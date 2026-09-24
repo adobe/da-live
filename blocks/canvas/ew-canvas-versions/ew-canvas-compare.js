@@ -114,12 +114,28 @@ class EwCanvasCompare extends LitElement {
 
   get _panes() {
     if (!this.diffDom) return null;
-    if (this._panesCache?.source === this.diffDom) return this._panesCache;
-    const current = this.diffDom.cloneNode(true);
-    current.querySelectorAll('ins').forEach((el) => el.remove());
-    const version = this.diffDom.cloneNode(true);
-    version.querySelectorAll('del').forEach((el) => el.remove());
-    this._panesCache = { source: this.diffDom, current, version };
+    if (this._panesCache?.source === this.diffDom
+      && this._panesCache.embedded === this.embedded) return this._panesCache;
+    if (!this.embedded) {
+      const current = this.diffDom.cloneNode(true);
+      current.querySelectorAll('ins').forEach((el) => el.remove());
+      const version = this.diffDom.cloneNode(true);
+      version.querySelectorAll('del').forEach((el) => el.remove());
+      this._panesCache = { source: this.diffDom, embedded: false, current, version };
+      return this._panesCache;
+    }
+    const rows = [...this.diffDom.childNodes]
+      .filter((node) => node.nodeType !== Node.TEXT_NODE || node.textContent.trim())
+      .map((node) => {
+        const cloneWithout = (tag) => {
+          if (node.nodeType === Node.ELEMENT_NODE && node.localName === tag) return null;
+          const clone = node.cloneNode(true);
+          clone.querySelectorAll?.(tag).forEach((el) => el.remove());
+          return clone;
+        };
+        return { current: cloneWithout('ins'), version: cloneWithout('del') };
+      });
+    this._panesCache = { source: this.diffDom, embedded: true, rows };
     return this._panesCache;
   }
 
@@ -150,9 +166,14 @@ class EwCanvasCompare extends LitElement {
           </div>
         </div>
         ${panes ? html`
-          <div class="ew-cc-split">
-            <div class="ew-cc-pane ProseMirror">${panes.current}</div>
-            <div class="ew-cc-pane ProseMirror">${panes.version}</div>
+          <div class="ew-cc-split${this.embedded ? ' is-aligned' : ''}">
+            ${this.embedded ? panes.rows.map((row) => html`
+              <div class="ew-cc-pane ProseMirror">${row.current}</div>
+              <div class="ew-cc-pane ProseMirror">${row.version}</div>
+            `) : html`
+              <div class="ew-cc-pane ProseMirror">${panes.current}</div>
+              <div class="ew-cc-pane ProseMirror">${panes.version}</div>
+            `}
           </div>
         ` : html`
           <div class="ew-cc-body ProseMirror">${this.embedded && this.diffDom ? this.diffDom : this.dom}</div>

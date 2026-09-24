@@ -14,7 +14,8 @@ export function wrapTablesInWrappers(root) {
 export function stripEmptyTopLevelBlocks(root) {
   const isWhitespace = (s) => !s || /^\s*$/.test(s);
   Array.from(root.children).forEach((child) => {
-    const hasMedia = child.querySelector('img, video, table, hr, iframe, svg');
+    const contentSelector = 'img, video, table, hr, iframe, svg';
+    const hasMedia = child.matches(contentSelector) || child.querySelector(contentSelector);
     if (!hasMedia && isWhitespace(child.textContent)) child.remove();
   });
 }
