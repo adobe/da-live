@@ -81,6 +81,7 @@ describe('setupIframeChannel', () => {
       editorOrigin: window.location.origin,
     });
     expect(message.context).to.equal(message.project);
+    expect(message).to.have.property('token');
     expect(targetOrigin).to.equal('https://plugin.example.com');
     expect(transfer).to.have.lengthOf(1);
 
@@ -163,7 +164,7 @@ describe('setupIframeChannel', () => {
     window.removeEventListener('ew-table-drag-end', onEnd);
   });
 
-  it('rejects asset picker requests without host authentication or a configured picker', async () => {
+  it('rejects asset listing requests without host authentication', async () => {
     const iframe = makeIframe();
     iframe.contentWindow = window;
     const postMessage = sinon.stub(window, 'postMessage');
@@ -176,13 +177,13 @@ describe('setupIframeChannel', () => {
     const emit = (source, origin, type) => window.dispatchEvent(new MessageEvent('message', { source, origin, data: { type } }));
     const wrongSource = new MessageChannel();
     try {
-      emit(wrongSource.port1, 'https://plugin.example.com', 'ew-asset-picker-config-request');
-      emit(window, 'https://other.example.com', 'ew-asset-picker-config-request');
+      emit(wrongSource.port1, 'https://plugin.example.com', 'ew-asset-list-request');
+      emit(window, 'https://other.example.com', 'ew-asset-list-request');
       expect(postMessage.called).to.be.false;
-      emit(window, 'https://plugin.example.com', 'ew-asset-picker-config-request');
+      emit(window, 'https://plugin.example.com', 'ew-asset-list-request');
       await wait();
       expect(postMessage.firstCall.args[0]).to.deep.equal({
-        type: 'ew-asset-picker-config',
+        type: 'ew-asset-list-error',
         error: 'Sign in to Experience Workspace to browse assets.',
       });
       emit(window, 'https://plugin.example.com', 'ew-asset-picker-select');
@@ -198,7 +199,7 @@ describe('setupIframeChannel', () => {
     }
   });
 
-  it('forwards the current IMS token when the picker requests configuration', async () => {
+  it('uses live IMS authentication without forwarding it in asset list responses', async () => {
     const previousIms = window.adobeIMS;
     const previousImsFlag = localStorage.getItem('nx-ims');
     const previousFetch = window.fetch;
@@ -223,14 +224,84 @@ describe('setupIframeChannel', () => {
       window.dispatchEvent(new MessageEvent('message', {
         source: window,
         origin: 'https://plugin.example.com',
-        data: { type: 'ew-asset-picker-config-request' },
+        data: { type: 'ew-asset-list-request' },
       }));
       await wait(150);
-      const configReply = postMessage.getCalls().find((call) => (
-        call.args[0].type === 'ew-asset-picker-config'
+      const listReply = postMessage.getCalls().find((call) => (
+        call.args[0].type === 'ew-asset-list-error'
       ))?.args[0];
-      expect(configReply?.token).to.equal('refreshed-token');
-      expect(configReply?.error).to.equal('No AEM Assets repository is configured for this site.');
+      expect(listReply).to.deep.equal({
+        type: 'ew-asset-list-error',
+        error: 'No AEM Assets repository is configured for this site.',
+      });
+    } finally {
+      destroy?.();
+      postMessage.restore();
+      window.adobeIMS = previousIms;
+      window.fetch = previousFetch;
+      if (previousImsFlag === null) localStorage.removeItem('nx-ims');
+      else localStorage.setItem('nx-ims', previousImsFlag);
+    }
+  });
+
+  it('lists only host-fetched assets and refuses selections not returned by the listing', async () => {
+    const previousIms = window.adobeIMS;
+    const previousImsFlag = localStorage.getItem('nx-ims');
+    const previousFetch = window.fetch;
+    localStorage.setItem('nx-ims', 'true');
+    window.adobeIMS = { getAccessToken: () => ({ token: 'live-token' }) };
+    const requests = [];
+    window.fetch = async (url, options) => {
+      if (url.includes('/ping/')) return new Response('', { status: 200 });
+      if (url.includes('/config/asset-list-bridge-org/asset-list-bridge-site/')) {
+        return new Response(JSON.stringify({
+          data: [
+            { key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' },
+          ],
+        }), { status: 200 });
+      }
+      if (url.startsWith('https://author-p1-e1.adobeaemcloud.com/adobe/repository/;api=search')) {
+        requests.push({ url, options });
+        return new Response(JSON.stringify({
+          children: [{
+            'repo:path': '/content/dam/listed.jpg',
+            'repo:name': 'listed.jpg',
+            'repo:id': 'urn:aaid:aem:listed',
+            'dc:format': 'image/jpeg',
+            'aem:formatName': 'jpeg',
+          }],
+        }), { status: 200 });
+      }
+      return new Response('', { status: 404 });
+    };
+    const iframe = makeIframe();
+    iframe.contentWindow = window;
+    const postMessage = sinon.stub(window, 'postMessage');
+    let destroy;
+    try {
+      ({ destroy } = await setupIframeChannel({
+        iframe,
+        hashState: { org: 'asset-list-bridge-org', site: 'asset-list-bridge-site' },
+        getView: () => null,
+        onClose: () => {},
+      }));
+      const emit = (data) => window.dispatchEvent(new MessageEvent('message', { source: window, origin: 'https://plugin.example.com', data }));
+      emit({ type: 'ew-asset-list-request' });
+      await wait(150);
+      const result = postMessage.getCalls().find(({ args }) => args[0].type === 'ew-asset-list-result')?.args[0];
+      expect(result, JSON.stringify(postMessage.getCalls().map(({ args }) => args[0]))).to.exist;
+      expect(result.assets[0].name).to.equal('listed.jpg');
+      expect(result.assets[0].html).to.include('publish-p1-e1.adobeaemcloud.com');
+      expect(result).not.to.have.property('token');
+      expect(requests).to.have.lengthOf(1);
+      expect(requests[0].options.headers.Authorization).to.equal('Bearer live-token');
+      emit({ type: 'ew-asset-list-request', more: true, url: 'https://evil.org/steal' });
+      await wait();
+      expect(requests).to.have.lengthOf(1);
+      expect(postMessage.getCalls().filter(({ args }) => args[0].type === 'ew-asset-list-result')[1].args[0]).to.include({ hasMore: false });
+      emit({ type: 'ew-asset-picker-select', asset: { 'repo:id': 'urn:aaid:aem:unlisted' } });
+      const error = postMessage.getCalls().find(({ args }) => args[0].type === 'ew-asset-picker-selection-error')?.args[0];
+      expect(error.error).to.equal('The asset picker is not ready.');
     } finally {
       destroy?.();
       postMessage.restore();

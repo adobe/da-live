@@ -1,8 +1,8 @@
 import { insertText, insertHTML, getEditorSelection } from './helpers.js';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { getAuthToken, initIms, getPostMessageTargetOrigin, isValidHref } from '../../shared/utils.js';
-import { buildAssetSelectorProps } from '../../shared/aem-assets/selector-props.js';
 import { getRepositoryConfig, insertSelectedAsset } from './aem-assets.js';
+import { createAssetListing } from './asset-list.js';
 
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
@@ -10,6 +10,10 @@ const { DA_ADMIN } = await import(`${getNx2()}/utils/utils.js`);
 
 /**
  * Wire a two-way MessageChannel between the host and a BYO plugin iframe.
+ * Asset requests use postMessage: ew-asset-list-request { more?: boolean } →
+ * ew-asset-list-result { assets: [{ asset, html, thumbnail, name }], hasMore }
+ * or ew-asset-list-error { error }. Clicks use ew-asset-picker-select { asset }.
+ * Authentication and pagination URLs stay in the host, never in the iframe.
  *
  * @param {object} opts
  * @param {HTMLIFrameElement} opts.iframe
@@ -36,8 +40,9 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   let dragHandles = [];
   let assetConfigPromise;
   let assetConfig;
+  let assetListing;
+  let loadingAssets = false;
   let selectingAsset = false;
-  let token;
   let destroyed = false;
   const respondToPicker = (type, details) => {
     if (!destroyed && iframe.contentWindow) {
@@ -113,39 +118,34 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
       window.dispatchEvent(new CustomEvent('ew-table-drag-start', { detail: { html } }));
     } else if (event.data?.type === 'ew-table-drag-end') {
       window.dispatchEvent(new Event('ew-table-drag-end'));
-    } else if (event.data?.type === 'ew-asset-picker-config-request') {
-      getAuthToken().then((currentToken) => {
-        token = currentToken;
-        if (!token) {
-          respondToPicker('ew-asset-picker-config', { error: 'Sign in to Experience Workspace to browse assets.' });
-          return;
-        }
+    } else if (event.data?.type === 'ew-asset-list-request') {
+      if (loadingAssets) return;
+      loadingAssets = true;
+      (async () => {
+        const currentToken = await getAuthToken();
+        if (!currentToken) throw new Error('Sign in to Experience Workspace to browse assets.');
         assetConfigPromise ??= getRepositoryConfig(org, site).catch((error) => {
           assetConfigPromise = null;
           throw error;
         });
-        assetConfigPromise.then((config) => {
-          if (!config) {
-            respondToPicker('ew-asset-picker-config', {
-              token,
-              error: 'No AEM Assets repository is configured for this site.',
-            });
-            return;
-          }
-          assetConfig = config;
-          const { imsToken: _, ...props } = buildAssetSelectorProps({
-            imsToken: token,
-            repoConfig: config,
-          });
-          respondToPicker('ew-asset-picker-config', { props, token });
-        }).catch((error) => {
-          respondToPicker('ew-asset-picker-config', { error: error.message });
+        const config = await assetConfigPromise;
+        if (!config) throw new Error('No AEM Assets repository is configured for this site.');
+        assetListing ??= createAssetListing(config);
+        assetConfig = config;
+        const result = await assetListing.load({
+          more: event.data.more === true,
+          token: currentToken,
         });
-      }).catch((error) => {
-        respondToPicker('ew-asset-picker-config', { error: error.message });
+        respondToPicker('ew-asset-list-result', result);
+      })().catch((error) => {
+        respondToPicker('ew-asset-list-error', { error: error.message });
+      }).finally(() => {
+        loadingAssets = false;
       });
     } else if (event.data?.type === 'ew-asset-picker-select') {
-      if (!assetConfig) {
+      const id = event.data.asset?.['repo:id'] || event.data.asset?.['repo:path'];
+      const asset = assetListing?.getAsset(id);
+      if (!assetConfig || !asset) {
         respondToPicker('ew-asset-picker-selection-error', { error: 'The asset picker is not ready.' });
         return;
       }
@@ -155,7 +155,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
       }
       selectingAsset = true;
       insertSelectedAsset({
-        asset: event.data.asset,
+        asset,
         repoConfig: assetConfig,
         org,
         site,
@@ -237,7 +237,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   };
 
   await initIms();
-  token = await getAuthToken();
+  const token = await getAuthToken();
 
   const readyTimer = setTimeout(() => {
     if (!iframe.contentWindow) return;
