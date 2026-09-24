@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { getCommentsBridge } from '../editor-utils/comments-bridge.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import {
@@ -12,9 +12,11 @@ const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
 
-const [base, style] = await Promise.all([
+// form.css so first-party views can put standard controls in the header actions zone.
+const [base, style, form] = await Promise.all([
   loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href),
   loadStyle(import.meta.url),
+  loadStyle(`${getNx2()}/styles/form.css`),
 ]);
 
 const CLOSE_ICON_SRC = '/img/icons/s2-icon-splitright-20-n.svg';
@@ -36,7 +38,7 @@ class EwToolPanel extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [base, style];
+    this.shadowRoot.adoptedStyleSheets = [base, style, form];
     this._bindCommentCountUpdates();
     this._onRailToggle = () => this._broadcastActiveView();
     document.addEventListener(PANEL_EVENT.OPEN, this._onRailToggle);

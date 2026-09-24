@@ -55,8 +55,12 @@ import { MenuItem, Dropdown, renderGrouped, blockTypeItem, wrapItem } from '../.
 
 import { InputRule, inputRules, wrappingInputRule } from 'prosemirror-inputrules';
 
+import { Transform, Mapping } from 'prosemirror-transform';
+
 // All exported
 export {
+  Transform,
+  Mapping,
   EditorView,
   Decoration,
   DecorationSet,

@@ -25,6 +25,13 @@
   padding-right: var(--s2-spacing-75);
 }
 
+/* Header-actions controls sit next to the view picker, so scale them to the bar. */
+.tool-panel-header-actions .nx-checkbox {
+  font-size: var(--s2-body-size-xs);
+  color: var(--s2-gray-800);
+  white-space: nowrap;
+}
+
 .tool-panel-close {
   display: inline-flex;
   align-items: center;
