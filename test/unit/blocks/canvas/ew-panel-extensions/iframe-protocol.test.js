@@ -241,4 +241,19 @@ describe('setupIframeChannel', () => {
 
     expect(iframe.contentWindow.postMessage.called).to.be.false;
   });
+
+  it('does not post a delayed ready message after destroy', async () => {
+    const iframe = makeIframe();
+    const { destroy } = await setupIframeChannel({
+      iframe,
+      hashState: { org: 'myorg', site: 'mysite' },
+      getView: () => null,
+      onClose: () => {},
+    });
+
+    destroy();
+    await wait(800);
+
+    expect(iframe.contentWindow.postMessage.called).to.be.false;
+  });
 });

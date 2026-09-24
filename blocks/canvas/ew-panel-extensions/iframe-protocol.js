@@ -95,7 +95,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     token = ims?.accessToken?.token;
   } catch { /* proceed without token */ }
 
-  setTimeout(() => {
+  const readyTimer = setTimeout(() => {
     if (!iframe.contentWindow) return;
     iframe.contentWindow.postMessage(
       { ready: true, project, context: project, token },
@@ -111,8 +111,10 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   document.addEventListener(CHAT_EVENT.AGENT_CHANGE, onAgentChange);
 
   const destroy = () => {
+    clearTimeout(readyTimer);
     document.removeEventListener(CHAT_EVENT.AGENT_CHANGE, onAgentChange);
     channel.port1.close();
+    channel.port2.close();
   };
 
   return { channel, destroy };
