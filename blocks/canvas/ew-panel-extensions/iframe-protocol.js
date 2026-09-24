@@ -4,6 +4,8 @@ import { getAuthToken, initIms, getPostMessageTargetOrigin, isValidHref } from '
 import { getRepositoryConfig } from './aem-assets.js';
 import { createAssetListing } from './asset-list.js';
 import { createLocalAssetListing } from './local-asset-list.js';
+import { getBlockProperties, replaceBlockText, replaceBlockImage } from './properties.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
@@ -43,16 +45,32 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   let assetListing;
   let loadingAssets = false;
   let destroyed = false;
+  let propertiesOpen = false;
+  let propertiesScheduled = false;
+  const respondToPicker = (type, details) => {
+    if (!destroyed && iframe.contentWindow) {
+      iframe.contentWindow.postMessage({ type, ...details }, targetOrigin);
+    }
+  };
+  const sendProperties = (saved = false) => {
+    if (!propertiesOpen || destroyed) return;
+    respondToPicker('ew-properties-result', { ...getBlockProperties(getView()), saved });
+  };
+  const scheduleProperties = () => {
+    if (!propertiesOpen || propertiesScheduled) return;
+    propertiesScheduled = true;
+    queueMicrotask(() => {
+      propertiesScheduled = false;
+      sendProperties();
+    });
+  };
+  const unsubscribeSelection = canvasBus.editorSelectState.subscribe(scheduleProperties);
+  const unsubscribeDocument = canvasBus.editorHtmlState.subscribe(scheduleProperties);
   const localMock = window.location.port === '3000'
     && ['localhost', '127.0.0.1'].includes(window.location.hostname);
   const prepareAsset = async (id) => {
     const token = localMock ? null : await getAuthToken();
     await assetListing.prepareFile(id, token);
-  };
-  const respondToPicker = (type, details) => {
-    if (!destroyed && iframe.contentWindow) {
-      iframe.contentWindow.postMessage({ type, ...details }, targetOrigin);
-    }
   };
   const renderDragHandles = () => {
     if (!dragHandles.length || !iframe.isConnected) {
@@ -192,6 +210,20 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
       }).finally(() => {
         loadingAssets = false;
       });
+    } else if (event.data?.type === 'ew-properties-watch') {
+      propertiesOpen = event.data.active === true;
+      sendProperties();
+    } else if (event.data?.type === 'ew-properties-text') {
+      try {
+        replaceBlockText(getView(), event.data.item, event.data.text);
+        sendProperties(true);
+      } catch (error) {
+        respondToPicker('ew-properties-error', { error: error.message });
+      }
+    } else if (event.data?.type === 'ew-properties-image') {
+      replaceBlockImage(getView(), event.data.item, event.data.file, { org, site, path })
+        .then(() => sendProperties(true))
+        .catch((error) => respondToPicker('ew-properties-error', { error: error.message }));
     }
   };
   window.addEventListener('message', onPluginMessage);
@@ -289,6 +321,8 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     window.removeEventListener('resize', renderDragHandles);
     window.removeEventListener('scroll', renderDragHandles, true);
     frameObserver.disconnect();
+    unsubscribeSelection();
+    unsubscribeDocument();
     dragHandleLayer.remove();
     window.dispatchEvent(new Event('ew-table-drag-end'));
     window.dispatchEvent(new Event('ew-asset-drag-end'));
