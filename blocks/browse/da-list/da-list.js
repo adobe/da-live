@@ -1,6 +1,7 @@
 import { LitElement, html, repeat, nothing } from 'da-lit';
 import { isFavorite, toggleFavorite } from '../shared/favorites.js';
-import { getNx, getNx2Api, sanitizePathParts } from '../../../scripts/utils.js';
+import { getTypeLabel } from '../../shared/icons.js';
+import { getNx, getNx2, getNx2Api, sanitizePathParts } from '../../../scripts/utils.js';
 import {
   aemAction,
   getExistingSchedule,
@@ -12,12 +13,38 @@ import { createVersion } from '../../shared/version/version-actions.js';
 
 import '../da-list-item/da-list-item.js';
 
+await import(`${getNx2()}/blocks/shared/popover/popover.js`);
+
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const SHARED = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
 const STYLE = await loadStyle(import.meta.url);
 
 const MAX_DELETE_COUNT = 1000;
 const DELETE_CONFIRM_THRESHOLD = 10;
+
+function pluralizeTypeLabel(label, count) {
+  return count === 1 ? label : `${label}s`;
+}
+
+function sortTypeLabels(labels) {
+  return [...labels].sort((a, b) => {
+    if (a === 'Folder') return -1;
+    if (b === 'Folder') return 1;
+    return a.localeCompare(b);
+  });
+}
+
+const TYPE_TAG_CLASSES = {
+  Folder: 'folder',
+  Page: 'page',
+  Image: 'image',
+  Link: 'link',
+  JSON: 'sheet',
+};
+
+function tagClassForTypeLabel(label) {
+  return TYPE_TAG_CLASSES[label] || '';
+}
 
 export default class DaList extends LitElement {
   static properties = {
@@ -28,9 +55,12 @@ export default class DaList extends LitElement {
     select: { type: Boolean },
     sort: { type: Boolean },
     drag: { type: Boolean },
+    flattenFolders: { type: Boolean },
     listItems: { attribute: false },
     newItem: { attribute: false },
     _permissions: { state: true },
+    _collapsedTypes: { state: true },
+    _hiddenTypes: { state: true },
     _listItems: { state: true },
     _itemsRemaining: { state: true },
     _itemErrors: { state: true },
@@ -75,6 +105,8 @@ export default class DaList extends LitElement {
     this._canUnpublish = true;
     this._listItems = [];
     this._canDelete = true;
+    this._collapsedTypes = new Set();
+    this._hiddenTypes = new Set();
   }
 
   connectedCallback() {
@@ -873,9 +905,79 @@ export default class DaList extends LitElement {
   }
 
   get filteredItems() {
-    return this._filter
-      ? this._listItems.filter((item) => item.name.includes(this._filter))
-      : this._listItems;
+    let items = this._listItems;
+    if (this._hiddenTypes.size) {
+      items = items.filter((item) => !this._hiddenTypes.has(getTypeLabel(item.ext)));
+    }
+    if (this._filter) items = items.filter((item) => item.name.includes(this._filter));
+    return items;
+  }
+
+  get allTypeLabels() {
+    return sortTypeLabels(new Set(this._listItems.map((item) => getTypeLabel(item.ext))));
+  }
+
+  get groupedItems() {
+    const items = this.filteredItems;
+    if (this.flattenFolders !== false) return [{ label: null, items }];
+
+    const buckets = new Map();
+    items.forEach((item) => {
+      const label = getTypeLabel(item.ext);
+      if (!buckets.has(label)) buckets.set(label, []);
+      buckets.get(label).push(item);
+    });
+
+    return sortTypeLabels(buckets.keys()).map((label) => ({ label, items: buckets.get(label) }));
+  }
+
+  toggleTypeGroup(label) {
+    const next = new Set(this._collapsedTypes);
+    if (next.has(label)) next.delete(label);
+    else next.add(label);
+    this._collapsedTypes = next;
+  }
+
+  get _typesPopover() {
+    return this.shadowRoot.querySelector('.da-list-types-popover');
+  }
+
+  toggleTypesPopover(anchor) {
+    const popover = this._typesPopover;
+    if (popover.open) popover.close();
+    else popover.show({ anchor });
+  }
+
+  toggleTypeVisibility(label) {
+    const next = new Set(this._hiddenTypes);
+    if (next.has(label)) next.delete(label);
+    else next.add(label);
+    this._hiddenTypes = next;
+  }
+
+  toggleAllTypesVisibility() {
+    this._hiddenTypes = this._hiddenTypes.size ? new Set() : new Set(this.allTypeLabels);
+  }
+
+  getGroupItems(label) {
+    return this.groupedItems.find((group) => group.label === label)?.items || [];
+  }
+
+  async handleGroupCheckAll(label) {
+    const items = this.getGroupItems(label);
+    const check = items.some((item) => !item.isChecked);
+
+    if (check && this._continuationToken && !this._allPagesLoaded) {
+      this._bulkLoading = true;
+      try {
+        await this.loadAllPages();
+      } finally {
+        this._bulkLoading = false;
+      }
+    }
+
+    this.getGroupItems(label).forEach((item) => { item.isChecked = check; });
+    this.handleSelectionState();
   }
 
   get isSelectAll() {
@@ -1187,11 +1289,10 @@ export default class DaList extends LitElement {
     `;
   }
 
-  renderList(items) {
-    const showSentinel = this._continuationToken && !this._allPagesLoaded;
-    return html`
-      <div class="da-item-list" role="presentation">
-      ${repeat(items, (item) => item.path, (item, idx) => html`
+  renderGroupItems(items, indexByPath) {
+    return repeat(items, (item) => item.path, (item) => {
+      const idx = indexByPath.get(item.path);
+      return html`
         <da-list-item
           role="row"
           @checked=${(e) => this.handleItemChecked(e, item, idx)}
@@ -1207,7 +1308,56 @@ export default class DaList extends LitElement {
           ext="${item.ext}"
           editor="${this.editor}"
           idx=${idx}>
-        </da-list-item>`)}
+        </da-list-item>`;
+    });
+  }
+
+  renderGroupHeader(label, groupItems) {
+    const collapsed = this._collapsedTypes.has(label);
+    const count = groupItems.length;
+    const checkedCount = groupItems.filter((item) => item.isChecked).length;
+    const isGroupSelectAll = count > 0 && checkedCount === count;
+    const isGroupIndeterminate = checkedCount > 0 && checkedCount < count;
+    const typeLabel = pluralizeTypeLabel(label, count);
+    return html`
+      <div class="da-list-group-header ${collapsed ? 'is-collapsed' : ''}">
+        ${this.select ? html`
+          <label class="da-checkbox ${isGroupIndeterminate ? 'indeterminate' : ''} ${this._bulkLoading ? 'loading' : ''}">
+            <input
+              type="checkbox"
+              .checked="${isGroupSelectAll}"
+              @click=${() => this.handleGroupCheckAll(label)}
+              aria-label="Select all ${typeLabel.toLowerCase()}"
+              ?disabled=${this._bulkLoading}
+              aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
+          </label>
+        ` : nothing}
+        <button
+          type="button"
+          class="da-list-group-toggle"
+          aria-expanded="${!collapsed}"
+          @click=${() => this.toggleTypeGroup(label)}>
+          <svg class="da-list-group-chevron" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M6 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+          <span class="tag ${label.toLowerCase()}">${count} ${typeLabel}</span>
+        </button>
+      </div>`;
+  }
+
+  renderList(items) {
+    const showSentinel = this._continuationToken && !this._allPagesLoaded;
+    const indexByPath = new Map(this._listItems.map((item, i) => [item.path, i]));
+    const groups = this.groupedItems;
+
+    return html`
+      <div class="da-item-list" role="presentation">
+      ${groups[0].label === null
+        ? this.renderGroupItems(items, indexByPath)
+        : groups.map(({ label, items: groupItems }) => html`
+            ${this.renderGroupHeader(label, groupItems)}
+            ${!this._collapsedTypes.has(label) ? this.renderGroupItems(groupItems, indexByPath) : nothing}
+          `)}
         ${showSentinel ? html`<div class="da-list-sentinel" aria-hidden="true"></div>` : nothing}
       </div>
     `;
@@ -1315,7 +1465,36 @@ export default class DaList extends LitElement {
       ${this.renderConfirmDialog()}
       ${this._dropConflicts?.length ? this.renderDropConfirm() : nothing}
       ${!this._confirm && this._itemErrors.length ? this.renderErrors() : nothing}
+      ${this.renderTypesPopover()}
       `;
+  }
+
+  renderTypesPopover() {
+    const labels = this.allTypeLabels;
+    const allVisible = this._hiddenTypes.size === 0;
+
+    return html`
+      <nx-popover class="da-list-types-popover" role="dialog" aria-label="Show all types">
+        <h4 class="da-list-types-title">Types</h4>
+        ${labels.map((label) => html`
+          <label class="da-checkbox da-list-types-row">
+            <input
+              type="checkbox"
+              .checked=${!this._hiddenTypes.has(label)}
+              @click=${() => this.toggleTypeVisibility(label)}>
+            <span class="tag ${tagClassForTypeLabel(label)}">${label}</span>
+          </label>
+        `)}
+        <div class="da-list-types-row da-list-types-select-all">
+          <label class="da-checkbox">
+            <input
+              type="checkbox"
+              .checked=${allVisible}
+              @click=${() => this.toggleAllTypesVisibility()}>
+            <span>Select all</span>
+          </label>
+        </div>
+      </nx-popover>`;
   }
 
   setupObserver() {

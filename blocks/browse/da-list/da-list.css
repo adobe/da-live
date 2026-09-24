@@ -20,6 +20,74 @@
   width: 100%;
 }
 
+.da-list-group-header {
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-200);
+  width: 100%;
+  padding: var(--s2-spacing-100) var(--s2-spacing-300);
+  font-family: var(--s2-font-family);
+  color: var(--s2-gray-600);
+  font-size: var(--s2-component-s-regular-font-size);
+}
+
+.da-list-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-100);
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--s2-gray-700);
+  font: inherit;
+  font-weight: var(--s2-component-s-medium-font-weight, 500);
+  cursor: pointer;
+  text-align: left;
+}
+
+.da-list-group-toggle:hover {
+  color: var(--s2-gray-900);
+}
+
+.da-list-group-chevron {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  transition: transform 0.12s ease;
+}
+
+.da-list-group-header.is-collapsed .da-list-group-chevron {
+  transform: rotate(-90deg);
+}
+
+.da-list-types-popover {
+  width: 200px;
+}
+
+.da-list-types-title {
+  color: var(--s2-gray-900);
+  font-size: 12px;
+  line-height: 20px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.da-list-types-row {
+  width: 100%;
+  padding: var(--s2-spacing-100) 0;
+}
+
+.da-list-types-select-all {
+  font-size: 12px;
+  margin-top: var(--s2-spacing-100);
+  border-top: 1px solid var(--s2-gray-200);
+
+  .da-checkbox {
+    gap: var(--s2-spacing-100);
+  }
+}
+
 /* List Item */
 da-list-item {
   font-size: var(--s2-component-s-regular-font-size, 14px);
@@ -45,6 +113,10 @@ da-list-item.is-expanded::before,
 da-list-item:hover::after,
 da-list-item.is-expanded::after {
   margin: 0;
+}
+
+.da-list-group-header + da-list-item::before {
+  display: none;
 }
 
 /* Empty list */
@@ -395,4 +467,38 @@ da-list-item.is-expanded::after {
 
 .da-list-note-excluded::first-letter {
   text-transform: uppercase;
+}
+
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  height: 24px;
+  border-radius: var(--s2-corner-radius-400);
+  padding: 3px 12px;
+  box-sizing: border-box;
+  font-family: var(--s2-font-family);
+  font-size: var(--s2-component-s-regular-font-size);
+  background-color: var(--s2-gray-200);
+
+  &.folder {
+    background-color: var(--s2-yellow-200);
+  }
+
+  &.page {
+    background-color: var(--s2-blue-200);
+  }
+
+  &.image {
+    background-color: var(--s2-blue-400);
+  }
+
+  &.link {
+    background-color: var(--s2-seafoam-200);
+  }
+
+  &.sheet {
+    background-color: var(--s2-red-200);
+  }
 }

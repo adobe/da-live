@@ -1,5 +1,6 @@
 :host {
   display: block;
+  font-family: var(--s2-font-family);
 }
 
 .da-browse-header {
@@ -61,20 +62,8 @@
   margin-left: 2px;
 }
 
-.da-browse-view-options-menu {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  z-index: 3;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.da-browse-view-options-popover {
   width: 280px;
-  padding: 8px;
-  border-radius: 10px;
-  background: #fff;
-  box-shadow: 0 0 2px rgb(0 0 0 / 12%), 0 2px 6px rgb(0 0 0 / 4%), 0 4px 12px rgb(0 0 0 / 8%);
 }
 
 .da-browse-view-options-row {
@@ -91,7 +80,7 @@
 
 .da-browse-view-options-label {
   color: var(--s2-gray-900);
-  font-size: 16px;
+  font-size: 14px;
   line-height: 20px;
   font-weight: 500;
 }

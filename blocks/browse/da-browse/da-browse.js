@@ -7,7 +7,10 @@ import { getChatPanelContent } from '../../shared/chat-panel.js';
 import '../da-new/da-new.js';
 import '../da-search/da-search.js';
 import '../da-list/da-list.js';
+
 await import(`${getNx2()}/blocks/shared/segmented-btn/segmented.js`);
+await import(`${getNx2()}/blocks/shared/switch/switch.js`);
+await import(`${getNx2()}/blocks/shared/popover/popover.js`);
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
@@ -26,6 +29,25 @@ function closeChatPanel() {
   document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
 }
 
+const FLATTEN_FOLDERS_KEY = 'da-browse-flatten-folders';
+
+function getStoredFlattenFolders() {
+  try {
+    const stored = sessionStorage.getItem(FLATTEN_FOLDERS_KEY);
+    return stored === null ? true : stored === 'true';
+  } catch {
+    return true;
+  }
+}
+
+function setStoredFlattenFolders(flatten) {
+  try {
+    sessionStorage.setItem(FLATTEN_FOLDERS_KEY, String(flatten));
+  } catch {
+    // sessionStorage may be unavailable (Safari private mode, quota, etc.)
+  }
+}
+
 export default class DaBrowse extends LitElement {
   static properties = {
     details: { attribute: false },
@@ -33,9 +55,9 @@ export default class DaBrowse extends LitElement {
     _searchItems: { state: true },
     _ewEnabled: { state: true },
     _chatEnabled: { state: true },
-    _viewOptionsOpen: { state: true },
     _viewLayout: { state: true },
     _viewRowSize: { state: true },
+    _flattenFolders: { state: true },
   };
 
   _browseSelKeys = new Set();
@@ -89,9 +111,9 @@ export default class DaBrowse extends LitElement {
         selected: false,
       },
     ];
-    this._viewOptionsOpen = false;
     this._viewLayout = 'list';
     this._viewRowSize = 'm';
+    this._flattenFolders = getStoredFlattenFolders();
   }
 
   connectedCallback() {
@@ -216,9 +238,17 @@ export default class DaBrowse extends LitElement {
     return this.shadowRoot.querySelector('da-new');
   }
 
+  get browseCmp() {
+    return this.shadowRoot.querySelector('.da-list-type-browse');
+  }
+
+  toggleTypesFilter({ currentTarget }) {
+    this.browseCmp?.toggleTypesPopover(currentTarget);
+  }
+
   get browseListItems() {
     // eslint-disable-next-line no-underscore-dangle
-    return this.shadowRoot.querySelector('.da-list-type-browse')?._listItems || [];
+    return this.browseCmp?._listItems || [];
   }
 
   isRootFolder(path) {
@@ -254,7 +284,8 @@ export default class DaBrowse extends LitElement {
         @selectionchanged=${type === 'browse' && this._chatEnabled ? this._handleBrowseSelection : nothing}
         select="${select ? true : nothing}"
         sort="${sort ? true : nothing}"
-        drag="${drag ? true : nothing}"></da-list>`;
+        drag="${drag ? true : nothing}"
+        .flattenFolders=${this._flattenFolders}></da-list>`;
   }
 
   renderSettingsActions() {
@@ -270,8 +301,14 @@ export default class DaBrowse extends LitElement {
       </a>`;
   }
 
-  toggleViewOptions() {
-    this._viewOptionsOpen = !this._viewOptionsOpen;
+  get _viewOptionsPopover() {
+    return this.shadowRoot.querySelector('.da-browse-view-options-popover');
+  }
+
+  toggleViewOptions({ currentTarget }) {
+    const popover = this._viewOptionsPopover;
+    if (popover.open) popover.close();
+    else popover.show({ anchor: currentTarget });
   }
 
   setViewLayout(layout) {
@@ -282,19 +319,22 @@ export default class DaBrowse extends LitElement {
     this._viewRowSize = size;
   }
 
-  renderViewOptionsMenu() {
-    if (!this._viewOptionsOpen) return nothing;
+  setFlattenFolders(flatten) {
+    this._flattenFolders = flatten;
+    setStoredFlattenFolders(flatten);
+  }
 
+  renderViewOptionsMenu() {
     return html`
-      <div class="da-browse-view-options-menu" role="dialog" aria-label="View Options">
+      <nx-popover class="da-browse-view-options-popover" role="dialog" aria-label="View Options">
         <div class="da-browse-view-options-row">
           <div class="da-browse-view-options-label">Layout</div>
           <nx-segmented-btn
             label="Layout options"
             .items=${[
-              { value: 'list', icon: '/img/icons/s2-icon-listbulleted-20-n.svg', label: 'List view', iconOnly: true },
-              { value: 'grid', icon: '/img/icons/s2-icon-viewgrid-20-n.svg', label: 'Grid view', iconOnly: true },
-            ]}
+        { value: 'list', icon: '/img/icons/s2-icon-listbulleted-20-n.svg', label: 'List view', iconOnly: true },
+        { value: 'grid', icon: '/img/icons/s2-icon-viewgrid-20-n.svg', label: 'Grid view', iconOnly: true },
+      ]}
             .value=${this._viewLayout}
             @change=${({ detail }) => this.setViewLayout(detail.value)}>
           </nx-segmented-btn>
@@ -304,25 +344,32 @@ export default class DaBrowse extends LitElement {
           <nx-segmented-btn
             label="Row size options"
             .items=${[
-              { value: 's', label: 'S' },
-              { value: 'm', label: 'M' },
-              { value: 'l', label: 'L' },
-            ]}
+        { value: 's', label: 'S' },
+        { value: 'm', label: 'M' },
+        { value: 'l', label: 'L' },
+      ]}
             .value=${this._viewRowSize}
             @change=${({ detail }) => this.setViewRowSize(detail.value)}>
           </nx-segmented-btn>
         </div>
-      </div>`;
+        <div class="da-browse-view-options-row">
+          <nx-switch
+            label="Flatten folders"
+            ?checked=${this._flattenFolders}
+            @change=${({ detail }) => this.setFlattenFolders(detail.checked)}>
+          </nx-switch>
+        </div>
+      </nx-popover>`;
   }
 
   renderToolbarLeading() {
     return html`
       <div class="da-browse-toolbar-actions">
-        ${this.renderNew()}
         ${this._chatEnabled ? html`
           <button type="button" part="chat-btn" class="chat-btn nx-action-btn-icon" aria-label="Open chat panel" @click=${openChatPanel}>
             <svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-splitleft-20-n.svg#icon"></use></svg>
           </button>` : nothing}
+        ${this.renderNew()}
       </div>`;
   }
 
@@ -340,7 +387,7 @@ export default class DaBrowse extends LitElement {
           </svg>
           <span>View Options</span>
         </button>
-        <button type="button" class="da-browse-toolbar-control nx-action-btn-quiet">
+        <button type="button" class="da-browse-toolbar-control nx-action-btn-quiet" @click=${this.toggleTypesFilter}>
           <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-filter-20-n.svg#icon"></use></svg>
           <span>Show All types</span>
         </button>

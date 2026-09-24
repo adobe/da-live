@@ -22,3 +22,12 @@ export function iconPathForExt(ext) {
   const type = !ext ? 'folder' : ext;
   return ICONS[type] || ICONS.file;
 }
+
+export function getTypeLabel(ext) {
+  if (!ext) return 'Folder';
+  if (ext === 'html') return 'Page';
+  if (ext === 'link') return 'Link';
+  if (ext === 'json') return 'Sheet';
+  if (['jpg', 'jpeg', 'ico', 'png', 'gif', 'svg', 'webp', 'avif'].includes(ext)) return 'Image';
+  return ext.toUpperCase();
+}

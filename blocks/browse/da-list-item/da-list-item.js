@@ -1,7 +1,7 @@
 import { LitElement, html, nothing, until } from 'da-lit';
 import { delay, sanitizeName, formatDate } from '../../shared/utils.js';
 import { getNx, getNx2Api } from '../../../scripts/utils.js';
-import { ICONS, iconPathForExt } from '../../shared/icons.js';
+import { ICONS, iconPathForExt, getTypeLabel } from '../../shared/icons.js';
 import getEditPath from '../shared.js';
 
 // Styles
@@ -244,14 +244,6 @@ export default class DaListItem extends LitElement {
     return html`<svg viewBox="0 0 20 20"><use href="${iconPathForExt(this.ext)}#icon"</svg>`;
   }
 
-  getTypeLabel() {
-    if (!this.ext) return 'Folder';
-    if (this.ext === 'html') return 'Page';
-    if (this.ext === 'link') return 'Link';
-    if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'avif'].includes(this.ext)) return 'Image';
-    return this.ext.toUpperCase();
-  }
-
   renderItem() {
     let path = this.ext ? getEditPath({ path: this.path, ext: this.ext, editor: this.editor }) : `#${this.path}`;
     let externalUrlPromise;
@@ -262,6 +254,9 @@ export default class DaListItem extends LitElement {
         .then((response) => response.json())
         .then((data) => data.externalUrl);
     }
+
+    const type = getTypeLabel(this.ext);
+
     return html`
       <a href="${this.ext === 'link' ? until(externalUrlPromise) : path}" class="da-item-list-item-title" data-column="name">
         <div class="da-item-list-item-info">
@@ -277,7 +272,7 @@ export default class DaListItem extends LitElement {
           </div>
         </div>
       </a>
-      <div class="da-item-list-item-meta da-item-list-item-type-label" data-column="type">${this.getTypeLabel()}</div>
+      <div class="da-item-list-item-meta da-item-list-item-type-label" data-column="type" class="${type.toLowerCase()}">${type}</div>
       <div class="da-item-list-item-meta da-item-list-item-date" data-column="modified">${this.ext === 'link' ? '—' : (this.renderDate() || '—')}</div>`;
   }
 
