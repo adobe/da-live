@@ -17,6 +17,13 @@ export function normalizeComparisonHtml(html, context) {
   [...dom.body.querySelectorAll('*')].reverse().forEach((el) => {
     if (!CONTENT_TAGS.has(el.localName)) el.replaceWith(...el.childNodes);
   });
+  // Collapse table cells whose only content is a single paragraph. Live markdown renders
+  // cell text directly (<td>Omnichannel</td>) while the editor wraps it in a block node
+  // (<td><p>Omnichannel</p></td>); without this the unmatched <p> tags make htmldiff mark
+  // every row as removed and re-added instead of matched.
+  dom.querySelectorAll('td > p:only-child, th > p:only-child').forEach((p) => {
+    p.replaceWith(...p.childNodes);
+  });
   const base = `https://main--${context.site}--${context.org}.aem.live/${context.path.replace(/^\//, '').replace(/\.html$/, '')}`;
   dom.body.querySelectorAll('*').forEach((el) => {
     [...el.attributes].forEach(({ name, value }) => {

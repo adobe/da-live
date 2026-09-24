@@ -228,6 +228,17 @@ describe('comparison content normalization', () => {
     expect(html).to.include('<table>');
   });
 
+  it('collapses single-paragraph table cells so editor rows match live rows', () => {
+    const editorCell = comparison.normalizeComparisonHtml('<div class="tableWrapper"><table><tbody><tr><td><p>Omnichannel</p></td></tr></tbody></table></div>', page);
+    const liveCell = comparison.normalizeComparisonHtml('<table><tbody><tr><td>Omnichannel</td></tr></tbody></table>', page);
+    expect(editorCell).to.include('<td>Omnichannel</td>');
+    expect(editorCell).to.equal(liveCell);
+    // Multi-paragraph and non-paragraph cells are left untouched
+    const multi = comparison.normalizeComparisonHtml('<table><tbody><tr><td><p>A</p><p>B</p></td><td><ul><li>C</li></ul></td></tr></tbody></table>', page);
+    expect(multi).to.include('<td><p>A</p><p>B</p></td>');
+    expect(multi).to.include('<td><ul><li>C</li></ul></td>');
+  });
+
   it('loads delivered markdown using the shared API and treats only live 404 as an empty baseline', async () => {
     expect(comparison.readDeliveredContent).to.be.a('function');
     const calls = [];
