@@ -1,17 +1,26 @@
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
+import { EditorState, EditorView, TextSelection } from 'da-y-wrapper';
+import { getSchema } from 'da-parser';
 import { setNx } from '../../../../../scripts/utils.js';
+import { createTrackingPlugin } from '../../../../../blocks/canvas/editor-utils/prose-diff.js';
+import { getEnterInputRulesPlugin } from '../../../../../blocks/edit/prose/plugins/keyHandlers.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let getPreviewOrigin;
 let fetchWysiwygBranch;
 let parseSections;
+let resolveChangedScope;
+let updateDocument;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
   getPreviewOrigin = mod.getPreviewOrigin;
   fetchWysiwygBranch = mod.fetchWysiwygBranch;
   parseSections = mod.parseSections;
+  resolveChangedScope = mod.resolveChangedScope;
+  updateDocument = mod.updateDocument;
 });
 
 describe('getPreviewOrigin', () => {
@@ -157,11 +166,13 @@ describe('parseSections', () => {
     </div></main>`;
     const [section] = parseSections(html);
     expect(section.blocks).to.deep.equal([
-      { name: 'hero', variant: '', blockIndex: 0, proseIndex: 0, innerText: 'Hero content' },
+      {
+        name: 'hero', variant: '', blockIndex: 0, proseIndex: 0, blockEnd: undefined, innerText: 'Hero content',
+      },
     ]);
     expect(section.items).to.deep.equal([
       {
-        type: 'block', name: 'hero', variant: '', blockIndex: 0, proseIndex: 0, innerText: 'Hero content',
+        type: 'block', name: 'hero', variant: '', blockIndex: 0, proseIndex: 0, blockEnd: undefined, innerText: 'Hero content',
       },
     ]);
   });
@@ -310,7 +321,7 @@ describe('parseSections', () => {
     }]);
     expect(sections[1].items).to.deep.equal([
       {
-        type: 'block', name: 'cards', variant: '', blockIndex: 0, proseIndex: 0, innerText: 'Cards',
+        type: 'block', name: 'cards', variant: '', blockIndex: 0, proseIndex: 0, blockEnd: undefined, innerText: 'Cards',
       },
     ]);
   });
@@ -337,5 +348,326 @@ describe('dispatchMirror', () => {
     const view = { dispatch: () => { throw new Error('boom'); } };
     expect(() => dispatchMirror(view, {}, ctx)).to.throw('boom');
     expect(ctx).to.deep.equal({ suppressRerender: false, mirroringFromIframe: false });
+  });
+});
+
+describe('resolveChangedScope', () => {
+  const html = `<main>
+    <div>
+      <p data-prose-index="1">Intro</p>
+      <div class="cards" data-block-index="10">Cards</div>
+      <p data-prose-index="20">Outro</p>
+    </div>
+    <div><div class="hero" data-block-index="30">Hero</div></div>
+  </main>`;
+
+  it('resolves a block-local change to its block and section', () => {
+    const owners = resolveChangedScope({
+      changes: [{ type: 'text', pos: 12 }],
+      sections: parseSections(html),
+    });
+
+    expect(owners).to.deep.equal({
+      sectionIndexes: [0],
+      blocks: [{ sectionIndex: 0, blockIndex: 0 }],
+      metadataNames: [],
+    });
+  });
+
+  it('resolves default content to its section without assigning a block', () => {
+    const owners = resolveChangedScope({
+      changes: [{ type: 'text', pos: 5 }],
+      sections: parseSections(html),
+    });
+
+    expect(owners).to.deep.equal({ sectionIndexes: [0], blocks: [], metadataNames: [] });
+  });
+
+  it('returns owners from multiple sections for a cross-section change', () => {
+    const owners = resolveChangedScope({
+      changes: [{ type: 'text', pos: 12 }, { type: 'text', pos: 30 }],
+      sections: parseSections(html),
+    });
+
+    expect(owners).to.deep.equal({
+      sectionIndexes: [0, 1],
+      blocks: [
+        { sectionIndex: 0, blockIndex: 0 },
+        { sectionIndex: 1, blockIndex: 1 },
+      ],
+      metadataNames: [],
+    });
+  });
+
+  it('resolves deleted content against the previous section metadata', () => {
+    const owners = resolveChangedScope({
+      changes: [{ type: 'deleted', pos: 12 }],
+      sections: parseSections('<main><div><p data-prose-index="1">Intro</p></div></main>'),
+      previousSections: parseSections(html),
+    });
+
+    expect(owners).to.deep.equal({
+      sectionIndexes: [0],
+      blocks: [{ sectionIndex: 0, blockIndex: 0 }],
+      metadataNames: [],
+    });
+  });
+
+  it('returns null when a change position has no unambiguous owner', () => {
+    const owners = resolveChangedScope({
+      changes: [{ type: 'text', pos: 0 }],
+      sections: parseSections(html),
+    });
+
+    expect(owners).to.be.null;
+  });
+
+  it('retains page and section metadata names without treating them as blocks', () => {
+    const sections = parseSections(`<main>
+      <div><div class="metadata" data-block-index="1">Page metadata</div></div>
+      <div><div class="section-metadata" data-block-index="10">Section metadata</div></div>
+    </main>`);
+
+    expect(resolveChangedScope({ changes: [{ type: 'attrs', pos: 1 }], sections })).to.deep.equal({
+      sectionIndexes: [0],
+      blocks: [],
+      metadataNames: ['metadata'],
+    });
+    expect(resolveChangedScope({ changes: [{ type: 'attrs', pos: 10 }], sections })).to.deep.equal({
+      sectionIndexes: [1],
+      blocks: [],
+      metadataNames: ['section-metadata'],
+    });
+  });
+});
+
+describe('updateDocument metadata rerenders', () => {
+  let clock;
+
+  beforeEach(() => { clock = sinon.useFakeTimers(); });
+  afterEach(() => { clock.restore(); });
+
+  function ctxForBody(body) {
+    const dom = document.createElement('div');
+    dom.innerHTML = body;
+    return {
+      suppressRerender: false,
+      view: { dom },
+      port: { postMessage: sinon.spy() },
+    };
+  }
+
+  function tableNode(name) {
+    const cell = { type: { name: 'table_cell' }, textContent: name, childCount: 1 };
+    const row = { type: { name: 'table_row' }, childCount: 2, child: () => cell };
+    const table = { type: { name: 'table' }, child: () => row };
+    return { table, row, cell };
+  }
+
+  function ctxForTable(name, selectionPos = 10) {
+    const dom = document.createElement('div');
+    dom.innerHTML = `
+      <div class="tableWrapper">
+        <table>
+          <tbody>
+            <tr><td><p>${name}</p></td></tr>
+            <tr><td><p>key</p></td><td><p>value</p></td></tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+    const { table, row, cell } = tableNode(name);
+    return {
+      suppressRerender: false,
+      view: {
+        dom,
+        posAtDOM: () => 1,
+        state: {
+          selection: { from: selectionPos },
+          doc: {
+            resolve: () => ({
+              depth: 4,
+              parent: { nodeSize: 50 },
+              node: (depth) => [null, table, row, cell, { type: { name: 'paragraph' } }][depth],
+              index: () => 1,
+            }),
+          },
+        },
+      },
+      port: { postMessage: sinon.spy() },
+    };
+  }
+
+  it('debounces page metadata rerenders', () => {
+    const ctx = ctxForBody('<div class="metadata" data-block-index="1">Page metadata</div>');
+
+    updateDocument(ctx, { changes: [{ type: 'attrs', pos: 1 }] });
+
+    expect(ctx.port.postMessage.called).to.be.false;
+    clock.runAll();
+    expect(ctx.port.postMessage.calledOnce).to.be.true;
+    expect(ctx.port.postMessage.firstCall.args[0].payload.rerenderScope).to.deep.equal({ type: 'page' });
+  });
+
+  it('debounces section metadata rerenders and keeps section scope', () => {
+    const ctx = ctxForBody(`
+      <div class="metadata" data-block-index="1">Page metadata</div>
+      <hr>
+      <div class="section-metadata" data-block-index="10">Section metadata</div>
+    `);
+
+    updateDocument(ctx, { changes: [{ type: 'attrs', pos: 10 }] });
+
+    expect(ctx.port.postMessage.called).to.be.false;
+    clock.runAll();
+    expect(ctx.port.postMessage.calledOnce).to.be.true;
+    expect(ctx.port.postMessage.firstCall.args[0].payload.rerenderScope).to.deep.equal({
+      type: 'section',
+      sectionIndex: 1,
+    });
+  });
+
+  it('restarts the debounce window for repeated metadata edits', () => {
+    const ctx = ctxForBody('<div class="metadata" data-block-index="1">Page metadata</div>');
+
+    updateDocument(ctx, { changes: [{ type: 'attrs', pos: 1 }] });
+    clock.tick(1);
+    updateDocument(ctx, { changes: [{ type: 'attrs', pos: 1 }] });
+    expect(ctx.port.postMessage.called).to.be.false;
+    expect(clock.countTimers()).to.equal(1);
+    clock.runAll();
+    expect(ctx.port.postMessage.calledOnce).to.be.true;
+  });
+
+  it('flushes a pending metadata rerender before a following non-metadata rerender', () => {
+    const ctx = ctxForBody(`
+      <div class="metadata" data-block-index="1">Page metadata</div>
+      <div class="hero" data-block-index="20">Hero</div>
+    `);
+
+    updateDocument(ctx, { changes: [{ type: 'attrs', pos: 1 }] });
+    clock.tick(1);
+    updateDocument(ctx, { changes: [{ type: 'attrs', pos: 20 }] });
+
+    expect(ctx.port.postMessage.callCount).to.equal(2);
+    expect(ctx.port.postMessage.firstCall.args[0].payload.rerenderScope).to.deep.equal({ type: 'page' });
+    expect(ctx.port.postMessage.secondCall.args[0].payload.rerenderScope).to.deep.equal({
+      type: 'block',
+      sectionIndex: 0,
+      blockIndex: 0,
+    });
+  });
+
+  it('debounces metadata rerenders when missing details but selection is inside metadata', () => {
+    const ctx = ctxForTable('Metadata');
+
+    updateDocument(ctx);
+
+    expect(ctx.port.postMessage.called).to.be.false;
+    clock.runAll();
+    expect(ctx.port.postMessage.calledOnce).to.be.true;
+    expect(ctx.port.postMessage.firstCall.args[0].payload.rerenderScope).to.deep.equal({ type: 'page' });
+  });
+
+  it('debounces section metadata rerenders when missing details but selection is inside section metadata', () => {
+    const ctx = ctxForTable('Section-Metadata');
+
+    updateDocument(ctx);
+
+    expect(ctx.port.postMessage.called).to.be.false;
+    clock.runAll();
+    expect(ctx.port.postMessage.calledOnce).to.be.true;
+    expect(ctx.port.postMessage.firstCall.args[0].payload.rerenderScope).to.deep.equal({
+      type: 'section',
+      sectionIndex: 0,
+    });
+  });
+});
+
+describe('updateDocument section count rerenders', () => {
+  it('sends one section refresh for the first dash and one body refresh for Enter', () => {
+    const schema = getSchema();
+    const ctx = { port: { postMessage: sinon.spy() } };
+    const syncEditor = sinon.spy();
+    const enterPlugin = getEnterInputRulesPlugin();
+    const trackingPlugin = createTrackingPlugin(
+      (details) => updateDocument(ctx, details),
+      undefined,
+      syncEditor,
+    );
+    const container = document.createElement('div');
+    document.body.append(container);
+    ctx.view = new EditorView(container, {
+      state: EditorState.create({
+        schema,
+        doc: schema.nodes.doc.create(null, schema.nodes.paragraph.create()),
+        plugins: [trackingPlugin, enterPlugin],
+      }),
+    });
+    try {
+      ctx.view.dispatch(ctx.view.state.tr.insertText('-', 1));
+      expect(ctx.port.postMessage.callCount).to.equal(1);
+      expect(ctx.port.postMessage.firstCall.args[0].payload.rerenderScope)
+        .to.deep.equal({ type: 'section', sectionIndex: 0 });
+
+      ctx.view.dispatch(ctx.view.state.tr.insertText('--', 2));
+      expect(syncEditor.callCount).to.equal(1);
+      expect(ctx.port.postMessage.callCount).to.equal(1);
+
+      ctx.view.dispatch(ctx.view.state.tr.setSelection(
+        TextSelection.create(ctx.view.state.doc, 4),
+      ));
+      expect(enterPlugin.props.handleKeyDown(ctx.view, { key: 'Enter' })).to.be.true;
+      expect(ctx.port.postMessage.callCount).to.equal(2);
+      const { body } = ctx.port.postMessage.lastCall.args[0].payload;
+      expect(body).to.not.include('---');
+      expect(new DOMParser().parseFromString(body, 'text/html').querySelector('main').children)
+        .to.have.lengthOf(2);
+    } finally {
+      ctx.view.destroy();
+      container.remove();
+    }
+  });
+
+  const node = (name) => ({ type: { name }, eq(other) { return other === this; } });
+  const fakeDoc = (nodes) => ({ forEach: (cb) => nodes.forEach((n) => cb(n)) });
+  const hr = () => node('horizontal_rule');
+  const [a, b, c, d] = ['a', 'b', 'c', 'd'].map(() => node('paragraph'));
+
+  function scopeFor(previous, next) {
+    const dom = document.createElement('div');
+    dom.innerHTML = '<p>a</p>';
+    const ctx = { suppressRerender: false, view: { dom }, port: { postMessage: sinon.spy() } };
+    updateDocument(ctx, {
+      changes: [{ type: 'deleted', pos: 1 }],
+      previousDoc: fakeDoc(previous),
+      doc: fakeDoc(next),
+    });
+    return ctx.port.postMessage.firstCall.args[0].payload.rerenderScope;
+  }
+
+  it('reports the previous index of a removed section', () => {
+    expect(scopeFor([a, hr(), b, hr(), c], [a, hr(), c]))
+      .to.deep.equal({ type: 'section-removed', sectionIndex: 1 });
+  });
+
+  it('reports a removed first section', () => {
+    expect(scopeFor([a, hr(), b], [b]))
+      .to.deep.equal({ type: 'section-removed', sectionIndex: 0 });
+  });
+
+  it('reports the new index of an added section', () => {
+    expect(scopeFor([a, hr(), c], [a, hr(), b, hr(), c]))
+      .to.deep.equal({ type: 'section-added', sectionIndex: 1 });
+  });
+
+  it('does not report a merge as a removed section', () => {
+    expect(scopeFor([a, hr(), b, hr(), c, d], [a, hr(), b, c, d]).type)
+      .to.not.equal('section-removed');
+  });
+
+  it('does not report a split as an added section', () => {
+    expect(scopeFor([a, hr(), b, c], [a, hr(), b, hr(), c]).type)
+      .to.not.equal('section-added');
   });
 });

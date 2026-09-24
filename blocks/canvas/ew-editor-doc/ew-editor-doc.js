@@ -100,6 +100,10 @@ export class EwEditorDoc extends LitElement {
     if (this._controllerCtx?.reloadTimer) {
       clearTimeout(this._controllerCtx.reloadTimer);
     }
+    if (this._controllerCtx?.metadataRerenderTimer) {
+      clearTimeout(this._controllerCtx.metadataRerenderTimer);
+    }
+    if (this._controllerCtx) this._controllerCtx.metadataRerender = undefined;
     this._controllerCtx = undefined;
   }
 
@@ -371,9 +375,9 @@ export class EwEditorDoc extends LitElement {
             mediaBusImage(this.ctx),
             createExtensionsBridgePlugin(),
             createTrackingPlugin(
-              () => {
+              (details) => {
                 const body = this._controllerCtx
-                  ? updateDocument(this._controllerCtx)
+                  ? updateDocument(this._controllerCtx, details)
                   : getInstrumentedHTML(this._proseContext?.view);
                 if (body) canvasBus.editorHtmlState.emit(body);
               },

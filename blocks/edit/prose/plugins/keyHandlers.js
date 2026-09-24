@@ -39,7 +39,7 @@ export function getURLInputRule() {
   );
 }
 
-export function getDashesInputRule(dispatchTransaction) {
+export function getDashesInputRule() {
   return new InputRule(
     /^---[\n]$/,
     (state, match, start, end) => {
@@ -48,15 +48,15 @@ export function getDashesInputRule(dispatchTransaction) {
       const newNodes = DOMParser.fromSchema(state.schema).parse(div);
 
       const selection = TextSelection.create(state.doc, start, end);
-      dispatchTransaction(state.tr.setSelection(selection).replaceSelectionWith(newNodes));
+      return state.tr.setSelection(selection).replaceSelectionWith(newNodes);
     },
   );
 }
 
 // This function returns a modified inputrule plugin that triggers when the regex in the
 // rule matches and the Enter key is pressed
-export function getEnterInputRulesPlugin(dispatchTransaction) {
-  const irsplugin = inputRules({ rules: [getDashesInputRule(dispatchTransaction)] });
+export function getEnterInputRulesPlugin() {
+  const irsplugin = inputRules({ rules: [getDashesInputRule()] });
 
   const hkd = (view, event) => {
     if (event.key !== 'Enter') return false;
