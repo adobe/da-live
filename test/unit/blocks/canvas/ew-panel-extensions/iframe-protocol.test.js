@@ -124,7 +124,7 @@ describe('setupIframeChannel', () => {
     destroy();
   });
 
-  it('relays table drags only from the connected plugin frame and origin', async () => {
+  it('relays HTML drags only from the connected plugin frame and origin', async () => {
     const iframe = makeIframe();
     iframe.contentWindow = window;
     const { destroy } = await setupIframeChannel({
@@ -146,15 +146,16 @@ describe('setupIframeChannel', () => {
     );
     emit(wrongSource.port1, 'https://plugin.example.com', data);
     emit(window, 'https://other.example.com', data);
-    emit(window, 'https://plugin.example.com', { ...data, html: '<p>Not a table</p>' });
+    emit(window, 'https://plugin.example.com', { ...data, html: '' });
     expect(starts).to.have.length(0);
     emit(iframe.contentWindow, 'https://plugin.example.com', data);
-    expect(starts).to.deep.equal([data.html]);
+    emit(iframe.contentWindow, 'https://plugin.example.com', { ...data, html: '<h2>Heading</h2>' });
+    expect(starts).to.deep.equal([data.html, '<h2>Heading</h2>']);
     emit(iframe.contentWindow, 'https://plugin.example.com', { type: 'ew-table-drag-end' });
     expect(ends).to.equal(1);
     destroy();
     emit(iframe.contentWindow, 'https://plugin.example.com', data);
-    expect(starts).to.have.length(1);
+    expect(starts).to.have.length(2);
     wrongSource.port1.close();
     wrongSource.port2.close();
     window.removeEventListener('ew-table-drag-start', onStart);
@@ -173,9 +174,10 @@ describe('setupIframeChannel', () => {
       onClose: () => {},
     });
     const markup = '<table><tr><td>Hero</td></tr></table>';
+    const heading = '<h2>Heading</h2>';
     const handles = [
       { x: 0, y: 0, width: 0, height: 20, html: markup },
-      { x: 30, y: 50, width: 100, height: 40, html: markup },
+      { x: 30, y: 50, width: 100, height: 40, html: heading },
     ];
     window.dispatchEvent(new MessageEvent('message', {
       source: iframe.contentWindow,
@@ -191,8 +193,8 @@ describe('setupIframeChannel', () => {
     const onStart = (event) => starts.push(event.detail.html);
     window.addEventListener('ew-table-drag-start', onStart);
     handle.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: transfer }));
-    expect(transfer.getData('text/html')).to.equal(markup);
-    expect(starts).to.deep.equal([markup]);
+    expect(transfer.getData('text/html')).to.equal(heading);
+    expect(starts).to.deep.equal([heading]);
     const postMessage = sinon.stub(iframe.contentWindow, 'postMessage');
     handle.click();
     expect(postMessage.calledWith({ type: 'ew-table-drag-handle-click', index: 1 })).to.be.true;

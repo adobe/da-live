@@ -91,14 +91,13 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
       )).filter((handle) => (
         handle && typeof handle === 'object'
         && [handle.x, handle.y, handle.width, handle.height].every(Number.isFinite)
-        && handle.width > 0 && handle.height > 0 && typeof handle.html === 'string'
-        && new DOMParser().parseFromString(handle.html, 'text/html').body.querySelector('table')
+        && handle.width > 0 && handle.height > 0
+        && typeof handle.html === 'string' && handle.html.trim()
       ));
       renderDragHandles();
     } else if (event.data?.type === 'ew-table-drag-start') {
       const { html } = event.data;
-      if (typeof html !== 'string'
-        || !new DOMParser().parseFromString(html, 'text/html').body.querySelector('table')) return;
+      if (typeof html !== 'string' || !html.trim()) return;
       window.dispatchEvent(new CustomEvent('ew-table-drag-start', { detail: { html } }));
     } else if (event.data?.type === 'ew-table-drag-end') {
       window.dispatchEvent(new Event('ew-table-drag-end'));

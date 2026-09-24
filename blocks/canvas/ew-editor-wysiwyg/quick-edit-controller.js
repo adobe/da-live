@@ -10,7 +10,7 @@ import {
   handleStoredMarks,
 } from './utils/handlers.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
-import { insertDroppedTable } from './utils/table-drop.js';
+import { insertDroppedHtml } from './utils/table-drop.js';
 
 const MUTATING_MESSAGES = new Set(['node-update', 'image-replace', 'history', MESSAGE_TYPES.TABLE_DROP]);
 
@@ -61,13 +61,13 @@ export function createControllerOnMessage(ctx) {
       updateState(payload, ctx);
     } else if (type === MESSAGE_TYPES.TABLE_DROP) {
       try {
-        if (!insertDroppedTable(payload, ctx)) {
+        if (!insertDroppedHtml(payload, ctx)) {
           // eslint-disable-next-line no-console
-          console.warn('[quick-edit-controller] Rejected invalid table drop');
+          console.warn('[quick-edit-controller] Rejected invalid HTML drop');
         }
       } catch (error) {
         // eslint-disable-next-line no-console
-        console.error('[quick-edit-controller] Could not insert dropped table', error);
+        console.error('[quick-edit-controller] Could not insert dropped HTML', error);
       }
     } else if (type === MESSAGE_TYPES.HISTORY) {
       handleUndoRedo(payload, ctx);

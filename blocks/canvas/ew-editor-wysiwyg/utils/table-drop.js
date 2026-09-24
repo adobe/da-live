@@ -22,16 +22,15 @@ export function getTableDropPosition(doc, anchor, side) {
   return side === 'before' ? outer.offset : outer.offset + outer.node.nodeSize;
 }
 
-export function insertDroppedTable({ html, anchor, side }, ctx) {
+export function insertDroppedHtml({ html, anchor, side }, ctx) {
   const { view } = ctx;
-  if (!view || typeof html !== 'string') return false;
+  if (!view || typeof html !== 'string' || !html.trim()) return false;
   const position = getTableDropPosition(view.state.doc, anchor, side);
   if (position === null) return false;
 
   const dom = new DOMParser().parseFromString(html, 'text/html');
-  if (!dom.body.querySelector('table')) return false;
   const parsed = PMDOMParser.fromSchema(view.state.schema).parse(dom.body);
-  if (![...parsed.content.content].some((node) => node.type.name === 'table')) return false;
+  if (!parsed.content.size) return false;
 
   const tr = view.state.tr.insert(position, parsed.content);
   const end = position + parsed.content.size;
