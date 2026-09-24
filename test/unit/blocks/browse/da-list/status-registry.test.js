@@ -14,14 +14,13 @@ const {
 
 const PAGE = { path: '/org/site/tea.html', previewPath: '/org/site/tea', sitePath: '/tea', ext: 'html', name: 'tea' };
 
-function libraryConfig(rows) {
-  return { library: { data: rows } };
+function statusConfig(rows) {
+  return { status: { data: rows } };
 }
 
 function statusRow(overrides = {}) {
   return {
     title: 'Request Publish',
-    surface: 'status',
     label: 'Workflow',
     module: '/tools/plugins/rfp/plugin.js',
     ...overrides,
@@ -30,7 +29,7 @@ function statusRow(overrides = {}) {
 
 /** Builds a registry whose modules resolve to the handles given by URL. */
 function registryWith(rows, handles, opts = {}) {
-  setDaConfigs([null, libraryConfig(rows)]);
+  setDaConfigs([null, statusConfig(rows)]);
   const loaded = [];
   const registry = createStatusRegistry({
     org: 'org',
@@ -97,10 +96,9 @@ describe('status registry', () => {
       expect(contribution.heading).to.equal('Request Publish');
     });
 
-    it('ignores rows of another surface, rows with no module and rows with no title', async () => {
+    it('ignores rows with no module and rows with no title', async () => {
       const { registry, loaded } = registryWith(
         [
-          statusRow({ surface: 'actionbar' }),
           statusRow({ title: 'Other', module: '' }),
           statusRow({ title: '' }),
         ],
@@ -110,10 +108,18 @@ describe('status registry', () => {
       expect(loaded).to.deep.equal([]);
     });
 
+    it('tolerates a surface key left over from the library-sheet shape', async () => {
+      const { registry } = registryWith(
+        [statusRow({ surface: 'status' })],
+        { '/x': moduleOf({ getStatus: async () => ({ state: 'neutral', label: 'Draft' }) }) },
+      );
+      expect((await registry.getContributions(PAGE)).length).to.equal(1);
+    });
+
     it('dedupes by normalized name, site rows winning over org rows', async () => {
       setDaConfigs([
-        libraryConfig([statusRow({ label: 'Org Workflow' })]),
-        libraryConfig([statusRow({ label: 'Site Workflow' })]),
+        statusConfig([statusRow({ label: 'Org Workflow' })]),
+        statusConfig([statusRow({ label: 'Site Workflow' })]),
       ]);
       const registry = createStatusRegistry({
         org: 'org',
@@ -339,7 +345,7 @@ describe('status registry', () => {
     });
 
     it('lets one failing plugin keep another plugin rendering', async () => {
-      setDaConfigs([null, libraryConfig([
+      setDaConfigs([null, statusConfig([
         statusRow({ title: 'Bad', module: '/bad.js' }),
         statusRow({ title: 'Good', module: '/good.js', label: 'Review' }),
       ])]);

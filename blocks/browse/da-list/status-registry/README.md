@@ -16,16 +16,15 @@ The host code that consumes it lives in `../da-list.js` (builds one registry per
 
 ## 1. Declare the plugin
 
-Add a row to the site's or org's `library` config sheet:
+Add a row to the site's or org's `status` config sheet (a dedicated sheet, not the `library` sheet the editor reads):
 
-| title | surface | module | label | icon | kinds | requires | ref |
-|---|---|---|---|---|---|---|---|
-| Request Publish | status | `/tools/plugins/request-for-publish/plugin.js` | Workflow | workflow | page | | |
+| title | module | label | icon | kinds | requires | ref |
+|---|---|---|---|---|---|---|
+| Request Publish | `/tools/plugins/request-for-publish/plugin.js` | Workflow | workflow | page | | |
 
 | Column | Required | Meaning |
 |---|---|---|
 | `title` | yes | Plugin identity. Normalized into a name (trimmed, lowercased, spaces to hyphens); two status rows with the same name collide and the first wins. |
-| `surface` | yes | `status`. Rows for any other surface are ignored here. |
 | `module` | yes | ES module URL. A path starting with `/` is resolved against `https://<ref>--<site>--<org>.aem.live`, or `http://localhost:3000` when running with `?ref=local`. An absolute URL is used as is. |
 | `label` | no | The drawer cell's heading, where PREVIEWED and PUBLISHED sit. Falls back to `title`. There is no host default word. |
 | `icon` | no | Fallback icon for statuses that do not name their own. A curated name (see below), never a URL. |
@@ -33,9 +32,9 @@ Add a row to the site's or org's `library` config sheet:
 | `requires` | no | `write` means the host does not call the plugin at all for users without write access to the folder. Absent means no gate. |
 | `ref` | no | Branch trust gate. Default `main`; a row naming another branch is only used when the browse URL carries the same `?ref=`. |
 
-`path`, `experience` and `format` are ignored on a status row. There is no `placement` column.
+`path`, `experience` and `format` from the `library` sheet are ignored here; a status row carries only the columns above. There is no `placement` column.
 
-**Both surfaces, one module.** A plugin that also contributes an action-bar item writes **two rows pointing at the same `module` URL**. The module is imported and `init`ed once per module URL, so the second row costs nothing but a line of config.
+**Both surfaces, one module.** A plugin that also contributes an action-bar item adds a row for that surface too, pointing at the same `module` URL. The module is imported and `init`ed once per module URL, so the second row costs nothing but a line of config.
 
 ---
 

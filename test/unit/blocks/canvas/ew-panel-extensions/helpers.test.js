@@ -470,4 +470,21 @@ describe('EW panel helpers fetchExtensions', () => {
     setDaConfigs([{ error: true }]);
     expect(await fetchExtensions('org', 'site')).to.eql([]);
   });
+
+  it('skips a library row that has no path', async () => {
+    const pathlessRow = {
+      title: 'Request Publish',
+      module: '/tools/plugins/request-for-publish/plugin.js',
+    };
+    setDaConfigs([{ library: { data: [pathlessRow, blocksRow] }, data: [] }]);
+    const names = (await fetchExtensions('org', 'site')).map((e) => e.name);
+    expect(names).to.deep.equal(['blocks']);
+  });
+
+  it('skips rows without a usable string path', async () => {
+    const blankRow = { title: 'Blank Path', path: '   ' };
+    setDaConfigs([{ library: { data: [blankRow, blocksRow] }, data: [] }]);
+    const names = (await fetchExtensions('org', 'site')).map((e) => e.name);
+    expect(names).to.deep.equal(['blocks']);
+  });
 });

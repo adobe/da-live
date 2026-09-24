@@ -1,7 +1,7 @@
 import { getNx } from '../../../../scripts/utils.js';
 import { getAuthToken, isValidHref } from '../../../shared/utils.js';
 
-const { fetchDaConfigs, getFirstSheet } = await import(`${getNx()}/utils/daConfig.js`);
+const { fetchDaConfigs } = await import(`${getNx()}/utils/daConfig.js`);
 
 const ref = new URLSearchParams(window.location.search).get('ref') || 'main';
 
@@ -73,17 +73,17 @@ function parseKinds(value) {
 }
 
 /**
- * Turns the `library` rows of the org and site configs into status rows:
- * deduped by `surface + name`, site rows ahead of org rows, `ref` already
- * applied. Rows a plugin cannot use are dropped here, before any import.
+ * Turns the `status` sheet rows of the org and site configs into status rows:
+ * deduped by `name`, site rows ahead of org rows, `ref` already applied.
+ * Every row in the dedicated sheet is a status plugin, so there is no surface
+ * test here. Rows a plugin cannot use are dropped before any import.
  */
 export function toStatusRows(configs, { org, site }) {
   const valid = configs.filter((config) => config && !config.error).reverse();
-  const rows = valid.flatMap((config) => config?.library?.data || getFirstSheet(config) || []);
+  const rows = valid.flatMap((config) => config?.status?.data || []);
 
   const seen = new Set();
   return rows.reduce((acc, row) => {
-    if (row?.surface?.trim().toLowerCase() !== 'status') return acc;
     if (!row.title?.trim() || !row.module?.trim()) return acc;
     if (!isPluginAllowed(row.ref)) return acc;
 
