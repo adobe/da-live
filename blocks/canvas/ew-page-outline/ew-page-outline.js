@@ -28,10 +28,10 @@ const EDIT_ICON_SRC = '/img/icons/s2-icon-edit-20-n.svg';
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 
-const [formStyle, style, baseStyle] = await Promise.all([
+const [formStyle, buttonsStyle, style] = await Promise.all([
   getSheet(`${getNx2()}/styles/form.css`),
+  getSheet(`${getNx2()}/styles/buttons.css`),
   loadStyle(import.meta.url),
-  loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href),
 ]);
 
 const OUTLINE_TYPES = {
@@ -97,7 +97,7 @@ class EwPageOutline extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [baseStyle, formStyle, style];
+    this.shadowRoot.adoptedStyleSheets = [formStyle, style, buttonsStyle];
     this._expandedContent = new Set();
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
     this._unsubscribeHtml = canvasBus.editorHtmlState.subscribe((aemHtml) => {
@@ -524,9 +524,9 @@ class EwPageOutline extends LitElement {
     return html`
       <nx-dialog class="ew-po-delete" title="${title}" @close=${() => this._cancelDelete()}>
         <span>${message}</span>
-        <button slot="actions" class="da-btn-secondary"
+        <button slot="actions" class="nx-form-btn-secondary"
           @click=${() => this._cancelDelete()}>Cancel</button>
-        <button slot="actions" class="da-btn-primary"
+        <button slot="actions" class="nx-form-btn-primary"
           @click=${() => this._confirmDelete()}>Delete</button>
       </nx-dialog>`;
   }
@@ -535,7 +535,7 @@ class EwPageOutline extends LitElement {
     const { noun } = this._deleteInfo(type, index);
     const label = `Delete ${noun}`;
     return html`
-      <button type="button" class="action-btn delete-btn" draggable="false"
+      <button type="button" class="nx-action-btn-icon nx-btn-sm action-btn delete-btn" draggable="false"
               aria-label="${label}"
               @pointerdown=${(e) => e.stopPropagation()}
               @click=${(e) => this._onDelete(e, type, index)}>
@@ -561,8 +561,8 @@ class EwPageOutline extends LitElement {
         ${expanded ? html`
           <ul class="content-children" role="group">
             ${item.children.map((child) => {
-    const label = contentChildLabel(child);
-    return html`
+      const label = contentChildLabel(child);
+      return html`
               <li class="block-item content-item content-child ${this._selectedProseIndex === child.proseIndex ? 'selected' : ''}"
                   role="treeitem" tabindex="-1"
                   aria-selected="${this._selectedProseIndex === child.proseIndex}"
@@ -581,7 +581,7 @@ class EwPageOutline extends LitElement {
                   <use href="${DRAG_ICON_SRC}#icon"></use>
                 </svg>
               </li>`;
-  })}
+    })}
           </ul>` : nothing}
       </li>`;
   }
@@ -603,7 +603,7 @@ class EwPageOutline extends LitElement {
     const label = sec.name || fallback;
     return html`
       <span class="section-label" title="${label}">${label}</span>
-      <button type="button" class="action-btn edit-btn nx-btn-sm" draggable="false"
+      <button type="button" class="nx-action-btn-icon edit-btn nx-btn-sm" draggable="false"
               aria-label="Rename section ${sec.sectionIndex + 1}"
               @pointerdown=${(e) => e.stopPropagation()}
               @click=${() => this._startRename(sec)}>
@@ -626,7 +626,7 @@ class EwPageOutline extends LitElement {
              @dragend=${this._onDragEnd}>
           ${this._renderSectionLabel(sec)}
           ${this._hasBlockLibrary ? html`
-            <button type="button" class="action-btn add-block-btn" draggable="false"
+            <button type="button" class="nx-action-btn-icon nx-btn-sm action-btn add-block-btn" draggable="false"
                     aria-label="Add block to section ${sec.sectionIndex + 1}"
                     @pointerdown=${(e) => e.stopPropagation()}
                     @click=${(e) => this._openAddBlockModal(e, sec.sectionIndex)}>
