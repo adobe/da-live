@@ -74,6 +74,12 @@ export function createControllerOnMessage(ctx) {
       handleCommentMarkerClear();
     } else if (type === MESSAGE_TYPES.COMMENT_SHORTCUT) {
       handleCommentShortcut();
+    } else if (type === MESSAGE_TYPES.RUM_CLICK) {
+      // Clicks inside the WYSIWYG iframe can't reach the host RUM enhancer, so the
+      // iframe forwards them here to record an `ew-wysiwyg-doc` click on the host
+      // session's RUM. No-op when this session isn't RUM-selected.
+      const { source, target } = payload;
+      window.hlx?.rum?.sampleRUM?.('click', { source, target });
     }
   };
 }
