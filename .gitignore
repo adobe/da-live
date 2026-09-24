@@ -106,5 +106,6 @@ typings/
 .idea/*
 .cursorrules
 .claude
+.github/copilot/settings.local.json
 /.scout
 docs/superpowers/
