@@ -690,6 +690,7 @@ class EwFileExplorer extends LitElement {
           <svg viewBox="0 0 20 20" aria-hidden="true"><use href="${CLEAR_ICON_SRC}#icon"></use></svg>
         </button>
         <nx-picker
+          size="m"
           .items="${CATEGORIES}"
           .value="${this._category ?? 'all'}"
           placement="below-end"

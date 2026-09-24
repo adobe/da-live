@@ -7,6 +7,7 @@ import { getCommentsBridge, toggleComments, getCommentsVisible } from '../editor
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { PANEL_EVENT, getSectionAtPosition } = await import(`${getNx()}/utils/panel.js`);
+await import(`${getNx2()}/blocks/shared/segmented-btn/segmented.js`);
 
 const style = await loadStyle(import.meta.url);
 const buttons = await getSheet(`${getNx2()}/styles/buttons.css`);
@@ -22,6 +23,11 @@ const ICONS = {
 };
 
 const EDITOR_VIEWS = /** @type {const} */ (['layout', 'content', 'split']);
+const EDITOR_VIEW_ITEMS = [
+  { value: 'layout', label: 'Layout' },
+  { value: 'content', label: 'Content' },
+  { value: 'split', icon: ICONS.gridCompare, iconOnly: true, label: 'Split view' },
+];
 
 class EWCanvasHeader extends LitElement {
   static properties = {
@@ -161,28 +167,14 @@ class EWCanvasHeader extends LitElement {
 
         <div class="group group-center" part="group-center">
           ${this.authorized ? html`
-          <div class="segmented" role="group" aria-label="Editor view" part="editor-view-toggle">
-            <button
-              type="button"
-              class="segment ${this.editorView === 'layout' ? 'is-selected' : ''}"
-              aria-pressed=${this.editorView === 'layout'}
-              @click=${() => this._setEditorView('layout')}
-            >Layout</button>
-            <button
-              type="button"
-              class="segment ${this.editorView === 'content' ? 'is-selected' : ''}"
-              aria-pressed=${this.editorView === 'content'}
-              @click=${() => this._setEditorView('content')}
-            >Content</button>
-            <button
-              type="button"
-              class="segment segment-icon ${this.editorView === 'split' ? 'is-selected' : ''}"
-              aria-pressed=${this.editorView === 'split'}
-              aria-label="Split view"
-              title="Split view"
-              @click=${() => this._setEditorView('split')}
-            >${this._renderIcon('gridCompare')}</button>
-          </div>
+          <nx-segmented-btn
+            part="editor-view-toggle"
+            label="Editor view"
+            size="m"
+            .items=${EDITOR_VIEW_ITEMS}
+            .value=${this.editorView}
+            @change=${(e) => this._setEditorView(e.detail.value)}
+          ></nx-segmented-btn>
           ` : nothing}
         </div>
 

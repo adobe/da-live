@@ -6,8 +6,18 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 await import('../../../../../blocks/canvas/ew-canvas-header/ew-canvas-header.js');
 
-function segmentByLabel(header, label) {
-  return [...header.shadowRoot.querySelectorAll('.segment')]
+function segmentedBtn(header) {
+  return header.shadowRoot.querySelector('nx-segmented-btn');
+}
+
+async function segments(header) {
+  const el = segmentedBtn(header);
+  await el.updateComplete;
+  return [...el.shadowRoot.querySelectorAll('.segment')];
+}
+
+async function segmentByLabel(header, label) {
+  return (await segments(header))
     .find((b) => b.textContent.trim().startsWith(label)) ?? null;
 }
 
@@ -25,9 +35,9 @@ describe('ew-canvas-header segments', () => {
   it('renders the Layout, Content and Split segments', async () => {
     header.editorView = 'layout';
     await header.updateComplete;
-    expect(header.shadowRoot.querySelectorAll('.segment').length).to.equal(3);
-    expect(segmentByLabel(header, 'Layout')).to.exist;
-    expect(segmentByLabel(header, 'Content')).to.exist;
+    expect((await segments(header)).length).to.equal(3);
+    expect(await segmentByLabel(header, 'Layout')).to.exist;
+    expect(await segmentByLabel(header, 'Content')).to.exist;
   });
 
   it('never renders a block segment (block editing is a modal now)', async () => {
@@ -35,7 +45,11 @@ describe('ew-canvas-header segments', () => {
       header.editorView = view;
       // eslint-disable-next-line no-await-in-loop
       await header.updateComplete;
-      expect(header.shadowRoot.querySelector('.segment-block')).to.be.null;
+      // eslint-disable-next-line no-await-in-loop
+      const el = segmentedBtn(header);
+      // eslint-disable-next-line no-await-in-loop
+      await el.updateComplete;
+      expect(el.shadowRoot.querySelector('.segment-block')).to.be.null;
     }
   });
 
@@ -45,7 +59,7 @@ describe('ew-canvas-header segments', () => {
     let requestedView;
     const unsub = canvasBus.editorViewRequest.subscribe(({ view }) => { requestedView = view; });
 
-    segmentByLabel(header, 'Content').click();
+    (await segmentByLabel(header, 'Content')).click();
     unsub?.();
 
     expect(requestedView).to.equal('content');

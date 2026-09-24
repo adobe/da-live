@@ -17,9 +17,9 @@
     "Trebuchet MS",
     sans-serif
   );
-  font-size: var(--s2-body-size-xs);
-  font-weight: var(--s2-component-s-medium-font-weight, 500);
-  line-height: 16px;
+  font-size: var(--s2-component-m-regular-font-size);
+  font-weight: var(--s2-component-m-medium-font-weight, 500);
+  line-height: var(--s2-component-m-regular-line-height);
   color: var(--s2-gray-800);
   background: var(--s2-gray-25);
   border: 1px solid var(--s2-gray-200);
@@ -34,7 +34,7 @@
 
 .toolbar-btn {
   box-sizing: border-box;
-  height: 24px;
+  height: 32px;
   padding: 0 8px;
   display: inline-flex;
   align-items: center;
@@ -56,16 +56,21 @@
   background: var(--s2-gray-200);
 }
 
+.toolbar-btn:focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: 2px;
+}
+
 .toolbar-btn.icon-only {
-  min-width: 24px;
+  min-width: 32px;
   padding: 0;
   justify-content: center;
 }
 
 .toolbar-btn svg.icon {
   display: block;
-  width: 16px;
-  height: 16px;
+  width: var(--s2-icon-size, 18px);
+  height: var(--s2-icon-size, 18px);
   overflow: hidden;
 }
 
@@ -88,7 +93,7 @@
 
 /* Size the variant picker to match the toolbar buttons (same height, padding, radius). */
 .toolbar-variant {
-  --nx-picker-height: 24px;
+  --nx-picker-height: 32px;
   --nx-picker-padding: 0 6px;
   --nx-picker-radius: var(--s2-corner-radius-100);
 

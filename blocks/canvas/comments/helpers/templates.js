@@ -72,6 +72,7 @@ export function renderCommentMenu(panel, comment, threadId, isRoot, canEdit) {
 
   return html`
     <nx-menu
+      size="m"
       placement="below"
       .items=${items}
       @select=${(e) => panel.handleMenuSelect(e.detail.id, comment, threadId)}>

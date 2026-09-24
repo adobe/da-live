@@ -319,7 +319,7 @@ class EwSelectionToolbar extends LitElement {
       { id: 'aem-assets', label: 'AEM Assets' },
     ];
     return html`
-      <nx-menu placement="above" .items=${menuItems}
+      <nx-menu placement="above" size="m" .items=${menuItems}
         @select=${(e) => {
           if (e.detail.id === 'upload') this._triggerUpload();
           else this._openAemAssets();
@@ -350,7 +350,7 @@ class EwSelectionToolbar extends LitElement {
       .filter(({ id }) => this._isCommandVisible(id))
       .map(({ id, label, icon }) => ({ id, label, icon }));
     return html`
-      <nx-menu placement="above" .items=${items}
+      <nx-menu placement="above" size="m" .items=${items}
         @select=${(e) => this._onTableMenuSelect(e)}>
         <button slot="trigger" type="button" class="toolbar-btn"
           aria-label="Edit table" title="Edit table">
@@ -366,6 +366,7 @@ class EwSelectionToolbar extends LitElement {
         <nx-picker
           class="toolbar-block-type"
           placement="above"
+          size="m"
           ignoreFocus
           .items=${BLOCK_TYPE_PICKER_ITEMS}
           value="paragraph"
