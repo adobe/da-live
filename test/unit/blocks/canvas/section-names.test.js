@@ -171,8 +171,8 @@ describe('section names — outline panel', () => {
   it('opens the rename input from the edit button next to the name', async () => {
     await setSections([section(0, 'Hero')]);
     const header = el.shadowRoot.querySelector('.section-header');
-    const order = [...header.children].map((c) => c.classList[0]);
-    expect(order.indexOf('action-btn')).to.equal(order.indexOf('section-label') + 1);
+    const order = [...header.children].map((c) => (c.classList.contains('edit-btn') ? 'edit-btn' : c.classList[0]));
+    expect(order.indexOf('edit-btn')).to.equal(order.indexOf('section-label') + 1);
 
     el.shadowRoot.querySelector('.edit-btn').click();
     await el.updateComplete;

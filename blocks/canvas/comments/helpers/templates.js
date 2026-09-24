@@ -6,7 +6,7 @@ import { DRAFT_MODES } from './draft-state.js';
 import { generateColorSet } from '../../editor-utils/author-color.js';
 
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.userAgent);
-export const COMMENT_SHORTCUT = IS_MAC ? '⌘ + Option + M' : 'Ctrl + Alt + M';
+export const COMMENT_SHORTCUT = IS_MAC ? '⌘ + ⌥ + M' : 'Ctrl + Alt + M';
 export const SUBMIT_SHORTCUT = IS_MAC ? '⌘ + Enter' : 'Ctrl + Enter';
 
 const ICONS = {
@@ -32,7 +32,7 @@ export function renderAvatar(panel, author) {
 }
 
 export function renderForm(panel, {
-  placeholder, submitLabel, value, formClass = '', showActions = true, onFocus,
+  placeholder, submitLabel = 'Submit', value, formClass = '', showActions = true, onFocus,
 }) {
   return html`
     <form
@@ -57,7 +57,7 @@ export function renderForm(panel, {
               : submitLabel}
           </button>
         </div>
-        <div class="ew-comment-form-hint"><kbd>${SUBMIT_SHORTCUT}</kbd> to submit</div>
+        <div class="ew-comment-form-hint">Or hit <kbd class="da-kbd">${SUBMIT_SHORTCUT}</kbd> to ${submitLabel.toLowerCase()}</div>
       ` : nothing}
     </form>
   `;
@@ -66,7 +66,7 @@ export function renderForm(panel, {
 export function renderCommentMenu(panel, comment, threadId, isRoot, canEdit) {
   if (!canEdit && !isRoot) return nothing;
   const items = [
-    ...(canEdit ? [{ id: 'delete', label: 'Delete' }] : []),
+    ...(canEdit ? [{ id: 'edit', label: 'Edit' }, { id: 'delete', label: 'Delete' }] : []),
     ...(isRoot ? [{ id: 'link', label: 'Get link to this comment' }] : []),
   ];
 
@@ -108,6 +108,10 @@ export function renderComment(panel, {
   const showMenu = !isPreview && !isResolved && (isRoot || canEdit);
   const showResolve = !isPreview && isRoot && !isResolved && !!panel.currentUser;
 
+  const isEditing = !isPreview
+    && panel._draft?.mode === DRAFT_MODES.EDIT
+    && panel._draft.commentId === comment.id;
+
   const isSpinning = !isRoot && panel._submittingId === comment.id;
   return html`
     <div class="ew-comment ${isRoot ? 'ew-comment-root' : 'ew-comment-reply'} ${isSpinning ? 'is-loading' : ''}">
@@ -120,8 +124,9 @@ export function renderComment(panel, {
           <span class="ew-comment-time" title="${formatUtils.formatFullTimestamp(comment.createdAt)}">
             ${formatUtils.formatTimestamp(comment.createdAt)}
           </span>
+          ${comment.editedAt ? html`<span class="ew-comment-edited" title="${formatUtils.formatFullTimestamp(comment.editedAt)}">· Edited ${formatUtils.formatTimestamp(comment.editedAt)}</span>` : nothing}
         </div>
-        ${showResolve || showMenu ? html`
+        ${!isEditing && (showResolve || showMenu) ? html`
           <div class="ew-comment-header-actions" @click=${(e) => e.stopPropagation()}>
             ${showResolve ? html`
               <button type="button" class="nx-action-btn-icon nx-btn-sm" ?disabled=${!!panel._submittingId} @click=${() => panel.handleResolveThread(threadId)} title="Resolve" aria-label="Resolve">
@@ -132,7 +137,14 @@ export function renderComment(panel, {
           </div>
         ` : nothing}
       </div>
-      <div class="ew-comment-content ${isPreview ? 'is-clamped' : ''}">${comment.body}</div>
+      ${isEditing ? renderForm(panel, {
+        placeholder: 'Edit comment...',
+        submitLabel: 'Save',
+        value: panel._draft?.text || '',
+        formClass: 'ew-comment-edit-form',
+      }) : html`
+        <div class="ew-comment-content ${isPreview ? 'is-clamped' : ''}">${comment.body}</div>
+      `}
     </div>
   `;
 }
@@ -213,8 +225,8 @@ export function renderListView(panel, viewModel) {
 
   return html`
     <div class="ew-comments-list">
-      <p class="ew-comments-hint">
-        Select content and press <kbd>${COMMENT_SHORTCUT}</kbd> to add a comment.
+      <p class="da-hint">
+        <strong>Select content</strong> and press <kbd class="da-kbd">${COMMENT_SHORTCUT}</kbd> to add a comment.
       </p>
       ${tabs.length > 1 ? html`
         <div class="ew-comment-tabs" role="group" aria-label="Filter comment threads">

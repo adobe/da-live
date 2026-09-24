@@ -9,6 +9,7 @@ import {
   DRAFT_MODES,
   makeNewDraft,
   makeReplyDraft,
+  makeEditDraft,
   setDraftText,
   shouldAdoptPendingAnchor,
 } from './helpers/draft-state.js';
@@ -22,6 +23,7 @@ await import(`${getNx()}/blocks/shared/menu/menu.js`);
 const sheet = await getSheet('/blocks/canvas/comments/comments-panel.css');
 const buttons = await getSheet(`${getNx2()}/styles/buttons.css`);
 const form = await getSheet(`${getNx2()}/styles/form.css`);
+const base = await getSheet('/blocks/shared/styles/base.css');
 
 let toastModulePromise;
 
@@ -137,7 +139,7 @@ export class CommentsPanel extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [
-      ...this.shadowRoot.adoptedStyleSheets, buttons, form, sheet,
+      ...this.shadowRoot.adoptedStyleSheets, base, buttons, form, sheet,
     ];
     if (this.controller === undefined) this.controller = getCommentsBridge().controller;
     this.setupObservers();
@@ -223,6 +225,10 @@ export class CommentsPanel extends LitElement {
     this._draft = makeReplyDraft(rootComment.id);
   }
 
+  startEditDraft(comment) {
+    this._draft = makeEditDraft(comment);
+  }
+
   cancelDraft() {
     this._draft = null;
     this.controller?.clearPendingAnchor();
@@ -260,6 +266,8 @@ export class CommentsPanel extends LitElement {
         this.controller.setSelectedThread(id);
       } else if (draft.mode === DRAFT_MODES.REPLY) {
         await this.controller.createReply({ user, threadId: draft.threadId, body });
+      } else if (draft.mode === DRAFT_MODES.EDIT) {
+        await this.controller.editComment({ commentId: draft.commentId, body });
       }
       this.controller.collapseSelection();
       this.controller.clearPendingAnchor();
@@ -345,7 +353,8 @@ export class CommentsPanel extends LitElement {
   }
 
   handleMenuSelect(id, comment, threadId) {
-    if (id === 'delete') this.handleDeleteComment(comment.id, threadId);
+    if (id === 'edit') this.startEditDraft(comment);
+    else if (id === 'delete') this.handleDeleteComment(comment.id, threadId);
     else if (id === 'link') this.copyThreadLink(threadId);
   }
 

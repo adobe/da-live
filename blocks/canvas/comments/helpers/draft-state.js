@@ -1,4 +1,4 @@
-export const DRAFT_MODES = Object.freeze({ NEW: 'new', REPLY: 'reply' });
+export const DRAFT_MODES = Object.freeze({ NEW: 'new', REPLY: 'reply', EDIT: 'edit' });
 
 export function makeNewDraft(anchorData) {
   return { mode: DRAFT_MODES.NEW, anchorData, text: '' };
@@ -6,6 +6,10 @@ export function makeNewDraft(anchorData) {
 
 export function makeReplyDraft(threadId) {
   return { mode: DRAFT_MODES.REPLY, threadId, text: '' };
+}
+
+export function makeEditDraft(comment) {
+  return { mode: DRAFT_MODES.EDIT, commentId: comment.id, text: comment.body ?? '' };
 }
 
 export function setDraftText(draft, text) {
