@@ -611,6 +611,7 @@ export function extensionToPanelView(ext, section) {
     label: ext.title,
     section,
     firstParty: ext.ootb,
+    ...(!ext.ootb && { cacheKey: JSON.stringify(ext.sources || []) }),
     experience: ext.experience,
     sources: ext.sources,
     icon: ext.icon,

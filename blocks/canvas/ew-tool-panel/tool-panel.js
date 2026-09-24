@@ -26,10 +26,13 @@ class EwToolPanel extends LitElement {
     activeId: { type: String },
     org: { type: String },
     site: { type: String },
+    contextKey: { type: String },
     _fullsizeDialogViewId: { state: true },
   };
 
   _loaded = {};
+
+  _loadedKeys = {};
 
   connectedCallback() {
     super.connectedCallback();
@@ -101,16 +104,29 @@ class EwToolPanel extends LitElement {
   }
 
   _pruneLoadedViews() {
-    const ids = new Set(this.views.map((v) => v.id));
+    const viewsById = new Map(this.views.map((v) => [v.id, v]));
     Object.keys(this._loaded).forEach((id) => {
-      if (!ids.has(id)) {
+      const view = viewsById.get(id);
+      if (!view || (view.cacheKey !== undefined && view.cacheKey !== this._loadedKeys[id])) {
         this._loaded[id].remove();
         delete this._loaded[id];
+        delete this._loadedKeys[id];
+      }
+    });
+  }
+
+  _clearPageBoundViews() {
+    Object.keys(this._loaded).forEach((id) => {
+      if (this._loadedKeys[id] !== undefined) {
+        this._loaded[id].remove();
+        delete this._loaded[id];
+        delete this._loadedKeys[id];
       }
     });
   }
 
   async updated(changed) {
+    if (changed.has('contextKey')) this._clearPageBoundViews();
     if (changed.has('views')) await this._onViewsChange();
     if (changed.has('activeId')) {
       if (this.activeId) persistToolPanelView(this.activeId);
@@ -131,6 +147,7 @@ class EwToolPanel extends LitElement {
       this._closeDialog();
       this.activeId = undefined;
       this._loaded = {};
+      this._loadedKeys = {};
       this.shadowRoot.querySelector('.tool-panel-content').replaceChildren();
       return;
     }
@@ -151,6 +168,9 @@ class EwToolPanel extends LitElement {
           availableIds: ids,
         });
       await this.showPanel(initial ?? this.views[0].id);
+    } else if (!this._loaded[this.activeId]) {
+      await this.showPanel(this.activeId);
+      this._syncContent();
     }
   }
 
@@ -179,6 +199,7 @@ class EwToolPanel extends LitElement {
   async showPanel(name) {
     const consumer = this.views.find((c) => c.id === name);
     if (!consumer) return;
+    const { contextKey } = this;
     if (consumer.experience === 'window') {
       window.open(
         new URL(consumer.sources[0], window.location.href).href,
@@ -196,7 +217,14 @@ class EwToolPanel extends LitElement {
       return;
     }
     if (!this._loaded[name]) {
-      this._loaded[name] = await consumer.load();
+      const loaded = await consumer.load();
+      const currentConsumer = this.views.find((c) => c.id === name);
+      if (this.contextKey !== contextKey || currentConsumer !== consumer) {
+        loaded?.remove();
+        return;
+      }
+      this._loaded[name] = loaded;
+      this._loadedKeys[name] = consumer.cacheKey;
     }
     this.activeId = name;
   }
