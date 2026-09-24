@@ -191,7 +191,7 @@ export default class DaListItem extends LitElement {
       popover.close();
       return;
     }
-    popover.show({ anchor: button, placement: 'below' });
+    popover.show({ anchor: button, placement: 'auto' });
     button.setAttribute('aria-expanded', 'true');
     popover.addEventListener('close', () => {
       button.setAttribute('aria-expanded', 'false');

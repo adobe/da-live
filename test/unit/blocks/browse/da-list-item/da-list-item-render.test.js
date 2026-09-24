@@ -256,6 +256,7 @@ describe('da-list-item render', () => {
       const popover = el.shadowRoot.querySelector('nx-popover');
       expect(popover.open).to.be.true;
       expect(popover.anchor).to.equal(button);
+      expect(popover.placement).to.equal('auto');
       expect(button.getAttribute('aria-expanded')).to.equal('true');
     });
 
