@@ -1,5 +1,6 @@
 import { getNx } from '../../../scripts/utils.js';
 import { buildAssetSelectorProps } from '../../shared/aem-assets/selector-props.js';
+import { formatExternalBrief } from '../../shared/aem-assets/external-brief.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { getRepositoryConfig, getResponsiveImageConfig } from '../../edit/da-assets/helpers/config.js';
 import {
@@ -62,9 +63,13 @@ export async function renderAssets({ container, org, site, onClose }) {
     ? getResponsiveImageConfig(org, site)
     : Promise.resolve(false);
 
+  const view = getExtensionsBridge().view;
+  const externalBrief = view?.state?.doc ? formatExternalBrief(view.state.doc) : '';
+
   const selectorProps = buildAssetSelectorProps({
     imsToken: token,
     repoConfig,
+    externalBrief,
     onClose: onClose && (() => assetPanel.style.display !== 'none' && onClose()),
     handleSelection: buildHandleSelection({
       assetPanel,

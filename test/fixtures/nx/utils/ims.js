@@ -1,7 +1,6 @@
 // Mock ims.js for tests
 export async function loadIms() {
-  // Mock implementation
-  return Promise.resolve();
+  return Promise.resolve(window.__testImsDetails);
 }
 
 export function handleSignIn() {

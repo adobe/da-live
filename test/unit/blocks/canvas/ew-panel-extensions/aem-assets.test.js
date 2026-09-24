@@ -15,8 +15,11 @@ import { expect } from '@esm-bundle/chai';
 const { setNx } = await import('../../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { getRepositoryConfig } = await import(
+const { getRepositoryConfig, renderAssets } = await import(
   '../../../../../blocks/canvas/ew-panel-extensions/aem-assets.js'
+);
+const { getExtensionsBridge } = await import(
+  '../../../../../blocks/canvas/editor-utils/extensions-bridge.js'
 );
 
 function makeSheet(entries) {
@@ -35,6 +38,17 @@ function makeFetch(responses) {
       if (url.includes(pattern)) return response;
     }
     return new Response('', { status: 404 });
+  };
+}
+
+function makeDoc(text, h1Title = '') {
+  return {
+    textContent: text,
+    descendants: (fn) => {
+      if (h1Title) {
+        fn({ type: { name: 'heading' }, attrs: { level: 1 }, textContent: h1Title });
+      }
+    },
   };
 }
 
@@ -117,5 +131,94 @@ describe('Canvas AEM Assets repository config', () => {
     } finally {
       window.fetch = orgFetch;
     }
+  });
+});
+
+describe('Canvas AEM Assets renderAssets', () => {
+  let orgFetch;
+  let orgHeadAppend;
+  let orgPureJSSelectors;
+  let orgImsDetails;
+  let bridge;
+
+  beforeEach(() => {
+    orgFetch = window.fetch;
+    orgHeadAppend = document.head.append;
+    orgPureJSSelectors = window.PureJSSelectors;
+    orgImsDetails = window.__testImsDetails;
+    bridge = getExtensionsBridge();
+    bridge.view = null;
+    window.__testImsDetails = {
+      accessToken: { token: 'ims-token' },
+      anonymous: false,
+    };
+    document.head.append = function append(node) {
+      if (node.tagName === 'SCRIPT') {
+        queueMicrotask(() => node.onload?.());
+        return node;
+      }
+      return orgHeadAppend.call(this, node);
+    };
+  });
+
+  afterEach(() => {
+    window.fetch = orgFetch;
+    document.head.append = orgHeadAppend;
+    window.PureJSSelectors = orgPureJSSelectors;
+    window.__testImsDetails = orgImsDetails;
+    bridge.view = null;
+  });
+
+  it('passes the page-content externalBrief to the asset selector advisor', async () => {
+    const org = 'canvas-brief-org';
+    const site = 'canvas-brief-site';
+    window.fetch = makeFetch({
+      [`/config/${org}/${site}/`]: makeSheet([
+        { key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' },
+      ]),
+    });
+
+    bridge.view = {
+      state: {
+        doc: makeDoc('We sell great shoes.', 'Our Products'),
+      },
+    };
+
+    let renderCall;
+    window.PureJSSelectors = {
+      renderAssetSelector: (...args) => {
+        renderCall = args;
+      },
+    };
+
+    const container = document.createElement('div');
+    await renderAssets({ container, org, site });
+
+    expect(renderCall).to.have.length(2);
+    expect(renderCall[1].externalBrief).to.include('Title: Our Products');
+    expect(renderCall[1].externalBrief).to.include('We sell great shoes.');
+  });
+
+  it('falls back to an empty externalBrief when the canvas view is unavailable', async () => {
+    const org = 'canvas-empty-brief-org';
+    const site = 'canvas-empty-brief-site';
+    window.fetch = makeFetch({
+      [`/config/${org}/${site}/`]: makeSheet([
+        { key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' },
+      ]),
+    });
+
+    let renderCall;
+    window.PureJSSelectors = {
+      renderAssetSelector: (...args) => {
+        renderCall = args;
+      },
+    };
+
+    const container = document.createElement('div');
+    await renderAssets({ container, org, site });
+
+    expect(renderCall).to.have.length(2);
+    expect(renderCall[1]).to.have.property('externalBrief', '');
   });
 });

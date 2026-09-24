@@ -1,6 +1,7 @@
 import { getNx } from '../../../scripts/utils.js';
 import getPathDetails from '../../shared/pathDetails.js';
 import { buildAssetSelectorProps } from '../../shared/aem-assets/selector-props.js';
+import { formatExternalBrief } from '../../shared/aem-assets/external-brief.js';
 import { getRepositoryConfig, getResponsiveImageConfig } from './helpers/config.js';
 import {
   buildAuthorUrl, buildDmUrl, buildDeliveryUrl,
@@ -16,26 +17,7 @@ export { buildFeatureSet } from '../../shared/aem-assets/selector-props.js';
 const DM_ERROR_MSG = 'The selected asset is not available because it is not approved for delivery. Please check the status.';
 const PUBLISH_ERROR_MSG = 'The selected asset is not available on the publish tier. Please publish the asset in AEM and try again.';
 
-export function formatExternalBrief(doc) {
-  let title = '';
-  doc.descendants((node) => {
-    if (node.type.name === 'heading' && node.attrs.level === 1 && !title) {
-      title = node.textContent;
-    }
-    return !title;
-  });
-
-  const contentPlainText = doc.textContent;
-  if (!contentPlainText) return '';
-
-  return `The user is looking for assets that match a web page with the following content:
-
-  ${title ? `Title: ${title}` : ''}
-
-  ${contentPlainText}
-
-  Please suggest Assets that are visually appealing and relevant to the subject.`;
-}
+export { formatExternalBrief };
 
 export function resolveAssetUrl(asset, repoConfig) {
   const {
