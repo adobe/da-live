@@ -63,10 +63,14 @@ export function renderForm(panel, {
   `;
 }
 
-export function renderCommentMenu(panel, comment, threadId, isRoot, canEdit) {
+export function renderCommentMenu(panel, comment, threadId, isRoot, canEdit, isResolved) {
   if (!canEdit && !isRoot) return nothing;
+  const canReopen = isRoot && isResolved && !!panel.currentUser;
   const items = [
-    ...(canEdit ? [{ id: 'edit', label: 'Edit' }, { id: 'delete', label: 'Delete' }] : []),
+    { section: 'Actions' },
+    ...(canReopen ? [{ id: 'reopen', label: 'Reopen' }] : []),
+    ...(canEdit && !isResolved ? [{ id: 'edit', label: 'Edit' }] : []),
+    ...(canEdit ? [{ id: 'delete', label: isRoot ? 'Delete thread' : 'Delete' }] : []),
     ...(isRoot ? [{ id: 'link', label: 'Get link to this comment' }] : []),
   ];
 
@@ -104,7 +108,7 @@ export function renderComment(panel, {
   isDetached = false, isPreview = false,
 }) {
   const canEdit = panel.canEditComment(comment);
-  const showMenu = !isPreview && !isResolved && (isRoot || canEdit);
+  const showMenu = !isPreview && (isRoot || (canEdit && !isResolved));
   const showResolve = !isPreview && isRoot && !isResolved && !!panel.currentUser;
 
   const isEditing = !isPreview
@@ -132,7 +136,7 @@ export function renderComment(panel, {
                 ${renderIcon('checkmark')}
               </button>
             ` : nothing}
-            ${showMenu ? renderCommentMenu(panel, comment, threadId, isRoot, canEdit) : nothing}
+            ${showMenu ? renderCommentMenu(panel, comment, threadId, isRoot, canEdit, isResolved) : nothing}
           </div>
         ` : nothing}
       </div>
@@ -270,12 +274,7 @@ export function renderThreadView(panel, thread) {
             ${replies.map((reply) => renderComment(panel, { comment: reply, threadId, isResolved }))}
           </div>
         ` : nothing}
-        ${isResolved ? html`
-          <div class="ew-comment-thread-actions">
-            <sl-button class="primary outline" ?disabled=${!!panel._submittingId} @click=${() => panel.handleUnresolveThread(threadId)}>Reopen</sl-button>
-            ${panel.canEditComment(thread) ? html`<sl-button class="negative" ?disabled=${!!panel._submittingId} @click=${() => panel.handleDeleteThread(threadId)}>Delete thread</sl-button>` : nothing}
-          </div>
-        ` : html`
+        ${isResolved ? nothing : html`
           <div class="ew-comments-reply-form ${isReplying ? 'ew-comments-reply-form-expanded' : ''}">
             ${renderForm(panel, {
               placeholder: 'Add a Reply...',
