@@ -1,19 +1,22 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getFirstSheet, fetchDaConfigs } from '../../shared/utils.js';
-import { getNx, sanitizePathParts, getNxEWFlags } from '../../../scripts/utils.js';
+import { getNx, getNx2, sanitizePathParts, getNxEWFlags } from '../../../scripts/utils.js';
 import { getChatPanelContent } from '../../shared/chat-panel.js';
 
 // Components
 import '../da-new/da-new.js';
 import '../da-search/da-search.js';
 import '../da-list/da-list.js';
+await import(`${getNx2()}/blocks/shared/segmented-btn/segmented.js`);
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-await import(`${getNx()}/blocks/shared/breadcrumb/breadcrumb.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT, wasPanelOpen, registerPanelSection } = await import(`${getNx()}/utils/panel.js`);
 
-const style = await loadStyle(import.meta.url);
+const [BUTTONS, style] = await Promise.all([
+  loadStyle(`${getNx2()}/styles/buttons.css`),
+  loadStyle(import.meta.url),
+]);
 
 function openChatPanel() {
   document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat' } }));
@@ -30,6 +33,9 @@ export default class DaBrowse extends LitElement {
     _searchItems: { state: true },
     _ewEnabled: { state: true },
     _chatEnabled: { state: true },
+    _viewOptionsOpen: { state: true },
+    _viewLayout: { state: true },
+    _viewRowSize: { state: true },
   };
 
   _browseSelKeys = new Set();
@@ -83,11 +89,14 @@ export default class DaBrowse extends LitElement {
         selected: false,
       },
     ];
+    this._viewOptionsOpen = false;
+    this._viewLayout = 'list';
+    this._viewRowSize = 'm';
   }
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style];
+    this.shadowRoot.adoptedStyleSheets = [BUTTONS, style];
     this._handleShortcuts = this.handleShortcuts.bind(this);
     document.addEventListener('keydown', this._handleShortcuts);
   }
@@ -248,53 +257,114 @@ export default class DaBrowse extends LitElement {
         drag="${drag ? true : nothing}"></da-list>`;
   }
 
+  renderSettingsActions() {
+    if (!this.details?.org) return nothing;
+
+    const href = this.details.site
+      ? `/config#/${this.details.org}/${this.details.site}/`
+      : `/config#/${this.details.org}/`;
+
+    return html`
+      <a class="da-browse-settings-link nx-action-btn-icon" href="${href}" aria-label="Config" title="Config">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-settings-20-n.svg#icon"></use></svg>
+      </a>`;
+  }
+
+  toggleViewOptions() {
+    this._viewOptionsOpen = !this._viewOptionsOpen;
+  }
+
+  setViewLayout(layout) {
+    this._viewLayout = layout;
+  }
+
+  setViewRowSize(size) {
+    this._viewRowSize = size;
+  }
+
+  renderViewOptionsMenu() {
+    if (!this._viewOptionsOpen) return nothing;
+
+    return html`
+      <div class="da-browse-view-options-menu" role="dialog" aria-label="View Options">
+        <div class="da-browse-view-options-row">
+          <div class="da-browse-view-options-label">Layout</div>
+          <nx-segmented-btn
+            label="Layout options"
+            .items=${[
+              { value: 'list', icon: '/img/icons/s2-icon-listbulleted-20-n.svg', label: 'List view', iconOnly: true },
+              { value: 'grid', icon: '/img/icons/s2-icon-viewgrid-20-n.svg', label: 'Grid view', iconOnly: true },
+            ]}
+            .value=${this._viewLayout}
+            @change=${({ detail }) => this.setViewLayout(detail.value)}>
+          </nx-segmented-btn>
+        </div>
+        <div class="da-browse-view-options-row">
+          <div class="da-browse-view-options-label">Row size</div>
+          <nx-segmented-btn
+            label="Row size options"
+            .items=${[
+              { value: 's', label: 'S' },
+              { value: 'm', label: 'M' },
+              { value: 'l', label: 'L' },
+            ]}
+            .value=${this._viewRowSize}
+            @change=${({ detail }) => this.setViewRowSize(detail.value)}>
+          </nx-segmented-btn>
+        </div>
+      </div>`;
+  }
+
+  renderToolbarLeading() {
+    return html`
+      <div class="da-browse-toolbar-actions">
+        ${this.renderNew()}
+        ${this._chatEnabled ? html`
+          <button type="button" part="chat-btn" class="chat-btn nx-action-btn-icon" aria-label="Open chat panel" @click=${openChatPanel}>
+            <svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-splitleft-20-n.svg#icon"></use></svg>
+          </button>` : nothing}
+      </div>`;
+  }
+
+  renderToolbarTrailing() {
+    return html`
+      <div class="da-browse-toolbar-controls" aria-label="Browse toolbar controls">
+        <button type="button" class="da-browse-toolbar-control nx-action-btn-quiet" @click=${this.toggleViewOptions}>
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <rect x="3" y="4" width="8" height="5" rx="1"></rect>
+            <rect x="13" y="5" width="4" height="1.75" rx="0.875"></rect>
+            <circle cx="15" cy="14" r="3"></circle>
+            <path d="M16.8 15.8l1.6 1.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+            <rect x="3" y="11" width="3" height="6" rx="1"></rect>
+            <rect x="7.5" y="11" width="3.5" height="2" rx="1"></rect>
+          </svg>
+          <span>View Options</span>
+        </button>
+        <button type="button" class="da-browse-toolbar-control nx-action-btn-quiet">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-filter-20-n.svg#icon"></use></svg>
+          <span>Show All types</span>
+        </button>
+        ${this.renderSettingsActions()}
+        ${this.renderViewOptionsMenu()}
+      </div>`;
+  }
+
   render() {
     return html`
       <div class="da-browse-header">
-        ${this._chatEnabled ? html`
-          <button type="button" part="chat-btn" class="chat-btn" aria-label="Open chat panel" @click=${openChatPanel}>
-            <svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-splitleft-20-n.svg#icon"></use></svg>
-          </button>` : nothing}
-      </div>
-      <div class="da-browse-content">
-        <div class="da-tablist" role="tablist" aria-label="Dark Alley content">
-          ${this._tabItems.map((tab, idx) => {
-      if (tab.id === 'search' && this.isRootFolder(this.details.fullpath)) {
-        return nothing;
-      }
-      return html`
-            <button
-              id="tab-${tab.id}"
-              type="button"
-              role="tab"
-              aria-selected="${tab.selected}"
-              aria-controls="tabpanel-${tab.id}"
-              @click=${() => { this.handleTabClick(idx); }}>
-              <span class="focus">${tab.title}</span>
-            </button>`;
-    })}
-      </div>
-      <div class="da-list-header context-${this.context}">
-          <div class="da-breadcrumb-action-area">
-            <div class="da-breadcrumb-area">
-              <nx-breadcrumb .pathSegments="${this.details.fullpath.split('/').filter(Boolean)}"></nx-breadcrumb>
-              ${!this.details.path ? html`
-                <a class="da-breadcrumb-config" href="/config#${this.details.fullpath}/" aria-label="Config">
-                  <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-settings-20-n.svg#icon"></use></svg>
-                </a>` : nothing}
-            </div>
-            ${this._tabItems.map((tab) => html`
-              <div class="da-list-header-action" data-visible="${tab.selected}">
-                ${tab.id === 'browse' ? this.renderNew() : this.renderSearch()}
-              </div>
-            `)}
+        <div class="da-browse-toolbar">
+          <div class="da-browse-toolbar-leading">
+            ${this.renderToolbarLeading()}
+          </div>
+          <div class="da-browse-toolbar-trailing">
+            ${this.renderToolbarTrailing()}
           </div>
         </div>
-      ${this._tabItems.map((tab) => html`
-        <div class="da-tabpanel" id="tabpanel-${tab.id}" role="grid" aria-labelledby="tab-${tab.id}" data-visible="${tab.selected}">
-          ${tab.id === 'browse' ? this.renderList(tab.id, this.details.fullpath, true, true, true) : this.renderList(tab.id, null, false, false, false)}
+      </div>
+      <div class="da-browse-content">
+        <div class="da-tabpanel" role="grid">
+          ${this.renderList('browse', this.details.fullpath, true, true, true)}
         </div>
-      `)}
       </div>
     `;
   }

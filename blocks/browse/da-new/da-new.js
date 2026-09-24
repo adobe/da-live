@@ -1,14 +1,15 @@
 import { LitElement, html } from 'da-lit';
 import { sanitizeName, EMPTY_DOC } from '../../shared/utils.js';
-import { getNx, getNx2Api } from '../../../scripts/utils.js';
+import { getNx, getNx2, getNx2Api } from '../../../scripts/utils.js';
 import getEditPath from '../shared.js';
 import '../../shared/da-link-dialog/da-link-dialog.js';
 import '../../shared/da-name-dialog/da-name-dialog.js';
 
 // Styles & Icons
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const [base, STYLE] = await Promise.all([
+const [base, BUTTONS, STYLE] = await Promise.all([
   loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href),
+  loadStyle(`${getNx2()}/styles/buttons.css`),
   loadStyle(import.meta.url),
 ]);
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
@@ -35,7 +36,7 @@ export default class DaNew extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [base, STYLE];
+    this.shadowRoot.adoptedStyleSheets = [base, BUTTONS, STYLE];
   }
 
   sendNewItem(item) {
@@ -143,10 +144,11 @@ export default class DaNew extends LitElement {
         { id: 'media', label: 'Media' },
         { id: 'link', label: 'Link' },
       ]} @select=${this.handleNewType}>
-          <button slot="trigger" class="da-actions-new-button" ?disabled=${this._disabled || this._loading} aria-label="New">
+          <button slot="trigger" class="da-actions-new-button nx-btn-accent" ?disabled=${this._disabled || this._loading} aria-label="New">
             ${this._loading
         ? html`<span class="da-loading-spinner" aria-hidden="true"></span>`
         : html`<svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-addcircle-20-n.svg#icon"></svg>`}
+            <span class="da-actions-new-label">New</span>
           </button>
         </nx-menu>
         <input type="file" id="da-actions-file" class="da-actions-file" @change=${this.handleAddFile} />

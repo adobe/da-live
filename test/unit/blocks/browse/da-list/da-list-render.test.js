@@ -160,6 +160,19 @@ describe('da-list render', () => {
     expect(el.shadowRoot.querySelector('button.da-browse-filter')).to.exist;
   });
 
+  it('Renders a table-style header with Name, Type, and Modified columns', async () => {
+    await fixture({ fullpath: '/o/r' });
+    el._listItems = [{ path: '/o/r/page.html', name: 'page', ext: 'html', lastModified: 1704067200000 }];
+    await rerender();
+    const header = el.shadowRoot.querySelector('.da-browse-table-header');
+    expect(header).to.exist;
+    const columns = [...header.querySelectorAll('[data-column]')].map((node) => node.getAttribute('data-column'));
+    expect(columns).to.deep.equal(['select', 'name', 'type', 'modified', 'actions']);
+    expect(header.textContent).to.contain('Name');
+    expect(header.textContent).to.contain('Type');
+    expect(header.textContent).to.contain('Modified');
+  });
+
   it('getSortAttr returns "ascending" / "descending" / "none"', async () => {
     await fixture({ fullpath: '/o/r' });
     expect(el.getSortAttr('new')).to.equal('ascending');

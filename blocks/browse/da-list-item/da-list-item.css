@@ -20,33 +20,36 @@
 
 .da-item-list-item-inner {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 40px minmax(0, 1fr) 120px 180px var(--da-list-action-width, 32px);
   align-items: center;
-  gap: var(--da-list-pad-inline, 24px);
-  padding: 0 var(--da-list-pad-inline, 24px);
+  column-gap: var(--s2-spacing-200);
+  padding: 0 var(--s2-spacing-300);
+  min-height: 64px;
 }
 
-.da-item-list-item-inner.can-select {
-  grid-template-columns: auto 1fr auto;
+.da-item-list-item-selection-placeholder {
+  width: 100%;
+  height: 100%;
 }
 
 .da-item-list-item-title,
 .da-item-list-item-rename {
+  display: grid;
   gap: var(--s2-spacing-100);
-  justify-content: space-between;
   align-items: center;
   text-decoration: none;
   color: var(--s2-gray-900);
-  padding: var(--s2-spacing-300) 0;
 }
 
 .da-item-list-item-title {
   outline-offset: -1px;
-  grid-template-columns: 1fr auto;
+  min-width: 0;
 }
 
 .da-item-list-item-rename {
-  grid-template-columns: auto 1fr auto;
+  grid-column: 2 / 5;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: var(--s2-spacing-300) 0;
 }
 
 .da-item-list-item-info {
@@ -63,10 +66,7 @@
   align-items: center;
   width: 32px;
   height: 32px;
-}
-
-.da-item-list-item-date {
-  min-width: 160px;
+  flex: 0 0 32px;
 }
 
 .da-item-list-item-name {
@@ -80,7 +80,24 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: var(--s2-component-s-bold-font-weight);
+  font-size: var(--s2-component-s-regular-font-size, 14px);
+  line-height: 20px;
+  font-weight: var(--s2-component-s-medium-font-weight);
+}
+
+.da-item-list-item-meta {
+  font-size: var(--s2-component-s-regular-font-size, 14px);
+  line-height: 20px;
+  color: var(--s2-gray-600);
+  min-width: 0;
+}
+
+.da-item-list-item-type-label {
+  font-weight: var(--s2-component-s-medium-font-weight);
+}
+
+.da-item-list-item-date {
+  white-space: nowrap;
 }
 
 .da-item-list-item-type > svg:first-child {
@@ -98,7 +115,6 @@
   filter: drop-shadow(0 0 1.5px var(--s2-gray-25));
   color: var(--s2-yellow-500);
 }
-
 
 .icon.rename-icon,
 .icon.cancel-icon,
@@ -124,6 +140,7 @@
 /* Rename */
 .da-item-list-item-rename input {
   display: block;
+  min-width: 0;
   font-family: var(--s2-font-family);
   font-size: 16px;
   background: none;
@@ -169,14 +186,14 @@
   align-items: center;
   justify-content: center;
   background: none;
-  border-radius: 3px;
+  border-radius: 6px;
   cursor: pointer;
   position: relative;
   transition: background 0.2s ease;
+}
 
-  &:hover {
-      background: var(--s2-blue-300);
-  }
+.da-item-list-item-expand-btn:hover {
+  background: var(--s2-blue-300);
 }
 
 .da-item-list-item-expand-btn::after {
@@ -189,7 +206,7 @@
 
 .da-item-list-item-expand-btn.is-visible {
   display: flex;
-  transition: transform .2s ease-in-out;
+  transition: transform 0.2s ease-in-out;
 }
 
 .da-item-list-item-expand-btn svg {
@@ -200,7 +217,7 @@
 /* Details */
 .da-item-list-item-details {
   display: none;
-  grid-template-columns: var(--da-list-action-width, 32px) 80px 1fr 182px 182px;
+  grid-template-columns: 40px 80px 1fr 182px 182px;
   padding: 24px var(--da-list-action-width, 32px) 24px 0;
   gap: var(--s2-spacing-100);
   border-top: 1px solid var(--s2-gray-100);
@@ -228,15 +245,15 @@
   width: 33.33px;
   height: 32px;
   color: light-dark(var(--s2-gray-400), var(--s2-gray-700));
+}
 
-  &::after {
-    content: '';
-    display: block;
-    width: 100%;
-    height: 100%;
-    background-color: currentColor;
-    mask: no-repeat center / 32px 32px url('/img/icons/s2-icon-experiencecloudsolid-20-n.svg');
-  }
+.da-item-list-item-aem-icon::after {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-color: currentColor;
+  mask: no-repeat center / 32px 32px url('/img/icons/s2-icon-experiencecloudsolid-20-n.svg');
 }
 
 .da-item-list-item-aem-icon.is-active {
@@ -254,16 +271,8 @@
   margin-bottom: 3px;
 }
 
-
 @keyframes spin {
   100% {
-    transform:rotate(90deg);
-  }
-}
-
-@media (width >= 600px) {
-  .da-item-list-item-title,
-  .da-item-list-item-rename {
-    display: grid;
+    transform: rotate(90deg);
   }
 }
