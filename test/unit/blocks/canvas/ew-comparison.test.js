@@ -69,6 +69,48 @@ describe('embedded existing comparison view', () => {
     expect(color('.ew-cc-chip:not(.is-neutral)')).to.equal(color('ins'));
     expect(color('.ew-cc-chip.is-neutral')).to.equal(color('del'));
   });
+
+  it('aligns unchanged table rows when the preceding live content is taller', async () => {
+    const { normalizeComparisonHtml } = comparison;
+    const { buildCompareDom } = await import('../../../../blocks/shared/version/compare.js');
+    const live = `<h1>Journey</h1><p>Unchanged introduction</p><p>${'Older, longer description with a lot more text that spans several lines in the comparison pane. '.repeat(4)}</p><hr><table><tr><td>Cards</td></tr><tr><td>Omnichannel</td></tr><tr><td>Inventory</td></tr><tr><td>Store Ops</td></tr><tr><td>Employee Dev</td></tr></table>`;
+    const current = '<h1>Journey</h1><p>Unchanged introduction</p><p>Short description.</p><div class="tableWrapper"><table><tr><td><p>cards</p></td></tr><tr><td><p>Omnichannel</p></td></tr><tr><td><p>Inventory</p></td></tr><tr><td><p>Store Ops</p></td></tr><tr><td><p>Employee Dev</p></td></tr></table></div>';
+    const { dom } = await buildCompareDom({
+      htmlA: normalizeComparisonHtml(live, page),
+      htmlB: normalizeComparisonHtml(current, page),
+      closeOnOutsideClick: false,
+    });
+    element = document.createElement('ew-canvas-compare');
+    element.embedded = true;
+    element.split = true;
+    element.currentLabel = 'Live';
+    element.label = 'Current document';
+    element.diffDom = dom;
+    element.style.cssText = 'width: 760px; height: 320px';
+    document.body.append(element);
+    await element.updateComplete;
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync(await (await fetch('/blocks/canvas/ew-canvas-versions/ew-canvas-compare.css')).text());
+    element.shadowRoot.adoptedStyleSheets = [sheet];
+
+    const split = element.shadowRoot.querySelector('.ew-cc-split');
+    const tables = [...split.querySelectorAll('table')];
+    expect(tables).to.have.length(2);
+    expect(tables.map((table) => [...table.querySelectorAll('tr')].map((row) => row.textContent.trim())))
+      .to.deep.equal([
+        ['Cards', 'Omnichannel', 'Inventory', 'Store Ops', 'Employee Dev'],
+        ['cards', 'Omnichannel', 'Inventory', 'Store Ops', 'Employee Dev'],
+      ]);
+    expect(tables.map((table) => table.querySelector('tr:nth-child(n+2) ins, tr:nth-child(n+2) del')))
+      .to.deep.equal([null, null]);
+    expect(Math.abs(tables[0].getBoundingClientRect().top - tables[1].getBoundingClientRect().top))
+      .to.be.lessThan(2);
+    expect(split.scrollHeight).to.be.greaterThan(split.clientHeight);
+    split.scrollTop = 40;
+    expect(split.scrollTop).to.equal(40);
+    expect(Math.abs(tables[0].getBoundingClientRect().top - tables[1].getBoundingClientRect().top))
+      .to.be.lessThan(2);
+  });
 });
 
 describe('standalone workspace comparison', () => {
@@ -221,6 +263,13 @@ describe('standalone workspace comparison', () => {
 });
 
 describe('comparison content normalization', () => {
+  it('keeps top-level separators when serializing document blocks', async () => {
+    const { stripEmptyTopLevelBlocks } = await import('../../../../blocks/shared/version/compare.js');
+    const root = new DOMParser().parseFromString('<hr><p> </p><p>Content</p>', 'text/html').body;
+    stripEmptyTopLevelBlocks(root);
+    expect(root.innerHTML).to.equal('<hr><p>Content</p>');
+  });
+
   it('normalizes editor wrappers and strips executable markup and attributes', () => {
     expect(comparison.normalizeComparisonHtml).to.be.a('function');
     const html = comparison.normalizeComparisonHtml('<div class="tableWrapper"><table><tr><td><p>A</p></td></tr></table></div><img src="javascript:bad" onerror="bad()"><script>bad()</script>', page);

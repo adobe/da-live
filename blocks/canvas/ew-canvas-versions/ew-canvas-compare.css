@@ -106,6 +106,30 @@ nx-popover {
   }
 }
 
+.ew-cc-split.is-aligned {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  overflow: auto;
+}
+
+.ew-cc-split.is-aligned .ew-cc-pane {
+  overflow: visible;
+  padding-block: var(--s2-spacing-100);
+}
+
+.ew-cc-split.is-aligned .ew-cc-pane:nth-child(odd) {
+  border-right: 1px solid var(--s2-gray-100);
+}
+
+.ew-cc-split.is-aligned .ew-cc-pane > :first-child {
+  margin-top: 0;
+}
+
+.ew-cc-split.is-aligned .ew-cc-pane > :last-child {
+  margin-bottom: 0;
+}
+
 :is(.ew-cc-body, .ew-cc-pane) > *:first-child {
   margin-top: 0;
 }
