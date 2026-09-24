@@ -10,7 +10,11 @@ export function findChangedNodes(oldDoc, newDoc) {
   const changes = [];
 
   function traverse(oldNode, newNode, pos) {
-    if (oldNode === newNode) return;
+    // Reference equality alone misses "same content, new object" cases — e.g. a full-node
+    // replaceWith() from a freshly parsed node (WYSIWYG sync, Yjs remote update) always
+    // produces new instances, so relying on `===` would cascade into diffing every
+    // descendant even when nothing actually changed. Node#eq() is a value comparison.
+    if (oldNode === newNode || (oldNode && newNode && oldNode.eq(newNode))) return;
 
     if (!oldNode || !newNode || oldNode.type !== newNode.type) {
       changes.push({
@@ -60,45 +64,69 @@ export function findChangedNodes(oldDoc, newDoc) {
 
     const oldSize = oldNode.childCount;
     const newSize = newNode.childCount;
-    const minSize = Math.min(oldSize, newSize);
+
+    // Pairing children by raw index breaks as soon as one sibling is added or removed
+    // (e.g. a new list item, a paragraph split by Enter) — every pair after that point
+    // is compared against the wrong counterpart and cascades into spurious diffs for
+    // the rest of the siblings. Matching the common leading/trailing run by value first
+    // isolates the actually-changed middle range.
+    const maxPrefix = Math.min(oldSize, newSize);
+    let prefix = 0;
+    while (prefix < maxPrefix && oldNode.child(prefix).eq(newNode.child(prefix))) {
+      prefix += 1;
+    }
+
+    const maxSuffix = maxPrefix - prefix;
+    let suffix = 0;
+    while (
+      suffix < maxSuffix
+      && oldNode.child(oldSize - 1 - suffix).eq(newNode.child(newSize - 1 - suffix))
+    ) {
+      suffix += 1;
+    }
 
     let oldPos = pos + 1;
     let newPos = pos + 1;
 
-    for (let i = 0; i < minSize; i += 1) {
-      const oldChild = oldNode.child(i);
-      const newChild = newNode.child(i);
+    for (let i = 0; i < prefix; i += 1) {
+      oldPos += oldNode.child(i).nodeSize;
+      newPos += newNode.child(i).nodeSize;
+    }
+
+    const oldMidEnd = oldSize - suffix;
+    const newMidEnd = newSize - suffix;
+    const midSize = Math.min(oldMidEnd - prefix, newMidEnd - prefix);
+
+    for (let i = 0; i < midSize; i += 1) {
+      const oldChild = oldNode.child(prefix + i);
+      const newChild = newNode.child(prefix + i);
       traverse(oldChild, newChild, oldPos);
       oldPos += oldChild.nodeSize;
       newPos += newChild.nodeSize;
     }
 
-    if (newSize > oldSize) {
-      for (let i = oldSize; i < newSize; i += 1) {
-        const newChild = newNode.child(i);
-        changes.push({
-          type: 'added',
-          pos: newPos,
-          node: newChild,
-        });
-        newPos += newChild.nodeSize;
-      }
+    for (let i = prefix + midSize; i < newMidEnd; i += 1) {
+      const newChild = newNode.child(i);
+      changes.push({
+        type: 'added',
+        pos: newPos,
+        node: newChild,
+      });
+      newPos += newChild.nodeSize;
     }
 
-    if (oldSize > newSize) {
-      for (let i = newSize; i < oldSize; i += 1) {
-        const oldChild = oldNode.child(i);
-        changes.push({
-          type: 'deleted',
-          pos: oldPos,
-          node: oldChild,
-        });
-        oldPos += oldChild.nodeSize;
-      }
+    for (let i = prefix + midSize; i < oldMidEnd; i += 1) {
+      const oldChild = oldNode.child(i);
+      changes.push({
+        type: 'deleted',
+        pos: oldPos,
+        node: oldChild,
+      });
+      oldPos += oldChild.nodeSize;
     }
   }
 
-  traverse(oldDoc, newDoc, 0);
+  traverse(oldDoc, newDoc, -1);
   return changes;
 }
 
@@ -153,21 +181,39 @@ export function findCommonEditableAncestor(view, changes, prevState) {
 }
 
 export function createTrackingPlugin(rerenderPage, updateCursors, getEditor, onSelectionChange) {
+  // there can be multiple apply() calls before one update() call,
+  // therefore we need to preserve the first state before any transactions
+  // to get the right diff on the last apply and avoid "last wins" scenarios
+  let beforeTransactionState = null;
+  let skipped = false;
+
   return new Plugin({
     key: trackingPluginKey,
     state: {
-      init() { return false; },
-      apply(tr) { return tr.getMeta(trackingPluginKey) === true; },
+      init() { return {}; },
+      apply(tr, value, oldState) {
+        if (tr.getMeta(trackingPluginKey) === true) {
+          skipped = true;
+          return value;
+        }
+        if (!tr.docChanged) return value;
+        beforeTransactionState ??= oldState;
+        return value;
+      },
     },
     view() {
       return {
         update(view, prevState) {
           const docChanged = view.state.doc !== prevState.doc;
+          const previousDoc = beforeTransactionState?.doc;
+          const wasSkipped = skipped;
+          beforeTransactionState = null;
+          skipped = false;
 
-          if (docChanged && trackingPluginKey.getState(view.state)) {
+          if (docChanged && (wasSkipped || !previousDoc)) {
             rerenderPage?.();
           } else if (docChanged) {
-            const changes = findChangedNodes(prevState.doc, view.state.doc);
+            const changes = findChangedNodes(previousDoc, view.state.doc);
 
             if (changes.length > 0) {
               // Only an EDITABLE_TYPES node changing its own attrs/type (heading level,
@@ -183,7 +229,11 @@ export function createTrackingPlugin(rerenderPage, updateCursors, getEditor, onS
               if (commonEditable) {
                 getEditor?.({ cursorOffset: commonEditable.pos + 1 });
               } else {
-                rerenderPage?.();
+                rerenderPage?.({
+                  changes,
+                  previousDoc,
+                  doc: view.state.doc,
+                });
               }
             }
           }

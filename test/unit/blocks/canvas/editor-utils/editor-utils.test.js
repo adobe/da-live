@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
 import { setNx } from '../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -6,12 +7,16 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 let getPreviewOrigin;
 let fetchWysiwygBranch;
 let parseSections;
+let resolveChangedScope;
+let updateDocument;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
   getPreviewOrigin = mod.getPreviewOrigin;
   fetchWysiwygBranch = mod.fetchWysiwygBranch;
   parseSections = mod.parseSections;
+  resolveChangedScope = mod.resolveChangedScope;
+  updateDocument = mod.updateDocument;
 });
 
 describe('getPreviewOrigin', () => {
@@ -157,11 +162,13 @@ describe('parseSections', () => {
     </div></main>`;
     const [section] = parseSections(html);
     expect(section.blocks).to.deep.equal([
-      { name: 'hero', variant: '', blockIndex: 0, proseIndex: 0, innerText: 'Hero content' },
+      {
+        name: 'hero', variant: '', blockIndex: 0, proseIndex: 0, blockEnd: undefined, innerText: 'Hero content',
+      },
     ]);
     expect(section.items).to.deep.equal([
       {
-        type: 'block', name: 'hero', variant: '', blockIndex: 0, proseIndex: 0, innerText: 'Hero content',
+        type: 'block', name: 'hero', variant: '', blockIndex: 0, proseIndex: 0, blockEnd: undefined, innerText: 'Hero content',
       },
     ]);
   });
@@ -310,8 +317,243 @@ describe('parseSections', () => {
     }]);
     expect(sections[1].items).to.deep.equal([
       {
-        type: 'block', name: 'cards', variant: '', blockIndex: 0, proseIndex: 0, innerText: 'Cards',
+        type: 'block', name: 'cards', variant: '', blockIndex: 0, proseIndex: 0, blockEnd: undefined, innerText: 'Cards',
       },
     ]);
+  });
+});
+
+describe('resolveChangedScope', () => {
+  const html = `<main>
+    <div>
+      <p data-prose-index="1">Intro</p>
+      <div class="cards" data-block-index="10">Cards</div>
+      <p data-prose-index="20">Outro</p>
+    </div>
+    <div><div class="hero" data-block-index="30">Hero</div></div>
+  </main>`;
+
+  it('resolves a block-local change to its block and section', () => {
+    const owners = resolveChangedScope({
+      changes: [{ type: 'text', pos: 12 }],
+      sections: parseSections(html),
+    });
+
+    expect(owners).to.deep.equal({
+      sectionIndexes: [0],
+      blocks: [{ sectionIndex: 0, blockIndex: 0 }],
+      metadataNames: [],
+    });
+  });
+
+  it('resolves default content to its section without assigning a block', () => {
+    const owners = resolveChangedScope({
+      changes: [{ type: 'text', pos: 5 }],
+      sections: parseSections(html),
+    });
+
+    expect(owners).to.deep.equal({ sectionIndexes: [0], blocks: [], metadataNames: [] });
+  });
+
+  it('returns owners from multiple sections for a cross-section change', () => {
+    const owners = resolveChangedScope({
+      changes: [{ type: 'text', pos: 12 }, { type: 'text', pos: 30 }],
+      sections: parseSections(html),
+    });
+
+    expect(owners).to.deep.equal({
+      sectionIndexes: [0, 1],
+      blocks: [
+        { sectionIndex: 0, blockIndex: 0 },
+        { sectionIndex: 1, blockIndex: 1 },
+      ],
+      metadataNames: [],
+    });
+  });
+
+  it('resolves deleted content against the previous section metadata', () => {
+    const owners = resolveChangedScope({
+      changes: [{ type: 'deleted', pos: 12 }],
+      sections: parseSections('<main><div><p data-prose-index="1">Intro</p></div></main>'),
+      previousSections: parseSections(html),
+    });
+
+    expect(owners).to.deep.equal({
+      sectionIndexes: [0],
+      blocks: [{ sectionIndex: 0, blockIndex: 0 }],
+      metadataNames: [],
+    });
+  });
+
+  it('returns null when a change position has no unambiguous owner', () => {
+    const owners = resolveChangedScope({
+      changes: [{ type: 'text', pos: 0 }],
+      sections: parseSections(html),
+    });
+
+    expect(owners).to.be.null;
+  });
+
+  it('retains page and section metadata names without treating them as blocks', () => {
+    const sections = parseSections(`<main>
+      <div><div class="metadata" data-block-index="1">Page metadata</div></div>
+      <div><div class="section-metadata" data-block-index="10">Section metadata</div></div>
+    </main>`);
+
+    expect(resolveChangedScope({ changes: [{ type: 'attrs', pos: 1 }], sections })).to.deep.equal({
+      sectionIndexes: [0],
+      blocks: [],
+      metadataNames: ['metadata'],
+    });
+    expect(resolveChangedScope({ changes: [{ type: 'attrs', pos: 10 }], sections })).to.deep.equal({
+      sectionIndexes: [1],
+      blocks: [],
+      metadataNames: ['section-metadata'],
+    });
+  });
+});
+
+describe('updateDocument metadata rerenders', () => {
+  let clock;
+
+  beforeEach(() => { clock = sinon.useFakeTimers(); });
+  afterEach(() => { clock.restore(); });
+
+  function ctxForBody(body) {
+    const dom = document.createElement('div');
+    dom.innerHTML = body;
+    return {
+      suppressRerender: false,
+      view: { dom },
+      port: { postMessage: sinon.spy() },
+    };
+  }
+
+  function tableNode(name) {
+    const cell = { type: { name: 'table_cell' }, textContent: name, childCount: 1 };
+    const row = { type: { name: 'table_row' }, childCount: 2, child: () => cell };
+    const table = { type: { name: 'table' }, child: () => row };
+    return { table, row, cell };
+  }
+
+  function ctxForTable(name, selectionPos = 10) {
+    const dom = document.createElement('div');
+    dom.innerHTML = `
+      <div class="tableWrapper">
+        <table>
+          <tbody>
+            <tr><td><p>${name}</p></td></tr>
+            <tr><td><p>key</p></td><td><p>value</p></td></tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+    const { table, row, cell } = tableNode(name);
+    return {
+      suppressRerender: false,
+      view: {
+        dom,
+        posAtDOM: () => 1,
+        state: {
+          selection: { from: selectionPos },
+          doc: {
+            resolve: () => ({
+              depth: 4,
+              parent: { nodeSize: 50 },
+              node: (depth) => [null, table, row, cell, { type: { name: 'paragraph' } }][depth],
+              index: () => 1,
+            }),
+          },
+        },
+      },
+      port: { postMessage: sinon.spy() },
+    };
+  }
+
+  it('debounces page metadata rerenders for 3 seconds', () => {
+    const ctx = ctxForBody('<div class="metadata" data-block-index="1">Page metadata</div>');
+
+    updateDocument(ctx, { changes: [{ type: 'attrs', pos: 1 }] });
+
+    expect(ctx.port.postMessage.called).to.be.false;
+    clock.tick(2999);
+    expect(ctx.port.postMessage.called).to.be.false;
+    clock.tick(1);
+    expect(ctx.port.postMessage.calledOnce).to.be.true;
+    expect(ctx.port.postMessage.firstCall.args[0].payload.rerenderScope).to.deep.equal({ type: 'page' });
+  });
+
+  it('debounces section metadata rerenders and keeps section scope', () => {
+    const ctx = ctxForBody(`
+      <div class="metadata" data-block-index="1">Page metadata</div>
+      <hr>
+      <div class="section-metadata" data-block-index="10">Section metadata</div>
+    `);
+
+    updateDocument(ctx, { changes: [{ type: 'attrs', pos: 10 }] });
+
+    expect(ctx.port.postMessage.called).to.be.false;
+    clock.tick(3000);
+    expect(ctx.port.postMessage.calledOnce).to.be.true;
+    expect(ctx.port.postMessage.firstCall.args[0].payload.rerenderScope).to.deep.equal({
+      type: 'section',
+      sectionIndex: 1,
+    });
+  });
+
+  it('restarts the debounce window for repeated metadata edits', () => {
+    const ctx = ctxForBody('<div class="metadata" data-block-index="1">Page metadata</div>');
+
+    updateDocument(ctx, { changes: [{ type: 'attrs', pos: 1 }] });
+    clock.tick(2000);
+    updateDocument(ctx, { changes: [{ type: 'attrs', pos: 1 }] });
+    clock.tick(2999);
+    expect(ctx.port.postMessage.called).to.be.false;
+    clock.tick(1);
+    expect(ctx.port.postMessage.calledOnce).to.be.true;
+  });
+
+  it('flushes a pending metadata rerender before a following non-metadata rerender', () => {
+    const ctx = ctxForBody(`
+      <div class="metadata" data-block-index="1">Page metadata</div>
+      <div class="hero" data-block-index="20">Hero</div>
+    `);
+
+    updateDocument(ctx, { changes: [{ type: 'attrs', pos: 1 }] });
+    clock.tick(1000);
+    updateDocument(ctx, { changes: [{ type: 'attrs', pos: 20 }] });
+
+    expect(ctx.port.postMessage.callCount).to.equal(2);
+    expect(ctx.port.postMessage.firstCall.args[0].payload.rerenderScope).to.deep.equal({ type: 'page' });
+    expect(ctx.port.postMessage.secondCall.args[0].payload.rerenderScope).to.deep.equal({
+      type: 'block',
+      sectionIndex: 0,
+      blockIndex: 0,
+    });
+  });
+
+  it('debounces metadata rerenders when missing details but selection is inside metadata', () => {
+    const ctx = ctxForTable('Metadata');
+
+    updateDocument(ctx);
+
+    expect(ctx.port.postMessage.called).to.be.false;
+    clock.tick(3000);
+    expect(ctx.port.postMessage.calledOnce).to.be.true;
+    expect(ctx.port.postMessage.firstCall.args[0].payload.rerenderScope).to.deep.equal({ type: 'page' });
+  });
+
+  it('debounces section metadata rerenders when missing details but selection is inside section metadata', () => {
+    const ctx = ctxForTable('Section-Metadata');
+
+    updateDocument(ctx);
+
+    expect(ctx.port.postMessage.called).to.be.false;
+    clock.tick(3000);
+    expect(ctx.port.postMessage.calledOnce).to.be.true;
+    expect(ctx.port.postMessage.firstCall.args[0].payload.rerenderScope).to.deep.equal({
+      type: 'section',
+      sectionIndex: 0,
+    });
   });
 });

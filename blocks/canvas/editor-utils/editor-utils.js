@@ -3,6 +3,7 @@ import prose2aem from '../../shared/prose2aem.js';
 import { getNx } from '../../../scripts/utils.js';
 import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
 import { toolbarController } from './toolbar-controller.js';
+import { getTableInfo } from './blocks.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { canvasBus, registerEditorSelectEnricher } from '../utils/canvas-bus.js';
 
@@ -215,7 +216,7 @@ export function extractCursors(view) {
   return [...cursorMap.values()];
 }
 
-export function getInstrumentedHTML(view) {
+export function getInstrumentedHTML(view, { livePreview = true } = {}) {
   const editorClone = view.dom.cloneNode(true);
 
   const originalElements = view.dom.querySelectorAll(EDITABLE_SELECTORS);
@@ -241,15 +242,19 @@ export function getInstrumentedHTML(view) {
   clonedTables.forEach((table, index) => {
     const firstRow = table.querySelector('tr');
     const firstCellText = firstRow?.cells?.[0]?.textContent?.trim().toLowerCase();
-    const isPageOrSectionMetadata = firstCellText === 'metadata' || firstCellText === 'section metadata' || firstCellText === 'section-metadata';
     const isLibraryMetadata = firstCellText === 'library metadata' || firstCellText === 'library-metadata';
-    if (isPageOrSectionMetadata || isLibraryMetadata) return;
+    if (isLibraryMetadata) return;
     const div = table.parentElement;
     const blockMarker = document.createElement('div');
     blockMarker.className = 'block-marker';
     try {
       const position = view.posAtDOM(originalTables[index], 0);
+      const tableNode = view.state.doc.resolve(position).parent;
       blockMarker.setAttribute('data-prose-index', position);
+      // The block's real close, not just "until the next item" — a trailing empty
+      // paragraph after the block has no item of its own, so without this it gets
+      // misattributed to the block instead of the section.
+      blockMarker.setAttribute('data-block-end', position - 1 + tableNode.nodeSize);
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn('Could not find position for table block:', e);
@@ -293,10 +298,10 @@ export function getInstrumentedHTML(view) {
 
   // Serialize clone to HTML, then move block-marker index onto wrapper as data-block-index
   // (same pattern as da-nx qe-advanced: getInstrumentedHTML in prose2aem.js).
-  let htmlString = prose2aem(editorClone, true, false, true);
+  let htmlString = prose2aem(editorClone, livePreview, false);
   htmlString = htmlString.replace(
-    /<div class="block-marker" data-prose-index="(\d+)"><\/div>\s*<div([^>]*?)>/gi,
-    (_match, proseIndex, divAttributes) => `<div${divAttributes} data-block-index="${proseIndex}">`,
+    /<div class="block-marker" data-prose-index="(\d+)" data-block-end="(\d+)"><\/div>\s*<div([^>]*?)>/gi,
+    (_match, proseIndex, blockEnd, divAttributes) => `<div${divAttributes} data-block-index="${proseIndex}" data-block-end="${blockEnd}">`,
   );
   return htmlString;
 }
@@ -384,15 +389,30 @@ export function parseSections(htmlText) {
       const name = el.tagName === 'DIV' ? el.classList[0] : undefined;
       const isBlock = name && !SKIP_BLOCK_CLASSES.has(name);
 
+      if (name === 'metadata' || name === 'section-metadata') {
+        flushRun();
+        const rawProseIndex = el.getAttribute('data-block-index');
+        items.push({
+          type: 'metadata',
+          name,
+          proseIndex: rawProseIndex != null ? Number(rawProseIndex) : undefined,
+        });
+        return;
+      }
+
       if (isBlock) {
         flushRun();
         const rawProseIndex = el.getAttribute('data-block-index');
         const proseIndex = rawProseIndex != null ? Number(rawProseIndex) : undefined;
+        const rawBlockEnd = el.getAttribute('data-block-end');
+        const blockEnd = rawBlockEnd != null ? Number(rawBlockEnd) : undefined;
         const innerText = el.textContent?.trim() ?? '';
         // Classes after the block name are its variant(s) — the same descriptor the
         // doc editor's header row shows in parentheses (e.g. `cards (highlight)`).
         const variant = [...el.classList].slice(1).join(', ');
-        const block = { name, variant, blockIndex: flatIndex, proseIndex, innerText };
+        const block = {
+          name, variant, blockIndex: flatIndex, proseIndex, blockEnd, innerText,
+        };
         blocks.push(block);
         items.push({ type: 'block', ...block });
         flatIndex += 1;
@@ -407,6 +427,54 @@ export function parseSections(htmlText) {
 
     return { sectionIndex, name: section.getAttribute('data-section-name') || '', blocks, items };
   });
+}
+
+export function resolveChangedScope({ changes, sections, previousSections = sections }) {
+  const resolveOwner = (pos, ownerSections) => {
+    const items = ownerSections.flatMap((section) => section.items.map((item) => ({
+      sectionIndex: section.sectionIndex,
+      item,
+    })));
+    const itemIndex = items.findIndex(({ item }, index) => {
+      const nextItem = items[index + 1]?.item;
+      return pos >= item.proseIndex && (nextItem == null || pos < nextItem.proseIndex);
+    });
+
+    if (itemIndex < 0) return null;
+
+    const { sectionIndex, item } = items[itemIndex];
+    // A block only owns positions up to its own close — the gap between a block's end and
+    // the next item (e.g. a trailing empty paragraph, which has no item of its own) belongs
+    // to the section, not the preceding block.
+    if (item.type === 'block' && item.blockEnd != null && pos >= item.blockEnd) {
+      return { sectionIndex, block: undefined, metadataName: undefined };
+    }
+    return {
+      sectionIndex,
+      block: item.type === 'block'
+        ? { sectionIndex, blockIndex: item.blockIndex }
+        : undefined,
+      metadataName: item.type === 'metadata' ? item.name : undefined,
+    };
+  };
+
+  const owners = changes.map((change) => resolveOwner(
+    change.pos,
+    change.type === 'deleted' ? previousSections : sections,
+  ));
+  if (owners.some((owner) => owner == null)) return null;
+
+  const sectionIndexes = [...new Set(owners.map(({ sectionIndex }) => sectionIndex))];
+  const blocks = [...new Map(
+    owners
+      .filter(({ block }) => block)
+      .map(({ block }) => [block.blockIndex, block]),
+  ).values()];
+  const metadataNames = [...new Set(
+    owners.map(({ metadataName }) => metadataName).filter(Boolean),
+  )];
+
+  return { sectionIndexes, blocks, metadataNames };
 }
 
 let selectBlockMeta = new Map();
@@ -433,10 +501,90 @@ registerEditorSelectEnricher((detail) => {
   return { ...detail, blockName, proseIndex, innerText };
 });
 
-export function updateDocument(ctx) {
+function getRerenderScope(details, body) {
+  if (!details || !body) return { type: 'page' };
+
+  const sections = parseSections(body);
+  const owners = resolveChangedScope({
+    changes: details.changes,
+    sections,
+  });
+  if (!owners) return { type: 'page' };
+  if (owners.metadataNames.includes('section-metadata') && owners.sectionIndexes.length === 1) {
+    return { type: 'section', sectionIndex: owners.sectionIndexes[0] };
+  }
+  if (owners.metadataNames.includes('metadata')) return { type: 'page' };
+
+  const changeOwners = details.changes.map((change) => resolveChangedScope({
+    changes: [change],
+    sections,
+  }));
+  const [block] = owners.blocks;
+  if (owners.blocks.length === 1 && changeOwners.every((owner) => owner?.blocks.length === 1)) {
+    return { type: 'block', ...block };
+  }
+  if (owners.sectionIndexes.length === 1) {
+    return { type: 'section', sectionIndex: owners.sectionIndexes[0] };
+  }
+  return { type: 'page' };
+}
+
+const METADATA_RERENDER_DEBOUNCE_MS = 2000;
+const METADATA_TABLE_NAMES = new Set(['metadata', 'section-metadata']);
+
+function getSelectionMetadataDetails(ctx) {
+  const { state } = ctx.view ?? {};
+  const pos = state?.selection?.from;
+  if (typeof pos !== 'number') return undefined;
+  const tableName = getTableInfo(state, pos)?.tableName?.trim().toLowerCase();
+  if (!METADATA_TABLE_NAMES.has(tableName)) return undefined;
+  return { changes: [{ type: 'selection', pos }] };
+}
+
+function isMetadataRerender(details, body) {
+  if (!details || !body) return false;
+  const owners = resolveChangedScope({
+    changes: details.changes,
+    sections: parseSections(body),
+  });
+  return owners?.metadataNames.some((name) => name === 'metadata' || name === 'section-metadata') === true;
+}
+
+function postBody(ctx, body, rerenderScope) {
+  ctx.port.postMessage({ type: MESSAGE_TYPES.SET_BODY, payload: { body, rerenderScope } });
+}
+
+function clearMetadataRerenderTimer(ctx) {
+  if (!ctx.metadataRerenderTimer) return;
+  clearTimeout(ctx.metadataRerenderTimer);
+  ctx.metadataRerenderTimer = undefined;
+}
+
+function flushMetadataRerender(ctx) {
+  const pending = ctx.metadataRerender;
+  if (!pending) return;
+  clearMetadataRerenderTimer(ctx);
+  ctx.metadataRerender = undefined;
+  postBody(ctx, pending.body, pending.rerenderScope);
+}
+
+export function updateDocument(ctx, details) {
   if (ctx.suppressRerender) return undefined;
   const body = getInstrumentedHTML(ctx.view);
-  ctx.port.postMessage({ type: MESSAGE_TYPES.SET_BODY, payload: { body } });
+  const fallbackDetails = details ?? getSelectionMetadataDetails(ctx);
+  const scopeBody = fallbackDetails ? getInstrumentedHTML(ctx.view, { livePreview: false }) : body;
+  const rerenderScope = getRerenderScope(fallbackDetails, scopeBody);
+  if (isMetadataRerender(fallbackDetails, scopeBody)) {
+    clearMetadataRerenderTimer(ctx);
+    ctx.metadataRerender = { body, rerenderScope };
+    ctx.metadataRerenderTimer = setTimeout(() => {
+      ctx.metadataRerenderTimer = undefined;
+      flushMetadataRerender(ctx);
+    }, METADATA_RERENDER_DEBOUNCE_MS);
+  } else {
+    flushMetadataRerender(ctx);
+    postBody(ctx, body, rerenderScope);
+  }
   return body;
 }
 
