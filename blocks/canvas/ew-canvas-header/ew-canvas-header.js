@@ -26,7 +26,7 @@ const EDITOR_VIEWS = /** @type {const} */ (['layout', 'content', 'split']);
 const EDITOR_VIEW_ITEMS = [
   { value: 'layout', label: 'Layout' },
   { value: 'content', label: 'Content' },
-  { value: 'split', icon: 'gridcompare', ariaLabel: 'Split view', title: 'Split view' },
+  { value: 'split', icon: ICONS.gridCompare, iconOnly: true, label: 'Split view' },
 ];
 
 class EWCanvasHeader extends LitElement {
@@ -170,6 +170,7 @@ class EWCanvasHeader extends LitElement {
           <nx-segmented-btn
             part="editor-view-toggle"
             label="Editor view"
+            size="m"
             .items=${EDITOR_VIEW_ITEMS}
             .value=${this.editorView}
             @change=${(e) => this._setEditorView(e.detail.value)}

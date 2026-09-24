@@ -43,11 +43,13 @@ class NxSegmentedBtn extends HTMLElement {
     this.#items.forEach((item) => {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = `segment${item.icon ? ' segment-icon' : ''}${this.#value === item.value ? ' is-selected' : ''}`;
+      btn.className = `segment${item.icon && item.iconOnly ? ' segment-icon' : ''}${this.#value === item.value ? ' is-selected' : ''}`;
       btn.setAttribute('aria-pressed', String(this.#value === item.value));
-      if (item.ariaLabel) btn.setAttribute('aria-label', item.ariaLabel);
-      if (item.title) btn.title = item.title;
-      btn.textContent = item.icon ? '' : item.label;
+      if (item.iconOnly) {
+        btn.setAttribute('aria-label', item.label);
+        btn.title = item.label;
+      }
+      btn.textContent = item.iconOnly ? '' : item.label;
       btn.addEventListener('click', () => this.#select(item.value));
       wrap.append(btn);
     });
