@@ -4,6 +4,7 @@ import {
   getReplySummary,
   formatTimestamp,
   formatAnchorPreview,
+  formatCommentPrompt,
 } from '../../../../../../blocks/canvas/comments/helpers/format-utils.js';
 
 describe('format-utils', () => {
@@ -116,6 +117,47 @@ describe('format-utils', () => {
         makeReply('u5', 'Eve'),
       ];
       expect(getReplySummary({ rootComment: root, replies })).to.equal(' from Bob, Carol and 2 others');
+    });
+  });
+
+  describe('formatCommentPrompt', () => {
+    const thread = {
+      anchorType: 'text',
+      anchorText: 'the quick brown fox',
+      author: { name: 'Alice' },
+      body: 'make this bold',
+      replies: [{ author: { name: 'Bob' }, body: 'agreed' }],
+    };
+
+    it('includes the anchor, the root comment and every reply, without author names', () => {
+      expect(formatCommentPrompt(thread)).to.equal(
+        'Address this comment on "the quick brown fox":\n\nmake this bold\nagreed',
+      );
+    });
+
+    it('omits the target when there is no anchor text', () => {
+      const orphan = { author: { name: 'Alice' }, body: 'fix this' };
+      expect(formatCommentPrompt(orphan)).to.equal('Address this comment:\n\nfix this');
+    });
+
+    it('reads a block anchor as a name, not a raw "block:" prefix', () => {
+      const author = { name: 'Alice' };
+      const onBlock = { anchorType: 'table', anchorText: 'block: columns', author, body: 'tighten this' };
+      expect(formatCommentPrompt(onBlock)).to.equal('Address this comment on the columns block:\n\ntighten this');
+    });
+
+    it('falls back to "a table" for an unnamed table anchor', () => {
+      const onTable = { anchorType: 'table', anchorText: '', author: { name: 'Alice' }, body: 'fix' };
+      expect(formatCommentPrompt(onTable)).to.equal('Address this comment on a table:\n\nfix');
+    });
+
+    it('describes image anchors', () => {
+      const onImage = { anchorType: 'image', author: { name: 'Alice' }, body: 'swap it' };
+      expect(formatCommentPrompt(onImage)).to.equal('Address this comment on an image:\n\nswap it');
+    });
+
+    it('returns an empty string for no thread', () => {
+      expect(formatCommentPrompt(null)).to.equal('');
     });
   });
 });

@@ -2,8 +2,10 @@ import { LitElement, html } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import { openCommentsPanel, getCommentsBridge } from '../editor-utils/comments-bridge.js';
+import { setChatPrompt } from '../../shared/chat-panel.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { buildDeepLinkUrl, parseDeepLink } from './helpers/deep-link.js';
+import { formatCommentPrompt } from './helpers/format-utils.js';
 import { authorKey } from './helpers/author-colors.js';
 import {
   DRAFT_MODES,
@@ -374,6 +376,7 @@ export class CommentsPanel extends LitElement {
     if (id === 'edit') this.startEditDraft(comment);
     else if (id === 'delete') this.handleDeleteComment(comment.id, threadId);
     else if (id === 'reopen') this.handleUnresolveThread(threadId);
+    else if (id === 'chat') this.addThreadToChat(threadId);
     else if (id === 'link') this.copyThreadLink(threadId);
   }
 
@@ -381,6 +384,15 @@ export class CommentsPanel extends LitElement {
     if (!comment || !this.currentUser) return false;
     const me = authorKey(this.currentUser);
     return Boolean(me) && me === authorKey(comment.author);
+  }
+
+  addThreadToChat(threadId = this.controller?.selectedThreadId) {
+    const thread = this.getThreadById(threadId);
+    if (!thread) return;
+    setChatPrompt(
+      formatCommentPrompt(thread),
+      () => this.controller?.selectThreadRange(threadId),
+    );
   }
 
   copyThreadLink(threadId = this.controller?.selectedThreadId) {
