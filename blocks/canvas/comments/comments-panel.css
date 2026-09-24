@@ -313,6 +313,16 @@
   margin-left: 40px;
 }
 
+.ew-comment-edited {
+  font-size: 12px;
+  color: var(--s2-gray-600);
+}
+
+.ew-comment-edit-form {
+  margin-left: 40px;
+  margin-top: 0;
+}
+
 .ew-comment-form-actions button,
 .ew-comment-thread-actions button {
   flex: 0 0 auto;
