@@ -1,6 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
 import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.js';
+import { getImageDocumentVersion } from '../../../../../blocks/canvas/utils/image-document-version.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -16,7 +17,7 @@ before(async () => {
   ({ toasts } = await import('../../../../fixtures/nx2/blocks/shared/toast/toast.js'));
 });
 
-function stubStore({ upgraded, contentUrl = './media_abc.png' }) {
+function stubStore({ upgraded, contentUrl = './media_abc.png', onUpload } = {}) {
   const saved = window.fetch;
   const calls = [];
   window.fetch = async (url, opts) => {
@@ -28,6 +29,7 @@ function stubStore({ upgraded, contentUrl = './media_abc.png' }) {
         headers: upgraded ? { 'x-api-upgrade-available': 'true' } : {},
       });
     }
+    onUpload?.();
     return new Response(JSON.stringify({ source: { contentUrl } }), {
       status: 201,
       headers: { 'content-type': 'application/json' },
@@ -42,6 +44,7 @@ afterEach(() => {
 
 describe('handleImageReplace', () => {
   let editor;
+  let imagePos;
 
   const ctxFor = (owner, repo) => {
     const posted = [];
@@ -59,9 +62,25 @@ describe('handleImageReplace', () => {
   };
 
   const imageData = 'data:image/png;base64,iVBORw0KGgo=';
+  const request = (overrides = {}) => ({
+    imageData,
+    fileName: 'pic.png',
+    proseIndex: imagePos,
+    requestId: 'upload-1',
+    imageVersion: getImageDocumentVersion(editor.view.state.doc),
+    originalSrc: '/old.png',
+    ...overrides,
+  });
 
   beforeEach(async () => {
     editor = await createTestEditor();
+    const { state } = editor.view;
+    const img = state.schema.nodes.image.create({ src: '/old.png', alt: 'Original alt' });
+    const para = state.schema.nodes.paragraph.create(null, img);
+    editor.view.dispatch(state.tr.replaceWith(0, state.doc.content.size, para));
+    editor.view.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'image') imagePos = pos;
+    });
     await nextFrame();
   });
 
@@ -73,7 +92,7 @@ describe('handleImageReplace', () => {
     const { calls, restore } = stubStore({ upgraded: true });
     const { ctx } = ctxFor('wysorg', 'wyssite');
     try {
-      await handleImageReplace({ imageData, fileName: 'pic.png', originalSrc: '/old.png' }, ctx);
+      await handleImageReplace(request(), ctx);
 
       // the route past the site is nx2's, so what is pinned is the store and the path
       const upload = calls.find((c) => c.opts?.method === 'POST');
@@ -90,7 +109,7 @@ describe('handleImageReplace', () => {
     const { calls, restore } = stubStore({ upgraded: false, contentUrl: 'https://content.da.live/wyslegacy/wyslegacy/.page/pic.png' });
     const { ctx } = ctxFor('wyslegacy', 'wyslegacy');
     try {
-      await handleImageReplace({ imageData, fileName: 'pic.png', originalSrc: '/old.png' }, ctx);
+      await handleImageReplace(request(), ctx);
 
       const upload = calls.find((c) => c.opts?.method === 'POST');
       expect(upload, 'nothing was uploaded').to.exist;
@@ -105,9 +124,11 @@ describe('handleImageReplace', () => {
     const { restore } = stubStore({ upgraded: true, contentUrl: './media_xyz.png' });
     const { ctx, posted } = ctxFor('wysrep', 'wysrep');
     try {
-      await handleImageReplace({ imageData, fileName: 'pic.png', originalSrc: '/old.png' }, ctx);
+      await handleImageReplace(request(), ctx);
 
       expect(posted.at(-1).payload.newSrc).to.equal('./media_xyz.png');
+      expect(posted.at(-1).payload.requestId).to.equal('upload-1');
+      expect(editor.view.state.doc.nodeAt(imagePos).attrs.alt).to.equal('Original alt');
     } finally {
       restore();
     }
@@ -121,7 +142,7 @@ describe('handleImageReplace', () => {
     };
     const { ctx, posted } = ctxFor('wysref', 'wysref');
     try {
-      await handleImageReplace({ imageData, fileName: 'pic.png', originalSrc: '/old.png' }, ctx);
+      await handleImageReplace(request(), ctx);
 
       expect(posted.at(-1).payload.error).to.contain('403');
     } finally {
@@ -136,12 +157,129 @@ describe('handleImageReplace', () => {
     const big = `data:image/png;base64,${'A'.repeat(Math.ceil((HLX6_MAX_IMAGE_BYTES + 1) / 3) * 4)}`;
     toasts.length = 0;
     try {
-      await handleImageReplace({ imageData: big, fileName: 'big.png', originalSrc: '/old.png' }, ctx);
+      await handleImageReplace(request({ imageData: big, fileName: 'big.png' }), ctx);
 
       expect(calls.filter((c) => c.opts?.method === 'POST')).to.have.length(0);
       expect(posted.at(-1).payload.error).to.contain('too large');
       expect(toasts).to.have.length(1);
       expect(toasts[0].text).to.contain('Max image size allowed is 4.5 MB');
+    } finally {
+      restore();
+    }
+  });
+
+  it('replaces only the indexed image when two images have the same URL', async () => {
+    const { state } = editor.view;
+    const first = state.schema.nodes.image.create({ src: '/old.png', alt: 'First' });
+    const second = state.schema.nodes.image.create({ src: '/old.png', alt: 'Second' });
+    const para = state.schema.nodes.paragraph.create(null, [first, second]);
+    editor.view.dispatch(state.tr.replaceWith(0, state.doc.content.size, para));
+    const positions = [];
+    editor.view.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'image') positions.push(pos);
+    });
+    const { restore } = stubStore({ upgraded: true });
+    const { ctx, posted } = ctxFor('wysrep', 'wysrep');
+    try {
+      await handleImageReplace(request({ proseIndex: positions[1] }), ctx);
+
+      expect(editor.view.state.doc.nodeAt(positions[0]).attrs.src).to.equal('/old.png');
+      expect(editor.view.state.doc.nodeAt(positions[1]).attrs.src).to.equal('./media_abc.png');
+      expect(editor.view.state.doc.nodeAt(positions[1]).attrs.alt).to.equal('Second');
+      expect(posted.at(-1).payload).to.include({ proseIndex: positions[1], requestId: 'upload-1' });
+    } finally {
+      restore();
+    }
+  });
+
+  it('rejects an invalid index before uploading rather than using the URL', async () => {
+    const { calls, restore } = stubStore({ upgraded: true });
+    const { ctx, posted } = ctxFor('wysrep', 'wysrep');
+    try {
+      await handleImageReplace(request({ proseIndex: imagePos + 1 }), ctx);
+
+      expect(calls.filter((c) => c.opts?.method === 'POST')).to.have.length(0);
+      expect(editor.view.state.doc.nodeAt(imagePos).attrs.src).to.equal('/old.png');
+      expect(posted.at(-1).payload.error).to.contain('position');
+    } finally {
+      restore();
+    }
+  });
+
+  it('rejects a missing index in a new request', async () => {
+    const { calls, restore } = stubStore({ upgraded: true });
+    const { ctx, posted } = ctxFor('wysrep', 'wysrep');
+    try {
+      await handleImageReplace(request({ proseIndex: null }), ctx);
+
+      expect(calls.filter((c) => c.opts?.method === 'POST')).to.have.length(0);
+      expect(posted.at(-1).payload.error).to.contain('position');
+    } finally {
+      restore();
+    }
+  });
+
+  it('rejects an indexed request with no document version', async () => {
+    const { calls, restore } = stubStore({ upgraded: true });
+    const { ctx, posted } = ctxFor('wysrep', 'wysrep');
+    try {
+      await handleImageReplace(request({ requestId: null, imageVersion: null }), ctx);
+
+      expect(calls.filter((c) => c.opts?.method === 'POST')).to.have.length(0);
+      expect(posted.at(-1).payload.error).to.contain('out of date');
+    } finally {
+      restore();
+    }
+  });
+
+  it('rejects a stale image version even if its index now holds an identical image', async () => {
+    const staleVersion = getImageDocumentVersion(editor.view.state.doc);
+    const { state } = editor.view;
+    editor.view.dispatch(state.tr.insert(imagePos, state.schema.nodes.image.create({ src: '/old.png' })));
+    const { calls, restore } = stubStore({ upgraded: true });
+    const { ctx, posted } = ctxFor('wysrep', 'wysrep');
+    try {
+      await handleImageReplace(request({ imageVersion: staleVersion }), ctx);
+
+      expect(calls.filter((c) => c.opts?.method === 'POST')).to.have.length(0);
+      expect(posted.at(-1).payload.error).to.contain('out of date');
+      expect(editor.view.state.doc.nodeAt(imagePos).attrs.src).to.equal('/old.png');
+    } finally {
+      restore();
+    }
+  });
+
+  it('rejects an old URL-only request when multiple images match', async () => {
+    const { state } = editor.view;
+    const duplicate = state.schema.nodes.image.create({ src: '/old.png' });
+    editor.view.dispatch(state.tr.insert(imagePos + 1, duplicate));
+    const { calls, restore } = stubStore({ upgraded: true });
+    const { ctx, posted } = ctxFor('wysrep', 'wysrep');
+    try {
+      await handleImageReplace({ imageData, fileName: 'pic.png', originalSrc: '/old.png' }, ctx);
+
+      expect(calls.filter((c) => c.opts?.method === 'POST')).to.have.length(0);
+      expect(posted.at(-1).payload.error).to.contain('ambiguous');
+    } finally {
+      restore();
+    }
+  });
+
+  it('refuses a changed document during upload instead of replacing the wrong image', async () => {
+    const { restore } = stubStore({
+      upgraded: true,
+      onUpload: () => editor.view.dispatch(editor.view.state.tr.insertText('before ', imagePos)),
+    });
+    const { ctx, posted } = ctxFor('wysrep', 'wysrep');
+    try {
+      await handleImageReplace(request(), ctx);
+
+      expect(posted.at(-1).payload.error).to.contain('changed');
+      const images = [];
+      editor.view.state.doc.descendants((node) => {
+        if (node.type.name === 'image') images.push(node.attrs.src);
+      });
+      expect(images).to.deep.equal(['/old.png']);
     } finally {
       restore();
     }
