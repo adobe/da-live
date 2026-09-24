@@ -1,5 +1,7 @@
 import { LitElement, html, nothing, repeat } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
+import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
+import { getPreviewOrigin } from '../editor-utils/editor-utils.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import './ew-panel-library.js';
 
@@ -17,6 +19,7 @@ class EwPanelExtension extends LitElement {
   static properties = {
     extension: { attribute: false },
     _hashState: { state: true },
+    _iframeSrc: { state: true },
   };
 
   connectedCallback() {
@@ -33,6 +36,7 @@ class EwPanelExtension extends LitElement {
       }
       this._hashState = state;
     });
+    this._prepareIframeSrc();
   }
 
   disconnectedCallback() {
@@ -41,10 +45,25 @@ class EwPanelExtension extends LitElement {
     this._resetChannel();
   }
 
+  updated(changed) {
+    if (changed.has('extension')) this._prepareIframeSrc();
+  }
+
   _resetChannel() {
     this._channelGeneration = (this._channelGeneration || 0) + 1;
     this._destroyChannel?.();
     this._destroyChannel = undefined;
+  }
+
+  async _prepareIframeSrc() {
+    const source = this.extension?.sources?.[0];
+    if (!source || this.extension?.ootb) {
+      this._iframeSrc = source;
+      return;
+    }
+    const iframeSrc = toPreviewProxyUrl(source, { getUrl: getPreviewOrigin });
+    await ensurePreviewProxySession(iframeSrc, { getUrl: getPreviewOrigin });
+    if (source === this.extension?.sources?.[0]) this._iframeSrc = iframeSrc;
   }
 
   async _handlePluginLoad({ target }) {
@@ -79,12 +98,12 @@ class EwPanelExtension extends LitElement {
     }
 
     const contextKey = pageContextKey(ext.sources?.[0], this._hashState);
-    if (!contextKey) return nothing;
+    if (!contextKey || !this._iframeSrc) return nothing;
 
     return repeat([contextKey], (key) => key, () => html`
       <iframe
         class="ext-iframe"
-        src=${ext.sources?.[0]}
+        src=${this._iframeSrc}
         title=${ext.title}
         allow="clipboard-write *"
         @load=${this._handlePluginLoad}

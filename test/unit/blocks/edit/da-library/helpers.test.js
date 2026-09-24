@@ -71,19 +71,19 @@ describe('da-library/helpers exports', () => {
   });
 
   describe('getPreviewUrl', () => {
-    it('Returns the URL unchanged when origin contains "--"', () => {
+    it('Routes AEM-hosted preview URLs through the DA preview proxy', () => {
       const url = 'https://main--repo--org.aem.live/page';
-      expect(getPreviewUrl(url)).to.equal(url);
+      expect(getPreviewUrl(url)).to.equal('https://main--repo--org.preview.da.live/page');
     });
 
-    it('Rewrites a content.da.live URL to aem.page', () => {
+    it('Rewrites a content.da.live URL to the DA preview proxy', () => {
       expect(getPreviewUrl('https://content.da.live/org/site/folder/page'))
-        .to.equal('https://main--site--org.aem.page/folder/page');
+        .to.equal('https://main--site--org.preview.da.live/folder/page');
     });
 
-    it('Rewrites an admin.da.live URL to aem.page', () => {
+    it('Rewrites an admin.da.live URL to the DA preview proxy', () => {
       expect(getPreviewUrl('https://admin.da.live/source/org/site/folder/page'))
-        .to.equal('https://main--site--org.aem.page/folder/page');
+        .to.equal('https://main--site--org.preview.da.live/folder/page');
     });
 
     it('Returns false for an unrelated origin', () => {

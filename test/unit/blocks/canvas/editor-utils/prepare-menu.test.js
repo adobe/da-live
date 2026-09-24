@@ -224,6 +224,97 @@ describe('PrepareMenu', () => {
 
       window.fetch = prevFetch;
     });
+
+    it('routes relative plugin paths and icons through the DA preview proxy', async () => {
+      const prevFetch = window.fetch;
+      window.fetch = async (url) => {
+        if (url.includes('/config/orgE/siteE')) {
+          const body = {
+            prepare: {
+              data: [{
+                title: 'Plugin Action',
+                path: '/tools/plugins/plugin-action/index.html',
+                icon: '/tools/plugins/plugin-action/icon.svg',
+              }],
+            },
+          };
+          return new Response(JSON.stringify(body), { status: 200 });
+        }
+        if (url.includes('/config/orgE')) {
+          return new Response(JSON.stringify({}), { status: 200 });
+        }
+        return prevFetch(url);
+      };
+
+      el = await fixture({ details: createDetails({ org: 'orgE', site: 'siteE' }) });
+
+      const item = el._menuItems.find(({ title }) => title === 'Plugin Action');
+      expect(item.path).to.equal('https://main--siteE--orgE.stage-preview.da.live/tools/plugins/plugin-action/index.html');
+      expect(item.icon).to.equal('https://main--siteE--orgE.stage-preview.da.live/tools/plugins/plugin-action/icon.svg');
+
+      window.fetch = prevFetch;
+    });
+
+    it('routes absolute site-specific plugin paths and icons through the DA preview proxy', async () => {
+      const prevFetch = window.fetch;
+      window.fetch = async (url) => {
+        if (url.includes('/config/orgF/siteF')) {
+          const body = {
+            prepare: {
+              data: [{
+                title: 'Plugin Action',
+                path: 'https://main--othersite--otherorg.aem.live/tools/plugins/plugin-action/index.html',
+                icon: 'https://main--othersite--otherorg.aem.live/tools/plugins/plugin-action/icon.svg',
+              }],
+            },
+          };
+          return new Response(JSON.stringify(body), { status: 200 });
+        }
+        if (url.includes('/config/orgF')) {
+          return new Response(JSON.stringify({}), { status: 200 });
+        }
+        return prevFetch(url);
+      };
+
+      el = await fixture({ details: createDetails({ org: 'orgF', site: 'siteF' }) });
+
+      const item = el._menuItems.find(({ title }) => title === 'Plugin Action');
+      // Uses the org/site embedded in the absolute URL, not the fixture's details.org/site.
+      expect(item.path).to.equal('https://main--othersite--otherorg.stage-preview.da.live/tools/plugins/plugin-action/index.html');
+      expect(item.icon).to.equal('https://main--othersite--otherorg.stage-preview.da.live/tools/plugins/plugin-action/icon.svg');
+
+      window.fetch = prevFetch;
+    });
+
+    it('routes absolute same-site plugin paths and icons through the DA preview proxy', async () => {
+      const prevFetch = window.fetch;
+      window.fetch = async (url) => {
+        if (url.includes('/config/orgG/siteG')) {
+          const body = {
+            prepare: {
+              data: [{
+                title: 'Plugin Action',
+                path: 'https://main--siteG--orgG.aem.live/tools/plugins/plugin-action/index.html',
+                icon: 'https://main--siteG--orgG.aem.live/tools/plugins/plugin-action/icon.svg',
+              }],
+            },
+          };
+          return new Response(JSON.stringify(body), { status: 200 });
+        }
+        if (url.includes('/config/orgG')) {
+          return new Response(JSON.stringify({}), { status: 200 });
+        }
+        return prevFetch(url);
+      };
+
+      el = await fixture({ details: createDetails({ org: 'orgG', site: 'siteG' }) });
+
+      const item = el._menuItems.find(({ title }) => title === 'Plugin Action');
+      expect(item.path).to.equal('https://main--siteg--orgg.stage-preview.da.live/tools/plugins/plugin-action/index.html');
+      expect(item.icon).to.equal('https://main--siteg--orgg.stage-preview.da.live/tools/plugins/plugin-action/icon.svg');
+
+      window.fetch = prevFetch;
+    });
   });
 
   describe('render', () => {
@@ -372,6 +463,44 @@ describe('PrepareMenu', () => {
 
       expect(el._dialogItem.title).to.equal('OOTB');
       expect(el._dialogItem.cmp).to.equal(mockCmp);
+    });
+
+    it('authenticates the same preview proxy origin the dialog iframe will load', async () => {
+      el = await fixture();
+      stubPopover(el);
+
+      const savedAdobeIMS = window.adobeIMS;
+      window.adobeIMS = { getAccessToken: () => ({ token: 'T1' }) };
+      const prevFetch = window.fetch;
+      const cookieRequests = [];
+      window.fetch = async (url, opts) => {
+        if (typeof url === 'string' && url.includes('/gimme_cookie')) {
+          cookieRequests.push(url);
+          return new Response('', { status: 200 });
+        }
+        return prevFetch(url, opts);
+      };
+
+      const item = {
+        title: 'Large External',
+        path: 'https://main--sitef--orgf.aem.live/tools/plugins/plugin/index.html',
+        experience: 'fullsize-dialog',
+      };
+
+      try {
+        await el.handleItemClick(item);
+      } finally {
+        window.fetch = prevFetch;
+        if (savedAdobeIMS === undefined) {
+          delete window.adobeIMS;
+        } else {
+          window.adobeIMS = savedAdobeIMS;
+        }
+      }
+
+      expect(cookieRequests).to.deep.equal([
+        'https://main--sitef--orgf.stage-preview.da.live/gimme_cookie',
+      ]);
     });
   });
 

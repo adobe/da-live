@@ -1,10 +1,21 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { fetchDaConfigs, getPostMessageTargetOrigin } from '../../shared/utils.js';
+import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
 import { getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
 const { PREFLIGHT_EVENT } = await import(`${getNx2()}/utils/preflight-events.js`);
+const ref = new URLSearchParams(window.location.search).get('ref') || 'main';
+
+function resolveMenuItem(item, details) {
+  const fallback = { org: details?.org, site: details?.site, branch: ref };
+  return {
+    ...item,
+    path: item.path ? toPreviewProxyUrl(item.path, fallback) : item.path,
+    icon: item.icon ? toPreviewProxyUrl(item.icon, fallback) : item.icon,
+  };
+}
 
 function isSvgSymbol(icon) {
   if (typeof icon !== 'string' || !icon) return false;
@@ -107,9 +118,10 @@ export default class DaPrepare extends LitElement {
     );
 
     // For config items without path or render, fallback to OOTB if available
-    this._menuItems = [...merged.values()].map(
-      (item) => (item.path || item.render ? item : ootbLookup.get(item.title) || item),
-    );
+    this._menuItems = [...merged.values()].map((item) => {
+      const resolved = item.path || item.render ? item : ootbLookup.get(item.title) || item;
+      return resolveMenuItem(resolved, this.details);
+    });
   }
 
   handleOutsideClick = (e) => {
@@ -135,6 +147,11 @@ export default class DaPrepare extends LitElement {
       this._dialogItem = { ...item, cmp };
       return;
     }
+    await ensurePreviewProxySession(item.path, {
+      org: this.details?.org,
+      site: this.details?.site,
+      branch: ref,
+    });
     if (item.experience === 'fullsize-dialog') {
       this._fullsizeDialogItem = item;
       return;

@@ -3,6 +3,7 @@ import { DOMParser } from 'da-y-wrapper';
 import getPathDetails from '../../../shared/pathDetails.js';
 import { daFetch, fetchDaConfigs, getFirstSheet, getSheetByName } from '../../../shared/utils.js';
 import { CON_ORIGIN } from '../../../shared/constants.js';
+import { getPreviewProxyDetails, toPreviewProxyUrl } from '../../../shared/preview-proxy.js';
 import { openAssets } from '../../da-assets/da-assets.js';
 import { fetchKeyAutocompleteData } from '../../prose/plugins/slashMenu/keyAutocomplete.js';
 import { getNx2Api, sanitizeName } from '../../../../scripts/utils.js';
@@ -147,10 +148,14 @@ async function fetchLibraryConfig(org, site) {
     if (allowed) {
       const name = row.title.trim().toLowerCase().replaceAll(' ', '-');
       const ootb = DA_PLUGINS[name];
+      const branch = row.ref || ref;
+      const sources = calculateSources(org, site, row.path);
       const plugin = {
         name,
         title: row.title.trim(),
-        sources: calculateSources(org, site, row.path),
+        sources: ootb
+          ? sources
+          : sources.map((source) => toPreviewProxyUrl(source, { org, site, branch })),
         ref: row.ref || 'main',
         experience: ootb?.experience || row.experience || 'inline',
       };
@@ -176,7 +181,7 @@ async function fetchLibraryConfig(org, site) {
       }
 
       // If its not an OOTB plugin, and no provided icon, use the default
-      if (!ootb) plugin.icon = row.icon || '#S2_Icon_Plugin';
+      if (!ootb) plugin.icon = row.icon ? toPreviewProxyUrl(row.icon, { org, site, branch }) : '#S2_Icon_Plugin';
       acc.push(plugin);
     }
     return acc;
@@ -229,22 +234,8 @@ export const getMetadata = (el) => [...el.childNodes].reduce((rdx, row) => {
 }, {});
 
 export function getPreviewUrl(previewUrl) {
-  try {
-    const url = new URL(previewUrl);
-
-    if (url.origin.includes('--')) return url.href;
-    if (url.origin.includes('content.da.live')) {
-      const [, org, site, ...split] = url.pathname.split('/');
-      return `https://${ref}--${site}--${org}.aem.page/${split.join('/')}`;
-    }
-    if (url.origin.includes('admin.da.live')) {
-      const [, , org, site, ...split] = url.pathname.split('/');
-      return `https://${ref}--${site}--${org}.aem.page/${split.join('/')}`;
-    }
-  } catch {
-    return false;
-  }
-  return false;
+  const { url, org, site } = getPreviewProxyDetails(previewUrl, { branch: ref });
+  return org && site ? url : false;
 }
 
 export function getAemUrlVars(url) {
@@ -285,8 +276,7 @@ export function getItemDetails(item) {
   const url = new URL(item.path || item.value);
   const { hostname, pathname } = url;
 
-  // AEM Flavor
-  if (hostname.includes('.aem.')) {
+  if (hostname.includes('--')) {
     const [org, site] = hostname.split('.')[0].split('--').reverse();
     return { org, site, pathname };
   }
