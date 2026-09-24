@@ -119,15 +119,17 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
     return;
   }
   removeNotPermitted(mountRoot);
-  const canWrite = (session.permissions ?? []).some((p) => p === 'write');
+  const canWrite = session.permissions?.some((permission) => permission === 'write') === true;
   header.authorized = true;
   header.canWrite = canWrite;
   const docEl = ensureNxEditorDoc(mountRoot);
   docEl.session = session;
   docEl.ctx = ctx;
-  const frameEl = ensureNxEditorWysiwyg(mountRoot);
-  frameEl.canWrite = canWrite;
-  frameEl.ctx = ctx;
+  const wysiwygEl = ensureNxEditorWysiwyg(mountRoot);
+  // Must be set before `ctx`: the ctx change reloads the iframe, and the quick-edit
+  // INIT payload sent on load reads `canWrite` to decide contenteditable.
+  wysiwygEl.canWrite = canWrite;
+  wysiwygEl.ctx = ctx;
   finalizeSplitEditorMountOrder(mountRoot);
   notifyCanvasEditorActive(header.editorView);
   syncEditorSplitLayout({ mountRoot, view: header.editorView });
@@ -137,6 +139,7 @@ async function syncToolPanelViews(toolPanel, { org, site }, panelName) {
   const key = org && site ? `${org}/${site}` : null;
   if (key === toolPanel.dataset.extKey) return false;
   toolPanel.dataset.extKey = key ?? '';
+  toolPanel.contextKey = key ?? '';
 
   if (!key) {
     toolPanel.org = undefined;
@@ -233,7 +236,8 @@ export default async function decorate(block) {
     getContent: getChatPanelContent(),
     onShow: (aside, id, options) => {
       if (!options?.text) return;
-      aside?.querySelector('nx-chat')?.setPrompt(options.text, { autoSend: options.autoSend });
+      const detail = { text: options.text, autoSend: options.autoSend };
+      document.dispatchEvent(new CustomEvent(CHAT_EVENT.SET_PROMPT, { detail }));
     },
   });
 
