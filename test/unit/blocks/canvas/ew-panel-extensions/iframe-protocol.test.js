@@ -162,6 +162,84 @@ describe('setupIframeChannel', () => {
     window.removeEventListener('ew-table-drag-end', onEnd);
   });
 
+  it('rejects asset picker requests without host authentication or a configured picker', async () => {
+    const iframe = makeIframe();
+    iframe.contentWindow = window;
+    const postMessage = sinon.stub(window, 'postMessage');
+    const { destroy } = await setupIframeChannel({
+      iframe,
+      hashState: { org: 'myorg', site: 'mysite' },
+      getView: () => null,
+      onClose: () => {},
+    });
+    const emit = (source, origin, type) => window.dispatchEvent(new MessageEvent('message', { source, origin, data: { type } }));
+    const wrongSource = new MessageChannel();
+    try {
+      emit(wrongSource.port1, 'https://plugin.example.com', 'ew-asset-picker-config-request');
+      emit(window, 'https://other.example.com', 'ew-asset-picker-config-request');
+      expect(postMessage.called).to.be.false;
+      emit(window, 'https://plugin.example.com', 'ew-asset-picker-config-request');
+      await wait();
+      expect(postMessage.firstCall.args[0]).to.deep.equal({
+        type: 'ew-asset-picker-config',
+        error: 'Sign in to Experience Workspace to browse assets.',
+      });
+      emit(window, 'https://plugin.example.com', 'ew-asset-picker-select');
+      expect(postMessage.secondCall.args[0]).to.deep.equal({
+        type: 'ew-asset-picker-selection-error',
+        error: 'The asset picker is not ready.',
+      });
+    } finally {
+      destroy();
+      wrongSource.port1.close();
+      wrongSource.port2.close();
+      postMessage.restore();
+    }
+  });
+
+  it('forwards the current IMS token when the picker requests configuration', async () => {
+    const previousIms = window.adobeIMS;
+    const previousImsFlag = localStorage.getItem('nx-ims');
+    const previousFetch = window.fetch;
+    localStorage.setItem('nx-ims', 'true');
+    const getAccessToken = sinon.stub().returns({ token: 'initial-token' });
+    window.adobeIMS = { getAccessToken };
+    window.fetch = async () => new Response('', { status: 404 });
+    const iframe = makeIframe();
+    iframe.contentWindow = window;
+    const postMessage = sinon.stub(window, 'postMessage');
+    let destroy;
+    try {
+      ({ destroy } = await setupIframeChannel({
+        iframe,
+        hashState: { org: 'myorg', site: 'mysite' },
+        getView: () => null,
+        onClose: () => {},
+      }));
+      await wait(800);
+      expect(postMessage.firstCall.args[0].token).to.equal('initial-token');
+      getAccessToken.returns({ token: 'refreshed-token' });
+      window.dispatchEvent(new MessageEvent('message', {
+        source: window,
+        origin: 'https://plugin.example.com',
+        data: { type: 'ew-asset-picker-config-request' },
+      }));
+      await wait(150);
+      const configReply = postMessage.getCalls().find((call) => (
+        call.args[0].type === 'ew-asset-picker-config'
+      ))?.args[0];
+      expect(configReply?.token).to.equal('refreshed-token');
+      expect(configReply?.error).to.equal('No AEM Assets repository is configured for this site.');
+    } finally {
+      destroy?.();
+      postMessage.restore();
+      window.adobeIMS = previousIms;
+      window.fetch = previousFetch;
+      if (previousImsFlag === null) localStorage.removeItem('nx-ims');
+      else localStorage.setItem('nx-ims', previousImsFlag);
+    }
+  });
+
   it('creates host-document drag sources over variants and removes them on teardown', async () => {
     const iframe = document.createElement('iframe');
     document.body.append(iframe);

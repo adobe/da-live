@@ -1,6 +1,8 @@
 import { insertText, insertHTML, getEditorSelection } from './helpers.js';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
-import { getPostMessageTargetOrigin, isValidHref } from '../../shared/utils.js';
+import { getAuthToken, initIms, getPostMessageTargetOrigin, isValidHref } from '../../shared/utils.js';
+import { buildAssetSelectorProps } from '../../shared/aem-assets/selector-props.js';
+import { getRepositoryConfig, insertSelectedAsset } from './aem-assets.js';
 
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
@@ -32,6 +34,16 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     pointerEvents: 'none',
   });
   let dragHandles = [];
+  let assetConfigPromise;
+  let assetConfig;
+  let selectingAsset = false;
+  let token;
+  let destroyed = false;
+  const respondToPicker = (type, details) => {
+    if (!destroyed && iframe.contentWindow) {
+      iframe.contentWindow.postMessage({ type, ...details }, targetOrigin);
+    }
+  };
   const renderDragHandles = () => {
     if (!dragHandles.length || !iframe.isConnected) {
       dragHandleLayer.remove();
@@ -82,7 +94,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   if (iframe instanceof Element) frameObserver.observe(iframe);
   window.addEventListener('resize', renderDragHandles);
   window.addEventListener('scroll', renderDragHandles, true);
-  const onTableDrag = (event) => {
+  const onPluginMessage = (event) => {
     if (event.source !== iframe.contentWindow || event.origin !== targetOrigin) return;
     if (event.data?.type === 'ew-table-drag-handles') {
       if (!Array.isArray(event.data.handles)) return;
@@ -101,9 +113,61 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
       window.dispatchEvent(new CustomEvent('ew-table-drag-start', { detail: { html } }));
     } else if (event.data?.type === 'ew-table-drag-end') {
       window.dispatchEvent(new Event('ew-table-drag-end'));
+    } else if (event.data?.type === 'ew-asset-picker-config-request') {
+      getAuthToken().then((currentToken) => {
+        token = currentToken;
+        if (!token) {
+          respondToPicker('ew-asset-picker-config', { error: 'Sign in to Experience Workspace to browse assets.' });
+          return;
+        }
+        assetConfigPromise ??= getRepositoryConfig(org, site).catch((error) => {
+          assetConfigPromise = null;
+          throw error;
+        });
+        assetConfigPromise.then((config) => {
+          if (!config) {
+            respondToPicker('ew-asset-picker-config', {
+              token,
+              error: 'No AEM Assets repository is configured for this site.',
+            });
+            return;
+          }
+          assetConfig = config;
+          const { imsToken: _, ...props } = buildAssetSelectorProps({
+            imsToken: token,
+            repoConfig: config,
+          });
+          respondToPicker('ew-asset-picker-config', { props, token });
+        }).catch((error) => {
+          respondToPicker('ew-asset-picker-config', { error: error.message });
+        });
+      }).catch((error) => {
+        respondToPicker('ew-asset-picker-config', { error: error.message });
+      });
+    } else if (event.data?.type === 'ew-asset-picker-select') {
+      if (!assetConfig) {
+        respondToPicker('ew-asset-picker-selection-error', { error: 'The asset picker is not ready.' });
+        return;
+      }
+      if (selectingAsset) {
+        respondToPicker('ew-asset-picker-selection-error', { error: 'Finish the current asset selection first.' });
+        return;
+      }
+      selectingAsset = true;
+      insertSelectedAsset({
+        asset: event.data.asset,
+        repoConfig: assetConfig,
+        org,
+        site,
+        getView,
+      }).catch((error) => {
+        respondToPicker('ew-asset-picker-selection-error', { error: error.message });
+      }).finally(() => {
+        selectingAsset = false;
+      });
     }
   };
-  window.addEventListener('message', onTableDrag);
+  window.addEventListener('message', onPluginMessage);
 
   channel.port1.onmessage = (e) => {
     const { action, details } = e.data || {};
@@ -171,12 +235,8 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     daAdmin: DA_ADMIN,
   };
 
-  let token;
-  try {
-    const { loadIms } = await import(`${getNx()}/utils/ims.js`);
-    const ims = await loadIms();
-    token = ims?.accessToken?.token;
-  } catch { /* proceed without token */ }
+  await initIms();
+  token = await getAuthToken();
 
   const readyTimer = setTimeout(() => {
     if (!iframe.contentWindow) return;
@@ -194,9 +254,10 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   document.addEventListener(CHAT_EVENT.AGENT_CHANGE, onAgentChange);
 
   const destroy = () => {
+    destroyed = true;
     clearTimeout(readyTimer);
     document.removeEventListener(CHAT_EVENT.AGENT_CHANGE, onAgentChange);
-    window.removeEventListener('message', onTableDrag);
+    window.removeEventListener('message', onPluginMessage);
     window.removeEventListener('resize', renderDragHandles);
     window.removeEventListener('scroll', renderDragHandles, true);
     frameObserver.disconnect();

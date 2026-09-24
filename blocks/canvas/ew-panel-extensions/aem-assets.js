@@ -79,6 +79,55 @@ export async function renderAssets({ container, org, site, onClose }) {
   window.PureJSSelectors.renderAssetSelector(assetPanel, selectorProps);
 }
 
+export async function insertSelectedAsset({ asset, repoConfig, org, site, getView }) {
+  if (!asset || typeof asset !== 'object' || !asset['aem:formatName']) {
+    throw new Error('The selected asset is invalid.');
+  }
+  if (!getView()) throw new Error('The editor is not connected.');
+
+  const dialog = document.createElement('dialog');
+  dialog.className = 'da-dialog-asset';
+  const styleLink = document.createElement('link');
+  styleLink.rel = 'stylesheet';
+  styleLink.href = new URL('../../edit/da-assets/da-assets.css', import.meta.url).href;
+  const { assetPanel, secondaryPanel } = createDialogPanels();
+  dialog.append(styleLink, secondaryPanel);
+  document.body.append(dialog);
+  const close = () => {
+    if (dialog.open) dialog.close();
+  };
+  const observer = new MutationObserver(() => {
+    if (secondaryPanel.style.display === 'none') close();
+  });
+  observer.observe(secondaryPanel, { attributes: true, attributeFilter: ['style'] });
+  const mimetype = asset.mimetype || asset['dc:format'] || '';
+  const responsiveImageConfigPromise = repoConfig.isSmartCrop && mimetype.startsWith('image/')
+    ? getResponsiveImageConfig(org, site)
+    : Promise.resolve(false);
+  const handleSelection = buildHandleSelection({
+    assetPanel,
+    secondaryPanel,
+    repoConfig,
+    responsiveImageConfigPromise,
+    getView,
+    close,
+  });
+
+  try {
+    const selection = handleSelection([asset]);
+    if (secondaryPanel.style.display !== 'none') dialog.showModal();
+    await selection;
+    if (dialog.open) {
+      await new Promise((resolve) => {
+        dialog.addEventListener('close', resolve, { once: true });
+      });
+    }
+  } finally {
+    observer.disconnect();
+    dialog.remove();
+  }
+}
+
 export function getAssetsPlugin({ org, site }) {
   return {
     name: 'aem-assets',
