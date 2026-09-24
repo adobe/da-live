@@ -233,6 +233,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     view: view || 'edit',
     hash: window.location.hash,
     daAdmin: DA_ADMIN,
+    editorOrigin: window.location.origin,
   };
 
   await initIms();

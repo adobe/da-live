@@ -78,6 +78,7 @@ describe('setupIframeChannel', () => {
       view: 'split',
       hash: '#/myorg/mysite/a/b',
       daAdmin: 'https://admin.da.live',
+      editorOrigin: window.location.origin,
     });
     expect(message.context).to.equal(message.project);
     expect(targetOrigin).to.equal('https://plugin.example.com');
