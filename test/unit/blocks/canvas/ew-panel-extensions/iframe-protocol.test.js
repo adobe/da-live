@@ -77,6 +77,7 @@ describe('setupIframeChannel', () => {
       path: '/a/b',
       view: 'split',
       hash: '#/myorg/mysite/a/b',
+      daAdmin: 'https://admin.da.live',
     });
     expect(message.context).to.equal(message.project);
     expect(targetOrigin).to.equal('https://plugin.example.com');
@@ -121,6 +122,84 @@ describe('setupIframeChannel', () => {
 
     expect(onClose.calledOnce).to.be.true;
     destroy();
+  });
+
+  it('relays table drags only from the connected plugin frame and origin', async () => {
+    const iframe = makeIframe();
+    iframe.contentWindow = window;
+    const { destroy } = await setupIframeChannel({
+      iframe,
+      hashState: { org: 'myorg', site: 'mysite' },
+      getView: () => null,
+      onClose: () => {},
+    });
+    const starts = [];
+    let ends = 0;
+    const onStart = (event) => starts.push(event.detail.html);
+    const onEnd = () => { ends += 1; };
+    window.addEventListener('ew-table-drag-start', onStart);
+    window.addEventListener('ew-table-drag-end', onEnd);
+    const data = { type: 'ew-table-drag-start', html: '<table><tr><td>Hero</td></tr></table>' };
+    const wrongSource = new MessageChannel();
+    const emit = (source, origin, payload) => window.dispatchEvent(
+      new MessageEvent('message', { source, origin, data: payload }),
+    );
+    emit(wrongSource.port1, 'https://plugin.example.com', data);
+    emit(window, 'https://other.example.com', data);
+    emit(window, 'https://plugin.example.com', { ...data, html: '<p>Not a table</p>' });
+    expect(starts).to.have.length(0);
+    emit(iframe.contentWindow, 'https://plugin.example.com', data);
+    expect(starts).to.deep.equal([data.html]);
+    emit(iframe.contentWindow, 'https://plugin.example.com', { type: 'ew-table-drag-end' });
+    expect(ends).to.equal(1);
+    destroy();
+    emit(iframe.contentWindow, 'https://plugin.example.com', data);
+    expect(starts).to.have.length(1);
+    wrongSource.port1.close();
+    wrongSource.port2.close();
+    window.removeEventListener('ew-table-drag-start', onStart);
+    window.removeEventListener('ew-table-drag-end', onEnd);
+  });
+
+  it('creates host-document drag sources over variants and removes them on teardown', async () => {
+    const iframe = document.createElement('iframe');
+    document.body.append(iframe);
+    Object.defineProperty(iframe, 'src', { value: 'https://plugin.example.com/app' });
+    iframe.getBoundingClientRect = () => ({ left: 100, top: 40, right: 400, bottom: 340 });
+    const { destroy } = await setupIframeChannel({
+      iframe,
+      hashState: { org: 'myorg', site: 'mysite' },
+      getView: () => null,
+      onClose: () => {},
+    });
+    const markup = '<table><tr><td>Hero</td></tr></table>';
+    const handles = [
+      { x: 0, y: 0, width: 0, height: 20, html: markup },
+      { x: 30, y: 50, width: 100, height: 40, html: markup },
+    ];
+    window.dispatchEvent(new MessageEvent('message', {
+      source: iframe.contentWindow,
+      origin: 'https://plugin.example.com',
+      data: { type: 'ew-table-drag-handles', handles },
+    }));
+    const handle = document.querySelector('.ew-table-drag-handle');
+    expect(document.querySelectorAll('.ew-table-drag-handle')).to.have.length(1);
+    expect(handle.getBoundingClientRect().left).to.equal(130);
+    expect(handle.getBoundingClientRect().top).to.equal(90);
+    const transfer = new DataTransfer();
+    const starts = [];
+    const onStart = (event) => starts.push(event.detail.html);
+    window.addEventListener('ew-table-drag-start', onStart);
+    handle.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: transfer }));
+    expect(transfer.getData('text/html')).to.equal(markup);
+    expect(starts).to.deep.equal([markup]);
+    const postMessage = sinon.stub(iframe.contentWindow, 'postMessage');
+    handle.click();
+    expect(postMessage.calledWith({ type: 'ew-table-drag-handle-click', index: 1 })).to.be.true;
+    destroy();
+    expect(document.querySelector('.ew-table-drag-handles')).to.equal(null);
+    window.removeEventListener('ew-table-drag-start', onStart);
+    iframe.remove();
   });
 
   it('opens the tools panel for a showPanel action', async () => {

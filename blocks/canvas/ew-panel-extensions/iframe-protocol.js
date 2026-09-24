@@ -1,9 +1,10 @@
 import { insertText, insertHTML, getEditorSelection } from './helpers.js';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { getPostMessageTargetOrigin, isValidHref } from '../../shared/utils.js';
 
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
+const { DA_ADMIN } = await import(`${getNx2()}/utils/utils.js`);
 
 /**
  * Wire a two-way MessageChannel between the host and a BYO plugin iframe.
@@ -22,6 +23,88 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   const targetOrigin = getPostMessageTargetOrigin(iframe.src);
 
   const channel = new MessageChannel();
+  const dragHandleLayer = document.createElement('div');
+  dragHandleLayer.className = 'ew-table-drag-handles';
+  Object.assign(dragHandleLayer.style, {
+    position: 'fixed',
+    inset: '0',
+    zIndex: '1000',
+    pointerEvents: 'none',
+  });
+  let dragHandles = [];
+  const renderDragHandles = () => {
+    if (!dragHandles.length || !iframe.isConnected) {
+      dragHandleLayer.remove();
+      return;
+    }
+    const frame = iframe.getBoundingClientRect();
+    const elements = dragHandles.map((handle) => {
+      const left = Math.max(frame.left, frame.left + handle.x);
+      const top = Math.max(frame.top, frame.top + handle.y);
+      const right = Math.min(frame.right, frame.left + handle.x + handle.width);
+      const bottom = Math.min(frame.bottom, frame.top + handle.y + handle.height);
+      if (right <= left || bottom <= top) return null;
+      const element = document.createElement('div');
+      element.className = 'ew-table-drag-handle';
+      element.draggable = true;
+      element.setAttribute('aria-hidden', 'true');
+      Object.assign(element.style, {
+        position: 'fixed',
+        left: `${left}px`,
+        top: `${top}px`,
+        width: `${right - left}px`,
+        height: `${bottom - top}px`,
+        pointerEvents: 'auto',
+        cursor: 'grab',
+      });
+      element.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/html', handle.html);
+        e.dataTransfer.effectAllowed = 'copy';
+        window.dispatchEvent(new CustomEvent('ew-table-drag-start', { detail: { html: handle.html } }));
+      });
+      element.addEventListener('dragend', () => {
+        window.dispatchEvent(new Event('ew-table-drag-end'));
+      });
+      element.addEventListener('click', () => {
+        iframe.contentWindow?.postMessage({ type: 'ew-table-drag-handle-click', index: handle.index }, targetOrigin);
+      });
+      element.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        iframe.contentWindow?.postMessage({ type: 'ew-table-drag-handle-wheel', deltaY: e.deltaY }, targetOrigin);
+      }, { passive: false });
+      return element;
+    }).filter(Boolean);
+    dragHandleLayer.replaceChildren(...elements);
+    if (elements.length && !dragHandleLayer.isConnected) document.body.append(dragHandleLayer);
+    if (!elements.length) dragHandleLayer.remove();
+  };
+  const frameObserver = new ResizeObserver(renderDragHandles);
+  if (iframe instanceof Element) frameObserver.observe(iframe);
+  window.addEventListener('resize', renderDragHandles);
+  window.addEventListener('scroll', renderDragHandles, true);
+  const onTableDrag = (event) => {
+    if (event.source !== iframe.contentWindow || event.origin !== targetOrigin) return;
+    if (event.data?.type === 'ew-table-drag-handles') {
+      if (!Array.isArray(event.data.handles)) return;
+      dragHandles = event.data.handles.map((handle, index) => (
+        handle && typeof handle === 'object' ? { ...handle, index } : null
+      )).filter((handle) => (
+        handle && typeof handle === 'object'
+        && [handle.x, handle.y, handle.width, handle.height].every(Number.isFinite)
+        && handle.width > 0 && handle.height > 0 && typeof handle.html === 'string'
+        && new DOMParser().parseFromString(handle.html, 'text/html').body.querySelector('table')
+      ));
+      renderDragHandles();
+    } else if (event.data?.type === 'ew-table-drag-start') {
+      const { html } = event.data;
+      if (typeof html !== 'string'
+        || !new DOMParser().parseFromString(html, 'text/html').body.querySelector('table')) return;
+      window.dispatchEvent(new CustomEvent('ew-table-drag-start', { detail: { html } }));
+    } else if (event.data?.type === 'ew-table-drag-end') {
+      window.dispatchEvent(new Event('ew-table-drag-end'));
+    }
+  };
+  window.addEventListener('message', onTableDrag);
 
   channel.port1.onmessage = (e) => {
     const { action, details } = e.data || {};
@@ -86,6 +169,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     path: path ? `/${path}` : '/',
     view: view || 'edit',
     hash: window.location.hash,
+    daAdmin: DA_ADMIN,
   };
 
   let token;
@@ -113,6 +197,12 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   const destroy = () => {
     clearTimeout(readyTimer);
     document.removeEventListener(CHAT_EVENT.AGENT_CHANGE, onAgentChange);
+    window.removeEventListener('message', onTableDrag);
+    window.removeEventListener('resize', renderDragHandles);
+    window.removeEventListener('scroll', renderDragHandles, true);
+    frameObserver.disconnect();
+    dragHandleLayer.remove();
+    window.dispatchEvent(new Event('ew-table-drag-end'));
     channel.port1.close();
     channel.port2.close();
   };

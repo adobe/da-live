@@ -10,8 +10,9 @@ import {
   handleStoredMarks,
 } from './utils/handlers.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
+import { insertDroppedTable } from './utils/table-drop.js';
 
-const MUTATING_MESSAGES = new Set(['node-update', 'image-replace', 'history']);
+const MUTATING_MESSAGES = new Set(['node-update', 'image-replace', 'history', MESSAGE_TYPES.TABLE_DROP]);
 
 // Coalesce RELOAD bursts (each rebuilds the full body) into one refresh per window;
 // a concurrent remote edit can otherwise fire many in a row and peg the main thread.
@@ -58,6 +59,16 @@ export function createControllerOnMessage(ctx) {
       getEditor(payload, ctx);
     } else if (type === MESSAGE_TYPES.NODE_UPDATE) {
       updateState(payload, ctx);
+    } else if (type === MESSAGE_TYPES.TABLE_DROP) {
+      try {
+        if (!insertDroppedTable(payload, ctx)) {
+          // eslint-disable-next-line no-console
+          console.warn('[quick-edit-controller] Rejected invalid table drop');
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('[quick-edit-controller] Could not insert dropped table', error);
+      }
     } else if (type === MESSAGE_TYPES.HISTORY) {
       handleUndoRedo(payload, ctx);
     } else if (type === MESSAGE_TYPES.NEW_VERSION) {
