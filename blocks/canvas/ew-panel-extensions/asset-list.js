@@ -1,6 +1,5 @@
 /* eslint-disable no-underscore-dangle -- AEM response fields use underscored names. */
-import { resolveAssetUrl } from '../../edit/da-assets/da-assets.js';
-import { getAssetAlt, getDmApprovalStatus, getScene7PublishStatus } from '../../edit/da-assets/helpers/urls.js';
+import { getDmApprovalStatus, getScene7PublishStatus } from '../../edit/da-assets/helpers/urls.js';
 
 const RENDITION_REL = 'http://ns.adobe.com/adobecloud/rel/rendition';
 const METADATA_REL = 'http://ns.adobe.com/adobecloud/rel/metadata/asset';
@@ -88,33 +87,47 @@ async function authenticatedFetch(url, token) {
   return response;
 }
 
-function dragHTML(asset, config) {
-  const url = resolveAssetUrl(asset, config);
-  const element = document.createElement(config.insertAsLink ? 'a' : 'img');
-  if (config.insertAsLink) {
-    element.href = url;
-    element.textContent = getAssetAlt(asset);
-  } else {
-    element.src = url;
-    element.alt = getAssetAlt(asset);
-  }
-  return element.outerHTML;
-}
-
 /**
  * One listing per connected plugin. The host owns the pagination cursor and
- * the selectable assets; neither URLs nor insertion properties come from the iframe.
+ * the approved assets; neither URLs nor insertion properties come from the iframe.
  */
 export function createAssetListing(config) {
   const origin = repositoryOrigin(config);
   const firstUrl = `${origin}${SEARCH_PATH}?path=%2Fcontent%2Fdam&assetType=file&limit=24`;
   let nextUrl = null;
   let started = false;
-  const selected = new Map();
+  const listedAssets = new Map();
+  const files = new Map();
 
   return {
-    getAsset(id) {
-      return typeof id === 'string' ? selected.get(id) : undefined;
+    getFile(id) {
+      return files.get(id)?.file;
+    },
+    async prepareFile(id, token) {
+      const asset = listedAssets.get(id);
+      if (!asset) throw new Error('The image is not in the asset list.');
+      if (!token) throw new Error('Sign in to Experience Workspace to drag images.');
+      if (!files.has(id)) {
+        const encodedPath = asset.path.split('/').map(encodeURIComponent).join('/');
+        const url = safeUrl(encodedPath, origin, ['/content/dam/']);
+        if (!url || new URL(url).pathname !== encodedPath) {
+          throw new Error('Invalid AEM image path.');
+        }
+        const pending = { file: null };
+        pending.promise = (async () => {
+          const blob = await (await authenticatedFetch(url, token)).blob();
+          if (!blob.size || !blob.type.startsWith('image/')) {
+            throw new Error('AEM Assets did not return an image file.');
+          }
+          pending.file = new File([blob], asset.name, { type: blob.type });
+          return pending.file;
+        })().catch((error) => {
+          if (files.get(id) === pending) files.delete(id);
+          throw error;
+        });
+        files.set(id, pending);
+      }
+      return files.get(id).promise;
     },
     async load({ more = false, token }) {
       if (!token) throw new Error('Sign in to Experience Workspace to browse assets.');
@@ -149,14 +162,6 @@ export function createAssetListing(config) {
           asset._embedded = { ...asset._embedded, [METADATA_REL]: metadata };
         }
         if (!eligible(asset, config)) return null;
-        let html;
-        try {
-          html = dragHTML(asset, config);
-        } catch (error) {
-          // eslint-disable-next-line no-console
-          console.warn('Could not resolve AEM asset URL:', error);
-          return null;
-        }
         let thumbnail = null;
         const thumbUrl = thumbnailLink(asset, origin);
         if (thumbUrl) {
@@ -167,11 +172,14 @@ export function createAssetListing(config) {
             console.warn('Could not load AEM asset thumbnail:', error);
           }
         }
-        return { asset, html, thumbnail, name: asset.name };
+        return { asset, thumbnail, name: asset.name };
       }));
-      if (!more) selected.clear();
       const listed = assets.filter(Boolean);
-      listed.forEach(({ asset }) => selected.set(asset['repo:id'] || asset.path, asset));
+      if (!more) {
+        listedAssets.clear();
+        files.clear();
+      }
+      listed.forEach(({ asset }) => listedAssets.set(asset['repo:id'] || asset.path, asset));
       nextUrl = next;
       started = true;
       return { assets: listed, hasMore: !!next };

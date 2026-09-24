@@ -48,7 +48,7 @@ describe('trusted AEM asset listing', () => {
     expect(() => createAssetListing({ ...config, repositoryId: 'delivery-p1-e1.adobeaemcloud.com', tierType: 'delivery' })).to.throw('not supported');
   });
 
-  it('normalizes, filters, escapes and fetches thumbnails with host authentication', async () => {
+  it('normalizes, filters and fetches thumbnails with host authentication', async () => {
     const fetchStub = sinon.stub().callsFake(async (url, opts) => {
       expect(opts.headers.Authorization).to.equal('Bearer live-token');
       expect(opts.redirect).to.equal('error');
@@ -76,12 +76,7 @@ describe('trusted AEM asset listing', () => {
       mimetype: 'image/jpeg',
     });
     expect(assets[0].thumbnail).to.be.instanceOf(Blob);
-    const node = document.createElement('div');
-    node.innerHTML = assets[0].html;
-    expect(node.querySelector('img').getAttribute('src')).to.include('/content/dam/a" onerror="evil.jpg');
-    expect(node.querySelector('img').getAttribute('alt')).to.equal('<b>alt</b>');
-    expect(node.querySelector('img').getAttribute('onerror')).to.be.null;
-    expect(listing.getAsset(assets[0].asset['repo:id'])).to.equal(assets[0].asset);
+    expect(assets[0]).not.to.have.property('html');
     expect(fetchStub.callCount).to.equal(2);
   });
 
@@ -100,7 +95,62 @@ describe('trusted AEM asset listing', () => {
     expect(result.hasMore).to.be.false;
     const nextRequest = fetchStub.getCalls().find((call) => call.args[0] === next);
     expect(nextRequest.args[1].headers.Authorization).to.equal('Bearer new-token');
-    expect(listing.getAsset('urn:aaid:aem:first.jpg')).to.exist;
+  });
+
+  it('fetches the authenticated original once and prepares an image File for native drops', async () => {
+    const fetchStub = sinon.stub().callsFake(async (url, options) => {
+      expect(options.headers.Authorization).to.equal(['Bearer', 'live-token'].join(' '));
+      if (url === search) return json({ children: [image('a photo.jpg')] });
+      if (url.includes('/adobe/repository/thumb/')) return new Response(new Blob(['thumb'], { type: 'image/jpeg' }));
+      if (url === `${origin}/content/dam/a%20photo.jpg`) {
+        return new Response(new Blob(['original bytes'], { type: 'image/jpeg' }));
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+    window.fetch = fetchStub;
+    const listing = createAssetListing(config);
+    await listing.load({ token: 'live-token' });
+    const id = 'urn:aaid:aem:a photo.jpg';
+    expect(listing.getFile(id)).to.be.undefined;
+    const [first, second] = await Promise.all([
+      listing.prepareFile(id, 'live-token'), listing.prepareFile(id, 'live-token'),
+    ]);
+    expect(first).to.equal(second);
+    expect(first).to.be.instanceOf(File);
+    expect(first.name).to.equal('a photo.jpg');
+    expect(first.type).to.equal('image/jpeg');
+    expect(await first.text()).to.equal('original bytes');
+    expect(listing.getFile(id)).to.equal(first);
+    expect(fetchStub.callCount).to.equal(3);
+    try {
+      await listing.prepareFile('https://evil.org/image.jpg', 'token');
+      throw new Error('Expected an unknown image to fail');
+    } catch (error) {
+      expect(error.message).to.include('not in the asset list');
+    }
+  });
+
+  it('rejects unexpected file responses and retries after a failed download', async () => {
+    let attempts = 0;
+    window.fetch = async (url) => {
+      if (url === search) return json({ children: [image('photo.jpg', { _links: {} })] });
+      attempts += 1;
+      return attempts === 1
+        ? new Response('Not an image', { headers: { 'content-type': 'text/html' } })
+        : new Response(new Blob(['photo'], { type: 'image/jpeg' }));
+    };
+    const listing = createAssetListing(config);
+    await listing.load({ token: 'token' });
+    const id = 'urn:aaid:aem:photo.jpg';
+    try {
+      await listing.prepareFile(id, 'token');
+      throw new Error('Expected invalid file response to fail');
+    } catch (error) {
+      expect(error.message).to.equal('AEM Assets did not return an image file.');
+    }
+    expect(listing.getFile(id)).to.be.undefined;
+    expect((await listing.prepareFile(id, 'token')).type).to.equal('image/jpeg');
+    expect(attempts).to.equal(2);
   });
 
   it('rejects cross-origin or non-search pagination URLs', async () => {
@@ -157,7 +207,7 @@ describe('trusted AEM asset listing', () => {
     };
     const { assets } = await createAssetListing({ ...config, isDmEnabled: true, assetOrigin: 'delivery-p1-e1.adobeaemcloud.com' }).load({ token: 'token' });
     expect(assets.map(({ name }) => name)).to.deep.equal(['approved.jpg']);
-    expect(assets[0].html).to.include('delivery-p1-e1.adobeaemcloud.com');
+    expect(assets[0]).not.to.have.property('html');
   });
 
   it('reports missing DM metadata rather than silently returning an empty page', async () => {
@@ -170,16 +220,16 @@ describe('trusted AEM asset listing', () => {
     }
   });
 
-  it('keeps an asset when its thumbnail fails and builds link HTML when configured', async () => {
+  it('keeps an asset when its thumbnail fails', async () => {
     window.fetch = async (url) => {
       if (url === search) return json({ children: [image('linked.jpg')] });
       return new Response('', { status: 403 });
     };
     const warning = sinon.stub(console, 'warn');
     try {
-      const { assets } = await createAssetListing({ ...config, insertAsLink: true }).load({ token: 'token' });
+      const { assets } = await createAssetListing(config).load({ token: 'token' });
       expect(assets[0].thumbnail).to.be.null;
-      expect(assets[0].html).to.include('<a href="');
+      expect(assets[0]).not.to.have.property('html');
       expect(warning.calledOnce).to.be.true;
     } finally {
       warning.restore();

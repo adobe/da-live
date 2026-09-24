@@ -186,11 +186,6 @@ describe('setupIframeChannel', () => {
         type: 'ew-asset-list-error',
         error: 'Sign in to Experience Workspace to browse assets.',
       });
-      emit(window, 'https://plugin.example.com', 'ew-asset-picker-select');
-      expect(postMessage.secondCall.args[0]).to.deep.equal({
-        type: 'ew-asset-picker-selection-error',
-        error: 'The asset picker is not ready.',
-      });
     } finally {
       destroy();
       wrongSource.port1.close();
@@ -244,7 +239,7 @@ describe('setupIframeChannel', () => {
     }
   });
 
-  it('lists only host-fetched assets and refuses selections not returned by the listing', async () => {
+  it('lists only host-fetched assets without forwarding authentication', async () => {
     const previousIms = window.adobeIMS;
     const previousImsFlag = localStorage.getItem('nx-ims');
     const previousFetch = window.fetch;
@@ -272,11 +267,17 @@ describe('setupIframeChannel', () => {
           }],
         }), { status: 200 });
       }
+      if (url === 'https://author-p1-e1.adobeaemcloud.com/content/dam/listed.jpg') {
+        requests.push({ url, options });
+        return new Response(new Blob(['jpeg bytes'], { type: 'image/jpeg' }));
+      }
       return new Response('', { status: 404 });
     };
-    const iframe = makeIframe();
-    iframe.contentWindow = window;
-    const postMessage = sinon.stub(window, 'postMessage');
+    const iframe = document.createElement('iframe');
+    document.body.append(iframe);
+    Object.defineProperty(iframe, 'src', { value: 'https://plugin.example.com/app' });
+    iframe.getBoundingClientRect = () => ({ left: 100, top: 40, right: 400, bottom: 340 });
+    const postMessage = sinon.stub(iframe.contentWindow, 'postMessage');
     let destroy;
     try {
       ({ destroy } = await setupIframeChannel({
@@ -285,13 +286,13 @@ describe('setupIframeChannel', () => {
         getView: () => null,
         onClose: () => {},
       }));
-      const emit = (data) => window.dispatchEvent(new MessageEvent('message', { source: window, origin: 'https://plugin.example.com', data }));
+      const emit = (data) => window.dispatchEvent(new MessageEvent('message', { source: iframe.contentWindow, origin: 'https://plugin.example.com', data }));
       emit({ type: 'ew-asset-list-request' });
       await wait(150);
       const result = postMessage.getCalls().find(({ args }) => args[0].type === 'ew-asset-list-result')?.args[0];
       expect(result, JSON.stringify(postMessage.getCalls().map(({ args }) => args[0]))).to.exist;
       expect(result.assets[0].name).to.equal('listed.jpg');
-      expect(result.assets[0].html).to.include('publish-p1-e1.adobeaemcloud.com');
+      expect(result.assets[0]).not.to.have.property('html');
       expect(result).not.to.have.property('token');
       expect(requests).to.have.lengthOf(1);
       expect(requests[0].options.headers.Authorization).to.equal('Bearer live-token');
@@ -299,12 +300,53 @@ describe('setupIframeChannel', () => {
       await wait();
       expect(requests).to.have.lengthOf(1);
       expect(postMessage.getCalls().filter(({ args }) => args[0].type === 'ew-asset-list-result')[1].args[0]).to.include({ hasMore: false });
-      emit({ type: 'ew-asset-picker-select', asset: { 'repo:id': 'urn:aaid:aem:unlisted' } });
-      const error = postMessage.getCalls().find(({ args }) => args[0].type === 'ew-asset-picker-selection-error')?.args[0];
-      expect(error.error).to.equal('The asset picker is not ready.');
+      emit({
+        type: 'ew-table-drag-handles',
+        handles: [{
+          x: 10,
+          y: 10,
+          width: 100,
+          height: 40,
+          assetId: 'urn:aaid:aem:listed',
+          clickable: false,
+        }],
+      });
+      const handle = document.querySelector('.ew-table-drag-handle');
+      expect(handle).to.exist;
+      const pending = new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: new DataTransfer() });
+      expect(handle.dispatchEvent(pending)).to.be.false;
+      expect(pending.dataTransfer.files).to.have.lengthOf(0);
+      handle.dispatchEvent(new PointerEvent('pointerenter'));
+      await wait();
+      expect(requests).to.have.lengthOf(2);
+      const authorization = requests[0].options.headers.Authorization;
+      expect(requests[1].options.headers.Authorization).to.equal(authorization);
+      const transfer = new DataTransfer();
+      const starts = [];
+      const files = [];
+      const onStart = () => starts.push('html');
+      const onAssetStart = (event) => files.push(event.detail.file);
+      window.addEventListener('ew-table-drag-start', onStart);
+      window.addEventListener('ew-asset-drag-start', onAssetStart);
+      try {
+        handle.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: transfer }));
+        expect(transfer.files).to.have.lengthOf(0);
+        expect(transfer.getData('application/x-ew-image')).to.equal('image');
+        expect(files).to.have.lengthOf(1);
+        expect(files[0].name).to.equal('listed.jpg');
+        expect(await files[0].text()).to.equal('jpeg bytes');
+        expect(transfer.getData('text/html')).to.equal('');
+        expect(starts).to.have.lengthOf(0);
+        handle.click();
+        expect(postMessage.getCalls().some(({ args }) => args[0].type === 'ew-table-drag-handle-click')).to.be.false;
+      } finally {
+        window.removeEventListener('ew-table-drag-start', onStart);
+        window.removeEventListener('ew-asset-drag-start', onAssetStart);
+      }
     } finally {
       destroy?.();
       postMessage.restore();
+      iframe.remove();
       window.adobeIMS = previousIms;
       window.fetch = previousFetch;
       if (previousImsFlag === null) localStorage.removeItem('nx-ims');
@@ -328,6 +370,9 @@ describe('setupIframeChannel', () => {
     const handles = [
       { x: 0, y: 0, width: 0, height: 20, html: markup },
       { x: 30, y: 50, width: 100, height: 40, html: heading },
+      {
+        x: 150, y: 50, width: 100, height: 40, html: '<img src="/asset.jpg">', clickable: false,
+      },
     ];
     window.dispatchEvent(new MessageEvent('message', {
       source: iframe.contentWindow,
@@ -335,7 +380,7 @@ describe('setupIframeChannel', () => {
       data: { type: 'ew-table-drag-handles', handles },
     }));
     const handle = document.querySelector('.ew-table-drag-handle');
-    expect(document.querySelectorAll('.ew-table-drag-handle')).to.have.length(1);
+    expect(document.querySelectorAll('.ew-table-drag-handle')).to.have.length(2);
     expect(handle.getBoundingClientRect().left).to.equal(130);
     expect(handle.getBoundingClientRect().top).to.equal(90);
     const transfer = new DataTransfer();
@@ -348,6 +393,9 @@ describe('setupIframeChannel', () => {
     const postMessage = sinon.stub(iframe.contentWindow, 'postMessage');
     handle.click();
     expect(postMessage.calledWith({ type: 'ew-table-drag-handle-click', index: 1 })).to.be.true;
+    postMessage.resetHistory();
+    document.querySelectorAll('.ew-table-drag-handle')[1].click();
+    expect(postMessage.called).to.be.false;
     destroy();
     expect(document.querySelector('.ew-table-drag-handles')).to.equal(null);
     window.removeEventListener('ew-table-drag-start', onStart);
