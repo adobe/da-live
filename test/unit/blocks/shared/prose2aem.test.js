@@ -373,6 +373,15 @@ describe('prose2aem with isFragment parameter', () => {
     expect(result).to.match(/<p><a [^>]*data-edit-as="image"[^>]*>https:\/\/example\.com\/asset\.jpg<\/a><\/p>/);
   });
 
+  it('Carries data-image-index onto the editable-link anchor', () => {
+    const fragment = document.createElement('div');
+    fragment.innerHTML = '<p><img src="https://example.com/asset.jpg" data-edit-as="image" data-image-index="12"></p>';
+
+    const result = prose2aem(fragment, true, true);
+
+    expect(result).to.match(/<a [^>]*data-image-index="12"/);
+  });
+
   it('Serializes an editable-link image without alt to a plain <a> with no title', () => {
     const fragment = document.createElement('div');
     fragment.innerHTML = `
