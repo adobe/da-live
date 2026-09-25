@@ -433,9 +433,43 @@ registerEditorSelectEnricher((detail) => {
   return { ...detail, blockName, proseIndex, innerText };
 });
 
+function getMetadata(view) {
+  const table = [...view.dom.querySelectorAll('table')].find((t) => (
+    t.querySelector(':scope > tbody > tr:first-child > td:first-child')
+      ?.innerText.trim().toLowerCase() === 'metadata'
+  ));
+  if (!table) return {};
+  const rows = [...table.querySelectorAll(':scope > tbody > tr')].slice(1);
+  return Object.fromEntries(
+    rows
+      .map((row) => [...row.querySelectorAll(':scope > td')])
+      .filter((cells) => cells[0]?.innerText.trim())
+      .map((cells) => [cells[0].innerText.trim(), cells[1]?.innerText.trim() ?? '']),
+  );
+}
+
+function metadataChanged(prev, next) {
+  if (!prev || !next) return true;
+  const prevKeys = Object.keys(prev);
+  const nextKeys = Object.keys(next);
+  if (prevKeys.length !== nextKeys.length) return true;
+  return nextKeys.some((key) => prev[key] !== next[key]);
+}
+
 export function updateDocument(ctx) {
   if (ctx.suppressRerender) return undefined;
   const body = getInstrumentedHTML(ctx.view);
+
+  // Skip rerender if suppressed (e.g., during image updates)
+  const previousMetadata = ctx.metadata;
+  const nextMetadata = getMetadata(ctx.view);
+  ctx.metadata = nextMetadata;
+  // Skip the first call — there's no prior state to compare against.
+  if (previousMetadata !== undefined && metadataChanged(previousMetadata, nextMetadata)) {
+    ctx.port.postMessage({ type: MESSAGE_TYPES.METADATA_CHANGE, payload: { } });
+    return body;
+  }
+
   ctx.port.postMessage({ type: MESSAGE_TYPES.SET_BODY, payload: { body } });
   return body;
 }
