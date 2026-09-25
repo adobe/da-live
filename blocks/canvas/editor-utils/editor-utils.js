@@ -324,15 +324,16 @@ function getDefaultContentProseIndex(el, kind) {
   return attr != null ? Number(attr) : undefined;
 }
 
-function firstLineText(el) {
-  const clone = el.cloneNode(true);
-  clone.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
-  return clone.textContent.trim().split('\n')[0].trim();
-}
-
 // Editable link-images (editAs='image') serialize as <a data-edit-as="image">src</a>,
 // but are image nodes in the editor, so the outline treats them as images, not link text.
 const LINK_IMAGE_SELECTOR = 'a[data-edit-as="image"]';
+
+function firstLineText(el) {
+  const clone = el.cloneNode(true);
+  clone.querySelectorAll(LINK_IMAGE_SELECTOR).forEach((a) => a.remove());
+  clone.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
+  return clone.textContent.trim().split('\n')[0].trim();
+}
 
 function getText(el) {
   if (el.matches?.(LINK_IMAGE_SELECTOR)) return '';
@@ -402,7 +403,7 @@ export function parseSections(htmlText) {
         flushRun();
         const rawProseIndex = el.getAttribute('data-block-index');
         const proseIndex = rawProseIndex != null ? Number(rawProseIndex) : undefined;
-        const innerText = el.textContent?.trim() ?? '';
+        const innerText = getText(el);
         // Classes after the block name are its variant(s) — the same descriptor the
         // doc editor's header row shows in parentheses (e.g. `cards (highlight)`).
         const variant = [...el.classList].slice(1).join(', ');

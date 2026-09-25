@@ -308,6 +308,18 @@ describe('parseSections', () => {
     }]);
   });
 
+  it('keeps link-image URLs out of paragraph snippets and block text', () => {
+    const img = '<a href="https://x.com/a.jpg" data-edit-as="image">https://x.com/a.jpg</a>';
+    const html = `<main><div>
+      <p data-prose-index="1">${img}Hello<br>second</p>
+      <div class="cards" data-block-index="20"><div><div>${img}</div><div>Card</div></div></div>
+    </div></main>`;
+    const [section] = parseSections(html);
+    const [content, block] = section.items;
+    expect(content.children[0]).to.include({ kind: 'paragraph', innerText: 'Hellosecond', snippet: 'Hello' });
+    expect(block.innerText).to.equal('Card');
+  });
+
   it('handles multiple sections independently', () => {
     const html = `<main>
       <div><p data-prose-index="1">Section one text</p></div>
