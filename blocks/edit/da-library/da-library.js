@@ -299,7 +299,9 @@ class DaLibrary extends LitElement {
     setTimeout(() => {
       if (!target.contentWindow) return;
 
-      const project = { view, org, repo, ref: 'main', path: `/${path.join('/')}` };
+      const project = {
+        view, org, repo, site: repo, ref: 'main', path: `/${path.join('/')}`,
+      };
 
       const { token } = window.adobeIMS.getAccessToken();
 
