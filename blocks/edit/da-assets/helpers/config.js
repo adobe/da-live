@@ -74,6 +74,12 @@ export async function getResponsiveImageConfig(owner, repo) {
  *   already carry the same key, so per-asset overrides (smartcrop, future
  *   per-image presets) win.
  *
+ * imageType:
+ *   'link'          — aem.assets.image.type is 'link' (images inserted as plain <a> links)
+ *   'editable-link' — as above, plus the `flags` sheet has aem.assets.editableExternalImages=true:
+ *                     images are edited as <img> but still persisted as <a> links
+ *   null            — default image insertion
+ *
  * @returns {{ repositoryId, tierType, assetOrigin, assetBasePath, isDmEnabled,
  *             isSmartCrop, approvedOnly,
  *             imageType, mimeRenditionOverrides, siteImageModifiers }}
@@ -82,6 +88,8 @@ export async function getRepositoryConfig(owner, repo) {
   const configs = await Promise.all(fetchDaConfigs({ org: owner, site: repo }));
   const entries = configs.reverse().flatMap((config) => getFirstSheet(config) || []);
   const getValue = (key) => entries.find((conf) => conf.key === key)?.value || null;
+  const flagEntries = configs.flatMap((config) => config?.flags?.data || []);
+  const getFlag = (key) => flagEntries.find((conf) => conf.key === key)?.value || null;
 
   const repositoryId = getValue('aem.repositoryId');
   if (!repositoryId) return null;
@@ -104,8 +112,10 @@ export async function getRepositoryConfig(owner, repo) {
     isDmEnabled,
     configuredValue: getValue('aem.asset.dm.approvedonly'),
   });
-  const rawImageType = getValue('aem.assets.image.type');
-  const imageType = ['link', 'editable-link'].includes(rawImageType) ? rawImageType : null;
+  const isLink = getValue('aem.assets.image.type') === 'link';
+  const isEditable = getFlag('aem.assets.editableExternalImages') === 'true';
+  let imageType = null;
+  if (isLink) imageType = isEditable ? 'editable-link' : 'link';
   const mimeRenditionOverrides = parseMimeRenditions(getValue('aem.asset.mime.renditions'));
   const siteImageModifiers = parseSiteImageModifiers(getValue('aem.asset.image.modifiers'));
 

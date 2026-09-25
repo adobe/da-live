@@ -136,17 +136,64 @@ describe('getRepositoryConfig', () => {
     }
   });
 
-  it('sets imageType to editable-link when aem.assets.image.type is editable-link', async () => {
+  it('sets imageType to editable-link when image.type is link and the editable flag is set', async () => {
     const orgFetch = window.fetch;
     window.fetch = makeFetch({
-      '/rcfg/linkimgtype/': makeSheet([
-        { key: 'aem.repositoryId', value: 'author-p61-e61.adobeaemcloud.com' },
-        { key: 'aem.assets.image.type', value: 'editable-link' },
-      ]),
+      '/rcfg/linkimgtype/': {
+        ok: true,
+        json: async () => ({
+          data: {
+            data: [
+              { key: 'aem.repositoryId', value: 'author-p61-e61.adobeaemcloud.com' },
+              { key: 'aem.assets.image.type', value: 'link' },
+            ],
+          },
+          flags: { data: [{ key: 'aem.assets.editableExternalImages', value: 'true' }] },
+          ':names': ['data', 'flags'],
+          ':type': 'multi-sheet',
+        }),
+      },
     });
     try {
       const cfg = await getRepositoryConfig('rcfg', 'linkimgtype');
       expect(cfg.imageType).to.equal('editable-link');
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
+
+  it('ignores the editable flag when image.type is not link', async () => {
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      '/rcfg/flagonly/': {
+        ok: true,
+        json: async () => ({
+          data: { data: [{ key: 'aem.repositoryId', value: 'author-p64-e64.adobeaemcloud.com' }] },
+          flags: { data: [{ key: 'aem.assets.editableExternalImages', value: 'true' }] },
+          ':names': ['data', 'flags'],
+          ':type': 'multi-sheet',
+        }),
+      },
+    });
+    try {
+      const cfg = await getRepositoryConfig('rcfg', 'flagonly');
+      expect(cfg.imageType).to.be.null;
+    } finally {
+      window.fetch = orgFetch;
+    }
+  });
+
+  it('treats aem.assets.image.type=editable-link as unrecognized', async () => {
+    const orgFetch = window.fetch;
+    window.fetch = makeFetch({
+      '/rcfg/oldvalue/': makeSheet([
+        { key: 'aem.repositoryId', value: 'author-p65-e65.adobeaemcloud.com' },
+        { key: 'aem.assets.image.type', value: 'editable-link' },
+      ]),
+    });
+    try {
+      const cfg = await getRepositoryConfig('rcfg', 'oldvalue');
+      expect(cfg.imageType).to.be.null;
     } finally {
       window.fetch = orgFetch;
     }
