@@ -93,13 +93,8 @@ function makePictures(editor, live) {
       a.textContent = src;
       if (img.id) a.id = img.id;
 
-      const linkParent = img.parentElement;
-      const linkGrandparent = linkParent.parentElement;
-      if (linkParent.nodeName === 'P' && linkGrandparent?.childElementCount === 1 && linkParent.childElementCount === 1) {
-        linkGrandparent.replaceChild(a, linkParent);
-      } else {
-        linkParent.replaceChild(a, img);
-      }
+      // Keep the wrapping <p>, like a normally authored link.
+      img.parentElement.replaceChild(a, img);
       return;
     }
 

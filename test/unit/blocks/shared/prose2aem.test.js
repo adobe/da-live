@@ -361,6 +361,16 @@ describe('prose2aem with isFragment parameter', () => {
     expect(result).to.include('title="A description"');
     expect(result).to.include('data-edit-as="image"');
     expect(result).to.include('>https://example.com/asset.jpg<');
+    expect(result).to.match(/<p>\s*<a [^>]*data-edit-as="image"/);
+  });
+
+  it('Keeps the <p> around an editable-link image that is alone in a block cell', () => {
+    const fragment = document.createElement('div');
+    fragment.innerHTML = '<table><tbody><tr><td>cards</td></tr><tr><td><p><img src="https://example.com/asset.jpg" data-edit-as="image"></p></td></tr></tbody></table>';
+
+    const result = prose2aem(fragment, true, true);
+
+    expect(result).to.match(/<p><a [^>]*data-edit-as="image"[^>]*>https:\/\/example\.com\/asset\.jpg<\/a><\/p>/);
   });
 
   it('Serializes an editable-link image without alt to a plain <a> with no title', () => {
