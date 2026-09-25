@@ -11,6 +11,8 @@ let extensionToPanelView;
 let getPreviewStatus;
 let createCommentsView;
 let fetchExtensions;
+let getItemPreviewUrl;
+let loadBlockLibrary;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
@@ -19,7 +21,15 @@ before(async () => {
   getPreviewStatus = mod.getPreviewStatus;
   createCommentsView = mod.createCommentsView;
   fetchExtensions = mod.fetchExtensions;
+  getItemPreviewUrl = mod.getItemPreviewUrl;
+  loadBlockLibrary = mod.loadBlockLibrary;
 });
+
+// The DA Preview Proxy host: `<ref>--<site>--<org>.(stage-)preview.da.live`.
+// Which of stage-/prod is chosen depends on the running host, so the tests
+// accept either — the guarantee under test is that library content routes
+// through the proxy and never straight to `aem.live`/`aem.page`.
+const PROXY_HOST = /^https:\/\/main--proxysite--proxyorg\.(stage-preview|preview)\.da\.live\//;
 
 describe('EW panel helpers transformBlock', () => {
   let savedFetch;
@@ -284,6 +294,58 @@ describe('EW panel helpers transformBlock', () => {
     `);
     const variants = await getBlockVariants('/mock-path');
     expect(variants[0].name).to.equal('Custom Name');
+  });
+});
+
+describe('DA Preview Proxy routing', () => {
+  let savedFetch;
+  beforeEach(() => { savedFetch = window.fetch; });
+  afterEach(() => {
+    window.fetch = savedFetch;
+    setDaConfigs([]);
+  });
+
+  it('builds the block preview iframe URL on the proxy, not aem.page', () => {
+    const details = getItemPreviewUrl(
+      { path: 'https://main--proxysite--proxyorg.aem.page/blocks/hero' },
+      { org: 'proxyorg', site: 'proxysite' },
+    );
+    expect(details.previewUrl).to.match(PROXY_HOST);
+    expect(details.previewUrl).to.not.include('aem.page');
+    expect(details.previewUrl.endsWith('/blocks/hero')).to.be.true;
+  });
+
+  it('fetches AEM-hosted variant HTML via the proxy with credentials', async () => {
+    const calls = [];
+    window.fetch = (url, opts) => {
+      calls.push({ url: url.toString(), opts: opts || {} });
+      return Promise.resolve(new Response(
+        '<body><div><div class="hero"><div><div>content</div></div></div></div></body>',
+        { status: 200 },
+      ));
+    };
+    await getBlockVariants('https://main--proxysite--proxyorg.aem.page/blocks/hero');
+    expect(calls).to.have.lengthOf(1);
+    expect(calls[0].url).to.match(PROXY_HOST);
+    expect(calls[0].url).to.not.include('aem.page');
+    // AEM-hosted content is fetched as `.plain.html`.
+    expect(calls[0].url.endsWith('/blocks/hero.plain.html')).to.be.true;
+    expect(calls[0].opts.credentials).to.equal('include');
+  });
+
+  it('fetches configured library sources via the proxy with credentials', async () => {
+    setDaConfigs([{ library: { data: [{ title: 'Blocks', path: '/blocks.json' }] }, data: [] }]);
+    const calls = [];
+    window.fetch = (url, opts) => {
+      calls.push({ url: url.toString(), opts: opts || {} });
+      return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+    };
+    await loadBlockLibrary('proxyorg', 'proxysite');
+    const source = calls.find((c) => c.url.includes('/blocks.json'));
+    expect(source, 'block source was fetched').to.exist;
+    expect(source.url).to.match(PROXY_HOST);
+    expect(source.url).to.not.include('aem.live');
+    expect(source.opts.credentials).to.equal('include');
   });
 });
 

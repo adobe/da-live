@@ -1,10 +1,11 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { DOMParser as PMDOMParser, DOMSerializer, Slice, TextSelection } from 'da-y-wrapper';
 import { getNx, getNx2Api } from '../../../scripts/utils.js';
-import { daFetch } from '../../shared/utils.js';
+import { daFetch, getAuthToken } from '../../shared/utils.js';
 import { htmlToProse } from '../../edit/utils/helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { getCommentsBridge, formatCommentsViewLabel } from '../editor-utils/comments-bridge.js';
+import { getPreviewOrigin, fetchWysiwygCookie } from '../editor-utils/editor-utils.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { fetchDaConfigs, getFirstSheet } = await import(`${getNx()}/utils/daConfig.js`);
@@ -79,7 +80,9 @@ function decorateImages(element, path) {
 
 async function fetchAndParseHtml(path, isAemHosted) {
   try {
-    const resp = await daFetch(`${path}${isAemHosted ? '.plain.html' : ''}`, { noRedirect: true });
+    // credentials: 'include' sends the preview-proxy session cookie (set by the
+    // editor's gimme_cookie prefetch) so protected sites don't 401.
+    const resp = await daFetch(`${path}${isAemHosted ? '.plain.html' : ''}`, { noRedirect: true, credentials: 'include' });
     if (!resp.ok) return null;
     return new window.DOMParser().parseFromString(await resp.text(), 'text/html');
   } catch { return null; }
@@ -186,16 +189,28 @@ function transformBlock(block) {
   return item;
 }
 
+// Rewrite an AEM-hosted block URL (`ref--site--org.aem.page|live/...`) to the DA
+// Preview Proxy (`ref--site--org.preview.da.live/...`) so the request is served
+// with the editor's DA session instead of requiring a sidekick login.
+function toPreviewProxyUrl(url) {
+  const [branch, itemSite, itemOrg] = url.hostname.split('.')[0].split('--');
+  if (!branch || !itemSite || !itemOrg) return url.href;
+  return `${getPreviewOrigin(itemOrg, itemSite, branch)}${url.pathname}`;
+}
+
 export async function getBlockVariants(path) {
   let isAemHosted = false;
+  let fetchPath = path;
   try {
-    isAemHosted = AEM_ORIGINS.some((o) => new URL(path).origin.endsWith(o));
+    const url = new URL(path);
+    isAemHosted = AEM_ORIGINS.some((o) => url.origin.endsWith(o));
+    if (isAemHosted) fetchPath = toPreviewProxyUrl(url);
   } catch { /* relative path */ }
 
-  const doc = await fetchAndParseHtml(path, isAemHosted);
+  const doc = await fetchAndParseHtml(fetchPath, isAemHosted);
   if (!doc) return [];
 
-  decorateImages(doc.body, path);
+  decorateImages(doc.body, fetchPath);
   return groupBlocks(getSectionsAndBlocks(doc)).map(transformBlock);
 }
 
@@ -234,7 +249,7 @@ function calculateSources(org, site, sheetPath) {
     const trimmed = p.trim();
     if (!trimmed.startsWith('/')) return trimmed;
     if (ref === 'local') return `http://localhost:3000${trimmed}`;
-    return `https://${ref}--${site}--${org}.aem.live${trimmed}`;
+    return `${getPreviewOrigin(org, site, ref)}${trimmed}`;
   });
 }
 
@@ -301,7 +316,7 @@ export async function fetchBlocks(sources) {
   const blocks = [];
   for (const url of sources) {
     try {
-      const resp = await daFetch(url, { noRedirect: true });
+      const resp = await daFetch(url, { noRedirect: true, credentials: 'include' });
       if (resp.ok) {
         const json = await resp.json();
         const data = getFirstSheet(json) ?? (Array.isArray(json) ? json : []);
@@ -314,6 +329,14 @@ export async function fetchBlocks(sources) {
     } catch { /* skip failed source */ }
   }
   return blocks;
+}
+
+async function ensurePreviewProxyCookie(org, site) {
+  if (ref === 'local') return;
+  try {
+    const token = await getAuthToken();
+    if (token) await fetchWysiwygCookie({ org, repo: site, token, branch: ref });
+  } catch { /* editor prefetch may already have set it; non-fatal */ }
 }
 
 const blockLibraryCache = new Map();
@@ -332,6 +355,7 @@ export function loadBlockLibrary(org, site) {
     const pending = (async () => {
       const ext = await getBlocksExtension(org, site);
       if (!ext) return { ext: null, blocks: [] };
+      await ensurePreviewProxyCookie(org, site);
       const blocks = await fetchBlocks(ext.sources);
       return { ext, blocks };
     })().catch((err) => {
@@ -365,7 +389,7 @@ function loadLibrarySheet(org, site, sheet) {
       const rows = [];
       for (const url of ext.sources || []) {
         try {
-          const resp = await daFetch(url, { noRedirect: true });
+          const resp = await daFetch(url, { noRedirect: true, credentials: 'include' });
           if (resp.ok) {
             const json = await resp.json();
             if (Array.isArray(json?.[sheet]?.data)) rows.push(...json[sheet].data);
@@ -393,7 +417,7 @@ export async function fetchItems(sources, format) {
   const items = [];
   for (const source of sources) {
     try {
-      const resp = await daFetch(source, { noRedirect: true });
+      const resp = await daFetch(source, { noRedirect: true, credentials: 'include' });
       if (resp.ok) {
         const json = await resp.json();
         const data = getFirstSheet(json) ?? (Array.isArray(json) ? json : []);
@@ -491,7 +515,9 @@ export function getItemPreviewUrl(item, { org, site }) {
   }
 
   return {
-    previewUrl: `https://${ref}--${itemSite}--${itemOrg}.aem.page${itemPath}`,
+    // The iframe loads via the DA Preview Proxy so the preview renders for
+    // protected sites (the browser sends the editor's preview-proxy cookie).
+    previewUrl: `${getPreviewOrigin(itemOrg, itemSite, ref)}${itemPath}`,
     org: itemOrg,
     site: itemSite,
     pathname: itemPath,
