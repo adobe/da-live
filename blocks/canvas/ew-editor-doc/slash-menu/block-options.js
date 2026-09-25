@@ -2,6 +2,7 @@
 import { goToNextCell } from 'da-y-wrapper';
 import { loadBlockOptions } from '../../ew-panel-extensions/helpers.js';
 import { getTableInfo } from '../../editor-utils/blocks.js';
+import { isColorCode } from '../../editor-utils/color-code.js';
 
 /**
  * "Block options" — per-block key/value autocomplete for a block's body cells,
@@ -12,12 +13,6 @@ import { getTableInfo } from '../../editor-utils/blocks.js';
 
 export function normalizeForSlashMenu(str) {
   return str?.toLowerCase().trim().replace(/\s+/g, '-');
-}
-
-function isColorCode(str) {
-  const hexColorRegex = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
-  const rgbColorRegex = /^rgba?\(\s*(\d{1,3}\s*,\s*){2}\d{1,3}(\s*,\s*(0|1|0?\.\d+))?\s*\)$/;
-  return hexColorRegex.test(str) || rgbColorRegex.test(str) || str?.includes('-gradient(');
 }
 
 function buildBlockMap(data) {
