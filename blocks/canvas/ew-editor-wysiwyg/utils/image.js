@@ -2,33 +2,50 @@ import { getNx2Api } from '../../../../scripts/utils.js';
 import { MESSAGE_TYPES } from '../../utils/quick-edit-messages.js';
 import { dataUrlByteLength, refuseOversizedImage } from '../../utils/image-upload.js';
 
-function updateImageInDocument(view, originalSrc, newSrc) {
+function srcMatches(currentSrc, originalSrc) {
+  if (currentSrc === originalSrc) return true;
+  try {
+    const currentUrl = new URL(currentSrc, window.location.href);
+    const originalUrl = new URL(originalSrc, window.location.href);
+    return currentUrl.pathname === originalUrl.pathname;
+  } catch {
+    return currentSrc.includes(originalSrc) || originalSrc.includes(currentSrc);
+  }
+}
+
+// The replacement is an uploaded DA media file, not an AEM asset, so it must not keep
+// the editable-link marker (which would persist it as a text link).
+const replacedAttrs = (node, newSrc) => ({ ...node.attrs, src: newSrc, editAs: null });
+
+function imageAt(doc, pos) {
+  if (!doc || pos == null || pos < 0 || pos > doc.content.size) return null;
+  const node = doc.nodeAt(pos);
+  return node?.type.name === 'image' ? node : null;
+}
+
+// indexedSrc is the doc src of the image at imageIndex when the drop arrived. The iframe's
+// src can't be compared instead: it is resolved against the preview origin and may be a
+// site-rewritten rendition of the doc src.
+function updateImageInDocument(view, originalSrc, newSrc, imageIndex, indexedSrc) {
   if (!view) return false;
 
   const { state } = view;
   const { tr } = state;
+
+  // Prefer the exact dropped node; the src fallback would also hit every other image
+  // sharing its path (e.g. two smart crops of one asset). The src check catches a
+  // position that drifted during the upload.
+  const indexed = imageAt(state.doc, imageIndex);
+  if (indexed && indexedSrc != null && indexed.attrs.src === indexedSrc) {
+    view.dispatch(tr.setNodeMarkup(imageIndex, null, replacedAttrs(indexed, newSrc)));
+    return true;
+  }
+
   let updated = false;
-
   state.doc.descendants((node, pos) => {
-    if (node.type.name === 'image') {
-      const currentSrc = node.attrs.src;
-      let isMatch = currentSrc === originalSrc;
-
-      if (!isMatch) {
-        try {
-          const currentUrl = new URL(currentSrc, window.location.href);
-          const originalUrl = new URL(originalSrc, window.location.href);
-          isMatch = currentUrl.pathname === originalUrl.pathname;
-        } catch {
-          isMatch = currentSrc.includes(originalSrc) || originalSrc.includes(currentSrc);
-        }
-      }
-
-      if (isMatch) {
-        const newAttrs = { ...node.attrs, src: newSrc };
-        tr.setNodeMarkup(pos, null, newAttrs);
-        updated = true;
-      }
+    if (node.type.name === 'image' && srcMatches(node.attrs.src, originalSrc)) {
+      tr.setNodeMarkup(pos, null, replacedAttrs(node, newSrc));
+      updated = true;
     }
   });
 
@@ -57,8 +74,9 @@ function getPageName(currentPath) {
   return currentPath.replace(/^\//, '');
 }
 
-export async function handleImageReplace({ imageData, fileName, originalSrc }, ctx) {
+export async function handleImageReplace({ imageData, fileName, originalSrc, imageIndex }, ctx) {
   ctx.suppressRerender = true;
+  const indexedSrc = imageAt(ctx.view?.state.doc ?? null, imageIndex)?.attrs.src;
 
   try {
     const sitePath = `/${ctx.owner}/${ctx.repo}`;
@@ -93,7 +111,7 @@ export async function handleImageReplace({ imageData, fileName, originalSrc }, c
     // the media bus is content addressed, so the src is only known from the response
     const { source: { contentUrl: newSrc } } = await resp.json();
 
-    updateImageInDocument(ctx.view, originalSrc, newSrc);
+    updateImageInDocument(ctx.view, originalSrc, newSrc, imageIndex, indexedSrc);
 
     ctx.port.postMessage({
       type: MESSAGE_TYPES.IMAGE_REPLACE,
