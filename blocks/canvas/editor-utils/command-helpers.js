@@ -152,6 +152,11 @@ export function isImageNodeSelected({ selection }) {
   return selection?.node?.type.name === 'image';
 }
 
+// Editable link-images persist as <a href="src">, so they can't also carry a link.
+export function isLinkImageSelected(state) {
+  return isImageNodeSelected(state) && !!state.selection.node.attrs.editAs;
+}
+
 /* ---- Link queries ---- */
 
 function findLinkInRange(state) {

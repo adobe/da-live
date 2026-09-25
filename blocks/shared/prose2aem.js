@@ -83,6 +83,24 @@ function makePictures(editor, live) {
     const daCursor = img.parentElement.querySelector('#da-cursor-position');
     if (daCursor) setCursor(daCursor, img);
 
+    if (img.getAttribute('data-edit-as') === 'image') {
+      const src = img.getAttribute('src');
+      const a = document.createElement('a');
+      a.href = src;
+      const altAttr = img.getAttribute('alt');
+      if (altAttr) a.title = altAttr;
+      a.setAttribute('data-edit-as', 'image');
+      a.textContent = src;
+      if (img.id) a.id = img.id;
+      // Canvas instrumentation (outline/selection) maps the image node via this index.
+      const imageIndex = img.getAttribute('data-image-index');
+      if (imageIndex != null) a.setAttribute('data-image-index', imageIndex);
+
+      // Keep the wrapping <p>, like a normally authored link.
+      img.parentElement.replaceChild(a, img);
+      return;
+    }
+
     const clone = img.cloneNode(true);
     clone.setAttribute('loading', 'lazy');
 
