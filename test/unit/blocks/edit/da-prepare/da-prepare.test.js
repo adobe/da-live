@@ -205,6 +205,37 @@ describe('DaPrepare', () => {
 
       window.fetch = prevFetch;
     });
+
+    it('routes relative plugin paths and icons through the DA preview proxy', async () => {
+      const prevFetch = window.fetch;
+      window.fetch = async (url) => {
+        if (url.includes('/config/orgD/siteD')) {
+          const body = {
+            prepare: {
+              data: [{
+                title: 'Plugin Action',
+                path: '/tools/plugins/plugin-action/index.html',
+                icon: '/tools/plugins/plugin-action/icon.svg',
+              }],
+            },
+          };
+          return new Response(JSON.stringify(body), { status: 200 });
+        }
+        if (url.includes('/config/orgD')) {
+          return new Response(JSON.stringify({}), { status: 200 });
+        }
+        return prevFetch(url);
+      };
+
+      el = await fixture({ details: createDetails({ org: 'orgD', site: 'siteD' }) });
+      await waitForMenu();
+
+      const item = el._menuItems.find(({ title }) => title === 'Plugin Action');
+      expect(item.path).to.equal('https://main--siteD--orgD.preview.da.live/tools/plugins/plugin-action/index.html');
+      expect(item.icon).to.equal('https://main--siteD--orgD.preview.da.live/tools/plugins/plugin-action/icon.svg');
+
+      window.fetch = prevFetch;
+    });
   });
 
   describe('render', () => {

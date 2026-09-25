@@ -291,12 +291,14 @@ export async function contentLogin(owner, repo) {
   }
 }
 
-export async function livePreviewLogin(owner, repo) {
+export async function livePreviewLogin(owner, repo, branch = 'main', getUrl = getLivePreviewUrl) {
   try {
-    const { accessToken } = await initIms();
-    await fetch(`${getLivePreviewUrl(owner, repo)}/gimme_cookie`, {
+    const ims = await initIms();
+    const token = ims?.accessToken?.token || window.adobeIMS?.getAccessToken?.()?.token;
+    if (!token) return;
+    await fetch(`${getUrl(owner, repo, branch)}/gimme_cookie`, {
       credentials: 'include',
-      headers: { Authorization: `Bearer ${accessToken.token}` },
+      headers: { Authorization: `Bearer ${token}` },
     });
   } catch (e) {
     // eslint-disable-next-line no-console

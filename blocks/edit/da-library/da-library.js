@@ -3,6 +3,7 @@ import { DOMParser as proseDOMParser, DOMSerializer, Slice, TextSelection } from
 import { htmlToProse } from '../utils/helpers.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 import { getPostMessageTargetOrigin, isValidHref } from '../../shared/utils.js';
+import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
 import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import searchFor from './helpers/search.js';
@@ -117,18 +118,29 @@ class DaLibrary extends LitElement {
   };
 
   async handlePluginClick(plugin) {
-    this._active = plugin;
-
     if (plugin.experience === 'aem-assets') {
+      this._active = plugin;
       plugin.callback();
       this.handleClose();
+      return;
     }
 
     if (plugin.experience === 'window') {
       const href = plugin.sources?.[0];
       if (!href) return;
-      window.open(href, href);
+      // Open synchronously so the browser still sees this as a user-gesture
+      // popup; async work before window.open() gets it blocked.
+      const popup = window.open('', href);
+      const previewHref = toPreviewProxyUrl(href);
+      await ensurePreviewProxySession(previewHref);
+      if (popup) popup.location.href = previewHref;
+      return;
     }
+
+    // Inline/dialog experiences render an iframe straight at plugin.sources[0],
+    // so the proxy session needs to exist before _active flips the iframe on.
+    await ensurePreviewProxySession(plugin.sources?.[0]);
+    this._active = plugin;
   }
 
   dialogCheck() {
@@ -238,9 +250,11 @@ class DaLibrary extends LitElement {
 
   async handleOpenPreview(item) {
     const { org, site, pathname } = getItemDetails(item);
+    const url = toPreviewProxyUrl(item.path || item.value, { org, site, branch: ref });
+    await ensurePreviewProxySession(url, { org, site, branch: ref });
     this._preview = {
       name: item.name || item.key,
-      url: `https://${ref}--${site}--${org}.aem.page${pathname}`,
+      url,
     };
 
     // Lazily get the preview status

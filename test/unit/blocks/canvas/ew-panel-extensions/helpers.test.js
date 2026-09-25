@@ -318,6 +318,53 @@ describe('extensionToPanelView', () => {
     const ext = { name: 'configured-tool', title: 'Configured tool', experience: 'inline', sources: ['/tool'], icon: '' };
     expect(extensionToPanelView(ext, 'Extensions').cacheKey).to.equal('["/tool"]');
   });
+
+  it('routes configured extension sources and icons through the DA preview proxy', () => {
+    const ext = {
+      name: 'configured-tool',
+      title: 'Configured tool',
+      experience: 'inline',
+      sources: ['https://main--repo--org.aem.live/tools/plugins/tool/index.html'],
+      icon: 'https://main--repo--org.aem.live/tools/plugins/tool/icon.svg',
+    };
+    const view = extensionToPanelView(ext, 'Extensions');
+    expect(view.sources).to.deep.equal(['https://main--repo--org.stage-preview.da.live/tools/plugins/tool/index.html']);
+    expect(view.icon).to.equal('https://main--repo--org.stage-preview.da.live/tools/plugins/tool/icon.svg');
+  });
+
+  it('authenticates the same preview proxy origin the fullsize-dialog iframe will load', async () => {
+    const savedAdobeIMS = window.adobeIMS;
+    window.adobeIMS = { getAccessToken: () => ({ token: 'T1' }) };
+    const savedFetch = window.fetch;
+    const cookieRequests = [];
+    window.fetch = async (url, opts) => {
+      if (typeof url === 'string' && url.includes('/gimme_cookie')) {
+        cookieRequests.push(url);
+        return new Response('', { status: 200 });
+      }
+      return savedFetch(url, opts);
+    };
+
+    const ext = {
+      name: 'configured-tool',
+      title: 'Configured tool',
+      experience: 'fullsize-dialog',
+      sources: ['https://main--siteg--orgg.aem.live/tools/plugins/tool/index.html'],
+    };
+    const view = extensionToPanelView(ext, 'Extensions');
+    const container = document.createElement('div');
+
+    try {
+      await view.loadModal(container, () => {});
+    } finally {
+      window.fetch = savedFetch;
+      if (savedAdobeIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedAdobeIMS;
+    }
+
+    expect(cookieRequests).to.deep.equal([
+      'https://main--siteg--orgg.stage-preview.da.live/gimme_cookie',
+    ]);
+  });
 });
 
 describe('getPreviewStatus', () => {

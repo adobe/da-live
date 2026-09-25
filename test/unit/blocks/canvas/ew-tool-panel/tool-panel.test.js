@@ -68,6 +68,67 @@ describe('EwToolPanel — modal experience', () => {
       expect(threw).to.be.false;
       expect(el.activeId).to.be.undefined;
     });
+
+    it('opens window-style views through the DA preview proxy', async () => {
+      const el = createPanel([{
+        id: 'configured-tool',
+        label: 'Configured tool',
+        experience: 'window',
+        sources: ['https://main--repo--org.aem.live/tools/plugins/tool/index.html'],
+      }]);
+
+      const savedOpen = window.open;
+      const popup = { location: { href: '' } };
+      window.open = () => popup;
+
+      try {
+        await el.showPanel('configured-tool');
+      } finally {
+        window.open = savedOpen;
+      }
+
+      expect(popup.location.href).to.equal('https://main--repo--org.stage-preview.da.live/tools/plugins/tool/index.html');
+    });
+
+    it('authenticates the same preview proxy origin the popup will load', async () => {
+      const el = createPanel([{
+        id: 'configured-tool',
+        label: 'Configured tool',
+        experience: 'window',
+        sources: ['https://main--repo--org.aem.live/tools/plugins/tool/index.html'],
+      }]);
+
+      const savedOpen = window.open;
+      window.open = () => ({ location: { href: '' } });
+
+      const savedAdobeIMS = window.adobeIMS;
+      window.adobeIMS = { getAccessToken: () => ({ token: 'T1' }) };
+      const savedFetch = window.fetch;
+      const cookieRequests = [];
+      window.fetch = async (url, opts) => {
+        if (typeof url === 'string' && url.includes('/gimme_cookie')) {
+          cookieRequests.push(url);
+          return new Response('', { status: 200 });
+        }
+        return savedFetch(url, opts);
+      };
+
+      try {
+        await el.showPanel('configured-tool');
+      } finally {
+        window.open = savedOpen;
+        window.fetch = savedFetch;
+        if (savedAdobeIMS === undefined) {
+          delete window.adobeIMS;
+        } else {
+          window.adobeIMS = savedAdobeIMS;
+        }
+      }
+
+      expect(cookieRequests).to.deep.equal([
+        'https://main--repo--org.stage-preview.da.live/gimme_cookie',
+      ]);
+    });
   });
 });
 

@@ -1,6 +1,8 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { fetchDaConfigs, getPostMessageTargetOrigin } from '../../shared/utils.js';
+import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
+import { getPreviewOrigin } from './editor-utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { initPreflightBridge, reportPreflightStatus } from './preflight-bridge.js';
 
@@ -8,6 +10,17 @@ const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
 
 const style = await loadStyle(import.meta.url);
+const ref = new URLSearchParams(window.location.search).get('ref') || 'main';
+
+function resolveMenuItem(item, details) {
+  const fallback = { org: details?.org, site: details?.site, branch: ref };
+  fallback.getUrl = getPreviewOrigin;
+  return {
+    ...item,
+    path: item.path ? toPreviewProxyUrl(item.path, fallback) : item.path,
+    icon: item.icon ? toPreviewProxyUrl(item.icon, fallback) : item.icon,
+  };
+}
 
 function isSvgSymbol(icon) {
   if (typeof icon !== 'string' || !icon) return false;
@@ -110,9 +123,10 @@ export default class PrepareMenu extends LitElement {
     );
 
     // For config items without path or render, fallback to OOTB if available
-    this._menuItems = [...merged.values()].map(
-      (item) => (item.path || item.render ? item : ootbLookup.get(item.title) || item),
-    );
+    this._menuItems = [...merged.values()].map((item) => {
+      const resolved = item.path || item.render ? item : ootbLookup.get(item.title) || item;
+      return resolveMenuItem(resolved, this.details);
+    });
   }
 
   toggle(anchor) {
@@ -134,6 +148,12 @@ export default class PrepareMenu extends LitElement {
       this._dialogItem = { ...item, cmp };
       return;
     }
+    await ensurePreviewProxySession(item.path, {
+      org: this.details?.org,
+      site: this.details?.site,
+      branch: ref,
+      getUrl: getPreviewOrigin,
+    });
     if (item.experience === 'fullsize-dialog') {
       this._fullsizeDialogItem = item;
       return;
