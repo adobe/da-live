@@ -4,6 +4,7 @@ import { commandsFor, COMMAND_BY_ID } from '../editor-utils/command-defs.js';
 import {
   getBlockTypePickerValue,
   getLinkInfoInSelection,
+  isLinkImageSelected,
   applyLink,
 } from '../editor-utils/command-helpers.js';
 import { toolbarController } from '../editor-utils/toolbar-controller.js';
@@ -180,6 +181,8 @@ class EwSelectionToolbar extends LitElement {
   openLinkDialog(view) {
     if (view) this.view = view;
     if (!this.view) return;
+    // Also guards Mod-k, which bypasses the toolbar's link-button visibility.
+    if (isLinkImageSelected(this.view.state)) return;
     const info = getLinkInfoInSelection(this.view.state);
     if (info) {
       this._linkHref = info.href;

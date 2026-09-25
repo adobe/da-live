@@ -235,3 +235,26 @@ describe('add-comment command', () => {
     expect(evt.detail).to.deep.equal({ section: 'tools', id: 'comments' });
   });
 });
+
+describe('link commands on a selected image', () => {
+  async function imageState(attrs) {
+    const { EditorState, NodeSelection } = await import('da-y-wrapper');
+    const { getSchema } = await import('da-parser');
+    const schema = getSchema();
+    const para = schema.nodes.paragraph.create(null, schema.nodes.image.create(attrs));
+    const doc = schema.nodes.doc.create(null, para);
+    return EditorState.create({ schema, doc, selection: NodeSelection.create(doc, 1) });
+  }
+  const visible = (id, state) => COMMAND_BY_ID.get(id).visible(state);
+
+  it('offers Create link for a normal image', async () => {
+    const state = await imageState({ src: '/x.png' });
+    expect(visible('link-create', state)).to.be.true;
+  });
+
+  it('hides Create/Edit link for an editable link-image', async () => {
+    const state = await imageState({ src: 'https://dm.example/x.jpg', editAs: 'image' });
+    expect(visible('link-create', state)).to.be.false;
+    expect(visible('link-edit', state)).to.be.false;
+  });
+});
