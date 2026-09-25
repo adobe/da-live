@@ -63,10 +63,14 @@ export function renderForm(panel, {
   `;
 }
 
-export function renderCommentMenu(panel, comment, threadId, isRoot, canEdit) {
+export function renderCommentMenu(panel, comment, threadId, isRoot, canEdit, isResolved) {
   if (!canEdit && !isRoot) return nothing;
+  const canReopen = isRoot && isResolved && !!panel.currentUser;
   const items = [
-    ...(canEdit ? [{ id: 'delete', label: 'Delete' }] : []),
+    { section: 'Actions' },
+    ...(canReopen ? [{ id: 'reopen', label: 'Reopen' }] : []),
+    ...(canEdit && !isResolved ? [{ id: 'edit', label: 'Edit' }] : []),
+    ...(canEdit ? [{ id: 'delete', label: isRoot ? 'Delete thread' : 'Delete' }] : []),
     ...(isRoot ? [{ id: 'link', label: 'Get link to this comment' }] : []),
   ];
 
@@ -104,8 +108,12 @@ export function renderComment(panel, {
   isDetached = false, isPreview = false,
 }) {
   const canEdit = panel.canEditComment(comment);
-  const showMenu = !isPreview && !isResolved && (isRoot || canEdit);
+  const showMenu = !isPreview && (isRoot || (canEdit && !isResolved));
   const showResolve = !isPreview && isRoot && !isResolved && !!panel.currentUser;
+
+  const isEditing = !isPreview
+    && panel._draft?.mode === DRAFT_MODES.EDIT
+    && panel._draft.commentId === comment.id;
 
   const isSpinning = !isRoot && panel._submittingId === comment.id;
   return html`
@@ -119,19 +127,27 @@ export function renderComment(panel, {
           <span class="ew-comment-time" title="${formatUtils.formatFullTimestamp(comment.createdAt)}">
             ${formatUtils.formatTimestamp(comment.createdAt)}
           </span>
+          ${comment.editedAt ? html`<span class="ew-comment-edited" title="${formatUtils.formatFullTimestamp(comment.editedAt)}">· Edited ${formatUtils.formatTimestamp(comment.editedAt)}</span>` : nothing}
         </div>
-        ${showResolve || showMenu ? html`
+        ${!isEditing && (showResolve || showMenu) ? html`
           <div class="ew-comment-header-actions" @click=${(e) => e.stopPropagation()}>
             ${showResolve ? html`
               <button type="button" class="nx-action-btn-icon nx-btn-sm" ?disabled=${!!panel._submittingId} @click=${() => panel.handleResolveThread(threadId)} title="Resolve" aria-label="Resolve">
                 ${renderIcon('checkmark')}
               </button>
             ` : nothing}
-            ${showMenu ? renderCommentMenu(panel, comment, threadId, isRoot, canEdit) : nothing}
+            ${showMenu ? renderCommentMenu(panel, comment, threadId, isRoot, canEdit, isResolved) : nothing}
           </div>
         ` : nothing}
       </div>
-      <div class="ew-comment-content ${isPreview ? 'is-clamped' : ''}">${comment.body}</div>
+      ${isEditing ? renderForm(panel, {
+        placeholder: 'Edit comment...',
+        submitLabel: 'Save',
+        value: panel._draft?.text || '',
+        formClass: 'ew-comment-edit-form',
+      }) : html`
+        <div class="ew-comment-content ${isPreview ? 'is-clamped' : ''}">${comment.body}</div>
+      `}
     </div>
   `;
 }
@@ -258,12 +274,7 @@ export function renderThreadView(panel, thread) {
             ${replies.map((reply) => renderComment(panel, { comment: reply, threadId, isResolved }))}
           </div>
         ` : nothing}
-        ${isResolved ? html`
-          <div class="ew-comment-thread-actions">
-            <sl-button class="primary outline" ?disabled=${!!panel._submittingId} @click=${() => panel.handleUnresolveThread(threadId)}>Reopen</sl-button>
-            ${panel.canEditComment(thread) ? html`<sl-button class="negative" ?disabled=${!!panel._submittingId} @click=${() => panel.handleDeleteThread(threadId)}>Delete thread</sl-button>` : nothing}
-          </div>
-        ` : html`
+        ${isResolved ? nothing : html`
           <div class="ew-comments-reply-form ${isReplying ? 'ew-comments-reply-form-expanded' : ''}">
             ${renderForm(panel, {
               placeholder: 'Add a Reply...',

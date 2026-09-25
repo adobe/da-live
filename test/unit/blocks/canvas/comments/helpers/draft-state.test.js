@@ -3,6 +3,7 @@ import {
   DRAFT_MODES,
   makeNewDraft,
   makeReplyDraft,
+  makeEditDraft,
   setDraftText,
   hasUnsavedText,
   shouldAdoptPendingAnchor,
@@ -22,6 +23,13 @@ describe('ew-comments draft-state', () => {
     expect(draft.mode).to.equal(DRAFT_MODES.REPLY);
     expect(draft.threadId).to.equal('t1');
     expect(draft.text).to.equal('');
+  });
+
+  it('makeEditDraft seeds the draft with the comment body', () => {
+    const draft = makeEditDraft({ id: 'c1', body: 'original' });
+    expect(draft.mode).to.equal(DRAFT_MODES.EDIT);
+    expect(draft.commentId).to.equal('c1');
+    expect(draft.text).to.equal('original');
   });
 
   it('setDraftText returns null on a null draft', () => {
@@ -64,6 +72,11 @@ describe('ew-comments draft-state', () => {
     it('keeps the existing `new` draft if the anchor is unchanged', () => {
       const draft = makeNewDraft(anchor);
       expect(shouldAdoptPendingAnchor(draft, anchor)).to.be.false;
+    });
+
+    it('does NOT clobber an edit draft in progress', () => {
+      const edit = makeEditDraft({ id: 'c1', body: 'original' });
+      expect(shouldAdoptPendingAnchor(edit, anchor)).to.be.false;
     });
 
     it('does NOT clobber a reply with typed text', () => {
