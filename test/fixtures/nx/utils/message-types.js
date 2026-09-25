@@ -24,6 +24,7 @@ export const MESSAGE_TYPES = Object.freeze({
   COMMENT_MARKER_CLICK: 'comment-marker-click',
   COMMENT_MARKER_CLEAR: 'comment-marker-clear',
   COMMENT_SHORTCUT: 'comment-shortcut',
+  RUM_CLICK: 'rum-click',
 
   IMAGE_REPLACE: 'image-replace',
 });

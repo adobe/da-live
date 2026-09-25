@@ -101,3 +101,27 @@ describe('quick-edit-controller RELOAD coalescing', () => {
     expect(setBodyCount(ctx)).to.equal(2);
   });
 });
+
+describe('quick-edit-controller RUM_CLICK forwarding', () => {
+  let prevHlx;
+
+  beforeEach(() => { prevHlx = window.hlx; });
+  afterEach(() => { window.hlx = prevHlx; });
+
+  it('records a RUM click checkpoint from a forwarded iframe click', () => {
+    const sampleRUM = sinon.spy();
+    window.hlx = { rum: { sampleRUM } };
+    const ctx = makeCtx(true);
+    const payload = { source: 'ew-wysiwyg-doc', target: 'hero' };
+    send(createControllerOnMessage(ctx), { type: 'rum-click', payload });
+    expect(sampleRUM.calledOnceWith('click', payload)).to.be.true;
+  });
+
+  it('does not throw when RUM is not initialised on the page', () => {
+    window.hlx = undefined;
+    const ctx = makeCtx(true);
+    const onMessage = createControllerOnMessage(ctx);
+    expect(() => onMessage({ data: { type: 'rum-click', payload: { source: 'ew-wysiwyg-doc', target: 'p' } } }))
+      .to.not.throw();
+  });
+});
