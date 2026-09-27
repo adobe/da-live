@@ -10,6 +10,7 @@ import {
   moveBlockToSection,
   moveBlock,
   moveSection,
+  insertSection,
 } from '../../../../../blocks/canvas/editor-utils/blocks.js';
 import { makeView, makeRealView } from '../test-helpers.js';
 
@@ -434,5 +435,24 @@ describe('deleteBlock (no deliberate selection change)', () => {
 
     expect(view.state.selection).to.not.be.instanceOf(NodeSelection);
     expect(docTypes(view.state.doc)).to.deep.equal(['table']);
+  });
+});
+
+describe('insertSection', () => {
+  it('appends a horizontal_rule node to the end of the doc and adds a new section', () => {
+    const view = makeView({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'hello' }] }],
+    });
+
+    insertSection(view);
+
+    const { doc } = view.state;
+    expect(doc.lastChild.type.name).to.equal('horizontal_rule');
+    expect(docTypes(doc)).to.deep.equal(['paragraph', 'horizontal_rule']);
+  });
+
+  it('does nothing when view is falsy', () => {
+    expect(() => insertSection(null)).to.not.throw();
   });
 });

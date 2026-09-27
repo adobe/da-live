@@ -287,6 +287,13 @@ export function deleteSection(view, sectionIndex) {
   setFirstSectionName(names[0]);
 }
 
+export function insertSection(view) {
+  if (!view) return;
+  const { doc, schema } = view.state;
+  const hrNode = schema.nodes.horizontal_rule.create();
+  view.dispatch(view.state.tr.insert(doc.content.size, hrNode));
+}
+
 export function moveSection(view, fromSectionIndex, toSectionIndex, dropPosition) {
   if (!view) return;
   if (isSamePosition(fromSectionIndex, toSectionIndex, dropPosition)) return;
