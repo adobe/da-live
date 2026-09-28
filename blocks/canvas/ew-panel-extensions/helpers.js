@@ -3,7 +3,7 @@ import { DOMParser as PMDOMParser, DOMSerializer, Slice, TextSelection } from 'd
 import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import { daFetch } from '../../shared/utils.js';
 import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
-import { getPreviewOrigin } from '../editor-utils/editor-utils.js';
+import { getPreviewOrigin } from '../editor-utils/preview-origin.js';
 import { htmlToProse } from '../../edit/utils/helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { getCommentsBridge, formatCommentsViewLabel } from '../editor-utils/comments-bridge.js';

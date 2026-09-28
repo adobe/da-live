@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
-import { getPreviewOrigin } from '../editor-utils/editor-utils.js';
+import { getPreviewOrigin } from '../editor-utils/preview-origin.js';
 import { getCommentsBridge } from '../editor-utils/comments-bridge.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import {
