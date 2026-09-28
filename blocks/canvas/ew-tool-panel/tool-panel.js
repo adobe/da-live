@@ -1,7 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
-import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
-import { getPreviewOrigin } from '../editor-utils/preview-origin.js';
 import { getCommentsBridge } from '../editor-utils/comments-bridge.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import {
@@ -203,14 +201,11 @@ class EwToolPanel extends LitElement {
     if (!consumer) return;
     const { contextKey } = this;
     if (consumer.experience === 'window') {
-      // Open synchronously so the browser still sees this as a user-gesture
-      // popup; async work before window.open() gets it blocked.
-      const popup = window.open('', '_blank', 'noopener,noreferrer');
-      const rawHref = new URL(consumer.sources[0], window.location.href).href;
-      const proxyOpts = { getUrl: getPreviewOrigin, currentOrg: this.org };
-      const href = toPreviewProxyUrl(rawHref, proxyOpts);
-      await ensurePreviewProxySession(href, proxyOpts);
-      if (popup) popup.location.href = href;
+      window.open(
+        new URL(consumer.sources[0], window.location.href).href,
+        '_blank',
+        'noopener,noreferrer',
+      );
       return;
     }
     if (consumer.experience === 'fullsize-dialog') {

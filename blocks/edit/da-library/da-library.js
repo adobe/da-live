@@ -130,13 +130,7 @@ class DaLibrary extends LitElement {
     if (plugin.experience === 'window') {
       const href = plugin.sources?.[0];
       if (!href) return;
-      // Open synchronously so the browser still sees this as a user-gesture
-      // popup; async work before window.open() gets it blocked.
-      const popup = window.open('', href);
-      const proxyOpts = { currentOrg: getCurrentOrg() };
-      const previewHref = toPreviewProxyUrl(href, proxyOpts);
-      await ensurePreviewProxySession(previewHref, proxyOpts);
-      if (popup) popup.location.href = previewHref;
+      window.open(href, href);
       return;
     }
 

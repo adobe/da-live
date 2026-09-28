@@ -154,30 +154,41 @@ describe('da-library element', () => {
 
   it('handlePluginClick opens window for window-experience plugins', async () => {
     await fixture([]);
-    const popup = { location: { href: '' } };
+    let opened;
     const savedOpen = window.open;
-    window.open = () => popup;
+    window.open = (url) => {
+      opened = url;
+      return null;
+    };
     try {
-      await el.handlePluginClick({ name: 'plug', experience: 'window', sources: ['https://x'] });
-      expect(popup.location.href).to.equal('https://x');
+      el.handlePluginClick({ name: 'plug', experience: 'window', sources: ['https://x'] });
+      expect(opened).to.equal('https://x');
     } finally {
       window.open = savedOpen;
     }
   });
 
-  it('handlePluginClick opens cross-org window plugins at their original URL', async () => {
+  it('handlePluginClick opens window plugins at their original URL without a proxy cookie', async () => {
     await fixture([]);
-    const popup = { location: { href: '' } };
+    let opened;
+    const cookieRequests = [];
     const savedOpen = window.open;
-    const hashBefore = window.location.hash;
-    window.open = () => popup;
-    window.history.replaceState(null, '', '#/org/site/page');
+    const prevFetch = window.fetch;
+    window.open = (url) => {
+      opened = url;
+      return null;
+    };
+    window.fetch = async (url, opts) => {
+      if (String(url).includes('/gimme_cookie')) cookieRequests.push(url);
+      return prevFetch(url, opts);
+    };
     try {
-      await el.handlePluginClick({ name: 'plug', experience: 'window', sources: ['https://main--repo--other.aem.live/x'] });
-      expect(popup.location.href).to.equal('https://main--repo--other.aem.live/x');
+      await el.handlePluginClick({ name: 'plug', experience: 'window', sources: ['https://main--repo--org.aem.live/x'] });
+      expect(opened).to.equal('https://main--repo--org.aem.live/x');
+      expect(cookieRequests).to.deep.equal([]);
     } finally {
       window.open = savedOpen;
-      window.history.replaceState(null, '', hashBefore || window.location.pathname);
+      window.fetch = prevFetch;
     }
   });
 

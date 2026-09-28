@@ -151,14 +151,17 @@ async function fetchLibraryConfig(org, site) {
       const branch = row.ref || ref;
       const sources = calculateSources(org, site, row.path);
       const proxyOpts = { org, site, branch, currentOrg: org };
+      const experience = ootb?.experience || row.experience || 'inline';
+      // Window plugins open in a new tab where the user authenticates via sidekick.
+      const useProxy = !ootb && experience !== 'window';
       const plugin = {
         name,
         title: row.title.trim(),
-        sources: ootb
-          ? sources
-          : sources.map((source) => toPreviewProxyUrl(source, proxyOpts)),
+        sources: useProxy
+          ? sources.map((source) => toPreviewProxyUrl(source, proxyOpts))
+          : sources,
         ref: row.ref || 'main',
-        experience: ootb?.experience || row.experience || 'inline',
+        experience,
       };
 
       if (name === 'blocks') {

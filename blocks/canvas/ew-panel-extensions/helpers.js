@@ -591,7 +591,8 @@ export function extensionToPanelView(ext, section) {
     firstParty: ext.ootb,
     ...(!ext.ootb && { cacheKey: JSON.stringify(ext.sources || []) }),
     experience: ext.experience,
-    sources: ext.ootb
+    // Window extensions open in a new tab where the user authenticates via sidekick.
+    sources: ext.ootb || ext.experience === 'window'
       ? ext.sources
       : (ext.sources || []).map(
         (source) => toPreviewProxyUrl(source, proxyOpts),
