@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { fetchDaConfigs, getPostMessageTargetOrigin } from '../../shared/utils.js';
 import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
-import { getPreviewOrigin } from './preview-origin.js';
+import { getPreviewOrigin } from './editor-utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { initPreflightBridge, reportPreflightStatus } from './preflight-bridge.js';
 

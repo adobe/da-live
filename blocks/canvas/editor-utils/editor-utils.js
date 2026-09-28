@@ -5,7 +5,6 @@ import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
 import { toolbarController } from './toolbar-controller.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { canvasBus, registerEditorSelectEnricher } from '../utils/canvas-bus.js';
-import { getPreviewOrigin } from './preview-origin.js';
 
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 
@@ -448,7 +447,13 @@ export function updateCursors(ctx) {
 
 // --- preview.js ---
 
-export { getPreviewOrigin };
+export function getPreviewOrigin(org, repo, branch = 'main') {
+  const hostname = window?.location?.hostname ?? '';
+  const domain = hostname.endsWith('aem.page') || hostname.endsWith('localhost')
+    ? 'stage-preview.da.live'
+    : 'preview.da.live';
+  return `https://${branch}--${repo}--${org}.${domain}`;
+}
 
 export async function fetchWysiwygBranch({ org, site, path }) {
   if (!org || !site) return 'main';

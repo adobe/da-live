@@ -1,7 +1,7 @@
 import { LitElement, html, nothing, repeat } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
-import { getPreviewOrigin } from '../editor-utils/preview-origin.js';
+import { getPreviewOrigin } from '../editor-utils/editor-utils.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import './ew-panel-library.js';
 
