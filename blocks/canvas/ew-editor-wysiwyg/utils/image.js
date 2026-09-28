@@ -33,15 +33,19 @@ function resolveImagePosition(doc, { proseIndex, originalSrc, requestId, imageVe
   return found;
 }
 
-function updateImageInDocument(view, proseIndex, newSrc, originalDoc) {
-  if (view.state.doc !== originalDoc) {
-    throw new Error('The page changed during the image upload. Please try again.');
-  }
-  const node = originalDoc.nodeAt(proseIndex);
-  if (node?.type.name !== 'image') {
+function updateImageInDocument(view, target, newSrc) {
+  let proseIndex = null;
+  let ambiguous = false;
+  view.state.doc.descendants((node, pos) => {
+    if (node === target) {
+      if (proseIndex != null) ambiguous = true;
+      else proseIndex = pos;
+    }
+  });
+  if (proseIndex == null || ambiguous) {
     throw new Error('The selected image is no longer available. Please try again.');
   }
-  view.dispatch(view.state.tr.setNodeMarkup(proseIndex, null, { ...node.attrs, src: newSrc }));
+  view.dispatch(view.state.tr.setNodeMarkup(proseIndex, null, { ...target.attrs, src: newSrc }));
 }
 
 function dataUrlToBlob(dataUrl) {
@@ -64,14 +68,17 @@ function getPageName(currentPath) {
 
 export async function handleImageReplace(payload, ctx) {
   const { imageData, fileName, proseIndex, originalSrc, requestId } = payload;
+  let view;
   const reply = (result) => ctx.port.postMessage({
     type: MESSAGE_TYPES.IMAGE_REPLACE,
     payload: { ...result, proseIndex, originalSrc, requestId },
   });
   try {
-    if (!ctx.view) throw new Error('Image editor is unavailable. Please try again.');
-    const originalDoc = ctx.view.state.doc;
+    view = ctx.view;
+    if (!view) throw new Error('Image editor is unavailable. Please try again.');
+    const originalDoc = view.state.doc;
     const imagePos = resolveImagePosition(originalDoc, payload);
+    const target = originalDoc.nodeAt(imagePos);
     const sitePath = `/${ctx.owner}/${ctx.repo}`;
     if (await refuseOversizedImage(dataUrlByteLength(imageData), sitePath)) {
       reply({ error: 'Image is too large' });
@@ -97,7 +104,8 @@ export async function handleImageReplace(payload, ctx) {
     // the media bus is content addressed, so the src is only known from the response
     const { source: { contentUrl: newSrc } } = await resp.json();
 
-    updateImageInDocument(ctx.view, imagePos, newSrc, originalDoc);
+    if (ctx.view !== view) throw new Error('Image editor changed during the upload. Please try again.');
+    updateImageInDocument(view, target, newSrc);
     reply({ newSrc });
   } catch (error) {
     // eslint-disable-next-line no-console

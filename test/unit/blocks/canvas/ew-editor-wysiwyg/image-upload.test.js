@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import { Y } from 'da-y-wrapper';
 import { setNx } from '../../../../../scripts/utils.js';
 import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.js';
 import { getImageDocumentVersion } from '../../../../../blocks/canvas/utils/image-document-version.js';
@@ -29,7 +30,7 @@ function stubStore({ upgraded, contentUrl = './media_abc.png', onUpload } = {}) 
         headers: upgraded ? { 'x-api-upgrade-available': 'true' } : {},
       });
     }
-    onUpload?.();
+    await onUpload?.();
     return new Response(JSON.stringify({ source: { contentUrl } }), {
       status: 201,
       headers: { 'content-type': 'application/json' },
@@ -265,7 +266,7 @@ describe('handleImageReplace', () => {
     }
   });
 
-  it('refuses a changed document during upload instead of replacing the wrong image', async () => {
+  it('follows the target past an unrelated edit during upload', async () => {
     const { restore } = stubStore({
       upgraded: true,
       onUpload: () => editor.view.dispatch(editor.view.state.tr.insertText('before ', imagePos)),
@@ -274,13 +275,121 @@ describe('handleImageReplace', () => {
     try {
       await handleImageReplace(request(), ctx);
 
-      expect(posted.at(-1).payload.error).to.contain('changed');
-      const images = [];
-      editor.view.state.doc.descendants((node) => {
-        if (node.type.name === 'image') images.push(node.attrs.src);
-      });
-      expect(images).to.deep.equal(['/old.png']);
+      expect(posted.at(-1).payload.newSrc).to.equal('./media_abc.png');
+      expect(editor.view.state.doc.nodeAt(imagePos + 'before '.length).attrs)
+        .to.include({ src: './media_abc.png', alt: 'Original alt' });
     } finally {
+      restore();
+    }
+  });
+
+  it('follows the target when a collaborator edits before it during upload', async () => {
+    expect(editor.ydoc.getXmlFragment('prosemirror').length).to.be.greaterThan(0);
+    const originalImage = editor.view.state.doc.nodeAt(imagePos);
+    const peerDoc = new Y.Doc();
+    Y.applyUpdate(peerDoc, Y.encodeStateAsUpdate(editor.ydoc));
+    const peer = await createTestEditor({ ydoc: peerDoc, doc: editor.view.state.doc });
+    await nextFrame();
+    expect(peer.view.state.doc.nodeAt(imagePos)?.type.name).to.equal('image');
+    const { restore } = stubStore({
+      upgraded: true,
+      onUpload: async () => {
+        const before = Y.encodeStateVector(editor.ydoc);
+        peer.view.dispatch(peer.view.state.tr.insertText('remote ', imagePos));
+        Y.applyUpdate(editor.ydoc, Y.encodeStateAsUpdate(peer.ydoc, before));
+        await nextFrame();
+        const images = [];
+        editor.view.state.doc.descendants((node, pos) => {
+          if (node.type.name === 'image') images.push(pos);
+        });
+        expect(images).to.deep.equal([imagePos + 'remote '.length]);
+        expect(editor.view.state.doc.nodeAt(images[0])).to.equal(originalImage);
+      },
+    });
+    const { ctx, posted } = ctxFor('wysrep', 'wysrep');
+    try {
+      await handleImageReplace(request(), ctx);
+
+      expect(posted.at(-1).payload.newSrc).to.equal('./media_abc.png');
+      expect(editor.view.state.doc.nodeAt(imagePos + 'remote '.length).attrs.src)
+        .to.equal('./media_abc.png');
+    } finally {
+      restore();
+      destroyEditor(peer);
+    }
+  });
+
+  it('does not replace a new image with the same URL when the target is removed', async () => {
+    const { restore } = stubStore({
+      upgraded: true,
+      onUpload: () => {
+        const { state } = editor.view;
+        const duplicate = state.schema.nodes.image.create({ src: '/old.png', alt: 'Other image' });
+        editor.view.dispatch(state.tr.delete(imagePos, imagePos + 1).insert(imagePos, duplicate));
+      },
+    });
+    const { ctx, posted } = ctxFor('wysrep', 'wysrep');
+    try {
+      await handleImageReplace(request(), ctx);
+
+      expect(posted.at(-1).payload.error).to.contain('no longer available');
+      expect(editor.view.state.doc.nodeAt(imagePos).attrs)
+        .to.include({ src: '/old.png', alt: 'Other image' });
+    } finally {
+      restore();
+    }
+  });
+
+  it('refuses an image node reused in two positions', async () => {
+    const { state } = editor.view;
+    editor.view.dispatch(state.tr.insert(imagePos + 1, state.doc.nodeAt(imagePos)));
+    const { restore } = stubStore({ upgraded: true });
+    const { ctx, posted } = ctxFor('wysrep', 'wysrep');
+    try {
+      await handleImageReplace(request(), ctx);
+
+      expect(posted.at(-1).payload.error).to.contain('no longer available');
+      expect(editor.view.state.doc.nodeAt(imagePos).attrs.src).to.equal('/old.png');
+      expect(editor.view.state.doc.nodeAt(imagePos + 1).attrs.src).to.equal('/old.png');
+    } finally {
+      restore();
+    }
+  });
+
+  it('keeps simultaneous uploads on distinct images independent', async () => {
+    const { state } = editor.view;
+    const other = state.schema.nodes.image.create({ src: '/other.png', alt: 'Other' });
+    editor.view.dispatch(state.tr.insert(imagePos + 1, other));
+    const pending = [];
+    let bothUploadsStarted;
+    const started = new Promise((resolve) => { bothUploadsStarted = resolve; });
+    const { restore } = stubStore({
+      upgraded: true,
+      onUpload: () => new Promise((resolve) => {
+        pending.push(resolve);
+        if (pending.length === 2) bothUploadsStarted();
+      }),
+    });
+    const { ctx, posted } = ctxFor('wysrep', 'wysrep');
+    const first = handleImageReplace(request({ requestId: 'first' }), ctx);
+    const second = handleImageReplace(request({
+      proseIndex: imagePos + 1,
+      originalSrc: '/other.png',
+      requestId: 'second',
+    }), ctx);
+    try {
+      await started;
+      pending[0]();
+      await first;
+      pending[1]();
+      await second;
+
+      expect(posted.map(({ payload }) => payload.requestId)).to.deep.equal(['first', 'second']);
+      expect(posted.every(({ payload }) => !!payload.newSrc)).to.equal(true);
+      expect(editor.view.state.doc.nodeAt(imagePos).attrs.src).to.equal('./media_abc.png');
+      expect(editor.view.state.doc.nodeAt(imagePos + 1).attrs.src).to.equal('./media_abc.png');
+    } finally {
+      pending.forEach((resolve) => resolve());
       restore();
     }
   });
