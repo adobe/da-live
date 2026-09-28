@@ -271,6 +271,7 @@ export async function fetchExtensions(org, site) {
       format: row.format || '',
       icon: row.icon || '',
       ootb: OOTB_PLUGINS.has(name),
+      org,
     });
     return acc;
   }, []);
@@ -560,6 +561,7 @@ export function createCommentsView() {
 }
 
 export function extensionToPanelView(ext, section) {
+  const proxyOpts = { getUrl: getPreviewOrigin, currentOrg: ext.org };
   // Block library opens its own dedicated modal (used by the slash menu and
   // outline "+" button) rather than the generic inline panel or iframe dialog.
   if (ext.name === 'blocks') {
@@ -592,9 +594,9 @@ export function extensionToPanelView(ext, section) {
     sources: ext.ootb
       ? ext.sources
       : (ext.sources || []).map(
-        (source) => toPreviewProxyUrl(source, { getUrl: getPreviewOrigin }),
+        (source) => toPreviewProxyUrl(source, proxyOpts),
       ),
-    icon: ext.ootb ? ext.icon : toPreviewProxyUrl(ext.icon, { getUrl: getPreviewOrigin }),
+    icon: ext.ootb ? ext.icon : toPreviewProxyUrl(ext.icon, proxyOpts),
     load: async () => {
       await import('./ew-panel-extensions.js');
       const el = document.createElement('ew-panel-extension');
@@ -613,8 +615,8 @@ export function extensionToPanelView(ext, section) {
 
       const iframe = document.createElement('iframe');
       iframe.className = 'ext-iframe';
-      const src = toPreviewProxyUrl(ext.sources?.[0] ?? '', { getUrl: getPreviewOrigin });
-      await ensurePreviewProxySession(src, { getUrl: getPreviewOrigin });
+      const src = toPreviewProxyUrl(ext.sources?.[0] ?? '', proxyOpts);
+      await ensurePreviewProxySession(src, proxyOpts);
       iframe.src = src;
       iframe.title = ext.title;
       iframe.allow = 'clipboard-write *';

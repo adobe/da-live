@@ -9,7 +9,8 @@ const { PREFLIGHT_EVENT } = await import(`${getNx2()}/utils/preflight-events.js`
 const ref = new URLSearchParams(window.location.search).get('ref') || 'main';
 
 function resolveMenuItem(item, details) {
-  const fallback = { org: details?.org, site: details?.site, branch: ref };
+  const { org, site } = details || {};
+  const fallback = { org, site, branch: ref, currentOrg: org };
   return {
     ...item,
     path: item.path ? toPreviewProxyUrl(item.path, fallback) : item.path,
@@ -151,6 +152,7 @@ export default class DaPrepare extends LitElement {
       org: this.details?.org,
       site: this.details?.site,
       branch: ref,
+      currentOrg: this.details?.org,
     });
     if (item.experience === 'fullsize-dialog') {
       this._fullsizeDialogItem = item;

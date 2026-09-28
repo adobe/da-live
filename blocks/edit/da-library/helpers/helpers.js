@@ -150,12 +150,13 @@ async function fetchLibraryConfig(org, site) {
       const ootb = DA_PLUGINS[name];
       const branch = row.ref || ref;
       const sources = calculateSources(org, site, row.path);
+      const proxyOpts = { org, site, branch, currentOrg: org };
       const plugin = {
         name,
         title: row.title.trim(),
         sources: ootb
           ? sources
-          : sources.map((source) => toPreviewProxyUrl(source, { org, site, branch })),
+          : sources.map((source) => toPreviewProxyUrl(source, proxyOpts)),
         ref: row.ref || 'main',
         experience: ootb?.experience || row.experience || 'inline',
       };
@@ -181,7 +182,7 @@ async function fetchLibraryConfig(org, site) {
       }
 
       // If its not an OOTB plugin, and no provided icon, use the default
-      if (!ootb) plugin.icon = row.icon ? toPreviewProxyUrl(row.icon, { org, site, branch }) : '#S2_Icon_Plugin';
+      if (!ootb) plugin.icon = row.icon ? toPreviewProxyUrl(row.icon, proxyOpts) : '#S2_Icon_Plugin';
       acc.push(plugin);
     }
     return acc;

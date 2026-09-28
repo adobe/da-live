@@ -90,6 +90,28 @@ describe('EwToolPanel — modal experience', () => {
       expect(popup.location.href).to.equal('https://main--repo--org.stage-preview.da.live/tools/plugins/tool/index.html');
     });
 
+    it('opens cross-org window-style views at their original URL', async () => {
+      const el = createPanel([{
+        id: 'configured-tool',
+        label: 'Configured tool',
+        experience: 'window',
+        sources: ['https://main--repo--other.aem.live/tools/plugins/tool/index.html'],
+      }]);
+      el.org = 'org';
+
+      const savedOpen = window.open;
+      const popup = { location: { href: '' } };
+      window.open = () => popup;
+
+      try {
+        await el.showPanel('configured-tool');
+      } finally {
+        window.open = savedOpen;
+      }
+
+      expect(popup.location.href).to.equal('https://main--repo--other.aem.live/tools/plugins/tool/index.html');
+    });
+
     it('authenticates the same preview proxy origin the popup will load', async () => {
       const el = createPanel([{
         id: 'configured-tool',

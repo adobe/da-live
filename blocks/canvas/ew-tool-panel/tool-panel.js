@@ -207,8 +207,9 @@ class EwToolPanel extends LitElement {
       // popup; async work before window.open() gets it blocked.
       const popup = window.open('', '_blank', 'noopener,noreferrer');
       const rawHref = new URL(consumer.sources[0], window.location.href).href;
-      const href = toPreviewProxyUrl(rawHref, { getUrl: getPreviewOrigin });
-      await ensurePreviewProxySession(href, { getUrl: getPreviewOrigin });
+      const proxyOpts = { getUrl: getPreviewOrigin, currentOrg: this.org };
+      const href = toPreviewProxyUrl(rawHref, proxyOpts);
+      await ensurePreviewProxySession(href, proxyOpts);
       if (popup) popup.location.href = href;
       return;
     }

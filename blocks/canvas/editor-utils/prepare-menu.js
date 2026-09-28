@@ -13,7 +13,8 @@ const style = await loadStyle(import.meta.url);
 const ref = new URLSearchParams(window.location.search).get('ref') || 'main';
 
 function resolveMenuItem(item, details) {
-  const fallback = { org: details?.org, site: details?.site, branch: ref };
+  const { org, site } = details || {};
+  const fallback = { org, site, branch: ref, currentOrg: org };
   fallback.getUrl = getPreviewOrigin;
   return {
     ...item,
@@ -152,6 +153,7 @@ export default class PrepareMenu extends LitElement {
       org: this.details?.org,
       site: this.details?.site,
       branch: ref,
+      currentOrg: this.details?.org,
       getUrl: getPreviewOrigin,
     });
     if (item.experience === 'fullsize-dialog') {

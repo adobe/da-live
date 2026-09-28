@@ -19,6 +19,8 @@ import {
 const sheet = await getSheet('/blocks/edit/da-library/da-library.css');
 const buttons = await getSheet(`${getNx().replace(/\/nx2$/, '/nx')}/styles/buttons.css`);
 
+const getCurrentOrg = () => sanitizePathParts(window.location.hash.slice(1))[0];
+
 const ICONS = [
   '/blocks/edit/img/S2_Icon_ExperienceAdd_20_N.svg',
   '/blocks/edit/img/S2_Icon_ExperiencePreview_20_N.svg',
@@ -131,15 +133,16 @@ class DaLibrary extends LitElement {
       // Open synchronously so the browser still sees this as a user-gesture
       // popup; async work before window.open() gets it blocked.
       const popup = window.open('', href);
-      const previewHref = toPreviewProxyUrl(href);
-      await ensurePreviewProxySession(previewHref);
+      const proxyOpts = { currentOrg: getCurrentOrg() };
+      const previewHref = toPreviewProxyUrl(href, proxyOpts);
+      await ensurePreviewProxySession(previewHref, proxyOpts);
       if (popup) popup.location.href = previewHref;
       return;
     }
 
     // Inline/dialog experiences render an iframe straight at plugin.sources[0],
     // so the proxy session needs to exist before _active flips the iframe on.
-    await ensurePreviewProxySession(plugin.sources?.[0]);
+    await ensurePreviewProxySession(plugin.sources?.[0], { currentOrg: getCurrentOrg() });
     this._active = plugin;
   }
 
@@ -250,8 +253,9 @@ class DaLibrary extends LitElement {
 
   async handleOpenPreview(item) {
     const { org, site, pathname } = getItemDetails(item);
-    const url = toPreviewProxyUrl(item.path || item.value, { org, site, branch: ref });
-    await ensurePreviewProxySession(url, { org, site, branch: ref });
+    const proxyOpts = { org, site, branch: ref, currentOrg: getCurrentOrg() };
+    const url = toPreviewProxyUrl(item.path || item.value, proxyOpts);
+    await ensurePreviewProxySession(url, proxyOpts);
     this._preview = {
       name: item.name || item.key,
       url,

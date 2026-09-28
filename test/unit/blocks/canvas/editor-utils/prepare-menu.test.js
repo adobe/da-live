@@ -255,7 +255,7 @@ describe('PrepareMenu', () => {
       window.fetch = prevFetch;
     });
 
-    it('routes absolute site-specific plugin paths and icons through the DA preview proxy', async () => {
+    it('leaves cross-org absolute plugin paths and icons unproxied', async () => {
       const prevFetch = window.fetch;
       window.fetch = async (url) => {
         if (url.includes('/config/orgF/siteF')) {
@@ -279,9 +279,9 @@ describe('PrepareMenu', () => {
       el = await fixture({ details: createDetails({ org: 'orgF', site: 'siteF' }) });
 
       const item = el._menuItems.find(({ title }) => title === 'Plugin Action');
-      // Uses the org/site embedded in the absolute URL, not the fixture's details.org/site.
-      expect(item.path).to.equal('https://main--othersite--otherorg.stage-preview.da.live/tools/plugins/plugin-action/index.html');
-      expect(item.icon).to.equal('https://main--othersite--otherorg.stage-preview.da.live/tools/plugins/plugin-action/icon.svg');
+      // A plugin hosted by a different org keeps its original URL.
+      expect(item.path).to.equal('https://main--othersite--otherorg.aem.live/tools/plugins/plugin-action/index.html');
+      expect(item.icon).to.equal('https://main--othersite--otherorg.aem.live/tools/plugins/plugin-action/icon.svg');
 
       window.fetch = prevFetch;
     });
@@ -466,7 +466,7 @@ describe('PrepareMenu', () => {
     });
 
     it('authenticates the same preview proxy origin the dialog iframe will load', async () => {
-      el = await fixture();
+      el = await fixture({ details: createDetails({ org: 'orgf', site: 'sitef' }) });
       stubPopover(el);
 
       const savedAdobeIMS = window.adobeIMS;

@@ -332,6 +332,20 @@ describe('extensionToPanelView', () => {
     expect(view.icon).to.equal('https://main--repo--org.stage-preview.da.live/tools/plugins/tool/icon.svg');
   });
 
+  it('leaves extension sources and icons from another org unproxied', () => {
+    const ext = {
+      name: 'configured-tool',
+      title: 'Configured tool',
+      experience: 'inline',
+      org: 'org',
+      sources: ['https://main--repo--other.aem.live/tools/plugins/tool/index.html'],
+      icon: 'https://main--repo--other.aem.live/tools/plugins/tool/icon.svg',
+    };
+    const view = extensionToPanelView(ext, 'Extensions');
+    expect(view.sources).to.deep.equal(['https://main--repo--other.aem.live/tools/plugins/tool/index.html']);
+    expect(view.icon).to.equal('https://main--repo--other.aem.live/tools/plugins/tool/icon.svg');
+  });
+
   it('authenticates the same preview proxy origin the fullsize-dialog iframe will load', async () => {
     const savedAdobeIMS = window.adobeIMS;
     window.adobeIMS = { getAccessToken: () => ({ token: 'T1' }) };

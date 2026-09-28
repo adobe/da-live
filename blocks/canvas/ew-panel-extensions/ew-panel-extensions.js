@@ -61,8 +61,9 @@ class EwPanelExtension extends LitElement {
       this._iframeSrc = source;
       return;
     }
-    const iframeSrc = toPreviewProxyUrl(source, { getUrl: getPreviewOrigin });
-    await ensurePreviewProxySession(iframeSrc, { getUrl: getPreviewOrigin });
+    const proxyOpts = { getUrl: getPreviewOrigin, currentOrg: this.extension?.org };
+    const iframeSrc = toPreviewProxyUrl(source, proxyOpts);
+    await ensurePreviewProxySession(iframeSrc, proxyOpts);
     if (source === this.extension?.sources?.[0]) this._iframeSrc = iframeSrc;
   }
 

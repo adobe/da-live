@@ -21,7 +21,7 @@ function buildPreviewUrl({
   return `${getUrl(org, site, branch)}${pathname}${search}${hash}`;
 }
 
-export function getPreviewProxyDetails(input, fallback = {}) {
+function resolvePreviewProxyDetails(input, fallback) {
   if (typeof input !== 'string' || !input) return { url: input };
   if (input.startsWith('#') || input.includes('.svg#')) return { url: input };
 
@@ -86,6 +86,21 @@ export function getPreviewProxyDetails(input, fallback = {}) {
   }
 
   return { url: input };
+}
+
+/**
+ * Resolve a plugin/extension URL to its DA preview proxy equivalent.
+ * When `fallback.currentOrg` is set, URLs belonging to a different org are
+ * returned unchanged: the user may not have access to that org, and a public
+ * cross-org plugin keeps working at its original URL.
+ */
+export function getPreviewProxyDetails(input, fallback = {}) {
+  const details = resolvePreviewProxyDetails(input, fallback);
+  const { currentOrg } = fallback;
+  if (currentOrg && details.org && details.org.toLowerCase() !== currentOrg.toLowerCase()) {
+    return { url: input };
+  }
+  return details;
 }
 
 export function toPreviewProxyUrl(input, fallback) {

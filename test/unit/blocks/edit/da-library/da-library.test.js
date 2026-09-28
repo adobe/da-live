@@ -165,6 +165,22 @@ describe('da-library element', () => {
     }
   });
 
+  it('handlePluginClick opens cross-org window plugins at their original URL', async () => {
+    await fixture([]);
+    const popup = { location: { href: '' } };
+    const savedOpen = window.open;
+    const hashBefore = window.location.hash;
+    window.open = () => popup;
+    window.history.replaceState(null, '', '#/org/site/page');
+    try {
+      await el.handlePluginClick({ name: 'plug', experience: 'window', sources: ['https://main--repo--other.aem.live/x'] });
+      expect(popup.location.href).to.equal('https://main--repo--other.aem.live/x');
+    } finally {
+      window.open = savedOpen;
+      window.history.replaceState(null, '', hashBefore || window.location.pathname);
+    }
+  });
+
   it('handlePluginClick is a no-op for window-experience without sources', async () => {
     await fixture([]);
     let opened = 0;

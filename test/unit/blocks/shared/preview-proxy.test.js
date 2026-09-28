@@ -102,6 +102,24 @@ describe('getPreviewProxyDetails', () => {
     const details = getPreviewProxyDetails('not a url');
     expect(details.url).to.equal('not a url');
   });
+
+  it('proxies same-org URLs when currentOrg is set (case-insensitive)', () => {
+    const details = getPreviewProxyDetails('https://main--tools--org.aem.live/p', { currentOrg: 'ORG' });
+    expect(details.url).to.equal('https://main--tools--org.preview.da.live/p');
+    expect(details.org).to.equal('org');
+  });
+
+  it('leaves cross-org URLs unchanged when currentOrg is set', () => {
+    const input = 'https://main--site--other.aem.live/p';
+    expect(getPreviewProxyDetails(input, { currentOrg: 'org' })).to.deep.equal({ url: input });
+    const content = 'https://content.da.live/other/site/p';
+    expect(getPreviewProxyDetails(content, { currentOrg: 'org' })).to.deep.equal({ url: content });
+  });
+
+  it('always proxies relative paths against the fallback org', () => {
+    const details = getPreviewProxyDetails('/p', { org: 'org', site: 'site', currentOrg: 'org' });
+    expect(details.url).to.equal('https://main--site--org.preview.da.live/p');
+  });
 });
 
 describe('toPreviewProxyUrl', () => {
@@ -134,6 +152,19 @@ describe('ensurePreviewProxySession', () => {
     };
 
     await ensurePreviewProxySession('https://example.com/path');
+
+    expect(called).to.be.false;
+  });
+
+  it('does not request a cookie for a cross-org url', async () => {
+    window.adobeIMS = { getAccessToken: () => ({ token: 'T1' }) };
+    let called = false;
+    window.fetch = async () => {
+      called = true;
+      return new Response('', { status: 200 });
+    };
+
+    await ensurePreviewProxySession('https://main--site--other.aem.live/path', { currentOrg: 'org' });
 
     expect(called).to.be.false;
   });
