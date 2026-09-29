@@ -197,9 +197,12 @@ export class EwEditorDoc extends LitElement {
     // A plain text selection has no classifiable node, so selectedNodePayload returns
     // null and the WYSIWYG canvas never scrolls. Fall back to the active content anchor
     // (the same shape content navigation already broadcasts) so selecting text in the
-    // doc canvas still scrolls the WYSIWYG to that block (#1220).
+    // doc canvas still scrolls the WYSIWYG to that block (#1220). Skipped for a
+    // selection mirrored from the iframe itself: scrolling the pane the user is
+    // editing in back to their own caret would fight them.
     let contentFallback = false;
-    if (node === null && scrollIntoView && overrideNode === undefined) {
+    if (node === null && scrollIntoView && overrideNode === undefined
+      && !this._controllerCtx?.mirroringFromIframe) {
       const proseIndex = activeContentProseIndex(view);
       if (typeof proseIndex === 'number') {
         node = { anchorType: 'content', proseIndex };
