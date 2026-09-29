@@ -30,7 +30,7 @@ Always check `canvas-bus.js`, da-nx's `PANEL_EVENT`/`CHAT_EVENT`, and `MESSAGE_T
 
 Use [Conventional Commits](https://www.conventionalcommits.org/) for every commit message and PR title (`fix:`, `feat:`, `chore:`, …). A husky `commit-msg` hook runs commitlint (`@commitlint/config-conventional`) locally.
 
-PR titles matter most: squash-merged PRs use the title as the commit semantic-release reads, and the title bypasses the local hook. Pick the type based on consumer impact — `fix` (patch), `feat` (minor), and `!`/`BREAKING CHANGE` (major) create a release; everything else (`chore`, `docs`, `ci`, `test`, `refactor`, `style`, `build`) does not.
+PR titles matter most: squash-merged PRs use the title as the commit semantic-release reads, and the title bypasses the local hook. Pick the type based on consumer impact — `fix`, `perf`, `revert` (patch) and `feat` (minor) create a release; everything else (`chore`, `docs`, `ci`, `test`, `refactor`, `style`, `build`) does not. Only a `BREAKING CHANGE:` footer triggers a major release — the `feat!:` shorthand is not recognized by the release config, so don't use it.
 
 ## Changelog
 
