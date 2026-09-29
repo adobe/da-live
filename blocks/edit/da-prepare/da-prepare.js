@@ -190,7 +190,9 @@ export default class DaPrepare extends LitElement {
 
       const { view, org, site, path } = this.details;
 
-      const context = { view, org, site, ref: 'main', path };
+      const context = {
+        view, org, site, repo: site, ref: 'main', path,
+      };
       const { token } = window.adobeIMS.getAccessToken();
 
       const message = { ready: true, context, token };
