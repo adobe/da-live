@@ -95,3 +95,32 @@ describe('Ew panel library icons: preview + search', () => {
     expect(img.style.display).to.equal('none');
   });
 });
+
+describe('Ew panel library access errors', () => {
+  let el;
+
+  beforeEach(async () => {
+    el = document.createElement('ew-panel-library');
+    document.body.append(el);
+    el.extension = { name: 'icons', ootb: true, sources: [] };
+    await el.updateComplete;
+    await el._loadItems();
+  });
+
+  afterEach(() => el.remove());
+
+  it('explains how to get access when the library refused the request', async () => {
+    const items = [];
+    items.authError = true;
+    el._items = items;
+    await el.updateComplete;
+    const state = el.shadowRoot.querySelector('.ext-state').textContent;
+    expect(state).to.include('sign in with AEM Sidekick');
+  });
+
+  it('keeps the plain empty state otherwise', async () => {
+    el._items = [];
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.ext-state').textContent).to.equal('No icons found.');
+  });
+});

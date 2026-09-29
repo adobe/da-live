@@ -8,7 +8,8 @@ import {
   insertText,
   insertTemplate,
   getPreviewStatus,
-  getItemPreviewUrl,
+  ensureItemPreviewAccess,
+  LIBRARY_AUTH_MESSAGE,
 } from './helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 
@@ -124,7 +125,7 @@ class EwPanelLibrary extends LitElement {
   async _openPreview(item) {
     const { org, site } = this._hashState || {};
     if (!org || !site) return;
-    const details = getItemPreviewUrl(item, { org, site });
+    const details = await ensureItemPreviewAccess(item, { org, site });
     this._preview = {
       name: item.name || item.key || item.title,
       url: details.previewUrl,
@@ -200,9 +201,13 @@ class EwPanelLibrary extends LitElement {
     `;
   }
 
+  _renderEmpty(message) {
+    return html`<div class="ext-state">${this._items?.authError ? LIBRARY_AUTH_MESSAGE : message}</div>`;
+  }
+
   _renderBlocks() {
     if (this._items === undefined) return html`<div class="ext-state">Loading…</div>`;
-    if (!this._items.length) return html`<div class="ext-state">No blocks found.</div>`;
+    if (!this._items.length) return this._renderEmpty('No blocks found.');
     return html`
       <ul class="ext-list">
         ${this._items.map((block) => html`
@@ -224,7 +229,7 @@ class EwPanelLibrary extends LitElement {
 
   _renderTemplates() {
     if (this._items === undefined) return html`<div class="ext-state">Loading…</div>`;
-    if (!this._items.length) return html`<div class="ext-state">No templates found.</div>`;
+    if (!this._items.length) return this._renderEmpty('No templates found.');
     return html`
       <ul class="ext-list">
         ${this._items.map((item) => html`
@@ -262,7 +267,7 @@ class EwPanelLibrary extends LitElement {
 
   _renderKeyValueItems(label) {
     if (this._items === undefined) return html`<div class="ext-state">Loading…</div>`;
-    if (!this._items.length) return html`<div class="ext-state">No ${label} found.</div>`;
+    if (!this._items.length) return this._renderEmpty(`No ${label} found.`);
 
     const isIcons = this.extension.name === 'icons';
     const items = this._filteredItems();

@@ -13,6 +13,11 @@ let createCommentsView;
 let fetchExtensions;
 let getItemPreviewUrl;
 let loadBlockLibrary;
+let resetBlockLibraryCache;
+let fetchBlocks;
+let fetchItems;
+let insertTemplate;
+let ensureItemPreviewAccess;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
@@ -23,6 +28,11 @@ before(async () => {
   fetchExtensions = mod.fetchExtensions;
   getItemPreviewUrl = mod.getItemPreviewUrl;
   loadBlockLibrary = mod.loadBlockLibrary;
+  resetBlockLibraryCache = mod.resetBlockLibraryCache;
+  fetchBlocks = mod.fetchBlocks;
+  fetchItems = mod.fetchItems;
+  insertTemplate = mod.insertTemplate;
+  ensureItemPreviewAccess = mod.ensureItemPreviewAccess;
 });
 
 // The DA Preview Proxy host: `<ref>--<site>--<org>.(stage-)preview.da.live`.
@@ -346,6 +356,115 @@ describe('DA Preview Proxy routing', () => {
     expect(source.url).to.match(PROXY_HOST);
     expect(source.url).to.not.include('aem.live');
     expect(source.opts.credentials).to.equal('include');
+  });
+
+  describe('credentials, cookie and access errors', () => {
+    let calls;
+    let respond;
+
+    beforeEach(() => {
+      resetBlockLibraryCache();
+      calls = [];
+      respond = () => new Response(JSON.stringify({ data: [] }), { status: 200 });
+      window.fetch = (url, opts) => {
+        calls.push({ url: url.toString(), opts: opts || {} });
+        return Promise.resolve(respond(url.toString()));
+      };
+    });
+
+    afterEach(() => {
+      window.localStorage.removeItem('nx-ims');
+      delete window.adobeIMS;
+      resetBlockLibraryCache();
+    });
+
+    function signIn() {
+      window.localStorage.setItem('nx-ims', 'true');
+      window.adobeIMS = { getAccessToken: () => ({ token: 'tok' }) };
+    }
+
+    it('fetches non-AEM absolute sources without credentials (their CORS is `*`)', async () => {
+      await fetchBlocks(['https://example.com/shared/blocks.json']);
+      expect(calls).to.have.lengthOf(1);
+      expect(calls[0].url).to.equal('https://example.com/shared/blocks.json');
+      expect(calls[0].opts.credentials).to.equal(undefined);
+    });
+
+    it('rewrites absolute AEM sources to the proxy, keeping the query string', async () => {
+      await fetchItems(['https://main--proxysite--proxyorg.aem.live/icons.json?sheet=a']);
+      expect(calls[0].url).to.match(PROXY_HOST);
+      expect(calls[0].url.endsWith('/icons.json?sheet=a')).to.be.true;
+      expect(calls[0].opts.credentials).to.equal('include');
+    });
+
+    it('leaves look-alike hosts that are not exactly branch--site--org on AEM alone', async () => {
+      await fetchBlocks(['https://main--proxysite--proxyorg.evilaem.page/blocks.json']);
+      expect(calls[0].url).to.equal('https://main--proxysite--proxyorg.evilaem.page/blocks.json');
+      expect(calls[0].opts.credentials).to.equal(undefined);
+    });
+
+    it('mints the proxy cookie once, before the first credentialed request, when signed in', async () => {
+      signIn();
+      await fetchBlocks([
+        'https://main--proxysite--proxyorg.aem.page/a.json',
+        'https://main--proxysite--proxyorg.aem.page/b.json',
+      ]);
+      const urls = calls.map((c) => c.url);
+      const proxyGimme = urls.filter((u) => PROXY_HOST.test(u) && u.endsWith('/gimme_cookie'));
+      expect(proxyGimme).to.have.lengthOf(1);
+      expect(urls.indexOf(proxyGimme[0])).to.be.below(urls.findIndex((u) => u.endsWith('/a.json')));
+      expect(urls.filter((u) => u.endsWith('.json'))).to.have.lengthOf(2);
+    });
+
+    it('does not mint a cookie when signed out', async () => {
+      await fetchBlocks(['https://main--proxysite--proxyorg.aem.page/a.json']);
+      expect(calls.some((c) => c.url.includes('gimme_cookie'))).to.be.false;
+    });
+
+    it('flags authError when every source refuses access, and does not cache it', async () => {
+      setDaConfigs([{ library: { data: [{ title: 'Blocks', path: '/blocks.json' }] }, data: [] }]);
+      respond = () => new Response('', { status: 401 });
+      const first = await loadBlockLibrary('proxyorg', 'proxysite');
+      expect(first.blocks).to.have.lengthOf(0);
+      expect(first.blocks.authError).to.be.true;
+
+      respond = () => new Response(JSON.stringify({ data: [{ name: 'Hero', path: '/hero' }] }), { status: 200 });
+      const second = await loadBlockLibrary('proxyorg', 'proxysite');
+      expect(second.blocks.map((b) => b.name)).to.deep.equal(['Hero']);
+      expect(second.blocks.authError).to.equal(undefined);
+    });
+
+    it('does not flag authError for a plain empty library', async () => {
+      const items = await fetchItems(['/placeholders.json']);
+      expect(items.authError).to.equal(undefined);
+    });
+
+    it('resolves inserted variant images against the public AEM origin, not the proxy', async () => {
+      respond = () => new Response(
+        '<body><div><div class="hero"><div><div><img src="./media_1.png"></div></div></div></div></body>',
+        { status: 200 },
+      );
+      const [variant] = await getBlockVariants('https://main--proxysite--proxyorg.aem.page/blocks/hero');
+      const img = variant.dom.querySelector('img');
+      expect(img.getAttribute('src')).to.equal('https://main--proxysite--proxyorg.aem.page/media_1.png');
+    });
+
+    it('inserts templates from AEM through the proxy', async () => {
+      respond = () => new Response('', { status: 404 });
+      await insertTemplate(null, 'https://main--proxysite--proxyorg.aem.page/templates/t');
+      expect(calls[0].url).to.match(PROXY_HOST);
+      expect(calls[0].opts.credentials).to.equal('include');
+    });
+
+    it('mints the preview cookie before handing back the preview iframe URL', async () => {
+      signIn();
+      const details = await ensureItemPreviewAccess(
+        { path: 'https://main--proxysite--proxyorg.aem.page/blocks/hero' },
+        { org: 'proxyorg', site: 'proxysite' },
+      );
+      expect(details.previewUrl).to.match(PROXY_HOST);
+      expect(calls.some((c) => PROXY_HOST.test(c.url) && c.url.endsWith('/gimme_cookie'))).to.be.true;
+    });
   });
 });
 
