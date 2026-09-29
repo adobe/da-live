@@ -40,20 +40,6 @@ class EwBlockToolbar extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [styles];
-    this._onOutsidePointerDown = (e) => {
-      if (!this.open) return;
-      const path = e.composedPath();
-      if (path.includes(this)) return;
-      const editorDom = this.view?.dom;
-      if (editorDom && path.includes(editorDom)) return;
-      this.hide();
-    };
-    document.addEventListener('pointerdown', this._onOutsidePointerDown);
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    document.removeEventListener('pointerdown', this._onOutsidePointerDown);
   }
 
   updated(changed) {
@@ -160,6 +146,17 @@ class EwBlockToolbar extends LitElement {
 
   get open() {
     return this.classList.contains('open');
+  }
+
+  /** Read by toolbarController to tell an unchanged re-render from a new block. */
+  get blockName() { return this._blockName ?? ''; }
+
+  get blockVariant() { return this._currentVariant ?? ''; }
+
+  /** A picker left open is the single source of truth for "is interacting", so a
+   * re-render can't close it underneath the user. */
+  get isInteracting() {
+    return this.shadowRoot?.querySelector('nx-picker')?.open ?? false;
   }
 
   _icon(name) {

@@ -23,7 +23,8 @@ import { createTrackingPlugin } from '../editor-utils/prose-diff.js';
 import { resolveEditorDocSession } from './utils/load-editor-doc.js';
 import { afterNextPaint, ensureProseMountedInShadow } from './utils/shadow-mount.js';
 import { teardownEditorDocResources } from './utils/teardown.js';
-import { getSelectionToolbar, hideSelectionToolbar, setSelectionToolbarCtx } from '../editor-utils/selection-toolbar.js';
+import { setSelectionToolbarCtx } from '../editor-utils/selection-toolbar.js';
+import { toolbarController } from '../editor-utils/toolbar-controller.js';
 import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.js';
 import mediaBusImage from './prose-plugins/mediaBusImage.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
@@ -74,6 +75,7 @@ export class EwEditorDoc extends LitElement {
       this._canWrite = false;
       this._teardown();
       setSelectionToolbarCtx();
+      toolbarController.reset();
       this._error = undefined;
       this._lastDocBlockIndex = undefined;
       this._lastDocSelKey = undefined;
@@ -243,13 +245,38 @@ export class EwEditorDoc extends LitElement {
       path: controllerPathnameFromEditorCtx(this.ctx),
       canWrite: this._canWrite === true,
       getToken: async () => (await loadIms())?.accessToken?.token ?? null,
-      // Relay handlers must not force focus / move the hidden view's caret (see
-      // handleCursorMove) — it makes y-prosemirror clobber incoming remote edits.
-      isDocViewHidden: () => this._editorView === 'layout',
     };
     wireQuickEditControllerPort(this._controllerCtx);
 
     this._comments.setupIframeBridge();
+  }
+
+  /** The doc surface owns the toolbar only while the ProseMirror DOM holds focus. */
+  _wireProseFocus(view, proseEl) {
+    this._unwireProseFocus?.();
+    const onFocusIn = () => canvasBus.toolbarSurfaceRequest.emit({ surface: 'doc', active: true });
+    const onFocusOut = () => {
+      // Defer so focus can settle. If it landed on a toolbar (button/dialog) or back
+      // in the prose, stay active; otherwise the user left the doc surface.
+      setTimeout(() => {
+        // ProseMirror moves focus within its own dom when it installs a NodeSelection,
+        // which fires focusout without the user leaving. `view.hasFocus()` is
+        // shadow-root aware, unlike `document.activeElement`.
+        if (view.hasFocus?.()) return;
+        const tb = toolbarController.ensureToolbar();
+        const btb = toolbarController.ensureBlockToolbar();
+        const active = document.activeElement;
+        if (active && [tb, btb].some((el) => active === el || el.contains(active))) return;
+        canvasBus.toolbarSurfaceRequest.emit({ surface: 'doc', active: false });
+      }, 0);
+    };
+    proseEl.addEventListener('focusin', onFocusIn);
+    proseEl.addEventListener('focusout', onFocusOut);
+    this._unwireProseFocus = () => {
+      proseEl.removeEventListener('focusin', onFocusIn);
+      proseEl.removeEventListener('focusout', onFocusOut);
+      this._unwireProseFocus = undefined;
+    };
   }
 
   _setupAwareness(wsProvider) {
@@ -272,6 +299,7 @@ export class EwEditorDoc extends LitElement {
 
   _teardown() {
     this._stopObservingUndoManager();
+    this._unwireProseFocus?.();
     const { wsProvider, view, proseEl } = this._proseContext ?? {};
     teardownEditorDocResources({
       clearPortHandler: () => this._clearControllerPort(),
@@ -357,6 +385,8 @@ export class EwEditorDoc extends LitElement {
         sourceUrl,
         canWrite: this._canWrite,
       });
+      toolbarController.setDocView(view);
+      this._wireProseFocus(view, proseEl);
 
       this._comments.loadStore(wsProvider);
 
@@ -381,10 +411,6 @@ export class EwEditorDoc extends LitElement {
     this._unsubscribeEditorActive = canvasBus.editorViewState.subscribe(({ view }) => {
       this._editorView = view;
       this.hidden = view === 'layout';
-      // Drop any forced-focus override on the now-hidden doc view; natural
-      // hasFocus() is correct and stops y-prosemirror reconciling against it.
-      if (view === 'layout') delete this._proseContext?.view?.hasFocus;
-      hideSelectionToolbar();
     });
     this._unsubscribeWysiwygPortReady = canvasBus.wysiwygPortReady.subscribe(
       ({ port, iframe } = {}) => {
@@ -440,12 +466,14 @@ export class EwEditorDoc extends LitElement {
     // The toolbar is a manual popover in the dialog's top layer and swallows Escape, so
     // close the modal on Escape ourselves (unless a toolbar dropdown is handling it).
     this._onBlockEditKeydown = (e) => {
-      if (e.key !== 'Escape' || getSelectionToolbar().isInteracting) return;
+      if (e.key !== 'Escape' || toolbarController.ensureToolbar().isInteracting) return;
       e.preventDefault();
       this.exitBlockEdit();
     };
     document.addEventListener('keydown', this._onBlockEditKeydown, true);
     canvasBus.blockEditState.emit({ open: true });
+    // Claim the surface before focusing, so the focus policy lets `view.focus()`
+    // through and the toolbar serves selections made inside the modal.
     view.focus();
   }
 
@@ -467,9 +495,10 @@ export class EwEditorDoc extends LitElement {
       document.removeEventListener('keydown', this._onBlockEditKeydown, true);
       this._onBlockEditKeydown = undefined;
     }
-    hideSelectionToolbar();
+    canvasBus.blockEditState.emit({ open: false });
+    canvasBus.toolbarSurfaceRequest.emit({ active: false });
     // Return the toolbar to the body before the modal DOM is torn down by re-render.
-    const toolbar = getSelectionToolbar();
+    const toolbar = toolbarController.ensureToolbar();
     if (toolbar.parentElement && toolbar.parentElement !== document.body) {
       document.body.appendChild(toolbar);
     }
@@ -480,7 +509,6 @@ export class EwEditorDoc extends LitElement {
       const body = updateDocument(this._controllerCtx);
       if (body) canvasBus.editorHtmlState.emit(body);
     }
-    canvasBus.blockEditState.emit({ open: false });
   }
 
   disconnectedCallback() {
@@ -492,6 +520,7 @@ export class EwEditorDoc extends LitElement {
     this._unsubscribeBlockEditRequest?.();
     this._teardown();
     setSelectionToolbarCtx();
+    toolbarController.reset();
     super.disconnectedCallback();
   }
 
@@ -508,15 +537,28 @@ export class EwEditorDoc extends LitElement {
       }
     }
     const { proseEl } = this._proseContext ?? {};
+    let remounted = false;
     if (proseEl) {
+      const previousParent = proseEl.parentElement;
       ensureProseMountedInShadow({ shadowRoot: this.shadowRoot, proseEl });
+      remounted = proseEl.parentElement !== previousParent;
     }
     if (this._blockEditMode) {
       // Host the selection toolbar inside the dialog so it sits in the dialog's top
       // layer (a body-level toolbar would render behind the modal backdrop).
       const host = this.shadowRoot.querySelector('.block-edit-toolbar-host');
-      const toolbar = getSelectionToolbar();
+      const toolbar = toolbarController.ensureToolbar();
       if (host && toolbar.parentElement !== host) host.appendChild(toolbar);
+      // Moving the prose dom into the dialog drops DOM focus; restore it, or the
+      // modal opens uneditable and with no active surface.
+      if (remounted) {
+        // Wait for the paint that displays the dialog — focus() is a no-op until then.
+        afterNextPaint(() => {
+          if (!this._blockEditMode) return;
+          this._proseContext?.view?.focus();
+          canvasBus.toolbarSurfaceRequest.emit({ surface: 'doc', active: true });
+        });
+      }
     }
   }
 
