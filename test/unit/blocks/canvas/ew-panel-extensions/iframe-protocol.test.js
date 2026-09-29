@@ -73,6 +73,7 @@ describe('setupIframeChannel', () => {
     expect(message.project).to.deep.equal({
       org: 'myorg',
       repo: 'mysite',
+      site: 'mysite',
       ref: 'feature123',
       path: '/a/b',
       view: 'split',
