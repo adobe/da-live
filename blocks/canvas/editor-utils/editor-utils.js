@@ -15,13 +15,19 @@ const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
  * that produced it. The reset is in a `finally` deliberately: stranding the flag
  * `true` (a throw inside `dispatch`) silently stops the iframe receiving any
  * further body updates for the rest of the session.
+ *
+ * `mirroringFromIframe` marks the dispatch as iframe-originated for the (synchronous)
+ * selection-tracking hook, so it doesn't scroll the iframe back to where the user
+ * already is. Kept separate from `suppressRerender`, which block edit also holds.
  */
 export function dispatchMirror(view, tr, ctx) {
   ctx.suppressRerender = true;
+  ctx.mirroringFromIframe = true;
   try {
     view.dispatch(tr);
   } finally {
     ctx.suppressRerender = false;
+    ctx.mirroringFromIframe = false;
   }
 }
 
