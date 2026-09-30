@@ -308,3 +308,174 @@ describe('EwEditorDoc — block-edit prevents overlapping SET_BODY redecorations
     expect(port.active).to.be.above(0, 'exiting flushes a redecoration, once it is safe');
   });
 });
+
+describe('EwEditorDoc — _broadcastSelectedNode text-selection fallback (#1220)', () => {
+  let editor;
+  let el;
+  let messages;
+  let ctx;
+
+  // Two plain paragraphs: "first" spans 0–7, "second" starts at 7.
+  function setTextDoc(view) {
+    const { schema } = view.state;
+    const para = (text) => schema.nodes.paragraph.create(null, schema.text(text));
+    const { content } = schema.nodes.doc.create(null, [para('first'), para('second')]);
+    view.dispatch(view.state.tr.replaceWith(0, view.state.doc.content.size, content));
+  }
+
+  function setCursor(pos) {
+    const { state } = editor.view;
+    editor.view.dispatch(state.tr.setSelection(TextSelection.create(state.doc, pos)));
+  }
+
+  beforeEach(async () => {
+    editor = await createTestEditor();
+    setTextDoc(editor.view);
+    el = document.createElement('ew-editor-doc');
+    messages = [];
+    ctx = { port: { postMessage: (msg) => messages.push(msg) }, suppressRerender: false };
+    el._proseContext = { view: editor.view };
+    el._controllerCtx = ctx;
+  });
+
+  afterEach(() => {
+    destroyEditor(editor);
+  });
+
+  it('scrolls the WYSIWYG to the content anchor of a doc-origin text cursor', () => {
+    setCursor(3);
+    el._broadcastSelectedNode(true);
+
+    expect(messages).to.have.lengthOf(1);
+    expect(messages[0].node).to.deep.equal({ anchorType: 'content', proseIndex: 1 });
+    expect(messages[0].scrollIntoView).to.equal(true);
+    expect(messages[0].payload).to.deep.equal({
+      node: { anchorType: 'content', proseIndex: 1 },
+      scrollIntoView: true,
+    });
+  });
+
+  it('does not re-broadcast while the cursor stays in the same block, but does on a block change', () => {
+    setCursor(2);
+    el._broadcastSelectedNode(true);
+    setCursor(4);
+    el._broadcastSelectedNode(true);
+    expect(messages).to.have.lengthOf(1);
+
+    setCursor(10);
+    el._broadcastSelectedNode(true);
+    expect(messages).to.have.lengthOf(2);
+    expect(messages[1].node).to.deep.equal({ anchorType: 'content', proseIndex: 8 });
+    expect(messages[1].scrollIntoView).to.equal(true);
+  });
+
+  it('does not scroll the iframe back to a selection mirrored from the iframe itself', () => {
+    setCursor(3);
+    ctx.mirroringFromIframe = true;
+    el._broadcastSelectedNode(true);
+
+    expect(messages).to.have.lengthOf(1);
+    expect(messages[0].node).to.equal(null);
+    expect(messages[0].scrollIntoView).to.equal(false);
+  });
+
+  it('skips the scroll for a real dispatchMirror, then scrolls again for doc-origin moves', async () => {
+    const { dispatchMirror } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
+    destroyEditor(editor);
+    const onSelection = () => el._broadcastSelectedNode(true);
+    const trackingPlugin = createTrackingPlugin(null, null, null, onSelection);
+    editor = await createTestEditor({ additionalPlugins: [trackingPlugin] });
+    setTextDoc(editor.view);
+    el._proseContext = { view: editor.view };
+    messages.length = 0;
+    el._lastBroadcastNodeKey = undefined;
+
+    const { view } = editor;
+    dispatchMirror(view, view.state.tr.setSelection(TextSelection.create(view.state.doc, 3)), ctx);
+    expect(messages.map((m) => m.scrollIntoView)).to.deep.equal([false]);
+    expect(ctx.mirroringFromIframe).to.equal(false);
+
+    setCursor(10);
+    expect(messages).to.have.lengthOf(2);
+    expect(messages[1].scrollIntoView).to.equal(true);
+  });
+
+  describe('selections inside a block (table)', () => {
+    let tableStarts;
+
+    // intro paragraph, table A (two cells), table B (one cell).
+    function setTableDoc(view) {
+      const { schema } = view.state;
+      const para = (text) => schema.nodes.paragraph.create(null, schema.text(text));
+      const cell = (text) => schema.nodes.table_cell.create(null, para(text));
+      const table = (...texts) => schema.nodes.table.create(
+        null,
+        schema.nodes.table_row.create(null, texts.map(cell)),
+      );
+      const { content } = schema.nodes.doc.create(null, [
+        para('intro'), table('a1', 'a2'), table('b1'),
+      ]);
+      view.dispatch(view.state.tr.replaceWith(0, view.state.doc.content.size, content));
+      tableStarts = [];
+      view.state.doc.forEach((node, offset) => {
+        if (node.type.name === 'table') tableStarts.push(offset);
+      });
+    }
+
+    function posInText(text) {
+      let found;
+      editor.view.state.doc.descendants((node, pos) => {
+        if (found === undefined && node.isText && node.text === text) found = pos + 1;
+      });
+      return found;
+    }
+
+    beforeEach(() => {
+      setTableDoc(editor.view);
+    });
+
+    it('broadcasts the whole-table anchor with scrollIntoView for a cursor in a cell', () => {
+      setCursor(posInText('a1'));
+      el._broadcastSelectedNode(true);
+
+      expect(messages).to.have.lengthOf(1);
+      const node = { anchorType: 'table', proseIndex: tableStarts[0] + 1 };
+      expect(messages[0].node).to.deep.equal(node);
+      expect(messages[0].scrollIntoView).to.equal(true);
+      expect(messages[0].payload).to.deep.equal({ node, scrollIntoView: true });
+    });
+
+    it('does not re-broadcast when moving between cells of the same table', () => {
+      setCursor(posInText('a1'));
+      el._broadcastSelectedNode(true);
+      setCursor(posInText('a2'));
+      el._broadcastSelectedNode(true);
+
+      expect(messages).to.have.lengthOf(1);
+    });
+
+    it('re-broadcasts when moving to a different block', () => {
+      setCursor(posInText('a1'));
+      el._broadcastSelectedNode(true);
+      setCursor(posInText('b1'));
+      el._broadcastSelectedNode(true);
+      setCursor(posInText('intro'));
+      el._broadcastSelectedNode(true);
+
+      expect(messages).to.have.lengthOf(3);
+      expect(messages[1].node).to.deep.equal({ anchorType: 'table', proseIndex: tableStarts[1] + 1 });
+      expect(messages[1].scrollIntoView).to.equal(true);
+      expect(messages[2].node).to.deep.equal({ anchorType: 'content', proseIndex: 1 });
+    });
+
+    it('does not scroll for a table-cell selection mirrored from the iframe', () => {
+      setCursor(posInText('a1'));
+      ctx.mirroringFromIframe = true;
+      el._broadcastSelectedNode(true);
+
+      expect(messages).to.have.lengthOf(1);
+      expect(messages[0].node).to.equal(null);
+      expect(messages[0].scrollIntoView).to.equal(false);
+    });
+  });
+});
