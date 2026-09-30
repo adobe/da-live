@@ -10,7 +10,14 @@ import {
   editorDocRenderPhase,
 } from './utils/ctx.js';
 import { subscribeCollabUserList } from './utils/awareness-users.js';
-import { describeDocSelection, applyHighlight, SEL_BLOCK, selectedNodePayload, activeContentProseIndex } from './utils/selection.js';
+import {
+  describeDocSelection,
+  applyHighlight,
+  SEL_BLOCK,
+  selectedNodePayload,
+  activeContentProseIndex,
+  enclosingTablePayload,
+} from './utils/selection.js';
 import {
   prefetchWysiwygCookiesIfSignedIn,
   wireQuickEditControllerPort,
@@ -197,9 +204,10 @@ export class EwEditorDoc extends LitElement {
     // A plain text selection has no classifiable node, so selectedNodePayload returns
     // null and the WYSIWYG canvas never scrolls. Fall back to the active content anchor
     // (the same shape content navigation already broadcasts) so selecting text in the
-    // doc canvas still scrolls the WYSIWYG to that block (#1220). Skipped for a
-    // selection mirrored from the iframe itself: scrolling the pane the user is
-    // editing in back to their own caret would fight them.
+    // doc canvas still scrolls the WYSIWYG to that block (#1220). Inside a block (table)
+    // there is no content anchor, so fall back to the whole-table anchor instead.
+    // Skipped for a selection mirrored from the iframe itself: scrolling the pane the
+    // user is editing in back to their own caret would fight them.
     let contentFallback = false;
     if (node === null && scrollIntoView && overrideNode === undefined
       && !this._controllerCtx?.mirroringFromIframe) {
@@ -207,6 +215,9 @@ export class EwEditorDoc extends LitElement {
       if (typeof proseIndex === 'number') {
         node = { anchorType: 'content', proseIndex };
         contentFallback = true;
+      } else {
+        node = enclosingTablePayload(view);
+        contentFallback = Boolean(node);
       }
     }
     const key = node ? `${node.anchorType}:${node.proseIndex}` : 'null';

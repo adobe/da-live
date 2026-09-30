@@ -399,4 +399,83 @@ describe('EwEditorDoc — _broadcastSelectedNode text-selection fallback (#1220)
     expect(messages).to.have.lengthOf(2);
     expect(messages[1].scrollIntoView).to.equal(true);
   });
+
+  describe('selections inside a block (table)', () => {
+    let tableStarts;
+
+    // intro paragraph, table A (two cells), table B (one cell).
+    function setTableDoc(view) {
+      const { schema } = view.state;
+      const para = (text) => schema.nodes.paragraph.create(null, schema.text(text));
+      const cell = (text) => schema.nodes.table_cell.create(null, para(text));
+      const table = (...texts) => schema.nodes.table.create(
+        null,
+        schema.nodes.table_row.create(null, texts.map(cell)),
+      );
+      const { content } = schema.nodes.doc.create(null, [
+        para('intro'), table('a1', 'a2'), table('b1'),
+      ]);
+      view.dispatch(view.state.tr.replaceWith(0, view.state.doc.content.size, content));
+      tableStarts = [];
+      view.state.doc.forEach((node, offset) => {
+        if (node.type.name === 'table') tableStarts.push(offset);
+      });
+    }
+
+    function posInText(text) {
+      let found;
+      editor.view.state.doc.descendants((node, pos) => {
+        if (found === undefined && node.isText && node.text === text) found = pos + 1;
+      });
+      return found;
+    }
+
+    beforeEach(() => {
+      setTableDoc(editor.view);
+    });
+
+    it('broadcasts the whole-table anchor with scrollIntoView for a cursor in a cell', () => {
+      setCursor(posInText('a1'));
+      el._broadcastSelectedNode(true);
+
+      expect(messages).to.have.lengthOf(1);
+      const node = { anchorType: 'table', proseIndex: tableStarts[0] + 1 };
+      expect(messages[0].node).to.deep.equal(node);
+      expect(messages[0].scrollIntoView).to.equal(true);
+      expect(messages[0].payload).to.deep.equal({ node, scrollIntoView: true });
+    });
+
+    it('does not re-broadcast when moving between cells of the same table', () => {
+      setCursor(posInText('a1'));
+      el._broadcastSelectedNode(true);
+      setCursor(posInText('a2'));
+      el._broadcastSelectedNode(true);
+
+      expect(messages).to.have.lengthOf(1);
+    });
+
+    it('re-broadcasts when moving to a different block', () => {
+      setCursor(posInText('a1'));
+      el._broadcastSelectedNode(true);
+      setCursor(posInText('b1'));
+      el._broadcastSelectedNode(true);
+      setCursor(posInText('intro'));
+      el._broadcastSelectedNode(true);
+
+      expect(messages).to.have.lengthOf(3);
+      expect(messages[1].node).to.deep.equal({ anchorType: 'table', proseIndex: tableStarts[1] + 1 });
+      expect(messages[1].scrollIntoView).to.equal(true);
+      expect(messages[2].node).to.deep.equal({ anchorType: 'content', proseIndex: 1 });
+    });
+
+    it('does not scroll for a table-cell selection mirrored from the iframe', () => {
+      setCursor(posInText('a1'));
+      ctx.mirroringFromIframe = true;
+      el._broadcastSelectedNode(true);
+
+      expect(messages).to.have.lengthOf(1);
+      expect(messages[0].node).to.equal(null);
+      expect(messages[0].scrollIntoView).to.equal(false);
+    });
+  });
 });
