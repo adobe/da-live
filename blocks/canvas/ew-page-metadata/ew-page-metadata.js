@@ -4,11 +4,12 @@ import getSheet from '../../shared/sheet.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { readMetadataRows, setMetadataValue, addMetadataRow, deleteMetadataRow } from '../editor-utils/metadata.js';
-import { buildMetadataFields, mergeMetadataFields } from '../editor-utils/metadata-fields.js';
+import { buildMetadataFields, resolveMetadataFields } from '../editor-utils/metadata-fields.js';
 import { loadBlockOptions } from '../ew-panel-extensions/helpers.js';
 
 const DELETE_ICON_SRC = '/img/icons/s2-icon-delete-20-n.svg';
 const ADD_ICON_SRC = '/img/icons/s2-icon-addcircle-20-n.svg';
+const COLOR_FILL_ICON_SRC = '/img/icons/s2-icon-colorfill-20-n.svg';
 const EMPTY_OPTION = { value: '', label: 'Please Select' };
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
@@ -21,10 +22,6 @@ const [formStyle, style, baseStyle] = await Promise.all([
   loadStyle(import.meta.url),
   loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href),
 ]);
-
-function hasColorValues(field) {
-  return !!field.values?.some((v) => v.colorValue);
-}
 
 class EwPageMetadata extends LitElement {
   static properties = {
@@ -81,7 +78,7 @@ class EwPageMetadata extends LitElement {
   }
 
   get _fields() {
-    return mergeMetadataFields(this._docRows ?? [], this._libraryFields ?? []);
+    return resolveMetadataFields(this._docRows ?? [], this._libraryFields ?? []);
   }
 
   _commit(field, value) {
@@ -128,27 +125,6 @@ class EwPageMetadata extends LitElement {
     this._showAddDialog = false;
   }
 
-  _renderSwatchRadio(field) {
-    return html`
-      <div class="ew-pm-swatch-radio" role="radiogroup">
-        <label>
-          <input type="radio" name="field-${field.key}" value=""
-                 .checked=${!field.value}
-                 @change=${() => this._commit(field, '')}>
-          <span class="label">${EMPTY_OPTION.label}</span>
-        </label>
-        ${field.values.map((v) => html`
-          <label>
-            <input type="radio" name="field-${field.key}" value=${v.value}
-                   .checked=${field.value === v.value}
-                   @change=${() => this._commit(field, v.value)}>
-            ${v.colorValue ? html`<span class="swatch" style="background-color:${v.colorValue}"></span>` : ''}
-            <span class="label">${v.title}</span>
-          </label>
-        `)}
-      </div>`;
-  }
-
   _renderField(field) {
     if (!field.values?.length) {
       return html`
@@ -160,9 +136,15 @@ class EwPageMetadata extends LitElement {
         <ew-metadata-multiselect .items=${field.values} .value=${field.value}
           @change=${(e) => this._commit(field, e.detail.value)}></ew-metadata-multiselect>`;
     }
-    if (hasColorValues(field)) return this._renderSwatchRadio(field);
     return html`
-      <nx-picker size="m" .items=${[EMPTY_OPTION, ...field.values.map((v) => ({ value: v.value, label: v.title }))]}
+      <nx-picker size="m" .items=${[
+        EMPTY_OPTION,
+        ...field.values.map((v) => ({
+          value: v.value,
+          label: v.title,
+          ...(v.colorValue ? { action: true, trailingIcon: COLOR_FILL_ICON_SRC } : {}),
+        })),
+      ]}
         .value=${field.value}
         @change=${(e) => this._commit(field, e.detail.value)}></nx-picker>`;
   }

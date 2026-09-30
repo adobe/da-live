@@ -92,14 +92,16 @@ describe('ew-page-metadata', () => {
       expect(rowFor(el, 'Title').querySelector('input[type="text"]').value).to.equal('My Page');
     });
 
-    it('renders an unconfigured doc key as a plain text field', async () => {
+    it('renders unconfigured doc keys alongside fallback fields when there is no library config', async () => {
       bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['legacy-flag', 'yes']])] });
       canvasBus.editorDocState.emit();
       await el.updateComplete;
       expect(rowFor(el, 'legacy-flag').querySelector('input[type="text"]').value).to.equal('yes');
+      expect(rowFor(el, 'Title')).to.exist;
+      expect(rowFor(el, 'Description')).to.exist;
     });
 
-    it('renders both configured and unconfigured fields together, the latter as plain text', async () => {
+    it('renders configured fields plus unconfigured doc keys when library config is present', async () => {
       bridge.view = makeRealView({
         type: 'doc',
         content: [metadataTableJSON([['category', 'news'], ['legacy-flag', 'yes']])],
@@ -110,6 +112,8 @@ describe('ew-page-metadata', () => {
 
       expect(rowFor(el, 'category').querySelector('nx-picker')).to.exist;
       expect(rowFor(el, 'legacy-flag').querySelector('input[type="text"]').value).to.equal('yes');
+      expect(rowFor(el, 'Title')).to.equal(null);
+      expect(rowFor(el, 'Description')).to.equal(null);
     });
 
     it('shows the add-field button even when fields are configured', async () => {
@@ -120,24 +124,22 @@ describe('ew-page-metadata', () => {
       expect(el.shadowRoot.querySelector('h3').textContent).to.equal('Page Metadata');
     });
 
-    it('does not show a delete button for Title or Description, but does for other fields', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['legacy-flag', 'yes']])] });
+    it('shows a delete button for fallback Title and Description', async () => {
+      bridge.view = makeRealView(baseDoc());
       canvasBus.editorDocState.emit();
       await el.updateComplete;
-      expect(rowFor(el, 'Title').querySelector('.delete-btn')).to.equal(null);
-      expect(rowFor(el, 'Description').querySelector('.delete-btn')).to.equal(null);
-      expect(rowFor(el, 'legacy-flag').querySelector('.delete-btn')).to.exist;
+      expect(rowFor(el, 'Title').querySelector('.delete-btn')).to.exist;
+      expect(rowFor(el, 'Description').querySelector('.delete-btn')).to.exist;
     });
 
     it('clears the fields when editorHtmlState signals the doc was unloaded', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['legacy-flag', 'yes']])] });
+      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['title', 'My Page']])] });
       canvasBus.editorDocState.emit();
       await el.updateComplete;
-      expect(rowFor(el, 'legacy-flag')).to.exist;
+      expect(rowFor(el, 'Title').querySelector('input[type="text"]').value).to.equal('My Page');
 
       canvasBus.editorHtmlState.emit('');
       await el.updateComplete;
-      expect(rowFor(el, 'legacy-flag')).to.equal(null);
       expect(rowFor(el, 'Title').querySelector('input[type="text"]').value).to.equal('');
     });
   });
@@ -168,7 +170,7 @@ describe('ew-page-metadata', () => {
       expect(multi.value).to.equal('a, b');
     });
 
-    it('renders swatch radios, including a leading empty option, for a field with color values', async () => {
+    it('renders color fields as a picker using a fixed trailing icon', async () => {
       bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['accent', 'adobe-red']])] });
       el._libraryFields = [{
         key: 'accent',
@@ -178,12 +180,15 @@ describe('ew-page-metadata', () => {
       }];
       canvasBus.editorDocState.emit();
       await el.updateComplete;
-      const row = rowFor(el, 'accent');
-      expect(row.querySelector('.swatch')).to.exist;
-      const emptyRadio = row.querySelector('input[type="radio"][value=""]');
-      expect(emptyRadio).to.exist;
-      expect(emptyRadio.closest('label').textContent.trim()).to.equal('Please Select');
-      expect(row.querySelector('input[type="radio"][value="adobe-red"]').checked).to.equal(true);
+      const picker = rowFor(el, 'accent').querySelector('nx-picker');
+      expect(picker).to.exist;
+      expect(picker.value).to.equal('adobe-red');
+      expect(picker.items[0]).to.deep.equal({ value: '', label: 'Please Select' });
+      expect(picker.items[1].value).to.equal('adobe-red');
+      expect(picker.items[1].label).to.equal('Adobe Red');
+      expect(picker.items[1].action).to.equal(true);
+      expect(picker.items[1].trailingIcon).to.equal('/img/icons/s2-icon-colorfill-20-n.svg');
+      expect(picker.items[2]).to.deep.equal({ value: 'sky', label: 'Sky' });
     });
 
     it('selects the empty option when the field has no current value', async () => {
@@ -250,7 +255,7 @@ describe('ew-page-metadata', () => {
       expect(tableRows(bridge.view)).to.deep.equal([{ key: 'tags', value: 'a, b' }]);
     });
 
-    it('commits a swatch-radio click', async () => {
+    it('commits a picker change for a color field', async () => {
       bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['accent', 'adobe-red']])] });
       el._libraryFields = [{
         key: 'accent',
@@ -261,7 +266,8 @@ describe('ew-page-metadata', () => {
       canvasBus.editorDocState.emit();
       await el.updateComplete;
 
-      rowFor(el, 'accent').querySelector('input[type="radio"][value="sky"]').click();
+      rowFor(el, 'accent').querySelector('nx-picker')
+        .dispatchEvent(new CustomEvent('change', { detail: { value: 'sky' } }));
 
       expect(tableRows(bridge.view)).to.deep.equal([{ key: 'accent', value: 'sky' }]);
     });
@@ -287,8 +293,9 @@ describe('ew-page-metadata', () => {
       expect(rowFor(el, 'Keywords').querySelector('input[type="text"]').value).to.equal('');
     });
 
-    it('deletes a field after confirming the delete dialog', async () => {
+    it('deletes a configured field after confirming the delete dialog', async () => {
       bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['legacy-flag', 'yes']])] });
+      el._libraryFields = [{ key: 'legacy-flag', label: 'Legacy Flag', type: 'single', values: null }];
       canvasBus.editorDocState.emit();
       await el.updateComplete;
 
@@ -301,8 +308,24 @@ describe('ew-page-metadata', () => {
       expect(tableRows(bridge.view)).to.deep.equal([]);
     });
 
-    it('cancelling the delete dialog leaves the field untouched', async () => {
+    it('deletes a fallback Title row but keeps the Title field visible', async () => {
+      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['Title', 'My Page']])] });
+      canvasBus.editorDocState.emit();
+      await el.updateComplete;
+
+      rowFor(el, 'Title').querySelector('.delete-btn').click();
+      await el.updateComplete;
+      el.shadowRoot.querySelector('.ew-pm-delete .da-btn-primary').click();
+      await el.updateComplete;
+
+      expect(tableRows(bridge.view)).to.deep.equal([]);
+      expect(rowFor(el, 'Title')).to.exist;
+      expect(rowFor(el, 'Title').querySelector('input[type="text"]').value).to.equal('');
+    });
+
+    it('cancelling the delete dialog leaves the configured field untouched', async () => {
       bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['legacy-flag', 'yes']])] });
+      el._libraryFields = [{ key: 'legacy-flag', label: 'Legacy Flag', type: 'single', values: null }];
       canvasBus.editorDocState.emit();
       await el.updateComplete;
 

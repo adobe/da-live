@@ -5,7 +5,7 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const {
   buildMetadataFields,
-  mergeMetadataFields,
+  resolveMetadataFields,
 } = await import('../../../../../blocks/canvas/editor-utils/metadata-fields.js');
 
 describe('buildMetadataFields', () => {
@@ -87,42 +87,41 @@ describe('buildMetadataFields', () => {
   });
 });
 
-describe('mergeMetadataFields', () => {
+describe('resolveMetadataFields', () => {
   it('falls back to Title/Description text fields when no config is present', () => {
-    const fields = mergeMetadataFields([], []);
+    const fields = resolveMetadataFields([], []);
     expect(fields.map((f) => f.key)).to.deep.equal(['Title', 'Description']);
     expect(fields.every((f) => f.type === 'single' && f.values === null)).to.equal(true);
   });
 
-  it('pre-fills default fields from the current doc value, case-insensitively', () => {
+  it('pre-fills fallback fields from the current doc value, case-insensitively', () => {
     const docRows = [{ key: 'title', value: 'My Page' }];
-    const fields = mergeMetadataFields(docRows, []);
+    const fields = resolveMetadataFields(docRows, []);
     expect(fields.find((f) => f.key === 'Title').value).to.equal('My Page');
     expect(fields.find((f) => f.key === 'Description').value).to.equal('');
   });
 
-  it('always puts Title and Description first, ahead of configured fields', () => {
+  it('uses only configured fields when config is present', () => {
     const configured = [{ key: 'category', label: 'Category', type: 'single', values: null }];
-    const fields = mergeMetadataFields([], configured);
-    expect(fields.map((f) => f.key)).to.deep.equal(['Title', 'Description', 'category']);
+    const fields = resolveMetadataFields([], configured);
+    expect(fields.map((f) => f.key)).to.deep.equal(['category']);
   });
 
   it('pre-fills a configured field from the doc, case-insensitively', () => {
     const configured = [{ key: 'category', label: 'Category', type: 'single', values: null }];
     const docRows = [{ key: 'Category', value: 'News' }];
-    expect(mergeMetadataFields(docRows, configured).find((f) => f.key === 'category').value).to.equal('News');
+    expect(resolveMetadataFields(docRows, configured).find((f) => f.key === 'category').value).to.equal('News');
   });
 
-  it('appends doc keys not present in Title/Description/config as plain text fields, preserving data', () => {
+  it('appends doc keys that are not present in the config as removable plain text fields', () => {
     const configured = [{ key: 'category', label: 'Category', type: 'single', values: null }];
     const docRows = [
       { key: 'Category', value: 'News' },
       { key: 'legacy-flag', value: 'yes' },
     ];
-    const fields = mergeMetadataFields(docRows, configured);
-    expect(fields.map((f) => f.key)).to.deep.equal(['Title', 'Description', 'category', 'legacy-flag']);
-    const extra = fields.find((f) => f.key === 'legacy-flag');
-    expect(extra).to.deep.equal({
+    const fields = resolveMetadataFields(docRows, configured);
+    expect(fields.map((f) => f.key)).to.deep.equal(['category', 'legacy-flag']);
+    expect(fields.find((f) => f.key === 'legacy-flag')).to.deep.equal({
       key: 'legacy-flag',
       label: 'legacy-flag',
       type: 'single',
@@ -133,43 +132,33 @@ describe('mergeMetadataFields', () => {
     });
   });
 
-  it('marks Title/Description as not removable, and everything else as removable', () => {
-    const configured = [{ key: 'category', label: 'Category', type: 'single', values: null }];
-    const fields = mergeMetadataFields([{ key: 'extra', value: 'x' }], configured);
-    expect(fields.find((f) => f.key === 'Title').removable).to.equal(false);
-    expect(fields.find((f) => f.key === 'Description').removable).to.equal(false);
-    expect(fields.find((f) => f.key === 'category').removable).to.equal(true);
+  it('marks fallback fields and passthrough doc fields as removable', () => {
+    const fields = resolveMetadataFields([{ key: 'extra', value: 'x' }], []);
+    expect(fields.find((f) => f.key === 'Title').removable).to.equal(true);
+    expect(fields.find((f) => f.key === 'Description').removable).to.equal(true);
     expect(fields.find((f) => f.key === 'extra').removable).to.equal(true);
   });
 
-  it('marks Title/Description/configured fields as configured, and passthrough doc fields as not', () => {
-    const fields = mergeMetadataFields([{ key: 'extra', value: 'x' }], []);
-    expect(fields.find((f) => f.key === 'Title').configured).to.equal(true);
-    expect(fields.find((f) => f.key === 'extra').configured).to.equal(false);
+  it('marks configured fields as removable and configured', () => {
+    const configured = [{ key: 'category', label: 'Category', type: 'single', values: null }];
+    const fields = resolveMetadataFields([], configured);
+    expect(fields.find((f) => f.key === 'category').removable).to.equal(true);
+    expect(fields.find((f) => f.key === 'category').configured).to.equal(true);
   });
 
-  it('keeps Title/Description as plain text fields even if config gives them values/type', () => {
+  it('uses configured Title/Description as-is when they are explicitly configured', () => {
     const configured = buildMetadataFields([
-      { blocks: 'metadata', key: 'title', type: 'multi', values: 'A=a' },
+      { blocks: 'metadata', key: 'title', type: 'multi', values: 'A=a', label: 'Page Title' },
+      { blocks: 'metadata', key: 'description', label: 'Summary' },
     ]);
-    const fields = mergeMetadataFields([], configured);
-    const title = fields.find((f) => f.key === 'Title');
-    expect(title.type).to.equal('single');
-    expect(title.values).to.equal(null);
-  });
-
-  it('uses the config row\'s explicit label for Title/Description when present', () => {
-    const configured = buildMetadataFields([
-      { blocks: 'metadata', key: 'title', label: 'Page Title' },
-    ]);
-    const fields = mergeMetadataFields([], configured);
-    expect(fields.find((f) => f.key === 'Title').label).to.equal('Page Title');
-    expect(fields.find((f) => f.key === 'Description').label).to.equal('Description');
-  });
-
-  it('keeps the default Title/Description label when the config row has no explicit label', () => {
-    const configured = buildMetadataFields([{ blocks: 'metadata', key: 'title' }]);
-    const fields = mergeMetadataFields([], configured);
-    expect(fields.find((f) => f.key === 'Title').label).to.equal('Title');
+    const fields = resolveMetadataFields([], configured);
+    expect(fields.map((f) => f.key)).to.deep.equal(['title', 'description']);
+    expect(fields.find((f) => f.key === 'title')).to.deep.include({
+      label: 'Page Title',
+      type: 'multi',
+      removable: true,
+      configured: true,
+    });
+    expect(fields.find((f) => f.key === 'description').label).to.equal('Summary');
   });
 });

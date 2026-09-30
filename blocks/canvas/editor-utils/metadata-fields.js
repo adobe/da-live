@@ -39,8 +39,8 @@ export function buildMetadataFields(data) {
 }
 
 const DEFAULT_FIELDS = [
-  { key: 'Title', label: 'Title', type: 'single', values: null, removable: false },
-  { key: 'Description', label: 'Description', type: 'single', values: null, removable: false },
+  { key: 'Title', label: 'Title', type: 'single', values: null, removable: true },
+  { key: 'Description', label: 'Description', type: 'single', values: null, removable: true },
 ];
 
 function findDocValue(docRows, key) {
@@ -48,38 +48,26 @@ function findDocValue(docRows, key) {
   return docRows.find((row) => normalize(row.key) === target)?.value ?? '';
 }
 
-function findConfigRawLabel(configuredFields, key) {
-  const target = normalize(key);
-  return configuredFields.find((f) => normalize(f.key) === target)?.rawLabel;
-}
-
 /**
- * Merge the page's current metadata rows with the configured field set. Title and
- * Description always come first (as plain text, regardless of what config says about
- * their type/values), using the config's label for them when one is explicitly given.
- * Configured fields follow, then any doc key not covered by Title/Description/config so
- * existing data is never dropped.
+ * Resolve the metadata fields shown in the panel. When the library config defines
+ * metadata fields, use that configured field list; otherwise fall back to the built-in
+ * Title/Description fields. In both cases, keep any additional doc-only metadata rows
+ * visible as removable plain-text fields, and hydrate everything from the live doc
+ * case-insensitively. Deleting a fallback/configured field only removes the current
+ * metadata row; the field stays visible because it remains part of the resolved base set.
  */
-export function mergeMetadataFields(docRows, configuredFields) {
-  const titleDescFields = DEFAULT_FIELDS.map((f) => ({
-    ...f,
-    label: findConfigRawLabel(configuredFields, f.key) || f.label,
-    value: findDocValue(docRows, f.key),
+export function resolveMetadataFields(docRows, configuredFields) {
+  const hasConfig = !!configuredFields?.length;
+  const baseFields = hasConfig ? configuredFields : DEFAULT_FIELDS;
+  const visibleFields = baseFields.map((field) => ({
+    ...field,
+    value: findDocValue(docRows, field.key),
     configured: true,
+    removable: true,
   }));
 
-  const restConfigured = configuredFields.filter(
-    (f) => !DEFAULT_FIELDS.some((d) => normalize(d.key) === normalize(f.key)),
-  );
-  const merged = restConfigured.map((f) => (
-    { ...f, value: findDocValue(docRows, f.key), configured: true, removable: true }
-  ));
-
-  const usedKeys = new Set([
-    ...DEFAULT_FIELDS.map((f) => normalize(f.key)),
-    ...restConfigured.map((f) => normalize(f.key)),
-  ]);
-  const extra = docRows
+  const usedKeys = new Set(baseFields.map((field) => normalize(field.key)));
+  const extraFields = (docRows || [])
     .filter((row) => !usedKeys.has(normalize(row.key)))
     .map((row) => ({
       key: row.key,
@@ -91,5 +79,5 @@ export function mergeMetadataFields(docRows, configuredFields) {
       removable: true,
     }));
 
-  return [...titleDescFields, ...merged, ...extra];
+  return [...visibleFields, ...extraFields];
 }

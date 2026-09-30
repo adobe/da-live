@@ -201,6 +201,12 @@ describe('deleteMetadataRow', () => {
     expect(table.child(1).textContent).to.equal('DescriptionDesc');
   });
 
+  it('removes the entire metadata table when deleting its last row', () => {
+    const view = makeRealView({ type: 'doc', content: [metadataTableJSON([['Title', 'My Page']])] });
+    deleteMetadataRow(view, 'Title');
+    expect(findTablePos(view)).to.equal(-1);
+  });
+
   it('does nothing when no metadata table exists', () => {
     const view = makeRealView({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hello' }] }] });
     expect(() => deleteMetadataRow(view, 'Title')).to.not.throw();

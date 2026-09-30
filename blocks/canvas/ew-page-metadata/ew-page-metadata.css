@@ -57,23 +57,3 @@
   box-sizing: border-box;
 }
 
-.ew-pm-swatch-radio {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.ew-pm-swatch-radio label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-}
-
-.swatch {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 1px solid rgb(0 0 0 / 15%);
-}

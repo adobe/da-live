@@ -133,6 +133,14 @@ export function deleteMetadataRow(view, key) {
   if (!found) return;
   const match = findMetadataRow(found.node, key);
   if (!match) return;
+
+  // When deleting the last remaining metadata row, remove the whole metadata block
+  // instead of leaving behind a heading-only table.
+  if (found.node.childCount <= 2) {
+    view.dispatch(view.state.tr.delete(found.pos, found.pos + found.node.nodeSize));
+    return;
+  }
+
   const { row, offset } = match;
   const rowPos = found.pos + 1 + offset;
   view.dispatch(view.state.tr.delete(rowPos, rowPos + row.nodeSize));
