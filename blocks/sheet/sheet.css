@@ -16,6 +16,15 @@ body {
   width: 200px;
 }
 
+.da-sheet-not-permitted {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: light-dark(#555, #aaa);
+  font: var(--nx-font-body, 14px/1.4 system-ui, sans-serif);
+}
+
 .da-version-wrapper {
   display: flex;
   justify-content: center;

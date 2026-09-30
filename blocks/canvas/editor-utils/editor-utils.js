@@ -2,11 +2,28 @@ import { TextSelection } from 'da-y-wrapper';
 import prose2aem from '../../shared/prose2aem.js';
 import { getNx } from '../../../scripts/utils.js';
 import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
-import { getSelectionToolbar } from './selection-toolbar.js';
+import { toolbarController } from './toolbar-controller.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { canvasBus, registerEditorSelectEnricher } from '../utils/canvas-bus.js';
 
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
+
+/**
+ * Dispatch a transaction mirrored from the quick-edit iframe.
+ *
+ * `suppressRerender` stops the resulting update echoing straight back to the iframe
+ * that produced it. The reset is in a `finally` deliberately: stranding the flag
+ * `true` (a throw inside `dispatch`) silently stops the iframe receiving any
+ * further body updates for the rest of the session.
+ */
+export function dispatchMirror(view, tr, ctx) {
+  ctx.suppressRerender = true;
+  try {
+    view.dispatch(tr);
+  } finally {
+    ctx.suppressRerender = false;
+  }
+}
 
 // --- state.js ---
 
@@ -16,6 +33,43 @@ function findInsertedRange(oldText, newText) {
   const maxPrefix = Math.min(oldText.length, newText.length);
   while (prefixLen < maxPrefix && oldText[prefixLen] === newText[prefixLen]) prefixLen += 1;
   return { start: prefixLen, end: prefixLen + (newText.length - oldText.length) };
+}
+
+// Resolve the editable block the WYSIWYG should mount for a given prose index.
+//
+// Naively taking `resolve(before(depth)).nodeAfter` climbs to the enclosing
+// `table_cell` when the index lands on the cell-content boundary (e.g. a block
+// inside a table-backed block such as `cards`). The iframe then wraps it in a
+// fresh doc via `schema.node('doc', [node])`, but a `table_cell` is not valid
+// top-level `doc` content (`doc` is `block+`; a cell only belongs in a
+// `table_row`), so it throws "Invalid content for node doc" and the editor dies.
+//
+// Return the block that actually corresponds to the index (paragraph / heading /
+// list), never its table container, and preserve the index for the
+// `data-prose-index` roundtrip.
+export function resolveEditableNode(doc, cursorOffset) {
+  const $pos = doc.resolve(cursorOffset);
+  const docMatch = doc.type.schema.nodes.doc.contentMatch;
+
+  // The index sits at the boundary right before an editable block — e.g. inside
+  // a table cell, immediately before its first block. The block is the node
+  // after the index; keep the index so the placeholder still resolves.
+  const after = $pos.nodeAfter;
+  if (after && docMatch.matchType(after.type)) {
+    return { node: after, cursorOffset };
+  }
+
+  // The index sits inside an editable block. Climb to the innermost ancestor
+  // that is valid top-level `doc` content — never a `table_cell` / `table_row`.
+  const { depth } = $pos;
+  for (let d = depth; d >= 1; d -= 1) {
+    const ancestor = $pos.node(d);
+    if (docMatch.matchType(ancestor.type)) {
+      return { node: ancestor, cursorOffset: $pos.before(d) + 1 };
+    }
+  }
+
+  return { node: null, cursorOffset };
 }
 
 export function updateState(data, ctx) {
@@ -59,12 +113,9 @@ export function updateState(data, ctx) {
   const restoredTo = Math.min(selTo, maxPos);
   tr.setSelection(TextSelection.create(tr.doc, restoredFrom, restoredTo));
 
-  ctx.suppressRerender = true;
-  view.dispatch(tr);
-  ctx.suppressRerender = false;
+  dispatchMirror(view, tr, ctx);
 
-  const tb = getSelectionToolbar();
-  if (tb.open && !tb.isInteracting) tb.requestUpdate();
+  toolbarController.refresh();
 
   // Sync the updated node (with marks applied) back to the portal's mini editor.
   // Without this, the portal's editor retains the plain-text version, so the next
@@ -72,9 +123,7 @@ export function updateState(data, ctx) {
   // (replaceWith replaces the whole paragraph with the portal's plain content).
   if (appliedMarks && ctx.port) {
     try {
-      const syncPos = view.state.doc.resolve(data.cursorOffset);
-      const syncNodeStart = syncPos.before(syncPos.depth);
-      const syncNode = view.state.doc.resolve(syncNodeStart).nodeAfter;
+      const { node: syncNode } = resolveEditableNode(view.state.doc, data.cursorOffset);
       if (syncNode) {
         const editorState = syncNode.toJSON();
         const { cursorOffset } = data;
@@ -100,16 +149,11 @@ export function getEditor(data, ctx) {
   if (cursorOffset < 0 || cursorOffset > maxPos) return;
 
   try {
-    const pos = doc.resolve(cursorOffset);
-    const before = pos.before(pos.depth);
-    const beforePos = doc.resolve(before);
-    const nodeAtBefore = beforePos.nodeAfter;
-    if (!nodeAtBefore) return;
-    const editorState = nodeAtBefore.toJSON();
-    const newCursorOffset = before + 1;
+    const { node, cursorOffset: newCursorOffset } = resolveEditableNode(doc, cursorOffset);
+    if (!node) return;
     ctx.port.postMessage({
       type: MESSAGE_TYPES.SET_EDITOR_STATE,
-      payload: { editorState, cursorOffset: newCursorOffset },
+      payload: { editorState: node.toJSON(), cursorOffset: newCursorOffset },
     });
   } catch {
     // Stale iframe cursor after structural replace (e.g. chat revert, remote sync).

@@ -132,4 +132,79 @@ describe('ew-comments', () => {
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('.ew-comments-spinner')).to.be.null;
   });
+
+  it('emphasizes the prerequisite in the list hint', async () => {
+    el = await makeEl();
+    el.controller = makeCtrl();
+    await el.updateComplete;
+
+    const listHint = el.shadowRoot.querySelector('.ew-comments-list > .da-hint');
+    const prerequisite = listHint?.querySelector('strong');
+
+    expect(prerequisite?.textContent.trim()).to.equal('Select content');
+  });
+
+  it('renders contextual shortcut copy for new comments', async () => {
+    const currentUser = { id: 'u1', name: 'Alice', email: 'a@b.com' };
+    const ctrl = makeCtrl({
+      pendingAnchor: { anchorFrom: [1], anchorTo: [2], anchorType: 'text', anchorText: 'hello' },
+      getCurrentUser() { return currentUser; },
+    });
+
+    el = await makeEl();
+    el.controller = ctrl;
+    await el.updateComplete;
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+    await el.updateComplete;
+
+    const formHint = el.shadowRoot.querySelector('.ew-comment-form-hint');
+    expect(formHint?.textContent.replace(/\s+/g, ' ').trim()).to.include('Or hit');
+    expect(formHint?.textContent.replace(/\s+/g, ' ').trim()).to.include('to comment');
+    expect(formHint?.textContent.replace(/\s+/g, ' ').trim()).to.not.include('to submit');
+  });
+
+  it('renders contextual shortcut copy for replies', async () => {
+    const currentUser = { id: 'u1', name: 'Alice', email: 'a@b.com' };
+    const thread = {
+      id: 't1',
+      body: 'Root comment',
+      author: currentUser,
+      createdAt: new Date().toISOString(),
+      replies: [],
+      isDetached: false,
+      isResolved: false,
+      resolved: false,
+    };
+    const ctrl = makeCtrl({
+      selectedThreadId: 't1',
+      getCurrentUser() { return currentUser; },
+      getThreadGroups() { return { active: [thread], detached: [], resolved: [] }; },
+    });
+
+    el = await makeEl();
+    el.controller = ctrl;
+    await el.updateComplete;
+    el.startReplyDraft(thread);
+    await el.updateComplete;
+
+    const formHint = el.shadowRoot.querySelector('.ew-comment-form-hint');
+    expect(formHint?.textContent.replace(/\s+/g, ' ').trim()).to.include('Or hit');
+    expect(formHint?.textContent.replace(/\s+/g, ' ').trim()).to.include('to reply');
+    expect(formHint?.textContent.replace(/\s+/g, ' ').trim()).to.not.include('to submit');
+  });
+
+  it('allows shared hints to grow and adds extra top padding to the comments hint', async () => {
+    el = await makeEl();
+    el.controller = makeCtrl();
+    await el.updateComplete;
+
+    const rules = [...el.shadowRoot.adoptedStyleSheets]
+      .flatMap((sheet) => [...sheet.cssRules]);
+    const sharedHintRule = rules.find((rule) => rule.selectorText === '.da-hint');
+    const commentsHintRule = rules.find((rule) => rule.selectorText === '.ew-comments-list > .da-hint');
+
+    expect(sharedHintRule?.style.minHeight).to.equal('24px');
+    expect(sharedHintRule?.style.height).to.equal('');
+    expect(commentsHintRule?.style.paddingTop).to.not.equal('');
+  });
 });
