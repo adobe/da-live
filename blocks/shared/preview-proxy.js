@@ -1,7 +1,7 @@
 import { getLivePreviewUrl } from './constants.js';
 import { livePreviewLogin } from './utils.js';
 
-const AEM_HOST = /\.(aem|hlx)\.(page|live)$/;
+const AEM_HOST = /\.aem\.(page|live)$/;
 
 function isPreviewHost(hostname) {
   return hostname.includes('preview.da.live') || hostname.endsWith('.localhost');

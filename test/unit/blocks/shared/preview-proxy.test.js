@@ -35,13 +35,8 @@ describe('getPreviewProxyDetails', () => {
     expect(details.url).to.equal('https://feat--site--org.preview.da.live/path');
   });
 
-  it('rewrites an hlx.live URL', () => {
-    const details = getPreviewProxyDetails('https://feat--site--org.hlx.live/path');
-    expect(details.url).to.equal('https://feat--site--org.preview.da.live/path');
-  });
-
-  it('rewrites an hlx.page URL', () => {
-    const details = getPreviewProxyDetails('https://feat--site--org.hlx.page/path');
+  it('rewrites an aem.live URL', () => {
+    const details = getPreviewProxyDetails('https://feat--site--org.aem.live/path');
     expect(details.url).to.equal('https://feat--site--org.preview.da.live/path');
   });
 
