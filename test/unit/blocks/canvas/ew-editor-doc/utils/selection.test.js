@@ -6,6 +6,7 @@ import {
   applyHighlight,
   selectedNodePayload,
   activeContentProseIndex,
+  enclosingTablePayload,
   SEL_BLOCK,
   SEL_ITEM,
   SEL_TEXT,
@@ -261,5 +262,57 @@ describe('activeContentProseIndex', () => {
     const sel = NodeSelection.create(editor.view.state.doc, imgPos);
     editor.view.dispatch(editor.view.state.tr.setSelection(sel));
     expect(activeContentProseIndex(editor.view)).to.equal(imgPos);
+  });
+});
+
+describe('enclosingTablePayload', () => {
+  let editor;
+
+  beforeEach(async () => {
+    editor = await createTestEditor();
+  });
+
+  afterEach(() => {
+    destroyEditor(editor);
+  });
+
+  function setIntroAndTable() {
+    const { state } = editor.view;
+    const { schema } = state;
+    const intro = schema.nodes.paragraph.create(null, schema.text('intro'));
+    const para = schema.nodes.paragraph.create(null, schema.text('cards'));
+    const cell = schema.nodes.table_cell.create({ colspan: 2, colwidth: null }, para);
+    const row = schema.nodes.table_row.create(null, cell);
+    const table = schema.nodes.table.create(null, row);
+    const { content } = schema.nodes.doc.create(null, [intro, table]);
+    editor.view.dispatch(state.tr.replaceWith(0, state.doc.content.size, content));
+    return intro.nodeSize;
+  }
+
+  it('returns the whole-table anchor for a cursor inside a table cell', () => {
+    const tableStart = setIntroAndTable();
+    let textPos = -1;
+    editor.view.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text === 'cards') textPos = pos;
+    });
+    const sel = TextSelection.create(editor.view.state.doc, textPos + 2);
+    editor.view.dispatch(editor.view.state.tr.setSelection(sel));
+    expect(enclosingTablePayload(editor.view))
+      .to.deep.equal({ anchorType: 'table', proseIndex: tableStart + 1 });
+  });
+
+  it('returns null for a cursor outside any table', () => {
+    setIntroAndTable();
+    const sel = TextSelection.create(editor.view.state.doc, 2);
+    editor.view.dispatch(editor.view.state.tr.setSelection(sel));
+    expect(enclosingTablePayload(editor.view)).to.equal(null);
+  });
+
+  it('returns null for a NodeSelection and a missing view', () => {
+    const tableStart = setIntroAndTable();
+    const sel = NodeSelection.create(editor.view.state.doc, tableStart);
+    editor.view.dispatch(editor.view.state.tr.setSelection(sel));
+    expect(enclosingTablePayload(editor.view)).to.equal(null);
+    expect(enclosingTablePayload(undefined)).to.equal(null);
   });
 });
