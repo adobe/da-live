@@ -36,6 +36,17 @@ export function buildMetadataFields(data) {
     });
 }
 
+/** True for empty or parseable JSON. */
+export function isValidJson(value) {
+  if (!value) return true;
+  try {
+    JSON.parse(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Pretty-print JSON for editing; returns the value unchanged if it isn't valid JSON. */
 export function formatJsonValue(value) {
   try {

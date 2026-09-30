@@ -204,6 +204,18 @@ describe('ew-page-metadata', () => {
       const textarea = rowFor(el, 'json-ld').querySelector('textarea');
       expect(textarea.classList.contains('nx-input')).to.equal(true);
       expect(textarea.value).to.equal('{\n  "@type": "Article"\n}');
+      expect(rowFor(el, 'json-ld').classList.contains('nx-field-error')).to.equal(false);
+      expect(rowFor(el, 'json-ld').querySelector('.nx-input-error-msg')).to.equal(null);
+    });
+
+    it('flags a json field holding invalid JSON with an error message', async () => {
+      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['json-ld', '{broken']])] });
+      el._libraryFields = [{ key: 'json-ld', label: 'JSON-LD', type: 'json', values: null }];
+      canvasBus.editorDocState.emit();
+      await el.updateComplete;
+      const row = rowFor(el, 'json-ld');
+      expect(row.classList.contains('nx-field-error')).to.equal(true);
+      expect(row.querySelector('.nx-input-error-msg').textContent.trim()).to.equal('Invalid JSON');
     });
 
     it('selects the empty option when the field has no current value', async () => {
@@ -298,6 +310,21 @@ describe('ew-page-metadata', () => {
       textarea.dispatchEvent(new Event('blur'));
 
       expect(tableRows(bridge.view)).to.deep.equal([{ key: 'json-ld', value: '{"@type":"Event"}' }]);
+    });
+
+    it('saves invalid JSON as typed and flags the field', async () => {
+      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['json-ld', '{"@type":"Article"}']])] });
+      el._libraryFields = [{ key: 'json-ld', label: 'JSON-LD', type: 'json', values: null }];
+      canvasBus.editorDocState.emit();
+      await el.updateComplete;
+
+      const textarea = rowFor(el, 'json-ld').querySelector('textarea');
+      textarea.value = '{\n  broken\n}';
+      textarea.dispatchEvent(new Event('blur'));
+      await el.updateComplete;
+
+      expect(tableRows(bridge.view)).to.deep.equal([{ key: 'json-ld', value: '{ broken }' }]);
+      expect(rowFor(el, 'json-ld').classList.contains('nx-field-error')).to.equal(true);
     });
 
     it('adds a new field via the + dialog with just a key, leaving the value empty', async () => {

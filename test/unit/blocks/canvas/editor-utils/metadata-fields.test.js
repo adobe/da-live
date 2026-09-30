@@ -8,6 +8,7 @@ const {
   resolveMetadataFields,
   formatJsonValue,
   compactJsonValue,
+  isValidJson,
 } = await import('../../../../../blocks/canvas/editor-utils/metadata-fields.js');
 
 describe('buildMetadataFields', () => {
@@ -155,5 +156,16 @@ describe('JSON value formatting', () => {
   it('keeps invalid JSON as typed, collapsing line breaks', () => {
     expect(compactJsonValue('{\n  broken\n}')).to.equal('{ broken }');
     expect(compactJsonValue('')).to.equal('');
+  });
+});
+
+describe('isValidJson', () => {
+  it('accepts valid JSON and empty values', () => {
+    expect(isValidJson('{"@type":"Article"}')).to.equal(true);
+    expect(isValidJson('')).to.equal(true);
+  });
+
+  it('rejects invalid JSON', () => {
+    expect(isValidJson('{broken')).to.equal(false);
   });
 });

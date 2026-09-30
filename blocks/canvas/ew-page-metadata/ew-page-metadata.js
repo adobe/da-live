@@ -4,7 +4,7 @@ import getSheet from '../../shared/sheet.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { readMetadataRows, setMetadataValue, addMetadataRow, deleteMetadataRow } from '../editor-utils/metadata.js';
-import { buildMetadataFields, resolveMetadataFields, formatJsonValue, compactJsonValue } from '../editor-utils/metadata-fields.js';
+import { buildMetadataFields, resolveMetadataFields, formatJsonValue, compactJsonValue, isValidJson } from '../editor-utils/metadata-fields.js';
 import { loadBlockOptions } from '../ew-panel-extensions/helpers.js';
 
 const DELETE_ICON_SRC = '/img/icons/s2-icon-delete-20-n.svg';
@@ -152,8 +152,9 @@ class EwPageMetadata extends LitElement {
   }
 
   _renderRow(field) {
+    const invalidJson = field.type === 'json' && !isValidJson(field.value);
     return html`
-      <div class="ew-pm-row nx-form-field" data-key=${field.key}>
+      <div class="ew-pm-row nx-form-field ${invalidJson ? 'nx-field-error' : ''}" data-key=${field.key}>
         <label class="ew-pm-label">${field.label}</label>
         <div class="ew-pm-control-row">
           <div class="ew-pm-control">${this._renderField(field)}</div>
@@ -164,6 +165,7 @@ class EwPageMetadata extends LitElement {
             </svg>
           </button>
         </div>
+        ${invalidJson ? html`<span class="nx-input-error-msg" role="alert">Invalid JSON</span>` : nothing}
       </div>`;
   }
 
