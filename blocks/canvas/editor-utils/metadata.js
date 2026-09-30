@@ -41,7 +41,7 @@ function findMetadataTable(view) {
   return result;
 }
 
-// Skips the heading row (index 0); matches on the row's key cell, case-insensitively.
+// Case-insensitive key match, skipping the heading row.
 function findMetadataRow(tableNode, key) {
   const target = normalizeKey(key);
   let result = null;
@@ -52,11 +52,7 @@ function findMetadataRow(tableNode, key) {
   return result;
 }
 
-/**
- * Read the page's current metadata rows straight from the live doc — more robust than
- * parsing rendered aemHtml, which depends on the real editor's table-wrapper plugins
- * and only reflects whatever the last html-state emission happened to capture.
- */
+/** Read the metadata key/value rows from the live doc. */
 export function readMetadataRows(view) {
   const found = view ? findMetadataTable(view) : null;
   if (!found) return [];
@@ -70,7 +66,7 @@ export function readMetadataRows(view) {
   return rows;
 }
 
-/** Insert an empty metadata table at the end of the doc if one is missing. Returns its position. */
+/** Append an empty metadata table if missing; returns its position. */
 export function ensureMetadataTable(view) {
   const existing = findMetadataTable(view);
   if (existing) return existing.pos;
@@ -82,8 +78,7 @@ export function ensureMetadataTable(view) {
   return pos;
 }
 
-// Title and Description always lead the table (in that order); everything else keeps
-// its existing relative order after them.
+// Title, then Description, then the rest in their existing order.
 function canonicalRowOrder(rows) {
   const titleRow = rows.find((r) => normalizeKey(r.child(0).textContent) === 'title');
   const descRow = rows.find((r) => normalizeKey(r.child(0).textContent) === 'description');
@@ -134,8 +129,7 @@ export function deleteMetadataRow(view, key) {
   const match = findMetadataRow(found.node, key);
   if (!match) return;
 
-  // When deleting the last remaining metadata row, remove the whole metadata block
-  // instead of leaving behind a heading-only table.
+  // Last row: remove the whole block.
   if (found.node.childCount <= 2) {
     view.dispatch(view.state.tr.delete(found.pos, found.pos + found.node.nodeSize));
     return;

@@ -38,16 +38,6 @@ describe('buildMetadataFields', () => {
     expect(buildMetadataFields(rows)[0].label).to.equal('Robots Directive');
   });
 
-  it('exposes rawLabel as the explicit label only, undefined when none was given', () => {
-    const rows = [
-      { blocks: 'metadata', key: 'robots', label: 'Robots Directive' },
-      { blocks: 'metadata', key: 'category' },
-    ];
-    const fields = buildMetadataFields(rows);
-    expect(fields.find((f) => f.key === 'robots').rawLabel).to.equal('Robots Directive');
-    expect(fields.find((f) => f.key === 'category').rawLabel).to.equal(undefined);
-  });
-
   it('defaults type to single, honors type=multi', () => {
     const rows = [
       { blocks: 'metadata', key: 'category' },
@@ -113,7 +103,7 @@ describe('resolveMetadataFields', () => {
     expect(resolveMetadataFields(docRows, configured).find((f) => f.key === 'category').value).to.equal('News');
   });
 
-  it('appends doc keys that are not present in the config as removable plain text fields', () => {
+  it('appends doc keys that are not present in the config as plain text fields', () => {
     const configured = [{ key: 'category', label: 'Category', type: 'single', values: null }];
     const docRows = [
       { key: 'Category', value: 'News' },
@@ -127,23 +117,7 @@ describe('resolveMetadataFields', () => {
       type: 'single',
       values: null,
       value: 'yes',
-      configured: false,
-      removable: true,
     });
-  });
-
-  it('marks fallback fields and passthrough doc fields as removable', () => {
-    const fields = resolveMetadataFields([{ key: 'extra', value: 'x' }], []);
-    expect(fields.find((f) => f.key === 'Title').removable).to.equal(true);
-    expect(fields.find((f) => f.key === 'Description').removable).to.equal(true);
-    expect(fields.find((f) => f.key === 'extra').removable).to.equal(true);
-  });
-
-  it('marks configured fields as removable and configured', () => {
-    const configured = [{ key: 'category', label: 'Category', type: 'single', values: null }];
-    const fields = resolveMetadataFields([], configured);
-    expect(fields.find((f) => f.key === 'category').removable).to.equal(true);
-    expect(fields.find((f) => f.key === 'category').configured).to.equal(true);
   });
 
   it('uses configured Title/Description as-is when they are explicitly configured', () => {
@@ -153,12 +127,7 @@ describe('resolveMetadataFields', () => {
     ]);
     const fields = resolveMetadataFields([], configured);
     expect(fields.map((f) => f.key)).to.deep.equal(['title', 'description']);
-    expect(fields.find((f) => f.key === 'title')).to.deep.include({
-      label: 'Page Title',
-      type: 'multi',
-      removable: true,
-      configured: true,
-    });
+    expect(fields.find((f) => f.key === 'title')).to.deep.include({ label: 'Page Title', type: 'multi' });
     expect(fields.find((f) => f.key === 'description').label).to.equal('Summary');
   });
 });

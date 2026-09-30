@@ -16,19 +16,6 @@
   font-size: 14px;
 }
 
-.add-btn,
-.delete-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-}
-
-.icon {
-  width: 16px;
-  height: 16px;
-}
-
 .ew-pm-fields {
   display: flex;
   flex-direction: column;
@@ -50,10 +37,10 @@
   min-width: 0;
 }
 
-.ew-pm-control input[type='text'],
+.ew-pm-control .nx-input,
 .ew-pm-control nx-picker,
-.ew-pm-control ew-metadata-multiselect {
+.ew-pm-control ew-metadata-multiselect,
+.ew-pm-add .nx-input {
   width: 100%;
-  box-sizing: border-box;
 }
 

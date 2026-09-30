@@ -46,9 +46,7 @@ export const canvasBus = Object.freeze({
   toolbarSurfaceRequest: createChannel(),
 
   undoState: createChannel(),
-  // Fires on every doc-changing transaction, with no payload — a cheap, granular signal
-  // for anything that needs to react to *any* edit (including plain in-place typing),
-  // unlike editorHtmlState which only fires on the (throttled) full-page re-render path.
+  // Fires on every doc change (no payload), unlike the throttled editorHtmlState.
   editorDocState: createChannel(),
   editorViewState: createChannel({ replay: true }),
   blockEditState: createChannel({ replay: true }),

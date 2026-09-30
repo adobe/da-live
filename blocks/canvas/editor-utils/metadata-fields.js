@@ -19,28 +19,21 @@ function parseValues(raw) {
   });
 }
 
-/**
- * Filter the library "options" sheet (columns: blocks, key, values, type, label) to the
- * rows configuring the page metadata panel, producing one field descriptor per key.
- */
+/** Build metadata field descriptors from the library "options" sheet. */
 export function buildMetadataFields(data) {
   return (data || [])
     .filter((row) => row.key && matchesMetadata(row))
-    .map((row) => {
-      const rawLabel = row.label?.trim() || undefined;
-      return {
-        key: row.key.trim(),
-        label: rawLabel || row.key.trim(),
-        rawLabel,
-        type: normalize(row.type) === 'multi' ? 'multi' : 'single',
-        values: parseValues(row.values),
-      };
-    });
+    .map((row) => ({
+      key: row.key.trim(),
+      label: row.label?.trim() || row.key.trim(),
+      type: normalize(row.type) === 'multi' ? 'multi' : 'single',
+      values: parseValues(row.values),
+    }));
 }
 
 const DEFAULT_FIELDS = [
-  { key: 'Title', label: 'Title', type: 'single', values: null, removable: true },
-  { key: 'Description', label: 'Description', type: 'single', values: null, removable: true },
+  { key: 'Title', label: 'Title', type: 'single', values: null },
+  { key: 'Description', label: 'Description', type: 'single', values: null },
 ];
 
 function findDocValue(docRows, key) {
@@ -49,21 +42,14 @@ function findDocValue(docRows, key) {
 }
 
 /**
- * Resolve the metadata fields shown in the panel. When the library config defines
- * metadata fields, use that configured field list; otherwise fall back to the built-in
- * Title/Description fields. In both cases, keep any additional doc-only metadata rows
- * visible as removable plain-text fields, and hydrate everything from the live doc
- * case-insensitively. Deleting a fallback/configured field only removes the current
- * metadata row; the field stays visible because it remains part of the resolved base set.
+ * Fields shown in the panel: the configured fields (or Title/Description when none),
+ * plus any other doc rows, with values read from the doc.
  */
 export function resolveMetadataFields(docRows, configuredFields) {
-  const hasConfig = !!configuredFields?.length;
-  const baseFields = hasConfig ? configuredFields : DEFAULT_FIELDS;
+  const baseFields = configuredFields?.length ? configuredFields : DEFAULT_FIELDS;
   const visibleFields = baseFields.map((field) => ({
     ...field,
     value: findDocValue(docRows, field.key),
-    configured: true,
-    removable: true,
   }));
 
   const usedKeys = new Set(baseFields.map((field) => normalize(field.key)));
@@ -75,8 +61,6 @@ export function resolveMetadataFields(docRows, configuredFields) {
       type: 'single',
       values: null,
       value: row.value,
-      configured: false,
-      removable: true,
     }));
 
   return [...visibleFields, ...extraFields];

@@ -36,6 +36,7 @@ describe('ew-metadata-multiselect', () => {
     expect(checkboxFor(el, 'news').checked).to.equal(true);
     expect(checkboxFor(el, 'blog').checked).to.equal(false);
     expect(checkboxFor(el, 'adobe-red').checked).to.equal(true);
+    expect(checkboxFor(el, 'news').closest('label').classList.contains('nx-checkbox')).to.equal(true);
   });
 
   it('renders a color swatch next to items with a colorValue', async () => {

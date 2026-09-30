@@ -17,10 +17,10 @@ await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
 await import('./ew-metadata-multiselect.js');
 
-const [formStyle, style, baseStyle] = await Promise.all([
+const [formStyle, buttonsStyle, style] = await Promise.all([
   getSheet(`${getNx2()}/styles/form.css`),
+  getSheet(`${getNx2()}/styles/buttons.css`),
   loadStyle(import.meta.url),
-  loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href),
 ]);
 
 class EwPageMetadata extends LitElement {
@@ -35,7 +35,7 @@ class EwPageMetadata extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [baseStyle, formStyle, style];
+    this.shadowRoot.adoptedStyleSheets = [formStyle, buttonsStyle, style];
     this._docRows = [];
     this._libraryFields = [];
     this._unsubHash = hashChange.subscribe((state) => {
@@ -43,10 +43,7 @@ class EwPageMetadata extends LitElement {
       this._hashState = state;
       if (state?.org !== prev?.org || state?.site !== prev?.site) this._loadLibraryFields();
     });
-    // editorHtmlState only signals "doc cleared" here (e.g. navigating away) — the actual
-    // refresh trigger is editorDocState, which fires on every doc-changing transaction
-    // (including plain in-place typing, not just the ones that trigger a full re-render),
-    // and reads straight from the live doc rather than re-parsing rendered aemHtml.
+    // Rows refresh on editorDocState; an empty editorHtmlState means the doc was unloaded.
     this._unsubscribeHtml = canvasBus.editorHtmlState.subscribe((aemHtml) => {
       if (!aemHtml?.trim()) this._docRows = [];
     });
@@ -128,7 +125,7 @@ class EwPageMetadata extends LitElement {
   _renderField(field) {
     if (!field.values?.length) {
       return html`
-        <input type="text" class="da-input" .value=${field.value}
+        <input type="text" class="nx-input" .value=${field.value}
                @blur=${(e) => this._commit(field, e.target.value)}>`;
     }
     if (field.type === 'multi') {
@@ -151,31 +148,31 @@ class EwPageMetadata extends LitElement {
 
   _renderRow(field) {
     return html`
-      <div class="ew-pm-row da-form-field" data-key=${field.key}>
+      <div class="ew-pm-row nx-form-field" data-key=${field.key}>
         <label class="ew-pm-label">${field.label}</label>
         <div class="ew-pm-control-row">
           <div class="ew-pm-control">${this._renderField(field)}</div>
-          ${field.removable === false ? nothing : html`
-            <button type="button" class="delete-btn" aria-label="Delete ${field.label}"
-                    @click=${() => this._onDeleteClick(field.key)}>
-              <svg aria-hidden="true" class="icon" viewBox="0 0 20 20">
-                <use href="${DELETE_ICON_SRC}#icon"></use>
-              </svg>
-            </button>`}
+          <button type="button" class="nx-action-btn-icon nx-btn-sm delete-btn" aria-label="Delete ${field.label}"
+                  @click=${() => this._onDeleteClick(field.key)}>
+            <svg aria-hidden="true" viewBox="0 0 20 20">
+              <use href="${DELETE_ICON_SRC}#icon"></use>
+            </svg>
+          </button>
         </div>
       </div>`;
   }
 
   _renderAddDialog() {
     return html`
-      <nx-dialog class="ew-pm-add" title="Add field" @close=${() => this._cancelAdd()}>
-        <label>Key
-          <input type="text" name="key" class="da-input" .value=${this._draftKey}
+      <nx-dialog class="ew-pm-add" title="Add page metadata field" @close=${() => this._cancelAdd()}>
+        <label class="nx-form-field">
+          <span>Field name</span>
+          <input type="text" name="key" class="nx-input" .value=${this._draftKey}
                  @input=${(e) => { this._draftKey = e.target.value; }}>
         </label>
-        <button slot="actions" class="da-btn-secondary"
+        <button slot="actions" class="nx-form-btn-secondary"
                 @click=${() => this._cancelAdd()}>Cancel</button>
-        <button slot="actions" class="da-btn-primary"
+        <button slot="actions" class="nx-form-btn-primary"
                 @click=${() => this._confirmAdd()}>Add</button>
       </nx-dialog>`;
   }
@@ -185,9 +182,9 @@ class EwPageMetadata extends LitElement {
       <nx-dialog class="ew-pm-delete" title="Delete field" @close=${() => this._cancelDelete()}>
         <span>Are you sure you want to remove
           <strong>${this._pendingDeleteKey}</strong> metadata from the page?</span>
-        <button slot="actions" class="da-btn-secondary"
+        <button slot="actions" class="nx-form-btn-secondary"
                 @click=${() => this._cancelDelete()}>Cancel</button>
-        <button slot="actions" class="da-btn-primary"
+        <button slot="actions" class="nx-form-btn-primary"
                 @click=${() => this._confirmDelete()}>Delete</button>
       </nx-dialog>`;
   }
@@ -197,9 +194,9 @@ class EwPageMetadata extends LitElement {
       <div class="ew-page-metadata">
         <div class="ew-pm-header">
           <h3>Page Metadata</h3>
-          <button type="button" class="add-btn" aria-label="Add field"
+          <button type="button" class="nx-action-btn-icon nx-btn-sm add-btn" aria-label="Add page metadata field"
                   @click=${() => this._onAddClick()}>
-            <svg aria-hidden="true" class="icon" viewBox="0 0 20 20">
+            <svg aria-hidden="true" viewBox="0 0 20 20">
               <use href="${ADD_ICON_SRC}#icon"></use>
             </svg>
           </button>

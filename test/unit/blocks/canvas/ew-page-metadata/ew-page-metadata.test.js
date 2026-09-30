@@ -76,20 +76,43 @@ describe('ew-page-metadata', () => {
     canvasBus.editorHtmlState.emit('');
   });
 
-  describe('fallback + read path', () => {
-    it('renders default Title/Description text fields when there is no library config', async () => {
+  describe('panel chrome', () => {
+    it('shows "Page Metadata" as the panel headline', async () => {
+      expect(el.shadowRoot.querySelector('h3').textContent).to.equal('Page Metadata');
+    });
+
+    it('uses NX form/button styles for inputs and icon buttons', async () => {
       bridge.view = makeRealView(baseDoc());
       canvasBus.editorDocState.emit();
       await el.updateComplete;
-      expect(rowFor(el, 'Title').querySelector('input[type="text"]').value).to.equal('');
-      expect(rowFor(el, 'Description').querySelector('input[type="text"]').value).to.equal('');
+      const row = rowFor(el, 'Title');
+      const addBtn = el.shadowRoot.querySelector('.add-btn');
+      expect(row.classList.contains('nx-form-field')).to.equal(true);
+      expect(row.querySelector('input[type="text"]').classList.contains('nx-input')).to.equal(true);
+      expect(row.querySelector('.delete-btn').classList.contains('nx-action-btn-icon')).to.equal(true);
+      expect(addBtn.classList.contains('nx-action-btn-icon')).to.equal(true);
+      expect(addBtn.getAttribute('aria-label')).to.equal('Add page metadata field');
     });
 
-    it('pre-fills default fields from the current doc metadata', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['title', 'My Page']])] });
+    it('renders the add-field dialog with its copy and an NX input', async () => {
+      el.shadowRoot.querySelector('.add-btn').click();
+      await el.updateComplete;
+      const dialog = el.shadowRoot.querySelector('.ew-pm-add');
+      expect(dialog.getAttribute('title')).to.equal('Add page metadata field');
+      expect(dialog.querySelector('.nx-form-field span').textContent.trim()).to.equal('Field name');
+      expect(dialog.querySelector('input[name="key"]').classList.contains('nx-input')).to.equal(true);
+    });
+  });
+
+  describe('fallback + read path', () => {
+    it('renders deletable default Title/Description text fields when there is no library config', async () => {
+      bridge.view = makeRealView(baseDoc());
       canvasBus.editorDocState.emit();
       await el.updateComplete;
-      expect(rowFor(el, 'Title').querySelector('input[type="text"]').value).to.equal('My Page');
+      ['Title', 'Description'].forEach((key) => {
+        expect(rowFor(el, key).querySelector('input[type="text"]').value).to.equal('');
+        expect(rowFor(el, key).querySelector('.delete-btn')).to.exist;
+      });
     });
 
     it('renders unconfigured doc keys alongside fallback fields when there is no library config', async () => {
@@ -116,23 +139,7 @@ describe('ew-page-metadata', () => {
       expect(rowFor(el, 'Description')).to.equal(null);
     });
 
-    it('shows the add-field button even when fields are configured', async () => {
-      expect(el.shadowRoot.querySelector('.add-btn')).to.exist;
-    });
-
-    it('shows "Page Metadata" as the panel headline', async () => {
-      expect(el.shadowRoot.querySelector('h3').textContent).to.equal('Page Metadata');
-    });
-
-    it('shows a delete button for fallback Title and Description', async () => {
-      bridge.view = makeRealView(baseDoc());
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
-      expect(rowFor(el, 'Title').querySelector('.delete-btn')).to.exist;
-      expect(rowFor(el, 'Description').querySelector('.delete-btn')).to.exist;
-    });
-
-    it('clears the fields when editorHtmlState signals the doc was unloaded', async () => {
+    it('pre-fills from the doc, and clears when editorHtmlState signals the doc was unloaded', async () => {
       bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['title', 'My Page']])] });
       canvasBus.editorDocState.emit();
       await el.updateComplete;
@@ -181,14 +188,12 @@ describe('ew-page-metadata', () => {
       canvasBus.editorDocState.emit();
       await el.updateComplete;
       const picker = rowFor(el, 'accent').querySelector('nx-picker');
-      expect(picker).to.exist;
       expect(picker.value).to.equal('adobe-red');
-      expect(picker.items[0]).to.deep.equal({ value: '', label: 'Please Select' });
-      expect(picker.items[1].value).to.equal('adobe-red');
-      expect(picker.items[1].label).to.equal('Adobe Red');
-      expect(picker.items[1].action).to.equal(true);
-      expect(picker.items[1].trailingIcon).to.equal('/img/icons/s2-icon-colorfill-20-n.svg');
-      expect(picker.items[2]).to.deep.equal({ value: 'sky', label: 'Sky' });
+      expect(picker.items).to.deep.equal([
+        { value: '', label: 'Please Select' },
+        { value: 'adobe-red', label: 'Adobe Red', action: true, trailingIcon: '/img/icons/s2-icon-colorfill-20-n.svg' },
+        { value: 'sky', label: 'Sky' },
+      ]);
     });
 
     it('selects the empty option when the field has no current value', async () => {
@@ -285,7 +290,7 @@ describe('ew-page-metadata', () => {
 
       dialog.querySelector('input[name="key"]').value = 'Keywords';
       dialog.querySelector('input[name="key"]').dispatchEvent(new Event('input'));
-      dialog.querySelector('.da-btn-primary').click();
+      dialog.querySelector('.nx-form-btn-primary').click();
       await el.updateComplete;
 
       expect(tableRows(bridge.view)).to.deep.equal([{ key: 'Keywords', value: '' }]);
@@ -303,7 +308,7 @@ describe('ew-page-metadata', () => {
       await el.updateComplete;
       const message = el.shadowRoot.querySelector('.ew-pm-delete span').textContent.replace(/\s+/g, ' ').trim();
       expect(message).to.equal('Are you sure you want to remove legacy-flag metadata from the page?');
-      el.shadowRoot.querySelector('.ew-pm-delete .da-btn-primary').click();
+      el.shadowRoot.querySelector('.ew-pm-delete .nx-form-btn-primary').click();
 
       expect(tableRows(bridge.view)).to.deep.equal([]);
     });
@@ -315,7 +320,7 @@ describe('ew-page-metadata', () => {
 
       rowFor(el, 'Title').querySelector('.delete-btn').click();
       await el.updateComplete;
-      el.shadowRoot.querySelector('.ew-pm-delete .da-btn-primary').click();
+      el.shadowRoot.querySelector('.ew-pm-delete .nx-form-btn-primary').click();
       await el.updateComplete;
 
       expect(tableRows(bridge.view)).to.deep.equal([]);
@@ -331,7 +336,7 @@ describe('ew-page-metadata', () => {
 
       rowFor(el, 'legacy-flag').querySelector('.delete-btn').click();
       await el.updateComplete;
-      el.shadowRoot.querySelector('.ew-pm-delete .da-btn-secondary').click();
+      el.shadowRoot.querySelector('.ew-pm-delete .nx-form-btn-secondary').click();
       await el.updateComplete;
 
       expect(el.shadowRoot.querySelector('.ew-pm-delete')).to.equal(null);
@@ -340,9 +345,7 @@ describe('ew-page-metadata', () => {
   });
 
   describe('sync with external doc changes', () => {
-    // findTablePos/textStartPos are deliberately independent of the tableRows()/
-    // metadataTableJSON() helpers above — they walk the doc via nodeSize, the same way
-    // production code (findMetadataTable/findMetadataRow) computes positions.
+    // Walk the doc by nodeSize, like production code, independent of the helpers above.
     function findTablePos(view) {
       let tablePos = -1;
       view.state.doc.descendants((n, p) => { if (n.type.name === 'table' && tablePos < 0) tablePos = p; });
@@ -364,8 +367,7 @@ describe('ew-page-metadata', () => {
       await el.updateComplete;
       expect(rowFor(el, 'Title').querySelector('input[type="text"]').value).to.equal('Old');
 
-      // Simulate what happens when a user types directly into the value cell: a plain
-      // text replace, no row inserted/removed — the case editorDocState exists to cover.
+      // Simulate typing into the value cell: a plain text replace, no row change.
       const { view } = bridge;
       const tablePos = findTablePos(view);
       const table = view.state.doc.nodeAt(tablePos);

@@ -36,7 +36,7 @@ class EwMetadataMultiselect extends LitElement {
       <ul class="ew-metadata-multiselect">
         ${(this.items || []).map((item) => html`
           <li>
-            <label class="da-checkbox">
+            <label class="nx-checkbox">
               <input type="checkbox" value=${item.value}
                      .checked=${selected.has(item.value)}
                      @change=${() => this._onToggle(item.value)}>
