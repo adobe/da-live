@@ -6,6 +6,8 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 const {
   buildMetadataFields,
   resolveMetadataFields,
+  formatJsonValue,
+  compactJsonValue,
 } = await import('../../../../../blocks/canvas/editor-utils/metadata-fields.js');
 
 describe('buildMetadataFields', () => {
@@ -38,14 +40,16 @@ describe('buildMetadataFields', () => {
     expect(buildMetadataFields(rows)[0].label).to.equal('Robots Directive');
   });
 
-  it('defaults type to single, honors type=multi', () => {
+  it('defaults type to single, honors type=multi and type=json', () => {
     const rows = [
       { blocks: 'metadata', key: 'category' },
       { blocks: 'metadata', key: 'tags', type: 'multi' },
+      { blocks: 'metadata', key: 'json-ld', type: 'JSON' },
     ];
     const fields = buildMetadataFields(rows);
     expect(fields.find((f) => f.key === 'category').type).to.equal('single');
     expect(fields.find((f) => f.key === 'tags').type).to.equal('multi');
+    expect(fields.find((f) => f.key === 'json-ld').type).to.equal('json');
   });
 
   it('leaves values null for a plain text field with no values column', () => {
@@ -129,5 +133,27 @@ describe('resolveMetadataFields', () => {
     expect(fields.map((f) => f.key)).to.deep.equal(['title', 'description']);
     expect(fields.find((f) => f.key === 'title')).to.deep.include({ label: 'Page Title', type: 'multi' });
     expect(fields.find((f) => f.key === 'description').label).to.equal('Summary');
+  });
+});
+
+describe('JSON value formatting', () => {
+  it('pretty-prints valid JSON for editing', () => {
+    expect(formatJsonValue('{"@type":"Article","name":"A"}'))
+      .to.equal('{\n  "@type": "Article",\n  "name": "A"\n}');
+  });
+
+  it('leaves invalid or empty JSON untouched for editing', () => {
+    expect(formatJsonValue('{broken')).to.equal('{broken');
+    expect(formatJsonValue('')).to.equal('');
+  });
+
+  it('compacts valid JSON to a single line for storage', () => {
+    expect(compactJsonValue('{\n  "@type": "Article",\n  "name": "A"\n}'))
+      .to.equal('{"@type":"Article","name":"A"}');
+  });
+
+  it('keeps invalid JSON as typed, collapsing line breaks', () => {
+    expect(compactJsonValue('{\n  broken\n}')).to.equal('{ broken }');
+    expect(compactJsonValue('')).to.equal('');
   });
 });

@@ -196,6 +196,16 @@ describe('ew-page-metadata', () => {
       ]);
     });
 
+    it('renders a json field as a textarea with pretty-printed JSON', async () => {
+      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['json-ld', '{"@type":"Article"}']])] });
+      el._libraryFields = [{ key: 'json-ld', label: 'JSON-LD', type: 'json', values: null }];
+      canvasBus.editorDocState.emit();
+      await el.updateComplete;
+      const textarea = rowFor(el, 'json-ld').querySelector('textarea');
+      expect(textarea.classList.contains('nx-input')).to.equal(true);
+      expect(textarea.value).to.equal('{\n  "@type": "Article"\n}');
+    });
+
     it('selects the empty option when the field has no current value', async () => {
       bridge.view = makeRealView(baseDoc());
       el._libraryFields = [{ key: 'category', label: 'Category', type: 'single', values: [{ title: 'News', value: 'news' }] }];
@@ -275,6 +285,19 @@ describe('ew-page-metadata', () => {
         .dispatchEvent(new CustomEvent('change', { detail: { value: 'sky' } }));
 
       expect(tableRows(bridge.view)).to.deep.equal([{ key: 'accent', value: 'sky' }]);
+    });
+
+    it('commits a json textarea on blur as compact JSON', async () => {
+      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['json-ld', '{"@type":"Article"}']])] });
+      el._libraryFields = [{ key: 'json-ld', label: 'JSON-LD', type: 'json', values: null }];
+      canvasBus.editorDocState.emit();
+      await el.updateComplete;
+
+      const textarea = rowFor(el, 'json-ld').querySelector('textarea');
+      textarea.value = '{\n  "@type": "Event"\n}';
+      textarea.dispatchEvent(new Event('blur'));
+
+      expect(tableRows(bridge.view)).to.deep.equal([{ key: 'json-ld', value: '{"@type":"Event"}' }]);
     });
 
     it('adds a new field via the + dialog with just a key, leaving the value empty', async () => {

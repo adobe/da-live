@@ -44,3 +44,10 @@
   width: 100%;
 }
 
+.ew-pm-control .ew-pm-json {
+  height: 160px;
+  padding: 8px var(--s2-spacing-200);
+  font-family: monospace;
+  resize: vertical;
+}
+

@@ -19,16 +19,39 @@ function parseValues(raw) {
   });
 }
 
+const FIELD_TYPES = ['multi', 'json'];
+
 /** Build metadata field descriptors from the library "options" sheet. */
 export function buildMetadataFields(data) {
   return (data || [])
     .filter((row) => row.key && matchesMetadata(row))
-    .map((row) => ({
-      key: row.key.trim(),
-      label: row.label?.trim() || row.key.trim(),
-      type: normalize(row.type) === 'multi' ? 'multi' : 'single',
-      values: parseValues(row.values),
-    }));
+    .map((row) => {
+      const type = normalize(row.type);
+      return {
+        key: row.key.trim(),
+        label: row.label?.trim() || row.key.trim(),
+        type: FIELD_TYPES.includes(type) ? type : 'single',
+        values: parseValues(row.values),
+      };
+    });
+}
+
+/** Pretty-print JSON for editing; returns the value unchanged if it isn't valid JSON. */
+export function formatJsonValue(value) {
+  try {
+    return JSON.stringify(JSON.parse(value), null, 2);
+  } catch {
+    return value;
+  }
+}
+
+/** Compact JSON to one line for storage; invalid JSON keeps its text, minus line breaks. */
+export function compactJsonValue(value) {
+  try {
+    return JSON.stringify(JSON.parse(value));
+  } catch {
+    return value.replace(/\s*\n\s*/g, ' ').trim();
+  }
 }
 
 const DEFAULT_FIELDS = [

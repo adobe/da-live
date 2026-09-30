@@ -4,7 +4,7 @@ import getSheet from '../../shared/sheet.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { readMetadataRows, setMetadataValue, addMetadataRow, deleteMetadataRow } from '../editor-utils/metadata.js';
-import { buildMetadataFields, resolveMetadataFields } from '../editor-utils/metadata-fields.js';
+import { buildMetadataFields, resolveMetadataFields, formatJsonValue, compactJsonValue } from '../editor-utils/metadata-fields.js';
 import { loadBlockOptions } from '../ew-panel-extensions/helpers.js';
 
 const DELETE_ICON_SRC = '/img/icons/s2-icon-delete-20-n.svg';
@@ -123,6 +123,11 @@ class EwPageMetadata extends LitElement {
   }
 
   _renderField(field) {
+    if (field.type === 'json') {
+      return html`
+        <textarea class="nx-input ew-pm-json" .value=${formatJsonValue(field.value)}
+                  @blur=${(e) => this._commit(field, compactJsonValue(e.target.value))}></textarea>`;
+    }
     if (!field.values?.length) {
       return html`
         <input type="text" class="nx-input" .value=${field.value}
