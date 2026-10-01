@@ -1,7 +1,6 @@
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getPathDetails from '../../shared/pathDetails.js';
 import { buildAssetSelectorProps, rememberAssetFolder } from '../../shared/aem-assets/selector-props.js';
-import { getRepositoryConfig, getResponsiveImageConfig } from './helpers/config.js';
 import {
   buildAuthorUrl, buildDmUrl, buildDeliveryUrl,
   getAssetAlt, getDmApprovalStatus, getScene7PublishStatus,
@@ -9,6 +8,8 @@ import {
 import { applySiteImageModifiers } from './helpers/imageModifiers.js';
 import { insertImage, insertLink, insertFragment, createImageNode, getBlockName } from './helpers/insert.js';
 import showSmartCropDialog from './helpers/smart-crop.js';
+
+const { getRepositoryConfig, getResponsiveImageConfig } = await import(`${getNx2()}/utils/aem-assets/repository-config.js`);
 
 export const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/static-assets/resources/assets-selectors.js';
 export { buildFeatureSet } from '../../shared/aem-assets/selector-props.js';
@@ -90,7 +91,7 @@ function showAssetPanel(assetPanel, secondaryPanel) {
  * @param {object} opts
  * @param {HTMLElement} opts.assetPanel - Panel hosting the asset selector.
  * @param {HTMLElement} opts.secondaryPanel - Panel used for smart-crop / error UI.
- * @param {object} opts.repoConfig - Resolved repository config (see helpers/config.js).
+ * @param {object} opts.repoConfig - Resolved repository config (see getRepositoryConfig).
  * @param {Promise<Array|false>} opts.responsiveImageConfigPromise - Responsive image configs.
  * @param {function(): object} opts.getView - Returns the current ProseMirror view.
  * @param {function(): void} opts.close - Closes the surrounding dialog/panel.
