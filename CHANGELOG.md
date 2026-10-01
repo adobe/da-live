@@ -1,3 +1,10 @@
+## [1.0.3](https://github.com/adobe/da-live/compare/v1.0.2...v1.0.3) (2026-10-01)
+
+
+### Bug Fixes
+
+* add title field for link dialog ([#1320](https://github.com/adobe/da-live/issues/1320)) ([cc639f7](https://github.com/adobe/da-live/commit/cc639f72c679bf875ddb298d4f0848d7c9ac9039))
+
 ## [1.0.2](https://github.com/adobe/da-live/compare/v1.0.1...v1.0.2) (2026-09-30)
 
 
