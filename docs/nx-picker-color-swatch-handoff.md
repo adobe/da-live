@@ -46,10 +46,50 @@ Root cause:
 We switched to a fixed trailing icon for color options:
 
 ```js
-{ value, label, action: true, trailingIcon: '/img/icons/s2-icon-color-fill-20-n.svg' }
+{ value, label, action: true, trailingIcon: '/img/icons/s2-icon-colorfill-20-n.svg' }
 ```
 
 This works as a stable fallback, but it does **not** show the actual per-option color.
+
+Note: `action: true` is not needed and should be dropped. In `nx-picker`, `action` items skip `_select()` (meant for "opens in dialog/tab" entries like the tool panel's). `trailingIcon` renders without it.
+
+## Existing precedent: block options slash menu (`nx-menu`)
+
+Color swatches already work in the canvas slash menu. In a block cell, typing `/` offers that block's key/value options from the same library `options` sheet, and color values render as swatches. That menu is `nx-menu`, which already supports a `swatch` item property.
+
+Data flow in da-live:
+
+1. `blocks/canvas/ew-editor-doc/slash-menu/slash-menu.js`
+   - `setup()` creates one `nx-menu` (`document.createElement('nx-menu')`) for the slash menu.
+   - In cell mode, `syncSlashUi()` calls `ensureBlockOptions(orgSite)` and sets `items = blockOptionItems(view.state, slash.query)`.
+   - On `select`, `isBlockOption(id)` → `applyBlockOption(view, id)` writes the value into the cell.
+2. `blocks/canvas/ew-editor-doc/slash-menu/block-options.js`
+   - `blockOptionItems()` builds menu items; for value options:
+     ```js
+     items.push({ id, label: v.title, ...(isColorCode(v.value) ? { swatch: v.value } : {}) });
+     ```
+   - Covered by `test/unit/blocks/canvas/ew-editor-doc/block-options.test.js` ("flags hex-color values with a swatch").
+3. `blocks/canvas/editor-utils/color-code.js` `isColorCode()` (hex, rgb/rgba, gradients). Shared with the metadata panel (`metadata-fields.js` sets `colorValue` with it).
+
+Rendering in da-nx (`nx2/blocks/shared/menu/`):
+
+- `menu.js`:
+  ```js
+  ${item.swatch ? html`<span class="menu-item-swatch" style="background:${item.swatch}"></span>` : nothing}
+  ```
+- `menu.css`:
+  ```css
+  .menu-item-swatch {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    border: 1px solid var(--s2-gray-300);
+    border-radius: var(--s2-corner-radius-75);
+  }
+  ```
+- Tests: `nx2/test/unit/nx/blocks/shared/menu/menu.test.js` ("renders a color swatch when item.swatch is set").
+
+By contrast, `nx2/blocks/shared/picker/picker.js` (`_renderItem`) only renders `item.trailingIcon` via `<use href="${item.trailingIcon}#icon">` and has no swatch support.
 
 ## Current local state
 
@@ -120,20 +160,22 @@ Example:
 or
 
 ```js
-{ value, label, trailingIconHref: '/img/icons/s2-icon-color-fill-20-n.svg#icon' }
+{ value, label, trailingIconHref: '/img/icons/s2-icon-colorfill-20-n.svg#icon' }
 ```
 
 This would make inline sprite injection possible.
 
 ## Recommendation
 
-Preferred enhancement:
+Go with **Option A, using the same `swatch` property and styling as `nx-menu`**, so both components share one item API:
 
-1. add first-class `swatch` support to `nx-picker`
-2. render a small rounded rectangle chip next to the label
-3. keep existing `trailingIcon` behavior unchanged for action/open-in items
+1. In `nx2/blocks/shared/picker/picker.js` `_renderItem`, render `item.swatch` before the label, like `menu.js` does.
+2. Optionally show the selected item's swatch in the picker trigger too.
+3. Copy `.menu-item-swatch` styling into the picker CSS (16px, `--s2-gray-300` border, `--s2-corner-radius-75`).
+4. Add picker tests mirroring the menu's swatch tests.
+5. Keep `trailingIcon` / `action` unchanged for action/open-in items.
 
-That gives the metadata panel exactly what it needs without overloading the action-icon mechanism.
+That gives the metadata panel exactly what it needs without overloading the action-icon mechanism, and matches what authors already see in the block options slash menu.
 
 ## Consumer example after enhancement
 
@@ -147,7 +189,7 @@ If `swatch` support exists, the metadata panel could emit:
 }
 ```
 
-for color values, while non-color values remain:
+for color values (dropping `action` / `trailingIcon` and `COLOR_FILL_ICON_SRC`), while non-color values remain:
 
 ```js
 {
@@ -155,6 +197,10 @@ for color values, while non-color values remain:
   label: v.title,
 }
 ```
+
+## Related: multiselect swatch shape
+
+The metadata panel's `ew-metadata-multiselect` renders its own swatch (`.swatch` in `ew-metadata-multiselect.css`: 12px circle). PR #1359 review comment `4145303628` (usman-khalid) asks for a rounded square like the block options menu, so light colors don't look like radio buttons. Matching `.menu-item-swatch` above keeps the multiselect, `nx-menu` and the future `nx-picker` swatch consistent.
 
 ## Why this matters
 
