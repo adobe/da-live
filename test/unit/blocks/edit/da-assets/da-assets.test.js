@@ -17,7 +17,18 @@ const {
 // Minimal mock of a ProseMirror view with a tracked dispatch spy.
 function makeView() {
   const dispatched = [];
-  const schema = { nodes: { image: { create: (attrs) => ({ type: 'image', attrs }) } } };
+  const createdNodes = [];
+  const schema = {
+    nodes: {
+      image: {
+        create: (attrs) => {
+          const node = { type: 'image', attrs };
+          createdNodes.push(node);
+          return node;
+        },
+      },
+    },
+  };
   const tr = {
     replaceSelectionWith: () => tr,
     insert: () => tr,
@@ -26,6 +37,7 @@ function makeView() {
   };
   return {
     dispatched,
+    createdNodes,
     state: {
       schema,
       selection: { $from: { depth: 0, node: () => null }, from: 0 },
@@ -55,7 +67,11 @@ const AUTHOR_PUBLISH_CONFIG = {
   assetBasePath: '/adobe/assets',
   isDmEnabled: false,
   isSmartCrop: false,
-  insertAsLink: false,
+};
+
+const AUTHOR_PUBLISH_EDITABLE_LINK_CONFIG = {
+  ...AUTHOR_PUBLISH_CONFIG,
+  imageType: 'editable-link',
 };
 
 const AUTHOR_DM_CONFIG = {
@@ -65,7 +81,16 @@ const AUTHOR_DM_CONFIG = {
   assetBasePath: '/adobe/assets',
   isDmEnabled: true,
   isSmartCrop: false,
-  insertAsLink: false,
+};
+
+const AUTHOR_DM_EDITABLE_LINK_CONFIG = {
+  repositoryId: 'author-p1-e1.adobeaemcloud.com',
+  tierType: 'author',
+  assetOrigin: 'delivery-p1-e1.adobeaemcloud.com',
+  assetBasePath: '/adobe/assets',
+  isDmEnabled: true,
+  isSmartCrop: false,
+  imageType: 'editable-link',
 };
 
 const DELIVERY_CONFIG = {
@@ -75,7 +100,6 @@ const DELIVERY_CONFIG = {
   assetBasePath: '/adobe/assets',
   isDmEnabled: true,
   isSmartCrop: false,
-  insertAsLink: false,
 };
 
 // ---------------------------------------------------------------------------
@@ -333,11 +357,82 @@ describe('buildHandleSelection', () => {
     expect(view.dispatched).to.have.length(0);
   });
 
-  it('closes dialog and takes link path for image when insertAsLink is true', async () => {
-    const { view, dialog, handler } = setup({ ...AUTHOR_PUBLISH_CONFIG, insertAsLink: true });
+  it('closes dialog and takes link path for image when imageType is link', async () => {
+    const { view, dialog, handler } = setup({ ...AUTHOR_PUBLISH_CONFIG, imageType: 'link' });
     try { await handler([IMAGE_ASSET]); } catch { /* proseDOMParser mock limitation */ }
     expect(dialog.isOpen).to.be.false;
     expect(view.dispatched).to.have.length(0);
+  });
+
+  it('inserts image node with editAs image on standard path when imageType is editable-link', async () => {
+    const { view, dialog, handler } = setup(AUTHOR_PUBLISH_EDITABLE_LINK_CONFIG);
+    await handler([IMAGE_ASSET]);
+    expect(dialog.isOpen).to.be.false;
+    expect(view.dispatched).to.have.length(1);
+    expect(view.createdNodes).to.have.length(1);
+    expect(view.createdNodes[0].attrs.editAs).to.equal('image');
+  });
+
+  it('closes dialog and takes link path for non-image assets even when imageType is editable-link', async () => {
+    const { view, dialog, handler } = setup(AUTHOR_PUBLISH_EDITABLE_LINK_CONFIG);
+    try { await handler([PDF_ASSET]); } catch { /* proseDOMParser mock limitation */ }
+    expect(dialog.isOpen).to.be.false;
+    expect(view.dispatched).to.have.length(0);
+    expect(view.createdNodes).to.have.length(0);
+  });
+
+  it('inserts image node with editAs image on smart-crop no-crops fallback path', async () => {
+    window.fetch = async () => ({ ok: true, json: async () => ({ items: [] }) });
+    const { view, dialog } = setup({ ...AUTHOR_DM_EDITABLE_LINK_CONFIG, isSmartCrop: true });
+    const assetPanel = makePanel();
+    const secondaryPanel = makePanel();
+    const handler = buildHandleSelection({
+      assetPanel,
+      secondaryPanel,
+      repoConfig: { ...AUTHOR_DM_EDITABLE_LINK_CONFIG, isSmartCrop: true },
+      responsiveImageConfigPromise: Promise.resolve(false),
+      getView: () => view,
+      close: () => dialog.close(),
+    });
+    await handler([IMAGE_ASSET]);
+    expect(dialog.isOpen).to.be.false;
+    expect(view.createdNodes).to.have.length(1);
+    expect(view.createdNodes[0].attrs.editAs).to.equal('image');
+  });
+
+  it('passes editAs image through smart-crop onInsert to created fragment nodes', async () => {
+    window.fetch = async () => ({
+      ok: true,
+      json: async () => ({ items: [{ name: 'desktop' }, { name: 'mobile' }] }),
+    });
+    const view = makeView();
+    window.view = view;
+    const dialog = makeDialog();
+    const assetPanel = makePanel();
+    const secondaryPanel = makePanel();
+    document.body.append(assetPanel, secondaryPanel);
+
+    const handler = buildHandleSelection({
+      assetPanel,
+      secondaryPanel,
+      repoConfig: { ...AUTHOR_DM_EDITABLE_LINK_CONFIG, isSmartCrop: true },
+      responsiveImageConfigPromise: Promise.resolve(false),
+      getView: () => view,
+      close: () => dialog.close(),
+    });
+    await handler([IMAGE_ASSET]);
+
+    const insertBtn = secondaryPanel.querySelector('.insert');
+    expect(insertBtn).to.exist;
+    try { insertBtn.click(); } catch { /* Fragment.fromArray needs real nodes */ }
+    expect(dialog.isOpen).to.be.false;
+    expect(view.createdNodes.length).to.be.greaterThan(0);
+    view.createdNodes.forEach((node) => {
+      expect(node.attrs.editAs).to.equal('image');
+    });
+
+    assetPanel.remove();
+    secondaryPanel.remove();
   });
 
   it('shows error panel for unapproved asset in author+DM mode', async () => {
