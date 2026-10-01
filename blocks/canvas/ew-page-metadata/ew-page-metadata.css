@@ -1,14 +1,17 @@
 .ew-page-metadata {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 12px;
+  gap: var(--s2-spacing-200);;
+  padding: 0 var(--s2-spacing-200);
+  max-height: 100%;
 }
 
 .ew-pm-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  top: 0;
+  padding-top: var(--s2-spacing-200);
 }
 
 .ew-pm-header h3 {
@@ -19,13 +22,15 @@
 .ew-pm-fields {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--s2-spacing-300);
+  overflow: scroll;
+  margin-bottom: var(--s2-spacing-200);
 }
 
 .ew-pm-control-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--s2-spacing-100);
 }
 
 .ew-pm-row .delete-btn {
@@ -46,7 +51,7 @@
 
 .ew-pm-control .ew-pm-json {
   height: 160px;
-  padding: 8px var(--s2-spacing-200);
+  padding: var(--s2-spacing-100) var(--s2-spacing-200);
   font-family: monospace;
   resize: vertical;
 }
