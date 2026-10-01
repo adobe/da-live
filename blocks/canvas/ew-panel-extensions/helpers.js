@@ -258,6 +258,9 @@ export async function fetchExtensions(org, site) {
   const seen = new Set();
   const extensions = rows.reduce((acc, row) => {
     if (!row.title || !getIsPluginAllowed(row.ref)) return acc;
+    // A row without a usable path has no sources to load; skip it so one bad
+    // row cannot crash the whole panel.
+    if (typeof row.path !== 'string' || !row.path.trim()) return acc;
     const name = row.title.trim().toLowerCase().replaceAll(' ', '-');
     if (seen.has(name)) return acc;
     seen.add(name);

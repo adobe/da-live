@@ -48,6 +48,117 @@ describe('DaListItem', () => {
     });
   });
 
+  describe('statusItem', () => {
+    function itemAt(path, ext = 'html') {
+      const el = new DaListItem();
+      el.path = path;
+      el.ext = ext;
+      el.name = path.split('/').pop();
+      return el.statusItem;
+    }
+
+    it('Carries the DA source path unchanged', () => {
+      expect(itemAt('/org/repo/tea.html').path).to.equal('/org/repo/tea.html');
+    });
+
+    it('Strips the extension for the AEM preview form', () => {
+      expect(itemAt('/org/repo/tea.html').previewPath).to.equal('/org/repo/tea');
+    });
+
+    it('Strips the org and site prefix for the site-relative form', () => {
+      expect(itemAt('/org/repo/tea.html').sitePath).to.equal('/tea');
+    });
+
+    it('Removes exactly two segments, however deep the page sits', () => {
+      expect(itemAt('/org/repo/de/products/tea.html').sitePath).to.equal('/de/products/tea');
+    });
+
+    it('Leaves a non-html extension in place', () => {
+      const item = itemAt('/org/repo/data.json', 'json');
+      expect(item.previewPath).to.equal('/org/repo/data.json');
+      expect(item.sitePath).to.equal('/data.json');
+    });
+  });
+
+  describe('plugin status lifecycle', () => {
+    function makeItem(registry) {
+      const el = new DaListItem();
+      el.path = '/org/repo/tea.html';
+      el.name = 'tea';
+      el.ext = 'html';
+      el.statusRegistry = registry;
+      el.updateAEMStatus = async () => {};
+      el.updateDAStatus = async () => {};
+      el.requestUpdate = () => {};
+      return el;
+    }
+
+    const contribution = { name: 'rfp', heading: 'Workflow', status: { state: 'pending', label: 'In Review', icon: 'clock' } };
+
+    it('Asks no plugin anything before the row is expanded', () => {
+      let calls = 0;
+      const el = makeItem({ getContributions: async () => { calls += 1; return []; } });
+      expect(calls).to.equal(0);
+      expect(el._statuses).to.equal(undefined);
+    });
+
+    it('Asks once per expand, and again on the next expand', async () => {
+      let calls = 0;
+      const el = makeItem({ getContributions: async () => { calls += 1; return [contribution]; } });
+      el.toggleExpand();
+      expect(calls).to.equal(1);
+      el.toggleExpand();
+      el.toggleExpand();
+      expect(calls).to.equal(2);
+    });
+
+    it('Hands the registry all three path forms', async () => {
+      let seen;
+      const el = makeItem({ getContributions: async (item) => { seen = item; return []; } });
+      await el.updatePluginStatus();
+      expect(seen.path).to.equal('/org/repo/tea.html');
+      expect(seen.previewPath).to.equal('/org/repo/tea');
+      expect(seen.sitePath).to.equal('/tea');
+    });
+
+    it('Clears the status on collapse', async () => {
+      const el = makeItem({ getContributions: async () => [contribution] });
+      el.toggleExpand();
+      await el.updatePluginStatus();
+      expect(el._statuses.length).to.equal(1);
+      el.toggleExpand();
+      expect(el._statuses).to.equal(undefined);
+    });
+
+    it('Clears the status when the item is renamed onto a new path', async () => {
+      const el = makeItem({ getContributions: async () => [contribution] });
+      await el.updatePluginStatus();
+      expect(el._statuses.length).to.equal(1);
+      el.clearPluginStatus();
+      expect(el._statuses).to.equal(undefined);
+    });
+
+    it('Renders only the current response when two expands are in flight', async () => {
+      const pending = [];
+      const queue = (resolve) => { pending.push(resolve); };
+      const el = makeItem({ getContributions: () => new Promise(queue) });
+      const first = el.updatePluginStatus();
+      el.clearPluginStatus();
+      const second = el.updatePluginStatus();
+      // The first call resolves last, out of order.
+      pending[1]([{ ...contribution, heading: 'Second' }]);
+      pending[0]([{ ...contribution, heading: 'First' }]);
+      await Promise.all([first, second]);
+      expect(el._statuses.map((c) => c.heading)).to.deep.equal(['Second']);
+    });
+
+    it('Does nothing at all when no registry was handed down', async () => {
+      const el = makeItem(undefined);
+      await el.updatePluginStatus();
+      expect(el._statuses).to.equal(undefined);
+    });
+  });
+
   describe('handleRenameSubmit', () => {
     function makeSubmitEvent({ value, submitterValue = 'confirm' }) {
       return {

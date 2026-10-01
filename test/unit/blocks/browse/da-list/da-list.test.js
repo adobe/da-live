@@ -468,6 +468,55 @@ describe('DaList helpers', () => {
     });
   });
 
+  describe('updateStatusRegistry', () => {
+    it('Builds one registry for an org and site', () => {
+      const el = makeList();
+      el._permissions = ['read', 'write'];
+      el.updateStatusRegistry('org', 'repo');
+      expect(typeof el._statusRegistry.getContributions).to.equal('function');
+    });
+
+    it('Exposes nothing beyond the prepared contributions', () => {
+      const el = makeList();
+      el.updateStatusRegistry('org', 'repo');
+      expect(Object.keys(el._statusRegistry)).to.deep.equal(['getContributions']);
+    });
+
+    it('Builds no registry above the site level', () => {
+      const el = makeList();
+      el.updateStatusRegistry('org', undefined);
+      expect(el._statusRegistry).to.equal(null);
+    });
+
+    it('Keeps the same registry while walking folders in one site', () => {
+      const el = makeList();
+      el._permissions = ['read'];
+      el.updateStatusRegistry('org', 'repo');
+      const first = el._statusRegistry;
+      el.updateStatusRegistry('org', 'repo');
+      expect(el._statusRegistry).to.equal(first);
+    });
+
+    it('Rebuilds when the path crosses a site boundary', () => {
+      const el = makeList();
+      el._permissions = ['read'];
+      el.updateStatusRegistry('org', 'repo');
+      const first = el._statusRegistry;
+      el.updateStatusRegistry('org', 'other');
+      expect(el._statusRegistry).to.not.equal(first);
+    });
+
+    it('Rebuilds when the folder permissions change', () => {
+      const el = makeList();
+      el._permissions = ['read', 'write'];
+      el.updateStatusRegistry('org', 'repo');
+      const first = el._statusRegistry;
+      el._permissions = ['read'];
+      el.updateStatusRegistry('org', 'repo');
+      expect(el._statusRegistry).to.not.equal(first);
+    });
+  });
+
   describe('loadMore', () => {
     let savedFetch;
     beforeEach(() => { savedFetch = window.fetch; });

@@ -142,6 +142,9 @@ async function fetchLibraryConfig(org, site) {
   const libraryData = getSheetByName(config, 'library');
   if (!libraryData) return [];
   return libraryData.reduce((acc, row) => {
+    // A row without a usable path has no sources to load; skip it so one bad
+    // row cannot crash the whole library.
+    if (typeof row.path !== 'string' || !row.path.trim()) return acc;
     // Determine if a plugin should be visible based on query param
     const allowed = getIsPluginAllowed(row.ref);
     if (allowed) {

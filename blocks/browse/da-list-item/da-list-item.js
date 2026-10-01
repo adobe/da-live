@@ -19,6 +19,7 @@ export default class DaListItem extends LitElement {
     editor: { type: String },
     rename: { type: Boolean },
     allowselect: { type: Boolean },
+    statusRegistry: { attribute: false },
     isChecked: { attribute: 'ischecked', type: Boolean },
     isFavorited: { attribute: 'isfavorited', type: Boolean },
     _isRenaming: { type: Boolean },
@@ -27,7 +28,14 @@ export default class DaListItem extends LitElement {
     _live: { state: true },
     _version: { state: true },
     _lastModifedBy: { state: true },
+    _statuses: { state: true },
   };
+
+  /**
+   * Bumped on every expand and every collapse, so a response that lands after
+   * the state it was requested for can tell it is stale and drop itself.
+   */
+  _expandSeq = 0;
 
   connectedCallback() {
     super.connectedCallback();
@@ -41,6 +49,7 @@ export default class DaListItem extends LitElement {
     if (props.has('path')) {
       if (props.get('path') !== this.path) {
         this.classList.remove('is-expanded');
+        this.clearPluginStatus();
       }
     }
 
@@ -116,6 +125,78 @@ export default class DaListItem extends LitElement {
     this._lastModifedBy = json.pop().users.map(
       (user) => user.email.split('@')[0],
     ).join(', ').toLowerCase();
+  }
+
+  /**
+   * The item as a plugin sees it. Three path forms travel together because a
+   * plugin cannot guess which one it needs and a wrong guess shows up as "no
+   * status" on every row rather than as an error: `path` is the DA source path
+   * with its extension, `previewPath` is the extensionless AEM form (the same
+   * normalization updateAEMStatus performs), and `sitePath` is that minus the
+   * /org/site prefix, which is what the reference plugin stores.
+   */
+  get statusItem() {
+    const previewPath = this.ext === 'html' ? this.path.slice(0, -5) : this.path;
+    return {
+      path: this.path,
+      previewPath,
+      sitePath: previewPath.replace(/^\/[^/]+\/[^/]+/, ''),
+      name: this.name,
+      ext: this.ext,
+      date: this.date,
+    };
+  }
+
+  clearPluginStatus() {
+    this._expandSeq += 1;
+    this._statuses = undefined;
+  }
+
+  /**
+   * One call per plugin per expand, never before. There is no host cache: the
+   * drawer is refetched every time it opens, exactly like the two cells beside
+   * it, and nothing at all is rendered while the call is in flight.
+   */
+  async updatePluginStatus() {
+    if (!this.statusRegistry) return;
+    this._expandSeq += 1;
+    const seq = this._expandSeq;
+    let statuses = [];
+    try {
+      statuses = await this.statusRegistry.getContributions(this.statusItem);
+      // Only a status with detail is clickable, so only then is the popover
+      // worth fetching. A site with no status plugins never loads it.
+      if (statuses.some((contribution) => contribution.status?.detail?.length)) {
+        await import(`${getNx()}/blocks/shared/popover/popover.js`);
+      }
+    } catch {
+      // Nothing the user can act on, and nothing to render: the registry has
+      // already swallowed every failure a plugin can produce.
+      statuses = [];
+    }
+    if (seq !== this._expandSeq) return;
+    this._statuses = statuses;
+  }
+
+  /**
+   * The icon is the trigger. Escape, outside-click dismissal and the native
+   * popover API all come from nx-popover; the button only owns its own
+   * expanded state and taking focus back when the popover goes away.
+   */
+  toggleStatusDetail(e) {
+    const button = e.currentTarget;
+    const popover = button.nextElementSibling;
+    if (!popover) return;
+    if (popover.open) {
+      popover.close();
+      return;
+    }
+    popover.show({ anchor: button, placement: 'auto' });
+    button.setAttribute('aria-expanded', 'true');
+    popover.addEventListener('close', () => {
+      button.setAttribute('aria-expanded', 'false');
+      button.focus();
+    }, { once: true });
   }
 
   handleChecked(e) {
@@ -207,11 +288,13 @@ export default class DaListItem extends LitElement {
     if (this.classList.contains('is-expanded')) {
       this.updateAEMStatus();
       this.updateDAStatus();
+      this.updatePluginStatus();
     } else {
       this._preview = null;
       this._live = null;
       this._version = null;
       this._lastModifedBy = null;
+      this.clearPluginStatus();
     }
   }
 
@@ -306,6 +389,78 @@ export default class DaListItem extends LitElement {
     return env === '_preview' ? 'Not previewed' : 'Not published';
   }
 
+  /**
+   * One cell per contributing plugin, mirroring the Previewed and Published
+   * anatomy so the drawer gains no new visual vocabulary.
+   *
+   * With detail the icon is a button opening a popover; without it the icon is
+   * a plain glyph, so nothing invites a click that would do nothing.
+   */
+  renderStatus({ heading, status }) {
+    return html`
+      <div class="da-list-item-status is-${status.state}">
+        ${status.detail?.length ? this.renderStatusTrigger(status) : this.renderStatusIcon(status)}
+        <div>
+          <p class="da-list-item-details-title">${heading}</p>
+          <p class="da-list-item-status-label">${status.label}</p>
+        </div>
+      </div>`;
+  }
+
+  renderStatusIcon(status) {
+    return html`
+      <svg class="da-list-item-status-icon" viewBox="0 0 20 20" aria-hidden="true">
+        <use href="/img/icons/s2-icon-${status.icon}-20-n.svg#icon"></use>
+      </svg>`;
+  }
+
+  renderStatusTrigger(status) {
+    return html`
+      <button
+        type="button"
+        class="da-list-item-status-btn"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-label="${status.label} details"
+        @click=${this.toggleStatusDetail}>
+        ${this.renderStatusIcon(status)}
+      </button>
+      <nx-popover role="dialog" aria-label="${status.label} details">
+        <div class="da-list-item-status-detail">
+          <p class="da-list-item-status-detail-title">${status.label}</p>
+          ${status.detail.map((row) => html`
+            <div class="da-list-item-status-detail-row">
+              <span class="da-list-item-status-detail-key">${row.label}</span>
+              <span class="da-list-item-status-detail-value">${row.value}</span>
+            </div>`)}
+          ${status.href ? html`
+            <a
+              class="da-list-item-status-link"
+              href=${status.href}
+              target="_blank"
+              rel="noopener"
+              aria-label="Open ${status.label}">Open</a>` : nothing}
+        </div>
+      </nx-popover>`;
+  }
+
+  /**
+   * Every plugin shares one grid track, so the native columns lose a bounded
+   * amount of width however many plugins a site configures.
+   *
+   * There is no loading state, on purpose. Most pages have no status, so a
+   * placeholder would appear and vanish again on the majority of expands. A
+   * null status, a plugin that failed and a plugin still thinking all render
+   * the same nothing.
+   */
+  renderStatuses() {
+    if (!this._statuses?.length) return nothing;
+    return html`
+      <div class="da-item-list-item-statuses">
+        ${this._statuses.map((contribution) => this.renderStatus(contribution))}
+      </div>`;
+  }
+
   render() {
     return html`
       <div class="da-item-list-item-inner ${this.allowselect ? 'can-select' : ''}" role="gridcell">
@@ -317,7 +472,7 @@ export default class DaListItem extends LitElement {
           class="da-item-list-item-expand-btn ${(this.ext && this.ext !== 'link') ? 'is-visible' : ''}">
         </button>
       </div>
-      <div class="da-item-list-item-details ${this.allowselect ? 'can-select' : ''}" role="gridcell">
+      <div class="da-item-list-item-details ${this.allowselect ? 'can-select' : ''} ${this._statuses?.length ? 'has-status' : ''}" role="gridcell">
         ${this.renderDaDetails()}
         <a
           href=${this._preview?.redirect || this._preview?.url}
@@ -343,6 +498,7 @@ export default class DaListItem extends LitElement {
             <p class="da-aem-icon-date">${this._live?.status === 401 || this._live?.status === 403 ? 'Not authorized' : this.renderAemDate('_live')}</p>
           </div>
         </a>
+        ${this.renderStatuses()}
       </div>
     `;
   }

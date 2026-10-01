@@ -12,6 +12,7 @@ const {
   daFetchLibrary,
   getItemDetails,
   getItems,
+  getLibraryList,
   getPreviewStatus,
   OOTB_PLUGINS,
   ref,
@@ -335,6 +336,52 @@ describe('da-library/helpers exports', () => {
       window.fetch = () => Promise.resolve(new Response('{}', { status: 500 }));
       const result = await getPreviewStatus({ org: 'o', site: 's', pathname: '/p' });
       expect(result).to.equal(null);
+    });
+  });
+
+  describe('getLibraryList', () => {
+    const SITE = 'statussite';
+    const PATHLESS_ROW = {
+      title: 'Request Publish',
+      module: '/tools/plugins/request-for-publish/plugin.js',
+    };
+
+    let savedFetch;
+    let originalHash;
+
+    before(() => { originalHash = window.location.hash; });
+    after(() => { window.location.hash = originalHash; });
+    beforeEach(() => { savedFetch = window.fetch; });
+    afterEach(() => { window.fetch = savedFetch; });
+
+    function mockConfigFetch(org, libraryRows) {
+      window.fetch = (url) => {
+        if (url === `https://admin.da.live/config/${org}/${SITE}/`) {
+          return Promise.resolve(new Response(JSON.stringify({
+            ':type': 'multi-sheet',
+            ':names': ['library'],
+            library: { data: libraryRows },
+          }), { status: 200 }));
+        }
+        return Promise.resolve(new Response('{}', { status: 200 }));
+      };
+    }
+
+    it('Skips a row with no path and still loads the normal row', async () => {
+      const org = 'statusliborg';
+      window.location.hash = `#/${org}/${SITE}`;
+      mockConfigFetch(org, [PATHLESS_ROW, { title: 'Cards', path: '/cards.json' }]);
+      const library = await getLibraryList();
+      expect(library.map((plugin) => plugin.name)).to.deep.equal(['cards']);
+      expect(library[0].sources).to.deep.equal([`https://main--${SITE}--${org}.aem.live/cards.json`]);
+    });
+
+    it('Skips a row whose path is a blank string', async () => {
+      const org = 'statusliborgb';
+      window.location.hash = `#/${org}/${SITE}`;
+      mockConfigFetch(org, [{ title: 'Blank', path: '  ' }, { title: 'Cards', path: '/cards.json' }]);
+      const library = await getLibraryList();
+      expect(library.map((plugin) => plugin.name)).to.deep.equal(['cards']);
     });
   });
 });
