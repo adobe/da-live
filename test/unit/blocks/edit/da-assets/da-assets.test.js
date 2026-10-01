@@ -1,14 +1,20 @@
 import { expect } from '@esm-bundle/chai';
 
-const { setNx } = await import('../../../../../scripts/utils.js');
+const { setNx, getNx2 } = await import('../../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const {
   formatExternalBrief,
-  resolveAssetUrl,
   buildHandleSelection,
   createDialogPanels,
 } = await import('../../../../../blocks/edit/da-assets/da-assets.js');
+const {
+  DM_ERROR_MSG,
+  MISSING_FORMAT_ERROR_MSG,
+  PUBLISH_ERROR_MSG,
+  selectionCalls,
+  setSelection,
+} = await import(`${getNx2()}/utils/aem-assets/selection.js`);
 
 // ---------------------------------------------------------------------------
 // Shared mocks
@@ -17,7 +23,17 @@ const {
 // Minimal mock of a ProseMirror view with a tracked dispatch spy.
 function makeView() {
   const dispatched = [];
-  const schema = { nodes: { image: { create: (attrs) => ({ type: 'image', attrs }) } } };
+  const created = [];
+  const schema = {
+    nodes: {
+      image: {
+        create: (attrs) => {
+          created.push(attrs);
+          return { type: 'image', attrs };
+        },
+      },
+    },
+  };
   const tr = {
     replaceSelectionWith: () => tr,
     insert: () => tr,
@@ -26,6 +42,7 @@ function makeView() {
   };
   return {
     dispatched,
+    created,
     state: {
       schema,
       selection: { $from: { depth: 0, node: () => null }, from: 0 },
@@ -47,19 +64,7 @@ function makePanel() {
   return document.createElement('div');
 }
 
-// Base repo configs for the three modes
-const AUTHOR_PUBLISH_CONFIG = {
-  repositoryId: 'author-p1-e1.adobeaemcloud.com',
-  tierType: 'author',
-  assetOrigin: 'publish-p1-e1.adobeaemcloud.com',
-  assetBasePath: '/adobe/assets',
-  isDmEnabled: false,
-  isSmartCrop: false,
-  insertAsLink: false,
-};
-
-const AUTHOR_DM_CONFIG = {
-  repositoryId: 'author-p1-e1.adobeaemcloud.com',
+const REPO_CONFIG = {
   tierType: 'author',
   assetOrigin: 'delivery-p1-e1.adobeaemcloud.com',
   assetBasePath: '/adobe/assets',
@@ -68,15 +73,10 @@ const AUTHOR_DM_CONFIG = {
   insertAsLink: false,
 };
 
-const DELIVERY_CONFIG = {
-  repositoryId: 'delivery-p1-e1.adobeaemcloud.com',
-  tierType: 'delivery',
-  assetOrigin: 'delivery-p1-e1.adobeaemcloud.com',
-  assetBasePath: '/adobe/assets',
-  isDmEnabled: true,
-  isSmartCrop: false,
-  insertAsLink: false,
-};
+const ASSET = { 'repo:id': 'urn:aaid:aem:img-001', name: 'photo.jpg' };
+const IMAGE_HREF = 'https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:img-001/as/photo.avif';
+const IMAGE_SELECTION = { href: IMAGE_HREF, isImage: true, alt: 'A photo' };
+const PDF_SELECTION = { href: 'https://delivery-p1-e1.adobeaemcloud.com/doc.pdf', isImage: false, alt: '' };
 
 // ---------------------------------------------------------------------------
 // formatExternalBrief
@@ -129,127 +129,20 @@ describe('formatExternalBrief', () => {
 });
 
 // ---------------------------------------------------------------------------
-// resolveAssetUrl
-// ---------------------------------------------------------------------------
-
-describe('resolveAssetUrl', () => {
-  const AUTHOR_IMAGE = {
-    name: 'photo.jpg',
-    path: '/content/dam/photo.jpg',
-    mimetype: 'image/jpeg',
-    'repo:id': 'urn:aaid:aem:img-001',
-    _links: {},
-  };
-  const DELIVERY_IMAGE = {
-    'repo:assetId': 'urn:aaid:aem:del-001',
-    'repo:name': 'photo.jpg',
-    'repo:repositoryId': 'delivery-p1-e1.adobeaemcloud.com',
-    'dc:format': 'image/jpeg',
-  };
-
-  it('uses buildAuthorUrl for author+publish mode', () => {
-    const url = resolveAssetUrl(AUTHOR_IMAGE, AUTHOR_PUBLISH_CONFIG);
-    expect(url).to.equal('https://publish-p1-e1.adobeaemcloud.com/content/dam/photo.jpg');
-  });
-
-  it('uses buildDmUrl for author+DM mode', () => {
-    const url = resolveAssetUrl(AUTHOR_IMAGE, AUTHOR_DM_CONFIG);
-    expect(url).to.include('/adobe/assets/urn:aaid:aem:img-001/as/photo.avif');
-    expect(url).to.include('delivery-p1-e1.adobeaemcloud.com');
-  });
-
-  it('uses buildDeliveryUrl for delivery tier', () => {
-    const url = resolveAssetUrl(DELIVERY_IMAGE, DELIVERY_CONFIG);
-    expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:del-001/as/photo.avif');
-  });
-
-  it('respects custom aem.assets.prod.origin for delivery tier', () => {
-    const customConfig = { ...DELIVERY_CONFIG, assetOrigin: 'custom-delivery.example.com' };
-    const url = resolveAssetUrl(DELIVERY_IMAGE, customConfig);
-    expect(url).to.equal('https://custom-delivery.example.com/adobe/assets/urn:aaid:aem:del-001/as/photo.avif');
-    expect(url).to.not.include('delivery-p1-e1.adobeaemcloud.com');
-  });
-
-  it('respects custom aem.assets.prod.basepath for delivery tier', () => {
-    const customConfig = { ...DELIVERY_CONFIG, assetBasePath: '/delivery-assets' };
-    const url = resolveAssetUrl(DELIVERY_IMAGE, customConfig);
-    expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/delivery-assets/urn:aaid:aem:del-001/as/photo.avif');
-  });
-
-  it('serves image as original in author+DM mode when image/* wildcard is set to original', () => {
-    const url = resolveAssetUrl(AUTHOR_IMAGE, {
-      ...AUTHOR_DM_CONFIG,
-      mimeRenditionOverrides: { 'image/*': 'original' },
-    });
-    expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:img-001/original/as/photo.jpg');
-  });
-
-  it('serves image as original in delivery tier when image/* wildcard is set to original', () => {
-    const url = resolveAssetUrl(DELIVERY_IMAGE, {
-      ...DELIVERY_CONFIG,
-      mimeRenditionOverrides: { 'image/*': 'original' },
-    });
-    expect(url).to.equal('https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:del-001/original/as/photo.jpg');
-  });
-
-  it('serves PSD as avif even when image/* wildcard is original (exact match wins)', () => {
-    const psdAsset = {
-      name: 'design.psd',
-      path: '/content/dam/design.psd',
-      mimetype: 'application/x-photoshop',
-      'repo:id': 'urn:aaid:aem:psd-001',
-      _links: {},
-    };
-    const url = resolveAssetUrl(psdAsset, {
-      ...AUTHOR_DM_CONFIG,
-      mimeRenditionOverrides: { 'image/*': 'original', 'application/x-photoshop': 'avif' },
-    });
-    expect(url).to.include('/as/design.avif');
-  });
-
-  it('uses mimeRenditionOverrides from repoConfig for specific mime types', () => {
-    const docAsset = {
-      name: 'report.docx',
-      path: '/content/dam/report.docx',
-      mimetype: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'repo:id': 'urn:aaid:aem:docx-001',
-      _links: {},
-    };
-    const url = resolveAssetUrl(docAsset, {
-      ...AUTHOR_DM_CONFIG,
-      mimeRenditionOverrides: { 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'original' },
-    });
-    expect(url).to.include('/original/as/report.docx');
-  });
-
-  it('appends siteImageModifiers to AEM Assets Open API image URLs', () => {
-    const url = resolveAssetUrl(DELIVERY_IMAGE, {
-      ...DELIVERY_CONFIG,
-      siteImageModifiers: 'width=1920&quality=85',
-    });
-    const params = new URL(url).searchParams;
-    expect(params.get('width')).to.equal('1920');
-    expect(params.get('quality')).to.equal('85');
-  });
-
-  it('does not modify URLs when siteImageModifiers is null/absent', () => {
-    const url = resolveAssetUrl(DELIVERY_IMAGE, DELIVERY_CONFIG);
-    expect(new URL(url).searchParams.has('width')).to.equal(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
 // buildHandleSelection
 // ---------------------------------------------------------------------------
 
 describe('buildHandleSelection', () => {
   let orgFetch;
-  beforeEach(() => { orgFetch = window.fetch; });
+  beforeEach(() => {
+    orgFetch = window.fetch;
+    selectionCalls.length = 0;
+    setSelection(IMAGE_SELECTION);
+  });
   afterEach(() => { window.fetch = orgFetch; });
 
-  function setup(repoConfig = AUTHOR_PUBLISH_CONFIG) {
+  function setup(repoConfig = REPO_CONFIG) {
     const view = makeView();
-    window.view = view;
     const dialog = makeDialog();
     const assetPanel = makePanel();
     const secondaryPanel = makePanel();
@@ -264,255 +157,95 @@ describe('buildHandleSelection', () => {
     return { view, dialog, assetPanel, secondaryPanel, handler };
   }
 
-  const IMAGE_ASSET = {
-    'aem:formatName': 'jpeg',
-    mimetype: 'image/jpeg',
-    name: 'photo.jpg',
-    path: '/content/dam/photo.jpg',
-    'repo:id': 'urn:aaid:aem:img-001',
-    _links: {},
-    _embedded: {
-      'http://ns.adobe.com/adobecloud/rel/metadata/asset': {
-        'dam:assetStatus': 'approved',
-        'dam:activationTarget': 'delivery',
-      },
-    },
-  };
-
-  const PDF_ASSET = {
-    'aem:formatName': 'pdf',
-    mimetype: 'application/pdf',
-    name: 'doc.pdf',
-    path: '/content/dam/doc.pdf',
-    'repo:id': 'urn:aaid:aem:pdf-001',
-    _links: {},
-    _embedded: {
-      'http://ns.adobe.com/adobecloud/rel/metadata/asset': {
-        'dam:assetStatus': 'approved',
-        'dam:activationTarget': 'delivery',
-      },
-    },
-  };
+  function mockSmartCrops(items) {
+    window.fetch = async () => ({ ok: true, json: async () => ({ items }) });
+  }
 
   it('does nothing when assets array is empty', async () => {
-    const { view, dialog } = setup();
-    await buildHandleSelection({
-      assetPanel: makePanel(),
-      secondaryPanel: makePanel(),
-      repoConfig: AUTHOR_PUBLISH_CONFIG,
-      responsiveImageConfigPromise: Promise.resolve(false),
-      getView: () => view,
-      close: () => dialog.close(),
-    })([]);
-    expect(view.dispatched).to.have.length(0);
-    expect(dialog.isOpen).to.be.true;
-  });
-
-  it('does nothing when asset has no aem:formatName', async () => {
     const { view, dialog, handler } = setup();
-    await handler([{ mimetype: 'image/jpeg' }]);
+    await handler([]);
+    expect(selectionCalls).to.have.length(0);
     expect(view.dispatched).to.have.length(0);
     expect(dialog.isOpen).to.be.true;
   });
 
-  it('closes dialog and dispatches insert for a standard image (author+publish)', async () => {
-    const { view, dialog, handler } = setup(AUTHOR_PUBLISH_CONFIG);
-    await handler([IMAGE_ASSET]);
+  it('resolves the selected asset with the repository config', async () => {
+    const { handler } = setup();
+    await handler([ASSET]);
+    expect(selectionCalls).to.deep.equal([{ asset: ASSET, repoConfig: REPO_CONFIG }]);
+  });
+
+  it('does nothing when the asset has no format', async () => {
+    setSelection({ error: MISSING_FORMAT_ERROR_MSG });
+    const { view, dialog, secondaryPanel, handler } = setup();
+    await handler([ASSET]);
+    expect(view.dispatched).to.have.length(0);
+    expect(dialog.isOpen).to.be.true;
+    expect(secondaryPanel.innerHTML).to.equal('');
+  });
+
+  it('closes dialog and inserts the resolved image with its alt text', async () => {
+    const { view, dialog, handler } = setup();
+    await handler([ASSET]);
     expect(dialog.isOpen).to.be.false;
     expect(view.dispatched).to.have.length(1);
+    expect(view.created).to.deep.equal([{ src: IMAGE_HREF, style: 'width: 180px', alt: 'A photo' }]);
   });
 
   it('closes dialog and takes link path for non-image assets', async () => {
-    const { view, dialog, handler } = setup(AUTHOR_PUBLISH_CONFIG);
+    setSelection(PDF_SELECTION);
+    const { view, dialog, handler } = setup();
     // dialog.close() is called before insertLink, so we can verify dialog state
     // even though proseDOMParser needs a real schema (tested in insert.test.js)
-    try { await handler([PDF_ASSET]); } catch { /* proseDOMParser mock limitation */ }
+    try { await handler([ASSET]); } catch { /* proseDOMParser mock limitation */ }
     expect(dialog.isOpen).to.be.false;
-    // insertImage dispatches; insertLink does not reach dispatch before the parse error
-    // — confirms the code branched to insertLink not insertImage
-    expect(view.dispatched).to.have.length(0);
+    expect(view.created).to.have.length(0);
   });
 
   it('closes dialog and takes link path for image when insertAsLink is true', async () => {
-    const { view, dialog, handler } = setup({ ...AUTHOR_PUBLISH_CONFIG, insertAsLink: true });
-    try { await handler([IMAGE_ASSET]); } catch { /* proseDOMParser mock limitation */ }
+    const { view, dialog, handler } = setup({ ...REPO_CONFIG, insertAsLink: true });
+    try { await handler([ASSET]); } catch { /* proseDOMParser mock limitation */ }
     expect(dialog.isOpen).to.be.false;
-    expect(view.dispatched).to.have.length(0);
+    expect(view.created).to.have.length(0);
   });
 
-  it('shows error panel for unapproved asset in author+DM mode', async () => {
-    const { dialog, secondaryPanel, handler } = setup(AUTHOR_DM_CONFIG);
-    const unapproved = {
-      ...IMAGE_ASSET,
-      _embedded: {
-        'http://ns.adobe.com/adobecloud/rel/metadata/asset': {
-          'dam:assetStatus': 'draft',
-          'dam:activationTarget': 'author',
-        },
-      },
-    };
-    await handler([unapproved]);
-    // Dialog stays open, error panel shown
-    expect(dialog.isOpen).to.be.true;
-    expect(secondaryPanel.querySelector('.da-dialog-asset-error')).to.exist;
-  });
-
-  it('shows error panel when approved but activationTarget is not delivery', async () => {
-    const { dialog, secondaryPanel, handler } = setup(AUTHOR_DM_CONFIG);
-    const noTarget = {
-      ...IMAGE_ASSET,
-      _embedded: {
-        'http://ns.adobe.com/adobecloud/rel/metadata/asset': {
-          'dam:assetStatus': 'approved',
-          'dam:activationTarget': 'author',
-        },
-      },
-    };
-    await handler([noTarget]);
-    expect(dialog.isOpen).to.be.true;
-    expect(secondaryPanel.querySelector('.da-dialog-asset-error')).to.exist;
-  });
-
-  it('allows approved asset with undefined activationTarget in author+DM mode', async () => {
-    window.fetch = async () => ({ ok: true, json: async () => ({ items: [] }) });
-    const { dialog, secondaryPanel, handler } = setup({ ...AUTHOR_DM_CONFIG, isSmartCrop: false });
-    const noTarget = {
-      ...IMAGE_ASSET,
-      _embedded: { 'http://ns.adobe.com/adobecloud/rel/metadata/asset': { 'dam:assetStatus': 'approved' } },
-    };
-    await handler([noTarget]);
-    expect(dialog.isOpen).to.be.false;
-    expect(secondaryPanel.querySelector('.da-dialog-asset-error')).to.not.exist;
-  });
-
-  it('does NOT show error panel for approved+delivery asset in author+DM mode', async () => {
-    window.fetch = async () => ({ ok: true, json: async () => ({ items: [] }) });
-    const { secondaryPanel, handler } = setup({ ...AUTHOR_DM_CONFIG, isSmartCrop: false });
-    await handler([IMAGE_ASSET]);
-    expect(secondaryPanel.querySelector('.da-dialog-asset-error')).to.not.exist;
-  });
-
-  it('shows error panel for unpublished asset in author+publish mode', async () => {
-    const { dialog, secondaryPanel, handler } = setup(AUTHOR_PUBLISH_CONFIG);
-    const unpublished = {
-      ...IMAGE_ASSET,
-      'repo:scene7FileStatus': 'PublishIncomplete',
-    };
-    await handler([unpublished]);
-    expect(dialog.isOpen).to.be.true;
-    expect(secondaryPanel.querySelector('.da-dialog-asset-error')).to.exist;
-    expect(secondaryPanel.querySelector('.da-dialog-asset-error').textContent)
-      .to.include('not available on the publish tier');
-  });
-
-  it('allows insertion when scene7FileStatus is PublishComplete in author+publish mode', async () => {
-    const { view, dialog, handler } = setup(AUTHOR_PUBLISH_CONFIG);
-    const published = {
-      ...IMAGE_ASSET,
-      'repo:scene7FileStatus': 'PublishComplete',
-    };
-    await handler([published]);
-    expect(dialog.isOpen).to.be.false;
-    expect(view.dispatched).to.have.length(1);
-  });
-
-  it('allows insertion when scene7FileStatus is absent in author+publish mode', async () => {
-    const { view, dialog, handler } = setup(AUTHOR_PUBLISH_CONFIG);
-    await handler([IMAGE_ASSET]);
-    expect(dialog.isOpen).to.be.false;
-    expect(view.dispatched).to.have.length(1);
-  });
-
-  it('does not check scene7FileStatus for author+DM mode', async () => {
-    window.fetch = async () => ({ ok: true, json: async () => ({ items: [] }) });
-    const { secondaryPanel, handler } = setup({ ...AUTHOR_DM_CONFIG, isSmartCrop: false });
-    const asset = {
-      ...IMAGE_ASSET,
-      'repo:scene7FileStatus': 'PublishIncomplete',
-    };
-    await handler([asset]);
-    expect(secondaryPanel.querySelector('.da-dialog-asset-error')).to.not.exist;
-  });
-
-  it('does NOT check approval for delivery tier assets', async () => {
-    const { dialog, secondaryPanel, handler } = setup(DELIVERY_CONFIG);
-    // Delivery tier assets don't have _embedded metadata
-    const deliveryAsset = {
-      'aem:formatName': 'jpeg',
-      'dc:format': 'image/jpeg',
-      'repo:assetId': 'urn:aaid:aem:del-001',
-      'repo:name': 'photo.jpg',
-      'repo:repositoryId': 'delivery-p1-e1.adobeaemcloud.com',
-    };
-    await handler([deliveryAsset]);
-    expect(dialog.isOpen).to.be.false;
-    expect(secondaryPanel.querySelector('.da-dialog-asset-error')).to.not.exist;
+  [DM_ERROR_MSG, PUBLISH_ERROR_MSG].forEach((message) => {
+    it(`shows the error panel for "${message}" and keeps the dialog open`, async () => {
+      setSelection({ error: message });
+      const { view, dialog, assetPanel, secondaryPanel, handler } = setup();
+      await handler([ASSET]);
+      expect(dialog.isOpen).to.be.true;
+      expect(view.dispatched).to.have.length(0);
+      expect(assetPanel.style.display).to.equal('none');
+      expect(secondaryPanel.querySelector('.da-dialog-asset-error').textContent).to.equal(message);
+    });
   });
 
   it('shows smart crop panel for image when isSmartCrop is true (crops available)', async () => {
-    window.fetch = async () => ({
-      ok: true,
-      json: async () => ({ items: [{ name: 'desktop' }, { name: 'mobile' }] }),
-    });
-    const { dialog, assetPanel, secondaryPanel } = setup(
-      { ...AUTHOR_DM_CONFIG, isSmartCrop: true },
-    );
-    const handler = buildHandleSelection({
-      assetPanel,
-      secondaryPanel,
-      repoConfig: { ...AUTHOR_DM_CONFIG, isSmartCrop: true },
-      responsiveImageConfigPromise: Promise.resolve(false),
-      getView: () => window.view,
-      close: () => dialog.close(),
-    });
-    await handler([IMAGE_ASSET]);
-    // secondary panel should be visible with smart crop UI
+    mockSmartCrops([{ name: 'desktop' }, { name: 'mobile' }]);
+    const { secondaryPanel, handler } = setup({ ...REPO_CONFIG, isSmartCrop: true });
+    await handler([ASSET]);
     expect(secondaryPanel.style.display).to.equal('block');
     expect(secondaryPanel.querySelector('.da-dialog-asset-crops')).to.exist;
+    expect(secondaryPanel.querySelector('[data-name="original"] img').getAttribute('src')).to.equal(IMAGE_HREF);
   });
 
   it('inserts image directly when isSmartCrop is true but no crops available', async () => {
-    window.fetch = async () => ({
-      ok: true,
-      json: async () => ({ items: [] }),
-    });
-    const { dialog, view } = setup({ ...AUTHOR_DM_CONFIG, isSmartCrop: true });
-    const assetPanel = makePanel();
-    const secondaryPanel = makePanel();
-    const handler = buildHandleSelection({
-      assetPanel,
-      secondaryPanel,
-      repoConfig: { ...AUTHOR_DM_CONFIG, isSmartCrop: true },
-      responsiveImageConfigPromise: Promise.resolve(false),
-      getView: () => view,
-      close: () => dialog.close(),
-    });
-    await handler([IMAGE_ASSET]);
+    mockSmartCrops([]);
+    const { view, dialog, handler } = setup({ ...REPO_CONFIG, isSmartCrop: true });
+    await handler([ASSET]);
     expect(dialog.isOpen).to.be.false;
     expect(view.dispatched).to.have.length(1);
+    expect(view.created[0].src).to.equal(IMAGE_HREF);
   });
 
   it('calls onInsert callback from smart crop dialog, closing dialog and inserting nodes', async () => {
-    window.fetch = async () => ({
-      ok: true,
-      json: async () => ({ items: [{ name: 'desktop' }, { name: 'mobile' }] }),
-    });
-    const view = makeView();
-    window.view = view;
-    const dialog = makeDialog();
-    const assetPanel = makePanel();
-    const secondaryPanel = makePanel();
+    mockSmartCrops([{ name: 'desktop' }, { name: 'mobile' }]);
+    const { dialog, assetPanel, secondaryPanel, handler } = setup(
+      { ...REPO_CONFIG, isSmartCrop: true },
+    );
     document.body.append(assetPanel, secondaryPanel);
-
-    const handler = buildHandleSelection({
-      assetPanel,
-      secondaryPanel,
-      repoConfig: { ...AUTHOR_DM_CONFIG, isSmartCrop: true },
-      responsiveImageConfigPromise: Promise.resolve(false),
-      getView: () => view,
-      close: () => dialog.close(),
-    });
-    await handler([IMAGE_ASSET]);
+    await handler([ASSET]);
 
     // Smart crop panel is now shown — click Insert to trigger onInsert callback
     const insertBtn = secondaryPanel.querySelector('.insert');
