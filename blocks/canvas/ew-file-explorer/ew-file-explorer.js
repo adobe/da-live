@@ -15,8 +15,8 @@ await import(`${getNx()}/blocks/shared/picker/picker.js`);
 const { fetchDaConfigs } = await import(`${getNx()}/utils/daConfig.js`);
 const {
   isStructuredContent,
-  getStructuredContentEditHref,
-  getStructuredContentHref,
+  getStructuredContentEditorUrl,
+  getStructuredContentDeliveryUrl,
 } = await import(`${getNx()}/utils/structuredContent.js`);
 
 const [buttons, style] = await Promise.all([
@@ -332,7 +332,7 @@ class EwFileExplorer extends LitElement {
       return;
     }
     if (isStructuredContent({ path: item.path, configs: this._configs })) {
-      window.open(getStructuredContentEditHref(item.path), '_blank', 'noopener,noreferrer');
+      window.open(getStructuredContentEditorUrl(item.path), '_blank', 'noopener,noreferrer');
       return;
     }
     if (item.ext === 'html') {
@@ -346,7 +346,7 @@ class EwFileExplorer extends LitElement {
 
   _copyUrl(item) {
     return isStructuredContent({ path: item.path, configs: this._configs })
-      ? getStructuredContentHref({ path: item.path })
+      ? getStructuredContentDeliveryUrl({ path: item.path })
       : getAemUrl(item);
   }
 

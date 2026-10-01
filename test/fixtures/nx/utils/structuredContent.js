@@ -2,7 +2,7 @@
 import { getFirstSheet } from './daConfig.js';
 
 const SC_EDITOR = '/form';
-const SC_ORIGIN = 'https://da-sc.adobeaem.workers.dev';
+const SC_DELIVERY_DOMAIN = 'https://da-sc.adobeaem.workers.dev';
 const stripHtml = (path) => path.replace(/\.html$/, '');
 
 const isFormEditor = (editor) => editor.split(/[?#]/)[0].endsWith(SC_EDITOR);
@@ -28,6 +28,6 @@ export function isStructuredContent({ path, configs }) {
     .some((row) => isFormRule(path, row));
 }
 
-export const getStructuredContentEditHref = (path) => `${SC_EDITOR}#${stripHtml(path)}`;
+export const getStructuredContentEditorUrl = (path) => `${SC_EDITOR}#${stripHtml(path)}`;
 
-export const getStructuredContentHref = ({ path, tier = 'preview' }) => `${SC_ORIGIN}/${tier}${stripHtml(path)}`;
+export const getStructuredContentDeliveryUrl = ({ path, tier = 'preview' }) => `${SC_DELIVERY_DOMAIN}/${tier}${stripHtml(path)}`;
