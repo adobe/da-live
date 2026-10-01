@@ -3,7 +3,8 @@ import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import {
   loadBlockLibrary,
-  getItemPreviewUrl,
+  ensureItemPreviewAccess,
+  LIBRARY_AUTH_MESSAGE,
   getPreviewStatus,
 } from '../ew-panel-extensions/helpers.js';
 
@@ -157,7 +158,9 @@ class EwBlockLibraryModal extends LitElement {
       this._previewInfo = null;
       return;
     }
-    const details = getItemPreviewUrl(block, { org, site });
+    const details = await ensureItemPreviewAccess(block, { org, site });
+    // A newer selection may have started while the preview cookie was minted.
+    if (this._selectedPath !== block.path) return;
     const url = details.previewUrl;
     this._previewInfo = { path: block.path, name: block.name, url, ok: undefined };
     const ok = await getPreviewStatus({
@@ -252,7 +255,7 @@ class EwBlockLibraryModal extends LitElement {
       return html`<div class="modal-state">Loading blocks…</div>`;
     }
     if (!this._blocks.length) {
-      return html`<div class="modal-state">No blocks found.</div>`;
+      return html`<div class="modal-state">${this._blocks.authError ? LIBRARY_AUTH_MESSAGE : 'No blocks found.'}</div>`;
     }
     const filtered = this._filteredBlocks();
     if (!filtered.length) {
