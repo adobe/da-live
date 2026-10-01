@@ -9,8 +9,7 @@ import { loadBlockOptions } from '../ew-panel-extensions/helpers.js';
 
 const DELETE_ICON_SRC = '/img/icons/s2-icon-delete-20-n.svg';
 const ADD_ICON_SRC = '/img/icons/s2-icon-addcircle-20-n.svg';
-const COLOR_FILL_ICON_SRC = '/img/icons/s2-icon-colorfill-20-n.svg';
-const EMPTY_OPTION = { value: '', label: 'Please Select' };
+const EMPTY_OPTION = { value: '', label: 'None' };
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
@@ -139,12 +138,12 @@ class EwPageMetadata extends LitElement {
           @change=${(e) => this._commit(field, e.detail.value)}></ew-metadata-multiselect>`;
     }
     return html`
-      <nx-picker size="m" .items=${[
+      <nx-picker size="m" variant="field" placeholder="Please Select" .items=${[
         EMPTY_OPTION,
         ...field.values.map((v) => ({
           value: v.value,
           label: v.title,
-          ...(v.colorValue ? { action: true, trailingIcon: COLOR_FILL_ICON_SRC } : {}),
+          ...(v.colorValue ? { swatch: v.colorValue } : {}),
         })),
       ]}
         .value=${field.value}
