@@ -522,6 +522,33 @@ describe('EwFileExplorer', () => {
     });
   });
 
+  describe('structured content', () => {
+    const SC = { path: '/org/site/forms/contact.html', ext: 'html' };
+
+    beforeEach(() => {
+      el._configs = [null, { data: [{ key: 'editor.path', value: '/org/site/forms=https://da.live/form#' }] }];
+    });
+
+    it('opens structured content in the form editor', () => {
+      const savedOpen = window.open;
+      const opened = [];
+      window.open = (...args) => { opened.push(args); };
+      const savedHash = window.location.hash;
+      try {
+        el._onItemClick(SC);
+        expect(opened).to.deep.equal([['/form#/org/site/forms/contact', '_blank', 'noopener,noreferrer']]);
+        expect(window.location.hash).to.equal(savedHash);
+      } finally {
+        window.open = savedOpen;
+      }
+    });
+
+    it('uses the da-sc preview url for structured content', () => {
+      expect(el._rowTitle(SC)).to.equal('https://da-sc.adobeaem.workers.dev/preview/org/site/forms/contact');
+      expect(el._rowTitle({ path: '/org/site/blog/foo.html', ext: 'html' })).to.equal('https://main--site--org.aem.page/blog/foo');
+    });
+  });
+
   describe('_relativeParentPath', () => {
     it('omits the org/site root prefix', () => {
       el._treeRoot = '/org/site';

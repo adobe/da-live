@@ -12,6 +12,12 @@ const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
+const { fetchDaConfigs } = await import(`${getNx()}/utils/daConfig.js`);
+const {
+  isStructuredContent,
+  getStructuredContentEditorUrl,
+  getStructuredContentDeliveryUrl,
+} = await import(`${getNx()}/utils/structuredContent.js`);
 
 const [buttons, style] = await Promise.all([
   getSheet(`${getNx2()}/styles/buttons.css`),
@@ -89,6 +95,7 @@ class EwFileExplorer extends LitElement {
     _matchingFolders: { state: true },
     _categoryCrawling: { state: true },
     _createDialog: { state: true },
+    _configs: { state: true },
   };
 
   connectedCallback() {
@@ -150,10 +157,17 @@ class EwFileExplorer extends LitElement {
       this._category = 'all';
       this._resetCategoryCrawl();
       this._clearCrawlCache();
+      this._loadConfigs(org, site);
       this._loadFromLeaves(org, site, path);
     } else if (path) {
       this._expandToPath(path);
     }
+  }
+
+  async _loadConfigs(org, site) {
+    this._configs = undefined;
+    const configs = await Promise.all(fetchDaConfigs({ org, site })).catch(() => undefined);
+    if (org === this._org && site === this._site) this._configs = configs;
   }
 
   // Ensure every ancestor folder of `path` is expanded and loaded, so the
@@ -317,6 +331,10 @@ class EwFileExplorer extends LitElement {
       this._toggle(item.pathKey, item.path);
       return;
     }
+    if (isStructuredContent({ path: item.path, configs: this._configs })) {
+      window.open(getStructuredContentEditorUrl(item.path), '_blank', 'noopener,noreferrer');
+      return;
+    }
     if (item.ext === 'html') {
       window.location.hash = `#/${itemHashPath(item)}`;
       return;
@@ -326,10 +344,16 @@ class EwFileExplorer extends LitElement {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
+  _copyUrl(item) {
+    return isStructuredContent({ path: item.path, configs: this._configs })
+      ? getStructuredContentDeliveryUrl({ path: item.path })
+      : getAemUrl(item);
+  }
+
   async _onCopyUrl(e, item) {
     e.stopPropagation();
     const btn = e.currentTarget;
-    const url = getAemUrl(item);
+    const url = this._copyUrl(item);
     if (!url) return;
     await navigator.clipboard.writeText(url);
     clearTimeout(btn.copiedTimeoutId);
@@ -532,7 +556,7 @@ class EwFileExplorer extends LitElement {
   // Copyable rows show the exact URL the copy button would copy. Other rows
   // (folders, images, etc.) have nothing to copy, so no title is needed.
   _rowTitle(item) {
-    return COPYABLE_EXTS.has(item.ext) ? getAemUrl(item) : '';
+    return COPYABLE_EXTS.has(item.ext) ? this._copyUrl(item) : '';
   }
 
   _renderSearchResult(item) {
