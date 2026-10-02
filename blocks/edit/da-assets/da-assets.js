@@ -1,20 +1,13 @@
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getPathDetails from '../../shared/pathDetails.js';
-import { buildAssetSelectorProps } from '../../shared/aem-assets/selector-props.js';
-import { getRepositoryConfig, getResponsiveImageConfig } from './helpers/config.js';
-import {
-  buildAuthorUrl, buildDmUrl, buildDeliveryUrl,
-  getAssetAlt, getDmApprovalStatus, getScene7PublishStatus,
-} from './helpers/urls.js';
-import { applySiteImageModifiers } from './helpers/imageModifiers.js';
 import { insertImage, insertLink, insertFragment, createImageNode, getBlockName } from './helpers/insert.js';
 import showSmartCropDialog from './helpers/smart-crop.js';
 
-export const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/static-assets/resources/assets-selectors.js';
-export { buildFeatureSet } from '../../shared/aem-assets/selector-props.js';
-
-const DM_ERROR_MSG = 'The selected asset is not available because it is not approved for delivery. Please check the status.';
-const PUBLISH_ERROR_MSG = 'The selected asset is not available on the publish tier. Please publish the asset in AEM and try again.';
+const { getRepositoryConfig, getResponsiveImageConfig } = await import(`${getNx2()}/utils/aem-assets/repository-config.js`);
+const { buildAssetSelectorProps } = await import(`${getNx2()}/utils/aem-assets/selector-props.js`);
+const { applySiteImageModifiers } = await import(`${getNx2()}/utils/aem-assets/image-modifiers.js`);
+const { MISSING_FORMAT_ERROR_MSG, resolveAssetSelection } = await import(`${getNx2()}/utils/aem-assets/selection.js`);
+const { ASSET_SELECTOR_URL } = await import(`${getNx2()}/utils/aem-assets/selector.js`);
 
 export function formatExternalBrief(doc) {
   let title = '';
@@ -37,24 +30,7 @@ export function formatExternalBrief(doc) {
   Please suggest Assets that are visually appealing and relevant to the subject.`;
 }
 
-export function resolveAssetUrl(asset, repoConfig) {
-  const {
-    tierType, assetOrigin, assetBasePath, isDmEnabled,
-    mimeRenditionOverrides, siteImageModifiers,
-  } = repoConfig;
-  const renditionOptions = { mimeRenditionOverrides };
-  let url;
-  if (tierType === 'delivery') {
-    url = buildDeliveryUrl(asset, assetOrigin, assetBasePath, renditionOptions);
-  } else if (isDmEnabled) {
-    url = buildDmUrl(asset, assetOrigin, assetBasePath, renditionOptions);
-  } else {
-    url = buildAuthorUrl(asset, assetOrigin);
-  }
-  return applySiteImageModifiers(url, siteImageModifiers);
-}
-
-function showErrorPanel(container, onBack, onCancel, message = DM_ERROR_MSG) {
+function showErrorPanel(container, onBack, onCancel, message) {
   container.innerHTML = `<p class="da-dialog-asset-error">${message}</p><div class="da-dialog-asset-buttons"><button class="back">Back</button><button class="cancel">Cancel</button></div>`;
   container.querySelector('.cancel').addEventListener('click', onCancel);
   container.querySelector('.back').addEventListener('click', onBack);
@@ -90,7 +66,7 @@ function showAssetPanel(assetPanel, secondaryPanel) {
  * @param {object} opts
  * @param {HTMLElement} opts.assetPanel - Panel hosting the asset selector.
  * @param {HTMLElement} opts.secondaryPanel - Panel used for smart-crop / error UI.
- * @param {object} opts.repoConfig - Resolved repository config (see helpers/config.js).
+ * @param {object} opts.repoConfig - Resolved repository config (see getRepositoryConfig).
  * @param {Promise<Array|false>} opts.responsiveImageConfigPromise - Responsive image configs.
  * @param {function(): object} opts.getView - Returns the current ProseMirror view.
  * @param {function(): void} opts.close - Closes the surrounding dialog/panel.
@@ -108,15 +84,11 @@ export function buildHandleSelection({
     const [asset] = assets;
     if (!asset) return;
 
-    const format = asset['aem:formatName'];
-    if (!format) return;
-
     const view = getView();
     if (!view) return;
 
-    const mimetype = asset.mimetype || asset['dc:format'] || '';
-    const isImage = mimetype.toLowerCase().startsWith('image/');
-    const alt = getAssetAlt(asset);
+    const selection = resolveAssetSelection({ asset, repoConfig });
+    if (selection.error === MISSING_FORMAT_ERROR_MSG) return;
 
     const resetToAssetPanel = () => showAssetPanel(assetPanel, secondaryPanel);
     const closeAndReset = () => {
@@ -124,35 +96,22 @@ export function buildHandleSelection({
       resetToAssetPanel();
     };
 
-    // Author+DM mode: check asset is approved for delivery before inserting
-    if (repoConfig.tierType === 'author' && repoConfig.isDmEnabled) {
-      const { status, activationTarget } = getDmApprovalStatus(asset);
-      if (status !== 'approved' || (activationTarget && activationTarget !== 'delivery')) {
-        showSecondaryPanel(assetPanel, secondaryPanel);
-        showErrorPanel(secondaryPanel, resetToAssetPanel, closeAndReset);
-        return;
-      }
+    if (selection.error) {
+      showSecondaryPanel(assetPanel, secondaryPanel);
+      showErrorPanel(secondaryPanel, resetToAssetPanel, closeAndReset, selection.error);
+      return;
     }
 
-    // Author+Publish mode: check asset is published to the publish tier
-    if (repoConfig.tierType === 'author' && !repoConfig.isDmEnabled) {
-      const scene7Status = getScene7PublishStatus(asset);
-      if (scene7Status && scene7Status !== 'PublishComplete') {
-        showSecondaryPanel(assetPanel, secondaryPanel);
-        showErrorPanel(secondaryPanel, resetToAssetPanel, closeAndReset, PUBLISH_ERROR_MSG);
-        return;
-      }
-    }
+    const { href, isImage, alt } = selection;
 
     // Smart crop flow (only for images with smart crop enabled)
     if (isImage && repoConfig.isSmartCrop) {
-      const assetUrl = resolveAssetUrl(asset, repoConfig);
       showSecondaryPanel(assetPanel, secondaryPanel);
 
       const hasCrops = await showSmartCropDialog({
         container: secondaryPanel,
         asset,
-        assetUrl,
+        assetUrl: href,
         dmOrigin: repoConfig.assetOrigin,
         dmBasePath: repoConfig.assetBasePath,
         blockName: getBlockName(view),
@@ -172,19 +131,18 @@ export function buildHandleSelection({
 
       if (!hasCrops) {
         closeAndReset();
-        insertImage(view, assetUrl, alt);
+        insertImage(view, href, alt);
       }
       return;
     }
 
     // Standard insertion
     close();
-    const src = resolveAssetUrl(asset, repoConfig);
 
     if (!isImage || repoConfig.insertAsLink) {
-      insertLink(view, src);
+      insertLink(view, href);
     } else {
-      insertImage(view, src, alt);
+      insertImage(view, href, alt);
     }
   };
 }

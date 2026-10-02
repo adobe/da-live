@@ -2,6 +2,8 @@
 
 Integrates the [AEM Asset Selector](https://experience.adobe.com/solutions/CQ-assets-selectors) into the DA editor, allowing authors to browse and insert assets from an AEM as a Cloud Service instance directly into a document.
 
+The non-UI logic lives in Nexter at `nx2/utils/aem-assets/`. The classic editor and Canvas import it through `getNx2()`. This folder keeps the dialog, Smart Crop, and ProseMirror insertion.
+
 ## File structure
 
 ```
@@ -9,9 +11,6 @@ da-assets/
   da-assets.js        Orchestrator — IMS auth, dialog lifecycle, selector mount
   da-assets.css       Dialog and crop selector styles
   helpers/
-    config.js         DA site config fetch/cache and repository mode resolution
-    constants.js      Shared constants (DEFAULT_ASSET_BASE_PATH)
-    urls.js           Asset URL builders (one per repository mode) and rendition resolution
     insert.js         ProseMirror insertion helpers
     smart-crop.js     Smart Crop selection dialog UI
 ```
@@ -135,52 +134,21 @@ When `aem.asset.smartcrop.select = on`, the Smart Crop dialog can optionally sho
 
 ## Module responsibilities
 
-### `helpers/constants.js`
+### Nexter `nx2/utils/aem-assets/`
 
-Exports `DEFAULT_ASSET_BASE_PATH` (`/adobe/assets`), the default base path segment used in DM and delivery URLs.
+| Module | Provides |
+|---|---|
+| `repository-config.js` | `getRepositoryConfig`, `getResponsiveImageConfig`, `parseMimeRenditions` |
+| `selection.js` | `resolveAssetSelection`, `resolveAssetUrl`, error messages |
+| `selector-props.js` | `buildAssetSelectorProps`, `buildFeatureSet` |
+| `selector.js` | `ASSET_SELECTOR_URL`, `loadAssetSelector` |
+| `urls.js` | URL builders, `resolveRenditionType`, `getAssetAlt`, approval and publish status |
+| `image-modifiers.js` | `applySiteImageModifiers`, `parseSiteImageModifiers` |
+| `config.js` | Dynamic Media and approved-only rules |
+| `filter-schema.js` | Approved-only filter props |
+| `constants.js` | Default asset base path |
 
-### `helpers/config.js`
-
-- `parseMimeRenditions(configValue, defaults)` — parses the `aem.asset.mime.renditions` config string into a `Record<string, string>` map of mime-type to rendition-type. Supports exact types and prefix wildcards.
-- `getConfKey(owner, repo, key)` — fetches a single key from the cascading DA site config (repo-level first, then org-level). Results are cached for the page session.
-- `getRepositoryConfig(owner, repo)` — resolves all config keys into a single `repoConfig` object used throughout the selector.
-- `getResponsiveImageConfig(owner, repo)` — returns the parsed `responsive-images` sheet for Smart Crop structure selection.
-
-`repoConfig` shape:
-
-```js
-{
-  repositoryId,           // e.g. 'author-p1-e1.adobeaemcloud.com'
-  tierType,               // 'author' | 'delivery'
-  assetOrigin,            // final URL host for inserted assets
-  assetBasePath,          // base path segment (default '/adobe/assets')
-  isDmEnabled,            // true when DM delivery URLs should be used
-  isSmartCrop,            // true when Smart Crop selection is active
-  insertAsLink,           // true when images should be inserted as <a> links
-  mimeRenditionOverrides, // Record<string, string> from aem.asset.mime.renditions
-}
-```
-
-### `blocks/shared/aem-assets/selector-props.js`
-
-- `buildFeatureSet(isDmEnabled)` — returns the asset-selector feature list. Base features: `upload`, `collections`, `detail-panel`, `advisor`. Adds `dynamic-media` only when DM is enabled.
-- `buildAssetSelectorProps({ imsToken, repoConfig, externalBrief, onClose, handleSelection })` — builds the shared AEM Asset Selector props, including approved-only filter props when enabled.
-
-### `helpers/urls.js`
-
-URL builder functions keyed to the mode:
-
-- `buildAuthorUrl(asset, publishOrigin)` — author+publish mode.
-- `buildDmUrl(asset, host, basePath, renditionOptions)` — author+DM mode. Uses `repo:id` from the asset.
-- `buildDeliveryUrl(asset, overrideHost, basePath, renditionOptions)` — delivery tier. Uses `repo:assetId` and `repo:repositoryId` from the asset; `overrideHost` takes precedence over `repo:repositoryId`.
-- `buildSmartCropUrl(asset, dmOrigin, cropName, basePath)` — builds a smart crop URL with `?smartcrop=<cropName>`.
-- `buildSmartCropsListUrl(asset, dmOrigin, basePath)` — builds the URL to fetch available smart crops for an asset.
-
-Plus:
-
-- `resolveRenditionType(mimetype, { mimeRenditionOverrides })` — determines the rendition type (`avif` / `play` / `original`) using override map and built-in defaults.
-- `getAssetAlt(asset)` — reads alt text, preferring `Iptc4xmpExt:ExtDescrAccessibility` (the field the content supply chain agent maps alt text to), then `_embedded` metadata (`dc:description` or `dc:title`).
-- `getDmApprovalStatus(asset)` — reads `dam:assetStatus` and `dam:activationTarget` from `_embedded` metadata.
+`resolveAssetSelection({ asset, repoConfig })` returns `{ href, isImage, alt }` or `{ error }`. The error is `MISSING_FORMAT_ERROR_MSG`, `DM_ERROR_MSG` (not approved for delivery), or `PUBLISH_ERROR_MSG` (not published).
 
 ### `helpers/insert.js`
 
@@ -209,8 +177,7 @@ Entry point. Key exports:
   1. Checks IMS authentication.
   2. Calls `getRepositoryConfig` to resolve the active mode.
   3. Creates the `<dialog>` with two panels (asset selector and secondary for crops/errors) and mounts the AEM Asset Selector via `window.PureJSSelectors.renderAssetSelector`.
-  4. Handles selection by routing to the correct URL builder, approval check, or Smart Crop dialog based on the mode.
+  4. Handles selection with `buildHandleSelection`.
 - `formatExternalBrief(doc)` — extracts the document title and plain-text content from the ProseMirror doc to build an AI advisor brief for the asset selector.
-- `resolveAssetUrl(asset, repoConfig)` — routes to the correct URL builder based on mode and config.
 - `createDialogPanels()` — creates the two dialog inner panels (asset panel and secondary panel).
-- `buildHandleSelection(dialog, assetPanel, secondaryPanel, repoConfig, responsiveImageConfigPromise)` — returns the selection handler callback wired to the dialog lifecycle.
+- `buildHandleSelection({ assetPanel, secondaryPanel, repoConfig, responsiveImageConfigPromise, getView, close })` returns the selection handler. It resolves the asset with `resolveAssetSelection`. A missing format is ignored. Other errors show the error panel. With Smart Crop enabled, images open the crop step. Otherwise the asset is inserted as an image or link.
