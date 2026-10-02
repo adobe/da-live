@@ -1,52 +1,10 @@
-import { getNx2Api } from '../../../../scripts/utils.js';
+import { getNx2, getNx2Api } from '../../../../scripts/utils.js';
 import { MESSAGE_TYPES } from '../../utils/quick-edit-messages.js';
 import { dataUrlByteLength, refuseOversizedImage } from '../../utils/image-upload.js';
-import { getImageDocumentVersion } from '../../utils/image-document-version.js';
 
-function resolveImagePosition(doc, { proseIndex, originalSrc, requestId, imageVersion }) {
-  if (proseIndex != null || requestId != null) {
-    if (imageVersion !== getImageDocumentVersion(doc)) {
-      throw new Error('Image position is out of date. Please refresh and try again.');
-    }
-    if (!Number.isSafeInteger(proseIndex) || proseIndex < 0
-      || doc.nodeAt(proseIndex)?.type.name !== 'image') {
-      throw new Error('Image position is no longer valid. Please refresh and try again.');
-    }
-    return proseIndex;
-  }
-
-  // Older quick-edit iframes send only a URL; never pick one of several matches.
-  const name = originalSrc?.split(/[?#]/)[0].split('/').pop();
-  let found = null;
-  let ambiguous = false;
-  if (name) {
-    doc.descendants((node, pos) => {
-      if (node.type.name === 'image' && node.attrs.src?.split(/[?#]/)[0].split('/').pop() === name) {
-        if (found != null) ambiguous = true;
-        else found = pos;
-      }
-    });
-  }
-  if (found == null || ambiguous) {
-    throw new Error('Image position is missing or ambiguous. Please refresh and try again.');
-  }
-  return found;
-}
-
-function updateImageInDocument(view, target, newSrc) {
-  let proseIndex = null;
-  let ambiguous = false;
-  view.state.doc.descendants((node, pos) => {
-    if (node === target) {
-      if (proseIndex != null) ambiguous = true;
-      else proseIndex = pos;
-    }
-  });
-  if (proseIndex == null || ambiguous) {
-    throw new Error('The selected image is no longer available. Please try again.');
-  }
-  view.dispatch(view.state.tr.setNodeMarkup(proseIndex, null, { ...target.attrs, src: newSrc }));
-}
+const { resolveImagePosition, updateImageInDocument } = await import(
+  `${getNx2()}/public/utils/quick-edit-images.js`
+);
 
 function dataUrlToBlob(dataUrl) {
   const [header, base64Data] = dataUrl.split(',');
@@ -77,7 +35,7 @@ export async function handleImageReplace(payload, ctx) {
     view = ctx.view;
     if (!view) throw new Error('Image editor is unavailable. Please try again.');
     const originalDoc = view.state.doc;
-    const imagePos = resolveImagePosition(originalDoc, payload);
+    const imagePos = resolveImagePosition({ ...payload, doc: originalDoc });
     const target = originalDoc.nodeAt(imagePos);
     const sitePath = `/${ctx.owner}/${ctx.repo}`;
     if (await refuseOversizedImage(dataUrlByteLength(imageData), sitePath)) {
@@ -105,7 +63,7 @@ export async function handleImageReplace(payload, ctx) {
     const { source: { contentUrl: newSrc } } = await resp.json();
 
     if (ctx.view !== view) throw new Error('Image editor changed during the upload. Please try again.');
-    updateImageInDocument(view, target, newSrc);
+    updateImageInDocument({ view, target, newSrc });
     reply({ newSrc });
   } catch (error) {
     // eslint-disable-next-line no-console

@@ -1,13 +1,5 @@
-const versions = new WeakMap();
-const sessionId = crypto.randomUUID();
-let nextVersion = 0;
+import { getNx2 } from '../../../scripts/utils.js';
 
-export function getImageDocumentVersion(doc) {
-  let version = versions.get(doc);
-  if (!version) {
-    nextVersion += 1;
-    version = `${sessionId}:${nextVersion}`;
-    versions.set(doc, version);
-  }
-  return version;
-}
+export const { getImageDocumentVersion } = await import(
+  `${getNx2()}/public/utils/quick-edit-images.js`
+);
