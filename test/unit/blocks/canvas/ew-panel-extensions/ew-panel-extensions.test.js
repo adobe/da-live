@@ -57,4 +57,53 @@ describe('ew-panel-extension page context', () => {
 
     expect(el.shadowRoot.querySelector('ew-panel-library')).to.equal(first);
   });
+
+  it('mounts configured extension iframes through the DA preview proxy', async () => {
+    el.extension = {
+      name: 'configured-tool',
+      title: 'Configured tool',
+      sources: ['https://main--example-site--example-org.aem.live/tools/plugins/tool/index.html'],
+    };
+    document.body.append(el);
+    await nextUpdate();
+    await nextUpdate();
+
+    const iframe = el.shadowRoot.querySelector('iframe');
+    expect(iframe).to.exist;
+    expect(iframe.getAttribute('src')).to.equal('https://main--example-site--example-org.stage-preview.da.live/tools/plugins/tool/index.html');
+  });
+
+  it('authenticates the same preview proxy origin the iframe loads', async () => {
+    const savedAdobeIMS = window.adobeIMS;
+    window.adobeIMS = { getAccessToken: () => ({ token: 'T1' }) };
+    const savedFetch = window.fetch;
+    const cookieRequests = [];
+    window.fetch = async (url, opts) => {
+      if (typeof url === 'string' && url.includes('/gimme_cookie')) {
+        cookieRequests.push(url);
+        return new Response('', { status: 200 });
+      }
+      return savedFetch(url, opts);
+    };
+
+    el.extension = {
+      name: 'configured-tool',
+      title: 'Configured tool',
+      sources: ['https://main--example-site--example-org.aem.live/tools/plugins/tool/index.html'],
+    };
+    document.body.append(el);
+
+    try {
+      await nextUpdate();
+      await nextUpdate();
+    } finally {
+      window.fetch = savedFetch;
+      if (savedAdobeIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedAdobeIMS;
+    }
+
+    expect(cookieRequests.length).to.be.greaterThan(0);
+    cookieRequests.forEach((url) => {
+      expect(url).to.equal('https://main--example-site--example-org.stage-preview.da.live/gimme_cookie');
+    });
+  });
 });

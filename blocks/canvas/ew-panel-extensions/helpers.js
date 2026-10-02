@@ -2,6 +2,8 @@
 import { DOMParser as PMDOMParser, DOMSerializer, Slice, TextSelection } from 'da-y-wrapper';
 import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import { daFetch } from '../../shared/utils.js';
+import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
+import { getPreviewOrigin } from '../editor-utils/editor-utils.js';
 import { htmlToProse } from '../../edit/utils/helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { getCommentsBridge, formatCommentsViewLabel } from '../editor-utils/comments-bridge.js';
@@ -269,6 +271,7 @@ export async function fetchExtensions(org, site) {
       format: row.format || '',
       icon: row.icon || '',
       ootb: OOTB_PLUGINS.has(name),
+      org,
     });
     return acc;
   }, []);
@@ -558,6 +561,7 @@ export function createCommentsView() {
 }
 
 export function extensionToPanelView(ext, section) {
+  const proxyOpts = { getUrl: getPreviewOrigin, currentOrg: ext.org };
   // Block library opens its own dedicated modal (used by the slash menu and
   // outline "+" button) rather than the generic inline panel or iframe dialog.
   if (ext.name === 'blocks') {
@@ -587,8 +591,13 @@ export function extensionToPanelView(ext, section) {
     firstParty: ext.ootb,
     ...(!ext.ootb && { cacheKey: JSON.stringify(ext.sources || []) }),
     experience: ext.experience,
-    sources: ext.sources,
-    icon: ext.icon,
+    // Window extensions open in a new tab where the user authenticates via sidekick.
+    sources: ext.ootb || ext.experience === 'window'
+      ? ext.sources
+      : (ext.sources || []).map(
+        (source) => toPreviewProxyUrl(source, proxyOpts),
+      ),
+    icon: ext.ootb ? ext.icon : toPreviewProxyUrl(ext.icon, proxyOpts),
     load: async () => {
       await import('./ew-panel-extensions.js');
       const el = document.createElement('ew-panel-extension');
@@ -607,7 +616,9 @@ export function extensionToPanelView(ext, section) {
 
       const iframe = document.createElement('iframe');
       iframe.className = 'ext-iframe';
-      iframe.src = ext.sources?.[0] ?? '';
+      const src = toPreviewProxyUrl(ext.sources?.[0] ?? '', proxyOpts);
+      await ensurePreviewProxySession(src, proxyOpts);
+      iframe.src = src;
       iframe.title = ext.title;
       iframe.allow = 'clipboard-write *';
       container.append(iframe);

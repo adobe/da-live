@@ -15,6 +15,7 @@ import {
   fetchDaConfigs,
   getAuthToken,
   isValidHref,
+  livePreviewLogin,
 } from '../../../../blocks/shared/utils.js';
 
 // daFetch's 401-no-token path lazy-loads the banner module, which resolves
@@ -232,6 +233,63 @@ describe('getAuthToken', () => {
     window.localStorage.setItem('nx-ims', 'true');
     window.adobeIMS = { getAccessToken: () => null };
     expect(await getAuthToken()).to.be.null;
+  });
+});
+
+describe('livePreviewLogin', () => {
+  let savedAdobeIMS;
+  let savedFetch;
+
+  beforeEach(() => {
+    savedAdobeIMS = window.adobeIMS;
+    savedFetch = window.fetch;
+  });
+
+  afterEach(() => {
+    window.fetch = savedFetch;
+    if (savedAdobeIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedAdobeIMS;
+  });
+
+  it('is a no-op when there is no IMS token', async () => {
+    delete window.adobeIMS;
+    let called = false;
+    window.fetch = async () => {
+      called = true;
+      return new Response('', { status: 200 });
+    };
+
+    await livePreviewLogin('org', 'site', 'main');
+
+    expect(called).to.be.false;
+  });
+
+  it('requests /gimme_cookie from the default live preview origin', async () => {
+    window.adobeIMS = { getAccessToken: () => ({ token: 'T1' }) };
+    const calls = [];
+    window.fetch = async (url, opts) => {
+      calls.push({ url, headers: opts?.headers });
+      return new Response('', { status: 200 });
+    };
+
+    await livePreviewLogin('org', 'site', 'feat');
+
+    expect(calls).to.have.lengthOf(1);
+    expect(calls[0].url).to.equal('https://feat--site--org.preview.da.live/gimme_cookie');
+    expect(calls[0].headers.Authorization).to.equal('Bearer T1');
+  });
+
+  it('requests /gimme_cookie from a custom origin builder when provided', async () => {
+    window.adobeIMS = { getAccessToken: () => ({ token: 'T1' }) };
+    const calls = [];
+    window.fetch = async (url) => {
+      calls.push(url);
+      return new Response('', { status: 200 });
+    };
+    const getUrl = (org, site, branch) => `https://${branch}--${site}--${org}.stage-preview.da.live`;
+
+    await livePreviewLogin('org', 'site', 'feat', getUrl);
+
+    expect(calls).to.deep.equal(['https://feat--site--org.stage-preview.da.live/gimme_cookie']);
   });
 });
 
