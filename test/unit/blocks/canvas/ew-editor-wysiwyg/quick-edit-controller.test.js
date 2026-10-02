@@ -101,3 +101,42 @@ describe('quick-edit-controller RELOAD coalescing', () => {
     expect(setBodyCount(ctx)).to.equal(2);
   });
 });
+
+describe('quick-edit-controller IFRAME_CLICK forwarding', () => {
+  let prevHlx;
+
+  beforeEach(() => { prevHlx = window.hlx; });
+  afterEach(() => { window.hlx = prevHlx; });
+
+  it('records an ew-wysiwyg-doc RUM click from a forwarded iframe click', () => {
+    const sampleRUM = sinon.spy();
+    window.hlx = { rum: { sampleRUM } };
+    const ctx = makeCtx(true);
+    send(createControllerOnMessage(ctx), { type: 'iframe-click', payload: { target: 'hero' } });
+    expect(sampleRUM.calledOnceWith('click', { source: 'ew-wysiwyg-doc', target: 'hero' })).to.be.true;
+  });
+
+  it('still attributes the source when the iframe sends no target', () => {
+    const sampleRUM = sinon.spy();
+    window.hlx = { rum: { sampleRUM } };
+    const ctx = makeCtx(true);
+    send(createControllerOnMessage(ctx), { type: 'iframe-click', payload: {} });
+    expect(sampleRUM.calledOnceWith('click', { source: 'ew-wysiwyg-doc', target: undefined })).to.be.true;
+  });
+
+  it('ignores the legacy rum-click type', () => {
+    const sampleRUM = sinon.spy();
+    window.hlx = { rum: { sampleRUM } };
+    const ctx = makeCtx(true);
+    send(createControllerOnMessage(ctx), { type: 'rum-click', payload: { target: 'p' } });
+    expect(sampleRUM.called).to.be.false;
+  });
+
+  it('does not throw when RUM is not initialised on the page', () => {
+    window.hlx = undefined;
+    const ctx = makeCtx(true);
+    const onMessage = createControllerOnMessage(ctx);
+    expect(() => onMessage({ data: { type: 'iframe-click', payload: { target: 'p' } } }))
+      .to.not.throw();
+  });
+});
