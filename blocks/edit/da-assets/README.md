@@ -210,7 +210,7 @@ Entry point. Key exports:
   2. Calls `getRepositoryConfig` to resolve the active mode.
   3. Creates the `<dialog>` with two panels (asset selector and secondary for crops/errors) and mounts the AEM Asset Selector via `window.PureJSSelectors.renderAssetSelector`.
   4. Handles selection by routing to the correct URL builder, approval check, or Smart Crop dialog based on the mode.
-- `formatExternalBrief(doc)` — extracts the document title and plain-text content from the ProseMirror doc to build an AI advisor brief for the asset selector.
+- `formatExternalBrief(doc)` — re-exported from `blocks/shared/aem-assets/external-brief.js`; extracts the document title and plain-text content from the ProseMirror doc to build an AI advisor brief for the asset selector.
 - `resolveAssetUrl(asset, repoConfig)` — routes to the correct URL builder based on mode and config.
 - `createDialogPanels()` — creates the two dialog inner panels (asset panel and secondary panel).
 - `buildHandleSelection(dialog, assetPanel, secondaryPanel, repoConfig, responsiveImageConfigPromise)` — returns the selection handler callback wired to the dialog lifecycle.
