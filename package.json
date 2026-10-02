@@ -1,5 +1,6 @@
 {
   "name": "@adobecom/dark-alley",
+  "version": "1.0.3",
   "type": "module",
   "author": "Adobe",
   "license": "Apache License 2.0",
@@ -32,13 +33,23 @@
   },
   "devDependencies": {
     "@adobe/eslint-config-helix": "^3.0.17",
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
     "@esm-bundle/chai": "4.3.4-fix.0",
+    "@semantic-release/changelog": "^7.0.0",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/git": "^11.0.1",
+    "@semantic-release/github": "^12.0.10",
+    "@semantic-release/npm": "^13.2.0",
+    "@semantic-release/release-notes-generator": "^14.1.1",
     "@web/dev-server-import-maps": "0.3.0",
     "@web/test-runner": "1.0.0",
     "@web/test-runner-commands": "1.0.1",
     "chai": "6.2.2",
     "eslint": "9.39.5",
     "globals": "^17.3.0",
+    "husky": "^9.1.7",
+    "semantic-release": "^25.0.9",
     "sinon": "22.1.0",
     "stylelint": "17.14.1",
     "stylelint-config-standard": "40.0.0"
@@ -54,6 +65,9 @@
     "test:e2e": "cd test/e2e && npm i && npm run test:all",
     "build:da-lit": "esbuild --format=esm --minify ./deps/lit/src/index.js --bundle --outfile=./deps/lit/dist/index.js",
     "build:da-y-wrapper": "esbuild --format=esm --minify ./deps/da-y-wrapper/src/index.js --bundle --outfile=./deps/da-y-wrapper/dist/index.js",
-    "build:da-parser": "./tools/build-da-parser.sh"
+    "build:da-parser": "./tools/build-da-parser.sh",
+    "semantic-release": "semantic-release",
+    "semantic-release-dry": "semantic-release --dry-run --no-ci --branches $CI_BRANCH",
+    "prepare": "husky"
   }
 }
