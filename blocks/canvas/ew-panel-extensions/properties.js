@@ -22,17 +22,19 @@ export function getBlockProperties(view) {
   const block = closestBlock(view);
   if (!block) return { block: null, items: [], canWrite: view.editable };
   const { pos, node } = block;
-  const headerEnd = pos + 1 + (node.firstChild?.nodeSize || 0);
   const items = [];
-  node.descendants((child, offset) => {
-    const absolute = pos + 1 + offset;
-    if (absolute < headerEnd) return true;
-    if (child.isText) {
-      items.push({ kind: 'text', pos: absolute, text: child.text });
-    } else if (child.type.name === 'image') {
-      items.push({ kind: 'image', pos: absolute, src: child.attrs.src, alt: child.attrs.alt || '' });
-    }
-    return true;
+  node.forEach((row, rowOffset, rowIndex) => {
+    if (rowIndex === 0 || row.type.name !== 'table_row') return;
+    row.descendants((child, offset) => {
+      const absolute = pos + 2 + rowOffset + offset;
+      if (child.isText) {
+        items.push({ kind: 'text', pos: absolute, text: child.text, rowIndex });
+      } else if (child.type.name === 'image') {
+        const { src, alt = '' } = child.attrs;
+        items.push({ kind: 'image', pos: absolute, src, alt, rowIndex });
+      }
+      return true;
+    });
   });
   return {
     block: { pos, name: getTableBlockName(node) },

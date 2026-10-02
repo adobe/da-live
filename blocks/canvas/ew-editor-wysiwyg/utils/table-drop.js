@@ -1,6 +1,9 @@
 import { DOMParser as PMDOMParser, TextSelection } from 'da-y-wrapper';
 
 export function getTableDropPosition(doc, anchor, side) {
+  if (anchor?.kind === 'main') {
+    return anchor.index === 0 && side === 'before' ? 0 : null;
+  }
   if (!anchor || !['block', 'text', 'image'].includes(anchor.kind)
     || !Number.isSafeInteger(anchor.index)
     || !['before', 'after'].includes(side)) return null;

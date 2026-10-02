@@ -102,6 +102,50 @@ describe('quick-edit HTML insertion', () => {
     }
   });
 
+  it('inserts unordered and ordered lists with editable sample items', () => {
+    for (const [tag, type] of [['ul', 'bullet_list'], ['ol', 'ordered_list']]) {
+      const state = ctx();
+      expect(insertDroppedHtml({
+        html: `<${tag}><li>List item</li></${tag}>`,
+        anchor: { kind: 'text', index: 1 },
+        side: 'before',
+      }, state)).to.equal(true);
+      expect(types(state.view)[0]).to.equal(type);
+      expect(state.view.state.doc.firstChild.firstChild.textContent).to.equal('List item');
+    }
+  });
+
+  it('inserts an image URL from a dragged AEM asset as editable content', () => {
+    const state = ctx();
+    const src = 'https://delivery.example.com/adobe/assets/photo/as/coffee.avif';
+    expect(insertDroppedHtml({
+      html: `<img src="${src}" alt="Coffee">`,
+      anchor: { kind: 'text', index: 1 },
+      side: 'before',
+    }, state)).to.equal(true);
+    const images = [];
+    state.view.state.doc.descendants((node) => {
+      if (node.type.name === 'image') images.push(node);
+    });
+    expect(images).to.have.length(1);
+    expect(images[0].attrs.src).to.equal(src);
+    expect(images[0].attrs.alt).to.equal('Coffee');
+  });
+
+  it('inserts HTML at the start of an empty document via the main anchor', () => {
+    const state = { view: makeView({ type: 'doc', content: [] }) };
+    expect(getTableDropPosition(state.view.state.doc, { kind: 'main', index: 0 }, 'before')).to.equal(0);
+    expect(insertDroppedHtml({
+      html: '<h2>Heading</h2>',
+      anchor: { kind: 'main', index: 0 },
+      side: 'before',
+    }, state)).to.equal(true);
+    expect(types(state.view)).to.deep.equal(['heading']);
+    expect(state.view.state.doc.firstChild.textContent).to.equal('Heading');
+    expect(getTableDropPosition(state.view.state.doc, { kind: 'main', index: 1 }, 'before')).to.equal(null);
+    expect(getTableDropPosition(state.view.state.doc, { kind: 'main', index: 0 }, 'after')).to.equal(null);
+  });
+
   it('rejects stale positions, empty HTML, and read-only messages', () => {
     const state = ctx();
     expect(insertDroppedHtml({ html: HTML, anchor: { kind: 'block', index: 999 }, side: 'before' }, state)).to.equal(false);
