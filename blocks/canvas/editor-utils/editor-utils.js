@@ -1,13 +1,13 @@
 import { TextSelection } from 'da-y-wrapper';
 import prose2aem from '../../shared/prose2aem.js';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
 import { toolbarController } from './toolbar-controller.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { canvasBus, registerEditorSelectEnricher } from '../utils/canvas-bus.js';
-import { getImageDocumentVersion } from '../utils/image-document-version.js';
 
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
+const { getImageDocumentVersion } = await import(`${getNx2()}/public/utils/quick-edit-images.js`);
 
 /**
  * Dispatch a transaction mirrored from the quick-edit iframe.

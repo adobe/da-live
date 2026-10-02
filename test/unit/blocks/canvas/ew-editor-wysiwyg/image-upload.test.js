@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { Y } from 'da-y-wrapper';
-import { setNx } from '../../../../../scripts/utils.js';
+import { getNx2, setNx } from '../../../../../scripts/utils.js';
 import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -13,7 +13,7 @@ let toasts;
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 
 before(async () => {
-  ({ getImageDocumentVersion } = await import('../../../../../blocks/canvas/utils/image-document-version.js'));
+  ({ getImageDocumentVersion } = await import(`${getNx2()}/public/utils/quick-edit-images.js`));
   ({ handleImageReplace } = await import('../../../../../blocks/canvas/ew-editor-wysiwyg/utils/image.js'));
   ({ HLX6_MAX_IMAGE_BYTES } = await import('../../../../../blocks/canvas/utils/image-upload.js'));
   ({ toasts } = await import('../../../../fixtures/nx2/blocks/shared/toast/toast.js'));
