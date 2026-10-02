@@ -6,6 +6,7 @@ export const ICONS = {
   link: '/img/icons/s2-icon-link-20-n.svg',
   jpg: '/img/icons/s2-icon-image-20-n.svg',
   jpeg: '/img/icons/s2-icon-image-20-n.svg',
+  ico: '/img/icons/s2-icon-image-20-n.svg',
   png: '/img/icons/s2-icon-image-20-n.svg',
   svg: '/img/icons/s2-icon-image-20-n.svg',
   gif: '/img/icons/s2-icon-image-20-n.svg',
@@ -21,4 +22,13 @@ export const ICONS = {
 export function iconPathForExt(ext) {
   const type = !ext ? 'folder' : ext;
   return ICONS[type] || ICONS.file;
+}
+
+export function getTypeLabel(ext) {
+  if (!ext) return 'Folder';
+  if (ext === 'html') return 'Page';
+  if (ext === 'link') return 'Link';
+  if (ext === 'json') return 'Sheet';
+  if (['jpg', 'jpeg', 'ico', 'png', 'gif', 'svg', 'webp', 'avif'].includes(ext)) return 'Image';
+  return ext.toUpperCase();
 }

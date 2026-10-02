@@ -41,6 +41,16 @@ describe('da-list-item render', () => {
     expect(el.shadowRoot.querySelector('.da-item-list-item-name-text').textContent).to.equal('page');
   });
 
+  it('Renders table-style cells for name, type, and modified metadata', async () => {
+    await fixture({ date: 1704067200000, path: '/org/repo/page.html', ext: 'html' });
+    const row = el.shadowRoot.querySelector('.da-item-list-item-inner');
+    expect(row).to.exist;
+    expect(row.querySelector('[data-column="name"]')).to.exist;
+    expect(row.querySelector('[data-column="type"]').textContent.trim()).to.equal('Page');
+    expect(row.querySelector('[data-column="modified"]').textContent).to.contain('2024');
+    expect(row.querySelector('[data-column="actions"]')).to.exist;
+  });
+
   it('Renders a folder item with hash href when ext is empty', async () => {
     await fixture({ ext: '' });
     const link = el.shadowRoot.querySelector('a.da-item-list-item-title');

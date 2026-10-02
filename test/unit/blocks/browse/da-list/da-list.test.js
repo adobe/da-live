@@ -163,6 +163,95 @@ describe('DaList helpers', () => {
   });
 
   describe('handleSort', () => {
+    let storageDescriptor;
+
+    beforeEach(() => {
+      storageDescriptor = Object.getOwnPropertyDescriptor(window, 'localStorage');
+      Object.defineProperty(window, 'localStorage', { configurable: true, value: sessionStorage });
+      localStorage.removeItem('da-browse-settings');
+    });
+
+    afterEach(() => {
+      localStorage.removeItem('da-browse-settings');
+      Object.defineProperty(window, 'localStorage', storageDescriptor);
+    });
+
+    it('persists a successful sort while preserving other browse settings', async () => {
+      const el = makeList();
+      el.sort = true;
+      localStorage.setItem('da-browse-settings', '{"flattenFolders":false}');
+      await el.setSort('name', 'ascending');
+      expect(JSON.parse(localStorage.getItem('da-browse-settings'))).to.deep.equal({
+        flattenFolders: false,
+        sort: { property: 'name', direction: 'ascending' },
+      });
+    });
+
+    it('reports no sort before a user chooses a column', () => {
+      expect(makeList().sortState).to.deep.equal({ property: null, direction: 'none', loading: false });
+    });
+
+    it('applies all four explicit sorts while keeping favorites first', async () => {
+      const el = makeList();
+      el._listItems = [
+        { name: 'z', lastModified: 5, isFavorited: true },
+        { name: 'b', lastModified: 20 },
+        { name: 'a', lastModified: 10 },
+      ];
+      for (const [property, direction, names] of [
+        ['name', 'ascending', ['z', 'a', 'b']],
+        ['name', 'descending', ['z', 'b', 'a']],
+        ['lastModified', 'descending', ['z', 'b', 'a']],
+        ['lastModified', 'ascending', ['z', 'a', 'b']],
+      ]) {
+        // eslint-disable-next-line no-await-in-loop
+        await el.setSort(property, direction);
+        expect(el._listItems.map((item) => item.name)).to.deep.equal(names);
+        expect(el.sortState).to.deep.equal({ property, direction, loading: false });
+      }
+    });
+
+    it('does not claim sorting completed while pagination is still loading', async () => {
+      const el = makeList();
+      el._listItems = [{ name: 'b' }, { name: 'a' }];
+      let finish;
+      el.ensureAllPagesLoadedForSort = () => new Promise((resolve) => { finish = resolve; });
+      const pending = el.setSort('name', 'ascending');
+      expect(el.sortState).to.deep.equal({ property: null, direction: 'none', loading: true });
+      finish();
+      await pending;
+      expect(el.sortState).to.deep.equal({ property: 'name', direction: 'ascending', loading: false });
+    });
+
+    it('reports incomplete pagination without labeling a partial list as sorted', async () => {
+      const el = makeList();
+      el._continuationToken = 'next';
+      el.ensureAllPagesLoadedForSort = async () => {};
+      await el.setSort('name', 'ascending');
+      expect(el.sortState.property).to.be.null;
+      expect(el._status.type).to.equal('error');
+    });
+
+    it('does not apply a pending sort to a different folder', async () => {
+      const el = makeList();
+      el.fullpath = '/org/site/one';
+      el.ensureAllPagesLoadedForSort = async () => { el.fullpath = '/org/site/two'; };
+      await el.setSort('name', 'ascending');
+      expect(el.sortState.property).to.be.null;
+    });
+
+    it('keeps sorting after creating and renaming an item', async () => {
+      const el = makeList();
+      el._listItems = [{ path: '/b', name: 'b' }, { path: '/d', name: 'd' }];
+      await el.setSort('name', 'ascending');
+      el.newItem = { path: '/c', name: 'c' };
+      el.handleNewItem();
+      expect(el._listItems.map((item) => item.name)).to.deep.equal(['b', 'c', 'd']);
+      el.handleRenameCompleted({ detail: { oldPath: '/d', path: '/a', name: 'a' } });
+      expect(el._listItems.map((item) => item.name)).to.deep.equal(['a', 'b', 'c']);
+      expect(el.sortState.direction).to.equal('ascending');
+    });
+
     it('type "new" sorts ascending (a → z)', () => {
       const el = makeList();
       el._listItems = [{ name: 'b' }, { name: 'a' }];
@@ -280,14 +369,14 @@ describe('DaList helpers', () => {
   });
 
   describe('handleNameFilter', () => {
-    it('Sets _filter and clears sort state', () => {
+    it('Sets _filter without clearing the actual sort state', () => {
       const el = makeList();
       el._sortName = 'old';
       el._sortDate = 'new';
       el.handleNameFilter({ target: { value: 'HELLO' } });
       expect(el._filter).to.equal('HELLO');
-      expect(el._sortName).to.equal(undefined);
-      expect(el._sortDate).to.equal(undefined);
+      expect(el._sortName).to.equal('old');
+      expect(el._sortDate).to.equal('new');
     });
   });
 
@@ -386,6 +475,25 @@ describe('DaList helpers', () => {
   });
 
   describe('handleItemChecked', () => {
+    it('does not select filtered-out items between shift-click endpoints', () => {
+      const el = makeList();
+      el._listItems = [
+        { name: 'alpha', ext: 'html', isChecked: false },
+        { name: 'hidden', ext: 'json', isChecked: false },
+        { name: 'also-visible', ext: 'html', isChecked: false },
+      ];
+      el._hiddenTypes = new Set(['Sheet']);
+      el.handleSelectionState = () => {};
+      el.handleItemChecked({ detail: { checked: true } }, el._listItems[0], 0);
+      el.handleItemChecked({ detail: { checked: true, shiftKey: true } }, el._listItems[2], 2);
+      expect(el._listItems.map((item) => item.isChecked)).to.deep.equal([true, false, true]);
+      el._listItems.forEach((item) => { item.isChecked = false; });
+      el._hiddenTypes = new Set();
+      el._filter = 'a';
+      el.handleItemChecked({ detail: { checked: true, shiftKey: true } }, el._listItems[0], 0);
+      expect(el._listItems.map((item) => item.isChecked)).to.deep.equal([true, false, true]);
+    });
+
     it('Toggles a single item check state and tracks the last checked index', () => {
       const el = makeList();
       el._listItems = [{ isChecked: false }, { isChecked: false }];

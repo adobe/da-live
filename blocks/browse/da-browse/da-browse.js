@@ -2,14 +2,14 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getFirstSheet, fetchDaConfigs } from '../../shared/utils.js';
 import { getNx, sanitizePathParts, getNxEWFlags } from '../../../scripts/utils.js';
 import { getChatPanelContent } from '../../shared/chat-panel.js';
+import { getBrowseSettings, updateBrowseSettings } from '../shared/settings.js';
 
 // Components
 import '../da-new/da-new.js';
-import '../da-search/da-search.js';
 import '../da-list/da-list.js';
+import '../da-browse-header/da-browse-header.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-await import(`${getNx()}/blocks/shared/breadcrumb/breadcrumb.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT, wasPanelOpen, registerPanelSection } = await import(`${getNx()}/utils/panel.js`);
 
@@ -26,10 +26,11 @@ function closeChatPanel() {
 export default class DaBrowse extends LitElement {
   static properties = {
     details: { attribute: false },
-    _tabItems: { state: true },
-    _searchItems: { state: true },
     _ewEnabled: { state: true },
     _chatEnabled: { state: true },
+    _typesFilterState: { state: true },
+    _sortState: { state: true },
+    _flattenFolders: { state: true },
   };
 
   _browseSelKeys = new Set();
@@ -71,18 +72,10 @@ export default class DaBrowse extends LitElement {
 
   constructor() {
     super();
-    this._tabItems = [
-      {
-        id: 'browse',
-        title: 'Browse',
-        selected: true,
-      },
-      {
-        id: 'search',
-        title: 'Search',
-        selected: false,
-      },
-    ];
+    this._typesFilterState = { open: false, hiddenCount: 0 };
+    this._sortState = { property: null, direction: 'none', loading: false };
+    const { flattenFolders } = getBrowseSettings();
+    this._flattenFolders = typeof flattenFolders === 'boolean' ? flattenFolders : true;
   }
 
   connectedCallback() {
@@ -187,114 +180,58 @@ export default class DaBrowse extends LitElement {
     return matchedConf.split('=')[1];
   }
 
-  handleTabClick(idx) {
-    this._tabItems = this._tabItems.map((tab, tidx) => ({ ...tab, selected: idx === tidx }));
-  }
-
-  handleSearch(e) {
-    this.shadowRoot.querySelector('.da-list-type-search').listItems = e.detail.items;
-  }
-
   handleNewItem(e) {
     this.shadowRoot.querySelector('.da-list-type-browse').newItem = e.detail.item;
-  }
-
-  get context() {
-    return this._tabItems.find((tab) => tab.selected).id;
   }
 
   get newCmp() {
     return this.shadowRoot.querySelector('da-new');
   }
 
-  get browseListItems() {
-    // eslint-disable-next-line no-underscore-dangle
-    return this.shadowRoot.querySelector('.da-list-type-browse')?._listItems || [];
+  get browseCmp() {
+    return this.shadowRoot.querySelector('.da-list-type-browse');
   }
 
-  isRootFolder(path) {
-    return path.split('/').length <= 2;
-  }
-
-  renderNew() {
-    return html`
-      <da-new
-        @newitem=${this.handleNewItem}
-        fullpath="${this.details.fullpath}"
-        editor="${this.editor}">
-      </da-new>`;
-  }
-
-  renderSearch() {
-    return html`
-      <da-search
-        @updated=${this.handleSearch}
-        fullpath="${this.details.fullpath}"
-        .browseItems="${this.browseListItems}">
-      </da-search>`;
-  }
-
-  renderList(type, fullpath, select, sort, drag) {
+  renderList() {
     return html`
       <da-list
-        class="da-list-type-${type}"
-        fullpath="${fullpath}"
+        class="da-list-type-browse"
+        fullpath="${this.details.fullpath}"
         editor="${this.editor}"
         .hidePublishConfs=${this.hidePublishConfs}
         @onpermissions=${this.handlePermissions}
-        @selectionchanged=${type === 'browse' && this._chatEnabled ? this._handleBrowseSelection : nothing}
-        select="${select ? true : nothing}"
-        sort="${sort ? true : nothing}"
-        drag="${drag ? true : nothing}"></da-list>`;
+        @typesfilterchange=${({ detail }) => { this._typesFilterState = detail; }}
+        @sortchange=${({ detail }) => { this._sortState = detail; }}
+        @selectionchanged=${this._chatEnabled ? this._handleBrowseSelection : nothing}
+        select
+        sort
+        drag
+        .flattenFolders=${this._flattenFolders}></da-list>`;
+  }
+
+  setFlattenFolders(flatten) {
+    this._flattenFolders = flatten;
+    updateBrowseSettings({ flattenFolders: flatten });
   }
 
   render() {
     return html`
-      <div class="da-browse-header">
-        ${this._chatEnabled ? html`
-          <button type="button" part="chat-btn" class="chat-btn" aria-label="Open chat panel" @click=${openChatPanel}>
-            <svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-splitleft-20-n.svg#icon"></use></svg>
-          </button>` : nothing}
-      </div>
+      <da-browse-header exportparts="chat-btn"
+        .details=${this.details}
+        .chatEnabled=${this._chatEnabled}
+        .flattenFolders=${this._flattenFolders}
+        .typesFilterState=${this._typesFilterState}
+        .sortState=${this._sortState}
+        @chatrequest=${openChatPanel}
+        @typesfilterrequest=${({ detail }) => this.browseCmp.toggleTypesPopover(detail.anchor)}
+        @sortrequest=${({ detail }) => this.browseCmp.setSort(detail.property, detail.direction)}
+        @flattenfolderschange=${({ detail }) => this.setFlattenFolders(detail.flatten)}>
+        <da-new @newitem=${this.handleNewItem} fullpath="${this.details.fullpath}" editor="${this.editor}"></da-new>
+      </da-browse-header>
       <div class="da-browse-content">
-        <div class="da-tablist" role="tablist" aria-label="Dark Alley content">
-          ${this._tabItems.map((tab, idx) => {
-      if (tab.id === 'search' && this.isRootFolder(this.details.fullpath)) {
-        return nothing;
-      }
-      return html`
-            <button
-              id="tab-${tab.id}"
-              type="button"
-              role="tab"
-              aria-selected="${tab.selected}"
-              aria-controls="tabpanel-${tab.id}"
-              @click=${() => { this.handleTabClick(idx); }}>
-              <span class="focus">${tab.title}</span>
-            </button>`;
-    })}
-      </div>
-      <div class="da-list-header context-${this.context}">
-          <div class="da-breadcrumb-action-area">
-            <div class="da-breadcrumb-area">
-              <nx-breadcrumb .pathSegments="${this.details.fullpath.split('/').filter(Boolean)}"></nx-breadcrumb>
-              ${!this.details.path ? html`
-                <a class="da-breadcrumb-config" href="/config#${this.details.fullpath}/" aria-label="Config">
-                  <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-settings-20-n.svg#icon"></use></svg>
-                </a>` : nothing}
-            </div>
-            ${this._tabItems.map((tab) => html`
-              <div class="da-list-header-action" data-visible="${tab.selected}">
-                ${tab.id === 'browse' ? this.renderNew() : this.renderSearch()}
-              </div>
-            `)}
-          </div>
+        <div role="grid" aria-label="Browse files">
+          ${this.renderList()}
         </div>
-      ${this._tabItems.map((tab) => html`
-        <div class="da-tabpanel" id="tabpanel-${tab.id}" role="grid" aria-labelledby="tab-${tab.id}" data-visible="${tab.selected}">
-          ${tab.id === 'browse' ? this.renderList(tab.id, this.details.fullpath, true, true, true) : this.renderList(tab.id, null, false, false, false)}
-        </div>
-      `)}
       </div>
     `;
   }

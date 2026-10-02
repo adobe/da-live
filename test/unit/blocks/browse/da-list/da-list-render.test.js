@@ -1,5 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
+import { setViewport } from '@web/test-runner-commands';
 
 const { setNx } = await import('../../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -19,9 +20,13 @@ async function waitForRender(listEl) {
 describe('da-list render', () => {
   let el;
   let savedFetch;
+  let storageDescriptor;
 
   beforeEach(() => {
+    storageDescriptor = Object.getOwnPropertyDescriptor(window, 'localStorage');
+    Object.defineProperty(window, 'localStorage', { configurable: true, value: sessionStorage });
     savedFetch = window.fetch;
+    localStorage.removeItem('da-browse-settings');
     // Stub fetch to avoid real network calls during getList()
     window.fetch = () => Promise.resolve(new Response('[]', { status: 200 }));
   });
@@ -30,6 +35,8 @@ describe('da-list render', () => {
     window.fetch = savedFetch;
     if (el && el.parentElement) el.remove();
     el = null;
+    localStorage.removeItem('da-browse-settings');
+    Object.defineProperty(window, 'localStorage', storageDescriptor);
   });
 
   async function fixture(props = {}) {
@@ -42,8 +49,39 @@ describe('da-list render', () => {
 
   async function rerender() {
     el.requestUpdate();
-    await waitForRender(el);
+    await el.updateComplete;
   }
+
+  it('restores saved sorting on initial load and applies it again when changing folders', async () => {
+    localStorage.setItem('da-browse-settings', JSON.stringify({ sort: { property: 'name', direction: 'ascending' } }));
+    el = document.createElement('da-list');
+    el.sort = true;
+    el.getList = async () => [
+      { path: `${el.fullpath}/b.html`, name: 'b', ext: 'html' },
+      { path: `${el.fullpath}/a.html`, name: 'a', ext: 'html' },
+    ];
+    el.updateDeletePermission = async () => {};
+    el.fullpath = '/org/site/one';
+    document.body.append(el);
+    await nextFrame();
+    await el.updateComplete;
+    expect(el._listItems.map((item) => item.name)).to.deep.equal(['a', 'b']);
+    expect(el.sortState.property).to.equal('name');
+    el.fullpath = '/org/site/two';
+    await nextFrame();
+    await el.updateComplete;
+    expect(el._listItems.map((item) => item.path)).to.deep.equal([
+      '/org/site/two/a.html', '/org/site/two/b.html',
+    ]);
+    expect(el.shadowRoot.querySelector('[data-column="name"]').getAttribute('aria-sort')).to.equal('ascending');
+  });
+
+  it('uses default ordering for an invalid stored sort', async () => {
+    localStorage.setItem('da-browse-settings', '{"sort":{"property":"unknown","direction":"ascending"}}');
+    await fixture({ fullpath: '/o/r', sort: true });
+    await el.updateComplete;
+    expect(el.sortState.direction).to.equal('none');
+  });
 
   it('Renders an empty list message when no items', async () => {
     await fixture({ fullpath: '/o/r' });
@@ -160,11 +198,123 @@ describe('da-list render', () => {
     expect(el.shadowRoot.querySelector('button.da-browse-filter')).to.exist;
   });
 
+  it('Renders a table-style header with Name, Type, and Modified columns', async () => {
+    await fixture({ fullpath: '/o/r' });
+    el._listItems = [{ path: '/o/r/page.html', name: 'page', ext: 'html', lastModified: 1704067200000 }];
+    await rerender();
+    const header = el.shadowRoot.querySelector('.da-browse-table-header');
+    expect(header).to.exist;
+    const columns = [...header.querySelectorAll('[data-column]')].map((node) => node.getAttribute('data-column'));
+    expect(columns).to.deep.equal(['select', 'name', 'type', 'modified', 'actions']);
+    expect(header.textContent).to.contain('Name');
+    expect(header.textContent).to.contain('Type');
+    expect(header.textContent).to.contain('Modified');
+  });
+
   it('getSortAttr returns "ascending" / "descending" / "none"', async () => {
     await fixture({ fullpath: '/o/r' });
     expect(el.getSortAttr('new')).to.equal('ascending');
     expect(el.getSortAttr('old')).to.equal('descending');
     expect(el.getSortAttr(undefined)).to.equal('none');
+  });
+
+  it('retains the sentinel when a grouped, filtered page has no visible items', async () => {
+    await fixture();
+    el.loadMore = () => {};
+    el._bulkLoading = true;
+    el.flattenFolders = false;
+    el._listItems = [{ path: '/o/r/page.html', name: 'page', ext: 'html' }];
+    el._hiddenTypes = new Set(['Page']);
+    el._continuationToken = 'next';
+    el._allPagesLoaded = false;
+    await rerender();
+    expect(el.shadowRoot.querySelector('da-list-item')).to.be.null;
+    expect(el.shadowRoot.querySelector('.da-list-sentinel')).to.exist;
+  });
+
+  it('uses the same Sheet tag styling for groups and the type filter', async () => {
+    await fixture();
+    el.flattenFolders = false;
+    el._listItems = [{ path: '/o/r/data.json', name: 'data', ext: 'json' }];
+    await rerender();
+    expect(el.shadowRoot.querySelector('.da-list-group-header .tag').classList.contains('sheet')).to.be.true;
+    expect(el.shadowRoot.querySelector('.da-list-types-popover .tag').classList.contains('sheet')).to.be.true;
+  });
+
+  it('keeps header and row columns aligned at narrow and wide viewport sizes', async () => {
+    await fixture();
+    el._listItems = [{ path: '/o/r/page.html', name: 'page', ext: 'html' }];
+    await rerender();
+    const item = el.shadowRoot.querySelector('da-list-item');
+    await item.updateComplete;
+    const [listCss, itemCss] = await Promise.all([
+      savedFetch('/blocks/browse/da-list/da-list.css').then((response) => response.text()),
+      savedFetch('/blocks/browse/da-list-item/da-list-item.css').then((response) => response.text()),
+    ]);
+    const listStyle = new CSSStyleSheet();
+    const itemStyle = new CSSStyleSheet();
+    listStyle.replaceSync(listCss);
+    itemStyle.replaceSync(itemCss);
+    el.shadowRoot.adoptedStyleSheets = [listStyle];
+    item.shadowRoot.adoptedStyleSheets = [itemStyle];
+    const header = el.shadowRoot.querySelector('.da-browse-table-header');
+    const row = item.shadowRoot.querySelector('.da-item-list-item-inner');
+    const viewport = { width: window.innerWidth, height: window.innerHeight };
+    try {
+      for (const [width, columns] of [[480, 3], [900, 5]]) {
+        // eslint-disable-next-line no-await-in-loop
+        await setViewport({ width, height: viewport.height });
+        const headerColumns = getComputedStyle(header).gridTemplateColumns.split(' ');
+        const rowColumns = getComputedStyle(row).gridTemplateColumns.split(' ');
+        expect(headerColumns.length).to.equal(columns);
+        expect(rowColumns).to.deep.equal(headerColumns);
+        const typeDisplay = getComputedStyle(row.querySelector('[data-column="type"]')).display;
+        expect(typeDisplay === 'none').to.equal(width < 600);
+      }
+    } finally {
+      await setViewport(viewport);
+    }
+  });
+
+  it('filters by type and restores all types', async () => {
+    await fixture();
+    el._listItems = [
+      { path: '/o/r/page.html', name: 'page', ext: 'html' },
+      { path: '/o/r/data.json', name: 'data', ext: 'json' },
+    ];
+    el.toggleTypeVisibility('Page');
+    await rerender();
+    expect(el.filteredItems.map((item) => item.ext)).to.deep.equal(['json']);
+    el.toggleAllTypesVisibility();
+    await rerender();
+    expect(el.filteredItems.length).to.equal(2);
+  });
+
+  it('collapses and expands type groups without changing the data', async () => {
+    await fixture();
+    el.flattenFolders = false;
+    el._listItems = [{ path: '/o/r/page.html', name: 'page', ext: 'html' }];
+    el.toggleTypeGroup('Page');
+    await rerender();
+    expect(el.shadowRoot.querySelector('da-list-item')).to.be.null;
+    expect(el.shadowRoot.querySelector('.da-list-group-toggle').getAttribute('aria-expanded')).to.equal('false');
+    el.toggleTypeGroup('Page');
+    await rerender();
+    expect(el.shadowRoot.querySelector('da-list-item')).to.exist;
+  });
+
+  it('loads remaining pages before presenting the complete type selection', async () => {
+    await fixture();
+    el._continuationToken = 'next';
+    el._allPagesLoaded = false;
+    el.loadAllPages = async () => {
+      el._listItems = [{ path: '/o/r/data.json', name: 'data', ext: 'json' }];
+      el._allPagesLoaded = true;
+      el._continuationToken = null;
+    };
+    await el.toggleTypesPopover(document.createElement('button'));
+    expect(el.allTypeLabels).to.deep.equal(['Sheet']);
+    expect(el._bulkLoading).to.be.false;
   });
 
   it('Hides the action bar when no items are selected', async () => {

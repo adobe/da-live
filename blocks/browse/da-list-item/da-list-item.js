@@ -1,7 +1,7 @@
 import { LitElement, html, nothing, until } from 'da-lit';
 import { delay, sanitizeName, formatDate } from '../../shared/utils.js';
 import { getNx, getNx2Api } from '../../../scripts/utils.js';
-import { ICONS, iconPathForExt } from '../../shared/icons.js';
+import { ICONS, iconPathForExt, getTypeLabel } from '../../shared/icons.js';
 import getEditPath from '../shared.js';
 
 // Styles
@@ -254,8 +254,11 @@ export default class DaListItem extends LitElement {
         .then((response) => response.json())
         .then((data) => data.externalUrl);
     }
+
+    const type = getTypeLabel(this.ext);
+
     return html`
-      <a href="${this.ext === 'link' ? until(externalUrlPromise) : path}" class="da-item-list-item-title">
+      <a href="${this.ext === 'link' ? until(externalUrlPromise) : path}" class="da-item-list-item-title" data-column="name">
         <div class="da-item-list-item-info">
           ${this._isRenaming ? html`<span class="da-item-list-item-type"><div class="icon rename-icon"></div></span>
           ` : html`
@@ -268,13 +271,14 @@ export default class DaListItem extends LitElement {
             <span class="da-item-list-item-name-text">${this.name}</span>
           </div>
         </div>
-        <div class="da-item-list-item-date">${this.ext === 'link' ? nothing : this.renderDate()}</div>
-      </a>`;
+      </a>
+      <div class="da-item-list-item-meta da-item-list-item-type-label" data-column="type">${type}</div>
+      <div class="da-item-list-item-meta da-item-list-item-date" data-column="modified">${this.ext === 'link' ? '—' : (this.renderDate() || '—')}</div>`;
   }
 
   renderCheckBox() {
     return html`
-      <label class="da-checkbox">
+      <label class="da-checkbox da-item-list-item-select" data-column="select">
         <input type="checkbox" name="item-selected" id="item-selected-${this.idx}" .checked="${this.isChecked}" @click="${this.handleChecked}" aria-label="Select item">
       </label>
     `;
@@ -308,11 +312,12 @@ export default class DaListItem extends LitElement {
 
   render() {
     return html`
-      <div class="da-item-list-item-inner ${this.allowselect ? 'can-select' : ''}" role="gridcell">
-        ${this.allowselect ? this.renderCheckBox() : nothing}
+      <div class="da-item-list-item-inner ${this.allowselect ? 'can-select' : ''}">
+        ${this.allowselect ? this.renderCheckBox() : html`<span class="da-item-list-item-selection-placeholder" data-column="select" aria-hidden="true"></span>`}
         ${this.rename ? this.renderRename() : this.renderItem()}
         <button
           aria-label="Open"
+          data-column="actions"
           @click=${this.toggleExpand}
           class="da-item-list-item-expand-btn ${(this.ext && this.ext !== 'link') ? 'is-visible' : ''}">
         </button>
