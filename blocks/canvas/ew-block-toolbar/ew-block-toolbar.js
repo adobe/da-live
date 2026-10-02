@@ -223,6 +223,7 @@ class EwBlockToolbar extends LitElement {
             <nx-picker
               class="toolbar-variant"
               placement="above"
+              size="m"
               ignoreFocus
               .items=${this._variantPickerItems()}
               value=""

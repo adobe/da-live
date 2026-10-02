@@ -42,8 +42,8 @@
 
 .toolbar-btn {
   box-sizing: border-box;
-  min-width: 24px;
-  height: 24px;
+  min-width: 32px;
+  height: 32px;
   padding: 0;
   display: inline-flex;
   align-items: center;
@@ -58,6 +58,11 @@
 
 .toolbar-btn:hover {
   background: var(--s2-gray-200);
+}
+
+.toolbar-btn:focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: 2px;
 }
 
 .toolbar-btn[aria-pressed="true"] {
@@ -90,8 +95,8 @@
 
 .toolbar-btn svg.icon {
   display: block;
-  width: 16px;
-  height: 16px;
+  width: var(--s2-icon-size, 18px);
+  height: var(--s2-icon-size, 18px);
   overflow: hidden;
 }
 
