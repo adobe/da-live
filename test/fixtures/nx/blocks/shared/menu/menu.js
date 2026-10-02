@@ -1,9 +1,11 @@
 class NxMenu extends HTMLElement {
   open = false;
 
-  close() {
-    this.open = false;
-  }
+  show() { this.open = true; }
+
+  close() { this.open = false; }
+
+  reposition() {}
 }
 
 if (!customElements.get('nx-menu')) {

@@ -73,6 +73,7 @@ describe('setupIframeChannel', () => {
     expect(message.project).to.deep.equal({
       org: 'myorg',
       repo: 'mysite',
+      site: 'mysite',
       ref: 'feature123',
       path: '/a/b',
       view: 'split',
@@ -238,6 +239,21 @@ describe('setupIframeChannel', () => {
     iframe.contentWindow.postMessage.resetHistory();
 
     document.dispatchEvent(new CustomEvent(CHAT_EVENT.AGENT_CHANGE, { detail: { agent: 'writer' } }));
+
+    expect(iframe.contentWindow.postMessage.called).to.be.false;
+  });
+
+  it('does not post a delayed ready message after destroy', async () => {
+    const iframe = makeIframe();
+    const { destroy } = await setupIframeChannel({
+      iframe,
+      hashState: { org: 'myorg', site: 'mysite' },
+      getView: () => null,
+      onClose: () => {},
+    });
+
+    destroy();
+    await wait(800);
 
     expect(iframe.contentWindow.postMessage.called).to.be.false;
   });
