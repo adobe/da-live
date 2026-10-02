@@ -272,7 +272,7 @@ export default class DaListItem extends LitElement {
           </div>
         </div>
       </a>
-      <div class="da-item-list-item-meta da-item-list-item-type-label" data-column="type" class="${type.toLowerCase()}">${type}</div>
+      <div class="da-item-list-item-meta da-item-list-item-type-label" data-column="type">${type}</div>
       <div class="da-item-list-item-meta da-item-list-item-date" data-column="modified">${this.ext === 'link' ? '—' : (this.renderDate() || '—')}</div>`;
   }
 
@@ -312,7 +312,7 @@ export default class DaListItem extends LitElement {
 
   render() {
     return html`
-      <div class="da-item-list-item-inner ${this.allowselect ? 'can-select' : ''}" role="row">
+      <div class="da-item-list-item-inner ${this.allowselect ? 'can-select' : ''}">
         ${this.allowselect ? this.renderCheckBox() : html`<span class="da-item-list-item-selection-placeholder" data-column="select" aria-hidden="true"></span>`}
         ${this.rename ? this.renderRename() : this.renderItem()}
         <button

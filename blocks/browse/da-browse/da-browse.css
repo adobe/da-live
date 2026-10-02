@@ -3,92 +3,9 @@
   font-family: var(--s2-font-family);
 }
 
-.da-browse-header {
-  width: 100%;
-  max-width: none;
-  margin: 0;
-  padding: 0;
-  border-bottom: 1px solid var(--s2-gray-200);
-}
-
 .da-browse-content {
   width: 100%;
   max-width: none;
   margin: 0;
   padding: 0;
-}
-
-.da-browse-toolbar {
-  box-sizing: border-box;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px;
-}
-
-.da-browse-toolbar-leading {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  flex: 1;
-}
-
-.da-browse-toolbar-trailing {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-shrink: 0;
-}
-
-.da-browse-toolbar-actions,
-.da-browse-toolbar-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.da-browse-toolbar-controls {
-  position: relative;
-}
-
-.da-browse-toolbar-control {
-  white-space: nowrap;
-}
-
-.da-browse-settings-link {
-  margin-left: 2px;
-}
-
-.da-browse-view-options-popover {
-  width: 280px;
-}
-
-.da-browse-view-options-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  width: 100%;
-}
-
-.da-browse-view-options-row + .da-browse-view-options-row {
-  margin-top: 12px;
-}
-
-.da-browse-view-options-label {
-  color: var(--s2-gray-900);
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 500;
-}
-
-.da-browse-view-options-row nx-segmented-btn {
-  flex: none;
-}
-
-.da-tabpanel {
-  margin-top: 0;
 }

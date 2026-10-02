@@ -20,10 +20,10 @@
 
 .da-item-list-item-inner {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 120px 180px var(--da-list-action-width, 32px);
+  grid-template-columns: var(--da-list-select-width, 40px) minmax(0, 1fr) var(--da-list-type-width, 120px) var(--da-list-date-width, 180px) var(--da-list-action-width, 32px);
   align-items: center;
   column-gap: var(--s2-spacing-200);
-  padding: 0 var(--s2-spacing-300);
+  padding: 0 var(--da-list-pad-inline, 24px);
   min-height: 64px;
 }
 
@@ -80,29 +80,21 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--s2-component-s-regular-font-size, 14px);
   line-height: 20px;
-  font-weight: var(--s2-component-s-medium-font-weight);
 }
 
 .da-item-list-item-meta {
-  font-size: var(--s2-component-s-regular-font-size, 14px);
   line-height: 20px;
   color: var(--s2-gray-600);
   min-width: 0;
 }
 
 .da-item-list-item-type-label {
-  font-weight: var(--s2-component-s-medium-font-weight);
+  font-weight: var(--s2-component-m-medium-font-weight);
 }
 
 .da-item-list-item-date {
   white-space: nowrap;
-}
-
-.da-item-list-item-type > svg:first-child {
-  width: 18px;
-  height: 18px;
 }
 
 .da-item-list-item-favorite {
@@ -121,7 +113,7 @@
 .icon.checkmark-icon {
   width: 18px;
   height: 18px;
-  background-color: currentColor;
+  background-color: currentcolor;
 }
 
 .icon.rename-icon {
@@ -200,7 +192,7 @@
   content: '';
   width: 18px;
   height: 18px;
-  background-color: currentColor;
+  background-color: currentcolor;
   mask: no-repeat center / 18px url('/img/icons/s2-icon-more-20-n.svg');
 }
 
@@ -252,7 +244,7 @@
   display: block;
   width: 100%;
   height: 100%;
-  background-color: currentColor;
+  background-color: currentcolor;
   mask: no-repeat center / 32px 32px url('/img/icons/s2-icon-experiencecloudsolid-20-n.svg');
 }
 
@@ -274,5 +266,30 @@
 @keyframes spin {
   100% {
     transform: rotate(90deg);
+  }
+}
+
+.da-item-list-item-type > svg:first-child {
+  width: 18px;
+  height: 18px;
+}
+
+@media (width < 600px) {
+  .da-item-list-item-inner {
+    grid-template-columns: var(--da-list-select-width, 24px) minmax(0, 1fr) var(--da-list-action-width, 32px);
+    column-gap: var(--s2-spacing-100);
+  }
+
+  .da-item-list-item-type-label,
+  .da-item-list-item-date {
+    display: none;
+  }
+
+  .da-item-list-item-rename {
+    grid-column: 2;
+  }
+
+  .da-item-list-item-details {
+    grid-template-columns: 1fr;
   }
 }

@@ -1,25 +1,19 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getFirstSheet, fetchDaConfigs } from '../../shared/utils.js';
-import { getNx, getNx2, sanitizePathParts, getNxEWFlags } from '../../../scripts/utils.js';
+import { getNx, sanitizePathParts, getNxEWFlags } from '../../../scripts/utils.js';
 import { getChatPanelContent } from '../../shared/chat-panel.js';
+import { getBrowseSettings, updateBrowseSettings } from '../shared/settings.js';
 
 // Components
 import '../da-new/da-new.js';
-import '../da-search/da-search.js';
 import '../da-list/da-list.js';
-
-await import(`${getNx2()}/blocks/shared/segmented-btn/segmented.js`);
-await import(`${getNx2()}/blocks/shared/switch/switch.js`);
-await import(`${getNx2()}/blocks/shared/popover/popover.js`);
+import '../da-browse-header/da-browse-header.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT, wasPanelOpen, registerPanelSection } = await import(`${getNx()}/utils/panel.js`);
 
-const [BUTTONS, style] = await Promise.all([
-  loadStyle(`${getNx2()}/styles/buttons.css`),
-  loadStyle(import.meta.url),
-]);
+const style = await loadStyle(import.meta.url);
 
 function openChatPanel() {
   document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat' } }));
@@ -29,34 +23,13 @@ function closeChatPanel() {
   document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
 }
 
-const FLATTEN_FOLDERS_KEY = 'da-browse-flatten-folders';
-
-function getStoredFlattenFolders() {
-  try {
-    const stored = sessionStorage.getItem(FLATTEN_FOLDERS_KEY);
-    return stored === null ? true : stored === 'true';
-  } catch {
-    return true;
-  }
-}
-
-function setStoredFlattenFolders(flatten) {
-  try {
-    sessionStorage.setItem(FLATTEN_FOLDERS_KEY, String(flatten));
-  } catch {
-    // sessionStorage may be unavailable (Safari private mode, quota, etc.)
-  }
-}
-
 export default class DaBrowse extends LitElement {
   static properties = {
     details: { attribute: false },
-    _tabItems: { state: true },
-    _searchItems: { state: true },
     _ewEnabled: { state: true },
     _chatEnabled: { state: true },
-    _viewLayout: { state: true },
-    _viewRowSize: { state: true },
+    _typesFilterState: { state: true },
+    _sortState: { state: true },
     _flattenFolders: { state: true },
   };
 
@@ -99,26 +72,15 @@ export default class DaBrowse extends LitElement {
 
   constructor() {
     super();
-    this._tabItems = [
-      {
-        id: 'browse',
-        title: 'Browse',
-        selected: true,
-      },
-      {
-        id: 'search',
-        title: 'Search',
-        selected: false,
-      },
-    ];
-    this._viewLayout = 'list';
-    this._viewRowSize = 'm';
-    this._flattenFolders = getStoredFlattenFolders();
+    this._typesFilterState = { open: false, hiddenCount: 0 };
+    this._sortState = { property: null, direction: 'none', loading: false };
+    const { flattenFolders } = getBrowseSettings();
+    this._flattenFolders = typeof flattenFolders === 'boolean' ? flattenFolders : true;
   }
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [BUTTONS, style];
+    this.shadowRoot.adoptedStyleSheets = [style];
     this._handleShortcuts = this.handleShortcuts.bind(this);
     document.addEventListener('keydown', this._handleShortcuts);
   }
@@ -218,20 +180,8 @@ export default class DaBrowse extends LitElement {
     return matchedConf.split('=')[1];
   }
 
-  handleTabClick(idx) {
-    this._tabItems = this._tabItems.map((tab, tidx) => ({ ...tab, selected: idx === tidx }));
-  }
-
-  handleSearch(e) {
-    this.shadowRoot.querySelector('.da-list-type-search').listItems = e.detail.items;
-  }
-
   handleNewItem(e) {
     this.shadowRoot.querySelector('.da-list-type-browse').newItem = e.detail.item;
-  }
-
-  get context() {
-    return this._tabItems.find((tab) => tab.selected).id;
   }
 
   get newCmp() {
@@ -242,175 +192,45 @@ export default class DaBrowse extends LitElement {
     return this.shadowRoot.querySelector('.da-list-type-browse');
   }
 
-  toggleTypesFilter({ currentTarget }) {
-    this.browseCmp?.toggleTypesPopover(currentTarget);
-  }
-
-  get browseListItems() {
-    // eslint-disable-next-line no-underscore-dangle
-    return this.browseCmp?._listItems || [];
-  }
-
-  isRootFolder(path) {
-    return path.split('/').length <= 2;
-  }
-
-  renderNew() {
-    return html`
-      <da-new
-        @newitem=${this.handleNewItem}
-        fullpath="${this.details.fullpath}"
-        editor="${this.editor}">
-      </da-new>`;
-  }
-
-  renderSearch() {
-    return html`
-      <da-search
-        @updated=${this.handleSearch}
-        fullpath="${this.details.fullpath}"
-        .browseItems="${this.browseListItems}">
-      </da-search>`;
-  }
-
-  renderList(type, fullpath, select, sort, drag) {
+  renderList() {
     return html`
       <da-list
-        class="da-list-type-${type}"
-        fullpath="${fullpath}"
+        class="da-list-type-browse"
+        fullpath="${this.details.fullpath}"
         editor="${this.editor}"
         .hidePublishConfs=${this.hidePublishConfs}
         @onpermissions=${this.handlePermissions}
-        @selectionchanged=${type === 'browse' && this._chatEnabled ? this._handleBrowseSelection : nothing}
-        select="${select ? true : nothing}"
-        sort="${sort ? true : nothing}"
-        drag="${drag ? true : nothing}"
+        @typesfilterchange=${({ detail }) => { this._typesFilterState = detail; }}
+        @sortchange=${({ detail }) => { this._sortState = detail; }}
+        @selectionchanged=${this._chatEnabled ? this._handleBrowseSelection : nothing}
+        select
+        sort
+        drag
         .flattenFolders=${this._flattenFolders}></da-list>`;
-  }
-
-  renderSettingsActions() {
-    if (!this.details?.org) return nothing;
-
-    const href = this.details.site
-      ? `/config#/${this.details.org}/${this.details.site}/`
-      : `/config#/${this.details.org}/`;
-
-    return html`
-      <a class="da-browse-settings-link nx-action-btn-icon" href="${href}" aria-label="Config" title="Config">
-        <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-settings-20-n.svg#icon"></use></svg>
-      </a>`;
-  }
-
-  get _viewOptionsPopover() {
-    return this.shadowRoot.querySelector('.da-browse-view-options-popover');
-  }
-
-  toggleViewOptions({ currentTarget }) {
-    const popover = this._viewOptionsPopover;
-    if (popover.open) popover.close();
-    else popover.show({ anchor: currentTarget });
-  }
-
-  setViewLayout(layout) {
-    this._viewLayout = layout;
-  }
-
-  setViewRowSize(size) {
-    this._viewRowSize = size;
   }
 
   setFlattenFolders(flatten) {
     this._flattenFolders = flatten;
-    setStoredFlattenFolders(flatten);
-  }
-
-  renderViewOptionsMenu() {
-    return html`
-      <nx-popover class="da-browse-view-options-popover" role="dialog" aria-label="View Options">
-        <div class="da-browse-view-options-row">
-          <div class="da-browse-view-options-label">Layout</div>
-          <nx-segmented-btn
-            label="Layout options"
-            .items=${[
-        { value: 'list', icon: '/img/icons/s2-icon-listbulleted-20-n.svg', label: 'List view', iconOnly: true },
-        { value: 'grid', icon: '/img/icons/s2-icon-viewgrid-20-n.svg', label: 'Grid view', iconOnly: true },
-      ]}
-            .value=${this._viewLayout}
-            @change=${({ detail }) => this.setViewLayout(detail.value)}>
-          </nx-segmented-btn>
-        </div>
-        <div class="da-browse-view-options-row">
-          <div class="da-browse-view-options-label">Row size</div>
-          <nx-segmented-btn
-            label="Row size options"
-            .items=${[
-        { value: 's', label: 'S' },
-        { value: 'm', label: 'M' },
-        { value: 'l', label: 'L' },
-      ]}
-            .value=${this._viewRowSize}
-            @change=${({ detail }) => this.setViewRowSize(detail.value)}>
-          </nx-segmented-btn>
-        </div>
-        <div class="da-browse-view-options-row">
-          <nx-switch
-            label="Flatten folders"
-            ?checked=${this._flattenFolders}
-            @change=${({ detail }) => this.setFlattenFolders(detail.checked)}>
-          </nx-switch>
-        </div>
-      </nx-popover>`;
-  }
-
-  renderToolbarLeading() {
-    return html`
-      <div class="da-browse-toolbar-actions">
-        ${this._chatEnabled ? html`
-          <button type="button" part="chat-btn" class="chat-btn nx-action-btn-icon" aria-label="Open chat panel" @click=${openChatPanel}>
-            <svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-splitleft-20-n.svg#icon"></use></svg>
-          </button>` : nothing}
-        ${this.renderNew()}
-      </div>`;
-  }
-
-  renderToolbarTrailing() {
-    return html`
-      <div class="da-browse-toolbar-controls" aria-label="Browse toolbar controls">
-        <button type="button" class="da-browse-toolbar-control nx-action-btn-quiet" @click=${this.toggleViewOptions}>
-          <svg viewBox="0 0 20 20" aria-hidden="true">
-            <rect x="3" y="4" width="8" height="5" rx="1"></rect>
-            <rect x="13" y="5" width="4" height="1.75" rx="0.875"></rect>
-            <circle cx="15" cy="14" r="3"></circle>
-            <path d="M16.8 15.8l1.6 1.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
-            <rect x="3" y="11" width="3" height="6" rx="1"></rect>
-            <rect x="7.5" y="11" width="3.5" height="2" rx="1"></rect>
-          </svg>
-          <span>View Options</span>
-        </button>
-        <button type="button" class="da-browse-toolbar-control nx-action-btn-quiet" @click=${this.toggleTypesFilter}>
-          <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-filter-20-n.svg#icon"></use></svg>
-          <span>Show All types</span>
-        </button>
-        ${this.renderSettingsActions()}
-        ${this.renderViewOptionsMenu()}
-      </div>`;
+    updateBrowseSettings({ flattenFolders: flatten });
   }
 
   render() {
     return html`
-      <div class="da-browse-header">
-        <div class="da-browse-toolbar">
-          <div class="da-browse-toolbar-leading">
-            ${this.renderToolbarLeading()}
-          </div>
-          <div class="da-browse-toolbar-trailing">
-            ${this.renderToolbarTrailing()}
-          </div>
-        </div>
-      </div>
+      <da-browse-header exportparts="chat-btn"
+        .details=${this.details}
+        .chatEnabled=${this._chatEnabled}
+        .flattenFolders=${this._flattenFolders}
+        .typesFilterState=${this._typesFilterState}
+        .sortState=${this._sortState}
+        @chatrequest=${openChatPanel}
+        @typesfilterrequest=${({ detail }) => this.browseCmp.toggleTypesPopover(detail.anchor)}
+        @sortrequest=${({ detail }) => this.browseCmp.setSort(detail.property, detail.direction)}
+        @flattenfolderschange=${({ detail }) => this.setFlattenFolders(detail.flatten)}>
+        <da-new @newitem=${this.handleNewItem} fullpath="${this.details.fullpath}" editor="${this.editor}"></da-new>
+      </da-browse-header>
       <div class="da-browse-content">
-        <div class="da-tabpanel" role="grid">
-          ${this.renderList('browse', this.details.fullpath, true, true, true)}
+        <div role="grid" aria-label="Browse files">
+          ${this.renderList()}
         </div>
       </div>
     `;

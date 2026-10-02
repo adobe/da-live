@@ -1,11 +1,11 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { sanitizeName } from '../utils.js';
-import getSheet from '../sheet.js';
 
 const nx = getNx();
 await import(`${nx}/blocks/shared/dialog/dialog.js`);
-const form = await getSheet(`${getNx2()}/styles/form.css`);
+const { loadStyle } = await import(`${nx}/utils/utils.js`);
+const form = await loadStyle(`${getNx2()}/styles/form.css`);
 
 class DaNameDialog extends LitElement {
   static properties = {

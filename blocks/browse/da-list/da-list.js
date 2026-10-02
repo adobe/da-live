@@ -1,7 +1,8 @@
 import { LitElement, html, repeat, nothing } from 'da-lit';
 import { isFavorite, toggleFavorite } from '../shared/favorites.js';
+import { getBrowseSettings, updateBrowseSettings } from '../shared/settings.js';
 import { getTypeLabel } from '../../shared/icons.js';
-import { getNx, getNx2, getNx2Api, sanitizePathParts } from '../../../scripts/utils.js';
+import { getNx, getNx2Api, sanitizePathParts } from '../../../scripts/utils.js';
 import {
   aemAction,
   getExistingSchedule,
@@ -13,7 +14,7 @@ import { createVersion } from '../../shared/version/version-actions.js';
 
 import '../da-list-item/da-list-item.js';
 
-await import(`${getNx2()}/blocks/shared/popover/popover.js`);
+await import(`${getNx()}/blocks/shared/popover/popover.js`);
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const SHARED = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
@@ -39,7 +40,7 @@ const TYPE_TAG_CLASSES = {
   Page: 'page',
   Image: 'image',
   Link: 'link',
-  JSON: 'sheet',
+  Sheet: 'sheet',
 };
 
 function tagClassForTypeLabel(label) {
@@ -65,6 +66,9 @@ export default class DaList extends LitElement {
     _itemsRemaining: { state: true },
     _itemErrors: { state: true },
     _filter: { state: true },
+    _sortName: { state: true },
+    _sortDate: { state: true },
+    _sorting: { state: true },
     _showFilter: { state: true },
     _selectedItems: { state: true },
     _dropFiles: { state: true },
@@ -124,6 +128,10 @@ export default class DaList extends LitElement {
     }
 
     if (props.has('fullpath') && this.fullpath) {
+      const path = this.fullpath;
+      this._sortName = undefined;
+      this._sortDate = undefined;
+      this.notifySortState();
       this._filter = '';
       this._showFilter = undefined;
       this._allPagesLoaded = false;
@@ -131,7 +139,19 @@ export default class DaList extends LitElement {
       // Delete button is decided before any selection can surface it. The site
       // config is already warm (da-browse fetches it first) so this is cheap.
       const [items] = await Promise.all([this.getList(), this.updateDeletePermission()]);
+      if (path !== this.fullpath) {
+        super.update(props);
+        return;
+      }
       this._listItems = items;
+      if (this.sort) {
+        const { sort } = getBrowseSettings();
+        if (sort && ['name', 'lastModified'].includes(sort.property)
+          && ['ascending', 'descending'].includes(sort.direction)) {
+          await this.setSort(sort.property, sort.direction);
+        }
+      }
+      this.notifySortState();
     }
 
     if (props.has('newItem') && this.newItem) {
@@ -325,6 +345,8 @@ export default class DaList extends LitElement {
     }
     this._listItems.unshift(this.newItem);
     this.newItem = null;
+    const { property, direction } = this.sortState;
+    if (property) this.handleSort(direction === 'ascending' ? 'new' : 'old', property);
   }
 
   handleClear() {
@@ -395,12 +417,17 @@ export default class DaList extends LitElement {
   }
 
   handleItemChecked(e, item, index) {
-    if (e.detail.shiftKey && this._lastCheckedIndex !== null) {
-      const start = Math.min(this._lastCheckedIndex, index);
-      const end = Math.max(this._lastCheckedIndex, index);
+    const visibleItems = this.groupedItems
+      .filter(({ label }) => !this._collapsedTypes.has(label))
+      .flatMap((group) => group.items);
+    const previousIndex = visibleItems.indexOf(this._listItems[this._lastCheckedIndex]);
+    const currentIndex = visibleItems.indexOf(item);
+    if (e.detail.shiftKey && previousIndex >= 0 && currentIndex >= 0) {
+      const start = Math.min(previousIndex, currentIndex);
+      const end = Math.max(previousIndex, currentIndex);
 
       for (let i = start; i <= end; i += 1) {
-        this._listItems[i].isChecked = e.detail.checked;
+        visibleItems[i].isChecked = e.detail.checked;
       }
       this._lastCheckedIndex = index;
     } else {
@@ -435,6 +462,8 @@ export default class DaList extends LitElement {
     this._listItemPaths.delete(oldPath);
     if (path) this._listItemPaths.add(path);
     this._listItems[index] = item;
+    const { property, direction } = this.sortState;
+    if (property) this.handleSort(direction === 'ascending' ? 'new' : 'old', property);
   }
 
   wait(milliseconds) {
@@ -843,7 +872,47 @@ export default class DaList extends LitElement {
     const sortFn = this.getSortFn(first, last, prop);
     this._listItems.sort(sortFn);
     this.applyFavoriteOrder();
+    this._sortName = prop === 'name' ? type : undefined;
+    this._sortDate = prop === 'lastModified' ? type : undefined;
+    this._lastCheckedIndex = null;
     this.requestUpdate();
+  }
+
+  get sortState() {
+    let property = null;
+    if (this._sortName) property = 'name';
+    else if (this._sortDate) property = 'lastModified';
+    return {
+      property,
+      direction: this.getSortAttr(this._sortName || this._sortDate),
+      loading: !!this._sorting,
+    };
+  }
+
+  async setSort(property, direction) {
+    if (this._sorting || this._bulkLoading) return;
+    const path = this.fullpath;
+    this._sorting = true;
+    try {
+      await this.ensureAllPagesLoadedForSort();
+      if (path !== this.fullpath) return;
+      if (this._continuationToken && !this._allPagesLoaded) {
+        this.setStatus('Could not sort all files', 'Loading the remaining files did not complete. Please try again.', 'error');
+        return;
+      }
+      this.handleSort(direction === 'ascending' ? 'new' : 'old', property);
+      if (this.sort) updateBrowseSettings({ sort: { property, direction } });
+    } finally {
+      this._sorting = false;
+    }
+  }
+
+  notifySortState() {
+    this.dispatchEvent(new CustomEvent('sortchange', {
+      detail: { ...this.sortState, loading: !!this._sorting || !!this._bulkLoading },
+      bubbles: true,
+      composed: true,
+    }));
   }
 
   async ensureAllPagesLoadedForSort() {
@@ -859,17 +928,11 @@ export default class DaList extends LitElement {
   }
 
   async handleNameSort() {
-    this._sortDate = undefined;
-    this._sortName = this._sortName === 'old' ? 'new' : 'old';
-    await this.ensureAllPagesLoadedForSort();
-    this.handleSort(this._sortName, 'name');
+    await this.setSort('name', this._sortName === 'old' ? 'ascending' : 'descending');
   }
 
   async handleDateSort() {
-    this._sortName = undefined;
-    this._sortDate = this._sortDate === 'old' ? 'new' : 'old';
-    await this.ensureAllPagesLoadedForSort();
-    this.handleSort(this._sortDate, 'lastModified');
+    await this.setSort('lastModified', this._sortDate === 'old' ? 'ascending' : 'descending');
   }
 
   async toggleFilterView() {
@@ -899,8 +962,6 @@ export default class DaList extends LitElement {
   }
 
   handleNameFilter(e) {
-    this._sortName = undefined;
-    this._sortDate = undefined;
     this._filter = e.target.value;
   }
 
@@ -942,10 +1003,33 @@ export default class DaList extends LitElement {
     return this.shadowRoot.querySelector('.da-list-types-popover');
   }
 
-  toggleTypesPopover(anchor) {
+  async toggleTypesPopover(anchor) {
     const popover = this._typesPopover;
-    if (popover.open) popover.close();
-    else popover.show({ anchor });
+    if (popover.open) {
+      popover.close();
+      return;
+    }
+    popover.show({ anchor });
+    this.notifyTypesFilter();
+    if (this._continuationToken && !this._allPagesLoaded) {
+      this._bulkLoading = true;
+      try {
+        await this.loadAllPages();
+      } finally {
+        this._bulkLoading = false;
+      }
+    }
+  }
+
+  notifyTypesFilter() {
+    this.dispatchEvent(new CustomEvent('typesfilterchange', {
+      detail: {
+        open: !!this._typesPopover?.open,
+        hiddenCount: this.allTypeLabels.filter((label) => this._hiddenTypes.has(label)).length,
+      },
+      bubbles: true,
+      composed: true,
+    }));
   }
 
   toggleTypeVisibility(label) {
@@ -1340,7 +1424,7 @@ export default class DaList extends LitElement {
           <svg class="da-list-group-chevron" viewBox="0 0 20 20" aria-hidden="true">
             <path d="M6 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
           </svg>
-          <span class="tag ${label.toLowerCase()}">${count} ${typeLabel}</span>
+          <span class="tag ${tagClassForTypeLabel(label)}">${count} ${typeLabel}</span>
         </button>
       </div>`;
   }
@@ -1352,7 +1436,7 @@ export default class DaList extends LitElement {
 
     return html`
       <div class="da-item-list" role="presentation">
-      ${groups[0].label === null
+      ${this.flattenFolders !== false
         ? this.renderGroupItems(items, indexByPath)
         : groups.map(({ label, items: groupItems }) => html`
             ${this.renderGroupHeader(label, groupItems)}
@@ -1474,13 +1558,15 @@ export default class DaList extends LitElement {
     const allVisible = this._hiddenTypes.size === 0;
 
     return html`
-      <nx-popover class="da-list-types-popover" role="dialog" aria-label="Show all types">
+      <nx-popover class="da-list-types-popover" role="dialog" aria-label="Show all types"
+        aria-busy=${!!this._bulkLoading} @close=${this.notifyTypesFilter}>
         <h4 class="da-list-types-title">Types</h4>
         ${labels.map((label) => html`
           <label class="da-checkbox da-list-types-row">
             <input
               type="checkbox"
               .checked=${!this._hiddenTypes.has(label)}
+              ?disabled=${this._bulkLoading}
               @click=${() => this.toggleTypeVisibility(label)}>
             <span class="tag ${tagClassForTypeLabel(label)}">${label}</span>
           </label>
@@ -1490,6 +1576,7 @@ export default class DaList extends LitElement {
             <input
               type="checkbox"
               .checked=${allVisible}
+              ?disabled=${this._bulkLoading}
               @click=${() => this.toggleAllTypesVisibility()}>
             <span>Select all</span>
           </label>
@@ -1526,6 +1613,10 @@ export default class DaList extends LitElement {
 
   updated(changedProps) {
     super.updated(changedProps);
+    if (changedProps.has('_sortName') || changedProps.has('_sortDate') || changedProps.has('_sorting') || changedProps.has('_bulkLoading')) {
+      this.notifySortState();
+    }
+    if (changedProps.has('_hiddenTypes') || changedProps.has('_listItems')) this.notifyTypesFilter();
     if (!this._observer) this.setupObserver();
     const sentinel = this.shadowRoot?.querySelector('.da-list-sentinel');
     if (this._observer) {
