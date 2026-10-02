@@ -1,6 +1,7 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
+import { adaptEvaluation } from '../../../../../blocks/canvas/ew-governance/adapter.js';
 
 const tick = () => new Promise((resolve) => { setTimeout(resolve, 20); });
 
@@ -48,6 +49,90 @@ describe('ew-governance preflight gate', () => {
     await el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g2' });
     cap.stop();
     expect(cap.events).to.deep.equal([{ path: '/org/site/a.html', status: 'fail', requestId: 'g2' }]);
+  });
+
+  it('reports fail when only site-code checks fail', async () => {
+    const data = adaptEvaluation({
+      site_code_evaluation: {
+        evaluations: [
+          {
+            check_title: 'Page has exactly one H1',
+            alignment: 'NO',
+            reasoning: 'No H1 heading found.',
+            suggestions: 'Add a single H1 heading.',
+            category: null,
+          },
+        ],
+      },
+    });
+    const el = document.createElement('ew-governance');
+    el._evaluate = async () => { el._data = data; };
+    const cap = captureStatus();
+    await el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'sitefail' });
+    cap.stop();
+    expect(cap.events).to.deep.equal([
+      { path: '/org/site/a.html', status: 'fail', requestId: 'sitefail' },
+    ]);
+  });
+
+  it('reports success when site-code checks pass or are not applicable', async () => {
+    const data = adaptEvaluation({
+      site_code_evaluation: {
+        evaluations: [
+          {
+            check_title: 'Baseline preflight check',
+            alignment: 'YES',
+            reasoning: 'Site preflight is wired up.',
+            suggestions: null,
+            category: null,
+          },
+          {
+            check_title: 'Cards block has valid structure',
+            alignment: 'NA',
+            reasoning: 'No cards block on the page.',
+            suggestions: null,
+            category: null,
+          },
+        ],
+      },
+    });
+    const el = document.createElement('ew-governance');
+    el._evaluate = async () => { el._data = data; };
+    const cap = captureStatus();
+    await el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'sitepass' });
+    cap.stop();
+    expect(cap.events).to.deep.equal([
+      { path: '/org/site/a.html', status: 'success', requestId: 'sitepass' },
+    ]);
+  });
+
+  it('passes adapted site-code findings to the shared preflight renderer', async () => {
+    const data = adaptEvaluation({
+      site_code_evaluation: {
+        evaluations: [
+          {
+            check_title: 'All images have alt text',
+            alignment: 'NO',
+            reasoning: 'One image is missing alt text.',
+            suggestions: 'Provide descriptive alt text.',
+            category: null,
+          },
+        ],
+      },
+    });
+    const el = document.createElement('ew-governance');
+    el._evaluate = async () => { el._data = data; };
+    document.body.appendChild(el);
+    try {
+      await el.updateComplete;
+      const renderer = el.shadowRoot.querySelector('nx-page-eval');
+      expect(renderer).to.exist;
+      expect(renderer.data).to.equal(data);
+      expect(renderer.data.sections[0].items[0].title).to.equal('All images have alt text');
+      expect(renderer.data.sections[0].items[0].suggestion.suggested).to.equal('Provide descriptive alt text.');
+    } finally {
+      el.remove();
+    }
   });
 
   it('reports fail when the evaluation errors', async () => {

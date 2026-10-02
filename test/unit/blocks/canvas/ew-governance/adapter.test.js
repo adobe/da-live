@@ -54,6 +54,47 @@ const RESPONSE = {
   ],
 };
 
+const SITE_CODE_EVALUATION = {
+  source: 'https://example.com/page',
+  evaluations: [
+    {
+      check_title: 'Headings are in a valid accessibility order',
+      alignment: 'NA',
+      reasoning: 'No headings on the page.',
+      suggestions: null,
+      category: null,
+    },
+    {
+      check_title: 'Baseline preflight check',
+      alignment: 'YES',
+      reasoning: 'Site preflight is wired up.',
+      suggestions: null,
+      category: null,
+    },
+    {
+      check_title: 'Cards block has valid structure',
+      alignment: 'NA',
+      reasoning: 'No cards block on the page.',
+      suggestions: null,
+      category: null,
+    },
+    {
+      check_title: 'Page has exactly one H1',
+      alignment: 'NO',
+      reasoning: 'Found 0 <h1> element(s) in main; expected exactly 1.',
+      suggestions: 'Add a single H1 heading.',
+      category: null,
+    },
+    {
+      check_title: 'All images have alt text',
+      alignment: 'NO',
+      reasoning: 'One image is missing alt text.',
+      suggestions: 'Provide descriptive alt text for every image.',
+      category: null,
+    },
+  ],
+};
+
 describe('ew-governance adapter', () => {
   it('uses brand_name as the title', () => {
     expect(adaptEvaluation(RESPONSE).title).to.equal('Example Brand');
@@ -141,5 +182,126 @@ describe('ew-governance adapter', () => {
     expect(summary.every((t) => t.value === 0)).to.equal(true);
     expect(sections.every((s) => s.items.length === 0)).to.equal(true);
     expect(failed).to.equal(0);
+  });
+
+  it('includes site-code checks in the existing groups, after text and image checks', () => {
+    const { sections, summary, failed } = adaptEvaluation({
+      ...RESPONSE,
+      site_code_evaluation: SITE_CODE_EVALUATION,
+    });
+
+    expect(sections[0].items.map((item) => item.title)).to.deep.equal([
+      'Failing with a suggested fix',
+      'Failing without a fix',
+      'Page has exactly one H1',
+      'All images have alt text',
+    ]);
+    expect(sections[1].items.map((item) => item.title)).to.deep.equal([
+      'Passing check',
+      'Passing image check',
+      'Baseline preflight check',
+    ]);
+    expect(sections[2].items.map((item) => item.title)).to.deep.equal([
+      'Not applicable check',
+      'Headings are in a valid accessibility order',
+      'Cards block has valid structure',
+    ]);
+    expect(summary.map((tile) => tile.value)).to.deep.equal([4, 3, 3]);
+    expect(failed).to.equal(4);
+    expect(sections.map((section) => section.defaultOpen)).to.deep.equal([true, false, false]);
+  });
+
+  it('matches the live response shape with three failures, three passes, and two NA checks', () => {
+    const { sections, summary, failed } = adaptEvaluation({
+      text_evaluation: { evaluations: [RESPONSE.text_evaluation.evaluations[0]] },
+      image_evaluations: [
+        ...RESPONSE.image_evaluations,
+        { ...RESPONSE.image_evaluations[0], source: 'https://example.com/assets/another-image.jpg' },
+      ],
+      site_code_evaluation: SITE_CODE_EVALUATION,
+    });
+
+    expect(summary.map((tile) => [tile.label, tile.value])).to.deep.equal([
+      ['Failed', 3],
+      ['Passed', 3],
+      ['Not applicable', 2],
+    ]);
+    expect(sections.map((section) => section.items.length)).to.deep.equal([3, 3, 2]);
+    expect(sections.map((section) => section.subLabel)).to.deep.equal([
+      '3 checks failed',
+      '3 checks passed',
+      '2 checks not executed',
+    ]);
+    expect(failed).to.equal(3);
+  });
+
+  it('adapts a site-code-only response and preserves suggestions and null categories', () => {
+    const response = { site_code_evaluation: SITE_CODE_EVALUATION };
+    const { sections, summary, failed } = adaptEvaluation(response);
+    const [headingOrder, baseline, , singleH1] = SITE_CODE_EVALUATION.evaluations;
+
+    expect(summary.map((tile) => tile.value)).to.deep.equal([2, 1, 2]);
+    expect(failed).to.equal(2);
+    expect(sections[0].items[0]).to.deep.equal({
+      title: singleH1.check_title,
+      description: singleH1.reasoning,
+      suggestion: {
+        label: singleH1.check_title,
+        issue: singleH1.reasoning,
+        suggested: singleH1.suggestions,
+        context: { category: null, description: singleH1.reasoning },
+      },
+    });
+    expect(sections[1].items[0]).to.deep.equal({
+      title: baseline.check_title,
+      description: baseline.reasoning,
+      check: {
+        label: baseline.check_title,
+        context: { category: null, description: baseline.reasoning },
+      },
+    });
+    expect(sections[2].items[0]).to.deep.equal({
+      title: headingOrder.check_title,
+      description: headingOrder.reasoning,
+      check: {
+        label: headingOrder.check_title,
+        context: { category: null, description: headingOrder.reasoning },
+      },
+    });
+  });
+
+  it('keeps a failed site-code check without suggestions as a check item', () => {
+    const check = { ...SITE_CODE_EVALUATION.evaluations[3], suggestions: null };
+    const siteCode = { evaluations: [check] };
+    const { sections, failed } = adaptEvaluation({ site_code_evaluation: siteCode });
+
+    expect(failed).to.equal(1);
+    expect(sections[0].items[0]).to.deep.equal({
+      title: check.check_title,
+      description: check.reasoning,
+      check: {
+        label: check.check_title,
+        context: { category: null, description: check.reasoning },
+      },
+    });
+  });
+
+  it('opens passed checks when site-code checks pass or are not applicable', () => {
+    const siteCode = { evaluations: SITE_CODE_EVALUATION.evaluations.slice(0, 3) };
+    const { sections, summary, failed } = adaptEvaluation({ site_code_evaluation: siteCode });
+
+    expect(summary.map((tile) => tile.value)).to.deep.equal([0, 1, 2]);
+    expect(failed).to.equal(0);
+    expect(sections.map((section) => section.defaultOpen)).to.deep.equal([false, true, false]);
+  });
+
+  [undefined, null, {}, { evaluations: null }, { evaluations: [] }].forEach((siteCode) => {
+    it(`preserves text/image results with absent or empty site-code data: ${JSON.stringify(siteCode)}`, () => {
+      expect(adaptEvaluation({
+        ...RESPONSE,
+        site_code_evaluation: siteCode,
+      })).to.deep.equal(adaptEvaluation(RESPONSE));
+      expect(adaptEvaluation({ site_code_evaluation: siteCode })).to.deep.equal(adaptEvaluation());
+    });
   });
 });
