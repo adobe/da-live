@@ -304,4 +304,129 @@ describe('ew-governance adapter', () => {
       expect(adaptEvaluation({ site_code_evaluation: siteCode })).to.deep.equal(adaptEvaluation());
     });
   });
+
+  describe('built-in checks', () => {
+    // Synthetic slice of built_in_evaluation (DA out-of-the-box preflight checks).
+    const BUILT_IN_EVALUATION = {
+      source: 'https://example.com/page',
+      status: 'complete',
+      evaluations: [
+        {
+          check_id: 'h1-count',
+          check_title: 'H1 count',
+          alignment: 'NO',
+          reasoning: 'No H1 found.',
+          suggestions: 'Add a single H1 heading.',
+          category_id: 'content',
+          category: 'Content',
+        },
+        {
+          check_id: 'links:abc',
+          check_title: 'Links: https://example.com/broken',
+          alignment: 'NO',
+          reasoning: 'Could not validate link.',
+          suggestions: null,
+          category_id: 'references',
+          category: 'References',
+        },
+        {
+          check_id: 'seo-description',
+          check_title: 'Description',
+          alignment: 'YES',
+          reasoning: 'Description found.',
+          suggestions: null,
+          category_id: 'seo',
+          category: 'SEO',
+        },
+        {
+          check_id: 'fragments',
+          check_title: 'Fragments',
+          alignment: 'NA',
+          reasoning: 'No fragments on the page.',
+          suggestions: null,
+          category_id: 'references',
+          category: 'References',
+        },
+        {
+          check_id: '__built_in__',
+          check_title: 'Built-in checks',
+          alignment: 'Error',
+          reasoning: 'Could not fetch the page source.',
+          suggestions: null,
+          category: null,
+        },
+      ],
+    };
+
+    it('lists built-in checks first in each group', () => {
+      const { sections, summary, failed } = adaptEvaluation({
+        ...RESPONSE,
+        site_code_evaluation: SITE_CODE_EVALUATION,
+        built_in_evaluation: BUILT_IN_EVALUATION,
+      });
+
+      expect(sections[0].items.map((item) => item.title)).to.deep.equal([
+        'H1 count',
+        'Links: https://example.com/broken',
+        'Failing with a suggested fix',
+        'Failing without a fix',
+        'Page has exactly one H1',
+        'All images have alt text',
+      ]);
+      expect(sections[1].items.map((item) => item.title)).to.deep.equal([
+        'Description',
+        'Passing check',
+        'Passing image check',
+        'Baseline preflight check',
+      ]);
+      expect(sections[2].items.map((item) => item.title)).to.deep.equal([
+        'Fragments',
+        'Built-in checks',
+        'Not applicable check',
+        'Headings are in a valid accessibility order',
+        'Cards block has valid structure',
+      ]);
+      expect(summary.map((tile) => tile.value)).to.deep.equal([6, 4, 5]);
+      expect(failed).to.equal(6);
+    });
+
+    it('builds suggestion and check items for failing built-in checks', () => {
+      const { sections } = adaptEvaluation({ built_in_evaluation: BUILT_IN_EVALUATION });
+      const [h1, link] = sections[0].items;
+
+      expect(h1.suggestion).to.deep.equal({
+        label: 'H1 count',
+        issue: 'No H1 found.',
+        suggested: 'Add a single H1 heading.',
+        context: { category: 'Content', description: 'No H1 found.' },
+      });
+      expect(link.check.label).to.equal('Links: https://example.com/broken');
+      expect(link.suggestion).to.be.undefined;
+    });
+
+    it('treats an Error row as not applicable so it does not block publish', () => {
+      const evaluations = [BUILT_IN_EVALUATION.evaluations[4]];
+      const { sections, failed } = adaptEvaluation({ built_in_evaluation: { evaluations } });
+      expect(failed).to.equal(0);
+      expect(sections[2].items.map((item) => item.title)).to.deep.equal(['Built-in checks']);
+    });
+
+    it('adapts a built-in-only response', () => {
+      const { summary, failed } = adaptEvaluation({ built_in_evaluation: BUILT_IN_EVALUATION });
+      expect(summary.map((tile) => tile.value)).to.deep.equal([2, 1, 2]);
+      expect(failed).to.equal(2);
+    });
+
+    [undefined, null, {}, { evaluations: null }, { evaluations: [] }, { evaluations: 'oops' }]
+      .forEach((builtIn) => {
+        it(`keeps other checks without built-in data: ${JSON.stringify(builtIn)}`, () => {
+          expect(adaptEvaluation({
+            ...RESPONSE,
+            built_in_evaluation: builtIn,
+          })).to.deep.equal(adaptEvaluation(RESPONSE));
+          const onlyBuiltIn = adaptEvaluation({ built_in_evaluation: builtIn });
+          expect(onlyBuiltIn).to.deep.equal(adaptEvaluation());
+        });
+      });
+  });
 });

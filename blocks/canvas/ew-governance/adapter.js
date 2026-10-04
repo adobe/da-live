@@ -2,7 +2,8 @@
 // (POST https://enterprise-context.adobe.io/api/v0/evaluate/page) into the
 // { title, summary, sections } shape consumed by the shared page-evaluation
 // renderer (nx-page-eval / artifact type PageEvaluationWithIcons in da-nx).
-// Includes text, image, and site-code checks in the same alignment groups.
+// Includes built-in (DA out-of-the-box preflight), text, image, and site-code
+// checks in the same alignment groups; built-in checks are listed first.
 
 const TONE_BY_ALIGNMENT = { YES: 'positive', NO: 'negative' };
 
@@ -29,6 +30,11 @@ function toItem(check, assetLabel) {
 }
 
 function collectChecks(response) {
+  // Optional: absent for non-DA/EDS pages or older servers.
+  const builtIn = response.built_in_evaluation?.evaluations;
+  const builtInChecks = (Array.isArray(builtIn) ? builtIn : [])
+    .filter(Boolean)
+    .map((check) => ({ check }));
   const textChecks = (response.text_evaluation?.evaluations ?? [])
     .map((check) => ({ check }));
   const imageChecks = (response.image_evaluations ?? [])
@@ -36,7 +42,7 @@ function collectChecks(response) {
       .map((check) => ({ check, assetLabel: basename(image.source) })));
   const siteCodeChecks = (response.site_code_evaluation?.evaluations ?? [])
     .map((check) => ({ check }));
-  return [...textChecks, ...imageChecks, ...siteCodeChecks];
+  return [...builtInChecks, ...textChecks, ...imageChecks, ...siteCodeChecks];
 }
 
 export function adaptEvaluation(response = {}) {
