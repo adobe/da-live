@@ -77,13 +77,14 @@ function findDocValue(docRows, key) {
 
 /**
  * Fields shown in the panel: the configured fields (or Title/Description when none),
- * plus any other doc rows, with values read from the doc.
+ * plus any other doc rows, with values read from the doc. Only the other doc rows are removable.
  */
 export function resolveMetadataFields(docRows, configuredFields) {
   const baseFields = configuredFields?.length ? configuredFields : DEFAULT_FIELDS;
   const visibleFields = baseFields.map((field) => ({
     ...field,
     value: findDocValue(docRows, field.key),
+    removable: false,
   }));
 
   const usedKeys = new Set(baseFields.map((field) => normalize(field.key)));
@@ -95,6 +96,7 @@ export function resolveMetadataFields(docRows, configuredFields) {
       type: 'single',
       values: null,
       value: row.value,
+      removable: true,
     }));
 
   return [...visibleFields, ...extraFields];

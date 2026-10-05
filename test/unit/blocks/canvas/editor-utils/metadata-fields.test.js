@@ -122,7 +122,17 @@ describe('resolveMetadataFields', () => {
       type: 'single',
       values: null,
       value: 'yes',
+      removable: true,
     });
+  });
+
+  it('marks only fields outside the base set as removable', () => {
+    const configured = [{ key: 'category', label: 'Category', type: 'single', values: null }];
+    const docRows = [{ key: 'custom', value: 'x' }];
+    expect(resolveMetadataFields(docRows, []).map((f) => [f.key, f.removable]))
+      .to.deep.equal([['Title', false], ['Description', false], ['custom', true]]);
+    expect(resolveMetadataFields(docRows, configured).map((f) => [f.key, f.removable]))
+      .to.deep.equal([['category', false], ['custom', true]]);
   });
 
   it('uses configured Title/Description as-is when they are explicitly configured', () => {

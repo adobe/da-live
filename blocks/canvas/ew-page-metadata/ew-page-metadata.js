@@ -157,12 +157,13 @@ class EwPageMetadata extends LitElement {
         <label class="ew-pm-label">${field.label}</label>
         <div class="ew-pm-control-row">
           <div class="ew-pm-control">${this._renderField(field)}</div>
-          <button type="button" class="nx-action-btn-icon nx-btn-sm delete-btn" aria-label="Delete ${field.label}"
-                  @click=${() => this._onDeleteClick(field.key)}>
-            <svg aria-hidden="true" viewBox="0 0 20 20">
-              <use href="${DELETE_ICON_SRC}#icon"></use>
-            </svg>
-          </button>
+          ${field.removable ? html`
+            <button type="button" class="nx-action-btn-icon nx-btn-sm delete-btn" aria-label="Delete ${field.label}"
+                    @click=${() => this._onDeleteClick(field.key)}>
+              <svg aria-hidden="true" viewBox="0 0 20 20">
+                <use href="${DELETE_ICON_SRC}#icon"></use>
+              </svg>
+            </button>` : nothing}
         </div>
         ${invalidJson ? html`<span class="nx-input-error-msg" role="alert">Invalid JSON</span>` : nothing}
       </div>`;

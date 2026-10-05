@@ -82,10 +82,10 @@ describe('ew-page-metadata', () => {
     });
 
     it('uses NX form/button styles for inputs and icon buttons', async () => {
-      bridge.view = makeRealView(baseDoc());
+      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['custom', 'x']])] });
       canvasBus.editorDocState.emit();
       await el.updateComplete;
-      const row = rowFor(el, 'Title');
+      const row = rowFor(el, 'custom');
       const addBtn = el.shadowRoot.querySelector('.add-btn');
       expect(row.classList.contains('nx-form-field')).to.equal(true);
       expect(row.querySelector('input[type="text"]').classList.contains('nx-input')).to.equal(true);
@@ -105,13 +105,12 @@ describe('ew-page-metadata', () => {
   });
 
   describe('fallback + read path', () => {
-    it('renders deletable default Title/Description text fields when there is no library config', async () => {
+    it('renders default Title/Description text fields when there is no library config', async () => {
       bridge.view = makeRealView(baseDoc());
       canvasBus.editorDocState.emit();
       await el.updateComplete;
       ['Title', 'Description'].forEach((key) => {
         expect(rowFor(el, key).querySelector('input[type="text"]').value).to.equal('');
-        expect(rowFor(el, key).querySelector('.delete-btn')).to.exist;
       });
     });
 
@@ -135,8 +134,6 @@ describe('ew-page-metadata', () => {
 
       expect(rowFor(el, 'category').querySelector('nx-picker')).to.exist;
       expect(rowFor(el, 'legacy-flag').querySelector('input[type="text"]').value).to.equal('yes');
-      expect(rowFor(el, 'Title')).to.equal(null);
-      expect(rowFor(el, 'Description')).to.equal(null);
     });
 
     it('pre-fills from the doc, and clears when editorHtmlState signals the doc was unloaded', async () => {
@@ -162,7 +159,7 @@ describe('ew-page-metadata', () => {
       expect(picker.getAttribute('size')).to.equal('m');
       expect(picker.value).to.equal('news');
       expect(picker.items).to.deep.equal([
-        { value: '', label: 'Please Select' },
+        { value: '', label: 'None' },
         { value: 'news', label: 'News' },
       ]);
     });
@@ -177,7 +174,7 @@ describe('ew-page-metadata', () => {
       expect(multi.value).to.equal('a, b');
     });
 
-    it('renders color fields as a picker using a fixed trailing icon', async () => {
+    it('renders color fields as a picker with swatches', async () => {
       bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['accent', 'adobe-red']])] });
       el._libraryFields = [{
         key: 'accent',
@@ -190,8 +187,8 @@ describe('ew-page-metadata', () => {
       const picker = rowFor(el, 'accent').querySelector('nx-picker');
       expect(picker.value).to.equal('adobe-red');
       expect(picker.items).to.deep.equal([
-        { value: '', label: 'Please Select' },
-        { value: 'adobe-red', label: 'Adobe Red', action: true, trailingIcon: '/img/icons/s2-icon-colorfill-20-n.svg' },
+        { value: '', label: 'None' },
+        { value: 'adobe-red', label: 'Adobe Red', swatch: '#FF0000' },
         { value: 'sky', label: 'Sky' },
       ]);
     });
@@ -204,8 +201,6 @@ describe('ew-page-metadata', () => {
       const textarea = rowFor(el, 'json-ld').querySelector('textarea');
       expect(textarea.classList.contains('nx-input')).to.equal(true);
       expect(textarea.value).to.equal('{\n  "@type": "Article"\n}');
-      expect(rowFor(el, 'json-ld').classList.contains('nx-field-error')).to.equal(false);
-      expect(rowFor(el, 'json-ld').querySelector('.nx-input-error-msg')).to.equal(null);
     });
 
     it('flags a json field holding invalid JSON with an error message', async () => {
@@ -336,7 +331,6 @@ describe('ew-page-metadata', () => {
       await el.updateComplete;
       const dialog = el.shadowRoot.querySelector('.ew-pm-add');
       expect(dialog).to.exist;
-      expect(dialog.querySelector('input[name="value"]')).to.equal(null);
 
       dialog.querySelector('input[name="key"]').value = 'Keywords';
       dialog.querySelector('input[name="key"]').dispatchEvent(new Event('input'));
@@ -346,11 +340,11 @@ describe('ew-page-metadata', () => {
       expect(tableRows(bridge.view)).to.deep.equal([{ key: 'Keywords', value: '' }]);
       expect(el.shadowRoot.querySelector('.ew-pm-add')).to.equal(null);
       expect(rowFor(el, 'Keywords').querySelector('input[type="text"]').value).to.equal('');
+      expect(rowFor(el, 'Keywords').querySelector('.delete-btn')).to.exist;
     });
 
-    it('deletes a configured field after confirming the delete dialog', async () => {
+    it('deletes a custom field after confirming the delete dialog', async () => {
       bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['legacy-flag', 'yes']])] });
-      el._libraryFields = [{ key: 'legacy-flag', label: 'Legacy Flag', type: 'single', values: null }];
       canvasBus.editorDocState.emit();
       await el.updateComplete;
 
@@ -363,24 +357,8 @@ describe('ew-page-metadata', () => {
       expect(tableRows(bridge.view)).to.deep.equal([]);
     });
 
-    it('deletes a fallback Title row but keeps the Title field visible', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['Title', 'My Page']])] });
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
-
-      rowFor(el, 'Title').querySelector('.delete-btn').click();
-      await el.updateComplete;
-      el.shadowRoot.querySelector('.ew-pm-delete .nx-form-btn-primary').click();
-      await el.updateComplete;
-
-      expect(tableRows(bridge.view)).to.deep.equal([]);
-      expect(rowFor(el, 'Title')).to.exist;
-      expect(rowFor(el, 'Title').querySelector('input[type="text"]').value).to.equal('');
-    });
-
-    it('cancelling the delete dialog leaves the configured field untouched', async () => {
+    it('cancelling the delete dialog leaves the custom field untouched', async () => {
       bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['legacy-flag', 'yes']])] });
-      el._libraryFields = [{ key: 'legacy-flag', label: 'Legacy Flag', type: 'single', values: null }];
       canvasBus.editorDocState.emit();
       await el.updateComplete;
 

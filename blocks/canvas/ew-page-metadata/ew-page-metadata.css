@@ -1,7 +1,7 @@
 .ew-page-metadata {
   display: flex;
   flex-direction: column;
-  gap: var(--s2-spacing-200);;
+  gap: var(--s2-spacing-200);
   padding: 0 var(--s2-spacing-200);
   max-height: 100%;
 }
