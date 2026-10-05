@@ -77,10 +77,12 @@ class EwPageMetadata extends LitElement {
     return resolveMetadataFields(this._docRows ?? [], this._libraryFields ?? []);
   }
 
+  // Empty values remove the row; unchanged values are not written.
   _commit(field, value) {
     const { view } = getExtensionsBridge();
-    if (!view) return;
-    setMetadataValue(view, field.key, value);
+    if (!view || value === field.value) return;
+    if (value.trim()) setMetadataValue(view, field.key, value);
+    else deleteMetadataRow(view, field.key);
     this._docRows = readMetadataRows(view);
   }
 

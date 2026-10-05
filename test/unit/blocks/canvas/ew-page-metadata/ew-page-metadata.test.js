@@ -253,8 +253,8 @@ describe('ew-page-metadata', () => {
       expect(tableRows(bridge.view)).to.deep.equal([{ key: 'category', value: 'blog' }]);
     });
 
-    it('commits the empty option, clearing the value', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['category', 'news']])] });
+    it('removes the row when the empty option is selected', async () => {
+      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['category', 'news'], ['custom', 'x']])] });
       el._libraryFields = [{ key: 'category', label: 'Category', type: 'single', values: [{ title: 'News', value: 'news' }] }];
       canvasBus.editorDocState.emit();
       await el.updateComplete;
@@ -262,7 +262,42 @@ describe('ew-page-metadata', () => {
       const picker = rowFor(el, 'category').querySelector('nx-picker');
       picker.dispatchEvent(new CustomEvent('change', { detail: { value: '' } }));
 
-      expect(tableRows(bridge.view)).to.deep.equal([{ key: 'category', value: '' }]);
+      expect(tableRows(bridge.view)).to.deep.equal([{ key: 'custom', value: 'x' }]);
+    });
+
+    it('removes the row when a text field is emptied', async () => {
+      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['Title', 'My Page'], ['Description', 'Desc']])] });
+      canvasBus.editorDocState.emit();
+      await el.updateComplete;
+
+      const input = rowFor(el, 'Title').querySelector('input[type="text"]');
+      input.value = '   ';
+      input.dispatchEvent(new Event('blur'));
+
+      expect(tableRows(bridge.view)).to.deep.equal([{ key: 'Description', value: 'Desc' }]);
+    });
+
+    it('removes the row when all multiselect values are cleared', async () => {
+      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['tags', 'a'], ['custom', 'x']])] });
+      el._libraryFields = [{ key: 'tags', label: 'Tags', type: 'multi', values: [{ title: 'A', value: 'a' }] }];
+      canvasBus.editorDocState.emit();
+      await el.updateComplete;
+
+      rowFor(el, 'tags').querySelector('ew-metadata-multiselect')
+        .dispatchEvent(new CustomEvent('change', { detail: { value: '' } }));
+
+      expect(tableRows(bridge.view)).to.deep.equal([{ key: 'custom', value: 'x' }]);
+    });
+
+    it('does not write to the doc when a field is blurred unchanged', async () => {
+      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['Keywords', '']])] });
+      canvasBus.editorDocState.emit();
+      await el.updateComplete;
+
+      const input = rowFor(el, 'Keywords').querySelector('input[type="text"]');
+      input.dispatchEvent(new Event('blur'));
+
+      expect(tableRows(bridge.view)).to.deep.equal([{ key: 'Keywords', value: '' }]);
     });
 
     it('commits a multiselect change as the comma-joined value', async () => {
