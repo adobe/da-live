@@ -141,14 +141,15 @@ class EwPageMetadata extends LitElement {
 
   _renderField(field) {
     const readOnly = !this._canWrite;
+    const name = field.key.trim().toLowerCase();
     if (field.type === 'json') {
       return html`
-        <textarea class="nx-input ew-pm-json" .value=${formatJsonValue(field.value)} ?readonly=${readOnly}
+        <textarea name=${name} class="nx-input ew-pm-json" .value=${formatJsonValue(field.value)} ?readonly=${readOnly}
                   @blur=${(e) => this._commit(field, compactJsonValue(e.target.value))}></textarea>`;
     }
     if (!field.values?.length) {
       return html`
-        <input type="text" class="nx-input" .value=${field.value} ?readonly=${readOnly}
+        <input type="text" name=${name} class="nx-input" .value=${field.value} ?readonly=${readOnly}
                @blur=${(e) => this._commit(field, e.target.value)}>`;
     }
     if (field.type === 'multi') {

@@ -111,6 +111,22 @@ describe('ew-page-metadata', () => {
   });
 
   describe('fallback + read path', () => {
+    it('names text fields after their lowercased key', async () => {
+      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['Legacy-Flag', 'yes']])] });
+      canvasBus.editorDocState.emit();
+      await el.updateComplete;
+      const names = [...el.shadowRoot.querySelectorAll('.ew-pm-control input[type="text"]')]
+        .map((input) => input.name);
+      expect(names).to.deep.equal(['title', 'description', 'legacy-flag']);
+
+      el._libraryFields = [
+        { key: 'Robots', label: 'Robots', type: 'single', values: null },
+        { key: 'JSON-LD', label: 'JSON-LD', type: 'json', values: null },
+      ];
+      await el.updateComplete;
+      expect(rowFor(el, 'Robots').querySelector('input').name).to.equal('robots');
+      expect(rowFor(el, 'JSON-LD').querySelector('textarea').name).to.equal('json-ld');
+    });
     it('renders default Title/Description text fields when there is no library config', async () => {
       bridge.view = makeRealView(baseDoc());
       canvasBus.editorDocState.emit();
