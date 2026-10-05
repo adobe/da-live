@@ -198,29 +198,36 @@ function removeMetadata(editor) {
   editor.querySelector('.metadata')?.remove();
 }
 
+function getSectionMetadataValues(node, useUrls = true) {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return node.textContent.split(',').map((value) => value.trim()).filter(Boolean);
+  }
+  if (useUrls && node.nodeName === 'A' && node.getAttribute('href')) return [node.href];
+  if (useUrls && node.nodeName === 'IMG' && node.getAttribute('src')) return [node.src];
+  return [...node.childNodes].flatMap((child) => getSectionMetadataValues(child, useUrls));
+}
+
 function applySectionMetadata(editor) {
   editor.querySelectorAll('.section-metadata').forEach((block) => {
     const section = block.parentElement;
     block.querySelectorAll(':scope > div').forEach((row) => {
       const cols = row.querySelectorAll(':scope > div');
       if (cols.length < 2) return;
-      const key = cols[0].textContent.trim().toLowerCase()
-        .replace(/[^0-9a-z]+/g, '-')
-        .replace(/^-+|-+$/g, '');
+      const name = cols[0].textContent.replace(/[^0-9a-zA-Z:_-]/g, '-');
+      const key = /^hreflang[-:]/i.test(name) ? `hreflang:${name.substring(9)}` : name.toLowerCase();
       if (!key) return;
       if (key === 'style') {
-        cols[1].textContent.trim().split(',')
-          .map((s) => s.trim().toLowerCase().replace(/[^0-9a-z]+/g, '-').replace(/^-+|-+$/g, ''))
-          .filter(Boolean)
+        getSectionMetadataValues(cols[1], false)
+          .flatMap(toBlockCSSClassNames)
           .forEach((cls) => section.classList.add(cls));
+      } else if (key === 'id') {
+        const id = cols[1].textContent.toLowerCase()
+          .replace(/[^0-9a-z._:-]+/g, '-')
+          .replace(/^[^a-z]+/, '')
+          .replace(/-+$/, '');
+        if (id) section.id = id;
       } else {
-        const camelKey = key.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-        const linkEl = cols[1].querySelector('a');
-        const imgEl = cols[1].querySelector('img');
-        let value = cols[1].textContent.trim();
-        if (linkEl) value = linkEl.href;
-        else if (imgEl) value = imgEl.src;
-        section.dataset[camelKey] = value;
+        section.setAttribute(`data-${key}`, getSectionMetadataValues(cols[1]).join(','));
       }
     });
     block.remove();

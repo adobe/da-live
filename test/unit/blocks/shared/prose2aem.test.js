@@ -79,6 +79,109 @@ describe('prose2aem section-metadata handling', () => {
     return parsed.querySelector('main');
   }
 
+  function renderSection(rows) {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          ${rows}
+        </table>
+      </div>
+    `);
+    return parseMain(prose2aem(editor, true, false)).querySelector(':scope > div');
+  }
+
+  [
+    ['My Section!', 'my-section'],
+    ['123 My.Section_Name:Part-2!', 'my.section_name:part-2'],
+    ['---Leading---', 'leading'],
+    ['', null],
+    ['123!!!', null],
+  ].forEach(([value, expected]) => {
+    it(`normalizes section ID "${value}" to ${expected}`, () => {
+      const section = renderSection(`<tr><td>Id</td><td>${value}</td></tr>`);
+      expect(section.getAttribute('id')).to.equal(expected);
+      expect(section.hasAttribute('data-id')).to.be.false;
+    });
+  });
+
+  it('does not overwrite a section ID with an empty or invalid value', () => {
+    const section = renderSection(`
+      <tr><td>Id</td><td>First Section</td></tr>
+      <tr><td>Id</td><td></td></tr>
+      <tr><td>Id</td><td>123!</td></tr>
+    `);
+    expect(section.id).to.equal('first-section');
+  });
+
+  [
+    ['wide dark', ['wide-dark']],
+    ['columns wide, dark fancy', ['columns-wide', 'dark-fancy']],
+    ['<p>two columns</p><p>centered, dark</p>', ['two-columns', 'centered', 'dark']],
+    ['<p>two columns<br>centered, dark</p>', ['two-columns', 'centered', 'dark']],
+    ['Columns (wide, dark)', ['columns', 'wide', 'dark']],
+    ['<strong>wide</strong> dark', ['wide', 'dark']],
+    ['', []],
+  ].forEach(([value, expected]) => {
+    it(`extracts style classes from "${value}"`, () => {
+      const section = renderSection(`<tr><td>Style</td><td>${value}</td></tr>`);
+      expect([...section.classList]).to.deep.equal(expected);
+    });
+  });
+
+  [
+    ['Custom_Key:Name', 'custom_key:name'],
+    ['Two  Words', 'two--words'],
+    ['-Edge-', '-edge-'],
+    ['hreflang-en-US', 'hreflang:en-us'],
+  ].forEach(([key, name]) => {
+    it(`normalizes metadata key "${key}" to "${name}"`, () => {
+      const section = renderSection(`<tr><td>${key}</td><td>value</td></tr>`);
+      expect(section.getAttribute(`data-${name}`)).to.equal('value');
+    });
+  });
+
+  it('collects mixed text, links and images in document order', () => {
+    const section = renderSection(`
+      <tr><td>Sources</td><td>first, second
+        <img src="https://example.com/first.jpg">
+        <a href="https://example.com/page"><strong>Label</strong></a>
+        <p>third <em>fourth</em></p>
+        <img src="https://example.com/last.jpg">
+      </td></tr>
+    `);
+    expect(section.dataset.sources).to.equal(
+      'first,second,https://example.com/first.jpg,https://example.com/page,third,fourth,https://example.com/last.jpg',
+    );
+  });
+
+  it('uses the link URL rather than a linked image or label', () => {
+    const section = renderSection(`
+      <tr><td>Source</td><td>
+        <a href="https://example.com/page"><img src="https://example.com/image.jpg">Label</a>
+      </td></tr>
+    `);
+    expect(section.dataset.source).to.equal('https://example.com/page');
+  });
+
+  it('preserves browser resolution of relative metadata URLs', () => {
+    const section = renderSection(`
+      <tr><td>Source</td><td><a href="./page">Label</a></td></tr>
+      <tr><td>Image</td><td><img src="./image.jpg"></td></tr>
+    `);
+    expect(section.dataset.source).to.equal(new URL('./page', document.baseURI).href);
+    expect(section.dataset.image).to.equal(new URL('./image.jpg', document.baseURI).href);
+  });
+
+  it('skips rows with no value column or an empty key', () => {
+    const section = renderSection(`
+      <tr><td>Style</td></tr>
+      <tr><td></td><td>value</td></tr>
+    `);
+    expect(section.attributes.length).to.equal(0);
+  });
+
   it('applies style value as CSS class on the parent section', () => {
     const editor = makeEditor(`
       <p>Content</p>
