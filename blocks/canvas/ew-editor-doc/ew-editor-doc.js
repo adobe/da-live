@@ -10,7 +10,14 @@ import {
   editorDocRenderPhase,
 } from './utils/ctx.js';
 import { subscribeCollabUserList } from './utils/awareness-users.js';
-import { describeDocSelection, applyHighlight, SEL_BLOCK, selectedNodePayload, activeContentProseIndex } from './utils/selection.js';
+import {
+  describeDocSelection,
+  applyHighlight,
+  SEL_BLOCK,
+  selectedNodePayload,
+  activeContentProseIndex,
+  enclosingTablePayload,
+} from './utils/selection.js';
 import {
   prefetchWysiwygCookiesIfSignedIn,
   wireQuickEditControllerPort,
@@ -193,16 +200,38 @@ export class EwEditorDoc extends LitElement {
     const port = this._controllerCtx?.port;
     const { view } = this._proseContext ?? {};
     if (!port || !view) return;
-    const node = overrideNode !== undefined ? overrideNode : selectedNodePayload(view);
+    let node = overrideNode !== undefined ? overrideNode : selectedNodePayload(view);
+    // A plain text selection has no classifiable node, so selectedNodePayload returns
+    // null and the WYSIWYG canvas never scrolls. Fall back to the active content anchor
+    // (the same shape content navigation already broadcasts) so selecting text in the
+    // doc canvas still scrolls the WYSIWYG to that block (#1220). Inside a block (table)
+    // there is no content anchor, so fall back to the whole-table anchor instead.
+    // Skipped for a selection mirrored from the iframe itself: scrolling the pane the
+    // user is editing in back to their own caret would fight them.
+    let contentFallback = false;
+    if (node === null && scrollIntoView && overrideNode === undefined
+      && !this._controllerCtx?.mirroringFromIframe) {
+      const proseIndex = activeContentProseIndex(view);
+      if (typeof proseIndex === 'number') {
+        node = { anchorType: 'content', proseIndex };
+        contentFallback = true;
+      } else {
+        node = enclosingTablePayload(view);
+        contentFallback = Boolean(node);
+      }
+    }
     const key = node ? `${node.anchorType}:${node.proseIndex}` : 'null';
-    const forceScroll = scrollIntoView && Boolean(node);
+    const scrollToNode = scrollIntoView && Boolean(node);
+    // A real node anchor re-scrolls on every re-select; the content fallback only when
+    // the target block changes, so dragging a text selection doesn't spam the iframe.
+    const forceScroll = scrollToNode && !contentFallback;
     if (!forceScroll && key === this._lastBroadcastNodeKey) return;
     this._lastBroadcastNodeKey = key;
     port.postMessage({
       type: MESSAGE_TYPES.SET_SELECTED_NODE,
       node,
-      scrollIntoView: forceScroll,
-      payload: { node, scrollIntoView: forceScroll },
+      scrollIntoView: scrollToNode,
+      payload: { node, scrollIntoView: scrollToNode },
     });
   }
 

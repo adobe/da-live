@@ -101,6 +101,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   const project = {
     org,
     repo: site,
+    site,
     ref,
     path: path ? `/${path}` : '/',
     view: view || 'edit',

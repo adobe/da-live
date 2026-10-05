@@ -339,3 +339,27 @@ describe('parseSections', () => {
     ]);
   });
 });
+
+describe('dispatchMirror', () => {
+  let dispatchMirror;
+
+  before(async () => {
+    ({ dispatchMirror } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js'));
+  });
+
+  it('flags the dispatch as iframe-originated only while it runs', () => {
+    const ctx = {};
+    let seen;
+    const view = { dispatch: () => { seen = { ...ctx }; } };
+    dispatchMirror(view, {}, ctx);
+    expect(seen).to.deep.equal({ suppressRerender: true, mirroringFromIframe: true });
+    expect(ctx).to.deep.equal({ suppressRerender: false, mirroringFromIframe: false });
+  });
+
+  it('clears both flags even when dispatch throws', () => {
+    const ctx = {};
+    const view = { dispatch: () => { throw new Error('boom'); } };
+    expect(() => dispatchMirror(view, {}, ctx)).to.throw('boom');
+    expect(ctx).to.deep.equal({ suppressRerender: false, mirroringFromIframe: false });
+  });
+});
