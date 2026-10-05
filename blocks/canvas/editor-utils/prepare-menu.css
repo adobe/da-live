@@ -115,7 +115,7 @@
   font-family: inherit;
   font-size: var(--nx-menu-font-size, var(--nx-ui-text-body));
   font-weight: 500;
-  line-height: var(--s2-body-line-height, 1.5);
+  line-height: var(--nx-ui-line-body);
   text-align: left;
   cursor: pointer;
 }

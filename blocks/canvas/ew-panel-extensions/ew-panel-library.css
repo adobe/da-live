@@ -116,7 +116,7 @@
 .ext-description {
   padding: 6px 16px 6px 0;
   font-size: var(--nx-ui-text-detail);
-  line-height: 1.4;
+  line-height: var(--nx-ui-line-description);
   color: var(--s2-gray-600);
 }
 

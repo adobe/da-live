@@ -223,7 +223,7 @@
 
 .ew-comment-content {
   font-size: var(--nx-ui-text-comment);
-  line-height: 1.5;
+  line-height: var(--nx-ui-line-body);
   color: var(--s2-gray-800);
   white-space: pre-wrap;
   margin-left: 40px;
@@ -274,6 +274,7 @@
   height: 100px;
   padding: 8px var(--s2-spacing-200);
   font-family: var(--body-font-family);
+  font-size: var(--nx-ui-text-field);
   resize: none;
 }
 

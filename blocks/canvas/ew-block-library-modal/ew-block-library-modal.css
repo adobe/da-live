@@ -164,7 +164,7 @@
   padding: 6px 36px 10px;
   font-size: var(--nx-ui-text-detail);
   color: var(--s2-gray-700);
-  line-height: 1.4;
+  line-height: var(--nx-ui-line-description);
 }
 
 .modal-tree-caret {

@@ -124,6 +124,11 @@ button {
   color: var(--s2-gray-900);
 }
 
+.meta,
+.user {
+  font-size: var(--nx-ui-text-detail);
+}
+
 .versionicon {
   width: 24px;
   height: 24px;
