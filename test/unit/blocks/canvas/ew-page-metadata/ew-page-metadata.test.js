@@ -111,6 +111,12 @@ describe('ew-page-metadata', () => {
   });
 
   describe('fallback + read path', () => {
+    it('reads the doc rows when opened after the doc has loaded', async () => {
+      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['title', 'My Page']])] });
+      const lateEl = await createPanel();
+      expect(rowFor(lateEl, 'Title').querySelector('input[type="text"]').value).to.equal('My Page');
+      lateEl.remove();
+    });
     it('names text fields after their lowercased key', async () => {
       bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['Legacy-Flag', 'yes']])] });
       canvasBus.editorDocState.emit();

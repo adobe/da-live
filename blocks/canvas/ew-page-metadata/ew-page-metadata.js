@@ -37,7 +37,9 @@ class EwPageMetadata extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [formStyle, buttonsStyle, style];
-    this._docRows = [];
+    // editorDocState only fires on changes, so read the current rows on connect.
+    const { view: currentView } = getExtensionsBridge();
+    this._docRows = currentView ? readMetadataRows(currentView) : [];
     this._libraryFields = [];
     this._unsubHash = hashChange.subscribe((state) => {
       const prev = this._hashState;
