@@ -57,6 +57,12 @@ npm run build:da-lit
 npm run build:da-y-wrapper
 ```
 
+Section metadata bundles the HTML pipeline step and DOM-to-HAST adapter. Rebuild after dependency updates:
+
+```shell
+npm run build:section-metadata
+```
+
+Preview defaults to rendering v2. Pass `{ url, config }` as the fourth `prose2aem()` argument to override.
+
 Additional details can be [found here](https://github.com/adobe/da-live/wiki/Dependencies).
-
-

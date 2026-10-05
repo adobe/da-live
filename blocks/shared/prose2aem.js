@@ -1,4 +1,5 @@
 import getPathDetails from './pathDetails.js';
+import { extractSectionMetadata, fromDom } from '../../deps/section-metadata/dist/index.js';
 
 function setCursor(cursor, el) {
   el.id = cursor.id;
@@ -198,30 +199,32 @@ function removeMetadata(editor) {
   editor.querySelector('.metadata')?.remove();
 }
 
-function applySectionMetadata(editor) {
-  editor.querySelectorAll('.section-metadata').forEach((block) => {
+function applySectionMetadata(editor, previewOptions) {
+  const blocks = editor.querySelectorAll('.section-metadata');
+  if (!blocks.length) return;
+  const url = new URL(
+    previewOptions.url || getPathDetails()?.previewUrl || editor.ownerDocument.baseURI,
+  );
+  const config = previewOptions.config || { features: { rendering: { version: 2 } } };
+  blocks.forEach((block) => {
     const section = block.parentElement;
-    block.querySelectorAll(':scope > div').forEach((row) => {
-      const cols = row.querySelectorAll(':scope > div');
-      if (cols.length < 2) return;
-      const key = cols[0].textContent.trim().toLowerCase()
-        .replace(/[^0-9a-z]+/g, '-')
-        .replace(/^-+|-+$/g, '');
-      if (!key) return;
-      if (key === 'style') {
-        cols[1].textContent.trim().split(',')
-          .map((s) => s.trim().toLowerCase().replace(/[^0-9a-z]+/g, '-').replace(/^-+|-+$/g, ''))
-          .filter(Boolean)
-          .forEach((cls) => section.classList.add(cls));
-      } else {
-        const camelKey = key.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-        const linkEl = cols[1].querySelector('a');
-        const imgEl = cols[1].querySelector('img');
-        let value = cols[1].textContent.trim();
-        if (linkEl) value = linkEl.href;
-        else if (imgEl) value = imgEl.src;
-        section.dataset[camelKey] = value;
-      }
+    const metadata = fromDom(block);
+    const hast = {
+      type: 'element',
+      tagName: 'div',
+      properties: {},
+      children: [metadata],
+    };
+    extractSectionMetadata({
+      content: { hast },
+      config,
+      prodHost: url.host,
+      info: { path: url.pathname },
+    });
+    if (hast.children.includes(metadata)) return;
+    Object.entries(hast.properties).forEach(([name, value]) => {
+      if (name === 'className') value.forEach((cls) => section.classList.add(cls));
+      else section.setAttribute(name, value);
     });
     block.remove();
   });
@@ -269,7 +272,7 @@ function convertLocalUrlsToRelative(editor) {
  * @param {Boolean} isFragment whether or not the DOM is a fragment
  * @returns AEM-friendly HTML as a text string
  */
-export default function prose2aem(editor, livePreview, isFragment = false) {
+export default function prose2aem(editor, livePreview, isFragment = false, previewOptions = {}) {
   if (!isFragment) editor.removeAttribute('class');
 
   editor.removeAttribute('contenteditable');
@@ -314,7 +317,7 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
 
   if (!isFragment) {
     makeSections(editor);
-    if (livePreview) applySectionMetadata(editor);
+    if (livePreview) applySectionMetadata(editor, previewOptions);
   }
 
   if (isFragment) {
@@ -337,7 +340,7 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
   return html;
 }
 
-export function getHtmlWithCursor(view) {
+export function getHtmlWithCursor(view, previewOptions = {}) {
   const { selection } = view.state;
   const cursorPos = selection.from;
 
@@ -390,5 +393,5 @@ export function getHtmlWithCursor(view) {
     clonedNode.insertBefore(marker, clonedNode.childNodes[offset] || null);
   }
 
-  return prose2aem(editorClone, true);
+  return prose2aem(editorClone, true, false, previewOptions);
 }

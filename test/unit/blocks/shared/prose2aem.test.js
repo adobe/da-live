@@ -1,7 +1,7 @@
 import { readFile } from '@web/test-runner-commands';
 import { expect } from '@esm-bundle/chai';
 
-import prose2aem from '../../../../blocks/shared/prose2aem.js';
+import prose2aem, { getHtmlWithCursor } from '../../../../blocks/shared/prose2aem.js';
 
 const htmlString = await readFile({ path: './mocks/prose2aem.html' });
 const doc = new DOMParser().parseFromString(htmlString, 'text/html');
@@ -78,6 +78,208 @@ describe('prose2aem section-metadata handling', () => {
     const parsed = new DOMParser().parseFromString(html, 'text/html');
     return parsed.querySelector('main');
   }
+
+  function renderSection(rows, previewOptions) {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          ${rows}
+        </table>
+      </div>
+    `);
+    return parseMain(prose2aem(editor, true, false, previewOptions)).querySelector(':scope > div');
+  }
+
+  [
+    ['My Section!', 'my-section'],
+    ['123 My.Section_Name:Part-2!', 'my.section_name:part-2'],
+    ['---Leading---', 'leading'],
+    ['', null],
+    ['123!!!', null],
+  ].forEach(([value, expected]) => {
+    it(`normalizes section ID "${value}" to ${expected}`, () => {
+      const section = renderSection(`<tr><td>Id</td><td>${value}</td></tr>`);
+      expect(section.getAttribute('id')).to.equal(expected);
+      expect(section.hasAttribute('data-id')).to.be.false;
+    });
+  });
+
+  it('does not overwrite a section ID with an empty or invalid value', () => {
+    const section = renderSection(`
+      <tr><td>Id</td><td>First Section</td></tr>
+      <tr><td>Id</td><td></td></tr>
+      <tr><td>Id</td><td>123!</td></tr>
+    `);
+    expect(section.id).to.equal('first-section');
+  });
+
+  [
+    ['wide dark', ['wide-dark']],
+    ['columns wide, dark fancy', ['columns-wide', 'dark-fancy']],
+    ['<p>two columns</p><p>centered, dark</p>', ['two-columns', 'centered', 'dark']],
+    ['<p>two columns<br>centered, dark</p>', ['two-columns', 'centered', 'dark']],
+    ['Columns (wide, dark)', ['columns', 'wide', 'dark']],
+    ['<strong>wide</strong> dark', ['wide', 'dark']],
+    ['', []],
+  ].forEach(([value, expected]) => {
+    it(`extracts style classes from "${value}"`, () => {
+      const section = renderSection(`<tr><td>Style</td><td>${value}</td></tr>`);
+      expect([...section.classList]).to.deep.equal(expected);
+    });
+  });
+
+  [
+    ['Custom_Key:Name', 'custom_key:name'],
+    ['Two  Words', 'two--words'],
+    ['-Edge-', '-edge-'],
+    ['hreflang-en-US', 'hreflang:en-us'],
+  ].forEach(([key, name]) => {
+    it(`normalizes metadata key "${key}" to "${name}"`, () => {
+      const section = renderSection(`<tr><td>${key}</td><td>value</td></tr>`);
+      expect(section.getAttribute(`data-${name}`)).to.equal('value');
+    });
+  });
+
+  it('collects mixed text, links and images in document order', () => {
+    const section = renderSection(`
+      <tr><td>Sources</td><td>first, second
+        <img src="https://example.com/first.jpg">
+        <a href="https://example.com/page"><strong>Label</strong></a>
+        <p>third <em>fourth</em></p>
+        <img src="https://example.com/last.jpg">
+      </td></tr>
+    `);
+    expect(section.dataset.sources).to.equal(
+      'first,second,https://example.com/first.jpg,https://example.com/page,third,fourth,https://example.com/last.jpg',
+    );
+  });
+
+  it('uses the link URL rather than a linked image or label', () => {
+    const section = renderSection(`
+      <tr><td>Source</td><td>
+        <a href="https://example.com/page"><img src="https://example.com/image.jpg">Label</a>
+      </td></tr>
+    `);
+    expect(section.dataset.source).to.equal('https://example.com/page');
+  });
+
+  it('preserves browser resolution of relative metadata URLs', () => {
+    const section = renderSection(`
+      <tr><td>Source</td><td><a href="./page">Label</a></td></tr>
+      <tr><td>Image</td><td><img src="./image.jpg"></td></tr>
+    `);
+    expect(section.dataset.source).to.equal(new URL('./page', document.baseURI).href);
+    expect(section.dataset.image).to.equal(new URL('./image.jpg', document.baseURI).href);
+  });
+
+  it('resolves relative metadata URLs against the explicit preview host and page path', () => {
+    const section = renderSection(`
+      <tr><td>Source</td><td><a href="./related">Label</a></td></tr>
+      <tr><td>Image</td><td><img src="./image.jpg"></td></tr>
+      <tr><td>Root</td><td><a href="/root">Root</a></td></tr>
+      <tr><td>External</td><td><a href="https://example.com/page">External</a></td></tr>
+    `, { url: 'https://main--site--org.aem.live/en/products/page' });
+    expect(section.dataset.source).to.equal('https://main--site--org.aem.live/en/products/related');
+    expect(section.dataset.image).to.equal('https://main--site--org.aem.live/en/products/image.jpg');
+    expect(section.dataset.root).to.equal('https://main--site--org.aem.live/root');
+    expect(section.dataset.external).to.equal('https://example.com/page');
+  });
+
+  it('uses rendering configuration to retain metadata when processing is disabled', () => {
+    const config = { features: { rendering: { version: 1 } } };
+    const section = renderSection('<tr><td>Style</td><td>highlight</td></tr>', { config });
+    expect(section.querySelector('.section-metadata')).to.exist;
+    expect(section.classList.contains('highlight')).to.be.false;
+  });
+
+  [
+    [{ features: { rendering: { version: 3 } } }, true],
+    [{ created: '2026-05-01T00:00:00Z' }, true],
+    [{ created: '2026-04-30T23:59:59Z' }, false],
+    [{}, false],
+  ].forEach(([config, enabled]) => {
+    it(`honors pipeline rendering configuration ${JSON.stringify(config)}`, () => {
+      const section = renderSection('<tr><td>Style</td><td>highlight</td></tr>', { config });
+      expect(section.classList.contains('highlight')).to.equal(enabled);
+      expect(!!section.querySelector('.section-metadata')).to.equal(!enabled);
+    });
+  });
+
+  it('skips rows with no value column or an empty key', () => {
+    const section = renderSection(`
+      <tr><td>Style</td></tr>
+      <tr><td></td><td>value</td></tr>
+    `);
+    expect(section.attributes.length).to.equal(0);
+  });
+
+  it('preserves the cursor marker moved onto the section', () => {
+    const section = renderSection(`
+      <tr><td>Style<span id="da-cursor-position"></span></td><td>highlight</td></tr>
+    `);
+    expect(section.id).to.equal('da-cursor-position');
+    expect(section.classList.contains('highlight')).to.be.true;
+  });
+
+  it('leaves section content and instrumentation intact', () => {
+    const editor = makeEditor(`
+      <p data-prose-index="123">Content <strong>with formatting</strong></p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          <tr><td>Style</td><td>highlight</td></tr>
+        </table>
+      </div>
+    `);
+    editor.dataset.sectionName = 'Hero';
+    const content = editor.querySelector('p');
+    const main = parseMain(prose2aem(editor, true, false));
+    expect(editor.querySelector('p')).to.equal(content);
+    expect(main.querySelector('p').outerHTML).to.equal(
+      '<p data-prose-index="123">Content <strong>with formatting</strong></p>',
+    );
+    expect(main.querySelector(':scope > div').dataset.sectionName).to.equal('Hero');
+  });
+
+  it('forwards preview context through cursor serialization without changing the editor', () => {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          <tr><td>Source</td><td><a href="./related">Label</a></td></tr>
+        </table>
+      </div>
+    `);
+    const original = editor.innerHTML;
+    const view = {
+      dom: editor,
+      state: { selection: { from: 1 } },
+      domAtPos: () => ({ node: editor.querySelector('p').firstChild, offset: 0 }),
+    };
+    const main = parseMain(getHtmlWithCursor(view, { url: 'https://main--site--org.aem.live/en/page' }));
+    expect(main.querySelector(':scope > div').dataset.source).to.equal(
+      'https://main--site--org.aem.live/en/related',
+    );
+    expect(main.querySelector('#da-cursor-position')).to.exist;
+    expect(editor.innerHTML).to.equal(original);
+  });
+
+  it('does not process section metadata in fragments', () => {
+    const editor = makeEditor(`
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          <tr><td>Id</td><td>My Section</td></tr>
+        </table>
+      </div>
+    `);
+    const html = prose2aem(editor, true, true, { url: 'https://main--site--org.aem.live/page' });
+    expect(html).to.contain('class="section-metadata"');
+    expect(html).to.not.contain('id="my-section"');
+  });
 
   it('applies style value as CSS class on the parent section', () => {
     const editor = makeEditor(`
