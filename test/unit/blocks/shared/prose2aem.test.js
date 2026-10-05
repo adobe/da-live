@@ -1,7 +1,8 @@
 import { readFile } from '@web/test-runner-commands';
 import { expect } from '@esm-bundle/chai';
 
-import prose2aem from '../../../../blocks/shared/prose2aem.js';
+import prose2aem, { getHtmlWithCursor } from '../../../../blocks/shared/prose2aem.js';
+import { getLivePreviewUrl } from '../../../../blocks/shared/constants.js';
 
 const htmlString = await readFile({ path: './mocks/prose2aem.html' });
 const doc = new DOMParser().parseFromString(htmlString, 'text/html');
@@ -79,7 +80,7 @@ describe('prose2aem section-metadata handling', () => {
     return parsed.querySelector('main');
   }
 
-  function renderSection(rows) {
+  function renderSection(rows, previewOptions) {
     const editor = makeEditor(`
       <p>Content</p>
       <div class="tableWrapper">
@@ -89,7 +90,7 @@ describe('prose2aem section-metadata handling', () => {
         </table>
       </div>
     `);
-    return parseMain(prose2aem(editor, true, false)).querySelector(':scope > div');
+    return parseMain(prose2aem(editor, true, false, previewOptions)).querySelector(':scope > div');
   }
 
   [
@@ -172,6 +173,78 @@ describe('prose2aem section-metadata handling', () => {
     `);
     expect(section.dataset.source).to.equal(new URL('./page', document.baseURI).href);
     expect(section.dataset.image).to.equal(new URL('./image.jpg', document.baseURI).href);
+  });
+
+  it('resolves metadata URLs against the supplied DA preview page', () => {
+    const url = 'https://main--site--org.preview.da.live/en/products/page';
+    const section = renderSection(`
+      <tr><td>Source</td><td><a href="./related?view=full#details">Label</a></td></tr>
+      <tr><td>Image</td><td><img src="./image.jpg"></td></tr>
+      <tr><td>Root</td><td><a href="/root">Root</a></td></tr>
+      <tr><td>External</td><td><a href="https://example.com/page">External</a></td></tr>
+    `, { url });
+    expect(section.dataset.source).to.equal(
+      'https://main--site--org.preview.da.live/en/products/related?view=full#details',
+    );
+    expect(section.dataset.image).to.equal(
+      'https://main--site--org.preview.da.live/en/products/image.jpg',
+    );
+    expect(section.dataset.root).to.equal('https://main--site--org.preview.da.live/root');
+    expect(section.dataset.external).to.equal('https://example.com/page');
+  });
+
+  it('uses a supplied local preview URL without changing its protocol or port', () => {
+    const section = renderSection(`
+      <tr><td>Source</td><td><a href="./related">Label</a></td></tr>
+    `, { url: 'http://localhost:3001/en/page' });
+    expect(section.dataset.source).to.equal('http://localhost:3001/en/related');
+  });
+
+  it('defaults to the site preview host and content path from the DA location', () => {
+    const originalUrl = window.location.href;
+    const originalName = window.name;
+    history.replaceState(null, '', '/edit#/org/site/en/products/page');
+    try {
+      const section = renderSection(`
+        <tr><td>Source</td><td><a href="./related">Label</a></td></tr>
+        <tr><td>Image</td><td><img src="./image.jpg"></td></tr>
+        <tr><td>Page</td><td><a href="https://main--site--org.aem.page/other">Page</a></td></tr>
+        <tr><td>Live</td><td><a href="https://main--site--org.aem.live/other">Live</a></td></tr>
+      `);
+      const origin = getLivePreviewUrl('org', 'site');
+      expect(section.dataset.source).to.equal(`${origin}/en/products/related`);
+      expect(section.dataset.image).to.equal(`${origin}/en/products/image.jpg`);
+      expect(section.dataset.page).to.equal(`${origin}/other`);
+      expect(section.dataset.live).to.equal(`${origin}/other`);
+    } finally {
+      history.replaceState(null, '', originalUrl);
+      window.name = originalName;
+    }
+  });
+
+  it('forwards the preview page URL through cursor serialization', () => {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          <tr><td>Source</td><td><a href="./related">Label</a></td></tr>
+        </table>
+      </div>
+    `);
+    const original = editor.innerHTML;
+    const view = {
+      dom: editor,
+      state: { selection: { from: 1 } },
+      domAtPos: () => ({ node: editor.querySelector('p').firstChild, offset: 0 }),
+    };
+    const url = 'https://main--site--org.preview.da.live/en/page';
+    const main = parseMain(getHtmlWithCursor(view, { url }));
+    expect(main.querySelector(':scope > div').dataset.source).to.equal(
+      'https://main--site--org.preview.da.live/en/related',
+    );
+    expect(main.querySelector('#da-cursor-position')).to.exist;
+    expect(editor.innerHTML).to.equal(original);
   });
 
   it('skips rows with no value column or an empty key', () => {
