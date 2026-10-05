@@ -36,16 +36,16 @@ test('Regional Edit Document', async ({ page, context }, workerInfo) => {
   /* */ // Added this to make it work in Helix 6
   await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}`);
   const folderName = folderURL.split('/').pop();
-  await expect(page.getByRole('button', { name: 'New' })).toBeEnabled();
-  await page.getByRole('button', { name: 'New' }).click({ force: true });
+  await expect(page.getByRole('button', { name: 'New', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'New', exact: true }).click({ force: true });
   await page.getByRole('menuitem', { name: 'Folder' }).click();
   await page.getByPlaceholder('folder name').fill(folderName);
   await page.getByRole('button', { name: 'Create' }).click();
   /* */ // End addition
 
   await page.goto(folderURL);
-  await expect(page.getByRole('button', { name: 'New' })).toBeEnabled();
-  await page.getByRole('button', { name: 'New' }).click({ force: true });
+  await expect(page.getByRole('button', { name: 'New', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'New', exact: true }).click({ force: true });
   const [fileChooser] = await Promise.all([
     page.waitForEvent('filechooser'),
     page.getByRole('menuitem', { name: 'Media' }).click(),
