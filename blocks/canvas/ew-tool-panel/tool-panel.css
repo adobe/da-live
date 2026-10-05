@@ -135,7 +135,7 @@
   background: none;
   box-shadow: none;
   cursor: pointer;
-  font-size: var(--s2-component-l-regular-font-size);
+  font-size: var(--nx-ui-text-title);
   color: inherit;
 }
 

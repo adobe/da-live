@@ -79,7 +79,7 @@
 
 .toolbar-btn[data-mark="code"] {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.7rem;
+  font-size: var(--nx-ui-text-code);
   letter-spacing: -0.02em;
   padding: 0;
 }

@@ -29,7 +29,7 @@
 
 .modal-title {
   font-weight: 600;
-  font-size: var(--s2-component-l-bold-font-size);
+  font-size: var(--nx-ui-text-title);
 }
 
 .modal-body {

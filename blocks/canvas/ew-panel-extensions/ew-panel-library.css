@@ -101,7 +101,7 @@
 }
 
 .ext-variant-subtitle {
-  font-size: var(--s2-component-xs-regular-font-size);
+  font-size: var(--nx-ui-text-label);
   color: var(--s2-gray-500);
   margin-top: 2px;
 }
