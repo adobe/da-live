@@ -64,3 +64,7 @@
 .ew-pm-required {
   color: var(--s2-red-900);
 }
+
+.ew-pm-control nx-picker[inert] {
+  opacity: 0.6;
+}

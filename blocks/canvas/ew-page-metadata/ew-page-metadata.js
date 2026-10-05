@@ -79,10 +79,15 @@ class EwPageMetadata extends LitElement {
     return resolveMetadataFields(this._docRows ?? [], this._libraryFields ?? []);
   }
 
+  // Same source as the versions panel: the editor view is only editable with write access.
+  get _canWrite() {
+    return getExtensionsBridge().view?.editable ?? false;
+  }
+
   // Empty values remove the row; unchanged values are not written.
   _commit(field, value) {
     const { view } = getExtensionsBridge();
-    if (!view || value === field.value) return;
+    if (!view || !this._canWrite || value === field.value) return;
     if (value.trim()) setMetadataValue(view, field.key, value);
     else deleteMetadataRow(view, field.key);
     this._docRows = readMetadataRows(view);
@@ -135,23 +140,25 @@ class EwPageMetadata extends LitElement {
   }
 
   _renderField(field) {
+    const readOnly = !this._canWrite;
     if (field.type === 'json') {
       return html`
-        <textarea class="nx-input ew-pm-json" .value=${formatJsonValue(field.value)}
+        <textarea class="nx-input ew-pm-json" .value=${formatJsonValue(field.value)} ?readonly=${readOnly}
                   @blur=${(e) => this._commit(field, compactJsonValue(e.target.value))}></textarea>`;
     }
     if (!field.values?.length) {
       return html`
-        <input type="text" class="nx-input" .value=${field.value}
+        <input type="text" class="nx-input" .value=${field.value} ?readonly=${readOnly}
                @blur=${(e) => this._commit(field, e.target.value)}>`;
     }
     if (field.type === 'multi') {
       return html`
-        <ew-metadata-multiselect .items=${field.values} .value=${field.value}
+        <ew-metadata-multiselect .items=${field.values} .value=${field.value} ?disabled=${readOnly}
           @change=${(e) => this._commit(field, e.detail.value)}></ew-metadata-multiselect>`;
     }
+    // nx-picker has no disabled state; inert blocks interaction.
     return html`
-      <nx-picker size="m" variant="field" placeholder="Please Select" .items=${[
+      <nx-picker size="m" variant="field" placeholder="Please Select" ?inert=${readOnly} .items=${[
         EMPTY_OPTION,
         ...field.values.map((v) => ({
           value: v.value,
@@ -170,7 +177,7 @@ class EwPageMetadata extends LitElement {
         <label class="ew-pm-label">${field.label}</label>
         <div class="ew-pm-control-row">
           <div class="ew-pm-control">${this._renderField(field)}</div>
-          ${field.removable ? html`
+          ${field.removable && this._canWrite ? html`
             <button type="button" class="nx-action-btn-icon nx-btn-sm delete-btn" aria-label="Delete ${field.label}"
                     @click=${() => this._onDeleteClick(field.key)}>
               <svg aria-hidden="true" viewBox="0 0 20 20">
@@ -220,12 +227,13 @@ class EwPageMetadata extends LitElement {
       <div class="ew-page-metadata">
         <div class="ew-pm-header">
           <h3>Page Metadata</h3>
-          <button type="button" class="nx-action-btn-icon nx-btn-sm add-btn" aria-label="Add page metadata field"
-                  @click=${() => this._onAddClick()}>
-            <svg aria-hidden="true" viewBox="0 0 20 20">
-              <use href="${ADD_ICON_SRC}#icon"></use>
-            </svg>
-          </button>
+          ${this._canWrite ? html`
+            <button type="button" class="nx-action-btn-icon nx-btn-sm add-btn" aria-label="Add page metadata field"
+                    @click=${() => this._onAddClick()}>
+              <svg aria-hidden="true" viewBox="0 0 20 20">
+                <use href="${ADD_ICON_SRC}#icon"></use>
+              </svg>
+            </button>` : nothing}
         </div>
         <div class="ew-pm-fields">
           ${this._fields.map((field) => this._renderRow(field))}

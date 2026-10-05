@@ -61,4 +61,12 @@ describe('ew-metadata-multiselect', () => {
     checkboxFor(el, 'news').click();
     expect(detail.value).to.equal('blog');
   });
+
+  it('disables all checkboxes when disabled', async () => {
+    const el = await createMultiselect('news');
+    el.disabled = true;
+    await el.updateComplete;
+    const boxes = [...el.shadowRoot.querySelectorAll('input[type="checkbox"]')];
+    expect(boxes.every((box) => box.disabled)).to.equal(true);
+  });
 });

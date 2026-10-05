@@ -95,6 +95,9 @@ describe('ew-page-metadata', () => {
     });
 
     it('renders the add-field dialog with its copy and NX inputs', async () => {
+      bridge.view = makeRealView(baseDoc());
+      canvasBus.editorDocState.emit();
+      await el.updateComplete;
       el.shadowRoot.querySelector('.add-btn').click();
       await el.updateComplete;
       const dialog = el.shadowRoot.querySelector('.ew-pm-add');
@@ -429,6 +432,9 @@ describe('ew-page-metadata', () => {
     });
 
     it('clears the field name error while typing', async () => {
+      bridge.view = makeRealView(baseDoc());
+      canvasBus.editorDocState.emit();
+      await el.updateComplete;
       const dialog = await fillAddDialog();
       dialog.querySelector('.nx-form-btn-primary').click();
       await el.updateComplete;
@@ -466,6 +472,45 @@ describe('ew-page-metadata', () => {
 
       expect(el.shadowRoot.querySelector('.ew-pm-delete')).to.equal(null);
       expect(tableRows(bridge.view)).to.deep.equal([{ key: 'legacy-flag', value: 'yes' }]);
+    });
+  });
+
+  describe('read-only', () => {
+    beforeEach(async () => {
+      bridge.view = makeRealView({
+        type: 'doc',
+        content: [metadataTableJSON([
+          ['category', 'news'], ['tags', 'a'], ['json-ld', '{}'], ['note', 'x'], ['custom', 'y'],
+        ])],
+      });
+      bridge.view.setProps({ editable: () => false });
+      el._libraryFields = [
+        { key: 'category', label: 'Category', type: 'single', values: [{ title: 'News', value: 'news' }] },
+        { key: 'tags', label: 'Tags', type: 'multi', values: [{ title: 'A', value: 'a' }] },
+        { key: 'json-ld', label: 'JSON-LD', type: 'json', values: null },
+        { key: 'note', label: 'Note', type: 'single', values: null },
+      ];
+      canvasBus.editorDocState.emit();
+      await el.updateComplete;
+    });
+
+    it('hides the add and delete buttons', () => {
+      expect(!!el.shadowRoot.querySelector('.add-btn')).to.equal(false);
+      expect(!!el.shadowRoot.querySelector('.delete-btn')).to.equal(false);
+    });
+
+    it('makes all field controls read-only', () => {
+      expect(rowFor(el, 'note').querySelector('input[type="text"]').readOnly).to.equal(true);
+      expect(rowFor(el, 'custom').querySelector('input[type="text"]').readOnly).to.equal(true);
+      expect(rowFor(el, 'json-ld').querySelector('textarea').readOnly).to.equal(true);
+      expect(rowFor(el, 'tags').querySelector('ew-metadata-multiselect').disabled).to.equal(true);
+      expect(rowFor(el, 'category').querySelector('nx-picker').hasAttribute('inert')).to.equal(true);
+    });
+
+    it('does not write changes to the doc', () => {
+      rowFor(el, 'category').querySelector('nx-picker')
+        .dispatchEvent(new CustomEvent('change', { detail: { value: '' } }));
+      expect(tableRows(bridge.view)[0]).to.deep.equal({ key: 'category', value: 'news' });
     });
   });
 

@@ -16,6 +16,7 @@ class EwMetadataMultiselect extends LitElement {
   static properties = {
     items: { attribute: false },
     value: { type: String },
+    disabled: { type: Boolean },
   };
 
   connectedCallback() {
@@ -39,6 +40,7 @@ class EwMetadataMultiselect extends LitElement {
             <label class="nx-checkbox">
               <input type="checkbox" value=${item.value}
                      .checked=${selected.has(item.value)}
+                     ?disabled=${this.disabled}
                      @change=${() => this._onToggle(item.value)}>
               ${item.colorValue ? html`<span class="swatch" style="background-color:${item.colorValue}"></span>` : ''}
               <span class="label">${item.title}</span>
