@@ -17,7 +17,7 @@
     "Trebuchet MS",
     sans-serif
   );
-  font-size: var(--s2-body-size-xs);
+  font-size: var(--nx-ui-text-detail);
   font-weight: var(--s2-component-s-medium-font-weight, 500);
   line-height: 16px;
   color: var(--s2-gray-800);
@@ -64,8 +64,8 @@
 
 .toolbar-btn svg.icon {
   display: block;
-  width: 16px;
-  height: 16px;
+  width: var(--nx-ui-icon-size);
+  height: var(--nx-ui-icon-size);
   overflow: hidden;
 }
 

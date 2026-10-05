@@ -90,8 +90,8 @@
 
 .toolbar-btn svg.icon {
   display: block;
-  width: 16px;
-  height: 16px;
+  width: var(--nx-ui-icon-size);
+  height: var(--nx-ui-icon-size);
   overflow: hidden;
 }
 

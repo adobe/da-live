@@ -67,14 +67,14 @@
 
 .ew-comments-empty {
   color: var(--s2-gray-700);
-  font-size: 14px;
+  font-size: var(--nx-ui-text-body);
   text-align: center;
   padding: 24px 0;
 }
 
 .ew-comments-detached-reference {
   display: block;
-  font-size: 11px;
+  font-size: var(--nx-ui-text-caption);
   color: var(--comment-text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -98,7 +98,7 @@
   background: transparent;
   color: var(--s2-gray-700);
   font-family: var(--body-font-family);
-  font-size: 12px;
+  font-size: var(--nx-ui-text-detail);
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
@@ -135,7 +135,7 @@
   background: transparent;
   color: var(--s2-gray-700);
   font-family: var(--body-font-family);
-  font-size: 14px;
+  font-size: var(--nx-ui-text-body);
   cursor: pointer;
 }
 
@@ -183,7 +183,7 @@
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 12px;
+  font-size: var(--nx-ui-text-detail);
   font-weight: 600;
   flex-shrink: 0;
 }
@@ -212,17 +212,17 @@
 .ew-comment-author {
   display: block;
   font-weight: 600;
-  font-size: 13px;
+  font-size: var(--nx-ui-text-emphasis);
   color: var(--s2-gray-800);
 }
 
 .ew-comment-time {
-  font-size: 12px;
+  font-size: var(--nx-ui-text-detail);
   color: var(--s2-gray-700);
 }
 
 .ew-comment-content {
-  font-size: 15px;
+  font-size: var(--nx-ui-text-comment);
   line-height: 1.5;
   color: var(--s2-gray-800);
   white-space: pre-wrap;
@@ -253,7 +253,7 @@
 .ew-comments-thread-replies-summary {
   display: inline-block;
   margin-left: 40px;
-  font-size: 12px;
+  font-size: var(--nx-ui-text-detail);
   color: var(--s2-blue-800);
   font-weight: 500;
 }
@@ -291,20 +291,20 @@
 
 .ew-comment-form-hint {
   margin-top: var(--s2-spacing-200);
-  font-size: 11px;
+  font-size: var(--nx-ui-text-caption);
   color: var(--s2-gray-600);
   text-align: right;
 }
 
 .ew-comments-resolved-info {
   width: 100%;
-  font-size: 12px;
+  font-size: var(--nx-ui-text-detail);
   color: var(--s2-gray-600);
   margin-left: 40px;
 }
 
 .ew-comment-edited {
-  font-size: 12px;
+  font-size: var(--nx-ui-text-detail);
   color: var(--s2-gray-600);
 }
 
@@ -411,7 +411,7 @@
   padding: 8px 12px;
   background: var(--s2-gray-50);
   border-left: 2px solid var(--s2-gray-400);
-  font-size: 11px;
+  font-size: var(--nx-ui-text-caption);
   color: var(--s2-gray-700);
   min-width: 0;
   border-radius: 4px;

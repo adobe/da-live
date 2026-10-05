@@ -34,7 +34,7 @@
   background: transparent;
   cursor: pointer;
   gap: var(--s2-spacing-75);
-  font-size: var(--s2-body-size-s);
+  font-size: var(--nx-ui-text-body);
 
   svg.icon {
     display: block;
