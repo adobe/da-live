@@ -53,8 +53,8 @@
 }
 
 .prepare-dialog-icon {
-  width: 18px;
-  height: 18px;
+  width: var(--nx-ui-icon-regular);
+  height: var(--nx-ui-icon-regular);
   flex-shrink: 0;
 }
 
@@ -131,7 +131,7 @@
 
 .icon {
   display: block;
-  width: 20px;
-  height: 20px;
+  width: var(--nx-ui-icon-feature);
+  height: var(--nx-ui-icon-feature);
   flex-shrink: 0;
 }

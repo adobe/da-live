@@ -69,8 +69,8 @@
 
   &.segment-icon svg.icon {
     display: block;
-    width: 16px;
-    height: 16px;
+    width: var(--nx-ui-icon-compact);
+    height: var(--nx-ui-icon-compact);
     flex-shrink: 0;
     overflow: hidden;
   }

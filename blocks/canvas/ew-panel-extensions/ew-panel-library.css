@@ -189,8 +189,8 @@
 }
 
 .ext-search-icon {
-  width: var(--nx-ui-icon-size);
-  height: var(--nx-ui-icon-size);
+  width: var(--nx-ui-icon-toolbar);
+  height: var(--nx-ui-icon-toolbar);
   flex-shrink: 0;
   color: var(--s2-gray-600);
 }
@@ -226,8 +226,8 @@
 }
 
 .ext-search-clear svg {
-  width: var(--nx-ui-icon-size);
-  height: var(--nx-ui-icon-size);
+  width: var(--nx-ui-icon-toolbar);
+  height: var(--nx-ui-icon-toolbar);
   display: block;
 }
 

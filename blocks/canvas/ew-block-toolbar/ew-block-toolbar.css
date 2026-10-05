@@ -64,8 +64,8 @@
 
 .toolbar-btn svg.icon {
   display: block;
-  width: var(--nx-ui-icon-size);
-  height: var(--nx-ui-icon-size);
+  width: var(--nx-ui-icon-toolbar);
+  height: var(--nx-ui-icon-toolbar);
   overflow: hidden;
 }
 

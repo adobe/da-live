@@ -40,8 +40,8 @@
 
   svg.icon {
     display: block;
-    width: 16px;
-    height: 16px;
+    width: var(--nx-ui-icon-compact);
+    height: var(--nx-ui-icon-compact);
     overflow: hidden;
   }
 
@@ -117,8 +117,8 @@
 }
 
 .tool-panel-dialog-icon {
-  width: 18px;
-  height: 18px;
+  width: var(--nx-ui-icon-regular);
+  height: var(--nx-ui-icon-regular);
   flex-shrink: 0;
 }
 

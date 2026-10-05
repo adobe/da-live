@@ -382,15 +382,15 @@
 .ew-comments-icon {
   display: inline-block;
   flex-shrink: 0;
-  width: 20px;
-  height: 20px;
+  width: var(--nx-ui-icon-feature);
+  height: var(--nx-ui-icon-feature);
   fill: currentcolor;
 }
 
 .ew-comments-icon-checkmark,
 .ew-comments-icon-chevron-left {
-  width: 18px;
-  height: 18px;
+  width: var(--nx-ui-icon-regular);
+  height: var(--nx-ui-icon-regular);
 }
 
 .ew-comments-icon-detached {

@@ -60,8 +60,8 @@
   top: 50%;
   transform: translateY(-50%);
   z-index: 1;
-  width: 16px;
-  height: 16px;
+  width: var(--nx-ui-icon-compact);
+  height: var(--nx-ui-icon-compact);
   color: light-dark(var(--s2-gray-700), var(--s2-gray-400));
   pointer-events: none;
   margin-left: 10px;
@@ -169,8 +169,8 @@
 
 .modal-tree-caret {
   flex-shrink: 0;
-  width: 16px;
-  height: 16px;
+  width: var(--nx-ui-icon-compact);
+  height: var(--nx-ui-icon-compact);
   color: var(--s2-gray-600);
   transition: transform 0.1s ease-out;
 }

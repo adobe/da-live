@@ -137,15 +137,15 @@ button {
   background: var(--s2-gray-75);
 
   svg {
-    width: 16px;
-    height: 16px;
+    width: var(--nx-ui-icon-compact);
+    height: var(--nx-ui-icon-compact);
     transition: transform 0.15s ease;
   }
 }
 
 .versionentry.is-audit .versionicon svg {
-  width: 12px;
-  height: 12px;
+  width: var(--nx-ui-icon-micro);
+  height: var(--nx-ui-icon-micro);
 }
 
 .versionentry:hover .versionicon {
