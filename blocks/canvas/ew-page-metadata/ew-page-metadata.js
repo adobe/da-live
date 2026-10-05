@@ -29,6 +29,8 @@ class EwPageMetadata extends LitElement {
     _hashState: { state: true },
     _showAddDialog: { state: true },
     _draftKey: { state: true },
+    _draftValue: { state: true },
+    _keyError: { state: true },
     _pendingDeleteKey: { state: true },
   };
 
@@ -106,6 +108,8 @@ class EwPageMetadata extends LitElement {
   _onAddClick() {
     this._showAddDialog = true;
     this._draftKey = '';
+    this._draftValue = '';
+    this._keyError = '';
   }
 
   _cancelAdd() {
@@ -114,10 +118,17 @@ class EwPageMetadata extends LitElement {
 
   _confirmAdd() {
     const key = this._draftKey?.trim();
-    if (!key) return;
+    if (!key) {
+      this._keyError = 'Field name is required';
+      return;
+    }
+    if (this._fields.some((field) => field.key.toLowerCase() === key.toLowerCase())) {
+      this._keyError = 'Field already exists';
+      return;
+    }
     const { view } = getExtensionsBridge();
     if (view) {
-      addMetadataRow(view, key, '');
+      addMetadataRow(view, key, this._draftValue?.trim() ?? '');
       this._docRows = readMetadataRows(view);
     }
     this._showAddDialog = false;
@@ -174,10 +185,16 @@ class EwPageMetadata extends LitElement {
   _renderAddDialog() {
     return html`
       <nx-dialog class="ew-pm-add" title="Add page metadata field" @close=${() => this._cancelAdd()}>
+        <label class="nx-form-field ${this._keyError ? 'nx-field-error' : ''}">
+          <span>Field name <span class="ew-pm-required" aria-hidden="true">*</span></span>
+          <input type="text" name="key" class="nx-input" aria-required="true" .value=${this._draftKey}
+                 @input=${(e) => { this._draftKey = e.target.value; this._keyError = ''; }}>
+          ${this._keyError ? html`<span class="nx-input-error-msg" role="alert">${this._keyError}</span>` : nothing}
+        </label>
         <label class="nx-form-field">
-          <span>Field name</span>
-          <input type="text" name="key" class="nx-input" .value=${this._draftKey}
-                 @input=${(e) => { this._draftKey = e.target.value; }}>
+          <span>Value</span>
+          <input type="text" name="value" class="nx-input" .value=${this._draftValue}
+                 @input=${(e) => { this._draftValue = e.target.value; }}>
         </label>
         <button slot="actions" class="nx-form-btn-secondary"
                 @click=${() => this._cancelAdd()}>Cancel</button>

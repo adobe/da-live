@@ -56,3 +56,11 @@
   resize: vertical;
 }
 
+
+.ew-pm-add .nx-form-field + .nx-form-field {
+  margin-top: var(--s2-spacing-200);
+}
+
+.ew-pm-required {
+  color: var(--s2-red-900);
+}

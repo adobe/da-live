@@ -94,13 +94,16 @@ describe('ew-page-metadata', () => {
       expect(addBtn.getAttribute('aria-label')).to.equal('Add page metadata field');
     });
 
-    it('renders the add-field dialog with its copy and an NX input', async () => {
+    it('renders the add-field dialog with its copy and NX inputs', async () => {
       el.shadowRoot.querySelector('.add-btn').click();
       await el.updateComplete;
       const dialog = el.shadowRoot.querySelector('.ew-pm-add');
+      const [keyLabel, valueLabel] = dialog.querySelectorAll('.nx-form-field > span:first-child');
       expect(dialog.getAttribute('title')).to.equal('Add page metadata field');
-      expect(dialog.querySelector('.nx-form-field span').textContent.trim()).to.equal('Field name');
-      expect(dialog.querySelector('input[name="key"]').classList.contains('nx-input')).to.equal(true);
+      expect(keyLabel.textContent.replace(/\s+/g, '')).to.equal('Fieldname*');
+      expect(dialog.querySelector('input[name="key"]').getAttribute('aria-required')).to.equal('true');
+      expect(valueLabel.textContent.trim()).to.equal('Value');
+      expect(dialog.querySelector('input[name="value"]').classList.contains('nx-input')).to.equal(true);
     });
   });
 
@@ -357,18 +360,24 @@ describe('ew-page-metadata', () => {
       expect(rowFor(el, 'json-ld').classList.contains('nx-field-error')).to.equal(true);
     });
 
+    async function fillAddDialog({ key = '', value = '' } = {}) {
+      el.shadowRoot.querySelector('.add-btn').click();
+      await el.updateComplete;
+      const dialog = el.shadowRoot.querySelector('.ew-pm-add');
+      [['key', key], ['value', value]].forEach(([name, text]) => {
+        const input = dialog.querySelector(`input[name="${name}"]`);
+        input.value = text;
+        input.dispatchEvent(new Event('input'));
+      });
+      return dialog;
+    }
+
     it('adds a new field via the + dialog with just a key, leaving the value empty', async () => {
       bridge.view = makeRealView(baseDoc());
       canvasBus.editorDocState.emit();
       await el.updateComplete;
 
-      el.shadowRoot.querySelector('.add-btn').click();
-      await el.updateComplete;
-      const dialog = el.shadowRoot.querySelector('.ew-pm-add');
-      expect(dialog).to.exist;
-
-      dialog.querySelector('input[name="key"]').value = 'Keywords';
-      dialog.querySelector('input[name="key"]').dispatchEvent(new Event('input'));
+      const dialog = await fillAddDialog({ key: 'Keywords' });
       dialog.querySelector('.nx-form-btn-primary').click();
       await el.updateComplete;
 
@@ -376,6 +385,59 @@ describe('ew-page-metadata', () => {
       expect(el.shadowRoot.querySelector('.ew-pm-add')).to.equal(null);
       expect(rowFor(el, 'Keywords').querySelector('input[type="text"]').value).to.equal('');
       expect(rowFor(el, 'Keywords').querySelector('.delete-btn')).to.exist;
+    });
+
+    it('adds a new field with its value via the + dialog', async () => {
+      bridge.view = makeRealView(baseDoc());
+      canvasBus.editorDocState.emit();
+      await el.updateComplete;
+
+      const dialog = await fillAddDialog({ key: 'Keywords', value: ' foo, bar ' });
+      dialog.querySelector('.nx-form-btn-primary').click();
+      await el.updateComplete;
+
+      expect(tableRows(bridge.view)).to.deep.equal([{ key: 'Keywords', value: 'foo, bar' }]);
+    });
+
+    it('requires a field name before adding', async () => {
+      bridge.view = makeRealView(baseDoc());
+      canvasBus.editorDocState.emit();
+      await el.updateComplete;
+
+      const dialog = await fillAddDialog({ key: '  ', value: 'x' });
+      dialog.querySelector('.nx-form-btn-primary').click();
+      await el.updateComplete;
+
+      const field = dialog.querySelector('input[name="key"]').closest('.nx-form-field');
+      expect(field.classList.contains('nx-field-error')).to.equal(true);
+      expect(field.querySelector('.nx-input-error-msg').textContent.trim()).to.equal('Field name is required');
+      expect(el.shadowRoot.querySelector('.ew-pm-add')).to.exist;
+      expect(tableRows(bridge.view)).to.deep.equal([]);
+    });
+
+    it('rejects a field name that already exists, ignoring case', async () => {
+      bridge.view = makeRealView(baseDoc());
+      canvasBus.editorDocState.emit();
+      await el.updateComplete;
+
+      const dialog = await fillAddDialog({ key: 'title' });
+      dialog.querySelector('.nx-form-btn-primary').click();
+      await el.updateComplete;
+
+      expect(dialog.querySelector('.nx-input-error-msg').textContent.trim()).to.equal('Field already exists');
+      expect(tableRows(bridge.view)).to.deep.equal([]);
+    });
+
+    it('clears the field name error while typing', async () => {
+      const dialog = await fillAddDialog();
+      dialog.querySelector('.nx-form-btn-primary').click();
+      await el.updateComplete;
+      const input = dialog.querySelector('input[name="key"]');
+      input.value = 'K';
+      input.dispatchEvent(new Event('input'));
+      await el.updateComplete;
+
+      expect(input.closest('.nx-form-field').classList.contains('nx-field-error')).to.equal(false);
     });
 
     it('deletes a custom field after confirming the delete dialog', async () => {
