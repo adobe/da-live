@@ -1,13 +1,15 @@
 import { LitElement, html, nothing, until } from 'da-lit';
 import { delay, sanitizeName, formatDate } from '../../shared/utils.js';
-import { getNx, getNx2Api } from '../../../scripts/utils.js';
+import { getNx, getNx2, getNx2Api } from '../../../scripts/utils.js';
 import { ICONS, iconPathForExt, getTypeLabel } from '../../shared/icons.js';
 import getEditPath from '../shared.js';
 
 // Styles
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const SHARED = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
-const STYLE = await loadStyle(import.meta.url);
+const [FORM, STYLE] = await Promise.all([
+  loadStyle(`${getNx2()}/styles/form.css`),
+  loadStyle(import.meta.url),
+]);
 
 export default class DaListItem extends LitElement {
   static properties = {
@@ -31,7 +33,7 @@ export default class DaListItem extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [SHARED, STYLE];
+    this.shadowRoot.adoptedStyleSheets = [FORM, STYLE];
   }
 
   async update(props) {
@@ -278,7 +280,7 @@ export default class DaListItem extends LitElement {
 
   renderCheckBox() {
     return html`
-      <label class="da-checkbox da-item-list-item-select" data-column="select">
+      <label class="nx-checkbox da-item-list-item-select" data-column="select">
         <input type="checkbox" name="item-selected" id="item-selected-${this.idx}" .checked="${this.isChecked}" @click="${this.handleChecked}" aria-label="Select item">
       </label>
     `;

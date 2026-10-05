@@ -3,7 +3,7 @@ import { getNx, getNx2 } from '../../../scripts/utils.js';
 
 await import(`${getNx()}/blocks/shared/switch/switch.js`);
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
-await import(`${getNx()}/blocks/shared/menu/menu.js`);
+await import(`${getNx()}/blocks/shared/picker/picker.js`);
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const [BUTTONS, style] = await Promise.all([
@@ -92,28 +92,23 @@ export default class DaBrowseHeader extends LitElement {
 
   renderSortOptions() {
     const options = [
-      { property: 'name', direction: 'ascending', label: 'Name (A-Z)' },
-      { property: 'name', direction: 'descending', label: 'Name (Z-A)' },
-      { property: 'lastModified', direction: 'descending', label: 'Modified (newest first)' },
-      { property: 'lastModified', direction: 'ascending', label: 'Modified (oldest first)' },
+      { value: 'name:ascending', label: 'Name (A-Z)' },
+      { value: 'name:descending', label: 'Name (Z-A)' },
+      { value: 'lastModified:descending', label: 'Modified (newest first)' },
+      { value: 'lastModified:ascending', label: 'Modified (oldest first)' },
     ];
     return html`
-      <nx-menu class="da-browse-sort-menu" size="m"
-        .items=${options.map(({ property, direction, label }) => ({
-      id: `${property}:${direction}`,
-      label,
-      icon: this.sortState.property === property && this.sortState.direction === direction ? 'checkmark' : undefined,
-    }))}
-        @select=${({ detail }) => {
-        const option = options.find(({ property, direction }) => detail.id === `${property}:${direction}`);
-        if (option) this.requestSort(option.property, option.direction);
-      }}>
-        <button slot="trigger" type="button" class="da-browse-toolbar-control da-browse-sort-control nx-action-btn-quiet"
-          aria-haspopup="menu" aria-expanded="false" aria-busy=${this.sortState.loading} ?disabled=${this.sortState.loading}>
-          <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-sort-20-n.svg#icon"></use></svg>
-          <span>${this.sortLabel}</span>
-        </button>
-      </nx-menu>`;
+      <nx-picker class="da-browse-sort-control" size="m"
+        .items=${options}
+        .value=${this.sortState.property ? `${this.sortState.property}:${this.sortState.direction}` : ''}
+        .labelOverride=${this.sortLabel}
+        aria-label="Sort files" aria-busy=${this.sortState.loading} aria-disabled=${this.sortState.loading}
+        ?inert=${this.sortState.loading}
+        @change=${({ detail }) => {
+        if (!options.some(({ value }) => value === detail.value)) return;
+        const [property, direction] = detail.value.split(':');
+        this.requestSort(property, direction);
+      }}></nx-picker>`;
   }
 
   get sortLabel() {

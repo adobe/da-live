@@ -2,7 +2,7 @@ import { LitElement, html, repeat, nothing } from 'da-lit';
 import { isFavorite, toggleFavorite } from '../shared/favorites.js';
 import { getBrowseSettings, updateBrowseSettings } from '../shared/settings.js';
 import { getTypeLabel } from '../../shared/icons.js';
-import { getNx, getNx2Api, sanitizePathParts } from '../../../scripts/utils.js';
+import { getNx, getNx2, getNx2Api, sanitizePathParts } from '../../../scripts/utils.js';
 import {
   aemAction,
   getExistingSchedule,
@@ -17,8 +17,10 @@ import '../da-list-item/da-list-item.js';
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const SHARED = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
-const STYLE = await loadStyle(import.meta.url);
+const [FORM, STYLE] = await Promise.all([
+  loadStyle(`${getNx2()}/styles/form.css`),
+  loadStyle(import.meta.url),
+]);
 
 const MAX_DELETE_COUNT = 1000;
 const DELETE_CONFIRM_THRESHOLD = 10;
@@ -115,7 +117,7 @@ export default class DaList extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [SHARED, STYLE];
+    this.shadowRoot.adoptedStyleSheets = [FORM, STYLE];
   }
 
   async update(props) {
@@ -1406,7 +1408,7 @@ export default class DaList extends LitElement {
     return html`
       <div class="da-list-group-header ${collapsed ? 'is-collapsed' : ''}">
         ${this.select ? html`
-          <label class="da-checkbox ${isGroupIndeterminate ? 'indeterminate' : ''} ${this._bulkLoading ? 'loading' : ''}">
+          <label class="nx-checkbox ${isGroupIndeterminate ? 'indeterminate' : ''} ${this._bulkLoading ? 'loading' : ''}">
             <input
               type="checkbox"
               .checked="${isGroupSelectAll}"
@@ -1454,7 +1456,7 @@ export default class DaList extends LitElement {
 
   renderCheckBox() {
     return html`
-      <label class="da-checkbox ${this._bulkLoading ? 'loading' : ''} ${this._selectedItems.length > 0 && !this.isSelectAll ? 'indeterminate' : ''}" role="columnheader">
+      <label class="nx-checkbox ${this._bulkLoading ? 'loading' : ''} ${this._selectedItems.length > 0 && !this.isSelectAll ? 'indeterminate' : ''}" role="columnheader">
         <input type="checkbox" id="select-all" name="select-all" .checked="${this.isSelectAll}" @click="${this.handleCheckAll}" aria-label="Select all items" ?disabled=${this._bulkLoading} aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
       </label>
     `;
@@ -1562,7 +1564,7 @@ export default class DaList extends LitElement {
         aria-busy=${!!this._bulkLoading} @close=${this.notifyTypesFilter}>
         <h4 class="da-list-types-title">Types</h4>
         ${labels.map((label) => html`
-          <label class="da-checkbox da-list-types-row">
+          <label class="nx-checkbox da-list-types-row">
             <input
               type="checkbox"
               .checked=${!this._hiddenTypes.has(label)}
@@ -1572,7 +1574,7 @@ export default class DaList extends LitElement {
           </label>
         `)}
         <div class="da-list-types-row da-list-types-select-all">
-          <label class="da-checkbox">
+          <label class="nx-checkbox">
             <input
               type="checkbox"
               .checked=${allVisible}

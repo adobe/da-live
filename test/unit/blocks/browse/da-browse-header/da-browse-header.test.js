@@ -16,7 +16,9 @@ describe('da-browse-header', () => {
   afterEach(() => header.remove());
 
   it('renders independently with default sort and no config or chat action', () => {
-    expect(header.shadowRoot.querySelector('.da-browse-sort-control').textContent).to.contain('Sort: Default');
+    const picker = header.shadowRoot.querySelector('nx-picker');
+    expect(picker.labelOverride).to.equal('Sort: Default');
+    expect(picker.value).to.equal('');
     expect(header.shadowRoot.querySelector('.da-browse-settings-link')).to.be.null;
     expect(header.shadowRoot.querySelector('.chat-btn')).to.be.null;
   });
@@ -24,8 +26,8 @@ describe('da-browse-header', () => {
   it('requests sorting without changing the supplied sort state', () => {
     let event;
     header.addEventListener('sortrequest', (e) => { event = e; });
-    const menu = header.shadowRoot.querySelector('nx-menu');
-    menu.dispatchEvent(new CustomEvent('select', { detail: { id: 'name:ascending' } }));
+    const picker = header.shadowRoot.querySelector('nx-picker');
+    picker.dispatchEvent(new CustomEvent('change', { detail: { value: 'name:ascending' } }));
     expect(event.detail).to.deep.equal({ property: 'name', direction: 'ascending' });
     expect(event.bubbles).to.be.true;
     expect(event.composed).to.be.true;
@@ -35,17 +37,17 @@ describe('da-browse-header', () => {
   it('reflects supplied sort state and disables sorting while loading', async () => {
     header.sortState = { property: 'lastModified', direction: 'descending', loading: true };
     await header.updateComplete;
-    const button = header.shadowRoot.querySelector('.da-browse-sort-control');
-    expect(button.textContent).to.contain('Sorted by Modified (newest first)');
-    expect(button.getAttribute('aria-busy')).to.equal('true');
-    expect(button.disabled).to.be.true;
-    expect(button.getAttribute('aria-haspopup')).to.equal('menu');
-    const menu = header.shadowRoot.querySelector('nx-menu');
-    expect(menu.items[2].icon).to.equal('checkmark');
-    expect(menu.items.filter((item) => item.icon).length).to.equal(1);
+    const picker = header.shadowRoot.querySelector('nx-picker');
+    expect(picker.labelOverride).to.equal('Sorted by Modified (newest first)');
+    expect(picker.getAttribute('aria-busy')).to.equal('true');
+    expect(picker.inert).to.be.true;
+    expect(picker.value).to.equal('lastModified:descending');
+    expect(picker.items.map(({ value }) => value)).to.deep.equal([
+      'name:ascending', 'name:descending', 'lastModified:descending', 'lastModified:ascending',
+    ]);
     let requests = 0;
     header.addEventListener('sortrequest', () => { requests += 1; });
-    menu.dispatchEvent(new CustomEvent('select', { detail: { id: 'name:ascending' } }));
+    picker.dispatchEvent(new CustomEvent('change', { detail: { value: 'name:ascending' } }));
     expect(requests).to.equal(0);
   });
 

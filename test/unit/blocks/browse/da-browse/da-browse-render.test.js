@@ -114,7 +114,8 @@ describe('da-browse render', () => {
     expect(headerRoot().querySelector('.da-browse-toolbar-trailing')).to.exist;
     expect(headerRoot().querySelector('.chat-btn')?.classList.contains('nx-action-btn-icon')).to.be.true;
     expect(rightButtons.every((btn) => btn.classList.contains('nx-action-btn-quiet'))).to.be.true;
-    expect(rightButtons.map((btn) => btn.textContent.trim())).to.deep.equal(['View Options', 'Show All types', 'Sort: Default']);
+    expect(rightButtons.map((btn) => btn.textContent.trim())).to.deep.equal(['View Options', 'Show All types']);
+    expect(headerRoot().querySelector('nx-picker').labelOverride).to.equal('Sort: Default');
     expect(menu).to.exist;
     expect(menu.querySelector('nx-switch').getAttribute('label')).to.equal('Flatten folders');
     expect(rightButtons[0].getAttribute('aria-expanded')).to.equal('false');
@@ -138,7 +139,7 @@ describe('da-browse render', () => {
     expect(document.createElement('da-browse')._flattenFolders).to.be.false;
   });
 
-  it('keeps the sort menu, label, and column selectors synchronized', async () => {
+  it('keeps the sort picker, label, and column selectors synchronized', async () => {
     await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
     const list = el.browseCmp;
     await list.updateComplete;
@@ -147,39 +148,38 @@ describe('da-browse render', () => {
       { path: '/org/site/a.html', name: 'a', ext: 'html', lastModified: 100 },
     ];
     await list.updateComplete;
-    const button = headerRoot().querySelector('.da-browse-sort-control');
-    const menu = headerRoot().querySelector('.da-browse-sort-menu');
-    expect(button.textContent).to.contain('Sort: Default');
+    const picker = headerRoot().querySelector('nx-picker');
+    expect(picker.labelOverride).to.equal('Sort: Default');
     expect(list.shadowRoot.querySelector('[data-column="name"]').getAttribute('aria-sort')).to.equal('none');
-    menu.dispatchEvent(new CustomEvent('select', { detail: { id: 'name:ascending' } }));
+    picker.dispatchEvent(new CustomEvent('change', { detail: { value: 'name:ascending' } }));
     await list.updateComplete;
     await nextFrame();
     await list.updateComplete;
     await settle();
     expect(list._listItems.map((item) => item.name)).to.deep.equal(['a', 'b']);
-    expect(button.textContent).to.contain('Sorted by Name (A-Z)');
+    expect(picker.labelOverride).to.equal('Sorted by Name (A-Z)');
+    expect(picker.value).to.equal('name:ascending');
     expect(list.shadowRoot.querySelector('[data-column="name"]').getAttribute('aria-sort')).to.equal('ascending');
     await list.handleDateSort();
     await list.updateComplete;
     await settle();
-    expect(button.textContent).to.contain('Sorted by Modified (newest first)');
-    expect(menu.items[2].icon).to.equal('checkmark');
-    expect(menu.items[0].icon).to.be.undefined;
+    expect(picker.labelOverride).to.equal('Sorted by Modified (newest first)');
+    expect(picker.value).to.equal('lastModified:descending');
     await list.handleDateSort();
     await list.updateComplete;
     await settle();
-    expect(menu.items[3].icon).to.equal('checkmark');
-    expect(button.textContent).to.contain('oldest first');
+    expect(picker.value).to.equal('lastModified:ascending');
+    expect(picker.labelOverride).to.contain('oldest first');
     list.handleNameFilter({ target: { value: 'a' } });
     await list.updateComplete;
     await settle();
-    expect(button.textContent).to.contain('Sorted by Modified');
+    expect(picker.labelOverride).to.contain('Sorted by Modified');
     el.details = { fullpath: '/org/other', org: 'org', site: 'other' };
     await nextFrame();
     await settle();
     await list.updateComplete;
     await settle();
-    expect(button.textContent).to.contain('Sorted by Modified (oldest first)');
+    expect(picker.labelOverride).to.equal('Sorted by Modified (oldest first)');
     expect(JSON.parse(localStorage.getItem('da-browse-settings')).sort)
       .to.deep.equal({ property: 'lastModified', direction: 'ascending' });
   });

@@ -7,8 +7,7 @@ import '../../shared/da-name-dialog/da-name-dialog.js';
 
 // Styles & Icons
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const [base, BUTTONS, STYLE] = await Promise.all([
-  loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href),
+const [BUTTONS, STYLE] = await Promise.all([
   loadStyle(`${getNx2()}/styles/buttons.css`),
   loadStyle(import.meta.url),
 ]);
@@ -36,7 +35,7 @@ export default class DaNew extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [base, BUTTONS, STYLE];
+    this.shadowRoot.adoptedStyleSheets = [BUTTONS, STYLE];
   }
 
   sendNewItem(item) {
@@ -146,7 +145,7 @@ export default class DaNew extends LitElement {
       ]} @select=${this.handleNewType}>
           <button slot="trigger" class="da-actions-new-button nx-btn-accent" ?disabled=${this._disabled || this._loading} aria-label="New">
             ${this._loading
-        ? html`<span class="da-loading-spinner" aria-hidden="true"></span>`
+        ? html`<span class="nx-loading-spinner" aria-hidden="true"></span>`
         : html`<svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-addcircle-20-n.svg#icon"></svg>`}
             <span class="da-actions-new-label">New</span>
           </button>
