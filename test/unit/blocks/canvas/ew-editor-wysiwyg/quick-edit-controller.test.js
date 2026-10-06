@@ -116,6 +116,28 @@ describe('quick-edit-controller IFRAME_CLICK forwarding', () => {
     expect(sampleRUM.calledOnceWith('click', { source: 'ew-wysiwyg-doc', target: 'hero' })).to.be.true;
   });
 
+  it('records an ew-wysiwyg-layout RUM click when the iframe reports the layout source', () => {
+    const sampleRUM = sinon.spy();
+    window.hlx = { rum: { sampleRUM } };
+    const ctx = makeCtx(true);
+    send(createControllerOnMessage(ctx), {
+      type: 'iframe-click',
+      payload: { target: 'hero', source: 'ew-wysiwyg-layout' },
+    });
+    expect(sampleRUM.calledOnceWith('click', { source: 'ew-wysiwyg-layout', target: 'hero' })).to.be.true;
+  });
+
+  it('falls back to ew-wysiwyg-doc for a missing or unknown source', () => {
+    const sampleRUM = sinon.spy();
+    window.hlx = { rum: { sampleRUM } };
+    const ctx = makeCtx(true);
+    const onMessage = createControllerOnMessage(ctx);
+    send(onMessage, { type: 'iframe-click', payload: { target: 'a', source: 'something-else' } });
+    send(onMessage, { type: 'iframe-click', payload: { target: 'b' } });
+    expect(sampleRUM.firstCall.args[1]).to.deep.equal({ source: 'ew-wysiwyg-doc', target: 'a' });
+    expect(sampleRUM.secondCall.args[1]).to.deep.equal({ source: 'ew-wysiwyg-doc', target: 'b' });
+  });
+
   it('still attributes the source when the iframe sends no target', () => {
     const sampleRUM = sinon.spy();
     window.hlx = { rum: { sampleRUM } };
