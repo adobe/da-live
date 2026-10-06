@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/adobe/da-live/compare/v1.0.3...v1.1.0) (2026-10-06)
+
+
+### Features
+
+* **ew:** add page metadata side panel ([#1359](https://github.com/adobe/da-live/issues/1359)) ([d0fb7b0](https://github.com/adobe/da-live/commit/d0fb7b09ead6330a8c9e8c117c133ba636271301))
+
 ## [1.0.3](https://github.com/adobe/da-live/compare/v1.0.2...v1.0.3) (2026-10-01)
 
 

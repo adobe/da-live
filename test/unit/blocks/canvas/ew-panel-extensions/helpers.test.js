@@ -10,6 +10,8 @@ let getBlockVariants;
 let extensionToPanelView;
 let getPreviewStatus;
 let createCommentsView;
+let createMetadataView;
+let getCanvasToolPanelViews;
 let fetchExtensions;
 
 before(async () => {
@@ -18,6 +20,8 @@ before(async () => {
   extensionToPanelView = mod.extensionToPanelView;
   getPreviewStatus = mod.getPreviewStatus;
   createCommentsView = mod.createCommentsView;
+  createMetadataView = mod.createMetadataView;
+  getCanvasToolPanelViews = mod.getCanvasToolPanelViews;
   fetchExtensions = mod.fetchExtensions;
 });
 
@@ -443,6 +447,31 @@ describe('ew-comments panel visibility', () => {
     setCommentsController(stubController(second));
     await el.updateComplete;
     expect(second.at(-1)).to.equal(true);
+  });
+});
+
+describe('createMetadataView', () => {
+  it('is a first-party Editor-section view', () => {
+    const view = createMetadataView();
+    expect(view.id).to.equal('metadata');
+    expect(view.label).to.equal('Page');
+    expect(view.section).to.equal('Editor');
+    expect(view.firstParty).to.equal(true);
+  });
+
+  it('load() returns an ew-page-metadata element', async () => {
+    const el = await createMetadataView().load();
+    expect(el.localName).to.equal('ew-page-metadata');
+  });
+});
+
+describe('getCanvasToolPanelViews', () => {
+  afterEach(() => setDaConfigs([]));
+
+  it('includes the metadata view alongside the other first-party Editor views', async () => {
+    setDaConfigs([{ data: [] }]);
+    const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
+    expect(views.map((v) => v.id)).to.include('metadata');
   });
 });
 
