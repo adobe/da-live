@@ -364,6 +364,8 @@ describe('extensionToPanelView', () => {
 
   it('authenticates the same preview proxy origin the fullsize-dialog iframe will load', async () => {
     const savedAdobeIMS = window.adobeIMS;
+    const savedNxIms = window.localStorage.getItem('nx-ims');
+    window.localStorage.setItem('nx-ims', 'true');
     window.adobeIMS = { getAccessToken: () => ({ token: 'T1' }) };
     const savedFetch = window.fetch;
     const cookieRequests = [];
@@ -389,6 +391,8 @@ describe('extensionToPanelView', () => {
     } finally {
       window.fetch = savedFetch;
       if (savedAdobeIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedAdobeIMS;
+      if (savedNxIms === null) window.localStorage.removeItem('nx-ims');
+      else window.localStorage.setItem('nx-ims', savedNxIms);
     }
 
     expect(cookieRequests).to.deep.equal([
