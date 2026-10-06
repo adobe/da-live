@@ -148,7 +148,7 @@ async function fetchLibraryConfig(org, site) {
     if (allowed) {
       const name = row.title.trim().toLowerCase().replaceAll(' ', '-');
       const ootb = DA_PLUGINS[name];
-      const branch = row.ref || ref;
+      const branch = sanitizeName(row.ref, false) || ref;
       const sources = calculateSources(org, site, row.path);
       const proxyOpts = { org, site, branch, currentOrg: org };
       const experience = ootb?.experience || row.experience || 'inline';
