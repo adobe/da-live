@@ -1,0 +1,70 @@
+.ew-page-metadata {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2-spacing-200);
+  max-height: 100%;
+}
+
+.ew-pm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  top: 0;
+  padding: var(--s2-spacing-200) var(--s2-spacing-200) 0 var(--s2-spacing-200);
+}
+
+.ew-pm-header h3 {
+  margin: 0;
+  font-size: var(--s2-component-m-regular-font-size);
+}
+
+.ew-pm-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2-spacing-300);
+  overflow: scroll;
+  margin-bottom: var(--s2-spacing-200);
+  padding: 0 var(--s2-spacing-200);
+}
+
+.ew-pm-control-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-100);
+}
+
+.ew-pm-row .delete-btn {
+  flex-shrink: 0;
+}
+
+.ew-pm-control {
+  flex: 1;
+  min-width: 0;
+}
+
+.ew-pm-control .nx-input,
+.ew-pm-control nx-picker,
+.ew-pm-control ew-metadata-multiselect,
+.ew-pm-add .nx-input {
+  width: 100%;
+}
+
+.ew-pm-control .ew-pm-json {
+  height: 160px;
+  padding: var(--s2-spacing-100) var(--s2-spacing-200);
+  font-family: monospace;
+  resize: vertical;
+}
+
+
+.ew-pm-add .nx-form-field + .nx-form-field {
+  margin-top: var(--s2-spacing-200);
+}
+
+.ew-pm-required {
+  color: var(--s2-red-900);
+}
+
+.ew-pm-control nx-picker[inert] {
+  opacity: 0.6;
+}
