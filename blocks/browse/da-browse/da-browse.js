@@ -12,6 +12,7 @@ const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/breadcrumb/breadcrumb.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT, wasPanelOpen, registerPanelSection } = await import(`${getNx()}/utils/panel.js`);
+const { getEditor: resolveEditor } = await import(`${getNx()}/utils/editor.js`);
 
 const style = await loadStyle(import.meta.url);
 
@@ -161,30 +162,15 @@ export default class DaBrowse extends LitElement {
     if (reFetch) {
       const { org, site } = this.details;
       const configs = await Promise.all(fetchDaConfigs({ org, site }));
+      this.editorConfigs = configs;
       const rows = configs.filter(Boolean).reverse().flatMap((c) => getFirstSheet(c) || []);
-      this.editorConfs = rows.reduce((acc, row) => {
-        if (row.key === 'editor.path') acc.push(row.value);
-        return acc;
-      }, []);
       this.hidePublishConfs = rows.reduce((acc, row) => {
         if (row.key === 'editor.hidePublish') acc.push(row.value);
         return acc;
       }, []);
     }
 
-    if (!this.editorConfs || this.editorConfs.length === 0) return DEF_EDIT;
-
-    // Filter down all matched confs
-    const matchedConfs = this.editorConfs.filter(
-      (conf) => this.details.fullpath.startsWith(conf.split('=')[0]),
-    );
-
-    if (matchedConfs.length === 0) return DEF_EDIT;
-
-    // Sort by length in descending order (longest first)
-    const matchedConf = matchedConfs.sort((a, b) => b.split('=')[0].length - a.split('=')[0].length)[0];
-
-    return matchedConf.split('=')[1];
+    return resolveEditor({ path: this.details.fullpath, configs: this.editorConfigs }) ?? DEF_EDIT;
   }
 
   handleTabClick(idx) {

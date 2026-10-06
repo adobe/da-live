@@ -583,7 +583,7 @@ describe('DaBrowse Component', () => {
       expect(editor).to.equal('https://long-match');
     });
 
-    it('Reuses cached editorConfs when reFetch is false', async () => {
+    it('Reuses cached editor configs when reFetch is false', async () => {
       let calls = 0;
       window.fetch = () => {
         calls += 1;
