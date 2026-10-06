@@ -106,7 +106,7 @@ button {
   }
 
   .da-icon-btn:hover {
-    background: var(--s2-gray-300);
+    background: var(--nx-ui-icon-btn-hover-bg, var(--s2-gray-300));
   }
 
   &:last-of-type {

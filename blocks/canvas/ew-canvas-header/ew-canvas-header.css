@@ -27,13 +27,13 @@
   justify-content: center;
   box-sizing: border-box;
   margin: 0;
-  height: 24px;
+  height: var(--nx-ui-segment-height);
   padding: 0 9px;
   border: none;
   border-radius: var(--s2-corner-radius-400);
   font: inherit;
-  font-size: var(--nx-ui-text-detail);
-  line-height: 16px;
+  font-size: var(--nx-ui-text-component);
+  line-height: var(--nx-ui-line-component);
   font-weight: var(--s2-component-s-medium-font-weight);
   color: var(--s2-gray-700);
   background: transparent;
@@ -63,14 +63,14 @@
   }
 
   &.segment-icon {
-    padding: 0 6px;
+    padding: 0 calc((var(--nx-ui-segment-height) - var(--nx-ui-icon-toolbar)) / 2);
     min-width: 28px;
   }
 
   &.segment-icon svg.icon {
     display: block;
-    width: var(--nx-ui-icon-compact);
-    height: var(--nx-ui-icon-compact);
+    width: var(--nx-ui-icon-toolbar);
+    height: var(--nx-ui-icon-toolbar);
     flex-shrink: 0;
     overflow: hidden;
   }

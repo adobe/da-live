@@ -156,7 +156,7 @@
 }
 
 .block-edit-close:hover {
-  background: light-dark(var(--s2-gray-200), var(--s2-gray-700));
+  background: var(--nx-ui-icon-btn-hover-bg, light-dark(var(--s2-gray-200), var(--s2-gray-700)));
 }
 
 .block-edit-body {

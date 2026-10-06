@@ -140,7 +140,7 @@
 }
 
 .tool-panel-fullsize-dialog-close:hover {
-  background: light-dark(var(--s2-gray-200), var(--s2-gray-600));
+  background: var(--nx-ui-icon-btn-hover-bg, light-dark(var(--s2-gray-200), var(--s2-gray-600)));
 }
 
 .tool-panel-fullsize-dialog-body {
