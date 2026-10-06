@@ -29,31 +29,65 @@ describe('comparison plugin protocol', () => {
     clientPort?.close();
   });
 
-  it('advertises host capabilities in the existing ready handshake', () => {
-    expect(ready.capabilities).to.deep.equal({ comparison: 1, saveDocument: 1 });
+  it('initializes the existing ready handshake without capability negotiation', () => {
+    expect(ready.ready).to.equal(true);
+    expect(ready.capabilities).to.equal(undefined);
   });
 
-  it('acknowledges a request over the same port and uses host-owned page context', async () => {
-    expect(canvasBus.comparisonRequest).to.exist;
+  it('opens comparison without a request ID or response callback, using host-owned context', async () => {
+    const received = new Promise((resolve) => {
+      unsubscribe = canvasBus.comparisonRequest.subscribe(resolve);
+    });
+    clientPort.postMessage({ action: 'openComparison', details: { candidate: 'document', baseline: 'live', path: '/other', html: '<script>bad</script>' } });
+    const request = await received;
+    expect(request.action).to.equal('openComparison');
+    expect(request.context).to.deep.equal({ org: 'example', site: 'site', path: 'page' });
+    expect(request.details).to.deep.equal({ candidate: 'document', baseline: 'live' });
+    expect(request.resolve).to.equal(undefined);
+  });
+
+  it('ignores invalid comparison inputs before routing a valid fire-and-forget close', async () => {
+    const requests = [];
+    const closed = new Promise((resolve) => {
+      unsubscribe = canvasBus.comparisonRequest.subscribe((request) => {
+        requests.push(request);
+        if (request.action === 'closeComparison') resolve(request);
+      });
+    });
+    clientPort.postMessage({ action: 'openComparison', details: { candidate: 'url', baseline: 'live' } });
+    clientPort.postMessage({ action: 'closeComparison' });
+    const request = await closed;
+    expect(requests).to.have.length(1);
+    expect(request.resolve).to.equal(undefined);
+    expect(request.context).to.deep.equal({ org: 'example', site: 'site', path: 'page' });
+  });
+
+  it('acknowledges save completion over the same port', async () => {
     unsubscribe = canvasBus.comparisonRequest.subscribe(({ action, context, details, resolve }) => {
-      expect(action).to.equal('openComparison');
+      expect(action).to.equal('saveDocument');
       expect(context).to.deep.equal({ org: 'example', site: 'site', path: 'page' });
-      expect(details).to.deep.equal({ candidate: 'document', baseline: 'live' });
+      expect(details).to.equal(undefined);
       resolve({ ok: true });
     });
     const response = new Promise((resolve) => {
       clientPort.onmessage = ({ data }) => resolve(data);
     });
-    clientPort.postMessage({ action: 'openComparison', requestId: 'compare-1', details: { candidate: 'document', baseline: 'live', path: '/other', html: '<script>bad</script>' } });
-    expect(await response).to.deep.equal({ action: 'sdkResponse', requestId: 'compare-1', result: { ok: true } });
+    clientPort.postMessage({ action: 'saveDocument', requestId: 'save-1', details: { path: '/other' } });
+    expect(await response).to.deep.equal({ action: 'sdkResponse', requestId: 'save-1', result: { ok: true } });
   });
 
-  it('rejects unsupported comparison types before notifying the canvas', async () => {
-    expect(ready.capabilities?.comparison).to.equal(1);
-    const response = new Promise((resolve) => {
-      clientPort.onmessage = ({ data }) => resolve(data);
+  it('does not start a save without a valid response correlation ID', async () => {
+    const requests = [];
+    const closed = new Promise((resolve) => {
+      unsubscribe = canvasBus.comparisonRequest.subscribe((request) => {
+        requests.push(request.action);
+        if (request.action === 'closeComparison') resolve();
+      });
     });
-    clientPort.postMessage({ action: 'openComparison', requestId: 'compare-2', details: { candidate: 'url', baseline: 'live' } });
-    expect((await response).result).to.deep.equal({ ok: false, error: 'invalid-comparison' });
+    clientPort.postMessage({ action: 'saveDocument' });
+    clientPort.postMessage({ action: 'saveDocument', requestId: '' });
+    clientPort.postMessage({ action: 'closeComparison' });
+    await closed;
+    expect(requests).to.deep.equal(['closeComparison']);
   });
 });
