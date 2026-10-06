@@ -21,8 +21,8 @@ input {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: var(--nx-ui-icon-btn-size, 24px);
+  height: var(--nx-ui-icon-btn-size, 24px);
   padding: 0;
   background: transparent;
   color: var(--s2-gray-800);
@@ -36,12 +36,13 @@ input {
   }
 
   svg {
-    width: 16px;
-    height: 16px;
+    width: var(--nx-ui-icon-toolbar, 16px);
+    height: var(--nx-ui-icon-toolbar, 16px);
   }
 
   &:hover {
     background: var(--nx-ui-icon-btn-hover-bg, var(--s2-gray-100));
+    color: var(--nx-ui-icon-btn-hover-color, var(--s2-gray-800));
   }
 
   &:disabled {
