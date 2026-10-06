@@ -41,20 +41,6 @@ button {
   flex-shrink: 0;
 }
 
-.create-version-btn {
-  width: var(--nx-ui-icon-btn-size);
-  height: var(--nx-ui-icon-btn-size);
-
-  svg {
-    width: var(--nx-ui-icon-toolbar);
-    height: var(--nx-ui-icon-toolbar);
-  }
-
-  &:hover {
-    background: var(--nx-ui-icon-btn-hover-bg);
-  }
-}
-
 .segment {
   display: flex;
   gap: var(--s2-spacing-100);
