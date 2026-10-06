@@ -503,3 +503,85 @@ describe('ew-page-outline — content drag & delete', () => {
     expect(el._dropTarget.dropPosition).to.equal('after');
   });
 });
+
+describe('ew-page-outline - read-only', () => {
+  let el;
+  let bridge;
+
+  const paragraph = (proseIndex, text) => ({ type: 'content', kind: 'paragraph', proseIndex, innerText: text, snippet: text });
+
+  async function renderOutline({ editable }) {
+    bridge.view = makeRealView({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Intro' }] }],
+    });
+    if (!editable) bridge.view.setProps({ editable: () => false });
+    el._hasBlockLibrary = true;
+    el._sections = [
+      {
+        sectionIndex: 0,
+        blocks: [{ name: 'cards', blockIndex: 0 }],
+        items: [
+          { type: 'block', name: 'cards', blockIndex: 0 },
+          contentGroupItem(10, [paragraph(10, 'Intro')]),
+        ],
+      },
+      {
+        sectionIndex: 1,
+        blocks: [],
+        items: [contentGroupItem(20, [paragraph(20, 'Second')])],
+      },
+    ];
+    await el.updateComplete;
+    el.shadowRoot.querySelector('.content-group > .content-item').click();
+    await el.updateComplete;
+  }
+
+  const editControls = () => el.shadowRoot.querySelectorAll('.edit-btn, .delete-btn, .add-block-btn');
+  const draggables = () => el.shadowRoot.querySelectorAll('[draggable="true"]');
+  const dragHandles = () => el.shadowRoot.querySelectorAll('use[href^="/img/icons/s2-icon-draghandle"]');
+
+  beforeEach(async () => {
+    el = await createOutline();
+    bridge = getExtensionsBridge();
+  });
+
+  afterEach(() => {
+    el.remove();
+    bridge.view = null;
+  });
+
+  it('hides rename, add-block, delete and drag controls for a read-only view', async () => {
+    await renderOutline({ editable: false });
+
+    expect(el.shadowRoot.querySelectorAll('.outline-section')).to.have.lengthOf(2);
+    expect(el.shadowRoot.querySelector('[data-block-index="0"]')).to.exist;
+    expect(el.shadowRoot.querySelectorAll('.content-child')).to.have.lengthOf(1);
+    expect(editControls()).to.have.lengthOf(0);
+    expect(draggables()).to.have.lengthOf(0);
+    expect(dragHandles()).to.have.lengthOf(0);
+  });
+
+  it('still selects a block from a read-only outline', async () => {
+    await renderOutline({ editable: false });
+
+    let received;
+    const unsub = canvasBus.editorSelectState.subscribe((detail) => { received = detail; });
+    el.shadowRoot.querySelector('[data-block-index="0"]').click();
+    unsub();
+    await el.updateComplete;
+
+    expect(received).to.deep.equal({ blockIndex: 0, source: 'outline' });
+    expect(el.shadowRoot.querySelector('[data-block-index="0"]').getAttribute('aria-selected')).to.equal('true');
+  });
+
+  it('shows rename, add-block, delete and drag controls for an editable view', async () => {
+    await renderOutline({ editable: true });
+
+    expect(el.shadowRoot.querySelectorAll('.edit-btn')).to.have.lengthOf(2);
+    expect(el.shadowRoot.querySelectorAll('.add-block-btn')).to.have.lengthOf(2);
+    expect(el.shadowRoot.querySelectorAll('.delete-btn')).to.have.lengthOf(4);
+    expect(draggables()).to.have.lengthOf(4);
+    expect(dragHandles()).to.have.lengthOf(4);
+  });
+});
