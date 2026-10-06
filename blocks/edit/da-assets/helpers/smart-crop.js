@@ -1,7 +1,5 @@
-import { getNx2 } from '../../../../scripts/utils.js';
 import { daFetch } from '../../../shared/utils.js';
-
-const { buildSmartCropsListUrl, buildSmartCropUrl } = await import(`${getNx2()}/utils/aem-assets/urls.js`);
+import { buildSmartCropsListUrl, buildSmartCropUrl } from './urls.js';
 
 function buildStructureSelectionHtml(responsiveImageConfig, blockName, smartCropItems) {
   if (!responsiveImageConfig) return '';
