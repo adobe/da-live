@@ -11,6 +11,10 @@ const DELETE_ICON_SRC = '/img/icons/s2-icon-delete-20-n.svg';
 const ADD_ICON_SRC = '/img/icons/s2-icon-addcircle-20-n.svg';
 const EMPTY_OPTION = { value: '', label: 'None' };
 
+const fieldId = (field) => `ew-pm-${field.key.trim().toLowerCase().replace(/\s+/g, '-')}`;
+// Only native text controls can be targeted by <label for>.
+const isTextField = (field) => field.type === 'json' || !field.values?.length;
+
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
@@ -143,20 +147,20 @@ class EwPageMetadata extends LitElement {
 
   _renderField(field) {
     const readOnly = !this._canWrite;
-    const name = field.key.trim().toLowerCase();
+    const id = fieldId(field);
     if (field.type === 'json') {
       return html`
-        <textarea name=${name} class="nx-input ew-pm-json" .value=${formatJsonValue(field.value)} ?readonly=${readOnly}
+        <textarea id=${id} class="nx-input ew-pm-json" .value=${formatJsonValue(field.value)} ?readonly=${readOnly}
                   @blur=${(e) => this._commit(field, compactJsonValue(e.target.value))}></textarea>`;
     }
     if (!field.values?.length) {
       return html`
-        <input type="text" name=${name} class="nx-input" .value=${field.value} ?readonly=${readOnly}
+        <input type="text" id=${id} class="nx-input" .value=${field.value} ?readonly=${readOnly}
                @blur=${(e) => this._commit(field, e.target.value)}>`;
     }
     if (field.type === 'multi') {
       return html`
-        <ew-metadata-multiselect .items=${field.values} .value=${field.value} ?disabled=${readOnly}
+        <ew-metadata-multiselect .items=${field.values} .value=${field.value} .label=${field.label} ?disabled=${readOnly}
           @change=${(e) => this._commit(field, e.detail.value)}></ew-metadata-multiselect>`;
     }
     // nx-picker has no disabled state; inert blocks interaction.
@@ -177,7 +181,7 @@ class EwPageMetadata extends LitElement {
     const invalidJson = field.type === 'json' && !isValidJson(field.value);
     return html`
       <div class="ew-pm-row nx-form-field ${invalidJson ? 'nx-field-error' : ''}" data-key=${field.key}>
-        <label class="ew-pm-label">${field.label}</label>
+        <label class="ew-pm-label" for=${isTextField(field) ? fieldId(field) : nothing}>${field.label}</label>
         <div class="ew-pm-control-row">
           <div class="ew-pm-control">${this._renderField(field)}</div>
           ${field.removable && this._canWrite ? html`

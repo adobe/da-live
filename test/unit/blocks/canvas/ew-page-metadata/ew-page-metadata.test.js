@@ -111,27 +111,48 @@ describe('ew-page-metadata', () => {
   });
 
   describe('fallback + read path', () => {
+    it('connects each field label to its text control', async () => {
+      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['og image', 'x']])] });
+      el._libraryFields = [
+        { key: 'Title', label: 'Page Title', type: 'single', values: null },
+        { key: 'JSON-LD', label: 'JSON-LD', type: 'json', values: null },
+      ];
+      canvasBus.editorDocState.emit();
+      await el.updateComplete;
+      const labelOf = (control) => control.labels[0]?.textContent.trim();
+      expect(labelOf(rowFor(el, 'Title').querySelector('input'))).to.equal('Page Title');
+      expect(labelOf(rowFor(el, 'JSON-LD').querySelector('textarea'))).to.equal('JSON-LD');
+      expect(rowFor(el, 'og image').querySelector('input').id).to.equal('ew-pm-og-image');
+    });
+
+    it('passes the field label to the multiselect', async () => {
+      bridge.view = makeRealView(baseDoc());
+      el._libraryFields = [{ key: 'tags', label: 'Tags', type: 'multi', values: [{ title: 'A', value: 'a' }] }];
+      canvasBus.editorDocState.emit();
+      await el.updateComplete;
+      expect(rowFor(el, 'tags').querySelector('ew-metadata-multiselect').label).to.equal('Tags');
+    });
     it('reads the doc rows when opened after the doc has loaded', async () => {
       bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['title', 'My Page']])] });
       const lateEl = await createPanel();
       expect(rowFor(lateEl, 'Title').querySelector('input[type="text"]').value).to.equal('My Page');
       lateEl.remove();
     });
-    it('names text fields after their lowercased key', async () => {
+    it('gives text fields an id from their lowercased key', async () => {
       bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['Legacy-Flag', 'yes']])] });
       canvasBus.editorDocState.emit();
       await el.updateComplete;
-      const names = [...el.shadowRoot.querySelectorAll('.ew-pm-control input[type="text"]')]
-        .map((input) => input.name);
-      expect(names).to.deep.equal(['title', 'description', 'legacy-flag']);
+      const ids = [...el.shadowRoot.querySelectorAll('.ew-pm-control input[type="text"]')]
+        .map((input) => input.id);
+      expect(ids).to.deep.equal(['ew-pm-title', 'ew-pm-description', 'ew-pm-legacy-flag']);
 
       el._libraryFields = [
         { key: 'Robots', label: 'Robots', type: 'single', values: null },
         { key: 'JSON-LD', label: 'JSON-LD', type: 'json', values: null },
       ];
       await el.updateComplete;
-      expect(rowFor(el, 'Robots').querySelector('input').name).to.equal('robots');
-      expect(rowFor(el, 'JSON-LD').querySelector('textarea').name).to.equal('json-ld');
+      expect(rowFor(el, 'Robots').querySelector('input').id).to.equal('ew-pm-robots');
+      expect(rowFor(el, 'JSON-LD').querySelector('textarea').id).to.equal('ew-pm-json-ld');
     });
     it('renders default Title/Description text fields when there is no library config', async () => {
       bridge.view = makeRealView(baseDoc());

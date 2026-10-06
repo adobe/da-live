@@ -1,4 +1,4 @@
-import { LitElement, html } from 'da-lit';
+import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 
@@ -17,6 +17,7 @@ class EwMetadataMultiselect extends LitElement {
     items: { attribute: false },
     value: { type: String },
     disabled: { type: Boolean },
+    label: { type: String },
   };
 
   connectedCallback() {
@@ -34,7 +35,7 @@ class EwMetadataMultiselect extends LitElement {
   render() {
     const selected = new Set(parseSelected(this.value));
     return html`
-      <ul class="ew-metadata-multiselect">
+      <ul class="ew-metadata-multiselect" role="group" aria-label=${this.label ?? nothing}>
         ${(this.items || []).map((item) => html`
           <li>
             <label class="nx-checkbox">

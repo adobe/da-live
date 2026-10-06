@@ -69,4 +69,13 @@ describe('ew-metadata-multiselect', () => {
     const boxes = [...el.shadowRoot.querySelectorAll('input[type="checkbox"]')];
     expect(boxes.every((box) => box.disabled)).to.equal(true);
   });
+
+  it('exposes its label as an accessible group name', async () => {
+    const el = await createMultiselect();
+    el.label = 'Tags';
+    await el.updateComplete;
+    const group = el.shadowRoot.querySelector('.ew-metadata-multiselect');
+    expect(group.getAttribute('role')).to.equal('group');
+    expect(group.getAttribute('aria-label')).to.equal('Tags');
+  });
 });

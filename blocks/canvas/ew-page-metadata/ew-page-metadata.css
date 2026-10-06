@@ -15,7 +15,7 @@
 
 .ew-pm-header h3 {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--s2-component-m-regular-font-size);
 }
 
 .ew-pm-fields {
