@@ -13,7 +13,7 @@ import { buildDisplayItems, formatUser } from '../../shared/version/helpers.js';
 import { docToHtml, domToHtml, buildCompareDom } from '../../shared/version/compare.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { trackingPluginKey } from '../editor-utils/prose-diff.js';
-import './ew-canvas-compare.js';
+import '../ew-comparison/ew-canvas-compare.js';
 
 const IS_MAC = typeof navigator !== 'undefined' && /Mac|iP(hone|[oa]d)/.test(navigator.platform);
 const SHORTCUT_HINT = IS_MAC ? '⌘ + ⌥ + S' : 'Ctrl + Alt + S';

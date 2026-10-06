@@ -9,7 +9,7 @@ const page = { org: 'example', site: 'site', path: 'page' };
 
 before(async () => {
   comparison = await import('../../../../blocks/canvas/ew-comparison/comparison.js');
-  await import('../../../../blocks/canvas/ew-canvas-versions/ew-canvas-compare.js');
+  await import('../../../../blocks/canvas/ew-comparison/ew-canvas-compare.js');
 });
 
 describe('comparison renderer ownership', () => {
@@ -150,7 +150,7 @@ describe('embedded existing comparison view', () => {
     document.body.append(element);
     await element.updateComplete;
     const sheet = new CSSStyleSheet();
-    sheet.replaceSync(await (await fetch('/blocks/canvas/ew-canvas-versions/ew-canvas-compare.css')).text());
+    sheet.replaceSync(await (await fetch('/blocks/canvas/ew-comparison/ew-canvas-compare.css')).text());
     element.shadowRoot.adoptedStyleSheets = [sheet];
     const color = (selector) => getComputedStyle(
       element.shadowRoot.querySelector(selector),
@@ -179,7 +179,7 @@ describe('embedded existing comparison view', () => {
     document.body.append(element);
     await element.updateComplete;
     const sheet = new CSSStyleSheet();
-    sheet.replaceSync(await (await fetch('/blocks/canvas/ew-canvas-versions/ew-canvas-compare.css')).text());
+    sheet.replaceSync(await (await fetch('/blocks/canvas/ew-comparison/ew-canvas-compare.css')).text());
     element.shadowRoot.adoptedStyleSheets = [sheet];
 
     const split = element.shadowRoot.querySelector('.ew-cc-split');
