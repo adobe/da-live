@@ -295,7 +295,7 @@ class EwToolPanel extends LitElement {
               <p>${dialogTitle}</p>
             </div>
             <button type="button" class="tool-panel-fullsize-dialog-close" aria-label="Close"
-              @click=${(e) => e.target.closest('dialog').close()}>✕</button>
+              @click=${(e) => e.target.closest('dialog').close()}><svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-close-20-n.svg#icon"></use></svg></button>
           </div>
           <div class="tool-panel-fullsize-dialog-body"></div>
         </dialog>

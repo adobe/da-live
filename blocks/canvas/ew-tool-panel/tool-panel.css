@@ -126,8 +126,12 @@
   background: none;
   box-shadow: none;
   cursor: pointer;
-  font-size: var(--nx-ui-text-title);
   color: inherit;
+
+  .icon {
+    width: var(--nx-ui-icon-toolbar);
+    height: var(--nx-ui-icon-toolbar);
+  }
 }
 
 .tool-panel-fullsize-dialog-close:hover {

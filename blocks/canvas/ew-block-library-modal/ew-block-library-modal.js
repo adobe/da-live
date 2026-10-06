@@ -321,8 +321,8 @@ class EwBlockLibraryModal extends LitElement {
         <div class="modal-content">
           <header class="modal-header">
             <span class="modal-title">${this.heading ?? 'Insert block'}</span>
-            <button type="button" class="nx-action-btn-icon nx-btn-sm"
-                    aria-label="Close" @click=${() => this._close()}>✕</button>
+            <button type="button" class="nx-action-btn-icon modal-close"
+                    aria-label="Close" @click=${() => this._close()}><svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-close-20-n.svg#icon"></use></svg></button>
           </header>
           <div class="modal-body">
             <aside class="modal-tree-wrap">

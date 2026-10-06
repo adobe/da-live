@@ -27,6 +27,19 @@
   border-bottom: 1px solid var(--s2-gray-200);
 }
 
+.nx-action-btn-icon.modal-close {
+  --nx-ui-icon-regular: var(--nx-ui-icon-toolbar);
+
+  width: var(--nx-ui-icon-btn-size);
+  height: var(--nx-ui-icon-btn-size);
+  padding: 0;
+
+  &:hover:not(:disabled) {
+    background: var(--nx-ui-icon-btn-hover-bg);
+    color: var(--nx-ui-icon-btn-hover-color);
+  }
+}
+
 .modal-title {
   font-weight: 600;
   font-size: var(--nx-ui-text-title);

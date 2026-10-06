@@ -309,7 +309,7 @@ class EwPanelLibrary extends LitElement {
       <dialog class="ext-preview-dialog" @close=${() => this._closePreview()}>
         <div class="ext-preview-header">
           <p class="ext-preview-title">${name} preview</p>
-          <button class="nx-action-btn-icon nx-btn-sm" aria-label="Close" @click=${() => this._closePreview()}>✕</button>
+          <button class="nx-action-btn-icon ext-preview-close" aria-label="Close" @click=${() => this._closePreview()}><svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-close-20-n.svg#icon"></use></svg></button>
         </div>
         <div class="ext-preview-body">
           ${error ? html`<div class="ext-preview-error"><p>${error}</p></div>` : nothing}

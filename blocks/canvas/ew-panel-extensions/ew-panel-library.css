@@ -286,6 +286,19 @@
   font-weight: 600;
 }
 
+.nx-action-btn-icon.ext-preview-close {
+  --nx-ui-icon-regular: var(--nx-ui-icon-toolbar);
+
+  width: var(--nx-ui-icon-btn-size);
+  height: var(--nx-ui-icon-btn-size);
+  padding: 0;
+
+  &:hover:not(:disabled) {
+    background: var(--nx-ui-icon-btn-hover-bg);
+    color: var(--nx-ui-icon-btn-hover-color);
+  }
+}
+
 .ext-preview-body {
   flex: 1;
   position: relative;

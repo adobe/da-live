@@ -143,20 +143,27 @@
 }
 
 .block-edit-close {
-  width: 28px;
-  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--nx-ui-icon-btn-size);
+  height: var(--nx-ui-icon-btn-size);
   padding: 0;
   border: none;
-  border-radius: var(--s2-corner-radius-75);
+  border-radius: var(--s2-corner-radius-400);
   background: transparent;
-  color: inherit;
-  font-family: inherit;
-  font-size: var(--nx-ui-text-title);
+  color: var(--s2-gray-800);
   cursor: pointer;
+
+  .icon {
+    width: var(--nx-ui-icon-toolbar);
+    height: var(--nx-ui-icon-toolbar);
+  }
 }
 
 .block-edit-close:hover {
   background: var(--nx-ui-icon-btn-hover-bg);
+  color: var(--nx-ui-icon-btn-hover-color);
 }
 
 .block-edit-body {
