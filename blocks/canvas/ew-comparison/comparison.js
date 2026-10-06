@@ -148,18 +148,22 @@ export function installComparison({
     const { action, details, context, resolve } = request;
     if (!comparisonContextKey(context)
       || comparisonContextKey(context) !== comparisonContextKey(getContext())) {
-      resolve({ ok: false, error: 'stale-context' });
+      resolve?.({ ok: false, error: 'stale-context' });
       return;
     }
     try {
-      if (action === 'openComparison') resolve(await open(details));
-      else if (action === 'closeComparison') resolve(close());
-      else if (action === 'saveDocument') {
+      if (action === 'openComparison') {
+        const result = await open(details);
+        resolve?.(result);
+      } else if (action === 'closeComparison') {
+        const result = close();
+        resolve?.(result);
+      } else if (action === 'saveDocument') {
         const result = await saveDocument?.();
-        resolve(comparisonContextKey(context) === comparisonContextKey(getContext())
+        resolve?.(comparisonContextKey(context) === comparisonContextKey(getContext())
           ? result || { ok: false, error: 'no-document' } : { ok: false, error: 'stale-context' });
       }
-    } catch (error) { resolve({ ok: false, error: error.message }); }
+    } catch (error) { resolve?.({ ok: false, error: error.message }); }
   });
   const unsubscribeChanges = canvasBus.editorHtmlState.subscribe(() => {
     if (surface?.candidate === 'document') surface.stale = true;
