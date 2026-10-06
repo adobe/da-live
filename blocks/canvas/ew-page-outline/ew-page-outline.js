@@ -252,6 +252,11 @@ class EwPageOutline extends LitElement {
   }
 
   _onDragStart(e, type, index) {
+    // Selected text still drags when the item is not draggable.
+    if (!this._canWrite) {
+      e.preventDefault();
+      return;
+    }
     this._dragging = { type, index };
     const el = type === OUTLINE_TYPES.SECTION ? e.currentTarget.parentElement : e.currentTarget;
     el.classList.add('dragging');
