@@ -41,6 +41,17 @@ button {
   flex-shrink: 0;
 }
 
+.toolbar .nx-action-btn-icon {
+  width: var(--nx-ui-icon-btn-size);
+  height: var(--nx-ui-icon-btn-size);
+  padding: 0;
+
+  .icon {
+    width: var(--nx-ui-icon-toolbar);
+    height: var(--nx-ui-icon-toolbar);
+  }
+}
+
 .segment {
   display: flex;
   gap: var(--s2-spacing-100);

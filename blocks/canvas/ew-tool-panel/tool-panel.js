@@ -271,7 +271,7 @@ class EwToolPanel extends LitElement {
 
     return html`
       <div class="tool-panel-header">
-        <button type="button" class="nx-action-btn-icon${getUISize() === 'm' ? '' : ' nx-btn-sm'}" aria-label="Close panel" @click=${this._close}>
+        <button type="button" class="nx-action-btn-icon" aria-label="Close panel" @click=${this._close}>
           <svg aria-hidden="true" viewBox="0 0 20 20"><use href="${CLOSE_ICON_SRC}#icon"></use></svg>
         </button>
         <nx-picker

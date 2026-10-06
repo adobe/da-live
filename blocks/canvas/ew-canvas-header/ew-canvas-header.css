@@ -24,6 +24,17 @@
   border-bottom: 1px solid var(--s2-gray-200);
 }
 
+.bar .nx-action-btn-icon {
+  width: var(--nx-ui-icon-btn-size);
+  height: var(--nx-ui-icon-btn-size);
+  padding: 0;
+
+  svg {
+    width: var(--nx-ui-icon-toolbar);
+    height: var(--nx-ui-icon-toolbar);
+  }
+}
+
 .comments-toggle {
   position: relative;
   overflow: visible;

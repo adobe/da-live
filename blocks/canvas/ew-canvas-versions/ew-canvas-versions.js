@@ -413,7 +413,7 @@ class EwCanvasVersions extends LitElement {
               aria-pressed=${this._filter === 'me'}
               @click=${() => this._setFilter('me')}>Only me</button>
           </div>
-          <button type="button" class="nx-action-btn-icon${getUISize() === 'm' ? '' : ' nx-btn-sm'}" aria-label="Create version"
+          <button type="button" class="nx-action-btn-icon" aria-label="Create version"
             ?disabled=${!!this._newVersion} @click=${this.handleNew}>
             <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
               <use href="${ICON_ADD}#icon"></use>

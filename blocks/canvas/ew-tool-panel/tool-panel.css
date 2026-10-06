@@ -25,6 +25,17 @@
   padding-right: var(--s2-spacing-75);
 }
 
+.tool-panel-header .nx-action-btn-icon {
+  width: var(--nx-ui-icon-btn-size);
+  height: var(--nx-ui-icon-btn-size);
+  padding: 0;
+
+  svg {
+    width: var(--nx-ui-icon-toolbar);
+    height: var(--nx-ui-icon-toolbar);
+  }
+}
+
 .tool-panel-content {
   flex: 1;
   display: flex;
