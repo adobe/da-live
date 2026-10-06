@@ -1,43 +1,10 @@
-import { getNx2Api } from '../../../../scripts/utils.js';
+import { getNx2, getNx2Api } from '../../../../scripts/utils.js';
 import { MESSAGE_TYPES } from '../../utils/quick-edit-messages.js';
 import { dataUrlByteLength, refuseOversizedImage } from '../../utils/image-upload.js';
 
-function updateImageInDocument(view, originalSrc, newSrc) {
-  if (!view) return false;
-
-  const { state } = view;
-  const { tr } = state;
-  let updated = false;
-
-  state.doc.descendants((node, pos) => {
-    if (node.type.name === 'image') {
-      const currentSrc = node.attrs.src;
-      let isMatch = currentSrc === originalSrc;
-
-      if (!isMatch) {
-        try {
-          const currentUrl = new URL(currentSrc, window.location.href);
-          const originalUrl = new URL(originalSrc, window.location.href);
-          isMatch = currentUrl.pathname === originalUrl.pathname;
-        } catch {
-          isMatch = currentSrc.includes(originalSrc) || originalSrc.includes(currentSrc);
-        }
-      }
-
-      if (isMatch) {
-        const newAttrs = { ...node.attrs, src: newSrc };
-        tr.setNodeMarkup(pos, null, newAttrs);
-        updated = true;
-      }
-    }
-  });
-
-  if (updated) {
-    view.dispatch(tr);
-  }
-
-  return updated;
-}
+const { resolveImagePosition, updateImageInDocument } = await import(
+  `${getNx2()}/public/utils/quick-edit-images.js`
+);
 
 function dataUrlToBlob(dataUrl) {
   const [header, base64Data] = dataUrl.split(',');
@@ -57,16 +24,22 @@ function getPageName(currentPath) {
   return currentPath.replace(/^\//, '');
 }
 
-export async function handleImageReplace({ imageData, fileName, originalSrc }, ctx) {
-  ctx.suppressRerender = true;
-
+export async function handleImageReplace(payload, ctx) {
+  const { imageData, fileName, proseIndex, originalSrc, requestId } = payload;
+  let view;
+  const reply = (result) => ctx.port.postMessage({
+    type: MESSAGE_TYPES.IMAGE_REPLACE,
+    payload: { ...result, proseIndex, originalSrc, requestId },
+  });
   try {
+    view = ctx.view;
+    if (!view) throw new Error('Image editor is unavailable. Please try again.');
+    const originalDoc = view.state.doc;
+    const imagePos = resolveImagePosition({ ...payload, doc: originalDoc });
+    const target = originalDoc.nodeAt(imagePos);
     const sitePath = `/${ctx.owner}/${ctx.repo}`;
     if (await refuseOversizedImage(dataUrlByteLength(imageData), sitePath)) {
-      ctx.port.postMessage({
-        type: MESSAGE_TYPES.IMAGE_REPLACE,
-        payload: { error: 'Image is too large', originalSrc },
-      });
+      reply({ error: 'Image is too large' });
       return;
     }
 
@@ -82,33 +55,19 @@ export async function handleImageReplace({ imageData, fileName, originalSrc }, c
     const resp = await source.uploadMedia(uploadPath, { body: blob });
 
     if (!resp.ok) {
-      const error = `Upload failed with status ${resp.status}`;
-      ctx.port.postMessage({
-        type: MESSAGE_TYPES.IMAGE_REPLACE,
-        payload: { error, originalSrc },
-      });
+      reply({ error: `Upload failed with status ${resp.status}` });
       return;
     }
 
     // the media bus is content addressed, so the src is only known from the response
     const { source: { contentUrl: newSrc } } = await resp.json();
 
-    updateImageInDocument(ctx.view, originalSrc, newSrc);
-
-    ctx.port.postMessage({
-      type: MESSAGE_TYPES.IMAGE_REPLACE,
-      payload: { newSrc, originalSrc },
-    });
+    if (ctx.view !== view) throw new Error('Image editor changed during the upload. Please try again.');
+    updateImageInDocument({ view, target, newSrc });
+    reply({ newSrc });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Error replacing image:', error);
-    ctx.port.postMessage({
-      type: MESSAGE_TYPES.IMAGE_REPLACE,
-      payload: { error: error.message, originalSrc },
-    });
-  } finally {
-    setTimeout(() => {
-      ctx.suppressRerender = false;
-    }, 500);
+    reply({ error: error.message });
   }
 }
