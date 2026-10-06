@@ -87,7 +87,6 @@ export class EwEditorDoc extends LitElement {
       this._lastDocBlockIndex = undefined;
       this._lastDocSelKey = undefined;
       this._lastBroadcastNodeKey = undefined;
-      canvasBus.editorHtmlState.emit('');
     }
   }
 
@@ -343,6 +342,7 @@ export class EwEditorDoc extends LitElement {
     this._unbindSectionName?.();
     this._unbindSectionName = undefined;
     this._proseContext = undefined;
+    canvasBus.editorHtmlState.emit('');
   }
 
   async _loadEditor() {
