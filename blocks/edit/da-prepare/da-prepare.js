@@ -1,12 +1,12 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { fetchDaConfigs, getPostMessageTargetOrigin } from '../../shared/utils.js';
 import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
-import { getNx2 } from '../../../scripts/utils.js';
+import { getNx2, sanitizeName } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
 const { PREFLIGHT_EVENT } = await import(`${getNx2()}/utils/preflight-events.js`);
-const ref = new URLSearchParams(window.location.search).get('ref') || 'main';
+const ref = sanitizeName(new URLSearchParams(window.location.search).get('ref'), false) || 'main';
 
 function resolveMenuItem(item, details) {
   const { org, site } = details || {};

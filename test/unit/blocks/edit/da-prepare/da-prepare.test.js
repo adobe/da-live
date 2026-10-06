@@ -13,6 +13,10 @@ describe('DaPrepare', () => {
 
   before(async () => {
     savedFetch = window.fetch;
+    const initialUrl = window.location.href;
+    const testUrl = new URL(initialUrl);
+    testUrl.searchParams.set('ref', 'evil.example/x');
+    window.history.replaceState({}, '', testUrl);
 
     // Mock fetch for getSheet CSS, SVGs, and config endpoints
     window.fetch = async (url) => {
@@ -36,6 +40,7 @@ describe('DaPrepare', () => {
 
     const mod = await import('../../../../../blocks/edit/da-prepare/da-prepare.js');
     DaPrepare = mod.default;
+    window.history.replaceState({}, '', initialUrl);
   });
 
   after(() => {
@@ -231,8 +236,8 @@ describe('DaPrepare', () => {
       await waitForMenu();
 
       const item = el._menuItems.find(({ title }) => title === 'Plugin Action');
-      expect(item.path).to.equal('https://main--siteD--orgD.preview.da.live/tools/plugins/plugin-action/index.html');
-      expect(item.icon).to.equal('https://main--siteD--orgD.preview.da.live/tools/plugins/plugin-action/icon.svg');
+      expect(item.path).to.equal('https://evil-example-x--siteD--orgD.preview.da.live/tools/plugins/plugin-action/index.html');
+      expect(item.icon).to.equal('https://evil-example-x--siteD--orgD.preview.da.live/tools/plugins/plugin-action/icon.svg');
 
       window.fetch = prevFetch;
     });
