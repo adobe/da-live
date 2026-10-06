@@ -584,4 +584,36 @@ describe('ew-page-outline - read-only', () => {
     expect(draggables()).to.have.lengthOf(4);
     expect(dragHandles()).to.have.lengthOf(4);
   });
+
+  it('drops a pending delete when the outline switches to another document', async () => {
+    await renderOutline({ editable: true });
+    el.shadowRoot.querySelector('.outline-section .delete-btn').click();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelectorAll('nx-dialog.ew-po-delete')).to.have.lengthOf(1);
+
+    const reader = makeRealView({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Reader' }] }],
+    });
+    reader.setProps({ editable: () => false });
+    bridge.view = reader;
+    el._hashState = { org: 'org', site: 'site', path: 'reader-page' };
+    await el.updateComplete;
+
+    expect(el.shadowRoot.querySelectorAll('nx-dialog.ew-po-delete').length).to.equal(0);
+    expect(el._pendingDelete ?? null).to.equal(null);
+    expect(docSeq(reader.state.doc)).to.deep.equal(['Reader']);
+  });
+
+  it('drops a pending delete when the document unloads', async () => {
+    await renderOutline({ editable: true });
+    el.shadowRoot.querySelector('.outline-section .delete-btn').click();
+    await el.updateComplete;
+
+    canvasBus.editorHtmlState.emit('');
+    await el.updateComplete;
+
+    expect(el.shadowRoot.querySelectorAll('nx-dialog.ew-po-delete').length).to.equal(0);
+    expect(el._pendingDelete ?? null).to.equal(null);
+  });
 });
