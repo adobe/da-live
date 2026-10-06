@@ -8,16 +8,12 @@ import getEditPath from '../../browse/shared.js';
 import getSheet from '../../shared/sheet.js';
 import '../../shared/da-name-dialog/da-name-dialog.js';
 
-const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { loadStyle, hashChange, DA_SC } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
 const { fetchDaConfigs } = await import(`${getNx()}/utils/daConfig.js`);
-const {
-  isStructuredContent,
-  getStructuredContentEditorUrl,
-  getStructuredContentDeliveryUrl,
-} = await import(`${getNx()}/utils/structuredContent.js`);
+const { getEditor } = await import(`${getNx()}/utils/editor.js`);
 
 const [buttons, style] = await Promise.all([
   getSheet(`${getNx2()}/styles/buttons.css`),
@@ -27,6 +23,9 @@ const [buttons, style] = await Promise.all([
 const CREATE_PAGE_ERROR = 'Could not create the page. Try a different name.';
 
 const COPYABLE_EXTS = new Set(['html', 'json']);
+
+// The editor's last path segment, e.g. 'https://da.live/form#' → 'form', '/canvas#' → 'canvas'.
+const getEditorName = (editor) => editor?.split(/[?#]/)[0].split('/').pop();
 
 const CATEGORIES = [
   { value: 'all', label: 'All' },
@@ -331,11 +330,12 @@ class EwFileExplorer extends LitElement {
       this._toggle(item.pathKey, item.path);
       return;
     }
-    if (isStructuredContent({ path: item.path, configs: this._configs })) {
-      window.open(getStructuredContentEditorUrl(item.path), '_blank', 'noopener,noreferrer');
-      return;
-    }
     if (item.ext === 'html') {
+      const editor = this._editorFor(item);
+      if (editor && getEditorName(editor) !== 'canvas') {
+        window.open(getEditPath({ path: item.path, ext: item.ext, editor }), '_blank', 'noopener,noreferrer');
+        return;
+      }
       window.location.hash = `#/${itemHashPath(item)}`;
       return;
     }
@@ -344,10 +344,17 @@ class EwFileExplorer extends LitElement {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
+  // The editor configured for a page via `editor.path`, or undefined for the default.
+  _editorFor(item) {
+    if (item.ext !== 'html') return undefined;
+    return getEditor({ path: item.path, configs: this._configs });
+  }
+
+  // Structured content (pages edited in /form) is delivered by da-sc instead of aem.page.
+  // TODO: replace this config-based check once structured content becomes a first-class type.
   _copyUrl(item) {
-    return isStructuredContent({ path: item.path, configs: this._configs })
-      ? getStructuredContentDeliveryUrl({ path: item.path })
-      : getAemUrl(item);
+    if (getEditorName(this._editorFor(item)) !== 'form') return getAemUrl(item);
+    return `${DA_SC}/preview${item.path.replace(/\.html$/, '')}`;
   }
 
   async _onCopyUrl(e, item) {

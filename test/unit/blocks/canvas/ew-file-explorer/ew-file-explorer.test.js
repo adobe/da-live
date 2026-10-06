@@ -522,24 +522,44 @@ describe('EwFileExplorer', () => {
     });
   });
 
-  describe('structured content', () => {
+  describe('configured editor', () => {
     const SC = { path: '/org/site/forms/contact.html', ext: 'html' };
 
     beforeEach(() => {
-      el._configs = [null, { data: [{ key: 'editor.path', value: '/org/site/forms=https://da.live/form#' }] }];
+      el._configs = [null, {
+        data: [
+          { key: 'editor.path', value: '/org/site/forms=https://da.live/form#' },
+          { key: 'editor.path', value: '/org/site/blog=/canvas#' },
+        ],
+      }];
     });
 
-    it('opens structured content in the form editor', () => {
+    it('opens a page in its configured editor', () => {
       const savedOpen = window.open;
       const opened = [];
       window.open = (...args) => { opened.push(args); };
       const savedHash = window.location.hash;
       try {
         el._onItemClick(SC);
-        expect(opened).to.deep.equal([['/form#/org/site/forms/contact', '_blank', 'noopener,noreferrer']]);
+        expect(opened).to.deep.equal([['https://da.live/form#/org/site/forms/contact', '_blank', 'noopener,noreferrer']]);
         expect(window.location.hash).to.equal(savedHash);
       } finally {
         window.open = savedOpen;
+      }
+    });
+
+    it('stays in canvas when the configured editor is canvas', () => {
+      const savedOpen = window.open;
+      const opened = [];
+      window.open = (...args) => { opened.push(args); };
+      const savedHash = window.location.hash;
+      try {
+        el._onItemClick({ path: '/org/site/blog/foo.html', ext: 'html' });
+        expect(opened).to.deep.equal([]);
+        expect(window.location.hash).to.equal('#/org/site/blog/foo');
+      } finally {
+        window.open = savedOpen;
+        window.location.hash = savedHash;
       }
     });
 
