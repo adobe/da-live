@@ -1,6 +1,6 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { Plugin } from 'da-y-wrapper';
-import { getNx } from '../../../../scripts/utils.js';
+import { getNx, getUISize } from '../../../../scripts/utils.js';
 import {
   slashMenuItemsForQuery,
   applySlashSelection,
@@ -80,6 +80,7 @@ function setup(container, view, ctxRef) {
   const menu = document.createElement('nx-menu');
   menu.ignoreFocus = true;
   menu.scoped = true;
+  menu.setAttribute('size', getUISize());
   menu.items = slashMenuItemsForQuery('');
   container.append(menu);
 

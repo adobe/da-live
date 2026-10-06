@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { DOMParser as PMDOMParser } from 'da-y-wrapper';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getUISize } from '../../../scripts/utils.js';
 import { initIms } from '../../shared/utils.js';
 import {
   fetchVersions,
@@ -331,7 +331,7 @@ class EwCanvasVersions extends LitElement {
             <span class="meta">${entry.date}, ${entry.time}</span>
             ${users ? html`<span class="user">${users}</span>` : nothing}
           </div>
-          <nx-menu .items=${menuItems} placement="auto"
+          <nx-menu size=${getUISize()} .items=${menuItems} placement="auto"
             @click=${(e) => e.stopPropagation()}
             @keydown=${(e) => e.stopPropagation()}
             @select=${(e) => {

@@ -1,6 +1,7 @@
 /* eslint-disable no-underscore-dangle */
 
 import { html, nothing } from 'da-lit';
+import { getUISize } from '../../../../scripts/utils.js';
 import * as formatUtils from './format-utils.js';
 import { DRAFT_MODES } from './draft-state.js';
 import { generateColorSet } from '../../editor-utils/author-color.js';
@@ -76,6 +77,7 @@ export function renderCommentMenu(panel, comment, threadId, isRoot, canEdit, isR
 
   return html`
     <nx-menu
+      size=${getUISize()}
       placement="below"
       .items=${items}
       @select=${(e) => panel.handleMenuSelect(e.detail.id, comment, threadId)}>

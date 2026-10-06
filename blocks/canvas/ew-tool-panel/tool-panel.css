@@ -40,8 +40,8 @@
 
   svg.icon {
     display: block;
-    width: var(--nx-ui-icon-compact);
-    height: var(--nx-ui-icon-compact);
+    width: var(--nx-ui-icon-toolbar);
+    height: var(--nx-ui-icon-toolbar);
     overflow: hidden;
   }
 
