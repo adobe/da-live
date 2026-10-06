@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import { readFile } from '@web/test-runner-commands';
 import { setNx } from '../../../../scripts/utils.js';
 import { canvasBus } from '../../../../blocks/canvas/utils/canvas-bus.js';
 
@@ -9,6 +10,94 @@ const page = { org: 'example', site: 'site', path: 'page' };
 before(async () => {
   comparison = await import('../../../../blocks/canvas/ew-comparison/comparison.js');
   await import('../../../../blocks/canvas/ew-canvas-versions/ew-canvas-compare.js');
+});
+
+describe('comparison renderer ownership', () => {
+  it('loads the renderer from the comparison module', async () => {
+    await import('../../../../blocks/canvas/ew-comparison/ew-canvas-compare.js');
+    expect(customElements.get('ew-canvas-compare')).to.be.a('function');
+  });
+
+  it('makes version history consume the comparison-owned renderer', async () => {
+    const source = await readFile({ path: '../../../../blocks/canvas/ew-canvas-versions/ew-canvas-versions.js' });
+    expect(source).to.include("import '../ew-comparison/ew-canvas-compare.js';");
+    expect(source).not.to.include("import './ew-canvas-compare.js';");
+  });
+
+  it('keeps the comparison component and renderer independent of version history', async () => {
+    const source = await readFile({ path: '../../../../blocks/canvas/ew-comparison/ew-comparison.js' });
+    expect(source).to.include("import './ew-canvas-compare.js';");
+    expect(source).not.to.include('ew-canvas-versions/');
+    const renderer = await readFile({ path: '../../../../blocks/canvas/ew-comparison/ew-canvas-compare.js' });
+    expect(renderer).not.to.include('ew-canvas-versions/');
+    const stylesheet = await fetch('/blocks/canvas/ew-comparison/ew-canvas-compare.css');
+    expect(stylesheet.ok).to.equal(true);
+  });
+});
+
+describe('version-history comparison consumer', () => {
+  let versions;
+  let popoverPrototype;
+  let originalShow;
+
+  before(async () => {
+    await import('../../../../blocks/canvas/ew-canvas-versions/ew-canvas-versions.js');
+  });
+
+  beforeEach(() => {
+    popoverPrototype = customElements.get('nx-popover').prototype;
+    originalShow = popoverPrototype.show;
+    popoverPrototype.show = () => {};
+  });
+
+  afterEach(() => {
+    versions?.remove();
+    if (originalShow) popoverPrototype.show = originalShow;
+    else delete popoverPrototype.show;
+  });
+
+  it('keeps the version preview modal, split toggle, focus trap, and close cleanup', async () => {
+    versions = document.createElement('ew-canvas-versions');
+    document.body.append(versions);
+    await versions.updateComplete;
+    let cleaned = false;
+    versions.path = '/example/site/page.html';
+    versions._versions = [];
+    versions._compareSplit = false;
+    versions._compareCtx = {
+      previewDom: new DOMParser().parseFromString('<p>Saved content</p>', 'text/html').body,
+      diffDom: new DOMParser().parseFromString('<p><del>Current content</del><ins>Saved content</ins></p>', 'text/html').body,
+      label: 'Saved version',
+      entry: {},
+      cleanup: () => { cleaned = true; },
+    };
+    await versions.updateComplete;
+    const view = versions.shadowRoot.querySelector('ew-canvas-compare');
+    await view.updateComplete;
+    const popover = view.shadowRoot.querySelector('nx-popover');
+    expect(popover.getAttribute('role')).to.equal('dialog');
+    expect(popover.getAttribute('aria-modal')).to.equal('true');
+    expect(popover.getAttribute('aria-label')).to.equal('Compare with Saved version');
+    expect(popover.persistent).to.equal(true);
+    expect(view.shadowRoot.querySelector('.ew-cc-body').textContent).to.include('Saved content');
+    const close = view.shadowRoot.querySelector('.ew-cc-close-btn');
+    expect(view.shadowRoot.activeElement).to.equal(close);
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', cancelable: true });
+    document.dispatchEvent(tab);
+    expect(tab.defaultPrevented).to.equal(true);
+    const toggle = view.shadowRoot.querySelector('button[aria-pressed]');
+    expect(view.shadowRoot.activeElement).to.equal(toggle);
+    toggle.click();
+    await versions.updateComplete;
+    await view.updateComplete;
+    expect(view.split).to.equal(true);
+    expect([...view.shadowRoot.querySelectorAll('.ew-cc-pane')].map((pane) => pane.textContent))
+      .to.deep.equal(['Current content', 'Saved content']);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await versions.updateComplete;
+    expect(versions.shadowRoot.querySelector('ew-canvas-compare')).to.equal(null);
+    expect(cleaned).to.equal(true);
+  });
 });
 
 describe('embedded existing comparison view', () => {
