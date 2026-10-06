@@ -136,6 +136,10 @@ class EwPageOutline extends LitElement {
     this._unsubscribeSelect?.();
   }
 
+  get _canWrite() {
+    return getExtensionsBridge().view?.editable ?? false;
+  }
+
   get _selectedPath() {
     const { org, site, path } = this._hashState ?? {};
     return org && site && path ? `${org}/${site}/${path}` : '';
@@ -532,6 +536,7 @@ class EwPageOutline extends LitElement {
   }
 
   _renderDeleteButton(type, index) {
+    if (!this._canWrite) return nothing;
     const { noun } = this._deleteInfo(type, index);
     const label = `Delete ${noun}`;
     return html`
@@ -548,6 +553,7 @@ class EwPageOutline extends LitElement {
   _renderContentGroup(item, isFirst) {
     const key = item.proseIndex;
     const expanded = this._expandedContent?.has(key);
+    const canWrite = this._canWrite;
     return html`
       <li class="content-group" role="none">
         <div class="block-item content-item" role="treeitem"
@@ -566,7 +572,7 @@ class EwPageOutline extends LitElement {
               <li class="block-item content-item content-child ${this._selectedProseIndex === child.proseIndex ? 'selected' : ''}"
                   role="treeitem" tabindex="-1"
                   aria-selected="${this._selectedProseIndex === child.proseIndex}"
-                  draggable="true"
+                  draggable="${canWrite}"
                   @dragstart=${(e) => this._onDragStart(e, OUTLINE_TYPES.CONTENT, child)}
                   @dragover=${(e) => this._onContentDragOver(e, child)}
                   @drop=${this._onDrop}
@@ -577,9 +583,9 @@ class EwPageOutline extends LitElement {
                   ${child.snippet ? html`<span class="content-snippet">${child.snippet}</span>` : nothing}
                 </span>
                 ${this._renderDeleteButton(OUTLINE_TYPES.CONTENT, child)}
-                <svg aria-hidden="true" class="icon drag" viewBox="0 0 20 20">
+                ${canWrite ? html`<svg aria-hidden="true" class="icon drag" viewBox="0 0 20 20">
                   <use href="${DRAG_ICON_SRC}#icon"></use>
-                </svg>
+                </svg>` : nothing}
               </li>`;
     })}
           </ul>` : nothing}
@@ -603,29 +609,30 @@ class EwPageOutline extends LitElement {
     const label = sec.name || fallback;
     return html`
       <span class="section-label" title="${label}">${label}</span>
-      <button type="button" class="nx-action-btn-icon edit-btn nx-btn-sm" draggable="false"
+      ${this._canWrite ? html`<button type="button" class="nx-action-btn-icon edit-btn nx-btn-sm" draggable="false"
               aria-label="Rename section ${sec.sectionIndex + 1}"
               @pointerdown=${(e) => e.stopPropagation()}
               @click=${() => this._startRename(sec)}>
         <svg aria-hidden="true" class="icon" viewBox="0 0 20 20">
           <use href="${EDIT_ICON_SRC}#icon"></use>
         </svg>
-      </button>`;
+      </button>` : nothing}`;
   }
 
   _renderSection(sec, isFirstSection) {
     const editing = this._editingSection === sec.sectionIndex;
+    const canWrite = this._canWrite;
     return html`
       <li class="outline-section" role="none"
           @dragover=${(e) => this._onSectionDragOver(e, sec)}
           @dragleave=${this._onDragLeave}
           @drop=${this._onDrop}>
         <div class="section-header" data-section-header
-             draggable="${editing ? 'false' : 'true'}"
+             draggable="${canWrite && !editing}"
              @dragstart=${(e) => this._onDragStart(e, OUTLINE_TYPES.SECTION, sec.sectionIndex)}
              @dragend=${this._onDragEnd}>
           ${this._renderSectionLabel(sec)}
-          ${this._hasBlockLibrary ? html`
+          ${this._hasBlockLibrary && canWrite ? html`
             <button type="button" class="nx-action-btn-icon nx-btn-sm action-btn add-block-btn" draggable="false"
                     aria-label="Add block to section ${sec.sectionIndex + 1}"
                     @pointerdown=${(e) => e.stopPropagation()}
@@ -635,9 +642,9 @@ class EwPageOutline extends LitElement {
               </svg>
             </button>` : nothing}
           ${this._renderDeleteButton(OUTLINE_TYPES.SECTION, sec.sectionIndex)}
-          <svg aria-hidden="true" class="icon" viewBox="0 0 20 20">
+          ${canWrite ? html`<svg aria-hidden="true" class="icon" viewBox="0 0 20 20">
                 <use href="${DRAG_ICON_SRC}#icon"></use>
-              </svg>
+              </svg>` : nothing}
         </div>
         <ul class="block-list" role="group"
             aria-label="Blocks in section ${sec.sectionIndex + 1}">
@@ -652,7 +659,7 @@ class EwPageOutline extends LitElement {
                 data-block-index="${item.blockIndex}"
                 tabindex="${isFirstSection && itemIdx === 0 ? '0' : '-1'}"
                 aria-selected="${this._selectedBlockIndex === item.blockIndex}"
-                draggable="true"
+                draggable="${canWrite}"
                 @dragstart=${(e) => this._onDragStart(e, OUTLINE_TYPES.BLOCK, item.blockIndex)}
                 @dragover=${(e) => this._onBlockDragOver(e, item.blockIndex)}
                 @drop=${this._onDrop}
@@ -660,9 +667,9 @@ class EwPageOutline extends LitElement {
                 @click=${() => this._select(item.blockIndex)}>
               <span class="block-name">${item.name}${item.variant ? ` (${item.variant})` : ''}</span>
               ${this._renderDeleteButton(OUTLINE_TYPES.BLOCK, item.blockIndex)}
-              <svg aria-hidden="true" class="icon drag" viewBox="0 0 20 20">
+              ${canWrite ? html`<svg aria-hidden="true" class="icon drag" viewBox="0 0 20 20">
                 <use href="${DRAG_ICON_SRC}#icon"></use>
-              </svg>
+              </svg>` : nothing}
             </li>`
           : this._renderContentGroup(item, isFirstSection && itemIdx === 0)))}
         </ul>
