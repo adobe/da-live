@@ -652,4 +652,54 @@ describe('ew-page-outline - read-only', () => {
     expect(await dragSecondSectionOntoFirst({ editable: true }))
       .to.deep.equal(['Second', 'hr', 'First']);
   });
+
+  const twoSections = ([a, b], { editable }) => {
+    const view = makeRealView({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: a }] },
+        { type: 'horizontal_rule' },
+        { type: 'paragraph', content: [{ type: 'text', text: b }] },
+      ],
+    });
+    if (!editable) view.setProps({ editable: () => false });
+    return view;
+  };
+
+  async function dragAcrossDocumentSwitch(next) {
+    bridge.view = twoSections(['Writer first', 'Writer second'], { editable: true });
+    el._sections = parseSections(getInstrumentedHTML(bridge.view));
+    await el.updateComplete;
+
+    const dataTransfer = new DataTransfer();
+    const fire = (target, type, clientY = 0) => {
+      const init = { bubbles: true, composed: true, cancelable: true, dataTransfer, clientY };
+      target.dispatchEvent(new DragEvent(type, init));
+    };
+    fire(el.shadowRoot.querySelectorAll('[data-section-header]')[1], 'dragstart');
+
+    canvasBus.editorHtmlState.emit('');
+    el._hashState = { org: 'org', site: 'site', path: 'next-page' };
+    await el.updateComplete;
+    bridge.view = next;
+    el._sections = parseSections(getInstrumentedHTML(next));
+    await el.updateComplete;
+
+    const first = el.shadowRoot.querySelector('.outline-section');
+    fire(first, 'dragover', first.getBoundingClientRect().top);
+    fire(first, 'drop');
+    return docSeq(next.state.doc);
+  }
+
+  it('does not apply a drag started in another document to a read-only document', async () => {
+    const reader = twoSections(['Reader first', 'Reader second'], { editable: false });
+    expect(await dragAcrossDocumentSwitch(reader))
+      .to.deep.equal(['Reader first', 'hr', 'Reader second']);
+  });
+
+  it('does not apply a drag started in another document to the next writable document', async () => {
+    const writer = twoSections(['Next first', 'Next second'], { editable: true });
+    expect(await dragAcrossDocumentSwitch(writer))
+      .to.deep.equal(['Next first', 'hr', 'Next second']);
+  });
 });
