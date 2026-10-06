@@ -51,7 +51,7 @@ button {
   }
 
   &:hover {
-    background: var(--nx-ui-icon-btn-hover-bg, var(--s2-gray-100));
+    background: var(--nx-ui-icon-btn-hover-bg);
   }
 }
 
@@ -120,7 +120,7 @@ button {
   }
 
   .da-icon-btn:hover {
-    background: var(--nx-ui-icon-btn-hover-bg, var(--s2-gray-300));
+    background: var(--nx-ui-icon-btn-hover-bg);
   }
 
   &:last-of-type {

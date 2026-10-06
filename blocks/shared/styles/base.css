@@ -41,7 +41,7 @@ input {
   }
 
   &:hover {
-    background: var(--s2-gray-100);
+    background: var(--nx-ui-icon-btn-hover-bg, var(--s2-gray-100));
   }
 
   &:disabled {

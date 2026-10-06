@@ -57,7 +57,7 @@
 }
 
 .toolbar-btn:hover {
-  background: var(--nx-ui-icon-btn-hover-bg, var(--s2-gray-200));
+  background: var(--nx-ui-icon-btn-hover-bg);
 }
 
 .toolbar-btn[aria-pressed="true"] {
