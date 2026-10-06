@@ -158,7 +158,11 @@ describe('ew-canvas-versions', () => {
 
 describe('create-version form', () => {
   let inst;
+  beforeEach(() => {
+    getExtensionsBridge().view = { editable: true };
+  });
   afterEach(() => {
+    getExtensionsBridge().view = null;
     inst?.remove(); inst = null;
   });
 
@@ -226,6 +230,39 @@ describe('create-version form', () => {
     expect(saveBtn.disabled).to.be.true;
     expect(saveBtn.getAttribute('aria-label')).to.equal('Saving');
     expect(saveBtn.querySelector('.da-loading-spinner')).to.exist;
+  });
+});
+
+// ─── Create version permission gating ───────────────────────────────────────
+
+describe('create version permission gating', () => {
+  let inst;
+
+  afterEach(() => {
+    getExtensionsBridge().view = null;
+    inst?.remove(); inst = null;
+  });
+
+  it('hides the create button and hint and ignores handleNew for read-only users', async () => {
+    getExtensionsBridge().view = { editable: false };
+    inst = await createInstance({ path: '/org/site/doc.html', _versions: [ver()] });
+    expect(inst.shadowRoot.querySelector('.versionlist') !== null).to.be.true;
+    expect(inst.shadowRoot.querySelector('button[aria-label="Create version"]') === null).to.be.true;
+    expect(inst.shadowRoot.querySelector('.da-hint') === null).to.be.true;
+    inst.handleNew();
+    await inst.updateComplete;
+    expect(inst.shadowRoot.querySelector('li.is-new') === null).to.be.true;
+  });
+
+  it('shows the create button and hint and opens the form for writers', async () => {
+    getExtensionsBridge().view = { editable: true };
+    inst = await createInstance({ path: '/org/site/doc.html', _versions: [ver()] });
+    expect(inst.shadowRoot.querySelector('.da-hint') !== null).to.be.true;
+    const btn = inst.shadowRoot.querySelector('button[aria-label="Create version"]');
+    expect(btn).to.exist;
+    btn.click();
+    await inst.updateComplete;
+    expect(inst.shadowRoot.querySelector('li.is-new') !== null).to.be.true;
   });
 });
 
