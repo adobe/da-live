@@ -199,21 +199,23 @@ class EwPageMetadata extends LitElement {
   _renderAddDialog() {
     return html`
       <nx-dialog class="ew-pm-add" title="Add page metadata field" @close=${() => this._cancelAdd()}>
-        <label class="nx-form-field ${this._keyError ? 'nx-field-error' : ''}">
-          <span>Field name <span class="ew-pm-required" aria-hidden="true">*</span></span>
-          <input type="text" name="key" class="nx-input" aria-required="true" .value=${this._draftKey}
-                 @input=${(e) => { this._draftKey = e.target.value; this._keyError = ''; }}>
-          ${this._keyError ? html`<span class="nx-input-error-msg" role="alert">${this._keyError}</span>` : nothing}
-        </label>
-        <label class="nx-form-field">
-          <span>Value</span>
-          <input type="text" name="value" class="nx-input" .value=${this._draftValue}
-                 @input=${(e) => { this._draftValue = e.target.value; }}>
-        </label>
-        <button slot="actions" class="nx-form-btn-secondary"
+        <form id="ew-pm-add-form" novalidate
+              @submit=${(e) => { e.preventDefault(); this._confirmAdd(); }}>
+          <label class="nx-form-field ${this._keyError ? 'nx-field-error' : ''}">
+            <span>Field name <span class="ew-pm-required" aria-hidden="true">*</span></span>
+            <input type="text" name="key" class="nx-input" required .value=${this._draftKey}
+                   @input=${(e) => { this._draftKey = e.target.value; this._keyError = ''; }}>
+            ${this._keyError ? html`<span class="nx-input-error-msg" role="alert">${this._keyError}</span>` : nothing}
+          </label>
+          <label class="nx-form-field">
+            <span>Value</span>
+            <input type="text" name="value" class="nx-input" .value=${this._draftValue}
+                   @input=${(e) => { this._draftValue = e.target.value; }}>
+          </label>
+        </form>
+        <button type="button" slot="actions" class="nx-form-btn-secondary"
                 @click=${() => this._cancelAdd()}>Cancel</button>
-        <button slot="actions" class="nx-form-btn-primary"
-                @click=${() => this._confirmAdd()}>Add</button>
+        <button type="submit" form="ew-pm-add-form" slot="actions" class="nx-form-btn-primary">Add</button>
       </nx-dialog>`;
   }
 

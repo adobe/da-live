@@ -108,7 +108,7 @@ describe('ew-page-metadata', () => {
       const [keyLabel, valueLabel] = dialog.querySelectorAll('.nx-form-field > span:first-child');
       expect(dialog.getAttribute('title')).to.equal('Add page metadata field');
       expect(keyLabel.textContent.replace(/\s+/g, '')).to.equal('Fieldname*');
-      expect(dialog.querySelector('input[name="key"]').getAttribute('aria-required')).to.equal('true');
+      expect(dialog.querySelector('input[name="key"]').required).to.equal(true);
       expect(valueLabel.textContent.trim()).to.equal('Value');
       expect(dialog.querySelector('input[name="value"]').classList.contains('nx-input')).to.equal(true);
     });
