@@ -243,10 +243,12 @@ describe('livePreviewLogin', () => {
   beforeEach(() => {
     savedAdobeIMS = window.adobeIMS;
     savedFetch = window.fetch;
+    window.localStorage.removeItem('nx-ims');
   });
 
   afterEach(() => {
     window.fetch = savedFetch;
+    window.localStorage.removeItem('nx-ims');
     if (savedAdobeIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedAdobeIMS;
   });
 
@@ -263,7 +265,21 @@ describe('livePreviewLogin', () => {
     expect(called).to.be.false;
   });
 
+  it('does not request a cookie without an nx-ims session', async () => {
+    window.adobeIMS = { getAccessToken: () => ({ token: 'T1' }) };
+    let called = false;
+    window.fetch = async () => {
+      called = true;
+      return new Response('', { status: 200 });
+    };
+
+    await livePreviewLogin('org', 'site', 'main');
+
+    expect(called).to.be.false;
+  });
+
   it('requests /gimme_cookie from the default live preview origin', async () => {
+    window.localStorage.setItem('nx-ims', 'true');
     window.adobeIMS = { getAccessToken: () => ({ token: 'T1' }) };
     const calls = [];
     window.fetch = async (url, opts) => {
@@ -279,6 +295,7 @@ describe('livePreviewLogin', () => {
   });
 
   it('requests /gimme_cookie from a custom origin builder when provided', async () => {
+    window.localStorage.setItem('nx-ims', 'true');
     window.adobeIMS = { getAccessToken: () => ({ token: 'T1' }) };
     const calls = [];
     window.fetch = async (url) => {

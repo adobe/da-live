@@ -293,8 +293,7 @@ export async function contentLogin(owner, repo) {
 
 export async function livePreviewLogin(owner, repo, branch = 'main', getUrl = getLivePreviewUrl) {
   try {
-    const ims = await initIms();
-    const token = ims?.accessToken?.token || window.adobeIMS?.getAccessToken?.()?.token;
+    const token = await getAuthToken();
     if (!token) return;
     await fetch(`${getUrl(owner, repo, branch)}/gimme_cookie`, {
       credentials: 'include',

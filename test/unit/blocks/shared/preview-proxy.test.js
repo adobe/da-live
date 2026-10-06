@@ -55,6 +55,11 @@ describe('getPreviewProxyDetails', () => {
     expect(details.branch).to.equal('main');
   });
 
+  it('does not parse a lookalike preview host', () => {
+    const input = 'https://main--site--org.preview.da.live.attacker.example/path';
+    expect(getPreviewProxyDetails(input).url).to.equal(input);
+  });
+
   it('rewrites a content.da.live URL', () => {
     const details = getPreviewProxyDetails('https://content.da.live/org/site/path/to/page?a=1', { branch: 'feat' });
     expect(details.url).to.equal('https://feat--site--org.preview.da.live/path/to/page?a=1');
@@ -62,11 +67,31 @@ describe('getPreviewProxyDetails', () => {
     expect(details.site).to.equal('site');
   });
 
+  it('does not rewrite a lookalike content host', () => {
+    const input = 'https://content.da.live.attacker.example/org/site/path';
+    expect(getPreviewProxyDetails(input).url).to.equal(input);
+  });
+
+  it('rewrites a stage-content.da.live URL', () => {
+    const details = getPreviewProxyDetails('https://stage-content.da.live/org/site/path', { branch: 'feat' });
+    expect(details.url).to.equal('https://feat--site--org.preview.da.live/path');
+  });
+
   it('rewrites an admin.da.live URL', () => {
     const details = getPreviewProxyDetails('https://admin.da.live/source/org/site/path/to/page', { branch: 'feat' });
     expect(details.url).to.equal('https://feat--site--org.preview.da.live/path/to/page');
     expect(details.org).to.equal('org');
     expect(details.site).to.equal('site');
+  });
+
+  it('does not rewrite a lookalike admin host', () => {
+    const input = 'https://admin.da.live.attacker.example/source/org/site/path';
+    expect(getPreviewProxyDetails(input).url).to.equal(input);
+  });
+
+  it('rewrites a stage-admin.da.live URL', () => {
+    const details = getPreviewProxyDetails('https://stage-admin.da.live/source/org/site/path', { branch: 'feat' });
+    expect(details.url).to.equal('https://feat--site--org.preview.da.live/path');
   });
 
   it('uses a custom getUrl origin builder when provided', () => {
@@ -131,10 +156,12 @@ describe('ensurePreviewProxySession', () => {
   beforeEach(() => {
     savedAdobeIMS = window.adobeIMS;
     savedFetch = window.fetch;
+    window.localStorage.removeItem('nx-ims');
   });
 
   afterEach(() => {
     window.fetch = savedFetch;
+    window.localStorage.removeItem('nx-ims');
     if (savedAdobeIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedAdobeIMS;
   });
 
@@ -178,6 +205,7 @@ describe('ensurePreviewProxySession', () => {
   });
 
   it('authenticates the origin resolved from an absolute AEM URL', async () => {
+    window.localStorage.setItem('nx-ims', 'true');
     window.adobeIMS = { getAccessToken: () => ({ token: 'T1' }) };
     const calls = [];
     window.fetch = async (url, opts) => {
@@ -193,6 +221,7 @@ describe('ensurePreviewProxySession', () => {
   });
 
   it('authenticates a relative path using fallback org/site/branch', async () => {
+    window.localStorage.setItem('nx-ims', 'true');
     window.adobeIMS = { getAccessToken: () => ({ token: 'T1' }) };
     const calls = [];
     window.fetch = async (url) => {
@@ -219,6 +248,7 @@ describe('ensurePreviewProxySession', () => {
   });
 
   it('uses a custom getUrl origin builder when provided', async () => {
+    window.localStorage.setItem('nx-ims', 'true');
     window.adobeIMS = { getAccessToken: () => ({ token: 'T1' }) };
     const calls = [];
     window.fetch = async (url) => {

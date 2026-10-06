@@ -13,6 +13,10 @@ describe('PrepareMenu', () => {
 
   before(async () => {
     savedFetch = window.fetch;
+    const initialUrl = window.location.href;
+    const testUrl = new URL(initialUrl);
+    testUrl.searchParams.set('ref', 'feature/foo');
+    window.history.replaceState({}, '', testUrl);
 
     window.fetch = async (url) => {
       if (url.endsWith('.css')) {
@@ -34,6 +38,7 @@ describe('PrepareMenu', () => {
 
     const mod = await import('../../../../../blocks/canvas/editor-utils/prepare-menu.js');
     PrepareMenu = mod.default;
+    window.history.replaceState({}, '', initialUrl);
   });
 
   after(() => {
@@ -249,8 +254,8 @@ describe('PrepareMenu', () => {
       el = await fixture({ details: createDetails({ org: 'orgE', site: 'siteE' }) });
 
       const item = el._menuItems.find(({ title }) => title === 'Plugin Action');
-      expect(item.path).to.equal('https://main--siteE--orgE.stage-preview.da.live/tools/plugins/plugin-action/index.html');
-      expect(item.icon).to.equal('https://main--siteE--orgE.stage-preview.da.live/tools/plugins/plugin-action/icon.svg');
+      expect(item.path).to.equal('https://feature-foo--siteE--orgE.stage-preview.da.live/tools/plugins/plugin-action/index.html');
+      expect(item.icon).to.equal('https://feature-foo--siteE--orgE.stage-preview.da.live/tools/plugins/plugin-action/icon.svg');
 
       window.fetch = prevFetch;
     });
@@ -470,6 +475,8 @@ describe('PrepareMenu', () => {
       stubPopover(el);
 
       const savedAdobeIMS = window.adobeIMS;
+      const savedNxIms = window.localStorage.getItem('nx-ims');
+      window.localStorage.setItem('nx-ims', 'true');
       window.adobeIMS = { getAccessToken: () => ({ token: 'T1' }) };
       const prevFetch = window.fetch;
       const cookieRequests = [];
@@ -496,6 +503,8 @@ describe('PrepareMenu', () => {
         } else {
           window.adobeIMS = savedAdobeIMS;
         }
+        if (savedNxIms === null) window.localStorage.removeItem('nx-ims');
+        else window.localStorage.setItem('nx-ims', savedNxIms);
       }
 
       expect(cookieRequests).to.deep.equal([

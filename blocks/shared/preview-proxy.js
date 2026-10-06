@@ -2,9 +2,13 @@ import { getLivePreviewUrl } from './constants.js';
 import { livePreviewLogin } from './utils.js';
 
 const AEM_HOST = /\.aem\.(page|live)$/;
+const CONTENT_HOSTS = new Set(['content.da.live', 'stage-content.da.live']);
+const ADMIN_HOSTS = new Set(['admin.da.live', 'stage-admin.da.live']);
 
 function isPreviewHost(hostname) {
-  return hostname.includes('preview.da.live') || hostname.endsWith('.localhost');
+  return hostname.endsWith('.preview.da.live')
+    || hostname.endsWith('.stage-preview.da.live')
+    || hostname.endsWith('.localhost');
 }
 
 function parseBranchHost(hostname) {
@@ -52,7 +56,7 @@ function resolvePreviewProxyDetails(input, fallback) {
       };
     }
 
-    if (url.hostname.includes('content.da.live')) {
+    if (CONTENT_HOSTS.has(url.hostname)) {
       const [, org, site, ...rest] = url.pathname.split('/');
       if (!org || !site) return { url: input };
       const targetPath = `/${rest.join('/')}`;
@@ -67,7 +71,7 @@ function resolvePreviewProxyDetails(input, fallback) {
       };
     }
 
-    if (url.hostname.includes('admin.da.live')) {
+    if (ADMIN_HOSTS.has(url.hostname)) {
       const [, , org, site, ...rest] = url.pathname.split('/');
       if (!org || !site) return { url: input };
       const targetPath = `/${rest.join('/')}`;

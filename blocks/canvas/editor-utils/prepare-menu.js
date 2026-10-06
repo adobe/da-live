@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, sanitizeName } from '../../../scripts/utils.js';
 import { fetchDaConfigs, getPostMessageTargetOrigin } from '../../shared/utils.js';
 import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
 import { getPreviewOrigin } from './editor-utils.js';
@@ -10,7 +10,7 @@ const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
 
 const style = await loadStyle(import.meta.url);
-const ref = new URLSearchParams(window.location.search).get('ref') || 'main';
+const ref = sanitizeName(new URLSearchParams(window.location.search).get('ref'), false) || 'main';
 
 function resolveMenuItem(item, details) {
   const { org, site } = details || {};
