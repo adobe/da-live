@@ -24,7 +24,6 @@ const CREATE_PAGE_ERROR = 'Could not create the page. Try a different name.';
 
 const COPYABLE_EXTS = new Set(['html', 'json']);
 
-// The editor's last path segment, e.g. 'https://da.live/form#' → 'form', '/canvas#' → 'canvas'.
 const getEditorName = (editor) => editor?.split(/[?#]/)[0].split('/').pop();
 
 const CATEGORIES = [
@@ -332,7 +331,7 @@ class EwFileExplorer extends LitElement {
     }
     if (item.ext === 'html') {
       const editor = this._editorFor(item);
-      if (editor && getEditorName(editor) !== 'canvas') {
+      if (getEditorName(editor) !== 'canvas') {
         window.open(getEditPath({ path: item.path, ext: item.ext, editor }), '_blank', 'noopener,noreferrer');
         return;
       }
@@ -344,13 +343,11 @@ class EwFileExplorer extends LitElement {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
-  // The editor configured for a page via `editor.path`, or undefined for the default.
   _editorFor(item) {
     if (item.ext !== 'html') return undefined;
-    return getEditor({ path: item.path, configs: this._configs });
+    return getEditor({ path: item.path, configs: this._configs, ewEnabled: true });
   }
 
-  // Structured content (pages edited in /form) is delivered by da-sc instead of aem.page.
   // TODO: replace this config-based check once structured content becomes a first-class type.
   _copyUrl(item) {
     if (getEditorName(this._editorFor(item)) !== 'form') return getAemUrl(item);

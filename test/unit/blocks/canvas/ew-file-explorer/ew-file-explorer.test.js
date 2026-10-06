@@ -526,13 +526,13 @@ describe('EwFileExplorer', () => {
     const SC = { path: '/org/site/forms/contact.html', ext: 'html' };
 
     beforeEach(() => {
-      el._configs = [null, {
-        data: [
-          { key: 'editor.path', value: '/org/site/forms=https://da.live/form#' },
-          { key: 'editor.path', value: '/org/site/blog=/canvas#' },
-        ],
-      }];
+      el._configs = [null, { data: [] }];
+      globalThis.__editorMock = ({ path, configs }) => {
+        if (configs !== el._configs) return undefined;
+        return path.startsWith('/org/site/forms') ? 'https://da.live/form#' : undefined;
+      };
     });
+    afterEach(() => { delete globalThis.__editorMock; });
 
     it('opens a page in its configured editor', () => {
       const savedOpen = window.open;
@@ -548,7 +548,7 @@ describe('EwFileExplorer', () => {
       }
     });
 
-    it('stays in canvas when the configured editor is canvas', () => {
+    it('stays in canvas when no other editor is configured', () => {
       const savedOpen = window.open;
       const opened = [];
       window.open = (...args) => { opened.push(args); };

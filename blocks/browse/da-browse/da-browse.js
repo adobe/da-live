@@ -157,8 +157,6 @@ export default class DaBrowse extends LitElement {
   }
 
   async getEditor(reFetch) {
-    const DEF_EDIT = this._ewEnabled ? '/canvas#' : '/edit#';
-
     if (reFetch) {
       const { org, site } = this.details;
       const configs = await Promise.all(fetchDaConfigs({ org, site }));
@@ -170,7 +168,11 @@ export default class DaBrowse extends LitElement {
       }, []);
     }
 
-    return resolveEditor({ path: this.details.fullpath, configs: this.editorConfigs }) ?? DEF_EDIT;
+    return resolveEditor({
+      path: this.details.fullpath,
+      configs: this.editorConfigs,
+      ewEnabled: this._ewEnabled,
+    });
   }
 
   handleTabClick(idx) {
