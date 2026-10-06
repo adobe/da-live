@@ -616,4 +616,40 @@ describe('ew-page-outline - read-only', () => {
     expect(el.shadowRoot.querySelectorAll('nx-dialog.ew-po-delete').length).to.equal(0);
     expect(el._pendingDelete ?? null).to.equal(null);
   });
+
+  async function dragSecondSectionOntoFirst({ editable }) {
+    bridge.view = makeRealView({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'First' }] },
+        { type: 'horizontal_rule' },
+        { type: 'paragraph', content: [{ type: 'text', text: 'Second' }] },
+      ],
+    });
+    if (!editable) bridge.view.setProps({ editable: () => false });
+    el._sections = parseSections(getInstrumentedHTML(bridge.view));
+    await el.updateComplete;
+
+    const [first, second] = el.shadowRoot.querySelectorAll('.outline-section');
+    const dataTransfer = new DataTransfer();
+    const fire = (target, type, clientY = 0) => {
+      const init = { bubbles: true, composed: true, cancelable: true, dataTransfer, clientY };
+      target.dispatchEvent(new DragEvent(type, init));
+    };
+    // A text selection drag starts on the label even when the header is not draggable.
+    fire(second.querySelector('.section-label'), 'dragstart');
+    fire(first, 'dragover', first.getBoundingClientRect().top);
+    fire(first, 'drop');
+    return docSeq(bridge.view.state.doc);
+  }
+
+  it('does not move a section dragged by its label in a read-only view', async () => {
+    expect(await dragSecondSectionOntoFirst({ editable: false }))
+      .to.deep.equal(['First', 'hr', 'Second']);
+  });
+
+  it('moves a section dragged by its label in an editable view', async () => {
+    expect(await dragSecondSectionOntoFirst({ editable: true }))
+      .to.deep.equal(['Second', 'hr', 'First']);
+  });
 });
