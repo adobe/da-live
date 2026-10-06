@@ -31,6 +31,9 @@ export default class DaBrowse extends LitElement {
     _typesFilterState: { state: true },
     _sortState: { state: true },
     _flattenFolders: { state: true },
+    _search: { state: true },
+    _searchItems: { state: true },
+    _searchError: { state: true },
   };
 
   _browseSelKeys = new Set();
@@ -83,11 +86,92 @@ export default class DaBrowse extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [style];
     this._handleShortcuts = this.handleShortcuts.bind(this);
     document.addEventListener('keydown', this._handleShortcuts);
+    this._navSearchReady = this.mountNavSearch();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('keydown', this._handleShortcuts);
+    this.clearSearch();
+    this._navSearch?.remove();
+  }
+
+  async mountNavSearch() {
+    const nav = document.querySelector('nx-nav');
+    if (!nav) return;
+    await import(`${getNx()}/blocks/shared/search/search.js`);
+    if (!this.isConnected) return;
+    if (!this._navSearch) {
+      const field = document.createElement('nx-search');
+      field.slot = 'search';
+      field.variant = 'field';
+      field.size = 'm';
+      field.setAttribute('role', 'search');
+      field.addEventListener('search-submit', (event) => this.submitSearch(event));
+      field.addEventListener('input', () => {
+        if (!field.value) this.clearSearch();
+      });
+      this._navSearch = field;
+    }
+    nav.append(this._navSearch);
+    this.updateNavSearch();
+  }
+
+  updateNavSearch() {
+    if (!this._navSearch) return;
+    const directory = this.details?.fullpath?.split('/').filter(Boolean).at(-1);
+    const label = directory ? `Search ${directory}` : 'Search files';
+    this._navSearch.label = label;
+    this._navSearch.placeholder = label;
+    this._navSearch.setAttribute('aria-label', label);
+  }
+
+  clearSearch() {
+    const wasSearching = !!this._search;
+    this._searchRequest = undefined;
+    this._search?.cancelSearch();
+    this._search = undefined;
+    this._searchItems = undefined;
+    this._searchError = undefined;
+    if (this._navSearch) this._navSearch.value = '';
+    if (wasSearching) {
+      this.browseCmp?.notifySortState?.();
+      this.browseCmp?.notifyTypesFilter?.();
+    }
+  }
+
+  async submitSearch(event) {
+    event.preventDefault();
+    const term = event.detail.value.trim();
+    const fullpath = this.details?.fullpath;
+    if (!term || !fullpath) return;
+    const request = {};
+    this._searchRequest = request;
+    this._searchError = undefined;
+    try {
+      await import('../da-search/da-search.js');
+      if (this._searchRequest !== request || !this.isConnected) return;
+      const search = document.createElement('da-search');
+      search.fullpath = fullpath;
+      search.externalInput = true;
+      search.browseItems = this.browseCmp?.items?.map((item) => ({ ...item }));
+      search.caseSensitive = this._search?.caseSensitive ?? true;
+      search.showReplace = this._search?.showReplace;
+      this._search?.cancelSearch();
+      search.addEventListener('updated', ({ detail }) => {
+        if (this._search === search) this._searchItems = detail.items;
+      });
+      this._search = search;
+      this._searchItems = [];
+      await this.updateComplete;
+      await search.updateComplete;
+      if (this._searchRequest !== request || !this.isConnected) return;
+      await search.search(fullpath, term);
+    } catch (error) {
+      if (this._searchRequest === request) {
+        this._searchError = `Search failed: ${error.message}`;
+      }
+    }
   }
 
   handleShortcuts(e) {
@@ -116,7 +200,11 @@ export default class DaBrowse extends LitElement {
     if (props.has('details') && this.details) {
       const prevDetails = props.get('details');
       const orgChanged = prevDetails?.org !== this.details.org;
-      if (prevDetails?.fullpath !== this.details.fullpath) this._clearBrowseSelection();
+      if (prevDetails?.fullpath !== this.details.fullpath) {
+        this._clearBrowseSelection();
+        this.clearSearch();
+        this.updateNavSearch();
+      }
 
       // EW flag lives at site level — re-check whenever org or site changes,
       // and do this before getEditor so the default editor reflects EW state
@@ -192,6 +280,36 @@ export default class DaBrowse extends LitElement {
     return this.shadowRoot.querySelector('.da-list-type-browse');
   }
 
+  get activeListCmp() {
+    return this.shadowRoot.querySelector(this._search ? '.da-list-type-search' : '.da-list-type-browse');
+  }
+
+  handleTypesFilterChange({ currentTarget, detail }) {
+    if (currentTarget === this.activeListCmp) this._typesFilterState = detail;
+  }
+
+  handleSortChange({ currentTarget, detail }) {
+    if (currentTarget === this.activeListCmp) this._sortState = detail;
+  }
+
+  renderSearchResults() {
+    return html`
+      <div class="da-search-controls">
+        <button type="button" @click=${this.clearSearch}>Back to browse</button>
+        ${this._search}
+      </div>
+      <div role="grid" aria-label="Search results">
+        <da-list class="da-list-type-search"
+          editor=${this.editor}
+          .listItems=${this._searchItems}
+          .hidePublishConfs=${this.hidePublishConfs}
+          .flattenFolders=${this._flattenFolders}
+          @typesfilterchange=${this.handleTypesFilterChange}
+          @sortchange=${this.handleSortChange}
+          select sort></da-list>
+      </div>`;
+  }
+
   renderList() {
     return html`
       <da-list
@@ -200,8 +318,8 @@ export default class DaBrowse extends LitElement {
         editor="${this.editor}"
         .hidePublishConfs=${this.hidePublishConfs}
         @onpermissions=${this.handlePermissions}
-        @typesfilterchange=${({ detail }) => { this._typesFilterState = detail; }}
-        @sortchange=${({ detail }) => { this._sortState = detail; }}
+        @typesfilterchange=${this.handleTypesFilterChange}
+        @sortchange=${this.handleSortChange}
         @selectionchanged=${this._chatEnabled ? this._handleBrowseSelection : nothing}
         select
         sort
@@ -223,13 +341,15 @@ export default class DaBrowse extends LitElement {
         .typesFilterState=${this._typesFilterState}
         .sortState=${this._sortState}
         @chatrequest=${openChatPanel}
-        @typesfilterrequest=${({ detail }) => this.browseCmp.toggleTypesPopover(detail.anchor)}
-        @sortrequest=${({ detail }) => this.browseCmp.setSort(detail.property, detail.direction)}
+        @typesfilterrequest=${({ detail }) => this.activeListCmp.toggleTypesPopover(detail.anchor)}
+        @sortrequest=${({ detail }) => this.activeListCmp.setSort(detail.property, detail.direction)}
         @flattenfolderschange=${({ detail }) => this.setFlattenFolders(detail.flatten)}>
         <da-new @newitem=${this.handleNewItem} fullpath="${this.details.fullpath}" editor="${this.editor}"></da-new>
       </da-browse-header>
       <div class="da-browse-content">
-        <div role="grid" aria-label="Browse files">
+        ${this._searchError ? html`<p role="alert">${this._searchError}</p>` : nothing}
+        ${this._search ? this.renderSearchResults() : nothing}
+        <div role="grid" aria-label="Browse files" ?hidden=${!!this._search}>
           ${this.renderList()}
         </div>
       </div>

@@ -169,6 +169,10 @@ export default class DaList extends LitElement {
     this.setupObserver();
   }
 
+  get items() {
+    return this._listItems;
+  }
+
   setStatus(text, description, type = 'info') {
     if (!text) {
       this._status = null;

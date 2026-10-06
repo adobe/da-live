@@ -28,6 +28,7 @@ export default class DaSearch extends LitElement {
   static properties = {
     fullpath: { type: String },
     browseItems: { type: Array },
+    externalInput: { type: Boolean },
     _term: { state: true },
     _total: { state: true },
     _matches: { state: true },
@@ -49,6 +50,25 @@ export default class DaSearch extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [STYLE];
   }
 
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.cancelSearch();
+  }
+
+  cancelSearch() {
+    this._cancelCrawl?.();
+    this._cancelCrawl = undefined;
+    this._searchRun = undefined;
+  }
+
+  get caseSensitive() {
+    return this._caseSensitive;
+  }
+
+  set caseSensitive(value) {
+    this._caseSensitive = value;
+  }
+
   update(props) {
     if (props.has('fullpath') && props.get('fullpath') !== this.fullpath) {
       this.setDefault();
@@ -64,6 +84,9 @@ export default class DaSearch extends LitElement {
   }
 
   setDefault() {
+    this.cancelSearch();
+    this._searchRun = {};
+    this._term = undefined;
     this._items = [];
     this._searchTotal = 0;
     this._searchQueue = [];
@@ -108,9 +131,11 @@ export default class DaSearch extends LitElement {
   }
 
   async getMatches(startPath, term) {
+    const run = this._searchRun;
     const searchTypes = ['.html', '.json', '.svg'];
 
     const searchFile = async (file, prevRetry = 0) => {
+      if (this._searchRun !== run) return;
       if (!searchTypes.some((type) => file.path.endsWith(type))) return;
 
       let retryCount = prevRetry;
@@ -123,6 +148,7 @@ export default class DaSearch extends LitElement {
           const { source } = await getNx2Api();
           const resp = await source.get(file.path);
           const text = await resp.text();
+          if (this._searchRun !== run) return file;
           // Log empty files
           // eslint-disable-next-line no-console
           if (text.length < 2) console.log(file.path);
@@ -138,7 +164,7 @@ export default class DaSearch extends LitElement {
           return { error: 'fetch error' };
         }
 
-        if (match) {
+        if (match && this._searchRun === run) {
           this._matches += 1;
           file.name = file.path.replace(`.${file.ext}`, '').replace(this.fullpath, '');
           this._items = [...this._items, file];
@@ -150,7 +176,7 @@ export default class DaSearch extends LitElement {
 
       const result = await this.timeoutWrapper(getFile);
 
-      if (result.error && retryCount <= 3) {
+      if (result?.error && retryCount <= 3 && this._searchRun === run) {
         // eslint-disable-next-line no-console
         console.log(`retrying due to ${result.error}: ${file.path}`);
         retryCount += 1;
@@ -159,15 +185,19 @@ export default class DaSearch extends LitElement {
     };
 
     const { paths, files } = await this.getSearchScope(startPath);
-    const { results } = crawl({ path: paths, callback: searchFile, throttle: 10, files });
-    await results;
+    if (this._searchRun !== run) return;
+    const crawling = crawl({ path: paths, callback: searchFile, throttle: 10, files });
+    this._cancelCrawl = crawling.cancelCrawl;
+    await crawling.results;
   }
 
   async search(startPath, term) {
+    const run = this._searchRun;
     this._term = term;
     this._action = 'Found';
     performance.mark('start-search');
     await this.getMatches(startPath, term);
+    if (this._searchRun !== run) return;
     performance.mark('end-search');
 
     const timestamp = Date.now();
@@ -203,6 +233,7 @@ export default class DaSearch extends LitElement {
 
   async handleReplace(e) {
     e.preventDefault();
+    const run = this._searchRun;
     const [replace] = e.target.elements;
     if (!replace.value) return;
 
@@ -213,24 +244,26 @@ export default class DaSearch extends LitElement {
     performance.mark('start-replace');
 
     const replaceFile = async (file, prevRetry = 0) => {
+      if (this._searchRun !== run) return;
       let retryCount = prevRetry;
 
       const getFile = async () => {
         const { source } = await getNx2Api();
         const getResp = await source.get(file.path);
         const text = await getResp.text();
+        if (this._searchRun !== run) return file;
         const replacedText = text.replaceAll(this._term, replace.value);
         const blob = new Blob([replacedText], { type: 'text/html' });
         const postResp = await source.save(file.path, { body: blob });
         if (!postResp.ok) return { error: 'Error saving file' };
-        this._matches += 1;
+        if (this._searchRun === run) this._matches += 1;
         return file;
       };
 
       const result = await this.timeoutWrapper(getFile, 60000);
 
       // Only retry for true failures (not timeouts)
-      if (result.error === 'bad result') {
+      if (result?.error === 'bad result' && this._searchRun === run) {
         if (retryCount >= 3) {
           // eslint-disable-next-line no-console
           console.log('retry limit exceeded');
@@ -243,6 +276,7 @@ export default class DaSearch extends LitElement {
 
     const queue = new Queue(replaceFile);
     await Promise.all(this._items.map((match) => queue.push(match)));
+    if (this._searchRun !== run) return;
 
     performance.mark('end-replace');
     const timestamp = Date.now();
@@ -252,7 +286,7 @@ export default class DaSearch extends LitElement {
   }
 
   get showText() {
-    return this.matches && this._total;
+    return !!this._term && (this._total > 0 || this._time !== null);
   }
 
   get matchText() {
@@ -273,7 +307,7 @@ export default class DaSearch extends LitElement {
 
   render() {
     return html`
-      <form @submit=${this.handleSearch} role="search">
+      ${this.externalInput ? nothing : html`<form @submit=${this.handleSearch} role="search">
         <div class="search-input-wrapper">
           <input type="text" placeholder="Enter search" name="term" aria-label="Search term"/>
           <button
@@ -286,7 +320,11 @@ export default class DaSearch extends LitElement {
           </button>
         </div>
         <input type="submit" value="Search" />
-      </form>
+      </form>`}
+      ${this.externalInput ? html`
+        <button type="button" class="external-case-toggle"
+          aria-pressed=${this._caseSensitive}
+          @click=${this.toggleCaseSensitive}>Case sensitive</button>` : nothing}
       <p class="search-results">${this.showText ? html`${this.matchText}${this.timeText}` : nothing}</p>
       <div class="replace-pane">
         <form class="da-replace-form${this.showReplace ? nothing : ' hide'}" @submit=${this.handleReplace}>

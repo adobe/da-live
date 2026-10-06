@@ -6,6 +6,21 @@
   top: 1px;
 }
 
+.external-case-toggle {
+  justify-self: start;
+  padding: var(--s2-spacing-100) var(--s2-spacing-200);
+  border: 1px solid var(--s2-gray-300);
+  border-radius: var(--s2-corner-radius-100);
+  background: var(--s2-gray-50);
+  color: var(--s2-gray-800);
+  font: inherit;
+  cursor: pointer;
+
+  &[aria-pressed="true"] {
+    border-color: var(--s2-blue-900);
+  }
+}
+
 form {
   display: grid;
   grid-template-columns: 1fr 96px;

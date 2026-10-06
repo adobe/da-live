@@ -1,6 +1,7 @@
 :host {
   display: block;
   font-family: var(--s2-font-family);
+  container: browse-header / inline-size;
 }
 
 .da-browse-header {
@@ -51,6 +52,7 @@
 
 .da-browse-toolbar-control {
   white-space: nowrap;
+  position: relative;
 }
 
 .da-browse-settings-link {
@@ -68,4 +70,23 @@
   justify-content: space-between;
   gap: var(--s2-spacing-150);
   width: 100%;
+}
+
+@container browse-header (width < 900px) {
+  .da-browse-control-label,
+  .da-browse-sort-control::part(label) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .da-browse-toolbar-control {
+    width: 32px;
+    padding: 7px;
+  }
 }

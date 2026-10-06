@@ -98,7 +98,7 @@ export default class DaBrowseHeader extends LitElement {
       { value: 'lastModified:ascending', label: 'Modified (oldest first)' },
     ];
     return html`
-      <nx-picker class="da-browse-sort-control" size="m"
+      <nx-picker class="da-browse-sort-control" size="m" title=${this.sortLabel}
         .items=${options}
         .value=${this.sortState.property ? `${this.sortState.property}:${this.sortState.direction}` : ''}
         .labelOverride=${this.sortLabel}
@@ -108,7 +108,9 @@ export default class DaBrowseHeader extends LitElement {
         if (!options.some(({ value }) => value === detail.value)) return;
         const [property, direction] = detail.value.split(':');
         this.requestSort(property, direction);
-      }}></nx-picker>`;
+      }}>
+        <svg slot="prefix" viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-sort-20-n.svg#icon"></use></svg>
+      </nx-picker>`;
   }
 
   get sortLabel() {
@@ -121,19 +123,22 @@ export default class DaBrowseHeader extends LitElement {
   }
 
   renderToolbarTrailing() {
+    const typesLabel = this.typesFilterState.hiddenCount
+      ? `${this.typesFilterState.hiddenCount} ${this.typesFilterState.hiddenCount === 1 ? 'type' : 'types'} hidden`
+      : 'Show All types';
     return html`
       <div class="da-browse-toolbar-controls" role="group" aria-label="Browse toolbar controls">
         <button type="button" class="da-browse-toolbar-control nx-action-btn-quiet" aria-haspopup="dialog"
-          aria-controls="browse-view-options" aria-expanded=${this._viewOptionsOpen} @click=${this.toggleViewOptions}>
+          title="View Options"
+          aria-controls="browse-view-options"
+          aria-expanded=${this._viewOptionsOpen} @click=${this.toggleViewOptions}>
           <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-listbulleted-20-n.svg#icon"></use></svg>
-          <span>View Options</span>
+          <span class="da-browse-control-label">View Options</span>
         </button>
         <button type="button" class="da-browse-toolbar-control nx-action-btn-quiet" aria-haspopup="dialog"
-          aria-expanded=${this.typesFilterState.open} @click=${this.requestTypesFilter}>
+          title=${typesLabel} aria-expanded=${this.typesFilterState.open} @click=${this.requestTypesFilter}>
           <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-filter-20-n.svg#icon"></use></svg>
-          <span>${this.typesFilterState.hiddenCount
-        ? `${this.typesFilterState.hiddenCount} ${this.typesFilterState.hiddenCount === 1 ? 'type' : 'types'} hidden`
-        : 'Show All types'}</span>
+          <span class="da-browse-control-label">${typesLabel}</span>
         </button>
         ${this.renderSortOptions()}
         ${this.renderSettingsActions()}

@@ -36,6 +36,7 @@ describe('DaSearch', () => {
   });
 
   afterEach(() => {
+    daSearch.remove();
     fetchStub.restore();
   });
 
@@ -62,6 +63,43 @@ describe('DaSearch', () => {
       expect(daSearch._total).to.equal(0);
       expect(daSearch._matches).to.equal(0);
       expect(daSearch._time).to.be.null;
+    });
+  });
+
+  describe('nav search support', () => {
+    it('cancels the crawl and invalidates its callbacks', () => {
+      const cancel = spy();
+      daSearch._cancelCrawl = cancel;
+      daSearch.cancelSearch();
+      expect(cancel.calledOnce).to.be.true;
+      expect(daSearch._searchRun).to.equal(undefined);
+    });
+
+    it('does not start a crawl after cancellation during scope resolution', async () => {
+      let finish;
+      const scope = new Promise((resolve) => { finish = resolve; });
+      stub(daSearch, 'getSearchScope').returns(scope);
+      const pending = daSearch.getMatches('/org/site', 'term');
+      daSearch.cancelSearch();
+      finish({ paths: [], files: [] });
+      await pending;
+      expect(daSearch._cancelCrawl).to.equal(undefined);
+      expect(daSearch._items).to.deep.equal([]);
+      expect(fetchStub.called).to.be.false;
+    });
+
+    it('keeps case and replace controls without duplicating the nav input', async () => {
+      daSearch.externalInput = true;
+      document.body.append(daSearch);
+      await daSearch.updateComplete;
+      expect(daSearch.shadowRoot.querySelector('form[role="search"]')).to.be.null;
+      const control = daSearch.shadowRoot.querySelector('.external-case-toggle');
+      expect(control.getAttribute('aria-pressed')).to.equal('true');
+      control.click();
+      await daSearch.updateComplete;
+      expect(daSearch.caseSensitive).to.be.false;
+      expect(control.getAttribute('aria-pressed')).to.equal('false');
+      expect(daSearch.shadowRoot.querySelector('.replace-pane')).to.exist;
     });
   });
 
@@ -638,33 +676,34 @@ describe('DaSearch', () => {
 
   describe('getters', () => {
     describe('showText', () => {
-      it('checks showText behavior when matches is 0', () => {
+      it('shows progress when files were searched but none matched', () => {
+        daSearch._term = 'missing';
         daSearch._matches = 0;
         daSearch._total = 10;
-
-        // Note: showText uses this.matches (not this._matches)
-        // Since matches property is not explicitly defined, behavior depends on implementation
-        const result = daSearch.showText;
-        // Just verify it returns a value (could be 0, undefined, or 10)
-        expect(result !== null).to.be.true;
+        expect(daSearch.showText).to.be.true;
       });
 
       it('checks showText behavior when total is 0', () => {
+        daSearch._term = 'term';
         daSearch._matches = 5;
         daSearch._total = 0;
 
-        const result = daSearch.showText;
-        // Just verify it returns a value
-        expect(result !== null).to.be.true;
+        expect(daSearch.showText).to.be.false;
       });
 
       it('checks showText behavior when both are set', () => {
+        daSearch._term = 'term';
         daSearch._matches = 5;
         daSearch._total = 10;
 
-        const result = daSearch.showText;
-        // Just verify it returns a value
-        expect(result !== null).to.be.true;
+        expect(daSearch.showText).to.be.true;
+      });
+
+      it('shows an empty result summary after a completed search', () => {
+        daSearch._term = 'term';
+        daSearch._total = 0;
+        daSearch._time = '0.01';
+        expect(daSearch.showText).to.be.true;
       });
     });
 
