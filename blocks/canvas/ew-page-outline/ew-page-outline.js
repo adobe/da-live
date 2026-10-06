@@ -118,6 +118,7 @@ class EwPageOutline extends LitElement {
         this._selectedBlockIndex = undefined;
         this._selectedProseIndex = undefined;
         this._cancelRename();
+        this._pendingDelete = null;
       }
     });
     this._unsubscribeSelect = canvasBus.editorSelectState
@@ -152,6 +153,7 @@ class EwPageOutline extends LitElement {
       this._selectedBlockIndex = undefined;
       this._selectedProseIndex = undefined;
       this._cancelRename();
+      this._pendingDelete = null;
     }
     this._prevSelectedPath = sp;
 
