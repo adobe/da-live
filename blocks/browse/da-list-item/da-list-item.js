@@ -270,7 +270,7 @@ export default class DaListItem extends LitElement {
             </span>
           `}
           <div class="da-item-list-item-name">
-            <span class="da-item-list-item-name-text">${this.name}</span>
+            <span class="da-item-list-item-name-text" title=${this.name}>${this.name}</span>
           </div>
         </div>
       </a>

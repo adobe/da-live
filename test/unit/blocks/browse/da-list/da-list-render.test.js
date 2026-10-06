@@ -261,7 +261,7 @@ describe('da-list render', () => {
     const row = item.shadowRoot.querySelector('.da-item-list-item-inner');
     const viewport = { width: window.innerWidth, height: window.innerHeight };
     try {
-      for (const [width, columns] of [[480, 3], [900, 5]]) {
+      for (const [width, columns] of [[480, 3], [700, 4], [1000, 5]]) {
         // eslint-disable-next-line no-await-in-loop
         await setViewport({ width, height: viewport.height });
         const headerColumns = getComputedStyle(header).gridTemplateColumns.split(' ');
@@ -269,7 +269,9 @@ describe('da-list render', () => {
         expect(headerColumns.length).to.equal(columns);
         expect(rowColumns).to.deep.equal(headerColumns);
         const typeDisplay = getComputedStyle(row.querySelector('[data-column="type"]')).display;
-        expect(typeDisplay === 'none').to.equal(width < 600);
+        expect(typeDisplay === 'none').to.equal(el.getBoundingClientRect().width < 900);
+        const dateDisplay = getComputedStyle(row.querySelector('[data-column="modified"]')).display;
+        expect(dateDisplay === 'none').to.equal(el.getBoundingClientRect().width < 500);
       }
     } finally {
       await setViewport(viewport);

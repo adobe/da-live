@@ -55,6 +55,14 @@
   position: relative;
 }
 
+.da-browse-sort-control {
+  --nx-picker-radius: var(--s2-corner-radius-400);
+}
+
+.da-browse-sort-control:hover {
+  --nx-picker-background: var(--s2-gray-200);
+}
+
 .da-browse-settings-link {
   margin-left: 2px;
   box-sizing: border-box;

@@ -3,7 +3,10 @@
 }
 
 :host {
-  --da-list-pad-inline: 24px;
+  display: block;
+  container: browse-list / inline-size;
+
+  --da-list-pad-inline: 16px;
   --da-list-action-width: 32px;
   --da-list-type-width: 120px;
   --da-list-date-width: 180px;
@@ -504,19 +507,33 @@ da-list-item.is-expanded::after {
   }
 }
 
-@media (width < 600px) {
-  :host {
+@container browse-list (width < 900px) {
+  .da-browse-table-header {
+    grid-template-columns: var(--da-list-select-width) minmax(0, 1fr) var(--da-list-date-width) var(--da-list-action-width);
+  }
+
+  .da-browse-header-cell-type {
+    display: none;
+  }
+}
+
+@container browse-list (width < 600px) {
+  .da-browse-table-header,
+  .da-item-list {
     --da-list-pad-inline: 8px;
     --da-list-select-width: 24px;
   }
 
   .da-browse-table-header {
-    grid-template-columns: var(--da-list-select-width) minmax(0, 1fr) var(--da-list-action-width);
-    padding-inline: var(--da-list-pad-inline);
     column-gap: var(--s2-spacing-100);
   }
+}
 
-  .da-browse-header-cell-type,
+@container browse-list (width < 500px) {
+  .da-browse-table-header {
+    grid-template-columns: var(--da-list-select-width) minmax(0, 1fr) var(--da-list-action-width);
+  }
+
   .da-browse-header-cell-modified {
     display: none;
   }
