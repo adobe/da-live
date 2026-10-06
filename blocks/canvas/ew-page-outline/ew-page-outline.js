@@ -114,11 +114,7 @@ class EwPageOutline extends LitElement {
           this._expandedContent = new Set();
         }
       } else {
-        this._sections = undefined;
-        this._selectedBlockIndex = undefined;
-        this._selectedProseIndex = undefined;
-        this._cancelRename();
-        this._pendingDelete = null;
+        this._resetDocumentState();
       }
     });
     this._unsubscribeSelect = canvasBus.editorSelectState
@@ -137,8 +133,15 @@ class EwPageOutline extends LitElement {
     this._unsubscribeSelect?.();
   }
 
+  // Checked when a change is applied, not only when it starts: the document can
+  // switch while a drag, delete dialog, rename or block library is open.
+  get _writableView() {
+    const { view } = getExtensionsBridge();
+    return view?.editable ? view : null;
+  }
+
   get _canWrite() {
-    return getExtensionsBridge().view?.editable ?? false;
+    return !!this._writableView;
   }
 
   get _selectedPath() {
@@ -149,11 +152,7 @@ class EwPageOutline extends LitElement {
   willUpdate() {
     const sp = this._selectedPath;
     if (this._prevSelectedPath !== undefined && sp !== this._prevSelectedPath) {
-      this._sections = undefined;
-      this._selectedBlockIndex = undefined;
-      this._selectedProseIndex = undefined;
-      this._cancelRename();
-      this._pendingDelete = null;
+      this._resetDocumentState();
     }
     this._prevSelectedPath = sp;
 
@@ -164,6 +163,15 @@ class EwPageOutline extends LitElement {
       this._hasBlockLibrary = false;
       if (orgSiteKey) this._checkBlockLibrary(org, site);
     }
+  }
+
+  _resetDocumentState() {
+    this._sections = undefined;
+    this._selectedBlockIndex = undefined;
+    this._selectedProseIndex = undefined;
+    this._cancelRename();
+    this._pendingDelete = null;
+    this._clearDragState();
   }
 
   async _checkBlockLibrary(org, site) {
@@ -355,8 +363,8 @@ class EwPageOutline extends LitElement {
     e.stopPropagation();
     const { _dragging, _dropTarget } = this;
     this._clearDragState();
-    if (!_dropTarget || !_dragging) return;
-    const { view } = getExtensionsBridge();
+    const view = this._writableView;
+    if (!_dropTarget || !_dragging || !view) return;
 
     if (_dragging.type === OUTLINE_TYPES.CONTENT) {
       let target;
@@ -419,7 +427,7 @@ class EwPageOutline extends LitElement {
     const current = this._sections?.[sectionIndex]?.name ?? '';
     this._cancelRename();
     if (next === current) return;
-    const { view } = getExtensionsBridge();
+    const view = this._writableView;
     if (view) setSectionName(view, sectionIndex, next);
   }
 
@@ -437,11 +445,13 @@ class EwPageOutline extends LitElement {
   async _openAddBlockModal(e, sectionIndex) {
     e.stopPropagation();
     e.preventDefault();
-    const { view } = getExtensionsBridge();
+    const view = this._writableView;
     if (!view) return;
     const modulePath = '../ew-block-library-modal/ew-block-library-modal.js';
     const { openBlockLibraryModal } = await import(modulePath);
-    const onInsert = (dom) => insertBlockAtSectionStart(view, dom, sectionIndex);
+    const onInsert = (dom) => {
+      if (this._writableView === view) insertBlockAtSectionStart(view, dom, sectionIndex);
+    };
     openBlockLibraryModal({ onInsert });
   }
 
@@ -512,7 +522,7 @@ class EwPageOutline extends LitElement {
   _confirmDelete() {
     const { type, index } = this._pendingDelete;
     this._pendingDelete = null;
-    const { view } = getExtensionsBridge();
+    const view = this._writableView;
     if (!view) return;
     if (type === OUTLINE_TYPES.BLOCK) {
       deleteBlock(view, index);
