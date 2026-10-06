@@ -28,7 +28,7 @@
   box-sizing: border-box;
   margin: 0;
   height: var(--nx-ui-segment-height);
-  padding: 0 9px;
+  padding: 0 var(--nx-ui-segment-padding);
   border: none;
   border-radius: var(--s2-corner-radius-400);
   font: inherit;
@@ -64,7 +64,7 @@
 
   &.segment-icon {
     padding: 0 calc((var(--nx-ui-segment-height) - var(--nx-ui-icon-toolbar)) / 2);
-    min-width: 28px;
+    min-width: max(28px, var(--nx-ui-segment-height));
   }
 
   &.segment-icon svg.icon {

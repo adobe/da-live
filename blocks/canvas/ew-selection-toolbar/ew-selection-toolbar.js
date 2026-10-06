@@ -58,6 +58,7 @@ class EwSelectionToolbar extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    this.dataset.uiSize = getUISize();
     this.shadowRoot.adoptedStyleSheets = [styles];
   }
 

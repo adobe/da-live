@@ -273,6 +273,7 @@
   width: 100%;
   height: 100px;
   padding: 8px var(--s2-spacing-200);
+  border-width: var(--nx-ui-field-border-width);
   font-family: var(--body-font-family);
   font-size: var(--nx-ui-text-field);
   resize: none;

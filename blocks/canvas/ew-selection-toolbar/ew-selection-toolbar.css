@@ -42,8 +42,8 @@
 
 .toolbar-btn {
   box-sizing: border-box;
-  min-width: 24px;
-  height: 24px;
+  min-width: var(--nx-ui-toolbar-btn-size);
+  height: var(--nx-ui-toolbar-btn-size);
   padding: 0;
   display: inline-flex;
   align-items: center;
@@ -105,4 +105,9 @@
 .toolbar-block-type-wrap {
   display: inline-flex;
   align-items: center;
+}
+
+:host([data-ui-size="m"]) .toolbar-btn:focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: 2px;
 }

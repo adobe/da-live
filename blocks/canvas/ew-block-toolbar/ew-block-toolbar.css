@@ -34,7 +34,7 @@
 
 .toolbar-btn {
   box-sizing: border-box;
-  height: 24px;
+  height: var(--nx-ui-toolbar-btn-size);
   padding: 0 8px;
   display: inline-flex;
   align-items: center;
@@ -57,7 +57,7 @@
 }
 
 .toolbar-btn.icon-only {
-  min-width: 24px;
+  min-width: var(--nx-ui-toolbar-btn-size);
   padding: 0;
   justify-content: center;
 }
@@ -88,9 +88,14 @@
 
 /* Size the variant picker to match the toolbar buttons (same height, padding, radius). */
 .toolbar-variant {
-  --nx-picker-height: 24px;
+  --nx-picker-height: var(--nx-ui-toolbar-btn-size);
   --nx-picker-padding: 0 6px;
   --nx-picker-radius: var(--s2-corner-radius-100);
 
   font-weight: inherit;
+}
+
+:host([data-ui-size="m"]) .toolbar-btn:focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: 2px;
 }
