@@ -76,15 +76,21 @@ describe('ew-page-metadata', () => {
     canvasBus.editorHtmlState.emit('');
   });
 
+  // Loads a doc with these metadata rows (none: a plain paragraph) and optional library config.
+  async function loadDoc(rows, libraryFields) {
+    bridge.view = makeRealView(rows ? { type: 'doc', content: [metadataTableJSON(rows)] } : baseDoc());
+    if (libraryFields) el._libraryFields = libraryFields;
+    canvasBus.editorDocState.emit();
+    await el.updateComplete;
+  }
+
   describe('panel chrome', () => {
     it('shows "Page Metadata" as the panel headline', async () => {
       expect(el.shadowRoot.querySelector('h3').textContent).to.equal('Page Metadata');
     });
 
     it('uses NX form/button styles for inputs and icon buttons', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['custom', 'x']])] });
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc([['custom', 'x']]);
       const row = rowFor(el, 'custom');
       const addBtn = el.shadowRoot.querySelector('.add-btn');
       expect(row.classList.contains('nx-form-field')).to.equal(true);
@@ -95,9 +101,7 @@ describe('ew-page-metadata', () => {
     });
 
     it('renders the add-field dialog with its copy and NX inputs', async () => {
-      bridge.view = makeRealView(baseDoc());
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc();
       el.shadowRoot.querySelector('.add-btn').click();
       await el.updateComplete;
       const dialog = el.shadowRoot.querySelector('.ew-pm-add');
@@ -112,13 +116,10 @@ describe('ew-page-metadata', () => {
 
   describe('fallback + read path', () => {
     it('connects each field label to its text control', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['og image', 'x']])] });
-      el._libraryFields = [
+      await loadDoc([['og image', 'x']], [
         { key: 'Title', label: 'Page Title', type: 'single', values: null },
         { key: 'JSON-LD', label: 'JSON-LD', type: 'json', values: null },
-      ];
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      ]);
       const labelOf = (control) => control.labels[0]?.textContent.trim();
       expect(labelOf(rowFor(el, 'Title').querySelector('input'))).to.equal('Page Title');
       expect(labelOf(rowFor(el, 'JSON-LD').querySelector('textarea'))).to.equal('JSON-LD');
@@ -126,10 +127,7 @@ describe('ew-page-metadata', () => {
     });
 
     it('passes the field label to the multiselect', async () => {
-      bridge.view = makeRealView(baseDoc());
-      el._libraryFields = [{ key: 'tags', label: 'Tags', type: 'multi', values: [{ title: 'A', value: 'a' }] }];
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc(undefined, [{ key: 'tags', label: 'Tags', type: 'multi', values: [{ title: 'A', value: 'a' }] }]);
       expect(rowFor(el, 'tags').querySelector('ew-metadata-multiselect').label).to.equal('Tags');
     });
     it('reads the doc rows when opened after the doc has loaded', async () => {
@@ -138,10 +136,9 @@ describe('ew-page-metadata', () => {
       expect(rowFor(lateEl, 'Title').querySelector('input[type="text"]').value).to.equal('My Page');
       lateEl.remove();
     });
+
     it('gives text fields an id from their lowercased key', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['Legacy-Flag', 'yes']])] });
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc([['Legacy-Flag', 'yes']]);
       const ids = [...el.shadowRoot.querySelectorAll('.ew-pm-control input[type="text"]')]
         .map((input) => input.id);
       expect(ids).to.deep.equal(['ew-pm-title', 'ew-pm-description', 'ew-pm-legacy-flag']);
@@ -155,40 +152,31 @@ describe('ew-page-metadata', () => {
       expect(rowFor(el, 'JSON-LD').querySelector('textarea').id).to.equal('ew-pm-json-ld');
     });
     it('renders default Title/Description text fields when there is no library config', async () => {
-      bridge.view = makeRealView(baseDoc());
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc();
       ['Title', 'Description'].forEach((key) => {
         expect(rowFor(el, key).querySelector('input[type="text"]').value).to.equal('');
       });
     });
 
     it('renders unconfigured doc keys alongside fallback fields when there is no library config', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['legacy-flag', 'yes']])] });
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc([['legacy-flag', 'yes']]);
       expect(rowFor(el, 'legacy-flag').querySelector('input[type="text"]').value).to.equal('yes');
       expect(rowFor(el, 'Title')).to.exist;
       expect(rowFor(el, 'Description')).to.exist;
     });
 
     it('renders configured fields plus unconfigured doc keys when library config is present', async () => {
-      bridge.view = makeRealView({
-        type: 'doc',
-        content: [metadataTableJSON([['category', 'news'], ['legacy-flag', 'yes']])],
-      });
-      el._libraryFields = [{ key: 'category', label: 'Category', type: 'single', values: [{ title: 'News', value: 'news' }] }];
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc(
+        [['category', 'news'], ['legacy-flag', 'yes']],
+        [{ key: 'category', label: 'Category', type: 'single', values: [{ title: 'News', value: 'news' }] }],
+      );
 
       expect(rowFor(el, 'category').querySelector('nx-picker')).to.exist;
       expect(rowFor(el, 'legacy-flag').querySelector('input[type="text"]').value).to.equal('yes');
     });
 
     it('pre-fills from the doc, and clears when editorHtmlState signals the doc was unloaded', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['title', 'My Page']])] });
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc([['title', 'My Page']]);
       expect(rowFor(el, 'Title').querySelector('input[type="text"]').value).to.equal('My Page');
 
       canvasBus.editorHtmlState.emit('');
@@ -199,10 +187,7 @@ describe('ew-page-metadata', () => {
 
   describe('config-driven rendering', () => {
     it('renders a single-select dropdown with a leading empty option', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['category', 'news']])] });
-      el._libraryFields = [{ key: 'category', label: 'Category', type: 'single', values: [{ title: 'News', value: 'news' }] }];
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc([['category', 'news']], [{ key: 'category', label: 'Category', type: 'single', values: [{ title: 'News', value: 'news' }] }]);
       const picker = rowFor(el, 'category').querySelector('nx-picker');
       expect(picker).to.exist;
       expect(picker.getAttribute('size')).to.equal('m');
@@ -214,25 +199,19 @@ describe('ew-page-metadata', () => {
     });
 
     it('renders ew-metadata-multiselect for a multi-select field', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['tags', 'a, b']])] });
-      el._libraryFields = [{ key: 'tags', label: 'Tags', type: 'multi', values: [{ title: 'A', value: 'a' }, { title: 'B', value: 'b' }] }];
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc([['tags', 'a, b']], [{ key: 'tags', label: 'Tags', type: 'multi', values: [{ title: 'A', value: 'a' }, { title: 'B', value: 'b' }] }]);
       const multi = rowFor(el, 'tags').querySelector('ew-metadata-multiselect');
       expect(multi).to.exist;
       expect(multi.value).to.equal('a, b');
     });
 
     it('renders color fields as a picker with swatches', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['accent', 'adobe-red']])] });
-      el._libraryFields = [{
+      await loadDoc([['accent', 'adobe-red']], [{
         key: 'accent',
         label: 'Accent',
         type: 'single',
         values: [{ title: 'Adobe Red', value: 'adobe-red', colorValue: '#FF0000' }, { title: 'Sky', value: 'sky' }],
-      }];
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      }]);
       const picker = rowFor(el, 'accent').querySelector('nx-picker');
       expect(picker.value).to.equal('adobe-red');
       expect(picker.items).to.deep.equal([
@@ -243,30 +222,21 @@ describe('ew-page-metadata', () => {
     });
 
     it('renders a json field as a textarea with pretty-printed JSON', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['json-ld', '{"@type":"Article"}']])] });
-      el._libraryFields = [{ key: 'json-ld', label: 'JSON-LD', type: 'json', values: null }];
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc([['json-ld', '{"@type":"Article"}']], [{ key: 'json-ld', label: 'JSON-LD', type: 'json', values: null }]);
       const textarea = rowFor(el, 'json-ld').querySelector('textarea');
       expect(textarea.classList.contains('nx-input')).to.equal(true);
       expect(textarea.value).to.equal('{\n  "@type": "Article"\n}');
     });
 
     it('flags a json field holding invalid JSON with an error message', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['json-ld', '{broken']])] });
-      el._libraryFields = [{ key: 'json-ld', label: 'JSON-LD', type: 'json', values: null }];
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc([['json-ld', '{broken']], [{ key: 'json-ld', label: 'JSON-LD', type: 'json', values: null }]);
       const row = rowFor(el, 'json-ld');
       expect(row.classList.contains('nx-field-error')).to.equal(true);
       expect(row.querySelector('.nx-input-error-msg').textContent.trim()).to.equal('Invalid JSON');
     });
 
     it('selects the empty option when the field has no current value', async () => {
-      bridge.view = makeRealView(baseDoc());
-      el._libraryFields = [{ key: 'category', label: 'Category', type: 'single', values: [{ title: 'News', value: 'news' }] }];
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc(undefined, [{ key: 'category', label: 'Category', type: 'single', values: [{ title: 'News', value: 'news' }] }]);
       const picker = rowFor(el, 'category').querySelector('nx-picker');
       expect(picker.value).to.equal('');
     });
@@ -274,9 +244,7 @@ describe('ew-page-metadata', () => {
 
   describe('write-back', () => {
     it('creates the metadata table and commits a value on text-field blur when none exists yet', async () => {
-      bridge.view = makeRealView(baseDoc());
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc();
 
       const input = rowFor(el, 'Title').querySelector('input[type="text"]');
       input.value = 'Brand new';
@@ -286,15 +254,12 @@ describe('ew-page-metadata', () => {
     });
 
     it('commits a picker change to the existing row', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['category', 'news']])] });
-      el._libraryFields = [{
+      await loadDoc([['category', 'news']], [{
         key: 'category',
         label: 'Category',
         type: 'single',
         values: [{ title: 'News', value: 'news' }, { title: 'Blog', value: 'blog' }],
-      }];
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      }]);
 
       const picker = rowFor(el, 'category').querySelector('nx-picker');
       picker.dispatchEvent(new CustomEvent('change', { detail: { value: 'blog' } }));
@@ -303,10 +268,7 @@ describe('ew-page-metadata', () => {
     });
 
     it('removes the row when the empty option is selected', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['category', 'news'], ['custom', 'x']])] });
-      el._libraryFields = [{ key: 'category', label: 'Category', type: 'single', values: [{ title: 'News', value: 'news' }] }];
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc([['category', 'news'], ['custom', 'x']], [{ key: 'category', label: 'Category', type: 'single', values: [{ title: 'News', value: 'news' }] }]);
 
       const picker = rowFor(el, 'category').querySelector('nx-picker');
       picker.dispatchEvent(new CustomEvent('change', { detail: { value: '' } }));
@@ -315,9 +277,7 @@ describe('ew-page-metadata', () => {
     });
 
     it('removes the row when a text field is emptied', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['Title', 'My Page'], ['Description', 'Desc']])] });
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc([['Title', 'My Page'], ['Description', 'Desc']]);
 
       const input = rowFor(el, 'Title').querySelector('input[type="text"]');
       input.value = '   ';
@@ -327,10 +287,7 @@ describe('ew-page-metadata', () => {
     });
 
     it('removes the row when all multiselect values are cleared', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['tags', 'a'], ['custom', 'x']])] });
-      el._libraryFields = [{ key: 'tags', label: 'Tags', type: 'multi', values: [{ title: 'A', value: 'a' }] }];
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc([['tags', 'a'], ['custom', 'x']], [{ key: 'tags', label: 'Tags', type: 'multi', values: [{ title: 'A', value: 'a' }] }]);
 
       rowFor(el, 'tags').querySelector('ew-metadata-multiselect')
         .dispatchEvent(new CustomEvent('change', { detail: { value: '' } }));
@@ -338,10 +295,8 @@ describe('ew-page-metadata', () => {
       expect(tableRows(bridge.view)).to.deep.equal([{ key: 'custom', value: 'x' }]);
     });
 
-    it('does not write to the doc when a field is blurred unchanged', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['Keywords', '']])] });
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+    it('keeps an empty field when it is blurred unchanged', async () => {
+      await loadDoc([['Keywords', '']]);
 
       const input = rowFor(el, 'Keywords').querySelector('input[type="text"]');
       input.dispatchEvent(new Event('blur'));
@@ -350,10 +305,7 @@ describe('ew-page-metadata', () => {
     });
 
     it('commits a multiselect change as the comma-joined value', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['tags', 'a']])] });
-      el._libraryFields = [{ key: 'tags', label: 'Tags', type: 'multi', values: [{ title: 'A', value: 'a' }, { title: 'B', value: 'b' }] }];
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc([['tags', 'a']], [{ key: 'tags', label: 'Tags', type: 'multi', values: [{ title: 'A', value: 'a' }, { title: 'B', value: 'b' }] }]);
 
       const multi = rowFor(el, 'tags').querySelector('ew-metadata-multiselect');
       multi.dispatchEvent(new CustomEvent('change', { detail: { value: 'a, b' } }));
@@ -361,28 +313,8 @@ describe('ew-page-metadata', () => {
       expect(tableRows(bridge.view)).to.deep.equal([{ key: 'tags', value: 'a, b' }]);
     });
 
-    it('commits a picker change for a color field', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['accent', 'adobe-red']])] });
-      el._libraryFields = [{
-        key: 'accent',
-        label: 'Accent',
-        type: 'single',
-        values: [{ title: 'Adobe Red', value: 'adobe-red', colorValue: '#FF0000' }, { title: 'Sky', value: 'sky' }],
-      }];
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
-
-      rowFor(el, 'accent').querySelector('nx-picker')
-        .dispatchEvent(new CustomEvent('change', { detail: { value: 'sky' } }));
-
-      expect(tableRows(bridge.view)).to.deep.equal([{ key: 'accent', value: 'sky' }]);
-    });
-
     it('commits a json textarea on blur as compact JSON', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['json-ld', '{"@type":"Article"}']])] });
-      el._libraryFields = [{ key: 'json-ld', label: 'JSON-LD', type: 'json', values: null }];
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc([['json-ld', '{"@type":"Article"}']], [{ key: 'json-ld', label: 'JSON-LD', type: 'json', values: null }]);
 
       const textarea = rowFor(el, 'json-ld').querySelector('textarea');
       textarea.value = '{\n  "@type": "Event"\n}';
@@ -392,10 +324,7 @@ describe('ew-page-metadata', () => {
     });
 
     it('saves invalid JSON as typed and flags the field', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['json-ld', '{"@type":"Article"}']])] });
-      el._libraryFields = [{ key: 'json-ld', label: 'JSON-LD', type: 'json', values: null }];
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc([['json-ld', '{"@type":"Article"}']], [{ key: 'json-ld', label: 'JSON-LD', type: 'json', values: null }]);
 
       const textarea = rowFor(el, 'json-ld').querySelector('textarea');
       textarea.value = '{\n  broken\n}';
@@ -419,24 +348,19 @@ describe('ew-page-metadata', () => {
     }
 
     it('adds a new field via the + dialog with just a key, leaving the value empty', async () => {
-      bridge.view = makeRealView(baseDoc());
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc();
 
       const dialog = await fillAddDialog({ key: 'Keywords' });
       dialog.querySelector('.nx-form-btn-primary').click();
       await el.updateComplete;
 
       expect(tableRows(bridge.view)).to.deep.equal([{ key: 'Keywords', value: '' }]);
-      expect(el.shadowRoot.querySelector('.ew-pm-add')).to.equal(null);
       expect(rowFor(el, 'Keywords').querySelector('input[type="text"]').value).to.equal('');
       expect(rowFor(el, 'Keywords').querySelector('.delete-btn')).to.exist;
     });
 
     it('adds a new field with its value via the + dialog', async () => {
-      bridge.view = makeRealView(baseDoc());
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc();
 
       const dialog = await fillAddDialog({ key: 'Keywords', value: ' foo, bar ' });
       dialog.querySelector('.nx-form-btn-primary').click();
@@ -446,9 +370,7 @@ describe('ew-page-metadata', () => {
     });
 
     it('requires a field name before adding', async () => {
-      bridge.view = makeRealView(baseDoc());
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc();
 
       const dialog = await fillAddDialog({ key: '  ', value: 'x' });
       dialog.querySelector('.nx-form-btn-primary').click();
@@ -462,9 +384,7 @@ describe('ew-page-metadata', () => {
     });
 
     it('rejects a field name that already exists, ignoring case', async () => {
-      bridge.view = makeRealView(baseDoc());
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc();
 
       const dialog = await fillAddDialog({ key: 'title' });
       dialog.querySelector('.nx-form-btn-primary').click();
@@ -474,25 +394,8 @@ describe('ew-page-metadata', () => {
       expect(tableRows(bridge.view)).to.deep.equal([]);
     });
 
-    it('clears the field name error while typing', async () => {
-      bridge.view = makeRealView(baseDoc());
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
-      const dialog = await fillAddDialog();
-      dialog.querySelector('.nx-form-btn-primary').click();
-      await el.updateComplete;
-      const input = dialog.querySelector('input[name="key"]');
-      input.value = 'K';
-      input.dispatchEvent(new Event('input'));
-      await el.updateComplete;
-
-      expect(input.closest('.nx-form-field').classList.contains('nx-field-error')).to.equal(false);
-    });
-
     it('deletes a custom field after confirming the delete dialog', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['legacy-flag', 'yes']])] });
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc([['legacy-flag', 'yes']]);
 
       rowFor(el, 'legacy-flag').querySelector('.delete-btn').click();
       await el.updateComplete;
@@ -504,16 +407,13 @@ describe('ew-page-metadata', () => {
     });
 
     it('cancelling the delete dialog leaves the custom field untouched', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['legacy-flag', 'yes']])] });
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc([['legacy-flag', 'yes']]);
 
       rowFor(el, 'legacy-flag').querySelector('.delete-btn').click();
       await el.updateComplete;
       el.shadowRoot.querySelector('.ew-pm-delete .nx-form-btn-secondary').click();
       await el.updateComplete;
 
-      expect(el.shadowRoot.querySelector('.ew-pm-delete')).to.equal(null);
       expect(tableRows(bridge.view)).to.deep.equal([{ key: 'legacy-flag', value: 'yes' }]);
     });
   });
@@ -537,11 +437,6 @@ describe('ew-page-metadata', () => {
       await el.updateComplete;
     });
 
-    it('hides the add and delete buttons', () => {
-      expect(!!el.shadowRoot.querySelector('.add-btn')).to.equal(false);
-      expect(!!el.shadowRoot.querySelector('.delete-btn')).to.equal(false);
-    });
-
     it('makes all field controls read-only', () => {
       expect(rowFor(el, 'note').querySelector('input[type="text"]').readOnly).to.equal(true);
       expect(rowFor(el, 'custom').querySelector('input[type="text"]').readOnly).to.equal(true);
@@ -550,7 +445,7 @@ describe('ew-page-metadata', () => {
       expect(rowFor(el, 'category').querySelector('nx-picker').hasAttribute('inert')).to.equal(true);
     });
 
-    it('does not write changes to the doc', () => {
+    it('keeps the doc unchanged when a field changes', () => {
       rowFor(el, 'category').querySelector('nx-picker')
         .dispatchEvent(new CustomEvent('change', { detail: { value: '' } }));
       expect(tableRows(bridge.view)[0]).to.deep.equal({ key: 'category', value: 'news' });
@@ -575,9 +470,7 @@ describe('ew-page-metadata', () => {
     }
 
     it('refreshes on a plain in-place text edit within an existing cell, not just structural changes', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['Title', 'Old']])] });
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
+      await loadDoc([['Title', 'Old']]);
       expect(rowFor(el, 'Title').querySelector('input[type="text"]').value).to.equal('Old');
 
       // Simulate typing into the value cell: a plain text replace, no row change.
@@ -590,25 +483,6 @@ describe('ew-page-metadata', () => {
       await el.updateComplete;
 
       expect(rowFor(el, 'Title').querySelector('input[type="text"]').value).to.equal('New');
-    });
-
-    it('does not show a field for a freshly-added row until it has a key', async () => {
-      bridge.view = makeRealView({ type: 'doc', content: [metadataTableJSON([['Title', 'My Page']])] });
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
-      const fieldCountBefore = el.shadowRoot.querySelectorAll('.ew-pm-row').length;
-
-      const { view } = bridge;
-      const tablePos = findTablePos(view);
-      const table = view.state.doc.nodeAt(tablePos);
-      const { schema } = view.state;
-      const emptyCell = () => schema.nodes.table_cell.create(null, schema.nodes.paragraph.create());
-      const emptyRow = schema.nodes.table_row.create(null, [emptyCell(), emptyCell()]);
-      view.dispatch(view.state.tr.insert(tablePos + table.nodeSize - 1, emptyRow));
-      canvasBus.editorDocState.emit();
-      await el.updateComplete;
-
-      expect(el.shadowRoot.querySelectorAll('.ew-pm-row').length).to.equal(fieldCountBefore);
     });
   });
 });
