@@ -557,6 +557,19 @@ export function createCommentsView() {
   };
 }
 
+export function createMetadataView() {
+  return {
+    id: 'metadata',
+    label: 'Page',
+    section: 'Editor',
+    firstParty: true,
+    load: async () => {
+      await import('../ew-page-metadata/ew-page-metadata.js');
+      return document.createElement('ew-page-metadata');
+    },
+  };
+}
+
 export function extensionToPanelView(ext, section) {
   // Block library opens its own dedicated modal (used by the slash menu and
   // outline "+" button) rather than the generic inline panel or iframe dialog.
@@ -645,6 +658,7 @@ export async function getCanvasToolPanelViews({ org, site }) {
 
   return [
     createOutlineView(),
+    createMetadataView(),
     createFileExplorerView(),
     createVersioningView(),
     createCommentsView(),
