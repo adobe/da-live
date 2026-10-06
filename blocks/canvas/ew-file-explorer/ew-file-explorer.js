@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2, getNx2Api } from '../../../scripts/utils.js';
+import { getNx, getNx2, getNx2Api, getNxEWFlags, sanitizePath } from '../../../scripts/utils.js';
 import { listFolder, itemHashPath, getAemUrl } from '../../shared/daFiles.js';
 import { iconPathForExt } from '../../shared/icons.js';
 import { EMPTY_DOC } from '../../shared/utils.js';
@@ -8,12 +8,13 @@ import getEditPath from '../../browse/shared.js';
 import getSheet from '../../shared/sheet.js';
 import '../../shared/da-name-dialog/da-name-dialog.js';
 
-const { loadStyle, hashChange, DA_SC } = await import(`${getNx()}/utils/utils.js`);
+const { loadStyle, hashChange, getScUrl } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
 const { fetchDaConfigs } = await import(`${getNx()}/utils/daConfig.js`);
 const { getEditor } = await import(`${getNx()}/utils/editor.js`);
+const { isEWEnabled } = await getNxEWFlags();
 
 const [buttons, style] = await Promise.all([
   getSheet(`${getNx2()}/styles/buttons.css`),
@@ -164,8 +165,15 @@ class EwFileExplorer extends LitElement {
 
   async _loadConfigs(org, site) {
     this._configs = undefined;
-    const configs = await Promise.all(fetchDaConfigs({ org, site })).catch(() => undefined);
-    if (org === this._org && site === this._site) this._configs = configs;
+    this._ewEnabled = undefined;
+    const [configs, ewEnabled] = await Promise.all([
+      Promise.all(fetchDaConfigs({ org, site })).catch(() => undefined),
+      isEWEnabled({ org, site }).catch(() => false),
+    ]);
+    if (org === this._org && site === this._site) {
+      this._configs = configs;
+      this._ewEnabled = ewEnabled;
+    }
   }
 
   // Ensure every ancestor folder of `path` is expanded and loaded, so the
@@ -345,13 +353,12 @@ class EwFileExplorer extends LitElement {
 
   _editorFor(item) {
     if (item.ext !== 'html') return undefined;
-    return getEditor({ path: item.path, configs: this._configs, ewEnabled: true });
+    return getEditor({ path: item.path, configs: this._configs, ewEnabled: this._ewEnabled });
   }
 
-  // TODO: replace this config-based check once structured content becomes a first-class type.
   _copyUrl(item) {
     if (getEditorName(this._editorFor(item)) !== 'form') return getAemUrl(item);
-    return `${DA_SC}/preview${item.path.replace(/\.html$/, '')}`;
+    return getScUrl({ path: sanitizePath(item.path.replace(/\.html$/, '')) });
   }
 
   async _onCopyUrl(e, item) {

@@ -10,7 +10,8 @@ export const DA_ADMIN = 'https://admin.da.live';
 
 export const DA_COLLAB = 'wss://collab.da.live';
 
-export const DA_SC = 'https://da-sc.adobeaem.workers.dev';
+// Echoes its input; the URL format is tested in da-nx.
+export const getScUrl = ({ path }) => `sc:${path}`;
 
 let _hashState = {};
 const _hashSubscribers = new Set();
