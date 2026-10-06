@@ -46,6 +46,11 @@ button {
   height: var(--nx-ui-icon-btn-size);
   padding: 0;
 
+  &:hover:not(:disabled, .is-active) {
+    background: var(--nx-ui-icon-btn-hover-bg);
+    color: var(--nx-ui-icon-btn-hover-color);
+  }
+
   .icon {
     width: var(--nx-ui-icon-toolbar);
     height: var(--nx-ui-icon-toolbar);
