@@ -1,3 +1,15 @@
+# [1.2.0](https://github.com/adobe/da-live/compare/v1.1.0...v1.2.0) (2026-10-06)
+
+
+### Bug Fixes
+
+* address images consistently instead of by url in wysiwyg ([#1377](https://github.com/adobe/da-live/issues/1377)) ([d7a29b3](https://github.com/adobe/da-live/commit/d7a29b31793a171c3223a7f7b50c076a50e51e0c)), closes [#1018](https://github.com/adobe/da-live/issues/1018) [#1302](https://github.com/adobe/da-live/issues/1302)
+
+
+### Features
+
+* **assets:** preserve last folder between asset picker openings ([#1346](https://github.com/adobe/da-live/issues/1346)) ([8539c92](https://github.com/adobe/da-live/commit/8539c92e998ab3328cbf5baba43c3eb789cf05fc)), closes [#1345](https://github.com/adobe/da-live/issues/1345)
+
 # [1.1.0](https://github.com/adobe/da-live/compare/v1.0.3...v1.1.0) (2026-10-06)
 
 
