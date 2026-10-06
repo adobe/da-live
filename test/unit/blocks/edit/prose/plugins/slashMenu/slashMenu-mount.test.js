@@ -1,4 +1,5 @@
 /* eslint-disable no-underscore-dangle */
+import '../../../../../setup-nx.js';
 import { expect } from '@esm-bundle/chai';
 import { TextSelection } from 'da-y-wrapper';
 import slashMenuPluginFactory from '../../../../../../../blocks/edit/prose/plugins/slashMenu/slashMenu.js';

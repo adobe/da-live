@@ -11,111 +11,29 @@
  */
 
 import { expect } from '@esm-bundle/chai';
+import '../../../setup-nx.js';
 
-const { setNx } = await import('../../../../../scripts/utils.js');
-setNx('/test/fixtures/nx', { hostname: 'example.com' });
-
-const { getRepositoryConfig } = await import(
+const { getNx2 } = await import('../../../../../scripts/utils.js');
+const { getRepositoryConfig, getAssetsPlugin } = await import(
   '../../../../../blocks/canvas/ew-panel-extensions/aem-assets.js'
 );
+const shared = await import(`${getNx2()}/utils/aem-assets/repository-config.js`);
 
-function makeSheet(entries) {
-  return { ok: true, json: async () => ({ data: entries }) };
-}
-
-function makeFetch(responses) {
-  return async (url) => {
-    // getNx2Api's config.get pings isHlx6 first (HLX_ADMIN/ping/{org}/{site}); check that
-    // before the pattern match below, since a ping url can otherwise collide with an
-    // org-level config pattern (e.g. '/ping/{org}/{site}' contains '/{org}/').
-    if (url.includes('/ping/')) return new Response('', { status: 200 });
-    for (const [pattern, response] of Object.entries(responses).sort(
-      ([a], [b]) => b.length - a.length,
-    )) {
-      if (url.includes(pattern)) return response;
-    }
-    return new Response('', { status: 404 });
-  };
-}
-
-describe('Canvas AEM Assets repository config', () => {
-  [
-    ['DM delivery', 'canvas-dm-org', 'canvas-dm-site', [
-      { key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' },
-      { key: 'aem.asset.dm.delivery', value: 'on' },
-    ]],
-    ['Smart Crop', 'canvas-smartcrop-org', 'canvas-smartcrop-site', [
-      { key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' },
-      { key: 'aem.asset.smartcrop.select', value: 'on' },
-    ]],
-    ['delivery production origin', 'canvas-delivery-org', 'canvas-delivery-site', [
-      { key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' },
-      { key: 'aem.assets.prod.origin', value: 'delivery-p1-e1.adobeaemcloud.com' },
-    ]],
-  ].forEach(([name, org, site, entries]) => {
-    it(`defaults approvedOnly on for ${name}`, async () => {
-      const orgFetch = window.fetch;
-      window.fetch = makeFetch({ [`/config/${org}/${site}/`]: makeSheet(entries) });
-      try {
-        const config = await getRepositoryConfig(org, site);
-        expect(config.isDmEnabled).to.be.true;
-        expect(config.approvedOnly).to.be.true;
-      } finally {
-        window.fetch = orgFetch;
-      }
-    });
+describe('Canvas AEM Assets', () => {
+  afterEach(() => {
+    shared.setRepositoryConfig(null);
+    shared.configCalls.length = 0;
   });
 
-  it('enables approvedOnly when aem.asset.dm.approvedonly is on', async () => {
-    const org = 'canvas-approved-on-org';
-    const site = 'canvas-approved-on-site';
-    const orgFetch = window.fetch;
-    window.fetch = makeFetch({
-      [`/config/${org}/${site}/`]: makeSheet([
-        { key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' },
-        { key: 'aem.asset.dm.delivery', value: 'on' },
-        { key: 'aem.asset.dm.approvedonly', value: 'on' },
-      ]),
-    });
-    try {
-      const config = await getRepositoryConfig(org, site);
-      expect(config.isDmEnabled).to.be.true;
-      expect(config.approvedOnly).to.be.true;
-    } finally {
-      window.fetch = orgFetch;
-    }
+  it('re-exports the shared repository config resolver', async () => {
+    expect(getRepositoryConfig).to.equal(shared.getRepositoryConfig);
+    const config = { repositoryId: 'author-example', imageType: 'editable-link' };
+    shared.setRepositoryConfig(config);
+    expect(await getRepositoryConfig('org', 'site')).to.equal(config);
+    expect(shared.configCalls).to.deep.equal([['org', 'site']]);
   });
 
-  it('honors site off over org on', async () => {
-    const org = 'canvas-site-off-org';
-    const site = 'canvas-site-off-site';
-    const orgFetch = window.fetch;
-    window.fetch = makeFetch({
-      [`/config/${org}/`]: makeSheet([
-        { key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' },
-        { key: 'aem.asset.dm.delivery', value: 'on' },
-        { key: 'aem.asset.dm.approvedonly', value: 'on' },
-      ]),
-      [`/config/${org}/${site}/`]: makeSheet([{ key: 'aem.asset.dm.approvedonly', value: 'off' }]),
-    });
-    try {
-      const config = await getRepositoryConfig(org, site);
-      expect(config.approvedOnly).to.be.false;
-    } finally {
-      window.fetch = orgFetch;
-    }
-  });
-
-  it('does not apply the author filter to delivery tier', async () => {
-    const org = 'canvas-delivery-tier-org';
-    const site = 'canvas-delivery-tier-site';
-    const orgFetch = window.fetch;
-    window.fetch = makeFetch({ [`/config/${org}/${site}/`]: makeSheet([{ key: 'aem.repositoryId', value: 'delivery-p1-e1.adobeaemcloud.com' }]) });
-    try {
-      const config = await getRepositoryConfig(org, site);
-      expect(config.approvedOnly).to.be.false;
-    } finally {
-      window.fetch = orgFetch;
-    }
+  it('registers the asset picker for the requested site', () => {
+    expect(getAssetsPlugin({ org: 'org', site: 'site' })).to.include({ name: 'aem-assets', experience: 'fullsize-dialog', org: 'org', site: 'site' });
   });
 });

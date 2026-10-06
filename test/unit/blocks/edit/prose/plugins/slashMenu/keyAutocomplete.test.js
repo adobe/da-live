@@ -1,3 +1,4 @@
+import '../../../../../setup-nx.js';
 import { expect } from '@esm-bundle/chai';
 import {
   processKeyData,
