@@ -5,7 +5,7 @@ import { getChatPanelContent } from '../../../shared/chat-panel.js';
 import { getBrowseSettings, updateBrowseSettings } from '../shared/settings.js';
 
 // Components
-import '../da-new/da-new.js';
+import '../../da-new/da-new.js';
 import '../da-list/da-list.js';
 import '../da-browse-header/da-browse-header.js';
 
@@ -513,7 +513,7 @@ export default class DaBrowse extends LitElement {
         @typesfilterrequest=${({ detail }) => this.activeListCmp.toggleTypesPopover(detail.anchor)}
         @sortrequest=${({ detail }) => this.activeListCmp.setSort(detail.property, detail.direction)}
         @flattenfolderschange=${({ detail }) => this.setFlattenFolders(detail.flatten)}>
-        <da-new @newitem=${this.handleNewItem} fullpath="${this.details.fullpath}" editor="${this.editor}"></da-new>
+        <da-new variant="accent" @newitem=${this.handleNewItem} fullpath="${this.details.fullpath}" editor="${this.editor}"></da-new>
       </da-browse-header>
       <div class="da-browse-content">
         ${search.error ? html`<p role="alert">${search.error}</p>` : nothing}

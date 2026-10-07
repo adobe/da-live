@@ -4,7 +4,7 @@ import { getNx, sanitizePathParts, getNxEWFlags } from '../../../../scripts/util
 import { getChatPanelContent } from '../../../shared/chat-panel.js';
 
 // Components
-import '../da-new/da-new.js';
+import '../../da-new/da-new.js';
 import '../da-search/da-search.js';
 import '../da-list/da-list.js';
 
