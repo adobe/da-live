@@ -102,7 +102,7 @@ describe('quick-edit-controller RELOAD coalescing', () => {
   });
 });
 
-describe('quick-edit-controller IFRAME_CLICK forwarding', () => {
+describe('quick-edit-controller QUICK_EDIT_IFRAME_CLICK forwarding', () => {
   let prevHlx;
 
   beforeEach(() => { prevHlx = window.hlx; });
@@ -112,7 +112,10 @@ describe('quick-edit-controller IFRAME_CLICK forwarding', () => {
     const sampleRUM = sinon.spy();
     window.hlx = { rum: { sampleRUM } };
     const ctx = makeCtx(true);
-    send(createControllerOnMessage(ctx), { type: 'iframe-click', payload: { target: 'hero' } });
+    send(createControllerOnMessage(ctx), {
+      type: 'quick-edit-iframe-click',
+      payload: { target: 'hero' },
+    });
     expect(sampleRUM.calledOnceWith('click', { source: 'ew-wysiwyg-layout', target: 'hero' })).to.be.true;
   });
 
@@ -121,7 +124,7 @@ describe('quick-edit-controller IFRAME_CLICK forwarding', () => {
     window.hlx = { rum: { sampleRUM } };
     const ctx = makeCtx(true);
     send(createControllerOnMessage(ctx), {
-      type: 'iframe-click',
+      type: 'quick-edit-iframe-click',
       payload: { target: 'hero', source: 'ew-wysiwyg-layout' },
     });
     expect(sampleRUM.calledOnceWith('click', { source: 'ew-wysiwyg-layout', target: 'hero' })).to.be.true;
@@ -133,7 +136,7 @@ describe('quick-edit-controller IFRAME_CLICK forwarding', () => {
       window.hlx = { rum: { sampleRUM } };
       const ctx = makeCtx(true);
       send(createControllerOnMessage(ctx), {
-        type: 'iframe-click',
+        type: 'quick-edit-iframe-click',
         payload: { target: 'a', source },
       });
       expect(sampleRUM.calledOnceWith('click', {
@@ -147,23 +150,25 @@ describe('quick-edit-controller IFRAME_CLICK forwarding', () => {
     const sampleRUM = sinon.spy();
     window.hlx = { rum: { sampleRUM } };
     const ctx = makeCtx(true);
-    send(createControllerOnMessage(ctx), { type: 'iframe-click', payload: {} });
+    send(createControllerOnMessage(ctx), { type: 'quick-edit-iframe-click', payload: {} });
     expect(sampleRUM.calledOnceWith('click', { source: 'ew-wysiwyg-layout', target: undefined })).to.be.true;
   });
 
-  it('ignores the legacy rum-click type', () => {
-    const sampleRUM = sinon.spy();
-    window.hlx = { rum: { sampleRUM } };
-    const ctx = makeCtx(true);
-    send(createControllerOnMessage(ctx), { type: 'rum-click', payload: { target: 'p' } });
-    expect(sampleRUM.called).to.be.false;
+  ['rum-click', 'iframe-click'].forEach((type) => {
+    it(`ignores the superseded ${type} type`, () => {
+      const sampleRUM = sinon.spy();
+      window.hlx = { rum: { sampleRUM } };
+      const ctx = makeCtx(true);
+      send(createControllerOnMessage(ctx), { type, payload: { target: 'p' } });
+      expect(sampleRUM.called).to.be.false;
+    });
   });
 
   it('does not throw when RUM is not initialised on the page', () => {
     window.hlx = undefined;
     const ctx = makeCtx(true);
     const onMessage = createControllerOnMessage(ctx);
-    expect(() => onMessage({ data: { type: 'iframe-click', payload: { target: 'p' } } }))
+    expect(() => onMessage({ data: { type: 'quick-edit-iframe-click', payload: { target: 'p' } } }))
       .to.not.throw();
   });
 });
