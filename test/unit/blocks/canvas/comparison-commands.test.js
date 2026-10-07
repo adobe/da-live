@@ -24,6 +24,7 @@ describe('fire-and-forget comparison commands', () => {
   let errors;
   let saveCalls;
   let fail;
+  let saveError;
   const rejection = (event) => {
     errors.push(event.reason);
     event.preventDefault();
@@ -34,12 +35,17 @@ describe('fire-and-forget comparison commands', () => {
     errors = [];
     saveCalls = 0;
     fail = false;
+    saveError = null;
     window.addEventListener('unhandledrejection', rejection);
     controller = installComparison({
       mountRoot: root,
       getContext: () => context,
       getDocument: () => '<p>Current read-only content</p>',
-      saveDocument: async () => { saveCalls += 1; return { ok: false, error: 'not-writable' }; },
+      saveDocument: async () => {
+        saveCalls += 1;
+        if (saveError) throw new Error(saveError);
+        return { ok: false, error: 'not-writable' };
+      },
       loadContent: async () => {
         if (fail) throw new Error('Delivery read failed');
         return { html: '<p>Live content</p>' };
@@ -52,13 +58,13 @@ describe('fire-and-forget comparison commands', () => {
     window.removeEventListener('unhandledrejection', rejection);
   });
 
-  it('opens and closes without callbacks or saving the document', async () => {
+  it('opens and closes without response callbacks when the save reports read-only', async () => {
     canvasBus.comparisonRequest.emit({ action: 'openComparison', details: { candidate: 'document', baseline: 'live' }, context });
     await waitFor(() => root.querySelector('ew-comparison')?.loading === false);
     canvasBus.comparisonRequest.emit({ action: 'closeComparison', context });
     await new Promise((resolve) => { setTimeout(resolve, 20); });
     expect(root.querySelector('ew-comparison')).to.equal(null);
-    expect(saveCalls).to.equal(0);
+    expect(saveCalls).to.equal(1);
     expect(errors).to.deep.equal([]);
   });
 
@@ -70,7 +76,20 @@ describe('fire-and-forget comparison commands', () => {
     await surface.updateComplete;
     await new Promise((resolve) => { setTimeout(resolve, 20); });
     expect(surface.shadowRoot.textContent).to.include('Delivery read failed');
-    expect(saveCalls).to.equal(0);
+    expect(saveCalls).to.equal(1);
+    expect(errors).to.deep.equal([]);
+  });
+
+  it('shows save failures without a caller response or unhandled rejection', async () => {
+    saveError = 'Save transport failed';
+    canvasBus.comparisonRequest.emit({ action: 'openComparison', details: { candidate: 'document', baseline: 'live' }, context });
+    await waitFor(() => root.querySelector('ew-comparison')?.loading === false);
+    const surface = root.querySelector('ew-comparison');
+    await surface.updateComplete;
+    await new Promise((resolve) => { setTimeout(resolve, 20); });
+    expect(surface.shadowRoot.textContent).to.include('Save transport failed');
+    expect(surface.diffDom).to.equal(undefined);
+    expect(saveCalls).to.equal(1);
     expect(errors).to.deep.equal([]);
   });
 

@@ -210,12 +210,18 @@ describe('standalone workspace comparison', () => {
   let context;
   let calls;
   let html;
+  let saveDocument;
+  let saveCalls;
+  let serializeCalls;
 
   beforeEach(() => {
     expect(comparison.installComparison).to.be.a('function');
     context = { ...page };
     html = '<h1>Current document</h1><p>New author text</p>';
     calls = [];
+    saveDocument = async () => ({ ok: true });
+    saveCalls = 0;
+    serializeCalls = 0;
     mountRoot = document.createElement('div');
     editor = document.createElement('textarea');
     editor.value = 'Editor state';
@@ -226,8 +232,8 @@ describe('standalone workspace comparison', () => {
     controller = comparison.installComparison({
       mountRoot,
       getContext: () => context,
-      getDocument: () => html,
-      saveDocument: async () => ({ ok: true }),
+      getDocument: () => { serializeCalls += 1; return html; },
+      saveDocument: () => { saveCalls += 1; return saveDocument(); },
       loadContent: async (partition) => {
         calls.push(partition);
         return { html: `<h1>${partition}</h1><p>${partition} content</p>` };
@@ -263,6 +269,106 @@ describe('standalone workspace comparison', () => {
     html = undefined;
     expect((await controller.open({ candidate: 'preview', baseline: 'live' })).ok).to.equal(true);
     expect(calls).to.have.members(['preview', 'live']);
+  });
+
+  ['document', 'preview'].forEach((candidate) => {
+    it(`awaits the host save before serializing or loading ${candidate} comparison`, async () => {
+      let complete;
+      const saving = new Promise((resolve) => { complete = resolve; });
+      saveDocument = () => saving;
+      const pending = controller.open({ candidate, baseline: 'live' });
+      await new Promise((resolve) => { setTimeout(resolve, 20); });
+      const duringSave = { saveCalls, serializeCalls, calls: [...calls] };
+      html = '<p>Edits received while saving</p>';
+      complete({ ok: true });
+      expect(await pending).to.deep.equal({ ok: true });
+      expect(duringSave).to.deep.equal({ saveCalls: 1, serializeCalls: 0, calls: [] });
+      expect(calls).to.deep.equal(candidate === 'document' ? ['live'] : ['live', 'preview']);
+      expect(serializeCalls).to.equal(candidate === 'document' ? 1 : 0);
+      const surface = mountRoot.querySelector('ew-comparison');
+      expect(surface.diffDom.textContent).to.include(candidate === 'document'
+        ? 'Edits received while saving' : 'preview content');
+    });
+
+    it(`opens ${candidate} comparison when the host cannot write the document`, async () => {
+      saveDocument = async () => ({ ok: false, error: 'not-writable' });
+      expect(await controller.open({ candidate, baseline: 'live' })).to.deep.equal({ ok: true });
+      expect(saveCalls).to.equal(1);
+      expect(calls).to.deep.equal(candidate === 'document' ? ['live'] : ['live', 'preview']);
+      expect(mountRoot.querySelector('ew-comparison').error).to.equal(undefined);
+    });
+
+    ['no-document', 'stale-context', 'Save transport failed'].forEach((error) => {
+      [false, true].forEach((reject) => {
+        it(`shows ${reject ? 'rejected' : 'returned'} ${error} without reading ${candidate} content`, async () => {
+          saveDocument = async () => {
+            if (reject) throw new Error(error);
+            return { ok: false, error };
+          };
+          expect(await controller.open({ candidate, baseline: 'live' }))
+            .to.deep.equal({ ok: false, error });
+          expect(saveCalls).to.equal(1);
+          expect(serializeCalls).to.equal(0);
+          expect(calls).to.deep.equal([]);
+          const surface = mountRoot.querySelector('ew-comparison');
+          await surface.updateComplete;
+          expect(surface.shadowRoot.textContent).to.include(error);
+          expect(surface.loading).to.equal(false);
+          expect(surface.diffDom).to.equal(undefined);
+        });
+      });
+    });
+
+    it(`does not interpret a rejected not-writable error as permission to open ${candidate}`, async () => {
+      saveDocument = async () => { throw new Error('not-writable'); };
+      expect(await controller.open({ candidate, baseline: 'live' }))
+        .to.deep.equal({ ok: false, error: 'not-writable' });
+      expect(calls).to.deep.equal([]);
+      expect(serializeCalls).to.equal(0);
+      const surface = mountRoot.querySelector('ew-comparison');
+      await surface.updateComplete;
+      expect(surface.shadowRoot.textContent).to.include('not-writable');
+    });
+
+    ['close', 'navigation', 'silent context change', 'replacement'].forEach((change) => {
+      it(`discards stale ${candidate} work after ${change} during save`, async () => {
+        let complete;
+        const saving = new Promise((resolve) => { complete = resolve; });
+        saveDocument = () => saving;
+        const pending = controller.open({ candidate, baseline: 'live' });
+        await new Promise((resolve) => { setTimeout(resolve, 20); });
+        const duringSave = { saveCalls, serializeCalls, calls: [...calls] };
+        if (change === 'close') controller.close();
+        else if (change === 'replacement') {
+          saveDocument = async () => ({ ok: true });
+          await controller.open({ candidate, baseline: 'live' });
+        } else {
+          context = { ...page, path: 'next' };
+          if (change === 'navigation') controller.contextChanged();
+        }
+        const beforeCompletion = { serializeCalls, calls: [...calls] };
+        const surface = mountRoot.querySelector('ew-comparison');
+        const diffDom = surface?.diffDom;
+        complete({ ok: true });
+        expect(await pending).to.deep.equal({ ok: false, error: 'stale-context' });
+        expect(duringSave).to.deep.equal({ saveCalls: 1, serializeCalls: 0, calls: [] });
+        expect({ serializeCalls, calls }).to.deep.equal(beforeCompletion);
+        expect(mountRoot.querySelector('ew-comparison')).to.equal(surface);
+        expect(surface?.diffDom).to.equal(diffDom);
+        if (change === 'close' || change === 'navigation') expect(editor.inert).to.equal(false);
+      });
+    });
+  });
+
+  it('does not load content when an installed host save has no result', async () => {
+    saveDocument = async () => undefined;
+    expect((await controller.open({ candidate: 'document', baseline: 'live' })).ok).to.equal(false);
+    expect(calls).to.deep.equal([]);
+    expect(serializeCalls).to.equal(0);
+    const surface = mountRoot.querySelector('ew-comparison');
+    await surface.updateComplete;
+    expect(surface.error).to.be.a('string').and.not.equal('');
+    expect(surface.shadowRoot.textContent).to.include(surface.error);
   });
 
   it('switches between split and unified diffs without losing changes', async () => {
@@ -342,12 +448,14 @@ describe('standalone workspace comparison', () => {
     expect(surface.shadowRoot.textContent).to.include('changed');
   });
 
-  it('exposes the save handshake separately from read-only comparison', async () => {
+  it('preserves the separately acknowledged save handshake without opening comparison', async () => {
     const result = await new Promise((resolve) => {
       canvasBus.comparisonRequest.emit({ action: 'saveDocument', context: page, resolve });
     });
     expect(result).to.deep.equal({ ok: true });
+    expect(saveCalls).to.equal(1);
     expect(calls).to.have.length(0);
+    expect(mountRoot.querySelector('ew-comparison')).to.equal(null);
   });
 });
 
