@@ -22,6 +22,13 @@ function isHeading(el) {
   return ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(el?.nodeName);
 }
 
+function getHeadingAnchor(heading) {
+  if (!isHeading(heading)) return undefined;
+  // Source HTML may omit the ID that AEM generates from the heading text.
+  return heading.id || heading.textContent.toLowerCase()
+    .replace(/[^0-9a-z]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+}
+
 function getBlockName(className) {
   const [name, ...rest] = (className || '').split(' ');
   return { name, variants: rest.length ? rest.join(', ') : undefined };
@@ -109,6 +116,7 @@ function groupBlocks(elements) {
       blockGroup.dataset.isgroup = 'true';
       if (isHeading(el.previousElementSibling)) {
         blockGroup.dataset.groupheading = el.previousElementSibling.textContent;
+        blockGroup.dataset.groupanchor = getHeadingAnchor(el.previousElementSibling);
       }
       state.currentGroup = { blockGroup };
     } else if (el.classList?.contains('library-container-end') && state.currentGroup) {
@@ -170,6 +178,8 @@ function transformBlock(block) {
   } else {
     item = getBlockName(block.className || '');
   }
+  const anchor = block.dataset.groupanchor || getHeadingAnchor(headingSib);
+  if (anchor) item.anchor = anchor;
 
   // Extract and strip metadata before generating the block's dom, so it never
   // leaks into the content that gets copied/inserted or previewed.

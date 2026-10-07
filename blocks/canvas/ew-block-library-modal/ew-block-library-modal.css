@@ -126,6 +126,9 @@
 .modal-tree-variant-row .modal-tree-row {
   flex: 1;
   min-width: 0;
+}
+
+.modal-tree-variant-row .modal-tree-row:disabled {
   cursor: default;
 }
 
@@ -156,6 +159,8 @@
 .modal-tree-info:focus-visible,
 .modal-tree-variant-row:hover .modal-tree-add,
 .modal-tree-variant-row:hover .modal-tree-info,
+.modal-tree-variant-row:focus-within .modal-tree-add,
+.modal-tree-variant-row:focus-within .modal-tree-info,
 .modal-tree-variant-row .modal-tree-info[aria-expanded="true"] {
   visibility: visible;
 }
@@ -261,4 +266,3 @@
 .modal-preview-error p {
   margin: 0;
 }
-
