@@ -225,6 +225,16 @@ canvasBus.commentComposeRequest.subscribe(() => {
   openPanelSection('tools', 'comments');
 });
 
+canvasBus.toolbarSelectionState.subscribe(({ surface, block }) => {
+  if (surface === 'wysiwyg' && block) openPanelSection('tools', 'block');
+});
+
+canvasBus.editorSelectState.subscribe(({ source, blockIndex }) => {
+  if (source === 'doc' && blockIndex >= 0) {
+    openPanelSection('tools', 'block');
+  }
+});
+
 export default async function decorate(block) {
   const { org, site } = hashState();
 

@@ -5,25 +5,13 @@ import { replaceBlockRange, setTableBlockVariant, appendBlockRow } from '../edit
 import { isMultiBlock, getMultiBlockTemplateRow } from '../editor-utils/multi-block.js';
 import { requestComment } from '../editor-utils/command-helpers.js';
 import { canvasBus } from '../utils/canvas-bus.js';
+import { getBlockVariantOptions, normalizeBlockName } from '../editor-utils/block-variants.js';
 
 const nx = getNx();
 const { loadStyle } = await import(`${nx}/utils/utils.js`);
 await import(`${nx}/blocks/shared/picker/picker.js`);
 
 const styles = await loadStyle(import.meta.url);
-
-/** Normalize block names so `card-list`, `Card List` and `card_list` all compare equal. */
-function normalizeBlockName(name) {
-  return (name || '').toLowerCase().replace(/[\s_-]+/g, ' ').trim();
-}
-
-/** Split a library variant entry into its base block name and variant descriptor. */
-function splitLibraryVariant(variant) {
-  if (variant?.variants) return { base: variant.name || '', variant: variant.variants };
-  const match = (variant?.name || '').match(/^(.*\S)\s*\(([^)]+)\)\s*$/);
-  if (match) return { base: match[1].trim(), variant: match[2].trim() };
-  return { base: variant?.name || '', variant: '' };
-}
 
 class EwBlockToolbar extends LitElement {
   static properties = {
@@ -64,17 +52,9 @@ class EwBlockToolbar extends LitElement {
     this._variantOptions = [];
     if (!this.org || !this.site || !blockName) return;
     const { blocks } = await loadBlockLibrary(this.org, this.site);
-    const target = normalizeBlockName(blockName);
-    const found = new Set();
-    await Promise.all((blocks || []).map(async (block) => {
-      const variants = (await block.loadVariants) || [];
-      variants.forEach((v) => {
-        const { base, variant } = splitLibraryVariant(v);
-        if (variant && normalizeBlockName(base) === target) found.add(variant);
-      });
-    }));
+    const options = await getBlockVariantOptions(blocks, blockName);
     if (this._blockName !== blockName) return;
-    this._variantOptions = [...found];
+    this._variantOptions = options;
   }
 
   async _loadMultiBlock(blockName) {

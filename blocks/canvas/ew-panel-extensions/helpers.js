@@ -570,6 +570,19 @@ export function createMetadataView() {
   };
 }
 
+export function createBlockView() {
+  return {
+    id: 'block',
+    label: 'Block',
+    section: 'Editor',
+    firstParty: true,
+    load: async () => {
+      await import('../ew-block-properties/ew-block-properties.js');
+      return document.createElement('ew-block-properties');
+    },
+  };
+}
+
 export function extensionToPanelView(ext, section) {
   // Block library opens its own dedicated modal (used by the slash menu and
   // outline "+" button) rather than the generic inline panel or iframe dialog.
@@ -648,7 +661,7 @@ export function extensionToPanelView(ext, section) {
 }
 
 /**
- * Tool panel: Editor placeholder, Library (blocks / AEM Assets / icons / templates / placeholders),
+ * Tool panel: Editor views, Library (blocks / AEM Assets / icons / templates / placeholders),
  * Extensions (other plugins).
  */
 export async function getCanvasToolPanelViews({ org, site }) {
@@ -659,6 +672,7 @@ export async function getCanvasToolPanelViews({ org, site }) {
   return [
     createOutlineView(),
     createMetadataView(),
+    createBlockView(),
     createFileExplorerView(),
     createVersioningView(),
     createCommentsView(),

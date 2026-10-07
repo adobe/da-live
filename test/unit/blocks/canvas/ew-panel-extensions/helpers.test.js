@@ -11,6 +11,7 @@ let extensionToPanelView;
 let getPreviewStatus;
 let createCommentsView;
 let createMetadataView;
+let createBlockView;
 let getCanvasToolPanelViews;
 let fetchExtensions;
 
@@ -21,6 +22,7 @@ before(async () => {
   getPreviewStatus = mod.getPreviewStatus;
   createCommentsView = mod.createCommentsView;
   createMetadataView = mod.createMetadataView;
+  createBlockView = mod.createBlockView;
   getCanvasToolPanelViews = mod.getCanvasToolPanelViews;
   fetchExtensions = mod.fetchExtensions;
 });
@@ -468,10 +470,25 @@ describe('createMetadataView', () => {
 describe('getCanvasToolPanelViews', () => {
   afterEach(() => setDaConfigs([]));
 
-  it('includes the metadata view alongside the other first-party Editor views', async () => {
+  it('includes Page and Block alongside the other first-party Editor views', async () => {
     setDaConfigs([{ data: [] }]);
     const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
-    expect(views.map((v) => v.id)).to.include('metadata');
+    expect(views.map((v) => v.id)).to.include.members(['metadata', 'block']);
+  });
+});
+
+describe('createBlockView', () => {
+  it('is a first-party Editor-section view', () => {
+    const view = createBlockView();
+    expect(view.id).to.equal('block');
+    expect(view.label).to.equal('Block');
+    expect(view.section).to.equal('Editor');
+    expect(view.firstParty).to.equal(true);
+  });
+
+  it('load() returns an ew-block-properties element', async () => {
+    const el = await createBlockView().load();
+    expect(el.localName).to.equal('ew-block-properties');
   });
 });
 
