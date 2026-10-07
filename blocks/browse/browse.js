@@ -1,4 +1,7 @@
 import { getNx } from '../../scripts/utils.js';
+import { getBrowsePath } from './utils.js';
+
+const browsePath = getBrowsePath({ search: window.location.search });
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -13,7 +16,8 @@ async function loadComponent(el, cmpName, pathDetails) {
   }
   // Swapping views — remove whichever component is currently mounted.
   el.querySelector('da-sites, da-browse')?.remove();
-  await import(`./${cmpName}/${cmpName}.js`);
+  const componentPath = cmpName === 'da-sites' ? '.' : browsePath;
+  await import(`${componentPath}/${cmpName}/${cmpName}.js`);
   const cmp = document.createElement(cmpName);
   cmp.details = pathDetails;
   el.append(cmp);
