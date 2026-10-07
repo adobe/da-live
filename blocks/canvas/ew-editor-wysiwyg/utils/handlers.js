@@ -179,15 +179,16 @@ function findImagePosBySrc(doc, src, blockIndex) {
     }
   }
   let found = null;
+  let ambiguous = false;
   doc.nodesBetween(from, to, (n, pos) => {
-    if (found != null) return false;
     if (n.type.name === 'image' && srcFileName(n.attrs?.src) === name) {
-      found = pos;
+      if (found != null) ambiguous = true;
+      else found = pos;
       return false;
     }
     return true;
   });
-  return found;
+  return ambiguous ? null : found;
 }
 
 export function resolveNodeSelectPos(node, doc) {
@@ -199,10 +200,11 @@ export function resolveNodeSelectPos(node, doc) {
   }
   if (node.anchorType === 'image') {
     const pos = node.proseIndex;
-    if (pos != null && pos >= 0 && pos <= doc.content.size
+    if (Number.isSafeInteger(pos) && pos >= 0 && pos < doc.content.size
       && doc.nodeAt(pos)?.type.name === 'image') {
       return pos;
     }
+    if (pos != null) return null;
     return node.src ? findImagePosBySrc(doc, node.src, node.blockIndex) : null;
   }
   return null;
