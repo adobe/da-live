@@ -28,11 +28,14 @@
 }
 
 .nx-action-btn-icon.modal-close {
-  --nx-btn-icon-size: var(--nx-ui-icon-l);
-
   width: var(--nx-ui-icon-btn-size);
   height: var(--nx-ui-icon-btn-size);
   padding: 0;
+
+  svg {
+    width: var(--nx-ui-icon-l);
+    height: var(--nx-ui-icon-l);
+  }
 
   &:hover:not(:disabled) {
     background: var(--nx-ui-icon-btn-hover-bg);
