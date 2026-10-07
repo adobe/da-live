@@ -1,28 +1,12 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2Api } from '../../../../scripts/utils.js';
+import { getSearchScope, timeoutWrapper } from '../../shared/search.js';
 
 const { crawl, Queue } = await import(`${getNx()}/public/utils/tree.js`);
 
 // Styles
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const STYLE = await loadStyle(import.meta.url);
-
-const DEFAULT_LOCALES = ['langstore'];
-
-function getLocales(translate) {
-  const locales = new Set(DEFAULT_LOCALES);
-
-  translate?.languages?.data?.forEach((lang) => {
-    lang.locales?.split(',').forEach((loc) => {
-      const dir = loc.split('/').find((part) => part?.trim() !== '');
-      if (dir) {
-        locales.add(dir.trim());
-      }
-    });
-  });
-
-  return locales;
-}
 
 export default class DaSearch extends LitElement {
   static properties = {
@@ -73,38 +57,10 @@ export default class DaSearch extends LitElement {
   }
 
   async getSearchScope(startPath) {
-    const isSiteFolder = startPath.split('/').length === 3;
-    if (!isSiteFolder) {
-      return { paths: [startPath], files: [] };
-    }
-
-    const { source } = await getNx2Api();
-    const resp = await source.get(`${startPath}/.da/translate.json`);
-    if (!resp.ok) {
-      return { paths: [startPath], files: [] };
-    }
-
-    const translate = await resp.json();
-    const locales = getLocales(translate);
-
-    if (!locales.size || !this.browseItems?.length) {
-      return { paths: [startPath], files: [] };
-    }
-
-    const paths = [];
-    const files = [];
-
-    this.browseItems.forEach((item) => {
-      if (!locales.has(item.name)) {
-        if (item.ext) {
-          files.push(item);
-        } else {
-          paths.push(item.path);
-        }
-      }
+    return getSearchScope({
+      startPath,
+      getBrowseItems: () => this.browseItems,
     });
-
-    return { paths, files };
   }
 
   async getMatches(startPath, term) {
@@ -186,19 +142,7 @@ export default class DaSearch extends LitElement {
   }
 
   timeoutWrapper(fn, timeout = 30000) {
-    return new Promise((resolve) => {
-      const loading = fn();
-
-      const timedout = setTimeout(() => { resolve({ error: 'timeout' }); }, timeout);
-
-      loading.then((result) => {
-        clearTimeout(timedout);
-        resolve(result);
-      }).catch(() => {
-        clearTimeout(timedout);
-        resolve({ error: 'bad result' });
-      });
-    });
+    return timeoutWrapper({ fn, timeout });
   }
 
   async handleReplace(e) {
