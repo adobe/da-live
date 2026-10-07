@@ -39,7 +39,7 @@ function buildCanvasDocPath(state) {
   return `${org}/${site}/${path}`;
 }
 
-function notifyCanvasEditorActive(view) {
+export function notifyCanvasEditorActive(view) {
   const v = normalizeCanvasEditorView(view);
   canvasBus.editorViewState.emit({ view: v });
 }
