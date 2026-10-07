@@ -38,7 +38,7 @@ function buildCanvasDocPath(state) {
   return `${org}/${site}/${path}`;
 }
 
-function notifyCanvasEditorActive(view) {
+export function notifyCanvasEditorActive(view) {
   const v = normalizeCanvasEditorView(view);
   canvasBus.editorViewState.emit({ view: v });
 }
@@ -182,6 +182,7 @@ async function syncToolPanelViews(toolPanel, { org, site }, panelName) {
   const key = org && site ? `${org}/${site}` : null;
   if (key === toolPanel.dataset.extKey) return false;
   toolPanel.dataset.extKey = key ?? '';
+  toolPanel.contextKey = key ?? '';
 
   if (!key) {
     toolPanel.org = undefined;

@@ -1,6 +1,6 @@
 import { getNx } from '../../../scripts/utils.js';
 import getPathDetails from '../../shared/pathDetails.js';
-import { buildAssetSelectorProps } from '../../shared/aem-assets/selector-props.js';
+import { buildAssetSelectorProps, rememberAssetFolder } from '../../shared/aem-assets/selector-props.js';
 import { getRepositoryConfig, getResponsiveImageConfig } from './helpers/config.js';
 import {
   buildAuthorUrl, buildDmUrl, buildDeliveryUrl,
@@ -110,6 +110,8 @@ export function buildHandleSelection({
 
     const format = asset['aem:formatName'];
     if (!format) return;
+
+    rememberAssetFolder(repoConfig, asset.path);
 
     const view = getView();
     if (!view) return;
