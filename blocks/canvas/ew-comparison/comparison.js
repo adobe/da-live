@@ -111,7 +111,15 @@ export function installComparison({
       });
       mountRoot.append(surface);
       await surface.updateComplete;
+      if (!current()) return { ok: false, error: 'stale-context' };
       surface.focusHeading();
+      if (saveDocument) {
+        const result = await saveDocument();
+        if (!current()) return { ok: false, error: 'stale-context' };
+        if (!result?.ok && result?.error !== 'not-writable') {
+          throw new Error(result?.error || 'no-document');
+        }
+      }
       const documentHtml = options.candidate === 'document' ? getDocument?.() : null;
       if (options.candidate === 'document' && typeof documentHtml !== 'string') {
         throw new Error('The current document is not ready. Try again once it has loaded.');
