@@ -66,6 +66,34 @@ describe('canvasBus.editorHtmlState replay', () => {
   });
 });
 
+describe('canvasBus toolbar state', () => {
+  it('replays the latest active surface, including when editing has stopped', () => {
+    canvasBus.toolbarSurfaceState.emit({ activeSurface: 'wysiwyg' });
+    const received = [];
+    const unsub = canvasBus.toolbarSurfaceState.subscribe((state) => received.push(state));
+    canvasBus.toolbarSurfaceState.emit({ activeSurface: null });
+    unsub();
+    expect(received).to.deep.equal([
+      { activeSurface: 'wysiwyg' },
+      { activeSurface: null },
+    ]);
+  });
+
+  it('delivers selection changes without replaying stale selections', () => {
+    canvasBus.toolbarSelectionState.emit({ surface: 'doc', showable: true, block: null });
+    let received;
+    const unsub = canvasBus.toolbarSelectionState.subscribe((state) => { received = state; });
+    expect(received).to.equal(undefined);
+    canvasBus.toolbarSelectionState.emit({ surface: 'wysiwyg', showable: false, block: { name: 'cards' } });
+    unsub();
+    expect(received).to.deep.equal({
+      surface: 'wysiwyg',
+      showable: false,
+      block: { name: 'cards' },
+    });
+  });
+});
+
 describe('canvasBus.editorSelectState enrichment', () => {
   it('passes details through unchanged until an enricher is registered, applies it once registered, and rejects a second registration', () => {
     let received;
