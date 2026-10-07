@@ -9,7 +9,7 @@ import {
   replaceBlockRange, setTableBlockVariant, appendBlockRow, deleteBlockRow, moveBlockRow,
 } from '../editor-utils/blocks.js';
 import { getBlockVariantOptions, normalizeBlockName } from '../editor-utils/block-variants.js';
-import { loadBlockLibrary } from '../ew-panel-extensions/helpers.js';
+import { loadBlockLibrary, resetBlockLibraryCache, resetBlockOptionsCache } from '../ew-panel-extensions/helpers.js';
 import { isMultiBlock, getMultiBlockTemplateRow } from '../editor-utils/multi-block.js';
 import { getBlockFieldTemplate, buildBlockFieldDefinitions, resolveBlockFields } from '../editor-utils/block-fields.js';
 import { getSourceUploadContext } from '../ew-editor-doc/prose-plugins/sourceUploadContext.js';
@@ -51,6 +51,8 @@ class EwBlockProperties extends LitElement {
     _uploadingField: { state: true },
     _assetTarget: { state: true },
     _generateFieldsContext: { state: true },
+    _fieldsGenerationRequested: { state: true },
+    _refreshingLibrary: { state: true },
   };
 
   connectedCallback() {
@@ -62,11 +64,13 @@ class EwBlockProperties extends LitElement {
     this._multiTemplateRow = null;
     this._fieldDefinitions = [];
     this._generateFieldsContext = null;
+    this._fieldsGenerationRequested = false;
     this._refresh();
     this._unsubscribeHash = hashChange.subscribe((state) => {
       const prev = this._hashState;
       this._hashState = state;
       if (state?.org !== prev?.org || state?.site !== prev?.site) {
+        this._fieldsGenerationRequested = false;
         this._loadVariants();
         this._loadMultiBlock();
         this._loadFields();
@@ -91,6 +95,7 @@ class EwBlockProperties extends LitElement {
         this._fieldError = '';
         this._assetTarget = null;
         this._generateFieldsContext = null;
+        this._fieldsGenerationRequested = false;
         this._clearDragState();
       }
     });
@@ -121,6 +126,10 @@ class EwBlockProperties extends LitElement {
     this._disabled = !block || view.editable === false;
     const table = block?.node ?? null;
     const tablePos = block?.from ?? null;
+    if (this._name !== prevName || this._variant !== prevVariant
+      || view !== prevView || tablePos !== this._itemTablePos) {
+      this._fieldsGenerationRequested = false;
+    }
     if (table !== this._itemTable || tablePos !== this._itemTablePos
       || view !== this._itemEditorView || this._disabled) this._clearDragState();
     this._itemTable = table;
@@ -429,7 +438,32 @@ Illustrative HTML ONLY for a template with an image in its first single-cell row
 </div>
 
 Adapt the rows, cells, and labels to the actual selected library variant; do not blindly copy this example. Add the generated fields table to that variant's existing library metadata, or create associated library metadata if absent. Fill an empty fields entry if one exists. Preserve description, search tags, other metadata, all template content, and all other variants. Do not replace the block or edit the current page to add this schema. If nonempty fields already exist in the source, report them rather than overwriting them. Show the generated table and identify the exact library document and variant to which it belongs.`;
+    this._fieldsGenerationRequested = true;
     document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat', options: { text, autoSend: false } } }));
+  }
+
+  async _onRefreshLibrary() {
+    const { org, site } = this._hashState ?? {};
+    const block = getSelectedBlock(getExtensionsBridge().view?.state);
+    if (!this._fieldsGenerationRequested || this._refreshingLibrary || !org || !site
+      || !block || getTableBlockName(block.node) !== this._name
+      || getTableBlockVariant(block.node) !== this._variant) return;
+    this._refreshingLibrary = true;
+    resetBlockLibraryCache();
+    resetBlockOptionsCache();
+    const loading = Promise.all([
+      this._loadVariants(), this._loadMultiBlock(), this._loadFields(),
+    ]);
+    const loadId = this._fieldLoadId;
+    try {
+      await loading;
+    } catch (error) {
+      if (loadId === this._fieldLoadId && this.isConnected) {
+        this._fieldError = `Unable to refresh block library: ${error.message}`;
+      }
+    } finally {
+      this._refreshingLibrary = false;
+    }
   }
 
   get _fields() {
@@ -541,7 +575,14 @@ Adapt the rows, cells, and labels to the actual selected library variant; do not
     return html`
       ${this._generateFieldsContext ? html`
         <button type="button" class="nx-form-btn-secondary ew-block-generate-fields"
+          ?disabled=${this._refreshingLibrary}
           @click=${this._onGenerateFields}>Generate fields</button>
+      ` : nothing}
+      ${this._fieldsGenerationRequested && !this._fieldDefinitions.length ? html`
+        <button type="button" class="nx-form-btn-secondary ew-block-refresh-library"
+          ?disabled=${this._refreshingLibrary} @click=${this._onRefreshLibrary}>
+          ${this._refreshingLibrary ? 'Refreshing...' : 'Refresh'}
+        </button>
       ` : nothing}
       ${this._fields.map((field) => {
         const id = `ew-block-field-${field.key}`;

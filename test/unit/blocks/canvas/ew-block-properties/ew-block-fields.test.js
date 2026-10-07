@@ -52,6 +52,7 @@ describe('ew-block-properties library fields', () => {
     '',
   );
   const generateButton = () => el.shadowRoot.querySelector('.ew-block-generate-fields');
+  const refreshButton = () => el.shadowRoot.querySelector('.ew-block-refresh-library');
 
   beforeEach(async () => {
     resetBlockLibraryCache();
@@ -122,7 +123,115 @@ describe('ew-block-properties library fields', () => {
     await el._loadFields();
     await el.updateComplete;
     expect(generateButton().textContent.trim()).to.equal('Generate fields');
+    expect(refreshButton()).to.equal(null);
     expect(el.shadowRoot.querySelector('.ew-block-field')).to.equal(null);
+  });
+
+  it('shows Refresh after requesting generation and reloads the library to render new fields', async () => {
+    resetBlockLibraryCache();
+    html = withoutFields();
+    await el._loadFields();
+    await el.updateComplete;
+    generateButton().click();
+    await el.updateComplete;
+    expect(refreshButton().textContent.trim()).to.equal('Refresh');
+    fetchStub.resetHistory();
+    html = libraryHtml() + libraryHtml(fieldsTable, 'center');
+    const { doc } = view.state;
+    const refresh = sinon.spy(el, '_onRefreshLibrary');
+    el.requestUpdate();
+    await el.updateComplete;
+    refreshButton().click();
+    expect(refresh.calledOnce).to.equal(true);
+    await refresh.returnValues[0];
+    await el.updateComplete;
+    const fetchedUrls = fetchStub.getCalls().map((call) => String(call.args[0]));
+    expect(fetchedUrls).to.include('http://localhost:2000/mock-blocks.json');
+    expect(fetchedUrls).to.include('http://localhost:2000/mock-hero.html');
+    expect(fieldElement('title').querySelector('input').value).to.equal('Current title');
+    expect(el._variantOptions).to.include('center');
+    expect(generateButton()).to.equal(null);
+    expect(refreshButton()).to.equal(null);
+    expect(view.state.doc).to.equal(doc);
+  });
+
+  it('disables Refresh while loading and allows retry when fields are still missing', async () => {
+    resetBlockLibraryCache();
+    html = withoutFields();
+    await el._loadFields();
+    el._onGenerateFields();
+    let finish;
+    html = new Promise((resolve) => { finish = resolve; });
+    const loading = el._onRefreshLibrary();
+    await el.updateComplete;
+    expect(refreshButton().disabled).to.equal(true);
+    expect(refreshButton().textContent.trim()).to.equal('Refreshing...');
+    const calls = fetchStub.callCount;
+    await el._onRefreshLibrary();
+    expect(fetchStub.callCount).to.equal(calls);
+    finish(withoutFields());
+    await loading;
+    await el.updateComplete;
+    expect(refreshButton().disabled).to.equal(false);
+    expect(refreshButton().textContent.trim()).to.equal('Refresh');
+    expect(generateButton()).not.to.equal(null);
+  });
+
+  it('does not retain the generation refresh action when switching variants or unloading the document', async () => {
+    resetBlockLibraryCache();
+    html = withoutFields() + withoutFields('center');
+    await el._loadFields();
+    el._onGenerateFields();
+    await el.updateComplete;
+    expect(refreshButton()).not.to.equal(null);
+    el._onVariantChange({ detail: { value: 'center' } });
+    await el._loadFields();
+    await el.updateComplete;
+    expect(refreshButton()).to.equal(null);
+    el._onGenerateFields();
+    await el.updateComplete;
+    expect(refreshButton()).not.to.equal(null);
+    canvasBus.editorHtmlState.emit('');
+    await el.updateComplete;
+    expect(refreshButton()).to.equal(null);
+  });
+
+  it('keeps Refresh available after a metadata error so the corrected library can be reloaded', async () => {
+    resetBlockLibraryCache();
+    html = withoutFields();
+    await el._loadFields();
+    el._onGenerateFields();
+    html = libraryHtml('not a table');
+    await el._onRefreshLibrary();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('[role="alert"]').textContent).to.include('Fields header');
+    expect(refreshButton().disabled).to.equal(false);
+    html = libraryHtml();
+    await el._onRefreshLibrary();
+    await el.updateComplete;
+    expect(fieldElement('title')).not.to.equal(null);
+    expect(el.shadowRoot.querySelector('[role="alert"]')).to.equal(null);
+    expect(refreshButton()).to.equal(null);
+  });
+
+  it('does not apply refreshed fields to a different selection', async () => {
+    resetBlockLibraryCache();
+    html = withoutFields();
+    await el._loadFields();
+    el._onGenerateFields();
+    let finish;
+    html = new Promise((resolve) => { finish = resolve; });
+    const loading = el._onRefreshLibrary();
+    view.dispatch(view.state.tr.setSelection(
+      TextSelection.create(view.state.doc, view.state.doc.firstChild.nodeSize + 1),
+    ));
+    el._refresh();
+    finish(libraryHtml());
+    await loading;
+    await el.updateComplete;
+    expect(el._fieldDefinitions).to.deep.equal([]);
+    expect(refreshButton()).to.equal(null);
+    expect(el._refreshingLibrary).to.equal(false);
   });
 
   it('opens AI chat with a detailed variant-specific draft without auto-sending or editing the page', async () => {
