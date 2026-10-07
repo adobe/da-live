@@ -111,7 +111,7 @@ export default class DaList extends LitElement {
 
   async firstUpdated() {
     await import('../../../shared/da-dialog/da-dialog.js');
-    await import('../da-actionbar/da-actionbar.js');
+    await import('../../da-actionbar/da-actionbar.js');
     this.setupObserver();
   }
 

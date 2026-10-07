@@ -1,5 +1,5 @@
 import { LitElement, html } from 'da-lit';
-import { getNx } from '../../../../scripts/utils.js';
+import { getNx } from '../../../scripts/utils.js';
 
 // Styles
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -122,7 +122,7 @@ export default class DaActionBar extends LitElement {
   }
 
   async handleShare() {
-    const { items2Clipboard } = await import('../../shared/list.js');
+    const { items2Clipboard } = await import('../shared/list.js');
     items2Clipboard(this.items);
     const opts = { bubbles: true, composed: true };
     const event = new CustomEvent('onshare', opts);

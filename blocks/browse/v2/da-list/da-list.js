@@ -165,7 +165,7 @@ export default class DaList extends LitElement {
 
   async firstUpdated() {
     await import('../../../shared/da-dialog/da-dialog.js');
-    await import('../da-actionbar/da-actionbar.js');
+    await import('../../da-actionbar/da-actionbar.js');
     this.setupObserver();
   }
 
@@ -1534,6 +1534,7 @@ export default class DaList extends LitElement {
         ${this.drag ? this.renderDropArea() : nothing}
       </div>
       <da-actionbar
+        class="full-width"
         .permissions=${this._permissions}
         .canDelete=${this._canDelete}
         @clearselection=${this.handleClear}

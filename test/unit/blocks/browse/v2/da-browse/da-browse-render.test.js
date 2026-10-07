@@ -195,9 +195,10 @@ describe('da-browse render', () => {
   });
 
   it('sizes the fixed action bar to browse and follows panel-driven width changes', async () => {
-    await import('../../../../../../blocks/browse/v2/da-actionbar/da-actionbar.js');
-    const sheets = await Promise.all(['da-browse', 'da-list', 'da-actionbar'].map(async (name) => {
-      const { href } = new URL(`../../../../../../blocks/browse/v2/${name}/${name}.css`, import.meta.url);
+    await import('../../../../../../blocks/browse/da-actionbar/da-actionbar.js');
+    const paths = ['v2/da-browse/da-browse.css', 'v2/da-list/da-list.css', 'da-actionbar/da-actionbar.css'];
+    const sheets = await Promise.all(paths.map(async (path) => {
+      const { href } = new URL(`../../../../../../blocks/browse/${path}`, import.meta.url);
       const response = await savedFetch(href);
       expect(response.ok).to.be.true;
       const sheet = new CSSStyleSheet();
@@ -208,6 +209,7 @@ describe('da-browse render', () => {
     const list = el.browseCmp;
     await list.updateComplete;
     const actionbar = list.actionBar;
+    expect(actionbar.classList.contains('full-width')).to.be.true;
     actionbar.setAttribute('data-visible', 'true');
     actionbar.items = [{ path: '/org/site/page.html', name: 'page', ext: 'html' }];
     await actionbar.updateComplete;
