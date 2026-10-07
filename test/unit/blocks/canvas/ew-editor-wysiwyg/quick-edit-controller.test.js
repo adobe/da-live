@@ -108,12 +108,12 @@ describe('quick-edit-controller IFRAME_CLICK forwarding', () => {
   beforeEach(() => { prevHlx = window.hlx; });
   afterEach(() => { window.hlx = prevHlx; });
 
-  it('records an ew-wysiwyg-doc RUM click from a forwarded iframe click', () => {
+  it('records a layout RUM click from a forwarded iframe click without a source', () => {
     const sampleRUM = sinon.spy();
     window.hlx = { rum: { sampleRUM } };
     const ctx = makeCtx(true);
     send(createControllerOnMessage(ctx), { type: 'iframe-click', payload: { target: 'hero' } });
-    expect(sampleRUM.calledOnceWith('click', { source: 'ew-wysiwyg-doc', target: 'hero' })).to.be.true;
+    expect(sampleRUM.calledOnceWith('click', { source: 'ew-wysiwyg-layout', target: 'hero' })).to.be.true;
   });
 
   it('records an ew-wysiwyg-layout RUM click when the iframe reports the layout source', () => {
@@ -127,15 +127,20 @@ describe('quick-edit-controller IFRAME_CLICK forwarding', () => {
     expect(sampleRUM.calledOnceWith('click', { source: 'ew-wysiwyg-layout', target: 'hero' })).to.be.true;
   });
 
-  it('falls back to ew-wysiwyg-doc for a missing or unknown source', () => {
-    const sampleRUM = sinon.spy();
-    window.hlx = { rum: { sampleRUM } };
-    const ctx = makeCtx(true);
-    const onMessage = createControllerOnMessage(ctx);
-    send(onMessage, { type: 'iframe-click', payload: { target: 'a', source: 'something-else' } });
-    send(onMessage, { type: 'iframe-click', payload: { target: 'b' } });
-    expect(sampleRUM.firstCall.args[1]).to.deep.equal({ source: 'ew-wysiwyg-doc', target: 'a' });
-    expect(sampleRUM.secondCall.args[1]).to.deep.equal({ source: 'ew-wysiwyg-doc', target: 'b' });
+  ['ew-wysiwyg-doc', 'ew-editor-doc', 'something-else'].forEach((source) => {
+    it(`attributes iframe clicks to layout regardless of the reported source: ${source}`, () => {
+      const sampleRUM = sinon.spy();
+      window.hlx = { rum: { sampleRUM } };
+      const ctx = makeCtx(true);
+      send(createControllerOnMessage(ctx), {
+        type: 'iframe-click',
+        payload: { target: 'a', source },
+      });
+      expect(sampleRUM.calledOnceWith('click', {
+        source: 'ew-wysiwyg-layout',
+        target: 'a',
+      })).to.be.true;
+    });
   });
 
   it('still attributes the source when the iframe sends no target', () => {
@@ -143,7 +148,7 @@ describe('quick-edit-controller IFRAME_CLICK forwarding', () => {
     window.hlx = { rum: { sampleRUM } };
     const ctx = makeCtx(true);
     send(createControllerOnMessage(ctx), { type: 'iframe-click', payload: {} });
-    expect(sampleRUM.calledOnceWith('click', { source: 'ew-wysiwyg-doc', target: undefined })).to.be.true;
+    expect(sampleRUM.calledOnceWith('click', { source: 'ew-wysiwyg-layout', target: undefined })).to.be.true;
   });
 
   it('ignores the legacy rum-click type', () => {

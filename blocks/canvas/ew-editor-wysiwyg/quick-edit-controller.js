@@ -13,8 +13,6 @@ import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 
 const MUTATING_MESSAGES = new Set(['node-update', 'image-replace', 'history']);
 
-const RUM_CLICK_SOURCES = new Set(['ew-wysiwyg-doc', 'ew-wysiwyg-layout']);
-
 // Coalesce RELOAD bursts (each rebuilds the full body) into one refresh per window;
 // a concurrent remote edit can otherwise fire many in a row and peg the main thread.
 const RELOAD_DEBOUNCE_MS = 150;
@@ -77,11 +75,8 @@ export function createControllerOnMessage(ctx) {
     } else if (type === MESSAGE_TYPES.COMMENT_SHORTCUT) {
       handleCommentShortcut();
     } else if (type === MESSAGE_TYPES.IFRAME_CLICK) {
-      // Clicks inside the WYSIWYG iframe can't reach the host RUM enhancer, so the
-      // iframe forwards them here and we record them on the host session's RUM, using the
-      // doc/layout `source` the iframe reports. No-op when this session isn't RUM-selected.
-      const source = RUM_CLICK_SOURCES.has(payload?.source) ? payload.source : 'ew-wysiwyg-doc';
-      window.hlx?.rum?.sampleRUM?.('click', { source, target: payload?.target });
+      // The iframe boundary identifies layout clicks, even with an older sender's doc source.
+      window.hlx?.rum?.sampleRUM?.('click', { source: 'ew-wysiwyg-layout', target: payload?.target });
     }
   };
 }
