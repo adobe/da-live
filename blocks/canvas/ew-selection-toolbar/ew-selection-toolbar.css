@@ -42,8 +42,8 @@
 
 .toolbar-btn {
   box-sizing: border-box;
-  min-width: var(--nx-ui-toolbar-btn-size);
-  height: var(--nx-ui-toolbar-btn-size);
+  min-width: var(--nx-ui-control-height);
+  height: var(--nx-ui-control-height);
   padding: 0;
   display: inline-flex;
   align-items: center;

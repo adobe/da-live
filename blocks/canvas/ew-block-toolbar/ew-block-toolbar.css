@@ -34,7 +34,7 @@
 
 .toolbar-btn {
   box-sizing: border-box;
-  height: var(--nx-ui-toolbar-btn-size);
+  height: var(--nx-ui-control-height);
   padding: 0 8px;
   display: inline-flex;
   align-items: center;
@@ -57,7 +57,7 @@
 }
 
 .toolbar-btn.icon-only {
-  min-width: var(--nx-ui-toolbar-btn-size);
+  min-width: var(--nx-ui-control-height);
   padding: 0;
   justify-content: center;
 }
@@ -88,7 +88,7 @@
 
 /* Size the variant picker to match the toolbar buttons (same height, padding, radius). */
 .toolbar-variant {
-  --nx-picker-height: var(--nx-ui-toolbar-btn-size);
+  --nx-picker-height: var(--nx-ui-control-height);
   --nx-picker-padding: 0 6px;
   --nx-picker-radius: var(--s2-corner-radius-100);
 

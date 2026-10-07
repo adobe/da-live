@@ -28,7 +28,7 @@ nx-popover {
 .ew-cc-chip {
   display: inline-flex;
   align-items: center;
-  height: var(--nx-ui-inline-btn-height);
+  height: var(--nx-ui-control-height-compact);
   padding: 0 var(--s2-spacing-200);
   border-radius: var(--s2-corner-radius-400);
   background: var(--s2-blue-200);
@@ -65,7 +65,7 @@ nx-popover {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: var(--nx-ui-inline-btn-height);
+    height: var(--nx-ui-control-height-compact);
     padding: 0 var(--s2-spacing-100);
     font-size: var(--nx-ui-text-description);
     font-weight: normal;
