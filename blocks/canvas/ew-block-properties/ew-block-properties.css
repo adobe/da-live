@@ -55,6 +55,19 @@
   opacity: 0.5;
 }
 
+.ew-block-field-image {
+  display: block;
+  width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  border-radius: var(--s2-corner-radius-100);
+}
+
+.ew-block-assets {
+  width: min(900px, 80vw);
+  height: min(700px, 80vh);
+}
+
 .ew-block-items {
   display: flex;
   flex-direction: column;

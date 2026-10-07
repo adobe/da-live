@@ -6,11 +6,25 @@ import { refuseOversizedImage } from '../../utils/image-upload.js';
 const FPO_IMG_URL = '/blocks/edit/img/fpo.svg';
 export const SUPPORTED_IMAGE_FILES = ['image/svg+xml', 'image/png', 'image/jpeg', 'image/gif'];
 
-export async function uploadImageFile(view, file, details) {
+// Field replacements keep the image until upload succeeds and the target is still valid.
+export async function uploadImageFile(view, file, details, options = {}) {
+  const { imagePos, canReplace = () => true } = options;
   if (!SUPPORTED_IMAGE_FILES.some((type) => type === file.type)) return;
   if (await refuseOversizedImage(file.size, details.parent)) return;
 
   const { schema } = view.state;
+  if (imagePos != null) {
+    const image = view.state.doc.nodeAt(imagePos);
+    if (image?.type.name !== 'image' || !canReplace()) return;
+    const { source } = await getNx2Api();
+    const resp = await source.uploadMedia(`${details.parent}/.${details.name}/${file.name}`, { body: file });
+    if (!resp.ok) throw new Error(`Image upload failed (${resp.status}).`);
+    const { source: { contentUrl } } = await resp.json();
+    if (!contentUrl) throw new Error('Image upload did not return a content URL.');
+    if (!canReplace() || view.state.doc.nodeAt(imagePos) !== image) return;
+    view.dispatch(view.state.tr.setNodeMarkup(imagePos, null, { ...image.attrs, src: contentUrl }));
+    return;
+  }
   const fpo = schema.nodes.image.create({ src: FPO_IMG_URL, style: 'width: 180px' });
   view.dispatch(view.state.tr.replaceSelectionWith(fpo).scrollIntoView());
 

@@ -369,7 +369,7 @@ export class EwEditorDoc extends LitElement {
           const commentsPlugin = this._comments.createPlugin(session, this.ctx, ws);
           return [
             mediaBusImage(this.ctx),
-            createExtensionsBridgePlugin(),
+            createExtensionsBridgePlugin(sourceUrl),
             createTrackingPlugin(
               () => {
                 const body = this._controllerCtx

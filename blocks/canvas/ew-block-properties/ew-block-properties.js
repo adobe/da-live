@@ -1,4 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
+import { NodeSelection } from 'da-y-wrapper';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import { canvasBus } from '../utils/canvas-bus.js';
@@ -10,9 +11,16 @@ import {
 import { getBlockVariantOptions, normalizeBlockName } from '../editor-utils/block-variants.js';
 import { loadBlockLibrary } from '../ew-panel-extensions/helpers.js';
 import { isMultiBlock, getMultiBlockTemplateRow } from '../editor-utils/multi-block.js';
+import { getBlockFieldTemplate, buildBlockFieldDefinitions, resolveBlockFields } from '../editor-utils/block-fields.js';
+import { getSourceUploadContext } from '../ew-editor-doc/prose-plugins/sourceUploadContext.js';
+import { SUPPORTED_IMAGE_FILES, uploadImageFile } from '../ew-editor-doc/prose-plugins/imageDrop.js';
+import { getRepositoryConfig, renderAssets } from '../ew-panel-extensions/aem-assets.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
+await import(`${getNx()}/blocks/shared/menu/menu.js`);
+await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 const [formStyle, buttonsStyle, pageStyle, style] = await Promise.all([
   getSheet(`${getNx2()}/styles/form.css`),
   getSheet(`${getNx2()}/styles/buttons.css`),
@@ -37,6 +45,12 @@ class EwBlockProperties extends LitElement {
     _itemTable: { state: true },
     _dragIndex: { state: true },
     _dropIndex: { state: true },
+    _fieldDefinitions: { state: true },
+    _fieldError: { state: true },
+    _hasAemAssets: { state: true },
+    _uploadingField: { state: true },
+    _assetTarget: { state: true },
+    _generateFieldsContext: { state: true },
   };
 
   connectedCallback() {
@@ -46,6 +60,8 @@ class EwBlockProperties extends LitElement {
     this._variantOptions = [];
     this._isMulti = false;
     this._multiTemplateRow = null;
+    this._fieldDefinitions = [];
+    this._generateFieldsContext = null;
     this._refresh();
     this._unsubscribeHash = hashChange.subscribe((state) => {
       const prev = this._hashState;
@@ -53,6 +69,7 @@ class EwBlockProperties extends LitElement {
       if (state?.org !== prev?.org || state?.site !== prev?.site) {
         this._loadVariants();
         this._loadMultiBlock();
+        this._loadFields();
       }
     });
     this._unsubscribeSelection = canvasBus.toolbarSelectionState.subscribe(() => this._refresh());
@@ -69,6 +86,11 @@ class EwBlockProperties extends LitElement {
         this._multiTemplateRow = null;
         this._itemCount = 0;
         this._multiLoadId = (this._multiLoadId ?? 0) + 1;
+        this._fieldLoadId = (this._fieldLoadId ?? 0) + 1;
+        this._fieldDefinitions = [];
+        this._fieldError = '';
+        this._assetTarget = null;
+        this._generateFieldsContext = null;
         this._clearDragState();
       }
     });
@@ -82,6 +104,8 @@ class EwBlockProperties extends LitElement {
     this._unsubscribeHash?.();
     this._variantLoadId = (this._variantLoadId ?? 0) + 1;
     this._multiLoadId = (this._multiLoadId ?? 0) + 1;
+    this._fieldLoadId = (this._fieldLoadId ?? 0) + 1;
+    this._assetTarget = null;
     this._clearDragState();
   }
 
@@ -89,6 +113,8 @@ class EwBlockProperties extends LitElement {
     const { view } = getExtensionsBridge();
     const block = getSelectedBlock(view?.state);
     const prevName = this._name;
+    const prevVariant = this._variant;
+    const prevView = this._itemEditorView;
     this._name = block ? getTableBlockName(block.node) : '';
     this._variant = block ? getTableBlockVariant(block.node) : '';
     this._hasBlock = !!block;
@@ -104,6 +130,9 @@ class EwBlockProperties extends LitElement {
     if (this._name !== prevName) {
       this._loadVariants();
       this._loadMultiBlock();
+    }
+    if (this._name !== prevName || this._variant !== prevVariant || view !== prevView) {
+      this._loadFields();
     }
   }
 
@@ -316,6 +345,241 @@ class EwBlockProperties extends LitElement {
       </section>`;
   }
 
+  async _loadFields() {
+    const loadId = (this._fieldLoadId ?? 0) + 1;
+    this._fieldLoadId = loadId;
+    this._fieldDefinitions = [];
+    this._generateFieldsContext = null;
+    this._fieldError = '';
+    this._hasAemAssets = false;
+    const { org, site } = this._hashState ?? {};
+    const name = this._name;
+    const variant = this._variant;
+    const { view } = getExtensionsBridge();
+    if (!org || !site || !name || !view) return;
+    try {
+      const [multi, { ext, blocks }] = await Promise.all([
+        isMultiBlock(org, site, name), loadBlockLibrary(org, site),
+      ]);
+      const match = await getBlockFieldTemplate(blocks, name, variant, view.state.schema);
+      const definitions = multi ? [] : buildBlockFieldDefinitions(match);
+      if (loadId !== this._fieldLoadId || !this.isConnected) return;
+      this._fieldDefinitions = definitions;
+      if (!match || !('fields' in match.item) || (!multi && !definitions.length)) {
+        this._generateFieldsContext = {
+          org, site, name, variant, librarySources: ext?.sources ?? [], blockPath: match?.path,
+        };
+      }
+      const config = definitions.some((field) => field.type === 'image')
+        ? await getRepositoryConfig(org, site) : null;
+      if (loadId !== this._fieldLoadId || !this.isConnected) return;
+      this._hasAemAssets = config !== null;
+    } catch (error) {
+      if (loadId !== this._fieldLoadId || !this.isConnected) return;
+      this._fieldError = `Unable to load block fields: ${error.message}`;
+    }
+  }
+
+  _onGenerateFields() {
+    const context = this._generateFieldsContext;
+    const block = getSelectedBlock(getExtensionsBridge().view?.state);
+    if (!context || !block || getTableBlockName(block.node) !== context.name
+      || getTableBlockVariant(block.node) !== context.variant) return;
+    const library = context.librarySources.length
+      ? context.librarySources.map((source) => `- ${source}`).join('\n')
+      : 'No block library is configured. Resolve the blocks library for this organization/site first.';
+    const text = `Generate sidebar field definitions for the currently selected block variant.
+
+Selected block:
+- Organization/site: ${context.org}/${context.site}
+- Block name: ${context.name}
+- Variant: ${context.variant || '(no variant)'}
+- Exact block table header: ${block.node.firstChild.textContent}
+- Matching block library document: ${context.blockPath || 'Locate it by following the library index entries below.'}
+
+Configured block library index sources:
+${library}
+
+Inspect the block library before generating anything:
+1. Open the configured library index source(s) and follow the block's document path. If a matching library document is listed above, inspect that document.
+2. Find ONLY the "${context.name}" variant "${context.variant || '(no variant)'}". Match the actual block table header or block CSS classes, not just the display heading: a display label such as "Hero (Text Start)" can describe the actual "hero (left)" variant.
+3. Read that variant's template rows, cells, text elements, and images. Generate fields from the LIBRARY TEMPLATE, not from extra content in the current page. If the exact variant cannot be found or the source cannot be read, explain what is missing rather than inventing a schema.
+
+How sidebar fields work:
+- Each library variant can have a "fields" entry in its associated "library-metadata". The entry's value is a nested table.
+- The nested table starts with a single header cell containing "fields". This is a header, not an editable field.
+- Subsequent rows mirror the template's content rows in the same order, with the same number and order of cells. Do not add the block name/variant header as a content row.
+- Inside each metadata cell, put one plain paragraph per field label, in the same order as the corresponding text blocks or images in the template cell. A cell containing a heading followed by a paragraph needs two labels in that same cell, not two separate table rows.
+- Labels should be meaningful author-facing names, such as Image, Title, or Subheading. Labels do NOT need to use the template's heading tags or copy its sample text.
+- Do not write explicit type declarations: the sidebar infers "image" from the matching template image/picture and "text" from a text element. Headings and paragraphs are both text, regardless of heading level. Ignore empty spacer paragraphs around image-only content.
+- Sidebar values come from the selected page block; edits update that block while preserving its existing heading/paragraph tags and attributes. Additional trailing page content not described by the fields remains untouched.
+
+Illustrative HTML ONLY for a template with an image in its first single-cell row and a heading plus paragraph in its second single-cell row:
+<div class="library-metadata">
+  <div>
+    <div><p>fields</p></div>
+    <div>
+      <table><tbody>
+        <tr><td><p>fields</p></td></tr>
+        <tr><td><p>Image</p></td></tr>
+        <tr><td><p>Title</p><p>Subheading</p></td></tr>
+      </tbody></table>
+    </div>
+  </div>
+</div>
+
+Adapt the rows, cells, and labels to the actual selected library variant; do not blindly copy this example. Add the generated fields table to that variant's existing library metadata, or create associated library metadata if absent. Fill an empty fields entry if one exists. Preserve description, search tags, other metadata, all template content, and all other variants. Do not replace the block or edit the current page to add this schema. If nonempty fields already exist in the source, report them rather than overwriting them. Show the generated table and identify the exact library document and variant to which it belongs.`;
+    document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat', options: { text, autoSend: false } } }));
+  }
+
+  get _fields() {
+    const { view } = getExtensionsBridge();
+    return this._isMulti ? []
+      : resolveBlockFields(getSelectedBlock(view?.state), this._fieldDefinitions ?? []);
+  }
+
+  _captureField(field) {
+    const { view, sourceUrl } = getExtensionsBridge();
+    const block = getSelectedBlock(view?.state);
+    if (!view || view.editable === false || !block || !field.node
+      || !this._fields.some((current) => current.key === field.key && current.node === field.node
+        && current.pos === field.pos)) return null;
+    return {
+      view, sourceUrl, block: block.node, from: block.from, node: field.node, pos: field.pos,
+    };
+  }
+
+  _isFieldTargetCurrent(target) {
+    const { view, sourceUrl } = getExtensionsBridge();
+    const block = getSelectedBlock(view?.state);
+    return this.isConnected && view === target.view && sourceUrl === target.sourceUrl
+      && view.editable !== false && block?.from === target.from && block.node === target.block
+      && view.state.doc.nodeAt(target.pos) === target.node;
+  }
+
+  _commitText(field, value) {
+    const target = this._captureField(field);
+    if (!target || value === field.value) return;
+    const { view, pos, node } = target;
+    const tr = view.state.tr.insertText(value, pos + 1, pos + 1 + node.content.size);
+    tr.setSelection(view.state.selection.map(tr.doc, tr.mapping));
+    view.dispatch(tr);
+    this._refresh();
+  }
+
+  _triggerFieldUpload(field) {
+    const target = this._captureField(field);
+    if (!target) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = SUPPORTED_IMAGE_FILES.join(',');
+    input.addEventListener('change', () => {
+      const file = input.files?.[0];
+      if (file) this._uploadFieldImage(field, target, file);
+    }, { once: true });
+    input.click();
+  }
+
+  async _uploadFieldImage(field, target, file) {
+    if (!this._isFieldTargetCurrent(target)) return;
+    this._fieldError = '';
+    const details = getSourceUploadContext(target.sourceUrl);
+    if (!details) {
+      this._fieldError = 'Unable to upload an image: the document source is unavailable.';
+      return;
+    }
+    if (!SUPPORTED_IMAGE_FILES.includes(file.type)) {
+      this._fieldError = 'Select an SVG, PNG, JPEG, or GIF image.';
+      return;
+    }
+    this._uploadingField = field.key;
+    try {
+      await uploadImageFile(target.view, file, details, {
+        imagePos: target.pos,
+        canReplace: () => this._isFieldTargetCurrent(target),
+      });
+      this._refresh();
+    } catch (error) {
+      if (this._isFieldTargetCurrent(target)) {
+        this._fieldError = `Unable to replace image: ${error.message}`;
+      }
+    } finally {
+      if (this._uploadingField === field.key) this._uploadingField = null;
+    }
+  }
+
+  async _openFieldAssets(field) {
+    const target = this._captureField(field);
+    if (!target) return;
+    this._assetTarget = target;
+    this._fieldError = '';
+    await this.updateComplete;
+    const container = this.shadowRoot.querySelector('.ew-block-assets');
+    if (!container || this._assetTarget !== target) return;
+    try {
+      await renderAssets({
+        container,
+        org: this._hashState.org,
+        site: this._hashState.site,
+        onClose: () => { this._assetTarget = null; this._refresh(); },
+        getView: () => {
+          if (this._assetTarget !== target || !this._isFieldTargetCurrent(target)) return null;
+          const { view } = target;
+          const selection = NodeSelection.create(view.state.doc, target.pos);
+          view.dispatch(view.state.tr.setSelection(selection));
+          return view;
+        },
+      });
+    } catch (error) {
+      if (this._assetTarget !== target) return;
+      this._assetTarget = null;
+      this._fieldError = `Unable to open AEM Assets: ${error.message}`;
+    }
+  }
+
+  _renderFields() {
+    return html`
+      ${this._generateFieldsContext ? html`
+        <button type="button" class="nx-form-btn-secondary ew-block-generate-fields"
+          @click=${this._onGenerateFields}>Generate fields</button>
+      ` : nothing}
+      ${this._fields.map((field) => {
+        const id = `ew-block-field-${field.key}`;
+        const disabled = this._disabled || !field.node || !!this._uploadingField;
+        return html`
+          <div class="nx-form-field ew-block-field" data-field=${field.label}>
+            <label for=${field.type === 'text' ? id : nothing}>${field.label}</label>
+            ${field.type === 'text' ? html`
+              <input id=${id} class="nx-input" type="text" .value=${field.value}
+                ?readonly=${disabled} @blur=${(e) => this._commitText(field, e.target.value)}>
+            ` : html`
+              ${field.value ? html`<img class="ew-block-field-image"
+                src=${getExtensionsBridge().view?.nodeDOM?.(field.pos)?.src ?? field.value}
+                alt=${field.node.attrs.alt ?? ''}>` : nothing}
+              ${this._hasAemAssets ? html`
+                <nx-menu placement="below-start"
+                  .items=${[{ id: 'upload', label: 'Upload' }, { id: 'aem-assets', label: 'AEM Assets' }]}
+                  ?inert=${disabled}
+                  @select=${(e) => {
+                    if (e.detail.id === 'upload') this._triggerFieldUpload(field);
+                    else if (e.detail.id === 'aem-assets') this._openFieldAssets(field);
+                  }}>
+                  <button slot="trigger" type="button" class="nx-form-btn-secondary" ?disabled=${disabled}>
+                    Replace image
+                  </button>
+                </nx-menu>
+              ` : html`
+                <button type="button" class="nx-form-btn-secondary" ?disabled=${disabled}
+                  @click=${() => this._triggerFieldUpload(field)}>Replace image</button>
+              `}
+            `}
+            ${field.error ? html`<span class="nx-input-error-msg" role="alert">${field.error}</span>` : nothing}
+            ${this._uploadingField === field.key ? html`<span role="status">Uploading image...</span>` : nothing}
+          </div>`;
+      })}
+      ${this._fieldError ? html`<p class="nx-input-error-msg" role="alert">${this._fieldError}</p>` : nothing}`;
+  }
+
   async _loadVariants() {
     const loadId = (this._variantLoadId ?? 0) + 1;
     this._variantLoadId = loadId;
@@ -385,9 +649,14 @@ class EwBlockProperties extends LitElement {
               aria-label=${`Open block library for ${this._name}`}
               aria-haspopup="dialog" ?disabled=${this._disabled}
               @click=${this._openLibrary}>${html`<span>${this._name}</span>`}${switchIcon}</button>
-          </div>${this._renderVariantPicker()}${this._renderItems()}` : html`<p class="ew-block-empty">Select a block</p>`}
+          </div>${this._renderVariantPicker()}${this._renderFields()}${this._renderItems()}` : html`<p class="ew-block-empty">Select a block</p>`}
         </div>
-      </div>`;
+      </div>
+      ${this._assetTarget ? html`
+        <nx-dialog title="Replace image" @close=${() => { this._assetTarget = null; }}>
+          <div class="ew-block-assets"></div>
+        </nx-dialog>
+      ` : nothing}`;
   }
 }
 

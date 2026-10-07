@@ -33,8 +33,14 @@ function loadSelectorScript() {
 // Public API
 // ---------------------------------------------------------------------------
 
-/** Renders the AEM asset selector into `container`; selections insert into the editor. */
-export async function renderAssets({ container, org, site, onClose }) {
+/** getView can pin replacement to a field; the default follows the editor selection. */
+export async function renderAssets({
+  container,
+  org,
+  site,
+  onClose,
+  getView = () => getExtensionsBridge().view,
+}) {
   const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
   const ims = await loadIms();
   if (ims?.anonymous) handleSignIn();
@@ -71,7 +77,7 @@ export async function renderAssets({ container, org, site, onClose }) {
       secondaryPanel,
       repoConfig,
       responsiveImageConfigPromise,
-      getView: () => getExtensionsBridge().view,
+      getView,
       close: () => onClose?.(),
     }),
   });

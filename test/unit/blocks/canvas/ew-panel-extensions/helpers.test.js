@@ -125,6 +125,27 @@ describe('EW panel helpers transformBlock', () => {
     expect(variants[0].description).to.equal('A hero block');
   });
 
+  it('preserves structured fields metadata without inserting it into block content', async () => {
+    mockHtml(`
+      <body><div><h2>Hero (Text Start)</h2>
+        <div class="hero left"><div><div><picture><img src="/hero.png"></picture></div></div>
+          <div><div><h1>Author Kit</h1><p>Subheading</p></div></div></div>
+        <div class="library-metadata">
+          <div><div>fields</div><div><table><tbody>
+            <tr><td><p>fields</p></td></tr><tr><td><p>image</p></td></tr>
+            <tr><td><p>title</p><p>subheading</p></td></tr>
+          </tbody></table></div></div>
+        </div>
+      </div></body>
+    `);
+    const [variant] = await getBlockVariants('/mock-path');
+    expect(variant.fields).to.be.instanceOf(window.HTMLTableElement);
+    expect(variant.fields.rows[2].cells[0].children.length).to.equal(2);
+    expect(variant.dom.rows.length).to.equal(3);
+    expect(variant.dom.textContent).not.to.include('fields');
+    expect(variant.dom.querySelector('.library-metadata')).to.equal(null);
+  });
+
   it('Sets item.tags from searchtags in embedded library-metadata', async () => {
     mockHtml(`
       <body><div>

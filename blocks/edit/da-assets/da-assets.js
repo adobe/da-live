@@ -160,6 +160,8 @@ export function buildHandleSelection({
         blockName: getBlockName(view),
         responsiveImageConfigPromise,
         onInsert: (srcs) => {
+          const currentView = getView();
+          if (!currentView || currentView !== view) return;
           closeAndReset();
           const nodes = srcs.map((src) => createImageNode(
             view,
@@ -173,6 +175,8 @@ export function buildHandleSelection({
       });
 
       if (!hasCrops) {
+        const currentView = getView();
+        if (!currentView || currentView !== view) return;
         closeAndReset();
         insertImage(view, assetUrl, alt);
       }

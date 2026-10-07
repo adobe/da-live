@@ -136,7 +136,8 @@ function getLibraryMetadata(el) {
     if (row.children) {
       const key = row.children[0]?.textContent.trim().toLowerCase();
       const val = row.children[1]?.textContent.trim();
-      if (key && val) acc[key] = val;
+      if (key === 'fields') acc.fields = row.children[1]?.querySelector('table')?.cloneNode(true) ?? val;
+      else if (key && val) acc[key] = val;
     }
     return acc;
   }, {});
@@ -179,6 +180,7 @@ function transformBlock(block) {
     if (md.name) item.name = md.name;
     if (md.searchtags) item.tags = md.searchtags;
     if (md.description) item.description = md.description;
+    if ('fields' in md) item.fields = md.fields;
     metaEl.remove();
   }
 
