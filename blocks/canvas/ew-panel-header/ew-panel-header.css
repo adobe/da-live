@@ -34,12 +34,12 @@
   background: transparent;
   cursor: pointer;
   gap: var(--s2-spacing-75);
-  font-size: var(--nx-ui-text-body);
+  font-size: var(--nx-ui-text-content);
 
   svg.icon {
     display: block;
-    width: var(--nx-ui-icon-compact);
-    height: var(--nx-ui-icon-compact);
+    width: var(--nx-ui-icon-m);
+    height: var(--nx-ui-icon-m);
     overflow: hidden;
   }
 

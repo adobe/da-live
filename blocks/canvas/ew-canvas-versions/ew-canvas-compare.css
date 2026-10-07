@@ -33,7 +33,7 @@ nx-popover {
   border-radius: var(--s2-corner-radius-400);
   background: var(--s2-blue-200);
   color: var(--s2-gray-800);
-  font-size: var(--nx-ui-text-component);
+  font-size: var(--nx-ui-text-description);
 }
 
 .ew-cc-chip.is-neutral {
@@ -67,7 +67,7 @@ nx-popover {
     justify-content: center;
     height: var(--nx-ui-inline-btn-height);
     padding: 0 var(--s2-spacing-100);
-    font-size: var(--nx-ui-text-component);
+    font-size: var(--nx-ui-text-description);
     font-weight: normal;
     border-radius: var(--s2-corner-radius-400);
 

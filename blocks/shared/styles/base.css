@@ -36,8 +36,8 @@ input {
   }
 
   svg {
-    width: var(--nx-ui-icon-toolbar, 16px);
-    height: var(--nx-ui-icon-toolbar, 16px);
+    width: var(--nx-ui-icon-l, 16px);
+    height: var(--nx-ui-icon-l, 16px);
   }
 
   &:hover {

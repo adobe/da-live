@@ -28,7 +28,7 @@
 }
 
 .nx-action-btn-icon.modal-close {
-  --nx-ui-icon-regular: var(--nx-ui-icon-toolbar);
+  --nx-btn-icon-size: var(--nx-ui-icon-l);
 
   width: var(--nx-ui-icon-btn-size);
   height: var(--nx-ui-icon-btn-size);
@@ -73,8 +73,8 @@
   top: 50%;
   transform: translateY(-50%);
   z-index: 1;
-  width: var(--nx-ui-icon-compact);
-  height: var(--nx-ui-icon-compact);
+  width: var(--nx-ui-icon-m);
+  height: var(--nx-ui-icon-m);
   color: light-dark(var(--s2-gray-700), var(--s2-gray-400));
   pointer-events: none;
   margin-left: 10px;
@@ -87,7 +87,7 @@
 
 .modal-state {
   padding: var(--s2-spacing-200);
-  font-size: var(--nx-ui-text-body);
+  font-size: var(--nx-ui-text-content);
   color: var(--s2-gray-700);
 }
 
@@ -111,7 +111,7 @@
   border: none;
   text-align: left;
   font-family: inherit;
-  font-size: var(--nx-ui-text-body);
+  font-size: var(--nx-ui-text-content);
   color: inherit;
   cursor: pointer;
   gap: 8px;
@@ -175,15 +175,15 @@
 
 .modal-tree-description {
   padding: 6px 36px 10px;
-  font-size: var(--nx-ui-text-detail);
+  font-size: var(--nx-ui-text-caption);
   color: var(--s2-gray-700);
-  line-height: var(--nx-ui-line-description);
+  line-height: var(--nx-ui-line-caption);
 }
 
 .modal-tree-caret {
   flex-shrink: 0;
-  width: var(--nx-ui-icon-compact);
-  height: var(--nx-ui-icon-compact);
+  width: var(--nx-ui-icon-m);
+  height: var(--nx-ui-icon-m);
   color: var(--s2-gray-600);
   transition: transform 0.1s ease-out;
 }
@@ -202,12 +202,12 @@
 .modal-tree-subtitle {
   margin-left: 4px;
   color: var(--s2-gray-600);
-  font-size: var(--nx-ui-text-detail);
+  font-size: var(--nx-ui-text-caption);
 }
 
 .modal-tree-loading {
   padding: 8px 36px;
-  font-size: var(--nx-ui-text-detail);
+  font-size: var(--nx-ui-text-caption);
   color: var(--s2-gray-600);
 }
 
@@ -235,7 +235,7 @@
   justify-content: center;
   flex: 1;
   color: var(--s2-gray-600);
-  font-size: var(--nx-ui-text-body);
+  font-size: var(--nx-ui-text-content);
 }
 
 .modal-preview-stage {
@@ -268,7 +268,7 @@
   padding: var(--s2-spacing-200);
   background: var(--s2-orange-100);
   color: var(--s2-orange-900);
-  font-size: var(--nx-ui-text-body);
+  font-size: var(--nx-ui-text-content);
 }
 
 .modal-preview-error p {

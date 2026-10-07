@@ -79,7 +79,7 @@
 
 .toolbar-btn[data-mark="code"] {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: var(--nx-ui-text-code);
+  font-size: var(--nx-ui-text-caption);
   letter-spacing: -0.02em;
   padding: 0;
 }
@@ -90,8 +90,8 @@
 
 .toolbar-btn svg.icon {
   display: block;
-  width: var(--nx-ui-icon-toolbar);
-  height: var(--nx-ui-icon-toolbar);
+  width: var(--nx-ui-icon-l);
+  height: var(--nx-ui-icon-l);
   overflow: hidden;
 }
 

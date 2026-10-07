@@ -36,8 +36,8 @@
   }
 
   svg {
-    width: var(--nx-ui-icon-toolbar);
-    height: var(--nx-ui-icon-toolbar);
+    width: var(--nx-ui-icon-l);
+    height: var(--nx-ui-icon-l);
   }
 }
 
@@ -99,7 +99,7 @@
   align-items: center;
   gap: var(--s2-spacing-100);
   margin: 0;
-  font-size: var(--nx-ui-text-preview-title);
+  font-size: var(--nx-ui-text-content);
   font-weight: 600;
 
   p {
@@ -108,8 +108,8 @@
 }
 
 .tool-panel-dialog-icon {
-  width: var(--nx-ui-icon-regular);
-  height: var(--nx-ui-icon-regular);
+  width: var(--nx-ui-icon-l);
+  height: var(--nx-ui-icon-l);
   flex-shrink: 0;
 }
 
@@ -129,8 +129,8 @@
   color: inherit;
 
   .icon {
-    width: var(--nx-ui-icon-toolbar);
-    height: var(--nx-ui-icon-toolbar);
+    width: var(--nx-ui-icon-l);
+    height: var(--nx-ui-icon-l);
   }
 }
 

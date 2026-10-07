@@ -33,6 +33,6 @@
   padding: 1rem;
   color: light-dark(#555, #aaa);
   font-family: var(--s2-font-family);
-  font-size: var(--nx-ui-text-body);
+  font-size: var(--nx-ui-text-content);
   text-align: center;
 }

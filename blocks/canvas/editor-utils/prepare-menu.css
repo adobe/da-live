@@ -48,13 +48,13 @@
   align-items: center;
   gap: var(--s2-spacing-100);
   margin: 0;
-  font-size: var(--nx-ui-text-body);
+  font-size: var(--nx-ui-text-content);
   font-weight: 600;
 }
 
 .prepare-dialog-icon {
-  width: var(--nx-ui-icon-regular);
-  height: var(--nx-ui-icon-regular);
+  width: var(--nx-ui-icon-l);
+  height: var(--nx-ui-icon-l);
   flex-shrink: 0;
 }
 
@@ -113,9 +113,9 @@
   background: none;
   color: light-dark(var(--s2-gray-900), var(--s2-gray-800));
   font-family: inherit;
-  font-size: var(--nx-menu-font-size, var(--nx-ui-text-body));
+  font-size: var(--nx-menu-font-size, var(--nx-ui-text-content));
   font-weight: 500;
-  line-height: var(--nx-ui-line-body);
+  line-height: var(--nx-ui-line-content);
   text-align: left;
   cursor: pointer;
 }
@@ -131,7 +131,7 @@
 
 .icon {
   display: block;
-  width: var(--nx-ui-icon-feature);
-  height: var(--nx-ui-icon-feature);
+  width: var(--nx-ui-icon-xl);
+  height: var(--nx-ui-icon-xl);
   flex-shrink: 0;
 }

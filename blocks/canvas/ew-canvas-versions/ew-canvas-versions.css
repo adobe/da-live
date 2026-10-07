@@ -4,7 +4,7 @@
   min-height: 0;
   font-family: var(--s2-font-family);
   padding: var(--s2-spacing-200) 0 0 var(--s2-spacing-200);
-  font-size: var(--nx-ui-text-component);
+  font-size: var(--nx-ui-text-description);
   color: var(--s2-gray-700);
 }
 
@@ -24,7 +24,7 @@ button {
 
 .placeholder {
   padding: var(--s2-spacing-300) var(--s2-spacing-200);
-  font-size: var(--nx-ui-text-component);
+  font-size: var(--nx-ui-text-description);
   color: var(--s2-gray-600);
   text-align: center;
 }
@@ -52,8 +52,8 @@ button {
   }
 
   .icon {
-    width: var(--nx-ui-icon-toolbar);
-    height: var(--nx-ui-icon-toolbar);
+    width: var(--nx-ui-icon-l);
+    height: var(--nx-ui-icon-l);
   }
 }
 
@@ -64,7 +64,7 @@ button {
 }
 
 .seg-btn {
-  font-size: var(--nx-ui-text-component);
+  font-size: var(--nx-ui-text-description);
   border: none;
   background: transparent;
   color: var(--s2-gray-700);
@@ -135,14 +135,14 @@ button {
 }
 
 .versionname {
-  font-size: var(--nx-ui-text-component);
+  font-size: var(--nx-ui-text-description);
   font-weight: 700;
   color: var(--s2-gray-900);
 }
 
 .meta,
 .user {
-  font-size: var(--nx-ui-text-detail);
+  font-size: var(--nx-ui-text-caption);
 }
 
 .versionicon {
@@ -158,15 +158,15 @@ button {
   background: var(--s2-gray-75);
 
   svg {
-    width: var(--nx-ui-icon-compact);
-    height: var(--nx-ui-icon-compact);
+    width: var(--nx-ui-icon-m);
+    height: var(--nx-ui-icon-m);
     transition: transform 0.15s ease;
   }
 }
 
 .versionentry.is-audit .versionicon svg {
-  width: var(--nx-ui-icon-micro);
-  height: var(--nx-ui-icon-micro);
+  width: var(--nx-ui-icon-xs);
+  height: var(--nx-ui-icon-xs);
 }
 
 .versionentry:hover .versionicon {
@@ -310,7 +310,7 @@ summary {
 .is-new {
   .da-input {
     height: var(--nx-ui-panel-field-height);
-    font-size: var(--nx-ui-text-component);
+    font-size: var(--nx-ui-text-description);
   }
 
   .da-btn-secondary {
@@ -319,7 +319,7 @@ summary {
     justify-content: center;
     height: var(--nx-ui-panel-field-height);
     padding: 0 var(--s2-spacing-100);
-    font-size: var(--nx-ui-text-component);
+    font-size: var(--nx-ui-text-description);
     font-weight: normal;
     border-radius: var(--s2-corner-radius-400);
 

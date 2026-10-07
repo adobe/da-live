@@ -34,7 +34,7 @@
   background: var(--ew-comment-author-color, #6b7280);
   color: #fff;
   font-family: inherit;
-  font-size: var(--nx-ui-text-detail);
+  font-size: var(--nx-ui-text-caption);
   font-weight: 600;
   line-height: 1;
   filter:
@@ -156,8 +156,8 @@
   cursor: pointer;
 
   .icon {
-    width: var(--nx-ui-icon-toolbar);
-    height: var(--nx-ui-icon-toolbar);
+    width: var(--nx-ui-icon-l);
+    height: var(--nx-ui-icon-l);
   }
 }
 
@@ -264,7 +264,7 @@
   border: 1px solid light-dark(#becee9, var(--s2-gray-500, #5c5c5c));
   padding: 0 4px;
   border-radius: 4px;
-  font-size: var(--nx-ui-text-body);
+  font-size: var(--nx-ui-text-content);
 }
 
 .ew-editor-doc .ProseMirror pre {
@@ -356,7 +356,7 @@
   position: absolute;
   top: -1.05em;
   left: -1px;
-  font-size: var(--nx-ui-text-emphasis);
+  font-size: var(--nx-ui-text-description);
   background-color: rgb(250 129 0);
   border-radius: 2px;
   padding: 0 3px;
@@ -369,7 +369,7 @@
   align-items: center;
   justify-content: center;
   color: light-dark(#505050, var(--s2-gray-700, #cacaca));
-  font-size: var(--nx-ui-text-body);
+  font-size: var(--nx-ui-text-content);
   padding: 1rem;
   text-align: center;
   height: 100%;
@@ -384,7 +384,7 @@
 
 .ew-editor-doc-error {
   color: light-dark(#c00, #ff6b6b);
-  font-size: var(--nx-ui-text-body);
+  font-size: var(--nx-ui-text-content);
   padding: 0.5rem;
 }
 
@@ -490,7 +490,7 @@
 .nx-focal-point-dialog__title {
   margin: 0;
   padding: 1rem 1.25rem;
-  font-size: var(--nx-ui-text-title-l);
+  font-size: var(--nx-ui-text-heading);
   font-weight: 600;
   border-bottom: 1px solid light-dark(#e0e0e0, var(--s2-gray-400, #5c5c5c));
 }
@@ -507,7 +507,7 @@
 .nx-focal-point-dialog__btn {
   padding: 0.5rem 1rem;
   border-radius: 6px;
-  font-size: var(--nx-ui-text-body);
+  font-size: var(--nx-ui-text-content);
   cursor: pointer;
   border: 1px solid light-dark(#c0c0c0, var(--s2-gray-500, #6e6e6e));
   background: light-dark(#f5f5f5, var(--s2-gray-200, #3d3d3d));
@@ -624,7 +624,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: var(--nx-ui-text-body);
+  font-size: var(--nx-ui-text-content);
   font-weight: 600;
   color: light-dark(#555, var(--s2-gray-700, #cacaca));
   min-width: 120px;
@@ -635,7 +635,7 @@
   padding: 8px 12px;
   border: 1px solid light-dark(#d0d0d0, var(--s2-gray-500, #5c5c5c));
   border-radius: 4px;
-  font-size: var(--nx-ui-text-input);
+  font-size: var(--nx-ui-text-content);
   text-align: center;
   background: light-dark(#fafafa, var(--s2-gray-75, #2c2c2c));
   font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;

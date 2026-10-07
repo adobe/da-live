@@ -8,7 +8,7 @@
     "Trebuchet MS",
     sans-serif
   );
-  font-size: var(--nx-ui-text-body);
+  font-size: var(--nx-ui-text-content);
   color: var(--s2-gray-800);
 }
 
@@ -35,8 +35,8 @@
   }
 
   svg {
-    width: var(--nx-ui-icon-toolbar);
-    height: var(--nx-ui-icon-toolbar);
+    width: var(--nx-ui-icon-l);
+    height: var(--nx-ui-icon-l);
   }
 }
 
@@ -59,7 +59,7 @@
   border-radius: 999px;
   background-color: var(--s2-blue-800, #0265dc);
   color: #fff;
-  font-size: var(--nx-ui-text-badge);
+  font-size: var(--nx-ui-text-caption);
   font-weight: var(--s2-component-s-medium-font-weight, 700);
   line-height: 1;
 }
