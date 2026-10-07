@@ -522,6 +522,110 @@ describe('EwFileExplorer', () => {
     });
   });
 
+  describe('configured editor', () => {
+    const SC = { path: '/org/site/forms/contact.html', ext: 'html' };
+
+    beforeEach(() => {
+      el._configs = [null, { data: [] }];
+      el._ewEnabled = true;
+      globalThis.__editorMock = ({ path, configs }) => {
+        if (configs !== el._configs) return undefined;
+        return path.startsWith('/org/site/forms') ? 'https://da.live/form#' : undefined;
+      };
+    });
+    afterEach(() => { delete globalThis.__editorMock; });
+
+    it('opens a page in its configured editor', () => {
+      const savedOpen = window.open;
+      const opened = [];
+      window.open = (...args) => { opened.push(args); };
+      const savedHash = window.location.hash;
+      try {
+        el._onItemClick(SC);
+        expect(opened).to.deep.equal([['https://da.live/form#/org/site/forms/contact', '_blank', 'noopener,noreferrer']]);
+        expect(window.location.hash).to.equal(savedHash);
+      } finally {
+        window.open = savedOpen;
+      }
+    });
+
+    it('stays in canvas when no other editor is configured', () => {
+      const savedOpen = window.open;
+      const opened = [];
+      window.open = (...args) => { opened.push(args); };
+      const savedHash = window.location.hash;
+      try {
+        el._onItemClick({ path: '/org/site/blog/foo.html', ext: 'html' });
+        expect(opened).to.deep.equal([]);
+        expect(window.location.hash).to.equal('#/org/site/blog/foo');
+      } finally {
+        window.open = savedOpen;
+        window.location.hash = savedHash;
+      }
+    });
+
+    it('opens other pages in /edit when EW is not enabled', () => {
+      el._ewEnabled = false;
+      const savedOpen = window.open;
+      const opened = [];
+      window.open = (...args) => { opened.push(args); };
+      try {
+        el._onItemClick({ path: '/org/site/blog/foo.html', ext: 'html' });
+        expect(opened).to.deep.equal([['/edit#/org/site/blog/foo', '_blank', 'noopener,noreferrer']]);
+      } finally {
+        window.open = savedOpen;
+      }
+    });
+
+    it('loads the EW flag for the site', async () => {
+      globalThis.__ewEnabledMock = ({ org, site }) => org === 'org' && site === 'site';
+      el._org = 'org';
+      el._site = 'site';
+      try {
+        await el._loadConfigs('org', 'site');
+        expect(el._ewEnabled).to.be.true;
+      } finally {
+        delete globalThis.__ewEnabledMock;
+      }
+    });
+
+    it('treats EW as not enabled when its flag fails to load', async () => {
+      globalThis.__ewEnabledMock = () => { throw new Error('flags unavailable'); };
+      el._org = 'org';
+      el._site = 'site';
+      try {
+        await el._loadConfigs('org', 'site');
+        expect(el._ewEnabled).to.be.false;
+      } finally {
+        delete globalThis.__ewEnabledMock;
+      }
+    });
+
+    it('drops the configs and EW flag of a site that is no longer shown', async () => {
+      globalThis.__ewEnabledMock = () => true;
+      el._org = 'org';
+      el._site = 'site';
+      try {
+        const loading = el._loadConfigs('org', 'site');
+        el._site = 'other';
+        await loading;
+        expect(el._configs).to.be.undefined;
+        expect(el._ewEnabled).to.be.undefined;
+      } finally {
+        delete globalThis.__ewEnabledMock;
+      }
+    });
+
+    it('uses the da-sc url for structured content', () => {
+      expect(el._rowTitle(SC)).to.equal('sc:/org/site/forms/contact');
+      expect(el._rowTitle({ path: '/org/site/blog/foo.html', ext: 'html' })).to.equal('https://main--site--org.aem.page/blog/foo');
+    });
+
+    it('uses the sanitized path in the da-sc url', () => {
+      expect(el._rowTitle({ path: '/org/site/forms/My Form.html', ext: 'html' })).to.equal('sc:/org/site/forms/my-form');
+    });
+  });
+
   describe('_relativeParentPath', () => {
     it('omits the org/site root prefix', () => {
       el._treeRoot = '/org/site';
