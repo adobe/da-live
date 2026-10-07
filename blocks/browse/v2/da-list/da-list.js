@@ -67,11 +67,9 @@ export default class DaList extends LitElement {
     _listItems: { state: true },
     _itemsRemaining: { state: true },
     _itemErrors: { state: true },
-    _filter: { state: true },
     _sortName: { state: true },
     _sortDate: { state: true },
     _sorting: { state: true },
-    _showFilter: { state: true },
     _selectedItems: { state: true },
     _dropFiles: { state: true },
     _dropMessage: { state: true },
@@ -86,7 +84,6 @@ export default class DaList extends LitElement {
     _continuationToken: { state: true },
     _isLoadingMore: { state: true },
     _bulkLoading: { state: true },
-    _filterLoading: { state: true },
     _allPagesLoaded: { state: true },
     _aemActionState: { state: true },
     _isHlx6: { state: true },
@@ -101,7 +98,6 @@ export default class DaList extends LitElement {
     this._emptyMessage = 'Empty';
     this._dropMessage = 'Drop content here';
     this._lastCheckedIndex = null;
-    this._filter = '';
     this._continuationToken = null;
     this._isLoadingMore = false;
     this._observer = null;
@@ -134,13 +130,12 @@ export default class DaList extends LitElement {
       this._sortName = undefined;
       this._sortDate = undefined;
       this.notifySortState();
-      this._filter = '';
-      this._showFilter = undefined;
       this._allPagesLoaded = false;
       // Resolve the delete allowlist alongside the listing so the action bar's
       // Delete button is decided before any selection can surface it. The site
       // config is already warm (da-browse fetches it first) so this is cheap.
-      const [items] = await Promise.all([this.getList(), this.updateDeletePermission()]);
+      this._directoryReady = Promise.all([this.getList(), this.updateDeletePermission()]);
+      const [items] = await this._directoryReady;
       if (path !== this.fullpath) {
         super.update(props);
         return;
@@ -171,6 +166,19 @@ export default class DaList extends LitElement {
 
   get items() {
     return this._listItems;
+  }
+
+  async getDirectorySnapshot() {
+    await this.updateComplete;
+    await this._directoryReady;
+    if (this._directoryError) throw new Error(this._directoryError);
+    return {
+      fullpath: this.fullpath,
+      items: this._listItems,
+      version: this._listItems,
+      continuationToken: this._continuationToken,
+      complete: this._allPagesLoaded,
+    };
   }
 
   setStatus(text, description, type = 'info') {
@@ -211,12 +219,14 @@ export default class DaList extends LitElement {
 
   async getList() {
     try {
+      this._directoryError = undefined;
       this._continuationToken = null;
       const { source, isHlx6 } = await getNx2Api();
       const [org, site] = sanitizePathParts(this.fullpath);
       this._isHlx6 = site ? await isHlx6(org, site) : false;
       const { ok, items, continuationToken, permissions } = await source.list(this.fullpath);
       if (!ok) {
+        this._directoryError = 'Not permitted to list filenames';
         this._emptyMessage = 'Not permitted';
         this.resetListItemPaths([]);
         return [];
@@ -231,7 +241,8 @@ export default class DaList extends LitElement {
       const ordered = [...favorites, ...rest];
       this.scheduleAutoCheck();
       return ordered;
-    } catch {
+    } catch (error) {
+      this._directoryError = `Directory listing failed: ${error.message}`;
       this._emptyMessage = 'Not permitted';
       this.resetListItemPaths([]);
       return [];
@@ -941,43 +952,10 @@ export default class DaList extends LitElement {
     await this.setSort('lastModified', this._sortDate === 'old' ? 'ascending' : 'descending');
   }
 
-  async toggleFilterView() {
-    this._filter = '';
-    this._filterLoading = true;
-    this._showFilter = !this._showFilter;
-    const filterInput = this.shadowRoot?.querySelector('input[name="filter"]');
-    filterInput.value = '';
-    if (this._showFilter) {
-      if (this._continuationToken && !this._allPagesLoaded) {
-        this._bulkLoading = true;
-        await this.loadAllPages();
-        this._bulkLoading = false;
-      }
-      await this.wait(1);
-      filterInput.focus();
-      this._filterLoading = false;
-    } else {
-      this._filterLoading = false;
-    }
-  }
-
-  handleFilterBlur(e) {
-    if (e.target.value === '') {
-      this._showFilter = false;
-    }
-  }
-
-  handleNameFilter(e) {
-    this._filter = e.target.value;
-  }
-
   get filteredItems() {
-    let items = this._listItems;
-    if (this._hiddenTypes.size) {
-      items = items.filter((item) => !this._hiddenTypes.has(getTypeLabel(item.ext)));
-    }
-    if (this._filter) items = items.filter((item) => item.name.includes(this._filter));
-    return items;
+    return this._hiddenTypes.size
+      ? this._listItems.filter((item) => !this._hiddenTypes.has(getTypeLabel(item.ext)))
+      : this._listItems;
   }
 
   get allTypeLabels() {
@@ -1482,32 +1460,9 @@ export default class DaList extends LitElement {
           ${this.renderCheckBox()}
         </div>
         <div class="da-browse-header-cell da-browse-header-cell-name" data-column="name" role="columnheader" aria-sort="${this.getSortAttr(this._sortName) || 'none'}">
-          <!-- Toggle button is split into 2 buttons (enable/disable) to prevent bug re-toggling on blur event -->
-          ${!this._showFilter ? html`
-            <button
-              class="da-browse-filter ${this._filterLoading ? 'loading' : ''}"
-              name="toggle-filter"
-              @click=${() => this.toggleFilterView()}
-              ?disabled=${this._filterLoading}
-              aria-disabled=${this._filterLoading ? 'true' : 'false'}
-              aria-label="Toggle filter">
-              <svg viewBox="0 0 20 20"><use href="/img/icons/s2-icon-filter-20-n.svg#icon"></svg>
-            </button>
-          ` : html`
-            <button
-              class="da-browse-filter selected ${this._filterLoading ? 'loading' : ''}"
-              name="toggle-filter"
-              @click=${() => this.toggleFilterView()}
-              ?disabled=${this._filterLoading}
-              aria-disabled=${this._filterLoading ? 'true' : 'false'}
-              aria-label="Toggle filter">
-              <svg viewBox="0 0 20 20"><use href="/img/icons/s2-icon-filter-20-n.svg#icon"></svg>
-            </button>
-          `}
           <div class="da-browse-header-container">
-            <input @blur=${this.handleFilterBlur} name="filter" class=${this._showFilter ? 'show' : nothing} @change=${this.handleNameFilter} @keyup=${this.handleNameFilter} type="text" placeholder="Filter" aria-label="Filter items">
             <button
-              class="da-browse-header-name ${this._sortName} ${this._showFilter ? 'hide' : ''} ${this._bulkLoading ? 'loading' : ''}"
+              class="da-browse-header-name ${this._sortName} ${this._bulkLoading ? 'loading' : ''}"
               @click=${this.handleNameSort}
               ?disabled=${this._bulkLoading}
               aria-disabled=${this._bulkLoading ? 'true' : 'false'}>

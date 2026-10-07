@@ -2,7 +2,7 @@ import { LitElement, html, nothing, until } from 'da-lit';
 import { delay, sanitizeName, formatDate } from '../../../shared/utils.js';
 import { getNx, getNx2, getNx2Api } from '../../../../scripts/utils.js';
 import { ICONS, iconPathForExt, getTypeLabel } from '../../../shared/icons.js';
-import getEditPath from '../../shared.js';
+import { getBrowseItemHref } from '../shared/navigation.js';
 
 // Styles
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -248,20 +248,12 @@ export default class DaListItem extends LitElement {
   }
 
   renderItem() {
-    let path = this.ext ? getEditPath({ path: this.path, ext: this.ext, editor: this.editor }) : `#${this.path}`;
-    let externalUrlPromise;
-    if (this.ext === 'link') {
-      path = nothing;
-      externalUrlPromise = getNx2Api()
-        .then(({ source }) => source.get(this.path))
-        .then((response) => response.json())
-        .then((data) => data.externalUrl);
-    }
+    const href = getBrowseItemHref(this);
 
     const type = getTypeLabel(this.ext);
 
     return html`
-      <a href="${this.ext === 'link' ? until(externalUrlPromise) : path}" class="da-item-list-item-title" data-column="name">
+      <a href="${this.ext === 'link' ? until(href) : href}" class="da-item-list-item-title" data-column="name">
         <div class="da-item-list-item-info">
           ${this._isRenaming ? html`<span class="da-item-list-item-type"><div class="icon rename-icon"></div></span>
           ` : html`

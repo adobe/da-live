@@ -135,13 +135,19 @@ export default class DaBrowse extends LitElement {
   async mountNavSearch() {
     const nav = document.querySelector('nx-nav');
     if (!nav) return;
-    await import(`${getNx()}/blocks/shared/search/search.js`);
+    await import('../da-browse-search/da-browse-search.js');
     if (!this.isConnected) return;
     if (!this._navSearch) {
-      const field = document.createElement('nx-search');
+      const field = document.createElement('da-browse-search');
       field.slot = 'search';
       field.variant = 'field';
       field.size = 'm';
+      field.getDirectory = async () => {
+        await this.updateComplete;
+        const list = this.browseCmp;
+        if (!list) throw new Error('Directory listing is not ready');
+        return list.getDirectorySnapshot();
+      };
       field.setAttribute('role', 'search');
       field.addEventListener('search-submit', (event) => this.submitSearch(event));
       field.addEventListener('input', () => {
@@ -175,6 +181,7 @@ export default class DaBrowse extends LitElement {
     const label = directory ? `Search ${directory}` : 'Search files';
     this._navSearch.label = label;
     this._navSearch.placeholder = label;
+    this._navSearch.fullpath = this.details?.fullpath;
     this._navSearch.setAttribute('aria-label', label);
   }
 
@@ -196,7 +203,10 @@ export default class DaBrowse extends LitElement {
     this._searchEngine?.cancelSearch();
     this._searchEngine = undefined;
     this._searchState = { matchCase: this._searchState.matchCase, loading: false };
-    if (this._navSearch) this._navSearch.value = '';
+    if (this._navSearch) {
+      this._navSearch.resetCatalog();
+      this._navSearch.value = '';
+    }
     this.syncSearchPanel();
     if (wasSearching) {
       this.browseCmp?.notifySortState?.();
@@ -207,6 +217,7 @@ export default class DaBrowse extends LitElement {
   async submitSearch(event, { preserveDraft = false } = {}) {
     event.preventDefault();
     if (this._searchState.replacement?.loading) return;
+    this._navSearch?.closeSuggestions();
     const term = event.detail.value.trim();
     const fullpath = this.details?.fullpath;
     if (!term || !fullpath) return;
@@ -280,6 +291,8 @@ export default class DaBrowse extends LitElement {
     const state = this._searchState;
     if (this._navSearch) {
       this._navSearch.disabled = !!state.replacement?.loading;
+      this._navSearch.matchCase = state.matchCase;
+      this._navSearch.editor = this.editor;
       const value = state.draft ?? state.term ?? '';
       if (this._navSearch.value !== value) this._navSearch.value = value;
     }
