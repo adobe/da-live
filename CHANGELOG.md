@@ -1,3 +1,10 @@
+## [1.2.2](https://github.com/adobe/da-live/compare/v1.2.1...v1.2.2) (2026-10-07)
+
+
+### Bug Fixes
+
+* **plugins:** use preview proxy for library and prepare menu plugins ([#1385](https://github.com/adobe/da-live/issues/1385)) ([ad9ed5a](https://github.com/adobe/da-live/commit/ad9ed5ae4ac4a0a6921184e4ee4bf1dbdde84dc0))
+
 ## [1.2.1](https://github.com/adobe/da-live/compare/v1.2.0...v1.2.1) (2026-10-07)
 
 
