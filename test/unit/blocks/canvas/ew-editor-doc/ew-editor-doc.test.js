@@ -2,6 +2,7 @@
 import { expect } from '@esm-bundle/chai';
 import { NodeSelection, TextSelection } from 'da-y-wrapper';
 import { setNx } from '../../../../../scripts/utils.js';
+import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -477,5 +478,21 @@ describe('EwEditorDoc — _broadcastSelectedNode text-selection fallback (#1220)
       expect(messages[0].node).to.equal(null);
       expect(messages[0].scrollIntoView).to.equal(false);
     });
+  });
+});
+
+describe('EwEditorDoc - teardown on removal (#1406)', () => {
+  it('broadcasts empty editor html when the element is removed', () => {
+    const el = document.createElement('ew-editor-doc');
+    document.body.append(el);
+    canvasBus.editorHtmlState.emit('<main><div><p>hi</p></div></main>');
+    const seen = [];
+    const unsub = canvasBus.editorHtmlState.subscribe((html) => seen.push(html));
+    seen.length = 0;
+    el.remove();
+    unsub();
+    canvasBus.editorHtmlState.emit('');
+    expect(seen.length > 0).to.equal(true);
+    expect(seen[seen.length - 1]).to.equal('');
   });
 });
