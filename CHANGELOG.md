@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/adobe/da-live/compare/v1.2.0...v1.2.1) (2026-10-07)
+
+
+### Bug Fixes
+
+* resolve canvas version preview images ([#1417](https://github.com/adobe/da-live/issues/1417)) ([38b2e50](https://github.com/adobe/da-live/commit/38b2e504cbbb17790540386c3a61399d4b378897))
+
 # [1.2.0](https://github.com/adobe/da-live/compare/v1.1.0...v1.2.0) (2026-10-06)
 
 
