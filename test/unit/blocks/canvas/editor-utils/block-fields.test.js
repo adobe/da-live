@@ -89,10 +89,10 @@ describe('block fields', () => {
 
   it('uses the exact paragraph length threshold in the library, not the selected text', async () => {
     const table = template();
-    table.querySelector('p').textContent = 'x'.repeat(50);
+    table.querySelector('p').textContent = 'x'.repeat(200);
     let definitions = await definitionsFor([{ dom: table, fields: metadata() }]);
     const current = template();
-    current.querySelector('p').textContent = 'x'.repeat(80);
+    current.querySelector('p').textContent = 'x'.repeat(300);
     expect(resolveBlockFields(selectedBlock(current), definitions)[2].readOnly).to.equal(false);
     table.querySelector('p').textContent += 'x';
     definitions = await definitionsFor([{ dom: table, fields: metadata() }]);

@@ -273,7 +273,7 @@ describe('ew-block-properties library fields', () => {
       'At least one item must remain',
       'disabled and grayed out',
       'exact label IGNORE',
-      'Exactly 50 characters is still editable',
+      'Exactly 200 characters is still editable',
       'Include labels for these fields anyway',
       'whole-text bold link',
       'separate text and URL controls',
@@ -604,7 +604,7 @@ describe('ew-block-properties library fields', () => {
 
   it('keeps option pickers inert for read-only templates and read-only documents', async () => {
     blockOptions = [{ blocks: 'hero', key: 'Color', values: 'Green=green|Blue=blue' }];
-    await setKeyValueTemplate('green', 'x'.repeat(51));
+    await setKeyValueTemplate('green', 'x'.repeat(201));
     let picker = fieldElement('Background').querySelector('nx-picker');
     expect(picker.hasAttribute('inert')).to.equal(true);
     let { doc } = view.state;
@@ -693,8 +693,18 @@ describe('ew-block-properties library fields', () => {
     expect(view.state.selection).to.be.instanceOf(NodeSelection);
   });
 
+  it('keeps paragraphs up to 200 template characters editable in the rail', async () => {
+    await setTextTemplate(`<h1>Title</h1><p>${'x'.repeat(200)}</p>`);
+    const input = fieldElement('subheading').querySelector('input');
+    expect(input.readOnly).to.equal(false);
+    expect(fieldElement('subheading').getAttribute('aria-disabled')).to.equal('false');
+    input.value = 'Edited longer paragraph';
+    input.dispatchEvent(new Event('blur'));
+    expect(el._fields[2].value).to.equal('Edited longer paragraph');
+  });
+
   it('hides IGNORE and grays out long or mixed text without permitting programmatic edits', async () => {
-    await setTextTemplate(`<h1>Ignore this</h1><p>${'x'.repeat(51)}</p>`, '<p>IGNORE</p><p>subheading</p>');
+    await setTextTemplate(`<h1>Ignore this</h1><p>${'x'.repeat(201)}</p>`, '<p>IGNORE</p><p>subheading</p>');
     expect(fieldElement('IGNORE')).to.equal(null);
     expect(fieldElement('subheading').getAttribute('aria-disabled')).to.equal('true');
     expect(fieldElement('subheading').querySelector('input').readOnly).to.equal(true);

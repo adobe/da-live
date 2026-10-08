@@ -18,7 +18,7 @@ function fieldNodes(node, path = []) {
 }
 
 function textReadOnly(node, checkLength = false) {
-  return (checkLength && node.type.name === 'paragraph' && node.textContent.length > 50)
+  return (checkLength && node.type.name === 'paragraph' && node.textContent.length > 200)
     || node.childCount > 1 || (node.childCount === 1 && !node.firstChild.isText);
 }
 
