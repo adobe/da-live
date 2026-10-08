@@ -2,20 +2,30 @@ import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { buildHandleSelection, createDialogPanels } from '../../edit/da-assets/da-assets.js';
 
-const nx2 = getNx2();
-const [
-  { getRepositoryConfig, getResponsiveImageConfig },
-  { buildAssetSelectorProps },
-  { loadAssetSelector },
-] = await Promise.all([
-  import(`${nx2}/utils/aem-assets/repository-config.js`),
-  import(`${nx2}/utils/aem-assets/selector-props.js`),
-  import(`${nx2}/utils/aem-assets/selector.js`),
-]);
+const { getRepositoryConfig, getResponsiveImageConfig } = await import(`${getNx2()}/utils/aem-assets/repository-config.js`);
+const { buildAssetSelectorProps } = await import(`${getNx2()}/utils/aem-assets/selector-props.js`);
+const { ASSET_SELECTOR_URL } = await import(`${getNx2()}/utils/aem-assets/selector.js`);
 
 // Re-exported for ew-selection-toolbar's "does this site have AEM assets?" check.
 // The picker shares Nexter's config resolver with the classic editor.
 export { getRepositoryConfig };
+
+// ---------------------------------------------------------------------------
+// Script loader
+// ---------------------------------------------------------------------------
+
+let selectorScriptLoaded;
+
+function loadSelectorScript() {
+  selectorScriptLoaded ??= new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = ASSET_SELECTOR_URL;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.append(script);
+  });
+  return selectorScriptLoaded;
+}
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -32,12 +42,7 @@ export async function renderAssets({ container, org, site, onClose }) {
   const repoConfig = await getRepositoryConfig(org, site);
   if (!repoConfig) return;
 
-  const { error } = await loadAssetSelector();
-  if (error) {
-    // eslint-disable-next-line no-console
-    console.error(error);
-    return;
-  }
+  await loadSelectorScript();
 
   // The panel is rendered inside a shadow root, so link the shared asset-picker
   // styles (blocks/edit/da-assets/da-assets.css) that style the smart-crop / error UI.

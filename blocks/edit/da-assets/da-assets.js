@@ -3,20 +3,11 @@ import getPathDetails from '../../shared/pathDetails.js';
 import { insertImage, insertLink, insertFragment, createImageNode, getBlockName } from './helpers/insert.js';
 import showSmartCropDialog from './helpers/smart-crop.js';
 
-const nx2 = getNx2();
-const [
-  { getRepositoryConfig, getResponsiveImageConfig },
-  { buildAssetSelectorProps, rememberAssetFolder },
-  { applySiteImageModifiers },
-  { MISSING_FORMAT_ERROR_MSG, resolveAssetSelection },
-  { loadAssetSelector },
-] = await Promise.all([
-  import(`${nx2}/utils/aem-assets/repository-config.js`),
-  import(`${nx2}/utils/aem-assets/selector-props.js`),
-  import(`${nx2}/utils/aem-assets/image-modifiers.js`),
-  import(`${nx2}/utils/aem-assets/selection.js`),
-  import(`${nx2}/utils/aem-assets/selector.js`),
-]);
+const { getRepositoryConfig, getResponsiveImageConfig } = await import(`${getNx2()}/utils/aem-assets/repository-config.js`);
+const { buildAssetSelectorProps, rememberAssetFolder } = await import(`${getNx2()}/utils/aem-assets/selector-props.js`);
+const { applySiteImageModifiers } = await import(`${getNx2()}/utils/aem-assets/image-modifiers.js`);
+const { MISSING_FORMAT_ERROR_MSG, resolveAssetSelection } = await import(`${getNx2()}/utils/aem-assets/selection.js`);
+const { ASSET_SELECTOR_URL } = await import(`${getNx2()}/utils/aem-assets/selector.js`);
 
 export function formatExternalBrief(doc) {
   let title = '';
@@ -160,7 +151,15 @@ export function buildHandleSelection({
 
 export async function openAssets() {
   const nx = getNx();
+  const isNx2 = nx.endsWith('/nx2');
   const { loadStyle } = await import(`${nx}/utils/utils.js`);
+  // TODO: remove the ternary and the nx v1 branch once nxver=2 is
+  // rolled out on the CDN. Kept for backward compat during the
+  // transition: nx v1 exposes loadScript at utils/script.js; nx2
+  // re-exports it from utils/utils.js.
+  const loadScript = isNx2
+    ? (await import(`${nx}/utils/utils.js`)).loadScript
+    : (await import(`${nx}/utils/script.js`)).default;
   const { loadIms, handleSignIn } = await import(`${nx}/utils/ims.js`);
 
   const details = await loadIms();
@@ -181,12 +180,7 @@ export async function openAssets() {
   if (assetSheet && !document.adoptedStyleSheets.includes(assetSheet)) {
     document.adoptedStyleSheets = [...document.adoptedStyleSheets, assetSheet];
   }
-  const { error } = await loadAssetSelector();
-  if (error) {
-    // eslint-disable-next-line no-console
-    console.error(error);
-    return;
-  }
+  await loadScript(ASSET_SELECTOR_URL);
 
   dialog = document.createElement('dialog');
   dialog.className = 'da-dialog-asset';
