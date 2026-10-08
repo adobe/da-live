@@ -1,12 +1,12 @@
 import { getNx, getNx2 } from '../../../scripts/utils.js';
-import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { buildHandleSelection, createDialogPanels } from '../../edit/da-assets/da-assets.js';
+import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 
 const nx2 = getNx2();
 const [
   { getRepositoryConfig, getResponsiveImageConfig },
   { buildAssetSelectorProps },
-  { loadAssetSelector },
+  { ASSET_SELECTOR_URL },
 ] = await Promise.all([
   import(`${nx2}/utils/aem-assets/repository-config.js`),
   import(`${nx2}/utils/aem-assets/selector-props.js`),
