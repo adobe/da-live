@@ -2,9 +2,16 @@ import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { buildHandleSelection, createDialogPanels } from '../../edit/da-assets/da-assets.js';
 
-const { getRepositoryConfig, getResponsiveImageConfig } = await import(`${getNx2()}/utils/aem-assets/repository-config.js`);
-const { buildAssetSelectorProps } = await import(`${getNx2()}/utils/aem-assets/selector-props.js`);
-const { ASSET_SELECTOR_URL } = await import(`${getNx2()}/utils/aem-assets/selector.js`);
+const nx2 = getNx2();
+const [
+  { getRepositoryConfig, getResponsiveImageConfig },
+  { buildAssetSelectorProps },
+  { loadAssetSelector },
+] = await Promise.all([
+  import(`${nx2}/utils/aem-assets/repository-config.js`),
+  import(`${nx2}/utils/aem-assets/selector-props.js`),
+  import(`${nx2}/utils/aem-assets/selector.js`),
+]);
 
 // Re-exported for ew-selection-toolbar's "does this site have AEM assets?" check.
 // The picker shares Nexter's config resolver with the classic editor.

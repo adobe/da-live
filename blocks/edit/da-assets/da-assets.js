@@ -3,11 +3,20 @@ import getPathDetails from '../../shared/pathDetails.js';
 import { insertImage, insertLink, insertFragment, createImageNode, getBlockName } from './helpers/insert.js';
 import showSmartCropDialog from './helpers/smart-crop.js';
 
-const { getRepositoryConfig, getResponsiveImageConfig } = await import(`${getNx2()}/utils/aem-assets/repository-config.js`);
-const { buildAssetSelectorProps, rememberAssetFolder } = await import(`${getNx2()}/utils/aem-assets/selector-props.js`);
-const { applySiteImageModifiers } = await import(`${getNx2()}/utils/aem-assets/image-modifiers.js`);
-const { MISSING_FORMAT_ERROR_MSG, resolveAssetSelection } = await import(`${getNx2()}/utils/aem-assets/selection.js`);
-const { ASSET_SELECTOR_URL } = await import(`${getNx2()}/utils/aem-assets/selector.js`);
+const nx2 = getNx2();
+const [
+  { getRepositoryConfig, getResponsiveImageConfig },
+  { buildAssetSelectorProps, rememberAssetFolder },
+  { applySiteImageModifiers },
+  { MISSING_FORMAT_ERROR_MSG, resolveAssetSelection },
+  { loadAssetSelector },
+] = await Promise.all([
+  import(`${nx2}/utils/aem-assets/repository-config.js`),
+  import(`${nx2}/utils/aem-assets/selector-props.js`),
+  import(`${nx2}/utils/aem-assets/image-modifiers.js`),
+  import(`${nx2}/utils/aem-assets/selection.js`),
+  import(`${nx2}/utils/aem-assets/selector.js`),
+]);
 
 export function formatExternalBrief(doc) {
   let title = '';
