@@ -189,8 +189,8 @@
 }
 
 .ext-search-icon {
-  width: var(--nx-ui-icon-l);
-  height: var(--nx-ui-icon-l);
+  width: var(--nx-ui-icon);
+  height: var(--nx-ui-icon);
   flex-shrink: 0;
   color: var(--s2-gray-600);
 }
@@ -226,8 +226,8 @@
 }
 
 .ext-search-clear svg {
-  width: var(--nx-ui-icon-l);
-  height: var(--nx-ui-icon-l);
+  width: var(--nx-ui-icon);
+  height: var(--nx-ui-icon);
   display: block;
 }
 
@@ -292,8 +292,8 @@
   padding: 0;
 
   svg {
-    width: var(--nx-ui-icon-l);
-    height: var(--nx-ui-icon-l);
+    width: var(--nx-ui-icon);
+    height: var(--nx-ui-icon);
   }
 
   &:hover:not(:disabled) {

@@ -38,8 +38,8 @@
 
   svg.icon {
     display: block;
-    width: var(--nx-ui-icon-m);
-    height: var(--nx-ui-icon-m);
+    width: var(--nx-ui-icon);
+    height: var(--nx-ui-icon);
     overflow: hidden;
   }
 

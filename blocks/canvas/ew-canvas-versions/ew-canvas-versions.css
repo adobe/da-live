@@ -52,8 +52,8 @@ button {
   }
 
   .icon {
-    width: var(--nx-ui-icon-l);
-    height: var(--nx-ui-icon-l);
+    width: var(--nx-ui-icon);
+    height: var(--nx-ui-icon);
   }
 }
 
@@ -158,15 +158,15 @@ button {
   background: var(--s2-gray-75);
 
   svg {
-    width: var(--nx-ui-icon-m);
-    height: var(--nx-ui-icon-m);
+    width: var(--nx-ui-icon);
+    height: var(--nx-ui-icon);
     transition: transform 0.15s ease;
   }
 }
 
 .versionentry.is-audit .versionicon svg {
-  width: var(--nx-ui-icon-xs);
-  height: var(--nx-ui-icon-xs);
+  width: calc(var(--nx-ui-icon) - 6px);
+  height: calc(var(--nx-ui-icon) - 6px);
 }
 
 .versionentry:hover .versionicon {

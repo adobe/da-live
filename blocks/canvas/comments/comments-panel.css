@@ -384,15 +384,15 @@
 .ew-comments-icon {
   display: inline-block;
   flex-shrink: 0;
-  width: var(--nx-ui-icon-xl);
-  height: var(--nx-ui-icon-xl);
+  width: calc(var(--nx-ui-icon) + 2px);
+  height: calc(var(--nx-ui-icon) + 2px);
   fill: currentcolor;
 }
 
 .ew-comments-icon-checkmark,
 .ew-comments-icon-chevron-left {
-  width: var(--nx-ui-icon-l);
-  height: var(--nx-ui-icon-l);
+  width: var(--nx-ui-icon);
+  height: var(--nx-ui-icon);
 }
 
 .ew-comments-icon-detached {

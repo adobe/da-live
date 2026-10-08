@@ -22,8 +22,8 @@
 }
 
 .search-icon {
-  width: var(--nx-ui-icon-l);
-  height: var(--nx-ui-icon-l);
+  width: var(--nx-ui-icon);
+  height: var(--nx-ui-icon);
   flex-shrink: 0;
   color: var(--s2-gray-600);
 }
@@ -134,8 +134,8 @@
 
 .icon {
   flex-shrink: 0;
-  width: var(--nx-ui-icon-m);
-  height: var(--nx-ui-icon-m);
+  width: var(--nx-ui-icon);
+  height: var(--nx-ui-icon);
 }
 
 .label {

@@ -156,8 +156,8 @@
   cursor: pointer;
 
   .icon {
-    width: var(--nx-ui-icon-l);
-    height: var(--nx-ui-icon-l);
+    width: var(--nx-ui-icon);
+    height: var(--nx-ui-icon);
   }
 }
 
