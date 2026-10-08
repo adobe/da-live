@@ -67,6 +67,15 @@
   border-radius: var(--s2-corner-radius-100);
 }
 
+.nx-input.ew-block-textarea {
+  box-sizing: border-box;
+  width: 100%;
+  height: auto;
+  min-height: 96px;
+  resize: vertical;
+  font: inherit;
+}
+
 .ew-block-field[aria-disabled='true'],
 .ew-block-list-item[aria-disabled='true'] {
   opacity: 0.5;

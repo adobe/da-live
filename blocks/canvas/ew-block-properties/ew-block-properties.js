@@ -151,9 +151,9 @@ class EwBlockProperties extends LitElement {
 
   _renderTextField(field, disabled) {
     const id = `ew-block-field-${field.key}`;
-    return html`
-      <label for=${id}>${field.label}</label>
-      ${field.values?.length ? html`
+    let control;
+    if (field.values?.length) {
+      control = html`
         <nx-picker id=${id} size="m" variant="field" placement="below-start"
           aria-label=${field.label} placeholder="Please Select"
           ?inert=${disabled || field.readOnly}
@@ -161,10 +161,20 @@ class EwBlockProperties extends LitElement {
           .items=${field.values.map(({ title, value }) => ({ label: title, value }))}
           .value=${field.value}
           .labelOverride=${field.values.some(({ value }) => value === field.value) ? '' : field.value}
-          @change=${(e) => this._commitText(field, e.detail.value)}></nx-picker>
-      ` : html`<input id=${id} class="nx-input" type="text" .value=${field.value}
+          @change=${(e) => this._commitText(field, e.detail.value)}></nx-picker>`;
+    } else if (field.multiline) {
+      control = html`
+        <textarea id=${id} class="nx-input ew-block-textarea" rows="4" .value=${field.value}
+          ?readonly=${disabled || field.readOnly}
+          @blur=${(e) => this._commitText(field, e.target.value)}></textarea>`;
+    } else {
+      control = html`<input id=${id} class="nx-input" type="text" .value=${field.value}
         ?readonly=${disabled || field.readOnly}
-        @blur=${(e) => this._commitText(field, e.target.value)}>`}
+        @blur=${(e) => this._commitText(field, e.target.value)}>`;
+    }
+    return html`
+      <label for=${id}>${field.label}</label>
+      ${control}
       ${field.href !== undefined ? html`
         <label for="${id}-url">URL</label>
         <input id="${id}-url" class="nx-input" type="url" .value=${field.href}
@@ -628,8 +638,8 @@ Selected block:
 - Variant: ${context.variant || '(no variant)'}
 - Exact block table header: ${block.node.firstChild.textContent}
 - Multi-item block: ${context.multi ? 'yes' : 'no'}
+- Block library type config: ${context.multi ? `block=${context.name}, property=multi` : 'not configured as multi'}
 ${context.multi ? `- Library template sample items: ${context.templateRowCount ?? '(not loaded; inspect the library)'}
-- Selected page items: ${block.node.childCount - 1}
 ` : `- Library template content rows: ${context.templateRowCount ?? '(not loaded; inspect the library)'}
 `}- Matching block library document: ${context.blockPath || 'Locate it by following the library index entries below.'}
 
@@ -642,37 +652,24 @@ Block type rules (authoritative):
 - If the block IS configured as multi, generate fields for ONLY the FIRST content row, regardless of N. Only in this case are later library rows sample items sharing the first row's schema.
 - The block name/variant header is not included in N.
 
-${context.multi ? `Repeating-block contract (authoritative):
-- The editor sheet configures block=${context.name}, property=multi. This configuration determines repeatability, NOT the number of library rows or the presence of a list.
-- Each content table row is one repeating item. Multiple library rows are sample items, not a fixed item count. Three sample cards still use ONE shared item schema.
-- The sidebar can add, delete and reorder whole item rows, and expand each item to edit its fields. Do not claim that item counts are fixed or that only list fields support dynamic items.
-- Keep the existing table-row block structure. Do NOT convert cards to <ul>/<ol> or change any template content to make the block repeatable. List fields are a separate feature inside an item.
-
-` : ''}${context.validationError ? `Existing fields metadata failed sidebar validation:
+${context.validationError ? `Existing fields metadata failed sidebar validation:
 ${context.validationError}
 Inspect and repair ONLY this variant's invalid fields entry. Reuse appropriate existing labels, but correct its rows/cells to the schema rules below. Do not duplicate per-item metadata rows.
 
 ` : ''}Inspect the block library before generating anything:
 1. Open the configured library index source(s) and follow the block's document path. If a matching library document is listed above, inspect that document.
-2. Find ONLY the "${context.name}" variant "${context.variant || '(no variant)'}". Match the actual block table header or block CSS classes, not just the display heading: a display label such as "Hero (Text Start)" can describe the actual "hero (left)" variant.
+2. Find ONLY the "${context.name}" variant "${context.variant || '(no variant)'}". Match the actual block table header or block CSS classes, not just a display heading.
 3. Read that variant's template rows, cells, text elements, images, lists, and blockquotes. Generate fields from the LIBRARY TEMPLATE, not from extra content in the current page. If the exact variant cannot be found or the source cannot be read, explain what is missing rather than inventing a schema.
-4. Inspect the library's options sheet for this block and shared "all" options. These supply existing dropdown choices; do not invent choices or add type declarations to the fields table.
-${context.multi ? '5. This block is configured as multi in the editor sheet. Inspect ONLY the first item row after the block header to define its shared field schema. Do not generate separate definitions for later sample items or the current page items.' : '5. This is a non-repeating block. Its field schema must describe all of the library template content rows.'}
+${context.multi ? '4. Inspect ONLY the first item row after the block header to define its shared field schema.' : '4. Its field schema must describe all of the library template content rows.'}
 
-How sidebar fields work:
+Fields metadata format:
 - Each library variant can have a "fields" entry in its associated "library-metadata". The entry's value is a nested table.
 - The nested table starts with a single header cell containing "fields". This is a header, not an editable field.
-- ${context.multi ? 'For this multi-item block, the fields table must contain exactly two rows: the Fields header and ONE content row describing only the first item. That item row must have the same number and order of cells as the first library item row. Every repeating item reuses this schema, regardless of how many sample items are in the template or selected page.' : 'Subsequent rows mirror the template\'s content rows in the same order, with the same number and order of cells.'} Do not add the block name/variant header as a content row.
-- Multi-item blocks show each item as a collapsible card with a chevron. Expanding it opens that item's own field editor. Reuse the same labels and field order for every item; do not duplicate the metadata rows for each item.
-- Inside each metadata cell, put one plain paragraph per field label, in the same order as the corresponding text blocks, images, or lists in the template cell. A cell containing a heading followed by a paragraph needs two labels in that same cell, not two separate table rows. A blockquote's text is a field too; its wrapper does not need a separate label.
-- Labels should be meaningful author-facing names, such as Image, Title, or Subheading. Labels do NOT need to use the template's heading tags or copy its sample text.
-- Do not write explicit type declarations: the sidebar infers "image" from the matching template image/picture, "list" from an ordered or unordered list, and "text" from a text element. Headings and paragraphs are both text, regardless of heading level. Ignore empty spacer paragraphs around image-only content. Image fields show a preview and replacement controls.
-- A list needs one label for the whole list, not one label per item. The rail groups individual item inputs together, with a + button, drag reordering with blue insertion lines, and Alt+ArrowUp/Alt+ArrowDown reordering. Its items can be edited, added, reordered and deleted. At least one item must remain; the final item's delete button is disabled and grayed out.
+- ${context.multi ? 'For this multi-item block, the fields table must contain exactly two rows: the Fields header and ONE content row describing only the first item. That item row must have the same number and order of cells as the first library item row. Every repeating item reuses this schema; do not duplicate the metadata rows.' : 'Subsequent rows mirror the template\'s content rows in the same order, with the same number and order of cells.'} Do not add the block name/variant header as a content row.
+- Inside each metadata cell, put one plain paragraph per field label, in the same order as the template content. Use meaningful names, not type declarations or dropdown choices.
+- Count each heading/paragraph, image/picture, or whole list as one field. Headings and paragraphs are both text; inline formatting and links do not create extra labels. For blockquotes, label their text blocks, not the wrapper. Ignore empty spacer paragraphs around image-only content.
+- A list needs one label for the whole list, not one label per item. Keep the template's cell order and spans; multiple fields in one cell need multiple label paragraphs in that cell, not separate table rows.
 - Use the exact label IGNORE to hide a field without changing subsequent field positions. For a key/value row, label the key IGNORE if it should not be edited, and give the value a meaningful label. Hidden fields still occupy their original positions.
-- Paragraphs with more than 200 characters in the LIBRARY TEMPLATE are grayed out and read-only, even if the current page's text is shorter. Exactly 200 characters is still editable. Short text with multiple inline text runs, mixed marks, partial links, or inline non-text content is also read-only. Include labels for these fields anyway; do not omit them and break the field mapping.
-- For text that passes the length check, formatting applied uniformly across the whole text remains editable and is preserved when editing, including a whole-text bold link. A whole-text link shows separate text and URL controls grouped inside a rounded border; editing either preserves other marks and link attributes.
-- In a two-column key/value row with a single text key and a single text value, a matching key in the block library options sheet makes the value a dropdown. Match the actual key text, not the sidebar field label; block names and keys are normalized for case and whitespace. Block-specific choices override shared "all" choices. Choices use the configured display labels and stored values (for example, Blue=blue). Unmatched rows stay text fields, and a current value outside the choices remains visible without being overwritten.
-- Sidebar values come from the selected page block; edits update that block while preserving its existing heading/paragraph tags and attributes. Additional trailing page content not described by the fields remains untouched.
 
 ${context.multi ? `Illustrative HTML ONLY: a repeating Cards block with THREE sample items and ONE shared first-item schema. These are table-row items, not a list field.
 <div class="cards">
@@ -689,55 +686,23 @@ ${context.multi ? `Illustrative HTML ONLY: a repeating Cards block with THREE sa
   </div></div>
 </div>
 ` : `Illustrative HTML ONLY: the non-repeating Everything Block and its corresponding library metadata.
-The first content row has seven fields: heading, tagline, image, one whole list, quote, long paragraph, and link. The next row hides the Color key with IGNORE but exposes its Green value. The final row exposes both columns as text fields.
 <div class="everything-block">
-  <div>
-    <div>
-      <h1>Hello World</h1>
-      <p>Foo bar baz</p>
-      <picture>
-        <source srcset="/media_everything.png">
-        <source srcset="/media_everything.png" media="(min-width: 600px)">
-        <img src="/media_everything.png" loading="lazy" alt="Example image">
-      </picture>
-      <ul>
-        <li>List</li>
-        <li>Item 2</li>
-        <li>Item 3</li>
-      </ul>
-      <blockquote><p>A quote?</p></blockquote>
-      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim <a href="https://google.com">veniam</a>, quis nostrud exercitation ullamco laboris. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia.</p>
-      <p><a href="https://google.com">A link</a></p>
-    </div>
-  </div>
+  <div><div>
+    <h1>Hello World</h1><p>Tagline</p><picture><img src="/example.png"></picture>
+    <ul><li>List</li><li>Item 2</li><li>Item 3</li></ul>
+    <blockquote><p>A quote</p></blockquote><p>A paragraph</p><p><a href="https://google.com">A link</a></p>
+  </div></div>
   <div><div><p>Color</p></div><div><p>Green</p></div></div>
   <div><div><p>Left side</p></div><div><p>Right side</p></div></div>
 </div>
 <div class="library-metadata">
-  <div>
-    <div><p>fields</p></div>
-    <div>
-      <table><tbody>
-        <tr><td colspan="2"><p>fields</p></td></tr>
-        <tr>
-          <td colspan="2">
-            <p>title</p>
-            <p>tagline</p>
-            <p>image</p>
-            <p>list below image</p>
-            <p>quote</p>
-            <p>long paragraph</p>
-            <p>link</p>
-          </td>
-        </tr>
-        <tr><td><p>IGNORE</p></td><td><p>Color</p></td></tr>
-        <tr><td><p>Left Column</p></td><td><p>Right Column</p></td></tr>
-      </tbody></table>
-    </div>
-  </div>
+  <div><div><p>fields</p></div><div><table>
+    <tr><td colspan="2"><p>fields</p></td></tr>
+    <tr><td colspan="2"><p>title</p><p>tagline</p><p>image</p><p>list below image</p><p>quote</p><p>paragraph</p><p>link</p></td></tr>
+    <tr><td><p>IGNORE</p></td><td><p>Color</p></td></tr>
+    <tr><td><p>Left Column</p></td><td><p>Right Column</p></td></tr>
+  </table></div></div>
 </div>
-
-In this example, the long paragraph is read-only, the quote is editable, and the link exposes both "A link" and its URL. If the existing options sheet has a row with blocks=everything-block, key=Color, values=Green|Blue|Red (or a shared "all" row for that key), the Color value is a dropdown; otherwise it remains a text field. The fields table itself does not define dropdown choices.
 `}
 Adapt the rows, cells, and labels to the actual selected library variant; do not blindly copy this example. Add the generated fields table to that variant's existing library metadata, or create associated library metadata if absent. Fill an empty fields entry if one exists. Preserve description, search tags, other metadata, all template content, and all other variants. Do not replace the block or edit the current page to add this schema. ${context.validationError ? 'Repair the existing invalid fields entry identified above; do not overwrite valid fields in other variants.' : 'If nonempty fields already exist in the source, report them rather than overwriting them.'} Show the generated table and identify the exact library document and variant to which it belongs.`;
     this._fieldsGenerationRequested = true;

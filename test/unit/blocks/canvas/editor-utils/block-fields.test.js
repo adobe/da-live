@@ -131,21 +131,28 @@ describe('block fields', () => {
     }
   });
 
-  it('uses the exact paragraph length threshold in the library, not the selected text', async () => {
+  it('uses multiline controls for long template or current text without locking it', async () => {
     const table = template();
     table.querySelector('p').textContent = 'x'.repeat(200);
     let definitions = await definitionsFor([{ dom: table, fields: metadata() }]);
     const current = template();
+    expect(resolveBlockFields(selectedBlock(current), definitions)[2].multiline).to.equal(false);
     current.querySelector('p').textContent = 'x'.repeat(300);
-    expect(resolveBlockFields(selectedBlock(current), definitions)[2].readOnly).to.equal(false);
+    let field = resolveBlockFields(selectedBlock(current), definitions)[2];
+    expect(field.readOnly).to.equal(false);
+    expect(field.multiline).to.equal(true);
     table.querySelector('p').textContent += 'x';
     definitions = await definitionsFor([{ dom: table, fields: metadata() }]);
     current.querySelector('p').textContent = 'Short now';
-    expect(resolveBlockFields(selectedBlock(current), definitions)[2].readOnly).to.equal(true);
+    [, , field] = resolveBlockFields(selectedBlock(current), definitions);
+    expect(field.readOnly).to.equal(false);
+    expect(field.multiline).to.equal(true);
   });
 
   it('allows uniform marks and links but locks mixed formatting and inline non-text nodes', async () => {
     for (const [content, readOnly] of [
+      ['<strong>All bold</strong>', false],
+      ['<a href="/link">Entire link</a>', false],
       ['<strong><a href="/link">All bold link</a></strong>', false],
       ['Plain <strong>bold</strong>', true],
       ['<a href="/one">One</a><a href="/two">Two</a>', true],
@@ -160,6 +167,39 @@ describe('block fields', () => {
     const current = template();
     current.querySelector('p').innerHTML = 'New <em>mixed</em> formatting';
     expect(resolveBlockFields(selectedBlock(current), definitions)[2].readOnly).to.equal(true);
+  });
+
+  it('checks current formatting rather than inheriting rich formatting from the library sample', async () => {
+    const table = template();
+    table.querySelector('p').innerHTML = 'Template <strong>emphasis</strong>';
+    const definitions = await definitionsFor([{ dom: table, fields: metadata() }]);
+    const current = template();
+    for (const content of [
+      'x'.repeat(300),
+      `<strong>${'x'.repeat(300)}</strong>`,
+      `<a href="/whole-text">${'x'.repeat(300)}</a>`,
+      `<strong><a href="/whole-text">${'x'.repeat(300)}</a></strong>`,
+    ]) {
+      current.querySelector('p').innerHTML = content;
+      const field = resolveBlockFields(selectedBlock(current), definitions)[2];
+      expect(field.readOnly).to.equal(false);
+      expect(field.multiline).to.equal(true);
+    }
+    current.querySelector('p').innerHTML = 'Partial <strong>formatting</strong>';
+    expect(resolveBlockFields(selectedBlock(current), definitions)[2].readOnly).to.equal(true);
+  });
+
+  it('checks each current list item without inheriting the template item formatting', async () => {
+    const table = template();
+    table.rows[2].cells[0].innerHTML = '<ul><li>Template <strong>bold</strong></li></ul><p>After</p>';
+    const definitions = await definitionsFor([{ dom: table, fields: metadata() }]);
+    const current = template();
+    current.rows[2].cells[0].innerHTML = `<ul><li>${'x'.repeat(300)}</li>
+      <li>Other <em>formatting</em></li></ul><p>After</p>`;
+    const field = resolveBlockFields(selectedBlock(current), definitions)[1];
+    expect(field.items[0].readOnly).to.equal(false);
+    expect(field.items[0].multiline).to.equal(true);
+    expect(field.items[1].readOnly).to.equal(true);
   });
 
   it('resolves ordered lists of different lengths without moving subsequent fields', async () => {

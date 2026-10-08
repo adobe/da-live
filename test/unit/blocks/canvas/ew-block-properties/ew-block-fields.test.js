@@ -296,26 +296,20 @@ describe('ew-block-properties library fields', () => {
       'one plain paragraph per field label',
       'Headings and paragraphs are both text',
       'one label for the whole list',
-      'blue insertion lines',
-      'At least one item must remain',
-      'disabled and grayed out',
       'exact label IGNORE',
-      'Exactly 200 characters is still editable',
-      'Include labels for these fields anyway',
-      'whole-text bold link',
-      'separate text and URL controls',
-      'options sheet makes the value a dropdown',
-      'Block-specific choices override shared "all" choices',
-      'configured display labels and stored values',
-      'outside the choices remains visible',
-      'Additional trailing page content',
+      'not type declarations or dropdown choices',
       'all other variants',
       'Do not replace the block or edit the current page',
       'rather than inventing a schema',
     ].forEach((fragment) => expect(text).to.include(fragment));
+    expect(text.length).to.be.below(6000);
+    for (const fragment of [
+      '200 characters', 'read-only', 'textarea', 'grayed out', 'blue insertion lines',
+      'Alt+Arrow', 'options sheet', 'whole-text bold link', 'URL controls', 'Selected page items:',
+    ]) expect(text).not.to.include(fragment);
     const example = text.slice(
       text.indexOf('<div class="everything-block">'),
-      text.indexOf('\nIn this example,'),
+      text.indexOf('\nAdapt the rows'),
     );
     const container = document.createElement('div');
     container.innerHTML = example;
@@ -327,12 +321,12 @@ describe('ew-block-properties library fields', () => {
     const definitions = buildBlockFieldDefinitions({ item: { fields }, template });
     const resolved = resolveBlockFields({ node: template, from: 0 }, definitions);
     expect(resolved.map((field) => field.label)).to.deep.equal([
-      'title', 'tagline', 'image', 'list below image', 'quote', 'long paragraph',
+      'title', 'tagline', 'image', 'list below image', 'quote', 'paragraph',
       'link', 'Color', 'Left Column', 'Right Column',
     ]);
     expect(resolved.every((field) => !field.error)).to.equal(true);
     expect(resolved[3].items.map((item) => item.value)).to.deep.equal(['List', 'Item 2', 'Item 3']);
-    expect(resolved[5].readOnly).to.equal(true);
+    expect(resolved[5].readOnly).to.equal(false);
     expect(resolved[6].href).to.equal('https://google.com');
     expect(resolved[7].optionKey).to.equal('Color');
     expect(view.state.doc).to.equal(doc);
@@ -585,11 +579,12 @@ describe('ew-block-properties library fields', () => {
     expect(options.autoSend).to.equal(true);
     for (const fragment of [
       'Block name: cards', 'Variant: default', 'Multi-item block: yes',
-      'Library template sample items: 3', 'Selected page items: 3',
-      'block=cards, property=multi', 'Three sample cards still use ONE shared item schema',
-      'Do NOT convert cards to <ul>/<ol>', 'List fields are a separate feature',
+      'Library template sample items: 3', 'block=cards, property=multi',
+      'generate fields for ONLY the FIRST content row',
       'THREE sample items and ONE shared first-item schema',
     ]) expect(options.text).to.include(fragment);
+    expect(options.text.length).to.be.below(6000);
+    expect(options.text).not.to.include('Selected page items:');
     expect(options.text).not.to.include('<div class="everything-block">');
   });
 
@@ -850,7 +845,7 @@ describe('ew-block-properties library fields', () => {
     for (const fragment of [
       'Multi-item block: yes', 'ONLY the first item row', 'exactly two rows',
       'Every repeating item reuses this schema', 'do not duplicate the metadata rows',
-      'collapsible card with a chevron', 'Library template sample items: 2',
+      'Library template sample items: 2',
     ]) expect(options.text).to.include(fragment);
     const example = options.text.slice(
       options.text.indexOf('<div class="cards">'),
@@ -1016,9 +1011,9 @@ describe('ew-block-properties library fields', () => {
     expect(el._fields[1].values.map((item) => item.value)).to.deep.equal(['light', 'dark']);
   });
 
-  it('keeps option pickers inert for read-only templates and read-only documents', async () => {
+  it('keeps option pickers inert for mixed current content and read-only documents', async () => {
     blockOptions = [{ blocks: 'hero', key: 'Color', values: 'Green=green|Blue=blue' }];
-    await setKeyValueTemplate('green', 'x'.repeat(201));
+    await setKeyValueTemplate('Plain <strong>bold</strong>');
     let picker = fieldElement('Background').querySelector('nx-picker');
     expect(picker.hasAttribute('inert')).to.equal(true);
     let { doc } = view.state;
@@ -1117,19 +1112,130 @@ describe('ew-block-properties library fields', () => {
     expect(el._fields[2].value).to.equal('Edited longer paragraph');
   });
 
-  it('hides IGNORE and grays out long or mixed text without permitting programmatic edits', async () => {
-    await setTextTemplate(`<h1>Ignore this</h1><p>${'x'.repeat(201)}</p>`, '<p>IGNORE</p><p>subheading</p>');
+  it('edits long paragraphs in a resizable textarea while preserving marks and link attributes', async () => {
+    const text = 'x'.repeat(201);
+    await setTextTemplate(`<h1>Title</h1><p><strong><a href="/link" title="Link title">${text}</a></strong></p>`);
+    const group = fieldElement('subheading');
+    const textarea = group.querySelector('textarea');
+    expect(textarea.value).to.equal(text);
+    expect(textarea.readOnly).to.equal(false);
+    expect(group.getAttribute('aria-disabled')).to.equal('false');
+    expect(group.querySelector('input[type="text"]')).to.equal(null);
+    const cssPath = '/blocks/canvas/ew-block-properties/ew-block-properties.css';
+    fetchStub.withArgs(cssPath).callThrough();
+    const response = await fetch(cssPath);
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync(await response.text());
+    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
+    const style = getComputedStyle(textarea);
+    expect(parseFloat(style.minHeight)).to.be.at.least(96);
+    expect(style.resize).to.equal('vertical');
+    const before = el._fields[2].node;
+    textarea.value = 'Edited\nparagraph';
+    textarea.dispatchEvent(new Event('blur'));
+    await el.updateComplete;
+    let field = el._fields[2];
+    expect(field.value).to.equal('Edited\nparagraph');
+    expect(field.node.attrs).to.deep.equal(before.attrs);
+    expect(field.node.firstChild.marks).to.deep.equal(before.firstChild.marks);
+    const url = fieldElement('subheading').querySelector('input[type="url"]');
+    url.value = '/new';
+    url.dispatchEvent(new Event('blur'));
+    await el.updateComplete;
+    [, , field] = el._fields;
+    expect(field.href).to.equal('/new');
+    expect(field.node.firstChild.marks.find((mark) => mark.type.name === 'link').attrs.title)
+      .to.equal('Link title');
+    expect(field.node.firstChild.marks.some((mark) => mark.type.name === 'strong')).to.equal(true);
+    expect(fieldElement('subheading').querySelector('textarea').value).to.equal('Edited\nparagraph');
+  });
+
+  it('uses a textarea when current text grows beyond the short library template', async () => {
+    const input = fieldElement('subheading').querySelector('input');
+    input.value = 'x'.repeat(201);
+    input.dispatchEvent(new Event('blur'));
+    await el.updateComplete;
+    const textarea = fieldElement('subheading').querySelector('textarea');
+    expect(textarea.value).to.equal('x'.repeat(201));
+    expect(textarea.readOnly).to.equal(false);
+  });
+
+  it('keeps long current text editable when the library paragraph has mixed formatting', async () => {
+    await setTextTemplate('<h1>Title</h1><p>Template <strong>emphasis</strong></p>');
+    const field = el._fields[2];
+    const { schema } = view.state;
+    const paragraph = field.node.type.create(field.node.attrs, schema.text('x'.repeat(300)));
+    view.dispatch(view.state.tr.replaceWith(field.pos, field.pos + field.node.nodeSize, paragraph));
+    canvasBus.editorDocState.emit();
+    await el.updateComplete;
+    const group = fieldElement('subheading');
+    const textarea = group.querySelector('textarea');
+    expect(textarea.readOnly).to.equal(false);
+    expect(group.getAttribute('aria-disabled')).to.equal('false');
+    textarea.value = 'Changed long paragraph';
+    textarea.dispatchEvent(new Event('blur'));
+    await el.updateComplete;
+    expect(el._fields[2].value).to.equal('Changed long paragraph');
+  });
+
+  it('prevents textarea edits in read-only documents and rejects stale textarea blurs', async () => {
+    await setTextTemplate(`<h1>Title</h1><p>${'x'.repeat(201)}</p>`);
+    const stale = fieldElement('subheading').querySelector('textarea');
+    el._commitText(el._fields[2], 'External change');
+    const { doc } = view.state;
+    stale.value = 'Stale change';
+    stale.dispatchEvent(new Event('blur'));
+    expect(view.state.doc).to.equal(doc);
+    await el.updateComplete;
+    view.editable = false;
+    canvasBus.editorDocState.emit();
+    await el.updateComplete;
+    const textarea = fieldElement('subheading').querySelector('textarea');
+    expect(textarea.readOnly).to.equal(true);
+    textarea.value = 'Do not save';
+    textarea.dispatchEvent(new Event('blur'));
+    expect(view.state.doc).to.equal(doc);
+  });
+
+  it('edits long list items in textareas without changing neighboring items', async () => {
+    await setTextTemplate(`<ul><li>${'x'.repeat(201)}</li><li>Short</li></ul><p>After list</p>`);
+    const textarea = fieldElement('title').querySelector('textarea');
+    expect(textarea.readOnly).to.equal(false);
+    textarea.value = 'Updated long item';
+    textarea.dispatchEvent(new Event('blur'));
+    await el.updateComplete;
+    expect(el._fields[1].items.map((item) => item.value)).to.deep.equal(['Updated long item', 'Short']);
+    expect(el._fields[2].value).to.equal('After list');
+  });
+
+  it('uses the same textarea control inside an expanded repeating item', async () => {
+    await setMultiTemplate();
+    const field = el._fields.find((item) => item.itemIndex === 1 && item.label === 'Title');
+    el._commitText(field, 'x'.repeat(201));
+    await el.updateComplete;
+    await expandItem(1);
+    const textarea = itemField(1, 'Title').querySelector('textarea');
+    expect(textarea.readOnly).to.equal(false);
+    textarea.value = 'Updated repeated title';
+    textarea.dispatchEvent(new Event('blur'));
+    await el.updateComplete;
+    expect(el._fields.find((item) => item.itemIndex === 0 && item.label === 'Title').value)
+      .to.equal('First title');
+    expect(el._fields.find((item) => item.itemIndex === 1 && item.label === 'Title').value)
+      .to.equal('Updated repeated title');
+  });
+
+  it('hides IGNORE and grays out mixed text without permitting programmatic edits', async () => {
+    await setTextTemplate(
+      '<h1>Ignore this</h1><p>Some <a href="/link">linked</a> text</p>',
+      '<p>IGNORE</p><p>subheading</p>',
+    );
     expect(fieldElement('IGNORE')).to.equal(null);
     expect(fieldElement('subheading').getAttribute('aria-disabled')).to.equal('true');
     expect(fieldElement('subheading').querySelector('input').readOnly).to.equal(true);
-    let { doc } = view.state;
+    const { doc } = view.state;
     el._commitText(el._fields[1], 'Do not save');
-    expect(view.state.doc).to.equal(doc);
-    await setTextTemplate('<h1>Title</h1><p>Some <a href="/link">linked</a> text</p>');
-    expect(fieldElement('subheading').querySelector('input').readOnly).to.equal(true);
-    doc = view.state.doc;
-    el._commitText(el._fields[2], 'Do not save');
-    el._commitLink(el._fields[2], '/new');
+    el._commitLink(el._fields[1], '/new');
     expect(view.state.doc).to.equal(doc);
   });
 

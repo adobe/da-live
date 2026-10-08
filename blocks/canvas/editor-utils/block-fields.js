@@ -17,9 +17,12 @@ function fieldNodes(node, path = []) {
   return fields;
 }
 
-function textReadOnly(node, checkLength = false) {
-  return (checkLength && node.type.name === 'paragraph' && node.textContent.length > 200)
-    || node.childCount > 1 || (node.childCount === 1 && !node.firstChild.isText);
+function textReadOnly(node) {
+  return node.content.content.some((child) => !child.isText || !child.sameMarkup(node.firstChild));
+}
+
+function textMultiline(node) {
+  return !!node && (node.textContent.length > 200 || node.textContent.includes('\n'));
 }
 
 function nodeAtPath(block, path) {
@@ -38,7 +41,13 @@ function listItems(node) {
   const items = [];
   node.forEach((item, offset, index) => {
     const text = item.childCount === 1 && item.firstChild.isTextblock ? item.firstChild : null;
-    items.push({ index, offset, node: text, readOnly: !text || textReadOnly(text, true) });
+    items.push({
+      index,
+      offset,
+      node: text,
+      readOnly: !text || textReadOnly(text),
+      multiline: textMultiline(text),
+    });
   });
   return items;
 }
@@ -104,14 +113,15 @@ export function buildBlockFieldDefinitions(match, { multi = false } = {}) {
       labels.forEach((label, fieldIndex) => {
         if (!label || label.toUpperCase() === 'IGNORE') return;
         const { path, type, node } = nodes[fieldIndex];
+        const items = type === 'list' ? listItems(node) : [];
         definitions.push({
           key: path.join('-'),
           label,
           path,
           type,
           multi,
-          readOnly: type === 'text' && textReadOnly(node, true),
-          itemReadOnly: type === 'list' ? listItems(node).map((itemNode) => itemNode.readOnly) : [],
+          multiline: type === 'text' && textMultiline(node),
+          itemMultiline: items.map((listItem) => listItem.multiline),
           fieldIndex,
           rowCount: template.childCount,
           cellCount: templateRow.childCount,
@@ -160,7 +170,8 @@ export function resolveBlockFields(block, definitions, { itemIndex = 0 } = {}) {
         && row.firstChild.childCount === 1 && row.firstChild.firstChild.isTextblock
         && row.firstChild.firstChild.content.content.every((child) => child.isText)
         ? row.firstChild.textContent : '',
-      readOnly: field.readOnly || (matches && field.type === 'text' && textReadOnly(node)),
+      readOnly: matches && field.type === 'text' && textReadOnly(node),
+      multiline: field.multiline || (matches && field.type === 'text' && textMultiline(node)),
       href: matches && field.type === 'text'
         ? node.firstChild?.marks.find((mark) => mark.type.name === 'link')?.attrs.href : undefined,
       items: matches && field.type === 'list' ? listItems(node).map((item) => ({
@@ -170,8 +181,9 @@ export function resolveBlockFields(block, definitions, { itemIndex = 0 } = {}) {
         node: item.node,
         pos: pos + 2 + item.offset,
         value: node.child(item.index).textContent,
-        readOnly: (field.itemReadOnly[item.index] ?? field.itemReadOnly[0] ?? false)
-          || !item.node || textReadOnly(item.node),
+        readOnly: item.readOnly,
+        multiline: (field.itemMultiline?.[item.index] ?? field.itemMultiline?.[0] ?? false)
+          || item.multiline,
         href: item.node?.firstChild?.marks.find((mark) => mark.type.name === 'link')?.attrs.href,
       })) : [],
       error: matches ? '' : 'This field does not match the selected block structure.',
