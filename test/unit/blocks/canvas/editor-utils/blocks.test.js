@@ -10,6 +10,7 @@ import {
   moveBlockToSection,
   moveBlock,
   moveSection,
+  insertSectionAfter,
 } from '../../../../../blocks/canvas/editor-utils/blocks.js';
 import { makeView, makeRealView } from '../test-helpers.js';
 
@@ -434,5 +435,41 @@ describe('deleteBlock (no deliberate selection change)', () => {
 
     expect(view.state.selection).to.not.be.instanceOf(NodeSelection);
     expect(docTypes(view.state.doc)).to.deep.equal(['table']);
+  });
+});
+
+describe('insertSectionAfter', () => {
+  const para = (text) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
+  const rule = (daSectionName) => ({ type: 'horizontal_rule', attrs: { daSectionName } });
+  const seq = (doc) => {
+    const out = [];
+    doc.forEach((n) => out.push(n.type.name === 'horizontal_rule' ? `hr:${n.attrs.daSectionName ?? ''}` : n.textContent));
+    return out;
+  };
+  const threeSections = () => makeView({
+    type: 'doc',
+    content: [para('one'), rule('Feat'), para('two'), rule('Footer'), para('three')],
+  });
+
+  it('inserts an unnamed section after a middle section', () => {
+    const view = threeSections();
+    insertSectionAfter(view, 1);
+    expect(seq(view.state.doc)).to.deep.equal(['one', 'hr:Feat', 'two', 'hr:', 'hr:Footer', 'three']);
+  });
+
+  it('inserts after the first section, keeping following names', () => {
+    const view = threeSections();
+    insertSectionAfter(view, 0);
+    expect(seq(view.state.doc)).to.deep.equal(['one', 'hr:', 'hr:Feat', 'two', 'hr:Footer', 'three']);
+  });
+
+  it('appends after the last section', () => {
+    const view = threeSections();
+    insertSectionAfter(view, 2);
+    expect(seq(view.state.doc)).to.deep.equal(['one', 'hr:Feat', 'two', 'hr:Footer', 'three', 'hr:']);
+  });
+
+  it('ignores a missing view', () => {
+    expect(() => insertSectionAfter(null, 0)).to.not.throw();
   });
 });

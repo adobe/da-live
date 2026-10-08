@@ -48,7 +48,7 @@ input {
 }
 
 .section-label {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   display: block;
   min-width: 0;
   padding: var(--s2-spacing-75) var(--s2-spacing-100);
@@ -60,10 +60,16 @@ input {
   white-space: nowrap;
 }
 
-.edit-btn {
-  visibility: hidden;
+.section-menu {
+  flex-shrink: 0;
   margin-inline-start: var(--s2-spacing-50);
-  margin-inline-end: auto;
+}
+
+.drag-handle {
+  display: block;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
 }
 
 .section-name-input {
@@ -90,6 +96,14 @@ input {
   padding: var(--s2-spacing-75) var(--s2-spacing-100);
   padding-inline-start: var(--s2-spacing-300);
   cursor: grab;
+
+  &:has(> .drag-handle) {
+    padding-inline-start: var(--s2-spacing-100);
+  }
+
+  > .drag-handle {
+    margin-inline-end: calc(var(--s2-spacing-300) - var(--s2-spacing-100) + var(--s2-spacing-75));
+  }
   font-size: var(--s2-body-size-s);
   font-weight: 500;
   color: var(--s2-gray-800);
@@ -130,13 +144,9 @@ input {
   border-bottom: 2px solid var(--s2-blue-600, #147af3);
 }
 
-/* Blocks have no chevron — indent to align with expandable content-item labels */
-.block-item:not(.content-item) {
-  padding-inline-start: calc(var(--s2-spacing-300) + 1rem);
-}
-
 .block-empty {
   cursor: default;
+  padding-inline-start: calc(var(--s2-spacing-300) + 1rem + var(--s2-spacing-75));
 }
 
 .empty-label {
@@ -159,6 +169,7 @@ input {
   display: inline-block;
   flex-shrink: 0;
   width: 1rem;
+  margin-inline-end: var(--s2-spacing-75);
   text-align: center;
   transition: transform 0.15s;
 }
@@ -176,6 +187,10 @@ input {
 .content-child {
   padding-inline-start: var(--s2-spacing-500);
   min-height: 44px;
+
+  > .drag-handle {
+    margin-inline-end: calc(var(--s2-spacing-500) - var(--s2-spacing-100) + var(--s2-spacing-75));
+  }
 }
 
 .content-label {
@@ -226,11 +241,9 @@ input {
     height: 16px;
   }
 
-.outline-section:has(.selected) .section-header :is(.action-btn, .edit-btn),
-.selected :is(.action-btn, .edit-btn),
-:is(.action-btn, .edit-btn):focus-visible,
-.section-header:hover :is(.action-btn, .edit-btn),
-.block-item:hover :is(.action-btn, .edit-btn) {
+.selected .action-btn,
+.action-btn:focus-visible,
+.block-item:hover .action-btn {
   visibility: visible;
 }
 
