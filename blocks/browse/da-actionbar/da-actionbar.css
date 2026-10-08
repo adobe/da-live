@@ -87,3 +87,16 @@ button {
 .da-action-bar .hide {
   display: none;
 }
+
+/* Enforce-preflight indicator on the Publish button (mirrors the editor's
+   da-title-preflight-dot). */
+.da-action-bar .da-preflight-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.da-action-bar .da-preflight-dot.is-required {
+  background: var(--s2-orange-500);
+}
