@@ -30,6 +30,106 @@ const selectedBlock = (table, from = 0) => {
 };
 
 describe('block fields', () => {
+  it('supports the everything block metadata, including a single field for the list', async () => {
+    const content = `<h1>Hello World</h1><p>Foo bar baz</p>
+      <picture><img src="/everything.png"></picture>
+      <ul><li>List</li><li>Item 2</li><li>Item 3</li></ul>
+      <blockquote><p>A quote?</p></blockquote>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+        Sed do eiusmod tempor incididunt ut <a href="https://google.com">veniam</a>.</p>
+      <p><a href="https://google.com">A link</a></p>`;
+    const table = dom(`<table><tr><td colspan="2">Hero (left)</td></tr>
+      <tr><td colspan="2">${content}</td></tr>
+      <tr><td><p>Color</p></td><td><p>Green</p></td></tr>
+      <tr><td><p>Left side</p></td><td><p>Right side</p></td></tr></table>`);
+    const metadataTable = dom(`<table><tr><td colspan="2">fields</td></tr>
+      <tr><td colspan="2"><p>title</p><p>tagline</p><p>image</p>
+        <p>list below image</p><p>quote</p><p>long paragraph</p><p>link</p></td></tr>
+      <tr><td>IGNORE</td><td>Color</td></tr>
+      <tr><td>Left Column</td><td>Right Column</td></tr></table>`);
+    const definitions = await definitionsFor([{ dom: table, fields: metadataTable }]);
+    const block = selectedBlock(table, 10);
+    const fields = resolveBlockFields(block, definitions);
+    expect(fields.map((field) => field.label)).to.deep.equal([
+      'title', 'tagline', 'image', 'list below image', 'quote', 'long paragraph',
+      'link', 'Color', 'Left Column', 'Right Column',
+    ]);
+    expect(fields.every((field) => !field.error)).to.equal(true);
+    expect(fields[3].type).to.equal('list');
+    expect(fields[3].items.map((item) => item.value)).to.deep.equal(['List', 'Item 2', 'Item 3']);
+    fields[3].items.forEach((item) => {
+      expect(block.node.nodeAt(item.pos - block.from - 1)).to.equal(item.node);
+    });
+    expect(fields[4].value).to.equal('A quote?');
+    expect(fields[5].readOnly).to.equal(true);
+    expect(fields[6].href).to.equal('https://google.com');
+    expect(fields[6].readOnly).to.equal(false);
+    expect(fields[7].value).to.equal('Green');
+    expect(fields[7].optionKey).to.equal('Color');
+    expect(fields[8].optionKey).to.equal('');
+    expect(fields[9].optionKey).to.equal('Left side');
+  });
+
+  it('only identifies single-text key/value rows as block-option candidates', async () => {
+    for (const [key, value, labels, expected] of [
+      ['<p>Color</p>', '<p>Green</p>', '<p>Value</p>', 'Color'],
+      ['<blockquote><p>Color</p></blockquote>', '<p>Green</p>', '<p>Value</p>', ''],
+      ['<p><img src="/key.png"></p>', '<p>Green</p>', '<p>Value</p>', ''],
+      ['<p>Color</p>', '<p>Green</p><p>Extra</p>', '<p>Value</p><p>Extra</p>', ''],
+      ['<p>Color<br>Extra</p>', '<p>Green</p>', '<p>Value</p>', ''],
+    ]) {
+      const table = dom(`<table><tr><td colspan="2">Hero (left)</td></tr>
+        <tr><td>${key}</td><td>${value}</td></tr></table>`);
+      const fields = dom(`<table><tr><td colspan="2">fields</td></tr>
+        <tr><td>IGNORE</td><td>${labels}</td></tr></table>`);
+      const definitions = await definitionsFor([{ dom: table, fields }]);
+      expect(resolveBlockFields(selectedBlock(table), definitions)[0].optionKey).to.equal(expected);
+    }
+  });
+
+  it('uses the exact paragraph length threshold in the library, not the selected text', async () => {
+    const table = template();
+    table.querySelector('p').textContent = 'x'.repeat(50);
+    let definitions = await definitionsFor([{ dom: table, fields: metadata() }]);
+    const current = template();
+    current.querySelector('p').textContent = 'x'.repeat(80);
+    expect(resolveBlockFields(selectedBlock(current), definitions)[2].readOnly).to.equal(false);
+    table.querySelector('p').textContent += 'x';
+    definitions = await definitionsFor([{ dom: table, fields: metadata() }]);
+    current.querySelector('p').textContent = 'Short now';
+    expect(resolveBlockFields(selectedBlock(current), definitions)[2].readOnly).to.equal(true);
+  });
+
+  it('allows uniform marks and links but locks mixed formatting and inline non-text nodes', async () => {
+    for (const [content, readOnly] of [
+      ['<strong><a href="/link">All bold link</a></strong>', false],
+      ['Plain <strong>bold</strong>', true],
+      ['<a href="/one">One</a><a href="/two">Two</a>', true],
+      ['One<br>Two', true],
+    ]) {
+      const table = template();
+      table.querySelector('p').innerHTML = content;
+      const definitions = await definitionsFor([{ dom: table, fields: metadata() }]);
+      expect(resolveBlockFields(selectedBlock(table), definitions)[2].readOnly).to.equal(readOnly);
+    }
+    const definitions = await definitionsFor([{ dom: template(), fields: metadata() }]);
+    const current = template();
+    current.querySelector('p').innerHTML = 'New <em>mixed</em> formatting';
+    expect(resolveBlockFields(selectedBlock(current), definitions)[2].readOnly).to.equal(true);
+  });
+
+  it('resolves ordered lists of different lengths without moving subsequent fields', async () => {
+    const table = template();
+    table.rows[2].cells[0].innerHTML = '<ol start="3"><li>First</li><li>Second</li></ol><p>After</p>';
+    const definitions = await definitionsFor([{ dom: table, fields: metadata() }]);
+    const current = template();
+    current.rows[2].cells[0].innerHTML = '<ol start="3"><li>A</li><li>B</li><li>C</li></ol><p>Still after</p>';
+    const fields = resolveBlockFields(selectedBlock(current), definitions);
+    expect(fields[1].items.map((item) => item.value)).to.deep.equal(['A', 'B', 'C']);
+    expect(fields[2].value).to.equal('Still after');
+    expect(fields.every((field) => !field.error)).to.equal(true);
+  });
+
   it('maps labels by row, cell and element, inferring types from the template', async () => {
     const definitions = await definitionsFor([{ dom: template(), fields: metadata() }]);
     expect(definitions.map(({ label, type, path }) => ({ label, type, path }))).to.deep.equal([

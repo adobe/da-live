@@ -5,6 +5,9 @@ import { normalizeBlockName } from './block-variants.js';
 const normalizeVariant = (value) => value.split(',').map(normalizeBlockName).sort().join(',');
 
 function fieldNodes(node, path = []) {
+  if (['bullet_list', 'ordered_list'].includes(node.type.name)) {
+    return [{ node, path, type: 'list' }];
+  }
   if (node.type.name === 'image') return [{ node, path, type: 'image' }];
   if (node.isTextblock && !node.content.content.some((child) => child.type.name === 'image')) {
     return [{ node, path, type: 'text' }];
@@ -12,6 +15,32 @@ function fieldNodes(node, path = []) {
   const fields = [];
   node.forEach((child, offset, index) => fields.push(...fieldNodes(child, [...path, index])));
   return fields;
+}
+
+function textReadOnly(node, checkLength = false) {
+  return (checkLength && node.type.name === 'paragraph' && node.textContent.length > 50)
+    || node.childCount > 1 || (node.childCount === 1 && !node.firstChild.isText);
+}
+
+function nodeAtPath(block, path) {
+  let { node } = block;
+  let pos = block.from;
+  for (const index of path) {
+    if (!node || index >= node.childCount) return { node: null, pos };
+    pos += 1;
+    for (let i = 0; i < index; i += 1) pos += node.child(i).nodeSize;
+    node = node.child(index);
+  }
+  return { node, pos };
+}
+
+function listItems(node) {
+  const items = [];
+  node.forEach((item, offset, index) => {
+    const text = item.childCount === 1 && item.firstChild.isTextblock ? item.firstChild : null;
+    items.push({ index, offset, node: text, readOnly: !text || textReadOnly(text, true) });
+  });
+  return items;
 }
 
 function matchFieldCount(nodes, count) {
@@ -70,13 +99,15 @@ export function buildBlockFieldDefinitions(match) {
         throw new Error('Block field names do not match the library template content.');
       }
       labels.forEach((label, fieldIndex) => {
-        if (!label) return;
-        const { path, type } = nodes[fieldIndex];
+        if (!label || label.toUpperCase() === 'IGNORE') return;
+        const { path, type, node } = nodes[fieldIndex];
         definitions.push({
           key: path.join('-'),
           label,
           path,
           type,
+          readOnly: type === 'text' && textReadOnly(node, true),
+          itemReadOnly: type === 'list' ? listItems(node).map((itemNode) => itemNode.readOnly) : [],
           fieldIndex,
           rowCount: template.childCount,
           cellCount: templateRow.childCount,
@@ -103,17 +134,7 @@ export function resolveBlockFields(block, definitions) {
     const nodes = matchFieldCount(cellNodes, field.fieldCount);
     const current = nodes[field.fieldIndex];
     const path = current?.path ?? field.path;
-    let { node } = block;
-    let pos = block.from;
-    for (const index of path) {
-      if (!node || index >= node.childCount) {
-        node = null;
-        break;
-      }
-      pos += 1;
-      for (let i = 0; i < index; i += 1) pos += node.child(i).nodeSize;
-      node = node.child(index);
-    }
+    const { node, pos } = nodeAtPath(block, path);
     const matches = block.node.childCount === field.rowCount
       && row?.childCount === field.cellCount
       && nodes.length >= field.fieldCount
@@ -125,6 +146,25 @@ export function resolveBlockFields(block, definitions) {
       node: matches ? node : null,
       pos,
       value: value || '',
+      optionKey: matches && field.type === 'text' && cellIndex === 1 && row.childCount === 2
+        && cell.childCount === 1 && cell.firstChild.isTextblock
+        && row.firstChild.childCount === 1 && row.firstChild.firstChild.isTextblock
+        && row.firstChild.firstChild.content.content.every((child) => child.isText)
+        ? row.firstChild.textContent : '',
+      readOnly: field.readOnly || (matches && field.type === 'text' && textReadOnly(node)),
+      href: matches && field.type === 'text'
+        ? node.firstChild?.marks.find((mark) => mark.type.name === 'link')?.attrs.href : undefined,
+      items: matches && field.type === 'list' ? listItems(node).map((item) => ({
+        key: `${field.key}-item-${item.index}`,
+        label: `Item ${item.index + 1}`,
+        type: 'text',
+        node: item.node,
+        pos: pos + 2 + item.offset,
+        value: node.child(item.index).textContent,
+        readOnly: (field.itemReadOnly[item.index] ?? field.itemReadOnly[0] ?? false)
+          || !item.node || textReadOnly(item.node),
+        href: item.node?.firstChild?.marks.find((mark) => mark.type.name === 'link')?.attrs.href,
+      })) : [],
       error: matches ? '' : 'This field does not match the selected block structure.',
     };
   });

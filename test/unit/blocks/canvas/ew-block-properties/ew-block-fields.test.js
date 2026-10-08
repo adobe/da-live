@@ -5,6 +5,7 @@ import { getNx, setNx } from '../../../../../scripts/utils.js';
 import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 import { makeView } from '../test-helpers.js';
 import { setDaConfigs } from '../../../../fixtures/nx/utils/daConfig.js';
+import { buildBlockFieldDefinitions, resolveBlockFields } from '../../../../../blocks/canvas/editor-utils/block-fields.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -43,6 +44,7 @@ describe('ew-block-properties library fields', () => {
   let fetchStub;
   let html;
   let assets;
+  let blockOptions;
   let assetTestId = 0;
 
   const fieldElement = (label) => el.shadowRoot.querySelector(`[data-field="${label}"]`);
@@ -59,6 +61,7 @@ describe('ew-block-properties library fields', () => {
     resetBlockOptionsCache();
     html = libraryHtml();
     assets = false;
+    blockOptions = [];
     fetchStub = sinon.stub(window, 'fetch').callsFake(async (url, options) => {
       if (options?.method === 'POST') {
         return new Response(JSON.stringify({ source: { contentUrl: './media_replacement.png' } }), { status: 201, headers: { 'Content-Type': 'application/json' } });
@@ -71,7 +74,8 @@ describe('ew-block-properties library fields', () => {
       if (String(url).includes('/config/') && assets) {
         data.push({ key: 'aem.repositoryId', value: 'delivery-p1-e1.adobeaemcloud.com' });
       }
-      return new Response(JSON.stringify({ data }), { headers: { 'Content-Type': 'application/json' } });
+      const sheets = String(url).includes('/mock-blocks.json') ? { options: { data: blockOptions } } : {};
+      return new Response(JSON.stringify({ data, ...sheets }), { headers: { 'Content-Type': 'application/json' } });
     });
     setDaConfigs([{ library: { data: [{ title: 'Blocks', path: 'http://localhost:2000/mock-blocks.json' }] } }]);
     hashChange._set({ org: 'fieldorg', site: 'fieldsite' });
@@ -234,7 +238,7 @@ describe('ew-block-properties library fields', () => {
     expect(el._refreshingLibrary).to.equal(false);
   });
 
-  it('opens AI chat with a detailed variant-specific draft without auto-sending or editing the page', async () => {
+  it('auto-sends a variant-specific generation prompt with a valid Everything Block example without editing the page', async () => {
     resetBlockLibraryCache();
     html = withoutFields();
     await el._loadFields();
@@ -250,7 +254,7 @@ describe('ew-block-properties library fields', () => {
     expect(opened.calledOnce).to.equal(true);
     const { detail } = opened.firstCall.args[0];
     expect(detail.section).to.equal('chat');
-    expect(detail.options.autoSend).to.equal(false);
+    expect(detail.options.autoSend).to.equal(true);
     const { text } = detail.options;
     [
       'fieldorg/fieldsite',
@@ -264,11 +268,46 @@ describe('ew-block-properties library fields', () => {
       'same order',
       'one plain paragraph per field label',
       'Headings and paragraphs are both text',
+      'one label for the whole list',
+      'blue insertion lines',
+      'At least one item must remain',
+      'disabled and grayed out',
+      'exact label IGNORE',
+      'Exactly 50 characters is still editable',
+      'Include labels for these fields anyway',
+      'whole-text bold link',
+      'separate text and URL controls',
+      'options sheet makes the value a dropdown',
+      'Block-specific choices override shared "all" choices',
+      'configured display labels and stored values',
+      'outside the choices remains visible',
       'Additional trailing page content',
       'all other variants',
       'Do not replace the block or edit the current page',
       'rather than inventing a schema',
     ].forEach((fragment) => expect(text).to.include(fragment));
+    const example = text.slice(
+      text.indexOf('<div class="everything-block">'),
+      text.indexOf('\nIn this example,'),
+    );
+    const container = document.createElement('div');
+    container.innerHTML = example;
+    const fields = container.querySelector('.library-metadata table');
+    const { dom } = htmlToProse(`<body><main><div>${example}</div></main></body>`);
+    const blockContainer = document.createElement('div');
+    blockContainer.append(dom.querySelector('table').cloneNode(true));
+    const template = PMDOMParser.fromSchema(view.state.schema).parse(blockContainer).firstChild;
+    const definitions = buildBlockFieldDefinitions({ item: { fields }, template });
+    const resolved = resolveBlockFields({ node: template, from: 0 }, definitions);
+    expect(resolved.map((field) => field.label)).to.deep.equal([
+      'title', 'tagline', 'image', 'list below image', 'quote', 'long paragraph',
+      'link', 'Color', 'Left Column', 'Right Column',
+    ]);
+    expect(resolved.every((field) => !field.error)).to.equal(true);
+    expect(resolved[3].items.map((item) => item.value)).to.deep.equal(['List', 'Item 2', 'Item 3']);
+    expect(resolved[5].readOnly).to.equal(true);
+    expect(resolved[6].href).to.equal('https://google.com');
+    expect(resolved[7].optionKey).to.equal('Color');
     expect(view.state.doc).to.equal(doc);
   });
 
@@ -312,7 +351,7 @@ describe('ew-block-properties library fields', () => {
       document.removeEventListener(PANEL_EVENT.OPEN, opened);
     }
     expect(opened.firstCall.args[0].detail.options.text).to.include('No block library is configured');
-    expect(opened.firstCall.args[0].detail.options.autoSend).to.equal(false);
+    expect(opened.firstCall.args[0].detail.options.autoSend).to.equal(true);
   });
 
   it('describes the no-variant selection without reusing the previous variant', async () => {
@@ -446,6 +485,382 @@ describe('ew-block-properties library fields', () => {
     expect(view.state.doc.nodeAt(el._fields[0].pos)).to.equal(image);
     expect(fieldElement('subheading').querySelector('input').value).to.equal('Current subheading');
     expect(view.state.selection).to.be.instanceOf(NodeSelection);
+  });
+
+  const setTextTemplate = async (content, labels = '<p>title</p><p>subheading</p>') => {
+    const fields = fieldsTable.replace('<p>title</p><p>subheading</p>', labels);
+    html = libraryHtml(fields).replace('<h1>Template title</h1><p>Template subheading</p>', content);
+    const container = document.createElement('div');
+    container.innerHTML = `<table><tr><td>Hero (left)</td></tr>
+      <tr><td><p><img src="/current.png"></p></td></tr>
+      <tr><td>${content}</td></tr></table><p>Outside block</p>`;
+    const doc = PMDOMParser.fromSchema(view.state.schema).parse(container);
+    const tr = view.state.tr.replaceWith(0, view.state.doc.content.size, doc.content);
+    view.dispatch(tr.setSelection(NodeSelection.create(tr.doc, 0)));
+    resetBlockLibraryCache();
+    await el._loadFields();
+    el._refresh();
+    await el.updateComplete;
+  };
+
+  const setKeyValueTemplate = async (value = 'green', templateValue = value, key = 'Color') => {
+    const fields = fieldsTable.replace(
+      '<tr><td><p>title</p><p>subheading</p></td></tr>',
+      '<tr><td><p>IGNORE</p></td><td><p>Background</p></td></tr>',
+    );
+    html = libraryHtml(fields).replace(
+      '<div><div><h1>Template title</h1><p>Template subheading</p></div></div>',
+      `<div><div><p>${key}</p></div><div><p>${templateValue}</p></div></div>`,
+    );
+    const container = document.createElement('div');
+    container.innerHTML = `<table><tr><td colspan="2">Hero (left)</td></tr>
+      <tr><td colspan="2"><p><img src="/current.png"></p></td></tr>
+      <tr><td><p>${key}</p></td><td><p>${value}</p></td></tr></table><p>Outside block</p>`;
+    const doc = PMDOMParser.fromSchema(view.state.schema).parse(container);
+    const tr = view.state.tr.replaceWith(0, view.state.doc.content.size, doc.content);
+    view.dispatch(tr.setSelection(NodeSelection.create(tr.doc, 0)));
+    resetBlockLibraryCache();
+    resetBlockOptionsCache();
+    await el._loadFields();
+    el._refresh();
+    await el.updateComplete;
+  };
+
+  it('renders matching key/value options as a picker and saves stored values with marks intact', async () => {
+    blockOptions = [{ blocks: ' HERO ', key: ' COLOR ', values: 'Green=green|Blue=blue' }];
+    await setKeyValueTemplate('<strong>green</strong>');
+    const picker = fieldElement('Background').querySelector('nx-picker');
+    expect(picker).not.to.equal(null);
+    expect(fieldElement('Background').querySelector('input')).to.equal(null);
+    expect(picker.items).to.deep.equal([
+      { label: 'Green', value: 'green' }, { label: 'Blue', value: 'blue' },
+    ]);
+    expect(picker.value).to.equal('green');
+    const field = el._fields[1];
+    const keyCell = view.state.doc.firstChild.child(2).firstChild;
+    const { marks } = field.node.firstChild;
+    picker.dispatchEvent(new CustomEvent('change', { detail: { value: 'blue' } }));
+    await el.updateComplete;
+    expect(el._fields[1].value).to.equal('blue');
+    expect(el._fields[1].node.firstChild.marks).to.deep.equal(marks);
+    expect(view.state.doc.firstChild.child(2).firstChild).to.equal(keyCell);
+    expect(view.state.doc.lastChild.textContent).to.equal('Outside block');
+    expect(view.state.selection).to.be.instanceOf(NodeSelection);
+  });
+
+  it('honors normalized option keys, all-block defaults and block-specific overrides', async () => {
+    blockOptions = [
+      { blocks: 'all', key: 'Color Name', values: 'Default=default' },
+      { blocks: 'hero', key: 'Color Name', values: 'Green=green|Blue=blue' },
+    ];
+    await setKeyValueTemplate('green', 'green', ' Color   Name ');
+    expect(fieldElement('Background').querySelector('nx-picker').items.map((item) => item.value))
+      .to.deep.equal(['green', 'blue']);
+    blockOptions = [{ blocks: 'all', key: 'color name', values: 'Default=default' }];
+    await setKeyValueTemplate('default', 'default', 'Color Name');
+    expect(fieldElement('Background').querySelector('nx-picker').items)
+      .to.deep.equal([{ label: 'Default', value: 'default' }]);
+  });
+
+  it('leaves unmatched keys and options for other blocks as text fields', async () => {
+    blockOptions = [{ blocks: 'cards', key: 'Color', values: 'Green=green|Blue=blue' }];
+    await setKeyValueTemplate();
+    expect(fieldElement('Background').querySelector('nx-picker')).to.equal(null);
+    expect(fieldElement('Background').querySelector('input').value).to.equal('green');
+    blockOptions = [{ blocks: 'hero', key: 'Size', values: 'Large|Small' }];
+    await setKeyValueTemplate();
+    expect(fieldElement('Background').querySelector('nx-picker')).to.equal(null);
+  });
+
+  it('shows unconfigured current values without overwriting them on load', async () => {
+    blockOptions = [{ blocks: 'hero', key: 'Color', values: 'Green=green|Blue=blue' }];
+    await setKeyValueTemplate('Custom color');
+    const picker = fieldElement('Background').querySelector('nx-picker');
+    expect(picker.value).to.equal('Custom color');
+    expect(picker.labelOverride).to.equal('Custom color');
+    expect(el._fields[1].value).to.equal('Custom color');
+  });
+
+  it('rejects stale dropdown changes after the row key changes', async () => {
+    blockOptions = [
+      { blocks: 'hero', key: 'Color', values: 'Green=green|Blue=blue' },
+      { blocks: 'hero', key: 'Theme', values: 'Light=light|Dark=dark' },
+    ];
+    await setKeyValueTemplate();
+    const picker = fieldElement('Background').querySelector('nx-picker');
+    const { tr } = view.state;
+    view.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'paragraph' && node.textContent === 'Color') {
+        tr.insertText('Theme', pos + 1, pos + 1 + node.content.size);
+      }
+    });
+    view.dispatch(tr.setSelection(NodeSelection.create(tr.doc, 0)));
+    const { doc } = view.state;
+    picker.dispatchEvent(new CustomEvent('change', { detail: { value: 'blue' } }));
+    expect(view.state.doc).to.equal(doc);
+    expect(el._fields[1].value).to.equal('green');
+    expect(el._fields[1].values.map((item) => item.value)).to.deep.equal(['light', 'dark']);
+  });
+
+  it('keeps option pickers inert for read-only templates and read-only documents', async () => {
+    blockOptions = [{ blocks: 'hero', key: 'Color', values: 'Green=green|Blue=blue' }];
+    await setKeyValueTemplate('green', 'x'.repeat(51));
+    let picker = fieldElement('Background').querySelector('nx-picker');
+    expect(picker.hasAttribute('inert')).to.equal(true);
+    let { doc } = view.state;
+    picker.dispatchEvent(new CustomEvent('change', { detail: { value: 'blue' } }));
+    expect(view.state.doc).to.equal(doc);
+    await setKeyValueTemplate();
+    view.editable = false;
+    canvasBus.editorDocState.emit();
+    await el.updateComplete;
+    picker = fieldElement('Background').querySelector('nx-picker');
+    expect(picker.hasAttribute('inert')).to.equal(true);
+    ({ doc } = view.state);
+    picker.dispatchEvent(new CustomEvent('change', { detail: { value: 'blue' } }));
+    expect(view.state.doc).to.equal(doc);
+  });
+
+  it('loads the everything block through the real library conversion and keeps all field positions', async () => {
+    const content = `<h1>Hello World</h1><p>Foo bar baz</p>
+      <picture><source srcset="/template.png"><img src="/template.png" loading="lazy"></picture>
+      <ul><li>List</li><li>Item 2</li><li>Item 3</li></ul>
+      <blockquote><p>A quote?</p></blockquote>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+        Sed do eiusmod tempor incididunt ut <a href="https://google.com">veniam</a>.</p>
+      <p><a href="https://google.com">A link</a></p>`;
+    const metadata = `<table><tr><td colspan="2" data-colwidth="272,0"><p>fields</p></td></tr>
+      <tr><td colspan="2"><p>title</p><p>tagline</p><p>image</p><p>list below image</p>
+        <p>quote</p><p>long paragraph</p><p>link</p></td></tr>
+      <tr><td><p>IGNORE</p></td><td><p>Color</p></td></tr>
+      <tr><td><p>Left Column</p></td><td><p>Right Column</p></td></tr></table>`;
+    html = `<body><header></header><main><div><div class="hero left">
+      <div><div>${content}</div></div>
+      <div><div><p>Color</p></div><div><p>Green</p></div></div>
+      <div><div><p>Left side</p></div><div><p>Right side</p></div></div>
+      </div><div class="library-metadata"><div><div><p>fields</p></div>
+      <div>${metadata}</div></div></div></div></main><footer></footer></body>`;
+    const { dom } = htmlToProse(html);
+    const container = document.createElement('div');
+    container.append(dom.querySelector('table').cloneNode(true));
+    const doc = PMDOMParser.fromSchema(view.state.schema).parse(container);
+    const tr = view.state.tr.replaceWith(0, view.state.doc.content.size, doc.content);
+    view.dispatch(tr.setSelection(NodeSelection.create(tr.doc, 0)));
+    resetBlockLibraryCache();
+    await el._loadFields();
+    el._refresh();
+    await el.updateComplete;
+    expect(el._fieldError).to.equal('');
+    expect(el._fields.every((field) => !field.error)).to.equal(true);
+    expect(el._fields.map((field) => field.label)).to.deep.equal([
+      'title', 'tagline', 'image', 'list below image', 'quote', 'long paragraph',
+      'link', 'Color', 'Left Column', 'Right Column',
+    ]);
+    expect(fieldElement('quote').querySelector('input').value).to.equal('A quote?');
+    expect(fieldElement('Color').querySelector('input').value).to.equal('Green');
+    expect(fieldElement('long paragraph').querySelector('input').readOnly).to.equal(true);
+    expect(fieldElement('link').querySelector('input[type="url"]').value).to.equal('https://google.com');
+    fieldElement('list below image').querySelector('button').click();
+    await el.updateComplete;
+    expect(el._fields[3].items.length).to.equal(4);
+    expect(fieldElement('quote').querySelector('input').value).to.equal('A quote?');
+    expect(fieldElement('Right Column').querySelector('input').value).to.equal('Right side');
+  });
+
+  it('shows link text and URL and preserves all whole-text marks when either is edited', async () => {
+    await setTextTemplate('<h1>Title</h1><p><strong><em><a href="/original" title="Link title">Bold link</a></em></strong></p>');
+    let field = el._fields[2];
+    const { marks } = field.node.firstChild;
+    const inputs = fieldElement('subheading').querySelectorAll('input');
+    expect(fieldElement('subheading').classList.contains('ew-block-field-group')).to.equal(true);
+    expect(inputs[0].value).to.equal('Bold link');
+    expect(inputs[1].value).to.equal('/original');
+    inputs[0].value = 'Updated link';
+    inputs[0].dispatchEvent(new Event('blur'));
+    await el.updateComplete;
+    [, , field] = el._fields;
+    expect(field.node.firstChild.marks).to.deep.equal(marks);
+    expect(field.value).to.equal('Updated link');
+    const url = fieldElement('subheading').querySelector('input[type="url"]');
+    url.value = 'https://example.com/new';
+    url.dispatchEvent(new Event('blur'));
+    await el.updateComplete;
+    [, , field] = el._fields;
+    expect(field.href).to.equal('https://example.com/new');
+    expect(field.node.firstChild.marks.find((mark) => mark.type.name === 'link').attrs.title)
+      .to.equal('Link title');
+    expect(field.node.firstChild.marks.map((mark) => mark.type.name)).to.include.members(['strong', 'em', 'link']);
+    expect(view.state.selection).to.be.instanceOf(NodeSelection);
+  });
+
+  it('hides IGNORE and grays out long or mixed text without permitting programmatic edits', async () => {
+    await setTextTemplate(`<h1>Ignore this</h1><p>${'x'.repeat(51)}</p>`, '<p>IGNORE</p><p>subheading</p>');
+    expect(fieldElement('IGNORE')).to.equal(null);
+    expect(fieldElement('subheading').getAttribute('aria-disabled')).to.equal('true');
+    expect(fieldElement('subheading').querySelector('input').readOnly).to.equal(true);
+    let { doc } = view.state;
+    el._commitText(el._fields[1], 'Do not save');
+    expect(view.state.doc).to.equal(doc);
+    await setTextTemplate('<h1>Title</h1><p>Some <a href="/link">linked</a> text</p>');
+    expect(fieldElement('subheading').querySelector('input').readOnly).to.equal(true);
+    doc = view.state.doc;
+    el._commitText(el._fields[2], 'Do not save');
+    el._commitLink(el._fields[2], '/new');
+    expect(view.state.doc).to.equal(doc);
+  });
+
+  it('groups list inputs and supports adding, editing, keyboard and drag reordering', async () => {
+    await setTextTemplate('<ol start="3"><li><strong><a href="/one">First</a></strong></li><li>Second</li><li>Third</li></ol><p>After list</p>');
+    let field = el._fields[1];
+    const listElement = () => fieldElement('title');
+    expect(listElement().querySelectorAll('.ew-block-item').length).to.equal(3);
+    expect(listElement().classList.contains('ew-block-field-group')).to.equal(true);
+    expect(listElement().querySelector('h4').classList.contains('nx-form-field')).to.equal(true);
+    expect(listElement().querySelectorAll('.ew-block-drop-zone').length).to.equal(4);
+    expect(listElement().querySelector('input').value).to.equal('First');
+    const originalItem = field.node.firstChild;
+    const listAttrs = field.node.attrs;
+    const drag = listElement().querySelector('.ew-block-item');
+    const dragEvent = new Event('dragstart', { bubbles: true, cancelable: true });
+    Object.defineProperty(dragEvent, 'dataTransfer', { value: { setData: sinon.spy() } });
+    drag.dispatchEvent(dragEvent);
+    const dropZone = listElement().querySelectorAll('.ew-block-drop-zone')[3];
+    const dragOver = new Event('dragover', { cancelable: true });
+    Object.defineProperty(dragOver, 'dataTransfer', { value: {} });
+    dropZone.dispatchEvent(dragOver);
+    await el.updateComplete;
+    expect(dragOver.defaultPrevented).to.equal(true);
+    expect(dropZone.hasAttribute('data-drop-active')).to.equal(true);
+    expect(listElement().querySelector('.ew-block-item').classList.contains('is-dragging')).to.equal(true);
+    dropZone.dispatchEvent(new Event('drop'));
+    await el.updateComplete;
+    [, field] = el._fields;
+    expect(field.items.map((item) => item.value)).to.deep.equal(['Second', 'Third', 'First']);
+    expect(field.node.child(2)).to.equal(originalItem);
+    expect(field.node.attrs).to.deep.equal(listAttrs);
+    expect(listElement().querySelector('[data-drop-active]')).to.equal(null);
+    listElement().querySelectorAll('.ew-block-item')[2].dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowUp', altKey: true, bubbles: true }),
+    );
+    await el.updateComplete;
+    expect(el._fields[1].items.map((item) => item.value)).to.deep.equal(['Second', 'First', 'Third']);
+    listElement().querySelector('button').click();
+    await el.updateComplete;
+    expect(el._fields[1].items.map((item) => item.value)).to.deep.equal(['Second', 'First', 'Third', '']);
+    const input = listElement().querySelectorAll('.ew-block-list-item input[type="text"]')[3];
+    input.value = 'Added item';
+    input.dispatchEvent(new Event('blur'));
+    await el.updateComplete;
+    expect(el._fields[1].items[3].value).to.equal('Added item');
+    expect(el._fields[2].value).to.equal('After list');
+    expect(view.state.doc.lastChild.textContent).to.equal('Outside block');
+    expect(view.state.selection).to.be.instanceOf(NodeSelection);
+  });
+
+  it('rejects stale list drops and read-only list mutations', async () => {
+    await setTextTemplate('<ul><li>First</li><li>Second</li></ul><p>After</p>');
+    const field = el._fields[1];
+    const target = el._captureField(field);
+    el._listDrag = { target, key: field.key, index: 0 };
+    el._changeList(field, null);
+    const { doc } = view.state;
+    fieldElement('title').querySelectorAll('.ew-block-drop-zone')[2].dispatchEvent(new Event('drop'));
+    expect(view.state.doc).to.equal(doc);
+    view.editable = false;
+    canvasBus.editorDocState.emit();
+    await el.updateComplete;
+    expect(fieldElement('title').querySelector('button').disabled).to.equal(true);
+    el._changeList(el._fields[1], null);
+    expect(view.state.doc).to.equal(doc);
+  });
+
+  it('deletes list items while preserving neighbors and keeps the last item editable', async () => {
+    await setTextTemplate('<ol start="3"><li>First</li><li><strong><a href="/two">Second</a></strong></li><li>Third</li></ol><p>After list</p>');
+    const list = fieldElement('title');
+    const { node } = el._fields[1];
+    list.querySelectorAll('.ew-block-list-delete')[0].click();
+    await el.updateComplete;
+    expect(el._fields[1].items.map((item) => item.value)).to.deep.equal(['Second', 'Third']);
+    expect(el._fields[1].node.firstChild).to.equal(node.child(1));
+    expect(el._fields[1].node.attrs).to.deep.equal(node.attrs);
+    expect(el._fields[2].value).to.equal('After list');
+    expect(view.state.doc.lastChild.textContent).to.equal('Outside block');
+    expect(view.state.selection).to.be.instanceOf(NodeSelection);
+    list.querySelectorAll('.ew-block-list-delete')[1].click();
+    await el.updateComplete;
+    expect(el._fields[1].items.map((item) => item.value)).to.deep.equal(['Second']);
+    const deleteButton = list.querySelector('.ew-block-list-delete');
+    expect(deleteButton.disabled).to.equal(true);
+    expect(list.querySelector('input').readOnly).to.equal(false);
+    const { doc } = view.state;
+    deleteButton.click();
+    el._changeList(el._fields[1], 0, null);
+    expect(view.state.doc).to.equal(doc);
+    list.querySelector('button').click();
+    await el.updateComplete;
+    expect(el._fields[1].items.length).to.equal(2);
+    expect([...list.querySelectorAll('.ew-block-list-delete')].every((button) => !button.disabled))
+      .to.equal(true);
+  });
+
+  it('rejects stale and read-only list deletions', async () => {
+    await setTextTemplate('<ul><li>First</li><li>Second</li><li>Third</li></ul><p>After</p>');
+    const field = el._fields[1];
+    el._changeList(field, 0, null);
+    let { doc } = view.state;
+    el._changeList(field, 0, null);
+    expect(view.state.doc).to.equal(doc);
+    view.editable = false;
+    canvasBus.editorDocState.emit();
+    await el.updateComplete;
+    expect([...fieldElement('title').querySelectorAll('.ew-block-list-delete')]
+      .every((button) => button.disabled)).to.equal(true);
+    ({ doc } = view.state);
+    el._changeList(el._fields[1], 0, null);
+    expect(view.state.doc).to.equal(doc);
+  });
+
+  it('matches field typography, groups links and lists, and shows blue lines in the item gaps', async () => {
+    await setTextTemplate('<ul><li>First</li><li>Second</li></ul><p><a href="/link">Link</a></p>');
+    const cssPath = '/blocks/canvas/ew-block-properties/ew-block-properties.css';
+    fetchStub.withArgs(cssPath).callThrough();
+    const response = await fetch(cssPath);
+    const formStyle = new CSSStyleSheet();
+    formStyle.replaceSync('.nx-form-field { font-size: 18px; color: #606060; }');
+    const style = new CSSStyleSheet();
+    style.replaceSync(await response.text());
+    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, formStyle, style];
+    el.style.setProperty('--s2-component-s-regular-font-size', '13px');
+    el.style.setProperty('--s2-gray-300', '#d5d5d5');
+    el.style.setProperty('--s2-corner-radius-500', '8px');
+    el.style.setProperty('--s2-spacing-100', '8px');
+    el.style.setProperty('--s2-blue-600', '#1473e6');
+    const heading = getComputedStyle(fieldElement('title').querySelector('h4'));
+    const label = getComputedStyle(fieldElement('subheading').querySelector('label'));
+    for (const property of ['fontSize', 'fontWeight', 'color']) {
+      expect(heading[property]).to.equal(label[property]);
+    }
+    for (const group of [fieldElement('title'), fieldElement('subheading')]) {
+      const groupStyle = getComputedStyle(group);
+      expect(groupStyle.borderTopWidth).to.equal('1px');
+      expect(groupStyle.borderTopColor).to.equal('rgb(213, 213, 213)');
+      expect(groupStyle.borderRadius).to.equal('8px');
+    }
+    const zones = fieldElement('title').querySelectorAll('.ew-block-drop-zone');
+    expect(getComputedStyle(zones[1]).height).to.equal('8px');
+    el._listDrop = { key: el._fields[1].key, index: 1 };
+    await el.updateComplete;
+    const indicator = getComputedStyle(zones[1], '::after');
+    expect(indicator.height).to.equal('2px');
+    expect(indicator.backgroundColor).to.equal('rgb(20, 115, 230)');
+    fieldElement('title').querySelector('.ew-block-list-delete').click();
+    await el.updateComplete;
+    const deleteButton = fieldElement('title').querySelector('.ew-block-list-delete');
+    expect(deleteButton.disabled).to.equal(true);
+    expect(getComputedStyle(deleteButton).opacity).to.equal('0.5');
+    el._clearListDragState();
+    await el.updateComplete;
+    expect(fieldElement('title').querySelector('[data-drop-active]')).to.equal(null);
   });
 
   it('maps plain-text field labels to paragraphs and wrapped headings without tag matching', async () => {
