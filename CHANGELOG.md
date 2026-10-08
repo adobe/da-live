@@ -1,3 +1,10 @@
+## [1.2.4](https://github.com/adobe/da-live/compare/v1.2.3...v1.2.4) (2026-10-08)
+
+
+### Bug Fixes
+
+* **ew:** hide outline edit actions for read-only users ([#1418](https://github.com/adobe/da-live/issues/1418)) ([bc87e6a](https://github.com/adobe/da-live/commit/bc87e6ab5eba53c79e741ff343eaa7a494178b7a)), closes [#1407](https://github.com/adobe/da-live/issues/1407) [#1407](https://github.com/adobe/da-live/issues/1407) [#1407](https://github.com/adobe/da-live/issues/1407) [#1407](https://github.com/adobe/da-live/issues/1407) [#1407](https://github.com/adobe/da-live/issues/1407) [#1407](https://github.com/adobe/da-live/issues/1407) [#1407](https://github.com/adobe/da-live/issues/1407) [#1407](https://github.com/adobe/da-live/issues/1407)
+
 ## [1.2.3](https://github.com/adobe/da-live/compare/v1.2.2...v1.2.3) (2026-10-08)
 
 
