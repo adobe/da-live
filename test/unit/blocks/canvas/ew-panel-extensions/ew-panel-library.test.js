@@ -68,7 +68,7 @@ describe('Ew panel library _insertTemplate', () => {
     view.state.doc.descendants((node) => {
       if (node.type.name === 'image') images.push(node.attrs.src);
     });
-    expect(images).to.deep.equal(['https://main--site--org.aem.live/media.png']);
+    expect(images).to.deep.equal(['https://main--site--org.aem.live/templates/media.png']);
     expect(el._actionError).to.equal(undefined);
   });
 
@@ -87,6 +87,113 @@ describe('Ew panel library _insertTemplate', () => {
     expect(calls[0].url).to.equal('https://main--shared--other.aem.live/templates/home');
     expect(calls[0].opts.credentials).to.equal(undefined);
     expect(view.state.doc.textContent).to.include('Shared template');
+  });
+
+  [
+    {
+      name: 'same-org AEM templates',
+      source: 'https://feat--site--org.aem.live/templates/home',
+      fetched: 'https://feat--site--org.stage-preview.da.live/templates/home',
+      publicDocument: 'https://feat--site--org.aem.live/templates/home',
+      rootMedia: true,
+      credentials: 'include',
+    },
+    {
+      name: 'cross-org AEM templates',
+      source: 'https://feat--shared--other.aem.page/templates/home',
+      publicDocument: 'https://feat--shared--other.aem.page/templates/home',
+      rootMedia: true,
+    },
+    {
+      name: 'proxied DA-content templates',
+      source: 'https://content.da.live/org/site/templates/home',
+      fetched: 'https://main--site--org.stage-preview.da.live/templates/home',
+      publicDocument: 'https://main--site--org.aem.page/templates/home',
+      rootMedia: true,
+      credentials: 'include',
+    },
+    {
+      name: 'cross-org DA-content templates',
+      source: 'https://content.da.live/other/shared/templates/home',
+      publicDocument: 'https://content.da.live/other/shared/templates/home',
+    },
+    {
+      name: 'DA-content templates without editor org context',
+      source: 'https://content.da.live/org/site/templates/home',
+      publicDocument: 'https://content.da.live/org/site/templates/home',
+      context: {},
+    },
+    {
+      name: 'relative same-org template sources',
+      source: '/templates/home',
+      fetched: 'https://main--site--org.stage-preview.da.live/templates/home',
+      publicDocument: 'https://main--site--org.aem.live/templates/home',
+      rootMedia: true,
+      credentials: 'include',
+    },
+    {
+      name: 'already-proxied templates',
+      source: 'https://main--site--org.stage-preview.da.live/templates/home',
+      publicDocument: 'https://main--site--org.aem.page/templates/home',
+      rootMedia: true,
+      credentials: 'include',
+    },
+    {
+      name: 'unrecognized public template hosts',
+      source: 'https://example.com/library/templates/home',
+      publicDocument: 'https://example.com/library/templates/home',
+    },
+    {
+      name: 'cross-org already-proxied templates',
+      source: 'https://feat--shared--other.preview.da.live/templates/home',
+      publicDocument: 'https://feat--shared--other.aem.page/templates/home',
+      rootMedia: true,
+    },
+    {
+      name: 'already-proxied templates without editor org context',
+      source: 'https://main--site--org.stage-preview.da.live/templates/home',
+      publicDocument: 'https://main--site--org.aem.page/templates/home',
+      rootMedia: true,
+      context: {},
+    },
+  ].forEach(({
+    name, source, fetched, publicDocument, rootMedia, credentials, context,
+  }) => {
+    it(`preserves saved image paths and URL components for ${name}`, async () => {
+      const view = makeView({ type: 'doc', content: [{ type: 'paragraph' }] });
+      getExtensionsBridge().view = view;
+      const paths = [
+        './images/logo.png?size=2#logo',
+        './media_abc123.png?width=800#hero',
+        '../shared/banner.png',
+        '/assets/logo.svg',
+        'https://cdn.example.com/photo.png?size=3#photo',
+      ];
+      const calls = [];
+      window.fetch = async (url, opts) => {
+        calls.push({ url, opts });
+        const images = paths.map((src) => `<p><img src="${src}" alt="Template image" width="800" height="400"></p>`).join('');
+        return new Response(`<body><main><div>${images}</div></main></body>`);
+      };
+      const el = document.createElement('ew-panel-library');
+      el._hashState = context || { org: 'org', site: 'site' };
+      await el._insertTemplate({ path: source });
+      expect(el._actionError).to.equal(undefined);
+      expect(calls).to.have.lengthOf(1);
+      expect(calls[0].url).to.equal(fetched || source);
+      expect(calls[0].opts.credentials).to.equal(credentials);
+      const images = [];
+      view.state.doc.descendants((node) => {
+        if (node.type.name === 'image') images.push(node.attrs);
+      });
+      const expected = paths.map((path, index) => {
+        const base = index === 1 && rootMedia ? `${new URL(publicDocument).origin}/` : publicDocument;
+        return new URL(path, base).href;
+      });
+      expect(images.map((img) => img.src)).to.deep.equal(expected);
+      expect(images.every((img) => img.alt === 'Template image')).to.be.true;
+      expect(images.some((img) => img.src.includes('preview.da.live'))).to.be.false;
+    });
   });
 });
 

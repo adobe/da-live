@@ -71,18 +71,16 @@ function getBlockTableHtml(block) {
   return table;
 }
 
-function decorateImages(element, path, { resize = true } = {}) {
+function decorateImages(element, path) {
   try {
     const { origin } = new URL(path);
     element.querySelectorAll('img').forEach((img) => {
       if (img.getAttribute('src')?.startsWith('./')) {
         img.src = `${origin}/${img.src.split('/').pop()}`;
       }
-      if (resize) {
-        const ratio = img.width > 200 ? 200 / img.width : 1;
-        img.width = Math.round(img.width * ratio);
-        img.height = Math.round(img.height * ratio);
-      }
+      const ratio = img.width > 200 ? 200 / img.width : 1;
+      img.width = Math.round(img.width * ratio);
+      img.height = Math.round(img.height * ratio);
     });
   } catch { /* leave images as-is */ }
 }
@@ -99,6 +97,28 @@ function libraryContentUrl(path, { org, site } = {}) {
   if (!path.startsWith('/') || !org || !site) return path;
   const origin = ref === 'local' ? 'http://localhost:3000' : `https://${branch}--${site}--${org}.aem.live`;
   return new URL(path, origin).href;
+}
+
+function resolveTemplateImages(element, path, context) {
+  const source = new URL(libraryContentUrl(path, context), window.location.href);
+  const isAemSource = AEM_ORIGINS.some((domain) => source.hostname.endsWith(`.${domain}`));
+  const isProxySource = /\.(?:stage-)?preview\.da\.live$/.test(source.hostname);
+  const proxyOpts = libraryProxyOptions(context);
+  const imageOpts = { ...proxyOpts, currentOrg: isProxySource ? undefined : proxyOpts.currentOrg };
+  const details = proxyOpts.currentOrg || isProxySource
+    ? getPreviewProxyDetails(source.href, imageOpts) : {};
+  if (!isAemSource && details.org) {
+    // Proxy HTML is AEM-rendered; persist its public counterpart, not the proxy origin.
+    const proxy = new URL(details.url);
+    source.href = `https://${details.branch}--${details.site}--${details.org}.aem.page${proxy.pathname}${proxy.search}${proxy.hash}`;
+  }
+  element.querySelectorAll('img[src]').forEach((img) => {
+    const src = img.getAttribute('src');
+    if (!src) return;
+    // Only generated AEM media references use the site root rather than the document directory.
+    const rootMedia = (isAemSource || details.org) && /^\.\/media_[^/?#]+(?:[?#].*)?$/.test(src);
+    img.setAttribute('src', new URL(src, rootMedia ? `${source.origin}/` : source.href).href);
+  });
 }
 
 /**
@@ -540,7 +560,7 @@ export async function insertTemplate(view, url, context) {
   }
   const html = (await resp.text()).replace('class="template-metadata"', 'class="metadata"');
   const doc = new window.DOMParser().parseFromString(html, 'text/html');
-  decorateImages(doc.body, libraryContentUrl(url, context), { resize: false });
+  resolveTemplateImages(doc.body, url, context);
   const { dom } = htmlToProse(doc.body.innerHTML);
   const parsed = PMDOMParser.fromSchema(view.state.schema).parse(dom);
   view.dispatch(view.state.tr.replaceSelectionWith(parsed).scrollIntoView());

@@ -57,6 +57,9 @@ When validating library routing, check both a protected same-org library and a
 cross-org library. Verify the sheets, variant HTML, template insertion, and preview
 iframe requests, including the matching proxy and `/gimme_cookie` origins. Inserted
 image URLs should retain their public content origin rather than the proxy origin.
+Template image paths resolve against the public document URL, preserving directories,
+query strings, and fragments. Only generated AEM `./media_*` references use the site root;
+direct DA-content templates retain the organization/site path in relative image URLs.
 
 ## Additional details
 ### Recommendations
@@ -74,4 +77,3 @@ npm run build:da-y-wrapper
 ```
 
 Additional details can be [found here](https://github.com/adobe/da-live/wiki/Dependencies).
-
