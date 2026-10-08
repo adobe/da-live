@@ -912,6 +912,7 @@ class EwPageOutline extends LitElement {
     return html`
       <li class="block-item content-item content-child ${selected ? 'selected' : ''}"
           role="row" aria-level="3" aria-posinset="${i + 1}" aria-setsize="${siblings.length}"
+          aria-label="${child.snippet ? `${label} ${child.snippet}` : label}"
           tabindex="-1" aria-selected="${selected}"
           data-child-prose="${child.proseIndex}"
           draggable="${this._canWrite}"
@@ -962,6 +963,7 @@ class EwPageOutline extends LitElement {
     return html`
       <li class="block-item ${selected ? 'selected' : ''}" role="row"
           aria-level="2" aria-posinset="${posinset}" aria-setsize="${setsize}"
+          aria-label="${label}"
           data-block-index="${item.blockIndex}"
           tabindex="-1" aria-selected="${selected}"
           draggable="${this._canWrite}"
@@ -1009,6 +1011,7 @@ class EwPageOutline extends LitElement {
           @drop=${this._onDrop}>
         <div class="section-header" data-section-header role="row"
              aria-level="1" aria-posinset="${sec.sectionIndex + 1}" aria-setsize="${sectionCount}"
+             aria-label="${label}"
              tabindex="-1"
              draggable="${this._canWrite && !editing}"
              @dragstart=${(e) => this._onDragStart(e, OUTLINE_TYPES.SECTION, sec.sectionIndex)}

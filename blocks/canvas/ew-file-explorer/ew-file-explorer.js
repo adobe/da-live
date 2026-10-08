@@ -540,6 +540,7 @@ class EwFileExplorer extends LitElement {
       <div role="row" class="row${isDir ? '' : ' file'}${selected ? ' selected' : ''}"
         style="--depth: ${depth}"
         tabindex="-1"
+        aria-label="${hint ? `${item.name}, ${hint}` : item.name}"
         title="${this._rowTitle(item) || nothing}"
         aria-level="${depth + 1}" aria-posinset="${posinset}" aria-setsize="${setsize}"
         aria-expanded="${isDir ? expanded : nothing}"
