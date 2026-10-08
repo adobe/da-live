@@ -68,7 +68,16 @@ export default async function init(el) {
   const { name, fullpath, owner, repo } = details;
   const ext = name.split('.').pop();
 
-  await contentLogin(owner, repo);
+  const { isHlx6, source } = await getNx2Api();
+  if (await isHlx6(owner, repo)) {
+    if (ext !== 'pdf') {
+      const resp = await source.get(fullpath);
+      if (!resp.ok) throw new Error(`Could not load media: ${resp.status}`);
+      details.contentUrl = URL.createObjectURL(await resp.blob());
+    }
+  } else {
+    await contentLogin(owner, repo);
+  }
 
   const daTitle = document.createElement('da-title');
 
