@@ -134,8 +134,8 @@
 
 .icon {
   flex-shrink: 0;
-  width: var(--nx-ui-icon);
-  height: var(--nx-ui-icon);
+  width: calc(var(--nx-ui-icon) - 2px);
+  height: calc(var(--nx-ui-icon) - 2px);
 }
 
 .label {

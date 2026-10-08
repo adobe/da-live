@@ -158,8 +158,8 @@ button {
   background: var(--s2-gray-75);
 
   svg {
-    width: var(--nx-ui-icon);
-    height: var(--nx-ui-icon);
+    width: calc(var(--nx-ui-icon) - 2px);
+    height: calc(var(--nx-ui-icon) - 2px);
     transition: transform 0.15s ease;
   }
 }

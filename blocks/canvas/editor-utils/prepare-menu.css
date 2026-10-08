@@ -131,7 +131,7 @@
 
 .icon {
   display: block;
-  width: var(--nx-ui-icon);
-  height: var(--nx-ui-icon);
+  width: calc(var(--nx-ui-icon) + 2px);
+  height: calc(var(--nx-ui-icon) + 2px);
   flex-shrink: 0;
 }

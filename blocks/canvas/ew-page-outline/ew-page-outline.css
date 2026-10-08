@@ -222,8 +222,8 @@ input {
 
   svg.icon {
     display: block;
-    width: var(--nx-ui-icon);
-    height: var(--nx-ui-icon);
+    width: calc(var(--nx-ui-icon) - 2px);
+    height: calc(var(--nx-ui-icon) - 2px);
   }
 
 .outline-section:has(.selected) .section-header :is(.action-btn, .edit-btn),
