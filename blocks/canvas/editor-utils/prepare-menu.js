@@ -9,6 +9,7 @@ await import(`${getNx()}/blocks/shared/popover/popover.js`);
 
 const style = await loadStyle(import.meta.url);
 const ref = sanitizeName(new URLSearchParams(window.location.search).get('ref'), false) || 'main';
+const PREFLIGHT_TITLE = 'Preflight';
 
 function resolveMenuItem(item, details) {
   const { org, site } = details || {};
@@ -104,6 +105,8 @@ export default class PrepareMenu extends LitElement {
     const merged = new Map(
       configs.flatMap((items) => items.map((item) => [item.title, item])),
     );
+    // A `Preflight` row configures the Preflight side panel, not a menu entry.
+    merged.delete(PREFLIGHT_TITLE);
 
     // For config items without path or render, fallback to OOTB if available
     this._menuItems = [...merged.values()].map((item) => {

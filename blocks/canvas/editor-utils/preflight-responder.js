@@ -23,6 +23,11 @@ export function takePendingPreflightRequest() {
   return request;
 }
 
+// Non-claiming read, so a container can decide what to mount before the panel claims it.
+export function peekPendingPreflightRequest() {
+  return pendingRequest;
+}
+
 async function openPreflightPanel() {
   const { PANEL_EVENT } = await panelEvents();
   document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'tools', id: 'preflight' } }));

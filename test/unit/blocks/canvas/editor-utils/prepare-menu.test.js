@@ -230,6 +230,28 @@ describe('PrepareMenu', () => {
       window.fetch = prevFetch;
     });
 
+    it('skips Preflight sheet rows, which configure the Preflight side panel', async () => {
+      const prevFetch = window.fetch;
+      window.fetch = async (url) => {
+        if (url.includes('/config/orgP/siteP')) {
+          const body = { prepare: { data: [{ title: 'Preflight', path: 'https://example.com/pf' }] } };
+          return new Response(JSON.stringify(body), { status: 200 });
+        }
+        if (url.includes('/config/orgP')) {
+          const body = { prepare: { data: [{ title: 'Preflight' }] } };
+          return new Response(JSON.stringify(body), { status: 200 });
+        }
+        return prevFetch(url);
+      };
+
+      el = await fixture({ details: createDetails({ org: 'orgP', site: 'siteP' }) });
+
+      expect(el._menuItems.map((item) => item.title)).to.not.include('Preflight');
+      expect(el._menuItems.map((item) => item.title)).to.include('Unpublish');
+
+      window.fetch = prevFetch;
+    });
+
     it('routes relative plugin paths and icons through the DA preview proxy', async () => {
       const prevFetch = window.fetch;
       window.fetch = async (url) => {

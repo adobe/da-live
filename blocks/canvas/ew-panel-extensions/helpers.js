@@ -544,17 +544,58 @@ function createVersioningView() {
   };
 }
 
-function createPreflightView() {
-  return {
+export const PREFLIGHT_TITLE = 'Preflight';
+
+/**
+ * Resolve a custom Preflight from the org/site `prepare` sheets, using the same rules
+ * the Prepare menu had: rows merge by title with site overriding org, and only a row
+ * with a `path` replaces the built-in Preflight.
+ * @returns {Promise<{ title: string, path: string } | null>}
+ */
+export async function resolvePreflightConfig({ org, site }) {
+  if (!org) return null;
+  const configs = await Promise.all(fetchDaConfigs({ org, site }));
+  const row = configs
+    .flatMap((conf) => conf?.prepare?.data || [])
+    .filter((item) => item?.title === PREFLIGHT_TITLE)
+    .pop();
+  if (!row?.path) return null;
+  return { title: row.title, path: row.path };
+}
+
+export function createPreflightView({ custom, org, site } = {}) {
+  const view = {
     id: 'preflight',
-    label: 'Preflight',
+    label: PREFLIGHT_TITLE,
     section: 'Editor',
     firstParty: true,
-    load: async () => {
+  };
+
+  if (!custom) {
+    view.load = async () => {
       await import('../ew-preflight/ew-preflight.js');
       return document.createElement('ew-preflight');
-    },
+    };
+    return view;
+  }
+
+  const proxyOpts = { org, site, branch: ref, currentOrg: org, getUrl: getPreviewOrigin };
+  const source = toPreviewProxyUrl(custom.path, proxyOpts);
+  view.cacheKey = JSON.stringify([source]);
+  view.load = async () => {
+    await import('../ew-preflight/ew-preflight-host.js');
+    const el = document.createElement('ew-preflight-host');
+    el.extension = {
+      name: 'preflight',
+      title: custom.title,
+      sources: [source],
+      experience: 'inline',
+      org,
+      site,
+    };
+    return el;
   };
+  return view;
 }
 
 export function createCommentsView() {
@@ -676,7 +717,10 @@ export function extensionToPanelView(ext, section) {
  * Extensions (other plugins).
  */
 export async function getCanvasToolPanelViews({ org, site }) {
-  const extensions = await fetchExtensions(org, site);
+  const [extensions, customPreflight] = await Promise.all([
+    fetchExtensions(org, site),
+    resolvePreflightConfig({ org, site }).catch(() => null),
+  ]);
   const library = sortLibraryExtensions(extensions.filter(isLibraryExtension));
   const thirdParty = extensions.filter((ext) => !isLibraryExtension(ext));
 
@@ -686,7 +730,7 @@ export async function getCanvasToolPanelViews({ org, site }) {
     createFileExplorerView(),
     createVersioningView(),
     createCommentsView(),
-    createPreflightView(),
+    createPreflightView({ custom: customPreflight, org, site }),
     ...library.map((ext) => extensionToPanelView(ext, 'Library')),
     ...thirdParty.map((ext) => extensionToPanelView(ext, 'Extensions')),
   ];
