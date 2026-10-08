@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 
-const { setNx } = await import('../../../../../scripts/utils.js');
+const { setNx, getNx2 } = await import('../../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const {
@@ -10,7 +10,7 @@ const {
   createDialogPanels,
 } = await import('../../../../../blocks/edit/da-assets/da-assets.js');
 
-const { buildAssetSelectorProps } = await import('../../../../../blocks/shared/aem-assets/selector-props.js');
+const { rememberedFolders } = await import(`${getNx2()}/utils/aem-assets/selector-props.js`);
 
 // ---------------------------------------------------------------------------
 // Shared mocks
@@ -528,32 +528,13 @@ describe('buildHandleSelection', () => {
     secondaryPanel.remove();
   });
 
-  it('remembers the selected asset folder for author-tier repos', async () => {
+  it('remembers the selected asset folder with Nexter', async () => {
+    rememberedFolders.length = 0;
     const { handler } = setup(AUTHOR_PUBLISH_CONFIG);
     await handler([IMAGE_ASSET]);
-    const props = buildAssetSelectorProps({
-      imsToken: 'token',
-      repoConfig: AUTHOR_PUBLISH_CONFIG,
-      handleSelection: () => {},
-    });
-    expect(props).to.have.property('path', '/content/dam');
-  });
-
-  it('does not remember a folder for delivery-tier repos', async () => {
-    const { handler } = setup(DELIVERY_CONFIG);
-    await handler([{
-      'aem:formatName': 'jpeg',
-      'dc:format': 'image/jpeg',
-      'repo:assetId': 'urn:aaid:aem:del-001',
-      'repo:name': 'photo.jpg',
-      'repo:repositoryId': 'delivery-p1-e1.adobeaemcloud.com',
-    }]);
-    const props = buildAssetSelectorProps({
-      imsToken: 'token',
-      repoConfig: DELIVERY_CONFIG,
-      handleSelection: () => {},
-    });
-    expect(props).to.not.have.property('path');
+    expect(rememberedFolders).to.deep.equal([
+      { repoConfig: AUTHOR_PUBLISH_CONFIG, assetPath: IMAGE_ASSET.path },
+    ]);
   });
 });
 

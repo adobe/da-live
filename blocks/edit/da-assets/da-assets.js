@@ -1,6 +1,5 @@
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getPathDetails from '../../shared/pathDetails.js';
-import { buildAssetSelectorProps, rememberAssetFolder } from '../../shared/aem-assets/selector-props.js';
 import {
   buildAuthorUrl, buildDmUrl, buildDeliveryUrl,
   getAssetAlt, getDmApprovalStatus, getScene7PublishStatus,
@@ -10,9 +9,9 @@ import { insertImage, insertLink, insertFragment, createImageNode, getBlockName 
 import showSmartCropDialog from './helpers/smart-crop.js';
 
 const { getRepositoryConfig, getResponsiveImageConfig } = await import(`${getNx2()}/utils/aem-assets/repository-config.js`);
+const { buildAssetSelectorProps, rememberAssetFolder } = await import(`${getNx2()}/utils/aem-assets/selector-props.js`);
 
 export const ASSET_SELECTOR_URL = 'https://experience.adobe.com/solutions/CQ-assets-selectors/static-assets/resources/assets-selectors.js';
-export { buildFeatureSet } from '../../shared/aem-assets/selector-props.js';
 
 const DM_ERROR_MSG = 'The selected asset is not available because it is not approved for delivery. Please check the status.';
 const PUBLISH_ERROR_MSG = 'The selected asset is not available on the publish tier. Please publish the asset in AEM and try again.';
