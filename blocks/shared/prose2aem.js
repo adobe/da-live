@@ -1,4 +1,5 @@
 import getPathDetails from './pathDetails.js';
+import { getLivePreviewUrl } from './constants.js';
 
 function setCursor(cursor, el) {
   el.id = cursor.id;
@@ -198,29 +199,50 @@ function removeMetadata(editor) {
   editor.querySelector('.metadata')?.remove();
 }
 
-function applySectionMetadata(editor) {
-  editor.querySelectorAll('.section-metadata').forEach((block) => {
+function getSectionMetadataValues(node, baseUrl, useUrls = true) {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return node.textContent.split(',').map((value) => value.trim()).filter(Boolean);
+  }
+  if (useUrls && node.nodeName === 'A' && node.getAttribute('href')) {
+    return [new URL(node.getAttribute('href'), baseUrl).href];
+  }
+  if (useUrls && node.nodeName === 'IMG' && node.getAttribute('src')) {
+    return [new URL(node.getAttribute('src'), baseUrl).href];
+  }
+  return [...node.childNodes].flatMap((child) => getSectionMetadataValues(child, baseUrl, useUrls));
+}
+
+function applySectionMetadata(editor, previewOptions) {
+  const blocks = editor.querySelectorAll('.section-metadata');
+  if (!blocks.length) return;
+  let { url } = previewOptions;
+  if (!url) {
+    const details = getPathDetails();
+    url = details?.org && details?.site
+      ? new URL(details.path || '/', getLivePreviewUrl(details.org, details.site)).href
+      : editor.ownerDocument.baseURI;
+  }
+  const baseUrl = new URL(url);
+  blocks.forEach((block) => {
     const section = block.parentElement;
     block.querySelectorAll(':scope > div').forEach((row) => {
       const cols = row.querySelectorAll(':scope > div');
       if (cols.length < 2) return;
-      const key = cols[0].textContent.trim().toLowerCase()
-        .replace(/[^0-9a-z]+/g, '-')
-        .replace(/^-+|-+$/g, '');
+      const name = cols[0].textContent.replace(/[^0-9a-zA-Z:_-]/g, '-');
+      const key = /^hreflang[-:]/i.test(name) ? `hreflang:${name.substring(9)}` : name.toLowerCase();
       if (!key) return;
       if (key === 'style') {
-        cols[1].textContent.trim().split(',')
-          .map((s) => s.trim().toLowerCase().replace(/[^0-9a-z]+/g, '-').replace(/^-+|-+$/g, ''))
-          .filter(Boolean)
+        getSectionMetadataValues(cols[1], baseUrl, false)
+          .flatMap(toBlockCSSClassNames)
           .forEach((cls) => section.classList.add(cls));
+      } else if (key === 'id') {
+        const id = cols[1].textContent.toLowerCase()
+          .replace(/[^0-9a-z._:-]+/g, '-')
+          .replace(/^[^a-z]+/, '')
+          .replace(/-+$/, '');
+        if (id) section.id = id;
       } else {
-        const camelKey = key.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-        const linkEl = cols[1].querySelector('a');
-        const imgEl = cols[1].querySelector('img');
-        let value = cols[1].textContent.trim();
-        if (linkEl) value = linkEl.href;
-        else if (imgEl) value = imgEl.src;
-        section.dataset[camelKey] = value;
+        section.setAttribute(`data-${key}`, getSectionMetadataValues(cols[1], baseUrl).join(','));
       }
     });
     block.remove();
@@ -269,7 +291,7 @@ function convertLocalUrlsToRelative(editor) {
  * @param {Boolean} isFragment whether or not the DOM is a fragment
  * @returns AEM-friendly HTML as a text string
  */
-export default function prose2aem(editor, livePreview, isFragment = false) {
+export default function prose2aem(editor, livePreview, isFragment = false, previewOptions = {}) {
   if (!isFragment) editor.removeAttribute('class');
 
   editor.removeAttribute('contenteditable');
@@ -314,7 +336,7 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
 
   if (!isFragment) {
     makeSections(editor);
-    if (livePreview) applySectionMetadata(editor);
+    if (livePreview) applySectionMetadata(editor, previewOptions);
   }
 
   if (isFragment) {
@@ -337,7 +359,7 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
   return html;
 }
 
-export function getHtmlWithCursor(view) {
+export function getHtmlWithCursor(view, previewOptions = {}) {
   const { selection } = view.state;
   const cursorPos = selection.from;
 
@@ -390,5 +412,5 @@ export function getHtmlWithCursor(view) {
     clonedNode.insertBefore(marker, clonedNode.childNodes[offset] || null);
   }
 
-  return prose2aem(editorClone, true);
+  return prose2aem(editorClone, true, false, previewOptions);
 }

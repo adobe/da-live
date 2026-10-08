@@ -38,6 +38,8 @@ In order to also use the local `nx` scripts, run `npm run local` in the `da-nx` 
 ### Edge Delivery
 If you wish to do any testing that involves Edge Delivery, please note the following:
 
+Live preview assumes rendering v2. Section metadata URLs resolve against the DA preview page, not the editor shell or production host.
+
 1. Your local environment will be using Stage Adobe Identity. 
 1. Your local/stage project will need to have a stage compatible fstab entry. Hostname: `stage-content.da.live`
 1. Edge Delivery cannot validate a Stage Adobe Identity. Your stage project should have auth turned off: `requireAuth: false`
@@ -58,5 +60,4 @@ npm run build:da-y-wrapper
 ```
 
 Additional details can be [found here](https://github.com/adobe/da-live/wiki/Dependencies).
-
 

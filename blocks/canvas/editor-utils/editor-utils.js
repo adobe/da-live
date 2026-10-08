@@ -317,7 +317,7 @@ export function getInstrumentedHTML(view) {
 
   // Serialize clone to HTML, then move block-marker index onto wrapper as data-block-index
   // (same pattern as da-nx qe-advanced: getInstrumentedHTML in prose2aem.js).
-  let htmlString = prose2aem(editorClone, true, false, true);
+  let htmlString = prose2aem(editorClone, true, false);
   htmlString = htmlString.replace(
     /<div class="block-marker" data-prose-index="(\d+)"><\/div>\s*<div([^>]*?)>/gi,
     (_match, proseIndex, divAttributes) => `<div${divAttributes} data-block-index="${proseIndex}">`,

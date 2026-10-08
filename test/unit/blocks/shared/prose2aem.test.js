@@ -1,7 +1,8 @@
 import { readFile } from '@web/test-runner-commands';
 import { expect } from '@esm-bundle/chai';
 
-import prose2aem from '../../../../blocks/shared/prose2aem.js';
+import prose2aem, { getHtmlWithCursor } from '../../../../blocks/shared/prose2aem.js';
+import { getLivePreviewUrl } from '../../../../blocks/shared/constants.js';
 
 const htmlString = await readFile({ path: './mocks/prose2aem.html' });
 const doc = new DOMParser().parseFromString(htmlString, 'text/html');
@@ -78,6 +79,181 @@ describe('prose2aem section-metadata handling', () => {
     const parsed = new DOMParser().parseFromString(html, 'text/html');
     return parsed.querySelector('main');
   }
+
+  function renderSection(rows, previewOptions) {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          ${rows}
+        </table>
+      </div>
+    `);
+    return parseMain(prose2aem(editor, true, false, previewOptions)).querySelector(':scope > div');
+  }
+
+  [
+    ['My Section!', 'my-section'],
+    ['123 My.Section_Name:Part-2!', 'my.section_name:part-2'],
+    ['---Leading---', 'leading'],
+    ['', null],
+    ['123!!!', null],
+  ].forEach(([value, expected]) => {
+    it(`normalizes section ID "${value}" to ${expected}`, () => {
+      const section = renderSection(`<tr><td>Id</td><td>${value}</td></tr>`);
+      expect(section.getAttribute('id')).to.equal(expected);
+      expect(section.hasAttribute('data-id')).to.be.false;
+    });
+  });
+
+  it('does not overwrite a section ID with an empty or invalid value', () => {
+    const section = renderSection(`
+      <tr><td>Id</td><td>First Section</td></tr>
+      <tr><td>Id</td><td></td></tr>
+      <tr><td>Id</td><td>123!</td></tr>
+    `);
+    expect(section.id).to.equal('first-section');
+  });
+
+  [
+    ['wide dark', ['wide-dark']],
+    ['columns wide, dark fancy', ['columns-wide', 'dark-fancy']],
+    ['<p>two columns</p><p>centered, dark</p>', ['two-columns', 'centered', 'dark']],
+    ['<p>two columns<br>centered, dark</p>', ['two-columns', 'centered', 'dark']],
+    ['Columns (wide, dark)', ['columns', 'wide', 'dark']],
+    ['<strong>wide</strong> dark', ['wide', 'dark']],
+    ['', []],
+  ].forEach(([value, expected]) => {
+    it(`extracts style classes from "${value}"`, () => {
+      const section = renderSection(`<tr><td>Style</td><td>${value}</td></tr>`);
+      expect([...section.classList]).to.deep.equal(expected);
+    });
+  });
+
+  [
+    ['Custom_Key:Name', 'custom_key:name'],
+    ['Two  Words', 'two--words'],
+    ['-Edge-', '-edge-'],
+    ['hreflang-en-US', 'hreflang:en-us'],
+  ].forEach(([key, name]) => {
+    it(`normalizes metadata key "${key}" to "${name}"`, () => {
+      const section = renderSection(`<tr><td>${key}</td><td>value</td></tr>`);
+      expect(section.getAttribute(`data-${name}`)).to.equal('value');
+    });
+  });
+
+  it('collects mixed text, links and images in document order', () => {
+    const section = renderSection(`
+      <tr><td>Sources</td><td>first, second
+        <img src="https://example.com/first.jpg">
+        <a href="https://example.com/page"><strong>Label</strong></a>
+        <p>third <em>fourth</em></p>
+        <img src="https://example.com/last.jpg">
+      </td></tr>
+    `);
+    expect(section.dataset.sources).to.equal(
+      'first,second,https://example.com/first.jpg,https://example.com/page,third,fourth,https://example.com/last.jpg',
+    );
+  });
+
+  it('uses the link URL rather than a linked image or label', () => {
+    const section = renderSection(`
+      <tr><td>Source</td><td>
+        <a href="https://example.com/page"><img src="https://example.com/image.jpg">Label</a>
+      </td></tr>
+    `);
+    expect(section.dataset.source).to.equal('https://example.com/page');
+  });
+
+  it('preserves browser resolution of relative metadata URLs', () => {
+    const section = renderSection(`
+      <tr><td>Source</td><td><a href="./page">Label</a></td></tr>
+      <tr><td>Image</td><td><img src="./image.jpg"></td></tr>
+    `);
+    expect(section.dataset.source).to.equal(new URL('./page', document.baseURI).href);
+    expect(section.dataset.image).to.equal(new URL('./image.jpg', document.baseURI).href);
+  });
+
+  it('resolves metadata URLs against the supplied DA preview page', () => {
+    const url = 'https://main--site--org.preview.da.live/en/products/page';
+    const section = renderSection(`
+      <tr><td>Source</td><td><a href="./related?view=full#details">Label</a></td></tr>
+      <tr><td>Image</td><td><img src="./image.jpg"></td></tr>
+      <tr><td>Root</td><td><a href="/root">Root</a></td></tr>
+      <tr><td>External</td><td><a href="https://example.com/page">External</a></td></tr>
+    `, { url });
+    expect(section.dataset.source).to.equal(
+      'https://main--site--org.preview.da.live/en/products/related?view=full#details',
+    );
+    expect(section.dataset.image).to.equal(
+      'https://main--site--org.preview.da.live/en/products/image.jpg',
+    );
+    expect(section.dataset.root).to.equal('https://main--site--org.preview.da.live/root');
+    expect(section.dataset.external).to.equal('https://example.com/page');
+  });
+
+  it('uses a supplied local preview URL without changing its protocol or port', () => {
+    const section = renderSection(`
+      <tr><td>Source</td><td><a href="./related">Label</a></td></tr>
+    `, { url: 'http://localhost:3001/en/page' });
+    expect(section.dataset.source).to.equal('http://localhost:3001/en/related');
+  });
+
+  it('defaults to the site preview host and content path from the DA location', () => {
+    const originalUrl = window.location.href;
+    const originalName = window.name;
+    history.replaceState(null, '', '/edit#/org/site/en/products/page');
+    try {
+      const section = renderSection(`
+        <tr><td>Source</td><td><a href="./related">Label</a></td></tr>
+        <tr><td>Image</td><td><img src="./image.jpg"></td></tr>
+        <tr><td>Page</td><td><a href="https://main--site--org.aem.page/other">Page</a></td></tr>
+        <tr><td>Live</td><td><a href="https://main--site--org.aem.live/other">Live</a></td></tr>
+      `);
+      const origin = getLivePreviewUrl('org', 'site');
+      expect(section.dataset.source).to.equal(`${origin}/en/products/related`);
+      expect(section.dataset.image).to.equal(`${origin}/en/products/image.jpg`);
+      expect(section.dataset.page).to.equal(`${origin}/other`);
+      expect(section.dataset.live).to.equal(`${origin}/other`);
+    } finally {
+      history.replaceState(null, '', originalUrl);
+      window.name = originalName;
+    }
+  });
+
+  it('forwards the preview page URL through cursor serialization', () => {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          <tr><td>Source</td><td><a href="./related">Label</a></td></tr>
+        </table>
+      </div>
+    `);
+    const original = editor.innerHTML;
+    const view = {
+      dom: editor,
+      state: { selection: { from: 1 } },
+      domAtPos: () => ({ node: editor.querySelector('p').firstChild, offset: 0 }),
+    };
+    const url = 'https://main--site--org.preview.da.live/en/page';
+    const main = parseMain(getHtmlWithCursor(view, { url }));
+    expect(main.querySelector(':scope > div').dataset.source).to.equal(
+      'https://main--site--org.preview.da.live/en/related',
+    );
+    expect(main.querySelector('#da-cursor-position')).to.exist;
+    expect(editor.innerHTML).to.equal(original);
+  });
+
+  it('skips rows with no value column or an empty key', () => {
+    const section = renderSection(`
+      <tr><td>Style</td></tr>
+      <tr><td></td><td>value</td></tr>
+    `);
+    expect(section.attributes.length).to.equal(0);
+  });
 
   it('applies style value as CSS class on the parent section', () => {
     const editor = makeEditor(`
