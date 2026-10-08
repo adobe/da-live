@@ -1,7 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
-import { treegridEnsureTabStop, treegridFocusIn, treegridKeydown } from '../utils/treegrid-nav.js';
 import { parseSections } from '../editor-utils/editor-utils.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { canvasBus } from '../utils/canvas-bus.js';
@@ -37,6 +36,7 @@ const FOCUS_TARGETS = '[role="row"]';
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
+const { treegridEnsureTabStop, treegridFocusIn, treegridKeydown } = await import(`${getNx2()}/blocks/shared/utils/treegrid-nav.js`);
 
 const [formStyle, buttonsStyle, style] = await Promise.all([
   getSheet(`${getNx2()}/styles/form.css`),
@@ -450,7 +450,7 @@ class EwPageOutline extends LitElement {
   };
 
   _onGridFocusIn = (e) => {
-    treegridFocusIn(e, this.shadowRoot);
+    treegridFocusIn(e, { root: this.shadowRoot });
   };
 
   _onGridKeydown = (e) => {
@@ -458,7 +458,7 @@ class EwPageOutline extends LitElement {
       this._onPickupKeydown(e);
       return;
     }
-    treegridKeydown(e, this.shadowRoot);
+    treegridKeydown(e, { root: this.shadowRoot });
   };
 
   _onGridContextMenu = (e) => {

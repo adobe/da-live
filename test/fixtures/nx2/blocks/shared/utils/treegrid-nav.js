@@ -28,7 +28,7 @@ export function treegridEnsureTabStop(root) {
   if (rows.length && !rows.some((row) => row.tabIndex === 0)) rows[0].tabIndex = 0;
 }
 
-export function treegridFocusIn(e, root) {
+export function treegridFocusIn(e, { root }) {
   const row = e.target.closest?.(ROW);
   if (!row) return;
   treegridRows(root).forEach((el) => { el.tabIndex = el === row ? 0 : -1; });
@@ -94,10 +94,11 @@ function controlKeydown(e, control, row, rows) {
   next?.focus();
 }
 
-export function treegridKeydown(e, root, {
+export function treegridKeydown(e, {
+  root,
   toggle = (row) => row.click(),
   activate = (row) => row.click(),
-} = {}) {
+}) {
   const active = root.activeElement;
   if (!active || active.matches(TEXT_ENTRY)) return;
   const rows = treegridRows(root);

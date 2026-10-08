@@ -620,7 +620,7 @@ describe('EwFileExplorer', () => {
     });
   });
 
-  describe('.action-btn keyboard reachability', () => {
+  describe('.action-btn row controls', () => {
     beforeEach(async () => {
       el._org = 'org';
       el._site = 'site';
@@ -633,19 +633,18 @@ describe('EwFileExplorer', () => {
     it('is hidden by default, even on the row that is the current roving-tabindex stop', async () => {
       await withRealCss(el);
 
-      const rows = [...el.shadowRoot.querySelectorAll('.row')];
-      const firstRow = rows[0];
+      const firstRow = el.shadowRoot.querySelector('[role="row"]');
       expect(firstRow.getAttribute('tabindex')).to.equal('0');
 
-      const btn = firstRow.closest('.row-wrap').querySelector('.action-btn');
+      const btn = firstRow.querySelector('.action-btn');
       expect(getComputedStyle(btn).visibility).to.equal('hidden');
     });
 
     it('becomes visible when the row itself receives real focus, and hides again on blur', async () => {
       await withRealCss(el);
 
-      const firstRow = el.shadowRoot.querySelector('.row');
-      const btn = firstRow.closest('.row-wrap').querySelector('.action-btn');
+      const firstRow = el.shadowRoot.querySelector('[role="row"]');
+      const btn = firstRow.querySelector('.action-btn');
       expect(getComputedStyle(btn).visibility).to.equal('hidden');
 
       firstRow.focus();
@@ -656,8 +655,7 @@ describe('EwFileExplorer', () => {
     });
 
     it('does not let Enter/Space on the button bubble into toggling the row', async () => {
-      const firstRow = el.shadowRoot.querySelector('.row');
-      const btn = firstRow.closest('.row-wrap').querySelector('.action-btn');
+      const btn = el.shadowRoot.querySelector('[role="row"] .action-btn');
       const expandedBefore = new Set(el._expanded);
 
       const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
@@ -666,23 +664,24 @@ describe('EwFileExplorer', () => {
       expect(el._expanded).to.deep.equal(expandedBefore);
     });
 
-    it('makes the copy-url button reachable by Tab, same as other action buttons', async () => {
+    it('keeps row controls out of the tab order', async () => {
       el._cache = { '/org/site': [{ name: 'a.html', path: '/org/site/a.html', ext: 'html' }] };
       await el.updateComplete;
 
-      const copyBtn = el.shadowRoot.querySelector('.copy-url');
-      expect(copyBtn.getAttribute('tabindex')).to.not.equal('-1');
+      const btns = [...el.shadowRoot.querySelectorAll('.action-btn')];
+      expect(btns.length).to.equal(2);
+      expect(btns.every((b) => b.getAttribute('tabindex') === '-1')).to.be.true;
     });
 
-    it('does not show the copied checkmark just from tabbing to the button', async () => {
+    it('does not show the copied checkmark just from focusing the button', async () => {
       el._cache = { '/org/site': [{ name: 'a.html', path: '/org/site/a.html', ext: 'html' }] };
       await el.updateComplete;
       await withRealCss(el);
 
       const row = el.shadowRoot.querySelector('.row.file');
-      row.focus(); // reveals the action buttons, as real Tab navigation would
-      const copyBtn = row.closest('.row-wrap').querySelector('.copy-url');
-      copyBtn.focus(); // simulates the next real Tab press landing on the now-visible button
+      row.focus();
+      const copyBtn = row.querySelector('.copy-url');
+      copyBtn.focus();
 
       const checkmark = copyBtn.querySelector('.icon-checkmark');
       expect(getComputedStyle(checkmark).display).to.equal('none');
@@ -708,47 +707,144 @@ describe('EwFileExplorer', () => {
     });
   });
 
-  describe('tree keyboard navigation: expand/collapse', () => {
+  describe('file treegrid', () => {
+    const rows = () => [...el.shadowRoot.querySelectorAll('[role="row"]')];
+    const rowByText = (text) => rows().find((r) => r.querySelector('.label').textContent.trim() === text);
+    const press = (target, key) => {
+      const event = new KeyboardEvent('keydown', { key, bubbles: true, composed: true, cancelable: true });
+      target.dispatchEvent(event);
+      return event;
+    };
+
     beforeEach(async () => {
       el._org = 'org';
       el._site = 'site';
       el._treeRoot = '/org/site';
       el._cache = {
-        '/org/site': [{ name: 'sub', path: '/org/site/sub' }],
+        '/org/site': [
+          { name: 'sub', path: '/org/site/sub' },
+          { name: 'b.html', path: '/org/site/b.html', ext: 'html' },
+        ],
         '/org/site/sub': [{ name: 'child.html', path: '/org/site/sub/child.html', ext: 'html' }],
       };
       el._expanded = new Set(['org/site']);
       await el.updateComplete;
     });
 
-    it('expands a collapsed folder on ArrowRight and collapses it on ArrowLeft', async () => {
-      const rows = [...el.shadowRoot.querySelectorAll('.row')];
-      const subRow = rows.find((r) => r.textContent.includes('sub'));
-      subRow.tabIndex = 0;
-      subRow.focus();
+    it('renders a treegrid with leveled rows and a single gridcell', () => {
+      const grid = el.shadowRoot.querySelector('[role="treegrid"]');
+      expect(grid.getAttribute('aria-label')).to.equal('Files');
+      expect(el.shadowRoot.querySelector('[role="tree"], [role="treeitem"], [role="group"]')).to.not.exist;
 
-      subRow.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
-      await el.updateComplete;
-      expect(subRow.getAttribute('aria-expanded')).to.equal('true');
+      const sub = rowByText('sub');
+      expect(sub.getAttribute('aria-level')).to.equal('2');
+      expect(sub.getAttribute('aria-posinset')).to.equal('1');
+      expect(sub.getAttribute('aria-setsize')).to.equal('2');
+      expect(sub.getAttribute('aria-expanded')).to.equal('false');
+      expect(sub.querySelectorAll('[role="gridcell"]').length).to.equal(1);
+      expect(sub.querySelector('.new-page-btn').closest('[role="row"]') === sub).to.be.true;
 
-      subRow.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true }));
-      await el.updateComplete;
-      expect(subRow.getAttribute('aria-expanded')).to.equal('false');
+      const file = rowByText('b.html');
+      expect(file.hasAttribute('aria-expanded')).to.be.false;
+      expect(file.getAttribute('aria-selected')).to.equal('false');
     });
 
-    it('still navigates rows with ArrowDown/Up after Tab moves focus onto a row action button', async () => {
-      await withRealCss(el);
+    it('expands a collapsed folder on ArrowRight and collapses it on ArrowLeft', async () => {
+      const sub = rowByText('sub');
+      sub.focus();
 
-      const rows = [...el.shadowRoot.querySelectorAll('.row')];
-      const rootRow = rows[0];
-      const subRow = rows.find((r) => r.textContent.includes('sub'));
-      rootRow.focus();
+      press(sub, 'ArrowRight');
+      await el.updateComplete;
+      expect(sub.getAttribute('aria-expanded')).to.equal('true');
+      expect(rowByText('child.html').getAttribute('aria-level')).to.equal('3');
 
-      const newPageBtn = rootRow.closest('.row-wrap').querySelector('.new-page-btn');
-      newPageBtn.focus();
+      press(sub, 'ArrowLeft');
+      await el.updateComplete;
+      expect(sub.getAttribute('aria-expanded')).to.equal('false');
+    });
 
-      newPageBtn.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
-      expect(el.shadowRoot.activeElement).to.equal(subRow);
+    it('moves from a child row to its parent folder on ArrowLeft', async () => {
+      el._expanded = new Set(['org/site', 'org/site/sub']);
+      await el.updateComplete;
+      const child = rowByText('child.html');
+      child.focus();
+
+      press(child, 'ArrowLeft');
+      expect(el.shadowRoot.activeElement === rowByText('sub')).to.be.true;
+    });
+
+    it('moves into row controls and between rows from a control', async () => {
+      const sub = rowByText('sub');
+      sub.focus();
+
+      press(sub, 'ArrowDown');
+      const file = rowByText('b.html');
+      expect(el.shadowRoot.activeElement === file).to.be.true;
+
+      press(file, 'ArrowRight');
+      const copyBtn = file.querySelector('.copy-url');
+      expect(el.shadowRoot.activeElement === copyBtn).to.be.true;
+
+      press(copyBtn, 'ArrowUp');
+      expect(el.shadowRoot.activeElement === sub.querySelector('.new-page-btn')).to.be.true;
+
+      press(el.shadowRoot.activeElement, 'Escape');
+      expect(el.shadowRoot.activeElement === sub).to.be.true;
+    });
+
+    it('activates a file row with Enter', async () => {
+      const savedHash = window.location.hash;
+      const file = rowByText('b.html');
+      file.focus();
+      try {
+        expect(press(file, 'Enter').defaultPrevented).to.be.true;
+        expect(window.location.hash).to.equal('#/org/site/b');
+      } finally {
+        window.location.hash = savedHash;
+      }
+    });
+
+    it('keeps one tab stop that follows focus', async () => {
+      const file = rowByText('b.html');
+      file.dispatchEvent(new FocusEvent('focusin', { bubbles: true, composed: true }));
+      expect(rows().filter((r) => r.tabIndex === 0).map((r) => r.querySelector('.label').textContent.trim()))
+        .to.deep.equal(['b.html']);
+    });
+  });
+
+  describe('search results treegrid', () => {
+    beforeEach(async () => {
+      el._org = 'org';
+      el._site = 'site';
+      el._treeRoot = '/org/site';
+      el._cache = { '/org/site': [] };
+      el._searchTerm = 'foo';
+      el._searchResults = [
+        { name: 'foo.html', path: '/org/site/a/foo.html', ext: 'html' },
+        { name: 'foo.json', path: '/org/site/foo.json', ext: 'json' },
+      ];
+      el._searching = false;
+      await el.updateComplete;
+    });
+
+    it('renders results as flat treegrid rows, not list items', () => {
+      expect(el.shadowRoot.querySelector('[role="list"]')).to.not.exist;
+      const grid = el.shadowRoot.querySelector('[role="treegrid"]');
+      expect(grid.getAttribute('aria-label')).to.equal('Search results');
+
+      const rows = [...grid.querySelectorAll('[role="row"]')];
+      expect(rows.map((r) => r.getAttribute('aria-level'))).to.deep.equal(['1', '1']);
+      expect(rows.map((r) => r.getAttribute('aria-posinset'))).to.deep.equal(['1', '2']);
+      expect(rows.every((r) => r.getAttribute('aria-setsize') === '2')).to.be.true;
+      expect(rows[0].querySelector('.path-hint').textContent).to.equal('a');
+      expect(rows[0].getAttribute('tabindex')).to.equal('0');
+    });
+
+    it('navigates results with arrow keys', () => {
+      const rows = [...el.shadowRoot.querySelectorAll('[role="row"]')];
+      rows[0].focus();
+      rows[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true, cancelable: true }));
+      expect(el.shadowRoot.activeElement === rows[1]).to.be.true;
     });
   });
 
