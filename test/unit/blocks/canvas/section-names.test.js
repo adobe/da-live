@@ -23,11 +23,13 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 let getInstrumentedHTML;
 let parseSections;
 let canvasBus;
+let getExtensionsBridge;
 
 before(async () => {
   await import('../../../../blocks/canvas/ew-page-outline/ew-page-outline.js');
   ({ getInstrumentedHTML, parseSections } = await import('../../../../blocks/canvas/editor-utils/editor-utils.js'));
   ({ canvasBus } = await import('../../../../blocks/canvas/utils/canvas-bus.js'));
+  ({ getExtensionsBridge } = await import('../../../../blocks/canvas/editor-utils/extensions-bridge.js'));
 });
 
 const para = (text) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
@@ -122,6 +124,7 @@ describe('section names — outline panel', () => {
   let el;
 
   beforeEach(async () => {
+    getExtensionsBridge().view = makeRealView({ type: 'doc', content: [{ type: 'paragraph' }] });
     el = document.createElement('ew-page-outline');
     el._checkBlockLibrary = async () => {};
     document.body.appendChild(el);
@@ -130,7 +133,10 @@ describe('section names — outline panel', () => {
     await el.updateComplete;
   });
 
-  afterEach(() => el.remove());
+  afterEach(() => {
+    el.remove();
+    getExtensionsBridge().view = null;
+  });
 
   const setSections = async (sections) => {
     el._sections = sections;
@@ -171,8 +177,8 @@ describe('section names — outline panel', () => {
   it('opens the rename input from the edit button next to the name', async () => {
     await setSections([section(0, 'Hero')]);
     const header = el.shadowRoot.querySelector('.section-header');
-    const order = [...header.children].map((c) => c.classList[0]);
-    expect(order.indexOf('action-btn')).to.equal(order.indexOf('section-label') + 1);
+    const order = [...header.children].map((c) => (c.classList.contains('edit-btn') ? 'edit-btn' : c.classList[0]));
+    expect(order.indexOf('edit-btn')).to.equal(order.indexOf('section-label') + 1);
 
     el.shadowRoot.querySelector('.edit-btn').click();
     await el.updateComplete;
