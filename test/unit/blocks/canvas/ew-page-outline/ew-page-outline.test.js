@@ -1,5 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
+import { sendKeys } from '@web/test-runner-commands';
 import { EditorState, EditorView, columnResizing } from 'da-y-wrapper';
 import { getSchema } from 'da-parser';
 import { setNx } from '../../../../../scripts/utils.js';
@@ -7,6 +8,7 @@ import { makeRealView } from '../test-helpers.js';
 import { createTrackingPlugin } from '../../../../../blocks/canvas/editor-utils/prose-diff.js';
 import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 import { getDropTargets } from '../../../../../blocks/canvas/ew-page-outline/drop-targets.js';
+import { axAll, axFocused, axTree, tabFrom } from '../../../helpers/ax-tree.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -1014,12 +1016,13 @@ describe('ew-page-outline - treegrid', () => {
 
   const root = () => el.shadowRoot;
   const active = () => root().activeElement;
-  const rows = () => [...root().querySelectorAll('[role="row"]')];
   const sectionRow = (i) => root().querySelectorAll('.outline-section')[i].querySelector('.section-header');
   const blockRow = (i) => root().querySelector(`[data-block-index="${i}"]`);
   const handleOf = (row) => row.querySelector('.drag-handle');
   const announced = () => root().querySelector('[aria-live]').textContent.trim();
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const grid = () => axTree('ew-page-outline >>> [role="treegrid"]');
+  const handleNode = async (name) => axAll(await grid(), 'button').find((b) => b.name === name);
 
   const press = (key, target = active()) => {
     const event = new KeyboardEvent('keydown', { key, bubbles: true, composed: true, cancelable: true });
@@ -1061,23 +1064,35 @@ describe('ew-page-outline - treegrid', () => {
     bridge.view = null;
   });
 
-  it('exposes a treegrid with levelled rows and one gridcell each', async () => {
+  it('exposes a treegrid with levelled, named rows and one gridcell each', async () => {
     await load([table('hero'), para('one'), rule(), para('two')]);
     await expandAll();
 
-    const grid = root().querySelector('.outline-list');
-    expect(grid.getAttribute('role')).to.equal('treegrid');
-    expect(rows().map((r) => [
-      r.getAttribute('aria-level'), r.getAttribute('aria-posinset'), r.getAttribute('aria-setsize'),
-    ])).to.deep.equal([
-      ['1', '1', '2'], ['2', '1', '2'], ['2', '2', '2'], ['3', '1', '1'],
-      ['1', '2', '2'], ['2', '1', '1'], ['3', '1', '1'],
+    const tree = await grid();
+    expect(tree).to.include({ role: 'treegrid', name: 'Page outline' });
+    const axRows = axAll(tree, 'row');
+    expect(axRows.map(({ name, level, expanded }) => ({ name, level, expanded }))).to.deep.equal([
+      { name: 'Section 1', level: 1, expanded: undefined },
+      { name: 'hero block', level: 2, expanded: undefined },
+      { name: 'Default content', level: 2, expanded: true },
+      { name: 'Paragraph one', level: 3, expanded: undefined },
+      { name: 'Section 2', level: 1, expanded: undefined },
+      { name: 'Default content', level: 2, expanded: true },
+      { name: 'Paragraph two', level: 3, expanded: undefined },
     ]);
-    expect(rows().every((r) => r.querySelectorAll(':scope > [role="gridcell"]').length === 1)).to.be.true;
-    expect(sectionRow(0).hasAttribute('aria-expanded')).to.be.false;
-    expect(root().querySelector('[data-group-key]').getAttribute('aria-expanded')).to.equal('true');
-    expect(rows().filter((r) => r.tabIndex === 0)).to.have.lengthOf(1);
-    expect(sectionRow(0).tabIndex).to.equal(0);
+    expect(axRows.every((r) => r.children.length === 1 && r.children[0].role === 'gridcell')).to.be.true;
+  });
+
+  it('is a single tab stop that starts on the first row', async () => {
+    await load([table('hero'), para('one')]);
+    const before = document.createElement('button');
+    el.before(before);
+
+    await tabFrom(before);
+    expect(axFocused(await grid())).to.include({ role: 'row', name: 'Section 1' });
+    await sendKeys({ press: 'Tab' });
+    expect(axFocused(await grid())).to.equal(undefined);
+    before.remove();
   });
 
   it('navigates rows and controls from the keyboard', async () => {
@@ -1127,10 +1142,10 @@ describe('ew-page-outline - treegrid', () => {
     await load([table('hero'), para('one')]);
     await expandAll();
 
-    expect(handleOf(sectionRow(0)).getAttribute('aria-label')).to.equal('Move Section 1');
-    expect(handleOf(blockRow(0)).getAttribute('aria-label')).to.equal('Move hero block');
-    expect(handleOf(root().querySelector('.content-child')).getAttribute('aria-label'))
-      .to.equal('Move paragraph (one)');
+    const axRows = axAll(await grid(), 'row');
+    expect(axRows.map((r) => axAll(r, 'button')[0]?.name)).to.deep.equal([
+      'Move Section 1', 'Move hero block', undefined, 'Move paragraph (one)',
+    ]);
     expect(handleOf(blockRow(0)).getAttribute('draggable')).to.equal(null);
   });
 
@@ -1141,7 +1156,7 @@ describe('ew-page-outline - treegrid', () => {
     handle.focus();
     handle.click();
     await el.updateComplete;
-    expect(handle.getAttribute('aria-pressed')).to.equal('true');
+    expect(await handleNode('Move hero block')).to.include({ pressed: true });
     expect(announced()).to.match(/^Picked up hero block/);
 
     press('ArrowDown', handle);
@@ -1170,7 +1185,7 @@ describe('ew-page-outline - treegrid', () => {
 
     expect(docSeq(view.state.doc)).to.deep.equal(['hero', 'cards']);
     expect(announced()).to.equal('Move cancelled.');
-    expect(handle.getAttribute('aria-pressed')).to.equal('false');
+    expect(await handleNode('Move hero block')).to.include({ pressed: false });
     expect(root().querySelector('[data-drop-position]')).to.equal(null);
     expect(active() === handle).to.be.true;
   });
