@@ -43,23 +43,17 @@ If you wish to do any testing that involves Edge Delivery, please note the follo
 1. Edge Delivery cannot validate a Stage Adobe Identity. Your stage project should have auth turned off: `requireAuth: false`
 
 ### Canvas library access
-Built-in library sheets, block variants, template insertion, and preview iframes use
-the shared DA preview proxy for content in the current editor's organization,
-including libraries hosted by another site in that organization. The proxy session
-is requested before loading content, and only proxy fetches include credentials.
+Library sheets, block variants, templates, and previews use the shared DA preview proxy
+for same-org sources, including other sites, requesting a session before loading.
+Only proxy fetches include credentials; cross-org sources load directly.
 
-Cross-organization sources keep their original URLs and do not request a DA proxy
-session. If access is denied, verify DA sign-in and site access for same-org libraries;
-for cross-org AEM libraries, open the source preview and sign in with AEM Sidekick,
-then reopen the library. Access failures are not cached as a successful empty library.
+For access errors, check DA sign-in and site access (same-org), or sign in on the source
+preview with AEM Sidekick (cross-org AEM), then reopen the library. Access failures are
+not cached.
 
-When validating library routing, check both a protected same-org library and a
-cross-org library. Verify the sheets, variant HTML, template insertion, and preview
-iframe requests, including the matching proxy and `/gimme_cookie` origins. Inserted
-image URLs should retain their public content origin rather than the proxy origin.
-Template image paths resolve against the public document URL, preserving directories,
-query strings, and fragments. Only generated AEM `./media_*` references use the site root;
-direct DA-content templates retain the organization/site path in relative image URLs.
+Validate protected same-org and cross-org libraries, including matching proxy and
+`/gimme_cookie` origins. Inserted images retain public source URLs, paths, queries, and
+fragments; generated AEM `./media_*` references use the site root.
 
 ## Additional details
 ### Recommendations
