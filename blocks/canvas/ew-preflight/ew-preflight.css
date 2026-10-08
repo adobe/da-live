@@ -1,6 +1,7 @@
 :host {
   display: block;
   height: 100%;
+  overflow-y: auto;
 }
 
 /* Loading / error states. The evaluation results themselves are drawn by the

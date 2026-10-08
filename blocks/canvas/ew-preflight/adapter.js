@@ -42,7 +42,7 @@ function collectChecks(response) {
       .map((check) => ({ check, assetLabel: basename(image.source) })));
   const siteCodeChecks = (response.site_code_evaluation?.evaluations ?? [])
     .map((check) => ({ check }));
-  return [...builtInChecks, ...textChecks, ...imageChecks, ...siteCodeChecks];
+  return [...builtInChecks, ...siteCodeChecks, ...textChecks, ...imageChecks];
 }
 
 export function adaptEvaluation(response = {}) {
