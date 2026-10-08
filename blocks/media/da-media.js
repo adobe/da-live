@@ -13,6 +13,13 @@ class DaMedia extends LitElement {
     document.title = `View ${this.details.name} - Experience Workspace`;
   }
 
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    if (this.details.contentUrl?.startsWith('blob:')) {
+      URL.revokeObjectURL(this.details.contentUrl);
+    }
+  }
+
   get _mediaType() {
     const ext = this.details.name.split('.').pop();
     return ext;

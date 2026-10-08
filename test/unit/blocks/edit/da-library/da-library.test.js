@@ -168,6 +168,30 @@ describe('da-library element', () => {
     }
   });
 
+  it('handlePluginClick opens window plugins at their original URL without a proxy cookie', async () => {
+    await fixture([]);
+    let opened;
+    const cookieRequests = [];
+    const savedOpen = window.open;
+    const prevFetch = window.fetch;
+    window.open = (url) => {
+      opened = url;
+      return null;
+    };
+    window.fetch = async (url, opts) => {
+      if (String(url).includes('/gimme_cookie')) cookieRequests.push(url);
+      return prevFetch(url, opts);
+    };
+    try {
+      await el.handlePluginClick({ name: 'plug', experience: 'window', sources: ['https://main--repo--org.aem.live/x'] });
+      expect(opened).to.equal('https://main--repo--org.aem.live/x');
+      expect(cookieRequests).to.deep.equal([]);
+    } finally {
+      window.open = savedOpen;
+      window.fetch = prevFetch;
+    }
+  });
+
   it('handlePluginClick is a no-op for window-experience without sources', async () => {
     await fixture([]);
     let opened = 0;
@@ -179,6 +203,13 @@ describe('da-library element', () => {
     } finally {
       window.open = savedOpen;
     }
+  });
+
+  it('handlePluginClick awaits the preview proxy session before activating inline/dialog plugins', async () => {
+    await fixture([]);
+    const plugin = { name: 'plug', experience: 'inline', sources: ['https://main--repo--org.preview.da.live/x'] };
+    await el.handlePluginClick(plugin);
+    expect(el._active).to.equal(plugin);
   });
 
   it('handlePreviewClose deletes the _preview prop', async () => {
@@ -427,7 +458,7 @@ describe('da-library handleOpenPreview', () => {
     const item = { name: 'Marquee', path: 'https://main--repo--org.aem.live/page' };
     await el.handleOpenPreview(item);
     expect(el._preview.name).to.equal('Marquee');
-    expect(el._preview.url).to.contain('aem.page/page');
+    expect(el._preview.url).to.equal('https://main--repo--org.preview.da.live/page');
     expect(el._preview.ok).to.be.true;
   });
 
