@@ -1,0 +1,121 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  font-family: var(--s2-font-family);
+  color: var(--s2-gray-900);
+}
+
+.browse-tools-header {
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-100);
+  flex-shrink: 0;
+  min-height: 48px;
+  padding: 0 var(--s2-spacing-100);
+  border-bottom: 1px solid var(--s2-gray-200);
+  box-sizing: border-box;
+
+  h2 {
+    margin: 0;
+    font-size: var(--s2-component-m-medium-font-size, 14px);
+    font-weight: 600;
+  }
+}
+
+.browse-tools-content {
+  min-height: 0;
+  overflow: auto;
+  padding: var(--s2-spacing-200);
+  font-size: var(--s2-component-s-regular-font-size, 14px);
+  line-height: 1.5;
+
+  p {
+    overflow-wrap: anywhere;
+  }
+
+  form {
+    margin-top: var(--s2-spacing-300);
+  }
+
+  .da-input {
+    width: 100%;
+  }
+}
+
+.browse-match-case {
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-100);
+}
+
+.browse-search-scope {
+  color: var(--s2-gray-600);
+}
+
+.browse-replace-confirmation {
+  padding: var(--s2-spacing-200);
+  border: 1px solid var(--s2-gray-300);
+  border-radius: var(--s2-corner-radius-400);
+  background: var(--s2-gray-50);
+}
+
+.browse-replace-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--s2-spacing-100);
+}
+
+.browse-match-context {
+  margin-top: var(--s2-spacing-200);
+}
+
+.browse-find-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2-spacing-100);
+  margin-top: var(--s2-spacing-200);
+}
+
+.browse-match-file {
+  h4 {
+    margin-bottom: var(--s2-spacing-100);
+    overflow-wrap: anywhere;
+  }
+}
+
+.browse-match-snippet {
+  margin-block: var(--s2-spacing-200);
+
+  pre {
+    margin: 0;
+    padding: var(--s2-spacing-100);
+    border: 1px solid var(--s2-gray-200);
+    border-radius: var(--s2-corner-radius-400);
+    background-color: var(--s2-gray-50);
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  mark,
+  del,
+  ins {
+    background-color: light-dark(#ffedb0, #604b00);
+    color: inherit;
+  }
+
+  .browse-match-removed {
+    background-color: light-dark(#ffe1df, #5c2422);
+    text-decoration: line-through;
+  }
+
+  .browse-match-replaced {
+    background-color: light-dark(#d5f0dc, #164b32);
+    text-decoration: none;
+  }
+}

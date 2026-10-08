@@ -11,6 +11,36 @@ describe('DaActionBar', () => {
     DaActionBar = mod.default;
   });
 
+  describe('width customization', () => {
+    it('retains legacy width by default and uses the container width only with full-width', async () => {
+      const stylesUrl = new URL('../../../../../blocks/browse/da-actionbar/da-actionbar.css', import.meta.url);
+      const response = await fetch(stylesUrl.href);
+      expect(response.ok).to.be.true;
+      const sheet = new CSSStyleSheet();
+      sheet.replaceSync(await response.text());
+      const container = document.createElement('div');
+      container.style.cssText = 'container-type: inline-size; width: 800px; --se-grid-container-width: 450px';
+      const bar = new DaActionBar();
+      bar.items = [{ path: '/org/site/page.html', name: 'page', ext: 'html' }];
+      container.append(bar);
+      document.body.append(container);
+      try {
+        await bar.updateComplete;
+        bar.shadowRoot.adoptedStyleSheets = [sheet];
+        const content = bar.shadowRoot.querySelector('.da-action-bar');
+        expect(content.getBoundingClientRect().width).to.be.closeTo(450, 0.5);
+        bar.classList.add('full-width');
+        expect(content.getBoundingClientRect().width).to.be.closeTo(800, 0.5);
+        container.style.width = '520px';
+        expect(content.getBoundingClientRect().width).to.be.closeTo(520, 0.5);
+        bar.classList.remove('full-width');
+        expect(content.getBoundingClientRect().width).to.be.closeTo(450, 0.5);
+      } finally {
+        container.remove();
+      }
+    });
+  });
+
   describe('update', () => {
     it('Resets copying/moving/deleting flags when items go empty', async () => {
       const el = new DaActionBar();

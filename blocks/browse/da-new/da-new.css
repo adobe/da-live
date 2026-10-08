@@ -11,37 +11,33 @@
   top: 1px;
 }
 
-.da-actions-new-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+:host([variant="accent"]) .da-actions-create {
+  top: 0;
+}
+
+.da-actions-new-button.nx-btn-accent {
+  min-width: 88px;
+}
+
+.da-actions-new-button.nx-action-btn-icon {
   width: 24px;
   height: 24px;
   padding: 0;
-  border: none;
-  border-radius: var(--s2-corner-radius-400);
-  background: none;
-  cursor: pointer;
   color: var(--s2-gray-900);
-  transition: background 0.2s ease;
-
-  & svg {
-    width: 18px;
-    height: 18px;
-  }
-
-  &:hover {
-    background-color: var(--s2-gray-200);
-  }
 
   &:disabled {
     color: var(--s2-gray-400);
     cursor: not-allowed;
+    opacity: 1;
   }
 
   &[data-active] {
     background-color: var(--s2-gray-200);
   }
+}
+
+.da-actions-new-label {
+  line-height: 1;
 }
 
 .da-actions-file {
@@ -51,4 +47,3 @@
 nx-menu {
   --nx-menu-font-size: var(--s2-body-size-s);
 }
-
