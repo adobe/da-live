@@ -792,13 +792,13 @@ describe('ew-page-outline - section menu', () => {
     bridge.view = null;
   });
 
-  it('renders one labelled, untabbable trigger per section and no inline section buttons', async () => {
+  it('renders one labelled, tabbable trigger per section and no inline section buttons', async () => {
     await load([para('one'), rule('Feat'), para('two')]);
 
     const triggers = [...root().querySelectorAll('.section-menu-trigger')];
     expect(triggers.map((t) => t.getAttribute('aria-label')))
       .to.deep.equal(['More actions for Section 1', 'More actions for Feat']);
-    expect(triggers.every((t) => t.getAttribute('tabindex') === '-1')).to.be.true;
+    expect(triggers.every((t) => t.tabIndex >= 0 && !t.hasAttribute('tabindex'))).to.be.true;
     expect(root().querySelectorAll('.section-header .delete-btn, .edit-btn, .add-block-btn')).to.have.lengthOf(0);
     const buttons = [...root().querySelectorAll('button')].filter((b) => !b.closest('nx-menu'));
     expect(buttons.some((b) => /add section/i.test(b.textContent))).to.be.false;
