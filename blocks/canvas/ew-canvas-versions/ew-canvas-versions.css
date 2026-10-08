@@ -165,8 +165,8 @@ button {
 }
 
 .versionentry.is-audit .versionicon svg {
-  width: calc(var(--nx-ui-icon) - 6px);
-  height: calc(var(--nx-ui-icon) - 6px);
+  width: calc(var(--nx-ui-icon) - 4px);
+  height: calc(var(--nx-ui-icon) - 4px);
 }
 
 .versionentry:hover .versionicon {

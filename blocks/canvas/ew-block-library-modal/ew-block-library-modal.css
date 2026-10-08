@@ -232,6 +232,22 @@
   background: var(--s2-gray-75);
 }
 
+.nx-action-btn-icon.modal-viewport-btn {
+  width: var(--nx-ui-icon-btn-size);
+  height: var(--nx-ui-icon-btn-size);
+  padding: 0;
+
+  svg {
+    width: var(--nx-ui-icon);
+    height: var(--nx-ui-icon);
+  }
+
+  &:hover:not(:disabled, .is-active) {
+    background: var(--nx-ui-icon-btn-hover-bg);
+    color: var(--nx-ui-icon-btn-hover-color);
+  }
+}
+
 .modal-preview-placeholder {
   display: flex;
   align-items: center;
