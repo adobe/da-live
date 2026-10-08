@@ -23,11 +23,13 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 let getInstrumentedHTML;
 let parseSections;
 let canvasBus;
+let getExtensionsBridge;
 
 before(async () => {
   await import('../../../../blocks/canvas/ew-page-outline/ew-page-outline.js');
   ({ getInstrumentedHTML, parseSections } = await import('../../../../blocks/canvas/editor-utils/editor-utils.js'));
   ({ canvasBus } = await import('../../../../blocks/canvas/utils/canvas-bus.js'));
+  ({ getExtensionsBridge } = await import('../../../../blocks/canvas/editor-utils/extensions-bridge.js'));
 });
 
 const para = (text) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
@@ -122,6 +124,7 @@ describe('section names — outline panel', () => {
   let el;
 
   beforeEach(async () => {
+    getExtensionsBridge().view = makeRealView({ type: 'doc', content: [{ type: 'paragraph' }] });
     el = document.createElement('ew-page-outline');
     el._checkBlockLibrary = async () => {};
     document.body.appendChild(el);
@@ -130,7 +133,10 @@ describe('section names — outline panel', () => {
     await el.updateComplete;
   });
 
-  afterEach(() => el.remove());
+  afterEach(() => {
+    el.remove();
+    getExtensionsBridge().view = null;
+  });
 
   const setSections = async (sections) => {
     el._sections = sections;
