@@ -159,7 +159,7 @@ export default class DaBrowseSearch extends NxSearch {
       || this.shadowRoot.activeElement !== this.input) return;
     this.updateSuggestions();
     const request = {};
-    const fullpath = this.fullpath;
+    const { fullpath } = this;
     this._metadataRequest = request;
     try {
       const snapshot = await this.getDirectory();
@@ -167,7 +167,8 @@ export default class DaBrowseSearch extends NxSearch {
         || snapshot.fullpath !== fullpath || !this.value.trim()) return;
       if (this._catalog?.version === snapshot.version && this._catalog.fullpath === fullpath) {
         this.updateSuggestions();
-        return this._catalog.ready;
+        await this._catalog.ready;
+        return;
       }
       this._catalog?.controller?.abort();
       const catalog = {
@@ -180,9 +181,10 @@ export default class DaBrowseSearch extends NxSearch {
       this._catalog = catalog;
       this.updateSuggestions();
       catalog.ready = this.loadCatalog(catalog, snapshot);
-      return catalog.ready;
+      await catalog.ready;
     } catch (error) {
-      if (this._metadataRequest !== request || !this.isConnected || fullpath !== this.fullpath) return;
+      if (this._metadataRequest !== request || !this.isConnected
+        || fullpath !== this.fullpath) return;
       this._catalog = { fullpath, items: [], loading: false, error: error.message };
       this.updateSuggestions();
     }
@@ -203,7 +205,9 @@ export default class DaBrowseSearch extends NxSearch {
     this._navigationRequest = request;
     try {
       const href = await getBrowseItemHref({ ...option.item, editor: this.editor });
-      if (this._navigationRequest === request && this.isConnected && !this.disabled) this.navigate(href);
+      if (this._navigationRequest === request && this.isConnected && !this.disabled) {
+        this.navigate(href);
+      }
     } catch (error) {
       if (this._navigationRequest !== request || !this.isConnected) return;
       this._status = `Could not open file: ${error.message}`;

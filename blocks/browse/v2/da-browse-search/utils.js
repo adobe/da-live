@@ -18,9 +18,9 @@ export async function loadFilenames({ snapshot, list, signal, onPage }) {
     signal.throwIfAborted();
     if (seenTokens.has(token)) throw new Error('Directory pagination did not advance');
     seenTokens.add(token);
-    const page = await timeoutWrapper({
-      fn: () => list(fullpath, { continuationToken: token }),
-    });
+    const requestToken = token;
+    const fn = () => list(fullpath, { continuationToken: requestToken });
+    const page = await timeoutWrapper({ fn });
     signal.throwIfAborted();
     if (!page.ok || !Array.isArray(page.items)) {
       throw new Error(page.error || `Directory request failed${page.status ? ` (${page.status})` : ''}`);
