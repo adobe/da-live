@@ -25,7 +25,7 @@ export function takePendingPreflightRequest() {
 
 async function openPreflightPanel() {
   const { PANEL_EVENT } = await panelEvents();
-  document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'tools', id: 'governance' } }));
+  document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'tools', id: 'preflight' } }));
 }
 
 const handleRunRequest = (detail) => {

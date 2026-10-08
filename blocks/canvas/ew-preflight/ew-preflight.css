@@ -5,7 +5,7 @@
 
 /* Loading / error states. The evaluation results themselves are drawn by the
    shared <nx-page-eval> renderer, which carries its own styles. */
-.ew-governance-status {
+.ew-preflight-status {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -18,7 +18,7 @@
   font-size: 14px;
 }
 
-.ew-governance-retry {
+.ew-preflight-retry {
   padding: 6px 14px;
   background: var(--s2-gray-100);
   color: var(--s2-gray-800);
@@ -29,6 +29,6 @@
   cursor: pointer;
 }
 
-.ew-governance-retry:hover {
+.ew-preflight-retry:hover {
   background: var(--s2-gray-200);
 }

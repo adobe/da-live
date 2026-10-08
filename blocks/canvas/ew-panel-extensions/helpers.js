@@ -544,15 +544,15 @@ function createVersioningView() {
   };
 }
 
-function createGovernanceView() {
+function createPreflightView() {
   return {
-    id: 'governance',
+    id: 'preflight',
     label: 'Preflight',
     section: 'Editor',
     firstParty: true,
     load: async () => {
-      await import('../ew-governance/ew-governance.js');
-      return document.createElement('ew-governance');
+      await import('../ew-preflight/ew-preflight.js');
+      return document.createElement('ew-preflight');
     },
   };
 }
@@ -686,7 +686,7 @@ export async function getCanvasToolPanelViews({ org, site }) {
     createFileExplorerView(),
     createVersioningView(),
     createCommentsView(),
-    createGovernanceView(),
+    createPreflightView(),
     ...library.map((ext) => extensionToPanelView(ext, 'Library')),
     ...thirdParty.map((ext) => extensionToPanelView(ext, 'Extensions')),
   ];

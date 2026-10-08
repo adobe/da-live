@@ -23,7 +23,7 @@ describe('preflight-responder', () => {
     takePendingPreflightRequest();
   });
 
-  it('opens the governance panel and parks the request on a run', async () => {
+  it('opens the preflight panel and parks the request on a run', async () => {
     let openDetail;
     const onOpen = (e) => { openDetail = e.detail; };
     document.addEventListener('nx-panel-open', onOpen);
@@ -31,7 +31,7 @@ describe('preflight-responder', () => {
     await tick();
     document.removeEventListener('nx-panel-open', onOpen);
 
-    expect(openDetail).to.deep.equal({ section: 'tools', id: 'governance' });
+    expect(openDetail).to.deep.equal({ section: 'tools', id: 'preflight' });
   });
 
   it('takePendingPreflightRequest returns then clears the parked request', async () => {

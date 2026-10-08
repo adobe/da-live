@@ -30,7 +30,7 @@ function ensureRenderer() {
   return rendererPromise;
 }
 
-class EwGovernance extends LitElement {
+class EwPreflight extends LitElement {
   static properties = {
     _loading: { state: true },
     _error: { state: true },
@@ -182,16 +182,16 @@ class EwGovernance extends LitElement {
   render() {
     if (this._loading && !this._data) {
       return html`
-        <div class="ew-governance-status">
+        <div class="ew-preflight-status">
           <span class="da-loading-spinner"></span>
           <span>Evaluating page…</span>
         </div>`;
     }
     if (this._error && !this._data) {
       return html`
-        <div class="ew-governance-status" role="alert">
+        <div class="ew-preflight-status" role="alert">
           <p>${this._error}</p>
-          <button class="ew-governance-retry" @click=${() => this._evaluateAndReport()}>Try again</button>
+          <button class="ew-preflight-retry" @click=${() => this._evaluateAndReport()}>Try again</button>
         </div>`;
     }
     if (!this._data) return nothing;
@@ -199,6 +199,6 @@ class EwGovernance extends LitElement {
   }
 }
 
-if (!customElements.get('ew-governance')) {
-  customElements.define('ew-governance', EwGovernance);
+if (!customElements.get('ew-preflight')) {
+  customElements.define('ew-preflight', EwPreflight);
 }

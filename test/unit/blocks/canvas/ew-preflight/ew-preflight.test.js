@@ -1,7 +1,7 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
-import { adaptEvaluation } from '../../../../../blocks/canvas/ew-governance/adapter.js';
+import { adaptEvaluation } from '../../../../../blocks/canvas/ew-preflight/adapter.js';
 
 const tick = () => new Promise((resolve) => { setTimeout(resolve, 20); });
 
@@ -26,17 +26,17 @@ function captureStatus() {
   };
 }
 
-describe('ew-governance preflight gate', () => {
+describe('ew-preflight preflight gate', () => {
   let canvasBus;
 
   before(async () => {
     setNx('/test/fixtures/nx', { hostname: 'example.com' });
-    await import('../../../../../blocks/canvas/ew-governance/ew-governance.js');
+    await import('../../../../../blocks/canvas/ew-preflight/ew-preflight.js');
     ({ canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js'));
   });
 
   it('reports success when no checks failed, echoing the run path + requestId', async () => {
-    const el = stubEvaluate(document.createElement('ew-governance'), { failed: 0 });
+    const el = stubEvaluate(document.createElement('ew-preflight'), { failed: 0 });
     const cap = captureStatus();
     await el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g1' });
     cap.stop();
@@ -44,7 +44,7 @@ describe('ew-governance preflight gate', () => {
   });
 
   it('reports fail when a check failed', async () => {
-    const el = stubEvaluate(document.createElement('ew-governance'), { failed: 1 });
+    const el = stubEvaluate(document.createElement('ew-preflight'), { failed: 1 });
     const cap = captureStatus();
     await el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g2' });
     cap.stop();
@@ -65,7 +65,7 @@ describe('ew-governance preflight gate', () => {
         ],
       },
     });
-    const el = document.createElement('ew-governance');
+    const el = document.createElement('ew-preflight');
     el._evaluate = async () => { el._data = data; };
     const cap = captureStatus();
     await el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'sitefail' });
@@ -96,7 +96,7 @@ describe('ew-governance preflight gate', () => {
         ],
       },
     });
-    const el = document.createElement('ew-governance');
+    const el = document.createElement('ew-preflight');
     el._evaluate = async () => { el._data = data; };
     const cap = captureStatus();
     await el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'sitepass' });
@@ -120,7 +120,7 @@ describe('ew-governance preflight gate', () => {
         ],
       },
     });
-    const el = document.createElement('ew-governance');
+    const el = document.createElement('ew-preflight');
     el._evaluate = async () => { el._data = data; };
     document.body.appendChild(el);
     try {
@@ -136,7 +136,7 @@ describe('ew-governance preflight gate', () => {
   });
 
   it('reports fail when the evaluation errors', async () => {
-    const el = stubEvaluate(document.createElement('ew-governance'), { error: 'boom' });
+    const el = stubEvaluate(document.createElement('ew-preflight'), { error: 'boom' });
     const cap = captureStatus();
     await el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g3' });
     cap.stop();
@@ -144,7 +144,7 @@ describe('ew-governance preflight gate', () => {
   });
 
   it('reports cancelled when the panel closes before the run settles', async () => {
-    const el = document.createElement('ew-governance');
+    const el = document.createElement('ew-preflight');
     let release;
     el._evaluate = () => new Promise((resolve) => { release = resolve; });
     const running = el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g4' });
@@ -164,7 +164,7 @@ describe('ew-governance preflight gate', () => {
   });
 
   it('_cancelGate emits cancelled for an in-flight gate (disconnect backstop)', () => {
-    const el = document.createElement('ew-governance');
+    const el = document.createElement('ew-preflight');
     el._gateRequestId = 'g5';
     el._gatePath = '/org/site/a.html';
     el._gateSettled = false;
@@ -175,7 +175,7 @@ describe('ew-governance preflight gate', () => {
   });
 
   it('dedupes a repeated requestId — runs the gate once', async () => {
-    const el = stubEvaluate(document.createElement('ew-governance'), { failed: 0 });
+    const el = stubEvaluate(document.createElement('ew-preflight'), { failed: 0 });
     const cap = captureStatus();
     await el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g6' });
     await el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g6' });
@@ -184,7 +184,7 @@ describe('ew-governance preflight gate', () => {
   });
 
   it('a non-gate refresh emits a requestId-less status at the derived doc path', async () => {
-    const el = stubEvaluate(document.createElement('ew-governance'), { failed: 0 });
+    const el = stubEvaluate(document.createElement('ew-preflight'), { failed: 0 });
     el._hashState = { org: 'o', site: 's', path: '/p' };
     const cap = captureStatus();
     await el._evaluateAndReport();
@@ -201,7 +201,7 @@ describe('ew-governance preflight gate', () => {
     canvasBus.preflightRunRequest.emit({ paths: ['/org/site/a.html'], requestId: 'g7' });
     await tick();
 
-    const el = stubEvaluate(document.createElement('ew-governance'), { failed: 0 });
+    const el = stubEvaluate(document.createElement('ew-preflight'), { failed: 0 });
     const cap = captureStatus();
     document.body.appendChild(el);
     await tick();
