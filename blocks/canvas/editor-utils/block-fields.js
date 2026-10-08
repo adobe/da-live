@@ -81,7 +81,9 @@ export function buildBlockFieldDefinitions(match, { multi = false } = {}) {
     throw new Error('Block fields metadata must be a table with a Fields header.');
   }
   if (rows.length !== (multi ? 2 : template.childCount) || (multi && template.childCount < 2)) {
-    throw new Error('Block fields metadata rows do not match the library template.');
+    throw new Error(multi
+      ? `Multi-item block fields metadata rows must contain exactly two rows: a Fields header and one shared first-item row. The library's ${template.childCount - 1} sample items do not need separate metadata rows, and a first template item must exist.`
+      : 'Block fields metadata rows do not match the library template.');
   }
   const definitions = [];
   [...rows].slice(1).forEach((row, index) => {

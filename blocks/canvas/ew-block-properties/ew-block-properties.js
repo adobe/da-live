@@ -580,22 +580,22 @@ class EwBlockProperties extends LitElement {
         isMultiBlock(org, site, name), loadBlockLibrary(org, site), loadBlockOptions(org, site),
       ]);
       const match = await getBlockFieldTemplate(blocks, name, variant, view.state.schema);
-      const definitions = buildBlockFieldDefinitions(match, { multi });
       if (loadId !== this._fieldLoadId || !this.isConnected) return;
-      this._fieldDefinitions = definitions;
       this._isMulti = multi;
       this._blockOptions = processBlockOptions(options);
-      if (!match || !('fields' in match.item) || !definitions.length) {
-        this._generateFieldsContext = {
-          org,
-          site,
-          name,
-          variant,
-          multi,
-          librarySources: ext?.sources ?? [],
-          blockPath: match?.path,
-        };
-      }
+      this._generateFieldsContext = {
+        org,
+        site,
+        name,
+        variant,
+        multi,
+        templateRowCount: match ? match.template.childCount - 1 : null,
+        librarySources: ext?.sources ?? [],
+        blockPath: match?.path,
+      };
+      const definitions = buildBlockFieldDefinitions(match, { multi });
+      this._fieldDefinitions = definitions;
+      if (definitions.length) this._generateFieldsContext = null;
       const config = definitions.some((field) => field.type === 'image')
         ? await getRepositoryConfig(org, site) : null;
       if (loadId !== this._fieldLoadId || !this.isConnected) return;
@@ -603,6 +603,12 @@ class EwBlockProperties extends LitElement {
     } catch (error) {
       if (loadId !== this._fieldLoadId || !this.isConnected) return;
       this._fieldError = `Unable to load block fields: ${error.message}`;
+      if (this._generateFieldsContext) {
+        this._generateFieldsContext = {
+          ...this._generateFieldsContext,
+          validationError: error.message,
+        };
+      }
     }
   }
 
@@ -622,12 +628,31 @@ Selected block:
 - Variant: ${context.variant || '(no variant)'}
 - Exact block table header: ${block.node.firstChild.textContent}
 - Multi-item block: ${context.multi ? 'yes' : 'no'}
-- Matching block library document: ${context.blockPath || 'Locate it by following the library index entries below.'}
+${context.multi ? `- Library template sample items: ${context.templateRowCount ?? '(not loaded; inspect the library)'}
+- Selected page items: ${block.node.childCount - 1}
+` : `- Library template content rows: ${context.templateRowCount ?? '(not loaded; inspect the library)'}
+`}- Matching block library document: ${context.blockPath || 'Locate it by following the library index entries below.'}
 
 Configured block library index sources:
 ${library}
 
-Inspect the block library before generating anything:
+Block type rules (authoritative):
+- ONLY the selected block's type configuration in the block library editor sheet determines whether it is multi-item. Never infer this from row count, similar-looking rows, the block name, or the presence of a list.
+- If the block is NOT configured as multi, generate fields for ALL N content rows, even if those rows look like repeated cards. They are not sample items to skip.
+- If the block IS configured as multi, generate fields for ONLY the FIRST content row, regardless of N. Only in this case are later library rows sample items sharing the first row's schema.
+- The block name/variant header is not included in N.
+
+${context.multi ? `Repeating-block contract (authoritative):
+- The editor sheet configures block=${context.name}, property=multi. This configuration determines repeatability, NOT the number of library rows or the presence of a list.
+- Each content table row is one repeating item. Multiple library rows are sample items, not a fixed item count. Three sample cards still use ONE shared item schema.
+- The sidebar can add, delete and reorder whole item rows, and expand each item to edit its fields. Do not claim that item counts are fixed or that only list fields support dynamic items.
+- Keep the existing table-row block structure. Do NOT convert cards to <ul>/<ol> or change any template content to make the block repeatable. List fields are a separate feature inside an item.
+
+` : ''}${context.validationError ? `Existing fields metadata failed sidebar validation:
+${context.validationError}
+Inspect and repair ONLY this variant's invalid fields entry. Reuse appropriate existing labels, but correct its rows/cells to the schema rules below. Do not duplicate per-item metadata rows.
+
+` : ''}Inspect the block library before generating anything:
 1. Open the configured library index source(s) and follow the block's document path. If a matching library document is listed above, inspect that document.
 2. Find ONLY the "${context.name}" variant "${context.variant || '(no variant)'}". Match the actual block table header or block CSS classes, not just the display heading: a display label such as "Hero (Text Start)" can describe the actual "hero (left)" variant.
 3. Read that variant's template rows, cells, text elements, images, lists, and blockquotes. Generate fields from the LIBRARY TEMPLATE, not from extra content in the current page. If the exact variant cannot be found or the source cannot be read, explain what is missing rather than inventing a schema.
@@ -649,7 +674,21 @@ How sidebar fields work:
 - In a two-column key/value row with a single text key and a single text value, a matching key in the block library options sheet makes the value a dropdown. Match the actual key text, not the sidebar field label; block names and keys are normalized for case and whitespace. Block-specific choices override shared "all" choices. Choices use the configured display labels and stored values (for example, Blue=blue). Unmatched rows stay text fields, and a current value outside the choices remains visible without being overwritten.
 - Sidebar values come from the selected page block; edits update that block while preserving its existing heading/paragraph tags and attributes. Additional trailing page content not described by the fields remains untouched.
 
-Illustrative HTML ONLY: the non-repeating Everything Block and its corresponding library metadata.
+${context.multi ? `Illustrative HTML ONLY: a repeating Cards block with THREE sample items and ONE shared first-item schema. These are table-row items, not a list field.
+<div class="cards">
+  <div><div><picture><img src="/first.png" alt="First"></picture></div><div><h2>First title</h2><p>$39.99</p><p><a href="/first">Shop now</a></p></div></div>
+  <div><div><picture><img src="/second.png" alt="Second"></picture></div><div><h2>Second title</h2><p>$249.99</p><p><a href="/second">Shop now</a></p></div></div>
+  <div><div><picture><img src="/third.png" alt="Third"></picture></div><div><h2>Third title</h2><p>$14.99</p><p><a href="/third">Shop now</a></p></div></div>
+</div>
+<div class="library-metadata">
+  <div><div><p>fields</p></div><div>
+    <table><tbody>
+      <tr><td colspan="2"><p>fields</p></td></tr>
+      <tr><td><p>Image</p></td><td><p>Title</p><p>Price</p><p>Link</p></td></tr>
+    </tbody></table>
+  </div></div>
+</div>
+` : `Illustrative HTML ONLY: the non-repeating Everything Block and its corresponding library metadata.
 The first content row has seven fields: heading, tagline, image, one whole list, quote, long paragraph, and link. The next row hides the Color key with IGNORE but exposes its Green value. The final row exposes both columns as text fields.
 <div class="everything-block">
   <div>
@@ -699,23 +738,8 @@ The first content row has seven fields: heading, tagline, image, one whole list,
 </div>
 
 In this example, the long paragraph is read-only, the quote is editable, and the link exposes both "A link" and its URL. If the existing options sheet has a row with blocks=everything-block, key=Color, values=Green|Blue|Red (or a shared "all" row for that key), the Color value is a dropdown; otherwise it remains a text field. The fields table itself does not define dropdown choices.
-
-${context.multi ? `For THIS multi-item block, do not copy the non-repeating example's extra metadata rows. Here is a separate illustrative Cards example with two sample items but only ONE item row in its fields metadata:
-<div class="cards">
-  <div><div><picture><img src="/first.png" alt="First"></picture></div><div><h2>First title</h2><p>First description</p></div></div>
-  <div><div><picture><img src="/second.png" alt="Second"></picture></div><div><h2>Second title</h2><p>Second description</p></div></div>
-</div>
-<div class="library-metadata">
-  <div><div><p>fields</p></div><div>
-    <table><tbody>
-      <tr><td colspan="2"><p>fields</p></td></tr>
-      <tr><td><p>Image</p></td><td><p>Title</p><p>Description</p></td></tr>
-    </tbody></table>
-  </div></div>
-</div>
-
-` : ''}
-Adapt the rows, cells, and labels to the actual selected library variant; do not blindly copy this example. Add the generated fields table to that variant's existing library metadata, or create associated library metadata if absent. Fill an empty fields entry if one exists. Preserve description, search tags, other metadata, all template content, and all other variants. Do not replace the block or edit the current page to add this schema. If nonempty fields already exist in the source, report them rather than overwriting them. Show the generated table and identify the exact library document and variant to which it belongs.`;
+`}
+Adapt the rows, cells, and labels to the actual selected library variant; do not blindly copy this example. Add the generated fields table to that variant's existing library metadata, or create associated library metadata if absent. Fill an empty fields entry if one exists. Preserve description, search tags, other metadata, all template content, and all other variants. Do not replace the block or edit the current page to add this schema. ${context.validationError ? 'Repair the existing invalid fields entry identified above; do not overwrite valid fields in other variants.' : 'If nonempty fields already exist in the source, report them rather than overwriting them.'} Show the generated table and identify the exact library document and variant to which it belongs.`;
     this._fieldsGenerationRequested = true;
     document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat', options: { text, autoSend: true } } }));
   }
@@ -904,7 +928,9 @@ Adapt the rows, cells, and labels to the actual selected library variant; do not
       ${this._generateFieldsContext ? html`
         <button type="button" class="nx-form-btn-secondary ew-block-generate-fields"
           ?disabled=${this._refreshingLibrary}
-          @click=${this._onGenerateFields}>Generate fields</button>
+          @click=${this._onGenerateFields}>
+          ${this._generateFieldsContext.validationError ? 'Repair fields' : 'Generate fields'}
+        </button>
       ` : nothing}
       ${this._fieldsGenerationRequested && !this._fieldDefinitions.length ? html`
         <button type="button" class="nx-form-btn-secondary ew-block-refresh-library"

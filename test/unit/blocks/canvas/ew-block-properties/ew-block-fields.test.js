@@ -49,6 +49,17 @@ const multiLibraryHtml = (fields = multiFieldsTable, variant = 'left', name = 'T
     <div><div><picture><img src="/other-template.png"></picture></div><div>${multiContent('Other')}</div></div>
   </div>${fields === null ? '' : `<div class="library-metadata"><div><div>fields</div><div>${fields}</div></div></div>`}
   </div></body>`;
+const cardsFieldsTable = `<table><tr><td colspan="2">fields</td></tr>
+  <tr><td>Image</td><td><p>Title</p><p>Price</p><p>Link</p></td></tr></table>`;
+const cardsBlockHtml = `<div class="cards default">
+  ${[['First', '$39.99'], ['Second', '$249.99'], ['Third', '$14.99']].map(([name, price]) => `
+    <div><div><picture><img src="/${name.toLowerCase()}.png"></picture></div>
+      <div><h3>${name} title</h3><p>${price}</p><p><a href="/${name.toLowerCase()}">Shop now</a></p></div></div>
+  `).join('')}</div>`;
+const cardsLibraryHtml = (fields = cardsFieldsTable) => `<body><div><h2>Cards - Default</h2>
+  ${cardsBlockHtml}
+  ${fields === null ? '' : `<div class="library-metadata"><div><div>fields</div><div>${fields}</div></div></div>`}
+  </div></body>`;
 
 describe('ew-block-properties library fields', () => {
   let el;
@@ -420,12 +431,12 @@ describe('ew-block-properties library fields', () => {
     expect(generateButton()).not.to.equal(null);
   });
 
-  it('does not offer generation when existing fields metadata is malformed', async () => {
+  it('offers targeted repair while reporting malformed existing fields metadata', async () => {
     resetBlockLibraryCache();
     html = libraryHtml('not a table');
     await el._loadFields();
     await el.updateComplete;
-    expect(generateButton()).to.equal(null);
+    expect(generateButton().textContent.trim()).to.equal('Repair fields');
     expect(el.shadowRoot.querySelector('[role="alert"]').textContent).to.include('Fields header');
   });
 
@@ -542,6 +553,112 @@ describe('ew-block-properties library fields', () => {
     itemCard(index).querySelector('.ew-block-item-toggle').click();
     await el.updateComplete;
   };
+  const setCardsTemplate = async (fields = cardsFieldsTable) => {
+    blockEditor = [{ block: 'cards', property: 'multi' }];
+    html = cardsLibraryHtml(fields);
+    const { dom } = htmlToProse(`<body><main><div>${cardsBlockHtml}</div></main></body>`);
+    const container = document.createElement('div');
+    container.append(dom.querySelector('table'));
+    const doc = PMDOMParser.fromSchema(view.state.schema).parse(container);
+    const tr = view.state.tr.replaceWith(0, view.state.doc.content.size, doc.content);
+    view.dispatch(tr.setSelection(NodeSelection.create(tr.doc, 0)));
+    resetBlockLibraryCache();
+    resetBlockOptionsCache();
+    el._refresh();
+    await Promise.all([el._loadMultiBlock(), el._loadFields()]);
+    await el.updateComplete;
+  };
+
+  it('treats three library Cards rows as samples and sends their repeatability explicitly', async () => {
+    await setCardsTemplate(null);
+    expect(el._isMulti).to.equal(true);
+    expect(el.shadowRoot.querySelectorAll('.ew-block-multi-item').length).to.equal(3);
+    expect(view.state.doc.firstChild.textContent).not.to.include('List');
+    const opened = sinon.spy();
+    document.addEventListener(PANEL_EVENT.OPEN, opened);
+    try {
+      generateButton().click();
+    } finally {
+      document.removeEventListener(PANEL_EVENT.OPEN, opened);
+    }
+    const { options } = opened.firstCall.args[0].detail;
+    expect(options.autoSend).to.equal(true);
+    for (const fragment of [
+      'Block name: cards', 'Variant: default', 'Multi-item block: yes',
+      'Library template sample items: 3', 'Selected page items: 3',
+      'block=cards, property=multi', 'Three sample cards still use ONE shared item schema',
+      'Do NOT convert cards to <ul>/<ol>', 'List fields are a separate feature',
+      'THREE sample items and ONE shared first-item schema',
+    ]) expect(options.text).to.include(fragment);
+    expect(options.text).not.to.include('<div class="everything-block">');
+  });
+
+  it('generates fields for all three Cards rows when Cards is not configured as multi', async () => {
+    await setCardsTemplate(null);
+    blockEditor = [{ block: 'hero', property: 'multi' }];
+    resetBlockOptionsCache();
+    await Promise.all([el._loadMultiBlock(), el._loadFields()]);
+    await el.updateComplete;
+    expect(el._isMulti).to.equal(false);
+    expect(el.shadowRoot.querySelector('.ew-block-items')).to.equal(null);
+    const opened = sinon.spy();
+    document.addEventListener(PANEL_EVENT.OPEN, opened);
+    try {
+      generateButton().click();
+    } finally {
+      document.removeEventListener(PANEL_EVENT.OPEN, opened);
+    }
+    const { options } = opened.firstCall.args[0].detail;
+    for (const fragment of [
+      'Multi-item block: no', 'Library template content rows: 3',
+      'generate fields for ALL N content rows',
+      'Never infer this from row count',
+      'Its field schema must describe all of the library template content rows',
+    ]) expect(options.text).to.include(fragment);
+    expect(options.text).not.to.include('Library template sample items:');
+    expect(options.text).not.to.include('Repeating-block contract');
+    expect(options.text).not.to.include('<div class="cards">');
+    const container = document.createElement('div');
+    container.innerHTML = cardsFieldsTable;
+    const fields = container.firstChild;
+    fields.tBodies[0].append(fields.rows[1].cloneNode(true), fields.rows[1].cloneNode(true));
+    const { doc } = view.state;
+    html = cardsLibraryHtml(fields.outerHTML);
+    await el._onRefreshLibrary();
+    await el.updateComplete;
+    expect(el._fieldError).to.equal('');
+    expect(el._fieldDefinitions.length).to.equal(12);
+    expect(el._fields.filter((field) => field.label === 'Title').map((field) => field.value))
+      .to.deep.equal(['First title', 'Second title', 'Third title']);
+    expect(generateButton()).to.equal(null);
+    expect(view.state.doc).to.equal(doc);
+  });
+
+  it('reuses a first-item schema across three sample Cards and newly added cards', async () => {
+    await setCardsTemplate();
+    expect(el._fieldError).to.equal('');
+    expect(el._fieldDefinitions.length).to.equal(4);
+    expect(el._fields.length).to.equal(12);
+    expect(generateButton()).to.equal(null);
+    await expandItem(2);
+    expect(itemField(2, 'Title').querySelector('input').value).to.equal('Third title');
+    expect(itemField(2, 'Price').querySelector('input').value).to.equal('$14.99');
+    expect(itemField(2, 'Link').querySelector('input[type="url"]').value).to.equal('/third');
+    const table = view.state.doc.firstChild;
+    const title = itemField(2, 'Title').querySelector('input');
+    title.value = 'Updated third card';
+    title.dispatchEvent(new Event('blur'));
+    await el.updateComplete;
+    expect(view.state.doc.firstChild.child(1)).to.equal(table.child(1));
+    expect(view.state.doc.firstChild.child(2)).to.equal(table.child(2));
+    el._onAddItem();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelectorAll('.ew-block-multi-item').length).to.equal(4);
+    expect(el._fields.length).to.equal(16);
+    await expandItem(3);
+    expect(itemField(3, 'Title').querySelector('input').value).to.equal('First title');
+    expect(itemField(2, 'Title').querySelector('input').value).to.equal('Updated third card');
+  });
 
   it('places the grab handle before the expansion chevron', async () => {
     await setMultiTemplate();
@@ -733,7 +850,7 @@ describe('ew-block-properties library fields', () => {
     for (const fragment of [
       'Multi-item block: yes', 'ONLY the first item row', 'exactly two rows',
       'Every repeating item reuses this schema', 'do not duplicate the metadata rows',
-      'collapsible card with a chevron',
+      'collapsible card with a chevron', 'Library template sample items: 2',
     ]) expect(options.text).to.include(fragment);
     const example = options.text.slice(
       options.text.indexOf('<div class="cards">'),
@@ -746,9 +863,13 @@ describe('ew-block-properties library fields', () => {
     blockContainer.append(dom.querySelector('table').cloneNode(true));
     const template = PMDOMParser.fromSchema(view.state.schema).parse(blockContainer).firstChild;
     const definitions = buildBlockFieldDefinitions({ item: { fields: container.querySelector('.library-metadata table') }, template }, { multi: true });
-    expect(definitions.map((field) => field.label)).to.deep.equal(['Image', 'Title', 'Description']);
+    expect(template.childCount).to.equal(4);
+    expect(container.querySelector('.library-metadata table').rows.length).to.equal(2);
+    expect(definitions.map((field) => field.label)).to.deep.equal(['Image', 'Title', 'Price', 'Link']);
     expect(resolveBlockFields({ node: template, from: 0 }, definitions, { itemIndex: 1 })[1].value)
       .to.equal('Second title');
+    expect(resolveBlockFields({ node: template, from: 0 }, definitions, { itemIndex: 2 })[1].value)
+      .to.equal('Third title');
     html = multiLibraryHtml();
     await el._onRefreshLibrary();
     await el.updateComplete;
@@ -758,15 +879,42 @@ describe('ew-block-properties library fields', () => {
     expect(itemField(1, 'Title').querySelector('input').value).to.equal('Second title');
   });
 
-  it('reports duplicated per-item metadata rows instead of offering to overwrite malformed fields', async () => {
+  it('offers targeted repair when all three sample Cards have separate metadata rows', async () => {
     const container = document.createElement('div');
-    container.innerHTML = multiFieldsTable;
+    container.innerHTML = cardsFieldsTable;
     const fields = container.firstChild;
-    fields.tBodies[0].append(fields.rows[1].cloneNode(true));
-    await setMultiTemplate(fields.outerHTML);
-    expect(generateButton()).to.equal(null);
-    expect(el._fieldError).to.include('metadata rows');
+    fields.tBodies[0].append(fields.rows[1].cloneNode(true), fields.rows[1].cloneNode(true));
+    await setCardsTemplate(fields.outerHTML);
+    const { doc } = view.state;
+    expect(el._isMulti).to.equal(true);
+    expect(generateButton().textContent.trim()).to.equal('Repair fields');
+    expect(el._fieldError).to.include('exactly two rows');
+    expect(el._fieldError).to.include('3 sample items');
+    expect(el.shadowRoot.querySelectorAll('.ew-block-multi-item').length).to.equal(3);
     expect(el.shadowRoot.querySelector('.ew-block-item-toggle')).to.equal(null);
+    const opened = sinon.spy();
+    document.addEventListener(PANEL_EVENT.OPEN, opened);
+    try {
+      generateButton().click();
+    } finally {
+      document.removeEventListener(PANEL_EVENT.OPEN, opened);
+    }
+    const { options } = opened.firstCall.args[0].detail;
+    expect(options.text).to.include('Multi-item block: yes');
+    expect(options.text).to.include('Existing fields metadata failed sidebar validation');
+    expect(options.text).to.include('Inspect and repair ONLY this variant');
+    expect(options.text).to.include('do not overwrite valid fields in other variants');
+    expect(options.text).not.to.include('report them rather than overwriting them');
+    expect(view.state.doc).to.equal(doc);
+    html = cardsLibraryHtml();
+    await el._onRefreshLibrary();
+    await el.updateComplete;
+    expect(el._fieldError).to.equal('');
+    expect(generateButton()).to.equal(null);
+    expect(el.shadowRoot.querySelectorAll('.ew-block-item-toggle').length).to.equal(3);
+    expect(view.state.doc).to.equal(doc);
+    await expandItem(2);
+    expect(itemField(2, 'Title').querySelector('input').value).to.equal('Third title');
   });
 
   const setKeyValueTemplate = async (value = 'green', templateValue = value, key = 'Color') => {

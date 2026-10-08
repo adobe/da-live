@@ -35,7 +35,7 @@ describe('block fields', () => {
       <td><h2>${name}</h2><p><a href="/${name}">${name} link</a></p>
         <ul><li>${name} one</li><li>${name} two</li></ul></td></tr>`;
     const table = dom(`<table><tr><td colspan="2">Hero (left)</td></tr>
-      ${row('Template')}${row('Another template item')}</table>`);
+      ${row('Template')}${row('Another template item')}${row('Third template item')}</table>`);
     const fields = dom(`<table><tr><td colspan="2">fields</td></tr>
       <tr><td>Image</td><td><p>Title</p><p>Link</p><p>List</p></td></tr></table>`);
     const match = { item: { fields }, template: selectedBlock(table).node };
@@ -67,9 +67,11 @@ describe('block fields', () => {
   });
 
   it('requires only a header and first-item row for multi-block fields metadata', () => {
-    const table = dom('<table><tr><td>Hero (left)</td></tr><tr><td>First</td></tr><tr><td>Second</td></tr></table>');
-    const fields = dom('<table><tr><td>fields</td></tr><tr><td>Title</td></tr><tr><td>Title</td></tr></table>');
-    expect(() => buildBlockFieldDefinitions({ item: { fields }, template: selectedBlock(table).node }, { multi: true })).to.throw('metadata rows');
+    const table = dom('<table><tr><td>Cards (default)</td></tr><tr><td>First</td></tr><tr><td>Second</td></tr><tr><td>Third</td></tr></table>');
+    const fields = dom('<table><tr><td>fields</td></tr><tr><td>Title</td></tr><tr><td>Title</td></tr><tr><td>Title</td></tr></table>');
+    const match = { item: { fields }, template: selectedBlock(table).node };
+    expect(() => buildBlockFieldDefinitions(match, { multi: true }))
+      .to.throw("metadata rows must contain exactly two rows: a Fields header and one shared first-item row. The library's 3 sample items");
   });
 
   it('supports the everything block metadata, including a single field for the list', async () => {
