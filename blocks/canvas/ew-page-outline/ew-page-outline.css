@@ -65,11 +65,29 @@ input {
   margin-inline-start: var(--s2-spacing-50);
 }
 
+.row-cell {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+}
+
 .drag-handle {
-  display: block;
+  display: flex;
   flex-shrink: 0;
-  width: 16px;
-  height: 16px;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  margin-inline-start: -4px;
+  cursor: grab;
+
+  &[aria-pressed="true"] {
+    background: var(--s2-gray-200);
+  }
+}
+
+.section-header .drag-handle {
+  margin-inline-end: -4px;
 }
 
 .section-name-input {
@@ -96,14 +114,6 @@ input {
   padding: var(--s2-spacing-75) var(--s2-spacing-100);
   padding-inline-start: var(--s2-spacing-300);
   cursor: grab;
-
-  &:has(> .drag-handle) {
-    padding-inline-start: var(--s2-spacing-100);
-  }
-
-  > .drag-handle {
-    margin-inline-end: calc(var(--s2-spacing-300) - var(--s2-spacing-100) + var(--s2-spacing-75));
-  }
   font-size: var(--s2-body-size-s);
   font-weight: 500;
   color: var(--s2-gray-800);
@@ -123,9 +133,17 @@ input {
     background: var(--s2-blue-100);
     color: var(--s2-blue-900);
   }
+
+  &:has(> .row-cell > .drag-handle) {
+    padding-inline-start: var(--s2-spacing-100);
+  }
+
+  > .row-cell > .drag-handle {
+    margin-inline-end: calc(var(--s2-spacing-300) - var(--s2-spacing-100) + var(--s2-spacing-75) - 4px);
+  }
 }
 
-[role="treeitem"]:focus-visible {
+[role="row"]:focus-visible {
   outline: 2px solid var(--s2-blue-700);
   outline-offset: -2px;
   border-radius: var(--s2-corner-radius-75);
@@ -188,8 +206,8 @@ input {
   padding-inline-start: var(--s2-spacing-500);
   min-height: 44px;
 
-  > .drag-handle {
-    margin-inline-end: calc(var(--s2-spacing-500) - var(--s2-spacing-100) + var(--s2-spacing-75));
+  > .row-cell > .drag-handle {
+    margin-inline-end: calc(var(--s2-spacing-500) - var(--s2-spacing-100) + var(--s2-spacing-75) - 4px);
   }
 }
 
@@ -232,7 +250,7 @@ input {
 }
 
 .action-btn {
-  visibility: hidden;
+  opacity: 0;
 }
 
   svg.icon {
@@ -243,8 +261,18 @@ input {
 
 .selected .action-btn,
 .action-btn:focus-visible,
-.block-item:hover .action-btn {
-  visibility: visible;
+.block-item:hover .action-btn,
+.block-item:focus-within .action-btn {
+  opacity: 1;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .placeholder {

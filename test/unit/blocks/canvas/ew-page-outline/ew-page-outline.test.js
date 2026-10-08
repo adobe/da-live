@@ -6,6 +6,7 @@ import { setNx } from '../../../../../scripts/utils.js';
 import { makeRealView } from '../test-helpers.js';
 import { createTrackingPlugin } from '../../../../../blocks/canvas/editor-utils/prose-diff.js';
 import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
+import { getDropTargets } from '../../../../../blocks/canvas/ew-page-outline/drop-targets.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -579,10 +580,12 @@ describe('ew-page-outline - read-only', () => {
   it('keeps a same-size handle slot so read-only rows stay aligned', async () => {
     await renderOutline({ editable: false });
 
-    const header = el.shadowRoot.querySelector('.section-header');
-    const block = el.shadowRoot.querySelector('[data-block-index="0"]');
+    const cell = (row) => row.querySelector('[role="gridcell"]');
+    const header = cell(el.shadowRoot.querySelector('.section-header'));
+    const block = cell(el.shadowRoot.querySelector('[data-block-index="0"]'));
     expect(header.firstElementChild.classList.contains('drag-handle')).to.be.true;
     expect(block.firstElementChild.classList.contains('drag-handle')).to.be.true;
+    expect(block.firstElementChild.tagName).to.equal('SPAN');
     expect(block.firstElementChild.childElementCount).to.equal(0);
   });
 
@@ -734,7 +737,8 @@ describe('ew-page-outline - section menu', () => {
   const menuOf = (i) => sectionEls()[i].querySelector('nx-menu');
   const triggerOf = (i) => root().querySelector(`.section-menu-trigger[data-section-index="${i}"]`);
   const active = () => root().activeElement;
-  const focusTargets = () => [...root().querySelectorAll('.section-menu-trigger, [role="treeitem"]')];
+  const focusTargets = () => [...root().querySelectorAll('[role="row"]')];
+  const sectionRow = (i) => sectionEls()[i].querySelector('.section-header');
   const names = () => parseSections(getInstrumentedHTML(view)).map((sec) => sec.name);
 
   async function settle() {
@@ -812,12 +816,12 @@ describe('ew-page-outline - section menu', () => {
   it('leads the section header and block rows with the drag handle', async () => {
     await load([table('hero')]);
 
-    const header = root().querySelector('.section-header');
-    const block = root().querySelector('[data-block-index="0"]');
+    const header = root().querySelector('.section-header [role="gridcell"]');
+    const block = root().querySelector('[data-block-index="0"] [role="gridcell"]');
     expect(block).to.exist;
-    [header, block].forEach((row) => {
-      expect(row.firstElementChild.classList.contains('drag-handle')).to.be.true;
-      expect(row.firstElementChild.querySelector('use').getAttribute('href'))
+    [header, block].forEach((cell) => {
+      expect(cell.firstElementChild.classList.contains('drag-handle')).to.be.true;
+      expect(cell.firstElementChild.querySelector('use').getAttribute('href'))
         .to.equal('/img/icons/s2-icon-draghandle-20-n.svg#icon');
     });
     expect(header.lastElementChild.tagName).to.equal('NX-MENU');
@@ -907,7 +911,7 @@ describe('ew-page-outline - section menu', () => {
     expect(active() === triggerOf(0)).to.be.true;
   });
 
-  it('deletes a section via the menu and focuses the next trigger', async () => {
+  it('deletes a section via the menu and focuses the next section row', async () => {
     await load([para('one'), rule('A'), para('two'), rule('B'), para('three')]);
 
     menuOf(1).choose('delete');
@@ -917,7 +921,7 @@ describe('ew-page-outline - section menu', () => {
     await settle();
 
     expect(docSeq(view.state.doc)).to.deep.equal(['one', 'hr', 'three']);
-    expect(active() === triggerOf(1)).to.be.true;
+    expect(active() === sectionRow(1)).to.be.true;
   });
 
   it('focuses the last target after deleting the last section', async () => {
@@ -990,5 +994,315 @@ describe('ew-page-outline - section menu', () => {
 
     el._runWithFocus(view, () => triggerOf(0), () => {});
     expect(el._pendingFocus ?? null).to.equal(null);
+  });
+});
+
+describe('ew-page-outline - treegrid', () => {
+  let el;
+  let bridge;
+  let view;
+
+  const para = (text) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
+  const rule = () => ({ type: 'horizontal_rule' });
+  const table = (name) => ({
+    type: 'table',
+    content: [{
+      type: 'table_row',
+      content: [{ type: 'table_cell', content: [para(name)] }],
+    }],
+  });
+
+  const root = () => el.shadowRoot;
+  const active = () => root().activeElement;
+  const rows = () => [...root().querySelectorAll('[role="row"]')];
+  const sectionRow = (i) => root().querySelectorAll('.outline-section')[i].querySelector('.section-header');
+  const blockRow = (i) => root().querySelector(`[data-block-index="${i}"]`);
+  const handleOf = (row) => row.querySelector('.drag-handle');
+  const announced = () => root().querySelector('[aria-live]').textContent.trim();
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+  const press = (key, target = active()) => {
+    const event = new KeyboardEvent('keydown', { key, bubbles: true, composed: true, cancelable: true });
+    target.dispatchEvent(event);
+    return event;
+  };
+
+  const fireDrag = (target, type, clientY = 0) => {
+    const dataTransfer = new DataTransfer();
+    const init = { bubbles: true, composed: true, cancelable: true, dataTransfer, clientY };
+    target.dispatchEvent(new DragEvent(type, init));
+  };
+
+  async function settle() {
+    canvasBus.editorHtmlState.emit(getInstrumentedHTML(view));
+    await el.updateComplete;
+    await el.updateComplete;
+  }
+
+  async function load(content) {
+    view = makeTrackedView({ type: 'doc', content });
+    bridge.view = view;
+    await settle();
+  }
+
+  async function expandAll() {
+    el._expandedContent = new Set(el._sections.flatMap((sec) => sec.items
+      .filter((item) => item.type === 'content').map((item) => item.proseIndex)));
+    await el.updateComplete;
+  }
+
+  beforeEach(async () => {
+    el = await createOutline();
+    bridge = getExtensionsBridge();
+  });
+
+  afterEach(() => {
+    el.remove();
+    bridge.view = null;
+  });
+
+  it('exposes a treegrid with levelled rows and one gridcell each', async () => {
+    await load([table('hero'), para('one'), rule(), para('two')]);
+    await expandAll();
+
+    const grid = root().querySelector('.outline-list');
+    expect(grid.getAttribute('role')).to.equal('treegrid');
+    expect(rows().map((r) => [
+      r.getAttribute('aria-level'), r.getAttribute('aria-posinset'), r.getAttribute('aria-setsize'),
+    ])).to.deep.equal([
+      ['1', '1', '2'], ['2', '1', '2'], ['2', '2', '2'], ['3', '1', '1'],
+      ['1', '2', '2'], ['2', '1', '1'], ['3', '1', '1'],
+    ]);
+    expect(rows().every((r) => r.querySelectorAll(':scope > [role="gridcell"]').length === 1)).to.be.true;
+    expect(sectionRow(0).hasAttribute('aria-expanded')).to.be.false;
+    expect(root().querySelector('[data-group-key]').getAttribute('aria-expanded')).to.equal('true');
+    expect(rows().filter((r) => r.tabIndex === 0)).to.have.lengthOf(1);
+    expect(sectionRow(0).tabIndex).to.equal(0);
+  });
+
+  it('navigates rows and controls from the keyboard', async () => {
+    await load([table('hero'), para('one')]);
+
+    sectionRow(0).focus();
+    press('ArrowDown');
+    expect(active() === blockRow(0)).to.be.true;
+    press('ArrowRight');
+    expect(active() === handleOf(blockRow(0))).to.be.true;
+    press('ArrowRight');
+    expect(active().classList.contains('delete-btn')).to.be.true;
+    press('ArrowUp');
+    expect(active().classList.contains('section-menu-trigger')).to.be.true;
+    press('Escape');
+    expect(active() === sectionRow(0)).to.be.true;
+  });
+
+  it('selects a block with Enter and does nothing on a section row', async () => {
+    await load([table('hero')]);
+
+    let received;
+    const unsub = canvasBus.editorSelectState.subscribe((detail) => { received = detail; });
+    sectionRow(0).focus();
+    press('Enter');
+    expect(received).to.equal(undefined);
+    blockRow(0).focus();
+    press('Enter');
+    unsub();
+    expect(received).to.include({ blockIndex: 0, source: 'outline' });
+  });
+
+  it('opens the row menu on contextmenu and leaves menu-less rows alone', async () => {
+    await load([table('hero')]);
+
+    const onSection = new MouseEvent('contextmenu', { bubbles: true, composed: true, cancelable: true });
+    sectionRow(0).dispatchEvent(onSection);
+    expect(onSection.defaultPrevented).to.be.true;
+    expect(sectionRow(0).querySelector('nx-menu').open).to.be.true;
+
+    const onBlock = new MouseEvent('contextmenu', { bubbles: true, composed: true, cancelable: true });
+    blockRow(0).dispatchEvent(onBlock);
+    expect(onBlock.defaultPrevented).to.be.false;
+  });
+
+  it('labels drag handles as buttons in the row', async () => {
+    await load([table('hero'), para('one')]);
+    await expandAll();
+
+    expect(handleOf(sectionRow(0)).getAttribute('aria-label')).to.equal('Move Section 1');
+    expect(handleOf(blockRow(0)).getAttribute('aria-label')).to.equal('Move hero block');
+    expect(handleOf(root().querySelector('.content-child')).getAttribute('aria-label'))
+      .to.equal('Move paragraph (one)');
+    expect(handleOf(blockRow(0)).getAttribute('draggable')).to.equal(null);
+  });
+
+  it('moves a block with keyboard pick-up and focuses it after the drop', async () => {
+    await load([table('hero'), table('cards'), para('one')]);
+
+    const handle = handleOf(blockRow(0));
+    handle.focus();
+    handle.click();
+    await el.updateComplete;
+    expect(handle.getAttribute('aria-pressed')).to.equal('true');
+    expect(announced()).to.match(/^Picked up hero block/);
+
+    press('ArrowDown', handle);
+    await el.updateComplete;
+    expect(announced()).to.equal('Before Default content in Section 1');
+    expect(root().querySelector('[data-group-key]').dataset.dropPosition).to.equal('before');
+
+    handle.click();
+    await settle();
+
+    expect(docSeq(view.state.doc)).to.deep.equal(['cards', 'hero', 'one']);
+    expect(announced()).to.equal('Dropped hero block.');
+    expect(blockRow(1).textContent.trim()).to.equal('hero');
+    expect(active() === blockRow(1)).to.be.true;
+  });
+
+  it('cancels a pick-up with Escape and refocuses the handle', async () => {
+    await load([table('hero'), table('cards')]);
+
+    const handle = handleOf(blockRow(0));
+    handle.focus();
+    handle.click();
+    press('ArrowDown', handle);
+    press('Escape', handle);
+    await el.updateComplete;
+
+    expect(docSeq(view.state.doc)).to.deep.equal(['hero', 'cards']);
+    expect(announced()).to.equal('Move cancelled.');
+    expect(handle.getAttribute('aria-pressed')).to.equal('false');
+    expect(root().querySelector('[data-drop-position]')).to.equal(null);
+    expect(active() === handle).to.be.true;
+  });
+
+  it('cancels a pick-up on Tab, outside pointerdown and native drag start', async () => {
+    await load([table('hero'), table('cards')]);
+    const handle = () => handleOf(blockRow(0));
+
+    handle().click();
+    press('Tab', handle());
+    expect(el._pickup).to.equal(null);
+
+    handle().click();
+    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, composed: true }));
+    expect(el._pickup).to.equal(null);
+
+    handle().click();
+    fireDrag(blockRow(1), 'dragstart');
+    expect(el._pickup).to.equal(null);
+    expect(el._dragging.index).to.equal(1);
+    fireDrag(blockRow(1), 'dragend');
+  });
+
+  it('moves a section with keyboard pick-up', async () => {
+    await load([para('one'), rule(), para('two'), rule(), para('three')]);
+
+    const handle = handleOf(sectionRow(2));
+    handle.focus();
+    handle.click();
+    press('ArrowUp', handle);
+    await el.updateComplete;
+    expect(announced()).to.equal('Before Section 2');
+    handle.click();
+    await settle();
+
+    expect(docSeq(view.state.doc)).to.deep.equal(['one', 'hr', 'three', 'hr', 'two']);
+    expect(active() === sectionRow(1)).to.be.true;
+  });
+
+  it('moves a content child with keyboard pick-up and refocuses it', async () => {
+    await load([para('A'), para('B')]);
+    await expandAll();
+
+    const handle = handleOf(root().querySelector('.content-child'));
+    handle.focus();
+    handle.click();
+    press('ArrowDown', handle);
+    handle.click();
+    await settle();
+    await el.updateComplete;
+
+    expect(docSeq(view.state.doc)).to.deep.equal(['B', 'A']);
+    const children = [...root().querySelectorAll('.content-child')];
+    expect(children[1].textContent).to.contain('A');
+    expect(active() === children[1]).to.be.true;
+  });
+
+  it('moves a block with pointer pick-up: click handle, hover, click to drop', async () => {
+    await load([table('hero'), table('cards')]);
+
+    const handle = handleOf(blockRow(0));
+    handle.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, detail: 1 }));
+    expect(el._pickup).to.exist;
+
+    const target = blockRow(1);
+    const rect = target.getBoundingClientRect();
+    target.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, composed: true, clientY: rect.bottom - 1 }));
+    expect(target.dataset.dropPosition).to.equal('after');
+    target.click();
+    await settle();
+
+    expect(docSeq(view.state.doc)).to.deep.equal(['cards', 'hero']);
+    expect(el._pickup).to.equal(null);
+  });
+
+  it('cancels a pointer pick-up when the handle is clicked again', async () => {
+    await load([table('hero'), table('cards')]);
+
+    const handle = handleOf(blockRow(0));
+    const click = () => handle.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, detail: 1 }));
+    click();
+    blockRow(1).dispatchEvent(new PointerEvent('pointermove', { bubbles: true, composed: true }));
+    click();
+    await el.updateComplete;
+
+    expect(el._pickup).to.equal(null);
+    expect(docSeq(view.state.doc)).to.deep.equal(['hero', 'cards']);
+  });
+
+  async function expectParity(dragging, source) {
+    const { targets } = getDropTargets(dragging, el._sections, el._expandedContent);
+    expect(targets.length).to.be.greaterThan(0);
+    targets.forEach(({ target, description }) => {
+      fireDrag(source(), 'dragstart');
+      const indicator = el._dropIndicatorEl(dragging, target);
+      const section = indicator.closest('.outline-section');
+      const ys = [indicator, section].flatMap((node) => {
+        const rect = node.getBoundingClientRect();
+        return [rect.top + 1, rect.bottom - 1];
+      });
+      const matched = ys.some((y) => {
+        fireDrag(indicator, 'dragover', y);
+        return same(el._dropTarget, target);
+      });
+      fireDrag(source(), 'dragend');
+      expect(matched, `${dragging.type} -> ${description}`).to.be.true;
+    });
+  }
+
+  it('finds the content run for a child after an empty section', async () => {
+    await load([para('one'), rule(), rule(), table('cards'), para('three')]);
+
+    const group = el._sections[2].items[1];
+    expect(el._findRunKeyForProseIndex(group.children[0].proseIndex)).to.equal(group.proseIndex);
+  });
+
+  it('offers only keyboard targets a mouse drag can also produce', async () => {
+    await load([
+      table('hero'), para('one'), para('two'), rule(), rule(), table('cards'), para('three'),
+    ]);
+
+    await expectParity({ type: 'section', index: 0 }, () => sectionRow(0));
+    await expectParity({ type: 'section', index: 2 }, () => sectionRow(2));
+    await expectParity({ type: 'block', index: 0 }, () => blockRow(0));
+    await expectParity({ type: 'block', index: 1 }, () => blockRow(1));
+
+    await expandAll();
+    await expectParity({ type: 'block', index: 1 }, () => blockRow(1));
+    const [child] = el._sections[0].items[1].children;
+    await expectParity(
+      { type: 'content', index: child },
+      () => root().querySelector(`[data-child-prose="${child.proseIndex}"]`),
+    );
   });
 });
