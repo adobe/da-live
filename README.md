@@ -42,6 +42,22 @@ If you wish to do any testing that involves Edge Delivery, please note the follo
 1. Your local/stage project will need to have a stage compatible fstab entry. Hostname: `stage-content.da.live`
 1. Edge Delivery cannot validate a Stage Adobe Identity. Your stage project should have auth turned off: `requireAuth: false`
 
+### Canvas library access
+Built-in library sheets, block variants, template insertion, and preview iframes use
+the shared DA preview proxy for content in the current editor's organization,
+including libraries hosted by another site in that organization. The proxy session
+is requested before loading content, and only proxy fetches include credentials.
+
+Cross-organization sources keep their original URLs and do not request a DA proxy
+session. If access is denied, verify DA sign-in and site access for same-org libraries;
+for cross-org AEM libraries, open the source preview and sign in with AEM Sidekick,
+then reopen the library. Access failures are not cached as a successful empty library.
+
+When validating library routing, check both a protected same-org library and a
+cross-org library. Verify the sheets, variant HTML, template insertion, and preview
+iframe requests, including the matching proxy and `/gimme_cookie` origins. Inserted
+image URLs should retain their public content origin rather than the proxy origin.
+
 ## Additional details
 ### Recommendations
 1. We recommend running `npm install` for linting.
@@ -58,5 +74,4 @@ npm run build:da-y-wrapper
 ```
 
 Additional details can be [found here](https://github.com/adobe/da-live/wiki/Dependencies).
-
 

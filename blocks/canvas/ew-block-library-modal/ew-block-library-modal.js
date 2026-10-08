@@ -75,6 +75,7 @@ class EwBlockLibraryModal extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
+    this._previewRequest = null;
   }
 
   willUpdate(changed) {
@@ -140,6 +141,8 @@ class EwBlockLibraryModal extends LitElement {
   }
 
   async _selectBlock(block) {
+    this._selectedPath = block.path;
+    this._loadPreview(block);
     const willExpand = this._expandedPath !== block.path;
     this._expandedPath = willExpand ? block.path : null;
     if (willExpand && !this._variantsByPath.has(block.path)) {
@@ -148,27 +151,26 @@ class EwBlockLibraryModal extends LitElement {
       next.set(block.path, variants ?? []);
       this._variantsByPath = next;
     }
-    this._selectedPath = block.path;
-    this._loadPreview(block);
   }
 
   async _loadPreview(block) {
+    const request = {};
+    this._previewRequest = request;
     const { org, site } = this._hashState || {};
     if (!org || !site) {
       this._previewInfo = null;
       return;
     }
     const details = await ensureItemPreviewAccess(block, { org, site });
-    // A newer selection may have started while the preview cookie was minted.
-    if (this._selectedPath !== block.path) return;
+    if (this._previewRequest !== request) return;
     const url = details.previewUrl;
     this._previewInfo = { path: block.path, name: block.name, url, ok: undefined };
-    const ok = await getPreviewStatus({
+    const ok = details.org?.toLowerCase() === org.toLowerCase() ? await getPreviewStatus({
       org: details.org,
       site: details.site,
       pathname: details.pathname,
-    });
-    if (this._previewInfo?.url === url) {
+    }) : null;
+    if (this._previewRequest === request) {
       this._previewInfo = { ...this._previewInfo, ok };
     }
   }
@@ -205,7 +207,7 @@ class EwBlockLibraryModal extends LitElement {
       return html`<div class="modal-tree-loading">Loading variants…</div>`;
     }
     if (!variants.length) {
-      return html`<div class="modal-tree-loading">No variants found.</div>`;
+      return html`<div class="modal-tree-loading">${variants.authError ? LIBRARY_AUTH_MESSAGE : 'No variants found.'}</div>`;
     }
     return html`
       <ul class="modal-tree-variants" role="group">

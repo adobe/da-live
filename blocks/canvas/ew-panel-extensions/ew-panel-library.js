@@ -43,6 +43,7 @@ class EwPanelLibrary extends LitElement {
     _tooltipOpen: { state: true },
     _hashState: { state: true },
     _search: { state: true },
+    _actionError: { state: true },
   };
 
   connectedCallback() {
@@ -54,6 +55,7 @@ class EwPanelLibrary extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
+    this._previewRequest = null;
   }
 
   willUpdate(changed) {
@@ -62,6 +64,8 @@ class EwPanelLibrary extends LitElement {
       this._blockVariants = new Map();
       this._expandedBlock = null;
       this._preview = undefined;
+      this._previewRequest = null;
+      this._actionError = undefined;
       this._tooltipOpen = null;
       this._search = '';
       this._loadItems();
@@ -78,16 +82,19 @@ class EwPanelLibrary extends LitElement {
     if (!ext) return;
 
     if (!ext.ootb) return;
+    const context = { org: this._hashState?.org || ext.org, site: this._hashState?.site };
 
     if (ext.name === 'blocks') {
-      this._items = await fetchBlocks(ext.sources);
+      const items = await fetchBlocks(ext.sources, context);
+      if (this.extension === ext) this._items = items;
       return;
     }
 
     let defaultFormat = '';
     if (ext.name === 'icons') defaultFormat = ':<content>:';
     else if (ext.name === 'placeholders') defaultFormat = '{{<content>}}';
-    this._items = await fetchItems(ext.sources, ext.format || defaultFormat);
+    const items = await fetchItems(ext.sources, ext.format || defaultFormat, context);
+    if (this.extension === ext) this._items = items;
   }
 
   async _toggleBlock(block) {
@@ -119,26 +126,35 @@ class EwPanelLibrary extends LitElement {
   async _insertTemplate(item) {
     const { view } = getExtensionsBridge();
     if (!view) return;
-    await insertTemplate(view, item.path || item.value);
+    this._actionError = undefined;
+    try {
+      await insertTemplate(view, item.path || item.value, this._hashState);
+    } catch (error) {
+      this._actionError = error.message;
+    }
   }
 
   async _openPreview(item) {
     const { org, site } = this._hashState || {};
     if (!org || !site) return;
+    const request = {};
+    this._previewRequest = request;
     const details = await ensureItemPreviewAccess(item, { org, site });
+    if (this._previewRequest !== request) return;
     this._preview = {
       name: item.name || item.key || item.title,
       url: details.previewUrl,
     };
-    this._preview.ok = await getPreviewStatus({
+    const ok = details.org?.toLowerCase() === org.toLowerCase() ? await getPreviewStatus({
       org: details.org,
       site: details.site,
       pathname: details.pathname,
-    });
-    this.requestUpdate();
+    }) : null;
+    if (this._previewRequest === request) this._preview = { ...this._preview, ok };
   }
 
   async _closePreview() {
+    this._previewRequest = null;
     this._preview = undefined;
     await this.updateComplete;
     this.shadowRoot.querySelector('button')?.focus();
@@ -174,7 +190,7 @@ class EwPanelLibrary extends LitElement {
       return html`<div class="ext-variants-loading">Loading variants…</div>`;
     }
     if (!variants.length) {
-      return html`<div class="ext-variants-loading">No variants found.</div>`;
+      return html`<div class="ext-variants-loading">${variants.authError ? LIBRARY_AUTH_MESSAGE : 'No variants found.'}</div>`;
     }
     return html`
       <ul class="ext-variant-list">
@@ -337,7 +353,9 @@ class EwPanelLibrary extends LitElement {
       return this._renderKeyValueItems(ext.name);
     })();
 
-    return html`${body}${this._renderPreviewDialog()}`;
+    return html`
+      ${this._actionError ? html`<div class="ext-state" role="alert">${this._actionError}</div>` : nothing}
+      ${body}${this._renderPreviewDialog()}`;
   }
 }
 

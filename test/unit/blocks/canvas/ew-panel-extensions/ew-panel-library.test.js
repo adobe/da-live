@@ -1,6 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
 import { getExtensionsBridge } from '../../../../../blocks/canvas/editor-utils/extensions-bridge.js';
+import { makeView } from '../test-helpers.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -46,6 +47,46 @@ describe('Ew panel library _insertTemplate', () => {
     await el._insertTemplate({ key: 'home', value: 'https://content.da.live/org/site/home' });
 
     expect(fetchedUrl).to.equal('https://content.da.live/org/site/home');
+    expect(el._actionError).to.equal('Unable to load template (404).');
+  });
+
+  it('inserts a same-org template through the proxy without persisting proxy image URLs', async () => {
+    const view = makeView({ type: 'doc', content: [{ type: 'paragraph' }] });
+    getExtensionsBridge().view = view;
+    const calls = [];
+    window.fetch = async (url, opts) => {
+      calls.push({ url, opts });
+      return new Response('<body><main><div><p>Template text</p><p><img src="./media.png" width="800" height="400"></p></div></main></body>');
+    };
+    const el = document.createElement('ew-panel-library');
+    el._hashState = { org: 'org', site: 'site' };
+    await el._insertTemplate({ path: 'https://main--site--org.aem.live/templates/home' });
+    expect(calls[0].url).to.equal('https://main--site--org.stage-preview.da.live/templates/home');
+    expect(calls[0].opts.credentials).to.equal('include');
+    expect(view.state.doc.textContent).to.include('Template text');
+    const images = [];
+    view.state.doc.descendants((node) => {
+      if (node.type.name === 'image') images.push(node.attrs.src);
+    });
+    expect(images).to.deep.equal(['https://main--site--org.aem.live/media.png']);
+    expect(el._actionError).to.equal(undefined);
+  });
+
+  it('keeps a cross-org template direct and inserts its content', async () => {
+    const view = makeView({ type: 'doc', content: [{ type: 'paragraph' }] });
+    getExtensionsBridge().view = view;
+    const calls = [];
+    window.fetch = async (url, opts) => {
+      calls.push({ url, opts });
+      return new Response('<body><main><div><p>Shared template</p></div></main></body>');
+    };
+    const el = document.createElement('ew-panel-library');
+    el._hashState = { org: 'org', site: 'site' };
+    await el._insertTemplate({ path: 'https://main--shared--other.aem.live/templates/home' });
+    expect(calls).to.have.lengthOf(1);
+    expect(calls[0].url).to.equal('https://main--shared--other.aem.live/templates/home');
+    expect(calls[0].opts.credentials).to.equal(undefined);
+    expect(view.state.doc.textContent).to.include('Shared template');
   });
 });
 
@@ -115,6 +156,7 @@ describe('Ew panel library access errors', () => {
     el._items = items;
     await el.updateComplete;
     const state = el.shadowRoot.querySelector('.ext-state').textContent;
+    expect(state).to.include('signed in to DA');
     expect(state).to.include('sign in with AEM Sidekick');
   });
 
@@ -122,5 +164,24 @@ describe('Ew panel library access errors', () => {
     el._items = [];
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('.ext-state').textContent).to.equal('No icons found.');
+  });
+
+  it('renders an insertion error instead of silently failing', async () => {
+    el._actionError = 'Library access was denied.';
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('[role="alert"]').textContent).to.equal('Library access was denied.');
+  });
+
+  it('renders access guidance when variant HTML is denied', async () => {
+    const variants = [];
+    variants.authError = true;
+    el.extension = { name: 'blocks', ootb: true, sources: [] };
+    await el.updateComplete;
+    await el._loadItems();
+    el._items = [{ name: 'Hero', path: '/hero' }];
+    el._expandedBlock = '/hero';
+    el._blockVariants.set('/hero', variants);
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.ext-variants-loading').textContent).to.include('Library access was denied');
   });
 });
