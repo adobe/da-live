@@ -132,7 +132,7 @@ input {
 
 /* Blocks have no chevron — indent to align with expandable content-item labels */
 .block-item:not(.content-item) {
-  padding-inline-start: calc(var(--s2-spacing-300) + var(--nx-ui-icon) - 2px + var(--s2-spacing-100));
+  padding-inline-start: calc(var(--s2-spacing-300) + var(--nx-ui-icon) - 8px + var(--s2-spacing-100));
 }
 
 .block-empty {
@@ -160,8 +160,8 @@ input {
 
 .content-caret {
   flex-shrink: 0;
-  width: calc(var(--nx-ui-icon) - 2px);
-  height: calc(var(--nx-ui-icon) - 2px);
+  width: calc(var(--nx-ui-icon) - 8px);
+  height: calc(var(--nx-ui-icon) - 8px);
   color: var(--s2-gray-600);
   transition: transform 0.1s ease-out;
 }
