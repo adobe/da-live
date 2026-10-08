@@ -1,3 +1,11 @@
+## [1.2.3](https://github.com/adobe/da-live/compare/v1.2.2...v1.2.3) (2026-10-08)
+
+
+### Bug Fixes
+
+* **ew:** "Create document" prompt when navigating to a non-existent URL ([#1311](https://github.com/adobe/da-live/issues/1311)) ([d269372](https://github.com/adobe/da-live/commit/d269372d345da913a3c0814a54b83668723a87c2)), closes [bpauli/da-live#2](https://github.com/bpauli/da-live/issues/2) [adobe/da-live#1309](https://github.com/adobe/da-live/issues/1309)
+* load hlx6 media through the source API ([#1421](https://github.com/adobe/da-live/issues/1421)) ([0bcbb13](https://github.com/adobe/da-live/commit/0bcbb131bf07f46dd49d4b921a9ce1d366a88071))
+
 ## [1.2.2](https://github.com/adobe/da-live/compare/v1.2.1...v1.2.2) (2026-10-07)
 
 
