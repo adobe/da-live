@@ -1,6 +1,6 @@
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getPathDetails from '../../shared/pathDetails.js';
-import { insertImage, insertLink, insertFragment, createImageNode, getBlockName } from './helpers/insert.js';
+import { createImageNode, getBlockName, insertFragment, insertImage, insertLink } from './helpers/insert.js';
 import showSmartCropDialog from './helpers/smart-crop.js';
 
 const nx2 = getNx2();
@@ -9,7 +9,7 @@ const [
   { buildAssetSelectorProps, rememberAssetFolder },
   { applySiteImageModifiers },
   { MISSING_FORMAT_ERROR_MSG, resolveAssetSelection },
-  { loadAssetSelector },
+  { ASSET_SELECTOR_URL },
 ] = await Promise.all([
   import(`${nx2}/utils/aem-assets/repository-config.js`),
   import(`${nx2}/utils/aem-assets/selector-props.js`),
