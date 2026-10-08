@@ -37,7 +37,6 @@ import imageDrop from './prose-plugins/imageDrop.js';
 import imageFocalPoint from '../../edit/prose/plugins/imageFocalPoint.js';
 import sectionPasteHandler from '../../edit/prose/plugins/sectionPasteHandler.js';
 import base64Uploader from './prose-plugins/base64Uploader.js';
-import blockFocus, { guardFocusedBlockDeletion } from './prose-plugins/blockFocus.js';
 import { getNx } from '../../../scripts/utils.js';
 import { getAuthToken } from '../../shared/utils.js';
 import { generateColor, collabCursorBuilder } from '../editor-utils/author-color.js';
@@ -195,7 +194,6 @@ export default async function initProse({
     getURLInputRulesPlugin(),
     getListInputRulesPlugin(schema),
     // Runs before the base/table keymaps so it can veto deleting the block being edited.
-    keymap({ Backspace: guardFocusedBlockDeletion, Delete: guardFocusedBlockDeletion }),
     keymap(buildKeymap(schema)),
     keymap({ Backspace: handleTableBackspace }),
     keymap(baseKeymap),
@@ -225,7 +223,6 @@ export default async function initProse({
     }),
     gapCursor(),
     tableEditing({ allowTableNodeSelection: true }),
-    blockFocus(),
     ...resolvedExtraPlugins,
   ];
 

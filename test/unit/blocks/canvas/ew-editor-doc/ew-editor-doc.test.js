@@ -64,15 +64,13 @@ function buildTableDoc(view) {
   const { content } = schema.nodes.doc.create(null, [table]);
   view.dispatch(view.state.tr.replaceWith(0, view.state.doc.content.size, content));
 
-  let tablePos = -1;
   let cellTextPos = -1;
   view.state.doc.descendants((node, pos) => {
-    if (node.type.name === 'table' && tablePos === -1) tablePos = pos;
     if (node.type.name === 'paragraph' && node.textContent === 'content') {
       cellTextPos = pos + 1 + Math.floor(node.textContent.length / 2);
     }
   });
-  return { tablePos, cellTextPos };
+  return { cellTextPos };
 }
 
 describe('EwEditorDoc — _scrollDocToProseIndex', () => {
@@ -163,13 +161,8 @@ describe('EwEditorDoc — _scrollDocToProseIndex', () => {
   });
 });
 
-// Splitting a table-cell paragraph (e.g. Enter mid-cell) fails findCommonEditableAncestor
-// and falls back to a full SET_BODY redecoration, which races the block-edit modal's
-// live-editing of that same iframe DOM.
-describe('EwEditorDoc — block-edit suppresses controller rerenders', () => {
+describe('EwEditorDoc — structural edits update the preview', () => {
   let editor;
-  let el;
-  let tablePos;
   let cellTextPos;
   let ctx;
   let postMessageCalls;
@@ -181,32 +174,18 @@ describe('EwEditorDoc — block-edit suppresses controller rerenders', () => {
     const trackingPlugin = createTrackingPlugin(() => updateDocument(ctx));
     editor = await createTestEditor({ additionalPlugins: [trackingPlugin] });
     ctx.view = editor.view;
-    ({ tablePos, cellTextPos } = buildTableDoc(editor.view));
+    ({ cellTextPos } = buildTableDoc(editor.view));
     // Discard the setup dispatch's own trip through the tracking plugin.
     postMessageCalls.length = 0;
-
-    el = document.createElement('ew-editor-doc');
-    el._proseContext = { view: editor.view };
-    el._controllerCtx = ctx;
   });
 
   afterEach(() => {
     destroyEditor(editor);
   });
 
-  it('splitting a table-cell paragraph triggers a rerender outside block edit', () => {
+  it('splitting a table-cell paragraph triggers a rerender', () => {
     editor.view.dispatch(editor.view.state.tr.split(cellTextPos));
 
-    expect(postMessageCalls).to.have.lengthOf(1);
-  });
-
-  it('suppresses that rerender for the duration of block edit, then flushes one on exit', () => {
-    el.enterBlockEdit(tablePos);
-
-    editor.view.dispatch(editor.view.state.tr.split(cellTextPos));
-    expect(postMessageCalls).to.have.lengthOf(0);
-
-    el.exitBlockEdit();
     expect(postMessageCalls).to.have.lengthOf(1);
   });
 });
@@ -245,10 +224,8 @@ function buildTwoCellTableDoc(view) {
   const { content } = schema.nodes.doc.create(null, [table]);
   view.dispatch(view.state.tr.replaceWith(0, view.state.doc.content.size, content));
 
-  let tablePos = -1;
   const cellTextPos = {};
   view.state.doc.descendants((node, pos) => {
-    if (node.type.name === 'table' && tablePos === -1) tablePos = pos;
     if (node.type.name === 'paragraph' && node.textContent === 'first cell') {
       cellTextPos.first = pos + 1 + Math.floor(node.textContent.length / 2);
     }
@@ -256,13 +233,11 @@ function buildTwoCellTableDoc(view) {
       cellTextPos.second = pos + 1 + Math.floor(node.textContent.length / 2);
     }
   });
-  return { tablePos, cellTextPos };
+  return { cellTextPos };
 }
 
-describe('EwEditorDoc — block-edit prevents overlapping SET_BODY redecorations', () => {
+describe('EwEditorDoc — consecutive SET_BODY redecorations', () => {
   let editor;
-  let el;
-  let tablePos;
   let cellTextPos;
   let ctx;
   let port;
@@ -274,19 +249,15 @@ describe('EwEditorDoc — block-edit prevents overlapping SET_BODY redecorations
     const trackingPlugin = createTrackingPlugin(() => updateDocument(ctx));
     editor = await createTestEditor({ additionalPlugins: [trackingPlugin] });
     ctx.view = editor.view;
-    ({ tablePos, cellTextPos } = buildTwoCellTableDoc(editor.view));
+    ({ cellTextPos } = buildTwoCellTableDoc(editor.view));
     port.reset(); // discard the setup dispatch's own trip through the tracking plugin
-
-    el = document.createElement('ew-editor-doc');
-    el._proseContext = { view: editor.view };
-    el._controllerCtx = ctx;
   });
 
   afterEach(() => {
     destroyEditor(editor);
   });
 
-  it('two edits in quick succession overlap outside block edit', () => {
+  it('emits a second update while the first redecoration is in flight', () => {
     editor.view.dispatch(editor.view.state.tr.split(cellTextPos.first));
     const activeAfterFirst = port.active;
     expect(activeAfterFirst).to.be.above(0, 'first edit should start a redecoration');
@@ -295,17 +266,6 @@ describe('EwEditorDoc — block-edit prevents overlapping SET_BODY redecorations
     // assert on overlap growth rather than a pinned call count.
     editor.view.dispatch(editor.view.state.tr.split(cellTextPos.second));
     expect(port.active).to.be.above(activeAfterFirst, 'a second SET_BODY fired while the first was still in flight');
-  });
-
-  it('never starts a redecoration during block edit, so none can overlap', () => {
-    el.enterBlockEdit(tablePos);
-
-    editor.view.dispatch(editor.view.state.tr.split(cellTextPos.first));
-    editor.view.dispatch(editor.view.state.tr.split(cellTextPos.second));
-    expect(port.maxActive).to.equal(0, 'block edit must not start any redecoration at all');
-
-    el.exitBlockEdit();
-    expect(port.active).to.be.above(0, 'exiting flushes a redecoration, once it is safe');
   });
 });
 

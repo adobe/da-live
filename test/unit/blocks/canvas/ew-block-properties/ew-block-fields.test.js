@@ -38,6 +38,18 @@ const libraryHtml = (fields = fieldsTable, variant = 'left') => `
     <div class="library-metadata"><div><div>fields</div><div>${fields}</div></div></div>
   </div></body>`;
 
+const multiFieldsTable = `<table><tr><td colspan="2">fields</td></tr>
+  <tr><td>Image</td><td><p>Title</p><p>Link</p><p>List</p></td></tr></table>`;
+const multiContent = (name) => `<h3>${name} title</h3>
+  <p><strong><a href="/${name.toLowerCase()}">${name} link</a></strong></p>
+  <ul><li>${name} one</li><li>${name} two</li></ul>`;
+const multiLibraryHtml = (fields = multiFieldsTable, variant = 'left', name = 'Template') => `
+  <body><div><h2>Hero</h2><div class="hero ${variant}">
+    <div><div><picture><img src="/template.png"></picture></div><div>${multiContent(name)}</div></div>
+    <div><div><picture><img src="/other-template.png"></picture></div><div>${multiContent('Other')}</div></div>
+  </div>${fields === null ? '' : `<div class="library-metadata"><div><div>fields</div><div>${fields}</div></div></div>`}
+  </div></body>`;
+
 describe('ew-block-properties library fields', () => {
   let el;
   let view;
@@ -45,6 +57,7 @@ describe('ew-block-properties library fields', () => {
   let html;
   let assets;
   let blockOptions;
+  let blockEditor;
   let assetTestId = 0;
 
   const fieldElement = (label) => el.shadowRoot.querySelector(`[data-field="${label}"]`);
@@ -62,6 +75,7 @@ describe('ew-block-properties library fields', () => {
     html = libraryHtml();
     assets = false;
     blockOptions = [];
+    blockEditor = [];
     fetchStub = sinon.stub(window, 'fetch').callsFake(async (url, options) => {
       if (options?.method === 'POST') {
         return new Response(JSON.stringify({ source: { contentUrl: './media_replacement.png' } }), { status: 201, headers: { 'Content-Type': 'application/json' } });
@@ -74,7 +88,8 @@ describe('ew-block-properties library fields', () => {
       if (String(url).includes('/config/') && assets) {
         data.push({ key: 'aem.repositoryId', value: 'delivery-p1-e1.adobeaemcloud.com' });
       }
-      const sheets = String(url).includes('/mock-blocks.json') ? { options: { data: blockOptions } } : {};
+      const sheets = String(url).includes('/mock-blocks.json')
+        ? { options: { data: blockOptions }, editor: { data: blockEditor } } : {};
       return new Response(JSON.stringify({ data, ...sheets }), { headers: { 'Content-Type': 'application/json' } });
     });
     setDaConfigs([{ library: { data: [{ title: 'Blocks', path: 'http://localhost:2000/mock-blocks.json' }] } }]);
@@ -260,6 +275,7 @@ describe('ew-block-properties library fields', () => {
       'fieldorg/fieldsite',
       'Block name: hero',
       'Variant: left',
+      'Multi-item block: no',
       'Exact block table header: Hero (left)',
       'http://localhost:2000/mock-blocks.json',
       'http://localhost:2000/mock-hero.html',
@@ -502,6 +518,256 @@ describe('ew-block-properties library fields', () => {
     el._refresh();
     await el.updateComplete;
   };
+
+  const setMultiTemplate = async (fields = multiFieldsTable) => {
+    blockEditor = [{ block: 'hero', property: 'multi' }];
+    html = multiLibraryHtml(fields);
+    const container = document.createElement('div');
+    container.innerHTML = `<table><tr><td colspan="2">Hero (left)</td></tr>
+      <tr><td><p><img src="/first.png"></p></td><td>${multiContent('First')}</td></tr>
+      <tr><td><p><img src="/second.png"></p></td><td>${multiContent('Second')}</td></tr>
+      </table><p>Outside block</p>`;
+    const doc = PMDOMParser.fromSchema(view.state.schema).parse(container);
+    const tr = view.state.tr.replaceWith(0, view.state.doc.content.size, doc.content);
+    view.dispatch(tr.setSelection(NodeSelection.create(tr.doc, 0)));
+    resetBlockLibraryCache();
+    resetBlockOptionsCache();
+    el._refresh();
+    await Promise.all([el._loadMultiBlock(), el._loadFields()]);
+    await el.updateComplete;
+  };
+  const itemCard = (index) => el.shadowRoot.querySelectorAll('.ew-block-multi-item')[index];
+  const itemField = (index, label) => itemCard(index).querySelector(`[data-field="${label}"]`);
+  const expandItem = async (index) => {
+    itemCard(index).querySelector('.ew-block-item-toggle').click();
+    await el.updateComplete;
+  };
+
+  it('places the grab handle before the expansion chevron', async () => {
+    await setMultiTemplate();
+    const header = itemCard(0).querySelector('.ew-block-item-header');
+    expect(header.firstElementChild).to.equal(header.querySelector('.ew-block-item-grip'));
+    expect(header.children[1]).to.equal(header.querySelector('.ew-block-item-toggle'));
+  });
+
+  it('expands every repeated item into its own editor using the first-item field schema', async () => {
+    await setMultiTemplate();
+    expect(el._fieldError).to.equal('');
+    expect(el._fieldDefinitions.length).to.equal(4);
+    expect(el._fields.length).to.equal(8);
+    expect(generateButton()).to.equal(null);
+    expect(el.shadowRoot.querySelector('.ew-block-field')).to.equal(null);
+    expect(itemCard(1).querySelector('.ew-block-item-toggle').getAttribute('aria-expanded')).to.equal('false');
+    await expandItem(1);
+    expect(itemCard(1).querySelector('.ew-block-item-toggle').getAttribute('aria-expanded')).to.equal('true');
+    expect(itemField(1, 'Title').querySelector('input').value).to.equal('Second title');
+    expect(itemField(1, 'Image').querySelector('img').getAttribute('src')).to.equal('/second.png');
+    expect(itemField(1, 'Link').querySelector('input[type="url"]').value).to.equal('/second');
+    expect(itemField(1, 'List').querySelectorAll('.ew-block-list-item').length).to.equal(2);
+    expect(itemCard(0).querySelector('.ew-block-item-fields')).to.equal(null);
+    await expandItem(0);
+    expect(itemField(0, 'Title').querySelector('input').value).to.equal('First title');
+    const ids = [...el.shadowRoot.querySelectorAll('.ew-block-item-fields [id]')].map((node) => node.id);
+    expect(new Set(ids).size).to.equal(ids.length);
+    await expandItem(1);
+    expect(itemCard(1).querySelector('.ew-block-item-fields')).to.equal(null);
+    expect(itemField(0, 'Title')).not.to.equal(null);
+  });
+
+  it('edits text, links, lists and images in only the expanded repeated item', async () => {
+    await setMultiTemplate();
+    await expandItem(1);
+    const table = view.state.doc.firstChild;
+    const input = itemField(1, 'Title').querySelector('input');
+    input.value = 'Updated second title';
+    input.dispatchEvent(new Event('blur'));
+    await el.updateComplete;
+    expect(el._expandedItems.has(1)).to.equal(true);
+    expect(itemField(1, 'Title').querySelector('input').value).to.equal('Updated second title');
+    const title = el._fields.find((field) => field.itemIndex === 1 && field.label === 'Title');
+    expect(title.node.attrs.level).to.equal(3);
+    const link = el._fields.find((field) => field.itemIndex === 1 && field.label === 'Link');
+    const marks = link.node.firstChild.marks.map((mark) => mark.type.name);
+    const url = itemField(1, 'Link').querySelector('input[type="url"]');
+    url.value = '/changed';
+    url.dispatchEvent(new Event('blur'));
+    await el.updateComplete;
+    expect(el._fields.find((field) => field.itemIndex === 1 && field.label === 'Link')
+      .node.firstChild.marks.map((mark) => mark.type.name)).to.deep.equal(marks);
+    itemField(1, 'List').querySelector('button').click();
+    await el.updateComplete;
+    expect(el._fields.find((field) => field.itemIndex === 1 && field.label === 'List').items.length)
+      .to.equal(3);
+    const image = el._fields.find((field) => field.itemIndex === 1 && field.label === 'Image');
+    await el._uploadFieldImage(image, el._captureField(image), png());
+    await el.updateComplete;
+    expect(itemField(1, 'Image').querySelector('img').getAttribute('src')).to.equal('./media_replacement.png');
+    expect(view.state.doc.firstChild.firstChild).to.equal(table.firstChild);
+    expect(view.state.doc.firstChild.child(1)).to.equal(table.child(1));
+    expect(view.state.doc.lastChild.textContent).to.equal('Outside block');
+    expect(el._expandedItems.has(1)).to.equal(true);
+  });
+
+  it('keeps the correct item expanded through reordering, deletion and adding template items', async () => {
+    await setMultiTemplate();
+    await expandItem(1);
+    const stale = el._fields.find((field) => field.itemIndex === 1 && field.label === 'Title');
+    itemCard(1).dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', altKey: true, bubbles: true }));
+    await el.updateComplete;
+    expect(el._expandedItems.has(0)).to.equal(true);
+    expect(itemField(0, 'Title').querySelector('input').value).to.equal('Second title');
+    const { doc } = view.state;
+    el._commitText(stale, 'Do not save');
+    expect(view.state.doc).to.equal(doc);
+    el._onDeleteItem(0);
+    await el.updateComplete;
+    expect(el._expandedItems.size).to.equal(0);
+    el._onAddItem();
+    await el.updateComplete;
+    await expandItem(1);
+    expect(itemField(1, 'Title').querySelector('input').value).to.equal('Template title');
+    expect(el._fields.every((field) => !field.error)).to.equal(true);
+  });
+
+  it('uses the selected variant first item when adding multi-block rows', async () => {
+    await setMultiTemplate();
+    html += multiLibraryHtml(multiFieldsTable, 'right', 'Right template');
+    resetBlockLibraryCache();
+    el._onVariantChange({ detail: { value: 'right' } });
+    await Promise.all([el._loadFields(), el._loadMultiBlock()]);
+    el._onAddItem();
+    await el.updateComplete;
+    await expandItem(2);
+    expect(itemField(2, 'Title').querySelector('input').value).to.equal('Right template title');
+    expect(el._fields.every((field) => !field.error)).to.equal(true);
+  });
+
+  it('keeps read-only repeated item editors inspectable without permitting edits', async () => {
+    await setMultiTemplate();
+    view.editable = false;
+    canvasBus.editorDocState.emit();
+    await el.updateComplete;
+    await expandItem(1);
+    expect(itemField(1, 'Title').querySelector('input').readOnly).to.equal(true);
+    expect(itemField(1, 'Image').querySelector('button').disabled).to.equal(true);
+    const { doc } = view.state;
+    el._commitText(el._fields.find((field) => field.itemIndex === 1 && field.label === 'Title'), 'No edit');
+    expect(view.state.doc).to.equal(doc);
+  });
+
+  it('keeps nested list drag and field clicks separate from the repeating item controls', async () => {
+    await setMultiTemplate();
+    await expandItem(1);
+    const selected = sinon.spy();
+    const unsubscribe = canvasBus.editorProseSelectState.subscribe(selected);
+    selected.resetHistory();
+    try {
+      itemField(1, 'Title').querySelector('input').dispatchEvent(new Event('click', { bubbles: true }));
+      expect(selected.called).to.equal(false);
+      const list = itemField(1, 'List');
+      const drag = new Event('dragstart', { bubbles: true, cancelable: true });
+      Object.defineProperty(drag, 'dataTransfer', { value: { setData: sinon.spy() } });
+      list.querySelector('.ew-block-item').dispatchEvent(drag);
+      expect(el._dragSource).to.equal(null);
+      expect(el._listDrag).not.to.equal(null);
+      const over = new Event('dragover', { cancelable: true });
+      Object.defineProperty(over, 'dataTransfer', { value: {} });
+      const zone = list.querySelectorAll('.ew-block-drop-zone')[2];
+      zone.dispatchEvent(over);
+      zone.dispatchEvent(new Event('drop', { bubbles: true }));
+      await el.updateComplete;
+      expect(el._fields.find((field) => field.itemIndex === 1 && field.label === 'List')
+        .items.map((item) => item.value)).to.deep.equal(['Second two', 'Second one']);
+      expect(view.state.doc.firstChild.child(1).child(1).firstChild.textContent).to.equal('First title');
+      expect(view.state.doc.firstChild.child(2).child(1).firstChild.textContent).to.equal('Second title');
+      expect(el._expandedItems.has(1)).to.equal(true);
+    } finally {
+      unsubscribe();
+    }
+  });
+
+  it('applies block-option dropdowns independently to repeating key/value rows', async () => {
+    await setMultiTemplate();
+    blockOptions = [{ blocks: 'hero', key: 'Color', values: 'Green=green|Blue=blue' }];
+    const fields = '<table><tr><td colspan="2">fields</td></tr><tr><td>IGNORE</td><td>Color</td></tr></table>';
+    html = `<body><div><h2>Hero</h2><div class="hero left">
+      <div><div><p>Color</p></div><div><p>green</p></div></div>
+      <div><div><p>Color</p></div><div><p>blue</p></div></div>
+      </div><div class="library-metadata"><div><div>fields</div><div>${fields}</div></div></div>
+      </div></body>`;
+    const container = document.createElement('div');
+    container.innerHTML = `<table><tr><td colspan="2">Hero (left)</td></tr>
+      <tr><td><p>Color</p></td><td><p>green</p></td></tr>
+      <tr><td><p>Color</p></td><td><p>blue</p></td></tr></table>`;
+    const table = PMDOMParser.fromSchema(view.state.schema).parse(container).firstChild;
+    const tr = view.state.tr.replaceWith(0, view.state.doc.firstChild.nodeSize, table);
+    view.dispatch(tr.setSelection(NodeSelection.create(tr.doc, 0)));
+    resetBlockLibraryCache();
+    resetBlockOptionsCache();
+    el._refresh();
+    await Promise.all([el._loadFields(), el._loadMultiBlock()]);
+    await expandItem(0);
+    await expandItem(1);
+    expect(itemField(0, 'Color').querySelector('nx-picker').value).to.equal('green');
+    const picker = itemField(1, 'Color').querySelector('nx-picker');
+    expect(picker.value).to.equal('blue');
+    picker.dispatchEvent(new CustomEvent('change', { detail: { value: 'green' } }));
+    await el.updateComplete;
+    expect(el._fields.map((field) => field.value)).to.deep.equal(['green', 'green']);
+    expect(view.state.doc.firstChild.child(1)).to.equal(table.child(1));
+    expect(view.state.doc.firstChild.child(2).firstChild).to.equal(table.child(2).firstChild);
+  });
+
+  it('auto-sends multi-aware generation instructions and a valid first-item-only example', async () => {
+    await setMultiTemplate(null);
+    expect(generateButton()).not.to.equal(null);
+    const opened = sinon.spy();
+    document.addEventListener(PANEL_EVENT.OPEN, opened);
+    try {
+      generateButton().click();
+    } finally {
+      document.removeEventListener(PANEL_EVENT.OPEN, opened);
+    }
+    const { options } = opened.firstCall.args[0].detail;
+    expect(options.autoSend).to.equal(true);
+    for (const fragment of [
+      'Multi-item block: yes', 'ONLY the first item row', 'exactly two rows',
+      'Every repeating item reuses this schema', 'do not duplicate the metadata rows',
+      'collapsible card with a chevron',
+    ]) expect(options.text).to.include(fragment);
+    const example = options.text.slice(
+      options.text.indexOf('<div class="cards">'),
+      options.text.indexOf('\nAdapt the rows'),
+    );
+    const container = document.createElement('div');
+    container.innerHTML = example;
+    const { dom } = htmlToProse(`<body><main><div>${example}</div></main></body>`);
+    const blockContainer = document.createElement('div');
+    blockContainer.append(dom.querySelector('table').cloneNode(true));
+    const template = PMDOMParser.fromSchema(view.state.schema).parse(blockContainer).firstChild;
+    const definitions = buildBlockFieldDefinitions({ item: { fields: container.querySelector('.library-metadata table') }, template }, { multi: true });
+    expect(definitions.map((field) => field.label)).to.deep.equal(['Image', 'Title', 'Description']);
+    expect(resolveBlockFields({ node: template, from: 0 }, definitions, { itemIndex: 1 })[1].value)
+      .to.equal('Second title');
+    html = multiLibraryHtml();
+    await el._onRefreshLibrary();
+    await el.updateComplete;
+    expect(generateButton()).to.equal(null);
+    expect(el.shadowRoot.querySelectorAll('.ew-block-item-toggle').length).to.equal(2);
+    await expandItem(1);
+    expect(itemField(1, 'Title').querySelector('input').value).to.equal('Second title');
+  });
+
+  it('reports duplicated per-item metadata rows instead of offering to overwrite malformed fields', async () => {
+    const container = document.createElement('div');
+    container.innerHTML = multiFieldsTable;
+    const fields = container.firstChild;
+    fields.tBodies[0].append(fields.rows[1].cloneNode(true));
+    await setMultiTemplate(fields.outerHTML);
+    expect(generateButton()).to.equal(null);
+    expect(el._fieldError).to.include('metadata rows');
+    expect(el.shadowRoot.querySelector('.ew-block-item-toggle')).to.equal(null);
+  });
 
   const setKeyValueTemplate = async (value = 'green', templateValue = value, key = 'Color') => {
     const fields = fieldsTable.replace(

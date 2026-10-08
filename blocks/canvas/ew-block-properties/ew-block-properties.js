@@ -44,6 +44,7 @@ class EwBlockProperties extends LitElement {
     _multiTemplateRow: { state: true },
     _itemCount: { state: true },
     _itemTable: { state: true },
+    _expandedItems: { state: true },
     _dragIndex: { state: true },
     _dropIndex: { state: true },
     _listDrag: { state: true },
@@ -68,6 +69,7 @@ class EwBlockProperties extends LitElement {
     this._multiTemplateRow = null;
     this._fieldDefinitions = [];
     this._blockOptions = null;
+    this._expandedItems = new Set();
     this._generateFieldsContext = null;
     this._fieldsGenerationRequested = false;
     this._refresh();
@@ -97,6 +99,7 @@ class EwBlockProperties extends LitElement {
         this._multiLoadId = (this._multiLoadId ?? 0) + 1;
         this._fieldLoadId = (this._fieldLoadId ?? 0) + 1;
         this._fieldDefinitions = [];
+        this._expandedItems = new Set();
         this._fieldError = '';
         this._assetTarget = null;
         this._generateFieldsContext = null;
@@ -281,6 +284,19 @@ class EwBlockProperties extends LitElement {
     if (this._name !== prevName || this._variant !== prevVariant
       || view !== prevView || tablePos !== this._itemTablePos) {
       this._fieldsGenerationRequested = false;
+      this._expandedItems = new Set();
+    } else if (table && this._itemTable && table !== this._itemTable) {
+      const previousRows = this._itemTable.content.content;
+      const rows = table.content.content;
+      const reordered = rows.some((row, index) => {
+        const previousIndex = previousRows.indexOf(row);
+        return previousIndex >= 0 && previousIndex !== index;
+      });
+      this._expandedItems = new Set([...this._expandedItems].flatMap((index) => {
+        const nextIndex = rows.indexOf(previousRows[index + 1]) - 1;
+        if (nextIndex >= 0) return [nextIndex];
+        return !reordered && rows.length === previousRows.length ? [index] : [];
+      }));
     }
     if (table !== this._itemTable || tablePos !== this._itemTablePos
       || view !== this._itemEditorView || this._disabled) {
@@ -293,6 +309,8 @@ class EwBlockProperties extends LitElement {
     this._itemCount = table ? table.childCount - 1 : 0;
     if (this._name !== prevName) {
       this._loadVariants();
+    }
+    if (this._name !== prevName || this._variant !== prevVariant) {
       this._loadMultiBlock();
     }
     if (this._name !== prevName || this._variant !== prevVariant || view !== prevView) {
@@ -308,12 +326,17 @@ class EwBlockProperties extends LitElement {
     this._clearDragState();
     const { org, site } = this._hashState ?? {};
     const name = this._name;
+    const variant = this._variant;
+    const { view } = getExtensionsBridge();
     if (!org || !site || !name) return;
     const multi = await isMultiBlock(org, site, name);
     if (loadId !== this._multiLoadId || !this.isConnected) return;
     this._isMulti = multi;
     if (!multi) return;
-    const row = await getMultiBlockTemplateRow(org, site, name);
+    const { blocks } = await loadBlockLibrary(org, site);
+    const match = view
+      ? await getBlockFieldTemplate(blocks, name, variant, view.state.schema) : null;
+    const row = match?.item.dom.rows[1] ?? await getMultiBlockTemplateRow(org, site, name);
     if (loadId !== this._multiLoadId || !this.isConnected) return;
     this._multiTemplateRow = row;
   }
@@ -365,7 +388,7 @@ class EwBlockProperties extends LitElement {
 
   _onItemDragStart(e, index) {
     const view = this._getItemView();
-    if (!view) {
+    if (!view || e.target.closest('button, input, nx-picker')) {
       e.preventDefault();
       return;
     }
@@ -418,7 +441,7 @@ class EwBlockProperties extends LitElement {
     moveBlockRow(view, this._itemTablePos, index + 1, destination + 1);
     this._refresh();
     this.updateComplete.then(() => {
-      this.shadowRoot.querySelectorAll('.ew-block-item')[destination]?.focus();
+      this.shadowRoot.querySelectorAll('.ew-block-multi-item')[destination]?.focus();
     });
   }
 
@@ -467,6 +490,7 @@ class EwBlockProperties extends LitElement {
 
   _renderItems() {
     if (!this._isMulti) return nothing;
+    const fields = this._fields;
     return html`
       <section class="ew-block-items" aria-labelledby="block-items-heading">
         <div class="ew-block-items-header">
@@ -485,25 +509,54 @@ class EwBlockProperties extends LitElement {
               @dragleave=${() => this._onItemDragLeave(index)}
               @drop=${(e) => this._onItemDrop(e, index)}></li>
             ${index < this._itemCount ? html`
-            <li class="ew-block-item ${this._dragIndex === index ? 'is-dragging' : ''}"
-              draggable=${!this._disabled} tabindex=${this._disabled ? -1 : 0}
+            <li class="ew-block-item ew-block-multi-item ${this._dragIndex === index ? 'is-dragging' : ''}"
+              draggable=${!this._disabled && !this._expandedItems.has(index)}
+              tabindex=${this._disabled ? -1 : 0}
               aria-label=${`Item ${index + 1}`} aria-keyshortcuts="Enter Space Alt+ArrowUp Alt+ArrowDown"
               title="Click to scroll to item. Drag to reorder, or press Alt+ArrowUp / Alt+ArrowDown"
               @click=${(e) => this._onItemClick(e, index)}
               @dragstart=${(e) => this._onItemDragStart(e, index)}
               @dragend=${this._clearDragState}
               @keydown=${(e) => this._onItemKeydown(e, index)}>
+              <div class="ew-block-item-header" draggable=${!this._disabled}>
               <svg class="ew-block-item-grip" viewBox="0 0 16 16" aria-hidden="true">
                 <circle cx="5" cy="4" r="1"></circle><circle cx="11" cy="4" r="1"></circle>
                 <circle cx="5" cy="8" r="1"></circle><circle cx="11" cy="8" r="1"></circle>
                 <circle cx="5" cy="12" r="1"></circle><circle cx="11" cy="12" r="1"></circle>
               </svg>
+              ${this._fieldDefinitions.length ? html`
+              <button type="button" class="nx-action-btn-icon nx-btn-sm ew-block-item-toggle"
+                draggable="false" aria-label=${`Edit item ${index + 1} fields`}
+                aria-expanded=${this._expandedItems.has(index)}
+                aria-controls=${`ew-block-item-fields-${index}`}
+                @click=${() => {
+                  const expanded = new Set(this._expandedItems);
+                  if (expanded.has(index)) expanded.delete(index);
+                  else expanded.add(index);
+                  this._expandedItems = expanded;
+                }}>
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="m6 4 4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5"></path>
+                </svg>
+              </button>
+              ` : nothing}
               <div class="ew-block-item-preview">${this._renderItemPreview(index)}</div>
               <button type="button" class="nx-action-btn-icon nx-btn-sm"
                 draggable="false" aria-label=${`Delete item ${index + 1}`}
                 ?disabled=${this._disabled} @click=${() => this._onDeleteItem(index)}>
                 <svg aria-hidden="true" viewBox="0 0 20 20"><use href="${DELETE_ICON_SRC}#icon"></use></svg>
               </button>
+              </div>
+              ${this._expandedItems.has(index) ? html`
+                <div class="ew-block-item-fields" id=${`ew-block-item-fields-${index}`}
+                  @click=${(e) => e.stopPropagation()}
+                  @keydown=${(e) => e.stopPropagation()}
+                  @dragstart=${(e) => e.stopPropagation()}
+                  @dragend=${(e) => e.stopPropagation()}>
+                  ${fields.filter((field) => field.itemIndex === index)
+                    .map((field) => this._renderField(field))}
+                </div>
+              ` : nothing}
             </li>` : nothing}`)}
         </ol>
       </section>`;
@@ -527,13 +580,20 @@ class EwBlockProperties extends LitElement {
         isMultiBlock(org, site, name), loadBlockLibrary(org, site), loadBlockOptions(org, site),
       ]);
       const match = await getBlockFieldTemplate(blocks, name, variant, view.state.schema);
-      const definitions = multi ? [] : buildBlockFieldDefinitions(match);
+      const definitions = buildBlockFieldDefinitions(match, { multi });
       if (loadId !== this._fieldLoadId || !this.isConnected) return;
       this._fieldDefinitions = definitions;
+      this._isMulti = multi;
       this._blockOptions = processBlockOptions(options);
-      if (!match || !('fields' in match.item) || (!multi && !definitions.length)) {
+      if (!match || !('fields' in match.item) || !definitions.length) {
         this._generateFieldsContext = {
-          org, site, name, variant, librarySources: ext?.sources ?? [], blockPath: match?.path,
+          org,
+          site,
+          name,
+          variant,
+          multi,
+          librarySources: ext?.sources ?? [],
+          blockPath: match?.path,
         };
       }
       const config = definitions.some((field) => field.type === 'image')
@@ -561,6 +621,7 @@ Selected block:
 - Block name: ${context.name}
 - Variant: ${context.variant || '(no variant)'}
 - Exact block table header: ${block.node.firstChild.textContent}
+- Multi-item block: ${context.multi ? 'yes' : 'no'}
 - Matching block library document: ${context.blockPath || 'Locate it by following the library index entries below.'}
 
 Configured block library index sources:
@@ -571,11 +632,13 @@ Inspect the block library before generating anything:
 2. Find ONLY the "${context.name}" variant "${context.variant || '(no variant)'}". Match the actual block table header or block CSS classes, not just the display heading: a display label such as "Hero (Text Start)" can describe the actual "hero (left)" variant.
 3. Read that variant's template rows, cells, text elements, images, lists, and blockquotes. Generate fields from the LIBRARY TEMPLATE, not from extra content in the current page. If the exact variant cannot be found or the source cannot be read, explain what is missing rather than inventing a schema.
 4. Inspect the library's options sheet for this block and shared "all" options. These supply existing dropdown choices; do not invent choices or add type declarations to the fields table.
+${context.multi ? '5. This block is configured as multi in the editor sheet. Inspect ONLY the first item row after the block header to define its shared field schema. Do not generate separate definitions for later sample items or the current page items.' : '5. This is a non-repeating block. Its field schema must describe all of the library template content rows.'}
 
 How sidebar fields work:
 - Each library variant can have a "fields" entry in its associated "library-metadata". The entry's value is a nested table.
 - The nested table starts with a single header cell containing "fields". This is a header, not an editable field.
-- Subsequent rows mirror the template's content rows in the same order, with the same number and order of cells. Do not add the block name/variant header as a content row.
+- ${context.multi ? 'For this multi-item block, the fields table must contain exactly two rows: the Fields header and ONE content row describing only the first item. That item row must have the same number and order of cells as the first library item row. Every repeating item reuses this schema, regardless of how many sample items are in the template or selected page.' : 'Subsequent rows mirror the template\'s content rows in the same order, with the same number and order of cells.'} Do not add the block name/variant header as a content row.
+- Multi-item blocks show each item as a collapsible card with a chevron. Expanding it opens that item's own field editor. Reuse the same labels and field order for every item; do not duplicate the metadata rows for each item.
 - Inside each metadata cell, put one plain paragraph per field label, in the same order as the corresponding text blocks, images, or lists in the template cell. A cell containing a heading followed by a paragraph needs two labels in that same cell, not two separate table rows. A blockquote's text is a field too; its wrapper does not need a separate label.
 - Labels should be meaningful author-facing names, such as Image, Title, or Subheading. Labels do NOT need to use the template's heading tags or copy its sample text.
 - Do not write explicit type declarations: the sidebar infers "image" from the matching template image/picture, "list" from an ordered or unordered list, and "text" from a text element. Headings and paragraphs are both text, regardless of heading level. Ignore empty spacer paragraphs around image-only content. Image fields show a preview and replacement controls.
@@ -586,7 +649,7 @@ How sidebar fields work:
 - In a two-column key/value row with a single text key and a single text value, a matching key in the block library options sheet makes the value a dropdown. Match the actual key text, not the sidebar field label; block names and keys are normalized for case and whitespace. Block-specific choices override shared "all" choices. Choices use the configured display labels and stored values (for example, Blue=blue). Unmatched rows stay text fields, and a current value outside the choices remains visible without being overwritten.
 - Sidebar values come from the selected page block; edits update that block while preserving its existing heading/paragraph tags and attributes. Additional trailing page content not described by the fields remains untouched.
 
-Illustrative HTML ONLY: the Everything Block and its corresponding library metadata.
+Illustrative HTML ONLY: the non-repeating Everything Block and its corresponding library metadata.
 The first content row has seven fields: heading, tagline, image, one whole list, quote, long paragraph, and link. The next row hides the Color key with IGNORE but exposes its Green value. The final row exposes both columns as text fields.
 <div class="everything-block">
   <div>
@@ -637,6 +700,21 @@ The first content row has seven fields: heading, tagline, image, one whole list,
 
 In this example, the long paragraph is read-only, the quote is editable, and the link exposes both "A link" and its URL. If the existing options sheet has a row with blocks=everything-block, key=Color, values=Green|Blue|Red (or a shared "all" row for that key), the Color value is a dropdown; otherwise it remains a text field. The fields table itself does not define dropdown choices.
 
+${context.multi ? `For THIS multi-item block, do not copy the non-repeating example's extra metadata rows. Here is a separate illustrative Cards example with two sample items but only ONE item row in its fields metadata:
+<div class="cards">
+  <div><div><picture><img src="/first.png" alt="First"></picture></div><div><h2>First title</h2><p>First description</p></div></div>
+  <div><div><picture><img src="/second.png" alt="Second"></picture></div><div><h2>Second title</h2><p>Second description</p></div></div>
+</div>
+<div class="library-metadata">
+  <div><div><p>fields</p></div><div>
+    <table><tbody>
+      <tr><td colspan="2"><p>fields</p></td></tr>
+      <tr><td><p>Image</p></td><td><p>Title</p><p>Description</p></td></tr>
+    </tbody></table>
+  </div></div>
+</div>
+
+` : ''}
 Adapt the rows, cells, and labels to the actual selected library variant; do not blindly copy this example. Add the generated fields table to that variant's existing library metadata, or create associated library metadata if absent. Fill an empty fields entry if one exists. Preserve description, search tags, other metadata, all template content, and all other variants. Do not replace the block or edit the current page to add this schema. If nonempty fields already exist in the source, report them rather than overwriting them. Show the generated table and identify the exact library document and variant to which it belongs.`;
     this._fieldsGenerationRequested = true;
     document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat', options: { text, autoSend: true } } }));
@@ -669,13 +747,18 @@ Adapt the rows, cells, and labels to the actual selected library variant; do not
   get _fields() {
     const { view } = getExtensionsBridge();
     const options = this._blockOptions?.get(this._name);
-    return this._isMulti ? []
-      : resolveBlockFields(getSelectedBlock(view?.state), this._fieldDefinitions ?? [])
-        .map((field) => ({
-          ...field,
-          values: field.optionKey
-            ? options?.get(normalizeForSlashMenu(field.optionKey)) : undefined,
-        }));
+    const block = getSelectedBlock(view?.state);
+    const definitions = this._fieldDefinitions ?? [];
+    const fields = this._isMulti
+      ? Array.from({ length: block ? block.node.childCount - 1 : 0 }, (_, itemIndex) => (
+        resolveBlockFields(block, definitions, { itemIndex })
+      )).flat()
+      : resolveBlockFields(block, definitions);
+    return fields.map((field) => ({
+      ...field,
+      values: field.optionKey
+        ? options?.get(normalizeForSlashMenu(field.optionKey)) : undefined,
+    }));
   }
 
   _captureField(field) {
@@ -780,25 +863,12 @@ Adapt the rows, cells, and labels to the actual selected library variant; do not
     }
   }
 
-  _renderFields() {
+  _renderField(field) {
+    const disabled = this._disabled || !field.node || !!this._uploadingField;
+    let control = nothing;
+    if (field.type === 'text') control = this._renderTextField(field, disabled);
+    if (field.type === 'list') control = this._renderListField(field, disabled);
     return html`
-      ${this._generateFieldsContext ? html`
-        <button type="button" class="nx-form-btn-secondary ew-block-generate-fields"
-          ?disabled=${this._refreshingLibrary}
-          @click=${this._onGenerateFields}>Generate fields</button>
-      ` : nothing}
-      ${this._fieldsGenerationRequested && !this._fieldDefinitions.length ? html`
-        <button type="button" class="nx-form-btn-secondary ew-block-refresh-library"
-          ?disabled=${this._refreshingLibrary} @click=${this._onRefreshLibrary}>
-          ${this._refreshingLibrary ? 'Refreshing...' : 'Refresh'}
-        </button>
-      ` : nothing}
-      ${this._fields.map((field) => {
-        const disabled = this._disabled || !field.node || !!this._uploadingField;
-        let control = nothing;
-        if (field.type === 'text') control = this._renderTextField(field, disabled);
-        if (field.type === 'list') control = this._renderListField(field, disabled);
-        return html`
           <div class="nx-form-field ew-block-field ${field.type === 'list' || field.href !== undefined ? 'ew-block-field-group' : ''}"
             data-field=${field.label}
             aria-disabled=${disabled || field.readOnly}>
@@ -827,7 +897,22 @@ Adapt the rows, cells, and labels to the actual selected library variant; do not
             ${field.error ? html`<span class="nx-input-error-msg" role="alert">${field.error}</span>` : nothing}
             ${this._uploadingField === field.key ? html`<span role="status">Uploading image...</span>` : nothing}
           </div>`;
-      })}
+  }
+
+  _renderFields() {
+    return html`
+      ${this._generateFieldsContext ? html`
+        <button type="button" class="nx-form-btn-secondary ew-block-generate-fields"
+          ?disabled=${this._refreshingLibrary}
+          @click=${this._onGenerateFields}>Generate fields</button>
+      ` : nothing}
+      ${this._fieldsGenerationRequested && !this._fieldDefinitions.length ? html`
+        <button type="button" class="nx-form-btn-secondary ew-block-refresh-library"
+          ?disabled=${this._refreshingLibrary} @click=${this._onRefreshLibrary}>
+          ${this._refreshingLibrary ? 'Refreshing...' : 'Refresh'}
+        </button>
+      ` : nothing}
+      ${this._isMulti ? nothing : this._fields.map((field) => this._renderField(field))}
       ${this._fieldError ? html`<p class="nx-input-error-msg" role="alert">${this._fieldError}</p>` : nothing}`;
   }
 

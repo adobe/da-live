@@ -68,9 +68,10 @@ export async function getBlockFieldTemplate(blocks, name, variant, schema) {
  * The fields table mirrors the block table, including its header. Labels inside
  * each cell address text and images in order, regardless of text tags or wrappers.
  * Empty spacer paragraphs around image-only fields do not count as text fields.
+ * Multi blocks declare only the first item row and reuse those fields for every item.
  * Selected cells may contain additional trailing content outside the declared fields.
  */
-export function buildBlockFieldDefinitions(match) {
+export function buildBlockFieldDefinitions(match, { multi = false } = {}) {
   if (!match || !('fields' in match.item)) return [];
   const { item, template } = match;
 
@@ -79,7 +80,7 @@ export function buildBlockFieldDefinitions(match) {
     || rows[0].textContent.trim().toLowerCase() !== 'fields') {
     throw new Error('Block fields metadata must be a table with a Fields header.');
   }
-  if (rows.length !== template.childCount) {
+  if (rows.length !== (multi ? 2 : template.childCount) || (multi && template.childCount < 2)) {
     throw new Error('Block fields metadata rows do not match the library template.');
   }
   const definitions = [];
@@ -106,6 +107,7 @@ export function buildBlockFieldDefinitions(match) {
           label,
           path,
           type,
+          multi,
           readOnly: type === 'text' && textReadOnly(node, true),
           itemReadOnly: type === 'list' ? listItems(node).map((itemNode) => itemNode.readOnly) : [],
           fieldIndex,
@@ -123,25 +125,30 @@ export async function getBlockFieldDefinitions(blocks, name, variant, schema) {
   return buildBlockFieldDefinitions(await getBlockFieldTemplate(blocks, name, variant, schema));
 }
 
-export function resolveBlockFields(block, definitions) {
+export function resolveBlockFields(block, definitions, { itemIndex = 0 } = {}) {
   if (!block) return [];
   return definitions.map((field) => {
-    const rowIndex = field.path[0];
+    const rowIndex = field.multi ? itemIndex + 1 : field.path[0];
     const cellIndex = field.path[1];
     const row = block.node.maybeChild(rowIndex);
     const cell = row?.maybeChild(cellIndex);
     const cellNodes = cell ? fieldNodes(cell, [rowIndex, cellIndex]) : [];
     const nodes = matchFieldCount(cellNodes, field.fieldCount);
     const current = nodes[field.fieldIndex];
-    const path = current?.path ?? field.path;
+    const templatePath = [rowIndex, ...field.path.slice(1)];
+    const path = current?.path ?? templatePath;
+    const key = field.multi ? templatePath.join('-') : field.key;
     const { node, pos } = nodeAtPath(block, path);
-    const matches = block.node.childCount === field.rowCount
+    const matches = (field.multi ? rowIndex >= 1 && rowIndex < block.node.childCount
+      : block.node.childCount === field.rowCount)
       && row?.childCount === field.cellCount
       && nodes.length >= field.fieldCount
       && current?.type === field.type;
     const value = matches && (field.type === 'image' ? node.attrs.src : node.textContent);
     return {
       ...field,
+      key,
+      itemIndex: field.multi ? itemIndex : undefined,
       path,
       node: matches ? node : null,
       pos,
@@ -155,7 +162,7 @@ export function resolveBlockFields(block, definitions) {
       href: matches && field.type === 'text'
         ? node.firstChild?.marks.find((mark) => mark.type.name === 'link')?.attrs.href : undefined,
       items: matches && field.type === 'list' ? listItems(node).map((item) => ({
-        key: `${field.key}-item-${item.index}`,
+        key: `${key}-item-${item.index}`,
         label: `Item ${item.index + 1}`,
         type: 'text',
         node: item.node,

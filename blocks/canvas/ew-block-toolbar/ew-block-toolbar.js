@@ -1,14 +1,14 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { getBlocksExtension, loadBlockLibrary } from '../ew-panel-extensions/helpers.js';
-import { replaceBlockRange, setTableBlockVariant, appendBlockRow } from '../editor-utils/blocks.js';
+import { getSelectedBlock, replaceBlockRange, setTableBlockVariant, appendBlockRow } from '../editor-utils/blocks.js';
 import { isMultiBlock, getMultiBlockTemplateRow } from '../editor-utils/multi-block.js';
 import { requestComment } from '../editor-utils/command-helpers.js';
-import { canvasBus } from '../utils/canvas-bus.js';
 import { getBlockVariantOptions, normalizeBlockName } from '../editor-utils/block-variants.js';
 
 const nx = getNx();
 const { loadStyle } = await import(`${nx}/utils/utils.js`);
+const { PANEL_EVENT } = await import(`${nx}/utils/panel.js`);
 await import(`${nx}/blocks/shared/picker/picker.js`);
 
 const styles = await loadStyle(import.meta.url);
@@ -144,10 +144,8 @@ class EwBlockToolbar extends LitElement {
   }
 
   _onEditBlock() {
-    const pos = this.view?.state.selection.from;
-    if (pos == null) return;
-    // Ask the doc editor to open the single-block editor modal (see ew-editor-doc.enterBlockEdit).
-    canvasBus.blockEditRequest.emit({ pos });
+    if (!getSelectedBlock(this.view?.state)) return;
+    document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'tools', id: 'block' } }));
   }
 
   _onComment() {

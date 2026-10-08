@@ -19,7 +19,7 @@ const { getImageDocumentVersion } = await import(`${getNx2()}/public/utils/quick
  *
  * `mirroringFromIframe` marks the dispatch as iframe-originated for the (synchronous)
  * selection-tracking hook, so it doesn't scroll the iframe back to where the user
- * already is. Kept separate from `suppressRerender`, which block edit also holds.
+ * already is. This is separate from the update-echo guard, `suppressRerender`.
  */
 export function dispatchMirror(view, tr, ctx) {
   ctx.suppressRerender = true;

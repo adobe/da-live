@@ -3,7 +3,7 @@ import { DOMParser as PMDOMParser } from 'da-y-wrapper';
 import { getSchema } from 'da-parser';
 import { getBlockVariantOptions } from '../../../../../blocks/canvas/editor-utils/block-variants.js';
 import { createExtensionsBridgePlugin, getExtensionsBridge } from '../../../../../blocks/canvas/editor-utils/extensions-bridge.js';
-import { getBlockFieldDefinitions, resolveBlockFields } from '../../../../../blocks/canvas/editor-utils/block-fields.js';
+import { buildBlockFieldDefinitions, getBlockFieldDefinitions, resolveBlockFields } from '../../../../../blocks/canvas/editor-utils/block-fields.js';
 
 const schema = getSchema();
 const dom = (html) => {
@@ -30,6 +30,48 @@ const selectedBlock = (table, from = 0) => {
 };
 
 describe('block fields', () => {
+  it('uses one first-item schema for every row of a multi block', () => {
+    const row = (name) => `<tr><td><p><img src="/${name}.png"></p></td>
+      <td><h2>${name}</h2><p><a href="/${name}">${name} link</a></p>
+        <ul><li>${name} one</li><li>${name} two</li></ul></td></tr>`;
+    const table = dom(`<table><tr><td colspan="2">Hero (left)</td></tr>
+      ${row('Template')}${row('Another template item')}</table>`);
+    const fields = dom(`<table><tr><td colspan="2">fields</td></tr>
+      <tr><td>Image</td><td><p>Title</p><p>Link</p><p>List</p></td></tr></table>`);
+    const match = { item: { fields }, template: selectedBlock(table).node };
+    const definitions = buildBlockFieldDefinitions(match, { multi: true });
+    expect(definitions.length).to.equal(4);
+    const current = dom(`<table><tr><td colspan="2">Hero (left)</td></tr>
+      ${row('First')}${row('Second')}${row('Third')}</table>`);
+    const block = selectedBlock(current, 10);
+    const all = [0, 1, 2].flatMap((itemIndex) => {
+      const resolved = resolveBlockFields(block, definitions, { itemIndex });
+      expect(resolved.every((field) => !field.error)).to.equal(true);
+      expect(resolved[1].value).to.equal(['First', 'Second', 'Third'][itemIndex]);
+      resolved.forEach((field) => {
+        expect(field.path[0]).to.equal(itemIndex + 1);
+        expect(block.node.nodeAt(field.pos - block.from - 1)).to.equal(field.node);
+      });
+      return resolved;
+    });
+    expect(new Set(all.map((field) => field.key)).size).to.equal(12);
+    expect(new Set(all.flatMap((field) => field.items.map((item) => item.key))).size).to.equal(6);
+    const missing = resolveBlockFields(block, definitions, { itemIndex: 3 });
+    expect(missing.every((field) => field.node === null && field.error)).to.equal(true);
+    current.rows[2].deleteCell(1);
+    const mismatched = selectedBlock(current);
+    expect(resolveBlockFields(mismatched, definitions, { itemIndex: 1 })
+      .every((field) => field.node === null)).to.equal(true);
+    expect(resolveBlockFields(mismatched, definitions, { itemIndex: 2 })
+      .every((field) => !field.error)).to.equal(true);
+  });
+
+  it('requires only a header and first-item row for multi-block fields metadata', () => {
+    const table = dom('<table><tr><td>Hero (left)</td></tr><tr><td>First</td></tr><tr><td>Second</td></tr></table>');
+    const fields = dom('<table><tr><td>fields</td></tr><tr><td>Title</td></tr><tr><td>Title</td></tr></table>');
+    expect(() => buildBlockFieldDefinitions({ item: { fields }, template: selectedBlock(table).node }, { multi: true })).to.throw('metadata rows');
+  });
+
   it('supports the everything block metadata, including a single field for the list', async () => {
     const content = `<h1>Hello World</h1><p>Foo bar baz</p>
       <picture><img src="/everything.png"></picture>
