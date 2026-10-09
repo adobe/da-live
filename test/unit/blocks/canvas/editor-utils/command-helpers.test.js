@@ -5,6 +5,7 @@ import {
   applyLink,
   getLinkInfoInSelection,
   selectionHasLink,
+  isLinkImageSelected,
   canComment,
 } from '../../../../../blocks/canvas/editor-utils/command-helpers.js';
 
@@ -79,6 +80,27 @@ describe('canComment', () => {
 
   it('is true for a non-empty text selection', () => {
     expect(canComment(stateWithRange(1, 6))).to.equal(true);
+  });
+});
+
+describe('isLinkImageSelected', () => {
+  function stateWithSelectedImage(attrs) {
+    const para = schema.nodes.paragraph.create(null, schema.nodes.image.create(attrs));
+    const doc = schema.nodes.doc.create(null, para);
+    return EditorState.create({ schema, doc, selection: NodeSelection.create(doc, 1) });
+  }
+
+  it('is true for a selected editable link-image', () => {
+    const state = stateWithSelectedImage({ src: 'https://dm.example/x.jpg', editAs: 'image' });
+    expect(isLinkImageSelected(state)).to.equal(true);
+  });
+
+  it('is false for a selected normal image', () => {
+    expect(isLinkImageSelected(stateWithSelectedImage({ src: '/x.png' }))).to.equal(false);
+  });
+
+  it('is false for a text selection', () => {
+    expect(isLinkImageSelected(stateWithPlainText())).to.equal(false);
   });
 });
 

@@ -213,6 +213,29 @@ describe('buildHandleSelection', () => {
     expect(view.created).to.have.length(0);
   });
 
+  it('takes link path for image when imageType is link', async () => {
+    const { view, dialog, handler } = setup({ ...REPO_CONFIG, imageType: 'link' });
+    try { await handler([ASSET]); } catch { /* proseDOMParser mock limitation */ }
+    expect(dialog.isOpen).to.be.false;
+    expect(view.created).to.have.length(0);
+  });
+
+  it('inserts image with editAs image when imageType is editable-link', async () => {
+    const { view, dialog, handler } = setup({ ...REPO_CONFIG, insertAsLink: true, imageType: 'editable-link' });
+    await handler([ASSET]);
+    expect(dialog.isOpen).to.be.false;
+    expect(view.dispatched).to.have.length(1);
+    expect(view.created).to.deep.equal([{ src: IMAGE_HREF, style: 'width: 180px', alt: 'A photo', editAs: 'image' }]);
+  });
+
+  it('takes link path for non-image assets when imageType is editable-link', async () => {
+    setSelection(PDF_SELECTION);
+    const { view, dialog, handler } = setup({ ...REPO_CONFIG, insertAsLink: true, imageType: 'editable-link' });
+    try { await handler([ASSET]); } catch { /* proseDOMParser mock limitation */ }
+    expect(dialog.isOpen).to.be.false;
+    expect(view.created).to.have.length(0);
+  });
+
   [DM_ERROR_MSG, PUBLISH_ERROR_MSG].forEach((message) => {
     it(`shows the error panel for "${message}" and keeps the dialog open`, async () => {
       setSelection({ error: message });
@@ -241,6 +264,27 @@ describe('buildHandleSelection', () => {
     expect(dialog.isOpen).to.be.false;
     expect(view.dispatched).to.have.length(1);
     expect(view.created[0].src).to.equal(IMAGE_HREF);
+  });
+
+  it('keeps editAs image when smart crop has no crops', async () => {
+    mockSmartCrops([]);
+    const { view, handler } = setup({ ...REPO_CONFIG, isSmartCrop: true, imageType: 'editable-link' });
+    await handler([ASSET]);
+    expect(view.created[0].editAs).to.equal('image');
+  });
+
+  it('keeps editAs image on smart crop insert', async () => {
+    mockSmartCrops([{ name: 'desktop' }, { name: 'mobile' }]);
+    const { view, assetPanel, secondaryPanel, handler } = setup(
+      { ...REPO_CONFIG, isSmartCrop: true, imageType: 'editable-link' },
+    );
+    document.body.append(assetPanel, secondaryPanel);
+    await handler([ASSET]);
+    try { secondaryPanel.querySelector('.insert').click(); } catch { /* Fragment.fromArray needs real nodes */ }
+    expect(view.created.length).to.be.greaterThan(0);
+    view.created.forEach((attrs) => expect(attrs.editAs).to.equal('image'));
+    assetPanel.remove();
+    secondaryPanel.remove();
   });
 
   it('calls onInsert callback from smart crop dialog, closing dialog and inserting nodes', async () => {

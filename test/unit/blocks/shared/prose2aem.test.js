@@ -344,6 +344,73 @@ describe('prose2aem with isFragment parameter', () => {
     expect(result).to.include('alt="Test image"');
   });
 
+  it('Serializes an editable-link image to a plain <a> with no <picture>', () => {
+    const fragment = document.createElement('div');
+    fragment.innerHTML = `
+      <p>
+        <img src="https://example.com/asset.jpg" alt="A description" data-edit-as="image">
+      </p>
+    `;
+
+    const result = prose2aem(fragment, true, true);
+
+    expect(result).to.not.include('<picture>');
+    expect(result).to.not.include('<img');
+    expect(result).to.include('<a');
+    expect(result).to.include('href="https://example.com/asset.jpg"');
+    expect(result).to.include('title="A description"');
+    expect(result).to.include('data-edit-as="image"');
+    expect(result).to.include('>https://example.com/asset.jpg<');
+    expect(result).to.match(/<p>\s*<a [^>]*data-edit-as="image"/);
+  });
+
+  it('Keeps the <p> around an editable-link image that is alone in a block cell', () => {
+    const fragment = document.createElement('div');
+    fragment.innerHTML = '<table><tbody><tr><td>cards</td></tr><tr><td><p><img src="https://example.com/asset.jpg" data-edit-as="image"></p></td></tr></tbody></table>';
+
+    const result = prose2aem(fragment, true, true);
+
+    expect(result).to.match(/<p><a [^>]*data-edit-as="image"[^>]*>https:\/\/example\.com\/asset\.jpg<\/a><\/p>/);
+  });
+
+  it('Carries data-image-index onto the editable-link anchor', () => {
+    const fragment = document.createElement('div');
+    fragment.innerHTML = '<p><img src="https://example.com/asset.jpg" data-edit-as="image" data-image-index="12"></p>';
+
+    const result = prose2aem(fragment, true, true);
+
+    expect(result).to.match(/<a [^>]*data-image-index="12"/);
+  });
+
+  it('Serializes an editable-link image without alt to a plain <a> with no title', () => {
+    const fragment = document.createElement('div');
+    fragment.innerHTML = `
+      <p>
+        <img src="https://example.com/asset.jpg" data-edit-as="image">
+      </p>
+    `;
+
+    const result = prose2aem(fragment, true, true);
+
+    expect(result).to.not.include('<picture>');
+    expect(result).to.include('<a');
+    expect(result).to.not.include('title=');
+  });
+
+  it('Leaves other images unaffected by the editable-link handling (regression)', () => {
+    const fragment = document.createElement('div');
+    fragment.innerHTML = `
+      <p>
+        <img src="https://example.com/regular.jpg" alt="Regular">
+      </p>
+    `;
+
+    const result = prose2aem(fragment, true, true);
+
+    expect(result).to.include('<picture>');
+    expect(result).to.not.include('data-edit-as');
+  });
+
   it('Converts focal point attributes to data-title', () => {
     const fragment = document.createElement('div');
     fragment.innerHTML = `

@@ -1,5 +1,6 @@
 import { expect } from '@esm-bundle/chai';
-import { TextSelection } from 'da-y-wrapper';
+import sinon from 'sinon';
+import { NodeSelection, TextSelection } from 'da-y-wrapper';
 import {
   getHeadingKeymap,
   insertSectionBreak,
@@ -137,6 +138,37 @@ describe('menu/linkItem exports', () => {
       editor.view.dispatch(tr2);
       const item = linkItem(linkMark);
       expect(item.spec.enable(editor.view.state)).to.be.false;
+    });
+
+    function selectImage(attrs) {
+      const { schema } = editor.view.state;
+      const tr = editor.view.state.tr.replaceWith(
+        0,
+        editor.view.state.doc.content.size,
+        schema.nodes.paragraph.create(null, [schema.nodes.image.create(attrs)]),
+      );
+      editor.view.dispatch(tr);
+      editor.view.dispatch(editor.view.state.tr.setSelection(
+        NodeSelection.create(editor.view.state.doc, 1),
+      ));
+      return linkItem(schema.marks.link);
+    }
+
+    it('enable() is true for a selected normal image', () => {
+      const item = selectImage({ src: '/x.png' });
+      expect(item.spec.enable(editor.view.state)).to.be.true;
+    });
+
+    it('enable() is false for a selected editable link-image', () => {
+      const item = selectImage({ src: 'https://dm.example/x.jpg', editAs: 'image' });
+      expect(item.spec.enable(editor.view.state)).to.be.false;
+    });
+
+    it('run() does not open the prompt for an editable link-image (Mod-k path)', () => {
+      const item = selectImage({ src: 'https://dm.example/x.jpg', editAs: 'image' });
+      const dispatch = sinon.spy();
+      item.spec.run(editor.view.state, dispatch, editor.view);
+      expect(dispatch.called).to.be.false;
     });
   });
 

@@ -115,6 +115,9 @@ export function buildHandleSelection({
 
     const { href, isImage, alt } = selection;
 
+    const imageType = repoConfig.imageType ?? (repoConfig.insertAsLink ? 'link' : null);
+    const editAs = imageType === 'editable-link' ? 'image' : undefined;
+
     // Smart crop flow (only for images with smart crop enabled)
     if (isImage && repoConfig.isSmartCrop) {
       showSecondaryPanel(assetPanel, secondaryPanel);
@@ -133,6 +136,7 @@ export function buildHandleSelection({
             view,
             applySiteImageModifiers(src, repoConfig.siteImageModifiers),
             alt,
+            editAs,
           ));
           insertFragment(view, nodes);
         },
@@ -142,7 +146,7 @@ export function buildHandleSelection({
 
       if (!hasCrops) {
         closeAndReset();
-        insertImage(view, href, alt);
+        insertImage(view, href, alt, editAs);
       }
       return;
     }
@@ -150,10 +154,10 @@ export function buildHandleSelection({
     // Standard insertion
     close();
 
-    if (!isImage || repoConfig.insertAsLink) {
+    if (!isImage || imageType === 'link') {
       insertLink(view, href);
     } else {
-      insertImage(view, href, alt);
+      insertImage(view, href, alt, editAs);
     }
   };
 }

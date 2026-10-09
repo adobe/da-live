@@ -295,6 +295,31 @@ describe('parseSections', () => {
     }]);
   });
 
+  it('treats an editable link-image paragraph as an image, not link text', () => {
+    const html = `<main><div>
+      <p data-prose-index="6"><a href="https://x.com/a.jpg" data-edit-as="image" data-image-index="7">https://x.com/a.jpg</a></p>
+    </div></main>`;
+    const [section] = parseSections(html);
+    expect(section.items).to.deep.equal([{
+      type: 'content',
+      proseIndex: 6,
+      innerText: '',
+      children: [{ type: 'content', kind: 'image', proseIndex: 7, innerText: '', snippet: '' }],
+    }]);
+  });
+
+  it('keeps link-image URLs out of paragraph snippets and block text', () => {
+    const img = '<a href="https://x.com/a.jpg" data-edit-as="image">https://x.com/a.jpg</a>';
+    const html = `<main><div>
+      <p data-prose-index="1">${img}Hello<br>second</p>
+      <div class="cards" data-block-index="20"><div><div>${img}</div><div>Card</div></div></div>
+    </div></main>`;
+    const [section] = parseSections(html);
+    const [content, block] = section.items;
+    expect(content.children[0]).to.include({ kind: 'paragraph', innerText: 'Hellosecond', snippet: 'Hello' });
+    expect(block.innerText).to.equal('Card');
+  });
+
   it('handles multiple sections independently', () => {
     const html = `<main>
       <div><p data-prose-index="1">Section one text</p></div>
