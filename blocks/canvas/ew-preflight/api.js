@@ -1,9 +1,9 @@
 import { getAuthToken } from '../../shared/utils.js';
 
 // Experience Governance "evaluate page" REST endpoint.
-const BASE_URL = 'https://enterprise-context.adobe.io';
+const BASE_URL = 'https://experience-context.adobe.io';
 const EVALUATE_PATH = '/api/v0/evaluate/page';
-// Fixed enterprise-context API key (NOT the IMS client id).
+// Fixed experience-context API key (NOT the IMS client id).
 const API_KEY = 'darkalley';
 
 /**

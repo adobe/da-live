@@ -1,5 +1,5 @@
 // Adapts an Experience Governance "evaluate page" REST response
-// (POST https://enterprise-context.adobe.io/api/v0/evaluate/page) into the
+// (POST https://experience-context.adobe.io/api/v0/evaluate/page) into the
 // { title, summary, sections } shape consumed by the shared page-evaluation
 // renderer (nx-page-eval / artifact type PageEvaluationWithIcons in da-nx).
 // Includes built-in (DA out-of-the-box preflight), text, image, and site-code
