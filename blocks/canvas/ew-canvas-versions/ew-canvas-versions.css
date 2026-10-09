@@ -47,6 +47,21 @@ button {
   color: var(--s2-gray-700);
 }
 
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-100);
+}
+
+.refresh-icon {
+  width: 16px;
+  height: 16px;
+  background: currentcolor;
+  mask-position: center;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+}
+
 .seg-btn {
   font-size: var(--s2-component-s-regular-font-size);
   border: none;
@@ -318,5 +333,3 @@ summary {
 nx-dialog {
   --nx-dialog-padding: var(--s2-spacing-200);
 }
-
-

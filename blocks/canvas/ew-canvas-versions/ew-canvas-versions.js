@@ -1,6 +1,6 @@
-import { LitElement, html, nothing } from 'da-lit';
+import { LitElement, html, nothing, repeat } from 'da-lit';
 import { DOMParser as PMDOMParser } from 'da-y-wrapper';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { initIms } from '../../shared/utils.js';
 import {
   fetchVersions,
@@ -13,6 +13,8 @@ import { buildDisplayItems, formatUser } from '../../shared/version/helpers.js';
 import { docToHtml, domToHtml, buildCompareDom } from '../../shared/version/compare.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { trackingPluginKey } from '../editor-utils/prose-diff.js';
+import { canvasBus } from '../utils/canvas-bus.js';
+import { initVersionBridge } from '../editor-utils/version-bridge.js';
 import './ew-canvas-compare.js';
 
 const IS_MAC = typeof navigator !== 'undefined' && /Mac|iP(hone|[oa]d)/.test(navigator.platform);
@@ -22,6 +24,7 @@ const ICON_ADD = '/img/icons/s2-icon-addcircle-20-n.svg';
 const ICON_MORE = '/img/icons/s2-icon-more-20-n.svg';
 const ICON_CHEVRON = '/img/icons/s2-icon-chevrondown-20-n.svg';
 const ICON_CLOSE = '/img/icons/s2-icon-close-20-n.svg';
+const ICON_REFRESH = `${getNx2()}/public/icons/S2_Icon_Refresh_20_N.svg`;
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
@@ -45,12 +48,20 @@ async function showError(text) {
   showToast({ text, variant: 'error' });
 }
 
+function entryKey(entry) {
+  if (entry.isVersion) return entry.url || entry.versionId || entry;
+  const oldest = entry.audits.at(-1);
+  return `audit-${oldest.timestamp ?? `${oldest.date}-${oldest.time}`}`;
+}
+
 class EwCanvasVersions extends LitElement {
   static properties = {
     path: { type: String },
     _filter: { state: true },
     _imsEmail: { state: true },
     _versions: { state: true },
+    _refreshing: { state: true },
+    _loadError: { state: true },
     _newVersion: { state: true },
     _savingVersion: { state: true },
     _restoreEntry: { state: true },
@@ -63,6 +74,10 @@ class EwCanvasVersions extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [baseStyle, style];
     this._filter = 'all';
     initIms().then((ims) => { this._imsEmail = ims?.email ?? null; });
+    initVersionBridge();
+    this._unsubVersion = canvasBus.versionCreatedState.subscribe(({ path }) => {
+      if (path === this.path) this.handleRefresh();
+    });
     this._unsubHash = hashChange?.subscribe((state) => {
       const next = buildDocPath(state);
       if (next !== this.path) {
@@ -71,6 +86,8 @@ class EwCanvasVersions extends LitElement {
         this.handleRestoreCancel();
         this.handleCancel();
         if (next) this._load();
+      } else if (next && this._versions === undefined) {
+        this._load();
       }
     });
   }
@@ -78,6 +95,9 @@ class EwCanvasVersions extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
+    this._unsubVersion?.();
+    this._loadRequest = (this._loadRequest ?? 0) + 1;
+    this._refreshing = false;
   }
 
   updated(changed) {
@@ -89,14 +109,39 @@ class EwCanvasVersions extends LitElement {
   }
 
   async _load({ showLoading = true } = {}) {
+    const { path } = this;
+    if (!path) return;
+    const request = (this._loadRequest ?? 0) + 1;
+    this._loadRequest = request;
     if (showLoading) this._versions = undefined;
-    const versions = await fetchVersions(this.path);
+    this._refreshing = true;
+    this._loadError = false;
+    const versions = await fetchVersions(path);
+    if (request !== this._loadRequest || path !== this.path || !this.isConnected) return;
+    this._refreshing = false;
     if (versions === null) {
-      showError('Could not load version history. Please try again.');
-      this._versions = [];
+      this._loadError = true;
+      await showError('Could not load version history. Please try again.');
       return;
     }
+
+    const list = this.shadowRoot.querySelector('.versionlist');
+    const scrollTop = list?.scrollTop ?? 0;
+    const top = list?.getBoundingClientRect().top ?? 0;
+    const anchor = scrollTop > 0
+      ? [...list.children].find((row) => row.getBoundingClientRect().bottom > top)
+      : null;
+    const anchorTop = anchor?.getBoundingClientRect().top;
     this._versions = versions;
+    await this.updateComplete;
+    if (request !== this._loadRequest || path !== this.path || !this.isConnected || !list) return;
+    list.scrollTop = anchor?.isConnected
+      ? list.scrollTop + anchor.getBoundingClientRect().top - anchorTop
+      : scrollTop;
+  }
+
+  handleRefresh() {
+    return this._load({ showLoading: false });
   }
 
   _setFilter(val) {
@@ -111,15 +156,17 @@ class EwCanvasVersions extends LitElement {
     e.preventDefault();
     if (this._savingVersion) return;
     const label = e.target.elements.label?.value || '';
+    const { path } = this;
     this._savingVersion = true;
-    const ok = await createVersion(this.path, label);
+    const ok = await createVersion(path, label);
     this._savingVersion = false;
+    if (path !== this.path || !this.isConnected) return;
     if (!ok) {
       showError('Could not save version. Please try again.');
       return;
     }
     this._newVersion = null;
-    this._load({ showLoading: false });
+    this.handleRefresh();
   }
 
   handleCancel() {
@@ -398,8 +445,12 @@ class EwCanvasVersions extends LitElement {
       `;
     }
 
+    const loading = html`<p class="loading" role=${this._loadError ? 'alert' : nothing}>
+      ${this._loadError ? 'Could not load version history. Use Refresh to try again.' : 'Loading…'}
+    </p>`;
+
     return html`
-      <div class="ew-canvas-versions">
+      <div class="ew-canvas-versions" aria-busy=${this._refreshing ? 'true' : 'false'}>
         <div class="toolbar">
           <div class="segment" role="group" aria-label="Filter versions">
             <button type="button"
@@ -411,20 +462,30 @@ class EwCanvasVersions extends LitElement {
               aria-pressed=${this._filter === 'me'}
               @click=${() => this._setFilter('me')}>Only me</button>
           </div>
-          <button type="button" class="da-icon-btn" aria-label="Create version"
-            ?disabled=${!!this._newVersion} @click=${this.handleNew}>
-            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
-              <use href="${ICON_ADD}#icon"></use>
-            </svg>
-          </button>
+          <div class="toolbar-actions">
+            <button type="button" class="da-icon-btn refresh-btn"
+              aria-label=${this._refreshing ? 'Refreshing version history' : 'Refresh version history'}
+              title="Refresh version history" ?disabled=${this._refreshing}
+              @click=${this.handleRefresh}>
+              ${this._refreshing
+        ? html`<span class="da-loading-spinner" aria-hidden="true"></span>`
+        : html`<span class="refresh-icon" style=${`mask-image: url("${ICON_REFRESH}")`} aria-hidden="true"></span>`}
+            </button>
+            <button type="button" class="da-icon-btn" aria-label="Create version"
+              ?disabled=${!!this._newVersion} @click=${this.handleNew}>
+              <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
+                <use href="${ICON_ADD}#icon"></use>
+              </svg>
+            </button>
+          </div>
         </div>
         <p class="da-hint">Press <kbd class="da-kbd">${SHORTCUT_HINT}</kbd> to add to version history while editing.</p>
         ${this._versions === undefined
-        ? html`<p class="loading">Loading…</p>`
+        ? loading
         : html`<ul class="versionlist">
               ${this._newVersion ? this.renderNewRow() : nothing}
               ${this.renderCurrentRow()}
-              ${buildDisplayItems(this._filteredVersions).map((entry) => (
+              ${repeat(buildDisplayItems(this._filteredVersions), entryKey, (entry) => (
           entry.isVersion ? this.renderVersion(entry) : this.renderAudits(entry)
         ))}
             </ul>`}
