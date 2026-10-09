@@ -1,6 +1,6 @@
 /* eslint-disable object-curly-newline */
 /* eslint-disable no-use-before-define */
-import { HLX_ADMIN, AEM_API, DA_ADMIN, ALLOWED_TOKEN } from './utils.js';
+import { HLX_ADMIN, AEM_API, DA_ADMIN, DA_CONTENT, ALLOWED_TOKEN } from './utils.js';
 import { loadIms, handleSignIn } from './ims.js';
 
 export { AEM_API };
@@ -261,7 +261,33 @@ export const source = {
   copy: withArgs(async ({
     org, site, path, destination, collision,
   }) => {
-    const hlx6 = await isHlx6(org, site);
+    const dest = fromPath(destination);
+    const sameSite = org === dest.org && site === dest.site;
+    const [srcHlx6, destHlx6] = await Promise.all([
+      isHlx6(org, site),
+      isHlx6(dest.org, dest.site),
+    ]);
+
+    // Mirrors da-nx nx2 (adobe/da-nx#732): a cross-site copy touching hlx6
+    // streams the bytes to the destination instead of a server-side copy.
+    if (!sameSite && (srcHlx6 || destHlx6)) {
+      const getResp = await source.get({ org, site, path });
+      if (!getResp.ok) return getResp;
+      let body;
+      if (path.toLowerCase().endsWith('.html')) {
+        const srcBase = srcHlx6
+          ? `https://main--${site}--${org}.aem.page${path}`
+          : `${DA_CONTENT}/${org}/${site}${path}`;
+        body = absolutizeMediaRefs(await getResp.text(), srcBase);
+      } else {
+        body = await getResp.blob();
+      }
+      return source.save({
+        org: dest.org, site: dest.site, path: dest.path, body,
+      });
+    }
+
+    const hlx6 = srcHlx6;
     if (hlx6) {
       const url = new URL(await getDaApiPath(SOURCE, org, site, destination));
       url.searchParams.set('source', path);
@@ -498,6 +524,15 @@ const TYPE_MAP = {
   '.mp4': 'video/mp4',
   '.pdf': 'application/pdf',
 };
+
+// Rewrite relative `media_` refs (src/href/srcset) to absolute URLs against
+// `base`. Already-absolute and non-`media_` refs are left untouched.
+function absolutizeMediaRefs(html, base) {
+  return html.replace(/\b(src|href|srcset)=(["'])(.*?)\2/gi, (full, attr, quote, val) => {
+    if (!val.includes('media_') || /^(https?:)?\/\//i.test(val.trim())) return full;
+    return `${attr}=${quote}${new URL(val.trim(), base).href}${quote}`;
+  });
+}
 
 // DA-owned endpoints proxied between DA_ADMIN and AEM_API.
 async function getDaApiPath(api, org, site, path = '') {

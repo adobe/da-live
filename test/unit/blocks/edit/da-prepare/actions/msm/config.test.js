@@ -6,7 +6,24 @@ import {
   isPageLocal,
   checkOverrides,
   clearMsmCache,
+  inheritsFromBase,
 } from '../../../../../../../blocks/edit/da-prepare/actions/msm/helpers/config.js';
+import { setPaceOptions } from '../../../../../../../blocks/edit/da-prepare/actions/msm/helpers/pace.js';
+
+const PING = 'https://admin.hlx.page/ping/';
+
+// isHlx6 memoizes per org/site, so Helix 6 cases use their own site names.
+function hlx6Fetch(hlx6Sites, handler, calls = []) {
+  return async (url, opts = {}) => {
+    if (url.startsWith(PING)) {
+      const site = url.slice(PING.length).split('/')[1];
+      const headers = hlx6Sites.includes(site) ? { 'x-api-upgrade-available': 'true' } : {};
+      return new Response('', { status: 200, headers });
+    }
+    calls.push({ url, method: opts.method || 'GET' });
+    return handler(url, opts);
+  };
+}
 
 const ORG_CONFIG = {
   msm: {
@@ -39,10 +56,12 @@ describe('MSM config', () => {
     window.localStorage.removeItem('nx-ims');
     // see msm.test.js — the org config is fetched through the nx2 config API
     setNx('/test/fixtures/nx', { hostname: 'example.com' });
+    setPaceOptions({ sleep: () => Promise.resolve(), minIntervalMs: 0 });
     clearMsmCache();
   });
 
   afterEach(() => {
+    window.localStorage.removeItem('hlx6-upgrade');
     window.fetch = savedFetch;
     if (savedLocalStorage) {
       window.localStorage.setItem('nx-ims', savedLocalStorage);
@@ -161,13 +180,30 @@ describe('MSM config', () => {
 
   describe('isPageLocal', () => {
     it('returns true when HEAD returns 200', async () => {
-      window.fetch = (url, opts) => {
-        expect(opts.method).to.equal('HEAD');
-        return Promise.resolve(new Response('', { status: 200 }));
-      };
+      const calls = [];
+      window.fetch = hlx6Fetch([], () => Promise.resolve(new Response('', { status: 200 })), calls);
 
       const result = await isPageLocal('org', 'san-diego-mccs', '/about');
       expect(result).to.be.true;
+      expect(calls[0].method).to.equal('HEAD');
+      expect(calls[0].url).to.equal('https://admin.da.live/source/org/san-diego-mccs/about.html');
+    });
+
+    it('checks a Helix 6 site in the source bus', async () => {
+      const calls = [];
+      window.fetch = hlx6Fetch(['h6-local'], () => Promise.resolve(new Response('', { status: 200 })), calls);
+
+      const result = await isPageLocal('org', 'h6-local', '/about');
+      expect(result).to.be.true;
+      expect(calls[0].method).to.equal('HEAD');
+      expect(calls[0].url).to.equal('https://api.aem.live/org/sites/h6-local/source/about.html');
+    });
+
+    it('returns false when the HEAD keeps failing', async () => {
+      window.fetch = hlx6Fetch(['h6-fail'], () => Promise.reject(new TypeError('Failed to fetch')));
+
+      const result = await isPageLocal('org', 'h6-fail', '/about');
+      expect(result).to.be.false;
     });
 
     it('returns false when HEAD returns 404', async () => {
@@ -206,6 +242,42 @@ describe('MSM config', () => {
     it('handles empty satellites', async () => {
       const results = await checkOverrides('org', {}, '/about');
       expect(results).to.deep.equal([]);
+    });
+
+    it('keeps at most four HEAD requests in flight', async () => {
+      let inFlight = 0;
+      let max = 0;
+      window.fetch = hlx6Fetch([], async () => {
+        inFlight += 1;
+        max = Math.max(max, inFlight);
+        await new Promise((resolve) => { setTimeout(resolve, 5); });
+        inFlight -= 1;
+        return new Response('', { status: 404 });
+      });
+
+      const satellites = Object.fromEntries(
+        Array.from({ length: 10 }, (_, i) => [`paced-sat-${i}`, { label: `Sat ${i}` }]),
+      );
+      const results = await checkOverrides('org', satellites, '/about');
+      expect(results).to.have.length(10);
+      expect(max).to.equal(4);
+    });
+  });
+
+  describe('inheritsFromBase', () => {
+    it('is true when base and satellite are legacy DA sites', async () => {
+      window.fetch = hlx6Fetch([], () => Promise.resolve(new Response('', { status: 200 })));
+      expect(await inheritsFromBase('org', 'inh-base1', 'inh-sat1')).to.be.true;
+    });
+
+    it('is false when the satellite is on Helix 6', async () => {
+      window.fetch = hlx6Fetch(['inh-sat2'], () => Promise.resolve(new Response('', { status: 200 })));
+      expect(await inheritsFromBase('org', 'inh-base2', 'inh-sat2')).to.be.false;
+    });
+
+    it('is false when the base is on Helix 6', async () => {
+      window.fetch = hlx6Fetch(['inh-base3'], () => Promise.resolve(new Response('', { status: 200 })));
+      expect(await inheritsFromBase('org', 'inh-base3', 'inh-sat3')).to.be.false;
     });
   });
 

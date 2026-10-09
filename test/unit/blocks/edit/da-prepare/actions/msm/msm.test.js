@@ -2,6 +2,7 @@
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../../../scripts/utils.js';
 import { setMergeCopy } from '../../../../../../../blocks/edit/da-prepare/actions/msm/helpers/utils.js';
+import { setPaceOptions } from '../../../../../../../blocks/edit/da-prepare/actions/msm/helpers/pace.js';
 
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 const waitForLoad = () => new Promise((resolve) => { setTimeout(resolve, 100); });
@@ -55,6 +56,23 @@ function createFetchMock({ orgConfigs = {}, overrideSites = [], aemStatus } = {}
   };
 }
 
+const PING = 'https://admin.hlx.page/ping/';
+
+// Answers the nx2 isHlx6 ping with the upgrade header for `hlx6Sites` and
+// records every other call. isHlx6 memoizes per org/site, so Helix 6 cases
+// use their own site names.
+function withHlx6(hlx6Sites, mock, calls = []) {
+  return async (url, opts = {}) => {
+    if (url.startsWith(PING)) {
+      const site = url.slice(PING.length).split('/')[1];
+      const headers = hlx6Sites.includes(site) ? { 'x-api-upgrade-available': 'true' } : {};
+      return new Response('', { status: 200, headers });
+    }
+    calls.push({ url, method: opts.method || 'GET' });
+    return mock(url, opts);
+  };
+}
+
 describe('DaMsm component', () => {
   let savedFetch;
   let savedLocalStorage;
@@ -69,6 +87,7 @@ describe('DaMsm component', () => {
     // the suite has to point nx at the test fixtures the way every other
     // da-prepare test does; without it getNx2Api() tries to load the real one.
     setNx('/test/fixtures/nx', { hostname: 'example.com' });
+    setPaceOptions({ sleep: () => Promise.resolve(), minIntervalMs: 0 });
 
     window.fetch = async (url) => {
       if (url.endsWith('.css')) {
@@ -93,6 +112,7 @@ describe('DaMsm component', () => {
     if (el && el.parentElement) el.remove();
     el = null;
     setMergeCopy(null);
+    window.localStorage.removeItem('hlx6-upgrade');
   });
 
   async function fixture(details, fetchMock) {
@@ -694,6 +714,202 @@ describe('DaMsm component', () => {
 
       el.applySatelliteAction();
       expect(el._confirmAction).to.be.undefined;
+    });
+  });
+
+  describe('error reporting', () => {
+    it('marks a satellite as failed when its request keeps throwing', async () => {
+      const base = createFetchMock({});
+      const mock = async (url, opts) => {
+        if (url.includes('admin.hlx.page/preview/')) throw new TypeError('Failed to fetch');
+        return base(url, opts);
+      };
+      await fixtureWithState(mock, { action: 'preview', selected: new Set(['pendleton']) });
+
+      await el.runAction('preview');
+
+      const sat = el._satellites.find((s) => s.site === 'pendleton');
+      expect(sat.status).to.equal('error');
+      expect(el._busy).to.be.false;
+    });
+
+    it('shows the error message next to the satellite', async () => {
+      const base = createFetchMock({});
+      const mock = async (url, opts) => {
+        if (url.includes('admin.hlx.page/preview/')) {
+          return new Response('', { status: 403, headers: { 'x-error': 'not authorized' } });
+        }
+        return base(url, opts);
+      };
+      await fixtureWithState(mock, { action: 'preview', selected: new Set(['pendleton']) });
+
+      await el.runAction('preview');
+      await nextFrame();
+
+      const sat = el._satellites.find((s) => s.site === 'pendleton');
+      expect(sat.message).to.equal('not authorized');
+      const msg = el.shadowRoot.querySelector('.sat-message');
+      expect(msg.textContent).to.include('not authorized');
+    });
+
+    it('reports resume inheritance as failed when the follow-up preview fails', async () => {
+      const aemStatus = { preview: { status: 200 }, live: { status: 404 } };
+      const base = createFetchMock({ aemStatus });
+      const mock = async (url, opts) => {
+        if (url.includes('admin.hlx.page/preview/') && opts?.method === 'POST') {
+          return new Response('', { status: 500 });
+        }
+        return base(url, opts);
+      };
+      await fixtureWithState(mock, {
+        satellites: makeSatellites(['san-diego']),
+        action: 'reset',
+        selected: new Set(['san-diego']),
+      });
+
+      await el.runAction('reset');
+
+      const sat = el._satellites.find((s) => s.site === 'san-diego');
+      expect(sat.status).to.equal('error');
+      expect(sat.hasOverride).to.be.false;
+    });
+  });
+
+  describe('Helix 6 satellites — base view', () => {
+    function h6Satellites(overrides = []) {
+      return [
+        { site: 'h6-sd', label: 'H6 San Diego', hasOverride: overrides.includes('h6-sd'), status: undefined },
+        { site: 'pendleton', label: 'Camp Pendleton', hasOverride: overrides.includes('pendleton'), status: undefined },
+      ];
+    }
+
+    it('refuses to preview an inherited page on a Helix 6 satellite', async () => {
+      const calls = [];
+      const mock = withHlx6(['h6-sd'], createFetchMock({}), calls);
+      await fixtureWithState(mock, {
+        satellites: h6Satellites(),
+        action: 'preview',
+        selected: new Set(['h6-sd', 'pendleton']),
+      });
+
+      await el.runAction('preview');
+
+      const h6 = el._satellites.find((s) => s.site === 'h6-sd');
+      expect(h6.status).to.equal('error');
+      expect(h6.message).to.include('Helix 6');
+      expect(calls.some((c) => c.url.includes('h6-sd') && c.method === 'POST')).to.be.false;
+      const legacy = el._satellites.find((s) => s.site === 'pendleton');
+      expect(legacy.status).to.equal('success');
+    });
+
+    it('refuses to publish an inherited page when the base is on Helix 6', async () => {
+      const calls = [];
+      const mock = withHlx6(['h6-mccs'], createFetchMock({}), calls);
+      await fixtureWithState(mock, {
+        details: { org: 'test', site: 'h6-mccs', path: '/about' },
+        action: 'publish',
+        selected: new Set(['pendleton']),
+      });
+
+      await el.runAction('publish');
+
+      const sat = el._satellites.find((s) => s.site === 'pendleton');
+      expect(sat.status).to.equal('error');
+      expect(sat.message).to.include('Helix 6');
+      expect(calls.some((c) => c.method === 'POST')).to.be.false;
+    });
+
+    it('refuses to resume inheritance on a Helix 6 satellite and keeps its page', async () => {
+      const calls = [];
+      const mock = withHlx6(['h6-sd'], createFetchMock({}), calls);
+      await fixtureWithState(mock, {
+        satellites: h6Satellites(['h6-sd']),
+        action: 'reset',
+        selected: new Set(['h6-sd']),
+      });
+
+      await el.runAction('reset');
+
+      const sat = el._satellites.find((s) => s.site === 'h6-sd');
+      expect(sat.status).to.equal('error');
+      expect(sat.message).to.include('Helix 6');
+      expect(sat.hasOverride).to.be.true;
+      expect(calls.some((c) => c.method === 'DELETE')).to.be.false;
+    });
+
+    it('cancels inheritance by copying the page into the Helix 6 satellite', async () => {
+      const calls = [];
+      const mock = withHlx6(['h6-sd'], createFetchMock({}), calls);
+      await fixtureWithState(mock, {
+        satellites: h6Satellites(),
+        action: 'break',
+        selected: new Set(['h6-sd']),
+      });
+
+      await el.runAction('break');
+
+      const sat = el._satellites.find((s) => s.site === 'h6-sd');
+      expect(sat.status).to.equal('success');
+      expect(sat.hasOverride).to.be.true;
+      expect(calls.some((c) => c.method === 'POST'
+        && c.url === 'https://api.aem.live/test/sites/h6-sd/source/about.html')).to.be.true;
+    });
+  });
+
+  describe('Helix 6 satellites — satellite view', () => {
+    it('refuses to resume inheritance on a Helix 6 satellite', async () => {
+      const calls = [];
+      const mock = withHlx6(['h6-self'], createFetchMock({}), calls);
+      await fixtureWithState(mock, {
+        role: 'satellite',
+        baseSite: 'mccs',
+        hasOverride: true,
+        details: { org: 'test', site: 'h6-self', path: '/about' },
+      });
+
+      await el.runSatelliteAction('resume-inheritance');
+      await nextFrame();
+
+      expect(el._satStatus).to.equal('error');
+      expect(el._hasOverride).to.be.true;
+      expect(calls.some((c) => c.method === 'DELETE')).to.be.false;
+      const msg = el.shadowRoot.querySelector('.sat-message');
+      expect(msg.textContent).to.include('Helix 6');
+    });
+
+    it('refuses to resume inheritance from a Helix 6 base', async () => {
+      const calls = [];
+      const mock = withHlx6(['h6-parent'], createFetchMock({}), calls);
+      await fixtureWithState(mock, {
+        role: 'satellite',
+        baseSite: 'h6-parent',
+        hasOverride: true,
+        details: { org: 'test', site: 'san-diego', path: '/about' },
+      });
+
+      await el.runSatelliteAction('resume-inheritance');
+
+      expect(el._satStatus).to.equal('error');
+      expect(calls.some((c) => c.method === 'DELETE')).to.be.false;
+    });
+
+    it('syncs from base by override into a Helix 6 satellite', async () => {
+      const calls = [];
+      const mock = withHlx6(['h6-self2'], createFetchMock({}), calls);
+      await fixtureWithState(mock, {
+        role: 'satellite',
+        baseSite: 'mccs',
+        hasOverride: false,
+        details: { org: 'test', site: 'h6-self2', path: '/about' },
+      });
+      el._syncMode = 'override';
+
+      await el.runSatelliteAction('sync-from-base');
+
+      expect(el._satStatus).to.equal('success');
+      expect(el._hasOverride).to.be.true;
+      expect(calls.some((c) => c.method === 'POST'
+        && c.url === 'https://api.aem.live/test/sites/h6-self2/source/about.html')).to.be.true;
     });
   });
 });

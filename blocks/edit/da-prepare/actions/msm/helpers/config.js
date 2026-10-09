@@ -90,3 +90,7 @@ export async function checkOverrides(org, satellites, pagePath) {
 export function clearMsmCache() {
   Object.keys(configCache).forEach((key) => { delete configCache[key]; });
 }
+
+export async function inheritsFromBase() {
+  return true;
+}
