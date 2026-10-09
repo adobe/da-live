@@ -1,53 +1,50 @@
-import { DA_ORIGIN } from '../../../../../shared/constants.js';
-import { daFetch } from '../../../../../shared/utils.js';
-import { getNx } from '../../../../../../scripts/utils.js';
+import { getNx, getNx2Api } from '../../../../../../scripts/utils.js';
+import paced from './pace.js';
 
-const AEM_ADMIN = 'https://admin.hlx.page';
-
-export async function previewSatellite(org, satellite, pagePath) {
-  const aemPath = pagePath.replace('.html', '');
-  const url = `${AEM_ADMIN}/preview/${org}/${satellite}/main${aemPath}`;
-  const resp = await daFetch(url, { method: 'POST' });
-  if (!resp.ok) {
-    const xError = resp.headers?.get('x-error') || `Preview failed (${resp.status})`;
-    return { error: xError };
+async function call(task, fallback) {
+  try {
+    const resp = await paced(task);
+    if (resp?.ok) return { ok: true, resp };
+    const status = resp?.status ?? 0;
+    return { error: resp?.headers?.get('x-error') || `${fallback} (${status})` };
+  } catch (e) {
+    return { error: `${fallback} (${e.message})` };
   }
-  return resp.json();
 }
 
-export async function publishSatellite(org, satellite, pagePath) {
-  const aemPath = pagePath.replace('.html', '');
-  const url = `${AEM_ADMIN}/live/${org}/${satellite}/main${aemPath}`;
-  const resp = await daFetch(url, { method: 'POST' });
-  if (!resp.ok) {
-    const xError = resp.headers?.get('x-error') || `Publish failed (${resp.status})`;
-    return { error: xError };
-  }
-  return resp.json();
+async function aemAction(action, org, site, pagePath, fallback) {
+  const { aem } = await getNx2Api();
+  const path = pagePath.replace('.html', '');
+  const result = await call(() => aem[action]({ org, site, path }), fallback);
+  if (result.error) return result;
+  return result.resp.json().catch(() => ({}));
+}
+
+export function previewSatellite(org, satellite, pagePath) {
+  return aemAction('preview', org, satellite, pagePath, 'Preview failed');
+}
+
+export function publishSatellite(org, satellite, pagePath) {
+  return aemAction('publish', org, satellite, pagePath, 'Publish failed');
 }
 
 export async function createOverride(org, base, satellite, pagePath) {
-  const basePath = `${DA_ORIGIN}/source/${org}/${base}${pagePath}.html`;
-  const resp = await daFetch(basePath);
-  if (!resp.ok) return { error: `Failed to fetch base content (${resp.status})` };
-
-  const html = await resp.text();
-  const blob = new Blob([html], { type: 'text/html' });
-  const formData = new FormData();
-  formData.append('data', blob);
-
-  const satPath = `${DA_ORIGIN}/source/${org}/${satellite}${pagePath}.html`;
-  const saveResp = await daFetch(satPath, { method: 'PUT', body: formData });
-  if (!saveResp.ok) return { error: `Failed to create override (${saveResp.status})` };
-  return { ok: true };
+  const { source } = await getNx2Api();
+  const result = await call(() => source.copy({
+    org,
+    site: base,
+    path: `${pagePath}.html`,
+    destination: `/${org}/${satellite}${pagePath}.html`,
+  }), 'Failed to create override');
+  return result.error ? result : { ok: true };
 }
 
 export async function getSatellitePageStatus(org, satellite, pagePath) {
-  const aemPath = pagePath.replace('.html', '');
-  const url = `${AEM_ADMIN}/status/${org}/${satellite}/main${aemPath}`;
-  const resp = await daFetch(url);
-  if (!resp.ok) return { preview: false, live: false };
-  const json = await resp.json();
+  const { status } = await getNx2Api();
+  const path = pagePath.replace('.html', '');
+  const result = await call(() => status.get({ org, site: satellite, path }), 'Status failed');
+  if (result.error) return { preview: false, live: false };
+  const json = await result.resp.json();
   return {
     preview: json.preview?.status === 200,
     live: json.live?.status === 200,
@@ -55,10 +52,12 @@ export async function getSatellitePageStatus(org, satellite, pagePath) {
 }
 
 export async function deleteOverride(org, satellite, pagePath) {
-  const satPath = `${DA_ORIGIN}/source/${org}/${satellite}${pagePath}.html`;
-  const resp = await daFetch(satPath, { method: 'DELETE' });
-  if (!resp.ok) return { error: `Failed to delete override (${resp.status})` };
-  return { ok: true };
+  const { source } = await getNx2Api();
+  const result = await call(
+    () => source.delete({ org, site: satellite, path: `${pagePath}.html` }),
+    'Failed to delete override',
+  );
+  return result.error ? result : { ok: true };
 }
 
 let mergeCopyFn;
@@ -66,6 +65,15 @@ export function setMergeCopy(fn) { mergeCopyFn = fn; }
 
 export async function mergeFromBase(org, base, satellite, pagePath) {
   try {
+    const { isHlx6 } = await getNx2Api();
+    const [baseHlx6, satelliteHlx6] = await Promise.all([
+      isHlx6(org, base),
+      isHlx6(org, satellite),
+    ]);
+    if (baseHlx6 || satelliteHlx6) {
+      return { error: 'Merge isn\'t available for Helix 6 sites yet, use Override' };
+    }
+
     const mergeCopy = mergeCopyFn
       || (await import(`${getNx()}/blocks/loc/project/index.js`)).mergeCopy;
 

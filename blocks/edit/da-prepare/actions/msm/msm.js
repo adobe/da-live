@@ -1,6 +1,12 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../../../shared/sheet.js';
-import { getSatellites, getBaseSite, isPageLocal, checkOverrides } from './helpers/config.js';
+import {
+  getSatellites,
+  getBaseSite,
+  isPageLocal,
+  checkOverrides,
+  inheritsFromBase,
+} from './helpers/config.js';
 import {
   previewSatellite,
   publishSatellite,
@@ -14,6 +20,20 @@ const sheet = await getSheet(import.meta.url.replace('js', 'css'));
 
 const STATUS = { pending: 'pending', success: 'success', error: 'error' };
 const SYNC_MODE = { override: 'override', merge: 'merge' };
+
+const NO_INHERITANCE = 'Pages aren\'t inherited when the base or the satellite runs on Helix 6';
+const NO_INHERITANCE_COPY = `${NO_INHERITANCE}. Use Cancel inheritance to copy the page.`;
+const NO_INHERITANCE_RESUME = `${NO_INHERITANCE}, so resuming inheritance would only delete the page.`;
+
+async function republish(org, site, path, pageStatus) {
+  if (pageStatus.live) {
+    const preview = await previewSatellite(org, site, path);
+    if (preview.error) return preview;
+    return publishSatellite(org, site, path);
+  }
+  if (pageStatus.preview) return previewSatellite(org, site, path);
+  return {};
+}
 
 const ACTION_SCOPE = {
   preview: 'inherited',
@@ -37,6 +57,7 @@ class DaMsm extends LitElement {
     _baseSite: { state: true },
     _hasOverride: { state: true },
     _satStatus: { state: true },
+    _satMessage: { state: true },
     _openPicker: { state: true },
   };
 
@@ -136,13 +157,21 @@ class DaMsm extends LitElement {
   }
 
   clearStatuses() {
-    this._satellites = this._satellites?.map((s) => ({ ...s, status: undefined }));
+    this._satellites = this._satellites?.map(
+      (s) => ({ ...s, status: undefined, message: undefined }),
+    );
   }
 
   updateSatStatus(site, status) {
     this._satellites = this._satellites.map(
-      (s) => (s.site === site ? { ...s, status } : s),
+      (s) => (s.site === site ? { ...s, status, message: undefined } : s),
     );
+  }
+
+  updateSatResult(site, { error, ...changes }) {
+    this._satellites = this._satellites.map((s) => (s.site === site
+      ? { ...s, ...changes, status: error ? STATUS.error : STATUS.success, message: error }
+      : s));
   }
 
   async apply() {
@@ -178,87 +207,62 @@ class DaMsm extends LitElement {
 
   async runAction(action) {
     this._busy = true;
-    const { org, site, path } = this.details;
     const targets = this._targets;
 
     targets.forEach((s) => this.updateSatStatus(s.site, STATUS.pending));
 
-    switch (action) {
-      case 'preview':
-      case 'publish': {
-        const fn = action === 'publish' ? publishSatellite : previewSatellite;
-        await Promise.allSettled(targets.map(async (sat) => {
-          const result = await fn(org, sat.site, path);
-          this.updateSatStatus(sat.site, result.error ? STATUS.error : STATUS.success);
-        }));
-        break;
+    await Promise.all(targets.map(async (sat) => {
+      let result;
+      try {
+        result = await this.runTargetAction(action, sat);
+      } catch (e) {
+        result = { error: e.message || 'Request failed' };
       }
-
-      case 'break':
-        await Promise.allSettled(targets.map(async (sat) => {
-          const result = await createOverride(org, site, sat.site, path);
-          if (result.error) {
-            this.updateSatStatus(sat.site, STATUS.error);
-          } else {
-            this._satellites = this._satellites.map(
-              (s) => (s.site === sat.site
-                ? { ...s, hasOverride: true, status: STATUS.success }
-                : s),
-            );
-          }
-        }));
-        break;
-
-      case 'sync':
-        if (this._syncMode === SYNC_MODE.merge) {
-          await Promise.allSettled(targets.map(async (sat) => {
-            const result = await mergeFromBase(org, site, sat.site, path);
-            if (result.error) {
-              this.updateSatStatus(sat.site, STATUS.error);
-            } else {
-              this._satellites = this._satellites.map(
-                (s) => (s.site === sat.site
-                  ? { ...s, editUrl: result.editUrl, status: STATUS.success }
-                  : s),
-              );
-            }
-          }));
-        } else {
-          await Promise.allSettled(targets.map(async (sat) => {
-            const result = await createOverride(org, site, sat.site, path);
-            this.updateSatStatus(sat.site, result.error ? STATUS.error : STATUS.success);
-          }));
-        }
-        break;
-
-      case 'reset':
-        await Promise.allSettled(targets.map(async (sat) => {
-          const pageStatus = await getSatellitePageStatus(org, sat.site, path);
-          const result = await deleteOverride(org, sat.site, path);
-          if (result.error) {
-            this.updateSatStatus(sat.site, STATUS.error);
-          } else {
-            if (pageStatus.live) {
-              await previewSatellite(org, sat.site, path);
-              await publishSatellite(org, sat.site, path);
-            } else if (pageStatus.preview) {
-              await previewSatellite(org, sat.site, path);
-            }
-            this._satellites = this._satellites.map(
-              (s) => (s.site === sat.site
-                ? { ...s, hasOverride: false, status: STATUS.success }
-                : s),
-            );
-          }
-        }));
-        break;
-
-      default:
-        break;
-    }
+      this.updateSatResult(sat.site, result);
+    }));
 
     this._selected = new Set();
     this._busy = false;
+  }
+
+  async runTargetAction(action, sat) {
+    const { org, site, path } = this.details;
+
+    switch (action) {
+      case 'preview':
+      case 'publish': {
+        if (!await inheritsFromBase(org, site, sat.site)) return { error: NO_INHERITANCE_COPY };
+        const fn = action === 'publish' ? publishSatellite : previewSatellite;
+        const result = await fn(org, sat.site, path);
+        return { error: result.error };
+      }
+
+      case 'break': {
+        const result = await createOverride(org, site, sat.site, path);
+        return result.error ? result : { hasOverride: true };
+      }
+
+      case 'sync': {
+        if (this._syncMode === SYNC_MODE.merge) {
+          const result = await mergeFromBase(org, site, sat.site, path);
+          return result.error ? result : { editUrl: result.editUrl };
+        }
+        const result = await createOverride(org, site, sat.site, path);
+        return { error: result.error };
+      }
+
+      case 'reset': {
+        if (!await inheritsFromBase(org, site, sat.site)) return { error: NO_INHERITANCE_RESUME };
+        const pageStatus = await getSatellitePageStatus(org, sat.site, path);
+        const result = await deleteOverride(org, sat.site, path);
+        if (result.error) return result;
+        const synced = await republish(org, sat.site, path, pageStatus);
+        return { hasOverride: false, error: synced.error };
+      }
+
+      default:
+        return {};
+    }
   }
 
   applySatelliteAction() {
@@ -278,41 +282,34 @@ class DaMsm extends LitElement {
   async runSatelliteAction(action) {
     this._busy = true;
     this._satStatus = STATUS.pending;
+    this._satMessage = undefined;
     const { org, site, path } = this.details;
 
+    let result = {};
     try {
-      let result;
       if (action === 'sync-from-base') {
         result = this._syncMode === SYNC_MODE.merge
           ? await mergeFromBase(org, this._baseSite, site, path)
           : await createOverride(org, this._baseSite, site, path);
+        if (!result.error) this._hasOverride = true;
       } else if (action === 'resume-inheritance') {
-        const pageStatus = await getSatellitePageStatus(org, site, path);
-        result = await deleteOverride(org, site, path);
-        if (!result?.error) {
-          if (pageStatus.live) {
-            await previewSatellite(org, site, path);
-            await publishSatellite(org, site, path);
-          } else if (pageStatus.preview) {
-            await previewSatellite(org, site, path);
+        if (!await inheritsFromBase(org, this._baseSite, site)) {
+          result = { error: NO_INHERITANCE_RESUME };
+        } else {
+          const pageStatus = await getSatellitePageStatus(org, site, path);
+          result = await deleteOverride(org, site, path);
+          if (!result.error) {
+            this._hasOverride = false;
+            result = await republish(org, site, path, pageStatus);
           }
         }
       }
-
-      if (result?.error) {
-        this._satStatus = STATUS.error;
-      } else {
-        this._satStatus = STATUS.success;
-        if (action === 'resume-inheritance') {
-          this._hasOverride = false;
-        } else {
-          this._hasOverride = true;
-        }
-      }
-    } catch {
-      this._satStatus = STATUS.error;
+    } catch (e) {
+      result = { error: e.message || 'Request failed' };
     }
 
+    this._satStatus = result.error ? STATUS.error : STATUS.success;
+    this._satMessage = result.error;
     this._busy = false;
   }
 
@@ -351,6 +348,7 @@ class DaMsm extends LitElement {
           <a class="icon-btn" href=${sat.editUrl || `${window.location.origin}/edit#/${this.details.org}/${sat.site}${this.details.path}`} target="_blank" title="Open in editor">
             <svg viewBox="0 0 20 20"><path fill="currentColor" d="M18.16 15.62V4.12c0-1.24-1.01-2.25-2.25-2.25H4.41c-1.24 0-2.25 1.01-2.25 2.25v3.72c0 .41.34.75.75.75s.75-.34.75-.75v-3.72c0-.41.34-.75.75-.75h11.5c.41 0 .75.34.75.75v11.5c0 .41-.34.75-.75.75h-3.81c-.41 0-.75.34-.75.75s.34.75.75.75h3.81c1.24 0 2.25-1.01 2.25-2.25z"/><path fill="currentColor" d="M11.16 9.62v4.24c0 .41-.34.75-.75.75s-.75-.34-.75-.75v-2.43l-6.47 6.47c-.15.15-.34.22-.53.22s-.38-.07-.53-.22a.754.754 0 010-1.06l6.47-6.47H6.17c-.41 0-.75-.34-.75-.75s.34-.75.75-.75h4.24c.41 0 .75.34.75.75z"/></svg>
           </a>` : nothing}
+        ${sat.status === STATUS.error && sat.message ? html`<p class="sat-message">${sat.message}</p>` : nothing}
       </li>`;
   }
 
@@ -523,6 +521,7 @@ class DaMsm extends LitElement {
         <span class="sat-status-value">${this._baseSite}</span>
         ${this.renderSatelliteStatusIcon()}
       </div>
+      ${this._satStatus === STATUS.error && this._satMessage ? html`<p class="sat-message">${this._satMessage}</p>` : nothing}
       <div class="action-row">
         ${this.renderPicker(
           'action',

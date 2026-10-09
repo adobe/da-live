@@ -1,5 +1,6 @@
-import { DA_ORIGIN } from '../../../../../shared/constants.js';
-import { daFetch, fetchDaConfigs } from '../../../../../shared/utils.js';
+import { fetchDaConfigs } from '../../../../../shared/utils.js';
+import { getNx2Api } from '../../../../../../scripts/utils.js';
+import paced from './pace.js';
 
 const configCache = {};
 
@@ -69,11 +70,19 @@ export async function getBaseSite(org, satellite) {
 }
 
 export async function isPageLocal(org, site, pagePath) {
-  const resp = await daFetch(
-    `${DA_ORIGIN}/source/${org}/${site}${pagePath}.html`,
-    { method: 'HEAD' },
-  );
-  return resp.ok;
+  const { source } = await getNx2Api();
+  try {
+    const resp = await paced(() => source.getMetadata({ org, site, path: `${pagePath}.html` }));
+    return !!resp.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function inheritsFromBase(org, base, satellite) {
+  const { isHlx6 } = await getNx2Api();
+  const [baseHlx6, satelliteHlx6] = await Promise.all([isHlx6(org, base), isHlx6(org, satellite)]);
+  return !baseHlx6 && !satelliteHlx6;
 }
 
 export async function checkOverrides(org, satellites, pagePath) {
@@ -89,8 +98,4 @@ export async function checkOverrides(org, satellites, pagePath) {
 
 export function clearMsmCache() {
   Object.keys(configCache).forEach((key) => { delete configCache[key]; });
-}
-
-export async function inheritsFromBase() {
-  return true;
 }
