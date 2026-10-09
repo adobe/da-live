@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import { TextSelection } from 'da-y-wrapper';
 import { createCommentsController } from '../../../../../blocks/canvas/comments/helpers/controller.js';
 import commentPlugin, { commentPluginKey } from '../../../../../blocks/canvas/comments/comment-plugin.js';
 import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.js';
@@ -228,6 +229,158 @@ describe('comments helpers/controller', () => {
     expect(attached.has('t2'), 'bogus anchor is not attached').to.be.false;
     expect(attached.has('t3'), 'resolved threads are not attached').to.be.false;
     expect(attached.has('r1'), 'replies are not attached').to.be.false;
+    destroyEditor(editor);
+    c.destroy();
+  });
+
+  it('selectThreadRange selects the comment\'s anchored range in the editor', async () => {
+    const { controller: c, editor, store: m } = await createControllerWithPlugin();
+    editor.view.dispatch(editor.view.state.tr.insertText('hello world'));
+
+    const { encodeAnchor } = await import('../../../../../blocks/canvas/comments/helpers/anchor.js');
+    const encoded = encodeAnchor({
+      selectionData: { from: 1, to: 6, anchorType: 'text', anchorText: 'hello' },
+      state: editor.view.state,
+    });
+    m.set('t1', {
+      id: 't1', ...encoded, author: { id: 'u' }, body: '', createdAt: 0, resolved: false,
+    });
+
+    editor.view.dispatch(editor.view.state.tr.setSelection(
+      TextSelection.create(editor.view.state.doc, 1),
+    ));
+    expect(editor.view.state.selection.empty, 'selection starts collapsed').to.be.true;
+
+    expect(c.selectThreadRange('t1')).to.be.true;
+    const { selection } = editor.view.state;
+    expect(selection.from).to.equal(1);
+    expect(selection.to).to.equal(6);
+    expect(editor.view.state.doc.textBetween(selection.from, selection.to)).to.equal('hello');
+
+    destroyEditor(editor);
+    c.destroy();
+  });
+
+  it('selectThreadRange leaves the selection alone for an unknown or detached thread', async () => {
+    const { controller: c, editor, store: m } = await createControllerWithPlugin();
+    editor.view.dispatch(editor.view.state.tr.insertText('hello world'));
+    m.set('gone', {
+      id: 'gone',
+      anchorFrom: [0, 255, 255, 255, 127, 0],
+      anchorTo: [0, 255, 255, 255, 127, 6],
+      anchorType: 'text',
+      anchorText: 'missing',
+      author: { id: 'u' },
+      body: '',
+      createdAt: 0,
+      resolved: false,
+    });
+
+    expect(c.selectThreadRange('nope')).to.be.false;
+    expect(c.selectThreadRange('gone')).to.be.false;
+    expect(editor.view.state.selection.empty).to.be.true;
+
+    destroyEditor(editor);
+    c.destroy();
+  });
+
+  it('selectThreadRange selects a block (table) anchor as a node selection the chat reads as a block', async () => {
+    const { controller: c, editor, store: m } = await createControllerWithPlugin();
+    const { view } = editor;
+    const table = view.state.schema.nodes.table.createAndFill();
+    view.dispatch(view.state.tr.insert(0, table));
+
+    const tablePos = 0;
+    expect(view.state.doc.nodeAt(tablePos).type.name).to.equal('table');
+
+    const { encodeAnchor } = await import('../../../../../blocks/canvas/comments/helpers/anchor.js');
+    const encoded = encodeAnchor({
+      selectionData: {
+        from: tablePos,
+        to: tablePos + table.nodeSize,
+        anchorType: 'table',
+        anchorText: 'block: columns',
+      },
+      state: view.state,
+    });
+    m.set('b1', {
+      id: 'b1', ...encoded, author: { id: 'u' }, body: '', createdAt: 0, resolved: false,
+    });
+
+    expect(c.selectThreadRange('b1')).to.be.true;
+
+    const [{ describeDocSelection, SEL_BLOCK }, { getActiveBlockIndex }] = await Promise.all([
+      import('../../../../../blocks/canvas/ew-editor-doc/utils/selection.js'),
+      import('../../../../../blocks/canvas/editor-utils/blocks.js'),
+    ]);
+    const descriptor = describeDocSelection(view);
+    expect(descriptor.selectionType, 'chat needs SEL_BLOCK to build a block pill').to.equal(SEL_BLOCK);
+    expect(descriptor.selFrom).to.equal(tablePos);
+    expect(getActiveBlockIndex(view), 'enricher needs a real blockIndex to attach blockName').to.be.at.least(0);
+
+    destroyEditor(editor);
+    c.destroy();
+  });
+
+  it('blockContext names the commented block and pins its exact position', async () => {
+    const { controller: c, editor, store: m } = await createControllerWithPlugin();
+    const { view } = editor;
+    const { schema } = view.state;
+    const para = (t) => schema.nodes.paragraph.create(null, t ? schema.text(t) : null);
+    const cell = (t) => schema.nodes.table_cell.create({ colspan: 1, colwidth: null }, para(t));
+    const hero = schema.nodes.table.create(null, [
+      schema.nodes.table_row.create(null, cell('hero')),
+      schema.nodes.table_row.create(null, cell('first hero copy')),
+    ]);
+    const hero2 = schema.nodes.table.create(null, [
+      schema.nodes.table_row.create(null, cell('hero')),
+      schema.nodes.table_row.create(null, cell('second hero copy')),
+    ]);
+    view.dispatch(view.state.tr.replaceWith(0, view.state.doc.content.size, [hero, hero2]));
+
+    const secondPos = hero.nodeSize;
+    expect(view.state.doc.nodeAt(secondPos).type.name).to.equal('table');
+
+    const { encodeAnchor } = await import('../../../../../blocks/canvas/comments/helpers/anchor.js');
+    const encoded = encodeAnchor({
+      selectionData: {
+        from: secondPos,
+        to: secondPos + hero2.nodeSize,
+        anchorType: 'table',
+        anchorText: 'block: hero',
+      },
+      state: view.state,
+    });
+    m.set('b2', {
+      id: 'b2', ...encoded, author: { id: 'u' }, body: '', createdAt: 0, resolved: false,
+    });
+
+    const ctx = c.blockContext('b2');
+    expect(ctx.blockName).to.equal('hero');
+    expect(ctx.innerText, 'pill must carry the commented instance, not the first match').to.contain('second hero copy');
+    expect(ctx.innerText).to.not.contain('first hero copy');
+    expect(ctx.selFrom, 'selFrom disambiguates two blocks of the same name').to.equal(secondPos);
+    expect(ctx.selTo).to.equal(secondPos + hero2.nodeSize);
+
+    expect(c.blockContext('nope')).to.be.null;
+
+    destroyEditor(editor);
+    c.destroy();
+  });
+
+  it('blockContext returns null for a text anchor', async () => {
+    const { controller: c, editor, store: m } = await createControllerWithPlugin();
+    editor.view.dispatch(editor.view.state.tr.insertText('hello world'));
+    const { encodeAnchor } = await import('../../../../../blocks/canvas/comments/helpers/anchor.js');
+    const encoded = encodeAnchor({
+      selectionData: { from: 1, to: 6, anchorType: 'text', anchorText: 'hello' },
+      state: editor.view.state,
+    });
+    m.set('t9', {
+      id: 't9', ...encoded, author: { id: 'u' }, body: '', createdAt: 0, resolved: false,
+    });
+    expect(c.blockContext('t9')).to.be.null;
+
     destroyEditor(editor);
     c.destroy();
   });
