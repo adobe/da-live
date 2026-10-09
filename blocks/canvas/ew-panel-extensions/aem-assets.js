@@ -1,15 +1,20 @@
-import { getNx } from '../../../scripts/utils.js';
-import { buildAssetSelectorProps } from '../../shared/aem-assets/selector-props.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
+import { buildHandleSelection, createDialogPanels } from '../../edit/da-assets/da-assets.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
-import { getRepositoryConfig, getResponsiveImageConfig } from '../../edit/da-assets/helpers/config.js';
-import {
-  ASSET_SELECTOR_URL,
-  buildHandleSelection,
-  createDialogPanels,
-} from '../../edit/da-assets/da-assets.js';
+
+const nx2 = getNx2();
+const [
+  { getRepositoryConfig, getResponsiveImageConfig },
+  { buildAssetSelectorProps },
+  { ASSET_SELECTOR_URL },
+] = await Promise.all([
+  import(`${nx2}/utils/aem-assets/repository-config.js`),
+  import(`${nx2}/utils/aem-assets/selector-props.js`),
+  import(`${nx2}/utils/aem-assets/selector.js`),
+]);
 
 // Re-exported for ew-selection-toolbar's "does this site have AEM assets?" check.
-// The picker shares the classic editor's config resolver rather than forking it.
+// The picker shares Nexter's config resolver with the classic editor.
 export { getRepositoryConfig };
 
 // ---------------------------------------------------------------------------
