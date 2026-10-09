@@ -1,3 +1,44 @@
+## [1.2.4](https://github.com/adobe/da-live/compare/v1.2.3...v1.2.4) (2026-10-08)
+
+
+### Bug Fixes
+
+* **ew:** hide outline edit actions for read-only users ([#1418](https://github.com/adobe/da-live/issues/1418)) ([bc87e6a](https://github.com/adobe/da-live/commit/bc87e6ab5eba53c79e741ff343eaa7a494178b7a)), closes [#1407](https://github.com/adobe/da-live/issues/1407) [#1407](https://github.com/adobe/da-live/issues/1407) [#1407](https://github.com/adobe/da-live/issues/1407) [#1407](https://github.com/adobe/da-live/issues/1407) [#1407](https://github.com/adobe/da-live/issues/1407) [#1407](https://github.com/adobe/da-live/issues/1407) [#1407](https://github.com/adobe/da-live/issues/1407) [#1407](https://github.com/adobe/da-live/issues/1407)
+
+## [1.2.3](https://github.com/adobe/da-live/compare/v1.2.2...v1.2.3) (2026-10-08)
+
+
+### Bug Fixes
+
+* **ew:** "Create document" prompt when navigating to a non-existent URL ([#1311](https://github.com/adobe/da-live/issues/1311)) ([d269372](https://github.com/adobe/da-live/commit/d269372d345da913a3c0814a54b83668723a87c2)), closes [bpauli/da-live#2](https://github.com/bpauli/da-live/issues/2) [adobe/da-live#1309](https://github.com/adobe/da-live/issues/1309)
+* load hlx6 media through the source API ([#1421](https://github.com/adobe/da-live/issues/1421)) ([0bcbb13](https://github.com/adobe/da-live/commit/0bcbb131bf07f46dd49d4b921a9ce1d366a88071))
+
+## [1.2.2](https://github.com/adobe/da-live/compare/v1.2.1...v1.2.2) (2026-10-07)
+
+
+### Bug Fixes
+
+* **plugins:** use preview proxy for library and prepare menu plugins ([#1385](https://github.com/adobe/da-live/issues/1385)) ([ad9ed5a](https://github.com/adobe/da-live/commit/ad9ed5ae4ac4a0a6921184e4ee4bf1dbdde84dc0))
+
+## [1.2.1](https://github.com/adobe/da-live/compare/v1.2.0...v1.2.1) (2026-10-07)
+
+
+### Bug Fixes
+
+* resolve canvas version preview images ([#1417](https://github.com/adobe/da-live/issues/1417)) ([38b2e50](https://github.com/adobe/da-live/commit/38b2e504cbbb17790540386c3a61399d4b378897))
+
+# [1.2.0](https://github.com/adobe/da-live/compare/v1.1.0...v1.2.0) (2026-10-06)
+
+
+### Bug Fixes
+
+* address images consistently instead of by url in wysiwyg ([#1377](https://github.com/adobe/da-live/issues/1377)) ([d7a29b3](https://github.com/adobe/da-live/commit/d7a29b31793a171c3223a7f7b50c076a50e51e0c)), closes [#1018](https://github.com/adobe/da-live/issues/1018) [#1302](https://github.com/adobe/da-live/issues/1302)
+
+
+### Features
+
+* **assets:** preserve last folder between asset picker openings ([#1346](https://github.com/adobe/da-live/issues/1346)) ([8539c92](https://github.com/adobe/da-live/commit/8539c92e998ab3328cbf5baba43c3eb789cf05fc)), closes [#1345](https://github.com/adobe/da-live/issues/1345)
+
 # [1.1.0](https://github.com/adobe/da-live/compare/v1.0.3...v1.1.0) (2026-10-06)
 
 
