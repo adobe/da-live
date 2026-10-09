@@ -184,27 +184,27 @@ describe('ew-preflight adapter', () => {
     expect(failed).to.equal(0);
   });
 
-  it('includes site-code checks in the existing groups, after text and image checks', () => {
+  it('includes site-code checks in the existing groups, before text and image checks', () => {
     const { sections, summary, failed } = adaptEvaluation({
       ...RESPONSE,
       site_code_evaluation: SITE_CODE_EVALUATION,
     });
 
     expect(sections[0].items.map((item) => item.title)).to.deep.equal([
-      'Failing with a suggested fix',
-      'Failing without a fix',
       'Page has exactly one H1',
       'All images have alt text',
+      'Failing with a suggested fix',
+      'Failing without a fix',
     ]);
     expect(sections[1].items.map((item) => item.title)).to.deep.equal([
+      'Baseline preflight check',
       'Passing check',
       'Passing image check',
-      'Baseline preflight check',
     ]);
     expect(sections[2].items.map((item) => item.title)).to.deep.equal([
-      'Not applicable check',
       'Headings are in a valid accessibility order',
       'Cards block has valid structure',
+      'Not applicable check',
     ]);
     expect(summary.map((tile) => tile.value)).to.deep.equal([4, 3, 3]);
     expect(failed).to.equal(4);
@@ -368,23 +368,23 @@ describe('ew-preflight adapter', () => {
       expect(sections[0].items.map((item) => item.title)).to.deep.equal([
         'H1 count',
         'Links: https://example.com/broken',
-        'Failing with a suggested fix',
-        'Failing without a fix',
         'Page has exactly one H1',
         'All images have alt text',
+        'Failing with a suggested fix',
+        'Failing without a fix',
       ]);
       expect(sections[1].items.map((item) => item.title)).to.deep.equal([
         'Description',
+        'Baseline preflight check',
         'Passing check',
         'Passing image check',
-        'Baseline preflight check',
       ]);
       expect(sections[2].items.map((item) => item.title)).to.deep.equal([
         'Fragments',
         'Built-in checks',
-        'Not applicable check',
         'Headings are in a valid accessibility order',
         'Cards block has valid structure',
+        'Not applicable check',
       ]);
       expect(summary.map((tile) => tile.value)).to.deep.equal([6, 4, 5]);
       expect(failed).to.equal(6);

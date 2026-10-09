@@ -3,7 +3,7 @@
 // { title, summary, sections } shape consumed by the shared page-evaluation
 // renderer (nx-page-eval / artifact type PageEvaluationWithIcons in da-nx).
 // Includes built-in (DA out-of-the-box preflight), text, image, and site-code
-// checks in the same alignment groups; built-in checks are listed first.
+// checks in the same alignment groups, ordered built-in, site-code, text, image.
 
 const TONE_BY_ALIGNMENT = { YES: 'positive', NO: 'negative' };
 
