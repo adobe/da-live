@@ -1,6 +1,7 @@
 import { getNx, getNx2Api } from '../../scripts/utils.js';
 import { EMPTY_DOC } from '../shared/utils.js';
 import { getCommentsBridge } from './editor-utils/comments-bridge.js';
+import { initPreflightResponder } from './editor-utils/preflight-responder.js';
 import {
   normalizeCanvasEditorView,
   readInitialCanvasEditorView,
@@ -272,6 +273,9 @@ canvasBus.commentComposeRequest.subscribe(() => {
 
 export default async function decorate(block) {
   const { org, site } = hashState();
+
+  // Make the "Preflight" side panel the responder for the publish gate's run request.
+  initPreflightResponder();
 
   registerPanelSection('chat', {
     position: 'before',
