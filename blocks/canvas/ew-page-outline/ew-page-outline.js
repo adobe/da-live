@@ -289,9 +289,9 @@ class EwPageOutline extends LitElement {
     this.shadowRoot.querySelector('[data-drop-position]')?.removeAttribute('data-drop-position');
   }
 
-  _setDropIndicator(el, data) {
+  _setDropIndicator(el, data, indicatorPosition = data.dropPosition) {
     this._clearDropIndicator();
-    el.dataset.dropPosition = data.dropPosition;
+    el.dataset.dropPosition = indicatorPosition;
     this._dropTarget = data;
   }
 
@@ -396,6 +396,14 @@ class EwPageOutline extends LitElement {
     const rect = e.currentTarget.getBoundingClientRect();
     const dropPosition = e.clientY < rect.top + rect.height / 2
       ? DROP_POSITIONS.BEFORE : DROP_POSITIONS.AFTER;
+    if (this._expandedContent?.has(item.proseIndex)) {
+      this._setDropIndicator(
+        e.currentTarget,
+        { contentChild: item.children[0], dropPosition: DROP_POSITIONS.BEFORE },
+        dropPosition,
+      );
+      return;
+    }
     const targetChild = dropPosition === DROP_POSITIONS.BEFORE
       ? item.children[0]
       : item.children[item.children.length - 1];

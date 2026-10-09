@@ -503,6 +503,30 @@ describe('ew-page-outline — content drag & delete', () => {
     expect(el._dropTarget.contentChild).to.deep.equal(item.children[1]);
     expect(el._dropTarget.dropPosition).to.equal('after');
   });
+
+  it('dropping on the lower half of an expanded group header targets before the first child', () => {
+    const item = {
+      proseIndex: 1,
+      children: [
+        { kind: 'paragraph', proseIndex: 1, innerText: 'first' },
+        { kind: 'paragraph', proseIndex: 5, innerText: 'last' },
+      ],
+    };
+    el._expandedContent = new Set([item.proseIndex]);
+    el._dragging = { type: 'content', index: { kind: 'paragraph', proseIndex: 99 } };
+
+    const currentTarget = { getBoundingClientRect: () => ({ top: 0, height: 20 }), dataset: {} };
+    el._onContentGroupDragOver({
+      preventDefault() {},
+      stopPropagation() {},
+      currentTarget,
+      clientY: 15,
+    }, item);
+
+    expect(el._dropTarget.contentChild).to.deep.equal(item.children[0]);
+    expect(el._dropTarget.dropPosition).to.equal('before');
+    expect(currentTarget.dataset.dropPosition).to.equal('after');
+  });
 });
 
 describe('ew-page-outline - read-only', () => {

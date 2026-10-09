@@ -136,12 +136,26 @@ input {
   cursor: grabbing;
 }
 
-[data-drop-position="before"] {
-  border-top: 2px solid var(--s2-blue-600, #147af3);
+[data-drop-position] {
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    z-index: 1;
+    height: 2px;
+    background: var(--s2-blue-600, #147af3);
+    pointer-events: none;
+  }
 }
 
-[data-drop-position="after"] {
-  border-bottom: 2px solid var(--s2-blue-600, #147af3);
+[data-drop-position="before"]::after {
+  top: -1px;
+}
+
+[data-drop-position="after"]::after {
+  bottom: -1px;
 }
 
 .block-empty {
