@@ -275,6 +275,20 @@ export function setSectionName(view, sectionIndex, name) {
   view.dispatch(view.state.tr.setNodeMarkup(hrPos, null, { daSectionName }));
 }
 
+export function insertSectionAfter(view, sectionIndex) {
+  if (!view) return;
+  const { doc, schema } = view.state;
+  let hrCount = 0;
+  let pos = doc.content.size;
+  doc.forEach((node, offset) => {
+    if (node.type === schema.nodes.horizontal_rule) {
+      hrCount += 1;
+      if (hrCount === sectionIndex + 1) pos = offset;
+    }
+  });
+  view.dispatch(view.state.tr.insert(pos, schema.nodes.horizontal_rule.create()));
+}
+
 export function deleteSection(view, sectionIndex) {
   if (!view) return;
   const { groups, names } = splitSections(view);

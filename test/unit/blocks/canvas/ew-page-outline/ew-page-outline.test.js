@@ -1,6 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
-import { EditorState, EditorView } from 'da-y-wrapper';
+import { EditorState, EditorView, columnResizing } from 'da-y-wrapper';
 import { getSchema } from 'da-parser';
 import { setNx } from '../../../../../scripts/utils.js';
 import { makeRealView } from '../test-helpers.js';
@@ -43,6 +43,7 @@ function makeTrackedView(json) {
   document.body.appendChild(dom);
   let view;
   const plugins = [
+    columnResizing(),
     createTrackingPlugin(() => canvasBus.editorHtmlState.emit(getInstrumentedHTML(view))),
   ];
   const state = EditorState.create({ schema, doc, plugins });
@@ -502,6 +503,30 @@ describe('ew-page-outline — content drag & delete', () => {
     expect(el._dropTarget.contentChild).to.deep.equal(item.children[1]);
     expect(el._dropTarget.dropPosition).to.equal('after');
   });
+
+  it('dropping on the lower half of an expanded group header targets before the first child', () => {
+    const item = {
+      proseIndex: 1,
+      children: [
+        { kind: 'paragraph', proseIndex: 1, innerText: 'first' },
+        { kind: 'paragraph', proseIndex: 5, innerText: 'last' },
+      ],
+    };
+    el._expandedContent = new Set([item.proseIndex]);
+    el._dragging = { type: 'content', index: { kind: 'paragraph', proseIndex: 99 } };
+
+    const currentTarget = { getBoundingClientRect: () => ({ top: 0, height: 20 }), dataset: {} };
+    el._onContentGroupDragOver({
+      preventDefault() {},
+      stopPropagation() {},
+      currentTarget,
+      clientY: 15,
+    }, item);
+
+    expect(el._dropTarget.contentChild).to.deep.equal(item.children[0]);
+    expect(el._dropTarget.dropPosition).to.equal('before');
+    expect(currentTarget.dataset.dropPosition).to.equal('after');
+  });
 });
 
 describe('ew-page-outline - read-only', () => {
@@ -537,7 +562,7 @@ describe('ew-page-outline - read-only', () => {
     await el.updateComplete;
   }
 
-  const editControls = () => el.shadowRoot.querySelectorAll('.edit-btn, .delete-btn, .add-block-btn');
+  const editControls = () => el.shadowRoot.querySelectorAll('nx-menu, .section-menu-trigger, .delete-btn');
   const draggables = () => el.shadowRoot.querySelectorAll('[draggable="true"]');
   const dragHandles = () => el.shadowRoot.querySelectorAll('use[href^="/img/icons/s2-icon-draghandle"]');
 
@@ -551,7 +576,7 @@ describe('ew-page-outline - read-only', () => {
     bridge.view = null;
   });
 
-  it('hides rename, add-block, delete and drag controls for a read-only view', async () => {
+  it('hides the section menu, delete and drag controls for a read-only view', async () => {
     await renderOutline({ editable: false });
 
     expect(el.shadowRoot.querySelectorAll('.outline-section')).to.have.lengthOf(2);
@@ -575,19 +600,28 @@ describe('ew-page-outline - read-only', () => {
     expect(el.shadowRoot.querySelector('[data-block-index="0"]').getAttribute('aria-selected')).to.equal('true');
   });
 
-  it('shows rename, add-block, delete and drag controls for an editable view', async () => {
+  it('keeps a same-size handle slot so read-only rows stay aligned', async () => {
+    await renderOutline({ editable: false });
+
+    const header = el.shadowRoot.querySelector('.section-header');
+    const block = el.shadowRoot.querySelector('[data-block-index="0"]');
+    expect(header.firstElementChild.classList.contains('drag-handle')).to.be.true;
+    expect(block.firstElementChild.classList.contains('drag-handle')).to.be.true;
+    expect(block.firstElementChild.childElementCount).to.equal(0);
+  });
+
+  it('shows the section menu, delete and drag controls for an editable view', async () => {
     await renderOutline({ editable: true });
 
-    expect(el.shadowRoot.querySelectorAll('.edit-btn')).to.have.lengthOf(2);
-    expect(el.shadowRoot.querySelectorAll('.add-block-btn')).to.have.lengthOf(2);
-    expect(el.shadowRoot.querySelectorAll('.delete-btn')).to.have.lengthOf(4);
+    expect(el.shadowRoot.querySelectorAll('.section-menu-trigger')).to.have.lengthOf(2);
+    expect(el.shadowRoot.querySelectorAll('.delete-btn')).to.have.lengthOf(2);
     expect(draggables()).to.have.lengthOf(4);
     expect(dragHandles()).to.have.lengthOf(4);
   });
 
   it('drops a pending delete when the outline switches to another document', async () => {
     await renderOutline({ editable: true });
-    el.shadowRoot.querySelector('.outline-section .delete-btn').click();
+    el.shadowRoot.querySelector('.outline-section nx-menu').choose('delete');
     await el.updateComplete;
     expect(el.shadowRoot.querySelectorAll('nx-dialog.ew-po-delete')).to.have.lengthOf(1);
 
@@ -607,7 +641,7 @@ describe('ew-page-outline - read-only', () => {
 
   it('drops a pending delete when the document unloads', async () => {
     await renderOutline({ editable: true });
-    el.shadowRoot.querySelector('.outline-section .delete-btn').click();
+    el.shadowRoot.querySelector('.outline-section nx-menu').choose('delete');
     await el.updateComplete;
 
     canvasBus.editorHtmlState.emit('');
@@ -701,5 +735,284 @@ describe('ew-page-outline - read-only', () => {
     const writer = twoSections(['Next first', 'Next second'], { editable: true });
     expect(await dragAcrossDocumentSwitch(writer))
       .to.deep.equal(['Next first', 'hr', 'Next second']);
+  });
+});
+
+describe('ew-page-outline - section menu', () => {
+  let el;
+  let bridge;
+  let view;
+
+  const para = (text) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
+  const rule = (daSectionName = null) => ({ type: 'horizontal_rule', attrs: { daSectionName } });
+  const table = (name) => ({
+    type: 'table',
+    content: [{
+      type: 'table_row',
+      content: [{ type: 'table_cell', content: [para(name)] }],
+    }],
+  });
+
+  const root = () => el.shadowRoot;
+  const sectionEls = () => [...root().querySelectorAll('.outline-section')];
+  const menuOf = (i) => sectionEls()[i].querySelector('nx-menu');
+  const triggerOf = (i) => root().querySelector(`.section-menu-trigger[data-section-index="${i}"]`);
+  const active = () => root().activeElement;
+  const focusTargets = () => [...root().querySelectorAll('.section-menu-trigger, [role="treeitem"]')];
+  const names = () => parseSections(getInstrumentedHTML(view)).map((sec) => sec.name);
+
+  async function settle() {
+    canvasBus.editorHtmlState.emit(getInstrumentedHTML(view));
+    await el.updateComplete;
+    await el.updateComplete;
+  }
+
+  async function load(content, { blockLibrary = false } = {}) {
+    view = makeTrackedView({ type: 'doc', content });
+    bridge.view = view;
+    el._hasBlockLibrary = blockLibrary;
+    await settle();
+  }
+
+  const nextTask = () => new Promise((resolve) => { setTimeout(resolve); });
+
+  function stubBlockLibrary() {
+    const modal = {};
+    el._loadBlockLibraryModal = async () => ({
+      openBlockLibraryModal: ({ onInsert }) => {
+        const dialog = document.createElement('dialog');
+        document.body.append(dialog);
+        dialog.showModal();
+        const close = () => {
+          dialog.close();
+          dialog.remove();
+        };
+        modal.open = true;
+        modal.insert = (html) => {
+          const dom = document.createElement('div');
+          dom.innerHTML = html;
+          onInsert(dom);
+          close();
+        };
+        modal.cancel = close;
+      },
+    });
+    return modal;
+  }
+
+  beforeEach(async () => {
+    el = await createOutline();
+    bridge = getExtensionsBridge();
+  });
+
+  afterEach(() => {
+    el.remove();
+    bridge.view = null;
+  });
+
+  it('renders one labelled, tabbable trigger per section and no inline section buttons', async () => {
+    await load([para('one'), rule('Feat'), para('two')]);
+
+    const triggers = [...root().querySelectorAll('.section-menu-trigger')];
+    expect(triggers.map((t) => t.getAttribute('aria-label')))
+      .to.deep.equal(['More actions for Section 1', 'More actions for Feat']);
+    expect(triggers.every((t) => t.tabIndex >= 0 && !t.hasAttribute('tabindex'))).to.be.true;
+    expect(root().querySelectorAll('.section-header .delete-btn, .edit-btn, .add-block-btn')).to.have.lengthOf(0);
+    const buttons = [...root().querySelectorAll('button')].filter((b) => !b.closest('nx-menu'));
+    expect(buttons.some((b) => /add section/i.test(b.textContent))).to.be.false;
+  });
+
+  it('lists Add block only when the site has a block library', async () => {
+    await load([para('one')]);
+    expect(menuOf(0).items.filter((i) => i.id).map((i) => i.id))
+      .to.deep.equal(['rename', 'add-section-after', 'delete']);
+
+    el._hasBlockLibrary = true;
+    await el.updateComplete;
+    expect(menuOf(0).items.filter((i) => i.id).map((i) => i.id))
+      .to.deep.equal(['rename', 'add-block', 'add-section-after', 'delete']);
+  });
+
+  it('leads the section header and block rows with the drag handle', async () => {
+    await load([table('hero')]);
+
+    const header = root().querySelector('.section-header');
+    const block = root().querySelector('[data-block-index="0"]');
+    expect(block).to.exist;
+    [header, block].forEach((row) => {
+      expect(row.firstElementChild.classList.contains('drag-handle')).to.be.true;
+      expect(row.firstElementChild.querySelector('use').getAttribute('href'))
+        .to.equal('/img/icons/s2-icon-draghandle-20-n.svg#icon');
+    });
+    expect(header.lastElementChild.tagName).to.equal('NX-MENU');
+  });
+
+  it('returns focus to the trigger on Escape but not on outside click', async () => {
+    await load([table('hero'), para('one')]);
+
+    menuOf(0).pressEscape();
+    expect(active() === triggerOf(0)).to.be.true;
+
+    const row = root().querySelector('[data-block-index="0"]');
+    menuOf(0).clickOutside(row);
+    expect(active() === row).to.be.true;
+  });
+
+  it('renames via the menu and returns focus to the trigger on Enter', async () => {
+    await load([para('one'), rule('Feat'), para('two')]);
+
+    menuOf(1).choose('rename');
+    await el.updateComplete;
+    const input = root().querySelector('.section-name-input');
+    expect(active() === input).to.be.true;
+    expect(sectionEls()[1].querySelector('nx-menu')).to.be.null;
+
+    input.value = 'Features';
+    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await settle();
+
+    expect(names()).to.deep.equal(['', 'Features']);
+    expect(active() === triggerOf(1)).to.be.true;
+  });
+
+  it('returns focus to the trigger when a rename is cancelled with Escape', async () => {
+    await load([para('one'), rule('Feat'), para('two')]);
+
+    menuOf(1).choose('rename');
+    await el.updateComplete;
+    root().querySelector('.section-name-input')
+      .dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await el.updateComplete;
+    await el.updateComplete;
+
+    expect(names()).to.deep.equal(['', 'Feat']);
+    expect(active() === triggerOf(1)).to.be.true;
+  });
+
+  it('adds a section after and focuses its trigger', async () => {
+    await load([para('one'), rule('Feat'), para('two')]);
+
+    menuOf(0).choose('add-section-after');
+    await settle();
+
+    expect(docSeq(view.state.doc)).to.deep.equal(['one', 'hr', 'hr', 'two']);
+    expect(names()).to.deep.equal(['', '', 'Feat']);
+    expect(active() === triggerOf(1)).to.be.true;
+  });
+
+  it('inserts a block at the section start and focuses the new block row', async () => {
+    await load([para('one'), rule('Feat'), para('two')], { blockLibrary: true });
+    const modal = stubBlockLibrary();
+
+    menuOf(1).choose('add-block');
+    await nextTask();
+    expect(modal.open).to.be.true;
+
+    modal.insert('<table><tr><td><p>cards</p></td></tr></table>');
+    await settle();
+
+    expect(docSeq(view.state.doc)).to.deep.equal(['one', 'hr', 'cards', 'two']);
+    const row = root().querySelector('[data-block-index="0"]');
+    expect(row?.textContent.trim()).to.equal('cards');
+    expect(active() === row).to.be.true;
+  });
+
+  it('returns focus to the trigger when the block library is cancelled', async () => {
+    await load([para('one')], { blockLibrary: true });
+    const modal = stubBlockLibrary();
+
+    menuOf(0).choose('add-block');
+    await nextTask();
+    modal.cancel();
+    await el.updateComplete;
+
+    expect(docSeq(view.state.doc)).to.deep.equal(['one']);
+    expect(active() === triggerOf(0)).to.be.true;
+  });
+
+  it('deletes a section via the menu and focuses the next trigger', async () => {
+    await load([para('one'), rule('A'), para('two'), rule('B'), para('three')]);
+
+    menuOf(1).choose('delete');
+    await el.updateComplete;
+    expect(root().querySelector('nx-dialog.ew-po-delete')).to.exist;
+    el._confirmDelete();
+    await settle();
+
+    expect(docSeq(view.state.doc)).to.deep.equal(['one', 'hr', 'three']);
+    expect(active() === triggerOf(1)).to.be.true;
+  });
+
+  it('focuses the last target after deleting the last section', async () => {
+    await load([para('one'), rule('A'), para('two')]);
+
+    menuOf(1).choose('delete');
+    await el.updateComplete;
+    el._confirmDelete();
+    await settle();
+
+    const targets = focusTargets();
+    expect(docSeq(view.state.doc)).to.deep.equal(['one']);
+    expect(active() === targets[targets.length - 1]).to.be.true;
+  });
+
+  it('returns focus to the opener when a delete is cancelled', async () => {
+    await load([table('hero'), para('one')]);
+
+    menuOf(0).choose('delete');
+    await el.updateComplete;
+    el._cancelDelete();
+    await el.updateComplete;
+    await el.updateComplete;
+    expect(active() === triggerOf(0)).to.be.true;
+
+    const button = root().querySelector('[data-block-index="0"] .delete-btn');
+    button.click();
+    await el.updateComplete;
+    el._cancelDelete();
+    await el.updateComplete;
+    await el.updateComplete;
+    expect(active() === button).to.be.true;
+  });
+
+  it('focuses the row now at the same position after an inline block delete', async () => {
+    await load([table('hero'), table('cards'), para('one')]);
+
+    const before = focusTargets();
+    const index = before.indexOf(root().querySelector('[data-block-index="0"]'));
+    root().querySelector('[data-block-index="0"] .delete-btn').click();
+    await el.updateComplete;
+    el._confirmDelete();
+    await settle();
+
+    const row = focusTargets()[index];
+    expect(row.textContent.trim()).to.equal('cards');
+    expect(active() === row).to.be.true;
+  });
+
+  it('does not leave focus pending when deleting the only empty section', async () => {
+    await load([{ type: 'paragraph' }]);
+
+    menuOf(0).choose('delete');
+    await el.updateComplete;
+    el._confirmDelete();
+    await settle();
+    expect(el._pendingFocus ?? null).to.equal(null);
+
+    const elsewhere = document.createElement('button');
+    document.body.append(elsewhere);
+    elsewhere.focus();
+    view.dispatch(view.state.tr.insertText('typed', 1));
+    await settle();
+    expect(document.activeElement === elsewhere).to.be.true;
+    elsewhere.remove();
+  });
+
+  it('drops pending focus when an action leaves the doc unchanged', async () => {
+    await load([para('one')]);
+
+    el._runWithFocus(view, () => triggerOf(0), () => {});
+    expect(el._pendingFocus ?? null).to.equal(null);
   });
 });
