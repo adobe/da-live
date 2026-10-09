@@ -2,25 +2,9 @@ import { getNx2, getNx2Api } from '../../../../scripts/utils.js';
 import { MESSAGE_TYPES } from '../../utils/quick-edit-messages.js';
 import { dataUrlByteLength, refuseOversizedImage } from '../../utils/image-upload.js';
 
-const { resolveImagePosition } = await import(
+const { resolveImagePosition, updateImageInDocument } = await import(
   `${getNx2()}/public/utils/quick-edit-images.js`
 );
-
-function updateImageInDocument({ view, target, newSrc }) {
-  let proseIndex = null;
-  let ambiguous = false;
-  view.state.doc.descendants((node, pos) => {
-    if (node === target) {
-      if (proseIndex != null) ambiguous = true;
-      else proseIndex = pos;
-    }
-  });
-  if (proseIndex == null || ambiguous) {
-    throw new Error('The selected image is no longer available. Please try again.');
-  }
-  const attrs = { ...target.attrs, src: newSrc, editAs: null };
-  view.dispatch(view.state.tr.setNodeMarkup(proseIndex, null, attrs));
-}
 
 function dataUrlToBlob(dataUrl) {
   const [header, base64Data] = dataUrl.split(',');
