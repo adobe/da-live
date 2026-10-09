@@ -24,6 +24,7 @@ const DELETE_ICON_SRC = '/img/icons/s2-icon-delete-20-n.svg';
 const ADD_BLOCK_ICON_SRC = '/img/icons/s2-icon-tableadd-20-n.svg';
 const DRAG_ICON_SRC = '/img/icons/s2-icon-draghandle-20-n.svg';
 const EDIT_ICON_SRC = '/img/icons/s2-icon-edit-20-n.svg';
+const CHEVRON_ICON_SRC = '/img/icons/s2-icon-chevronright-10-n.svg';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
@@ -579,6 +580,9 @@ class EwPageOutline extends LitElement {
              @click=${() => this._toggleContentGroup(key)}
              @dragover=${(e) => this._onContentGroupDragOver(e, item)}
              @drop=${this._onDrop}>
+          <svg aria-hidden="true" class="content-caret" viewBox="0 0 10 10">
+            <use href="${CHEVRON_ICON_SRC}#icon"></use>
+          </svg>
           <span class="block-name content-label">Default content</span>
         </div>
         ${expanded ? html`

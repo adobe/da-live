@@ -4,7 +4,7 @@
   min-height: 0;
   font-family: var(--s2-font-family);
   padding: var(--s2-spacing-200) 0 0 var(--s2-spacing-200);
-  font-size: var(--s2-component-s-regular-font-size);
+  font-size: var(--nx-ui-text-description);
   color: var(--s2-gray-700);
 }
 
@@ -24,7 +24,7 @@ button {
 
 .placeholder {
   padding: var(--s2-spacing-300) var(--s2-spacing-200);
-  font-size: var(--s2-component-s-regular-font-size);
+  font-size: var(--nx-ui-text-description);
   color: var(--s2-gray-600);
   text-align: center;
 }
@@ -41,6 +41,22 @@ button {
   flex-shrink: 0;
 }
 
+.toolbar .nx-action-btn-icon {
+  width: var(--nx-ui-icon-btn-size);
+  height: var(--nx-ui-icon-btn-size);
+  padding: 0;
+
+  &:hover:not(:disabled, .is-active) {
+    background: var(--nx-ui-icon-btn-hover-bg);
+    color: var(--nx-ui-icon-btn-hover-color);
+  }
+
+  .icon {
+    width: var(--nx-ui-icon);
+    height: var(--nx-ui-icon);
+  }
+}
+
 .segment {
   display: flex;
   gap: var(--s2-spacing-100);
@@ -48,11 +64,11 @@ button {
 }
 
 .seg-btn {
-  font-size: var(--s2-component-s-regular-font-size);
+  font-size: var(--nx-ui-text-description);
   border: none;
   background: transparent;
   color: var(--s2-gray-700);
-  height: 24px;
+  height: var(--nx-ui-control-height-compact);
   min-width: 48px;
   padding: 0 var(--s2-spacing-100);
   transition: transform 0.125s ease-out;
@@ -106,7 +122,7 @@ button {
   }
 
   .da-icon-btn:hover {
-    background: var(--s2-gray-300);
+    background: var(--nx-ui-icon-btn-hover-bg);
   }
 
   &:last-of-type {
@@ -119,9 +135,14 @@ button {
 }
 
 .versionname {
-  font-size: var(--s2-component-s-regular-font-size);
+  font-size: var(--nx-ui-text-description);
   font-weight: 700;
   color: var(--s2-gray-900);
+}
+
+.meta,
+.user {
+  font-size: var(--nx-ui-text-caption);
 }
 
 .versionicon {
@@ -137,15 +158,15 @@ button {
   background: var(--s2-gray-75);
 
   svg {
-    width: 16px;
-    height: 16px;
+    width: calc(var(--nx-ui-icon) - 2px);
+    height: calc(var(--nx-ui-icon) - 2px);
     transition: transform 0.15s ease;
   }
 }
 
 .versionentry.is-audit .versionicon svg {
-  width: 12px;
-  height: 12px;
+  width: calc(var(--nx-ui-icon) - 4px);
+  height: calc(var(--nx-ui-icon) - 4px);
 }
 
 .versionentry:hover .versionicon {
@@ -288,17 +309,17 @@ summary {
 
 .is-new {
   .da-input {
-    height: 24px;
-    font-size: var(--s2-component-s-regular-font-size);
+    height: var(--nx-ui-control-height);
+    font-size: var(--nx-ui-text-description);
   }
 
   .da-btn-secondary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: 24px;
+    height: var(--nx-ui-control-height);
     padding: 0 var(--s2-spacing-100);
-    font-size: var(--s2-component-s-regular-font-size);
+    font-size: var(--nx-ui-text-description);
     font-weight: normal;
     border-radius: var(--s2-corner-radius-400);
 
@@ -318,5 +339,3 @@ summary {
 nx-dialog {
   --nx-dialog-padding: var(--s2-spacing-200);
 }
-
-

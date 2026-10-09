@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2, getNx2Api } from '../../../scripts/utils.js';
+import { getNx, getNx2, getNx2Api, getUISize } from '../../../scripts/utils.js';
 import { listFolder, itemHashPath, getAemUrl } from '../../shared/daFiles.js';
 import { iconPathForExt } from '../../shared/icons.js';
 import { EMPTY_DOC } from '../../shared/utils.js';
@@ -71,6 +71,7 @@ const SEARCH_ICON_SRC = '/img/icons/s2-icon-search-20-n.svg';
 const CLEAR_ICON_SRC = '/img/icons/s2-icon-close-20-n.svg';
 const COPY_ICON_SRC = '/img/icons/s2-icon-paste-20-n.svg';
 const CHECKMARK_ICON_SRC = '/img/icons/s2-icon-checkmark-20-n.svg';
+const CHEVRON_ICON_SRC = '/img/icons/s2-icon-chevronright-10-n.svg';
 const REFRESH_ICON_HTML = `<svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${REFRESH_ICON_SRC}#icon"></use></svg>`;
 const REFRESH_SPINNER_HTML = '<span class="da-loading-spinner" aria-hidden="true"></span>';
 
@@ -636,6 +637,7 @@ class EwFileExplorer extends LitElement {
             title="${this._rowTitle(item) || nothing}"
             aria-expanded="${isDir ? expanded : nothing}"
             aria-selected="${selected}">
+            ${isDir ? html`<svg class="row-caret" viewBox="0 0 10 10" aria-hidden="true"><use href="${CHEVRON_ICON_SRC}#icon"></use></svg>` : nothing}
             <svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="${iconPathForExt(ext)}#icon"></use></svg>
             <span class="label">${name}</span>
           </button>
@@ -690,6 +692,7 @@ class EwFileExplorer extends LitElement {
           <svg viewBox="0 0 20 20" aria-hidden="true"><use href="${CLEAR_ICON_SRC}#icon"></use></svg>
         </button>
         <nx-picker
+          size=${getUISize()}
           .items="${CATEGORIES}"
           .value="${this._category ?? 'all'}"
           placement="below-end"

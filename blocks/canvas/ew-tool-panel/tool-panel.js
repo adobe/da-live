@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2, getUISize } from '../../../scripts/utils.js';
+import getSheet from '../../shared/sheet.js';
 import { getCommentsBridge } from '../editor-utils/comments-bridge.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import {
@@ -12,9 +13,10 @@ const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
 
-const [base, style] = await Promise.all([
+const [base, style, buttons] = await Promise.all([
   loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href),
   loadStyle(import.meta.url),
+  getSheet(`${getNx2()}/styles/buttons.css`),
 ]);
 
 const CLOSE_ICON_SRC = '/img/icons/s2-icon-splitright-20-n.svg';
@@ -36,7 +38,7 @@ class EwToolPanel extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [base, style];
+    this.shadowRoot.adoptedStyleSheets = [base, style, buttons];
     this._bindCommentCountUpdates();
     this._onRailToggle = () => this._broadcastActiveView();
     document.addEventListener(PANEL_EVENT.OPEN, this._onRailToggle);
@@ -269,10 +271,11 @@ class EwToolPanel extends LitElement {
 
     return html`
       <div class="tool-panel-header">
-        <button type="button" class="tool-panel-close" aria-label="Close panel" @click=${this._close}>
-          <svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${CLOSE_ICON_SRC}#icon"></use></svg>
+        <button type="button" class="nx-action-btn-icon" aria-label="Close panel" @click=${this._close}>
+          <svg aria-hidden="true" viewBox="0 0 20 20"><use href="${CLOSE_ICON_SRC}#icon"></use></svg>
         </button>
         <nx-picker
+          size=${getUISize()}
           .items=${items}
           .value=${this.activeId}
           placement="below-start"
@@ -292,7 +295,7 @@ class EwToolPanel extends LitElement {
               <p>${dialogTitle}</p>
             </div>
             <button type="button" class="tool-panel-fullsize-dialog-close" aria-label="Close"
-              @click=${(e) => e.target.closest('dialog').close()}>✕</button>
+              @click=${(e) => e.target.closest('dialog').close()}><svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-close-20-n.svg#icon"></use></svg></button>
           </div>
           <div class="tool-panel-fullsize-dialog-body"></div>
         </dialog>

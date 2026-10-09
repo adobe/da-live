@@ -17,9 +17,9 @@
     "Trebuchet MS",
     sans-serif
   );
-  font-size: var(--s2-body-size-xs);
+  font-size: var(--nx-ui-text-description);
   font-weight: var(--s2-component-s-medium-font-weight, 500);
-  line-height: 16px;
+  line-height: var(--nx-ui-line-description);
   color: var(--s2-gray-800);
   background: var(--s2-gray-25);
   border: 1px solid var(--s2-gray-200);
@@ -34,7 +34,7 @@
 
 .toolbar-btn {
   box-sizing: border-box;
-  height: 24px;
+  height: var(--nx-ui-control-height);
   padding: 0 8px;
   display: inline-flex;
   align-items: center;
@@ -53,19 +53,19 @@
 }
 
 .toolbar-btn:hover:not(:disabled) {
-  background: var(--s2-gray-200);
+  background: var(--nx-ui-icon-btn-hover-bg);
 }
 
 .toolbar-btn.icon-only {
-  min-width: 24px;
+  min-width: var(--nx-ui-control-height);
   padding: 0;
   justify-content: center;
 }
 
 .toolbar-btn svg.icon {
   display: block;
-  width: 16px;
-  height: 16px;
+  width: var(--nx-ui-icon);
+  height: var(--nx-ui-icon);
   overflow: hidden;
 }
 
@@ -88,9 +88,14 @@
 
 /* Size the variant picker to match the toolbar buttons (same height, padding, radius). */
 .toolbar-variant {
-  --nx-picker-height: 24px;
+  --nx-picker-height: var(--nx-ui-control-height);
   --nx-picker-padding: 0 6px;
   --nx-picker-radius: var(--s2-corner-radius-100);
 
   font-weight: inherit;
+}
+
+:host([data-ui-size="m"]) .toolbar-btn:focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: 2px;
 }

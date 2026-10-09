@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getUISize } from '../../../scripts/utils.js';
 import { getBlocksExtension, loadBlockLibrary } from '../ew-panel-extensions/helpers.js';
 import { replaceBlockRange, setTableBlockVariant, appendBlockRow } from '../editor-utils/blocks.js';
 import { isMultiBlock, getMultiBlockTemplateRow } from '../editor-utils/multi-block.js';
@@ -39,6 +39,7 @@ class EwBlockToolbar extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    this.dataset.uiSize = getUISize();
     this.shadowRoot.adoptedStyleSheets = [styles];
   }
 
@@ -222,6 +223,7 @@ class EwBlockToolbar extends LitElement {
           <span class="toolbar-variant-wrap">
             <nx-picker
               class="toolbar-variant"
+              size=${getUISize()}
               placement="above"
               ignoreFocus
               .items=${this._variantPickerItems()}

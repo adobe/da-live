@@ -22,8 +22,8 @@
 }
 
 .search-icon {
-  width: 16px;
-  height: 16px;
+  width: var(--nx-ui-icon);
+  height: var(--nx-ui-icon);
   flex-shrink: 0;
   color: var(--s2-gray-600);
 }
@@ -35,7 +35,7 @@
   outline: none;
   background: none;
   font-family: inherit;
-  font-size: var(--s2-body-size-xs);
+  font-size: var(--nx-ui-text-description);
   color: var(--s2-gray-900);
   padding: 0;
 
@@ -100,7 +100,7 @@
   background: transparent;
   color: inherit;
   font-family: inherit;
-  font-size: var(--s2-body-size-s);
+  font-size: var(--nx-ui-text-content);
   font-weight: 500;
   text-align: start;
   cursor: pointer;
@@ -114,28 +114,27 @@
   }
 }
 
-.row[aria-expanded]::before {
-  content: '›';
-  display: inline-block;
+.row-caret {
   flex-shrink: 0;
-  width: 1rem;
-  text-align: center;
-  transition: transform 0.15s;
+  width: calc(var(--nx-ui-icon) - 8px);
+  height: calc(var(--nx-ui-icon) - 8px);
+  color: var(--s2-gray-600);
+  transition: transform 0.1s ease-out;
 }
 
-.row[aria-expanded="true"]::before {
+.row[aria-expanded="true"] .row-caret {
   transform: rotate(90deg);
 }
 
 /* Files have no chevron — indent to align with folder labels */
 .row.file {
-  padding-inline-start: calc(var(--depth, 0) * var(--s2-spacing-300) + var(--s2-spacing-100) + 1rem + var(--s2-spacing-75));
+  padding-inline-start: calc(var(--depth, 0) * var(--s2-spacing-300) + var(--s2-spacing-100) + var(--nx-ui-icon) - 8px + var(--s2-spacing-75));
 }
 
 .icon {
   flex-shrink: 0;
-  width: 16px;
-  height: 16px;
+  width: calc(var(--nx-ui-icon) - 2px);
+  height: calc(var(--nx-ui-icon) - 2px);
 }
 
 .label {
@@ -150,7 +149,7 @@
   margin-inline-start: var(--s2-spacing-75);
   color: var(--s2-gray-600);
   font-weight: 400;
-  font-size: var(--s2-body-size-xs, 12px);
+  font-size: var(--nx-ui-text-caption);
 }
 
 .copy-url {
@@ -171,7 +170,7 @@
 
 .notice {
   padding: var(--s2-spacing-75) var(--s2-spacing-100);
-  font-size: var(--s2-body-size-s);
+  font-size: var(--nx-ui-text-content);
   color: var(--s2-gray-600);
   margin: 0;
 
@@ -187,13 +186,14 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    font: var(--nx-font-body, 14px/1.4 system-ui, sans-serif);
+    font-family: var(--s2-font-family);
+    font-size: var(--nx-ui-text-content);
   }
 }
 
 .placeholder {
   padding: var(--s2-spacing-300) var(--s2-spacing-100);
-  font-size: var(--s2-body-size-s);
+  font-size: var(--nx-ui-text-content);
   color: var(--s2-gray-600);
   text-align: center;
   margin: 0;

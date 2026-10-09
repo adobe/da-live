@@ -634,7 +634,7 @@ export class EwEditorDoc extends LitElement {
           <header class="block-edit-header">
             <span class="block-edit-title">${title}</span>
             <button type="button" class="block-edit-close" aria-label="Close"
-                    @click=${() => this.shadowRoot.querySelector('nx-dialog')?.close()}>✕</button>
+                    @click=${() => this.shadowRoot.querySelector('nx-dialog')?.close()}><svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-close-20-n.svg#icon"></use></svg></button>
           </header>
           <div class="block-edit-body">
             <div class="ew-editor-doc block-edit-doc">
