@@ -34,15 +34,23 @@ function loadSelectorScript() {
 // ---------------------------------------------------------------------------
 
 /** Renders the AEM asset selector into `container`; selections insert into the editor. */
-export async function renderAssets({ container, org, site, onClose }) {
+export async function renderAssets({
+  container, org, site, onClose, getView = () => getExtensionsBridge().view, onError,
+}) {
   const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
   const ims = await loadIms();
   if (ims?.anonymous) handleSignIn();
   const token = ims?.accessToken?.token;
-  if (!token) return;
+  if (!token) {
+    if (onError) throw new Error('Sign in before opening AEM Assets.');
+    return;
+  }
 
   const repoConfig = await getRepositoryConfig(org, site);
-  if (!repoConfig) return;
+  if (!repoConfig) {
+    if (onError) throw new Error('AEM Assets is not configured for this site.');
+    return;
+  }
 
   await loadSelectorScript();
 
@@ -66,14 +74,21 @@ export async function renderAssets({ container, org, site, onClose }) {
     imsToken: token,
     repoConfig,
     onClose: onClose && (() => assetPanel.style.display !== 'none' && onClose()),
-    handleSelection: buildHandleSelection({
-      assetPanel,
-      secondaryPanel,
-      repoConfig,
-      responsiveImageConfigPromise,
-      getView: () => getExtensionsBridge().view,
-      close: () => onClose?.(),
-    }),
+    handleSelection: async (assets) => {
+      try {
+        await buildHandleSelection({
+          assetPanel,
+          secondaryPanel,
+          repoConfig,
+          responsiveImageConfigPromise,
+          getView,
+          close: () => onClose?.(),
+        })(assets);
+      } catch (err) {
+        if (onError) onError(err);
+        else throw err;
+      }
+    },
   });
 
   window.PureJSSelectors.renderAssetSelector(assetPanel, selectorProps);

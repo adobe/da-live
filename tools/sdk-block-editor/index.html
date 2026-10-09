@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Block sidebar SDK prototype</title>
+  <script type="importmap">
+    {
+      "imports": {
+        "da-y-wrapper": "/deps/da-y-wrapper/dist/index.js",
+        "da-parser": "/deps/da-parser/dist/index.js",
+        "da-lit": "/deps/lit/dist/index.js",
+        "hast-util-from-html": "/test/fixtures/hast-stub.js"
+      }
+    }
+  </script>
+  <style>
+    body { margin: 24px; font-family: system-ui, sans-serif; }
+    .workspace { display: grid; grid-template-columns: 1fr 400px; gap: 24px; }
+    .ProseMirror { min-height: 500px; padding: 16px; border: 1px solid #999; }
+    .ProseMirror:focus { outline: 2px solid #1473e6; }
+    table { border-collapse: collapse; width: 100%; }
+    td { border: 1px solid #999; padding: 8px; }
+    img { max-width: 120px; }
+    iframe { width: 100%; height: 800px; border: 1px solid #999; }
+    #extension-url { width: min(80vw, 1000px); }
+    #status { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Block sidebar SDK prototype</h1>
+  <p>The editor and extension communicate through the real SDK MessageChannel.
+    Content is a local fixture: nothing is saved to a remote document.</p>
+  <label>Extension URL <input id="extension-url" type="url"></label>
+  <button id="connect" type="button">Connect extension</button>
+  <button id="remote-edit" type="button">Simulate intervening edit</button>
+  <label><input id="read-only" type="checkbox"> Read only</label>
+  <p id="status" role="status"></p>
+  <div class="workspace">
+    <div id="editor"></div>
+    <div id="extension"></div>
+  </div>
+  <script type="module" src="./prototype.js"></script>
+</body>
+</html>

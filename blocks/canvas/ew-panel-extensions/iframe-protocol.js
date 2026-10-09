@@ -1,6 +1,7 @@
 import { insertText, insertHTML, getEditorSelection } from './helpers.js';
 import { getNx } from '../../../scripts/utils.js';
 import { getPostMessageTargetOrigin, isValidHref } from '../../shared/utils.js';
+import { createEditorProtocol } from './editor-protocol.js';
 
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
@@ -22,8 +23,13 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   const targetOrigin = getPostMessageTargetOrigin(iframe.src);
 
   const channel = new MessageChannel();
+  const editorProtocol = createEditorProtocol({ port: channel.port1, getView, hashState });
 
   channel.port1.onmessage = (e) => {
+    if (e.data?.requestId) {
+      editorProtocol.handle(e.data);
+      return;
+    }
     const { action, details } = e.data || {};
     const editorView = getView();
 
@@ -99,7 +105,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   const readyTimer = setTimeout(() => {
     if (!iframe.contentWindow) return;
     iframe.contentWindow.postMessage(
-      { ready: true, project, context: project, token },
+      { ready: true, project, context: project, token, capabilities: { editor: 1 } },
       targetOrigin,
       [channel.port2],
     );
@@ -112,6 +118,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   document.addEventListener(CHAT_EVENT.AGENT_CHANGE, onAgentChange);
 
   const destroy = () => {
+    editorProtocol.destroy();
     clearTimeout(readyTimer);
     document.removeEventListener(CHAT_EVENT.AGENT_CHANGE, onAgentChange);
     channel.port1.close();

@@ -341,8 +341,8 @@ class EwBlockLibraryModal extends LitElement {
 
 customElements.define('ew-block-library-modal', EwBlockLibraryModal);
 
-export async function openBlockLibraryModal({ onInsert, heading } = {}) {
-  if (document.body.querySelector('ew-block-library-modal')) return;
+export async function openBlockLibraryModal({ onInsert, heading, onClose } = {}) {
+  if (document.body.querySelector('ew-block-library-modal')) return undefined;
 
   let hashState;
   const unsub = hashChange.subscribe((s) => { hashState = s; });
@@ -351,12 +351,16 @@ export async function openBlockLibraryModal({ onInsert, heading } = {}) {
 
   // Reuses the slash-menu prefetch cache, so this is instant once warmed.
   const { ext, blocks } = await loadBlockLibrary(org, site);
-  if (!ext) return;
+  if (!ext) return undefined;
 
   const modal = document.createElement('ew-block-library-modal');
   modal.blocks = blocks;
   modal.onInsert = onInsert;
   modal.heading = heading;
-  modal.addEventListener('close', () => modal.remove(), { once: true });
+  modal.addEventListener('close', () => {
+    modal.remove();
+    onClose?.();
+  }, { once: true });
   document.body.append(modal);
+  return modal;
 }

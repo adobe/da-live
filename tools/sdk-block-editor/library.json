@@ -1,0 +1,22 @@
+{
+  "data": [
+    {
+      "name": "Cards",
+      "path": "http://localhost:3001/tools/sdk-block-editor/cards.html"
+    },
+    {
+      "name": "Settings",
+      "path": "http://localhost:3001/tools/sdk-block-editor/settings.html"
+    }
+  ],
+  "editor": {
+    "data": [
+      { "block": "cards", "property": "multi" }
+    ]
+  },
+  "options": {
+    "data": [
+      { "blocks": "settings", "key": "Color", "values": "Red=red|Blue=blue|Green=green" }
+    ]
+  }
+}

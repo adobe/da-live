@@ -47,6 +47,7 @@ export const canvasBus = Object.freeze({
 
   undoState: createChannel(),
   editorDocState: createChannel(),
+  extensionEditorState: createChannel(),
   editorViewState: createChannel({ replay: true }),
   blockEditState: createChannel({ replay: true }),
   toolbarSurfaceState: createChannel({ replay: true }),
