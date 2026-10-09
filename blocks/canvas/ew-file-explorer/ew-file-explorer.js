@@ -3,7 +3,6 @@ import { getNx, getNx2, getNx2Api } from '../../../scripts/utils.js';
 import { listFolder, itemHashPath, getAemUrl } from '../../shared/daFiles.js';
 import { iconPathForExt } from '../../shared/icons.js';
 import { EMPTY_DOC } from '../../shared/utils.js';
-import { treeKeydown, treeFocusIn, treeEnsureTabStop } from '../utils/tree-nav.js';
 import getEditPath from '../../browse/shared.js';
 import getSheet from '../../shared/sheet.js';
 import '../../shared/da-name-dialog/da-name-dialog.js';
@@ -12,6 +11,7 @@ const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
+const { treegridEnsureTabStop, treegridFocusIn, treegridKeydown } = await import(`${getNx2()}/blocks/shared/utils/treegrid-nav.js`);
 
 const [buttons, style] = await Promise.all([
   getSheet(`${getNx2()}/styles/buttons.css`),
@@ -120,7 +120,7 @@ class EwFileExplorer extends LitElement {
   }
 
   updated() {
-    treeEnsureTabStop(this.shadowRoot);
+    treegridEnsureTabStop(this.shadowRoot);
   }
 
   _onHashChange({ org, site, path }) {
@@ -487,18 +487,13 @@ class EwFileExplorer extends LitElement {
     this._clearSearch();
   }
 
-  _onTreeKeydown(e) {
-    const item = this.shadowRoot.activeElement;
-    if (item?.matches('.row[aria-expanded]')) {
-      const expanded = item.getAttribute('aria-expanded') === 'true';
-      if ((e.key === 'ArrowRight' && !expanded) || (e.key === 'ArrowLeft' && expanded)) {
-        e.preventDefault();
-        item.click();
-        return;
-      }
-    }
-    treeKeydown(e, this.shadowRoot);
-  }
+  _onGridKeydown = (e) => {
+    treegridKeydown(e, { root: this.shadowRoot });
+  };
+
+  _onGridFocusIn = (e) => {
+    treegridFocusIn(e, { root: this.shadowRoot });
+  };
 
   _onClearClick() {
     const input = this.shadowRoot.querySelector('.search-input');
@@ -535,31 +530,53 @@ class EwFileExplorer extends LitElement {
     return COPYABLE_EXTS.has(item.ext) ? getAemUrl(item) : '';
   }
 
-  _renderSearchResult(item) {
-    const hashPath = itemHashPath(item);
-    const selected = this._selectedPath === hashPath;
-    const copyable = COPYABLE_EXTS.has(item.ext);
-    const parentPath = this._relativeParentPath(item);
+  _renderRow({
+    item, depth, posinset, setsize, expanded, hint,
+  }) {
+    const isDir = item.type === 'directory';
+    const selected = !isDir && this._selectedPath === itemHashPath(item);
 
     return html`
-      <li role="none">
-        <div class="row-wrap${selected ? ' selected' : ''}"
-          @click="${() => this._onItemClick(item)}">
-          <button type="button" class="row file" title="${this._rowTitle(item) || nothing}">
-            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="${iconPathForExt(item.ext)}#icon"></use></svg>
-            <span class="label">
-              ${item.name}
-              <span class="path-hint">${parentPath}</span>
-            </span>
-          </button>
-          ${copyable ? html`
-            <button type="button" class="nx-action-btn-icon nx-btn-sm action-btn copy-url" title="Copy URL" aria-label="Copy URL for ${item.name}"
+      <div role="row" class="row${isDir ? '' : ' file'}${selected ? ' selected' : ''}"
+        style="--depth: ${depth}"
+        tabindex="-1"
+        aria-label="${hint ? `${item.name}, ${hint}` : item.name}"
+        title="${this._rowTitle(item) || nothing}"
+        aria-level="${depth + 1}" aria-posinset="${posinset}" aria-setsize="${setsize}"
+        aria-expanded="${isDir ? expanded : nothing}"
+        aria-selected="${selected}"
+        @click="${() => this._onItemClick(item)}">
+        <div class="row-cell" role="gridcell">
+          <svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="${iconPathForExt(item.ext)}#icon"></use></svg>
+          <span class="label">
+            ${item.name}
+            ${hint === undefined ? nothing : html`<span class="path-hint">${hint}</span>`}
+          </span>
+          ${COPYABLE_EXTS.has(item.ext) ? html`
+            <button type="button" class="nx-action-btn-icon nx-btn-sm action-btn copy-url" tabindex="-1"
+              title="Copy URL" aria-label="Copy URL for ${item.name}"
               @click="${(e) => this._onCopyUrl(e, item)}">
               <svg class="icon-paste" viewBox="0 0 20 20" aria-hidden="true"><use href="${COPY_ICON_SRC}#icon"></use></svg>
               <svg class="icon-checkmark" viewBox="0 0 20 20" aria-hidden="true"><use href="${CHECKMARK_ICON_SRC}#icon"></use></svg>
             </button>` : nothing}
+          ${isDir ? html`
+            <button type="button" class="nx-action-btn-icon nx-btn-sm action-btn new-page-btn" tabindex="-1"
+              draggable="false" aria-label="New page in ${item.name}"
+              @pointerdown=${(e) => e.stopPropagation()}
+              @click=${(e) => this._openCreateDialog(e, item)}>
+              <svg aria-hidden="true" viewBox="0 0 20 20"><use href="${ADD_ICON_SRC}#icon"></use></svg>
+            </button>` : nothing}
         </div>
-      </li>`;
+      </div>`;
+  }
+
+  _renderGrid(label, rows) {
+    return html`
+      <ul class="tree" role="treegrid" aria-label="${label}"
+        @keydown="${this._onGridKeydown}"
+        @focusin="${this._onGridFocusIn}">
+        ${rows}
+      </ul>`;
   }
 
   _categoryLabel() {
@@ -579,9 +596,10 @@ class EwFileExplorer extends LitElement {
     return html`
       <p class="notice search-status" aria-live="polite">${statusText}</p>
       ${hasResults ? html`
-        <ul class="tree" role="list" aria-label="Search results">
-          ${this._searchResults.map((item) => this._renderSearchResult(item))}
-        </ul>` : nothing}
+        ${this._renderGrid('Search results', this._searchResults.map((item, i) => html`
+          <li role="none">
+            ${this._renderRow({ item, depth: 0, posinset: i + 1, setsize: count, hint: this._relativeParentPath(item) })}
+          </li>`))}` : nothing}
     `;
   }
 
@@ -617,47 +635,17 @@ class EwFileExplorer extends LitElement {
     }
   }
 
-  _renderNode(item, depth) {
-    const { type, pathKey, name, children, ext } = item;
-    const isDir = type === 'directory';
-    const expanded = isDir && this._expanded?.has(pathKey);
-    const hashPath = itemHashPath(item);
-    const selected = !isDir && this._selectedPath === hashPath;
-    const copyable = COPYABLE_EXTS.has(ext);
-    const visibleChildren = this._visibleChildren(children);
+  _renderNode(item, depth, posinset, setsize) {
+    const isDir = item.type === 'directory';
+    const expanded = isDir && !!this._expanded?.has(item.pathKey);
+    const visibleChildren = this._visibleChildren(item.children);
 
     return html`
       <li role="none">
-        <div class="row-wrap${selected ? ' selected' : ''}" style="--depth: ${depth}"
-          @click="${() => this._onItemClick(item)}">
-          <button type="button" role="treeitem"
-            class="row${isDir ? '' : ' file'}"
-            tabindex="-1"
-            title="${this._rowTitle(item) || nothing}"
-            aria-expanded="${isDir ? expanded : nothing}"
-            aria-selected="${selected}">
-            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="${iconPathForExt(ext)}#icon"></use></svg>
-            <span class="label">${name}</span>
-          </button>
-          ${copyable ? html`
-            <button type="button" class="nx-action-btn-icon nx-btn-sm action-btn copy-url" title="Copy URL" aria-label="Copy URL for ${name}"
-              @click="${(e) => this._onCopyUrl(e, item)}">
-              <svg class="icon-paste" viewBox="0 0 20 20" aria-hidden="true"><use href="${COPY_ICON_SRC}#icon"></use></svg>
-              <svg class="icon-checkmark" viewBox="0 0 20 20" aria-hidden="true"><use href="${CHECKMARK_ICON_SRC}#icon"></use></svg>
-            </button>` : nothing}
-          ${isDir ? html`
-            <button type="button" class="nx-action-btn-icon nx-btn-sm action-btn new-page-btn" draggable="false"
-              aria-label="New page in ${name}"
-              @pointerdown=${(e) => e.stopPropagation()}
-              @click=${(e) => this._openCreateDialog(e, item)}>
-              <svg aria-hidden="true" viewBox="0 0 20 20">
-                <use href="${ADD_ICON_SRC}#icon"></use>
-              </svg>
-            </button>` : nothing}
-        </div>
+        ${this._renderRow({ item, depth, posinset, setsize, expanded })}
         ${expanded && visibleChildren.length ? html`
-          <ul role="group">
-            ${visibleChildren.map((c) => this._renderNode(c, depth + 1))}
+          <ul role="none">
+            ${visibleChildren.map((c, i) => this._renderNode(c, depth + 1, i + 1, visibleChildren.length))}
           </ul>` : nothing}
       </li>`;
   }
@@ -699,11 +687,7 @@ class EwFileExplorer extends LitElement {
       ${this._searchTerm ? this._renderSearchList() : html`
         ${this._categoryCrawling ? html`
           <p class="notice search-status" aria-live="polite">Scanning for ${(this._categoryLabel() ?? '').toLowerCase()}…</p>` : nothing}
-        <ul class="tree" role="tree" aria-label="Files"
-          @keydown="${(e) => this._onTreeKeydown(e)}"
-          @focusin="${(e) => treeFocusIn(e, this.shadowRoot)}">
-          ${tree.map((item) => this._renderNode(item, 0))}
-        </ul>`}
+        ${this._renderGrid('Files', tree.map((item, i) => this._renderNode(item, 0, i + 1, tree.length)))}`}
       <da-name-dialog
         dialog-title="New page in ${this._createDialog?.folder?.split('/').pop() ?? ''}"
         name-placeholder="page name"

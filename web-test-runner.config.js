@@ -3,6 +3,18 @@ import { importMapsPlugin } from '@web/dev-server-import-maps';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { defaultReporter } from '@web/test-runner';
 
+function axTreePlugin() {
+  return {
+    name: 'ax-tree',
+    async executeCommand({ command, payload, session }) {
+      if (command !== 'ax-tree') return undefined;
+      const page = session.browser.getPage(session.id);
+      const root = await page.$(payload.selector);
+      return root && page.accessibility.snapshot({ interestingOnly: false, root });
+    },
+  };
+}
+
 function customReporter() {
   return {
     async reportTestFileResults({ logger, sessionsForTestFile }) {
@@ -40,6 +52,7 @@ export default {
         },
       },
     ),
+    axTreePlugin(),
   ],
   reporters: [
     defaultReporter({ reportTestResults: true, reportTestProgress: true }),

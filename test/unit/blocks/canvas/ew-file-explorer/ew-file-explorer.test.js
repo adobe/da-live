@@ -1,6 +1,8 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
+import { sendKeys } from '@web/test-runner-commands';
 import { setNx } from '../../../../../scripts/utils.js';
+import { axAll, axFocused, axTree } from '../../../helpers/ax-tree.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -620,7 +622,7 @@ describe('EwFileExplorer', () => {
     });
   });
 
-  describe('.action-btn keyboard reachability', () => {
+  describe('.action-btn row controls', () => {
     beforeEach(async () => {
       el._org = 'org';
       el._site = 'site';
@@ -630,22 +632,19 @@ describe('EwFileExplorer', () => {
       await el.updateComplete;
     });
 
-    it('is hidden by default, even on the row that is the current roving-tabindex stop', async () => {
+    it('is hidden by default', async () => {
       await withRealCss(el);
 
-      const rows = [...el.shadowRoot.querySelectorAll('.row')];
-      const firstRow = rows[0];
-      expect(firstRow.getAttribute('tabindex')).to.equal('0');
-
-      const btn = firstRow.closest('.row-wrap').querySelector('.action-btn');
+      const firstRow = el.shadowRoot.querySelector('[role="row"]');
+      const btn = firstRow.querySelector('.action-btn');
       expect(getComputedStyle(btn).visibility).to.equal('hidden');
     });
 
     it('becomes visible when the row itself receives real focus, and hides again on blur', async () => {
       await withRealCss(el);
 
-      const firstRow = el.shadowRoot.querySelector('.row');
-      const btn = firstRow.closest('.row-wrap').querySelector('.action-btn');
+      const firstRow = el.shadowRoot.querySelector('[role="row"]');
+      const btn = firstRow.querySelector('.action-btn');
       expect(getComputedStyle(btn).visibility).to.equal('hidden');
 
       firstRow.focus();
@@ -656,8 +655,7 @@ describe('EwFileExplorer', () => {
     });
 
     it('does not let Enter/Space on the button bubble into toggling the row', async () => {
-      const firstRow = el.shadowRoot.querySelector('.row');
-      const btn = firstRow.closest('.row-wrap').querySelector('.action-btn');
+      const btn = el.shadowRoot.querySelector('[role="row"] .action-btn');
       const expandedBefore = new Set(el._expanded);
 
       const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
@@ -666,23 +664,27 @@ describe('EwFileExplorer', () => {
       expect(el._expanded).to.deep.equal(expandedBefore);
     });
 
-    it('makes the copy-url button reachable by Tab, same as other action buttons', async () => {
+    it('keeps row controls out of the tab order', async () => {
       el._cache = { '/org/site': [{ name: 'a.html', path: '/org/site/a.html', ext: 'html' }] };
       await el.updateComplete;
+      const grid = () => axTree('ew-file-explorer >>> [role="treegrid"]');
+      expect(axAll(await grid(), 'button').map((b) => b.name))
+        .to.deep.equal(['New page in site', 'Copy URL for a.html']);
 
-      const copyBtn = el.shadowRoot.querySelector('.copy-url');
-      expect(copyBtn.getAttribute('tabindex')).to.not.equal('-1');
+      el.shadowRoot.querySelector('[role="row"]').focus();
+      await sendKeys({ press: 'Tab' });
+      expect(axFocused(await grid())).to.equal(undefined);
     });
 
-    it('does not show the copied checkmark just from tabbing to the button', async () => {
+    it('does not show the copied checkmark just from focusing the button', async () => {
       el._cache = { '/org/site': [{ name: 'a.html', path: '/org/site/a.html', ext: 'html' }] };
       await el.updateComplete;
       await withRealCss(el);
 
       const row = el.shadowRoot.querySelector('.row.file');
-      row.focus(); // reveals the action buttons, as real Tab navigation would
-      const copyBtn = row.closest('.row-wrap').querySelector('.copy-url');
-      copyBtn.focus(); // simulates the next real Tab press landing on the now-visible button
+      row.focus();
+      const copyBtn = row.querySelector('.copy-url');
+      copyBtn.focus();
 
       const checkmark = copyBtn.querySelector('.icon-checkmark');
       expect(getComputedStyle(checkmark).display).to.equal('none');
@@ -708,47 +710,155 @@ describe('EwFileExplorer', () => {
     });
   });
 
-  describe('tree keyboard navigation: expand/collapse', () => {
+  describe('file treegrid', () => {
+    const GRID = 'ew-file-explorer >>> [role="treegrid"]';
+    const rowEl = (text) => [...el.shadowRoot.querySelectorAll('[role="row"]')]
+      .find((r) => r.querySelector('.label').textContent.trim() === text);
+    const axRows = async () => axAll(await axTree(GRID), 'row')
+      .map(({ name, level, expanded, selected }) => ({ name, level, expanded, selected }));
+    const press = (target, key) => {
+      const event = new KeyboardEvent('keydown', { key, bubbles: true, composed: true, cancelable: true });
+      target.dispatchEvent(event);
+      return event;
+    };
+
     beforeEach(async () => {
       el._org = 'org';
       el._site = 'site';
       el._treeRoot = '/org/site';
       el._cache = {
-        '/org/site': [{ name: 'sub', path: '/org/site/sub' }],
+        '/org/site': [
+          { name: 'sub', path: '/org/site/sub' },
+          { name: 'b.html', path: '/org/site/b.html', ext: 'html' },
+        ],
         '/org/site/sub': [{ name: 'child.html', path: '/org/site/sub/child.html', ext: 'html' }],
       };
       el._expanded = new Set(['org/site']);
+      el._selectedPath = 'org/site/b';
       await el.updateComplete;
+    });
+
+    it('exposes a named treegrid with levelled, named rows and one gridcell each', async () => {
+      const tree = await axTree(GRID);
+      expect(tree).to.include({ role: 'treegrid', name: 'Files' });
+      expect(await axRows()).to.deep.equal([
+        { name: 'site', level: 1, expanded: true, selected: false },
+        { name: 'sub', level: 2, expanded: false, selected: false },
+        { name: 'b.html', level: 2, expanded: undefined, selected: true },
+      ]);
+      const rows = axAll(tree, 'row');
+      expect(rows.every((r) => r.children.length === 1 && r.children[0].role === 'gridcell')).to.be.true;
+      expect(axAll(rows[1], 'button').map((b) => b.name)).to.deep.equal(['New page in sub']);
     });
 
     it('expands a collapsed folder on ArrowRight and collapses it on ArrowLeft', async () => {
-      const rows = [...el.shadowRoot.querySelectorAll('.row')];
-      const subRow = rows.find((r) => r.textContent.includes('sub'));
-      subRow.tabIndex = 0;
-      subRow.focus();
+      const sub = rowEl('sub');
+      sub.focus();
 
-      subRow.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
+      press(sub, 'ArrowRight');
       await el.updateComplete;
-      expect(subRow.getAttribute('aria-expanded')).to.equal('true');
+      expect(await axRows()).to.deep.include.members([
+        { name: 'sub', level: 2, expanded: true, selected: false },
+        { name: 'child.html', level: 3, expanded: undefined, selected: false },
+      ]);
 
-      subRow.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true }));
+      press(sub, 'ArrowLeft');
       await el.updateComplete;
-      expect(subRow.getAttribute('aria-expanded')).to.equal('false');
+      expect((await axRows()).map((r) => r.name)).to.deep.equal(['site', 'sub', 'b.html']);
     });
 
-    it('still navigates rows with ArrowDown/Up after Tab moves focus onto a row action button', async () => {
-      await withRealCss(el);
+    it('moves from a child row to its parent folder on ArrowLeft', async () => {
+      el._expanded = new Set(['org/site', 'org/site/sub']);
+      await el.updateComplete;
+      const child = rowEl('child.html');
+      child.focus();
 
-      const rows = [...el.shadowRoot.querySelectorAll('.row')];
-      const rootRow = rows[0];
-      const subRow = rows.find((r) => r.textContent.includes('sub'));
-      rootRow.focus();
+      press(child, 'ArrowLeft');
+      expect(axFocused(await axTree(GRID))).to.include({ role: 'row', name: 'sub' });
+    });
 
-      const newPageBtn = rootRow.closest('.row-wrap').querySelector('.new-page-btn');
-      newPageBtn.focus();
+    it('moves into row controls and between rows from a control', async () => {
+      const sub = rowEl('sub');
+      sub.focus();
+      const focused = async () => axFocused(await axTree(GRID));
 
-      newPageBtn.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
-      expect(el.shadowRoot.activeElement).to.equal(subRow);
+      press(sub, 'ArrowDown');
+      expect(await focused()).to.include({ role: 'row', name: 'b.html' });
+
+      press(el.shadowRoot.activeElement, 'ArrowRight');
+      expect(await focused()).to.include({ role: 'button', name: 'Copy URL for b.html' });
+
+      press(el.shadowRoot.activeElement, 'ArrowUp');
+      expect(await focused()).to.include({ role: 'button', name: 'New page in sub' });
+
+      press(el.shadowRoot.activeElement, 'Escape');
+      expect(await focused()).to.include({ role: 'row', name: 'sub' });
+    });
+
+    it('activates a file row with Enter', async () => {
+      const savedHash = window.location.hash;
+      const file = rowEl('b.html');
+      file.focus();
+      try {
+        expect(press(file, 'Enter').defaultPrevented).to.be.true;
+        expect(window.location.hash).to.equal('#/org/site/b');
+      } finally {
+        window.location.hash = savedHash;
+      }
+    });
+
+    it('is a single tab stop that returns to the last focused row', async () => {
+      const after = document.createElement('button');
+      el.after(after);
+      const backIn = async () => {
+        after.focus();
+        await sendKeys({ down: 'Shift' });
+        await sendKeys({ press: 'Tab' });
+        await sendKeys({ up: 'Shift' });
+        return axFocused(await axTree(GRID))?.name;
+      };
+      try {
+        expect(await backIn()).to.equal('site');
+        rowEl('b.html').focus();
+        expect(await backIn()).to.equal('b.html');
+      } finally {
+        after.remove();
+      }
+    });
+  });
+
+  describe('search results treegrid', () => {
+    const GRID = 'ew-file-explorer >>> [role="treegrid"]';
+
+    beforeEach(async () => {
+      el._org = 'org';
+      el._site = 'site';
+      el._treeRoot = '/org/site';
+      el._cache = { '/org/site': [] };
+      el._searchTerm = 'foo';
+      el._searchResults = [
+        { name: 'foo.html', path: '/org/site/a/foo.html', ext: 'html' },
+        { name: 'foo.json', path: '/org/site/foo.json', ext: 'json' },
+      ];
+      el._searching = false;
+      await el.updateComplete;
+    });
+
+    it('exposes results as flat treegrid rows, not a list', async () => {
+      const tree = await axTree(GRID);
+      expect(tree).to.include({ role: 'treegrid', name: 'Search results' });
+      expect(axAll(tree, 'list')).to.be.empty;
+      expect(axAll(tree, 'row').map(({ name, level }) => ({ name, level }))).to.deep.equal([
+        { name: 'foo.html, a', level: 1 },
+        { name: 'foo.json', level: 1 },
+      ]);
+    });
+
+    it('navigates results with arrow keys', async () => {
+      const [first] = el.shadowRoot.querySelectorAll('[role="row"]');
+      first.focus();
+      first.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true, cancelable: true }));
+      expect(axFocused(await axTree(GRID))).to.include({ role: 'row', name: 'foo.json' });
     });
   });
 
