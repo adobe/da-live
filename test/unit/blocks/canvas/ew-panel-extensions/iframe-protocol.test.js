@@ -1,6 +1,9 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
+import { TextSelection } from 'da-y-wrapper';
 import { setNx, getNx } from '../../../../../scripts/utils.js';
+import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
+import { makeView } from '../test-helpers.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -256,5 +259,150 @@ describe('setupIframeChannel', () => {
     await wait(800);
 
     expect(iframe.contentWindow.postMessage.called).to.be.false;
+  });
+});
+
+describe('setupIframeChannel link selection', () => {
+  const ORIGIN = 'https://plugin.example.com';
+  const hashState = { org: 'myorg', site: 'mysite' };
+  const link = (href, text) => ({ type: 'text', text, marks: [{ type: 'link', attrs: { href } }] });
+  const para = (...content) => ({ type: 'paragraph', content });
+  const docJson = () => ({
+    type: 'doc',
+    content: [
+      para(link('https://a.test/one', 'one')),
+      para({ type: 'text', text: 'plain' }),
+      para(link('https://a.test/two', 'two')),
+    ],
+  });
+
+  const onClose = () => {};
+  const connect = (iframe, view) => {
+    const getView = () => view;
+    return setupIframeChannel({ iframe, hashState, getView, onClose });
+  };
+
+  function select(view, pos) {
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, pos)));
+  }
+
+  function selectionPosts(iframe) {
+    return iframe.contentWindow.postMessage.getCalls()
+      .map((call) => call.args)
+      .filter(([message]) => message.action === 'selectionChange');
+  }
+
+  it('tells the plugin which link holds the cursor once it is ready', async () => {
+    const view = makeView(docJson());
+    select(view, 2);
+    const iframe = makeIframe();
+    const { destroy } = await connect(iframe, view);
+
+    canvasBus.editorSelectState.emit({ source: 'doc' });
+    expect(selectionPosts(iframe)).to.have.lengthOf(0);
+
+    await wait(800);
+
+    expect(selectionPosts(iframe)).to.deep.equal([[
+      { action: 'selectionChange', details: { link: { href: 'https://a.test/one', text: 'one' } } },
+      ORIGIN,
+    ]]);
+    destroy();
+  });
+
+  it('posts link changes only when the link under the cursor changes', async () => {
+    const view = makeView(docJson());
+    select(view, 2);
+    const iframe = makeIframe();
+    const { destroy } = await connect(iframe, view);
+    await wait(800);
+    iframe.contentWindow.postMessage.resetHistory();
+
+    select(view, 3);
+    canvasBus.editorSelectState.emit({ source: 'doc' });
+    expect(selectionPosts(iframe)).to.have.lengthOf(0);
+
+    select(view, 14);
+    canvasBus.editorSelectState.emit({ source: 'doc' });
+    select(view, 8);
+    canvasBus.editorDocState.emit();
+
+    expect(selectionPosts(iframe).map(([message]) => message.details)).to.deep.equal([
+      { link: { href: 'https://a.test/two', text: 'two' } },
+      { link: null },
+    ]);
+    destroy();
+  });
+
+  it('stops posting link changes after destroy', async () => {
+    const view = makeView(docJson());
+    const iframe = makeIframe();
+    const { destroy } = await connect(iframe, view);
+    await wait(800);
+    destroy();
+    iframe.contentWindow.postMessage.resetHistory();
+
+    select(view, 14);
+    canvasBus.editorSelectState.emit({ source: 'doc' });
+
+    expect(selectionPosts(iframe)).to.have.lengthOf(0);
+  });
+
+  it('replaces the selected link, confirms it and reports the new link', async () => {
+    const view = makeView(docJson());
+    select(view, 2);
+    const iframe = makeIframe();
+    const { channel, destroy } = await connect(iframe, view);
+    await wait(800);
+    iframe.contentWindow.postMessage.resetHistory();
+
+    channel.port2.postMessage({
+      action: 'replaceLink',
+      details: { html: '<p><a href="https://a.test/new">new</a></p>', href: 'https://a.test/one' },
+    });
+    await wait();
+
+    expect(view.state.doc.firstChild.textContent).to.equal('new');
+    expect(view.state.doc.childCount).to.equal(3);
+    expect(iframe.contentWindow.postMessage.calledWith(
+      { action: 'replaceLinkResult', details: { ok: true } },
+      ORIGIN,
+    )).to.be.true;
+    expect(selectionPosts(iframe).map(([message]) => message.details)).to.deep.equal([
+      { link: { href: 'https://a.test/new', text: 'new' } },
+    ]);
+    destroy();
+  });
+
+  it('reports an error when the selected link cannot be replaced', async () => {
+    const view = makeView(docJson());
+    select(view, 8);
+    const iframe = makeIframe();
+    const { channel, destroy } = await connect(iframe, view);
+
+    channel.port2.postMessage({ action: 'replaceLink', details: { html: '<p><a href="https://a.test/new">new</a></p>' } });
+    await wait();
+
+    const [[message, origin]] = iframe.contentWindow.postMessage.getCalls()
+      .map((call) => call.args)
+      .filter(([data]) => data.action === 'replaceLinkResult');
+    expect(origin).to.equal(ORIGIN);
+    expect(message.details.ok).to.be.false;
+    expect(message.details.error).to.be.a('string');
+    destroy();
+  });
+
+  it('reports an error for replaceLink when there is no editor view', async () => {
+    const iframe = makeIframe();
+    const { channel, destroy } = await connect(iframe, null);
+
+    channel.port2.postMessage({ action: 'replaceLink', details: { html: '<p>x</p>' } });
+    await wait();
+
+    expect(iframe.contentWindow.postMessage.calledWith(
+      { action: 'replaceLinkResult', details: { ok: false, error: 'No editor view' } },
+      ORIGIN,
+    )).to.be.true;
+    destroy();
   });
 });

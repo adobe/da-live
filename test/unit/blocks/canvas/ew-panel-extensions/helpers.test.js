@@ -583,3 +583,117 @@ describe('EW panel helpers fetchExtensions', () => {
     expect(await fetchExtensions('org', 'site')).to.eql([]);
   });
 });
+
+describe('plugin link selection', () => {
+  const link = (href, text, extra = []) => ({ type: 'text', text, marks: [...extra, { type: 'link', attrs: { href } }] });
+  const text = (value) => ({ type: 'text', text: value });
+  const para = (...content) => ({ type: 'paragraph', content });
+  const doc = (...content) => ({ type: 'doc', content });
+
+  let getLinkAtSelection;
+  let replaceLink;
+  let makeView;
+  let TextSelection;
+
+  before(async () => {
+    ({ getLinkAtSelection, replaceLink } = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js'));
+    ({ makeView } = await import('../test-helpers.js'));
+    ({ TextSelection } = await import('da-y-wrapper'));
+  });
+
+  function expectDoc(view, json) {
+    const expected = view.state.schema.nodeFromJSON(json);
+    expect(view.state.doc.eq(expected), JSON.stringify(view.state.doc.toJSON())).to.be.true;
+  }
+
+  function select(view, from, to = from) {
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to)));
+    return view;
+  }
+
+  it('returns the whole link around a cursor inside it', () => {
+    const view = select(makeView(doc(para(text('see '), link('https://a.test/x', 'landscape'), text(' now')))), 8);
+    expect(getLinkAtSelection(view.state)).to.deep.equal({ href: 'https://a.test/x', text: 'landscape', from: 5, to: 14 });
+  });
+
+  it('finds a link when the cursor sits on its start or end edge', () => {
+    const view = makeView(doc(para(link('https://a.test/x', 'landscape'))));
+    expect(getLinkAtSelection(select(view, 1).state)?.href).to.equal('https://a.test/x');
+    expect(getLinkAtSelection(select(view, 10).state)?.href).to.equal('https://a.test/x');
+  });
+
+  it('returns null for a cursor in plain text', () => {
+    const view = select(makeView(doc(para(text('plain '), link('https://a.test/x', 'link')))), 3);
+    expect(getLinkAtSelection(view.state)).to.equal(null);
+  });
+
+  it('accepts a selection inside one link and rejects one that leaves it', () => {
+    const view = makeView(doc(para(text('see '), link('https://a.test/x', 'landscape'))));
+    expect(getLinkAtSelection(select(view, 6, 10).state)?.text).to.equal('landscape');
+    expect(getLinkAtSelection(select(view, 2, 10).state)).to.equal(null);
+  });
+
+  it('spans text nodes that share the link mark', () => {
+    const view = select(makeView(doc(para(
+      link('https://a.test/x', 'land'),
+      link('https://a.test/x', 'scape', [{ type: 'strong' }]),
+    ))), 2);
+    expect(getLinkAtSelection(view.state)).to.include({ text: 'landscape', from: 1, to: 10 });
+  });
+
+  it('keeps adjacent links with different targets apart', () => {
+    const view = select(makeView(doc(para(
+      link('https://a.test/one', 'one'),
+      link('https://a.test/two', 'two'),
+    ))), 6);
+    expect(getLinkAtSelection(view.state)).to.deep.equal({ href: 'https://a.test/two', text: 'two', from: 4, to: 7 });
+  });
+
+  it('replaces a link that fills its paragraph without adding paragraphs', () => {
+    const view = select(makeView(doc(
+      para(text('intro')),
+      para(link('https://a.test/old', 'landscape')),
+      para(text('outro')),
+    )), 12);
+    const error = replaceLink(view, { html: '<p><a href="https://a.test/new">New photo</a></p>', href: 'https://a.test/old' });
+    expect(error).to.equal(null);
+    expectDoc(view, doc(
+      para(text('intro')),
+      para(link('https://a.test/new', 'New photo')),
+      para(text('outro')),
+    ));
+  });
+
+  it('replaces an inline link in place and keeps the surrounding text', () => {
+    const view = select(makeView(doc(para(
+      text('before '),
+      link('https://a.test/old', 'old'),
+      text(' after'),
+    ))), 9);
+    expect(replaceLink(view, { html: '<p><a href="https://a.test/new">new</a></p>' })).to.equal(null);
+    expectDoc(view, doc(para(
+      text('before '),
+      link('https://a.test/new', 'new'),
+      text(' after'),
+    )));
+  });
+
+  it('leaves the cursor on the replacement link', () => {
+    const view = select(makeView(doc(para(link('https://a.test/old', 'landscape')))), 3);
+    replaceLink(view, { html: '<p><a href="https://a.test/new">New photo</a></p>' });
+    expect(getLinkAtSelection(view.state)?.href).to.equal('https://a.test/new');
+  });
+
+  it('refuses to replace when the selected link no longer matches', () => {
+    const view = select(makeView(doc(para(link('https://a.test/other', 'other')))), 3);
+    const before = view.state.doc;
+    expect(replaceLink(view, { html: '<p><a href="https://a.test/new">new</a></p>', href: 'https://a.test/old' }))
+      .to.be.a('string');
+    expect(view.state.doc.eq(before)).to.be.true;
+  });
+
+  it('refuses to replace when no link is selected', () => {
+    const view = select(makeView(doc(para(text('plain text')))), 3);
+    expect(replaceLink(view, { html: '<p><a href="https://a.test/new">new</a></p>' })).to.be.a('string');
+  });
+});
