@@ -439,6 +439,58 @@ export function insertHTML(view, htmlStr) {
   view.dispatch(view.state.tr.replaceRange(from, to, slice).scrollIntoView());
 }
 
+function linkMarkAt(parent, index, linkType) {
+  if (index < 0 || index >= parent.childCount) return null;
+  return linkType.isInSet(parent.child(index).marks) || null;
+}
+
+/**
+ * The whole link holding the cursor, or the selection when it lies inside one link.
+ * A cursor on a link edge counts as inside the link.
+ */
+export function getLinkAtSelection(state) {
+  const linkType = state.schema.marks.link;
+  const { $from, $to, empty } = state.selection;
+  if (!linkType || !$from.parent.isTextblock || !$from.sameParent($to)) return null;
+
+  const { parent } = $from;
+  const at = $from.index();
+  const candidates = $from.textOffset || !empty ? [at] : [at - 1, at];
+  const index = candidates.find((i) => linkMarkAt(parent, i, linkType));
+  if (index === undefined) return null;
+
+  const mark = linkMarkAt(parent, index, linkType);
+  let start = index;
+  let end = index + 1;
+  while (start > 0 && mark.isInSet(parent.child(start - 1).marks)) start -= 1;
+  while (end < parent.childCount && mark.isInSet(parent.child(end).marks)) end += 1;
+  const from = $from.posAtIndex(start);
+  const to = $from.posAtIndex(end);
+  if ($from.pos < from || $to.pos > to) return null;
+
+  return { href: mark.attrs.href, text: state.doc.textBetween(from, to), from, to };
+}
+
+/**
+ * Extends the selection to the whole link under it and replaces the link with `html`.
+ * A single paragraph of `html` is inserted inline, so the link's paragraph stays intact.
+ * Returns an error message, or null on success.
+ */
+export function replaceLink(view, { html, href } = {}) {
+  if (typeof html !== 'string') return 'No HTML to insert';
+  const link = getLinkAtSelection(view.state);
+  if (!link) return 'No link at the selection';
+  if (href && href !== link.href) return 'The selected link has changed';
+
+  const { body } = new window.DOMParser().parseFromString(html, 'text/html');
+  const { content } = PMDOMParser.fromSchema(view.state.schema).parse(body);
+  const open = content.childCount === 1 && content.firstChild.isTextblock ? 1 : 0;
+  const { tr } = view.state;
+  tr.setSelection(TextSelection.create(tr.doc, link.from, link.to));
+  view.dispatch(tr.replaceSelection(new Slice(content, open, open)).scrollIntoView());
+  return null;
+}
+
 export function getEditorSelection(view) {
   const { selection } = view.state;
   if (selection.empty) return null;

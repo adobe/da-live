@@ -1,5 +1,6 @@
-import { insertText, insertHTML, getEditorSelection } from './helpers.js';
+import { insertText, insertHTML, getEditorSelection, getLinkAtSelection, replaceLink } from './helpers.js';
 import { getNx } from '../../../scripts/utils.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 import { getPostMessageTargetOrigin, isValidHref } from '../../shared/utils.js';
 
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
@@ -22,6 +23,19 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   const targetOrigin = getPostMessageTargetOrigin(iframe.src);
 
   const channel = new MessageChannel();
+
+  let ready = false;
+  let lastLink;
+  const postSelection = () => {
+    const editorView = getView();
+    if (!ready || !editorView || !iframe.contentWindow) return;
+    const link = getLinkAtSelection(editorView.state);
+    const details = { link: link && { href: link.href, text: link.text } };
+    const key = JSON.stringify(details);
+    if (key === lastLink) return;
+    lastLink = key;
+    iframe.contentWindow.postMessage({ action: 'selectionChange', details }, targetOrigin);
+  };
 
   channel.port1.onmessage = (e) => {
     const { action, details } = e.data || {};
@@ -59,6 +73,15 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
       document.dispatchEvent(
         new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat', options: { text, autoSend } } }),
       );
+    }
+
+    if (action === 'replaceLink') {
+      const error = editorView ? replaceLink(editorView, details) : 'No editor view';
+      iframe.contentWindow?.postMessage(
+        { action: 'replaceLinkResult', details: error ? { ok: false, error } : { ok: true } },
+        targetOrigin,
+      );
+      postSelection();
     }
 
     if (action === 'getSelection') {
@@ -103,7 +126,12 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
       targetOrigin,
       [channel.port2],
     );
+    ready = true;
+    postSelection();
   }, 750);
+
+  const unsubscribeSelection = [canvasBus.editorSelectState, canvasBus.editorDocState]
+    .map((state) => state.subscribe(postSelection));
 
   const onAgentChange = ({ detail }) => {
     if (!iframe.contentWindow) return;
@@ -113,6 +141,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
 
   const destroy = () => {
     clearTimeout(readyTimer);
+    unsubscribeSelection.forEach((unsubscribe) => unsubscribe());
     document.removeEventListener(CHAT_EVENT.AGENT_CHANGE, onAgentChange);
     channel.port1.close();
     channel.port2.close();
