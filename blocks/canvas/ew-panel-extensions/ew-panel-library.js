@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2 } from '../../../scripts/utils.js';
+import { getNx, getNx2, getUISize, getBtnSizeClass } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import {
   fetchBlocks,
@@ -46,6 +46,7 @@ class EwPanelLibrary extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    this.dataset.uiSize = getUISize();
     this.shadowRoot.adoptedStyleSheets = [buttonsStyle, style];
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
   }
@@ -253,7 +254,7 @@ class EwPanelLibrary extends LitElement {
           aria-label="Search ${label}"
           .value=${this._search || ''}
           @input=${this._onSearchInput}>
-        <button type="button" class="ext-search-clear" aria-label="Clear search" @click=${this._onSearchClear}>
+        <button type="button" class="nx-action-btn-icon nx-btn-sm ext-search-clear" aria-label="Clear search" @click=${this._onSearchClear}>
           <svg viewBox="0 0 20 20" aria-hidden="true"><use href="${CLEAR_ICON_SRC}#icon"></use></svg>
         </button>
       </div>
@@ -309,7 +310,7 @@ class EwPanelLibrary extends LitElement {
       <dialog class="ext-preview-dialog" @close=${() => this._closePreview()}>
         <div class="ext-preview-header">
           <p class="ext-preview-title">${name} preview</p>
-          <button class="nx-action-btn-icon ext-preview-close" aria-label="Close" @click=${() => this._closePreview()}><svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-close-20-n.svg#icon"></use></svg></button>
+          <button class="nx-action-btn-icon ext-preview-close ${getBtnSizeClass()}" aria-label="Close" @click=${() => this._closePreview()}><svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-close-20-n.svg#icon"></use></svg></button>
         </div>
         <div class="ext-preview-body">
           ${error ? html`<div class="ext-preview-error"><p>${error}</p></div>` : nothing}

@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2 } from '../../../scripts/utils.js';
+import { getNx, getNx2, getUISize } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import { treeKeydown } from '../utils/tree-nav.js';
 import { parseSections } from '../editor-utils/editor-utils.js';
@@ -98,6 +98,7 @@ class EwPageOutline extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    this.dataset.uiSize = getUISize();
     this.shadowRoot.adoptedStyleSheets = [formStyle, style, buttonsStyle];
     this._expandedContent = new Set();
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });

@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { yUndo, yRedo, NodeSelection, TextSelection } from 'da-y-wrapper';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2, getBtnSizeClass } from '../../../scripts/utils.js';
 import { updateDocument, updateCursors, getInstrumentedHTML, getEditor } from '../editor-utils/editor-utils.js';
 import { bindFirstSectionName } from '../../shared/section-name.js';
 import { getActiveBlockIndex, getBlockPositions, getTableBlockName } from '../editor-utils/blocks.js';
@@ -55,6 +55,7 @@ await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 
 const style = await loadStyle(import.meta.url);
 const commentHighlightStyle = await getSheet('/blocks/canvas/comments/comment-highlight.css');
+const buttonsStyle = await getSheet(`${getNx2()}/styles/buttons.css`);
 
 export class EwEditorDoc extends LitElement {
   static properties = {
@@ -436,7 +437,7 @@ export class EwEditorDoc extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style, commentHighlightStyle];
+    this.shadowRoot.adoptedStyleSheets = [buttonsStyle, style, commentHighlightStyle];
     this._unsubscribeEditorActive = canvasBus.editorViewState.subscribe(({ view }) => {
       this._editorView = view;
       this.hidden = view === 'layout';
@@ -633,7 +634,7 @@ export class EwEditorDoc extends LitElement {
         <div class="block-edit-content">
           <header class="block-edit-header">
             <span class="block-edit-title">${title}</span>
-            <button type="button" class="block-edit-close" aria-label="Close"
+            <button type="button" class="nx-action-btn-icon block-edit-close ${getBtnSizeClass()}" aria-label="Close"
                     @click=${() => this.shadowRoot.querySelector('nx-dialog')?.close()}><svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-close-20-n.svg#icon"></use></svg></button>
           </header>
           <div class="block-edit-body">

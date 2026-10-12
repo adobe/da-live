@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2, getNx2Api, getUISize } from '../../../scripts/utils.js';
+import { getNx, getNx2, getNx2Api, getUISize, getBtnSizeClass } from '../../../scripts/utils.js';
 import { listFolder, itemHashPath, getAemUrl } from '../../shared/daFiles.js';
 import { iconPathForExt } from '../../shared/icons.js';
 import { EMPTY_DOC } from '../../shared/utils.js';
@@ -94,6 +94,7 @@ class EwFileExplorer extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    this.dataset.uiSize = getUISize();
     this._category ??= 'all';
     this.shadowRoot.adoptedStyleSheets = [buttons, style];
     this._unsubHash = hashChange.subscribe((state) => this._onHashChange(state));
@@ -290,7 +291,7 @@ class EwFileExplorer extends LitElement {
     if (this._headerRefreshBtn) return this._headerRefreshBtn;
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'da-icon-btn';
+    btn.className = `nx-action-btn-icon ${getBtnSizeClass()}`.trim();
     btn.setAttribute('aria-label', 'Refresh files');
     btn.innerHTML = REFRESH_ICON_HTML;
     btn.addEventListener('click', () => this._onRefreshClick());

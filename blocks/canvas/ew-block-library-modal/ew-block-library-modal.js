@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2 } from '../../../scripts/utils.js';
+import { getNx, getNx2, getUISize, getBtnSizeClass } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import {
   loadBlockLibrary,
@@ -64,6 +64,7 @@ class EwBlockLibraryModal extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    this.dataset.uiSize = getUISize();
     this.shadowRoot.adoptedStyleSheets = [buttonsStyle, formStyle, style];
     this._variantsByPath = new Map();
     this._openDescriptions = new Set();
@@ -284,7 +285,7 @@ class EwBlockLibraryModal extends LitElement {
       <div class="modal-preview-toolbar" role="group" aria-label="Preview width">
         ${VIEWPORTS.map(([id, label, , icon]) => html`
           <button type="button"
-                  class="nx-action-btn-icon modal-viewport-btn ${this._viewport === id ? 'is-active' : ''}"
+                  class="nx-action-btn-icon modal-viewport-btn ${getBtnSizeClass()} ${this._viewport === id ? 'is-active' : ''}"
                   aria-label=${label}
                   title=${label}
                   aria-pressed=${this._viewport === id}
@@ -321,7 +322,7 @@ class EwBlockLibraryModal extends LitElement {
         <div class="modal-content">
           <header class="modal-header">
             <span class="modal-title">${this.heading ?? 'Insert block'}</span>
-            <button type="button" class="nx-action-btn-icon modal-close"
+            <button type="button" class="nx-action-btn-icon modal-close ${getBtnSizeClass()}"
                     aria-label="Close" @click=${() => this._close()}><svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-close-20-n.svg#icon"></use></svg></button>
           </header>
           <div class="modal-body">

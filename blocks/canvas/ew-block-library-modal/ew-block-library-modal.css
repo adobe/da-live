@@ -27,22 +27,6 @@
   border-bottom: 1px solid var(--s2-gray-200);
 }
 
-.nx-action-btn-icon.modal-close {
-  width: var(--nx-ui-icon-btn-size);
-  height: var(--nx-ui-icon-btn-size);
-  padding: 0;
-
-  svg {
-    width: var(--nx-ui-icon);
-    height: var(--nx-ui-icon);
-  }
-
-  &:hover:not(:disabled) {
-    background: var(--nx-ui-icon-btn-hover-bg);
-    color: var(--nx-ui-icon-btn-hover-color);
-  }
-}
-
 .modal-title {
   font-weight: 600;
   font-size: var(--nx-ui-text-title);
@@ -76,8 +60,8 @@
   top: 50%;
   transform: translateY(-50%);
   z-index: 1;
-  width: calc(var(--nx-ui-icon) - 2px);
-  height: calc(var(--nx-ui-icon) - 2px);
+  width: 14px;
+  height: 14px;
   color: light-dark(var(--s2-gray-700), var(--s2-gray-400));
   pointer-events: none;
   margin-left: 10px;
@@ -178,15 +162,15 @@
 
 .modal-tree-description {
   padding: 6px 36px 10px;
-  font-size: var(--nx-ui-text-caption);
+  font-size: var(--nx-ui-text-description);
   color: var(--s2-gray-700);
-  line-height: var(--nx-ui-line-caption);
+  line-height: var(--nx-ui-line-description);
 }
 
 .modal-tree-caret {
   flex-shrink: 0;
-  width: calc(var(--nx-ui-icon) - 2px);
-  height: calc(var(--nx-ui-icon) - 2px);
+  width: 14px;
+  height: 14px;
   color: var(--s2-gray-600);
   transition: transform 0.1s ease-out;
 }
@@ -205,12 +189,12 @@
 .modal-tree-subtitle {
   margin-left: 4px;
   color: var(--s2-gray-600);
-  font-size: var(--nx-ui-text-caption);
+  font-size: var(--nx-ui-text-description);
 }
 
 .modal-tree-loading {
   padding: 8px 36px;
-  font-size: var(--nx-ui-text-caption);
+  font-size: var(--nx-ui-text-description);
   color: var(--s2-gray-600);
 }
 
@@ -230,22 +214,6 @@
   padding: var(--s2-spacing-100);
   border-bottom: 1px solid var(--s2-gray-200);
   background: var(--s2-gray-75);
-}
-
-.nx-action-btn-icon.modal-viewport-btn {
-  width: var(--nx-ui-icon-btn-size);
-  height: var(--nx-ui-icon-btn-size);
-  padding: 0;
-
-  svg {
-    width: var(--nx-ui-icon);
-    height: var(--nx-ui-icon);
-  }
-
-  &:hover:not(:disabled, .is-active) {
-    background: var(--nx-ui-icon-btn-hover-bg);
-    color: var(--nx-ui-icon-btn-hover-color);
-  }
 }
 
 .modal-preview-placeholder {
@@ -294,3 +262,10 @@
   margin: 0;
 }
 
+:host([data-ui-size="m"]) {
+  .modal-search-icon,
+  .modal-tree-caret {
+    width: 16px;
+    height: 16px;
+  }
+}

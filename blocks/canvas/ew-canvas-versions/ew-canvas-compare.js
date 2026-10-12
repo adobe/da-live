@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2, getUISize, getBtnSizeClass } from '../../../scripts/utils.js';
+import getSheet from '../../shared/sheet.js';
 import { getRenderableSrc } from '../ew-editor-doc/prose-plugins/mediaBusImage.js';
 
 const ICON_CLOSE = '/img/icons/s2-icon-close-20-n.svg';
@@ -8,6 +9,7 @@ const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
 const style = await loadStyle(import.meta.url);
 const baseStyle = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
+const buttonsStyle = await getSheet(`${getNx2()}/styles/buttons.css`);
 
 function getCanvasSection() {
   return document.querySelector('ew-canvas-header')?.parentElement
@@ -30,7 +32,8 @@ class EwCanvasCompare extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [baseStyle, style];
+    this.dataset.uiSize = getUISize();
+    this.shadowRoot.adoptedStyleSheets = [baseStyle, buttonsStyle, style];
     this._onKeydown = (e) => {
       if (e.key === 'Escape') {
         this._close();
@@ -145,6 +148,7 @@ class EwCanvasCompare extends LitElement {
 
   render() {
     const panes = this.split ? this._panes : null;
+    const sizeCls = getBtnSizeClass();
     return html`
       <nx-popover role="dialog" aria-modal="true" aria-label="Compare with ${this.label}">
         <div class="ew-cc-header">
@@ -155,15 +159,15 @@ class EwCanvasCompare extends LitElement {
             </div>
           ` : html`<span class="ew-cc-chip">${this.label}</span>`}
           <div class="ew-cc-actions">
-            <button type="button" class="da-btn-secondary${this.split ? ' is-active' : ''}"
+            <button type="button" class="nx-action-btn ${sizeCls}${this.split ? ' is-active' : ''}"
               aria-pressed=${this.split ? 'true' : 'false'}
               @click=${this._toggleSplit}>
               Compare
             </button>
             ${this.canWrite ? html`
-              <button type="button" class="da-btn-secondary" @click=${this._restore}>Restore</button>
+              <button type="button" class="nx-action-btn ${sizeCls}" @click=${this._restore}>Restore</button>
             ` : nothing}
-            <button type="button" class="da-icon-btn ew-cc-close-btn" aria-label="Close" @click=${this._close}>
+            <button type="button" class="nx-action-btn-icon ew-cc-close-btn ${sizeCls}" aria-label="Close" @click=${this._close}>
               <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
                 <use href="${ICON_CLOSE}#icon"></use>
               </svg>

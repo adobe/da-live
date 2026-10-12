@@ -40,26 +40,6 @@
   opacity: 0.45;
 }
 
-.toolbar-btn {
-  box-sizing: border-box;
-  min-width: var(--nx-ui-control-height);
-  height: var(--nx-ui-control-height);
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  border-radius: var(--s2-corner-radius-100);
-  background: none;
-  color: var(--s2-gray-800);
-  font: inherit;
-  cursor: pointer;
-}
-
-.toolbar-btn:hover {
-  background: var(--nx-ui-icon-btn-hover-bg);
-}
-
 .toolbar-btn[aria-pressed="true"] {
   background: var(--s2-blue-200);
   color: var(--s2-blue-900);
@@ -67,6 +47,7 @@
 
 .toolbar-btn[aria-pressed="true"]:hover {
   background: var(--s2-blue-300);
+  color: var(--s2-blue-900);
 }
 
 .toolbar-btn[data-mark="strong"] {
@@ -79,20 +60,13 @@
 
 .toolbar-btn[data-mark="code"] {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: var(--nx-ui-text-caption);
+  font-size: var(--nx-ui-text-description);
   letter-spacing: -0.02em;
   padding: 0;
 }
 
 .toolbar-btn[hidden] {
   display: none;
-}
-
-.toolbar-btn svg.icon {
-  display: block;
-  width: var(--nx-ui-icon);
-  height: var(--nx-ui-icon);
-  overflow: hidden;
 }
 
 .toolbar-sep {
@@ -105,9 +79,4 @@
 .toolbar-block-type-wrap {
   display: inline-flex;
   align-items: center;
-}
-
-:host([data-ui-size="m"]) .toolbar-btn:focus-visible {
-  outline: 2px solid var(--s2-blue-800);
-  outline-offset: 2px;
 }

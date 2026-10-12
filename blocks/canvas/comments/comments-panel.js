@@ -1,5 +1,5 @@
 import { LitElement, html } from 'da-lit';
-import { getNx, getNx2 } from '../../../scripts/utils.js';
+import { getNx, getNx2, getUISize } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import { openCommentsPanel, getCommentsBridge } from '../editor-utils/comments-bridge.js';
 import { canvasBus } from '../utils/canvas-bus.js';
@@ -138,6 +138,7 @@ export class CommentsPanel extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    this.dataset.uiSize = getUISize();
     this.shadowRoot.adoptedStyleSheets = [
       ...this.shadowRoot.adoptedStyleSheets, base, buttons, form, sheet,
     ];

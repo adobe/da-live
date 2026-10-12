@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { DOMParser as PMDOMParser } from 'da-y-wrapper';
-import { getNx, getNx2, getUISize } from '../../../scripts/utils.js';
+import { getNx, getNx2, getUISize, getBtnSizeClass } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import { initIms } from '../../shared/utils.js';
 import {
@@ -23,10 +23,15 @@ const ICON_ADD = '/img/icons/s2-icon-addcircle-20-n.svg';
 const ICON_MORE = '/img/icons/s2-icon-more-20-n.svg';
 const ICON_CHEVRON = '/img/icons/s2-icon-chevrondown-20-n.svg';
 const ICON_CLOSE = '/img/icons/s2-icon-close-20-n.svg';
+const FILTER_ITEMS = [
+  { value: 'all', label: 'All' },
+  { value: 'me', label: 'Only me' },
+];
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
+await import(`${getNx2()}/blocks/shared/segmented-btn/segmented.js`);
 const style = await loadStyle(import.meta.url);
 const baseStyle = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
 const buttonsStyle = await getSheet(`${getNx2()}/styles/buttons.css`);
@@ -62,6 +67,7 @@ class EwCanvasVersions extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    this.dataset.uiSize = getUISize();
     this.shadowRoot.adoptedStyleSheets = [baseStyle, style, buttonsStyle];
     this._filter = 'all';
     initIms().then((ims) => { this._imsEmail = ims?.email ?? null; });
@@ -269,12 +275,12 @@ class EwCanvasVersions extends LitElement {
             class="da-input" .value=${`Version ${this._newVersion.date}`}
             ?readonly=${this._savingVersion} />
           <div class="ew-cv-new-actions">
-            <button type="submit" class="ew-cv-save-btn da-btn-secondary"
+            <button type="submit" class="ew-cv-save-btn nx-action-btn ${getBtnSizeClass()}"
               ?disabled=${this._savingVersion}
               aria-label=${this._savingVersion ? 'Saving' : nothing}>
               ${this._savingVersion ? html`<span class="da-loading-spinner" aria-hidden="true"></span>` : 'Save'}
             </button>
-            <button type="button" class="da-icon-btn" aria-label="Cancel"
+            <button type="button" class="nx-action-btn-icon ew-cv-cancel-btn ${getBtnSizeClass()}" aria-label="Cancel"
               ?disabled=${this._savingVersion}
               @click=${this.handleCancel}>
               <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
@@ -403,17 +409,14 @@ class EwCanvasVersions extends LitElement {
     return html`
       <div class="ew-canvas-versions">
         <div class="toolbar">
-          <div class="segment" role="group" aria-label="Filter versions">
-            <button type="button"
-              class="seg-btn${this._filter === 'all' ? ' is-selected' : ''}"
-              aria-pressed=${this._filter === 'all'}
-              @click=${() => this._setFilter('all')}>All</button>
-            <button type="button"
-              class="seg-btn${this._filter === 'me' ? ' is-selected' : ''}"
-              aria-pressed=${this._filter === 'me'}
-              @click=${() => this._setFilter('me')}>Only me</button>
-          </div>
-          <button type="button" class="nx-action-btn-icon" aria-label="Create version"
+          <nx-segmented-btn
+            label="Filter versions"
+            size=${getUISize()}
+            .items=${FILTER_ITEMS}
+            .value=${this._filter}
+            @change=${(e) => this._setFilter(e.detail.value)}
+          ></nx-segmented-btn>
+          <button type="button" class="nx-action-btn-icon ${getBtnSizeClass()}" aria-label="Create version"
             ?disabled=${!!this._newVersion} @click=${this.handleNew}>
             <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
               <use href="${ICON_ADD}#icon"></use>

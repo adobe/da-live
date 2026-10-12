@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, sanitizeName } from '../../../scripts/utils.js';
+import { getNx, getNx2, getUISize, getBtnSizeClass, sanitizeName } from '../../../scripts/utils.js';
+import getSheet from '../../shared/sheet.js';
 import { fetchDaConfigs, getPostMessageTargetOrigin } from '../../shared/utils.js';
 import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
 import { getPreviewOrigin } from './editor-utils.js';
@@ -10,6 +11,7 @@ const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
 
 const style = await loadStyle(import.meta.url);
+const buttonsStyle = await getSheet(`${getNx2()}/styles/buttons.css`);
 const ref = sanitizeName(new URLSearchParams(window.location.search).get('ref'), false) || 'main';
 
 function resolveMenuItem(item, details) {
@@ -63,7 +65,8 @@ export default class PrepareMenu extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style];
+    this.dataset.uiSize = getUISize();
+    this.shadowRoot.adoptedStyleSheets = [buttonsStyle, style];
     initPreflightBridge();
     this._unsubs = [
       canvasBus.preflightRunRequest.subscribe(this.handlePreflightRun),
@@ -254,10 +257,10 @@ export default class PrepareMenu extends LitElement {
             <span>${this._fullsizeDialogItem.title}</span>
           </h2>
           <button
-            class="prepare-fullsize-dialog-close"
+            class="nx-action-btn-icon prepare-fullsize-dialog-close ${getBtnSizeClass()}"
             type="button"
             aria-label="Close"
-            @click=${this.handleCloseFullsizeDialog}>&times;</button>
+            @click=${this.handleCloseFullsizeDialog}><svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-close-20-n.svg#icon"></use></svg></button>
         </header>
         <div class="prepare-fullsize-dialog-body">
           <iframe

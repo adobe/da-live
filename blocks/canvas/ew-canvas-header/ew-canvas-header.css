@@ -24,22 +24,6 @@
   border-bottom: 1px solid var(--s2-gray-200);
 }
 
-.bar .nx-action-btn-icon {
-  width: var(--nx-ui-icon-btn-size);
-  height: var(--nx-ui-icon-btn-size);
-  padding: 0;
-
-  &:hover:not(:disabled, .is-active) {
-    background: var(--nx-ui-icon-btn-hover-bg);
-    color: var(--nx-ui-icon-btn-hover-color);
-  }
-
-  svg {
-    width: var(--nx-ui-icon);
-    height: var(--nx-ui-icon);
-  }
-}
-
 .comments-toggle {
   position: relative;
   overflow: visible;
@@ -59,7 +43,7 @@
   border-radius: 999px;
   background-color: var(--s2-blue-800, #0265dc);
   color: #fff;
-  font-size: var(--nx-ui-text-caption);
+  font-size: var(--nx-ui-text-description);
   font-weight: var(--s2-component-s-medium-font-weight, 700);
   line-height: 1;
 }

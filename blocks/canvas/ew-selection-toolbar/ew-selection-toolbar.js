@@ -1,5 +1,6 @@
 import { LitElement, html } from 'da-lit';
-import { getNx, getUISize } from '../../../scripts/utils.js';
+import { getNx, getNx2, getUISize, getBtnSizeClass } from '../../../scripts/utils.js';
+import getSheet from '../../shared/sheet.js';
 import { commandsFor, COMMAND_BY_ID } from '../editor-utils/command-defs.js';
 import {
   getBlockTypePickerValue,
@@ -19,6 +20,7 @@ await import('../../shared/da-link-dialog/da-link-dialog.js');
 await import('../../shared/da-alt-dialog/da-alt-dialog.js');
 
 const styles = await loadStyle(import.meta.url);
+const buttonsStyle = await getSheet(`${getNx2()}/styles/buttons.css`);
 
 const MARK_ITEMS = commandsFor('toolbar-marks');
 const STRUCTURE_ITEMS = commandsFor('toolbar-structure');
@@ -60,7 +62,7 @@ class EwSelectionToolbar extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.dataset.uiSize = getUISize();
-    this.shadowRoot.adoptedStyleSheets = [styles];
+    this.shadowRoot.adoptedStyleSheets = [buttonsStyle, styles];
   }
 
   get _picker() { return this.shadowRoot?.querySelector('nx-picker'); }
@@ -306,7 +308,7 @@ class EwSelectionToolbar extends LitElement {
     return html`
       <button
         type="button"
-        class="toolbar-btn"
+        class="toolbar-btn nx-action-btn-icon ${getBtnSizeClass()}"
         aria-label=${label}
         title=${label}
         aria-pressed=${pressed ? 'true' : 'false'}
@@ -332,7 +334,7 @@ class EwSelectionToolbar extends LitElement {
           if (e.detail.id === 'upload') this._triggerUpload();
           else this._openAemAssets();
         }}>
-        <button slot="trigger" type="button" class="toolbar-btn"
+        <button slot="trigger" type="button" class="toolbar-btn nx-action-btn-icon ${getBtnSizeClass()}"
           aria-label=${imageItem.label} title=${imageItem.label}>
           ${this._icon(imageItem.icon)}
         </button>
@@ -360,7 +362,7 @@ class EwSelectionToolbar extends LitElement {
     return html`
       <nx-menu placement="above" size=${getUISize()} .items=${items}
         @select=${(e) => this._onTableMenuSelect(e)}>
-        <button slot="trigger" type="button" class="toolbar-btn"
+        <button slot="trigger" type="button" class="toolbar-btn nx-action-btn-icon ${getBtnSizeClass()}"
           aria-label="Edit table" title="Edit table">
           ${this._icon('tableedit')}
         </button>

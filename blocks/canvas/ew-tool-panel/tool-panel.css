@@ -25,22 +25,6 @@
   padding-right: var(--s2-spacing-75);
 }
 
-.tool-panel-header .nx-action-btn-icon {
-  width: var(--nx-ui-icon-btn-size);
-  height: var(--nx-ui-icon-btn-size);
-  padding: 0;
-
-  &:hover:not(:disabled, .is-active) {
-    background: var(--nx-ui-icon-btn-hover-bg);
-    color: var(--nx-ui-icon-btn-hover-color);
-  }
-
-  svg {
-    width: var(--nx-ui-icon);
-    height: var(--nx-ui-icon);
-  }
-}
-
 .tool-panel-content {
   flex: 1;
   display: flex;
@@ -108,35 +92,9 @@
 }
 
 .tool-panel-dialog-icon {
-  width: var(--nx-ui-icon);
-  height: var(--nx-ui-icon);
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
-}
-
-.tool-panel-fullsize-dialog-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--nx-ui-icon-btn-size);
-  height: var(--nx-ui-icon-btn-size);
-  padding: 0;
-  appearance: none;
-  border: none;
-  border-radius: var(--s2-corner-radius-400);
-  background: none;
-  box-shadow: none;
-  cursor: pointer;
-  color: inherit;
-
-  .icon {
-    width: var(--nx-ui-icon);
-    height: var(--nx-ui-icon);
-  }
-}
-
-.tool-panel-fullsize-dialog-close:hover {
-  background: var(--nx-ui-icon-btn-hover-bg);
-  color: var(--nx-ui-icon-btn-hover-color);
 }
 
 .tool-panel-fullsize-dialog-body {
@@ -150,4 +108,9 @@
     height: 100%;
     border: none;
   }
+}
+
+:host([data-ui-size="m"]) .tool-panel-dialog-icon {
+  width: 18px;
+  height: 18px;
 }

@@ -96,4 +96,7 @@ export const getNx2Api = () => {
 // Mirrors the body.ui-size-* class nx2's decorateDoc() applies from the 'ui-size' preference.
 export const getUISize = () => document.body.className.match(/\bui-size-(\w+)/)?.[1] ?? 's';
 
+// Shared nx2 buttons are small in s and default size otherwise.
+export const getBtnSizeClass = () => (getUISize() === 's' ? 'nx-btn-sm' : '');
+
 export const getNxEWFlags = () => import(`${getNx2()}/utils/ewFlags.js`);

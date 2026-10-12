@@ -34,7 +34,7 @@
   background: var(--ew-comment-author-color, #6b7280);
   color: #fff;
   font-family: inherit;
-  font-size: var(--nx-ui-text-caption);
+  font-size: var(--nx-ui-text-description);
   font-weight: 600;
   line-height: 1;
   filter:
@@ -140,30 +140,6 @@
   font-weight: 600;
   font-size: var(--nx-ui-text-title);
   text-transform: capitalize;
-}
-
-.block-edit-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--nx-ui-icon-btn-size);
-  height: var(--nx-ui-icon-btn-size);
-  padding: 0;
-  border: none;
-  border-radius: var(--s2-corner-radius-400);
-  background: transparent;
-  color: var(--s2-gray-800);
-  cursor: pointer;
-
-  .icon {
-    width: var(--nx-ui-icon);
-    height: var(--nx-ui-icon);
-  }
-}
-
-.block-edit-close:hover {
-  background: var(--nx-ui-icon-btn-hover-bg);
-  color: var(--nx-ui-icon-btn-hover-color);
 }
 
 .block-edit-body {
@@ -356,7 +332,7 @@
   position: absolute;
   top: -1.05em;
   left: -1px;
-  font-size: var(--nx-ui-text-description);
+  font-size: var(--nx-ui-text-content);
   background-color: rgb(250 129 0);
   border-radius: 2px;
   padding: 0 3px;
