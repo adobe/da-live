@@ -303,3 +303,52 @@ describe('diff-actions addToHashMetadata without a global view', () => {
     }
   });
 });
+
+describe('diff-actions addToHashMetadata matches the rollout hashes', () => {
+  // A rollout (da-nx loc regional-diff) skips upstream blocks whose hash the page lists as
+  // rejected and leaves local blocks alone whose hash it lists as accepted. It hashes each block
+  // of the saved page with text nodes trimmed, whitespace between tags removed, attributes
+  // sorted and same-site links on .aem.live. The editor has to store that same hash, or the next
+  // rollout raises the same conflict again.
+  const page = `<body><header></header><main><div>
+    <da-diff-deleted><p>Range: <a href="https://main--site--org.aem.live/data/sheet.json#range">513 km</a> (WLTP)</p></da-diff-deleted>
+    <p da-diff-added="">Range: <a href="https://main--site--org.aem.page/data/local.json#range">518 km</a> (WLTP)</p>
+    <p>Unchanged text</p>
+    <div class="metadata" da-diff-added=""><div><div><p>Title</p></div><div><p>Local title</p></div></div></div>
+  </div></main><footer></footer></body>`;
+
+  it('stores the hash the rollout computes for paragraphs with links and for metadata', async () => {
+    await import('../../../../../../blocks/edit/prose/diff/object_hash.js');
+    const { aem2doc, getSchema, yDocToProsemirror } = await import('da-parser');
+    const { Y } = await import('da-y-wrapper');
+    const { initDaMetadata, getDaMetadata } = await import('../../../../../../blocks/edit/utils/helpers.js');
+    const { addToHashMetadata } = await import('../../../../../../blocks/edit/prose/diff/diff-actions.js');
+    const rolloutHash = (html) => window.objectHash(html).substring(0, 12);
+    const storage = new Map();
+    initDaMetadata({
+      get: (key) => storage.get(key) || null,
+      set: (key, value) => storage.set(key, value),
+      delete: (key) => storage.delete(key),
+      [Symbol.iterator]: () => storage.entries(),
+    });
+    try {
+      const ydoc = new Y.Doc();
+      aem2doc(page, ydoc);
+      const doc = yDocToProsemirror(getSchema(), ydoc);
+      const diffNodes = [];
+      doc.descendants((node) => {
+        if (!['diff_added', 'diff_deleted'].includes(node.type.name)) return true;
+        diffNodes.push(node);
+        return false;
+      });
+      for (const node of diffNodes) await addToHashMetadata(node, ACCEPTED_KEY);
+      expect(getDaMetadata(ACCEPTED_KEY).split(',')).to.have.members([
+        rolloutHash('<p>Range:<a href="https://main--site--org.aem.live/data/sheet.json#range">513 km</a>(WLTP)</p>'),
+        rolloutHash('<p>Range:<a href="https://main--site--org.aem.live/data/local.json#range">518 km</a>(WLTP)</p>'),
+        rolloutHash('<div class="metadata"><div><div><p>Title</p></div><div><p>Local title</p></div></div></div>'),
+      ]);
+    } finally {
+      initDaMetadata(null);
+    }
+  });
+});
