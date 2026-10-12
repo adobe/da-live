@@ -1,6 +1,8 @@
 import { readFile } from '@web/test-runner-commands';
 import { expect } from '@esm-bundle/chai';
 
+import { getSchema, prosemirrorToYXmlFragment, doc2aem } from 'da-parser';
+import { Y, DOMSerializer } from 'da-y-wrapper';
 import prose2aem from '../../../../blocks/shared/prose2aem.js';
 
 const htmlString = await readFile({ path: './mocks/prose2aem.html' });
@@ -593,5 +595,55 @@ describe('prose2aem same-site URL conversion', () => {
     const link = editor.querySelector('a');
 
     expect(link.getAttribute('href')).to.equal('https://main--repo--org.aem.live/fragments/tabs');
+  });
+});
+
+describe('prose2aem / doc2aem parity for link-images', () => {
+  const schema = getSchema();
+  const SRC = 'https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:img-001/as/photo.avif';
+  const img = (extra) => schema.nodes.image.create({ src: SRC, alt: 'Alt', editAs: 'image', ...extra });
+  const p = (...c) => schema.node('paragraph', null, c);
+  const root = (...c) => schema.node('doc', null, c);
+  const cell = (type, ...c) => schema.node(type, null, c);
+
+  const cases = [
+    ['lone link-image', root(p(img()))],
+    ['text and link-image', root(p(schema.text('Hello '), img()))],
+    ['two link-images', root(p(img(), img()))],
+    ['link-image in block cell', root(schema.node('table', null, [
+      schema.node('table_row', null, [cell('table_header', p(schema.text('columns')))]),
+      schema.node('table_row', null, [
+        cell('table_cell', p(img())),
+        cell('table_cell', p(schema.text('text'))),
+      ]),
+    ]))],
+    ['link-image in list item', root(schema.node('bullet_list', null, [
+      schema.node('list_item', null, [p(img())]),
+    ]))],
+    ['link-image with focal attrs', root(p(img({ dataFocalX: '10', dataFocalY: '20' })))],
+  ];
+
+  const norm = (html) => html.replace(/\s+/g, ' ').replace(/> </g, '><').trim();
+  const mainHtml = (html) => new DOMParser().parseFromString(html, 'text/html')
+    .querySelector('main > div').innerHTML;
+
+  cases.forEach(([name, pmDoc]) => {
+    it(name, () => {
+      const ydoc = new Y.Doc();
+      prosemirrorToYXmlFragment(pmDoc, ydoc.getXmlFragment('prosemirror'));
+      const persisted = norm(mainHtml(doc2aem(ydoc)));
+
+      const div = document.createElement('div');
+      div.append(DOMSerializer.fromSchema(schema).serializeFragment(pmDoc.content));
+      div.querySelectorAll('table').forEach((t) => {
+        const w = document.createElement('div');
+        w.className = 'tableWrapper';
+        t.replaceWith(w);
+        w.append(t);
+      });
+      const preview = norm(mainHtml(prose2aem(div, false, false)));
+
+      expect(preview).to.equal(persisted);
+    });
   });
 });
