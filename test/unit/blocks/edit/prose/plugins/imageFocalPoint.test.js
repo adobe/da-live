@@ -1,5 +1,7 @@
 import { expect } from '@esm-bundle/chai';
+import { NodeSelection } from 'da-y-wrapper';
 import { setNx } from '../../../../../../scripts/utils.js';
+import { createTestEditor, destroyEditor } from '../test-helpers.js';
 
 describe('imageFocalPoint Plugin', () => {
   let imageFocalPoint;
@@ -224,5 +226,35 @@ describe('imageFocalPoint Plugin', () => {
     const icon = nodeView.dom.querySelector('.focal-point-icon');
     expect(icon).to.exist;
     expect(icon.classList.contains('focal-point-icon-active')).to.be.true;
+  });
+
+  it('drops focal view when image becomes editAs link-image', async () => {
+    const editor = await createTestEditor({ additionalPlugins: [imageFocalPoint()] });
+    await new Promise((resolve) => { setTimeout(resolve, 50); });
+    const { view } = editor;
+    const { schema } = view.state;
+    const cell = (child) => schema.nodes.table_cell.create(null, child);
+    const table = schema.nodes.table.create(null, [
+      schema.nodes.table_row.create(null, cell(schema.nodes.paragraph.create(null, schema.text('hero')))),
+      schema.nodes.table_row.create(null, cell(schema.nodes.paragraph.create(null, schema.nodes.image.create({ src: '/a.png' })))),
+    ]);
+    view.dispatch(view.state.tr.replaceWith(0, view.state.doc.content.size, table));
+    await new Promise((resolve) => { setTimeout(resolve, 50); });
+    expect(view.dom.querySelector('span.focal-point-image-wrapper img')).to.exist;
+
+    let imgPos;
+    view.state.doc.descendants((n, p) => { if (n.type.name === 'image') imgPos = p; });
+    const tr = view.state.tr.setSelection(NodeSelection.create(view.state.doc, imgPos));
+    tr.replaceSelectionWith(schema.nodes.image.create({
+      src: 'https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:1/as/a.jpg',
+      editAs: 'image',
+    }));
+    view.dispatch(tr);
+    await new Promise((resolve) => { setTimeout(resolve, 50); });
+
+    const img = view.dom.querySelector('img');
+    expect(img.getAttribute('data-edit-as')).to.equal('image');
+    expect(img.closest('.focal-point-image-wrapper')).to.be.null;
+    destroyEditor(editor);
   });
 });

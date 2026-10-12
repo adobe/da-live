@@ -120,7 +120,7 @@ class ImageWithFocalPointView {
   }
 
   update(node) {
-    if (node.type.name !== 'image') return false;
+    if (node.type.name !== 'image' || node.attrs.editAs) return false;
 
     this.node = node;
     updateImageAttributes(this.img, node.attrs);
