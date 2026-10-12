@@ -15,7 +15,7 @@ const sheet = await getSheet('/blocks/edit/da-title/da-title.css');
 const { PREFLIGHT_EVENT, newPreflightRequestId } = await import(`${getNx2()}/utils/preflight-events.js`);
 
 const LAZY_DELAY = 1500;
-const PREFLIGHT_TIMEOUT = 60000;
+const PREFLIGHT_TIMEOUT = 300000;
 const ICONS = [
   '/blocks/edit/img/Smock_Cloud_18_N.svg',
   '/blocks/edit/img/Smock_CloudDisconnected_18_N.svg',
