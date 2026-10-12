@@ -300,6 +300,7 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
       if (this.isSecondOfPair(parent, indexInParent)) {
         // This is the second node of a pair - render invisible
         this.dom = document.createElement('span');
+        this.dom.className = 'loc-pair-hidden';
         this.dom.style.display = 'none';
         return;
       }

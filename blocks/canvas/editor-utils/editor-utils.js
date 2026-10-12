@@ -237,6 +237,21 @@ export function extractCursors(view) {
   return [...cursorMap.values()];
 }
 
+// Merge-conflict node views render their own UI (tabs, buttons, overlays).
+// Serialize what the author sees by default instead: the local version of a
+// pair, the content of a lone node. The hidden second half of a pair goes.
+function unwrapDiffViews(root) {
+  root.querySelectorAll('.loc-pair-hidden').forEach((el) => el.remove());
+  root.querySelectorAll('.loc-tabbed-container').forEach((container) => {
+    const local = container.querySelector('.diff-tab-pane[data-tab="added"]');
+    container.replaceWith(...(local ? local.childNodes : []));
+  });
+  root.querySelectorAll('.loc-single-container').forEach((container) => {
+    container.querySelectorAll(':scope > .loc-color-overlay').forEach((el) => el.remove());
+    container.replaceWith(...container.childNodes);
+  });
+}
+
 export function getInstrumentedHTML(view) {
   const editorClone = view.dom.cloneNode(true);
 
@@ -295,6 +310,8 @@ export function getInstrumentedHTML(view) {
       console.warn('Could not find position for image:', e);
     }
   });
+
+  unwrapDiffViews(editorClone);
 
   const remoteCursors = editorClone.querySelectorAll('.ProseMirror-yjs-cursor');
 
