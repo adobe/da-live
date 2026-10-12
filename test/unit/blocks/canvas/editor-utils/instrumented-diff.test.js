@@ -30,7 +30,11 @@ function makeDiffView(content) {
       },
     },
   });
-  return { view, cleanup: () => { view.destroy(); dom.remove(); } };
+  const cleanup = () => {
+    view.destroy();
+    dom.remove();
+  };
+  return { view, cleanup };
 }
 
 const outlineOf = (view) => parseSections(getInstrumentedHTML(view)).flatMap((s) => s.items);
