@@ -36,6 +36,7 @@ import tableSelectHandle from '../../edit/prose/plugins/tableSelectHandle.js';
 import imageDrop from './prose-plugins/imageDrop.js';
 import imageFocalPoint from '../../edit/prose/plugins/imageFocalPoint.js';
 import sectionPasteHandler from '../../edit/prose/plugins/sectionPasteHandler.js';
+import linkConverter from '../../edit/prose/plugins/linkConverter.js';
 import base64Uploader from './prose-plugins/base64Uploader.js';
 import blockFocus, { guardFocusedBlockDeletion } from './prose-plugins/blockFocus.js';
 import { getNx } from '../../../scripts/utils.js';
@@ -188,6 +189,7 @@ export default async function initProse({
     yUndoPlugin(),
     tableSelectHandle(),
     imageDrop(schema, () => path),
+    linkConverter(schema),
     sectionPasteHandler(schema),
     base64Uploader({ getSourceUrl: () => path, getEditorView: () => viewRef }),
     columnResizing(),
