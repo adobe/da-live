@@ -297,15 +297,11 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
 
       // Only process the first node of a potential pair
       // If this is the second node, render as invisible to avoid duplication
-      if (indexInParent > 0) {
-        const prevSibling = parent.child(indexInParent - 1);
-
-        if (this.canFormLocPair(prevSibling, thisNode)) {
-          // This is the second node of a pair - render invisible
-          this.dom = document.createElement('span');
-          this.dom.style.display = 'none';
-          return;
-        }
+      if (this.isSecondOfPair(parent, indexInParent)) {
+        // This is the second node of a pair - render invisible
+        this.dom = document.createElement('span');
+        this.dom.style.display = 'none';
+        return;
       }
 
       let canFormPair = false;
@@ -488,6 +484,26 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
         // eslint-disable-next-line no-console
         console.warn('Failed to load enhanced overlays:', error);
       }
+    }
+
+    // Pairs are formed left to right, so a node already used as the second
+    // half of one pair cannot also start a pair with its next sibling.
+    // Checking only the previous sibling would pair the added node of one
+    // conflict with the deleted node of the next and hide the whole second
+    // conflict.
+    isSecondOfPair(parent, index) {
+      let start = index;
+      while (start > 0 && isLocNode(parent.child(start - 1))) start -= 1;
+      let i = start;
+      while (i < index) {
+        if (this.canFormLocPair(parent.child(i), parent.child(i + 1))) {
+          if (i + 1 === index) return true;
+          i += 2;
+        } else {
+          i += 1;
+        }
+      }
+      return false;
     }
 
     canFormLocPair(nodeA, nodeB) {
