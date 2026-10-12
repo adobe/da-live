@@ -72,7 +72,7 @@ const REPO_CONFIG = {
   assetBasePath: '/adobe/assets',
   isDmEnabled: true,
   isSmartCrop: false,
-  insertAsLink: false,
+  imageType: null,
 };
 
 const ASSET = { 'repo:id': 'urn:aaid:aem:img-001', name: 'photo.jpg' };
@@ -206,13 +206,6 @@ describe('buildHandleSelection', () => {
     expect(view.created).to.have.length(0);
   });
 
-  it('closes dialog and takes link path for image when insertAsLink is true', async () => {
-    const { view, dialog, handler } = setup({ ...REPO_CONFIG, insertAsLink: true });
-    try { await handler([ASSET]); } catch { /* proseDOMParser mock limitation */ }
-    expect(dialog.isOpen).to.be.false;
-    expect(view.created).to.have.length(0);
-  });
-
   it('takes link path for image when imageType is link', async () => {
     const { view, dialog, handler } = setup({ ...REPO_CONFIG, imageType: 'link' });
     try { await handler([ASSET]); } catch { /* proseDOMParser mock limitation */ }
@@ -221,7 +214,7 @@ describe('buildHandleSelection', () => {
   });
 
   it('inserts image with editAs image when imageType is editable-link', async () => {
-    const { view, dialog, handler } = setup({ ...REPO_CONFIG, insertAsLink: true, imageType: 'editable-link' });
+    const { view, dialog, handler } = setup({ ...REPO_CONFIG, imageType: 'editable-link' });
     await handler([ASSET]);
     expect(dialog.isOpen).to.be.false;
     expect(view.dispatched).to.have.length(1);
@@ -230,7 +223,7 @@ describe('buildHandleSelection', () => {
 
   it('takes link path for non-image assets when imageType is editable-link', async () => {
     setSelection(PDF_SELECTION);
-    const { view, dialog, handler } = setup({ ...REPO_CONFIG, insertAsLink: true, imageType: 'editable-link' });
+    const { view, dialog, handler } = setup({ ...REPO_CONFIG, imageType: 'editable-link' });
     try { await handler([ASSET]); } catch { /* proseDOMParser mock limitation */ }
     expect(dialog.isOpen).to.be.false;
     expect(view.created).to.have.length(0);

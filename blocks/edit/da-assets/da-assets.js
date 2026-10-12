@@ -115,7 +115,7 @@ export function buildHandleSelection({
 
     const { href, isImage, alt } = selection;
 
-    const imageType = repoConfig.imageType ?? (repoConfig.insertAsLink ? 'link' : null);
+    const { imageType } = repoConfig;
     const editAs = imageType === 'editable-link' ? 'image' : undefined;
 
     // Smart crop flow (only for images with smart crop enabled)
