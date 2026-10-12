@@ -70,7 +70,7 @@ export const CON_ORIGIN = (() => getDaEnv(window.location, 'da-content', DA_CONT
 export const LIVE_PREVIEW_DOMAIN = (() => getDaEnv(window.location, 'da-live-preview', DA_LIVE_PREVIEW_ENVS))();
 export const DA_ETC_ORIGIN = (() => getDaEnv(window.location, 'da-etc', DA_ETC_ENVS))();
 
-export function getLivePreviewUrl(owner, repo) {
+export function getLivePreviewUrl(owner, repo, branch = 'main') {
   const protocol = LIVE_PREVIEW_DOMAIN.startsWith('localhost') ? 'http' : 'https';
-  return `${protocol}://main--${repo}--${owner}.${LIVE_PREVIEW_DOMAIN}`;
+  return `${protocol}://${branch}--${repo}--${owner}.${LIVE_PREVIEW_DOMAIN}`;
 }
