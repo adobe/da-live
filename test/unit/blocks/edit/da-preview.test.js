@@ -64,4 +64,16 @@ describe('DA preview metadata URL context', () => {
       'http://localhost:3001/en/related',
     );
   });
+
+  it('setBody does not throw when path is unset', () => {
+    const editor = document.createElement('div');
+    editor.innerHTML = '<p>Content</p>';
+    window.view = {
+      dom: editor,
+      state: { selection: { from: 1 } },
+      domAtPos: () => ({ node: editor.querySelector('p').firstChild, offset: 0 }),
+    };
+    const preview = new DaPreview();
+    expect(() => preview.setBody()).to.not.throw();
+  });
 });

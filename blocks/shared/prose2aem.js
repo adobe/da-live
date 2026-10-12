@@ -199,15 +199,24 @@ function removeMetadata(editor) {
   editor.querySelector('.metadata')?.remove();
 }
 
+function resolveMetadataUrl(value, baseUrl) {
+  if (value.startsWith('https://')) return value;
+  try {
+    return new URL(value, baseUrl).href;
+  } catch {
+    return value;
+  }
+}
+
 function getSectionMetadataValues(node, baseUrl, useUrls = true) {
   if (node.nodeType === Node.TEXT_NODE) {
     return node.textContent.split(',').map((value) => value.trim()).filter(Boolean);
   }
   if (useUrls && node.nodeName === 'A' && node.getAttribute('href')) {
-    return [new URL(node.getAttribute('href'), baseUrl).href];
+    return [resolveMetadataUrl(node.getAttribute('href'), baseUrl)];
   }
   if (useUrls && node.nodeName === 'IMG' && node.getAttribute('src')) {
-    return [new URL(node.getAttribute('src'), baseUrl).href];
+    return [resolveMetadataUrl(node.getAttribute('src'), baseUrl)];
   }
   return [...node.childNodes].flatMap((child) => getSectionMetadataValues(child, baseUrl, useUrls));
 }
@@ -222,13 +231,19 @@ function applySectionMetadata(editor, previewOptions) {
       ? new URL(details.path || '/', getLivePreviewUrl(details.org, details.site)).href
       : editor.ownerDocument.baseURI;
   }
-  const baseUrl = new URL(url);
+  let baseUrl;
+  try {
+    const parsed = new URL(url);
+    baseUrl = new URL(parsed.pathname, parsed.origin);
+  } catch {
+    baseUrl = new URL(editor.ownerDocument.baseURI);
+  }
   blocks.forEach((block) => {
     const section = block.parentElement;
     block.querySelectorAll(':scope > div').forEach((row) => {
       const cols = row.querySelectorAll(':scope > div');
       if (cols.length < 2) return;
-      const name = cols[0].textContent.replace(/[^0-9a-zA-Z:_-]/g, '-');
+      const name = cols[0].textContent.trim().replace(/[^0-9a-zA-Z:_-]/g, '-');
       const key = /^hreflang[-:]/i.test(name) ? `hreflang:${name.substring(9)}` : name.toLowerCase();
       if (!key) return;
       if (key === 'style') {

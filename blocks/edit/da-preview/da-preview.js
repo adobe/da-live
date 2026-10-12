@@ -47,7 +47,7 @@ export default class DaPreview extends LitElement {
     if (!window.view) return;
 
     // Always cache the body for future use
-    this.body = getHtmlWithCursor(window.view, { url: this._previewUrl });
+    this.body = getHtmlWithCursor(window.view, { url: this.path ? this._previewUrl : undefined });
 
     // If initialized, send the preview to the iframe
     if (this.initialized && this.body) this.sendPreview();

@@ -247,6 +247,52 @@ describe('prose2aem section-metadata handling', () => {
     expect(editor.innerHTML).to.equal(original);
   });
 
+  it('does not throw on malformed metadata URLs and keeps the raw value', () => {
+    const section = renderSection(`
+      <tr><td>Source</td><td><a href="http://[bad">Label</a></td></tr>
+      <tr><td>Image</td><td><img src="http://[bad"></td></tr>
+    `, { url: 'https://main--site--org.preview.da.live/en/page' });
+    expect(section.dataset.source).to.equal('http://[bad');
+    expect(section.dataset.image).to.equal('http://[bad');
+  });
+
+  it('keeps absolute https URLs verbatim', () => {
+    const section = renderSection(`
+      <tr><td>Source</td><td><a href="https://example.com">Label</a></td></tr>
+    `, { url: 'https://main--site--org.preview.da.live/en/page' });
+    expect(section.dataset.source).to.equal('https://example.com');
+  });
+
+  it('ignores query and hash of the supplied url when resolving', () => {
+    const section = renderSection(`
+      <tr><td>Top</td><td><a href="#top">Label</a></td></tr>
+      <tr><td>Query</td><td><a href="?x=1">Label</a></td></tr>
+    `, { url: 'https://main--site--org.preview.da.live/en/page?dapreview=on&martech=off#h' });
+    expect(section.dataset.top).to.equal('https://main--site--org.preview.da.live/en/page#top');
+    expect(section.dataset.query).to.equal('https://main--site--org.preview.da.live/en/page?x=1');
+  });
+
+  it('trims padding around the metadata key', () => {
+    const section = renderSection('<tr><td> Style </td><td>dark, wide</td></tr>');
+    expect([...section.classList]).to.deep.equal(['dark', 'wide']);
+  });
+
+  it('falls back without throwing when the supplied url is invalid', () => {
+    const section = renderSection(`
+      <tr><td>Source</td><td><a href="./page">Label</a></td></tr>
+    `, { url: 'not a url' });
+    expect(section.dataset.source).to.equal(new URL('./page', document.baseURI).href);
+  });
+
+  it('keeps colon in hreflang keys and supports a bare hreflang key', () => {
+    const section = renderSection(`
+      <tr><td>hreflang:en-US</td><td>a</td></tr>
+      <tr><td>hreflang</td><td>b</td></tr>
+    `);
+    expect(section.getAttribute('data-hreflang:en-us')).to.equal('a');
+    expect(section.getAttribute('data-hreflang')).to.equal('b');
+  });
+
   it('skips rows with no value column or an empty key', () => {
     const section = renderSection(`
       <tr><td>Style</td></tr>
