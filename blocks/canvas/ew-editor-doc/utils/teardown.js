@@ -1,3 +1,5 @@
+import { removeActiveView } from '../../../edit/prose/diff/diff-utils.js';
+
 export function teardownEditorDocResources({
   clearPortHandler,
   awarenessOff,
@@ -14,6 +16,7 @@ export function teardownEditorDocResources({
     wsProvider.disconnect({ data: 'unmount' });
   }
   if (view) {
+    removeActiveView(view);
     view.destroy();
   }
   if (proseEl?.parentNode) {

@@ -29,6 +29,9 @@ const EDITOR_VIEW_ITEMS = [
   { value: 'split', icon: ICONS.gridCompare, iconOnly: true, label: 'Split view' },
 ];
 
+// Unresolved merge conflicts can only be resolved in the Content view.
+const CONFLICT_VIEW_ITEMS = EDITOR_VIEW_ITEMS.filter(({ value }) => value === 'content');
+
 class EWCanvasHeader extends LitElement {
   static properties = {
     /** `'layout'` / `'content'` = single pane; `'split'` = doc + WYSIWYG side by side */
@@ -36,6 +39,7 @@ class EWCanvasHeader extends LitElement {
     undoAvailable: { type: Boolean },
     redoAvailable: { type: Boolean },
     authorized: { type: Boolean },
+    hasUnresolvedMergeConflicts: { type: Boolean, reflect: true, attribute: 'has-conflicts' },
     canWrite: { type: Boolean },
     _chatDisabled: { state: true },
     _commentsVisible: { state: true },
@@ -48,6 +52,7 @@ class EWCanvasHeader extends LitElement {
     this.undoAvailable = false;
     this.redoAvailable = false;
     this.authorized = true;
+    this.hasUnresolvedMergeConflicts = false;
     this.canWrite = true;
     this._commentsVisible = false;
     this._commentCount = 0;
@@ -119,9 +124,9 @@ class EWCanvasHeader extends LitElement {
     canvasBus.redoRequest.emit();
   }
 
-  _setEditorView(view) {
+  setEditorView(view) {
+    if (this.hasUnresolvedMergeConflicts && view !== 'content') return;
     if (!EDITOR_VIEWS.includes(view) || view === this.editorView) return;
-    this.editorView = view;
     canvasBus.editorViewRequest.emit({ view });
   }
 
@@ -171,9 +176,10 @@ class EWCanvasHeader extends LitElement {
             part="editor-view-toggle"
             label="Editor view"
             size="m"
-            .items=${EDITOR_VIEW_ITEMS}
+            title=${this.hasUnresolvedMergeConflicts ? 'Resolve conflicts to switch views' : nothing}
+            .items=${this.hasUnresolvedMergeConflicts ? CONFLICT_VIEW_ITEMS : EDITOR_VIEW_ITEMS}
             .value=${this.editorView}
-            @change=${(e) => this._setEditorView(e.detail.value)}
+            @change=${(e) => this.setEditorView(e.detail.value)}
           ></nx-segmented-btn>
           ` : nothing}
         </div>

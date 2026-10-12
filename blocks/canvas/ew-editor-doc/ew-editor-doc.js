@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { yUndo, yRedo, NodeSelection, TextSelection } from 'da-y-wrapper';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { updateDocument, updateCursors, getInstrumentedHTML, getEditor } from '../editor-utils/editor-utils.js';
 import { bindFirstSectionName } from '../../shared/section-name.js';
 import { getActiveBlockIndex, getBlockPositions, getTableBlockName } from '../editor-utils/blocks.js';
@@ -55,6 +55,8 @@ await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 
 const style = await loadStyle(import.meta.url);
 const commentHighlightStyle = await getSheet('/blocks/canvas/comments/comment-highlight.css');
+const buttons = await getSheet(`${getNx2()}/styles/buttons.css`);
+const diffStyle = await getSheet('/blocks/canvas/ew-editor-doc/ew-editor-doc-diff.css');
 
 export class EwEditorDoc extends LitElement {
   static properties = {
@@ -122,6 +124,10 @@ export class EwEditorDoc extends LitElement {
     const canUndo = mgr ? mgr.undoStack.length > 0 : false;
     const canRedo = mgr ? mgr.redoStack.length > 0 : false;
     canvasBus.undoState.emit({ canUndo, canRedo });
+  }
+
+  _emitMergeConflictsState(hasMergeConflicts) {
+    canvasBus.mergeConflictsState.emit({ hasMergeConflicts });
   }
 
   _observeUndoManager(mgr) {
@@ -383,6 +389,8 @@ export class EwEditorDoc extends LitElement {
         permissions,
         setEditable: (editable) => this._setEditable(editable),
         getToken: () => token,
+        onMergeConflictsChange: (hasConflicts) => this._emitMergeConflictsState(hasConflicts),
+        hostEl: this,
         extraPlugins: ({ wsProvider: ws }) => {
           const commentsPlugin = this._comments.createPlugin(session, this.ctx, ws);
           return [
@@ -456,7 +464,7 @@ export class EwEditorDoc extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style, commentHighlightStyle];
+    this.shadowRoot.adoptedStyleSheets = [style, commentHighlightStyle, buttons, diffStyle];
     this._unsubscribeEditorActive = canvasBus.editorViewState.subscribe(({ view }) => {
       this._editorView = view;
       this.hidden = view === 'layout';
