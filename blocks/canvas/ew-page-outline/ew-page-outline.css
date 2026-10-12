@@ -179,7 +179,7 @@ input {
   margin-inline-start: calc(var(--level, 0) * (12px + var(--s2-spacing-75)));
   line-height: 16px;
   text-align: start;
-  transform-origin: 0.2em 50%;
+  transform-origin: 0.2em 60%;
   transition: transform 0.15s;
 }
 
