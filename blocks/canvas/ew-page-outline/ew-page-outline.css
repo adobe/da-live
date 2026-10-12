@@ -71,7 +71,7 @@ input {
   flex-shrink: 0;
   width: 16px;
   height: 16px;
-  margin-inline-end: calc(var(--s2-spacing-75) + var(--level, 0) * 16px);
+  margin-inline-end: var(--s2-spacing-75);
 }
 
 .section-name-input {
@@ -174,11 +174,12 @@ input {
 .chevron {
   display: block;
   flex-shrink: 0;
-  width: 24px;
+  width: 12px;
   height: 16px;
+  margin-inline-start: calc(var(--level, 0) * (12px + var(--s2-spacing-75)));
   line-height: 16px;
-  text-align: center;
-  transform: rotate(90deg);
+  text-align: start;
+  transform-origin: 0.2em 60%;
   transition: transform 0.15s;
 }
 
@@ -187,7 +188,7 @@ input {
 }
 
 .content-item[aria-expanded="true"] > .chevron {
-  transform: rotate(-90deg);
+  transform: rotate(90deg);
 }
 
 .content-children {

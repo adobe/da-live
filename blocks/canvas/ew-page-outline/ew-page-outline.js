@@ -687,8 +687,8 @@ class EwPageOutline extends LitElement {
     </span>`;
   }
 
-  _renderChevron() {
-    return html`<span class="chevron" aria-hidden="true"></span>`;
+  _renderChevron(level) {
+    return html`<span class="chevron" style="--level: ${level}" aria-hidden="true"></span>`;
   }
 
   _renderSectionMenu(sec) {
@@ -724,15 +724,15 @@ class EwPageOutline extends LitElement {
     const canWrite = this._canWrite;
     return html`
       <li class="content-group" role="none">
-        <div class="block-item content-item" role="treeitem" style="--level: 1"
+        <div class="block-item content-item" role="treeitem"
              tabindex="${isFirst ? '0' : '-1'}"
              aria-expanded="${expanded}"
              @click=${() => this._toggleContentGroup(key)}
              @dragover=${(e) => this._onContentGroupDragOver(e, item)}
              @drop=${this._onDrop}>
           ${this._renderDragHandle(false)}
+          ${this._renderChevron(0)}
           <span class="block-name content-label">Default content</span>
-          ${this._renderChevron()}
         </div>
         ${expanded ? html`
           <ul class="content-children" role="group">
@@ -740,7 +740,7 @@ class EwPageOutline extends LitElement {
       const label = contentChildLabel(child);
       return html`
               <li class="block-item content-item content-child ${this._selectedProseIndex === child.proseIndex ? 'selected' : ''}"
-                  role="treeitem" tabindex="-1" style="--level: 2"
+                  role="treeitem" tabindex="-1"
                   aria-selected="${this._selectedProseIndex === child.proseIndex}"
                   draggable="${canWrite}"
                   @dragstart=${(e) => this._onDragStart(e, OUTLINE_TYPES.CONTENT, child)}
@@ -749,6 +749,7 @@ class EwPageOutline extends LitElement {
                   @dragend=${this._onDragEnd}
                   @click=${(e) => { e.stopPropagation(); this._selectProse(child.proseIndex, child.kind); }}>
                 ${this._renderDragHandle()}
+                ${this._renderChevron(1)}
                 <span class="content-label-stack">
                   <span class="block-name content-label">${label}</span>
                   ${child.snippet ? html`<span class="content-snippet">${child.snippet}</span>` : nothing}
@@ -797,14 +798,15 @@ class EwPageOutline extends LitElement {
         <ul class="block-list" role="group"
             aria-label="Blocks in section ${sec.sectionIndex + 1}">
           ${sec.items.length === 0
-        ? html`<li class="block-item block-empty" style="--level: 1"
+        ? html`<li class="block-item block-empty"
                     role="treeitem" tabindex="-1">
                 ${this._renderDragHandle(false)}
+                ${this._renderChevron(0)}
                 <span class="empty-label">Empty section</span>
               </li>`
         : sec.items.map((item, itemIdx) => (item.type === 'block'
           ? html`
-            <li class="block-item ${this._selectedBlockIndex === item.blockIndex ? 'selected' : ''}" role="treeitem" style="--level: 1"
+            <li class="block-item ${this._selectedBlockIndex === item.blockIndex ? 'selected' : ''}" role="treeitem"
                 data-block-index="${item.blockIndex}"
                 tabindex="${isFirstSection && itemIdx === 0 ? '0' : '-1'}"
                 aria-selected="${this._selectedBlockIndex === item.blockIndex}"
@@ -815,6 +817,7 @@ class EwPageOutline extends LitElement {
                 @dragend=${this._onDragEnd}
                 @click=${() => this._select(item.blockIndex)}>
               ${this._renderDragHandle()}
+              ${this._renderChevron(0)}
               <span class="block-name">${item.name}${item.variant ? ` (${item.variant})` : ''}</span>
               ${this._renderDeleteButton(OUTLINE_TYPES.BLOCK, item.blockIndex)}
             </li>`
