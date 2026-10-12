@@ -847,7 +847,7 @@ describe('ew-page-outline - section menu', () => {
     expect(header.lastElementChild.tagName).to.equal('NX-MENU');
   });
 
-  it('gives rows a handle slot, child rows a chevron slot, chevron only on default content', async () => {
+  it('gives every row a handle slot, trailing chevron only on default content', async () => {
     await load([para('one'), table('hero'), rule('Empty'), rule('Last'), para('two')]);
     const keys = [...root().querySelectorAll('.content-item:not(.content-child)')].length;
     expect(keys).to.be.greaterThan(0);
@@ -861,13 +861,14 @@ describe('ew-page-outline - section menu', () => {
     expect(root().querySelectorAll('.block-item[data-block-index]').length).to.be.greaterThan(0);
     rows.forEach((row) => {
       expect(row.children[0].classList.contains('drag-handle')).to.be.true;
-      const isHeader = row.matches('.section-header');
-      expect(row.children[1].classList.contains('chevron'), row.className).to.equal(!isHeader);
+      const isGroup = row.matches('.content-item:not(.content-child)');
+      expect(!!row.querySelector('.chevron'), row.className).to.equal(isGroup);
+      if (isGroup) expect(row.lastElementChild.classList.contains('chevron')).to.be.true;
     });
-    root().querySelectorAll('.block-list > li > .chevron, .content-item:not(.content-child) > .chevron')
-      .forEach((c) => expect(c.style.getPropertyValue('--level')).to.equal('0'));
-    root().querySelectorAll('.content-child > .chevron')
-      .forEach((c) => expect(c.style.getPropertyValue('--level')).to.equal('1'));
+    const level = (row) => row.style.getPropertyValue('--level') || '0';
+    root().querySelectorAll('.section-header').forEach((r) => expect(level(r)).to.equal('0'));
+    root().querySelectorAll('.block-item:not(.content-child)').forEach((r) => expect(level(r)).to.equal('1'));
+    root().querySelectorAll('.content-child').forEach((r) => expect(level(r)).to.equal('2'));
     rows.forEach((row) => {
       const isGroup = row.matches('.content-item:not(.content-child)');
       expect(row.hasAttribute('aria-expanded'), row.className).to.equal(isGroup);
