@@ -1,10 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
-import {
-  peekPendingPreflightRequest,
-  takePendingPreflightRequest,
-} from '../editor-utils/preflight-responder.js';
+import { peekPendingPreflightRequest } from '../editor-utils/preflight-responder.js';
 import './ew-preflight.js';
 import '../ew-panel-extensions/ew-panel-extensions.js';
 
@@ -71,12 +68,7 @@ class EwPreflightHost extends LitElement {
   _showBuiltin(requestId) {
     this._gateRequestId = requestId;
     this._gateSettled = false;
-    if (this._builtin) {
-      // A mounted <ew-preflight> answers through its own `preflightRunRequest`
-      // subscription, so drop the parked copy to keep it from being replayed later.
-      takePendingPreflightRequest();
-      return;
-    }
+    if (this._builtin) return;
     // A fresh instance claims the parked request on its first connect.
     this._builtin = document.createElement('ew-preflight');
     this._syncHeaderActions();

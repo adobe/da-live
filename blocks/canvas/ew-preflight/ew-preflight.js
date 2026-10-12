@@ -89,6 +89,7 @@ class EwPreflight extends LitElement {
     const requestId = detail?.requestId;
     const path = detail?.path ?? detail?.paths?.[0];
     if (!requestId || !path) return;
+    takePendingPreflightRequest(requestId);
     // The pending store (first open) and the live subscription (re-publish) can both
     // deliver the same run; only act once.
     if (requestId === this._lastGateRequestId) return;

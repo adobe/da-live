@@ -237,4 +237,40 @@ describe('ew-preflight preflight gate', () => {
     const gateEvents = cap.events.filter((d) => d.requestId === 'g7');
     expect(gateEvents).to.deep.equal([{ path: '/org/site/a.html', status: 'success', requestId: 'g7' }]);
   });
+
+  it('claims live and duplicate requests so a fresh instance does not replay them', async () => {
+    const { initPreflightResponder, peekPendingPreflightRequest, takePendingPreflightRequest } = await import('../../../../../blocks/canvas/editor-utils/preflight-responder.js');
+    initPreflightResponder();
+    const el = stubEvaluate(document.createElement('ew-preflight'));
+    const fresh = stubEvaluate(document.createElement('ew-preflight'));
+    const detail = { paths: ['/org/site/a.html'], requestId: 'g8' };
+    let cap;
+    try {
+      document.body.appendChild(el);
+      await tick();
+      cap = captureStatus();
+
+      canvasBus.preflightRunRequest.emit(detail);
+      expect(peekPendingPreflightRequest()).to.equal(null);
+      await tick();
+
+      canvasBus.preflightRunRequest.emit(detail);
+      expect(peekPendingPreflightRequest()).to.equal(null);
+      await tick();
+
+      el.remove();
+      document.body.appendChild(fresh);
+      await tick();
+
+      expect(cap.events.filter((d) => d.requestId)).to.deep.equal([
+        { path: '/org/site/a.html', status: 'success', requestId: 'g8' },
+      ]);
+      expect(cap.events.filter((d) => !d.requestId)).to.have.lengthOf(1);
+    } finally {
+      el.remove();
+      fresh.remove();
+      cap?.stop();
+      takePendingPreflightRequest();
+    }
+  });
 });

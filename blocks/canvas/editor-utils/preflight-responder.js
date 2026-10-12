@@ -15,9 +15,9 @@ const panelEvents = () => {
 let initialized = false;
 let pendingRequest = null;
 
-// Claim-and-clear: the panel takes the parked request exactly once on mount, so a later
-// reconnect can never replay a stale run.
-export function takePendingPreflightRequest() {
+// Claim on mount or live delivery; an older run must not clear a newer parked request.
+export function takePendingPreflightRequest(requestId) {
+  if (requestId && pendingRequest?.requestId !== requestId) return null;
   const request = pendingRequest;
   pendingRequest = null;
   return request;

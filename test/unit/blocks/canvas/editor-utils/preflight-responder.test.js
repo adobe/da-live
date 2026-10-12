@@ -42,6 +42,15 @@ describe('preflight-responder', () => {
     expect(takePendingPreflightRequest()).to.equal(null);
   });
 
+  it('claims only the matching requestId without discarding a newer request', () => {
+    canvasBus.preflightRunRequest.emit({ paths: ['/org/site/a.html'], requestId: 'older' });
+    canvasBus.preflightRunRequest.emit({ paths: ['/org/site/b.html'], requestId: 'newer' });
+
+    expect(takePendingPreflightRequest('older')).to.equal(null);
+    expect(takePendingPreflightRequest('newer')).to.deep.equal({ path: '/org/site/b.html', requestId: 'newer' });
+    expect(takePendingPreflightRequest()).to.equal(null);
+  });
+
   it('ignores malformed runs (missing requestId or multiple paths)', async () => {
     canvasBus.preflightRunRequest.emit({ paths: ['/org/site/a.html'] });
     canvasBus.preflightRunRequest.emit({ paths: ['/a', '/b'], requestId: 'run-3' });
