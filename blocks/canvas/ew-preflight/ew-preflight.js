@@ -9,12 +9,6 @@ import { evaluatePage } from './api.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
-let panelEventsPromise;
-const panelEvents = () => {
-  panelEventsPromise ??= import(`${getNx()}/utils/panel.js`);
-  return panelEventsPromise;
-};
-
 const style = await loadStyle(import.meta.url);
 const baseStyle = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
 
@@ -103,10 +97,12 @@ class EwPreflight extends LitElement {
     this._gateRequestId = requestId;
     this._gatePath = path;
     this._gateSettled = false;
-    const { PANEL_EVENT } = await panelEvents();
-    const onClose = () => this._cancelGate();
-    document.addEventListener(PANEL_EVENT.CLOSE, onClose);
-    this._removePanelClose = () => document.removeEventListener(PANEL_EVENT.CLOSE, onClose);
+    // Cancel only when the tools panel itself closes (`null`). Other panels closing
+    // (e.g. chat) or switching to another tool view leave the run going.
+    this._unsubPanelVisibility?.();
+    this._unsubPanelVisibility = canvasBus.toolPanelViewState.subscribe((viewId) => {
+      if (viewId === null) this._cancelGate();
+    });
     await this._evaluate();
     this._finishGate(this._resultStatus());
   };
@@ -114,8 +110,8 @@ class EwPreflight extends LitElement {
   _finishGate(status) {
     if (this._gateSettled || !this._gateRequestId) return;
     this._gateSettled = true;
-    this._removePanelClose?.();
-    this._removePanelClose = null;
+    this._unsubPanelVisibility?.();
+    this._unsubPanelVisibility = null;
     const { _gateRequestId: requestId, _gatePath: path } = this;
     this._gateRequestId = null;
     this._gatePath = null;

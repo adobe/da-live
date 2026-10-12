@@ -98,19 +98,24 @@ describe('ew-preflight-host', () => {
     run('h3');
     await el.updateComplete;
     await tick();
-    document.dispatchEvent(new CustomEvent('nx-panel-close'));
+    canvasBus.toolPanelViewState.emit(null);
     await el.updateComplete;
     expect(builtin(el)).to.equal(null);
     expect(custom(el).hidden).to.equal(false);
     expect(el.getHeaderActions().childElementCount).to.equal(0);
+    canvasBus.toolPanelViewState.emit('preflight');
   });
 
-  it('ignores closing a different panel section', async () => {
+  it('ignores other panels closing (e.g. chat)', async () => {
     el = await mount();
     run('h4');
     await el.updateComplete;
     await tick();
+    el._gateSettled = false;
+    document.dispatchEvent(new CustomEvent('nx-panel-close', { bubbles: true, composed: true }));
     document.dispatchEvent(new CustomEvent('nx-panel-close', { detail: { section: 'chat' } }));
+    // The still-open tool panel re-broadcasts its current view.
+    canvasBus.toolPanelViewState.emit('preflight');
     await el.updateComplete;
     expect(builtin(el)).to.exist;
   });

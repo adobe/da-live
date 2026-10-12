@@ -143,15 +143,14 @@ describe('ew-preflight preflight gate', () => {
     expect(cap.events).to.deep.equal([{ path: '/org/site/a.html', status: 'fail', requestId: 'g3' }]);
   });
 
-  it('reports cancelled when the panel closes before the run settles', async () => {
+  it('reports cancelled when the tools panel closes before the run settles', async () => {
     const el = document.createElement('ew-preflight');
     let release;
     el._evaluate = () => new Promise((resolve) => { release = resolve; });
     const running = el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g4' });
-    await tick(); // let the panel-close listener register
 
     const cap = captureStatus();
-    document.dispatchEvent(new CustomEvent('nx-panel-close'));
+    canvasBus.toolPanelViewState.emit(null);
     cap.stop();
     expect(cap.events).to.deep.equal([{ path: '/org/site/a.html', status: 'cancelled', requestId: 'g4' }]);
 
@@ -161,6 +160,33 @@ describe('ew-preflight preflight gate', () => {
     await running;
     cap2.stop();
     expect(cap2.events).to.deep.equal([]);
+  });
+
+  it('keeps the run going when another panel closes or the tool view switches', async () => {
+    const el = document.createElement('ew-preflight');
+    let release;
+    el._evaluate = () => new Promise((resolve) => {
+      release = () => {
+        el._error = null;
+        el._data = { failed: 0 };
+        resolve();
+      };
+    });
+    const running = el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g4b' });
+
+    const cap = captureStatus();
+    // Chat's close button: bubbles to document with no section.
+    document.dispatchEvent(new CustomEvent('nx-panel-close', { bubbles: true, composed: true }));
+    document.dispatchEvent(new CustomEvent('nx-panel-close', { detail: { section: 'chat' } }));
+    // The tool panel re-broadcasts / switches view while still open.
+    canvasBus.toolPanelViewState.emit('preflight');
+    canvasBus.toolPanelViewState.emit('files');
+    expect(cap.events).to.deep.equal([]);
+
+    release();
+    await running;
+    cap.stop();
+    expect(cap.events).to.deep.equal([{ path: '/org/site/a.html', status: 'success', requestId: 'g4b' }]);
   });
 
   it('_cancelGate emits cancelled for an in-flight gate (disconnect backstop)', () => {

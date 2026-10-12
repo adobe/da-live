@@ -9,7 +9,6 @@ import './ew-preflight.js';
 import '../ew-panel-extensions/ew-panel-extensions.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 
 const style = await loadStyle(import.meta.url);
 
@@ -40,7 +39,6 @@ class EwPreflightHost extends LitElement {
       canvasBus.preflightStatusState.subscribe(this._onStatus),
       canvasBus.toolPanelViewState.subscribe(this._onViewState),
     ];
-    document.addEventListener(PANEL_EVENT.CLOSE, this._onPanelClose);
     // A publish that opened this panel parks its request before we mount.
     const pending = peekPendingPreflightRequest();
     if (pending && !this._builtin) this._showBuiltin(pending.requestId);
@@ -50,7 +48,6 @@ class EwPreflightHost extends LitElement {
     super.disconnectedCallback();
     this._unsubs?.forEach((unsub) => unsub());
     this._unsubs = null;
-    document.removeEventListener(PANEL_EVENT.CLOSE, this._onPanelClose);
   }
 
   _onRunRequest = (detail) => {
@@ -63,14 +60,12 @@ class EwPreflightHost extends LitElement {
     if (requestId && requestId === this._gateRequestId) this._gateSettled = true;
   };
 
+  // `null` means the tools panel itself closed; other panels (e.g. chat) closing
+  // re-broadcast the current view id and leave the built-in run alone.
   _onViewState = (id) => {
-    if (this._builtin && this._gateSettled && id && id !== VIEW_ID) this._showCustom();
-  };
-
-  _onPanelClose = (e) => {
-    const section = e?.detail?.section;
-    if (section && section !== 'tools') return;
-    if (this._builtin) this._showCustom();
+    if (!this._builtin) return;
+    if (id === null) this._showCustom();
+    else if (this._gateSettled && id !== VIEW_ID) this._showCustom();
   };
 
   _showBuiltin(requestId) {
