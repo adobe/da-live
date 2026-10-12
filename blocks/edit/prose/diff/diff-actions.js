@@ -129,9 +129,14 @@ function nodeToHtml(node) {
 
 export const addToHashMetadata = async (node, mdKey) => {
   const hash = await objHash(nodeToHtml(node));
-  const hashStr = getDaMetadata(mdKey);
-  const hashes = hashStr ? new Set(hashStr.split(',')) : new Set();
+  // A rollout saves the page metadata back with lowercase keys. Merge both spellings into one
+  // row, or the next rollout reads its own older row and ignores this decision.
+  const lowerKey = mdKey.toLowerCase();
+  const hashes = new Set([mdKey, lowerKey]
+    .flatMap((key) => (getDaMetadata(key) || '').split(','))
+    .filter(Boolean));
   hashes.add(hash);
+  if (lowerKey !== mdKey) setDaMetadata(lowerKey, null);
   setDaMetadata(mdKey, Array.from(hashes).join(','));
 };
 
