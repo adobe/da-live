@@ -848,17 +848,27 @@ describe('ew-page-outline - section menu', () => {
   });
 
   it('gives every row a handle slot then a chevron slot, chevron only on default content', async () => {
-    await load([para('one'), table('hero')]);
-    el._expandedContent = new Set();
+    await load([para('one'), table('hero'), rule('Empty'), rule('Last'), para('two')]);
+    const keys = [...root().querySelectorAll('.content-item:not(.content-child)')].length;
+    expect(keys).to.be.greaterThan(0);
+    el._expandedContent = new Set(el._sections.flatMap((s) => s.items
+      .filter((i) => i.type === 'content').map((i) => i.proseIndex)));
     await el.updateComplete;
-    const rows = [...root().querySelectorAll('.section-header, .block-item')];
-    expect(rows.length).to.be.greaterThan(2);
+    const sel = '.section-header, .block-item';
+    const rows = [...root().querySelectorAll(sel)];
+    expect(root().querySelectorAll('.content-child').length).to.be.greaterThan(0);
+    expect(root().querySelectorAll('.block-empty').length).to.be.greaterThan(0);
+    expect(root().querySelectorAll('.block-item[data-block-index]').length).to.be.greaterThan(0);
     rows.forEach((row) => {
       expect(row.children[0].classList.contains('drag-handle')).to.be.true;
       expect(row.children[1].classList.contains('chevron')).to.be.true;
     });
-    const group = root().querySelector('.content-item:not(.content-child)');
-    if (group) expect(group.querySelector('.drag-handle svg')).to.not.exist;
+    rows.forEach((row) => {
+      const isGroup = row.matches('.content-item:not(.content-child)');
+      expect(row.hasAttribute('aria-expanded'), row.className).to.equal(isGroup);
+      const noHandle = isGroup || row.matches('.block-empty');
+      expect(!!row.children[0].querySelector('svg'), row.className).to.equal(!noHandle);
+    });
   });
 
   it('returns focus to the trigger on Escape but not on outside click', async () => {
