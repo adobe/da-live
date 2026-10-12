@@ -65,4 +65,23 @@ describe('ew-canvas-header segments', () => {
     expect(requestedView).to.equal('content');
     expect(header.editorView).to.equal('content');
   });
+
+  it('offers only the Content view while merge conflicts are unresolved', async () => {
+    header.editorView = 'content';
+    header.hasUnresolvedMergeConflicts = true;
+    await header.updateComplete;
+    const labels = (await segments(header)).map((b) => b.textContent.trim());
+    expect(labels).to.deep.equal(['Content']);
+
+    let requestedView;
+    const unsub = canvasBus.editorViewRequest.subscribe(({ view }) => { requestedView = view; });
+    header.setEditorView('layout');
+    unsub?.();
+    expect(requestedView).to.equal(undefined);
+    expect(header.editorView).to.equal('content');
+
+    header.hasUnresolvedMergeConflicts = false;
+    await header.updateComplete;
+    expect((await segments(header)).length).to.equal(3);
+  });
 });
