@@ -339,3 +339,72 @@ describe('dispatchMirror', () => {
     expect(ctx).to.deep.equal({ suppressRerender: false, mirroringFromIframe: false });
   });
 });
+
+describe('section metadata base url', () => {
+  let getInstrumentedHTML;
+  let updateDocument;
+  let makeRealView;
+
+  before(async () => {
+    ({ getInstrumentedHTML, updateDocument } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js'));
+    ({ makeRealView } = await import('../test-helpers.js'));
+  });
+
+  function sectionMetaView() {
+    const cell = (attrs, content) => ({
+      type: 'table_cell',
+      attrs,
+      content: [{ type: 'paragraph', content }],
+    });
+    const view = makeRealView({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'Content' }] },
+        {
+          type: 'table',
+          content: [
+            { type: 'table_row', content: [cell({ colspan: 2 }, [{ type: 'text', text: 'Section Metadata' }])] },
+            {
+              type: 'table_row',
+              content: [
+                cell({ colspan: 1 }, [{ type: 'text', text: 'Related' }]),
+                cell({ colspan: 1 }, [{
+                  type: 'text',
+                  text: 'link',
+                  marks: [{ type: 'link', attrs: { href: './related' } }],
+                }]),
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const table = view.dom.querySelector('table');
+    if (!table.parentElement.classList.contains('tableWrapper')) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'tableWrapper';
+      table.replaceWith(wrapper);
+      wrapper.append(table);
+    }
+    return view;
+  }
+
+  const iframeSrc = 'https://feat--site--org.preview.da.live/en/page?rum=off';
+  const expected = 'data-related="https://feat--site--org.preview.da.live/en/related"';
+
+  it('resolves section metadata links against the supplied url', () => {
+    const html = getInstrumentedHTML(sectionMetaView(), { url: iframeSrc });
+    expect(html).to.include(expected);
+  });
+
+  it('updateDocument uses the iframe origin', () => {
+    const messages = [];
+    const body = updateDocument({
+      view: sectionMetaView(),
+      port: { postMessage: (m) => messages.push(m) },
+      iframe: { src: iframeSrc },
+    });
+    expect(messages[0].payload.body).to.equal(body);
+    expect(body).to.include(expected);
+  });
+});

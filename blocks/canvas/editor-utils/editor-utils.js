@@ -237,7 +237,7 @@ export function extractCursors(view) {
   return [...cursorMap.values()];
 }
 
-export function getInstrumentedHTML(view) {
+export function getInstrumentedHTML(view, previewOptions = {}) {
   const editorClone = view.dom.cloneNode(true);
 
   const originalElements = view.dom.querySelectorAll(EDITABLE_SELECTORS);
@@ -317,7 +317,7 @@ export function getInstrumentedHTML(view) {
 
   // Serialize clone to HTML, then move block-marker index onto wrapper as data-block-index
   // (same pattern as da-nx qe-advanced: getInstrumentedHTML in prose2aem.js).
-  let htmlString = prose2aem(editorClone, true, false);
+  let htmlString = prose2aem(editorClone, true, false, previewOptions);
   htmlString = htmlString.replace(
     /<div class="block-marker" data-prose-index="(\d+)"><\/div>\s*<div([^>]*?)>/gi,
     (_match, proseIndex, divAttributes) => `<div${divAttributes} data-block-index="${proseIndex}">`,
@@ -459,7 +459,7 @@ registerEditorSelectEnricher((detail) => {
 
 export function updateDocument(ctx) {
   if (ctx.suppressRerender) return undefined;
-  const body = getInstrumentedHTML(ctx.view);
+  const body = getInstrumentedHTML(ctx.view, { url: ctx.iframe?.src || undefined });
   ctx.port.postMessage({ type: MESSAGE_TYPES.SET_BODY, payload: { body } });
   return body;
 }

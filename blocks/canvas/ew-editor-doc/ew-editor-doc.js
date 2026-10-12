@@ -111,10 +111,14 @@ export class EwEditorDoc extends LitElement {
     }));
   }
 
+  get _previewOptions() {
+    return { url: this._wysiwygIframe?.src || undefined };
+  }
+
   _emitHtmlChange() {
     const { view } = this._proseContext ?? {};
     if (!view) return;
-    canvasBus.editorHtmlState.emit(getInstrumentedHTML(view));
+    canvasBus.editorHtmlState.emit(getInstrumentedHTML(view, this._previewOptions));
   }
 
   _emitUndoState() {
@@ -374,7 +378,7 @@ export class EwEditorDoc extends LitElement {
               () => {
                 const body = this._controllerCtx
                   ? updateDocument(this._controllerCtx)
-                  : getInstrumentedHTML(this._proseContext?.view);
+                  : getInstrumentedHTML(this._proseContext?.view, this._previewOptions);
                 if (body) canvasBus.editorHtmlState.emit(body);
               },
               () => { if (this._controllerCtx) updateCursors(this._controllerCtx); },
