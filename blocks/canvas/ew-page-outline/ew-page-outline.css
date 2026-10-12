@@ -174,9 +174,9 @@ input {
 .chevron {
   display: block;
   flex-shrink: 0;
-  width: 16px;
+  width: 12px;
   height: 16px;
-  margin-inline-start: calc(var(--level, 0) * (16px + var(--s2-spacing-75)));
+  margin-inline-start: calc(var(--level, 0) * (12px + var(--s2-spacing-75)));
   line-height: 16px;
   text-align: start;
   transform-origin: 0.2em 50%;
