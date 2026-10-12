@@ -352,3 +352,34 @@ describe('diff-actions addToHashMetadata matches the rollout hashes', () => {
     }
   });
 });
+
+describe('diff-actions addToHashMetadata after a rollout', () => {
+  // A rollout reads the page metadata with lowercase keys and saves it back that way, so a page
+  // that was rolled out has an `acceptedhashes` row. If the editor adds an `acceptedHashes` row
+  // next to it, the next rollout reads the later, stale row and ignores the new decision.
+  it('keeps the hashes in a single row, including those the rollout saved', async () => {
+    const { getSchema } = await import('da-parser');
+    const { initDaMetadata } = await import('../../../../../../blocks/edit/utils/helpers.js');
+    const { addToHashMetadata } = await import('../../../../../../blocks/edit/prose/diff/diff-actions.js');
+    const storage = new Map([['acceptedhashes', 'aaaaaaaaaaaa,bbbbbbbbbbbb']]);
+    initDaMetadata({
+      get: (key) => storage.get(key) || null,
+      set: (key, value) => storage.set(key, value),
+      delete: (key) => storage.delete(key),
+      [Symbol.iterator]: () => storage.entries(),
+    });
+    try {
+      const node = getSchema().nodeFromJSON({
+        type: 'diff_added',
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'local text' }] }],
+      });
+      await addToHashMetadata(node, ACCEPTED_KEY);
+      expect([...storage.keys()]).to.deep.equal([ACCEPTED_KEY]);
+      const hashes = storage.get(ACCEPTED_KEY).split(',');
+      expect(hashes).to.include.members(['aaaaaaaaaaaa', 'bbbbbbbbbbbb']);
+      expect(hashes).to.have.length(3);
+    } finally {
+      initDaMetadata(null);
+    }
+  });
+});
