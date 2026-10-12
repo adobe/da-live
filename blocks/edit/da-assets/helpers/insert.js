@@ -30,15 +30,21 @@ export function getBlockName(view) {
 }
 
 /**
- * Creates and dispatches a ProseMirror image node at the current selection.
+ * Creates an image node without dispatching it (used for building fragment arrays).
  */
-export function insertImage(view, src, alt, editAs) {
-  const { state } = view;
+export function createImageNode(view, src, alt, editAs) {
   const attrs = { src, style: 'width: 180px' };
   if (alt) attrs.alt = alt;
   if (editAs) attrs.editAs = editAs;
-  const node = state.schema.nodes.image.create(attrs);
-  view.dispatch(state.tr.replaceSelectionWith(node).scrollIntoView());
+  return view.state.schema.nodes.image.create(attrs);
+}
+
+/**
+ * Creates and dispatches a ProseMirror image node at the current selection.
+ */
+export function insertImage(view, src, alt, editAs) {
+  const node = createImageNode(view, src, alt, editAs);
+  view.dispatch(view.state.tr.replaceSelectionWith(node, !editAs).scrollIntoView());
 }
 
 /**
@@ -63,14 +69,4 @@ export function insertFragment(view, nodes) {
   const { state } = view;
   const fragment = Fragment.fromArray(nodes);
   view.dispatch(state.tr.insert(state.selection.from, fragment).deleteSelection().scrollIntoView());
-}
-
-/**
- * Creates an image node without dispatching it (used for building fragment arrays).
- */
-export function createImageNode(view, src, alt, editAs) {
-  const attrs = { src, style: 'width: 180px' };
-  if (alt) attrs.alt = alt;
-  if (editAs) attrs.editAs = editAs;
-  return view.state.schema.nodes.image.create(attrs);
 }
