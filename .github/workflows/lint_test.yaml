@@ -32,7 +32,8 @@ jobs:
   release-dry-run:
     name: Semantic Release (Dry Run)
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    # Fork PRs: the head branch doesn't exist here and the token can't push, so the dry run can't work.
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     needs: test
     env:
       CI_BRANCH: ${{ github.head_ref }}
