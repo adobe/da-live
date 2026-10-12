@@ -92,9 +92,11 @@ function makePictures(editor, live) {
       a.setAttribute('data-edit-as', 'image');
       a.textContent = src;
       if (img.id) a.id = img.id;
-      // Canvas instrumentation (outline/selection) maps the image node via this index.
-      const imageIndex = img.getAttribute('data-image-index');
-      if (imageIndex != null) a.setAttribute('data-image-index', imageIndex);
+      // Canvas instrumentation (outline, selection, image replace) maps the image node via these.
+      ['data-image-index', 'data-image-version'].forEach((attr) => {
+        const value = img.getAttribute(attr);
+        if (value != null) a.setAttribute(attr, value);
+      });
 
       // Keep the wrapping <p>, like a normally authored link.
       img.parentElement.replaceChild(a, img);
