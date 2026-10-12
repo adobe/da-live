@@ -82,6 +82,21 @@ function getOuterHTMLWithSortedAttributes(element) {
   return `<${tagName}${attrs ? ` ${attrs}` : ''}>${inner}</${tagName}>`;
 }
 
+const AEM_HOST = /\.hlx\.page\/|\.hlx\.live\/|\.aem\.page\//g;
+
+function trimTextNodes(node) {
+  if (node.nodeType === Node.TEXT_NODE) {
+    node.textContent = node.textContent.trim();
+  } else {
+    node.childNodes.forEach(trimTextNodes);
+  }
+}
+
+const isEmptyParagraph = (el) => el.nodeName === 'P' && !el.childNodes.length;
+
+// A rollout (da-nx loc regional-diff) hashes each block of the saved page this way: same-site
+// links on .aem.live, text nodes trimmed, attributes sorted, whitespace between tags removed.
+// The stored decision hashes must match, or the next rollout raises the same conflicts again.
 function nodeToHtml(node) {
   // The canvas has no global `view`; the node carries its own schema.
   const serializer = DOMSerializer.fromSchema(node.type.schema);
@@ -92,8 +107,24 @@ function nodeToHtml(node) {
     div.classList.add('tableWrapper');
   }
   div.appendChild(fragment);
-  const aem = prose2aem(div, true, true);
-  return getOuterHTMLWithSortedAttributes(aem);
+  // The saved page, not the live preview: that keeps metadata blocks and absolute links.
+  const html = prose2aem(div, false, true);
+  const { body } = new DOMParser().parseFromString(html, 'text/html');
+  body.querySelectorAll('[da-diff-added]').forEach((el) => el.removeAttribute('da-diff-added'));
+  [['a', 'href'], ['img', 'src'], ['source', 'srcset']].forEach(([tag, attr]) => {
+    body.querySelectorAll(`${tag}[${attr}]`).forEach((el) => {
+      el.setAttribute(attr, el.getAttribute(attr).replace(AEM_HOST, '.aem.live/'));
+    });
+  });
+  trimTextNodes(body);
+  return [...body.children]
+    .filter((el) => !isEmptyParagraph(el))
+    .map((el) => getOuterHTMLWithSortedAttributes(el)
+      .replace(/>\s+</g, '><')
+      .replace(/[\n\r\t]/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim())
+    .join('');
 }
 
 export const addToHashMetadata = async (node, mdKey) => {
