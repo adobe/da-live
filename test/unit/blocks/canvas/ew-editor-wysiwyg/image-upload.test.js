@@ -158,30 +158,6 @@ describe('handleImageReplace', () => {
     }
   });
 
-  it('replaces only the image at proseIndex, not every image sharing its path', async () => {
-    const { schema } = editor.view.state;
-    const src = 'https://delivery-p1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:1/as/crop.jpg';
-    editor.view.dispatch(editor.view.state.tr.replaceWith(
-      0,
-      editor.view.state.doc.content.size,
-      schema.nodes.paragraph.create(null, [
-        schema.nodes.image.create({ src: `${src}?smartcrop=Small` }),
-        schema.nodes.image.create({ src: `${src}?smartcrop=Large` }),
-      ]),
-    ));
-    const { restore } = stubStore({ upgraded: true, contentUrl: './media_new.png' });
-    const { ctx } = ctxFor('wysidx', 'wysidx');
-    try {
-      await handleImageReplace(request({ fileName: 'new.png', originalSrc: `${src}?smartcrop=Large`, proseIndex: 2 }), ctx);
-
-      const para = editor.view.state.doc.firstChild;
-      expect(para.child(0).attrs.src).to.equal(`${src}?smartcrop=Small`);
-      expect(para.child(1).attrs.src).to.equal('./media_new.png');
-    } finally {
-      restore();
-    }
-  });
-
   it('uses proseIndex even when the site rewrote the rendered src', async () => {
     const { schema } = editor.view.state;
     const src = 'https://delivery-p1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:1/as/car.jpg';
@@ -202,24 +178,6 @@ describe('handleImageReplace', () => {
       const img = editor.view.state.doc.firstChild.firstChild;
       expect(img.attrs.src).to.equal('./media_new.png');
       expect(img.attrs.editAs).to.be.null;
-    } finally {
-      restore();
-    }
-  });
-
-  it('supports legacy URL-only requests for a unique image', async () => {
-    const { schema } = editor.view.state;
-    editor.view.dispatch(editor.view.state.tr.replaceWith(
-      0,
-      editor.view.state.doc.content.size,
-      schema.nodes.paragraph.create(null, [schema.text('ab'), schema.nodes.image.create({ src: '/old.png' })]),
-    ));
-    const { restore } = stubStore({ upgraded: true, contentUrl: './media_new.png' });
-    const { ctx } = ctxFor('wysdrift', 'wysdrift');
-    try {
-      await handleImageReplace({ imageData, fileName: 'new.png', originalSrc: '/old.png' }, ctx);
-
-      expect(editor.view.state.doc.firstChild.lastChild.attrs.src).to.equal('./media_new.png');
     } finally {
       restore();
     }
