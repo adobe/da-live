@@ -53,6 +53,11 @@ button {
   gap: var(--s2-spacing-100);
 }
 
+.refresh-btn[aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .refresh-icon {
   width: 16px;
   height: 16px;

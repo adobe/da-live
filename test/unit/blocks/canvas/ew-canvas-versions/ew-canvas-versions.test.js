@@ -1,5 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
+import { sendKeys } from '@web/test-runner-commands';
 import { setNx, getNx, getNx2Api } from '../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -286,20 +287,55 @@ describe('version history refresh', () => {
     const list = inst.shadowRoot.querySelector('.versionlist');
     const button = inst.shadowRoot.querySelector('.refresh-btn');
     expect(button.getAttribute('aria-label')).to.equal('Refresh version history');
-    button.click();
+    button.focus();
+    await sendKeys({ press: 'Enter' });
     await nextFrame();
     await inst.updateComplete;
-    expect(button.disabled).to.be.true;
+    expect(button.getAttribute('aria-disabled')).to.equal('true');
+    expect(inst.shadowRoot.activeElement).to.equal(button);
     expect(button.querySelector('.da-loading-spinner')).to.exist;
     expect(inst.shadowRoot.querySelector('.versionlist')).to.equal(list);
     expect(inst._versions).to.equal(entries);
     button.click();
+    await sendKeys({ press: 'Enter' });
     expect(calls).to.equal(1);
     finish(response([latest, old]));
     await waitFor(() => !inst._refreshing);
     expect(inst._versions.map((entry) => entry.label)).to.deep.equal(['Previewed', 'Older version']);
-    expect(button.disabled).to.be.false;
+    expect(button.getAttribute('aria-disabled')).to.equal('false');
+    expect(inst.shadowRoot.activeElement).to.equal(button);
     expect(inst.shadowRoot.querySelector('.ew-canvas-versions').getAttribute('aria-busy')).to.equal('false');
+  });
+
+  it('does not steal focus when the user moves during refresh', async () => {
+    let finish;
+    mockList(() => new Promise((resolve) => { finish = resolve; }));
+    inst = await createInstance({ path, _versions: [ver(old)] });
+    const button = inst.shadowRoot.querySelector('.refresh-btn');
+    const filter = inst.shadowRoot.querySelector('.seg-btn');
+    button.focus();
+    button.click();
+    await nextFrame();
+    filter.focus();
+    finish(response([latest, old]));
+    await waitFor(() => !inst._refreshing);
+    expect(inst.shadowRoot.activeElement).to.equal(filter);
+  });
+
+  it('accepts a version-created event while a manual refresh is pending', async () => {
+    const pending = [];
+    mockList(() => new Promise((resolve) => { pending.push(resolve); }));
+    inst = await createInstance({ path, _versions: [ver(old)] });
+    inst.shadowRoot.querySelector('.refresh-btn').click();
+    await nextFrame();
+    document.dispatchEvent(new CustomEvent('nx-version-created', { detail: { path } }));
+    await nextFrame();
+    expect(pending).to.have.lengthOf(2);
+    pending[1](response([latest, old]));
+    await waitFor(() => !inst._refreshing);
+    pending[0](response([old]));
+    await nextFrame();
+    expect(inst._versions[0].label).to.equal('Previewed');
   });
 
   it('automatically reloads history on successful version creation for this document', async () => {

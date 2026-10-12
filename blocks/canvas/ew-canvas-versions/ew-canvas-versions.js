@@ -465,8 +465,8 @@ class EwCanvasVersions extends LitElement {
           <div class="toolbar-actions">
             <button type="button" class="da-icon-btn refresh-btn"
               aria-label=${this._refreshing ? 'Refreshing version history' : 'Refresh version history'}
-              title="Refresh version history" ?disabled=${this._refreshing}
-              @click=${this.handleRefresh}>
+              title="Refresh version history" aria-disabled=${this._refreshing ? 'true' : 'false'}
+              @click=${() => { if (!this._refreshing) this.handleRefresh(); }}>
               ${this._refreshing
         ? html`<span class="da-loading-spinner" aria-hidden="true"></span>`
         : html`<span class="refresh-icon" style=${`mask-image: url("${ICON_REFRESH}")`} aria-hidden="true"></span>`}
