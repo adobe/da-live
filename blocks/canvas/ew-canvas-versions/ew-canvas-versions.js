@@ -434,6 +434,7 @@ class EwCanvasVersions extends LitElement {
         <ew-canvas-compare
           .dom=${this._compareCtx.previewDom}
           .diffDom=${this._compareCtx.diffDom}
+          .path=${this.path}
           label=${this._compareCtx.label}
           ?canWrite=${this._canWrite}
           ?split=${this._compareSplit}

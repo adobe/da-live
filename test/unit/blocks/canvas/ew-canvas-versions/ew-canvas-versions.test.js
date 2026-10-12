@@ -8,11 +8,17 @@ const nextFrame = () => new Promise((r) => { setTimeout(r, 0); });
 
 let buildDocPath;
 let getExtensionsBridge;
+let popoverShow;
 
 before(async () => {
   ({ buildDocPath } = await import('../../../../../blocks/canvas/ew-canvas-versions/ew-canvas-versions.js'));
   ({ getExtensionsBridge } = await import('../../../../../blocks/canvas/editor-utils/extensions-bridge.js'));
+  const popover = customElements.get('nx-popover').prototype;
+  popoverShow = popover.show;
+  popover.show = () => {};
 });
+
+after(() => { customElements.get('nx-popover').prototype.show = popoverShow; });
 
 async function createInstance(props = {}) {
   const inst = document.createElement('ew-canvas-versions');
@@ -27,6 +33,60 @@ async function createInstance(props = {}) {
 const ver = (overrides = {}) => ({ isVersion: true, date: 'Jan 1', time: '10:00', users: [], ...overrides });
 
 const auditGroup = (audits = [{ date: 'Jan 1', time: '09:00', users: [] }]) => ({ date: 'Jan 1', audits });
+
+describe('version image previews', () => {
+  let inst;
+  afterEach(() => { inst?.remove(); });
+
+  it('resolves media images in a version preview without changing restore content', async () => {
+    const dom = document.createElement('div');
+    dom.innerHTML = '<p><img src="./media_123.png"></p>';
+    inst = document.createElement('ew-canvas-compare');
+    Object.assign(inst, { dom, path: '/org/repo/doc.html', label: 'Published' });
+    document.body.appendChild(inst);
+    await inst.updateComplete;
+    expect(inst.shadowRoot.querySelector('.ew-cc-body img').getAttribute('src'))
+      .to.equal('https://main--repo--org.stage-preview.da.live/media_123.png');
+    expect(dom.querySelector('img').getAttribute('src')).to.equal('./media_123.png');
+  });
+
+  it('updates image URLs when switching versions and leaves absolute URLs alone', async () => {
+    const dom = document.createElement('div');
+    dom.innerHTML = '<p><img src="./media_first.png"><img src="https://example.com/image.png"></p>';
+    inst = document.createElement('ew-canvas-compare');
+    Object.assign(inst, { dom, path: '/org/repo/doc.html', label: 'First' });
+    document.body.appendChild(inst);
+    await inst.updateComplete;
+    expect(inst.shadowRoot.querySelectorAll('.ew-cc-body img')[1].getAttribute('src'))
+      .to.equal('https://example.com/image.png');
+    const nextDom = document.createElement('div');
+    nextDom.innerHTML = '<p><img src="./media_second.png"></p>';
+    inst.dom = nextDom;
+    await inst.updateComplete;
+    expect(inst.shadowRoot.querySelector('.ew-cc-body img').getAttribute('src'))
+      .to.equal('https://main--repo--org.stage-preview.da.live/media_second.png');
+    inst.path = '/org/other/doc.html';
+    await inst.updateComplete;
+    expect(inst.shadowRoot.querySelector('.ew-cc-body img').getAttribute('src'))
+      .to.equal('https://main--other--org.stage-preview.da.live/media_second.png');
+  });
+
+  it('resolves images in both comparison panes without changing diff content', async () => {
+    const diffDom = document.createElement('div');
+    diffDom.innerHTML = '<p><del><img src="./media_old.png"></del><ins><img src="./media_new.png"></ins></p>';
+    inst = document.createElement('ew-canvas-compare');
+    Object.assign(inst, { diffDom, path: '/org/repo/doc.html', label: 'Published', split: true });
+    document.body.appendChild(inst);
+    await inst.updateComplete;
+    const images = inst.shadowRoot.querySelectorAll('.ew-cc-pane img');
+    expect([...images].map((img) => img.getAttribute('src'))).to.deep.equal([
+      'https://main--repo--org.stage-preview.da.live/media_old.png',
+      'https://main--repo--org.stage-preview.da.live/media_new.png',
+    ]);
+    expect([...diffDom.querySelectorAll('img')].map((img) => img.getAttribute('src')))
+      .to.deep.equal(['./media_old.png', './media_new.png']);
+  });
+});
 
 // ─── _filteredVersions ───────────────────────────────────────────────────────
 

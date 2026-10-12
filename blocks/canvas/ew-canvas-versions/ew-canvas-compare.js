@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
+import { getRenderableSrc } from '../ew-editor-doc/prose-plugins/mediaBusImage.js';
 
 const ICON_CLOSE = '/img/icons/s2-icon-close-20-n.svg';
 
@@ -21,6 +22,7 @@ class EwCanvasCompare extends LitElement {
   static properties = {
     dom: { attribute: false },
     diffDom: { attribute: false },
+    path: { type: String },
     label: { type: String },
     canWrite: { type: Boolean },
     split: { type: Boolean },
@@ -108,14 +110,36 @@ class EwCanvasCompare extends LitElement {
     this.dispatchEvent(new CustomEvent('toggle-split', { bubbles: true, composed: true }));
   }
 
+  _displayDom(source) {
+    const dom = source.cloneNode(true);
+    const [, org, repo] = (this.path ?? '').split('/');
+    dom.querySelectorAll('img').forEach((img) => {
+      const src = getRenderableSrc(img.getAttribute('src'), { org, repo });
+      if (src) img.setAttribute('src', src);
+    });
+    return dom;
+  }
+
+  get _preview() {
+    if (!this.dom) return null;
+    if (this._previewCache?.source === this.dom && this._previewCache.path === this.path) {
+      return this._previewCache.dom;
+    }
+    const dom = this._displayDom(this.dom);
+    this._previewCache = { source: this.dom, path: this.path, dom };
+    return dom;
+  }
+
   get _panes() {
     if (!this.diffDom) return null;
-    if (this._panesCache?.source === this.diffDom) return this._panesCache;
-    const current = this.diffDom.cloneNode(true);
+    if (this._panesCache?.source === this.diffDom && this._panesCache.path === this.path) {
+      return this._panesCache;
+    }
+    const current = this._displayDom(this.diffDom);
     current.querySelectorAll('ins').forEach((el) => el.remove());
-    const version = this.diffDom.cloneNode(true);
+    const version = this._displayDom(this.diffDom);
     version.querySelectorAll('del').forEach((el) => el.remove());
-    this._panesCache = { source: this.diffDom, current, version };
+    this._panesCache = { source: this.diffDom, path: this.path, current, version };
     return this._panesCache;
   }
 
@@ -152,7 +176,7 @@ class EwCanvasCompare extends LitElement {
             <div class="ew-cc-pane ProseMirror">${panes.version}</div>
           </div>
         ` : html`
-          <div class="ew-cc-body ProseMirror">${this.dom}</div>
+          <div class="ew-cc-body ProseMirror">${this._preview}</div>
         `}
       </nx-popover>
     `;
