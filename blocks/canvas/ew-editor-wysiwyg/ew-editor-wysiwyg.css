@@ -32,6 +32,7 @@
   min-height: 120px;
   padding: 1rem;
   color: light-dark(#555, #aaa);
-  font: var(--nx-font-body, 14px/1.4 system-ui, sans-serif);
+  font-family: var(--s2-font-family);
+  font-size: var(--s2-component-m-regular-font-size);
   text-align: center;
 }

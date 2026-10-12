@@ -482,7 +482,7 @@ export function getPreviewOrigin(org, repo, branch = 'main') {
 export async function fetchWysiwygBranch({ org, site, path }) {
   if (!org || !site) return 'main';
   const branchParam = new URLSearchParams(window.location.search).get('ref');
-  if (branchParam) return branchParam;
+  if (branchParam && branchParam !== 'local') return branchParam;
 
   try {
     const configs = await Promise.all(fetchDaConfigs({ org, site }));

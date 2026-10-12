@@ -52,7 +52,7 @@ input {
   display: block;
   min-width: 0;
   padding: var(--s2-spacing-75) var(--s2-spacing-100);
-  font-size: var(--s2-body-size-s);
+  font-size: var(--s2-component-m-regular-font-size);
   font-weight: 600;
   color: var(--s2-gray-800);
   overflow: hidden;
@@ -72,7 +72,7 @@ input {
   height: 19px;
   margin: 5px;
   padding: var(--s2-spacing-50);
-  font-size: var(--s2-body-size-s);
+  font-size: var(--s2-component-m-regular-font-size);
   border-radius: 6px;
   border: 0;
   background: var(--s2-gray-75);
@@ -90,7 +90,7 @@ input {
   padding: var(--s2-spacing-75) var(--s2-spacing-100);
   padding-inline-start: var(--s2-spacing-300);
   cursor: grab;
-  font-size: var(--s2-body-size-s);
+  font-size: var(--s2-component-m-regular-font-size);
   font-weight: 500;
   color: var(--s2-gray-800);
   min-height: 32px;
@@ -197,7 +197,7 @@ input {
 }
 
 .content-snippet {
-  font-size: var(--s2-body-size-xs, 0.75rem);
+  font-size: var(--s2-component-s-regular-font-size);
   font-weight: 400;
   color: var(--s2-gray-600);
   overflow: hidden;
@@ -236,7 +236,7 @@ input {
 
 .placeholder {
   padding: var(--s2-spacing-300) var(--s2-spacing-100);
-  font-size: var(--s2-body-size-s);
+  font-size: var(--s2-component-m-regular-font-size);
   color: var(--s2-gray-600);
   text-align: center;
 

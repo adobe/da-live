@@ -26,12 +26,15 @@ class EwCanvasCompare extends LitElement {
     label: { type: String },
     canWrite: { type: Boolean },
     split: { type: Boolean },
+    embedded: { type: Boolean, reflect: true },
+    currentLabel: { type: String },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [baseStyle, style];
     this._onKeydown = (e) => {
+      if (this.embedded) return;
       if (e.key === 'Escape') {
         this._close();
         return;
@@ -44,6 +47,7 @@ class EwCanvasCompare extends LitElement {
   get _popover() { return this.shadowRoot.querySelector('nx-popover'); }
 
   async firstUpdated() {
+    if (this.embedded) return;
     const popover = this._popover;
     popover.persistent = true;
     popover.show();
@@ -132,25 +136,39 @@ class EwCanvasCompare extends LitElement {
 
   get _panes() {
     if (!this.diffDom) return null;
-    if (this._panesCache?.source === this.diffDom && this._panesCache.path === this.path) {
+    if (this._panesCache?.source === this.diffDom && this._panesCache.path === this.path
+      && this._panesCache.embedded === this.embedded) return this._panesCache;
+    if (!this.embedded) {
+      const current = this._displayDom(this.diffDom);
+      current.querySelectorAll('ins').forEach((el) => el.remove());
+      const version = this._displayDom(this.diffDom);
+      version.querySelectorAll('del').forEach((el) => el.remove());
+      const { diffDom: source, path } = this;
+      this._panesCache = { source, path, embedded: false, current, version };
       return this._panesCache;
     }
-    const current = this._displayDom(this.diffDom);
-    current.querySelectorAll('ins').forEach((el) => el.remove());
-    const version = this._displayDom(this.diffDom);
-    version.querySelectorAll('del').forEach((el) => el.remove());
-    this._panesCache = { source: this.diffDom, path: this.path, current, version };
+    const rows = [...this._displayDom(this.diffDom).childNodes]
+      .filter((node) => node.nodeType !== Node.TEXT_NODE || node.textContent.trim())
+      .map((node) => {
+        const cloneWithout = (tag) => {
+          if (node.nodeType === Node.ELEMENT_NODE && node.localName === tag) return null;
+          const clone = node.cloneNode(true);
+          clone.querySelectorAll?.(tag).forEach((el) => el.remove());
+          return clone;
+        };
+        return { current: cloneWithout('ins'), version: cloneWithout('del') };
+      });
+    this._panesCache = { source: this.diffDom, path: this.path, embedded: true, rows };
     return this._panesCache;
   }
 
-  render() {
+  renderContent() {
     const panes = this.split ? this._panes : null;
     return html`
-      <nx-popover role="dialog" aria-modal="true" aria-label="Compare with ${this.label}">
         <div class="ew-cc-header">
-          ${panes ? html`
+          ${panes || (this.embedded && this.diffDom) ? html`
             <div class="ew-cc-chip-row">
-              <div class="ew-cc-chip-slot"><span class="ew-cc-chip is-neutral">Current</span></div>
+              <div class="ew-cc-chip-slot"><span class="ew-cc-chip is-neutral">${this.currentLabel || 'Current'}</span></div>
               <div class="ew-cc-chip-slot"><span class="ew-cc-chip">${this.label}</span></div>
             </div>
           ` : html`<span class="ew-cc-chip">${this.label}</span>`}
@@ -158,7 +176,7 @@ class EwCanvasCompare extends LitElement {
             <button type="button" class="da-btn-secondary${this.split ? ' is-active' : ''}"
               aria-pressed=${this.split ? 'true' : 'false'}
               @click=${this._toggleSplit}>
-              Compare
+              ${this.embedded ? 'Side by side' : 'Compare'}
             </button>
             ${this.canWrite ? html`
               <button type="button" class="da-btn-secondary" @click=${this._restore}>Restore</button>
@@ -171,15 +189,25 @@ class EwCanvasCompare extends LitElement {
           </div>
         </div>
         ${panes ? html`
-          <div class="ew-cc-split">
-            <div class="ew-cc-pane ProseMirror">${panes.current}</div>
-            <div class="ew-cc-pane ProseMirror">${panes.version}</div>
+          <div class="ew-cc-split${this.embedded ? ' is-aligned' : ''}">
+            ${this.embedded ? panes.rows.map((row) => html`
+              <div class="ew-cc-pane ProseMirror">${row.current}</div>
+              <div class="ew-cc-pane ProseMirror">${row.version}</div>
+            `) : html`
+              <div class="ew-cc-pane ProseMirror">${panes.current}</div>
+              <div class="ew-cc-pane ProseMirror">${panes.version}</div>
+            `}
           </div>
         ` : html`
-          <div class="ew-cc-body ProseMirror">${this._preview}</div>
+          <div class="ew-cc-body ProseMirror">${this.embedded && this.diffDom ? this._displayDom(this.diffDom) : this._preview}</div>
         `}
-      </nx-popover>
     `;
+  }
+
+  render() {
+    return this.embedded
+      ? html`<section class="ew-cc-embedded" role="region" aria-label="Content comparison">${this.renderContent()}</section>`
+      : html`<nx-popover role="dialog" aria-modal="true" aria-label="Compare with ${this.label}">${this.renderContent()}</nx-popover>`;
   }
 }
 

@@ -78,6 +78,7 @@ function setup(container, view, ctxRef) {
   container.append(anchor);
 
   const menu = document.createElement('nx-menu');
+  menu.setAttribute('size', 'm');
   menu.ignoreFocus = true;
   menu.scoped = true;
   menu.items = slashMenuItemsForQuery('');
