@@ -3,6 +3,7 @@ import inlinesvg from '../../../shared/inlinesvg.js';
 import { openFocalPointDialog } from './focalPointDialog.js';
 import { loadLibrary } from '../../da-library/helpers/helpers.js';
 import { getTableInfo, isInTableCell } from './tableUtils.js';
+import { isEditableLinkImage } from './linkImage.js';
 
 const imageFocalPointKey = new PluginKey('imageFocalPoint');
 
@@ -120,7 +121,7 @@ class ImageWithFocalPointView {
   }
 
   update(node) {
-    if (node.type.name !== 'image' || node.attrs.editAs) return false;
+    if (node.type.name !== 'image' || isEditableLinkImage(node)) return false;
 
     this.node = node;
     updateImageAttributes(this.img, node.attrs);
@@ -147,7 +148,7 @@ export default function imageFocalPoint() {
     props: {
       nodeViews: {
         image(node, view, getPos) {
-          if (node.attrs?.editAs) return null;
+          if (isEditableLinkImage(node)) return null;
           if (isInTableCell(view.state, getPos())) {
             return new ImageWithFocalPointView(node, view, getPos);
           }

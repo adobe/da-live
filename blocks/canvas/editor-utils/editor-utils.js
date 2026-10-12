@@ -352,19 +352,21 @@ function getDefaultContentProseIndex(el, kind) {
 // but are image nodes in the editor, so the outline treats them as images, not link text.
 const LINK_IMAGE_SELECTOR = 'a[data-edit-as="image"]';
 
-function firstLineText(el) {
+function withoutLinkImages(el) {
   const clone = el.cloneNode(true);
   clone.querySelectorAll(LINK_IMAGE_SELECTOR).forEach((a) => a.remove());
+  return clone;
+}
+
+function firstLineText(el) {
+  const clone = withoutLinkImages(el);
   clone.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
   return clone.textContent.trim().split('\n')[0].trim();
 }
 
 function getText(el) {
-  if (el.matches?.(LINK_IMAGE_SELECTOR)) return '';
   if (!el.querySelector?.(LINK_IMAGE_SELECTOR)) return el.textContent?.trim() ?? '';
-  const clone = el.cloneNode(true);
-  clone.querySelectorAll(LINK_IMAGE_SELECTOR).forEach((a) => a.remove());
-  return clone.textContent.trim();
+  return withoutLinkImages(el).textContent.trim();
 }
 
 function getContentSnippet(el, kind) {
