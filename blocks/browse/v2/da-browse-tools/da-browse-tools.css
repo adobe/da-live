@@ -39,48 +39,69 @@
     margin-top: var(--s2-spacing-300);
   }
 
-  .da-input {
+  .nx-input {
     width: 100%;
   }
 }
 
+.browse-find-field {
+  position: relative;
+  display: block;
+  margin-bottom: var(--s2-spacing-100);
+
+  .nx-input {
+    padding-inline-end: 40px;
+  }
+}
+
 .browse-match-case {
-  display: flex;
-  align-items: center;
-  gap: var(--s2-spacing-100);
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: var(--s2-spacing-75, 6px);
+  margin-block: auto;
+  box-sizing: border-box;
+  width: 28px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--s2-corner-radius-200, 4px);
+  background: transparent;
+  color: var(--s2-gray-700);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .browse-search-scope {
   color: var(--s2-gray-600);
 }
 
-.browse-replace-confirmation {
-  padding: var(--s2-spacing-200);
-  border: 1px solid var(--s2-gray-300);
-  border-radius: var(--s2-corner-radius-400);
-  background: var(--s2-gray-50);
-}
-
-.browse-replace-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: var(--s2-spacing-100);
-}
-
 .browse-match-context {
   margin-top: var(--s2-spacing-200);
 }
 
-.browse-find-options {
+.browse-search-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: var(--s2-spacing-100);
   margin-top: var(--s2-spacing-200);
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2-spacing-100);
+    white-space: nowrap;
+  }
 }
 
 .browse-match-file {
+  ul {
+    margin: 0;
+    padding-inline-start: var(--s2-spacing-300);
+    overflow-wrap: anywhere;
+  }
+
   h4 {
     margin-bottom: var(--s2-spacing-100);
     overflow-wrap: anywhere;
@@ -102,20 +123,19 @@
     overflow-wrap: anywhere;
   }
 
-  mark,
-  del,
+  mark {
+    background-color: var(--s2-yellow-200);
+  }
+
+  del {
+    text-decoration: none;
+    background-color: var(--s2-red-200);
+    color: var(--s2-red-1000);
+  }
+
   ins {
-    background-color: light-dark(#ffedb0, #604b00);
-    color: inherit;
-  }
-
-  .browse-match-removed {
-    background-color: light-dark(#ffe1df, #5c2422);
-    text-decoration: line-through;
-  }
-
-  .browse-match-replaced {
-    background-color: light-dark(#d5f0dc, #164b32);
+    background-color: var(--s2-green-200);
+    color: var(--s2-green-1000);
     text-decoration: none;
   }
 }

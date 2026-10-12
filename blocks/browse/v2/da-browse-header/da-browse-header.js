@@ -2,7 +2,6 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../../scripts/utils.js';
 
 await import(`${getNx()}/blocks/shared/switch/switch.js`);
-await import(`${getNx()}/blocks/shared/popover/popover.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -11,8 +10,6 @@ const [BUTTONS, style] = await Promise.all([
   loadStyle(import.meta.url),
 ]);
 
-// Controlled toolbar: da-browse supplies list state and handles action requests.
-// The default slot keeps da-new's creation and permission handling with its owner.
 export default class DaBrowseHeader extends LitElement {
   static properties = {
     details: { attribute: false },
@@ -21,23 +18,14 @@ export default class DaBrowseHeader extends LitElement {
     typesFilterState: { attribute: false },
     sortState: { attribute: false },
     searchState: { attribute: false },
-    _viewOptionsOpen: { state: true },
   };
 
   connectedCallback() {
     this.flattenFolders ??= true;
     this.typesFilterState ??= { open: false, hiddenCount: 0 };
     this.sortState ??= { property: null, direction: 'none', loading: false };
-    this._viewOptionsOpen ??= false;
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [BUTTONS, style];
-  }
-
-  toggleViewOptions({ currentTarget }) {
-    const popover = this.shadowRoot.querySelector('.da-browse-view-options-popover');
-    if (popover.open) popover.close();
-    else popover.show({ anchor: currentTarget });
-    this._viewOptionsOpen = popover.open;
   }
 
   requestTypesFilter({ currentTarget }) {
@@ -80,17 +68,6 @@ export default class DaBrowseHeader extends LitElement {
       </a>`;
   }
 
-  renderViewOptionsMenu() {
-    return html`
-      <nx-popover id="browse-view-options" class="da-browse-view-options-popover" role="dialog" aria-label="View Options"
-        @close=${() => { this._viewOptionsOpen = false; }}>
-        <div class="da-browse-view-options-row">
-          <nx-switch label="Flatten folders" .checked=${this.flattenFolders}
-            @change=${this.requestFlattenFolders}></nx-switch>
-        </div>
-      </nx-popover>`;
-  }
-
   renderSortOptions() {
     const options = [
       { value: 'name:ascending', label: 'Name (A-Z)' },
@@ -123,27 +100,21 @@ export default class DaBrowseHeader extends LitElement {
     return `Sorted by ${name ? 'Name' : 'Modified'} (${name ? nameDirection : dateDirection})`;
   }
 
-  renderToolbarTrailing() {
+  renderToolbarControls() {
     const typesLabel = this.typesFilterState.hiddenCount
       ? `${this.typesFilterState.hiddenCount} ${this.typesFilterState.hiddenCount === 1 ? 'type' : 'types'} hidden`
       : 'Show All types';
     return html`
       <div class="da-browse-toolbar-controls" role="group" aria-label="Browse toolbar controls">
-        <button type="button" class="da-browse-toolbar-control nx-action-btn-quiet" aria-haspopup="dialog"
-          title="View Options"
-          aria-controls="browse-view-options"
-          aria-expanded=${this._viewOptionsOpen} @click=${this.toggleViewOptions}>
-          <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-listbulleted-20-n.svg#icon"></use></svg>
-          <span class="da-browse-control-label">View Options</span>
-        </button>
+        ${this.renderSortOptions()}
         <button type="button" class="da-browse-toolbar-control nx-action-btn-quiet" aria-haspopup="dialog"
           title=${typesLabel} aria-expanded=${this.typesFilterState.open} @click=${this.requestTypesFilter}>
           <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-filter-20-n.svg#icon"></use></svg>
           <span class="da-browse-control-label">${typesLabel}</span>
         </button>
-        ${this.renderSortOptions()}
+        <nx-switch class="da-browse-flatten-control" label="Flatten folders" .checked=${this.flattenFolders}
+          @change=${this.requestFlattenFolders}></nx-switch>
         ${this.renderSettingsActions()}
-        ${this.renderViewOptionsMenu()}
       </div>`;
   }
 
@@ -159,25 +130,19 @@ export default class DaBrowseHeader extends LitElement {
 
   render() {
     return html`
-      <div class="da-browse-header">
-        <div class="da-browse-toolbar">
-          <div class="da-browse-toolbar-leading">
-            <div class="da-browse-toolbar-actions">
-              ${this.chatEnabled ? html`
-                <button type="button" part="chat-btn" class="chat-btn nx-action-btn-icon" aria-label="Open chat panel" @click=${this.requestChat}>
-                  <svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-splitleft-20-n.svg#icon"></use></svg>
-                </button>` : nothing}
-              ${this.searchState ? nothing : html`<slot></slot>`}
-              <p class="da-browse-search-summary" aria-hidden="true" ?data-loading=${this.searchState?.loading}>${this.searchState && !this.searchState.error ? html`
-                <span class="da-browse-search-progress">Searching...${this.searchState.count
-                  ? html` &#183; ${this.searchState.count} found` : nothing}</span>
-                <span class="da-browse-search-complete">${this.searchResultsSummary}</span>` : nothing}</p>
-              <p class="da-browse-search-status" role="status" aria-atomic="true">${this.searchSummary}</p>
-            </div>
-          </div>
-          <div class="da-browse-toolbar-trailing">${this.renderToolbarTrailing()}</div>
-        </div>
-      </div>`;
+      <div class="da-browse-toolbar-leading">
+        ${this.chatEnabled ? html`
+          <button type="button" part="chat-btn" class="chat-btn nx-action-btn-icon" aria-label="Open chat panel" @click=${this.requestChat}>
+            <svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-splitleft-20-n.svg#icon"></use></svg>
+          </button>` : nothing}
+        ${this.searchState ? nothing : html`<slot></slot>`}
+        <p class="da-browse-search-summary" aria-hidden="true" ?data-loading=${this.searchState?.loading}>${this.searchState && !this.searchState.error ? html`
+          <span class="da-browse-search-progress">Searching...${this.searchState.count
+          ? html` &#183; ${this.searchState.count} found` : nothing}</span>
+          <span class="da-browse-search-complete">${this.searchResultsSummary}</span>` : nothing}</p>
+        <p class="da-browse-search-status" role="status" aria-atomic="true">${this.searchSummary}</p>
+      </div>
+      ${this.renderToolbarControls()}`;
   }
 }
 

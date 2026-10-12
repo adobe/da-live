@@ -23,12 +23,12 @@ export default class DaListItem extends LitElement {
     allowselect: { type: Boolean },
     isChecked: { attribute: 'ischecked', type: Boolean },
     isFavorited: { attribute: 'isfavorited', type: Boolean },
-    _isRenaming: { type: Boolean },
-    _isExpanded: { type: Boolean, state: true },
+    _isRenaming: { state: true },
+    _isExpanded: { state: true },
     _preview: { state: true },
     _live: { state: true },
     _version: { state: true },
-    _lastModifedBy: { state: true },
+    _lastModifiedBy: { state: true },
   };
 
   connectedCallback() {
@@ -50,12 +50,11 @@ export default class DaListItem extends LitElement {
     super.update(props);
   }
 
-  selectInput() {
-    setTimeout(() => {
-      const input = this.shadowRoot.querySelector('.da-item-list-item-rename input');
-      input.focus();
-      input.select();
-    }, 250);
+  async selectInput() {
+    await this.updateComplete;
+    const input = this.shadowRoot.querySelector('.da-item-list-item-rename input');
+    input?.focus();
+    input?.select();
   }
 
   async updateAEMStatus() {
@@ -98,25 +97,24 @@ export default class DaListItem extends LitElement {
       this._version = json.filter((entry) => entry.version).length;
       const headResp = await source.getMetadata(this.path);
       const lastModifiedBy = headResp?.headers?.get('x-last-modified-by');
-      this._lastModifedBy = lastModifiedBy
+      this._lastModifiedBy = lastModifiedBy
         ? lastModifiedBy.split('@')[0].toLowerCase()
         : 'anonymous';
       return;
     }
 
     if (json.length === 0) {
-      this._lastModifedBy = 'anonymous';
+      this._lastModifiedBy = 'anonymous';
       this._version = 0;
       return;
     }
 
-    json.sort((a, b) => a.timestamp - b.timestamp);
     const { length: count } = json.reduce((acc, entry) => {
       if (entry.url?.startsWith('/versionsource')) acc.push(entry);
       return acc;
     }, []);
     this._version = count;
-    this._lastModifedBy = json.pop().users.map(
+    this._lastModifiedBy = json.reduce((a, b) => (b.timestamp > a.timestamp ? b : a)).users.map(
       (user) => user.email.split('@')[0],
     ).join(', ').toLowerCase();
   }
@@ -214,7 +212,7 @@ export default class DaListItem extends LitElement {
       this._preview = null;
       this._live = null;
       this._version = null;
-      this._lastModifedBy = null;
+      this._lastModifiedBy = null;
     }
   }
 
@@ -227,7 +225,7 @@ export default class DaListItem extends LitElement {
   renderRename() {
     return html`
       <form class="da-item-list-item-rename" @submit=${this.handleRenameSubmit}>
-        <span class="da-item-list-item-type ${this.ext ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder'} ${this.ext ? `da-item-list-item-icon-${this.ext}` : ''}">
+        <span class="da-item-list-item-type">
           ${this.renderIcon()}
         </span>
         <input type="text" value="${this.name}" @input=${this.handleRename} name="new-name" aria-label="Rename item">
@@ -244,7 +242,7 @@ export default class DaListItem extends LitElement {
   }
 
   renderIcon() {
-    return html`<svg viewBox="0 0 20 20"><use href="${iconPathForExt(this.ext)}#icon"</svg>`;
+    return html`<svg viewBox="0 0 20 20"><use href="${iconPathForExt(this.ext)}#icon"></use></svg>`;
   }
 
   renderItem() {
@@ -259,7 +257,7 @@ export default class DaListItem extends LitElement {
           ` : html`
             <span class="da-item-list-item-type">
               ${this.renderIcon()}
-              ${this.isFavorited ? html`<svg class="da-item-list-item-favorite" viewBox="0 0 20 20" aria-label="Favorited"><use href="${ICONS.favorite}#icon"</svg>` : nothing}
+              ${this.isFavorited ? html`<svg class="da-item-list-item-favorite" viewBox="0 0 20 20" aria-label="Favorited"><use href="${ICONS.favorite}#icon"></use></svg>` : nothing}
             </span>
           `}
           <div class="da-item-list-item-name">
@@ -287,7 +285,7 @@ export default class DaListItem extends LitElement {
       </div>
       <div class="da-list-item-da-details-modified">
         <p class="da-list-item-details-title">Modified by</p>
-        <p>${this._lastModifedBy ? this._lastModifedBy : 'Checking'}</p>
+        <p>${this._lastModifiedBy ? this._lastModifiedBy : 'Checking'}</p>
       </div>
     `;
   }
@@ -304,7 +302,7 @@ export default class DaListItem extends LitElement {
 
   render() {
     return html`
-      <div class="da-item-list-item-inner ${this.allowselect ? 'can-select' : ''}">
+      <div class="da-item-list-item-inner">
         ${this.allowselect ? this.renderCheckBox() : html`<span class="da-item-list-item-selection-placeholder" data-column="select" aria-hidden="true"></span>`}
         ${this.rename ? this.renderRename() : this.renderItem()}
         <button
@@ -326,7 +324,6 @@ export default class DaListItem extends LitElement {
             target="_blank"
             title="Open preview"
             aria-labelledby="preview-label preview-date"
-            @click=${this.showPreview}
             class="da-item-list-item-aem-btn">
             <span class="da-item-list-item-aem-icon ${this._preview?.status === 200 ? 'is-active' : ''}" aria-hidden="true"></span>
             <span id="preview-date" class="da-aem-icon-date">${this._preview?.status === 401 || this._preview?.status === 403 ? 'Not authorized' : this.renderAemDate('_preview')}</span>
@@ -339,7 +336,6 @@ export default class DaListItem extends LitElement {
             target="_blank"
             title="Open published page"
             aria-labelledby="live-label live-date"
-            @click=${this.showPreview}
             class="da-item-list-item-aem-btn">
             <span class="da-item-list-item-aem-icon ${this._live?.status === 200 ? 'is-active' : ''}" aria-hidden="true"></span>
             <span id="live-date" class="da-aem-icon-date">${this._live?.status === 401 || this._live?.status === 403 ? 'Not authorized' : this.renderAemDate('_live')}</span>

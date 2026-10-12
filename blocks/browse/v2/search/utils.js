@@ -1,6 +1,6 @@
 const MAX_SNIPPETS = 3;
 const MAX_SNIPPET_LENGTH = 160;
-const CONTEXT_LENGTH = 40;
+const CONTEXT_LENGTH = 20;
 
 export function getSearchPattern({ term, caseSensitive }) {
   const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -15,7 +15,7 @@ export function getMatchContext({
   pattern = getSearchPattern({ term, caseSensitive }),
 }) {
   const snippets = [];
-  let hasMore = false;
+  let moreCount = 0;
   let previousMatchEnd = 0;
   for (const match of text.matchAll(pattern)) {
     const previous = snippets.at(-1);
@@ -26,8 +26,7 @@ export function getMatchContext({
         end: Math.min(match.index + match[0].length, previousEnd) - previous.offset,
       });
     } else if (snippets.length === MAX_SNIPPETS) {
-      hasMore = true;
-      break;
+      moreCount += 1;
     } else {
       const start = Math.max(previousEnd, previousMatchEnd, match.index - CONTEXT_LENGTH, 0);
       const end = Math.min(
@@ -50,5 +49,6 @@ export function getMatchContext({
     }
     previousMatchEnd = match.index + match[0].length;
   }
-  return { filenameMatch: filename.search(pattern) !== -1, snippets, hasMore };
+  const filenameMatch = filename.search(pattern) !== -1;
+  return { filenameMatch, snippets, hasMore: moreCount > 0, moreCount };
 }

@@ -138,12 +138,12 @@ export default class DaNew extends LitElement {
     const accent = this.variant === 'accent';
     return html`
       <div class="da-actions-create">
-        <nx-menu .items=${[
-        { id: 'folder', label: 'Folder' },
-        { id: 'document', label: 'Page' },
-        { id: 'sheet', label: 'Sheet' },
-        { id: 'media', label: 'Media' },
-        { id: 'link', label: 'Link' },
+        <nx-menu size="m" .items=${[
+        { id: 'folder', label: 'Folder', icon: 'folder' },
+        { id: 'document', label: 'Page', icon: 'filehtml' },
+        { id: 'sheet', label: 'Sheet', icon: 'data' },
+        { id: 'media', label: 'Media', icon: 'image' },
+        { id: 'link', label: 'Link', icon: 'link' },
       ]} @select=${this.handleNewType}>
           <button slot="trigger" class="da-actions-new-button ${accent ? 'nx-btn-accent' : 'nx-action-btn-icon'}" ?disabled=${this._disabled || this._loading} aria-label="New">
             ${this._loading

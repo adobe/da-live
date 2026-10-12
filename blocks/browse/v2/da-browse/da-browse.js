@@ -19,6 +19,11 @@ function openChatPanel() {
   document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat' } }));
 }
 
+function toggleToolsPanel(open) {
+  const type = open ? PANEL_EVENT.CLOSE : PANEL_EVENT.OPEN;
+  document.dispatchEvent(new CustomEvent(type, { detail: { section: 'tools', id: 'search' } }));
+}
+
 function closeChatPanel() {
   document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
 }
@@ -163,9 +168,7 @@ export default class DaBrowse extends LitElement {
       action.innerHTML = `<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true">
         <use href="/img/icons/s2-icon-properties-20-n.svg#icon"></use>
       </svg>`;
-      action.addEventListener('click', () => {
-        document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'tools' } }));
-      });
+      action.addEventListener('click', () => toggleToolsPanel(this._toolsOpen));
       field.append(action);
       this._searchAction = action;
       this._navSearch = field;
@@ -187,7 +190,6 @@ export default class DaBrowse extends LitElement {
 
   setSearchDraft(value) {
     if (this._searchState.replacement?.loading) return;
-    this._searchPanel?.invalidateReplacement();
     if (!value) {
       this.clearSearch();
       return;
@@ -197,7 +199,6 @@ export default class DaBrowse extends LitElement {
   }
 
   clearSearch() {
-    this._searchPanel?.invalidateReplacement();
     const wasSearching = !!this._searchEngine;
     this._searchRequest = undefined;
     this._searchEngine?.cancelSearch();
@@ -338,10 +339,14 @@ export default class DaBrowse extends LitElement {
     try {
       const result = await search.replaceMatches({ replacement });
       if (this._searchEngine !== search || !this.isConnected) return;
-      this._searchState = {
-        ...this._searchState,
-        replacement: result.cancelled ? { error: 'Replacement cancelled.' } : result,
-      };
+      if (result.cancelled) {
+        this._searchState = { ...this._searchState, replacement: { error: 'Replacement cancelled.' } };
+      } else {
+        // Results are stale once replaced; reset the search but keep the outcome visible.
+        this.clearSearch();
+        this._searchState = { ...this._searchState, replacement: result };
+        this.syncSearchPanel();
+      }
     } catch (error) {
       if (this._searchEngine === search && this.isConnected) {
         this._searchState = {

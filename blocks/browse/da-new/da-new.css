@@ -43,7 +43,3 @@
 .da-actions-file {
   display: none;
 }
-
-nx-menu {
-  --nx-menu-font-size: var(--s2-body-size-s);
-}

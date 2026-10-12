@@ -1,7 +1,7 @@
 import { LitElement, html, repeat, nothing } from 'da-lit';
 import { isFavorite, toggleFavorite } from '../../shared/favorites.js';
 import { getBrowseSettings, updateBrowseSettings } from '../shared/settings.js';
-import { getTypeLabel } from '../../../shared/icons.js';
+import { getTypeLabel, isMediaExt } from '../../../shared/icons.js';
 import { getNx, getNx2, getNx2Api, sanitizePathParts } from '../../../../scripts/utils.js';
 import {
   aemAction,
@@ -41,6 +41,7 @@ const TYPE_TAG_CLASSES = {
   Folder: 'folder',
   Page: 'page',
   Image: 'image',
+  Video: 'video',
   Link: 'link',
   Sheet: 'sheet',
 };
@@ -62,13 +63,12 @@ export default class DaList extends LitElement {
     listItems: { attribute: false },
     newItem: { attribute: false },
     _permissions: { state: true },
+    _itemsRemaining: { state: true },
     _collapsedTypes: { state: true },
     _hiddenTypes: { state: true },
     _listItems: { state: true },
-    _itemsRemaining: { state: true },
     _itemErrors: { state: true },
-    _sortName: { state: true },
-    _sortDate: { state: true },
+    _sort: { state: true },
     _sorting: { state: true },
     _selectedItems: { state: true },
     _dropFiles: { state: true },
@@ -127,8 +127,7 @@ export default class DaList extends LitElement {
 
     if (props.has('fullpath') && this.fullpath) {
       const path = this.fullpath;
-      this._sortName = undefined;
-      this._sortDate = undefined;
+      this._sort = undefined;
       this.notifySortState();
       this._allPagesLoaded = false;
       // Resolve the delete allowlist alongside the listing so the action bar's
@@ -159,7 +158,7 @@ export default class DaList extends LitElement {
   }
 
   async firstUpdated() {
-    await import('../../../shared/da-dialog/da-dialog.js');
+    await import('../../../shared/da-confirm-dialog/da-confirm-dialog.js');
     await import('../../da-actionbar/da-actionbar.js');
     this.setupObserver();
   }
@@ -363,7 +362,7 @@ export default class DaList extends LitElement {
     this._listItems.unshift(this.newItem);
     this.newItem = null;
     const { property, direction } = this.sortState;
-    if (property) this.handleSort(direction === 'ascending' ? 'new' : 'old', property);
+    if (property) this.handleSort(direction, property);
   }
 
   handleClear() {
@@ -480,7 +479,17 @@ export default class DaList extends LitElement {
     if (path) this._listItemPaths.add(path);
     this._listItems[index] = item;
     const { property, direction } = this.sortState;
-    if (property) this.handleSort(direction === 'ascending' ? 'new' : 'old', property);
+    if (property) this.handleSort(direction, property);
+  }
+
+  // Timers that touch component state are cancelled on disconnect.
+  later(fn, milliseconds) {
+    this._timers ??= new Set();
+    const id = setTimeout(() => {
+      this._timers.delete(id);
+      fn();
+    }, milliseconds);
+    this._timers.add(id);
   }
 
   wait(milliseconds) {
@@ -681,7 +690,7 @@ export default class DaList extends LitElement {
 
   handleShare() {
     this.setStatus('Copied', 'URLs have been copied to the clipboard.');
-    setTimeout(() => { this.setStatus(); }, 3000);
+    this.later(() => this.setStatus(), 3000);
   }
 
   handlePreview() {
@@ -734,7 +743,6 @@ export default class DaList extends LitElement {
     }
     let remaining = items.length;
     const results = [];
-    const MEDIA_EXTS = new Set(['jpg', 'jpeg', 'png', 'gif', 'mp4', 'pdf', 'svg', 'ico', 'webp', 'avif']);
 
     const callback = async (item) => {
       const aemPath = item.ext === 'html' ? item.path.replace(/\.html$/, '') : item.path;
@@ -744,14 +752,14 @@ export default class DaList extends LitElement {
       } else if (json.error) {
         this._itemErrors.push({ ...item, message: json.error?.message || `Couldn't ${action} item` });
       } else {
-        if (!MEDIA_EXTS.has(item.ext)) createVersion(item.path, `${verb}ed`);
+        if (!isMediaExt(item.ext)) createVersion(item.path, `${verb}ed`);
         results.push({ name: item.name, url: json[urlKey]?.url });
       }
       remaining -= 1;
       if (remaining === 0) {
         if (results.length > 0) {
           this._aemActionState = { verb, results };
-          setTimeout(() => {
+          this.later(() => {
             if (this._confirm?.type !== 'results') this._aemActionState = null;
           }, 5000);
           this.handleErrorClose();
@@ -882,26 +890,22 @@ export default class DaList extends LitElement {
     };
   }
 
-  handleSort(type, prop) {
-    const first = type === 'old' ? -1 : 1;
-    const last = type === 'old' ? 1 : -1;
+  handleSort(direction, prop) {
+    const first = direction === 'ascending' ? 1 : -1;
+    const last = -first;
 
     const sortFn = this.getSortFn(first, last, prop);
     this._listItems.sort(sortFn);
     this.applyFavoriteOrder();
-    this._sortName = prop === 'name' ? type : undefined;
-    this._sortDate = prop === 'lastModified' ? type : undefined;
+    this._sort = { property: prop, direction };
     this._lastCheckedIndex = null;
     this.requestUpdate();
   }
 
   get sortState() {
-    let property = null;
-    if (this._sortName) property = 'name';
-    else if (this._sortDate) property = 'lastModified';
     return {
-      property,
-      direction: this.getSortAttr(this._sortName || this._sortDate),
+      property: this._sort?.property ?? null,
+      direction: this._sort?.direction ?? 'none',
       loading: !!this._sorting,
     };
   }
@@ -917,7 +921,7 @@ export default class DaList extends LitElement {
         this.setStatus('Could not sort all files', 'Loading the remaining files did not complete. Please try again.', 'error');
         return;
       }
-      this.handleSort(direction === 'ascending' ? 'new' : 'old', property);
+      this.handleSort(direction, property);
       if (this.sort) updateBrowseSettings({ sort: { property, direction } });
     } finally {
       this._sorting = false;
@@ -944,12 +948,13 @@ export default class DaList extends LitElement {
     }
   }
 
-  async handleNameSort() {
-    await this.setSort('name', this._sortName === 'old' ? 'ascending' : 'descending');
+  async toggleSort(property) {
+    const descending = this._sort?.property === property && this._sort.direction === 'descending';
+    await this.setSort(property, descending ? 'ascending' : 'descending');
   }
 
-  async handleDateSort() {
-    await this.setSort('lastModified', this._sortDate === 'old' ? 'ascending' : 'descending');
+  sortDirectionFor(property) {
+    return this._sort?.property === property ? this._sort.direction : 'none';
   }
 
   get filteredItems() {
@@ -1106,18 +1111,14 @@ export default class DaList extends LitElement {
     }
 
     const checkbox = html`
-      <div class="da-modal-checkbox">
+      <label class="nx-checkbox">
         <input
           type="checkbox"
           name="confirm-unpublish"
-          ?checked=${this._unpublish}
-          @click=${() => { this._unpublish = !this._unpublish; }}>
-        <label
-          for="confirm-unpublish"
-          @click=${() => { this._unpublish = !this._unpublish; }}>
-          Unpublish ${this._itemString}
-        </label>
-      </div>
+          .checked=${this._unpublish}
+          @change=${(e) => { this._unpublish = e.target.checked; }}>
+        Unpublish ${this._itemString}
+      </label>
     `;
 
     const subject = requireTypedDelete
@@ -1218,13 +1219,13 @@ export default class DaList extends LitElement {
     }
 
     return html`
-      <da-dialog
+      <da-confirm-dialog
         title=${title}
         .message=${message}
         .action=${action}
         @close=${this.handleConfirmClose}>
         ${body}
-      </da-dialog>
+      </da-confirm-dialog>
     `;
   }
 
@@ -1239,7 +1240,7 @@ export default class DaList extends LitElement {
     };
 
     return html`
-      <da-dialog
+      <da-confirm-dialog
         title="Replace ${count} existing ${itemWord}"
         .action=${action}
         @close=${this.handleDropCancel}>
@@ -1247,7 +1248,7 @@ export default class DaList extends LitElement {
         <ul class="da-drop-conflicts">
           ${this._dropConflicts.map((name) => html`<li>${name}</li>`)}
         </ul>
-      </da-dialog>
+      </da-confirm-dialog>
     `;
   }
 
@@ -1276,7 +1277,7 @@ export default class DaList extends LitElement {
           try {
             await navigator.clipboard.writeText(results.map(({ url }) => url).filter(Boolean).join('\n'));
             this.setStatus('Copied', 'URLs copied to clipboard.');
-            setTimeout(() => { this.setStatus(); }, 3000);
+            this.later(() => this.setStatus(), 3000);
           } catch { /* clipboard not accessible */ }
         },
       };
@@ -1325,12 +1326,12 @@ export default class DaList extends LitElement {
     }
 
     return html`
-      <da-dialog
+      <da-confirm-dialog
         title=${title}
         .action=${action}
         @close=${closeHandler}>
         ${body}
-      </da-dialog>
+      </da-confirm-dialog>
     `;
   }
 
@@ -1345,7 +1346,7 @@ export default class DaList extends LitElement {
     };
 
     return html`
-      <da-dialog
+      <da-confirm-dialog
         title="Errors"
         .action=${action}
         @close=${this.handleErrorClose}>
@@ -1353,7 +1354,7 @@ export default class DaList extends LitElement {
           <p class="error-item-message">${item.message}</p>
           <p class="error-item-name">${item.name}</p>
         `)}
-      </da-dialog>
+      </da-confirm-dialog>
     `;
   }
 
@@ -1444,11 +1445,6 @@ export default class DaList extends LitElement {
     `;
   }
 
-  getSortAttr(sortType) {
-    if (!sortType) return 'none';
-    return sortType === 'old' ? 'descending' : 'ascending';
-  }
-
   render() {
     const hasMorePages = this._continuationToken && !this._allPagesLoaded;
     const { filteredItems } = this;
@@ -1459,11 +1455,11 @@ export default class DaList extends LitElement {
         <div class="da-browse-header-cell da-browse-header-cell-select" data-column="select">
           ${this.renderCheckBox()}
         </div>
-        <div class="da-browse-header-cell da-browse-header-cell-name" data-column="name" role="columnheader" aria-sort="${this.getSortAttr(this._sortName) || 'none'}">
+        <div class="da-browse-header-cell da-browse-header-cell-name" data-column="name" role="columnheader" aria-sort="${this.sortDirectionFor('name')}">
           <div class="da-browse-header-container">
             <button
-              class="da-browse-header-name ${this._sortName} ${this._bulkLoading ? 'loading' : ''}"
-              @click=${this.handleNameSort}
+              class="da-browse-header-name ${this.sortDirectionFor('name')} ${this._bulkLoading ? 'loading' : ''}"
+              @click=${() => this.toggleSort('name')}
               ?disabled=${this._bulkLoading}
               aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
               Name
@@ -1471,11 +1467,11 @@ export default class DaList extends LitElement {
           </div>
         </div>
         <div class="da-browse-header-cell da-browse-header-cell-type" data-column="type" role="columnheader">Type</div>
-        <div class="da-browse-header-cell da-browse-header-cell-modified" data-column="modified" role="columnheader" aria-sort="${this.getSortAttr(this._sortDate) || 'none'}">
+        <div class="da-browse-header-cell da-browse-header-cell-modified" data-column="modified" role="columnheader" aria-sort="${this.sortDirectionFor('lastModified')}">
           <div class="da-browse-header-container">
             <button
-              class="da-browse-header-name ${this._sortDate} ${this._bulkLoading ? 'loading' : ''}"
-              @click=${this.handleDateSort}
+              class="da-browse-header-name ${this.sortDirectionFor('lastModified')} ${this._bulkLoading ? 'loading' : ''}"
+              @click=${() => this.toggleSort('lastModified')}
               ?disabled=${this._bulkLoading}
               aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
               Modified
@@ -1575,7 +1571,7 @@ export default class DaList extends LitElement {
 
   updated(changedProps) {
     super.updated(changedProps);
-    if (changedProps.has('_sortName') || changedProps.has('_sortDate') || changedProps.has('_sorting') || changedProps.has('_bulkLoading')) {
+    if (changedProps.has('_sort') || changedProps.has('_sorting') || changedProps.has('_bulkLoading')) {
       this.notifySortState();
     }
     if (changedProps.has('_hiddenTypes') || changedProps.has('_listItems')) this.notifyTypesFilter();
@@ -1621,6 +1617,8 @@ export default class DaList extends LitElement {
   disconnectedCallback() {
     if (this._observer) this._observer.disconnect();
     if (this._autoCheckTimer) clearTimeout(this._autoCheckTimer);
+    this._timers?.forEach(clearTimeout);
+    this._timers?.clear();
     super.disconnectedCallback();
   }
 

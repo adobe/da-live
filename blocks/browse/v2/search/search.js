@@ -170,7 +170,8 @@ export default class SearchEngine extends EventTarget {
     const queue = new Queue(async (file) => {
       results.push(await replaceFile(file));
     }, 10);
-    await Promise.all(this._items.map((match) => queue.push(match)));
+    const targets = this._items.filter((item) => item.matchContext?.snippets.length);
+    await Promise.all(targets.map((match) => queue.push(match)));
     if (this._searchRun !== run) return { cancelled: true };
     this._replaceErrors = results.filter((result) => result?.error);
 
