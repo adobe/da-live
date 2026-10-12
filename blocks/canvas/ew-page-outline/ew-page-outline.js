@@ -731,7 +731,7 @@ class EwPageOutline extends LitElement {
              @dragover=${(e) => this._onContentGroupDragOver(e, item)}
              @drop=${this._onDrop}>
           ${this._renderDragHandle(false)}
-          ${this._renderChevron(1)}
+          ${this._renderChevron(0)}
           <span class="block-name content-label">Default content</span>
         </div>
         ${expanded ? html`
@@ -749,7 +749,7 @@ class EwPageOutline extends LitElement {
                   @dragend=${this._onDragEnd}
                   @click=${(e) => { e.stopPropagation(); this._selectProse(child.proseIndex, child.kind); }}>
                 ${this._renderDragHandle()}
-                ${this._renderChevron(2)}
+                ${this._renderChevron(1)}
                 <span class="content-label-stack">
                   <span class="block-name content-label">${label}</span>
                   ${child.snippet ? html`<span class="content-snippet">${child.snippet}</span>` : nothing}
@@ -792,7 +792,6 @@ class EwPageOutline extends LitElement {
              @dragstart=${(e) => this._onDragStart(e, OUTLINE_TYPES.SECTION, sec.sectionIndex)}
              @dragend=${this._onDragEnd}>
           ${this._renderDragHandle()}
-          ${this._renderChevron(0)}
           ${this._renderSectionLabel(sec)}
           ${this._renderSectionMenu(sec)}
         </div>
@@ -802,7 +801,7 @@ class EwPageOutline extends LitElement {
         ? html`<li class="block-item block-empty"
                     role="treeitem" tabindex="-1">
                 ${this._renderDragHandle(false)}
-                ${this._renderChevron(1)}
+                ${this._renderChevron(0)}
                 <span class="empty-label">Empty section</span>
               </li>`
         : sec.items.map((item, itemIdx) => (item.type === 'block'
@@ -818,7 +817,7 @@ class EwPageOutline extends LitElement {
                 @dragend=${this._onDragEnd}
                 @click=${() => this._select(item.blockIndex)}>
               ${this._renderDragHandle()}
-              ${this._renderChevron(1)}
+              ${this._renderChevron(0)}
               <span class="block-name">${item.name}${item.variant ? ` (${item.variant})` : ''}</span>
               ${this._renderDeleteButton(OUTLINE_TYPES.BLOCK, item.blockIndex)}
             </li>`

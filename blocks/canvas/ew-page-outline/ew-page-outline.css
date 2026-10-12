@@ -175,7 +175,7 @@ input {
   flex-shrink: 0;
   width: 16px;
   height: 16px;
-  margin-inline-start: calc(var(--level, 0) * var(--s2-spacing-300));
+  margin-inline-start: calc(var(--level, 0) * (16px + var(--s2-spacing-75)));
   line-height: 16px;
   text-align: center;
   transition: transform 0.15s;
