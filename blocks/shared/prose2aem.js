@@ -1,4 +1,5 @@
 import getPathDetails from './pathDetails.js';
+import { parseIcons, removeEditorArtifacts } from './prose-cleanup.js';
 
 function setCursor(cursor, el) {
   el.id = cursor.id;
@@ -227,15 +228,6 @@ function applySectionMetadata(editor) {
   });
 }
 
-const iconRegex = /(?<!(?:https?|urn)[^\s<>]*):(#?[a-z_-]+[a-z\d]*):/gi; // matches icon pattern but not in URLs
-function parseIcons(editor) {
-  if (!iconRegex.test(editor.innerHTML)) return;
-  editor.innerHTML = editor.innerHTML.replace(
-    iconRegex,
-    (_, iconName) => `<span class="icon icon-${iconName}"></span>`,
-  );
-}
-
 const removeEls = (els) => els.forEach((el) => el.remove());
 
 function convertLocalUrlsToRelative(editor) {
@@ -282,17 +274,7 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
   const daDiffDeletedEls = editor.querySelectorAll('da-diff-deleted');
   removeEls(daDiffDeletedEls);
 
-  const emptyImgs = editor.querySelectorAll('img.ProseMirror-separator');
-  removeEls(emptyImgs);
-
-  const trailingBreaks = editor.querySelectorAll('.ProseMirror-trailingBreak');
-  removeEls(trailingBreaks);
-
-  const userPointers = editor.querySelectorAll('.ProseMirror-yjs-cursor');
-  removeEls(userPointers);
-
-  const gapCursors = editor.querySelectorAll('.ProseMirror-gapcursor');
-  removeEls(gapCursors);
+  removeEditorArtifacts(editor);
 
   const highlights = editor.querySelectorAll('span.ProseMirror-yjs-selection');
   highlights.forEach((el) => {

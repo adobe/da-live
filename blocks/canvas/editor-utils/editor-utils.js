@@ -177,7 +177,7 @@ export function getEditor(data, ctx) {
     return;
   }
   const { view } = ctx;
-  const { cursorOffset, previousDoc } = data;
+  const { cursorOffset, previousDoc, origin } = data;
   if (typeof cursorOffset !== 'number') return;
 
   const { doc } = view.state;
@@ -194,6 +194,7 @@ export function getEditor(data, ctx) {
         cursorOffset: newCursorOffset,
         imageVersion: getImageDocumentVersion(doc),
         lengthDiff: previousDoc ? doc.content.size - previousDoc.content.size : 0,
+        origin,
       },
     });
     markPreviewSynced(ctx, data);

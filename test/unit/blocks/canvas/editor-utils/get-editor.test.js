@@ -62,6 +62,16 @@ function capture(view) {
 describe('getEditor with a table-backed (cards) block', () => {
   afterEach(() => { document.body.innerHTML = ''; });
 
+  it('forwards the edit origin to the preview', () => {
+    const view = makeView(cardsDoc);
+    const cursorOffset = posBefore(view.state.doc, 'paragraph');
+    const { ctx, posted } = capture(view);
+
+    getEditor({ cursorOffset, origin: 'remote' }, ctx);
+
+    expect(posted[0].payload.origin).to.equal('remote');
+  });
+
   it('sends the cell heading, never the enclosing table_cell', () => {
     const view = makeView(cardsDoc);
     const cursorOffset = posBefore(view.state.doc, 'heading');
