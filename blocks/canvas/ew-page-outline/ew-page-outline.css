@@ -80,8 +80,13 @@ input {
   box-sizing: border-box;
   width: 24px;
   height: 24px;
-  margin-inline: -4px;
+  margin-block: -4px;
+  margin-inline: -4px 0;
   cursor: grab;
+
+  &.nx-action-btn-icon {
+    color: inherit;
+  }
 
   &[aria-pressed="true"] {
     background: var(--s2-gray-200);
