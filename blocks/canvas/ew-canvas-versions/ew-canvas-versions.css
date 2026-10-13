@@ -56,7 +56,7 @@ button {
 .versionentry {
   position: relative;
   gap: var(--s2-spacing-75);
-  padding: var(--s2-spacing-200) var(--s2-spacing-200) 0 28px;
+  padding: var(--s2-spacing-300) var(--s2-spacing-200) 0 28px;
   border-left: 1px solid var(--s2-gray-200);
   min-height: 24px;
 
