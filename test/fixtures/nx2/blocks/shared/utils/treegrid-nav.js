@@ -1,6 +1,7 @@
 const ROW = '[role="row"]';
 const CONTROL = 'button, input, a[href], [role="button"]';
-const TEXT_ENTRY = 'input, textarea, [contenteditable="true"]';
+const TEXT_ENTRY = 'textarea, [contenteditable="true"]';
+const NAVIGABLE_INPUT_TYPES = new Set(['checkbox', 'button', 'submit', 'reset', 'image']);
 
 export function treegridRows(root) {
   return [...root.querySelectorAll(ROW)];
@@ -100,7 +101,8 @@ export function treegridKeydown(e, {
   activate = (row) => row.click(),
 }) {
   const active = root.activeElement;
-  if (!active || active.matches(TEXT_ENTRY)) return;
+  if (!active || active.matches(TEXT_ENTRY)
+    || (active.matches('input') && !NAVIGABLE_INPUT_TYPES.has(active.type))) return;
   const rows = treegridRows(root);
   if (active.matches(ROW)) {
     rowKeydown(e, active, rows, { toggle, activate });
