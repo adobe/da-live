@@ -1,6 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
-import { setNx } from '../../../../../scripts/utils.js';
+import { getNx, setNx } from '../../../../../scripts/utils.js';
 import { adaptEvaluation } from '../../../../../blocks/canvas/ew-preflight/adapter.js';
 
 const tick = () => new Promise((resolve) => { setTimeout(resolve, 20); });
@@ -271,6 +271,150 @@ describe('ew-preflight preflight gate', () => {
       fresh.remove();
       cap?.stop();
       takePendingPreflightRequest();
+    }
+  });
+});
+
+describe('ew-preflight document navigation', () => {
+  let canvasBus;
+  let hashChange;
+  const PAGE_A = { org: 'o', site: 's', path: '/a' };
+  const PAGE_B = { org: 'o', site: 's', path: '/b' };
+
+  before(async () => {
+    setNx('/test/fixtures/nx', { hostname: 'example.com' });
+    await import('../../../../../blocks/canvas/ew-preflight/ew-preflight.js');
+    ({ canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js'));
+    ({ hashChange } = await import(`${getNx()}/utils/utils.js`));
+  });
+
+  // Records which page each evaluation ran for; `hold` keeps the next run pending.
+  // Mirrors the real _evaluate's runId guard against stale responses.
+  function trackEvaluate(el) {
+    const runs = [];
+    el._evaluate = () => {
+      const { path } = el._hashState;
+      const runId = (el._runId ?? 0) + 1;
+      el._runId = runId;
+      el._loading = true;
+      runs.push(path);
+      return new Promise((resolve) => {
+        const finish = () => {
+          if (el._runId === runId) {
+            el._loading = false;
+            el._error = null;
+            el._data = { failed: 0, path };
+          }
+          resolve();
+        };
+        if (el.hold) el.release = finish;
+        else finish();
+      });
+    };
+    return runs;
+  }
+
+  async function mount(view) {
+    hashChange._set(PAGE_A);
+    canvasBus.toolPanelViewState.emit(view);
+    const el = document.createElement('ew-preflight');
+    const runs = trackEvaluate(el);
+    document.body.appendChild(el);
+    await tick();
+    return { el, runs };
+  }
+
+  it('evaluates exactly once on first mount with the view active', async () => {
+    const { el, runs } = await mount('preflight');
+    try {
+      expect(runs).to.deep.equal(['/a']);
+    } finally {
+      el.remove();
+    }
+  });
+
+  it('does not evaluate again when a gate already ran while the view was hidden', async () => {
+    const { el, runs } = await mount('preflight');
+    try {
+      canvasBus.toolPanelViewState.emit('files');
+      hashChange._set(PAGE_B);
+      el.hold = true;
+      const running = el._handlePreflightRun({ paths: ['/o/s/b.html'], requestId: 'nav2' });
+      canvasBus.toolPanelViewState.emit('preflight');
+      await tick();
+      expect(runs).to.deep.equal(['/a', '/b']);
+      el.release();
+      await running;
+      canvasBus.toolPanelViewState.emit('preflight');
+      await tick();
+      expect(runs).to.deep.equal(['/a', '/b']);
+    } finally {
+      el.remove();
+    }
+  });
+
+  it('re-evaluates the new page when navigating while the view is active', async () => {
+    const { el, runs } = await mount('preflight');
+    try {
+      hashChange._set(PAGE_B);
+      await tick();
+      expect(runs).to.deep.equal(['/a', '/b']);
+      expect(el._data.path).to.equal('/b');
+    } finally {
+      el.remove();
+    }
+  });
+
+  it('defers re-evaluation until the view is shown again', async () => {
+    const { el, runs } = await mount('preflight');
+    try {
+      canvasBus.toolPanelViewState.emit('files');
+      hashChange._set(PAGE_B);
+      await tick();
+      expect(runs).to.deep.equal(['/a']);
+      expect(el._data).to.equal(null);
+
+      canvasBus.toolPanelViewState.emit('preflight');
+      await tick();
+      expect(runs).to.deep.equal(['/a', '/b']);
+    } finally {
+      el.remove();
+    }
+  });
+
+  it('ignores hash changes that keep the same page', async () => {
+    const { el, runs } = await mount('preflight');
+    try {
+      hashChange._set({ ...PAGE_A });
+      await tick();
+      expect(runs).to.deep.equal(['/a']);
+    } finally {
+      el.remove();
+    }
+  });
+
+  it('cancels a gate for the old page and drops its late result', async () => {
+    const { el, runs } = await mount('preflight');
+    try {
+      el.hold = true;
+      const running = el._handlePreflightRun({ paths: ['/o/s/a.html'], requestId: 'nav1' });
+      const releaseOld = el.release;
+
+      const cap = captureStatus();
+      el.hold = false;
+      hashChange._set(PAGE_B);
+      await tick();
+      releaseOld();
+      await running;
+      cap.stop();
+
+      expect(runs).to.deep.equal(['/a', '/a', '/b']);
+      expect(cap.events.filter((d) => d.requestId)).to.deep.equal([
+        { path: '/o/s/a.html', status: 'cancelled', requestId: 'nav1' },
+      ]);
+      expect(el._data.path).to.equal('/b');
+    } finally {
+      el.remove();
     }
   });
 });

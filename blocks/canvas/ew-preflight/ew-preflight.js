@@ -12,6 +12,12 @@ const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const style = await loadStyle(import.meta.url);
 const baseStyle = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
 
+const VIEW_ID = 'preflight';
+
+function pageKey({ org, site, path } = {}) {
+  return org && site ? `${org}/${site}/${(path ?? '').replace(/^\//, '')}` : '';
+}
+
 const REFRESH_ICON_SRC = '/img/icons/s2-icon-refresh-20-n.svg';
 const REFRESH_ICON_HTML = `<svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${REFRESH_ICON_SRC}#icon"></use></svg>`;
 const REFRESH_SPINNER_HTML = '<span class="da-loading-spinner" aria-hidden="true"></span>';
@@ -34,23 +40,30 @@ class EwPreflight extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [baseStyle, style];
-    this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
+    this._unsubHash = hashChange.subscribe((state) => {
+      this._hashState = state;
+      if (this._started && pageKey(state) !== this._evaluatedKey) this._onPageChange();
+    });
     // Answer a publish gate that runs while the panel is already mounted.
     this._unsubRun = canvasBus.preflightRunRequest.subscribe(this._handlePreflightRun);
     if (!this._started) {
       this._started = true;
       // If a publish opened this panel, run for that gate; otherwise a plain first-open
-      // evaluation. Later page navigation does not re-run; only the header refresh does.
+      // evaluation. Page navigation re-runs via _onPageChange.
       const pending = takePendingPreflightRequest();
       if (pending) this._handlePreflightRun(pending);
       else this._evaluateAndReport();
     }
+    // After the first-open run: the channel replays the current view immediately, which
+    // must find that run already loading rather than start a second one.
+    this._unsubView = canvasBus.toolPanelViewState.subscribe(this._onViewState);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
     this._unsubRun?.();
+    this._unsubView?.();
     // Unmounting before a gate settles frees the waiting publish immediately.
     this._cancelGate();
   }
@@ -78,9 +91,40 @@ class EwPreflight extends LitElement {
     return this._data?.failed === 0 ? 'success' : 'fail';
   }
 
+  // Records which page the results belong to, so navigation can tell they are stale.
+  _evaluateCurrentPage() {
+    this._evaluatedKey = pageKey(this._hashState);
+    return this._evaluate();
+  }
+
+  // The results belong to the previous document: drop them, free a gate waiting on the
+  // old path, and evaluate the new page once the view is shown.
+  _onPageChange() {
+    if (this._gateRequestId && this._gatePath !== this._docFullpath) this._cancelGate();
+    this._evaluatedKey = pageKey(this._hashState);
+    this._runId = (this._runId ?? 0) + 1;
+    this._data = null;
+    this._error = null;
+    this._loading = false;
+    this._setRefreshBusy(false);
+    this._evaluateIfShown();
+  }
+
+  _onViewState = (viewId) => {
+    this._activeView = viewId;
+    this._evaluateIfShown();
+  };
+
+  // No results, no error and nothing in flight means the current page was never evaluated.
+  _evaluateIfShown() {
+    if (this._activeView !== VIEW_ID) return;
+    if (this._data || this._error || this._loading) return;
+    this._evaluateAndReport();
+  }
+
   // Run the checks and, outside a gate, report the verdict so the Publish dot tracks it.
   async _evaluateAndReport() {
-    await this._evaluate();
+    await this._evaluateCurrentPage();
     if (this._gateRequestId) return;
     reportPreflightStatus({ path: this._docFullpath, status: this._resultStatus() });
   }
@@ -104,7 +148,7 @@ class EwPreflight extends LitElement {
     this._unsubPanelVisibility = canvasBus.toolPanelViewState.subscribe((viewId) => {
       if (viewId === null) this._cancelGate();
     });
-    await this._evaluate();
+    await this._evaluateCurrentPage();
     this._finishGate(this._resultStatus());
   };
 
