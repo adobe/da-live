@@ -60,6 +60,7 @@ export default class DaList extends LitElement {
     sort: { type: Boolean },
     drag: { type: Boolean },
     flattenFolders: { type: Boolean },
+    view: { type: String },
     listItems: { attribute: false },
     newItem: { attribute: false },
     _permissions: { state: true },
@@ -1359,6 +1360,11 @@ export default class DaList extends LitElement {
   }
 
   renderGroupItems(items, indexByPath) {
+    const rows = this.renderGroupRows(items, indexByPath);
+    return this.view === 'card' ? html`<div class="da-card-grid" role="presentation">${rows}</div>` : rows;
+  }
+
+  renderGroupRows(items, indexByPath) {
     return repeat(items, (item) => item.path, (item) => {
       const idx = indexByPath.get(item.path);
       return html`
@@ -1368,6 +1374,7 @@ export default class DaList extends LitElement {
           @onstatus=${({ detail }) => this.setStatus(detail.text, detail.description, detail.type)}
           @renamecompleted=${(e) => this.handleRenameCompleted(e)}
           allowselect="${this.select ? true : nothing}"
+          view="${this.view === 'card' ? 'card' : nothing}"
           ischecked="${item.isChecked ? true : nothing}"
           isfavorited="${item.isFavorited ? true : nothing}"
           rename="${item.rename ? true : nothing}"
@@ -1451,7 +1458,7 @@ export default class DaList extends LitElement {
     const showList = filteredItems?.length > 0 || hasMorePages;
 
     return html`
-      <div class="da-browse-panel-header da-browse-table-header" role="row">
+      <div class="da-browse-panel-header da-browse-table-header ${this.view === 'card' ? 'is-card' : ''}" role="row">
         <div class="da-browse-header-cell da-browse-header-cell-select" data-column="select">
           ${this.renderCheckBox()}
         </div>

@@ -27,6 +27,10 @@ const VIDEO_EXTS = ['mp4', 'webm', 'mov', 'm4v', 'ogv'];
 
 const IMG_EXTS = ['jpg', 'jpeg', 'ico', 'png', 'gif', 'svg', 'webp', 'avif'];
 
+export function isImageExt(ext) {
+  return IMG_EXTS.includes(ext);
+}
+
 export function isMediaExt(ext) {
   return ext === 'pdf' || IMG_EXTS.includes(ext) || VIDEO_EXTS.includes(ext);
 }
@@ -41,7 +45,7 @@ export function getTypeLabel(ext) {
   if (ext === 'html') return 'Page';
   if (ext === 'link') return 'Link';
   if (ext === 'json') return 'Sheet';
-  if (IMG_EXTS.includes(ext)) return 'Image';
+  if (isImageExt(ext)) return 'Image';
   if (VIDEO_EXTS.includes(ext)) return 'Video';
   return ext.toUpperCase();
 }

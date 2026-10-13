@@ -146,6 +146,23 @@ da-list-item.is-expanded::after {
   min-height: 52px;
 }
 
+.da-browse-table-header.is-card {
+  display: flex;
+  min-height: 40px;
+  padding-inline: var(--da-list-pad-inline, 24px);
+
+  > :not(.da-browse-header-cell-select) {
+    display: none;
+  }
+}
+
+.da-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--s2-spacing-200);
+  padding: var(--s2-spacing-200) var(--da-list-pad-inline, 24px);
+}
+
 .da-browse-header-cell {
   min-width: 0;
   color: var(--s2-gray-600);

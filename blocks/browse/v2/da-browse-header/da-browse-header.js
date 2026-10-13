@@ -3,6 +3,7 @@ import { getNx, getNx2 } from '../../../../scripts/utils.js';
 
 await import(`${getNx()}/blocks/shared/switch/switch.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
+await import(`${getNx()}/blocks/shared/segmented-btn/segmented.js`);
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const [BUTTONS, style] = await Promise.all([
@@ -10,11 +11,17 @@ const [BUTTONS, style] = await Promise.all([
   loadStyle(import.meta.url),
 ]);
 
+const VIEW_ITEMS = [
+  { value: 'list', label: 'List view', icon: '/img/icons/s2-icon-viewlist-20-n.svg', iconOnly: true },
+  { value: 'card', label: 'Card view', icon: '/img/icons/s2-icon-viewgrid-20-n.svg', iconOnly: true },
+];
+
 export default class DaBrowseHeader extends LitElement {
   static properties = {
     details: { attribute: false },
     chatEnabled: { type: Boolean },
     flattenFolders: { type: Boolean },
+    view: { type: String },
     typesFilterState: { attribute: false },
     sortState: { attribute: false },
     searchState: { attribute: false },
@@ -22,6 +29,7 @@ export default class DaBrowseHeader extends LitElement {
 
   connectedCallback() {
     this.flattenFolders ??= true;
+    this.view ??= 'list';
     this.typesFilterState ??= { open: false, hiddenCount: 0 };
     this.sortState ??= { property: null, direction: 'none', loading: false };
     super.connectedCallback();
@@ -53,6 +61,14 @@ export default class DaBrowseHeader extends LitElement {
     }));
   }
 
+  requestView({ detail }) {
+    this.dispatchEvent(new CustomEvent('viewchange', {
+      detail: { view: detail.value },
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
   requestChat() {
     this.dispatchEvent(new CustomEvent('chatrequest', { bubbles: true, composed: true }));
   }
@@ -79,16 +95,14 @@ export default class DaBrowseHeader extends LitElement {
       <nx-picker class="da-browse-sort-control" size="m" title=${this.sortLabel}
         .items=${options}
         .value=${this.sortState.property ? `${this.sortState.property}:${this.sortState.direction}` : ''}
-        .labelOverride=${this.sortLabel}
+        .labelOverride=${'Sort'}
         aria-label="Sort files" aria-busy=${this.sortState.loading} aria-disabled=${this.sortState.loading}
         ?inert=${this.sortState.loading}
         @change=${({ detail }) => {
         if (!options.some(({ value }) => value === detail.value)) return;
         const [property, direction] = detail.value.split(':');
         this.requestSort(property, direction);
-      }}>
-        <svg slot="prefix" viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-sort-20-n.svg#icon"></use></svg>
-      </nx-picker>`;
+      }}></nx-picker>`;
   }
 
   get sortLabel() {
@@ -106,6 +120,8 @@ export default class DaBrowseHeader extends LitElement {
       : 'Show All types';
     return html`
       <div class="da-browse-toolbar-controls" role="group" aria-label="Browse toolbar controls">
+        <nx-segmented-btn class="da-browse-view-control" label="View" .items=${VIEW_ITEMS}
+          .value=${this.view} @change=${this.requestView}></nx-segmented-btn>
         ${this.renderSortOptions()}
         <button type="button" class="da-browse-toolbar-control nx-action-btn-quiet" aria-haspopup="dialog"
           title=${typesLabel} aria-expanded=${this.typesFilterState.open} @click=${this.requestTypesFilter}>

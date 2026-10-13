@@ -1,7 +1,7 @@
 import { LitElement, html, nothing, until } from 'da-lit';
 import { delay, sanitizeName, formatDate } from '../../../shared/utils.js';
 import { getNx, getNx2, getNx2Api } from '../../../../scripts/utils.js';
-import { ICONS, iconPathForExt, getTypeLabel } from '../../../shared/icons.js';
+import { ICONS, iconPathForExt, getTypeLabel, isImageExt } from '../../../shared/icons.js';
 import { getBrowseItemHref } from '../shared/navigation.js';
 
 // Styles
@@ -21,9 +21,11 @@ export default class DaListItem extends LitElement {
     editor: { type: String },
     rename: { type: Boolean },
     allowselect: { type: Boolean },
+    view: { type: String, reflect: true },
     isChecked: { attribute: 'ischecked', type: Boolean },
     isFavorited: { attribute: 'isfavorited', type: Boolean },
     _isRenaming: { state: true },
+    _imageUrl: { state: true },
     _isExpanded: { state: true },
     _preview: { state: true },
     _live: { state: true },
@@ -42,12 +44,59 @@ export default class DaListItem extends LitElement {
     }
     if (props.has('path')) {
       if (props.get('path') !== this.path) {
+        this.resetImage();
         this.classList.remove('is-expanded');
         this._isExpanded = false;
       }
     }
 
     super.update(props);
+  }
+
+  disconnectedCallback() {
+    this.resetImage();
+    super.disconnectedCallback();
+  }
+
+  resetImage() {
+    this._imageObserver?.disconnect();
+    this._imageObserver = null;
+    this._imageRequested = false;
+    this.dropImage();
+  }
+
+  dropImage() {
+    if (this._imageUrl) URL.revokeObjectURL(this._imageUrl);
+    this._imageUrl = null;
+  }
+
+  updated() {
+    // One attempt per path: a failed load must not retry on every re-render.
+    if (this.view !== 'card' || !isImageExt(this.ext) || this._imageRequested
+      || this._imageObserver) return;
+    // Fetch lazily so large folders only load previews that scroll into view.
+    this._imageObserver = new IntersectionObserver(([entry]) => {
+      if (!entry?.isIntersecting) return;
+      this._imageObserver.disconnect();
+      this._imageObserver = null;
+      this.loadImage();
+    });
+    this._imageObserver.observe(this);
+  }
+
+  async loadImage() {
+    const { path } = this;
+    this._imageRequested = true;
+    try {
+      const { source } = await getNx2Api();
+      const resp = await source.get(path);
+      if (!resp.ok) return;
+      const url = URL.createObjectURL(await resp.blob());
+      if (path === this.path && this.isConnected) this._imageUrl = url;
+      else URL.revokeObjectURL(url);
+    } catch {
+      // The icon fallback stays in place.
+    }
   }
 
   async selectInput() {
@@ -269,9 +318,9 @@ export default class DaListItem extends LitElement {
       <div class="da-item-list-item-meta da-item-list-item-date" data-column="modified">${this.ext === 'link' ? '—' : (this.renderDate() || '—')}</div>`;
   }
 
-  renderCheckBox() {
+  renderCheckBox(className = 'da-item-list-item-select') {
     return html`
-      <label class="nx-checkbox da-item-list-item-select" data-column="select">
+      <label class="nx-checkbox ${className}" data-column="select">
         <input type="checkbox" name="item-selected" id="item-selected-${this.idx}" .checked="${this.isChecked}" @click="${this.handleChecked}" aria-label="Select item">
       </label>
     `;
@@ -300,7 +349,33 @@ export default class DaListItem extends LitElement {
     return env === '_preview' ? 'Not previewed' : 'Not published';
   }
 
+  renderCardPreview() {
+    if (isImageExt(this.ext) && this._imageUrl) {
+      return html`<img src="${this._imageUrl}" alt="" @error=${() => this.dropImage()}>`;
+    }
+    return html`<svg class="da-card-icon" viewBox="0 0 20 20" aria-hidden="true"><use href="${iconPathForExt(this.ext)}#icon"></use></svg>`;
+  }
+
+  renderCard() {
+    const href = getBrowseItemHref(this);
+    return html`
+      <div class="da-card">
+        <div class="da-card-preview">
+          <a href="${this.ext === 'link' ? until(href) : href}" tabindex="-1" aria-hidden="true">
+            ${this.renderCardPreview()}
+          </a>
+          ${this.allowselect ? this.renderCheckBox('da-card-select') : nothing}
+        </div>
+        ${this.rename ? this.renderRename() : html`
+          <a href="${this.ext === 'link' ? until(href) : href}" class="da-card-name">
+            ${this._isRenaming ? html`<span class="da-item-list-item-type"><div class="icon rename-icon"></div></span>` : html`<svg class="da-card-name-icon" viewBox="0 0 20 20" aria-hidden="true"><use href="${iconPathForExt(this.ext)}#icon"></use></svg>`}
+            <span class="da-card-name-text" title=${this.name}>${this.name}</span>
+          </a>`}
+      </div>`;
+  }
+
   render() {
+    if (this.view === 'card') return this.renderCard();
     return html`
       <div class="da-item-list-item-inner">
         ${this.allowselect ? this.renderCheckBox() : html`<span class="da-item-list-item-selection-placeholder" data-column="select" aria-hidden="true"></span>`}

@@ -36,6 +36,7 @@ export default class DaBrowse extends LitElement {
     _typesFilterState: { state: true },
     _sortState: { state: true },
     _flattenFolders: { state: true },
+    _view: { state: true },
     _searchState: { state: true },
     _permissions: { state: true },
     _toolsOpen: { state: true },
@@ -83,8 +84,9 @@ export default class DaBrowse extends LitElement {
     this._typesFilterState = { open: false, hiddenCount: 0 };
     this._sortState = { property: null, direction: 'none', loading: false };
     this._searchState = { matchCase: true };
-    const { flattenFolders } = getBrowseSettings();
+    const { flattenFolders, view } = getBrowseSettings();
     this._flattenFolders = typeof flattenFolders === 'boolean' ? flattenFolders : true;
+    this._view = view === 'card' ? 'card' : 'list';
   }
 
   connectedCallback() {
@@ -485,6 +487,7 @@ export default class DaBrowse extends LitElement {
           .listItems=${this._searchState.items}
           .hidePublishConfs=${this.hidePublishConfs}
           .flattenFolders=${this._flattenFolders}
+          .view=${this._view}
           @typesfilterchange=${this.handleTypesFilterChange}
           @sortchange=${this.handleSortChange}
           select sort></da-list>
@@ -505,7 +508,13 @@ export default class DaBrowse extends LitElement {
         select
         sort
         drag
-        .flattenFolders=${this._flattenFolders}></da-list>`;
+        .flattenFolders=${this._flattenFolders}
+        .view=${this._view}></da-list>`;
+  }
+
+  setView(view) {
+    this._view = view === 'card' ? 'card' : 'list';
+    updateBrowseSettings({ view: this._view });
   }
 
   setFlattenFolders(flatten) {
@@ -520,6 +529,7 @@ export default class DaBrowse extends LitElement {
         .details=${this.details}
         .chatEnabled=${this._chatEnabled}
         .flattenFolders=${this._flattenFolders}
+        .view=${this._view}
         .typesFilterState=${this._typesFilterState}
         .sortState=${this._sortState}
         .searchState=${this._searchEngine || search.loading || search.error ? {
@@ -530,6 +540,7 @@ export default class DaBrowse extends LitElement {
         @chatrequest=${openChatPanel}
         @typesfilterrequest=${({ detail }) => this.activeListCmp.toggleTypesPopover(detail.anchor)}
         @sortrequest=${({ detail }) => this.activeListCmp.setSort(detail.property, detail.direction)}
+        @viewchange=${({ detail }) => this.setView(detail.view)}
         @flattenfolderschange=${({ detail }) => this.setFlattenFolders(detail.flatten)}>
         <da-new variant="accent" @newitem=${this.handleNewItem} fullpath="${this.details.fullpath}" editor="${this.editor}"></da-new>
       </da-browse-header>

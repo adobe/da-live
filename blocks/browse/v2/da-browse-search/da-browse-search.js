@@ -1,16 +1,24 @@
-import { html, nothing } from 'da-lit';
+import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2Api } from '../../../../scripts/utils.js';
 import { getTypeLabel, iconPathForExt } from '../../../shared/icons.js';
 import { getBrowseItemHref } from '../shared/navigation.js';
 import { loadFilenames, matchFilenames } from './utils.js';
 
-const { NxSearch } = await import(`${getNx()}/blocks/shared/search/search.js`);
 const { listKeydown } = await import(`${getNx()}/blocks/shared/utils/list-nav.js`);
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const style = await loadStyle(import.meta.url);
+const [SEARCH, style] = await Promise.all([
+  loadStyle(`${getNx()}/blocks/shared/search/search.css`),
+  loadStyle(import.meta.url),
+]);
 
-export default class DaBrowseSearch extends NxSearch {
+export default class DaBrowseSearch extends LitElement {
   static properties = {
+    value: { type: String },
+    label: { type: String },
+    placeholder: { type: String },
+    disabled: { type: Boolean, reflect: true },
+    variant: { type: String, reflect: true },
+    size: { type: String, reflect: true },
     fullpath: { type: String },
     editor: { type: String },
     matchCase: { type: Boolean },
@@ -22,8 +30,10 @@ export default class DaBrowseSearch extends NxSearch {
   };
 
   connectedCallback() {
+    this.value ??= '';
+    this.label ??= 'Search';
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [...this.shadowRoot.adoptedStyleSheets, style];
+    this.shadowRoot.adoptedStyleSheets = [SEARCH, style];
   }
 
   get input() { return this.shadowRoot.querySelector('input'); }
@@ -32,10 +42,17 @@ export default class DaBrowseSearch extends NxSearch {
 
   get suggestionsOpen() { return !!this._open; }
 
-  onInput = () => {
+  onInput(event) {
+    this.value = event.target.value;
     this._dismissed = false;
     this._active = undefined;
-  };
+  }
+
+  onChange(event) {
+    event.stopPropagation();
+    this.value = event.target.value;
+    this.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+  }
 
   onFocus = () => {
     this._dismissed = false;
@@ -70,7 +87,27 @@ export default class DaBrowseSearch extends NxSearch {
   clear() {
     if (this.disabled) return;
     this.resetCatalog();
-    super.clear();
+    if (!this.input.value) return;
+    this.input.value = '';
+    this.value = '';
+    this.focus();
+    this.dispatchEvent(new InputEvent('input', {
+      inputType: 'deleteContentBackward',
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
+  focus(options) {
+    this.input?.focus(options);
+  }
+
+  submitSearch() {
+    this.dispatchEvent(new CustomEvent('search-submit', {
+      detail: { value: this.value },
+      bubbles: true,
+      composed: true,
+    }));
   }
 
   disconnectedCallback() {
@@ -198,7 +235,7 @@ export default class DaBrowseSearch extends NxSearch {
     if (!option || this.disabled) return;
     this.closeSuggestions();
     if (option.action) {
-      super.onKeydown(new KeyboardEvent('keydown', { key: 'Enter' }));
+      this.submitSearch();
       return;
     }
     const request = {};
@@ -244,14 +281,12 @@ export default class DaBrowseSearch extends NxSearch {
         return;
       }
       this.closeSuggestions();
+      event.preventDefault();
+      this.submitSearch();
     }
-    super.onKeydown(event);
   }
 
   updated(changed) {
-    this.input.addEventListener('input', this.onInput);
-    this.input.addEventListener('focus', this.onFocus);
-    this.input.addEventListener('blur', this.onBlur);
     if (changed.has('fullpath') || !this.value.trim()) this.resetCatalog();
     else if (this.disabled) this.closeSuggestions();
     else if ((changed.has('value') || changed.has('matchCase') || changed.has('getDirectory'))
@@ -259,21 +294,35 @@ export default class DaBrowseSearch extends NxSearch {
       this._active = undefined;
       this.refreshSuggestions();
     }
-    this.input.setAttribute('role', 'combobox');
-    this.input.setAttribute('aria-autocomplete', 'list');
-    this.input.setAttribute('aria-haspopup', 'listbox');
-    this.input.setAttribute('aria-expanded', String(!!this._open));
-    this.input.setAttribute('aria-controls', 'search-options');
     const index = this._suggestions?.findIndex((item) => item.value === this._active) ?? -1;
-    if (this._open && index >= 0) this.input.setAttribute('aria-activedescendant', `search-option-${index}`);
-    else this.input.removeAttribute('aria-activedescendant');
     if (changed.has('_active') && this._active !== undefined) {
       this.shadowRoot.getElementById(`search-option-${index}`)?.scrollIntoView({ block: 'nearest' });
     }
   }
 
   render() {
-    return html`${super.render()}
+    const activeIndex = this._suggestions?.findIndex((item) => item.value === this._active) ?? -1;
+    return html`
+      <div class="search-field">
+        <svg class="search-icon" viewBox="0 0 20 20" aria-hidden="true">
+          <use href="${getNx()}/img/icons/s2-icon-search-20-n.svg#icon"></use>
+        </svg>
+        <input type="search" role="combobox" aria-label=${this.label}
+          aria-autocomplete="list" aria-haspopup="listbox" aria-expanded=${!!this._open}
+          aria-controls="search-options"
+          aria-activedescendant=${this._open && activeIndex >= 0 ? `search-option-${activeIndex}` : nothing}
+          placeholder=${this.placeholder ?? ''} autocomplete="off"
+          .value=${this.value} ?disabled=${this.disabled}
+          @input=${this.onInput} @change=${this.onChange}
+          @focus=${this.onFocus} @blur=${this.onBlur} @keydown=${this.onKeydown}>
+        <button type="button" aria-label="Clear search" ?hidden=${!this.value}
+          ?disabled=${this.disabled} @click=${this.clear}>
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <use href="${getNx()}/img/icons/s2-icon-close-20-n.svg#icon"></use>
+          </svg>
+        </button>
+        <slot name="actions"></slot>
+      </div>
       <p class="suggestions-error" role="status" ?hidden=${this._open || !this._status?.startsWith('Suggestions unavailable:')}>${this._status}</p>
       <nx-popover class="search-suggestions" @close=${this.onClose}>
         ${this._status ? html`<p class="search-suggestions-status" role="status">${this._status}</p>` : nothing}
