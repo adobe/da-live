@@ -292,9 +292,9 @@ class EwPageOutline extends LitElement {
     this.shadowRoot.querySelector('[data-drop-position]')?.removeAttribute('data-drop-position');
   }
 
-  _setDropIndicator(el, data) {
+  _setDropIndicator(el, data, indicatorPosition = data.dropPosition) {
     this._clearDropIndicator();
-    el.dataset.dropPosition = data.dropPosition;
+    el.dataset.dropPosition = indicatorPosition;
     this._dropTarget = data;
   }
 
@@ -400,6 +400,14 @@ class EwPageOutline extends LitElement {
     const rect = e.currentTarget.getBoundingClientRect();
     const dropPosition = e.clientY < rect.top + rect.height / 2
       ? DROP_POSITIONS.BEFORE : DROP_POSITIONS.AFTER;
+    if (this._expandedContent?.has(item.proseIndex)) {
+      this._setDropIndicator(
+        e.currentTarget,
+        { contentChild: item.children[0], dropPosition: DROP_POSITIONS.BEFORE },
+        dropPosition,
+      );
+      return;
+    }
     const targetChild = dropPosition === DROP_POSITIONS.BEFORE
       ? item.children[0]
       : item.children[item.children.length - 1];
@@ -879,6 +887,10 @@ class EwPageOutline extends LitElement {
       </button>`;
   }
 
+  _renderChevron(level) {
+    return html`<span class="chevron" style="--level: ${level}" aria-hidden="true"></span>`;
+  }
+
   _renderSectionMenu(sec) {
     if (!this._canWrite || this._editingSection === sec.sectionIndex) return nothing;
     const items = [
@@ -924,6 +936,7 @@ class EwPageOutline extends LitElement {
           @click=${(e) => { e.stopPropagation(); this._selectProse(child.proseIndex, child.kind); }}>
         <div class="row-cell" role="gridcell">
           ${this._renderDragHandle(OUTLINE_TYPES.CONTENT, child, noun)}
+          ${this._renderChevron(1)}
           <span class="content-label-stack">
             <span class="block-name content-label">${label}</span>
             ${child.snippet ? html`<span class="content-snippet">${child.snippet}</span>` : nothing}
@@ -947,6 +960,8 @@ class EwPageOutline extends LitElement {
              @pointermove=${this._onPickupPointer((e) => this._onContentGroupDragOver(e, item))}
              @drop=${this._onDrop}>
           <div class="row-cell" role="gridcell">
+            <span class="drag-handle" aria-hidden="true"></span>
+            ${this._renderChevron(0)}
             <span class="block-name content-label">Default content</span>
           </div>
         </div>
@@ -975,6 +990,7 @@ class EwPageOutline extends LitElement {
           @click=${() => this._select(item.blockIndex)}>
         <div class="row-cell" role="gridcell">
           ${this._renderDragHandle(OUTLINE_TYPES.BLOCK, item.blockIndex, label)}
+          ${this._renderChevron(0)}
           <span class="block-name">${blockLabel(item)}</span>
           ${this._renderDeleteButton(OUTLINE_TYPES.BLOCK, item.blockIndex)}
         </div>
@@ -1027,6 +1043,8 @@ class EwPageOutline extends LitElement {
         ? html`<li class="block-item block-empty" role="row"
                     aria-level="2" aria-posinset="1" aria-setsize="1" tabindex="-1">
                 <div class="row-cell" role="gridcell">
+                  <span class="drag-handle" aria-hidden="true"></span>
+                  ${this._renderChevron(0)}
                   <span class="empty-label">Empty section</span>
                 </div>
               </li>`

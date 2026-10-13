@@ -506,6 +506,30 @@ describe('ew-page-outline — content drag & delete', () => {
     expect(el._dropTarget.contentChild).to.deep.equal(item.children[1]);
     expect(el._dropTarget.dropPosition).to.equal('after');
   });
+
+  it('dropping on the lower half of an expanded group header targets before the first child', () => {
+    const item = {
+      proseIndex: 1,
+      children: [
+        { kind: 'paragraph', proseIndex: 1, innerText: 'first' },
+        { kind: 'paragraph', proseIndex: 5, innerText: 'last' },
+      ],
+    };
+    el._expandedContent = new Set([item.proseIndex]);
+    el._dragging = { type: 'content', index: { kind: 'paragraph', proseIndex: 99 } };
+
+    const currentTarget = { getBoundingClientRect: () => ({ top: 0, height: 20 }), dataset: {} };
+    el._onContentGroupDragOver({
+      preventDefault() {},
+      stopPropagation() {},
+      currentTarget,
+      clientY: 15,
+    }, item);
+
+    expect(el._dropTarget.contentChild).to.deep.equal(item.children[0]);
+    expect(el._dropTarget.dropPosition).to.equal('before');
+    expect(currentTarget.dataset.dropPosition).to.equal('after');
+  });
 });
 
 describe('ew-page-outline - read-only', () => {
@@ -827,6 +851,36 @@ describe('ew-page-outline - section menu', () => {
         .to.equal('/img/icons/s2-icon-draghandle-20-n.svg#icon');
     });
     expect(header.lastElementChild.tagName).to.equal('NX-MENU');
+  });
+
+  it('gives rows a handle slot, child rows a chevron slot, chevron only on default content', async () => {
+    await load([para('one'), table('hero'), rule('Empty'), rule('Last'), para('two')]);
+    const keys = [...root().querySelectorAll('.content-item:not(.content-child)')].length;
+    expect(keys).to.be.greaterThan(0);
+    el._expandedContent = new Set(el._sections.flatMap((s) => s.items
+      .filter((i) => i.type === 'content').map((i) => i.proseIndex)));
+    await el.updateComplete;
+    const sel = '.section-header, .block-item';
+    const rows = [...root().querySelectorAll(sel)];
+    expect(root().querySelectorAll('.content-child').length).to.be.greaterThan(0);
+    expect(root().querySelectorAll('.block-empty').length).to.be.greaterThan(0);
+    expect(root().querySelectorAll('.block-item[data-block-index]').length).to.be.greaterThan(0);
+    rows.forEach((row) => {
+      const cell = row.querySelector('[role="gridcell"]');
+      expect(cell.children[0].classList.contains('drag-handle')).to.be.true;
+      const isHeader = row.matches('.section-header');
+      expect(cell.children[1].classList.contains('chevron'), row.className).to.equal(!isHeader);
+    });
+    root().querySelectorAll('.block-list > li > .row-cell > .chevron, .content-item:not(.content-child) > .row-cell > .chevron')
+      .forEach((c) => expect(c.style.getPropertyValue('--level')).to.equal('0'));
+    root().querySelectorAll('.content-child > .row-cell > .chevron')
+      .forEach((c) => expect(c.style.getPropertyValue('--level')).to.equal('1'));
+    rows.forEach((row) => {
+      const isGroup = row.matches('.content-item:not(.content-child)');
+      expect(row.hasAttribute('aria-expanded'), row.className).to.equal(isGroup);
+      const noHandle = isGroup || row.matches('.block-empty');
+      expect(!!row.querySelector('.drag-handle svg'), row.className).to.equal(!noHandle);
+    });
   });
 
   it('returns focus to the trigger on Escape but not on outside click', async () => {
