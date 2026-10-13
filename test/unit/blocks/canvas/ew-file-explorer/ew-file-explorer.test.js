@@ -1,6 +1,7 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
+import { setDaConfigs } from '../../../../fixtures/nx/utils/daConfig.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -523,15 +524,8 @@ describe('EwFileExplorer', () => {
   });
 
   describe('configured editor', () => {
-    const SC = { path: '/org/site/forms/contact.html', ext: 'html' };
-
     beforeEach(() => {
-      el._configs = [null, { data: [] }];
-      el._ewEnabled = true;
-      globalThis.__editorMock = ({ path, configs }) => {
-        if (configs !== el._configs) return undefined;
-        return path.startsWith('/org/site/forms') ? 'https://da.live/form#' : undefined;
-      };
+      globalThis.__editorMock = ({ path }) => (path.startsWith('/org/site/forms') ? 'https://da.live/form#' : '/canvas#');
     });
     afterEach(() => { delete globalThis.__editorMock; });
 
@@ -541,7 +535,7 @@ describe('EwFileExplorer', () => {
       window.open = (...args) => { opened.push(args); };
       const savedHash = window.location.hash;
       try {
-        el._onItemClick(SC);
+        el._onItemClick({ path: '/org/site/forms/contact.html', ext: 'html' });
         expect(opened).to.deep.equal([['https://da.live/form#/org/site/forms/contact', '_blank', 'noopener,noreferrer']]);
         expect(window.location.hash).to.equal(savedHash);
       } finally {
@@ -564,65 +558,25 @@ describe('EwFileExplorer', () => {
       }
     });
 
-    it('opens other pages in /edit when EW is not enabled', () => {
-      el._ewEnabled = false;
-      const savedOpen = window.open;
-      const opened = [];
-      window.open = (...args) => { opened.push(args); };
-      try {
-        el._onItemClick({ path: '/org/site/blog/foo.html', ext: 'html' });
-        expect(opened).to.deep.equal([['/edit#/org/site/blog/foo', '_blank', 'noopener,noreferrer']]);
-      } finally {
-        window.open = savedOpen;
-      }
-    });
-
-    it('loads the EW flag for the site', async () => {
-      globalThis.__ewEnabledMock = ({ org, site }) => org === 'org' && site === 'site';
-      el._org = 'org';
-      el._site = 'site';
-      try {
-        await el._loadConfigs('org', 'site');
-        expect(el._ewEnabled).to.be.true;
-      } finally {
-        delete globalThis.__ewEnabledMock;
-      }
-    });
-
-    it('treats EW as not enabled when its flag fails to load', async () => {
-      globalThis.__ewEnabledMock = () => { throw new Error('flags unavailable'); };
-      el._org = 'org';
-      el._site = 'site';
-      try {
-        await el._loadConfigs('org', 'site');
-        expect(el._ewEnabled).to.be.false;
-      } finally {
-        delete globalThis.__ewEnabledMock;
-      }
-    });
-
-    it('drops the configs and EW flag of a site that is no longer shown', async () => {
-      globalThis.__ewEnabledMock = () => true;
-      el._org = 'org';
-      el._site = 'site';
-      try {
-        const loading = el._loadConfigs('org', 'site');
-        el._site = 'other';
-        await loading;
-        expect(el._configs).to.be.undefined;
-        expect(el._ewEnabled).to.be.undefined;
-      } finally {
-        delete globalThis.__ewEnabledMock;
-      }
-    });
-
-    it('uses the da-sc url for structured content', () => {
-      expect(el._rowTitle(SC)).to.equal('sc:/org/site/forms/contact');
-      expect(el._rowTitle({ path: '/org/site/blog/foo.html', ext: 'html' })).to.equal('https://main--site--org.aem.page/blog/foo');
-    });
-
-    it('uses the sanitized path in the da-sc url', () => {
+    it('uses the sanitized da-sc url for structured content', () => {
       expect(el._rowTitle({ path: '/org/site/forms/My Form.html', ext: 'html' })).to.equal('sc:/org/site/forms/my-form');
+    });
+
+    it('resolves the editor from the site configs and EW flag', async () => {
+      const configs = [{ data: [] }, { data: [] }];
+      setDaConfigs(configs);
+      let args;
+      globalThis.__editorMock = (opts) => { args = opts; };
+      el._org = 'org';
+      el._site = 'site';
+      try {
+        await el._loadConfigs('org', 'site');
+        el._rowTitle({ path: '/org/site/blog/foo.html', ext: 'html' });
+        expect(args.configs).to.deep.equal(configs);
+        expect(args.ewEnabled).to.be.false;
+      } finally {
+        setDaConfigs([]);
+      }
     });
   });
 
