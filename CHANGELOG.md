@@ -1,3 +1,15 @@
+# [1.4.0](https://github.com/adobe/da-live/compare/v1.3.1...v1.4.0) (2026-10-13)
+
+
+### Bug Fixes
+
+* **ew:** hide create version controls for read-only users ([#1419](https://github.com/adobe/da-live/issues/1419)) ([217aa0b](https://github.com/adobe/da-live/commit/217aa0bb3456b685c0fcad7844a0661485ec368f)), closes [#1406](https://github.com/adobe/da-live/issues/1406) [#1406](https://github.com/adobe/da-live/issues/1406) [#1406](https://github.com/adobe/da-live/issues/1406) [#1406](https://github.com/adobe/da-live/issues/1406) [#1406](https://github.com/adobe/da-live/issues/1406) [#1406](https://github.com/adobe/da-live/issues/1406)
+
+
+### Features
+
+* **canvas:** outline row action menu with add section after ([#1165](https://github.com/adobe/da-live/issues/1165)) ([acdf03d](https://github.com/adobe/da-live/commit/acdf03db44d78758a4e5f456b7e3711132087f8e))
+
 ## [1.3.1](https://github.com/adobe/da-live/compare/v1.3.0...v1.3.1) (2026-10-13)
 
 
