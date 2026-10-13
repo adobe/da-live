@@ -825,7 +825,7 @@ describe('ew-page-outline - section menu', () => {
     expect(root().querySelectorAll('.block-empty').length).to.be.greaterThan(0);
     expect(root().querySelectorAll('.block-item[data-block-index]').length).to.be.greaterThan(0);
     rows.forEach((row) => {
-      const cell = row.querySelector('[role="gridcell"]');
+      const cell = row.querySelector('.row-cell');
       expect(cell.children[0].classList.contains('drag-handle')).to.be.true;
       const isHeader = row.matches('.section-header');
       expect(cell.children[1].classList.contains('chevron'), row.className).to.equal(!isHeader);
@@ -1094,6 +1094,25 @@ describe('ew-page-outline - treegrid', () => {
       { name: 'Paragraph two', level: 3, expanded: undefined },
     ]);
     expect(axRows.every((r) => r.children.length === 1 && r.children[0].role === 'gridcell')).to.be.true;
+  });
+
+  it('describes an empty section on its header and skips the note with arrow keys', async () => {
+    await load([para('one'), rule(), rule(), para('two')]);
+
+    const note = root().querySelector('.block-empty');
+    expect(note.textContent.trim()).to.equal('Empty section');
+    expect(note.getAttribute('aria-hidden')).to.equal('true');
+    expect(note.matches('[role="row"], [role="row"] *')).to.be.false;
+    const axHeaders = axAll(await grid(), 'row').filter((r) => r.level === 1);
+    expect(axHeaders.map(({ name, description }) => ({ name, description }))).to.deep.equal([
+      { name: 'Section 1', description: undefined },
+      { name: 'Section 2', description: 'Empty section' },
+      { name: 'Section 3', description: undefined },
+    ]);
+
+    sectionRow(1).focus();
+    press('ArrowDown');
+    expect(active() === sectionRow(2)).to.be.true;
   });
 
   it('is a single tab stop that starts on the first row', async () => {

@@ -968,6 +968,7 @@ class EwPageOutline extends LitElement {
         <div class="section-header" data-section-header role="row"
              aria-level="1" aria-posinset="${sec.sectionIndex + 1}" aria-setsize="${sectionCount}"
              aria-label="${label}"
+             aria-description="${setsize === 0 ? 'Empty section' : nothing}"
              tabindex="-1"
              draggable="${this._canWrite && !editing}"
              @dragstart=${(e) => this._onDragStart(e, OUTLINE_TYPES.SECTION, sec.sectionIndex)}
@@ -980,9 +981,8 @@ class EwPageOutline extends LitElement {
         </div>
         <ul class="block-list" role="none">
           ${setsize === 0
-        ? html`<li class="block-item block-empty" role="row"
-                    aria-level="2" aria-posinset="1" aria-setsize="1" tabindex="-1">
-                <div class="row-cell" role="gridcell">
+        ? html`<li class="block-item block-empty" role="none" aria-hidden="true">
+                <div class="row-cell">
                   <span class="drag-handle" aria-hidden="true"></span>
                   ${this._renderChevron(0)}
                   <span class="empty-label">Empty section</span>
