@@ -60,8 +60,8 @@
   top: 50%;
   transform: translateY(-50%);
   z-index: 1;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   color: light-dark(var(--s2-gray-700), var(--s2-gray-400));
   pointer-events: none;
   margin-left: 10px;
@@ -70,6 +70,7 @@
 .modal-search .nx-input {
   width: 100%;
   padding-left: 34px;
+  font-size: var(--nx-ui-text-content);
 }
 
 .modal-state {
@@ -263,7 +264,11 @@
 }
 
 :host([data-ui-size="m"]) {
-  .modal-search-icon,
+  .modal-search-icon {
+    width: 18px;
+    height: 18px;
+  }
+
   .modal-tree-caret {
     width: 16px;
     height: 16px;
