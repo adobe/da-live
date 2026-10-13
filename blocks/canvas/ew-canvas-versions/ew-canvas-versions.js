@@ -12,6 +12,7 @@ import {
 import { buildDisplayItems, formatUser } from '../../shared/version/helpers.js';
 import { docToHtml, domToHtml, buildCompareDom } from '../../shared/version/compare.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 import { trackingPluginKey } from '../editor-utils/prose-diff.js';
 import './ew-canvas-compare.js';
 
@@ -56,12 +57,17 @@ class EwCanvasVersions extends LitElement {
     _restoreEntry: { state: true },
     _compareCtx: { state: true },
     _compareSplit: { state: true },
+    _canWrite: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [baseStyle, style];
     this._filter = 'all';
+    this._canWrite = getExtensionsBridge().view?.editable ?? false;
+    this._unsubHtml = canvasBus.editorHtmlState.subscribe(() => {
+      this._canWrite = getExtensionsBridge().view?.editable ?? false;
+    });
     initIms().then((ims) => { this._imsEmail = ims?.email ?? null; });
     this._unsubHash = hashChange?.subscribe((state) => {
       const next = buildDocPath(state);
@@ -78,6 +84,7 @@ class EwCanvasVersions extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
+    this._unsubHtml?.();
   }
 
   updated(changed) {
@@ -104,6 +111,7 @@ class EwCanvasVersions extends LitElement {
   }
 
   handleNew() {
+    if (!this._canWrite) return;
     this._newVersion = newVersionEntry();
   }
 
@@ -234,10 +242,6 @@ class EwCanvasVersions extends LitElement {
       this._compareCtx = { ...this._compareCtx, diffDom, cleanup };
     }
     this._compareSplit = !this._compareSplit;
-  }
-
-  get _canWrite() {
-    return getExtensionsBridge().view?.editable ?? false;
   }
 
   get _comparingId() {
@@ -411,14 +415,15 @@ class EwCanvasVersions extends LitElement {
               aria-pressed=${this._filter === 'me'}
               @click=${() => this._setFilter('me')}>Only me</button>
           </div>
-          <button type="button" class="da-icon-btn" aria-label="Create version"
-            ?disabled=${!!this._newVersion} @click=${this.handleNew}>
-            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
-              <use href="${ICON_ADD}#icon"></use>
-            </svg>
-          </button>
+          ${this._canWrite ? html`
+            <button type="button" class="da-icon-btn" aria-label="Create version"
+              ?disabled=${!!this._newVersion} @click=${this.handleNew}>
+              <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
+                <use href="${ICON_ADD}#icon"></use>
+              </svg>
+            </button>` : nothing}
         </div>
-        <p class="da-hint">Press <kbd class="da-kbd">${SHORTCUT_HINT}</kbd> to add to version history while editing.</p>
+        ${this._canWrite ? html`<p class="da-hint">Press <kbd class="da-kbd">${SHORTCUT_HINT}</kbd> to add to version history while editing.</p>` : nothing}
         ${this._versions === undefined
         ? html`<p class="loading">Loading…</p>`
         : html`<ul class="versionlist">
