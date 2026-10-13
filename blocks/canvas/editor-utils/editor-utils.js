@@ -1,12 +1,13 @@
 import { TextSelection } from 'da-y-wrapper';
 import prose2aem from '../../shared/prose2aem.js';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
 import { toolbarController } from './toolbar-controller.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { canvasBus, registerEditorSelectEnricher } from '../utils/canvas-bus.js';
 
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
+const { getImageDocumentVersion } = await import(`${getNx2()}/public/utils/quick-edit-images.js`);
 
 /**
  * Dispatch a transaction mirrored from the quick-edit iframe.
@@ -135,13 +136,24 @@ export function updateState(data, ctx) {
         const { cursorOffset } = data;
         ctx.port.postMessage({
           type: MESSAGE_TYPES.SET_EDITOR_STATE,
-          payload: { editorState, cursorOffset },
+          payload: {
+            editorState,
+            cursorOffset,
+            imageVersion: getImageDocumentVersion(view.state.doc),
+          },
         });
       }
     } catch {
       // Non-fatal: position errors after structural changes
     }
   }
+  ctx.port?.postMessage({
+    type: MESSAGE_TYPES.NODE_UPDATE,
+    payload: {
+      nodeUpdateId: data.nodeUpdateId,
+      imageVersion: getImageDocumentVersion(view.state.doc),
+    },
+  });
 }
 
 export function getEditor(data, ctx) {
@@ -159,7 +171,11 @@ export function getEditor(data, ctx) {
     if (!node) return;
     ctx.port.postMessage({
       type: MESSAGE_TYPES.SET_EDITOR_STATE,
-      payload: { editorState: node.toJSON(), cursorOffset: newCursorOffset },
+      payload: {
+        editorState: node.toJSON(),
+        cursorOffset: newCursorOffset,
+        imageVersion: getImageDocumentVersion(doc),
+      },
     });
   } catch {
     // Stale iframe cursor after structural replace (e.g. chat revert, remote sync).
@@ -265,6 +281,7 @@ export function getInstrumentedHTML(view) {
 
   const originalImages = view.dom.querySelectorAll('img');
   const clonedImages = editorClone.querySelectorAll('img');
+  const imageVersion = getImageDocumentVersion(view.state.doc);
   originalImages.forEach((originalImage, index) => {
     if (originalImage.matches('.ProseMirror-separator, .ProseMirror-trailingBreak')) return;
     const clonedImage = clonedImages[index];
@@ -272,6 +289,7 @@ export function getInstrumentedHTML(view) {
     try {
       const pos = view.posAtDOM(originalImage, 0);
       clonedImage.setAttribute('data-image-index', pos);
+      clonedImage.setAttribute('data-image-version', imageVersion);
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn('Could not find position for image:', e);
