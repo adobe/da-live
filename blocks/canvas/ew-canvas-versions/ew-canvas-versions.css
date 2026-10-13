@@ -86,13 +86,15 @@ button {
 
 .versionname {
   font-size: var(--nx-ui-text-content);
-  font-weight: 700;
-  color: var(--s2-gray-900);
+  line-height: var(--nx-ui-line-content);
+  font-weight: var(--s2-component-s-bold-font-weight);
+  color: var(--s2-gray-800);
 }
 
 .meta,
 .user {
-  font-size: var(--nx-ui-text-description);
+  font-size: var(--nx-ui-text-content);
+  line-height: var(--nx-ui-line-content);
 }
 
 .versionicon {
@@ -175,9 +177,6 @@ button {
 }
 
 .version-more-btn {
-  background: transparent;
-  width: 24px;
-  height:24px;
   opacity: 0;
 }
 
@@ -247,6 +246,19 @@ summary {
   gap: 2px;
   min-width: 0;
   flex: 1;
+
+  .meta,
+  .user {
+    font-weight: var(--s2-component-s-medium-font-weight);
+  }
+
+  .meta {
+    color: var(--s2-gray-800);
+  }
+
+  .user {
+    color: var(--s2-gray-600);
+  }
 }
 
 /* New version row */

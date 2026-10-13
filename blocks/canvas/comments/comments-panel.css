@@ -98,7 +98,7 @@
   background: transparent;
   color: var(--s2-gray-700);
   font-family: var(--body-font-family);
-  font-size: var(--nx-ui-text-description);
+  font-size: var(--nx-ui-text-content);
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
@@ -217,7 +217,7 @@
 }
 
 .ew-comment-time {
-  font-size: var(--nx-ui-text-description);
+  font-size: var(--nx-ui-text-content);
   color: var(--s2-gray-700);
 }
 
@@ -253,7 +253,7 @@
 .ew-comments-thread-replies-summary {
   display: inline-block;
   margin-left: 40px;
-  font-size: var(--nx-ui-text-description);
+  font-size: var(--nx-ui-text-content);
   color: var(--s2-blue-800);
   font-weight: 500;
 }
@@ -306,7 +306,7 @@
 }
 
 .ew-comment-edited {
-  font-size: var(--nx-ui-text-description);
+  font-size: var(--nx-ui-text-content);
   color: var(--s2-gray-600);
 }
 

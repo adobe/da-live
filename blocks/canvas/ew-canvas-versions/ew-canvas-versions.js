@@ -346,7 +346,7 @@ class EwCanvasVersions extends LitElement {
         if (e.detail.id === 'restore') this.handleRestoreClick(entry);
         else this.handleCompare(e, entry);
       }}>
-            <button slot="trigger" type="button" class="version-more-btn" aria-label="More actions">
+            <button slot="trigger" type="button" class="nx-action-btn-icon version-more-btn ${getBtnSizeClass()}" aria-label="More actions">
               <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
                 <use href="${ICON_MORE}#icon"></use>
               </svg>
