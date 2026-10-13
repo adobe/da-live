@@ -21,7 +21,7 @@ function scheduleReload(ctx) {
   if (ctx.reloadTimer) return;
   ctx.reloadTimer = setTimeout(() => {
     ctx.reloadTimer = null;
-    updateDocument(ctx);
+    updateDocument(ctx, { useConfirmedBaseline: true });
   }, RELOAD_DEBOUNCE_MS);
 }
 
