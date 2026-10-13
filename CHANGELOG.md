@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/adobe/da-live/compare/v1.2.4...v1.3.0) (2026-10-12)
+
+
+### Features
+
+* support pasted urls on highlighted text to link automatically ([#1429](https://github.com/adobe/da-live/issues/1429)) ([563cd4e](https://github.com/adobe/da-live/commit/563cd4e5db7f3ccd5f6a1af3afc217cbff2bc06e))
+
 ## [1.2.4](https://github.com/adobe/da-live/compare/v1.2.3...v1.2.4) (2026-10-08)
 
 
