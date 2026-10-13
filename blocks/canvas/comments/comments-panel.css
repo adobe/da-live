@@ -74,7 +74,7 @@
 
 .ew-comments-detached-reference {
   display: block;
-  font-size: var(--nx-ui-text-description);
+  font-size: var(--nx-ui-text-content);
   color: var(--comment-text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -183,7 +183,7 @@
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: var(--nx-ui-text-description);
+  font-size: var(--nx-ui-text-content);
   font-weight: 600;
   flex-shrink: 0;
 }
@@ -293,14 +293,14 @@
 
 .ew-comment-form-hint {
   margin-top: var(--s2-spacing-200);
-  font-size: var(--nx-ui-text-description);
+  font-size: var(--nx-ui-text-content);
   color: var(--s2-gray-600);
   text-align: right;
 }
 
 .ew-comments-resolved-info {
   width: 100%;
-  font-size: var(--nx-ui-text-description);
+  font-size: var(--nx-ui-text-content);
   color: var(--s2-gray-600);
   margin-left: 40px;
 }
@@ -413,7 +413,7 @@
   padding: 8px 12px;
   background: var(--s2-gray-50);
   border-left: 2px solid var(--s2-gray-400);
-  font-size: var(--nx-ui-text-description);
+  font-size: var(--nx-ui-text-content);
   color: var(--s2-gray-700);
   min-width: 0;
   border-radius: 4px;
