@@ -1,7 +1,7 @@
 /* eslint-disable no-underscore-dangle */
 
 import { html, nothing } from 'da-lit';
-import { getUISize } from '../../../../scripts/utils.js';
+import { getUISize, getBtnSizeClass } from '../../../../scripts/utils.js';
 import * as formatUtils from './format-utils.js';
 import { DRAFT_MODES } from './draft-state.js';
 import { generateColorSet } from '../../editor-utils/author-color.js';
@@ -264,7 +264,7 @@ export function renderThreadView(panel, thread) {
 
   return html`
     <div class="ew-comments-thread-detail">
-      <button class="ew-comments-back-btn" @click=${panel.backToList}>
+      <button type="button" class="nx-action-btn-quiet ew-comments-back-btn ${getBtnSizeClass()}" @click=${panel.backToList}>
         ${renderIcon('chevron-left')}
         Back
       </button>

@@ -190,7 +190,7 @@ describe('ew-page-metadata', () => {
       await loadDoc([['category', 'news']], [{ key: 'category', label: 'Category', type: 'single', values: [{ title: 'News', value: 'news' }] }]);
       const picker = rowFor(el, 'category').querySelector('nx-picker');
       expect(picker).to.exist;
-      expect(picker.getAttribute('size')).to.equal('m');
+      expect(picker.getAttribute('size')).to.equal('s');
       expect(picker.value).to.equal('news');
       expect(picker.items).to.deep.equal([
         { value: '', label: 'None' },

@@ -126,21 +126,7 @@
 }
 
 .ew-comments-back-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 0;
   margin-bottom: 12px;
-  border: none;
-  background: transparent;
-  color: var(--s2-gray-700);
-  font-family: var(--body-font-family);
-  font-size: var(--nx-ui-text-content);
-  cursor: pointer;
-}
-
-.ew-comments-back-btn:hover {
-  color: var(--s2-blue-800);
 }
 
 .ew-comment-card {

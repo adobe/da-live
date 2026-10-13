@@ -35,6 +35,7 @@ await import(`${getNx2()}/blocks/shared/segmented-btn/segmented.js`);
 const style = await loadStyle(import.meta.url);
 const baseStyle = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
 const buttonsStyle = await getSheet(`${getNx2()}/styles/buttons.css`);
+const formStyle = await getSheet(`${getNx2()}/styles/form.css`);
 
 export function buildDocPath(state) {
   const { org, site, path } = state ?? {};
@@ -68,7 +69,7 @@ class EwCanvasVersions extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.dataset.uiSize = getUISize();
-    this.shadowRoot.adoptedStyleSheets = [baseStyle, style, buttonsStyle];
+    this.shadowRoot.adoptedStyleSheets = [baseStyle, buttonsStyle, formStyle, style];
     this._filter = 'all';
     initIms().then((ims) => { this._imsEmail = ims?.email ?? null; });
     this._unsubHash = hashChange?.subscribe((state) => {
@@ -389,9 +390,9 @@ class EwCanvasVersions extends LitElement {
       <nx-dialog class="ew-cv-restore" title="Restore version"
         @close=${this.handleRestoreCancel}>
         <span>Replace the current document with the content from <strong>${label}</strong>?</span>
-        <button slot="actions" class="da-btn-secondary"
+        <button slot="actions" class="nx-form-btn-secondary"
           @click=${this.handleRestoreCancel}>Cancel</button>
-        <button slot="actions" class="da-btn-primary"
+        <button slot="actions" class="nx-form-btn-primary"
           @click=${this.handleRestoreConfirm}>Restore</button>
       </nx-dialog>
     `;
