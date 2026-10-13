@@ -171,6 +171,11 @@ input {
   bottom: -1px;
 }
 
+.block-item[data-drop-position="after"]::after,
+.section-header[data-drop-position="after"]::after {
+  bottom: -2px;
+}
+
 .block-empty {
   cursor: default;
 }

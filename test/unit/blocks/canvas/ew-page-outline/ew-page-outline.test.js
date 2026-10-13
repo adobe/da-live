@@ -816,6 +816,32 @@ describe('ew-page-outline - section menu', () => {
     bridge.view = null;
   });
 
+  it('draws one drop bar position between adjacent rows', async () => {
+    await load([table('hero'), table('cards'), rule('B'), table('x')]);
+    const cssText = await (await fetch('/blocks/canvas/ew-page-outline/ew-page-outline.css')).text();
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync(cssText);
+    root().adoptedStyleSheets = [...root().adoptedStyleSheets, sheet];
+    el.style.setProperty('--s2-gray-200', '#ccc');
+
+    const barTop = (target, position) => {
+      target.dataset.dropPosition = position;
+      const top = target.getBoundingClientRect().top + target.clientTop
+        + parseFloat(getComputedStyle(target, '::after').top);
+      delete target.dataset.dropPosition;
+      return top;
+    };
+    const block = (i) => root().querySelector(`[data-block-index="${i}"]`);
+    const pairs = [
+      [block(0), block(1)],
+      [sectionRow(0), block(0)],
+      [sectionEls()[0], sectionRow(1)],
+    ];
+    pairs.forEach(([above, below]) => {
+      expect(barTop(above, 'after'), above.className).to.equal(barTop(below, 'before'));
+    });
+  });
+
   it('renders one labelled, roving trigger per section and no inline section buttons', async () => {
     await load([para('one'), rule('Feat'), para('two')]);
 
