@@ -48,7 +48,7 @@
   align-items: center;
   gap: var(--s2-spacing-100);
   margin: 0;
-  font-size: var(--nx-ui-text-content);
+  font-size: var(--nx-ui-text-title);
   font-weight: 600;
 }
 
