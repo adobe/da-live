@@ -20,7 +20,7 @@ export default class DaBrowseHeader extends LitElement {
   static properties = {
     details: { attribute: false },
     chatEnabled: { type: Boolean },
-    flattenFolders: { type: Boolean },
+    groupByType: { type: Boolean },
     view: { type: String },
     typesFilterState: { attribute: false },
     sortState: { attribute: false },
@@ -28,7 +28,7 @@ export default class DaBrowseHeader extends LitElement {
   };
 
   connectedCallback() {
-    this.flattenFolders ??= true;
+    this.groupByType ??= false;
     this.view ??= 'list';
     this.typesFilterState ??= { open: false, hiddenCount: 0 };
     this.sortState ??= { property: null, direction: 'none', loading: false };
@@ -53,9 +53,9 @@ export default class DaBrowseHeader extends LitElement {
     }));
   }
 
-  requestFlattenFolders({ detail }) {
-    this.dispatchEvent(new CustomEvent('flattenfolderschange', {
-      detail: { flatten: detail.checked },
+  requestGroupByType({ detail }) {
+    this.dispatchEvent(new CustomEvent('groupbytypechange', {
+      detail: { group: detail.checked },
       bubbles: true,
       composed: true,
     }));
@@ -120,16 +120,16 @@ export default class DaBrowseHeader extends LitElement {
       : 'Show All types';
     return html`
       <div class="da-browse-toolbar-controls" role="group" aria-label="Browse toolbar controls">
-        <nx-segmented-btn class="da-browse-view-control" label="View" .items=${VIEW_ITEMS}
-          .value=${this.view} @change=${this.requestView}></nx-segmented-btn>
-        ${this.renderSortOptions()}
+        <nx-switch class="da-browse-group-control" label="Group by type" .checked=${this.groupByType}
+          @change=${this.requestGroupByType}></nx-switch>
         <button type="button" class="da-browse-toolbar-control nx-action-btn-quiet" aria-haspopup="dialog"
           title=${typesLabel} aria-expanded=${this.typesFilterState.open} @click=${this.requestTypesFilter}>
           <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-filter-20-n.svg#icon"></use></svg>
           <span class="da-browse-control-label">${typesLabel}</span>
         </button>
-        <nx-switch class="da-browse-flatten-control" label="Flatten folders" .checked=${this.flattenFolders}
-          @change=${this.requestFlattenFolders}></nx-switch>
+        ${this.renderSortOptions()}
+        <nx-segmented-btn class="da-browse-view-control" label="View" .items=${VIEW_ITEMS}
+          .value=${this.view} @change=${this.requestView}></nx-segmented-btn>
         ${this.renderSettingsActions()}
       </div>`;
   }

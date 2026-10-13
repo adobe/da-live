@@ -59,7 +59,7 @@ export default class DaList extends LitElement {
     select: { type: Boolean },
     sort: { type: Boolean },
     drag: { type: Boolean },
-    flattenFolders: { type: Boolean },
+    groupByType: { type: Boolean },
     view: { type: String },
     listItems: { attribute: false },
     newItem: { attribute: false },
@@ -980,7 +980,7 @@ export default class DaList extends LitElement {
 
   get groupedItems() {
     const items = this.filteredItems;
-    if (this.flattenFolders !== false) return [{ label: null, items }];
+    if (!this.groupByType) return [{ label: null, items }];
 
     const buckets = new Map();
     items.forEach((item) => {
@@ -1438,7 +1438,7 @@ export default class DaList extends LitElement {
 
     return html`
       <div class="da-item-list" role="presentation">
-      ${this.flattenFolders !== false
+      ${!this.groupByType
         ? this.renderGroupItems(items, indexByPath)
         : groups.map(({ label, items: groupItems }) => html`
             ${this.renderGroupHeader(label, groupItems)}
@@ -1499,7 +1499,7 @@ export default class DaList extends LitElement {
         </div>
         <div class="da-browse-header-cell da-browse-header-cell-actions" data-column="actions" aria-hidden="true"></div>
       </div>
-      <div class="da-browse-panel" role="rowgroup" aria-label="File list" @dragenter=${this.drag ? this.dragenter : nothing} @dragleave=${this.drag ? this.dragleave : nothing}>
+      <div class="da-browse-panel ${this.view === 'card' ? 'card-view' : ''}" role="rowgroup" aria-label="File list" @dragenter=${this.drag ? this.dragenter : nothing} @dragleave=${this.drag ? this.dragleave : nothing}>
         ${showList ? this.renderList(filteredItems) : this.renderEmpty()}
         ${this.drag ? this.renderDropArea() : nothing}
       </div>

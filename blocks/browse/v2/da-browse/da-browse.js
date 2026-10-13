@@ -35,7 +35,7 @@ export default class DaBrowse extends LitElement {
     _chatEnabled: { state: true },
     _typesFilterState: { state: true },
     _sortState: { state: true },
-    _flattenFolders: { state: true },
+    _groupByType: { state: true },
     _view: { state: true },
     _searchState: { state: true },
     _permissions: { state: true },
@@ -84,8 +84,8 @@ export default class DaBrowse extends LitElement {
     this._typesFilterState = { open: false, hiddenCount: 0 };
     this._sortState = { property: null, direction: 'none', loading: false };
     this._searchState = { matchCase: true };
-    const { flattenFolders, view } = getBrowseSettings();
-    this._flattenFolders = typeof flattenFolders === 'boolean' ? flattenFolders : true;
+    const { groupByType, view } = getBrowseSettings();
+    this._groupByType = groupByType === true;
     this._view = view === 'card' ? 'card' : 'list';
   }
 
@@ -486,7 +486,7 @@ export default class DaBrowse extends LitElement {
           editor=${this.editor}
           .listItems=${this._searchState.items}
           .hidePublishConfs=${this.hidePublishConfs}
-          .flattenFolders=${this._flattenFolders}
+          .groupByType=${this._groupByType}
           .view=${this._view}
           @typesfilterchange=${this.handleTypesFilterChange}
           @sortchange=${this.handleSortChange}
@@ -508,7 +508,7 @@ export default class DaBrowse extends LitElement {
         select
         sort
         drag
-        .flattenFolders=${this._flattenFolders}
+        .groupByType=${this._groupByType}
         .view=${this._view}></da-list>`;
   }
 
@@ -517,9 +517,9 @@ export default class DaBrowse extends LitElement {
     updateBrowseSettings({ view: this._view });
   }
 
-  setFlattenFolders(flatten) {
-    this._flattenFolders = flatten;
-    updateBrowseSettings({ flattenFolders: flatten });
+  setGroupByType(group) {
+    this._groupByType = group;
+    updateBrowseSettings({ groupByType: group });
   }
 
   render() {
@@ -528,7 +528,7 @@ export default class DaBrowse extends LitElement {
       <da-browse-header exportparts="chat-btn"
         .details=${this.details}
         .chatEnabled=${this._chatEnabled}
-        .flattenFolders=${this._flattenFolders}
+        .groupByType=${this._groupByType}
         .view=${this._view}
         .typesFilterState=${this._typesFilterState}
         .sortState=${this._sortState}
@@ -541,7 +541,7 @@ export default class DaBrowse extends LitElement {
         @typesfilterrequest=${({ detail }) => this.activeListCmp.toggleTypesPopover(detail.anchor)}
         @sortrequest=${({ detail }) => this.activeListCmp.setSort(detail.property, detail.direction)}
         @viewchange=${({ detail }) => this.setView(detail.view)}
-        @flattenfolderschange=${({ detail }) => this.setFlattenFolders(detail.flatten)}>
+        @groupbytypechange=${({ detail }) => this.setGroupByType(detail.group)}>
         <da-new variant="accent" @newitem=${this.handleNewItem} fullpath="${this.details.fullpath}" editor="${this.editor}"></da-new>
       </da-browse-header>
       <div class="da-browse-content">

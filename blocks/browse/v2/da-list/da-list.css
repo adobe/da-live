@@ -96,20 +96,24 @@ da-list-item {
   font-size: var(--s2-component-m-regular-font-size, 14px);
 }
 
-da-list-item::before {
-  display: block;
-  content: "";
-  height: 1px;
-  background: var(--s2-gray-300);
-  margin: 0 18px;
+.da-browse-panel:not(.card-view) {
+  da-list-item::before {
+    display: block;
+    content: "";
+    height: 1px;
+    background: var(--s2-gray-300);
+    margin: 0 18px;
+  }
+
+  da-list-item::after {
+    display: block;
+    content: "";
+    height: 1px;
+    background: var(--s2-gray-200);
+  }
 }
 
-da-list-item::after {
-  display: block;
-  content: "";
-  height: 1px;
-  background: var(--s2-gray-200);
-}
+
 
 da-list-item:hover::before,
 da-list-item.is-expanded::before,
@@ -223,6 +227,7 @@ da-list-item.is-expanded::after {
 }
 
 .da-browse-header-cell-select .nx-checkbox {
+  gap: var(--s2-spacing-300);
   margin: 0;
 }
 
