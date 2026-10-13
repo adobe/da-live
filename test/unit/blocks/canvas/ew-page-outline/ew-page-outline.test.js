@@ -894,7 +894,7 @@ describe('ew-page-outline - section menu', () => {
     expect(active() === row).to.be.true;
   });
 
-  it('renames via the menu and returns focus to the trigger on Enter', async () => {
+  it('renames via the menu and returns focus to the section row on Enter', async () => {
     await load([para('one'), rule('Feat'), para('two')]);
 
     menuOf(1).choose('rename');
@@ -909,10 +909,10 @@ describe('ew-page-outline - section menu', () => {
     await settle();
 
     expect(names()).to.deep.equal(['', 'Features']);
-    expect(active() === triggerOf(1)).to.be.true;
+    expect(active() === sectionRow(1)).to.be.true;
   });
 
-  it('returns focus to the trigger when a rename is cancelled with Escape', async () => {
+  it('returns focus to the section row when a rename is cancelled with Escape', async () => {
     await load([para('one'), rule('Feat'), para('two')]);
 
     menuOf(1).choose('rename');
@@ -923,10 +923,10 @@ describe('ew-page-outline - section menu', () => {
     await el.updateComplete;
 
     expect(names()).to.deep.equal(['', 'Feat']);
-    expect(active() === triggerOf(1)).to.be.true;
+    expect(active() === sectionRow(1)).to.be.true;
   });
 
-  it('adds a section after and focuses its trigger', async () => {
+  it('adds a section after and focuses its row', async () => {
     await load([para('one'), rule('Feat'), para('two')]);
 
     menuOf(0).choose('add-section-after');
@@ -934,7 +934,7 @@ describe('ew-page-outline - section menu', () => {
 
     expect(docSeq(view.state.doc)).to.deep.equal(['one', 'hr', 'hr', 'two']);
     expect(names()).to.deep.equal(['', '', 'Feat']);
-    expect(active() === triggerOf(1)).to.be.true;
+    expect(active() === sectionRow(1)).to.be.true;
   });
 
   it('inserts a block at the section start and focuses the new block row', async () => {

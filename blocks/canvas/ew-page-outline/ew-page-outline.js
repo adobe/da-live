@@ -224,10 +224,6 @@ class EwPageOutline extends LitElement {
     if (view.state.doc === before) this._pendingFocus = null;
   }
 
-  _menuTrigger(sectionIndex) {
-    return this.shadowRoot.querySelector(`.section-menu-trigger[data-section-index="${sectionIndex}"]`);
-  }
-
   _focusTargets() {
     return [...this.shadowRoot.querySelectorAll(FOCUS_TARGETS)];
   }
@@ -683,11 +679,11 @@ class EwPageOutline extends LitElement {
     if (e.key === 'Enter') {
       e.preventDefault();
       this._commitRename(sectionIndex);
-      this._queueFocus(() => this._menuTrigger(sectionIndex));
+      this._queueFocus(() => this._sectionRow(sectionIndex));
     } else if (e.key === 'Escape') {
       e.preventDefault();
       this._cancelRename();
-      this._queueFocus(() => this._menuTrigger(sectionIndex));
+      this._queueFocus(() => this._sectionRow(sectionIndex));
     }
   }
 
@@ -721,7 +717,7 @@ class EwPageOutline extends LitElement {
     const nextIndex = sectionIndex + 1;
     this._runWithFocus(
       view,
-      () => this._menuTrigger(nextIndex),
+      () => this._sectionRow(nextIndex),
       () => insertSectionAfter(view, sectionIndex),
     );
   }
