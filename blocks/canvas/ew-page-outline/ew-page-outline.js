@@ -288,9 +288,9 @@ class EwPageOutline extends LitElement {
     this.shadowRoot.querySelector('[data-drop-position]')?.removeAttribute('data-drop-position');
   }
 
-  _setDropIndicator(el, data, indicatorPosition = data.dropPosition) {
+  _setDropIndicator(el, data) {
     this._clearDropIndicator();
-    el.dataset.dropPosition = indicatorPosition;
+    el.dataset.dropPosition = data.dropPosition;
     this._dropTarget = data;
   }
 
@@ -299,6 +299,7 @@ class EwPageOutline extends LitElement {
     this._dragSourceEl?.classList.remove('dragging');
     this._dragSourceEl = null;
     this._dragging = null;
+    this._dragTargets = null;
     this._dropTarget = null;
   }
 
@@ -313,102 +314,45 @@ class EwPageOutline extends LitElement {
     const el = type === OUTLINE_TYPES.SECTION ? e.currentTarget.parentElement : e.currentTarget;
     el.classList.add('dragging');
     this._dragSourceEl = el;
+    const { targets } = getDropTargets(this._dragging, this._sections, this._expandedContent);
+    this._dragTargets = targets;
     e.dataTransfer.effectAllowed = 'move';
   }
 
-  _onSectionDragOver(e, sec) {
-    const type = this._dragging?.type;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const dropPosition = e.clientY < rect.top + rect.height / 2
-      ? DROP_POSITIONS.BEFORE : DROP_POSITIONS.AFTER;
-
-    if (type === OUTLINE_TYPES.SECTION) {
-      if (this._dragging.index === sec.sectionIndex) return;
-      e.preventDefault();
-
-      const el = dropPosition === DROP_POSITIONS.BEFORE
-        ? e.currentTarget.querySelector('[data-section-header]')
-        : e.currentTarget;
-
-      this._setDropIndicator(el, { sectionIndex: sec.sectionIndex, dropPosition });
-    } else if (type === OUTLINE_TYPES.CONTENT) {
-      // Bubbles here from anywhere unclaimed in the section; only the header is before/after-aware.
-      e.preventDefault();
-      const headerEl = e.currentTarget.querySelector('[data-section-header]');
-      const onHeader = headerEl?.contains(e.target);
-      const contentDropPosition = onHeader ? dropPosition : DROP_POSITIONS.AFTER;
-      this._setDropIndicator(
-        headerEl,
-        { sectionIndex: sec.sectionIndex, dropPosition: contentDropPosition },
-      );
-    } else {
-      if (sec.blocks.some((b) => b.blockIndex === this._dragging?.index)) return;
-      if (sec.blocks.length) {
-        const { blockIndex } = sec.blocks[sec.blocks.length - 1];
-        e.preventDefault();
-
-        const lastBlockEl = this.shadowRoot.querySelector(`[data-block-index="${blockIndex}"]`);
-        if (!lastBlockEl) return;
-        this._setDropIndicator(lastBlockEl, { blockIndex, dropPosition: DROP_POSITIONS.AFTER });
-        return;
+  _targetIndexAt(clientY, targets) {
+    const source = this._dragSourceEl?.getBoundingClientRect();
+    if (source && clientY >= source.top && clientY <= source.bottom) return -1;
+    let best = -1;
+    let bestDistance = Infinity;
+    targets.forEach(({ target }, i) => {
+      const rect = this._dropIndicatorEl(this._dragging, target)?.getBoundingClientRect();
+      if (!rect) return;
+      const y = target.dropPosition === DROP_POSITIONS.BEFORE ? rect.top : rect.bottom;
+      const distance = Math.abs(clientY - y);
+      if (distance < bestDistance) {
+        best = i;
+        bestDistance = distance;
       }
+    });
+    return best;
+  }
 
-      // No blocks to anchor on — fall back to the section boundary itself.
-      e.preventDefault();
-      const headerEl = e.currentTarget.querySelector('[data-section-header]');
-      this._setDropIndicator(
-        headerEl,
-        { sectionIndex: sec.sectionIndex, dropPosition: DROP_POSITIONS.AFTER },
-      );
+  _showDropTarget(target) {
+    const el = target && this._dropIndicatorEl(this._dragging, target);
+    if (el) {
+      this._setDropIndicator(el, target);
+    } else {
+      this._clearDropIndicator();
+      this._dropTarget = null;
     }
   }
 
-  _onBlockDragOver(e, blockIndex) {
-    const type = this._dragging?.type;
-    if (![OUTLINE_TYPES.BLOCK, OUTLINE_TYPES.CONTENT].includes(type)) return;
-    if (type === OUTLINE_TYPES.BLOCK && this._dragging.index === blockIndex) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const rect = e.currentTarget.getBoundingClientRect();
-    const dropPosition = e.clientY < rect.top + rect.height / 2
-      ? DROP_POSITIONS.BEFORE : DROP_POSITIONS.AFTER;
-    this._setDropIndicator(e.currentTarget, { blockIndex, dropPosition });
-  }
-
-  _onContentDragOver(e, child) {
-    const type = this._dragging?.type;
-    if (![OUTLINE_TYPES.CONTENT, OUTLINE_TYPES.BLOCK].includes(type)) return;
-    const isSameChild = type === OUTLINE_TYPES.CONTENT
-      && this._dragging.index.proseIndex === child.proseIndex;
-    if (isSameChild) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const rect = e.currentTarget.getBoundingClientRect();
-    const dropPosition = e.clientY < rect.top + rect.height / 2
-      ? DROP_POSITIONS.BEFORE : DROP_POSITIONS.AFTER;
-    this._setDropIndicator(e.currentTarget, { contentChild: child, dropPosition });
-  }
-
-  _onContentGroupDragOver(e, item) {
-    if (![OUTLINE_TYPES.CONTENT, OUTLINE_TYPES.BLOCK].includes(this._dragging?.type)) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const rect = e.currentTarget.getBoundingClientRect();
-    const dropPosition = e.clientY < rect.top + rect.height / 2
-      ? DROP_POSITIONS.BEFORE : DROP_POSITIONS.AFTER;
-    if (this._expandedContent?.has(item.proseIndex)) {
-      this._setDropIndicator(
-        e.currentTarget,
-        { contentChild: item.children[0], dropPosition: DROP_POSITIONS.BEFORE },
-        dropPosition,
-      );
-      return;
-    }
-    const targetChild = dropPosition === DROP_POSITIONS.BEFORE
-      ? item.children[0]
-      : item.children[item.children.length - 1];
-    this._setDropIndicator(e.currentTarget, { contentChild: targetChild, dropPosition });
-  }
+  _onGridDragOver = (e) => {
+    if (!this._dragTargets || this._pickup) return;
+    const target = this._dragTargets[this._targetIndexAt(e.clientY, this._dragTargets)]?.target;
+    this._showDropTarget(target);
+    if (this._dropTarget) e.preventDefault();
+  };
 
   _onDrop = (e) => {
     e.preventDefault();
@@ -487,13 +431,18 @@ class EwPageOutline extends LitElement {
 
   _onGridPointerLeave = () => {
     if (!this._pickup) return;
+    this._pickup.index = null;
     this._clearDropIndicator();
     this._dropTarget = null;
   };
 
-  _onPickupPointer(handler) {
-    return (e) => { if (this._pickup) handler(e); };
-  }
+  _onGridPointerMove = (e) => {
+    const pickup = this._pickup;
+    if (!pickup) return;
+    const index = this._targetIndexAt(e.clientY, pickup.targets);
+    pickup.index = index === -1 ? null : index;
+    this._showDropTarget(pickup.targets[index]?.target);
+  };
 
   _onPickupOutside = (e) => {
     if (!e.composedPath().includes(this)) this._cancelPickup();
@@ -925,9 +874,6 @@ class EwPageOutline extends LitElement {
           data-child-prose="${child.proseIndex}"
           draggable="${this._canWrite}"
           @dragstart=${(e) => this._onDragStart(e, OUTLINE_TYPES.CONTENT, child)}
-          @dragover=${(e) => this._onContentDragOver(e, child)}
-          @pointermove=${this._onPickupPointer((e) => this._onContentDragOver(e, child))}
-          @drop=${this._onDrop}
           @dragend=${this._onDragEnd}
           @click=${(e) => { e.stopPropagation(); this._selectProse(child.proseIndex, child.kind); }}>
         <div class="row-cell" role="gridcell">
@@ -951,10 +897,7 @@ class EwPageOutline extends LitElement {
              aria-level="2" aria-posinset="${posinset}" aria-setsize="${setsize}"
              tabindex="-1" aria-expanded="${expanded}"
              data-group-key="${key}"
-             @click=${() => this._toggleContentGroup(key)}
-             @dragover=${(e) => this._onContentGroupDragOver(e, item)}
-             @pointermove=${this._onPickupPointer((e) => this._onContentGroupDragOver(e, item))}
-             @drop=${this._onDrop}>
+             @click=${() => this._toggleContentGroup(key)}>
           <div class="row-cell" role="gridcell">
             <span class="drag-handle" aria-hidden="true"></span>
             ${this._renderChevron(0)}
@@ -979,9 +922,6 @@ class EwPageOutline extends LitElement {
           tabindex="-1" aria-selected="${selected}"
           draggable="${this._canWrite}"
           @dragstart=${(e) => this._onDragStart(e, OUTLINE_TYPES.BLOCK, item.blockIndex)}
-          @dragover=${(e) => this._onBlockDragOver(e, item.blockIndex)}
-          @pointermove=${this._onPickupPointer((e) => this._onBlockDragOver(e, item.blockIndex))}
-          @drop=${this._onDrop}
           @dragend=${this._onDragEnd}
           @click=${() => this._select(item.blockIndex)}>
         <div class="row-cell" role="gridcell">
@@ -1016,11 +956,7 @@ class EwPageOutline extends LitElement {
     const label = sectionLabel(sec);
     const setsize = sec.items.length;
     return html`
-      <li class="outline-section" role="none"
-          @dragover=${(e) => this._onSectionDragOver(e, sec)}
-          @pointermove=${this._onPickupPointer((e) => this._onSectionDragOver(e, sec))}
-          @dragleave=${this._onDragLeave}
-          @drop=${this._onDrop}>
+      <li class="outline-section" role="none">
         <div class="section-header" data-section-header role="row"
              aria-level="1" aria-posinset="${sec.sectionIndex + 1}" aria-setsize="${sectionCount}"
              aria-label="${label}"
@@ -1068,7 +1004,11 @@ class EwPageOutline extends LitElement {
                 @focusin=${this._onGridFocusIn}
                 @contextmenu=${this._onGridContextMenu}
                 @click=${this._onGridClickCapture}
-                @pointerleave=${this._onGridPointerLeave}>
+                @pointerleave=${this._onGridPointerLeave}
+                @pointermove=${this._onGridPointerMove}
+                @dragover=${this._onGridDragOver}
+                @dragleave=${this._onDragLeave}
+                @drop=${this._onDrop}>
               ${this._sections.map((sec) => this._renderSection(sec, this._sections.length))}
             </ul>`}
       </div>

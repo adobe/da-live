@@ -463,73 +463,6 @@ describe('ew-page-outline — content drag & delete', () => {
 
     expect(docSeq(bridge.view.state.doc)).to.deep.equal(['hero', 'hr']);
   });
-
-  it('accepts a block drag over a content child/group (sets a drop indicator, not just content drags)', () => {
-    const child = { kind: 'paragraph', proseIndex: 1 };
-    el._dragging = { type: 'block', index: 0 };
-
-    const rect = { top: 0, height: 20 };
-    const fakeEvent = (clientY) => ({
-      preventDefault() {},
-      stopPropagation() {},
-      currentTarget: { getBoundingClientRect: () => rect, dataset: {} },
-      clientY,
-    });
-
-    el._onContentDragOver(fakeEvent(15), child);
-    expect(el._dropTarget).to.deep.equal({ contentChild: child, dropPosition: 'after' });
-  });
-
-  it('dropping on a group header before/after targets the first/last child', () => {
-    const item = {
-      proseIndex: 1,
-      children: [
-        { kind: 'paragraph', proseIndex: 1, innerText: 'first' },
-        { kind: 'paragraph', proseIndex: 5, innerText: 'last' },
-      ],
-    };
-    el._dragging = { type: 'content', index: { kind: 'paragraph', proseIndex: 99 } };
-
-    const rect = { top: 0, height: 20 };
-    const fakeEvent = (clientY) => ({
-      preventDefault() {},
-      stopPropagation() {},
-      currentTarget: { getBoundingClientRect: () => rect, dataset: {} },
-      clientY,
-    });
-
-    el._onContentGroupDragOver(fakeEvent(5), item);
-    expect(el._dropTarget.contentChild).to.deep.equal(item.children[0]);
-    expect(el._dropTarget.dropPosition).to.equal('before');
-
-    el._onContentGroupDragOver(fakeEvent(15), item);
-    expect(el._dropTarget.contentChild).to.deep.equal(item.children[1]);
-    expect(el._dropTarget.dropPosition).to.equal('after');
-  });
-
-  it('dropping on the lower half of an expanded group header targets before the first child', () => {
-    const item = {
-      proseIndex: 1,
-      children: [
-        { kind: 'paragraph', proseIndex: 1, innerText: 'first' },
-        { kind: 'paragraph', proseIndex: 5, innerText: 'last' },
-      ],
-    };
-    el._expandedContent = new Set([item.proseIndex]);
-    el._dragging = { type: 'content', index: { kind: 'paragraph', proseIndex: 99 } };
-
-    const currentTarget = { getBoundingClientRect: () => ({ top: 0, height: 20 }), dataset: {} };
-    el._onContentGroupDragOver({
-      preventDefault() {},
-      stopPropagation() {},
-      currentTarget,
-      clientY: 15,
-    }, item);
-
-    expect(el._dropTarget.contentChild).to.deep.equal(item.children[0]);
-    expect(el._dropTarget.dropPosition).to.equal('before');
-    expect(currentTarget.dataset.dropPosition).to.equal('after');
-  });
 });
 
 describe('ew-page-outline - read-only', () => {
@@ -1353,6 +1286,67 @@ describe('ew-page-outline - treegrid', () => {
 
     expect(el._pickup).to.equal(null);
     expect(docSeq(view.state.doc)).to.deep.equal(['hero', 'cards']);
+  });
+
+  const dragOver = (clientY) => {
+    const event = new DragEvent('dragover', { bubbles: true, composed: true, cancelable: true, clientY });
+    root().querySelector('[role="treegrid"]').dispatchEvent(event);
+    return event;
+  };
+  const marked = () => root().querySelector('[data-drop-position]');
+
+  it('shows one drop position for the gap between two rows', async () => {
+    await load([table('hero'), table('cards'), table('x')]);
+    fireDrag(blockRow(2), 'dragstart');
+
+    const gap = blockRow(0).getBoundingClientRect().bottom;
+    dragOver(gap - 2);
+    const above = { target: el._dropTarget, el: marked() };
+    dragOver(gap + 2);
+
+    expect(above.target).to.deep.equal({ blockIndex: 1, dropPosition: 'before' });
+    expect(el._dropTarget).to.deep.equal(above.target);
+    expect(marked()).to.equal(above.el);
+    expect(marked()).to.equal(blockRow(1));
+  });
+
+  it('offers no drop while the pointer is over the dragged row', async () => {
+    await load([table('hero'), table('cards')]);
+    fireDrag(blockRow(0), 'dragstart');
+
+    const rect = blockRow(0).getBoundingClientRect();
+    const event = dragOver(rect.top + rect.height / 2);
+
+    expect(event.defaultPrevented).to.be.false;
+    expect(el._dropTarget).to.equal(null);
+    expect(marked()).to.equal(null);
+  });
+
+  it('targets the first child below an expanded Default content header', async () => {
+    await load([table('hero'), para('one'), para('two'), table('cards')]);
+    await expandAll();
+    fireDrag(blockRow(1), 'dragstart');
+
+    const rect = root().querySelector('[data-group-key]').getBoundingClientRect();
+    dragOver(rect.top + rect.height * 0.75);
+
+    const [first] = el._sections[0].items[1].children;
+    expect(same(el._dropTarget, { contentChild: first, dropPosition: 'before' })).to.be.true;
+    expect(marked()).to.equal(root().querySelector(`[data-child-prose="${first.proseIndex}"]`));
+  });
+
+  it('drops a dragged block between content children', async () => {
+    await load([table('hero'), para('one'), para('two')]);
+    await expandAll();
+    fireDrag(blockRow(0), 'dragstart');
+
+    const [, second] = el._sections[0].items[1].children;
+    const row = root().querySelector(`[data-child-prose="${second.proseIndex}"]`);
+    expect(dragOver(row.getBoundingClientRect().top + 1).defaultPrevented).to.be.true;
+    fireDrag(row, 'drop');
+    await settle();
+
+    expect(docSeq(view.state.doc)).to.deep.equal(['one', 'hero', 'two']);
   });
 
   async function expectParity(dragging, source) {
