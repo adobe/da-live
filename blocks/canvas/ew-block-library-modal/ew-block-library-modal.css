@@ -163,9 +163,9 @@
 
 .modal-tree-description {
   padding: 6px 36px 10px;
-  font-size: var(--nx-ui-text-description);
+  font-size: var(--nx-ui-text-content);
   color: var(--s2-gray-700);
-  line-height: var(--nx-ui-line-description);
+  line-height: var(--nx-ui-line-content);
 }
 
 .modal-tree-caret {
@@ -190,12 +190,12 @@
 .modal-tree-subtitle {
   margin-left: 4px;
   color: var(--s2-gray-600);
-  font-size: var(--nx-ui-text-description);
+  font-size: var(--nx-ui-text-content);
 }
 
 .modal-tree-loading {
   padding: 8px 36px;
-  font-size: var(--nx-ui-text-description);
+  font-size: var(--nx-ui-text-content);
   color: var(--s2-gray-600);
 }
 

@@ -34,7 +34,7 @@
   background: var(--ew-comment-author-color, #6b7280);
   color: #fff;
   font-family: inherit;
-  font-size: var(--nx-ui-text-description);
+  font-size: var(--nx-ui-text-content);
   font-weight: 600;
   line-height: 1;
   filter:

@@ -149,7 +149,7 @@
   margin-inline-start: var(--s2-spacing-75);
   color: var(--s2-gray-600);
   font-weight: 400;
-  font-size: var(--nx-ui-text-description);
+  font-size: var(--nx-ui-text-content);
 }
 
 .copy-url {

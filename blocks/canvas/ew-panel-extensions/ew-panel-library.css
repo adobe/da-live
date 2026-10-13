@@ -107,7 +107,7 @@
 }
 
 .ext-variant-subtitle {
-  font-size: var(--nx-ui-text-description);
+  font-size: var(--nx-ui-text-content);
   color: var(--s2-gray-500);
   margin-top: 2px;
 }
@@ -121,8 +121,8 @@
 
 .ext-description {
   padding: 6px 16px 6px 0;
-  font-size: var(--nx-ui-text-description);
-  line-height: var(--nx-ui-line-description);
+  font-size: var(--nx-ui-text-content);
+  line-height: var(--nx-ui-line-content);
   color: var(--s2-gray-600);
 }
 
@@ -239,7 +239,7 @@
 .ext-item-value {
   flex-shrink: 0;
   margin-left: 8px;
-  font-size: var(--nx-ui-text-description);
+  font-size: var(--nx-ui-text-content);
   color: var(--s2-gray-600);
   overflow: hidden;
   text-overflow: ellipsis;

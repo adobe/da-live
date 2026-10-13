@@ -43,7 +43,7 @@
   border-radius: 999px;
   background-color: var(--s2-blue-800, #0265dc);
   color: #fff;
-  font-size: var(--nx-ui-text-description);
+  font-size: var(--s2-component-xs-regular-font-size);
   font-weight: var(--s2-component-s-medium-font-weight, 700);
   line-height: 1;
 }
