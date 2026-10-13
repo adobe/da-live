@@ -1,6 +1,6 @@
 import { insertText, insertHTML, getEditorSelection } from './helpers.js';
 import { getNx } from '../../../scripts/utils.js';
-import { getPostMessageTargetOrigin, isValidHref } from '../../shared/utils.js';
+import { getPostMessageTargetOrigin, isRequestId, isValidHref, replyToGetSelection } from '../../shared/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
@@ -39,7 +39,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     }
     if (action === 'saveDocument') {
       const { requestId } = e.data;
-      if (typeof requestId !== 'string' || !requestId || requestId.length > 100) return;
+      if (!isRequestId(requestId)) return;
       canvasBus.comparisonRequest.emit({
         action,
         context: { org, site, path },
@@ -84,19 +84,14 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     }
 
     if (action === 'getSelection') {
-      if (!editorView) {
-        channel.port1.postMessage({ action: 'error', details: 'No editor view' });
-        return;
-      }
-      const html = getEditorSelection(editorView);
-      if (!html) {
-        channel.port1.postMessage({ action: 'error', details: 'No selection found' });
-        return;
-      }
-      iframe.contentWindow.postMessage(
-        { action: 'sendSelection', details: html },
+      replyToGetSelection({
+        port: channel.port1,
+        target: iframe.contentWindow,
         targetOrigin,
-      );
+        requestId: e.data.requestId,
+        html: editorView ? getEditorSelection(editorView) : null,
+        error: editorView ? 'No selection found' : 'No editor view',
+      });
     }
   };
 
