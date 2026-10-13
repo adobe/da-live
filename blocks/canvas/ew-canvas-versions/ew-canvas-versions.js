@@ -12,8 +12,8 @@ import {
 import { buildDisplayItems, formatUser } from '../../shared/version/helpers.js';
 import { docToHtml, domToHtml, buildCompareDom } from '../../shared/version/compare.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
-import { trackingPluginKey } from '../editor-utils/prose-diff.js';
 import { canvasBus } from '../utils/canvas-bus.js';
+import { trackingPluginKey } from '../editor-utils/prose-diff.js';
 import { initVersionBridge } from '../editor-utils/version-bridge.js';
 import './ew-canvas-compare.js';
 
@@ -67,12 +67,17 @@ class EwCanvasVersions extends LitElement {
     _restoreEntry: { state: true },
     _compareCtx: { state: true },
     _compareSplit: { state: true },
+    _canWrite: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [baseStyle, style];
     this._filter = 'all';
+    this._canWrite = getExtensionsBridge().view?.editable ?? false;
+    this._unsubHtml = canvasBus.editorHtmlState.subscribe(() => {
+      this._canWrite = getExtensionsBridge().view?.editable ?? false;
+    });
     initIms().then((ims) => { this._imsEmail = ims?.email ?? null; });
     initVersionBridge();
     this._unsubVersion = canvasBus.versionCreatedState.subscribe(({ path }) => {
@@ -95,6 +100,7 @@ class EwCanvasVersions extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
+    this._unsubHtml?.();
     this._unsubVersion?.();
     this._loadRequest = (this._loadRequest ?? 0) + 1;
     this._refreshing = false;
@@ -149,6 +155,7 @@ class EwCanvasVersions extends LitElement {
   }
 
   handleNew() {
+    if (!this._canWrite) return;
     this._newVersion = newVersionEntry();
   }
 
@@ -281,10 +288,6 @@ class EwCanvasVersions extends LitElement {
       this._compareCtx = { ...this._compareCtx, diffDom, cleanup };
     }
     this._compareSplit = !this._compareSplit;
-  }
-
-  get _canWrite() {
-    return getExtensionsBridge().view?.editable ?? false;
   }
 
   get _comparingId() {
@@ -471,15 +474,15 @@ class EwCanvasVersions extends LitElement {
         ? html`<span class="da-loading-spinner" aria-hidden="true"></span>`
         : html`<span class="refresh-icon" style=${`mask-image: url("${ICON_REFRESH}")`} aria-hidden="true"></span>`}
             </button>
-            <button type="button" class="da-icon-btn" aria-label="Create version"
+            ${this._canWrite ? html`<button type="button" class="da-icon-btn" aria-label="Create version"
               ?disabled=${!!this._newVersion} @click=${this.handleNew}>
               <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
                 <use href="${ICON_ADD}#icon"></use>
               </svg>
-            </button>
+            </button>` : nothing}
           </div>
         </div>
-        <p class="da-hint">Press <kbd class="da-kbd">${SHORTCUT_HINT}</kbd> to add to version history while editing.</p>
+        ${this._canWrite ? html`<p class="da-hint">Press <kbd class="da-kbd">${SHORTCUT_HINT}</kbd> to add to version history while editing.</p>` : nothing}
         ${this._versions === undefined
         ? loading
         : html`<ul class="versionlist">

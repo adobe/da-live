@@ -9,11 +9,13 @@ const nextFrame = () => new Promise((r) => { setTimeout(r, 0); });
 
 let buildDocPath;
 let getExtensionsBridge;
+let canvasBus;
 let popoverShow;
 
 before(async () => {
   ({ buildDocPath } = await import('../../../../../blocks/canvas/ew-canvas-versions/ew-canvas-versions.js'));
   ({ getExtensionsBridge } = await import('../../../../../blocks/canvas/editor-utils/extensions-bridge.js'));
+  ({ canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js'));
   const popover = customElements.get('nx-popover').prototype;
   popoverShow = popover.show;
   popover.show = () => {};
@@ -352,18 +354,40 @@ describe('version history refresh', () => {
     expect(inst._versions[0].label).to.equal('Previewed');
   });
 
+  it('keeps manual and automatic refresh available to read-only users', async () => {
+    let calls = 0;
+    mockList(() => {
+      calls += 1;
+      return Promise.resolve(response([latest, old]));
+    });
+    getExtensionsBridge().view = { editable: false };
+    inst = await createInstance({ path, _versions: [ver(old)] });
+    expect(inst.shadowRoot.querySelector('button[aria-label="Create version"]')).to.not.exist;
+    inst.shadowRoot.querySelector('.refresh-btn').click();
+    await waitFor(() => calls === 1 && !inst._refreshing);
+    expect(inst._versions[0].label).to.equal('Previewed');
+    document.dispatchEvent(new CustomEvent('nx-version-created', { detail: { path } }));
+    await waitFor(() => calls === 2 && !inst._refreshing);
+    expect(inst._versions[0].label).to.equal('Previewed');
+    expect(inst.shadowRoot.querySelector('button[aria-label="Create version"]')).to.not.exist;
+  });
+
   it('does not refresh for another document or after disconnection', async () => {
     let calls = 0;
     mockList(() => {
       calls += 1;
       return Promise.resolve(response([latest, old]));
     });
+    getExtensionsBridge().view = { editable: false };
     inst = await createInstance({ path, _versions: [ver(old)] });
     document.dispatchEvent(new CustomEvent('nx-version-created', { detail: { path: '/refreshorg/refreshsite/other.html' } }));
     inst.remove();
+    getExtensionsBridge().view = { editable: true };
+    canvasBus.editorHtmlState.emit('<body></body>');
     document.dispatchEvent(new CustomEvent('nx-version-created', { detail: { path } }));
     await nextFrame();
     expect(calls).to.equal(0);
+    expect(inst._canWrite).to.be.false;
   });
 
   it('fetches other authors versions while retaining the Only me filter', async () => {
@@ -410,6 +434,7 @@ describe('version history refresh', () => {
 
   it('preserves an open comparison, restore dialog, and unsaved version name', async () => {
     mockList(() => Promise.resolve(response([latest, old])));
+    getExtensionsBridge().view = { editable: true };
     inst = await createInstance({ path, _versions: [ver(old)] });
     inst.handleNew();
     const previewDom = document.createElement('div');
@@ -520,7 +545,11 @@ describe('version history refresh', () => {
 
 describe('create-version form', () => {
   let inst;
+  beforeEach(() => {
+    getExtensionsBridge().view = { editable: true };
+  });
   afterEach(() => {
+    getExtensionsBridge().view = null;
     inst?.remove(); inst = null;
   });
 
@@ -588,6 +617,61 @@ describe('create-version form', () => {
     expect(saveBtn.disabled).to.be.true;
     expect(saveBtn.getAttribute('aria-label')).to.equal('Saving');
     expect(saveBtn.querySelector('.da-loading-spinner')).to.exist;
+  });
+});
+
+// ─── Create version permission gating ───────────────────────────────────────
+
+describe('create version permission gating', () => {
+  let inst;
+
+  afterEach(() => {
+    getExtensionsBridge().view = null;
+    canvasBus.editorHtmlState.emit('');
+    inst?.remove(); inst = null;
+  });
+
+  it('hides the create button and hint and ignores handleNew for read-only users', async () => {
+    getExtensionsBridge().view = { editable: false };
+    inst = await createInstance({ path: '/org/site/doc.html', _versions: [ver()] });
+    expect(inst.shadowRoot.querySelector('.versionlist') !== null).to.be.true;
+    expect(inst.shadowRoot.querySelector('button[aria-label="Create version"]') === null).to.be.true;
+    expect(inst.shadowRoot.querySelector('.da-hint') === null).to.be.true;
+    inst.handleNew();
+    await inst.updateComplete;
+    expect(inst.shadowRoot.querySelector('li.is-new') === null).to.be.true;
+  });
+
+  it('shows the create button and hint and opens the form for writers', async () => {
+    getExtensionsBridge().view = { editable: true };
+    inst = await createInstance({ path: '/org/site/doc.html', _versions: [ver()] });
+    expect(inst.shadowRoot.querySelector('.da-hint') !== null).to.be.true;
+    const btn = inst.shadowRoot.querySelector('button[aria-label="Create version"]');
+    expect(btn).to.exist;
+    btn.click();
+    await inst.updateComplete;
+    expect(inst.shadowRoot.querySelector('li.is-new') !== null).to.be.true;
+  });
+
+  it('shows the create button and hint once a writable view loads', async () => {
+    getExtensionsBridge().view = null;
+    inst = await createInstance({ path: '/org/site/doc.html', _versions: [ver()] });
+    expect(inst.shadowRoot.querySelector('button[aria-label="Create version"]') === null).to.be.true;
+    getExtensionsBridge().view = { editable: true };
+    canvasBus.editorHtmlState.emit('<body></body>');
+    await inst.updateComplete;
+    expect(inst.shadowRoot.querySelector('button[aria-label="Create version"]') !== null).to.be.true;
+    expect(inst.shadowRoot.querySelector('.da-hint') !== null).to.be.true;
+  });
+
+  it('hides the create button when the view is torn down', async () => {
+    getExtensionsBridge().view = { editable: true };
+    inst = await createInstance({ path: '/org/site/doc.html', _versions: [ver()] });
+    expect(inst.shadowRoot.querySelector('button[aria-label="Create version"]') !== null).to.be.true;
+    getExtensionsBridge().view = null;
+    canvasBus.editorHtmlState.emit('');
+    await inst.updateComplete;
+    expect(inst.shadowRoot.querySelector('button[aria-label="Create version"]') === null).to.be.true;
   });
 });
 
