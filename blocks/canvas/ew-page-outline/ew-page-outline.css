@@ -66,6 +66,10 @@ input {
   margin-inline-start: var(--s2-spacing-50);
 }
 
+.section-menu-trigger.nx-action-btn-icon:focus-visible {
+  outline-offset: 0;
+}
+
 .row-cell {
   display: flex;
   flex: 1;
