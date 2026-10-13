@@ -13,6 +13,10 @@ describe('DaPrepare', () => {
 
   before(async () => {
     savedFetch = window.fetch;
+    const initialUrl = window.location.href;
+    const testUrl = new URL(initialUrl);
+    testUrl.searchParams.set('ref', 'evil.example/x');
+    window.history.replaceState({}, '', testUrl);
 
     // Mock fetch for getSheet CSS, SVGs, and config endpoints
     window.fetch = async (url) => {
@@ -36,6 +40,7 @@ describe('DaPrepare', () => {
 
     const mod = await import('../../../../../blocks/edit/da-prepare/da-prepare.js');
     DaPrepare = mod.default;
+    window.history.replaceState({}, '', initialUrl);
   });
 
   after(() => {
@@ -202,6 +207,37 @@ describe('DaPrepare', () => {
 
       const item = el._menuItems.find(({ title }) => title === 'Large Action');
       expect(item.experience).to.equal('fullsize-dialog');
+
+      window.fetch = prevFetch;
+    });
+
+    it('routes relative plugin paths and icons through the DA preview proxy', async () => {
+      const prevFetch = window.fetch;
+      window.fetch = async (url) => {
+        if (url.includes('/config/orgD/siteD')) {
+          const body = {
+            prepare: {
+              data: [{
+                title: 'Plugin Action',
+                path: '/tools/plugins/plugin-action/index.html',
+                icon: '/tools/plugins/plugin-action/icon.svg',
+              }],
+            },
+          };
+          return new Response(JSON.stringify(body), { status: 200 });
+        }
+        if (url.includes('/config/orgD')) {
+          return new Response(JSON.stringify({}), { status: 200 });
+        }
+        return prevFetch(url);
+      };
+
+      el = await fixture({ details: createDetails({ org: 'orgD', site: 'siteD' }) });
+      await waitForMenu();
+
+      const item = el._menuItems.find(({ title }) => title === 'Plugin Action');
+      expect(item.path).to.equal('https://evil-example-x--siteD--orgD.preview.da.live/tools/plugins/plugin-action/index.html');
+      expect(item.icon).to.equal('https://evil-example-x--siteD--orgD.preview.da.live/tools/plugins/plugin-action/icon.svg');
 
       window.fetch = prevFetch;
     });

@@ -503,3 +503,203 @@ describe('ew-page-outline — content drag & delete', () => {
     expect(el._dropTarget.dropPosition).to.equal('after');
   });
 });
+
+describe('ew-page-outline - read-only', () => {
+  let el;
+  let bridge;
+
+  const paragraph = (proseIndex, text) => ({ type: 'content', kind: 'paragraph', proseIndex, innerText: text, snippet: text });
+
+  async function renderOutline({ editable }) {
+    bridge.view = makeRealView({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Intro' }] }],
+    });
+    if (!editable) bridge.view.setProps({ editable: () => false });
+    el._hasBlockLibrary = true;
+    el._sections = [
+      {
+        sectionIndex: 0,
+        blocks: [{ name: 'cards', blockIndex: 0 }],
+        items: [
+          { type: 'block', name: 'cards', blockIndex: 0 },
+          contentGroupItem(10, [paragraph(10, 'Intro')]),
+        ],
+      },
+      {
+        sectionIndex: 1,
+        blocks: [],
+        items: [contentGroupItem(20, [paragraph(20, 'Second')])],
+      },
+    ];
+    await el.updateComplete;
+    el.shadowRoot.querySelector('.content-group > .content-item').click();
+    await el.updateComplete;
+  }
+
+  const editControls = () => el.shadowRoot.querySelectorAll('.edit-btn, .delete-btn, .add-block-btn');
+  const draggables = () => el.shadowRoot.querySelectorAll('[draggable="true"]');
+  const dragHandles = () => el.shadowRoot.querySelectorAll('use[href^="/img/icons/s2-icon-draghandle"]');
+
+  beforeEach(async () => {
+    el = await createOutline();
+    bridge = getExtensionsBridge();
+  });
+
+  afterEach(() => {
+    el.remove();
+    bridge.view = null;
+  });
+
+  it('hides rename, add-block, delete and drag controls for a read-only view', async () => {
+    await renderOutline({ editable: false });
+
+    expect(el.shadowRoot.querySelectorAll('.outline-section')).to.have.lengthOf(2);
+    expect(el.shadowRoot.querySelector('[data-block-index="0"]')).to.exist;
+    expect(el.shadowRoot.querySelectorAll('.content-child')).to.have.lengthOf(1);
+    expect(editControls()).to.have.lengthOf(0);
+    expect(draggables()).to.have.lengthOf(0);
+    expect(dragHandles()).to.have.lengthOf(0);
+  });
+
+  it('still selects a block from a read-only outline', async () => {
+    await renderOutline({ editable: false });
+
+    let received;
+    const unsub = canvasBus.editorSelectState.subscribe((detail) => { received = detail; });
+    el.shadowRoot.querySelector('[data-block-index="0"]').click();
+    unsub();
+    await el.updateComplete;
+
+    expect(received).to.deep.equal({ blockIndex: 0, source: 'outline' });
+    expect(el.shadowRoot.querySelector('[data-block-index="0"]').getAttribute('aria-selected')).to.equal('true');
+  });
+
+  it('shows rename, add-block, delete and drag controls for an editable view', async () => {
+    await renderOutline({ editable: true });
+
+    expect(el.shadowRoot.querySelectorAll('.edit-btn')).to.have.lengthOf(2);
+    expect(el.shadowRoot.querySelectorAll('.add-block-btn')).to.have.lengthOf(2);
+    expect(el.shadowRoot.querySelectorAll('.delete-btn')).to.have.lengthOf(4);
+    expect(draggables()).to.have.lengthOf(4);
+    expect(dragHandles()).to.have.lengthOf(4);
+  });
+
+  it('drops a pending delete when the outline switches to another document', async () => {
+    await renderOutline({ editable: true });
+    el.shadowRoot.querySelector('.outline-section .delete-btn').click();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelectorAll('nx-dialog.ew-po-delete')).to.have.lengthOf(1);
+
+    const reader = makeRealView({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Reader' }] }],
+    });
+    reader.setProps({ editable: () => false });
+    bridge.view = reader;
+    el._hashState = { org: 'org', site: 'site', path: 'reader-page' };
+    await el.updateComplete;
+
+    expect(el.shadowRoot.querySelectorAll('nx-dialog.ew-po-delete').length).to.equal(0);
+    expect(el._pendingDelete ?? null).to.equal(null);
+    expect(docSeq(reader.state.doc)).to.deep.equal(['Reader']);
+  });
+
+  it('drops a pending delete when the document unloads', async () => {
+    await renderOutline({ editable: true });
+    el.shadowRoot.querySelector('.outline-section .delete-btn').click();
+    await el.updateComplete;
+
+    canvasBus.editorHtmlState.emit('');
+    await el.updateComplete;
+
+    expect(el.shadowRoot.querySelectorAll('nx-dialog.ew-po-delete').length).to.equal(0);
+    expect(el._pendingDelete ?? null).to.equal(null);
+  });
+
+  async function dragSecondSectionOntoFirst({ editable }) {
+    bridge.view = makeRealView({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'First' }] },
+        { type: 'horizontal_rule' },
+        { type: 'paragraph', content: [{ type: 'text', text: 'Second' }] },
+      ],
+    });
+    if (!editable) bridge.view.setProps({ editable: () => false });
+    el._sections = parseSections(getInstrumentedHTML(bridge.view));
+    await el.updateComplete;
+
+    const [first, second] = el.shadowRoot.querySelectorAll('.outline-section');
+    const dataTransfer = new DataTransfer();
+    const fire = (target, type, clientY = 0) => {
+      const init = { bubbles: true, composed: true, cancelable: true, dataTransfer, clientY };
+      target.dispatchEvent(new DragEvent(type, init));
+    };
+    // A text selection drag starts on the label even when the header is not draggable.
+    fire(second.querySelector('.section-label'), 'dragstart');
+    fire(first, 'dragover', first.getBoundingClientRect().top);
+    fire(first, 'drop');
+    return docSeq(bridge.view.state.doc);
+  }
+
+  it('does not move a section dragged by its label in a read-only view', async () => {
+    expect(await dragSecondSectionOntoFirst({ editable: false }))
+      .to.deep.equal(['First', 'hr', 'Second']);
+  });
+
+  it('moves a section dragged by its label in an editable view', async () => {
+    expect(await dragSecondSectionOntoFirst({ editable: true }))
+      .to.deep.equal(['Second', 'hr', 'First']);
+  });
+
+  const twoSections = ([a, b], { editable }) => {
+    const view = makeRealView({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: a }] },
+        { type: 'horizontal_rule' },
+        { type: 'paragraph', content: [{ type: 'text', text: b }] },
+      ],
+    });
+    if (!editable) view.setProps({ editable: () => false });
+    return view;
+  };
+
+  async function dragAcrossDocumentSwitch(next) {
+    bridge.view = twoSections(['Writer first', 'Writer second'], { editable: true });
+    el._sections = parseSections(getInstrumentedHTML(bridge.view));
+    await el.updateComplete;
+
+    const dataTransfer = new DataTransfer();
+    const fire = (target, type, clientY = 0) => {
+      const init = { bubbles: true, composed: true, cancelable: true, dataTransfer, clientY };
+      target.dispatchEvent(new DragEvent(type, init));
+    };
+    fire(el.shadowRoot.querySelectorAll('[data-section-header]')[1], 'dragstart');
+
+    canvasBus.editorHtmlState.emit('');
+    el._hashState = { org: 'org', site: 'site', path: 'next-page' };
+    await el.updateComplete;
+    bridge.view = next;
+    el._sections = parseSections(getInstrumentedHTML(next));
+    await el.updateComplete;
+
+    const first = el.shadowRoot.querySelector('.outline-section');
+    fire(first, 'dragover', first.getBoundingClientRect().top);
+    fire(first, 'drop');
+    return docSeq(next.state.doc);
+  }
+
+  it('does not apply a drag started in another document to a read-only document', async () => {
+    const reader = twoSections(['Reader first', 'Reader second'], { editable: false });
+    expect(await dragAcrossDocumentSwitch(reader))
+      .to.deep.equal(['Reader first', 'hr', 'Reader second']);
+  });
+
+  it('does not apply a drag started in another document to the next writable document', async () => {
+    const writer = twoSections(['Next first', 'Next second'], { editable: true });
+    expect(await dragAcrossDocumentSwitch(writer))
+      .to.deep.equal(['Next first', 'hr', 'Next second']);
+  });
+});

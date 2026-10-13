@@ -3,6 +3,7 @@ import { DOMParser as proseDOMParser, DOMSerializer, Slice, TextSelection } from
 import { htmlToProse } from '../utils/helpers.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
 import { getPostMessageTargetOrigin, isValidHref } from '../../shared/utils.js';
+import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
 import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import searchFor from './helpers/search.js';
@@ -17,6 +18,8 @@ import {
 
 const sheet = await getSheet('/blocks/edit/da-library/da-library.css');
 const buttons = await getSheet(`${getNx().replace(/\/nx2$/, '/nx')}/styles/buttons.css`);
+
+const getCurrentOrg = () => sanitizePathParts(window.location.hash.slice(1))[0];
 
 const ICONS = [
   '/blocks/edit/img/S2_Icon_ExperienceAdd_20_N.svg',
@@ -117,18 +120,24 @@ class DaLibrary extends LitElement {
   };
 
   async handlePluginClick(plugin) {
-    this._active = plugin;
-
     if (plugin.experience === 'aem-assets') {
+      this._active = plugin;
       plugin.callback();
       this.handleClose();
+      return;
     }
 
     if (plugin.experience === 'window') {
       const href = plugin.sources?.[0];
       if (!href) return;
       window.open(href, href);
+      return;
     }
+
+    // Inline/dialog experiences render an iframe straight at plugin.sources[0],
+    // so the proxy session needs to exist before _active flips the iframe on.
+    await ensurePreviewProxySession(plugin.sources?.[0], { currentOrg: getCurrentOrg() });
+    this._active = plugin;
   }
 
   dialogCheck() {
@@ -238,9 +247,12 @@ class DaLibrary extends LitElement {
 
   async handleOpenPreview(item) {
     const { org, site, pathname } = getItemDetails(item);
+    const proxyOpts = { org, site, branch: ref, currentOrg: getCurrentOrg() };
+    const url = toPreviewProxyUrl(item.path || item.value, proxyOpts);
+    await ensurePreviewProxySession(url, proxyOpts);
     this._preview = {
       name: item.name || item.key,
-      url: `https://${ref}--${site}--${org}.aem.page${pathname}`,
+      url,
     };
 
     // Lazily get the preview status
