@@ -20,6 +20,8 @@ const [buttonsStyle, style] = await Promise.all([
 
 const SEARCH_ICON_SRC = '/img/icons/s2-icon-search-20-n.svg';
 const CLEAR_ICON_SRC = '/img/icons/s2-icon-close-20-n.svg';
+const CHEVRON_ICON_SRC = '/img/icons/s2-icon-chevronright-20-n.svg';
+const INFO_ICON_SRC = '/img/icons/s2-icon-infocircle-20-n.svg';
 
 const iconAdd = () => html`<svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-experienceadd-20-n.svg#icon"></use></svg>`;
 const iconPreview = () => html`<svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-experiencepreview-20-n.svg#icon"></use></svg>`;
@@ -188,7 +190,9 @@ class EwPanelLibrary extends LitElement {
               <div class="ext-variant-actions">
                 ${v.description ? html`
                   <button class="nx-action-btn-icon nx-btn-sm" aria-label="Info"
-                    @click=${() => this._toggleTooltip(v.name)}>ℹ</button>` : nothing}
+                    @click=${() => this._toggleTooltip(v.name)}>
+                    <svg aria-hidden="true" viewBox="0 0 20 20"><use href="${INFO_ICON_SRC}#icon"></use></svg>
+                  </button>` : nothing}
                 <button class="nx-action-btn-icon nx-btn-sm" aria-label="Add"
                   @click=${() => this._insertBlock(v)}>${iconAdd()}</button>
               </div>
@@ -210,8 +214,11 @@ class EwPanelLibrary extends LitElement {
           <li class="ext-group">
             <div class="ext-group-header">
               <button class="ext-group-title" @click=${() => this._toggleBlock(block)}>
+                <svg aria-hidden="true" viewBox="0 0 20 20"
+                  class="ext-expand-icon ${this._expandedBlock === block.path ? 'is-expanded' : ''}">
+                  <use href="${CHEVRON_ICON_SRC}#icon"></use>
+                </svg>
                 <span class="ext-item-name">${block.name}</span>
-                <span class="ext-expand-icon">${this._expandedBlock === block.path ? '▾' : '▸'}</span>
               </button>
               <button class="nx-action-btn-icon nx-btn-sm" aria-label="Preview"
                 @click=${() => this._openPreview(block)}>${iconPreview()}</button>

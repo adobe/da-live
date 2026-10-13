@@ -35,7 +35,7 @@
   align-items: center;
   flex: 1;
   min-width: 0;
-  padding: 10px 0 10px 16px;
+  padding: 8px 12px;
   background: none;
   border: none;
   cursor: pointer;
@@ -50,9 +50,15 @@
 }
 
 .ext-expand-icon {
-  font-size: var(--nx-ui-text-description);
+  width: 14px;
+  height: 14px;
   color: var(--s2-gray-600);
   flex-shrink: 0;
+  transition: transform 0.1s ease-out;
+
+  &.is-expanded {
+    transform: rotate(90deg);
+  }
 }
 
 .ext-variant-list {
@@ -69,7 +75,7 @@
 }
 
 .ext-variant-item {
-  padding: 8px 0 8px 24px;
+  padding: 8px 0 8px 34px;
   border-bottom: 1px solid var(--s2-gray-100);
 }
 
@@ -308,4 +314,13 @@
 :host([data-ui-size="m"]) .ext-search-icon {
   width: 18px;
   height: 18px;
+}
+
+:host([data-ui-size="m"]) .ext-expand-icon {
+  width: 16px;
+  height: 16px;
+}
+
+:host([data-ui-size="m"]) .ext-variant-item {
+  padding-left: 36px;
 }
