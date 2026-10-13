@@ -143,6 +143,9 @@ describe('section names — outline panel', () => {
     await el.updateComplete;
   };
 
+  const menuOf = (sectionIndex) => el.shadowRoot
+    .querySelectorAll('.outline-section')[sectionIndex].querySelector('nx-menu');
+
   const section = (sectionIndex, name, items = []) => (
     { sectionIndex, name, blocks: [], items }
   );
@@ -169,21 +172,19 @@ describe('section names — outline panel', () => {
 
   it('placeholders the input with the ordinal, not section content', async () => {
     await setSections([section(0, '', [headingRun('Why us')])]);
-    el.shadowRoot.querySelector('.edit-btn').click();
+    menuOf(0).choose('rename');
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('.section-name-input').placeholder).to.equal('Section 1');
   });
 
-  it('opens the rename input from the edit button next to the name', async () => {
+  it('opens the rename input from the section menu and hides the menu while editing', async () => {
     await setSections([section(0, 'Hero')]);
-    const header = el.shadowRoot.querySelector('.section-header');
-    const order = [...header.children].map((c) => (c.classList.contains('edit-btn') ? 'edit-btn' : c.classList[0]));
-    expect(order.indexOf('edit-btn')).to.equal(order.indexOf('section-label') + 1);
+    expect(el.shadowRoot.querySelector('.edit-btn')).to.be.null;
 
-    el.shadowRoot.querySelector('.edit-btn').click();
+    menuOf(0).choose('rename');
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('.section-name-input')).to.exist;
-    expect(el.shadowRoot.querySelector('.edit-btn')).to.be.null;
+    expect(el.shadowRoot.querySelector('nx-menu')).to.be.null;
   });
 
   it('does not start a rename from the name itself', async () => {
@@ -198,7 +199,7 @@ describe('section names — outline panel', () => {
 
   it('opens an input seeded with the stored name and stops the header dragging', async () => {
     await setSections([section(0, 'Hero')]);
-    el.shadowRoot.querySelector('.edit-btn').click();
+    menuOf(0).choose('rename');
     await el.updateComplete;
     const input = el.shadowRoot.querySelector('.section-name-input');
     expect(input.value).to.equal('Hero');
