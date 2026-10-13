@@ -88,3 +88,7 @@
     cursor: auto;
   }
 }
+
+:host([data-ui-size="m"]) .comment-count-chip {
+  font-size: var(--s2-component-s-regular-font-size);
+}

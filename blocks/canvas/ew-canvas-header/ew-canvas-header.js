@@ -55,6 +55,7 @@ class EWCanvasHeader extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    this.dataset.uiSize = getUISize();
     this.shadowRoot.adoptedStyleSheets = [style, buttons];
     this._unsubHash = hashChange.subscribe((state) => {
       this._syncChatDisabled(state?.org, state?.site);
