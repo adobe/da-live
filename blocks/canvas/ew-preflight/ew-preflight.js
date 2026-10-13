@@ -71,7 +71,7 @@ class EwPreflight extends LitElement {
   async _resolvePageUrl() {
     const { org, site, path } = this._hashState ?? {};
     if (!org || !site) return '';
-    const relPath = path ? path.repalace(/^\//, '') : '';
+    const relPath = path ? path.replace(/^\//, '') : '';
     const branch = await fetchWysiwygBranch({ org, site, path: `${org}/${site}/${relPath}` });
     const origin = getPreviewOrigin(org, site, branch);
     return relPath ? `${origin}/${relPath}` : origin;
