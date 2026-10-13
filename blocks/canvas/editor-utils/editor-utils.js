@@ -171,6 +171,18 @@ export function extractCursors(view) {
   return [...cursorMap.values()];
 }
 
+// The node views render a block as a bare table, but prose2aem only turns a
+// table inside a .tableWrapper into a block. Give it that wrapper back.
+function wrapBareTables(nodes) {
+  return [...nodes].map((node) => {
+    if (node.nodeName !== 'TABLE') return node;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'tableWrapper';
+    wrapper.append(node);
+    return wrapper;
+  });
+}
+
 // Merge-conflict node views render their own UI (tabs, buttons, overlays).
 // Serialize what the author sees by default instead: the local version of a
 // pair, the content of a lone node. The hidden second half of a pair goes.
@@ -178,11 +190,11 @@ function unwrapDiffViews(root) {
   root.querySelectorAll('.loc-pair-hidden').forEach((el) => el.remove());
   root.querySelectorAll('.loc-tabbed-container').forEach((container) => {
     const local = container.querySelector('.diff-tab-pane[data-tab="added"]');
-    container.replaceWith(...(local ? local.childNodes : []));
+    container.replaceWith(...wrapBareTables(local ? local.childNodes : []));
   });
   root.querySelectorAll('.loc-single-container').forEach((container) => {
     container.querySelectorAll(':scope > .loc-color-overlay').forEach((el) => el.remove());
-    container.replaceWith(...container.childNodes);
+    container.replaceWith(...wrapBareTables(container.childNodes));
   });
 }
 
