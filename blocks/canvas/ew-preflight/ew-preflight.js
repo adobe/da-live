@@ -77,7 +77,7 @@ class EwPreflight extends LitElement {
 
   // The document path the publish gate matches STATUS against. Mirrors da-nx's
   // buildPrepareDetails().fullpath (`/org/site/path.html`) so a non-gate refresh
-  // updates the gate's Publish dot. Gate runs echo the run's path instead.
+  // updates the gate's Publish dot. Gate runs must match this document path.
   get _docFullpath() {
     const { org, site, path } = this._hashState ?? {};
     if (!org || !site || !path) return '';
@@ -137,8 +137,12 @@ class EwPreflight extends LitElement {
     // The pending store (first open) and the live subscription (re-publish) can both
     // deliver the same run; only act once.
     if (requestId === this._lastGateRequestId) return;
-    this._started = true;
     this._lastGateRequestId = requestId;
+    if (path !== this._docFullpath) {
+      reportPreflightStatus({ path, status: 'cancelled', requestId });
+      return;
+    }
+    this._started = true;
     this._gateRequestId = requestId;
     this._gatePath = path;
     this._gateSettled = false;

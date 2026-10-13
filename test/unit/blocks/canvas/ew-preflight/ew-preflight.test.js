@@ -4,6 +4,13 @@ import { getNx, setNx } from '../../../../../scripts/utils.js';
 import { adaptEvaluation } from '../../../../../blocks/canvas/ew-preflight/adapter.js';
 
 const tick = () => new Promise((resolve) => { setTimeout(resolve, 20); });
+const GATE_PAGE = { org: 'org', site: 'site', path: '/a' };
+
+function createGateElement() {
+  const el = document.createElement('ew-preflight');
+  el._hashState = GATE_PAGE;
+  return el;
+}
 
 // The gate wiring is what we test here; the REST call (evaluatePage) and the
 // da-nx renderer (ensureRenderer) are external, so every element gets a stubbed
@@ -28,15 +35,30 @@ function captureStatus() {
 
 describe('ew-preflight preflight gate', () => {
   let canvasBus;
+  let hashChange;
+  let takePendingPreflightRequest;
 
   before(async () => {
     setNx('/test/fixtures/nx', { hostname: 'example.com' });
     await import('../../../../../blocks/canvas/ew-preflight/ew-preflight.js');
     ({ canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js'));
+    ({ hashChange } = await import(`${getNx()}/utils/utils.js`));
+    const responder = await import('../../../../../blocks/canvas/editor-utils/preflight-responder.js');
+    ({ takePendingPreflightRequest } = responder);
+    responder.initPreflightResponder();
+  });
+
+  beforeEach(() => {
+    hashChange._set(GATE_PAGE);
+  });
+
+  afterEach(() => {
+    takePendingPreflightRequest();
+    hashChange._set({});
   });
 
   it('reports success when no checks failed, echoing the run path + requestId', async () => {
-    const el = stubEvaluate(document.createElement('ew-preflight'), { failed: 0 });
+    const el = stubEvaluate(createGateElement(), { failed: 0 });
     const cap = captureStatus();
     await el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g1' });
     cap.stop();
@@ -44,7 +66,7 @@ describe('ew-preflight preflight gate', () => {
   });
 
   it('reports fail when a check failed', async () => {
-    const el = stubEvaluate(document.createElement('ew-preflight'), { failed: 1 });
+    const el = stubEvaluate(createGateElement(), { failed: 1 });
     const cap = captureStatus();
     await el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g2' });
     cap.stop();
@@ -65,7 +87,7 @@ describe('ew-preflight preflight gate', () => {
         ],
       },
     });
-    const el = document.createElement('ew-preflight');
+    const el = createGateElement();
     el._evaluate = async () => { el._data = data; };
     const cap = captureStatus();
     await el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'sitefail' });
@@ -96,7 +118,7 @@ describe('ew-preflight preflight gate', () => {
         ],
       },
     });
-    const el = document.createElement('ew-preflight');
+    const el = createGateElement();
     el._evaluate = async () => { el._data = data; };
     const cap = captureStatus();
     await el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'sitepass' });
@@ -120,7 +142,7 @@ describe('ew-preflight preflight gate', () => {
         ],
       },
     });
-    const el = document.createElement('ew-preflight');
+    const el = createGateElement();
     el._evaluate = async () => { el._data = data; };
     document.body.appendChild(el);
     try {
@@ -136,7 +158,7 @@ describe('ew-preflight preflight gate', () => {
   });
 
   it('reports fail when the evaluation errors', async () => {
-    const el = stubEvaluate(document.createElement('ew-preflight'), { error: 'boom' });
+    const el = stubEvaluate(createGateElement(), { error: 'boom' });
     const cap = captureStatus();
     await el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g3' });
     cap.stop();
@@ -144,7 +166,7 @@ describe('ew-preflight preflight gate', () => {
   });
 
   it('reports cancelled when the tools panel closes before the run settles', async () => {
-    const el = document.createElement('ew-preflight');
+    const el = createGateElement();
     let release;
     el._evaluate = () => new Promise((resolve) => { release = resolve; });
     const running = el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g4' });
@@ -163,7 +185,7 @@ describe('ew-preflight preflight gate', () => {
   });
 
   it('keeps the run going when another panel closes or the tool view switches', async () => {
-    const el = document.createElement('ew-preflight');
+    const el = createGateElement();
     let release;
     el._evaluate = () => new Promise((resolve) => {
       release = () => {
@@ -190,7 +212,7 @@ describe('ew-preflight preflight gate', () => {
   });
 
   it('_cancelGate emits cancelled for an in-flight gate (disconnect backstop)', () => {
-    const el = document.createElement('ew-preflight');
+    const el = createGateElement();
     el._gateRequestId = 'g5';
     el._gatePath = '/org/site/a.html';
     el._gateSettled = false;
@@ -201,7 +223,7 @@ describe('ew-preflight preflight gate', () => {
   });
 
   it('dedupes a repeated requestId — runs the gate once', async () => {
-    const el = stubEvaluate(document.createElement('ew-preflight'), { failed: 0 });
+    const el = stubEvaluate(createGateElement(), { failed: 0 });
     const cap = captureStatus();
     await el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g6' });
     await el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g6' });
@@ -210,7 +232,7 @@ describe('ew-preflight preflight gate', () => {
   });
 
   it('a non-gate refresh emits a requestId-less status at the derived doc path', async () => {
-    const el = stubEvaluate(document.createElement('ew-preflight'), { failed: 0 });
+    const el = stubEvaluate(createGateElement(), { failed: 0 });
     el._hashState = { org: 'o', site: 's', path: '/p' };
     const cap = captureStatus();
     await el._evaluateAndReport();
@@ -227,7 +249,7 @@ describe('ew-preflight preflight gate', () => {
     canvasBus.preflightRunRequest.emit({ paths: ['/org/site/a.html'], requestId: 'g7' });
     await tick();
 
-    const el = stubEvaluate(document.createElement('ew-preflight'), { failed: 0 });
+    const el = stubEvaluate(createGateElement(), { failed: 0 });
     const cap = captureStatus();
     document.body.appendChild(el);
     await tick();
@@ -239,10 +261,10 @@ describe('ew-preflight preflight gate', () => {
   });
 
   it('claims live and duplicate requests so a fresh instance does not replay them', async () => {
-    const { initPreflightResponder, peekPendingPreflightRequest, takePendingPreflightRequest } = await import('../../../../../blocks/canvas/editor-utils/preflight-responder.js');
+    const { initPreflightResponder, peekPendingPreflightRequest } = await import('../../../../../blocks/canvas/editor-utils/preflight-responder.js');
     initPreflightResponder();
-    const el = stubEvaluate(document.createElement('ew-preflight'));
-    const fresh = stubEvaluate(document.createElement('ew-preflight'));
+    const el = stubEvaluate(createGateElement());
+    const fresh = stubEvaluate(createGateElement());
     const detail = { paths: ['/org/site/a.html'], requestId: 'g8' };
     let cap;
     try {
@@ -271,6 +293,85 @@ describe('ew-preflight preflight gate', () => {
       fresh.remove();
       cap?.stop();
       takePendingPreflightRequest();
+    }
+  });
+
+  it('cancels a mismatched live request once without evaluating or replacing an active gate', async () => {
+    hashChange._set({ ...GATE_PAGE, path: '/b' });
+    const el = stubEvaluate(createGateElement());
+    let evaluations = 0;
+    let cap;
+    try {
+      document.body.appendChild(el);
+      await tick();
+      el._evaluate = async () => { evaluations += 1; };
+      el._gateRequestId = 'active';
+      el._gatePath = '/org/site/b.html';
+      el._gateSettled = false;
+      cap = captureStatus();
+
+      const detail = { paths: ['/org/site/a.html'], requestId: 'mismatch' };
+      canvasBus.preflightRunRequest.emit(detail);
+      await tick();
+      canvasBus.preflightRunRequest.emit(detail);
+      await tick();
+
+      expect(cap.events).to.deep.equal([
+        { path: '/org/site/a.html', status: 'cancelled', requestId: 'mismatch' },
+      ]);
+      expect(evaluations).to.equal(0);
+      expect(el._gateRequestId).to.equal('active');
+      expect(el._gatePath).to.equal('/org/site/b.html');
+      expect(el._gateSettled).to.equal(false);
+      expect(takePendingPreflightRequest()).to.equal(null);
+    } finally {
+      cap?.stop();
+      el.remove();
+    }
+  });
+
+  it('cancels a gate without evaluating when no document context is available', async () => {
+    const el = createGateElement();
+    el._hashState = {};
+    let evaluations = 0;
+    el._evaluate = async () => { evaluations += 1; };
+    const cap = captureStatus();
+    try {
+      await el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'no-page' });
+      expect(cap.events).to.deep.equal([
+        { path: '/org/site/a.html', status: 'cancelled', requestId: 'no-page' },
+      ]);
+      expect(evaluations).to.equal(0);
+      expect(el._gateRequestId).to.equal(undefined);
+    } finally {
+      cap.stop();
+      el._cancelGate();
+    }
+  });
+
+  it('cancels a request parked before navigation instead of evaluating the new page for that gate', async () => {
+    canvasBus.preflightRunRequest.emit({ paths: ['/org/site/a.html'], requestId: 'parked-a' });
+    hashChange._set({ ...GATE_PAGE, path: '/b' });
+    canvasBus.toolPanelViewState.emit('preflight');
+    const el = createGateElement();
+    const runs = [];
+    el._evaluate = async () => {
+      runs.push({ path: el._hashState.path, requestId: el._gateRequestId });
+      el._data = { failed: 0 };
+    };
+    const cap = captureStatus();
+    try {
+      document.body.appendChild(el);
+      await tick();
+      expect(cap.events.filter((detail) => detail.requestId)).to.deep.equal([
+        { path: '/org/site/a.html', status: 'cancelled', requestId: 'parked-a' },
+      ]);
+      expect(runs).to.deep.equal([{ path: '/b', requestId: undefined }]);
+      expect(takePendingPreflightRequest()).to.equal(null);
+    } finally {
+      cap.stop();
+      el.remove();
+      canvasBus.toolPanelViewState.emit(null);
     }
   });
 });
