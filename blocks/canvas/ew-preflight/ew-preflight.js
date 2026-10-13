@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
-import { getPreviewOrigin } from '../editor-utils/editor-utils.js';
+import { getPreviewOrigin, fetchWysiwygBranch } from '../editor-utils/editor-utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { reportPreflightStatus } from '../editor-utils/preflight-bridge.js';
 import { takePendingPreflightRequest } from '../editor-utils/preflight-responder.js';
@@ -68,11 +68,13 @@ class EwPreflight extends LitElement {
     this._cancelGate();
   }
 
-  get _pageUrl() {
+  async _resolvePageUrl() {
     const { org, site, path } = this._hashState ?? {};
     if (!org || !site) return '';
-    const suffix = path ? `/${path.replace(/^\//, '')}` : '';
-    return `${getPreviewOrigin(org, site)}${suffix}`;
+    const relPath = path ? path.repalace(/^\//, '') : '';
+    const branch = await fetchWysiwygBranch({ org, site, path: `${org}/${site}/${relPath}` });
+    const origin = getPreviewOrigin(org, site, branch);
+    return relPath ? `${origin}/${relPath}` : origin;
   }
 
   // The document path the publish gate matches STATUS against. Mirrors da-nx's
@@ -172,8 +174,8 @@ class EwPreflight extends LitElement {
   }
 
   async _evaluate() {
-    const pageUrl = this._pageUrl;
-    if (!pageUrl) {
+    const { org, site } = this._hashState ?? {};
+    if (!org || !site) {
       this._error = 'No page is open.';
       return;
     }
@@ -184,7 +186,8 @@ class EwPreflight extends LitElement {
     this._error = null;
     this._setRefreshBusy(true);
     try {
-      await ensureRenderer();
+      const [pageUrl] = await Promise.all([this._resolvePageUrl(), ensureRenderer()]);
+      if (this._runId !== runId) return;
       const response = await evaluatePage(pageUrl);
       if (this._runId !== runId) return;
       this._data = adaptEvaluation(response);

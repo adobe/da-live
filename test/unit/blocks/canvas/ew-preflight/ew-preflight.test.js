@@ -519,3 +519,23 @@ describe('ew-preflight document navigation', () => {
     }
   });
 });
+
+describe('ew-preflight page URL', () => {
+  let originalUrl;
+
+  before(async () => {
+    await import('../../../../../blocks/canvas/ew-preflight/ew-preflight.js');
+  });
+
+  beforeEach(() => { originalUrl = window.location.href; });
+  afterEach(() => { window.history.replaceState(null, '', originalUrl); });
+
+  it('evaluates the ?ref= branch instead of main', async () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('ref', 'feat');
+    window.history.replaceState(null, '', url);
+    const el = createGateElement();
+    const pageUrl = await el._resolvePageUrl();
+    expect(pageUrl).to.match(/^https:\/\/feat--site--org\.[^/]+\/a$/);
+  });
+});
