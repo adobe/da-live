@@ -11,6 +11,7 @@ import {
 import { toolbarController } from '../editor-utils/toolbar-controller.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
@@ -44,6 +45,8 @@ function blockTypeLabelForRaw(raw) {
 }
 
 class EwSelectionToolbar extends LitElement {
+  _uiSize = new UISizeController(this);
+
   static properties = {
     view: { attribute: false },
     activeSurface: { attribute: false },
@@ -61,7 +64,6 @@ class EwSelectionToolbar extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.dataset.uiSize = getUISize();
     this.shadowRoot.adoptedStyleSheets = [buttonsStyle, styles];
   }
 

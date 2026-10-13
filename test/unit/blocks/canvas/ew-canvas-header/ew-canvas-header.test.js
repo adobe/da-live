@@ -1,6 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
 import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
+import { setUISize } from '../../../../fixtures/nx2/utils/ui-size.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -23,14 +24,48 @@ async function segmentByLabel(header, label) {
 
 describe('ew-canvas-header segments', () => {
   let header;
+  let originalSize;
+  let originalClasses;
 
   beforeEach(async () => {
+    originalSize = localStorage.getItem('ui-size');
+    originalClasses = document.body.className;
+    setUISize({ size: 's' });
     header = document.createElement('ew-canvas-header');
     document.body.append(header);
     await header.updateComplete;
   });
 
-  afterEach(() => header.remove());
+  afterEach(() => {
+    header.remove();
+    if (originalSize === null) localStorage.removeItem('ui-size');
+    else localStorage.setItem('ui-size', originalSize);
+    document.body.className = originalClasses;
+  });
+
+  it('updates host, buttons, and segments live without resetting editor state', async () => {
+    header.editorView = 'content';
+    header.undoAvailable = true;
+    await header.updateComplete;
+    const control = segmentedBtn(header);
+    const undo = header.shadowRoot.querySelector('[data-action="undo"]');
+    expect(undo.classList.contains('nx-btn-sm')).to.be.true;
+    setUISize({ size: 'm' });
+    await header.updateComplete;
+    await control.updateComplete;
+    expect(header.dataset.uiSize).to.equal('m');
+    expect(control.getAttribute('size')).to.equal('m');
+    expect(undo.classList.contains('nx-btn-sm')).to.be.false;
+    expect(header.editorView).to.equal('content');
+    expect(header.undoAvailable).to.be.true;
+    expect(segmentedBtn(header)).to.equal(control);
+    setUISize({ size: 's' });
+    await header.updateComplete;
+    expect(header.dataset.uiSize).to.equal('s');
+    expect(control.getAttribute('size')).to.equal('s');
+    expect(undo.classList.contains('nx-btn-sm')).to.be.true;
+    expect(header.editorView).to.equal('content');
+  });
 
   it('renders the Layout, Content and Split segments', async () => {
     header.editorView = 'layout';

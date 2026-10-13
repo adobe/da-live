@@ -6,6 +6,7 @@ import { canvasBus } from '../utils/canvas-bus.js';
 import { getCommentsBridge, toggleComments, getCommentsVisible } from '../editor-utils/comments-bridge.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 const { PANEL_EVENT, getSectionAtPosition } = await import(`${getNx()}/utils/panel.js`);
 await import(`${getNx2()}/blocks/shared/segmented-btn/segmented.js`);
 
@@ -30,6 +31,8 @@ const EDITOR_VIEW_ITEMS = [
 ];
 
 class EWCanvasHeader extends LitElement {
+  _uiSize = new UISizeController(this);
+
   static properties = {
     /** `'layout'` / `'content'` = single pane; `'split'` = doc + WYSIWYG side by side */
     editorView: { type: String, reflect: true },
@@ -55,7 +58,6 @@ class EWCanvasHeader extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.dataset.uiSize = getUISize();
     this.shadowRoot.adoptedStyleSheets = [style, buttons];
     this._unsubHash = hashChange.subscribe((state) => {
       this._syncChatDisabled(state?.org, state?.site);

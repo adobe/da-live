@@ -9,6 +9,7 @@ import { canvasBus } from '../utils/canvas-bus.js';
 
 const nx = getNx();
 const { loadStyle } = await import(`${nx}/utils/utils.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 await import(`${nx}/blocks/shared/picker/picker.js`);
 
 const styles = await loadStyle(import.meta.url);
@@ -28,6 +29,8 @@ function splitLibraryVariant(variant) {
 }
 
 class EwBlockToolbar extends LitElement {
+  _uiSize = new UISizeController(this);
+
   static properties = {
     view: { attribute: false },
     org: { type: String },
@@ -41,7 +44,6 @@ class EwBlockToolbar extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.dataset.uiSize = getUISize();
     this.shadowRoot.adoptedStyleSheets = [buttonsStyle, styles];
   }
 

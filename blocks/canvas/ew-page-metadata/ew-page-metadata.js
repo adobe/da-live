@@ -16,6 +16,7 @@ const fieldId = (field) => `ew-pm-${field.key.trim().toLowerCase().replace(/\s+/
 const isTextField = (field) => field.type === 'json' || !field.values?.length;
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
 await import('./ew-metadata-multiselect.js');
@@ -27,6 +28,8 @@ const [formStyle, buttonsStyle, style] = await Promise.all([
 ]);
 
 class EwPageMetadata extends LitElement {
+  _uiSize = new UISizeController(this);
+
   static properties = {
     _docRows: { state: true },
     _libraryFields: { state: true },

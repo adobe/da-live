@@ -50,6 +50,7 @@ const CONTENT_KIND_NODE_NAMES = {
 };
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 
@@ -58,6 +59,8 @@ const commentHighlightStyle = await getSheet('/blocks/canvas/comments/comment-hi
 const buttonsStyle = await getSheet(`${getNx2()}/styles/buttons.css`);
 
 export class EwEditorDoc extends LitElement {
+  _uiSize = new UISizeController(this);
+
   static properties = {
     ctx: { type: Object },
     session: { type: Object },

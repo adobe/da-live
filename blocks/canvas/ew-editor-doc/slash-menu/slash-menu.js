@@ -1,6 +1,6 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { Plugin } from 'da-y-wrapper';
-import { getNx, getUISize } from '../../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../../scripts/utils.js';
 import {
   slashMenuItemsForQuery,
   applySlashSelection,
@@ -16,6 +16,7 @@ import {
 
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 
 function inTopLevelParagraph($from) {
   if ($from.parent.type.name !== 'paragraph') return false;
@@ -80,7 +81,8 @@ function setup(container, view, ctxRef) {
   const menu = document.createElement('nx-menu');
   menu.ignoreFocus = true;
   menu.scoped = true;
-  menu.setAttribute('size', getUISize());
+  // The menu is created outside Lit templates, so it owns its size subscription.
+  const uiSize = new UISizeController(menu, { onChange: (size) => { menu.size = size; } });
   menu.items = slashMenuItemsForQuery('');
   container.append(menu);
 
@@ -112,7 +114,7 @@ function setup(container, view, ctxRef) {
   const onScroll = () => { if (menu.open) menu.reposition(); };
   scrollEl?.addEventListener('scroll', onScroll, { passive: true });
 
-  return { menu, anchor, scrollEl, onScroll };
+  return { menu, anchor, scrollEl, onScroll, uiSize };
 }
 
 function positionAnchor(view, anchor, pos) {

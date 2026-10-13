@@ -35,6 +35,14 @@ In order to also use the local `nx` scripts, run `npm run local` in the `da-nx` 
 
 **Note:** these values will persist in local storage until you reset them.
 
+### Workspace UI size
+Use **UI size** in the profile popover to select **Small** or **Medium**. The scale
+applies immediately without reloading the document or resetting editor state.
+Workspace components use Nexter's `UISizeController` from `nx2/utils/ui-size.js`
+to update their host attributes and render their shared controls at the selected size.
+This requires the paired Nexter UI-size toggle change (adobe/da-nx#832).
+Embedded extensions do not receive the scale through a new iframe protocol.
+
 ### Edge Delivery
 If you wish to do any testing that involves Edge Delivery, please note the following:
 
@@ -58,5 +66,4 @@ npm run build:da-y-wrapper
 ```
 
 Additional details can be [found here](https://github.com/adobe/da-live/wiki/Dependencies).
-
 

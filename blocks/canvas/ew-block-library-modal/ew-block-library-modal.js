@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2, getUISize, getBtnSizeClass } from '../../../scripts/utils.js';
+import { getNx, getNx2, getBtnSizeClass } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import {
   loadBlockLibrary,
@@ -10,6 +10,7 @@ import {
 const nx = getNx();
 await import(`${nx}/blocks/shared/dialog/dialog.js`);
 const { loadStyle, hashChange } = await import(`${nx}/utils/utils.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 const [buttonsStyle, formStyle, style] = await Promise.all([
   getSheet(`${getNx2()}/styles/buttons.css`),
   getSheet(`${getNx2()}/styles/form.css`),
@@ -47,6 +48,8 @@ function variantSearchText(block, variant) {
 }
 
 class EwBlockLibraryModal extends LitElement {
+  _uiSize = new UISizeController(this);
+
   static properties = {
     blocks: { attribute: false },
     onInsert: { attribute: false },
@@ -64,7 +67,6 @@ class EwBlockLibraryModal extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.dataset.uiSize = getUISize();
     this.shadowRoot.adoptedStyleSheets = [buttonsStyle, formStyle, style];
     this._variantsByPath = new Map();
     this._openDescriptions = new Set();

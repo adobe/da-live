@@ -9,6 +9,7 @@ import getSheet from '../../shared/sheet.js';
 import '../../shared/da-name-dialog/da-name-dialog.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
@@ -76,6 +77,8 @@ const REFRESH_ICON_HTML = `<svg aria-hidden="true" class="icon" viewBox="0 0 20 
 const REFRESH_SPINNER_HTML = '<span class="da-loading-spinner" aria-hidden="true"></span>';
 
 class EwFileExplorer extends LitElement {
+  _uiSize = new UISizeController(this, { onChange: (size) => this._headerRefreshBtn?.classList.toggle('nx-btn-sm', size === 's') });
+
   static properties = {
     _cache: { state: true },
     _loading: { state: true },
@@ -94,7 +97,6 @@ class EwFileExplorer extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.dataset.uiSize = getUISize();
     this._category ??= 'all';
     this.shadowRoot.adoptedStyleSheets = [buttons, style];
     this._unsubHash = hashChange.subscribe((state) => this._onHashChange(state));

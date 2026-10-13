@@ -9,6 +9,7 @@ import {
 } from '../utils/panel.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
@@ -23,6 +24,8 @@ const CLOSE_ICON_SRC = '/img/icons/s2-icon-splitright-20-n.svg';
 const OPEN_IN_ICON_URL = '/img/icons/s2-icon-openin-20-n.svg';
 
 class EwToolPanel extends LitElement {
+  _uiSize = new UISizeController(this);
+
   static properties = {
     views: { attribute: false },
     activeId: { type: String },
@@ -38,7 +41,6 @@ class EwToolPanel extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.dataset.uiSize = getUISize();
     this.shadowRoot.adoptedStyleSheets = [base, style, buttons];
     this._bindCommentCountUpdates();
     this._onRailToggle = () => this._broadcastActiveView();

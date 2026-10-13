@@ -1,5 +1,5 @@
 import { LitElement, html } from 'da-lit';
-import { getNx, getNx2, getUISize } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import { openCommentsPanel, getCommentsBridge } from '../editor-utils/comments-bridge.js';
 import { canvasBus } from '../utils/canvas-bus.js';
@@ -20,6 +20,7 @@ import {
 } from './helpers/templates.js';
 
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 const sheet = await getSheet('/blocks/canvas/comments/comments-panel.css');
 const buttons = await getSheet(`${getNx2()}/styles/buttons.css`);
 const form = await getSheet(`${getNx2()}/styles/form.css`);
@@ -40,6 +41,8 @@ function formatToastMessage(text, description) {
 }
 
 export class CommentsPanel extends LitElement {
+  _uiSize = new UISizeController(this);
+
   static properties = {
     controller: { attribute: false },
     currentUser: { state: true },
@@ -138,7 +141,6 @@ export class CommentsPanel extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.dataset.uiSize = getUISize();
     this.shadowRoot.adoptedStyleSheets = [
       ...this.shadowRoot.adoptedStyleSheets, base, buttons, form, sheet,
     ];

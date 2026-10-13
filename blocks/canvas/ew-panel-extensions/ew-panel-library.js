@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2, getUISize, getBtnSizeClass } from '../../../scripts/utils.js';
+import { getNx, getNx2, getBtnSizeClass } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import {
   fetchBlocks,
@@ -13,6 +13,7 @@ import {
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 const [buttonsStyle, style] = await Promise.all([
   getSheet(`${getNx2()}/styles/buttons.css`),
   loadStyle(import.meta.url),
@@ -35,6 +36,8 @@ function andMatch(query, target) {
  * First-party library panel: blocks, templates, icons, placeholders (OOTB sheet-driven tools).
  */
 class EwPanelLibrary extends LitElement {
+  _uiSize = new UISizeController(this);
+
   static properties = {
     extension: { attribute: false },
     _items: { state: true },
@@ -48,7 +51,6 @@ class EwPanelLibrary extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.dataset.uiSize = getUISize();
     this.shadowRoot.adoptedStyleSheets = [buttonsStyle, style];
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
   }

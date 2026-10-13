@@ -29,6 +29,7 @@ const FILTER_ITEMS = [
 ];
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 await import(`${getNx2()}/blocks/shared/segmented-btn/segmented.js`);
@@ -54,6 +55,8 @@ async function showError(text) {
 }
 
 class EwCanvasVersions extends LitElement {
+  _uiSize = new UISizeController(this);
+
   static properties = {
     path: { type: String },
     _filter: { state: true },
@@ -68,7 +71,6 @@ class EwCanvasVersions extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.dataset.uiSize = getUISize();
     this.shadowRoot.adoptedStyleSheets = [baseStyle, buttonsStyle, formStyle, style];
     this._filter = 'all';
     initIms().then((ims) => { this._imsEmail = ims?.email ?? null; });

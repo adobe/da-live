@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2, getUISize } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import { treeKeydown } from '../utils/tree-nav.js';
 import { parseSections } from '../editor-utils/editor-utils.js';
@@ -27,6 +27,7 @@ const EDIT_ICON_SRC = '/img/icons/s2-icon-edit-20-n.svg';
 const CHEVRON_ICON_SRC = '/img/icons/s2-icon-chevronright-10-n.svg';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 
 const [formStyle, buttonsStyle, style] = await Promise.all([
@@ -84,6 +85,8 @@ function sectionsEqual(a, b) {
 }
 
 class EwPageOutline extends LitElement {
+  _uiSize = new UISizeController(this);
+
   static properties = {
     _sections: { state: true },
     _selectedBlockIndex: { state: true },
@@ -98,7 +101,6 @@ class EwPageOutline extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.dataset.uiSize = getUISize();
     this.shadowRoot.adoptedStyleSheets = [formStyle, style, buttonsStyle];
     this._expandedContent = new Set();
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });

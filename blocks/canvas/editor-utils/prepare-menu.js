@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2, getUISize, getBtnSizeClass, sanitizeName } from '../../../scripts/utils.js';
+import { getNx, getNx2, getBtnSizeClass, sanitizeName } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import { fetchDaConfigs, getPostMessageTargetOrigin } from '../../shared/utils.js';
 import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
@@ -8,6 +8,7 @@ import { canvasBus } from '../utils/canvas-bus.js';
 import { initPreflightBridge, reportPreflightStatus } from './preflight-bridge.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
 
 const style = await loadStyle(import.meta.url);
@@ -56,6 +57,8 @@ const OOTB_ACTIONS = [
 ];
 
 export default class PrepareMenu extends LitElement {
+  _uiSize = new UISizeController(this);
+
   static properties = {
     details: { attribute: false },
     _menuItems: { state: true },
@@ -65,7 +68,6 @@ export default class PrepareMenu extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.dataset.uiSize = getUISize();
     this.shadowRoot.adoptedStyleSheets = [buttonsStyle, style];
     initPreflightBridge();
     this._unsubs = [
