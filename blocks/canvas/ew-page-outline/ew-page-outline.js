@@ -402,6 +402,8 @@ class EwPageOutline extends LitElement {
   };
 
   _onGridKeydown = (e) => {
+    const isMenuKey = e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10');
+    if (isMenuKey && this._openRowMenu(e)) return;
     if (this._pickup) {
       this._onPickupKeydown(e);
       return;
@@ -411,12 +413,18 @@ class EwPageOutline extends LitElement {
 
   _onGridContextMenu = (e) => {
     const row = e.composedPath().find((el) => el.getAttribute?.('role') === 'row');
+    if (row?.querySelector('nx-menu')?.open) e.preventDefault();
+  };
+
+  _openRowMenu(e) {
+    const row = e.composedPath().find((el) => el.getAttribute?.('role') === 'row');
     const menu = row?.querySelector('nx-menu');
-    if (!menu) return;
+    if (!menu) return false;
     e.preventDefault();
     this._cancelPickup();
     if (!menu.open) menu.show({ anchor: menu.querySelector('[slot="trigger"]') });
-  };
+    return true;
+  }
 
   _onGridClickCapture = {
     handleEvent: (e) => {

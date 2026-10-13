@@ -1138,17 +1138,31 @@ describe('ew-page-outline - treegrid', () => {
     expect(received).to.include({ blockIndex: 0, source: 'outline' });
   });
 
-  it('opens the row menu on contextmenu and leaves menu-less rows alone', async () => {
+  it('opens the row menu with Shift+F10 or the ContextMenu key, not a mouse right-click', async () => {
     await load([table('hero')]);
+    const menu = sectionRow(0).querySelector('nx-menu');
+    const rightClick = () => {
+      const event = new MouseEvent('contextmenu', { bubbles: true, composed: true, cancelable: true });
+      handleOf(sectionRow(0)).dispatchEvent(event);
+      return event;
+    };
 
-    const onSection = new MouseEvent('contextmenu', { bubbles: true, composed: true, cancelable: true });
-    sectionRow(0).dispatchEvent(onSection);
-    expect(onSection.defaultPrevented).to.be.true;
-    expect(sectionRow(0).querySelector('nx-menu').open).to.be.true;
+    expect(rightClick().defaultPrevented).to.be.false;
+    expect(menu.open).to.be.false;
 
-    const onBlock = new MouseEvent('contextmenu', { bubbles: true, composed: true, cancelable: true });
-    blockRow(0).dispatchEvent(onBlock);
-    expect(onBlock.defaultPrevented).to.be.false;
+    const init = { bubbles: true, composed: true, cancelable: true };
+    const shiftF10 = new KeyboardEvent('keydown', { ...init, key: 'F10', shiftKey: true });
+    handleOf(sectionRow(0)).dispatchEvent(shiftF10);
+    expect(shiftF10.defaultPrevented).to.be.true;
+    expect(menu.open).to.be.true;
+    expect(rightClick().defaultPrevented).to.be.true;
+    menu.close();
+
+    expect(press('ContextMenu', sectionRow(0)).defaultPrevented).to.be.true;
+    expect(menu.open).to.be.true;
+    menu.close();
+
+    expect(press('ContextMenu', blockRow(0)).defaultPrevented).to.be.false;
   });
 
   it('labels drag handles as buttons in the row', async () => {
