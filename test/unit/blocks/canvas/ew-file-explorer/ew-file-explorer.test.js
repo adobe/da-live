@@ -767,10 +767,13 @@ describe('EwFileExplorer', () => {
       expect((await axRows()).map((r) => r.name)).to.deep.equal(['site', 'sub', 'b.html']);
     });
 
-    it('shows an "Empty folder" row when an empty folder is expanded with ArrowRight', async () => {
+    it('shows an "Empty folder" note when an empty folder is expanded, skipped by arrow keys', async () => {
       el._cache = {
         ...el._cache,
-        '/org/site': [...el._cache['/org/site'], { name: 'empty', path: '/org/site/empty' }],
+        '/org/site': [
+          { name: 'empty', path: '/org/site/empty' },
+          ...el._cache['/org/site'],
+        ],
         '/org/site/empty': [],
       };
       await el.updateComplete;
@@ -780,15 +783,16 @@ describe('EwFileExplorer', () => {
       press(folder, 'ArrowRight');
       await el.updateComplete;
 
-      const rows = (await axRows()).map(({ name, level, expanded }) => ({ name, level, expanded }));
-      expect(rows.slice(-2)).to.deep.equal([
-        { name: 'empty', level: 2, expanded: true },
-        { name: 'Empty folder', level: 3, expanded: undefined },
-      ]);
-      expect(rowEl('Empty folder').querySelectorAll('button')).to.have.lengthOf(0);
+      const note = el.shadowRoot.querySelector('.empty-note');
+      expect(note.textContent.trim()).to.equal('Empty folder');
+      expect(note.getAttribute('aria-hidden')).to.equal('true');
+      expect(note.matches('[role="row"], [role="row"] *')).to.be.false;
+      const axFolder = axAll(await axTree(GRID), 'row').find((r) => r.name === 'empty');
+      expect(axFolder).to.include({ expanded: true, description: 'Empty folder' });
+      expect((await axRows()).map((r) => r.name)).to.deep.equal(['site', 'empty', 'sub', 'b.html']);
 
       press(folder, 'ArrowDown');
-      expect(axFocused(await axTree(GRID))).to.include({ role: 'row', name: 'Empty folder' });
+      expect(axFocused(await axTree(GRID))).to.include({ role: 'row', name: 'sub' });
     });
 
     it('shows no placeholder for a collapsed or still-loading folder', async () => {
@@ -798,7 +802,7 @@ describe('EwFileExplorer', () => {
       };
       el._expanded = new Set(['org/site', 'org/site/unloaded']);
       await el.updateComplete;
-      expect((await axRows()).map((r) => r.name)).to.deep.equal(['site', 'sub', 'b.html', 'unloaded']);
+      expect(el.shadowRoot.querySelector('.empty-note')).to.equal(null);
     });
 
     it('says "No matching files" when the filter hides everything in an expanded folder', async () => {
@@ -807,14 +811,13 @@ describe('EwFileExplorer', () => {
       el._categoryCrawling = false;
       await el.updateComplete;
 
-      expect((await axRows()).map(({ name, level }) => ({ name, level }))).to.deep.equal([
-        { name: 'site', level: 1 },
-        { name: 'No matching files', level: 2 },
-      ]);
+      expect(el.shadowRoot.querySelector('.empty-note').textContent.trim()).to.equal('No matching files');
+      const axSite = axAll(await axTree(GRID), 'row').find((r) => r.name === 'site');
+      expect(axSite.description).to.equal('No matching files');
 
       el._categoryCrawling = true;
       await el.updateComplete;
-      expect((await axRows()).map((r) => r.name)).to.deep.equal(['site']);
+      expect(el.shadowRoot.querySelector('.empty-note')).to.equal(null);
     });
 
     it('moves from a child row to its parent folder on ArrowLeft', async () => {

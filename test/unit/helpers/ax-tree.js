@@ -3,7 +3,7 @@ import { executeServerCommand, sendKeys } from '@web/test-runner-commands';
 const SKIP = new Set([
   'none', 'generic', 'StaticText', 'InlineTextBox', 'LineBreak', 'ListMarker',
 ]);
-const KEYS = ['role', 'name', 'level', 'expanded', 'selected', 'pressed', 'focused', 'disabled'];
+const KEYS = ['role', 'name', 'description', 'level', 'expanded', 'selected', 'pressed', 'focused', 'disabled'];
 
 function prune(node) {
   const children = (node.children ?? []).flatMap(prune);

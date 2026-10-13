@@ -531,7 +531,7 @@ class EwFileExplorer extends LitElement {
   }
 
   _renderRow({
-    item, depth, posinset, setsize, expanded, hint,
+    item, depth, posinset, setsize, expanded, hint, description,
   }) {
     const isDir = item.type === 'directory';
     const selected = !isDir && this._selectedPath === itemHashPath(item);
@@ -545,6 +545,7 @@ class EwFileExplorer extends LitElement {
         aria-level="${depth + 1}" aria-posinset="${posinset}" aria-setsize="${setsize}"
         aria-expanded="${isDir ? expanded : nothing}"
         aria-selected="${selected}"
+        aria-description="${description || nothing}"
         @click="${() => this._onItemClick(item)}">
         <div class="row-cell" role="gridcell">
           <svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="${iconPathForExt(item.ext)}#icon"></use></svg>
@@ -649,20 +650,15 @@ class EwFileExplorer extends LitElement {
 
     return html`
       <li role="none">
-        ${this._renderRow({ item, depth, posinset, setsize, expanded })}
+        ${this._renderRow({
+    item, depth, posinset, setsize, expanded, description: emptyLabel,
+  })}
         ${expanded && visibleChildren?.length ? html`
           <ul role="none">
             ${visibleChildren.map((c, i) => this._renderNode(c, depth + 1, i + 1, visibleChildren.length))}
           </ul>` : nothing}
         ${emptyLabel ? html`
-          <ul role="none">
-            <li role="none">
-              <div role="row" class="row empty" style="--depth: ${depth + 1}" tabindex="-1"
-                aria-level="${depth + 2}" aria-posinset="1" aria-setsize="1">
-                <div class="row-cell" role="gridcell"><span class="label">${emptyLabel}</span></div>
-              </div>
-            </li>
-          </ul>` : nothing}
+          <div class="empty-note" style="--depth: ${depth + 1}" aria-hidden="true">${emptyLabel}</div>` : nothing}
       </li>`;
   }
 
