@@ -908,7 +908,7 @@ class EwPageOutline extends LitElement {
                 class="nx-action-btn-icon nx-btn-sm section-menu-trigger"
                 data-section-index="${sec.sectionIndex}"
                 aria-label="More actions for ${sectionLabel(sec)}"
-                draggable="false"
+                tabindex="-1" draggable="false"
                 @pointerdown=${(e) => e.stopPropagation()}>
           <svg aria-hidden="true" class="icon" viewBox="0 0 20 20">
             <use href="${MORE_ICON_SRC}#icon"></use>
