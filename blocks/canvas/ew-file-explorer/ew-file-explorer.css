@@ -120,8 +120,16 @@
 }
 
 /* Files have no chevron — indent to align with folder labels */
-.row.file {
+.row.file,
+.row.empty {
   padding-inline-start: calc(var(--depth, 0) * var(--s2-spacing-300) + var(--s2-spacing-100) + 1rem + var(--s2-spacing-75));
+}
+
+.row.empty {
+  cursor: default;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--s2-gray-600);
 }
 
 .icon {

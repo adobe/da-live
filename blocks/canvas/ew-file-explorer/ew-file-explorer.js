@@ -635,17 +635,33 @@ class EwFileExplorer extends LitElement {
     }
   }
 
+  _emptyFolderLabel(item, visibleChildren) {
+    if (!this._cache?.[item.path] || visibleChildren?.length) return null;
+    if (!item.children.length) return 'Empty folder';
+    return this._categoryCrawling ? null : 'No matching files';
+  }
+
   _renderNode(item, depth, posinset, setsize) {
     const isDir = item.type === 'directory';
     const expanded = isDir && !!this._expanded?.has(item.pathKey);
     const visibleChildren = this._visibleChildren(item.children);
+    const emptyLabel = expanded && this._emptyFolderLabel(item, visibleChildren);
 
     return html`
       <li role="none">
         ${this._renderRow({ item, depth, posinset, setsize, expanded })}
-        ${expanded && visibleChildren.length ? html`
+        ${expanded && visibleChildren?.length ? html`
           <ul role="none">
             ${visibleChildren.map((c, i) => this._renderNode(c, depth + 1, i + 1, visibleChildren.length))}
+          </ul>` : nothing}
+        ${emptyLabel ? html`
+          <ul role="none">
+            <li role="none">
+              <div role="row" class="row empty" style="--depth: ${depth + 1}" tabindex="-1"
+                aria-level="${depth + 2}" aria-posinset="1" aria-setsize="1">
+                <div class="row-cell" role="gridcell"><span class="label">${emptyLabel}</span></div>
+              </div>
+            </li>
           </ul>` : nothing}
       </li>`;
   }
