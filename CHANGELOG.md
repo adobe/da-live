@@ -1,3 +1,58 @@
+# [1.4.0](https://github.com/adobe/da-live/compare/v1.3.1...v1.4.0) (2026-10-13)
+
+
+### Bug Fixes
+
+* **ew:** hide create version controls for read-only users ([#1419](https://github.com/adobe/da-live/issues/1419)) ([217aa0b](https://github.com/adobe/da-live/commit/217aa0bb3456b685c0fcad7844a0661485ec368f)), closes [#1406](https://github.com/adobe/da-live/issues/1406) [#1406](https://github.com/adobe/da-live/issues/1406) [#1406](https://github.com/adobe/da-live/issues/1406) [#1406](https://github.com/adobe/da-live/issues/1406) [#1406](https://github.com/adobe/da-live/issues/1406) [#1406](https://github.com/adobe/da-live/issues/1406)
+
+
+### Features
+
+* **canvas:** outline row action menu with add section after ([#1165](https://github.com/adobe/da-live/issues/1165)) ([acdf03d](https://github.com/adobe/da-live/commit/acdf03db44d78758a4e5f456b7e3711132087f8e))
+
+## [1.3.1](https://github.com/adobe/da-live/compare/v1.3.0...v1.3.1) (2026-10-13)
+
+
+### Bug Fixes
+
+* **canvas:** send lengthDiff with SET_EDITOR_STATE on doc-view edits ([#1433](https://github.com/adobe/da-live/issues/1433)) ([5fd24d5](https://github.com/adobe/da-live/commit/5fd24d5ab1858ed4e8afc43e0472396a168a2bc0))
+
+# [1.3.0](https://github.com/adobe/da-live/compare/v1.2.4...v1.3.0) (2026-10-12)
+
+
+### Features
+
+* support pasted urls on highlighted text to link automatically ([#1429](https://github.com/adobe/da-live/issues/1429)) ([563cd4e](https://github.com/adobe/da-live/commit/563cd4e5db7f3ccd5f6a1af3afc217cbff2bc06e))
+
+## [1.2.4](https://github.com/adobe/da-live/compare/v1.2.3...v1.2.4) (2026-10-08)
+
+
+### Bug Fixes
+
+* **ew:** hide outline edit actions for read-only users ([#1418](https://github.com/adobe/da-live/issues/1418)) ([bc87e6a](https://github.com/adobe/da-live/commit/bc87e6ab5eba53c79e741ff343eaa7a494178b7a)), closes [#1407](https://github.com/adobe/da-live/issues/1407) [#1407](https://github.com/adobe/da-live/issues/1407) [#1407](https://github.com/adobe/da-live/issues/1407) [#1407](https://github.com/adobe/da-live/issues/1407) [#1407](https://github.com/adobe/da-live/issues/1407) [#1407](https://github.com/adobe/da-live/issues/1407) [#1407](https://github.com/adobe/da-live/issues/1407) [#1407](https://github.com/adobe/da-live/issues/1407)
+
+## [1.2.3](https://github.com/adobe/da-live/compare/v1.2.2...v1.2.3) (2026-10-08)
+
+
+### Bug Fixes
+
+* **ew:** "Create document" prompt when navigating to a non-existent URL ([#1311](https://github.com/adobe/da-live/issues/1311)) ([d269372](https://github.com/adobe/da-live/commit/d269372d345da913a3c0814a54b83668723a87c2)), closes [bpauli/da-live#2](https://github.com/bpauli/da-live/issues/2) [adobe/da-live#1309](https://github.com/adobe/da-live/issues/1309)
+* load hlx6 media through the source API ([#1421](https://github.com/adobe/da-live/issues/1421)) ([0bcbb13](https://github.com/adobe/da-live/commit/0bcbb131bf07f46dd49d4b921a9ce1d366a88071))
+
+## [1.2.2](https://github.com/adobe/da-live/compare/v1.2.1...v1.2.2) (2026-10-07)
+
+
+### Bug Fixes
+
+* **plugins:** use preview proxy for library and prepare menu plugins ([#1385](https://github.com/adobe/da-live/issues/1385)) ([ad9ed5a](https://github.com/adobe/da-live/commit/ad9ed5ae4ac4a0a6921184e4ee4bf1dbdde84dc0))
+
+## [1.2.1](https://github.com/adobe/da-live/compare/v1.2.0...v1.2.1) (2026-10-07)
+
+
+### Bug Fixes
+
+* resolve canvas version preview images ([#1417](https://github.com/adobe/da-live/issues/1417)) ([38b2e50](https://github.com/adobe/da-live/commit/38b2e504cbbb17790540386c3a61399d4b378897))
+
 # [1.2.0](https://github.com/adobe/da-live/compare/v1.1.0...v1.2.0) (2026-10-06)
 
 

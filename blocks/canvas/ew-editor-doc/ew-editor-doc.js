@@ -87,7 +87,6 @@ export class EwEditorDoc extends LitElement {
       this._lastDocBlockIndex = undefined;
       this._lastDocSelKey = undefined;
       this._lastBroadcastNodeKey = undefined;
-      canvasBus.editorHtmlState.emit('');
     }
   }
 
@@ -99,6 +98,9 @@ export class EwEditorDoc extends LitElement {
     }
     if (this._controllerCtx?.reloadTimer) {
       clearTimeout(this._controllerCtx.reloadTimer);
+    }
+    if (this._controllerCtx?.metadataRerenderTimer) {
+      clearTimeout(this._controllerCtx.metadataRerenderTimer);
     }
     this._controllerCtx = undefined;
   }
@@ -360,6 +362,7 @@ export class EwEditorDoc extends LitElement {
     this._unbindSectionName?.();
     this._unbindSectionName = undefined;
     this._proseContext = undefined;
+    canvasBus.editorHtmlState.emit('');
   }
 
   async _loadEditor() {
@@ -389,9 +392,9 @@ export class EwEditorDoc extends LitElement {
             mediaBusImage(this.ctx),
             createExtensionsBridgePlugin(),
             createTrackingPlugin(
-              () => {
+              (details) => {
                 const body = this._controllerCtx
-                  ? updateDocument(this._controllerCtx)
+                  ? updateDocument(this._controllerCtx, details)
                   : getInstrumentedHTML(this._proseContext?.view);
                 if (body) canvasBus.editorHtmlState.emit(body);
               },

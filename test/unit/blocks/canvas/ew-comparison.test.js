@@ -442,7 +442,7 @@ describe('standalone workspace comparison', () => {
 
   it('marks an open document comparison stale after editor changes', async () => {
     await controller.open({ candidate: 'document', baseline: 'live' });
-    canvasBus.editorHtmlState.emit({ html: '<p>Later edit</p>' });
+    canvasBus.editorHtmlState.emit('<p>Later edit</p>');
     const surface = mountRoot.querySelector('ew-comparison');
     await surface.updateComplete;
     expect(surface.shadowRoot.textContent).to.include('changed');
