@@ -305,7 +305,7 @@ export default class DaBrowseSearch extends LitElement {
     return html`
       <div class="search-field">
         <svg class="search-icon" viewBox="0 0 20 20" aria-hidden="true">
-          <use href="${getNx()}/img/icons/s2-icon-search-20-n.svg#icon"></use>
+          <use href="/img/icons/s2-icon-search-20-n.svg#icon"></use>
         </svg>
         <input type="search" role="combobox" aria-label=${this.label}
           aria-autocomplete="list" aria-haspopup="listbox" aria-expanded=${!!this._open}
@@ -318,7 +318,7 @@ export default class DaBrowseSearch extends LitElement {
         <button type="button" aria-label="Clear search" ?hidden=${!this.value}
           ?disabled=${this.disabled} @click=${this.clear}>
           <svg viewBox="0 0 20 20" aria-hidden="true">
-            <use href="${getNx()}/img/icons/s2-icon-close-20-n.svg#icon"></use>
+            <use href="/img/icons/s2-icon-close-20-n.svg#icon"></use>
           </svg>
         </button>
         <slot name="actions"></slot>

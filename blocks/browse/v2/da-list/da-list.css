@@ -150,10 +150,21 @@ da-list-item.is-expanded::after {
   display: flex;
   min-height: 40px;
   padding-inline: var(--da-list-pad-inline, 24px);
+  align-items: center;
+  gap: var(--s2-spacing-200);
 
-  > :not(.da-browse-header-cell-select) {
+  > :not(.da-browse-header-cell-select, .da-card-sort-pill) {
     display: none;
   }
+}
+
+.da-card-sort-pill {
+  margin-inline-start: auto;
+}
+
+.da-card-select-all-label {
+  color: var(--s2-gray-800);
+  font-size: var(--s2-component-m-regular-font-size, 14px);
 }
 
 .da-card-grid {

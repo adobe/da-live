@@ -958,6 +958,16 @@ export default class DaList extends LitElement {
     return this._sort?.property === property ? this._sort.direction : 'none';
   }
 
+  get sortPillLabel() {
+    const { property, direction } = this._sort ?? {};
+    if (!property || direction === 'none') return 'Sort: Default';
+    const name = property === 'name';
+    const asc = direction === 'ascending';
+    const labels = name ? ['A-Z', 'Z-A'] : ['oldest first', 'newest first'];
+    const detail = labels[asc ? 0 : 1];
+    return `Sorted by ${name ? 'Name' : 'Modified'} (${detail})`;
+  }
+
   get filteredItems() {
     return this._hiddenTypes.size
       ? this._listItems.filter((item) => !this._hiddenTypes.has(getTypeLabel(item.ext)))
@@ -1448,6 +1458,7 @@ export default class DaList extends LitElement {
     return html`
       <label class="nx-checkbox ${this._bulkLoading ? 'loading' : ''} ${this._selectedItems.length > 0 && !this.isSelectAll ? 'indeterminate' : ''}" role="columnheader">
         <input type="checkbox" id="select-all" name="select-all" .checked="${this.isSelectAll}" @click="${this.handleCheckAll}" aria-label="Select all items" ?disabled=${this._bulkLoading} aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
+        ${this.view === 'card' ? html`<span class="da-card-select-all-label">Select all</span>` : nothing}
       </label>
     `;
   }
@@ -1462,6 +1473,7 @@ export default class DaList extends LitElement {
         <div class="da-browse-header-cell da-browse-header-cell-select" data-column="select">
           ${this.renderCheckBox()}
         </div>
+        ${this.view === 'card' ? html`<span class="tag da-card-sort-pill">${this.sortPillLabel}</span>` : nothing}
         <div class="da-browse-header-cell da-browse-header-cell-name" data-column="name" role="columnheader" aria-sort="${this.sortDirectionFor('name')}">
           <div class="da-browse-header-container">
             <button
