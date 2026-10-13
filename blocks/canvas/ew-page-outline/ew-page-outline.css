@@ -88,6 +88,10 @@ input {
     color: inherit;
   }
 
+  &.nx-action-btn-icon:focus-visible {
+    outline-offset: 0;
+  }
+
   &[aria-pressed="true"] {
     background: var(--s2-gray-200);
   }
