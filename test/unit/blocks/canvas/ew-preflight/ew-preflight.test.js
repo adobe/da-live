@@ -14,11 +14,12 @@ function createGateElement() {
 
 // The gate wiring is what we test here; the REST call (evaluatePage) and the
 // da-nx renderer (ensureRenderer) are external, so every element gets a stubbed
-// `_evaluate` that just sets `_data`/`_error` synthetically.
+// `_evaluate` that sets `_data`/`_error` synthetically and resolves to the run's verdict.
 function stubEvaluate(el, { failed = 0, error = null } = {}) {
   el._evaluate = async () => {
     el._error = error;
     el._data = error ? undefined : { failed };
+    return el._verdictFor({ data: el._data, error });
   };
   return el;
 }
@@ -88,7 +89,10 @@ describe('ew-preflight preflight gate', () => {
       },
     });
     const el = createGateElement();
-    el._evaluate = async () => { el._data = data; };
+    el._evaluate = async () => {
+      el._data = data;
+      return el._verdictFor({ data });
+    };
     const cap = captureStatus();
     await el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'sitefail' });
     cap.stop();
@@ -119,7 +123,10 @@ describe('ew-preflight preflight gate', () => {
       },
     });
     const el = createGateElement();
-    el._evaluate = async () => { el._data = data; };
+    el._evaluate = async () => {
+      el._data = data;
+      return el._verdictFor({ data });
+    };
     const cap = captureStatus();
     await el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'sitepass' });
     cap.stop();
@@ -199,7 +206,7 @@ describe('ew-preflight preflight gate', () => {
       release = () => {
         el._error = null;
         el._data = { failed: 0 };
-        resolve();
+        resolve(el._verdictFor({ data: el._data }));
       };
     });
     const running = el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g4b' });
@@ -237,6 +244,59 @@ describe('ew-preflight preflight gate', () => {
     await el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g6' });
     cap.stop();
     expect(cap.events).to.have.lengthOf(1);
+  });
+
+  it('settles overlapping gates only with their own run result', async () => {
+    const el = createGateElement();
+    const finishers = [];
+    // Mirrors the real _evaluate's contract: a superseded run resolves to null.
+    el._evaluate = () => {
+      const runId = (el._runId ?? 0) + 1;
+      el._runId = runId;
+      return new Promise((resolve) => {
+        finishers.push((data) => {
+          if (el._runId !== runId) {
+            resolve(null);
+            return;
+          }
+          el._data = data;
+          resolve(el._verdictFor({ data }));
+        });
+      });
+    };
+    // A passing result from an earlier evaluation of this page.
+    el._data = { failed: 0 };
+    const cap = captureStatus();
+    try {
+      const runA = el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'A' });
+      const runB = el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'B' });
+      expect(cap.events).to.deep.equal([
+        { path: '/org/site/a.html', status: 'cancelled', requestId: 'A' },
+      ]);
+
+      finishers[0]({ failed: 0 });
+      await runA;
+      expect(cap.events).to.have.lengthOf(1);
+
+      finishers[1]({ failed: 2 });
+      await runB;
+      expect(cap.events).to.deep.equal([
+        { path: '/org/site/a.html', status: 'cancelled', requestId: 'A' },
+        { path: '/org/site/a.html', status: 'fail', requestId: 'B' },
+      ]);
+    } finally {
+      cap.stop();
+    }
+  });
+
+  it('shows the error instead of earlier results when a later run fails', async () => {
+    const el = createGateElement();
+    el._resolvePageUrl = async () => { throw new Error('down'); };
+    el._data = { failed: 0 };
+    const verdict = await el._evaluate();
+    expect(verdict.status).to.equal('error');
+    expect(el._data).to.equal(null);
+    expect(el.render().strings.join('')).to.contain('ew-preflight-retry');
   });
 
   it('a non-gate refresh emits a requestId-less status at the derived doc path', async () => {
@@ -366,6 +426,7 @@ describe('ew-preflight preflight gate', () => {
     el._evaluate = async () => {
       runs.push({ path: el._hashState.path, requestId: el._gateRequestId });
       el._data = { failed: 0 };
+      return el._verdictFor({ data: el._data });
     };
     const cap = captureStatus();
     try {
@@ -409,12 +470,14 @@ describe('ew-preflight document navigation', () => {
       runs.push(path);
       return new Promise((resolve) => {
         const finish = () => {
-          if (el._runId === runId) {
-            el._loading = false;
-            el._error = null;
-            el._data = { failed: 0, path };
+          if (el._runId !== runId) {
+            resolve(null);
+            return;
           }
-          resolve();
+          el._loading = false;
+          el._error = null;
+          el._data = { failed: 0, path };
+          resolve(el._verdictFor({ data: el._data }));
         };
         if (el.hold) el.release = finish;
         else finish();

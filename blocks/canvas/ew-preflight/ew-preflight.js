@@ -90,9 +90,9 @@ class EwPreflight extends LitElement {
 
   // `error` means the checks could not run (API/network failure), as opposed to `fail`
   // (checks ran and found issues); `message` carries the cause for the publish dialog.
-  _resultStatus() {
-    if (this._error) return { status: 'error', message: this._error };
-    return { status: this._data?.failed === 0 ? 'success' : 'fail' };
+  _verdictFor({ data, error } = {}) {
+    if (error) return { status: 'error', message: error };
+    return { status: data?.failed === 0 ? 'success' : 'fail' };
   }
 
   // Records which page the results belong to, so navigation can tell they are stale.
@@ -128,9 +128,9 @@ class EwPreflight extends LitElement {
 
   // Run the checks and, outside a gate, report the verdict so the Publish dot tracks it.
   async _evaluateAndReport() {
-    await this._evaluateCurrentPage();
-    if (this._gateRequestId) return;
-    reportPreflightStatus({ path: this._docFullpath, ...this._resultStatus() });
+    const verdict = await this._evaluateCurrentPage();
+    if (!verdict || this._gateRequestId) return;
+    reportPreflightStatus({ path: this._docFullpath, ...verdict });
   }
 
   _handlePreflightRun = async (detail) => {
@@ -146,6 +146,8 @@ class EwPreflight extends LitElement {
       reportPreflightStatus({ path, status: 'cancelled', requestId });
       return;
     }
+    // A newer run for this page supersedes the open gate; free that publish first.
+    if (this._gateRequestId) this._cancelGate();
     this._started = true;
     this._gateRequestId = requestId;
     this._gatePath = path;
@@ -156,9 +158,11 @@ class EwPreflight extends LitElement {
     this._unsubPanelVisibility = canvasBus.toolPanelViewState.subscribe((viewId) => {
       if (viewId === null) this._cancelGate();
     });
-    await this._evaluateCurrentPage();
-    const { status, message } = this._resultStatus();
-    this._finishGate(status, message);
+    const verdict = await this._evaluateCurrentPage();
+    // Settle only the gate this run started; it may already be settled or replaced.
+    if (this._gateRequestId !== requestId) return;
+    if (verdict) this._finishGate(verdict.status, verdict.message);
+    else this._cancelGate();
   };
 
   _finishGate(status, message) {
@@ -176,27 +180,35 @@ class EwPreflight extends LitElement {
     this._finishGate('cancelled');
   }
 
+  // Resolves to this run's verdict, or `null` when a newer run superseded it, so
+  // callers never read results that belong to another run.
   async _evaluate() {
-    const { org, site } = this._hashState ?? {};
-    if (!org || !site) {
-      this._error = 'No page is open.';
-      return;
-    }
     // Guard against a stale response overwriting a newer run.
     const runId = (this._runId ?? 0) + 1;
     this._runId = runId;
-    this._loading = true;
+    // A new run makes earlier results stale; clearing them also lets errors render.
+    this._data = null;
     this._error = null;
+    const { org, site } = this._hashState ?? {};
+    if (!org || !site) {
+      this._loading = false;
+      this._setRefreshBusy(false);
+      this._error = 'No page is open.';
+      return this._verdictFor({ error: this._error });
+    }
+    this._loading = true;
     this._setRefreshBusy(true);
     try {
       const [pageUrl] = await Promise.all([this._resolvePageUrl(), ensureRenderer()]);
-      if (this._runId !== runId) return;
+      if (this._runId !== runId) return null;
       const response = await evaluatePage(pageUrl);
-      if (this._runId !== runId) return;
+      if (this._runId !== runId) return null;
       this._data = adaptEvaluation(response);
+      return this._verdictFor({ data: this._data });
     } catch (e) {
-      if (this._runId !== runId) return;
+      if (this._runId !== runId) return null;
       this._error = e?.detail || 'Could not evaluate the page. Try again.';
+      return this._verdictFor({ error: this._error });
     } finally {
       if (this._runId === runId) {
         this._loading = false;
