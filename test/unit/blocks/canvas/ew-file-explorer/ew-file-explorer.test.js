@@ -3,6 +3,7 @@ import { expect } from '@esm-bundle/chai';
 import { sendKeys } from '@web/test-runner-commands';
 import { setNx } from '../../../../../scripts/utils.js';
 import { axAll, axFocused, axTree } from '../../../helpers/ax-tree.js';
+import { treegridCalls } from '../../../../fixtures/nx2/blocks/shared/utils/treegrid-nav.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -751,23 +752,38 @@ describe('EwFileExplorer', () => {
       expect(axAll(rows[1], 'button').map((b) => b.name)).to.deep.equal(['New page in sub']);
     });
 
-    it('expands a collapsed folder on ArrowRight and collapses it on ArrowLeft', async () => {
+    it('delegates keyboard, focus and tab stop handling to treegrid-nav on its shadow root', async () => {
+      treegridCalls.length = 0;
+      el._selectedPath = 'org/site/sub';
+      await el.updateComplete;
       const sub = rowEl('sub');
-      sub.focus();
+      sub.dispatchEvent(new FocusEvent('focusin', { bubbles: true, composed: true }));
+      const event = press(sub, 'ArrowDown');
 
-      press(sub, 'ArrowRight');
+      const last = (name) => treegridCalls.filter((c) => c.name === name).at(-1).args;
+      expect(last('ensureTabStop')[0]).to.equal(el.shadowRoot);
+      expect(last('focusIn')[1].root).to.equal(el.shadowRoot);
+      const [keyEvent, opts] = last('keydown');
+      expect(keyEvent).to.equal(event);
+      expect(opts.root).to.equal(el.shadowRoot);
+    });
+
+    it('toggles a folder row on click, which treegrid-nav uses to expand and collapse', async () => {
+      const sub = rowEl('sub');
+
+      sub.click();
       await el.updateComplete;
       expect(await axRows()).to.deep.include.members([
         { name: 'sub', level: 2, expanded: true, selected: false },
         { name: 'child.html', level: 3, expanded: undefined, selected: false },
       ]);
 
-      press(sub, 'ArrowLeft');
+      sub.click();
       await el.updateComplete;
       expect((await axRows()).map((r) => r.name)).to.deep.equal(['site', 'sub', 'b.html']);
     });
 
-    it('shows an "Empty folder" note when an empty folder is expanded, skipped by arrow keys', async () => {
+    it('shows an "Empty folder" note when an empty folder is expanded, not as a row', async () => {
       el._cache = {
         ...el._cache,
         '/org/site': [
@@ -778,9 +794,7 @@ describe('EwFileExplorer', () => {
       };
       await el.updateComplete;
 
-      const folder = rowEl('empty');
-      folder.focus();
-      press(folder, 'ArrowRight');
+      rowEl('empty').click();
       await el.updateComplete;
 
       const note = el.shadowRoot.querySelector('.empty-note');
@@ -790,9 +804,6 @@ describe('EwFileExplorer', () => {
       const axFolder = axAll(await axTree(GRID), 'row').find((r) => r.name === 'empty');
       expect(axFolder).to.include({ expanded: true, description: 'Empty folder' });
       expect((await axRows()).map((r) => r.name)).to.deep.equal(['site', 'empty', 'sub', 'b.html']);
-
-      press(folder, 'ArrowDown');
-      expect(axFocused(await axTree(GRID))).to.include({ role: 'row', name: 'sub' });
     });
 
     it('shows no placeholder for a collapsed or still-loading folder', async () => {
@@ -820,62 +831,13 @@ describe('EwFileExplorer', () => {
       expect(el.shadowRoot.querySelector('.empty-note')).to.equal(null);
     });
 
-    it('moves from a child row to its parent folder on ArrowLeft', async () => {
-      el._expanded = new Set(['org/site', 'org/site/sub']);
-      await el.updateComplete;
-      const child = rowEl('child.html');
-      child.focus();
-
-      press(child, 'ArrowLeft');
-      expect(axFocused(await axTree(GRID))).to.include({ role: 'row', name: 'sub' });
-    });
-
-    it('moves into row controls and between rows from a control', async () => {
-      const sub = rowEl('sub');
-      sub.focus();
-      const focused = async () => axFocused(await axTree(GRID));
-
-      press(sub, 'ArrowDown');
-      expect(await focused()).to.include({ role: 'row', name: 'b.html' });
-
-      press(el.shadowRoot.activeElement, 'ArrowRight');
-      expect(await focused()).to.include({ role: 'button', name: 'Copy URL for b.html' });
-
-      press(el.shadowRoot.activeElement, 'ArrowUp');
-      expect(await focused()).to.include({ role: 'button', name: 'New page in sub' });
-
-      press(el.shadowRoot.activeElement, 'Escape');
-      expect(await focused()).to.include({ role: 'row', name: 'sub' });
-    });
-
-    it('activates a file row with Enter', async () => {
+    it('opens a file row on click, which treegrid-nav uses to activate', async () => {
       const savedHash = window.location.hash;
-      const file = rowEl('b.html');
-      file.focus();
       try {
-        expect(press(file, 'Enter').defaultPrevented).to.be.true;
+        rowEl('b.html').click();
         expect(window.location.hash).to.equal('#/org/site/b');
       } finally {
         window.location.hash = savedHash;
-      }
-    });
-
-    it('is a single tab stop that returns to the last focused row', async () => {
-      const after = document.createElement('button');
-      el.after(after);
-      const backIn = async () => {
-        after.focus();
-        await sendKeys({ down: 'Shift' });
-        await sendKeys({ press: 'Tab' });
-        await sendKeys({ up: 'Shift' });
-        return axFocused(await axTree(GRID))?.name;
-      };
-      try {
-        expect(await backIn()).to.equal('site');
-        rowEl('b.html').focus();
-        expect(await backIn()).to.equal('b.html');
-      } finally {
-        after.remove();
       }
     });
   });
@@ -907,11 +869,11 @@ describe('EwFileExplorer', () => {
       ]);
     });
 
-    it('navigates results with arrow keys', async () => {
+    it('delegates keyboard handling to treegrid-nav', async () => {
+      treegridCalls.length = 0;
       const [first] = el.shadowRoot.querySelectorAll('[role="row"]');
-      first.focus();
-      first.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true, cancelable: true }));
-      expect(axFocused(await axTree(GRID))).to.include({ role: 'row', name: 'foo.json' });
+      first.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true }));
+      expect(treegridCalls.filter((c) => c.name === 'keydown').at(-1).args[1].root).to.equal(el.shadowRoot);
     });
   });
 

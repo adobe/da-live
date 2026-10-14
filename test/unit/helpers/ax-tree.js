@@ -1,4 +1,4 @@
-import { executeServerCommand, sendKeys } from '@web/test-runner-commands';
+import { executeServerCommand } from '@web/test-runner-commands';
 
 const SKIP = new Set([
   'none', 'generic', 'StaticText', 'InlineTextBox', 'LineBreak', 'ListMarker',
@@ -27,9 +27,4 @@ export function axAll(node, role) {
 export function axFocused(node) {
   if (node.focused) return node;
   return (node.children ?? []).map(axFocused).find(Boolean);
-}
-
-export async function tabFrom(el) {
-  el.focus();
-  await sendKeys({ press: 'Tab' });
 }

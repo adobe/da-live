@@ -1,6 +1,5 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
-import { sendKeys } from '@web/test-runner-commands';
 import { EditorState, EditorView, columnResizing } from 'da-y-wrapper';
 import { getSchema } from 'da-parser';
 import { setNx } from '../../../../../scripts/utils.js';
@@ -8,7 +7,8 @@ import { makeRealView } from '../test-helpers.js';
 import { createTrackingPlugin } from '../../../../../blocks/canvas/editor-utils/prose-diff.js';
 import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 import { getDropTargets } from '../../../../../blocks/canvas/ew-page-outline/drop-targets.js';
-import { axAll, axFocused, axTree, tabFrom } from '../../../helpers/ax-tree.js';
+import { axAll, axTree } from '../../../helpers/ax-tree.js';
+import { treegridCalls } from '../../../../fixtures/nx2/blocks/shared/utils/treegrid-nav.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -268,21 +268,6 @@ describe('ew-page-outline — expandable default content', () => {
 
     // Structural change (a child removed) — sectionsEqual fails, expansion resets.
     expect(el.shadowRoot.querySelector('.content-item').getAttribute('aria-expanded')).to.equal('false');
-  });
-
-  it('expands and collapses the focused group header with ArrowRight/ArrowLeft', async () => {
-    const header = el.shadowRoot.querySelector('.content-item');
-    header.focus();
-
-    header.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
-    await el.updateComplete;
-    expect(header.getAttribute('aria-expanded')).to.equal('true');
-    expect(el.shadowRoot.querySelector('.content-children')).to.exist;
-
-    header.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
-    await el.updateComplete;
-    expect(header.getAttribute('aria-expanded')).to.equal('false');
-    expect(el.shadowRoot.querySelector('.content-children')).to.be.null;
   });
 });
 
@@ -1096,7 +1081,7 @@ describe('ew-page-outline - treegrid', () => {
     expect(axRows.every((r) => r.children.length === 1 && r.children[0].role === 'gridcell')).to.be.true;
   });
 
-  it('describes an empty section on its header and skips the note with arrow keys', async () => {
+  it('describes an empty section on its header, not as a row', async () => {
     await load([para('one'), rule(), rule(), para('two')]);
 
     const note = root().querySelector('.block-empty');
@@ -1109,50 +1094,37 @@ describe('ew-page-outline - treegrid', () => {
       { name: 'Section 2', description: 'Empty section' },
       { name: 'Section 3', description: undefined },
     ]);
-
-    sectionRow(1).focus();
-    press('ArrowDown');
-    expect(active() === sectionRow(2)).to.be.true;
   });
 
-  it('is a single tab stop that starts on the first row', async () => {
+  it('delegates keys to treegrid-nav unless picking up or opening a menu', async () => {
+    treegridCalls.length = 0;
     await load([table('hero'), para('one')]);
-    const before = document.createElement('button');
-    el.before(before);
+    const delegated = () => treegridCalls.filter((c) => c.name === 'keydown').map((c) => c.args[0]);
 
-    await tabFrom(before);
-    expect(axFocused(await grid())).to.include({ role: 'row', name: 'Section 1' });
-    await sendKeys({ press: 'Tab' });
-    expect(axFocused(await grid())).to.equal(undefined);
-    before.remove();
+    expect(treegridCalls.find((c) => c.name === 'ensureTabStop').args[0]).to.equal(root());
+    sectionRow(0).dispatchEvent(new FocusEvent('focusin', { bubbles: true, composed: true }));
+    expect(treegridCalls.find((c) => c.name === 'focusIn').args[1].root).to.equal(root());
+
+    const arrow = press('ArrowDown', sectionRow(0));
+    expect(delegated()).to.deep.equal([arrow]);
+    expect(treegridCalls.at(-1).args[1].root).to.equal(root());
+
+    press('ContextMenu', sectionRow(0));
+    sectionRow(0).querySelector('nx-menu').close();
+    handleOf(blockRow(0)).click();
+    press('ArrowDown', handleOf(blockRow(0)));
+    press('Escape', handleOf(blockRow(0)));
+    expect(delegated()).to.deep.equal([arrow]);
   });
 
-  it('navigates rows and controls from the keyboard', async () => {
-    await load([table('hero'), para('one')]);
-
-    sectionRow(0).focus();
-    press('ArrowDown');
-    expect(active() === blockRow(0)).to.be.true;
-    press('ArrowRight');
-    expect(active() === handleOf(blockRow(0))).to.be.true;
-    press('ArrowRight');
-    expect(active().classList.contains('delete-btn')).to.be.true;
-    press('ArrowUp');
-    expect(active().classList.contains('section-menu-trigger')).to.be.true;
-    press('Escape');
-    expect(active() === sectionRow(0)).to.be.true;
-  });
-
-  it('selects a block with Enter and does nothing on a section row', async () => {
+  it('selects a block on row click, which treegrid-nav uses to activate, but not a section', async () => {
     await load([table('hero')]);
 
     let received;
     const unsub = canvasBus.editorSelectState.subscribe((detail) => { received = detail; });
-    sectionRow(0).focus();
-    press('Enter');
+    sectionRow(0).click();
     expect(received).to.equal(undefined);
-    blockRow(0).focus();
-    press('Enter');
+    blockRow(0).click();
     unsub();
     expect(received).to.include({ blockIndex: 0, source: 'outline' });
   });
