@@ -6,6 +6,7 @@ await import(`${getNx()}/blocks/shared/picker/picker.js`);
 await import(`${getNx()}/blocks/shared/segmented-btn/segmented.js`);
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 const [BUTTONS, style] = await Promise.all([
   loadStyle(`${getNx2()}/styles/buttons.css`),
   loadStyle(import.meta.url),
@@ -28,10 +29,6 @@ export default class DaBrowseHeader extends LitElement {
   };
 
   connectedCallback() {
-    this.groupByType ??= false;
-    this.view ??= 'list';
-    this.typesFilterState ??= { open: false, hiddenCount: 0 };
-    this.sortState ??= { property: null, direction: 'none', loading: false };
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [BUTTONS, style];
   }
@@ -70,7 +67,7 @@ export default class DaBrowseHeader extends LitElement {
   }
 
   requestChat() {
-    this.dispatchEvent(new CustomEvent('chatrequest', { bubbles: true, composed: true }));
+    document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat' } }));
   }
 
   renderSettingsActions() {

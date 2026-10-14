@@ -3,6 +3,7 @@ import { getNx, getNx2 } from '../../../../scripts/utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
+await import('../../../shared/da-confirm-dialog/da-confirm-dialog.js');
 
 const [FORM, BUTTON, STYLE] = await Promise.all([
   loadStyle(`${getNx2()}/styles/form.css`),
@@ -14,6 +15,7 @@ class DaBrowseTools extends LitElement {
   static properties = {
     searchState: { attribute: false },
     _replacement: { state: true },
+    _confirming: { state: true },
   };
 
   connectedCallback() {
@@ -89,6 +91,16 @@ class DaBrowseTools extends LitElement {
 
   replace() {
     if (!this.canReplace || !this.hasReplacement) return;
+    this._confirming = true;
+  }
+
+  cancelReplace() {
+    this._confirming = false;
+  }
+
+  confirmReplace() {
+    this._confirming = false;
+    if (!this.canReplace || !this.hasReplacement) return;
     this.dispatchEvent(new CustomEvent('replacerequest', { detail: { replacement: this._replacement ?? '' }, bubbles: true, composed: true }));
   }
 
@@ -150,6 +162,20 @@ class DaBrowseTools extends LitElement {
       </section>`;
   }
 
+  renderConfirm() {
+    const count = this.replaceCount;
+    const fileWord = count === 1 ? 'file' : 'files';
+    const action = { style: 'negative', label: 'Replace', click: () => this.confirmReplace() };
+    return html`
+      <da-confirm-dialog
+        title="Replace in ${count} ${fileWord}"
+        .action=${action}
+        @close=${this.cancelReplace}>
+        <p>Replace <mark>${this.searchState.term}</mark> with
+          <mark>${this._replacement}</mark> across ${count} ${fileWord}?</p>
+      </da-confirm-dialog>`;
+  }
+
   render() {
     const state = this.searchState;
     const replacement = state?.replacement;
@@ -203,7 +229,8 @@ class DaBrowseTools extends LitElement {
             <ul>${replacement.errors.map(({ path, error }) => html`<li>${path}: ${error}</li>`)}</ul>
           </div>` : nothing}
         ${this.renderMatchContext()}
-      </section>`;
+      </section>
+      ${this._confirming ? this.renderConfirm() : nothing}`;
   }
 }
 

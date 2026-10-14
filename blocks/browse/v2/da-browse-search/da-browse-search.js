@@ -6,10 +6,9 @@ import { loadFilenames, matchFilenames } from './utils.js';
 
 const { listKeydown } = await import(`${getNx()}/blocks/shared/utils/list-nav.js`);
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const [SEARCH, style] = await Promise.all([
-  loadStyle(`${getNx()}/blocks/shared/search/search.css`),
-  loadStyle(import.meta.url),
-]);
+const style = await loadStyle(import.meta.url);
+await import(`${getNx()}/blocks/shared/search/search.js`);
+await import(`${getNx()}/blocks/shared/popover/popover.js`);
 
 export default class DaBrowseSearch extends LitElement {
   static properties = {
@@ -17,8 +16,6 @@ export default class DaBrowseSearch extends LitElement {
     label: { type: String },
     placeholder: { type: String },
     disabled: { type: Boolean, reflect: true },
-    variant: { type: String, reflect: true },
-    size: { type: String, reflect: true },
     fullpath: { type: String },
     editor: { type: String },
     matchCase: { type: Boolean },
@@ -32,11 +29,16 @@ export default class DaBrowseSearch extends LitElement {
   connectedCallback() {
     this.value ??= '';
     this.label ??= 'Search';
+    this.slot ||= 'search';
+    this.setAttribute('role', 'search');
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [SEARCH, style];
+    this.shadowRoot.adoptedStyleSheets = [style];
   }
 
-  get input() { return this.shadowRoot.querySelector('input'); }
+  get field() { return this.shadowRoot.querySelector('nx-search'); }
+
+  // The text input lives in nx-search's shadow root.
+  get input() { return this.field?.shadowRoot?.querySelector('input'); }
 
   get popover() { return this.shadowRoot.querySelector('nx-popover'); }
 
@@ -46,12 +48,6 @@ export default class DaBrowseSearch extends LitElement {
     this.value = event.target.value;
     this._dismissed = false;
     this._active = undefined;
-  }
-
-  onChange(event) {
-    event.stopPropagation();
-    this.value = event.target.value;
-    this.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
   }
 
   onFocus = () => {
@@ -66,7 +62,6 @@ export default class DaBrowseSearch extends LitElement {
     this._active = undefined;
     this._open = false;
     this._openRequest = undefined;
-    this._resizeObserver?.disconnect();
   };
 
   closeSuggestions() {
@@ -84,22 +79,8 @@ export default class DaBrowseSearch extends LitElement {
     this.closeSuggestions();
   }
 
-  clear() {
-    if (this.disabled) return;
-    this.resetCatalog();
-    if (!this.input.value) return;
-    this.input.value = '';
-    this.value = '';
-    this.focus();
-    this.dispatchEvent(new InputEvent('input', {
-      inputType: 'deleteContentBackward',
-      bubbles: true,
-      composed: true,
-    }));
-  }
-
   focus(options) {
-    this.input?.focus(options);
+    this.field?.focus(options);
   }
 
   submitSearch() {
@@ -119,28 +100,13 @@ export default class DaBrowseSearch extends LitElement {
     if (this.disabled || !this.value.trim() || this._dismissed) return;
     const request = {};
     this._openRequest = request;
-    try {
-      this._popoverReady ??= import(`${getNx()}/blocks/shared/popover/popover.js`);
-      await this._popoverReady;
-      await this.updateComplete;
-      if (this._openRequest !== request || !this.isConnected || this.disabled
-        || this.shadowRoot.activeElement !== this.input || !this.value.trim()) return;
-      const anchor = this.shadowRoot.querySelector('.search-field');
-      this.popover.style.width = `${anchor.getBoundingClientRect().width}px`;
-      this.popover.show({ anchor, placement: 'auto' });
-      this._open = true;
-      this._resizeObserver ??= new ResizeObserver(() => {
-        if (!this.popover?.open) return;
-        this.popover.style.width = `${anchor.getBoundingClientRect().width}px`;
-        this.popover.reposition();
-      });
-      this._resizeObserver.observe(anchor);
-    } catch (error) {
-      this._popoverReady = undefined;
-      if (this._openRequest !== request) return;
-      this._status = `Suggestions unavailable: ${error.message}`;
-      this.closeSuggestions();
-    }
+    await this.updateComplete;
+    if (this._openRequest !== request || !this.isConnected || this.disabled
+      || this.shadowRoot.activeElement !== this.field || !this.value.trim()) return;
+    const anchor = this.field;
+    this.popover.style.width = `${anchor.getBoundingClientRect().width}px`;
+    this.popover.show({ anchor, placement: 'auto' });
+    this._open = true;
   }
 
   updateSuggestions() {
@@ -193,7 +159,7 @@ export default class DaBrowseSearch extends LitElement {
 
   async refreshSuggestions() {
     if (this.disabled || !this.value.trim()
-      || this.shadowRoot.activeElement !== this.input) return;
+      || this.shadowRoot.activeElement !== this.field) return;
     this.updateSuggestions();
     const request = {};
     const { fullpath } = this;
@@ -255,7 +221,7 @@ export default class DaBrowseSearch extends LitElement {
 
   onKeydown(event) {
     if (event.isComposing || this.disabled) return;
-    if (event.key === 'Escape') {
+    if (event.key === 'Escape' && this._open) {
       event.preventDefault();
       event.stopPropagation();
       this.closeSuggestions();
@@ -281,9 +247,22 @@ export default class DaBrowseSearch extends LitElement {
         return;
       }
       this.closeSuggestions();
-      event.preventDefault();
-      this.submitSearch();
     }
+  }
+
+  syncAria() {
+    const { input } = this;
+    if (!input) return;
+    const activeIndex = this._suggestions?.findIndex((item) => item.value === this._active) ?? -1;
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-autocomplete', 'list');
+    input.setAttribute('aria-haspopup', 'listbox');
+    input.setAttribute('aria-expanded', String(!!this._open));
+    // Element references cross the nx-search shadow boundary; id references cannot.
+    input.ariaControlsElements = [this.shadowRoot.getElementById('search-options')];
+    input.ariaActiveDescendantElement = this._open && activeIndex >= 0
+      ? this.shadowRoot.getElementById(`search-option-${activeIndex}`)
+      : null;
   }
 
   updated(changed) {
@@ -294,6 +273,7 @@ export default class DaBrowseSearch extends LitElement {
       this._active = undefined;
       this.refreshSuggestions();
     }
+    this.syncAria();
     const index = this._suggestions?.findIndex((item) => item.value === this._active) ?? -1;
     if (changed.has('_active') && this._active !== undefined) {
       this.shadowRoot.getElementById(`search-option-${index}`)?.scrollIntoView({ block: 'nearest' });
@@ -301,28 +281,13 @@ export default class DaBrowseSearch extends LitElement {
   }
 
   render() {
-    const activeIndex = this._suggestions?.findIndex((item) => item.value === this._active) ?? -1;
     return html`
-      <div class="search-field">
-        <svg class="search-icon" viewBox="0 0 20 20" aria-hidden="true">
-          <use href="/img/icons/s2-icon-search-20-n.svg#icon"></use>
-        </svg>
-        <input type="search" role="combobox" aria-label=${this.label}
-          aria-autocomplete="list" aria-haspopup="listbox" aria-expanded=${!!this._open}
-          aria-controls="search-options"
-          aria-activedescendant=${this._open && activeIndex >= 0 ? `search-option-${activeIndex}` : nothing}
-          placeholder=${this.placeholder ?? ''} autocomplete="off"
-          .value=${this.value} ?disabled=${this.disabled}
-          @input=${this.onInput} @change=${this.onChange}
-          @focus=${this.onFocus} @blur=${this.onBlur} @keydown=${this.onKeydown}>
-        <button type="button" aria-label="Clear search" ?hidden=${!this.value}
-          ?disabled=${this.disabled} @click=${this.clear}>
-          <svg viewBox="0 0 20 20" aria-hidden="true">
-            <use href="/img/icons/s2-icon-close-20-n.svg#icon"></use>
-          </svg>
-        </button>
-        <slot name="actions"></slot>
-      </div>
+      <nx-search variant="field" size="m" .value=${this.value} .label=${this.label}
+        .placeholder=${this.placeholder} ?disabled=${this.disabled}
+        @input=${this.onInput} @focusin=${this.onFocus} @focusout=${this.onBlur}
+        @keydown=${{ handleEvent: (event) => this.onKeydown(event), capture: true }}>
+        <slot name="actions" slot="actions"></slot>
+      </nx-search>
       <p class="suggestions-error" role="status" ?hidden=${this._open || !this._status?.startsWith('Suggestions unavailable:')}>${this._status}</p>
       <nx-popover class="search-suggestions" @close=${this.onClose}>
         ${this._status ? html`<p class="search-suggestions-status" role="status">${this._status}</p>` : nothing}

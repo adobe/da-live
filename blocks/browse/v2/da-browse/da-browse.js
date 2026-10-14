@@ -8,20 +8,19 @@ import { getBrowseSettings, updateBrowseSettings } from '../shared/settings.js';
 import '../../da-new/da-new.js';
 import '../da-list/da-list.js';
 import '../da-browse-header/da-browse-header.js';
+import SearchSession from '../search/session.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT, wasPanelOpen, registerPanelSection } = await import(`${getNx()}/utils/panel.js`);
 
+const SORT_PROPS = ['name', 'lastModified'];
+const SORT_DIRECTIONS = ['ascending', 'descending'];
+
 const style = await loadStyle(import.meta.url);
 
 function openChatPanel() {
   document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat' } }));
-}
-
-function toggleToolsPanel(open) {
-  const type = open ? PANEL_EVENT.CLOSE : PANEL_EVENT.OPEN;
-  document.dispatchEvent(new CustomEvent(type, { detail: { section: 'tools', id: 'search' } }));
 }
 
 function closeChatPanel() {
@@ -35,11 +34,10 @@ export default class DaBrowse extends LitElement {
     _chatEnabled: { state: true },
     _typesFilterState: { state: true },
     _sortState: { state: true },
+    _sortPreference: { state: true },
     _groupByType: { state: true },
     _view: { state: true },
-    _searchState: { state: true },
     _permissions: { state: true },
-    _toolsOpen: { state: true },
   };
 
   _browseSelKeys = new Set();
@@ -83,8 +81,10 @@ export default class DaBrowse extends LitElement {
     super();
     this._typesFilterState = { open: false, hiddenCount: 0 };
     this._sortState = { property: null, direction: 'none', loading: false };
-    this._searchState = { matchCase: true };
-    const { groupByType, view } = getBrowseSettings();
+    this.search = new SearchSession(this);
+    const { groupByType, view, sort } = getBrowseSettings();
+    this._sortPreference = SORT_PROPS.includes(sort?.property)
+      && SORT_DIRECTIONS.includes(sort?.direction) ? sort : undefined;
     this._groupByType = groupByType === true;
     this._view = view === 'card' ? 'card' : 'list';
   }
@@ -94,269 +94,21 @@ export default class DaBrowse extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [style];
     this._handleShortcuts = this.handleShortcuts.bind(this);
     document.addEventListener('keydown', this._handleShortcuts);
-    document.addEventListener(PANEL_EVENT.OPEN, this.handleToolsPanel);
-    document.addEventListener(PANEL_EVENT.CLOSE, this.handleToolsPanel);
-    registerPanelSection('tools', {
-      position: 'after',
-      width: '360px',
-      getContent: () => this.getSearchPanel(),
-      onShow: async (aside) => {
-        if (!this.isConnected) {
-          aside.remove();
-          return;
-        }
-        const panel = await this.getSearchPanel();
-        if (!this.isConnected) {
-          aside.remove();
-          return;
-        }
-        const body = aside.querySelector('.panel-body');
-        if (!body.contains(panel)) body.replaceChildren(panel);
-        aside.id = 'da-browse-tools';
-        aside.setAttribute('aria-label', 'Browse tools');
-        if (!this._toolsOpen) {
-          document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'tools' } }));
-          return;
-        }
-        await panel.updateComplete;
-        panel.focus();
-      },
-    });
-    this._navSearchReady = this.mountNavSearch();
+    this.search.mount();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('keydown', this._handleShortcuts);
-    document.removeEventListener(PANEL_EVENT.OPEN, this.handleToolsPanel);
-    document.removeEventListener(PANEL_EVENT.CLOSE, this.handleToolsPanel);
-    if (this._searchPanel) {
-      document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'tools' } }));
-      this._searchPanel.closest('aside.panel')?.remove();
-      this._searchPanel.remove();
-    }
-    this.clearSearch();
-    this._navSearch?.remove();
+    this.search.destroy();
   }
 
-  async mountNavSearch() {
-    const nav = document.querySelector('nx-nav');
-    if (!nav) return;
-    await import('../da-browse-search/da-browse-search.js');
-    if (!this.isConnected) return;
-    if (!this._navSearch) {
-      const field = document.createElement('da-browse-search');
-      field.slot = 'search';
-      field.variant = 'field';
-      field.size = 'm';
-      field.getDirectory = async () => {
-        await this.updateComplete;
-        const list = this.browseCmp;
-        if (!list) throw new Error('Directory listing is not ready');
-        return list.getDirectorySnapshot();
-      };
-      field.setAttribute('role', 'search');
-      field.addEventListener('search-submit', (event) => this.submitSearch(event));
-      field.addEventListener('input', () => {
-        this.setSearchDraft(field.value);
-      });
-      const action = document.createElement('button');
-      action.slot = 'actions';
-      action.type = 'button';
-      action.title = 'Search options';
-      action.setAttribute('aria-label', 'Search options');
-      action.setAttribute('aria-controls', 'da-browse-tools');
-      action.setAttribute('aria-expanded', 'false');
-      action.innerHTML = `<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true">
-        <use href="/img/icons/s2-icon-properties-20-n.svg#icon"></use>
-      </svg>`;
-      action.addEventListener('click', () => toggleToolsPanel(this._toolsOpen));
-      field.append(action);
-      this._searchAction = action;
-      this._navSearch = field;
-    }
-    nav.append(this._navSearch);
-    this.updateNavSearch();
-    this.syncSearchPanel();
-  }
-
-  updateNavSearch() {
-    if (!this._navSearch) return;
-    const directory = this.details?.fullpath?.split('/').filter(Boolean).at(-1);
-    const label = directory ? `Search ${directory}` : 'Search files';
-    this._navSearch.label = label;
-    this._navSearch.placeholder = label;
-    this._navSearch.fullpath = this.details?.fullpath;
-    this._navSearch.setAttribute('aria-label', label);
-  }
-
-  setSearchDraft(value) {
-    if (this._searchState.replacement?.loading) return;
-    if (!value) {
-      this.clearSearch();
-      return;
-    }
-    this._searchState = { ...this._searchState, draft: value, replacement: undefined };
-    this.syncSearchPanel();
-  }
-
-  clearSearch() {
-    const wasSearching = !!this._searchEngine;
-    this._searchRequest = undefined;
-    this._searchEngine?.cancelSearch();
-    this._searchEngine = undefined;
-    this._searchState = { matchCase: this._searchState.matchCase, loading: false };
-    if (this._navSearch) {
-      this._navSearch.resetCatalog();
-      this._navSearch.value = '';
-    }
-    this.syncSearchPanel();
-    if (wasSearching) {
-      this.browseCmp?.notifySortState?.();
-      this.browseCmp?.notifyTypesFilter?.();
-    }
-  }
-
-  async submitSearch(event, { preserveDraft = false } = {}) {
-    event.preventDefault();
-    if (this._searchState.replacement?.loading) return;
-    this._navSearch?.closeSuggestions();
-    const term = event.detail.value.trim();
-    const fullpath = this.details?.fullpath;
-    if (!term || !fullpath) return;
-    const request = {};
-    this._searchRequest = request;
-    this._searchEngine?.cancelSearch();
-    this._searchState = {
-      matchCase: this._searchState.matchCase,
-      draft: preserveDraft ? this._searchState.draft ?? event.detail.value : event.detail.value,
-      term,
-      items: [],
-      loading: true,
-    };
-    try {
-      const { default: SearchEngine } = await import('../search/search.js');
-      if (this._searchRequest !== request || !this.isConnected) return;
-      const search = new SearchEngine();
-      search.fullpath = fullpath;
-      search.browseItems = this.browseCmp?.items?.map((item) => ({ ...item }));
-      search.caseSensitive = this._searchState.matchCase;
-      this._searchEngine?.cancelSearch();
-      search.addEventListener('updated', ({ detail }) => {
-        if (this._searchEngine === search && this._searchRequest === request) {
-          this._searchState = { ...this._searchState, items: detail.items };
-        }
-      });
-      this._searchEngine = search;
-      this._searchState = { ...this._searchState, items: [] };
-      await this.updateComplete;
-      if (this._searchRequest !== request || !this.isConnected) return;
-      await search.search(fullpath, term);
-    } catch (error) {
-      if (this._searchRequest === request) {
-        this._searchState = { ...this._searchState, error: `Search failed: ${error.message}` };
-      }
-    } finally {
-      if (this._searchRequest === request) {
-        this._searchState = { ...this._searchState, loading: false };
-      }
-    }
-  }
-
-  handleToolsPanel = (event) => {
-    const closingOwnPanel = event.type === PANEL_EVENT.CLOSE
-      && this._searchPanel?.closest('aside.panel')?.contains(event.target);
-    if (event.detail?.section !== 'tools' && !closingOwnPanel) return;
-    this._toolsOpen = event.type === PANEL_EVENT.OPEN;
-    if (!this._toolsOpen) this._searchAction?.focus();
-  };
-
-  async getSearchPanel() {
-    this._searchPanelReady ??= import('../da-browse-tools/da-browse-tools.js').then(() => {
-      const panel = document.createElement('da-browse-tools');
-      panel.addEventListener('findchange', ({ detail }) => this.setSearchDraft(detail.value));
-      panel.addEventListener('search-submit', (event) => this.submitSearch(event));
-      panel.addEventListener('matchcasechange', (event) => this.changeMatchCase(event));
-      panel.addEventListener('replacerequest', (event) => this.replaceSearchMatches(event));
-      this._searchPanel = panel;
-      this.syncSearchPanel();
-      return panel;
-    }).catch((error) => {
-      this._searchPanelReady = undefined;
-      this._toolsOpen = false;
-      this._searchState = { ...this._searchState, error: `Search options failed: ${error.message}` };
-      throw error;
-    });
-    return this._searchPanelReady;
-  }
-
-  syncSearchPanel() {
-    const state = this._searchState;
-    if (this._navSearch) {
-      this._navSearch.disabled = !!state.replacement?.loading;
-      this._navSearch.matchCase = state.matchCase;
-      this._navSearch.editor = this.editor;
-      const value = state.draft ?? state.term ?? '';
-      if (this._navSearch.value !== value) this._navSearch.value = value;
-    }
-    this._searchAction?.setAttribute('aria-expanded', String(!!this._toolsOpen));
-    if (!this._searchPanel) return;
-    this._searchPanel.searchState = {
-      ...state,
-      request: this._searchRequest,
-      scope: this.details?.fullpath,
-      count: state.items?.length ?? 0,
-      canWrite: !!this._permissions?.includes('write'),
-    };
+  get canWrite() {
+    return !!this._permissions?.includes('write');
   }
 
   updated() {
-    this.syncSearchPanel();
-  }
-
-  async changeMatchCase({ detail: { matchCase } }) {
-    if (this._searchState.replacement?.loading || this._searchState.matchCase === matchCase) return;
-    this._searchState = { ...this._searchState, matchCase };
-    if (this._searchState.term) {
-      await this.submitSearch(
-        new CustomEvent('search-submit', { detail: { value: this._searchState.term } }),
-        { preserveDraft: true },
-      );
-    }
-  }
-
-  async replaceSearchMatches({ detail: { replacement } }) {
-    const search = this._searchEngine;
-    const {
-      loading,
-      error: searchError,
-      replacement: previousReplacement,
-      term,
-      draft,
-    } = this._searchState;
-    if (!search || !term || (draft ?? term).trim() !== term
-      || loading || previousReplacement?.loading
-      || searchError || !this._permissions?.includes('write')) return;
-    this._searchState = { ...this._searchState, replacement: { loading: true } };
-    try {
-      const result = await search.replaceMatches({ replacement });
-      if (this._searchEngine !== search || !this.isConnected) return;
-      if (result.cancelled) {
-        this._searchState = { ...this._searchState, replacement: { error: 'Replacement cancelled.' } };
-      } else {
-        // Results are stale once replaced; reset the search but keep the outcome visible.
-        this.clearSearch();
-        this._searchState = { ...this._searchState, replacement: result };
-        this.syncSearchPanel();
-      }
-    } catch (error) {
-      if (this._searchEngine === search && this.isConnected) {
-        this._searchState = {
-          ...this._searchState,
-          replacement: { error: `Replacement failed: ${error.message}` },
-        };
-      }
-    }
+    this.search.sync();
   }
 
   handleShortcuts(e) {
@@ -389,8 +141,8 @@ export default class DaBrowse extends LitElement {
       if (prevDetails?.fullpath !== this.details.fullpath) {
         this._permissions = undefined;
         this._clearBrowseSelection();
-        this.clearSearch();
-        this.updateNavSearch();
+        this.search.clear();
+        this.search.updateNavField();
       }
 
       // EW flag lives at site level — re-check whenever org or site changes,
@@ -468,7 +220,7 @@ export default class DaBrowse extends LitElement {
   }
 
   get activeListCmp() {
-    return this.shadowRoot.querySelector(this._searchEngine ? '.da-list-type-search' : '.da-list-type-browse');
+    return this.shadowRoot.querySelector(this.search.engine ? '.da-list-type-search' : '.da-list-type-browse');
   }
 
   handleTypesFilterChange({ currentTarget, detail }) {
@@ -476,7 +228,14 @@ export default class DaBrowse extends LitElement {
   }
 
   handleSortChange({ currentTarget, detail }) {
-    if (currentTarget === this.activeListCmp) this._sortState = detail;
+    if (currentTarget !== this.activeListCmp) return;
+    this._sortState = detail;
+    const { property, direction, loading } = detail;
+    if (!property || loading) return;
+    const saved = this._sortPreference;
+    if (saved?.property === property && saved?.direction === direction) return;
+    this._sortPreference = { property, direction };
+    updateBrowseSettings({ sort: this._sortPreference });
   }
 
   renderSearchResults() {
@@ -484,12 +243,13 @@ export default class DaBrowse extends LitElement {
       <div role="grid" aria-label="Search results">
         <da-list class="da-list-type-search"
           editor=${this.editor}
-          .listItems=${this._searchState.items}
+          .listItems=${this.search.state.items}
           .hidePublishConfs=${this.hidePublishConfs}
           .groupByType=${this._groupByType}
           .view=${this._view}
           @typesfilterchange=${this.handleTypesFilterChange}
           @sortchange=${this.handleSortChange}
+          .sortPreference=${this._sortPreference}
           select sort></da-list>
       </div>`;
   }
@@ -509,6 +269,7 @@ export default class DaBrowse extends LitElement {
         sort
         drag
         .groupByType=${this._groupByType}
+        .sortPreference=${this._sortPreference}
         .view=${this._view}></da-list>`;
   }
 
@@ -523,7 +284,7 @@ export default class DaBrowse extends LitElement {
   }
 
   render() {
-    const search = this._searchState;
+    const search = this.search.state;
     return html`
       <da-browse-header exportparts="chat-btn"
         .details=${this.details}
@@ -532,12 +293,11 @@ export default class DaBrowse extends LitElement {
         .view=${this._view}
         .typesFilterState=${this._typesFilterState}
         .sortState=${this._sortState}
-        .searchState=${this._searchEngine || search.loading || search.error ? {
+        .searchState=${this.search.engine || search.loading || search.error ? {
           loading: search.loading,
           count: search.items?.length ?? 0,
           error: search.error,
         } : undefined}
-        @chatrequest=${openChatPanel}
         @typesfilterrequest=${({ detail }) => this.activeListCmp.toggleTypesPopover(detail.anchor)}
         @sortrequest=${({ detail }) => this.activeListCmp.setSort(detail.property, detail.direction)}
         @viewchange=${({ detail }) => this.setView(detail.view)}
@@ -546,8 +306,8 @@ export default class DaBrowse extends LitElement {
       </da-browse-header>
       <div class="da-browse-content">
         ${search.error ? html`<p role="alert">${search.error}</p>` : nothing}
-        ${this._searchEngine ? this.renderSearchResults() : nothing}
-        <div role="grid" aria-label="Browse files" ?hidden=${!!this._searchEngine}>
+        ${this.search.engine ? this.renderSearchResults() : nothing}
+        <div role="grid" aria-label="Browse files" ?hidden=${!!this.search.engine}>
           ${this.renderList()}
         </div>
       </div>

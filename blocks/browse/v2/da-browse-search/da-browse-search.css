@@ -1,3 +1,12 @@
+:host {
+  display: block;
+  min-width: 0;
+  font-family: var(--s2-font-family);
+
+  --nx-search-font-size: var(--s2-component-m-regular-font-size, 16px);
+  --nx-search-line-height: var(--s2-component-m-regular-line-height, 24px);
+}
+
 .search-suggestions {
   max-width: calc(100vw - 20px);
   font-family: var(--s2-font-family);

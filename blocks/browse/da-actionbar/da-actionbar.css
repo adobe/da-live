@@ -22,7 +22,8 @@ button {
 }
 
 :host(.full-width) .da-action-bar {
-  width: 100cqi;
+  margin: 0 var(--da-list-pad-inline);
+  width: calc(100cqi - var(--da-list-pad-inline) * 2);
 }
 
 .da-action-bar button {

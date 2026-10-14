@@ -1,6 +1,5 @@
 import { LitElement, html, repeat, nothing } from 'da-lit';
 import { isFavorite, toggleFavorite } from '../../shared/favorites.js';
-import { getBrowseSettings, updateBrowseSettings } from '../shared/settings.js';
 import { getTypeLabel, isMediaExt } from '../../../shared/icons.js';
 import { getNx, getNx2, getNx2Api, sanitizePathParts } from '../../../../scripts/utils.js';
 import {
@@ -58,6 +57,7 @@ export default class DaList extends LitElement {
     hidePublishConfs: { attribute: false },
     select: { type: Boolean },
     sort: { type: Boolean },
+    sortPreference: { attribute: false },
     drag: { type: Boolean },
     groupByType: { type: Boolean },
     view: { type: String },
@@ -141,12 +141,8 @@ export default class DaList extends LitElement {
         return;
       }
       this._listItems = items;
-      if (this.sort) {
-        const { sort } = getBrowseSettings();
-        if (sort && ['name', 'lastModified'].includes(sort.property)
-          && ['ascending', 'descending'].includes(sort.direction)) {
-          await this.setSort(sort.property, sort.direction);
-        }
+      if (this.sort && this.sortPreference) {
+        await this.setSort(this.sortPreference.property, this.sortPreference.direction);
       }
       this.notifySortState();
     }
@@ -923,7 +919,6 @@ export default class DaList extends LitElement {
         return;
       }
       this.handleSort(direction, property);
-      if (this.sort) updateBrowseSettings({ sort: { property, direction } });
     } finally {
       this._sorting = false;
     }
@@ -956,6 +951,13 @@ export default class DaList extends LitElement {
 
   sortDirectionFor(property) {
     return this._sort?.property === property ? this._sort.direction : 'none';
+  }
+
+  renderSortIcon(property) {
+    const direction = this.sortDirectionFor(property);
+    if (direction === 'none') return nothing;
+    const icon = direction === 'ascending' ? 'sortup' : 'sortdown';
+    return html`<svg class="da-browse-sort-icon" viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-${icon}-20-n.svg#icon"></use></svg>`;
   }
 
   get sortPillLabel() {
@@ -1482,6 +1484,7 @@ export default class DaList extends LitElement {
               ?disabled=${this._bulkLoading}
               aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
               Name
+              ${this.renderSortIcon('name')}
             </button>
           </div>
         </div>
@@ -1494,6 +1497,7 @@ export default class DaList extends LitElement {
               ?disabled=${this._bulkLoading}
               aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
               Modified
+              ${this.renderSortIcon('lastModified')}
             </button>
           </div>
         </div>

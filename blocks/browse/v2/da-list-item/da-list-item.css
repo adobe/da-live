@@ -372,10 +372,6 @@
   background: var(--s2-gray-75, var(--s2-gray-50));
   transition: background-color 0.12s ease;
 
-  &:hover {
-    background: var(--s2-blue-100);
-  }
-
   &:has(input:checked) {
     background: var(--s2-blue-100);
     outline: 2px solid var(--s2-blue-800, currentColor);
