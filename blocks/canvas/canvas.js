@@ -22,6 +22,8 @@ import { getChatPanelContent } from '../shared/chat-panel.js';
 import { canvasBus } from './utils/canvas-bus.js';
 import { initBranchBridge } from './editor-utils/branch-bridge.js';
 import { resolveCanvasBranch } from './editor-utils/branch-state.js';
+import { installComparison } from './ew-comparison/comparison.js';
+import { docToHtml } from '../shared/version/compare.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
@@ -317,6 +319,18 @@ export default async function decorate(block) {
   syncEditorSplitLayout({ mountRoot, view: header.editorView });
   installEditorSplitDrag(mountRoot);
 
+  let comparisonContext;
+  const comparison = installComparison({
+    mountRoot,
+    getContext: () => comparisonContext,
+    getDocument: () => {
+      const { view } = mountRoot.querySelector('ew-editor-doc')
+        ?.getComparisonSession(comparisonContext) || {};
+      return view ? docToHtml(view) : undefined;
+    },
+    saveDocument: () => mountRoot.querySelector('ew-editor-doc')?.saveForComparison(comparisonContext),
+  });
+
   canvasBus.undoState.subscribe((detail) => {
     header.undoAvailable = detail?.canUndo ?? false;
     header.redoAvailable = detail?.canRedo ?? false;
@@ -324,6 +338,8 @@ export default async function decorate(block) {
 
   initBranchBridge();
   hashChange.subscribe((state) => {
+    comparisonContext = state;
+    comparison.contextChanged();
     syncCanvasEditorsToHash({ mountRoot, header, state });
     const toolPanel = document.querySelector('aside.panel[data-position="after"] ew-tool-panel');
     if (toolPanel) syncToolPanelViews(toolPanel, state);

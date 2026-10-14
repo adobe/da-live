@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/adobe/da-live/compare/v1.4.0...v1.5.0) (2026-10-14)
+
+
+### Features
+
+* **ew:** compare documents and previews with live content ([#1405](https://github.com/adobe/da-live/issues/1405)) ([19c4eb8](https://github.com/adobe/da-live/commit/19c4eb8a2c34c19486403ddaf8e2e93af9ea0701))
+
 # [1.4.0](https://github.com/adobe/da-live/compare/v1.3.1...v1.4.0) (2026-10-13)
 
 
