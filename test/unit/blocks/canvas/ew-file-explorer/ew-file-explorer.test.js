@@ -2,6 +2,7 @@
 import { expect } from '@esm-bundle/chai';
 import { sendKeys } from '@web/test-runner-commands';
 import { setNx } from '../../../../../scripts/utils.js';
+import { CHAT_EVENT } from '../../../../fixtures/nx/utils/chat.js';
 import { axAll, axFocused, axTree } from '../../../helpers/ax-tree.js';
 import { treegridCalls } from '../../../../fixtures/nx2/blocks/shared/utils/treegrid-nav.js';
 
@@ -25,6 +26,39 @@ function mockFetch(listingsByFullpath) {
     return new Response(JSON.stringify(match[1]), { status: 200 });
   };
   return { calls, restore: () => { window.fetch = savedFetch; } };
+}
+
+function holdFetch(listingsByFullpath, held) {
+  const savedFetch = window.fetch;
+  const pending = [];
+  const released = [];
+  window.fetch = async (url) => {
+    const s = String(url);
+    if (s.includes('/ping/')) return new Response('', { status: 200 });
+    const match = Object.entries(listingsByFullpath).find(([fp]) => s === listUrl(fp));
+    const respond = () => (match
+      ? new Response(JSON.stringify(match[1]), { status: 200 })
+      : new Response('', { status: 404 }));
+    const isHeld = (fp) => held.some((p) => fp.startsWith(p))
+      && !released.some((p) => fp.startsWith(p));
+    if (!match || !isHeld(match[0])) return respond();
+    return new Promise((resolve) => {
+      pending.push({ fp: match[0], go: () => resolve(respond()) });
+    });
+  };
+  const settle = () => new Promise((r) => { setTimeout(r, 20); });
+  return {
+    release: async (prefix) => {
+      released.push(prefix);
+      pending.filter((p) => p.fp.startsWith(prefix)).forEach((p) => {
+        pending.splice(pending.indexOf(p), 1);
+        p.go();
+      });
+      await settle();
+    },
+    settle,
+    restore: () => { window.fetch = savedFetch; },
+  };
 }
 
 async function withRealCss(el) {
@@ -154,6 +188,61 @@ describe('EwFileExplorer', () => {
 
       expect(el._error).to.equal('Not permitted');
       expect(el._treeRoot).to.be.null;
+    });
+  });
+
+  describe('stale loads after a site change', () => {
+    const A = {
+      '/a/site': [{ name: 'sub', path: '/a/site/sub' }],
+      '/a/site/sub': [{ name: 'x.html', path: '/a/site/sub/x.html', ext: 'html' }],
+    };
+    const B = { '/b/site': [{ name: 'y.html', path: '/b/site/y.html', ext: 'html' }] };
+    const keys = () => Object.keys(el._cache);
+    let net;
+
+    afterEach(() => net?.restore());
+
+    it('ignores a slow initial load from the previous site', async () => {
+      net = holdFetch({ ...A, ...B }, ['/a/']);
+      el._onHashChange({ org: 'a', site: 'site', path: 'sub/x' });
+      el._onHashChange({ org: 'b', site: 'site', path: 'y' });
+      await net.settle();
+      await net.release('/a/');
+
+      expect(el._treeRoot).to.equal('/b/site');
+      expect(keys()).to.deep.equal(['/b/site']);
+      expect([...el._expanded]).to.deep.equal(['b/site']);
+      expect(el._loading).to.be.false;
+    });
+
+    it('keeps the new site loading while a previous site load finishes', async () => {
+      net = holdFetch({ ...A, ...B }, ['/a/', '/b/']);
+      el._onHashChange({ org: 'a', site: 'site', path: 'sub/x' });
+      el._onHashChange({ org: 'b', site: 'site', path: 'y' });
+      await net.release('/a/');
+
+      expect(el._loading).to.be.true;
+      expect(el._treeRoot).to.equal(null);
+      await net.release('/b/');
+      expect(el._treeRoot).to.equal('/b/site');
+    });
+
+    it('ignores folder loads, refreshes and agent updates from the previous site', async () => {
+      net = holdFetch({ ...A, ...B }, ['/a/site/sub']);
+      el._onHashChange({ org: 'a', site: 'site' });
+      await net.settle();
+      el._expandToPath('sub/x');
+      el._loadAndExpand('a/site/sub');
+      el._refreshPath('/a/site/sub');
+      el._cache = { ...el._cache, '/a/site/sub': [] };
+      document.dispatchEvent(new CustomEvent(CHAT_EVENT.AGENT_CHANGE, { detail: { scope: 'file', paths: ['/a/site/sub'] } }));
+      el._onHashChange({ org: 'b', site: 'site' });
+      await net.settle();
+      await net.release('/a/');
+
+      expect(keys()).to.deep.equal(['/b/site']);
+      expect([...el._expanded]).to.deep.equal(['b/site']);
+      expect(el._loading).to.be.false;
     });
   });
 

@@ -91,6 +91,8 @@ class EwFileExplorer extends LitElement {
     _createDialog: { state: true },
   };
 
+  _loadGen = 0;
+
   connectedCallback() {
     super.connectedCallback();
     this._category ??= 'all';
@@ -100,10 +102,12 @@ class EwFileExplorer extends LitElement {
       if (detail?.scope !== 'file') return;
       const toRefresh = (detail.paths ?? []).filter((p) => this._cache?.[p]);
       if (!toRefresh.length) return;
+      const gen = this._loadGen;
       const updates = await Promise.all(toRefresh.map(async (p) => {
         const result = await listFolder(p);
         return Array.isArray(result) ? [p, result] : null;
       }));
+      if (gen !== this._loadGen) return;
       const patched = Object.fromEntries(updates.filter(Boolean));
       if (Object.keys(patched).length) this._cache = { ...this._cache, ...patched };
     };
@@ -125,6 +129,7 @@ class EwFileExplorer extends LitElement {
 
   _onHashChange({ org, site, path }) {
     const rootChanged = org !== this._org || site !== this._site;
+    if (rootChanged) this._loadGen += 1;
     this._org = org;
     this._site = site;
 
@@ -166,6 +171,7 @@ class EwFileExplorer extends LitElement {
       return;
     }
 
+    const gen = this._loadGen;
     const orgSite = `${this._org}/${this._site}`;
     const parts = path.split('/');
     const parentFp = parts.length > 1
@@ -174,6 +180,7 @@ class EwFileExplorer extends LitElement {
 
     if (!this._cache?.[parentFp]) {
       const result = await listFolder(parentFp);
+      if (gen !== this._loadGen) return;
       if (!Array.isArray(result)) {
         this._cache = {};
         this._expanded = new Set();
@@ -198,6 +205,7 @@ class EwFileExplorer extends LitElement {
       const result = await listFolder(fp);
       return Array.isArray(result) ? [fp, result] : null;
     }));
+    if (gen !== this._loadGen) return;
     const patched = Object.fromEntries(results.filter(Boolean));
     if (Object.keys(patched).length) this._cache = { ...this._cache, ...patched };
   }
@@ -207,6 +215,7 @@ class EwFileExplorer extends LitElement {
   // permission on a subfolder but not its ancestors). If the very first fetch
   // fails, treats it as "not permitted" and shows no tree.
   async _loadFromLeaves(org, site, path) {
+    const gen = this._loadGen;
     this._loading = true;
     this._error = null;
     const cache = {};
@@ -230,6 +239,7 @@ class EwFileExplorer extends LitElement {
         const fp = pathsToFetch[i];
         // eslint-disable-next-line no-await-in-loop
         const result = await listFolder(fp);
+        if (gen !== this._loadGen) return;
         if (Array.isArray(result)) {
           cache[fp] = result;
           treeRoot = fp;
@@ -243,13 +253,15 @@ class EwFileExplorer extends LitElement {
       this._expanded = expanded;
       this._treeRoot = treeRoot;
     } finally {
-      this._loading = false;
+      if (gen === this._loadGen) this._loading = false;
     }
   }
 
   async _loadAndExpand(pathKey) {
+    const gen = this._loadGen;
     this._loading = true;
     const result = await listFolder(`/${pathKey}`);
+    if (gen !== this._loadGen) return;
     if (Array.isArray(result)) {
       this._cache = { ...this._cache, [`/${pathKey}`]: result };
       this._expanded = new Set([...(this._expanded ?? []), pathKey]);
@@ -258,8 +270,9 @@ class EwFileExplorer extends LitElement {
   }
 
   async _refreshPath(fullpath) {
+    const gen = this._loadGen;
     const result = await listFolder(fullpath);
-    if (!Array.isArray(result)) return false;
+    if (gen !== this._loadGen || !Array.isArray(result)) return false;
     this._cache = { ...this._cache, [fullpath]: result };
     this._expanded = new Set([...(this._expanded ?? []), fullpath.replace(/^\//, '')]);
     return true;
