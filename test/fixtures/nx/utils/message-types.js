@@ -25,5 +25,9 @@ export const MESSAGE_TYPES = Object.freeze({
   COMMENT_MARKER_CLEAR: 'comment-marker-clear',
   COMMENT_SHORTCUT: 'comment-shortcut',
 
+  SET_FINDING_MARKERS: 'set-finding-markers',
+  FINDING_MARKER_CLICK: 'finding-marker-click',
+  FINDING_MARKER_LAYOUT: 'finding-marker-layout',
+
   IMAGE_REPLACE: 'image-replace',
 });
