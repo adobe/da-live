@@ -1,6 +1,6 @@
 import { LitElement, html, nothing, repeat } from 'da-lit';
 import { DOMParser as PMDOMParser } from 'da-y-wrapper';
-import { getNx, getNx2 } from '../../../scripts/utils.js';
+import { getNx } from '../../../scripts/utils.js';
 import { initIms } from '../../shared/utils.js';
 import {
   fetchVersions,
@@ -24,7 +24,9 @@ const ICON_ADD = '/img/icons/s2-icon-addcircle-20-n.svg';
 const ICON_MORE = '/img/icons/s2-icon-more-20-n.svg';
 const ICON_CHEVRON = '/img/icons/s2-icon-chevrondown-20-n.svg';
 const ICON_CLOSE = '/img/icons/s2-icon-close-20-n.svg';
-const ICON_REFRESH = `${getNx2()}/public/icons/S2_Icon_Refresh_20_N.svg`;
+const ICON_REFRESH = '/img/icons/s2-icon-refresh-20-n.svg';
+const REFRESH_ICON_HTML = `<svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${ICON_REFRESH}#icon"></use></svg>`;
+const REFRESH_SPINNER_HTML = '<span class="da-loading-spinner" aria-hidden="true"></span>';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
@@ -104,9 +106,11 @@ class EwCanvasVersions extends LitElement {
     this._unsubVersion?.();
     this._loadRequest = (this._loadRequest ?? 0) + 1;
     this._refreshing = false;
+    this._syncHeaderRefreshButton();
   }
 
   updated(changed) {
+    this._syncHeaderRefreshButton();
     if (changed.has('_newVersion') && this._newVersion) {
       const input = this.shadowRoot.querySelector('.da-input');
       input?.focus();
@@ -131,6 +135,7 @@ class EwCanvasVersions extends LitElement {
       return;
     }
 
+    // Keep the visible row anchored when new versions are inserted above it.
     const list = this.shadowRoot.querySelector('.versionlist');
     const scrollTop = list?.scrollTop ?? 0;
     const top = list?.getBoundingClientRect().top ?? 0;
@@ -148,6 +153,29 @@ class EwCanvasVersions extends LitElement {
 
   handleRefresh() {
     return this._load({ showLoading: false });
+  }
+
+  _syncHeaderRefreshButton() {
+    if (!this._headerRefreshBtn) return;
+    this._headerRefreshBtn.setAttribute('aria-disabled', this._refreshing || !this.path ? 'true' : 'false');
+    this._headerRefreshBtn.setAttribute('aria-label', this._refreshing ? 'Refreshing version history' : 'Refresh version history');
+    this._headerRefreshBtn.innerHTML = this._refreshing
+      ? REFRESH_SPINNER_HTML : REFRESH_ICON_HTML;
+  }
+
+  getHeaderActions() {
+    if (!this._headerRefreshBtn) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'da-icon-btn';
+      btn.title = 'Refresh version history';
+      btn.addEventListener('click', () => {
+        if (!this._refreshing && this.path) this.handleRefresh();
+      });
+      this._headerRefreshBtn = btn;
+    }
+    this._syncHeaderRefreshButton();
+    return this._headerRefreshBtn;
   }
 
   _setFilter(val) {
@@ -465,22 +493,12 @@ class EwCanvasVersions extends LitElement {
               aria-pressed=${this._filter === 'me'}
               @click=${() => this._setFilter('me')}>Only me</button>
           </div>
-          <div class="toolbar-actions">
-            <button type="button" class="da-icon-btn refresh-btn"
-              aria-label=${this._refreshing ? 'Refreshing version history' : 'Refresh version history'}
-              title="Refresh version history" aria-disabled=${this._refreshing ? 'true' : 'false'}
-              @click=${() => { if (!this._refreshing) this.handleRefresh(); }}>
-              ${this._refreshing
-        ? html`<span class="da-loading-spinner" aria-hidden="true"></span>`
-        : html`<span class="refresh-icon" style=${`mask-image: url("${ICON_REFRESH}")`} aria-hidden="true"></span>`}
-            </button>
             ${this._canWrite ? html`<button type="button" class="da-icon-btn" aria-label="Create version"
               ?disabled=${!!this._newVersion} @click=${this.handleNew}>
               <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
                 <use href="${ICON_ADD}#icon"></use>
               </svg>
             </button>` : nothing}
-          </div>
         </div>
         ${this._canWrite ? html`<p class="da-hint">Press <kbd class="da-kbd">${SHORTCUT_HINT}</kbd> to add to version history while editing.</p>` : nothing}
         ${this._versions === undefined

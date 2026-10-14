@@ -248,6 +248,7 @@ describe('version history refresh', () => {
   beforeEach(() => { savedFetch = window.fetch; });
 
   afterEach(() => {
+    inst?.getHeaderActions().remove();
     inst?.remove();
     inst = null;
     window.fetch = savedFetch;
@@ -277,6 +278,45 @@ describe('version history refresh', () => {
     await inst.updateComplete;
   }
 
+  it('mounts Refresh in the tool-panel header and reuses it when switching views', async () => {
+    await import('../../../../../blocks/canvas/ew-tool-panel/tool-panel.js');
+    inst = await createInstance({ path, _versions: [ver(old)] });
+    const panel = document.createElement('ew-tool-panel');
+    panel.pendingView = 'versions';
+    panel.views = [
+      { id: 'versions', label: 'Versions', firstParty: true, load: async () => inst },
+      { id: 'other', label: 'Other', firstParty: true, load: async () => document.createElement('div') },
+    ];
+    document.body.append(panel);
+    try {
+      const button = inst.getHeaderActions();
+      await waitFor(() => panel.shadowRoot.querySelector('.tool-panel-header-actions')?.contains(button));
+      inst.path = path;
+      await inst.updateComplete;
+      expect(inst.shadowRoot.querySelector('.toolbar').contains(button)).to.be.false;
+      await panel.showPanel('other');
+      await panel.updateComplete;
+      expect(button.isConnected).to.be.false;
+      await panel.showPanel('versions');
+      await panel.updateComplete;
+      expect(panel.shadowRoot.querySelector('.tool-panel-header-actions').contains(button)).to.be.true;
+      expect(inst.getHeaderActions()).to.equal(button);
+    } finally {
+      panel.remove();
+    }
+  });
+
+  it('keeps header Refresh inactive until a document is selected', async () => {
+    inst = await createInstance();
+    const button = inst.getHeaderActions();
+    expect(button.getAttribute('aria-disabled')).to.equal('true');
+    button.click();
+    expect(inst._refreshing).to.not.be.true;
+    inst.path = path;
+    await inst.updateComplete;
+    expect(button.getAttribute('aria-disabled')).to.equal('false');
+  });
+
   it('offers a labelled refresh action and keeps history visible while loading', async () => {
     let finish;
     let calls = 0;
@@ -287,14 +327,18 @@ describe('version history refresh', () => {
     const entries = [ver(old)];
     inst = await createInstance({ path, _versions: entries });
     const list = inst.shadowRoot.querySelector('.versionlist');
-    const button = inst.shadowRoot.querySelector('.refresh-btn');
+    const button = inst.getHeaderActions();
+    document.body.append(button);
+    expect(inst.getHeaderActions()).to.equal(button);
+    expect(button.querySelector('use').getAttribute('href')).to.equal('/img/icons/s2-icon-refresh-20-n.svg#icon');
+    expect(inst.shadowRoot.querySelector('.refresh-btn')).to.not.exist;
     expect(button.getAttribute('aria-label')).to.equal('Refresh version history');
     button.focus();
     await sendKeys({ press: 'Enter' });
     await nextFrame();
     await inst.updateComplete;
     expect(button.getAttribute('aria-disabled')).to.equal('true');
-    expect(inst.shadowRoot.activeElement).to.equal(button);
+    expect(document.activeElement).to.equal(button);
     expect(button.querySelector('.da-loading-spinner')).to.exist;
     expect(inst.shadowRoot.querySelector('.versionlist')).to.equal(list);
     expect(inst._versions).to.equal(entries);
@@ -305,7 +349,7 @@ describe('version history refresh', () => {
     await waitFor(() => !inst._refreshing);
     expect(inst._versions.map((entry) => entry.label)).to.deep.equal(['Previewed', 'Older version']);
     expect(button.getAttribute('aria-disabled')).to.equal('false');
-    expect(inst.shadowRoot.activeElement).to.equal(button);
+    expect(document.activeElement).to.equal(button);
     expect(inst.shadowRoot.querySelector('.ew-canvas-versions').getAttribute('aria-busy')).to.equal('false');
   });
 
@@ -313,7 +357,8 @@ describe('version history refresh', () => {
     let finish;
     mockList(() => new Promise((resolve) => { finish = resolve; }));
     inst = await createInstance({ path, _versions: [ver(old)] });
-    const button = inst.shadowRoot.querySelector('.refresh-btn');
+    const button = inst.getHeaderActions();
+    document.body.append(button);
     const filter = inst.shadowRoot.querySelector('.seg-btn');
     button.focus();
     button.click();
@@ -328,7 +373,7 @@ describe('version history refresh', () => {
     const pending = [];
     mockList(() => new Promise((resolve) => { pending.push(resolve); }));
     inst = await createInstance({ path, _versions: [ver(old)] });
-    inst.shadowRoot.querySelector('.refresh-btn').click();
+    inst.getHeaderActions().click();
     await nextFrame();
     document.dispatchEvent(new CustomEvent('nx-version-created', { detail: { path } }));
     await nextFrame();
@@ -363,7 +408,7 @@ describe('version history refresh', () => {
     getExtensionsBridge().view = { editable: false };
     inst = await createInstance({ path, _versions: [ver(old)] });
     expect(inst.shadowRoot.querySelector('button[aria-label="Create version"]')).to.not.exist;
-    inst.shadowRoot.querySelector('.refresh-btn').click();
+    inst.getHeaderActions().click();
     await waitFor(() => calls === 1 && !inst._refreshing);
     expect(inst._versions[0].label).to.equal('Previewed');
     document.dispatchEvent(new CustomEvent('nx-version-created', { detail: { path } }));
@@ -459,11 +504,14 @@ describe('version history refresh', () => {
     const list = inst.shadowRoot.querySelector('.versionlist');
     list.style.cssText = 'height: 100px; overflow: auto; margin: 0; padding: 0;';
     [...list.children].forEach((row) => { row.style.height = '40px'; });
+    await new Promise(requestAnimationFrame);
     list.scrollTop = 300;
+    await new Promise(requestAnimationFrame);
     const anchor = [...list.children]
       .find((row) => row.getBoundingClientRect().bottom > list.getBoundingClientRect().top);
     const { top } = anchor.getBoundingClientRect();
     await inst.handleRefresh();
+    await new Promise(requestAnimationFrame);
     expect(anchor.isConnected).to.be.true;
     expect(anchor.getBoundingClientRect().top).to.be.closeTo(top, 1);
   });
@@ -488,7 +536,7 @@ describe('version history refresh', () => {
     await inst.updateComplete;
     expect(inst._versions).to.be.undefined;
     expect(inst.shadowRoot.querySelector('[role="alert"]').textContent).to.include('Use Refresh');
-    expect(inst.shadowRoot.querySelector('.refresh-btn').disabled).to.be.false;
+    expect(inst.getHeaderActions().getAttribute('aria-disabled')).to.equal('false');
     mockList(() => Promise.resolve(response([latest, old])));
     await inst.handleRefresh();
     expect(inst._loadError).to.be.false;
