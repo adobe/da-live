@@ -67,4 +67,22 @@ describe('suggest mode is scoped to the doc editor', () => {
     off();
     expect(last).to.deep.equal({ on: false });
   });
+
+  it('turns the mode back on when returning from layout', () => {
+    canvasBus.suggestModeRequest.emit();
+    canvasBus.editorViewState.emit({ view: 'layout' });
+
+    let last;
+    const off = canvasBus.suggestModeState.subscribe((d) => { last = d; });
+    canvasBus.editorViewState.emit({ view: 'content' });
+    off();
+    expect(isSuggesting(view.state)).to.be.true;
+    expect(last).to.deep.equal({ on: true });
+  });
+
+  it('stays off when returning from layout if it was off before', () => {
+    canvasBus.editorViewState.emit({ view: 'layout' });
+    canvasBus.editorViewState.emit({ view: 'split' });
+    expect(isSuggesting(view.state)).to.be.false;
+  });
 });

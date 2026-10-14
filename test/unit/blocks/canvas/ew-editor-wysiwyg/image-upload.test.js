@@ -395,3 +395,65 @@ describe('handleImageReplace', () => {
     }
   });
 });
+
+describe('handleImageReplace with a pending suggestion', () => {
+  let editor;
+  let imagePos;
+
+  const ctxFor = () => {
+    const posted = [];
+    return {
+      posted,
+      ctx: {
+        owner: 'wysorg',
+        repo: 'wyssite',
+        path: '/page',
+        view: editor.view,
+        port: { postMessage: (message) => posted.push(message) },
+        getToken: () => 'test-token',
+      },
+    };
+  };
+
+  beforeEach(async () => {
+    editor = await createTestEditor();
+    const { state } = editor.view;
+    const img = state.schema.nodes.image.create({
+      src: '/old.png',
+      suggestion: 'delete',
+      suggestionUsername: 'Ada',
+    });
+    editor.view.dispatch(state.tr.replaceWith(
+      0,
+      state.doc.content.size,
+      state.schema.nodes.paragraph.create(null, img),
+    ));
+    editor.view.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'image') imagePos = pos;
+    });
+    await nextFrame();
+  });
+
+  afterEach(() => destroyEditor(editor));
+
+  it('refuses the replace instead of overwriting the proposal', async () => {
+    const { calls, restore } = stubStore({ upgraded: true });
+    const { ctx, posted } = ctxFor();
+    try {
+      await handleImageReplace({
+        imageData: 'data:image/png;base64,iVBORw0KGgo=',
+        fileName: 'pic.png',
+        proseIndex: imagePos,
+        requestId: 'upload-locked',
+        imageVersion: getImageDocumentVersion(editor.view.state.doc),
+        originalSrc: '/old.png',
+      }, ctx);
+
+      expect(calls.some((c) => c.opts?.method === 'POST')).to.be.false;
+      expect(posted[0].payload.error).to.contain('Switch to Content');
+      expect(editor.view.state.doc.firstChild.firstChild.attrs.src).to.equal('/old.png');
+    } finally {
+      restore();
+    }
+  });
+});

@@ -19,6 +19,22 @@
   text-decoration-thickness: 2px;
 }
 
+.da-prose-mirror .da-suggestion-node-insert {
+  outline: 2px solid var(--suggestion-added-border);
+  outline-offset: 2px;
+}
+
+.da-prose-mirror .da-suggestion-node-delete {
+  outline: 2px dashed var(--suggestion-deleted-border);
+  outline-offset: 2px;
+  opacity: 0.55;
+}
+
+/* Focal point is an attribute change, which suggest mode can't track yet. */
+.da-prose-mirror .da-suggesting .focal-point-icon {
+  display: none;
+}
+
 .ew-suggestion-popover {
   position: absolute;
   z-index: 10;

@@ -96,6 +96,23 @@ describe('ew-block-toolbar', () => {
     expect(labels).to.include('blue');
   });
 
+  it('locks the variant picker while suggesting', async () => {
+    toolbar.show('cards');
+    toolbar._variantOptions = ['highlight'];
+    canvasBus.suggestModeState.emit({ on: true });
+    await toolbar.updateComplete;
+
+    const wrap = toolbar.shadowRoot.querySelector('.toolbar-variant-wrap');
+    expect(wrap.classList.contains('is-disabled')).to.be.true;
+    expect(wrap.title).to.contain('Not available while suggesting');
+    expect(wrap.querySelector('nx-picker').inert).to.be.true;
+
+    canvasBus.suggestModeState.emit({ on: false });
+    await toolbar.updateComplete;
+    expect(wrap.classList.contains('is-disabled')).to.be.false;
+    expect(wrap.querySelector('nx-picker').inert).to.be.false;
+  });
+
   it('reflects the current variant on the picker', async () => {
     toolbar.show('cards', 'highlight');
     toolbar._variantOptions = ['highlight', 'blue'];

@@ -33,6 +33,7 @@ import {
 } from './command-helpers.js';
 import { openLinkDialog, openAltDialog, triggerAddImage } from './selection-toolbar.js';
 import { blockItemsForQuery, hasLibrary, insertBlockItem, getState } from './block-slash.js';
+import { isSuggesting, NOT_WHILE_SUGGESTING } from '../suggestions/suggestion-plugin.js';
 
 const notImageSelected = (state) => !isImageNodeSelected(state);
 
@@ -332,6 +333,8 @@ export const COMMANDS = [
     icon: iconName('imagetext'),
     showIn: ['toolbar-image'],
     visible: isImageNodeSelected,
+    disabled: isSuggesting,
+    disabledLabel: NOT_WHILE_SUGGESTING,
     apply: openAltDialog,
   },
   {

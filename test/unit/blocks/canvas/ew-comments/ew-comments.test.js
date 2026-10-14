@@ -215,6 +215,7 @@ describe('ew-comments — suggestion cards', () => {
     el?.remove();
     el = null;
     canvasBus.suggestionsState.emit({ items: [] });
+    canvasBus.suggestModeState.emit({ on: false });
   });
 
   const replace = {
@@ -224,6 +225,7 @@ describe('ew-comments — suggestion cards', () => {
   const showing = async (items) => {
     el = await makeEl();
     el.controller = makeCtrl();
+    canvasBus.suggestModeState.emit({ on: true });
     await el.updateComplete;
     canvasBus.suggestionsState.emit({ items });
     await el.updateComplete;
@@ -285,6 +287,7 @@ describe('ew-comments — suggestion cards', () => {
     let scrolledTo = null;
     el = await makeEl();
     el.controller = makeCtrl({ scrollToPos(pos) { scrolledTo = pos; } });
+    canvasBus.suggestModeState.emit({ on: true });
     await el.updateComplete;
     canvasBus.suggestionsState.emit({ items: [replace] });
     await el.updateComplete;
@@ -401,6 +404,7 @@ describe('ew-comments — suggestion card accent', () => {
   const cardFor = async (item, ctrl) => {
     el = await makeEl();
     el.controller = ctrl ?? makeCtrl();
+    canvasBus.suggestModeState.emit({ on: true });
     await el.updateComplete;
     canvasBus.suggestionsState.emit({ items: [item] });
     await el.updateComplete;
@@ -411,6 +415,7 @@ describe('ew-comments — suggestion card accent', () => {
     el?.remove();
     el = null;
     canvasBus.suggestionsState.emit({ items: [] });
+    canvasBus.suggestModeState.emit({ on: false });
   });
 
   it('accents by author, not by operation', async () => {
@@ -462,6 +467,7 @@ describe('ew-comments — resolved suggestions', () => {
         resolved: [{ ...entry, replies: [], isDetached: false, isResolved: true }],
       }),
     });
+    canvasBus.suggestModeState.emit({ on: true });
     await el.updateComplete;
     el._activeTab = 'resolved';
     await el.updateComplete;
@@ -471,6 +477,7 @@ describe('ew-comments — resolved suggestions', () => {
   afterEach(() => {
     el?.remove();
     el = null;
+    canvasBus.suggestModeState.emit({ on: false });
   });
 
   it('shows an accepted suggestion on the resolved tab', async () => {
@@ -517,10 +524,116 @@ describe('ew-comments — resolved suggestions', () => {
         resolved: [{ ...record, replies: [], isResolved: true }],
       }),
     });
+    canvasBus.suggestModeState.emit({ on: true });
     await el.updateComplete;
     el._activeTab = 'resolved';
     await el.updateComplete;
     const card = el.shadowRoot.querySelector('.ew-suggestion-card');
     expect(card.style.getPropertyValue('--ew-suggestion-accent')).to.equal(set.strong);
+  });
+});
+
+describe('ew-comments — suggesting drives the list', () => {
+  let el;
+  const suggestion = {
+    id: '7-22', from: 7, to: 22, kind: 'replace', deleted: 'ipsum', inserted: 'lorem', username: 'Ada',
+  };
+  const thread = {
+    id: 'c1',
+    threadId: null,
+    author: { name: 'Ada', id: 'Ada' },
+    body: 'a comment',
+    createdAt: 1700000000000,
+    replies: [],
+    isDetached: false,
+    isResolved: false,
+  };
+  const resolvedSuggestion = {
+    id: 'r1',
+    threadId: null,
+    kind: 'suggestion',
+    suggestion: { kind: 'delete', deleted: 'gone', inserted: '' },
+    author: { name: 'Ada', id: 'Ada' },
+    createdAt: 1700000000000,
+    replies: [],
+    isResolved: true,
+    resolved: true,
+    resolution: 'accepted',
+  };
+
+  const mount = async () => {
+    el = await makeEl();
+    el.controller = makeCtrl({
+      counts: { active: 1, resolved: 1 },
+      getThreadGroups: () => ({
+        active: [thread],
+        detached: [],
+        resolved: [resolvedSuggestion, { ...thread, id: 'c2', isResolved: true, resolved: true }],
+      }),
+    });
+    await el.updateComplete;
+    canvasBus.suggestionsState.emit({ items: [suggestion] });
+    await el.updateComplete;
+  };
+
+  const suggest = async (on) => {
+    canvasBus.suggestModeState.emit({ on });
+    await el.updateComplete;
+  };
+
+  afterEach(() => {
+    el?.remove();
+    el = null;
+    canvasBus.suggestionsState.emit({ items: [] });
+    canvasBus.suggestModeState.emit({ on: false });
+  });
+
+  const counts = () => [...el.shadowRoot.querySelectorAll('.ew-comment-tab-count')]
+    .map((n) => n.textContent.trim());
+
+  it('shows comments and hides suggestions by default', async () => {
+    await mount();
+    expect(el.shadowRoot.querySelector('.ew-suggestion-card')).to.be.null;
+    expect(el.shadowRoot.querySelector('.ew-comment-card')).to.exist;
+    expect(counts()).to.deep.equal(['(1)', '(1)']);
+  });
+
+  it('shows only suggestions while suggesting', async () => {
+    await mount();
+    await suggest(true);
+    const cards = el.shadowRoot.querySelectorAll('.ew-comment-card');
+    expect(cards.length).to.equal(1);
+    expect(cards[0].dataset.suggestion).to.equal('7-22');
+    expect(counts()).to.deep.equal(['(1)', '(1)']);
+  });
+
+  it('goes back to comments when suggesting stops', async () => {
+    await mount();
+    await suggest(true);
+    await suggest(false);
+    expect(el.shadowRoot.querySelector('.ew-suggestion-card')).to.be.null;
+    expect(el.shadowRoot.querySelector('.ew-comment-card')).to.exist;
+  });
+
+  it('counts and lists resolved suggestions on the resolved tab', async () => {
+    await mount();
+    await suggest(true);
+    el._activeTab = 'resolved';
+    await el.updateComplete;
+    const cards = el.shadowRoot.querySelectorAll('.ew-comment-card');
+    expect(cards.length).to.equal(1);
+    expect(cards[0].dataset.suggestionOutcome).to.equal('accepted');
+  });
+
+  it('returns to the active tab when suggesting is toggled', async () => {
+    await mount();
+    el._activeTab = 'resolved';
+    await suggest(true);
+    expect(el._activeTab).to.equal('active');
+  });
+
+  it('has no filter control of its own', async () => {
+    await mount();
+    expect(el.shadowRoot.querySelector('.ew-comments-filter-btn')).to.be.null;
   });
 });

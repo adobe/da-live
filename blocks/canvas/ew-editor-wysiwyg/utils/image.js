@@ -1,6 +1,8 @@
 import { getNx2, getNx2Api } from '../../../../scripts/utils.js';
 import { MESSAGE_TYPES } from '../../utils/quick-edit-messages.js';
 import { dataUrlByteLength, refuseOversizedImage } from '../../utils/image-upload.js';
+import { SUGGESTION_LOCK_HINT } from '../../editor-utils/editor-utils.js';
+import { hasPendingSuggestion } from '../../suggestions/suggestion-plugin.js';
 
 const { resolveImagePosition, updateImageInDocument } = await import(
   `${getNx2()}/public/utils/quick-edit-images.js`
@@ -37,6 +39,10 @@ export async function handleImageReplace(payload, ctx) {
     const originalDoc = view.state.doc;
     const imagePos = resolveImagePosition({ ...payload, doc: originalDoc });
     const target = originalDoc.nodeAt(imagePos);
+    if (target && hasPendingSuggestion(target)) {
+      reply({ error: SUGGESTION_LOCK_HINT });
+      return;
+    }
     const sitePath = `/${ctx.owner}/${ctx.repo}`;
     if (await refuseOversizedImage(dataUrlByteLength(imageData), sitePath)) {
       reply({ error: 'Image is too large' });

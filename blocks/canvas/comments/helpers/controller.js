@@ -142,6 +142,7 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
         kind: 'suggestion',
         suggestion: {
           kind: suggestion.kind,
+          subject: suggestion.subject ?? 'text',
           deleted: suggestion.deleted,
           inserted: suggestion.inserted,
         },

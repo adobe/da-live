@@ -1,6 +1,6 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { Plugin } from 'da-y-wrapper';
-import { suggestionRange } from './suggestion-plugin.js';
+import { suggestionAuthor, suggestionRange } from './suggestion-plugin.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
 const ICONS = {
@@ -20,12 +20,6 @@ function iconButton(kind, label, onClick) {
   btn.addEventListener('mousedown', (e) => e.preventDefault());
   btn.addEventListener('click', onClick);
   return btn;
-}
-
-function authorAt(state, range) {
-  const node = state.doc.nodeAt(range.from);
-  const mark = node?.marks?.find((m) => m.type.name.startsWith('suggestion_'));
-  return mark?.attrs?.username || '';
 }
 
 function build(view) {
@@ -66,7 +60,7 @@ export default function suggestionPopover() {
           el.classList.remove('open');
           return;
         }
-        const who = authorAt(view.state, range);
+        const who = suggestionAuthor(view.state, range);
         label.textContent = who ? `${who} suggested` : 'Suggested edit';
         const coords = view.coordsAtPos(range.from);
         const box = container.getBoundingClientRect();

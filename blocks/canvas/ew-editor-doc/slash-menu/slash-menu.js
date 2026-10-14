@@ -13,6 +13,10 @@ import {
   isBlockOption,
   applyBlockOption,
 } from './block-options.js';
+import { suggestionTransactionKey } from '../../suggestions/suggestion-plugin.js';
+import { getSlashContext } from '../../editor-utils/slash-context.js';
+
+export { getSlashContext };
 
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
@@ -21,39 +25,6 @@ function inTopLevelParagraph($from) {
   if ($from.parent.type.name !== 'paragraph') return false;
   if ($from.depth < 1) return false;
   return $from.node($from.depth - 1).type.name === 'doc';
-}
-
-/** 'block' for a top-level paragraph (block insert), 'cell' inside a block cell (options). */
-function paragraphMode($from) {
-  if ($from.parent.type.name !== 'paragraph' || $from.depth < 1) return null;
-  const parentType = $from.node($from.depth - 1).type.name;
-  if (parentType === 'doc') return 'block';
-  if (parentType === 'table_cell') return 'cell';
-  return null;
-}
-
-export function getSlashContext(state) {
-  const { $from } = state.selection;
-  const mode = paragraphMode($from);
-  if (!mode) return null;
-
-  const paraStart = $from.start();
-  const head = state.selection.from;
-  if (head <= paraStart) return null;
-
-  const prefix = state.doc.textBetween(paraStart, head, '\ufffc', '\ufffc');
-  const slashIndex = prefix.lastIndexOf('/');
-  if (slashIndex === -1) return null;
-
-  if (slashIndex > 0) {
-    if (mode !== 'cell') return null;
-    if (!prefix.slice(0, slashIndex).trimEnd().endsWith(',')) return null;
-  }
-
-  const query = prefix.slice(slashIndex + 1);
-  if (query.length > 50) return null;
-
-  return { query, anchorPos: paraStart + slashIndex, mode };
 }
 
 // A CellSelection (one or more selected table cells) carries `$anchorCell`;
@@ -97,7 +68,8 @@ function setup(container, view, ctxRef) {
     if (slash) {
       const { anchorPos } = slash;
       const head = state.selection.from;
-      view.dispatch(state.tr.delete(anchorPos, head));
+      view.dispatch(state.tr.delete(anchorPos, head)
+        .setMeta(suggestionTransactionKey, { skipSuggestionOperation: true }));
       if (isBlockOption(e.detail.id)) {
         applyBlockOption(view, e.detail.id);
       } else {

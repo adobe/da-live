@@ -10,8 +10,8 @@ const { getInstrumentedHTML } = await import('../../../../../blocks/canvas/edito
 
 const schema = getSchema();
 
-// Layout mode ships this HTML to the quick-edit iframe over SET_BODY, so the
-// suggestion marks have to survive serialization or they render as plain text.
+// Layout mode ships this HTML to the quick-edit iframe over SET_BODY. It shows the
+// approved page: a proposed insertion is not in it yet, a proposed deletion still is.
 describe('suggestions in instrumented HTML', () => {
   let view;
   afterEach(() => view?.destroy());
@@ -29,19 +29,22 @@ describe('suggestions in instrumented HTML', () => {
     return view;
   };
 
-  it('keeps an insertion as a da-suggestion-added element', () => {
+  it('leaves a proposed insertion out', () => {
     mount('Hello world');
     setSuggesting(view, true);
     view.dispatch(view.state.tr.insertText(' brave', 6));
-    expect(getInstrumentedHTML(view)).to.contain('da-suggestion-added');
+    const html = getInstrumentedHTML(view);
+    expect(html).to.not.contain('da-suggestion-added');
+    expect(html).to.not.contain('brave');
+    expect(html).to.contain('Hello');
   });
 
-  it('keeps a deletion as a da-suggestion-deleted element', () => {
+  it('keeps text proposed for deletion, as plain text', () => {
     mount('Hello cruel world');
     setSuggesting(view, true);
     view.dispatch(view.state.tr.delete(6, 12));
     const html = getInstrumentedHTML(view);
-    expect(html).to.contain('da-suggestion-deleted');
+    expect(html).to.not.contain('da-suggestion-deleted');
     expect(html).to.contain('cruel');
   });
 });

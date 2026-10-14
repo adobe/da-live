@@ -166,7 +166,14 @@ export function renderStatusLine(label, user, at) {
   `;
 }
 
-function renderSuggestionBody({ kind, deleted, inserted }) {
+function renderSuggestionBody({ kind, subject = 'text', deleted, inserted }) {
+  if (subject !== 'text') {
+    if (kind === 'replace') {
+      return html`<strong>Replace ${subject}:</strong> <em>${deleted}</em> with <em>${inserted}</em>`;
+    }
+    if (kind === 'delete') return html`<strong>Delete ${subject}:</strong> <em>${deleted}</em>`;
+    return html`<strong>Insert ${subject}:</strong> <em>${inserted}</em>`;
+  }
   if (kind === 'replace') {
     return html`<strong>Replace:</strong> <em>“${deleted}”</em> with <em>“${inserted}”</em>`;
   }
@@ -297,6 +304,10 @@ export function renderListView(panel, viewModel) {
   }
 
   const { tabCounts, visibleThreads, suggestions = [] } = viewModel;
+  const noun = panel._suggesting ? 'suggestions' : 'comments';
+  const emptyLabel = panel._activeTab === 'resolved'
+    ? `No resolved ${noun}`
+    : `No ${noun} yet`;
   const tabs = [
     { id: 'active', label: 'Active', count: tabCounts.active },
     { id: 'resolved', label: 'Resolved', count: tabCounts.resolved },
@@ -306,7 +317,7 @@ export function renderListView(panel, viewModel) {
     <div class="ew-comments-list">
       ${panel._suggesting ? html`
         <p class="da-hint">
-          Suggesting. Your edits become suggestions.
+         Your edits become suggestions. Available in content mode only.
         </p>
       ` : html`
         <p class="da-hint">
@@ -314,7 +325,7 @@ export function renderListView(panel, viewModel) {
         </p>
       `}
       ${tabs.length > 1 ? html`
-        <div class="ew-comment-tabs" role="group" aria-label="Filter comment threads">
+        <div class="ew-comment-tabs" role="group" aria-label="Comment status">
           ${tabs.map((tab) => html`
             <button
               class="ew-comment-tab ${panel._activeTab === tab.id ? 'is-active' : ''}"
@@ -332,7 +343,7 @@ export function renderListView(panel, viewModel) {
           ${visibleThreads.map((thread) => renderThreadPreview(panel, thread))}
         </ul>
       ` : html`
-        <p class="ew-comments-empty">${panel._activeTab === 'resolved' ? 'No resolved comments' : 'No comments yet'}</p>
+        <p class="ew-comments-empty">${emptyLabel}</p>
       `}
     </div>
   `;

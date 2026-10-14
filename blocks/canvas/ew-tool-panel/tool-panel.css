@@ -32,6 +32,11 @@
   white-space: nowrap;
 }
 
+/* nx's .nx-checkbox sets display, which would otherwise beat [hidden]. */
+.tool-panel-header-actions > [hidden] {
+  display: none;
+}
+
 .tool-panel-close {
   display: inline-flex;
   align-items: center;

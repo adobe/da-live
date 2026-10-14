@@ -346,6 +346,7 @@ export class EwEditorDoc extends LitElement {
     this._comments.teardown();
     this._unbindSectionName?.();
     this._unbindSectionName = undefined;
+    this._resumeSuggesting = false;
     this._proseContext = undefined;
   }
 
@@ -453,11 +454,21 @@ export class EwEditorDoc extends LitElement {
     ).catch(() => { /* the doc change already landed; the audit record is best effort */ });
   }
 
-  _exitSuggestMode() {
+  // Layout edits arrive as mirrored doc transactions, which suggest mode must not capture.
+  _suspendSuggestMode() {
     const { view } = this._proseContext ?? {};
     if (!view || !isSuggesting(view.state)) return;
+    this._resumeSuggesting = true;
     setSuggesting(view, false);
     canvasBus.suggestModeState.emit({ on: false });
+  }
+
+  _resumeSuggestMode() {
+    const { view } = this._proseContext ?? {};
+    if (!this._resumeSuggesting || !view) return;
+    this._resumeSuggesting = false;
+    setSuggesting(view, true);
+    canvasBus.suggestModeState.emit({ on: true });
   }
 
   connectedCallback() {
@@ -468,7 +479,8 @@ export class EwEditorDoc extends LitElement {
     this._unsubscribeEditorActive = canvasBus.editorViewState.subscribe(({ view }) => {
       this._editorView = view;
       this.hidden = view === 'layout';
-      if (view === 'layout') this._exitSuggestMode();
+      if (view === 'layout') this._suspendSuggestMode();
+      else this._resumeSuggestMode();
     });
     this._unsubscribeSuggestMode = canvasBus.suggestModeRequest.subscribe(() => {
       const { view } = this._proseContext ?? {};

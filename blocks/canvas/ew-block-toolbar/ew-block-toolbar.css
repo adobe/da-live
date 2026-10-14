@@ -86,6 +86,11 @@
   align-items: center;
 }
 
+.toolbar-variant-wrap.is-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* Size the variant picker to match the toolbar buttons (same height, padding, radius). */
 .toolbar-variant {
   --nx-picker-height: 24px;

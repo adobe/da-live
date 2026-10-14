@@ -302,12 +302,13 @@ class EwSelectionToolbar extends LitElement {
     const hidden = !this._isCommandVisible(id);
     const disabled = this._isCommandDisabled(id);
     const pressed = this._isCommandActive(id);
+    const title = (disabled && COMMAND_BY_ID.get(id)?.disabledLabel) || label;
     return html`
       <button
         type="button"
         class="toolbar-btn"
         aria-label=${label}
-        title=${label}
+        title=${title}
         aria-pressed=${pressed ? 'true' : 'false'}
         ?hidden=${hidden}
         ?disabled=${disabled}

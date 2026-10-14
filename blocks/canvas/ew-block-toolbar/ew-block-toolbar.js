@@ -4,6 +4,7 @@ import { getBlocksExtension, loadBlockLibrary } from '../ew-panel-extensions/hel
 import { replaceBlockRange, setTableBlockVariant, appendBlockRow } from '../editor-utils/blocks.js';
 import { isMultiBlock, getMultiBlockTemplateRow } from '../editor-utils/multi-block.js';
 import { requestComment } from '../editor-utils/command-helpers.js';
+import { NOT_WHILE_SUGGESTING } from '../suggestions/suggestion-plugin.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
 const nx = getNx();
@@ -35,11 +36,19 @@ class EwBlockToolbar extends LitElement {
     _variantOptions: { state: true },
     _hasBlockLibrary: { state: true },
     _multiTemplateRow: { state: true },
+    _suggesting: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [styles];
+    this._unsubSuggestMode = canvasBus.suggestModeState
+      .subscribe(({ on } = {}) => { this._suggesting = Boolean(on); });
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this._unsubSuggestMode?.();
   }
 
   updated(changed) {
@@ -219,11 +228,14 @@ class EwBlockToolbar extends LitElement {
         </button>
         ${hasVariants ? html`
           <span class="toolbar-sep" aria-hidden="true"></span>
-          <span class="toolbar-variant-wrap">
+          <span
+            class="toolbar-variant-wrap ${this._suggesting ? 'is-disabled' : ''}"
+            title=${this._suggesting ? NOT_WHILE_SUGGESTING : nothing}>
             <nx-picker
               class="toolbar-variant"
               placement="above"
               ignoreFocus
+              ?inert=${this._suggesting}
               .items=${this._variantPickerItems()}
               value=""
               @change=${(e) => this._onVariantChange(e)}

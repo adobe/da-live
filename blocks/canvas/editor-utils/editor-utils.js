@@ -5,6 +5,7 @@ import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
 import { toolbarController } from './toolbar-controller.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { canvasBus, registerEditorSelectEnricher } from '../utils/canvas-bus.js';
+import { hasPendingSuggestion } from '../suggestions/suggestion-plugin.js';
 
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 const { getImageDocumentVersion } = await import(`${getNx2()}/public/utils/quick-edit-images.js`);
@@ -87,6 +88,20 @@ export function updateState(data, ctx) {
   // application on input never runs; we must apply them ourselves here.
   const { storedMarks } = view.state;
   const node = view.state.schema.nodeFromJSON(data.node);
+  // Layout's editor can't see suggestion marks, so its copy of the node would erase them.
+  const editing = resolveEditableNode(view.state.doc, data.cursorOffset).node;
+  if (editing && hasPendingSuggestion(editing)) {
+    ctx.port?.postMessage({
+      type: MESSAGE_TYPES.NODE_UPDATE,
+      payload: {
+        nodeUpdateId: data.nodeUpdateId,
+        imageVersion: getImageDocumentVersion(view.state.doc),
+      },
+    });
+    // eslint-disable-next-line no-use-before-define -- defined with the other document helpers
+    updateDocument(ctx);
+    return;
+  }
   const pos = view.state.doc.resolve(data.cursorOffset);
   // Preserve a range selection (e.g. toggling Bold on selected text) rather than
   // always collapsing to a point — collapsing loses the range when nothing moves
@@ -169,6 +184,7 @@ export function getEditor(data, ctx) {
   try {
     const { node, cursorOffset: newCursorOffset } = resolveEditableNode(doc, cursorOffset);
     if (!node) return;
+    if (hasPendingSuggestion(node)) return;
     ctx.port.postMessage({
       type: MESSAGE_TYPES.SET_EDITOR_STATE,
       payload: {
@@ -202,6 +218,78 @@ const EDITABLE_SELECTORS = EDITABLES.map((edit) => edit.selector).join(', ');
 export function isOutermostWysiwygEditable(el) {
   if (!el?.matches?.(EDITABLE_SELECTORS)) return false;
   return !el.parentElement?.closest(EDITABLE_SELECTORS);
+}
+
+// Layout can't edit these without erasing the suggestions (see updateState).
+export const SUGGESTION_LOCK_HINT = 'Pending suggestions. Switch to Content to edit, or accept or reject them first.';
+const SUGGESTION_PENDING_HINT = 'Proposed for deletion. Review in Content.';
+// Hard-coded values: this lands in the customer's page, which has none of our tokens.
+const SUGGESTION_STYLE = `<style>
+[data-suggestion-lock],[data-suggestion-pending]{position:relative}
+[data-suggestion-lock]{cursor:not-allowed}
+[data-suggestion-lock]::before{content:'';position:absolute;left:-10px;top:2px;bottom:2px;width:3px;border-radius:2px;background:#959595}
+[data-suggestion-pending]{outline:1px dashed #959595;outline-offset:4px}
+[data-suggestion-placeholder]{display:block;margin:8px 0;padding:6px 12px;border:1px dashed #959595;border-radius:8px;background:#f5f5f5;color:#505050;font:400 12px/1.4 system-ui,sans-serif;letter-spacing:normal;text-transform:none}
+span[data-suggestion-placeholder]{display:inline-block;margin:0}
+[data-suggestion-lock]:hover::after,[data-suggestion-pending]:hover::after{position:absolute;left:0;top:100%;z-index:10;margin-top:6px;padding:4px 10px;border-radius:8px;background:#fff;color:#505050;box-shadow:0 2px 10px rgb(0 0 0 / 18%);font:400 12px/1.4 system-ui,sans-serif;letter-spacing:normal;text-transform:none;white-space:nowrap;pointer-events:none}
+[data-suggestion-lock]:hover::after{content:attr(data-suggestion-lock)}
+[data-suggestion-pending]:hover::after{content:attr(data-suggestion-pending)}
+</style>`;
+
+function placeholder(tag, kind, label) {
+  const el = document.createElement(tag);
+  el.setAttribute('data-suggestion-placeholder', kind);
+  el.textContent = label;
+  return el;
+}
+
+function suggestedBlockName(table) {
+  return table.querySelector('td')?.textContent.trim() || 'block';
+}
+
+function isEmptyAfterStrip(el) {
+  if (el.textContent.trim()) return false;
+  return !el.querySelector('img:not(.ProseMirror-separator), table, [data-suggestion-placeholder]');
+}
+
+// Layout shows the approved page: proposed insertions are not part of it yet, proposed
+// deletions still are. Whole blocks leave a placeholder so the composition stays readable.
+function applyApprovedView(clone) {
+  const emptied = new Set();
+  let changed = false;
+
+  clone.querySelectorAll('da-suggestion-added').forEach((el) => {
+    const owner = el.closest('[data-prose-index]');
+    if (owner) emptied.add(owner);
+    el.remove();
+    changed = true;
+  });
+
+  clone.querySelectorAll('da-suggestion-deleted').forEach((el) => {
+    el.replaceWith(...el.childNodes);
+    changed = true;
+  });
+
+  clone.querySelectorAll('table[suggestion="insert"]').forEach((table) => {
+    const marker = table.previousElementSibling;
+    if (marker?.classList.contains('block-marker')) marker.remove();
+    table.replaceWith(placeholder('p', 'block', `Suggested block: ${suggestedBlockName(table)}`));
+    changed = true;
+  });
+
+  clone.querySelectorAll('table[suggestion="delete"]').forEach((table) => {
+    table.setAttribute('data-suggestion-pending', SUGGESTION_PENDING_HINT);
+    changed = true;
+  });
+
+  clone.querySelectorAll('img[data-suggestion="insert"]').forEach((img) => {
+    img.replaceWith(placeholder('span', 'image', 'Suggested image'));
+    changed = true;
+  });
+
+  emptied.forEach((el) => { if (isEmptyAfterStrip(el)) el.remove(); });
+
+  return changed;
 }
 
 export function extractCursors(view) {
@@ -242,6 +330,7 @@ export function getInstrumentedHTML(view) {
 
   const originalElements = view.dom.querySelectorAll(EDITABLE_SELECTORS);
   const clonedElements = editorClone.querySelectorAll(EDITABLE_SELECTORS);
+  let hasLocked = false;
 
   originalElements.forEach((originalElement, index) => {
     if (!isOutermostWysiwygEditable(originalElement)) return;
@@ -249,6 +338,11 @@ export function getInstrumentedHTML(view) {
       try {
         const editableElementStartPos = view.posAtDOM(originalElement, 0);
         clonedElements[index].setAttribute('data-prose-index', editableElementStartPos);
+        const { node } = resolveEditableNode(view.state.doc, editableElementStartPos);
+        if (node && hasPendingSuggestion(node)) {
+          clonedElements[index].setAttribute('data-suggestion-lock', SUGGESTION_LOCK_HINT);
+          hasLocked = true;
+        }
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn('Could not find position for element:', e);
@@ -296,6 +390,8 @@ export function getInstrumentedHTML(view) {
     }
   });
 
+  const hasSuggestions = applyApprovedView(editorClone);
+
   const remoteCursors = editorClone.querySelectorAll('.ProseMirror-yjs-cursor');
 
   remoteCursors.forEach((remoteCursor) => {
@@ -322,7 +418,7 @@ export function getInstrumentedHTML(view) {
     /<div class="block-marker" data-prose-index="(\d+)"><\/div>\s*<div([^>]*?)>/gi,
     (_match, proseIndex, divAttributes) => `<div${divAttributes} data-block-index="${proseIndex}">`,
   );
-  return htmlString;
+  return hasLocked || hasSuggestions ? `${htmlString}${SUGGESTION_STYLE}` : htmlString;
 }
 
 const SKIP_BLOCK_CLASSES = new Set(['default-content-wrapper', 'metadata', 'section-metadata', 'library-metadata', 'block-marker']);
@@ -374,6 +470,12 @@ function getDefaultContentKind(el) {
   return { kind: 'paragraph' };
 }
 
+function isSuggestionPlaceholder(el) {
+  if (el.hasAttribute?.('data-suggestion-placeholder')) return true;
+  const inner = el.querySelector?.('[data-suggestion-placeholder]');
+  return !!inner && el.textContent.trim() === inner.textContent.trim();
+}
+
 export function parseSections(htmlText) {
   const doc = new DOMParser().parseFromString(htmlText, 'text/html');
   const container = doc.querySelector('main') ?? doc.body;
@@ -405,6 +507,7 @@ export function parseSections(htmlText) {
     };
 
     Array.from(section.children).forEach((el) => {
+      if (isSuggestionPlaceholder(el)) return;
       const name = el.tagName === 'DIV' ? el.classList[0] : undefined;
       const isBlock = name && !SKIP_BLOCK_CLASSES.has(name);
 
