@@ -1,12 +1,15 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
-import { setNx, getNx } from '../../../../../scripts/utils.js';
+import { TextSelection } from 'da-y-wrapper';
+import { setNx, getNx, getNx2 } from '../../../../../scripts/utils.js';
+import { makeView } from '../test-helpers.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { setupIframeChannel } = await import('../../../../../blocks/canvas/ew-panel-extensions/iframe-protocol.js');
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
+const { setRepositoryConfig } = await import(`${getNx2()}/utils/aem-assets/repository-config.js`);
 
 const wait = (ms = 50) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
@@ -27,6 +30,7 @@ describe('setupIframeChannel', () => {
 
   afterEach(() => {
     setUrl(originalUrl);
+    setRepositoryConfig(null);
   });
 
   it('is a no-op when org is missing from hashState', async () => {
@@ -73,6 +77,7 @@ describe('setupIframeChannel', () => {
     expect(message.project).to.deep.equal({
       org: 'myorg',
       repo: 'mysite',
+      site: 'mysite',
       ref: 'feature123',
       path: '/a/b',
       view: 'split',
@@ -240,6 +245,11 @@ describe('setupIframeChannel', () => {
   });
 
   it('lists only host-fetched assets without forwarding authentication', async () => {
+    setRepositoryConfig({
+      repositoryId: 'author-p1-e1.adobeaemcloud.com',
+      tierType: 'author',
+      isDmEnabled: false,
+    });
     const previousIms = window.adobeIMS;
     const previousImsFlag = localStorage.getItem('nx-ims');
     const previousFetch = window.fetch;
@@ -534,5 +544,84 @@ describe('setupIframeChannel', () => {
     await wait(800);
 
     expect(iframe.contentWindow.postMessage.called).to.be.false;
+  });
+});
+
+describe('setupIframeChannel getSelection', () => {
+  const HOST = { org: 'myorg', site: 'mysite' };
+  let destroyChannel;
+
+  // "Hello world" with positions 1..6 selected ("Hello"); from === to means no selection.
+  function viewWithSelection(from, to) {
+    const view = makeView({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hello world' }] }],
+    });
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to)));
+    return view;
+  }
+
+  async function connect(view) {
+    const iframe = makeIframe();
+    const options = { iframe, hashState: HOST, getView: () => view, onClose: () => {} };
+    const { channel, destroy } = await setupIframeChannel(options);
+    destroyChannel = destroy;
+    return { iframe, channel };
+  }
+
+  function request(channel, message) {
+    const reply = new Promise((resolve) => {
+      channel.port2.onmessage = (e) => resolve(e.data);
+    });
+    channel.port2.postMessage(message);
+    return reply;
+  }
+
+  afterEach(() => {
+    destroyChannel?.();
+    destroyChannel = undefined;
+  });
+
+  it('answers a request with a requestId on the port with the selected HTML', async () => {
+    const { iframe, channel } = await connect(viewWithSelection(1, 6));
+    const data = await request(channel, { action: 'getSelection', requestId: 'sel-1' });
+    expect(data).to.deep.equal({ action: 'sdkResponse', requestId: 'sel-1', result: { ok: true, html: '<p>Hello</p>' } });
+    expect(iframe.contentWindow.postMessage.called).to.be.false;
+  });
+
+  it('answers a request with a requestId with "No selection found" for an empty selection', async () => {
+    const { channel } = await connect(viewWithSelection(3, 3));
+    const data = await request(channel, { action: 'getSelection', requestId: 'sel-2' });
+    expect(data).to.deep.equal({ action: 'sdkResponse', requestId: 'sel-2', result: { ok: false, error: 'No selection found' } });
+  });
+
+  it('answers a request with a requestId with "No editor view" without an editor', async () => {
+    const { channel } = await connect(null);
+    const data = await request(channel, { action: 'getSelection', requestId: 'sel-3' });
+    expect(data).to.deep.equal({ action: 'sdkResponse', requestId: 'sel-3', result: { ok: false, error: 'No editor view' } });
+  });
+
+  it('keeps the sendSelection window reply for requests without a requestId', async () => {
+    const { iframe, channel } = await connect(viewWithSelection(1, 6));
+    channel.port2.postMessage({ action: 'getSelection' });
+    await wait(20);
+    expect(iframe.contentWindow.postMessage.calledOnceWith(
+      { action: 'sendSelection', details: '<p>Hello</p>' },
+      'https://plugin.example.com',
+    )).to.be.true;
+  });
+
+  it('keeps the port error reply for an empty selection without a requestId', async () => {
+    const { channel } = await connect(viewWithSelection(3, 3));
+    const data = await request(channel, { action: 'getSelection' });
+    expect(data).to.deep.equal({ action: 'error', details: 'No selection found' });
+  });
+
+  ['', 42, 'x'.repeat(101)].forEach((requestId) => {
+    it(`treats requestId ${JSON.stringify(requestId).slice(0, 12)} as a request without one`, async () => {
+      const { channel } = await connect(viewWithSelection(3, 3));
+      const data = await request(channel, { action: 'getSelection', requestId });
+      expect(data).to.deep.equal({ action: 'error', details: 'No selection found' });
+    });
   });
 });

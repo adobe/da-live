@@ -1,0 +1,67 @@
+:host {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  background: var(--s2-gray-25, #fff);
+  color: var(--s2-gray-900, #242424);
+  font-family: var(--s2-font-family, system-ui, sans-serif);
+}
+
+.comparison {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--s2-gray-200, #ddd);
+}
+
+header > div {
+  flex: 1;
+  min-width: 120px;
+}
+
+h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+h2:focus-visible {
+  outline: 2px solid var(--s2-blue-600, #1473e6);
+  outline-offset: 3px;
+}
+
+.path {
+  margin: 4px 0 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.status {
+  padding: 4px 16px;
+  font-size: 12px;
+  color: var(--s2-gray-700, #555);
+}
+
+.status p {
+  margin: 6px 0;
+}
+
+.error {
+  color: var(--s2-red-800, #b40000);
+}
+
+.stale {
+  font-weight: 700;
+}

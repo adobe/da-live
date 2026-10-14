@@ -278,6 +278,30 @@ export function getPostMessageTargetOrigin(url, fallback = '/') {
   }
 }
 
+/** True for the requestId an SDK request carries when it expects an `sdkResponse`. */
+export function isRequestId(value) {
+  return typeof value === 'string' && value.length > 0 && value.length <= 100;
+}
+
+/**
+ * Answers a plugin's getSelection request. Requests with a requestId get an `sdkResponse` on the
+ * port; older SDK copies send none and still get `sendSelection` on window or `error` on the port.
+ */
+export function replyToGetSelection({
+  port, target, targetOrigin, requestId, html, error,
+}) {
+  if (isRequestId(requestId)) {
+    const result = html ? { ok: true, html } : { ok: false, error };
+    port.postMessage({ action: 'sdkResponse', requestId, result });
+    return;
+  }
+  if (html) {
+    target.postMessage({ action: 'sendSelection', details: html }, targetOrigin);
+    return;
+  }
+  port.postMessage({ action: 'error', details: error });
+}
+
 export async function contentLogin(owner, repo) {
   try {
     const { accessToken } = await initIms();
@@ -291,12 +315,13 @@ export async function contentLogin(owner, repo) {
   }
 }
 
-export async function livePreviewLogin(owner, repo) {
+export async function livePreviewLogin(owner, repo, branch = 'main', getUrl = getLivePreviewUrl) {
   try {
-    const { accessToken } = await initIms();
-    await fetch(`${getLivePreviewUrl(owner, repo)}/gimme_cookie`, {
+    const token = await getAuthToken();
+    if (!token) return;
+    await fetch(`${getUrl(owner, repo, branch)}/gimme_cookie`, {
       credentials: 'include',
-      headers: { Authorization: `Bearer ${accessToken.token}` },
+      headers: { Authorization: `Bearer ${token}` },
     });
   } catch (e) {
     // eslint-disable-next-line no-console

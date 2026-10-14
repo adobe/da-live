@@ -1,5 +1,7 @@
 /* eslint-disable no-underscore-dangle -- AEM response fields use underscored names. */
-import { getDmApprovalStatus, getScene7PublishStatus } from '../../edit/da-assets/helpers/urls.js';
+import { getNx2 } from '../../../scripts/utils.js';
+
+const { getDmApprovalStatus, getScene7PublishStatus } = await import(`${getNx2()}/utils/aem-assets/urls.js`);
 
 const RENDITION_REL = 'http://ns.adobe.com/adobecloud/rel/rendition';
 const METADATA_REL = 'http://ns.adobe.com/adobecloud/rel/metadata/asset';

@@ -10,7 +10,14 @@ import {
   editorDocRenderPhase,
 } from './utils/ctx.js';
 import { subscribeCollabUserList } from './utils/awareness-users.js';
-import { describeDocSelection, applyHighlight, SEL_BLOCK, selectedNodePayload, activeContentProseIndex } from './utils/selection.js';
+import {
+  describeDocSelection,
+  applyHighlight,
+  SEL_BLOCK,
+  selectedNodePayload,
+  activeContentProseIndex,
+  enclosingTablePayload,
+} from './utils/selection.js';
 import {
   prefetchWysiwygCookiesIfSignedIn,
   wireQuickEditControllerPort,
@@ -80,7 +87,6 @@ export class EwEditorDoc extends LitElement {
       this._lastDocBlockIndex = undefined;
       this._lastDocSelKey = undefined;
       this._lastBroadcastNodeKey = undefined;
-      canvasBus.editorHtmlState.emit('');
     }
   }
 
@@ -92,6 +98,9 @@ export class EwEditorDoc extends LitElement {
     }
     if (this._controllerCtx?.reloadTimer) {
       clearTimeout(this._controllerCtx.reloadTimer);
+    }
+    if (this._controllerCtx?.metadataRerenderTimer) {
+      clearTimeout(this._controllerCtx.metadataRerenderTimer);
     }
     this._controllerCtx = undefined;
   }
@@ -193,16 +202,38 @@ export class EwEditorDoc extends LitElement {
     const port = this._controllerCtx?.port;
     const { view } = this._proseContext ?? {};
     if (!port || !view) return;
-    const node = overrideNode !== undefined ? overrideNode : selectedNodePayload(view);
+    let node = overrideNode !== undefined ? overrideNode : selectedNodePayload(view);
+    // A plain text selection has no classifiable node, so selectedNodePayload returns
+    // null and the WYSIWYG canvas never scrolls. Fall back to the active content anchor
+    // (the same shape content navigation already broadcasts) so selecting text in the
+    // doc canvas still scrolls the WYSIWYG to that block (#1220). Inside a block (table)
+    // there is no content anchor, so fall back to the whole-table anchor instead.
+    // Skipped for a selection mirrored from the iframe itself: scrolling the pane the
+    // user is editing in back to their own caret would fight them.
+    let contentFallback = false;
+    if (node === null && scrollIntoView && overrideNode === undefined
+      && !this._controllerCtx?.mirroringFromIframe) {
+      const proseIndex = activeContentProseIndex(view);
+      if (typeof proseIndex === 'number') {
+        node = { anchorType: 'content', proseIndex };
+        contentFallback = true;
+      } else {
+        node = enclosingTablePayload(view);
+        contentFallback = Boolean(node);
+      }
+    }
     const key = node ? `${node.anchorType}:${node.proseIndex}` : 'null';
-    const forceScroll = scrollIntoView && Boolean(node);
+    const scrollToNode = scrollIntoView && Boolean(node);
+    // A real node anchor re-scrolls on every re-select; the content fallback only when
+    // the target block changes, so dragging a text selection doesn't spam the iframe.
+    const forceScroll = scrollToNode && !contentFallback;
     if (!forceScroll && key === this._lastBroadcastNodeKey) return;
     this._lastBroadcastNodeKey = key;
     port.postMessage({
       type: MESSAGE_TYPES.SET_SELECTED_NODE,
       node,
-      scrollIntoView: forceScroll,
-      payload: { node, scrollIntoView: forceScroll },
+      scrollIntoView: scrollToNode,
+      payload: { node, scrollIntoView: scrollToNode },
     });
   }
 
@@ -223,6 +254,23 @@ export class EwEditorDoc extends LitElement {
     const { wsProvider } = this._proseContext ?? {};
     if (!wsProvider) return Promise.resolve({ ok: true });
     return forceSave(wsProvider);
+  }
+
+  getComparisonSession({ org, site, path } = {}) {
+    const session = this._proseContext;
+    const fullPath = `${org}/${site}/${path?.replace(/^\//, '').replace(/\.html$/, '')}`;
+    return session?.context === this.ctx && this.ctx?.path === fullPath && session?.view
+      ? session : null;
+  }
+
+  async saveForComparison(context) {
+    const session = this.getComparisonSession(context);
+    if (!session) return { ok: false, error: 'no-document' };
+    if (!session.view.editable) return { ok: false, error: 'not-writable' };
+    if (!session.wsProvider) return { ok: false, error: 'no-document' };
+    const result = await forceSave(session.wsProvider);
+    return session === this.getComparisonSession(context)
+      ? result : { ok: false, error: 'stale-context' };
   }
 
   _setupController() {
@@ -314,6 +362,7 @@ export class EwEditorDoc extends LitElement {
     this._unbindSectionName?.();
     this._unbindSectionName = undefined;
     this._proseContext = undefined;
+    canvasBus.editorHtmlState.emit('');
   }
 
   async _loadEditor() {
@@ -321,7 +370,8 @@ export class EwEditorDoc extends LitElement {
       return;
     }
 
-    const session = this.session ?? await resolveEditorDocSession(this.ctx);
+    const context = this.ctx;
+    const session = this.session ?? await resolveEditorDocSession(context);
     if (!session.ok) {
       this._error = session.error;
       return;
@@ -342,9 +392,9 @@ export class EwEditorDoc extends LitElement {
             mediaBusImage(this.ctx),
             createExtensionsBridgePlugin(),
             createTrackingPlugin(
-              () => {
+              (details) => {
                 const body = this._controllerCtx
-                  ? updateDocument(this._controllerCtx)
+                  ? updateDocument(this._controllerCtx, details)
                   : getInstrumentedHTML(this._proseContext?.view);
                 if (body) canvasBus.editorHtmlState.emit(body);
               },
@@ -375,7 +425,9 @@ export class EwEditorDoc extends LitElement {
         },
       });
 
-      this._proseContext = { proseEl, wsProvider, view, ydoc, undoManager };
+      this._proseContext = {
+        proseEl, wsProvider, view, ydoc, undoManager, context,
+      };
       this._comments.publish();
       this._unbindSectionName = bindFirstSectionName(ydoc, view, () => this._emitHtmlChange());
 

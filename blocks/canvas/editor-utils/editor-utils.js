@@ -1,12 +1,19 @@
 import { TextSelection } from 'da-y-wrapper';
 import prose2aem from '../../shared/prose2aem.js';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
 import { toolbarController } from './toolbar-controller.js';
+import {
+  diffTopLevel,
+  getRerenderScope,
+  touchesMetadata,
+  touchesUnrendered,
+} from './rerender-scope.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { canvasBus, registerEditorSelectEnricher } from '../utils/canvas-bus.js';
 
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
+const { getImageDocumentVersion } = await import(`${getNx2()}/public/utils/quick-edit-images.js`);
 
 /**
  * Dispatch a transaction mirrored from the quick-edit iframe.
@@ -15,14 +22,28 @@ const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
  * that produced it. The reset is in a `finally` deliberately: stranding the flag
  * `true` (a throw inside `dispatch`) silently stops the iframe receiving any
  * further body updates for the rest of the session.
+ *
+ * `mirroringFromIframe` marks the dispatch as iframe-originated for the (synchronous)
+ * selection-tracking hook, so it doesn't scroll the iframe back to where the user
+ * already is. Kept separate from `suppressRerender`, which block edit also holds.
  */
 export function dispatchMirror(view, tr, ctx) {
   ctx.suppressRerender = true;
+  ctx.mirroringFromIframe = true;
   try {
     view.dispatch(tr);
   } finally {
     ctx.suppressRerender = false;
+    ctx.mirroringFromIframe = false;
   }
+}
+
+// syncedDoc includes SET_EDITOR_STATE pushes; confirmedDoc doesn't (a RELOAD means one failed).
+function markPreviewSynced(ctx, { previousDoc, doc } = {}, { confirmed = false } = {}) {
+  if (!previousDoc || !doc) return;
+  if (touchesUnrendered(diffTopLevel(previousDoc, doc))) return;
+  if (ctx.syncedDoc && ctx.syncedDoc === previousDoc) ctx.syncedDoc = doc;
+  if (confirmed && ctx.confirmedDoc && ctx.confirmedDoc === previousDoc) ctx.confirmedDoc = doc;
 }
 
 // --- state.js ---
@@ -129,19 +150,33 @@ export function updateState(data, ctx) {
         const { cursorOffset } = data;
         ctx.port.postMessage({
           type: MESSAGE_TYPES.SET_EDITOR_STATE,
-          payload: { editorState, cursorOffset },
+          payload: {
+            editorState,
+            cursorOffset,
+            imageVersion: getImageDocumentVersion(view.state.doc),
+          },
         });
       }
     } catch {
       // Non-fatal: position errors after structural changes
     }
   }
+  ctx.port?.postMessage({
+    type: MESSAGE_TYPES.NODE_UPDATE,
+    payload: {
+      nodeUpdateId: data.nodeUpdateId,
+      imageVersion: getImageDocumentVersion(view.state.doc),
+    },
+  });
 }
 
 export function getEditor(data, ctx) {
-  if (ctx.suppressRerender) return;
+  if (ctx.suppressRerender) {
+    if (ctx.mirroringFromIframe) markPreviewSynced(ctx, data, { confirmed: true });
+    return;
+  }
   const { view } = ctx;
-  const { cursorOffset } = data;
+  const { cursorOffset, previousDoc } = data;
   if (typeof cursorOffset !== 'number') return;
 
   const { doc } = view.state;
@@ -153,8 +188,14 @@ export function getEditor(data, ctx) {
     if (!node) return;
     ctx.port.postMessage({
       type: MESSAGE_TYPES.SET_EDITOR_STATE,
-      payload: { editorState: node.toJSON(), cursorOffset: newCursorOffset },
+      payload: {
+        editorState: node.toJSON(),
+        cursorOffset: newCursorOffset,
+        imageVersion: getImageDocumentVersion(doc),
+        lengthDiff: previousDoc ? doc.content.size - previousDoc.content.size : 0,
+      },
     });
+    markPreviewSynced(ctx, data);
   } catch {
     // Stale iframe cursor after structural replace (e.g. chat revert, remote sync).
   }
@@ -259,6 +300,7 @@ export function getInstrumentedHTML(view) {
 
   const originalImages = view.dom.querySelectorAll('img');
   const clonedImages = editorClone.querySelectorAll('img');
+  const imageVersion = getImageDocumentVersion(view.state.doc);
   originalImages.forEach((originalImage, index) => {
     if (originalImage.matches('.ProseMirror-separator, .ProseMirror-trailingBreak')) return;
     const clonedImage = clonedImages[index];
@@ -266,6 +308,7 @@ export function getInstrumentedHTML(view) {
     try {
       const pos = view.posAtDOM(originalImage, 0);
       clonedImage.setAttribute('data-image-index', pos);
+      clonedImage.setAttribute('data-image-version', imageVersion);
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn('Could not find position for image:', e);
@@ -293,11 +336,13 @@ export function getInstrumentedHTML(view) {
 
   // Serialize clone to HTML, then move block-marker index onto wrapper as data-block-index
   // (same pattern as da-nx qe-advanced: getInstrumentedHTML in prose2aem.js).
-  let htmlString = prose2aem(editorClone, true, false, true);
+  let htmlString = prose2aem(editorClone, true, false);
   htmlString = htmlString.replace(
     /<div class="block-marker" data-prose-index="(\d+)"><\/div>\s*<div([^>]*?)>/gi,
     (_match, proseIndex, divAttributes) => `<div${divAttributes} data-block-index="${proseIndex}">`,
   );
+  // Any marker that didn't pair with a wrapper would be decorated as a real block.
+  htmlString = htmlString.replace(/<div class="block-marker"[^>]*><\/div>/gi, '');
   return htmlString;
 }
 
@@ -433,11 +478,45 @@ registerEditorSelectEnricher((detail) => {
   return { ...detail, blockName, proseIndex, innerText };
 });
 
-export function updateDocument(ctx) {
-  if (ctx.suppressRerender) return undefined;
+const METADATA_RERENDER_DEBOUNCE_MS = 2000;
+
+function clearMetadataRerenderTimer(ctx) {
+  if (!ctx.metadataRerenderTimer) return;
+  clearTimeout(ctx.metadataRerenderTimer);
+  ctx.metadataRerenderTimer = undefined;
+}
+
+const getBaseline = (ctx) => (ctx.useConfirmedBaseline ? ctx.confirmedDoc : ctx.syncedDoc);
+
+function postBody(ctx) {
+  clearMetadataRerenderTimer(ctx);
+  const { doc } = ctx.view.state;
   const body = getInstrumentedHTML(ctx.view);
-  ctx.port.postMessage({ type: MESSAGE_TYPES.SET_BODY, payload: { body } });
+  const rerenderScope = getRerenderScope({ previousDoc: getBaseline(ctx), doc, body });
+  ctx.port.postMessage({ type: MESSAGE_TYPES.SET_BODY, payload: { body, rerenderScope } });
+  ctx.syncedDoc = doc;
+  ctx.confirmedDoc = doc;
+  ctx.useConfirmedBaseline = false;
   return body;
+}
+
+export function updateDocument(ctx, { previousDoc, doc, useConfirmedBaseline = false } = {}) {
+  if (ctx.suppressRerender) {
+    if (ctx.mirroringFromIframe) markPreviewSynced(ctx, { previousDoc, doc }, { confirmed: true });
+    return undefined;
+  }
+  if (useConfirmedBaseline) ctx.useConfirmedBaseline = true;
+  const baseline = getBaseline(ctx);
+  const trigger = previousDoc && doc
+    ? diffTopLevel(previousDoc, doc)
+    : baseline && diffTopLevel(baseline, ctx.view.state.doc);
+  if (!baseline || !touchesMetadata(trigger)) return postBody(ctx);
+  clearMetadataRerenderTimer(ctx);
+  ctx.metadataRerenderTimer = setTimeout(() => {
+    ctx.metadataRerenderTimer = undefined;
+    if (!ctx.suppressRerender) postBody(ctx);
+  }, METADATA_RERENDER_DEBOUNCE_MS);
+  return getInstrumentedHTML(ctx.view);
 }
 
 export function updateCursors(ctx) {
@@ -458,7 +537,7 @@ export function getPreviewOrigin(org, repo, branch = 'main') {
 export async function fetchWysiwygBranch({ org, site, path }) {
   if (!org || !site) return 'main';
   const branchParam = new URLSearchParams(window.location.search).get('ref');
-  if (branchParam) return branchParam;
+  if (branchParam && branchParam !== 'local') return branchParam;
 
   try {
     const configs = await Promise.all(fetchDaConfigs({ org, site }));

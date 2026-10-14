@@ -1,7 +1,8 @@
 import { expect } from '@esm-bundle/chai';
-import { EditorState, TextSelection } from 'da-y-wrapper';
+import { EditorState, NodeSelection, TextSelection } from 'da-y-wrapper';
 import { getSchema } from 'da-parser';
 import {
+  applyLink,
   getLinkInfoInSelection,
   selectionHasLink,
   canComment,
@@ -78,5 +79,66 @@ describe('canComment', () => {
 
   it('is true for a non-empty text selection', () => {
     expect(canComment(stateWithRange(1, 6))).to.equal(true);
+  });
+});
+
+describe('applyLink - title', () => {
+  function viewFrom(state) {
+    const view = { state };
+    view.dispatch = (tr) => { view.state = view.state.apply(tr); };
+    return view;
+  }
+
+  function stateWithSelection(from, to) {
+    const para = schema.nodes.paragraph.create(null, schema.text('hello'));
+    const doc = schema.nodes.doc.create(null, para);
+    return EditorState.create({ schema, doc, selection: TextSelection.create(doc, from, to) });
+  }
+
+  function linkMarkOf(state) {
+    let mark = null;
+    state.doc.descendants((node) => {
+      const m = schema.marks.link.isInSet(node.marks);
+      if (m) mark = m;
+    });
+    return mark;
+  }
+
+  it('writes a trimmed title onto the link mark', () => {
+    const view = viewFrom(stateWithSelection(1, 6));
+    applyLink(view, { href: 'https://x.com', text: 'hello', title: '  Tip  ' });
+    const mark = linkMarkOf(view.state);
+    expect(mark.attrs.href).to.equal('https://x.com');
+    expect(mark.attrs.title).to.equal('Tip');
+  });
+
+  it('writes null title when the title is empty', () => {
+    const view = viewFrom(stateWithSelection(1, 6));
+    applyLink(view, { href: 'https://x.com', text: 'hello', title: '' });
+    expect(linkMarkOf(view.state).attrs.title).to.equal(null);
+  });
+
+  it('writes null title when the title is omitted (backward compatible)', () => {
+    const view = viewFrom(stateWithSelection(1, 6));
+    applyLink(view, { href: 'https://x.com', text: 'hello' });
+    expect(linkMarkOf(view.state).attrs.title).to.equal(null);
+  });
+
+  it('writes and clears the title on a selected image', () => {
+    const image = schema.nodes.image.create({ src: '/x.png', href: 'https://old.com' });
+    const para = schema.nodes.paragraph.create(null, image);
+    const doc = schema.nodes.doc.create(null, para);
+    const state = EditorState.create({
+      schema,
+      doc,
+      selection: NodeSelection.create(doc, 1),
+    });
+    const view = viewFrom(state);
+
+    applyLink(view, { href: 'https://x.com', title: '  Tip  ' });
+    expect(view.state.selection.node.attrs.title).to.equal('Tip');
+
+    applyLink(view, { href: 'https://x.com', title: '' });
+    expect(view.state.selection.node.attrs.title).to.equal(null);
   });
 });

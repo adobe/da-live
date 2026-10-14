@@ -1,9 +1,10 @@
 import { expect } from '@esm-bundle/chai';
-import { setNx } from '../../../../../scripts/utils.js';
+import { setNx, getNx2 } from '../../../../../scripts/utils.js';
 import { makeView } from '../test-helpers.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
+const { DM_ERROR_MSG, setSelection } = await import(`${getNx2()}/utils/aem-assets/selection.js`);
 const { insertSelectedAsset } = await import(
   '../../../../../blocks/canvas/ew-panel-extensions/aem-assets.js'
 );
@@ -18,7 +19,14 @@ const repoConfig = {
 };
 
 describe('sidebar asset picker insertion', () => {
+  afterEach(() => setSelection({}));
+
   it('uses the same host insertion path for image assets', async () => {
+    setSelection({
+      href: 'https://publish-example.adobeaemcloud.com/content/dam/example.jpg',
+      isImage: true,
+      alt: 'Example',
+    });
     const view = makeView({
       type: 'doc',
       content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Start' }] }],
@@ -45,6 +53,7 @@ describe('sidebar asset picker insertion', () => {
   });
 
   it('keeps the shared approval error visible until dismissed', async () => {
+    setSelection({ error: DM_ERROR_MSG });
     const view = makeView({ type: 'doc', content: [] });
     const pending = insertSelectedAsset({
       asset: {
@@ -59,7 +68,7 @@ describe('sidebar asset picker insertion', () => {
     });
     const dialog = document.querySelector('.da-dialog-asset');
     expect(dialog.open).to.be.true;
-    expect(dialog.textContent).to.include('not approved for delivery');
+    expect(dialog.textContent).to.include(DM_ERROR_MSG);
     dialog.querySelector('.cancel').click();
     await pending;
     expect(document.querySelector('.da-dialog-asset')).to.equal(null);

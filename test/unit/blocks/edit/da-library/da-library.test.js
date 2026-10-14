@@ -1,6 +1,9 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
+import { TextSelection } from 'da-y-wrapper';
 import { setNx } from '../../../../../scripts/utils.js';
+import { makeView } from '../../canvas/test-helpers.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -168,6 +171,30 @@ describe('da-library element', () => {
     }
   });
 
+  it('handlePluginClick opens window plugins at their original URL without a proxy cookie', async () => {
+    await fixture([]);
+    let opened;
+    const cookieRequests = [];
+    const savedOpen = window.open;
+    const prevFetch = window.fetch;
+    window.open = (url) => {
+      opened = url;
+      return null;
+    };
+    window.fetch = async (url, opts) => {
+      if (String(url).includes('/gimme_cookie')) cookieRequests.push(url);
+      return prevFetch(url, opts);
+    };
+    try {
+      await el.handlePluginClick({ name: 'plug', experience: 'window', sources: ['https://main--repo--org.aem.live/x'] });
+      expect(opened).to.equal('https://main--repo--org.aem.live/x');
+      expect(cookieRequests).to.deep.equal([]);
+    } finally {
+      window.open = savedOpen;
+      window.fetch = prevFetch;
+    }
+  });
+
   it('handlePluginClick is a no-op for window-experience without sources', async () => {
     await fixture([]);
     let opened = 0;
@@ -179,6 +206,13 @@ describe('da-library element', () => {
     } finally {
       window.open = savedOpen;
     }
+  });
+
+  it('handlePluginClick awaits the preview proxy session before activating inline/dialog plugins', async () => {
+    await fixture([]);
+    const plugin = { name: 'plug', experience: 'inline', sources: ['https://main--repo--org.preview.da.live/x'] };
+    await el.handlePluginClick(plugin);
+    expect(el._active).to.equal(plugin);
   });
 
   it('handlePreviewClose deletes the _preview prop', async () => {
@@ -427,7 +461,7 @@ describe('da-library handleOpenPreview', () => {
     const item = { name: 'Marquee', path: 'https://main--repo--org.aem.live/page' };
     await el.handleOpenPreview(item);
     expect(el._preview.name).to.equal('Marquee');
-    expect(el._preview.url).to.contain('aem.page/page');
+    expect(el._preview.url).to.equal('https://main--repo--org.preview.da.live/page');
     expect(el._preview.ok).to.be.true;
   });
 
@@ -484,5 +518,98 @@ describe('da-library toggleLibrary', () => {
     } finally {
       root.remove();
     }
+  });
+});
+
+describe('da-library plugin channel getSelection', () => {
+  let el;
+  let savedView;
+  let savedIms;
+
+  beforeEach(() => {
+    savedView = window.view;
+    savedIms = window.adobeIMS;
+    window.adobeIMS = { getAccessToken: () => ({ token: 'token' }) };
+  });
+
+  afterEach(() => {
+    if (el?.parentElement) el.remove();
+    el = null;
+    window.view = savedView;
+    window.adobeIMS = savedIms;
+  });
+
+  // "Hello world" with positions 1..6 selected ("Hello"); from === to means no selection.
+  function viewWithSelection(from, to) {
+    const view = makeView({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hello world' }] }],
+    });
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to)));
+    return view;
+  }
+
+  // Runs handlePluginLoad and returns the plugin's end of the channel from the ready message.
+  async function connect(view) {
+    window.view = view;
+    el = document.createElement('da-library');
+    el.config = [];
+    document.body.appendChild(el);
+    await nextFrame();
+    const target = { src: 'https://plugin.example.com/app', contentWindow: { postMessage: sinon.spy() } };
+    const clock = sinon.useFakeTimers({ toFake: ['setTimeout'] });
+    try {
+      el.handlePluginLoad({ target });
+      clock.tick(750);
+    } finally {
+      clock.restore();
+    }
+    const [message, , [port]] = target.contentWindow.postMessage.firstCall.args;
+    expect(message.ready).to.be.true;
+    target.contentWindow.postMessage.resetHistory();
+    return { target, port };
+  }
+
+  function request(port, message) {
+    const reply = new Promise((resolve) => {
+      port.onmessage = (e) => resolve(e.data);
+    });
+    port.postMessage(message);
+    return reply;
+  }
+
+  it('answers a request with a requestId on the port with the selected HTML', async () => {
+    const { target, port } = await connect(viewWithSelection(1, 6));
+    const data = await request(port, { action: 'getSelection', requestId: 'sel-1' });
+    expect(data).to.deep.equal({ action: 'sdkResponse', requestId: 'sel-1', result: { ok: true, html: '<p>Hello</p>' } });
+    expect(target.contentWindow.postMessage.called).to.be.false;
+  });
+
+  it('answers a request with a requestId with "No selection found" for an empty selection', async () => {
+    const { port } = await connect(viewWithSelection(3, 3));
+    const data = await request(port, { action: 'getSelection', requestId: 'sel-2' });
+    expect(data).to.deep.equal({ action: 'sdkResponse', requestId: 'sel-2', result: { ok: false, error: 'No selection found' } });
+  });
+
+  it('answers a request with a requestId with "No editor view" without an editor', async () => {
+    const { port } = await connect(undefined);
+    const data = await request(port, { action: 'getSelection', requestId: 'sel-3' });
+    expect(data).to.deep.equal({ action: 'sdkResponse', requestId: 'sel-3', result: { ok: false, error: 'No editor view' } });
+  });
+
+  it('keeps the sendSelection window reply for requests without a requestId', async () => {
+    const { target, port } = await connect(viewWithSelection(1, 6));
+    port.postMessage({ action: 'getSelection' });
+    await new Promise((resolve) => { setTimeout(resolve, 20); });
+    expect(target.contentWindow.postMessage.calledOnceWith(
+      { action: 'sendSelection', details: '<p>Hello</p>' },
+      'https://plugin.example.com',
+    )).to.be.true;
+  });
+
+  it('keeps the port error reply for an empty selection without a requestId', async () => {
+    const { port } = await connect(viewWithSelection(3, 3));
+    const data = await request(port, { action: 'getSelection' });
+    expect(data).to.deep.equal({ action: 'error', details: 'No selection found' });
   });
 });

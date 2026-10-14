@@ -144,6 +144,13 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
       return id;
     },
 
+    async editComment({ commentId, body, now = Date.now() }) {
+      const comment = store.get(commentId);
+      if (!comment) return;
+      await store.set(commentId, { ...comment, body, editedAt: now });
+      broadcastChange();
+    },
+
     async resolveThread({ threadId, user, now = Date.now() }) {
       const comment = store.get(threadId);
       if (!comment) return;

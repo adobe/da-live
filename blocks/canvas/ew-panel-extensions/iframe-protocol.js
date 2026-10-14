@@ -1,6 +1,8 @@
 import { insertText, insertHTML, getEditorSelection } from './helpers.js';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
-import { getAuthToken, initIms, getPostMessageTargetOrigin, isValidHref } from '../../shared/utils.js';
+import {
+  getAuthToken, initIms, getPostMessageTargetOrigin, isRequestId, isValidHref, replyToGetSelection,
+} from '../../shared/utils.js';
 import { getRepositoryConfig } from './aem-assets.js';
 import { createAssetListing } from './asset-list.js';
 import { createLocalAssetListing } from './local-asset-list.js';
@@ -230,6 +232,27 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
 
   channel.port1.onmessage = (e) => {
     const { action, details } = e.data || {};
+
+    if (action === 'openComparison' || action === 'closeComparison') {
+      if (action === 'openComparison'
+        && (!['document', 'preview'].includes(details?.candidate) || details?.baseline !== 'live')) return;
+      canvasBus.comparisonRequest.emit({
+        action,
+        details: action === 'openComparison' ? { candidate: details.candidate, baseline: details.baseline } : undefined,
+        context: { org, site, path },
+      });
+      return;
+    }
+    if (action === 'saveDocument') {
+      const { requestId } = e.data;
+      if (!isRequestId(requestId)) return;
+      canvasBus.comparisonRequest.emit({
+        action,
+        context: { org, site, path },
+        resolve: (result) => channel.port1.postMessage({ action: 'sdkResponse', requestId, result }),
+      });
+      return;
+    }
     const editorView = getView();
 
     if (action === 'sendText' && editorView) {
@@ -267,19 +290,14 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     }
 
     if (action === 'getSelection') {
-      if (!editorView) {
-        channel.port1.postMessage({ action: 'error', details: 'No editor view' });
-        return;
-      }
-      const html = getEditorSelection(editorView);
-      if (!html) {
-        channel.port1.postMessage({ action: 'error', details: 'No selection found' });
-        return;
-      }
-      iframe.contentWindow.postMessage(
-        { action: 'sendSelection', details: html },
+      replyToGetSelection({
+        port: channel.port1,
+        target: iframe.contentWindow,
         targetOrigin,
-      );
+        requestId: e.data.requestId,
+        html: editorView ? getEditorSelection(editorView) : null,
+        error: editorView ? 'No selection found' : 'No editor view',
+      });
     }
   };
 
@@ -287,6 +305,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   const project = {
     org,
     repo: site,
+    site,
     ref,
     path: path ? `/${path}` : '/',
     view: view || 'edit',
@@ -301,7 +320,12 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   const readyTimer = setTimeout(() => {
     if (!iframe.contentWindow) return;
     iframe.contentWindow.postMessage(
-      { ready: true, project, context: project, token },
+      {
+        ready: true,
+        project,
+        context: project,
+        token,
+      },
       targetOrigin,
       [channel.port2],
     );

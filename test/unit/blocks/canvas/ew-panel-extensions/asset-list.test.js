@@ -1,6 +1,10 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
-import { createAssetListing, repositoryOrigin } from '../../../../../blocks/canvas/ew-panel-extensions/asset-list.js';
+import { setNx } from '../../../../../scripts/utils.js';
+
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
+
+const { createAssetListing, repositoryOrigin } = await import('../../../../../blocks/canvas/ew-panel-extensions/asset-list.js');
 
 const origin = 'https://author-p1-e1.adobeaemcloud.com';
 const search = `${origin}/adobe/repository/;api=search?path=%2Fcontent%2Fdam&assetType=file&limit=24`;

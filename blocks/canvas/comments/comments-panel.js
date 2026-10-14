@@ -9,6 +9,7 @@ import {
   DRAFT_MODES,
   makeNewDraft,
   makeReplyDraft,
+  makeEditDraft,
   setDraftText,
   shouldAdoptPendingAnchor,
 } from './helpers/draft-state.js';
@@ -224,6 +225,10 @@ export class CommentsPanel extends LitElement {
     this._draft = makeReplyDraft(rootComment.id);
   }
 
+  startEditDraft(comment) {
+    this._draft = makeEditDraft(comment);
+  }
+
   cancelDraft() {
     this._draft = null;
     this.controller?.clearPendingAnchor();
@@ -261,6 +266,8 @@ export class CommentsPanel extends LitElement {
         this.controller.setSelectedThread(id);
       } else if (draft.mode === DRAFT_MODES.REPLY) {
         await this.controller.createReply({ user, threadId: draft.threadId, body });
+      } else if (draft.mode === DRAFT_MODES.EDIT) {
+        await this.controller.editComment({ commentId: draft.commentId, body });
       }
       this.controller.collapseSelection();
       this.controller.clearPendingAnchor();
@@ -282,6 +289,7 @@ export class CommentsPanel extends LitElement {
       await this.controller.deleteComment({ commentId });
       if (this.controller.selectedThreadId === commentId) {
         this.controller.setSelectedThread(null);
+        this._activeTab = 'active';
       }
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -339,14 +347,10 @@ export class CommentsPanel extends LitElement {
     this._pendingDelete = null;
   }
 
-  handleDeleteThread(threadId) {
-    this.deleteComment(threadId);
-    this.cancelDraft();
-    this._activeTab = 'active';
-  }
-
   handleMenuSelect(id, comment, threadId) {
-    if (id === 'delete') this.handleDeleteComment(comment.id, threadId);
+    if (id === 'edit') this.startEditDraft(comment);
+    else if (id === 'delete') this.handleDeleteComment(comment.id, threadId);
+    else if (id === 'reopen') this.handleUnresolveThread(threadId);
     else if (id === 'link') this.copyThreadLink(threadId);
   }
 
