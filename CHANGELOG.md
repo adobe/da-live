@@ -1,3 +1,24 @@
+## [1.5.2](https://github.com/adobe/da-live/compare/v1.5.1...v1.5.2) (2026-10-14)
+
+
+### Bug Fixes
+
+* **canvas:** rerender block titles and metadata edits ([#1442](https://github.com/adobe/da-live/issues/1442)) ([a46bc71](https://github.com/adobe/da-live/commit/a46bc7136206cdc85ae9e085473852720434c052))
+
+## [1.5.1](https://github.com/adobe/da-live/compare/v1.5.0...v1.5.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* **scheduler:** strip .html before scheduling so helix-admin accepts the path ([#1436](https://github.com/adobe/da-live/issues/1436)) ([3ab3f42](https://github.com/adobe/da-live/commit/3ab3f42af2b0ee2fe8d3e57b571cc57660ee547b))
+
+# [1.5.0](https://github.com/adobe/da-live/compare/v1.4.0...v1.5.0) (2026-10-14)
+
+
+### Features
+
+* **ew:** compare documents and previews with live content ([#1405](https://github.com/adobe/da-live/issues/1405)) ([19c4eb8](https://github.com/adobe/da-live/commit/19c4eb8a2c34c19486403ddaf8e2e93af9ea0701))
+
 # [1.4.0](https://github.com/adobe/da-live/compare/v1.3.1...v1.4.0) (2026-10-13)
 
 

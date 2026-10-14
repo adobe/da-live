@@ -1,6 +1,8 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
+import { TextSelection } from 'da-y-wrapper';
 import { setNx, getNx } from '../../../../../scripts/utils.js';
+import { makeView } from '../test-helpers.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -256,5 +258,84 @@ describe('setupIframeChannel', () => {
     await wait(800);
 
     expect(iframe.contentWindow.postMessage.called).to.be.false;
+  });
+});
+
+describe('setupIframeChannel getSelection', () => {
+  const HOST = { org: 'myorg', site: 'mysite' };
+  let destroyChannel;
+
+  // "Hello world" with positions 1..6 selected ("Hello"); from === to means no selection.
+  function viewWithSelection(from, to) {
+    const view = makeView({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hello world' }] }],
+    });
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to)));
+    return view;
+  }
+
+  async function connect(view) {
+    const iframe = makeIframe();
+    const options = { iframe, hashState: HOST, getView: () => view, onClose: () => {} };
+    const { channel, destroy } = await setupIframeChannel(options);
+    destroyChannel = destroy;
+    return { iframe, channel };
+  }
+
+  function request(channel, message) {
+    const reply = new Promise((resolve) => {
+      channel.port2.onmessage = (e) => resolve(e.data);
+    });
+    channel.port2.postMessage(message);
+    return reply;
+  }
+
+  afterEach(() => {
+    destroyChannel?.();
+    destroyChannel = undefined;
+  });
+
+  it('answers a request with a requestId on the port with the selected HTML', async () => {
+    const { iframe, channel } = await connect(viewWithSelection(1, 6));
+    const data = await request(channel, { action: 'getSelection', requestId: 'sel-1' });
+    expect(data).to.deep.equal({ action: 'sdkResponse', requestId: 'sel-1', result: { ok: true, html: '<p>Hello</p>' } });
+    expect(iframe.contentWindow.postMessage.called).to.be.false;
+  });
+
+  it('answers a request with a requestId with "No selection found" for an empty selection', async () => {
+    const { channel } = await connect(viewWithSelection(3, 3));
+    const data = await request(channel, { action: 'getSelection', requestId: 'sel-2' });
+    expect(data).to.deep.equal({ action: 'sdkResponse', requestId: 'sel-2', result: { ok: false, error: 'No selection found' } });
+  });
+
+  it('answers a request with a requestId with "No editor view" without an editor', async () => {
+    const { channel } = await connect(null);
+    const data = await request(channel, { action: 'getSelection', requestId: 'sel-3' });
+    expect(data).to.deep.equal({ action: 'sdkResponse', requestId: 'sel-3', result: { ok: false, error: 'No editor view' } });
+  });
+
+  it('keeps the sendSelection window reply for requests without a requestId', async () => {
+    const { iframe, channel } = await connect(viewWithSelection(1, 6));
+    channel.port2.postMessage({ action: 'getSelection' });
+    await wait(20);
+    expect(iframe.contentWindow.postMessage.calledOnceWith(
+      { action: 'sendSelection', details: '<p>Hello</p>' },
+      'https://plugin.example.com',
+    )).to.be.true;
+  });
+
+  it('keeps the port error reply for an empty selection without a requestId', async () => {
+    const { channel } = await connect(viewWithSelection(3, 3));
+    const data = await request(channel, { action: 'getSelection' });
+    expect(data).to.deep.equal({ action: 'error', details: 'No selection found' });
+  });
+
+  ['', 42, 'x'.repeat(101)].forEach((requestId) => {
+    it(`treats requestId ${JSON.stringify(requestId).slice(0, 12)} as a request without one`, async () => {
+      const { channel } = await connect(viewWithSelection(3, 3));
+      const data = await request(channel, { action: 'getSelection', requestId });
+      expect(data).to.deep.equal({ action: 'error', details: 'No selection found' });
+    });
   });
 });
