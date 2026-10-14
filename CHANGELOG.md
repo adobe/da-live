@@ -1,3 +1,10 @@
+## [1.5.2](https://github.com/adobe/da-live/compare/v1.5.1...v1.5.2) (2026-10-14)
+
+
+### Bug Fixes
+
+* **canvas:** rerender block titles and metadata edits ([#1442](https://github.com/adobe/da-live/issues/1442)) ([a46bc71](https://github.com/adobe/da-live/commit/a46bc7136206cdc85ae9e085473852720434c052))
+
 ## [1.5.1](https://github.com/adobe/da-live/compare/v1.5.0...v1.5.1) (2026-10-14)
 
 
