@@ -1,5 +1,5 @@
 import { LitElement, html } from 'da-lit';
-import { getNx, getNx2 } from '../../../scripts/utils.js';
+import { getNx, getNx2, getNxEWFlags } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import { openCommentsPanel, getCommentsBridge } from '../editor-utils/comments-bridge.js';
 import { setChatPrompt, addChatContext } from '../../shared/chat-panel.js';
@@ -22,6 +22,7 @@ import {
   renderConfirmDeleteDialog,
 } from './helpers/templates.js';
 
+const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
 const sheet = await getSheet('/blocks/canvas/comments/comments-panel.css');
 const buttons = await getSheet(`${getNx2()}/styles/buttons.css`);
@@ -52,6 +53,7 @@ export class CommentsPanel extends LitElement {
     _submittingId: { state: true },
     _pendingDelete: { state: true },
     _threadGroups: { state: true },
+    chatDisabled: { state: true },
   };
 
   constructor() {
@@ -125,6 +127,9 @@ export class CommentsPanel extends LitElement {
       this._activeToolView = view;
       this.syncPanelOpen();
     });
+    this._unsubHash = hashChange.subscribe((state) => {
+      this.syncChatDisabled(state?.org, state?.site);
+    });
     this.syncPanelOpen();
   }
 
@@ -132,11 +137,26 @@ export class CommentsPanel extends LitElement {
     this.controller?.setPanelOpen(this._activeToolView === 'comments');
   }
 
+  async syncChatDisabled(org, site) {
+    const key = org && site ? `${org}/${site}` : '';
+    this._chatDisabledKey = key;
+    if (!key) {
+      this.chatDisabled = false;
+      return;
+    }
+    const { isEwChatDisabled } = await getNxEWFlags();
+    const disabled = await isEwChatDisabled({ org, site });
+    if (this._chatDisabledKey !== key) return;
+    this.chatDisabled = disabled;
+  }
+
   teardownBusSubscriptions() {
     this._unsubControllerState?.();
     this._unsubControllerState = null;
     this._unsubToolView?.();
     this._unsubToolView = null;
+    this._unsubHash?.();
+    this._unsubHash = null;
   }
 
   connectedCallback() {

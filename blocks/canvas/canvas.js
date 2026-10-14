@@ -281,8 +281,10 @@ export default async function decorate(block) {
     getContent: getChatPanelContent(),
     onShow: async (aside, id, options) => {
       if (!options?.text && !options?.onReady) return;
-      await aside?.querySelector('nx-chat, nx-chat-ao')?.updateComplete;
-      options.onReady?.();
+      if (options.onReady) {
+        await aside?.querySelector('nx-chat, nx-chat-ao')?.updateComplete;
+        await options.onReady();
+      }
       if (!options.text) return;
       const detail = { text: options.text, autoSend: options.autoSend };
       document.dispatchEvent(new CustomEvent(CHAT_EVENT.SET_PROMPT, { detail }));
