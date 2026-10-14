@@ -1,3 +1,10 @@
+## [1.5.1](https://github.com/adobe/da-live/compare/v1.5.0...v1.5.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* **scheduler:** strip .html before scheduling so helix-admin accepts the path ([#1436](https://github.com/adobe/da-live/issues/1436)) ([3ab3f42](https://github.com/adobe/da-live/commit/3ab3f42af2b0ee2fe8d3e57b571cc57660ee547b))
+
 # [1.5.0](https://github.com/adobe/da-live/compare/v1.4.0...v1.5.0) (2026-10-14)
 
 
