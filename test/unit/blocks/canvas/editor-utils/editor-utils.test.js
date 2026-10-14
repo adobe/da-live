@@ -41,6 +41,11 @@ describe('getPreviewOrigin', () => {
     expect(origin).to.include('feature--myrepo--myorg');
   });
 
+  it('uses the same hostname normalization as Send for slash and mixed-case branches', () => {
+    expect(getPreviewOrigin('myorg', 'myrepo', 'Feat/My_Branch'))
+      .to.include('feat-my-branch--myrepo--myorg');
+  });
+
   it('uses main when branch is explicitly main', () => {
     const origin = getPreviewOrigin('myorg', 'myrepo', 'main');
     expect(origin).to.include('main--myrepo--myorg');

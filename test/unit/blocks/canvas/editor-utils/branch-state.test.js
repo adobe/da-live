@@ -62,6 +62,18 @@ describe('authoritative canvas branch', () => {
     expect(get.called).to.be.false;
   });
 
+  it('keeps the configured Layout branch when ref selects local extension development', async () => {
+    window.history.replaceState(null, '', `${window.location.pathname}?ref=local`);
+    get.callsFake(async () => sheet([row(`/${ctx.org}/site`, 'Configured/Branch')]));
+    expect(await resolveCanvasBranch(ctx)).to.equal('configured-branch');
+  });
+
+  it('normalizes query and config branches before publishing them to every consumer', async () => {
+    window.history.replaceState(null, '', `${window.location.pathname}?ref=Feat/My_Branch`);
+    expect(await resolveCanvasBranch(ctx)).to.equal('feat-my-branch');
+    expect(get.called).to.be.false;
+  });
+
   it('uses longest segment prefixes and site precedence without matching sibling paths', async () => {
     const root = `/${ctx.org}/${ctx.repo}`;
     get.callsFake(async ({ site }) => sheet(site ? [
@@ -105,13 +117,22 @@ describe('authoritative canvas branch', () => {
     expect(states.at(-1).branch).to.equal('retried');
   });
 
-  it('does not hide network or malformed-row TypeErrors by choosing main', async () => {
+  it('does not hide network TypeErrors by choosing main', async () => {
     get.rejects(new TypeError('Network failed'));
     const networkError = await fetchWysiwygBranch(input(ctx)).catch((error) => error);
     expect(networkError).to.be.instanceOf(TypeError);
-    get.callsFake(async () => sheet([{ key: 'ew.wysiwygBranch', value: null }]));
-    const rowError = await fetchWysiwygBranch(input(ctx)).catch((error) => error);
-    expect(rowError).to.be.instanceOf(TypeError);
+  });
+
+  it('skips malformed rows and still selects valid sibling configuration', async () => {
+    get.callsFake(async () => sheet([
+      null,
+      { key: 'ew.wysiwygBranch', value: null },
+      { key: 'ew.wysiwygBranch', value: 42 },
+      { key: 'ew.wysiwygBranch', value: {} },
+      { key: 'ew.wysiwygBranch', value: 'missing-separator' },
+      row(`/${ctx.org}/site`, 'valid'),
+    ]));
+    expect(await resolveCanvasBranch(ctx)).to.equal('valid');
   });
 
   it('does not publish a stale success after navigation', async () => {

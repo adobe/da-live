@@ -1,7 +1,11 @@
-import { getNx2 } from '../../../scripts/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
-const { BRANCH_EVENT } = await import(`${getNx2()}/utils/branch-events.js`);
+// Stable wire names from Nexter's branch-events.js. Keep startup independent of
+// that new module so this host also works with older or pinned Nexter releases.
+const BRANCH_EVENT = Object.freeze({
+  REQUEST: 'nx-branch-request',
+  STATE: 'nx-branch-state',
+});
 
 let initialized = false;
 
