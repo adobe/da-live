@@ -14,7 +14,11 @@ const API_KEY = 'darkalley';
  */
 export async function evaluatePage(pageUrl) {
   const token = await getAuthToken();
-  if (!token) throw new Error('Not authenticated');
+  if (!token) {
+    const error = new Error('Not authenticated');
+    error.detail = error.message;
+    throw error;
+  }
 
   const resp = await fetch(`${BASE_URL}${EVALUATE_PATH}`, {
     method: 'POST',
@@ -27,16 +31,21 @@ export async function evaluatePage(pageUrl) {
   });
 
   if (!resp.ok) {
-    // The API may return a { detail } message explaining the failure; surface
-    // it so the caller can show it instead of a generic error.
-    let detail;
+    // Route errors return { detail }, while the auth middleware returns { error };
+    // surface whichever is present, always with the HTTP status.
+    let reason;
     try {
-      detail = (await resp.json())?.detail;
+      const body = await resp.json();
+      reason = [body?.detail, body?.error].find((v) => typeof v === 'string' && v);
     } catch {
-      // Body was absent or not JSON; fall back to the generic error.
+      // Body was absent or not JSON; fall back to the status alone.
     }
-    const error = new Error(detail || `Evaluate page failed: ${resp.status}`);
-    if (detail) error.detail = detail;
+    const detail = reason
+      ? `${reason} (${resp.status})`
+      : `Evaluate page failed (${resp.status})`;
+    const error = new Error(detail);
+    error.detail = detail;
+    error.status = resp.status;
     throw error;
   }
   return resp.json();
