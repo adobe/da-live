@@ -106,6 +106,30 @@ nx-popover {
   }
 }
 
+.ew-cc-split.is-aligned {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  overflow: auto;
+}
+
+.ew-cc-split.is-aligned .ew-cc-pane {
+  overflow: visible;
+  padding-block: var(--s2-spacing-100);
+}
+
+.ew-cc-split.is-aligned .ew-cc-pane:nth-child(odd) {
+  border-right: 1px solid var(--s2-gray-100);
+}
+
+.ew-cc-split.is-aligned .ew-cc-pane > :first-child {
+  margin-top: 0;
+}
+
+.ew-cc-split.is-aligned .ew-cc-pane > :last-child {
+  margin-bottom: 0;
+}
+
 :is(.ew-cc-body, .ew-cc-pane) > *:first-child {
   margin-top: 0;
 }
@@ -115,7 +139,7 @@ nx-popover {
   height: auto;
 }
 
-:is(.ew-cc-body, .ew-cc-pane) .tableWrapper {
+:is(.ew-cc-body, .ew-cc-pane) [class~="tableWrapper"] {
   overflow-x: auto;
   border: 2px solid var(--s2-gray-400);
   border-radius: 6px;
@@ -204,4 +228,40 @@ nx-popover {
 :is(.ew-cc-body, .ew-cc-pane) del.diffdel:has(> :is(p, h1, h2, h3, h4, h5, h6, li, blockquote):only-child:empty),
 :is(.ew-cc-body, .ew-cc-pane) del.diffmod:has(> :is(p, h1, h2, h3, h4, h5, h6, li, blockquote):only-child:empty) {
   display: none;
+}
+
+:host([embedded]) {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.ew-cc-embedded {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.ew-cc-embedded .ew-cc-header {
+  height: auto;
+  min-height: 48px;
+  flex-wrap: wrap;
+}
+
+.ew-cc-embedded .ew-cc-chip:not(.is-neutral) {
+  background: var(--s2-green-200);
+}
+
+.ew-cc-embedded .ew-cc-actions {
+  position: static;
+  transform: none;
+  margin-left: auto;
+}
+
+.ew-cc-embedded .ew-cc-chip-row {
+  width: auto;
+  flex: 1;
+  gap: var(--s2-spacing-300);
 }

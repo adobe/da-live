@@ -504,14 +504,11 @@ describe('version history refresh', () => {
     const list = inst.shadowRoot.querySelector('.versionlist');
     list.style.cssText = 'height: 100px; overflow: auto; margin: 0; padding: 0;';
     [...list.children].forEach((row) => { row.style.height = '40px'; });
-    await new Promise(requestAnimationFrame);
     list.scrollTop = 300;
-    await new Promise(requestAnimationFrame);
     const anchor = [...list.children]
       .find((row) => row.getBoundingClientRect().bottom > list.getBoundingClientRect().top);
     const { top } = anchor.getBoundingClientRect();
     await inst.handleRefresh();
-    await new Promise(requestAnimationFrame);
     expect(anchor.isConnected).to.be.true;
     expect(anchor.getBoundingClientRect().top).to.be.closeTo(top, 1);
   });
