@@ -6,6 +6,7 @@ import {
   checkForLocNodes,
 } from '../../../../../../blocks/edit/prose/diff/diff-utils.js';
 import { createTestEditor, destroyEditor } from '../test-helpers.js';
+import getSheet from '../../../../../../blocks/shared/sheet.js';
 
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 const waitFor = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
@@ -449,5 +450,84 @@ describe('diff-utils flow helpers', () => {
     editor.view.dispatch(tr);
     expect(checkForLocNodes(editor.view)).to.be.true;
     await nextFrame();
+  });
+});
+
+describe('diff-utils loc css adoption', () => {
+  const LOC_CSS = '/blocks/edit/prose/diff/diff-utils.css';
+  let editor;
+  const hosts = [];
+
+  function createHost() {
+    const host = document.createElement('div');
+    host.attachShadow({ mode: 'open' });
+    document.body.append(host);
+    hosts.push(host);
+    return host;
+  }
+
+  async function waitForSheet(host) {
+    for (let i = 0; i < 50; i += 1) {
+      if (host.shadowRoot.adoptedStyleSheets.length) return;
+      // eslint-disable-next-line no-await-in-loop
+      await waitFor(10);
+    }
+  }
+
+  beforeEach(async () => {
+    editor = await createTestEditor();
+    window.view = editor.view;
+    const { schema } = editor.view.state;
+    const tr = editor.view.state.tr.insert(
+      editor.view.state.doc.content.size,
+      buildDiffPara(schema, 'diff_added', 'new'),
+    );
+    editor.view.dispatch(tr);
+  });
+
+  afterEach(() => {
+    destroyEditor(editor);
+    delete window.view;
+    hosts.splice(0).forEach((host) => host.remove());
+  });
+
+  it('adopts the loc css into every host that renders diff nodes', async () => {
+    const locSheet = await getSheet(LOC_CSS);
+    const hostA = createHost();
+    checkForLocNodes(editor.view, hostA);
+    await waitForSheet(hostA);
+    expect(hostA.shadowRoot.adoptedStyleSheets.includes(locSheet), 'hostA adopts locSheet').to.be.true;
+
+    const hostB = createHost();
+    checkForLocNodes(editor.view, hostB);
+    await waitForSheet(hostB);
+    expect(hostB.shadowRoot.adoptedStyleSheets.includes(locSheet), 'hostB adopts locSheet').to.be.true;
+  });
+
+  it('re-adopts the loc css after the host resets its adopted sheets', async () => {
+    const locSheet = await getSheet(LOC_CSS);
+    const host = createHost();
+    checkForLocNodes(editor.view, host);
+    await waitForSheet(host);
+    expect(host.shadowRoot.adoptedStyleSheets.includes(locSheet), 'host adopts locSheet').to.be.true;
+
+    // A reconnected element replaces its adopted sheets with its own base set
+    const baseSheet = new CSSStyleSheet();
+    host.shadowRoot.adoptedStyleSheets = [baseSheet];
+    checkForLocNodes(editor.view, host);
+    await waitFor(50);
+    expect(host.shadowRoot.adoptedStyleSheets.includes(locSheet), 'host adopts locSheet').to.be.true;
+    expect(host.shadowRoot.adoptedStyleSheets.includes(baseSheet), 'host adopts baseSheet').to.be.true;
+  });
+
+  it('adopts the loc css only once per host', async () => {
+    const locSheet = await getSheet(LOC_CSS);
+    const host = createHost();
+    checkForLocNodes(editor.view, host);
+    checkForLocNodes(editor.view, host);
+    await waitForSheet(host);
+    await waitFor(50);
+    const count = host.shadowRoot.adoptedStyleSheets.filter((s) => s === locSheet).length;
+    expect(count).to.equal(1);
   });
 });
