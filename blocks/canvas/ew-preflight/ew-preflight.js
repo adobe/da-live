@@ -88,9 +88,11 @@ class EwPreflight extends LitElement {
     return `/${org}/${site}${pathname}`;
   }
 
+  // `error` means the checks could not run (API/network failure), as opposed to `fail`
+  // (checks ran and found issues); `message` carries the cause for the publish dialog.
   _resultStatus() {
-    if (this._error) return 'fail';
-    return this._data?.failed === 0 ? 'success' : 'fail';
+    if (this._error) return { status: 'error', message: this._error };
+    return { status: this._data?.failed === 0 ? 'success' : 'fail' };
   }
 
   // Records which page the results belong to, so navigation can tell they are stale.
@@ -128,7 +130,7 @@ class EwPreflight extends LitElement {
   async _evaluateAndReport() {
     await this._evaluateCurrentPage();
     if (this._gateRequestId) return;
-    reportPreflightStatus({ path: this._docFullpath, status: this._resultStatus() });
+    reportPreflightStatus({ path: this._docFullpath, ...this._resultStatus() });
   }
 
   _handlePreflightRun = async (detail) => {
@@ -155,10 +157,11 @@ class EwPreflight extends LitElement {
       if (viewId === null) this._cancelGate();
     });
     await this._evaluateCurrentPage();
-    this._finishGate(this._resultStatus());
+    const { status, message } = this._resultStatus();
+    this._finishGate(status, message);
   };
 
-  _finishGate(status) {
+  _finishGate(status, message) {
     if (this._gateSettled || !this._gateRequestId) return;
     this._gateSettled = true;
     this._unsubPanelVisibility?.();
@@ -166,7 +169,7 @@ class EwPreflight extends LitElement {
     const { _gateRequestId: requestId, _gatePath: path } = this;
     this._gateRequestId = null;
     this._gatePath = null;
-    reportPreflightStatus({ path, status, requestId });
+    reportPreflightStatus({ path, status, requestId, ...(message && { message }) });
   }
 
   _cancelGate() {

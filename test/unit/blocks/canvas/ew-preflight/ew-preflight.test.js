@@ -157,12 +157,20 @@ describe('ew-preflight preflight gate', () => {
     }
   });
 
-  it('reports fail when the evaluation errors', async () => {
+  it('reports error with the cause when the evaluation errors', async () => {
     const el = stubEvaluate(createGateElement(), { error: 'boom' });
     const cap = captureStatus();
     await el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g3' });
     cap.stop();
-    expect(cap.events).to.deep.equal([{ path: '/org/site/a.html', status: 'fail', requestId: 'g3' }]);
+    expect(cap.events).to.deep.equal([{ path: '/org/site/a.html', status: 'error', requestId: 'g3', message: 'boom' }]);
+  });
+
+  it('a non-gate refresh reports error with the cause when the evaluation errors', async () => {
+    const el = stubEvaluate(createGateElement(), { error: 'boom' });
+    const cap = captureStatus();
+    await el._evaluateAndReport();
+    cap.stop();
+    expect(cap.events).to.deep.equal([{ path: '/org/site/a.html', status: 'error', message: 'boom' }]);
   });
 
   it('reports cancelled when the tools panel closes before the run settles', async () => {
