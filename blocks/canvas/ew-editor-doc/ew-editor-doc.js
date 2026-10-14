@@ -256,23 +256,6 @@ export class EwEditorDoc extends LitElement {
     return forceSave(wsProvider);
   }
 
-  getComparisonSession({ org, site, path } = {}) {
-    const session = this._proseContext;
-    const fullPath = `${org}/${site}/${path?.replace(/^\//, '').replace(/\.html$/, '')}`;
-    return session?.context === this.ctx && this.ctx?.path === fullPath && session?.view
-      ? session : null;
-  }
-
-  async saveForComparison(context) {
-    const session = this.getComparisonSession(context);
-    if (!session) return { ok: false, error: 'no-document' };
-    if (!session.view.editable) return { ok: false, error: 'not-writable' };
-    if (!session.wsProvider) return { ok: false, error: 'no-document' };
-    const result = await forceSave(session.wsProvider);
-    return session === this.getComparisonSession(context)
-      ? result : { ok: false, error: 'stale-context' };
-  }
-
   _setupController() {
     const { view, wsProvider } = this._proseContext ?? {};
     if (!this.quickEditPort || !view || !wsProvider) return;
@@ -370,8 +353,7 @@ export class EwEditorDoc extends LitElement {
       return;
     }
 
-    const context = this.ctx;
-    const session = this.session ?? await resolveEditorDocSession(context);
+    const session = this.session ?? await resolveEditorDocSession(this.ctx);
     if (!session.ok) {
       this._error = session.error;
       return;
@@ -425,9 +407,7 @@ export class EwEditorDoc extends LitElement {
         },
       });
 
-      this._proseContext = {
-        proseEl, wsProvider, view, ydoc, undoManager, context,
-      };
+      this._proseContext = { proseEl, wsProvider, view, ydoc, undoManager };
       this._comments.publish();
       this._unbindSectionName = bindFirstSectionName(ydoc, view, () => this._emitHtmlChange());
 
