@@ -78,24 +78,22 @@ function setDiffLabelCssVars(daEditor) {
   host.style.setProperty('--diff-label-upstream', `'${labels.upstream}'`);
 }
 
-let locCssLoading = false;
+let locSheetPromise;
 async function loadLocCss(hostEl) {
-  if (locCssLoading) return;
-  locCssLoading = true;
-
   try {
-    const locSheet = await getSheet('/blocks/edit/prose/diff/diff-utils.css');
+    locSheetPromise ??= getSheet('/blocks/edit/prose/diff/diff-utils.css');
+    const locSheet = await locSheetPromise;
 
-    if (hostEl?.shadowRoot) {
-      hostEl.shadowRoot.adoptedStyleSheets = [
-        ...(hostEl.shadowRoot.adoptedStyleSheets || []),
-        locSheet,
-      ];
+    // Hosts can reset their adoptedStyleSheets (e.g. on reconnect), so check every time
+    const adopted = hostEl?.shadowRoot?.adoptedStyleSheets;
+    if (adopted && !adopted.includes(locSheet)) {
+      hostEl.shadowRoot.adoptedStyleSheets = [...adopted, locSheet];
 
       // Set CSS custom properties for diff labels
       setDiffLabelCssVars(hostEl);
     }
   } catch (error) {
+    locSheetPromise = undefined;
     // eslint-disable-next-line no-console
     console.warn('Failed to load LOC CSS:', error);
   }
