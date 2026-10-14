@@ -72,6 +72,60 @@ describe('EW panel helpers transformBlock', () => {
     expect(variants[0].variants).to.equal('wide');
   });
 
+  it('Preserves distinct heading IDs for variants, including metadata name overrides', async () => {
+    mockHtml(`
+      <main><div>
+        <h2 id="first-variant">Same title</h2>
+        <div class="hero"><div><div>first</div></div></div>
+        <h2 id="second-variant">Same title</h2>
+        <div class="library-metadata"><div><div>name</div><div>Custom name</div></div></div>
+        <div class="hero"><div><div>second</div></div></div>
+      </div></main>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants.map((v) => v.anchor)).to.deep.equal(['first-variant', 'second-variant']);
+    expect(variants[1].name).to.equal('Custom name');
+  });
+
+  it('Uses the AEM heading slug when source HTML omits the ID', async () => {
+    mockHtml(`
+      <main><div>
+        <h3> Hero: Wide &amp; Bright! </h3>
+        <div class="hero"><div><div>content</div></div></div>
+      </div></main>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants[0].anchor).to.equal('hero-wide-bright');
+  });
+
+  it('Preserves the heading anchor preceding a library group', async () => {
+    mockHtml(`
+      <main><div>
+        <h2 id="group-preview">My Group</h2>
+        <div class="library-container-start"></div>
+        <div class="hero"><div><div>content</div></div></div>
+        <div class="library-container-end"></div>
+        <div class="library-metadata"><div><div>name</div><div>Group name</div></div></div>
+      </div></main>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants[0].anchor).to.equal('group-preview');
+    expect(variants[0].name).to.equal('Group name');
+    expect(variants[0].dom.querySelector('h2')).to.be.null;
+  });
+
+  it('Does not invent anchors for variants with only library metadata', async () => {
+    mockHtml(`
+      <main><div>
+        <div class="quote"><div><div>content</div></div></div>
+        <div class="library-metadata"><div><div>name</div><div>Quote</div></div></div>
+      </div></main>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants[0].anchor).to.be.undefined;
+    expect(variants[0].name).to.equal('Quote');
+  });
+
   it('Returns an empty array when the fetch fails', async () => {
     window.fetch = () => Promise.resolve(new Response('error', { status: 500 }));
     const variants = await getBlockVariants('/mock-path');

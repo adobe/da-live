@@ -151,21 +151,39 @@ class EwBlockLibraryModal extends LitElement {
     this._loadPreview(block);
   }
 
-  async _loadPreview(block) {
+  _selectVariant(block, variant) {
+    if (!variant.anchor) return;
+    this._selectedPath = block.path;
+    if (this._previewInfo?.path === block.path) {
+      const url = new URL(this._previewInfo.url);
+      url.hash = encodeURIComponent(variant.anchor);
+      if (url.href === this._previewInfo.url) {
+        // Lit skips unchanged attributes; reapply the fragment to restore scroll.
+        this.shadowRoot.querySelector('.modal-preview-frame')?.setAttribute('src', url.href);
+      }
+      this._previewInfo = { ...this._previewInfo, url: url.href };
+    } else {
+      this._loadPreview(block, variant.anchor);
+    }
+  }
+
+  async _loadPreview(block, anchor) {
     const { org, site } = this._hashState || {};
     if (!org || !site) {
       this._previewInfo = null;
       return;
     }
     const details = getItemPreviewUrl(block, { org, site });
-    const url = details.previewUrl;
+    const previewUrl = new URL(details.previewUrl);
+    if (anchor) previewUrl.hash = encodeURIComponent(anchor);
+    const url = previewUrl.href;
     this._previewInfo = { path: block.path, name: block.name, url, ok: undefined };
     const ok = await getPreviewStatus({
       org: details.org,
       site: details.site,
       pathname: details.pathname,
     });
-    if (this._previewInfo?.url === url) {
+    if (this._previewInfo?.url.split('#')[0] === details.previewUrl) {
       this._previewInfo = { ...this._previewInfo, ok };
     }
   }
@@ -216,13 +234,16 @@ class EwBlockLibraryModal extends LitElement {
     return html`
       <li role="treeitem">
         <div class="modal-tree-variant-row">
-          <span class="modal-tree-row modal-tree-row-variant">
+          <button type="button"
+                  class="modal-tree-row modal-tree-row-variant"
+                  ?disabled=${!v.anchor}
+                  @click=${() => this._selectVariant(block, v)}>
             <span class="modal-tree-label">
               ${v.name}${v.variants
     ? html` <span class="modal-tree-subtitle">${v.variants}</span>`
     : nothing}
             </span>
-          </span>
+          </button>
           ${description ? html`
             <button type="button"
                     class="nx-action-btn-icon nx-btn-sm modal-tree-info"
