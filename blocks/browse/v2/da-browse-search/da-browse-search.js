@@ -19,6 +19,7 @@ export default class DaBrowseSearch extends LitElement {
     fullpath: { type: String },
     editor: { type: String },
     matchCase: { type: Boolean },
+    toolsOpen: { type: Boolean },
     getDirectory: { attribute: false },
     _suggestions: { state: true },
     _status: { state: true },
@@ -41,6 +42,8 @@ export default class DaBrowseSearch extends LitElement {
   get input() { return this.field?.shadowRoot?.querySelector('input'); }
 
   get popover() { return this.shadowRoot.querySelector('nx-popover'); }
+
+  get actionButton() { return this.shadowRoot.querySelector('button[slot="actions"]'); }
 
   get suggestionsOpen() { return !!this._open; }
 
@@ -82,6 +85,10 @@ export default class DaBrowseSearch extends LitElement {
   focus(options) {
     this.field?.focus(options);
   }
+
+  toggleTools = () => {
+    this.dispatchEvent(new CustomEvent('toolstoggle', { bubbles: true, composed: true }));
+  };
 
   submitSearch() {
     this.dispatchEvent(new CustomEvent('search-submit', {
@@ -286,7 +293,13 @@ export default class DaBrowseSearch extends LitElement {
         .placeholder=${this.placeholder} ?disabled=${this.disabled}
         @input=${this.onInput} @focusin=${this.onFocus} @focusout=${this.onBlur}
         @keydown=${{ handleEvent: (event) => this.onKeydown(event), capture: true }}>
-        <slot name="actions" slot="actions"></slot>
+        <button type="button" slot="actions" title="Search options" aria-label="Search options"
+          aria-controls="da-browse-tools" aria-expanded=${String(!!this.toolsOpen)}
+          @click=${this.toggleTools}>
+          <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true">
+            <use href="/img/icons/s2-icon-properties-20-n.svg#icon"></use>
+          </svg>
+        </button>
       </nx-search>
       <p class="suggestions-error" role="status" ?hidden=${this._open || !this._status?.startsWith('Suggestions unavailable:')}>${this._status}</p>
       <nx-popover class="search-suggestions" @close=${this.onClose}>

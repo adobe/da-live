@@ -5,12 +5,12 @@
   color: var(--s2-gray-700, inherit);
 }
 
-.da-btn-primary.negative {
+.nx-form-btn-primary.negative {
   background: var(--s2-red-900);
   border-color: var(--s2-red-900);
 }
 
-.da-btn-primary.negative:hover:not(:disabled) {
+.nx-form-btn-primary.negative:hover:not(:disabled) {
   background: var(--s2-red-1000);
   border-color: var(--s2-red-1000);
 }

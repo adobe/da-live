@@ -76,7 +76,7 @@ export default class DaBrowseHeader extends LitElement {
       ? `/config#/${this.details.org}/${this.details.site}/`
       : `/config#/${this.details.org}/`;
     return html`
-      <a class="da-browse-settings-link nx-action-btn-icon" href="${href}" aria-label="Config" title="Config">
+      <a class="browse-settings-link nx-action-btn-icon" href="${href}" aria-label="Config" title="Config">
         <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-settings-20-n.svg#icon"></use></svg>
       </a>`;
   }
@@ -89,7 +89,7 @@ export default class DaBrowseHeader extends LitElement {
       { value: 'lastModified:ascending', label: 'Modified (oldest first)' },
     ];
     return html`
-      <nx-picker class="da-browse-sort-control" size="m" title=${this.sortLabel}
+      <nx-picker class="browse-sort-control" size="m" title=${this.sortLabel}
         .items=${options}
         .value=${this.sortState.property ? `${this.sortState.property}:${this.sortState.direction}` : ''}
         .labelOverride=${'Sort'}
@@ -114,18 +114,18 @@ export default class DaBrowseHeader extends LitElement {
   renderToolbarControls() {
     const typesLabel = this.typesFilterState.hiddenCount
       ? `${this.typesFilterState.hiddenCount} ${this.typesFilterState.hiddenCount === 1 ? 'type' : 'types'} hidden`
-      : 'Show All types';
+      : 'Show All';
     return html`
-      <div class="da-browse-toolbar-controls" role="group" aria-label="Browse toolbar controls">
-        <nx-switch class="da-browse-group-control" label="Group by type" .checked=${this.groupByType}
+      <div class="browse-toolbar-controls" role="group" aria-label="Browse toolbar controls">
+        <nx-switch class="browse-group-control" label="Group by type" .checked=${this.groupByType}
           @change=${this.requestGroupByType}></nx-switch>
-        <button type="button" class="da-browse-toolbar-control nx-action-btn-quiet" aria-haspopup="dialog"
+        <button type="button" class="browse-toolbar-control nx-action-btn-quiet" aria-haspopup="dialog"
           title=${typesLabel} aria-expanded=${this.typesFilterState.open} @click=${this.requestTypesFilter}>
           <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-filter-20-n.svg#icon"></use></svg>
-          <span class="da-browse-control-label">${typesLabel}</span>
+          <span class="browse-control-label">${typesLabel}</span>
         </button>
         ${this.renderSortOptions()}
-        <nx-segmented-btn class="da-browse-view-control" label="View" .items=${VIEW_ITEMS}
+        <nx-segmented-btn class="browse-view-control" label="View" .items=${VIEW_ITEMS}
           .value=${this.view} @change=${this.requestView}></nx-segmented-btn>
         ${this.renderSettingsActions()}
       </div>`;
@@ -143,17 +143,17 @@ export default class DaBrowseHeader extends LitElement {
 
   render() {
     return html`
-      <div class="da-browse-toolbar-leading">
+      <div class="browse-toolbar-leading">
         ${this.chatEnabled ? html`
           <button type="button" part="chat-btn" class="chat-btn nx-action-btn-icon" aria-label="Open chat panel" @click=${this.requestChat}>
             <svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-splitleft-20-n.svg#icon"></use></svg>
           </button>` : nothing}
         ${this.searchState ? nothing : html`<slot></slot>`}
-        <p class="da-browse-search-summary" aria-hidden="true" ?data-loading=${this.searchState?.loading}>${this.searchState && !this.searchState.error ? html`
-          <span class="da-browse-search-progress">Searching...${this.searchState.count
+        <p class="browse-search-summary" aria-hidden="true" ?data-loading=${this.searchState?.loading}>${this.searchState && !this.searchState.error ? html`
+          <span class="browse-search-progress">Searching...${this.searchState.count
           ? html` &#183; ${this.searchState.count} found` : nothing}</span>
-          <span class="da-browse-search-complete">${this.searchResultsSummary}</span>` : nothing}</p>
-        <p class="da-browse-search-status" role="status" aria-atomic="true">${this.searchSummary}</p>
+          <span class="browse-search-complete">${this.searchResultsSummary}</span>` : nothing}</p>
+        <p class="browse-search-status" role="status" aria-atomic="true">${this.searchSummary}</p>
       </div>
       ${this.renderToolbarControls()}`;
   }

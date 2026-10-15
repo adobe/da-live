@@ -4,6 +4,13 @@ import { getNx, getNx2Api } from '../../../../scripts/utils.js';
 import { ICONS, iconPathForExt } from '../../../shared/icons.js';
 import getEditPath from '../../shared.js';
 
+import {
+  fetchAemStatus,
+  fetchDaStatus,
+  doesFileExist,
+  getRenamedPath,
+} from '../../shared/item.js';
+
 // Styles
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const SHARED = await loadStyle(new URL('../../../shared/styles/base.css', import.meta.url).href);
@@ -56,66 +63,16 @@ export default class DaListItem extends LitElement {
   }
 
   async updateAEMStatus() {
-    const { status, asJson } = await getNx2Api();
-    // AEM resolves HTML pages by their extensionless path.
-    const path = this.ext === 'html' ? this.path.slice(0, -5) : this.path;
-    const { data: json } = await asJson(status.get(path));
-
-    if (json) {
-      this._preview = {
-        status: json.preview.status,
-        url: json.preview.url,
-        lastModified: json.preview.lastModified ? formatDate(json.preview.lastModified) : null,
-        redirect: json.live.redirectLocation,
-      };
-      this._live = {
-        status: json.live.status,
-        url: json.live.url,
-        lastModified: json.live.lastModified ? formatDate(json.live.lastModified) : null,
-        redirect: json.live.redirectLocation,
-      };
-      return;
-    }
-    this._preview = { status: 401 };
-    this._live = { status: 401 };
+    const { preview, live } = await fetchAemStatus(this);
+    this._preview = preview;
+    this._live = live;
   }
 
   async updateDAStatus() {
-    const { versions, source, isHlx6 } = await getNx2Api();
-    const [, org, site] = this.path.split('/');
-
-    const resp = await versions.list(this.path);
-    if (!resp.ok) return;
-    const json = await resp.json();
-
-    // hlx6 no longer keeps last-modified info in the version records, and its
-    // version entries are ULID-based rather than /versionsource urls. Count the
-    // version records and HEAD the document for the last-modified-by header.
-    if (await isHlx6(org, site)) {
-      this._version = json.filter((entry) => entry.version).length;
-      const headResp = await source.getMetadata(this.path);
-      const lastModifiedBy = headResp?.headers?.get('x-last-modified-by');
-      this._lastModifedBy = lastModifiedBy
-        ? lastModifiedBy.split('@')[0].toLowerCase()
-        : 'anonymous';
-      return;
-    }
-
-    if (json.length === 0) {
-      this._lastModifedBy = 'anonymous';
-      this._version = 0;
-      return;
-    }
-
-    json.sort((a, b) => a.timestamp - b.timestamp);
-    const { length: count } = json.reduce((acc, entry) => {
-      if (entry.url?.startsWith('/versionsource')) acc.push(entry);
-      return acc;
-    }, []);
-    this._version = count;
-    this._lastModifedBy = json.pop().users.map(
-      (user) => user.email.split('@')[0],
-    ).join(', ').toLowerCase();
+    const status = await fetchDaStatus(this);
+    if (!status) return;
+    this._version = status.version;
+    this._lastModifedBy = status.lastModifiedBy;
   }
 
   handleChecked(e) {
@@ -141,10 +98,8 @@ export default class DaListItem extends LitElement {
     this.dispatchEvent(event);
   }
 
-  async doesFileExist(path) {
-    const { source } = await getNx2Api();
-    const { status } = await source.getMetadata(path);
-    return status === 200;
+  doesFileExist(path) {
+    return doesFileExist(path);
   }
 
   async handleRenameSubmit(e) {
@@ -159,9 +114,8 @@ export default class DaListItem extends LitElement {
       await delay(2000);
       this.setStatus();
     } else {
-      const idx = this.path.lastIndexOf(this.name);
       const oldPath = this.path;
-      const newPath = `${this.path.slice(0, idx)}${newName}${this.path.slice(idx + this.name.length)}`;
+      const newPath = getRenamedPath({ path: oldPath, name: this.name, newName });
 
       const fileExists = await this.doesFileExist(newPath);
       if (fileExists) {

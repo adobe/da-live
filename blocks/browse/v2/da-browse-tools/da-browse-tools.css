@@ -13,7 +13,7 @@
   gap: var(--s2-spacing-100);
   flex-shrink: 0;
   min-height: 48px;
-  padding: 0 var(--s2-spacing-100);
+  padding: 0 var(--s2-spacing-200);
   border-bottom: 1px solid var(--s2-gray-200);
   box-sizing: border-box;
 

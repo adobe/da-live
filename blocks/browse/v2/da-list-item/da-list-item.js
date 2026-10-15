@@ -1,13 +1,23 @@
 import { LitElement, html, nothing, until } from 'da-lit';
 import { delay, sanitizeName, formatDate } from '../../../shared/utils.js';
 import { getNx, getNx2, getNx2Api } from '../../../../scripts/utils.js';
-import { ICONS, iconPathForExt, getTypeLabel, isImageExt } from '../../../shared/icons.js';
+import { ICONS, iconPathForExt, getTypeLabel } from '../../../shared/icons.js';
+import '../da-card-preview/da-card-preview.js';
 import { getBrowseItemHref } from '../shared/navigation.js';
+
+import {
+  fetchAemStatus,
+  fetchDaStatus,
+  doesFileExist,
+  getRenamedPath,
+} from '../../shared/item.js';
 
 // Styles
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const [FORM, STYLE] = await Promise.all([
+await import(`${getNx()}/blocks/shared/popover/popover.js`);
+const [FORM, BUTTONS, STYLE] = await Promise.all([
   loadStyle(`${getNx2()}/styles/form.css`),
+  loadStyle(`${getNx2()}/styles/buttons.css`),
   loadStyle(import.meta.url),
 ]);
 
@@ -25,8 +35,7 @@ export default class DaListItem extends LitElement {
     isChecked: { attribute: 'ischecked', type: Boolean },
     isFavorited: { attribute: 'isfavorited', type: Boolean },
     _isRenaming: { state: true },
-    _imageUrl: { state: true },
-    _isExpanded: { state: true },
+    _detailsOpen: { state: true },
     _preview: { state: true },
     _live: { state: true },
     _version: { state: true },
@@ -35,7 +44,7 @@ export default class DaListItem extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [FORM, STYLE];
+    this.shadowRoot.adoptedStyleSheets = [FORM, BUTTONS, STYLE];
   }
 
   async update(props) {
@@ -44,59 +53,11 @@ export default class DaListItem extends LitElement {
     }
     if (props.has('path')) {
       if (props.get('path') !== this.path) {
-        this.resetImage();
-        this.classList.remove('is-expanded');
-        this._isExpanded = false;
+        this.closeDetails();
       }
     }
 
     super.update(props);
-  }
-
-  disconnectedCallback() {
-    this.resetImage();
-    super.disconnectedCallback();
-  }
-
-  resetImage() {
-    this._imageObserver?.disconnect();
-    this._imageObserver = null;
-    this._imageRequested = false;
-    this.dropImage();
-  }
-
-  dropImage() {
-    if (this._imageUrl) URL.revokeObjectURL(this._imageUrl);
-    this._imageUrl = null;
-  }
-
-  updated() {
-    // One attempt per path: a failed load must not retry on every re-render.
-    if (this.view !== 'card' || !isImageExt(this.ext) || this._imageRequested
-      || this._imageObserver) return;
-    // Fetch lazily so large folders only load previews that scroll into view.
-    this._imageObserver = new IntersectionObserver(([entry]) => {
-      if (!entry?.isIntersecting) return;
-      this._imageObserver.disconnect();
-      this._imageObserver = null;
-      this.loadImage();
-    });
-    this._imageObserver.observe(this);
-  }
-
-  async loadImage() {
-    const { path } = this;
-    this._imageRequested = true;
-    try {
-      const { source } = await getNx2Api();
-      const resp = await source.get(path);
-      if (!resp.ok) return;
-      const url = URL.createObjectURL(await resp.blob());
-      if (path === this.path && this.isConnected) this._imageUrl = url;
-      else URL.revokeObjectURL(url);
-    } catch {
-      // The icon fallback stays in place.
-    }
   }
 
   async selectInput() {
@@ -107,65 +68,16 @@ export default class DaListItem extends LitElement {
   }
 
   async updateAEMStatus() {
-    const { status, asJson } = await getNx2Api();
-    // AEM resolves HTML pages by their extensionless path.
-    const path = this.ext === 'html' ? this.path.slice(0, -5) : this.path;
-    const { data: json } = await asJson(status.get(path));
-
-    if (json) {
-      this._preview = {
-        status: json.preview.status,
-        url: json.preview.url,
-        lastModified: json.preview.lastModified ? formatDate(json.preview.lastModified) : null,
-        redirect: json.live.redirectLocation,
-      };
-      this._live = {
-        status: json.live.status,
-        url: json.live.url,
-        lastModified: json.live.lastModified ? formatDate(json.live.lastModified) : null,
-        redirect: json.live.redirectLocation,
-      };
-      return;
-    }
-    this._preview = { status: 401 };
-    this._live = { status: 401 };
+    const { preview, live } = await fetchAemStatus(this);
+    this._preview = preview;
+    this._live = live;
   }
 
   async updateDAStatus() {
-    const { versions, source, isHlx6 } = await getNx2Api();
-    const [, org, site] = this.path.split('/');
-
-    const resp = await versions.list(this.path);
-    if (!resp.ok) return;
-    const json = await resp.json();
-
-    // hlx6 no longer keeps last-modified info in the version records, and its
-    // version entries are ULID-based rather than /versionsource urls. Count the
-    // version records and HEAD the document for the last-modified-by header.
-    if (await isHlx6(org, site)) {
-      this._version = json.filter((entry) => entry.version).length;
-      const headResp = await source.getMetadata(this.path);
-      const lastModifiedBy = headResp?.headers?.get('x-last-modified-by');
-      this._lastModifiedBy = lastModifiedBy
-        ? lastModifiedBy.split('@')[0].toLowerCase()
-        : 'anonymous';
-      return;
-    }
-
-    if (json.length === 0) {
-      this._lastModifiedBy = 'anonymous';
-      this._version = 0;
-      return;
-    }
-
-    const { length: count } = json.reduce((acc, entry) => {
-      if (entry.url?.startsWith('/versionsource')) acc.push(entry);
-      return acc;
-    }, []);
-    this._version = count;
-    this._lastModifiedBy = json.reduce((a, b) => (b.timestamp > a.timestamp ? b : a)).users.map(
-      (user) => user.email.split('@')[0],
-    ).join(', ').toLowerCase();
+    const status = await fetchDaStatus(this);
+    if (!status) return;
+    this._version = status.version;
+    this._lastModifiedBy = status.lastModifiedBy;
   }
 
   handleChecked(e) {
@@ -191,10 +103,8 @@ export default class DaListItem extends LitElement {
     this.dispatchEvent(event);
   }
 
-  async doesFileExist(path) {
-    const { source } = await getNx2Api();
-    const { status } = await source.getMetadata(path);
-    return status === 200;
+  doesFileExist(path) {
+    return doesFileExist(path);
   }
 
   async handleRenameSubmit(e) {
@@ -209,9 +119,8 @@ export default class DaListItem extends LitElement {
       await delay(2000);
       this.setStatus();
     } else {
-      const idx = this.path.lastIndexOf(this.name);
       const oldPath = this.path;
-      const newPath = `${this.path.slice(0, idx)}${newName}${this.path.slice(idx + this.name.length)}`;
+      const newPath = getRenamedPath({ path: oldPath, name: this.name, newName });
 
       const fileExists = await this.doesFileExist(newPath);
       if (fileExists) {
@@ -252,18 +161,28 @@ export default class DaListItem extends LitElement {
     target.value = sanitizeName(target.value);
   }
 
-  toggleExpand() {
-    this._isExpanded = this.classList.toggle('is-expanded');
-    if (this._isExpanded) {
-      this.updateAEMStatus();
-      this.updateDAStatus();
-    } else {
-      this._preview = null;
-      this._live = null;
-      this._version = null;
-      this._lastModifiedBy = null;
+  get popover() { return this.shadowRoot.querySelector('nx-popover'); }
+
+  async toggleDetails({ currentTarget }) {
+    if (this._detailsOpen) {
+      this.popover?.close();
+      this.closeDetails();
+      return;
     }
+    this._detailsOpen = true;
+    this.updateAEMStatus();
+    this.updateDAStatus();
+    await this.updateComplete;
+    this.popover?.show({ anchor: currentTarget, placement: 'auto' });
   }
+
+  closeDetails = () => {
+    this._detailsOpen = false;
+    this._preview = null;
+    this._live = null;
+    this._version = null;
+    this._lastModifiedBy = null;
+  };
 
   renderDate() {
     if (!this.date) return nothing;
@@ -349,29 +268,71 @@ export default class DaListItem extends LitElement {
     return env === '_preview' ? 'Not previewed' : 'Not published';
   }
 
-  renderCardPreview() {
-    if (isImageExt(this.ext) && this._imageUrl) {
-      return html`<img src="${this._imageUrl}" alt="" @error=${() => this.dropImage()}>`;
-    }
-    return html`<svg class="da-card-icon" viewBox="0 0 20 20" aria-hidden="true"><use href="${iconPathForExt(this.ext)}#icon"></use></svg>`;
-  }
-
   renderCard() {
     const href = getBrowseItemHref(this);
     return html`
-      <div class="da-card">
-        <div class="da-card-preview">
+      <div class="card">
+        <div class="card-preview">
           <a href="${this.ext === 'link' ? until(href) : href}" tabindex="-1" aria-hidden="true">
-            ${this.renderCardPreview()}
+            <da-card-preview .path=${this.path} .ext=${this.ext} ?busy=${this._isRenaming}></da-card-preview>
           </a>
-          ${this.allowselect ? this.renderCheckBox('da-card-select') : nothing}
+          ${this.allowselect ? this.renderCheckBox('card-select') : nothing}
+          ${this.isFavorited ? html`<svg class="card-favorite" viewBox="0 0 20 20" aria-label="Favorited"><use href="${ICONS.favorite}#icon"></use></svg>` : nothing}
         </div>
         ${this.rename ? this.renderRename() : html`
-          <a href="${this.ext === 'link' ? until(href) : href}" class="da-card-name">
-            ${this._isRenaming ? html`<span class="da-item-list-item-type"><div class="icon rename-icon"></div></span>` : html`<svg class="da-card-name-icon" viewBox="0 0 20 20" aria-hidden="true"><use href="${iconPathForExt(this.ext)}#icon"></use></svg>`}
-            <span class="da-card-name-text" title=${this.name}>${this.name}</span>
-          </a>`}
+          <div class="card-info">
+            <div class="card-heading">
+              <a href="${this.ext === 'link' ? until(href) : href}" class="card-name">
+                <span class="card-name-text" title=${this.name}>${this.name}</span>
+              </a>
+              ${this.renderDetailsControl()}
+            </div>
+            <div class="card-meta">
+              <span class="card-type">${getTypeLabel(this.ext)}</span>
+              <span class="card-date">${this.ext === 'link' ? '—' : (this.renderDate() || '—')}</span>
+            </div>
+          </div>`}
       </div>`;
+  }
+
+  renderDetailsControl() {
+    if (!this.ext || this.ext === 'link') return nothing;
+    return html`
+      <button
+        type="button"
+        aria-label=${this._detailsOpen ? 'Hide details' : 'Show details'}
+        aria-haspopup="dialog"
+        aria-expanded=${Boolean(this._detailsOpen)}
+        data-column="actions"
+        @click=${this.toggleDetails}
+        class="nx-action-btn-icon da-item-list-item-expand-btn is-visible ${this._detailsOpen ? 'is-active' : ''}">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/${this._detailsOpen ? 's2-icon-chevronup-20-n' : 's2-icon-more-20-n'}.svg#icon"></use></svg>
+      </button>
+      ${this._detailsOpen ? html`<nx-popover placement='auto' class="da-item-details" role="dialog" aria-label="Details for ${this.name}" @close=${this.closeDetails}>
+        ${this.renderDaDetails()}
+        <div class="da-list-item-aem-details">
+          <p id="preview-label" class="da-list-item-details-title">Previewed${this._preview?.redirect ? ' redirect' : ''}</p>
+          <a
+            href=${this._preview?.redirect || this._preview?.url || nothing}
+            target="_blank"
+            title="Open preview"
+            aria-labelledby="preview-label preview-date"
+            class="da-item-list-item-aem-btn">
+            <span id="preview-date" class="da-aem-icon-date">${this._preview?.status === 401 || this._preview?.status === 403 ? 'Not authorized' : this.renderAemDate('_preview')}</span>
+          </a>
+        </div>
+        <div class="da-list-item-aem-details">
+          <p id="live-label" class="da-list-item-details-title">Published${this._live?.redirect ? ' redirect' : ''}</p>
+          <a
+            href=${this._live?.redirect || this._live?.url || nothing}
+            target="_blank"
+            title="Open published page"
+            aria-labelledby="live-label live-date"
+            class="da-item-list-item-aem-btn">
+            <span id="live-date" class="da-aem-icon-date">${this._live?.status === 401 || this._live?.status === 403 ? 'Not authorized' : this.renderAemDate('_live')}</span>
+          </a>
+        </div>
+      </nx-popover>` : nothing}`;
   }
 
   render() {
@@ -380,42 +341,7 @@ export default class DaListItem extends LitElement {
       <div class="da-item-list-item-inner">
         ${this.allowselect ? this.renderCheckBox() : html`<span class="da-item-list-item-selection-placeholder" data-column="select" aria-hidden="true"></span>`}
         ${this.rename ? this.renderRename() : this.renderItem()}
-        <button
-          type="button"
-          aria-label=${this._isExpanded ? 'Hide details' : 'Show details'}
-          aria-expanded=${Boolean(this._isExpanded)}
-          aria-controls="file-details"
-          data-column="actions"
-          @click=${this.toggleExpand}
-          class="da-item-list-item-expand-btn ${(this.ext && this.ext !== 'link') ? 'is-visible' : ''}">
-        </button>
-      </div>
-      <div id="file-details" class="da-item-list-item-details" role="gridcell">
-        ${this.renderDaDetails()}
-        <div class="da-list-item-aem-details">
-          <p id="preview-label" class="da-list-item-details-title">Previewed${this._preview?.redirect ? ' redirect' : ''}</p>
-          <a
-            href=${this._preview?.redirect || this._preview?.url}
-            target="_blank"
-            title="Open preview"
-            aria-labelledby="preview-label preview-date"
-            class="da-item-list-item-aem-btn">
-            <span class="da-item-list-item-aem-icon ${this._preview?.status === 200 ? 'is-active' : ''}" aria-hidden="true"></span>
-            <span id="preview-date" class="da-aem-icon-date">${this._preview?.status === 401 || this._preview?.status === 403 ? 'Not authorized' : this.renderAemDate('_preview')}</span>
-          </a>
-        </div>
-        <div class="da-list-item-aem-details">
-          <p id="live-label" class="da-list-item-details-title">Published${this._live?.redirect ? ' redirect' : ''}</p>
-          <a
-            href=${this._live?.redirect || this._live?.url}
-            target="_blank"
-            title="Open published page"
-            aria-labelledby="live-label live-date"
-            class="da-item-list-item-aem-btn">
-            <span class="da-item-list-item-aem-icon ${this._live?.status === 200 ? 'is-active' : ''}" aria-hidden="true"></span>
-            <span id="live-date" class="da-aem-icon-date">${this._live?.status === 401 || this._live?.status === 403 ? 'Not authorized' : this.renderAemDate('_live')}</span>
-          </a>
-        </div>
+        ${this.renderDetailsControl()}
       </div>
     `;
   }

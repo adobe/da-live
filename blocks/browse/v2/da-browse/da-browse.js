@@ -8,7 +8,7 @@ import { getBrowseSettings, updateBrowseSettings } from '../shared/settings.js';
 import '../../da-new/da-new.js';
 import '../da-list/da-list.js';
 import '../da-browse-header/da-browse-header.js';
-import SearchSession from '../search/session.js';
+import { toggleToolsPanel, closeToolsPanel, registerToolsPanel, watchToolsPanel } from '../search/panel.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
@@ -38,6 +38,8 @@ export default class DaBrowse extends LitElement {
     _groupByType: { state: true },
     _view: { state: true },
     _permissions: { state: true },
+    _search: { state: true },
+    _toolsOpen: { state: true },
   };
 
   _browseSelKeys = new Set();
@@ -81,7 +83,7 @@ export default class DaBrowse extends LitElement {
     super();
     this._typesFilterState = { open: false, hiddenCount: 0 };
     this._sortState = { property: null, direction: 'none', loading: false };
-    this.search = new SearchSession(this);
+    this._search = { matchCase: true };
     const { groupByType, view, sort } = getBrowseSettings();
     this._sortPreference = SORT_PROPS.includes(sort?.property)
       && SORT_DIRECTIONS.includes(sort?.direction) ? sort : undefined;
@@ -94,13 +96,13 @@ export default class DaBrowse extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [style];
     this._handleShortcuts = this.handleShortcuts.bind(this);
     document.addEventListener('keydown', this._handleShortcuts);
-    this.search.mount();
+    this.mountSearch();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('keydown', this._handleShortcuts);
-    this.search.destroy();
+    this.destroySearch();
   }
 
   get canWrite() {
@@ -108,7 +110,7 @@ export default class DaBrowse extends LitElement {
   }
 
   updated() {
-    this.search.sync();
+    this.syncSearch();
   }
 
   handleShortcuts(e) {
@@ -141,8 +143,8 @@ export default class DaBrowse extends LitElement {
       if (prevDetails?.fullpath !== this.details.fullpath) {
         this._permissions = undefined;
         this._clearBrowseSelection();
-        this.search.clear();
-        this.search.updateNavField();
+        this.clearSearch();
+        this.updateNavField();
       }
 
       // EW flag lives at site level — re-check whenever org or site changes,
@@ -220,7 +222,7 @@ export default class DaBrowse extends LitElement {
   }
 
   get activeListCmp() {
-    return this.shadowRoot.querySelector(this.search.engine ? '.da-list-type-search' : '.da-list-type-browse');
+    return this.shadowRoot.querySelector(this._searchEngine ? '.da-list-type-search' : '.da-list-type-browse');
   }
 
   handleTypesFilterChange({ currentTarget, detail }) {
@@ -238,12 +240,229 @@ export default class DaBrowse extends LitElement {
     updateBrowseSettings({ sort: this._sortPreference });
   }
 
+  mountSearch() {
+    this._unwatchTools = watchToolsPanel({
+      getPanel: () => this._toolsPanel,
+      onChange: (open) => {
+        this._toolsOpen = open;
+        if (!open) this._navField?.actionButton?.focus();
+      },
+    });
+    registerToolsPanel({
+      getPanel: () => this.getToolsPanel(),
+      isConnected: () => this.isConnected,
+      shouldShow: () => this._toolsOpen,
+    });
+    this._searchReady = this.mountNavField();
+  }
+
+  destroySearch() {
+    this._unwatchTools?.();
+    if (this._toolsPanel) {
+      closeToolsPanel();
+      this._toolsPanel.closest('aside.panel')?.remove();
+      this._toolsPanel.remove();
+    }
+    this.clearSearch();
+    this._navField?.remove();
+  }
+
+  async mountNavField() {
+    const nav = document.querySelector('nx-nav');
+    if (!nav) return;
+    await import('../da-browse-search/da-browse-search.js');
+    if (!this.isConnected) return;
+    if (!this._navField) {
+      const field = document.createElement('da-browse-search');
+      field.getDirectory = async () => {
+        await this.updateComplete;
+        if (!this.browseCmp) throw new Error('Directory listing is not ready');
+        return this.browseCmp.getDirectorySnapshot();
+      };
+      field.addEventListener('search-submit', (e) => this.submitSearch(e));
+      field.addEventListener('input', () => this.setSearchDraft(field.value));
+      field.addEventListener('toolstoggle', () => toggleToolsPanel(this._toolsOpen));
+      this._navField = field;
+    }
+    nav.append(this._navField);
+    this.updateNavField();
+    this.syncSearch();
+    this.getToolsPanel().catch(() => { });
+  }
+
+  updateNavField() {
+    if (!this._navField) return;
+    const { fullpath } = this.details ?? {};
+    const directory = fullpath?.split('/').filter(Boolean).at(-1);
+    const label = directory ? `Search ${directory}` : 'Search files';
+    this._navField.label = label;
+    this._navField.placeholder = label;
+    this._navField.fullpath = fullpath;
+    this._navField.setAttribute('aria-label', label);
+  }
+
+  setSearchDraft(value) {
+    if (this._search.replacement?.loading) return;
+    if (!value) {
+      this.clearSearch();
+      return;
+    }
+    this._search = { ...this._search, draft: value, replacement: undefined };
+    this.syncSearch();
+  }
+
+  clearSearch() {
+    const wasSearching = !!this._searchEngine;
+    this._searchRequest = undefined;
+    this._searchEngine?.cancelSearch();
+    this._searchEngine = undefined;
+    this._search = { matchCase: this._search.matchCase, loading: false };
+    if (this._navField) {
+      this._navField.resetCatalog();
+      this._navField.value = '';
+    }
+    this.syncSearch();
+    if (wasSearching) {
+      this.browseCmp?.notifySortState?.();
+      this.browseCmp?.notifyTypesFilter?.();
+    }
+  }
+
+  async submitSearch(event, { preserveDraft = false } = {}) {
+    event.preventDefault();
+    if (this._search.replacement?.loading) return;
+    this._navField?.closeSuggestions();
+    const term = event.detail.value.trim();
+    const fullpath = this.details?.fullpath;
+    if (!term || !fullpath) return;
+    const request = {};
+    this._searchRequest = request;
+    this._searchEngine?.cancelSearch();
+    this._search = {
+      matchCase: this._search.matchCase,
+      draft: preserveDraft ? this._search.draft ?? event.detail.value : event.detail.value,
+      term,
+      items: [],
+      loading: true,
+    };
+    try {
+      const { default: SearchEngine } = await import('../search/search.js');
+      if (this._searchRequest !== request || !this.isConnected) return;
+      const engine = new SearchEngine();
+      engine.fullpath = fullpath;
+      engine.browseItems = this.browseCmp?.items?.map((item) => ({ ...item }));
+      engine.caseSensitive = this._search.matchCase;
+      engine.addEventListener('updated', ({ detail }) => {
+        if (this._searchEngine === engine && this._searchRequest === request) {
+          this._search = { ...this._search, items: detail.items };
+        }
+      });
+      this._searchEngine = engine;
+      await this.updateComplete;
+      if (this._searchRequest !== request || !this.isConnected) return;
+      await engine.search(fullpath, term);
+    } catch (error) {
+      if (this._searchRequest === request) {
+        this._search = { ...this._search, error: `Search failed: ${error.message}` };
+      }
+    } finally {
+      if (this._searchRequest === request) {
+        this._search = { ...this._search, loading: false };
+      }
+    }
+  }
+
+  async getToolsPanel() {
+    this._toolsPanelReady ??= import('../da-browse-tools/da-browse-tools.js').then(() => {
+      const panel = document.createElement('da-browse-tools');
+      panel.addEventListener('findchange', ({ detail }) => this.setSearchDraft(detail.value));
+      panel.addEventListener('search-submit', (e) => this.submitSearch(e));
+      panel.addEventListener('matchcasechange', (e) => this.changeMatchCase(e));
+      panel.addEventListener('replacerequest', (e) => this.replaceMatches(e));
+      this._toolsPanel = panel;
+      this.syncSearch();
+      return panel;
+    }).catch((error) => {
+      this._toolsPanelReady = undefined;
+      this._toolsOpen = false;
+      this._search = { ...this._search, error: `Search options failed: ${error.message}` };
+      throw error;
+    });
+    return this._toolsPanelReady;
+  }
+
+  syncSearch() {
+    const search = this._search;
+    const field = this._navField;
+    if (field) {
+      field.disabled = !!search.replacement?.loading;
+      field.matchCase = search.matchCase;
+      field.editor = this.editor;
+      field.toolsOpen = this._toolsOpen;
+      const value = search.draft ?? search.term ?? '';
+      if (field.value !== value) field.value = value;
+    }
+    if (!this._toolsPanel) return;
+    this._toolsPanel.searchState = {
+      ...search,
+      request: this._searchRequest,
+      scope: this.details?.fullpath,
+      count: search.items?.length ?? 0,
+      canWrite: this.canWrite,
+    };
+  }
+
+  async changeMatchCase({ detail: { matchCase } }) {
+    if (this._search.replacement?.loading || this._search.matchCase === matchCase) return;
+    this._search = { ...this._search, matchCase };
+    if (this._search.term) {
+      await this.submitSearch(
+        new CustomEvent('search-submit', { detail: { value: this._search.term } }),
+        { preserveDraft: true },
+      );
+    }
+  }
+
+  async replaceMatches({ detail: { replacement } }) {
+    const engine = this._searchEngine;
+    const {
+      loading,
+      error: searchError,
+      replacement: previous,
+      term,
+      draft,
+    } = this._search;
+    if (!engine || !term || (draft ?? term).trim() !== term
+      || loading || previous?.loading
+      || searchError || !this.canWrite) return;
+    this._search = { ...this._search, replacement: { loading: true } };
+    try {
+      const result = await engine.replaceMatches({ replacement });
+      if (this._searchEngine !== engine || !this.isConnected) return;
+      if (result.cancelled) {
+        this._search = { ...this._search, replacement: { error: 'Replacement cancelled.' } };
+      } else {
+        // Results are stale once replaced; reset the search but keep the outcome visible.
+        this.clearSearch();
+        this._search = { ...this._search, replacement: result };
+        this.syncSearch();
+      }
+    } catch (error) {
+      if (this._searchEngine === engine && this.isConnected) {
+        this._search = {
+          ...this._search,
+          replacement: { error: `Replacement failed: ${error.message}` },
+        };
+      }
+    }
+  }
+
   renderSearchResults() {
     return html`
       <div role="grid" aria-label="Search results">
         <da-list class="da-list-type-search"
           editor=${this.editor}
-          .listItems=${this.search.state.items}
+          .listItems=${this._search.items}
           .hidePublishConfs=${this.hidePublishConfs}
           .groupByType=${this._groupByType}
           .view=${this._view}
@@ -284,7 +503,7 @@ export default class DaBrowse extends LitElement {
   }
 
   render() {
-    const search = this.search.state;
+    const search = this._search;
     return html`
       <da-browse-header exportparts="chat-btn"
         .details=${this.details}
@@ -293,7 +512,7 @@ export default class DaBrowse extends LitElement {
         .view=${this._view}
         .typesFilterState=${this._typesFilterState}
         .sortState=${this._sortState}
-        .searchState=${this.search.engine || search.loading || search.error ? {
+        .searchState=${this._searchEngine || search.loading || search.error ? {
           loading: search.loading,
           count: search.items?.length ?? 0,
           error: search.error,
@@ -306,8 +525,8 @@ export default class DaBrowse extends LitElement {
       </da-browse-header>
       <div class="da-browse-content">
         ${search.error ? html`<p role="alert">${search.error}</p>` : nothing}
-        ${this.search.engine ? this.renderSearchResults() : nothing}
-        <div role="grid" aria-label="Browse files" ?hidden=${!!this.search.engine}>
+        ${this._searchEngine ? this.renderSearchResults() : nothing}
+        <div role="grid" aria-label="Browse files" ?hidden=${!!this._searchEngine}>
           ${this.renderList()}
         </div>
       </div>

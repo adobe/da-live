@@ -33,9 +33,9 @@ class DaConfirmDialog extends LitElement {
       <nx-dialog title=${this.title ?? ''}>
         <slot></slot>
         ${this.message ? html`<span slot="actions" class="da-confirm-message">${this.message}</span>` : nothing}
-        <button type="button" slot="actions" class="da-btn-secondary" @click=${this._onCancel}>Cancel</button>
+        <button type="button" slot="actions" class="nx-form-btn-secondary" @click=${this._onCancel}>Cancel</button>
         ${action ? html`<button type="button" slot="actions"
-          class="da-btn-primary ${action.style ?? ''}"
+          class="nx-form-btn-primary ${action.style ?? ''}"
           ?disabled=${action.disabled}
           @click=${action.click}>${action.label}</button>` : nothing}
       </nx-dialog>

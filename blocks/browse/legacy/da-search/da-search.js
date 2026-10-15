@@ -1,6 +1,11 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2Api } from '../../../../scripts/utils.js';
-import { getSearchScope, timeoutWrapper } from '../../shared/search.js';
+import {
+  getSearchScope,
+  withRetry,
+  isSearchable,
+  getResultName,
+} from '../../shared/search.js';
 
 const { crawl, Queue } = await import(`${getNx()}/public/utils/tree.js`);
 
@@ -64,13 +69,10 @@ export default class DaSearch extends LitElement {
   }
 
   async getMatches(startPath, term) {
-    const searchTypes = ['.html', '.json', '.svg'];
+    const searchFile = async (file) => {
+      if (!isSearchable(file.path)) return;
 
-    const searchFile = async (file, prevRetry = 0) => {
-      if (!searchTypes.some((type) => file.path.endsWith(type))) return;
-
-      let retryCount = prevRetry;
-      if (retryCount === 0) this._total += 1;
+      this._total += 1;
 
       const getFile = async () => {
         let match;
@@ -96,7 +98,7 @@ export default class DaSearch extends LitElement {
 
         if (match) {
           this._matches += 1;
-          file.name = file.path.replace(`.${file.ext}`, '').replace(this.fullpath, '');
+          file.name = getResultName(file, this.fullpath);
           this._items = [...this._items, file];
           this.updateList();
         }
@@ -104,14 +106,7 @@ export default class DaSearch extends LitElement {
         return file;
       };
 
-      const result = await this.timeoutWrapper(getFile);
-
-      if (result.error && retryCount <= 3) {
-        // eslint-disable-next-line no-console
-        console.log(`retrying due to ${result.error}: ${file.path}`);
-        retryCount += 1;
-        await searchFile(file, retryCount);
-      }
+      await withRetry({ fn: getFile, path: file.path, retries: 4 });
     };
 
     const { paths, files } = await this.getSearchScope(startPath);
@@ -141,10 +136,6 @@ export default class DaSearch extends LitElement {
     this.search(this.fullpath, term.value);
   }
 
-  timeoutWrapper(fn, timeout = 30000) {
-    return timeoutWrapper({ fn, timeout });
-  }
-
   async handleReplace(e) {
     e.preventDefault();
     const [replace] = e.target.elements;
@@ -156,9 +147,7 @@ export default class DaSearch extends LitElement {
     this._matches = 0;
     performance.mark('start-replace');
 
-    const replaceFile = async (file, prevRetry = 0) => {
-      let retryCount = prevRetry;
-
+    const replaceFile = async (file) => {
       const getFile = async () => {
         const { source } = await getNx2Api();
         const getResp = await source.get(file.path);
@@ -171,18 +160,13 @@ export default class DaSearch extends LitElement {
         return file;
       };
 
-      const result = await this.timeoutWrapper(getFile, 60000);
-
       // Only retry for true failures (not timeouts)
-      if (result.error === 'bad result') {
-        if (retryCount >= 3) {
-          // eslint-disable-next-line no-console
-          console.log('retry limit exceeded');
-          return;
-        }
-        retryCount += 1;
-        replaceFile(file, retryCount);
-      }
+      await withRetry({
+        fn: getFile,
+        path: file.path,
+        timeout: 60000,
+        shouldRetry: (result) => result.error === 'bad result',
+      });
     };
 
     const queue = new Queue(replaceFile);

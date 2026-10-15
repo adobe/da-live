@@ -68,3 +68,33 @@ export function timeoutWrapper({ fn, timeout = 30000 }) {
     });
   });
 }
+
+export const SEARCH_TYPES = ['.html', '.json', '.svg'];
+
+export function isSearchable(path) {
+  return SEARCH_TYPES.some((type) => path.endsWith(type));
+}
+
+export function getResultName(file, fullpath) {
+  return file.path.replace(`.${file.ext}`, '').replace(fullpath, '');
+}
+
+// Runs fn under a timeout and retries while shouldRetry(result) holds.
+export async function withRetry({
+  fn,
+  path,
+  timeout = 30000,
+  retries = 3,
+  shouldRetry = (result) => result?.error,
+  isCancelled,
+}) {
+  let result = await timeoutWrapper({ fn, timeout });
+  for (let attempt = 0; attempt < retries; attempt += 1) {
+    if (!shouldRetry(result) || isCancelled?.()) break;
+    // eslint-disable-next-line no-console
+    console.log(`retrying due to ${result.error}: ${path}`);
+    // eslint-disable-next-line no-await-in-loop
+    result = await timeoutWrapper({ fn, timeout });
+  }
+  return result;
+}

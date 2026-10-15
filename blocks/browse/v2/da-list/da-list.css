@@ -378,6 +378,9 @@ da-list-item.is-expanded::after {
   background: var(--s2-blue-900);
 }
 
+.da-actionbar-modal-confirmation .nx-input {
+  width: 100%;
+}
 
 /* Drop conflicts dialog */
 .da-drop-conflicts {
@@ -409,7 +412,6 @@ da-list-item.is-expanded::after {
   text-transform: uppercase;
 }
 
-
 .tag {
   display: inline-flex;
   align-items: center;
@@ -420,7 +422,7 @@ da-list-item.is-expanded::after {
   box-sizing: border-box;
   font-family: var(--s2-font-family);
   font-size: var(--s2-component-m-regular-font-size);
-  background-color: var(--s2-gray-200);
+  background-color: var(--s2-gray-75);
 
   &.folder {
     background-color: var(--s2-yellow-200);
@@ -447,7 +449,7 @@ da-list-item.is-expanded::after {
   }
 }
 
-@container browse-list (width < 900px) {
+@container browse-list (width < 600px) {
   .da-browse-table-header {
     grid-template-columns: var(--da-list-select-width) minmax(0, 1fr) var(--da-list-date-width) var(--da-list-action-width);
   }
@@ -460,7 +462,6 @@ da-list-item.is-expanded::after {
 @container browse-list (width < 600px) {
   .da-browse-table-header,
   .da-item-list {
-    --da-list-pad-inline: 8px;
     --da-list-select-width: 24px;
   }
 
