@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/adobe/da-live/compare/v1.6.1...v1.7.0) (2026-10-15)
+
+
+### Features
+
+* allow sending annotations to the ew chat for resolution ([#1373](https://github.com/adobe/da-live/issues/1373)) ([6206c79](https://github.com/adobe/da-live/commit/6206c79f3fd47d89eb750bc670940c953444a6d2))
+
 ## [1.6.1](https://github.com/adobe/da-live/compare/v1.6.0...v1.6.1) (2026-10-15)
 
 
