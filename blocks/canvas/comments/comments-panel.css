@@ -112,7 +112,7 @@
 }
 
 .ew-comment-tab.is-active {
-  background: var(--s2-gray-200, #e6e6e6);
+  background: var(--s2-gray-100, #f0f0f0);
   color: var(--s2-gray-900, #000);
 }
 

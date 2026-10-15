@@ -89,6 +89,17 @@
   }
 }
 
+:host([data-ui-size="m"]) .nx-action-btn-icon.comments-toggle {
+  width: 36px;
+  height: 36px;
+  padding: 8px;
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
 :host([data-ui-size="m"]) .comment-count-chip {
   font-size: var(--s2-component-s-regular-font-size);
 }

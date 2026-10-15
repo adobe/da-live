@@ -184,7 +184,7 @@ class EWCanvasHeader extends LitElement {
         <div class="group group-end" part="group-end">
           <button
             type="button"
-            class="nx-action-btn-icon comments-toggle ${getLgBtnClass()} ${this._commentsVisible ? 'is-active' : ''}"
+            class="nx-action-btn-icon comments-toggle ${this._commentsVisible ? 'is-active' : ''}"
             part="btn comments-toggle"
             data-action="toggle-comments"
             aria-label=${`${this._commentsVisible ? 'Hide comments' : 'Show comments'}${this._commentCount > 0 && !this._commentsVisible ? ` (${this._commentCount} active)` : ''}`}
