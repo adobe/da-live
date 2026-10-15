@@ -190,12 +190,11 @@ describe('ew-canvas-versions', () => {
   it('changing the filter segment to "Only me" updates _filter', async () => {
     inst = await createInstance({ path: '/org/site/doc.html', _versions: [] });
     await inst.updateComplete;
-    const segmented = inst.shadowRoot.querySelector('nx-segmented-btn');
-    expect(segmented.value).to.equal('all');
-    segmented.dispatchEvent(new CustomEvent('change', { detail: { value: 'me' } }));
+    const [, onlyMe] = inst.shadowRoot.querySelectorAll('.seg-btn');
+    onlyMe.click();
     await inst.updateComplete;
     expect(inst._filter).to.equal('me');
-    expect(segmented.value).to.equal('me');
+    expect(onlyMe.classList.contains('is-selected')).to.be.true;
   });
 
   it('handleCloseCompare calls cleanup and clears _compareCtx', async () => {

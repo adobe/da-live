@@ -23,16 +23,11 @@ const ICON_ADD = '/img/icons/s2-icon-addcircle-20-n.svg';
 const ICON_MORE = '/img/icons/s2-icon-more-20-n.svg';
 const ICON_CHEVRON = '/img/icons/s2-icon-chevrondown-20-n.svg';
 const ICON_CLOSE = '/img/icons/s2-icon-close-20-n.svg';
-const FILTER_ITEMS = [
-  { value: 'all', label: 'All' },
-  { value: 'me', label: 'Only me' },
-];
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
-await import(`${getNx2()}/blocks/shared/segmented-btn/segmented.js`);
 const style = await loadStyle(import.meta.url);
 const baseStyle = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
 const buttonsStyle = await getSheet(`${getNx2()}/styles/buttons.css`);
@@ -412,14 +407,16 @@ class EwCanvasVersions extends LitElement {
     return html`
       <div class="ew-canvas-versions">
         <div class="toolbar">
-          <nx-segmented-btn
-            compact
-            label="Filter versions"
-            size=${getUISize()}
-            .items=${FILTER_ITEMS}
-            .value=${this._filter}
-            @change=${(e) => this._setFilter(e.detail.value)}
-          ></nx-segmented-btn>
+          <div class="segment" role="group" aria-label="Filter versions">
+            <button type="button"
+              class="seg-btn${this._filter === 'all' ? ' is-selected' : ''}"
+              aria-pressed=${this._filter === 'all'}
+              @click=${() => this._setFilter('all')}>All</button>
+            <button type="button"
+              class="seg-btn${this._filter === 'me' ? ' is-selected' : ''}"
+              aria-pressed=${this._filter === 'me'}
+              @click=${() => this._setFilter('me')}>Only me</button>
+          </div>
           <button type="button" class="nx-action-btn-icon ${getBtnSizeClass()}" aria-label="Create version"
             ?disabled=${!!this._newVersion} @click=${this.handleNew}>
             <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">

@@ -41,6 +41,36 @@ button {
   flex-shrink: 0;
 }
 
+.segment {
+  display: flex;
+  gap: var(--s2-spacing-100);
+  color: var(--s2-gray-700);
+}
+
+.seg-btn {
+  font-size: var(--s2-component-s-regular-font-size);
+  border: none;
+  background: transparent;
+  color: var(--s2-gray-700);
+  height: 24px;
+  min-width: 48px;
+  padding: 0 var(--s2-spacing-100);
+  transition: transform 0.125s ease-out;
+
+  &:active {
+    transform: scale(0.97);
+  }
+
+  &.is-selected {
+    background: var(--s2-gray-100);
+    color: var(--s2-gray-800);
+  }
+
+  &:hover:not(.is-selected) {
+    background: var(--s2-gray-75);
+  }
+}
+
 .versionlist {
   list-style: none;
   padding: 0;
@@ -303,7 +333,8 @@ nx-dialog {
     height: 14px;
   }
 
-  .is-new .da-input {
+  .is-new .da-input,
+  .seg-btn {
     height: 32px;
   }
 
@@ -312,7 +343,8 @@ nx-dialog {
     .versionname,
     .meta,
     .user,
-    .is-new .da-input
+    .is-new .da-input,
+    .seg-btn
   ) {
     font-size: var(--s2-component-m-regular-font-size);
   }
