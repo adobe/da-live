@@ -8,11 +8,19 @@ const nextFrame = () => new Promise((r) => { setTimeout(r, 0); });
 
 let buildDocPath;
 let getExtensionsBridge;
+let canvasBus;
+let popoverShow;
 
 before(async () => {
   ({ buildDocPath } = await import('../../../../../blocks/canvas/ew-canvas-versions/ew-canvas-versions.js'));
   ({ getExtensionsBridge } = await import('../../../../../blocks/canvas/editor-utils/extensions-bridge.js'));
+  ({ canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js'));
+  const popover = customElements.get('nx-popover').prototype;
+  popoverShow = popover.show;
+  popover.show = () => {};
 });
+
+after(() => { customElements.get('nx-popover').prototype.show = popoverShow; });
 
 async function createInstance(props = {}) {
   const inst = document.createElement('ew-canvas-versions');
@@ -27,6 +35,60 @@ async function createInstance(props = {}) {
 const ver = (overrides = {}) => ({ isVersion: true, date: 'Jan 1', time: '10:00', users: [], ...overrides });
 
 const auditGroup = (audits = [{ date: 'Jan 1', time: '09:00', users: [] }]) => ({ date: 'Jan 1', audits });
+
+describe('version image previews', () => {
+  let inst;
+  afterEach(() => { inst?.remove(); });
+
+  it('resolves media images in a version preview without changing restore content', async () => {
+    const dom = document.createElement('div');
+    dom.innerHTML = '<p><img src="./media_123.png"></p>';
+    inst = document.createElement('ew-canvas-compare');
+    Object.assign(inst, { dom, path: '/org/repo/doc.html', label: 'Published' });
+    document.body.appendChild(inst);
+    await inst.updateComplete;
+    expect(inst.shadowRoot.querySelector('.ew-cc-body img').getAttribute('src'))
+      .to.equal('https://main--repo--org.stage-preview.da.live/media_123.png');
+    expect(dom.querySelector('img').getAttribute('src')).to.equal('./media_123.png');
+  });
+
+  it('updates image URLs when switching versions and leaves absolute URLs alone', async () => {
+    const dom = document.createElement('div');
+    dom.innerHTML = '<p><img src="./media_first.png"><img src="https://example.com/image.png"></p>';
+    inst = document.createElement('ew-canvas-compare');
+    Object.assign(inst, { dom, path: '/org/repo/doc.html', label: 'First' });
+    document.body.appendChild(inst);
+    await inst.updateComplete;
+    expect(inst.shadowRoot.querySelectorAll('.ew-cc-body img')[1].getAttribute('src'))
+      .to.equal('https://example.com/image.png');
+    const nextDom = document.createElement('div');
+    nextDom.innerHTML = '<p><img src="./media_second.png"></p>';
+    inst.dom = nextDom;
+    await inst.updateComplete;
+    expect(inst.shadowRoot.querySelector('.ew-cc-body img').getAttribute('src'))
+      .to.equal('https://main--repo--org.stage-preview.da.live/media_second.png');
+    inst.path = '/org/other/doc.html';
+    await inst.updateComplete;
+    expect(inst.shadowRoot.querySelector('.ew-cc-body img').getAttribute('src'))
+      .to.equal('https://main--other--org.stage-preview.da.live/media_second.png');
+  });
+
+  it('resolves images in both comparison panes without changing diff content', async () => {
+    const diffDom = document.createElement('div');
+    diffDom.innerHTML = '<p><del><img src="./media_old.png"></del><ins><img src="./media_new.png"></ins></p>';
+    inst = document.createElement('ew-canvas-compare');
+    Object.assign(inst, { diffDom, path: '/org/repo/doc.html', label: 'Published', split: true });
+    document.body.appendChild(inst);
+    await inst.updateComplete;
+    const images = inst.shadowRoot.querySelectorAll('.ew-cc-pane img');
+    expect([...images].map((img) => img.getAttribute('src'))).to.deep.equal([
+      'https://main--repo--org.stage-preview.da.live/media_old.png',
+      'https://main--repo--org.stage-preview.da.live/media_new.png',
+    ]);
+    expect([...diffDom.querySelectorAll('img')].map((img) => img.getAttribute('src')))
+      .to.deep.equal(['./media_old.png', './media_new.png']);
+  });
+});
 
 // ─── _filteredVersions ───────────────────────────────────────────────────────
 
@@ -158,7 +220,11 @@ describe('ew-canvas-versions', () => {
 
 describe('create-version form', () => {
   let inst;
+  beforeEach(() => {
+    getExtensionsBridge().view = { editable: true };
+  });
   afterEach(() => {
+    getExtensionsBridge().view = null;
     inst?.remove(); inst = null;
   });
 
@@ -226,6 +292,61 @@ describe('create-version form', () => {
     expect(saveBtn.disabled).to.be.true;
     expect(saveBtn.getAttribute('aria-label')).to.equal('Saving');
     expect(saveBtn.querySelector('.da-loading-spinner')).to.exist;
+  });
+});
+
+// ─── Create version permission gating ───────────────────────────────────────
+
+describe('create version permission gating', () => {
+  let inst;
+
+  afterEach(() => {
+    getExtensionsBridge().view = null;
+    canvasBus.editorHtmlState.emit('');
+    inst?.remove(); inst = null;
+  });
+
+  it('hides the create button and hint and ignores handleNew for read-only users', async () => {
+    getExtensionsBridge().view = { editable: false };
+    inst = await createInstance({ path: '/org/site/doc.html', _versions: [ver()] });
+    expect(inst.shadowRoot.querySelector('.versionlist') !== null).to.be.true;
+    expect(inst.shadowRoot.querySelector('button[aria-label="Create version"]') === null).to.be.true;
+    expect(inst.shadowRoot.querySelector('.da-hint') === null).to.be.true;
+    inst.handleNew();
+    await inst.updateComplete;
+    expect(inst.shadowRoot.querySelector('li.is-new') === null).to.be.true;
+  });
+
+  it('shows the create button and hint and opens the form for writers', async () => {
+    getExtensionsBridge().view = { editable: true };
+    inst = await createInstance({ path: '/org/site/doc.html', _versions: [ver()] });
+    expect(inst.shadowRoot.querySelector('.da-hint') !== null).to.be.true;
+    const btn = inst.shadowRoot.querySelector('button[aria-label="Create version"]');
+    expect(btn).to.exist;
+    btn.click();
+    await inst.updateComplete;
+    expect(inst.shadowRoot.querySelector('li.is-new') !== null).to.be.true;
+  });
+
+  it('shows the create button and hint once a writable view loads', async () => {
+    getExtensionsBridge().view = null;
+    inst = await createInstance({ path: '/org/site/doc.html', _versions: [ver()] });
+    expect(inst.shadowRoot.querySelector('button[aria-label="Create version"]') === null).to.be.true;
+    getExtensionsBridge().view = { editable: true };
+    canvasBus.editorHtmlState.emit('<body></body>');
+    await inst.updateComplete;
+    expect(inst.shadowRoot.querySelector('button[aria-label="Create version"]') !== null).to.be.true;
+    expect(inst.shadowRoot.querySelector('.da-hint') !== null).to.be.true;
+  });
+
+  it('hides the create button when the view is torn down', async () => {
+    getExtensionsBridge().view = { editable: true };
+    inst = await createInstance({ path: '/org/site/doc.html', _versions: [ver()] });
+    expect(inst.shadowRoot.querySelector('button[aria-label="Create version"]') !== null).to.be.true;
+    getExtensionsBridge().view = null;
+    canvasBus.editorHtmlState.emit('');
+    await inst.updateComplete;
+    expect(inst.shadowRoot.querySelector('button[aria-label="Create version"]') === null).to.be.true;
   });
 });
 

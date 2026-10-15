@@ -66,8 +66,8 @@ const link = await page.getByRole('link', { name: orgPageName });
 
   const copyFolderURL = getTestFolderURL('copy', workerInfo);
   const copyFolderName = copyFolderURL.split('/').pop();
-  await expect(page.getByRole('button', { name: 'New' })).toBeEnabled();
-  await page.getByRole('button', { name: 'New' }).click({ force: true });
+  await expect(page.getByRole('button', { name: 'New', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'New', exact: true }).click({ force: true });
   await page.getByRole('menuitem', { name: 'Folder' }).click();
   await page.getByPlaceholder('folder name').fill(copyFolderName);
   await page.getByRole('button', { name: 'Create' }).click();

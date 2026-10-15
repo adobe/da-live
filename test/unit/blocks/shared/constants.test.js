@@ -79,4 +79,10 @@ describe('getLivePreviewUrl', () => {
       'https://main--da-bacom--adobecom.preview.da.live',
     );
   });
+
+  it('Builds a URL using the given branch instead of main', () => {
+    expect(getLivePreviewUrl('adobecom', 'da-bacom', 'feature-branch')).to.equal(
+      'https://feature-branch--da-bacom--adobecom.preview.da.live',
+    );
+  });
 });

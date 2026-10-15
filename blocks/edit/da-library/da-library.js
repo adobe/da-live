@@ -2,7 +2,8 @@ import { LitElement, html, nothing } from 'da-lit';
 import { DOMParser as proseDOMParser, DOMSerializer, Slice, TextSelection } from 'da-y-wrapper';
 import { htmlToProse } from '../utils/helpers.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
-import { getPostMessageTargetOrigin, isValidHref } from '../../shared/utils.js';
+import { getPostMessageTargetOrigin, isValidHref, replyToGetSelection } from '../../shared/utils.js';
+import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
 import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import searchFor from './helpers/search.js';
@@ -17,6 +18,8 @@ import {
 
 const sheet = await getSheet('/blocks/edit/da-library/da-library.css');
 const buttons = await getSheet(`${getNx().replace(/\/nx2$/, '/nx')}/styles/buttons.css`);
+
+const getCurrentOrg = () => sanitizePathParts(window.location.hash.slice(1))[0];
 
 const ICONS = [
   '/blocks/edit/img/S2_Icon_ExperienceAdd_20_N.svg',
@@ -117,18 +120,24 @@ class DaLibrary extends LitElement {
   };
 
   async handlePluginClick(plugin) {
-    this._active = plugin;
-
     if (plugin.experience === 'aem-assets') {
+      this._active = plugin;
       plugin.callback();
       this.handleClose();
+      return;
     }
 
     if (plugin.experience === 'window') {
       const href = plugin.sources?.[0];
       if (!href) return;
       window.open(href, href);
+      return;
     }
+
+    // Inline/dialog experiences render an iframe straight at plugin.sources[0],
+    // so the proxy session needs to exist before _active flips the iframe on.
+    await ensurePreviewProxySession(plugin.sources?.[0], { currentOrg: getCurrentOrg() });
+    this._active = plugin;
   }
 
   dialogCheck() {
@@ -238,9 +247,12 @@ class DaLibrary extends LitElement {
 
   async handleOpenPreview(item) {
     const { org, site, pathname } = getItemDetails(item);
+    const proxyOpts = { org, site, branch: ref, currentOrg: getCurrentOrg() };
+    const url = toPreviewProxyUrl(item.path || item.value, proxyOpts);
+    await ensurePreviewProxySession(url, proxyOpts);
     this._preview = {
       name: item.name || item.key,
-      url: `https://${ref}--${site}--${org}.aem.page${pathname}`,
+      url,
     };
 
     // Lazily get the preview status
@@ -277,17 +289,23 @@ class DaLibrary extends LitElement {
         this.handleClose();
       }
       if (e.data.action === 'getSelection') {
-        const { selection } = window.view.state;
-        if (selection.empty) {
-          channel.port1.postMessage({ action: 'error', details: 'No selection found' });
-          return;
+        const { view } = window;
+        let selectionHtml = null;
+        if (view && !view.state.selection.empty) {
+          const serializer = DOMSerializer.fromSchema(view.state.schema);
+          const fragment = serializer.serializeFragment(view.state.selection.content().content);
+          const div = document.createElement('div');
+          div.appendChild(fragment);
+          selectionHtml = div.innerHTML;
         }
-        const slice = selection.content();
-        const serializer = DOMSerializer.fromSchema(window.view.state.schema);
-        const fragment = serializer.serializeFragment(slice.content);
-        const div = document.createElement('div');
-        div.appendChild(fragment);
-        target.contentWindow.postMessage({ action: 'sendSelection', details: div.innerHTML }, targetOrigin);
+        replyToGetSelection({
+          port: channel.port1,
+          target: target.contentWindow,
+          targetOrigin,
+          requestId: e.data.requestId,
+          html: selectionHtml,
+          error: view ? 'No selection found' : 'No editor view',
+        });
       }
     };
 
@@ -299,7 +317,9 @@ class DaLibrary extends LitElement {
     setTimeout(() => {
       if (!target.contentWindow) return;
 
-      const project = { view, org, repo, ref: 'main', path: `/${path.join('/')}` };
+      const project = {
+        view, org, repo, site: repo, ref: 'main', path: `/${path.join('/')}`,
+      };
 
       const { token } = window.adobeIMS.getAccessToken();
 

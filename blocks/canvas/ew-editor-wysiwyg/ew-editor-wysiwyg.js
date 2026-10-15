@@ -1,8 +1,8 @@
 import { LitElement, html } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
-import { getPreviewOrigin, fetchWysiwygCookie, fetchWysiwygBranch } from '../editor-utils/editor-utils.js';
+import { getPreviewOrigin, fetchWysiwygCookie } from '../editor-utils/editor-utils.js';
 import { initIms as loadIms } from '../../shared/utils.js';
-import { hideSelectionToolbar } from '../editor-utils/selection-toolbar.js';
+import { toolbarController } from '../editor-utils/toolbar-controller.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
@@ -52,6 +52,7 @@ export class EwEditorWysiwyg extends LitElement {
     ctx: { type: Object },
     canWrite: { type: Boolean },
     _cookieReady: { state: true },
+    _previewError: { state: true },
   };
 
   connectedCallback() {
@@ -104,12 +105,12 @@ export class EwEditorWysiwyg extends LitElement {
     const view = this._canvasActiveView ?? 'layout';
     const showWysiwyg = view === 'layout' || view === 'split';
     this.hidden = !showWysiwyg;
-    hideSelectionToolbar();
   }
 
   _resetCookieStateForCtxChange() {
     this._clearQuickEditRetry();
     this._cookieReady = false;
+    this._previewError = false;
   }
 
   updated(changed) {
@@ -118,10 +119,12 @@ export class EwEditorWysiwyg extends LitElement {
     this.removeAttribute(WYSIWYG_PORT_READY_ATTR);
     this._resetCookieStateForCtxChange();
     this._syncCanvasVisibility();
-    const { org, repo, path } = this.ctx ?? {};
-    if (!org || !repo || !path) return;
+    const { ctx } = this;
+    const { org, repo, path, branchPromise } = ctx ?? {};
+    if (!org || !repo || !path || !branchPromise) return;
 
-    fetchWysiwygBranch({ org, site: repo, path }).then((branch) => {
+    branchPromise.then((branch) => {
+      if (this.ctx !== ctx || !this.isConnected) return false;
       this._wysiwygBranch = branch;
       return tryLoadWysiwygPreviewCookies({
         org,
@@ -131,9 +134,11 @@ export class EwEditorWysiwyg extends LitElement {
         getCurrentCtx: () => this.ctx,
       });
     }).then((ok) => {
-      if (!ok) return;
+      if (!ok || this.ctx !== ctx || !this.isConnected) return;
       this._cookieReady = true;
       this.requestUpdate();
+    }).catch(() => {
+      if (this.ctx === ctx && this.isConnected) this._previewError = true;
     });
   }
 
@@ -189,6 +194,7 @@ export class EwEditorWysiwyg extends LitElement {
     const { org, repo, path } = this.ctx ?? {};
     if (!iframe?.contentWindow || !org || !repo || !path) return;
 
+    toolbarController.setIframe(iframe);
     this.removeAttribute(WYSIWYG_PORT_READY_ATTR);
     this._clearQuickEditRetry();
     this._syncCanvasVisibility();
@@ -211,8 +217,20 @@ export class EwEditorWysiwyg extends LitElement {
     this._scheduleQuickEditInitRetries(send);
   }
 
+  _onIframeFocus() {
+    const iframe = this.shadowRoot?.querySelector('iframe');
+    canvasBus.toolbarSurfaceRequest.emit({ surface: 'wysiwyg', active: true, iframeEl: iframe });
+  }
+
   _onIframeBlur() {
-    hideSelectionToolbar();
+    // Defer so focus can settle. If it landed on the toolbar (button/dialog), keep
+    // the wysiwyg surface active; otherwise the user has left the pane.
+    setTimeout(() => {
+      const tb = toolbarController.ensureToolbar();
+      const active = document.activeElement;
+      if (active && (active === tb || tb.contains(active))) return;
+      canvasBus.toolbarSurfaceRequest.emit({ surface: 'wysiwyg', active: false });
+    }, 0);
   }
 
   render() {
@@ -223,6 +241,8 @@ export class EwEditorWysiwyg extends LitElement {
       body = html`
         <div class="ew-editor-wysiwyg-placeholder">Select an HTML file for WYSIWYG preview.</div>
       `;
+    } else if (this._previewError) {
+      body = html`<div class="ew-editor-wysiwyg-placeholder">Unable to load preview. Reload the editor to retry.</div>`;
     } else if (!this._cookieReady) {
       body = html`<div class="ew-editor-wysiwyg-placeholder">Loading preview…</div>`;
     } else {
@@ -234,6 +254,7 @@ export class EwEditorWysiwyg extends LitElement {
           allow="local-network-access"
           class="ew-editor-wysiwyg-iframe"
           @load=${this._onIframeLoad}
+          @focus=${this._onIframeFocus}
           @blur=${this._onIframeBlur}
         ></iframe>
       `;
