@@ -112,7 +112,7 @@ export default class DaListBase extends LitElement {
     this._confirmText = upper;
   }
 
-  afterListChange() {}
+  afterListChange() { }
 
   later(fn, milliseconds) {
     this._timers ??= new Set();
@@ -305,6 +305,18 @@ export default class DaListBase extends LitElement {
     this._listItems.unshift(this.newItem);
     this.newItem = null;
     this.afterListChange();
+  }
+
+  async handleClearSelection() {
+    const index = this._lastCheckedIndex;
+    this.handleClear();
+    await this.updateComplete;
+    const rows = [...this.shadowRoot.querySelectorAll('da-list-item')];
+    const row = rows.find((item) => item.idx === index) ?? rows[0];
+    await row?.updateComplete;
+    const target = row?.shadowRoot?.querySelector('input[name="item-selected"]')
+      ?? this.shadowRoot.querySelector('#select-all');
+    target?.focus();
   }
 
   handleClear() {

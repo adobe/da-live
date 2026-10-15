@@ -270,7 +270,7 @@ export default class DaList extends DaListBase {
       <da-actionbar
         .permissions=${this._permissions}
         .canDelete=${this._canDelete}
-        @clearselection=${this.handleClear}
+        @clearselection=${this.handleClearSelection}
         @rename=${this.handleRename}
         @onfavorite=${this.handleFavorite}
         @onpaste=${this.handlePaste}

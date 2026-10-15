@@ -478,7 +478,7 @@ export default class DaList extends DaListBase {
         class="full-width"
         .permissions=${this._permissions}
         .canDelete=${this._canDelete}
-        @clearselection=${this.handleClear}
+        @clearselection=${this.handleClearSelection}
         @rename=${this.handleRename}
         @onfavorite=${this.handleFavorite}
         @onpaste=${this.handlePaste}

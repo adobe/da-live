@@ -194,7 +194,7 @@ export default class DaActionBar extends LitElement {
             aria-label="Unselect items">
             ${icon('close')}
           </button>
-          <span>${this.currentAction}</span>
+          <span role="status" aria-live="polite">${this.currentAction}</span>
         </div>
         <div class="da-action-bar-right-rail" role="toolbar">
           <button

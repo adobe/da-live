@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../../scripts/utils.js';
+import { closeToolsPanel } from '../search/panel.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
@@ -21,7 +22,18 @@ class DaBrowseTools extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [FORM, BUTTON, STYLE];
+    this.addEventListener('keydown', this.handleEscape);
   }
+
+  disconnectedCallback() {
+    this.removeEventListener('keydown', this.handleEscape);
+    super.disconnectedCallback();
+  }
+
+  // The replace confirmation dialog handles its own Escape.
+  handleEscape = (event) => {
+    if (event.key === 'Escape' && !event.defaultPrevented && !this._confirming) closeToolsPanel();
+  };
 
   focus() {
     this.shadowRoot.querySelector('#find')?.focus();
