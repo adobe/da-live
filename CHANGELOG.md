@@ -1,3 +1,50 @@
+# [1.6.0](https://github.com/adobe/da-live/compare/v1.5.2...v1.6.0) (2026-10-15)
+
+
+### Features
+
+* **ew:** centralize canvas branch resolution ([#1439](https://github.com/adobe/da-live/issues/1439)) ([b657553](https://github.com/adobe/da-live/commit/b657553957a905b754174b19588dc0ee2c798ceb))
+
+## [1.5.2](https://github.com/adobe/da-live/compare/v1.5.1...v1.5.2) (2026-10-14)
+
+
+### Bug Fixes
+
+* **canvas:** rerender block titles and metadata edits ([#1442](https://github.com/adobe/da-live/issues/1442)) ([a46bc71](https://github.com/adobe/da-live/commit/a46bc7136206cdc85ae9e085473852720434c052))
+
+## [1.5.1](https://github.com/adobe/da-live/compare/v1.5.0...v1.5.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* **scheduler:** strip .html before scheduling so helix-admin accepts the path ([#1436](https://github.com/adobe/da-live/issues/1436)) ([3ab3f42](https://github.com/adobe/da-live/commit/3ab3f42af2b0ee2fe8d3e57b571cc57660ee547b))
+
+# [1.5.0](https://github.com/adobe/da-live/compare/v1.4.0...v1.5.0) (2026-10-14)
+
+
+### Features
+
+* **ew:** compare documents and previews with live content ([#1405](https://github.com/adobe/da-live/issues/1405)) ([19c4eb8](https://github.com/adobe/da-live/commit/19c4eb8a2c34c19486403ddaf8e2e93af9ea0701))
+
+# [1.4.0](https://github.com/adobe/da-live/compare/v1.3.1...v1.4.0) (2026-10-13)
+
+
+### Bug Fixes
+
+* **ew:** hide create version controls for read-only users ([#1419](https://github.com/adobe/da-live/issues/1419)) ([217aa0b](https://github.com/adobe/da-live/commit/217aa0bb3456b685c0fcad7844a0661485ec368f)), closes [#1406](https://github.com/adobe/da-live/issues/1406) [#1406](https://github.com/adobe/da-live/issues/1406) [#1406](https://github.com/adobe/da-live/issues/1406) [#1406](https://github.com/adobe/da-live/issues/1406) [#1406](https://github.com/adobe/da-live/issues/1406) [#1406](https://github.com/adobe/da-live/issues/1406)
+
+
+### Features
+
+* **canvas:** outline row action menu with add section after ([#1165](https://github.com/adobe/da-live/issues/1165)) ([acdf03d](https://github.com/adobe/da-live/commit/acdf03db44d78758a4e5f456b7e3711132087f8e))
+
+## [1.3.1](https://github.com/adobe/da-live/compare/v1.3.0...v1.3.1) (2026-10-13)
+
+
+### Bug Fixes
+
+* **canvas:** send lengthDiff with SET_EDITOR_STATE on doc-view edits ([#1433](https://github.com/adobe/da-live/issues/1433)) ([5fd24d5](https://github.com/adobe/da-live/commit/5fd24d5ab1858ed4e8afc43e0472396a168a2bc0))
+
 # [1.3.0](https://github.com/adobe/da-live/compare/v1.2.4...v1.3.0) (2026-10-12)
 
 

@@ -592,21 +592,32 @@ describe('ew-preflight document navigation', () => {
 });
 
 describe('ew-preflight page URL', () => {
-  let originalUrl;
+  const state = { org: 'org', site: 'site', path: '/org/site/a' };
+  let canvasBus;
 
   before(async () => {
     await import('../../../../../blocks/canvas/ew-preflight/ew-preflight.js');
+    ({ canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js'));
   });
 
-  beforeEach(() => { originalUrl = window.location.href; });
-  afterEach(() => { window.history.replaceState(null, '', originalUrl); });
+  afterEach(() => canvasBus.branchState.emit({ path: null, status: 'pending' }));
 
-  it('evaluates the ?ref= branch instead of main', async () => {
-    const url = new URL(window.location.href);
-    url.searchParams.set('ref', 'feat');
-    window.history.replaceState(null, '', url);
-    const el = createGateElement();
-    const pageUrl = await el._resolvePageUrl();
-    expect(pageUrl).to.match(/^https:\/\/feat--site--org\.[^/]+\/a$/);
+  it('evaluates the canvas branch instead of main', async () => {
+    canvasBus.branchState.emit({ ...state, status: 'ready', branch: 'Feat/One' });
+    const pageUrl = await createGateElement()._resolvePageUrl();
+    expect(pageUrl).to.match(/^https:\/\/feat-one--site--org\.[^/]+\/a$/);
+  });
+
+  ['pending', 'error'].forEach((status) => {
+    it(`fails instead of guessing a branch while branch state is ${status}`, async () => {
+      canvasBus.branchState.emit({ ...state, status });
+      let error;
+      try {
+        await createGateElement()._resolvePageUrl();
+      } catch (e) {
+        error = e;
+      }
+      expect(error?.detail).to.contain('preview branch');
+    });
   });
 });

@@ -4,6 +4,7 @@ import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import { daFetch } from '../../shared/utils.js';
 import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
 import { getPreviewOrigin } from '../editor-utils/editor-utils.js';
+import { getCanvasBranch, whenCanvasBranch } from '../utils/branch.js';
 import { htmlToProse } from '../../edit/utils/helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { getCommentsBridge, formatCommentsViewLabel } from '../editor-utils/comments-bridge.js';
@@ -477,6 +478,8 @@ export async function getPreviewStatus({ org, site, pathname }) {
 }
 
 export function getItemPreviewUrl(item, { org, site }) {
+  const branch = getCanvasBranch({ org, site });
+  if (!branch) return null;
   const url = new URL(item.path || item.value);
   const { hostname, pathname } = url;
 
@@ -494,7 +497,7 @@ export function getItemPreviewUrl(item, { org, site }) {
   }
 
   return {
-    previewUrl: `https://${ref}--${itemSite}--${itemOrg}.aem.page${itemPath}`,
+    previewUrl: `https://${branch}--${itemSite}--${itemOrg}.aem.page${itemPath}`,
     org: itemOrg,
     site: itemSite,
     pathname: itemPath,
@@ -579,10 +582,13 @@ export function createPreflightView({ custom, org, site } = {}) {
     return view;
   }
 
-  const proxyOpts = { org, site, branch: ref, currentOrg: org, getUrl: getPreviewOrigin };
-  const source = toPreviewProxyUrl(custom.path, proxyOpts);
-  view.cacheKey = JSON.stringify([source]);
+  // Resolved on load so the proxy URL uses the settled canvas branch, never a guess.
+  view.cacheKey = JSON.stringify([custom.path]);
   view.load = async () => {
+    const branch = await whenCanvasBranch({ org, site });
+    if (!branch) throw new Error('Could not determine the preview branch for Preflight.');
+    const proxyOpts = { org, site, branch, currentOrg: org, getUrl: getPreviewOrigin };
+    const source = toPreviewProxyUrl(custom.path, proxyOpts);
     await import('../ew-preflight/ew-preflight-host.js');
     const el = document.createElement('ew-preflight-host');
     el.extension = {

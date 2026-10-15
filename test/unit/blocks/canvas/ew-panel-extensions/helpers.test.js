@@ -15,6 +15,7 @@ let getCanvasToolPanelViews;
 let fetchExtensions;
 let resolvePreflightConfig;
 let createPreflightView;
+let getItemPreviewUrl;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
@@ -27,6 +28,31 @@ before(async () => {
   createMetadataView = mod.createMetadataView;
   getCanvasToolPanelViews = mod.getCanvasToolPanelViews;
   fetchExtensions = mod.fetchExtensions;
+  getItemPreviewUrl = mod.getItemPreviewUrl;
+});
+
+describe('library preview branch state', () => {
+  const state = { org: 'org', site: 'site', path: '/org/site/page' };
+  const item = { path: 'https://content.da.live/org/site/blocks/hero' };
+  afterEach(() => canvasBus.branchState.emit({ path: null, status: 'pending' }));
+
+  it('uses the configured canvas branch rather than a snapshotted query ref', () => {
+    canvasBus.branchState.emit({ ...state, status: 'ready', branch: 'Configured/Branch' });
+    expect(getItemPreviewUrl(item, state).previewUrl)
+      .to.equal('https://configured-branch--site--org.aem.page/blocks/hero');
+  });
+
+  ['pending', 'error'].forEach((status) => {
+    it(`does not build a main-branch URL while branch state is ${status}`, () => {
+      canvasBus.branchState.emit({ ...state, status });
+      expect(getItemPreviewUrl(item, state)).to.equal(null);
+    });
+  });
+
+  it('does not use state belonging to a different site', () => {
+    canvasBus.branchState.emit({ ...state, site: 'different', status: 'ready', branch: 'wrong' });
+    expect(getItemPreviewUrl(item, state)).to.equal(null);
+  });
 });
 
 describe('EW panel helpers transformBlock', () => {
@@ -619,15 +645,35 @@ describe('createPreflightView', () => {
     expect(view.cacheKey).to.equal(undefined);
   });
 
-  it('resolves a relative custom path through the preview proxy', () => {
-    const view = createPreflightView({
-      custom: { title: 'Preflight', path: '/tools/preflight.html' },
-      org: 'org',
-      site: 'site',
+  describe('with a custom path', () => {
+    const custom = { title: 'Preflight', path: '/tools/preflight.html' };
+    const state = { org: 'org', site: 'site', path: '/org/site/page' };
+    afterEach(() => canvasBus.branchState.emit({ path: null, status: 'pending' }));
+
+    it('keys the view by the configured path', () => {
+      const view = createPreflightView({ custom, org: 'org', site: 'site' });
+      expect(view.cacheKey).to.equal(JSON.stringify(['/tools/preflight.html']));
     });
-    const [source] = JSON.parse(view.cacheKey);
-    expect(source).to.match(/^https?:\/\//);
-    expect(source).to.contain('/tools/preflight.html');
+
+    it('proxies the custom path through the settled canvas branch', async () => {
+      canvasBus.branchState.emit({ ...state, status: 'pending' });
+      const loading = createPreflightView({ custom, org: 'org', site: 'site' }).load();
+      canvasBus.branchState.emit({ ...state, status: 'ready', branch: 'Configured/Branch' });
+      const [source] = (await loading).extension.sources;
+      expect(source).to.contain('configured-branch');
+      expect(source).to.contain('/tools/preflight.html');
+    });
+
+    it('does not guess a branch when resolution fails', async () => {
+      canvasBus.branchState.emit({ ...state, status: 'error', error: 'down' });
+      let error;
+      try {
+        await createPreflightView({ custom, org: 'org', site: 'site' }).load();
+      } catch (e) {
+        error = e;
+      }
+      expect(error).to.be.instanceOf(Error);
+    });
   });
 });
 

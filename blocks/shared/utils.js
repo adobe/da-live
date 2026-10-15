@@ -246,7 +246,7 @@ export const getSheetByIndex = (json, index = 0) => {
   if (json[':type'] !== 'multi-sheet') {
     return json.data;
   }
-  return json[Object.keys(json)[index]]?.data;
+  return json[json[':names']?.[index]]?.data;
 };
 
 export const getSheetByName = (json, name) => {
@@ -276,6 +276,30 @@ export function getPostMessageTargetOrigin(url, fallback = '/') {
     console.error(`Could not determine postMessage target origin for "${url}"`, e);
     return fallback;
   }
+}
+
+/** True for the requestId an SDK request carries when it expects an `sdkResponse`. */
+export function isRequestId(value) {
+  return typeof value === 'string' && value.length > 0 && value.length <= 100;
+}
+
+/**
+ * Answers a plugin's getSelection request. Requests with a requestId get an `sdkResponse` on the
+ * port; older SDK copies send none and still get `sendSelection` on window or `error` on the port.
+ */
+export function replyToGetSelection({
+  port, target, targetOrigin, requestId, html, error,
+}) {
+  if (isRequestId(requestId)) {
+    const result = html ? { ok: true, html } : { ok: false, error };
+    port.postMessage({ action: 'sdkResponse', requestId, result });
+    return;
+  }
+  if (html) {
+    target.postMessage({ action: 'sendSelection', details: html }, targetOrigin);
+    return;
+  }
+  port.postMessage({ action: 'error', details: error });
 }
 
 export async function contentLogin(owner, repo) {
@@ -355,15 +379,29 @@ export const fetchDaConfigs = (() => {
     return resp.json();
   };
 
+  const cacheConfig = (key, org, site) => {
+    configCache[key] = fetchConfig(org, site).then(
+      (result) => {
+        if (result.error) delete configCache[key];
+        return result;
+      },
+      (error) => {
+        delete configCache[key];
+        throw error;
+      },
+    );
+    return configCache[key];
+  };
+
   return ({ org, site }) => {
     if (!org) return [Promise.resolve(null)];
 
     // Set the org config promise if it does not exist
-    configCache[`/${org}`] ??= fetchConfig(org);
+    configCache[`/${org}`] ??= cacheConfig(`/${org}`, org);
 
     if (site) {
       // Set the site config promise if it does not exist
-      configCache[`/${org}/${site}`] ??= fetchConfig(org, site);
+      configCache[`/${org}/${site}`] ??= cacheConfig(`/${org}/${site}`, org, site);
     }
 
     // return array of cached configs (org = 0, site = 1)

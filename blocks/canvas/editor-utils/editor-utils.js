@@ -11,6 +11,7 @@ import {
 } from './rerender-scope.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { canvasBus, registerEditorSelectEnricher } from '../utils/canvas-bus.js';
+import { normalizeBranch } from '../utils/branch.js';
 
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 const { getImageDocumentVersion } = await import(`${getNx2()}/public/utils/quick-edit-images.js`);
@@ -176,7 +177,7 @@ export function getEditor(data, ctx) {
     return;
   }
   const { view } = ctx;
-  const { cursorOffset } = data;
+  const { cursorOffset, previousDoc } = data;
   if (typeof cursorOffset !== 'number') return;
 
   const { doc } = view.state;
@@ -192,6 +193,7 @@ export function getEditor(data, ctx) {
         editorState: node.toJSON(),
         cursorOffset: newCursorOffset,
         imageVersion: getImageDocumentVersion(doc),
+        lengthDiff: previousDoc ? doc.content.size - previousDoc.content.size : 0,
       },
     });
     markPreviewSynced(ctx, data);
@@ -530,35 +532,42 @@ export function getPreviewOrigin(org, repo, branch = 'main') {
   const domain = hostname.endsWith('aem.page') || hostname.endsWith('localhost')
     ? 'stage-preview.da.live'
     : 'preview.da.live';
-  return `https://${branch}--${repo}--${org}.${domain}`;
+  return `https://${normalizeBranch(branch)}--${repo}--${org}.${domain}`;
 }
 
 export async function fetchWysiwygBranch({ org, site, path }) {
   if (!org || !site) return 'main';
   const branchParam = new URLSearchParams(window.location.search).get('ref');
-  if (branchParam) return branchParam;
+  if (branchParam && branchParam !== 'local') return normalizeBranch(branchParam);
 
-  try {
-    const configs = await Promise.all(fetchDaConfigs({ org, site }));
-    const rows = configs.filter(Boolean).reverse().flatMap((c) => getFirstSheet(c) || []);
-    const branchRows = rows.filter((r) => r.key === 'ew.wysiwygBranch');
-    if (!branchRows.length) return 'main';
+  const configs = await Promise.all(fetchDaConfigs({ org, site }));
+  const rows = configs.filter((c) => {
+    if (c?.error) {
+      // eslint-disable-next-line no-console
+      console.warn(c.error, c.status);
+      return false;
+    }
+    return Boolean(c);
+  }).reverse().flatMap((c) => getFirstSheet(c) || []);
+  const branchRows = rows.filter((r) => r?.key === 'ew.wysiwygBranch'
+    && typeof r.value === 'string');
+  if (!branchRows.length) return 'main';
 
-    const fullPath = path ? `/${path}` : `/${org}/${site}`;
-    const matched = branchRows
-      .map((row) => {
-        const eqIdx = row.value.indexOf('=');
-        if (eqIdx === -1) return null;
-        return { prefix: row.value.slice(0, eqIdx), branch: row.value.slice(eqIdx + 1).trim() };
-      })
-      .filter((entry) => entry?.branch && fullPath.startsWith(entry.prefix))
-      .sort((a, b) => b.prefix.length - a.prefix.length)[0];
+  const fullPath = path ? `/${path}` : `/${org}/${site}`;
+  const matched = branchRows
+    .map((row) => {
+      const eqIdx = row.value.indexOf('=');
+      if (eqIdx === -1) return null;
+      return {
+        prefix: row.value.slice(0, eqIdx).replace(/\/+$/, ''),
+        branch: row.value.slice(eqIdx + 1).trim(),
+      };
+    })
+    .filter((entry) => entry?.branch
+      && (fullPath === entry.prefix || fullPath.startsWith(`${entry.prefix}/`)))
+    .sort((a, b) => b.prefix.length - a.prefix.length)[0];
 
-    return matched?.branch || 'main';
-  } catch (e) {
-    if (!(e instanceof TypeError) && !(e instanceof SyntaxError)) throw e;
-  }
-  return 'main';
+  return normalizeBranch(matched?.branch || 'main');
 }
 
 export async function fetchWysiwygCookie({ org, repo, token, branch = 'main' }) {
