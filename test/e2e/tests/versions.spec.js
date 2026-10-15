@@ -73,10 +73,10 @@ test('Create Version and Restore from it', async ({ page }, workerInfo) => {
     await expect(audit).toContainText(expectedUser);
   }
 
-  // Select 'ver 1' and restore it — the click expands the version entry;
-  // WebKit needs a beat for the expansion to start processing.
+  // Select 'ver 1' and restore it — the click expands the version entry.
+  // The following assertion's built-in polling covers WebKit needing a beat
+  // for the expansion to start processing.
   await page.getByText('ver 1', { exact: false }).click();
-  await page.waitForTimeout(500);
   const ver1Button = page.locator('li').filter({ hasText: 'ver 1' }).getByRole('button');
   await expect(ver1Button).toBeVisible();
   await ver1Button.click();
