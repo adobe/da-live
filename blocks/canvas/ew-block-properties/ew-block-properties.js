@@ -965,11 +965,22 @@ Adapt the rows, cells, and labels to the actual selected library variant; do not
     });
   }
 
+  _openQuickBlocks() {
+    document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'tools', id: 'quick-block' } }));
+  }
+
   render() {
     const switchIcon = html`<svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-switch-20-n.svg#icon"></use></svg>`;
     return html`
       <div class="ew-page-metadata">
-        <div class="ew-pm-fields">
+        <nav class="ew-block-tabs" role="tablist" aria-label="Block tools">
+          <button type="button" role="tab" aria-selected="false"
+            @click=${this._openQuickBlocks}>Quick blocks</button>
+          <button type="button" id="ew-block-properties-tab" role="tab" aria-selected="true"
+            aria-controls="ew-block-properties-panel">Block properties</button>
+        </nav>
+        <div class="ew-pm-fields" id="ew-block-properties-panel" role="tabpanel"
+          aria-labelledby="ew-block-properties-tab">
           ${this._hasBlock ? html`<div class="nx-form-field ew-pm-control">
             <span>Block</span>
             <button type="button" class="ew-block-name"

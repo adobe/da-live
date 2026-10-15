@@ -20,6 +20,10 @@ action to open the **Block** sidebar. Selection alone does not switch the
 sidebar. The sidebar supports variants and library-defined fields, including
 text, links, images, and repeating items. Field controls require matching block
 library metadata; use **Generate fields** and then **Refresh** where offered.
+On this demo branch, the top of the Block sidebar has a **Quick blocks / Block
+properties** switch. **Block properties** is selected; **Quick blocks** returns
+to the site's **Quick Block** extension. Its **Properties** shortcut opens the
+Block sidebar again.
 
 Drops and configuration edits change the document. Use the draft for demos that
 should not alter the index page.

@@ -273,3 +273,42 @@
   line-height: 1.5;
   text-align: center;
 }
+
+.ew-block-tabs {
+  display: flex;
+  gap: 2px;
+  margin-inline: var(--s2-spacing-200);
+  padding: 3px;
+  border-radius: var(--s2-corner-radius-500);
+  background: var(--s2-gray-100);
+}
+
+.ew-block-tabs button {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  border: 0;
+  border-radius: var(--s2-corner-radius-400);
+  background: transparent;
+  color: var(--s2-gray-700);
+  cursor: pointer;
+  font-family: var(--s2-font-family);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ew-block-tabs button:focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: -2px;
+}
+
+.ew-block-tabs button:hover:not([aria-selected='true']) {
+  background: var(--s2-gray-200);
+  color: var(--s2-gray-900);
+}
+
+.ew-block-tabs button[aria-selected='true'] {
+  background: var(--s2-gray-25);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%);
+  color: var(--s2-gray-900);
+}

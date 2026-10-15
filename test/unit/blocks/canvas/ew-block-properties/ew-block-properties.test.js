@@ -15,6 +15,7 @@ let resetBlockOptionsCache;
 let hashChange;
 let handleCursorMove;
 let handleIframeSelectionChange;
+let PANEL_EVENT;
 
 before(async () => {
   await import('../../../../../blocks/canvas/ew-block-properties/ew-block-properties.js');
@@ -22,6 +23,7 @@ before(async () => {
   ({ resetBlockLibraryCache, resetBlockOptionsCache } = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js'));
   ({ hashChange } = await import(`${getNx()}/utils/utils.js`));
   ({ handleCursorMove, handleIframeSelectionChange } = await import('../../../../../blocks/canvas/ew-editor-wysiwyg/utils/handlers.js'));
+  ({ PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`));
 });
 
 function table(name) {
@@ -80,6 +82,44 @@ describe('ew-block-properties', () => {
     ));
     hashChange._set({ org: 'testorg', site: 'testsite' });
   }
+
+  it('shows Quick blocks followed by the selected Block properties tab', () => {
+    const tabs = [...el.shadowRoot.querySelectorAll('.ew-block-tabs [role="tab"]')];
+    expect(tabs.map((tab) => tab.textContent)).to.deep.equal(['Quick blocks', 'Block properties']);
+    expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).to.deep.equal(['false', 'true']);
+    const panel = el.shadowRoot.querySelector('[role="tabpanel"]');
+    expect(tabs[1].getAttribute('aria-controls')).to.equal(panel.id);
+    expect(panel.getAttribute('aria-labelledby')).to.equal(tabs[1].id);
+  });
+
+  it('opens the Quick Block extension without changing the document or selection', () => {
+    const onOpen = sinon.spy();
+    document.addEventListener(PANEL_EVENT.OPEN, onOpen);
+    const { doc, selection } = view.state;
+    try {
+      el.shadowRoot.querySelector('.ew-block-tabs button').click();
+      expect(onOpen.calledOnce).to.be.true;
+      expect(onOpen.firstCall.args[0].detail).to.deep.equal({ section: 'tools', id: 'quick-block' });
+      expect(view.state.doc).to.equal(doc);
+      expect(view.state.selection).to.equal(selection);
+      el.shadowRoot.querySelector('#ew-block-properties-tab').click();
+      expect(onOpen.calledOnce).to.be.true;
+    } finally {
+      document.removeEventListener(PANEL_EVENT.OPEN, onOpen);
+    }
+  });
+
+  it('keeps navigation available without a selected block and on read-only pages', async () => {
+    view.editable = false;
+    canvasBus.editorDocState.emit();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.ew-block-tabs button').disabled).to.be.false;
+    getExtensionsBridge().view = null;
+    canvasBus.toolbarSelectionState.emit({ surface: 'doc', showable: false });
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.ew-block-tabs button').disabled).to.be.false;
+    expect(el.shadowRoot.querySelector('.ew-block-empty')).to.exist;
+  });
 
   function configureVariantLibrary(heroHtml = `
     <body>
@@ -214,7 +254,7 @@ describe('ew-block-properties', () => {
   });
 
   it('shows the already-selected block in a button, not an editable input', () => {
-    const button = el.shadowRoot.querySelector('button');
+    const button = el.shadowRoot.querySelector('.ew-block-name');
     expect(el.shadowRoot.querySelector('.ew-pm-header')).to.be.null;
     expect(el.shadowRoot.querySelector('.ew-pm-control > span').textContent).to.equal('Block');
     expect(el.shadowRoot.querySelector('input')).to.be.null;
@@ -232,7 +272,7 @@ describe('ew-block-properties', () => {
     const open = sinon.stub(el, '_openLibrary').resolves();
     el.requestUpdate();
     await el.updateComplete;
-    el.shadowRoot.querySelector('button').click();
+    el.shadowRoot.querySelector('.ew-block-name').click();
     expect(open.calledOnce).to.be.true;
   });
 
@@ -283,7 +323,7 @@ describe('ew-block-properties', () => {
       view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos)));
       canvasBus.toolbarSelectionState.emit({ surface, showable: false, block: { name: 'block' } });
       await el.updateComplete;
-      expect(el.shadowRoot.querySelector('button').textContent).to.equal(surface === 'doc' ? 'cards' : 'hero');
+      expect(el.shadowRoot.querySelector('.ew-block-name').textContent).to.equal(surface === 'doc' ? 'cards' : 'hero');
     }
   });
 
@@ -376,7 +416,7 @@ describe('ew-block-properties', () => {
     view.dispatch(tr.setSelection(NodeSelection.create(tr.doc, 0)));
     canvasBus.editorDocState.emit();
     await el.updateComplete;
-    expect(el.shadowRoot.querySelector('button').textContent).to.equal('teaser');
+    expect(el.shadowRoot.querySelector('.ew-block-name').textContent).to.equal('teaser');
   });
 
   it('shows Select a block when the selection is outside all blocks', async () => {
@@ -384,7 +424,7 @@ describe('ew-block-properties', () => {
     view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, outside)));
     canvasBus.toolbarSelectionState.emit({ surface: 'doc', showable: true });
     await el.updateComplete;
-    expect(el.shadowRoot.querySelector('button')).to.be.null;
+    expect(el.shadowRoot.querySelector('.ew-block-name')).to.be.null;
     expect(el.shadowRoot.querySelector('p').textContent).to.equal('Select a block');
   });
 
@@ -397,14 +437,14 @@ describe('ew-block-properties', () => {
     canvasBus.toolbarSelectionState.emit({ surface: 'doc', showable: false, block: { name: 'hero' } });
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('p')).to.be.null;
-    expect(el.shadowRoot.querySelector('button').textContent).to.equal('hero');
+    expect(el.shadowRoot.querySelector('.ew-block-name').textContent).to.equal('hero');
   });
 
   it('shows Select a block when no editor view is available', async () => {
     getExtensionsBridge().view = null;
     canvasBus.toolbarSelectionState.emit({ surface: 'doc', showable: true });
     await el.updateComplete;
-    expect(el.shadowRoot.querySelector('button')).to.be.null;
+    expect(el.shadowRoot.querySelector('.ew-block-name')).to.be.null;
     expect(el.shadowRoot.querySelector('p').textContent).to.equal('Select a block');
     await el._openLibrary();
     expect(document.querySelector('ew-block-library-modal')).to.be.null;
@@ -415,7 +455,7 @@ describe('ew-block-properties', () => {
     view.editable = false;
     canvasBus.editorDocState.emit();
     await el.updateComplete;
-    expect(el.shadowRoot.querySelector('button').disabled).to.be.true;
+    expect(el.shadowRoot.querySelector('.ew-block-name').disabled).to.be.true;
     await el._openLibrary();
     expect(document.querySelector('ew-block-library-modal')).to.be.null;
   });
@@ -432,7 +472,7 @@ describe('ew-block-properties', () => {
   it('shows Select a block when the document unloads', async () => {
     canvasBus.editorHtmlState.emit('');
     await el.updateComplete;
-    expect(el.shadowRoot.querySelector('button')).to.be.null;
+    expect(el.shadowRoot.querySelector('.ew-block-name')).to.be.null;
     expect(el.shadowRoot.querySelector('p').textContent).to.equal('Select a block');
   });
 
@@ -443,7 +483,7 @@ describe('ew-block-properties', () => {
     canvasBus.editorDocState.emit();
     document.body.append(el);
     await el.updateComplete;
-    expect(el.shadowRoot.querySelector('button').textContent).to.equal('teaser');
+    expect(el.shadowRoot.querySelector('.ew-block-name').textContent).to.equal('teaser');
   });
 
   it('matches the gray, rounded picker-field appearance', async () => {
@@ -452,7 +492,11 @@ describe('ew-block-properties', () => {
     sheet.replaceSync(await response.text());
     el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
     el.style.setProperty('--s2-gray-100', '#e8e8e8');
+    el.style.setProperty('--s2-gray-25', '#ffffff');
+    el.style.setProperty('--s2-gray-700', '#555555');
     el.style.setProperty('--s2-gray-800', '#292929');
+    el.style.setProperty('--s2-gray-900', '#171717');
+    el.style.setProperty('--s2-corner-radius-400', '6px');
     el.style.setProperty('--s2-corner-radius-500', '8px');
     el.style.setProperty('--s2-component-s-regular-font-size', '12px');
     el.style.setProperty('--s2-component-s-regular-line-height', '16px');
@@ -461,7 +505,21 @@ describe('ew-block-properties', () => {
     el.style.setProperty('--s2-spacing-200', '16px');
     expect(getComputedStyle(el.shadowRoot.querySelector('.ew-page-metadata')).paddingTop)
       .to.equal('16px');
-    const style = getComputedStyle(el.shadowRoot.querySelector('button'));
+    const tabs = el.shadowRoot.querySelector('.ew-block-tabs');
+    expect(getComputedStyle(tabs).backgroundColor).to.equal('rgb(232, 232, 232)');
+    expect(getComputedStyle(tabs).borderRadius).to.equal('8px');
+    const inactiveTab = getComputedStyle(tabs.children[0]);
+    const activeTab = getComputedStyle(tabs.children[1]);
+    expect(inactiveTab.backgroundColor).to.equal('rgba(0, 0, 0, 0)');
+    expect(inactiveTab.color).to.equal('rgb(85, 85, 85)');
+    expect(activeTab.backgroundColor).to.equal('rgb(255, 255, 255)');
+    expect(activeTab.color).to.equal('rgb(23, 23, 23)');
+    expect(activeTab.boxShadow).not.to.equal('none');
+    expect(activeTab.height).to.equal('30px');
+    expect(activeTab.fontWeight).to.equal('600');
+    el.style.setProperty('--s2-gray-25', '#242424');
+    expect(getComputedStyle(tabs.children[1]).backgroundColor).to.equal('rgb(36, 36, 36)');
+    const style = getComputedStyle(el.shadowRoot.querySelector('.ew-block-name'));
     expect(style.backgroundColor).to.equal('rgb(232, 232, 232)');
     expect(style.color).to.equal('rgb(41, 41, 41)');
     expect(style.height).to.equal('32px');
