@@ -67,6 +67,55 @@ describe('aem2prose', () => {
   });
 });
 
+describe('prose2aem image URLs', () => {
+  const mediaPath = '/media_14bee32b7222199474e7654ca6c19dcdb05f59c86.jpg#width=936&height=518';
+
+  function convertImage(src, livePreview) {
+    const editor = document.createElement('div');
+    const img = document.createElement('img');
+    img.setAttribute('src', src);
+    editor.append(img);
+    const result = prose2aem(editor, livePreview);
+    return new DOMParser().parseFromString(result, 'text/html');
+  }
+
+  function expectPictureSrc(parsed, expected) {
+    expect(parsed.querySelector('picture img').getAttribute('src')).to.equal(expected);
+    const sources = parsed.querySelectorAll('picture source');
+    expect(sources.length).to.equal(2);
+    sources.forEach((source) => {
+      expect(source.getAttribute('srcset')).to.equal(expected);
+    });
+  }
+
+  [
+    'https://main--sample-content-hlx6-migrated--kptdobe.preview.da.live',
+    'https://main--sample-content-hlx6-migrated--kptdobe.stage-preview.da.live',
+    'http://main--sample-content-hlx6-migrated--kptdobe.localhost:8000',
+    'https://main--sample-content-hlx6-migrated--kptdobe.aem.page',
+    'https://example.com',
+  ].forEach((origin) => {
+    [mediaPath, `/nested/folder${mediaPath}`].forEach((path) => {
+      it(`preserves the preview image URL ${origin}${path}`, () => {
+        const src = `${origin}${path}`;
+        expectPictureSrc(convertImage(src, true), src);
+      });
+    });
+  });
+
+  ['content.da.live', 'stage-content.da.live'].forEach((host) => {
+    it(`removes the org and site prefix for ${host} in live preview`, () => {
+      const src = `https://${host}/kptdobe/sample-content-hlx6-migrated/nested${mediaPath}`;
+      expectPictureSrc(convertImage(src, true), `/nested${mediaPath}`);
+    });
+
+    it(`preserves the full ${host} URL outside live preview`, () => {
+      const src = `https://${host}/kptdobe/sample-content-hlx6-migrated${mediaPath}`;
+      expectPictureSrc(convertImage(src, false), src);
+    });
+  });
+});
+
 describe('prose2aem section-metadata handling', () => {
   function makeEditor(innerHtml) {
     const editor = document.createElement('div');
