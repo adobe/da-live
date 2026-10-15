@@ -23,6 +23,8 @@ async function primeHlx6Cache(orgSitePairs) {
   }
 }
 
+const CONTENT = { filenameMatch: false, snippets: [{ text: 'old', matches: [] }] };
+
 describe('SearchEngine', () => {
   let searchEngine;
   let fetchStub;
@@ -46,7 +48,7 @@ describe('SearchEngine', () => {
       const text = '<p>Old old OLD a.b aXb A.B</p>';
       const context = getMatchContext({ text, filename: 'old.html', term: 'old', caseSensitive: false });
       const snippet = context.snippets[0];
-      expect(snippet.text).to.equal(text);
+      expect(snippet.text).to.equal('<p>Old old OLD a.b aXb A.B');
       expect(snippet.matches.map(({ start, end }) => snippet.text.slice(start, end)))
         .to.deep.equal(['Old', 'old', 'OLD']);
       expect(context.filenameMatch).to.be.true;
@@ -60,8 +62,8 @@ describe('SearchEngine', () => {
     });
 
     it('distinguishes filename-only matches and non-matching files', () => {
-      expect(getMatchContext({ text: 'unrelated', filename: 'old.html', term: 'old', caseSensitive: true })).to.deep.equal({ filenameMatch: true, snippets: [], hasMore: false });
-      expect(getMatchContext({ text: 'unrelated', filename: 'other.html', term: 'old', caseSensitive: true })).to.deep.equal({ filenameMatch: false, snippets: [], hasMore: false });
+      expect(getMatchContext({ text: 'unrelated', filename: 'old.html', term: 'old', caseSensitive: true })).to.deep.equal({ filenameMatch: true, snippets: [], hasMore: false, moreCount: 0 });
+      expect(getMatchContext({ text: 'unrelated', filename: 'other.html', term: 'old', caseSensitive: true })).to.deep.equal({ filenameMatch: false, snippets: [], hasMore: false, moreCount: 0 });
     });
 
     it('preserves Unicode source and its UTF-16 match offsets', () => {
@@ -81,11 +83,12 @@ describe('SearchEngine', () => {
       });
     });
 
-    it('bounds retained source excerpts and stops after the first three windows', () => {
+    it('bounds retained source excerpts and keeps the first three windows and counts the rest', () => {
       const text = `${'x'.repeat(200)}needle`.repeat(12);
       const context = getMatchContext({ text, filename: 'page.html', term: 'needle', caseSensitive: true });
       expect(context.snippets).to.have.length(3);
       expect(context.hasMore).to.be.true;
+      expect(context.moreCount).to.equal(9);
       context.snippets.forEach((snippet) => {
         expect(snippet.text.length).to.be.at.most(160);
         expect(snippet.text)
@@ -144,7 +147,6 @@ describe('SearchEngine', () => {
         await searchEngine.getMatches('/org/site', 'old');
         expect(fetchStub.called).to.be.true;
         expect(searchEngine._items).to.deep.equal([]);
-        expect(searchEngine._matches).to.equal(0);
       } finally {
         globalThis.__crawlMock = previous;
       }
@@ -158,25 +160,16 @@ describe('SearchEngine', () => {
       expect(search).not.to.be.instanceOf(HTMLElement);
       expect(customElements.get('da-search')).to.equal(undefined);
       expect(search._items).to.deep.equal([]);
-      expect(search._total).to.equal(0);
-      expect(search._matches).to.equal(0);
-      expect(search._time).to.be.null;
     });
   });
 
   describe('setDefault', () => {
     it('resets all state properties', () => {
       searchEngine._items = [{ path: '/test' }];
-      searchEngine._total = 5;
-      searchEngine._matches = 3;
-      searchEngine._time = '1.234';
 
       searchEngine.setDefault();
 
       expect(searchEngine._items).to.deep.equal([]);
-      expect(searchEngine._total).to.equal(0);
-      expect(searchEngine._matches).to.equal(0);
-      expect(searchEngine._time).to.be.null;
     });
   });
 
@@ -506,51 +499,6 @@ describe('SearchEngine', () => {
     });
   });
 
-  describe('timeoutWrapper', () => {
-    it('resolves with result when promise completes before timeout', async () => {
-      const fn = async () => ({ success: true });
-      const result = await searchEngine.timeoutWrapper(fn, 1000);
-
-      expect(result).to.deep.equal({ success: true });
-    });
-
-    it('resolves with timeout error when promise exceeds timeout', async () => {
-      const fn = async () => {
-        await new Promise((resolve) => { setTimeout(resolve, 200); });
-        return { success: true };
-      };
-      const result = await searchEngine.timeoutWrapper(fn, 50);
-
-      expect(result).to.deep.equal({ error: 'timeout' });
-    });
-
-    it('resolves with bad result error when promise rejects', async () => {
-      const fn = async () => {
-        throw new Error('test error');
-      };
-      const result = await searchEngine.timeoutWrapper(fn, 1000);
-
-      expect(result).to.deep.equal({ error: 'bad result' });
-    });
-
-    it('uses default timeout of 30000ms', async () => {
-      const fn = async () => ({ success: true });
-      const result = await searchEngine.timeoutWrapper(fn);
-
-      expect(result).to.deep.equal({ success: true });
-    });
-
-    it('clears timeout when promise completes', async () => {
-      const clearTimeoutSpy = spy(window, 'clearTimeout');
-      const fn = async () => ({ success: true });
-
-      await searchEngine.timeoutWrapper(fn, 1000);
-
-      expect(clearTimeoutSpy.called).to.be.true;
-      clearTimeoutSpy.restore();
-    });
-  });
-
   describe('search', () => {
     beforeEach(() => {
       searchEngine.fullpath = '/org/site/folder';
@@ -569,26 +517,12 @@ describe('SearchEngine', () => {
       expect(searchEngine.getMatches.calledOnce).to.be.true;
       expect(searchEngine.getMatches.firstCall.args).to.deep.equal(['/org/site/folder', 'test']);
     });
-
-    it('measures and sets search time', async () => {
-      await searchEngine.search('/org/site/folder', 'test');
-
-      expect(searchEngine._time).to.be.a('string');
-      expect(parseFloat(searchEngine._time)).to.be.a('number');
-    });
-
-    it('truncates time to 4 characters', async () => {
-      await searchEngine.search('/org/site/folder', 'test');
-
-      expect(searchEngine._time.length).to.be.at.most(4);
-    });
   });
 
   describe('case-aware replacement', () => {
     beforeEach(() => {
       searchEngine._term = 'old';
-      searchEngine._matches = 1;
-      searchEngine._items = [{ path: '/org/site/file.html', ext: 'html' }];
+      searchEngine._items = [{ path: '/org/site/file.html', ext: 'html', matchContext: CONTENT }];
     });
 
     function mockSource(text, writes) {
@@ -612,7 +546,6 @@ describe('SearchEngine', () => {
       expect(result).to.deep.equal({ replaced: 1, skipped: 0, errors: [] });
       expect(writes).to.have.length(1);
       expect(await writes[0].blob.text()).to.equal('$& $& axb');
-      expect(writes[0].blob.type).to.equal('text/html');
     });
 
     it('respects match case and supports deliberately empty replacements', async () => {
@@ -623,7 +556,19 @@ describe('SearchEngine', () => {
       expect(await writes[0].blob.text()).to.equal('OLD ');
     });
 
-    it('skips filename-only matches without saving unchanged content', async () => {
+    it('does not re-read or save filename-only matches', async () => {
+      searchEngine._items = [
+        { path: '/org/site/old.html', ext: 'html', matchContext: { filenameMatch: true, snippets: [] } },
+      ];
+      const writes = [];
+      mockSource('old content', writes);
+      const result = await searchEngine.replaceMatches({ replacement: 'new' });
+      expect(result).to.deep.equal({ replaced: 0, skipped: 0, errors: [] });
+      expect(fetchStub.called).to.be.false;
+      expect(writes).to.have.length(0);
+    });
+
+    it('skips content matches whose text no longer matches', async () => {
       const writes = [];
       mockSource('unrelated content', writes);
       const result = await searchEngine.replaceMatches({ replacement: 'new' });
@@ -631,27 +576,23 @@ describe('SearchEngine', () => {
       expect(writes).to.have.length(0);
     });
 
-    it('preserves JSON and SVG source types', async () => {
+    it('replaces in JSON and SVG sources', async () => {
       searchEngine._items = [
-        { path: '/org/site/file.json', ext: 'json' },
-        { path: '/org/site/file.svg', ext: 'svg' },
+        { path: '/org/site/file.json', ext: 'json', matchContext: CONTENT },
+        { path: '/org/site/file.svg', ext: 'svg', matchContext: CONTENT },
       ];
-      searchEngine._matches = 2;
       const writes = [];
       mockSource('old', writes);
       const result = await searchEngine.replaceMatches({ replacement: 'new' });
       expect(result.replaced).to.equal(2);
-      expect(writes.map(({ blob }) => blob.type))
-        .to.have.members(['application/json', 'image/svg+xml']);
       expect(await Promise.all(writes.map(({ blob }) => blob.text()))).to.deep.equal(['new', 'new']);
     });
 
     it('reports read and save failures and never saves an unreadable file', async () => {
       searchEngine._items = [
-        { path: '/org/site/denied.html', ext: 'html' },
-        { path: '/org/site/failing.html', ext: 'html' },
+        { path: '/org/site/denied.html', ext: 'html', matchContext: CONTENT },
+        { path: '/org/site/failing.html', ext: 'html', matchContext: CONTENT },
       ];
-      searchEngine._matches = 2;
       const writes = [];
       fetchStub.callsFake(async (href, opts) => {
         if (opts?.body) {
@@ -696,12 +637,10 @@ describe('SearchEngine', () => {
     it('complete search flow updates state correctly', async () => {
       searchEngine.fullpath = '/org/site';
       stub(searchEngine, 'getMatches').callsFake(async () => {
-        searchEngine._total = 10;
-        searchEngine._matches = 3;
         searchEngine._items = [
-          { path: '/org/site/a.html' },
-          { path: '/org/site/b.html' },
-          { path: '/org/site/c.html' },
+          { path: '/org/site/a.html', matchContext: CONTENT },
+          { path: '/org/site/b.html', matchContext: CONTENT },
+          { path: '/org/site/c.html', matchContext: CONTENT },
         ];
       });
 
@@ -709,24 +648,17 @@ describe('SearchEngine', () => {
 
       expect(searchEngine._term).to.equal('test');
 
-      expect(searchEngine._total).to.equal(10);
-      expect(searchEngine._matches).to.equal(3);
       expect(searchEngine._items.length).to.equal(3);
-      expect(searchEngine._time).to.be.a('string');
     });
 
     it('handles search with no matches', async () => {
       stub(searchEngine, 'getMatches').callsFake(async () => {
-        searchEngine._total = 10;
-        searchEngine._matches = 0;
         searchEngine._items = [];
       });
 
       await searchEngine.search('/org/site', 'nonexistent');
 
-      expect(searchEngine._matches).to.equal(0);
       expect(searchEngine._items).to.deep.equal([]);
-      expect(searchEngine._total).to.equal(10);
     });
   });
 });

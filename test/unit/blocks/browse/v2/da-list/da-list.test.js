@@ -13,6 +13,38 @@ function makeList() {
 }
 
 describe('DaList helpers', () => {
+  describe('getDirectorySnapshot', () => {
+    it('waits for initial metadata without changing rows or pagination', async () => {
+      const el = makeList();
+      Object.defineProperty(el, 'updateComplete', { value: Promise.resolve(true) });
+      let finish;
+      el._directoryReady = new Promise((resolve) => { finish = resolve; });
+      el.fullpath = '/o/r';
+      const pending = el.getDirectorySnapshot();
+      const items = [{ path: '/o/r/a.html', name: 'a', ext: 'html', isChecked: true }];
+      el._listItems = items;
+      el._continuationToken = 'next';
+      el._allPagesLoaded = false;
+      finish();
+      const snapshot = await pending;
+      expect(snapshot).to.deep.equal({ fullpath: '/o/r', items, version: items, continuationToken: 'next', complete: false });
+      expect(el._listItems).to.equal(items);
+      expect(el._continuationToken).to.equal('next');
+    });
+
+    it('reports an initial listing error instead of calling an empty list complete', async () => {
+      const el = makeList();
+      Object.defineProperty(el, 'updateComplete', { value: Promise.resolve(true) });
+      el._directoryError = 'Not permitted to list filenames';
+      try {
+        await el.getDirectorySnapshot();
+        expect.fail('Expected listing error');
+      } catch (error) {
+        expect(error.message).to.equal('Not permitted to list filenames');
+      }
+    });
+  });
+
   describe('mergeUniqueItemsByPath', () => {
     it('Returns existing items when nothing is incoming', () => {
       const el = makeList();
@@ -176,15 +208,12 @@ describe('DaList helpers', () => {
       Object.defineProperty(window, 'localStorage', storageDescriptor);
     });
 
-    it('persists a successful sort while preserving other browse settings', async () => {
+    it('does not touch browse settings itself', async () => {
       const el = makeList();
       el.sort = true;
-      localStorage.setItem('da-browse-settings', '{"flattenFolders":false}');
+      localStorage.setItem('da-browse-settings', '{"groupByType":true}');
       await el.setSort('name', 'ascending');
-      expect(JSON.parse(localStorage.getItem('da-browse-settings'))).to.deep.equal({
-        flattenFolders: false,
-        sort: { property: 'name', direction: 'ascending' },
-      });
+      expect(localStorage.getItem('da-browse-settings')).to.equal('{"groupByType":true}');
     });
 
     it('reports no sort before a user chooses a column', () => {
@@ -252,19 +281,17 @@ describe('DaList helpers', () => {
       expect(el.sortState.direction).to.equal('ascending');
     });
 
-    it('type "new" sorts ascending (a → z)', () => {
+    it('ascending sorts a → z', () => {
       const el = makeList();
       el._listItems = [{ name: 'b' }, { name: 'a' }];
-      el.handleSort('new', 'name');
-      // type !== 'old' → first=1, last=-1 → ascending
+      el.handleSort('ascending', 'name');
       expect(el._listItems.map((i) => i.name)).to.deep.equal(['a', 'b']);
     });
 
-    it('type "old" sorts descending (z → a)', () => {
+    it('descending sorts z → a', () => {
       const el = makeList();
       el._listItems = [{ name: 'a' }, { name: 'b' }];
-      el.handleSort('old', 'name');
-      // type === 'old' → first=-1, last=1 → descending
+      el.handleSort('descending', 'name');
       expect(el._listItems.map((i) => i.name)).to.deep.equal(['b', 'a']);
     });
   });
@@ -273,21 +300,20 @@ describe('DaList helpers', () => {
     it('Returns full list when no filter is active', () => {
       const el = makeList();
       el._listItems = [{ name: 'alpha' }, { name: 'beta' }];
-      el._filter = '';
       expect(el.filteredItems).to.deep.equal(el._listItems);
     });
 
-    it('Returns only items whose name includes the filter string', () => {
+    it('Returns only items whose type is visible', () => {
       const el = makeList();
-      el._listItems = [{ name: 'alpha' }, { name: 'beta' }, { name: 'alphabet' }];
-      el._filter = 'alpha';
+      el._listItems = [{ name: 'alpha', ext: 'html' }, { name: 'beta', ext: 'json' }, { name: 'alphabet', ext: 'html' }];
+      el._hiddenTypes = new Set(['Sheet']);
       expect(el.filteredItems.map((i) => i.name)).to.deep.equal(['alpha', 'alphabet']);
     });
 
     it('Returns empty array when no items match the filter', () => {
       const el = makeList();
-      el._listItems = [{ name: 'alpha' }, { name: 'beta' }];
-      el._filter = 'zzz';
+      el._listItems = [{ name: 'alpha', ext: 'html' }, { name: 'beta', ext: 'html' }];
+      el._hiddenTypes = new Set(['Page']);
       expect(el.filteredItems).to.deep.equal([]);
     });
   });
@@ -314,21 +340,21 @@ describe('DaList helpers', () => {
     it('Is true when all filtered items are checked, even if unfiltered items are not', () => {
       const el = makeList();
       el._listItems = [
-        { name: 'alpha', isChecked: true },
-        { name: 'beta', isChecked: false },
+        { name: 'alpha', ext: 'html', isChecked: true },
+        { name: 'beta', ext: 'json', isChecked: false },
       ];
-      el._filter = 'alpha';
+      el._hiddenTypes = new Set(['Sheet']);
       expect(el.isSelectAll).to.be.true;
     });
 
     it('Is false when some filtered items are unchecked', () => {
       const el = makeList();
       el._listItems = [
-        { name: 'alpha', isChecked: true },
-        { name: 'alphabet', isChecked: false },
-        { name: 'beta', isChecked: true },
+        { name: 'alpha', ext: 'html', isChecked: true },
+        { name: 'alphabet', ext: 'html', isChecked: false },
+        { name: 'beta', ext: 'json', isChecked: true },
       ];
-      el._filter = 'alpha';
+      el._hiddenTypes = new Set(['Sheet']);
       expect(el.isSelectAll).to.be.false;
     });
   });
@@ -356,7 +382,7 @@ describe('DaList helpers', () => {
 
     it('Returns false for unrelated property changes', () => {
       const el = makeList();
-      const props = new Map([['_showFilter', false]]);
+      const props = new Map([['_canDelete', false]]);
       expect(el.hasPaginationStateChanges(props)).to.be.false;
     });
 
@@ -365,34 +391,6 @@ describe('DaList helpers', () => {
       el._listItems = [{}, {}, {}];
       const props = new Map([['_listItems', [{}, {}]]]);
       expect(el.hasPaginationStateChanges(props)).to.be.true;
-    });
-  });
-
-  describe('handleNameFilter', () => {
-    it('Sets _filter without clearing the actual sort state', () => {
-      const el = makeList();
-      el._sortName = 'old';
-      el._sortDate = 'new';
-      el.handleNameFilter({ target: { value: 'HELLO' } });
-      expect(el._filter).to.equal('HELLO');
-      expect(el._sortName).to.equal('old');
-      expect(el._sortDate).to.equal('new');
-    });
-  });
-
-  describe('handleFilterBlur', () => {
-    it('Hides the filter view when blurred with empty input', () => {
-      const el = makeList();
-      el._showFilter = true;
-      el.handleFilterBlur({ target: { value: '' } });
-      expect(el._showFilter).to.be.false;
-    });
-
-    it('Leaves filter view open when input has content', () => {
-      const el = makeList();
-      el._showFilter = true;
-      el.handleFilterBlur({ target: { value: 'foo' } });
-      expect(el._showFilter).to.be.true;
     });
   });
 
@@ -488,8 +486,6 @@ describe('DaList helpers', () => {
       el.handleItemChecked({ detail: { checked: true, shiftKey: true } }, el._listItems[2], 2);
       expect(el._listItems.map((item) => item.isChecked)).to.deep.equal([true, false, true]);
       el._listItems.forEach((item) => { item.isChecked = false; });
-      el._hiddenTypes = new Set();
-      el._filter = 'a';
       el.handleItemChecked({ detail: { checked: true, shiftKey: true } }, el._listItems[0], 0);
       expect(el._listItems.map((item) => item.isChecked)).to.deep.equal([true, false, true]);
     });
@@ -1161,10 +1157,10 @@ describe('DaList helpers', () => {
 
     it('With filter active, only checks matching items and leaves others unchecked', async () => {
       const el = makeList();
-      const alpha = { name: 'alpha', isChecked: false };
-      const beta = { name: 'beta', isChecked: false };
+      const alpha = { name: 'alpha', ext: 'html', isChecked: false };
+      const beta = { name: 'beta', ext: 'json', isChecked: false };
       el._listItems = [alpha, beta];
-      el._filter = 'alpha';
+      el._hiddenTypes = new Set(['Sheet']);
       el._continuationToken = null;
       el.handleSelectionState = () => {};
       await el.handleCheckAll();
@@ -1174,32 +1170,15 @@ describe('DaList helpers', () => {
 
     it('With filter active, unchecks only matching items when all filtered are already checked', async () => {
       const el = makeList();
-      const alpha = { name: 'alpha', isChecked: true };
-      const beta = { name: 'beta', isChecked: true };
+      const alpha = { name: 'alpha', ext: 'html', isChecked: true };
+      const beta = { name: 'beta', ext: 'json', isChecked: true };
       el._listItems = [alpha, beta];
-      el._filter = 'alpha';
+      el._hiddenTypes = new Set(['Sheet']);
       el._continuationToken = null;
       el.handleSelectionState = () => {};
       await el.handleCheckAll();
       expect(alpha.isChecked).to.be.false;
       expect(beta.isChecked).to.be.true;
-    });
-  });
-
-  describe('toggleFilterView', () => {
-    it('Toggles _showFilter and clears the filter input value', async () => {
-      const el = makeList();
-      const input = { value: 'old', focus: () => {} };
-      Object.defineProperty(el, 'shadowRoot', {
-        configurable: true,
-        value: { querySelector: () => input },
-      });
-      el._continuationToken = null;
-      el._allPagesLoaded = true;
-      await el.toggleFilterView();
-      expect(el._showFilter).to.be.true;
-      expect(input.value).to.equal('');
-      expect(el._filter).to.equal('');
     });
   });
 
@@ -1276,8 +1255,8 @@ async function mountWithSelection(items, opts = {}) {
   return el;
 }
 
-const getDialog = (el) => el.shadowRoot.querySelector('da-dialog');
-const getYesInput = (el) => getDialog(el)?.querySelector('sl-input[placeholder="YES"]') || null;
+const getDialog = (el) => el.shadowRoot.querySelector('da-confirm-dialog');
+const getYesInput = (el) => getDialog(el)?.querySelector('input[placeholder="YES"]') || null;
 const getHeading = (el) => getDialog(el)?.querySelector('.da-actionbar-modal-confirmation .sl-heading-m')?.textContent ?? null;
 
 function typeInto(input, value) {
@@ -1340,7 +1319,7 @@ describe('DaList delete confirmation', () => {
     const el = await mountWithSelection(items, { unpublish: true });
 
     // Only one YES input should exist.
-    expect(getDialog(el).querySelectorAll('sl-input[placeholder="YES"]').length).to.equal(1);
+    expect(getDialog(el).querySelectorAll('input[placeholder="YES"]').length).to.equal(1);
     expect(getHeading(el)).to.equal('Are you sure you want to unpublish and delete 10 items?');
     expect(getDisabled(el)).to.equal(true);
 
@@ -1538,5 +1517,20 @@ describe('DaList checkCanUnpublish', () => {
     el._selectedItems = [fileItem()];
     await el.checkCanUnpublish();
     expect(el._canUnpublish).to.equal(true);
+  });
+});
+
+describe('DaList clear selection focus', () => {
+  it('returns focus to the last checked row checkbox when the action bar clears', async () => {
+    const items = [fileItem('a'), fileItem('b')];
+    const el = await mountWithSelection(items);
+    el.select = true;
+    el._confirm = null;
+    el._lastCheckedIndex = 1;
+    await el.updateComplete;
+    await el.handleClearSelection();
+    const row = el.shadowRoot.querySelectorAll('da-list-item')[1];
+    expect(row.shadowRoot.activeElement?.getAttribute('name')).to.equal('item-selected');
+    el.remove();
   });
 });

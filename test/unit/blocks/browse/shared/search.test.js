@@ -171,3 +171,28 @@ describe('shared browse search helpers', () => {
     });
   });
 });
+
+describe('withRetry', () => {
+  let calls;
+  const failing = async () => {
+    calls += 1;
+    return { error: 'x' };
+  };
+  beforeEach(() => { calls = 0; });
+
+  it('retries failures up to the limit then returns the last result', async () => {
+    const { withRetry } = await import('../../../../../blocks/browse/shared/search.js');
+    const result = await withRetry({ fn: failing, path: '/a.html', retries: 2 });
+    expect(calls).to.equal(3);
+    expect(result.error).to.equal('x');
+  });
+
+  it('stops once shouldRetry is false or the run is cancelled', async () => {
+    const { withRetry } = await import('../../../../../blocks/browse/shared/search.js');
+    await withRetry({ fn: failing, path: '/a', shouldRetry: () => false });
+    expect(calls).to.equal(1);
+    calls = 0;
+    await withRetry({ fn: failing, path: '/a', isCancelled: () => true });
+    expect(calls).to.equal(1);
+  });
+});

@@ -379,7 +379,7 @@ describe('DaListItem', () => {
       el.path = '/org/repo/page';
       await el.updateDAStatus();
       expect(el._version).to.equal(0);
-      expect(el._lastModifedBy).to.equal('anonymous');
+      expect(el._lastModifiedBy).to.equal('anonymous');
     });
 
     it('Counts versionsource entries and lowercases the modifier emails', async () => {
@@ -393,7 +393,7 @@ describe('DaListItem', () => {
       el.path = '/org/repo/page';
       await el.updateDAStatus();
       expect(el._version).to.equal(2);
-      expect(el._lastModifedBy).to.equal('jane, jim');
+      expect(el._lastModifiedBy).to.equal('jane, jim');
     });
 
     it('Returns early when version list fetch fails', async () => {
@@ -432,7 +432,7 @@ describe('DaListItem', () => {
       el.path = '/hlx6org/hlx6site/page';
       await el.updateDAStatus();
       expect(el._version).to.equal(2);
-      expect(el._lastModifedBy).to.equal('da-test');
+      expect(el._lastModifiedBy).to.equal('da-test');
     });
 
     it('Falls back to anonymous on hlx6 when the HEAD has no modified-by header', async () => {
@@ -449,37 +449,38 @@ describe('DaListItem', () => {
       el.path = '/hlx6org2/hlx6site2/page';
       await el.updateDAStatus();
       expect(el._version).to.equal(0);
-      expect(el._lastModifedBy).to.equal('anonymous');
+      expect(el._lastModifiedBy).to.equal('anonymous');
     });
   });
 
-  describe('toggleExpand', () => {
-    it('Adds is-expanded and triggers status updates', () => {
-      const el = new DaListItem();
-      el.classList.toggle('is-expanded', false);
+  describe('toggleDetails', () => {
+    it('Opens the details and triggers status updates', async () => {
+      const el = document.createElement('da-list-item');
+      document.body.append(el);
       let aem = false;
       let da = false;
       el.updateAEMStatus = () => { aem = true; };
       el.updateDAStatus = () => { da = true; };
-      el.toggleExpand();
-      expect(el.classList.contains('is-expanded')).to.be.true;
+      await el.toggleDetails({ currentTarget: document.createElement('button') });
+      el.remove();
+      expect(el._detailsOpen).to.be.true;
       expect(aem).to.be.true;
       expect(da).to.be.true;
     });
 
-    it('Clears state when collapsing', () => {
+    it('Clears state when closing', () => {
       const el = new DaListItem();
-      el.classList.add('is-expanded');
+      el._detailsOpen = true;
       el._preview = { status: 200 };
       el._live = { status: 200 };
       el._version = 5;
-      el._lastModifedBy = 'alice';
-      el.toggleExpand();
-      expect(el.classList.contains('is-expanded')).to.be.false;
+      el._lastModifiedBy = 'alice';
+      el.closeDetails();
+      expect(el._detailsOpen).to.be.false;
       expect(el._preview).to.equal(null);
       expect(el._live).to.equal(null);
       expect(el._version).to.equal(null);
-      expect(el._lastModifedBy).to.equal(null);
+      expect(el._lastModifiedBy).to.equal(null);
     });
   });
 
@@ -620,6 +621,7 @@ describe('DaListItem', () => {
       document.body.appendChild(el);
       await el.updateComplete;
 
+      el._detailsOpen = true;
       el._preview = { status: 200, url: 'https://preview.example.com/page', lastModified: null, redirect: '/redirected' };
       el._live = { status: 200, url: 'https://live.example.com/page', lastModified: null, redirect: '/redirected' };
       await el.updateComplete;
@@ -642,6 +644,7 @@ describe('DaListItem', () => {
       document.body.appendChild(el);
       await el.updateComplete;
 
+      el._detailsOpen = true;
       el._preview = { status: 200, url: 'https://preview.example.com/page', lastModified: null };
       el._live = { status: 200, url: 'https://live.example.com/page', lastModified: null };
       await el.updateComplete;

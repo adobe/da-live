@@ -20,6 +20,11 @@ describe('browse search tools', () => {
       loading: false,
       canWrite: true,
     };
+    panel.searchState.items = [{
+      path: '/org/site/products/a.html',
+      name: 'a.html',
+      matchContext: { filenameMatch: false, snippets: [{ text: 'old', matches: [] }] },
+    }];
     document.body.append(panel);
     await panel.updateComplete;
   });
@@ -27,8 +32,8 @@ describe('browse search tools', () => {
   afterEach(() => panel.remove());
 
   const review = async () => {
-    panel.shadowRoot.querySelector('.browse-replace-form')
-      .dispatchEvent(new Event('submit', { cancelable: true }));
+    await panel.updateComplete;
+    panel.shadowRoot.querySelector('#replace-btn').click();
     await panel.updateComplete;
   };
 
@@ -85,34 +90,20 @@ describe('browse search tools', () => {
       .to.be.null;
   });
 
-  it('previews empty replacements at review without requesting a write', async () => {
-    await setResults([result({ text: 'old old' })]);
-    const requested = spy();
-    panel.addEventListener('replacerequest', requested);
-    await review();
-    const after = panel.shadowRoot.querySelector('[data-preview="match"]');
-    expect(after.textContent).to.equal('old old');
-    expect([...after.querySelectorAll('del')].map((match) => match.textContent))
-      .to.deep.equal(['old', 'old']);
-    expect(after.querySelector('ins, mark')).to.be.null;
-    expect(panel.shadowRoot.querySelectorAll('pre')).to.have.length(1);
-    expect(requested.called).to.be.false;
-    expect(panel.shadowRoot.querySelector('.browse-replace-confirmation')).to.exist;
-  });
-
   it('groups context by filename as results stream without a preview picker', async () => {
     const first = result();
     const filename = result({ path: '/org/site/products/old.html', text: 'unrelated' });
     await setResults([first, filename]);
     expect(panel.shadowRoot.querySelector('select')).to.be.null;
-    expect(panel.shadowRoot.querySelectorAll('[data-match-file]')).to.have.length(2);
-    expect(panel.shadowRoot.textContent).to.contain('Filename match only.');
-    const filenameGroup = panel.shadowRoot.querySelector(`[data-match-file="${filename.path}"]`);
+    expect(panel.shadowRoot.querySelectorAll('[data-match-file]')).to.have.length(1);
+    const filenameGroup = panel.shadowRoot.querySelector('[data-match-group="filename"]');
+    expect(filenameGroup.textContent).to.contain('No matching content to replace.');
+    expect(filenameGroup.querySelectorAll('li')).to.have.length(1);
     expect(filenameGroup.querySelector('[data-preview="match"]')).to.be.null;
     const third = result({ path: '/org/site/products/third.html', text: 'old third' });
     panel.searchState = { ...panel.searchState, loading: true };
     await setResults([first, filename, third]);
-    expect(panel.shadowRoot.querySelectorAll('[data-match-file]')).to.have.length(3);
+    expect(panel.shadowRoot.querySelectorAll('[data-match-file]')).to.have.length(2);
     panel.searchState = { ...panel.searchState, request: {}, items: [third, first, filename] };
     await panel.updateComplete;
     expect(panel.shadowRoot.querySelector('h4').textContent).to.equal(third.name);
@@ -132,8 +123,7 @@ describe('browse search tools', () => {
   it('labels omitted matches and shows a fallback when source context is unavailable', async () => {
     await setResults([result({ text: `${'x'.repeat(200)}old`.repeat(5) })]);
     expect(panel.shadowRoot.querySelectorAll('[data-preview="match"]')).to.have.length(3);
-    expect(panel.shadowRoot.textContent).to.contain('More matches are not shown.');
-    expect(panel.shadowRoot.textContent).to.contain('Search-time source excerpts.');
+    expect(panel.shadowRoot.textContent).to.contain('+2 more matches in this file');
     await setResults([{ path: '/org/site/products/legacy.html', name: 'legacy' }]);
     expect(panel.shadowRoot.textContent).to.contain('Source context is unavailable');
   });
@@ -142,7 +132,7 @@ describe('browse search tools', () => {
     const items = Array.from({ length: 5 }, (_, index) => result({ path: `/org/site/products/page${index}.html` }));
     await setResults(items);
     expect(panel.shadowRoot.querySelectorAll('[data-match-file]')).to.have.length(3);
-    expect(panel.shadowRoot.textContent).to.contain('Showing context for 3 of 5 results.');
+    expect(panel.shadowRoot.textContent).to.contain('Showing context for 3 of 5 results');
     expect(panel.searchState.count).to.equal(5);
   });
 
@@ -164,7 +154,7 @@ describe('browse search tools', () => {
     expect(searched.called).to.be.false;
     panel.searchState = { ...panel.searchState, draft: 'new query' };
     await panel.updateComplete;
-    panel.shadowRoot.querySelector('.browse-find-form')
+    panel.shadowRoot.querySelector('.browse-search-form')
       .dispatchEvent(new Event('submit', { cancelable: true }));
     expect(searched.calledOnce).to.be.true;
     expect(searched.firstCall.args[0].detail).to.deep.equal({ value: 'new query' });
@@ -180,27 +170,25 @@ describe('browse search tools', () => {
     input.value = 'new';
     input.dispatchEvent(new Event('input'));
     panel.searchState = { ...panel.searchState, draft: 'new' };
-    panel.confirmReplacement();
+    await review();
     await panel.updateComplete;
     expect(requested.called).to.be.false;
-    expect(panel.shadowRoot.querySelector('.browse-replace-confirmation')).to.be.null;
     expect(panel.shadowRoot.querySelector('.browse-match-context')).to.be.null;
-    expect(panel.shadowRoot.querySelector('.browse-replace-form [type="submit"]').disabled).to.be.true;
-    expect(panel.shadowRoot.textContent).to.contain('Run Find to update the results.');
+    expect(panel.shadowRoot.querySelector('#replace-btn').disabled).to.be.true;
   });
 
   it('allows read-only searches but blocks Find controls while replacement is active', async () => {
     panel.searchState = { ...panel.searchState, canWrite: false };
     await panel.updateComplete;
-    expect(panel.shadowRoot.querySelector('.browse-find-form [type="submit"]').disabled).to.be.false;
-    expect(panel.shadowRoot.querySelector('.browse-replace-form [type="submit"]').disabled).to.be.true;
+    expect(panel.shadowRoot.querySelector('#find-btn').disabled).to.be.false;
+    expect(panel.shadowRoot.querySelector('#replace-btn').disabled).to.be.true;
     panel.searchState = { ...panel.searchState, replacement: { loading: true } };
     await panel.updateComplete;
     const searched = spy();
     panel.addEventListener('search-submit', searched);
     expect(panel.shadowRoot.querySelector('#find').disabled).to.be.true;
-    expect(panel.shadowRoot.querySelector('.browse-find-form [type="submit"]').disabled).to.be.true;
-    panel.shadowRoot.querySelector('.browse-find-form')
+    expect(panel.shadowRoot.querySelector('#find-btn').disabled).to.be.true;
+    panel.shadowRoot.querySelector('.browse-search-form')
       .dispatchEvent(new Event('submit', { cancelable: true }));
     expect(searched.called).to.be.false;
   });
@@ -215,7 +203,7 @@ describe('browse search tools', () => {
     expect(panel.searchState.matchCase).to.be.true;
   });
 
-  it('requires review and explicit confirmation before requesting a replacement', async () => {
+  it('asks for confirmation before requesting a replacement', async () => {
     const requested = spy();
     panel.addEventListener('replacerequest', requested);
     const input = panel.shadowRoot.querySelector('#replacement');
@@ -223,30 +211,58 @@ describe('browse search tools', () => {
     input.dispatchEvent(new Event('input'));
     await review();
     expect(requested.called).to.be.false;
-    const confirmation = panel.shadowRoot.querySelector('.browse-replace-confirmation');
-    expect(confirmation.textContent).to.contain('old');
-    expect(confirmation.textContent).to.contain('$& literal');
-    const buttons = confirmation.querySelectorAll('button');
-    expect(panel.shadowRoot.activeElement).to.equal(buttons[0]);
-    buttons[1].click();
+    const dialog = panel.shadowRoot.querySelector('da-confirm-dialog');
+    expect(dialog.title).to.equal('Replace in 1 file');
+    expect(dialog.textContent).to.contain('$& literal');
+    dialog.action.click();
+    await panel.updateComplete;
     expect(requested.calledOnce).to.be.true;
     expect(requested.firstCall.args[0].detail).to.deep.equal({ replacement: '$& literal' });
+    expect(panel.shadowRoot.querySelector('da-confirm-dialog')).to.be.null;
   });
 
-  it('allows an empty replacement only after confirmation and cancels without writing', async () => {
+  it('does not replace when the confirmation is dismissed', async () => {
     const requested = spy();
     panel.addEventListener('replacerequest', requested);
+    panel._replacement = 'new';
     await review();
-    expect(panel.shadowRoot.querySelector('.browse-replace-confirmation').textContent)
-      .to.contain('(empty text)');
-    await panel.cancelReplacement();
+    panel.shadowRoot.querySelector('da-confirm-dialog').dispatchEvent(new Event('close'));
+    await panel.updateComplete;
     expect(requested.called).to.be.false;
-    expect(panel.shadowRoot.querySelector('.browse-replace-confirmation')).to.be.null;
-    expect(panel.shadowRoot.activeElement)
-      .to.equal(panel.shadowRoot.querySelector('.browse-replace-form [type="submit"]'));
+    expect(panel.shadowRoot.querySelector('da-confirm-dialog')).to.be.null;
+  });
+
+  it('shows a spinner on Find while searching and lets Clear cancel', async () => {
+    await setResults([result()]);
+    panel.searchState = { ...panel.searchState, loading: true };
+    await panel.updateComplete;
+    const find = panel.shadowRoot.querySelector('#find-btn');
+    expect(find.disabled).to.be.true;
+    expect(find.getAttribute('aria-busy')).to.equal('true');
+    expect(find.querySelector('.nx-loading-spinner')).to.exist;
+    expect(panel.shadowRoot.querySelector('#clear-btn').disabled).to.be.false;
+    panel.searchState = { ...panel.searchState, loading: false };
+    await panel.updateComplete;
+    expect(panel.shadowRoot.querySelector('#find-btn .nx-loading-spinner')).to.be.null;
+  });
+
+  it('enables Replace only when the replacement is filled and clears both fields', async () => {
+    await setResults([result()]);
+    const submit = () => panel.shadowRoot.querySelector('#replace-btn');
+    expect(submit().disabled).to.be.true;
     await review();
-    panel.confirmReplacement();
-    expect(requested.firstCall.args[0].detail).to.deep.equal({ replacement: '' });
+    const input = panel.shadowRoot.querySelector('#replacement');
+    input.value = 'new';
+    input.dispatchEvent(new Event('input'));
+    await panel.updateComplete;
+    expect(submit().disabled).to.be.false;
+    const cleared = spy();
+    panel.addEventListener('findchange', cleared);
+    panel.shadowRoot.querySelector('#clear-btn').click();
+    await panel.updateComplete;
+    expect(cleared.firstCall.args[0].detail).to.deep.equal({ value: '' });
+    expect(panel._replacement).to.equal('');
+    expect(submit().disabled).to.be.true;
   });
 
   it('invalidates pending confirmation for new searches and replacement edits', async () => {
@@ -255,26 +271,27 @@ describe('browse search tools', () => {
     input.value = 'new';
     input.dispatchEvent(new Event('input'));
     await panel.updateComplete;
-    expect(panel.shadowRoot.querySelector('.browse-replace-confirmation')).to.be.null;
     await review();
     panel.searchState = { ...panel.searchState, request: {}, term: 'other' };
     await panel.updateComplete;
-    expect(panel.shadowRoot.querySelector('.browse-replace-confirmation')).to.be.null;
   });
 
   it('blocks writes during search, replacement, errors, and without write permission', async () => {
     const defaults = panel.searchState;
+    const requested = spy();
+    panel.addEventListener('replacerequest', requested);
+    panel._replacement = 'x';
     for (const state of [
       { loading: true }, { replacement: { loading: true } },
-      { error: 'Search failed' }, { canWrite: false }, { count: 0 }, { term: undefined },
+      { error: 'Search failed' }, { canWrite: false }, { count: 0, items: [] }, { term: undefined },
     ]) {
       panel.searchState = { ...defaults, ...state };
       // eslint-disable-next-line no-await-in-loop
       await panel.updateComplete;
-      expect(panel.shadowRoot.querySelector('.browse-replace-form [type="submit"]').disabled).to.be.true;
+      expect(panel.shadowRoot.querySelector('#replace-btn').disabled).to.be.true;
       // eslint-disable-next-line no-await-in-loop
       await review();
-      expect(panel.shadowRoot.querySelector('.browse-replace-confirmation')).to.be.null;
+      expect(requested.called).to.be.false;
     }
   });
 
@@ -289,12 +306,23 @@ describe('browse search tools', () => {
       },
     };
     await panel.updateComplete;
-    expect(panel.shadowRoot.querySelector('[role="status"]').textContent)
-      .to.equal('Replaced text in 1 file.');
     expect(panel.shadowRoot.textContent).to.contain('1 file had no matching text.');
     expect(panel.shadowRoot.querySelector('[role="alert"]').textContent).to.contain('403');
-    const status = panel.shadowRoot.querySelector('[role="status"]');
-    const context = panel.shadowRoot.querySelector('.browse-match-context');
-    expect(status.compareDocumentPosition(context)).to.equal(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('Closes the tools panel on Escape unless a confirmation is open', async () => {
+    const closed = spy();
+    document.addEventListener('nx-panel-close', closed);
+    try {
+      panel._confirming = true;
+      panel.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      expect(closed.called).to.be.false;
+      panel._confirming = false;
+      panel.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      expect(closed.calledOnce).to.be.true;
+      expect(closed.firstCall.args[0].detail.section).to.equal('tools');
+    } finally {
+      document.removeEventListener('nx-panel-close', closed);
+    }
   });
 });

@@ -68,9 +68,8 @@ describe('da-browse render', () => {
     await settle();
     await el.newCmp.updateComplete;
     return {
-      toolbar: headerRoot().querySelector('.da-browse-toolbar'),
-      rightButtons: [...headerRoot().querySelectorAll('.da-browse-toolbar-control')],
-      menu: headerRoot().querySelector('.da-browse-view-options-popover'),
+      toolbar: headerRoot(),
+      rightButtons: [...headerRoot().querySelectorAll('.browse-toolbar-control')],
       newButton: el.shadowRoot.querySelector('da-new')?.shadowRoot?.querySelector('.da-actions-new-button'),
       newLabel: el.shadowRoot.querySelector('da-new')?.shadowRoot?.querySelector('.da-actions-new-label'),
     };
@@ -103,45 +102,40 @@ describe('da-browse render', () => {
     expect(headerRoot().querySelector('slot').assignedElements()).to.deep.equal([el.newCmp]);
   });
 
-  it('renders the toolbar controls and view options menu', async () => {
-    const { toolbar, rightButtons, menu, newButton, newLabel } = await renderToolbar(
+  it('renders the toolbar controls and group-by-type switch', async () => {
+    const { toolbar, rightButtons, newLabel } = await renderToolbar(
       { fullpath: '/org/site', org: 'org', site: 'site', path: '' },
       { chat: true },
     );
     expect(newLabel?.textContent).to.equal('New');
-    expect(newButton?.classList.contains('nx-btn-accent')).to.be.true;
-    expect(toolbar.textContent).to.contain('View Options');
-    expect(toolbar.textContent).to.contain('Show All types');
-    expect(headerRoot().querySelector('.da-browse-toolbar-leading')).to.exist;
-    expect(headerRoot().querySelector('.da-browse-toolbar-trailing')).to.exist;
-    expect(headerRoot().querySelector('.chat-btn')?.classList.contains('nx-action-btn-icon')).to.be.true;
-    expect(rightButtons.every((btn) => btn.classList.contains('nx-action-btn-quiet'))).to.be.true;
-    expect(rightButtons.map((btn) => btn.textContent.trim())).to.deep.equal(['View Options', 'Show All types']);
-    expect(headerRoot().querySelector('nx-picker').labelOverride).to.equal('Sort: Default');
-    expect(menu).to.exist;
-    expect(menu.querySelector('nx-switch').getAttribute('label')).to.equal('Flatten folders');
-    expect(rightButtons[0].getAttribute('aria-expanded')).to.equal('false');
-    rightButtons[0].click();
-    await settle();
-    expect(menu.open).to.be.true;
-    expect(rightButtons[0].getAttribute('aria-expanded')).to.equal('true');
-    menu.close();
-    menu.dispatchEvent(new CustomEvent('close'));
-    await settle();
-    expect(rightButtons[0].getAttribute('aria-expanded')).to.equal('false');
+    expect(toolbar.textContent).to.contain('Show All');
+    expect(headerRoot().querySelector('.chat-btn')).to.exist;
+    expect(rightButtons.map((btn) => btn.textContent.trim())).to.deep.equal(['Show All']);
+    expect(headerRoot().querySelector('nx-picker').labelOverride).to.equal('Sort');
+    expect(headerRoot().querySelector('nx-switch').getAttribute('label')).to.equal('Group by type');
   });
 
-  it('persists flatten changes from the switch and restores them on a new instance', async () => {
+  it('persists the view from the segmented control and passes it to the list', async () => {
+    await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
+    headerRoot().querySelector('nx-segmented-btn')
+      .dispatchEvent(new CustomEvent('change', { detail: { value: 'card' } }));
+    await settle();
+    expect(el.browseCmp.view).to.equal('card');
+    expect(JSON.parse(localStorage.getItem('da-browse-settings')).view).to.equal('card');
+    expect(document.createElement('da-browse')._view).to.equal('card');
+  });
+
+  it('persists group-by-type changes from the switch and restores them on a new instance', async () => {
     await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
     const control = headerRoot().querySelector('nx-switch');
-    control.dispatchEvent(new CustomEvent('change', { detail: { checked: false } }));
+    control.dispatchEvent(new CustomEvent('change', { detail: { checked: true } }));
     await settle();
-    expect(el.browseCmp.flattenFolders).to.be.false;
-    expect(JSON.parse(localStorage.getItem('da-browse-settings'))).to.deep.equal({ flattenFolders: false });
-    expect(document.createElement('da-browse')._flattenFolders).to.be.false;
+    expect(el.browseCmp.groupByType).to.be.true;
+    expect(JSON.parse(localStorage.getItem('da-browse-settings'))).to.deep.equal({ groupByType: true });
+    expect(document.createElement('da-browse')._groupByType).to.be.true;
   });
 
-  it('keeps the sort picker, label, and column selectors synchronized', async () => {
+  it('keeps the Sort label fixed while synchronizing selection and column indicators', async () => {
     await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
     const list = el.browseCmp;
     await list.updateComplete;
@@ -151,7 +145,8 @@ describe('da-browse render', () => {
     ];
     await list.updateComplete;
     const picker = headerRoot().querySelector('nx-picker');
-    expect(picker.labelOverride).to.equal('Sort: Default');
+    expect(picker.labelOverride).to.equal('Sort');
+    expect(picker.title).to.equal('Sort: Default');
     expect(list.shadowRoot.querySelector('[data-column="name"]').getAttribute('aria-sort')).to.equal('none');
     picker.dispatchEvent(new CustomEvent('change', { detail: { value: 'name:ascending' } }));
     await list.updateComplete;
@@ -159,29 +154,34 @@ describe('da-browse render', () => {
     await list.updateComplete;
     await settle();
     expect(list._listItems.map((item) => item.name)).to.deep.equal(['a', 'b']);
-    expect(picker.labelOverride).to.equal('Sorted by Name (A-Z)');
+    expect(picker.labelOverride).to.equal('Sort');
+    expect(picker.title).to.equal('Sorted by Name (A-Z)');
     expect(picker.value).to.equal('name:ascending');
     expect(list.shadowRoot.querySelector('[data-column="name"]').getAttribute('aria-sort')).to.equal('ascending');
-    await list.handleDateSort();
+    await list.toggleSort('lastModified');
     await list.updateComplete;
     await settle();
-    expect(picker.labelOverride).to.equal('Sorted by Modified (newest first)');
+    expect(picker.labelOverride).to.equal('Sort');
+    expect(picker.title).to.equal('Sorted by Modified (newest first)');
     expect(picker.value).to.equal('lastModified:descending');
-    await list.handleDateSort();
+    await list.toggleSort('lastModified');
     await list.updateComplete;
     await settle();
     expect(picker.value).to.equal('lastModified:ascending');
-    expect(picker.labelOverride).to.contain('oldest first');
-    list.handleNameFilter({ target: { value: 'a' } });
+    expect(picker.labelOverride).to.equal('Sort');
+    expect(picker.title).to.contain('oldest first');
+    list.requestUpdate();
     await list.updateComplete;
     await settle();
-    expect(picker.labelOverride).to.contain('Sorted by Modified');
+    expect(picker.labelOverride).to.equal('Sort');
+    expect(picker.title).to.contain('Sorted by Modified');
     el.details = { fullpath: '/org/other', org: 'org', site: 'other' };
     await nextFrame();
     await settle();
     await list.updateComplete;
     await settle();
-    expect(picker.labelOverride).to.equal('Sorted by Modified (oldest first)');
+    expect(picker.labelOverride).to.equal('Sort');
+    expect(picker.title).to.equal('Sorted by Modified (oldest first)');
     expect(JSON.parse(localStorage.getItem('da-browse-settings')).sort)
       .to.deep.equal({ property: 'lastModified', direction: 'ascending' });
   });
@@ -194,58 +194,22 @@ describe('da-browse render', () => {
     expect(el.shadowRoot.querySelector('[role="grid"]').getAttribute('aria-label')).to.equal('Browse files');
   });
 
-  it('sizes the fixed action bar to browse and follows panel-driven width changes', async () => {
-    await import('../../../../../../blocks/browse/da-actionbar/da-actionbar.js');
-    const paths = ['v2/da-browse/da-browse.css', 'v2/da-list/da-list.css', 'da-actionbar/da-actionbar.css'];
-    const sheets = await Promise.all(paths.map(async (path) => {
-      const { href } = new URL(`../../../../../../blocks/browse/${path}`, import.meta.url);
-      const response = await savedFetch(href);
-      expect(response.ok).to.be.true;
-      const sheet = new CSSStyleSheet();
-      sheet.replaceSync(await response.text());
-      return sheet;
-    }));
-    await fixture({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
-    const list = el.browseCmp;
-    await list.updateComplete;
-    const actionbar = list.actionBar;
-    expect(actionbar.classList.contains('full-width')).to.be.true;
-    actionbar.setAttribute('data-visible', 'true');
-    actionbar.items = [{ path: '/org/site/page.html', name: 'page', ext: 'html' }];
-    await actionbar.updateComplete;
-    el.shadowRoot.adoptedStyleSheets = [sheets[0]];
-    list.shadowRoot.adoptedStyleSheets = [sheets[1]];
-    actionbar.shadowRoot.adoptedStyleSheets = [sheets[2]];
-    el.style.marginLeft = '48px';
-    const bar = actionbar.shadowRoot.querySelector('.da-action-bar');
-    [1100, 740, 1100].forEach((width) => {
-      el.style.width = `${width}px`;
-      const browseBounds = el.getBoundingClientRect();
-      const barBounds = bar.getBoundingClientRect();
-      expect(barBounds.width).to.be.closeTo(width, 0.5);
-      expect(barBounds.left).to.be.closeTo(browseBounds.left, 0.5);
-      expect(barBounds.right).to.be.closeTo(browseBounds.right, 0.5);
-    });
-    expect(getComputedStyle(bar).position).to.equal('fixed');
-    expect(getComputedStyle(bar).bottom).to.equal('12px');
-  });
-
   it('updates the type filter button from the list state', async () => {
     const { rightButtons } = await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
     const list = el.browseCmp;
     list._listItems = [{ path: '/org/site/a.html', name: 'a', ext: 'html' }];
     await list.updateComplete;
-    rightButtons[1].click();
+    rightButtons[0].click();
     await settle();
-    expect(rightButtons[1].getAttribute('aria-expanded')).to.equal('true');
+    expect(rightButtons[0].getAttribute('aria-expanded')).to.equal('true');
     list.toggleTypeVisibility('Page');
     await list.updateComplete;
     await settle();
-    expect(rightButtons[1].textContent).to.contain('1 type hidden');
+    expect(rightButtons[0].textContent).to.contain('1 type hidden');
     list._typesPopover.close();
     list._typesPopover.dispatchEvent(new CustomEvent('close'));
     await settle();
-    expect(rightButtons[1].getAttribute('aria-expanded')).to.equal('false');
+    expect(rightButtons[0].getAttribute('aria-expanded')).to.equal('false');
   });
 
   it('keeps the browse list available when navigating to the organization root', async () => {
@@ -259,7 +223,7 @@ describe('da-browse render', () => {
 
   it('renders a single contextual config action pointing to site config at site level', async () => {
     await fixture({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
-    const links = headerRoot().querySelectorAll('.da-browse-toolbar-trailing a.da-browse-settings-link');
+    const links = headerRoot().querySelectorAll('a.browse-settings-link');
     expect(links.length).to.equal(1);
     expect(links[0].getAttribute('aria-label')).to.equal('Config');
     expect(links[0].getAttribute('href')).to.equal('/config#/org/site/');
@@ -267,14 +231,14 @@ describe('da-browse render', () => {
 
   it('renders a single contextual config action pointing to site config below site level', async () => {
     await fixture({ fullpath: '/org/site/folder', org: 'org', site: 'site', path: '/folder' });
-    const links = headerRoot().querySelectorAll('.da-browse-toolbar-trailing a.da-browse-settings-link');
+    const links = headerRoot().querySelectorAll('a.browse-settings-link');
     expect(links.length).to.equal(1);
     expect(links[0].getAttribute('href')).to.equal('/config#/org/site/');
   });
 
   it('renders a single contextual config action pointing to org config at org level', async () => {
     await fixture({ fullpath: '/org', org: 'org', path: '' });
-    const links = headerRoot().querySelectorAll('.da-browse-toolbar-trailing a.da-browse-settings-link');
+    const links = headerRoot().querySelectorAll('a.browse-settings-link');
     expect(links.length).to.equal(1);
     expect(links[0].getAttribute('aria-label')).to.equal('Config');
     expect(links[0].getAttribute('href')).to.equal('/config#/org/');

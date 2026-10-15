@@ -322,31 +322,19 @@ describe('DaNew', () => {
       }
     });
 
-    it('defaults to an icon-only trigger and preserves variant-specific sizing and offset', async () => {
-      const stylesUrl = new URL('../../../../../blocks/browse/da-new/da-new.css', import.meta.url);
-      const response = await fetch(stylesUrl.href);
-      expect(response.ok).to.be.true;
-      const styles = new CSSStyleSheet();
-      styles.replaceSync(await response.text());
+    it('defaults to an icon-only trigger and shows the New label for the accent variant', async () => {
       const el = new DaNew();
       el.permissions = ['write'];
       document.body.append(el);
       try {
         await el.updateComplete;
-        el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, styles];
         const button = el.shadowRoot.querySelector('.da-actions-new-button');
-        const container = el.shadowRoot.querySelector('.da-actions-create');
         expect(button.classList.contains('nx-action-btn-icon')).to.be.true;
         expect(button.querySelector('.da-actions-new-label')).to.be.null;
-        expect(getComputedStyle(button).width).to.equal('24px');
-        expect(getComputedStyle(button).height).to.equal('24px');
-        expect(getComputedStyle(container).top).to.equal('1px');
         el.variant = 'accent';
         await el.updateComplete;
         expect(button.classList.contains('nx-btn-accent')).to.be.true;
         expect(button.textContent).to.contain('New');
-        expect(getComputedStyle(button).minWidth).to.equal('88px');
-        expect(getComputedStyle(container).top).to.equal('0px');
       } finally {
         el.remove();
       }

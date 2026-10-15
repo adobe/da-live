@@ -27,11 +27,20 @@ describe('browse-owned nav search', () => {
         @typesfilterchange=${browse.handleTypesFilterChange}></div>`;
     document.body.append(browse);
     await browse.updateComplete;
-    await browse._navSearchReady;
+    await browse._searchReady;
+    browse.browseCmp.getDirectorySnapshot = async () => ({
+      fullpath: browse.details.fullpath,
+      items: browse.browseCmp.items ?? [],
+      version: browse.browseCmp.items,
+      complete: true,
+    });
     getMatches = stub(SearchEngine.prototype, 'getMatches').callsFake(async function getMatchesForTest(path) {
-      this._total = 1;
-      this._matches = 1;
-      this._items = [{ path: `${path}/match.html`, name: '/match', ext: 'html' }];
+      this._items = [{
+        path: `${path}/match.html`,
+        name: '/match',
+        ext: 'html',
+        matchContext: { filenameMatch: false, snippets: [{ text: 'x', matches: [] }] },
+      }];
       this.updateList();
     });
   });
@@ -45,7 +54,7 @@ describe('browse-owned nav search', () => {
   async function submit(value) {
     const submitted = spy(browse, 'submitSearch');
     const event = new CustomEvent('search-submit', { detail: { value }, cancelable: true });
-    browse._navSearch.dispatchEvent(event);
+    browse._navField.dispatchEvent(event);
     await submitted.returnValues[0];
     submitted.restore();
     return event;
@@ -59,22 +68,20 @@ describe('browse-owned nav search', () => {
   }
 
   it('injects a scoped field into nav without nav owning search logic', () => {
-    const field = browse._navSearch;
+    const field = browse._navField;
+    expect(field.localName).to.equal('da-browse-search');
     expect(nav.shadowRoot.querySelector('slot').assignedElements()).to.deep.equal([field]);
     expect(field.getAttribute('role')).to.equal('search');
-    expect(field.children).to.have.length(1);
-    expect(field.firstElementChild).to.equal(browse._searchAction);
+    expect(field.children).to.have.length(0);
     expect(field.slot).to.equal('search');
-    expect(browse._searchAction.slot).to.equal('actions');
+    expect(field.actionButton.slot).to.equal('actions');
     expect(field.label).to.equal('Search products');
     expect(field.placeholder).to.equal('Search products');
     expect(field.getAttribute('aria-label')).to.equal('Search products');
-    expect(field.variant).to.equal('field');
-    expect(field.size).to.equal('m');
   });
 
   it('starts a search from the panel without requiring a prior nav search', async () => {
-    const panel = await browse.getSearchPanel();
+    const panel = await browse.getToolsPanel();
     document.body.append(panel);
     await panel.updateComplete;
     panel.focus();
@@ -83,41 +90,61 @@ describe('browse-owned nav search', () => {
     expect(input.value).to.equal('');
     input.value = '  panel query  ';
     input.dispatchEvent(new Event('input'));
-    expect(browse._navSearch.value).to.equal('  panel query  ');
+    expect(browse._navField.value).to.equal('  panel query  ');
     expect(getMatches.called).to.be.false;
     await panel.updateComplete;
     const submitted = spy(browse, 'submitSearch');
-    panel.shadowRoot.querySelector('.browse-find-form')
+    panel.shadowRoot.querySelector('.browse-search-form')
       .dispatchEvent(new Event('submit', { cancelable: true }));
     await submitted.returnValues[0];
     submitted.restore();
     await browse.updateComplete;
     await panel.updateComplete;
     expect(getMatches.calledOnceWithExactly('/org/site/products', 'panel query')).to.be.true;
-    expect(browse._searchState.term).to.equal('panel query');
-    expect(browse._searchState.draft).to.equal('  panel query  ');
-    expect(browse._navSearch.value).to.equal(input.value);
-    expect(panel.searchState.items).to.equal(browse._searchState.items);
+    expect(browse._search.term).to.equal('panel query');
+    expect(browse._search.draft).to.equal('  panel query  ');
+    expect(browse._navField.value).to.equal(input.value);
+    expect(panel.searchState.items).to.equal(browse._search.items);
+  });
+
+  it('Clear cancels the in-flight search and empties the field and results', async () => {
+    const panel = await browse.getToolsPanel();
+    document.body.append(panel);
+    await panel.updateComplete;
+    browse._navField.value = 'busy';
+    browse._navField.dispatchEvent(new Event('input'));
+    browse._search = { ...browse._search, term: 'busy', loading: true, items: [{ path: '/a' }] };
+    const cancel = spy();
+    browse._searchEngine = { cancelSearch: cancel };
+    browse.syncSearch();
+    await panel.updateComplete;
+    panel.shadowRoot.querySelector('#clear-btn').click();
+    await panel.updateComplete;
+    expect(cancel.calledOnce).to.be.true;
+    expect(browse._search.loading).to.be.false;
+    expect(browse._search.term).to.be.undefined;
+    expect(panel.shadowRoot.querySelector('#find').value).to.equal('');
+    expect(browse._navField.value).to.equal('');
   });
 
   it('synchronizes drafts in both directions without searching on input', async () => {
-    const panel = await browse.getSearchPanel();
+    const panel = await browse.getToolsPanel();
     document.body.append(panel);
     await panel.updateComplete;
-    browse._navSearch.value = 'nav draft';
-    browse._navSearch.dispatchEvent(new Event('input'));
+    browse._navField.value = 'nav draft';
+    browse._navField.dispatchEvent(new Event('input'));
     await panel.updateComplete;
     const input = panel.shadowRoot.querySelector('#find');
     expect(input.value).to.equal('nav draft');
     input.value = 'panel draft';
     input.dispatchEvent(new Event('input'));
-    expect(browse._navSearch.value).to.equal('panel draft');
-    expect(browse._searchState.draft).to.equal('panel draft');
+    expect(browse._navField.value).to.equal('panel draft');
+    expect(browse._search.draft).to.equal('panel draft');
     expect(getMatches.called).to.be.false;
     input.value = '';
     input.dispatchEvent(new Event('input'));
     await panel.updateComplete;
-    expect(browse._navSearch.value).to.equal('');
+    expect(browse._navField.value).to.equal('');
     expect(panel.searchState.term).to.be.undefined;
     expect(panel.shadowRoot.querySelector('.browse-match-context')).to.be.null;
   });
@@ -125,45 +152,26 @@ describe('browse-owned nav search', () => {
   it('invalidates replacement on nav edits and rejects writes against a different draft', async () => {
     await submit('one');
     browse.handlePermissions({ detail: ['write'] });
-    const panel = await browse.getSearchPanel();
+    const panel = await browse.getToolsPanel();
     document.body.append(panel);
     await panel.updateComplete;
     const replace = stub(browse._searchEngine, 'replaceMatches')
       .resolves({ replaced: 1, skipped: 0, errors: [] });
+    panel._replacement = 'x';
+    await panel.updateComplete;
     const requested = spy();
     panel.addEventListener('replacerequest', requested);
-    panel.shadowRoot.querySelector('.browse-replace-form')
-      .dispatchEvent(new Event('submit', { cancelable: true }));
+    browse._navField.value = 'two';
+    browse._navField.dispatchEvent(new Event('input'));
     await panel.updateComplete;
-    expect(panel.shadowRoot.querySelector('.browse-replace-confirmation')).to.exist;
-    browse._navSearch.value = 'two';
-    browse._navSearch.dispatchEvent(new Event('input'));
-    panel.confirmReplacement();
-    await browse.replaceSearchMatches({ detail: { replacement: 'unsafe' } });
-    await panel.updateComplete;
+    panel.shadowRoot.querySelector('#replace-btn').click();
+    await browse.replaceMatches({ detail: { replacement: 'unsafe' } });
     expect(requested.called).to.be.false;
     expect(replace.called).to.be.false;
-    expect(panel.shadowRoot.querySelector('.browse-replace-confirmation')).to.be.null;
     expect(panel.shadowRoot.querySelector('#find').value).to.equal('two');
-    expect(browse._searchState.term).to.equal('one');
-    expect(browse._searchState.draft).to.equal('two');
+    expect(browse._search.term).to.equal('one');
+    expect(browse._search.draft).to.equal('two');
     expect(panel.canReplace).to.be.false;
-    browse._navSearch.value = 'one';
-    browse._navSearch.dispatchEvent(new Event('input'));
-    await panel.updateComplete;
-    panel.shadowRoot.querySelector('.browse-replace-form')
-      .dispatchEvent(new Event('submit', { cancelable: true }));
-    await panel.updateComplete;
-    expect(panel.shadowRoot.querySelector('.browse-replace-confirmation')).to.exist;
-    browse._navSearch.value = 'two';
-    browse._navSearch.dispatchEvent(new Event('input'));
-    browse._navSearch.value = 'one';
-    browse._navSearch.dispatchEvent(new Event('input'));
-    panel.confirmReplacement();
-    await panel.updateComplete;
-    expect(requested.called).to.be.false;
-    expect(replace.called).to.be.false;
-    expect(panel.shadowRoot.querySelector('.browse-replace-confirmation')).to.be.null;
   });
 
   it('runs existing content search with a trimmed term and streams results to the list', async () => {
@@ -194,11 +202,11 @@ describe('browse-owned nav search', () => {
   });
 
   it('replaces coherent state snapshots across search, replacement, and clearing', async () => {
-    expect(DaBrowse.properties).to.have.property('_searchState');
+    expect(DaBrowse.properties).not.to.have.property('_searchState');
     expect(DaBrowse.properties).not.to.have.property('_searchEngine');
     expect(DaBrowse.properties).not.to.have.property('_searchRequest');
     await browse.changeMatchCase({ detail: { matchCase: false } });
-    const initial = Object.freeze(browse._searchState);
+    const initial = Object.freeze(browse._search);
     let finish;
     let start;
     const started = new Promise((resolve) => { start = resolve; });
@@ -211,7 +219,7 @@ describe('browse-owned nav search', () => {
       });
     });
     const pending = browse.submitSearch(new CustomEvent('search-submit', { detail: { value: 'one' } }));
-    const starting = Object.freeze(browse._searchState);
+    const starting = Object.freeze(browse._search);
     expect(starting).not.to.equal(initial);
     expect(starting).to.deep.equal({
       matchCase: false,
@@ -221,14 +229,14 @@ describe('browse-owned nav search', () => {
       loading: true,
     });
     await started;
-    const streamed = Object.freeze(browse._searchState);
+    const streamed = Object.freeze(browse._search);
     const request = browse._searchRequest;
     expect(streamed).not.to.equal(starting);
     expect(streamed.items).to.have.length(1);
     expect(starting.items).to.have.length(0);
     finish();
     await pending;
-    const completed = Object.freeze(browse._searchState);
+    const completed = Object.freeze(browse._search);
     expect(completed).not.to.equal(streamed);
     expect(completed.loading).to.be.false;
     expect(streamed.loading).to.be.true;
@@ -236,20 +244,20 @@ describe('browse-owned nav search', () => {
     browse.handlePermissions({ detail: ['write'] });
     const result = { replaced: 1, skipped: 0, errors: [] };
     stub(browse._searchEngine, 'replaceMatches').resolves(result);
-    const replacing = browse.replaceSearchMatches({ detail: { replacement: 'two' } });
-    const busy = Object.freeze(browse._searchState);
+    const replacing = browse.replaceMatches({ detail: { replacement: 'two' } });
+    const busy = Object.freeze(browse._search);
     expect(busy).not.to.equal(completed);
     expect(busy.replacement.loading).to.be.true;
     expect(completed.replacement).to.be.undefined;
     await replacing;
-    const replaced = Object.freeze(browse._searchState);
+    const replaced = Object.freeze(browse._search);
     expect(replaced).not.to.equal(busy);
     expect(replaced.replacement).to.equal(result);
-    expect(replaced.term).to.equal('one');
-    expect(replaced.items).to.equal(completed.items);
-    expect(browse._searchRequest).to.equal(request);
+    expect(replaced.term).to.be.undefined;
+    expect(replaced.items).to.be.undefined;
+    expect(browse._searchRequest).not.to.equal(request);
     browse.clearSearch();
-    expect(browse._searchState).to.deep.equal({ matchCase: false, loading: false });
+    expect(browse._search).to.deep.equal({ matchCase: false, loading: false });
     expect(initial).to.deep.equal({ matchCase: false, loading: false });
     expect(replaced.replacement).to.equal(result);
     expect(browse._searchEngine).to.be.undefined;
@@ -260,14 +268,14 @@ describe('browse-owned nav search', () => {
     await submit('one');
     const previous = browse._searchEngine;
     const pending = browse.submitSearch(new CustomEvent('search-submit', { detail: { value: 'two' } }));
-    const starting = browse._searchState;
+    const starting = browse._search;
     expect(browse._searchEngine).to.equal(previous);
     previous.dispatchEvent(new CustomEvent('updated', { detail: { items: [{ path: '/stale.html', name: 'stale', ext: 'html' }] } }));
-    expect(browse._searchState).to.equal(starting);
+    expect(browse._search).to.equal(starting);
     expect(starting.items).to.have.length(0);
     await pending;
-    expect(browse._searchState.term).to.equal('two');
-    expect(browse._searchState.items[0].path).to.equal('/org/site/products/match.html');
+    expect(browse._search.term).to.equal('two');
+    expect(browse._search.items[0].path).to.equal('/org/site/products/match.html');
   });
 
   it('matches filenames and document content through the existing crawler and source API', async () => {
@@ -294,25 +302,23 @@ describe('browse-owned nav search', () => {
       await submit('needle');
       expect(crawl.calledOnce).to.be.true;
       expect(crawl.firstCall.args[0].path).to.deep.equal(['/org/site/products']);
-      expect(browse._searchState.items.map((item) => item.path)).to.have.members([
+      expect(browse._search.items.map((item) => item.path)).to.have.members([
         '/org/site/products/content.html',
         '/org/site/products/needle.html',
       ]);
-      expect(browse._searchEngine._matches).to.equal(2);
-      expect(browse._searchEngine._total).to.equal(3);
       expect((await searchSummary()).textContent).to.equal('2 results found');
-      const panel = await browse.getSearchPanel();
+      const panel = await browse.getToolsPanel();
       document.body.append(panel);
       await panel.updateComplete;
-      expect(panel.searchState.items).to.equal(browse._searchState.items);
+      expect(panel.searchState.items).to.equal(browse._search.items);
       expect(panel.shadowRoot.querySelector('select')).to.be.null;
-      expect(panel.shadowRoot.querySelectorAll('[data-match-file]')).to.have.length(2);
+      expect(panel.shadowRoot.querySelectorAll('[data-match-file]')).to.have.length(1);
       const preview = panel.shadowRoot.querySelector(
         '[data-match-file="/org/site/products/content.html"] [data-preview="match"]',
       );
       expect(preview.textContent).to.equal('<p>needle</p>');
       expect(preview.querySelector('mark').textContent).to.equal('needle');
-      expect(panel.shadowRoot.textContent).to.contain('Filename match only.');
+      expect(panel.shadowRoot.querySelector('[data-match-group="filename"]')).to.exist;
       expect(fetch.getCalls().filter(({ args }) => new URL(String(args[0])).pathname.endsWith('.html')))
         .to.have.length(3);
       browse.clearSearch();
@@ -334,8 +340,9 @@ describe('browse-owned nav search', () => {
   });
 
   it('opens lazy browse tools from a consumer-owned search action', async () => {
-    expect(browse._searchPanel).to.be.undefined;
-    const action = browse._searchAction;
+    expect(browse._toolsPanel).to.be.undefined;
+    await browse._navField.updateComplete;
+    const action = browse._navField.actionButton;
     expect(action.getAttribute('aria-label')).to.equal('Search options');
     expect(action.querySelector('svg use').getAttribute('href'))
       .to.equal('/img/icons/s2-icon-properties-20-n.svg#icon');
@@ -344,15 +351,16 @@ describe('browse-owned nav search', () => {
     document.addEventListener(PANEL_EVENT.OPEN, listener);
     try {
       action.click();
-      expect(opened).to.deep.equal({ section: 'tools' });
+      expect(opened).to.deep.equal({ section: 'tools', id: 'search' });
       await browse.updateComplete;
       expect(action.getAttribute('aria-expanded')).to.equal('true');
-      const panel = await browse.getSearchPanel();
+      const panel = await browse.getToolsPanel();
       document.body.append(panel);
       await panel.updateComplete;
       expect(panel.searchState.scope).to.equal('/org/site/products');
       expect(panel.searchState.matchCase).to.be.true;
       expect(panel.shadowRoot.querySelector('#match-case').disabled).to.be.false;
+      expect(panel.shadowRoot.querySelector('#match-case').getAttribute('aria-pressed')).to.equal('true');
       panel.close();
       await browse.updateComplete;
       expect(action.getAttribute('aria-expanded')).to.equal('false');
@@ -376,15 +384,15 @@ describe('browse-owned nav search', () => {
     await submit('one');
     const previous = browse._searchEngine;
     const cancel = spy(previous, 'cancelSearch');
-    browse._navSearch.value = 'unfinished draft';
-    browse._navSearch.dispatchEvent(new Event('input'));
+    browse._navField.value = 'unfinished draft';
+    browse._navField.dispatchEvent(new Event('input'));
     await browse.changeMatchCase({ detail: { matchCase: false } });
     expect(cancel.called).to.be.true;
     expect(getMatches.secondCall.args).to.deep.equal(['/org/site/products', 'one']);
     expect(browse._searchEngine).not.to.equal(previous);
     expect(browse._searchEngine.caseSensitive).to.be.false;
-    expect(browse._navSearch.value).to.equal('unfinished draft');
-    expect(browse._searchState.draft).to.equal('unfinished draft');
+    expect(browse._navField.value).to.equal('unfinished draft');
+    expect(browse._search.draft).to.equal('unfinished draft');
   });
 
   it('invalidates an active crawl when match case changes without letting it finish the new search', async () => {
@@ -403,24 +411,28 @@ describe('browse-owned nav search', () => {
     await pending;
     expect(previous._searchRun).to.be.undefined;
     expect(browse._searchEngine.caseSensitive).to.be.false;
-    expect(browse._searchState.loading).to.be.false;
-    expect(browse._searchState.items).to.have.length(1);
+    expect(browse._search.loading).to.be.false;
+    expect(browse._search.items).to.have.length(1);
   });
   it('routes a confirmed replacement to the engine and reports its result in the panel', async () => {
     await submit('one');
     browse.handlePermissions({ detail: ['write'] });
-    const panel = await browse.getSearchPanel();
+    const panel = await browse.getToolsPanel();
     document.body.append(panel);
     await browse.updateComplete;
     await panel.updateComplete;
     const result = { replaced: 1, skipped: 0, errors: [] };
     const replace = stub(browse._searchEngine, 'replaceMatches').resolves(result);
-    await browse.replaceSearchMatches({ detail: { replacement: '$& literal' } });
+    await browse.replaceMatches({ detail: { replacement: '$& literal' } });
     await browse.updateComplete;
     await panel.updateComplete;
     expect(replace.calledOnceWithExactly({ replacement: '$& literal' })).to.be.true;
     expect(panel.searchState.replacement).to.deep.equal(result);
-    expect(panel.shadowRoot.querySelector('[role="status"]').textContent)
+    expect(panel.searchState.term).to.be.undefined;
+    expect(panel.searchState.items).to.be.undefined;
+    expect(browse._navField.value).to.equal('');
+    expect(panel.shadowRoot.querySelector('#replacement').value).to.equal('');
+    expect(panel.shadowRoot.querySelector('p[role="status"]').textContent)
       .to.equal('Replaced text in 1 file.');
   });
 
@@ -430,18 +442,18 @@ describe('browse-owned nav search', () => {
     const replace = stub(browse._searchEngine, 'replaceMatches').callsFake(() => new Promise((resolve) => {
       finish = resolve;
     }));
-    await browse.replaceSearchMatches({ detail: { replacement: 'two' } });
+    await browse.replaceMatches({ detail: { replacement: 'two' } });
     expect(replace.called).to.be.false;
     browse.handlePermissions({ detail: ['write'] });
-    const pending = browse.replaceSearchMatches({ detail: { replacement: 'two' } });
+    const pending = browse.replaceMatches({ detail: { replacement: 'two' } });
     await browse.updateComplete;
-    expect(browse._navSearch.disabled).to.be.true;
+    expect(browse._navField.disabled).to.be.true;
     browse.clearSearch();
     finish({ replaced: 1, skipped: 0, errors: [] });
     await pending;
     await browse.updateComplete;
-    expect(browse._searchState.replacement).to.be.undefined;
-    expect(browse._navSearch.disabled).to.be.false;
+    expect(browse._search.replacement).to.be.undefined;
+    expect(browse._navField.disabled).to.be.false;
   });
 
   it('routes toolbar sort and filter requests to the visible results list', async () => {
@@ -481,8 +493,8 @@ describe('browse-owned nav search', () => {
     await header.updateComplete;
     expect(header.shadowRoot.querySelector('slot')).to.be.null;
     expect(creation.isConnected).to.be.true;
-    browse._navSearch.value = '';
-    browse._navSearch.dispatchEvent(new Event('input'));
+    browse._navField.value = '';
+    browse._navField.dispatchEvent(new Event('input'));
     await browse.updateComplete;
     expect(browse._searchEngine).to.equal(undefined);
     expect(browse.shadowRoot.querySelector('.da-list-type-search')).to.be.null;
@@ -514,8 +526,8 @@ describe('browse-owned nav search', () => {
     await started;
     const summary = await searchSummary();
     expect(summary.textContent).to.equal('Searching...');
-    const visual = browse.shadowRoot.querySelector('da-browse-header').shadowRoot.querySelector('.da-browse-search-summary');
-    expect(visual.querySelector('.da-browse-search-progress').textContent).to.equal('Searching... \u00b7 1 found');
+    const visual = browse.shadowRoot.querySelector('da-browse-header').shadowRoot.querySelector('.browse-search-summary');
+    expect(visual.querySelector('.browse-search-progress').textContent).to.equal('Searching... \u00b7 1 found');
     expect(visual.getAttribute('aria-hidden')).to.equal('true');
     browse._searchEngine._items = [
       ...browse._searchEngine._items,
@@ -523,12 +535,12 @@ describe('browse-owned nav search', () => {
     ];
     browse._searchEngine.updateList();
     expect((await searchSummary()).textContent).to.equal('Searching...');
-    expect(visual.querySelector('.da-browse-search-progress').textContent).to.equal('Searching... \u00b7 2 found');
+    expect(visual.querySelector('.browse-search-progress').textContent).to.equal('Searching... \u00b7 2 found');
     finish();
     await pending;
     expect((await searchSummary()).textContent).to.equal('2 results found');
     expect(visual.hasAttribute('data-loading')).to.be.false;
-    expect(visual.querySelector('.da-browse-search-complete').textContent).to.equal('2 results found');
+    expect(visual.querySelector('.browse-search-complete').textContent).to.equal('2 results found');
   });
 
   it('reports an empty completed search rather than an unfinished zero count', async () => {
@@ -582,16 +594,16 @@ describe('browse-owned nav search', () => {
       });
     });
     const submitted = spy(browse, 'submitSearch');
-    browse._navSearch.dispatchEvent(new CustomEvent('search-submit', { detail: { value: 'one' } }));
+    browse._navField.dispatchEvent(new CustomEvent('search-submit', { detail: { value: 'one' } }));
     await started;
     const pending = submitted.returnValues[0];
     browse.clearSearch();
     finish();
     await pending;
     submitted.restore();
-    expect(browse._searchState.items).to.equal(undefined);
+    expect(browse._search.items).to.equal(undefined);
     expect(browse._searchEngine).to.equal(undefined);
-    expect(browse._searchState.loading).to.be.false;
+    expect(browse._search.loading).to.be.false;
     expect((await searchSummary()).textContent).to.equal('');
   });
 
@@ -602,10 +614,10 @@ describe('browse-owned nav search', () => {
     await browse.updateComplete;
     expect(browse._searchEngine).to.equal(undefined);
     expect(search._searchRun).to.equal(undefined);
-    expect(browse._navSearch.label).to.equal('Search images');
-    expect(browse._navSearch.placeholder).to.equal('Search images');
-    expect(browse._navSearch.getAttribute('aria-label')).to.equal('Search images');
-    expect(browse._navSearch.value).to.equal('');
+    expect(browse._navField.label).to.equal('Search images');
+    expect(browse._navField.placeholder).to.equal('Search images');
+    expect(browse._navField.getAttribute('aria-label')).to.equal('Search images');
+    expect(browse._navField.value).to.equal('');
   });
 
   it('removes the injected control and cancels the search when browse disconnects', async () => {
@@ -613,27 +625,33 @@ describe('browse-owned nav search', () => {
     const search = browse._searchEngine;
     browse.remove();
     expect(nav.querySelector('[slot="search"]')).to.be.null;
-    expect(browse._navSearch.isConnected).to.be.false;
-    expect(browse._searchAction.isConnected).to.be.false;
+    expect(browse._navField.isConnected).to.be.false;
     expect(search._searchRun).to.equal(undefined);
   });
 
   it('reattaches the same field and in-field action once when browse reconnects', async () => {
-    const field = browse._navSearch;
-    const action = browse._searchAction;
+    const field = browse._navField;
+    await field.updateComplete;
+    const action = field.actionButton;
     browse.remove();
     document.body.append(browse);
-    await browse._navSearchReady;
+    await browse._searchReady;
     expect(nav.shadowRoot.querySelector('slot').assignedElements()).to.deep.equal([field]);
-    expect(browse._navSearch).to.equal(field);
-    expect(browse._searchAction).to.equal(action);
-    expect([...field.children]).to.deep.equal([action]);
+    expect(browse._navField).to.equal(field);
+    expect(field.actionButton).to.equal(action);
     const opened = spy();
     document.addEventListener(PANEL_EVENT.OPEN, opened);
     try {
       action.click();
       expect(opened.calledOnce).to.be.true;
-      expect(opened.firstCall.args[0].detail).to.deep.equal({ section: 'tools' });
+      expect(opened.firstCall.args[0].detail).to.deep.equal({ section: 'tools', id: 'search' });
+      const closed = spy();
+      document.addEventListener(PANEL_EVENT.CLOSE, closed);
+      browse._toolsOpen = true;
+      action.click();
+      document.removeEventListener(PANEL_EVENT.CLOSE, closed);
+      expect(closed.calledOnce).to.be.true;
+      expect(closed.firstCall.args[0].detail.section).to.equal('tools');
     } finally {
       document.removeEventListener(PANEL_EVENT.OPEN, opened);
     }
@@ -646,7 +664,7 @@ describe('browse-owned nav search', () => {
     expect(browse.shadowRoot.querySelector('[role="alert"]').textContent)
       .to.equal('Search failed: Network unavailable');
     expect((await searchSummary()).textContent).to.equal('');
-    expect(browse._searchState).to.include({
+    expect(browse._search).to.include({
       term: 'one',
       loading: false,
       error: 'Search failed: Network unavailable',

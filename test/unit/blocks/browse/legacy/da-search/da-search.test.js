@@ -406,51 +406,6 @@ describe('DaSearch', () => {
     });
   });
 
-  describe('timeoutWrapper', () => {
-    it('resolves with result when promise completes before timeout', async () => {
-      const fn = async () => ({ success: true });
-      const result = await daSearch.timeoutWrapper(fn, 1000);
-
-      expect(result).to.deep.equal({ success: true });
-    });
-
-    it('resolves with timeout error when promise exceeds timeout', async () => {
-      const fn = async () => {
-        await new Promise((resolve) => { setTimeout(resolve, 200); });
-        return { success: true };
-      };
-      const result = await daSearch.timeoutWrapper(fn, 50);
-
-      expect(result).to.deep.equal({ error: 'timeout' });
-    });
-
-    it('resolves with bad result error when promise rejects', async () => {
-      const fn = async () => {
-        throw new Error('test error');
-      };
-      const result = await daSearch.timeoutWrapper(fn, 1000);
-
-      expect(result).to.deep.equal({ error: 'bad result' });
-    });
-
-    it('uses default timeout of 30000ms', async () => {
-      const fn = async () => ({ success: true });
-      const result = await daSearch.timeoutWrapper(fn);
-
-      expect(result).to.deep.equal({ success: true });
-    });
-
-    it('clears timeout when promise completes', async () => {
-      const clearTimeoutSpy = spy(window, 'clearTimeout');
-      const fn = async () => ({ success: true });
-
-      await daSearch.timeoutWrapper(fn, 1000);
-
-      expect(clearTimeoutSpy.called).to.be.true;
-      clearTimeoutSpy.restore();
-    });
-  });
-
   describe('handleSearch', () => {
     beforeEach(() => {
       daSearch.fullpath = '/org/site/folder';

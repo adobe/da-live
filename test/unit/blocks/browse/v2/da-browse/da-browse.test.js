@@ -199,7 +199,7 @@ describe('Browse', () => {
   it('hasPaginationStateChanges ignores unrelated property changes', () => {
     const daBrowse = new DaBrowse();
     daBrowse._listItems = [{ path: '/a', name: 'a' }];
-    const changedProps = new Map([['_showFilter', false]]);
+    const changedProps = new Map([['_unrelated', false]]);
 
     expect(daBrowse.hasPaginationStateChanges(changedProps)).to.be.false;
   });

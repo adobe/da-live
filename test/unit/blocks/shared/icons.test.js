@@ -3,8 +3,8 @@ import { getTypeLabel, iconPathForExt, ICONS } from '../../../../blocks/shared/i
 
 describe('browse file types', () => {
   it('labels folders and known file types consistently', () => {
-    expect([undefined, 'html', 'json', 'link', 'ico', 'pdf'].map(getTypeLabel))
-      .to.deep.equal(['Folder', 'Page', 'Sheet', 'Link', 'Image', 'PDF']);
+    expect([undefined, 'html', 'json', 'link', 'ico', 'pdf', 'mp4', 'webm', 'mov'].map(getTypeLabel))
+      .to.deep.equal(['Folder', 'Page', 'Sheet', 'Link', 'Image', 'PDF', 'Video', 'Video', 'Video']);
   });
 
   it('uses the image icon for ICO files and a file fallback for unknown extensions', () => {

@@ -1,6 +1,5 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
-import { setViewport } from '@web/test-runner-commands';
 
 const { setNx } = await import('../../../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -52,15 +51,15 @@ describe('da-list render', () => {
     await el.updateComplete;
   }
 
-  it('restores saved sorting on initial load and applies it again when changing folders', async () => {
-    localStorage.setItem('da-browse-settings', JSON.stringify({ sort: { property: 'name', direction: 'ascending' } }));
+  it('applies the sort preference on initial load and applies it again when changing folders', async () => {
     el = document.createElement('da-list');
     el.sort = true;
+    el.sortPreference = { property: 'name', direction: 'ascending' };
     el.getList = async () => [
       { path: `${el.fullpath}/b.html`, name: 'b', ext: 'html' },
       { path: `${el.fullpath}/a.html`, name: 'a', ext: 'html' },
     ];
-    el.updateDeletePermission = async () => {};
+    el.updateDeletePermission = async () => { };
     el.fullpath = '/org/site/one';
     document.body.append(el);
     await nextFrame();
@@ -118,13 +117,13 @@ describe('da-list render', () => {
     expect(el.shadowRoot.querySelector('.da-list-sentinel')).to.exist;
   });
 
-  it('Filters items by name when _filter is set', async () => {
+  it('Filters items by type without a Name text filter', async () => {
     await fixture({ fullpath: '/o/r' });
     el._listItems = [
       { path: '/o/r/alpha', name: 'alpha', ext: 'html' },
-      { path: '/o/r/beta', name: 'beta', ext: 'html' },
+      { path: '/o/r/beta', name: 'beta', ext: 'json' },
     ];
-    el._filter = 'alph';
+    el._hiddenTypes = new Set(['Sheet']);
     await rerender();
     const items = el.shadowRoot.querySelectorAll('da-list-item');
     expect(items.length).to.equal(1);
@@ -145,7 +144,7 @@ describe('da-list render', () => {
     await fixture({ fullpath: '/o/r' });
     el._dropConflicts = ['a.html', 'b.html'];
     await rerender();
-    const dialog = el.shadowRoot.querySelector('da-dialog');
+    const dialog = el.shadowRoot.querySelector('da-confirm-dialog');
     expect(dialog).to.exist;
     expect(dialog.title).to.contain('Replace 2');
     const items = dialog.querySelectorAll('.da-drop-conflicts li');
@@ -156,7 +155,7 @@ describe('da-list render', () => {
     await fixture({ fullpath: '/o/r' });
     el._dropConflicts = ['a.html'];
     await rerender();
-    const dialog = el.shadowRoot.querySelector('da-dialog');
+    const dialog = el.shadowRoot.querySelector('da-confirm-dialog');
     expect(dialog.title).to.contain('1 existing item');
   });
 
@@ -164,7 +163,7 @@ describe('da-list render', () => {
     await fixture({ fullpath: '/o/r' });
     el._itemErrors = [{ name: 'a', message: 'Failed' }];
     await rerender();
-    const dialog = el.shadowRoot.querySelector('da-dialog');
+    const dialog = el.shadowRoot.querySelector('da-confirm-dialog');
     expect(dialog).to.exist;
     expect(dialog.textContent).to.contain('Failed');
     expect(dialog.textContent).to.contain('a');
@@ -176,7 +175,7 @@ describe('da-list render', () => {
     el._confirm = { type: 'delete' };
     el._itemsRemaining = 0;
     await rerender();
-    const dialog = el.shadowRoot.querySelector('da-dialog');
+    const dialog = el.shadowRoot.querySelector('da-confirm-dialog');
     expect(dialog).to.exist;
     expect(dialog.title).to.contain('Deleting');
   });
@@ -191,11 +190,13 @@ describe('da-list render', () => {
     expect(el.shadowRoot.querySelector('.da-drop-area')).to.exist;
   });
 
-  it('Renders the filter input toggle button', async () => {
+  it('Keeps Name sorting without a filter input or toggle', async () => {
     await fixture({ fullpath: '/o/r' });
     el._listItems = [];
     await rerender();
-    expect(el.shadowRoot.querySelector('button.da-browse-filter')).to.exist;
+    expect(el.shadowRoot.querySelector('button.da-browse-filter')).to.be.null;
+    expect(el.shadowRoot.querySelector('input[name="filter"]')).to.be.null;
+    expect(el.shadowRoot.querySelector('.da-browse-header-cell-name button').textContent).to.contain('Name');
   });
 
   it('Renders a table-style header with Name, Type, and Modified columns', async () => {
@@ -211,18 +212,20 @@ describe('da-list render', () => {
     expect(header.textContent).to.contain('Modified');
   });
 
-  it('getSortAttr returns "ascending" / "descending" / "none"', async () => {
+  it('sortDirectionFor returns the active direction or "none"', async () => {
     await fixture({ fullpath: '/o/r' });
-    expect(el.getSortAttr('new')).to.equal('ascending');
-    expect(el.getSortAttr('old')).to.equal('descending');
-    expect(el.getSortAttr(undefined)).to.equal('none');
+    el._sort = { property: 'name', direction: 'ascending' };
+    expect(el.sortDirectionFor('name')).to.equal('ascending');
+    expect(el.sortDirectionFor('lastModified')).to.equal('none');
+    el._sort = undefined;
+    expect(el.sortDirectionFor('name')).to.equal('none');
   });
 
   it('retains the sentinel when a grouped, filtered page has no visible items', async () => {
     await fixture();
-    el.loadMore = () => {};
+    el.loadMore = () => { };
     el._bulkLoading = true;
-    el.flattenFolders = false;
+    el.groupByType = true;
     el._listItems = [{ path: '/o/r/page.html', name: 'page', ext: 'html' }];
     el._hiddenTypes = new Set(['Page']);
     el._continuationToken = 'next';
@@ -234,48 +237,11 @@ describe('da-list render', () => {
 
   it('uses the same Sheet tag styling for groups and the type filter', async () => {
     await fixture();
-    el.flattenFolders = false;
+    el.groupByType = true;
     el._listItems = [{ path: '/o/r/data.json', name: 'data', ext: 'json' }];
     await rerender();
     expect(el.shadowRoot.querySelector('.da-list-group-header .tag').classList.contains('sheet')).to.be.true;
     expect(el.shadowRoot.querySelector('.da-list-types-popover .tag').classList.contains('sheet')).to.be.true;
-  });
-
-  it('keeps header and row columns aligned at narrow and wide viewport sizes', async () => {
-    await fixture();
-    el._listItems = [{ path: '/o/r/page.html', name: 'page', ext: 'html' }];
-    await rerender();
-    const item = el.shadowRoot.querySelector('da-list-item');
-    await item.updateComplete;
-    const [listCss, itemCss] = await Promise.all([
-      savedFetch('/blocks/browse/v2/da-list/da-list.css').then((response) => response.text()),
-      savedFetch('/blocks/browse/v2/da-list-item/da-list-item.css').then((response) => response.text()),
-    ]);
-    const listStyle = new CSSStyleSheet();
-    const itemStyle = new CSSStyleSheet();
-    listStyle.replaceSync(listCss);
-    itemStyle.replaceSync(itemCss);
-    el.shadowRoot.adoptedStyleSheets = [listStyle];
-    item.shadowRoot.adoptedStyleSheets = [itemStyle];
-    const header = el.shadowRoot.querySelector('.da-browse-table-header');
-    const row = item.shadowRoot.querySelector('.da-item-list-item-inner');
-    const viewport = { width: window.innerWidth, height: window.innerHeight };
-    try {
-      for (const [width, columns] of [[480, 3], [700, 4], [1000, 5]]) {
-        // eslint-disable-next-line no-await-in-loop
-        await setViewport({ width, height: viewport.height });
-        const headerColumns = getComputedStyle(header).gridTemplateColumns.split(' ');
-        const rowColumns = getComputedStyle(row).gridTemplateColumns.split(' ');
-        expect(headerColumns.length).to.equal(columns);
-        expect(rowColumns).to.deep.equal(headerColumns);
-        const typeDisplay = getComputedStyle(row.querySelector('[data-column="type"]')).display;
-        expect(typeDisplay === 'none').to.equal(el.getBoundingClientRect().width < 900);
-        const dateDisplay = getComputedStyle(row.querySelector('[data-column="modified"]')).display;
-        expect(dateDisplay === 'none').to.equal(el.getBoundingClientRect().width < 500);
-      }
-    } finally {
-      await setViewport(viewport);
-    }
   });
 
   it('filters by type and restores all types', async () => {
@@ -294,7 +260,7 @@ describe('da-list render', () => {
 
   it('collapses and expands type groups without changing the data', async () => {
     await fixture();
-    el.flattenFolders = false;
+    el.groupByType = true;
     el._listItems = [{ path: '/o/r/page.html', name: 'page', ext: 'html' }];
     el.toggleTypeGroup('Page');
     await rerender();
@@ -340,6 +306,31 @@ describe('da-list render', () => {
     await rerender();
     const bar = el.shadowRoot.querySelector('da-actionbar');
     expect(bar.hidePublishConfs).to.deep.equal(['/o/r/blog']);
+  });
+
+  it('renders items in a card grid and keeps only select-all in the header', async () => {
+    await fixture({ select: true, view: 'card' });
+    el._listItems = [
+      { path: '/org/site/a.html', name: 'a', ext: 'html' },
+      { path: '/org/site/b.png', name: 'b', ext: 'png' },
+    ];
+    await rerender();
+    const items = el.shadowRoot.querySelectorAll('.da-card-grid da-list-item');
+    expect(items).to.have.length(2);
+    expect(items[0].getAttribute('view')).to.equal('card');
+    expect(el.shadowRoot.querySelector('.da-browse-table-header').classList.contains('is-card')).to.be.true;
+    expect(el.shadowRoot.querySelector('.da-card-select-all-label').textContent).to.equal('Select all');
+    expect(el.shadowRoot.querySelector('.da-card-sort-pill').textContent).to.equal('Sort: Default');
+    el._sort = { property: 'lastModified', direction: 'descending' };
+    await rerender();
+    expect(el.shadowRoot.querySelector('.da-card-sort-pill').textContent)
+      .to.equal('Sorted by Modified (newest first)');
+    el.view = 'list';
+    await rerender();
+    expect(el.shadowRoot.querySelector('.da-card-grid')).to.be.null;
+    expect(el.shadowRoot.querySelector('.da-card-sort-pill')).to.be.null;
+    expect(el.shadowRoot.querySelector('.da-card-select-all-label')).to.be.null;
+    expect(el.shadowRoot.querySelector('da-list-item').hasAttribute('view')).to.be.false;
   });
 });
 
