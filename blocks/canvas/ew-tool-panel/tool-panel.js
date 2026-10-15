@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2, getUISize, getLgBtnClass } from '../../../scripts/utils.js';
+import { getNx, getNx2, getUISize, getBtnSizeClass } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import { getCommentsBridge } from '../editor-utils/comments-bridge.js';
 import { canvasBus } from '../utils/canvas-bus.js';
@@ -275,7 +275,7 @@ class EwToolPanel extends LitElement {
 
     return html`
       <div class="tool-panel-header">
-        <button type="button" class="nx-action-btn-icon tool-panel-close ${getLgBtnClass()}" aria-label="Close panel" @click=${this._close}>
+        <button type="button" class="nx-action-btn-icon tool-panel-close ${getBtnSizeClass()}" aria-label="Close panel" @click=${this._close}>
           <svg aria-hidden="true" viewBox="0 0 20 20"><use href="${CLOSE_ICON_SRC}#icon"></use></svg>
         </button>
         <nx-picker
