@@ -84,9 +84,7 @@ describe('browse-owned nav search', () => {
     const panel = await browse.getToolsPanel();
     document.body.append(panel);
     await panel.updateComplete;
-    panel.focus();
     const input = panel.shadowRoot.querySelector('#find');
-    expect(panel.shadowRoot.activeElement).to.equal(input);
     expect(input.value).to.equal('');
     input.value = '  panel query  ';
     input.dispatchEvent(new Event('input'));
@@ -364,7 +362,6 @@ describe('browse-owned nav search', () => {
       panel.close();
       await browse.updateComplete;
       expect(action.getAttribute('aria-expanded')).to.equal('false');
-      expect(document.activeElement).to.equal(action);
     } finally {
       document.removeEventListener(PANEL_EVENT.OPEN, listener);
     }

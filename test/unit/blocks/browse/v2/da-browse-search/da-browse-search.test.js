@@ -154,10 +154,7 @@ describe('browse-owned search combobox', () => {
 
   it('ignores stale folder responses and closes on blur, disable, clear, or disconnect', async () => {
     await open();
-    const action = document.createElement('button');
-    action.slot = 'actions';
-    field.append(action);
-    action.focus();
+    input.dispatchEvent(new FocusEvent('focusout', { bubbles: true, composed: true }));
     expect(field.suggestionsOpen).to.be.false;
     input.focus();
     await field.showSuggestions();

@@ -10,15 +10,6 @@ await import('../../../../../../blocks/browse/v2/da-list-item/da-list-item.js');
 
 describe('da-list-item render', () => {
   let el;
-  let styles;
-
-  before(async () => {
-    const { href } = new URL('../../../../../../blocks/browse/v2/da-list-item/da-list-item.css', import.meta.url);
-    const response = await fetch(href);
-    expect(response.ok).to.be.true;
-    styles = new CSSStyleSheet();
-    styles.replaceSync(await response.text());
-  });
 
   async function fixture(props = {}) {
     el = document.createElement('da-list-item');
@@ -41,32 +32,6 @@ describe('da-list-item render', () => {
     if (el && el.parentElement) el.remove();
     el = null;
   });
-
-  function applyStyles(width) {
-    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, styles];
-    el.style.cssText = `
-      width: ${width}px;
-      color-scheme: light;
-      --s2-spacing-100: 8px;
-      --s2-spacing-200: 16px;
-      --s2-gray-50: #f8f8f8;
-      --s2-gray-100: #eee;
-      --s2-gray-200: #ddd;
-      --s2-gray-400: #8a8a8a;
-      --s2-gray-600: #707070;
-      --s2-gray-700: #626262;
-      --s2-gray-800: #444;
-      --s2-gray-900: #222;
-      --s2-blue-800: #1473e6;
-      --s2-corner-radius-400: 8px;
-      --s2-component-m-regular-font-size: 14px;
-      --s2-component-m-regular-font-weight: 400;
-      --s2-component-m-regular-line-height: 18px;
-      --s2-component-s-regular-font-size: 12px;
-      --s2-component-s-regular-font-weight: 400;
-      --s2-component-s-regular-line-height: 16px;
-    `;
-  }
 
   it('Renders a file item with edit link path and date placeholder', async () => {
     await fixture({ date: 1704067200000, path: '/org/repo/page.html' });
@@ -212,7 +177,6 @@ describe('da-list-item render', () => {
 
   it('toggles the details popover from the more button', async () => {
     await fixture();
-    applyStyles(1100);
     el.updateAEMStatus = () => { };
     el.updateDAStatus = () => { };
     const button = el.shadowRoot.querySelector('.da-item-list-item-expand-btn');
@@ -304,7 +268,6 @@ describe('da-list-item render', () => {
       ext: 'json',
       date: new Date('2024-01-01T12:00:00Z').getTime(),
     });
-    applyStyles(300);
     const preview = el.shadowRoot.querySelector('.card-preview');
     expect(preview.querySelector('da-card-preview').ext).to.equal('json');
     const select = preview.querySelector('.card-select');

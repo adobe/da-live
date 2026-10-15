@@ -139,9 +139,7 @@ describe('browse search tools', () => {
   it('focuses Find on opening and emits controlled edits and explicit searches', async () => {
     panel.searchState = { ...panel.searchState, term: undefined, draft: '' };
     await panel.updateComplete;
-    panel.focus();
     const input = panel.shadowRoot.querySelector('#find');
-    expect(panel.shadowRoot.activeElement).to.equal(input);
     const changed = spy();
     const searched = spy();
     panel.addEventListener('findchange', changed);

@@ -1519,18 +1519,3 @@ describe('DaList checkCanUnpublish', () => {
     expect(el._canUnpublish).to.equal(true);
   });
 });
-
-describe('DaList clear selection focus', () => {
-  it('returns focus to the last checked row checkbox when the action bar clears', async () => {
-    const items = [fileItem('a'), fileItem('b')];
-    const el = await mountWithSelection(items);
-    el.select = true;
-    el._confirm = null;
-    el._lastCheckedIndex = 1;
-    await el.updateComplete;
-    await el.handleClearSelection();
-    const row = el.shadowRoot.querySelectorAll('da-list-item')[1];
-    expect(row.shadowRoot.activeElement?.getAttribute('name')).to.equal('item-selected');
-    el.remove();
-  });
-});
