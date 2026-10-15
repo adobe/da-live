@@ -1,6 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
 import { getExtensionsBridge } from '../../../../../blocks/canvas/editor-utils/extensions-bridge.js';
+import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -70,6 +71,18 @@ describe('Ew panel library icons: preview + search', () => {
   });
 
   afterEach(() => el.remove());
+
+  it('shows branch-unavailable feedback without loading a guessed preview iframe', async () => {
+    el._hashState = { org: 'org', site: 'site', path: 'page' };
+    canvasBus.branchState.emit({ org: 'org', site: 'site', path: '/org/site/page', status: 'pending' });
+    await el._openPreview({ name: 'Hero', path: 'https://content.da.live/org/site/blocks/hero' });
+    await el.updateComplete;
+    expect(el.shadowRoot.textContent).to.include('Preview branch unavailable.');
+    expect(el.shadowRoot.querySelector('iframe')).to.equal(null);
+    canvasBus.branchState.emit({ path: null, status: 'pending' });
+    await el.updateComplete;
+    expect(el._preview).to.equal(undefined);
+  });
 
   it('renders an icon preview image per item using the sheet-configured icon URL', () => {
     const imgs = el.shadowRoot.querySelectorAll('.ext-item-icon');

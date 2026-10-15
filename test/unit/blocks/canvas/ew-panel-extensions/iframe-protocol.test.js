@@ -2,6 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import { TextSelection } from 'da-y-wrapper';
 import { setNx, getNx } from '../../../../../scripts/utils.js';
+import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 import { makeView } from '../test-helpers.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -29,6 +30,7 @@ describe('setupIframeChannel', () => {
 
   afterEach(() => {
     setUrl(originalUrl);
+    canvasBus.branchState.emit({ path: null, status: 'pending' });
   });
 
   it('is a no-op when org is missing from hashState', async () => {
@@ -77,6 +79,7 @@ describe('setupIframeChannel', () => {
       repo: 'mysite',
       site: 'mysite',
       ref: 'feature123',
+      branch: 'feature123',
       path: '/a/b',
       view: 'split',
       hash: '#/myorg/mysite/a/b',
@@ -107,6 +110,32 @@ describe('setupIframeChannel', () => {
     expect(message.project.view).to.equal('edit');
 
     destroy();
+  });
+
+  it('reports the configured site branch separately from the local plugin ref', async () => {
+    setUrl('/some/page?ref=local');
+    canvasBus.branchState.emit({
+      org: 'myorg',
+      site: 'mysite',
+      path: '/myorg/mysite/page',
+      status: 'ready',
+      branch: 'configured',
+    });
+    const iframe = makeIframe();
+    const { destroy } = await setupIframeChannel({
+      iframe,
+      hashState: { org: 'myorg', site: 'mysite', path: 'page' },
+      getView: () => null,
+      onClose: () => {},
+    });
+    try {
+      await wait(800);
+      const [message] = iframe.contentWindow.postMessage.firstCall.args;
+      expect(message.context.ref).to.equal('local');
+      expect(message.context.branch).to.equal('configured');
+    } finally {
+      destroy();
+    }
   });
 
   it('calls onClose for a closeLibrary action', async () => {

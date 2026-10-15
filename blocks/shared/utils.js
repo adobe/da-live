@@ -246,7 +246,7 @@ export const getSheetByIndex = (json, index = 0) => {
   if (json[':type'] !== 'multi-sheet') {
     return json.data;
   }
-  return json[Object.keys(json)[index]]?.data;
+  return json[json[':names']?.[index]]?.data;
 };
 
 export const getSheetByName = (json, name) => {
@@ -379,15 +379,29 @@ export const fetchDaConfigs = (() => {
     return resp.json();
   };
 
+  const cacheConfig = (key, org, site) => {
+    configCache[key] = fetchConfig(org, site).then(
+      (result) => {
+        if (result.error) delete configCache[key];
+        return result;
+      },
+      (error) => {
+        delete configCache[key];
+        throw error;
+      },
+    );
+    return configCache[key];
+  };
+
   return ({ org, site }) => {
     if (!org) return [Promise.resolve(null)];
 
     // Set the org config promise if it does not exist
-    configCache[`/${org}`] ??= fetchConfig(org);
+    configCache[`/${org}`] ??= cacheConfig(`/${org}`, org);
 
     if (site) {
       // Set the site config promise if it does not exist
-      configCache[`/${org}/${site}`] ??= fetchConfig(org, site);
+      configCache[`/${org}/${site}`] ??= cacheConfig(`/${org}/${site}`, org, site);
     }
 
     // return array of cached configs (org = 0, site = 1)

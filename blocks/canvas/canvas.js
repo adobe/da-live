@@ -20,6 +20,8 @@ import { resolveEditorDocSession, createdDocSession } from './ew-editor-doc/util
 import { SEL_BLOCK, SEL_ITEM, SEL_TEXT } from './ew-editor-doc/utils/selection.js';
 import { getChatPanelContent } from '../shared/chat-panel.js';
 import { canvasBus } from './utils/canvas-bus.js';
+import { initBranchBridge } from './editor-utils/branch-bridge.js';
+import { resolveCanvasBranch } from './editor-utils/branch-state.js';
 import { installComparison } from './ew-comparison/comparison.js';
 import { docToHtml } from '../shared/version/compare.js';
 
@@ -158,13 +160,15 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
   const name = state?.path?.split('/').pop();
   document.title = `${name ? `Edit ${name} | ` : ''}Experience Workspace`;
   if (!fullPath) {
+    resolveCanvasBranch();
     removeCanvasEditors(mountRoot);
     removeNotPermitted(mountRoot);
     header.authorized = true;
     header.canWrite = true;
     return;
   }
-  const ctx = editorCtxFromHashState(state, fullPath);
+  const editorCtx = editorCtxFromHashState(state, fullPath);
+  const ctx = { ...editorCtx, branchPromise: resolveCanvasBranch(editorCtx) };
   const session = await resolveEditorDocSession(ctx);
   if (loadCount !== editorLoadCount) return;
   if (session.notFound) {
@@ -332,6 +336,7 @@ export default async function decorate(block) {
     header.redoAvailable = detail?.canRedo ?? false;
   });
 
+  initBranchBridge();
   hashChange.subscribe((state) => {
     comparisonContext = state;
     comparison.contextChanged();
