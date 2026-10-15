@@ -413,6 +413,7 @@ class EwCanvasVersions extends LitElement {
       <div class="ew-canvas-versions">
         <div class="toolbar">
           <nx-segmented-btn
+            compact
             label="Filter versions"
             size=${getUISize()}
             .items=${FILTER_ITEMS}

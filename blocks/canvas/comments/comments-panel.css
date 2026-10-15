@@ -268,7 +268,11 @@
 }
 
 .ew-comments-reply-form:not(.ew-comments-reply-form-expanded) .ew-comment-form .ew-comment-textarea {
-  height: 32px;
+  height: 36px;
+}
+
+:host([data-ui-size="m"]) .ew-comments-reply-form:not(.ew-comments-reply-form-expanded) .ew-comment-form .ew-comment-textarea {
+  height: 40px;
 }
 
 .ew-comment-form-actions {

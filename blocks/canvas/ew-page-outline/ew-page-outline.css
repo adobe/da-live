@@ -135,7 +135,7 @@ input {
 
 /* Blocks have no chevron — indent to align with expandable content-item labels */
 .block-item:not(.content-item) {
-  padding-inline-start: 32px;
+  padding-inline-start: 34px;
 }
 
 .block-empty {
@@ -163,8 +163,8 @@ input {
 
 .content-caret {
   flex-shrink: 0;
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   color: var(--s2-gray-600);
   transition: transform 0.1s ease-out;
 }
@@ -256,12 +256,12 @@ input {
 
 :host([data-ui-size="m"]) {
   .block-item:not(.content-item) {
-    padding-inline-start: 34px;
+    padding-inline-start: 36px;
   }
 
   .content-caret {
-    width: 10px;
-    height: 10px;
+    width: 12px;
+    height: 12px;
   }
 
   svg.icon {
