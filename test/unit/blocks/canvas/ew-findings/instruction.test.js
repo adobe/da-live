@@ -54,6 +54,18 @@ describe('instruction text', () => {
     ]);
   });
 
+  it('describes highlight-only evidence as the start of the text, without a change', () => {
+    const text = buildApplyText({
+      finding,
+      label: 'Paragraph',
+      evidence: { anchorType: 'text', anchorText: 'Lorem ipsum dolor', replacement: 'x', highlightOnly: true },
+      page,
+    });
+    expect(text).to.include('Text starts with: "Lorem ipsum dolor"');
+    expect(text).to.not.include('Current text');
+    expect(text).to.not.include('Change it to');
+  });
+
   it('uses the image file name for image evidence', () => {
     const text = buildApplyText({
       finding,

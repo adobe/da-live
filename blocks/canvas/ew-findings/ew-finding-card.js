@@ -80,6 +80,7 @@ export class EwFindingCard extends LitElement {
     finding: { attribute: false },
     quote: { type: String },
     replacement: { type: String },
+    highlightOnly: { type: Boolean },
     index: { type: Number },
     total: { type: Number },
     placement: { type: String, reflect: true },
@@ -209,8 +210,9 @@ export class EwFindingCard extends LitElement {
               <div class="actions">
                 <button type="button" class="nx-action-btn nx-btn-sm add"
                         @click=${() => this._emit('finding-add-to-chat')}>Add to chat</button>
-                <button type="button" class="nx-btn-accent nx-btn-sm apply"
-                        @click=${() => this._emit('finding-apply')}>Apply change</button>
+                ${this.highlightOnly ? nothing : html`
+                  <button type="button" class="nx-btn-accent nx-btn-sm apply"
+                          @click=${() => this._emit('finding-apply')}>Apply change</button>`}
               </div>
             </div>
           </section>

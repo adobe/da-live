@@ -14,8 +14,11 @@ function detailLines({ finding, label, evidence }) {
   if (evidence?.anchorType === 'image') {
     add('Image: ', fileNameOf(evidence.src));
   } else if (evidence?.anchorType === 'text') {
-    if (evidence.anchorText) lines.push(`Current text: "${evidence.anchorText}"`);
-    if (evidence.replacement) lines.push(`Change it to: "${evidence.replacement}"`);
+    if (evidence.anchorText) {
+      // A highlight-only anchor is just the start of the element's text.
+      lines.push(`${evidence.highlightOnly ? 'Text starts with' : 'Current text'}: "${evidence.anchorText}"`);
+    }
+    if (evidence.replacement && !evidence.highlightOnly) lines.push(`Change it to: "${evidence.replacement}"`);
   }
   add('Suggested change: ', finding?.suggested);
   add('Reason: ', finding?.issue);

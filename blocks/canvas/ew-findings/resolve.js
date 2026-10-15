@@ -5,6 +5,8 @@ const QUOTE_MAP = {
   '\u2019': "'",
   '\u201C': '"',
   '\u201D': '"',
+  '\u2013': '-',
+  '\u2014': '-',
 };
 
 const isSpace = (ch) => /\s/.test(ch);
@@ -69,50 +71,91 @@ function flattenTextblock(node, blockPos) {
   return { text: chars.join(''), starts, ends };
 }
 
-function findText(doc, quote) {
+/**
+ * Text evidence `occurrence` (1-based) is the position of the quote among ALL its occurrences in
+ * the textblocks of the document, in document order. This is the definition the Brand Governance
+ * Agent uses (`page_findings._TextPool.occurrence`): matching is case-insensitive on normalised
+ * text (typographic quotes, dashes, whitespace runs); occurrences in one block do not overlap.
+ * E.g. for `Test content update`, `Test` the paragraph `Test` is occurrence 2 of "Test".
+ * Without a usable occurrence the match is case-sensitive: a block whose whole text is the quote
+ * wins over a substring match, then the first match.
+ */
+function findText(doc, quote, occurrence) {
   const needle = normalizeText(quote);
   if (!needle) return null;
-  let first = null;
-  let count = 0;
+  const lowerNeedle = needle.toLowerCase();
+  const matches = [];
   doc.descendants((node, pos) => {
     if (!node.isTextblock) return true;
     const { text, starts, ends } = flattenTextblock(node, pos);
-    let idx = text.indexOf(needle);
+    const lower = text.toLowerCase();
+    // Lowercasing must keep offsets aligned with the position maps.
+    const haystack = lower.length === text.length ? lower : text;
+    const needleForBlock = haystack === lower ? lowerNeedle : needle;
+    let idx = haystack.indexOf(needleForBlock);
     while (idx !== -1) {
-      count += 1;
-      if (!first) {
-        first = { from: starts[idx], to: ends[idx + needle.length - 1], blockPos: pos };
-      }
-      idx = text.indexOf(needle, idx + 1);
+      matches.push({
+        from: starts[idx],
+        to: ends[idx + needleForBlock.length - 1],
+        blockPos: pos,
+        exact: text.startsWith(needle, idx),
+        whole: text === needle,
+      });
+      idx = haystack.indexOf(needleForBlock, idx + needleForBlock.length);
     }
     return false;
   });
-  return first ? { ...first, ambiguous: count > 1 } : null;
+
+  let hit;
+  let count;
+  if (Number.isInteger(occurrence) && occurrence >= 1 && occurrence <= matches.length) {
+    hit = matches[occurrence - 1];
+    count = matches.length;
+  } else {
+    const exact = matches.filter((m) => m.exact);
+    hit = exact.find((m) => m.whole) ?? exact[0];
+    count = exact.length;
+  }
+  if (!hit) return null;
+  return {
+    from: hit.from,
+    to: hit.to,
+    blockPos: hit.blockPos,
+    ambiguous: count > 1,
+  };
 }
 
-function findImage(doc, src) {
+/**
+ * Image evidence `occurrence` (1-based) is the position of the image among the images of the
+ * document with the same file name (see `fileNameOf`), in document order; the Brand Governance
+ * Agent counts the same way (`page_findings.file_name_of`). Missing or out of range: first match.
+ */
+function findImage(doc, src, occurrence) {
   const name = fileNameOf(src);
   if (!name) return null;
-  let first = null;
-  let count = 0;
+  const matches = [];
   doc.descendants((node, pos) => {
     if (node.type.name === 'image' && fileNameOf(node.attrs?.src) === name) {
-      count += 1;
-      if (!first) first = { from: pos, to: pos + node.nodeSize, blockPos: pos };
+      matches.push({ from: pos, to: pos + node.nodeSize, blockPos: pos });
     }
     return true;
   });
-  return first ? { ...first, ambiguous: count > 1 } : null;
+  if (!matches.length) return null;
+  const wanted = Number.isInteger(occurrence) && occurrence >= 1 && occurrence <= matches.length
+    ? occurrence - 1
+    : 0;
+  return { ...matches[wanted], ambiguous: matches.length > 1 };
 }
 
 /**
  * @returns {{ from, to, anchorType, anchorText, ambiguous, blockPos } | null} PM range of the
- * first match. `blockPos` is the start of the containing textblock (text) or the image position.
+ * match chosen by `evidence.occurrence`, else the best one. `blockPos` is the start of the
+ * containing textblock (text) or the image position.
  */
 export function resolveEvidence(doc, evidence) {
   if (!doc || !evidence) return null;
   if (evidence.anchorType === 'text') {
-    const hit = findText(doc, evidence.anchorText);
+    const hit = findText(doc, evidence.anchorText, evidence.occurrence);
     if (!hit) return null;
     return {
       ...hit,
@@ -121,7 +164,7 @@ export function resolveEvidence(doc, evidence) {
     };
   }
   if (evidence.anchorType === 'image') {
-    const hit = findImage(doc, evidence.src);
+    const hit = findImage(doc, evidence.src, evidence.occurrence);
     return hit ? { ...hit, anchorType: 'image', anchorText: '' } : null;
   }
   return null;

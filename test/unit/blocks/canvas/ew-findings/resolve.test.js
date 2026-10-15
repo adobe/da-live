@@ -142,11 +142,18 @@ describe('resolveEvidence — text', () => {
     })).to.be.null;
   });
 
-  it('flags ambiguous matches and returns the first', () => {
-    const doc = makeDoc(para(text('Buy now and save')), para(text('Buy now')));
+  it('flags ambiguous matches and returns the first when no block equals the quote', () => {
+    const doc = makeDoc(para(text('Buy now and save')), para(text('Buy now, today')));
     const range = resolveEvidence(doc, { anchorType: 'text', anchorText: 'Buy now' });
     expect(range.ambiguous).to.equal(true);
     expect(range.from).to.equal(1);
+  });
+
+  it('prefers the block whose whole text is the quote over an earlier substring match', () => {
+    const doc = makeDoc(para(text('Buy now and save')), para(text('Buy now')));
+    const range = resolveEvidence(doc, { anchorType: 'text', anchorText: 'Buy now' });
+    expect(range.ambiguous).to.equal(true);
+    expect(doc.nodeAt(range.blockPos).textContent).to.equal('Buy now');
   });
 });
 
@@ -174,6 +181,131 @@ describe('resolveEvidence — image', () => {
     const doc = makeDoc(para(img(`./${HERO}`)), para(img(`./${HERO}?a=1`)));
     const range = resolveEvidence(doc, { anchorType: 'image', src: HERO });
     expect(range.ambiguous).to.equal(true);
+  });
+});
+
+// Same example as the Brand Governance Agent `TestHighlightOnlyEvidence`
+// (tests/test_page_findings.py):
+// "Test content update", "Test" and the same media file twice. Keep both in sync.
+describe('resolveEvidence — occurrence', () => {
+  const frescopa = () => makeDoc(
+    para(text('Test content update')),
+    para(text('Test')),
+    para(img('./media_dup.png?width=750&format=png')),
+    para(text('Lorem ipsum dolor sit amet')),
+    para(img('./media_dup.png?width=900')),
+    para(img('./media_solo.png')),
+  );
+  const textAt = (doc, range) => doc.nodeAt(range.blockPos).textContent;
+  const find = (doc, evidence) => resolveEvidence(doc, { anchorType: 'text', anchorText: 'Test', ...evidence });
+
+  it('honours occurrence: "Test" occurrence 2 is the paragraph "Test"', () => {
+    const doc = frescopa();
+    const range = find(doc, { occurrence: 2 });
+    expect(textAt(doc, range)).to.equal('Test');
+    expect(doc.textBetween(range.from, range.to)).to.equal('Test');
+    expect(range.ambiguous).to.equal(true);
+  });
+
+  it('counts case-insensitive substrings: with "testing" before, the paragraph "Test" is occurrence 3', () => {
+    // Real Frescopa page; the agent reports occurrence 3 for it (tests/test_page_findings.py).
+    const doc = makeDoc(
+      para(text('Markus did some testing ...')),
+      para(text('Test content update')),
+      para(text('Test')),
+    );
+    expect(textAt(doc, find(doc, { occurrence: 3 }))).to.equal('Test');
+    expect(textAt(doc, find(doc, { occurrence: 2 }))).to.equal('Test content update');
+    expect(textAt(doc, find(doc, { occurrence: 1 }))).to.equal('Markus did some testing ...');
+  });
+
+  it('occurrence 1 is the first match, in "Test content update"', () => {
+    const doc = frescopa();
+    expect(textAt(doc, find(doc, { occurrence: 1 }))).to.equal('Test content update');
+  });
+
+  it('without an occurrence prefers the block whose whole text is the quote', () => {
+    const doc = frescopa();
+    const range = find(doc, {});
+    expect(textAt(doc, range)).to.equal('Test');
+    expect(range.ambiguous).to.equal(true);
+  });
+
+  it('falls back to the whole-text block when the occurrence is out of range or invalid', () => {
+    const doc = frescopa();
+    [3, 0, -1, 1.5, '2', null].forEach((occurrence) => {
+      expect(textAt(doc, find(doc, { occurrence })), String(occurrence)).to.equal('Test');
+    });
+  });
+
+  it('falls back to the first match when no block equals the quote', () => {
+    const doc = makeDoc(para(text('Buy now and save')), para(text('Now Buy now please')));
+    const range = resolveEvidence(doc, { anchorType: 'text', anchorText: 'Buy now', occurrence: 9 });
+    expect(textAt(doc, range)).to.equal('Buy now and save');
+  });
+
+  it('counts case-insensitively and without overlap, like the agent', () => {
+    const doc = makeDoc(para(text('aaa test')), para(text('A TEST here')), para(text('test')));
+    const at = (occurrence) => {
+      const range = resolveEvidence(doc, { anchorType: 'text', anchorText: 'test', occurrence });
+      return doc.textBetween(range.from, range.to);
+    };
+    expect(at(2)).to.equal('TEST');
+    expect(at(3)).to.equal('test');
+    const aa = makeDoc(para(text('aaaa')), para(text('aa')));
+    const second = resolveEvidence(aa, { anchorType: 'text', anchorText: 'aa', occurrence: 2 });
+    expect(aa.nodeAt(second.blockPos).textContent).to.equal('aaaa');
+    expect(second.from).to.equal(3);
+    const third = resolveEvidence(aa, { anchorType: 'text', anchorText: 'aa', occurrence: 3 });
+    expect(aa.nodeAt(third.blockPos).textContent).to.equal('aa');
+  });
+
+  it('keeps matching case-sensitively when there is no usable occurrence', () => {
+    const doc = makeDoc(para(text('TEST only')));
+    expect(find(doc, {})).to.be.null;
+    expect(find(doc, { occurrence: 1 })).to.not.be.null;
+  });
+
+  it('resolves a highlight-only prefix to the start of the long paragraph', () => {
+    const doc = frescopa();
+    const range = resolveEvidence(doc, { anchorType: 'text', anchorText: 'Lorem ipsum dolor', highlightOnly: true });
+    expect(doc.textBetween(range.from, range.to)).to.equal('Lorem ipsum dolor');
+  });
+
+  it('honours the image occurrence by file name, document order', () => {
+    const doc = frescopa();
+    const first = resolveEvidence(doc, { anchorType: 'image', src: 'media_dup.png', occurrence: 1 });
+    const src = 'https://x/media_dup.png?w=1';
+    const second = resolveEvidence(doc, { anchorType: 'image', src, occurrence: 2 });
+    expect(doc.nodeAt(first.from).attrs.src).to.include('width=750');
+    expect(doc.nodeAt(second.from).attrs.src).to.include('width=900');
+    expect(second.from).to.be.greaterThan(first.from);
+    expect(second.ambiguous).to.equal(true);
+  });
+
+  it('falls back to the first image when the occurrence is missing or out of range', () => {
+    const doc = frescopa();
+    const firstFrom = resolveEvidence(doc, { anchorType: 'image', src: 'media_dup.png', occurrence: 1 }).from;
+    [undefined, 3, 0, 'x'].forEach((occurrence) => {
+      const range = resolveEvidence(doc, { anchorType: 'image', src: 'media_dup.png', occurrence });
+      expect(range.from).to.equal(firstFrom);
+    });
+  });
+
+  it('ignores the occurrence of a unique image', () => {
+    const doc = frescopa();
+    const range = resolveEvidence(doc, { anchorType: 'image', src: 'media_solo.png', occurrence: 2 });
+    expect(doc.nodeAt(range.from).attrs.src).to.include('media_solo');
+    expect(range.ambiguous).to.equal(false);
+  });
+
+  it('groups two findings of the same quote in different paragraphs separately', () => {
+    const doc = frescopa();
+    const [a, b] = resolveFindings(doc, [
+      { id: 'a', evidence: [{ anchorType: 'text', anchorText: 'Test', occurrence: 1 }] },
+      { id: 'b', evidence: [{ anchorType: 'text', anchorText: 'Test', occurrence: 2 }] },
+    ]);
+    expect(a.groupKey).to.not.equal(b.groupKey);
   });
 });
 

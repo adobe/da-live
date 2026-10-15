@@ -83,6 +83,9 @@ export function createFindingsController({
     const marker = { id: markerId, anchorType: range.anchorType, from: range.from, to: range.to };
     if (range.anchorType === 'image') {
       marker.imageSrc = view?.state.doc.nodeAt(range.from)?.attrs?.src ?? '';
+    } else if (range.anchorText) {
+      // Lets the preview verify (and correct) which element it outlines.
+      marker.anchorText = range.anchorText;
     }
     session.markerPosted = true;
     postMarkers([marker], markerId, scroll);
@@ -109,7 +112,10 @@ export function createFindingsController({
     const bounds = iframeBounds();
     card.finding = finding;
     card.quote = evidence?.anchorType === 'text' ? evidence.anchorText : '';
-    card.replacement = evidence?.anchorType === 'text' ? evidence.replacement ?? '' : '';
+    card.highlightOnly = !!evidence?.highlightOnly;
+    card.replacement = evidence?.anchorType === 'text' && !card.highlightOnly
+      ? evidence.replacement ?? ''
+      : '';
     card.index = groupIds.indexOf(finding.id);
     card.total = groupIds.length;
     card.unresolved = !session.marked || !session.rect;

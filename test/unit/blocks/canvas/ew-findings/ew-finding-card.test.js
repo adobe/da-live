@@ -113,6 +113,15 @@ describe('ew-finding-card', () => {
     expect(q(el, '.change')).to.be.null;
   });
 
+  it('hides Apply for highlight-only evidence but keeps Add to chat', async () => {
+    const el = await makeCard({ highlightOnly: true });
+    expect(q(el, '.apply')).to.be.null;
+    expect(q(el, '.add')).to.exist;
+    el.highlightOnly = false;
+    await el.updateComplete;
+    expect(q(el, '.apply')).to.exist;
+  });
+
   it('shows the not-located note and a backdrop for the unresolved dialog', async () => {
     const el = await makeCard({ unresolved: true });
     expect(q(el, '.note').textContent).to.include("Couldn't locate this on the page.");

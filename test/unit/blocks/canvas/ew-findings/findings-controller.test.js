@@ -179,6 +179,65 @@ describe('findings controller', () => {
     expect(card().finding.id).to.equal('b');
   });
 
+  it('adds the resolved anchorText to text markers only', async () => {
+    ctx = await setup();
+    focus('b');
+    await until(() => markerMsgs(ctx.sent).length > 0);
+    const [marker] = markerMsgs(ctx.sent)[0].payload.markers;
+    expect(marker.anchorText).to.equal('exceptional coffee');
+    expect(Object.keys(marker).sort()).to.deep.equal(['anchorText', 'anchorType', 'from', 'id', 'to']);
+
+    focus('c');
+    await until(() => markerMsgs(ctx.sent).at(-1).payload.markers.length > 0);
+    const [image] = markerMsgs(ctx.sent).at(-1).payload.markers;
+    expect(image.anchorType).to.equal('image');
+    expect(image).to.not.have.property('anchorText');
+  });
+
+  it('marks the paragraph "Test" for occurrence 2, not the first substring match', async () => {
+    ctx = await setup();
+    const { view } = ctx;
+    const doc = view.state.schema.nodeFromJSON({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [text('Test content update')] },
+        { type: 'paragraph', content: [text('Test')] },
+      ],
+    });
+    view.dispatch(view.state.tr.replaceWith(0, view.state.doc.content.size, doc.content));
+    const list = [{
+      id: 't',
+      title: 'Test',
+      evidence: [{ anchorType: 'text', anchorText: 'Test', occurrence: 2 }],
+    }];
+    focus('t', list);
+    await until(() => markerMsgs(ctx.sent).length > 0);
+    const [marker] = markerMsgs(ctx.sent)[0].payload.markers;
+    expect(marker.anchorText).to.equal('Test');
+    expect(view.state.doc.resolve(marker.from).parent.textContent).to.equal('Test');
+    // 2nd paragraph: 1 (open) + 19 chars + 1 (close) + 1 (open)
+    expect(marker.from).to.equal(22);
+  });
+
+  it('does not offer Apply for highlight-only evidence', async () => {
+    ctx = await setup();
+    const list = [{
+      id: 'h',
+      title: 'Lorem',
+      suggested: 'Rewrite',
+      evidence: [{ anchorType: 'text', anchorText: 'Born from a passion', replacement: 'x', highlightOnly: true }],
+    }];
+    focus('h', list);
+    await until(() => card()?.finding);
+    expect(card().highlightOnly).to.be.true;
+    expect(card().replacement).to.equal('');
+    await card().updateComplete;
+    expect(card().shadowRoot.querySelector('.apply')).to.be.null;
+    focus('a');
+    await until(() => card()?.finding?.id === 'a');
+    expect(card().highlightOnly).to.be.false;
+  });
+
   it('posts an image marker with the image src', async () => {
     ctx = await setup();
     focus('c');
