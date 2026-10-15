@@ -430,3 +430,36 @@
   min-width: 0;
   font-style: italic;
 }
+
+.ew-suggestion-card {
+  margin-bottom: 8px;
+  cursor: pointer;
+  border-left: 3px solid var(--ew-suggestion-accent, var(--s2-gray-500));
+  transition: background 0.2s;
+  animation: ew-comments-slide-in 0.2s ease-out;
+}
+
+.ew-suggestion-card.is-resolved {
+  cursor: default;
+  opacity: 0.75;
+}
+
+.ew-suggestion-card:not(.is-resolved):hover {
+  background: var(--s2-gray-75);
+}
+
+.ew-suggestion-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: var(--s2-gray-100);
+  color: var(--s2-gray-700);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.ew-suggestion-card .ew-comment-content em {
+  font-style: italic;
+}

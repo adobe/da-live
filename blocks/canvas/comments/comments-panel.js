@@ -20,6 +20,7 @@ import {
 } from './helpers/templates.js';
 
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
+
 const sheet = await getSheet('/blocks/canvas/comments/comments-panel.css');
 const buttons = await getSheet(`${getNx2()}/styles/buttons.css`);
 const form = await getSheet(`${getNx2()}/styles/form.css`);
@@ -49,11 +50,17 @@ export class CommentsPanel extends LitElement {
     _submittingId: { state: true },
     _pendingDelete: { state: true },
     _threadGroups: { state: true },
+    _suggestions: { state: true },
+    _suggesting: { state: true },
+    _canSuggest: { state: true },
   };
 
   constructor() {
     super();
     this._activeTab = 'active';
+    this._suggestions = [];
+    this._suggesting = false;
+    this._canSuggest = false;
   }
 
   willUpdate(changedProps) {
@@ -118,6 +125,16 @@ export class CommentsPanel extends LitElement {
     this.teardownBusSubscriptions();
     this._unsubControllerState = canvasBus.commentsControllerState
       .subscribe((controller) => { this.controller = controller; });
+    this._unsubSuggestions = canvasBus.suggestionsState
+      .subscribe(({ items } = {}) => { this._suggestions = items ?? []; });
+    this._unsubSuggestMode = canvasBus.suggestModeState.subscribe(({ on } = {}) => {
+      this._suggesting = Boolean(on);
+      this.syncHeaderToggle();
+    });
+    this._unsubEditorView = canvasBus.editorViewState.subscribe(({ view } = {}) => {
+      this._canSuggest = view !== 'layout';
+      this.syncHeaderToggle();
+    });
     this._unsubToolView = canvasBus.toolPanelViewState.subscribe((view) => {
       this._activeToolView = view;
       this.syncPanelOpen();
@@ -134,6 +151,12 @@ export class CommentsPanel extends LitElement {
     this._unsubControllerState = null;
     this._unsubToolView?.();
     this._unsubToolView = null;
+    this._unsubSuggestions?.();
+    this._unsubSuggestions = null;
+    this._unsubSuggestMode?.();
+    this._unsubSuggestMode = null;
+    this._unsubEditorView?.();
+    this._unsubEditorView = null;
   }
 
   connectedCallback() {
@@ -376,6 +399,40 @@ export class CommentsPanel extends LitElement {
       });
   }
 
+  // The tool panel hosts first-party header actions to the right of its view picker.
+  getHeaderActions() {
+    if (!this._headerActions) {
+      const label = document.createElement('label');
+      label.className = 'nx-checkbox';
+      label.title = 'Your edits become suggestions.';
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.addEventListener('change', () => {
+        if (input.checked === this._suggesting) return;
+        canvasBus.suggestModeRequest.emit();
+      });
+      label.append(input, document.createTextNode('Suggesting'));
+      this._headerActions = label;
+      this._headerToggle = input;
+    }
+    this.syncHeaderToggle();
+    return this._headerActions;
+  }
+
+  syncHeaderToggle() {
+    if (!this._headerToggle) return;
+    this._headerToggle.checked = this._suggesting;
+    this._headerActions.hidden = !this._canSuggest;
+  }
+
+  resolveSuggestion(suggestion, action) {
+    canvasBus.suggestionResolveRequest.emit({ from: suggestion.from, to: suggestion.to, action });
+  }
+
+  scrollToSuggestion(suggestion) {
+    this.controller?.scrollToPos?.(suggestion.from);
+  }
+
   render() {
     const { active, detached, resolved } = this._threadGroups
       ?? { active: [], detached: [], resolved: [] };
@@ -396,7 +453,11 @@ export class CommentsPanel extends LitElement {
     } else if (selectedThread) {
       content = renderThreadView(this, selectedThread);
     } else {
-      content = renderListView(this, { visibleThreads, tabCounts });
+      content = renderListView(this, {
+        visibleThreads,
+        tabCounts,
+        suggestions: this._activeTab === 'resolved' ? [] : this._suggestions,
+      });
     }
 
     return html`

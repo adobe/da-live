@@ -14,16 +14,21 @@ const ICONS = {
   'chevron-left': '/img/icons/s2-icon-chevronleft-20-n.svg',
   more: '/img/icons/s2-icon-more-20-n.svg',
   detached: '/img/icons/s2-icon-alerttriangle-20-n.svg',
+  close: '/img/icons/s2-icon-close-20-n.svg',
 };
 
 function renderIcon(name) {
   return html`<svg class="ew-comments-icon ew-comments-icon-${name}" viewBox="0 0 20 20" aria-hidden="true"><use href="${ICONS[name]}#icon"></use></svg>`;
 }
 
-export function renderAvatar(panel, author) {
-  const set = panel.controller?.authorColorSet
+function authorColorFor(panel, author) {
+  return panel.controller?.authorColorSet
     ? panel.controller.authorColorSet(author)
     : generateColorSet(author.email || author.id || '');
+}
+
+export function renderAvatar(panel, author) {
+  const set = authorColorFor(panel, author);
   return html`
     <div class="ew-comment-avatar" style="background-color: ${set.bg}; color: ${set.text}">
       ${formatUtils.getInitials(author.name)}
@@ -161,7 +166,40 @@ export function renderStatusLine(label, user, at) {
   `;
 }
 
+function renderSuggestionBody({ kind, deleted, inserted }) {
+  if (kind === 'replace') {
+    return html`<strong>Replace:</strong> <em>“${deleted}”</em> with <em>“${inserted}”</em>`;
+  }
+  if (kind === 'delete') return html`<strong>Delete:</strong> <em>“${deleted}”</em>`;
+  return html`<strong>Insert:</strong> <em>“${inserted}”</em>`;
+}
+
+function renderResolvedSuggestion(panel, thread) {
+  const author = thread.author ?? { name: 'Unknown' };
+  const accent = authorColorFor(panel, author).strong;
+  const label = thread.resolution === 'rejected' ? 'Suggestion rejected' : 'Suggestion accepted';
+  return html`
+    <li>
+      <div
+        class="ew-comment-card ew-comments-thread-surface ew-suggestion-card is-resolved"
+        style="--ew-suggestion-accent: ${accent}"
+        data-suggestion-outcome=${thread.resolution ?? 'accepted'}>
+        <div class="ew-comment-header">
+          ${renderAvatar(panel, author)}
+          <div class="ew-comment-meta">
+            <span class="ew-comment-author">${author.name}</span>
+            <span class="ew-suggestion-badge">Suggestion</span>
+          </div>
+        </div>
+        <div class="ew-comment-content">${renderSuggestionBody(thread.suggestion ?? {})}</div>
+        ${renderStatusLine(`${label} by`, thread.resolvedBy, thread.resolvedAt)}
+      </div>
+    </li>
+  `;
+}
+
 export function renderThreadPreview(panel, thread) {
+  if (thread.kind === 'suggestion') return renderResolvedSuggestion(panel, thread);
   const { id: threadId, replies, isDetached, isResolved } = thread;
   return html`
     <li>
@@ -185,6 +223,44 @@ export function renderThreadPreview(panel, thread) {
         ${isResolved
           ? renderStatusLine('Resolved by', thread.resolvedBy, thread.resolvedAt)
           : renderStatusLine('Reopened by', thread.reopenedBy, thread.reopenedAt)}
+      </div>
+    </li>
+  `;
+}
+
+export function renderSuggestionPreview(panel, suggestion) {
+  const { id, username, createdAt } = suggestion;
+  const author = { name: username || 'Unknown', id: username };
+  const accent = authorColorFor(panel, author).strong;
+  return html`
+    <li>
+      <div
+        class="ew-comment-card ew-comments-thread-surface ew-suggestion-card"
+        style="--ew-suggestion-accent: ${accent}"
+        data-suggestion=${id}
+        @click=${() => panel.scrollToSuggestion(suggestion)}>
+        <div class="ew-comment-header">
+          ${renderAvatar(panel, author)}
+          <div class="ew-comment-meta">
+            <span class="ew-comment-author">${author.name}</span>
+            <span class="ew-suggestion-badge">Suggestion</span>
+            ${createdAt ? html`
+              <span class="ew-comment-time" title="${formatUtils.formatFullTimestamp(createdAt)}">
+                ${formatUtils.formatTimestamp(createdAt)}
+              </span>` : nothing}
+          </div>
+          <div class="ew-comment-header-actions" @click=${(e) => e.stopPropagation()}>
+            <button type="button" class="nx-action-btn-icon nx-btn-sm" title="Accept suggestion" aria-label="Accept suggestion"
+              @click=${() => panel.resolveSuggestion(suggestion, 'accept')}>
+              ${renderIcon('checkmark')}
+            </button>
+            <button type="button" class="nx-action-btn-icon nx-btn-sm" title="Reject suggestion" aria-label="Reject suggestion"
+              @click=${() => panel.resolveSuggestion(suggestion, 'reject')}>
+              ${renderIcon('close')}
+            </button>
+          </div>
+        </div>
+        <div class="ew-comment-content">${renderSuggestionBody(suggestion)}</div>
       </div>
     </li>
   `;
@@ -220,7 +296,7 @@ export function renderListView(panel, viewModel) {
     return html`<div class="ew-comments-list"><p class="ew-comments-empty">Loading…</p></div>`;
   }
 
-  const { tabCounts, visibleThreads } = viewModel;
+  const { tabCounts, visibleThreads, suggestions = [] } = viewModel;
   const tabs = [
     { id: 'active', label: 'Active', count: tabCounts.active },
     { id: 'resolved', label: 'Resolved', count: tabCounts.resolved },
@@ -228,9 +304,15 @@ export function renderListView(panel, viewModel) {
 
   return html`
     <div class="ew-comments-list">
-      <p class="da-hint">
-        <strong>Select content</strong> and press <kbd class="da-kbd">${COMMENT_SHORTCUT}</kbd> to add a comment.
-      </p>
+      ${panel._suggesting ? html`
+        <p class="da-hint">
+          Suggesting. Your edits become suggestions.
+        </p>
+      ` : html`
+        <p class="da-hint">
+         Select content and press <kbd class="da-kbd">${COMMENT_SHORTCUT}</kbd> to add a comment.
+        </p>
+      `}
       ${tabs.length > 1 ? html`
         <div class="ew-comment-tabs" role="group" aria-label="Filter comment threads">
           ${tabs.map((tab) => html`
@@ -244,8 +326,9 @@ export function renderListView(panel, viewModel) {
           `)}
         </div>
       ` : nothing}
-      ${visibleThreads.length > 0 ? html`
+      ${visibleThreads.length > 0 || suggestions.length > 0 ? html`
         <ul class="ew-comments-threads-list">
+          ${suggestions.map((s) => renderSuggestionPreview(panel, s))}
           ${visibleThreads.map((thread) => renderThreadPreview(panel, thread))}
         </ul>
       ` : html`

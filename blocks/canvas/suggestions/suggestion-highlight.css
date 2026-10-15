@@ -1,0 +1,49 @@
+/* stylelint-disable selector-class-pattern */
+
+.da-prose-mirror {
+  --suggestion-added-bg: light-dark(#d7f5dd, rgb(80 220 130 / 22%));
+  --suggestion-added-border: light-dark(#0ba45d, rgb(110 230 160 / 90%));
+  --suggestion-deleted-color: light-dark(#68150a, rgb(255 160 150));
+  --suggestion-deleted-border: light-dark(#ff513d, rgb(255 120 100 / 90%));
+}
+
+.da-prose-mirror da-suggestion-added {
+  background-color: var(--suggestion-added-bg);
+  border-bottom: 2px solid var(--suggestion-added-border);
+}
+
+.da-prose-mirror da-suggestion-deleted {
+  color: var(--suggestion-deleted-color);
+  text-decoration: line-through;
+  text-decoration-color: var(--suggestion-deleted-border);
+  text-decoration-thickness: 2px;
+}
+
+.ew-suggestion-popover {
+  position: absolute;
+  z-index: 10;
+  display: none;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 4px 4px 10px;
+  border-radius: var(--s2-corner-radius-400, 8px);
+  background: light-dark(#fff, #1d1d1d);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 18%);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.ew-suggestion-popover.open {
+  display: flex;
+}
+
+.ew-suggestion-popover-author {
+  color: light-dark(#505050, #c8c8c8);
+  margin-right: 2px;
+}
+
+.ew-suggestion-popover .icon {
+  width: 16px;
+  height: 16px;
+  fill: currentcolor;
+}

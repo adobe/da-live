@@ -45,6 +45,8 @@ export const canvasBus = Object.freeze({
   blockEditRequest: createChannel(),
   preflightRunRequest: createChannel(),
   toolbarSurfaceRequest: createChannel(),
+  suggestModeRequest: createChannel(),
+  suggestionResolveRequest: createChannel(),
 
   undoState: createChannel(),
   editorDocState: createChannel(),
@@ -69,4 +71,6 @@ export const canvasBus = Object.freeze({
   commentsControllerState: createChannel(),
 
   preflightStatusState: createChannel(),
+  suggestModeState: createChannel({ replay: true }),
+  suggestionsState: createChannel({ replay: true }),
 });
