@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/adobe/da-live/compare/v1.5.2...v1.6.0) (2026-10-15)
+
+
+### Features
+
+* **ew:** centralize canvas branch resolution ([#1439](https://github.com/adobe/da-live/issues/1439)) ([b657553](https://github.com/adobe/da-live/commit/b657553957a905b754174b19588dc0ee2c798ceb))
+
 ## [1.5.2](https://github.com/adobe/da-live/compare/v1.5.1...v1.5.2) (2026-10-14)
 
 
