@@ -87,7 +87,6 @@ export class EwEditorDoc extends LitElement {
       this._lastDocBlockIndex = undefined;
       this._lastDocSelKey = undefined;
       this._lastBroadcastNodeKey = undefined;
-      canvasBus.editorHtmlState.emit('');
     }
   }
 
@@ -99,6 +98,9 @@ export class EwEditorDoc extends LitElement {
     }
     if (this._controllerCtx?.reloadTimer) {
       clearTimeout(this._controllerCtx.reloadTimer);
+    }
+    if (this._controllerCtx?.metadataRerenderTimer) {
+      clearTimeout(this._controllerCtx.metadataRerenderTimer);
     }
     this._controllerCtx = undefined;
   }
@@ -254,6 +256,23 @@ export class EwEditorDoc extends LitElement {
     return forceSave(wsProvider);
   }
 
+  getComparisonSession({ org, site, path } = {}) {
+    const session = this._proseContext;
+    const fullPath = `${org}/${site}/${path?.replace(/^\//, '').replace(/\.html$/, '')}`;
+    return session?.context === this.ctx && this.ctx?.path === fullPath && session?.view
+      ? session : null;
+  }
+
+  async saveForComparison(context) {
+    const session = this.getComparisonSession(context);
+    if (!session) return { ok: false, error: 'no-document' };
+    if (!session.view.editable) return { ok: false, error: 'not-writable' };
+    if (!session.wsProvider) return { ok: false, error: 'no-document' };
+    const result = await forceSave(session.wsProvider);
+    return session === this.getComparisonSession(context)
+      ? result : { ok: false, error: 'stale-context' };
+  }
+
   _setupController() {
     const { view, wsProvider } = this._proseContext ?? {};
     if (!this.quickEditPort || !view || !wsProvider) return;
@@ -343,6 +362,7 @@ export class EwEditorDoc extends LitElement {
     this._unbindSectionName?.();
     this._unbindSectionName = undefined;
     this._proseContext = undefined;
+    canvasBus.editorHtmlState.emit('');
   }
 
   async _loadEditor() {
@@ -350,7 +370,8 @@ export class EwEditorDoc extends LitElement {
       return;
     }
 
-    const session = this.session ?? await resolveEditorDocSession(this.ctx);
+    const context = this.ctx;
+    const session = this.session ?? await resolveEditorDocSession(context);
     if (!session.ok) {
       this._error = session.error;
       return;
@@ -371,9 +392,9 @@ export class EwEditorDoc extends LitElement {
             mediaBusImage(this.ctx),
             createExtensionsBridgePlugin(),
             createTrackingPlugin(
-              () => {
+              (details) => {
                 const body = this._controllerCtx
-                  ? updateDocument(this._controllerCtx)
+                  ? updateDocument(this._controllerCtx, details)
                   : getInstrumentedHTML(this._proseContext?.view);
                 if (body) canvasBus.editorHtmlState.emit(body);
               },
@@ -404,7 +425,9 @@ export class EwEditorDoc extends LitElement {
         },
       });
 
-      this._proseContext = { proseEl, wsProvider, view, ydoc, undoManager };
+      this._proseContext = {
+        proseEl, wsProvider, view, ydoc, undoManager, context,
+      };
       this._comments.publish();
       this._unbindSectionName = bindFirstSectionName(ydoc, view, () => this._emitHtmlChange());
 

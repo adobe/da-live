@@ -73,7 +73,7 @@ describe('quick-edit-controller RELOAD coalescing', () => {
     return {
       canWrite: true,
       suppressRerender: false,
-      view: { dom: document.createElement('div'), state: { doc: {} } },
+      view: { dom: document.createElement('div'), state: { doc: { forEach: () => {} } } },
       port: { postMessage: sinon.spy() },
     };
   }

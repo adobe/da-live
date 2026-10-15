@@ -3,8 +3,15 @@ import prose2aem from '../../shared/prose2aem.js';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
 import { toolbarController } from './toolbar-controller.js';
+import {
+  diffTopLevel,
+  getRerenderScope,
+  touchesMetadata,
+  touchesUnrendered,
+} from './rerender-scope.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { canvasBus, registerEditorSelectEnricher } from '../utils/canvas-bus.js';
+import { normalizeBranch } from '../utils/branch.js';
 
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 const { getImageDocumentVersion } = await import(`${getNx2()}/public/utils/quick-edit-images.js`);
@@ -30,6 +37,14 @@ export function dispatchMirror(view, tr, ctx) {
     ctx.suppressRerender = false;
     ctx.mirroringFromIframe = false;
   }
+}
+
+// syncedDoc includes SET_EDITOR_STATE pushes; confirmedDoc doesn't (a RELOAD means one failed).
+function markPreviewSynced(ctx, { previousDoc, doc } = {}, { confirmed = false } = {}) {
+  if (!previousDoc || !doc) return;
+  if (touchesUnrendered(diffTopLevel(previousDoc, doc))) return;
+  if (ctx.syncedDoc && ctx.syncedDoc === previousDoc) ctx.syncedDoc = doc;
+  if (confirmed && ctx.confirmedDoc && ctx.confirmedDoc === previousDoc) ctx.confirmedDoc = doc;
 }
 
 // --- state.js ---
@@ -157,9 +172,12 @@ export function updateState(data, ctx) {
 }
 
 export function getEditor(data, ctx) {
-  if (ctx.suppressRerender) return;
+  if (ctx.suppressRerender) {
+    if (ctx.mirroringFromIframe) markPreviewSynced(ctx, data, { confirmed: true });
+    return;
+  }
   const { view } = ctx;
-  const { cursorOffset } = data;
+  const { cursorOffset, previousDoc } = data;
   if (typeof cursorOffset !== 'number') return;
 
   const { doc } = view.state;
@@ -175,8 +193,10 @@ export function getEditor(data, ctx) {
         editorState: node.toJSON(),
         cursorOffset: newCursorOffset,
         imageVersion: getImageDocumentVersion(doc),
+        lengthDiff: previousDoc ? doc.content.size - previousDoc.content.size : 0,
       },
     });
+    markPreviewSynced(ctx, data);
   } catch {
     // Stale iframe cursor after structural replace (e.g. chat revert, remote sync).
   }
@@ -317,11 +337,13 @@ export function getInstrumentedHTML(view) {
 
   // Serialize clone to HTML, then move block-marker index onto wrapper as data-block-index
   // (same pattern as da-nx qe-advanced: getInstrumentedHTML in prose2aem.js).
-  let htmlString = prose2aem(editorClone, true, false, true);
+  let htmlString = prose2aem(editorClone, true, false);
   htmlString = htmlString.replace(
     /<div class="block-marker" data-prose-index="(\d+)"><\/div>\s*<div([^>]*?)>/gi,
     (_match, proseIndex, divAttributes) => `<div${divAttributes} data-block-index="${proseIndex}">`,
   );
+  // Any marker that didn't pair with a wrapper would be decorated as a real block.
+  htmlString = htmlString.replace(/<div class="block-marker"[^>]*><\/div>/gi, '');
   return htmlString;
 }
 
@@ -457,11 +479,45 @@ registerEditorSelectEnricher((detail) => {
   return { ...detail, blockName, proseIndex, innerText };
 });
 
-export function updateDocument(ctx) {
-  if (ctx.suppressRerender) return undefined;
+const METADATA_RERENDER_DEBOUNCE_MS = 2000;
+
+function clearMetadataRerenderTimer(ctx) {
+  if (!ctx.metadataRerenderTimer) return;
+  clearTimeout(ctx.metadataRerenderTimer);
+  ctx.metadataRerenderTimer = undefined;
+}
+
+const getBaseline = (ctx) => (ctx.useConfirmedBaseline ? ctx.confirmedDoc : ctx.syncedDoc);
+
+function postBody(ctx) {
+  clearMetadataRerenderTimer(ctx);
+  const { doc } = ctx.view.state;
   const body = getInstrumentedHTML(ctx.view);
-  ctx.port.postMessage({ type: MESSAGE_TYPES.SET_BODY, payload: { body } });
+  const rerenderScope = getRerenderScope({ previousDoc: getBaseline(ctx), doc, body });
+  ctx.port.postMessage({ type: MESSAGE_TYPES.SET_BODY, payload: { body, rerenderScope } });
+  ctx.syncedDoc = doc;
+  ctx.confirmedDoc = doc;
+  ctx.useConfirmedBaseline = false;
   return body;
+}
+
+export function updateDocument(ctx, { previousDoc, doc, useConfirmedBaseline = false } = {}) {
+  if (ctx.suppressRerender) {
+    if (ctx.mirroringFromIframe) markPreviewSynced(ctx, { previousDoc, doc }, { confirmed: true });
+    return undefined;
+  }
+  if (useConfirmedBaseline) ctx.useConfirmedBaseline = true;
+  const baseline = getBaseline(ctx);
+  const trigger = previousDoc && doc
+    ? diffTopLevel(previousDoc, doc)
+    : baseline && diffTopLevel(baseline, ctx.view.state.doc);
+  if (!baseline || !touchesMetadata(trigger)) return postBody(ctx);
+  clearMetadataRerenderTimer(ctx);
+  ctx.metadataRerenderTimer = setTimeout(() => {
+    ctx.metadataRerenderTimer = undefined;
+    if (!ctx.suppressRerender) postBody(ctx);
+  }, METADATA_RERENDER_DEBOUNCE_MS);
+  return getInstrumentedHTML(ctx.view);
 }
 
 export function updateCursors(ctx) {
@@ -476,35 +532,42 @@ export function getPreviewOrigin(org, repo, branch = 'main') {
   const domain = hostname.endsWith('aem.page') || hostname.endsWith('localhost')
     ? 'stage-preview.da.live'
     : 'preview.da.live';
-  return `https://${branch}--${repo}--${org}.${domain}`;
+  return `https://${normalizeBranch(branch)}--${repo}--${org}.${domain}`;
 }
 
 export async function fetchWysiwygBranch({ org, site, path }) {
   if (!org || !site) return 'main';
   const branchParam = new URLSearchParams(window.location.search).get('ref');
-  if (branchParam) return branchParam;
+  if (branchParam && branchParam !== 'local') return normalizeBranch(branchParam);
 
-  try {
-    const configs = await Promise.all(fetchDaConfigs({ org, site }));
-    const rows = configs.filter(Boolean).reverse().flatMap((c) => getFirstSheet(c) || []);
-    const branchRows = rows.filter((r) => r.key === 'ew.wysiwygBranch');
-    if (!branchRows.length) return 'main';
+  const configs = await Promise.all(fetchDaConfigs({ org, site }));
+  const rows = configs.filter((c) => {
+    if (c?.error) {
+      // eslint-disable-next-line no-console
+      console.warn(c.error, c.status);
+      return false;
+    }
+    return Boolean(c);
+  }).reverse().flatMap((c) => getFirstSheet(c) || []);
+  const branchRows = rows.filter((r) => r?.key === 'ew.wysiwygBranch'
+    && typeof r.value === 'string');
+  if (!branchRows.length) return 'main';
 
-    const fullPath = path ? `/${path}` : `/${org}/${site}`;
-    const matched = branchRows
-      .map((row) => {
-        const eqIdx = row.value.indexOf('=');
-        if (eqIdx === -1) return null;
-        return { prefix: row.value.slice(0, eqIdx), branch: row.value.slice(eqIdx + 1).trim() };
-      })
-      .filter((entry) => entry?.branch && fullPath.startsWith(entry.prefix))
-      .sort((a, b) => b.prefix.length - a.prefix.length)[0];
+  const fullPath = path ? `/${path}` : `/${org}/${site}`;
+  const matched = branchRows
+    .map((row) => {
+      const eqIdx = row.value.indexOf('=');
+      if (eqIdx === -1) return null;
+      return {
+        prefix: row.value.slice(0, eqIdx).replace(/\/+$/, ''),
+        branch: row.value.slice(eqIdx + 1).trim(),
+      };
+    })
+    .filter((entry) => entry?.branch
+      && (fullPath === entry.prefix || fullPath.startsWith(`${entry.prefix}/`)))
+    .sort((a, b) => b.prefix.length - a.prefix.length)[0];
 
-    return matched?.branch || 'main';
-  } catch (e) {
-    if (!(e instanceof TypeError) && !(e instanceof SyntaxError)) throw e;
-  }
-  return 'main';
+  return normalizeBranch(matched?.branch || 'main');
 }
 
 export async function fetchWysiwygCookie({ org, repo, token, branch = 'main' }) {
