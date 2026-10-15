@@ -15,6 +15,7 @@ import {
   fetchDaConfigs,
   getAuthToken,
   isValidHref,
+  livePreviewLogin,
 } from '../../../../blocks/shared/utils.js';
 
 // daFetch's 401-no-token path lazy-loads the banner module, which resolves
@@ -28,15 +29,24 @@ describe('getSheetByIndex', () => {
     expect(getSheetByIndex(json)).to.deep.equal([{ a: 1 }]);
   });
 
-  it('Returns first sheet data for multi-sheet at index 1', () => {
-    // index 0 is the ':type' key, so the first sheet is at index 1
-    const json = { ':type': 'multi-sheet', sheet1: { data: [{ a: 1 }] }, sheet2: { data: [{ b: 2 }] } };
-    expect(getSheetByIndex(json, 1)).to.deep.equal([{ a: 1 }]);
+  it('Returns first declared sheet data at index 0, independent of metadata order', () => {
+    const json = {
+      ':type': 'multi-sheet',
+      ':names': ['sheet1', 'sheet2'],
+      sheet2: { data: [{ b: 2 }] },
+      sheet1: { data: [{ a: 1 }] },
+    };
+    expect(getSheetByIndex(json, 0)).to.deep.equal([{ a: 1 }]);
   });
 
-  it('Returns second sheet data for multi-sheet at index 2', () => {
-    const json = { ':type': 'multi-sheet', sheet1: { data: [{ a: 1 }] }, sheet2: { data: [{ b: 2 }] } };
-    expect(getSheetByIndex(json, 2)).to.deep.equal([{ b: 2 }]);
+  it('Returns second declared sheet data at index 1', () => {
+    const json = {
+      ':type': 'multi-sheet',
+      ':names': ['sheet1', 'sheet2'],
+      sheet1: { data: [{ a: 1 }] },
+      sheet2: { data: [{ b: 2 }] },
+    };
+    expect(getSheetByIndex(json, 1)).to.deep.equal([{ b: 2 }]);
   });
 
   it('Returns undefined for out-of-bounds index', () => {
@@ -44,10 +54,13 @@ describe('getSheetByIndex', () => {
     expect(getSheetByIndex(json, 5)).to.equal(undefined);
   });
 
-  it('Defaults to index 0 which is the type key', () => {
-    // index 0 is ':type' which has no .data, so returns undefined
-    const json = { ':type': 'multi-sheet', sheet1: { data: [{ x: 99 }] } };
-    expect(getSheetByIndex(json)).to.equal(undefined);
+  it('Defaults to the first declared sheet, not the type key', () => {
+    const json = {
+      ':type': 'multi-sheet',
+      ':names': ['sheet1'],
+      sheet1: { data: [{ x: 99 }] },
+    };
+    expect(getSheetByIndex(json)).to.deep.equal([{ x: 99 }]);
   });
 });
 
@@ -232,6 +245,80 @@ describe('getAuthToken', () => {
     window.localStorage.setItem('nx-ims', 'true');
     window.adobeIMS = { getAccessToken: () => null };
     expect(await getAuthToken()).to.be.null;
+  });
+});
+
+describe('livePreviewLogin', () => {
+  let savedAdobeIMS;
+  let savedFetch;
+
+  beforeEach(() => {
+    savedAdobeIMS = window.adobeIMS;
+    savedFetch = window.fetch;
+    window.localStorage.removeItem('nx-ims');
+  });
+
+  afterEach(() => {
+    window.fetch = savedFetch;
+    window.localStorage.removeItem('nx-ims');
+    if (savedAdobeIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedAdobeIMS;
+  });
+
+  it('is a no-op when there is no IMS token', async () => {
+    delete window.adobeIMS;
+    let called = false;
+    window.fetch = async () => {
+      called = true;
+      return new Response('', { status: 200 });
+    };
+
+    await livePreviewLogin('org', 'site', 'main');
+
+    expect(called).to.be.false;
+  });
+
+  it('does not request a cookie without an nx-ims session', async () => {
+    window.adobeIMS = { getAccessToken: () => ({ token: 'T1' }) };
+    let called = false;
+    window.fetch = async () => {
+      called = true;
+      return new Response('', { status: 200 });
+    };
+
+    await livePreviewLogin('org', 'site', 'main');
+
+    expect(called).to.be.false;
+  });
+
+  it('requests /gimme_cookie from the default live preview origin', async () => {
+    window.localStorage.setItem('nx-ims', 'true');
+    window.adobeIMS = { getAccessToken: () => ({ token: 'T1' }) };
+    const calls = [];
+    window.fetch = async (url, opts) => {
+      calls.push({ url, headers: opts?.headers });
+      return new Response('', { status: 200 });
+    };
+
+    await livePreviewLogin('org', 'site', 'feat');
+
+    expect(calls).to.have.lengthOf(1);
+    expect(calls[0].url).to.equal('https://feat--site--org.preview.da.live/gimme_cookie');
+    expect(calls[0].headers.Authorization).to.equal('Bearer T1');
+  });
+
+  it('requests /gimme_cookie from a custom origin builder when provided', async () => {
+    window.localStorage.setItem('nx-ims', 'true');
+    window.adobeIMS = { getAccessToken: () => ({ token: 'T1' }) };
+    const calls = [];
+    window.fetch = async (url) => {
+      calls.push(url);
+      return new Response('', { status: 200 });
+    };
+    const getUrl = (org, site, branch) => `https://${branch}--${site}--${org}.stage-preview.da.live`;
+
+    await livePreviewLogin('org', 'site', 'feat', getUrl);
+
+    expect(calls).to.deep.equal(['https://feat--site--org.stage-preview.da.live/gimme_cookie']);
   });
 });
 

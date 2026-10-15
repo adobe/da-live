@@ -1,4 +1,7 @@
 /* eslint-disable no-underscore-dangle */
+// Must run first. These imports reach da-assets.js, which reads getNx2() at import time.
+import '../../../../../setup-nx.js';
+
 import { expect } from '@esm-bundle/chai';
 import { TextSelection } from 'da-y-wrapper';
 import slashMenuPluginFactory from '../../../../../../../blocks/edit/prose/plugins/slashMenu/slashMenu.js';

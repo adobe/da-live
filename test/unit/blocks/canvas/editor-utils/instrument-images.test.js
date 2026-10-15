@@ -42,6 +42,9 @@ describe('getInstrumentedHTML image instrumentation', () => {
     expect(stamped.length).to.equal(2);
 
     const { doc } = editor.view.state;
+    const versions = new Set(stamped.map((img) => img.getAttribute('data-image-version')));
+    expect(versions.size).to.equal(1);
+    expect([...versions][0]).to.be.a('string');
     stamped.forEach((img) => {
       const idx = Number(img.getAttribute('data-image-index'));
       expect(Number.isNaN(idx)).to.equal(false);

@@ -1,6 +1,8 @@
 import { insertText, insertHTML, getEditorSelection } from './helpers.js';
 import { getNx } from '../../../scripts/utils.js';
-import { getPostMessageTargetOrigin, isValidHref } from '../../shared/utils.js';
+import { getPostMessageTargetOrigin, isRequestId, isValidHref, replyToGetSelection } from '../../shared/utils.js';
+import { canvasBus } from '../utils/canvas-bus.js';
+import { getCanvasBranch } from '../utils/branch.js';
 
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
@@ -25,6 +27,27 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
 
   channel.port1.onmessage = (e) => {
     const { action, details } = e.data || {};
+
+    if (action === 'openComparison' || action === 'closeComparison') {
+      if (action === 'openComparison'
+        && (!['document', 'preview'].includes(details?.candidate) || details?.baseline !== 'live')) return;
+      canvasBus.comparisonRequest.emit({
+        action,
+        details: action === 'openComparison' ? { candidate: details.candidate, baseline: details.baseline } : undefined,
+        context: { org, site, path },
+      });
+      return;
+    }
+    if (action === 'saveDocument') {
+      const { requestId } = e.data;
+      if (!isRequestId(requestId)) return;
+      canvasBus.comparisonRequest.emit({
+        action,
+        context: { org, site, path },
+        resolve: (result) => channel.port1.postMessage({ action: 'sdkResponse', requestId, result }),
+      });
+      return;
+    }
     const editorView = getView();
 
     if (action === 'sendText' && editorView) {
@@ -62,19 +85,14 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     }
 
     if (action === 'getSelection') {
-      if (!editorView) {
-        channel.port1.postMessage({ action: 'error', details: 'No editor view' });
-        return;
-      }
-      const html = getEditorSelection(editorView);
-      if (!html) {
-        channel.port1.postMessage({ action: 'error', details: 'No selection found' });
-        return;
-      }
-      iframe.contentWindow.postMessage(
-        { action: 'sendSelection', details: html },
+      replyToGetSelection({
+        port: channel.port1,
+        target: iframe.contentWindow,
         targetOrigin,
-      );
+        requestId: e.data.requestId,
+        html: editorView ? getEditorSelection(editorView) : null,
+        error: editorView ? 'No selection found' : 'No editor view',
+      });
     }
   };
 
@@ -82,6 +100,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   const project = {
     org,
     repo: site,
+    site,
     ref,
     path: path ? `/${path}` : '/',
     view: view || 'edit',
@@ -95,10 +114,17 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     token = ims?.accessToken?.token;
   } catch { /* proceed without token */ }
 
-  setTimeout(() => {
+  const readyTimer = setTimeout(() => {
     if (!iframe.contentWindow) return;
+    // Keep ref's plugin-development meaning; branch is the selected site code.
+    const context = { ...project, branch: getCanvasBranch({ org, site }) };
     iframe.contentWindow.postMessage(
-      { ready: true, project, context: project, token },
+      {
+        ready: true,
+        project: context,
+        context,
+        token,
+      },
       targetOrigin,
       [channel.port2],
     );
@@ -111,8 +137,10 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   document.addEventListener(CHAT_EVENT.AGENT_CHANGE, onAgentChange);
 
   const destroy = () => {
+    clearTimeout(readyTimer);
     document.removeEventListener(CHAT_EVENT.AGENT_CHANGE, onAgentChange);
     channel.port1.close();
+    channel.port2.close();
   };
 
   return { channel, destroy };
