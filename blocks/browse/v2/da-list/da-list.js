@@ -250,11 +250,13 @@ export default class DaList extends DaListBase {
     return this._sort?.property === property ? this._sort.direction : 'none';
   }
 
-  renderSortIcon(property) {
-    const direction = this.sortDirectionFor(property);
-    if (direction === 'none') return nothing;
-    const icon = direction === 'ascending' ? 'sortup' : 'sortdown';
-    return html`<svg class="da-browse-sort-icon" viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-${icon}-20-n.svg#icon"></use></svg>`;
+  renderSortIcon() {
+    return html`
+      <svg class="da-browse-sort-icon" viewBox="0 0 20 20" aria-hidden="true">
+        <use class="ascending" href="/img/icons/s2-icon-sortup-20-n.svg#icon"></use>
+        <use class="descending" href="/img/icons/s2-icon-sortdown-20-n.svg#icon"></use>
+      </svg>
+    `;
   }
 
   get sortPillLabel() {
@@ -451,7 +453,7 @@ export default class DaList extends DaListBase {
               ?disabled=${this._bulkLoading}
               aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
               Name
-              ${this.renderSortIcon('name')}
+              ${this.renderSortIcon()}
             </button>
           </div>
         </div>
@@ -464,7 +466,7 @@ export default class DaList extends DaListBase {
               ?disabled=${this._bulkLoading}
               aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
               Modified
-              ${this.renderSortIcon('lastModified')}
+              ${this.renderSortIcon()}
             </button>
           </div>
         </div>

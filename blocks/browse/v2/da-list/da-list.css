@@ -235,15 +235,20 @@ da-list-item.is-expanded::after {
 .da-browse-sort-icon {
   width: 18px;
   height: 18px;
+
+  use {
+    opacity: 0;
+  }
 }
 
 .da-browse-header-name.ascending,
 .da-browse-header-name.descending {
   color: var(--s2-gray-900);
+}
 
-  .da-browse-sort-icon {
-    display: block;
-  }
+.da-browse-header-name.ascending use.ascending,
+.da-browse-header-name.descending use.descending {
+  opacity: 1;
 }
 
 .da-browse-header-name.loading .da-browse-sort-icon {
