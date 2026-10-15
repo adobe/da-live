@@ -83,7 +83,7 @@
   align-items: center;
   gap: var(--s2-spacing-100);
   margin: 0;
-  font-size: var(--nx-ui-text-title);
+  font-size: var(--s2-component-m-regular-font-size);
   font-weight: 600;
 
   p {
@@ -110,7 +110,45 @@
   }
 }
 
-:host([data-ui-size="m"]) .tool-panel-dialog-icon {
-  width: 20px;
-  height: 20px;
+.nx-action-btn-icon.tool-panel-close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.nx-action-btn-icon.tool-panel-fullsize-dialog-close {
+  width: 28px;
+  height: 28px;
+  padding: 6px;
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+:host([data-ui-size="m"]) {
+  .tool-panel-dialog-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .tool-panel-fullsize-dialog-title {
+    font-size: var(--s2-component-l-regular-font-size);
+  }
+
+  .nx-action-btn-icon.tool-panel-close svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .nx-action-btn-icon.tool-panel-fullsize-dialog-close {
+    width: 32px;
+    height: 32px;
+    padding: 7px;
+
+    svg {
+      width: 18px;
+      height: 18px;
+    }
+  }
 }

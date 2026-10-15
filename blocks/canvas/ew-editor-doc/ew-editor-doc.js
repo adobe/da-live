@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { yUndo, yRedo, NodeSelection, TextSelection } from 'da-y-wrapper';
-import { getNx, getNx2, getLgBtnClass } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { updateDocument, updateCursors, getInstrumentedHTML, getEditor } from '../editor-utils/editor-utils.js';
 import { bindFirstSectionName } from '../../shared/section-name.js';
 import { getActiveBlockIndex, getBlockPositions, getTableBlockName } from '../editor-utils/blocks.js';
@@ -640,7 +640,7 @@ export class EwEditorDoc extends LitElement {
         <div class="block-edit-content">
           <header class="block-edit-header">
             <span class="block-edit-title">${title}</span>
-            <button type="button" class="nx-action-btn-icon block-edit-close ${getLgBtnClass()}" aria-label="Close"
+            <button type="button" class="nx-action-btn-icon block-edit-close" aria-label="Close"
                     @click=${() => this.shadowRoot.querySelector('nx-dialog')?.close()}><svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-close-20-n.svg#icon"></use></svg></button>
           </header>
           <div class="block-edit-body">

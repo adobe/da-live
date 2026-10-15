@@ -50,8 +50,8 @@
 }
 
 .ext-expand-icon {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   color: var(--s2-gray-600);
   flex-shrink: 0;
   transition: transform 0.1s ease-out;
@@ -75,7 +75,7 @@
 }
 
 .ext-variant-item {
-  padding: 8px 0 8px 34px;
+  padding: 8px 0 8px 32px;
   border-bottom: 1px solid var(--s2-gray-100);
 }
 
@@ -317,12 +317,12 @@
 }
 
 :host([data-ui-size="m"]) .ext-expand-icon {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 
 :host([data-ui-size="m"]) .ext-variant-item {
-  padding-left: 36px;
+  padding-left: 34px;
 }
 
 :host([data-ui-size="m"]) {
