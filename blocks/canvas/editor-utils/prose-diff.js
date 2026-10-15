@@ -1,4 +1,5 @@
 import { Plugin, PluginKey } from 'da-y-wrapper';
+import { isRenderedBlock } from './rerender-scope.js';
 
 // Set on a transaction (tr.setMeta(trackingPluginKey, true)) to skip the diff
 // walk below — e.g. a full-document replace (restore) has no shared node
@@ -152,6 +153,8 @@ export function findCommonEditableAncestor(view, changes, prevState) {
 
       for (let { depth } = $pos; depth > 0; depth -= 1) {
         const node = $pos.node(depth);
+        if (node.type.name === 'table'
+          && (!isRenderedBlock(node) || $pos.index(depth) === 0)) return null;
         if (EDITABLE_TYPES.includes(node.type.name)) {
           editableAncestor = {
             node,
@@ -162,7 +165,7 @@ export function findCommonEditableAncestor(view, changes, prevState) {
 
       if (editableAncestor) {
         editableAncestors.push(editableAncestor);
-      } else if (!isDeletedNode) {
+      } else {
         return null;
       }
     } catch (e) {
