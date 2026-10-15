@@ -35,7 +35,7 @@
   align-items: center;
   flex: 1;
   min-width: 0;
-  padding: 8px 12px;
+  padding: 10px 0 10px 16px;
   background: none;
   border: none;
   cursor: pointer;

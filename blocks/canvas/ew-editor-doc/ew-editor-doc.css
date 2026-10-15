@@ -343,7 +343,7 @@
   position: absolute;
   top: -1.05em;
   left: -1px;
-  font-size: var(--s2-component-s-regular-font-size);
+  font-size: var(--s2-component-m-regular-font-size);
   background-color: rgb(250 129 0);
   border-radius: 2px;
   padding: 0 3px;
@@ -643,10 +643,11 @@
     }
   }
 
-  :is(
-    .ew-editor-doc .ew-comment-gutter-bubble,
-    .ew-editor-doc .ProseMirror-yjs-cursor > div
-  ) {
+  .ew-editor-doc .ew-comment-gutter-bubble {
     font-size: var(--s2-component-m-regular-font-size);
+  }
+
+  .ew-editor-doc .ProseMirror-yjs-cursor > div {
+    font-size: var(--s2-component-l-regular-font-size);
   }
 }
