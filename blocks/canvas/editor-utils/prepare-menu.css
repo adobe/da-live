@@ -53,8 +53,8 @@
 }
 
 .prepare-dialog-icon {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
 }
 
@@ -94,7 +94,7 @@
   font-family: inherit;
   font-size: var(--nx-menu-font-size, var(--nx-ui-text-content));
   font-weight: 500;
-  line-height: var(--nx-ui-line-content);
+  line-height: var(--s2-body-line-height, 1.5);
   text-align: left;
   cursor: pointer;
 }
@@ -110,19 +110,19 @@
 
 .icon {
   display: block;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
 }
 
 :host([data-ui-size="m"]) {
   .prepare-dialog-icon {
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
   }
 
   .icon {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
   }
 }

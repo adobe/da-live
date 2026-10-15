@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 
-import { getNx, getNx2, getNxEWFlags, getUISize, getBtnSizeClass } from '../../../scripts/utils.js';
+import { getNx, getNx2, getNxEWFlags, getUISize, getLgBtnClass } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { getCommentsBridge, toggleComments, getCommentsVisible } from '../editor-utils/comments-bridge.js';
@@ -135,7 +135,7 @@ class EWCanvasHeader extends LitElement {
   _renderLock() {
     const label = "Read-only — you don't have write access";
     return html`
-      <span class="nx-action-btn-icon read-only-icon ${getBtnSizeClass()}" role="img" aria-label=${label} title=${label}>
+      <span class="nx-action-btn-icon read-only-icon ${getLgBtnClass()}" role="img" aria-label=${label} title=${label}>
         ${this._renderIcon('lock')}
       </span>`;
   }
@@ -145,17 +145,17 @@ class EWCanvasHeader extends LitElement {
       <header class="bar" part="bar">
         <div class="group group-start" part="group-start">
           ${this._chatDisabled ? nothing : html`
-          <button type="button" class="nx-action-btn-icon ${getBtnSizeClass()}" part="btn toggle-before" data-action="open-panel-before" aria-label="Open before panel" @click=${() => this._openPanel('before')}>
+          <button type="button" class="nx-action-btn-icon ${getLgBtnClass()}" part="btn toggle-before" data-action="open-panel-before" aria-label="Open before panel" @click=${() => this._openPanel('before')}>
             ${this._renderIcon('splitLeft')}
           </button>
           `}
           ${this.canWrite ? html`
-          <button type="button" class="nx-action-btn-icon ${getBtnSizeClass()}" part="btn" data-action="undo" aria-label="Undo" ?disabled=${!this.undoAvailable} @click=${this._undo}>
+          <button type="button" class="nx-action-btn-icon ${getLgBtnClass()}" part="btn" data-action="undo" aria-label="Undo" ?disabled=${!this.undoAvailable} @click=${this._undo}>
             ${this._renderIcon('undo')}
           </button>
           <button
             type="button"
-            class="nx-action-btn-icon ${getBtnSizeClass()}"
+            class="nx-action-btn-icon ${getLgBtnClass()}"
             part="btn"
             data-action="redo"
             aria-label="Redo"
@@ -184,7 +184,7 @@ class EWCanvasHeader extends LitElement {
         <div class="group group-end" part="group-end">
           <button
             type="button"
-            class="nx-action-btn-icon comments-toggle ${getBtnSizeClass()} ${this._commentsVisible ? 'is-active' : ''}"
+            class="nx-action-btn-icon comments-toggle ${getLgBtnClass()} ${this._commentsVisible ? 'is-active' : ''}"
             part="btn comments-toggle"
             data-action="toggle-comments"
             aria-label=${`${this._commentsVisible ? 'Hide comments' : 'Show comments'}${this._commentCount > 0 && !this._commentsVisible ? ` (${this._commentCount} active)` : ''}`}
@@ -194,7 +194,7 @@ class EWCanvasHeader extends LitElement {
             ${this._renderIcon('comment')}
             ${this._commentCount > 0 && !this._commentsVisible ? html`<span class="comment-count-chip" aria-hidden="true">${this._commentCount}</span>` : nothing}
           </button>
-          <button type="button" class="nx-action-btn-icon ${getBtnSizeClass()}" part="btn toggle-after" data-action="open-panel-after" aria-label="Open after panel" @click=${() => this._openPanel('after')}>
+          <button type="button" class="nx-action-btn-icon ${getLgBtnClass()}" part="btn toggle-after" data-action="open-panel-after" aria-label="Open after panel" @click=${() => this._openPanel('after')}>
             ${this._renderIcon('splitRight')}
           </button>
         </div>

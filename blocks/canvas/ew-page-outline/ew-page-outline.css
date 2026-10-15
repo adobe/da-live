@@ -70,9 +70,10 @@ input {
 
 .section-name-input {
   flex: 1;
+  box-sizing: border-box;
   min-width: 0;
-  height: 19px;
-  margin: 5px;
+  height: 24px;
+  margin: 4px;
   padding: var(--s2-spacing-50);
   font-size: var(--nx-ui-text-content);
   border-radius: 6px;
@@ -202,7 +203,7 @@ input {
 }
 
 .content-snippet {
-  font-size: var(--nx-ui-text-content);
+  font-size: var(--s2-component-s-regular-font-size);
   font-weight: 400;
   color: var(--s2-gray-600);
   overflow: hidden;
@@ -227,8 +228,8 @@ input {
 
   svg.icon {
     display: block;
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
   }
 
 .outline-section:has(.selected) .section-header :is(.action-btn, .edit-btn),
@@ -264,7 +265,11 @@ input {
   }
 
   svg.icon {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
+  }
+
+  .content-snippet {
+    font-size: var(--s2-component-m-regular-font-size);
   }
 }

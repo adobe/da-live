@@ -163,15 +163,15 @@
 
 .modal-tree-description {
   padding: 6px 36px 10px;
-  font-size: var(--nx-ui-text-content);
+  font-size: var(--s2-component-s-regular-font-size);
   color: var(--s2-gray-700);
-  line-height: var(--nx-ui-line-content);
+  line-height: 1.4;
 }
 
 .modal-tree-caret {
   flex-shrink: 0;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   color: var(--s2-gray-600);
   transition: transform 0.1s ease-out;
 }
@@ -190,12 +190,12 @@
 .modal-tree-subtitle {
   margin-left: 4px;
   color: var(--s2-gray-600);
-  font-size: var(--nx-ui-text-content);
+  font-size: var(--s2-component-s-regular-font-size);
 }
 
 .modal-tree-loading {
   padding: 8px 36px;
-  font-size: var(--nx-ui-text-content);
+  font-size: var(--s2-component-s-regular-font-size);
   color: var(--s2-gray-600);
 }
 
@@ -270,7 +270,15 @@
   }
 
   .modal-tree-caret {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
+  }
+
+  :is(
+    .modal-tree-description,
+    .modal-tree-subtitle,
+    .modal-tree-loading
+  ) {
+    font-size: var(--s2-component-m-regular-font-size);
   }
 }

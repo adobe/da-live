@@ -34,7 +34,7 @@
   background: var(--ew-comment-author-color, #6b7280);
   color: #fff;
   font-family: inherit;
-  font-size: var(--nx-ui-text-content);
+  font-size: var(--s2-component-s-regular-font-size);
   font-weight: 600;
   line-height: 1;
   filter:
@@ -332,7 +332,7 @@
   position: absolute;
   top: -1.05em;
   left: -1px;
-  font-size: var(--nx-ui-text-content);
+  font-size: var(--s2-component-s-regular-font-size);
   background-color: rgb(250 129 0);
   border-radius: 2px;
   padding: 0 3px;
@@ -618,4 +618,13 @@
   color: inherit;
   font-weight: 500;
   box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
+}
+
+:host([data-ui-size="m"]) {
+  :is(
+    .ew-editor-doc .ew-comment-gutter-bubble,
+    .ew-editor-doc .ProseMirror-yjs-cursor > div
+  ) {
+    font-size: var(--s2-component-m-regular-font-size);
+  }
 }

@@ -99,4 +99,7 @@ export const getUISize = () => document.body.className.match(/\bui-size-(\w+)/)?
 // Shared nx2 buttons are small in s and default size otherwise.
 export const getBtnSizeClass = () => (getUISize() === 's' ? 'nx-btn-sm' : '');
 
+// Buttons that are 32px on main stay default in s and step up to large in m.
+export const getLgBtnClass = () => (getUISize() === 'm' ? 'nx-btn-lg' : '');
+
 export const getNxEWFlags = () => import(`${getNx2()}/utils/ewFlags.js`);

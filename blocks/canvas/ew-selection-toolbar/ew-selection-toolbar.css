@@ -60,7 +60,7 @@
 
 .toolbar-btn[data-mark="code"] {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: var(--nx-ui-text-content);
+  font-size: var(--s2-component-xs-regular-font-size);
   letter-spacing: -0.02em;
   padding: 0;
 }
@@ -79,4 +79,10 @@
 .toolbar-block-type-wrap {
   display: inline-flex;
   align-items: center;
+}
+
+:host([data-ui-size="m"]) {
+  .toolbar-btn[data-mark="code"] {
+    font-size: var(--s2-component-s-regular-font-size);
+  }
 }

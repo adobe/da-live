@@ -4,7 +4,7 @@
   min-height: 0;
   font-family: var(--s2-font-family);
   padding: var(--s2-spacing-200) 0 0 var(--s2-spacing-200);
-  font-size: var(--nx-ui-text-content);
+  font-size: var(--s2-component-s-regular-font-size);
   color: var(--s2-gray-700);
 }
 
@@ -24,7 +24,7 @@ button {
 
 .placeholder {
   padding: var(--s2-spacing-300) var(--s2-spacing-200);
-  font-size: var(--nx-ui-text-content);
+  font-size: var(--s2-component-s-regular-font-size);
   color: var(--s2-gray-600);
   text-align: center;
 }
@@ -85,16 +85,14 @@ button {
 }
 
 .versionname {
-  font-size: var(--nx-ui-text-content);
-  line-height: var(--nx-ui-line-content);
+  font-size: var(--s2-component-s-regular-font-size);
   font-weight: var(--s2-component-s-bold-font-weight);
   color: var(--s2-gray-800);
 }
 
 .meta,
 .user {
-  font-size: var(--nx-ui-text-content);
-  line-height: var(--nx-ui-line-content);
+  font-size: var(--s2-component-s-regular-font-size);
 }
 
 .versionicon {
@@ -110,8 +108,8 @@ button {
   background: var(--s2-gray-75);
 
   svg {
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
     transition: transform 0.15s ease;
   }
 }
@@ -272,7 +270,7 @@ summary {
 .is-new {
   .da-input {
     height: 24px;
-    font-size: var(--nx-ui-text-content);
+    font-size: var(--s2-component-s-regular-font-size);
   }
 
   .ew-cv-save-btn:has(.da-loading-spinner) {
@@ -292,10 +290,12 @@ nx-dialog {
 }
 
 :host([data-ui-size="m"]) {
+  font-size: var(--s2-component-m-regular-font-size);
+
   /* stylelint-disable-next-line no-descending-specificity */
   .versionicon svg {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
   }
 
   .versionentry.is-audit .versionicon svg {
@@ -305,5 +305,15 @@ nx-dialog {
 
   .is-new .da-input {
     height: 32px;
+  }
+
+  :is(
+    .placeholder,
+    .versionname,
+    .meta,
+    .user,
+    .is-new .da-input
+  ) {
+    font-size: var(--s2-component-m-regular-font-size);
   }
 }

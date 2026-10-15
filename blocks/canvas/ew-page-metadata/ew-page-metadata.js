@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2, getUISize, getBtnSizeClass } from '../../../scripts/utils.js';
+import { getNx, getNx2, getBtnSizeClass } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
@@ -168,7 +168,7 @@ class EwPageMetadata extends LitElement {
     }
     // nx-picker has no disabled state; inert blocks interaction.
     return html`
-      <nx-picker size=${getUISize()} variant="field" placeholder="Please Select" ?inert=${readOnly} .items=${[
+      <nx-picker size="m" variant="field" placeholder="Please Select" ?inert=${readOnly} .items=${[
         EMPTY_OPTION,
         ...field.values.map((v) => ({
           value: v.value,

@@ -35,7 +35,7 @@
   outline: none;
   background: none;
   font-family: inherit;
-  font-size: var(--nx-ui-text-content);
+  font-size: var(--s2-component-s-regular-font-size);
   color: var(--s2-gray-900);
   padding: 0;
 
@@ -133,8 +133,8 @@
 
 .icon {
   flex-shrink: 0;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
 }
 
 .label {
@@ -149,7 +149,7 @@
   margin-inline-start: var(--s2-spacing-75);
   color: var(--s2-gray-600);
   font-weight: 400;
-  font-size: var(--nx-ui-text-content);
+  font-size: var(--s2-component-s-regular-font-size);
 }
 
 .copy-url {
@@ -227,7 +227,14 @@
   }
 
   .icon {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
+  }
+
+  :is(
+    .search-input,
+    .path-hint
+  ) {
+    font-size: var(--s2-component-m-regular-font-size);
   }
 }

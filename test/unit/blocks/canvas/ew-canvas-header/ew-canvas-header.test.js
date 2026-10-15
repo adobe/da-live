@@ -49,13 +49,13 @@ describe('ew-canvas-header segments', () => {
     await header.updateComplete;
     const control = segmentedBtn(header);
     const undo = header.shadowRoot.querySelector('[data-action="undo"]');
-    expect(undo.classList.contains('nx-btn-sm')).to.be.true;
+    expect(undo.classList.contains('nx-btn-lg')).to.be.false;
     setUISize({ size: 'm' });
     await header.updateComplete;
     await control.updateComplete;
     expect(header.dataset.uiSize).to.equal('m');
     expect(control.getAttribute('size')).to.equal('m');
-    expect(undo.classList.contains('nx-btn-sm')).to.be.false;
+    expect(undo.classList.contains('nx-btn-lg')).to.be.true;
     expect(header.editorView).to.equal('content');
     expect(header.undoAvailable).to.be.true;
     expect(segmentedBtn(header)).to.equal(control);
@@ -63,7 +63,7 @@ describe('ew-canvas-header segments', () => {
     await header.updateComplete;
     expect(header.dataset.uiSize).to.equal('s');
     expect(control.getAttribute('size')).to.equal('s');
-    expect(undo.classList.contains('nx-btn-sm')).to.be.true;
+    expect(undo.classList.contains('nx-btn-lg')).to.be.false;
     expect(header.editorView).to.equal('content');
   });
 

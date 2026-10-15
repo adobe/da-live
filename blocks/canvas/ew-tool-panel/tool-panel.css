@@ -92,8 +92,8 @@
 }
 
 .tool-panel-dialog-icon {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
 }
 
@@ -111,6 +111,6 @@
 }
 
 :host([data-ui-size="m"]) .tool-panel-dialog-icon {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
 }

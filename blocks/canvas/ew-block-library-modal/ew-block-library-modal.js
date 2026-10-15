@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2, getBtnSizeClass } from '../../../scripts/utils.js';
+import { getNx, getNx2, getBtnSizeClass, getLgBtnClass } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import {
   loadBlockLibrary,
@@ -287,7 +287,7 @@ class EwBlockLibraryModal extends LitElement {
       <div class="modal-preview-toolbar" role="group" aria-label="Preview width">
         ${VIEWPORTS.map(([id, label, , icon]) => html`
           <button type="button"
-                  class="nx-action-btn-icon modal-viewport-btn ${getBtnSizeClass()} ${this._viewport === id ? 'is-active' : ''}"
+                  class="nx-action-btn-icon modal-viewport-btn ${getLgBtnClass()} ${this._viewport === id ? 'is-active' : ''}"
                   aria-label=${label}
                   title=${label}
                   aria-pressed=${this._viewport === id}

@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2, getBtnSizeClass, sanitizeName } from '../../../scripts/utils.js';
+import { getNx, getNx2, getLgBtnClass, sanitizeName } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import { fetchDaConfigs, getPostMessageTargetOrigin } from '../../shared/utils.js';
 import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
@@ -259,7 +259,7 @@ export default class PrepareMenu extends LitElement {
             <span>${this._fullsizeDialogItem.title}</span>
           </h2>
           <button
-            class="nx-action-btn-icon prepare-fullsize-dialog-close ${getBtnSizeClass()}"
+            class="nx-action-btn-icon prepare-fullsize-dialog-close ${getLgBtnClass()}"
             type="button"
             aria-label="Close"
             @click=${this.handleCloseFullsizeDialog}><svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-close-20-n.svg#icon"></use></svg></button>
