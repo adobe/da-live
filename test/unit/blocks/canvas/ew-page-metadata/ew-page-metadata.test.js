@@ -484,5 +484,22 @@ describe('ew-page-metadata', () => {
 
       expect(rowFor(el, 'Title').querySelector('input[type="text"]').value).to.equal('New');
     });
+
+    it('does not show a field for a freshly-added row until it has a key', async () => {
+      await loadDoc([['Title', 'My Page']]);
+      const fieldCountBefore = el.shadowRoot.querySelectorAll('.ew-pm-row').length;
+
+      const { view } = bridge;
+      const tablePos = findTablePos(view);
+      const table = view.state.doc.nodeAt(tablePos);
+      const { schema } = view.state;
+      const emptyCell = () => schema.nodes.table_cell.create(null, schema.nodes.paragraph.create());
+      const emptyRow = schema.nodes.table_row.create(null, [emptyCell(), emptyCell()]);
+      view.dispatch(view.state.tr.insert(tablePos + table.nodeSize - 1, emptyRow));
+      canvasBus.editorDocState.emit();
+      await el.updateComplete;
+
+      expect(el.shadowRoot.querySelectorAll('.ew-pm-row').length).to.equal(fieldCountBefore);
+    });
   });
 });

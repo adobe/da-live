@@ -138,7 +138,8 @@ function getLibraryMetadata(el) {
     if (row.children) {
       const key = row.children[0]?.textContent.trim().toLowerCase();
       const val = row.children[1]?.textContent.trim();
-      if (key && val) acc[key] = val;
+      if (key === 'fields') acc.fields = row.children[1]?.querySelector('table')?.cloneNode(true) ?? val;
+      else if (key && val) acc[key] = val;
     }
     return acc;
   }, {});
@@ -181,6 +182,7 @@ function transformBlock(block) {
     if (md.name) item.name = md.name;
     if (md.searchtags) item.tags = md.searchtags;
     if (md.description) item.description = md.description;
+    if ('fields' in md) item.fields = md.fields;
     metaEl.remove();
   }
 
@@ -573,6 +575,19 @@ export function createMetadataView() {
   };
 }
 
+export function createBlockView() {
+  return {
+    id: 'block',
+    label: 'Block',
+    section: 'Editor',
+    firstParty: true,
+    load: async () => {
+      await import('../ew-block-properties/ew-block-properties.js');
+      return document.createElement('ew-block-properties');
+    },
+  };
+}
+
 export function extensionToPanelView(ext, section) {
   const proxyOpts = { getUrl: getPreviewOrigin, currentOrg: ext.org };
   // Block library opens its own dedicated modal (used by the slash menu and
@@ -659,7 +674,7 @@ export function extensionToPanelView(ext, section) {
 }
 
 /**
- * Tool panel: Editor placeholder, Library (blocks / AEM Assets / icons / templates / placeholders),
+ * Tool panel: Editor views, Library (blocks / AEM Assets / icons / templates / placeholders),
  * Extensions (other plugins).
  */
 export async function getCanvasToolPanelViews({ org, site }) {
@@ -670,6 +685,7 @@ export async function getCanvasToolPanelViews({ org, site }) {
   return [
     createOutlineView(),
     createMetadataView(),
+    createBlockView(),
     createFileExplorerView(),
     createVersioningView(),
     createCommentsView(),

@@ -11,6 +11,7 @@ let extensionToPanelView;
 let getPreviewStatus;
 let createCommentsView;
 let createMetadataView;
+let createBlockView;
 let getCanvasToolPanelViews;
 let fetchExtensions;
 
@@ -21,6 +22,7 @@ before(async () => {
   getPreviewStatus = mod.getPreviewStatus;
   createCommentsView = mod.createCommentsView;
   createMetadataView = mod.createMetadataView;
+  createBlockView = mod.createBlockView;
   getCanvasToolPanelViews = mod.getCanvasToolPanelViews;
   fetchExtensions = mod.fetchExtensions;
 });
@@ -121,6 +123,27 @@ describe('EW panel helpers transformBlock', () => {
     `);
     const variants = await getBlockVariants('/mock-path');
     expect(variants[0].description).to.equal('A hero block');
+  });
+
+  it('preserves structured fields metadata without inserting it into block content', async () => {
+    mockHtml(`
+      <body><div><h2>Hero (Text Start)</h2>
+        <div class="hero left"><div><div><picture><img src="/hero.png"></picture></div></div>
+          <div><div><h1>Author Kit</h1><p>Subheading</p></div></div></div>
+        <div class="library-metadata">
+          <div><div>fields</div><div><table><tbody>
+            <tr><td><p>fields</p></td></tr><tr><td><p>image</p></td></tr>
+            <tr><td><p>title</p><p>subheading</p></td></tr>
+          </tbody></table></div></div>
+        </div>
+      </div></body>
+    `);
+    const [variant] = await getBlockVariants('/mock-path');
+    expect(variant.fields).to.be.instanceOf(window.HTMLTableElement);
+    expect(variant.fields.rows[2].cells[0].children.length).to.equal(2);
+    expect(variant.dom.rows.length).to.equal(3);
+    expect(variant.dom.textContent).not.to.include('fields');
+    expect(variant.dom.querySelector('.library-metadata')).to.equal(null);
   });
 
   it('Sets item.tags from searchtags in embedded library-metadata', async () => {
@@ -545,10 +568,25 @@ describe('createMetadataView', () => {
 describe('getCanvasToolPanelViews', () => {
   afterEach(() => setDaConfigs([]));
 
-  it('includes the metadata view alongside the other first-party Editor views', async () => {
+  it('includes Page and Block alongside the other first-party Editor views', async () => {
     setDaConfigs([{ data: [] }]);
     const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
-    expect(views.map((v) => v.id)).to.include('metadata');
+    expect(views.map((v) => v.id)).to.include.members(['metadata', 'block']);
+  });
+});
+
+describe('createBlockView', () => {
+  it('is a first-party Editor-section view', () => {
+    const view = createBlockView();
+    expect(view.id).to.equal('block');
+    expect(view.label).to.equal('Block');
+    expect(view.section).to.equal('Editor');
+    expect(view.firstParty).to.equal(true);
+  });
+
+  it('load() returns an ew-block-properties element', async () => {
+    const el = await createBlockView().load();
+    expect(el.localName).to.equal('ew-block-properties');
   });
 });
 

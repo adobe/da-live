@@ -2,8 +2,7 @@
   display: contents;
 }
 
-/* Rendered as a top-layer popover (see ew-selection-toolbar.js) so it sits above a
-   modal <dialog> such as the block-edit modal. Override the UA popover box defaults
+/* Rendered as a top-layer popover (see ew-selection-toolbar.js). Override the UA box defaults
    (inset/margin) to keep the bottom-centre anchoring. Hidden by the UA
    `[popover]:not(:popover-open)` rule until shown. */
 .toolbar-wrap {

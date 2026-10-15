@@ -3,8 +3,8 @@ import { loadBlockLibrary, loadBlockEditor } from '../ew-panel-extensions/helper
 /**
  * "Multi blocks" — blocks (e.g. cards) whose body is a repeating list of item rows.
  * Marked in the block library's "editor" sheet with `property: 'multi'`. For these,
- * the block toolbar offers an "Add item" button that appends a copy of the library
- * block's first item row.
+ * the toolbar and properties panel add copies of the library block's first item
+ * row. The properties panel also reorders and deletes item rows, never the header.
  */
 
 function normalize(name) {

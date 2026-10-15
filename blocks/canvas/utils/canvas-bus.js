@@ -42,14 +42,13 @@ export const canvasBus = Object.freeze({
   newVersionRequest: createChannel(),
   comparisonRequest: createChannel(),
   commentComposeRequest: createChannel(),
-  blockEditRequest: createChannel(),
   preflightRunRequest: createChannel(),
   toolbarSurfaceRequest: createChannel(),
 
   undoState: createChannel(),
+  // Fires on every doc change (no payload), unlike the throttled editorHtmlState.
   editorDocState: createChannel(),
   editorViewState: createChannel({ replay: true }),
-  blockEditState: createChannel({ replay: true }),
   toolbarSurfaceState: createChannel({ replay: true }),
   // Doc selection does not claim focus; an iframe selection does.
   toolbarSelectionState: createChannel(),
