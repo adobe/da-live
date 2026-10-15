@@ -14,6 +14,13 @@ describe('comparison plugin protocol', () => {
   let clientPort;
   let unsubscribe;
   beforeEach(async () => {
+    canvasBus.branchState.emit({
+      org: 'example',
+      site: 'site',
+      path: '/example/site/page',
+      status: 'ready',
+      branch: 'configured-branch',
+    });
     const initialized = new Promise((resolve) => {
       const iframe = {
         src: `${location.origin}/test-plugin`,
@@ -27,11 +34,14 @@ describe('comparison plugin protocol', () => {
     unsubscribe?.();
     connection?.destroy();
     clientPort?.close();
+    canvasBus.branchState.emit({ path: null, status: 'pending' });
   });
 
   it('initializes the existing ready handshake without capability negotiation', () => {
     expect(ready.ready).to.equal(true);
     expect(ready.capabilities).to.equal(undefined);
+    expect(ready.context).to.equal(ready.project);
+    expect(ready.context.branch).to.equal('configured-branch');
   });
 
   it('opens comparison without a request ID or response callback, using host-owned context', async () => {

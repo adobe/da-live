@@ -103,5 +103,15 @@ describe('scheduler/utils', () => {
       expect(body).to.deep.equal({ org: 'o', site: 's', path: '/p', userId: 'user-1', scheduledPublish: '2026-01-01' });
       expect(resp.ok).to.be.true;
     });
+
+    it('Strips a trailing .html from the path', async () => {
+      let captured;
+      window.fetch = (url, opts) => {
+        captured = { url, opts };
+        return Promise.resolve(new Response('{"ok":true}', { status: 200 }));
+      };
+      await schedulePagePublish('o', 's', '/p.html', 'user-1', '2026-01-01');
+      expect(JSON.parse(captured.opts.body).path).to.equal('/p');
+    });
   });
 });
