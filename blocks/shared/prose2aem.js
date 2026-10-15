@@ -204,23 +204,28 @@ function applySectionMetadata(editor) {
     block.querySelectorAll(':scope > div').forEach((row) => {
       const cols = row.querySelectorAll(':scope > div');
       if (cols.length < 2) return;
-      const key = cols[0].textContent.trim().toLowerCase()
-        .replace(/[^0-9a-z]+/g, '-')
-        .replace(/^-+|-+$/g, '');
+      const key = cols[0].textContent.trim().replace(/[^0-9a-zA-Z:_-]/g, '-').toLowerCase();
       if (!key) return;
       if (key === 'style') {
-        cols[1].textContent.trim().split(',')
-          .map((s) => s.trim().toLowerCase().replace(/[^0-9a-z]+/g, '-').replace(/^-+|-+$/g, ''))
-          .filter(Boolean)
-          .forEach((cls) => section.classList.add(cls));
+        const walker = document.createTreeWalker(cols[1], NodeFilter.SHOW_TEXT);
+        while (walker.nextNode()) {
+          walker.currentNode.textContent.split(',')
+            .flatMap(toBlockCSSClassNames)
+            .forEach((cls) => section.classList.add(cls));
+        }
+      } else if (key === 'id') {
+        const id = cols[1].textContent.toLowerCase()
+          .replace(/[^0-9a-z._:-]+/g, '-')
+          .replace(/^[^a-z]+/, '')
+          .replace(/-+$/, '');
+        if (id) section.id = id;
       } else {
-        const camelKey = key.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-        const linkEl = cols[1].querySelector('a');
-        const imgEl = cols[1].querySelector('img');
+        const linkEl = cols[1].querySelector('a[href]');
+        const imgEl = cols[1].querySelector('img[src]');
         let value = cols[1].textContent.trim();
-        if (linkEl) value = linkEl.href;
-        else if (imgEl) value = imgEl.src;
-        section.dataset[camelKey] = value;
+        if (linkEl) value = linkEl.getAttribute('href');
+        else if (imgEl) value = imgEl.getAttribute('src');
+        section.setAttribute(`data-${key}`, value);
       }
     });
     block.remove();
