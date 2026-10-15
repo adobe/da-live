@@ -1,4 +1,6 @@
-import { insertText, insertHTML, getEditorSelection } from './helpers.js';
+import { insertText, insertHTML, replaceHTML, getEditorSelection } from './helpers.js';
+import { getActiveBlockIndex } from '../editor-utils/blocks.js';
+import { getExtensionHTML } from '../editor-utils/editor-utils.js';
 import { getNx } from '../../../scripts/utils.js';
 import { getPostMessageTargetOrigin, isRequestId, isValidHref, replyToGetSelection } from '../../shared/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
@@ -24,9 +26,71 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   const targetOrigin = getPostMessageTargetOrigin(iframe.src);
 
   const channel = new MessageChannel();
+  let subscribed = false;
+  let htmlTimer;
+  let unsubscribeDoc;
+  let unsubscribeHtml;
+  let unsubscribeSelect;
+  let lastBlockIndex = null;
+
+  const selectionFor = (editorView) => {
+    const index = getActiveBlockIndex(editorView);
+    return { blockIndex: index < 0 ? null : index };
+  };
+  const publishDocument = () => {
+    clearTimeout(htmlTimer);
+    htmlTimer = undefined;
+    if (!subscribed) return;
+    const editorView = getView();
+    const selection = selectionFor(editorView);
+    lastBlockIndex = selection.blockIndex;
+    channel.port1.postMessage({
+      action: 'liveDocument',
+      html: editorView ? getExtensionHTML(editorView) : '',
+      selection,
+      editable: !!editorView?.editable,
+    });
+  };
+  const scheduleDocument = () => {
+    if (!subscribed) return;
+    clearTimeout(htmlTimer);
+    htmlTimer = setTimeout(publishDocument, 150);
+  };
+  const publishSelection = ({ blockIndex }) => {
+    if (!subscribed || htmlTimer !== undefined) return;
+    const index = Number.isInteger(blockIndex) && blockIndex >= 0 ? blockIndex : null;
+    if (lastBlockIndex === index) return;
+    lastBlockIndex = index;
+    channel.port1.postMessage({ action: 'liveSelection', selection: { blockIndex: index } });
+  };
+  const stopSubscription = () => {
+    subscribed = false;
+    clearTimeout(htmlTimer);
+    htmlTimer = undefined;
+    unsubscribeDoc?.();
+    unsubscribeHtml?.();
+    unsubscribeSelect?.();
+    unsubscribeDoc = undefined;
+    unsubscribeHtml = undefined;
+    unsubscribeSelect = undefined;
+  };
 
   channel.port1.onmessage = (e) => {
     const { action, details } = e.data || {};
+    if (action === 'subscribeLiveDocument') {
+      if (!subscribed) {
+        subscribed = true;
+        unsubscribeDoc = canvasBus.editorDocState.subscribe(scheduleDocument);
+        unsubscribeHtml = canvasBus.editorHtmlState.subscribe(scheduleDocument);
+        unsubscribeSelect = canvasBus.editorSelectState.subscribe(publishSelection);
+      }
+      publishDocument();
+      return;
+    }
+    if (action === 'unsubscribeLiveDocument') {
+      stopSubscription();
+      return;
+    }
 
     if (action === 'openComparison' || action === 'closeComparison') {
       if (action === 'openComparison'
@@ -49,6 +113,37 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
       return;
     }
     const editorView = getView();
+
+    if (action === 'sendHTML' && typeof details === 'object') {
+      const { requestId } = e.data;
+      if (!isRequestId(requestId)) return;
+      let result;
+      try {
+        if (!editorView) throw Object.assign(new Error('No editor view'), { code: 'NO_EDITOR' });
+        if (details?.replace !== true) throw Object.assign(new Error('Invalid replacement request'), { code: 'INVALID_HTML' });
+        if (details.expected !== undefined) {
+          const { expected } = details;
+          if (typeof expected?.html !== 'string' || !Number.isSafeInteger(expected.blockIndex) || expected.blockIndex < 0) {
+            throw Object.assign(new Error('Invalid replacement precondition'), { code: 'INVALID_EXPECTED' });
+          }
+          if (getActiveBlockIndex(editorView) !== expected.blockIndex) {
+            throw Object.assign(new Error('The selected block changed'), { code: 'WRONG_SELECTION' });
+          }
+          if (getExtensionHTML(editorView) !== expected.html) {
+            throw Object.assign(new Error('The live document changed while editing'), { code: 'STALE_LIVE' });
+          }
+        }
+        replaceHTML(editorView, details.html);
+        const html = getExtensionHTML(editorView);
+        const selection = selectionFor(editorView);
+        publishDocument();
+        result = { ok: true, html, selection, editable: !!editorView.editable };
+      } catch (error) {
+        result = { ok: false, error: error.code || 'REPLACE_FAILED', message: error.message };
+      }
+      channel.port1.postMessage({ action: 'sdkResponse', requestId, result });
+      return;
+    }
 
     if (action === 'sendText' && editorView) {
       insertText(editorView, details);
@@ -124,6 +219,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
         project: context,
         context,
         token,
+        capabilities: { liveDocument: 1, sendHTMLReplace: 1 },
       },
       targetOrigin,
       [channel.port2],
@@ -137,6 +233,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   document.addEventListener(CHAT_EVENT.AGENT_CHANGE, onAgentChange);
 
   const destroy = () => {
+    stopSubscription();
     clearTimeout(readyTimer);
     document.removeEventListener(CHAT_EVENT.AGENT_CHANGE, onAgentChange);
     channel.port1.close();

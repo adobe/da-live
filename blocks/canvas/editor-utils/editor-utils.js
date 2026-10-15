@@ -347,6 +347,20 @@ export function getInstrumentedHTML(view) {
   return htmlString;
 }
 
+export function getExtensionHTML(view) {
+  const doc = new DOMParser().parseFromString(getInstrumentedHTML(view), 'text/html');
+  doc.querySelectorAll('img[data-image-index]').forEach((image) => {
+    const pos = Number(image.getAttribute('data-image-index'));
+    const node = view.state.doc.nodeAt(pos);
+    if (node?.type.name !== 'image') throw new Error(`No editor image at position ${pos}`);
+    image.setAttribute('src', node.attrs.src);
+    image.closest('picture')?.querySelectorAll('source').forEach((source) => {
+      source.setAttribute('srcset', node.attrs.src);
+    });
+  });
+  return doc.body.outerHTML;
+}
+
 const SKIP_BLOCK_CLASSES = new Set(['default-content-wrapper', 'metadata', 'section-metadata', 'library-metadata', 'block-marker']);
 
 function hasDefaultContent(el) {

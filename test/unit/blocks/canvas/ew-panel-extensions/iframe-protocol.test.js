@@ -1,15 +1,16 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
-import { TextSelection } from 'da-y-wrapper';
+import { NodeSelection, TextSelection } from 'da-y-wrapper';
 import { setNx, getNx } from '../../../../../scripts/utils.js';
 import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
-import { makeView } from '../test-helpers.js';
+import { makeRealView, makeView } from '../test-helpers.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { setupIframeChannel } = await import('../../../../../blocks/canvas/ew-panel-extensions/iframe-protocol.js');
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
+const { getExtensionHTML } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
 
 const wait = (ms = 50) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
@@ -20,6 +21,123 @@ function makeIframe(src = 'https://plugin.example.com/app') {
 function setUrl(url) {
   window.history.replaceState(null, '', url);
 }
+
+describe('acknowledged live HTML replacement', () => {
+  let view;
+  let connection;
+  const paragraph = (text) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
+  beforeEach(async () => {
+    view = makeRealView({
+      type: 'doc',
+      content: [{
+        type: 'table',
+        content: [
+          { type: 'table_row', content: [{ type: 'table_cell', content: [paragraph('hero')] }] },
+          { type: 'table_row', content: [{ type: 'table_cell', content: [paragraph('Original')] }] },
+        ],
+      }, paragraph('Keep')],
+    });
+    view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, 0)));
+    connection = await setupIframeChannel({
+      iframe: makeIframe(),
+      hashState: { org: 'org', site: 'site', path: 'page' },
+      getView: () => view,
+      onClose: () => {},
+    });
+  });
+  afterEach(() => {
+    connection.destroy();
+    const mount = view.dom.parentElement;
+    view.destroy();
+    mount?.remove();
+  });
+  const replace = (details) => new Promise((resolve) => {
+    connection.channel.port2.onmessage = ({ data }) => {
+      if (data.action === 'sdkResponse') resolve(data.result);
+    };
+    connection.channel.port2.postMessage({ action: 'sendHTML', requestId: 'replace-1', details });
+  });
+  it('acknowledges a guarded block replacement with the updated live document', async () => {
+    const expected = { html: getExtensionHTML(view), blockIndex: 0 };
+    const result = await replace({
+      html: '<div class="hero"><div><div><p>Updated</p></div></div></div>',
+      replace: true,
+      expected,
+    });
+    expect(result.ok).to.equal(true);
+    expect(result.html).to.include('Updated').and.include('Keep');
+    expect(result.selection).to.deep.equal({ blockIndex: 0 });
+    expect(result.editable).to.equal(true);
+    expect(view.state.doc.childCount).to.equal(2);
+  });
+  it('round-trips image URLs through subscription and guarded edits', async () => {
+    const src = 'https://stage-content.da.live/other/site/.demo/bg.jpg';
+    let pos;
+    view.state.doc.descendants((node, start) => {
+      if (node.isText && node.text === 'Original') pos = start;
+    });
+    const image = view.state.schema.nodes.paragraph.create(
+      null,
+      view.state.schema.nodes.image.create({ src }),
+    );
+    const tr = view.state.tr.insert(pos - 1, image);
+    view.dispatch(tr.setSelection(NodeSelection.create(tr.doc, 0)));
+    const initial = new Promise((resolve) => {
+      connection.channel.port2.onmessage = ({ data }) => {
+        if (data.action === 'liveDocument') resolve(data);
+      };
+    });
+    connection.channel.port2.postMessage({ action: 'subscribeLiveDocument' });
+    let snapshot = await initial;
+    for (const title of ['Updated', 'Updated again']) {
+      const doc = new DOMParser().parseFromString(snapshot.html, 'text/html');
+      const block = doc.querySelector('table');
+      expect(block.querySelector('img').getAttribute('src')).to.equal(src);
+      expect([...block.querySelectorAll('source')].map((source) => source.getAttribute('srcset')))
+        .to.deep.equal([src, src]);
+      const text = [...block.querySelectorAll('tr')[1].querySelectorAll('p')]
+        .find((paragraphNode) => paragraphNode.textContent.trim());
+      text.textContent = title;
+      snapshot = await replace({
+        html: block.outerHTML,
+        replace: true,
+        expected: { html: snapshot.html, blockIndex: 0 },
+      });
+      expect(snapshot.ok).to.equal(true);
+      expect(snapshot.html).to.equal(getExtensionHTML(view));
+      const response = new DOMParser().parseFromString(snapshot.html, 'text/html');
+      expect(response.querySelector('img').getAttribute('src')).to.equal(src);
+      expect(view.state.doc.textContent).to.include(title);
+      view.state.doc.descendants((node) => {
+        if (node.type.name === 'image') expect(node.attrs.src).to.equal(src);
+      });
+    }
+  });
+  it('rejects stale content and a changed selection atomically', async () => {
+    const expected = { html: getExtensionHTML(view), blockIndex: 0 };
+    const tr = view.state.tr.insertText('Other', view.state.doc.content.size - 1);
+    view.dispatch(tr.setSelection(NodeSelection.create(tr.doc, 0)));
+    const before = view.state.doc;
+    const details = { html: '<p>Wrong</p>', replace: true, expected };
+    expect((await replace(details)).error).to.equal('STALE_LIVE');
+    expect(view.state.doc).to.equal(before);
+    view.dispatch(view.state.tr.setSelection(
+      TextSelection.create(view.state.doc, view.state.doc.content.size - 1),
+    ));
+    expect((await replace(details)).error).to.equal('WRONG_SELECTION');
+    expect(view.state.doc).to.equal(before);
+  });
+  it('reports read-only and invalid replacement errors without modifying the document', async () => {
+    const before = view.state.doc;
+    view.setProps({ editable: () => false });
+    expect((await replace({ html: '<p>No</p>', replace: true })).error).to.equal('READ_ONLY');
+    view.setProps({ editable: () => true });
+    expect((await replace({ html: '', replace: true })).error).to.equal('INVALID_HTML');
+    expect((await replace({ html: '<p>No</p>', replace: true, expected: {} })).error)
+      .to.equal('INVALID_EXPECTED');
+    expect(view.state.doc).to.equal(before);
+  });
+});
 
 describe('setupIframeChannel', () => {
   let originalUrl;
@@ -85,6 +203,7 @@ describe('setupIframeChannel', () => {
       hash: '#/myorg/mysite/a/b',
     });
     expect(message.context).to.equal(message.project);
+    expect(message.capabilities).to.deep.equal({ liveDocument: 1, sendHTMLReplace: 1 });
     expect(targetOrigin).to.equal('https://plugin.example.com');
     expect(transfer).to.have.lengthOf(1);
 
@@ -366,5 +485,101 @@ describe('setupIframeChannel getSelection', () => {
       const data = await request(channel, { action: 'getSelection', requestId });
       expect(data).to.deep.equal({ action: 'error', details: 'No selection found' });
     });
+  });
+});
+
+describe('setupIframeChannel live document subscription', () => {
+  const table = (text) => ({
+    type: 'table',
+    content: [
+      { type: 'table_row', content: [{ type: 'table_cell', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Cards' }] }] }] },
+      { type: 'table_row', content: [{ type: 'table_cell', content: [{ type: 'paragraph', content: [{ type: 'text', text }] }] }] },
+    ],
+  });
+  const makeDocument = (second) => makeRealView({ type: 'doc', content: [table('First'), table(second)] });
+  const disposeView = (view) => {
+    const mount = view.dom.parentElement;
+    view.destroy();
+    mount?.remove();
+  };
+  let currentView;
+  let destroyChannel;
+
+  afterEach(() => {
+    destroyChannel?.();
+    if (currentView) disposeView(currentView);
+    currentView = undefined;
+    destroyChannel = undefined;
+  });
+
+  it('pairs live block selection with the latest debounced HTML rather than stale HTML', async () => {
+    currentView = makeDocument('Second');
+    const { channel, destroy } = await setupIframeChannel({
+      iframe: makeIframe(),
+      hashState: { org: 'myorg', site: 'mysite' },
+      getView: () => currentView,
+      onClose: () => {},
+    });
+    destroyChannel = destroy;
+    const messages = [];
+    channel.port2.onmessage = ({ data }) => messages.push(data);
+    channel.port2.postMessage({ action: 'subscribeLiveDocument' });
+    await wait(30);
+    expect(messages).to.have.length(1);
+    expect(messages[0].action).to.equal('liveDocument');
+    expect(messages[0].selection).to.deep.equal({ blockIndex: 0 });
+    expect(new DOMParser().parseFromString(messages[0].html, 'text/html').querySelectorAll('table'))
+      .to.have.length(2);
+
+    const secondPos = currentView.state.doc.child(0).nodeSize;
+    currentView.dispatch(currentView.state.tr.setSelection(
+      NodeSelection.create(currentView.state.doc, secondPos),
+    ));
+    canvasBus.editorSelectState.emit({ source: 'doc', blockIndex: 1 });
+    await wait(20);
+    expect(messages[1]).to.deep.equal({ action: 'liveSelection', selection: { blockIndex: 1 } });
+
+    const previous = currentView;
+    currentView = makeDocument('Updated second');
+    disposeView(previous);
+    canvasBus.editorDocState.emit();
+    canvasBus.editorSelectState.emit({ source: 'doc', blockIndex: 0 });
+    await wait(20);
+    expect(messages).to.have.length(2);
+    await wait(170);
+    expect(messages).to.have.length(3);
+    expect(messages[2].action).to.equal('liveDocument');
+    expect(messages[2].html).to.include('Updated second');
+    expect(messages[2].selection).to.deep.equal({ blockIndex: 0 });
+  });
+
+  it('stops updates on unsubscribe and sends a fresh snapshot on resubscribe', async () => {
+    currentView = makeDocument('Before');
+    const { channel, destroy } = await setupIframeChannel({
+      iframe: makeIframe(),
+      hashState: { org: 'myorg', site: 'mysite' },
+      getView: () => currentView,
+      onClose: () => {},
+    });
+    destroyChannel = destroy;
+    const messages = [];
+    channel.port2.onmessage = ({ data }) => messages.push(data);
+    channel.port2.postMessage({ action: 'subscribeLiveDocument' });
+    await wait(30);
+    channel.port2.postMessage({ action: 'unsubscribeLiveDocument' });
+    await wait(20);
+    const previous = currentView;
+    currentView = makeDocument('After');
+    disposeView(previous);
+    canvasBus.editorDocState.emit();
+    canvasBus.editorSelectState.emit({ source: 'doc', blockIndex: 1 });
+    await wait(180);
+    expect(messages).to.have.length(1);
+
+    channel.port2.postMessage({ action: 'subscribeLiveDocument' });
+    await wait(30);
+    expect(messages).to.have.length(2);
+    expect(messages[1].html).to.include('After');
+    expect(messages[1].selection).to.deep.equal({ blockIndex: 0 });
   });
 });
