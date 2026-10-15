@@ -335,6 +335,25 @@ describe('daFetch', () => {
     expect(capturedOpts.headers).to.deep.equal({});
   });
 
+  ['https://admin.hlx.page/ping', 'https://admin.aem.live/ping', 'https://api.aem.live/o/sites'].forEach((url) => {
+    it(`Sends Authorization but not x-content-source-authorization to ${url}`, async () => {
+      window.localStorage.setItem('nx-ims', 'true');
+      window.adobeIMS = { getAccessToken: () => ({ token: 'tok' }) };
+      let capturedOpts;
+      window.fetch = (u, opts) => {
+        capturedOpts = opts;
+        return Promise.resolve(new Response('ok', { status: 200 }));
+      };
+      try {
+        await daFetch(url);
+      } finally {
+        delete window.adobeIMS;
+      }
+      expect(capturedOpts.headers.Authorization).to.equal('Bearer tok');
+      expect(capturedOpts.headers).to.not.have.property('x-content-source-authorization');
+    });
+  });
+
   it('Fetches without auth when nx-ims is not set', async () => {
     window.localStorage.removeItem('nx-ims');
     let capturedOpts;
