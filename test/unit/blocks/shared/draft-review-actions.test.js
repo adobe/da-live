@@ -159,6 +159,75 @@ describe('DA draft review actions', () => {
     expect(state.results[page.path].versionId).to.equal('v1');
   });
 
+  it('uses the full legacy version URL for both post-approval diff and restore', async () => {
+    const h = harness();
+    const requests = [];
+    h.options.api.versions.list = async () => new Response(JSON.stringify(h.entries.map((e) => ({
+      label: e['version-comment'],
+      versionId: 'file-guid.html',
+      url: `/versionsource/org/site/${e.version}/file-guid.html`,
+    }))));
+    h.options.api.versions.get = async (path, { versionId }) => {
+      requests.push(versionId);
+      return versionId === 'v1/file-guid.html'
+        ? new Response(h.versions.get('v1')) : new Response('', { status: 403 });
+    };
+    await h.approve();
+    expect((await h.act('apply')).results[page.path].versionId).to.equal('v1/file-guid.html');
+    await h.act('diff');
+    expect(h.events.find((event) => event.before)).to.include({ before: '<h1>Before</h1>', after: '<h1>After</h1>' });
+    await h.act('restore');
+    expect(requests).to.deep.equal(['v1/file-guid.html', 'v1/file-guid.html']);
+    expect(h.files.get(original)).to.equal('<h1>Before</h1>');
+  });
+
+  it('repairs existing receipts with a shorter legacy id before fetching a saved version', async () => {
+    const h = harness();
+    await h.approve();
+    await h.act('apply');
+    const key = [...h.store.keys()][0];
+    const receipt = JSON.parse(h.store.get(key));
+    receipt.results[page.path].versionId = 'file-guid.html';
+    delete receipt.results[page.path].versionLabel;
+    h.store.set(key, JSON.stringify(receipt));
+    h.options.api.versions.list = async () => new Response(JSON.stringify(h.entries.map((e) => ({
+      label: e['version-comment'],
+      versionId: 'file-guid.html',
+      url: `/versionsource/org/site/${e.version}/file-guid.html`,
+    }))));
+    const requests = [];
+    h.options.api.versions.get = async (path, { versionId }) => {
+      requests.push(versionId);
+      return versionId === 'v1/file-guid.html'
+        ? new Response(h.versions.get('v1')) : new Response('', { status: 403 });
+    };
+    const result = await h.act('diff');
+    expect(result.results[page.path].versionId).to.equal('v1/file-guid.html');
+    expect(JSON.parse(h.store.get(key)).results[page.path].versionId).to.equal('v1/file-guid.html');
+    expect(requests).to.deep.equal(['v1/file-guid.html']);
+    expect(h.files.get(original)).to.equal('<h1>After</h1>');
+    await h.act('restore');
+    expect(h.files.get(original)).to.equal('<h1>Before</h1>');
+  });
+
+  it('refuses to guess when an old receipt matches multiple saved versions', async () => {
+    const h = harness();
+    await h.approve();
+    await h.act('apply');
+    const key = [...h.store.keys()][0];
+    const receipt = JSON.parse(h.store.get(key));
+    receipt.results[page.path].versionId = 'file-guid.html';
+    delete receipt.results[page.path].versionLabel;
+    h.store.set(key, JSON.stringify(receipt));
+    h.options.api.versions.list = async () => new Response(JSON.stringify(['v1', 'v2'].map((id) => ({
+      label: `Before AI review ${ready.id} ${id}`,
+      versionId: 'file-guid.html',
+      url: `/versionsource/org/site/${id}/file-guid.html`,
+    }))));
+    await rejects(h.act('restore'), 'Could not uniquely identify');
+    expect(h.files.get(original)).to.equal('<h1>After</h1>');
+  });
+
   it('rejects draft paths outside the signed-in folder, extra pages and changed ids', async () => {
     const h = harness();
     await h.approve();

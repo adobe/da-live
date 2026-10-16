@@ -42,6 +42,18 @@ describe('getVersionId', () => {
     const id = getVersionId(PATH, { versionId: '01ABCDEF' });
     expect(id).to.equal('01ABCDEF');
   });
+
+  it('prefers the complete legacy URL over a shorter versionId field', () => {
+    const id = getVersionId(PATH, {
+      url: '/versionsource/testorg/testsite/version-guid/file-guid.html',
+      versionId: 'file-guid.html',
+    });
+    expect(id).to.equal('version-guid/file-guid.html');
+  });
+
+  it('accepts raw source-bus version entries as well as formatted ones', () => {
+    expect(getVersionId(PATH, { version: '01RAWVERSION' })).to.equal('01RAWVERSION');
+  });
 });
 
 describe('fetchVersions', () => {

@@ -2,8 +2,10 @@ import { DOMSerializer, Y } from 'da-y-wrapper';
 import { aem2doc, getSchema, yDocToProsemirror } from 'da-parser';
 import { formatDate } from '../utils.js';
 import { getNx2Api } from '../../../scripts/utils.js';
-import { formatVersions } from './helpers.js';
+import { formatVersions, getVersionId } from './helpers.js';
 import { wrapTablesInWrappers } from './compare.js';
+
+export { getVersionId } from './helpers.js';
 
 // Fetch and format the version list for a document path.
 // Returns the formatted array on success, null on network/auth failure.
@@ -32,14 +34,6 @@ export async function createVersion(path, label) {
   } catch {
     return false;
   }
-}
-
-// Compute the versionId for a preview/restore dispatch from a list entry.
-export function getVersionId(path, entry) {
-  const [, org, site] = path.split('/');
-  return entry.url
-    ? entry.url.replace(`/versionsource/${org}/${site}/`, '')
-    : entry.versionId;
 }
 
 export function htmlToAuthoringDom(text) {

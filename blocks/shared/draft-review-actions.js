@@ -1,3 +1,5 @@
+import { getVersionId } from './version/helpers.js';
+
 async function hash(text) {
   const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
   return [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -31,6 +33,26 @@ export function createDraftReviewService({
     const full = (path) => `/${org}/${site}${path}`;
     const fetchPage = (path) => read(api.source.get(full(path), { cachebust: true }), `Read ${path}`);
     const state = load();
+    const savedVersion = async (path, result) => {
+      if (!result.versionLabel) {
+        const listed = await api.versions.list(full(path));
+        if (!listed?.ok) throw new Error(`Could not resolve the saved version of ${path} (${listed?.status ?? 'network error'}).`);
+        const entries = await listed.json();
+        const matches = entries.filter((entry) => {
+          const label = entry.label ?? entry['version-comment'];
+          return label?.startsWith(`Before AI review ${review.id} `)
+            && [entry.version, entry.versionId, getVersionId(full(path), entry)]
+              .includes(result.versionId);
+        });
+        if (matches.length !== 1) {
+          throw new Error(`Could not uniquely identify the saved version of ${path}. Use version history to select it explicitly.`);
+        }
+        result.versionId = getVersionId(full(path), matches[0]);
+        result.versionLabel = matches[0].label ?? matches[0]['version-comment'];
+        persist(state);
+      }
+      return read(api.versions.get(full(path), { versionId: result.versionId }), 'Read saved version');
+    };
     const publicState = (s) => ({
       approvedPaths: s?.approvedPaths,
       results: s?.results ?? {},
@@ -93,7 +115,7 @@ export function createDraftReviewService({
         } else if (action === 'diff') {
           await flush({ org, site, path });
           const before = result?.versionId
-            ? await read(api.versions.get(full(path), { versionId: result.versionId }), 'Read saved version')
+            ? await savedVersion(path, result)
             : await fetchPage(path);
           const after = result?.status === 'applied' || result?.status === 'restored'
             ? await fetchPage(path) : await fetchPage(page.draftPath);
@@ -120,14 +142,13 @@ export function createDraftReviewService({
           if (!listed?.ok) throw new Error(`Could not confirm the saved version of ${path}. The original was not modified.`);
           const entries = await listed.json();
           const entry = entries.find((e) => (e.label ?? e['version-comment']) === label);
-          const versionId = entry?.version ?? entry?.versionId
-            ?? entry?.url?.split(`/versionsource/${org}/${site}/`)[1];
+          const versionId = entry && getVersionId(full(path), entry);
           if (!versionId) throw new Error(`Could not identify the saved version of ${path}. The original was not modified.`);
           await flush({ org, site, path });
           if (await hash(await fetchPage(path)) !== state.originals[path]) {
             throw new Error(`${path} changed while saving its version. The draft was not applied.`);
           }
-          state.results[path] = { versionId, status: 'applying' };
+          state.results[path] = { versionId, versionLabel: label, status: 'applying' };
           persist(state);
           await write({ org, site, path, content: draft });
           const applied = await fetchPage(path);
@@ -135,7 +156,7 @@ export function createDraftReviewService({
             throw new Error(`Could not confirm that ${path} contains the approved changes. Check version history before proceeding.`);
           }
           const appliedHash = await hash(applied);
-          state.results[path] = { versionId, appliedHash, status: 'applied' };
+          state.results[path] = { versionId, versionLabel: label, appliedHash, status: 'applied' };
           persist(state);
           notify({ org, site, path });
         } else if (action === 'restore') {
@@ -144,7 +165,7 @@ export function createDraftReviewService({
           if (await hash(await fetchPage(path)) !== result.appliedHash) {
             throw new Error(`${path} changed after approval. Restore from version history instead to avoid overwriting newer edits.`);
           }
-          const previous = await read(api.versions.get(full(path), { versionId: result.versionId }), 'Read previous version');
+          const previous = await savedVersion(path, result);
           await flush({ org, site, path });
           if (await hash(await fetchPage(path)) !== result.appliedHash) {
             throw new Error(`${path} changed while loading its previous version. Nothing was restored.`);

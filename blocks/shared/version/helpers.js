@@ -1,5 +1,12 @@
 import { formatDate } from '../utils.js';
 
+export function getVersionId(path, entry) {
+  const [, org, site] = path.split('/');
+  return entry.url
+    ? entry.url.replace(`/versionsource/${org}/${site}/`, '')
+    : entry.versionId ?? entry.version;
+}
+
 // hlx6 (.versions) records carry a `version` ULID and ISO `version-date`;
 // hlx5 (/versionlist) records carry an epoch `timestamp` and a `users` array.
 function isHlx6Entry(entry) {
