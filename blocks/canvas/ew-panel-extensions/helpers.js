@@ -1,5 +1,5 @@
 /* eslint-disable import/no-unresolved -- importmap */
-import { DOMParser as PMDOMParser, DOMSerializer, Slice, TextSelection } from 'da-y-wrapper';
+import { DOMParser as PMDOMParser, DOMSerializer, NodeSelection, Slice, TextSelection } from 'da-y-wrapper';
 import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import { daFetch } from '../../shared/utils.js';
 import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
@@ -7,6 +7,7 @@ import { getPreviewOrigin } from '../editor-utils/editor-utils.js';
 import { getCanvasBranch } from '../utils/branch.js';
 import { htmlToProse } from '../../edit/utils/helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
+import { getBlockPositions } from '../editor-utils/blocks.js';
 import { getCommentsBridge, formatCommentsViewLabel } from '../editor-utils/comments-bridge.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
@@ -419,8 +420,25 @@ export async function fetchItems(sources, format) {
 
 export function insertBlock(view, dom) {
   const parsed = PMDOMParser.fromSchema(view.state.schema).parse(dom);
-  const { tr, schema } = view.state;
-  const insertPos = tr.selection.from;
+  const { state } = view;
+  const { from, to } = state.selection;
+  // EDS blocks cannot nest: inserting while the selection stays within a block replaces it.
+  // A cross-block selection follows the existing insertion path instead.
+  const enclosingPos = getBlockPositions(view).find((pos) => {
+    const end = pos + state.doc.nodeAt(pos).nodeSize;
+    return from >= pos && from < end && to <= end;
+  });
+  if (enclosingPos !== undefined) {
+    const end = enclosingPos + state.doc.nodeAt(enclosingPos).nodeSize;
+    const tr = state.tr.replaceWith(enclosingPos, end, parsed.content);
+    if (tr.doc.nodeAt(enclosingPos)?.type.name === 'table') {
+      tr.setSelection(NodeSelection.create(tr.doc, enclosingPos));
+    }
+    view.dispatch(tr.scrollIntoView());
+    return;
+  }
+  const { tr, schema } = state;
+  const insertPos = from;
   let newTr = tr.insert(insertPos, schema.nodes.paragraph.create());
   newTr = newTr.replaceSelectionWith(parsed);
   const finalPos = Math.min(insertPos + parsed.nodeSize, newTr.doc.content.size);
@@ -438,6 +456,81 @@ export function insertHTML(view, htmlStr) {
   const slice = new Slice(parsed.content, 0, 0);
   const { from, to } = view.state.selection;
   view.dispatch(view.state.tr.replaceRange(from, to, slice).scrollIntoView());
+}
+
+export function replaceHTMLAtCursor(view, html) {
+  const fail = (code, message) => { throw Object.assign(new Error(message), { code }); };
+  if (!view.editable) fail('READ_ONLY', 'The editor is read-only.');
+  if (typeof html !== 'string' || !html.trim()) fail('INVALID_HTML', 'Replacement HTML is required.');
+  const { state } = view;
+  const { selection } = state;
+  const { from, to, $from } = selection;
+  const blockPos = getBlockPositions(view).find((pos) => {
+    const end = pos + state.doc.nodeAt(pos).nodeSize;
+    return from >= pos && from < end;
+  });
+  let start = blockPos;
+  if (start === undefined) {
+    if (selection instanceof NodeSelection && selection.node.isInline) start = from;
+    else if ($from.depth) start = $from.before(1);
+    else if (selection instanceof NodeSelection) start = from;
+  }
+  if (start === undefined) fail('NO_TARGET', 'Place the cursor inside content to replace.');
+  const original = state.doc.nodeAt(start);
+  const end = start + original.nodeSize;
+  if (to > end) fail('CROSS_TARGET', 'The selection spans multiple replacement targets.');
+  const input = new window.DOMParser().parseFromString(html, 'text/html');
+  const hasEdsBlock = input.body.querySelector('main, div[class]');
+  const main = input.querySelector('main');
+  const inputs = main ? [...main.children].flatMap((section) => [...section.children])
+    : [...input.body.children];
+  if (inputs.length !== 1) fail('INVALID_HTML', 'Replacement must contain exactly one content node.');
+  let dom = input.body;
+  if (hasEdsBlock) {
+    const converted = htmlToProse(main?.outerHTML || `<main><div>${input.body.innerHTML}</div></main>`);
+    dom = converted.dom;
+    converted.ydoc.destroy();
+  }
+  // aem2doc adds empty paragraphs around block tables for caret insertion.
+  if (hasEdsBlock && inputs[0].matches('div[class]')) {
+    dom.querySelectorAll(':scope > p:empty').forEach((node) => node.remove());
+  }
+  const parsed = PMDOMParser.fromSchema(state.schema).parse(dom);
+  let { content } = parsed;
+  if (original.isInline && parsed.childCount === 1 && parsed.firstChild.isTextblock) {
+    content = parsed.firstChild.content;
+  }
+  if (content.childCount !== 1) fail('INVALID_HTML', 'Replacement must contain exactly one content node.');
+  const replacement = content.firstChild;
+  const $start = state.doc.resolve(start);
+  if (!$start.parent.canReplace($start.index(), $start.index() + 1, content)) {
+    fail('INVALID_HTML', 'Replacement is not valid at this position.');
+  }
+  if (original.eq(replacement)) return;
+  const tr = state.tr.replaceWith(start, end, content);
+  const mapPosition = (pos) => {
+    let offset = pos - start;
+    const diffStart = original.content.findDiffStart(replacement.content);
+    const diffEnd = original.content.findDiffEnd(replacement.content);
+    if (diffStart !== null && diffEnd) {
+      const changeStart = diffStart + 1;
+      const overlap = Math.max(0, diffStart - diffEnd.a);
+      const oldEnd = diffEnd.a + 1 + overlap;
+      const newEnd = diffEnd.b + 1 + overlap;
+      if (offset >= oldEnd) offset += newEnd - oldEnd;
+      else if (offset > changeStart) offset = Math.min(offset, newEnd);
+    }
+    return Math.max(start, Math.min(start + offset, start + replacement.nodeSize - 1));
+  };
+  const anchor = mapPosition(selection.anchor);
+  const head = mapPosition(selection.head);
+  if (selection instanceof NodeSelection && tr.doc.nodeAt(anchor)
+    && NodeSelection.isSelectable(tr.doc.nodeAt(anchor))) {
+    tr.setSelection(NodeSelection.create(tr.doc, anchor));
+  } else {
+    tr.setSelection(TextSelection.between(tr.doc.resolve(anchor), tr.doc.resolve(head)));
+  }
+  view.dispatch(tr);
 }
 
 export function getEditorSelection(view) {
