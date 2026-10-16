@@ -21,39 +21,9 @@
   border-bottom: 1px solid var(--s2-gray-100);
 }
 
-.search-icon {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  color: var(--s2-gray-600);
-}
-
-.search-input {
+.search-bar nx-search {
   flex: 1;
   min-width: 0;
-  border: none;
-  outline: none;
-  background: none;
-  font-family: inherit;
-  font-size: var(--s2-body-size-xs);
-  color: var(--s2-gray-900);
-  padding: 0;
-
-  &::placeholder {
-    color: var(--s2-gray-600);
-  }
-
-  &::-webkit-search-cancel-button {
-    display: none;
-  }
-}
-
-.search-clear {
-  display: none;
-}
-
-.search-input:not(:placeholder-shown) + .search-clear {
-  display: flex;
 }
 
 .tree {

@@ -1,0 +1,16 @@
+.da-confirm-message {
+  margin-right: auto;
+  align-self: center;
+  font-size: var(--s2-font-size-100, 14px);
+  color: var(--s2-gray-700, inherit);
+}
+
+.nx-form-btn-primary.negative {
+  background: var(--s2-red-900);
+  border-color: var(--s2-red-900);
+}
+
+.nx-form-btn-primary.negative:hover:not(:disabled) {
+  background: var(--s2-red-1000);
+  border-color: var(--s2-red-1000);
+}
