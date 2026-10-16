@@ -20,10 +20,13 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
 
 ## Scope
 
-- The site picker lists browser-local recent sites and the site in the hash.
+- The workspace dropdown is mounted in the existing navigation slot and lists
+  browser-local recent sites, the site in the hash, and a Browse sites action.
+  It is removed when the landing page disconnects and retains the topbar size.
 - Files are the selected site's **root directory**, not a recursive site index.
   All root-listing pages are loaded before sorting by modification date.
-- Recently modified is not personal recently opened history.
+- The mock's Recent tab shows recently modified files, not personal
+  recently opened history. The root scope is not added as a visible subtitle.
 - Starred uses the existing browser-local `da-favorites` entries for that root.
   Favorites in nested folders are outside this first version.
 - Images reuse browse-v2's lazy previews; other files use their existing icons.
@@ -31,8 +34,22 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
   editors, preserving the Nexter/quick-edit preview parameters.
 - The prompt opens the site's existing assistant and fills its composer.
   It does **not** auto-send. The existing EW/chat flags still apply.
-- Tasks, notification counts, rendered page thumbnails and global AI routing
-  are intentionally not mocked.
+  The coworker icon, prompt placeholder and AI disclaimer follow the mock.
+  The plus button continues in chat, where attachments are already supported.
+- The Tasks table follows the mock but explicitly states that task data is not
+  connected. This is not an assertion that the selected site has no tasks.
+  Existing scheduler, translation and background-job APIs are not a source
+  for the mock's general task list (description, status, requester).
+- Notification counts, rendered page thumbnails and global AI routing are not
+  mocked. The mock's routing placeholder does not add a global routing backend.
+
+## Shared demo safety
+
+The `lp` branch changes only the application code, not `devlive` code or content.
+Loading the landing page reads the site's listing and configuration; favorites
+and view choices are browser-local. However, `aemsites/devlive` is shared content,
+not a sandbox copy. Editing an opened file or sending a prompt in the assistant
+can change that shared site. Use a separate content site for write testing.
 
 ## Manual checks
 

@@ -16,6 +16,7 @@ const ITEMS = [
 
 describe('landing page', () => {
   let el;
+  let nav;
   let loadSite;
 
   beforeEach(async () => {
@@ -26,6 +27,8 @@ describe('landing page', () => {
     hashChange._set({ org: 'org', site: 'site', fullpath: '/org/site' });
     sinon.stub(DaLanding.prototype, 'loadProfile').resolves();
     loadSite = sinon.stub(DaLanding.prototype, 'loadSite').resolves();
+    nav = document.createElement('nx-nav');
+    document.body.append(nav);
     el = document.createElement('da-landing');
     document.body.append(el);
     el._files = ITEMS;
@@ -34,17 +37,53 @@ describe('landing page', () => {
 
   afterEach(() => {
     el.remove();
+    nav.remove();
     sinon.restore();
     ['da-sites', 'da-favorites', 'da-browse-settings', 'ui-size'].forEach((key) => localStorage.removeItem(key));
     document.body.classList.remove('ui-size-m');
   });
 
-  it('renders a real file list, the current site and an honest root scope', () => {
+  it('renders files without adding site-root copy to the mock', () => {
     expect(el.shadowRoot.querySelector('h1').textContent).to.include('how can I help?');
     expect(el.shadowRoot.querySelectorAll('.file')).to.have.length(2);
-    expect(el.shadowRoot.querySelector('.scope-label').textContent).to.include('Site root / org/site');
-    expect(el.shadowRoot.querySelector('nx-picker').value).to.equal('org/site');
-    expect(el.shadowRoot.textContent).not.to.include('Tasks');
+    expect(el.shadowRoot.querySelector('.scope-label')).to.equal(null);
+    expect(el.shadowRoot.textContent).not.to.include('Site root');
+    expect(el.shadowRoot.querySelector('nx-picker')).to.equal(null);
+    expect(nav.querySelector('nx-picker').value).to.equal('org/site');
+    expect(el.shadowRoot.querySelector('.file-date').textContent).to.include('Last Edited');
+  });
+
+  it('matches the mock composer branding, placeholder and disclaimer', () => {
+    expect(el.shadowRoot.querySelector('.composer-input use').getAttribute('href')).to.include('coworker');
+    expect(el.shadowRoot.querySelector('textarea').placeholder).to.equal('Let me know your task — I can route you to the right app or tool');
+    const note = el.shadowRoot.querySelector('#assistant-note');
+    expect(note.textContent).to.include('AI responses may be inaccurate.');
+    expect(note.querySelector('a').textContent).to.equal('AI User Guidelines');
+    expect(note.querySelector('a').href).to.equal('https://www.adobe.com/legal/licenses-terms/adobe-dx-gen-ai-user-guidelines.html');
+    expect(el.shadowRoot.querySelector('.composer-actions').textContent.trim()).to.equal('');
+  });
+
+  it('mounts the workspace dropdown in nav and cleans it up on disconnect', async () => {
+    expect(nav.querySelector('[slot="search"]')).to.equal(el._sitePicker);
+    expect(el._sitePicker.items.at(-1).label).to.equal('Browse sites...');
+    hashChange._set({ org: 'org', site: 'other', fullpath: '/org/other' });
+    await el.updateComplete;
+    expect(el._sitePicker.value).to.equal('org/other');
+    el.remove();
+    expect(nav.querySelector('nx-picker')).to.equal(null);
+    document.body.append(el);
+    await el.updateComplete;
+    expect(nav.querySelectorAll('nx-picker')).to.have.length(1);
+    expect(el._sitePicker.value).to.equal('org/other');
+  });
+
+  it('shows Tasks without fabricating data or claiming the site has no tasks', () => {
+    expect(el.shadowRoot.querySelector('#tasks-heading').textContent).to.equal('Tasks');
+    expect([...el.shadowRoot.querySelectorAll('.tasks-panel th')].map((th) => th.textContent)).to.deep.equal([
+      'Page / Content Fragment', 'Task Description', 'Status', 'Requester',
+    ]);
+    expect(el.shadowRoot.querySelector('.tasks-unavailable').textContent).to.equal('Task data is not connected in this preview.');
+    expect(el.shadowRoot.querySelector('.tasks-panel').textContent).not.to.include('No tasks');
   });
 
   it('opts into a light preview without saving a theme preference', () => {
@@ -128,7 +167,7 @@ describe('landing page', () => {
     setUISize({ size: 'm' });
     await el.updateComplete;
     expect(el.dataset.uiSize).to.equal('m');
-    expect(el.shadowRoot.querySelector('nx-picker').getAttribute('size')).to.equal('m');
+    expect(nav.querySelector('nx-picker').size).to.equal('s');
     expect(el.shadowRoot.querySelector('nx-segmented-btn').getAttribute('size')).to.equal('m');
     expect(el.shadowRoot.querySelector('button[type="submit"]').classList.contains('nx-btn-lg')).to.equal(true);
     expect(el._prompt).to.equal('Update this page');
@@ -187,6 +226,27 @@ describe('landing page', () => {
     await el.submitPrompt({ preventDefault() {} });
     document.removeEventListener('nx-panel-open', listener);
     expect(listener.called).to.equal(false);
+    expect(el._prompt).to.equal('Update the hero');
+  });
+
+  it('opens the existing chat for attachments without sending a prompt', () => {
+    el._chatEnabled = true;
+    const listener = sinon.spy();
+    document.addEventListener('nx-panel-open', listener);
+    el.openAttachments({ preventDefault() {} });
+    document.removeEventListener('nx-panel-open', listener);
+    expect(listener.calledOnce).to.equal(true);
+    expect(listener.firstCall.args[0].detail).to.deep.equal({ section: 'chat' });
+    expect(el._prompt).to.equal('');
+  });
+
+  it('preserves a typed prompt when continuing to chat for attachments', async () => {
+    el._chatEnabled = true;
+    el._prompt = 'Update the hero';
+    const submit = sinon.stub(el, 'submitPrompt').resolves();
+    const event = { preventDefault() {} };
+    el.openAttachments(event);
+    expect(submit.calledOnceWithExactly(event)).to.equal(true);
     expect(el._prompt).to.equal('Update the hero');
   });
 

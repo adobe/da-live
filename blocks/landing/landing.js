@@ -9,6 +9,7 @@ import '../browse/v2/da-card-preview/da-card-preview.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { registerPanelSection, PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
+const { ADOBE_AI_GUIDELINES_URL } = await import(`${getNx()}/blocks/shared/chat/constants.js`);
 const nx = await import(`${getNx2()}/scripts/nx.js`);
 // PR #816 supplies live sizing; the opt-in page also works on the current shell.
 const sizing = nx.getUISize ? await import(`${getNx2()}/utils/ui-size.js`) : undefined;
@@ -72,7 +73,9 @@ export class DaLanding extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = styles;
+    this.mountWorkspace();
     this._unsubscribe = hashChange.subscribe((state) => this.setScope(state));
+    this.syncWorkspace();
     window.addEventListener('storage', this._onStorage);
     this.loadProfile();
   }
@@ -80,6 +83,7 @@ export class DaLanding extends LitElement {
   disconnectedCallback() {
     this._unsubscribe?.();
     this._request?.abort();
+    this._sitePicker?.remove();
     window.removeEventListener('storage', this._onStorage);
     document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
     super.disconnectedCallback();
@@ -91,6 +95,36 @@ export class DaLanding extends LitElement {
 
   get path() {
     return this._scope ? `/${this._scope}` : '';
+  }
+
+  mountWorkspace() {
+    const nav = document.querySelector('nx-nav');
+    if (!nav) return;
+    const picker = document.createElement('nx-picker');
+    picker.slot = 'search';
+    picker.classList.add('landing-workspace');
+    picker.setAttribute('aria-label', 'Workspace site');
+    picker.placeholder = 'Choose a site';
+    picker.size = 's';
+    picker.addEventListener('change', ({ detail: { value } }) => {
+      if (value === 'browse-sites') window.location.href = getBrowseHref({});
+      else window.location.hash = `#/${value}`;
+    });
+    this._sitePicker = picker;
+    nav.append(picker);
+  }
+
+  updated() {
+    this.syncWorkspace();
+  }
+
+  syncWorkspace() {
+    if (!this._sitePicker) return;
+    this._sitePicker.items = [
+      ...(this._sites || []),
+      { value: 'browse-sites', label: 'Browse sites...', action: true },
+    ];
+    this._sitePicker.value = this._scope || '';
   }
 
   loadSites() {
@@ -237,6 +271,15 @@ export class DaLanding extends LitElement {
     }
   }
 
+  openAttachments(event) {
+    if (!this._chatEnabled || this._handingOff) return;
+    if (this._prompt.trim()) {
+      this.submitPrompt(event);
+      return;
+    }
+    document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat' } }));
+  }
+
   renderFile(item) {
     const starred = this._favorites?.has(item.path);
     const modified = Number(item.lastModified);
@@ -245,7 +288,7 @@ export class DaLanding extends LitElement {
     const editor = this._editor || '/canvas#';
     return html`
       <li class="file">
-        <a class="file-link" href=${getFileHref({ item, editor })} title=${item.ext === 'link' ? `Open ${item.name} in Files` : item.name}>
+        <a class="file-link" href=${getFileHref({ item, editor })} title=${item.ext === 'link' ? `Open ${item.name} in Files` : `${item.name} (${getTypeLabel(item.ext)})`}>
           <div class="file-preview">
             <da-card-preview .path=${item.path} .ext=${item.ext}></da-card-preview>
           </div>
@@ -254,7 +297,7 @@ export class DaLanding extends LitElement {
               <svg aria-hidden="true" viewBox="0 0 20 20"><use href="${iconPathForExt(item.ext)}#icon"></use></svg>
               <span>${item.name}</span>
             </div>
-            <p class="file-date">${getTypeLabel(item.ext)}${date ? html` &middot; <time datetime=${date.toISOString()}>${dateFormat.format(date)}</time>` : nothing}</p>
+            <p class="file-date">${date ? html`Last Edited <time datetime=${date.toISOString()}>${dateFormat.format(date)}</time>` : 'Date unavailable'}</p>
           </div>
         </a>
         <button class="file-star nx-action-btn-icon nx-btn-sm" type="button"
@@ -267,7 +310,7 @@ export class DaLanding extends LitElement {
     if (!this._scope) {
       return html`<div class="empty-state">${icon('folder')}
         <h3>Choose a site to get started</h3>
-        <p>Select a recent site above, or find one in <a href=${getBrowseHref({})}>Browse sites</a>.</p>
+        <p>Select a site in the navigation, or find one in <a href=${getBrowseHref({})}>Browse sites</a>.</p>
       </div>`;
     }
     if (this._error) {
@@ -296,55 +339,72 @@ export class DaLanding extends LitElement {
   render() {
     return html`
       <div class="landing">
-        <div class="site-bar">
-          <span class="eyebrow">Your workspace</span>
-          ${this._sites?.length ? html`
-            <nx-picker .items=${this._sites} .value=${this._scope ?? ''} size=${this.uiSize}
-              label="Choose a site" aria-label="Workspace site"
-              @change=${({ detail: { value } }) => { window.location.hash = `#/${value}`; }}></nx-picker>
-          ` : html`<a href=${getBrowseHref({})}>Browse sites</a>`}
-        </div>
         ${this._siteError ? html`<p role="status">${this._siteError}</p>` : nothing}
         <section class="welcome" aria-labelledby="welcome-heading">
           <h1 id="welcome-heading">Hi${this._name ? html` ${this._name}` : nothing}, how can I help?</h1>
           <form class="composer" @submit=${this.submitPrompt}>
-            <label class="sr-only" for="landing-prompt">What would you like to work on?</label>
-            <textarea id="landing-prompt" rows="2" .value=${this._prompt}
-              ?disabled=${!this._chatEnabled || this._handingOff} aria-describedby="assistant-note"
-              placeholder="What would you like to work on?"
-              @input=${({ target }) => { this._prompt = target.value; }}></textarea>
+            <div class="composer-input">
+              ${icon('coworker')}
+              <label class="sr-only" for="landing-prompt">Let me know your task</label>
+              <textarea id="landing-prompt" rows="2" .value=${this._prompt}
+                ?disabled=${!this._chatEnabled || this._handingOff} aria-describedby="assistant-note assistant-context"
+                placeholder="Let me know your task — I can route you to the right app or tool"
+                @input=${({ target }) => { this._prompt = target.value; }}></textarea>
+            </div>
             <div class="composer-actions">
-              <span>${this._scope ? `Working in ${this._scope}` : 'Choose a site to use the assistant'}</span>
-              <button type="submit" class="nx-btn-accent ${this.uiSize === 'm' ? 'nx-btn-lg' : ''}"
-                ?disabled=${!this._chatEnabled || !this._prompt.trim() || this._handingOff}>
-                ${this._handingOff ? 'Opening...' : 'Continue in chat'}${icon('arrowupsend')}
-              </button>
+              <button type="button" class="nx-action-btn-icon ${this.uiSize === 'm' ? 'nx-btn-lg' : ''}"
+                aria-label="Add attachments in chat" title="Add attachments in chat"
+                ?disabled=${!this._chatEnabled || this._handingOff}
+                @click=${this.openAttachments}>${icon('add')}</button>
+              <button type="submit" class="composer-send nx-action-btn-icon is-active ${this.uiSize === 'm' ? 'nx-btn-lg' : ''}"
+                aria-label=${this._handingOff ? 'Opening chat' : 'Continue in chat'}
+                title="Continue in chat"
+                ?disabled=${!this._chatEnabled || !this._prompt.trim() || this._handingOff}>${icon('arrowupsend')}</button>
             </div>
           </form>
-          <p id="assistant-note" class="assistant-note" role="status">
-            ${this._chatError || (this._scope && this._chatEnabled === false
-            ? 'The assistant is not enabled for this site.'
-            : 'Continue in your site assistant. Review your prompt before sending.')}
+          <p id="assistant-note" class="assistant-note">
+            AI responses may be inaccurate.
+            <a href=${ADOBE_AI_GUIDELINES_URL} target="_blank" rel="noopener noreferrer">AI User Guidelines</a>
           </p>
+          <p id="assistant-context" class="sr-only">
+            ${this._scope ? `Working in ${this._scope}. Continue in your site assistant. Review your prompt before sending.` : 'Choose a site to use the assistant.'}
+          </p>
+          ${this._chatError || (this._scope && this._chatEnabled === false) ? html`
+            <p class="assistant-note" role="status">${this._chatError || 'The assistant is not enabled for this site.'}</p>` : nothing}
           ${this._profileError ? html`<p class="assistant-note" role="status">${this._profileError}</p>` : nothing}
         </section>
         <section class="files-panel" aria-labelledby="files-heading">
           <div class="panel-heading">
-            <div><h2 id="files-heading">Files</h2><p class="scope-label">Site root${this._scope ? ` / ${this._scope}` : ''}</p></div>
+            <h2 id="files-heading">Files</h2>
             <nx-segmented-btn label="File view" size=${this.uiSize} .items=${VIEW_ITEMS}
               .value=${this._view} @change=${this.changeView}></nx-segmented-btn>
           </div>
           <div class="files-toolbar">
             <div class="file-filters" role="group" aria-label="Filter files">
               <button class="filter" type="button" aria-pressed=${this._tab === 'recent'}
-                @click=${() => this.changeTab('recent')}>${icon('history')}Recently modified</button>
+                title="Recently modified files in this site"
+                @click=${() => this.changeTab('recent')}>${icon('history')}Recent</button>
               <button class="filter" type="button" aria-pressed=${this._tab === 'starred'}
                 @click=${() => this.changeTab('starred')}>${icon('star')}Starred</button>
             </div>
-            ${this._scope ? html`<a class="all-files" href=${getBrowseHref({ path: this.path })}>Show all files</a>` : nothing}
+            ${this._scope ? html`<a class="all-files" href=${getBrowseHref({ path: this.path })}>Show All Files</a>` : nothing}
           </div>
           ${this._actionError ? html`<p role="alert">${this._actionError}</p>` : nothing}
           <div aria-busy=${!!this._scope && !this._files && !this._error}>${this.renderFiles()}</div>
+        </section>
+        <section class="tasks-panel" aria-labelledby="tasks-heading">
+          <h2 id="tasks-heading">Tasks</h2>
+          <div class="tasks-table" role="region" aria-label="Tasks" tabindex="0">
+            <table>
+              <thead><tr>
+                <th scope="col">Page / Content Fragment</th>
+                <th scope="col">Task Description</th>
+                <th scope="col">Status</th>
+                <th scope="col">Requester</th>
+              </tr></thead>
+            </table>
+          </div>
+          <p class="tasks-unavailable" role="status">Task data is not connected in this preview.</p>
         </section>
       </div>`;
   }
