@@ -113,6 +113,21 @@ describe('ew-finding-card', () => {
     expect(el.shadowRoot.querySelectorAll('.context li')).to.have.lengthOf(2);
   });
 
+  it('renders every icon as real SVG geometry', async () => {
+    const el = await makeCard({ index: 1, total: 3 });
+    const svgs = [...el.shadowRoot.querySelectorAll('svg.icon')];
+    // close, failure diamond, context chevron, previous and next chevrons
+    expect(svgs).to.have.lengthOf(5);
+    svgs.forEach((svg) => {
+      const paths = [...svg.querySelectorAll('path')];
+      expect(paths.length).to.be.greaterThan(0);
+      paths.forEach((path) => {
+        expect(path.namespaceURI).to.equal('http://www.w3.org/2000/svg');
+        expect(path.getBBox().width).to.be.greaterThan(0);
+      });
+    });
+  });
+
   it('is explanation-only: no suggested change, Apply change or Add to chat', async () => {
     const el = await makeCard({ replacement: 'ignored', total: 2 });
     expect(q(el, '.suggestion, .change, .actions, .apply, .add')).to.be.null;
