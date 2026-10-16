@@ -65,6 +65,8 @@ describe('landing page', () => {
 
   it('mounts the workspace dropdown in nav and cleans it up on disconnect', async () => {
     expect(nav.querySelector('[slot="search"]')).to.equal(el._sitePicker);
+    expect(el._sitePicker.variant).to.equal('field');
+    expect(el._sitePicker.size).to.equal('m');
     expect(el._sitePicker.items.at(-1).label).to.equal('Browse sites...');
     hashChange._set({ org: 'org', site: 'other', fullpath: '/org/other' });
     await el.updateComplete;
@@ -170,7 +172,7 @@ describe('landing page', () => {
     setUISize({ size: 'm' });
     await el.updateComplete;
     expect(el.dataset.uiSize).to.equal('m');
-    expect(nav.querySelector('nx-picker').size).to.equal('s');
+    expect(nav.querySelector('nx-picker').size).to.equal('m');
     expect(el.shadowRoot.querySelector('nx-segmented-btn').getAttribute('size')).to.equal('m');
     expect(el.shadowRoot.querySelector('button[type="submit"]').classList.contains('nx-btn-lg')).to.equal(true);
     expect(el._prompt).to.equal('Update this page');

@@ -105,7 +105,8 @@ export class DaLanding extends LitElement {
     picker.classList.add('landing-workspace');
     picker.setAttribute('aria-label', 'Workspace site');
     picker.placeholder = 'Choose a site';
-    picker.size = 's';
+    picker.size = 'm';
+    picker.variant = 'field';
     picker.addEventListener('change', ({ detail: { value } }) => {
       if (value === 'browse-sites') window.location.href = getBrowseHref({});
       else window.location.hash = `#/${value}`;

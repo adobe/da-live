@@ -23,6 +23,9 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
 - The workspace dropdown is mounted in the existing navigation slot and lists
   browser-local recent sites, the site in the hash, and a Browse sites action.
   It is removed when the landing page disconnects and retains the topbar size.
+  The shared picker's field variant provides the full clickable pill, 32px
+  height, fixed 14px topbar text and right-aligned chevron. Its border and
+  background are on the actual trigger, not the noninteractive host.
 - Files are the selected site's **root directory**, not a recursive site index.
   All root-listing pages are loaded before sorting by modification date.
 - The mock's Recent tab shows recently modified files, not personal
