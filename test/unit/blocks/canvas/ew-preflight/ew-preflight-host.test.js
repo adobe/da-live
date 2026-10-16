@@ -1,7 +1,6 @@
+/* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
-import { setNx } from '../../../../../scripts/utils.js';
-
-const tick = () => new Promise((resolve) => { setTimeout(resolve, 30); });
+import { getNx, setNx } from '../../../../../scripts/utils.js';
 
 function captureStatus() {
   const events = [];
@@ -15,6 +14,7 @@ function captureStatus() {
 
 describe('ew-preflight-host', () => {
   let canvasBus;
+  let hashChange;
   let peekPendingPreflightRequest;
   let takePendingPreflightRequest;
   let el;
@@ -26,10 +26,10 @@ describe('ew-preflight-host', () => {
     responder.initPreflightResponder();
     await import('../../../../../blocks/canvas/ew-preflight/ew-preflight-host.js');
     ({ canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js'));
+    ({ hashChange } = await import(`${getNx()}/utils/utils.js`));
   });
 
-  async function mount() {
-    const host = document.createElement('ew-preflight-host');
+  async function mount(host = document.createElement('ew-preflight-host')) {
     document.body.append(host);
     await host.updateComplete;
     return host;
@@ -41,6 +41,7 @@ describe('ew-preflight-host', () => {
     el?.remove();
     el = null;
     takePendingPreflightRequest();
+    hashChange._set({});
   });
 
   it('renders the built-in Preflight and exposes its header actions', async () => {
@@ -50,13 +51,27 @@ describe('ew-preflight-host', () => {
   });
 
   it('lets the built-in Preflight claim a publish gate parked before mount', async () => {
+    hashChange._set({ org: 'org', site: 'site', path: '/a' });
+    el = document.createElement('ew-preflight-host');
+    let evaluations = 0;
+    el._preflight._evaluate = async () => {
+      evaluations += 1;
+      el._preflight._data = { failed: 0 };
+      return el._preflight._verdictFor({ data: el._preflight._data });
+    };
     const cap = captureStatus();
-    canvasBus.preflightRunRequest.emit({ paths: ['/org/site/a.html'], requestId: 'h1' });
-    expect(peekPendingPreflightRequest()?.requestId).to.equal('h1');
-    el = await mount();
-    await tick();
-    cap.stop();
-    expect(peekPendingPreflightRequest()).to.equal(null);
-    expect(cap.events.filter((d) => d.requestId === 'h1')).to.have.length(1);
+    try {
+      canvasBus.preflightRunRequest.emit({ paths: ['/org/site/a.html'], requestId: 'h1' });
+      expect(peekPendingPreflightRequest()?.requestId).to.equal('h1');
+      await mount(el);
+      await builtin(el).updateComplete;
+      expect(peekPendingPreflightRequest()).to.equal(null);
+      expect(evaluations).to.equal(1);
+      expect(cap.events).to.deep.equal([
+        { path: '/org/site/a.html', status: 'success', requestId: 'h1' },
+      ]);
+    } finally {
+      cap.stop();
+    }
   });
 });
