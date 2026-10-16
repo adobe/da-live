@@ -110,11 +110,6 @@
   }
 }
 
-.nx-action-btn-icon.tool-panel-close svg {
-  width: 16px;
-  height: 16px;
-}
-
 .nx-action-btn-icon.tool-panel-fullsize-dialog-close {
   width: 28px;
   height: 28px;
@@ -127,17 +122,6 @@
 }
 
 :host([data-ui-size="m"]) {
-  .nx-action-btn-icon.tool-panel-close {
-    width: 36px;
-    height: 36px;
-    padding: 9px;
-
-    svg {
-      width: 18px;
-      height: 18px;
-    }
-  }
-
   .tool-panel-dialog-icon {
     width: 20px;
     height: 20px;

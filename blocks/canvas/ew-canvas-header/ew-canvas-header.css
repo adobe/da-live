@@ -29,11 +29,6 @@
   overflow: visible;
 }
 
-.nx-action-btn-icon.comments-toggle svg {
-  width: 16px;
-  height: 16px;
-}
-
 .comment-count-chip {
   position: absolute;
   top: -2px;
@@ -91,17 +86,6 @@
   
   &:hover {
     cursor: auto;
-  }
-}
-
-:host([data-ui-size="m"]) .nx-action-btn-icon.comments-toggle {
-  width: 36px;
-  height: 36px;
-  padding: 9px;
-
-  svg {
-    width: 18px;
-    height: 18px;
   }
 }
 
