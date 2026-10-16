@@ -21,7 +21,7 @@ let fetchExtensions;
 let getItemPreviewUrl;
 let insertBlock;
 let insertHTML;
-let replaceHTML;
+let replaceHTMLAtCursor;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
@@ -35,7 +35,7 @@ before(async () => {
   getItemPreviewUrl = mod.getItemPreviewUrl;
   insertBlock = mod.insertBlock;
   insertHTML = mod.insertHTML;
-  replaceHTML = mod.replaceHTML;
+  replaceHTMLAtCursor = mod.replaceHTMLAtCursor;
 });
 
 describe('sendHTML replacement targets', () => {
@@ -77,7 +77,7 @@ describe('sendHTML replacement targets', () => {
     const before = view.state.doc.child(0);
     const after = view.state.doc.lastChild;
     const focused = document.activeElement;
-    replaceHTML(view, '<div class="hero wide"><div><div><p>Original title</p></div></div></div>');
+    replaceHTMLAtCursor(view, '<div class="hero wide"><div><div><p>Original title</p></div></div></div>');
     expect(view.state.doc.child(1).type.name).to.equal('table');
     expect(view.state.doc.child(1).textContent).to.equal('hero (wide)Original title');
     expect(view.state.selection.from).to.equal(pos + ' (wide)'.length);
@@ -89,14 +89,14 @@ describe('sendHTML replacement targets', () => {
     caret('Intro', 3);
     const pos = view.state.selection.from;
     view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, pos, pos + 1)));
-    replaceHTML(view, '<p>New Intro</p>');
+    replaceHTMLAtCursor(view, '<p>New Intro</p>');
     expect(view.state.doc.firstChild.textContent).to.equal('New Intro');
     expect(view.state.selection.anchor).to.equal(pos + 4);
     expect(view.state.selection.head).to.equal(pos + 5);
   });
   it('replaces the whole list rather than its inner paragraph or list item', () => {
     caret('Item');
-    replaceHTML(view, '<ul><li>First</li><li>Second</li></ul>');
+    replaceHTMLAtCursor(view, '<ul><li>First</li><li>Second</li></ul>');
     expect(view.state.doc.child(2).type.name).to.equal('bullet_list');
     expect(view.state.doc.child(2).childCount).to.equal(2);
   });
@@ -104,7 +104,7 @@ describe('sendHTML replacement targets', () => {
     let pos;
     view.state.doc.descendants((node, start) => { if (node.type.name === 'image') pos = start; });
     view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos)));
-    replaceHTML(view, '<img src="/new.png">');
+    replaceHTMLAtCursor(view, '<img src="/new.png">');
     expect(view.state.doc.nodeAt(pos).attrs.src).to.equal('/new.png');
     expect(view.state.selection).to.be.instanceOf(NodeSelection);
     expect(view.state.selection.from).to.equal(pos);
@@ -112,7 +112,7 @@ describe('sendHTML replacement targets', () => {
   it('preserves an explicit block selection', () => {
     const pos = view.state.doc.firstChild.nodeSize;
     view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos)));
-    replaceHTML(view, '<div class="hero"><div><div><p>New title</p></div></div></div>');
+    replaceHTMLAtCursor(view, '<div class="hero"><div><div><p>New title</p></div></div></div>');
     expect(view.state.selection).to.be.instanceOf(NodeSelection);
     expect(view.state.selection.from).to.equal(pos);
   });
@@ -122,12 +122,12 @@ describe('sendHTML replacement targets', () => {
     view.dispatch(view.state.tr.setSelection(
       TextSelection.create(before, 2, before.content.size - 1),
     ));
-    expect(() => replaceHTML(view, '<p>Bad</p>')).to.throw('multiple replacement targets');
+    expect(() => replaceHTMLAtCursor(view, '<p>Bad</p>')).to.throw('multiple replacement targets');
     caret('Intro');
-    expect(() => replaceHTML(view, '')).to.throw('Replacement HTML is required');
-    expect(() => replaceHTML(view, '<p>One</p><p>Two</p>')).to.throw('exactly one content node');
+    expect(() => replaceHTMLAtCursor(view, '')).to.throw('Replacement HTML is required');
+    expect(() => replaceHTMLAtCursor(view, '<p>One</p><p>Two</p>')).to.throw('exactly one content node');
     view.setProps({ editable: () => false });
-    expect(() => replaceHTML(view, '<p>No</p>')).to.throw('read-only');
+    expect(() => replaceHTMLAtCursor(view, '<p>No</p>')).to.throw('read-only');
     expect(view.state.doc).to.equal(before);
   });
   it('keeps the original sendHTML insertion path unchanged', () => {
@@ -145,7 +145,7 @@ describe('sendHTML replacement targets', () => {
         plugins: [ySyncPlugin(ydoc.getXmlFragment('prosemirror')), yUndoPlugin()],
       }));
       const pos = caret('Original title', 4);
-      replaceHTML(view, '<div class="hero"><div><div><p>Changed title</p></div></div></div>');
+      replaceHTMLAtCursor(view, '<div class="hero"><div><div><p>Changed title</p></div></div></div>');
       expect(view.state.doc.textContent).to.include('Changed title');
       expect(yDocToProsemirror(schema, ydoc).textContent).to.include('Changed title');
       expect(view.state.selection.from).to.equal(pos);

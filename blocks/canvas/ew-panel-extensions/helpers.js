@@ -458,7 +458,7 @@ export function insertHTML(view, htmlStr) {
   view.dispatch(view.state.tr.replaceRange(from, to, slice).scrollIntoView());
 }
 
-export function replaceHTML(view, html) {
+export function replaceHTMLAtCursor(view, html) {
   const fail = (code, message) => { throw Object.assign(new Error(message), { code }); };
   if (!view.editable) fail('READ_ONLY', 'The editor is read-only.');
   if (typeof html !== 'string' || !html.trim()) fail('INVALID_HTML', 'Replacement HTML is required.');

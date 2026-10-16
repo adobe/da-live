@@ -10,7 +10,7 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 const { setupIframeChannel } = await import('../../../../../blocks/canvas/ew-panel-extensions/iframe-protocol.js');
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
-const { getExtensionHTML } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
+const { getInstrumentedHTMLPreservingImageUrls } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
 
 const wait = (ms = 50) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
@@ -58,7 +58,7 @@ describe('acknowledged live HTML replacement', () => {
     connection.channel.port2.postMessage({ action: 'sendHTML', requestId: 'replace-1', details });
   });
   it('acknowledges a guarded block replacement with the updated live document', async () => {
-    const expected = { html: getExtensionHTML(view), blockIndex: 0 };
+    const expected = { html: getInstrumentedHTMLPreservingImageUrls(view), blockIndex: 0 };
     const result = await replace({
       html: '<div class="hero"><div><div><p>Updated</p></div></div></div>',
       replace: true,
@@ -104,7 +104,7 @@ describe('acknowledged live HTML replacement', () => {
         expected: { html: snapshot.html, blockIndex: 0 },
       });
       expect(snapshot.ok).to.equal(true);
-      expect(snapshot.html).to.equal(getExtensionHTML(view));
+      expect(snapshot.html).to.equal(getInstrumentedHTMLPreservingImageUrls(view));
       const response = new DOMParser().parseFromString(snapshot.html, 'text/html');
       expect(response.querySelector('img').getAttribute('src')).to.equal(src);
       expect(view.state.doc.textContent).to.include(title);
@@ -114,7 +114,7 @@ describe('acknowledged live HTML replacement', () => {
     }
   });
   it('rejects stale content and a changed selection atomically', async () => {
-    const expected = { html: getExtensionHTML(view), blockIndex: 0 };
+    const expected = { html: getInstrumentedHTMLPreservingImageUrls(view), blockIndex: 0 };
     const tr = view.state.tr.insertText('Other', view.state.doc.content.size - 1);
     view.dispatch(tr.setSelection(NodeSelection.create(tr.doc, 0)));
     const before = view.state.doc;

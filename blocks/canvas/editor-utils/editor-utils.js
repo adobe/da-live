@@ -347,7 +347,7 @@ export function getInstrumentedHTML(view) {
   return htmlString;
 }
 
-export function getExtensionHTML(view) {
+export function getInstrumentedHTMLPreservingImageUrls(view) {
   const doc = new DOMParser().parseFromString(getInstrumentedHTML(view), 'text/html');
   doc.querySelectorAll('img[data-image-index]').forEach((image) => {
     const pos = Number(image.getAttribute('data-image-index'));

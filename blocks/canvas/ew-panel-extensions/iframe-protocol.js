@@ -1,6 +1,6 @@
-import { insertText, insertHTML, replaceHTML, getEditorSelection } from './helpers.js';
+import { insertText, insertHTML, replaceHTMLAtCursor, getEditorSelection } from './helpers.js';
 import { getActiveBlockIndex } from '../editor-utils/blocks.js';
-import { getExtensionHTML } from '../editor-utils/editor-utils.js';
+import { getInstrumentedHTMLPreservingImageUrls } from '../editor-utils/editor-utils.js';
 import { getNx } from '../../../scripts/utils.js';
 import { getPostMessageTargetOrigin, isRequestId, isValidHref, replyToGetSelection } from '../../shared/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
@@ -37,7 +37,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     const index = getActiveBlockIndex(editorView);
     return { blockIndex: index < 0 ? null : index };
   };
-  const publishDocument = () => {
+  const broadcastDocument = () => {
     clearTimeout(htmlTimer);
     htmlTimer = undefined;
     if (!subscribed) return;
@@ -46,7 +46,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     lastBlockIndex = selection.blockIndex;
     channel.port1.postMessage({
       action: 'liveDocument',
-      html: editorView ? getExtensionHTML(editorView) : '',
+      html: editorView ? getInstrumentedHTMLPreservingImageUrls(editorView) : '',
       selection,
       editable: !!editorView?.editable,
     });
@@ -54,9 +54,9 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   const scheduleDocument = () => {
     if (!subscribed) return;
     clearTimeout(htmlTimer);
-    htmlTimer = setTimeout(publishDocument, 150);
+    htmlTimer = setTimeout(broadcastDocument, 150);
   };
-  const publishSelection = ({ blockIndex }) => {
+  const broadcastSelection = ({ blockIndex }) => {
     if (!subscribed || htmlTimer !== undefined) return;
     const index = Number.isInteger(blockIndex) && blockIndex >= 0 ? blockIndex : null;
     if (lastBlockIndex === index) return;
@@ -82,9 +82,9 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
         subscribed = true;
         unsubscribeDoc = canvasBus.editorDocState.subscribe(scheduleDocument);
         unsubscribeHtml = canvasBus.editorHtmlState.subscribe(scheduleDocument);
-        unsubscribeSelect = canvasBus.editorSelectState.subscribe(publishSelection);
+        unsubscribeSelect = canvasBus.editorSelectState.subscribe(broadcastSelection);
       }
-      publishDocument();
+      broadcastDocument();
       return;
     }
     if (action === 'unsubscribeLiveDocument') {
@@ -129,14 +129,14 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
           if (getActiveBlockIndex(editorView) !== expected.blockIndex) {
             throw Object.assign(new Error('The selected block changed'), { code: 'WRONG_SELECTION' });
           }
-          if (getExtensionHTML(editorView) !== expected.html) {
+          if (getInstrumentedHTMLPreservingImageUrls(editorView) !== expected.html) {
             throw Object.assign(new Error('The live document changed while editing'), { code: 'STALE_LIVE' });
           }
         }
-        replaceHTML(editorView, details.html);
-        const html = getExtensionHTML(editorView);
+        replaceHTMLAtCursor(editorView, details.html);
+        const html = getInstrumentedHTMLPreservingImageUrls(editorView);
         const selection = selectionFor(editorView);
-        publishDocument();
+        broadcastDocument();
         result = { ok: true, html, selection, editable: !!editorView.editable };
       } catch (error) {
         result = { ok: false, error: error.code || 'REPLACE_FAILED', message: error.message };

@@ -4,7 +4,7 @@ import { setNx } from '../../../../../scripts/utils.js';
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { createTestEditor, destroyEditor } = await import('../../edit/prose/test-helpers.js');
-const { getInstrumentedHTML, getExtensionHTML } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
+const { getInstrumentedHTML, getInstrumentedHTMLPreservingImageUrls } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
 
 function insertImages(editor) {
   const { state } = editor.view;
@@ -71,7 +71,7 @@ describe('getInstrumentedHTML image instrumentation', () => {
     editor.view.dispatch(state.tr.replaceWith(0, state.doc.content.size, paragraphs));
     const before = editor.view.state.doc;
     const previewBefore = getInstrumentedHTML(editor.view);
-    const parsed = new DOMParser().parseFromString(getExtensionHTML(editor.view), 'text/html');
+    const parsed = new DOMParser().parseFromString(getInstrumentedHTMLPreservingImageUrls(editor.view), 'text/html');
     const images = [...parsed.querySelectorAll('img[data-image-index]')];
     expect(images.map((image) => image.getAttribute('src'))).to.deep.equal(urls);
     images.forEach((image, index) => {
