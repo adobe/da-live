@@ -370,13 +370,29 @@ function getDefaultContentProseIndex(el, kind) {
   return attr != null ? Number(attr) : undefined;
 }
 
-function firstLineText(el) {
+// Editable link-images (editAs='image') serialize as <a data-edit-as="image">src</a>,
+// but are image nodes in the editor, so the outline treats them as images, not link text.
+const LINK_IMAGE_SELECTOR = 'a[data-edit-as="image"]';
+
+function withoutLinkImages(el) {
   const clone = el.cloneNode(true);
+  clone.querySelectorAll(LINK_IMAGE_SELECTOR).forEach((a) => a.remove());
+  return clone;
+}
+
+function firstLineText(el) {
+  const clone = withoutLinkImages(el);
   clone.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
   return clone.textContent.trim().split('\n')[0].trim();
 }
 
+function getText(el) {
+  if (!el.querySelector?.(LINK_IMAGE_SELECTOR)) return el.textContent?.trim() ?? '';
+  return withoutLinkImages(el).textContent.trim();
+}
+
 function getContentSnippet(el, kind) {
+  if (kind === 'image') return '';
   if (kind === 'list') return firstLineText(el.querySelector(':scope > li') ?? el);
   if (kind === 'quote') return firstLineText(el.querySelector(':scope > p') ?? el);
   return firstLineText(el);
@@ -389,10 +405,11 @@ function getDefaultContentKind(el) {
   if (tag === 'UL') return { kind: 'list', ordered: false };
   if (tag === 'PRE') return { kind: 'code' };
   if (tag === 'BLOCKQUOTE') return { kind: 'quote' };
-  if (el.textContent?.trim()) return { kind: 'paragraph' };
+  if (getText(el)) return { kind: 'paragraph' };
   // A text-less <p> wraps only an image, as does a bare <picture>/<img> — but a text-less
   // <p> with no image at all is just an empty paragraph, not an image wrapper.
-  if (el.matches?.('img') || el.querySelector?.('img')) return { kind: 'image' };
+  const imageSelector = `img, ${LINK_IMAGE_SELECTOR}`;
+  if (el.matches?.(imageSelector) || el.querySelector?.(imageSelector)) return { kind: 'image' };
   return { kind: 'paragraph' };
 }
 
@@ -410,14 +427,14 @@ export function parseSections(htmlText) {
         items.push({
           type: 'content',
           proseIndex: getDefaultContentProseIndex(currentRun[0]),
-          innerText: currentRun.map((el) => el.textContent.trim()).filter(Boolean).join(' '),
+          innerText: currentRun.map((el) => getText(el)).filter(Boolean).join(' '),
           children: currentRun.map((el) => {
             const kindInfo = getDefaultContentKind(el);
             return {
               type: 'content',
               ...kindInfo,
               proseIndex: getDefaultContentProseIndex(el, kindInfo.kind),
-              innerText: el.textContent.trim(),
+              innerText: getText(el),
               snippet: getContentSnippet(el, kindInfo.kind),
             };
           }),
@@ -434,7 +451,7 @@ export function parseSections(htmlText) {
         flushRun();
         const rawProseIndex = el.getAttribute('data-block-index');
         const proseIndex = rawProseIndex != null ? Number(rawProseIndex) : undefined;
-        const innerText = el.textContent?.trim() ?? '';
+        const innerText = getText(el);
         // Classes after the block name are its variant(s) — the same descriptor the
         // doc editor's header row shows in parentheses (e.g. `cards (highlight)`).
         const variant = [...el.classList].slice(1).join(', ');

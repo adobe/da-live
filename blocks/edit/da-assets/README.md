@@ -63,6 +63,7 @@ All keys are set in the DA site config at `https://da.live/config#/<org>/` or `h
 | `aem.assets.prod.origin` | No | e.g. `https://mysite.com` | Overrides the auto-derived asset URL origin for the final inserted URL. If the value starts with `delivery-`, DM delivery mode is also activated. |
 | `aem.assets.prod.basepath` | No | e.g. `/adobe/assets` | Overrides the default base path (`/adobe/assets`) used in DM and delivery URLs. |
 | `aem.assets.image.type` | No | `link` | Insert images as `<a>` links instead of `<img>` tags. Useful for Dynamic Media URLs that need to bypass Media Bus. |
+| `aem.assets.editableExternalImages` (**`flags` sheet**) | No | `true` | Only applies with `aem.assets.image.type=link`. Images are edited as real `<img>` nodes but still persisted as `<a data-edit-as="image">` links. |
 | `aem.asset.dm.delivery` | No | `on` | Use author for browsing but construct DM delivery URLs when inserting. Activates Author+DM mode. |
 | `aem.asset.dm.approvedonly` | No | absent, `on`, or `off` | For author-backed Dynamic Media modes, the default is to show only Approved assets through a locked Content Advisor filter. Absent or `on` enables it; exact `off` opts out and leaves Content Advisor unfiltered. Has no effect for Author + Publish or delivery-tier browsing. |
 | `aem.asset.smartcrop.select` | No | `on` | Show the Smart Crop selection dialog when an image is selected. Implies DM delivery. |

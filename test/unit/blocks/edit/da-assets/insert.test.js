@@ -1,9 +1,12 @@
 import { expect } from '@esm-bundle/chai';
+import { getSchema } from 'da-parser';
+import { EditorState, TextSelection } from 'da-y-wrapper';
 
 import {
   findBlockContext,
   getBlockName,
   createImageNode,
+  insertImage,
   insertFragment,
 } from '../../../../../blocks/edit/da-assets/helpers/insert.js';
 
@@ -118,6 +121,52 @@ describe('createImageNode', () => {
     const node = createImageNode(view, 'https://example.com/img.jpg');
     expect(node.attrs.alt).to.be.undefined;
   });
+
+  it('includes editAs attribute when provided', () => {
+    const view = makeView();
+    const node = createImageNode(view, 'https://example.com/img.jpg', 'alt', 'image');
+    expect(node.attrs.editAs).to.equal('image');
+  });
+
+  it('omits editAs attribute when not provided', () => {
+    const view = makeView();
+    const node = createImageNode(view, 'https://example.com/img.jpg', 'alt');
+    expect(node.attrs.editAs).to.be.undefined;
+  });
+});
+
+// ---------------------------------------------------------------------------
+// insertImage
+// ---------------------------------------------------------------------------
+
+describe('insertImage', () => {
+  it('dispatches an image node with src and default style', () => {
+    const view = makeView();
+    insertImage(view, 'https://example.com/img.jpg');
+    expect(view.dispatched).to.have.length(1);
+  });
+
+  it('includes editAs attribute when provided', () => {
+    const view = makeView();
+    let createdNode;
+    view.state.schema.nodes.image.create = (attrs) => {
+      createdNode = { type: 'image', attrs };
+      return createdNode;
+    };
+    insertImage(view, 'https://example.com/img.jpg', 'alt', 'image');
+    expect(createdNode.attrs.editAs).to.equal('image');
+  });
+
+  it('omits editAs attribute when not provided', () => {
+    const view = makeView();
+    let createdNode;
+    view.state.schema.nodes.image.create = (attrs) => {
+      createdNode = { type: 'image', attrs };
+      return createdNode;
+    };
+    insertImage(view, 'https://example.com/img.jpg', 'alt');
+    expect(createdNode.attrs.editAs).to.be.undefined;
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -130,5 +179,43 @@ describe('insertFragment', () => {
     // Fragment.fromArray([]) returns Fragment.empty — a valid ProseMirror Fragment
     insertFragment(view, []);
     expect(view.dispatched).to.have.length(1);
+  });
+});
+
+describe('insertImage link mark inheritance', () => {
+  function makeLinkedView() {
+    const schema = getSchema();
+    const link = schema.marks.link.create({ href: 'https://example.com/' });
+    const doc = schema.node('doc', null, [
+      schema.node('paragraph', null, [schema.text('hello world', [link])]),
+    ]);
+    let state = EditorState.create({ doc });
+    state = state.apply(state.tr.setSelection(TextSelection.create(state.doc, 4)));
+    return {
+      state,
+      dispatch(tr) { this.state = this.state.apply(tr); },
+    };
+  }
+
+  function findImage(view) {
+    let found = null;
+    view.state.doc.descendants((n) => { if (n.type.name === 'image') found = n; });
+    return found;
+  }
+
+  it('editAs image does not inherit link mark', () => {
+    const view = makeLinkedView();
+    insertImage(view, 'https://example.com/a.png', 'Alt', 'image');
+    const img = findImage(view);
+    expect(img).to.exist;
+    expect(img.marks.some((m) => m.type.name === 'link')).to.be.false;
+  });
+
+  it('normal image still inherits link mark', () => {
+    const view = makeLinkedView();
+    insertImage(view, 'https://example.com/a.png', 'Alt');
+    const img = findImage(view);
+    expect(img).to.exist;
+    expect(img.marks.some((m) => m.type.name === 'link')).to.be.true;
   });
 });

@@ -19,6 +19,7 @@ import {
   isInTable,
 } from 'da-y-wrapper';
 import { getCommentsBridge, openCommentsPanel } from './comments-bridge.js';
+import { isEditableLinkImage } from '../../edit/prose/plugins/linkImage.js';
 import { getSelectionData } from '../comments/helpers/anchor.js';
 
 /* ---- Apply factories ---- */
@@ -150,6 +151,11 @@ export const LOREM_SENTENCES = [
 
 export function isImageNodeSelected({ selection }) {
   return selection?.node?.type.name === 'image';
+}
+
+// Editable link-images persist as <a href="src">, so they can't also carry a link.
+export function isLinkImageSelected(state) {
+  return isEditableLinkImage(state.selection?.node);
 }
 
 /* ---- Link queries ---- */

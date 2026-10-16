@@ -1,4 +1,6 @@
 import { expect } from '@esm-bundle/chai';
+import { getSchema } from 'da-parser';
+import { EditorState } from 'da-y-wrapper';
 
 const { setNx, getNx2 } = await import('../../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -54,6 +56,31 @@ function makeView() {
   };
 }
 
+function makeRealView() {
+  const schema = getSchema();
+  const doc = schema.node('doc', null, [schema.node('paragraph')]);
+  return {
+    state: EditorState.create({ doc }),
+    dispatch(tr) { this.state = this.state.apply(tr); },
+  };
+}
+
+function collect(view, typeName) {
+  const found = [];
+  view.state.doc.descendants((n) => { if (n.type.name === typeName) found.push(n); });
+  return found;
+}
+
+function expectLink(view, href) {
+  expect(collect(view, 'image')).to.have.length(0);
+  const linked = [];
+  view.state.doc.descendants((n) => {
+    if (n.isText && n.marks.some((m) => m.type.name === 'link' && m.attrs.href === href)) linked.push(n);
+  });
+  expect(linked).to.have.length(1);
+  expect(linked[0].text).to.equal(href);
+}
+
 function makeDialog() {
   let open = true;
   return {
@@ -72,7 +99,7 @@ const REPO_CONFIG = {
   assetBasePath: '/adobe/assets',
   isDmEnabled: true,
   isSmartCrop: false,
-  insertAsLink: false,
+  imageType: null,
 };
 
 const ASSET = { 'repo:id': 'urn:aaid:aem:img-001', name: 'photo.jpg' };
@@ -144,8 +171,7 @@ describe('buildHandleSelection', () => {
   });
   afterEach(() => { window.fetch = orgFetch; });
 
-  function setup(repoConfig = REPO_CONFIG) {
-    const view = makeView();
+  function setup(repoConfig = REPO_CONFIG, view = makeView()) {
     const dialog = makeDialog();
     const assetPanel = makePanel();
     const secondaryPanel = makePanel();
@@ -198,19 +224,36 @@ describe('buildHandleSelection', () => {
 
   it('closes dialog and takes link path for non-image assets', async () => {
     setSelection(PDF_SELECTION);
-    const { view, dialog, handler } = setup();
-    // dialog.close() is called before insertLink, so we can verify dialog state
-    // even though proseDOMParser needs a real schema (tested in insert.test.js)
-    try { await handler([ASSET]); } catch { /* proseDOMParser mock limitation */ }
+    const { view, dialog, handler } = setup(REPO_CONFIG, makeRealView());
+    await handler([ASSET]);
     expect(dialog.isOpen).to.be.false;
-    expect(view.created).to.have.length(0);
+    expectLink(view, PDF_SELECTION.href);
   });
 
-  it('closes dialog and takes link path for image when insertAsLink is true', async () => {
-    const { view, dialog, handler } = setup({ ...REPO_CONFIG, insertAsLink: true });
-    try { await handler([ASSET]); } catch { /* proseDOMParser mock limitation */ }
+  it('takes link path for image when imageType is link', async () => {
+    const { view, dialog, handler } = setup({ ...REPO_CONFIG, imageType: 'link' }, makeRealView());
+    await handler([ASSET]);
     expect(dialog.isOpen).to.be.false;
-    expect(view.created).to.have.length(0);
+    expectLink(view, IMAGE_HREF);
+  });
+
+  it('inserts image with editAs image when imageType is editable-link', async () => {
+    const { view, dialog, handler } = setup({ ...REPO_CONFIG, imageType: 'editable-link' });
+    await handler([ASSET]);
+    expect(dialog.isOpen).to.be.false;
+    expect(view.dispatched).to.have.length(1);
+    expect(view.created).to.deep.equal([{ src: IMAGE_HREF, style: 'width: 180px', alt: 'A photo', editAs: 'image' }]);
+  });
+
+  it('takes link path for non-image assets when imageType is editable-link', async () => {
+    setSelection(PDF_SELECTION);
+    const { view, dialog, handler } = setup(
+      { ...REPO_CONFIG, imageType: 'editable-link' },
+      makeRealView(),
+    );
+    await handler([ASSET]);
+    expect(dialog.isOpen).to.be.false;
+    expectLink(view, PDF_SELECTION.href);
   });
 
   [DM_ERROR_MSG, PUBLISH_ERROR_MSG].forEach((message) => {
@@ -241,6 +284,29 @@ describe('buildHandleSelection', () => {
     expect(dialog.isOpen).to.be.false;
     expect(view.dispatched).to.have.length(1);
     expect(view.created[0].src).to.equal(IMAGE_HREF);
+  });
+
+  it('keeps editAs image when smart crop has no crops', async () => {
+    mockSmartCrops([]);
+    const { view, handler } = setup({ ...REPO_CONFIG, isSmartCrop: true, imageType: 'editable-link' });
+    await handler([ASSET]);
+    expect(view.created[0].editAs).to.equal('image');
+  });
+
+  it('keeps editAs image on smart crop insert', async () => {
+    mockSmartCrops([{ name: 'desktop' }, { name: 'mobile' }]);
+    const { view, assetPanel, secondaryPanel, handler } = setup(
+      { ...REPO_CONFIG, isSmartCrop: true, imageType: 'editable-link' },
+      makeRealView(),
+    );
+    document.body.append(assetPanel, secondaryPanel);
+    await handler([ASSET]);
+    secondaryPanel.querySelector('.insert').click();
+    const images = collect(view, 'image');
+    expect(images.length).to.be.greaterThan(0);
+    images.forEach((n) => expect(n.attrs.editAs).to.equal('image'));
+    assetPanel.remove();
+    secondaryPanel.remove();
   });
 
   it('calls onInsert callback from smart crop dialog, closing dialog and inserting nodes', async () => {

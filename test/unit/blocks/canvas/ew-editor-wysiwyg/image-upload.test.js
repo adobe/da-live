@@ -136,6 +136,53 @@ describe('handleImageReplace', () => {
     }
   });
 
+  it('drops the editable link-image marker from the replaced image', async () => {
+    const { schema } = editor.view.state;
+    const src = 'https://delivery-p1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:1/as/old.jpg';
+    editor.view.dispatch(editor.view.state.tr.replaceWith(
+      0,
+      editor.view.state.doc.content.size,
+      schema.nodes.paragraph.create(null, schema.nodes.image.create({ src, alt: 'Alt', editAs: 'image' })),
+    ));
+    const { restore } = stubStore({ upgraded: true, contentUrl: './media_new.png' });
+    const { ctx } = ctxFor('wysedit', 'wysedit');
+    try {
+      await handleImageReplace({ imageData, fileName: 'new.png', originalSrc: src }, ctx);
+
+      const img = editor.view.state.doc.firstChild.firstChild;
+      expect(img.attrs.src).to.equal('./media_new.png');
+      expect(img.attrs.editAs).to.be.null;
+      expect(img.attrs.alt).to.equal('Alt');
+    } finally {
+      restore();
+    }
+  });
+
+  it('uses proseIndex even when the site rewrote the rendered src', async () => {
+    const { schema } = editor.view.state;
+    const src = 'https://delivery-p1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:1/as/car.jpg';
+    editor.view.dispatch(editor.view.state.tr.replaceWith(
+      0,
+      editor.view.state.doc.content.size,
+      schema.nodes.paragraph.create(null, schema.nodes.image.create({ src, editAs: 'image' })),
+    ));
+    const { restore } = stubStore({ upgraded: true, contentUrl: './media_new.png' });
+    const { ctx } = ctxFor('wyssite2', 'wyssite2');
+    try {
+      await handleImageReplace(request({
+        fileName: 'new.png',
+        originalSrc: 'https://delivery-p1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:1/as/car.webp?width=750',
+        proseIndex: 1,
+      }), ctx);
+
+      const img = editor.view.state.doc.firstChild.firstChild;
+      expect(img.attrs.src).to.equal('./media_new.png');
+      expect(img.attrs.editAs).to.be.null;
+    } finally {
+      restore();
+    }
+  });
+
   it('reports a refused upload', async () => {
     const saved = window.fetch;
     window.fetch = async (url) => {

@@ -55,5 +55,6 @@ export function updateImageInDocument({ view, target, newSrc }) {
   if (proseIndex == null || ambiguous) {
     throw new Error('The selected image is no longer available. Please try again.');
   }
-  view.dispatch(view.state.tr.setNodeMarkup(proseIndex, null, { ...target.attrs, src: newSrc }));
+  const attrs = { ...target.attrs, src: newSrc, editAs: null };
+  view.dispatch(view.state.tr.setNodeMarkup(proseIndex, null, attrs));
 }

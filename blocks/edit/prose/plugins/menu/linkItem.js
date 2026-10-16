@@ -1,6 +1,7 @@
 import { MenuItem, TextSelection } from 'da-y-wrapper';
 import openPrompt from '../../../da-palette/da-palette.js';
 import { markActive } from './menuUtils.js';
+import { isEditableLinkImage } from '../linkImage.js';
 
 function defaultLinkFields() {
   return {
@@ -67,9 +68,10 @@ export function linkItem(linkMarkType) {
       return markActive(state, linkMarkType);
     },
     enable(state) {
-      // Check if an image node is selected
+      // Check if an image node is selected. Editable link-images persist as
+      // <a href="src">, so they can't also carry a link.
       if (state.selection.node && state.selection.node.type.name === 'image') {
-        return true;
+        return !isEditableLinkImage(state.selection.node);
       }
 
       const selContent = state.selection.content();
@@ -91,6 +93,8 @@ export function linkItem(linkMarkType) {
 
       const { node: selectionNode } = view.state.selection;
       const isImage = !!(selectionNode && selectionNode.type === view.state.schema.nodes.image);
+      // Mod-k calls run() directly, bypassing enable().
+      if (isEditableLinkImage(selectionNode)) return;
       const imageNodePos = isImage ? view.state.selection.$from.pos : -1;
 
       let currentRangeStart = $from.pos;
