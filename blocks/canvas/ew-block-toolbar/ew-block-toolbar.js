@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2, getUISize, getBtnSizeClass } from '../../../scripts/utils.js';
+import getSheet from '../../shared/sheet.js';
 import { getBlocksExtension, loadBlockLibrary } from '../ew-panel-extensions/helpers.js';
 import { replaceBlockRange, setTableBlockVariant, appendBlockRow } from '../editor-utils/blocks.js';
 import { isMultiBlock, getMultiBlockTemplateRow } from '../editor-utils/multi-block.js';
@@ -8,9 +9,11 @@ import { canvasBus } from '../utils/canvas-bus.js';
 
 const nx = getNx();
 const { loadStyle } = await import(`${nx}/utils/utils.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 await import(`${nx}/blocks/shared/picker/picker.js`);
 
 const styles = await loadStyle(import.meta.url);
+const buttonsStyle = await getSheet(`${getNx2()}/styles/buttons.css`);
 
 /** Normalize block names so `card-list`, `Card List` and `card_list` all compare equal. */
 function normalizeBlockName(name) {
@@ -26,6 +29,8 @@ function splitLibraryVariant(variant) {
 }
 
 class EwBlockToolbar extends LitElement {
+  _uiSize = new UISizeController(this);
+
   static properties = {
     view: { attribute: false },
     org: { type: String },
@@ -39,7 +44,7 @@ class EwBlockToolbar extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [styles];
+    this.shadowRoot.adoptedStyleSheets = [buttonsStyle, styles];
   }
 
   updated(changed) {
@@ -204,11 +209,12 @@ class EwBlockToolbar extends LitElement {
   render() {
     const name = this._blockName || 'Block';
     const hasVariants = (this._variantOptions?.length ?? 0) > 0;
+    const sizeCls = getBtnSizeClass();
     return html`
       <div class="toolbar-wrap" @mousedown=${(e) => e.preventDefault()}>
         <button
           type="button"
-          class="toolbar-btn block-replace"
+          class="nx-action-btn-quiet toolbar-btn block-replace ${sizeCls}"
           aria-label="Replace block"
           title="Replace block"
           ?disabled=${!this._hasBlockLibrary}
@@ -222,6 +228,7 @@ class EwBlockToolbar extends LitElement {
           <span class="toolbar-variant-wrap">
             <nx-picker
               class="toolbar-variant"
+              size=${getUISize()}
               placement="above"
               ignoreFocus
               .items=${this._variantPickerItems()}
@@ -233,7 +240,7 @@ class EwBlockToolbar extends LitElement {
           <span class="toolbar-sep" aria-hidden="true"></span>
           <button
             type="button"
-            class="toolbar-btn block-add-item"
+            class="nx-action-btn-quiet toolbar-btn block-add-item ${sizeCls}"
             aria-label="Add item"
             title="Add item"
             @click=${() => this._onAddItem()}
@@ -241,7 +248,7 @@ class EwBlockToolbar extends LitElement {
         <span class="toolbar-sep" aria-hidden="true"></span>
         <button
           type="button"
-          class="toolbar-btn block-edit icon-only"
+          class="nx-action-btn-icon toolbar-btn block-edit ${sizeCls}"
           aria-label="Edit block"
           title="Edit block"
           @click=${() => this._onEditBlock()}
@@ -249,7 +256,7 @@ class EwBlockToolbar extends LitElement {
         <span class="toolbar-sep" aria-hidden="true"></span>
         <button
           type="button"
-          class="toolbar-btn block-delete icon-only"
+          class="nx-action-btn-icon toolbar-btn block-delete ${sizeCls}"
           aria-label="Delete block"
           title="Delete block"
           @click=${() => this._onDeleteBlock()}
@@ -257,7 +264,7 @@ class EwBlockToolbar extends LitElement {
         <span class="toolbar-sep" aria-hidden="true"></span>
         <button
           type="button"
-          class="toolbar-btn block-comment icon-only"
+          class="nx-action-btn-icon toolbar-btn block-comment ${sizeCls}"
           aria-label="Comment"
           title="Comment"
           @click=${() => this._onComment()}

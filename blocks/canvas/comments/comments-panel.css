@@ -67,14 +67,14 @@
 
 .ew-comments-empty {
   color: var(--s2-gray-700);
-  font-size: 14px;
+  font-size: var(--nx-ui-text-content);
   text-align: center;
   padding: 24px 0;
 }
 
 .ew-comments-detached-reference {
   display: block;
-  font-size: 11px;
+  font-size: var(--s2-component-xs-regular-font-size);
   color: var(--comment-text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -92,13 +92,15 @@
   display: inline-flex;
   gap: 5px;
   align-items: center;
-  padding: 6px 14px;
+  box-sizing: border-box;
+  height: 28px;
+  padding: 0 12px;
   border: none;
   border-radius: 8px;
   background: transparent;
   color: var(--s2-gray-700);
   font-family: var(--body-font-family);
-  font-size: 12px;
+  font-size: var(--s2-component-s-regular-font-size);
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
@@ -110,7 +112,7 @@
 }
 
 .ew-comment-tab.is-active {
-  background: var(--s2-gray-200, #e6e6e6);
+  background: var(--s2-gray-100, #f0f0f0);
   color: var(--s2-gray-900, #000);
 }
 
@@ -126,21 +128,7 @@
 }
 
 .ew-comments-back-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 0;
   margin-bottom: 12px;
-  border: none;
-  background: transparent;
-  color: var(--s2-gray-700);
-  font-family: var(--body-font-family);
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.ew-comments-back-btn:hover {
-  color: var(--s2-blue-800);
 }
 
 .ew-comment-card {
@@ -183,7 +171,7 @@
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 12px;
+  font-size: var(--s2-component-s-regular-font-size);
   font-weight: 600;
   flex-shrink: 0;
 }
@@ -212,17 +200,17 @@
 .ew-comment-author {
   display: block;
   font-weight: 600;
-  font-size: 13px;
+  font-size: var(--s2-component-s-regular-font-size);
   color: var(--s2-gray-800);
 }
 
 .ew-comment-time {
-  font-size: 12px;
+  font-size: var(--s2-component-s-regular-font-size);
   color: var(--s2-gray-700);
 }
 
 .ew-comment-content {
-  font-size: 15px;
+  font-size: var(--nx-ui-text-content);
   line-height: 1.5;
   color: var(--s2-gray-800);
   white-space: pre-wrap;
@@ -253,7 +241,7 @@
 .ew-comments-thread-replies-summary {
   display: inline-block;
   margin-left: 40px;
-  font-size: 12px;
+  font-size: var(--s2-component-s-regular-font-size);
   color: var(--s2-blue-800);
   font-weight: 500;
 }
@@ -273,12 +261,18 @@
   width: 100%;
   height: 100px;
   padding: 8px var(--s2-spacing-200);
+  border-width: 1px;
   font-family: var(--body-font-family);
+  font-size: var(--nx-ui-text-content);
   resize: none;
 }
 
 .ew-comments-reply-form:not(.ew-comments-reply-form-expanded) .ew-comment-form .ew-comment-textarea {
   height: 36px;
+}
+
+:host([data-ui-size="m"]) .ew-comments-reply-form:not(.ew-comments-reply-form-expanded) .ew-comment-form .ew-comment-textarea {
+  height: 40px;
 }
 
 .ew-comment-form-actions {
@@ -291,20 +285,20 @@
 
 .ew-comment-form-hint {
   margin-top: var(--s2-spacing-200);
-  font-size: 11px;
+  font-size: var(--s2-component-xs-regular-font-size);
   color: var(--s2-gray-600);
   text-align: right;
 }
 
 .ew-comments-resolved-info {
   width: 100%;
-  font-size: 12px;
+  font-size: var(--s2-component-s-regular-font-size);
   color: var(--s2-gray-600);
   margin-left: 40px;
 }
 
 .ew-comment-edited {
-  font-size: 12px;
+  font-size: var(--s2-component-s-regular-font-size);
   color: var(--s2-gray-600);
 }
 
@@ -411,7 +405,7 @@
   padding: 8px 12px;
   background: var(--s2-gray-50);
   border-left: 2px solid var(--s2-gray-400);
-  font-size: 11px;
+  font-size: var(--s2-component-xs-regular-font-size);
   color: var(--s2-gray-700);
   min-width: 0;
   border-radius: 4px;
@@ -429,4 +423,41 @@
   text-overflow: ellipsis;
   min-width: 0;
   font-style: italic;
+}
+
+:host([data-ui-size="m"]) {
+  .ew-comments-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .ew-comments-icon-checkmark,
+  .ew-comments-icon-chevron-left {
+    width: 20px;
+    height: 20px;
+  }
+
+  .ew-comment-tab {
+    height: 32px;
+  }
+
+  :is(
+    .ew-comment-tab,
+    .ew-comment-avatar,
+    .ew-comment-author,
+    .ew-comment-time,
+    .ew-comments-thread-replies-summary,
+    .ew-comments-resolved-info,
+    .ew-comment-edited
+  ) {
+    font-size: var(--s2-component-m-regular-font-size);
+  }
+
+  :is(
+    .ew-comments-detached-reference,
+    .ew-comment-form-hint,
+    .ew-comments-compose-anchor-preview
+  ) {
+    font-size: var(--s2-component-s-regular-font-size);
+  }
 }

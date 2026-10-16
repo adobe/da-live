@@ -24,9 +24,11 @@ import { fetchExtensions } from '../ew-panel-extensions/helpers.js';
 const DELETE_ICON_SRC = '/img/icons/s2-icon-delete-20-n.svg';
 const DRAG_ICON_SRC = '/img/icons/s2-icon-draghandle-20-n.svg';
 const MORE_ICON_SRC = '/img/icons/s2-icon-more-20-n.svg';
+const CHEVRON_ICON_SRC = '/img/icons/s2-icon-chevronright-10-n.svg';
 const FOCUS_TARGETS = '.section-menu-trigger, [role="treeitem"]';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
 
@@ -85,6 +87,8 @@ function sectionsEqual(a, b) {
 }
 
 class EwPageOutline extends LitElement {
+  _uiSize = new UISizeController(this);
+
   static properties = {
     _sections: { state: true },
     _selectedBlockIndex: { state: true },
@@ -687,8 +691,10 @@ class EwPageOutline extends LitElement {
     </span>`;
   }
 
-  _renderChevron(level) {
-    return html`<span class="chevron" style="--level: ${level}" aria-hidden="true"></span>`;
+  _renderChevron(level, expandable = false) {
+    return html`<span class="chevron" style="--level: ${level}" aria-hidden="true">
+      ${expandable ? html`<svg viewBox="0 0 10 10"><use href="${CHEVRON_ICON_SRC}#icon"></use></svg>` : nothing}
+    </span>`;
   }
 
   _renderSectionMenu(sec) {
@@ -731,7 +737,7 @@ class EwPageOutline extends LitElement {
              @dragover=${(e) => this._onContentGroupDragOver(e, item)}
              @drop=${this._onDrop}>
           ${this._renderDragHandle(false)}
-          ${this._renderChevron(0)}
+          ${this._renderChevron(0, true)}
           <span class="block-name content-label">Default content</span>
         </div>
         ${expanded ? html`

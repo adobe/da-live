@@ -189,15 +189,14 @@ describe('ew-canvas-versions', () => {
     expect(inst._restoreEntry).to.be.null;
   });
 
-  it('clicking "Only me" updates aria-pressed and _filter', async () => {
+  it('changing the filter segment to "Only me" updates _filter', async () => {
     inst = await createInstance({ path: '/org/site/doc.html', _versions: [] });
     await inst.updateComplete;
-    const [allBtn, meBtn] = inst.shadowRoot.querySelectorAll('.seg-btn');
-    meBtn.click();
+    const [, onlyMe] = inst.shadowRoot.querySelectorAll('.seg-btn');
+    onlyMe.click();
     await inst.updateComplete;
     expect(inst._filter).to.equal('me');
-    expect(meBtn.getAttribute('aria-pressed')).to.equal('true');
-    expect(allBtn.getAttribute('aria-pressed')).to.equal('false');
+    expect(onlyMe.classList.contains('is-selected')).to.be.true;
   });
 
   it('handleCloseCompare calls cleanup and clears _compareCtx', async () => {
@@ -285,7 +284,7 @@ describe('create-version form', () => {
     await inst.updateComplete;
     const input = inst.shadowRoot.querySelector('.da-input');
     const saveBtn = inst.shadowRoot.querySelector('.ew-cv-save-btn');
-    const cancelBtn = inst.shadowRoot.querySelector('.da-icon-btn');
+    const cancelBtn = inst.shadowRoot.querySelector('.ew-cv-cancel-btn');
     expect(input.readOnly).to.be.true;
     expect(input.disabled).to.be.false;
     expect(cancelBtn.disabled).to.be.true;
