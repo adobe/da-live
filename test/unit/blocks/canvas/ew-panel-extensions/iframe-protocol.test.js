@@ -2,6 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import { TextSelection } from 'da-y-wrapper';
 import { setNx, getNx, getNx2 } from '../../../../../scripts/utils.js';
+import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 import { makeView } from '../test-helpers.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -31,6 +32,7 @@ describe('setupIframeChannel', () => {
   afterEach(() => {
     setUrl(originalUrl);
     setRepositoryConfig(null);
+    canvasBus.branchState.emit({ path: null, status: 'pending' });
   });
 
   it('is a no-op when org is missing from hashState', async () => {
@@ -39,7 +41,7 @@ describe('setupIframeChannel', () => {
       iframe,
       hashState: { site: 'mysite' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
 
     expect(result.channel).to.equal(null);
@@ -51,7 +53,7 @@ describe('setupIframeChannel', () => {
       iframe: { contentWindow: null },
       hashState: { org: 'myorg', site: 'mysite' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
 
     expect(result.channel).to.equal(null);
@@ -65,7 +67,7 @@ describe('setupIframeChannel', () => {
       iframe,
       hashState: { org: 'myorg', site: 'mysite', path: 'a/b', view: 'split' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
 
     await wait(800);
@@ -79,6 +81,7 @@ describe('setupIframeChannel', () => {
       repo: 'mysite',
       site: 'mysite',
       ref: 'feature123',
+      branch: 'feature123',
       path: '/a/b',
       view: 'split',
       hash: '#/myorg/mysite/a/b',
@@ -101,7 +104,7 @@ describe('setupIframeChannel', () => {
       iframe,
       hashState: { org: 'myorg', site: 'mysite' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
 
     await wait(800);
@@ -112,6 +115,32 @@ describe('setupIframeChannel', () => {
     expect(message.project.view).to.equal('edit');
 
     destroy();
+  });
+
+  it('reports the configured site branch separately from the local plugin ref', async () => {
+    setUrl('/some/page?ref=local');
+    canvasBus.branchState.emit({
+      org: 'myorg',
+      site: 'mysite',
+      path: '/myorg/mysite/page',
+      status: 'ready',
+      branch: 'configured',
+    });
+    const iframe = makeIframe();
+    const { destroy } = await setupIframeChannel({
+      iframe,
+      hashState: { org: 'myorg', site: 'mysite', path: 'page' },
+      getView: () => null,
+      onClose: () => { },
+    });
+    try {
+      await wait(800);
+      const [message] = iframe.contentWindow.postMessage.firstCall.args;
+      expect(message.context.ref).to.equal('local');
+      expect(message.context.branch).to.equal('configured');
+    } finally {
+      destroy();
+    }
   });
 
   it('calls onClose for a closeLibrary action', async () => {
@@ -138,7 +167,7 @@ describe('setupIframeChannel', () => {
       iframe,
       hashState: { org: 'myorg', site: 'mysite' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
     const starts = [];
     let ends = 0;
@@ -177,7 +206,7 @@ describe('setupIframeChannel', () => {
       iframe,
       hashState: { org: 'myorg', site: 'mysite' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
     const emit = (source, origin, type) => window.dispatchEvent(new MessageEvent('message', { source, origin, data: { type } }));
     const wrongSource = new MessageChannel();
@@ -216,7 +245,7 @@ describe('setupIframeChannel', () => {
         iframe,
         hashState: { org: 'myorg', site: 'mysite' },
         getView: () => null,
-        onClose: () => {},
+        onClose: () => { },
       }));
       await wait(800);
       expect(postMessage.firstCall.args[0].token).to.equal('initial-token');
@@ -294,7 +323,7 @@ describe('setupIframeChannel', () => {
         iframe,
         hashState: { org: 'asset-list-bridge-org', site: 'asset-list-bridge-site' },
         getView: () => null,
-        onClose: () => {},
+        onClose: () => { },
       }));
       const emit = (data) => window.dispatchEvent(new MessageEvent('message', { source: iframe.contentWindow, origin: 'https://plugin.example.com', data }));
       emit({ type: 'ew-asset-list-request' });
@@ -373,7 +402,7 @@ describe('setupIframeChannel', () => {
       iframe,
       hashState: { org: 'myorg', site: 'mysite' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
     const markup = '<table><tr><td>Hero</td></tr></table>';
     const heading = '<h2>Heading</h2>';
@@ -418,7 +447,7 @@ describe('setupIframeChannel', () => {
       iframe,
       hashState: { org: 'myorg', site: 'mysite' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
 
     let received;
@@ -439,7 +468,7 @@ describe('setupIframeChannel', () => {
       iframe,
       hashState: { org: 'myorg', site: 'mysite' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
 
     let received;
@@ -460,7 +489,7 @@ describe('setupIframeChannel', () => {
       iframe,
       hashState: { org: 'myorg', site: 'mysite' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
 
     let received;
@@ -481,7 +510,7 @@ describe('setupIframeChannel', () => {
       iframe,
       hashState: { org: 'myorg', site: 'mysite' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
 
     const reply = new Promise((resolve) => {
@@ -501,7 +530,7 @@ describe('setupIframeChannel', () => {
       iframe,
       hashState: { org: 'myorg', site: 'mysite' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
 
     document.dispatchEvent(new CustomEvent(CHAT_EVENT.AGENT_CHANGE, { detail: { agent: 'writer' } }));
@@ -520,7 +549,7 @@ describe('setupIframeChannel', () => {
       iframe,
       hashState: { org: 'myorg', site: 'mysite' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
 
     destroy();
@@ -537,7 +566,7 @@ describe('setupIframeChannel', () => {
       iframe,
       hashState: { org: 'myorg', site: 'mysite' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
 
     destroy();
@@ -563,7 +592,7 @@ describe('setupIframeChannel getSelection', () => {
 
   async function connect(view) {
     const iframe = makeIframe();
-    const options = { iframe, hashState: HOST, getView: () => view, onClose: () => {} };
+    const options = { iframe, hashState: HOST, getView: () => view, onClose: () => { } };
     const { channel, destroy } = await setupIframeChannel(options);
     destroyChannel = destroy;
     return { iframe, channel };

@@ -1,9 +1,20 @@
-import { getNx } from '../../scripts/utils.js';
+import { getNx, getNx2 } from '../../scripts/utils.js';
+import { resolveBrowsePath } from './utils.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
 const styles = await loadStyle(import.meta.url);
 document.adoptedStyleSheets.push(styles);
+
+async function getBrowsePath({ org, site }) {
+  const { fetchDaConfigs } = await import(`${getNx2()}/utils/daConfig.js`);
+  return resolveBrowsePath({
+    search: window.location.search,
+    org,
+    site,
+    fetchConfigs: fetchDaConfigs,
+  });
+}
 
 async function loadComponent(el, cmpName, pathDetails) {
   const existing = el.querySelector(cmpName);
@@ -13,7 +24,8 @@ async function loadComponent(el, cmpName, pathDetails) {
   }
   // Swapping views — remove whichever component is currently mounted.
   el.querySelector('da-sites, da-browse')?.remove();
-  await import(`./${cmpName}/${cmpName}.js`);
+  const componentPath = cmpName === 'da-sites' ? '.' : await getBrowsePath(pathDetails);
+  await import(`${componentPath}/${cmpName}/${cmpName}.js`);
   const cmp = document.createElement(cmpName);
   cmp.details = pathDetails;
   el.append(cmp);

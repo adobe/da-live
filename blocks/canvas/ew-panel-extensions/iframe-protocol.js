@@ -8,6 +8,7 @@ import { createAssetListing } from './asset-list.js';
 import { createLocalAssetListing } from './local-asset-list.js';
 import { getBlockProperties, replaceBlockText, replaceBlockImage } from './properties.js';
 import { canvasBus } from '../utils/canvas-bus.js';
+import { getCanvasBranch } from '../utils/branch.js';
 
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
@@ -319,11 +320,13 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
 
   const readyTimer = setTimeout(() => {
     if (!iframe.contentWindow) return;
+    // Keep ref's plugin-development meaning; branch is the selected site code.
+    const context = { ...project, branch: getCanvasBranch({ org, site }) };
     iframe.contentWindow.postMessage(
       {
         ready: true,
-        project,
-        context: project,
+        project: context,
+        context,
         token,
       },
       targetOrigin,

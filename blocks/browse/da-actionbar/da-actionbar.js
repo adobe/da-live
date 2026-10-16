@@ -122,7 +122,7 @@ export default class DaActionBar extends LitElement {
   }
 
   async handleShare() {
-    const { items2Clipboard } = await import('../da-list/helpers/utils.js');
+    const { items2Clipboard } = await import('../shared/list.js');
     items2Clipboard(this.items);
     const opts = { bubbles: true, composed: true };
     const event = new CustomEvent('onshare', opts);
@@ -194,7 +194,7 @@ export default class DaActionBar extends LitElement {
             aria-label="Unselect items">
             ${icon('close')}
           </button>
-          <span>${this.currentAction}</span>
+          <span role="status" aria-live="polite">${this.currentAction}</span>
         </div>
         <div class="da-action-bar-right-rail" role="toolbar">
           <button

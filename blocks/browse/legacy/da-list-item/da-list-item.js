@@ -1,0 +1,305 @@
+import { LitElement, html, nothing, until } from 'da-lit';
+import { delay, sanitizeName, formatDate } from '../../../shared/utils.js';
+import { getNx, getNx2Api } from '../../../../scripts/utils.js';
+import { ICONS, iconPathForExt } from '../../../shared/icons.js';
+import getEditPath from '../../shared.js';
+
+import {
+  fetchAemStatus,
+  fetchDaStatus,
+  doesFileExist,
+  getRenamedPath,
+} from '../../shared/item.js';
+
+// Styles
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const SHARED = await loadStyle(new URL('../../../shared/styles/base.css', import.meta.url).href);
+const STYLE = await loadStyle(import.meta.url);
+
+export default class DaListItem extends LitElement {
+  static properties = {
+    idx: { type: Number },
+    name: { type: String },
+    path: { type: String },
+    date: { type: Number },
+    ext: { type: String },
+    editor: { type: String },
+    rename: { type: Boolean },
+    allowselect: { type: Boolean },
+    isChecked: { attribute: 'ischecked', type: Boolean },
+    isFavorited: { attribute: 'isfavorited', type: Boolean },
+    _isRenaming: { type: Boolean },
+    _isExpanded: { type: Boolean, state: true },
+    _preview: { state: true },
+    _live: { state: true },
+    _version: { state: true },
+    _lastModifedBy: { state: true },
+  };
+
+  connectedCallback() {
+    super.connectedCallback();
+    this.shadowRoot.adoptedStyleSheets = [SHARED, STYLE];
+  }
+
+  async update(props) {
+    if (props.has('rename')) {
+      if (this.rename) this.selectInput();
+    }
+    if (props.has('path')) {
+      if (props.get('path') !== this.path) {
+        this.classList.remove('is-expanded');
+      }
+    }
+
+    super.update(props);
+  }
+
+  selectInput() {
+    setTimeout(() => {
+      const input = this.shadowRoot.querySelector('.da-item-list-item-rename input');
+      input.focus();
+      input.select();
+    }, 250);
+  }
+
+  async updateAEMStatus() {
+    const { preview, live } = await fetchAemStatus(this);
+    this._preview = preview;
+    this._live = live;
+  }
+
+  async updateDAStatus() {
+    const status = await fetchDaStatus(this);
+    if (!status) return;
+    this._version = status.version;
+    this._lastModifedBy = status.lastModifiedBy;
+  }
+
+  handleChecked(e) {
+    this.isChecked = !this.isChecked;
+    const opts = {
+      detail: { checked: this.isChecked, shiftKey: e?.shiftKey ?? false },
+      bubbles: true,
+      composed: true,
+    };
+    const event = new CustomEvent('checked', opts);
+    this.dispatchEvent(event);
+  }
+
+  notifyRenamed(oldPath) {
+    const opts = { detail: { path: this.path, name: this.name, date: this.date, oldPath } };
+    const event = new CustomEvent('renamecompleted', opts);
+    this.dispatchEvent(event);
+  }
+
+  setStatus(text, description, type) {
+    const opts = { detail: { text, description, type }, bubbles: true, composed: true };
+    const event = new CustomEvent('onstatus', opts);
+    this.dispatchEvent(event);
+  }
+
+  doesFileExist(path) {
+    return doesFileExist(path);
+  }
+
+  async handleRenameSubmit(e) {
+    e.preventDefault();
+
+    const newName = sanitizeName(e.target.elements['new-name'].value, { trimTrailing: true });
+
+    if (e.submitter.value === 'cancel' || this.name === newName) {
+      this.handleChecked();
+    } else if (!newName) {
+      this.setStatus('A name is required.', 'Please enter a valid name.');
+      await delay(2000);
+      this.setStatus();
+    } else {
+      const oldPath = this.path;
+      const newPath = getRenamedPath({ path: oldPath, name: this.name, newName });
+
+      const fileExists = await this.doesFileExist(newPath);
+      if (fileExists) {
+        this.setStatus('A file with this name already exists.', 'Please choose a different name.');
+        await delay(2000);
+        this.setStatus();
+        return;
+      }
+
+      this._preview = null;
+      this._live = null;
+
+      this.name = newName;
+      this.path = newPath;
+      this.rename = false;
+      this._isRenaming = true;
+      this.date = Date.now();
+
+      const showStatus = setTimeout(() => { this.setStatus('Renaming', 'Please be patient. Renaming items with many children can take time.'); }, 5000);
+      const { source } = await getNx2Api();
+      const { status } = await source.move(oldPath, { destination: newPath });
+
+      if (status === 204) {
+        clearTimeout(showStatus);
+        this.setStatus();
+        this._isRenaming = false;
+        // Uncheck the item and bubble up state
+        this.handleChecked();
+        this.updateAEMStatus();
+        this.notifyRenamed(oldPath);
+      } else {
+        this.setStatus('There was an error. Refresh and try again.', 'error');
+      }
+    }
+  }
+
+  handleRename({ target }) {
+    target.value = sanitizeName(target.value);
+  }
+
+  toggleExpand() {
+    this.classList.toggle('is-expanded');
+    if (this.classList.contains('is-expanded')) {
+      this.updateAEMStatus();
+      this.updateDAStatus();
+    } else {
+      this._preview = null;
+      this._live = null;
+      this._version = null;
+      this._lastModifedBy = null;
+    }
+  }
+
+  renderDate() {
+    if (!this.date) return nothing;
+    const { date, time } = formatDate(this.date);
+    return `${date} ${time}`;
+  }
+
+  renderRename() {
+    return html`
+      <form class="da-item-list-item-rename" @submit=${this.handleRenameSubmit}>
+        <span class="da-item-list-item-type ${this.ext ? 'da-item-list-item-type-file' : 'da-item-list-item-type-folder'} ${this.ext ? `da-item-list-item-icon-${this.ext}` : ''}">
+          ${this.renderIcon()}
+        </span>
+        <input type="text" value="${this.name}" @input=${this.handleRename} name="new-name" aria-label="Rename item">
+        <div class="da-item-list-item-rename-actions">
+          <button aria-label="Confirm" value="confirm">
+            <div class="icon checkmark-icon"></div>
+          </button>
+          <button aria-label="Cancel" value="cancel">
+            <div class="icon cancel-icon"></div>
+          </button>
+        </div>
+      </form>
+    `;
+  }
+
+  renderIcon() {
+    return html`<svg viewBox="0 0 20 20"><use href="${iconPathForExt(this.ext)}#icon"</svg>`;
+  }
+
+  renderItem() {
+    let path = this.ext ? getEditPath({ path: this.path, ext: this.ext, editor: this.editor }) : `#${this.path}`;
+    let externalUrlPromise;
+    if (this.ext === 'link') {
+      path = nothing;
+      externalUrlPromise = getNx2Api()
+        .then(({ source }) => source.get(this.path))
+        .then((response) => response.json())
+        .then((data) => data.externalUrl);
+    }
+    return html`
+      <a href="${this.ext === 'link' ? until(externalUrlPromise) : path}" class="da-item-list-item-title">
+        <div class="da-item-list-item-info">
+          ${this._isRenaming ? html`<span class="da-item-list-item-type"><div class="icon rename-icon"></div></span>
+          ` : html`
+            <span class="da-item-list-item-type">
+              ${this.renderIcon()}
+              ${this.isFavorited ? html`<svg class="da-item-list-item-favorite" viewBox="0 0 20 20" aria-label="Favorited"><use href="${ICONS.favorite}#icon"</svg>` : nothing}
+            </span>
+          `}
+          <div class="da-item-list-item-name">
+            <span class="da-item-list-item-name-text">${this.name}</span>
+          </div>
+        </div>
+        <div class="da-item-list-item-date">${this.ext === 'link' ? nothing : this.renderDate()}</div>
+      </a>`;
+  }
+
+  renderCheckBox() {
+    return html`
+      <label class="da-checkbox">
+        <input type="checkbox" name="item-selected" id="item-selected-${this.idx}" .checked="${this.isChecked}" @click="${this.handleChecked}" aria-label="Select item">
+      </label>
+    `;
+  }
+
+  renderDaDetails() {
+    return html`
+      <span class="da-item-list-item-type da-item-list-item-type-file-version">
+        <svg viewBox="0 0 20 20"><use href="${ICONS.file}#icon"</svg>
+      </span>
+      <div class="da-list-item-da-details-version">
+        <p class="da-list-item-details-title">Version</p>
+        <p>${this._version || this._version === 0 ? this._version : 'Checking'}</p>
+      </div>
+      <div class="da-list-item-da-details-modified">
+        <p class="da-list-item-details-title">Last Modified By</p>
+        <p>${this._lastModifedBy ? this._lastModifedBy : 'Checking'}</p>
+      </div>
+    `;
+  }
+
+  renderAemDate(env) {
+    if (!this[env]) {
+      return 'Checking';
+    }
+    if (this[env].lastModified) {
+      return `${this[env].lastModified.date} ${this[env].lastModified.time}`;
+    }
+    return env === '_preview' ? 'Not previewed' : 'Not published';
+  }
+
+  render() {
+    return html`
+      <div class="da-item-list-item-inner ${this.allowselect ? 'can-select' : ''}" role="gridcell">
+        ${this.allowselect ? this.renderCheckBox() : nothing}
+        ${this.rename ? this.renderRename() : this.renderItem()}
+        <button
+          aria-label="Open"
+          @click=${this.toggleExpand}
+          class="da-item-list-item-expand-btn ${(this.ext && this.ext !== 'link') ? 'is-visible' : ''}">
+        </button>
+      </div>
+      <div class="da-item-list-item-details ${this.allowselect ? 'can-select' : ''}" role="gridcell">
+        ${this.renderDaDetails()}
+        <a
+          href=${this._preview?.redirect || this._preview?.url}
+          target="_blank"
+          aria-label="Open preview"
+          @click=${this.showPreview}
+          class="da-item-list-item-aem-btn">
+          <div class="da-item-list-item-aem-icon ${this._preview?.status === 200 ? 'is-active' : ''}"></div>
+          <div class="da-aem-icon-details">
+            <p class="da-list-item-details-title">Previewed${this._live?.redirect ? ' Redirect' : ''}</p>
+            <p class="da-aem-icon-date">${this._preview?.status === 401 || this._preview?.status === 403 ? 'Not authorized' : this.renderAemDate('_preview')}</p>
+          </div>
+        </a>
+        <a
+          href=${this._live?.redirect || this._live?.url}
+          target="_blank"
+          aria-label="Open preview"
+          @click=${this.showPreview}
+          class="da-item-list-item-aem-btn">
+          <div class="da-item-list-item-aem-icon ${this._live?.status === 200 ? 'is-active' : ''}"></div>
+          <div class="da-aem-icon-details">
+            <p class="da-list-item-details-title">Published${this._live?.redirect ? ' Redirect' : ''}</p>
+            <p class="da-aem-icon-date">${this._live?.status === 401 || this._live?.status === 403 ? 'Not authorized' : this.renderAemDate('_live')}</p>
+          </div>
+        </a>
+      </div>
+    `;
+  }
+}
+
+customElements.define('da-list-item', DaListItem);

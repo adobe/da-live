@@ -16,6 +16,7 @@ let getCanvasToolPanelViews;
 let fetchExtensions;
 let resolvePreflightConfig;
 let createPreflightView;
+let getItemPreviewUrl;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
@@ -29,6 +30,31 @@ before(async () => {
   createBlockView = mod.createBlockView;
   getCanvasToolPanelViews = mod.getCanvasToolPanelViews;
   fetchExtensions = mod.fetchExtensions;
+  getItemPreviewUrl = mod.getItemPreviewUrl;
+});
+
+describe('library preview branch state', () => {
+  const state = { org: 'org', site: 'site', path: '/org/site/page' };
+  const item = { path: 'https://content.da.live/org/site/blocks/hero' };
+  afterEach(() => canvasBus.branchState.emit({ path: null, status: 'pending' }));
+
+  it('uses the configured canvas branch rather than a snapshotted query ref', () => {
+    canvasBus.branchState.emit({ ...state, status: 'ready', branch: 'Configured/Branch' });
+    expect(getItemPreviewUrl(item, state).previewUrl)
+      .to.equal('https://configured-branch--site--org.aem.page/blocks/hero');
+  });
+
+  ['pending', 'error'].forEach((status) => {
+    it(`does not build a main-branch URL while branch state is ${status}`, () => {
+      canvasBus.branchState.emit({ ...state, status });
+      expect(getItemPreviewUrl(item, state)).to.equal(null);
+    });
+  });
+
+  it('does not use state belonging to a different site', () => {
+    canvasBus.branchState.emit({ ...state, site: 'different', status: 'ready', branch: 'wrong' });
+    expect(getItemPreviewUrl(item, state)).to.equal(null);
+  });
 });
 
 describe('EW panel helpers transformBlock', () => {
@@ -414,7 +440,7 @@ describe('extensionToPanelView', () => {
     const container = document.createElement('div');
 
     try {
-      await view.loadModal(container, () => {});
+      await view.loadModal(container, () => { });
     } finally {
       window.fetch = savedFetch;
       if (savedAdobeIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedAdobeIMS;
@@ -486,10 +512,10 @@ describe('createCommentsView', () => {
 
   it('load() returns an ew-comments element that binds to the current controller', async () => {
     const controller = {
-      subscribe() { return () => {}; },
+      subscribe() { return () => { }; },
       getCurrentUser() { return null; },
-      onCurrentUserChange() { return () => {}; },
-      setPanelOpen() {},
+      onCurrentUserChange() { return () => { }; },
+      setPanelOpen() { },
     };
     setCommentsController(controller);
     const el = await createCommentsView().load();
@@ -504,9 +530,9 @@ describe('ew-comments panel visibility', () => {
   let el;
 
   const stubController = (calls) => ({
-    subscribe() { return () => {}; },
+    subscribe() { return () => { }; },
     getCurrentUser() { return null; },
-    onCurrentUserChange() { return () => {}; },
+    onCurrentUserChange() { return () => { }; },
     setPanelOpen(value) { calls.push(value); },
   });
 

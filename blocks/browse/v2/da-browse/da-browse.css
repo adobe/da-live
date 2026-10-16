@@ -1,0 +1,11 @@
+:host {
+  display: block;
+  font-family: var(--s2-font-family);
+}
+
+.da-browse-content {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
