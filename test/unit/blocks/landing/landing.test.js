@@ -3,7 +3,7 @@ import sinon from 'sinon';
 import '../../setup-nx.js';
 import { getFavorites, toggleFavorite } from '../../../../blocks/browse/shared/favorites.js';
 import { setUISize } from '../../../fixtures/nx2/utils/ui-size.js';
-import { DaLanding } from '../../../../blocks/landing/landing.js';
+import loadLanding, { DaLanding } from '../../../../blocks/landing/landing.js';
 import { getNx, getNx2Api } from '../../../../scripts/utils.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
@@ -45,6 +45,26 @@ describe('landing page', () => {
     expect(el.shadowRoot.querySelector('.scope-label').textContent).to.include('Site root / org/site');
     expect(el.shadowRoot.querySelector('nx-picker').value).to.equal('org/site');
     expect(el.shadowRoot.textContent).not.to.include('Tasks');
+  });
+
+  it('opts into a light preview without saving a theme preference', () => {
+    const { href } = window.location;
+    const preference = localStorage.getItem('color-scheme');
+    const container = document.createElement('div');
+    try {
+      const url = new URL(href);
+      url.searchParams.set('theme', 'light');
+      window.history.replaceState(null, '', url);
+      loadLanding(container);
+      expect(container.firstElementChild.dataset.theme).to.equal('light');
+      expect(localStorage.getItem('color-scheme')).to.equal(preference);
+      url.searchParams.delete('theme');
+      window.history.replaceState(null, '', url);
+      loadLanding(container);
+      expect(container.firstElementChild.hasAttribute('data-theme')).to.equal(false);
+    } finally {
+      window.history.replaceState(null, '', href);
+    }
   });
 
   it('uses existing root favorites and allows a file to be starred/unstarred', async () => {

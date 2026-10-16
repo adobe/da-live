@@ -356,5 +356,9 @@ export default function init(el) {
   if (!document.adoptedStyleSheets.includes(shellStyle)) {
     document.adoptedStyleSheets = [...document.adoptedStyleSheets, shellStyle];
   }
-  el.replaceChildren(document.createElement('da-landing'));
+  const landing = document.createElement('da-landing');
+  if (new URLSearchParams(window.location.search).get('theme') === 'light') {
+    landing.dataset.theme = 'light';
+  }
+  el.replaceChildren(landing);
 }

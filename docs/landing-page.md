@@ -9,6 +9,9 @@ After publishing the `lp` branch, open:
 https://lp--da-live--adobe.aem.live/?landing=true&nx=devlive#/aemsites/devlive
 ```
 
+Add `&theme=light` for a light-mode preview without changing the saved theme.
+The override applies only while this landing page is present.
+
 Use `nx=ui-size-scale` to exercise the live S/M sizing from adobe/da-nx#816.
 The landing page uses its `UISizeController`, text tokens, shared button classes
 and explicitly sized picker/segmented controls, following adobe/da-live#1416.
