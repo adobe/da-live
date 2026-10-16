@@ -17,7 +17,6 @@ import {
 import { dismissAlertBanner } from '../utils/utils.js';
 
 test('Empty out open editors on deleted documents', async ({ browser, page }, workerInfo) => {
-  test.skip(TEST_SITE !== 'da-status', 'Empty out open editors on deleted documents doesn\'t work yet in Helix 6');
   test.setTimeout(60000);
 
   const url = getTestPageURL('delete', workerInfo);

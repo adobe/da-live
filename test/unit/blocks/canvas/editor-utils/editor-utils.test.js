@@ -41,6 +41,11 @@ describe('getPreviewOrigin', () => {
     expect(origin).to.include('feature--myrepo--myorg');
   });
 
+  it('uses the same hostname normalization as Send for slash and mixed-case branches', () => {
+    expect(getPreviewOrigin('myorg', 'myrepo', 'Feat/My_Branch'))
+      .to.include('feat-my-branch--myrepo--myorg');
+  });
+
   it('uses main when branch is explicitly main', () => {
     const origin = getPreviewOrigin('myorg', 'myrepo', 'main');
     expect(origin).to.include('main--myrepo--myorg');
@@ -475,6 +480,20 @@ describe('updateDocument rerender scopes', () => {
     mount([p('Intro'), hr(), p('Delete'), p('Keep')]);
     dispatch((tr) => tr.delete(posOf(2), posOf(3)));
     expect(lastScope()).to.deep.equal({ type: 'section', sectionIndex: 1 });
+  });
+
+  it('refreshes the layout when joining paragraphs removes an editable node', () => {
+    mount([p('Intro'), hr(), p('First'), p('Second'), p('Tail')]);
+    ctx.port.postMessage.resetHistory();
+
+    dispatch((tr) => tr.join(posOf(3)));
+
+    expect(bodies()).to.have.lengthOf(1);
+    expect(lastScope()).to.deep.equal({ type: 'section', sectionIndex: 1 });
+    const layout = document.createElement('div');
+    layout.innerHTML = bodies()[0].payload.body;
+    expect([...layout.querySelectorAll('p')].map((node) => node.textContent))
+      .to.deep.equal(['Intro', 'FirstSecond', 'Tail']);
   });
 
   it('renders the page for one change spanning two sections', () => {
