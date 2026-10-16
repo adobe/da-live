@@ -2,9 +2,7 @@ import { Plugin } from 'da-y-wrapper';
 import { getNx2 } from '../../../scripts/utils.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { encodeAnchor, decodeAnchor } from '../comments/helpers/anchor.js';
-import { controllerPathnameFromEditorCtx } from '../ew-editor-doc/utils/ctx.js';
 import { resolveFindings } from './resolve.js';
-import { applyFinding, addFindingToChat } from './instruction.js';
 
 // How long to wait for the iframe to report the marker's rect before falling back to a
 // centered card (e.g. the preview runs a quick-edit build without finding support).
@@ -28,11 +26,6 @@ function isEditable(el) {
   return !!el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName));
 }
 
-function pageOf(ctx) {
-  if (!ctx?.org || !ctx?.repo) return '';
-  return `${ctx.org}/${ctx.repo}${controllerPathnameFromEditorCtx(ctx)}`;
-}
-
 function hasResolvableEvidence(finding) {
   return (finding?.evidence ?? []).some((e) => (
     (e?.anchorType === 'text' && e.anchorText)
@@ -42,13 +35,13 @@ function hasResolvableEvidence(finding) {
 
 /**
  * Shows evaluation findings on the page: claims EVAL_EVENT.FOCUS_FINDING, outlines the element
- * in the preview iframe (via SET_FINDING_MARKERS) and hosts the floating ew-finding-card.
+ * in the preview iframe (via SET_FINDING_MARKERS) and hosts the floating ew-finding-card, which
+ * only explains the failure.
  */
 export function createFindingsController({
   getView,
   getPort,
   getIframe,
-  getCtx,
   createCard = createCardElement,
   layoutTimeoutMs = LAYOUT_TIMEOUT_MS,
 }) {
@@ -106,16 +99,12 @@ export function createFindingsController({
   function updateCard() {
     const { card, current, groupIds } = session;
     if (!card) return;
-    const { finding, evidence } = current;
+    const { finding, label } = current;
     const anchorRect = session.marked ? hostRect() : null;
     const waiting = session.marked && !session.layoutDone && !session.timedOut;
     const bounds = iframeBounds();
     card.finding = finding;
-    card.quote = evidence?.anchorType === 'text' ? evidence.anchorText : '';
-    card.highlightOnly = !!evidence?.highlightOnly;
-    card.replacement = evidence?.anchorType === 'text' && !card.highlightOnly
-      ? evidence.replacement ?? ''
-      : '';
+    card.elementLabel = label ?? '';
     card.index = groupIds.indexOf(finding.id);
     card.total = groupIds.length;
     card.unresolved = !session.marked || !session.rect;
@@ -192,16 +181,6 @@ export function createFindingsController({
     select(session.groupIds[idx], { scroll: true });
   }
 
-  function cardArgs() {
-    const { current } = session;
-    return {
-      finding: current.finding,
-      label: current.label,
-      evidence: current.evidence,
-      page: pageOf(getCtx?.()),
-    };
-  }
-
   function listenWhileOpen(card) {
     const onPointerDown = (e) => {
       if (!e.composedPath().includes(card)) close();
@@ -221,11 +200,6 @@ export function createFindingsController({
       session.blurTimer = setTimeout(() => close({ restoreFocus: false }), IFRAME_CLICK_GRACE_MS);
     };
     const onClose = () => close();
-    const onApply = () => {
-      applyFinding(cardArgs());
-      close({ restoreFocus: false });
-    };
-    const onAdd = () => addFindingToChat(cardArgs());
     const onStep = (e) => step(e.detail.delta);
 
     document.addEventListener('pointerdown', onPointerDown, true);
@@ -233,8 +207,6 @@ export function createFindingsController({
     window.addEventListener('resize', onResize);
     window.addEventListener('blur', onBlur);
     card.addEventListener('finding-close', onClose);
-    card.addEventListener('finding-apply', onApply);
-    card.addEventListener('finding-add-to-chat', onAdd);
     card.addEventListener('finding-step', onStep);
     return () => {
       document.removeEventListener('pointerdown', onPointerDown, true);
@@ -242,8 +214,6 @@ export function createFindingsController({
       window.removeEventListener('resize', onResize);
       window.removeEventListener('blur', onBlur);
       card.removeEventListener('finding-close', onClose);
-      card.removeEventListener('finding-apply', onApply);
-      card.removeEventListener('finding-add-to-chat', onAdd);
       card.removeEventListener('finding-step', onStep);
     };
   }

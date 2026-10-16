@@ -53,7 +53,6 @@ async function setup({ withPort = true, withIframe = true, layoutTimeoutMs } = {
     getView: () => view,
     getPort: () => (withPort ? port : undefined),
     getIframe: () => (withIframe ? iframe : undefined),
-    getCtx: () => ({ org: 'acme', repo: 'site', path: 'acme/site/drafts/me/index' }),
     layoutTimeoutMs,
   });
   const editor = await createTestEditor({ additionalPlugins: [controller.plugin] });
@@ -164,8 +163,7 @@ describe('findings controller', () => {
     await until(() => card()?.total === 2);
     expect(card().index).to.equal(0);
     expect(card().finding.id).to.equal('a');
-    expect(card().quote).to.equal('passion for');
-    expect(card().replacement).to.equal('love of');
+    expect(card().elementLabel).to.equal('Heading 1');
 
     card().dispatchEvent(new CustomEvent('finding-step', { bubbles: true, detail: { delta: 1 } }));
     expect(card().finding.id).to.equal('b');
@@ -217,25 +215,6 @@ describe('findings controller', () => {
     expect(view.state.doc.resolve(marker.from).parent.textContent).to.equal('Test');
     // 2nd paragraph: 1 (open) + 19 chars + 1 (close) + 1 (open)
     expect(marker.from).to.equal(22);
-  });
-
-  it('does not offer Apply for highlight-only evidence', async () => {
-    ctx = await setup();
-    const list = [{
-      id: 'h',
-      title: 'Lorem',
-      suggested: 'Rewrite',
-      evidence: [{ anchorType: 'text', anchorText: 'Born from a passion', replacement: 'x', highlightOnly: true }],
-    }];
-    focus('h', list);
-    await until(() => card()?.finding);
-    expect(card().highlightOnly).to.be.true;
-    expect(card().replacement).to.equal('');
-    await card().updateComplete;
-    expect(card().shadowRoot.querySelector('.apply')).to.be.null;
-    focus('a');
-    await until(() => card()?.finding?.id === 'a');
-    expect(card().highlightOnly).to.be.false;
   });
 
   it('posts an image marker with the image src', async () => {
@@ -387,43 +366,24 @@ describe('findings controller', () => {
     expect(ctx.sent).to.have.lengthOf(0);
   });
 
-  it('Apply change sends the instruction with auto-send and closes everything', async () => {
+  it('is explanation-only: the card offers no Apply change or Add to chat', async () => {
     ctx = await setup();
     const events = [];
     const rec = (e) => events.push(e);
     document.addEventListener('nx-panel-open', rec);
-    focus('a');
-    await until(() => card()?.finding);
-    card().dispatchEvent(new CustomEvent('finding-apply', { bubbles: true }));
-    document.removeEventListener('nx-panel-open', rec);
-
-    expect(events).to.have.lengthOf(1);
-    const { section, options } = events[0].detail;
-    expect(section).to.equal('chat');
-    expect(options.autoSend).to.be.true;
-    expect(options.text).to.include('(acme/site/drafts/me/index)');
-    expect(options.text).to.include('Check: Header copy');
-    expect(options.text).to.include('Element: Heading 1');
-    expect(options.text).to.include('Current text: "passion for"');
-    expect(options.text).to.include('Change it to: "love of"');
-    expect(card()).to.be.null;
-    const m = markerMsgs(ctx.sent);
-    expect(m[m.length - 1].payload.markers).to.deep.equal([]);
-  });
-
-  it('Add to chat adds the pill and keeps the card open', async () => {
-    ctx = await setup();
-    const pills = [];
-    const rec = (e) => pills.push(e.detail);
     document.addEventListener('nx-add-to-chat', rec);
     focus('a');
     await until(() => card()?.finding);
+    await card().updateComplete;
+    const root = card().shadowRoot;
+    expect(root.querySelector('.apply, .add, .suggestion')).to.be.null;
+    expect(root.textContent).to.not.include('Apply change');
+    expect(root.textContent).to.not.include('Add to chat');
+    card().dispatchEvent(new CustomEvent('finding-apply', { bubbles: true }));
     card().dispatchEvent(new CustomEvent('finding-add-to-chat', { bubbles: true }));
+    document.removeEventListener('nx-panel-open', rec);
     document.removeEventListener('nx-add-to-chat', rec);
-
-    expect(pills).to.have.lengthOf(1);
-    expect(pills[0]).to.include({ key: 'eval-finding', id: 'eval-a', type: 'evaluation-finding', name: 'Header copy' });
-    expect(pills[0].description).to.include('Element: Heading 1');
+    expect(events).to.have.lengthOf(0);
     expect(ctx.controller.isOpen).to.be.true;
   });
 

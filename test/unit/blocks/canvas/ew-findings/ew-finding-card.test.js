@@ -40,34 +40,38 @@ describe('normalizeContext', () => {
 });
 
 describe('computePlacement', () => {
+  // 12px from the 4.8px outline the preview draws around the element.
+  const GAP = 16.8;
   const bounds = { top: 0, left: 0, width: 1000, height: 800 };
   const card = { width: 360, height: 300 };
 
   it('prefers the right side of the element', () => {
     const anchor = { top: 100, left: 100, width: 200, height: 40 };
     const p = computePlacement({ anchor, card, bounds });
-    expect(p).to.deep.equal({ side: 'right', left: 312, top: 100 });
+    expect(p.side).to.equal('right');
+    expect(p.left).to.be.closeTo(100 + 200 + GAP, 0.001);
+    expect(p.top).to.be.closeTo(100 - 4.8, 0.001);
   });
 
   it('flips left when there is no room on the right', () => {
     const anchor = { top: 100, left: 600, width: 380, height: 40 };
     const p = computePlacement({ anchor, card, bounds });
     expect(p.side).to.equal('left');
-    expect(p.left).to.equal(600 - 12 - 360);
+    expect(p.left).to.be.closeTo(600 - GAP - 360, 0.001);
   });
 
   it('goes below a full-width element', () => {
     const anchor = { top: 100, left: 20, width: 960, height: 40 };
     const p = computePlacement({ anchor, card, bounds });
     expect(p.side).to.equal('below');
-    expect(p.top).to.equal(152);
+    expect(p.top).to.be.closeTo(100 + 40 + GAP, 0.001);
   });
 
   it('goes above when below does not fit', () => {
     const anchor = { top: 600, left: 20, width: 960, height: 40 };
     const p = computePlacement({ anchor, card, bounds });
     expect(p.side).to.equal('above');
-    expect(p.top).to.equal(600 - 12 - 300);
+    expect(p.top).to.be.closeTo(600 - GAP - 300, 0.001);
   });
 
   it('clamps inside the bounds', () => {
@@ -87,14 +91,20 @@ describe('computePlacement', () => {
 describe('ew-finding-card', () => {
   afterEach(() => document.querySelectorAll('ew-finding-card').forEach((el) => el.remove()));
 
-  it('renders title, suggestion, issue, context and pager', async () => {
-    const el = await makeCard({ index: 1, total: 3 });
+  it('renders the element header, failure title, summary, context and pager', async () => {
+    const el = await makeCard({ index: 1, total: 3, elementLabel: 'Hero' });
     const dialog = q(el, '[role="dialog"]');
     expect(dialog.getAttribute('aria-labelledby')).to.equal('finding-title');
+    expect(q(el, 'h2').textContent).to.equal('Hero');
+    expect(q(el, '.badge').textContent).to.equal('3 failures');
     expect(q(el, '#finding-title').textContent).to.equal('Header copy');
-    expect(q(el, '.suggestion').textContent).to.include('Use the brand voice');
-    expect(q(el, '.issue').textContent).to.include('Too generic');
-    expect(q(el, '.pager').textContent).to.include('2 of 3 failures');
+    expect(q(el, '.failure-icon svg path[fill="#d45b00"]')).to.exist;
+    expect(q(el, '.summary h4').textContent).to.equal('Summary');
+    expect(q(el, '.summary p').textContent).to.equal('Too generic');
+    expect(q(el, '.context summary').textContent).to.include('Context');
+    expect(q(el, '.pager').textContent).to.include('Previous failure');
+    expect(q(el, '.pager').textContent).to.include('Next failure');
+    expect(q(el, '.pager [aria-live]').textContent).to.equal('2 of 3 failures');
     expect(q(el, '.note')).to.be.null;
     const links = [...el.shadowRoot.querySelectorAll('.context a')];
     expect(links).to.have.lengthOf(1);
@@ -103,23 +113,25 @@ describe('ew-finding-card', () => {
     expect(el.shadowRoot.querySelectorAll('.context li')).to.have.lengthOf(2);
   });
 
-  it('shows "quote → replacement" only when a replacement exists', async () => {
-    const el = await makeCard({ quote: 'Old', replacement: 'New' });
-    const change = q(el, '.change');
-    expect(change.textContent).to.include('Old');
-    expect(change.textContent).to.include('New');
-    el.replacement = '';
-    await el.updateComplete;
-    expect(q(el, '.change')).to.be.null;
+  it('is explanation-only: no suggested change, Apply change or Add to chat', async () => {
+    const el = await makeCard({ replacement: 'ignored', total: 2 });
+    expect(q(el, '.suggestion, .change, .actions, .apply, .add')).to.be.null;
+    expect(el.shadowRoot.textContent).to.not.include('Use the brand voice');
+    expect(el.shadowRoot.textContent).to.not.include('Apply change');
+    expect(el.shadowRoot.textContent).to.not.include('Add to chat');
   });
 
-  it('hides Apply for highlight-only evidence but keeps Add to chat', async () => {
-    const el = await makeCard({ highlightOnly: true });
-    expect(q(el, '.apply')).to.be.null;
-    expect(q(el, '.add')).to.exist;
-    el.highlightOnly = false;
-    await el.updateComplete;
-    expect(q(el, '.apply')).to.exist;
+  it('falls back to the description for the summary and to the title for the header', async () => {
+    const el = await makeCard({ finding: { id: 'd', title: 'Only title', description: 'Why it fails' } });
+    expect(q(el, 'h2').textContent).to.equal('Only title');
+    expect(q(el, '.summary p').textContent).to.equal('Why it fails');
+    expect(q(el, '.context')).to.be.null;
+  });
+
+  it('uses the singular badge for one failure and hides the pager', async () => {
+    const el = await makeCard({ index: 0, total: 1 });
+    expect(q(el, '.badge').textContent).to.equal('1 failure');
+    expect(q(el, '.pager')).to.be.null;
   });
 
   it('shows the not-located note and a backdrop for the unresolved dialog', async () => {
@@ -128,29 +140,28 @@ describe('ew-finding-card', () => {
     expect(q(el, '.backdrop')).to.exist;
   });
 
-  it('single failure disables both pager buttons', async () => {
-    const el = await makeCard({ index: 0, total: 1 });
-    expect(q(el, '.pager').textContent).to.include('1 of 1 failure');
+  it('disables Previous on the first failure and Next on the last', async () => {
+    const el = await makeCard({ index: 0, total: 2 });
     const [prev, next] = el.shadowRoot.querySelectorAll('.step');
     expect(prev.disabled).to.be.true;
-    expect(next.disabled).to.be.true;
+    expect(next.disabled).to.be.false;
+    el.index = 1;
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.step.prev').disabled).to.be.false;
+    expect(el.shadowRoot.querySelector('.step.next').disabled).to.be.true;
   });
 
-  it('emits events for the buttons', async () => {
+  it('emits events for close and the pager', async () => {
     const el = await makeCard({ index: 1, total: 3 });
     const seen = [];
-    ['finding-close', 'finding-apply', 'finding-add-to-chat', 'finding-step'].forEach((n) => {
+    ['finding-close', 'finding-step'].forEach((n) => {
       el.addEventListener(n, (e) => seen.push([n, e.detail]));
     });
-    q(el, '.add').click();
-    q(el, '.apply').click();
     q(el, '.close').click();
     const [prev, next] = el.shadowRoot.querySelectorAll('.step');
     prev.click();
     next.click();
     expect(seen).to.deep.equal([
-      ['finding-add-to-chat', null],
-      ['finding-apply', null],
       ['finding-close', null],
       ['finding-step', { delta: -1 }],
       ['finding-step', { delta: 1 }],
@@ -178,8 +189,8 @@ describe('ew-finding-card', () => {
       bounds: { top: 0, left: 0, width: 1400, height: 900 },
     });
     expect(el.getAttribute('data-side')).to.equal('right');
-    expect(el.style.left).to.equal('262px');
-    expect(el.style.top).to.equal('100px');
+    expect(el.style.left).to.equal('267px');
+    expect(el.style.top).to.equal('95px');
   });
 
   it('is hidden while pending', async () => {

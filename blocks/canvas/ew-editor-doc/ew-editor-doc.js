@@ -79,7 +79,6 @@ export class EwEditorDoc extends LitElement {
       getView: () => this._proseContext?.view,
       getPort: () => this._controllerCtx?.port,
       getIframe: () => this._controllerCtx?.iframe ?? this._wysiwygIframe,
-      getCtx: () => this.ctx,
     });
   }
 
