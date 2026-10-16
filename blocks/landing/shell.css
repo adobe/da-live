@@ -1,0 +1,34 @@
+body.dark-scheme:has(da-landing) {
+  color-scheme: dark;
+}
+
+body:has(da-landing[data-theme="light"]) {
+  color-scheme: light;
+}
+
+nx-nav:has(> .landing-workspace) {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  column-gap: 16px;
+}
+
+nx-nav > .landing-workspace {
+  --nx-picker-height: var(--s2-spacing-500);
+  --nx-picker-padding: var(--s2-spacing-75) var(--s2-spacing-300);
+  --nx-picker-border: 1px solid var(--s2-gray-300);
+  --nx-picker-radius: var(--s2-corner-radius-800);
+  --nx-picker-background: var(--s2-gray-25);
+  --nx-picker-max-width: 100%;
+
+  box-sizing: border-box;
+  width: max-content;
+  min-width: min(220px, 100%);
+  max-width: min(100%, 280px);
+}
+
+nx-nav > .landing-workspace:hover {
+  --nx-picker-border: 1px solid var(--s2-gray-500);
+}
+
+nx-nav > .landing-workspace::part(label) {
+  font-weight: var(--s2-component-m-bold-font-weight);
+}
