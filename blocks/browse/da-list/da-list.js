@@ -9,6 +9,7 @@ import {
   initIms,
 } from '../../shared/utils.js';
 import { createVersion } from '../../shared/version/version-actions.js';
+import createStatusRegistry from './status-registry/status-registry.js';
 
 import '../da-list-item/da-list-item.js';
 
@@ -55,6 +56,7 @@ export default class DaList extends LitElement {
     _aemActionState: { state: true },
     _isHlx6: { state: true },
     _canDelete: { state: true },
+    _statusRegistry: { state: true },
   };
 
   constructor() {
@@ -164,6 +166,7 @@ export default class DaList extends LitElement {
         return [];
       }
       if (permissions) this.handlePermissions(permissions);
+      this.updateStatusRegistry(org, site);
       this._continuationToken = continuationToken;
       this._allPagesLoaded = !continuationToken;
       this.resetListItemPaths(items);
@@ -178,6 +181,30 @@ export default class DaList extends LitElement {
       this.resetListItemPaths([]);
       return [];
     }
+  }
+
+  /**
+   * The status registry belongs to this list instance: it is built here,
+   * where `source.list` has just handed back the permissions a `requires` row
+   * is filtered on, and it is dropped when the list is.
+   *
+   * It is rebuilt when the path crosses an org or site boundary, since that is
+   * the scope of both the config it reads and the plugins it holds. Permissions
+   * are part of the key too: a `requires: write` plugin must not keep
+   * contributing after a move into a folder this user can only read.
+   */
+  updateStatusRegistry(org, site) {
+    const key = org && site ? `/${org}/${site}:${this._permissions?.join(',') ?? ''}` : '';
+    if (key === this._statusRegistryKey) return;
+    this._statusRegistryKey = key;
+    this._statusRegistry = key
+      ? createStatusRegistry({
+        org,
+        site,
+        path: `/${org}/${site}`,
+        permissions: this._permissions,
+      })
+      : null;
   }
 
   async updateDeletePermission() {
@@ -1206,6 +1233,7 @@ export default class DaList extends LitElement {
           date="${item.lastModified}"
           ext="${item.ext}"
           editor="${this.editor}"
+          .statusRegistry=${this._statusRegistry}
           idx=${idx}>
         </da-list-item>`)}
         ${showSentinel ? html`<div class="da-list-sentinel" aria-hidden="true"></div>` : nothing}
