@@ -1,17 +1,7 @@
-/* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
 
 const tick = () => new Promise((resolve) => { setTimeout(resolve, 30); });
-
-const EXTENSION = {
-  name: 'preflight',
-  title: 'Preflight',
-  sources: ['https://example.com/pf'],
-  experience: 'inline',
-  org: 'org',
-  site: 'site',
-};
 
 function captureStatus() {
   const events = [];
@@ -40,15 +30,12 @@ describe('ew-preflight-host', () => {
 
   async function mount() {
     const host = document.createElement('ew-preflight-host');
-    host.extension = EXTENSION;
     document.body.append(host);
     await host.updateComplete;
     return host;
   }
 
-  const custom = (host) => host.shadowRoot.querySelector('ew-panel-extension');
   const builtin = (host) => host.shadowRoot.querySelector('ew-preflight');
-  const run = (requestId) => canvasBus.preflightRunRequest.emit({ paths: ['/org/site/a.html'], requestId });
 
   afterEach(() => {
     el?.remove();
@@ -56,100 +43,20 @@ describe('ew-preflight-host', () => {
     takePendingPreflightRequest();
   });
 
-  it('shows the custom content by default', async () => {
+  it('renders the built-in Preflight and exposes its header actions', async () => {
     el = await mount();
-    expect(custom(el)).to.exist;
-    expect(custom(el).hidden).to.equal(false);
-    expect(custom(el).extension).to.equal(EXTENSION);
-    expect(builtin(el)).to.equal(null);
-    expect(el.getHeaderActions().childElementCount).to.equal(0);
-  });
-
-  it('switches to the built-in Preflight for a publish gate and reports its verdict', async () => {
-    el = await mount();
-    const cap = captureStatus();
-    run('h1');
-    await el.updateComplete;
-    await tick();
-    cap.stop();
     expect(builtin(el)).to.exist;
-    expect(custom(el).hidden).to.equal(true);
-    expect(el.getHeaderActions().childElementCount).to.equal(1);
-    expect(peekPendingPreflightRequest()).to.equal(null);
-    const gate = cap.events.filter((d) => d.requestId === 'h1');
-    expect(gate).to.have.length(1);
-    expect(gate[0].path).to.equal('/org/site/a.html');
+    expect(el.getHeaderActions()).to.equal(builtin(el).getHeaderActions());
   });
 
-  it('claims a request parked before mount exactly once', async () => {
+  it('lets the built-in Preflight claim a publish gate parked before mount', async () => {
     const cap = captureStatus();
-    run('h2');
-    expect(peekPendingPreflightRequest()?.requestId).to.equal('h2');
+    canvasBus.preflightRunRequest.emit({ paths: ['/org/site/a.html'], requestId: 'h1' });
+    expect(peekPendingPreflightRequest()?.requestId).to.equal('h1');
     el = await mount();
     await tick();
     cap.stop();
-    expect(builtin(el)).to.exist;
     expect(peekPendingPreflightRequest()).to.equal(null);
-    expect(cap.events.filter((d) => d.requestId === 'h2')).to.have.length(1);
-  });
-
-  it('returns to the custom content when the tools panel closes', async () => {
-    el = await mount();
-    run('h3');
-    await el.updateComplete;
-    await tick();
-    canvasBus.toolPanelViewState.emit(null);
-    await el.updateComplete;
-    expect(builtin(el)).to.equal(null);
-    expect(custom(el).hidden).to.equal(false);
-    expect(el.getHeaderActions().childElementCount).to.equal(0);
-    canvasBus.toolPanelViewState.emit('preflight');
-  });
-
-  it('ignores other panels closing (e.g. chat)', async () => {
-    el = await mount();
-    run('h4');
-    await el.updateComplete;
-    await tick();
-    el._gateSettled = false;
-    document.dispatchEvent(new CustomEvent('nx-panel-close', { bubbles: true, composed: true }));
-    document.dispatchEvent(new CustomEvent('nx-panel-close', { detail: { section: 'chat' } }));
-    // The still-open tool panel re-broadcasts its current view.
-    canvasBus.toolPanelViewState.emit('preflight');
-    await el.updateComplete;
-    expect(builtin(el)).to.exist;
-  });
-
-  it('returns to the custom content on a view switch only after the gate settled', async () => {
-    el = await mount();
-    run('h5');
-    await el.updateComplete;
-    await tick();
-    el._gateSettled = false;
-    canvasBus.toolPanelViewState.emit('files');
-    await el.updateComplete;
-    expect(builtin(el)).to.exist;
-
-    canvasBus.preflightStatusState.emit({ requestId: 'h5', status: 'fail' });
-    canvasBus.toolPanelViewState.emit('files');
-    await el.updateComplete;
-    expect(builtin(el)).to.equal(null);
-    canvasBus.toolPanelViewState.emit('preflight');
-  });
-
-  it('reuses a mounted built-in for a second gate and drops the parked copy', async () => {
-    el = await mount();
-    run('h6');
-    await el.updateComplete;
-    await tick();
-    const first = builtin(el);
-    const cap = captureStatus();
-    run('h7');
-    await el.updateComplete;
-    await tick();
-    cap.stop();
-    expect(builtin(el)).to.equal(first);
-    expect(peekPendingPreflightRequest()).to.equal(null);
-    expect(cap.events.filter((d) => d.requestId === 'h7')).to.have.length(1);
+    expect(cap.events.filter((d) => d.requestId === 'h1')).to.have.length(1);
   });
 });

@@ -13,14 +13,10 @@ let createCommentsView;
 let createMetadataView;
 let getCanvasToolPanelViews;
 let fetchExtensions;
-let resolvePreflightConfig;
-let createPreflightView;
 let getItemPreviewUrl;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
-  resolvePreflightConfig = mod.resolvePreflightConfig;
-  createPreflightView = mod.createPreflightView;
   getBlockVariants = mod.getBlockVariants;
   extensionToPanelView = mod.extensionToPanelView;
   getPreviewStatus = mod.getPreviewStatus;
@@ -581,99 +577,12 @@ describe('getCanvasToolPanelViews', () => {
     expect(views.map((v) => v.id)).to.include('metadata');
   });
 
-  it('uses the built-in Preflight view when no custom Preflight is configured', async () => {
-    setDaConfigs([{ data: [] }]);
-    const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
-    const preflight = views.find((v) => v.id === 'preflight');
-    expect(preflight.cacheKey).to.equal(undefined);
-  });
-
-  it('uses the custom Preflight view when the prepare sheet configures a path', async () => {
+  it('ignores a custom Preflight configured in the prepare sheet', async () => {
     setDaConfigs([{ prepare: { data: [{ title: 'Preflight', path: 'https://example.com/pf' }] } }]);
     const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
     const preflight = views.find((v) => v.id === 'preflight');
-    expect(preflight.cacheKey).to.equal(JSON.stringify(['https://example.com/pf']));
-  });
-});
-
-describe('resolvePreflightConfig', () => {
-  afterEach(() => setDaConfigs([]));
-
-  it('returns null without a Preflight row', async () => {
-    setDaConfigs([{ prepare: { data: [{ title: 'Other', path: '/x' }] } }, {}]);
-    expect(await resolvePreflightConfig({ org: 'org', site: 'site' })).to.equal(null);
-  });
-
-  it('returns null without an org', async () => {
-    expect(await resolvePreflightConfig({})).to.equal(null);
-  });
-
-  it('uses an org row with a path', async () => {
-    setDaConfigs([{ prepare: { data: [{ title: 'Preflight', path: '/org-pf' }] } }, {}]);
-    expect(await resolvePreflightConfig({ org: 'org', site: 'site' }))
-      .to.deep.equal({ title: 'Preflight', path: '/org-pf' });
-  });
-
-  it('lets the site row override the org row', async () => {
-    setDaConfigs([
-      { prepare: { data: [{ title: 'Preflight', path: '/org-pf' }] } },
-      { prepare: { data: [{ title: 'Preflight', path: '/site-pf' }] } },
-    ]);
-    expect(await resolvePreflightConfig({ org: 'org', site: 'site' }))
-      .to.deep.equal({ title: 'Preflight', path: '/site-pf' });
-  });
-
-  it('falls back to built-in when the winning row has no path', async () => {
-    setDaConfigs([
-      { prepare: { data: [{ title: 'Preflight', path: '/org-pf' }] } },
-      { prepare: { data: [{ title: 'Preflight' }] } },
-    ]);
-    expect(await resolvePreflightConfig({ org: 'org', site: 'site' })).to.equal(null);
-  });
-
-  it('ignores errored configs', async () => {
-    setDaConfigs([{ error: 'nope' }, { prepare: { data: [{ title: 'Preflight', path: '/pf' }] } }]);
-    expect(await resolvePreflightConfig({ org: 'org', site: 'site' }))
-      .to.deep.equal({ title: 'Preflight', path: '/pf' });
-  });
-});
-
-describe('createPreflightView', () => {
-  it('loads the built-in ew-preflight without a custom config', async () => {
-    const view = createPreflightView({ org: 'org', site: 'site' });
-    expect(view).to.include({ id: 'preflight', label: 'Preflight', firstParty: true });
-    expect(view.cacheKey).to.equal(undefined);
-  });
-
-  describe('with a custom path', () => {
-    const custom = { title: 'Preflight', path: '/tools/preflight.html' };
-    const state = { org: 'org', site: 'site', path: '/org/site/page' };
-    afterEach(() => canvasBus.branchState.emit({ path: null, status: 'pending' }));
-
-    it('keys the view by the configured path', () => {
-      const view = createPreflightView({ custom, org: 'org', site: 'site' });
-      expect(view.cacheKey).to.equal(JSON.stringify(['/tools/preflight.html']));
-    });
-
-    it('proxies the custom path through the settled canvas branch', async () => {
-      canvasBus.branchState.emit({ ...state, status: 'pending' });
-      const loading = createPreflightView({ custom, org: 'org', site: 'site' }).load();
-      canvasBus.branchState.emit({ ...state, status: 'ready', branch: 'Configured/Branch' });
-      const [source] = (await loading).extension.sources;
-      expect(source).to.contain('configured-branch');
-      expect(source).to.contain('/tools/preflight.html');
-    });
-
-    it('does not guess a branch when resolution fails', async () => {
-      canvasBus.branchState.emit({ ...state, status: 'error', error: 'down' });
-      let error;
-      try {
-        await createPreflightView({ custom, org: 'org', site: 'site' }).load();
-      } catch (e) {
-        error = e;
-      }
-      expect(error).to.be.instanceOf(Error);
-    });
+    expect(preflight).to.include({ label: 'Preflight', firstParty: true });
+    expect(preflight.cacheKey).to.equal(undefined);
   });
 });
 

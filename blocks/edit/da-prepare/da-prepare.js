@@ -23,6 +23,14 @@ function isSvgSymbol(icon) {
   return icon.startsWith('#') || icon.includes('.svg#');
 }
 
+// Custom Preflight (a `prepare` sheet row overriding the OOTB one) is supported only in
+// the classic editor; track usage to decide whether canvas ever needs it back.
+function trackCustomPreflight(path) {
+  import(`${getNx2()}/deps/rum.js`)
+    .then(({ sampleRUM }) => sampleRUM('click', { source: 'custom-preflight', target: path }))
+    .catch(() => {});
+}
+
 const OOTB_ACTIONS = [
   {
     title: 'Preflight',
@@ -148,6 +156,7 @@ export default class DaPrepare extends LitElement {
       this._dialogItem = { ...item, cmp };
       return;
     }
+    if (item.title === 'Preflight') trackCustomPreflight(item.path);
     await ensurePreviewProxySession(item.path, {
       org: this.details?.org,
       site: this.details?.site,
