@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { getPreviewOrigin } from '../editor-utils/editor-utils.js';
-import { getCanvasBranch } from '../utils/branch.js';
+import { whenCanvasBranch } from '../utils/branch.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { reportPreflightStatus } from '../editor-utils/preflight-bridge.js';
 import { takePendingPreflightRequest } from '../editor-utils/preflight-responder.js';
@@ -73,8 +73,8 @@ class EwPreflight extends LitElement {
     const { org, site, path } = this._hashState ?? {};
     if (!org || !site) return '';
     const relPath = path ? path.replace(/^\//, '') : '';
-    // Settled by the time an evaluation runs; never guess another branch if it isn't.
-    const branch = getCanvasBranch({ org, site });
+    // The panel can evaluate before canvas finishes resolving this page's branch.
+    const branch = await whenCanvasBranch({ org, site, path: relPath || undefined });
     if (!branch) {
       const error = new Error('Branch not resolved');
       error.detail = 'Could not determine the preview branch for this page. Try again.';

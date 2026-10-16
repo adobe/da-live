@@ -20,13 +20,20 @@ export function getCanvasBranch({ org, site } = {}) {
   return normalizeBranch(ref && ref !== 'local' ? ref : 'main');
 }
 
-/** Resolve once the canvas branch for org/site settles; `undefined` if resolution failed. */
-export function whenCanvasBranch({ org, site } = {}) {
+const toDocPath = (value) => value.replace(/\/+/g, '/');
+
+/**
+ * Resolve once the canvas branch settles; `undefined` if resolution failed.
+ * With `path`, only that page's state counts, never a previous page's.
+ */
+export function whenCanvasBranch({ org, site, path } = {}) {
+  const docPath = path ? toDocPath(`/${org}/${site}/${path}`) : undefined;
   return new Promise((resolve) => {
     let settled = false;
     let unsub;
     const onState = (state) => {
       if (settled) return;
+      if (docPath && (!state?.path || toDocPath(state.path) !== docPath)) return;
       const branch = getCanvasBranch({ org, site });
       const failed = state?.status === 'error' && state.org === org && state.site === site;
       if (!branch && !failed) return;

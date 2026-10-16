@@ -593,6 +593,7 @@ describe('ew-preflight document navigation', () => {
 
 describe('ew-preflight page URL', () => {
   const state = { org: 'org', site: 'site', path: '/org/site/a' };
+  const PAGE_URL = /^https:\/\/feat-one--site--org\.[^/]+\/a$/;
   let canvasBus;
 
   before(async () => {
@@ -605,19 +606,32 @@ describe('ew-preflight page URL', () => {
   it('evaluates the canvas branch instead of main', async () => {
     canvasBus.branchState.emit({ ...state, status: 'ready', branch: 'Feat/One' });
     const pageUrl = await createGateElement()._resolvePageUrl();
-    expect(pageUrl).to.match(/^https:\/\/feat-one--site--org\.[^/]+\/a$/);
+    expect(pageUrl).to.match(PAGE_URL);
   });
 
-  ['pending', 'error'].forEach((status) => {
-    it(`fails instead of guessing a branch while branch state is ${status}`, async () => {
-      canvasBus.branchState.emit({ ...state, status });
-      let error;
-      try {
-        await createGateElement()._resolvePageUrl();
-      } catch (e) {
-        error = e;
-      }
-      expect(error?.detail).to.contain('preview branch');
-    });
+  it('waits for a pending branch to resolve instead of failing', async () => {
+    canvasBus.branchState.emit({ ...state, status: 'pending' });
+    const resolving = createGateElement()._resolvePageUrl();
+    canvasBus.branchState.emit({ ...state, status: 'ready', branch: 'Feat/One' });
+    expect(await resolving).to.match(PAGE_URL);
+  });
+
+  it('ignores the previous page branch while the new page resolves', async () => {
+    canvasBus.branchState.emit({ ...state, path: '/org/site/b', status: 'ready', branch: 'old' });
+    const resolving = createGateElement()._resolvePageUrl();
+    canvasBus.branchState.emit({ ...state, status: 'pending' });
+    canvasBus.branchState.emit({ ...state, status: 'ready', branch: 'Feat/One' });
+    expect(await resolving).to.match(PAGE_URL);
+  });
+
+  it('fails instead of guessing a branch when resolution fails', async () => {
+    canvasBus.branchState.emit({ ...state, status: 'error', error: 'down' });
+    let error;
+    try {
+      await createGateElement()._resolvePageUrl();
+    } catch (e) {
+      error = e;
+    }
+    expect(error?.detail).to.contain('preview branch');
   });
 });
