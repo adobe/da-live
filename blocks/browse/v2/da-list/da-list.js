@@ -269,6 +269,10 @@ export default class DaList extends DaListBase {
     return `Sorted by ${name ? 'Name' : 'Modified'} (${detail})`;
   }
 
+  get selectableItems() {
+    return this.filteredItems;
+  }
+
   get filteredItems() {
     return this._hiddenTypes.size
       ? this._listItems.filter((item) => !this._hiddenTypes.has(getTypeLabel(item.ext)))
@@ -325,10 +329,12 @@ export default class DaList extends DaListBase {
 
   toggleTypeVisibility(label) {
     this._hiddenTypes = toggleInSet(this._hiddenTypes, label);
+    this.handleSelectionState();
   }
 
   toggleAllTypesVisibility() {
     this._hiddenTypes = this._hiddenTypes.size ? new Set() : new Set(this.allTypeLabels);
+    this.handleSelectionState();
   }
 
   getGroupItems(label) {

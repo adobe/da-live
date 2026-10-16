@@ -357,8 +357,12 @@ export default class DaListBase extends LitElement {
     this._deleteCountLoading = false;
   }
 
+  get selectableItems() {
+    return this._listItems;
+  }
+
   handleSelectionState() {
-    this._selectedItems = this._listItems.filter((item) => item.isChecked);
+    this._selectedItems = this.selectableItems.filter((item) => item.isChecked);
     // If more than one item is selected, force everything to not be in a rename state
     if (this._selectedItems.length > 1) {
       this._listItems.forEach((item) => { item.rename = false; });

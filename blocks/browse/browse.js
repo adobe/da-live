@@ -7,13 +7,13 @@ const styles = await loadStyle(import.meta.url);
 document.adoptedStyleSheets.push(styles);
 
 async function getBrowsePath({ org, site }) {
-  const { fetchDaConfigs } = await import(`${getNx2()}/utils/daConfig.js`);
-  return resolveBrowsePath({
-    search: window.location.search,
-    org,
-    site,
-    fetchConfigs: fetchDaConfigs,
-  });
+  const { search } = window.location;
+  try {
+    const { fetchDaConfigs } = await import(`${getNx2()}/utils/daConfig.js`);
+    return await resolveBrowsePath({ search, org, site, fetchConfigs: fetchDaConfigs });
+  } catch {
+    return resolveBrowsePath({ search, org, site, fetchConfigs: () => [] });
+  }
 }
 
 const V2_NAV_PATH = '/nx/fragments/browse2-nav';
