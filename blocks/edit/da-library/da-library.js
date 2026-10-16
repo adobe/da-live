@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { DOMParser as proseDOMParser, DOMSerializer, Slice, TextSelection } from 'da-y-wrapper';
 import { htmlToProse } from '../utils/helpers.js';
 import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
-import { getPostMessageTargetOrigin, isValidHref } from '../../shared/utils.js';
+import { getPostMessageTargetOrigin, isValidHref, replyToGetSelection } from '../../shared/utils.js';
 import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
 import getSheet from '../../shared/sheet.js';
 import inlinesvg from '../../shared/inlinesvg.js';
@@ -289,17 +289,23 @@ class DaLibrary extends LitElement {
         this.handleClose();
       }
       if (e.data.action === 'getSelection') {
-        const { selection } = window.view.state;
-        if (selection.empty) {
-          channel.port1.postMessage({ action: 'error', details: 'No selection found' });
-          return;
+        const { view } = window;
+        let selectionHtml = null;
+        if (view && !view.state.selection.empty) {
+          const serializer = DOMSerializer.fromSchema(view.state.schema);
+          const fragment = serializer.serializeFragment(view.state.selection.content().content);
+          const div = document.createElement('div');
+          div.appendChild(fragment);
+          selectionHtml = div.innerHTML;
         }
-        const slice = selection.content();
-        const serializer = DOMSerializer.fromSchema(window.view.state.schema);
-        const fragment = serializer.serializeFragment(slice.content);
-        const div = document.createElement('div');
-        div.appendChild(fragment);
-        target.contentWindow.postMessage({ action: 'sendSelection', details: div.innerHTML }, targetOrigin);
+        replyToGetSelection({
+          port: channel.port1,
+          target: target.contentWindow,
+          targetOrigin,
+          requestId: e.data.requestId,
+          html: selectionHtml,
+          error: view ? 'No selection found' : 'No editor view',
+        });
       }
     };
 

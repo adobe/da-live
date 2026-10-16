@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2, getBtnSizeClass, getLgBtnClass } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 import {
   loadBlockLibrary,
   getItemPreviewUrl,
@@ -72,11 +73,18 @@ class EwBlockLibraryModal extends LitElement {
     this._openDescriptions = new Set();
     this._viewport = 'desktop';
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
+    this._unsubBranch = canvasBus.branchState.subscribe((state) => {
+      if (!state?.path) {
+        this._previewInfo = null;
+        this._previewBlock = undefined;
+      } else if (this._previewBlock) this._loadPreview(this._previewBlock);
+    });
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
+    this._unsubBranch?.();
   }
 
   willUpdate(changed) {
@@ -155,12 +163,17 @@ class EwBlockLibraryModal extends LitElement {
   }
 
   async _loadPreview(block) {
+    this._previewBlock = block;
     const { org, site } = this._hashState || {};
     if (!org || !site) {
       this._previewInfo = null;
       return;
     }
     const details = getItemPreviewUrl(block, { org, site });
+    if (!details) {
+      this._previewInfo = { error: 'Preview branch unavailable. Please try again once the editor preview is ready.' };
+      return;
+    }
     const url = details.previewUrl;
     this._previewInfo = { path: block.path, name: block.name, url, ok: undefined };
     const ok = await getPreviewStatus({
@@ -298,6 +311,9 @@ class EwBlockLibraryModal extends LitElement {
   }
 
   _renderPreview() {
+    if (this._previewInfo?.error) {
+      return html`<div class="modal-preview-error"><p>${this._previewInfo.error}</p></div>`;
+    }
     if (!this._previewInfo) {
       return html`<div class="modal-preview-placeholder">
         Select a block to see a preview.

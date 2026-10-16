@@ -15,7 +15,7 @@ function docWithHeading(text, level = 2) {
   return schema.nodes.doc.create(null, heading);
 }
 
-function setup(text = 'hello') {
+function setup(content = 'hello') {
   let rerenderCalls = 0;
   let rerenderDetails;
   let getEditorCalls = 0;
@@ -25,7 +25,8 @@ function setup(text = 'hello') {
     () => { getEditorCalls += 1; },
     undefined,
   );
-  const prevState = EditorState.create({ schema, doc: docWithParagraph(text), plugins: [plugin] });
+  const doc = typeof content === 'string' ? docWithParagraph(content) : content;
+  const prevState = EditorState.create({ schema, doc, plugins: [plugin] });
   return {
     plugin,
     prevState,
@@ -33,6 +34,70 @@ function setup(text = 'hello') {
     rerenderDetails: () => rerenderDetails,
   };
 }
+
+describe('createTrackingPlugin rendered editable targets', () => {
+  const blockDoc = (name) => {
+    const row = (text) => schema.node('table_row', null, [
+      schema.node('table_cell', null, [schema.node('paragraph', null, [schema.text(text)])]),
+    ]);
+    return schema.node('doc', null, [
+      schema.node('paragraph', null, [schema.text('text')]),
+      schema.node('table', null, [row(name), row('before')]),
+    ]);
+  };
+
+  const textPosition = (doc, text) => {
+    const positions = [];
+    doc.descendants((node, pos) => {
+      if (node.isText && node.text === text) positions.push(pos);
+    });
+    expect(positions).to.have.length(1);
+    return positions[0];
+  };
+
+  it('rerenders block-title edits instead of opening the preceding paragraph', () => {
+    const { plugin, prevState, counts, rerenderDetails } = setup(blockDoc('hero'));
+    const nextState = prevState.apply(
+      prevState.tr.insertText('!', textPosition(prevState.doc, 'hero') + 1),
+    );
+
+    plugin.spec.view().update({ state: nextState }, prevState);
+
+    expect(counts()).to.deep.equal({ rerenderCalls: 1, getEditorCalls: 0 });
+    expect(rerenderDetails()).to.deep.include({
+      previousDoc: prevState.doc,
+      doc: nextState.doc,
+    });
+  });
+
+  ['Metadata', 'Section Metadata', 'Section Metadata (highlight)', 'Library Metadata'].forEach((name) => {
+    it(`rerenders body-cell edits inside ${name}`, () => {
+      const { plugin, prevState, counts, rerenderDetails } = setup(blockDoc(name));
+      const nextState = prevState.apply(
+        prevState.tr.insertText('!', textPosition(prevState.doc, 'before') + 1),
+      );
+
+      plugin.spec.view().update({ state: nextState }, prevState);
+
+      expect(counts()).to.deep.equal({ rerenderCalls: 1, getEditorCalls: 0 });
+      expect(rerenderDetails()).to.deep.include({
+        previousDoc: prevState.doc,
+        doc: nextState.doc,
+      });
+    });
+  });
+
+  it('keeps body-cell edits in ordinary rendered blocks inline', () => {
+    const { plugin, prevState, counts } = setup(blockDoc('hero'));
+    const nextState = prevState.apply(
+      prevState.tr.insertText('!', textPosition(prevState.doc, 'before') + 1),
+    );
+
+    plugin.spec.view().update({ state: nextState }, prevState);
+
+    expect(counts()).to.deep.equal({ rerenderCalls: 0, getEditorCalls: 1 });
+  });
+});
 
 describe('createTrackingPlugin — trackingPluginKey skip flag', () => {
   it('rerenders the scope when typing into an empty paragraph missing from the preview', () => {

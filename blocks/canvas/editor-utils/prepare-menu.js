@@ -1,10 +1,11 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2, sanitizeName } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import { fetchDaConfigs, getPostMessageTargetOrigin } from '../../shared/utils.js';
 import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
 import { getPreviewOrigin } from './editor-utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
+import { getCanvasBranch } from '../utils/branch.js';
 import { initPreflightBridge, reportPreflightStatus } from './preflight-bridge.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -13,11 +14,12 @@ await import(`${getNx()}/blocks/shared/popover/popover.js`);
 
 const style = await loadStyle(import.meta.url);
 const buttonsStyle = await getSheet(`${getNx2()}/styles/buttons.css`);
-const ref = sanitizeName(new URLSearchParams(window.location.search).get('ref'), false) || 'main';
 
 function resolveMenuItem(item, details) {
   const { org, site } = details || {};
-  const fallback = { org, site, branch: ref, currentOrg: org };
+  const branch = getCanvasBranch({ org, site });
+  if (!branch) return { ...item, disabled: Boolean(item.path && !item.render) };
+  const fallback = { org, site, branch, currentOrg: org };
   fallback.getUrl = getPreviewOrigin;
   return {
     ...item,
@@ -73,6 +75,7 @@ export default class PrepareMenu extends LitElement {
     this._unsubs = [
       canvasBus.preflightRunRequest.subscribe(this.handlePreflightRun),
       canvasBus.preflightStatusState.subscribe(this.handlePreflightStatus),
+      canvasBus.branchState.subscribe(() => { if (this.details) this.loadMenu(); }),
     ];
   }
 
@@ -110,9 +113,12 @@ export default class PrepareMenu extends LitElement {
   }
 
   async loadMenu() {
+    const { details } = this;
+    if (!details) return;
     const [org, site] = await Promise.all(
-      fetchDaConfigs({ org: this.details.org, site: this.details.site }),
+      fetchDaConfigs({ org: details.org, site: details.site }),
     );
+    if (this.details !== details || !this.isConnected) return;
 
     const ootbLookup = new Map(OOTB_ACTIONS.map((item) => [item.title, item]));
 
@@ -147,6 +153,7 @@ export default class PrepareMenu extends LitElement {
   }
 
   async handleItemClick(item) {
+    if (item.disabled) return;
     this._preflightRequestId = undefined;
     this.shadowRoot.querySelector('nx-popover').close();
     if (item.render) {
@@ -154,10 +161,12 @@ export default class PrepareMenu extends LitElement {
       this._dialogItem = { ...item, cmp };
       return;
     }
+    const branch = getCanvasBranch(this.details);
+    if (!branch) return;
     await ensurePreviewProxySession(item.path, {
       org: this.details?.org,
       site: this.details?.site,
-      branch: ref,
+      branch,
       currentOrg: this.details?.org,
       getUrl: getPreviewOrigin,
     });
@@ -215,7 +224,13 @@ export default class PrepareMenu extends LitElement {
       const { view, org, site, path } = this.details;
 
       const context = {
-        view, org, site, repo: site, ref: 'main', path,
+        view,
+        org,
+        site,
+        repo: site,
+        ref: new URLSearchParams(window.location.search).get('ref') || 'main',
+        branch: getCanvasBranch({ org, site }),
+        path,
       };
       const { token } = window.adobeIMS.getAccessToken();
 
@@ -298,7 +313,7 @@ export default class PrepareMenu extends LitElement {
       <nx-popover placement="below-end" @close=${this._onPopoverClose}>
         <div class="prepare-menu" role="menu">
           ${this._menuItems.map((item) => html`
-            <button type="button" class="prepare-menu-item" role="menuitem" @click=${() => this.handleItemClick(item)}>
+            <button type="button" class="prepare-menu-item" role="menuitem" ?disabled=${item.disabled} @click=${() => this.handleItemClick(item)}>
               ${this.renderIcon(item)}
               <span>${item.title}</span>
             </button>
