@@ -3,9 +3,6 @@ import { resolveBrowsePath } from './utils.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
-const styles = await loadStyle(import.meta.url);
-document.adoptedStyleSheets.push(styles);
-
 async function getBrowsePath({ org, site }) {
   const { fetchDaConfigs } = await import(`${getNx2()}/utils/daConfig.js`);
   return resolveBrowsePath({
@@ -57,7 +54,15 @@ function setRecentSite(details) {
   localStorage.setItem('da-sites', JSON.stringify([siteString, ...currentSites].slice(0, 8)));
 }
 
-export default function init(el) {
+export default async function init(el) {
+  if (new URLSearchParams(window.location.search).get('landing') === 'true') {
+    const { default: loadLanding } = await import('../landing/landing.js');
+    loadLanding(el);
+    return;
+  }
+
+  const styles = await loadStyle(import.meta.url);
+  document.adoptedStyleSheets.push(styles);
   hashChange.subscribe((pathDetails) => {
     const cmpName = pathDetails ? 'da-browse' : 'da-sites';
     loadComponent(el, cmpName, pathDetails);
