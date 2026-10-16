@@ -1,4 +1,4 @@
-import { Plugin, PluginKey } from 'da-y-wrapper';
+import { Plugin, PluginKey, ySyncPluginKey } from 'da-y-wrapper';
 import { isRenderedBlock } from './rerender-scope.js';
 
 // Set on a transaction (tr.setMeta(trackingPluginKey, true)) to skip the diff
@@ -183,12 +183,20 @@ export function findCommonEditableAncestor(view, changes, prevState) {
   return allSameAncestor ? editableAncestors[0] : null;
 }
 
+// Collaborators' changes arrive through Yjs; local undo/redo does too, but is still ours.
+function isRemoteChange(tr) {
+  const yMeta = tr.getMeta(ySyncPluginKey);
+  return !!yMeta?.isChangeOrigin && !yMeta.isUndoRedoOperation;
+}
+
 export function createTrackingPlugin(rerenderPage, updateCursors, getEditor, onSelectionChange) {
   // there can be multiple apply() calls before one update() call,
   // therefore we need to preserve the first state before any transactions
   // to get the right diff on the last apply and avoid "last wins" scenarios
   let beforeTransactionState = null;
   let skipped = false;
+  // A coalesced update only counts as remote if every document change in it was remote.
+  let remoteOnly = null;
 
   return new Plugin({
     key: trackingPluginKey,
@@ -201,6 +209,7 @@ export function createTrackingPlugin(rerenderPage, updateCursors, getEditor, onS
         }
         if (!tr.docChanged) return value;
         beforeTransactionState ??= oldState;
+        remoteOnly = (remoteOnly ?? true) && isRemoteChange(tr);
         return value;
       },
     },
@@ -210,8 +219,10 @@ export function createTrackingPlugin(rerenderPage, updateCursors, getEditor, onS
           const docChanged = view.state.doc !== prevState.doc;
           const previousDoc = beforeTransactionState?.doc;
           const wasSkipped = skipped;
+          const origin = remoteOnly ? 'remote' : 'local';
           beforeTransactionState = null;
           skipped = false;
+          remoteOnly = null;
 
           if (docChanged && (wasSkipped || !previousDoc)) {
             rerenderPage?.();
@@ -238,6 +249,7 @@ export function createTrackingPlugin(rerenderPage, updateCursors, getEditor, onS
                   cursorOffset: commonEditable.pos + 1,
                   previousDoc,
                   doc: view.state.doc,
+                  origin,
                 });
               } else {
                 rerenderPage?.({
