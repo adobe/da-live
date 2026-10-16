@@ -304,6 +304,13 @@
   margin-bottom: 0;
 }
 
+.nx-action-btn-icon.is-active {
+  &, &:hover:not(:disabled) {
+    background: var(--s2-gray-100);
+    color: inherit;
+  }
+}
+
 .card {
   display: flex;
   flex-direction: column;
@@ -334,13 +341,6 @@
 
   .da-item-list-item-type {
     display: none;
-  }
-
-  .nx-action-btn-icon.is-active {
-    &, &:hover:not(:disabled) {
-      background: var(--s2-gray-100);
-      color: inherit;
-    }
   }
 }
 
