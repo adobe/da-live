@@ -7,7 +7,14 @@ import { getNx } from '../../scripts/utils.js';
 export function getChatPanelContent() {
   return async () => {
     const { loadChat } = await import(`${getNx()}/utils/chat.js`);
-    return loadChat();
+    const chat = await loadChat();
+    if (chat.localName === 'nx-chat-ao') {
+      chat.draftReview = async (request) => {
+        const { draftReview } = await import('./draft-review.js');
+        return draftReview(request);
+      };
+    }
+    return chat;
   };
 }
 

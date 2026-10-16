@@ -42,6 +42,22 @@ export function getVersionId(path, entry) {
     : entry.versionId;
 }
 
+export function htmlToAuthoringDom(text) {
+  const ydoc = new Y.Doc();
+  try {
+    aem2doc(text, ydoc);
+    const schema = getSchema();
+    const pmDoc = yDocToProsemirror(schema, ydoc);
+    const fragment = DOMSerializer.fromSchema(schema).serializeFragment(pmDoc.content);
+    const dom = document.createElement('div');
+    dom.append(fragment);
+    wrapTablesInWrappers(dom);
+    return dom;
+  } finally {
+    ydoc.destroy();
+  }
+}
+
 // Fetch a version's HTML and parse it through the same schema-driven pipeline
 // the live doc went through (aem2doc -> ProseMirror -> DOMSerializer), so the
 // result is in the editor's authoring shape rather than raw stored/rendered
@@ -55,15 +71,7 @@ export async function fetchVersionHtml(path, entry) {
     const resp = await versions.get(path, { versionId });
     if (!resp.ok) return null;
     const text = await resp.text();
-    const ydoc = new Y.Doc();
-    aem2doc(text, ydoc);
-    const schema = getSchema();
-    const pmDoc = yDocToProsemirror(schema, ydoc);
-    const fragment = DOMSerializer.fromSchema(schema).serializeFragment(pmDoc.content);
-    const dom = document.createElement('div');
-    dom.append(fragment);
-    wrapTablesInWrappers(dom);
-    return dom;
+    return htmlToAuthoringDom(text);
   } catch {
     return null;
   }
