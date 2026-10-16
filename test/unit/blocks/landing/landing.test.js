@@ -84,6 +84,9 @@ describe('landing page', () => {
     ]);
     expect(el.shadowRoot.querySelector('.tasks-unavailable').textContent).to.equal('Task data is not connected in this preview.');
     expect(el.shadowRoot.querySelector('.tasks-panel').textContent).not.to.include('No tasks');
+    expect(el.shadowRoot.querySelector('.tasks-panel table').getAttribute('aria-labelledby')).to.equal('tasks-heading');
+    expect(el.shadowRoot.querySelector('.tasks-table .tasks-unavailable')).not.to.equal(null);
+    expect(el.shadowRoot.querySelector('.tasks-scroll .tasks-unavailable')).to.equal(null);
   });
 
   it('opts into a light preview without saving a theme preference', () => {

@@ -394,17 +394,19 @@ export class DaLanding extends LitElement {
         </section>
         <section class="tasks-panel" aria-labelledby="tasks-heading">
           <h2 id="tasks-heading">Tasks</h2>
-          <div class="tasks-table" role="region" aria-label="Tasks" tabindex="0">
-            <table>
-              <thead><tr>
-                <th scope="col">Page / Content Fragment</th>
-                <th scope="col">Task Description</th>
-                <th scope="col">Status</th>
-                <th scope="col">Requester</th>
-              </tr></thead>
-            </table>
+          <div class="tasks-table">
+            <div class="tasks-scroll" role="region" aria-label="Tasks" tabindex="0">
+              <table aria-labelledby="tasks-heading">
+                <thead><tr>
+                  <th scope="col">Page / Content Fragment</th>
+                  <th scope="col">Task Description</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Requester</th>
+                </tr></thead>
+              </table>
+            </div>
+            <p class="tasks-unavailable" role="status">Task data is not connected in this preview.</p>
           </div>
-          <p class="tasks-unavailable" role="status">Task data is not connected in this preview.</p>
         </section>
       </div>`;
   }

@@ -35,11 +35,17 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
 - The prompt opens the site's existing assistant and fills its composer.
   It does **not** auto-send. The existing EW/chat flags still apply.
   The coworker icon, prompt placeholder and AI disclaimer follow the mock.
+  The composer uses `--s2-body-size-m` (16px) at both UI sizes and
+  `--s2-gray-600` for the placeholder, including dark mode.
   The plus button continues in chat, where attachments are already supported.
 - The Tasks table follows the mock but explicitly states that task data is not
   connected. This is not an assertion that the selected site has no tasks.
   Existing scheduler, translation and background-job APIs are not a source
   for the mock's general task list (description, status, requester).
+  Table styling follows the [Spectrum table guidance](https://spectrum.adobe.com/web/rsp/components/table):
+  start-aligned text, a compact neutral header, column dividers and horizontal
+  scrolling on narrow screens. No nonfunctional sort or column-menu controls
+  are added while task data is unavailable.
 - Notification counts, rendered page thumbnails and global AI routing are not
   mocked. The mock's routing placeholder does not add a global routing backend.
 
