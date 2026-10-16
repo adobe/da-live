@@ -40,7 +40,7 @@ const until = async (fn, ms = 1000) => {
   return fn();
 };
 
-async function setup({ withPort = true, withIframe = true, layoutTimeoutMs } = {}) {
+async function setup({ withPort = true, withIframe = true, layoutTimeoutMs, ctx: editorCtx } = {}) {
   let view;
   const sent = [];
   const port = { postMessage: (m) => sent.push(m) };
@@ -54,6 +54,7 @@ async function setup({ withPort = true, withIframe = true, layoutTimeoutMs } = {
     getPort: () => (withPort ? port : undefined),
     getIframe: () => (withIframe ? iframe : undefined),
     layoutTimeoutMs,
+    getCtx: () => editorCtx,
   });
   const editor = await createTestEditor({ additionalPlugins: [controller.plugin] });
   view = editor.view;
@@ -429,5 +430,93 @@ describe('findings controller', () => {
     const count = markerMsgs(ctx.sent).length;
     ctx.controller.onPortChange();
     expect(markerMsgs(ctx.sent)).to.have.lengthOf(count + 1);
+  });
+
+  describe('Generate suggestion (SUGGEST_ELEMENT)', () => {
+    let opened;
+    const onOpen = (e) => opened.push(e.detail);
+    beforeEach(() => {
+      opened = [];
+      document.addEventListener('nx-panel-open', onOpen);
+    });
+    afterEach(() => document.removeEventListener('nx-panel-open', onOpen));
+
+    const suggest = (group, extra = {}) => {
+      const event = new CustomEvent('nx-eval-suggest-element', {
+        cancelable: true,
+        detail: { group, ...extra },
+      });
+      document.dispatchEvent(event);
+      return event;
+    };
+    const hero = {
+      key: 'el-hero',
+      label: 'Section 1 › hero — Heading 1',
+      name: 'Hero heading 1',
+      findings: [findings[0], findings[1]],
+    };
+
+    it('claims the event and opens the chat with the rich, auto-sent request', async () => {
+      ctx = await setup({ ctx: { org: 'o', repo: 's', path: '/o/s/drafts/me/index' } });
+      const event = suggest(hero);
+      expect(event.defaultPrevented).to.be.true;
+      expect(opened).to.have.lengthOf(1);
+      const { section, options } = opened[0];
+      expect(section).to.equal('chat');
+      expect(options.autoSend).to.be.true;
+      const lines = options.text.split('\n');
+      expect(lines[0]).to.equal('Hero heading 1 failure: Generate suggestion');
+      expect(lines[1]).to.equal('<!--nx:details-->');
+      expect(lines).to.include('/aem-governance-element-suggestions');
+      expect(lines).to.include('Page: https://da.live/canvas#/o/s/drafts/me/index');
+      expect(lines).to.include('Evaluated URL: https://main--s--o.preview.da.live/drafts/me/index');
+      expect(lines).to.include('Current text: "Born from a passion for exceptional coffee."');
+      expect(lines).to.include('Failing checks (2):');
+      expect(lines.some((l) => l.startsWith('1. Header copy — I-a.'))).to.be.true;
+      expect(lines.some((l) => l.includes('Hint: "love of"'))).to.be.true;
+    });
+
+    it('prefers the evaluated URL of the event and works without an editor context', async () => {
+      ctx = await setup();
+      suggest(hero, { evaluatedUrl: 'https://main--x--y.preview.da.live/p' });
+      const lines = opened[0].options.text.split('\n');
+      expect(lines).to.include('Evaluated URL: https://main--x--y.preview.da.live/p');
+      expect(lines.some((l) => l.startsWith('Page: '))).to.be.false;
+    });
+
+    it('describes an image element by its file and alt', async () => {
+      ctx = await setup();
+      suggest({ key: 'el-img', label: 'Section 1 › cards — Image', name: 'Cards image', findings: [findings[2]] });
+      const { text: message } = opened[0].options;
+      expect(message).to.include('Locate: image favicon.png, occurrence 1');
+      expect(message).to.include('Current alt: ""');
+    });
+
+    it('leaves the event alone when the element is not in the document, has no findings or is claimed', async () => {
+      ctx = await setup();
+      expect(suggest({ ...hero, findings: [findings[3]] }).defaultPrevented).to.be.false;
+      expect(suggest({ ...hero, findings: [] }).defaultPrevented).to.be.false;
+      expect(suggest({ key: 'x' }).defaultPrevented).to.be.false;
+      const early = (e) => e.preventDefault();
+      document.addEventListener('nx-eval-suggest-element', early, true);
+      suggest(hero);
+      document.removeEventListener('nx-eval-suggest-element', early, true);
+      expect(opened).to.have.lengthOf(0);
+    });
+
+    it('stops listening after stop()', async () => {
+      ctx = await setup();
+      ctx.controller.stop();
+      expect(suggest(hero).defaultPrevented).to.be.false;
+      expect(opened).to.have.lengthOf(0);
+    });
+
+    it('does not touch the open failure popover', async () => {
+      ctx = await setup();
+      focus('b');
+      await until(() => card()?.finding);
+      suggest(hero);
+      expect(ctx.controller.isOpen).to.be.true;
+    });
   });
 });

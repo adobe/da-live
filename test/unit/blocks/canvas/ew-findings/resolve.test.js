@@ -5,6 +5,8 @@ import {
   fileNameOf,
   resolveEvidence,
   resolveFindings,
+  elementSnapshot,
+  resolveGroup,
 } from '../../../../../blocks/canvas/ew-findings/resolve.js';
 
 const schema = getSchema();
@@ -350,5 +352,139 @@ describe('resolveFindings', () => {
     });
     const [r] = resolveFindings(doc, [f('a', [{ anchorType: 'text', anchorText: 'first item' }])]);
     expect(r.label).to.equal('List item');
+  });
+});
+
+describe('elementSnapshot', () => {
+  const link = (href) => [{ type: 'link', attrs: { href } }];
+  const strong = [{ type: 'strong' }];
+  const em = [{ type: 'em' }];
+
+  const snap = (doc, anchorText, occurrence) => {
+    const range = resolveEvidence(doc, { anchorType: 'text', anchorText, occurrence });
+    return elementSnapshot(doc, range);
+  };
+
+  it('returns the full text, kind, word count and neighbours of a heading', () => {
+    const doc = makeDoc(
+      para(text('Eyebrow line')),
+      h(1, text('  THE WORLD\u2019S  BEST   COFFEE!!! ')),
+      para(text('Every bean hand-picked.')),
+    );
+    const s = snap(doc, 'WORLD');
+    expect(s).to.deep.include({
+      anchorType: 'text',
+      kindLabel: 'Heading 1',
+      text: 'THE WORLD\u2019S BEST COFFEE!!!',
+      words: 4,
+      links: [],
+      formatting: [],
+    });
+    expect(s.neighbours).to.deep.equal({ prev: 'Paragraph "Eyebrow line"', next: 'Paragraph "Every bean hand-picked."' });
+  });
+
+  it('lists links as text -> href and bold/italic spans, whole or partial', () => {
+    const doc = makeDoc(para(
+      text('Read our '),
+      text('story', [...strong, ...link('/story')]),
+      text(' and '),
+      text('more', em),
+      text(' today'),
+    ));
+    const s = snap(doc, 'Read our');
+    expect(s.kindLabel).to.equal('Paragraph');
+    expect(s.links).to.deep.equal([{ text: 'story', href: '/story' }]);
+    expect(s.formatting).to.deep.equal([
+      { mark: 'bold', text: 'story', whole: false },
+      { mark: 'italic', text: 'more', whole: false },
+    ]);
+    expect(s.words).to.equal(6);
+  });
+
+  it('calls a paragraph that is one link a Button, with the whole-text formatting', () => {
+    const doc = makeDoc(
+      para(text('Surprise your loved ones.')),
+      para(text('Claim Rewards', [...em, ...link('https://example.com/signup')])),
+    );
+    const s = snap(doc, 'Claim Rewards');
+    expect(s.kindLabel).to.equal('Button');
+    expect(s.links).to.deep.equal([{ text: 'Claim Rewards', href: 'https://example.com/signup' }]);
+    expect(s.formatting).to.deep.equal([{ mark: 'italic', text: 'Claim Rewards', whole: true }]);
+    expect(s.neighbours).to.deep.equal({ prev: 'Paragraph "Surprise your loved ones."', next: '' });
+  });
+
+  it('describes a button neighbour with its link target', () => {
+    const doc = makeDoc(
+      para(text('Intro copy')),
+      para(text('Shop beans', link('/shop'))),
+    );
+    expect(snap(doc, 'Intro copy').neighbours.next).to.equal('Button "Shop beans" \u2192 /shop');
+  });
+
+  it('knows list items, the size of their list and uses the sibling items as neighbours', () => {
+    const doc = makeDoc({
+      type: 'bullet_list',
+      content: [
+        { type: 'list_item', content: [para(text('first item'))] },
+        { type: 'list_item', content: [para(text('second item'))] },
+        { type: 'list_item', content: [para(text('third item'))] },
+      ],
+    });
+    const s = snap(doc, 'second item');
+    expect(s.kindLabel).to.equal('List item');
+    expect(s.listSize).to.equal(3);
+    expect(s.neighbours).to.deep.equal({ prev: 'List item "first item"', next: 'List item "third item"' });
+  });
+
+  it('describes an image by file name, alt and link', () => {
+    const doc = makeDoc(
+      para(text('Above')),
+      para({ type: 'image', attrs: { src: `./${HERO}?width=750`, alt: 'Coffee Machines' } }),
+    );
+    const range = resolveEvidence(doc, { anchorType: 'image', src: `https://x.aem.live/${HERO}` });
+    const s = elementSnapshot(doc, range);
+    expect(s).to.deep.include({
+      anchorType: 'image', kindLabel: 'Image', fileName: HERO, alt: 'Coffee Machines', words: 0, text: '',
+    });
+    expect(s.src).to.contain(HERO);
+  });
+
+  it('is null without a document or range', () => {
+    expect(elementSnapshot(null, {})).to.equal(null);
+    expect(elementSnapshot(makeDoc(para(text('x'))), null)).to.equal(null);
+  });
+});
+
+describe('resolveGroup', () => {
+  const doc = makeDoc(
+    h(1, text('Hero title here')),
+    para(text('Other paragraph')),
+    para({ type: 'image', attrs: { src: `./${HERO}` } }),
+  );
+  const f = (id, evidence, extra = {}) => ({ id, title: id, evidence, ...extra });
+
+  it('resolves the element from the first resolvable finding and keeps the findings that belong to it', () => {
+    const r = resolveGroup(doc, [
+      f('a', [{ anchorType: 'text', anchorText: 'Hero title' }]),
+      f('b', [{ anchorType: 'text', anchorText: 'Hero title here' }]),
+      f('c', [{ anchorType: 'text', anchorText: 'Other paragraph' }]),
+      f('d', []),
+      f('e', [], { assetType: 'image' }),
+    ]);
+    expect(r.snapshot.kindLabel).to.equal('Heading 1');
+    expect(r.groupKey).to.match(/^text:\d+$/);
+    expect(r.evidence.anchorText).to.equal('Hero title');
+    expect(r.findings.map((x) => x.id)).to.deep.equal(['a', 'b', 'd']);
+  });
+
+  it('resolves an image group', () => {
+    const r = resolveGroup(doc, [f('i', [{ anchorType: 'image', src: HERO }])]);
+    expect(r.snapshot.anchorType).to.equal('image');
+    expect(r.findings).to.have.length(1);
+  });
+
+  it('is null when nothing resolves', () => {
+    expect(resolveGroup(doc, [f('x', [{ anchorType: 'text', anchorText: 'not here' }])])).to.equal(null);
+    expect(resolveGroup(doc, [])).to.equal(null);
   });
 });

@@ -219,3 +219,190 @@ export function resolveFindings(doc, findings) {
     };
   });
 }
+
+const MARK_LABELS = {
+  strong: 'bold',
+  em: 'italic',
+  u: 'underline',
+  s: 'strikethrough',
+  code: 'code',
+  sub: 'subscript',
+  sup: 'superscript',
+};
+
+const squash = (text) => String(text ?? '').replace(/\s+/g, ' ').trim();
+const clip = (text, max) => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text);
+
+// Inline runs of a textblock: consecutive text children with the same mark set merge into one.
+function inlineRuns(node) {
+  const runs = [];
+  node.forEach((child) => {
+    if (!child.isText) {
+      runs.push({ text: ' ', marks: [] });
+      return;
+    }
+    runs.push({ text: child.text, marks: child.marks });
+  });
+  return runs;
+}
+
+// One entry per maximal stretch of text that carries the mark (by `keyOf`), in document order.
+function spansOf(runs, keyOf) {
+  const spans = [];
+  let open;
+  runs.forEach((run) => {
+    const key = keyOf(run.marks);
+    if (key === undefined) {
+      open = undefined;
+      return;
+    }
+    if (open && open.key === key) {
+      open.text += run.text;
+    } else {
+      open = { key, text: run.text };
+      spans.push(open);
+    }
+  });
+  return spans;
+}
+
+function linksOf(runs) {
+  const hrefOf = (marks) => marks.find((m) => m.type.name === 'link')?.attrs.href;
+  return spansOf(runs, hrefOf)
+    .map(({ key, text }) => ({ text: squash(text), href: key }))
+    .filter((link) => link.text || link.href);
+}
+
+function formattingOf(runs, fullText) {
+  const found = [];
+  Object.entries(MARK_LABELS).forEach(([name, mark]) => {
+    spansOf(runs, (marks) => (marks.some((m) => m.type.name === name) ? name : undefined))
+      .forEach(({ text }) => {
+        const part = squash(text);
+        if (part) found.push({ mark, text: part, whole: part === fullText });
+      });
+  });
+  return found;
+}
+
+// A paragraph that is one link (optionally bold/italic) is a button in an Edge Delivery page.
+function isButton(links, fullText) {
+  return links.length === 1 && squash(links[0].text) === fullText && fullText !== '';
+}
+
+function inListItem(doc, blockPos) {
+  const $pos = doc.resolve(Math.min(blockPos + 1, doc.content.size));
+  for (let d = $pos.depth; d > 0; d -= 1) {
+    if ($pos.node(d).type.name === 'list_item') return d;
+  }
+  return 0;
+}
+
+function kindOf(doc, node, blockPos, links, fullText) {
+  if (node.type.name === 'image') return 'Image';
+  if (node.type.name === 'heading') return `Heading ${node.attrs?.level ?? 1}`;
+  if (node.type.name === 'code_block') return 'Code block';
+  if (inListItem(doc, blockPos)) return 'List item';
+  return isButton(links, fullText) ? 'Button' : 'Paragraph';
+}
+
+function describeNode(doc, node, pos) {
+  if (!node) return '';
+  if (node.type.name === 'image') return 'Image';
+  if (!node.isTextblock && !['list_item', 'bullet_list', 'ordered_list'].includes(node.type.name)) {
+    return '';
+  }
+  const target = node.isTextblock ? node : node.firstChild;
+  if (!target?.isTextblock) return '';
+  const runs = inlineRuns(target);
+  const text = squash(runs.map((r) => r.text).join(''));
+  if (!text) return '';
+  const links = linksOf(runs);
+  const kind = kindOf(doc, target, pos, links, text);
+  const href = kind === 'Button' ? ` → ${links[0].href}` : '';
+  return `${kind} "${clip(text, 60)}"${href}`;
+}
+
+// The previous and next sibling of the element (the list item when it is in a list).
+function neighboursOf(doc, blockPos) {
+  const depth = inListItem(doc, blockPos);
+  const $pos = doc.resolve(blockPos);
+  const level = depth ? depth - 1 : $pos.depth;
+  const parent = $pos.node(level);
+  const index = depth ? $pos.index(level) : $pos.index();
+  const at = (i) => {
+    const child = i >= 0 && i < parent.childCount ? parent.child(i) : null;
+    if (!child) return '';
+    let offset = 0;
+    for (let k = 0; k < i; k += 1) offset += parent.child(k).nodeSize;
+    return describeNode(doc, child, $pos.start(level) + offset);
+  };
+  return { prev: at(index - 1), next: at(index + 1) };
+}
+
+/**
+ * Everything the element suggestion request needs to say about the element a range sits in.
+ * Text is the full text of the textblock (whitespace collapsed, typography untouched).
+ * @returns {{ anchorType, kindLabel, text, words, links, formatting, neighbours, listSize?,
+ *   src?, fileName?, alt? } | null}
+ */
+export function elementSnapshot(doc, range) {
+  if (!doc || !range) return null;
+  const node = doc.nodeAt(range.blockPos);
+  if (!node) return null;
+  const neighbours = neighboursOf(doc, range.blockPos);
+  if (range.anchorType === 'image' || node.type.name === 'image') {
+    const src = node.attrs?.src ?? '';
+    return {
+      anchorType: 'image',
+      kindLabel: 'Image',
+      text: '',
+      words: 0,
+      src,
+      fileName: fileNameOf(src),
+      alt: node.attrs?.alt ?? '',
+      links: node.attrs?.href ? [{ text: 'image', href: node.attrs.href }] : [],
+      formatting: [],
+      neighbours,
+    };
+  }
+  if (!node.isTextblock) return null;
+  const runs = inlineRuns(node);
+  const text = squash(runs.map((r) => r.text).join(''));
+  const links = linksOf(runs);
+  const depth = inListItem(doc, range.blockPos);
+  return {
+    anchorType: 'text',
+    kindLabel: kindOf(doc, node, range.blockPos, links, text),
+    text,
+    words: text ? text.split(' ').length : 0,
+    links,
+    formatting: formattingOf(runs, text),
+    neighbours,
+    ...(depth && { listSize: doc.resolve(range.blockPos).node(depth - 1).childCount }),
+  };
+}
+
+/**
+ * Resolves the findings of one failing element to its place in the document.
+ * @returns {{ range, evidence, groupKey, findings, snapshot } | null} `findings` are the ones that
+ * belong to that element: they resolve to it, or they did not resolve and are of its kind.
+ */
+export function resolveGroup(doc, findings) {
+  const results = resolveFindings(doc, findings);
+  const first = results.find((r) => r.range);
+  if (!first) return null;
+  const snapshot = elementSnapshot(doc, first.range);
+  if (!snapshot) return null;
+  const kind = first.range.anchorType;
+  const mine = results.filter((r) => (r.range
+    ? r.groupKey === first.groupKey
+    : (r.finding.assetType ?? 'text') === kind));
+  return {
+    range: first.range,
+    evidence: first.evidence,
+    groupKey: first.groupKey,
+    findings: mine.map((r) => r.finding),
+    snapshot,
+  };
+}

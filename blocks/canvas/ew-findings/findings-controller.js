@@ -2,7 +2,9 @@ import { Plugin } from 'da-y-wrapper';
 import { getNx2 } from '../../../scripts/utils.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { encodeAnchor, decodeAnchor } from '../comments/helpers/anchor.js';
-import { resolveFindings } from './resolve.js';
+import { controllerPathnameFromEditorCtx } from '../ew-editor-doc/utils/ctx.js';
+import { resolveFindings, resolveGroup } from './resolve.js';
+import { requestSuggestions } from './instruction.js';
 
 // How long to wait for the iframe to report the marker's rect before falling back to a
 // centered card (e.g. the preview runs a quick-edit build without finding support).
@@ -26,6 +28,16 @@ function isEditable(el) {
   return !!el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName));
 }
 
+// The editor URL of the open document, and the preview URL the agent evaluates by default.
+function pagesOf(ctx) {
+  if (!ctx?.org || !ctx?.repo) return {};
+  const path = controllerPathnameFromEditorCtx(ctx);
+  return {
+    page: `https://da.live/canvas#/${ctx.org}/${ctx.repo}${path === '/' ? '' : path}`,
+    evaluatedUrl: `https://main--${ctx.repo}--${ctx.org}.preview.da.live${path}`,
+  };
+}
+
 function hasResolvableEvidence(finding) {
   return (finding?.evidence ?? []).some((e) => (
     (e?.anchorType === 'text' && e.anchorText)
@@ -36,16 +48,18 @@ function hasResolvableEvidence(finding) {
 /**
  * Shows evaluation findings on the page: claims EVAL_EVENT.FOCUS_FINDING, outlines the element
  * in the preview iframe (via SET_FINDING_MARKERS) and hosts the floating ew-finding-card, which
- * only explains the failure.
+ * only explains the failure. It also claims EVAL_EVENT.SUGGEST_ELEMENT ("Generate suggestion")
+ * and sends the chat a request that carries the element's full text, links and formatting.
  */
 export function createFindingsController({
   getView,
   getPort,
   getIframe,
+  getCtx,
   createCard = createCardElement,
   layoutTimeoutMs = LAYOUT_TIMEOUT_MS,
 }) {
-  let evalEvent;
+  let evalEvents;
   let wanted = false;
   let listening = false;
   let session = null;
@@ -240,6 +254,23 @@ export function createFindingsController({
     open(findings, findingId);
   }
 
+  function onSuggestElement(e) {
+    if (e.defaultPrevented) return;
+    const { group, evaluatedUrl } = e.detail ?? {};
+    const view = getView();
+    if (!view || !Array.isArray(group?.findings) || !group.findings.length) return;
+    const resolved = resolveGroup(view.state.doc, group.findings);
+    if (!resolved) return;
+    e.preventDefault();
+    const pages = pagesOf(getCtx?.());
+    requestSuggestions({
+      group,
+      resolved,
+      page: pages.page,
+      evaluatedUrl: evaluatedUrl ?? pages.evaluatedUrl,
+    });
+  }
+
   function onDocChange() {
     if (!session?.card || !session.anchor) return;
     const view = getView();
@@ -253,9 +284,18 @@ export function createFindingsController({
   }
 
   function attach() {
-    if (!wanted || listening || !evalEvent) return;
+    if (!wanted || listening || !evalEvents) return;
     listening = true;
-    document.addEventListener(evalEvent, onFocusFinding);
+    document.addEventListener(evalEvents.focus, onFocusFinding);
+    // Older da-nx builds have no SUGGEST_ELEMENT; the card then falls back to its own message.
+    if (evalEvents.suggest) document.addEventListener(evalEvents.suggest, onSuggestElement);
+  }
+
+  function detach() {
+    if (!listening) return;
+    document.removeEventListener(evalEvents.focus, onFocusFinding);
+    if (evalEvents.suggest) document.removeEventListener(evalEvents.suggest, onSuggestElement);
+    listening = false;
   }
 
   return {
@@ -271,12 +311,14 @@ export function createFindingsController({
     /** Idempotent; the da-nx contract module is loaded lazily so older da-nx builds still work. */
     async start() {
       wanted = true;
-      if (evalEvent === undefined) {
+      if (evalEvents === undefined) {
         try {
-          const mod = await import(`${getNx2()}/utils/evaluation-events.js`);
-          evalEvent = mod.EVAL_EVENT?.FOCUS_FINDING ?? null;
+          const { EVAL_EVENT } = await import(`${getNx2()}/utils/evaluation-events.js`);
+          evalEvents = EVAL_EVENT?.FOCUS_FINDING
+            ? { focus: EVAL_EVENT.FOCUS_FINDING, suggest: EVAL_EVENT.SUGGEST_ELEMENT }
+            : null;
         } catch {
-          evalEvent = null;
+          evalEvents = null;
         }
       }
       attach();
@@ -284,8 +326,7 @@ export function createFindingsController({
 
     stop() {
       wanted = false;
-      if (listening) document.removeEventListener(evalEvent, onFocusFinding);
-      listening = false;
+      detach();
       close({ restoreFocus: false });
     },
 
