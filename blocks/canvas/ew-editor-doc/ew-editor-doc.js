@@ -37,6 +37,7 @@ import mediaBusImage from './prose-plugins/mediaBusImage.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { createEditorComments } from './utils/editor-comments.js';
+import { createFindingsController } from '../ew-findings/findings-controller.js';
 import getSheet from '../../shared/sheet.js';
 
 // Maps ew-page-outline's default-content `kind` to the PM node type(s) it can back,
@@ -72,6 +73,13 @@ export class EwEditorDoc extends LitElement {
       getView: () => this._proseContext?.view,
       getPort: () => this._controllerCtx?.port,
       getContainer: () => this.shadowRoot?.querySelector('.ew-editor-doc'),
+    });
+    // Evaluation findings on the page (separate overlay from comments; both can coexist).
+    this._findings = createFindingsController({
+      getView: () => this._proseContext?.view,
+      getPort: () => this._controllerCtx?.port,
+      getIframe: () => this._controllerCtx?.iframe ?? this._wysiwygIframe,
+      getCtx: () => this.ctx,
     });
   }
 
@@ -293,8 +301,10 @@ export class EwEditorDoc extends LitElement {
       path: controllerPathnameFromEditorCtx(this.ctx),
       canWrite: this._canWrite === true,
       getToken: async () => (await loadIms())?.accessToken?.token ?? null,
+      findings: this._findings,
     };
     wireQuickEditControllerPort(this._controllerCtx);
+    this._findings.onPortChange();
 
     this._comments.setupIframeBridge();
   }
@@ -359,6 +369,7 @@ export class EwEditorDoc extends LitElement {
     });
     this._awarenessOff = undefined;
     this._comments.teardown();
+    this._findings.close({ restoreFocus: false });
     this._unbindSectionName?.();
     this._unbindSectionName = undefined;
     this._proseContext = undefined;
@@ -421,6 +432,7 @@ export class EwEditorDoc extends LitElement {
               },
             ),
             commentsPlugin,
+            this._findings.plugin,
           ];
         },
       });
@@ -484,6 +496,7 @@ export class EwEditorDoc extends LitElement {
       .subscribe(({ pos } = {}) => this.enterBlockEdit(pos));
     this._onCanvasHighlight = (e) => this._applyHighlight(e.detail);
     document.addEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
+    this._findings.start();
   }
 
   _applyHighlight(detail) {
@@ -570,6 +583,7 @@ export class EwEditorDoc extends LitElement {
     this._unsubscribeSelect?.();
     this._unsubscribeProseSelect?.();
     this._unsubscribeBlockEditRequest?.();
+    this._findings.stop();
     this._teardown();
     setSelectionToolbarCtx();
     toolbarController.reset();

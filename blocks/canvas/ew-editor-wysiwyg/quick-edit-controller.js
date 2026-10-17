@@ -74,6 +74,10 @@ export function createControllerOnMessage(ctx) {
       handleCommentMarkerClear();
     } else if (type === MESSAGE_TYPES.COMMENT_SHORTCUT) {
       handleCommentShortcut();
+    } else if (type === MESSAGE_TYPES.FINDING_MARKER_CLICK) {
+      ctx.findings?.onMarkerClick(payload);
+    } else if (type === MESSAGE_TYPES.FINDING_MARKER_LAYOUT) {
+      ctx.findings?.onMarkerLayout(payload);
     }
   };
 }
