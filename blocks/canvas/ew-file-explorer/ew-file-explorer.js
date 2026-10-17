@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2, getNx2Api } from '../../../scripts/utils.js';
+import { getNx, getNx2, getNx2Api, getNxEWFlags, sanitizePath } from '../../../scripts/utils.js';
 import { listFolder, itemHashPath, getAemUrl } from '../../shared/daFiles.js';
 import { iconPathForExt } from '../../shared/icons.js';
 import { EMPTY_DOC } from '../../shared/utils.js';
@@ -8,10 +8,13 @@ import getEditPath from '../../browse/shared.js';
 import getSheet from '../../shared/sheet.js';
 import '../../shared/da-name-dialog/da-name-dialog.js';
 
-const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { loadStyle, hashChange, getScUrl } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
+const { fetchDaConfigs } = await import(`${getNx()}/utils/daConfig.js`);
+const { getEditor } = await import(`${getNx()}/utils/editor.js`);
+const { isEWEnabled } = await getNxEWFlags();
 
 const [buttons, style] = await Promise.all([
   getSheet(`${getNx2()}/styles/buttons.css`),
@@ -21,6 +24,8 @@ const [buttons, style] = await Promise.all([
 const CREATE_PAGE_ERROR = 'Could not create the page. Try a different name.';
 
 const COPYABLE_EXTS = new Set(['html', 'json']);
+
+const getEditorName = (editor) => editor?.split(/[?#]/)[0].split('/').pop();
 
 const CATEGORIES = [
   { value: 'all', label: 'All' },
@@ -89,6 +94,7 @@ class EwFileExplorer extends LitElement {
     _matchingFolders: { state: true },
     _categoryCrawling: { state: true },
     _createDialog: { state: true },
+    _configs: { state: true },
   };
 
   connectedCallback() {
@@ -150,9 +156,23 @@ class EwFileExplorer extends LitElement {
       this._category = 'all';
       this._resetCategoryCrawl();
       this._clearCrawlCache();
+      this._loadConfigs(org, site);
       this._loadFromLeaves(org, site, path);
     } else if (path) {
       this._expandToPath(path);
+    }
+  }
+
+  async _loadConfigs(org, site) {
+    this._configs = undefined;
+    this._ewEnabled = undefined;
+    const [configs, ewEnabled] = await Promise.all([
+      Promise.all(fetchDaConfigs({ org, site })).catch(() => undefined),
+      isEWEnabled({ org, site }).catch(() => false),
+    ]);
+    if (org === this._org && site === this._site) {
+      this._configs = configs;
+      this._ewEnabled = ewEnabled;
     }
   }
 
@@ -318,6 +338,11 @@ class EwFileExplorer extends LitElement {
       return;
     }
     if (item.ext === 'html') {
+      const editor = this._editorFor(item);
+      if (getEditorName(editor) !== 'canvas') {
+        window.open(getEditPath({ path: item.path, ext: item.ext, editor }), '_blank', 'noopener,noreferrer');
+        return;
+      }
       window.location.hash = `#/${itemHashPath(item)}`;
       return;
     }
@@ -326,10 +351,20 @@ class EwFileExplorer extends LitElement {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
+  _editorFor(item) {
+    if (item.ext !== 'html') return undefined;
+    return getEditor({ path: item.path, configs: this._configs, ewEnabled: this._ewEnabled });
+  }
+
+  _copyUrl(item) {
+    if (getEditorName(this._editorFor(item)) !== 'form') return getAemUrl(item);
+    return getScUrl({ path: sanitizePath(item.path.replace(/\.html$/, '')) });
+  }
+
   async _onCopyUrl(e, item) {
     e.stopPropagation();
     const btn = e.currentTarget;
-    const url = getAemUrl(item);
+    const url = this._copyUrl(item);
     if (!url) return;
     await navigator.clipboard.writeText(url);
     clearTimeout(btn.copiedTimeoutId);
@@ -532,7 +567,7 @@ class EwFileExplorer extends LitElement {
   // Copyable rows show the exact URL the copy button would copy. Other rows
   // (folders, images, etc.) have nothing to copy, so no title is needed.
   _rowTitle(item) {
-    return COPYABLE_EXTS.has(item.ext) ? getAemUrl(item) : '';
+    return COPYABLE_EXTS.has(item.ext) ? this._copyUrl(item) : '';
   }
 
   _renderSearchResult(item) {

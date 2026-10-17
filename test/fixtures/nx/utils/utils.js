@@ -10,6 +10,8 @@ export const DA_ADMIN = 'https://admin.da.live';
 
 export const DA_COLLAB = 'wss://collab.da.live';
 
+export const getScUrl = ({ path }) => `sc:${path}`;
+
 let _hashState = {};
 const _hashSubscribers = new Set();
 export const hashChange = {

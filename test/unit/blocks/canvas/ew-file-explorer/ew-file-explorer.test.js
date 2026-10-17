@@ -1,6 +1,7 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
+import { setDaConfigs } from '../../../../fixtures/nx/utils/daConfig.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -519,6 +520,63 @@ describe('EwFileExplorer', () => {
 
     it('is empty for a non-copyable file', () => {
       expect(el._rowTitle({ path: '/org/site/a.png', ext: 'png' })).to.equal('');
+    });
+  });
+
+  describe('configured editor', () => {
+    beforeEach(() => {
+      globalThis.__editorMock = ({ path }) => (path.startsWith('/org/site/forms') ? 'https://da.live/form#' : '/canvas#');
+    });
+    afterEach(() => { delete globalThis.__editorMock; });
+
+    it('opens a page in its configured editor', () => {
+      const savedOpen = window.open;
+      const opened = [];
+      window.open = (...args) => { opened.push(args); };
+      const savedHash = window.location.hash;
+      try {
+        el._onItemClick({ path: '/org/site/forms/contact.html', ext: 'html' });
+        expect(opened).to.deep.equal([['https://da.live/form#/org/site/forms/contact', '_blank', 'noopener,noreferrer']]);
+        expect(window.location.hash).to.equal(savedHash);
+      } finally {
+        window.open = savedOpen;
+      }
+    });
+
+    it('stays in canvas when no other editor is configured', () => {
+      const savedOpen = window.open;
+      const opened = [];
+      window.open = (...args) => { opened.push(args); };
+      const savedHash = window.location.hash;
+      try {
+        el._onItemClick({ path: '/org/site/blog/foo.html', ext: 'html' });
+        expect(opened).to.deep.equal([]);
+        expect(window.location.hash).to.equal('#/org/site/blog/foo');
+      } finally {
+        window.open = savedOpen;
+        window.location.hash = savedHash;
+      }
+    });
+
+    it('uses the sanitized da-sc url for structured content', () => {
+      expect(el._rowTitle({ path: '/org/site/forms/My Form.html', ext: 'html' })).to.equal('sc:/org/site/forms/my-form');
+    });
+
+    it('resolves the editor from the site configs and EW flag', async () => {
+      const configs = [{ data: [] }, { data: [] }];
+      setDaConfigs(configs);
+      let args;
+      globalThis.__editorMock = (opts) => { args = opts; };
+      el._org = 'org';
+      el._site = 'site';
+      try {
+        await el._loadConfigs('org', 'site');
+        el._rowTitle({ path: '/org/site/blog/foo.html', ext: 'html' });
+        expect(args.configs).to.deep.equal(configs);
+        expect(args.ewEnabled).to.be.false;
+      } finally {
+        setDaConfigs([]);
+      }
     });
   });
 
