@@ -1,4 +1,4 @@
-import { LitElement, html } from 'da-lit';
+import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 
 // Styles
@@ -16,6 +16,7 @@ const ICON_NAMES = {
   share: 's2-icon-share-20-n',
   publish: 's2-icon-publish-20-n',
   preview: 's2-icon-preview-20-n',
+  preflight: 's2-icon-search-20-n',
 };
 
 const icon = (name) => html`<svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/${ICON_NAMES[name]}.svg#icon"></use></svg>`;
@@ -29,6 +30,7 @@ export default class DaActionBar extends LitElement {
     isFavorite: { attribute: false },
     isHlx6: { attribute: false },
     hidePublishConfs: { attribute: false },
+    enforcePreflight: { attribute: false },
     _isCopying: { state: true },
     _isDeleting: { state: true },
     _isMoving: { state: true },
@@ -121,6 +123,12 @@ export default class DaActionBar extends LitElement {
     this.dispatchEvent(event);
   }
 
+  handlePreflight() {
+    const opts = { bubbles: true, composed: true };
+    const event = new CustomEvent('onpreflight', opts);
+    this.dispatchEvent(event);
+  }
+
   async handleShare() {
     const { items2Clipboard } = await import('../da-list/helpers/utils.js');
     items2Clipboard(this.items);
@@ -153,6 +161,11 @@ export default class DaActionBar extends LitElement {
 
   get _canPublish() {
     return this._canAemAction && !this._hidePublish;
+  }
+
+  get _canPreflight() {
+    // Pages only, for now — the preflight modal evaluates html pages.
+    return this._canWrite && this.items.some((item) => item.ext === 'html') && !this._isCopying;
   }
 
   get _canRename() {
@@ -242,11 +255,19 @@ export default class DaActionBar extends LitElement {
             <span>Preview</span>
           </button>
           <button
+            @click=${this.handlePreflight}
+            class="preflight-button ${this._canPreflight ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
+            ${icon('preflight')}
+            <span>Preflight</span>
+          </button>
+          <button
             @click=${this.handlePublish}
             ?disabled=${!!this.loading}
+            title=${this.enforcePreflight ? 'Preflight required before publish' : nothing}
             class="publish-button ${this._canPublish ? '' : 'hide'} ${this.loading === 'publish' ? 'loading' : ''}">
             ${icon('publish')}
             <span>Publish</span>
+            ${this.enforcePreflight ? html`<span class="da-preflight-dot is-required"></span>` : nothing}
           </button>
           <button
             @click=${this.handleShare}
