@@ -29,6 +29,8 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
   Header branding, navigation, What’s New, Feedback and the profile retain their
   existing fragment-driven appearance. The landing-specific header replacement
   and notification trigger have been removed.
+  The outer application-frame border is removed only while the landing page
+  is present, matching the borderless Figma canvas.
   Site labels retain real identifiers; no Nike name or custom domain is fabricated.
 - Files are the selected site's **root directory**, not a recursive site index.
   All root-listing pages are loaded before sorting by modification date.
@@ -68,7 +70,7 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
   The coworker icon, prompt placeholder and AI disclaimer follow the mock.
   The composer uses `--s2-body-size-m` (16px) at both UI sizes and
   `--s2-gray-600` for the placeholder, including dark mode.
-  The plus button opens the existing Add menu locally and switches to a chevron
+  The plus button opens the existing Add menu locally and remains a plus
   while open. Files or images opens the native file picker directly; cancelling
   does not open chat. Selected files use the existing attachment builder and
   shared add-to-chat event, without uploading or auto-sending. Other selected
@@ -82,8 +84,9 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
   for the mock's general task list (description, status, requester).
   Table styling follows the [Spectrum table guidance](https://spectrum.adobe.com/web/rsp/components/table):
   start-aligned text, a compact neutral header, column dividers and horizontal
-  scrolling on narrow screens. No nonfunctional sort or column-menu controls
-  are added while task data is unavailable.
+  scrolling on narrow screens. Each header includes the 18px vertical
+  three-dot column-options icon from `1852:86574`. These controls are explicitly
+  disabled while task data is unavailable, rather than offering fake actions.
 - Notification counts, published-page screenshots and global AI routing are not
   mocked. The routing placeholder does not add a global routing backend.
 

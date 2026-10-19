@@ -166,15 +166,7 @@ textarea::placeholder {
   flex-shrink: 0;
 }
 
-.composer-actions nx-menu, .chat-add span {
-  display: flex;
-}
-
-.chat-add .icon-up, .chat-add[data-active] .icon-add {
-  display: none;
-}
-
-.chat-add[data-active] .icon-up {
+.composer-actions nx-menu {
   display: flex;
 }
 
@@ -327,8 +319,10 @@ da-card-preview {
   white-space: nowrap;
 }
 
-.tasks-panel th span {
+.task-column-heading > span {
   display: block;
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -556,6 +550,29 @@ da-card-preview {
 
 .tasks-panel th:nth-child(4) {
   width: 11.1%;
+}
+
+.task-column-heading {
+  display: flex;
+  align-items: center;
+}
+
+.task-column-options {
+  display: flex;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--s2-gray-700);
+}
+
+.column-options-icon {
+  width: 18px;
+  height: 18px;
+  background: currentcolor;
+  mask: url('/blocks/landing/column-options.svg') center / 18px no-repeat;
 }
 
 .all-files:hover, .file-link:hover .file-name span {

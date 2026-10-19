@@ -475,8 +475,7 @@ export class DaLanding extends LitElement {
                 <button slot="trigger" type="button"
                   class="chat-add nx-action-btn-icon ${this.uiSize === 'm' ? 'nx-btn-lg' : ''}"
                   aria-label="Add" ?disabled=${!this._chatEnabled || this._handingOff}>
-                  <span class="icon-add">${icon('add')}</span>
-                  <span class="icon-up">${icon('chevronup')}</span>
+                  ${icon('add')}
                 </button>
               </nx-menu>
               <button type="submit" class="composer-send nx-action-btn-icon is-active ${this.uiSize === 'm' ? 'nx-btn-lg' : ''}"
@@ -521,14 +520,21 @@ export class DaLanding extends LitElement {
             <div class="tasks-scroll" role="region" aria-label="Need Attention" tabindex="0">
               <table aria-labelledby="tasks-heading">
                 <thead><tr>
-                  <th scope="col"><span>Page / Content Fragment</span></th>
-                  <th scope="col"><span>Process Description</span></th>
-                  <th scope="col"><span>Status</span></th>
-                  <th scope="col"><span>Requester</span></th>
+                  ${['Page / Content Fragment', 'Process Description', 'Status', 'Requester'].map((label) => html`
+                    <th scope="col">
+                      <div class="task-column-heading">
+                        <span>${label}</span>
+                        <button class="task-column-options" type="button" disabled
+                          aria-label=${`${label} column options`} aria-describedby="tasks-availability"
+                          title="Column options are unavailable until task data is connected.">
+                          <span class="column-options-icon" aria-hidden="true"></span>
+                        </button>
+                      </div>
+                    </th>`)}
                 </tr></thead>
               </table>
             </div>
-            <p class="tasks-unavailable" role="status">Task data is not connected in this preview.</p>
+            <p id="tasks-availability" class="tasks-unavailable" role="status">Task data is not connected in this preview.</p>
           </div>
         </section>
       </div>`;

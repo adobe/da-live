@@ -11,6 +11,10 @@ body:has(da-landing[data-theme="light"]) {
   color-scheme: light;
 }
 
+html:has(meta[content="app-frame"]) body main:has(da-landing) {
+  border: 0;
+}
+
 nx-nav:has(> .landing-workspace) {
   grid-template-columns: auto minmax(0, 1fr) auto;
   column-gap: 16px;

@@ -83,7 +83,7 @@ describe('landing page', () => {
 
   it('shows Need Attention without fabricating data or claiming the site has no tasks', () => {
     expect(el.shadowRoot.querySelector('#tasks-heading').textContent).to.equal('Need Attention');
-    expect([...el.shadowRoot.querySelectorAll('.tasks-panel th')].map((th) => th.textContent)).to.deep.equal([
+    expect([...el.shadowRoot.querySelectorAll('.task-column-heading > span')].map((label) => label.textContent)).to.deep.equal([
       'Page / Content Fragment', 'Process Description', 'Status', 'Requester',
     ]);
     expect(el.shadowRoot.querySelector('.tasks-unavailable').textContent).to.equal('Task data is not connected in this preview.');
@@ -91,6 +91,25 @@ describe('landing page', () => {
     expect(el.shadowRoot.querySelector('.tasks-panel table').getAttribute('aria-labelledby')).to.equal('tasks-heading');
     expect(el.shadowRoot.querySelector('.tasks-table .tasks-unavailable')).not.to.equal(null);
     expect(el.shadowRoot.querySelector('.tasks-scroll .tasks-unavailable')).to.equal(null);
+  });
+
+  it('shows each task column’s options without pretending task controls are connected', () => {
+    const buttons = [...el.shadowRoot.querySelectorAll('.task-column-options')];
+    expect(buttons).to.have.length(4);
+    buttons.forEach((button) => {
+      expect(button.disabled).to.equal(true);
+      expect(button.getAttribute('aria-label')).to.include('column options');
+      expect(button.getAttribute('aria-describedby')).to.equal('tasks-availability');
+      expect(button.querySelector('.column-options-icon')).not.to.equal(null);
+    });
+  });
+
+  it('keeps the plus icon when the Add menu marks its trigger active', () => {
+    const trigger = el.shadowRoot.querySelector('.chat-add');
+    trigger.setAttribute('data-active', '');
+    expect(trigger.querySelector('use').getAttribute('href')).to.include('s2-icon-add-20-n.svg');
+    expect(trigger.querySelectorAll('svg')).to.have.length(1);
+    expect(trigger.querySelector('.icon-up')).to.equal(null);
   });
 
   it('uses source-backed page previews and local semantic file icons', () => {
