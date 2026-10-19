@@ -844,16 +844,26 @@ describe('loadRenderingVersion', () => {
     expect(getRenderingVersion()).to.equal(2);
   });
 
-  it('uses 1 when ew.renderingVersion is 1', async () => {
-    mockConfigs({ '/rvorg/': [{ key: 'ew.renderingVersion', value: '1' }] });
+  it('uses 1 when editor.renderingVersion is 1', async () => {
+    mockConfigs({ '/rvorg/': [{ key: 'editor.renderingVersion', value: '1' }] });
     expect(await loadRenderingVersion({ org: 'rvorg', site: 'site' })).to.equal(1);
     expect(getRenderingVersion()).to.equal(1);
   });
 
+  it('uses the fallback without config', async () => {
+    mockConfigs({});
+    expect(await loadRenderingVersion({ org: 'rvfb', site: 'site', fallback: 1 })).to.equal(1);
+  });
+
+  it('prefers config over the fallback', async () => {
+    mockConfigs({ '/rvfb2/': [{ key: 'editor.renderingVersion', value: '2' }] });
+    expect(await loadRenderingVersion({ org: 'rvfb2', site: 'site', fallback: 1 })).to.equal(2);
+  });
+
   it('lets site config override org config', async () => {
     mockConfigs({
-      '/rvover/': [{ key: 'ew.renderingVersion', value: '1' }],
-      '/rvover/site/': [{ key: 'ew.renderingVersion', value: '2' }],
+      '/rvover/': [{ key: 'editor.renderingVersion', value: '1' }],
+      '/rvover/site/': [{ key: 'editor.renderingVersion', value: '2' }],
     });
     expect(await loadRenderingVersion({ org: 'rvover', site: 'site' })).to.equal(2);
     expect(getRenderingVersion()).to.equal(2);

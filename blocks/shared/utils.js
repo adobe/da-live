@@ -417,14 +417,15 @@ let renderingVersionRequest;
 
 export const getRenderingVersion = () => renderingVersion;
 
-export async function loadRenderingVersion({ org, site } = {}) {
+export async function loadRenderingVersion({ org, site, fallback = 2 } = {}) {
   const request = {};
   renderingVersionRequest = request;
   const configs = await Promise.all(fetchDaConfigs({ org, site })).catch(() => []);
   const row = configs.filter((c) => c && !c.error).reverse()
     .flatMap((c) => getFirstSheet(c) || [])
-    .find((r) => r?.key === 'ew.renderingVersion');
-  const version = `${row?.value ?? ''}`.trim() === '1' ? 1 : 2;
+    .find((r) => r?.key === 'editor.renderingVersion');
+  const configured = parseInt(row?.value, 10);
+  const version = configured >= 1 ? configured : fallback;
   if (renderingVersionRequest === request) renderingVersion = version;
   return version;
 }
