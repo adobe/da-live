@@ -57,6 +57,22 @@ function findInsertedRange(oldText, newText) {
   return { start: prefixLen, end: prefixLen + (newText.length - oldText.length) };
 }
 
+const EDITABLES = [
+  { selector: 'h1', nodeName: 'H1', nodeType: 'heading' },
+  { selector: 'h2', nodeName: 'H2', nodeType: 'heading' },
+  { selector: 'h3', nodeName: 'H3', nodeType: 'heading' },
+  { selector: 'h4', nodeName: 'H4', nodeType: 'heading' },
+  { selector: 'h5', nodeName: 'H5', nodeType: 'heading' },
+  { selector: 'h6', nodeName: 'H6', nodeType: 'heading' },
+  { selector: 'p', nodeName: 'P', nodeType: 'paragraph' },
+  { selector: 'ol', nodeName: 'OL', nodeType: 'ordered_list' },
+  { selector: 'ul', nodeName: 'UL', nodeType: 'bullet_list' },
+  { selector: 'pre', nodeName: 'PRE', nodeType: 'code_block' },
+  { selector: 'blockquote', nodeName: 'BLOCKQUOTE', nodeType: 'blockquote' },
+];
+const EDITABLE_SELECTORS = EDITABLES.map((edit) => edit.selector).join(', ');
+const EDITABLE_NODE_TYPES = new Set(EDITABLES.map((edit) => edit.nodeType));
+
 // Resolve the editable block the WYSIWYG should mount for a given prose index.
 //
 // Naively taking `resolve(before(depth)).nodeAfter` climbs to the enclosing
@@ -66,12 +82,18 @@ function findInsertedRange(oldText, newText) {
 // top-level `doc` content (`doc` is `block+`; a cell only belongs in a
 // `table_row`), so it throws "Invalid content for node doc" and the editor dies.
 //
-// Return the block that actually corresponds to the index (paragraph / heading /
-// list), never its table container, and preserve the index for the
-// `data-prose-index` roundtrip.
+// Match instrumentation's outermost editable element, not an inner heading or
+// paragraph that would discard its quote/list wrapper. Tables are not editables.
 export function resolveEditableNode(doc, cursorOffset) {
   const $pos = doc.resolve(cursorOffset);
   const docMatch = doc.type.schema.nodes.doc.contentMatch;
+
+  for (let depth = 1; depth <= $pos.depth; depth += 1) {
+    const ancestor = $pos.node(depth);
+    if (EDITABLE_NODE_TYPES.has(ancestor.type.name)) {
+      return { node: ancestor, cursorOffset: $pos.before(depth) + 1 };
+    }
+  }
 
   // The index sits at the boundary right before an editable block — e.g. inside
   // a table cell, immediately before its first block. The block is the node
@@ -79,16 +101,6 @@ export function resolveEditableNode(doc, cursorOffset) {
   const after = $pos.nodeAfter;
   if (after && docMatch.matchType(after.type)) {
     return { node: after, cursorOffset };
-  }
-
-  // The index sits inside an editable block. Climb to the innermost ancestor
-  // that is valid top-level `doc` content — never a `table_cell` / `table_row`.
-  const { depth } = $pos;
-  for (let d = depth; d >= 1; d -= 1) {
-    const ancestor = $pos.node(d);
-    if (docMatch.matchType(ancestor.type)) {
-      return { node: ancestor, cursorOffset: $pos.before(d) + 1 };
-    }
   }
 
   return { node: null, cursorOffset };
@@ -119,11 +131,18 @@ export function updateState(data, ctx) {
     const oldText = view.state.doc.textBetween(nodeStart, nodeEnd);
     const inserted = findInsertedRange(oldText, node.textContent);
     if (inserted) {
-      // In ProseMirror each text character occupies one position unit, so
-      // text offset i maps to doc position nodeStart + 1 + i.
-      const markFrom = nodeStart + 1 + inserted.start;
-      const markTo = nodeStart + 1 + inserted.end;
-      storedMarks.forEach((mark) => tr.addMark(markFrom, markTo, mark));
+      // Text offsets omit the structural positions inside quotes and lists.
+      let textOffset = 0;
+      node.descendants((child, offset) => {
+        if (!child.isText) return;
+        const from = Math.max(inserted.start, textOffset);
+        const to = Math.min(inserted.end, textOffset + child.text.length);
+        if (from < to) {
+          const start = nodeStart + 1 + offset - textOffset;
+          storedMarks.forEach((mark) => tr.addMark(start + from, start + to, mark));
+        }
+        textOffset += child.text.length;
+      });
       // Preserve stored marks so continued typing stays in the same formatting state.
       tr.setStoredMarks(storedMarks);
       appliedMarks = true;
@@ -203,21 +222,6 @@ export function getEditor(data, ctx) {
 }
 
 // --- document.js ---
-
-const EDITABLES = [
-  { selector: 'h1', nodeName: 'H1' },
-  { selector: 'h2', nodeName: 'H2' },
-  { selector: 'h3', nodeName: 'H3' },
-  { selector: 'h4', nodeName: 'H4' },
-  { selector: 'h5', nodeName: 'H5' },
-  { selector: 'h6', nodeName: 'H6' },
-  { selector: 'p', nodeName: 'P' },
-  { selector: 'ol', nodeName: 'OL' },
-  { selector: 'ul', nodeName: 'UL' },
-  { selector: 'pre', nodeName: 'PRE' },
-  { selector: 'blockquote', nodeName: 'BLOCKQUOTE' },
-];
-const EDITABLE_SELECTORS = EDITABLES.map((edit) => edit.selector).join(', ');
 
 export function isOutermostWysiwygEditable(el) {
   if (!el?.matches?.(EDITABLE_SELECTORS)) return false;
