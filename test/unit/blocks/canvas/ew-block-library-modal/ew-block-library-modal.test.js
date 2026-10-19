@@ -1,5 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { setNx, getNx2Api } from '../../../../../scripts/utils.js';
+import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -18,6 +19,7 @@ describe('Block library variant preview navigation', () => {
   let modal;
   let savedStatusGet;
   const block = { name: 'Hero', path: 'https://content.da.live/org/site/library/hero' };
+  const branchState = { org: 'org', site: 'site', path: '/org/site/page', status: 'ready', branch: 'main' };
   const previewUrl = 'https://main--site--org.aem.page/library/hero';
   const variants = [
     { name: 'Wide', anchor: 'wide', dom: document.createElement('table') },
@@ -28,6 +30,7 @@ describe('Block library variant preview navigation', () => {
   beforeEach(async () => {
     savedStatusGet = status.get;
     status.get = async () => new Response(JSON.stringify({ preview: { status: 200 } }));
+    canvasBus.branchState.emit(branchState);
     modal = document.createElement('ew-block-library-modal');
     modal.blocks = [{ ...block, loadVariants: Promise.resolve(variants) }];
     document.body.append(modal);
@@ -41,6 +44,7 @@ describe('Block library variant preview navigation', () => {
 
   afterEach(() => {
     modal.remove();
+    canvasBus.branchState.emit({ path: null, status: 'pending' });
     status.get = savedStatusGet;
   });
 
@@ -124,6 +128,42 @@ describe('Block library variant preview navigation', () => {
     expect(modal._previewInfo.url).to.equal(`${previewUrl}#wide`);
     await modal.updateComplete;
     expect(modal.shadowRoot.querySelector('iframe').getAttribute('src')).to.equal(`${previewUrl}#wide`);
+  });
+
+  it('Uses the configured canvas branch when loading a variant preview', async () => {
+    canvasBus.branchState.emit({ ...branchState, branch: 'Configured/Branch' });
+    modal._previewInfo = null;
+    modal._selectVariant(block, variants[0]);
+    await modal.updateComplete;
+    expect(modal._previewBlock).to.equal(block);
+    expect(modal._previewInfo.url)
+      .to.equal('https://configured-branch--site--org.aem.page/library/hero#wide');
+  });
+
+  it('Retries a selected variant preview when the canvas branch becomes ready', async () => {
+    canvasBus.branchState.emit({ ...branchState, status: 'pending' });
+    modal._previewInfo = null;
+    modal._selectVariant(block, variants[0]);
+    await modal.updateComplete;
+    expect(modal._previewInfo.error).to.include('Preview branch unavailable');
+    expect(modal.shadowRoot.querySelector('iframe')).to.be.null;
+    canvasBus.branchState.emit(branchState);
+    await modal.updateComplete;
+    expect(modal._previewInfo.url).to.equal(previewUrl);
+    expect(modal.shadowRoot.querySelector('iframe')).to.exist;
+  });
+
+  it('Ignores a pending status result if the preview branch becomes unavailable', async () => {
+    let resolveStatus;
+    status.get = () => new Promise((resolve) => { resolveStatus = resolve; });
+    const loading = modal._loadPreview(block, variants[0].anchor);
+    await Promise.resolve();
+    canvasBus.branchState.emit({ ...branchState, status: 'error' });
+    resolveStatus(new Response(JSON.stringify({ preview: { status: 200 } })));
+    await loading;
+    await modal.updateComplete;
+    expect(modal._previewInfo.error).to.include('Preview branch unavailable');
+    expect(modal.shadowRoot.querySelector('iframe')).to.be.null;
   });
 
   it('Applies preview status even when the variant changes while status is loading', async () => {
