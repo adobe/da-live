@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2 } from '../../../scripts/utils.js';
+import { getNx, getNx2, getBtnSizeClass, getLgBtnClass } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import {
@@ -11,6 +11,7 @@ import {
 const nx = getNx();
 await import(`${nx}/blocks/shared/dialog/dialog.js`);
 const { loadStyle, hashChange } = await import(`${nx}/utils/utils.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 const [buttonsStyle, formStyle, style] = await Promise.all([
   getSheet(`${getNx2()}/styles/buttons.css`),
   getSheet(`${getNx2()}/styles/form.css`),
@@ -48,6 +49,8 @@ function variantSearchText(block, variant) {
 }
 
 class EwBlockLibraryModal extends LitElement {
+  _uiSize = new UISizeController(this);
+
   static properties = {
     blocks: { attribute: false },
     onInsert: { attribute: false },
@@ -297,7 +300,7 @@ class EwBlockLibraryModal extends LitElement {
       <div class="modal-preview-toolbar" role="group" aria-label="Preview width">
         ${VIEWPORTS.map(([id, label, , icon]) => html`
           <button type="button"
-                  class="nx-action-btn-icon modal-viewport-btn ${this._viewport === id ? 'is-active' : ''}"
+                  class="nx-action-btn-icon modal-viewport-btn ${getLgBtnClass()} ${this._viewport === id ? 'is-active' : ''}"
                   aria-label=${label}
                   title=${label}
                   aria-pressed=${this._viewport === id}
@@ -337,8 +340,8 @@ class EwBlockLibraryModal extends LitElement {
         <div class="modal-content">
           <header class="modal-header">
             <span class="modal-title">${this.heading ?? 'Insert block'}</span>
-            <button type="button" class="nx-action-btn-icon nx-btn-sm"
-                    aria-label="Close" @click=${() => this._close()}>✕</button>
+            <button type="button" class="nx-action-btn-icon modal-close ${getBtnSizeClass()}"
+                    aria-label="Close" @click=${() => this._close()}><svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-close-20-n.svg#icon"></use></svg></button>
           </header>
           <div class="modal-body">
             <aside class="modal-tree-wrap">

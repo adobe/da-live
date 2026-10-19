@@ -38,7 +38,9 @@ input {
   display: flex;
   align-items: center;
   gap: var(--s2-spacing-75);
-  padding: var(--s2-spacing-50) var(--s2-spacing-100);
+  box-sizing: border-box;
+  min-height: 32px;
+  padding: 0 var(--s2-spacing-100);
   background: var(--s2-gray-75);
   border-bottom: 1px solid var(--s2-gray-200);
   cursor: grab;
@@ -53,7 +55,7 @@ input {
   display: block;
   min-width: 0;
   padding: var(--s2-spacing-75) 0;
-  font-size: var(--s2-body-size-s);
+  font-size: var(--nx-ui-text-content);
   font-weight: 600;
   color: var(--s2-gray-800);
   overflow: hidden;
@@ -76,11 +78,12 @@ input {
 
 .section-name-input {
   flex: 1;
+  box-sizing: border-box;
   min-width: 0;
-  height: 19px;
-  margin: 5px;
+  height: 24px;
+  margin: 4px;
   padding: var(--s2-spacing-50);
-  font-size: var(--s2-body-size-s);
+  font-size: var(--nx-ui-text-content);
   border-radius: 6px;
   border: 0;
   background: var(--s2-gray-75);
@@ -98,7 +101,7 @@ input {
   gap: var(--s2-spacing-75);
   padding: var(--s2-spacing-75) var(--s2-spacing-100);
   cursor: grab;
-  font-size: var(--s2-body-size-s);
+  font-size: var(--nx-ui-text-content);
   font-weight: 500;
   color: var(--s2-gray-800);
   min-height: 32px;
@@ -172,22 +175,22 @@ input {
 }
 
 .chevron {
-  display: block;
+  display: flex;
+  align-items: center;
   flex-shrink: 0;
   width: 12px;
   height: 16px;
   margin-inline-start: calc(var(--level, 0) * (12px + var(--s2-spacing-75)));
-  line-height: 16px;
-  text-align: start;
-  transform-origin: 0.2em 60%;
-  transition: transform 0.15s;
+
+  svg {
+    width: 10px;
+    height: 10px;
+    color: var(--s2-gray-600);
+    transition: transform 0.15s;
+  }
 }
 
-.content-item[aria-expanded] > .chevron::before {
-  content: '›';
-}
-
-.content-item[aria-expanded="true"] > .chevron {
+.content-item[aria-expanded="true"] > .chevron svg {
   transform: rotate(90deg);
 }
 
@@ -220,7 +223,7 @@ input {
 }
 
 .content-snippet {
-  font-size: var(--s2-body-size-xs, 0.75rem);
+  font-size: var(--s2-component-s-regular-font-size);
   font-weight: 400;
   color: var(--s2-gray-600);
   overflow: hidden;
@@ -257,7 +260,7 @@ input {
 
 .placeholder {
   padding: var(--s2-spacing-300) var(--s2-spacing-100);
-  font-size: var(--s2-body-size-s);
+  font-size: var(--nx-ui-text-content);
   color: var(--s2-gray-600);
   text-align: center;
 
@@ -266,5 +269,26 @@ input {
     background: var(--s2-gray-100);
     padding: 0.1em 0.3em;
     border-radius: var(--s2-corner-radius-75);
+  }
+}
+
+:host([data-ui-size="m"]) {
+  .drag-handle {
+    width: 18px;
+    height: 18px;
+  }
+
+  .chevron svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  svg.icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .content-snippet {
+    font-size: var(--s2-component-m-regular-font-size);
   }
 }

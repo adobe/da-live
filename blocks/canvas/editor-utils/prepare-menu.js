@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
+import getSheet from '../../shared/sheet.js';
 import { fetchDaConfigs, getPostMessageTargetOrigin } from '../../shared/utils.js';
 import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
 import { getPreviewOrigin } from './editor-utils.js';
@@ -8,9 +9,11 @@ import { getCanvasBranch } from '../utils/branch.js';
 import { initPreflightBridge, reportPreflightStatus } from './preflight-bridge.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
 
 const style = await loadStyle(import.meta.url);
+const buttonsStyle = await getSheet(`${getNx2()}/styles/buttons.css`);
 
 function resolveMenuItem(item, details) {
   const { org, site } = details || {};
@@ -56,6 +59,8 @@ const OOTB_ACTIONS = [
 ];
 
 export default class PrepareMenu extends LitElement {
+  _uiSize = new UISizeController(this);
+
   static properties = {
     details: { attribute: false },
     _menuItems: { state: true },
@@ -65,7 +70,7 @@ export default class PrepareMenu extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style];
+    this.shadowRoot.adoptedStyleSheets = [buttonsStyle, style];
     initPreflightBridge();
     this._unsubs = [
       canvasBus.preflightRunRequest.subscribe(this.handlePreflightRun),
@@ -269,10 +274,10 @@ export default class PrepareMenu extends LitElement {
             <span>${this._fullsizeDialogItem.title}</span>
           </h2>
           <button
-            class="prepare-fullsize-dialog-close"
+            class="nx-action-btn-icon prepare-fullsize-dialog-close"
             type="button"
             aria-label="Close"
-            @click=${this.handleCloseFullsizeDialog}>&times;</button>
+            @click=${this.handleCloseFullsizeDialog}><svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-close-20-n.svg#icon"></use></svg></button>
         </header>
         <div class="prepare-fullsize-dialog-body">
           <iframe
