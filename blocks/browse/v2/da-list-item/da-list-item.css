@@ -10,7 +10,6 @@
 }
 
 :host(:hover) {
-  z-index: 1;
   background: var(--s2-blue-100);
 }
 

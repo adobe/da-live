@@ -6,7 +6,7 @@
 da-browse-header {
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 3;
   background: var(--s2-gray-25);
 }
 

@@ -105,10 +105,12 @@ da-list-item {
     content: "";
     height: 1px;
     background: var(--s2-gray-200);
+    z-index: 1;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
   }
 }
-
-
 
 da-list-item:hover::before,
 da-list-item.is-expanded::before,
@@ -140,7 +142,7 @@ da-list-item.is-expanded::after {
 .da-browse-table-header {
   position: sticky;
   top: var(--da-browse-header-height, 0);
-  z-index: 1;
+  z-index: 2;
   background: light-dark(#fff, #000);
   display: grid;
   grid-template-columns: var(--da-list-select-width) minmax(0, 1fr) var(--da-list-type-width) var(--da-list-date-width) var(--da-list-action-width);
