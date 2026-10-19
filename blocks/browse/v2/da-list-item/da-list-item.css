@@ -9,7 +9,7 @@
   margin-bottom: -1px;
 }
 
-:host(:hover) {
+:host(:hover), :host([ischecked="true"]) {
   background: var(--s2-blue-100);
 }
 
