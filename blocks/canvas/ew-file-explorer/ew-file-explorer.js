@@ -537,7 +537,7 @@ class EwFileExplorer extends LitElement {
 
   _renderSearchResult(item) {
     const hashPath = itemHashPath(item);
-    const selected = this._selectedPath === hashPath;
+    const selected = item.ext === 'html' && this._selectedPath === hashPath;
     const copyable = COPYABLE_EXTS.has(item.ext);
     const parentPath = this._relativeParentPath(item);
 
@@ -622,7 +622,7 @@ class EwFileExplorer extends LitElement {
     const isDir = type === 'directory';
     const expanded = isDir && this._expanded?.has(pathKey);
     const hashPath = itemHashPath(item);
-    const selected = !isDir && this._selectedPath === hashPath;
+    const selected = !isDir && ext === 'html' && this._selectedPath === hashPath;
     const copyable = COPYABLE_EXTS.has(ext);
     const visibleChildren = this._visibleChildren(children);
 
