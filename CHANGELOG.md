@@ -1,3 +1,10 @@
+## [1.7.1](https://github.com/adobe/da-live/compare/v1.7.0...v1.7.1) (2026-10-19)
+
+
+### Bug Fixes
+
+* **canvas:** preserve wrappers when editing nested blocks ([#1449](https://github.com/adobe/da-live/issues/1449)) ([9d24093](https://github.com/adobe/da-live/commit/9d2409399fa73b31fa374becc3580bfc8989ace3))
+
 # [1.7.0](https://github.com/adobe/da-live/compare/v1.6.1...v1.7.0) (2026-10-15)
 
 
