@@ -243,11 +243,6 @@ da-list-item.is-expanded::after {
   }
 }
 
-.da-browse-header-name.ascending,
-.da-browse-header-name.descending {
-  color: var(--s2-gray-900);
-}
-
 .da-browse-header-name.ascending use.ascending,
 .da-browse-header-name.descending use.descending {
   opacity: 1;

@@ -37,7 +37,7 @@
   gap: var(--s2-spacing-100);
   align-items: center;
   text-decoration: none;
-  color: var(--s2-gray-900);
+  color: var(--s2-gray-800);
 }
 
 .da-item-list-item-title {
@@ -87,7 +87,7 @@
 
 .da-item-list-item-meta {
   line-height: 20px;
-  color: var(--s2-gray-600);
+  color: var(--s2-gray-700);
   min-width: 0;
 }
 
