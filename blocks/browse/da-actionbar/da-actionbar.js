@@ -87,6 +87,16 @@ export default class DaActionBar extends LitElement {
     this._isCopying = true;
   }
 
+  handleShortcut(key) {
+    if (!this.items.length || !['c', 'x', 'v'].includes(key.toLowerCase())) return false;
+    const button = this.shadowRoot.querySelector(
+      `button[data-shortcut="${key.toLowerCase()}"]:not(:disabled)`,
+    );
+    if (!button) return false;
+    button.click();
+    return true;
+  }
+
   handleMove() {
     this._isCopying = true;
     this._isMoving = true;
@@ -212,18 +222,27 @@ export default class DaActionBar extends LitElement {
           </button>
           <button
             @click=${this.handleCopy}
+            data-shortcut="c"
+            aria-keyshortcuts="Meta+C Control+C"
+            ?disabled=${this._isCopying}
             class="copy-button ${this._isCopying ? 'hide' : ''}">
             ${icon('copy')}
             <span>Copy</span>
           </button>
           <button
             @click=${this.handleMove}
+            data-shortcut="x"
+            aria-keyshortcuts="Meta+X Control+X"
+            ?disabled=${!this._canCut || this._isCopying}
             class="copy-button ${this._canCut ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
             ${icon('cut')}
             <span>Cut</span>
           </button>
           <button
             @click=${this.handlePaste}
+            data-shortcut="v"
+            aria-keyshortcuts="Meta+V Control+V"
+            ?disabled=${!this._canWrite || !this._isCopying}
             class="copy-button ${this._canWrite ? '' : 'hide'} ${this._isCopying ? '' : 'hide'}">
             ${icon('paste')}
             <span>Paste</span>

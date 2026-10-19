@@ -127,7 +127,28 @@ export default class DaBrowse extends LitElement {
     this._headerResizeObserver.observe(header, { box: 'border-box' });
   }
 
+  canHandleClipboardShortcut(e) {
+    if (e.defaultPrevented) return false;
+    const path = e.composedPath();
+    const pageFocused = [document.body, document.documentElement].includes(path[0]);
+    if (!path.includes(this) && !pageFocused) return false;
+
+    const editingSelector = 'input:not([type="checkbox"]):not([type="radio"]), '
+      + 'textarea, select, dialog, [role="dialog"]';
+    return !path.some((node) => {
+      if (!(node instanceof Element)) return false;
+      return node.matches(editingSelector) || node.isContentEditable
+        || !!node.getRootNode().getSelection?.()?.toString();
+    });
+  }
+
   handleShortcuts(e) {
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey
+      && ['c', 'x', 'v'].includes(e.key?.toLowerCase())) {
+      if (this.canHandleClipboardShortcut(e)
+        && this.activeListCmp?.actionBar?.handleShortcut(e.key)) e.preventDefault();
+      return;
+    }
     // Check for Command / Control + Option + T
     if ((e.metaKey || e.ctrlKey) && e.altKey && e.code === 'KeyT') {
       e.preventDefault();

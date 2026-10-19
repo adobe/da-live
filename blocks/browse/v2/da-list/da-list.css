@@ -17,6 +17,7 @@
 /* Item List */
 .da-item-list {
   overflow: hidden;
+  padding-bottom: 80px;
 }
 
 .da-list-sentinel {
