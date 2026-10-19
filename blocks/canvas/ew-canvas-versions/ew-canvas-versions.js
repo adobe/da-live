@@ -9,12 +9,13 @@ import {
   fetchVersionHtml,
   getVersionId,
 } from '../../shared/version/version-actions.js';
-import { buildDisplayItems, formatUser } from '../../shared/version/helpers.js';
+import { buildDisplayItems, entryKey, formatUser } from '../../shared/version/helpers.js';
 import { docToHtml, domToHtml, buildCompareDom } from '../../shared/version/compare.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { trackingPluginKey } from '../editor-utils/prose-diff.js';
 import { initVersionBridge } from '../editor-utils/version-bridge.js';
+import { REFRESH_ICON_HTML, REFRESH_SPINNER_HTML } from './constants.js';
 import '../ew-comparison/ew-canvas-compare.js';
 
 const IS_MAC = typeof navigator !== 'undefined' && /Mac|iP(hone|[oa]d)/.test(navigator.platform);
@@ -24,9 +25,6 @@ const ICON_ADD = '/img/icons/s2-icon-addcircle-20-n.svg';
 const ICON_MORE = '/img/icons/s2-icon-more-20-n.svg';
 const ICON_CHEVRON = '/img/icons/s2-icon-chevrondown-20-n.svg';
 const ICON_CLOSE = '/img/icons/s2-icon-close-20-n.svg';
-const ICON_REFRESH = '/img/icons/s2-icon-refresh-20-n.svg';
-const REFRESH_ICON_HTML = `<svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${ICON_REFRESH}#icon"></use></svg>`;
-const REFRESH_SPINNER_HTML = '<span class="da-loading-spinner" aria-hidden="true"></span>';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
@@ -48,12 +46,6 @@ function loadToast() {
 async function showError(text) {
   const { showToast } = await loadToast();
   showToast({ text, variant: 'error' });
-}
-
-function entryKey(entry) {
-  if (entry.isVersion) return entry.url || entry.versionId || entry;
-  const oldest = entry.audits.at(-1);
-  return `audit-${oldest.timestamp ?? `${oldest.date}-${oldest.time}`}`;
 }
 
 class EwCanvasVersions extends LitElement {
@@ -83,7 +75,7 @@ class EwCanvasVersions extends LitElement {
     initIms().then((ims) => { this._imsEmail = ims?.email ?? null; });
     initVersionBridge();
     this._unsubVersion = canvasBus.versionCreatedState.subscribe(({ path }) => {
-      if (path === this.path) this.handleRefresh();
+      if (path === this.path) this._refreshVersions();
     });
     this._unsubHash = hashChange?.subscribe((state) => {
       const next = buildDocPath(state);
@@ -151,7 +143,7 @@ class EwCanvasVersions extends LitElement {
       : scrollTop;
   }
 
-  handleRefresh() {
+  _refreshVersions() {
     return this._load({ showLoading: false });
   }
 
@@ -170,7 +162,7 @@ class EwCanvasVersions extends LitElement {
       btn.className = 'da-icon-btn';
       btn.title = 'Refresh version history';
       btn.addEventListener('click', () => {
-        if (!this._refreshing && this.path) this.handleRefresh();
+        if (!this._refreshing && this.path) this._refreshVersions();
       });
       this._headerRefreshBtn = btn;
     }
@@ -201,7 +193,7 @@ class EwCanvasVersions extends LitElement {
       return;
     }
     this._newVersion = null;
-    this.handleRefresh();
+    this._refreshVersions();
   }
 
   handleCancel() {

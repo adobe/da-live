@@ -399,6 +399,35 @@ describe('version history refresh', () => {
     expect(inst._versions[0].label).to.equal('Previewed');
   });
 
+  it('reloads history after saving a named version through the form', async () => {
+    let listCalls = 0;
+    let createCalls = 0;
+    const saved = { ...latest, label: 'Saved version' };
+    mockList(() => {
+      listCalls += 1;
+      return Promise.resolve(response([saved, old]));
+    });
+    const listFetch = window.fetch;
+    window.fetch = (url, opts) => {
+      if (url.includes('/versionsource/refreshorg/refreshsite/page.html') && opts?.method === 'POST') {
+        createCalls += 1;
+        return Promise.resolve(new Response('', { status: 201 }));
+      }
+      return listFetch(url, opts);
+    };
+    getExtensionsBridge().view = { editable: true };
+    inst = await createInstance({ path, _versions: [ver(old)] });
+    inst.handleNew();
+    await inst.updateComplete;
+    inst.shadowRoot.querySelector('.da-input').value = 'Saved version';
+    inst.shadowRoot.querySelector('.ew-cv-new-row').requestSubmit();
+    await waitFor(() => listCalls === 1 && !inst._refreshing);
+    expect(createCalls).to.equal(1);
+    expect(inst._newVersion).to.be.null;
+    expect(inst.shadowRoot.querySelector('.ew-cv-new-row')).to.not.exist;
+    expect(inst._versions[0].label).to.equal('Saved version');
+  });
+
   it('keeps manual and automatic refresh available to read-only users', async () => {
     let calls = 0;
     mockList(() => {
@@ -440,7 +469,7 @@ describe('version history refresh', () => {
     inst = await createInstance({ path, _versions: [ver(old)], _filter: 'me' });
     await initIms();
     inst._imsEmail = 'me@example.com';
-    await inst.handleRefresh();
+    await inst._refreshVersions();
     expect(inst._versions).to.have.lengthOf(2);
     expect(inst._filter).to.equal('me');
     expect(inst._filteredVersions.map((entry) => entry.label)).to.deep.equal(['Older version']);
@@ -467,7 +496,7 @@ describe('version history refresh', () => {
     const trigger = row.querySelector('.version-row');
     trigger.focus();
     inst._compareTrigger = trigger;
-    await inst.handleRefresh();
+    await inst._refreshVersions();
     expect([...inst.shadowRoot.querySelectorAll('.is-version')]).to.include(row);
     expect(inst.shadowRoot.querySelector('details')).to.equal(details);
     expect(details.open).to.be.true;
@@ -490,7 +519,7 @@ describe('version history refresh', () => {
     await inst.updateComplete;
     const input = inst.shadowRoot.querySelector('.da-input');
     input.value = 'Unsubmitted name';
-    await inst.handleRefresh();
+    await inst._refreshVersions();
     expect(inst._compareCtx).to.equal(comparison);
     expect(inst._restoreEntry).to.equal(old);
     expect(inst.shadowRoot.querySelector('.da-input')).to.equal(input);
@@ -508,7 +537,7 @@ describe('version history refresh', () => {
     const anchor = [...list.children]
       .find((row) => row.getBoundingClientRect().bottom > list.getBoundingClientRect().top);
     const { top } = anchor.getBoundingClientRect();
-    await inst.handleRefresh();
+    await inst._refreshVersions();
     expect(anchor.isConnected).to.be.true;
     expect(anchor.getBoundingClientRect().top).to.be.closeTo(top, 1);
   });
@@ -517,7 +546,7 @@ describe('version history refresh', () => {
     mockList(() => Promise.resolve(new Response('', { status: 500 })));
     const entries = [ver(old)];
     inst = await createInstance({ path, _versions: entries });
-    await inst.handleRefresh();
+    await inst._refreshVersions();
     await nextFrame();
     expect(inst._versions).to.equal(entries);
     expect(inst.shadowRoot.textContent).to.include('Older version');
@@ -535,7 +564,7 @@ describe('version history refresh', () => {
     expect(inst.shadowRoot.querySelector('[role="alert"]').textContent).to.include('Use Refresh');
     expect(inst.getHeaderActions().getAttribute('aria-disabled')).to.equal('false');
     mockList(() => Promise.resolve(response([latest, old])));
-    await inst.handleRefresh();
+    await inst._refreshVersions();
     expect(inst._loadError).to.be.false;
     expect(inst._versions).to.have.lengthOf(2);
   });
@@ -544,9 +573,9 @@ describe('version history refresh', () => {
     const pending = [];
     mockList(() => new Promise((resolve) => { pending.push(resolve); }));
     inst = await createInstance({ path, _versions: [ver(old)] });
-    const first = inst.handleRefresh();
+    const first = inst._refreshVersions();
     await nextFrame();
-    const second = inst.handleRefresh();
+    const second = inst._refreshVersions();
     await nextFrame();
     pending[1](response([latest, old]));
     await second;
@@ -561,7 +590,7 @@ describe('version history refresh', () => {
       ? new Promise((resolve) => { finish = resolve; })
       : Promise.resolve(response([]))));
     inst = await createInstance({ path, _versions: [ver(old)] });
-    const refreshing = inst.handleRefresh();
+    const refreshing = inst._refreshVersions();
     await nextFrame();
     hashChange._set({ org: 'refreshorg', site: 'refreshsite', path: 'other' });
     await nextFrame();
@@ -576,7 +605,7 @@ describe('version history refresh', () => {
     mockList(() => new Promise((resolve) => { finish = resolve; }));
     const entries = [ver(old)];
     inst = await createInstance({ path, _versions: entries });
-    const refreshing = inst.handleRefresh();
+    const refreshing = inst._refreshVersions();
     await nextFrame();
     inst.remove();
     finish(response([latest, old]));
