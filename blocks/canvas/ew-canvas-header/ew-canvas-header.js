@@ -3,6 +3,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2, getNxEWFlags, getUISize, getLgBtnClass } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import { canvasBus } from '../utils/canvas-bus.js';
+import { ICONS, EDITOR_VIEWS, EDITOR_VIEW_ITEMS } from './constants.js';
 import { getCommentsBridge, toggleComments, getCommentsVisible } from '../editor-utils/comments-bridge.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
@@ -12,23 +13,6 @@ await import(`${getNx2()}/blocks/shared/segmented-btn/segmented.js`);
 
 const style = await loadStyle(import.meta.url);
 const buttons = await getSheet(`${getNx2()}/styles/buttons.css`);
-
-const ICONS = {
-  undo: '/img/icons/s2-icon-undo-20-n.svg',
-  redo: '/img/icons/s2-icon-redo-20-n.svg',
-  splitLeft: '/img/icons/s2-icon-splitleft-20-n.svg',
-  splitRight: '/img/icons/s2-icon-splitright-20-n.svg',
-  gridCompare: '/img/icons/s2-icon-gridcompare-20-n.svg',
-  lock: '/img/icons/s2-icon-lock-20-n.svg',
-  comment: '/img/icons/s2-icon-chat-20-n.svg',
-};
-
-const EDITOR_VIEWS = /** @type {const} */ (['layout', 'content', 'split']);
-const EDITOR_VIEW_ITEMS = [
-  { value: 'layout', label: 'Layout' },
-  { value: 'content', label: 'Content' },
-  { value: 'split', icon: ICONS.gridCompare, iconOnly: true, label: 'Split view' },
-];
 
 class EWCanvasHeader extends LitElement {
   _uiSize = new UISizeController(this);
