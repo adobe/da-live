@@ -3,11 +3,28 @@ import sinon from 'sinon';
 import '../../setup-nx.js';
 import {
   getSiteOptions, getBrowseHref, getFileHref, loadFiles, getLandingIconHref, formatModified,
+  fetchFileModifier,
 } from '../../../../blocks/landing/utils.js';
 
 const HREF = 'https://lp--da-live--adobe.aem.live/?landing=true&nx=devlive&quick-edit=devlive#/org/site';
 
 describe('landing page data and navigation', () => {
+  it('reads the real modifier from source metadata instead of inventing a user', async () => {
+    const getMetadata = sinon.stub().resolves(new Response(null, { headers: { 'x-last-modified-by': 'alex@example.test' } }));
+    expect(await fetchFileModifier({ path: '/org/site/index.html', source: { getMetadata } }))
+      .to.deep.equal({ name: 'alex' });
+    expect(getMetadata.calledOnceWithExactly('/org/site/index.html')).to.equal(true);
+  });
+
+  it('identifies missing and unreadable modifier metadata explicitly', async () => {
+    const source = { getMetadata: sinon.stub() };
+    source.getMetadata.onFirstCall().resolves(new Response(null, { status: 403 }));
+    source.getMetadata.onSecondCall().resolves(new Response());
+    expect((await fetchFileModifier({ path: '/org/site/a.html', source })).error).to.include('403');
+    expect((await fetchFileModifier({ path: '/org/site/b.html', source })).error)
+      .to.equal('The source did not provide a modifier.');
+  });
+
   it('uses the design’s semantic icons without changing shared file mappings', () => {
     expect(getLandingIconHref({ ext: 'html' })).to.include('/landing/page.svg');
     expect(getLandingIconHref({ ext: 'json' })).to.include('/landing/sheet.svg');

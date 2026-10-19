@@ -26,12 +26,9 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
   The shared picker's field variant provides the full clickable pill, 32px
   height, fixed 14px topbar text and right-aligned chevron. Its border and
   background are on the actual trigger, not the noninteractive host.
-  The `lp` Nexter branch supplies optional brand/actions slots with fragment
-  fallbacks for ordinary pages. Custom actions replace non-profile fragment
-  actions to avoid duplicates; the existing profile remains. Landing-owned
-  branding and actions are removed on disconnect.
-  What’s New and Feedback reuse the existing Nexter components and real fragments.
-  Notifications open an explicit unconnected-data notice without an invented count.
+  Header branding, navigation, What’s New, Feedback and the profile retain their
+  existing fragment-driven appearance. The landing-specific header replacement
+  and notification trigger have been removed.
   Site labels retain real identifiers; no Nike name or custom domain is fabricated.
 - Files are the selected site's **root directory**, not a recursive site index.
   All root-listing pages are loaded before sorting by modification date.
@@ -39,6 +36,14 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
   recently opened history. The root scope is not added as a visible subtitle.
 - Starred uses the existing browser-local `da-favorites` entries for that root.
   Favorites in nested folders are outside this first version.
+  Its 24px translucent control uses the Figma grey filled star, placed at the
+  lower-left of the card preview. The same control works in list rows.
+- List view is a separate semantic table, not a single-column stack of cards.
+  It follows `1852:84732`: Name, Folder, Modified at, Modified by and a star action,
+  a 40px header and 56px rows. Modifier names come from the source metadata
+  `x-last-modified-by` header, loaded only for visible list rows and retained
+  until the site listing is refreshed. Missing or unreadable metadata is marked
+  unavailable; no author names or profile photos are invented.
 - Images reuse browse-v2's lazy previews. Pages opt into read-only, source-backed
   document thumbnails (heading, representative image and excerpt), not screenshots
   of the published site. Source HTML is never inserted into the live DOM or executed.
@@ -48,6 +53,8 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
   semantic page, fragment, image and spreadsheet assets. Panels use its 1068px
   desktop width, 16px radius, translucent fill and three-layer shadow. The composer
   uses its 664px desktop width, 109px idle height and layered gradient treatment.
+  The background includes the separate white fade over the coloured artwork:
+  transparent at -794px, reaching white at about 604px in the 1024px canvas.
   Labels use explicit component line heights; modified dates use Today/Yesterday.
   Content-fragment icons require an explicit fragment type, not a folder-name guess.
 - Adobe Clean regular/medium/bold are sourced from Spectrum’s public site and scoped
@@ -61,9 +68,15 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
   The coworker icon, prompt placeholder and AI disclaimer follow the mock.
   The composer uses `--s2-body-size-m` (16px) at both UI sizes and
   `--s2-gray-600` for the placeholder, including dark mode.
-  The plus button continues in chat, where attachments are already supported.
+  The plus button opens the existing Add menu locally and switches to a chevron
+  while open. Files or images opens the native file picker directly; cancelling
+  does not open chat. Selected files use the existing attachment builder and
+  shared add-to-chat event, without uploading or auto-sending. Other selected
+  actions continue in the existing assistant through `openAddAction(id)`,
+  supported by both `nx-chat` and `nx-chat-ao`. Typed drafts are preserved.
 - The Need Attention table uses the Process Description heading and a 32px
-  header, but explicitly states that task data is not
+  header, a separate 46px heading area and a white 6px-radius table surface,
+  following `1852:85554`, but explicitly states that task data is not
   connected. This is not an assertion that the selected site has no tasks.
   Existing scheduler, translation and background-job APIs are not a source
   for the mock's general task list (description, status, requester).

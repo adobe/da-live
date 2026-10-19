@@ -1,6 +1,13 @@
 import { getBrowseItemHref } from '../browse/v2/shared/navigation.js';
 import { iconPathForExt, isImageExt } from '../shared/icons.js';
 
+export async function fetchFileModifier({ path, source }) {
+  const response = await source.getMetadata(path);
+  if (!response?.ok) return { error: `Could not load the modifier (${response?.status || 'no response'}).` };
+  const name = response.headers.get('x-last-modified-by');
+  return name ? { name: name.split('@')[0] } : { error: 'The source did not provide a modifier.' };
+}
+
 export function getLandingIconHref(item) {
   const type = item.type === 'content-fragment' || item.type === 'fragment' ? 'fragment'
     : { html: 'page', json: 'sheet', csv: 'sheet', xlsx: 'sheet' }[item.ext];

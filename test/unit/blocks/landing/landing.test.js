@@ -4,7 +4,6 @@ import '../../setup-nx.js';
 import { getFavorites, toggleFavorite } from '../../../../blocks/browse/shared/favorites.js';
 import { setUISize } from '../../../fixtures/nx2/utils/ui-size.js';
 import loadLanding, { DaLanding } from '../../../../blocks/landing/landing.js';
-import { DaLandingNav } from '../../../../blocks/landing/landing-nav.js';
 import { getNx, getNx2Api } from '../../../../scripts/utils.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
@@ -27,7 +26,6 @@ describe('landing page', () => {
     localStorage.setItem('da-sites', JSON.stringify(['org/site', 'org/other']));
     hashChange._set({ org: 'org', site: 'site', fullpath: '/org/site' });
     sinon.stub(DaLanding.prototype, 'loadProfile').resolves();
-    sinon.stub(DaLandingNav.prototype, 'loadActions').resolves();
     loadSite = sinon.stub(DaLanding.prototype, 'loadSite').resolves();
     nav = document.createElement('nx-nav');
     document.body.append(nav);
@@ -70,8 +68,7 @@ describe('landing page', () => {
     expect(el._sitePicker.variant).to.equal('field');
     expect(el._sitePicker.size).to.equal('m');
     expect(el._sitePicker.items.at(-1).label).to.equal('Browse sites...');
-    expect(nav.querySelector('[slot="brand"]').textContent).to.equal('Adobe Experience Manager');
-    expect(nav.querySelector('[slot="actions"]').tagName).to.equal('DA-LANDING-NAV');
+    expect(nav.querySelector('[slot="brand"], [slot="actions"]')).to.equal(null);
     hashChange._set({ org: 'org', site: 'other', fullpath: '/org/other' });
     await el.updateComplete;
     expect(el._sitePicker.value).to.equal('org/other');
@@ -94,18 +91,6 @@ describe('landing page', () => {
     expect(el.shadowRoot.querySelector('.tasks-panel table').getAttribute('aria-labelledby')).to.equal('tasks-heading');
     expect(el.shadowRoot.querySelector('.tasks-table .tasks-unavailable')).not.to.equal(null);
     expect(el.shadowRoot.querySelector('.tasks-scroll .tasks-unavailable')).to.equal(null);
-  });
-
-  it('opens and closes an honest notification preview without a fake count', async () => {
-    const actions = el._navActions;
-    await actions.updateComplete;
-    const trigger = actions.shadowRoot.querySelector('button');
-    const popover = actions.shadowRoot.querySelector('[popover]');
-    expect(actions.shadowRoot.textContent).to.include('Notifications are not connected');
-    trigger.click();
-    expect(popover.matches(':popover-open')).to.equal(true);
-    actions.shadowRoot.querySelector('[aria-label="Close notifications"]').click();
-    expect(popover.matches(':popover-open')).to.equal(false);
   });
 
   it('uses source-backed page previews and local semantic file icons', () => {
@@ -157,7 +142,12 @@ describe('landing page', () => {
   it('keeps files and preferences when switching between grid and list', async () => {
     el.changeView({ detail: { value: 'list' } });
     await el.updateComplete;
-    expect(el.shadowRoot.querySelector('.files').classList.contains('list-view')).to.equal(true);
+    expect(el.shadowRoot.querySelector('.files')).to.equal(null);
+    expect(el.shadowRoot.querySelectorAll('.file-table .file-row')).to.have.length(2);
+    expect([...el.shadowRoot.querySelectorAll('.file-table th')].map((th) => th.textContent))
+      .to.deep.equal(['Name', 'Folder', 'Modified at', 'Modified by', 'Star']);
+    expect(el.shadowRoot.querySelector('.list-file-link').textContent).to.include('Welcome');
+    expect(el.shadowRoot.querySelector('da-card-preview')).to.equal(null);
     expect(JSON.parse(localStorage.getItem('da-browse-settings')).view).to.equal('list');
     expect(el._files).to.equal(ITEMS);
   });
@@ -259,25 +249,92 @@ describe('landing page', () => {
     expect(el._prompt).to.equal('Update the hero');
   });
 
-  it('opens the existing chat for attachments without sending a prompt', () => {
+  it('keeps Add local until an item is selected, then hands off the selected action', async () => {
     el._chatEnabled = true;
+    await el.updateComplete;
     const listener = sinon.spy();
     document.addEventListener('nx-panel-open', listener);
-    el.openAttachments({ preventDefault() {} });
+    const menu = el.shadowRoot.querySelector('nx-menu');
+    menu.show();
+    expect(menu.open).to.equal(true);
+    expect(listener.called).to.equal(false);
+    menu.choose('prompt');
     document.removeEventListener('nx-panel-open', listener);
     expect(listener.calledOnce).to.equal(true);
-    expect(listener.firstCall.args[0].detail).to.deep.equal({ section: 'chat' });
+    const { detail } = listener.firstCall.args[0];
+    expect(detail.section).to.equal('chat');
+    expect(detail.options.action).to.equal('prompt');
+    expect(detail.options.autoSend).to.equal(undefined);
     expect(el._prompt).to.equal('');
   });
 
-  it('preserves a typed prompt when continuing to chat for attachments', async () => {
+  it('opens the native file picker directly without opening the assistant first', async () => {
+    el._chatEnabled = true;
+    await el.updateComplete;
+    const click = sinon.stub(el.shadowRoot.querySelector('.landing-file-input'), 'click');
+    const open = sinon.stub(el, 'openAssistant').resolves();
+    await el.selectAddAction({ detail: { id: 'files' } });
+    expect(click.calledOnce).to.equal(true);
+    expect(open.called).to.equal(false);
+  });
+
+  it('preserves a typed prompt while cancelling Add or handing off an action', async () => {
     el._chatEnabled = true;
     el._prompt = 'Update the hero';
-    const submit = sinon.stub(el, 'submitPrompt').resolves();
-    const event = { preventDefault() {} };
-    el.openAttachments(event);
-    expect(submit.calledOnceWithExactly(event)).to.equal(true);
+    await el.updateComplete;
+    const menu = el.shadowRoot.querySelector('nx-menu');
+    menu.show();
+    menu.pressEscape();
     expect(el._prompt).to.equal('Update the hero');
+    const open = sinon.stub(el, 'openAssistant').resolves();
+    menu.choose('command');
+    expect(open.calledOnceWithExactly({ text: 'Update the hero', action: 'command' })).to.equal(true);
+    expect(el._prompt).to.equal('Update the hero');
+  });
+
+  it('uses the same grey starred asset in grid and table without losing the star state', async () => {
+    el.starFile(ITEMS[0]);
+    el.changeTab('starred');
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.file-star img').src).to.include('/landing/star-filled.svg');
+    el.changeView({ detail: { value: 'list' } });
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.file-row .file-star').getAttribute('aria-pressed')).to.equal('true');
+    el.shadowRoot.querySelector('.file-row .file-star').click();
+    await el.updateComplete;
+    expect(el.shadowRoot.textContent).to.include('No starred files yet');
+  });
+
+  it('does not apply stale modifier metadata after a site request is aborted', async () => {
+    const request = new AbortController();
+    let finish;
+    sinon.stub(source, 'getMetadata').returns(new Promise((resolve) => { finish = resolve; }));
+    const pending = el.loadModifier(ITEMS[0], request);
+    await new Promise((resolve) => { setTimeout(resolve); });
+    request.abort();
+    finish(new Response(null, { headers: { 'x-last-modified-by': 'old@example.test' } }));
+    await pending;
+    expect(el._modifiers).to.equal(undefined);
+  });
+
+  it('loads visible list modifiers once and identifies unreadable metadata', async () => {
+    const metadata = sinon.stub(source, 'getMetadata');
+    metadata.onFirstCall().resolves(new Response(null, { headers: { 'x-last-modified-by': 'alex@example.test' } }));
+    metadata.onSecondCall().resolves(new Response(null, { status: 403 }));
+    el._request = new AbortController();
+    el.changeView({ detail: { value: 'list' } });
+    await el.updateComplete;
+    await new Promise((resolve) => { setTimeout(resolve); });
+    await el.updateComplete;
+    expect(metadata.callCount).to.equal(2);
+    const cells = el.shadowRoot.querySelectorAll('.file-modifier');
+    expect(cells[0].textContent).to.include('alex');
+    expect(cells[1].textContent).to.equal('Unavailable');
+    el.changeView({ detail: { value: 'card' } });
+    await el.updateComplete;
+    el.changeView({ detail: { value: 'list' } });
+    await el.updateComplete;
+    expect(metadata.callCount).to.equal(2);
   });
 
   it('shows more than ten files only when requested', async () => {
