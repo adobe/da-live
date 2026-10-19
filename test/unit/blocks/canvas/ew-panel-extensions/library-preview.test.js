@@ -7,6 +7,7 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 await import('../../../../../blocks/canvas/ew-panel-extensions/ew-panel-library.js');
 await import('../../../../../blocks/canvas/ew-block-library-modal/ew-block-library-modal.js');
 const { status } = await getNx2Api();
+const { resetBlockLibraryCache } = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
 
 function cookieGate() {
   let release;
@@ -29,6 +30,7 @@ function cookieGate() {
     let statusCalls;
 
     beforeEach(() => {
+      resetBlockLibraryCache();
       savedFetch = window.fetch;
       savedIMS = window.adobeIMS;
       savedNxIms = localStorage.getItem('nx-ims');
@@ -74,32 +76,139 @@ function cookieGate() {
       expect(el[preview]).to.equal(undefined);
       gate.release();
       await pending;
-      expect(calls).to.have.lengthOf(1);
+      expect(calls).to.have.lengthOf(2);
       expect(calls[0].url).to.equal('https://feat--shared--org.stage-preview.da.live/gimme_cookie');
       expect(calls[0].opts.credentials).to.equal('include');
+      expect(calls[1].opts.method).to.equal('HEAD');
+      expect(calls[1].opts.cache).to.equal('no-store');
       expect(el[preview].url).to.equal('https://feat--shared--org.stage-preview.da.live/hero?foo=bar#preview');
       expect(el[preview].ok).to.be.true;
     });
 
-    it('keeps cross-org preview URLs direct without cookie or DA status requests', async () => {
-      canvasBus.branchState.emit({
-        org: 'org',
-        site: 'site',
-        path: '/org/site/page',
-        status: 'ready',
-        branch: 'Configured/Branch',
+    [401, 403].forEach((statusCode) => {
+      it(`recovers a lost cookie on reopen after a preview HEAD ${statusCode}`, async () => {
+        const calls = [];
+        let cookieValid = false;
+        let cookieRequests = 0;
+        const gate = cookieGate();
+        window.fetch = async (url, opts) => {
+          calls.push({ url, opts });
+          if (url.endsWith('/gimme_cookie')) {
+            cookieRequests += 1;
+            if (cookieRequests === 2) {
+              gate.notify();
+              await gate.response;
+            }
+            cookieValid = true;
+            return new Response('');
+          }
+          return new Response('', { status: cookieValid ? 200 : statusCode });
+        };
+        const item = { name: 'Hero', path: 'https://main--site--org.aem.page/hero' };
+        await el[open](item);
+        expect(cookieRequests).to.equal(1);
+        // Keep the IMS token and helper caches intact, but discard the browser cookie.
+        cookieValid = false;
+        el[preview] = undefined;
+        const pending = el[open](item);
+        await gate.ready;
+        const beforeRenewal = el[preview];
+        gate.release();
+        await pending;
+        expect(beforeRenewal).to.equal(undefined);
+        expect(cookieRequests).to.equal(2);
+        expect(el[preview].url).to.equal('https://main--site--org.stage-preview.da.live/hero');
+        expect(el[preview].ok).to.equal(true);
+        const checks = calls.filter((call) => call.opts?.method === 'HEAD');
+        expect(checks).to.have.lengthOf(3);
+        expect(checks.every((call) => call.opts.credentials === 'include' && call.opts.cache === 'no-store')).to.equal(true);
       });
+    });
+
+    it('revalidates healthy preview sessions without another cookie exchange', async () => {
       const calls = [];
-      window.fetch = async (url) => {
-        calls.push(url);
+      window.fetch = async (url, opts) => {
+        calls.push({ url, opts });
         return new Response('');
       };
-      const path = 'https://feat--shared--other.aem.live/hero?foo=bar#preview';
-      await el[open]({ name: 'Hero', path });
-      expect(el[preview].url).to.equal(path);
-      expect(el[preview].ok).to.equal(null);
-      expect(calls).to.deep.equal([]);
+      const item = { name: 'Hero', path: 'https://main--site--org.aem.page/hero' };
+      await el[open](item);
+      await el[open](item);
+      expect(calls.filter((call) => call.url.endsWith('/gimme_cookie'))).to.have.lengthOf(1);
+      expect(calls.filter((call) => call.opts?.method === 'HEAD')).to.have.lengthOf(2);
+    });
+
+    it('surfaces persistent preview denial without loading an unauthorized iframe', async () => {
+      const calls = [];
+      window.fetch = async (url, opts) => {
+        calls.push({ url, opts });
+        return new Response('', { status: url.endsWith('/gimme_cookie') ? 200 : 403 });
+      };
+      await el[open]({ name: 'Hero', path: 'https://main--site--org.aem.page/hero' });
+      expect(el[preview].error).to.include('Library access was denied');
+      expect(el[preview].url).to.equal(undefined);
       expect(statusCalls).to.deep.equal([]);
+      expect(calls.filter((call) => call.opts?.method === 'HEAD')).to.have.lengthOf(2);
+      expect(calls.filter((call) => call.url.endsWith('/gimme_cookie'))).to.have.lengthOf(2);
+    });
+
+    it('shows retry guidance when preview validation cannot reach the proxy', async () => {
+      window.fetch = async (url, opts) => {
+        if (opts?.method === 'HEAD') throw new Error('Network unavailable');
+        return new Response('');
+      };
+      await el[open]({ name: 'Hero', path: 'https://main--site--org.aem.page/hero' });
+      expect(el[preview].error).to.equal('Unable to check preview access. Please try again.');
+      expect(el[preview].url).to.equal(undefined);
+      expect(statusCalls).to.deep.equal([]);
+    });
+
+    it('does not restore a preview after disconnecting during its access check', async () => {
+      document.body.append(el);
+      await el.updateComplete;
+      el._hashState = { org: 'org', site: 'site' };
+      const gate = cookieGate();
+      window.fetch = async (url, opts) => {
+        if (opts?.method === 'HEAD') {
+          gate.notify();
+          return gate.response;
+        }
+        return new Response('');
+      };
+      const previousPreview = el[preview];
+      const pending = el[open]({ name: 'Hero', path: 'https://main--site--org.aem.page/hero' });
+      await gate.ready;
+      el.remove();
+      gate.release();
+      await pending;
+      expect(el[preview]).to.equal(previousPreview);
+      expect(statusCalls).to.deep.equal([]);
+    });
+
+    [
+      'https://feat--shared--other.aem.live/hero',
+      'https://content.da.live/other/shared/hero',
+    ].forEach((source) => {
+      it(`uses rendered cross-org AEM previews without cookie or DA status requests for ${source}`, async () => {
+        canvasBus.branchState.emit({
+          org: 'org',
+          site: 'site',
+          path: '/org/site/page',
+          status: 'ready',
+          branch: 'Configured/Branch',
+        });
+        const calls = [];
+        window.fetch = async (url) => {
+          calls.push(url);
+          return new Response('');
+        };
+        const path = `${source}?foo=bar#preview`;
+        await el[open]({ name: 'Hero', path });
+        expect(el[preview].url).to.equal('https://configured-branch--shared--other.aem.page/hero?foo=bar#preview');
+        expect(el[preview].ok).to.equal(null);
+        expect(calls).to.deep.equal([]);
+        expect(statusCalls).to.deep.equal([]);
+      });
     });
 
     [
@@ -107,6 +216,8 @@ function cookieGate() {
       { label: 'absolute aem.page', path: 'https://main--site--org.aem.page/blocks/hero', site: 'site' },
       { label: 'absolute aem.live', path: 'https://main--site--org.aem.live/blocks/hero', site: 'site' },
       { label: 'same-org cross-site', path: 'https://main--shared--org.aem.page/blocks/hero', site: 'shared' },
+      { label: 'already-proxied', path: 'https://main--site--org.preview.da.live/blocks/hero', site: 'site' },
+      { label: 'relative', path: '/blocks/hero', site: 'site' },
     ].forEach(({ label, path, site }) => {
       it(`authenticates the resolved canvas branch before assigning the ${label} preview`, async () => {
         canvasBus.branchState.emit({
@@ -131,8 +242,9 @@ function cookieGate() {
         await pending;
         expect(el[preview].url).to.equal(`https://configured-branch--${site}--org.stage-preview.da.live/blocks/hero?foo=bar#preview`);
         expect(el[preview].ok).to.be.true;
-        expect(calls).to.have.lengthOf(1);
+        expect(calls).to.have.lengthOf(2);
         expect(calls[0].opts.credentials).to.equal('include');
+        expect(calls[1].opts.method).to.equal('HEAD');
         expect(statusCalls).to.deep.equal([`/org/${site}/blocks/hero`]);
       });
     });

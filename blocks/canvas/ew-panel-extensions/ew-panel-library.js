@@ -152,8 +152,11 @@ class EwPanelLibrary extends LitElement {
     if (!org || !site) return;
     const details = await ensureItemPreviewAccess(item, { org, site });
     if (this._previewRequest !== request) return;
-    if (!details) {
-      this._preview = { name: item.name || item.key || item.title, error: 'Preview branch unavailable. Please try again once the editor preview is ready.' };
+    if (!details || details.error) {
+      this._preview = {
+        name: item.name || item.key || item.title,
+        error: details?.error || 'Preview branch unavailable. Please try again once the editor preview is ready.',
+      };
       return;
     }
     this._preview = {

@@ -173,8 +173,8 @@ class EwBlockLibraryModal extends LitElement {
     }
     const details = await ensureItemPreviewAccess(block, { org, site });
     if (this._previewRequest !== request) return;
-    if (!details) {
-      this._previewInfo = { error: 'Preview branch unavailable. Please try again once the editor preview is ready.' };
+    if (!details || details.error) {
+      this._previewInfo = { error: details?.error || 'Preview branch unavailable. Please try again once the editor preview is ready.' };
       return;
     }
     const url = details.previewUrl;

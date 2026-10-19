@@ -69,7 +69,7 @@ describe('Ew panel library _insertTemplate', () => {
     view.state.doc.descendants((node) => {
       if (node.type.name === 'image') images.push(node.attrs.src);
     });
-    expect(images).to.deep.equal(['https://main--site--org.aem.live/templates/media.png']);
+    expect(images).to.deep.equal(['https://content.da.live/org/site/templates/media.png']);
     expect(el._actionError).to.equal(undefined);
   });
 
@@ -95,8 +95,8 @@ describe('Ew panel library _insertTemplate', () => {
       name: 'same-org AEM templates',
       source: 'https://feat--site--org.aem.live/templates/home',
       fetched: 'https://feat--site--org.stage-preview.da.live/templates/home',
-      publicDocument: 'https://feat--site--org.aem.live/templates/home',
-      rootMedia: true,
+      publicDocument: 'https://content.da.live/org/site/templates/home',
+      contentRoot: 'https://content.da.live/org/site',
       credentials: 'include',
     },
     {
@@ -109,34 +109,36 @@ describe('Ew panel library _insertTemplate', () => {
       name: 'proxied DA-content templates',
       source: 'https://content.da.live/org/site/templates/home',
       fetched: 'https://main--site--org.stage-preview.da.live/templates/home',
-      publicDocument: 'https://main--site--org.aem.page/templates/home',
-      rootMedia: true,
+      publicDocument: 'https://content.da.live/org/site/templates/home',
+      contentRoot: 'https://content.da.live/org/site',
       credentials: 'include',
     },
     {
       name: 'cross-org DA-content templates',
       source: 'https://content.da.live/other/shared/templates/home',
       publicDocument: 'https://content.da.live/other/shared/templates/home',
+      contentRoot: 'https://content.da.live/other/shared',
     },
     {
       name: 'DA-content templates without editor org context',
       source: 'https://content.da.live/org/site/templates/home',
       publicDocument: 'https://content.da.live/org/site/templates/home',
+      contentRoot: 'https://content.da.live/org/site',
       context: {},
     },
     {
       name: 'relative same-org template sources',
       source: '/templates/home',
       fetched: 'https://main--site--org.stage-preview.da.live/templates/home',
-      publicDocument: 'https://main--site--org.aem.live/templates/home',
-      rootMedia: true,
+      publicDocument: 'https://content.da.live/org/site/templates/home',
+      contentRoot: 'https://content.da.live/org/site',
       credentials: 'include',
     },
     {
       name: 'already-proxied templates',
       source: 'https://main--site--org.stage-preview.da.live/templates/home',
-      publicDocument: 'https://main--site--org.aem.page/templates/home',
-      rootMedia: true,
+      publicDocument: 'https://content.da.live/org/site/templates/home',
+      contentRoot: 'https://content.da.live/org/site',
       credentials: 'include',
     },
     {
@@ -147,18 +149,48 @@ describe('Ew panel library _insertTemplate', () => {
     {
       name: 'cross-org already-proxied templates',
       source: 'https://feat--shared--other.preview.da.live/templates/home',
-      publicDocument: 'https://feat--shared--other.aem.page/templates/home',
-      rootMedia: true,
+      publicDocument: 'https://content.da.live/other/shared/templates/home',
+      contentRoot: 'https://content.da.live/other/shared',
     },
     {
       name: 'already-proxied templates without editor org context',
       source: 'https://main--site--org.stage-preview.da.live/templates/home',
-      publicDocument: 'https://main--site--org.aem.page/templates/home',
-      rootMedia: true,
+      publicDocument: 'https://content.da.live/org/site/templates/home',
+      contentRoot: 'https://content.da.live/org/site',
       context: {},
     },
+    {
+      name: 'AEM HTML resources forwarded by the proxy',
+      source: 'https://feat--site--org.aem.page/templates/home.html',
+      fetched: 'https://feat--site--org.stage-preview.da.live/templates/home.html',
+      publicDocument: 'https://feat--site--org.aem.page/templates/home.html',
+      rootMedia: true,
+      credentials: 'include',
+    },
+    {
+      name: 'stage DA-content templates',
+      source: 'https://stage-content.da.live/org/site/templates/home',
+      fetched: 'https://main--site--org.stage-preview.da.live/templates/home',
+      publicDocument: 'https://stage-content.da.live/org/site/templates/home',
+      contentRoot: 'https://stage-content.da.live/org/site',
+      credentials: 'include',
+    },
+    ...['content.da.live', 'stage-content.da.live'].flatMap((host) => ['.html', '.plain.html'].map((suffix) => ({
+      name: `proxied ${host} ${suffix} resources`,
+      source: `https://${host}/org/site/templates/home${suffix}`,
+      fetched: `https://main--site--org.stage-preview.da.live/templates/home${suffix}`,
+      publicDocument: `https://main--site--org.aem.page/templates/home${suffix}`,
+      rootMedia: true,
+      credentials: 'include',
+    }))),
+    {
+      name: 'unproxied cross-org DA-content HTML',
+      source: 'https://content.da.live/other/shared/templates/home.html',
+      publicDocument: 'https://content.da.live/other/shared/templates/home.html',
+      contentRoot: 'https://content.da.live/other/shared',
+    },
   ].forEach(({
-    name, source, fetched, publicDocument, rootMedia, credentials, context,
+    name, source, fetched, publicDocument, rootMedia, contentRoot, credentials, context,
   }) => {
     it(`preserves saved image paths and URL components for ${name}`, async () => {
       const view = makeView({ type: 'doc', content: [{ type: 'paragraph' }] });
@@ -188,12 +220,49 @@ describe('Ew panel library _insertTemplate', () => {
         if (node.type.name === 'image') images.push(node.attrs);
       });
       const expected = paths.map((path, index) => {
+        if (contentRoot && path.startsWith('/')) return `${contentRoot}${path}`;
         const base = index === 1 && rootMedia ? `${new URL(publicDocument).origin}/` : publicDocument;
         return new URL(path, base).href;
       });
       expect(images.map((img) => img.src)).to.deep.equal(expected);
       expect(images.every((img) => img.alt === 'Template image')).to.be.true;
       expect(images.some((img) => img.src.includes('preview.da.live'))).to.be.false;
+    });
+  });
+
+  it('restores the stored content host for root-relative images in a proxied template', async () => {
+    const view = makeView({ type: 'doc', content: [{ type: 'paragraph' }] });
+    getExtensionsBridge().view = view;
+    window.fetch = async () => new Response('<body><main><div><p><img src="/library/templates/.home/img.png?width=800#hero" data-da-img-host="stage-content.da.live"></p></div></main></body>');
+    const el = document.createElement('ew-panel-library');
+    el._hashState = { org: 'org', site: 'site' };
+    await el._insertTemplate({ path: 'https://feat--site--org.preview.da.live/templates/home' });
+    expect(el._actionError).to.equal(undefined);
+    const images = [];
+    view.state.doc.descendants((node) => {
+      if (node.type.name === 'image') images.push(node.attrs.src);
+    });
+    expect(images).to.deep.equal(['https://stage-content.da.live/org/site/library/templates/.home/img.png?width=800#hero']);
+  });
+
+  ['content.da.live', 'stage-content.da.live'].forEach((host) => {
+    it(`restores HTTPS and removes a local port when an image records ${host}`, async () => {
+      const view = makeView({ type: 'doc', content: [{ type: 'paragraph' }] });
+      getExtensionsBridge().view = view;
+      window.fetch = async () => new Response(`<body><main><div><p><img src="/library/.hero/img.png?width=800#hero" data-da-img-host="${host}"></p><p><img src="./images/logo.png" data-da-img-host="${host}"></p></div></main></body>`);
+      const el = document.createElement('ew-panel-library');
+      el._hashState = { org: 'org', site: 'site' };
+      // Exercise the same HTTP/port base used by CON_ORIGIN in local development.
+      await el._insertTemplate({ path: 'http://content.da.live:8788/org/site/templates/home' });
+      expect(el._actionError).to.equal(undefined);
+      const images = [];
+      view.state.doc.descendants((node) => {
+        if (node.type.name === 'image') images.push(node.attrs.src);
+      });
+      expect(images).to.deep.equal([
+        `https://${host}/org/site/library/.hero/img.png?width=800#hero`,
+        `https://${host}/org/site/templates/images/logo.png`,
+      ]);
     });
   });
 });
