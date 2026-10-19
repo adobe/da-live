@@ -9,6 +9,12 @@ After publishing the `lp` branch, open:
 https://lp--da-live--adobe.aem.live/?landing=true&theme=light&nx=lp&quick-edit=devlive#/aemsites/devlive
 ```
 
+After integration into Martin's `devlive` branches, use:
+
+```text
+https://devlive--da-live--adobe.aem.live/?landing=true&theme=light&nx=devlive&quick-edit=devlive#/aemsites/devlive
+```
+
 Add `&theme=light` for a light-mode preview without changing the saved theme.
 The override applies only while this landing page is present.
 
@@ -92,7 +98,8 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
 
 ## Shared demo safety
 
-The `lp` branch changes only the application code, not `devlive` code or content.
+The `lp` branch keeps preview code isolated. Explicitly integrating it into
+`devlive` updates Martin's application code, but does not change site content.
 Loading the landing page reads the site's listing and configuration; favorites
 and view choices are browser-local. However, `aemsites/devlive` is shared content,
 not a sandbox copy. Editing an opened file or sending a prompt in the assistant
