@@ -591,6 +591,11 @@ export function getItemPreviewUrl(item, { org, site }) {
   const input = libraryContentUrl(item.path || item.value, context);
   const proxyOpts = libraryProxyOptions(context);
   const target = getPreviewProxyDetails(input, proxyOpts);
+  if (target.org) {
+    // Item previews render with the canvas branch, not the library source's branch.
+    const { pathname, search, hash } = new URL(target.url);
+    target.url = `${getPreviewOrigin(target.org, target.site, previewBranch)}${pathname}${search}${hash}`;
+  }
   // Retain status metadata for a direct cross-org URL without proxying or authenticating it.
   const metadata = getPreviewProxyDetails(input, { ...proxyOpts, currentOrg: undefined });
 

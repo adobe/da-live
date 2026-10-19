@@ -55,6 +55,13 @@ function cookieGate() {
     });
 
     it('waits for the matching cookie before assigning a same-org iframe URL', async () => {
+      canvasBus.branchState.emit({
+        org: 'org',
+        site: 'site',
+        path: '/org/site/page',
+        status: 'ready',
+        branch: 'feat',
+      });
       const gate = cookieGate();
       const calls = [];
       window.fetch = (url, opts) => {
@@ -75,6 +82,13 @@ function cookieGate() {
     });
 
     it('keeps cross-org preview URLs direct without cookie or DA status requests', async () => {
+      canvasBus.branchState.emit({
+        org: 'org',
+        site: 'site',
+        path: '/org/site/page',
+        status: 'ready',
+        branch: 'Configured/Branch',
+      });
       const calls = [];
       window.fetch = async (url) => {
         calls.push(url);
@@ -88,29 +102,39 @@ function cookieGate() {
       expect(statusCalls).to.deep.equal([]);
     });
 
-    it('authenticates the resolved canvas branch before assigning a DA-content preview', async () => {
-      canvasBus.branchState.emit({
-        org: 'org',
-        site: 'site',
-        path: '/org/site/page',
-        status: 'ready',
-        branch: 'Configured/Branch',
+    [
+      { label: 'DA-content', path: 'https://content.da.live/org/site/blocks/hero', site: 'site' },
+      { label: 'absolute aem.page', path: 'https://main--site--org.aem.page/blocks/hero', site: 'site' },
+      { label: 'absolute aem.live', path: 'https://main--site--org.aem.live/blocks/hero', site: 'site' },
+      { label: 'same-org cross-site', path: 'https://main--shared--org.aem.page/blocks/hero', site: 'shared' },
+    ].forEach(({ label, path, site }) => {
+      it(`authenticates the resolved canvas branch before assigning the ${label} preview`, async () => {
+        canvasBus.branchState.emit({
+          org: 'org',
+          site: 'site',
+          path: '/org/site/page',
+          status: 'ready',
+          branch: 'Configured/Branch',
+        });
+        const gate = cookieGate();
+        const calls = [];
+        window.fetch = (url, opts) => {
+          calls.push({ url, opts });
+          gate.notify();
+          return gate.response;
+        };
+        const pending = el[open]({ name: 'Hero', path: `${path}?foo=bar#preview` });
+        await gate.ready;
+        expect(el[preview]).to.equal(undefined);
+        expect(calls[0].url).to.equal(`https://configured-branch--${site}--org.stage-preview.da.live/gimme_cookie`);
+        gate.release();
+        await pending;
+        expect(el[preview].url).to.equal(`https://configured-branch--${site}--org.stage-preview.da.live/blocks/hero?foo=bar#preview`);
+        expect(el[preview].ok).to.be.true;
+        expect(calls).to.have.lengthOf(1);
+        expect(calls[0].opts.credentials).to.equal('include');
+        expect(statusCalls).to.deep.equal([`/org/${site}/blocks/hero`]);
       });
-      const gate = cookieGate();
-      const calls = [];
-      window.fetch = (url, opts) => {
-        calls.push({ url, opts });
-        gate.notify();
-        return gate.response;
-      };
-      const pending = el[open]({ name: 'Hero', path: 'https://content.da.live/org/site/blocks/hero?foo=bar#preview' });
-      await gate.ready;
-      expect(el[preview]).to.equal(undefined);
-      expect(calls[0].url).to.equal('https://configured-branch--site--org.stage-preview.da.live/gimme_cookie');
-      gate.release();
-      await pending;
-      expect(el[preview].url).to.equal('https://configured-branch--site--org.stage-preview.da.live/blocks/hero?foo=bar#preview');
-      expect(el[preview].ok).to.be.true;
     });
 
     it('does not request a cookie or load a guessed preview while branch resolution is pending', async () => {

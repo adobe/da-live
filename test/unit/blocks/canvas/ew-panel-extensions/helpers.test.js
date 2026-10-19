@@ -56,6 +56,32 @@ describe('library preview branch state', () => {
       .to.equal('https://configured-branch--site--org.stage-preview.da.live/blocks/hero');
   });
 
+  ['aem.page', 'aem.live'].forEach((domain) => {
+    ['site', 'shared'].forEach((site) => {
+      it(`uses the canvas branch for absolute same-org ${domain} previews on ${site}`, () => {
+        canvasBus.branchState.emit({ ...state, status: 'ready', branch: 'Configured/Branch' });
+        const path = `https://main--${site}--org.${domain}/blocks/hero?foo=bar#preview`;
+        expect(getItemPreviewUrl({ path }, state)).to.deep.equal({
+          previewUrl: `https://configured-branch--${site}--org.stage-preview.da.live/blocks/hero?foo=bar#preview`,
+          org: 'org',
+          site,
+          pathname: '/blocks/hero',
+        });
+      });
+    });
+
+    it(`preserves the source branch for cross-org ${domain} previews`, () => {
+      canvasBus.branchState.emit({ ...state, status: 'ready', branch: 'Configured/Branch' });
+      const path = `https://main--shared--other.${domain}/blocks/hero?foo=bar#preview`;
+      expect(getItemPreviewUrl({ path }, state)).to.deep.equal({
+        previewUrl: path,
+        org: 'other',
+        site: 'shared',
+        pathname: '/blocks/hero',
+      });
+    });
+  });
+
   ['pending', 'error'].forEach((status) => {
     it(`does not build a main-branch URL while branch state is ${status}`, () => {
       canvasBus.branchState.emit({ ...state, status });
