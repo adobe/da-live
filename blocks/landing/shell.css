@@ -1,3 +1,8 @@
+body:has(da-landing) {
+  --landing-font-family: landing-clean, var(--s2-font-family);
+  --landing-display-family: landing-display, var(--landing-font-family);
+}
+
 body.dark-scheme:has(da-landing) {
   color-scheme: dark;
 }
@@ -7,21 +12,23 @@ body:has(da-landing[data-theme="light"]) {
 }
 
 nx-nav:has(> .landing-workspace) {
+  --s2-font-family: landing-clean, adobe-clean, 'Trebuchet MS', sans-serif;
+
   grid-template-columns: auto minmax(0, 1fr) auto;
-  column-gap: 16px;
+  column-gap: 21px;
 }
 
 nx-nav > .landing-workspace {
   --nx-picker-height: var(--s2-spacing-500);
   --nx-picker-padding: var(--s2-spacing-75) var(--s2-spacing-300);
   --nx-picker-border: 1px solid var(--s2-gray-300);
-  --nx-picker-radius: var(--s2-corner-radius-800);
+  --nx-picker-radius: 20px;
   --nx-picker-background: var(--s2-gray-25);
   --nx-picker-max-width: 100%;
 
   box-sizing: border-box;
   width: max-content;
-  min-width: min(220px, 100%);
+  min-width: min(176px, 100%);
   max-width: min(100%, 280px);
 }
 
@@ -31,4 +38,68 @@ nx-nav > .landing-workspace:hover {
 
 nx-nav > .landing-workspace::part(label) {
   font-weight: var(--s2-component-m-bold-font-weight);
+}
+
+.landing-brand {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 16px;
+  padding-left: 16px;
+  color: var(--s2-gray-800);
+  font: 700 14px / 18px var(--landing-font-family);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.landing-brand img {
+  width: 24px;
+  height: 24px;
+}
+
+@media (width < 900px) {
+  .landing-brand span {
+    display: none;
+  }
+
+  nx-nav:has(> .landing-workspace) {
+    column-gap: 12px;
+  }
+}
+
+@media (width < 600px) {
+  nx-nav > .landing-workspace {
+    --nx-picker-padding: 4px 8px;
+
+    min-width: 0;
+    max-width: min(100%, 176px);
+  }
+}
+
+@font-face {
+  font-family: landing-clean;
+  src: url('./adobe-clean-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: landing-clean;
+  src: url('./adobe-clean-medium.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: landing-clean;
+  src: url('./adobe-clean-bold.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: landing-display;
+  src: local('Adobe Clean Display SemiBold'), local('AdobeCleanDisplay-SemiBold');
+  font-weight: 600;
+  font-display: swap;
 }

@@ -1,11 +1,30 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import '../../setup-nx.js';
-import { getSiteOptions, getBrowseHref, getFileHref, loadFiles } from '../../../../blocks/landing/utils.js';
+import {
+  getSiteOptions, getBrowseHref, getFileHref, loadFiles, getLandingIconHref, formatModified,
+} from '../../../../blocks/landing/utils.js';
 
 const HREF = 'https://lp--da-live--adobe.aem.live/?landing=true&nx=devlive&quick-edit=devlive#/org/site';
 
 describe('landing page data and navigation', () => {
+  it('uses the design’s semantic icons without changing shared file mappings', () => {
+    expect(getLandingIconHref({ ext: 'html' })).to.include('/landing/page.svg');
+    expect(getLandingIconHref({ ext: 'json' })).to.include('/landing/sheet.svg');
+    expect(getLandingIconHref({ ext: 'jpg' })).to.include('/landing/image.svg');
+    expect(getLandingIconHref({ ext: 'html', type: 'content-fragment' })).to.include('/landing/fragment.svg');
+    expect(getLandingIconHref({})).to.include('folder');
+  });
+
+  it('formats local calendar dates as Today, Yesterday or a short date', () => {
+    const now = new Date(2026, 9, 19, 12);
+    expect(formatModified({ modified: new Date(2026, 9, 19, 8).getTime(), now }).label).to.equal('Today');
+    expect(formatModified({ modified: new Date(2026, 9, 18, 23).getTime(), now }).label).to.equal('Yesterday');
+    expect(formatModified({ modified: new Date(2025, 8, 14).getTime(), now }).label).to.include('2025');
+    expect(formatModified({ modified: 'invalid', now })).to.equal(undefined);
+    expect(formatModified({ modified: undefined, now })).to.equal(undefined);
+  });
+
   it('keeps the current site and deduplicates valid recent sites', () => {
     expect(getSiteOptions({
       current: 'org/site',

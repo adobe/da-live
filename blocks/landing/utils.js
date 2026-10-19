@@ -1,4 +1,26 @@
 import { getBrowseItemHref } from '../browse/v2/shared/navigation.js';
+import { iconPathForExt, isImageExt } from '../shared/icons.js';
+
+export function getLandingIconHref(item) {
+  const type = item.type === 'content-fragment' || item.type === 'fragment' ? 'fragment'
+    : { html: 'page', json: 'sheet', csv: 'sheet', xlsx: 'sheet' }[item.ext];
+  const name = type || (isImageExt(item.ext) ? 'image' : undefined);
+  return name ? new URL(`./${name}.svg`, import.meta.url).href : iconPathForExt(item.ext);
+}
+
+export function formatModified({ modified, now = new Date() }) {
+  const date = new Date(Number(modified));
+  if (!(Number(modified) > 0) || Number.isNaN(date.getTime())) return undefined;
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (date >= today && date <= now) return { date, label: 'Today' };
+  if (date >= yesterday && date < today) return { date, label: 'Yesterday' };
+  return {
+    date,
+    label: new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', ...(date.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}) }).format(date),
+  };
+}
 
 export function getSiteOptions({ recentSites, current }) {
   const sites = [...new Set([current, ...recentSites].filter(

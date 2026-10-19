@@ -1,11 +1,14 @@
 import { LitElement, html, nothing, repeat } from 'da-lit';
 import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
 import { getChatPanelContent, setChatPrompt } from '../shared/chat-panel.js';
-import { iconPathForExt, getTypeLabel } from '../shared/icons.js';
+import { getTypeLabel } from '../shared/icons.js';
 import { getFavorites, toggleFavorite } from '../browse/shared/favorites.js';
 import { getBrowseSettings, updateBrowseSettings } from '../browse/v2/shared/settings.js';
-import { getSiteOptions, getBrowseHref, getFileHref, loadFiles } from './utils.js';
+import {
+  getSiteOptions, getBrowseHref, getFileHref, loadFiles, getLandingIconHref, formatModified,
+} from './utils.js';
 import '../browse/v2/da-card-preview/da-card-preview.js';
+import './landing-nav.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { registerPanelSection, PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
@@ -28,7 +31,6 @@ const VIEW_ITEMS = [
   { value: 'list', label: 'List view', icon: '/img/icons/s2-icon-viewlist-20-n.svg', iconOnly: true },
 ];
 const PAGE_SIZE = 10;
-const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
 
 function icon(name) {
   return html`<svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-${name}-20-n.svg#icon"></use></svg>`;
@@ -84,6 +86,8 @@ export class DaLanding extends LitElement {
     this._unsubscribe?.();
     this._request?.abort();
     this._sitePicker?.remove();
+    this._navBrand?.remove();
+    this._navActions?.remove();
     window.removeEventListener('storage', this._onStorage);
     document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
     super.disconnectedCallback();
@@ -112,15 +116,33 @@ export class DaLanding extends LitElement {
       else window.location.hash = `#/${value}`;
     });
     this._sitePicker = picker;
-    nav.append(picker);
+    const brand = document.createElement('a');
+    brand.slot = 'brand';
+    brand.href = window.location.href;
+    brand.className = 'landing-brand';
+    const logo = document.createElement('img');
+    logo.src = new URL('./adobe.svg', import.meta.url).href;
+    logo.alt = '';
+    logo.width = 24;
+    logo.height = 24;
+    const label = document.createElement('span');
+    label.textContent = 'Adobe Experience Manager';
+    brand.append(logo, label);
+    const actions = document.createElement('da-landing-nav');
+    actions.slot = 'actions';
+    this._navBrand = brand;
+    this._navActions = actions;
+    nav.append(brand, picker, actions);
   }
 
   updated() {
     this.syncWorkspace();
+    if (!this._prompt) this.shadowRoot.querySelector('textarea')?.style.removeProperty('height');
   }
 
   syncWorkspace() {
     if (!this._sitePicker) return;
+    this._navBrand.href = window.location.href;
     this._sitePicker.items = [
       ...(this._sites || []),
       { value: 'browse-sites', label: 'Browse sites...', action: true },
@@ -281,24 +303,30 @@ export class DaLanding extends LitElement {
     document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat' } }));
   }
 
+  updatePrompt({ target }) {
+    this._prompt = target.value;
+    target.style.height = 'auto';
+    target.style.height = `${Math.min(target.scrollHeight, 240)}px`;
+  }
+
   renderFile(item) {
     const starred = this._favorites?.has(item.path);
-    const modified = Number(item.lastModified);
-    const date = modified > 0 && !Number.isNaN(new Date(modified).getTime())
-      ? new Date(modified) : undefined;
+    const modified = formatModified({ modified: item.lastModified });
+    const iconHref = getLandingIconHref(item);
     const editor = this._editor || '/canvas#';
     return html`
       <li class="file">
         <a class="file-link" href=${getFileHref({ item, editor })} title=${item.ext === 'link' ? `Open ${item.name} in Files` : `${item.name} (${getTypeLabel(item.ext)})`}>
           <div class="file-preview">
-            <da-card-preview .path=${item.path} .ext=${item.ext}></da-card-preview>
+            <da-card-preview .path=${item.path} .ext=${item.ext} .iconHref=${iconHref}
+              .documentPreview=${item.ext === 'html'}></da-card-preview>
           </div>
           <div class="file-details">
             <div class="file-name">
-              <svg aria-hidden="true" viewBox="0 0 20 20"><use href="${iconPathForExt(item.ext)}#icon"></use></svg>
+              <span class="file-type-icon" aria-hidden="true" style="--file-icon: url('${iconHref}')"></span>
               <span>${item.name}</span>
             </div>
-            <p class="file-date">${date ? html`Last Edited <time datetime=${date.toISOString()}>${dateFormat.format(date)}</time>` : 'Date unavailable'}</p>
+            <p class="file-date">${modified ? html`Last Edited <time datetime=${modified.date.toISOString()}>${modified.label}</time>` : 'Date unavailable'}</p>
           </div>
         </a>
         <button class="file-star nx-action-btn-icon nx-btn-sm" type="button"
@@ -344,13 +372,14 @@ export class DaLanding extends LitElement {
         <section class="welcome" aria-labelledby="welcome-heading">
           <h1 id="welcome-heading">Hi${this._name ? html` ${this._name}` : nothing}, how can I help?</h1>
           <form class="composer" @submit=${this.submitPrompt}>
+            <div class="composer-surface" aria-hidden="true"></div>
             <div class="composer-input">
-              ${icon('coworker')}
+              <span class="coworker-icon" aria-hidden="true"></span>
               <label class="sr-only" for="landing-prompt">Let me know your task</label>
-              <textarea id="landing-prompt" rows="2" .value=${this._prompt}
+              <textarea id="landing-prompt" rows="1" .value=${this._prompt}
                 ?disabled=${!this._chatEnabled || this._handingOff} aria-describedby="assistant-note assistant-context"
                 placeholder="Let me know your task — I can route you to the right app or tool"
-                @input=${({ target }) => { this._prompt = target.value; }}></textarea>
+                @input=${this.updatePrompt}></textarea>
             </div>
             <div class="composer-actions">
               <button type="button" class="nx-action-btn-icon ${this.uiSize === 'm' ? 'nx-btn-lg' : ''}"
@@ -377,7 +406,7 @@ export class DaLanding extends LitElement {
         <section class="files-panel" aria-labelledby="files-heading">
           <div class="panel-heading">
             <h2 id="files-heading">Files</h2>
-            <nx-segmented-btn label="File view" size=${this.uiSize} .items=${VIEW_ITEMS}
+            <nx-segmented-btn label="File view" size="m" .items=${VIEW_ITEMS}
               .value=${this._view} @change=${this.changeView}></nx-segmented-btn>
           </div>
           <div class="files-toolbar">
@@ -394,13 +423,13 @@ export class DaLanding extends LitElement {
           <div aria-busy=${!!this._scope && !this._files && !this._error}>${this.renderFiles()}</div>
         </section>
         <section class="tasks-panel" aria-labelledby="tasks-heading">
-          <h2 id="tasks-heading">Tasks</h2>
+          <h2 id="tasks-heading">Need Attention</h2>
           <div class="tasks-table">
-            <div class="tasks-scroll" role="region" aria-label="Tasks" tabindex="0">
+            <div class="tasks-scroll" role="region" aria-label="Need Attention" tabindex="0">
               <table aria-labelledby="tasks-heading">
                 <thead><tr>
                   <th scope="col">Page / Content Fragment</th>
-                  <th scope="col">Task Description</th>
+                  <th scope="col">Process Description</th>
                   <th scope="col">Status</th>
                   <th scope="col">Requester</th>
                 </tr></thead>

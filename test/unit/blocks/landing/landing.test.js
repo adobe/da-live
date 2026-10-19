@@ -4,6 +4,7 @@ import '../../setup-nx.js';
 import { getFavorites, toggleFavorite } from '../../../../blocks/browse/shared/favorites.js';
 import { setUISize } from '../../../fixtures/nx2/utils/ui-size.js';
 import loadLanding, { DaLanding } from '../../../../blocks/landing/landing.js';
+import { DaLandingNav } from '../../../../blocks/landing/landing-nav.js';
 import { getNx, getNx2Api } from '../../../../scripts/utils.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
@@ -26,6 +27,7 @@ describe('landing page', () => {
     localStorage.setItem('da-sites', JSON.stringify(['org/site', 'org/other']));
     hashChange._set({ org: 'org', site: 'site', fullpath: '/org/site' });
     sinon.stub(DaLanding.prototype, 'loadProfile').resolves();
+    sinon.stub(DaLandingNav.prototype, 'loadActions').resolves();
     loadSite = sinon.stub(DaLanding.prototype, 'loadSite').resolves();
     nav = document.createElement('nx-nav');
     document.body.append(nav);
@@ -54,7 +56,7 @@ describe('landing page', () => {
   });
 
   it('matches the mock composer branding, placeholder and disclaimer', () => {
-    expect(el.shadowRoot.querySelector('.composer-input use').getAttribute('href')).to.include('coworker');
+    expect(el.shadowRoot.querySelector('.composer-input .coworker-icon')).not.to.equal(null);
     expect(el.shadowRoot.querySelector('textarea').placeholder).to.equal('Let me know your task — I can route you to the right app or tool');
     const note = el.shadowRoot.querySelector('#assistant-note');
     expect(note.textContent).to.include('AI responses may be inaccurate.');
@@ -68,27 +70,49 @@ describe('landing page', () => {
     expect(el._sitePicker.variant).to.equal('field');
     expect(el._sitePicker.size).to.equal('m');
     expect(el._sitePicker.items.at(-1).label).to.equal('Browse sites...');
+    expect(nav.querySelector('[slot="brand"]').textContent).to.equal('Adobe Experience Manager');
+    expect(nav.querySelector('[slot="actions"]').tagName).to.equal('DA-LANDING-NAV');
     hashChange._set({ org: 'org', site: 'other', fullpath: '/org/other' });
     await el.updateComplete;
     expect(el._sitePicker.value).to.equal('org/other');
     el.remove();
     expect(nav.querySelector('nx-picker')).to.equal(null);
+    expect(nav.children).to.have.length(0);
     document.body.append(el);
     await el.updateComplete;
     expect(nav.querySelectorAll('nx-picker')).to.have.length(1);
     expect(el._sitePicker.value).to.equal('org/other');
   });
 
-  it('shows Tasks without fabricating data or claiming the site has no tasks', () => {
-    expect(el.shadowRoot.querySelector('#tasks-heading').textContent).to.equal('Tasks');
+  it('shows Need Attention without fabricating data or claiming the site has no tasks', () => {
+    expect(el.shadowRoot.querySelector('#tasks-heading').textContent).to.equal('Need Attention');
     expect([...el.shadowRoot.querySelectorAll('.tasks-panel th')].map((th) => th.textContent)).to.deep.equal([
-      'Page / Content Fragment', 'Task Description', 'Status', 'Requester',
+      'Page / Content Fragment', 'Process Description', 'Status', 'Requester',
     ]);
     expect(el.shadowRoot.querySelector('.tasks-unavailable').textContent).to.equal('Task data is not connected in this preview.');
     expect(el.shadowRoot.querySelector('.tasks-panel').textContent).not.to.include('No tasks');
     expect(el.shadowRoot.querySelector('.tasks-panel table').getAttribute('aria-labelledby')).to.equal('tasks-heading');
     expect(el.shadowRoot.querySelector('.tasks-table .tasks-unavailable')).not.to.equal(null);
     expect(el.shadowRoot.querySelector('.tasks-scroll .tasks-unavailable')).to.equal(null);
+  });
+
+  it('opens and closes an honest notification preview without a fake count', async () => {
+    const actions = el._navActions;
+    await actions.updateComplete;
+    const trigger = actions.shadowRoot.querySelector('button');
+    const popover = actions.shadowRoot.querySelector('[popover]');
+    expect(actions.shadowRoot.textContent).to.include('Notifications are not connected');
+    trigger.click();
+    expect(popover.matches(':popover-open')).to.equal(true);
+    actions.shadowRoot.querySelector('[aria-label="Close notifications"]').click();
+    expect(popover.matches(':popover-open')).to.equal(false);
+  });
+
+  it('uses source-backed page previews and local semantic file icons', () => {
+    const preview = el.shadowRoot.querySelector('da-card-preview');
+    expect(preview.documentPreview).to.equal(true);
+    expect(preview.iconHref).to.include('/blocks/landing/page.svg');
+    expect(el.shadowRoot.querySelector('.file-type-icon').getAttribute('style')).to.include('page.svg');
   });
 
   it('opts into a light preview without saving a theme preference', () => {

@@ -2,14 +2,25 @@
   display: block;
   contain: inline-size;
   min-height: calc(100dvh - var(--s2-nav-height));
-  color: var(--s2-gray-900);
-  font-family: var(--s2-font-family);
+  color: var(--s2-gray-800);
+  font-family: var(--landing-font-family, var(--s2-font-family));
   font-size: var(--nx-ui-text-content, var(--s2-component-m-regular-font-size));
-  line-height: var(--s2-body-line-height);
+  line-height: calc(var(--nx-ui-text-content, 14px) + 4px);
+  background: var(--s2-gray-25);
+  position: relative;
+  isolation: isolate;
+}
+
+:host::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1024px;
+  z-index: -1;
+  pointer-events: none;
   background:
-    radial-gradient(ellipse at 22% 0, light-dark(#fff0f8, #281c2d), transparent 55%),
-    radial-gradient(ellipse at 80% 5%, light-dark(#eaf1ff, #182437), transparent 60%),
-    var(--s2-gray-25);
+    linear-gradient(light-dark(#fff0, #000c), light-dark(#fff0, #000c)),
+    url('./background.svg') top center / cover no-repeat;
 }
 
 * {
@@ -33,42 +44,86 @@ svg {
 
 .landing {
   display: flow-root;
-  max-width: 1168px;
+  max-width: 1116px;
   margin-inline: auto;
   padding: 0 24px 64px;
 }
 
 .welcome {
-  max-width: 710px;
-  margin: 84px auto 40px;
+  max-width: 664px;
+  margin: 80px auto 40px;
   text-align: center;
 }
 
 h1 {
-  margin-bottom: 44px;
-  font-size: var(--s2-heading-size-l);
-  font-weight: 700;
+  margin-bottom: 40px;
+  font-family: var(--landing-display-family, var(--landing-font-family, var(--s2-font-family)));
+  font-size: var(--s2-heading-size-xl);
+  font-weight: 600;
+  line-height: 42px;
+  letter-spacing: -0.01em;
 }
 
 .composer {
-  padding: 16px 20px;
-  border: 1px solid light-dark(#f5e4ff, #48354f);
+  position: relative;
+  isolation: isolate;
+  padding: 16px;
+  border: 0;
   border-radius: 24px;
-  background: var(--s2-gray-25);
-  box-shadow: 0 0 0 6px light-dark(#ffffff80, #ffffff08), 0 4px 24px light-dark(#5324770d, #0003);
   text-align: start;
+}
+
+.composer::before, .composer::after, .composer-surface {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.composer::before {
+  inset: -6px;
+  z-index: -2;
+  border-radius: 30px;
+  backdrop-filter: blur(4px);
+  background: linear-gradient(to top, light-dark(#ffffff7a, #272a32b3), light-dark(#fff, #30333b));
+  box-shadow: 0 2px 4px #ec69ff1a;
+}
+
+.composer::after {
+  inset: 6px -7px -6px -6px;
+  z-index: -3;
+  border-radius: 30px;
+  background: linear-gradient(to right, #ec69ff99, #ff513d80 37.316%, #ffa22366 76.741%);
+  opacity: 0.32;
+  filter: blur(8px);
+}
+
+.composer-surface {
+  inset: 0;
+  z-index: -1;
+  border: 1px solid #ec69ff1a;
+  border-radius: inherit;
+  background:
+    linear-gradient(to bottom, light-dark(#fff6, #ffffff03) 37.305%, light-dark(#ffffff21, #ffffff02) 83.398%),
+    radial-gradient(ellipse at 100% 100%, #ebeeff29, #fad3ff29 34.964%, #ffebe829 81.972%, #ffeccf29),
+    light-dark(#fffc, #22252dcc);
+  box-shadow: 0 -3px 10px 1px #ec69ff0d, inset 0 6px 15px #ffffff0a, inset 0 -5px 21.6px #ffffff0a;
 }
 
 .composer-input {
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  min-height: 21px;
+  padding-left: 6px;
 }
 
-.composer-input > svg {
+.coworker-icon {
+  display: block;
   width: 20px;
   height: 20px;
   flex-shrink: 0;
+  background: currentcolor;
+  mask: url('./coworker.svg') center / 20px no-repeat;
 }
 
 .composer:focus-within {
@@ -79,14 +134,15 @@ h1 {
 textarea {
   display: block;
   width: 100%;
-  min-height: 36px;
+  height: 21px;
+  min-height: 21px;
   max-height: 240px;
   border: 0;
   padding: 0;
   resize: none;
   font: inherit;
   font-size: var(--s2-body-size-m);
-  line-height: var(--s2-body-line-height);
+  line-height: 20px;
   color: inherit;
   background: transparent;
   outline: none;
@@ -102,7 +158,7 @@ textarea::placeholder {
   gap: 16px;
   justify-content: space-between;
   align-items: center;
-  margin-top: 16px;
+  margin-top: 24px;
 }
 
 .composer-actions > button {
@@ -114,22 +170,22 @@ textarea::placeholder {
 }
 
 .composer-send:disabled {
-  background: var(--s2-gray-75);
-  color: var(--s2-gray-500);
+  background: light-dark(#0000000a, #ffffff0a);
+  color: var(--s2-gray-400);
 }
 
 .assistant-note {
-  margin-top: 14px;
-  color: var(--s2-gray-700);
+  margin-top: 12px;
+  color: var(--s2-gray-600);
   font-size: var(--s2-component-s-regular-font-size);
+  line-height: 16px;
 }
 
 .files-panel, .tasks-panel {
-  padding: 16px;
-  border: 1px solid var(--s2-gray-200);
-  border-radius: 20px;
-  background: var(--s2-gray-25);
-  box-shadow: 0 2px 8px light-dark(#00000008, #0002);
+  padding: 12px 16px 16px;
+  border-radius: 16px;
+  background: light-dark(#fff9, #222222b3);
+  box-shadow: 0 0 1px #00000014, 0 1px 4px #0000000a, 0 2px 8px #00000014;
 }
 
 .panel-heading, .files-toolbar {
@@ -142,10 +198,16 @@ textarea::placeholder {
 
 h2 {
   font-size: var(--nx-ui-text-heading, var(--s2-heading-size-xs));
+  line-height: calc(var(--nx-ui-text-heading, 18px) + 4px);
+  color: var(--s2-gray-1000);
+}
+
+.panel-heading {
+  min-height: 32px;
 }
 
 .files-toolbar {
-  margin-block: 16px 8px;
+  margin-block: 8px;
 }
 
 .file-filters {
@@ -156,8 +218,8 @@ h2 {
 .filter {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 0;
+  gap: 6px;
+  padding: 7px 0;
   border: 0;
   border-bottom: 2px solid transparent;
   background: transparent;
@@ -167,7 +229,7 @@ h2 {
 }
 
 .filter[aria-pressed="true"] {
-  color: var(--s2-gray-900);
+  color: var(--s2-gray-800);
   border-bottom-color: currentcolor;
 }
 
@@ -176,6 +238,9 @@ h2 {
   align-items: center;
   gap: 8px;
   text-decoration: none;
+  color: var(--s2-gray-700);
+  font-size: var(--s2-component-s-regular-font-size);
+  line-height: 18px;
 }
 
 .files {
@@ -190,31 +255,37 @@ h2 {
 .file {
   min-width: 0;
   position: relative;
-  border: 1px solid transparent;
   border-radius: 12px;
   background: var(--s2-gray-75);
 }
 
 .file:hover {
-  border-color: var(--s2-gray-300);
+  box-shadow: inset 0 0 0 1px var(--s2-gray-300);
 }
 
 .file-link {
-  display: block;
-  padding: 4px 4px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
   text-decoration: none;
   border-radius: inherit;
 }
 
 .file-preview {
-  height: 84px;
+  height: 80px;
   overflow: hidden;
   border-radius: 8px;
-  background: var(--s2-gray-100);
+  background: var(--s2-gray-200);
+}
+
+da-card-preview {
+  --da-card-preview-icon-size: 20px;
+  --da-card-preview-object-fit: contain;
 }
 
 .file-details {
-  padding: 10px 32px 0 12px;
+  padding: 4px 12px;
 }
 
 .file-name {
@@ -222,6 +293,19 @@ h2 {
   align-items: center;
   gap: 8px;
   min-width: 0;
+  min-height: 20px;
+  color: var(--s2-gray-900);
+  font-weight: 500;
+}
+
+.file-type-icon {
+  display: block;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--s2-gray-700);
+  background: currentcolor;
+  mask: var(--file-icon) center / 20px no-repeat;
 }
 
 .file-name span {
@@ -235,15 +319,18 @@ h2 {
 }
 
 .file-date {
-  margin-top: 6px;
-  color: var(--s2-gray-700);
+  margin-top: 4px;
+  color: var(--s2-gray-600);
   font-size: var(--s2-component-s-regular-font-size);
+  line-height: 18px;
 }
 
 .file-star {
   position: absolute;
-  right: 8px;
-  top: 98px;
+  right: 12px;
+  top: 12px;
+  background: var(--s2-gray-25);
+  border-radius: 50%;
 }
 
 .file-star[aria-pressed="true"] {
@@ -321,10 +408,9 @@ h2 {
 }
 
 .tasks-table {
-  margin-top: var(--s2-spacing-200);
+  margin-top: 12px;
   overflow: hidden;
-  border: 1px solid var(--s2-gray-200);
-  border-radius: var(--s2-corner-radius-500);
+  border-radius: 4px;
 }
 
 .tasks-scroll {
@@ -341,9 +427,10 @@ table {
 }
 
 th {
-  height: var(--s2-spacing-600);
-  padding: var(--s2-spacing-100) var(--s2-spacing-300);
-  border-bottom: 1px solid var(--s2-gray-200);
+  height: 32px;
+  padding: 7px 18px;
+  border-bottom: 0;
+  box-shadow: inset 0 -1px var(--s2-gray-300);
   background: var(--s2-gray-75);
   color: var(--s2-gray-800);
   text-align: start;
@@ -352,23 +439,23 @@ th {
 }
 
 th:not(:last-child) {
-  border-inline-end: 1px solid var(--s2-gray-200);
+  border-inline-end: 1px solid var(--s2-gray-300);
 }
 
 th:nth-child(1) {
-  width: 22%;
+  width: 22.355%;
 }
 
 th:nth-child(2) {
-  width: 52%;
+  width: 53.224%;
 }
 
 th:nth-child(3) {
-  width: 14%;
+  width: 13.321%;
 }
 
 th:nth-child(4) {
-  width: 12%;
+  width: 11.1%;
 }
 
 .tasks-unavailable {
@@ -397,11 +484,20 @@ a:focus-visible, .filter:focus-visible, .tasks-scroll:focus-visible {
 
 :host([data-ui-size="m"]) {
   h1 {
-    font-size: var(--s2-heading-size-xl);
+    font-size: calc(var(--s2-heading-size-xl) + 4px);
+    line-height: 46px;
   }
 
   .file-date, .assistant-note {
     font-size: var(--s2-component-m-regular-font-size);
+  }
+
+  .file-date {
+    line-height: 21px;
+  }
+
+  .assistant-note {
+    line-height: 18px;
   }
 
   svg {
