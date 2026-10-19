@@ -1,7 +1,10 @@
 import getPathDetails from './pathDetails.js';
 
+const CURSOR_ATTR = 'data-da-cursor-position';
+const CURSOR_SELECTOR = `[${CURSOR_ATTR}]`;
+
 function setCursor(cursor, el) {
-  el.id = cursor.id;
+  el.setAttribute(CURSOR_ATTR, '');
   cursor.remove();
 }
 
@@ -50,7 +53,7 @@ function convertBlocks(editor, isFragment = false) {
     div.append(...divs);
 
     // cursor detection
-    const daCursor = nameRow.querySelector('#da-cursor-position');
+    const daCursor = nameRow.querySelector(CURSOR_SELECTOR);
     if (daCursor) setCursor(daCursor, div);
 
     if (isFragment) {
@@ -80,7 +83,7 @@ function makePictures(editor, live) {
     }
 
     // Set the cursor id on the image for live preview scrolling
-    const daCursor = img.parentElement.querySelector('#da-cursor-position');
+    const daCursor = img.parentElement.querySelector(CURSOR_SELECTOR);
     if (daCursor) setCursor(daCursor, img);
 
     const clone = img.cloneNode(true);
@@ -184,7 +187,7 @@ function makeSections(editor) {
       acc[acc.length - 1].append(child);
       // Find cursor inside section-metadata and bubble it to parent section
       if (child.classList.contains('section-metadata')) {
-        const daCursor = child.querySelector('#da-cursor-position');
+        const daCursor = child.querySelector(CURSOR_SELECTOR);
         if (daCursor) setCursor(daCursor, acc[acc.length - 1]);
       }
     }
@@ -220,6 +223,7 @@ function applySectionMetadata(editor) {
           .replace(/-+$/, '');
         if (id) section.id = id;
       } else {
+        // TODO #1414: join all links/images/comma tokens and absolutize URLs like the pipeline
         const linkEl = cols[1].querySelector('a[href]');
         const imgEl = cols[1].querySelector('img[src]');
         let value = cols[1].textContent.trim();
@@ -272,9 +276,11 @@ function convertLocalUrlsToRelative(editor) {
  * @param {HTMLElement} editor the editor dom
  * @param {Boolean} livePreview whether or not the target destination is Live Preview
  * @param {Boolean} isFragment whether or not the DOM is a fragment
+ * @param {Number} renderingVersion pipeline rendering version; below 2 leaves section metadata
+ *   to project code
  * @returns AEM-friendly HTML as a text string
  */
-export default function prose2aem(editor, livePreview, isFragment = false) {
+export default function prose2aem(editor, livePreview, isFragment = false, renderingVersion = 2) {
   if (!isFragment) editor.removeAttribute('class');
 
   editor.removeAttribute('contenteditable');
@@ -319,7 +325,7 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
 
   if (!isFragment) {
     makeSections(editor);
-    if (livePreview) applySectionMetadata(editor);
+    if (livePreview && renderingVersion >= 2) applySectionMetadata(editor);
   }
 
   if (isFragment) {
@@ -342,7 +348,7 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
   return html;
 }
 
-export function getHtmlWithCursor(view) {
+export function getHtmlWithCursor(view, renderingVersion = 2) {
   const { selection } = view.state;
   const cursorPos = selection.from;
 
@@ -375,7 +381,7 @@ export function getHtmlWithCursor(view) {
 
   // Create cursor marker element
   const marker = document.createElement('span');
-  marker.id = 'da-cursor-position';
+  marker.setAttribute(CURSOR_ATTR, '');
   marker.setAttribute('data-cursor-pos', cursorPos);
 
   // Insert the marker into the cloned DOM
@@ -395,5 +401,5 @@ export function getHtmlWithCursor(view) {
     clonedNode.insertBefore(marker, clonedNode.childNodes[offset] || null);
   }
 
-  return prose2aem(editorClone, true);
+  return prose2aem(editorClone, true, false, renderingVersion);
 }

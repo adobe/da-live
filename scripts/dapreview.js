@@ -16,7 +16,7 @@ async function loadCSS(href) {
 }
 
 function handleScrollTo() {
-  const cursorEl = window.document.getElementById('da-cursor-position');
+  const cursorEl = window.document.querySelector('[data-da-cursor-position]');
   if (cursorEl) {
     // Calculate header height dynamically and set scroll-margin
     const header = document.querySelector('header');

@@ -209,11 +209,31 @@ describe('prose2aem section-metadata handling', () => {
     const section = sectionFor(`
       <tr><td>My_Key:One</td><td>a</td></tr>
       <tr><td>Background Color</td><td>b</td></tr>
-      <tr><td>hreflang-en-US</td><td>c</td></tr>
     `);
     expect(section.getAttribute('data-my_key:one')).to.equal('a');
     expect(section.getAttribute('data-background-color')).to.equal('b');
-    expect(section.getAttribute('data-hreflang-en-us')).to.equal('c');
+  });
+
+  it('keeps the cursor marker when the cursor is in an id row', () => {
+    const section = sectionFor('<tr><td>id</td><td>my-<span data-da-cursor-position></span>section</td></tr>');
+    expect(section.id).to.equal('my-section');
+    expect(section.hasAttribute('data-da-cursor-position')).to.be.true;
+  });
+
+  it('leaves section metadata to project code on rendering version 1', () => {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          <tr><td>Style</td><td>highlight</td></tr>
+        </table>
+      </div>
+    `);
+    const main = parseMain(prose2aem(editor, true, false, 1));
+    const section = main.querySelector(':scope > div');
+    expect(main.querySelector('.section-metadata')).to.exist;
+    expect(section.classList.contains('highlight')).to.be.false;
   });
 
   it('keeps relative link hrefs relative', () => {

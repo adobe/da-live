@@ -1,5 +1,5 @@
 import { getNx, getNx2Api } from '../../scripts/utils.js';
-import { EMPTY_DOC } from '../shared/utils.js';
+import { EMPTY_DOC, loadRenderingVersion } from '../shared/utils.js';
 import { getCommentsBridge } from './editor-utils/comments-bridge.js';
 import {
   normalizeCanvasEditorView,
@@ -168,7 +168,11 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
     return;
   }
   const editorCtx = editorCtxFromHashState(state, fullPath);
-  const ctx = { ...editorCtx, branchPromise: resolveCanvasBranch(editorCtx) };
+  const branchPromise = Promise.all([
+    resolveCanvasBranch(editorCtx),
+    loadRenderingVersion({ org: editorCtx.org, site: editorCtx.repo }),
+  ]).then(([branch]) => branch);
+  const ctx = { ...editorCtx, branchPromise };
   const session = await resolveEditorDocSession(ctx);
   if (loadCount !== editorLoadCount) return;
   if (session.notFound) {
