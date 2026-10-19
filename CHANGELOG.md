@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/adobe/da-live/compare/v1.7.1...v1.8.0) (2026-10-19)
+
+
+### Features
+
+* new browse UI ([#1401](https://github.com/adobe/da-live/issues/1401)) ([6e0dd84](https://github.com/adobe/da-live/commit/6e0dd848d0965059f015ad241d780dba5c94a2ae))
+
 ## [1.7.1](https://github.com/adobe/da-live/compare/v1.7.0...v1.7.1) (2026-10-19)
 
 
