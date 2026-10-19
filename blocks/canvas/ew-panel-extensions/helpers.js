@@ -420,25 +420,8 @@ export async function fetchItems(sources, format) {
 
 export function insertBlock(view, dom) {
   const parsed = PMDOMParser.fromSchema(view.state.schema).parse(dom);
-  const { state } = view;
-  const { from, to } = state.selection;
-  // EDS blocks cannot nest: inserting while the selection stays within a block replaces it.
-  // A cross-block selection follows the existing insertion path instead.
-  const enclosingPos = getBlockPositions(view).find((pos) => {
-    const end = pos + state.doc.nodeAt(pos).nodeSize;
-    return from >= pos && from < end && to <= end;
-  });
-  if (enclosingPos !== undefined) {
-    const end = enclosingPos + state.doc.nodeAt(enclosingPos).nodeSize;
-    const tr = state.tr.replaceWith(enclosingPos, end, parsed.content);
-    if (tr.doc.nodeAt(enclosingPos)?.type.name === 'table') {
-      tr.setSelection(NodeSelection.create(tr.doc, enclosingPos));
-    }
-    view.dispatch(tr.scrollIntoView());
-    return;
-  }
-  const { tr, schema } = state;
-  const insertPos = from;
+  const { tr, schema } = view.state;
+  const insertPos = tr.selection.from;
   let newTr = tr.insert(insertPos, schema.nodes.paragraph.create());
   newTr = newTr.replaceSelectionWith(parsed);
   const finalPos = Math.min(insertPos + parsed.nodeSize, newTr.doc.content.size);
@@ -531,6 +514,19 @@ export function replaceHTMLAtCursor(view, html) {
     tr.setSelection(TextSelection.between(tr.doc.resolve(anchor), tr.doc.resolve(head)));
   }
   view.dispatch(tr);
+}
+
+export function insertLibraryBlock(view, dom) {
+  const { from, to } = view.state.selection;
+  const inBlock = getBlockPositions(view).some((pos) => {
+    const end = pos + view.state.doc.nodeAt(pos).nodeSize;
+    return from >= pos && from < end && to <= end;
+  });
+  if (inBlock && dom.tagName === 'TABLE') {
+    replaceHTMLAtCursor(view, dom.outerHTML);
+    return;
+  }
+  insertBlock(view, dom);
 }
 
 export function getEditorSelection(view) {
@@ -686,7 +682,7 @@ export function extensionToPanelView(ext, section) {
         openBlockLibraryModal({
           onInsert: (dom) => {
             const { view } = getExtensionsBridge();
-            if (view) insertBlock(view, dom);
+            if (view) insertLibraryBlock(view, dom);
           },
         });
       },

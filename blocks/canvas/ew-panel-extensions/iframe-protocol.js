@@ -1,6 +1,6 @@
 import { insertText, insertHTML, replaceHTMLAtCursor, getEditorSelection } from './helpers.js';
 import { getActiveBlockIndex } from '../editor-utils/blocks.js';
-import { getInstrumentedHTMLPreservingImageUrls } from '../editor-utils/editor-utils.js';
+import { getInstrumentedHTMLForSDK } from '../editor-utils/editor-utils.js';
 import { getNx } from '../../../scripts/utils.js';
 import { getPostMessageTargetOrigin, isRequestId, isValidHref, replyToGetSelection } from '../../shared/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
@@ -37,18 +37,23 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     const index = getActiveBlockIndex(editorView);
     return { blockIndex: index < 0 ? null : index };
   };
-  const broadcastDocument = () => {
+  const broadcastDocument = (snapshot) => {
     clearTimeout(htmlTimer);
     htmlTimer = undefined;
     if (!subscribed) return;
-    const editorView = getView();
-    const selection = selectionFor(editorView);
-    lastBlockIndex = selection.blockIndex;
+    let documentState = snapshot;
+    if (!documentState) {
+      const editorView = getView();
+      documentState = {
+        html: editorView ? getInstrumentedHTMLForSDK(editorView) : '',
+        selection: selectionFor(editorView),
+        editable: !!editorView?.editable,
+      };
+    }
+    lastBlockIndex = documentState.selection.blockIndex;
     channel.port1.postMessage({
       action: 'liveDocument',
-      html: editorView ? getInstrumentedHTMLPreservingImageUrls(editorView) : '',
-      selection,
-      editable: !!editorView?.editable,
+      ...documentState,
     });
   };
   const scheduleDocument = () => {
@@ -117,7 +122,6 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     if (action === 'sendHTML' && typeof details === 'object') {
       const { requestId } = e.data;
       if (!isRequestId(requestId)) return;
-      let result;
       try {
         if (!editorView) throw Object.assign(new Error('No editor view'), { code: 'NO_EDITOR' });
         if (details?.replace !== true) throw Object.assign(new Error('Invalid replacement request'), { code: 'INVALID_HTML' });
@@ -129,17 +133,32 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
           if (getActiveBlockIndex(editorView) !== expected.blockIndex) {
             throw Object.assign(new Error('The selected block changed'), { code: 'WRONG_SELECTION' });
           }
-          if (getInstrumentedHTMLPreservingImageUrls(editorView) !== expected.html) {
+          if (getInstrumentedHTMLForSDK(editorView) !== expected.html) {
             throw Object.assign(new Error('The live document changed while editing'), { code: 'STALE_LIVE' });
           }
         }
         replaceHTMLAtCursor(editorView, details.html);
-        const html = getInstrumentedHTMLPreservingImageUrls(editorView);
-        const selection = selectionFor(editorView);
-        broadcastDocument();
-        result = { ok: true, html, selection, editable: !!editorView.editable };
       } catch (error) {
-        result = { ok: false, error: error.code || 'REPLACE_FAILED', message: error.message };
+        channel.port1.postMessage({
+          action: 'sdkResponse',
+          requestId,
+          result: { ok: false, error: error.code || 'REPLACE_FAILED', message: error.message },
+        });
+        return;
+      }
+      const result = { ok: true, html: null };
+      try {
+        result.selection = selectionFor(editorView);
+        result.editable = !!editorView.editable;
+        result.html = getInstrumentedHTMLForSDK(editorView);
+        broadcastDocument({
+          html: result.html,
+          selection: result.selection,
+          editable: result.editable,
+        });
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.warn('Could not serialize or broadcast the live document after replacement:', error);
       }
       channel.port1.postMessage({ action: 'sdkResponse', requestId, result });
       return;

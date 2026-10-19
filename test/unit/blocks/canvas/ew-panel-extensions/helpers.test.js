@@ -738,7 +738,7 @@ describe('EW panel helpers fetchExtensions', () => {
   });
 });
 
-describe('block library insertion at the live selection', () => {
+describe('shared block insertion at the live selection', () => {
   const table = (name, body) => ({
     type: 'table',
     content: [
@@ -774,27 +774,16 @@ describe('block library insertion at the live selection', () => {
     return result;
   };
 
-  it('replaces the entire enclosing block for a caret inside a block cell', () => {
+  it('does not replace the enclosing block for a caret inside a block cell', () => {
     let caret;
     view.state.doc.descendants((node, pos) => {
       if (node.isText && node.text === 'Original') caret = pos + 1;
     });
     view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, caret)));
     insertBlock(view, replacement());
-    expect(contents()).to.deep.equal([
-      ['paragraph', 'Intro'], ['table', 'NewReplacement'],
-      ['paragraph', 'Outro'], ['table', 'OtherKeep'],
-    ]);
-    expect(view.state.selection).to.be.instanceOf(NodeSelection);
-  });
-
-  it('replaces an explicitly selected block without nesting another table', () => {
-    const pos = view.state.doc.child(0).nodeSize;
-    view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos)));
-    insertBlock(view, replacement());
-    expect(contents().filter(([type]) => type === 'table')).to.deep.equal([
-      ['table', 'NewReplacement'], ['table', 'OtherKeep'],
-    ]);
+    expect(view.state.doc.child(1).type.name).to.equal('table');
+    expect(view.state.doc.child(1).textContent).to.equal('CardsONewReplacementriginal');
+    expect(contents().at(-1)).to.deep.equal(['table', 'OtherKeep']);
   });
 
   it('retains insertion outside a block', () => {

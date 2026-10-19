@@ -10,7 +10,7 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 const { setupIframeChannel } = await import('../../../../../blocks/canvas/ew-panel-extensions/iframe-protocol.js');
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
-const { getInstrumentedHTMLPreservingImageUrls } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
+const { getInstrumentedHTML, getInstrumentedHTMLForSDK } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
 
 const wait = (ms = 50) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
@@ -46,6 +46,7 @@ describe('acknowledged live HTML replacement', () => {
     });
   });
   afterEach(() => {
+    sinon.restore();
     connection.destroy();
     const mount = view.dom.parentElement;
     view.destroy();
@@ -58,7 +59,7 @@ describe('acknowledged live HTML replacement', () => {
     connection.channel.port2.postMessage({ action: 'sendHTML', requestId: 'replace-1', details });
   });
   it('acknowledges a guarded block replacement with the updated live document', async () => {
-    const expected = { html: getInstrumentedHTMLPreservingImageUrls(view), blockIndex: 0 };
+    const expected = { html: getInstrumentedHTMLForSDK(view), blockIndex: 0 };
     const result = await replace({
       html: '<div class="hero"><div><div><p>Updated</p></div></div></div>',
       replace: true,
@@ -69,6 +70,75 @@ describe('acknowledged live HTML replacement', () => {
     expect(result.selection).to.deep.equal({ blockIndex: 0 });
     expect(result.editable).to.equal(true);
     expect(view.state.doc.childCount).to.equal(2);
+  });
+  it('acknowledges an applied replacement even when its HTML cannot be serialized', async () => {
+    const error = new Error('Serialization failed');
+    sinon.stub(view.dom, 'cloneNode').throws(error);
+    const warn = sinon.stub(console, 'warn');
+    const result = await replace({
+      html: '<div class="hero"><div><div><p>Updated</p></div></div></div>',
+      replace: true,
+    });
+    expect(result.ok).to.equal(true);
+    expect(result.html).to.equal(null);
+    expect(result.selection).to.deep.equal({ blockIndex: 0 });
+    expect(result.editable).to.equal(true);
+    expect(view.state.doc.textContent).to.equal('heroUpdatedKeep');
+    expect(warn.calledOnce).to.equal(true);
+    expect(warn.firstCall.args).to.deep.equal([
+      'Could not serialize or broadcast the live document after replacement:', error,
+    ]);
+  });
+  it('reuses the post-replacement HTML for the broadcast and cancels pending snapshots', async () => {
+    const initial = new Promise((resolve) => {
+      connection.channel.port2.onmessage = ({ data }) => {
+        if (data.action === 'liveDocument') resolve(data);
+      };
+    });
+    connection.channel.port2.postMessage({ action: 'subscribeLiveDocument' });
+    const snapshot = await initial;
+    const clone = sinon.spy(view.dom, 'cloneNode');
+    const broadcasts = [];
+    connection.channel.port2.addEventListener('message', ({ data }) => {
+      if (data.action === 'liveDocument') broadcasts.push(data);
+    });
+    canvasBus.editorDocState.emit({ doc: view.state.doc });
+    const result = await replace({
+      html: '<div class="hero"><div><div><p>Updated</p></div></div></div>',
+      replace: true,
+      expected: { html: snapshot.html, blockIndex: 0 },
+    });
+    await wait(200);
+    expect(result.ok).to.equal(true);
+    expect(clone.callCount).to.equal(2);
+    expect(broadcasts).to.deep.equal([{
+      action: 'liveDocument',
+      html: result.html,
+      selection: result.selection,
+      editable: result.editable,
+    }]);
+  });
+  it('acknowledges an applied replacement even when its broadcast fails', async () => {
+    const initial = new Promise((resolve) => {
+      connection.channel.port2.onmessage = ({ data }) => {
+        if (data.action === 'liveDocument') resolve(data);
+      };
+    });
+    connection.channel.port2.postMessage({ action: 'subscribeLiveDocument' });
+    await initial;
+    const error = new Error('Broadcast failed');
+    sinon.stub(connection.channel.port1, 'postMessage').callThrough()
+      .withArgs(sinon.match.has('action', 'liveDocument')).throws(error);
+    const warn = sinon.stub(console, 'warn');
+    const result = await replace({
+      html: '<div class="hero"><div><div><p>Updated</p></div></div></div>',
+      replace: true,
+    });
+    expect(result.ok).to.equal(true);
+    expect(result.html).to.include('Updated');
+    expect(view.state.doc.textContent).to.equal('heroUpdatedKeep');
+    expect(warn.calledOnce).to.equal(true);
+    expect(warn.firstCall.args[1]).to.equal(error);
   });
   it('round-trips image URLs through subscription and guarded edits', async () => {
     const src = 'https://stage-content.da.live/other/site/.demo/bg.jpg';
@@ -104,7 +174,7 @@ describe('acknowledged live HTML replacement', () => {
         expected: { html: snapshot.html, blockIndex: 0 },
       });
       expect(snapshot.ok).to.equal(true);
-      expect(snapshot.html).to.equal(getInstrumentedHTMLPreservingImageUrls(view));
+      expect(snapshot.html).to.equal(getInstrumentedHTMLForSDK(view));
       const response = new DOMParser().parseFromString(snapshot.html, 'text/html');
       expect(response.querySelector('img').getAttribute('src')).to.equal(src);
       expect(view.state.doc.textContent).to.include(title);
@@ -113,8 +183,37 @@ describe('acknowledged live HTML replacement', () => {
       });
     }
   });
+  it('accepts a guarded replacement after remote cursor metadata moves without a document update', async () => {
+    const [first, second] = view.dom.querySelectorAll('p');
+    first.setAttribute('data-cursor-remote', 'Collaborator');
+    first.setAttribute('data-cursor-remote-color', 'red');
+    const initial = new Promise((resolve) => {
+      connection.channel.port2.onmessage = ({ data }) => {
+        if (data.action === 'liveDocument') resolve(data);
+      };
+    });
+    connection.channel.port2.postMessage({ action: 'subscribeLiveDocument' });
+    const snapshot = await initial;
+    expect(snapshot.html).not.to.include('data-cursor-remote');
+    const before = view.state.doc;
+    const preview = getInstrumentedHTML(view);
+    first.removeAttribute('data-cursor-remote');
+    first.removeAttribute('data-cursor-remote-color');
+    second.setAttribute('data-cursor-remote', 'Collaborator');
+    second.setAttribute('data-cursor-remote-color', 'blue');
+    expect(getInstrumentedHTML(view)).not.to.equal(preview);
+    expect(view.state.doc).to.equal(before);
+    const result = await replace({
+      html: '<div class="hero"><div><div><p>Updated</p></div></div></div>',
+      replace: true,
+      expected: { html: snapshot.html, blockIndex: 0 },
+    });
+    expect(result.ok).to.equal(true);
+    expect(result.html).not.to.include('data-cursor-remote');
+    expect(view.state.doc.textContent).to.equal('heroUpdatedKeep');
+  });
   it('rejects stale content and a changed selection atomically', async () => {
-    const expected = { html: getInstrumentedHTMLPreservingImageUrls(view), blockIndex: 0 };
+    const expected = { html: getInstrumentedHTMLForSDK(view), blockIndex: 0 };
     const tr = view.state.tr.insertText('Other', view.state.doc.content.size - 1);
     view.dispatch(tr.setSelection(NodeSelection.create(tr.doc, 0)));
     const before = view.state.doc;
