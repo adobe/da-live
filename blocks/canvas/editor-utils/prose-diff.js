@@ -165,7 +165,7 @@ export function findCommonEditableAncestor(view, changes, prevState) {
 
       if (editableAncestor) {
         editableAncestors.push(editableAncestor);
-      } else if (!isDeletedNode) {
+      } else {
         return null;
       }
     } catch (e) {
