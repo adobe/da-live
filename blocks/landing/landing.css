@@ -20,7 +20,7 @@
   pointer-events: none;
   background:
     linear-gradient(light-dark(#fff0, #000c), light-dark(#fff0, #000c)),
-    url('./background.svg') top center / cover no-repeat;
+    url('/blocks/landing/background.svg') top center / cover no-repeat;
 }
 
 * {
@@ -58,7 +58,7 @@ svg {
 h1 {
   margin-bottom: 40px;
   font-family: var(--landing-display-family, var(--landing-font-family, var(--s2-font-family)));
-  font-size: var(--s2-heading-size-xl);
+  font-size: 32px;
   font-weight: 600;
   line-height: 42px;
   letter-spacing: -0.01em;
@@ -123,7 +123,7 @@ h1 {
   height: 20px;
   flex-shrink: 0;
   background: currentcolor;
-  mask: url('./coworker.svg') center / 20px no-repeat;
+  mask: url('/blocks/landing/coworker.svg') center / 20px no-repeat;
 }
 
 .composer:focus-within {
@@ -484,7 +484,7 @@ a:focus-visible, .filter:focus-visible, .tasks-scroll:focus-visible {
 
 :host([data-ui-size="m"]) {
   h1 {
-    font-size: calc(var(--s2-heading-size-xl) + 4px);
+    font-size: 36px;
     line-height: 46px;
   }
 
@@ -533,6 +533,10 @@ a:focus-visible, .filter:focus-visible, .tasks-scroll:focus-visible {
 
   .landing {
     padding-inline: 16px;
+  }
+
+  textarea {
+    min-height: 60px;
   }
 
   .file-filters {

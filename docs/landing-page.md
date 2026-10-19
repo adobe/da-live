@@ -26,8 +26,10 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
   The shared picker's field variant provides the full clickable pill, 32px
   height, fixed 14px topbar text and right-aligned chevron. Its border and
   background are on the actual trigger, not the noninteractive host.
-  The `lp` Nexter branch supplies optional brand/actions slots with unchanged
-  fragment fallbacks. Landing-owned branding and actions are removed on disconnect.
+  The `lp` Nexter branch supplies optional brand/actions slots with fragment
+  fallbacks for ordinary pages. Custom actions replace non-profile fragment
+  actions to avoid duplicates; the existing profile remains. Landing-owned
+  branding and actions are removed on disconnect.
   What’s New and Feedback reuse the existing Nexter components and real fragments.
   Notifications open an explicit unconnected-data notice without an invented count.
   Site labels retain real identifiers; no Nike name or custom domain is fabricated.

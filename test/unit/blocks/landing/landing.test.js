@@ -204,6 +204,7 @@ describe('landing page', () => {
     expect(el._files).to.equal(ITEMS);
     setUISize({ size: 's' });
     await el.updateComplete;
+    expect(el.shadowRoot.querySelector('nx-segmented-btn').getAttribute('size')).to.equal('s');
     expect(el.shadowRoot.querySelector('button[type="submit"]').classList.contains('nx-btn-lg')).to.equal(false);
   });
 

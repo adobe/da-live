@@ -406,7 +406,7 @@ export class DaLanding extends LitElement {
         <section class="files-panel" aria-labelledby="files-heading">
           <div class="panel-heading">
             <h2 id="files-heading">Files</h2>
-            <nx-segmented-btn label="File view" size="m" .items=${VIEW_ITEMS}
+            <nx-segmented-btn label="File view" size=${this.uiSize} .items=${VIEW_ITEMS}
               .value=${this._view} @change=${this.changeView}></nx-segmented-btn>
           </div>
           <div class="files-toolbar">
