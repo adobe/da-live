@@ -4,6 +4,7 @@ import { getNx, getNx2Api, sanitizeName } from '../../../scripts/utils.js';
 import { daFetch } from '../../shared/utils.js';
 import { getPreviewProxyDetails, ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
 import { getPreviewOrigin } from '../editor-utils/editor-utils.js';
+import { getCanvasBranch } from '../utils/branch.js';
 import { htmlToProse } from '../../edit/utils/helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { getCommentsBridge, formatCommentsViewLabel } from '../editor-utils/comments-bridge.js';
@@ -89,13 +90,13 @@ function decorateImages(element, path) {
 // DA Preview Proxy — library content on protected sites
 // ---------------------------------------------------------------------------
 
-function libraryProxyOptions({ org, site } = {}) {
-  return { org, site, currentOrg: org, branch, getUrl: getPreviewOrigin };
+function libraryProxyOptions({ org, site, branch: sourceBranch = branch } = {}) {
+  return { org, site, currentOrg: org, branch: sourceBranch, getUrl: getPreviewOrigin };
 }
 
-function libraryContentUrl(path, { org, site } = {}) {
+function libraryContentUrl(path, { org, site, branch: sourceBranch = branch } = {}) {
   if (!path.startsWith('/') || !org || !site) return path;
-  const origin = ref === 'local' ? 'http://localhost:3000' : `https://${branch}--${site}--${org}.aem.live`;
+  const origin = ref === 'local' ? 'http://localhost:3000' : `https://${sourceBranch}--${site}--${org}.aem.live`;
   return new URL(path, origin).href;
 }
 
@@ -584,8 +585,11 @@ export async function getPreviewStatus({ org, site, pathname }) {
 }
 
 export function getItemPreviewUrl(item, { org, site }) {
-  const input = libraryContentUrl(item.path || item.value, { org, site });
-  const proxyOpts = libraryProxyOptions({ org, site });
+  const previewBranch = getCanvasBranch({ org, site });
+  if (!previewBranch) return null;
+  const context = { org, site, branch: previewBranch };
+  const input = libraryContentUrl(item.path || item.value, context);
+  const proxyOpts = libraryProxyOptions(context);
   const target = getPreviewProxyDetails(input, proxyOpts);
   // Retain status metadata for a direct cross-org URL without proxying or authenticating it.
   const metadata = getPreviewProxyDetails(input, { ...proxyOpts, currentOrg: undefined });
@@ -604,6 +608,7 @@ export function getItemPreviewUrl(item, { org, site }) {
  */
 export async function ensureItemPreviewAccess(item, { org, site }) {
   const details = getItemPreviewUrl(item, { org, site });
+  if (!details) return null;
   if (org) await ensurePreviewProxySession(details.previewUrl, libraryProxyOptions({ org, site }));
   return details;
 }

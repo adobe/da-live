@@ -1,5 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { setNx, getNx2Api } from '../../../../../scripts/utils.js';
+import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -45,6 +46,7 @@ function cookieGate() {
 
     afterEach(() => {
       el.remove();
+      canvasBus.branchState.emit({ path: null, status: 'pending' });
       window.fetch = savedFetch;
       status.get = savedGet;
       if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
@@ -86,7 +88,51 @@ function cookieGate() {
       expect(statusCalls).to.deep.equal([]);
     });
 
-    it('does not restore a preview after the component disconnects during cookie exchange', async () => {
+    it('authenticates the resolved canvas branch before assigning a DA-content preview', async () => {
+      canvasBus.branchState.emit({
+        org: 'org',
+        site: 'site',
+        path: '/org/site/page',
+        status: 'ready',
+        branch: 'Configured/Branch',
+      });
+      const gate = cookieGate();
+      const calls = [];
+      window.fetch = (url, opts) => {
+        calls.push({ url, opts });
+        gate.notify();
+        return gate.response;
+      };
+      const pending = el[open]({ name: 'Hero', path: 'https://content.da.live/org/site/blocks/hero?foo=bar#preview' });
+      await gate.ready;
+      expect(el[preview]).to.equal(undefined);
+      expect(calls[0].url).to.equal('https://configured-branch--site--org.stage-preview.da.live/gimme_cookie');
+      gate.release();
+      await pending;
+      expect(el[preview].url).to.equal('https://configured-branch--site--org.stage-preview.da.live/blocks/hero?foo=bar#preview');
+      expect(el[preview].ok).to.be.true;
+    });
+
+    it('does not request a cookie or load a guessed preview while branch resolution is pending', async () => {
+      canvasBus.branchState.emit({
+        org: 'org',
+        site: 'site',
+        path: '/org/site/page',
+        status: 'pending',
+      });
+      const calls = [];
+      window.fetch = async (url) => {
+        calls.push(url);
+        return new Response('');
+      };
+      await el[open]({ name: 'Hero', path: 'https://content.da.live/org/site/blocks/hero' });
+      expect(el[preview].error).to.include('Preview branch unavailable.');
+      expect(el[preview].url).to.equal(undefined);
+      expect(calls).to.deep.equal([]);
+      expect(statusCalls).to.deep.equal([]);
+    });
+
+    it('does not restore a preview after canvas context is cleared during cookie exchange', async () => {
       document.body.append(el);
       await el.updateComplete;
       el._hashState = { org: 'org', site: 'site' };
@@ -97,10 +143,29 @@ function cookieGate() {
       };
       const pending = el[open]({ name: 'Hero', path: 'https://main--site--org.aem.page/hero' });
       await gate.ready;
+      canvasBus.branchState.emit({ path: null, status: 'pending' });
+      gate.release();
+      await pending;
+      expect(el[preview]?.url).to.equal(undefined);
+      expect(statusCalls).to.deep.equal([]);
+    });
+
+    it('does not restore a preview after the component disconnects during cookie exchange', async () => {
+      document.body.append(el);
+      await el.updateComplete;
+      el._hashState = { org: 'org', site: 'site' };
+      const gate = cookieGate();
+      window.fetch = () => {
+        gate.notify();
+        return gate.response;
+      };
+      const previousPreview = el[preview];
+      const pending = el[open]({ name: 'Hero', path: 'https://main--site--org.aem.page/hero' });
+      await gate.ready;
       el.remove();
       gate.release();
       await pending;
-      expect(el[preview]).to.equal(undefined);
+      expect(el[preview]).to.equal(previousPreview);
       expect(statusCalls).to.deep.equal([]);
     });
 

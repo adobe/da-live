@@ -45,6 +45,30 @@ before(async () => {
   resetBlockOptionsCache = mod.resetBlockOptionsCache;
 });
 
+describe('library preview branch state', () => {
+  const state = { org: 'org', site: 'site', path: '/org/site/page' };
+  const item = { path: 'https://content.da.live/org/site/blocks/hero' };
+  afterEach(() => canvasBus.branchState.emit({ path: null, status: 'pending' }));
+
+  it('uses the configured canvas branch rather than a snapshotted query ref', () => {
+    canvasBus.branchState.emit({ ...state, status: 'ready', branch: 'Configured/Branch' });
+    expect(getItemPreviewUrl(item, state).previewUrl)
+      .to.equal('https://configured-branch--site--org.stage-preview.da.live/blocks/hero');
+  });
+
+  ['pending', 'error'].forEach((status) => {
+    it(`does not build a main-branch URL while branch state is ${status}`, () => {
+      canvasBus.branchState.emit({ ...state, status });
+      expect(getItemPreviewUrl(item, state)).to.equal(null);
+    });
+  });
+
+  it('does not use state belonging to a different site', () => {
+    canvasBus.branchState.emit({ ...state, site: 'different', status: 'ready', branch: 'wrong' });
+    expect(getItemPreviewUrl(item, state)).to.equal(null);
+  });
+});
+
 // The DA Preview Proxy host: `<ref>--<site>--<org>.(stage-)preview.da.live`.
 // Which of stage-/prod is chosen depends on the running host, so the tests
 // accept either — the guarantee under test is that library content routes
