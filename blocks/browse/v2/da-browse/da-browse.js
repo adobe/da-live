@@ -97,12 +97,15 @@ export default class DaBrowse extends LitElement {
     this._handleShortcuts = this.handleShortcuts.bind(this);
     document.addEventListener('keydown', this._handleShortcuts);
     this.mountSearch();
+    this.observeHeader();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('keydown', this._handleShortcuts);
     this.destroySearch();
+    this._headerResizeObserver?.disconnect();
+    this._headerResizeObserver = undefined;
   }
 
   get canWrite() {
@@ -110,7 +113,18 @@ export default class DaBrowse extends LitElement {
   }
 
   updated() {
+    this.observeHeader();
     this.syncSearch();
+  }
+
+  observeHeader() {
+    if (!this.isConnected || this._headerResizeObserver) return;
+    const header = this.shadowRoot.querySelector('da-browse-header');
+    if (!header) return;
+    this._headerResizeObserver = new ResizeObserver(([entry]) => {
+      this.style.setProperty('--da-browse-header-height', `${entry.borderBoxSize[0].blockSize}px`);
+    });
+    this._headerResizeObserver.observe(header, { box: 'border-box' });
   }
 
   handleShortcuts(e) {

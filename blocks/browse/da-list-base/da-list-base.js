@@ -391,7 +391,8 @@ export default class DaListBase extends LitElement {
   }
 
   handleRename() {
-    const item = this._listItems.find((lItem) => lItem.isChecked);
+    const [item] = this._selectedItems;
+    if (!item) return;
     item.rename = true;
     this.requestUpdate();
   }

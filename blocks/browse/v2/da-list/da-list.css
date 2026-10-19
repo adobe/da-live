@@ -11,6 +11,7 @@
   --da-list-type-width: 120px;
   --da-list-date-width: 180px;
   --da-list-select-width: 40px;
+  --da-list-min-height: 56px;
 }
 
 /* Item List */
@@ -31,6 +32,8 @@
   font-family: var(--s2-font-family);
   color: var(--s2-gray-600);
   font-size: var(--s2-component-m-regular-font-size);
+  box-sizing: border-box;
+  min-height: var(--da-list-min-height);
 }
 
 .da-list-group-toggle {
@@ -97,13 +100,6 @@ da-list-item {
 }
 
 .da-browse-panel:not(.card-view) {
-  da-list-item::before {
-    display: block;
-    content: "";
-    height: 1px;
-    background: var(--s2-gray-300);
-  }
-
   da-list-item::after {
     display: block;
     content: "";
@@ -142,6 +138,10 @@ da-list-item.is-expanded::after {
 }
 
 .da-browse-table-header {
+  position: sticky;
+  top: var(--da-browse-header-height, 0);
+  z-index: 1;
+  background: light-dark(#fff, #000);
   display: grid;
   grid-template-columns: var(--da-list-select-width) minmax(0, 1fr) var(--da-list-type-width) var(--da-list-date-width) var(--da-list-action-width);
   align-items: center;

@@ -3,6 +3,13 @@
   font-family: var(--s2-font-family);
 }
 
+da-browse-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--s2-gray-25);
+}
+
 .da-browse-content {
   width: 100%;
   max-width: none;
