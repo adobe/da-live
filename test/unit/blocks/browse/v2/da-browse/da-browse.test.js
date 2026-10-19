@@ -10,6 +10,7 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { default: DaBrowse } = await import('../../../../../../blocks/browse/v2/da-list/da-list.js');
 const { default: DaBrowseComponent } = await import('../../../../../../blocks/browse/v2/da-browse/da-browse.js');
+const { default: DaActionBar } = await import('../../../../../../blocks/browse/da-actionbar/da-actionbar.js');
 
 describe('Browse', () => {
   it('Pasted item uses the target URL', async () => {
@@ -343,6 +344,93 @@ describe('DaBrowse Component', () => {
   beforeEach(() => {
     daBrowseComp = new DaBrowseComponent();
     daBrowseComp.details = { fullpath: '/myorg/mysite/folder', org: 'myorg', site: 'mysite', owner: 'myorg', depth: 3 };
+  });
+
+  describe('copy, cut and paste shortcuts', () => {
+    let browse;
+    let button;
+    let calls;
+
+    beforeEach(() => {
+      browse = new DaBrowseComponent();
+      const bar = new DaActionBar();
+      bar.items = [{ path: '/org/site/file.html' }];
+      bar.attachShadow({ mode: 'open' });
+      button = document.createElement('button');
+      button.dataset.shortcut = 'c';
+      bar.shadowRoot.append(button);
+      calls = 0;
+      button.addEventListener('click', () => { calls += 1; });
+      Object.defineProperty(browse, 'activeListCmp', { get: () => ({ actionBar: bar }) });
+    });
+
+    function shortcut(options = {}, path = [browse]) {
+      const event = new KeyboardEvent('keydown', {
+        key: 'c',
+        ctrlKey: true,
+        cancelable: true,
+        ...options,
+      });
+      Object.defineProperty(event, 'composedPath', { value: () => path || [browse] });
+      browse.handleShortcuts(event);
+      return event;
+    }
+
+    it('uses the action-bar buttons for Ctrl+C and Cmd+X', () => {
+      expect(shortcut().defaultPrevented).to.equal(true);
+      button.dataset.shortcut = 'x';
+      expect(shortcut({ key: 'x', ctrlKey: false, metaKey: true }).defaultPrevented).to.equal(true);
+      expect(calls).to.equal(2);
+    });
+
+    it('handles selection checkbox focus and unfocused page shortcuts', () => {
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      expect(shortcut({}, [checkbox, browse]).defaultPrevented).to.equal(true);
+      expect(shortcut({}, [document.body]).defaultPrevented).to.equal(true);
+      expect(calls).to.equal(2);
+    });
+
+    it('only pastes when the action-bar paste button is available', () => {
+      button.dataset.shortcut = 'v';
+      button.disabled = true;
+      expect(shortcut({ key: 'v' }).defaultPrevented).to.equal(false);
+      button.disabled = false;
+      expect(shortcut({ key: 'v' }).defaultPrevented).to.equal(true);
+      expect(shortcut({ key: 'v', ctrlKey: false, metaKey: true }).defaultPrevented)
+        .to.equal(true);
+      expect(calls).to.equal(2);
+    });
+
+    it('leaves unavailable actions and empty selections alone', () => {
+      button.disabled = true;
+      expect(shortcut().defaultPrevented).to.equal(false);
+      button.disabled = false;
+      browse.activeListCmp.actionBar.items = [];
+      expect(shortcut().defaultPrevented).to.equal(false);
+      expect(calls).to.equal(0);
+    });
+
+    it('ignores editing, dialogs, other panels and extra modifiers', () => {
+      ['input', 'textarea', 'select', 'dialog'].forEach((tag) => {
+        const event = shortcut({}, [document.createElement(tag), browse]);
+        expect(event.defaultPrevented).to.equal(false);
+      });
+      const editable = document.createElement('div');
+      editable.contentEditable = 'true';
+      expect(shortcut({}, [editable, browse]).defaultPrevented).to.equal(false);
+      expect(shortcut({}, [document.createElement('aside')]).defaultPrevented).to.equal(false);
+      expect(shortcut({ shiftKey: true }).defaultPrevented).to.equal(false);
+      expect(shortcut({ altKey: true }).defaultPrevented).to.equal(false);
+      expect(calls).to.equal(0);
+    });
+
+    it('preserves native shortcuts when text is selected', () => {
+      const text = document.createElement('span');
+      Object.defineProperty(text, 'getRootNode', { value: () => ({ getSelection: () => ({ toString: () => 'selected text' }) }) });
+      expect(shortcut({}, [text, browse]).defaultPrevented).to.equal(false);
+      expect(calls).to.equal(0);
+    });
   });
 
   describe('getEditor', () => {

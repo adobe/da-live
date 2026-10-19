@@ -420,9 +420,10 @@ describe('DaList helpers', () => {
   });
 
   describe('handleRename', () => {
-    it('Marks the checked item for rename', () => {
+    it('Marks the selected item for rename', () => {
       const el = makeList();
       el._listItems = [{ isChecked: false }, { isChecked: true }];
+      el._selectedItems = [el._listItems[1]];
       el.handleRename();
       expect(el._listItems[1].rename).to.be.true;
     });
