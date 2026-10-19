@@ -71,3 +71,17 @@ export function getReplySummary({ rootComment, replies }) {
   const remainingCount = uniqueAuthors.length - 2;
   return ` from ${uniqueAuthors[0]}, ${uniqueAuthors[1]} and ${remainingCount} ${remainingCount === 1 ? 'other' : 'others'}`;
 }
+
+function promptTarget(thread) {
+  const preview = formatAnchorPreview(thread);
+  if (!preview) return '';
+  const named = preview.match(/^block:\s*(.+)$/);
+  return named ? ` on the ${named[1]} block` : ` on ${preview}`;
+}
+
+export function formatCommentPrompt(thread) {
+  if (!thread) return '';
+  const target = promptTarget(thread);
+  const bodies = [thread, ...(thread.replies ?? [])].map((c) => c.body).filter(Boolean);
+  return `Address this comment${target}:\n\n${bodies.join('\n')}`;
+}
