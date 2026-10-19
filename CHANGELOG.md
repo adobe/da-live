@@ -1,3 +1,31 @@
+## [1.7.1](https://github.com/adobe/da-live/compare/v1.7.0...v1.7.1) (2026-10-19)
+
+
+### Bug Fixes
+
+* **canvas:** preserve wrappers when editing nested blocks ([#1449](https://github.com/adobe/da-live/issues/1449)) ([9d24093](https://github.com/adobe/da-live/commit/9d2409399fa73b31fa374becc3580bfc8989ace3))
+
+# [1.7.0](https://github.com/adobe/da-live/compare/v1.6.1...v1.7.0) (2026-10-15)
+
+
+### Features
+
+* allow sending annotations to the ew chat for resolution ([#1373](https://github.com/adobe/da-live/issues/1373)) ([6206c79](https://github.com/adobe/da-live/commit/6206c79f3fd47d89eb750bc670940c953444a6d2))
+
+## [1.6.1](https://github.com/adobe/da-live/compare/v1.6.0...v1.6.1) (2026-10-15)
+
+
+### Bug Fixes
+
+* **canvas:** correct refresh on paragraph removal ([#1444](https://github.com/adobe/da-live/issues/1444)) ([fc1c6f5](https://github.com/adobe/da-live/commit/fc1c6f5c9e1a8c44198d62aebfab6197aa56e6be))
+
+# [1.6.0](https://github.com/adobe/da-live/compare/v1.5.2...v1.6.0) (2026-10-15)
+
+
+### Features
+
+* **ew:** centralize canvas branch resolution ([#1439](https://github.com/adobe/da-live/issues/1439)) ([b657553](https://github.com/adobe/da-live/commit/b657553957a905b754174b19588dc0ee2c798ceb))
+
 ## [1.5.2](https://github.com/adobe/da-live/compare/v1.5.1...v1.5.2) (2026-10-14)
 
 

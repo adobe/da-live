@@ -71,7 +71,9 @@ export function renderCommentMenu(panel, comment, threadId, isRoot, canEdit, isR
     ...(canReopen ? [{ id: 'reopen', label: 'Reopen' }] : []),
     ...(canEdit && !isResolved ? [{ id: 'edit', label: 'Edit' }] : []),
     ...(canEdit ? [{ id: 'delete', label: isRoot ? 'Delete thread' : 'Delete' }] : []),
-    ...(isRoot ? [{ id: 'link', label: 'Get link to this comment' }] : []),
+    ...(isRoot && !isResolved && !panel.chatDisabled
+      ? [{ id: 'chat', label: 'Add to chat' }] : []),
+    ...(isRoot ? [{ id: 'link', label: 'Share' }] : []),
   ];
 
   return html`
