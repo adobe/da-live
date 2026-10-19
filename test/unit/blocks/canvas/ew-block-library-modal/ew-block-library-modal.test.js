@@ -14,6 +14,7 @@ try {
   window.fetch = savedFetch;
 }
 const { status } = await getNx2Api();
+const { getBlockVariants } = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
 
 describe('Block library variant preview navigation', () => {
   let modal;
@@ -117,6 +118,37 @@ describe('Block library variant preview navigation', () => {
     expect(modal._previewInfo.url).to.equal(`${previewUrl}#custom%20%23%20heading`);
     modal._selectVariant(block, variants[0]);
     expect(modal._previewInfo.url).to.equal(`${previewUrl}#wide`);
+  });
+
+  it('Navigates to duplicate and Unicode anchors parsed from DA source HTML', async () => {
+    const html = `
+      <main><div>
+        <h2>Default</h2>
+        <div class="hero"><div><div>first</div></div></div>
+        <h2>Default</h2>
+        <div class="hero"><div><div>second</div></div></div>
+        <h2>Über</h2>
+        <div class="hero"><div><div>third</div></div></div>
+      </div></main>
+    `;
+    let parsedVariants;
+    window.fetch = () => Promise.resolve(new Response(html));
+    try {
+      parsedVariants = await getBlockVariants(block.path);
+    } finally {
+      window.fetch = savedFetch;
+    }
+    modal._variantsByPath = new Map([[block.path, parsedVariants]]);
+    await modal.updateComplete;
+
+    const iframe = modal.shadowRoot.querySelector('iframe');
+    variantButtons()[1].click();
+    await modal.updateComplete;
+    expect(iframe.getAttribute('src')).to.equal(`${previewUrl}#default-1`);
+    variantButtons()[2].click();
+    await modal.updateComplete;
+    expect(iframe.getAttribute('src')).to.equal(`${previewUrl}#%C3%BCber`);
+    expect(modal.shadowRoot.querySelector('iframe')).to.equal(iframe);
   });
 
   it('Loads the correct block preview when selecting a variant from search results', async () => {

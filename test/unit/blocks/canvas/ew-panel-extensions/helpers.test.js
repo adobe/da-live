@@ -121,7 +121,162 @@ describe('EW panel helpers transformBlock', () => {
       </div></main>
     `);
     const variants = await getBlockVariants('/mock-path');
-    expect(variants[0].anchor).to.equal('hero-wide-bright');
+    expect(variants[0].anchor).to.equal('hero-wide--bright');
+  });
+
+  [
+    ['Cards &amp; Tabs', 'cards--tabs'],
+    ['2 Columns', 'columns'],
+    ['Über', 'über'],
+    ['中文', '中文'],
+    ['Tabs_with_underscores', 'tabs_with_underscores'],
+    ['2026', '2026'],
+  ].forEach(([heading, anchor]) => {
+    it(`Matches AEM's heading slug for "${heading}"`, async () => {
+      mockHtml(`
+        <main><div>
+          <h2>${heading}</h2>
+          <div class="hero"><div><div>content</div></div></div>
+        </div></main>
+      `);
+      const variants = await getBlockVariants('/mock-path');
+      expect(variants[0].anchor).to.equal(anchor);
+    });
+  });
+
+  it('Assigns unique anchors to repeated variant headings', async () => {
+    mockHtml(`
+      <main><div>
+        <h2>Default</h2>
+        <div class="hero"><div><div>first</div></div></div>
+        <h2>Default</h2>
+        <div class="hero"><div><div>second</div></div></div>
+      </div></main>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants.map((v) => v.anchor)).to.deep.equal(['default', 'default-1']);
+  });
+
+  it('Counts all heading levels across sections and inside groups in document order', async () => {
+    mockHtml(`
+      <main>
+        <div>
+          <h1>Default</h1>
+          <p>This heading does not label a variant.</p>
+          <h2>Default</h2>
+          <div class="hero"><div><div>first</div></div></div>
+        </div>
+        <div>
+          <h3>Default</h3>
+          <div class="library-container-start"></div>
+          <div class="hero"><div><div><h4>Default</h4>group content</div></div></div>
+          <div class="library-container-end"></div>
+        </div>
+        <div>
+          <h5>Default</h5>
+          <div class="hero"><div><div>third</div></div></div>
+          <h6>Default</h6>
+          <div class="hero"><div><div>fourth</div></div></div>
+        </div>
+      </main>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants.map((v) => v.anchor))
+      .to.deep.equal(['default-1', 'default-2', 'default-4', 'default-5']);
+  });
+
+  it('Resolves collisions after removing leading numeric prefixes', async () => {
+    mockHtml(`
+      <main><div>
+        <h2>1. Goals</h2>
+        <div class="hero"><div><div>first</div></div></div>
+        <h2>2. Goals</h2>
+        <div class="hero"><div><div>second</div></div></div>
+        <h2>Goals</h2>
+        <div class="hero"><div><div>third</div></div></div>
+      </div></main>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants.map((v) => v.anchor)).to.deep.equal(['goals', 'goals-1', 'goals-2']);
+  });
+
+  it('Avoids collisions with headings that already contain numeric suffixes', async () => {
+    mockHtml(`
+      <main><div>
+        <h2>Default</h2>
+        <div class="hero"><div><div>first</div></div></div>
+        <h2>Default-1</h2>
+        <div class="hero"><div><div>second</div></div></div>
+        <h2>Default</h2>
+        <div class="hero"><div><div>third</div></div></div>
+        <h2>Default-1</h2>
+        <div class="hero"><div><div>fourth</div></div></div>
+      </div></main>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants.map((v) => v.anchor))
+      .to.deep.equal(['default', 'default-1', 'default-2', 'default-1-1']);
+  });
+
+  it('Preserves existing IDs without consuming generated-heading counters', async () => {
+    mockHtml(`
+      <main><div>
+        <h2 id="existing-default">Default</h2>
+        <div class="hero"><div><div>first</div></div></div>
+        <h2>Default</h2>
+        <div class="hero"><div><div>second</div></div></div>
+        <h2>Default</h2>
+        <div class="hero"><div><div>third</div></div></div>
+      </div></main>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants.map((v) => v.anchor))
+      .to.deep.equal(['existing-default', 'default', 'default-1']);
+  });
+
+  it('Keeps generated anchors independent of metadata name overrides', async () => {
+    mockHtml(`
+      <main><div>
+        <h2>Default</h2>
+        <div class="library-metadata"><div><div>name</div><div>Custom name</div></div></div>
+        <div class="hero"><div><div>first</div></div></div>
+        <h2>Default</h2>
+        <div class="hero"><div><div>second</div></div></div>
+      </div></main>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants[0].name).to.equal('Custom name');
+    expect(variants.map((v) => v.anchor)).to.deep.equal(['default', 'default-1']);
+  });
+
+  it('Resets heading counters for each parsed document', async () => {
+    mockHtml(`
+      <main><div>
+        <h2>Default</h2>
+        <div class="hero"><div><div>first</div></div></div>
+        <h2>Default</h2>
+        <div class="hero"><div><div>second</div></div></div>
+      </div></main>
+    `);
+    const results = await Promise.all([
+      getBlockVariants('/first-library'),
+      getBlockVariants('/second-library'),
+    ]);
+    results.forEach((variants) => {
+      expect(variants.map((v) => v.anchor)).to.deep.equal(['default', 'default-1']);
+    });
+  });
+
+  it('Leaves whitespace-only headings without navigation anchors', async () => {
+    mockHtml(`
+      <main><div>
+        <h2>   </h2>
+        <div class="hero"><div><div>content</div></div></div>
+      </div></main>
+    `);
+    const variants = await getBlockVariants('/mock-path');
+    expect(variants).to.have.lengthOf(1);
+    expect(variants[0].anchor).to.be.undefined;
   });
 
   it('Preserves the heading anchor preceding a library group', async () => {
