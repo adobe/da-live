@@ -155,7 +155,7 @@
 .ew-comments-thread-surface.is-preview {
   margin-bottom: 8px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s;
   animation: ew-comments-slide-in 0.2s ease-out;
 }
 
