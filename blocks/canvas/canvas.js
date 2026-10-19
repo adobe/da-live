@@ -168,11 +168,11 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
     return;
   }
   const editorCtx = editorCtxFromHashState(state, fullPath);
-  const branchPromise = Promise.all([
-    resolveCanvasBranch(editorCtx),
-    loadRenderingVersion({ org: editorCtx.org, site: editorCtx.repo }),
-  ]).then(([branch]) => branch);
-  const ctx = { ...editorCtx, branchPromise };
+  const ctx = {
+    ...editorCtx,
+    branchPromise: resolveCanvasBranch(editorCtx),
+    renderingVersionPromise: loadRenderingVersion({ org: editorCtx.org, site: editorCtx.repo }),
+  };
   const session = await resolveEditorDocSession(ctx);
   if (loadCount !== editorLoadCount) return;
   if (session.notFound) {

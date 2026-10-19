@@ -30,6 +30,23 @@ describe('WYSIWYG shared canvas branch', () => {
     expect(get.called).to.be.false;
   });
 
+  it('waits for the rendering version before using the branch', async () => {
+    let finish;
+    el.ctx = {
+      org: 'org',
+      repo: 'site',
+      path: 'org/site/page',
+      branchPromise: Promise.resolve('selected'),
+      renderingVersionPromise: new Promise((resolve) => { finish = resolve; }),
+    };
+    await el.updateComplete;
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+    expect(el._wysiwygBranch).to.be.undefined;
+    finish(2);
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+    expect(el._wysiwygBranch).to.equal('selected');
+  });
+
   it('ignores an older branch promise after a context change', async () => {
     let finish;
     el.ctx = {
