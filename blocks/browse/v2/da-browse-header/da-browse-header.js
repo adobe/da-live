@@ -71,7 +71,7 @@ export default class DaBrowseHeader extends LitElement {
   }
 
   renderSettingsActions() {
-    if (!this.details?.org) return nothing;
+    if (!this.details?.org || this.details.path) return nothing;
     const href = this.details.site
       ? `/config#/${this.details.org}/${this.details.site}/`
       : `/config#/${this.details.org}/`;
