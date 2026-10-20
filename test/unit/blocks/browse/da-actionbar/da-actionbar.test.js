@@ -43,6 +43,11 @@ describe('DaActionBar', () => {
       document.body.append(el);
       try {
         await el.updateComplete;
+        el.shadowRoot.querySelectorAll('button').forEach((button) => {
+          expect(button.getAttribute('aria-label')).to.equal(button.textContent.trim()
+            || 'Unselect items');
+          expect(button.title).to.equal(button.getAttribute('aria-label'));
+        });
         expect(el.handleShortcut('v')).to.be.false;
         expect(el.handleShortcut('c')).to.be.true;
         await el.updateComplete;
