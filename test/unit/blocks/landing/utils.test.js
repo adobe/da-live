@@ -125,7 +125,7 @@ describe('landing page data and navigation', () => {
       expect(getBrowseItemHref({ path: '/org/site/folder' })).to.equal('#/org/site/folder');
       window.history.replaceState(null, '', '?nx=lp');
       expect(getBrowseItemHref({ path: '/org/site/page.html', ext: 'html', editor: '/canvas#' }))
-        .to.equal('/canvas#/org/site/page');
+        .to.equal('/canvas?nx=lp#/org/site/page');
     } finally {
       window.history.replaceState(null, '', href);
     }

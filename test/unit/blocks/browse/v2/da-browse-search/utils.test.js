@@ -131,9 +131,15 @@ describe('browse filename catalog', () => {
 
 describe('browse suggestion navigation', () => {
   it('preserves folder, page, sheet, media, canvas, and custom editor routes', () => {
+    const { href } = window.location;
+    window.history.replaceState(null, '', '?nx=lp');
+    try {
+      expect(getBrowseItemHref({ path: '/o/r/page.html', ext: 'html', editor: '/canvas#' })).to.equal('/canvas?nx=lp#/o/r/page');
+    } finally {
+      window.history.replaceState(null, '', href);
+    }
     expect(getBrowseItemHref({ path: '/o/r/folder' })).to.equal('#/o/r/folder');
     expect(getBrowseItemHref({ path: '/o/r/page.html', ext: 'html', editor: '/edit#' })).to.equal('/edit#/o/r/page');
-    expect(getBrowseItemHref({ path: '/o/r/page.html', ext: 'html', editor: '/canvas#' })).to.equal('/canvas#/o/r/page');
     expect(getBrowseItemHref({ path: '/o/r/data.json', ext: 'json' })).to.equal('/sheet#/o/r/data');
     expect(getBrowseItemHref({ path: '/o/r/image.png', ext: 'png' })).to.equal('/media#/o/r/image.png');
     expect(getBrowseItemHref({ path: '/o/r/path/page.html', ext: 'html', editor: 'https://experience.adobe.com/editor' })).to.equal('https://experience.adobe.com/editor/path/page');
