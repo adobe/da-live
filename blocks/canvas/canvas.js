@@ -1,4 +1,6 @@
-import { getNx } from '../../scripts/utils.js';
+import { getNx, getNx2Api } from '../../scripts/utils.js';
+import { EMPTY_DOC } from '../shared/utils.js';
+import { getCommentsBridge } from './editor-utils/comments-bridge.js';
 import {
   normalizeCanvasEditorView,
   readInitialCanvasEditorView,
@@ -14,10 +16,14 @@ import {
   installEditorSplitDrag,
   removeSplitGutter,
 } from './ew-editor-split/ew-editor-split.js';
-import { resolveEditorDocSession } from './ew-editor-doc/utils/load-editor-doc.js';
+import { resolveEditorDocSession, createdDocSession } from './ew-editor-doc/utils/load-editor-doc.js';
 import { SEL_BLOCK, SEL_ITEM, SEL_TEXT } from './ew-editor-doc/utils/selection.js';
 import { getChatPanelContent } from '../shared/chat-panel.js';
 import { canvasBus } from './utils/canvas-bus.js';
+import { initBranchBridge } from './editor-utils/branch-bridge.js';
+import { resolveCanvasBranch } from './editor-utils/branch-state.js';
+import { installComparison } from './ew-comparison/comparison.js';
+import { docToHtml } from '../shared/version/compare.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
@@ -36,7 +42,7 @@ function buildCanvasDocPath(state) {
   return `${org}/${site}/${path}`;
 }
 
-function notifyCanvasEditorActive(view) {
+export function notifyCanvasEditorActive(view) {
   const v = normalizeCanvasEditorView(view);
   canvasBus.editorViewState.emit({ view: v });
 }
@@ -91,6 +97,60 @@ function editorCtxFromHashState(state, fullPath) {
   return { org: state.org, repo: state.site, path: fullPath };
 }
 
+function mountCanvasEditors({ mountRoot, header, session, ctx }) {
+  removeNotPermitted(mountRoot);
+  const canWrite = session.permissions?.some((permission) => permission === 'write') === true;
+  header.authorized = true;
+  header.canWrite = canWrite;
+  const docEl = ensureNxEditorDoc(mountRoot);
+  docEl.session = session;
+  docEl.ctx = ctx;
+  const wysiwygEl = ensureNxEditorWysiwyg(mountRoot);
+  // Must be set before `ctx`: the ctx change reloads the iframe, and the quick-edit
+  // INIT payload sent on load reads `canWrite` to decide contenteditable.
+  wysiwygEl.canWrite = canWrite;
+  wysiwygEl.ctx = ctx;
+  finalizeSplitEditorMountOrder(mountRoot);
+  notifyCanvasEditorActive(header.editorView);
+  syncEditorSplitLayout({ mountRoot, view: header.editorView });
+}
+
+async function createEwDoc(path) {
+  const { source } = await getNx2Api();
+  return source.save(`/${path}.html`, { body: EMPTY_DOC });
+}
+
+// A navigated-to URL with no document: prompt to create it (mirrors the classic
+// doc editor). The stale-load guard (loadCount) stands in for da-not-found's
+// hashchange race guard - if the hash moved on while we awaited, drop the result.
+async function handleCanvasNotFound({ mountRoot, header, ctx, session, loadCount }) {
+  removeCanvasEditors(mountRoot);
+  removeNotPermitted(mountRoot);
+  header.authorized = false;
+  header.canWrite = false;
+  const { default: showEwNotFoundDialog, libraryHashFromPath } = await import('./ew-not-found/ew-not-found.js');
+  const name = ctx.path.split('/').pop();
+  const choice = await showEwNotFoundDialog({ name });
+  if (loadCount !== editorLoadCount) return;
+  if (choice === 'hashchange') return;
+  if (choice !== 'create') {
+    window.location.hash = libraryHashFromPath(ctx.path);
+    return;
+  }
+  const createResp = await createEwDoc(ctx.path);
+  if (loadCount !== editorLoadCount) return;
+  if (!createResp?.ok) {
+    showNotPermitted(mountRoot, 'Could not create the document.');
+    return;
+  }
+  mountCanvasEditors({
+    mountRoot,
+    header,
+    ctx,
+    session: createdDocSession(session, createResp),
+  });
+}
+
 async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
   editorLoadCount += 1;
   const loadCount = editorLoadCount;
@@ -100,54 +160,51 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
   const name = state?.path?.split('/').pop();
   document.title = `${name ? `Edit ${name} | ` : ''}Experience Workspace`;
   if (!fullPath) {
+    resolveCanvasBranch();
     removeCanvasEditors(mountRoot);
     removeNotPermitted(mountRoot);
     header.authorized = true;
     header.canWrite = true;
     return;
   }
-  const ctx = editorCtxFromHashState(state, fullPath);
+  const editorCtx = editorCtxFromHashState(state, fullPath);
+  const ctx = { ...editorCtx, branchPromise: resolveCanvasBranch(editorCtx) };
   const session = await resolveEditorDocSession(ctx);
   if (loadCount !== editorLoadCount) return;
+  if (session.notFound) {
+    await handleCanvasNotFound({ mountRoot, header, ctx, session, loadCount });
+    return;
+  }
   if (!session.ok) {
     removeCanvasEditors(mountRoot);
     showNotPermitted(mountRoot, session.error);
     header.authorized = false;
     return;
   }
-  removeNotPermitted(mountRoot);
-  const canWrite = (session.permissions ?? []).some((p) => p === 'write');
-  header.authorized = true;
-  header.canWrite = canWrite;
-  const docEl = ensureNxEditorDoc(mountRoot);
-  docEl.session = session;
-  docEl.ctx = ctx;
-  const frameEl = ensureNxEditorWysiwyg(mountRoot);
-  frameEl.canWrite = canWrite;
-  frameEl.ctx = ctx;
-  finalizeSplitEditorMountOrder(mountRoot);
-  notifyCanvasEditorActive(header.editorView);
-  syncEditorSplitLayout({ mountRoot, view: header.editorView });
+  mountCanvasEditors({ mountRoot, header, session, ctx });
 }
 
-async function syncToolPanelViews(toolPanel, { org, site }) {
+async function syncToolPanelViews(toolPanel, { org, site }, panelName) {
   const key = org && site ? `${org}/${site}` : null;
-  if (key === toolPanel.dataset.extKey) return;
+  if (key === toolPanel.dataset.extKey) return false;
   toolPanel.dataset.extKey = key ?? '';
+  toolPanel.contextKey = key ?? '';
 
   if (!key) {
     toolPanel.org = undefined;
     toolPanel.site = undefined;
     toolPanel.views = [];
-    return;
+    return true;
   }
 
   const { getCanvasToolPanelViews } = await import('./ew-panel-extensions/helpers.js');
   const views = await getCanvasToolPanelViews({ org, site });
-  if (toolPanel.dataset.extKey !== key) return;
+  if (toolPanel.dataset.extKey !== key) return false;
   toolPanel.org = org;
   toolPanel.site = site;
+  if (panelName) toolPanel.pendingView = panelName;
   toolPanel.views = views;
+  return true;
 }
 
 function hashState() {
@@ -191,6 +248,12 @@ const SHORTCUTS = [
     altKey: true,
     channel: canvasBus.newVersionRequest,
   },
+  {
+    code: 'KeyM',
+    mod: true,
+    altKey: true,
+    channel: canvasBus.commentComposeRequest,
+  },
 ];
 document.addEventListener('keydown', (e) => {
   const modKey = isMac ? e.metaKey : e.ctrlKey;
@@ -208,6 +271,11 @@ document.addEventListener('keydown', (e) => {
 
 canvasBus.newVersionRequest.subscribe(openNewVersionRow);
 
+canvasBus.commentComposeRequest.subscribe(() => {
+  getCommentsBridge().controller?.requestCompose();
+  openPanelSection('tools', 'comments');
+});
+
 export default async function decorate(block) {
   const { org, site } = hashState();
 
@@ -215,9 +283,15 @@ export default async function decorate(block) {
     position: 'before',
     width: '400px',
     getContent: getChatPanelContent(),
-    onShow: (aside, id, options) => {
-      if (!options?.text) return;
-      aside?.querySelector('nx-chat')?.setPrompt(options.text, { autoSend: options.autoSend });
+    onShow: async (aside, id, options) => {
+      if (!options?.text && !options?.onReady) return;
+      if (options.onReady) {
+        await aside?.querySelector('nx-chat, nx-chat-ao')?.updateComplete;
+        await options.onReady();
+      }
+      if (!options.text) return;
+      const detail = { text: options.text, autoSend: options.autoSend };
+      document.dispatchEvent(new CustomEvent(CHAT_EVENT.SET_PROMPT, { detail }));
     },
   });
 
@@ -231,9 +305,9 @@ export default async function decorate(block) {
     onShow: async (aside, id, options) => {
       const toolPanel = aside?.querySelector('ew-tool-panel');
       if (!toolPanel) return;
-      await syncToolPanelViews(toolPanel, hashState());
+      const selected = await syncToolPanelViews(toolPanel, hashState(), id);
       await toolPanel.updateComplete;
-      if (id && toolPanel.views?.some((v) => v.id === id)) {
+      if (id && !selected && toolPanel.views?.some((v) => v.id === id)) {
         await toolPanel.showPanel(id);
       }
       if (options?.newVersion) {
@@ -250,12 +324,27 @@ export default async function decorate(block) {
   syncEditorSplitLayout({ mountRoot, view: header.editorView });
   installEditorSplitDrag(mountRoot);
 
+  let comparisonContext;
+  const comparison = installComparison({
+    mountRoot,
+    getContext: () => comparisonContext,
+    getDocument: () => {
+      const { view } = mountRoot.querySelector('ew-editor-doc')
+        ?.getComparisonSession(comparisonContext) || {};
+      return view ? docToHtml(view) : undefined;
+    },
+    saveDocument: () => mountRoot.querySelector('ew-editor-doc')?.saveForComparison(comparisonContext),
+  });
+
   canvasBus.undoState.subscribe((detail) => {
     header.undoAvailable = detail?.canUndo ?? false;
     header.redoAvailable = detail?.canRedo ?? false;
   });
 
+  initBranchBridge();
   hashChange.subscribe((state) => {
+    comparisonContext = state;
+    comparison.contextChanged();
     syncCanvasEditorsToHash({ mountRoot, header, state });
     const toolPanel = document.querySelector('aside.panel[data-position="after"] ew-tool-panel');
     if (toolPanel) syncToolPanelViews(toolPanel, state);

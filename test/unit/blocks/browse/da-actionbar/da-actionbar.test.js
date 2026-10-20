@@ -34,6 +34,42 @@ describe('DaActionBar', () => {
     });
   });
 
+  describe('handleShortcut', () => {
+    it('uses the rendered Copy, Cut and Paste actions and their availability', async () => {
+      const el = new DaActionBar();
+      el.items = [{ path: '/org/site/file.html' }];
+      el.permissions = ['write'];
+      el.currentPath = '/org/site/destination';
+      document.body.append(el);
+      try {
+        await el.updateComplete;
+        expect(el.handleShortcut('v')).to.be.false;
+        expect(el.handleShortcut('c')).to.be.true;
+        await el.updateComplete;
+        expect(el._isCopying).to.be.true;
+        expect(el.handleShortcut('c')).to.be.false;
+        let move;
+        el.addEventListener('onpaste', (e) => { move = e.detail.move; });
+        expect(el.handleShortcut('v')).to.be.true;
+        expect(move).not.to.be.true;
+
+        el._isCopying = false;
+        await el.updateComplete;
+        el.permissions = ['read'];
+        await el.updateComplete;
+        expect(el.handleShortcut('x')).to.be.false;
+        el.permissions = ['write'];
+        await el.updateComplete;
+        expect(el.handleShortcut('x')).to.be.true;
+        await el.updateComplete;
+        expect(el.handleShortcut('v')).to.be.true;
+        expect(move).to.be.true;
+      } finally {
+        el.remove();
+      }
+    });
+  });
+
   describe('inNewDir', () => {
     it('Returns false when item directory matches currentPath', () => {
       const el = new DaActionBar();
@@ -144,6 +180,44 @@ describe('DaActionBar', () => {
       el.permissions = ['read'];
       el.isHlx6 = false;
       expect(el._canCut).to.be.false;
+    });
+  });
+
+  describe('_hidePublish / _canPublish', () => {
+    it('_hidePublish is false when hidePublishConfs is empty', () => {
+      const el = new DaActionBar();
+      el.items = [{ ext: 'html', path: '/org/site/blog/page.html' }];
+      expect(el._hidePublish).to.be.false;
+    });
+
+    it('_hidePublish is true when a selected item path matches a prefix', () => {
+      const el = new DaActionBar();
+      el.items = [{ ext: 'html', path: '/org/site/blog/page.html' }];
+      el.hidePublishConfs = ['/org/site/blog'];
+      expect(el._hidePublish).to.be.true;
+    });
+
+    it('_hidePublish is false when no selected item path matches any prefix', () => {
+      const el = new DaActionBar();
+      el.items = [{ ext: 'html', path: '/org/site/news/page.html' }];
+      el.hidePublishConfs = ['/org/site/blog'];
+      expect(el._hidePublish).to.be.false;
+    });
+
+    it('_canPublish is false when hidden, even with write permission', () => {
+      const el = new DaActionBar();
+      el.permissions = ['read', 'write'];
+      el.items = [{ ext: 'html', path: '/org/site/blog/page.html' }];
+      el.hidePublishConfs = ['/org/site/blog'];
+      expect(el._canPublish).to.be.false;
+    });
+
+    it('_canPublish is true when not hidden and _canAemAction is true', () => {
+      const el = new DaActionBar();
+      el.permissions = ['read', 'write'];
+      el.items = [{ ext: 'html', path: '/org/site/news/page.html' }];
+      el.hidePublishConfs = ['/org/site/blog'];
+      expect(el._canPublish).to.be.true;
     });
   });
 

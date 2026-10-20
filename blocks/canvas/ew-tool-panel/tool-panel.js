@@ -1,5 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
+import { getCommentsBridge } from '../editor-utils/comments-bridge.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 import {
   persistToolPanelView,
   resolveInitialToolPanelView,
@@ -24,14 +26,49 @@ class EwToolPanel extends LitElement {
     activeId: { type: String },
     org: { type: String },
     site: { type: String },
+    contextKey: { type: String },
     _fullsizeDialogViewId: { state: true },
   };
 
   _loaded = {};
 
+  _loadedKeys = {};
+
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [base, style];
+    this._bindCommentCountUpdates();
+    this._onRailToggle = () => this._broadcastActiveView();
+    document.addEventListener(PANEL_EVENT.OPEN, this._onRailToggle);
+    document.addEventListener(PANEL_EVENT.CLOSE, this._onRailToggle);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this._unsubCommentCounts?.();
+    this._unsubControllerChange?.();
+    document.removeEventListener(PANEL_EVENT.OPEN, this._onRailToggle);
+    document.removeEventListener(PANEL_EVENT.CLOSE, this._onRailToggle);
+  }
+
+  _broadcastActiveView() {
+    const rail = this.closest('aside.panel');
+    const visible = !!rail && !rail.hasAttribute('hidden');
+    canvasBus.toolPanelViewState.emit(visible ? this.activeId : null);
+  }
+
+  _bindCommentCountUpdates() {
+    const refresh = () => this.requestUpdate();
+    const bind = (controller) => {
+      this._unsubCommentCounts?.();
+      if (!controller?.subscribe) return;
+      this._unsubCommentCounts = controller.subscribe(({ reason }) => {
+        if (reason === 'counts' || reason === 'init') refresh();
+      });
+    };
+    bind(getCommentsBridge().controller);
+    this._unsubControllerChange = canvasBus.commentsControllerState
+      .subscribe((controller) => bind(controller));
   }
 
   get _fullsizeDialogView() {
@@ -53,7 +90,7 @@ class EwToolPanel extends LitElement {
         || v.experience === 'modal';
       items.push({
         value: v.id,
-        label: v.label,
+        label: v.getLabel?.() ?? v.label,
         ...(opensExternally && {
           action: true,
           trailingIcon: OPEN_IN_ICON_URL,
@@ -67,21 +104,35 @@ class EwToolPanel extends LitElement {
   }
 
   _pruneLoadedViews() {
-    const ids = new Set(this.views.map((v) => v.id));
+    const viewsById = new Map(this.views.map((v) => [v.id, v]));
     Object.keys(this._loaded).forEach((id) => {
-      if (!ids.has(id)) {
+      const view = viewsById.get(id);
+      if (!view || (view.cacheKey !== undefined && view.cacheKey !== this._loadedKeys[id])) {
         this._loaded[id].remove();
         delete this._loaded[id];
+        delete this._loadedKeys[id];
+      }
+    });
+  }
+
+  _clearPageBoundViews() {
+    Object.keys(this._loaded).forEach((id) => {
+      if (this._loadedKeys[id] !== undefined) {
+        this._loaded[id].remove();
+        delete this._loaded[id];
+        delete this._loadedKeys[id];
       }
     });
   }
 
   async updated(changed) {
+    if (changed.has('contextKey')) this._clearPageBoundViews();
     if (changed.has('views')) await this._onViewsChange();
     if (changed.has('activeId')) {
       if (this.activeId) persistToolPanelView(this.activeId);
       this._syncContent();
       this._syncHeaderActions();
+      this._broadcastActiveView();
     }
     if (changed.has('_fullsizeDialogViewId') && this._fullsizeDialogViewId) {
       await this._mountDialog();
@@ -89,10 +140,14 @@ class EwToolPanel extends LitElement {
   }
 
   async _onViewsChange() {
+    const requestedView = this.pendingView;
+    this.pendingView = undefined;
+
     if (!this.views?.length) {
       this._closeDialog();
       this.activeId = undefined;
       this._loaded = {};
+      this._loadedKeys = {};
       this.shadowRoot.querySelector('.tool-panel-content').replaceChildren();
       return;
     }
@@ -105,12 +160,17 @@ class EwToolPanel extends LitElement {
     }
 
     if (!this.activeId || !ids.has(this.activeId)) {
-      const initial = await resolveInitialToolPanelView({
-        org: this.org,
-        site: this.site,
-        availableIds: ids,
-      });
+      const initial = (requestedView && ids.has(requestedView))
+        ? requestedView
+        : await resolveInitialToolPanelView({
+          org: this.org,
+          site: this.site,
+          availableIds: ids,
+        });
       await this.showPanel(initial ?? this.views[0].id);
+    } else if (!this._loaded[this.activeId]) {
+      await this.showPanel(this.activeId);
+      this._syncContent();
     }
   }
 
@@ -139,6 +199,7 @@ class EwToolPanel extends LitElement {
   async showPanel(name) {
     const consumer = this.views.find((c) => c.id === name);
     if (!consumer) return;
+    const { contextKey } = this;
     if (consumer.experience === 'window') {
       window.open(
         new URL(consumer.sources[0], window.location.href).href,
@@ -156,7 +217,14 @@ class EwToolPanel extends LitElement {
       return;
     }
     if (!this._loaded[name]) {
-      this._loaded[name] = await consumer.load();
+      const loaded = await consumer.load();
+      const currentConsumer = this.views.find((c) => c.id === name);
+      if (this.contextKey !== contextKey || currentConsumer !== consumer) {
+        loaded?.remove();
+        return;
+      }
+      this._loaded[name] = loaded;
+      this._loadedKeys[name] = consumer.cacheKey;
     }
     this.activeId = name;
   }

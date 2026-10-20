@@ -1,17 +1,54 @@
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
+import { setCommentsController } from '../../../../../blocks/canvas/editor-utils/comments-bridge.js';
+import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
+import { setDaConfigs } from '../../../../fixtures/nx/utils/daConfig.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let getBlockVariants;
 let extensionToPanelView;
 let getPreviewStatus;
+let createCommentsView;
+let createMetadataView;
+let getCanvasToolPanelViews;
+let fetchExtensions;
+let getItemPreviewUrl;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
   getBlockVariants = mod.getBlockVariants;
   extensionToPanelView = mod.extensionToPanelView;
   getPreviewStatus = mod.getPreviewStatus;
+  createCommentsView = mod.createCommentsView;
+  createMetadataView = mod.createMetadataView;
+  getCanvasToolPanelViews = mod.getCanvasToolPanelViews;
+  fetchExtensions = mod.fetchExtensions;
+  getItemPreviewUrl = mod.getItemPreviewUrl;
+});
+
+describe('library preview branch state', () => {
+  const state = { org: 'org', site: 'site', path: '/org/site/page' };
+  const item = { path: 'https://content.da.live/org/site/blocks/hero' };
+  afterEach(() => canvasBus.branchState.emit({ path: null, status: 'pending' }));
+
+  it('uses the configured canvas branch rather than a snapshotted query ref', () => {
+    canvasBus.branchState.emit({ ...state, status: 'ready', branch: 'Configured/Branch' });
+    expect(getItemPreviewUrl(item, state).previewUrl)
+      .to.equal('https://configured-branch--site--org.aem.page/blocks/hero');
+  });
+
+  ['pending', 'error'].forEach((status) => {
+    it(`does not build a main-branch URL while branch state is ${status}`, () => {
+      canvasBus.branchState.emit({ ...state, status });
+      expect(getItemPreviewUrl(item, state)).to.equal(null);
+    });
+  });
+
+  it('does not use state belonging to a different site', () => {
+    canvasBus.branchState.emit({ ...state, site: 'different', status: 'ready', branch: 'wrong' });
+    expect(getItemPreviewUrl(item, state)).to.equal(null);
+  });
 });
 
 describe('EW panel helpers transformBlock', () => {
@@ -302,8 +339,91 @@ describe('extensionToPanelView', () => {
     const view = extensionToPanelView(ext, 'Library');
     expect(view.id).to.equal('templates');
     expect(view.experience).to.equal('inline');
+    expect(view.cacheKey).to.be.undefined;
     expect(view.load).to.be.a('function');
     expect(view.openModal).to.be.undefined;
+  });
+
+  it('gives configured extensions a source cache key', () => {
+    const ext = { name: 'configured-tool', title: 'Configured tool', experience: 'inline', sources: ['/tool'], icon: '' };
+    expect(extensionToPanelView(ext, 'Extensions').cacheKey).to.equal('["/tool"]');
+  });
+
+  it('routes configured extension sources and icons through the DA preview proxy', () => {
+    const ext = {
+      name: 'configured-tool',
+      title: 'Configured tool',
+      experience: 'inline',
+      sources: ['https://main--repo--org.aem.live/tools/plugins/tool/index.html'],
+      icon: 'https://main--repo--org.aem.live/tools/plugins/tool/icon.svg',
+    };
+    const view = extensionToPanelView(ext, 'Extensions');
+    expect(view.sources).to.deep.equal(['https://main--repo--org.stage-preview.da.live/tools/plugins/tool/index.html']);
+    expect(view.icon).to.equal('https://main--repo--org.stage-preview.da.live/tools/plugins/tool/icon.svg');
+  });
+
+  it('leaves extension sources and icons from another org unproxied', () => {
+    const ext = {
+      name: 'configured-tool',
+      title: 'Configured tool',
+      experience: 'inline',
+      org: 'org',
+      sources: ['https://main--repo--other.aem.live/tools/plugins/tool/index.html'],
+      icon: 'https://main--repo--other.aem.live/tools/plugins/tool/icon.svg',
+    };
+    const view = extensionToPanelView(ext, 'Extensions');
+    expect(view.sources).to.deep.equal(['https://main--repo--other.aem.live/tools/plugins/tool/index.html']);
+    expect(view.icon).to.equal('https://main--repo--other.aem.live/tools/plugins/tool/icon.svg');
+  });
+
+  it('leaves window extension sources unproxied so sidekick handles auth', () => {
+    const ext = {
+      name: 'configured-tool',
+      title: 'Configured tool',
+      experience: 'window',
+      org: 'org',
+      sources: ['https://main--repo--org.aem.live/tools/plugins/tool/index.html'],
+    };
+    const view = extensionToPanelView(ext, 'Extensions');
+    expect(view.sources).to.deep.equal(['https://main--repo--org.aem.live/tools/plugins/tool/index.html']);
+  });
+
+  it('authenticates the same preview proxy origin the fullsize-dialog iframe will load', async () => {
+    const savedAdobeIMS = window.adobeIMS;
+    const savedNxIms = window.localStorage.getItem('nx-ims');
+    window.localStorage.setItem('nx-ims', 'true');
+    window.adobeIMS = { getAccessToken: () => ({ token: 'T1' }) };
+    const savedFetch = window.fetch;
+    const cookieRequests = [];
+    window.fetch = async (url, opts) => {
+      if (typeof url === 'string' && url.includes('/gimme_cookie')) {
+        cookieRequests.push(url);
+        return new Response('', { status: 200 });
+      }
+      return savedFetch(url, opts);
+    };
+
+    const ext = {
+      name: 'configured-tool',
+      title: 'Configured tool',
+      experience: 'fullsize-dialog',
+      sources: ['https://main--siteg--orgg.aem.live/tools/plugins/tool/index.html'],
+    };
+    const view = extensionToPanelView(ext, 'Extensions');
+    const container = document.createElement('div');
+
+    try {
+      await view.loadModal(container, () => {});
+    } finally {
+      window.fetch = savedFetch;
+      if (savedAdobeIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedAdobeIMS;
+      if (savedNxIms === null) window.localStorage.removeItem('nx-ims');
+      else window.localStorage.setItem('nx-ims', savedNxIms);
+    }
+
+    expect(cookieRequests).to.deep.equal([
+      'https://main--siteg--orgg.stage-preview.da.live/gimme_cookie',
+    ]);
   });
 });
 
@@ -338,5 +458,154 @@ describe('getPreviewStatus', () => {
     window.fetch = () => Promise.resolve(new Response('{}', { status: 500 }));
     const result = await getPreviewStatus({ org: 'pstatusorg3', site: 'pstatussite3', pathname: '/p' });
     expect(result).to.equal(null);
+  });
+});
+
+describe('createCommentsView', () => {
+  afterEach(() => setCommentsController(null));
+
+  it('is a first-party Editor-section view', () => {
+    const view = createCommentsView();
+    expect(view.id).to.equal('comments');
+    expect(view.section).to.equal('Editor');
+    expect(view.firstParty).to.equal(true);
+  });
+
+  it('getLabel() shows the active thread count when comments exist', () => {
+    setCommentsController({ counts: { active: 20, resolved: 3 } });
+    expect(createCommentsView().getLabel()).to.equal('Comments (20)');
+  });
+
+  it('getLabel() omits the count when there are no active comments', () => {
+    setCommentsController({ counts: { active: 0, resolved: 3 } });
+    expect(createCommentsView().getLabel()).to.equal('Comments');
+    setCommentsController(null);
+    expect(createCommentsView().getLabel()).to.equal('Comments');
+  });
+
+  it('load() returns an ew-comments element that binds to the current controller', async () => {
+    const controller = {
+      subscribe() { return () => {}; },
+      getCurrentUser() { return null; },
+      onCurrentUserChange() { return () => {}; },
+      setPanelOpen() {},
+    };
+    setCommentsController(controller);
+    const el = await createCommentsView().load();
+    expect(el.localName).to.equal('ew-comments');
+    document.body.append(el);
+    expect(el.controller).to.equal(controller);
+    el.remove();
+  });
+});
+
+describe('ew-comments panel visibility', () => {
+  let el;
+
+  const stubController = (calls) => ({
+    subscribe() { return () => {}; },
+    getCurrentUser() { return null; },
+    onCurrentUserChange() { return () => {}; },
+    setPanelOpen(value) { calls.push(value); },
+  });
+
+  const mount = async (calls) => {
+    setCommentsController(stubController(calls));
+    el = await createCommentsView().load();
+    document.body.append(el);
+    await el.updateComplete;
+  };
+
+  afterEach(() => {
+    el?.remove();
+    el = null;
+    setCommentsController(null);
+  });
+
+  it('opens when comments is the active tool view', async () => {
+    const calls = [];
+    await mount(calls);
+    canvasBus.toolPanelViewState.emit('comments');
+    expect(calls.at(-1)).to.equal(true);
+  });
+
+  it('closes when another view is active or the rail is closed', async () => {
+    const calls = [];
+    await mount(calls);
+    canvasBus.toolPanelViewState.emit('comments');
+    canvasBus.toolPanelViewState.emit('versions');
+    expect(calls.at(-1)).to.equal(false);
+    canvasBus.toolPanelViewState.emit('comments');
+    canvasBus.toolPanelViewState.emit(null);
+    expect(calls.at(-1)).to.equal(false);
+  });
+
+  it('re-applies visibility to a swapped-in controller', async () => {
+    const first = [];
+    await mount(first);
+    canvasBus.toolPanelViewState.emit('comments');
+    expect(first.at(-1)).to.equal(true);
+
+    const second = [];
+    setCommentsController(stubController(second));
+    await el.updateComplete;
+    expect(second.at(-1)).to.equal(true);
+  });
+});
+
+describe('createMetadataView', () => {
+  it('is a first-party Editor-section view', () => {
+    const view = createMetadataView();
+    expect(view.id).to.equal('metadata');
+    expect(view.label).to.equal('Page');
+    expect(view.section).to.equal('Editor');
+    expect(view.firstParty).to.equal(true);
+  });
+
+  it('load() returns an ew-page-metadata element', async () => {
+    const el = await createMetadataView().load();
+    expect(el.localName).to.equal('ew-page-metadata');
+  });
+});
+
+describe('getCanvasToolPanelViews', () => {
+  afterEach(() => setDaConfigs([]));
+
+  it('includes the metadata view alongside the other first-party Editor views', async () => {
+    setDaConfigs([{ data: [] }]);
+    const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
+    expect(views.map((v) => v.id)).to.include('metadata');
+  });
+});
+
+describe('EW panel helpers fetchExtensions', () => {
+  const REPO = { key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' };
+  const blocksRow = { title: 'Blocks', path: '/blocks.json' };
+
+  afterEach(() => setDaConfigs([]));
+
+  it('loads the AEM assets panel when configured without a library sheet', async () => {
+    setDaConfigs([{ data: [REPO] }]);
+    const names = (await fetchExtensions('org', 'site')).map((e) => e.name);
+    expect(names).to.include('aem-assets');
+  });
+
+  it('loads the AEM assets panel alongside configured library tools', async () => {
+    setDaConfigs([{ library: { data: [blocksRow] }, data: [REPO] }]);
+    const names = (await fetchExtensions('org', 'site')).map((e) => e.name);
+    expect(names).to.include('blocks');
+    expect(names).to.include('aem-assets');
+  });
+
+  it('omits the AEM assets panel when no repository is configured', async () => {
+    setDaConfigs([{ library: { data: [blocksRow] }, data: [] }]);
+    const names = (await fetchExtensions('org', 'site')).map((e) => e.name);
+    expect(names).to.include('blocks');
+    expect(names).to.not.include('aem-assets');
+  });
+
+  it('returns an empty list when there are no valid configs', async () => {
+    setDaConfigs([{ error: true }]);
+    expect(await fetchExtensions('org', 'site')).to.eql([]);
   });
 });

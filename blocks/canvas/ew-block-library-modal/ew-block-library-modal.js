@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 import {
   loadBlockLibrary,
   getItemPreviewUrl,
@@ -20,6 +21,12 @@ const CHEVRON_ICON_SRC = '/img/icons/s2-icon-chevronright-20-n.svg';
 const SEARCH_ICON_SRC = '/img/icons/s2-icon-search-20-n.svg';
 const INFO_ICON_SRC = '/img/icons/s2-icon-infocircle-20-n.svg';
 const ADD_ICON_SRC = '/img/icons/s2-icon-addcircle-20-n.svg';
+
+const VIEWPORTS = [
+  ['desktop', 'Desktop', '100%', '/img/icons/s2-icon-devicedesktop-20-n.svg'],
+  ['tablet', 'Tablet', '768px', '/img/icons/s2-icon-devicetablet-20-n.svg'],
+  ['mobile', 'Mobile', '390px', '/img/icons/s2-icon-devicephone-20-n.svg'],
+];
 
 function andMatch(query, target) {
   const terms = query.split(/\s+/).filter(Boolean);
@@ -50,6 +57,7 @@ class EwBlockLibraryModal extends LitElement {
     _expandedPath: { state: true },
     _selectedPath: { state: true },
     _previewInfo: { state: true },
+    _viewport: { state: true },
     _hashState: { state: true },
     _search: { state: true },
     _openDescriptions: { state: true },
@@ -60,12 +68,20 @@ class EwBlockLibraryModal extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [buttonsStyle, formStyle, style];
     this._variantsByPath = new Map();
     this._openDescriptions = new Set();
+    this._viewport = 'desktop';
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
+    this._unsubBranch = canvasBus.branchState.subscribe((state) => {
+      if (!state?.path) {
+        this._previewInfo = null;
+        this._previewBlock = undefined;
+      } else if (this._previewBlock) this._loadPreview(this._previewBlock);
+    });
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
+    this._unsubBranch?.();
   }
 
   willUpdate(changed) {
@@ -144,12 +160,17 @@ class EwBlockLibraryModal extends LitElement {
   }
 
   async _loadPreview(block) {
+    this._previewBlock = block;
     const { org, site } = this._hashState || {};
     if (!org || !site) {
       this._previewInfo = null;
       return;
     }
     const details = getItemPreviewUrl(block, { org, site });
+    if (!details) {
+      this._previewInfo = { error: 'Preview branch unavailable. Please try again once the editor preview is ready.' };
+      return;
+    }
     const url = details.previewUrl;
     this._previewInfo = { path: block.path, name: block.name, url, ok: undefined };
     const ok = await getPreviewStatus({
@@ -271,7 +292,25 @@ class EwBlockLibraryModal extends LitElement {
       </div>`;
   }
 
+  _renderViewportBar() {
+    return html`
+      <div class="modal-preview-toolbar" role="group" aria-label="Preview width">
+        ${VIEWPORTS.map(([id, label, , icon]) => html`
+          <button type="button"
+                  class="nx-action-btn-icon modal-viewport-btn ${this._viewport === id ? 'is-active' : ''}"
+                  aria-label=${label}
+                  title=${label}
+                  aria-pressed=${this._viewport === id}
+                  @click=${() => { this._viewport = id; }}>
+            <svg aria-hidden="true" viewBox="0 0 20 20"><use href="${icon}#icon"></use></svg>
+          </button>`)}
+      </div>`;
+  }
+
   _renderPreview() {
+    if (this._previewInfo?.error) {
+      return html`<div class="modal-preview-error"><p>${this._previewInfo.error}</p></div>`;
+    }
     if (!this._previewInfo) {
       return html`<div class="modal-preview-placeholder">
         Select a block to see a preview.
@@ -280,11 +319,16 @@ class EwBlockLibraryModal extends LitElement {
     const { name, url, ok } = this._previewInfo;
     const hideIframe = ok === false ? 'hide-iframe' : '';
     const error = ok === false ? `It appears ${name} has not been previewed.` : '';
+    const width = VIEWPORTS.find(([id]) => id === this._viewport)?.[2] || '100%';
     return html`
       ${error ? html`<div class="modal-preview-error"><p>${error}</p></div>` : nothing}
-      <iframe class="modal-preview-frame ${hideIframe}" src=${url}
-              title="Preview of ${name}"
-              allow="clipboard-write *"></iframe>`;
+      <div class="modal-preview-stage">
+        <div class="modal-preview-viewport" style="width:${width}">
+          <iframe class="modal-preview-frame ${hideIframe}" src=${url}
+                  title="Preview of ${name}"
+                  allow="clipboard-write *"></iframe>
+        </div>
+      </div>`;
   }
 
   render() {
@@ -301,7 +345,10 @@ class EwBlockLibraryModal extends LitElement {
               ${this._renderSearch()}
               ${this._renderTree()}
             </aside>
-            <section class="modal-preview-wrap">${this._renderPreview()}</section>
+            <section class="modal-preview-wrap">
+              ${this._previewInfo ? this._renderViewportBar() : nothing}
+              ${this._renderPreview()}
+            </section>
           </div>
         </div>
       </nx-dialog>`;

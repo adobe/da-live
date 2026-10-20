@@ -34,7 +34,7 @@ jobs:
       run: cd test/e2e && npm ci
     - name: Install Playwright Browsers
       run: cd test/e2e && npx playwright install --with-deps chromium
-    - name: Run stale-resource cleanup
+    - name: Delete stale pw-* run folders by marker age
       env:
         TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
         TEST_ORG: ${{ matrix.env.TEST_ORG }}

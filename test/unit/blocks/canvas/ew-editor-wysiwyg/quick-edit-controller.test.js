@@ -60,3 +60,44 @@ describe('quick-edit-controller message gate', () => {
     expect(ctx._spies.setLocalStateField.calledWith('cursor', null)).to.be.true;
   });
 });
+
+describe('quick-edit-controller RELOAD coalescing', () => {
+  let clock;
+
+  beforeEach(() => { clock = sinon.useFakeTimers(); });
+  afterEach(() => { clock.restore(); });
+
+  // updateDocument reads the document identity and the empty view DOM before
+  // posting SET_BODY; the spy records each reload.
+  function makeReloadCtx() {
+    return {
+      canWrite: true,
+      suppressRerender: false,
+      view: { dom: document.createElement('div'), state: { doc: { forEach: () => {} } } },
+      port: { postMessage: sinon.spy() },
+    };
+  }
+
+  const setBodyCount = (ctx) => ctx.port.postMessage.getCalls()
+    .filter((c) => c.args[0]?.type === 'set-body').length;
+
+  it('coalesces a burst of RELOADs into a single updateDocument', () => {
+    const ctx = makeReloadCtx();
+    const onMessage = createControllerOnMessage(ctx);
+    for (let i = 0; i < 5; i += 1) send(onMessage, { type: 'reload' });
+    // Still inside the debounce window — nothing has fired yet.
+    expect(setBodyCount(ctx)).to.equal(0);
+    clock.tick(200);
+    expect(setBodyCount(ctx)).to.equal(1);
+  });
+
+  it('runs updateDocument again for a RELOAD after the window elapses', () => {
+    const ctx = makeReloadCtx();
+    const onMessage = createControllerOnMessage(ctx);
+    send(onMessage, { type: 'reload' });
+    clock.tick(200);
+    send(onMessage, { type: 'reload' });
+    clock.tick(200);
+    expect(setBodyCount(ctx)).to.equal(2);
+  });
+});

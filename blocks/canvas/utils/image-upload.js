@@ -1,16 +1,14 @@
 import { getNx2, getNx2Api } from '../../../scripts/utils.js';
 
-// The api service runs on Lambda, which caps a request at 6 MiB once base64 has
-// inflated the body. Measured 2026-08-18, the AWS edge answers 413 from 4,717,360
-// bytes up, and that 413 carries no CORS header, so the browser reads it as a
-// network failure with no status. The size is checked before the request instead.
-// da-admin took a 120 MB body in the same probe, so the cap is the source bus's.
-export const MAX_IMAGE_BYTES = 4500000;
-const MAX_IMAGE_LABEL = '4.5 MB';
+// hlx6 sites upload via the source-bus Lambda, which 413s once a base64 body
+// passes ~4.5 MB (measured 2026-08-18; the 413 has no CORS header, so it reads
+// as a bare network failure) — so they're capped at 4.5 MB. Legacy DA uploads
+// via da-admin, which took 120 MB fine, so they get the 20 MB image limit from
+// aem.live/limits. Size is checked before the request to avoid a dead-end upload.
 
-export function isImageTooLarge(bytes) {
-  return bytes > MAX_IMAGE_BYTES;
-}
+const MB = 1_000_000;
+export const HLX6_MAX_IMAGE_BYTES = 4.5 * MB;
+export const MAX_IMAGE_BYTES = 20 * MB;
 
 export function dataUrlByteLength(dataUrl) {
   const base64 = dataUrl?.split(';base64,')[1];
@@ -19,21 +17,32 @@ export function dataUrlByteLength(dataUrl) {
   return Math.floor(base64.length / 4) * 3 - padding;
 }
 
-export async function showImageTooLarge() {
+export async function showImageTooLarge(limitMB) {
   const { showToast, VARIANT_ERROR } = await import(`${getNx2()}/blocks/shared/toast/toast.js`);
   showToast({
-    text: `Image upload failed. Image size must be ${MAX_IMAGE_LABEL} or under`,
+    text: `Max image size allowed is ${limitMB} MB`,
     variant: VARIANT_ERROR,
   });
 }
 
+// hlx6 sites cap at 4.5 MB, legacy sites at 20 MB. A site we cannot resolve is
+// treated as legacy (isHlx6 answers false without a site).
+async function imageLimitBytes(org, site) {
+  try {
+    const { isHlx6 } = await getNx2Api();
+    if (await isHlx6(org, site)) return HLX6_MAX_IMAGE_BYTES;
+  } catch { /* fall back to the default limit */ }
+  return MAX_IMAGE_BYTES;
+}
+
 // `parentPath` is the document's folder, `/org/site/dir`.
 export async function refuseOversizedImage(bytes, parentPath) {
-  if (!isImageTooLarge(bytes)) return false;
+  // Anything at or under the strictest cap is allowed on every site, so the
+  // common case skips the hlx6 probe entirely.
+  if (bytes <= HLX6_MAX_IMAGE_BYTES) return false;
   const [, org, site] = (parentPath ?? '').split('/');
-  if (!org || !site) return false;
-  const { isHlx6 } = await getNx2Api();
-  if (!await isHlx6(org, site)) return false;
-  await showImageTooLarge();
+  const limitBytes = await imageLimitBytes(org, site);
+  if (bytes <= limitBytes) return false;
+  await showImageTooLarge(limitBytes / MB);
   return true;
 }

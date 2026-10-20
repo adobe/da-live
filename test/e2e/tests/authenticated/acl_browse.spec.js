@@ -18,7 +18,7 @@ test('Read-only directory', async ({ page }) => {
   const url = `${ENV}/${getQuery()}#/da-testautomation/acltest/testdocs/subdir`;
 
   await page.goto(url);
-  const newButton = page.getByRole('button', { name: 'New' });
+  const newButton = page.getByRole('button', { name: 'New', exact: true });
   await expect(newButton).toBeDisabled();
 
   await expect(page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/onlyread-doc"]')).toBeVisible();
@@ -42,10 +42,10 @@ test('Read-write directory', async ({ browser, page }, workerInfo) => {
   const browseURL = pageURL.replace(`/${pageName}`, '').replace('/edit#/', '/#/');
 
   await page.goto(browseURL);
-  const newButton = page.getByRole('button', { name: 'New' });
+  const newButton = page.getByRole('button', { name: 'New', exact: true });
   await expect(newButton).toBeEnabled();
   await newButton.click({ force: true });
-  await page.getByRole('menuitem', { name: 'Document' }).click();
+  await page.getByRole('menuitem', { name: 'Page' }).click();
   await page.getByPlaceholder('document name').fill(pageName);
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();

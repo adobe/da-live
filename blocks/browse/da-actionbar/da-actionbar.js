@@ -28,6 +28,7 @@ export default class DaActionBar extends LitElement {
     loading: { attribute: false },
     isFavorite: { attribute: false },
     isHlx6: { attribute: false },
+    hidePublishConfs: { attribute: false },
     _isCopying: { state: true },
     _isDeleting: { state: true },
     _isMoving: { state: true },
@@ -39,6 +40,7 @@ export default class DaActionBar extends LitElement {
     this.items = [];
     this.currentPath = '';
     this.isFavorite = false;
+    this.hidePublishConfs = [];
     this.canDelete = true;
   }
 
@@ -85,6 +87,16 @@ export default class DaActionBar extends LitElement {
     this._isCopying = true;
   }
 
+  handleShortcut(key) {
+    if (!this.items.length || !['c', 'x', 'v'].includes(key.toLowerCase())) return false;
+    const button = this.shadowRoot.querySelector(
+      `button[data-shortcut="${key.toLowerCase()}"]:not(:disabled)`,
+    );
+    if (!button) return false;
+    button.click();
+    return true;
+  }
+
   handleMove() {
     this._isCopying = true;
     this._isMoving = true;
@@ -120,7 +132,7 @@ export default class DaActionBar extends LitElement {
   }
 
   async handleShare() {
-    const { items2Clipboard } = await import('../da-list/helpers/utils.js');
+    const { items2Clipboard } = await import('../shared/list.js');
     items2Clipboard(this.items);
     const opts = { bubbles: true, composed: true };
     const event = new CustomEvent('onshare', opts);
@@ -141,6 +153,16 @@ export default class DaActionBar extends LitElement {
 
   get _canAemAction() {
     return this._canWrite && this.items.some((item) => item.ext && item.ext !== 'link') && !this._isCopying;
+  }
+
+  get _hidePublish() {
+    return this.hidePublishConfs.some(
+      (prefix) => this.items.some((item) => item.path?.startsWith(prefix)),
+    );
+  }
+
+  get _canPublish() {
+    return this._canAemAction && !this._hidePublish;
   }
 
   get _canRename() {
@@ -182,7 +204,7 @@ export default class DaActionBar extends LitElement {
             aria-label="Unselect items">
             ${icon('close')}
           </button>
-          <span>${this.currentAction}</span>
+          <span role="status" aria-live="polite">${this.currentAction}</span>
         </div>
         <div class="da-action-bar-right-rail" role="toolbar">
           <button
@@ -200,18 +222,27 @@ export default class DaActionBar extends LitElement {
           </button>
           <button
             @click=${this.handleCopy}
+            data-shortcut="c"
+            aria-keyshortcuts="Meta+C Control+C"
+            ?disabled=${this._isCopying}
             class="copy-button ${this._isCopying ? 'hide' : ''}">
             ${icon('copy')}
             <span>Copy</span>
           </button>
           <button
             @click=${this.handleMove}
+            data-shortcut="x"
+            aria-keyshortcuts="Meta+X Control+X"
+            ?disabled=${!this._canCut || this._isCopying}
             class="copy-button ${this._canCut ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
             ${icon('cut')}
             <span>Cut</span>
           </button>
           <button
             @click=${this.handlePaste}
+            data-shortcut="v"
+            aria-keyshortcuts="Meta+V Control+V"
+            ?disabled=${!this._canWrite || !this._isCopying}
             class="copy-button ${this._canWrite ? '' : 'hide'} ${this._isCopying ? '' : 'hide'}">
             ${icon('paste')}
             <span>Paste</span>
@@ -232,7 +263,7 @@ export default class DaActionBar extends LitElement {
           <button
             @click=${this.handlePublish}
             ?disabled=${!!this.loading}
-            class="publish-button ${this._canAemAction ? '' : 'hide'} ${this.loading === 'publish' ? 'loading' : ''}">
+            class="publish-button ${this._canPublish ? '' : 'hide'} ${this.loading === 'publish' ? 'loading' : ''}">
             ${icon('publish')}
             <span>Publish</span>
           </button>

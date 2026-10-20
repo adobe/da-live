@@ -1,17 +1,33 @@
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
+import {
+  EditorState,
+  EditorView,
+  TextSelection,
+  columnResizing,
+} from 'da-y-wrapper';
+import { getSchema } from 'da-parser';
 import { setNx } from '../../../../../scripts/utils.js';
+import { createTrackingPlugin } from '../../../../../blocks/canvas/editor-utils/prose-diff.js';
+import { getEnterInputRulesPlugin } from '../../../../../blocks/edit/prose/plugins/keyHandlers.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let getPreviewOrigin;
 let fetchWysiwygBranch;
 let parseSections;
+let updateDocument;
+let getEditor;
+let mirror;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
   getPreviewOrigin = mod.getPreviewOrigin;
   fetchWysiwygBranch = mod.fetchWysiwygBranch;
   parseSections = mod.parseSections;
+  updateDocument = mod.updateDocument;
+  getEditor = mod.getEditor;
+  mirror = mod.dispatchMirror;
 });
 
 describe('getPreviewOrigin', () => {
@@ -23,6 +39,11 @@ describe('getPreviewOrigin', () => {
   it('uses the provided branch', () => {
     const origin = getPreviewOrigin('myorg', 'myrepo', 'feature');
     expect(origin).to.include('feature--myrepo--myorg');
+  });
+
+  it('uses the same hostname normalization as Send for slash and mixed-case branches', () => {
+    expect(getPreviewOrigin('myorg', 'myrepo', 'Feat/My_Branch'))
+      .to.include('feat-my-branch--myrepo--myorg');
   });
 
   it('uses main when branch is explicitly main', () => {
@@ -147,6 +168,30 @@ describe('fetchWysiwygBranch', () => {
     mockConfig([{ key: 'ew.wysiwygBranch', value: '/org-wbr-12/site-wbr-12=feature' }]);
     const branch = await fetchWysiwygBranch(ctx({ path: 'org-wbr-12/site-wbr-12/page' }));
     expect(branch).to.equal('feature');
+  });
+
+  it('keeps local extension loading separate from the configured preview branch', async () => {
+    setSearch('?ref=local');
+    const context = ctx();
+    context.path = `${context.org}/${context.site}/page`;
+    let fetchCalled = false;
+    window.fetch = () => {
+      fetchCalled = true;
+      const data = [{ key: 'ew.wysiwygBranch', value: `/${context.org}/${context.site}=feature` }];
+      return Promise.resolve(new Response(JSON.stringify({ data }), { status: 200 }));
+    };
+    expect(await fetchWysiwygBranch(context)).to.equal('feature');
+    expect(fetchCalled).to.equal(true);
+    expect(new URLSearchParams(window.location.search).get('ref')).to.equal('local');
+  });
+
+  it('uses main for local extension loading when no preview branch is configured', async () => {
+    setSearch('?ref=local');
+    mockConfig([]);
+    const context = ctx();
+    const branch = await fetchWysiwygBranch(context);
+    expect(branch).to.equal('main');
+    expect(getPreviewOrigin(context.org, context.site, branch)).to.include(`main--${context.site}`);
   });
 });
 
@@ -313,5 +358,267 @@ describe('parseSections', () => {
         type: 'block', name: 'cards', variant: '', blockIndex: 0, proseIndex: 0, innerText: 'Cards',
       },
     ]);
+  });
+});
+
+describe('dispatchMirror', () => {
+  let dispatchMirror;
+
+  before(async () => {
+    ({ dispatchMirror } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js'));
+  });
+
+  it('flags the dispatch as iframe-originated only while it runs', () => {
+    const ctx = {};
+    let seen;
+    const view = { dispatch: () => { seen = { ...ctx }; } };
+    dispatchMirror(view, {}, ctx);
+    expect(seen).to.deep.equal({ suppressRerender: true, mirroringFromIframe: true });
+    expect(ctx).to.deep.equal({ suppressRerender: false, mirroringFromIframe: false });
+  });
+
+  it('clears both flags even when dispatch throws', () => {
+    const ctx = {};
+    const view = { dispatch: () => { throw new Error('boom'); } };
+    expect(() => dispatchMirror(view, {}, ctx)).to.throw('boom');
+    expect(ctx).to.deep.equal({ suppressRerender: false, mirroringFromIframe: false });
+  });
+});
+
+describe('updateDocument rerender scopes', () => {
+  const schema = getSchema();
+  const p = (text) => schema.nodes.paragraph.create(null, text ? schema.text(text) : null);
+  const h = (text, level = 2) => schema.nodes.heading.create({ level }, schema.text(text));
+  const hr = () => schema.nodes.horizontal_rule.create();
+  const row = (text) => schema.nodes.table_row.create(null, [
+    schema.nodes.table_cell.create(null, p(text)),
+  ]);
+  const table = (name, ...rows) => schema.nodes.table.create(null, [row(name), ...rows.map(row)]);
+
+  let ctx;
+  let container;
+
+  afterEach(() => {
+    ctx?.view.destroy();
+    container?.remove();
+  });
+
+  function mount(nodes) {
+    container = document.createElement('div');
+    document.body.append(container);
+    ctx = { suppressRerender: false, port: { postMessage: sinon.spy() } };
+    const tracking = createTrackingPlugin(
+      (details) => updateDocument(ctx, details),
+      undefined,
+      (data) => getEditor(data, ctx),
+    );
+    ctx.view = new EditorView(container, {
+      state: EditorState.create({
+        schema,
+        doc: schema.nodes.doc.create(null, nodes),
+        plugins: [columnResizing(), tracking],
+      }),
+    });
+    updateDocument(ctx);
+    return ctx.view;
+  }
+
+  const bodies = () => ctx.port.postMessage.getCalls()
+    .map(({ args: [message] }) => message)
+    .filter(({ type }) => type === 'set-body');
+  const lastScope = () => bodies().at(-1).payload.rerenderScope;
+  const posOf = (index) => {
+    let pos = 0;
+    for (let i = 0; i < index; i += 1) pos += ctx.view.state.doc.child(i).nodeSize;
+    return pos;
+  };
+  const dispatch = (build) => ctx.view.dispatch(build(ctx.view.state.tr));
+  const replaceChild = (index, node) => dispatch((tr) => tr.replaceWith(
+    posOf(index),
+    posOf(index) + ctx.view.state.doc.child(index).nodeSize,
+    node,
+  ));
+
+  it('renders the page when the preview has no baseline yet', () => {
+    mount([p('a')]);
+    expect(bodies()).to.have.lengthOf(1);
+    expect(lastScope()).to.deep.equal({ type: 'page' });
+  });
+
+  it('scopes a change to the first node of a section to that section', () => {
+    mount([p('Intro'), hr(), h('Title'), p('Tail')]);
+    dispatch((tr) => tr.setNodeMarkup(posOf(2), null, { level: 3 }));
+    expect(lastScope()).to.deep.equal({ type: 'section', sectionIndex: 1 });
+  });
+
+  it('scopes deleting the first node of a section to that section', () => {
+    mount([p('Intro'), hr(), p('Delete'), p('Keep')]);
+    dispatch((tr) => tr.delete(posOf(2), posOf(3)));
+    expect(lastScope()).to.deep.equal({ type: 'section', sectionIndex: 1 });
+  });
+
+  it('refreshes the layout when joining paragraphs removes an editable node', () => {
+    mount([p('Intro'), hr(), p('First'), p('Second'), p('Tail')]);
+    ctx.port.postMessage.resetHistory();
+
+    dispatch((tr) => tr.join(posOf(3)));
+
+    expect(bodies()).to.have.lengthOf(1);
+    expect(lastScope()).to.deep.equal({ type: 'section', sectionIndex: 1 });
+    const layout = document.createElement('div');
+    layout.innerHTML = bodies()[0].payload.body;
+    expect([...layout.querySelectorAll('p')].map((node) => node.textContent))
+      .to.deep.equal(['Intro', 'FirstSecond', 'Tail']);
+  });
+
+  it('renders the page for one change spanning two sections', () => {
+    mount([p('Intro'), hr(), h('Title')]);
+    dispatch((tr) => {
+      tr.insertText('longer ', 1);
+      return tr.setNodeMarkup(tr.mapping.map(posOf(2)), null, { level: 3 });
+    });
+    expect(lastScope()).to.deep.equal({ type: 'page' });
+  });
+
+  it('scopes a structural block change to the page-wide block', () => {
+    mount([table('cards', 'one'), hr(), p('a'), table('columns', 'two')]);
+    replaceChild(3, table('columns', 'two', 'three'));
+    expect(lastScope()).to.deep.equal({ type: 'block', sectionIndex: 1, blockIndex: 1 });
+  });
+
+  it('reports added and removed sections, and the page for merges', () => {
+    mount([p('a'), hr(), p('b'), hr(), p('c')]);
+    dispatch((tr) => tr.delete(posOf(1), posOf(3)));
+    expect(lastScope()).to.deep.equal({ type: 'section-removed', sectionIndex: 1 });
+
+    dispatch((tr) => tr.insert(posOf(1), [hr(), p('b')]));
+    expect(lastScope()).to.deep.equal({ type: 'section-added', sectionIndex: 1 });
+
+    dispatch((tr) => tr.delete(posOf(1), posOf(2)));
+    expect(lastScope()).to.deep.equal({ type: 'page' });
+
+    dispatch((tr) => tr.insert(posOf(1), hr()));
+    expect(lastScope()).to.deep.equal({ type: 'page' });
+
+    dispatch((tr) => tr.delete(0, posOf(2)));
+    expect(lastScope()).to.deep.equal({ type: 'section-removed', sectionIndex: 0 });
+  });
+
+  it('covers changes the preview missed while rerenders were suppressed', () => {
+    mount([p('a'), hr(), p('b'), hr(), p('c')]);
+    ctx.suppressRerender = true;
+    replaceChild(2, h('b'));
+    replaceChild(4, h('c'));
+    ctx.suppressRerender = false;
+    updateDocument(ctx);
+    expect(bodies()).to.have.lengthOf(2);
+    expect(lastScope()).to.deep.equal({ type: 'page' });
+  });
+
+  it('does not re-render nodes the preview already shows', () => {
+    mount([p('a'), hr(), p('b')]);
+    dispatch((tr) => tr.insertText('typed ', posOf(2) + 1));
+    mirror(ctx.view, ctx.view.state.tr.insertText('mirrored ', 1), ctx);
+    expect(bodies()).to.have.lengthOf(1);
+
+    replaceChild(0, h('a'));
+    expect(lastScope()).to.deep.equal({ type: 'section', sectionIndex: 0 });
+  });
+
+  it('re-renders pushed editor nodes when the iframe asks for a reload', () => {
+    mount([p('a'), hr(), p('b')]);
+    dispatch((tr) => tr.insertText('typed ', posOf(2) + 1));
+    updateDocument(ctx, { useConfirmedBaseline: true });
+    expect(lastScope()).to.deep.equal({ type: 'section', sectionIndex: 1 });
+  });
+
+  describe('metadata', () => {
+    let clock;
+
+    beforeEach(() => { clock = sinon.useFakeTimers(); });
+    afterEach(() => { clock.restore(); });
+
+    it('debounces section metadata and keeps the section scope', () => {
+      mount([p('a'), hr(), p('b'), table('section-metadata', 'one')]);
+      replaceChild(3, table('section-metadata', 'one', 'two'));
+      expect(bodies()).to.have.lengthOf(1);
+      clock.tick(2000);
+      expect(bodies()).to.have.lengthOf(2);
+      expect(lastScope()).to.deep.equal({ type: 'section', sectionIndex: 1 });
+    });
+
+    it('keeps every section edited within the debounce window', () => {
+      mount([table('section-metadata', 'one'), hr(), table('section-metadata', 'two')]);
+      replaceChild(0, table('section-metadata', 'one', 'x'));
+      clock.tick(1);
+      replaceChild(2, table('section-metadata', 'two', 'y'));
+      expect(clock.countTimers()).to.equal(1);
+      clock.tick(2000);
+      expect(bodies()).to.have.lengthOf(2);
+      expect(lastScope()).to.deep.equal({ type: 'page' });
+    });
+
+    it('renders the page for page metadata', () => {
+      mount([p('a'), table('metadata', 'one')]);
+      replaceChild(1, table('metadata', 'one', 'two'));
+      clock.tick(2000);
+      expect(lastScope()).to.deep.equal({ type: 'page' });
+    });
+
+    it('flushes a pending metadata rerender with the next rerender', () => {
+      mount([p('a'), table('section-metadata', 'one'), hr(), p('b')]);
+      replaceChild(1, table('section-metadata', 'one', 'two'));
+      replaceChild(3, h('b'));
+      expect(bodies()).to.have.lengthOf(2);
+      expect(lastScope()).to.deep.equal({ type: 'page' });
+      expect(clock.countTimers()).to.equal(0);
+    });
+  });
+});
+
+describe('updateDocument section count rerenders', () => {
+  it('sends one section refresh for the first dash and one body refresh for Enter', () => {
+    const schema = getSchema();
+    const ctx = { port: { postMessage: sinon.spy() } };
+    const syncEditor = sinon.spy();
+    const enterPlugin = getEnterInputRulesPlugin();
+    const trackingPlugin = createTrackingPlugin(
+      (details) => updateDocument(ctx, details),
+      undefined,
+      syncEditor,
+    );
+    const container = document.createElement('div');
+    document.body.append(container);
+    ctx.view = new EditorView(container, {
+      state: EditorState.create({
+        schema,
+        doc: schema.nodes.doc.create(null, schema.nodes.paragraph.create()),
+        plugins: [trackingPlugin, enterPlugin],
+      }),
+    });
+    try {
+      updateDocument(ctx);
+      ctx.view.dispatch(ctx.view.state.tr.insertText('-', 1));
+      expect(ctx.port.postMessage.callCount).to.equal(2);
+      expect(ctx.port.postMessage.lastCall.args[0].payload.rerenderScope)
+        .to.deep.equal({ type: 'section', sectionIndex: 0 });
+
+      ctx.view.dispatch(ctx.view.state.tr.insertText('--', 2));
+      expect(syncEditor.callCount).to.equal(1);
+      expect(ctx.port.postMessage.callCount).to.equal(2);
+
+      ctx.view.dispatch(ctx.view.state.tr.setSelection(
+        TextSelection.create(ctx.view.state.doc, 4),
+      ));
+      expect(enterPlugin.props.handleKeyDown(ctx.view, { key: 'Enter' })).to.be.true;
+      expect(ctx.port.postMessage.callCount).to.equal(3);
+      const { body } = ctx.port.postMessage.lastCall.args[0].payload;
+      expect(body).to.not.include('---');
+      expect(new DOMParser().parseFromString(body, 'text/html').querySelector('main').children)
+        .to.have.lengthOf(2);
+    } finally {
+      ctx.view.destroy();
+      container.remove();
+    }
   });
 });

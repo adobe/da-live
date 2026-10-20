@@ -69,7 +69,6 @@ test('Text formatting and links persist after reload', async ({ page }, workerIn
   test.setTimeout(60000);
 
   const url = getTestPageURL('formatting', workerInfo);
-  console.log(url);
   await page.goto(url);
   await page.getByText('Create document', { exact: true }).click();
   const proseMirror = page.locator('div.ProseMirror');

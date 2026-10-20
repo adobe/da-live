@@ -71,15 +71,6 @@ button {
   }
 }
 
-.hint {
-  margin: 0;
-  padding: 0 var(--s2-spacing-75);
-  height: 24px;
-  font-size: var(--s2-component-s-regular-font-size);
-  color: var(--s2-gray-700);
-  flex-shrink: 0;
-}
-
 .versionlist {
   list-style: none;
   padding: 0;

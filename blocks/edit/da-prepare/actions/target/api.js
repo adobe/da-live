@@ -27,13 +27,15 @@ export async function saveOffer(config, name, content, aemUrl, displayName, offe
     },
   };
 
+  if (config.workspace) body.workspace = config.workspace;
+
   const resp = await etcFetch(url, 'cors', {
     method: isUpdate ? 'PUT' : 'POST',
     headers: {
       Authorization: `Bearer ${config.token}`,
       'x-api-key': config.clientId,
-      'Content-Type': 'application/vnd.adobe.target.v1+json',
-      Accept: 'application/vnd.adobe.target.v1+json',
+      'Content-Type': 'application/vnd.adobe.target.v2+json',
+      Accept: 'application/vnd.adobe.target.v2+json',
     },
     body: JSON.stringify(body),
   });
@@ -55,7 +57,7 @@ export async function getOffer(config, offerId) {
     headers: {
       Authorization: `Bearer ${config.token}`,
       'x-api-key': config.clientId,
-      Accept: 'application/vnd.adobe.target.v1+json',
+      Accept: 'application/vnd.adobe.target.v2+json',
     },
   });
 
@@ -80,7 +82,7 @@ export async function deleteOffer(config, offerId) {
     headers: {
       Authorization: `Bearer ${config.token}`,
       'x-api-key': config.clientId,
-      Accept: 'application/vnd.adobe.target.v1+json',
+      Accept: 'application/vnd.adobe.target.v2+json',
     },
   });
 

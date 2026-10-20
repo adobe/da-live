@@ -1,11 +1,34 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { fetchDaConfigs, getPostMessageTargetOrigin } from '../../shared/utils.js';
+import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
+import { getPreviewOrigin } from './editor-utils.js';
+import { canvasBus } from '../utils/canvas-bus.js';
+import { getCanvasBranch } from '../utils/branch.js';
+import { initPreflightBridge, reportPreflightStatus } from './preflight-bridge.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
 
 const style = await loadStyle(import.meta.url);
+
+function resolveMenuItem(item, details) {
+  const { org, site } = details || {};
+  const branch = getCanvasBranch({ org, site });
+  if (!branch) return { ...item, disabled: Boolean(item.path && !item.render) };
+  const fallback = { org, site, branch, currentOrg: org };
+  fallback.getUrl = getPreviewOrigin;
+  return {
+    ...item,
+    path: item.path ? toPreviewProxyUrl(item.path, fallback) : item.path,
+    icon: item.icon ? toPreviewProxyUrl(item.icon, fallback) : item.icon,
+  };
+}
+
+function isSvgSymbol(icon) {
+  if (typeof icon !== 'string' || !icon) return false;
+  return icon.startsWith('#') || icon.includes('.svg#');
+}
 
 const OOTB_ACTIONS = [
   {
@@ -37,11 +60,24 @@ export default class PrepareMenu extends LitElement {
     details: { attribute: false },
     _menuItems: { state: true },
     _dialogItem: { state: true },
+    _fullsizeDialogItem: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
+    initPreflightBridge();
+    this._unsubs = [
+      canvasBus.preflightRunRequest.subscribe(this.handlePreflightRun),
+      canvasBus.preflightStatusState.subscribe(this.handlePreflightStatus),
+      canvasBus.branchState.subscribe(() => { if (this.details) this.loadMenu(); }),
+    ];
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this._unsubs?.forEach((unsub) => unsub());
+    this._unsubs = null;
   }
 
   update(props) {
@@ -57,14 +93,27 @@ export default class PrepareMenu extends LitElement {
   }
 
   reset() {
+    const dialog = this.shadowRoot.querySelector('.prepare-fullsize-dialog');
+    if (dialog?.open) dialog.close();
     this._menuItems = undefined;
     this._dialogItem = undefined;
+    this._fullsizeDialogItem = undefined;
+  }
+
+  updated(changed) {
+    if (changed.has('_fullsizeDialogItem') && this._fullsizeDialogItem) {
+      const dialog = this.shadowRoot.querySelector('.prepare-fullsize-dialog');
+      if (dialog && !dialog.open) dialog.showModal();
+    }
   }
 
   async loadMenu() {
+    const { details } = this;
+    if (!details) return;
     const [org, site] = await Promise.all(
-      fetchDaConfigs({ org: this.details.org, site: this.details.site }),
+      fetchDaConfigs({ org: details.org, site: details.site }),
     );
+    if (this.details !== details || !this.isConnected) return;
 
     const ootbLookup = new Map(OOTB_ACTIONS.map((item) => [item.title, item]));
 
@@ -81,9 +130,10 @@ export default class PrepareMenu extends LitElement {
     );
 
     // For config items without path or render, fallback to OOTB if available
-    this._menuItems = [...merged.values()].map(
-      (item) => (item.path || item.render ? item : ootbLookup.get(item.title) || item),
-    );
+    this._menuItems = [...merged.values()].map((item) => {
+      const resolved = item.path || item.render ? item : ootbLookup.get(item.title) || item;
+      return resolveMenuItem(resolved, this.details);
+    });
   }
 
   toggle(anchor) {
@@ -98,17 +148,65 @@ export default class PrepareMenu extends LitElement {
   }
 
   async handleItemClick(item) {
+    if (item.disabled) return;
+    this._preflightRequestId = undefined;
     this.shadowRoot.querySelector('nx-popover').close();
     if (item.render) {
       const cmp = await item.render(this.details);
       this._dialogItem = { ...item, cmp };
       return;
     }
+    const branch = getCanvasBranch(this.details);
+    if (!branch) return;
+    await ensurePreviewProxySession(item.path, {
+      org: this.details?.org,
+      site: this.details?.site,
+      branch,
+      currentOrg: this.details?.org,
+      getUrl: getPreviewOrigin,
+    });
+    if (item.experience === 'fullsize-dialog') {
+      this._fullsizeDialogItem = item;
+      return;
+    }
     this._dialogItem = item;
   }
 
+  handlePreflightRun = async (detail) => {
+    const { paths, requestId } = detail || {};
+    if (!paths || paths.length !== 1 || paths[0] !== this.details?.fullpath) return;
+    this.shadowRoot.querySelector('nx-popover')?.close();
+    const render = (await import('../../edit/da-prepare/actions/preflight/preflight.js')).default;
+    const cmp = render(this.details, requestId);
+    this._preflightRequestId = requestId;
+    this._dialogItem = { title: 'Preflight', cmp };
+  };
+
+  handlePreflightStatus = (detail) => {
+    const { requestId, status } = detail || {};
+    if (!this._preflightRequestId || requestId !== this._preflightRequestId) return;
+    if (status === 'success') {
+      this._dialogItem = undefined;
+      this._preflightRequestId = undefined;
+    }
+  };
+
   handleCloseDialog() {
+    if (this._preflightRequestId) {
+      reportPreflightStatus({
+        path: this.details?.fullpath,
+        status: 'cancelled',
+        requestId: this._preflightRequestId,
+      });
+    }
     this._dialogItem = undefined;
+    this._preflightRequestId = undefined;
+  }
+
+  handleCloseFullsizeDialog({ target } = {}) {
+    const dialog = target?.closest?.('.prepare-fullsize-dialog');
+    if (dialog?.open) dialog.close();
+    this._fullsizeDialogItem = undefined;
   }
 
   handleIframeLoad({ target }) {
@@ -120,7 +218,15 @@ export default class PrepareMenu extends LitElement {
 
       const { view, org, site, path } = this.details;
 
-      const context = { view, org, site, ref: 'main', path };
+      const context = {
+        view,
+        org,
+        site,
+        repo: site,
+        ref: new URLSearchParams(window.location.search).get('ref') || 'main',
+        branch: getCanvasBranch({ org, site }),
+        path,
+      };
       const { token } = window.adobeIMS.getAccessToken();
 
       const message = { ready: true, context, token };
@@ -149,11 +255,50 @@ export default class PrepareMenu extends LitElement {
     `;
   }
 
+  renderFullsizeDialog() {
+    if (!this._fullsizeDialogItem) return nothing;
+
+    return html`
+      <dialog
+        class="prepare-fullsize-dialog"
+        aria-labelledby="prepare-fullsize-dialog-title"
+        @close=${this.handleCloseFullsizeDialog}>
+        <header class="prepare-fullsize-dialog-header">
+          <h2 id="prepare-fullsize-dialog-title" class="prepare-fullsize-dialog-title">
+            ${this.renderDialogIcon(this._fullsizeDialogItem)}
+            <span>${this._fullsizeDialogItem.title}</span>
+          </h2>
+          <button
+            class="prepare-fullsize-dialog-close"
+            type="button"
+            aria-label="Close"
+            @click=${this.handleCloseFullsizeDialog}>&times;</button>
+        </header>
+        <div class="prepare-fullsize-dialog-body">
+          <iframe
+            src=${this._fullsizeDialogItem.path}
+            title=${this._fullsizeDialogItem.title}
+            @load=${this.handleIframeLoad}
+            allow="clipboard-write *"></iframe>
+        </div>
+      </dialog>
+    `;
+  }
+
+  renderDialogIcon(item) {
+    if (!item.icon) return nothing;
+    if (isSvgSymbol(item.icon)) {
+      return html`<svg aria-hidden="true" class="prepare-dialog-icon" viewBox="0 0 20 20"><use href="${item.icon}"/></svg>`;
+    }
+    return html`<img class="prepare-dialog-icon" src="${item.icon}" alt="" />`;
+  }
+
   renderIcon(item) {
-    if (item.icon?.includes('.svg')) {
+    if (!item.icon) return html`<span class="icon" aria-hidden="true"></span>`;
+    if (isSvgSymbol(item.icon)) {
       return html`<svg class="icon" viewBox="0 0 20 20"><use href="${item.icon}"/></svg>`;
     }
-    return html`<img class="icon" src="${item.icon}" />`;
+    return html`<img class="icon" src="${item.icon}" alt="" />`;
   }
 
   render() {
@@ -163,7 +308,7 @@ export default class PrepareMenu extends LitElement {
       <nx-popover placement="below-end" @close=${this._onPopoverClose}>
         <div class="prepare-menu" role="menu">
           ${this._menuItems.map((item) => html`
-            <button type="button" class="prepare-menu-item" role="menuitem" @click=${() => this.handleItemClick(item)}>
+            <button type="button" class="prepare-menu-item" role="menuitem" ?disabled=${item.disabled} @click=${() => this.handleItemClick(item)}>
               ${this.renderIcon(item)}
               <span>${item.title}</span>
             </button>
@@ -171,6 +316,7 @@ export default class PrepareMenu extends LitElement {
         </div>
       </nx-popover>
       ${this.renderDialog()}
+      ${this.renderFullsizeDialog()}
     `;
   }
 }

@@ -3,6 +3,7 @@ import { getNx } from '../../../scripts/utils.js';
 import { getBlocksExtension, loadBlockLibrary } from '../ew-panel-extensions/helpers.js';
 import { replaceBlockRange, setTableBlockVariant, appendBlockRow } from '../editor-utils/blocks.js';
 import { isMultiBlock, getMultiBlockTemplateRow } from '../editor-utils/multi-block.js';
+import { requestComment } from '../editor-utils/command-helpers.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
 const nx = getNx();
@@ -39,20 +40,6 @@ class EwBlockToolbar extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [styles];
-    this._onOutsidePointerDown = (e) => {
-      if (!this.open) return;
-      const path = e.composedPath();
-      if (path.includes(this)) return;
-      const editorDom = this.view?.dom;
-      if (editorDom && path.includes(editorDom)) return;
-      this.hide();
-    };
-    document.addEventListener('pointerdown', this._onOutsidePointerDown);
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    document.removeEventListener('pointerdown', this._onOutsidePointerDown);
   }
 
   updated(changed) {
@@ -122,8 +109,10 @@ class EwBlockToolbar extends LitElement {
     const picker = this._picker;
     if (!picker) return;
     const current = this._currentVariant ?? '';
-    if (current === '' || (this._variantOptions || []).includes(current)) {
-      picker.value = current;
+    const match = (this._variantOptions || [])
+      .find((v) => normalizeBlockName(v) === normalizeBlockName(current));
+    if (match) {
+      picker.value = match;
       picker.labelOverride = '';
     } else {
       picker.value = '';
@@ -159,6 +148,17 @@ class EwBlockToolbar extends LitElement {
     return this.classList.contains('open');
   }
 
+  /** Read by toolbarController to tell an unchanged re-render from a new block. */
+  get blockName() { return this._blockName ?? ''; }
+
+  get blockVariant() { return this._currentVariant ?? ''; }
+
+  /** A picker left open is the single source of truth for "is interacting", so a
+   * re-render can't close it underneath the user. */
+  get isInteracting() {
+    return this.shadowRoot?.querySelector('nx-picker')?.open ?? false;
+  }
+
   _icon(name) {
     return html`<svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-${name}-20-n.svg#icon"></use></svg>`;
   }
@@ -168,6 +168,12 @@ class EwBlockToolbar extends LitElement {
     if (pos == null) return;
     // Ask the doc editor to open the single-block editor modal (see ew-editor-doc.enterBlockEdit).
     canvasBus.blockEditRequest.emit({ pos });
+  }
+
+  _onComment() {
+    if (!this.view) return;
+    requestComment(this.view);
+    this.hide();
   }
 
   _onDeleteBlock() {
@@ -248,6 +254,14 @@ class EwBlockToolbar extends LitElement {
           title="Delete block"
           @click=${() => this._onDeleteBlock()}
         >${this._icon('delete')}</button>
+        <span class="toolbar-sep" aria-hidden="true"></span>
+        <button
+          type="button"
+          class="toolbar-btn block-comment icon-only"
+          aria-label="Comment"
+          title="Comment"
+          @click=${() => this._onComment()}
+        >${this._icon('comment')}</button>
       </div>
     `;
   }

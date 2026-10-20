@@ -1,6 +1,7 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
+import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 
@@ -13,6 +14,10 @@ describe('PrepareMenu', () => {
 
   before(async () => {
     savedFetch = window.fetch;
+    const initialUrl = window.location.href;
+    const testUrl = new URL(initialUrl);
+    testUrl.searchParams.set('ref', 'feature/foo');
+    window.history.replaceState({}, '', testUrl);
 
     window.fetch = async (url) => {
       if (url.endsWith('.css')) {
@@ -34,6 +39,7 @@ describe('PrepareMenu', () => {
 
     const mod = await import('../../../../../blocks/canvas/editor-utils/prepare-menu.js');
     PrepareMenu = mod.default;
+    window.history.replaceState({}, '', initialUrl);
   });
 
   after(() => {
@@ -56,6 +62,13 @@ describe('PrepareMenu', () => {
   async function fixture(props = {}) {
     const element = document.createElement('prepare-menu');
     element.details = props.details || createDetails();
+    canvasBus.branchState.emit({
+      org: element.details.org,
+      site: element.details.site,
+      path: element.details.fullpath,
+      status: 'ready',
+      branch: 'feature-foo',
+    });
     document.body.appendChild(element);
     await waitForMenu();
     await nextFrame();
@@ -75,6 +88,7 @@ describe('PrepareMenu', () => {
   afterEach(() => {
     if (el && el.parentElement) el.remove();
     el = null;
+    canvasBus.branchState.emit({ path: null, status: 'pending' });
   });
 
   it('is defined as a custom element', () => {
@@ -91,15 +105,52 @@ describe('PrepareMenu', () => {
       el = await fixture();
       el._menuItems = [{ title: 'Test' }];
       el._dialogItem = { title: 'dialog' };
+      el._fullsizeDialogItem = { title: 'large dialog' };
 
       el.reset();
 
       expect(el._menuItems).to.be.undefined;
       expect(el._dialogItem).to.be.undefined;
+      expect(el._fullsizeDialogItem).to.be.undefined;
+    });
+
+    it('closes an open fullsize dialog before clearing state', async () => {
+      el = await fixture();
+      const dialog = document.createElement('dialog');
+      let closed = false;
+      Object.defineProperty(dialog, 'open', { configurable: true, value: true });
+      dialog.close = () => { closed = true; };
+      dialog.className = 'prepare-fullsize-dialog';
+      el.shadowRoot.append(dialog);
+
+      el.reset();
+
+      expect(closed).to.be.true;
+      expect(el._fullsizeDialogItem).to.be.undefined;
     });
   });
 
   describe('loadMenu', () => {
+    it('uses updated canvas branch state for custom previews and disables unresolved paths', async () => {
+      const prevFetch = window.fetch;
+      window.fetch = async (url) => (url.includes('/config/branch-menu-org')
+        ? new Response(JSON.stringify({ prepare: { data: [{ title: 'Branch action', path: '/plugin.html' }] } }))
+        : prevFetch(url));
+      try {
+        el = await fixture({ details: createDetails({ org: 'branch-menu-org', site: 'site' }) });
+        const state = { org: 'branch-menu-org', site: 'site', path: '/branch-menu-org/site/page' };
+        canvasBus.branchState.emit({ ...state, status: 'ready', branch: 'Configured/Branch' });
+        await waitForMenu();
+        expect(el._menuItems.find((item) => item.title === 'Branch action').path)
+          .to.equal('https://configured-branch--site--branch-menu-org.stage-preview.da.live/plugin.html');
+        canvasBus.branchState.emit({ ...state, status: 'pending' });
+        await waitForMenu();
+        expect(el._menuItems.find((item) => item.title === 'Branch action').disabled).to.be.true;
+      } finally {
+        window.fetch = prevFetch;
+      }
+    });
+
     it('loads non-optional OOTB actions by default', async () => {
       el = await fixture();
 
@@ -158,6 +209,35 @@ describe('PrepareMenu', () => {
       window.fetch = prevFetch;
     });
 
+    it('preserves fullsize-dialog experience from custom actions', async () => {
+      const prevFetch = window.fetch;
+      window.fetch = async (url) => {
+        if (url.includes('/config/orgD/siteD')) {
+          const body = {
+            prepare: {
+              data: [{
+                title: 'Large Action',
+                path: 'https://example.com/large',
+                experience: 'fullsize-dialog',
+              }],
+            },
+          };
+          return new Response(JSON.stringify(body), { status: 200 });
+        }
+        if (url.includes('/config/orgD')) {
+          return new Response(JSON.stringify({}), { status: 200 });
+        }
+        return prevFetch(url);
+      };
+
+      el = await fixture({ details: createDetails({ org: 'orgD', site: 'siteD' }) });
+
+      const item = el._menuItems.find(({ title }) => title === 'Large Action');
+      expect(item.experience).to.equal('fullsize-dialog');
+
+      window.fetch = prevFetch;
+    });
+
     it('falls back to OOTB render for config items without path or render', async () => {
       const prevFetch = window.fetch;
       window.fetch = async (url) => {
@@ -175,6 +255,97 @@ describe('PrepareMenu', () => {
 
       const preflight = el._menuItems.find((item) => item.title === 'Preflight');
       expect(preflight.render).to.be.a('function');
+
+      window.fetch = prevFetch;
+    });
+
+    it('routes relative plugin paths and icons through the DA preview proxy', async () => {
+      const prevFetch = window.fetch;
+      window.fetch = async (url) => {
+        if (url.includes('/config/orgE/siteE')) {
+          const body = {
+            prepare: {
+              data: [{
+                title: 'Plugin Action',
+                path: '/tools/plugins/plugin-action/index.html',
+                icon: '/tools/plugins/plugin-action/icon.svg',
+              }],
+            },
+          };
+          return new Response(JSON.stringify(body), { status: 200 });
+        }
+        if (url.includes('/config/orgE')) {
+          return new Response(JSON.stringify({}), { status: 200 });
+        }
+        return prevFetch(url);
+      };
+
+      el = await fixture({ details: createDetails({ org: 'orgE', site: 'siteE' }) });
+
+      const item = el._menuItems.find(({ title }) => title === 'Plugin Action');
+      expect(item.path).to.equal('https://feature-foo--siteE--orgE.stage-preview.da.live/tools/plugins/plugin-action/index.html');
+      expect(item.icon).to.equal('https://feature-foo--siteE--orgE.stage-preview.da.live/tools/plugins/plugin-action/icon.svg');
+
+      window.fetch = prevFetch;
+    });
+
+    it('leaves cross-org absolute plugin paths and icons unproxied', async () => {
+      const prevFetch = window.fetch;
+      window.fetch = async (url) => {
+        if (url.includes('/config/orgF/siteF')) {
+          const body = {
+            prepare: {
+              data: [{
+                title: 'Plugin Action',
+                path: 'https://main--othersite--otherorg.aem.live/tools/plugins/plugin-action/index.html',
+                icon: 'https://main--othersite--otherorg.aem.live/tools/plugins/plugin-action/icon.svg',
+              }],
+            },
+          };
+          return new Response(JSON.stringify(body), { status: 200 });
+        }
+        if (url.includes('/config/orgF')) {
+          return new Response(JSON.stringify({}), { status: 200 });
+        }
+        return prevFetch(url);
+      };
+
+      el = await fixture({ details: createDetails({ org: 'orgF', site: 'siteF' }) });
+
+      const item = el._menuItems.find(({ title }) => title === 'Plugin Action');
+      // A plugin hosted by a different org keeps its original URL.
+      expect(item.path).to.equal('https://main--othersite--otherorg.aem.live/tools/plugins/plugin-action/index.html');
+      expect(item.icon).to.equal('https://main--othersite--otherorg.aem.live/tools/plugins/plugin-action/icon.svg');
+
+      window.fetch = prevFetch;
+    });
+
+    it('routes absolute same-site plugin paths and icons through the DA preview proxy', async () => {
+      const prevFetch = window.fetch;
+      window.fetch = async (url) => {
+        if (url.includes('/config/orgG/siteG')) {
+          const body = {
+            prepare: {
+              data: [{
+                title: 'Plugin Action',
+                path: 'https://main--siteG--orgG.aem.live/tools/plugins/plugin-action/index.html',
+                icon: 'https://main--siteG--orgG.aem.live/tools/plugins/plugin-action/icon.svg',
+              }],
+            },
+          };
+          return new Response(JSON.stringify(body), { status: 200 });
+        }
+        if (url.includes('/config/orgG')) {
+          return new Response(JSON.stringify({}), { status: 200 });
+        }
+        return prevFetch(url);
+      };
+
+      el = await fixture({ details: createDetails({ org: 'orgG', site: 'siteG' }) });
+
+      const item = el._menuItems.find(({ title }) => title === 'Plugin Action');
+      expect(item.path).to.equal('https://main--siteg--orgg.stage-preview.da.live/tools/plugins/plugin-action/index.html');
+      expect(item.icon).to.equal('https://main--siteg--orgg.stage-preview.da.live/tools/plugins/plugin-action/icon.svg');
 
       window.fetch = prevFetch;
     });
@@ -301,6 +472,21 @@ describe('PrepareMenu', () => {
       expect(el._dialogItem).to.deep.equal(item);
     });
 
+    it('sets _fullsizeDialogItem for fullsize-dialog items', async () => {
+      el = await fixture();
+      stubPopover(el);
+
+      const item = {
+        title: 'Large Custom',
+        path: 'https://example.com/large',
+        experience: 'fullsize-dialog',
+      };
+      await el.handleItemClick(item);
+
+      expect(el._fullsizeDialogItem).to.deep.equal(item);
+      expect(el._dialogItem).to.be.undefined;
+    });
+
     it('sets _dialogItem with rendered cmp for render-based items', async () => {
       el = await fixture();
       stubPopover(el);
@@ -312,6 +498,48 @@ describe('PrepareMenu', () => {
       expect(el._dialogItem.title).to.equal('OOTB');
       expect(el._dialogItem.cmp).to.equal(mockCmp);
     });
+
+    it('authenticates the same preview proxy origin the dialog iframe will load', async () => {
+      el = await fixture({ details: createDetails({ org: 'orgf', site: 'sitef' }) });
+      stubPopover(el);
+
+      const savedAdobeIMS = window.adobeIMS;
+      const savedNxIms = window.localStorage.getItem('nx-ims');
+      window.localStorage.setItem('nx-ims', 'true');
+      window.adobeIMS = { getAccessToken: () => ({ token: 'T1' }) };
+      const prevFetch = window.fetch;
+      const cookieRequests = [];
+      window.fetch = async (url, opts) => {
+        if (typeof url === 'string' && url.includes('/gimme_cookie')) {
+          cookieRequests.push(url);
+          return new Response('', { status: 200 });
+        }
+        return prevFetch(url, opts);
+      };
+
+      const item = {
+        title: 'Large External',
+        path: 'https://main--sitef--orgf.aem.live/tools/plugins/plugin/index.html',
+        experience: 'fullsize-dialog',
+      };
+
+      try {
+        await el.handleItemClick(item);
+      } finally {
+        window.fetch = prevFetch;
+        if (savedAdobeIMS === undefined) {
+          delete window.adobeIMS;
+        } else {
+          window.adobeIMS = savedAdobeIMS;
+        }
+        if (savedNxIms === null) window.localStorage.removeItem('nx-ims');
+        else window.localStorage.setItem('nx-ims', savedNxIms);
+      }
+
+      expect(cookieRequests).to.deep.equal([
+        'https://main--sitef--orgf.stage-preview.da.live/gimme_cookie',
+      ]);
+    });
   });
 
   describe('handleCloseDialog', () => {
@@ -322,6 +550,52 @@ describe('PrepareMenu', () => {
       el.handleCloseDialog();
 
       expect(el._dialogItem).to.be.undefined;
+    });
+
+    it('emits a cancelled status via the bridge when a gate request is active', async () => {
+      el = await fixture();
+      el._dialogItem = { title: 'Preflight' };
+      el._preflightRequestId = 'req-close';
+
+      let detail;
+      const onStatus = (e) => { detail = e.detail; };
+      document.addEventListener('nx-preflight-status', onStatus);
+      el.handleCloseDialog();
+      document.removeEventListener('nx-preflight-status', onStatus);
+
+      expect(detail).to.deep.equal({
+        path: '/testorg/testsite/test/page',
+        status: 'cancelled',
+        requestId: 'req-close',
+      });
+      expect(el._dialogItem).to.be.undefined;
+      expect(el._preflightRequestId).to.be.undefined;
+    });
+
+    it('does not emit a status for a manually opened dialog (no request id)', async () => {
+      el = await fixture();
+      el._dialogItem = { title: 'Preflight' };
+      el._preflightRequestId = undefined;
+
+      let fired = false;
+      const onStatus = () => { fired = true; };
+      document.addEventListener('nx-preflight-status', onStatus);
+      el.handleCloseDialog();
+      document.removeEventListener('nx-preflight-status', onStatus);
+
+      expect(fired).to.be.false;
+      expect(el._dialogItem).to.be.undefined;
+    });
+  });
+
+  describe('handleCloseFullsizeDialog', () => {
+    it('clears _fullsizeDialogItem', async () => {
+      el = await fixture();
+      el._fullsizeDialogItem = { title: 'Something' };
+
+      el.handleCloseFullsizeDialog();
+
+      expect(el._fullsizeDialogItem).to.be.undefined;
     });
   });
 
@@ -376,6 +650,41 @@ describe('PrepareMenu', () => {
     });
   });
 
+  describe('renderFullsizeDialog', () => {
+    it('renders nothing when no fullsize dialog item', async () => {
+      el = await fixture();
+      el._fullsizeDialogItem = undefined;
+      el.requestUpdate();
+      await nextFrame();
+
+      const dialog = el.shadowRoot.querySelector('.prepare-fullsize-dialog');
+      expect(dialog).to.not.exist;
+    });
+
+    it('renders fullsize dialog with iframe for path-based items', async () => {
+      el = await fixture();
+      el._fullsizeDialogItem = {
+        title: 'Large External',
+        path: 'https://example.com/large',
+        icon: '/blocks/edit/img/icon.svg#icon',
+        experience: 'fullsize-dialog',
+      };
+      el.requestUpdate();
+      await nextFrame();
+      await nextFrame();
+
+      const dialog = el.shadowRoot.querySelector('.prepare-fullsize-dialog');
+      expect(dialog).to.exist;
+      expect(dialog.getAttribute('aria-labelledby')).to.equal('prepare-fullsize-dialog-title');
+      expect(dialog.querySelector('#prepare-fullsize-dialog-title').textContent.trim()).to.equal('Large External');
+      expect(dialog.querySelector('.prepare-dialog-icon').getAttribute('aria-hidden')).to.equal('true');
+
+      const iframe = dialog.querySelector('iframe');
+      expect(iframe.getAttribute('src')).to.equal('https://example.com/large');
+      expect(iframe.getAttribute('title')).to.equal('Large External');
+    });
+  });
+
   describe('renderIcon', () => {
     it('renders an svg use element for .svg icon paths', async () => {
       el = await fixture();
@@ -387,6 +696,18 @@ describe('PrepareMenu', () => {
       const use = el.shadowRoot.querySelector('.prepare-menu-item svg.icon use');
       expect(use).to.exist;
       expect(use.getAttribute('href')).to.equal('/blocks/edit/img/icon.svg#icon');
+    });
+
+    it('renders standalone SVG icon paths as img elements', async () => {
+      el = await fixture();
+      el._menuItems = [{ title: 'Test', icon: '/tools/plugins/request-for-publish/request-for-publish.svg' }];
+      el.requestUpdate();
+      await nextFrame();
+      await nextFrame();
+
+      const img = el.shadowRoot.querySelector('.prepare-menu-item img.icon');
+      expect(img).to.exist;
+      expect(img.getAttribute('src')).to.equal('/tools/plugins/request-for-publish/request-for-publish.svg');
     });
 
     it('renders an img element for non-svg icon paths', async () => {
@@ -423,6 +744,33 @@ describe('PrepareMenu', () => {
       await nextFrame();
 
       expect(el._dialogItem).to.be.undefined;
+    });
+  });
+
+  describe('preflight dialog lifecycle', () => {
+    it('closes the gate-triggered dialog on success', async () => {
+      el = await fixture();
+      el._preflightRequestId = 'req-1';
+      el._dialogItem = { title: 'Preflight' };
+      document.dispatchEvent(new CustomEvent('nx-preflight-status', { detail: { requestId: 'req-1', status: 'success' } }));
+      expect(el._dialogItem).to.be.undefined;
+      expect(el._preflightRequestId).to.be.undefined;
+    });
+
+    it('keeps the dialog open on failure', async () => {
+      el = await fixture();
+      el._preflightRequestId = 'req-2';
+      el._dialogItem = { title: 'Preflight' };
+      document.dispatchEvent(new CustomEvent('nx-preflight-status', { detail: { requestId: 'req-2', status: 'fail' } }));
+      expect(el._dialogItem).to.not.be.undefined;
+    });
+
+    it('does not auto-close a manually opened dialog (no request id)', async () => {
+      el = await fixture();
+      el._preflightRequestId = undefined;
+      el._dialogItem = { title: 'Preflight' };
+      document.dispatchEvent(new CustomEvent('nx-preflight-status', { detail: { status: 'success' } }));
+      expect(el._dialogItem).to.not.be.undefined;
     });
   });
 });
