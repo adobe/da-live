@@ -11,9 +11,17 @@
  */
 
 import { initIms } from '../blocks/shared/utils.js';
-import { setNx, nxJS, nxCSS, getHomeHref } from './utils.js';
+import { setNx, nxJS, nxCSS, getHomeHref, getNavigationHref } from './utils.js';
 
 export function decorateArea({ area = document } = {}) {
+  area.querySelectorAll('a[href]').forEach((link) => {
+    const href = link.getAttribute('href');
+    if (href.startsWith('#') || link.hasAttribute('download')) return;
+    if (/\.[^/]+$/.test(link.pathname) && !link.pathname.endsWith('.html')) return;
+    const navigationHref = getNavigationHref({ href: link.href });
+    if (navigationHref !== link.href) link.href = navigationHref;
+  });
+
   // Find all dark & light images
   const lcpImgs = [...area.querySelectorAll('[alt="light"], [alt="dark"]')].filter((img) => {
     const pic = img.parentElement;

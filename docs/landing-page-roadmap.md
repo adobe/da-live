@@ -20,6 +20,8 @@ smaller logo and Adobe Experience Manager title consistently across the shell.
   Home navigation for other consumers. The shell's generic `homeHref` setting
   is shared by the logo and sidebar Home. Browse/editor links use `landing=home`
   to retain the opt-in destination without replacing those views with landing.
+  Internal page links and sidebar fragments preserve the preview flags too, so
+  Apps and Marketplace do not silently switch back to the default shell.
 - [x] Match the smaller Figma logo: a 24px mark in a 32px branding container
   (`2301:183989`), with "Adobe Experience Manager" at 14px/700/18px
   (`1852:85587`). Preserve an accessible click target and the existing header

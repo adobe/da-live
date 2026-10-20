@@ -52,6 +52,11 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
   Spectrum VF font parity still needs the approved font asset. The label is
   hidden below 600px while the accessible Home link and logo remain.
   The brand link preserves the selected workspace and preview parameters.
+  Internal sidebar and page links also retain the Nexter branch, theme and
+  landing-return marker through `decorateArea`, including loaded navigation
+  fragments. External links, local section anchors, downloads and asset links
+  are not changed. This prevents Apps and Marketplace from falling back to the
+  default Nexter branch and losing the configured branding and Home destination.
   Branding is identical on Landing, Browse, Canvas, Sheet, Media and other
   pages using this shell configuration, including direct visits without
   `landing=true`. Removing the landing component does not remove the brand.

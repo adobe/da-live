@@ -7,15 +7,37 @@ const { decorateArea } = await import('../../../scripts/scripts.js');
 
 describe('decorateArea', () => {
   let container;
+  let originalHref;
 
   beforeEach(() => {
+    originalHref = window.location.href;
     container = document.createElement('div');
     document.body.appendChild(container);
   });
 
   afterEach(() => {
     container.remove();
-    window.location.hash = '';
+    window.history.replaceState(null, '', originalHref);
+  });
+
+  it('preserves preview navigation in sidebar fragments even without images', () => {
+    window.history.replaceState(null, '', '/?landing=true&nx=lp&theme=light#/org/site');
+    container.innerHTML = '<a href="/apps">Apps</a><a href="/marketplace">Marketplace</a><a href="https://www.aem.live/docs/ew/about">Learn</a>';
+    decorateArea({ area: container });
+    const [apps, marketplace, learn] = container.querySelectorAll('a');
+    [apps, marketplace].forEach((link) => {
+      expect(link.search).to.equal('?nx=lp&theme=light&landing=home');
+    });
+    expect(learn.href).to.equal('https://www.aem.live/docs/ew/about');
+  });
+
+  it('does not alter local anchors, downloads or brand assets', () => {
+    window.history.replaceState(null, '', '/?landing=true&nx=lp');
+    container.innerHTML = '<a href="#section">Section</a><a href="/export" download>Export</a><a href="/brand.svg">Author</a>';
+    const links = [...container.querySelectorAll('a')];
+    const hrefs = links.map((link) => link.getAttribute('href'));
+    decorateArea({ area: container });
+    expect(links.map((link) => link.getAttribute('href'))).to.deep.equal(hrefs);
   });
 
   it('eager-loads a light-background image in light-scheme', () => {
