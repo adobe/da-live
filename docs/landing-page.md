@@ -115,6 +115,16 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
   scrolling on narrow screens. Each header includes the 18px vertical
   three-dot column-options icon from `1852:86574`. These controls are explicitly
   disabled for the sample rows, rather than offering fake actions.
+- Need Attention also lists the signed-in user's **open comment threads**: unresolved
+  threads in root-level pages that the user started or replied to, newest activity
+  first, above the sample rows. They read the same `.da/comments/{docId}/` store as
+  the Canvas comments panel (`createCommentsStore`, `buildThreadGroups`). Comments do
+  not record their page, so the site's `.da/comments/` folder is listed once and root
+  pages are probed with `HEAD` (`x-da-id`, at most six at a time) only until every
+  commented document is found. Rows open the editor with `?comment=<id>`, which
+  opens that thread in Canvas. Nested folders are not covered. Requester is the
+  thread starter. There are no assignments or mentions yet, so "open comments I
+  took part in" stands in for "waiting on me".
 - Notification counts, published-page screenshots and global AI routing are not
   mocked. The routing placeholder does not add a global routing backend.
 

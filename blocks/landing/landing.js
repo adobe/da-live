@@ -6,8 +6,9 @@ import { getFavorites, toggleFavorite } from '../browse/shared/favorites.js';
 import { getBrowseSettings, updateBrowseSettings } from '../browse/v2/shared/settings.js';
 import {
   getSiteOptions, getBrowseHref, getFileHref, loadFiles, getLandingIconHref, formatModified,
-  fetchFileModifier,
+  fetchFileModifier, loadMyOpenComments,
 } from './utils.js';
+import { buildDeepLinkUrl } from '../canvas/comments/helpers/deep-link.js';
 import '../browse/v2/da-card-preview/da-card-preview.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
@@ -65,6 +66,8 @@ export class DaLanding extends LitElement {
     _chatError: { state: true },
     _handingOff: { state: true },
     _modifiers: { state: true },
+    _comments: { state: true },
+    _commentsError: { state: true },
   };
 
   _sizing = sizing && new sizing.UISizeController(this);
@@ -154,10 +157,14 @@ export class DaLanding extends LitElement {
     }
   }
 
+  async loadImsProfile() {
+    const { loadIms } = await import(`${getNx()}/utils/ims.js`);
+    return loadIms();
+  }
+
   async loadProfile() {
     try {
-      const { loadIms } = await import(`${getNx()}/utils/ims.js`);
-      const profile = await loadIms();
+      const profile = await this.loadImsProfile();
       if (this.isConnected) this._name = profile?.first_name || profile?.displayName?.split(' ')[0];
     } catch {
       if (this.isConnected) this._profileError = 'Your profile could not be loaded.';
@@ -189,16 +196,73 @@ export class DaLanding extends LitElement {
     this._request = request;
     this._files = undefined;
     this._modifiers = undefined;
+    this._comments = undefined;
+    this._commentsError = undefined;
     this._error = undefined;
     if (!this._scope) return;
     this.loadChatAvailability(request);
     try {
       const { source } = await getNx2Api();
       const files = await loadFiles({ path: this.path, source, signal: request.signal });
-      if (this.isConnected && !request.signal.aborted) this._files = files;
+      if (!this.isConnected || request.signal.aborted) return;
+      this._files = files;
+      this.loadComments(files, request);
     } catch (error) {
       if (!request.signal.aborted && this.isConnected) this._error = error.message;
     }
+  }
+
+  async loadComments(files, request) {
+    const [org, site] = this._scope.split('/');
+    try {
+      const profile = await this.loadImsProfile();
+      if (!profile?.email && !profile?.userId) throw new Error('Sign in to see your comments.');
+      const { source } = await getNx2Api();
+      const comments = await loadMyOpenComments({
+        org, site, files, source, signal: request.signal, user: profile,
+      });
+      if (this.isConnected && !request.signal.aborted) this._comments = comments;
+    } catch (error) {
+      if (this.isConnected && !request.signal.aborted) {
+        this._comments = [];
+        this._commentsError = `Could not load your comments: ${error.message}`;
+      }
+    }
+  }
+
+  commentHref(comment) {
+    const href = getFileHref({ item: comment.file, editor: this._editor || '/canvas#' });
+    return buildDeepLinkUrl(href, comment.id).href;
+  }
+
+  renderCommentRow(comment) {
+    const name = comment.author?.name || comment.author?.email || 'Unknown';
+    return html`
+      <tr class="comment-task">
+        <td title=${comment.file.path}>
+          <a class="task-link" href=${this.commentHref(comment)}>${comment.file.name}</a>
+        </td>
+        <td title=${comment.body}>${comment.body}</td>
+        <td>
+          <span class="task-status" title="Open comment">
+            <span class="task-status-dot comment" aria-hidden="true"></span>
+            <span>Open Comment</span>
+          </span>
+        </td>
+        <td>
+          <span class="task-requester" title=${name}>
+            <span class="modifier-avatar" aria-hidden="true">${name[0].toUpperCase()}</span>
+            <span>${name}</span>
+          </span>
+        </td>
+      </tr>`;
+  }
+
+  renderCommentsStatus() {
+    if (!this._scope) return nothing;
+    if (this._commentsError) return html`<p class="tasks-comments-status" role="status">${this._commentsError}</p>`;
+    if (!this._comments) return html`<p class="tasks-comments-status" role="status">Loading your open comments...</p>`;
+    return nothing;
   }
 
   async loadChatAvailability(request) {
@@ -540,6 +604,7 @@ export class DaLanding extends LitElement {
                     </th>`)}
                 </tr></thead>
                 <tbody>
+                  ${repeat(this._comments || [], (comment) => comment.id, (comment) => this.renderCommentRow(comment))}
                   ${SAMPLE_TASKS.map((task) => html`
                     <tr>
                       <td title=${task.page}>${task.page}</td>
@@ -560,7 +625,10 @@ export class DaLanding extends LitElement {
                 </tbody>
               </table>
             </div>
-            <p id="tasks-availability" class="tasks-preview-note">Sample tasks for layout preview. Not live site data.</p>
+            ${this.renderCommentsStatus()}
+            <p id="tasks-availability" class="tasks-preview-note">${this._comments?.length
+              ? 'Open Comment rows are your live unresolved comment threads. Other rows are sample tasks for layout preview.'
+              : 'Sample tasks for layout preview. Not live site data.'}</p>
           </div>
         </section>
       </div>`;
