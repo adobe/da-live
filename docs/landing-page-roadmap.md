@@ -98,6 +98,13 @@ with fictional requester names. These are still labelled sample tasks.
   activity or recently modified content. If personal, persist actual open events
   with timestamps under the signed-in account. Support nested content, dedupe
   entries and recheck permissions instead of treating a root listing as history.
+- [ ] **Follow-up: extend Recent to all pages in the selected site.** Martin
+  confirmed during the demo that the current root-only behavior is OK for now.
+  This is a post-demo enhancement, not a demo blocker. Include recently
+  modified pages in subfolders, not only the site root, as
+  [requested by Martin on 2026-10-20](https://cq-dev.slack.com/archives/C0BAAAFRX5L/p1792506150626869?thread_ts=1792423413.463079&cid=C0BAAAFRX5L).
+  Preserve modification-date ordering and permissions, and check loading
+  performance on larger sites.
 - [ ] **Account-synced favorites.** Identify an existing supported user-preference
   API before building storage. Scope favorites to account and workspace, persist
   across devices and application origins, and handle removed or inaccessible
