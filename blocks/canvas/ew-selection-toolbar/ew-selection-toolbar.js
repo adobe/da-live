@@ -1,5 +1,6 @@
 import { LitElement, html } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
+import { SUPPORTED_IMAGE_TYPES } from '../../shared/constants.js';
 import { commandsFor, COMMAND_BY_ID } from '../editor-utils/command-defs.js';
 import {
   getBlockTypePickerValue,
@@ -264,7 +265,7 @@ class EwSelectionToolbar extends LitElement {
   _triggerUpload() {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/svg+xml,image/png,image/jpeg,image/gif';
+    input.accept = SUPPORTED_IMAGE_TYPES.join(',');
     input.addEventListener('change', (e) => this._onFileSelected(e), { once: true });
     input.click();
   }
