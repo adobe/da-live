@@ -1,5 +1,8 @@
 # Landing page MVP
 
+Track demo fixes and production improvements in the
+[landing-page backlog](landing-page-roadmap.md).
+
 The existing Browse page opts into the landing page with `?landing=true`.
 Without that parameter, Home, Browse and Canvas are unchanged.
 
