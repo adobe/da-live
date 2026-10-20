@@ -16,6 +16,21 @@ labelled sample task rows; Martin's `devlive` branch has no connected task feed.
 - [ ] Fix Adobe-logo/Home navigation back to the landing preview. Preserve the
   selected workspace and applicable preview parameters without changing normal
   Home navigation for other consumers.
+- [ ] Match the smaller Figma logo: a 24px mark in a 32px branding container
+  (`1852:83851` / `1852:83852`). Preserve an accessible click target and the
+  existing header arrangement; do not restore the rejected replacement header.
+- [ ] Tighten the existing site-switcher styling against Figma `1852:84079`:
+  compact 32px control, 14px bold label, pill border and 10px chevron. Review its
+  open, selected and keyboard-focus states against the approved picker design.
+  Keep real site identifiers where friendly names/domains are not available.
+- [ ] Use different greetings for chat-enabled and chat-disabled sites. Reuse
+  the existing EW/chat flags rather than adding a new availability service.
+  Confirm the no-chat wording with design; do not promise assistant help when
+  chat is disabled. Distinguish loading and failed flag checks from disabled chat.
+- [ ] Audit page, content-fragment, table/spreadsheet and image icons in both
+  grid and list views. The four Figma assets and basic mappings already exist;
+  fix remaining visual or known-type mapping discrepancies, not a new icon set.
+  Do not infer content fragments solely from folder names or `.json`.
 - [ ] Agree on the demo branch, content site and signed-in account. Verify access
   and assistant flags. Do not write to shared demo content during rehearsal.
 - [ ] Decide whether to bring the sample task rows to `devlive`. Keep the sample
@@ -25,6 +40,19 @@ labelled sample task rows; Martin's `devlive` branch has no connected task feed.
   that opening chat never sends a prompt automatically.
 - [ ] Check the presentation viewport, light mode, an empty site and unavailable
   previews. Fix demo blockers; defer new infrastructure and large redesigns.
+
+### UI-team call notes: 2026-10-19
+
+The logo, site-switcher appearance, chat/no-chat greeting and file-type icon
+audit above are bounded demo polish. Recommended order: Home navigation, logo
+size, greeting states, picker polish, then icon verification. Review each batch
+on `lp` before proposing a transfer to `devlive`.
+
+The current site switcher is already functional. Its Figma trigger uses a
+friendly site name and domain, but that display data must come from actual
+configuration. A full site-discovery/search service is not required just to
+polish the demo control. The opened-picker design and exact no-chat copy still
+need confirmation before treating their details as approved requirements.
 
 ## P1: product correctness after the demo
 
@@ -45,6 +73,12 @@ labelled sample task rows; Martin's `devlive` branch has no connected task feed.
   not just browser-local recent sites. Define root versus nested/cross-site
   coverage. Keep switching, deep links and back/forward navigation consistent,
   and prevent responses from a previous workspace appearing in the new one.
+  Resolve friendly site names and domains from supported configuration; add
+  richer picker search/grouping only if the approved design requires it.
+- [ ] **Reliable semantic file types.** Confirm how source APIs identify pages,
+  content fragments, tables and images. Reuse or preserve authoritative type
+  metadata through normalization. Handle ambiguous JSON and unknown types
+  explicitly so the correct icon does not depend on a filename guess.
 - [ ] **Match assistant promises to capabilities.** Define what landing-page
   routing should actually do. Either connect the supported app/tool routing or
   adjust the copy. Preserve draft, attachment and no-auto-send behavior, with
