@@ -327,6 +327,11 @@ da-card-preview {
   text-overflow: ellipsis;
 }
 
+.task-requester > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .file-date {
   margin-top: 4px;
   color: var(--s2-gray-600);
@@ -405,12 +410,27 @@ da-card-preview {
   white-space: nowrap;
 }
 
+.tasks-panel td {
+  height: 40px;
+  padding: 7px 18px;
+  box-shadow: inset 0 -1px var(--s2-gray-300);
+  color: var(--s2-gray-700);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .file-table td:first-child {
   padding-inline: 8px;
 }
 
 .file-table td:last-child {
   padding-inline: 0;
+}
+
+.tasks-panel td:last-child {
+  padding-inline: 16px 10px;
+  border-inline-start: 1px solid var(--s2-gray-300);
 }
 
 .file-table tbody tr:last-child td {
@@ -532,6 +552,42 @@ da-card-preview {
   font-weight: var(--s2-component-m-bold-font-weight);
 }
 
+.task-status, .task-requester {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.task-status > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-requester img {
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.task-status-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.task-status-dot.approval {
+  background: var(--s2-orange-800);
+}
+
+.task-status-dot.in-progress {
+  background: var(--s2-cyan-600);
+}
+
+.task-status-dot.scheduled {
+  background: var(--s2-blue-800);
+}
+
 .tasks-panel th:not(:last-child) {
   border-inline-end: 1px solid var(--s2-gray-300);
 }
@@ -541,7 +597,7 @@ da-card-preview {
 }
 
 .tasks-panel th:nth-child(2) {
-  width: 53.224%;
+  width: 47.224%;
 }
 
 .tasks-panel th:nth-child(3) {
@@ -549,7 +605,7 @@ da-card-preview {
 }
 
 .tasks-panel th:nth-child(4) {
-  width: 11.1%;
+  width: 17.1%;
 }
 
 .task-column-heading {
@@ -579,7 +635,7 @@ da-card-preview {
   text-decoration: underline;
 }
 
-.tasks-unavailable {
+.tasks-preview-note {
   padding: var(--s2-spacing-400) var(--s2-spacing-300);
   color: var(--s2-gray-600);
   text-align: start;

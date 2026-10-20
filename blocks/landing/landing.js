@@ -33,6 +33,13 @@ const VIEW_ITEMS = [
   { value: 'list', label: 'List view', icon: '/img/icons/s2-icon-viewlist-20-n.svg', iconOnly: true },
 ];
 const PAGE_SIZE = 10;
+const SAMPLE_TASKS = [
+  { page: 'Frescopa Homepage', description: 'Translation rollout, de, fr', status: 'Need Approval', state: 'approval', requester: 'Eva' },
+  { page: 'Atelier Nova', description: 'Review product copy', status: 'Need Approval', state: 'approval', requester: 'Steven' },
+  { page: 'Taste Profiles', description: 'Review coffee taste profiles', status: 'In-Progress', state: 'in-progress', requester: 'Michael' },
+  { page: 'Coffee Machines', description: 'Update product details', status: 'Scheduled', state: 'scheduled', requester: 'Sara' },
+  { page: 'Atelier Nova Campaign', description: 'Publish launch campaign', status: 'Scheduled', state: 'scheduled', requester: 'Karina' },
+];
 
 function icon(name) {
   return html`<svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-${name}-20-n.svg#icon"></use></svg>`;
@@ -518,7 +525,7 @@ export class DaLanding extends LitElement {
           <h2 id="tasks-heading">Need Attention</h2>
           <div class="tasks-table">
             <div class="tasks-scroll" role="region" aria-label="Need Attention" tabindex="0">
-              <table aria-labelledby="tasks-heading">
+              <table aria-labelledby="tasks-heading" aria-describedby="tasks-availability">
                 <thead><tr>
                   ${['Page / Content Fragment', 'Process Description', 'Status', 'Requester'].map((label) => html`
                     <th scope="col">
@@ -526,15 +533,34 @@ export class DaLanding extends LitElement {
                         <span>${label}</span>
                         <button class="task-column-options" type="button" disabled
                           aria-label=${`${label} column options`} aria-describedby="tasks-availability"
-                          title="Column options are unavailable until task data is connected.">
+                          title="Column options are unavailable for sample tasks.">
                           <span class="column-options-icon" aria-hidden="true"></span>
                         </button>
                       </div>
                     </th>`)}
                 </tr></thead>
+                <tbody>
+                  ${SAMPLE_TASKS.map((task) => html`
+                    <tr>
+                      <td title=${task.page}>${task.page}</td>
+                      <td title=${task.description}>${task.description}</td>
+                      <td>
+                        <span class="task-status" title=${task.status}>
+                          <span class="task-status-dot ${task.state}" aria-hidden="true"></span>
+                          <span>${task.status}</span>
+                        </span>
+                      </td>
+                      <td>
+                        <span class="task-requester" title=${task.requester}>
+                          <img src=${new URL('./sample-avatar.svg', import.meta.url).href} width="20" height="20" alt="">
+                          <span>${task.requester}</span>
+                        </span>
+                      </td>
+                    </tr>`)}
+                </tbody>
               </table>
             </div>
-            <p id="tasks-availability" class="tasks-unavailable" role="status">Task data is not connected in this preview.</p>
+            <p id="tasks-availability" class="tasks-preview-note">Sample tasks for layout preview. Not live site data.</p>
           </div>
         </section>
       </div>`;

@@ -1,7 +1,15 @@
 # Landing page MVP
 
+Track demo fixes and production improvements in the
+[landing-page backlog](landing-page-roadmap.md).
+
 The existing Browse page opts into the landing page with `?landing=true`.
 Without that parameter, Home, Browse and Canvas are unchanged.
+Links out of the preview carry `landing=home`: this keeps Browse and editors
+open normally while remembering that the logo and sidebar Home should return
+to `landing=true`. The shell's optional `homeHref` configuration is shared by
+both controls and is evaluated against the current workspace. Without a
+landing opt-in, it leaves each consumer's original Home destination unchanged.
 
 After publishing the `lp` branch, open:
 
@@ -32,9 +40,13 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
   The shared picker's field variant provides the full clickable pill, 32px
   height, fixed 14px topbar text and right-aligned chevron. Its border and
   background are on the actual trigger, not the noninteractive host.
-  Header branding, navigation, What’s New, Feedback and the profile retain their
-  existing fragment-driven appearance. The landing-specific header replacement
-  and notification trigger have been removed.
+  Martin's `devlive` integration retains the original fragment-driven logo
+  and Author lockup, including its sizing and typography. The `lp` branding
+  experiment (24px Experience Cloud logo and "Adobe Experience Manager" title)
+  is deliberately excluded. Navigation, What’s New, Feedback and the profile
+  keep their existing appearance. The original brand link still benefits from
+  the shell's Home-navigation fix; there is no replacement header or notification
+  trigger.
   The outer application-frame border is removed only while the landing page
   is present, matching the borderless Figma canvas.
   Site labels retain real identifiers; no Nike name or custom domain is fabricated.
@@ -84,15 +96,23 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
   supported by both `nx-chat` and `nx-chat-ao`. Typed drafts are preserved.
 - The Need Attention table uses the Process Description heading and a 32px
   header, a separate 46px heading area and a white 6px-radius table surface,
-  following `1852:85554`, but explicitly states that task data is not
-  connected. This is not an assertion that the selected site has no tasks.
+  following `1852:85554`. The `lp` preview includes five static Frescopa-themed
+  sample rows: Frescopa Homepage, Atelier Nova, Taste Profiles, Coffee Machines
+  and Atelier Nova Campaign. Homepage translation stays first, followed by
+  content review, product updates and campaign publication. Requesters use
+  fictional names, not real task assignments. Status dots and the design's
+  20px placeholder avatars from `1852:86574` retain the 40px row layout, with
+  more width for requesters.
+  These illustrative labels are not verified source paths or a site-specific feed.
+  The table is explicitly labelled as sample
+  data, not live site tasks. Rows do not open or update real content.
   Existing scheduler, translation and background-job APIs are not a source
   for the mock's general task list (description, status, requester).
   Table styling follows the [Spectrum table guidance](https://spectrum.adobe.com/web/rsp/components/table):
   start-aligned text, a compact neutral header, column dividers and horizontal
   scrolling on narrow screens. Each header includes the 18px vertical
   three-dot column-options icon from `1852:86574`. These controls are explicitly
-  disabled while task data is unavailable, rather than offering fake actions.
+  disabled for the sample rows, rather than offering fake actions.
 - Notification counts, published-page screenshots and global AI routing are not
   mocked. The routing placeholder does not add a global routing backend.
 

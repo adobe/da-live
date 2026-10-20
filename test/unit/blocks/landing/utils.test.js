@@ -1,6 +1,8 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import '../../setup-nx.js';
+import { getHomeHref } from '../../../../scripts/utils.js';
+import { getBrowseItemHref } from '../../../../blocks/browse/v2/shared/navigation.js';
 import {
   getSiteOptions, getBrowseHref, getFileHref, loadFiles, getLandingIconHref, formatModified,
   fetchFileModifier,
@@ -51,7 +53,7 @@ describe('landing page data and navigation', () => {
 
   it('exits the landing page into browse v2 without losing preview branches', () => {
     const url = new URL(getBrowseHref({ path: '/org/site/folder', href: HREF }));
-    expect(url.searchParams.has('landing')).to.equal(false);
+    expect(url.searchParams.get('landing')).to.equal('home');
     expect(url.searchParams.get('browse')).to.equal('2');
     expect(url.searchParams.get('nx')).to.equal('devlive');
     expect(url.searchParams.get('quick-edit')).to.equal('devlive');
@@ -76,7 +78,11 @@ describe('landing page data and navigation', () => {
       expect(url.hash).to.equal(hash);
       expect(url.searchParams.get('nx')).to.equal('devlive');
       expect(url.searchParams.get('quick-edit')).to.equal('devlive');
-      expect(url.searchParams.has('landing')).to.equal(false);
+      expect(url.searchParams.get('landing')).to.equal('home');
+      const homeUrl = new URL(getHomeHref({ href: url.href }));
+      expect(homeUrl.pathname).to.equal('/');
+      expect(homeUrl.searchParams.get('landing')).to.equal('true');
+      expect(homeUrl.hash).to.equal('#/org/site');
     });
   });
 
@@ -89,6 +95,38 @@ describe('landing page data and navigation', () => {
 
   it('supports the classic editor when EW is unavailable', () => {
     expect(new URL(getFileHref({ item: { path: '/org/site/page.html', ext: 'html' }, href: HREF, editor: '/edit#' })).pathname).to.equal('/edit');
+  });
+
+  it('retains the landing Home choice when opening an editor from Browse', () => {
+    const { href } = window.location;
+    try {
+      const browseUrl = new URL(href);
+      browseUrl.search = '?landing=home&nx=lp&quick-edit=devlive&browse=2';
+      window.history.replaceState(null, '', browseUrl);
+      const url = new URL(getBrowseItemHref({ path: '/org/site/page.html', ext: 'html', editor: '/canvas#' }));
+      expect(url.pathname).to.equal('/canvas');
+      expect(url.searchParams.get('landing')).to.equal('home');
+      expect(url.searchParams.get('nx')).to.equal('lp');
+      expect(url.searchParams.get('quick-edit')).to.equal('devlive');
+      expect(url.hash).to.equal('#/org/site/page');
+      expect(getBrowseItemHref({ path: '/org/site/folder' })).to.equal('#/org/site/folder');
+      window.history.replaceState(null, '', '?nx=lp');
+      expect(getBrowseItemHref({ path: '/org/site/page.html', ext: 'html', editor: '/canvas#' }))
+        .to.equal('/canvas#/org/site/page');
+    } finally {
+      window.history.replaceState(null, '', href);
+    }
+  });
+
+  it('does not pass landing or preview parameters to external editors', () => {
+    const { href } = window.location;
+    try {
+      window.history.replaceState(null, '', '?landing=home&nx=lp');
+      const destination = getBrowseItemHref({ path: '/org/site/page.html', ext: 'html', editor: 'https://experience.adobe.com/editor' });
+      expect(destination).to.equal('https://experience.adobe.com/editor/page');
+    } finally {
+      window.history.replaceState(null, '', href);
+    }
   });
 
   it('loads all root pages, deduplicates, hides system entries and sorts newest first', async () => {

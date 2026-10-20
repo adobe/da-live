@@ -81,16 +81,34 @@ describe('landing page', () => {
     expect(el._sitePicker.value).to.equal('org/other');
   });
 
-  it('shows Need Attention without fabricating data or claiming the site has no tasks', () => {
+  it('shows site-themed sample tasks with translation first, without presenting them as live data', () => {
     expect(el.shadowRoot.querySelector('#tasks-heading').textContent).to.equal('Need Attention');
     expect([...el.shadowRoot.querySelectorAll('.task-column-heading > span')].map((label) => label.textContent)).to.deep.equal([
       'Page / Content Fragment', 'Process Description', 'Status', 'Requester',
     ]);
-    expect(el.shadowRoot.querySelector('.tasks-unavailable').textContent).to.equal('Task data is not connected in this preview.');
+    expect(el.shadowRoot.querySelector('.tasks-preview-note').textContent).to.equal('Sample tasks for layout preview. Not live site data.');
     expect(el.shadowRoot.querySelector('.tasks-panel').textContent).not.to.include('No tasks');
     expect(el.shadowRoot.querySelector('.tasks-panel table').getAttribute('aria-labelledby')).to.equal('tasks-heading');
-    expect(el.shadowRoot.querySelector('.tasks-table .tasks-unavailable')).not.to.equal(null);
-    expect(el.shadowRoot.querySelector('.tasks-scroll .tasks-unavailable')).to.equal(null);
+    expect(el.shadowRoot.querySelector('.tasks-panel table').getAttribute('aria-describedby')).to.equal('tasks-availability');
+    expect(el.shadowRoot.querySelector('.tasks-table .tasks-preview-note')).not.to.equal(null);
+    expect(el.shadowRoot.querySelector('.tasks-scroll .tasks-preview-note')).to.equal(null);
+    const rows = [...el.shadowRoot.querySelectorAll('.tasks-panel tbody tr')];
+    expect(rows.map((row) => row.cells[0].textContent)).to.deep.equal([
+      'Frescopa Homepage', 'Atelier Nova', 'Taste Profiles', 'Coffee Machines', 'Atelier Nova Campaign',
+    ]);
+    expect(rows.map((row) => row.cells[1].textContent)).to.deep.equal([
+      'Translation rollout, de, fr', 'Review product copy', 'Review coffee taste profiles',
+      'Update product details', 'Publish launch campaign',
+    ]);
+    expect(rows.map((row) => row.querySelector('.task-status').textContent.trim())).to.deep.equal([
+      'Need Approval', 'Need Approval', 'In-Progress', 'Scheduled', 'Scheduled',
+    ]);
+    expect(rows.map((row) => row.querySelector('.task-requester').textContent.trim())).to.deep.equal([
+      'Eva', 'Steven', 'Michael', 'Sara', 'Karina',
+    ]);
+    expect(el.shadowRoot.querySelector('.tasks-panel').textContent).not.to.match(/nike|pegasus|jersey|just-do-it/i);
+    expect(el.shadowRoot.querySelectorAll('.tasks-panel tbody a, .tasks-panel tbody button')).to.have.length(0);
+    expect(el.shadowRoot.querySelectorAll('.task-requester img')).to.have.length(5);
   });
 
   it('shows each task column’s options without pretending task controls are connected', () => {

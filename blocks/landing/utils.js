@@ -1,5 +1,6 @@
 import { getBrowseItemHref } from '../browse/v2/shared/navigation.js';
 import { iconPathForExt, isImageExt } from '../shared/icons.js';
+import { getHomeHref } from '../../scripts/utils.js';
 
 export async function fetchFileModifier({ path, source }) {
   const response = await source.getMetadata(path);
@@ -41,7 +42,8 @@ export function getSiteOptions({ recentSites, current }) {
 
 export function getBrowseHref({ path = '', href = window.location.href }) {
   const url = new URL(href);
-  url.searchParams.delete('landing');
+  if (getHomeHref({ href })) url.searchParams.set('landing', 'home');
+  else url.searchParams.delete('landing');
   url.searchParams.set('browse', '2');
   url.hash = path ? `#${path}` : '';
   return url.href;
@@ -57,6 +59,7 @@ export function getFileHref({ item, href = window.location.href, editor = '/canv
   ['nx', 'quick-edit', 'ew', 'nx-chat-ao'].forEach((key) => {
     if (current.searchParams.has(key)) url.searchParams.set(key, current.searchParams.get(key));
   });
+  if (getHomeHref({ href })) url.searchParams.set('landing', 'home');
   return url.href;
 }
 

@@ -11,7 +11,7 @@
  */
 
 import { initIms } from '../blocks/shared/utils.js';
-import { setNx, nxJS, nxCSS } from './utils.js';
+import { setNx, nxJS, nxCSS, getHomeHref } from './utils.js';
 
 export function decorateArea({ area = document } = {}) {
   // Find all dark & light images
@@ -52,6 +52,7 @@ const CONFIG = {
   hostnames: ['da.live', 'da.page'],
   codeBase: import.meta.url.replace('/scripts/scripts.js', ''),
   providers: { da: window.location.origin },
+  homeHref: getHomeHref,
   decorateArea,
   imsClientId: 'darkalley',
   imsScope: 'ab.manage,AdobeID,gnav,openid,org.read,read_organizations,session,aem.frontend.all,additional_info.ownerOrg,additional_info.projectedProductContext,account_cluster.read',
