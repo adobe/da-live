@@ -87,9 +87,15 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
   supported by both `nx-chat` and `nx-chat-ao`. Typed drafts are preserved.
 - The Need Attention table uses the Process Description heading and a 32px
   header, a separate 46px heading area and a white 6px-radius table surface,
-  following `1852:85554`. The `lp` preview includes five static sample rows
-  from `1852:86574`, with status dots and the design's 20px placeholder avatars,
-  to review the 40px row layout. The table is explicitly labelled as sample
+  following `1852:85554`. The `lp` preview includes five static Frescopa-themed
+  sample rows: Atelier Nova, Coffee Agent, Taste Profiles, Coffee Machines and
+  Frescopa Homepage. The two translation rollouts stay at the top, followed by
+  content review, product updates and campaign publication. Requesters are
+  placeholder teams, not real task assignments. Status dots and the design's
+  20px placeholder avatars from `1852:86574` retain the 40px row layout, with
+  more width for the requester teams.
+  These illustrative labels are not verified source paths or a site-specific feed.
+  The table is explicitly labelled as sample
   data, not live site tasks. Rows do not open or update real content.
   Existing scheduler, translation and background-job APIs are not a source
   for the mock's general task list (description, status, requester).

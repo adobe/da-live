@@ -81,7 +81,7 @@ describe('landing page', () => {
     expect(el._sitePicker.value).to.equal('org/other');
   });
 
-  it('shows the Figma sample tasks without presenting them as live site data', () => {
+  it('shows site-themed sample tasks with translation first, without presenting them as live data', () => {
     expect(el.shadowRoot.querySelector('#tasks-heading').textContent).to.equal('Need Attention');
     expect([...el.shadowRoot.querySelectorAll('.task-column-heading > span')].map((label) => label.textContent)).to.deep.equal([
       'Page / Content Fragment', 'Process Description', 'Status', 'Requester',
@@ -94,14 +94,19 @@ describe('landing page', () => {
     expect(el.shadowRoot.querySelector('.tasks-scroll .tasks-preview-note')).to.equal(null);
     const rows = [...el.shadowRoot.querySelectorAll('.tasks-panel tbody tr')];
     expect(rows.map((row) => row.cells[0].textContent)).to.deep.equal([
-      'just-do-it-2026', 'pegasus-41', 'AGC-561', 'Jersey 2987', 'Jersey 765',
+      'Atelier Nova', 'Coffee Agent', 'Taste Profiles', 'Coffee Machines', 'Frescopa Homepage',
+    ]);
+    expect(rows.map((row) => row.cells[1].textContent)).to.deep.equal([
+      'Translation rollout, de, fr', 'Translation rollout, de, fr', 'Review coffee taste profiles',
+      'Update product details', 'Publish Atelier Nova campaign',
     ]);
     expect(rows.map((row) => row.querySelector('.task-status').textContent.trim())).to.deep.equal([
       'Need Approval', 'Need Approval', 'In-Progress', 'Scheduled', 'Scheduled',
     ]);
     expect(rows.map((row) => row.querySelector('.task-requester').textContent.trim())).to.deep.equal([
-      'Eva', 'Steven', 'Michael', 'Sara', 'Karina',
+      'Localization team', 'Content team', 'Editorial team', 'Product team', 'Marketing team',
     ]);
+    expect(el.shadowRoot.querySelector('.tasks-panel').textContent).not.to.match(/nike|pegasus|jersey|just-do-it/i);
     expect(el.shadowRoot.querySelectorAll('.tasks-panel tbody a, .tasks-panel tbody button')).to.have.length(0);
     expect(el.shadowRoot.querySelectorAll('.task-requester img')).to.have.length(5);
   });

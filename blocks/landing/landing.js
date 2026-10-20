@@ -34,11 +34,11 @@ const VIEW_ITEMS = [
 ];
 const PAGE_SIZE = 10;
 const SAMPLE_TASKS = [
-  { page: 'just-do-it-2026', description: 'Translation Rollout, de, fr', status: 'Need Approval', state: 'approval', requester: 'Eva' },
-  { page: 'pegasus-41', description: 'Translation Rollout, de, fr', status: 'Need Approval', state: 'approval', requester: 'Steven' },
-  { page: 'AGC-561', description: 'Pricing', status: 'In-Progress', state: 'in-progress', requester: 'Michael' },
-  { page: 'Jersey 2987', description: 'Pricing', status: 'Scheduled', state: 'scheduled', requester: 'Sara' },
-  { page: 'Jersey 765', description: 'Pricing', status: 'Scheduled', state: 'scheduled', requester: 'Karina' },
+  { page: 'Atelier Nova', description: 'Translation rollout, de, fr', status: 'Need Approval', state: 'approval', requester: 'Localization team' },
+  { page: 'Coffee Agent', description: 'Translation rollout, de, fr', status: 'Need Approval', state: 'approval', requester: 'Content team' },
+  { page: 'Taste Profiles', description: 'Review coffee taste profiles', status: 'In-Progress', state: 'in-progress', requester: 'Editorial team' },
+  { page: 'Coffee Machines', description: 'Update product details', status: 'Scheduled', state: 'scheduled', requester: 'Product team' },
+  { page: 'Frescopa Homepage', description: 'Publish Atelier Nova campaign', status: 'Scheduled', state: 'scheduled', requester: 'Marketing team' },
 ];
 
 function icon(name) {
