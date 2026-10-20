@@ -8,8 +8,10 @@ links are in [Landing page MVP](landing-page.md).
 
 Files and document previews use real source content. Recent currently means
 recently modified root files, not personal recently opened history. Stars are
-browser-local and origin-specific, not account-synced. Only `lp` has the five
-labelled sample task rows; Martin's `devlive` branch has no connected task feed.
+browser-local and origin-specific, not account-synced. Both `lp` and `devlive`
+have five labelled sample task rows, not a connected task feed. `lp` uses the
+smaller logo and Adobe Experience Manager title consistently across the shell.
+`devlive` retains the original logo and Author lockup pending approval.
 
 ## P0: this week's demo
 
@@ -21,7 +23,9 @@ labelled sample task rows; Martin's `devlive` branch has no connected task feed.
 - [x] Match the smaller Figma logo: a 24px mark in a 32px branding container
   (`2301:183989`), with "Adobe Experience Manager" at 14px/700/18px
   (`1852:85587`). Preserve an accessible click target and the existing header
-  arrangement; do not restore the rejected replacement header.
+  arrangement; do not restore the rejected replacement header. The `lp` shell
+  owns this branding across pages rather than mounting it from the landing
+  component. Do not transfer it to `devlive` before review and approval.
 - [ ] Tighten the existing site-switcher styling against Figma `1852:84079`:
   compact 32px control, 14px bold label, pill border and 10px chevron. Review its
   open, selected and keyboard-focus states against the approved picker design.
@@ -36,7 +40,7 @@ labelled sample task rows; Martin's `devlive` branch has no connected task feed.
   Do not infer content fragments solely from folder names or `.json`.
 - [ ] Agree on the demo branch, content site and signed-in account. Verify access
   and assistant flags. Do not write to shared demo content during rehearsal.
-- [ ] Decide whether to bring the sample task rows to `devlive`. Keep the sample
+- [x] Bring the sample task rows to `devlive`. Keep the sample
   label and disabled column controls; do not imply a real task integration.
 - [ ] Rehearse with real authenticated services: workspace selection, files,
   grid/list, stars, thumbnails, and assistant draft/attachment handoff. Confirm
@@ -75,7 +79,7 @@ need confirmation before treating their details as approved requirements.
 - [ ] Before production, source the Experience Cloud logo from the approved
   A4U app-icon package referenced by Figma and obtain the approved Adobe Clean
   Spectrum VF font. The `lp` logo is the downloaded Figma SVG; the title uses
-  the existing scoped Adobe Clean fallback with the specified size and weight.
+  the existing shared Adobe Clean fallback with the specified size and weight.
 
 The demo table now starts with Frescopa Homepage translation. Other rows cover
 product copy, taste-profile review, product details and campaign publication,

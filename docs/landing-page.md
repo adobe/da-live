@@ -43,15 +43,21 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
   height, fixed 14px topbar text and right-aligned chevron. Its border and
   background are on the actual trigger, not the noninteractive host.
   Navigation, What’s New, Feedback and the profile retain their existing
-  fragment-driven appearance. Only the brand uses the shell's optional `brand`
-  slot: the 24px Experience Cloud mark in a 32px container, followed by
+  fragment-driven appearance. On `lp`, da-live's shell configuration supplies
+  `brand: { title, logoHref, logoSize }` to the shared `nx-nav`. It renders the
+  24px Experience Cloud mark from `/img/experience-cloud.svg` in a 32px container,
+  followed by
   "Adobe Experience Manager" at 14px, weight 700 and 18px line height
-  (`2301:183989`, `1852:85587`). It reuses the scoped Adobe Clean font; exact
+  (`2301:183989`, `1852:85587`). It reuses the shared Adobe Clean font; exact
   Spectrum VF font parity still needs the approved font asset. The label is
   hidden below 600px while the accessible Home link and logo remain.
   The brand link preserves the selected workspace and preview parameters.
-  Removing the landing page restores the normal fragment brand. There is no
-  replacement header or notification trigger.
+  Branding is identical on Landing, Browse, Canvas, Sheet, Media and other
+  pages using this shell configuration, including direct visits without
+  `landing=true`. Removing the landing component does not remove the brand.
+  `devlive` still uses its original logo and Author lockup; this branding change
+  stays on `lp` until approved. There is no replacement header or notification
+  trigger.
   The outer application-frame border is removed only while the landing page
   is present, matching the borderless Figma canvas.
   Site labels retain real identifiers; no Nike name or custom domain is fabricated.

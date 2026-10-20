@@ -53,6 +53,11 @@ const CONFIG = {
   codeBase: import.meta.url.replace('/scripts/scripts.js', ''),
   providers: { da: window.location.origin },
   homeHref: getHomeHref,
+  brand: {
+    title: 'Adobe Experience Manager',
+    logoHref: new URL('../img/experience-cloud.svg', import.meta.url).href,
+    logoSize: 24,
+  },
   decorateArea,
   imsClientId: 'darkalley',
   imsScope: 'ab.manage,AdobeID,gnav,openid,org.read,read_organizations,session,aem.frontend.all,additional_info.ownerOrg,additional_info.projectedProductContext,account_cluster.read',
