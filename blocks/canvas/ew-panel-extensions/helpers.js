@@ -636,6 +636,19 @@ function createVersioningView() {
   };
 }
 
+export function createPreflightView() {
+  return {
+    id: 'preflight',
+    label: 'Preflight',
+    section: 'Editor',
+    firstParty: true,
+    load: async () => {
+      await import('../ew-preflight/ew-preflight-host.js');
+      return document.createElement('ew-preflight-host');
+    },
+  };
+}
+
 export function createCommentsView() {
   return {
     id: 'comments',
@@ -765,6 +778,7 @@ export async function getCanvasToolPanelViews({ org, site }) {
     createFileExplorerView(),
     createVersioningView(),
     createCommentsView(),
+    createPreflightView(),
     ...library.map((ext) => extensionToPanelView(ext, 'Library')),
     ...thirdParty.map((ext) => extensionToPanelView(ext, 'Extensions')),
   ];
