@@ -57,6 +57,10 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
   fragments. External links, local section anchors, downloads and asset links
   are not changed. This prevents Apps and Marketplace from falling back to the
   default Nexter branch and losing the configured branding and Home destination.
+  Legacy inner apps such as Localization and Scheduler use the same configured
+  brand and Home destination through NX1's navigation components. They keep
+  their existing shell version. The app adapts `decorateArea` to NX1's positional
+  callback as well as NX2's object argument so fragment links keep preview flags.
   Branding is identical on Landing, Browse, Canvas, Sheet, Media and other
   pages using this shell configuration, including direct visits without
   `landing=true`. Removing the landing component does not remove the brand.
@@ -88,7 +92,10 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
 - The Figma Ready Recent frame (`1852:83848`) supplies the gradient artwork and
   semantic page, fragment, image and spreadsheet assets. Panels use its 1068px
   desktop width, 16px radius, translucent fill and three-layer shadow. The composer
-  uses its 664px desktop width, 109px idle height and layered gradient treatment.
+  uses its 664px desktop width and 109px idle height. Its neutral translucent
+  fill, border and soft shadows follow the Spectrum AI Toolkit's Subtle prompt
+  field (`24045:21639` in branch `1ypHt0RiJxnGKoZGlIT6eY`), not the colored
+  hue/glow treatment. Prompt text, actions and assistant handoff are unchanged.
   The background includes the separate white fade over the coloured artwork:
   transparent at -794px, reaching white at about 604px in the 1024px canvas.
   Labels use explicit component line heights; modified dates use Today/Yesterday.

@@ -28,6 +28,11 @@ smaller logo and Adobe Experience Manager title consistently across the shell.
   arrangement; do not restore the rejected replacement header. The `lp` shell
   owns this branding across pages rather than mounting it from the landing
   component. Do not transfer it to `devlive` before review and approval.
+  Cover both NX2 and legacy NX1 navigation; Localization and Scheduler still
+  use NX1 and must not be migrated merely to display the configured brand.
+- [x] Use the Spectrum AI Toolkit Subtle prompt-field treatment: neutral
+  translucent surface, border and soft shadows instead of a colored hue/glow.
+  Preserve the existing composer layout, accessible focus and assistant handoff.
 - [ ] Tighten the existing site-switcher styling against Figma `1852:84079`:
   compact 32px control, 14px bold label, pill border and 10px chevron. Review its
   open, selected and keyboard-focus states against the approved picker design.

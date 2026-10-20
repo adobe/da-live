@@ -13,7 +13,8 @@
 import { initIms } from '../blocks/shared/utils.js';
 import { setNx, nxJS, nxCSS, getHomeHref, getNavigationHref } from './utils.js';
 
-export function decorateArea({ area = document } = {}) {
+export function decorateArea(options = {}) {
+  const area = options instanceof Node ? options : options.area || document;
   area.querySelectorAll('a[href]').forEach((link) => {
     const href = link.getAttribute('href');
     if (href.startsWith('#') || link.hasAttribute('download')) return;

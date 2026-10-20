@@ -74,7 +74,7 @@ h1 {
   text-align: start;
 }
 
-.composer::before, .composer::after, .composer-surface {
+.composer::before, .composer-surface {
   content: "";
   position: absolute;
   pointer-events: none;
@@ -85,29 +85,17 @@ h1 {
   z-index: -2;
   border-radius: 30px;
   backdrop-filter: blur(4px);
-  background: linear-gradient(to top, light-dark(#ffffff7a, #272a32b3), light-dark(#fff, #30333b));
-  box-shadow: 0 2px 4px #ec69ff1a;
-}
-
-.composer::after {
-  inset: 6px -7px -6px -6px;
-  z-index: -3;
-  border-radius: 30px;
-  background: linear-gradient(to right, #ec69ff99, #ff513d80 37.316%, #ffa22366 76.741%);
-  opacity: 0.32;
-  filter: blur(8px);
+  background: linear-gradient(to top, light-dark(#ffffff7a, #3030307a), light-dark(#fff, #303030));
+  box-shadow: 0 2px 4px #00000008;
 }
 
 .composer-surface {
   inset: 0;
   z-index: -1;
-  border: 1px solid #ec69ff1a;
+  border: 1px solid light-dark(#0000000f, #ffffff0f);
   border-radius: inherit;
-  background:
-    linear-gradient(to bottom, light-dark(#fff6, #ffffff03) 37.305%, light-dark(#ffffff21, #ffffff02) 83.398%),
-    radial-gradient(ellipse at 100% 100%, #ebeeff29, #fad3ff29 34.964%, #ffebe829 81.972%, #ffeccf29),
-    light-dark(#fffc, #22252dcc);
-  box-shadow: 0 -3px 10px 1px #ec69ff0d, inset 0 6px 15px #ffffff0a, inset 0 -5px 21.6px #ffffff0a;
+  background: light-dark(#fffc, #222c);
+  box-shadow: 0 8px 32px #00000008, inset 0 24px 32px #ffffff0a, inset 0 -5px 20px #ffffff0a;
 }
 
 .composer-input {

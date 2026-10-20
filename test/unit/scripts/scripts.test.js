@@ -31,6 +31,16 @@ describe('decorateArea', () => {
     expect(learn.href).to.equal('https://www.aem.live/docs/ew/about');
   });
 
+  it('adapts the legacy shell decoration callback to its actual fragment argument', () => {
+    window.history.replaceState(null, '', '/apps/loc?landing=home&nx=lp');
+    const fragment = document.createElement('div');
+    fragment.innerHTML = '<a href="/apps">Apps</a>';
+    decorateArea(fragment);
+    const link = fragment.querySelector('a');
+    expect(link.search).to.equal('?nx=lp&landing=home');
+    expect(link.pathname).to.equal('/apps');
+  });
+
   it('does not alter local anchors, downloads or brand assets', () => {
     window.history.replaceState(null, '', '/?landing=true&nx=lp');
     container.innerHTML = '<a href="#section">Section</a><a href="/export" download>Export</a><a href="/brand.svg">Author</a>';
