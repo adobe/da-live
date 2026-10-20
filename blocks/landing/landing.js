@@ -34,11 +34,11 @@ const VIEW_ITEMS = [
 ];
 const PAGE_SIZE = 10;
 const SAMPLE_TASKS = [
-  { page: 'Atelier Nova', description: 'Translation rollout, de, fr', status: 'Need Approval', state: 'approval', requester: 'Localization team' },
-  { page: 'Coffee Agent', description: 'Translation rollout, de, fr', status: 'Need Approval', state: 'approval', requester: 'Content team' },
-  { page: 'Taste Profiles', description: 'Review coffee taste profiles', status: 'In-Progress', state: 'in-progress', requester: 'Editorial team' },
-  { page: 'Coffee Machines', description: 'Update product details', status: 'Scheduled', state: 'scheduled', requester: 'Product team' },
-  { page: 'Frescopa Homepage', description: 'Publish Atelier Nova campaign', status: 'Scheduled', state: 'scheduled', requester: 'Marketing team' },
+  { page: 'Frescopa Homepage', description: 'Translation rollout, de, fr', status: 'Need Approval', state: 'approval', requester: 'Eva' },
+  { page: 'Atelier Nova', description: 'Review product copy', status: 'Need Approval', state: 'approval', requester: 'Steven' },
+  { page: 'Taste Profiles', description: 'Review coffee taste profiles', status: 'In-Progress', state: 'in-progress', requester: 'Michael' },
+  { page: 'Coffee Machines', description: 'Update product details', status: 'Scheduled', state: 'scheduled', requester: 'Sara' },
+  { page: 'Atelier Nova Campaign', description: 'Publish launch campaign', status: 'Scheduled', state: 'scheduled', requester: 'Karina' },
 ];
 
 function icon(name) {
@@ -96,6 +96,7 @@ export class DaLanding extends LitElement {
     this._unsubscribe?.();
     this._request?.abort();
     this._sitePicker?.remove();
+    this._brandLink?.remove();
     window.removeEventListener('storage', this._onStorage);
     document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
     super.disconnectedCallback();
@@ -112,6 +113,23 @@ export class DaLanding extends LitElement {
   mountWorkspace() {
     const nav = document.querySelector('nx-nav');
     if (!nav) return;
+    const brand = document.createElement('a');
+    brand.slot = 'brand';
+    brand.className = 'landing-brand';
+    brand.setAttribute('aria-label', 'Adobe Experience Manager home');
+    const mark = document.createElement('span');
+    mark.className = 'landing-brand-mark';
+    const logo = document.createElement('img');
+    logo.src = new URL('./experience-cloud.svg', import.meta.url).href;
+    logo.width = 24;
+    logo.height = 24;
+    logo.alt = '';
+    mark.append(logo);
+    const label = document.createElement('span');
+    label.className = 'landing-brand-label';
+    label.textContent = 'Adobe Experience Manager';
+    brand.append(mark, label);
+    this._brandLink = brand;
     const picker = document.createElement('nx-picker');
     picker.slot = 'search';
     picker.classList.add('landing-workspace');
@@ -124,7 +142,7 @@ export class DaLanding extends LitElement {
       else window.location.hash = `#/${value}`;
     });
     this._sitePicker = picker;
-    nav.append(picker);
+    nav.append(brand, picker);
   }
 
   updated() {
@@ -135,6 +153,10 @@ export class DaLanding extends LitElement {
 
   syncWorkspace() {
     if (!this._sitePicker) return;
+    const homeUrl = new URL(window.location.href);
+    homeUrl.pathname = '/';
+    homeUrl.hash = this._scope ? `#/${this._scope}` : '';
+    this._brandLink.href = homeUrl.href;
     this._sitePicker.items = [
       ...(this._sites || []),
       { value: 'browse-sites', label: 'Browse sites...', action: true },

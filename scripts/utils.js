@@ -44,6 +44,17 @@ export function sanitizePath(path) {
   return `/${sanitizePathParts(path).join('/')}`;
 }
 
+export function getHomeHref({ href = window.location.href } = {}) {
+  const homeUrl = new URL(href);
+  if (!['true', 'home'].includes(homeUrl.searchParams.get('landing'))) return undefined;
+  const [org, site] = homeUrl.hash.startsWith('#/') ? homeUrl.hash.slice(2).split('/') : [];
+  homeUrl.pathname = '/';
+  homeUrl.searchParams.set('landing', 'true');
+  homeUrl.searchParams.delete('browse');
+  homeUrl.hash = org && site ? `#/${org}/${site}` : '';
+  return homeUrl.href;
+}
+
 // Determine what version of NX to load
 let nxVer = document.head.querySelector('[name="nxver"]')?.getAttribute('content');
 if (!nxVer) nxVer = sanitizeName(new URLSearchParams(window.location.search).get('nxver'));

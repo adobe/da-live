@@ -20,6 +20,34 @@ nx-nav:has(> .landing-workspace) {
   column-gap: 16px;
 }
 
+nx-nav > .landing-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 32px;
+  padding-inline: 12px;
+  color: var(--s2-gray-800);
+  font-family: var(--landing-font-family);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 18px;
+  letter-spacing: 0;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.landing-brand-mark {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+}
+
+.landing-brand-mark img {
+  width: auto;
+}
+
 nx-nav > .landing-workspace {
   --nx-picker-height: var(--s2-spacing-500);
   --nx-picker-padding: var(--s2-spacing-75) var(--s2-spacing-300);
@@ -43,6 +71,10 @@ nx-nav > .landing-workspace::part(label) {
 }
 
 @media (width < 600px) {
+  .landing-brand-label {
+    display: none;
+  }
+
   nx-nav:has(> .landing-workspace) {
     column-gap: var(--s2-spacing-100);
   }

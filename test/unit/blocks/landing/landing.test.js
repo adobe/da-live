@@ -68,7 +68,8 @@ describe('landing page', () => {
     expect(el._sitePicker.variant).to.equal('field');
     expect(el._sitePicker.size).to.equal('m');
     expect(el._sitePicker.items.at(-1).label).to.equal('Browse sites...');
-    expect(nav.querySelector('[slot="brand"], [slot="actions"]')).to.equal(null);
+    expect(nav.querySelector('[slot="brand"]').textContent).to.equal('Adobe Experience Manager');
+    expect(nav.querySelector('[slot="actions"]')).to.equal(null);
     hashChange._set({ org: 'org', site: 'other', fullpath: '/org/other' });
     await el.updateComplete;
     expect(el._sitePicker.value).to.equal('org/other');
@@ -79,6 +80,34 @@ describe('landing page', () => {
     await el.updateComplete;
     expect(nav.querySelectorAll('nx-picker')).to.have.length(1);
     expect(el._sitePicker.value).to.equal('org/other');
+    expect(new URL(nav.querySelector('[slot="brand"]').href).hash).to.equal('#/org/other');
+    expect(nav.querySelectorAll('[slot="brand"]')).to.have.length(1);
+  });
+
+  it('uses the local 24px brand mark and keeps the current preview in its Home link', async () => {
+    const { href } = window.location;
+    try {
+      const url = new URL(href);
+      url.search = '?landing=true&theme=light&nx=lp&quick-edit=devlive';
+      window.history.replaceState(null, '', url);
+      el.syncWorkspace();
+      const brand = nav.querySelector('[slot="brand"]');
+      const logo = brand.querySelector('img');
+      expect(brand.getAttribute('aria-label')).to.equal('Adobe Experience Manager home');
+      expect(logo.src).to.include('/blocks/landing/experience-cloud.svg');
+      expect([logo.width, logo.height, logo.alt]).to.deep.equal([24, 24, '']);
+      const homeUrl = new URL(brand.href);
+      expect(homeUrl.pathname).to.equal('/');
+      expect(homeUrl.hash).to.equal('#/org/site');
+      expect(homeUrl.search).to.equal(url.search);
+      el.remove();
+      expect(nav.querySelector('[slot="brand"]')).to.equal(null);
+      document.body.append(el);
+      await el.updateComplete;
+      expect(nav.querySelectorAll('[slot="brand"]')).to.have.length(1);
+    } finally {
+      window.history.replaceState(null, '', href);
+    }
   });
 
   it('shows site-themed sample tasks with translation first, without presenting them as live data', () => {
@@ -94,17 +123,17 @@ describe('landing page', () => {
     expect(el.shadowRoot.querySelector('.tasks-scroll .tasks-preview-note')).to.equal(null);
     const rows = [...el.shadowRoot.querySelectorAll('.tasks-panel tbody tr')];
     expect(rows.map((row) => row.cells[0].textContent)).to.deep.equal([
-      'Atelier Nova', 'Coffee Agent', 'Taste Profiles', 'Coffee Machines', 'Frescopa Homepage',
+      'Frescopa Homepage', 'Atelier Nova', 'Taste Profiles', 'Coffee Machines', 'Atelier Nova Campaign',
     ]);
     expect(rows.map((row) => row.cells[1].textContent)).to.deep.equal([
-      'Translation rollout, de, fr', 'Translation rollout, de, fr', 'Review coffee taste profiles',
-      'Update product details', 'Publish Atelier Nova campaign',
+      'Translation rollout, de, fr', 'Review product copy', 'Review coffee taste profiles',
+      'Update product details', 'Publish launch campaign',
     ]);
     expect(rows.map((row) => row.querySelector('.task-status').textContent.trim())).to.deep.equal([
       'Need Approval', 'Need Approval', 'In-Progress', 'Scheduled', 'Scheduled',
     ]);
     expect(rows.map((row) => row.querySelector('.task-requester').textContent.trim())).to.deep.equal([
-      'Localization team', 'Content team', 'Editorial team', 'Product team', 'Marketing team',
+      'Eva', 'Steven', 'Michael', 'Sara', 'Karina',
     ]);
     expect(el.shadowRoot.querySelector('.tasks-panel').textContent).not.to.match(/nike|pegasus|jersey|just-do-it/i);
     expect(el.shadowRoot.querySelectorAll('.tasks-panel tbody a, .tasks-panel tbody button')).to.have.length(0);

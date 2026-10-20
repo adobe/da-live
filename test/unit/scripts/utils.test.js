@@ -1,5 +1,29 @@
 import { expect } from '@esm-bundle/chai';
-import { setNx, sanitizePath, sanitizePathParts, sanitizeName } from '../../../scripts/utils.js';
+import { setNx, sanitizePath, sanitizePathParts, sanitizeName, getHomeHref } from '../../../scripts/utils.js';
+
+describe('landing Home destination', () => {
+  it('leaves ordinary Home navigation unconfigured', () => {
+    expect(getHomeHref({ href: 'https://da.live/canvas?nx=lp#/org/site/page' })).to.equal(undefined);
+    expect(getHomeHref({ href: 'https://da.live/?landing=false' })).to.equal(undefined);
+  });
+
+  it('returns to the selected workspace from Browse and editors without losing preview flags', () => {
+    const url = new URL(getHomeHref({ href: 'https://da.live/canvas?landing=home&browse=2&nx=lp&quick-edit=devlive&theme=light#/org/site/folder/page' }));
+    expect(url.pathname).to.equal('/');
+    expect(url.hash).to.equal('#/org/site');
+    expect(url.searchParams.get('landing')).to.equal('true');
+    expect(url.searchParams.has('browse')).to.equal(false);
+    expect(url.searchParams.get('nx')).to.equal('lp');
+    expect(url.searchParams.get('quick-edit')).to.equal('devlive');
+    expect(url.searchParams.get('theme')).to.equal('light');
+  });
+
+  it('returns to workspace selection without inventing a site for empty or authentication hashes', () => {
+    ['#', '#/org', '#access_token=token'].forEach((hash) => {
+      expect(new URL(getHomeHref({ href: `https://da.live/?landing=true${hash}` })).hash).to.equal('');
+    });
+  });
+});
 
 describe('Libs', () => {
   it('Default Libs', () => {

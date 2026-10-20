@@ -13,12 +13,15 @@ labelled sample task rows; Martin's `devlive` branch has no connected task feed.
 
 ## P0: this week's demo
 
-- [ ] Fix Adobe-logo/Home navigation back to the landing preview. Preserve the
+- [x] Fix Adobe-logo/Home navigation back to the landing preview. Preserve the
   selected workspace and applicable preview parameters without changing normal
-  Home navigation for other consumers.
-- [ ] Match the smaller Figma logo: a 24px mark in a 32px branding container
-  (`1852:83851` / `1852:83852`). Preserve an accessible click target and the
-  existing header arrangement; do not restore the rejected replacement header.
+  Home navigation for other consumers. The shell's generic `homeHref` setting
+  is shared by the logo and sidebar Home. Browse/editor links use `landing=home`
+  to retain the opt-in destination without replacing those views with landing.
+- [x] Match the smaller Figma logo: a 24px mark in a 32px branding container
+  (`2301:183989`), with "Adobe Experience Manager" at 14px/700/18px
+  (`1852:85587`). Preserve an accessible click target and the existing header
+  arrangement; do not restore the rejected replacement header.
 - [ ] Tighten the existing site-switcher styling against Figma `1852:84079`:
   compact 32px control, 14px bold label, pill border and 10px chevron. Review its
   open, selected and keyboard-focus states against the approved picker design.
@@ -53,6 +56,30 @@ friendly site name and domain, but that display data must come from actual
 configuration. A full site-discovery/search service is not required just to
 polish the demo control. The opened-picker design and exact no-chat copy still
 need confirmation before treating their details as approved requirements.
+
+### Icon and branding notes: 2026-10-20
+
+- [ ] Review the intended navigation destination for
+  [Building Blocks (`1852:85477`)](https://www.figma.com/design/aliOqnaMYpvWLbnjrg5DFK/Experience-Workspace?node-id=1852-85477).
+  This is `S2_Icon_BuildingBlocks_20_N`, a blocks/library navigation glyph.
+  Do not substitute it for the content-fragment file-type icon or add a
+  nonfunctional navigation item just to display it.
+- [ ] Check the
+  [Image glyph (`1852:85507`)](https://www.figma.com/design/aliOqnaMYpvWLbnjrg5DFK/Experience-Workspace?node-id=1852-85507)
+  when reviewing image/asset navigation. It is `S2_Icon_Image_20_N`.
+  Landing image files already use the local Figma `image.svg` in grid and list
+  views, and shared Browse mappings use `s2-icon-image-20-n.svg`. Keep these
+  existing mappings until a specific visual or destination mismatch is confirmed.
+- [ ] Confirm page, fragment, table and image semantics with authoritative
+  source metadata, especially content fragments versus generic JSON.
+- [ ] Before production, source the Experience Cloud logo from the approved
+  A4U app-icon package referenced by Figma and obtain the approved Adobe Clean
+  Spectrum VF font. The `lp` logo is the downloaded Figma SVG; the title uses
+  the existing scoped Adobe Clean fallback with the specified size and weight.
+
+The demo table now starts with Frescopa Homepage translation. Other rows cover
+product copy, taste-profile review, product details and campaign publication,
+with fictional requester names. These are still labelled sample tasks.
 
 ## P1: product correctness after the demo
 
