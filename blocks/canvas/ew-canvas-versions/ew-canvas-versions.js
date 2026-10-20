@@ -127,20 +127,8 @@ class EwCanvasVersions extends LitElement {
       return;
     }
 
-    // Keep the visible row anchored when new versions are inserted above it.
-    const list = this.shadowRoot.querySelector('.versionlist');
-    const scrollTop = list?.scrollTop ?? 0;
-    const top = list?.getBoundingClientRect().top ?? 0;
-    const anchor = scrollTop > 0
-      ? [...list.children].find((row) => row.getBoundingClientRect().bottom > top)
-      : null;
-    const anchorTop = anchor?.getBoundingClientRect().top;
     this._versions = versions;
     await this.updateComplete;
-    if (request !== this._loadRequest || path !== this.path || !this.isConnected || !list) return;
-    list.scrollTop = anchor?.isConnected
-      ? list.scrollTop + anchor.getBoundingClientRect().top - anchorTop
-      : scrollTop;
   }
 
   _refreshVersions() {
