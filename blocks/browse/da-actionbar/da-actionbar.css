@@ -21,6 +21,11 @@ button {
   gap: var(--s2-spacing-100);
 }
 
+:host(.full-width) .da-action-bar {
+  margin: 0 var(--da-list-pad-inline);
+  width: calc(100cqi - var(--da-list-pad-inline) * 2);
+}
+
 .da-action-bar button {
   background: none;
   height: 32px;

@@ -11,6 +11,7 @@ const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
+await import(`${getNx()}/blocks/shared/search/search.js`);
 const { treegridEnsureTabStop, treegridFocusIn, treegridKeydown } = await import(`${getNx2()}/blocks/shared/utils/treegrid-nav.js`);
 
 const [buttons, style] = await Promise.all([
@@ -67,8 +68,6 @@ function buildTree(cache, rootFullpath) {
 
 const REFRESH_ICON_SRC = '/img/icons/s2-icon-refresh-20-n.svg';
 const ADD_ICON_SRC = '/img/icons/s2-icon-fileadd-20-n.svg';
-const SEARCH_ICON_SRC = '/img/icons/s2-icon-search-20-n.svg';
-const CLEAR_ICON_SRC = '/img/icons/s2-icon-close-20-n.svg';
 const COPY_ICON_SRC = '/img/icons/s2-icon-paste-20-n.svg';
 const CHECKMARK_ICON_SRC = '/img/icons/s2-icon-checkmark-20-n.svg';
 const REFRESH_ICON_HTML = `<svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${REFRESH_ICON_SRC}#icon"></use></svg>`;
@@ -494,12 +493,6 @@ class EwFileExplorer extends LitElement {
     this._searchDebounceId = setTimeout(() => this._runSearch(term), 200);
   }
 
-  _onSearchKeydown(e) {
-    if (e.key !== 'Escape') return;
-    e.target.value = '';
-    this._clearSearch();
-  }
-
   _onGridKeydown = (e) => {
     treegridKeydown(e, { root: this.shadowRoot });
   };
@@ -507,15 +500,6 @@ class EwFileExplorer extends LitElement {
   _onGridFocusIn = (e) => {
     treegridFocusIn(e, { root: this.shadowRoot });
   };
-
-  _onClearClick() {
-    const input = this.shadowRoot.querySelector('.search-input');
-    if (input) {
-      input.value = '';
-      input.focus();
-    }
-    this._clearSearch();
-  }
 
   _clearSearch() {
     clearTimeout(this._searchDebounceId);
@@ -685,8 +669,8 @@ class EwFileExplorer extends LitElement {
     if (!this._treeRoot) {
       return html`<div class="ew-file-explorer">
         ${this._error
-    ? html`<p class="notice centered" role="alert">${this._error}</p>`
-    : html`<p class="notice centered">Loading…</p>`}
+          ? html`<p class="notice centered" role="alert">${this._error}</p>`
+          : html`<p class="notice centered">Loading…</p>`}
       </div>`;
     }
 
@@ -694,14 +678,9 @@ class EwFileExplorer extends LitElement {
 
     return html`<div class="ew-file-explorer">
       <div class="search-bar" @focusin="${() => this._warmCrawl()}">
-        <svg class="search-icon" viewBox="0 0 20 20" aria-hidden="true"><use href="${SEARCH_ICON_SRC}#icon"></use></svg>
-        <input type="search" class="search-input" placeholder="Filter files" aria-label="Filter files"
+        <nx-search variant="quiet" size="s" placeholder="Filter files" label="Filter files"
           .value="${this._searchTerm ?? ''}"
-          @input="${(e) => this._onSearchInput(e)}"
-          @keydown="${(e) => this._onSearchKeydown(e)}">
-        <button type="button" class="nx-action-btn-icon nx-btn-sm search-clear" aria-label="Clear search" @click="${() => this._onClearClick()}">
-          <svg viewBox="0 0 20 20" aria-hidden="true"><use href="${CLEAR_ICON_SRC}#icon"></use></svg>
-        </button>
+          @input="${(e) => this._onSearchInput(e)}"></nx-search>
         <nx-picker
           .items="${CATEGORIES}"
           .value="${this._category ?? 'all'}"
