@@ -1,3 +1,29 @@
+# [1.9.0](https://github.com/adobe/da-live/compare/v1.8.0...v1.9.0) (2026-10-20)
+
+
+### Bug Fixes
+
+* preserve preview image URLs during serialization ([#1457](https://github.com/adobe/da-live/issues/1457)) ([58d6a8e](https://github.com/adobe/da-live/commit/58d6a8e399814a92f42666f78e6a383186c2f879))
+
+
+### Features
+
+* update extension SDK to support html subscription and html replacement ([#1453](https://github.com/adobe/da-live/issues/1453)) ([36f7f6f](https://github.com/adobe/da-live/commit/36f7f6f440ba8bb7d33bd310c06c79f3e8de6295))
+
+# [1.8.0](https://github.com/adobe/da-live/compare/v1.7.1...v1.8.0) (2026-10-19)
+
+
+### Features
+
+* new browse UI ([#1401](https://github.com/adobe/da-live/issues/1401)) ([6e0dd84](https://github.com/adobe/da-live/commit/6e0dd848d0965059f015ad241d780dba5c94a2ae))
+
+## [1.7.1](https://github.com/adobe/da-live/compare/v1.7.0...v1.7.1) (2026-10-19)
+
+
+### Bug Fixes
+
+* **canvas:** preserve wrappers when editing nested blocks ([#1449](https://github.com/adobe/da-live/issues/1449)) ([9d24093](https://github.com/adobe/da-live/commit/9d2409399fa73b31fa374becc3580bfc8989ace3))
+
 # [1.7.0](https://github.com/adobe/da-live/compare/v1.6.1...v1.7.0) (2026-10-15)
 
 
