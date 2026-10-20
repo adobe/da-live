@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/adobe/da-live/compare/v1.9.0...v1.10.0) (2026-10-20)
+
+
+### Features
+
+* **canvas:** preflight sidepanel using experience context api ([#1369](https://github.com/adobe/da-live/issues/1369)) ([1eec09d](https://github.com/adobe/da-live/commit/1eec09d617fa4433d5a7f8c0e7d0d768270b25c0))
+
 # [1.9.0](https://github.com/adobe/da-live/compare/v1.8.0...v1.9.0) (2026-10-20)
 
 
