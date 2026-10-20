@@ -403,15 +403,30 @@ describe('PrepareMenu', () => {
     });
 
     it('connects the extension host with iframe and context, without token or legacy message', async () => {
-      const iframe = await openItem(sdkItem);
-      iframe.dispatchEvent(new Event('load'));
-      await new Promise((r) => { setTimeout(r, 800); });
+      const initialUrl = window.location.href;
+      const testUrl = new URL(initialUrl);
+      testUrl.searchParams.set('ref', 'feature/foo');
+      window.history.replaceState({}, '', testUrl);
+      let iframe;
+      try {
+        iframe = await openItem(sdkItem);
+        iframe.dispatchEvent(new Event('load'));
+        await new Promise((r) => { setTimeout(r, 800); });
+      } finally {
+        window.history.replaceState({}, '', initialUrl);
+      }
 
       expect(globalThis.__extHostCalls).to.have.length(1);
       const [call] = globalThis.__extHostCalls;
       expect(call.iframe).to.equal(iframe);
       expect(call.context).to.deep.equal({
-        view: 'edit', org: 'testorg', site: 'testsite', repo: 'testsite', ref: 'main', path: '/test/page',
+        view: 'edit',
+        org: 'testorg',
+        site: 'testsite',
+        repo: 'testsite',
+        ref: 'feature/foo',
+        branch: 'feature-foo',
+        path: '/test/page',
       });
       expect(tokenCalls).to.equal(0);
     });

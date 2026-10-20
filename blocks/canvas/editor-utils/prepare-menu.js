@@ -108,17 +108,26 @@ export default class PrepareMenu extends LitElement {
     this._extIframe = undefined;
   }
 
+  getExtensionContext() {
+    const { view, org, site, path } = this.details;
+    return {
+      view,
+      org,
+      site,
+      repo: site,
+      ref: new URLSearchParams(window.location.search).get('ref') || 'main',
+      branch: getCanvasBranch({ org, site }),
+      path,
+    };
+  }
+
   async connectExtension(iframe) {
     this.closeExtension();
     this._extIframe = iframe;
     const gen = this._extGen;
     const { connectExtension } = await import(`${getNx2()}/utils/extension-host.js`);
     if (gen !== this._extGen) return;
-    const { view, org, site, path } = this.details;
-    const context = {
-      view, org, site, repo: site, ref: 'main', path,
-    };
-    this._ext = connectExtension({ iframe, context });
+    this._ext = connectExtension({ iframe, context: this.getExtensionContext() });
   }
 
   syncExtension() {
@@ -266,17 +275,7 @@ export default class PrepareMenu extends LitElement {
       // Lit can reuse this iframe for an SDK2 row before the timer fires.
       if (!target.contentWindow || target.hasAttribute('data-sdk2') || target.src !== loadedSrc) return;
 
-      const { view, org, site, path } = this.details;
-
-      const context = {
-        view,
-        org,
-        site,
-        repo: site,
-        ref: new URLSearchParams(window.location.search).get('ref') || 'main',
-        branch: getCanvasBranch({ org, site }),
-        path,
-      };
+      const context = this.getExtensionContext();
       const { token } = window.adobeIMS.getAccessToken();
 
       const message = { ready: true, context, token };
