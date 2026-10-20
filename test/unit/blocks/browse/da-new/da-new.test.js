@@ -305,4 +305,61 @@ describe('DaNew', () => {
       expect(el._disabled).to.be.false;
     });
   });
+
+  describe('render', () => {
+    it('shows a visible New label in the trigger button', async () => {
+      const el = new DaNew();
+      el.variant = 'accent';
+      document.body.appendChild(el);
+      await new Promise((resolve) => { setTimeout(resolve, 0); });
+      try {
+        const btn = el.shadowRoot.querySelector('.da-actions-new-button');
+        expect(btn).to.exist;
+        expect(btn.textContent).to.contain('New');
+        expect(btn.classList.contains('nx-btn-accent')).to.be.true;
+      } finally {
+        el.remove();
+      }
+    });
+
+    it('defaults to an icon-only trigger and shows the New label for the accent variant', async () => {
+      const el = new DaNew();
+      el.permissions = ['write'];
+      document.body.append(el);
+      try {
+        await el.updateComplete;
+        const button = el.shadowRoot.querySelector('.da-actions-new-button');
+        expect(button.classList.contains('nx-action-btn-icon')).to.be.true;
+        expect(button.querySelector('.da-actions-new-label')).to.be.null;
+        el.variant = 'accent';
+        await el.updateComplete;
+        expect(button.classList.contains('nx-btn-accent')).to.be.true;
+        expect(button.textContent).to.contain('New');
+      } finally {
+        el.remove();
+      }
+    });
+
+    ['icon', 'accent'].forEach((variant) => {
+      it(`uses the shared spinner and disables the ${variant} trigger while loading`, async () => {
+        const el = new DaNew();
+        el.variant = variant;
+        el.permissions = ['write'];
+        document.body.append(el);
+        try {
+          await el.updateComplete;
+          const button = el.shadowRoot.querySelector('.da-actions-new-button');
+          expect(button.disabled).to.be.false;
+          el._loading = true;
+          await el.updateComplete;
+          expect(button.disabled).to.be.true;
+          expect(button.querySelector('.nx-loading-spinner')).to.exist;
+          expect(button.querySelector('svg')).to.be.null;
+          expect(button.querySelector('.da-actions-new-label') !== null).to.equal(variant === 'accent');
+        } finally {
+          el.remove();
+        }
+      });
+    });
+  });
 });
