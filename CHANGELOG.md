@@ -1,3 +1,10 @@
+## [1.11.1](https://github.com/adobe/da-live/compare/v1.11.0...v1.11.1) (2026-10-20)
+
+
+### Bug Fixes
+
+* read block variant from library-metadata name in canvas toolbar ([#1455](https://github.com/adobe/da-live/issues/1455)) ([a7dfcad](https://github.com/adobe/da-live/commit/a7dfcad3a010342dd7aa5e4036a9cae85d0eeaed))
+
 # [1.11.0](https://github.com/adobe/da-live/compare/v1.10.0...v1.11.0) (2026-10-20)
 
 
