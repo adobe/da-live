@@ -43,6 +43,33 @@ describe('EwFileExplorer', () => {
 
   afterEach(() => { el.remove(); });
 
+  it('handles shared search input with consumer debounce and clears pending searches', async () => {
+    el._org = 'org';
+    el._site = 'site';
+    el._treeRoot = '/org/site';
+    await el.updateComplete;
+    const field = el.shadowRoot.querySelector('nx-search');
+    const searches = [];
+    let warmed = false;
+    el._runSearch = (term) => searches.push(term);
+    el._warmCrawl = () => { warmed = true; };
+    field.dispatchEvent(new FocusEvent('focusin', { bubbles: true, composed: true }));
+    expect(warmed).to.be.true;
+    field.value = '  plan  ';
+    field.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
+    expect(el._searchTerm).to.equal('plan');
+    expect(searches).to.deep.equal([]);
+    await new Promise((resolve) => { setTimeout(resolve, 250); });
+    expect(searches).to.deep.equal(['plan']);
+    field.value = 'pending';
+    field.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
+    field.value = '';
+    field.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
+    expect(el._searchTerm).to.equal('');
+    await new Promise((resolve) => { setTimeout(resolve, 250); });
+    expect(searches).to.deep.equal(['plan']);
+  });
+
   describe('_refreshPath', () => {
     beforeEach(() => {
       el._org = 'org';
@@ -242,7 +269,7 @@ describe('EwFileExplorer', () => {
     describe('_openCreateDialog / _closeCreateDialog', () => {
       it('opens with the folder path, closes back to null', () => {
         const item = { type: 'directory', path: '/org/site/a', name: 'a' };
-        const e = { stopPropagation: () => {}, preventDefault: () => {} };
+        const e = { stopPropagation: () => { }, preventDefault: () => { } };
 
         el._openCreateDialog(e, item);
         expect(el._createDialog).to.deep.equal({ folder: '/org/site/a', saving: false, error: null });
@@ -602,7 +629,7 @@ describe('EwFileExplorer', () => {
       el._org = 'org';
       el._site = 'site';
       el._category = 'sheet';
-      el._loadFromLeaves = async () => {};
+      el._loadFromLeaves = async () => { };
 
       el._onHashChange({ org: 'org', site: 'other-site', path: '' });
 
@@ -695,7 +722,7 @@ describe('EwFileExplorer', () => {
 
       const copyBtn = el.shadowRoot.querySelector('.copy-url');
       const savedWriteText = navigator.clipboard.writeText;
-      navigator.clipboard.writeText = async () => {};
+      navigator.clipboard.writeText = async () => { };
       try {
         copyBtn.click();
         await new Promise((r) => { setTimeout(r, 0); });
