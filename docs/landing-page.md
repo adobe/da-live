@@ -10,6 +10,8 @@ open normally while remembering that the logo and sidebar Home should return
 to `landing=true`. The shell's optional `homeHref` configuration is shared by
 both controls and is evaluated against the current workspace. Without a
 landing opt-in, it leaves each consumer's original Home destination unchanged.
+The light-theme preview override is carried through internal file/editor links
+so returning Home stays light even when the saved preference is dark.
 
 After publishing the `lp` branch, open:
 

@@ -8,7 +8,7 @@ import {
   fetchFileModifier,
 } from '../../../../blocks/landing/utils.js';
 
-const HREF = 'https://lp--da-live--adobe.aem.live/?landing=true&nx=devlive&quick-edit=devlive#/org/site';
+const HREF = 'https://lp--da-live--adobe.aem.live/?landing=true&nx=devlive&quick-edit=devlive&theme=light#/org/site';
 
 describe('landing page data and navigation', () => {
   it('reads the real modifier from source metadata instead of inventing a user', async () => {
@@ -57,6 +57,7 @@ describe('landing page data and navigation', () => {
     expect(url.searchParams.get('browse')).to.equal('2');
     expect(url.searchParams.get('nx')).to.equal('devlive');
     expect(url.searchParams.get('quick-edit')).to.equal('devlive');
+    expect(url.searchParams.get('theme')).to.equal('light');
     expect(url.hash).to.equal('#/org/site/folder');
   });
 
@@ -79,9 +80,11 @@ describe('landing page data and navigation', () => {
       expect(url.searchParams.get('nx')).to.equal('devlive');
       expect(url.searchParams.get('quick-edit')).to.equal('devlive');
       expect(url.searchParams.get('landing')).to.equal('home');
+      expect(url.searchParams.get('theme')).to.equal('light');
       const homeUrl = new URL(getHomeHref({ href: url.href }));
       expect(homeUrl.pathname).to.equal('/');
       expect(homeUrl.searchParams.get('landing')).to.equal('true');
+      expect(homeUrl.searchParams.get('theme')).to.equal('light');
       expect(homeUrl.hash).to.equal('#/org/site');
     });
   });
@@ -93,6 +96,14 @@ describe('landing page data and navigation', () => {
     expect(link).to.equal(folder);
   });
 
+  it('does not introduce a theme override when the user has not selected one', () => {
+    const href = new URL(HREF);
+    href.searchParams.delete('theme');
+    const url = new URL(getFileHref({ item: { path: '/org/site/page.html', ext: 'html' }, href: href.href }));
+    expect(url.searchParams.has('theme')).to.equal(false);
+    expect(new URL(getHomeHref({ href: url.href })).searchParams.has('theme')).to.equal(false);
+  });
+
   it('supports the classic editor when EW is unavailable', () => {
     expect(new URL(getFileHref({ item: { path: '/org/site/page.html', ext: 'html' }, href: HREF, editor: '/edit#' })).pathname).to.equal('/edit');
   });
@@ -101,13 +112,15 @@ describe('landing page data and navigation', () => {
     const { href } = window.location;
     try {
       const browseUrl = new URL(href);
-      browseUrl.search = '?landing=home&nx=lp&quick-edit=devlive&browse=2';
+      browseUrl.search = '?landing=home&nx=lp&quick-edit=devlive&browse=2&theme=light';
       window.history.replaceState(null, '', browseUrl);
       const url = new URL(getBrowseItemHref({ path: '/org/site/page.html', ext: 'html', editor: '/canvas#' }));
       expect(url.pathname).to.equal('/canvas');
       expect(url.searchParams.get('landing')).to.equal('home');
       expect(url.searchParams.get('nx')).to.equal('lp');
       expect(url.searchParams.get('quick-edit')).to.equal('devlive');
+      expect(url.searchParams.get('theme')).to.equal('light');
+      expect(new URL(getHomeHref({ href: url.href })).searchParams.get('theme')).to.equal('light');
       expect(url.hash).to.equal('#/org/site/page');
       expect(getBrowseItemHref({ path: '/org/site/folder' })).to.equal('#/org/site/folder');
       window.history.replaceState(null, '', '?nx=lp');
@@ -121,7 +134,7 @@ describe('landing page data and navigation', () => {
   it('does not pass landing or preview parameters to external editors', () => {
     const { href } = window.location;
     try {
-      window.history.replaceState(null, '', '?landing=home&nx=lp');
+      window.history.replaceState(null, '', '?landing=home&nx=lp&theme=light');
       const destination = getBrowseItemHref({ path: '/org/site/page.html', ext: 'html', editor: 'https://experience.adobe.com/editor' });
       expect(destination).to.equal('https://experience.adobe.com/editor/page');
     } finally {
