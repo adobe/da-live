@@ -94,6 +94,10 @@ with fictional requester names. These are still labelled sample tasks.
   API before building storage. Scope favorites to account and workspace, persist
   across devices and application origins, and handle removed or inaccessible
   files. Define how existing local stars are migrated without crossing accounts.
+- [x] **Open comment rows in Need Attention.** Unresolved root-level comment
+  threads the user started or replied to, deep-linked to Canvas. Sample rows stay.
+  Follow-ups: nested folders, a site-wide doc-id/comment index instead of `HEAD`
+  probing, and "waiting on me" (last reply by someone else) once agreed.
 - [ ] **Real Need Attention integration.** Agree on the task source, ownership and
   data contract with the team. Load authorized tasks, descriptions, statuses and
   requesters; connect task navigation and supported actions. Implement meaningful
