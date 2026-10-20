@@ -193,4 +193,60 @@ describe('imageFocalPoint Plugin', () => {
     expect(icon).to.exist;
     expect(icon.classList.contains('focal-point-icon-active')).to.be.true;
   });
+
+  describe('link-images', () => {
+    const heroCellState = () => ({
+      doc: {
+        resolve: () => ({
+          depth: 3,
+          node: (d) => {
+            if (d === 3) return { type: { name: 'table_cell' } };
+            if (d === 2) return { childCount: 2 };
+            if (d === 1) {
+              return { child: () => ({ child: () => ({ textContent: 'hero' }) }) };
+            }
+            return { type: { name: 'doc' } };
+          },
+          index: () => 0,
+        }),
+      },
+    });
+    const view = () => ({ state: heroCellState(), dom: document.createElement('div') });
+    const regular = (attrs = {}) => ({ type: { name: 'image' }, attrs: { src: 'a.jpg', editAs: null, ...attrs } });
+    const linkImage = (attrs = {}) => ({
+      type: { name: 'image' },
+      attrs: { src: 'https://cdn.example.com/a.jpg', editAs: 'image', ...attrs },
+    });
+
+    it('does not create a focal point node view for a link-image in a table cell', () => {
+      const { nodeViews } = imageFocalPoint().props;
+      expect(nodeViews.image(linkImage(), view(), () => 10) === null).to.equal(true);
+    });
+
+    it('does not create a focal point node view for a link-image that already has focal data', () => {
+      const { nodeViews } = imageFocalPoint().props;
+      const node = linkImage({ dataFocalX: '10', dataFocalY: '20' });
+      expect(nodeViews.image(node, view(), () => 10) === null).to.equal(true);
+    });
+
+    it('still creates a focal point node view for a regular image in a table cell', () => {
+      const { nodeViews } = imageFocalPoint().props;
+      const nodeView = nodeViews.image(regular(), view(), () => 10);
+      expect(nodeView && nodeView.dom.classList.contains('focal-point-image-wrapper')).to.equal(true);
+    });
+
+    it('refuses to update a regular image view into a link-image', async () => {
+      const { nodeViews } = imageFocalPoint().props;
+      const nodeView = nodeViews.image(regular(), view(), () => 10);
+      await new Promise((resolve) => { setTimeout(resolve, 500); });
+      expect(nodeView.update(linkImage())).to.equal(false);
+    });
+
+    it('still updates a regular image view with another regular image', async () => {
+      const { nodeViews } = imageFocalPoint().props;
+      const nodeView = nodeViews.image(regular(), view(), () => 10);
+      await new Promise((resolve) => { setTimeout(resolve, 500); });
+      expect(nodeView.update(regular({ src: 'b.jpg' }))).to.equal(true);
+    });
+  });
 });

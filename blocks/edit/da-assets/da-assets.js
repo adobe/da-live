@@ -133,6 +133,7 @@ export function buildHandleSelection({
             view,
             applySiteImageModifiers(src, repoConfig.siteImageModifiers),
             alt,
+            repoConfig.imageType,
           ));
           insertFragment(view, nodes);
         },
@@ -142,7 +143,7 @@ export function buildHandleSelection({
 
       if (!hasCrops) {
         closeAndReset();
-        insertImage(view, href, alt);
+        insertImage(view, href, alt, repoConfig.imageType);
       }
       return;
     }
@@ -150,10 +151,10 @@ export function buildHandleSelection({
     // Standard insertion
     close();
 
-    if (!isImage || repoConfig.insertAsLink) {
+    if (!isImage || repoConfig.imageType === 'link') {
       insertLink(view, href);
     } else {
-      insertImage(view, href, alt);
+      insertImage(view, href, alt, repoConfig.imageType);
     }
   };
 }
