@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/adobe/da-live/compare/v1.10.0...v1.11.0) (2026-10-20)
+
+
+### Features
+
+* **canvas:** outline and file explorer treegrids with shared da-nx nav ([#1422](https://github.com/adobe/da-live/issues/1422)) ([4beb87a](https://github.com/adobe/da-live/commit/4beb87ae0ed54220966c6c9e371f6de98d771791)), closes [#1165](https://github.com/adobe/da-live/issues/1165)
+
 # [1.10.0](https://github.com/adobe/da-live/compare/v1.9.0...v1.10.0) (2026-10-20)
 
 
