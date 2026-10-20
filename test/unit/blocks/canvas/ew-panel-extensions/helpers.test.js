@@ -1,8 +1,13 @@
 import { expect } from '@esm-bundle/chai';
+import {
+  EditorState, NodeSelection, TextSelection, prosemirrorToYDoc, yDocToProsemirror,
+  ySyncPlugin, yUndoPlugin, yUndo,
+} from 'da-y-wrapper';
 import { setNx } from '../../../../../scripts/utils.js';
 import { setCommentsController } from '../../../../../blocks/canvas/editor-utils/comments-bridge.js';
 import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 import { setDaConfigs } from '../../../../fixtures/nx/utils/daConfig.js';
+import { makeRealView } from '../test-helpers.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -14,6 +19,9 @@ let createMetadataView;
 let getCanvasToolPanelViews;
 let fetchExtensions;
 let getItemPreviewUrl;
+let insertBlock;
+let insertHTML;
+let replaceHTMLAtCursor;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
@@ -25,6 +33,126 @@ before(async () => {
   getCanvasToolPanelViews = mod.getCanvasToolPanelViews;
   fetchExtensions = mod.fetchExtensions;
   getItemPreviewUrl = mod.getItemPreviewUrl;
+  insertBlock = mod.insertBlock;
+  insertHTML = mod.insertHTML;
+  replaceHTMLAtCursor = mod.replaceHTMLAtCursor;
+});
+
+describe('sendHTML replacement targets', () => {
+  const paragraph = (text) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
+  const table = {
+    type: 'table',
+    content: [
+      { type: 'table_row', content: [{ type: 'table_cell', content: [paragraph('Hero')] }] },
+      { type: 'table_row', content: [{ type: 'table_cell', content: [paragraph('Original title')] }] },
+    ],
+  };
+  let view;
+  beforeEach(() => {
+    view = makeRealView({
+      type: 'doc',
+      content: [
+        paragraph('Intro'), table,
+        { type: 'bullet_list', content: [{ type: 'list_item', content: [paragraph('Item')] }] },
+        { type: 'paragraph', content: [{ type: 'image', attrs: { src: '/old.png' } }] },
+        paragraph('Outro'),
+      ],
+    });
+  });
+  afterEach(() => {
+    const mount = view.dom.parentElement;
+    view.destroy();
+    mount?.remove();
+  });
+  const caret = (text, offset = 1) => {
+    let pos;
+    view.state.doc.descendants((node, start) => {
+      if (node.isText && node.text === text) pos = start + offset;
+    });
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, pos)));
+    return pos;
+  };
+  it('replaces an EDS block and preserves a caret inside unchanged content without focusing the host', () => {
+    const pos = caret('Original title', 4);
+    const before = view.state.doc.child(0);
+    const after = view.state.doc.lastChild;
+    const focused = document.activeElement;
+    replaceHTMLAtCursor(view, '<div class="hero wide"><div><div><p>Original title</p></div></div></div>');
+    expect(view.state.doc.child(1).type.name).to.equal('table');
+    expect(view.state.doc.child(1).textContent).to.equal('hero (wide)Original title');
+    expect(view.state.selection.from).to.equal(pos + ' (wide)'.length);
+    expect(view.state.doc.firstChild).to.equal(before);
+    expect(view.state.doc.lastChild).to.equal(after);
+    expect(document.activeElement).to.equal(focused);
+  });
+  it('replaces a paragraph, preserving a range when content before it changes', () => {
+    caret('Intro', 3);
+    const pos = view.state.selection.from;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, pos, pos + 1)));
+    replaceHTMLAtCursor(view, '<p>New Intro</p>');
+    expect(view.state.doc.firstChild.textContent).to.equal('New Intro');
+    expect(view.state.selection.anchor).to.equal(pos + 4);
+    expect(view.state.selection.head).to.equal(pos + 5);
+  });
+  it('replaces the whole list rather than its inner paragraph or list item', () => {
+    caret('Item');
+    replaceHTMLAtCursor(view, '<ul><li>First</li><li>Second</li></ul>');
+    expect(view.state.doc.child(2).type.name).to.equal('bullet_list');
+    expect(view.state.doc.child(2).childCount).to.equal(2);
+  });
+  it('replaces a selected inline image without replacing its paragraph', () => {
+    let pos;
+    view.state.doc.descendants((node, start) => { if (node.type.name === 'image') pos = start; });
+    view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos)));
+    replaceHTMLAtCursor(view, '<img src="/new.png">');
+    expect(view.state.doc.nodeAt(pos).attrs.src).to.equal('/new.png');
+    expect(view.state.selection).to.be.instanceOf(NodeSelection);
+    expect(view.state.selection.from).to.equal(pos);
+  });
+  it('preserves an explicit block selection', () => {
+    const pos = view.state.doc.firstChild.nodeSize;
+    view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos)));
+    replaceHTMLAtCursor(view, '<div class="hero"><div><div><p>New title</p></div></div></div>');
+    expect(view.state.selection).to.be.instanceOf(NodeSelection);
+    expect(view.state.selection.from).to.equal(pos);
+  });
+  it('rejects ambiguous or invalid replacements and read-only editors', () => {
+    caret('Intro');
+    const before = view.state.doc;
+    view.dispatch(view.state.tr.setSelection(
+      TextSelection.create(before, 2, before.content.size - 1),
+    ));
+    expect(() => replaceHTMLAtCursor(view, '<p>Bad</p>')).to.throw('multiple replacement targets');
+    caret('Intro');
+    expect(() => replaceHTMLAtCursor(view, '')).to.throw('Replacement HTML is required');
+    expect(() => replaceHTMLAtCursor(view, '<p>One</p><p>Two</p>')).to.throw('exactly one content node');
+    view.setProps({ editable: () => false });
+    expect(() => replaceHTMLAtCursor(view, '<p>No</p>')).to.throw('read-only');
+    expect(view.state.doc).to.equal(before);
+  });
+  it('keeps the original sendHTML insertion path unchanged', () => {
+    caret('Intro', 2);
+    insertHTML(view, '<p>Inserted</p>');
+    expect(view.state.doc.textContent).to.include('Inserted');
+    expect(view.state.doc.textContent).to.include('Original title');
+  });
+  it('updates the collaborative document and participates in Yjs undo', () => {
+    const { schema, doc } = view.state;
+    const ydoc = prosemirrorToYDoc(doc);
+    try {
+      view.updateState(EditorState.create({
+        schema,
+        plugins: [ySyncPlugin(ydoc.getXmlFragment('prosemirror')), yUndoPlugin()],
+      }));
+      const pos = caret('Original title', 4);
+      replaceHTMLAtCursor(view, '<div class="hero"><div><div><p>Changed title</p></div></div></div>');
+      expect(view.state.doc.textContent).to.include('Changed title');
+      expect(yDocToProsemirror(schema, ydoc).textContent).to.include('Changed title');
+      expect(view.state.selection.from).to.equal(pos);
+      expect(yUndo(view.state, (tr) => view.dispatch(tr))).to.equal(true);
+      expect(view.state.doc.textContent).to.include('Original title');
+    } finally { ydoc.destroy(); }
+  });
 });
 
 describe('library preview branch state', () => {
@@ -607,5 +735,62 @@ describe('EW panel helpers fetchExtensions', () => {
   it('returns an empty list when there are no valid configs', async () => {
     setDaConfigs([{ error: true }]);
     expect(await fetchExtensions('org', 'site')).to.eql([]);
+  });
+});
+
+describe('shared block insertion at the live selection', () => {
+  const table = (name, body) => ({
+    type: 'table',
+    content: [
+      { type: 'table_row', content: [{ type: 'table_cell', content: [{ type: 'paragraph', content: [{ type: 'text', text: name }] }] }] },
+      { type: 'table_row', content: [{ type: 'table_cell', content: [{ type: 'paragraph', content: [{ type: 'text', text: body }] }] }] },
+    ],
+  });
+  const nodeText = (text) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
+  const replacement = () => {
+    const dom = document.createElement('table');
+    dom.innerHTML = '<tbody><tr><td><p>New</p></td></tr><tr><td><p>Replacement</p></td></tr></tbody>';
+    return dom;
+  };
+  let view;
+
+  beforeEach(() => {
+    view = makeRealView({
+      type: 'doc',
+      content: [
+        nodeText('Intro'), table('Cards', 'Original'), nodeText('Outro'), table('Other', 'Keep'),
+      ],
+    });
+  });
+  afterEach(() => {
+    const mount = view.dom.parentElement;
+    view.destroy();
+    mount?.remove();
+  });
+
+  const contents = () => {
+    const result = [];
+    view.state.doc.forEach((node) => result.push([node.type.name, node.textContent]));
+    return result;
+  };
+
+  it('does not replace the enclosing block for a caret inside a block cell', () => {
+    let caret;
+    view.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text === 'Original') caret = pos + 1;
+    });
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, caret)));
+    insertBlock(view, replacement());
+    expect(view.state.doc.child(1).type.name).to.equal('table');
+    expect(view.state.doc.child(1).textContent).to.equal('CardsONewReplacementriginal');
+    expect(contents().at(-1)).to.deep.equal(['table', 'OtherKeep']);
+  });
+
+  it('retains insertion outside a block', () => {
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 2)));
+    insertBlock(view, replacement());
+    expect(contents().filter(([type]) => type === 'table')).to.deep.equal([
+      ['table', 'NewReplacement'], ['table', 'CardsOriginal'], ['table', 'OtherKeep'],
+    ]);
   });
 });
