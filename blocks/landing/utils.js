@@ -56,7 +56,7 @@ export function getFileHref({ item, href = window.location.href, editor = '/canv
   }
   const url = new URL(getBrowseItemHref({ ...item, editor }), href);
   const current = new URL(href);
-  ['nx', 'quick-edit', 'ew', 'nx-chat-ao'].forEach((key) => {
+  ['nx', 'quick-edit', 'ew', 'nx-chat-ao', 'theme'].forEach((key) => {
     if (current.searchParams.has(key)) url.searchParams.set(key, current.searchParams.get(key));
   });
   if (getHomeHref({ href })) url.searchParams.set('landing', 'home');

@@ -9,7 +9,7 @@ export function getBrowseItemHref({ path, ext, editor }) {
     const url = new URL(href, currentUrl);
     if (url.origin !== currentUrl.origin) return href;
     url.searchParams.set('landing', 'home');
-    ['nx', 'quick-edit', 'ew', 'nx-chat-ao'].forEach((key) => {
+    ['nx', 'quick-edit', 'ew', 'nx-chat-ao', 'theme'].forEach((key) => {
       if (currentUrl.searchParams.has(key)) {
         url.searchParams.set(key, currentUrl.searchParams.get(key));
       }
