@@ -1,6 +1,7 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
+import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 
@@ -63,6 +64,13 @@ describe('PrepareMenu', () => {
   async function fixture(props = {}) {
     const element = document.createElement('prepare-menu');
     element.details = props.details || createDetails();
+    canvasBus.branchState.emit({
+      org: element.details.org,
+      site: element.details.site,
+      path: element.details.fullpath,
+      status: 'ready',
+      branch: 'feature-foo',
+    });
     document.body.appendChild(element);
     await waitForMenu();
     await nextFrame();
@@ -82,6 +90,7 @@ describe('PrepareMenu', () => {
   afterEach(() => {
     if (el && el.parentElement) el.remove();
     el = null;
+    canvasBus.branchState.emit({ path: null, status: 'pending' });
   });
 
   it('is defined as a custom element', () => {
@@ -124,6 +133,26 @@ describe('PrepareMenu', () => {
   });
 
   describe('loadMenu', () => {
+    it('uses updated canvas branch state for custom previews and disables unresolved paths', async () => {
+      const prevFetch = window.fetch;
+      window.fetch = async (url) => (url.includes('/config/branch-menu-org')
+        ? new Response(JSON.stringify({ prepare: { data: [{ title: 'Branch action', path: '/plugin.html' }] } }))
+        : prevFetch(url));
+      try {
+        el = await fixture({ details: createDetails({ org: 'branch-menu-org', site: 'site' }) });
+        const state = { org: 'branch-menu-org', site: 'site', path: '/branch-menu-org/site/page' };
+        canvasBus.branchState.emit({ ...state, status: 'ready', branch: 'Configured/Branch' });
+        await waitForMenu();
+        expect(el._menuItems.find((item) => item.title === 'Branch action').path)
+          .to.equal('https://configured-branch--site--branch-menu-org.stage-preview.da.live/plugin.html');
+        canvasBus.branchState.emit({ ...state, status: 'pending' });
+        await waitForMenu();
+        expect(el._menuItems.find((item) => item.title === 'Branch action').disabled).to.be.true;
+      } finally {
+        window.fetch = prevFetch;
+      }
+    });
+
     it('loads non-optional OOTB actions by default', async () => {
       el = await fixture();
 
@@ -425,8 +454,8 @@ describe('PrepareMenu', () => {
         return prevFetch(url);
       };
       const { warn } = console;
-      let warned = 0;
-      console.warn = () => { warned += 1; };
+      const warnings = [];
+      console.warn = (msg) => { warnings.push(msg); };
       try {
         el = await fixture({ details: createDetails({ org: 'orgI', site: 'siteI' }) });
       } finally {
@@ -436,7 +465,9 @@ describe('PrepareMenu', () => {
       const titles = el._menuItems.map((i) => i.title);
       expect(titles).to.include('Good');
       expect(titles).to.not.include('Bad');
-      expect(warned).to.equal(1);
+      // loadMenu can run twice (details update + branchState replay), so check content, not count.
+      expect(warnings).to.not.be.empty;
+      expect(warnings.every((w) => w.includes('"Bad"'))).to.be.true;
     });
 
     it('closes the handle on fullsize dialog close', async () => {

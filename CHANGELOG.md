@@ -1,3 +1,71 @@
+# [1.9.0](https://github.com/adobe/da-live/compare/v1.8.0...v1.9.0) (2026-10-20)
+
+
+### Bug Fixes
+
+* preserve preview image URLs during serialization ([#1457](https://github.com/adobe/da-live/issues/1457)) ([58d6a8e](https://github.com/adobe/da-live/commit/58d6a8e399814a92f42666f78e6a383186c2f879))
+
+
+### Features
+
+* update extension SDK to support html subscription and html replacement ([#1453](https://github.com/adobe/da-live/issues/1453)) ([36f7f6f](https://github.com/adobe/da-live/commit/36f7f6f440ba8bb7d33bd310c06c79f3e8de6295))
+
+# [1.8.0](https://github.com/adobe/da-live/compare/v1.7.1...v1.8.0) (2026-10-19)
+
+
+### Features
+
+* new browse UI ([#1401](https://github.com/adobe/da-live/issues/1401)) ([6e0dd84](https://github.com/adobe/da-live/commit/6e0dd848d0965059f015ad241d780dba5c94a2ae))
+
+## [1.7.1](https://github.com/adobe/da-live/compare/v1.7.0...v1.7.1) (2026-10-19)
+
+
+### Bug Fixes
+
+* **canvas:** preserve wrappers when editing nested blocks ([#1449](https://github.com/adobe/da-live/issues/1449)) ([9d24093](https://github.com/adobe/da-live/commit/9d2409399fa73b31fa374becc3580bfc8989ace3))
+
+# [1.7.0](https://github.com/adobe/da-live/compare/v1.6.1...v1.7.0) (2026-10-15)
+
+
+### Features
+
+* allow sending annotations to the ew chat for resolution ([#1373](https://github.com/adobe/da-live/issues/1373)) ([6206c79](https://github.com/adobe/da-live/commit/6206c79f3fd47d89eb750bc670940c953444a6d2))
+
+## [1.6.1](https://github.com/adobe/da-live/compare/v1.6.0...v1.6.1) (2026-10-15)
+
+
+### Bug Fixes
+
+* **canvas:** correct refresh on paragraph removal ([#1444](https://github.com/adobe/da-live/issues/1444)) ([fc1c6f5](https://github.com/adobe/da-live/commit/fc1c6f5c9e1a8c44198d62aebfab6197aa56e6be))
+
+# [1.6.0](https://github.com/adobe/da-live/compare/v1.5.2...v1.6.0) (2026-10-15)
+
+
+### Features
+
+* **ew:** centralize canvas branch resolution ([#1439](https://github.com/adobe/da-live/issues/1439)) ([b657553](https://github.com/adobe/da-live/commit/b657553957a905b754174b19588dc0ee2c798ceb))
+
+## [1.5.2](https://github.com/adobe/da-live/compare/v1.5.1...v1.5.2) (2026-10-14)
+
+
+### Bug Fixes
+
+* **canvas:** rerender block titles and metadata edits ([#1442](https://github.com/adobe/da-live/issues/1442)) ([a46bc71](https://github.com/adobe/da-live/commit/a46bc7136206cdc85ae9e085473852720434c052))
+
+## [1.5.1](https://github.com/adobe/da-live/compare/v1.5.0...v1.5.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* **scheduler:** strip .html before scheduling so helix-admin accepts the path ([#1436](https://github.com/adobe/da-live/issues/1436)) ([3ab3f42](https://github.com/adobe/da-live/commit/3ab3f42af2b0ee2fe8d3e57b571cc57660ee547b))
+
+# [1.5.0](https://github.com/adobe/da-live/compare/v1.4.0...v1.5.0) (2026-10-14)
+
+
+### Features
+
+* **ew:** compare documents and previews with live content ([#1405](https://github.com/adobe/da-live/issues/1405)) ([19c4eb8](https://github.com/adobe/da-live/commit/19c4eb8a2c34c19486403ddaf8e2e93af9ea0701))
+
 # [1.4.0](https://github.com/adobe/da-live/compare/v1.3.1...v1.4.0) (2026-10-13)
 
 

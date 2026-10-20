@@ -4,13 +4,14 @@ import getSheet from '../../shared/sheet.js';
 import {
   fetchBlocks,
   fetchItems,
-  insertBlock,
+  insertLibraryBlock,
   insertText,
   insertTemplate,
   getPreviewStatus,
   getItemPreviewUrl,
 } from './helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const [buttonsStyle, style] = await Promise.all([
@@ -48,11 +49,18 @@ class EwPanelLibrary extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [buttonsStyle, style];
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
+    this._unsubBranch = canvasBus.branchState.subscribe((state) => {
+      if (!state?.path) {
+        this._preview = undefined;
+        this._previewItem = undefined;
+      } else if (this._previewItem) this._openPreview(this._previewItem);
+    });
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
+    this._unsubBranch?.();
   }
 
   willUpdate(changed) {
@@ -61,6 +69,7 @@ class EwPanelLibrary extends LitElement {
       this._blockVariants = new Map();
       this._expandedBlock = null;
       this._preview = undefined;
+      this._previewItem = undefined;
       this._tooltipOpen = null;
       this._search = '';
       this._loadItems();
@@ -106,7 +115,7 @@ class EwPanelLibrary extends LitElement {
   _insertBlock(variant) {
     const { view } = getExtensionsBridge();
     if (!view) return;
-    insertBlock(view, variant.dom);
+    insertLibraryBlock(view, variant.dom);
   }
 
   _insertText(item) {
@@ -122,23 +131,30 @@ class EwPanelLibrary extends LitElement {
   }
 
   async _openPreview(item) {
+    this._previewItem = item;
     const { org, site } = this._hashState || {};
     if (!org || !site) return;
     const details = getItemPreviewUrl(item, { org, site });
-    this._preview = {
+    if (!details) {
+      this._preview = { name: item.name || item.key || item.title, error: 'Preview branch unavailable. Please try again once the editor preview is ready.' };
+      return;
+    }
+    const preview = {
       name: item.name || item.key || item.title,
       url: details.previewUrl,
     };
-    this._preview.ok = await getPreviewStatus({
+    this._preview = preview;
+    const ok = await getPreviewStatus({
       org: details.org,
       site: details.site,
       pathname: details.pathname,
     });
-    this.requestUpdate();
+    if (this._preview === preview) this._preview = { ...preview, ok };
   }
 
   async _closePreview() {
     this._preview = undefined;
+    this._previewItem = undefined;
     await this.updateComplete;
     this.shadowRoot.querySelector('button')?.focus();
   }
@@ -301,9 +317,9 @@ class EwPanelLibrary extends LitElement {
     if (!this._preview) return nothing;
     const { ok, name, url } = this._preview;
     const hideIframe = ok === undefined || ok === false ? 'hide-iframe' : '';
-    const error = ok === false
+    const error = this._preview.error || (ok === false
       ? `It appears ${name} has not been previewed.`
-      : undefined;
+      : undefined);
 
     return html`
       <dialog class="ext-preview-dialog" @close=${() => this._closePreview()}>
@@ -313,8 +329,8 @@ class EwPanelLibrary extends LitElement {
         </div>
         <div class="ext-preview-body">
           ${error ? html`<div class="ext-preview-error"><p>${error}</p></div>` : nothing}
-          <iframe class="ext-preview-frame ${hideIframe}" src=${url}
-            allow="clipboard-write *"></iframe>
+          ${url ? html`<iframe class="ext-preview-frame ${hideIframe}" src=${url}
+            allow="clipboard-write *"></iframe>` : nothing}
         </div>
       </dialog>
     `;

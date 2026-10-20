@@ -19,6 +19,8 @@ let parseSections;
 let updateDocument;
 let getEditor;
 let mirror;
+let getInstrumentedHTML;
+let mediaBusImage;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
@@ -28,6 +30,38 @@ before(async () => {
   updateDocument = mod.updateDocument;
   getEditor = mod.getEditor;
   mirror = mod.dispatchMirror;
+  getInstrumentedHTML = mod.getInstrumentedHTML;
+  ({ default: mediaBusImage } = await import('../../../../../blocks/canvas/ew-editor-doc/prose-plugins/mediaBusImage.js'));
+});
+
+describe('getInstrumentedHTML media bus images', () => {
+  let view;
+
+  afterEach(() => {
+    view?.destroy();
+  });
+
+  it('preserves the preview image path without changing the relative document source', () => {
+    const schema = getSchema();
+    const src = './media_123.png?width=750#width=2048&height=1368';
+    const image = schema.nodes.image.create({ src });
+    view = new EditorView(document.createElement('div'), {
+      state: EditorState.create({
+        schema,
+        doc: schema.nodes.doc.create(null, schema.nodes.paragraph.create(null, image)),
+        plugins: [mediaBusImage({ org: 'org', repo: 'site' })],
+      }),
+    });
+    const expected = `${getPreviewOrigin('org', 'site')}/${src.slice(2)}`;
+    expect(view.dom.querySelector('img').getAttribute('src')).to.equal(expected);
+
+    const result = new DOMParser().parseFromString(getInstrumentedHTML(view), 'text/html');
+    expect(result.querySelector('img').getAttribute('src')).to.equal(expected);
+    result.querySelectorAll('source').forEach((source) => {
+      expect(source.getAttribute('srcset')).to.equal(expected);
+    });
+    expect(view.state.doc.firstChild.firstChild.attrs.src).to.equal(src);
+  });
 });
 
 describe('getPreviewOrigin', () => {
@@ -39,6 +73,11 @@ describe('getPreviewOrigin', () => {
   it('uses the provided branch', () => {
     const origin = getPreviewOrigin('myorg', 'myrepo', 'feature');
     expect(origin).to.include('feature--myrepo--myorg');
+  });
+
+  it('uses the same hostname normalization as Send for slash and mixed-case branches', () => {
+    expect(getPreviewOrigin('myorg', 'myrepo', 'Feat/My_Branch'))
+      .to.include('feat-my-branch--myrepo--myorg');
   });
 
   it('uses main when branch is explicitly main', () => {
@@ -163,6 +202,30 @@ describe('fetchWysiwygBranch', () => {
     mockConfig([{ key: 'ew.wysiwygBranch', value: '/org-wbr-12/site-wbr-12=feature' }]);
     const branch = await fetchWysiwygBranch(ctx({ path: 'org-wbr-12/site-wbr-12/page' }));
     expect(branch).to.equal('feature');
+  });
+
+  it('keeps local extension loading separate from the configured preview branch', async () => {
+    setSearch('?ref=local');
+    const context = ctx();
+    context.path = `${context.org}/${context.site}/page`;
+    let fetchCalled = false;
+    window.fetch = () => {
+      fetchCalled = true;
+      const data = [{ key: 'ew.wysiwygBranch', value: `/${context.org}/${context.site}=feature` }];
+      return Promise.resolve(new Response(JSON.stringify({ data }), { status: 200 }));
+    };
+    expect(await fetchWysiwygBranch(context)).to.equal('feature');
+    expect(fetchCalled).to.equal(true);
+    expect(new URLSearchParams(window.location.search).get('ref')).to.equal('local');
+  });
+
+  it('uses main for local extension loading when no preview branch is configured', async () => {
+    setSearch('?ref=local');
+    mockConfig([]);
+    const context = ctx();
+    const branch = await fetchWysiwygBranch(context);
+    expect(branch).to.equal('main');
+    expect(getPreviewOrigin(context.org, context.site, branch)).to.include(`main--${context.site}`);
   });
 });
 
@@ -426,6 +489,20 @@ describe('updateDocument rerender scopes', () => {
     mount([p('Intro'), hr(), p('Delete'), p('Keep')]);
     dispatch((tr) => tr.delete(posOf(2), posOf(3)));
     expect(lastScope()).to.deep.equal({ type: 'section', sectionIndex: 1 });
+  });
+
+  it('refreshes the layout when joining paragraphs removes an editable node', () => {
+    mount([p('Intro'), hr(), p('First'), p('Second'), p('Tail')]);
+    ctx.port.postMessage.resetHistory();
+
+    dispatch((tr) => tr.join(posOf(3)));
+
+    expect(bodies()).to.have.lengthOf(1);
+    expect(lastScope()).to.deep.equal({ type: 'section', sectionIndex: 1 });
+    const layout = document.createElement('div');
+    layout.innerHTML = bodies()[0].payload.body;
+    expect([...layout.querySelectorAll('p')].map((node) => node.textContent))
+      .to.deep.equal(['Intro', 'FirstSecond', 'Tail']);
   });
 
   it('renders the page for one change spanning two sections', () => {

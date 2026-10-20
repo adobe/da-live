@@ -17,7 +17,7 @@ export function getTableName(node) {
     .replace(/-+$/, '');
 }
 
-const isRenderedBlock = (node) => {
+export const isRenderedBlock = (node) => {
   const name = getTableName(node);
   return name !== undefined && !UNRENDERED_TABLES.has(name);
 };
