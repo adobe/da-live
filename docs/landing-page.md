@@ -94,8 +94,12 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
   desktop width, 16px radius, translucent fill and three-layer shadow. The composer
   uses its 664px desktop width and 109px idle height. Its neutral translucent
   fill, border and soft shadows follow the Spectrum AI Toolkit's Subtle prompt
-  field (`24045:21639` in branch `1ypHt0RiJxnGKoZGlIT6eY`), not the colored
-  hue/glow treatment. Prompt text, actions and assistant handoff are unchanged.
+  field (`24045:21639` in branch `1ypHt0RiJxnGKoZGlIT6eY`). Hover uses that
+  theme's faint colored hue and surface gradients (`24045:21695`), only on fine
+  pointers while the assistant is available. Focus and typing return to a neutral
+  frame (`24045:21088`, `24045:21059`), retaining the visible focus outline.
+  Dimensions, spacing, prompt text, actions and assistant handoff are unchanged.
+  This does not add drag-and-drop or a generation state to the landing composer.
   The background includes the separate white fade over the coloured artwork:
   transparent at -794px, reaching white at about 604px in the 1024px canvas.
   Labels use explicit component line heights; modified dates use Today/Yesterday.

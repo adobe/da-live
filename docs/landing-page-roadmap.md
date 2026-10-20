@@ -30,9 +30,9 @@ smaller logo and Adobe Experience Manager title consistently across the shell.
   component. Do not transfer it to `devlive` before review and approval.
   Cover both NX2 and legacy NX1 navigation; Localization and Scheduler still
   use NX1 and must not be migrated merely to display the configured brand.
-- [x] Use the Spectrum AI Toolkit Subtle prompt-field treatment: neutral
-  translucent surface, border and soft shadows instead of a colored hue/glow.
-  Preserve the existing composer layout, accessible focus and assistant handoff.
+- [x] Use the Spectrum AI Toolkit Subtle prompt-field states: neutral idle and
+  focused surfaces, with a faint colored hover on fine pointers while enabled.
+  Preserve all existing dimensions, spacing, accessible focus and assistant handoff.
 - [ ] Tighten the existing site-switcher styling against Figma `1852:84079`:
   compact 32px control, 14px bold label, pill border and 10px chevron. Review its
   open, selected and keyboard-focus states against the approved picker design.

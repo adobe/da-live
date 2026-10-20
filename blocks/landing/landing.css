@@ -120,6 +120,61 @@ h1 {
   outline-offset: 4px;
 }
 
+.composer:focus-within::before {
+  backdrop-filter: none;
+  background: light-dark(#ffffff7a, #3030307a);
+  box-shadow: 0 2px 4px #0000000f;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .composer:has(textarea:enabled):hover:not(:focus-within)::before {
+    box-shadow: 0 2px 4px #ec69ff1a;
+  }
+
+  .composer:has(textarea:enabled):hover:not(:focus-within)::after {
+    content: "";
+    position: absolute;
+    inset: 6px -7px -6px -6px;
+    z-index: -3;
+    pointer-events: none;
+    border-radius: 30px;
+    background: linear-gradient(90deg, #ec69ff99, #ff513d80 37.316%, #ffa22366 76.741%);
+    filter: blur(8px);
+    opacity: 0.2;
+  }
+
+  .composer:has(textarea:enabled):hover:not(:focus-within) .composer-surface {
+    overflow: clip;
+    border-color: #ec69ff1a;
+    background:
+      linear-gradient(to bottom, light-dark(#fff6, #ffffff0a) 37.305%, light-dark(#ffffff21, #ffffff03) 83.398%),
+      radial-gradient(ellipse at bottom right,
+        light-dark(#ebeeff52, #ebeeff29),
+        light-dark(#fad3ff52, #fad3ff29) 34.964%,
+        light-dark(#ffebe852, #ffebe829) 81.972%,
+        light-dark(#ffeccf52, #ffeccf29)),
+      light-dark(#fffc, #222c);
+    box-shadow: 0 -3px 10px 1px #ec69ff0d, inset 0 6px 15px #ffffff0a,
+      inset 0 -5px 21.6px #ffffff0a, inset 0 24px 32px #ffffff0a;
+  }
+
+  .composer:has(textarea:enabled):hover:not(:focus-within) .composer-surface::before {
+    content: "";
+    position: absolute;
+    inset: 23px -1px -25px;
+    background: conic-gradient(from 90deg at 32.6% 50%,
+      transparent,
+      #fef4ff80 7.998%,
+      #fde9ff 15.995%,
+      #fef6ff 35.063%,
+      #ffe8f0 43.474%,
+      #fff4f880 54.857%,
+      transparent 66.241%);
+    filter: blur(40px);
+    opacity: 0.12;
+  }
+}
+
 textarea {
   display: block;
   width: 100%;
