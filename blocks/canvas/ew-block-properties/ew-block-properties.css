@@ -296,7 +296,7 @@
 .ew-block-tabs {
   display: flex;
   gap: 2px;
-  margin-inline: var(--s2-spacing-200);
+  margin: 0 16px 8px;
   padding: 3px;
   border-radius: var(--s2-corner-radius-500);
   background: var(--s2-gray-100);
