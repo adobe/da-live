@@ -12,9 +12,6 @@ da-browse-header {
   padding-inline: var(--s2-spacing-100);
 }
 
-da-browse-header:not([chatenabled]) nx-breadcrumb {
-  padding-inline-start: var(--s2-spacing-100);
-}
 
 .da-browse-content {
   box-sizing: border-box;

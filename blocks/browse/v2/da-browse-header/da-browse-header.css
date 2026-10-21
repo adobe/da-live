@@ -24,6 +24,10 @@
   flex: 1;
 }
 
+.browse-toolbar-leading:not(:has(.chat-btn)):has(slot:not([name])) {
+  padding-inline-start: var(--s2-spacing-100);
+}
+
 .browse-search-summary {
   display: grid;
   margin: 0;
