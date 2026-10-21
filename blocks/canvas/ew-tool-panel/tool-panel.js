@@ -269,9 +269,6 @@ class EwToolPanel extends LitElement {
 
     return html`
       <div class="tool-panel-header">
-        <button type="button" class="tool-panel-close" aria-label="Close panel" @click=${this._close}>
-          <svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${CLOSE_ICON_SRC}#icon"></use></svg>
-        </button>
         <nx-picker
           .items=${items}
           .value=${this.activeId}
@@ -279,6 +276,9 @@ class EwToolPanel extends LitElement {
           @change=${(e) => this.showPanel(e.detail.value)}
         ></nx-picker>
         <div class="tool-panel-header-actions"></div>
+        <button type="button" class="tool-panel-close" aria-label="Close panel" @click=${this._close}>
+          <svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${CLOSE_ICON_SRC}#icon"></use></svg>
+        </button>
       </div>
       <div class="tool-panel-content"></div>
       ${this._fullsizeDialogViewId ? html`
