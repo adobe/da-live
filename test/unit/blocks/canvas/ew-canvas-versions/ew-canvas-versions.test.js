@@ -526,20 +526,18 @@ describe('version history refresh', () => {
     expect(input.value).to.equal('Unsubmitted name');
   });
 
-  it('preserves the visible row when new versions are inserted above the scroll position', async () => {
+  it('preserves existing rows without programmatic scroll correction when new versions arrive', async () => {
     const entries = Array.from({ length: 20 }, (_, index) => ({ ...old, url: `/versionsource/refreshorg/refreshsite/v${index}.html`, timestamp: 1000 - index }));
     mockList(() => Promise.resolve(response([latest, ...entries])));
     inst = await createInstance({ path, _versions: entries.map((entry) => ver(entry)) });
     const list = inst.shadowRoot.querySelector('.versionlist');
-    list.style.cssText = 'height: 100px; overflow: auto; margin: 0; padding: 0;';
-    [...list.children].forEach((row) => { row.style.height = '40px'; });
-    list.scrollTop = 300;
-    const anchor = [...list.children]
-      .find((row) => row.getBoundingClientRect().bottom > list.getBoundingClientRect().top);
-    const { top } = anchor.getBoundingClientRect();
+    const rows = [...list.children];
+    Object.defineProperty(list, 'scrollTop', { set() { throw new Error('History refresh must leave scroll anchoring to the browser.'); } });
     await inst._refreshVersions();
-    expect(anchor.isConnected).to.be.true;
-    expect(anchor.getBoundingClientRect().top).to.be.closeTo(top, 1);
+    expect(inst.shadowRoot.querySelector('.versionlist')).to.equal(list);
+    expect([...list.children]).to.include.members(rows);
+    expect(list.children).to.have.lengthOf(rows.length + 1);
+    expect(inst._versions[0].label).to.equal('Previewed');
   });
 
   it('retains last loaded history and reports a refresh failure', async () => {
