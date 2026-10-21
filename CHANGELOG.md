@@ -1,3 +1,10 @@
+## [1.11.7](https://github.com/adobe/da-live/compare/v1.11.6...v1.11.7) (2026-10-21)
+
+
+### Bug Fixes
+
+* show config only on org or site level ([#1463](https://github.com/adobe/da-live/issues/1463)) ([0b92c0d](https://github.com/adobe/da-live/commit/0b92c0db6583575c79c287e099ec70666b3bbecd))
+
 ## [1.11.6](https://github.com/adobe/da-live/compare/v1.11.5...v1.11.6) (2026-10-21)
 
 
