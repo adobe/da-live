@@ -1,3 +1,39 @@
+## [1.11.6](https://github.com/adobe/da-live/compare/v1.11.5...v1.11.6) (2026-10-21)
+
+
+### Bug Fixes
+
+* allow AVIF and WebP image uploads in document editors ([#1464](https://github.com/adobe/da-live/issues/1464)) ([29db317](https://github.com/adobe/da-live/commit/29db317bed521211869f6edc6b961751bceba4ac))
+
+## [1.11.5](https://github.com/adobe/da-live/compare/v1.11.4...v1.11.5) (2026-10-21)
+
+
+### Bug Fixes
+
+* **ew:** record RUM click events from WYSIWYG layout mode ([#1324](https://github.com/adobe/da-live/issues/1324)) ([#1384](https://github.com/adobe/da-live/issues/1384)) ([aeb4563](https://github.com/adobe/da-live/commit/aeb4563cf8ea1d8143a06724aa28af45f71e067b))
+
+## [1.11.4](https://github.com/adobe/da-live/compare/v1.11.3...v1.11.4) (2026-10-21)
+
+
+### Bug Fixes
+
+* **ew:** route block library through DA Preview Proxy ([#1372](https://github.com/adobe/da-live/issues/1372)) ([28c2f89](https://github.com/adobe/da-live/commit/28c2f897f1e17a3c38089c1245dc2da6e1927797)), closes [#1201](https://github.com/adobe/da-live/issues/1201) [#1201](https://github.com/adobe/da-live/issues/1201)
+
+## [1.11.3](https://github.com/adobe/da-live/compare/v1.11.2...v1.11.3) (2026-10-21)
+
+
+### Bug Fixes
+
+* **ew:** highlight only the open HTML page in files panel ([#1456](https://github.com/adobe/da-live/issues/1456)) ([c6d7979](https://github.com/adobe/da-live/commit/c6d79793a57e0310ce505070f8871d09cf8cfeb9)), closes [#1363](https://github.com/adobe/da-live/issues/1363)
+* **ew:** scroll block library previews to variant headings ([#1420](https://github.com/adobe/da-live/issues/1420)) ([96ee337](https://github.com/adobe/da-live/commit/96ee337a420892b623c02582f76c13401523bc70)), closes [#1225](https://github.com/adobe/da-live/issues/1225)
+
+## [1.11.2](https://github.com/adobe/da-live/compare/v1.11.1...v1.11.2) (2026-10-21)
+
+
+### Bug Fixes
+
+* **canvas:** align tool panel toggle with toolbar ([#1466](https://github.com/adobe/da-live/issues/1466)) ([4b56c09](https://github.com/adobe/da-live/commit/4b56c09da46a7a2be127c73b0b6601ce11338d19))
+
 ## [1.11.1](https://github.com/adobe/da-live/compare/v1.11.0...v1.11.1) (2026-10-20)
 
 

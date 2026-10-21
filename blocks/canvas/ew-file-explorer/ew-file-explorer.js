@@ -531,7 +531,7 @@ class EwFileExplorer extends LitElement {
     item, depth, posinset, setsize, expanded, hint, description,
   }) {
     const isDir = item.type === 'directory';
-    const selected = !isDir && this._selectedPath === itemHashPath(item);
+    const selected = !isDir && item.ext === 'html' && this._selectedPath === itemHashPath(item);
 
     return html`
       <div role="row" class="row${isDir ? '' : ' file'}${selected ? ' selected' : ''}"
