@@ -448,6 +448,34 @@ describe('standalone workspace comparison', () => {
     expect(surface.shadowRoot.textContent).to.include('changed');
   });
 
+  it('broadcasts when a comparison is shown and when it closes, but not while it refreshes', async () => {
+    const states = [];
+    const unsubscribe = canvasBus.comparisonState.subscribe((state) => states.push(state));
+    try {
+      controller.close();
+      await controller.open({ candidate: 'document', baseline: 'live' });
+      await controller.open({ candidate: 'document', baseline: 'live' });
+      controller.close();
+      controller.close();
+    } finally {
+      unsubscribe();
+    }
+    expect(states).to.deep.equal([{ open: true }, { open: true }, { open: false }]);
+  });
+
+  it('broadcasts a close when the page changes under an open comparison', async () => {
+    await controller.open({ candidate: 'preview', baseline: 'live' });
+    const states = [];
+    const unsubscribe = canvasBus.comparisonState.subscribe((state) => states.push(state));
+    try {
+      context = { ...page, path: 'next' };
+      controller.contextChanged();
+    } finally {
+      unsubscribe();
+    }
+    expect(states).to.deep.equal([{ open: false }]);
+  });
+
   it('preserves the separately acknowledged save handshake without opening comparison', async () => {
     const result = await new Promise((resolve) => {
       canvasBus.comparisonRequest.emit({ action: 'saveDocument', context: page, resolve });
