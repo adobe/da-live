@@ -201,6 +201,7 @@ export default class DaActionBar extends LitElement {
           <button
             class="close-circle"
             @click=${this.handleClear}
+            title="Unselect items"
             aria-label="Unselect items">
             ${icon('close')}
           </button>
@@ -209,12 +210,16 @@ export default class DaActionBar extends LitElement {
         <div class="da-action-bar-right-rail" role="toolbar">
           <button
             @click=${this.handleRename}
+            aria-label="Rename"
+            title="Rename"
             class="rename-button ${this._canRename ? '' : 'hide'} ${this.items.length === 1 ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
             ${icon('rename')}
             <span>Rename</span>
           </button>
           <button
             @click=${this.handleFavorite}
+            aria-label="Favorite"
+            title="Favorite"
             aria-pressed=${this.isFavorite ? 'true' : 'false'}
             class="favorite-button ${this.isFavorite ? 'is-favorited' : ''} ${this.items.length === 1 ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
             ${icon('favorite')}
@@ -222,6 +227,8 @@ export default class DaActionBar extends LitElement {
           </button>
           <button
             @click=${this.handleCopy}
+            aria-label="Copy"
+            title="Copy"
             data-shortcut="c"
             aria-keyshortcuts="Meta+C Control+C"
             ?disabled=${this._isCopying}
@@ -231,6 +238,8 @@ export default class DaActionBar extends LitElement {
           </button>
           <button
             @click=${this.handleMove}
+            aria-label="Cut"
+            title="Cut"
             data-shortcut="x"
             aria-keyshortcuts="Meta+X Control+X"
             ?disabled=${!this._canCut || this._isCopying}
@@ -240,6 +249,8 @@ export default class DaActionBar extends LitElement {
           </button>
           <button
             @click=${this.handlePaste}
+            aria-label="Paste"
+            title="Paste"
             data-shortcut="v"
             aria-keyshortcuts="Meta+V Control+V"
             ?disabled=${!this._canWrite || !this._isCopying}
@@ -249,12 +260,16 @@ export default class DaActionBar extends LitElement {
           </button>
           <button
             @click=${this.handleDelete}
+            aria-label="Delete"
+            title="Delete"
             class="delete-button ${this._canDelete ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
             ${icon('delete')}
             <span>Delete</span>
           </button>
           <button
             @click=${this.handlePreview}
+            aria-label="Preview"
+            title="Preview"
             ?disabled=${!!this.loading}
             class="preview-button ${this._canAemAction ? '' : 'hide'} ${this.loading === 'preview' ? 'loading' : ''}">
             ${icon('preview')}
@@ -262,6 +277,8 @@ export default class DaActionBar extends LitElement {
           </button>
           <button
             @click=${this.handlePublish}
+            aria-label="Publish"
+            title="Publish"
             ?disabled=${!!this.loading}
             class="publish-button ${this._canPublish ? '' : 'hide'} ${this.loading === 'publish' ? 'loading' : ''}">
             ${icon('publish')}
@@ -269,6 +286,8 @@ export default class DaActionBar extends LitElement {
           </button>
           <button
             @click=${this.handleShare}
+            aria-label="Share"
+            title="Share"
             class="share-button ${this._canShare ? '' : 'hide'}">
             ${icon('share')}
             <span>Share</span>
