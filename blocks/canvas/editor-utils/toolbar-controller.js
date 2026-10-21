@@ -109,7 +109,7 @@ function render() {
   // fresh view arrives via setDocView on the next load).
   if (state.docView) tb.view = state.docView;
   // The element renders a surface-appropriate button set: the wysiwyg iframe owns
-  // block-level structure, so it gets inline/link/image controls only.
+  // block type, lists and tables, but element deletion is shared by both surfaces.
   tb.activeSurface = state.activeSurface;
 
   const { activeSurface } = state;

@@ -6,9 +6,108 @@ import {
   getLinkInfoInSelection,
   selectionHasLink,
   canComment,
+  canDeleteElement,
+  deleteElement,
 } from '../../../../../blocks/canvas/editor-utils/command-helpers.js';
 
 const schema = getSchema();
+
+describe('deleteElement', () => {
+  const paragraph = (text) => schema.nodes.paragraph.create(null, text ? schema.text(text) : null);
+
+  function viewWith(nodes, select) {
+    const doc = schema.nodes.doc.create(null, nodes);
+    const view = {
+      state: EditorState.create({ schema, doc, selection: select(doc) }),
+      dispatch(tr) { this.state = this.state.apply(tr); },
+    };
+    return view;
+  }
+
+  it('deletes the whole paragraph at the caret, preserving its neighbors', () => {
+    const before = paragraph('before');
+    const after = paragraph('after');
+    const view = viewWith(
+      [before, paragraph('delete me'), after],
+      (doc) => TextSelection.create(doc, before.nodeSize + 3),
+    );
+    deleteElement(view);
+    expect(view.state.doc.toJSON().content).to.deep.equal([before.toJSON(), after.toJSON()]);
+    view.state.doc.check();
+  });
+
+  it('deletes a heading even when only part of its text is selected', () => {
+    const heading = schema.nodes.heading.create({ level: 2 }, schema.text('heading'));
+    const after = paragraph('after');
+    const view = viewWith([heading, after], (doc) => TextSelection.create(doc, 2, 4));
+    deleteElement(view);
+    expect(view.state.doc.firstChild.eq(after)).to.be.true;
+    expect(view.state.doc.childCount).to.equal(1);
+  });
+
+  it('keeps a valid editable document when deleting the only paragraph', () => {
+    const view = viewWith([paragraph('only')], (doc) => TextSelection.create(doc, 2));
+    deleteElement(view);
+    expect(view.state.doc.childCount).to.equal(1);
+    expect(view.state.doc.firstChild.type.name).to.equal('paragraph');
+    expect(view.state.doc.textContent).to.equal('');
+    view.state.doc.check();
+  });
+
+  it('deletes an empty paragraph', () => {
+    const after = paragraph('after');
+    const view = viewWith([paragraph(), after], (doc) => TextSelection.create(doc, 1));
+    deleteElement(view);
+    expect(view.state.doc.childCount).to.equal(1);
+    expect(view.state.doc.firstChild.eq(after)).to.be.true;
+  });
+
+  it('deletes a paragraph inside a blockquote without deleting its siblings', () => {
+    const after = paragraph('after');
+    const quote = schema.nodes.blockquote.create(null, [paragraph('delete me'), after]);
+    const view = viewWith([quote], (doc) => TextSelection.create(doc, 3));
+    deleteElement(view);
+    expect(view.state.doc.firstChild.type.name).to.equal('blockquote');
+    expect(view.state.doc.firstChild.childCount).to.equal(1);
+    expect(view.state.doc.firstChild.firstChild.eq(after)).to.be.true;
+    view.state.doc.check();
+  });
+
+  it('keeps table cells valid when deleting their only paragraph', () => {
+    const cell = schema.nodes.table_cell.create(null, paragraph('delete me'));
+    const row = schema.nodes.table_row.create(null, [cell, cell]);
+    const table = schema.nodes.table.create(null, row);
+    const view = viewWith([table], (doc) => TextSelection.create(doc, 5));
+    deleteElement(view);
+    const result = view.state.doc.firstChild.firstChild;
+    expect(result.childCount).to.equal(2);
+    expect(result.firstChild.textContent).to.equal('');
+    expect(result.lastChild.textContent).to.equal('delete me');
+    view.state.doc.check();
+  });
+
+  it('deletes only a selected image, preserving surrounding text', () => {
+    const image = schema.nodes.image.create({ src: '/x.png' });
+    const para = schema.nodes.paragraph.create(null, [schema.text('before'), image, schema.text('after')]);
+    const view = viewWith([para], (doc) => NodeSelection.create(doc, 7));
+    deleteElement(view);
+    expect(view.state.doc.firstChild.textContent).to.equal('beforeafter');
+    expect(view.state.doc.firstChild.childCount).to.equal(1);
+    view.state.doc.check();
+  });
+
+  it('does not delete multiple elements for a selection spanning paragraphs', () => {
+    const first = paragraph('first');
+    const view = viewWith(
+      [first, paragraph('second')],
+      (doc) => TextSelection.create(doc, 2, first.nodeSize + 3),
+    );
+    const original = view.state.doc;
+    expect(canDeleteElement(view.state)).to.be.false;
+    deleteElement(view);
+    expect(view.state.doc).to.equal(original);
+  });
+});
 
 function stateWithLink({ href = 'https://example.com', text = 'hello', cursorPos = 3 } = {}) {
   const linkMark = schema.marks.link.create({ href });

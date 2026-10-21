@@ -152,6 +152,23 @@ export function isImageNodeSelected({ selection }) {
   return selection?.node?.type.name === 'image';
 }
 
+function selectedElementRange({ selection }) {
+  const { node, from, to, $from, $to } = selection;
+  if (node) return { from, to };
+  if (!$from.sameParent($to) || !$from.parent.isTextblock) return null;
+  return { from: $from.before(), to: $from.after() };
+}
+
+export function canDeleteElement(state) {
+  return selectedElementRange(state) !== null;
+}
+
+export function deleteElement(view) {
+  const range = selectedElementRange(view.state);
+  if (!range) return;
+  view.dispatch(view.state.tr.delete(range.from, range.to).scrollIntoView());
+}
+
 /* ---- Link queries ---- */
 
 function findLinkInRange(state) {

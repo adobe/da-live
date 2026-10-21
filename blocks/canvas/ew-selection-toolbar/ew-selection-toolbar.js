@@ -26,6 +26,7 @@ const TABLE_ITEMS = commandsFor('toolbar-table');
 const PICKER_DEFS = commandsFor('toolbar-picker');
 const LINK_ITEMS = commandsFor('toolbar-link');
 const IMAGE_ITEMS = commandsFor('toolbar-image');
+const DELETE_ITEMS = commandsFor('toolbar-delete');
 const COMMENT_ITEMS = commandsFor('toolbar-comment');
 
 const BLOCK_TYPE_LABELS = new Map(PICKER_DEFS.map(({ id, label }) => [id, label]));
@@ -393,8 +394,8 @@ class EwSelectionToolbar extends LitElement {
       : IMAGE_ITEMS;
 
     // `wysiwyg` marks sections offered while editing in the WYSIWYG iframe. The
-    // iframe owns block-level structure (block type, lists, tables), so those are
-    // doc-only; inline marks, links, image and comment controls stay in both.
+    // iframe owns block type, lists and tables, so those are doc-only; inline
+    // marks, links, image, delete and comment controls stay in both.
     const sections = [
       { items: PICKER_DEFS, wysiwyg: false, render: () => this._renderBlockTypePicker() },
       { items: MARK_ITEMS, wysiwyg: true, render: () => renderButtons(MARK_ITEMS) },
@@ -402,6 +403,7 @@ class EwSelectionToolbar extends LitElement {
       { items: TABLE_ITEMS, wysiwyg: false, render: () => this._renderTableMenu() },
       { items: LINK_ITEMS, wysiwyg: true, render: () => renderButtons(LINK_ITEMS) },
       { items: imageItems, wysiwyg: true, render: () => renderImageItems(imageItems) },
+      { items: DELETE_ITEMS, wysiwyg: true, render: () => renderButtons(DELETE_ITEMS) },
       { items: COMMENT_ITEMS, wysiwyg: true, render: () => renderButtons(COMMENT_ITEMS) },
     ];
 

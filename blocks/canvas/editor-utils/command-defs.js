@@ -30,6 +30,8 @@ import {
   removeLink,
   requestComment,
   canComment,
+  canDeleteElement,
+  deleteElement,
 } from './command-helpers.js';
 import { openLinkDialog, openAltDialog, triggerAddImage } from './selection-toolbar.js';
 import { blockItemsForQuery, hasLibrary, insertBlockItem, getState } from './block-slash.js';
@@ -342,7 +344,16 @@ export const COMMANDS = [
     apply: triggerAddImage,
   },
 
-  // Toolbar: comment (end of the toolbar, after image)
+  {
+    id: 'delete-element',
+    label: 'Delete element',
+    icon: iconName('delete'),
+    showIn: ['toolbar-delete'],
+    disabled: (state) => !canDeleteElement(state),
+    apply: deleteElement,
+  },
+
+  // Toolbar: comment (end of the toolbar, after delete)
   {
     id: 'add-comment',
     label: 'Comment',

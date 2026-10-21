@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { TextSelection, NodeSelection } from 'da-y-wrapper';
+import { TextSelection, NodeSelection, yUndo, yUndoPluginKey } from 'da-y-wrapper';
 import { setNx } from '../../../../../scripts/utils.js';
 import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.js';
 import { toolbarController } from '../../../../../blocks/canvas/editor-utils/toolbar-controller.js';
@@ -22,6 +22,7 @@ describe('ew-selection-toolbar buttons', () => {
 
   afterEach(async () => {
     toolbar._hasAemAssets = false;
+    toolbar.activeSurface = null;
     await toolbar.updateComplete;
     toolbar.view = null;
     destroyEditor(editor);
@@ -47,6 +48,49 @@ describe('ew-selection-toolbar buttons', () => {
     const { from, to } = editor.view.state.selection;
     return editor.view.state.doc.rangeHasMark(from, to, editor.view.state.schema.marks[name]);
   }
+
+  ['doc', 'wysiwyg'].forEach((surface) => {
+    it(`deletes the whole paragraph from the ${surface} toolbar and supports undo`, async () => {
+      const { state } = editor.view;
+      const { schema } = state;
+      const paragraph = (text) => schema.nodes.paragraph.create(null, schema.text(text));
+      const before = paragraph('before');
+      const after = paragraph('after');
+      editor.view.dispatch(state.tr.replaceWith(0, state.doc.content.size, [before, paragraph('delete me'), after]));
+      selectText(before.nodeSize + 2, before.nodeSize + 4);
+      toolbar.activeSurface = surface;
+      toolbar.requestUpdate();
+      await toolbar.updateComplete;
+
+      const button = toolbar.shadowRoot.querySelector('button[data-id="delete-element"]');
+      expect(button.getAttribute('aria-label')).to.equal('Delete element');
+      expect(button.disabled).to.be.false;
+      const original = editor.view.state.doc;
+      yUndoPluginKey.getState(editor.view.state).undoManager.stopCapturing();
+      await clickToolbarButton('delete-element');
+
+      expect(editor.view.state.doc.toJSON().content)
+        .to.deep.equal([before.toJSON(), after.toJSON()]);
+      yUndo(editor.view.state);
+      expect(editor.view.state.doc.eq(original)).to.be.true;
+    });
+  });
+
+  it('disables deletion when the selection spans multiple elements', async () => {
+    const { state } = editor.view;
+    const paragraph = (text) => state.schema.nodes.paragraph.create(null, state.schema.text(text));
+    const first = paragraph('first');
+    editor.view.dispatch(state.tr.replaceWith(0, state.doc.content.size, [first, paragraph('second')]));
+    selectText(2, first.nodeSize + 3);
+    toolbar.requestUpdate();
+    await toolbar.updateComplete;
+
+    const button = toolbar.shadowRoot.querySelector('button[data-id="delete-element"]');
+    expect(button.disabled).to.be.true;
+    const original = editor.view.state.doc;
+    button.click();
+    expect(editor.view.state.doc).to.equal(original);
+  });
 
   it('applies superscript to the selected range', async () => {
     setText('hello');
@@ -78,6 +122,17 @@ describe('ew-selection-toolbar buttons', () => {
     const sel = NodeSelection.create(editor.view.state.doc, imgPos);
     editor.view.dispatch(editor.view.state.tr.setSelection(sel));
   }
+
+  it('deletes a selected image', async () => {
+    selectImage();
+    toolbar.requestUpdate();
+    await toolbar.updateComplete;
+
+    await clickToolbarButton('delete-element');
+
+    expect(editor.view.state.doc.firstChild.type.name).to.equal('paragraph');
+    expect(editor.view.state.doc.firstChild.childCount).to.equal(0);
+  });
 
   it('opens the alt dialog with the current alt when image-alt-text is clicked', async () => {
     selectImage({ src: '/x.png', alt: 'Existing alt' });
