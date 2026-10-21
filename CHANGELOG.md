@@ -1,3 +1,10 @@
+## [1.12.2](https://github.com/adobe/da-live/compare/v1.12.1...v1.12.2) (2026-10-21)
+
+
+### Bug Fixes
+
+* refresh and spinner icons not loading ([#1472](https://github.com/adobe/da-live/issues/1472)) ([f6b392f](https://github.com/adobe/da-live/commit/f6b392f35101842549aaf6505b048b5319586a07))
+
 ## [1.12.1](https://github.com/adobe/da-live/compare/v1.12.0...v1.12.1) (2026-10-21)
 
 
