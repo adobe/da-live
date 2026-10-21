@@ -704,6 +704,14 @@ describe('getCanvasToolPanelViews', () => {
     const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
     expect(views.map((v) => v.id)).to.include('metadata');
   });
+
+  it('ignores a custom Preflight configured in the prepare sheet', async () => {
+    setDaConfigs([{ prepare: { data: [{ title: 'Preflight', path: 'https://example.com/pf' }] } }]);
+    const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
+    const preflight = views.find((v) => v.id === 'preflight');
+    expect(preflight).to.include({ label: 'Preflight', firstParty: true });
+    expect(preflight.cacheKey).to.equal(undefined);
+  });
 });
 
 describe('EW panel helpers fetchExtensions', () => {
