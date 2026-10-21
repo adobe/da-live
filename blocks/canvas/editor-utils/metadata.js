@@ -95,7 +95,7 @@ export function readMetadataRows(view) {
   return rows;
 }
 
-function findMetadataValueCell(view, key) {
+export function findMetadataValueCell(view, key) {
   const found = findMetadataTable(view);
   const match = found && findMetadataRow(found.node, key);
   return match ? valueCell(found.pos, match.row, match.offset) : null;

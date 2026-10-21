@@ -5,7 +5,7 @@ import { canvasBus } from '../utils/canvas-bus.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import {
   readMetadataRows, setMetadataValue, addMetadataRow, deleteMetadataRow,
-  findMetadataImage, setMetadataImage, selectMetadataImageTarget,
+  findMetadataImage, findMetadataValueCell, setMetadataImage, selectMetadataImageTarget,
 } from '../editor-utils/metadata.js';
 import { buildMetadataFields, resolveMetadataFields, formatJsonValue, compactJsonValue, isValidJson } from '../editor-utils/metadata-fields.js';
 import { loadBlockOptions } from '../ew-panel-extensions/helpers.js';
@@ -180,19 +180,22 @@ class EwPageMetadata extends LitElement {
     this._showAddDialog = false;
   }
 
-  // Pins an image change to the page and row it started on, and that row's current image.
+  // Pins an image change to the page and to the row's value cell as it was when the change
+  // started. Doc nodes are immutable, so an unchanged cell also means an unchanged image;
+  // a missing row is pinned as null, so adding it in the meantime also cancels the change.
   _captureImageTarget(field) {
     const { view, sourceUrl } = getExtensionsBridge();
     if (!view || !this._canWrite || field.type !== 'image') return null;
-    const image = findMetadataImage(view, field.key)?.node ?? null;
-    return { view, sourceUrl, key: field.key, image };
+    const cell = findMetadataValueCell(view, field.key)?.node ?? null;
+    const hasImage = !!findMetadataImage(view, field.key);
+    return { view, sourceUrl, key: field.key, cell, hasImage };
   }
 
   _isImageTargetCurrent(target) {
     const { view, sourceUrl } = getExtensionsBridge();
     return this.isConnected && !!target && view === target.view && sourceUrl === target.sourceUrl
       && view.editable !== false
-      && (findMetadataImage(view, target.key)?.node ?? null) === target.image;
+      && (findMetadataValueCell(view, target.key)?.node ?? null) === target.cell;
   }
 
   _triggerImageUpload(field) {
@@ -398,7 +401,7 @@ class EwPageMetadata extends LitElement {
         ${this._showAddDialog ? this._renderAddDialog() : nothing}
         ${this._pendingDeleteKey != null ? this._renderDeleteDialog() : nothing}
         ${this._assetTarget ? html`
-          <nx-dialog title=${this._assetTarget.image ? 'Replace image' : 'Add image'}
+          <nx-dialog title=${this._assetTarget.hasImage ? 'Replace image' : 'Add image'}
             @close=${() => { this._assetTarget = null; }}>
             <div class="ew-pm-assets"></div>
           </nx-dialog>` : nothing}

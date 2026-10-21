@@ -11,13 +11,19 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 let getExtensionsBridge;
 let findMetadataImage;
 let readMetadataRows;
+let setMetadataValue;
+let deleteMetadataRow;
 let setRepositoryConfig;
 let setSelection;
 
 before(async () => {
   await import('../../../../../blocks/canvas/ew-page-metadata/ew-page-metadata.js');
   ({ getExtensionsBridge } = await import('../../../../../blocks/canvas/editor-utils/extensions-bridge.js'));
-  ({ findMetadataImage, readMetadataRows } = await import('../../../../../blocks/canvas/editor-utils/metadata.js'));
+  const metadata = await import('../../../../../blocks/canvas/editor-utils/metadata.js');
+  findMetadataImage = metadata.findMetadataImage;
+  readMetadataRows = metadata.readMetadataRows;
+  setMetadataValue = metadata.setMetadataValue;
+  deleteMetadataRow = metadata.deleteMetadataRow;
   // Same module URLs as aem-assets.js imports, so the fixtures share their state.
   ({ setRepositoryConfig } = await import(`${getNx2()}/utils/aem-assets/repository-config.js`));
   ({ setSelection } = await import(`${getNx2()}/utils/aem-assets/selection.js`));
@@ -621,28 +627,56 @@ describe('ew-page-metadata', () => {
       expect(fetchStub.getCalls().some((call) => call.args[1]?.method === 'POST')).to.equal(false);
     });
 
+    // Starts an upload for `key`, runs `change` while it is in flight, then lets it finish.
+    async function uploadDuring(key, change) {
+      const target = el._captureImageTarget(field(key));
+      let finish;
+      const started = new Promise((resolve) => {
+        fetchStub.callsFake(async () => new Promise((done) => {
+          finish = done;
+          resolve();
+        }));
+      });
+      const uploading = el._uploadImage(field(key), target, png());
+      await started;
+      change();
+      finish(new Response(JSON.stringify({ source: { contentUrl: './media_stale.png' } }), { status: 201 }));
+      await uploading;
+    }
+
     [false, true].forEach((navigate) => {
       it(`does not apply an upload after ${navigate ? 'navigation' : 'a concurrent image change'}`, async () => {
         await loadImageDoc();
         const { view } = bridge;
-        const target = el._captureImageTarget(field('Image'));
-        let finish;
-        let start;
-        const started = new Promise((resolve) => { start = resolve; });
-        fetchStub.callsFake(async () => new Promise((resolve) => {
-          finish = resolve;
-          start();
-        }));
-        const uploading = el._uploadImage(field('Image'), target, png());
-        await started;
-        if (navigate) bridge.view = null;
-        else {
+        await uploadDuring('Image', () => {
+          if (navigate) {
+            bridge.view = null;
+            return;
+          }
           const { pos, node } = findMetadataImage(view, 'Image');
           view.dispatch(view.state.tr.setNodeMarkup(pos, null, { ...node.attrs, src: '/other.png' }));
-        }
-        finish(new Response(JSON.stringify({ source: { contentUrl: './media_stale.png' } }), { status: 201 }));
-        await uploading;
+        });
         expect(findMetadataImage(view, 'Image').node.attrs.src).to.equal(navigate ? '/current.png' : '/other.png');
+      });
+    });
+
+    describe('while the first image upload is pending', () => {
+      beforeEach(() => loadImageDoc(
+        { type: 'doc', content: [metadataTableJSON([['Title', 'My Page'], ['image', 'keep']])] },
+        [IMAGE_FIELD],
+      ));
+
+      it('does not overwrite a metadata value changed in the meantime', async () => {
+        const { view } = bridge;
+        await uploadDuring('image', () => setMetadataValue(view, 'image', 'newer value'));
+        expect(readMetadataRows(view).find((row) => row.key === 'image')).to.include({ value: 'newer value' });
+        expect(findMetadataImage(view, 'image')).to.equal(null);
+      });
+
+      it('does not recreate a metadata row deleted in the meantime', async () => {
+        const { view } = bridge;
+        await uploadDuring('image', () => deleteMetadataRow(view, 'image'));
+        expect(readMetadataRows(view).some((row) => row.key === 'image')).to.equal(false);
       });
     });
 
@@ -698,6 +732,7 @@ describe('ew-page-metadata', () => {
       it('replaces the row image with the selected asset, wherever the cursor is', async () => {
         await loadImageDoc();
         const selector = await openAssets('Image');
+        expect(el.shadowRoot.querySelector('nx-dialog').getAttribute('title')).to.equal('Replace image');
         const { view } = bridge;
         view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 4)));
         await selector.handleSelection([asset]);
@@ -712,6 +747,7 @@ describe('ew-page-metadata', () => {
       it('fills an empty configured image field with the selected asset', async () => {
         await loadImageDoc({ type: 'doc', content: [metadataTableJSON([['Title', 'My Page']])] }, [IMAGE_FIELD]);
         const selector = await openAssets('image');
+        expect(el.shadowRoot.querySelector('nx-dialog').getAttribute('title')).to.equal('Add image');
         await selector.handleSelection([asset]);
         expect(findMetadataImage(bridge.view, 'image').node.attrs.src).to.equal(ASSET_SRC);
       });

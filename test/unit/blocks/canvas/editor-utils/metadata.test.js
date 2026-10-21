@@ -8,6 +8,7 @@ import {
   setMetadataValue,
   deleteMetadataRow,
   findMetadataImage,
+  findMetadataValueCell,
   setMetadataImage,
   selectMetadataImageTarget,
 } from '../../../../../blocks/canvas/editor-utils/metadata.js';
@@ -257,6 +258,32 @@ describe('metadata image rows', () => {
     expect(findMetadataImage(view, 'Title')).to.equal(null);
     expect(findMetadataImage(view, 'Nope')).to.equal(null);
     expect(findMetadataImage(null, 'Image')).to.equal(null);
+  });
+
+  it('finds a row value cell case-insensitively, with its doc position', () => {
+    const view = makeRealView(docWithImageRow([['Title', 'My Page']]));
+    const title = findMetadataValueCell(view, 'title');
+    expect(title.node.type.name).to.equal('table_cell');
+    expect(title.node.textContent).to.equal('My Page');
+    expect(view.state.doc.nodeAt(title.pos)).to.equal(title.node);
+    const image = findMetadataValueCell(view, 'IMAGE');
+    expect(view.state.doc.nodeAt(image.pos)).to.equal(image.node);
+    expect(image.node.firstChild.firstChild.type.name).to.equal('image');
+  });
+
+  it('finds no value cell for a missing row or a page without metadata', () => {
+    expect(findMetadataValueCell(makeRealView(docWithImageRow([])), 'Title')).to.equal(null);
+    const plain = makeRealView({ type: 'doc', content: [{ type: 'paragraph' }] });
+    expect(findMetadataValueCell(plain, 'Title')).to.equal(null);
+  });
+
+  it('keeps an unchanged value cell as the same node across edits to other rows', () => {
+    const view = makeRealView(docWithImageRow([['Title', 'My Page']]));
+    const before = findMetadataValueCell(view, 'Image').node;
+    setMetadataValue(view, 'Title', 'Renamed');
+    expect(findMetadataValueCell(view, 'Image').node).to.equal(before);
+    setMetadataImage(view, 'Image', { src: './media_new.png' });
+    expect(findMetadataValueCell(view, 'Image').node).not.to.equal(before);
   });
 
   it('replaces only the src of an existing image, keeping its other attributes', () => {
