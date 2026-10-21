@@ -91,8 +91,8 @@ export async function ingestBlocks(blocks) {
 export async function insertBlockItem(view, id) {
   const entry = store.entries.find((e) => e.id === id);
   if (!entry) return;
-  const { insertBlock } = await import('../ew-panel-extensions/helpers.js');
-  insertBlock(view, entry.dom);
+  const { insertLibraryBlock } = await import('../ew-panel-extensions/helpers.js');
+  insertLibraryBlock(view, entry.dom);
 }
 
 /**

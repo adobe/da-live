@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { getCommentsBridge } from '../editor-utils/comments-bridge.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import {
@@ -12,8 +12,8 @@ const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
 
-const [base, style] = await Promise.all([
-  loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href),
+const [buttons, style] = await Promise.all([
+  loadStyle(`${getNx2()}/styles/buttons.css`),
   loadStyle(import.meta.url),
 ]);
 
@@ -36,7 +36,7 @@ class EwToolPanel extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [base, style];
+    this.shadowRoot.adoptedStyleSheets = [buttons, style];
     this._bindCommentCountUpdates();
     this._onRailToggle = () => this._broadcastActiveView();
     document.addEventListener(PANEL_EVENT.OPEN, this._onRailToggle);
