@@ -74,7 +74,7 @@ h1 {
   text-align: start;
 }
 
-.composer::before, .composer::after, .composer-surface {
+.composer::before, .composer-surface {
   content: "";
   position: absolute;
   pointer-events: none;
@@ -85,29 +85,17 @@ h1 {
   z-index: -2;
   border-radius: 30px;
   backdrop-filter: blur(4px);
-  background: linear-gradient(to top, light-dark(#ffffff7a, #272a32b3), light-dark(#fff, #30333b));
-  box-shadow: 0 2px 4px #ec69ff1a;
-}
-
-.composer::after {
-  inset: 6px -7px -6px -6px;
-  z-index: -3;
-  border-radius: 30px;
-  background: linear-gradient(to right, #ec69ff99, #ff513d80 37.316%, #ffa22366 76.741%);
-  opacity: 0.32;
-  filter: blur(8px);
+  background: linear-gradient(to top, light-dark(#ffffff7a, #3030307a), light-dark(#fff, #303030));
+  box-shadow: 0 2px 4px #00000008;
 }
 
 .composer-surface {
   inset: 0;
   z-index: -1;
-  border: 1px solid #ec69ff1a;
+  border: 1px solid light-dark(#0000000f, #ffffff0f);
   border-radius: inherit;
-  background:
-    linear-gradient(to bottom, light-dark(#fff6, #ffffff03) 37.305%, light-dark(#ffffff21, #ffffff02) 83.398%),
-    radial-gradient(ellipse at 100% 100%, #ebeeff29, #fad3ff29 34.964%, #ffebe829 81.972%, #ffeccf29),
-    light-dark(#fffc, #22252dcc);
-  box-shadow: 0 -3px 10px 1px #ec69ff0d, inset 0 6px 15px #ffffff0a, inset 0 -5px 21.6px #ffffff0a;
+  background: light-dark(#fffc, #222c);
+  box-shadow: 0 8px 32px #00000008, inset 0 24px 32px #ffffff0a, inset 0 -5px 20px #ffffff0a;
 }
 
 .composer-input {
@@ -127,9 +115,73 @@ h1 {
   mask: url('/blocks/landing/coworker.svg') center / 20px no-repeat;
 }
 
-.composer:focus-within {
-  outline: 2px solid var(--s2-blue-800);
-  outline-offset: 4px;
+.composer:focus-within:not(.is-dropzone)::before {
+  backdrop-filter: none;
+  background: light-dark(#ffffff7a, #3030307a);
+  box-shadow: 0 2px 4px #0000000f;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .composer:has(textarea:enabled):hover:not(:focus-within, .is-dropzone)::before {
+    box-shadow: 0 2px 4px #ec69ff1a;
+  }
+
+  .composer:has(textarea:enabled):hover:not(:focus-within, .is-dropzone)::after {
+    content: "";
+    position: absolute;
+    inset: 6px -7px -6px -6px;
+    z-index: -3;
+    pointer-events: none;
+    border-radius: 30px;
+    background: linear-gradient(90deg, #ec69ff99, #ff513d80 37.316%, #ffa22366 76.741%);
+    filter: blur(8px);
+    opacity: 0.2;
+  }
+
+  .composer:has(textarea:enabled):hover:not(:focus-within, .is-dropzone) .composer-surface {
+    overflow: clip;
+    border-color: #ec69ff1a;
+    background:
+      linear-gradient(to bottom, light-dark(#fff6, #ffffff0a) 37.305%, light-dark(#ffffff21, #ffffff03) 83.398%),
+      radial-gradient(ellipse at bottom right,
+        light-dark(#ebeeff52, #ebeeff29),
+        light-dark(#fad3ff52, #fad3ff29) 34.964%,
+        light-dark(#ffebe852, #ffebe829) 81.972%,
+        light-dark(#ffeccf52, #ffeccf29)),
+      light-dark(#fffc, #222c);
+    box-shadow: 0 -3px 10px 1px #ec69ff0d, inset 0 6px 15px #ffffff0a,
+      inset 0 -5px 21.6px #ffffff0a, inset 0 24px 32px #ffffff0a;
+  }
+
+  .composer:has(textarea:enabled):hover:not(:focus-within, .is-dropzone) .composer-surface::before {
+    content: "";
+    position: absolute;
+    inset: 23px -1px -25px;
+    background: conic-gradient(from 90deg at 32.6% 50%,
+      transparent,
+      #fef4ff80 7.998%,
+      #fde9ff 15.995%,
+      #fef6ff 35.063%,
+      #ffe8f0 43.474%,
+      #fff4f880 54.857%,
+      transparent 66.241%);
+    filter: blur(40px);
+    opacity: 0.12;
+  }
+}
+
+.composer.is-dropzone .composer-surface {
+  border: 2px solid #7a6afd;
+  background: linear-gradient(#ec69ff1a, #ec69ff1a), light-dark(#fffc, #222c);
+  box-shadow: 0 8px 32px #00000008, inset 0 24px 32px #ffffff0a, inset 0 -5px 21.6px #ffffff0a;
+}
+
+@media (forced-colors: active) {
+  .composer.is-dropzone .composer-surface,
+  .composer:has(textarea:focus-visible) .composer-surface {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
 }
 
 textarea {

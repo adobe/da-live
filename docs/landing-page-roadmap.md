@@ -25,6 +25,10 @@ the smaller logo and replacement title remain on `lp` only.
   (`1852:85587`). Preserve an accessible click target and the existing header
   arrangement; do not restore the rejected replacement header. Implemented on
   `lp` only, intentionally excluded from the `devlive` integration.
+- [x] Use the Spectrum AI Toolkit Subtle prompt-field states: neutral idle and
+  focused surfaces, with a faint colored hover on fine pointers while enabled.
+  The blue-violet ring belongs on the inner surface only during file drag-over.
+  Integrated into `devlive` with dimensions, spacing and assistant handoff preserved.
 - [ ] Tighten the existing site-switcher styling against Figma `1852:84079`:
   compact 32px control, 14px bold label, pill border and 10px chevron. Review its
   open, selected and keyboard-focus states against the approved picker design.

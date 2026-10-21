@@ -15,6 +15,7 @@ const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { registerPanelSection, PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 const { ADOBE_AI_GUIDELINES_URL, MENU_OPTIONS } = await import(`${getNx()}/blocks/shared/chat/constants.js`);
 const { ADD_MENU_ITEMS } = await import(`${getNx()}/blocks/chat/constants.js`);
+const { createFileDropHandlers } = await import(`${getNx()}/blocks/shared/chat/dnd.js`);
 const nx = await import(`${getNx2()}/scripts/nx.js`);
 // PR #816 supplies live sizing; the opt-in page also works on the current shell.
 const sizing = nx.getUISize ? await import(`${getNx2()}/utils/ui-size.js`) : undefined;
@@ -65,12 +66,18 @@ export class DaLanding extends LitElement {
     _editor: { state: true },
     _chatError: { state: true },
     _handingOff: { state: true },
+    _dragging: { state: true },
     _modifiers: { state: true },
     _comments: { state: true },
     _commentsError: { state: true },
   };
 
   _sizing = sizing && new sizing.UISizeController(this);
+
+  _dnd = createFileDropHandlers({
+    onDragging: (dragging) => { this._dragging = dragging; },
+    onFiles: (files) => this.addFiles(files),
+  });
 
   _onStorage = ({ key }) => {
     if (key === 'da-favorites' || key === null) this.refreshFavorites();
@@ -96,6 +103,7 @@ export class DaLanding extends LitElement {
   }
 
   disconnectedCallback() {
+    this._dragging = false;
     this._unsubscribe?.();
     this._request?.abort();
     this._sitePicker?.remove();
@@ -182,6 +190,7 @@ export class DaLanding extends LitElement {
     this._editor = undefined;
     this._chatError = undefined;
     this._handingOff = false;
+    this._dragging = false;
     this._error = undefined;
     this._actionError = undefined;
     this.loadSites();
@@ -375,20 +384,49 @@ export class DaLanding extends LitElement {
   }
 
   async attachFiles({ target }) {
-    const files = [...target.files];
+    try {
+      await this.addFiles([...target.files]);
+    } finally {
+      target.value = '';
+    }
+  }
+
+  handleFileDrag(event) {
+    if (!Array.from(event.dataTransfer?.types || []).includes('Files')) return undefined;
+    event.preventDefault();
+    if (!this._chatEnabled || this._handingOff) {
+      this._dragging = false;
+      event.dataTransfer.dropEffect = 'none';
+      return undefined;
+    }
+    const handlers = {
+      dragenter: this._dnd.onDragEnter,
+      dragleave: this._dnd.onDragLeave,
+      dragover: this._dnd.onDragOver,
+      drop: this._dnd.onDrop,
+    };
+    return handlers[event.type](event);
+  }
+
+  async addFiles(files) {
+    if (!this._chatEnabled || this._handingOff) return;
     if (!files.length) return;
     const scope = this._scope;
     try {
+      if (files.some((file) => !file.type?.startsWith('image/')
+        && !['application/pdf', 'text/markdown'].includes(file.type)
+        && !file.name?.endsWith('.md'))) {
+        throw new Error('Use images, PDFs or Markdown files.');
+      }
       const { buildAttachmentItems } = await import(`${getNx()}/blocks/shared/chat/files.js`);
       const attachments = await buildAttachmentItems(files);
-      if (!attachments.length || this._scope !== scope || !this.isConnected) return;
+      if (this._scope !== scope || !this.isConnected) return;
+      if (attachments.length !== files.length) throw new Error('Some files could not be read or exceed the attachment limit.');
       await this.openAssistant({ text: this._prompt.trim(), attachments });
     } catch (error) {
       if (this._scope === scope && this.isConnected) {
         this._chatError = `Could not attach files: ${error.message}`;
       }
-    } finally {
-      target.value = '';
     }
   }
 
@@ -528,7 +566,10 @@ export class DaLanding extends LitElement {
         ${this._siteError ? html`<p role="status">${this._siteError}</p>` : nothing}
         <section class="welcome" aria-labelledby="welcome-heading">
           <h1 id="welcome-heading">Hi${this._name ? html` ${this._name}` : nothing}, how can I help?</h1>
-          <form class="composer" @submit=${this.submitPrompt}>
+          <form class="composer ${this._dragging && this._chatEnabled && !this._handingOff ? 'is-dropzone' : ''}"
+            @submit=${this.submitPrompt} @dragenter=${this.handleFileDrag}
+            @dragleave=${this.handleFileDrag} @dragover=${this.handleFileDrag}
+            @drop=${this.handleFileDrag}>
             <div class="composer-surface" aria-hidden="true"></div>
             <div class="composer-input">
               <span class="coworker-icon" aria-hidden="true"></span>
