@@ -1,5 +1,6 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { DOMParser as PMDOMParser, DOMSerializer, NodeSelection, Slice, TextSelection } from 'da-y-wrapper';
+import { slug } from '../../../deps/github-slugger/dist/index.js';
 import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import { daFetch } from '../../shared/utils.js';
 import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
@@ -24,6 +25,32 @@ const REPLACE_CONTENT = '<content>';
 
 function isHeading(el) {
   return ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(el?.nodeName);
+}
+
+function addHeadingIds(doc) {
+  // Match helix-html-pipeline's add-heading-ids and IDSlugger. Every missing
+  // heading ID participates, even when the heading does not label a variant.
+  // https://github.com/adobe/helix-html-pipeline/blob/main/src/utils/id-slugger.js
+  const occurrences = new Map();
+  doc.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach((heading) => {
+    if (heading.id) return;
+    const text = heading.textContent.trim();
+    if (!text) return;
+
+    const original = slug(text).replace(/^\d+-+/, '');
+    let id = original;
+    while (occurrences.has(id)) {
+      const count = occurrences.get(original) + 1;
+      occurrences.set(original, count);
+      id = `${original}-${count}`;
+    }
+    occurrences.set(id, 0);
+    heading.id = id;
+  });
+}
+
+function getHeadingAnchor(heading) {
+  return isHeading(heading) ? heading.id : undefined;
 }
 
 function getBlockName(className) {
@@ -113,6 +140,7 @@ function groupBlocks(elements) {
       blockGroup.dataset.isgroup = 'true';
       if (isHeading(el.previousElementSibling)) {
         blockGroup.dataset.groupheading = el.previousElementSibling.textContent;
+        blockGroup.dataset.groupanchor = getHeadingAnchor(el.previousElementSibling);
       }
       state.currentGroup = { blockGroup };
     } else if (el.classList?.contains('library-container-end') && state.currentGroup) {
@@ -174,6 +202,8 @@ function transformBlock(block) {
   } else {
     item = getBlockName(block.className || '');
   }
+  const anchor = block.dataset.groupanchor || getHeadingAnchor(headingSib);
+  if (anchor) item.anchor = anchor;
 
   // Extract and strip metadata before generating the block's dom, so it never
   // leaks into the content that gets copied/inserted or previewed.
@@ -199,6 +229,7 @@ export async function getBlockVariants(path) {
   const doc = await fetchAndParseHtml(path, isAemHosted);
   if (!doc) return [];
 
+  addHeadingIds(doc);
   decorateImages(doc.body, path);
   return groupBlocks(getSectionsAndBlocks(doc)).map(transformBlock);
 }
