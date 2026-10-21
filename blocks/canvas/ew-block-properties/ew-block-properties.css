@@ -276,7 +276,7 @@
 
 /* Mirrors ew-extensions' quick-blocks header so switching tabs keeps the same heading. */
 .quick-header {
-  padding: 0 var(--s2-spacing-200);
+  padding: 12px 16px;
 }
 
 .quick-header h1 {
