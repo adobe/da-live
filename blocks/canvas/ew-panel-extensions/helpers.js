@@ -1,9 +1,10 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { DOMParser as PMDOMParser, DOMSerializer, NodeSelection, Slice, TextSelection } from 'da-y-wrapper';
 import { slug } from '../../../deps/github-slugger/dist/index.js';
-import { getNx, getNx2Api } from '../../../scripts/utils.js';
-import { daFetch } from '../../shared/utils.js';
-import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
+import { getNx, getNx2Api, sanitizeName } from '../../../scripts/utils.js';
+import { daFetch, getAuthToken } from '../../shared/utils.js';
+import { CON_ORIGIN } from '../../shared/constants.js';
+import { getPreviewProxyDetails, ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
 import { getPreviewOrigin } from '../editor-utils/editor-utils.js';
 import { getCanvasBranch } from '../utils/branch.js';
 import { htmlToProse } from '../../edit/utils/helpers.js';
@@ -15,9 +16,17 @@ const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { fetchDaConfigs, getFirstSheet } = await import(`${getNx()}/utils/daConfig.js`);
 
 const ref = new URLSearchParams(window.location.search).get('ref') || 'main';
+const branch = sanitizeName(ref, false, false) || 'main';
 
 const AEM_ORIGINS = ['hlx.page', 'hlx.live', 'aem.page', 'aem.live'];
 const REPLACE_CONTENT = '<content>';
+const blockLibraryCache = new Map();
+const librarySessions = new Map();
+const CONTENT_HOSTS = new Set(['content.da.live', 'stage-content.da.live']);
+
+export const LIBRARY_AUTH_MESSAGE = 'Library access was denied. Check that you are signed in '
+  + 'to DA and have access to this site. For a library hosted by another organization, open '
+  + 'its preview and sign in with AEM Sidekick, then reopen the library.';
 
 // ---------------------------------------------------------------------------
 // Block HTML parsing — ported from da-live helpers/index.js
@@ -94,26 +103,146 @@ function getBlockTableHtml(block) {
   return table;
 }
 
-function decorateImages(element, path) {
-  try {
-    const { origin } = new URL(path);
-    element.querySelectorAll('img').forEach((img) => {
-      if (img.getAttribute('src')?.startsWith('./')) {
-        img.src = `${origin}/${img.src.split('/').pop()}`;
-      }
-      const ratio = img.width > 200 ? 200 / img.width : 1;
-      img.width = Math.round(img.width * ratio);
-      img.height = Math.round(img.height * ratio);
-    });
-  } catch { /* leave images as-is */ }
+function decorateImages(element) {
+  element.querySelectorAll('img').forEach((img) => {
+    const ratio = img.width > 200 ? 200 / img.width : 1;
+    img.width = Math.round(img.width * ratio);
+    img.height = Math.round(img.height * ratio);
+  });
 }
 
-async function fetchAndParseHtml(path, isAemHosted) {
+// ---------------------------------------------------------------------------
+// DA Preview Proxy — library content on protected sites
+// ---------------------------------------------------------------------------
+
+function libraryProxyOptions({ org, site, branch: sourceBranch = branch } = {}) {
+  return { org, site, currentOrg: org, branch: sourceBranch, getUrl: getPreviewOrigin };
+}
+
+function libraryContentUrl(path, { org, site, branch: sourceBranch = branch } = {}) {
+  if (!path.startsWith('/') || !org || !site) return path;
+  const origin = ref === 'local' ? 'http://localhost:3000' : `https://${sourceBranch}--${site}--${org}.aem.live`;
+  return new URL(path, origin).href;
+}
+
+function resolveLibraryImages(element, path, context, { variant = false } = {}) {
+  const source = new URL(libraryContentUrl(path, context), window.location.href);
+  const isAemSource = AEM_ORIGINS.some((domain) => source.hostname.endsWith(`.${domain}`));
+  const isProxySource = /\.(?:stage-)?preview\.da\.live$/.test(source.hostname);
+  const isContentSource = CONTENT_HOSTS.has(source.hostname);
+  const proxyOpts = libraryProxyOptions(context);
+  const details = getPreviewProxyDetails(source.href, { ...proxyOpts, currentOrg: undefined });
+  const proxied = isProxySource || (proxyOpts.currentOrg
+    && Boolean(getPreviewProxyDetails(source.href, proxyOpts).org));
+  // Extensionless proxy pages are composed from DA source; .html/.plain.html use AEM.
+  const aemHtml = proxied && /\.html$/i.test(source.pathname);
+  const isDaSource = (isContentSource || proxied) && !aemHtml;
+  let contentRoot;
+  if (isDaSource && details.org) {
+    const origin = isContentSource ? source.origin : CON_ORIGIN;
+    contentRoot = `${origin}/${details.org}/${details.site}`;
+    source.href = `${contentRoot}${details.pathname}${source.search}${source.hash}`;
+  } else if (!isAemSource && proxied && details.org) {
+    source.href = `https://${details.branch}--${details.site}--${details.org}.aem.page${details.pathname}${source.search}${source.hash}`;
+  }
+  element.querySelectorAll('img[src]').forEach((img) => {
+    const src = img.getAttribute('src');
+    if (!src) return;
+    try {
+      const base = new URL(source.href);
+      const { daImgHost: storedHost } = img.dataset;
+      if (contentRoot && CONTENT_HOSTS.has(storedHost)) {
+        base.protocol = 'https:';
+        base.hostname = storedHost;
+        base.port = '';
+      }
+      if (contentRoot && src.startsWith('/') && !src.startsWith('//')) {
+        // DA composition strips the org/site prefix from stored content image URLs.
+        const prefix = `/${details.org}/${details.site}`;
+        const imagePath = src.startsWith(`${prefix}/`) ? src : `${prefix}${src}`;
+        img.setAttribute('src', new URL(imagePath, base.origin).href);
+      } else {
+        const rootMedia = !isDaSource && (isAemSource || proxied)
+          && (variant ? src.startsWith('./') : /^\.\/media_[^/?#]+(?:[?#].*)?$/.test(src));
+        img.setAttribute('src', new URL(src, rootMedia ? `${base.origin}/` : base.href).href);
+      }
+      img.removeAttribute('data-da-img-host');
+    } catch { /* a malformed image URL must not discard the entire block/template */ }
+  });
+}
+
+async function ensureLibraryPreviewSession(url, context) {
+  const proxyOpts = libraryProxyOptions(context);
+  const details = getPreviewProxyDetails(url, proxyOpts);
+  if (!proxyOpts.currentOrg || !details.org) return undefined;
+  // The origin includes org/site/branch and the stage/production environment.
+  const { origin } = new URL(details.url);
+  const token = await getAuthToken();
+  if (!token) {
+    librarySessions.delete(origin);
+    return undefined;
+  }
+  let session = librarySessions.get(origin);
+  if (!session || session.token !== token) {
+    session = { origin, token };
+    session.pending = ensurePreviewProxySession(url, proxyOpts).then((ok) => {
+      if (!ok && librarySessions.get(origin) === session) librarySessions.delete(origin);
+      return ok;
+    });
+    librarySessions.set(origin, session);
+  }
+  return await session.pending ? session : undefined;
+}
+
+function invalidateLibrarySession(session) {
+  if (session && librarySessions.get(session.origin) === session) {
+    librarySessions.delete(session.origin);
+  }
+}
+
+const isAuthFailure = (resp) => resp.status === 401 || resp.status === 403;
+
+/**
+ * Fetch library content, routing AEM-hosted URLs through the DA Preview Proxy.
+ * Only proxy requests carry credentials: aem.page/aem.live answer with
+ * `Access-Control-Allow-Origin: *`, which a credentialed request would fail.
+ */
+async function libraryFetch(href, context, opts = {}) {
+  const proxyOpts = libraryProxyOptions(context);
+  const source = libraryContentUrl(href, context);
+  if (!proxyOpts.currentOrg) return daFetch(source, opts);
+  const details = getPreviewProxyDetails(source, proxyOpts);
+  if (!details.org) return daFetch(source, opts);
+  let session = await ensureLibraryPreviewSession(source, context);
+  let resp = await daFetch(details.url, { ...opts, credentials: 'include' });
+  if (isAuthFailure(resp) && session) {
+    invalidateLibrarySession(session);
+    session = await ensureLibraryPreviewSession(source, context);
+    if (session) {
+      resp = await daFetch(details.url, { ...opts, credentials: 'include' });
+      if (isAuthFailure(resp)) invalidateLibrarySession(session);
+    }
+  }
+  return resp;
+}
+
+function plainHtmlUrl(path) {
+  const url = new URL(path);
+  url.pathname = `${url.pathname}.plain.html`;
+  return url.href;
+}
+
+async function fetchAndParseHtml(path, isAemHosted, context) {
   try {
-    const resp = await daFetch(`${path}${isAemHosted ? '.plain.html' : ''}`, { noRedirect: true });
-    if (!resp.ok) return null;
-    return new window.DOMParser().parseFromString(await resp.text(), 'text/html');
-  } catch { return null; }
+    const source = isAemHosted ? plainHtmlUrl(path) : path;
+    const resp = await libraryFetch(source, context, { noRedirect: true });
+    if (!resp.ok) return { authError: isAuthFailure(resp) };
+    return { doc: new window.DOMParser().parseFromString(await resp.text(), 'text/html') };
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn('[ew-library] Unable to load variant HTML', error);
+    return {};
+  }
 }
 
 function getSectionsAndBlocks(doc) {
@@ -220,17 +349,28 @@ function transformBlock(block) {
   return item;
 }
 
-export async function getBlockVariants(path) {
+export async function getBlockVariants(path, context) {
+  const source = libraryContentUrl(path, context);
   let isAemHosted = false;
   try {
-    isAemHosted = AEM_ORIGINS.some((o) => new URL(path).origin.endsWith(o));
+    isAemHosted = AEM_ORIGINS.some((o) => new URL(source).hostname.endsWith(`.${o}`));
   } catch { /* relative path */ }
 
-  const doc = await fetchAndParseHtml(path, isAemHosted);
-  if (!doc) return [];
+  const { doc, authError } = await fetchAndParseHtml(source, isAemHosted, context);
+  if (!doc) {
+    const variants = [];
+    if (authError) {
+      variants.authError = true;
+      blockLibraryCache.delete(`${context?.org}/${context?.site}`);
+    }
+    return variants;
+  }
 
   addHeadingIds(doc);
-  decorateImages(doc.body, path);
+  // Resolve against the actual HTML source, never the authenticated proxy origin.
+  const imageSource = isAemHosted ? plainHtmlUrl(source) : source;
+  resolveLibraryImages(doc.body, imageSource, context, { variant: true });
+  decorateImages(doc.body);
   return groupBlocks(getSectionsAndBlocks(doc)).map(transformBlock);
 }
 
@@ -269,7 +409,7 @@ function calculateSources(org, site, sheetPath) {
     const trimmed = p.trim();
     if (!trimmed.startsWith('/')) return trimmed;
     if (ref === 'local') return `http://localhost:3000${trimmed}`;
-    return `https://${ref}--${site}--${org}.aem.live${trimmed}`;
+    return `https://${branch}--${site}--${org}.aem.live${trimmed}`;
   });
 }
 
@@ -333,26 +473,34 @@ export async function getBlocksExtension(org, site) {
 // Data fetching
 // ---------------------------------------------------------------------------
 
-export async function fetchBlocks(sources) {
+/**
+ * Fetch the blocks listed by the library sources. Access failures (401/403) set
+ * `authError: true` so callers can retry and explain an empty library.
+ */
+export async function fetchBlocks(sources, context) {
   const blocks = [];
+  let authError = false;
   for (const url of sources) {
     try {
-      const resp = await daFetch(url, { noRedirect: true });
+      const resp = await libraryFetch(url, context, { noRedirect: true });
+      if (!resp.ok && isAuthFailure(resp)) authError = true;
       if (resp.ok) {
         const json = await resp.json();
         const data = getFirstSheet(json) ?? (Array.isArray(json) ? json : []);
         data.forEach((row) => {
           if (row.name && row.path) {
-            blocks.push({ ...row, loadVariants: getBlockVariants(row.path) });
+            blocks.push({ ...row, loadVariants: getBlockVariants(row.path, context) });
           }
         });
       }
-    } catch { /* skip failed source */ }
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.warn('[ew-library] Unable to load block source', url, error);
+    }
   }
+  if (authError) blocks.authError = true;
   return blocks;
 }
-
-const blockLibraryCache = new Map();
 
 /**
  * Load — and memoize per org/site — the configured blocks library: the resolved
@@ -368,7 +516,9 @@ export function loadBlockLibrary(org, site) {
     const pending = (async () => {
       const ext = await getBlocksExtension(org, site);
       if (!ext) return { ext: null, blocks: [] };
-      const blocks = await fetchBlocks(ext.sources);
+      const blocks = await fetchBlocks(ext.sources, { org, site });
+      // Don't memoize an access failure: signing in should fix it without a reload.
+      if (blocks.authError) blockLibraryCache.delete(key);
       return { ext, blocks };
     })().catch((err) => {
       // Don't cache transient failures — allow a later retry.
@@ -382,6 +532,7 @@ export function loadBlockLibrary(org, site) {
 
 export function resetBlockLibraryCache() {
   blockLibraryCache.clear();
+  librarySessions.clear();
 }
 
 const librarySheetCache = new Map();
@@ -399,15 +550,21 @@ function loadLibrarySheet(org, site, sheet) {
       const ext = await getBlocksExtension(org, site);
       if (!ext) return [];
       const rows = [];
+      let authError = false;
       for (const url of ext.sources || []) {
         try {
-          const resp = await daFetch(url, { noRedirect: true });
+          const resp = await libraryFetch(url, { org, site }, { noRedirect: true });
+          if (!resp.ok && isAuthFailure(resp)) authError = true;
           if (resp.ok) {
             const json = await resp.json();
             if (Array.isArray(json?.[sheet]?.data)) rows.push(...json[sheet].data);
           }
-        } catch { /* skip failed source */ }
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.warn('[ew-library] Unable to load library sheet', url, error);
+        }
       }
+      if (authError) librarySheetCache.delete(key);
       return rows;
     })().catch((err) => {
       librarySheetCache.delete(key);
@@ -425,11 +582,14 @@ export function resetBlockOptionsCache() {
   librarySheetCache.clear();
 }
 
-export async function fetchItems(sources, format) {
+/** Like fetchBlocks, including the `authError` flag, for OOTB item sheets. */
+export async function fetchItems(sources, format, context) {
   const items = [];
+  let authError = false;
   for (const source of sources) {
     try {
-      const resp = await daFetch(source, { noRedirect: true });
+      const resp = await libraryFetch(source, context, { noRedirect: true });
+      if (!resp.ok && isAuthFailure(resp)) authError = true;
       if (resp.ok) {
         const json = await resp.json();
         const data = getFirstSheet(json) ?? (Array.isArray(json) ? json : []);
@@ -440,8 +600,12 @@ export async function fetchItems(sources, format) {
           items.push({ ...row, key: key ?? '', text });
         });
       }
-    } catch { /* skip failed source */ }
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.warn('[ew-library] Unable to load item source', source, error);
+    }
   }
+  if (authError) items.authError = true;
   return items;
 }
 
@@ -571,11 +735,15 @@ export function getEditorSelection(view) {
   return div.innerHTML;
 }
 
-export async function insertTemplate(view, url) {
-  const resp = await daFetch(url);
-  if (!resp.ok) return;
+export async function insertTemplate(view, url, context) {
+  const resp = await libraryFetch(url, context, { noRedirect: true });
+  if (!resp.ok) {
+    throw new Error(isAuthFailure(resp) ? LIBRARY_AUTH_MESSAGE : `Unable to load template (${resp.status}).`);
+  }
   const html = (await resp.text()).replace('class="template-metadata"', 'class="metadata"');
-  const { dom } = htmlToProse(html);
+  const doc = new window.DOMParser().parseFromString(html, 'text/html');
+  resolveLibraryImages(doc.body, url, context);
+  const { dom } = htmlToProse(doc.body.innerHTML);
   const parsed = PMDOMParser.fromSchema(view.state.schema).parse(dom);
   view.dispatch(view.state.tr.replaceSelectionWith(parsed).scrollIntoView());
 }
@@ -598,30 +766,57 @@ export async function getPreviewStatus({ org, site, pathname }) {
 }
 
 export function getItemPreviewUrl(item, { org, site }) {
-  const branch = getCanvasBranch({ org, site });
-  if (!branch) return null;
-  const url = new URL(item.path || item.value);
-  const { hostname, pathname } = url;
-
-  let itemOrg = org;
-  let itemSite = site;
-  let itemPath = pathname;
-
-  if (hostname.includes('.aem.')) {
-    const parts = hostname.split('.')[0].split('--').reverse();
-    [itemOrg, itemSite] = parts;
-  } else if (hostname.includes('content.da.live')) {
-    const segments = pathname.slice(1).split('/');
-    [itemOrg, itemSite] = segments;
-    itemPath = `/${segments.slice(2).join('/')}`;
+  const previewBranch = getCanvasBranch({ org, site });
+  if (!previewBranch) return null;
+  const context = { org, site, branch: previewBranch };
+  const input = libraryContentUrl(item.path || item.value, context);
+  const proxyOpts = libraryProxyOptions(context);
+  const target = getPreviewProxyDetails(input, proxyOpts);
+  const metadata = getPreviewProxyDetails(input, { ...proxyOpts, currentOrg: undefined });
+  if (target.org) {
+    // Item previews render with the canvas branch, not the library source's branch.
+    const { pathname, search, hash } = new URL(target.url);
+    target.url = `${getPreviewOrigin(target.org, target.site, previewBranch)}${pathname}${search}${hash}`;
+  } else if (metadata.org) {
+    // Cross-org item previews still need rendered HTML, not a raw DA source endpoint.
+    const { search, hash } = new URL(input);
+    target.url = `https://${previewBranch}--${metadata.site}--${metadata.org}.aem.page${metadata.pathname}${search}${hash}`;
   }
 
   return {
-    previewUrl: `https://${branch}--${itemSite}--${itemOrg}.aem.page${itemPath}`,
-    org: itemOrg,
-    site: itemSite,
-    pathname: itemPath,
+    previewUrl: target.url,
+    org: metadata.org,
+    site: metadata.site,
+    pathname: metadata.pathname,
   };
+}
+
+/**
+ * Resolve an item's preview details and make sure the proxy session cookie for
+ * that org/site/branch exists before the caller points an iframe at it.
+ */
+export async function ensureItemPreviewAccess(item, { org, site }) {
+  const details = getItemPreviewUrl(item, { org, site });
+  if (!details) return null;
+  if (details.org?.toLowerCase() === org?.toLowerCase() && org) {
+    let error;
+    try {
+      // Iframe HTTP failures are opaque to callers. Validate the browser cookie
+      // on every navigation, while reusing successful cookie exchanges.
+      const resp = await libraryFetch(details.previewUrl, { org, site }, {
+        method: 'HEAD',
+        cache: 'no-store',
+        noRedirect: true,
+      });
+      if (!resp.ok && resp.status !== 404) {
+        error = isAuthFailure(resp) ? LIBRARY_AUTH_MESSAGE : `Unable to load preview (${resp.status}).`;
+      }
+    } catch {
+      error = 'Unable to check preview access. Please try again.';
+    }
+    if (error) return { ...details, previewUrl: undefined, error };
+  }
+  return details;
 }
 
 // ---------------------------------------------------------------------------

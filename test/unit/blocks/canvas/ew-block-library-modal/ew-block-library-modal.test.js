@@ -14,14 +14,24 @@ try {
   window.fetch = savedFetch;
 }
 const { status } = await getNx2Api();
-const { getBlockVariants } = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
+const { getBlockVariants, resetBlockLibraryCache } = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
+
+function responseGate() {
+  let release;
+  let notify;
+  const response = new Promise((resolve) => { release = resolve; });
+  const ready = new Promise((resolve) => { notify = resolve; });
+  return { response, ready, release, notify };
+}
 
 describe('Block library variant preview navigation', () => {
   let modal;
   let savedStatusGet;
+  let savedIMS;
+  let savedNxIms;
   const block = { name: 'Hero', path: 'https://content.da.live/org/site/library/hero' };
   const branchState = { org: 'org', site: 'site', path: '/org/site/page', status: 'ready', branch: 'main' };
-  const previewUrl = 'https://main--site--org.aem.page/library/hero';
+  const previewUrl = 'https://main--site--org.stage-preview.da.live/library/hero';
   const variants = [
     { name: 'Wide', anchor: 'wide', dom: document.createElement('table') },
     { name: 'Narrow', anchor: 'narrow', description: 'A narrow hero' },
@@ -29,6 +39,12 @@ describe('Block library variant preview navigation', () => {
   ];
 
   beforeEach(async () => {
+    resetBlockLibraryCache();
+    savedIMS = window.adobeIMS;
+    savedNxIms = localStorage.getItem('nx-ims');
+    localStorage.setItem('nx-ims', 'true');
+    window.adobeIMS = { getAccessToken: () => ({ token: 'test-token' }) };
+    window.fetch = async () => new Response('');
     savedStatusGet = status.get;
     status.get = async () => new Response(JSON.stringify({ preview: { status: 200 } }));
     canvasBus.branchState.emit(branchState);
@@ -38,6 +54,7 @@ describe('Block library variant preview navigation', () => {
     modal._hashState = { org: 'org', site: 'site' };
     modal._expandedPath = block.path;
     modal._selectedPath = block.path;
+    modal._previewBlock = block;
     modal._previewInfo = { path: block.path, name: block.name, url: previewUrl, ok: true };
     await modal.updateComplete;
     await modal.updateComplete;
@@ -47,6 +64,10 @@ describe('Block library variant preview navigation', () => {
     modal.remove();
     canvasBus.branchState.emit({ path: null, status: 'pending' });
     status.get = savedStatusGet;
+    window.fetch = savedFetch;
+    if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+    if (savedNxIms === null) localStorage.removeItem('nx-ims');
+    else localStorage.setItem('nx-ims', savedNxIms);
   });
 
   function variantButtons() {
@@ -131,12 +152,13 @@ describe('Block library variant preview navigation', () => {
         <div class="hero"><div><div>third</div></div></div>
       </div></main>
     `;
+    const previousFetch = window.fetch;
     let parsedVariants;
     window.fetch = () => Promise.resolve(new Response(html));
     try {
       parsedVariants = await getBlockVariants(block.path);
     } finally {
-      window.fetch = savedFetch;
+      window.fetch = previousFetch;
     }
     modal._variantsByPath = new Map([[block.path, parsedVariants]]);
     await modal.updateComplete;
@@ -155,7 +177,7 @@ describe('Block library variant preview navigation', () => {
     modal._previewInfo = { path: '/other', name: 'Other', url: 'about:blank', ok: true };
     modal._search = 'wide';
     await modal.updateComplete;
-    variantButtons()[0].click();
+    await modal._selectVariant(block, variants[0]);
     expect(modal._selectedPath).to.equal(block.path);
     expect(modal._previewInfo.url).to.equal(`${previewUrl}#wide`);
     await modal.updateComplete;
@@ -165,51 +187,130 @@ describe('Block library variant preview navigation', () => {
   it('Uses the configured canvas branch when loading a variant preview', async () => {
     canvasBus.branchState.emit({ ...branchState, branch: 'Configured/Branch' });
     modal._previewInfo = null;
-    modal._selectVariant(block, variants[0]);
+    await modal._selectVariant(block, variants[0]);
     await modal.updateComplete;
     expect(modal._previewBlock).to.equal(block);
     expect(modal._previewInfo.url)
-      .to.equal('https://configured-branch--site--org.aem.page/library/hero#wide');
+      .to.equal('https://configured-branch--site--org.stage-preview.da.live/library/hero#wide');
   });
 
   it('Retries a selected variant preview when the canvas branch becomes ready', async () => {
     canvasBus.branchState.emit({ ...branchState, status: 'pending' });
     modal._previewInfo = null;
-    modal._selectVariant(block, variants[0]);
+    await modal._selectVariant(block, variants[0]);
     await modal.updateComplete;
     expect(modal._previewInfo.error).to.include('Preview branch unavailable');
     expect(modal.shadowRoot.querySelector('iframe')).to.be.null;
+    const gate = responseGate();
+    status.get = () => {
+      gate.notify();
+      return gate.response;
+    };
     canvasBus.branchState.emit(branchState);
+    await gate.ready;
+    gate.release(new Response(JSON.stringify({ preview: { status: 200 } })));
     await modal.updateComplete;
-    expect(modal._previewInfo.url).to.equal(previewUrl);
+    expect(modal._previewInfo.url).to.equal(`${previewUrl}#wide`);
     expect(modal.shadowRoot.querySelector('iframe')).to.exist;
   });
 
   it('Ignores a pending status result if the preview branch becomes unavailable', async () => {
-    let resolveStatus;
-    status.get = () => new Promise((resolve) => { resolveStatus = resolve; });
+    const gate = responseGate();
+    status.get = () => {
+      gate.notify();
+      return gate.response;
+    };
     const loading = modal._loadPreview(block, variants[0].anchor);
-    await Promise.resolve();
+    await gate.ready;
     canvasBus.branchState.emit({ ...branchState, status: 'error' });
-    resolveStatus(new Response(JSON.stringify({ preview: { status: 200 } })));
+    gate.release(new Response(JSON.stringify({ preview: { status: 200 } })));
     await loading;
+    await Promise.resolve();
     await modal.updateComplete;
     expect(modal._previewInfo.error).to.include('Preview branch unavailable');
     expect(modal.shadowRoot.querySelector('iframe')).to.be.null;
   });
 
   it('Applies preview status even when the variant changes while status is loading', async () => {
-    let resolveStatus;
-    status.get = () => new Promise((resolve) => { resolveStatus = resolve; });
+    const gate = responseGate();
+    status.get = () => {
+      gate.notify();
+      return gate.response;
+    };
     const loading = modal._loadPreview(block);
-    await Promise.resolve();
-    modal._selectVariant(block, variants[1]);
-    resolveStatus(new Response(JSON.stringify({ preview: { status: 404 } })));
+    await gate.ready;
+    await modal._selectVariant(block, variants[1]);
+    gate.release(new Response(JSON.stringify({ preview: { status: 404 } })));
     await loading;
     await modal.updateComplete;
     expect(modal._previewInfo.url).to.equal(`${previewUrl}#narrow`);
     expect(modal._previewInfo.ok).to.be.false;
     expect(modal.shadowRoot.querySelector('.modal-preview-error')).to.exist;
+  });
+
+  it('Waits for proxy authentication before loading a selected variant fragment', async () => {
+    const gate = responseGate();
+    const calls = [];
+    window.fetch = (url, options) => {
+      calls.push({ url, options });
+      if (url.endsWith('/gimme_cookie')) {
+        gate.notify();
+        return gate.response;
+      }
+      return Promise.resolve(new Response(''));
+    };
+    modal._previewInfo = null;
+    const loading = modal._selectVariant(block, variants[0]);
+    await gate.ready;
+    await modal.updateComplete;
+    expect(modal.shadowRoot.querySelector('iframe')).to.be.null;
+    gate.release(new Response(''));
+    await loading;
+    await modal.updateComplete;
+    expect(calls.map(({ url }) => url)).to.deep.equal([
+      'https://main--site--org.stage-preview.da.live/gimme_cookie',
+      previewUrl,
+    ]);
+    expect(calls[1].options.method).to.equal('HEAD');
+    expect(modal.shadowRoot.querySelector('iframe').getAttribute('src')).to.equal(`${previewUrl}#wide`);
+  });
+
+  it('Keeps the latest variant when authentication for the same block is pending', async () => {
+    const gate = responseGate();
+    window.fetch = (url) => {
+      if (url.endsWith('/gimme_cookie')) {
+        gate.notify();
+        return gate.response;
+      }
+      return Promise.resolve(new Response(''));
+    };
+    const loading = modal._loadPreview(block, variants[0].anchor);
+    await gate.ready;
+    await modal._selectVariant(block, variants[1]);
+    gate.release(new Response(''));
+    await loading;
+    expect(modal._previewInfo.url).to.equal(`${previewUrl}#narrow`);
+    expect(modal._previewInfo.ok).to.be.true;
+  });
+
+  it('Cancels another pending block preview when returning to a visible variant', async () => {
+    const gate = responseGate();
+    window.fetch = (url) => {
+      if (url.includes('--other--') && url.endsWith('/gimme_cookie')) {
+        gate.notify();
+        return gate.response;
+      }
+      return Promise.resolve(new Response(''));
+    };
+    const loading = modal._loadPreview({ name: 'Other', path: 'https://main--other--org.aem.page/other' });
+    await gate.ready;
+    await modal._selectVariant(block, variants[1]);
+    gate.release(new Response(''));
+    await loading;
+    expect(modal._previewBlock).to.equal(block);
+    expect(modal._selectedPath).to.equal(block.path);
+    expect(modal._previewInfo.url).to.equal(`${previewUrl}#narrow`);
+    expect(modal._previewInfo.ok).to.be.true;
   });
 
   it('Actually scrolls the iframe to a heading using native fragment navigation', async () => {

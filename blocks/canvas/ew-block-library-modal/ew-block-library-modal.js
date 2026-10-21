@@ -4,7 +4,8 @@ import getSheet from '../../shared/sheet.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import {
   loadBlockLibrary,
-  getItemPreviewUrl,
+  ensureItemPreviewAccess,
+  LIBRARY_AUTH_MESSAGE,
   getPreviewStatus,
 } from '../ew-panel-extensions/helpers.js';
 
@@ -72,15 +73,19 @@ class EwBlockLibraryModal extends LitElement {
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
     this._unsubBranch = canvasBus.branchState.subscribe((state) => {
       if (!state?.path) {
+        this._previewRequest = null;
         this._previewInfo = null;
         this._previewBlock = undefined;
-      } else if (this._previewBlock) this._loadPreview(this._previewBlock);
+      } else if (this._previewBlock) {
+        this._loadPreview(this._previewBlock, this._previewRequest?.anchor);
+      }
     });
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
+    this._previewRequest = null;
     this._unsubBranch?.();
   }
 
@@ -147,6 +152,8 @@ class EwBlockLibraryModal extends LitElement {
   }
 
   async _selectBlock(block) {
+    this._selectedPath = block.path;
+    this._loadPreview(block);
     const willExpand = this._expandedPath !== block.path;
     this._expandedPath = willExpand ? block.path : null;
     if (willExpand && !this._variantsByPath.has(block.path)) {
@@ -155,14 +162,13 @@ class EwBlockLibraryModal extends LitElement {
       next.set(block.path, variants ?? []);
       this._variantsByPath = next;
     }
-    this._selectedPath = block.path;
-    this._loadPreview(block);
   }
 
-  _selectVariant(block, variant) {
+  async _selectVariant(block, variant) {
     if (!variant.anchor) return;
     this._selectedPath = block.path;
-    if (this._previewInfo?.path === block.path) {
+    if (this._previewInfo?.path === block.path && this._previewBlock?.path === block.path) {
+      if (this._previewRequest) this._previewRequest.anchor = variant.anchor;
       const url = new URL(this._previewInfo.url);
       url.hash = encodeURIComponent(variant.anchor);
       if (url.href === this._previewInfo.url) {
@@ -171,32 +177,35 @@ class EwBlockLibraryModal extends LitElement {
       }
       this._previewInfo = { ...this._previewInfo, url: url.href };
     } else {
-      this._loadPreview(block, variant.anchor);
+      await this._loadPreview(block, variant.anchor);
     }
   }
 
   async _loadPreview(block, anchor) {
+    const request = { anchor };
+    this._previewRequest = request;
     this._previewBlock = block;
     const { org, site } = this._hashState || {};
     if (!org || !site) {
       this._previewInfo = null;
       return;
     }
-    const details = getItemPreviewUrl(block, { org, site });
-    if (!details) {
-      this._previewInfo = { error: 'Preview branch unavailable. Please try again once the editor preview is ready.' };
+    const details = await ensureItemPreviewAccess(block, { org, site });
+    if (this._previewRequest !== request) return;
+    if (!details || details.error) {
+      this._previewInfo = { error: details?.error || 'Preview branch unavailable. Please try again once the editor preview is ready.' };
       return;
     }
     const previewUrl = new URL(details.previewUrl);
-    if (anchor) previewUrl.hash = encodeURIComponent(anchor);
+    if (request.anchor) previewUrl.hash = encodeURIComponent(request.anchor);
     const url = previewUrl.href;
     this._previewInfo = { path: block.path, name: block.name, url, ok: undefined };
-    const ok = await getPreviewStatus({
+    const ok = details.org?.toLowerCase() === org.toLowerCase() ? await getPreviewStatus({
       org: details.org,
       site: details.site,
       pathname: details.pathname,
-    });
-    if (this._previewInfo?.url?.split('#')[0] === details.previewUrl) {
+    }) : null;
+    if (this._previewRequest === request) {
       this._previewInfo = { ...this._previewInfo, ok };
     }
   }
@@ -233,7 +242,7 @@ class EwBlockLibraryModal extends LitElement {
       return html`<div class="modal-tree-loading">Loading variants…</div>`;
     }
     if (!variants.length) {
-      return html`<div class="modal-tree-loading">No variants found.</div>`;
+      return html`<div class="modal-tree-loading">${variants.authError ? LIBRARY_AUTH_MESSAGE : 'No variants found.'}</div>`;
     }
     return html`
       <ul class="modal-tree-variants" role="group">
@@ -286,7 +295,7 @@ class EwBlockLibraryModal extends LitElement {
       return html`<div class="modal-state">Loading blocks…</div>`;
     }
     if (!this._blocks.length) {
-      return html`<div class="modal-state">No blocks found.</div>`;
+      return html`<div class="modal-state">${this._blocks.authError ? LIBRARY_AUTH_MESSAGE : 'No blocks found.'}</div>`;
     }
     const filtered = this._filteredBlocks();
     if (!filtered.length) {
