@@ -87,7 +87,7 @@ describe('ew-block-properties', () => {
     const header = el.shadowRoot.querySelector('header.quick-header');
     expect(header.nextElementSibling.classList.contains('ew-block-tabs')).to.be.true;
     expect(header.querySelector('h1').textContent).to.equal('Quick Blocks');
-    expect(header.querySelector('p').textContent).to.equal('Click to add at the cursor, or drag into the page.');
+    expect(header.querySelector('p').textContent).to.equal('Select a block to edit it.');
   });
 
   it('shows consistent Blocks, Assets and Properties tabs', () => {

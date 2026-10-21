@@ -975,7 +975,7 @@ Adapt the rows, cells, and labels to the actual selected library variant; do not
       <div class="ew-page-metadata">
         <header class="quick-header">
           <h1>Quick Blocks</h1>
-          <p>Click to add at the cursor, or drag into the page.</p>
+          <p>Select a block to edit it.</p>
         </header>
         <nav class="ew-block-tabs" role="tablist" aria-label="Block tools">
           <button type="button" role="tab" aria-selected="false"
