@@ -1,3 +1,10 @@
+## [1.12.1](https://github.com/adobe/da-live/compare/v1.12.0...v1.12.1) (2026-10-21)
+
+
+### Bug Fixes
+
+* reload media viewer on hash navigation ([#1471](https://github.com/adobe/da-live/issues/1471)) ([ddec8fa](https://github.com/adobe/da-live/commit/ddec8fa6206062903ea42909a511c36d916e260c))
+
 # [1.12.0](https://github.com/adobe/da-live/compare/v1.11.7...v1.12.0) (2026-10-21)
 
 
