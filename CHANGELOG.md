@@ -1,3 +1,10 @@
+## [1.11.4](https://github.com/adobe/da-live/compare/v1.11.3...v1.11.4) (2026-10-21)
+
+
+### Bug Fixes
+
+* **ew:** route block library through DA Preview Proxy ([#1372](https://github.com/adobe/da-live/issues/1372)) ([28c2f89](https://github.com/adobe/da-live/commit/28c2f897f1e17a3c38089c1245dc2da6e1927797)), closes [#1201](https://github.com/adobe/da-live/issues/1201) [#1201](https://github.com/adobe/da-live/issues/1201)
+
 ## [1.11.3](https://github.com/adobe/da-live/compare/v1.11.2...v1.11.3) (2026-10-21)
 
 
