@@ -115,23 +115,18 @@ h1 {
   mask: url('/blocks/landing/coworker.svg') center / 20px no-repeat;
 }
 
-.composer:focus-within {
-  outline: 2px solid var(--s2-blue-800);
-  outline-offset: 4px;
-}
-
-.composer:focus-within::before {
+.composer:focus-within:not(.is-dropzone)::before {
   backdrop-filter: none;
   background: light-dark(#ffffff7a, #3030307a);
   box-shadow: 0 2px 4px #0000000f;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .composer:has(textarea:enabled):hover:not(:focus-within)::before {
+  .composer:has(textarea:enabled):hover:not(:focus-within, .is-dropzone)::before {
     box-shadow: 0 2px 4px #ec69ff1a;
   }
 
-  .composer:has(textarea:enabled):hover:not(:focus-within)::after {
+  .composer:has(textarea:enabled):hover:not(:focus-within, .is-dropzone)::after {
     content: "";
     position: absolute;
     inset: 6px -7px -6px -6px;
@@ -143,7 +138,7 @@ h1 {
     opacity: 0.2;
   }
 
-  .composer:has(textarea:enabled):hover:not(:focus-within) .composer-surface {
+  .composer:has(textarea:enabled):hover:not(:focus-within, .is-dropzone) .composer-surface {
     overflow: clip;
     border-color: #ec69ff1a;
     background:
@@ -158,7 +153,7 @@ h1 {
       inset 0 -5px 21.6px #ffffff0a, inset 0 24px 32px #ffffff0a;
   }
 
-  .composer:has(textarea:enabled):hover:not(:focus-within) .composer-surface::before {
+  .composer:has(textarea:enabled):hover:not(:focus-within, .is-dropzone) .composer-surface::before {
     content: "";
     position: absolute;
     inset: 23px -1px -25px;
@@ -172,6 +167,20 @@ h1 {
       transparent 66.241%);
     filter: blur(40px);
     opacity: 0.12;
+  }
+}
+
+.composer.is-dropzone .composer-surface {
+  border: 2px solid #7a6afd;
+  background: linear-gradient(#ec69ff1a, #ec69ff1a), light-dark(#fffc, #222c);
+  box-shadow: 0 8px 32px #00000008, inset 0 24px 32px #ffffff0a, inset 0 -5px 21.6px #ffffff0a;
+}
+
+@media (forced-colors: active) {
+  .composer.is-dropzone .composer-surface,
+  .composer:has(textarea:focus-visible) .composer-surface {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
   }
 }
 

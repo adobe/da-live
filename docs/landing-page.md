@@ -97,9 +97,18 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
   field (`24045:21639` in branch `1ypHt0RiJxnGKoZGlIT6eY`). Hover uses that
   theme's faint colored hue and surface gradients (`24045:21695`), only on fine
   pointers while the assistant is available. Focus and typing return to a neutral
-  frame (`24045:21088`, `24045:21059`), retaining the visible focus outline.
+  frame (`24045:21088`, `24045:21059`), without a blue focus outline.
+  Only dragging files over the available composer shows the dropzone's 2px
+  blue-violet ring and faint pink fill (`24045:21667`). The ring follows the
+  inner 24px-radius surface, leaving the outer 6px frosted frame untouched.
+  Leaving or dropping clears the highlight; dragging text does not activate it.
+  Dropped images, PDFs and Markdown files reuse the Add menu's attachment
+  builder and assistant handoff, preserving the draft without auto-sending.
+  Unsupported or unreadable files produce an explicit error.
+  Shared buttons retain their keyboard focus indicators, and forced-colors
+  mode provides a system-color focus outline for the prompt.
   Dimensions, spacing, prompt text, actions and assistant handoff are unchanged.
-  This does not add drag-and-drop or a generation state to the landing composer.
+  This does not add a generation state to the landing composer.
   The background includes the separate white fade over the coloured artwork:
   transparent at -794px, reaching white at about 604px in the 1024px canvas.
   Labels use explicit component line heights; modified dates use Today/Yesterday.

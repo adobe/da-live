@@ -14,6 +14,13 @@ const ITEMS = [
   { name: 'Products', path: '/org/site/products.json', ext: 'json' },
 ];
 
+function dragEvent({ type, relatedTarget, text = false }) {
+  const dataTransfer = new DataTransfer();
+  if (text) dataTransfer.setData('text/plain', 'Selected text');
+  else dataTransfer.items.add(new File(['A draft'], 'draft.md', { type: 'text/markdown' }));
+  return new DragEvent(type, { dataTransfer, relatedTarget, bubbles: true, cancelable: true });
+}
+
 describe('landing page', () => {
   let el;
   let nav;
@@ -402,6 +409,99 @@ describe('landing page', () => {
     await el.selectAddAction({ detail: { id: 'files' } });
     expect(click.calledOnce).to.equal(true);
     expect(open.called).to.equal(false);
+  });
+
+  it('highlights only file drags and keeps the dropzone active across composer children', async () => {
+    el._chatEnabled = true;
+    await el.updateComplete;
+    const form = el.shadowRoot.querySelector('.composer');
+    const textarea = form.querySelector('textarea');
+    const enter = dragEvent({ type: 'dragenter' });
+    textarea.dispatchEvent(enter);
+    await el.updateComplete;
+    expect(enter.defaultPrevented).to.equal(true);
+    expect(form.classList.contains('is-dropzone')).to.equal(true);
+    textarea.dispatchEvent(dragEvent({ type: 'dragleave', relatedTarget: form.querySelector('.chat-add') }));
+    await el.updateComplete;
+    expect(form.classList.contains('is-dropzone')).to.equal(true);
+    form.dispatchEvent(dragEvent({ type: 'dragleave' }));
+    await el.updateComplete;
+    expect(form.classList.contains('is-dropzone')).to.equal(false);
+    const text = dragEvent({ type: 'dragenter', text: true });
+    textarea.dispatchEvent(text);
+    await el.updateComplete;
+    expect(text.defaultPrevented).to.equal(false);
+    expect(form.classList.contains('is-dropzone')).to.equal(false);
+  });
+
+  it('clears the drop highlight and hands dropped files to the existing attachment flow', async () => {
+    el._chatEnabled = true;
+    el._prompt = 'Use this draft';
+    await el.updateComplete;
+    const add = sinon.stub(el, 'addFiles').resolves();
+    const form = el.shadowRoot.querySelector('.composer');
+    form.dispatchEvent(dragEvent({ type: 'dragenter' }));
+    form.dispatchEvent(dragEvent({ type: 'dragover' }));
+    const drop = dragEvent({ type: 'drop' });
+    form.dispatchEvent(drop);
+    await el.updateComplete;
+    expect(drop.defaultPrevented).to.equal(true);
+    expect(form.classList.contains('is-dropzone')).to.equal(false);
+    expect(add.calledOnce).to.equal(true);
+    expect(add.firstCall.args[0][0].name).to.equal('draft.md');
+    expect(el._prompt).to.equal('Use this draft');
+  });
+
+  it('rejects file drops while the assistant is unavailable or already handing off', async () => {
+    const add = sinon.stub(el, 'addFiles').resolves();
+    const form = el.shadowRoot.querySelector('.composer');
+    for (const state of [
+      { enabled: false, handingOff: false },
+      { enabled: true, handingOff: true },
+    ]) {
+      el._chatEnabled = state.enabled;
+      el._handingOff = state.handingOff;
+      form.dispatchEvent(dragEvent({ type: 'dragenter' }));
+      const drop = dragEvent({ type: 'drop' });
+      form.dispatchEvent(drop);
+      await el.updateComplete;
+      expect(drop.defaultPrevented).to.equal(true);
+      expect(drop.dataTransfer.dropEffect).to.equal('none');
+      expect(form.classList.contains('is-dropzone')).to.equal(false);
+    }
+    expect(add.called).to.equal(false);
+  });
+
+  it('clears a file drag when changing sites or disconnecting', async () => {
+    el._chatEnabled = true;
+    const form = el.shadowRoot.querySelector('.composer');
+    form.dispatchEvent(dragEvent({ type: 'dragenter' }));
+    hashChange._set({ org: 'org', site: 'other', fullpath: '/org/other' });
+    await el.updateComplete;
+    expect(form.classList.contains('is-dropzone')).to.equal(false);
+    el._dragging = true;
+    el.remove();
+    expect(el._dragging).to.equal(false);
+  });
+
+  it('reports unsupported dropped files without opening chat or losing the draft', async () => {
+    el._chatEnabled = true;
+    el._prompt = 'Use this draft';
+    const open = sinon.stub(el, 'openAssistant').resolves();
+    await el.addFiles([new File(['data'], 'archive.zip', { type: 'application/zip' })]);
+    await el.updateComplete;
+    expect(el._chatError).to.include('Use images, PDFs or Markdown files');
+    expect(open.called).to.equal(false);
+    expect(el._prompt).to.equal('Use this draft');
+  });
+
+  it('keeps the native picker on the same attachment flow and resets its selection', async () => {
+    const file = new File(['A draft'], 'draft.md', { type: 'text/markdown' });
+    const target = { files: [file], value: 'draft.md' };
+    const add = sinon.stub(el, 'addFiles').resolves();
+    await el.attachFiles({ target });
+    expect(add.calledOnceWithExactly([file])).to.equal(true);
+    expect(target.value).to.equal('');
   });
 
   it('preserves a typed prompt while cancelling Add or handing off an action', async () => {
