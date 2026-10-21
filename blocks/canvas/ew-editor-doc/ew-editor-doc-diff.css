@@ -153,3 +153,18 @@
 .ew-editor-doc-mount .da-regional-edits-actions {
   gap: var(--s2-spacing-200);
 }
+
+/* Lone blocks: reserve a strip below the content for the accept/delete
+   buttons, so they don't cover the next line. diff-utils.css moves the
+   buttons of short blocks 12px below the block; with the strip they fit. */
+.ew-editor-doc-mount .loc-single-container {
+  padding-bottom: 44px;
+}
+
+.ew-editor-doc-mount .loc-single-container .loc-floating-overlay {
+  padding: 0 var(--s2-spacing-200, 12px) 6px 0;
+}
+
+.ew-editor-doc-mount .loc-single-container.is-short .loc-sticky-buttons {
+  position: sticky;
+}

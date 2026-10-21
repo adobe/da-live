@@ -17,12 +17,12 @@ async function waitForSelector(root, selector) {
 
 // Lays out a lone diff node view the way the canvas editor does: inside the
 // shadow root of ew-editor-doc, with the canvas diff styles and diff-utils.css.
-async function renderLoneNode(editor, type, text) {
+async function renderLoneNode(editor, type, lines) {
   const { schema } = editor.view.state;
-  const para = schema.nodes.paragraph.create(null, schema.text(text));
+  const paras = lines.map((text) => schema.nodes.paragraph.create(null, schema.text(text)));
   editor.view.dispatch(editor.view.state.tr.insert(
     editor.view.state.doc.content.size,
-    schema.nodes[type].create({}, para),
+    schema.nodes[type].create({}, paras),
   ));
   let pos = -1;
   editor.view.state.doc.descendants((node, p) => {
@@ -67,15 +67,21 @@ describe('canvas merge conflicts: lone block layout', () => {
     delete window.view;
   });
 
-  ['diff_deleted', 'diff_added'].forEach((type) => {
-    it(`keeps the buttons of a one-line ${type} block off the next line`, async () => {
-      const rendered = await renderLoneNode(editor, type, 'One line of text');
+  const cases = [
+    ['a one-line diff_deleted block', 'diff_deleted', ['One line']],
+    ['a one-line diff_added block', 'diff_added', ['One line']],
+    ['a short multi-line block', 'diff_added', ['Line one', 'Line two']],
+  ];
+  cases.forEach(([name, type, lines]) => {
+    it(`keeps the buttons of ${name} off the next line`, async () => {
+      const rendered = await renderLoneNode(editor, type, lines);
       ({ host } = rendered);
       const container = rendered.view.dom.getBoundingClientRect();
       const buttons = rendered.buttons.getBoundingClientRect();
       const next = rendered.next.getBoundingClientRect();
 
       expect(buttons.height).to.be.greaterThan(0);
+      if (lines.length > 1) expect(rendered.view.dom.classList.contains('is-short')).to.be.true;
       expect(buttons.bottom).to.be.at.most(container.bottom);
       expect(buttons.bottom).to.be.at.most(next.top);
     });
