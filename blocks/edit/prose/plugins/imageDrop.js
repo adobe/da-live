@@ -1,12 +1,14 @@
 // eslint-disable-next-line import/no-unresolved
 import { Plugin, PluginKey } from 'da-y-wrapper';
 import getPathDetails from '../../../shared/pathDetails.js';
+import { SUPPORTED_IMAGE_TYPES } from '../../../shared/constants.js';
 import { getNx2Api } from '../../../../scripts/utils.js';
+
+export { SUPPORTED_IMAGE_TYPES };
 
 const imageDropKey = new PluginKey('imageDrop');
 
 const FPO_IMG_URL = '/blocks/edit/img/fpo.svg';
-export const SUPPORTED_IMAGE_TYPES = ['image/svg+xml', 'image/png', 'image/jpeg', 'image/gif'];
 
 export async function uploadImageFile(view, file) {
   if (!SUPPORTED_IMAGE_TYPES.some((type) => type === file.type)) return;

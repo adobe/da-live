@@ -199,7 +199,7 @@ describe('ensurePreviewProxySession', () => {
       return new Response('', { status: 200 });
     };
 
-    await ensurePreviewProxySession('https://main--site--org.aem.live/path');
+    expect(await ensurePreviewProxySession('https://main--site--org.aem.live/path')).to.equal(false);
 
     expect(called).to.be.false;
   });
@@ -213,11 +213,18 @@ describe('ensurePreviewProxySession', () => {
       return new Response('', { status: 200 });
     };
 
-    await ensurePreviewProxySession('https://feat--site--org.aem.live/path');
+    expect(await ensurePreviewProxySession('https://feat--site--org.aem.live/path')).to.equal(true);
 
     expect(calls).to.have.lengthOf(1);
     expect(calls[0].url).to.equal('https://feat--site--org.preview.da.live/gimme_cookie');
     expect(calls[0].headers.Authorization).to.equal('Bearer T1');
+  });
+
+  it('reports cookie refusal so callers can avoid caching a failed session', async () => {
+    window.localStorage.setItem('nx-ims', 'true');
+    window.adobeIMS = { getAccessToken: () => ({ token: 'T1' }) };
+    window.fetch = async () => new Response('', { status: 403 });
+    expect(await ensurePreviewProxySession('https://feat--site--org.aem.live/path')).to.equal(false);
   });
 
   it('authenticates a relative path using fallback org/site/branch', async () => {

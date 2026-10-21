@@ -82,6 +82,35 @@ describe('uploadImageFile', () => {
 
   const png = () => new File([new Uint8Array([1, 2, 3])], 'pic.png', { type: 'image/png' });
 
+  ['png', 'avif', 'webp'].forEach((ext) => {
+    [false, true].forEach((upgraded) => {
+      it(`uploads and inserts a ${ext} image on a ${upgraded ? 'migrated' : 'legacy'} site`, async () => {
+        const contentUrl = `./media_abc123.${ext}`;
+        const { calls, restore } = stubStore({ upgraded, contentUrl });
+        try {
+          const file = new File(['x'], `pic.${ext}`, { type: `image/${ext}` });
+          await uploadImageFile(editor.view, file, {
+            parent: `/fmtorg/${ext}${upgraded ? 'new' : 'old'}`,
+            name: 'doc',
+          });
+          const upload = calls.find((c) => c.opts?.method === 'POST');
+          expect(upload, 'nothing was uploaded').to.exist;
+          expect(new URL(upload.url).origin)
+            .to.equal(upgraded ? 'https://api.aem.live' : 'https://admin.da.live');
+          expect(upload.url.endsWith(`/.doc/pic.${ext}`)).to.equal(true);
+          expect(upload.opts.body).to.equal(file);
+          const sources = [];
+          editor.view.state.doc.descendants((node) => {
+            if (node.type.name === 'image') sources.push(node.attrs.src);
+          });
+          expect(sources).to.deep.equal([contentUrl]);
+        } finally {
+          restore();
+        }
+      });
+    });
+  });
+
   it('uploads to the source bus for a migrated site', async () => {
     const { calls, restore } = stubStore({ upgraded: true, contentUrl: './media_abc.png' });
     try {
