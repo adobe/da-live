@@ -1,21 +1,35 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
+import getSheet from '../../shared/sheet.js';
 import {
   fetchBlocks,
   fetchItems,
-  insertBlock,
+  insertLibraryBlock,
   insertText,
   insertTemplate,
   getPreviewStatus,
-  getItemPreviewUrl,
+  ensureItemPreviewAccess,
+  LIBRARY_AUTH_MESSAGE,
 } from './helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
-const style = await loadStyle(import.meta.url);
+const [buttonsStyle, style] = await Promise.all([
+  getSheet(`${getNx2()}/styles/buttons.css`),
+  loadStyle(import.meta.url),
+]);
 
-const iconAdd = () => html`<svg aria-hidden="true" class="icon ext-icon" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-experienceadd-20-n.svg#icon"></use></svg>`;
-const iconPreview = () => html`<svg aria-hidden="true" class="icon ext-icon" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-experiencepreview-20-n.svg#icon"></use></svg>`;
+const SEARCH_ICON_SRC = '/img/icons/s2-icon-search-20-n.svg';
+const CLEAR_ICON_SRC = '/img/icons/s2-icon-close-20-n.svg';
+
+const iconAdd = () => html`<svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-experienceadd-20-n.svg#icon"></use></svg>`;
+const iconPreview = () => html`<svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-experiencepreview-20-n.svg#icon"></use></svg>`;
+
+function andMatch(query, target) {
+  const terms = query.split(/\s+/).filter(Boolean);
+  return terms.every((term) => target.includes(term));
+}
 
 /**
  * First-party library panel: blocks, templates, icons, placeholders (OOTB sheet-driven tools).
@@ -29,17 +43,28 @@ class EwPanelLibrary extends LitElement {
     _preview: { state: true },
     _tooltipOpen: { state: true },
     _hashState: { state: true },
+    _search: { state: true },
+    _actionError: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style];
+    this.shadowRoot.adoptedStyleSheets = [buttonsStyle, style];
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
+    this._unsubBranch = canvasBus.branchState.subscribe((state) => {
+      if (!state?.path) {
+        this._previewRequest = null;
+        this._preview = undefined;
+        this._previewItem = undefined;
+      } else if (this._previewItem) this._openPreview(this._previewItem);
+    });
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
+    this._previewRequest = null;
+    this._unsubBranch?.();
   }
 
   willUpdate(changed) {
@@ -48,7 +73,11 @@ class EwPanelLibrary extends LitElement {
       this._blockVariants = new Map();
       this._expandedBlock = null;
       this._preview = undefined;
+      this._previewRequest = null;
+      this._actionError = undefined;
+      this._previewItem = undefined;
       this._tooltipOpen = null;
+      this._search = '';
       this._loadItems();
     }
   }
@@ -63,16 +92,19 @@ class EwPanelLibrary extends LitElement {
     if (!ext) return;
 
     if (!ext.ootb) return;
+    const context = { org: this._hashState?.org || ext.org, site: this._hashState?.site };
 
     if (ext.name === 'blocks') {
-      this._items = await fetchBlocks(ext.sources);
+      const items = await fetchBlocks(ext.sources, context);
+      if (this.extension === ext) this._items = items;
       return;
     }
 
     let defaultFormat = '';
     if (ext.name === 'icons') defaultFormat = ':<content>:';
     else if (ext.name === 'placeholders') defaultFormat = '{{<content>}}';
-    this._items = await fetchItems(ext.sources, ext.format || defaultFormat);
+    const items = await fetchItems(ext.sources, ext.format || defaultFormat, context);
+    if (this.extension === ext) this._items = items;
   }
 
   async _toggleBlock(block) {
@@ -92,7 +124,7 @@ class EwPanelLibrary extends LitElement {
   _insertBlock(variant) {
     const { view } = getExtensionsBridge();
     if (!view) return;
-    insertBlock(view, variant.dom);
+    insertLibraryBlock(view, variant.dom);
   }
 
   _insertText(item) {
@@ -104,33 +136,70 @@ class EwPanelLibrary extends LitElement {
   async _insertTemplate(item) {
     const { view } = getExtensionsBridge();
     if (!view) return;
-    await insertTemplate(view, item.path || item.value);
+    this._actionError = undefined;
+    try {
+      await insertTemplate(view, item.path || item.value, this._hashState);
+    } catch (error) {
+      this._actionError = error.message;
+    }
   }
 
   async _openPreview(item) {
+    this._previewItem = item;
+    const request = {};
+    this._previewRequest = request;
     const { org, site } = this._hashState || {};
     if (!org || !site) return;
-    const details = getItemPreviewUrl(item, { org, site });
+    const details = await ensureItemPreviewAccess(item, { org, site });
+    if (this._previewRequest !== request) return;
+    if (!details || details.error) {
+      this._preview = {
+        name: item.name || item.key || item.title,
+        error: details?.error || 'Preview branch unavailable. Please try again once the editor preview is ready.',
+      };
+      return;
+    }
     this._preview = {
       name: item.name || item.key || item.title,
       url: details.previewUrl,
     };
-    this._preview.ok = await getPreviewStatus({
+    const ok = details.org?.toLowerCase() === org.toLowerCase() ? await getPreviewStatus({
       org: details.org,
       site: details.site,
       pathname: details.pathname,
-    });
-    this.requestUpdate();
+    }) : null;
+    if (this._previewRequest === request) this._preview = { ...this._preview, ok };
   }
 
   async _closePreview() {
+    this._previewRequest = null;
     this._preview = undefined;
+    this._previewItem = undefined;
     await this.updateComplete;
     this.shadowRoot.querySelector('button')?.focus();
   }
 
   _toggleTooltip(key) {
     this._tooltipOpen = this._tooltipOpen === key ? null : key;
+  }
+
+  _onSearchInput = (e) => {
+    this._search = e.target.value;
+  };
+
+  _onSearchClear = () => {
+    const input = this.shadowRoot.querySelector('.ext-search-input');
+    if (input) input.value = '';
+    this._search = '';
+  };
+
+  _filteredItems() {
+    const q = (this._search || '').trim().toLowerCase();
+    if (!q) return this._items || [];
+    return (this._items || []).filter((item) => {
+      const text = [item.key, item.name, item.value].filter(Boolean).join(' ').toLowerCase();
+      return andMatch(q, text);
+    });
   }
 
   _renderVariants(block) {
@@ -140,7 +209,7 @@ class EwPanelLibrary extends LitElement {
       return html`<div class="ext-variants-loading">Loading variants…</div>`;
     }
     if (!variants.length) {
-      return html`<div class="ext-variants-loading">No variants found.</div>`;
+      return html`<div class="ext-variants-loading">${variants.authError ? LIBRARY_AUTH_MESSAGE : 'No variants found.'}</div>`;
     }
     return html`
       <ul class="ext-variant-list">
@@ -153,9 +222,9 @@ class EwPanelLibrary extends LitElement {
               </button>
               <div class="ext-variant-actions">
                 ${v.description ? html`
-                  <button class="ext-action-btn" aria-label="Info"
+                  <button class="nx-action-btn-icon nx-btn-sm" aria-label="Info"
                     @click=${() => this._toggleTooltip(v.name)}>ℹ</button>` : nothing}
-                <button class="ext-action-btn ext-add-btn" aria-label="Add"
+                <button class="nx-action-btn-icon nx-btn-sm" aria-label="Add"
                   @click=${() => this._insertBlock(v)}>${iconAdd()}</button>
               </div>
             </div>
@@ -167,9 +236,13 @@ class EwPanelLibrary extends LitElement {
     `;
   }
 
+  _renderEmpty(message) {
+    return html`<div class="ext-state">${this._items?.authError ? LIBRARY_AUTH_MESSAGE : message}</div>`;
+  }
+
   _renderBlocks() {
     if (this._items === undefined) return html`<div class="ext-state">Loading…</div>`;
-    if (!this._items.length) return html`<div class="ext-state">No blocks found.</div>`;
+    if (!this._items.length) return this._renderEmpty('No blocks found.');
     return html`
       <ul class="ext-list">
         ${this._items.map((block) => html`
@@ -179,7 +252,7 @@ class EwPanelLibrary extends LitElement {
                 <span class="ext-item-name">${block.name}</span>
                 <span class="ext-expand-icon">${this._expandedBlock === block.path ? '▾' : '▸'}</span>
               </button>
-              <button class="ext-action-btn ext-preview-btn" aria-label="Preview"
+              <button class="nx-action-btn-icon nx-btn-sm" aria-label="Preview"
                 @click=${() => this._openPreview(block)}>${iconPreview()}</button>
             </div>
             ${this._renderVariants(block)}
@@ -191,7 +264,7 @@ class EwPanelLibrary extends LitElement {
 
   _renderTemplates() {
     if (this._items === undefined) return html`<div class="ext-state">Loading…</div>`;
-    if (!this._items.length) return html`<div class="ext-state">No templates found.</div>`;
+    if (!this._items.length) return this._renderEmpty('No templates found.');
     return html`
       <ul class="ext-list">
         ${this._items.map((item) => html`
@@ -200,9 +273,9 @@ class EwPanelLibrary extends LitElement {
               <span class="ext-item-name">${item.name ?? item.key ?? item.title ?? item.value}</span>
             </button>
             <div class="ext-item-actions">
-              <button class="ext-action-btn ext-preview-btn" aria-label="Preview"
+              <button class="nx-action-btn-icon nx-btn-sm" aria-label="Preview"
                 @click=${() => this._openPreview(item)}>${iconPreview()}</button>
-              <button class="ext-action-btn ext-add-btn" aria-label="Add"
+              <button class="nx-action-btn-icon nx-btn-sm" aria-label="Add"
                 @click=${() => this._insertTemplate(item)}>${iconAdd()}</button>
             </div>
           </li>
@@ -211,25 +284,56 @@ class EwPanelLibrary extends LitElement {
     `;
   }
 
+  _renderSearchInput(label) {
+    return html`
+      <div class="ext-search">
+        <svg class="ext-search-icon" viewBox="0 0 20 20" aria-hidden="true"><use href="${SEARCH_ICON_SRC}#icon"></use></svg>
+        <input type="search" class="ext-search-input"
+          placeholder="Search"
+          aria-label="Search ${label}"
+          .value=${this._search || ''}
+          @input=${this._onSearchInput}>
+        <button type="button" class="ext-search-clear" aria-label="Clear search" @click=${this._onSearchClear}>
+          <svg viewBox="0 0 20 20" aria-hidden="true"><use href="${CLEAR_ICON_SRC}#icon"></use></svg>
+        </button>
+      </div>
+    `;
+  }
+
   _renderKeyValueItems(label) {
     if (this._items === undefined) return html`<div class="ext-state">Loading…</div>`;
-    if (!this._items.length) return html`<div class="ext-state">No ${label} found.</div>`;
+    if (!this._items.length) return this._renderEmpty(`No ${label} found.`);
+
+    const isIcons = this.extension.name === 'icons';
+    const items = this._filteredItems();
+
     return html`
-      <ul class="ext-list">
-        ${this._items.map((item) => html`
-          <li class="ext-item">
-            <button class="ext-item-title" @click=${() => this._insertText(item)}>
-              <span class="ext-item-name">${item.key || item.name || item.value}</span>
-              ${item.value && item.value !== item.key
-                ? html`<span class="ext-item-value">${item.value}</span>` : nothing}
-            </button>
-            <div class="ext-item-actions">
-              <button class="ext-action-btn ext-add-btn" aria-label="Add"
-                @click=${() => this._insertText(item)}>${iconAdd()}</button>
-            </div>
-          </li>
-        `)}
-      </ul>
+      ${this._renderSearchInput(label)}
+      <div class="ext-scroll">
+        ${items.length ? html`
+          <ul class="ext-list">
+            ${items.map((item) => {
+              const iconSrc = isIcons ? item.icon : null;
+              return html`
+                <li class="ext-item">
+                  <button class="ext-item-title" @click=${() => this._insertText(item)}>
+                    ${iconSrc ? html`
+                      <img class="ext-item-icon" src=${iconSrc} alt=""
+                        @error=${(e) => { e.target.style.display = 'none'; }} />` : nothing}
+                    <span class="ext-item-name">${item.key || item.name || item.value}</span>
+                    ${item.value && item.value !== item.key
+                      ? html`<span class="ext-item-value">${item.value}</span>` : nothing}
+                  </button>
+                  <div class="ext-item-actions">
+                    <button class="nx-action-btn-icon nx-btn-sm" aria-label="Add"
+                      @click=${() => this._insertText(item)}>${iconAdd()}</button>
+                  </div>
+                </li>
+              `;
+            })}
+          </ul>
+        ` : html`<div class="ext-state">No ${label} match “${this._search}”.</div>`}
+      </div>
     `;
   }
 
@@ -237,20 +341,20 @@ class EwPanelLibrary extends LitElement {
     if (!this._preview) return nothing;
     const { ok, name, url } = this._preview;
     const hideIframe = ok === undefined || ok === false ? 'hide-iframe' : '';
-    const error = ok === false
+    const error = this._preview.error || (ok === false
       ? `It appears ${name} has not been previewed.`
-      : undefined;
+      : undefined);
 
     return html`
       <dialog class="ext-preview-dialog" @close=${() => this._closePreview()}>
         <div class="ext-preview-header">
           <p class="ext-preview-title">${name} preview</p>
-          <button class="ext-preview-close" @click=${() => this._closePreview()}>✕</button>
+          <button class="nx-action-btn-icon nx-btn-sm" aria-label="Close" @click=${() => this._closePreview()}>✕</button>
         </div>
         <div class="ext-preview-body">
           ${error ? html`<div class="ext-preview-error"><p>${error}</p></div>` : nothing}
-          <iframe class="ext-preview-frame ${hideIframe}" src=${url}
-            allow="clipboard-write *"></iframe>
+          ${url ? html`<iframe class="ext-preview-frame ${hideIframe}" src=${url}
+            allow="clipboard-write *"></iframe>` : nothing}
         </div>
       </dialog>
     `;
@@ -268,7 +372,9 @@ class EwPanelLibrary extends LitElement {
       return this._renderKeyValueItems(ext.name);
     })();
 
-    return html`${body}${this._renderPreviewDialog()}`;
+    return html`
+      ${this._actionError ? html`<div class="ext-state" role="alert">${this._actionError}</div>` : nothing}
+      ${body}${this._renderPreviewDialog()}`;
   }
 }
 

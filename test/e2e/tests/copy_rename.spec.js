@@ -12,11 +12,11 @@
 import { test, expect } from '../utils/fixtures.js';
 import ENV from '../utils/env.js';
 import {
-  getQuery, getTestFolderURL, getTestPageURL, fill, TEST_ORG, TEST_SITE,
+  getQuery, getTestFolderURL, getTestPageURL, fill, TEST_ORG, TEST_SITE, RUN_FOLDER,
 } from '../utils/page.js';
 import { dismissAlertBanner } from '../utils/utils.js';
 
-test('Copy and Rename with Versioned document', async ({ page, trackCleanup }, workerInfo) => {
+test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => {
   test.skip(
     TEST_SITE !== 'da-status',
     `
@@ -31,8 +31,6 @@ const link = await page.getByRole('link', { name: orgPageName });
 
   const pageURL = getTestPageURL('copyrename', workerInfo);
   const orgPageName = pageURL.split('/').pop();
-  // Safety net for a failure before the rename below actually happens.
-  trackCleanup(pageURL);
   await page.goto(pageURL);
   await page.getByText('Create document', { exact: true }).click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
@@ -63,14 +61,13 @@ const link = await page.getByRole('link', { name: orgPageName });
   await page.waitForTimeout(5000);
 
   // Go back to the directory view
-  await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
+  await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}`);
   await dismissAlertBanner(page);
 
   const copyFolderURL = getTestFolderURL('copy', workerInfo);
   const copyFolderName = copyFolderURL.split('/').pop();
-  trackCleanup(copyFolderURL, { isFolder: true });
-  await expect(page.getByRole('button', { name: 'New' })).toBeEnabled();
-  await page.getByRole('button', { name: 'New' }).click({ force: true });
+  await expect(page.getByRole('button', { name: 'New', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'New', exact: true }).click({ force: true });
   await page.getByRole('menuitem', { name: 'Folder' }).click();
   await page.getByPlaceholder('folder name').fill(copyFolderName);
   await page.getByRole('button', { name: 'Create' }).click();
@@ -82,18 +79,18 @@ const link = await page.getByRole('link', { name: orgPageName });
   await page.getByRole('button', { name: 'Copy' }).click();
 
   await page.getByRole('link', { name: copyFolderName }).click();
-  await page.waitForURL(`**/${TEST_ORG}/${TEST_SITE}/tests/${copyFolderName}`);
+  await page.waitForURL(`**/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}/${copyFolderName}`);
 
   await page.getByRole('button', { name: 'Paste' }).click();
   await page.waitForTimeout(3000);
   /* TODO REMOVE once #233 is fixed */ await page.reload();
   const link = await page.getByRole('link', { name: orgPageName });
   const href = await link.getAttribute('href');
-  await expect(href).toEqual(`/edit#/${TEST_ORG}/${TEST_SITE}/tests/${copyFolderName}/${orgPageName}`);
+  await expect(href).toEqual(`/edit#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}/${copyFolderName}/${orgPageName}`);
 
   // go back to the original to rename it
   // Go to the directory view
-  await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
+  await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}`);
   await page.reload(); // Clears any leftover selection, if any
 
   await dismissAlertBanner(page);
@@ -108,8 +105,6 @@ const link = await page.getByRole('link', { name: orgPageName });
   await page.getByRole('button', { name: 'Rename' }).click();
   await page.locator(`input[value=${orgPageName}]`).fill(renPageName);
   await page.keyboard.press('Enter');
-  // The document now lives under its renamed path instead of pageURL.
-  trackCleanup(`${pageURL}ren`);
 
   // Open the renamed page
   await page.waitForTimeout(3000);
@@ -131,7 +126,7 @@ const link = await page.getByRole('link', { name: orgPageName });
   await expect(page.locator('div.ProseMirror')).toContainText('Versioned text');
 
   // now go to the copy
-  await page.goto(`${ENV}/edit${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests/${copyFolderName}/${orgPageName}`);
+  await page.goto(`${ENV}/edit${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}/${copyFolderName}/${orgPageName}`);
   await page.reload(); // Resets the versions view, shouldn't be needed TODO
   await expect(page.locator('div.ProseMirror')).toContainText('After versioned');
   await page.getByRole('button', { name: 'Versions' }).click();

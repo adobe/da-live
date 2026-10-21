@@ -42,6 +42,18 @@ describe('da-link-dialog', () => {
     expect(el.shadowRoot.querySelector('input[name="link-text"]')).to.exist;
   });
 
+  it('does not render the Title field by default', async () => {
+    await mount({ open: true });
+    expect(el.shadowRoot.querySelector('input[name="link-title"]')).to.be.null;
+  });
+
+  it('renders and pre-fills the Title field when show-title is set', async () => {
+    await mount({ open: true, showTitle: true, anchorTitle: 'My title' });
+    const titleInput = el.shadowRoot.querySelector('input[name="link-title"]');
+    expect(titleInput).to.exist;
+    expect(titleInput.value).to.equal('My title');
+  });
+
   it('pre-fills href and text inputs from properties', async () => {
     await mount({ open: true, href: 'https://example.com', text: 'Example' });
     const hrefInput = el.shadowRoot.querySelector('input[name="link-href"]');
@@ -57,10 +69,22 @@ describe('da-link-dialog', () => {
 
     el.shadowRoot.querySelector('input[name="link-href"]').value = 'https://test.com';
     el.shadowRoot.querySelector('input[name="link-text"]').value = 'Test';
-    el.shadowRoot.querySelector('.da-btn-primary').click();
+    el.shadowRoot.querySelector('.nx-form-btn-primary').click();
     await nextFrame();
 
     expect(detail).to.deep.equal({ href: 'https://test.com', text: 'Test' });
+  });
+
+  it('includes trimmed title in da-link-submit when show-title is set', async () => {
+    await mount({ open: true, showTitle: true });
+    let detail = null;
+    el.addEventListener('da-link-submit', (e) => { detail = e.detail; });
+    el.shadowRoot.querySelector('input[name="link-href"]').value = 'https://test.com';
+    el.shadowRoot.querySelector('input[name="link-text"]').value = 'Test';
+    el.shadowRoot.querySelector('input[name="link-title"]').value = '  Tooltip  ';
+    el.shadowRoot.querySelector('.nx-form-btn-primary').click();
+    await nextFrame();
+    expect(detail).to.deep.equal({ href: 'https://test.com', text: 'Test', title: 'Tooltip' });
   });
 
   it('emits da-link-submit with a relative path', async () => {
@@ -69,7 +93,7 @@ describe('da-link-dialog', () => {
     el.addEventListener('da-link-submit', (e) => { detail = e.detail; });
 
     el.shadowRoot.querySelector('input[name="link-href"]').value = '/about';
-    el.shadowRoot.querySelector('.da-btn-primary').click();
+    el.shadowRoot.querySelector('.nx-form-btn-primary').click();
     await nextFrame();
 
     expect(detail).to.deep.equal({ href: '/about', text: '' });
@@ -82,7 +106,7 @@ describe('da-link-dialog', () => {
 
     for (const url of [`${'javascript'}:alert(1)`, 'data:text/html,x', 'vbscript:foo']) {
       el.shadowRoot.querySelector('input[name="link-href"]').value = url;
-      el.shadowRoot.querySelector('.da-btn-primary').click();
+      el.shadowRoot.querySelector('.nx-form-btn-primary').click();
       await nextFrame();
     }
 
@@ -92,26 +116,26 @@ describe('da-link-dialog', () => {
   it('shows an error message when Save is clicked with an empty URL', async () => {
     await mount({ open: true });
     el.shadowRoot.querySelector('input[name="link-href"]').value = '';
-    el.shadowRoot.querySelector('.da-btn-primary').click();
+    el.shadowRoot.querySelector('.nx-form-btn-primary').click();
     await el.updateComplete;
 
     expect(el._urlError).to.equal('URL is required');
-    expect(el.shadowRoot.querySelector('.da-input-error-msg')).to.exist;
+    expect(el.shadowRoot.querySelector('.nx-input-error-msg')).to.exist;
   });
 
   it('shows an error message for dangerous URL protocols', async () => {
     await mount({ open: true });
     el.shadowRoot.querySelector('input[name="link-href"]').value = `${'javascript'}:alert(1)`;
-    el.shadowRoot.querySelector('.da-btn-primary').click();
+    el.shadowRoot.querySelector('.nx-form-btn-primary').click();
     await el.updateComplete;
 
     expect(el._urlError).to.equal('Invalid URL protocol');
-    expect(el.shadowRoot.querySelector('.da-input-error-msg')).to.exist;
+    expect(el.shadowRoot.querySelector('.nx-input-error-msg')).to.exist;
   });
 
   it('clears the error when the URL input is changed', async () => {
     await mount({ open: true });
-    el.shadowRoot.querySelector('.da-btn-primary').click();
+    el.shadowRoot.querySelector('.nx-form-btn-primary').click();
     await el.updateComplete;
     expect(el._urlError).to.equal('URL is required');
 
@@ -124,14 +148,14 @@ describe('da-link-dialog', () => {
     await mount({ open: true });
     let cancelled = false;
     el.addEventListener('close', () => { cancelled = true; });
-    el.shadowRoot.querySelector('.da-btn-secondary').click();
+    el.shadowRoot.querySelector('.nx-form-btn-secondary').click();
     await nextFrame();
     expect(cancelled).to.be.true;
   });
 
   it('clears _urlError when the dialog closes', async () => {
     await mount({ open: true });
-    el.shadowRoot.querySelector('.da-btn-primary').click();
+    el.shadowRoot.querySelector('.nx-form-btn-primary').click();
     await el.updateComplete;
     expect(el._urlError).to.equal('URL is required');
 

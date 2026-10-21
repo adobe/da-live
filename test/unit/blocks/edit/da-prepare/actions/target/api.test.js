@@ -31,12 +31,34 @@ describe('target/api', () => {
       expect(result.offerId).to.equal('new-id');
       expect(captured.opts.method).to.equal('POST');
       expect(captured.url).to.contain('/cors?url=');
+      expect(captured.opts.headers['Content-Type']).to.equal('application/vnd.adobe.target.v2+json');
+      expect(captured.opts.headers.Accept).to.equal('application/vnd.adobe.target.v2+json');
       const body = JSON.parse(captured.opts.body);
       expect(body.name).to.equal('My Offer');
+      // No workspace configured -> the field is omitted (Target uses Default Workspace).
+      expect(body.workspace).to.equal(undefined);
       expect(body.marketingCloudMetadata.editURL).to.equal(
         'https://da.live/edit#/org/repo/path',
       );
       expect(body.marketingCloudMetadata['aem.lastUpdatedBy']).to.equal('Joe');
+    });
+
+    it('Includes the workspace in the body when configured', async () => {
+      let captured;
+      window.fetch = (url, opts) => {
+        captured = { url, opts };
+        return Promise.resolve(new Response('{"id":"new-id"}', { status: 200 }));
+      };
+      const result = await saveOffer(
+        { ...config, workspace: 'ws-123' },
+        'My Offer',
+        '<p>hello</p>',
+        'https://main--repo--org.aem.page/path',
+        'Joe',
+      );
+      expect(result.offerId).to.equal('new-id');
+      const body = JSON.parse(captured.opts.body);
+      expect(body.workspace).to.equal('ws-123');
     });
 
     it('PUTs to update when offerId is provided', async () => {

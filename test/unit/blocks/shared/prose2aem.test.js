@@ -67,6 +67,46 @@ describe('aem2prose', () => {
   });
 });
 
+describe('prose2aem image URL handling', () => {
+  const suffix = '/nested/media_123.png?width=750#width=2048&height=1368';
+  const cases = [
+    { host: 'content.da.live', contentStore: true },
+    { host: 'stage-content.da.live', contentStore: true },
+    { host: 'main--site--org.preview.da.live' },
+    { host: 'main--site--org.stage-preview.da.live' },
+    { host: 'example.da.live' },
+    { host: 'content.da.live.example.com' },
+    { host: 'example.com' },
+  ];
+
+  cases.forEach(({ host, contentStore }) => {
+    [false, true].forEach((livePreview) => {
+      [false, true].forEach((isFragment) => {
+        it(`handles ${host} with livePreview=${livePreview}, isFragment=${isFragment}`, () => {
+          const editor = document.createElement('div');
+          const img = document.createElement('img');
+          const src = `https://${host}${contentStore ? '/org/site' : ''}${suffix}`;
+          img.src = src;
+          editor.append(img);
+
+          const result = prose2aem(editor, livePreview, isFragment);
+          const parsed = new DOMParser().parseFromString(result, 'text/html');
+          const expected = livePreview && contentStore
+            ? `${isFragment ? `https://${host}` : ''}${suffix}`
+            : src;
+
+          expect(parsed.querySelector('img').getAttribute('src')).to.equal(expected);
+          const sources = parsed.querySelectorAll('source');
+          expect(sources).to.have.lengthOf(2);
+          sources.forEach((source) => {
+            expect(source.getAttribute('srcset')).to.equal(expected);
+          });
+        });
+      });
+    });
+  });
+});
+
 describe('prose2aem section-metadata handling', () => {
   function makeEditor(innerHtml) {
     const editor = document.createElement('div');

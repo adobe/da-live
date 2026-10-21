@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Toggle between local and npm versions of @da-tools/da-parser
+# Toggle between local and npm versions of @adobe/da-parser
 #
 # SETUP (one-time):
 #   cd /path/to/da-tools/da-parser
@@ -17,7 +17,7 @@
 
 set -e
 
-PACKAGE="@da-tools/da-parser"
+PACKAGE="@adobe/da-parser"
 
 check_global_link() {
   # Check if da-parser is globally linked (setup step completed)
@@ -29,9 +29,9 @@ check_global_link() {
 }
 
 check_status() {
-  if [ -L "node_modules/@da-tools/da-parser" ]; then
-    target=$(readlink "node_modules/@da-tools/da-parser")
-    echo "LOCAL: node_modules/@da-tools/da-parser -> $target"
+  if [ -L "node_modules/@adobe/da-parser" ]; then
+    target=$(readlink "node_modules/@adobe/da-parser")
+    echo "LOCAL: node_modules/@adobe/da-parser -> $target"
   else
     echo "NPM: using published package"
   fi
@@ -57,7 +57,7 @@ case "$1" in
     ;;
   npm)
     # Remove symlink manually instead of npm unlink (which can modify package.json in npm 7+)
-    rm -rf "node_modules/@da-tools/da-parser"
+    rm -rf "node_modules/@adobe/da-parser"
     npm install
     echo "Switched to NPM da-parser"
     check_status

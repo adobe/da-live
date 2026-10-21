@@ -1,12 +1,12 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 
 const nx = getNx();
 await import(`${nx}/blocks/shared/dialog/dialog.js`);
 
 const { loadStyle } = await import(`${nx}/utils/utils.js`);
-const [base, styles] = await Promise.all([
-  loadStyle(new URL('../styles/base.css', import.meta.url).href),
+const [formStyle, styles] = await Promise.all([
+  loadStyle(`${getNx2()}/styles/form.css`),
   loadStyle(import.meta.url),
 ]);
 
@@ -16,13 +16,15 @@ class DaLinkDialog extends LitElement {
     href: { type: String },
     text: { type: String },
     title: { type: String, attribute: 'dialog-title' },
+    showTitle: { type: Boolean, attribute: 'show-title' },
+    anchorTitle: { type: String },
     saveLabel: { type: String },
     _urlError: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [base, styles];
+    this.shadowRoot.adoptedStyleSheets = [formStyle, styles];
   }
 
   _onSave() {
@@ -38,8 +40,12 @@ class DaLinkDialog extends LitElement {
     }
     this._urlError = '';
     const text = form.elements['link-text'].value;
+    const detail = { href, text };
+    if (this.showTitle) {
+      detail.title = form.elements['link-title'].value.trim();
+    }
     this.dispatchEvent(new CustomEvent('da-link-submit', {
-      detail: { href, text },
+      detail,
       bubbles: true,
       composed: true,
     }));
@@ -58,22 +64,28 @@ class DaLinkDialog extends LitElement {
     return html`
       <nx-dialog title="${this.title ?? 'Edit link'}" @close=${this._onClose}>
         <form class="link-form">
-          <label class="da-form-field ${this._urlError ? 'da-field-error' : ''}">
+          <label class="nx-form-field ${this._urlError ? 'nx-field-error' : ''}">
             <span>URL</span>
-            <input class="da-input" name="link-href" type="text" autofocus placeholder="https://…"
+            <input class="nx-input" name="link-href" type="text" autofocus placeholder="https://…"
                    autocomplete="off" .value=${this.href ?? ''}
                    @input=${() => { this._urlError = ''; }} />
-            <span class="da-input-error-msg" role="alert">${this._urlError}</span>
+            <span class="nx-input-error-msg" role="alert">${this._urlError}</span>
           </label>
-          <label class="da-form-field">
+          <label class="nx-form-field">
             <span>Display text</span>
-            <input class="da-input" name="link-text" type="text" placeholder="Link text"
+            <input class="nx-input" name="link-text" type="text" placeholder="Link text"
                    autocomplete="off" .value=${this.text ?? ''} />
           </label>
+          ${this.showTitle ? html`
+            <label class="nx-form-field">
+              <span>Title</span>
+              <input class="nx-input" name="link-title" type="text" placeholder="Link title"
+                     autocomplete="off" .value=${this.anchorTitle ?? ''} />
+            </label>` : nothing}
         </form>
-        <button type="button" slot="actions" class="da-btn-secondary"
+        <button type="button" slot="actions" class="nx-form-btn-secondary"
           @click=${this._onCancel}>Cancel</button>
-        <button type="button" slot="actions" class="da-btn-primary"
+        <button type="button" slot="actions" class="nx-form-btn-primary"
           @click=${this._onSave}>${this.saveLabel ?? 'Save'}</button>
       </nx-dialog>
     `;

@@ -2,7 +2,8 @@ import { DA_ORIGIN, CON_ORIGIN, DA_ETC_ORIGIN, getLivePreviewUrl, AEM_ORIGIN } f
 import { getNx, getNx2Api } from '../../scripts/utils.js';
 
 const DA_ORIGINS = ['https://da.live', 'https://da.page', 'https://admin.da.live', 'https://admin.da.page', 'https://stage-admin.da.live', 'https://content.da.live', 'http://localhost:8787'];
-const AEM_ORIGINS = ['https://admin.hlx.page', 'https://admin.aem.live'];
+const AEM_API_ORIGIN = 'https://api.aem.live';
+const AEM_ORIGINS = ['https://admin.hlx.page', 'https://admin.aem.live', AEM_API_ORIGIN];
 const ETC_ORIGINS = ['https://stage-content.da.live', 'https://helix-snapshot-scheduler-ci.adobeaem.workers.dev', 'https://helix-snapshot-scheduler-prod.adobeaem.workers.dev'];
 const ALLOWED_TOKEN = [...DA_ORIGINS, ...AEM_ORIGINS, ...ETC_ORIGINS];
 
@@ -128,21 +129,6 @@ export function etcFetch(href, api, options) {
   return fetch(url, opts);
 }
 
-export async function aemAdmin(path, api, method = 'POST') {
-  const [owner, repo, ...parts] = path.slice(1).split('/');
-  const name = parts.pop() || repo || owner;
-  parts.push(name.replace('.html', ''));
-  const aemUrl = `https://admin.hlx.page/${api}/${owner}/${repo}/main/${parts.join('/')}`;
-  const resp = await daFetch(aemUrl, { method });
-  if (method === 'DELETE' && resp.status === 204) return {};
-  if (!resp.ok) return undefined;
-  try {
-    return resp.json();
-  } catch {
-    return undefined;
-  }
-}
-
 /* eslint-disable max-len */
 /**
  * [admin] Unable to preview '.../page.md': source contains large image: error fetching resource at http.../hello: Image 1 exceeds allowed limit of 10.00MB
@@ -168,9 +154,12 @@ export function parseAemError(xError) {
   return xError.replace('[admin] ', '');
 }
 
-// `action` is the admin API namespace: 'preview' or 'live' (the latter is the
-// admin API's name for publish). Routes through nx's `aem` API, which detects
-// HLX6 vs legacy (via isHlx6) and calls the correct endpoint for the org/site.
+/**
+ * Publishes or previews a path via AEM.
+ * @param {string} path - The path to save.
+ * @param {'live'|'preview'} action - 'live' publishes, anything else previews.
+ * @returns {Promise<object>} The AEM response body, or an { error } object on failure.
+ */
 export async function saveToAem(path, action) {
   const { aem } = await getNx2Api();
   const aemPath = path.toLowerCase();
@@ -200,16 +189,18 @@ export async function getExistingSchedule(org, site, path) {
   }
 }
 
-export async function saveDaVersion(pathname, label = 'Published') {
-  try {
-    const { versions } = await getNx2Api();
-    await versions.create(pathname, { comment: label });
-  } catch {
-    // eslint-disable-next-line no-console
-    console.log(`Error creating auto version (${label}).`);
-  }
-}
-
+/**
+ * Runs the preview-then-publish flow for a path. Always previews first;
+ * when publishing, checks for an existing snapshot schedule unless skipped
+ * and lets the caller decide whether to proceed via `opts.onScheduled`.
+ * @param {string} path - The path to act on.
+ * @param {'preview'|'live'} action - 'preview' stops after preview; 'live' also publishes.
+ * @param {object} [opts]
+ * @param {boolean} [opts.skipSchedule] - Skip the existing-schedule check before publishing.
+ * @param {(schedule: object) => Promise<boolean>|boolean} [opts.onScheduled] - Called with the
+ *   existing schedule when one is found; return true to proceed with publish anyway.
+ * @returns {Promise<object>} The AEM response, `{ cancelled: true }`, or an `{ error }` object.
+ */
 export async function aemAction(path, action, opts = {}) {
   const previewJson = await saveToAem(path, 'preview');
   if (previewJson.error) return previewJson;
@@ -226,7 +217,10 @@ export async function aemAction(path, action, opts = {}) {
   }
 
   const liveJson = await saveToAem(path, 'live');
-  if (liveJson.error) return { ...liveJson, error: { ...liveJson.error, action: 'publish' } };
+  if (liveJson.error) {
+    const message = liveJson.error.message.replace(/ live$/, ' publish');
+    return { ...liveJson, error: { ...liveJson.error, action: 'publish', message } };
+  }
   return liveJson;
 }
 
@@ -245,14 +239,14 @@ export async function saveToDa({ path, formData, blob, props, preview = false })
   const daResp = await daFetch(`${DA_ORIGIN}/source${path}`, opts);
   if (!daResp.ok) return undefined;
   if (!preview) return undefined;
-  return aemAdmin(path, 'preview');
+  return aemAction(path, 'preview');
 }
 
 export const getSheetByIndex = (json, index = 0) => {
   if (json[':type'] !== 'multi-sheet') {
     return json.data;
   }
-  return json[Object.keys(json)[index]]?.data;
+  return json[json[':names']?.[index]]?.data;
 };
 
 export const getSheetByName = (json, name) => {
@@ -284,6 +278,30 @@ export function getPostMessageTargetOrigin(url, fallback = '/') {
   }
 }
 
+/** True for the requestId an SDK request carries when it expects an `sdkResponse`. */
+export function isRequestId(value) {
+  return typeof value === 'string' && value.length > 0 && value.length <= 100;
+}
+
+/**
+ * Answers a plugin's getSelection request. Requests with a requestId get an `sdkResponse` on the
+ * port; older SDK copies send none and still get `sendSelection` on window or `error` on the port.
+ */
+export function replyToGetSelection({
+  port, target, targetOrigin, requestId, html, error,
+}) {
+  if (isRequestId(requestId)) {
+    const result = html ? { ok: true, html } : { ok: false, error };
+    port.postMessage({ action: 'sdkResponse', requestId, result });
+    return;
+  }
+  if (html) {
+    target.postMessage({ action: 'sendSelection', details: html }, targetOrigin);
+    return;
+  }
+  port.postMessage({ action: 'error', details: error });
+}
+
 export async function contentLogin(owner, repo) {
   try {
     const { accessToken } = await initIms();
@@ -297,16 +315,19 @@ export async function contentLogin(owner, repo) {
   }
 }
 
-export async function livePreviewLogin(owner, repo) {
+export async function livePreviewLogin(owner, repo, branch = 'main', getUrl = getLivePreviewUrl) {
   try {
-    const { accessToken } = await initIms();
-    await fetch(`${getLivePreviewUrl(owner, repo)}/gimme_cookie`, {
+    const token = await getAuthToken();
+    if (!token) return false;
+    const resp = await fetch(`${getUrl(owner, repo, branch)}/gimme_cookie`, {
       credentials: 'include',
-      headers: { Authorization: `Bearer ${accessToken.token}` },
+      headers: { Authorization: `Bearer ${token}` },
     });
+    return resp.ok;
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('Live Preview Login failed', e);
+    return false;
   }
 }
 
@@ -339,24 +360,50 @@ export async function checkLockdownImages(owner) {
   }
 }
 
+/**
+ * Fetches org and (optionally) site configs, caching the in-flight/resolved
+ * promises by path so repeated calls for the same org/site reuse one request
+ * instead of firing duplicate fetches.
+ * @param {object} params
+ * @param {string} params.org - The org to fetch config for.
+ * @param {string} [params.site] - The site to also fetch config for.
+ * @returns {Promise[]} `[orgConfigPromise]`, or `[orgConfigPromise, siteConfigPromise]`
+ *   when `site` is given; `[Promise.resolve(null)]` when `org` is missing.
+ */
 export const fetchDaConfigs = (() => {
   const configCache = {};
 
-  const fetchConfig = async (pathname) => {
-    const resp = await daFetch(`${DA_ORIGIN}/config${pathname}/`);
+  const fetchConfig = async (org, site) => {
+    const { config: configApi } = await getNx2Api();
+    const resp = await configApi.get({ org, site });
+    const pathname = site ? `/${org}/${site}` : `/${org}`;
     if (!resp.ok) return { error: `Error loading ${pathname}`, status: resp.status };
     return resp.json();
+  };
+
+  const cacheConfig = (key, org, site) => {
+    configCache[key] = fetchConfig(org, site).then(
+      (result) => {
+        if (result.error) delete configCache[key];
+        return result;
+      },
+      (error) => {
+        delete configCache[key];
+        throw error;
+      },
+    );
+    return configCache[key];
   };
 
   return ({ org, site }) => {
     if (!org) return [Promise.resolve(null)];
 
     // Set the org config promise if it does not exist
-    configCache[`/${org}`] ??= fetchConfig(`/${org}`);
+    configCache[`/${org}`] ??= cacheConfig(`/${org}`, org);
 
     if (site) {
       // Set the site config promise if it does not exist
-      configCache[`/${org}/${site}`] ??= fetchConfig(`/${org}/${site}`);
+      configCache[`/${org}/${site}`] ??= cacheConfig(`/${org}/${site}`, org, site);
     }
 
     // return array of cached configs (org = 0, site = 1)
@@ -370,10 +417,21 @@ export const fetchDaConfigs = (() => {
 export const getSidekickConfig = (() => {
   const configCache = {};
 
+  // HLX6 sites serve sidekick config from api.aem.live; legacy DA sites
+  // still use the admin.hlx.page sidekick endpoint.
   const fetchConfig = async (org, site) => {
-    const aemPath = `/${org}/${site}/config.json`;
-
-    return aemAdmin(aemPath, 'sidekick', 'GET');
+    const { isHlx6 } = await getNx2Api();
+    const hlx6 = await isHlx6(org, site);
+    const url = hlx6
+      ? `${AEM_API_ORIGIN}/${org}/sites/${site}/sidekick`
+      : `${AEM_ORIGIN}/sidekick/${org}/${site}/main/config.json`;
+    const resp = await daFetch(url, { method: 'GET' });
+    if (!resp.ok) return undefined;
+    try {
+      return await resp.json();
+    } catch {
+      return undefined;
+    }
   };
 
   return ({ org, site }) => {
@@ -437,3 +495,6 @@ export function sanitizeName(value, { allowDot = false, trimTrailing = false } =
   if (trimTrailing) result = result.replace(/[^a-zA-Z0-9]+$/, '');
   return result;
 }
+
+// The minimal valid shape for a brand-new AEM document.
+export const EMPTY_DOC = '<body><header></header><main><div></div></main><footer></footer></body>';

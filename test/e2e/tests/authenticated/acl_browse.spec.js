@@ -18,7 +18,7 @@ test('Read-only directory', async ({ page }) => {
   const url = `${ENV}/${getQuery()}#/da-testautomation/acltest/testdocs/subdir`;
 
   await page.goto(url);
-  const newButton = page.getByRole('button', { name: 'New' });
+  const newButton = page.getByRole('button', { name: 'New', exact: true });
   await expect(newButton).toBeDisabled();
 
   await expect(page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/onlyread-doc"]')).toBeVisible();
@@ -35,19 +35,18 @@ test('Read-only directory', async ({ page }) => {
   await expect(page.locator('button.delete-button').filter({ visible: true })).toHaveCount(0);
 });
 
-test('Read-write directory', async ({ browser, page, trackCleanup }, workerInfo) => {
+test('Read-write directory', async ({ browser, page }, workerInfo) => {
   test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
   test.setTimeout(60000);
   const pageURL = getTestPageURL('acl-browse-edt', workerInfo, '/da-testautomation/acltest/testdocs/subdir/subdir1');
-  trackCleanup(pageURL);
   const pageName = pageURL.split('/').pop();
   const browseURL = pageURL.replace(`/${pageName}`, '').replace('/edit#/', '/#/');
 
   await page.goto(browseURL);
-  const newButton = page.getByRole('button', { name: 'New' });
+  const newButton = page.getByRole('button', { name: 'New', exact: true });
   await expect(newButton).toBeEnabled();
   await newButton.click({ force: true });
-  await page.getByRole('menuitem', { name: 'Document' }).click();
+  await page.getByRole('menuitem', { name: 'Page' }).click();
   await page.getByPlaceholder('document name').fill(pageName);
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();

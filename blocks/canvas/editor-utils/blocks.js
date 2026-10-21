@@ -1,8 +1,11 @@
 import { DOMParser as PMDOMParser, NodeSelection } from 'da-y-wrapper';
+import { getFirstSectionName, setFirstSectionName } from '../../shared/section-name.js';
+
+export const MAX_SECTION_NAME = 100;
 
 const NON_BLOCK_TABLE_NAMES = new Set(['metadata', 'section metadata', 'section-metadata']);
 
-function getTableBlockName(tableNode) {
+export function getTableBlockName(tableNode) {
   const firstRow = tableNode.firstChild;
   if (!firstRow) return '';
   const firstCell = firstRow.firstChild;
@@ -10,6 +13,70 @@ function getTableBlockName(tableNode) {
   const raw = firstCell.textContent?.trim() ?? '';
   const match = raw.match(/^([a-zA-Z0-9_\s-]+)(?:\s*\([^)]*\))?$/);
   return match ? match[1].trim().toLowerCase() : raw.toLowerCase();
+}
+
+/**
+ * Describe the block cell the position sits in: the block (table) name, the row's
+ * key cell content (when in a 2-column row's value cell), and the cell's column.
+ * Returns null when the position isn't inside a table cell.
+ */
+export function getTableInfo(state, pos) {
+  const $pos = state.doc.resolve(pos);
+  let cellDepth = -1;
+  for (let d = $pos.depth; d > 0; d -= 1) {
+    if ($pos.node(d).type.name === 'table_cell') {
+      cellDepth = d;
+      break;
+    }
+  }
+  if (cellDepth === -1) return null;
+
+  const rowDepth = cellDepth - 1;
+  const table = $pos.node(rowDepth - 1);
+  const row = $pos.node(rowDepth);
+  const cellIndex = $pos.index(cellDepth - 1);
+  const firstRowContent = table.child(0)?.child(0)?.textContent ?? '';
+  const match = firstRowContent.match(/^([a-zA-Z0-9_\s-]+)(?:\s*\([^)]*\))?$/);
+  if (!match) return null;
+
+  return {
+    tableName: match[1].trim(),
+    keyValue: (row.childCount > 1 && cellIndex === 1) ? row.child(0).textContent : null,
+    isFirstColumn: cellIndex === 0,
+    columnsInRow: row.childCount,
+  };
+}
+
+/** The variant descriptor inside the block header's parentheses, or '' if none. */
+export function getTableBlockVariant(tableNode) {
+  const firstRow = tableNode?.firstChild;
+  const firstCell = firstRow?.firstChild;
+  const raw = firstCell?.textContent?.trim() ?? '';
+  const match = raw.match(/\(([^)]*)\)\s*$/);
+  return match ? match[1].trim() : '';
+}
+
+/**
+ * Rewrite the selected block's header cell to carry `variant` (e.g. `name (variant)`),
+ * or just `name` when `variant` is empty, keeping the block node selected.
+ */
+export function setTableBlockVariant(view, variant) {
+  if (!view) return;
+  const { selection } = view.state;
+  if (!(selection instanceof NodeSelection)) return;
+  const table = selection.node;
+  if (table?.type?.name !== 'table') return;
+  const para = table.firstChild?.firstChild?.firstChild;
+  if (!para) return;
+  const tablePos = selection.from;
+  // table > row > cell > paragraph: content of the paragraph starts 4 tokens in.
+  const from = tablePos + 4;
+  const to = from + para.content.size;
+  const base = (para.textContent ?? '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+  const newText = variant ? `${base} (${variant})` : base;
+  const tr = view.state.tr.insertText(newText, from, to);
+  tr.setSelection(NodeSelection.create(tr.doc, tablePos));
+  view.dispatch(tr);
 }
 
 function isSamePosition(from, to, dropPosition) {
@@ -129,72 +196,129 @@ export function insertBlockAtSectionStart(view, dom, sectionIndex) {
   view.dispatch(view.state.tr.insert(pos, parsed).scrollIntoView());
 }
 
-export function deleteSection(view, sectionIndex) {
+export function replaceBlockRange(view, from, to, dom) {
   if (!view) return;
-  const { doc, schema } = view.state;
+  const parsed = PMDOMParser.fromSchema(view.state.schema).parse(dom);
+  view.dispatch(view.state.tr.replaceWith(from, to, parsed.content).scrollIntoView());
+}
 
-  const sections = [[]];
+/** Append a copy of `rowDom` (a library <tr>) as a new last row of the table at `tablePos`. */
+export function appendBlockRow(view, tablePos, rowDom) {
+  if (!view || !rowDom) return;
+  const { state } = view;
+  const table = state.doc.nodeAt(tablePos);
+  if (table?.type?.name !== 'table') return;
+  const wrapper = document.createElement('table');
+  wrapper.append(rowDom.cloneNode(true));
+  const parsed = PMDOMParser.fromSchema(state.schema).parse(wrapper);
+  let rowNode = null;
+  parsed.descendants((node) => {
+    if (rowNode) return false;
+    if (node.type.name === 'table_row') {
+      rowNode = node;
+      return false;
+    }
+    return true;
+  });
+  if (!rowNode) return;
+  const tr = state.tr.insert(tablePos + table.nodeSize - 1, rowNode);
+  tr.setSelection(NodeSelection.create(tr.doc, tablePos));
+  view.dispatch(tr.scrollIntoView());
+}
+
+function splitSections(view) {
+  const { doc, schema } = view.state;
+  const groups = [[]];
+  const names = [getFirstSectionName()];
   doc.forEach((node) => {
     if (node.type === schema.nodes.horizontal_rule) {
-      sections.push([]);
+      groups.push([]);
+      names.push(node.attrs.daSectionName ?? null);
     } else {
-      sections[sections.length - 1].push(node);
+      groups[groups.length - 1].push(node);
     }
   });
+  return { groups, names };
+}
 
-  if (sectionIndex < 0 || sectionIndex >= sections.length) return;
-
-  const remaining = sections.filter((_, i) => i !== sectionIndex);
-
-  const hrNode = schema.nodes.horizontal_rule.create();
-  const newNodes = [];
-  remaining.forEach((sectionNodes, i) => {
-    if (i > 0) newNodes.push(hrNode);
-    newNodes.push(...sectionNodes);
+function rebuildSections(view, groups, names) {
+  const { doc, schema } = view.state;
+  const nodes = [];
+  const starts = [];
+  groups.forEach((sectionNodes, i) => {
+    if (i > 0) nodes.push(schema.nodes.horizontal_rule.create({ daSectionName: names[i] }));
+    starts.push(nodes.reduce((size, node) => size + node.nodeSize, 0));
+    nodes.push(...sectionNodes);
   });
+  return { tr: view.state.tr.replaceWith(0, doc.content.size, nodes), starts };
+}
 
-  view.dispatch(view.state.tr.replaceWith(0, doc.content.size, newNodes));
+export function setSectionName(view, sectionIndex, name) {
+  if (!view) return;
+  const { doc, schema } = view.state;
+  const daSectionName = name?.trim().slice(0, MAX_SECTION_NAME) || null;
+
+  if (sectionIndex === 0) {
+    setFirstSectionName(daSectionName);
+    return;
+  }
+
+  let hrCount = 0;
+  let hrPos;
+  doc.forEach((node, offset) => {
+    if (node.type === schema.nodes.horizontal_rule) {
+      hrCount += 1;
+      if (hrCount === sectionIndex) hrPos = offset;
+    }
+  });
+  if (hrPos == null) return;
+  view.dispatch(view.state.tr.setNodeMarkup(hrPos, null, { daSectionName }));
+}
+
+export function insertSectionAfter(view, sectionIndex) {
+  if (!view) return;
+  const { doc, schema } = view.state;
+  let hrCount = 0;
+  let pos = doc.content.size;
+  doc.forEach((node, offset) => {
+    if (node.type === schema.nodes.horizontal_rule) {
+      hrCount += 1;
+      if (hrCount === sectionIndex + 1) pos = offset;
+    }
+  });
+  view.dispatch(view.state.tr.insert(pos, schema.nodes.horizontal_rule.create()));
+}
+
+export function deleteSection(view, sectionIndex) {
+  if (!view) return;
+  const { groups, names } = splitSections(view);
+  if (sectionIndex < 0 || sectionIndex >= groups.length) return;
+
+  groups.splice(sectionIndex, 1);
+  names.splice(sectionIndex, 1);
+
+  view.dispatch(rebuildSections(view, groups, names).tr);
+  setFirstSectionName(names[0]);
 }
 
 export function moveSection(view, fromSectionIndex, toSectionIndex, dropPosition) {
   if (!view) return;
   if (isSamePosition(fromSectionIndex, toSectionIndex, dropPosition)) return;
 
-  const { doc, schema } = view.state;
+  const { groups, names } = splitSections(view);
+  if (fromSectionIndex >= groups.length || toSectionIndex >= groups.length) return;
 
-  const sections = [[]];
-  doc.forEach((node) => {
-    if (node.type === schema.nodes.horizontal_rule) {
-      sections.push([]);
-    } else {
-      sections[sections.length - 1].push(node);
-    }
-  });
-
-  if (fromSectionIndex >= sections.length || toSectionIndex >= sections.length) return;
-
-  const reordered = [...sections];
-  const [moved] = reordered.splice(fromSectionIndex, 1);
+  const [moved] = groups.splice(fromSectionIndex, 1);
+  const [movedName] = names.splice(fromSectionIndex, 1);
   let insertIdx = dropPosition === 'before' ? toSectionIndex : toSectionIndex + 1;
   if (insertIdx > fromSectionIndex) insertIdx -= 1;
-  reordered.splice(insertIdx, 0, moved);
+  groups.splice(insertIdx, 0, moved);
+  names.splice(insertIdx, 0, movedName);
 
-  const hrNode = schema.nodes.horizontal_rule.create();
-  const newNodes = [];
-  let movedSectionStart;
-  reordered.forEach((sectionNodes, i) => {
-    if (i > 0) newNodes.push(hrNode);
-    if (sectionNodes === moved) {
-      movedSectionStart = newNodes.reduce((size, node) => size + node.nodeSize, 0);
-    }
-    newNodes.push(...sectionNodes);
-  });
-
-  const tr = view.state.tr.replaceWith(0, doc.content.size, newNodes);
-  if (movedSectionStart != null && moved.length) {
-    tr.setSelection(NodeSelection.create(tr.doc, movedSectionStart));
-  }
+  const { tr, starts } = rebuildSections(view, groups, names);
+  if (moved.length) tr.setSelection(NodeSelection.create(tr.doc, starts[insertIdx]));
   view.dispatch(tr);
+  setFirstSectionName(names[0]);
 }
 
 // Counterpart to getSectionStartOffset — the hr position bounding the previous section.

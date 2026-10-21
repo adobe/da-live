@@ -95,9 +95,11 @@ export function createMockAwareness() {
  */
 export async function createTestEditor({
   schema = null,
+  doc = undefined,
   additionalPlugins = [],
   editable = true,
   dispatchTransaction = null,
+  ydoc: providedYdoc = null,
 } = {}) {
   // Lazy load schema to avoid module loading issues
   let finalSchema = schema;
@@ -106,7 +108,7 @@ export async function createTestEditor({
     finalSchema = getSchema();
   }
   // Create a standalone Y.Doc (no server needed)
-  const ydoc = new Y.Doc();
+  const ydoc = providedYdoc ?? new Y.Doc();
 
   // Create Y.XmlFragment for ySyncPlugin (works standalone)
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
@@ -130,7 +132,7 @@ export async function createTestEditor({
   ];
 
   // Create editor state
-  const state = EditorState.create({ schema: finalSchema, plugins });
+  const state = EditorState.create({ schema: finalSchema, doc, plugins });
 
   // Create editor view
   const editorElement = document.createElement('div');

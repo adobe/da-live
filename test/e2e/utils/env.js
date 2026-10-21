@@ -24,3 +24,13 @@ export default ENV;
 
 export const TEST_ORG = process.env.TEST_ORG || 'da-sites';
 export const TEST_SITE = process.env.TEST_SITE || 'da-status';
+
+export function runFolderFor(branch) {
+  if (!branch || branch === 'local' || branch === 'local-https') {
+    return branch === 'local' || branch === 'local-https' ? 'pw-local' : 'pw-main';
+  }
+  return `pw-${branch}`;
+}
+
+// The folder every resource in this run is created under: pw-{branch}.
+export const RUN_FOLDER = runFolderFor(process.env.GITHUB_HEAD_REF);

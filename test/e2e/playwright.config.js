@@ -21,7 +21,9 @@ module.exports = defineConfig({
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
+  /* 'list' prints a per-test progress line (title + status + duration) to the
+     console as tests run; 'html' keeps the report artifact for CI/debugging. */
+  reporter: [['list'], ['html']],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   /* Default expect timeout. The app relies on Y.js WebSocket sync and may
      cycle through IMS login redirects, both of which regularly exceed 5s. */
@@ -42,8 +44,37 @@ module.exports = defineConfig({
 
   /* Configure projects for major browsers */
   projects: [
-    // Setup project
-    { name: 'setup', testMatch: /.*\.setup\.js/ },
+    // Setup project (auth + clean-at-start). 'cleanup' is its teardown, so
+    // Playwright runs it AFTER every project that depends on setup finishes -
+    // guaranteed to be last regardless of worker count or how the suite is
+    // launched (npm/npx/IDE), which a plain spec in tests/ cannot promise.
+    { name: 'setup', testMatch: /.*\.setup\.js/, teardown: 'teardown' },
+
+    // Teardown project (distinct from the scheduled test:cleanup sweeper):
+    // deletes THIS run's /tests/pw-{branch} folder once, at the very end. Runs
+    // even when tests failed. testIgnore on the browser projects below keeps
+    // teardown.spec.js from also running mid-suite.
+    {
+      name: 'teardown',
+      testMatch: /teardown\.spec\.js/,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: '.playwright/.auth/user.json',
+      },
+    },
+
+    // Sweeper project: the scheduled stale-folder cleanup (run on demand via
+    // `npm run test:cleanup` / cleanup.yml, NOT part of the normal suite - the
+    // browser projects testIgnore it). Depends on setup for an authed session.
+    {
+      name: 'sweeper',
+      testMatch: /sweeper\.spec\.js/,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: '.playwright/.auth/user.json',
+      },
+      dependencies: ['setup'],
+    },
 
     {
       name: 'chromium',
@@ -51,6 +82,7 @@ module.exports = defineConfig({
         ...devices['Desktop Chrome'],
         storageState: '.playwright/.auth/user.json',
       },
+      testIgnore: /(teardown|sweeper)\.spec\.js/,
       dependencies: ['setup'],
     },
 
@@ -60,6 +92,7 @@ module.exports = defineConfig({
         ...devices['Desktop Firefox'],
         storageState: '.playwright/.auth/user.json',
       },
+      testIgnore: /(teardown|sweeper)\.spec\.js/,
       dependencies: ['setup'],
     },
 
@@ -69,6 +102,7 @@ module.exports = defineConfig({
         ...devices['Desktop Safari'],
         storageState: '.playwright/.auth/user.json',
       },
+      testIgnore: /(teardown|sweeper)\.spec\.js/,
       dependencies: ['setup'],
     },
 

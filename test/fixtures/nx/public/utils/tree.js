@@ -4,9 +4,9 @@ export class Queue {
     this.items = [];
   }
 
-  push(item) {
+  async push(item) {
     this.items.push(item);
-    return this.callback ? this.callback(item) : undefined;
+    await this.callback?.(item);
   }
 
   shift() { return this.items.shift(); }

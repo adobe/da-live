@@ -85,6 +85,16 @@ export function activeContentProseIndex(view) {
   return $from.node(1).type.name === 'table' ? undefined : $from.before(1) + 1;
 }
 
+// Whole-table anchor for a text/cursor selection inside a top-level table (block),
+// matching the shape selectedNodePayload sends for a depth-0 table NodeSelection.
+export function enclosingTablePayload(view) {
+  const sel = view?.state?.selection;
+  if (!sel || sel instanceof NodeSelection) return null;
+  const { $from } = sel;
+  if ($from.depth < 1 || $from.node(1).type.name !== 'table') return null;
+  return { anchorType: 'table', proseIndex: $from.before(1) + 1 };
+}
+
 export function applyHighlight(view, { selFrom, selTo, selectionType } = {}) {
   if (!view || typeof selFrom !== 'number' || typeof selTo !== 'number') return;
   const { doc } = view.state;

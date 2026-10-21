@@ -11,69 +11,16 @@ describe('DaNew', () => {
     DaNew = mod.default;
   });
 
-  describe('handleNameChange', () => {
-    it('lowercases and replaces invalid chars with hyphens', () => {
-      const el = new DaNew();
-      const target = { value: 'Foo Bar' };
-      el.handleNameChange({ target });
-      expect(el._createName).to.equal('foo-bar');
-      expect(target.value).to.equal('foo-bar');
-    });
-
-    it('collapses consecutive invalid chars into a single hyphen', () => {
-      const el = new DaNew();
-      const target = { value: 'foo!!bar' };
-      el.handleNameChange({ target });
-      expect(el._createName).to.equal('foo-bar');
-      expect(target.value).to.equal('foo-bar');
-    });
-
-    it('collapses an invalid char typed right after an existing hyphen', () => {
-      // Simulates the DOM state after a prior keystroke: input value is "foo-",
-      // user types another invalid character making it "foo-!".
-      const el = new DaNew();
-      const target = { value: 'foo-!' };
-      el.handleNameChange({ target });
-      expect(el._createName).to.equal('foo-');
-      // Explicit DOM sync is required here: without it, Lit's property binding
-      // would skip the re-render when the sanitized value is unchanged.
-      expect(target.value).to.equal('foo-');
-    });
-
-    it('preserves a single trailing hyphen during typing', () => {
-      const el = new DaNew();
-      const target = { value: 'foo!' };
-      el.handleNameChange({ target });
-      expect(el._createName).to.equal('foo-');
-      expect(target.value).to.equal('foo-');
-    });
-  });
-
+  // Name validation/sanitization is covered by da-name-dialog's own test suite —
+  // _handleCreate only ever receives an already-valid, sanitized name via the
+  // da-name-submit event's detail.
   describe('_handleCreate', () => {
-    it('sets _nameError and does not close dialog when _createName is empty', async () => {
-      const el = new DaNew();
-      el._createName = '';
-      el._createDialogOpen = true;
-      await el._handleCreate();
-      expect(el._nameError).to.be.true;
-      expect(el._createDialogOpen).to.be.true;
-    });
-
-    it('sets _nameError when finalized name is empty after trimming', async () => {
-      const el = new DaNew();
-      el._createName = '---';
-      el._createDialogOpen = true;
-      await el._handleCreate();
-      expect(el._nameError).to.be.true;
-      expect(el._createDialogOpen).to.be.true;
-    });
-
     it('closes the dialog immediately before async work (document type)', async () => {
       const el = new DaNew();
-      el._createName = 'my-doc';
       el._createType = 'document';
       el.fullpath = '/org/repo';
       el.editor = '';
+      el._createDialogOpen = true;
 
       const savedFetch = window.fetch;
       const NAV_SENTINEL = new Error('stop-before-nav');
@@ -84,7 +31,7 @@ describe('DaNew', () => {
 
       let caught;
       try {
-        await el._handleCreate();
+        await el._handleCreate({ detail: { name: 'my-doc' } });
       } catch (e) {
         caught = e;
       } finally {
@@ -97,7 +44,6 @@ describe('DaNew', () => {
 
     it('creates an empty HTML document via source.save before navigating (document type)', async () => {
       const el = new DaNew();
-      el._createName = 'my-doc';
       el._createType = 'document';
       el.fullpath = '/org/repo';
       el.editor = '/edit#';
@@ -114,7 +60,7 @@ describe('DaNew', () => {
       };
 
       try {
-        await el._handleCreate();
+        await el._handleCreate({ detail: { name: 'my-doc' } });
       } catch (e) {
         // expected NAV_SENTINEL
       } finally {
@@ -131,7 +77,6 @@ describe('DaNew', () => {
 
     it('POSTs to the trailing-slash folder URL via source.createFolder', async () => {
       const el = new DaNew();
-      el._createName = 'my-folder-';
       el._createType = 'folder';
       el.fullpath = '/org/repo';
 
@@ -146,7 +91,7 @@ describe('DaNew', () => {
       el.sendNewItem = (item) => sendEvents.push(item);
 
       try {
-        await el._handleCreate();
+        await el._handleCreate({ detail: { name: 'my-folder' } });
       } finally {
         window.fetch = savedFetch;
       }
@@ -161,7 +106,6 @@ describe('DaNew', () => {
 
     it('saves an empty sheet JSON via source.save before navigating (sheet type)', async () => {
       const el = new DaNew();
-      el._createName = 'my-sheet';
       el._createType = 'sheet';
       el.fullpath = '/org/repo';
       el.editor = '';
@@ -178,7 +122,7 @@ describe('DaNew', () => {
       };
 
       try {
-        await el._handleCreate();
+        await el._handleCreate({ detail: { name: 'my-sheet' } });
       } catch (e) {
         // expected NAV_SENTINEL
       } finally {
@@ -327,6 +271,22 @@ describe('DaNew', () => {
     });
   });
 
+  describe('create dialog labels', () => {
+    it('titles the document dialog "New page"', () => {
+      const el = new DaNew();
+      el._createType = 'document';
+      expect(el._createDialogTitle).to.equal('New page');
+    });
+
+    it('keeps "New sheet" and "New folder" titles unchanged', () => {
+      const el = new DaNew();
+      el._createType = 'sheet';
+      expect(el._createDialogTitle).to.equal('New sheet');
+      el._createType = 'folder';
+      expect(el._createDialogTitle).to.equal('New folder');
+    });
+  });
+
   describe('_disabled getter', () => {
     it('disabled when no permissions provided', () => {
       const el = new DaNew();
@@ -343,6 +303,63 @@ describe('DaNew', () => {
       const el = new DaNew();
       el.permissions = ['read', 'write'];
       expect(el._disabled).to.be.false;
+    });
+  });
+
+  describe('render', () => {
+    it('shows a visible New label in the trigger button', async () => {
+      const el = new DaNew();
+      el.variant = 'accent';
+      document.body.appendChild(el);
+      await new Promise((resolve) => { setTimeout(resolve, 0); });
+      try {
+        const btn = el.shadowRoot.querySelector('.da-actions-new-button');
+        expect(btn).to.exist;
+        expect(btn.textContent).to.contain('New');
+        expect(btn.classList.contains('nx-btn-accent')).to.be.true;
+      } finally {
+        el.remove();
+      }
+    });
+
+    it('defaults to an icon-only trigger and shows the New label for the accent variant', async () => {
+      const el = new DaNew();
+      el.permissions = ['write'];
+      document.body.append(el);
+      try {
+        await el.updateComplete;
+        const button = el.shadowRoot.querySelector('.da-actions-new-button');
+        expect(button.classList.contains('nx-action-btn-icon')).to.be.true;
+        expect(button.querySelector('.da-actions-new-label')).to.be.null;
+        el.variant = 'accent';
+        await el.updateComplete;
+        expect(button.classList.contains('nx-btn-accent')).to.be.true;
+        expect(button.textContent).to.contain('New');
+      } finally {
+        el.remove();
+      }
+    });
+
+    ['icon', 'accent'].forEach((variant) => {
+      it(`uses the shared spinner and disables the ${variant} trigger while loading`, async () => {
+        const el = new DaNew();
+        el.variant = variant;
+        el.permissions = ['write'];
+        document.body.append(el);
+        try {
+          await el.updateComplete;
+          const button = el.shadowRoot.querySelector('.da-actions-new-button');
+          expect(button.disabled).to.be.false;
+          el._loading = true;
+          await el.updateComplete;
+          expect(button.disabled).to.be.true;
+          expect(button.querySelector('.nx-loading-spinner')).to.exist;
+          expect(button.querySelector('svg')).to.be.null;
+          expect(button.querySelector('.da-actions-new-label') !== null).to.equal(variant === 'accent');
+        } finally {
+          el.remove();
+        }
+      });
     });
   });
 });
