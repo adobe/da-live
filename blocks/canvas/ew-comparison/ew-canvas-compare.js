@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { getRenderableSrc } from '../ew-editor-doc/prose-plugins/mediaBusImage.js';
 
 const ICON_CLOSE = '/img/icons/s2-icon-close-20-n.svg';
@@ -7,7 +7,7 @@ const ICON_CLOSE = '/img/icons/s2-icon-close-20-n.svg';
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
 const style = await loadStyle(import.meta.url);
-const baseStyle = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
+const buttons = await loadStyle(`${getNx2()}/styles/buttons.css`);
 
 function getCanvasSection() {
   return document.querySelector('ew-canvas-header')?.parentElement
@@ -32,7 +32,7 @@ class EwCanvasCompare extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [baseStyle, style];
+    this.shadowRoot.adoptedStyleSheets = [buttons, style];
     this._onKeydown = (e) => {
       if (this.embedded) return;
       if (e.key === 'Escape') {
@@ -182,15 +182,15 @@ class EwCanvasCompare extends LitElement {
             </div>
           ` : html`<span class="ew-cc-chip">${this.label}</span>`}
           <div class="ew-cc-actions">
-            <button type="button" class="da-btn-secondary${this.split ? ' is-active' : ''}"
+            <button type="button" class="nx-action-btn nx-btn-sm${this.split ? ' is-active' : ''}"
               aria-pressed=${this.split ? 'true' : 'false'}
               @click=${this._toggleSplit}>
               ${this.embedded ? 'Side by side' : 'Compare'}
             </button>
             ${this.canWrite ? html`
-              <button type="button" class="da-btn-secondary" @click=${this._restore}>Restore</button>
+              <button type="button" class="nx-action-btn nx-btn-sm" @click=${this._restore}>Restore</button>
             ` : nothing}
-            <button type="button" class="da-icon-btn ew-cc-close-btn" aria-label="Close" @click=${this._close}>
+            <button type="button" class="nx-action-btn-icon nx-btn-sm ew-cc-close-btn" aria-label="Close" @click=${this._close}>
               <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
                 <use href="${ICON_CLOSE}#icon"></use>
               </svg>

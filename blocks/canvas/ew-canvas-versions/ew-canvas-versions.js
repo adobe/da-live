@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { DOMParser as PMDOMParser } from 'da-y-wrapper';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { initIms } from '../../shared/utils.js';
 import {
   fetchVersions,
@@ -28,7 +28,9 @@ const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 const style = await loadStyle(import.meta.url);
-const baseStyle = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
+const form = await loadStyle(`${getNx2()}/styles/form.css`);
+const buttons = await loadStyle(`${getNx2()}/styles/buttons.css`);
+const hints = await loadStyle(new URL('../../shared/styles/hints.css', import.meta.url).href);
 
 export function buildDocPath(state) {
   const { org, site, path } = state ?? {};
@@ -62,7 +64,7 @@ class EwCanvasVersions extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [baseStyle, style];
+    this.shadowRoot.adoptedStyleSheets = [form, buttons, hints, style];
     this._filter = 'all';
     this._canWrite = getExtensionsBridge().view?.editable ?? false;
     this._unsubHtml = canvasBus.editorHtmlState.subscribe(() => {
@@ -79,6 +81,12 @@ class EwCanvasVersions extends LitElement {
         if (next) this._load();
       }
     });
+    const [org, site, ...parts] = location.hash.slice(2).split('/');
+    canvasBus.comparisonRequest.emit({
+      action: 'openComparison',
+      details: { candidate: 'document', baseline: 'live' },
+      context: { org, site, path: parts.join('/') },
+    });
   }
 
   disconnectedCallback() {
@@ -89,7 +97,7 @@ class EwCanvasVersions extends LitElement {
 
   updated(changed) {
     if (changed.has('_newVersion') && this._newVersion) {
-      const input = this.shadowRoot.querySelector('.da-input');
+      const input = this.shadowRoot.querySelector('.nx-input');
       input?.focus();
       input?.select();
     }
@@ -268,15 +276,15 @@ class EwCanvasVersions extends LitElement {
         <span class="versionicon"></span>
         <form class="ew-cv-new-row" @submit=${this.handleNewSubmit} @keydown=${this.handleNewKeydown}>
           <input type="text" name="label" placeholder="Version name"
-            class="da-input" .value=${`Version ${this._newVersion.date}`}
+            class="nx-input" .value=${`Version ${this._newVersion.date}`}
             ?readonly=${this._savingVersion} />
           <div class="ew-cv-new-actions">
-            <button type="submit" class="ew-cv-save-btn da-btn-secondary"
+            <button type="submit" class="ew-cv-save-btn nx-action-btn nx-btn-sm"
               ?disabled=${this._savingVersion}
               aria-label=${this._savingVersion ? 'Saving' : nothing}>
-              ${this._savingVersion ? html`<span class="da-loading-spinner" aria-hidden="true"></span>` : 'Save'}
+              ${this._savingVersion ? html`<span class="nx-loading-spinner" aria-hidden="true"></span>` : 'Save'}
             </button>
-            <button type="button" class="da-icon-btn" aria-label="Cancel"
+            <button type="button" class="nx-action-btn-icon nx-btn-sm" aria-label="Cancel"
               ?disabled=${this._savingVersion}
               @click=${this.handleCancel}>
               <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
@@ -385,9 +393,9 @@ class EwCanvasVersions extends LitElement {
       <nx-dialog class="ew-cv-restore" title="Restore version"
         @close=${this.handleRestoreCancel}>
         <span>Replace the current document with the content from <strong>${label}</strong>?</span>
-        <button slot="actions" class="da-btn-secondary"
+        <button slot="actions" class="nx-form-btn-secondary"
           @click=${this.handleRestoreCancel}>Cancel</button>
-        <button slot="actions" class="da-btn-primary"
+        <button slot="actions" class="nx-form-btn-primary"
           @click=${this.handleRestoreConfirm}>Restore</button>
       </nx-dialog>
     `;
@@ -416,7 +424,7 @@ class EwCanvasVersions extends LitElement {
               @click=${() => this._setFilter('me')}>Only me</button>
           </div>
           ${this._canWrite ? html`
-            <button type="button" class="da-icon-btn" aria-label="Create version"
+            <button type="button" class="nx-action-btn-icon nx-btn-sm" aria-label="Create version"
               ?disabled=${!!this._newVersion} @click=${this.handleNew}>
               <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
                 <use href="${ICON_ADD}#icon"></use>
