@@ -973,6 +973,10 @@ Adapt the rows, cells, and labels to the actual selected library variant; do not
     const switchIcon = html`<svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-switch-20-n.svg#icon"></use></svg>`;
     return html`
       <div class="ew-page-metadata">
+        <header class="quick-header">
+          <h1>Quick Blocks</h1>
+          <p>Click to add at the cursor, or drag into the page.</p>
+        </header>
         <nav class="ew-block-tabs" role="tablist" aria-label="Block tools">
           <button type="button" role="tab" aria-selected="false"
             @click=${() => this._openQuickBlocks('blocks')}>Blocks</button>

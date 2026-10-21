@@ -274,6 +274,24 @@
   text-align: center;
 }
 
+/* Mirrors ew-extensions' quick-blocks header so switching tabs keeps the same heading. */
+.quick-header {
+  padding: 0 var(--s2-spacing-200);
+}
+
+.quick-header h1 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 24px;
+}
+
+.quick-header p {
+  margin: 4px 0 0;
+  color: var(--s2-gray-700);
+  font-size: 12px;
+  line-height: 18px;
+}
+
 .ew-block-tabs {
   display: flex;
   gap: 2px;

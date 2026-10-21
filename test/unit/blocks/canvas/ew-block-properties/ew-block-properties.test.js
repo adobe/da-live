@@ -83,6 +83,13 @@ describe('ew-block-properties', () => {
     hashChange._set({ org: 'testorg', site: 'testsite' });
   }
 
+  it('shows the Quick Blocks header above the tabs', () => {
+    const header = el.shadowRoot.querySelector('header.quick-header');
+    expect(header.nextElementSibling.classList.contains('ew-block-tabs')).to.be.true;
+    expect(header.querySelector('h1').textContent).to.equal('Quick Blocks');
+    expect(header.querySelector('p').textContent).to.equal('Click to add at the cursor, or drag into the page.');
+  });
+
   it('shows consistent Blocks, Assets and Properties tabs', () => {
     const tabs = [...el.shadowRoot.querySelectorAll('.ew-block-tabs [role="tab"]')];
     expect(tabs.map((tab) => tab.textContent)).to.deep.equal(['Blocks', 'Assets', 'Properties']);
@@ -429,7 +436,7 @@ describe('ew-block-properties', () => {
     canvasBus.toolbarSelectionState.emit({ surface: 'doc', showable: true });
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('.ew-block-name')).to.be.null;
-    expect(el.shadowRoot.querySelector('p').textContent).to.equal('Select a block');
+    expect(el.shadowRoot.querySelector('.ew-block-empty').textContent).to.equal('Select a block');
   });
 
   it('restores the name button when a block is selected again', async () => {
@@ -440,7 +447,7 @@ describe('ew-block-properties', () => {
     view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, 0)));
     canvasBus.toolbarSelectionState.emit({ surface: 'doc', showable: false, block: { name: 'hero' } });
     await el.updateComplete;
-    expect(el.shadowRoot.querySelector('p')).to.be.null;
+    expect(el.shadowRoot.querySelector('.ew-block-empty')).to.be.null;
     expect(el.shadowRoot.querySelector('.ew-block-name').textContent).to.equal('hero');
   });
 
@@ -449,7 +456,7 @@ describe('ew-block-properties', () => {
     canvasBus.toolbarSelectionState.emit({ surface: 'doc', showable: true });
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('.ew-block-name')).to.be.null;
-    expect(el.shadowRoot.querySelector('p').textContent).to.equal('Select a block');
+    expect(el.shadowRoot.querySelector('.ew-block-empty').textContent).to.equal('Select a block');
     await el._openLibrary();
     expect(document.querySelector('ew-block-library-modal')).to.be.null;
   });
@@ -477,7 +484,7 @@ describe('ew-block-properties', () => {
     canvasBus.editorHtmlState.emit('');
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('.ew-block-name')).to.be.null;
-    expect(el.shadowRoot.querySelector('p').textContent).to.equal('Select a block');
+    expect(el.shadowRoot.querySelector('.ew-block-empty').textContent).to.equal('Select a block');
   });
 
   it('unsubscribes when removed and refreshes when reconnected', async () => {
