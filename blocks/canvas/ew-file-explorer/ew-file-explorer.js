@@ -71,7 +71,7 @@ const ADD_ICON_SRC = '/img/icons/s2-icon-fileadd-20-n.svg';
 const COPY_ICON_SRC = '/img/icons/s2-icon-paste-20-n.svg';
 const CHECKMARK_ICON_SRC = '/img/icons/s2-icon-checkmark-20-n.svg';
 const REFRESH_ICON_HTML = `<svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${REFRESH_ICON_SRC}#icon"></use></svg>`;
-const REFRESH_SPINNER_HTML = '<span class="da-loading-spinner" aria-hidden="true"></span>';
+const REFRESH_SPINNER_HTML = '<span class="nx-loading-spinner" aria-hidden="true"></span>';
 
 class EwFileExplorer extends LitElement {
   static properties = {
@@ -301,7 +301,7 @@ class EwFileExplorer extends LitElement {
     if (this._headerRefreshBtn) return this._headerRefreshBtn;
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'da-icon-btn';
+    btn.className = 'nx-action-btn-icon nx-btn-sm';
     btn.setAttribute('aria-label', 'Refresh files');
     btn.innerHTML = REFRESH_ICON_HTML;
     btn.addEventListener('click', () => this._onRefreshClick());
