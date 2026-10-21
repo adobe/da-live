@@ -530,3 +530,43 @@ describe('EwEditorDoc - teardown on removal (#1406)', () => {
     expect(seen[seen.length - 1]).to.equal('');
   });
 });
+
+describe('EwEditorDoc - toolbar surface follows text focus', () => {
+  let editor;
+  let el;
+  let requests;
+  let unsub;
+
+  beforeEach(async () => {
+    editor = await createTestEditor();
+    el = document.createElement('ew-editor-doc');
+    requests = [];
+    unsub = canvasBus.toolbarSurfaceRequest.subscribe((r) => requests.push(r));
+  });
+
+  afterEach(() => {
+    unsub();
+    el._unwireProseFocus?.();
+    destroyEditor(editor);
+  });
+
+  it('does not activate the doc toolbar when a button inside a non-editable node gets focus', () => {
+    const { view } = editor;
+    const proseEl = view.dom.parentElement;
+    el._wireProseFocus(view, proseEl);
+    // A merge-conflict tab: a button inside a contenteditable=false node view.
+    const control = document.createElement('div');
+    control.contentEditable = 'false';
+    const tab = document.createElement('button');
+    tab.textContent = 'Upstream';
+    control.append(tab);
+    view.dom.append(control);
+
+    tab.focus();
+    expect(requests.filter((r) => r.active)).to.deep.equal([]);
+
+    view.focus();
+    expect(requests.filter((r) => r.active)).to.deep.equal([{ surface: 'doc', active: true }]);
+    control.remove();
+  });
+});
