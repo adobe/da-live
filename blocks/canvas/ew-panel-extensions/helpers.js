@@ -657,9 +657,10 @@ export function extensionToPanelView(ext, section) {
       firstParty: ext.ootb,
       experience: 'modal',
       icon: ext.icon,
-      openModal: async () => {
+      openModal: async (options) => {
         const { openBlockLibraryModal } = await import('../ew-block-library-modal/ew-block-library-modal.js');
-        openBlockLibraryModal({
+        await openBlockLibraryModal({
+          initialBlockPath: options?.blockPath,
           onInsert: (dom) => {
             const { view } = getExtensionsBridge();
             if (view) insertBlock(view, dom);

@@ -462,6 +462,55 @@ describe('setupIframeChannel', () => {
     destroy();
   });
 
+  it('forwards navigation options through the existing panel event', async () => {
+    const { channel, destroy } = await setupIframeChannel({
+      iframe: makeIframe(),
+      hashState: { org: 'myorg', site: 'mysite' },
+      getView: () => null,
+      onClose: () => {},
+    });
+    const received = [];
+    const onOpen = ({ detail }) => received.push(detail);
+    document.addEventListener(PANEL_EVENT.OPEN, onOpen);
+    try {
+      const options = { blockPath: 'https://example.com/library/cards' };
+      channel.port2.postMessage({ action: 'showPanel', details: { id: 'blocks', options } });
+      channel.port2.postMessage({ action: 'showPanel', details: { options } });
+      channel.port2.postMessage({ action: 'showPanel', details: null });
+      await wait();
+      expect(received).to.deep.equal([{ section: 'tools', id: 'blocks', options }]);
+    } finally {
+      document.removeEventListener(PANEL_EVENT.OPEN, onOpen);
+      destroy();
+    }
+  });
+
+  it('reads the latest options for initial readiness and sends subsequent options on the port', async () => {
+    const iframe = makeIframe();
+    let options = { tab: 'blocks' };
+    const { channel, destroy, updateOptions } = await setupIframeChannel({
+      iframe,
+      hashState: { org: 'myorg', site: 'mysite' },
+      getView: () => null,
+      getPanelOptions: () => options,
+      onClose: () => {},
+    });
+    try {
+      options = { tab: 'assets' };
+      await wait(800);
+      expect(iframe.contentWindow.postMessage.firstCall.args[0].panelOptions)
+        .to.deep.equal({ tab: 'assets' });
+      const received = new Promise((resolve) => {
+        channel.port2.onmessage = ({ data }) => resolve(data);
+      });
+      updateOptions({ tab: 'blocks' });
+      expect(await received).to.deep.equal({ action: 'panelOptions', details: { tab: 'blocks' } });
+    } finally {
+      destroy();
+    }
+    expect(() => updateOptions({ tab: 'assets' })).not.to.throw();
+  });
+
   it('opens the chat panel with autoSend for an object-form setPrompt action', async () => {
     const iframe = makeIframe();
     const { channel, destroy } = await setupIframeChannel({

@@ -26,9 +26,10 @@ const { DA_ADMIN } = await import(`${getNx2()}/utils/utils.js`);
  * @param {object} opts.hashState
  * @param {Function} opts.getView
  * @param {Function} opts.onClose
- * @returns {{ channel: MessageChannel, destroy: () => void }}
+ * @param {Function} [opts.getPanelOptions]
+ * @returns {{ channel: MessageChannel, destroy: () => void, updateOptions?: Function }}
  */
-export async function setupIframeChannel({ iframe, hashState, getView, onClose }) {
+export async function setupIframeChannel({ iframe, hashState, getView, onClose, getPanelOptions }) {
   const { org, site, path, view } = hashState;
   if (!org || !site || !iframe.contentWindow) return { channel: null, destroy() { } };
 
@@ -277,8 +278,11 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     }
 
     if (action === 'showPanel') {
+      const id = typeof details === 'string' ? details : details?.id;
+      const options = typeof details === 'object' ? details?.options : undefined;
+      if (typeof id !== 'string' || !id.trim()) return;
       document.dispatchEvent(
-        new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'tools', id: details } }),
+        new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'tools', id, ...(options !== undefined && { options }) } }),
       );
     }
 
@@ -328,6 +332,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
         project: context,
         context,
         token,
+        panelOptions: getPanelOptions?.(),
       },
       targetOrigin,
       [channel.port2],
@@ -357,5 +362,11 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     channel.port2.close();
   };
 
-  return { channel, destroy };
+  return {
+    channel,
+    destroy,
+    updateOptions: (options) => {
+      if (!destroyed) channel.port1.postMessage({ action: 'panelOptions', details: options });
+    },
+  };
 }

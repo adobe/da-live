@@ -965,8 +965,8 @@ Adapt the rows, cells, and labels to the actual selected library variant; do not
     });
   }
 
-  _openQuickBlocks() {
-    document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'tools', id: 'quick-block' } }));
+  _openQuickBlocks(tab) {
+    document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'tools', id: 'quick-block', options: { tab } } }));
   }
 
   render() {
@@ -975,9 +975,11 @@ Adapt the rows, cells, and labels to the actual selected library variant; do not
       <div class="ew-page-metadata">
         <nav class="ew-block-tabs" role="tablist" aria-label="Block tools">
           <button type="button" role="tab" aria-selected="false"
-            @click=${this._openQuickBlocks}>Quick blocks</button>
+            @click=${() => this._openQuickBlocks('blocks')}>Blocks</button>
+          <button type="button" role="tab" aria-selected="false"
+            @click=${() => this._openQuickBlocks('assets')}>Assets</button>
           <button type="button" id="ew-block-properties-tab" role="tab" aria-selected="true"
-            aria-controls="ew-block-properties-panel">Block properties</button>
+            aria-controls="ew-block-properties-panel">Properties</button>
         </nav>
         <div class="ew-pm-fields" id="ew-block-properties-panel" role="tabpanel"
           aria-labelledby="ew-block-properties-tab">

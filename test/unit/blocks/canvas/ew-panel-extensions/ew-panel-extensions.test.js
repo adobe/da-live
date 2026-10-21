@@ -23,6 +23,22 @@ describe('ew-panel-extension page context', () => {
     hashChange._set({});
   });
 
+  it('retains initial navigation options and forwards updates without reloading the iframe', async () => {
+    el.extension = { name: 'quick-block', title: 'Quick Block', sources: ['about:blank'] };
+    el.setPanelOptions({ tab: 'assets' });
+    document.body.append(el);
+    await nextUpdate();
+    const iframe = el.shadowRoot.querySelector('iframe');
+    expect(el._panelOptions).to.deep.equal({ tab: 'assets' });
+    const received = [];
+    el._updatePanelOptions = (options) => received.push(options);
+    el.setPanelOptions({ tab: 'blocks' });
+    expect(received).to.deep.equal([{ tab: 'blocks' }]);
+    expect(el.shadowRoot.querySelector('iframe')).to.equal(iframe);
+    el._resetChannel();
+    expect(el._updatePanelOptions).to.equal(undefined);
+  });
+
   it('remounts a configured extension iframe when the page path changes', async () => {
     el.extension = {
       name: 'configured-tool',

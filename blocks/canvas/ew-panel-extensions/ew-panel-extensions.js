@@ -53,6 +53,12 @@ class EwPanelExtension extends LitElement {
     this._channelGeneration = (this._channelGeneration || 0) + 1;
     this._destroyChannel?.();
     this._destroyChannel = undefined;
+    this._updatePanelOptions = undefined;
+  }
+
+  setPanelOptions(options) {
+    this._panelOptions = options;
+    this._updatePanelOptions?.(options);
   }
 
   async _prepareIframeSrc() {
@@ -74,10 +80,11 @@ class EwPanelExtension extends LitElement {
     this._destroyChannel = undefined;
     const hashState = this._hashState || {};
     const { setupIframeChannel } = await import('./iframe-protocol.js');
-    const { destroy } = await setupIframeChannel({
+    const { destroy, updateOptions } = await setupIframeChannel({
       iframe: target,
       hashState,
       getView: () => getExtensionsBridge().view,
+      getPanelOptions: () => this._panelOptions,
       onClose: () => this.dispatchEvent(
         new CustomEvent(PANEL_EVENT.CLOSE, { bubbles: true, composed: true }),
       ),
@@ -88,6 +95,7 @@ class EwPanelExtension extends LitElement {
       return;
     }
     this._destroyChannel = destroy;
+    this._updatePanelOptions = updateOptions;
   }
 
   render() {

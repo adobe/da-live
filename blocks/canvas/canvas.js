@@ -185,7 +185,7 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
   mountCanvasEditors({ mountRoot, header, session, ctx });
 }
 
-async function syncToolPanelViews(toolPanel, { org, site }, panelName) {
+async function syncToolPanelViews(toolPanel, { org, site }, panelName, options) {
   const key = org && site ? `${org}/${site}` : null;
   if (key === toolPanel.dataset.extKey) return false;
   toolPanel.dataset.extKey = key ?? '';
@@ -203,7 +203,10 @@ async function syncToolPanelViews(toolPanel, { org, site }, panelName) {
   if (toolPanel.dataset.extKey !== key) return false;
   toolPanel.org = org;
   toolPanel.site = site;
-  if (panelName) toolPanel.pendingView = panelName;
+  if (panelName) {
+    toolPanel.pendingView = panelName;
+    toolPanel.pendingOptions = options;
+  }
   toolPanel.views = views;
   return true;
 }
@@ -309,10 +312,10 @@ export default async function decorate(block) {
     onShow: async (aside, id, options) => {
       const toolPanel = aside?.querySelector('ew-tool-panel');
       if (!toolPanel) return;
-      const selected = await syncToolPanelViews(toolPanel, hashState(), id);
+      const selected = await syncToolPanelViews(toolPanel, hashState(), id, options);
       await toolPanel.updateComplete;
       if (id && !selected && toolPanel.views?.some((v) => v.id === id)) {
-        await toolPanel.showPanel(id);
+        await toolPanel.showPanel(id, options);
       }
       if (options?.newVersion) {
         await toolPanel.updateComplete;

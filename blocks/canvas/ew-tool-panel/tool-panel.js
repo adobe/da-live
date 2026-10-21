@@ -141,7 +141,9 @@ class EwToolPanel extends LitElement {
 
   async _onViewsChange() {
     const requestedView = this.pendingView;
+    const requestedOptions = this.pendingOptions;
     this.pendingView = undefined;
+    this.pendingOptions = undefined;
 
     if (!this.views?.length) {
       this._closeDialog();
@@ -159,7 +161,10 @@ class EwToolPanel extends LitElement {
       this._closeDialog();
     }
 
-    if (!this.activeId || !ids.has(this.activeId)) {
+    if (requestedView && ids.has(requestedView)) {
+      await this.showPanel(requestedView, requestedOptions);
+      this._syncContent();
+    } else if (!this.activeId || !ids.has(this.activeId)) {
       const initial = (requestedView && ids.has(requestedView))
         ? requestedView
         : await resolveInitialToolPanelView({
@@ -196,7 +201,7 @@ class EwToolPanel extends LitElement {
     }
   }
 
-  async showPanel(name) {
+  async showPanel(name, options) {
     const consumer = this.views.find((c) => c.id === name);
     if (!consumer) return;
     const { contextKey } = this;
@@ -213,7 +218,7 @@ class EwToolPanel extends LitElement {
       return;
     }
     if (consumer.experience === 'modal') {
-      await consumer.openModal?.();
+      await consumer.openModal?.(options);
       return;
     }
     if (!this._loaded[name]) {
@@ -226,6 +231,7 @@ class EwToolPanel extends LitElement {
       this._loaded[name] = loaded;
       this._loadedKeys[name] = consumer.cacheKey;
     }
+    if (options !== undefined) this._loaded[name].setPanelOptions?.(options);
     this.activeId = name;
   }
 

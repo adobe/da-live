@@ -83,13 +83,13 @@ describe('ew-block-properties', () => {
     hashChange._set({ org: 'testorg', site: 'testsite' });
   }
 
-  it('shows Quick blocks followed by the selected Block properties tab', () => {
+  it('shows consistent Blocks, Assets and Properties tabs', () => {
     const tabs = [...el.shadowRoot.querySelectorAll('.ew-block-tabs [role="tab"]')];
-    expect(tabs.map((tab) => tab.textContent)).to.deep.equal(['Quick blocks', 'Block properties']);
-    expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).to.deep.equal(['false', 'true']);
+    expect(tabs.map((tab) => tab.textContent)).to.deep.equal(['Blocks', 'Assets', 'Properties']);
+    expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).to.deep.equal(['false', 'false', 'true']);
     const panel = el.shadowRoot.querySelector('[role="tabpanel"]');
-    expect(tabs[1].getAttribute('aria-controls')).to.equal(panel.id);
-    expect(panel.getAttribute('aria-labelledby')).to.equal(tabs[1].id);
+    expect(tabs[2].getAttribute('aria-controls')).to.equal(panel.id);
+    expect(panel.getAttribute('aria-labelledby')).to.equal(tabs[2].id);
   });
 
   it('opens the Quick Block extension without changing the document or selection', () => {
@@ -99,11 +99,15 @@ describe('ew-block-properties', () => {
     try {
       el.shadowRoot.querySelector('.ew-block-tabs button').click();
       expect(onOpen.calledOnce).to.be.true;
-      expect(onOpen.firstCall.args[0].detail).to.deep.equal({ section: 'tools', id: 'quick-block' });
+      expect(onOpen.firstCall.args[0].detail)
+        .to.deep.equal({ section: 'tools', id: 'quick-block', options: { tab: 'blocks' } });
+      el.shadowRoot.querySelectorAll('.ew-block-tabs button')[1].click();
+      expect(onOpen.secondCall.args[0].detail)
+        .to.deep.equal({ section: 'tools', id: 'quick-block', options: { tab: 'assets' } });
       expect(view.state.doc).to.equal(doc);
       expect(view.state.selection).to.equal(selection);
       el.shadowRoot.querySelector('#ew-block-properties-tab').click();
-      expect(onOpen.calledOnce).to.be.true;
+      expect(onOpen.calledTwice).to.be.true;
     } finally {
       document.removeEventListener(PANEL_EVENT.OPEN, onOpen);
     }
@@ -509,7 +513,7 @@ describe('ew-block-properties', () => {
     expect(getComputedStyle(tabs).backgroundColor).to.equal('rgb(232, 232, 232)');
     expect(getComputedStyle(tabs).borderRadius).to.equal('8px');
     const inactiveTab = getComputedStyle(tabs.children[0]);
-    const activeTab = getComputedStyle(tabs.children[1]);
+    const activeTab = getComputedStyle(tabs.children[2]);
     expect(inactiveTab.backgroundColor).to.equal('rgba(0, 0, 0, 0)');
     expect(inactiveTab.color).to.equal('rgb(85, 85, 85)');
     expect(activeTab.backgroundColor).to.equal('rgb(255, 255, 255)');
@@ -518,7 +522,7 @@ describe('ew-block-properties', () => {
     expect(activeTab.height).to.equal('30px');
     expect(activeTab.fontWeight).to.equal('600');
     el.style.setProperty('--s2-gray-25', '#242424');
-    expect(getComputedStyle(tabs.children[1]).backgroundColor).to.equal('rgb(36, 36, 36)');
+    expect(getComputedStyle(tabs.children[2]).backgroundColor).to.equal('rgb(36, 36, 36)');
     const style = getComputedStyle(el.shadowRoot.querySelector('.ew-block-name'));
     expect(style.backgroundColor).to.equal('rgb(232, 232, 232)');
     expect(style.color).to.equal('rgb(41, 41, 41)');

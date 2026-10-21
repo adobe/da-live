@@ -52,6 +52,7 @@ class EwBlockLibraryModal extends LitElement {
     blocks: { attribute: false },
     onInsert: { attribute: false },
     heading: { attribute: false },
+    initialBlockPath: { attribute: false },
     _blocks: { state: true },
     _variantsByPath: { state: true },
     _expandedPath: { state: true },
@@ -87,6 +88,15 @@ class EwBlockLibraryModal extends LitElement {
   willUpdate(changed) {
     if (changed.has('blocks')) {
       this._populateBlocks(this.blocks);
+    }
+    if (changed.has('blocks') || changed.has('initialBlockPath')) {
+      const initial = this._blocks?.find((block) => block.path === this.initialBlockPath);
+      if (initial) this._selectBlock(initial);
+      else if (this.initialBlockPath) {
+        this._selectedPath = null;
+        this._expandedPath = null;
+        this._previewInfo = null;
+      }
     }
   }
 
@@ -149,14 +159,14 @@ class EwBlockLibraryModal extends LitElement {
   async _selectBlock(block) {
     const willExpand = this._expandedPath !== block.path;
     this._expandedPath = willExpand ? block.path : null;
+    this._selectedPath = block.path;
+    this._loadPreview(block);
     if (willExpand && !this._variantsByPath.has(block.path)) {
       const variants = await block.loadVariants;
       const next = new Map(this._variantsByPath);
       next.set(block.path, variants ?? []);
       this._variantsByPath = next;
     }
-    this._selectedPath = block.path;
-    this._loadPreview(block);
   }
 
   async _loadPreview(block) {
@@ -308,6 +318,10 @@ class EwBlockLibraryModal extends LitElement {
   }
 
   _renderPreview() {
+    if (this.initialBlockPath && !this._selectedPath && this._blocks
+      && !this._blocks.some((block) => block.path === this.initialBlockPath)) {
+      return html`<div class="modal-preview-error"><p>The requested block was not found in this library.</p></div>`;
+    }
     if (this._previewInfo?.error) {
       return html`<div class="modal-preview-error"><p>${this._previewInfo.error}</p></div>`;
     }
@@ -357,8 +371,12 @@ class EwBlockLibraryModal extends LitElement {
 
 customElements.define('ew-block-library-modal', EwBlockLibraryModal);
 
-export async function openBlockLibraryModal({ onInsert, heading } = {}) {
-  if (document.body.querySelector('ew-block-library-modal')) return;
+export async function openBlockLibraryModal({ onInsert, heading, initialBlockPath } = {}) {
+  const existing = document.body.querySelector('ew-block-library-modal');
+  if (existing) {
+    if (initialBlockPath) existing.initialBlockPath = initialBlockPath;
+    return;
+  }
 
   let hashState;
   const unsub = hashChange.subscribe((s) => { hashState = s; });
@@ -373,6 +391,7 @@ export async function openBlockLibraryModal({ onInsert, heading } = {}) {
   modal.blocks = blocks;
   modal.onInsert = onInsert;
   modal.heading = heading;
+  modal.initialBlockPath = initialBlockPath;
   modal.addEventListener('close', () => modal.remove(), { once: true });
   document.body.append(modal);
 }

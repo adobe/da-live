@@ -48,6 +48,20 @@ describe('EwToolPanel — modal experience', () => {
   });
 
   describe('showPanel', () => {
+    it('passes block preselection to a modal without activating another view', async () => {
+      let received;
+      const el = createPanel([{
+        id: 'blocks',
+        experience: 'modal',
+        openModal: async (options) => { received = options; },
+      }]);
+      el.activeId = 'quick-block';
+      const options = { blockPath: 'https://example.com/library/cards' };
+      await el.showPanel('blocks', options);
+      expect(received).to.equal(options);
+      expect(el.activeId).to.equal('quick-block');
+    });
+
     it('invokes openModal and does not activate the view for a modal experience', async () => {
       let opened = 0;
       const openModal = async () => { opened += 1; };
@@ -81,6 +95,58 @@ describe('EwToolPanel — loaded view cache', () => {
   });
 
   afterEach(() => el.remove());
+
+  it('delivers tab options on first load and on a cached extension without reloading it', async () => {
+    const received = [];
+    let loads = 0;
+    el.views = [{
+      id: 'quick-block',
+      load: async () => {
+        loads += 1;
+        const extension = document.createElement('div');
+        extension.setPanelOptions = (options) => received.push(options);
+        return extension;
+      },
+    }];
+    el.pendingView = 'quick-block';
+    el.pendingOptions = { tab: 'assets' };
+    await el.updateComplete;
+    await nextTask();
+    expect(received).to.deep.equal([{ tab: 'assets' }]);
+    await el.showPanel('quick-block', { tab: 'blocks' });
+    await el.showPanel('quick-block', { tab: 'assets' });
+    expect(loads).to.equal(1);
+    expect(received).to.deep.equal([{ tab: 'assets' }, { tab: 'blocks' }, { tab: 'assets' }]);
+  });
+
+  it('mounts a same-id extension with navigation options when its page context changes', async () => {
+    const received = [];
+    const view = () => ({
+      id: 'quick-block',
+      cacheKey: 'quick-block-source',
+      load: async () => {
+        const extension = document.createElement('div');
+        extension.setPanelOptions = (options) => received.push(options);
+        return extension;
+      },
+    });
+    el.contextKey = 'org/first';
+    el.pendingView = 'quick-block';
+    el.views = [view()];
+    await el.updateComplete;
+    await nextTask();
+    const original = el._loaded['quick-block'];
+    el.contextKey = 'org/second';
+    el.pendingView = 'quick-block';
+    el.pendingOptions = { tab: 'assets' };
+    el.views = [view()];
+    await el.updateComplete;
+    await nextTask();
+    expect(el._loaded['quick-block']).not.to.equal(original);
+    expect(el.shadowRoot.querySelector('.tool-panel-content').firstElementChild)
+      .to.equal(el._loaded['quick-block']);
+    expect(received).to.deep.equal([{ tab: 'assets' }]);
+  });
 
   it('reloads an active configured view when its source cache key changes', async () => {
     let loadCount = 0;
