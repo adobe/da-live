@@ -77,7 +77,7 @@ describe('da-browse-header', () => {
     await header.updateComplete;
     expect(header.shadowRoot.querySelector('[role="status"]')).to.equal(summary);
     expect(summary.textContent).to.equal('Searching...');
-    expect(header.shadowRoot.querySelector('slot')).to.be.null;
+    expect(header.shadowRoot.querySelector('slot:not([name])')).to.be.null;
     expect(creation.isConnected).to.be.true;
     header.searchState = { loading: true, count: 1 };
     await header.updateComplete;
@@ -110,7 +110,7 @@ describe('da-browse-header', () => {
     header.searchState = { loading: false, count: 0, error: 'Search failed' };
     await header.updateComplete;
     expect(header.shadowRoot.querySelector('[role="status"]').textContent).to.equal('');
-    expect(header.shadowRoot.querySelector('slot')).to.be.null;
+    expect(header.shadowRoot.querySelector('slot:not([name])')).to.be.null;
   });
 
   it('reflects supplied sort state and disables sorting while loading', async () => {

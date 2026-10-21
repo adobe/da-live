@@ -1,27 +1,12 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
+import { spy } from 'sinon';
 
 const { setNx } = await import('../../../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 await import('../../../../../../blocks/browse/v2/da-browse/da-browse.js');
 const { PANEL_EVENT } = await import('../../../../../fixtures/nx/utils/panel.js');
-
-const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
-
-async function waitForRender(el) {
-  const deadline = Date.now() + 5000;
-  while (Date.now() < deadline) {
-    const header = el.shadowRoot?.querySelector('da-browse-header');
-    if (header && el.browseCmp?.actionBar) {
-      await header.updateComplete;
-      await el.browseCmp.updateComplete;
-      return;
-    }
-    await nextFrame();
-  }
-  throw new Error('Browse header and list did not finish rendering.');
-}
 
 describe('da-browse render', () => {
   let el;
@@ -33,6 +18,13 @@ describe('da-browse render', () => {
   }
 
   async function settle() {
+    const update = spy(el, 'update');
+    try {
+      await el.updateComplete;
+      await update.lastCall?.returnValue;
+    } finally {
+      update.restore();
+    }
     await el.updateComplete;
     await el.shadowRoot.querySelector('da-browse-header').updateComplete;
   }
@@ -57,7 +49,10 @@ describe('da-browse render', () => {
     el = document.createElement('da-browse');
     el.details = details;
     document.body.appendChild(el);
-    await waitForRender(el);
+    await settle();
+    await el.browseCmp.updateComplete;
+    await el.browseCmp._directoryReady;
+    await el.browseCmp.updateComplete;
     return el;
   }
 
@@ -162,9 +157,10 @@ describe('da-browse render', () => {
     expect(picker.labelOverride).to.equal('Sort');
     expect(picker.title).to.equal('Sort: Default');
     expect(list.shadowRoot.querySelector('[data-column="name"]').getAttribute('aria-sort')).to.equal('none');
+    const setSort = spy(list, 'setSort');
     picker.dispatchEvent(new CustomEvent('change', { detail: { value: 'name:ascending' } }));
-    await list.updateComplete;
-    await nextFrame();
+    await setSort.lastCall.returnValue;
+    setSort.restore();
     await list.updateComplete;
     await settle();
     expect(list._listItems.map((item) => item.name)).to.deep.equal(['a', 'b']);
@@ -189,11 +185,16 @@ describe('da-browse render', () => {
     await settle();
     expect(picker.labelOverride).to.equal('Sort');
     expect(picker.title).to.contain('Sorted by Modified');
-    el.details = { fullpath: '/org/other', org: 'org', site: 'other' };
-    await nextFrame();
-    await settle();
-    await list.updateComplete;
-    await settle();
+    const update = spy(list, 'update');
+    try {
+      el.details = { fullpath: '/org/other', org: 'org', site: 'other' };
+      await settle();
+      await list.updateComplete;
+      await update.firstCall.returnValue;
+      await settle();
+    } finally {
+      update.restore();
+    }
     expect(picker.labelOverride).to.equal('Sort');
     expect(picker.title).to.equal('Sorted by Modified (oldest first)');
     expect(JSON.parse(localStorage.getItem('da-browse-settings')).sort)
@@ -202,7 +203,7 @@ describe('da-browse render', () => {
 
   it('renders only the browse grid without search tabs or a duplicate breadcrumb', async () => {
     await renderToolbar({ fullpath: '/org/site/folder', org: 'org', site: 'site', path: '/folder' });
-    expect(el.shadowRoot.querySelector('nx-breadcrumb')).to.be.null;
+    expect(el.shadowRoot.querySelectorAll('nx-breadcrumb').length).to.equal(1);
     expect(el.shadowRoot.querySelector('[role="tablist"], [role="tabpanel"], da-search')).to.be.null;
     expect(el.shadowRoot.querySelectorAll('da-list').length).to.equal(1);
     expect(el.shadowRoot.querySelector('[role="grid"]').getAttribute('aria-label')).to.equal('Browse files');
@@ -229,7 +230,6 @@ describe('da-browse render', () => {
   it('keeps the browse list available when navigating to the organization root', async () => {
     await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
     el.details = { fullpath: '/org', org: 'org', path: '' };
-    await nextFrame();
     await settle();
     expect(el.browseCmp.fullpath).to.equal('/org');
     expect(el.shadowRoot.querySelectorAll('da-list').length).to.equal(1);

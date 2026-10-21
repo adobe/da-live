@@ -1,18 +1,21 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
+import { spy } from 'sinon';
 
 const { setNx } = await import('../../../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 await import('../../../../../../blocks/browse/v2/da-list/da-list.js');
 
-const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
-
-async function waitForRender(listEl) {
-  const deadline = Date.now() + 5000;
-  while (Date.now() < deadline) {
-    if (listEl.shadowRoot?.querySelector('.da-browse-panel-header')) return;
-    await nextFrame();
+async function updateList(el, change) {
+  const update = spy(el, 'update');
+  try {
+    change();
+    await el.updateComplete;
+    await update.firstCall.returnValue;
+    await el.updateComplete;
+  } finally {
+    update.restore();
   }
 }
 
@@ -41,8 +44,7 @@ describe('da-list render', () => {
   async function fixture(props = {}) {
     el = document.createElement('da-list');
     Object.assign(el, props);
-    document.body.appendChild(el);
-    await waitForRender(el);
+    await updateList(el, () => document.body.appendChild(el));
     return el;
   }
 
@@ -50,6 +52,49 @@ describe('da-list render', () => {
     el.requestUpdate();
     await el.updateComplete;
   }
+
+  it('persists row favorites without changing order or selection until reload', async () => {
+    const savedFavorites = localStorage.getItem('da-favorites');
+    try {
+      localStorage.removeItem('da-favorites');
+      await fixture({ fullpath: '/org/site' });
+      const first = { path: '/org/site/a.html', name: 'a', ext: 'html', isChecked: true };
+      const second = { path: '/org/site/b.html', name: 'b', ext: 'html' };
+      el._listItems = [first, second];
+      el._selectedItems = [first];
+      await rerender();
+      const row = [...el.shadowRoot.querySelectorAll('da-list-item')]
+        .find((item) => item.path === second.path);
+      await row.updateComplete;
+      row.shadowRoot.querySelector('.da-item-list-item-favorite').click();
+      await el.updateComplete;
+      expect(second.isFavorited).to.be.true;
+      expect(el._listItems).to.deep.equal([first, second]);
+      expect(el._selectedItems).to.deep.equal([first]);
+      expect(JSON.parse(localStorage.getItem('da-favorites'))['/org/site'])
+        .to.deep.equal([second.path]);
+      await row.updateComplete;
+      expect(row.isFavorited).to.be.true;
+      row.shadowRoot.querySelector('.da-item-list-item-favorite').click();
+      await el.updateComplete;
+      expect(second.isFavorited).to.be.false;
+      expect(localStorage.getItem('da-favorites')).to.be.null;
+      expect(el._listItems).to.deep.equal([first, second]);
+
+      row.shadowRoot.querySelector('.da-item-list-item-favorite').click();
+      const reloaded = [
+        { ...first, isFavorited: false },
+        { ...second, isFavorited: false },
+      ];
+      el.applyFavoritesToItems(reloaded);
+      el._listItems = reloaded;
+      el.applyFavoriteOrder();
+      expect(el._listItems.map((item) => item.path)).to.deep.equal([second.path, first.path]);
+    } finally {
+      if (savedFavorites === null) localStorage.removeItem('da-favorites');
+      else localStorage.setItem('da-favorites', savedFavorites);
+    }
+  });
 
   it('applies the sort preference on initial load and applies it again when changing folders', async () => {
     el = document.createElement('da-list');
@@ -61,14 +106,10 @@ describe('da-list render', () => {
     ];
     el.updateDeletePermission = async () => { };
     el.fullpath = '/org/site/one';
-    document.body.append(el);
-    await nextFrame();
-    await el.updateComplete;
+    await updateList(el, () => document.body.append(el));
     expect(el._listItems.map((item) => item.name)).to.deep.equal(['a', 'b']);
     expect(el.sortState.property).to.equal('name');
-    el.fullpath = '/org/site/two';
-    await nextFrame();
-    await el.updateComplete;
+    await updateList(el, () => { el.fullpath = '/org/site/two'; });
     expect(el._listItems.map((item) => item.path)).to.deep.equal([
       '/org/site/two/a.html', '/org/site/two/b.html',
     ]);
@@ -351,8 +392,14 @@ describe('da-list pagination observer', () => {
     el = document.createElement('da-list');
     // Initialize so renderCheckBox()/isSelectAll don't throw on first render
     el._listItems = [];
-    document.body.appendChild(el);
-    await nextFrame();
+    const initialized = spy(el, 'firstUpdated');
+    try {
+      document.body.appendChild(el);
+      await el.updateComplete;
+      await initialized.firstCall.returnValue;
+    } finally {
+      initialized.restore();
+    }
   });
 
   afterEach(() => {

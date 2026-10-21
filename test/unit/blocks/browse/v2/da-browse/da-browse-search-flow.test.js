@@ -488,7 +488,9 @@ describe('browse-owned nav search', () => {
     await submit('one');
     const header = browse.shadowRoot.querySelector('da-browse-header');
     await header.updateComplete;
-    expect(header.shadowRoot.querySelector('slot')).to.be.null;
+    expect(header.shadowRoot.querySelector('slot:not([name])')).to.be.null;
+    expect(header.shadowRoot.querySelector('slot[name="actions"]').assignedElements())
+      .to.deep.equal([creation]);
     expect(creation.isConnected).to.be.true;
     browse._navField.value = '';
     browse._navField.dispatchEvent(new Event('input'));
@@ -497,7 +499,8 @@ describe('browse-owned nav search', () => {
     expect(browse.shadowRoot.querySelector('.da-list-type-search')).to.be.null;
     expect(browse.shadowRoot.querySelector('[aria-label="Browse files"]').hidden).to.be.false;
     expect((await searchSummary()).textContent).to.equal('');
-    expect(header.shadowRoot.querySelector('slot').assignedElements()).to.deep.equal([creation]);
+    expect(header.shadowRoot.querySelector('slot:not([name])').assignedElements())
+      .to.deep.equal([browse.shadowRoot.querySelector('nx-breadcrumb')]);
     expect(browse.newCmp).to.equal(creation);
   });
 
