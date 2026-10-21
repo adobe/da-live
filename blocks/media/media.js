@@ -42,7 +42,7 @@ async function getDefaultMedia() {
   return document.createElement('da-media');
 }
 
-async function loadPdfMedia(path, fileName) {
+async function loadPdfMedia(path, fileName, isCurrent) {
   const adobeDCView = new window.AdobeDC.View({ clientId: PDF_CLIENT_ID, divId: PDF_DIV_ID });
 
   try {
@@ -50,9 +50,11 @@ async function loadPdfMedia(path, fileName) {
     // path is the `/org/site/...` fullpath; source.get's withArgs parses it.
     const resp = await source.get(path);
     const blob = await resp.blob();
+    if (!isCurrent()) return;
 
     const reader = new FileReader();
     reader.onloadend = (e) => {
+      if (!isCurrent()) return;
       const promise = Promise.resolve(e.target.result);
       adobeDCView.previewFile({ content: { promise }, metaData: { fileName } });
     };
@@ -63,20 +65,44 @@ async function loadPdfMedia(path, fileName) {
   }
 }
 
-export default async function init(el) {
+async function setUI(el, isCurrent) {
   const details = getPathDetails();
   const { name, fullpath, owner, repo } = details;
   const ext = name.split('.').pop();
+  let blob;
 
-  await contentLogin(owner, repo);
+  const { isHlx6, source } = await getNx2Api();
+  if (await isHlx6(owner, repo)) {
+    if (ext !== 'pdf') {
+      const resp = await source.get(fullpath);
+      if (!resp.ok) throw new Error(`Could not load media: ${resp.status}`);
+      blob = await resp.blob();
+    }
+  } else {
+    await contentLogin(owner, repo);
+  }
 
   const daTitle = document.createElement('da-title');
 
   const daMedia = ext === 'pdf' ? await getPdfMedia() : await getDefaultMedia();
 
+  if (!isCurrent()) return;
+  if (blob) details.contentUrl = URL.createObjectURL(blob);
   daTitle.details = details;
   daMedia.details = details;
-  el.append(daTitle, daMedia);
+  el.replaceChildren(daTitle, daMedia);
 
-  if (ext === 'pdf') loadPdfMedia(fullpath, name);
+  if (ext === 'pdf') loadPdfMedia(fullpath, name, isCurrent);
+}
+
+export default async function init(el) {
+  let currentRequest = 0;
+  const load = () => {
+    currentRequest += 1;
+    const request = currentRequest;
+    return setUI(el, () => request === currentRequest);
+  };
+
+  window.addEventListener('hashchange', load);
+  await load();
 }

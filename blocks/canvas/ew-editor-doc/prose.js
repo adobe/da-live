@@ -8,7 +8,7 @@ import {
   Y,
   WebsocketProvider,
   ySyncPlugin,
-  yCursorPlugin,
+  daCursorPlugin,
   yUndoPlugin,
   yUndoPluginKey,
   yUndo,
@@ -36,17 +36,21 @@ import tableSelectHandle from '../../edit/prose/plugins/tableSelectHandle.js';
 import imageDrop from './prose-plugins/imageDrop.js';
 import imageFocalPoint from '../../edit/prose/plugins/imageFocalPoint.js';
 import sectionPasteHandler from '../../edit/prose/plugins/sectionPasteHandler.js';
+import linkConverter from '../../edit/prose/plugins/linkConverter.js';
 import base64Uploader from './prose-plugins/base64Uploader.js';
+import blockFocus, { guardFocusedBlockDeletion } from './prose-plugins/blockFocus.js';
 import { getNx } from '../../../scripts/utils.js';
 import { getAuthToken } from '../../shared/utils.js';
-import { generateColor, getCollabIdentity } from './utils/collab.js';
+import { generateColor, collabCursorBuilder } from '../editor-utils/author-color.js';
+import { getCollabIdentity } from './utils/collab.js';
 import { checkBlockLibraryConfigured } from '../editor-utils/block-slash.js';
 import { getDiffClass, addActiveView } from '../../edit/prose/diff/diff-utils.js';
 import { initDaMetadata } from '../../edit/utils/helpers.js';
 import { createMergeConflictsPlugin } from '../editor-utils/prose-merge-conflicts.js';
+import { toolbarController } from '../editor-utils/toolbar-controller.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
-const { DA_ADMIN, DA_COLLAB, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { DA_COLLAB, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
 function registerErrorHandler(ydoc) {
   ydoc.on('update', () => {
@@ -97,7 +101,8 @@ export default async function initProse({
   const ydoc = new Y.Doc();
 
   const server = DA_COLLAB;
-  const roomName = `${DA_ADMIN}${new URL(path).pathname}`;
+  // da-collab reads the store off the room name, and `path` is already the store's source url.
+  const roomName = path;
 
   const wsOpts = { protocols: ['yjs'] };
   let lastSentToken = null;
@@ -154,6 +159,7 @@ export default async function initProse({
       color: generateColor(identity.colorSeed),
       name: identity.name,
       id: identity.id,
+      email: identity.email,
     });
   } else {
     wsProvider.awareness.setLocalStateField('user', {
@@ -167,20 +173,34 @@ export default async function initProse({
   let viewRef = null;
   const dispatch = (tr) => { if (viewRef) viewRef.dispatch(tr); };
 
+  const resolvedExtraPlugins = typeof extraPlugins === 'function'
+    ? extraPlugins({ wsProvider, ydoc })
+    : extraPlugins;
+
   /* Keymap order matches da.live prose/index.js: baseKeymap after buildKeymap +
    * handleTableBackspace (fixes list Enter + table NodeSelection + Backspace). */
   const plugins = [
     ySyncPlugin(yXmlFragment),
-    yCursorPlugin(wsProvider.awareness),
+    // Upstream's yCursorPlugin only broadcasts while `view.hasFocus()`. The doc view
+    // has no browser focus while the quick-edit iframe owns editing, so the fork takes
+    // an explicit predicate instead (see deps/da-y-wrapper/src/da-cursor-plugin.js).
+    daCursorPlugin(wsProvider.awareness, {
+      cursorBuilder: collabCursorBuilder,
+      shouldBroadcast: (view) => toolbarController.activeSurface === 'wysiwyg'
+        || view.hasFocus(),
+    }),
     yUndoPlugin(),
     tableSelectHandle(),
     imageDrop(schema, () => path),
+    linkConverter(schema),
     sectionPasteHandler(schema),
     base64Uploader({ getSourceUrl: () => path, getEditorView: () => viewRef }),
     columnResizing(),
     getEnterInputRulesPlugin(dispatch),
     getURLInputRulesPlugin(),
     getListInputRulesPlugin(schema),
+    // Runs before the base/table keymaps so it can veto deleting the block being edited.
+    keymap({ Backspace: guardFocusedBlockDeletion, Delete: guardFocusedBlockDeletion }),
     keymap(buildKeymap(schema)),
     keymap({ Backspace: handleTableBackspace }),
     keymap(baseKeymap),
@@ -210,7 +230,8 @@ export default async function initProse({
     }),
     gapCursor(),
     tableEditing({ allowTableNodeSelection: true }),
-    ...extraPlugins,
+    blockFocus(),
+    ...resolvedExtraPlugins,
   ];
 
   if (canWrite) {

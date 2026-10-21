@@ -1,7 +1,9 @@
 import path from 'path';
 import { test, expect } from '../utils/fixtures.js';
 import ENV from '../utils/env.js';
-import { getQuery, getTestFolderURL, TEST_ORG, TEST_SITE } from '../utils/page.js';
+import {
+  getQuery, getTestFolderURL, TEST_ORG, TEST_SITE, RUN_FOLDER,
+} from '../utils/page.js';
 
 async function findPageTab(title, page, context) {
   let attemptsLeft = 5;
@@ -10,10 +12,8 @@ async function findPageTab(title, page, context) {
 
     await page.waitForTimeout(500);
     const pages = context.pages();
-    console.log('Num Pages:', pages.length);
     for (let i = 0; i < pages.length; i += 1) {
       const pageTitle = await pages[i].title();
-      console.log('Page:', pageTitle);
       if (pageTitle.includes('Edit regionaledit')) {
         return pages[i];
       }
@@ -28,32 +28,30 @@ const sendUndo = async (page) => {
   await expect(page.locator('div.diff-tabbed-actions.loc-floating-overlay')).toBeVisible();
 };
 
-test('Regional Edit Document', async ({ page, context, trackCleanup }, workerInfo) => {
+test('Regional Edit Document', async ({ page, context }, workerInfo) => {
   test.setTimeout(30000);
 
   const folderURL = getTestFolderURL('regionaledit', workerInfo);
-  trackCleanup(folderURL, { isFolder: true });
 
   /* */ // Added this to make it work in Helix 6
-  await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests`);
+  await page.goto(`${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}`);
   const folderName = folderURL.split('/').pop();
-  await expect(page.getByRole('button', { name: 'New' })).toBeEnabled();
-  await page.getByRole('button', { name: 'New' }).click({ force: true });
+  await expect(page.getByRole('button', { name: 'New', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'New', exact: true }).click({ force: true });
   await page.getByRole('menuitem', { name: 'Folder' }).click();
   await page.getByPlaceholder('folder name').fill(folderName);
   await page.getByRole('button', { name: 'Create' }).click();
   /* */ // End addition
 
   await page.goto(folderURL);
-  await expect(page.getByRole('button', { name: 'New' })).toBeEnabled();
-  await page.getByRole('button', { name: 'New' }).click({ force: true });
+  await expect(page.getByRole('button', { name: 'New', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'New', exact: true }).click({ force: true });
   const [fileChooser] = await Promise.all([
     page.waitForEvent('filechooser'),
     page.getByRole('menuitem', { name: 'Media' }).click(),
   ]);
 
   const htmlFile = path.join(__dirname, '/mocks/regionaledit.html');
-  console.log(htmlFile);
   await fileChooser.setFiles([`${htmlFile}`]);
 
   await page.getByRole('link', { name: 'regionaledit', exact: true }).click();

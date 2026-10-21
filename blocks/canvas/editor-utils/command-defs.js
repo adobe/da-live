@@ -28,6 +28,8 @@ import {
   isImageNodeSelected,
   selectionHasLink,
   removeLink,
+  requestComment,
+  canComment,
 } from './command-helpers.js';
 import { openLinkDialog, openAltDialog, triggerAddImage } from './selection-toolbar.js';
 import { blockItemsForQuery, hasLibrary, insertBlockItem, getState } from './block-slash.js';
@@ -284,7 +286,7 @@ export const COMMANDS = [
     id: 'table-merge-cells',
     label: 'Merge cells',
     icon: iconName('tablemergecells'),
-    showIn: ['toolbar-table'],
+    showIn: ['toolbar-table', 'slash-cell'],
     visible: canMergeCells,
     apply: mergeTableCells,
   },
@@ -292,7 +294,7 @@ export const COMMANDS = [
     id: 'table-split-cell',
     label: 'Split cell',
     icon: iconName('tablesplitcell'),
-    showIn: ['toolbar-table'],
+    showIn: ['toolbar-table', 'slash-cell'],
     visible: canSplitCell,
     apply: splitTableCell,
   },
@@ -340,6 +342,16 @@ export const COMMANDS = [
     apply: triggerAddImage,
   },
 
+  // Toolbar: comment (end of the toolbar, after image)
+  {
+    id: 'add-comment',
+    label: 'Comment',
+    icon: iconName('comment'),
+    showIn: ['toolbar-comment'],
+    visible: canComment,
+    apply: requestComment,
+  },
+
   // Slash menu: text section only
   {
     id: 'section-break',
@@ -378,9 +390,9 @@ export const COMMANDS = [
     icon: iconName('CCLibrary'),
     showIn: ['slash-blocks'],
     apply: async (view) => {
-      const { insertBlock } = await import('../ew-panel-extensions/helpers.js');
+      const { insertLibraryBlock } = await import('../ew-panel-extensions/helpers.js');
       const { openBlockLibraryModal } = await import('../ew-block-library-modal/ew-block-library-modal.js');
-      openBlockLibraryModal({ onInsert: (dom) => insertBlock(view, dom) });
+      openBlockLibraryModal({ onInsert: (dom) => insertLibraryBlock(view, dom) });
     },
   },
   {
@@ -454,4 +466,12 @@ export function applySlashSelection(view, id) {
   if (command) return command.apply(view);
   if (id?.startsWith('block:')) return insertBlockItem(view, id);
   return undefined;
+}
+
+// Cell commands offered when "/" is pressed on a multi-cell selection, filtered
+// to those currently available (mirrors the classic editor's cell slash menu).
+export function cellSelectionSlashItems(state) {
+  return commandsFor('slash-cell')
+    .filter((cmd) => cmd.visible?.(state))
+    .map((cmd) => toSlashItem(cmd));
 }

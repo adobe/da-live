@@ -4,7 +4,7 @@
 
 // Each channel is a private listener Set — no DOM element involved. `replay: true`
 // re-delivers the last truthy emitted value to a subscriber that joins later.
-function createChannel({ replay = false } = {}) {
+export function createChannel({ replay = false } = {}) {
   const listeners = new Set();
   let lastValue;
   return {
@@ -40,16 +40,35 @@ export const canvasBus = Object.freeze({
   undoRequest: createChannel(),
   redoRequest: createChannel(),
   newVersionRequest: createChannel(),
+  comparisonRequest: createChannel(),
+  commentComposeRequest: createChannel(),
+  blockEditRequest: createChannel(),
+  preflightRunRequest: createChannel(),
+  toolbarSurfaceRequest: createChannel(),
 
   undoState: createChannel(),
   mergeConflictsState: createChannel(),
-  editorViewState: createChannel(),
+  editorDocState: createChannel(),
+  editorViewState: createChannel({ replay: true }),
+  branchState: createChannel({ replay: true }),
+  blockEditState: createChannel({ replay: true }),
+  toolbarSurfaceState: createChannel({ replay: true }),
+  // Doc selection does not claim focus; an iframe selection does.
+  toolbarSelectionState: createChannel(),
   editorHtmlState: createChannel({ replay: true }),
   editorSelectState: {
     subscribe: editorSelectChannel.subscribe,
     emit: (detail) => editorSelectChannel.emit(enrichEditorSelect(detail)),
   },
   editorProseSelectState: createChannel(),
+  toolPanelViewState: createChannel({ replay: true }),
+  comparisonState: createChannel(),
 
-  wysiwygPortReady: createChannel(),
+  // Replays because the split layout re-appends `ew-editor-doc` on every hash
+  // sync, so a late resubscribe would otherwise miss an already-emitted port.
+  wysiwygPortReady: createChannel({ replay: true }),
+
+  commentsControllerState: createChannel(),
+
+  preflightStatusState: createChannel(),
 });

@@ -29,6 +29,7 @@ import { getNx2Api } from '../../../scripts/utils.js';
 import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
 import { forceSave } from '../../shared/forcesave.js';
+import { bindFirstSectionName } from '../../shared/section-name.js';
 
 // Rapid-reconnect guard (COR-44): y-websocket resets its backoff counter on
 // every successful onopen, so a close that follows a brief successful
@@ -511,6 +512,9 @@ function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
     // Reconfigure the view with the full plugin list
     const newState = window.view.state.reconfigure({ plugins: pluginList });
     window.view.updateState(newState);
+    // reconfigure() destroys/recreates all plugin views, incl. the cursor plugin, which
+    // nulls collab cursor awareness on destroy. Force an update pass to re-broadcast it.
+    window.view.dispatch(window.view.state.tr);
   });
 }
 
@@ -594,6 +598,7 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
 
   // yMap for storing document metadata (not synced to ProseMirror doc.attrs)
   initDaMetadata(ydoc.getMap('daMetadata'));
+  bindFirstSectionName(ydoc, window.view);
 
   const pluginsPromise = loadCustomPlugins();
   applyDelayedPlugins(pluginsPromise, schema, canWrite, {

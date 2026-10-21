@@ -3,6 +3,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2, getNxEWFlags } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import { canvasBus } from '../utils/canvas-bus.js';
+import { getCommentsBridge, toggleComments, getCommentsVisible } from '../editor-utils/comments-bridge.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { PANEL_EVENT, getSectionAtPosition } = await import(`${getNx()}/utils/panel.js`);
@@ -17,6 +18,7 @@ const ICONS = {
   splitRight: '/img/icons/s2-icon-splitright-20-n.svg',
   gridCompare: '/img/icons/s2-icon-gridcompare-20-n.svg',
   lock: '/img/icons/s2-icon-lock-20-n.svg',
+  comment: '/img/icons/s2-icon-chat-20-n.svg',
 };
 
 const EDITOR_VIEWS = /** @type {const} */ (['layout', 'content', 'split']);
@@ -31,6 +33,8 @@ class EWCanvasHeader extends LitElement {
     hasUnresolvedMergeConflicts: { type: Boolean, reflect: true, attribute: 'has-conflicts' },
     canWrite: { type: Boolean },
     _chatDisabled: { state: true },
+    _commentsVisible: { state: true },
+    _commentCount: { state: true },
   };
 
   constructor() {
@@ -41,6 +45,8 @@ class EWCanvasHeader extends LitElement {
     this.authorized = true;
     this.hasUnresolvedMergeConflicts = false;
     this.canWrite = true;
+    this._commentsVisible = false;
+    this._commentCount = 0;
   }
 
   connectedCallback() {
@@ -49,11 +55,37 @@ class EWCanvasHeader extends LitElement {
     this._unsubHash = hashChange.subscribe((state) => {
       this._syncChatDisabled(state?.org, state?.site);
     });
+    this._unsubControllerChange = canvasBus.commentsControllerState
+      .subscribe(() => this._bindComments());
+    this._bindComments();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
+    this._unsubControllerChange?.();
+    this._unbindComments?.();
+  }
+
+  _bindComments() {
+    this._unbindComments?.();
+    const syncVisible = () => { this._commentsVisible = getCommentsVisible(); };
+    const syncCount = () => {
+      this._commentCount = getCommentsBridge().controller?.counts?.active ?? 0;
+    };
+    syncVisible();
+    syncCount();
+    const { controller } = getCommentsBridge();
+    if (!controller?.on) {
+      this._unbindComments = null;
+      return;
+    }
+    const offs = [controller.on('panelOpen', syncVisible), controller.on('counts', syncCount)];
+    this._unbindComments = () => offs.forEach((off) => off?.());
+  }
+
+  _toggleComments() {
+    toggleComments();
   }
 
   async _syncChatDisabled(org, site) {
@@ -86,6 +118,7 @@ class EWCanvasHeader extends LitElement {
   setEditorView(view) {
     if (this.hasUnresolvedMergeConflicts && view !== 'content') return;
     if (!EDITOR_VIEWS.includes(view) || view === this.editorView) return;
+    this.editorView = view;
     canvasBus.editorViewRequest.emit({ view });
   }
 
@@ -96,7 +129,7 @@ class EWCanvasHeader extends LitElement {
   _renderLock() {
     const label = "Read-only — you don't have write access";
     return html`
-      <span class="nx-action-btn-icon" role="img" aria-label=${label} title=${label}>
+      <span class="nx-action-btn-icon read-only-icon" role="img" aria-label=${label} title=${label}>
         ${this._renderIcon('lock')}
       </span>`;
   }
@@ -106,17 +139,17 @@ class EWCanvasHeader extends LitElement {
       <header class="bar" part="bar">
         <div class="group group-start" part="group-start">
           ${this._chatDisabled ? nothing : html`
-          <button type="button" class="icon-btn" part="btn toggle-before" data-action="open-panel-before" aria-label="Open before panel" @click=${() => this._openPanel('before')}>
+          <button type="button" class="nx-action-btn-icon" part="btn toggle-before" data-action="open-panel-before" aria-label="Open before panel" @click=${() => this._openPanel('before')}>
             ${this._renderIcon('splitLeft')}
           </button>
           `}
           ${this.canWrite ? html`
-          <button type="button" class="icon-btn" part="btn" data-action="undo" aria-label="Undo" ?disabled=${!this.undoAvailable} @click=${this._undo}>
+          <button type="button" class="nx-action-btn-icon" part="btn" data-action="undo" aria-label="Undo" ?disabled=${!this.undoAvailable} @click=${this._undo}>
             ${this._renderIcon('undo')}
           </button>
           <button
             type="button"
-            class="icon-btn"
+            class="nx-action-btn-icon"
             part="btn"
             data-action="redo"
             aria-label="Redo"
@@ -160,7 +193,19 @@ class EWCanvasHeader extends LitElement {
         </div>
 
         <div class="group group-end" part="group-end">
-          <button type="button" class="icon-btn" part="btn toggle-after" data-action="open-panel-after" aria-label="Open after panel" @click=${() => this._openPanel('after')}>
+          <button
+            type="button"
+            class="nx-action-btn-icon comments-toggle ${this._commentsVisible ? 'is-active' : ''}"
+            part="btn comments-toggle"
+            data-action="toggle-comments"
+            aria-label=${`${this._commentsVisible ? 'Hide comments' : 'Show comments'}${this._commentCount > 0 && !this._commentsVisible ? ` (${this._commentCount} active)` : ''}`}
+            aria-pressed=${this._commentsVisible}
+            @click=${this._toggleComments}
+          >
+            ${this._renderIcon('comment')}
+            ${this._commentCount > 0 && !this._commentsVisible ? html`<span class="comment-count-chip" aria-hidden="true">${this._commentCount}</span>` : nothing}
+          </button>
+          <button type="button" class="nx-action-btn-icon" part="btn toggle-after" data-action="open-panel-after" aria-label="Open after panel" @click=${() => this._openPanel('after')}>
             ${this._renderIcon('splitRight')}
           </button>
         </div>

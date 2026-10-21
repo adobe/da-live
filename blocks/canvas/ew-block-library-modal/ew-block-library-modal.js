@@ -1,20 +1,33 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
+import getSheet from '../../shared/sheet.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 import {
   loadBlockLibrary,
-  getItemPreviewUrl,
+  ensureItemPreviewAccess,
+  LIBRARY_AUTH_MESSAGE,
   getPreviewStatus,
 } from '../ew-panel-extensions/helpers.js';
 
 const nx = getNx();
 await import(`${nx}/blocks/shared/dialog/dialog.js`);
 const { loadStyle, hashChange } = await import(`${nx}/utils/utils.js`);
-const style = await loadStyle(import.meta.url);
+const [buttonsStyle, formStyle, style] = await Promise.all([
+  getSheet(`${getNx2()}/styles/buttons.css`),
+  getSheet(`${getNx2()}/styles/form.css`),
+  loadStyle(import.meta.url),
+]);
 
 const CHEVRON_ICON_SRC = '/img/icons/s2-icon-chevronright-20-n.svg';
 const SEARCH_ICON_SRC = '/img/icons/s2-icon-search-20-n.svg';
 const INFO_ICON_SRC = '/img/icons/s2-icon-infocircle-20-n.svg';
 const ADD_ICON_SRC = '/img/icons/s2-icon-addcircle-20-n.svg';
+
+const VIEWPORTS = [
+  ['desktop', 'Desktop', '100%', '/img/icons/s2-icon-devicedesktop-20-n.svg'],
+  ['tablet', 'Tablet', '768px', '/img/icons/s2-icon-devicetablet-20-n.svg'],
+  ['mobile', 'Mobile', '390px', '/img/icons/s2-icon-devicephone-20-n.svg'],
+];
 
 function andMatch(query, target) {
   const terms = query.split(/\s+/).filter(Boolean);
@@ -39,11 +52,13 @@ class EwBlockLibraryModal extends LitElement {
   static properties = {
     blocks: { attribute: false },
     onInsert: { attribute: false },
+    heading: { attribute: false },
     _blocks: { state: true },
     _variantsByPath: { state: true },
     _expandedPath: { state: true },
     _selectedPath: { state: true },
     _previewInfo: { state: true },
+    _viewport: { state: true },
     _hashState: { state: true },
     _search: { state: true },
     _openDescriptions: { state: true },
@@ -51,15 +66,27 @@ class EwBlockLibraryModal extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style];
+    this.shadowRoot.adoptedStyleSheets = [buttonsStyle, formStyle, style];
     this._variantsByPath = new Map();
     this._openDescriptions = new Set();
+    this._viewport = 'desktop';
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
+    this._unsubBranch = canvasBus.branchState.subscribe((state) => {
+      if (!state?.path) {
+        this._previewRequest = null;
+        this._previewInfo = null;
+        this._previewBlock = undefined;
+      } else if (this._previewBlock) {
+        this._loadPreview(this._previewBlock, this._previewRequest?.anchor);
+      }
+    });
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
+    this._previewRequest = null;
+    this._unsubBranch?.();
   }
 
   willUpdate(changed) {
@@ -114,11 +141,6 @@ class EwBlockLibraryModal extends LitElement {
     this._search = e.target.value;
   };
 
-  _clearSearch = () => {
-    this._search = '';
-    this.shadowRoot.querySelector('.modal-search-input')?.focus();
-  };
-
   _onDialogClose = () => {
     this.dispatchEvent(new CustomEvent('close', { bubbles: true, composed: true }));
   };
@@ -130,6 +152,8 @@ class EwBlockLibraryModal extends LitElement {
   }
 
   async _selectBlock(block) {
+    this._selectedPath = block.path;
+    this._loadPreview(block);
     const willExpand = this._expandedPath !== block.path;
     this._expandedPath = willExpand ? block.path : null;
     if (willExpand && !this._variantsByPath.has(block.path)) {
@@ -138,25 +162,50 @@ class EwBlockLibraryModal extends LitElement {
       next.set(block.path, variants ?? []);
       this._variantsByPath = next;
     }
-    this._selectedPath = block.path;
-    this._loadPreview(block);
   }
 
-  async _loadPreview(block) {
+  async _selectVariant(block, variant) {
+    if (!variant.anchor) return;
+    this._selectedPath = block.path;
+    if (this._previewInfo?.path === block.path && this._previewBlock?.path === block.path) {
+      if (this._previewRequest) this._previewRequest.anchor = variant.anchor;
+      const url = new URL(this._previewInfo.url);
+      url.hash = encodeURIComponent(variant.anchor);
+      if (url.href === this._previewInfo.url) {
+        // Lit skips unchanged attributes; reapply the fragment to restore scroll.
+        this.shadowRoot.querySelector('.modal-preview-frame')?.setAttribute('src', url.href);
+      }
+      this._previewInfo = { ...this._previewInfo, url: url.href };
+    } else {
+      await this._loadPreview(block, variant.anchor);
+    }
+  }
+
+  async _loadPreview(block, anchor) {
+    const request = { anchor };
+    this._previewRequest = request;
+    this._previewBlock = block;
     const { org, site } = this._hashState || {};
     if (!org || !site) {
       this._previewInfo = null;
       return;
     }
-    const details = getItemPreviewUrl(block, { org, site });
-    const url = details.previewUrl;
+    const details = await ensureItemPreviewAccess(block, { org, site });
+    if (this._previewRequest !== request) return;
+    if (!details || details.error) {
+      this._previewInfo = { error: details?.error || 'Preview branch unavailable. Please try again once the editor preview is ready.' };
+      return;
+    }
+    const previewUrl = new URL(details.previewUrl);
+    if (request.anchor) previewUrl.hash = encodeURIComponent(request.anchor);
+    const url = previewUrl.href;
     this._previewInfo = { path: block.path, name: block.name, url, ok: undefined };
-    const ok = await getPreviewStatus({
+    const ok = details.org?.toLowerCase() === org.toLowerCase() ? await getPreviewStatus({
       org: details.org,
       site: details.site,
       pathname: details.pathname,
-    });
-    if (this._previewInfo?.url === url) {
+    }) : null;
+    if (this._previewRequest === request) {
       this._previewInfo = { ...this._previewInfo, ok };
     }
   }
@@ -193,7 +242,7 @@ class EwBlockLibraryModal extends LitElement {
       return html`<div class="modal-tree-loading">Loading variants…</div>`;
     }
     if (!variants.length) {
-      return html`<div class="modal-tree-loading">No variants found.</div>`;
+      return html`<div class="modal-tree-loading">${variants.authError ? LIBRARY_AUTH_MESSAGE : 'No variants found.'}</div>`;
     }
     return html`
       <ul class="modal-tree-variants" role="group">
@@ -207,16 +256,19 @@ class EwBlockLibraryModal extends LitElement {
     return html`
       <li role="treeitem">
         <div class="modal-tree-variant-row">
-          <span class="modal-tree-row modal-tree-row-variant">
+          <button type="button"
+                  class="modal-tree-row modal-tree-row-variant"
+                  ?disabled=${!v.anchor}
+                  @click=${() => this._selectVariant(block, v)}>
             <span class="modal-tree-label">
               ${v.name}${v.variants
     ? html` <span class="modal-tree-subtitle">${v.variants}</span>`
     : nothing}
             </span>
-          </span>
+          </button>
           ${description ? html`
             <button type="button"
-                    class="modal-tree-info"
+                    class="nx-action-btn-icon nx-btn-sm modal-tree-info"
                     aria-label="Show description"
                     aria-expanded=${isOpen}
                     @click=${() => this._toggleDescription(v)}>
@@ -225,7 +277,7 @@ class EwBlockLibraryModal extends LitElement {
               </svg>
             </button>` : nothing}
           <button type="button"
-                  class="modal-tree-add"
+                  class="nx-action-btn-icon nx-btn-sm modal-tree-add"
                   aria-label="Add ${v.name} to page"
                   @click=${() => this._addVariant(v)}>
             <svg aria-hidden="true" viewBox="0 0 20 20">
@@ -243,7 +295,7 @@ class EwBlockLibraryModal extends LitElement {
       return html`<div class="modal-state">Loading blocks…</div>`;
     }
     if (!this._blocks.length) {
-      return html`<div class="modal-state">No blocks found.</div>`;
+      return html`<div class="modal-state">${this._blocks.authError ? LIBRARY_AUTH_MESSAGE : 'No blocks found.'}</div>`;
     }
     const filtered = this._filteredBlocks();
     if (!filtered.length) {
@@ -256,29 +308,39 @@ class EwBlockLibraryModal extends LitElement {
   }
 
   _renderSearch() {
-    const hasValue = !!(this._search || '').length;
     return html`
       <div class="modal-search">
-        <div class="modal-search-field">
-          <svg aria-hidden="true" class="modal-search-icon" viewBox="0 0 20 20">
-            <use href="${SEARCH_ICON_SRC}#icon"></use>
-          </svg>
-          <input type="search"
-                 class="modal-search-input"
-                 placeholder="Search blocks"
-                 aria-label="Search blocks"
-                 .value=${this._search || ''}
-                 @input=${this._onSearchInput}>
-          ${hasValue ? html`
-            <button type="button"
-                    class="modal-search-clear"
-                    aria-label="Clear search"
-                    @click=${this._clearSearch}>✕</button>` : nothing}
-        </div>
+        <svg aria-hidden="true" class="modal-search-icon" viewBox="0 0 20 20">
+          <use href="${SEARCH_ICON_SRC}#icon"></use>
+        </svg>
+        <input type="search"
+               class="nx-input modal-search-input"
+               placeholder="Search blocks"
+               aria-label="Search blocks"
+               .value=${this._search || ''}
+               @input=${this._onSearchInput}>
+      </div>`;
+  }
+
+  _renderViewportBar() {
+    return html`
+      <div class="modal-preview-toolbar" role="group" aria-label="Preview width">
+        ${VIEWPORTS.map(([id, label, , icon]) => html`
+          <button type="button"
+                  class="nx-action-btn-icon modal-viewport-btn ${this._viewport === id ? 'is-active' : ''}"
+                  aria-label=${label}
+                  title=${label}
+                  aria-pressed=${this._viewport === id}
+                  @click=${() => { this._viewport = id; }}>
+            <svg aria-hidden="true" viewBox="0 0 20 20"><use href="${icon}#icon"></use></svg>
+          </button>`)}
       </div>`;
   }
 
   _renderPreview() {
+    if (this._previewInfo?.error) {
+      return html`<div class="modal-preview-error"><p>${this._previewInfo.error}</p></div>`;
+    }
     if (!this._previewInfo) {
       return html`<div class="modal-preview-placeholder">
         Select a block to see a preview.
@@ -287,11 +349,16 @@ class EwBlockLibraryModal extends LitElement {
     const { name, url, ok } = this._previewInfo;
     const hideIframe = ok === false ? 'hide-iframe' : '';
     const error = ok === false ? `It appears ${name} has not been previewed.` : '';
+    const width = VIEWPORTS.find(([id]) => id === this._viewport)?.[2] || '100%';
     return html`
       ${error ? html`<div class="modal-preview-error"><p>${error}</p></div>` : nothing}
-      <iframe class="modal-preview-frame ${hideIframe}" src=${url}
-              title="Preview of ${name}"
-              allow="clipboard-write *"></iframe>`;
+      <div class="modal-preview-stage">
+        <div class="modal-preview-viewport" style="width:${width}">
+          <iframe class="modal-preview-frame ${hideIframe}" src=${url}
+                  title="Preview of ${name}"
+                  allow="clipboard-write *"></iframe>
+        </div>
+      </div>`;
   }
 
   render() {
@@ -299,8 +366,8 @@ class EwBlockLibraryModal extends LitElement {
       <nx-dialog class="modal" @close=${this._onDialogClose}>
         <div class="modal-content">
           <header class="modal-header">
-            <span class="modal-title">Insert block</span>
-            <button type="button" class="modal-close"
+            <span class="modal-title">${this.heading ?? 'Insert block'}</span>
+            <button type="button" class="nx-action-btn-icon nx-btn-sm"
                     aria-label="Close" @click=${() => this._close()}>✕</button>
           </header>
           <div class="modal-body">
@@ -308,7 +375,10 @@ class EwBlockLibraryModal extends LitElement {
               ${this._renderSearch()}
               ${this._renderTree()}
             </aside>
-            <section class="modal-preview-wrap">${this._renderPreview()}</section>
+            <section class="modal-preview-wrap">
+              ${this._previewInfo ? this._renderViewportBar() : nothing}
+              ${this._renderPreview()}
+            </section>
           </div>
         </div>
       </nx-dialog>`;
@@ -317,7 +387,7 @@ class EwBlockLibraryModal extends LitElement {
 
 customElements.define('ew-block-library-modal', EwBlockLibraryModal);
 
-export async function openBlockLibraryModal({ onInsert } = {}) {
+export async function openBlockLibraryModal({ onInsert, heading } = {}) {
   if (document.body.querySelector('ew-block-library-modal')) return;
 
   let hashState;
@@ -332,6 +402,7 @@ export async function openBlockLibraryModal({ onInsert } = {}) {
   const modal = document.createElement('ew-block-library-modal');
   modal.blocks = blocks;
   modal.onInsert = onInsert;
+  modal.heading = heading;
   modal.addEventListener('close', () => modal.remove(), { once: true });
   document.body.append(modal);
 }
