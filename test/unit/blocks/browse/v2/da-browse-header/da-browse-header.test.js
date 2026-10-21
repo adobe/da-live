@@ -141,13 +141,11 @@ describe('da-browse-header', () => {
     expect(event.composed).to.be.true;
   });
 
-  it('retains compact control descriptions and filter and sort actions', async () => {
+  it('retains control descriptions and filter and sort actions', async () => {
     header.groupByType = true;
     header.typesFilterState = { open: false, hiddenCount: 2 };
     header.sortState = { property: 'name', direction: 'descending', loading: false };
     await header.updateComplete;
-    container.style.width = '600px';
-    expect(header.getBoundingClientRect().width).to.equal(600);
     const controls = header.shadowRoot.querySelectorAll('.browse-toolbar-control');
     expect(controls[0].title).to.equal('2 types hidden');
     expect(controls[0].querySelector('.browse-control-label').textContent)

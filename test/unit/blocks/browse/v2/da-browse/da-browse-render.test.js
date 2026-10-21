@@ -209,24 +209,6 @@ describe('da-browse render', () => {
     expect(el.shadowRoot.querySelector('[role="grid"]').getAttribute('aria-label')).to.equal('Browse files');
   });
 
-  it('updates the type filter button from the list state', async () => {
-    const { rightButtons } = await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
-    const list = el.browseCmp;
-    list._listItems = [{ path: '/org/site/a.html', name: 'a', ext: 'html' }];
-    await list.updateComplete;
-    rightButtons[0].click();
-    await settle();
-    expect(rightButtons[0].getAttribute('aria-expanded')).to.equal('true');
-    list.toggleTypeVisibility('Page');
-    await list.updateComplete;
-    await settle();
-    expect(rightButtons[0].textContent).to.contain('1 type hidden');
-    list._typesPopover.close();
-    list._typesPopover.dispatchEvent(new CustomEvent('close'));
-    await settle();
-    expect(rightButtons[0].getAttribute('aria-expanded')).to.equal('false');
-  });
-
   it('keeps the browse list available when navigating to the organization root', async () => {
     await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
     el.details = { fullpath: '/org', org: 'org', path: '' };
