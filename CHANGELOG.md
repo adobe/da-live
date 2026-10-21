@@ -1,3 +1,10 @@
+## [1.11.6](https://github.com/adobe/da-live/compare/v1.11.5...v1.11.6) (2026-10-21)
+
+
+### Bug Fixes
+
+* allow AVIF and WebP image uploads in document editors ([#1464](https://github.com/adobe/da-live/issues/1464)) ([29db317](https://github.com/adobe/da-live/commit/29db317bed521211869f6edc6b961751bceba4ac))
+
 ## [1.11.5](https://github.com/adobe/da-live/compare/v1.11.4...v1.11.5) (2026-10-21)
 
 
