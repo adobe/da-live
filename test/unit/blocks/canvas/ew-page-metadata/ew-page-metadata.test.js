@@ -1,16 +1,26 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
-import { setNx } from '../../../../../scripts/utils.js';
+import sinon from 'sinon';
+import { TextSelection } from 'da-y-wrapper';
+import { getNx2, setNx } from '../../../../../scripts/utils.js';
 import { makeRealView } from '../test-helpers.js';
 import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let getExtensionsBridge;
+let findMetadataImage;
+let readMetadataRows;
+let setRepositoryConfig;
+let setSelection;
 
 before(async () => {
   await import('../../../../../blocks/canvas/ew-page-metadata/ew-page-metadata.js');
   ({ getExtensionsBridge } = await import('../../../../../blocks/canvas/editor-utils/extensions-bridge.js'));
+  ({ findMetadataImage, readMetadataRows } = await import('../../../../../blocks/canvas/editor-utils/metadata.js'));
+  // Same module URLs as aem-assets.js imports, so the fixtures share their state.
+  ({ setRepositoryConfig } = await import(`${getNx2()}/utils/aem-assets/repository-config.js`));
+  ({ setSelection } = await import(`${getNx2()}/utils/aem-assets/selection.js`));
 });
 
 async function createPanel() {
@@ -483,6 +493,237 @@ describe('ew-page-metadata', () => {
       await el.updateComplete;
 
       expect(rowFor(el, 'Title').querySelector('input[type="text"]').value).to.equal('New');
+    });
+  });
+
+  describe('image fields', () => {
+    const SOURCE_URL = 'https://admin.da.live/source/imgorg/imgsite/dir/page.html';
+    const IMAGE_FIELD = { key: 'image', label: 'Image', type: 'image', values: null };
+    const png = () => new File(['image'], 'new.png', { type: 'image/png' });
+    let fetchStub;
+
+    function imageDoc(rows = [['Title', 'My Page']], attrs = { src: '/current.png', alt: 'Current alt' }) {
+      const table = metadataTableJSON(rows);
+      const cell = (content) => ({ type: 'table_cell', attrs: { colspan: 1 }, content: [{ type: 'paragraph', content }] });
+      table.content.push({
+        type: 'table_row',
+        content: [cell([{ type: 'text', text: 'Image' }]), cell([{ type: 'image', attrs }])],
+      });
+      return { type: 'doc', content: [table] };
+    }
+
+    async function loadImageDoc(json, libraryFields) {
+      bridge.view = makeRealView(json ?? imageDoc());
+      bridge.sourceUrl = SOURCE_URL;
+      if (libraryFields) el._libraryFields = libraryFields;
+      canvasBus.editorDocState.emit();
+      await el.updateComplete;
+    }
+
+    const field = (key) => el._fields.find((f) => f.key.toLowerCase() === key.toLowerCase());
+    const imageRow = () => rowFor(el, 'Image') ?? rowFor(el, 'image');
+
+    beforeEach(() => {
+      fetchStub = sinon.stub(window, 'fetch').callsFake(async (url, opts) => {
+        if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+        if (opts?.method === 'POST') {
+          return new Response(JSON.stringify({ source: { contentUrl: './media_new.png' } }), { status: 201 });
+        }
+        return new Response('{}');
+      });
+      setRepositoryConfig(null);
+    });
+
+    afterEach(() => {
+      sinon.restore();
+      bridge.sourceUrl = null;
+      setRepositoryConfig(null);
+      setSelection({});
+      delete window.PureJSSelectors;
+      setNx('/test/fixtures/nx', { hostname: 'example.com' });
+    });
+
+    it('shows a page image as a preview with Replace image instead of a text input', async () => {
+      await loadImageDoc();
+      const row = imageRow();
+      const img = row.querySelector('img.ew-pm-image-preview');
+      expect(new URL(img.src).pathname).to.equal('/current.png');
+      expect(img.alt).to.equal('Current alt');
+      expect(row.querySelector('input, textarea')).to.equal(null);
+      expect(row.querySelector('button.nx-form-btn-secondary').textContent.trim()).to.equal('Replace image');
+      expect(row.querySelector('label').hasAttribute('for')).to.equal(false);
+    });
+
+    it('offers Add image for a configured image field without an image', async () => {
+      await loadImageDoc({ type: 'doc', content: [metadataTableJSON([['Title', 'My Page']])] }, [IMAGE_FIELD]);
+      const row = rowFor(el, 'image');
+      expect(row.querySelector('img')).to.equal(null);
+      expect(row.querySelector('.ew-pm-image-empty').textContent).to.equal('No image');
+      expect(row.querySelector('button').textContent.trim()).to.equal('Add image');
+    });
+
+    it('opens an image file picker from the button when AEM Assets is not configured', async () => {
+      await loadImageDoc();
+      const input = document.createElement('input');
+      input.click = sinon.spy();
+      const create = sinon.stub(document, 'createElement').callThrough();
+      create.withArgs('input').returns(input);
+      imageRow().querySelector('button').click();
+      create.restore();
+      expect(input.type).to.equal('file');
+      expect(input.accept).to.equal('image/svg+xml,image/png,image/jpeg,image/gif,image/avif,image/webp');
+      expect(input.click.calledOnce).to.equal(true);
+    });
+
+    it('uploads a replacement next to the page and keeps the image attributes', async () => {
+      await loadImageDoc();
+      const target = el._captureImageTarget(field('Image'));
+      await el._uploadImage(field('Image'), target, png());
+      await el.updateComplete;
+      const upload = fetchStub.getCalls().find((call) => call.args[1]?.method === 'POST');
+      expect(String(upload.args[0])).to.include('/imgorg/imgsite/dir/.page/new.png');
+      const { node } = findMetadataImage(bridge.view, 'Image');
+      expect(node.attrs).to.include({ src: './media_new.png', alt: 'Current alt' });
+      expect(field('Image').value).to.equal('./media_new.png');
+      expect(el._uploadingKey).to.equal(null);
+    });
+
+    it('uploads the first image into an empty configured field', async () => {
+      await loadImageDoc({ type: 'doc', content: [metadataTableJSON([['Title', 'My Page']])] }, [IMAGE_FIELD]);
+      await el._uploadImage(field('image'), el._captureImageTarget(field('image')), png());
+      await el.updateComplete;
+      expect(readMetadataRows(bridge.view).map((row) => [row.key, row.image?.src])).to.deep.equal([
+        ['Title', undefined], ['image', './media_new.png'],
+      ]);
+      expect(rowFor(el, 'image').querySelector('button').textContent.trim()).to.equal('Replace image');
+    });
+
+    it('keeps the image and shows upload failures', async () => {
+      await loadImageDoc();
+      const before = findMetadataImage(bridge.view, 'Image').node;
+      fetchStub.callsFake(async () => new Response('Failed', { status: 500 }));
+      await el._uploadImage(field('Image'), el._captureImageTarget(field('Image')), png());
+      await el.updateComplete;
+      expect(findMetadataImage(bridge.view, 'Image').node).to.equal(before);
+      expect(imageRow().querySelector('[role="alert"]').textContent).to.include('500');
+      expect(el._uploadingKey).to.equal(null);
+    });
+
+    it('reports a missing upload context and unsupported file types', async () => {
+      await loadImageDoc();
+      bridge.sourceUrl = null;
+      await el._uploadImage(field('Image'), el._captureImageTarget(field('Image')), png());
+      expect(el._imageError.message).to.include('source is unavailable');
+      bridge.sourceUrl = SOURCE_URL;
+      const text = new File(['text'], 'file.txt', { type: 'text/plain' });
+      await el._uploadImage(field('Image'), el._captureImageTarget(field('Image')), text);
+      expect(el._imageError.message).to.include('SVG, PNG, JPEG, GIF, AVIF or WebP');
+      expect(fetchStub.getCalls().some((call) => call.args[1]?.method === 'POST')).to.equal(false);
+    });
+
+    [false, true].forEach((navigate) => {
+      it(`does not apply an upload after ${navigate ? 'navigation' : 'a concurrent image change'}`, async () => {
+        await loadImageDoc();
+        const { view } = bridge;
+        const target = el._captureImageTarget(field('Image'));
+        let finish;
+        let start;
+        const started = new Promise((resolve) => { start = resolve; });
+        fetchStub.callsFake(async () => new Promise((resolve) => {
+          finish = resolve;
+          start();
+        }));
+        const uploading = el._uploadImage(field('Image'), target, png());
+        await started;
+        if (navigate) bridge.view = null;
+        else {
+          const { pos, node } = findMetadataImage(view, 'Image');
+          view.dispatch(view.state.tr.setNodeMarkup(pos, null, { ...node.attrs, src: '/other.png' }));
+        }
+        finish(new Response(JSON.stringify({ source: { contentUrl: './media_stale.png' } }), { status: 201 }));
+        await uploading;
+        expect(findMetadataImage(view, 'Image').node.attrs.src).to.equal(navigate ? '/current.png' : '/other.png');
+      });
+    });
+
+    it('disables image changes without write access', async () => {
+      await loadImageDoc();
+      bridge.view.setProps({ editable: () => false });
+      canvasBus.editorDocState.emit();
+      el.requestUpdate();
+      await el.updateComplete;
+      expect(imageRow().querySelector('button').disabled).to.equal(true);
+      expect(el._captureImageTarget(field('Image'))).to.equal(null);
+    });
+
+    describe('AEM Assets', () => {
+      const asset = { 'aem:formatName': 'png', path: '/content/dam/new.png' };
+      const ASSET_SRC = 'https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/new/as/new.avif';
+
+      async function openAssets(key) {
+        let selector;
+        const renderAssetSelector = (container, props) => { selector = props; };
+        window.PureJSSelectors = { renderAssetSelector };
+        const append = document.head.append.bind(document.head);
+        sinon.stub(document.head, 'append').callsFake((...nodes) => {
+          if (nodes[0].tagName === 'SCRIPT') nodes[0].dispatchEvent(new Event('load'));
+          else append(...nodes);
+        });
+        setNx('/test/fixtures/nx2', { hostname: 'example.com' });
+        await el._openImageAssets(field(key));
+        expect(selector, el._imageError?.message).not.to.equal(undefined);
+        return selector;
+      }
+
+      beforeEach(async () => {
+        setRepositoryConfig({ repositoryId: 'delivery-p1-e1.adobeaemcloud.com' });
+        setSelection({ href: ASSET_SRC, isImage: true, alt: 'Asset alt' });
+        el._hashState = { org: 'imgorg', site: 'imgsite' };
+        await el._loadAssetsConfig();
+      });
+
+      it('offers Upload and AEM Assets when the site has an assets repository', async () => {
+        await loadImageDoc();
+        const menu = imageRow().querySelector('nx-menu');
+        expect(el._hasAemAssets).to.equal(true);
+        expect(menu.items).to.deep.equal([{ id: 'upload', label: 'Upload' }, { id: 'aem-assets', label: 'AEM Assets' }]);
+        const upload = sinon.stub(el, '_triggerImageUpload');
+        const assets = sinon.stub(el, '_openImageAssets');
+        menu.dispatchEvent(new CustomEvent('select', { detail: { id: 'upload' } }));
+        menu.dispatchEvent(new CustomEvent('select', { detail: { id: 'aem-assets' } }));
+        expect(upload.calledOnce).to.equal(true);
+        expect(assets.calledOnce).to.equal(true);
+      });
+
+      it('replaces the row image with the selected asset, wherever the cursor is', async () => {
+        await loadImageDoc();
+        const selector = await openAssets('Image');
+        const { view } = bridge;
+        view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 4)));
+        await selector.handleSelection([asset]);
+        canvasBus.editorDocState.emit();
+        await el.updateComplete;
+        const { node } = findMetadataImage(view, 'Image');
+        expect(node.attrs).to.include({ src: ASSET_SRC, alt: 'Asset alt' });
+        expect(readMetadataRows(view)[0]).to.deep.equal({ key: 'Title', value: 'My Page' });
+        expect(el.shadowRoot.querySelector('nx-dialog')).to.equal(null);
+      });
+
+      it('fills an empty configured image field with the selected asset', async () => {
+        await loadImageDoc({ type: 'doc', content: [metadataTableJSON([['Title', 'My Page']])] }, [IMAGE_FIELD]);
+        const selector = await openAssets('image');
+        await selector.handleSelection([asset]);
+        expect(findMetadataImage(bridge.view, 'image').node.attrs.src).to.equal(ASSET_SRC);
+      });
+
+      it('ignores a selection after the dialog is closed', async () => {
+        await loadImageDoc();
+        const selector = await openAssets('Image');
+        el.shadowRoot.querySelector('nx-dialog').dispatchEvent(new Event('close'));
+        const { doc } = bridge.view.state;
+        await selector.handleSelection([asset]);
+        expect(bridge.view.state.doc).to.equal(doc);
+      });
     });
   });
 });
