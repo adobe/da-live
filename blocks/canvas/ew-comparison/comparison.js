@@ -1,5 +1,6 @@
 import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import { buildCompareDom } from '../../shared/version/compare.js';
+import { isRequestId } from '../../shared/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
 const CONTENT_TAGS = new Set('a p h1 h2 h3 h4 h5 h6 div span strong em b i u s del ins sub sup code pre blockquote ul ol li table thead tbody tfoot tr td th caption colgroup col br hr img figure figcaption'.split(' '));
@@ -8,6 +9,33 @@ export function comparisonContextKey(context) {
   const { org, site, path } = context || {};
   return org && site && typeof path === 'string'
     ? JSON.stringify([org, site, path.replace(/^\//, '').replace(/\.html$/, '')]) : null;
+}
+
+// Routes a plugin's comparison and save messages. The page comes from the host context, never
+// from the message. Returns false for any other action.
+export function routeComparisonMessage({ action, details, requestId }, { context, port }) {
+  if (action === 'openComparison') {
+    if (['document', 'preview'].includes(details?.candidate) && details?.baseline === 'live') {
+      const { candidate, baseline } = details;
+      canvasBus.comparisonRequest.emit({ action, details: { candidate, baseline }, context });
+    }
+    return true;
+  }
+  if (action === 'closeComparison') {
+    canvasBus.comparisonRequest.emit({ action, context });
+    return true;
+  }
+  if (action === 'saveDocument') {
+    if (isRequestId(requestId)) {
+      canvasBus.comparisonRequest.emit({
+        action,
+        context,
+        resolve: (result) => port.postMessage({ action: 'sdkResponse', requestId, result }),
+      });
+    }
+    return true;
+  }
+  return false;
 }
 
 export function normalizeComparisonHtml(html, context) {
@@ -69,9 +97,10 @@ export function installComparison({
   let generation = 0;
   let activeKey;
   let trigger;
+  let shown = false;
   const inertStates = new Map();
 
-  const close = () => {
+  const reset = () => {
     generation += 1;
     const restoreFocus = document.activeElement === surface;
     surface?.remove();
@@ -81,6 +110,14 @@ export function installComparison({
     inertStates.clear();
     mountRoot.classList.remove('ew-comparison-host');
     if (restoreFocus && trigger?.isConnected) trigger.focus();
+  };
+
+  const close = () => {
+    reset();
+    if (shown) {
+      shown = false;
+      canvasBus.comparisonState.emit({ open: false });
+    }
     return { ok: true };
   };
 
@@ -91,7 +128,7 @@ export function installComparison({
     const context = getContext();
     const key = comparisonContextKey(context);
     if (!key) return { ok: false, error: 'no-document' };
-    close();
+    reset();
     const run = generation;
     activeKey = key;
     trigger = document.activeElement;
@@ -110,6 +147,8 @@ export function installComparison({
         el.inert = true;
       });
       mountRoot.append(surface);
+      shown = true;
+      canvasBus.comparisonState.emit({ open: true });
       await surface.updateComplete;
       if (!current()) return { ok: false, error: 'stale-context' };
       surface.focusHeading();
