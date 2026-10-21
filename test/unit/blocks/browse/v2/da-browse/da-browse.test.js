@@ -523,11 +523,9 @@ describe('DaBrowse Component', () => {
   });
 
   describe('handlePermissions', () => {
-    it('Forwards permissions to the new component if present', () => {
-      const newCmp = { permissions: undefined };
-      Object.defineProperty(daBrowseComp, 'newCmp', { configurable: true, get: () => newCmp });
+    it('Stores permissions for the header binding', () => {
       daBrowseComp.handlePermissions({ detail: ['read', 'write'] });
-      expect(newCmp.permissions).to.deep.equal(['read', 'write']);
+      expect(daBrowseComp._permissions).to.deep.equal(['read', 'write']);
     });
 
     it('Is a no-op when no new component is rendered', () => {

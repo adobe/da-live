@@ -70,8 +70,8 @@ describe('da-browse render', () => {
     return {
       toolbar: headerRoot(),
       rightButtons: [...headerRoot().querySelectorAll('.browse-toolbar-control')],
-      newButton: el.shadowRoot.querySelector('da-new')?.shadowRoot?.querySelector('.da-actions-new-button'),
-      newLabel: el.shadowRoot.querySelector('da-new')?.shadowRoot?.querySelector('.da-actions-new-label'),
+      newButton: el.newCmp?.shadowRoot?.querySelector('.da-actions-new-button'),
+      newLabel: el.newCmp?.shadowRoot?.querySelector('.da-actions-new-label'),
     };
   }
 
@@ -94,12 +94,26 @@ describe('da-browse render', () => {
     const list = el.browseCmp;
     await list.updateComplete;
     list.handlePermissions(['read', 'write']);
+    await el.updateComplete;
+    await el.shadowRoot.querySelector('da-browse-header').updateComplete;
+    await el.newCmp.updateComplete;
     expect(el.newCmp.permissions).to.deep.equal(['read', 'write']);
+    expect(el.newCmp.shadowRoot.querySelector('.da-actions-new-button').disabled).to.be.false;
+    expect(headerRoot().querySelector('slot[name="actions"]').assignedElements())
+      .to.deep.equal([el.newCmp]);
+    const breadcrumb = el.shadowRoot.querySelector('nx-breadcrumb');
+    expect(headerRoot().querySelector('slot:not([name])').assignedElements())
+      .to.deep.equal([breadcrumb]);
+    expect(breadcrumb.pathSegments).to.deep.equal(['org', 'site']);
     const item = { path: '/org/site/new.html', name: 'new', ext: 'html' };
     el.newCmp.sendNewItem(item);
     await list.updateComplete;
     expect(list._listItems).to.include(item);
-    expect(headerRoot().querySelector('slot').assignedElements()).to.deep.equal([el.newCmp]);
+    list.handlePermissions(['read']);
+    await el.updateComplete;
+    await el.shadowRoot.querySelector('da-browse-header').updateComplete;
+    await el.newCmp.updateComplete;
+    expect(el.newCmp.shadowRoot.querySelector('.da-actions-new-button').disabled).to.be.true;
   });
 
   it('renders the toolbar controls and group-by-type switch', async () => {

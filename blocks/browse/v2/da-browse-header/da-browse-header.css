@@ -114,7 +114,23 @@
   box-sizing: border-box;
 }
 
-@container browse-header (width < 600px) {
+::slotted(da-new[slot="actions"]) {
+  position: relative;
+  padding-inline-start: var(--s2-spacing-300, 24px);
+  margin-inline-start: var(--s2-spacing-100, 8px);
+}
+
+::slotted(da-new[slot="actions"])::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  top: 50%;
+  height: 16px;
+  border-inline-start: 1px solid var(--s2-gray-300);
+  transform: translateY(-50%);
+}
+
+@container browse-header (width < 800px) {
   .browse-control-label {
     position: absolute;
     width: 1px;

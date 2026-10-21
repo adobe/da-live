@@ -296,12 +296,40 @@ describe('da-list-item render', () => {
     expect(el.shadowRoot.querySelector('.card form.da-item-list-item-rename')).to.exist;
   });
 
-  it('Shows the favorite badge on cards only when favorited', async () => {
-    await fixture({ view: 'card' });
-    expect(el.shadowRoot.querySelector('.card-favorite')).to.not.exist;
+  it('renders a separate favorite action at the end of the name cell', async () => {
+    await fixture();
+    const button = el.shadowRoot.querySelector('.da-item-list-item-favorite');
+    expect(button.closest('a')).to.be.null;
+    expect(button.getAttribute('aria-label')).to.equal('Add to favorites');
+    expect(button.querySelector('use').getAttribute('href')).to.contain('s2-icon-star-20-n.svg');
+    let event;
+    el.addEventListener('favoritechange', (e) => { event = e; });
+    button.click();
+    expect(event.bubbles).to.be.true;
+    expect(event.composed).to.be.true;
+    expect(el.isChecked).not.to.be.true;
     el.isFavorited = true;
     await el.updateComplete;
-    const badge = el.shadowRoot.querySelector('.card-preview .card-favorite');
-    expect(badge.getAttribute('aria-label')).to.equal('Favorited');
+    expect(button.getAttribute('aria-pressed')).to.equal('true');
+    expect(button.getAttribute('aria-label')).to.equal('Remove from favorites');
+    expect(button.querySelector('use').getAttribute('href')).to.contain('s2-icon-starfilled-20-n.svg');
+  });
+
+  it('uses the shared favorite action on cards and updates its filled state', async () => {
+    await fixture({ view: 'card' });
+    const button = el.shadowRoot.querySelector('.card-preview .card-favorite');
+    expect(button.getAttribute('aria-pressed')).to.equal('false');
+    expect(button.querySelector('use').getAttribute('href')).to.contain('s2-icon-star-20-n.svg');
+    let event;
+    el.addEventListener('favoritechange', (e) => { event = e; });
+    button.click();
+    expect(event.bubbles).to.be.true;
+    expect(event.composed).to.be.true;
+    expect(el.isChecked).not.to.be.true;
+    el.isFavorited = true;
+    await el.updateComplete;
+    expect(button.getAttribute('aria-label')).to.equal('Remove from favorites');
+    expect(button.getAttribute('aria-pressed')).to.equal('true');
+    expect(button.querySelector('use').getAttribute('href')).to.contain('s2-icon-starfilled-20-n.svg');
   });
 });

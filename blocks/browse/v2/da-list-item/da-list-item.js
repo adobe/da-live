@@ -97,6 +97,10 @@ export default class DaListItem extends LitElement {
     this.dispatchEvent(event);
   }
 
+  requestFavorite() {
+    this.dispatchEvent(new CustomEvent('favoritechange', { bubbles: true, composed: true }));
+  }
+
   setStatus(text, description, type) {
     const opts = { detail: { text, description, type }, bubbles: true, composed: true };
     const event = new CustomEvent('onstatus', opts);
@@ -219,13 +223,13 @@ export default class DaListItem extends LitElement {
     const type = getTypeLabel(this.ext);
 
     return html`
-      <a href="${this.ext === 'link' ? until(href) : href}" class="da-item-list-item-title" data-column="name">
+      <div class="da-item-list-item-name-cell" data-column="name">
+      <a href="${this.ext === 'link' ? until(href) : href}" class="da-item-list-item-title">
         <div class="da-item-list-item-info">
           ${this._isRenaming ? html`<span class="da-item-list-item-type"><div class="icon rename-icon"></div></span>
           ` : html`
             <span class="da-item-list-item-type">
               ${this.renderIcon()}
-              ${this.isFavorited ? html`<svg class="da-item-list-item-favorite" viewBox="0 0 20 20" aria-label="Favorited"><use href="${ICONS.favorite}#icon"></use></svg>` : nothing}
             </span>
           `}
           <div class="da-item-list-item-name">
@@ -233,8 +237,23 @@ export default class DaListItem extends LitElement {
           </div>
         </div>
       </a>
+      ${this.renderFavorite()}
+      </div>
       <div class="da-item-list-item-meta da-item-list-item-type-label" data-column="type">${type}</div>
       <div class="da-item-list-item-meta da-item-list-item-date" data-column="modified">${this.ext === 'link' ? '—' : (this.renderDate() || '—')}</div>`;
+  }
+
+  renderFavorite(className = 'da-item-list-item-favorite') {
+    return html`
+      <button type="button" class="${className} nx-action-btn-icon nx-btn-sm"
+        aria-label=${this.isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+        title=${this.isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+        aria-pressed=${this.isFavorited ? 'true' : 'false'}
+        @click=${this.requestFavorite}>
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <use href="${this.isFavorited ? ICONS.favorite : '/img/icons/s2-icon-star-20-n.svg'}#icon"></use>
+        </svg>
+      </button>`;
   }
 
   renderCheckBox(className = 'da-item-list-item-select') {
@@ -277,7 +296,7 @@ export default class DaListItem extends LitElement {
             <da-card-preview .path=${this.path} .ext=${this.ext} ?busy=${this._isRenaming}></da-card-preview>
           </a>
           ${this.allowselect ? this.renderCheckBox('card-select') : nothing}
-          ${this.isFavorited ? html`<svg class="card-favorite" viewBox="0 0 20 20" aria-label="Favorited"><use href="${ICONS.favorite}#icon"></use></svg>` : nothing}
+          ${this.renderFavorite('card-favorite')}
         </div>
         ${this.rename ? this.renderRename() : html`
           <div class="card-info">

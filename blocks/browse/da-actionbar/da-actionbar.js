@@ -16,6 +16,7 @@ const ICON_NAMES = {
   share: 's2-icon-share-20-n',
   publish: 's2-icon-publish-20-n',
   preview: 's2-icon-preview-20-n',
+  coworker: 's2-icon-coworker-20-n',
 };
 
 const icon = (name) => html`<svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/${ICON_NAMES[name]}.svg#icon"></use></svg>`;
@@ -25,6 +26,7 @@ export default class DaActionBar extends LitElement {
     items: { attribute: false },
     permissions: { attribute: false },
     canDelete: { attribute: false },
+    canAskCoworker: { type: Boolean },
     loading: { attribute: false },
     isFavorite: { attribute: false },
     isHlx6: { attribute: false },
@@ -81,6 +83,10 @@ export default class DaActionBar extends LitElement {
     const opts = { bubbles: true, composed: true };
     const event = new CustomEvent('onfavorite', opts);
     this.dispatchEvent(event);
+  }
+
+  handleAskCoworker() {
+    this.dispatchEvent(new CustomEvent('askcoworker', { bubbles: true, composed: true }));
   }
 
   handleCopy() {
@@ -208,6 +214,12 @@ export default class DaActionBar extends LitElement {
           <span role="status" aria-live="polite">${this.currentAction}</span>
         </div>
         <div class="da-action-bar-right-rail" role="toolbar">
+          ${this.canAskCoworker ? html`
+            <button aria-label="Ask Coworker" title="Ask Coworker"
+              @click=${this.handleAskCoworker}>
+              ${icon('coworker')}
+              <span>Ask Coworker</span>
+            </button>` : ''}
           <button
             @click=${this.handleRename}
             aria-label="Rename"
@@ -218,12 +230,12 @@ export default class DaActionBar extends LitElement {
           </button>
           <button
             @click=${this.handleFavorite}
-            aria-label="Favorite"
-            title="Favorite"
+            aria-label=${this.isFavorite ? 'Remove favorite' : 'Favorite'}
+            title=${this.isFavorite ? 'Remove favorite' : 'Favorite'}
             aria-pressed=${this.isFavorite ? 'true' : 'false'}
             class="favorite-button ${this.isFavorite ? 'is-favorited' : ''} ${this.items.length === 1 ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
             ${icon('favorite')}
-            <span>Favorite</span>
+            <span>${this.isFavorite ? 'Remove favorite' : 'Favorite'}</span>
           </button>
           <button
             @click=${this.handleCopy}

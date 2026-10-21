@@ -10,6 +10,8 @@ import '../da-list/da-list.js';
 import '../da-browse-header/da-browse-header.js';
 import { toggleToolsPanel, closeToolsPanel, registerToolsPanel, watchToolsPanel } from '../search/panel.js';
 
+await import(`${getNx()}/blocks/shared/breadcrumb/breadcrumb.js`);
+
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT, wasPanelOpen, registerPanelSection } = await import(`${getNx()}/utils/panel.js`);
@@ -168,7 +170,6 @@ export default class DaBrowse extends LitElement {
 
   handlePermissions(e) {
     this._permissions = e.detail;
-    if (this.newCmp) this.newCmp.permissions = e.detail;
   }
 
   async update(props) {
@@ -198,6 +199,12 @@ export default class DaBrowse extends LitElement {
             position: 'before',
             width: '400px',
             getContent: getChatPanelContent(),
+            onShow: async (aside, id, options) => {
+              if (!options?.focus) return;
+              const chat = aside.querySelector('nx-chat, nx-chat-ao');
+              await chat?.updateComplete;
+              chat?.shadowRoot.querySelector('.chat-input')?.focus();
+            },
           });
           if (wasPanelOpen('chat')) openChatPanel();
         } else {
@@ -492,10 +499,18 @@ export default class DaBrowse extends LitElement {
     }
   }
 
+  askCoworker() {
+    const detail = { section: 'chat', options: { focus: true } };
+    document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail }));
+  }
+
   renderSearchResults() {
     return html`
       <div role="grid" aria-label="Search results">
         <da-list class="da-list-type-search"
+          .canAskCoworker=${this._chatEnabled}
+          @askcoworker=${this.askCoworker}
+          @selectionchanged=${this._chatEnabled ? this._handleBrowseSelection : nothing}
           editor=${this.editor}
           .listItems=${this._search.items}
           .hidePublishConfs=${this.hidePublishConfs}
@@ -512,6 +527,8 @@ export default class DaBrowse extends LitElement {
     return html`
       <da-list
         class="da-list-type-browse"
+        .canAskCoworker=${this._chatEnabled}
+        @askcoworker=${this.askCoworker}
         fullpath="${this.details.fullpath}"
         editor="${this.editor}"
         .hidePublishConfs=${this.hidePublishConfs}
@@ -548,15 +565,18 @@ export default class DaBrowse extends LitElement {
         .typesFilterState=${this._typesFilterState}
         .sortState=${this._sortState}
         .searchState=${this._searchEngine || search.loading || search.error ? {
-          loading: search.loading,
-          count: search.items?.length ?? 0,
-          error: search.error,
-        } : undefined}
+        loading: search.loading,
+        count: search.items?.length ?? 0,
+        error: search.error,
+      } : undefined}
         @typesfilterrequest=${({ detail }) => this.activeListCmp.toggleTypesPopover(detail.anchor)}
         @sortrequest=${({ detail }) => this.activeListCmp.setSort(detail.property, detail.direction)}
         @viewchange=${({ detail }) => this.setView(detail.view)}
         @groupbytypechange=${({ detail }) => this.setGroupByType(detail.group)}>
-        <da-new variant="accent" @newitem=${this.handleNewItem} fullpath="${this.details.fullpath}" editor="${this.editor}"></da-new>
+        <nx-breadcrumb .pathSegments=${this.details.fullpath.split('/').filter(Boolean)}></nx-breadcrumb>
+        <da-new slot="actions" variant="accent" .permissions=${this._permissions}
+          @newitem=${this.handleNewItem}
+          fullpath="${this.details.fullpath}" editor="${this.editor}"></da-new>
       </da-browse-header>
       <div class="da-browse-content">
         ${search.error ? html`<p role="alert">${search.error}</p>` : nothing}

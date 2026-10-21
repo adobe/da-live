@@ -235,13 +235,17 @@ describe('da-list render', () => {
     expect(el.shadowRoot.querySelector('.da-list-sentinel')).to.exist;
   });
 
-  it('uses the same Sheet tag styling for groups and the type filter', async () => {
+  it('renders Sheet labels in groups and the type filter', async () => {
     await fixture();
     el.groupByType = true;
     el._listItems = [{ path: '/o/r/data.json', name: 'data', ext: 'json' }];
     await rerender();
-    expect(el.shadowRoot.querySelector('.da-list-group-header .tag').classList.contains('sheet')).to.be.true;
-    expect(el.shadowRoot.querySelector('.da-list-types-popover .tag').classList.contains('sheet')).to.be.true;
+    expect(el.shadowRoot.querySelector('.da-list-group-label').textContent).to.equal('Sheet');
+    expect(el.shadowRoot.querySelector('.da-list-group-count').textContent).to.equal('1');
+    const labels = [...el.shadowRoot.querySelectorAll('.da-list-types-row')];
+    const sheet = labels.find((label) => label.textContent.trim() === 'Sheet');
+    expect(sheet).to.exist;
+    expect(sheet.querySelector('use').getAttribute('href')).to.contain('s2-icon-data-20-n.svg');
   });
 
   it('filters by type and restores all types', async () => {

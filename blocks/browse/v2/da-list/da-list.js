@@ -1,5 +1,5 @@
 import { html, repeat, nothing } from 'da-lit';
-import { getTypeLabel } from '../../../shared/icons.js';
+import { getTypeLabel, iconPathForExt } from '../../../shared/icons.js';
 import { getNx, getNx2 } from '../../../../scripts/utils.js';
 import DaListBase from '../../da-list-base/da-list-base.js';
 
@@ -31,19 +31,6 @@ function sortTypeLabels(labels) {
   });
 }
 
-const TYPE_TAG_CLASSES = {
-  Folder: 'folder',
-  Page: 'page',
-  Image: 'image',
-  Video: 'video',
-  Link: 'link',
-  Sheet: 'sheet',
-};
-
-function tagClassForTypeLabel(label) {
-  return TYPE_TAG_CLASSES[label] || '';
-}
-
 export default class DaList extends DaListBase {
   static sheets = [FORM, STYLE];
 
@@ -52,6 +39,7 @@ export default class DaList extends DaListBase {
     sortPreference: { attribute: false },
     groupByType: { type: Boolean },
     view: { type: String },
+    canAskCoworker: { type: Boolean },
     _collapsedTypes: { state: true },
     _hiddenTypes: { state: true },
     _sort: { state: true },
@@ -363,6 +351,7 @@ export default class DaList extends DaListBase {
         <da-list-item
           role="row"
           @checked=${(e) => this.handleItemChecked(e, item, idx)}
+          @favoritechange=${() => this.toggleItemFavorite(item)}
           @onstatus=${({ detail }) => this.setStatus(detail.text, detail.description, detail.type)}
           @renamecompleted=${(e) => this.handleRenameCompleted(e)}
           allowselect="${this.select ? true : nothing}"
@@ -408,7 +397,8 @@ export default class DaList extends DaListBase {
           <svg class="da-list-group-chevron" viewBox="0 0 20 20" aria-hidden="true">
             <path d="M6 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
           </svg>
-          <span class="tag ${tagClassForTypeLabel(label)}">${count} ${typeLabel}</span>
+          <span class="da-list-group-label">${typeLabel}</span>
+          <span class="da-list-group-count">${count}</span>
         </button>
       </div>`;
   }
@@ -484,6 +474,7 @@ export default class DaList extends DaListBase {
       </div>
       <da-actionbar
         class="full-width"
+        .canAskCoworker=${this.canAskCoworker}
         .permissions=${this._permissions}
         .canDelete=${this._canDelete}
         @clearselection=${this.handleClearSelection}
@@ -517,16 +508,22 @@ export default class DaList extends DaListBase {
       <nx-popover class="da-list-types-popover" role="dialog" aria-label="Show all types"
         aria-busy=${!!this._bulkLoading} @close=${this.notifyTypesFilter}>
         <h4 class="da-list-types-title">Types</h4>
-        ${labels.map((label) => html`
+        ${labels.map((label) => {
+    const item = this._listItems.find((entry) => getTypeLabel(entry.ext) === label);
+    return html`
           <label class="nx-checkbox da-list-types-row">
             <input
               type="checkbox"
               .checked=${!this._hiddenTypes.has(label)}
               ?disabled=${this._bulkLoading}
               @click=${() => this.toggleTypeVisibility(label)}>
-            <span class="tag ${tagClassForTypeLabel(label)}">${label}</span>
+            <svg class="da-list-type-icon" viewBox="0 0 20 20" aria-hidden="true">
+              <use href="${iconPathForExt(item.ext)}#icon"></use>
+            </svg>
+            <span>${label}</span>
           </label>
-        `)}
+        `;
+  })}
         <div class="da-list-types-row da-list-types-select-all">
           <label class="nx-checkbox">
             <input
