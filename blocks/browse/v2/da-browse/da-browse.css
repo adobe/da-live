@@ -10,10 +10,10 @@ da-browse-header {
   z-index: 3;
   background: var(--s2-gray-25);
   padding-inline: var(--s2-spacing-100);
+}
 
-  nx-breadcrumb:is(:first-child) {
-    padding-left: var(--s2-spacing-100);
-  }
+da-browse-header:not([chatenabled]) nx-breadcrumb {
+  padding-inline-start: var(--s2-spacing-100);
 }
 
 .da-browse-content {
