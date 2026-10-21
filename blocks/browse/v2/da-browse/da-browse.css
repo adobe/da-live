@@ -1,6 +1,4 @@
 :host {
-  --da-browse-max-width: 1440px;
-
   display: block;
   font-family: var(--s2-font-family);
   container: browse-workspace / inline-size;
@@ -11,10 +9,7 @@ da-browse-header {
   top: 0;
   z-index: 3;
   background: var(--s2-gray-25);
-  padding-inline: max(
-    16px,
-    calc((100% - var(--da-browse-max-width)) / 2 + 16px)
-  );
+  padding-inline: var(--s2-spacing-100);
 }
 
 @container browse-workspace (width < 1568px) {
@@ -29,7 +24,6 @@ da-browse-header {
 .da-browse-content {
   box-sizing: border-box;
   width: 100%;
-  max-width: var(--da-browse-max-width);
   margin-inline: auto;
 }
 
