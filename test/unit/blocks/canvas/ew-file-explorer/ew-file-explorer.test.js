@@ -367,7 +367,7 @@ describe('EwFileExplorer', () => {
       let sawSpinner = false;
       el._refreshPath = async () => {
         sawDisabled = btn.disabled;
-        sawSpinner = !!btn.querySelector('.da-loading-spinner');
+        sawSpinner = !!btn.querySelector('.nx-loading-spinner');
         return true;
       };
 
@@ -376,7 +376,7 @@ describe('EwFileExplorer', () => {
       expect(sawDisabled).to.be.true;
       expect(sawSpinner).to.be.true;
       expect(btn.disabled).to.be.false;
-      expect(btn.querySelector('.da-loading-spinner')).to.be.null;
+      expect(btn.querySelector('.nx-loading-spinner')).to.be.null;
       expect(btn.querySelector('svg')).to.exist;
     });
   });
@@ -388,7 +388,7 @@ describe('EwFileExplorer', () => {
 
       expect(first).to.equal(second);
       expect(first.tagName).to.equal('BUTTON');
-      expect(first.className).to.equal('da-icon-btn');
+      expect(first.className).to.equal('nx-action-btn-icon nx-btn-sm');
     });
 
     it('clicking the returned button invokes _onRefreshClick', () => {
