@@ -115,7 +115,7 @@
 }
 
 :host(:hover) .da-item-list-item-favorite,
-:host(:focus-within) .da-item-list-item-favorite,
+.da-item-list-item-inner:has(:focus-visible) .da-item-list-item-favorite,
 .da-item-list-item-favorite[aria-pressed="true"] {
   opacity: 1;
   color: var(--s2-gray-600);
