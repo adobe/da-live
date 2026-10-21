@@ -126,6 +126,49 @@ describe('landing page', () => {
     expect(el.shadowRoot.querySelectorAll('.task-requester img')).to.have.length(5);
   });
 
+  it('lists the user’s open comment threads above the sample tasks, deep-linked to the editor', async () => {
+    el._comments = [{
+      id: 'thread-1',
+      file: { name: 'index', path: '/org/site/index.html', ext: 'html' },
+      body: 'Please tighten the hero copy',
+      author: { name: 'alex', email: 'alex@example.test' },
+      replyCount: 1,
+      updatedAt: 50,
+    }];
+    await el.updateComplete;
+    const rows = [...el.shadowRoot.querySelectorAll('.tasks-panel tbody tr')];
+    expect(rows).to.have.length(6);
+    expect(rows[0].classList.contains('comment-task')).to.equal(true);
+    expect(rows[0].cells[1].textContent).to.equal('Please tighten the hero copy');
+    expect(rows[0].querySelector('.task-status').textContent.trim()).to.equal('Open Comment');
+    expect(rows[0].querySelector('.task-requester > span:last-child').textContent).to.equal('alex');
+    const link = new URL(rows[0].querySelector('a.task-link').href);
+    expect(link.searchParams.get('comment')).to.equal('thread-1');
+    expect(link.hash).to.include('/org/site/index');
+    expect(rows[1].cells[0].textContent).to.equal('Frescopa Homepage');
+    expect(el.shadowRoot.querySelector('.tasks-preview-note').textContent).to.include('live unresolved comment threads');
+    expect(el.shadowRoot.querySelector('.tasks-comments-status')).to.equal(null);
+  });
+
+  it('shows comment loading and failure states without hiding the sample tasks', async () => {
+    expect(el.shadowRoot.querySelector('.tasks-comments-status').textContent).to.include('Loading');
+    el._comments = [];
+    el._commentsError = 'Could not load your comments: nope';
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.tasks-comments-status').textContent).to.include('nope');
+    expect(el.shadowRoot.querySelectorAll('.tasks-panel tbody tr')).to.have.length(5);
+  });
+
+  it('loads comments for the signed-in user after the file listing', async () => {
+    loadSite.restore();
+    sinon.stub(source, 'list').resolves({ ok: true, items: ITEMS });
+    sinon.stub(DaLanding.prototype, 'loadImsProfile').resolves({});
+    await el.loadSite();
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+    expect(el._comments).to.deep.equal([]);
+    expect(el._commentsError).to.include('Sign in');
+  });
+
   it('shows each task column’s options without pretending task controls are connected', () => {
     const buttons = [...el.shadowRoot.querySelectorAll('.task-column-options')];
     expect(buttons).to.have.length(4);

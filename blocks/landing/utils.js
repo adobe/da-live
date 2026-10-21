@@ -1,6 +1,72 @@
 import { getBrowseItemHref } from '../browse/v2/shared/navigation.js';
 import { iconPathForExt, isImageExt } from '../shared/icons.js';
 import { getHomeHref } from '../../scripts/utils.js';
+import { DA_ORIGIN } from '../shared/constants.js';
+import { daFetch } from '../shared/utils.js';
+import { createCommentsStore } from '../canvas/comments/helpers/comments-store.js';
+import { buildThreadGroups } from '../canvas/comments/helpers/thread-grouping.js';
+
+// Same origin as the canvas comments store, so landing reads exactly what the editor writes.
+function listCommentDocs(org, site) {
+  return daFetch(`${DA_ORIGIN}/list/${org}/${site}/.da/comments/`, { cache: 'no-store' });
+}
+
+export function isCommentAuthor(author, user) {
+  const email = author?.email?.toLowerCase();
+  if (email && email === user?.email?.toLowerCase()) return true;
+  return !!author?.id && author.id === user?.userId;
+}
+
+// Pages carry their comment folder id in the source `x-da-id` header; comments do not
+// record their page path. Probe root pages until every commented document is found.
+async function mapDocsToFiles({ files, docIds, source, signal, concurrency }) {
+  const found = new Map();
+  const queue = files.filter((item) => item.ext === 'html');
+  const worker = async () => {
+    while (queue.length && found.size < docIds.size) {
+      signal.throwIfAborted();
+      const item = queue.shift();
+      const response = await source.getMetadata(item.path).catch(() => undefined);
+      const id = response?.ok ? response.headers.get('x-da-id') : undefined;
+      if (id && docIds.has(id)) found.set(id, item);
+    }
+  };
+  await Promise.all(Array.from({ length: concurrency }, worker));
+  signal.throwIfAborted();
+  return found;
+}
+
+export async function loadMyOpenComments({
+  org, site, files, user, source, signal, concurrency = 6,
+  fetchCommentDocs = listCommentDocs, createStore = createCommentsStore,
+}) {
+  signal.throwIfAborted();
+  const response = await fetchCommentDocs(org, site);
+  signal.throwIfAborted();
+  if (response.status === 404) return [];
+  if (!response.ok) throw new Error(`Could not load comments (${response.status}).`);
+  const docIds = new Set((await response.json()).map((entry) => entry.name));
+  if (!docIds.size) return [];
+
+  const docs = await mapDocsToFiles({ files, docIds, source, signal, concurrency });
+  const perDoc = await Promise.all([...docs].map(async ([docId, file]) => {
+    const store = createStore({ docId, owner: org, repo: site });
+    await store.load();
+    return buildThreadGroups({ store, attachedIds: null }).active
+      .filter((thread) => [thread, ...thread.replies]
+        .some((comment) => isCommentAuthor(comment.author, user)))
+      .map((thread) => ({
+        id: thread.id,
+        file,
+        body: thread.body,
+        author: thread.author,
+        replyCount: thread.replies.length,
+        updatedAt: Math.max(thread.createdAt || 0, ...thread.replies.map((r) => r.createdAt || 0)),
+      }));
+  }));
+  signal.throwIfAborted();
+  return perDoc.flat().sort((a, b) => b.updatedAt - a.updatedAt);
+}
 
 export async function fetchFileModifier({ path, source }) {
   const response = await source.getMetadata(path);

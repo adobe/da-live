@@ -631,6 +631,25 @@ da-card-preview {
   background: var(--s2-blue-800);
 }
 
+.task-status-dot.comment {
+  background: var(--s2-green-800);
+}
+
+.task-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.task-link:hover {
+  text-decoration: underline;
+}
+
+.task-requester .modifier-avatar {
+  width: 20px;
+  height: 20px;
+  font-size: 11px;
+}
+
 .tasks-panel th:not(:last-child) {
   border-inline-end: 1px solid var(--s2-gray-300);
 }
@@ -640,11 +659,11 @@ da-card-preview {
 }
 
 .tasks-panel th:nth-child(2) {
-  width: 47.224%;
+  width: 43.224%;
 }
 
 .tasks-panel th:nth-child(3) {
-  width: 13.321%;
+  width: 17.321%;
 }
 
 .tasks-panel th:nth-child(4) {
@@ -678,7 +697,7 @@ da-card-preview {
   text-decoration: underline;
 }
 
-.tasks-preview-note {
+.tasks-preview-note, .tasks-comments-status {
   padding: var(--s2-spacing-400) var(--s2-spacing-300);
   color: var(--s2-gray-600);
   text-align: start;

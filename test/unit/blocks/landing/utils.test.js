@@ -5,7 +5,7 @@ import { getHomeHref } from '../../../../scripts/utils.js';
 import { getBrowseItemHref } from '../../../../blocks/browse/v2/shared/navigation.js';
 import {
   getSiteOptions, getBrowseHref, getFileHref, loadFiles, getLandingIconHref, formatModified,
-  fetchFileModifier,
+  fetchFileModifier, loadMyOpenComments, isCommentAuthor,
 } from '../../../../blocks/landing/utils.js';
 
 const HREF = 'https://lp--da-live--adobe.aem.live/?landing=true&nx=devlive&quick-edit=devlive&theme=light#/org/site';
@@ -187,6 +187,119 @@ describe('landing page data and navigation', () => {
     } catch (error) {
       expect(error.name).to.equal('AbortError');
       expect(list.called).to.equal(false);
+    }
+  });
+});
+
+describe('landing page open comments', () => {
+  const ME = { email: 'me@example.test', userId: 'ME1' };
+  const ALEX = { id: 'A1', name: 'Alex', email: 'alex@example.test' };
+  const MINE = { id: 'ME1', name: 'Me', email: 'me@example.test' };
+  const FILES = [
+    { name: 'index', path: '/org/site/index.html', ext: 'html' },
+    { name: 'about', path: '/org/site/about.html', ext: 'html' },
+    { name: 'data', path: '/org/site/data.json', ext: 'json' },
+    { name: 'blog', path: '/org/site/blog' },
+  ];
+  const DOC_IDS = { '/org/site/index.html': 'doc-index', '/org/site/about.html': 'doc-about' };
+  const COMMENTS = {
+    'doc-index': [
+      {
+        id: 'mine-open', threadId: null, author: MINE, body: 'Fix hero', createdAt: 10, resolved: false,
+      },
+      {
+        id: 'mine-done', threadId: null, author: MINE, body: 'Done already', createdAt: 20, resolved: true,
+      },
+      {
+        id: 'alex-open', threadId: null, author: ALEX, body: 'Not mine', createdAt: 30, resolved: false,
+      },
+    ],
+    'doc-about': [
+      {
+        id: 'joined', threadId: null, author: ALEX, body: 'Check teaser', createdAt: 40, resolved: false,
+      },
+      { id: 'reply', threadId: 'joined', author: { ...MINE, email: 'ME@example.test' }, body: 'On it', createdAt: 50 },
+    ],
+  };
+
+  const setup = ({ commentDocs = ['doc-index', 'doc-about'], listOk = true } = {}) => {
+    const getMetadata = sinon.stub().callsFake(async (path) => new Response(null, { headers: DOC_IDS[path] ? { 'x-da-id': DOC_IDS[path] } : {} }));
+    const fetchCommentDocs = sinon.stub().resolves(listOk
+      ? new Response(JSON.stringify(commentDocs.map((name) => ({ name }))))
+      : new Response(null, { status: 404 }));
+    const createStore = sinon.stub().callsFake(({ docId }) => {
+      const map = new Map((COMMENTS[docId] || []).map((c) => [c.id, c]));
+      return { load: async () => {}, forEach: (fn) => map.forEach((v, k) => fn(v, k)) };
+    });
+    return { source: { getMetadata }, fetchCommentDocs, createStore };
+  };
+
+  it('matches authors by email (case-insensitively) or IMS user id', () => {
+    expect(isCommentAuthor({ email: 'ME@example.test' }, ME)).to.equal(true);
+    expect(isCommentAuthor({ id: 'ME1' }, ME)).to.equal(true);
+    expect(isCommentAuthor(ALEX, ME)).to.equal(false);
+    expect(isCommentAuthor(undefined, ME)).to.equal(false);
+    expect(isCommentAuthor({ id: '' }, { userId: '' })).to.equal(false);
+  });
+
+  it('lists unresolved threads the user started or replied to, latest activity first', async () => {
+    const deps = setup();
+    const threads = await loadMyOpenComments({
+      org: 'org', site: 'site', files: FILES, user: ME, signal: new AbortController().signal, ...deps,
+    });
+    expect(threads.map((t) => t.id)).to.deep.equal(['joined', 'mine-open']);
+    expect(threads[0]).to.include({ body: 'Check teaser', updatedAt: 50, replyCount: 1 });
+    expect(threads[0].file.path).to.equal('/org/site/about.html');
+    expect(threads[0].author.name).to.equal('Alex');
+    expect(deps.fetchCommentDocs.calledOnceWithExactly('org', 'site')).to.equal(true);
+    expect(deps.createStore.args.map(([a]) => a)).to.deep.equal([
+      { docId: 'doc-index', owner: 'org', repo: 'site' },
+      { docId: 'doc-about', owner: 'org', repo: 'site' },
+    ]);
+  });
+
+  it('only probes pages and stops once every commented document is found', async () => {
+    const deps = setup({ commentDocs: ['doc-index'] });
+    await loadMyOpenComments({
+      org: 'org', site: 'site', files: FILES, user: ME, signal: new AbortController().signal, concurrency: 1, ...deps,
+    });
+    expect(deps.source.getMetadata.args.map(([p]) => p)).to.deep.equal(['/org/site/index.html']);
+  });
+
+  it('skips page lookups when the site has no comments', async () => {
+    const deps = setup({ listOk: false });
+    const threads = await loadMyOpenComments({
+      org: 'org', site: 'site', files: FILES, user: ME, signal: new AbortController().signal, ...deps,
+    });
+    expect(threads).to.deep.equal([]);
+    expect(deps.source.getMetadata.called).to.equal(false);
+  });
+
+  it('surfaces comment listing failures other than a missing folder', async () => {
+    const deps = setup();
+    deps.fetchCommentDocs.resolves(new Response(null, { status: 403 }));
+    try {
+      await loadMyOpenComments({
+        org: 'org', site: 'site', files: FILES, user: ME, signal: new AbortController().signal, ...deps,
+      });
+      expect.fail('Expected comments to fail');
+    } catch (error) {
+      expect(error.message).to.include('403');
+    }
+  });
+
+  it('does not start when the request was superseded', async () => {
+    const deps = setup();
+    const controller = new AbortController();
+    controller.abort();
+    try {
+      await loadMyOpenComments({
+        org: 'org', site: 'site', files: FILES, user: ME, signal: controller.signal, ...deps,
+      });
+      expect.fail('Expected cancellation');
+    } catch (error) {
+      expect(error.name).to.equal('AbortError');
+      expect(deps.fetchCommentDocs.called).to.equal(false);
     }
   });
 });
