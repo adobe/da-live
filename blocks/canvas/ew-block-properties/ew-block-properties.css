@@ -1,4 +1,5 @@
 .ew-page-metadata {
+  gap: 0;
   padding-top: var(--s2-spacing-200);
 }
 
