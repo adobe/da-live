@@ -51,4 +51,17 @@ describe('createMergeConflictsPlugin', () => {
 
     expect(calls).to.deep.equal([]);
   });
+
+  it('does not report after the editor is destroyed', async () => {
+    const calls = [];
+    const plugin = createMergeConflictsPlugin((hasMergeConflicts) => calls.push(hasMergeConflicts));
+    editor = await createTestEditor({ additionalPlugins: [plugin] });
+
+    // The mount check is still pending when the page goes away.
+    destroyEditor(editor);
+    editor = undefined;
+    await waitFor(600);
+
+    expect(calls).to.deep.equal([]);
+  });
 });

@@ -304,7 +304,12 @@ export class EwEditorDoc extends LitElement {
   /** The doc surface owns the toolbar only while the ProseMirror DOM holds focus. */
   _wireProseFocus(view, proseEl) {
     this._unwireProseFocus?.();
-    const onFocusIn = () => canvasBus.toolbarSurfaceRequest.emit({ surface: 'doc', active: true });
+    const onFocusIn = () => {
+      // Focus on a control inside the doc (a merge-conflict tab or button sits in a
+      // contenteditable=false node view) is not text editing: no formatting toolbar.
+      if (!view.hasFocus?.()) return;
+      canvasBus.toolbarSurfaceRequest.emit({ surface: 'doc', active: true });
+    };
     const onFocusOut = () => {
       // Defer so focus can settle. If it landed on a toolbar (button/dialog) or back
       // in the prose, stay active; otherwise the user left the doc surface.
