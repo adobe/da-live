@@ -10,16 +10,13 @@ da-browse-header {
   z-index: 3;
   background: var(--s2-gray-25);
   padding-inline: var(--s2-spacing-100);
-}
 
-@container browse-workspace (width < 1568px) {
-  da-browse-header[chatenabled] {
-    padding-inline: max(
-      var(--s2-spacing-100),
-      calc((100% - var(--da-browse-max-width)) / 2)
-    );
+  nx-breadcrumb:is(:first-child) {
+    padding-left: var(--s2-spacing-100);
   }
 }
+
+
 
 .da-browse-content {
   box-sizing: border-box;
