@@ -407,20 +407,33 @@
   top: var(--s2-spacing-100);
   left: var(--s2-spacing-100);
   margin: 0;
+  opacity: 0;
 }
 
 .card-favorite {
   position: absolute;
-  top: var(--s2-spacing-100);
-  right: var(--s2-spacing-100);
-  width: 16px;
-  height: 16px;
-  padding: 3px;
-  box-sizing: border-box;
+  bottom: var(--s2-spacing-100);
+  left: var(--s2-spacing-100);
   border-radius: 50%;
   background: var(--s2-gray-25);
-  color: var(--s2-yellow-500);
-  pointer-events: none;
+  color: var(--s2-gray-600);
+  opacity: 0;
+}
+
+.card-select:has(input:checked),
+.card-favorite[aria-pressed="true"],
+.card:hover .card-select,
+.card:hover .card-favorite,
+.card:has(:focus-visible) .card-select,
+.card:has(:focus-visible) .card-favorite {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .card-select,
+  .card-favorite {
+    opacity: 1;
+  }
 }
 
 .card-select::after {
