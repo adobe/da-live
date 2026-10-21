@@ -155,6 +155,11 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
   lookup failed. Page metadata permission and network failures are reported
   rather than silently becoming an empty feed; pages deleted since listing are
   skipped. This does not broaden the root-page or participant filters.
+  Empty results distinguish no saved comments, no mapping to root-level pages,
+  only resolved threads, and open threads the current user has not participated
+  in. Landing opts into strict comment-store reads, so unreadable comment folders
+  or thread files appear as errors instead of an empty feed. Canvas retains its
+  existing tolerant load behavior.
 - Notification counts, published-page screenshots and global AI routing are not
   mocked. The routing placeholder does not add a global routing backend.
 

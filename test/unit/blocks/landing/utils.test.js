@@ -229,7 +229,7 @@ describe('landing page open comments', () => {
       : new Response(null, { status: 404 }));
     const createStore = sinon.stub().callsFake(({ docId }) => {
       const map = new Map((COMMENTS[docId] || []).map((c) => [c.id, c]));
-      return { load: async () => {}, forEach: (fn) => map.forEach((v, k) => fn(v, k)) };
+      return { load: sinon.stub().resolves(), forEach: (fn) => map.forEach((v, k) => fn(v, k)) };
     });
     return { source: { getMetadata }, fetchCommentDocs, createStore };
   };
@@ -244,7 +244,7 @@ describe('landing page open comments', () => {
 
   it('lists unresolved threads the user started or replied to, latest activity first', async () => {
     const deps = setup();
-    const threads = await loadMyOpenComments({
+    const { comments: threads } = await loadMyOpenComments({
       org: 'org', site: 'site', files: FILES, user: ME, signal: new AbortController().signal, ...deps,
     });
     expect(threads.map((t) => t.id)).to.deep.equal(['joined', 'mine-open']);
@@ -256,6 +256,56 @@ describe('landing page open comments', () => {
       { docId: 'doc-index', owner: 'org', repo: 'site' },
       { docId: 'doc-about', owner: 'org', repo: 'site' },
     ]);
+    deps.createStore.returnValues.forEach((store) => {
+      expect(store.load.calledOnceWithExactly({ strict: true })).to.equal(true);
+    });
+  });
+
+  it('explains when saved comments cannot be mapped to root-level pages', async () => {
+    const deps = setup({ commentDocs: ['nested-doc'] });
+    const result = await loadMyOpenComments({
+      org: 'org', site: 'site', files: FILES, user: ME, signal: new AbortController().signal, ...deps,
+    });
+    expect(result.comments).to.deep.equal([]);
+    expect(result.message).to.include('none could be linked to root-level pages');
+    expect(deps.createStore.called).to.equal(false);
+  });
+
+  it('distinguishes open threads by other people from a site with no comments', async () => {
+    const deps = setup();
+    const result = await loadMyOpenComments({
+      org: 'org',
+      site: 'site',
+      files: FILES,
+      user: { email: 'other@example.test' },
+      signal: new AbortController().signal,
+      ...deps,
+    });
+    expect(result.comments).to.deep.equal([]);
+    expect(result.message).to.include('you have not started or replied');
+  });
+
+  it('explains when all root-page threads are resolved', async () => {
+    const deps = setup();
+    deps.createStore.callsFake(() => ({
+      load: async () => {},
+      forEach: (fn) => fn({ ...COMMENTS['doc-index'][0], resolved: true }),
+    }));
+    const result = await loadMyOpenComments({
+      org: 'org', site: 'site', files: FILES, user: ME, signal: new AbortController().signal, ...deps,
+    });
+    expect(result.comments).to.deep.equal([]);
+    expect(result.message).to.include('All comment threads found on root-level pages are resolved');
+  });
+
+  it('explains when the matched comment folders contain no threads', async () => {
+    const deps = setup();
+    deps.createStore.callsFake(() => ({ load: async () => {}, forEach: () => {} }));
+    const result = await loadMyOpenComments({
+      org: 'org', site: 'site', files: FILES, user: ME, signal: new AbortController().signal, ...deps,
+    });
+    expect(result.comments).to.deep.equal([]);
+    expect(result.message).to.include('No comment threads were found on the matched root-level pages');
   });
 
   it('only probes pages and stops once every commented document is found', async () => {
@@ -268,10 +318,11 @@ describe('landing page open comments', () => {
 
   it('skips page lookups when the site has no comments', async () => {
     const deps = setup({ listOk: false });
-    const threads = await loadMyOpenComments({
+    const { comments: threads, message } = await loadMyOpenComments({
       org: 'org', site: 'site', files: FILES, user: ME, signal: new AbortController().signal, ...deps,
     });
     expect(threads).to.deep.equal([]);
+    expect(message).to.include('No comments have been saved');
     expect(deps.source.getMetadata.called).to.equal(false);
   });
 
@@ -335,7 +386,7 @@ describe('landing page open comments', () => {
   it('skips pages deleted after listing without dropping comments on other pages', async () => {
     const deps = setup();
     deps.source.getMetadata.withArgs('/org/site/index.html').resolves(new Response(null, { status: 404 }));
-    const threads = await loadMyOpenComments({
+    const { comments: threads } = await loadMyOpenComments({
       org: 'org', site: 'site', files: FILES, user: ME, signal: new AbortController().signal, ...deps,
     });
     expect(threads.map((thread) => thread.id)).to.deep.equal(['joined']);

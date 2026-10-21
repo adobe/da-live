@@ -114,6 +114,73 @@ describe('comments-store: store basics', () => {
   });
 });
 
+describe('comments-store: strict reads', () => {
+  afterEach(() => restoreFetch());
+
+  it('surfaces folder failures when strict without changing tolerant loads', async () => {
+    mockFetch(() => new Response(null, { status: 403 }));
+    const tolerant = createCommentsStore({ docId: 'doc-1', owner: 'o', repo: 'r' });
+    await tolerant.load();
+    expect(tolerant.loaded).to.equal(true);
+    const strict = createCommentsStore({ docId: 'doc-1', owner: 'o', repo: 'r' });
+    let failure;
+    try {
+      await strict.load({ strict: true });
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).to.be.an('error');
+    expect(failure.message).to.include('403');
+    expect(strict.loaded).to.equal(false);
+  });
+
+  it('surfaces unreadable comment files only when strict', async () => {
+    mockFetch(({ url }) => (url.includes('/list/')
+      ? new Response(JSON.stringify([{ name: 'a.json' }]))
+      : new Response(null, { status: 500 })));
+    const tolerant = createCommentsStore({ docId: 'doc-1', owner: 'o', repo: 'r' });
+    await tolerant.load();
+    expect(tolerant.size).to.equal(0);
+    expect(tolerant.loaded).to.equal(true);
+    const strict = createCommentsStore({ docId: 'doc-1', owner: 'o', repo: 'r' });
+    let failure;
+    try {
+      await strict.load({ strict: true });
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).to.be.an('error');
+    expect(failure.message).to.include('500');
+    expect(strict.loaded).to.equal(false);
+  });
+
+  it('does not swallow network failures fetching an individual comment in strict mode', async () => {
+    mockFetch(({ url }) => {
+      if (url.includes('/list/')) return new Response(JSON.stringify([{ name: 'a.json' }]));
+      throw new Error('Comment network failure');
+    });
+    const store = createCommentsStore({ docId: 'doc-1', owner: 'o', repo: 'r' });
+    let failure;
+    try {
+      await store.load({ strict: true });
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).to.be.an('error');
+    expect(failure.message).to.equal('Comment network failure');
+    expect(store.loaded).to.equal(false);
+  });
+
+  it('loads readable comments in strict mode', async () => {
+    const data = makeServerMock();
+    data.set('a', { id: 'a', body: 'A' });
+    const store = createCommentsStore({ docId: 'doc-1', owner: 'o', repo: 'r' });
+    await store.load({ strict: true });
+    expect(store.get('a').body).to.equal('A');
+    expect(store.loaded).to.equal(true);
+  });
+});
+
 describe('comments-store: store writes', () => {
   let store;
   let fetchCalls;

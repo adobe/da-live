@@ -68,6 +68,7 @@ export class DaLanding extends LitElement {
     _modifiers: { state: true },
     _comments: { state: true },
     _commentsError: { state: true },
+    _commentsMessage: { state: true },
   };
 
   _sizing = sizing && new sizing.UISizeController(this);
@@ -198,6 +199,7 @@ export class DaLanding extends LitElement {
     this._modifiers = undefined;
     this._comments = undefined;
     this._commentsError = undefined;
+    this._commentsMessage = undefined;
     this._error = undefined;
     if (!this._scope) return;
     this.loadChatAvailability(request);
@@ -218,10 +220,13 @@ export class DaLanding extends LitElement {
       const profile = await this.loadImsProfile();
       if (!profile?.email && !profile?.userId) throw new Error('Sign in to see your comments.');
       const { source } = await getNx2Api();
-      const comments = await loadMyOpenComments({
+      const { comments, message } = await loadMyOpenComments({
         org, site, files, source, signal: request.signal, user: profile,
       });
-      if (this.isConnected && !request.signal.aborted) this._comments = comments;
+      if (this.isConnected && !request.signal.aborted) {
+        this._comments = comments;
+        this._commentsMessage = message;
+      }
     } catch (error) {
       if (this.isConnected && !request.signal.aborted) {
         this._comments = [];
@@ -268,7 +273,8 @@ export class DaLanding extends LitElement {
     }
     if (!this._comments) return html`<p class="tasks-comments-status" role="status">Loading your open comments...</p>`;
     if (!this._comments.length) {
-      return html`<p class="tasks-comments-status" role="status">No unresolved comment threads you started or replied to were found on this site's root-level pages.</p>`;
+      return html`<p class="tasks-comments-status" role="status">${this._commentsMessage
+        || 'No unresolved comment threads you started or replied to were found on this site\'s root-level pages.'}</p>`;
     }
     return nothing;
   }

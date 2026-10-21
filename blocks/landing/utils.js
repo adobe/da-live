@@ -47,16 +47,24 @@ export async function loadMyOpenComments({
   signal.throwIfAborted();
   const response = await fetchCommentDocs(org, site);
   signal.throwIfAborted();
-  if (response.status === 404) return [];
+  const noSavedComments = { comments: [], message: 'No comments have been saved for this site.' };
+  if (response.status === 404) return noSavedComments;
   if (!response.ok) throw new Error(`Could not load comments (${response.status}).`);
   const docIds = new Set((await response.json()).map((entry) => entry.name));
-  if (!docIds.size) return [];
+  if (!docIds.size) return noSavedComments;
 
   const docs = await mapDocsToFiles({ files, docIds, source, signal, concurrency });
+  if (!docs.size) {
+    return {
+      comments: [],
+      message: 'Saved comments exist, but none could be linked to root-level pages. Comments in subfolders are not included.',
+    };
+  }
   const perDoc = await Promise.all([...docs].map(async ([docId, file]) => {
     const store = createStore({ docId, owner: org, repo: site });
-    await store.load();
-    return buildThreadGroups({ store, attachedIds: null }).active
+    await store.load({ strict: true });
+    const { active, resolved } = buildThreadGroups({ store, attachedIds: null });
+    const comments = active
       .filter((thread) => [thread, ...thread.replies]
         .some((comment) => isCommentAuthor(comment.author, user)))
       .map((thread) => ({
@@ -67,9 +75,23 @@ export async function loadMyOpenComments({
         replyCount: thread.replies.length,
         updatedAt: Math.max(thread.createdAt || 0, ...thread.replies.map((r) => r.createdAt || 0)),
       }));
+    return { comments, openCount: active.length, threadCount: active.length + resolved.length };
   }));
   signal.throwIfAborted();
-  return perDoc.flat().sort((a, b) => b.updatedAt - a.updatedAt);
+  const comments = perDoc.flatMap((doc) => doc.comments).sort((a, b) => b.updatedAt - a.updatedAt);
+  if (comments.length) return { comments };
+  if (perDoc.some((doc) => doc.openCount)) {
+    return {
+      comments,
+      message: 'Open comment threads exist on root-level pages, but you have not started or replied to any of them.',
+    };
+  }
+  return {
+    comments,
+    message: perDoc.some((doc) => doc.threadCount)
+      ? 'All comment threads found on root-level pages are resolved.'
+      : 'No comment threads were found on the matched root-level pages.',
+  };
 }
 
 export async function fetchFileModifier({ path, source }) {

@@ -185,6 +185,13 @@ describe('landing page', () => {
     expect(el.shadowRoot.querySelector('.tasks-comments-status').textContent).to.include('Choose a site');
   });
 
+  it('shows the actual empty-result reason from comment discovery', async () => {
+    el._comments = [];
+    el._commentsMessage = 'All comment threads found on root-level pages are resolved.';
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.tasks-comments-status').textContent).to.equal(el._commentsMessage);
+  });
+
   it('does not show an endless comment-loading state when the files fail to load', async () => {
     el._error = 'Could not load files.';
     await el.updateComplete;
