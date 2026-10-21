@@ -1,0 +1,155 @@
+/* stylelint-disable selector-class-pattern */
+
+.ew-editor-doc-mount .loc-tabbed-container {
+  background: var(--s2-gray-25);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
+  border-radius: var(--s2-corner-radius-400);
+}
+
+.ew-editor-doc-mount .diff-tab-content {
+  background: var(--s2-gray-25);
+}
+
+.ew-editor-doc-mount .da-diff-btn-base {
+  border-radius: var(--s2-corner-radius-400);
+  height: 28px;
+  background: var(--s2-gray-100);
+}
+
+.ew-editor-doc-mount .da-diff-btn .switch-btn,
+.ew-editor-doc-mount .da-diff-btn-3part .diff-label {
+  padding: 4px 10px;
+}
+
+.ew-editor-doc-mount .da-diff-btn .switch-btn {
+  cursor: default;
+}
+
+.ew-editor-doc-mount .da-diff-btn-base-element {
+  font-size: var(--s2-component-s-regular-font-size, 0.875rem);
+  font-weight: 600;
+
+  &:focus-visible {
+    outline: 2px solid var(--s2-blue-800);
+    outline-offset: 2px;
+  }
+}
+
+.ew-editor-doc-mount .da-diff-btn .confirm-btn,
+.ew-editor-doc-mount .da-diff-btn-3part .diff-accept,
+.ew-editor-doc-mount .da-diff-btn-3part .diff-delete {
+  padding: 0;
+}
+
+.ew-editor-doc-mount .da-diff-btn .confirm-btn::before,
+.ew-editor-doc-mount .da-diff-btn-3part .diff-accept::before {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background-color: currentcolor;
+  mask: no-repeat center / 16px url('/img/icons/s2-icon-checkmark-20-n.svg');
+}
+
+.ew-editor-doc-mount .da-diff-btn-3part .diff-delete::before {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background-color: currentcolor;
+  mask: no-repeat center / 16px url('/img/icons/s2-icon-close-20-n.svg');
+}
+
+.ew-editor-doc-mount .da-diff-btn:is(.is-local, .is-upstream, .is-diff) .switch-btn,
+.ew-editor-doc-mount .da-diff-btn-3part:is(.is-local, .is-upstream) .diff-label {
+  background: transparent;
+  color: var(--s2-gray-800);
+}
+
+.ew-editor-doc-mount .da-diff-btn:is(.is-local, .is-upstream, .is-diff) .confirm-btn,
+.ew-editor-doc-mount .da-diff-btn-3part:is(.is-local, .is-upstream) .diff-accept,
+.ew-editor-doc-mount .da-diff-btn-3part:is(.is-local, .is-upstream) .diff-delete {
+  background: var(--s2-gray-200);
+  color: var(--s2-gray-800);
+  border-left: 1px solid var(--s2-gray-300);
+}
+
+.ew-editor-doc-mount .da-diff-btn.is-active {
+  border-color: var(--s2-gray-900);
+}
+
+.ew-editor-doc-mount .da-diff-btn.is-active .switch-btn,
+.ew-editor-doc-mount .da-diff-btn.is-active .confirm-btn {
+  background: var(--s2-gray-300);
+  color: var(--s2-gray-900);
+}
+
+.ew-editor-doc-mount .da-diff-btn .confirm-btn:hover,
+.ew-editor-doc-mount .da-diff-btn-3part .diff-accept:hover,
+.ew-editor-doc-mount .da-diff-btn-3part .diff-delete:hover {
+  background: var(--s2-gray-300);
+  color: var(--s2-gray-900);
+}
+
+.ew-editor-doc-mount .diff-tooltip {
+  background: var(--s2-gray-1000);
+  color: var(--s2-gray-25);
+  font-weight: 500;
+  border: none;
+  border-radius: var(--s2-corner-radius-400);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 15%);
+  backdrop-filter: none;
+}
+
+.ew-editor-doc-mount .diff-tooltip::before {
+  display: none;
+}
+
+.ew-editor-doc-mount .diff-tooltip::after {
+  border-top-color: var(--s2-gray-1000);
+  filter: none;
+}
+
+.ew-editor-doc-mount .diff-tab-pane del.diffdel,
+.ew-editor-doc-mount .diff-tab-pane del.diffmod {
+  background-color: var(--s2-red-200);
+  color: var(--s2-red-900);
+  border: none;
+}
+
+.ew-editor-doc-mount .diff-tab-pane ins.diffins,
+.ew-editor-doc-mount .diff-tab-pane ins.diffmod {
+  background-color: var(--s2-green-200);
+  color: var(--s2-green-900);
+  border: none;
+}
+
+.ew-editor-doc-mount .loc-color-overlay.loc-regional {
+  background-color: color-mix(in srgb, var(--s2-green-200) 25%, transparent);
+}
+
+.ew-editor-doc-mount .loc-color-overlay.loc-langstore {
+  background-color: color-mix(in srgb, var(--s2-red-200) 25%, transparent);
+}
+
+.ew-editor-doc-mount .diff-bg-local {
+  background-color: color-mix(in srgb, var(--s2-green-200) 25%, transparent);
+}
+
+.ew-editor-doc-mount .diff-bg-upstream {
+  background-color: color-mix(in srgb, var(--s2-red-200) 25%, transparent);
+}
+
+.ew-editor-doc-mount .diff-bg-diff {
+  background-color: color-mix(in srgb, var(--s2-gray-100) 25%, transparent);
+}
+
+.ew-editor-doc-mount .da-regional-edits-overlay {
+  padding: var(--s2-spacing-200);
+  background: var(--s2-gray-25);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
+}
+
+.ew-editor-doc-mount .da-regional-edits-actions {
+  gap: var(--s2-spacing-200);
+}

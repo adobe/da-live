@@ -274,3 +274,32 @@ describe('diff-actions applyKeepOperation', () => {
     expect(calls).to.deep.equal([{ op: 'delete', s: 5, e: 9 }]);
   });
 });
+
+describe('diff-actions addToHashMetadata without a global view', () => {
+  it('Records the hash of a node using the node schema', async () => {
+    const { getSchema } = await import('da-parser');
+    const { initDaMetadata, getDaMetadata } = await import('../../../../../../blocks/edit/utils/helpers.js');
+    const { addToHashMetadata } = await import('../../../../../../blocks/edit/prose/diff/diff-actions.js');
+    const storage = new Map();
+    initDaMetadata({
+      get: (key) => storage.get(key) || null,
+      set: (key, value) => storage.set(key, value),
+      delete: (key) => storage.delete(key),
+      [Symbol.iterator]: () => storage.entries(),
+    });
+    const savedView = window.view;
+    delete window.view;
+    try {
+      const schema = getSchema();
+      const node = schema.nodeFromJSON({
+        type: 'diff_added',
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'local text' }] }],
+      });
+      await addToHashMetadata(node, ACCEPTED_KEY);
+      expect(getDaMetadata(ACCEPTED_KEY)).to.be.a('string').and.not.equal('');
+    } finally {
+      if (savedView) window.view = savedView;
+      initDaMetadata(null);
+    }
+  });
+});
