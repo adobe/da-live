@@ -78,19 +78,17 @@ function setDiffLabelCssVars(daEditor) {
   host.style.setProperty('--diff-label-upstream', `'${labels.upstream}'`);
 }
 
-let locCssLoading = false;
+let locSheetPromise;
 async function loadLocCss(hostEl) {
-  if (locCssLoading) return;
-  locCssLoading = true;
-
   try {
-    const locSheet = await getSheet('/blocks/edit/prose/diff/diff-utils.css');
+    locSheetPromise ??= getSheet('/blocks/edit/prose/diff/diff-utils.css');
+    const locSheet = await locSheetPromise;
 
     if (hostEl?.shadowRoot) {
-      hostEl.shadowRoot.adoptedStyleSheets = [
-        ...(hostEl.shadowRoot.adoptedStyleSheets || []),
-        locSheet,
-      ];
+      const sheets = hostEl.shadowRoot.adoptedStyleSheets || [];
+      if (!sheets.includes(locSheet)) {
+        hostEl.shadowRoot.adoptedStyleSheets = [...sheets, locSheet];
+      }
 
       // Set CSS custom properties for diff labels
       setDiffLabelCssVars(hostEl);
