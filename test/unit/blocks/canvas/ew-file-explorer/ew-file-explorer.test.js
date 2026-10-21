@@ -80,6 +80,58 @@ describe('EwFileExplorer', () => {
 
   afterEach(() => { el.remove(); });
 
+  ['tree', 'search'].forEach((view) => {
+    describe(`${view} file selection`, () => {
+      beforeEach(async () => {
+        const items = [
+          { name: 'example', path: '/org/site/example' },
+          ...['html', 'json', 'png'].map((ext) => ({ name: `example.${ext}`, path: `/org/site/example.${ext}`, ext })),
+          { name: 'other.html', path: '/org/site/other.html', ext: 'html' },
+        ];
+        el._org = 'org';
+        el._site = 'site';
+        el._treeRoot = '/org/site';
+        el._cache = { '/org/site': items };
+        el._expanded = new Set(['org/site']);
+        el._selectedPath = 'org/site/example';
+        if (view === 'search') {
+          el._searchTerm = 'example';
+          el._searchResults = items.filter((item) => item.ext);
+        }
+        await el.updateComplete;
+      });
+
+      it('highlights only the open HTML page, not same-name files or folders', () => {
+        const selected = [...el.shadowRoot.querySelectorAll('[role="row"].selected')];
+        expect(selected).to.have.length(1);
+        expect(selected[0].querySelector('.label').textContent.trim()).to.equal('example.html');
+        if (view === 'tree') {
+          expect(el.shadowRoot.querySelectorAll('[aria-selected="true"]')).to.have.length(1);
+        }
+      });
+
+      it('does not highlight a same-name page in a different folder', async () => {
+        el._selectedPath = 'org/site/elsewhere/example';
+        await el.updateComplete;
+        expect(el.shadowRoot.querySelector('[role="row"].selected')).to.be.null;
+      });
+
+      it('updates the highlight when the open page changes', async () => {
+        el._onHashChange({ org: 'org', site: 'site', path: 'other' });
+        await el.updateComplete;
+        const selected = [...el.shadowRoot.querySelectorAll('[role="row"].selected')];
+        expect(selected).to.have.length(1);
+        expect(selected[0].querySelector('.label').textContent.trim()).to.equal('other.html');
+      });
+
+      it('does not highlight any file when no page is open', async () => {
+        el._selectedPath = undefined;
+        await el.updateComplete;
+        expect(el.shadowRoot.querySelector('[role="row"].selected')).to.be.null;
+      });
+    });
+  });
+
   it('handles shared search input with consumer debounce and clears pending searches', async () => {
     el._org = 'org';
     el._site = 'site';
@@ -315,7 +367,7 @@ describe('EwFileExplorer', () => {
       let sawSpinner = false;
       el._refreshPath = async () => {
         sawDisabled = btn.disabled;
-        sawSpinner = !!btn.querySelector('.da-loading-spinner');
+        sawSpinner = !!btn.querySelector('.nx-loading-spinner');
         return true;
       };
 
@@ -324,7 +376,7 @@ describe('EwFileExplorer', () => {
       expect(sawDisabled).to.be.true;
       expect(sawSpinner).to.be.true;
       expect(btn.disabled).to.be.false;
-      expect(btn.querySelector('.da-loading-spinner')).to.be.null;
+      expect(btn.querySelector('.nx-loading-spinner')).to.be.null;
       expect(btn.querySelector('svg')).to.exist;
     });
   });
@@ -336,7 +388,7 @@ describe('EwFileExplorer', () => {
 
       expect(first).to.equal(second);
       expect(first.tagName).to.equal('BUTTON');
-      expect(first.className).to.equal('da-icon-btn');
+      expect(first.className).to.equal('nx-action-btn-icon nx-btn-sm');
     });
 
     it('clicking the returned button invokes _onRefreshClick', () => {
