@@ -1,3 +1,18 @@
+## [1.11.3](https://github.com/adobe/da-live/compare/v1.11.2...v1.11.3) (2026-10-21)
+
+
+### Bug Fixes
+
+* **ew:** highlight only the open HTML page in files panel ([#1456](https://github.com/adobe/da-live/issues/1456)) ([c6d7979](https://github.com/adobe/da-live/commit/c6d79793a57e0310ce505070f8871d09cf8cfeb9)), closes [#1363](https://github.com/adobe/da-live/issues/1363)
+* **ew:** scroll block library previews to variant headings ([#1420](https://github.com/adobe/da-live/issues/1420)) ([96ee337](https://github.com/adobe/da-live/commit/96ee337a420892b623c02582f76c13401523bc70)), closes [#1225](https://github.com/adobe/da-live/issues/1225)
+
+## [1.11.2](https://github.com/adobe/da-live/compare/v1.11.1...v1.11.2) (2026-10-21)
+
+
+### Bug Fixes
+
+* **canvas:** align tool panel toggle with toolbar ([#1466](https://github.com/adobe/da-live/issues/1466)) ([4b56c09](https://github.com/adobe/da-live/commit/4b56c09da46a7a2be127c73b0b6601ce11338d19))
+
 ## [1.11.1](https://github.com/adobe/da-live/compare/v1.11.0...v1.11.1) (2026-10-20)
 
 
