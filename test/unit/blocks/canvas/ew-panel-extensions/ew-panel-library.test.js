@@ -1,12 +1,195 @@
 import { expect } from '@esm-bundle/chai';
-import { setNx } from '../../../../../scripts/utils.js';
+import { stub } from 'sinon';
+import { NodeSelection, TextSelection } from 'da-y-wrapper';
+import { setNx, getNx } from '../../../../../scripts/utils.js';
 import { getExtensionsBridge } from '../../../../../blocks/canvas/editor-utils/extensions-bridge.js';
-import { makeView } from '../test-helpers.js';
+import { makeView, makeRealView } from '../test-helpers.js';
 import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
+import { setDaConfigs } from '../../../../fixtures/nx/utils/daConfig.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 await import('../../../../../blocks/canvas/ew-panel-extensions/ew-panel-library.js');
+
+describe('Ew panel library block insertion', () => {
+  const paragraph = (text) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
+  const table = (name, body) => ({
+    type: 'table',
+    content: [
+      { type: 'table_row', content: [{ type: 'table_cell', content: [paragraph(name)] }] },
+      { type: 'table_row', content: [{ type: 'table_cell', content: [paragraph(body)] }] },
+    ],
+  });
+  let view;
+  let el;
+  let dom;
+  let savedView;
+
+  beforeEach(() => {
+    savedView = getExtensionsBridge().view;
+    view = makeRealView({
+      type: 'doc',
+      content: [
+        paragraph('Intro'), table('Cards', 'Original'), paragraph('Outro'), table('Other', 'Keep'),
+      ],
+    });
+    getExtensionsBridge().view = view;
+    el = document.createElement('ew-panel-library');
+    dom = document.createElement('table');
+    dom.innerHTML = '<tbody><tr><td><p>New</p></td></tr><tr><td><p>Replacement</p></td></tr></tbody>';
+  });
+
+  afterEach(() => {
+    getExtensionsBridge().view = savedView;
+    const mount = view.dom.parentElement;
+    view.destroy();
+    mount.remove();
+  });
+
+  const contents = () => {
+    const result = [];
+    view.state.doc.forEach((node) => result.push([node.type.name, node.textContent]));
+    return result;
+  };
+  const selectBody = () => {
+    let caret;
+    view.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text === 'Original') caret = pos + 1;
+    });
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, caret)));
+  };
+
+  it('replaces the enclosing block for a caret inside a block cell', () => {
+    selectBody();
+    el._insertBlock({ dom });
+    expect(contents()).to.deep.equal([
+      ['paragraph', 'Intro'], ['table', 'NewReplacement'],
+      ['paragraph', 'Outro'], ['table', 'OtherKeep'],
+    ]);
+  });
+
+  it('replaces an explicitly selected block without nesting a table', () => {
+    const pos = view.state.doc.firstChild.nodeSize;
+    view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos)));
+    el._insertBlock({ dom });
+    expect(contents()).to.deep.equal([
+      ['paragraph', 'Intro'], ['table', 'NewReplacement'],
+      ['paragraph', 'Outro'], ['table', 'OtherKeep'],
+    ]);
+  });
+
+  ['plugin', 'slash menu'].forEach((source) => {
+    it(`replaces the enclosing block through the ${source} modal using a protected library`, async () => {
+      const { extensionToPanelView, resetBlockLibraryCache } = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
+      const { hashChange } = await import(`${getNx()}/utils/utils.js`);
+      const savedFetch = window.fetch;
+      const savedIMS = window.adobeIMS;
+      // Other test pages share localStorage; keep this sign-in state local to this page.
+      const storage = stub(Storage.prototype, 'getItem').callThrough();
+      storage.withArgs('nx-ims').returns('true');
+      window.adobeIMS = { getAccessToken: () => ({ token: 'test-token' }) };
+      hashChange._set({ org: 'org', site: 'site' });
+      setDaConfigs([{ library: { data: [{ title: 'Blocks', path: '/blocks.json' }] } }]);
+      resetBlockLibraryCache();
+      const proxy = 'https://main--site--org.stage-preview.da.live';
+      const responses = new Map([
+        [`${proxy}/gimme_cookie`, ''],
+        [`${proxy}/blocks.json`, JSON.stringify([{ name: 'New', path: 'https://main--site--org.aem.live/blocks/new' }])],
+        [`${proxy}/blocks/new.plain.html`, '<body><div><div class="New"><div><div><p>Replacement</p></div></div></div></div></body>'],
+      ]);
+      const calls = [];
+      window.fetch = async (url, options) => {
+        if (url.startsWith('/') || url.startsWith(window.location.origin)) {
+          return savedFetch(url, options);
+        }
+        calls.push({ url, options });
+        if (!responses.has(url)) throw new Error(`Unexpected library request: ${url}`);
+        return new Response(responses.get(url));
+      };
+      try {
+        selectBody();
+        if (source === 'plugin') {
+          await extensionToPanelView({ name: 'blocks', ootb: true }, 'Library').openModal();
+        } else {
+          const { COMMAND_BY_ID } = await import('../../../../../blocks/canvas/editor-utils/command-defs.js');
+          await COMMAND_BY_ID.get('open-library').apply(view);
+        }
+        for (let attempt = 0; attempt < 50 && !document.querySelector('ew-block-library-modal'); attempt += 1) {
+          await new Promise((resolve) => { setTimeout(resolve, 10); });
+        }
+        const modal = document.querySelector('ew-block-library-modal');
+        expect(modal).to.exist;
+        expect(modal.blocks).to.have.lengthOf(1);
+        const variants = await modal.blocks[0].loadVariants;
+        expect(variants).to.have.lengthOf(1);
+        modal.onInsert(variants[0].dom);
+        expect(contents()).to.deep.equal([
+          ['paragraph', 'Intro'], ['table', 'NewReplacement'],
+          ['paragraph', 'Outro'], ['table', 'OtherKeep'],
+        ]);
+        expect(calls.map(({ url }) => url)).to.deep.equal([...responses.keys()]);
+        expect(calls.every(({ options }) => options.credentials === 'include')).to.equal(true);
+        expect(calls[0].options.headers.Authorization).to.equal('Bearer test-token');
+      } finally {
+        document.querySelector('ew-block-library-modal')?.remove();
+        window.fetch = savedFetch;
+        if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+        storage.restore();
+        setDaConfigs([]);
+        hashChange._set({});
+        resetBlockLibraryCache();
+      }
+    });
+  });
+
+  it('replaces the enclosing block through a slash-library entry', async () => {
+    const { ingestBlocks, insertBlockItem, resetBlockLibrary } = await import('../../../../../blocks/canvas/editor-utils/block-slash.js');
+    try {
+      await ingestBlocks([{
+        name: 'New',
+        path: '/new',
+        loadVariants: Promise.resolve([{ name: 'New', dom }]),
+      }]);
+      selectBody();
+      await insertBlockItem(view, 'block:0');
+      expect(contents()).to.deep.equal([
+        ['paragraph', 'Intro'], ['table', 'NewReplacement'],
+        ['paragraph', 'Outro'], ['table', 'OtherKeep'],
+      ]);
+    } finally {
+      resetBlockLibrary();
+    }
+  });
+
+  it('inserts outside a block without replacing the current paragraph', () => {
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 2)));
+    el._insertBlock({ dom });
+    expect(contents().filter(([type]) => type === 'table')).to.deep.equal([
+      ['table', 'NewReplacement'], ['table', 'CardsOriginal'], ['table', 'OtherKeep'],
+    ]);
+    expect(view.state.doc.textContent.replace('NewReplacement', '')).to.include('Intro');
+  });
+
+  it('keeps insertion for selections spanning more than one target', () => {
+    selectBody();
+    const { from } = view.state.selection;
+    const end = view.state.doc.firstChild.nodeSize + view.state.doc.child(1).nodeSize;
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, from, end + 2)));
+    el._insertBlock({ dom });
+    expect(view.state.doc.textContent).to.include('Replacement');
+    expect(view.state.doc.lastChild.textContent).to.equal('OtherKeep');
+  });
+
+  it('keeps insertion for library groups with multiple content nodes', () => {
+    selectBody();
+    const group = document.createElement('div');
+    group.append(dom, document.createElement('p'));
+    group.lastChild.textContent = 'Grouped text';
+    el._insertBlock({ dom: group });
+    expect(view.state.doc.textContent).to.include('Replacement');
+    expect(view.state.doc.textContent).to.include('Grouped text');
+  });
+});
 
 describe('Ew panel library _insertTemplate', () => {
   let savedFetch;

@@ -4,7 +4,7 @@ import getSheet from '../../shared/sheet.js';
 import {
   fetchBlocks,
   fetchItems,
-  insertBlock,
+  insertLibraryBlock,
   insertText,
   insertTemplate,
   getPreviewStatus,
@@ -124,7 +124,7 @@ class EwPanelLibrary extends LitElement {
   _insertBlock(variant) {
     const { view } = getExtensionsBridge();
     if (!view) return;
-    insertBlock(view, variant.dom);
+    insertLibraryBlock(view, variant.dom);
   }
 
   _insertText(item) {

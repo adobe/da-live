@@ -351,6 +351,29 @@ export function getInstrumentedHTML(view) {
   return htmlString;
 }
 
+export function getInstrumentedHTMLForSDK(view) {
+  const doc = new DOMParser().parseFromString(getInstrumentedHTML(view), 'text/html');
+  doc.querySelectorAll('[data-cursor-remote], [data-cursor-remote-color]').forEach((element) => {
+    element.removeAttribute('data-cursor-remote');
+    element.removeAttribute('data-cursor-remote-color');
+  });
+  doc.querySelectorAll('img[data-image-index]').forEach((image) => {
+    try {
+      const pos = Number(image.getAttribute('data-image-index'));
+      const node = view.state.doc.nodeAt(pos);
+      if (node?.type.name !== 'image') throw new Error(`No editor image at position ${pos}`);
+      image.setAttribute('src', node.attrs.src);
+      image.closest('picture')?.querySelectorAll('source').forEach((source) => {
+        source.setAttribute('srcset', node.attrs.src);
+      });
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('Could not preserve original image URL:', e);
+    }
+  });
+  return doc.body.outerHTML;
+}
+
 const SKIP_BLOCK_CLASSES = new Set(['default-content-wrapper', 'metadata', 'section-metadata', 'library-metadata', 'block-marker']);
 
 function hasDefaultContent(el) {
