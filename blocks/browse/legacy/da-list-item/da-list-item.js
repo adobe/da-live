@@ -1,6 +1,6 @@
 import { LitElement, html, nothing, until } from 'da-lit';
 import { delay, sanitizeName, formatDate } from '../../../shared/utils.js';
-import { getNx, getNx2Api } from '../../../../scripts/utils.js';
+import { getNx, getNx2, getNx2Api } from '../../../../scripts/utils.js';
 import { ICONS, iconPathForExt } from '../../../shared/icons.js';
 import getEditPath from '../../shared.js';
 
@@ -13,7 +13,7 @@ import {
 
 // Styles
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const SHARED = await loadStyle(new URL('../../../shared/styles/base.css', import.meta.url).href);
+const SHARED = await loadStyle(`${getNx2()}/styles/form.css`);
 const STYLE = await loadStyle(import.meta.url);
 
 export default class DaListItem extends LitElement {
@@ -228,7 +228,7 @@ export default class DaListItem extends LitElement {
 
   renderCheckBox() {
     return html`
-      <label class="da-checkbox">
+      <label class="nx-checkbox">
         <input type="checkbox" name="item-selected" id="item-selected-${this.idx}" .checked="${this.isChecked}" @click="${this.handleChecked}" aria-label="Select item">
       </label>
     `;

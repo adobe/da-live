@@ -25,7 +25,8 @@ export function initPreflightBridge() {
 }
 
 // Outbound: let canvas report a Preflight verdict back on the da-nx document contract
-// (e.g. a `cancelled` status when the user closes the dialog before checks settle).
+// (e.g. a `cancelled` status when the user closes the dialog before checks settle, or
+// an `error` status with a `message` when the checks could not run at all).
 export function reportPreflightStatus(detail) {
   document.dispatchEvent(new CustomEvent(PREFLIGHT_EVENT.STATUS, { detail }));
 }
