@@ -61,6 +61,7 @@ export const canvasBus = Object.freeze({
   },
   editorProseSelectState: createChannel(),
   toolPanelViewState: createChannel({ replay: true }),
+  comparisonState: createChannel(),
 
   // Replays because the split layout re-appends `ew-editor-doc` on every hash
   // sync, so a late resubscribe would otherwise miss an already-emitted port.

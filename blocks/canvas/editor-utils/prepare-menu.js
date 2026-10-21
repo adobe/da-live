@@ -5,6 +5,7 @@ import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/previ
 import { getPreviewOrigin } from './editor-utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { getCanvasBranch } from '../utils/branch.js';
+import { routeComparisonMessage } from '../ew-comparison/comparison.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
@@ -63,12 +64,18 @@ export default class PrepareMenu extends LitElement {
     this._unsubBranch = canvasBus.branchState.subscribe(() => {
       if (this.details) this.loadMenu();
     });
+    this._unsubComparison = canvasBus.comparisonState.subscribe(
+      ({ open }) => this.handleComparisonState(open),
+    );
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubBranch?.();
     this._unsubBranch = null;
+    this._unsubComparison?.();
+    this._unsubComparison = null;
+    this.closePort();
   }
 
   update(props) {
@@ -84,6 +91,7 @@ export default class PrepareMenu extends LitElement {
   }
 
   reset() {
+    this.closePort();
     const dialog = this.shadowRoot.querySelector('.prepare-fullsize-dialog');
     if (dialog?.open) dialog.close();
     this._menuItems = undefined;
@@ -144,6 +152,12 @@ export default class PrepareMenu extends LitElement {
   async handleItemClick(item) {
     if (item.disabled) return;
     this.shadowRoot.querySelector('nx-popover').close();
+    if (this._comparison === 'open') {
+      this.closePort();
+      this._dialogItem = undefined;
+      this._fullsizeDialogItem = undefined;
+      await this.updateComplete;
+    }
     if (item.render) {
       const cmp = await item.render(this.details);
       this._dialogItem = { ...item, cmp };
@@ -166,23 +180,51 @@ export default class PrepareMenu extends LitElement {
   }
 
   handleCloseDialog() {
+    if (this._comparison === 'open') return;
+    this.closePort();
     this._dialogItem = undefined;
   }
 
   handleCloseFullsizeDialog({ target } = {}) {
+    if (this._comparison === 'open') return;
+    this.closePort();
     const dialog = target?.closest?.('.prepare-fullsize-dialog');
     if (dialog?.open) dialog.close();
     this._fullsizeDialogItem = undefined;
   }
 
+  // While a comparison the plugin asked for is shown, the modal dialog steps aside with its
+  // iframe still loaded, and comes back when the comparison closes.
+  handleComparisonState(open) {
+    const dialog = this.shadowRoot.querySelector(this._fullsizeDialogItem ? '.prepare-fullsize-dialog' : 'da-dialog');
+    if (open && this._comparison === 'requested') {
+      this._comparison = 'open';
+      dialog?.close();
+    } else if (!open && this._comparison === 'open') {
+      this._comparison = undefined;
+      dialog?.showModal();
+    }
+  }
+
+  closePort() {
+    this._port?.close();
+    this._port = undefined;
+    this._comparison = undefined;
+  }
+
   handleIframeLoad({ target }) {
     const targetOrigin = getPostMessageTargetOrigin(target.src);
     const channel = new MessageChannel();
+    const { view, org, site, path } = this.details;
+    this.closePort();
+    this._port = channel.port1;
+    channel.port1.onmessage = ({ data }) => {
+      if (data?.action === 'openComparison' && !this._comparison) this._comparison = 'requested';
+      routeComparisonMessage(data || {}, { context: { org, site, path }, port: channel.port1 });
+    };
 
     setTimeout(() => {
       if (!target.contentWindow) return;
-
-      const { view, org, site, path } = this.details;
 
       const context = {
         view,
