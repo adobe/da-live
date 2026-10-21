@@ -229,11 +229,10 @@ describe('da-browse render', () => {
     expect(links[0].getAttribute('href')).to.equal('/config#/org/site/');
   });
 
-  it('renders a single contextual config action pointing to site config below site level', async () => {
+  it('does not render a config action below site level', async () => {
     await fixture({ fullpath: '/org/site/folder', org: 'org', site: 'site', path: '/folder' });
     const links = headerRoot().querySelectorAll('a.browse-settings-link');
-    expect(links.length).to.equal(1);
-    expect(links[0].getAttribute('href')).to.equal('/config#/org/site/');
+    expect(links.length).to.equal(0);
   });
 
   it('renders a single contextual config action pointing to org config at org level', async () => {
