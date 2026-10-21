@@ -450,4 +450,44 @@ describe('diff-utils flow helpers', () => {
     expect(checkForLocNodes(editor.view)).to.be.true;
     await nextFrame();
   });
+
+  it('checkForLocNodes gives every host the diff stylesheet, also after the host resets its sheets', async () => {
+    const { schema } = editor.view.state;
+    editor.view.dispatch(editor.view.state.tr.insert(
+      editor.view.state.doc.content.size,
+      buildDiffPara(schema, 'diff_added', 'new'),
+    ));
+    const makeHost = () => {
+      const host = document.createElement('div');
+      host.attachShadow({ mode: 'open' });
+      document.body.append(host);
+      return host;
+    };
+    const sheetCount = async (host) => {
+      for (let i = 0; i < 50 && !host.shadowRoot.adoptedStyleSheets.length; i += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        await waitFor(10);
+      }
+      return host.shadowRoot.adoptedStyleSheets.length;
+    };
+    const first = makeHost();
+    const second = makeHost();
+
+    checkForLocNodes(editor.view, first);
+    expect(await sheetCount(first)).to.equal(1);
+    checkForLocNodes(editor.view, second);
+    expect(await sheetCount(second)).to.equal(1);
+
+    // The canvas editor re-adopts its own sheets when it is re-attached on navigation.
+    first.shadowRoot.adoptedStyleSheets = [];
+    checkForLocNodes(editor.view, first);
+    expect(await sheetCount(first)).to.equal(1);
+
+    checkForLocNodes(editor.view, first);
+    await waitFor(50);
+    expect(first.shadowRoot.adoptedStyleSheets.length).to.equal(1);
+
+    first.remove();
+    second.remove();
+  });
 });
