@@ -150,6 +150,11 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
   opens that thread in Canvas. Nested folders are not covered. Requester is the
   thread starter. There are no assignments or mentions yet, so "open comments I
   took part in" stands in for "waiting on me".
+  Above the sample rows, the feed explains when a workspace must be selected,
+  comments are loading, no qualifying threads were found, or the file/comment
+  lookup failed. Page metadata permission and network failures are reported
+  rather than silently becoming an empty feed; pages deleted since listing are
+  skipped. This does not broaden the root-page or participant filters.
 - Notification counts, published-page screenshots and global AI routing are not
   mocked. The routing placeholder does not add a global routing backend.
 

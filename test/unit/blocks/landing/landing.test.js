@@ -169,6 +169,30 @@ describe('landing page', () => {
     expect(el._commentsError).to.include('Sign in');
   });
 
+  it('explains the comment scope above the sample rows when no threads match', async () => {
+    el._comments = [];
+    await el.updateComplete;
+    const status = el.shadowRoot.querySelector('.tasks-comments-status');
+    expect(status.textContent).to.include('No unresolved comment threads you started or replied to');
+    expect(status.textContent).to.include('root-level pages');
+    expect(el.shadowRoot.querySelector('.tasks-table').firstElementChild).to.equal(status);
+    expect(el.shadowRoot.querySelectorAll('.tasks-panel tbody tr')).to.have.length(5);
+  });
+
+  it('asks for a workspace instead of silently hiding the comment feed', async () => {
+    hashChange._set(undefined);
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.tasks-comments-status').textContent).to.include('Choose a site');
+  });
+
+  it('does not show an endless comment-loading state when the files fail to load', async () => {
+    el._error = 'Could not load files.';
+    await el.updateComplete;
+    const status = el.shadowRoot.querySelector('.tasks-comments-status');
+    expect(status.textContent).to.include("this site's files could not be loaded");
+    expect(status.textContent).not.to.include('Loading');
+  });
+
   it('shows each task column’s options without pretending task controls are connected', () => {
     const buttons = [...el.shadowRoot.querySelectorAll('.task-column-options')];
     expect(buttons).to.have.length(4);

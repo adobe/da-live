@@ -259,9 +259,17 @@ export class DaLanding extends LitElement {
   }
 
   renderCommentsStatus() {
-    if (!this._scope) return nothing;
+    if (!this._scope) {
+      return html`<p class="tasks-comments-status" role="status">Choose a site in the workspace picker to see your open comments.</p>`;
+    }
     if (this._commentsError) return html`<p class="tasks-comments-status" role="status">${this._commentsError}</p>`;
+    if (this._error) {
+      return html`<p class="tasks-comments-status" role="status">Comments could not be checked because this site's files could not be loaded.</p>`;
+    }
     if (!this._comments) return html`<p class="tasks-comments-status" role="status">Loading your open comments...</p>`;
+    if (!this._comments.length) {
+      return html`<p class="tasks-comments-status" role="status">No unresolved comment threads you started or replied to were found on this site's root-level pages.</p>`;
+    }
     return nothing;
   }
 
@@ -588,6 +596,7 @@ export class DaLanding extends LitElement {
         <section class="tasks-panel" aria-labelledby="tasks-heading">
           <h2 id="tasks-heading">Need Attention</h2>
           <div class="tasks-table">
+            ${this.renderCommentsStatus()}
             <div class="tasks-scroll" role="region" aria-label="Need Attention" tabindex="0">
               <table aria-labelledby="tasks-heading" aria-describedby="tasks-availability">
                 <thead><tr>
@@ -625,7 +634,6 @@ export class DaLanding extends LitElement {
                 </tbody>
               </table>
             </div>
-            ${this.renderCommentsStatus()}
             <p id="tasks-availability" class="tasks-preview-note">${this._comments?.length
               ? 'Open Comment rows are your live unresolved comment threads. Other rows are sample tasks for layout preview.'
               : 'Sample tasks for layout preview. Not live site data.'}</p>

@@ -302,4 +302,42 @@ describe('landing page open comments', () => {
       expect(deps.fetchCommentDocs.called).to.equal(false);
     }
   });
+
+  it('surfaces page permission failures instead of presenting an empty comment feed', async () => {
+    const deps = setup();
+    deps.source.getMetadata.resolves(new Response(null, { status: 403 }));
+    try {
+      await loadMyOpenComments({
+        org: 'org', site: 'site', files: FILES, user: ME, signal: new AbortController().signal, ...deps,
+      });
+      expect.fail('Expected the page lookup to fail');
+    } catch (error) {
+      expect(error.message).to.include('/org/site/index.html');
+      expect(error.message).to.include('403');
+      expect(deps.createStore.called).to.equal(false);
+    }
+  });
+
+  it('surfaces page network failures instead of presenting an empty comment feed', async () => {
+    const deps = setup();
+    deps.source.getMetadata.rejects(new Error('Network unavailable'));
+    try {
+      await loadMyOpenComments({
+        org: 'org', site: 'site', files: FILES, user: ME, signal: new AbortController().signal, ...deps,
+      });
+      expect.fail('Expected the page lookup to fail');
+    } catch (error) {
+      expect(error.message).to.equal('Network unavailable');
+      expect(deps.createStore.called).to.equal(false);
+    }
+  });
+
+  it('skips pages deleted after listing without dropping comments on other pages', async () => {
+    const deps = setup();
+    deps.source.getMetadata.withArgs('/org/site/index.html').resolves(new Response(null, { status: 404 }));
+    const threads = await loadMyOpenComments({
+      org: 'org', site: 'site', files: FILES, user: ME, signal: new AbortController().signal, ...deps,
+    });
+    expect(threads.map((thread) => thread.id)).to.deep.equal(['joined']);
+  });
 });

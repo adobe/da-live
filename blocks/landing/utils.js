@@ -26,7 +26,11 @@ async function mapDocsToFiles({ files, docIds, source, signal, concurrency }) {
     while (queue.length && found.size < docIds.size) {
       signal.throwIfAborted();
       const item = queue.shift();
-      const response = await source.getMetadata(item.path).catch(() => undefined);
+      const response = await source.getMetadata(item.path);
+      signal.throwIfAborted();
+      if (!response?.ok && response?.status !== 404) {
+        throw new Error(`Could not check comments for ${item.path} (${response?.status || 'no response'}).`);
+      }
       const id = response?.ok ? response.headers.get('x-da-id') : undefined;
       if (id && docIds.has(id)) found.set(id, item);
     }
