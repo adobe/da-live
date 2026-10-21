@@ -1,3 +1,10 @@
+# [1.12.0](https://github.com/adobe/da-live/compare/v1.11.7...v1.12.0) (2026-10-21)
+
+
+### Features
+
+* **canvas:** answer save and comparison requests from prepare menu plugins ([#1467](https://github.com/adobe/da-live/issues/1467)) ([a280ad2](https://github.com/adobe/da-live/commit/a280ad29c948000acdc29d4de4d17eead0dd7cef))
+
 ## [1.11.7](https://github.com/adobe/da-live/compare/v1.11.6...v1.11.7) (2026-10-21)
 
 
