@@ -732,4 +732,171 @@ describe('PrepareMenu', () => {
       expect(el._dialogItem).to.be.undefined;
     });
   });
+
+  describe('plugin messages', () => {
+    const wait = (ms = 30) => new Promise((resolve) => { setTimeout(resolve, ms); });
+    let comparisonContextKey;
+    let savedIMS;
+    let unsubscribe;
+
+    before(async () => {
+      ({ comparisonContextKey } = await import('../../../../../blocks/canvas/ew-comparison/comparison.js'));
+    });
+
+    beforeEach(() => {
+      savedIMS = window.adobeIMS;
+      window.adobeIMS = { getAccessToken: () => ({ token: 'T' }) };
+    });
+
+    afterEach(() => {
+      unsubscribe?.();
+      unsubscribe = undefined;
+      window.adobeIMS = savedIMS;
+    });
+
+    // Resolves with the plugin's end of the channel once the 750 ms ready message is sent.
+    function connectPlugin(element) {
+      return new Promise((resolve) => {
+        element.handleIframeLoad({
+          target: {
+            src: 'https://example.com/plugin.html',
+            contentWindow: { postMessage: (data, origin, ports) => resolve(ports[0]) },
+          },
+        });
+      });
+    }
+
+    async function showDialog(element) {
+      element._dialogItem = { title: 'Request publish', cmp: document.createElement('div') };
+      await element.updateComplete;
+      await wait(60);
+      const daDialog = element.shadowRoot.querySelector('da-dialog');
+      return { daDialog, slDialog: daDialog.shadowRoot.querySelector('sl-dialog') };
+    }
+
+    it('answers a save request through the comparison controller for the open page', async () => {
+      el = await fixture({ details: createDetails({ path: '/test/page.html' }) });
+      const port = await connectPlugin(el);
+      unsubscribe = canvasBus.comparisonRequest.subscribe(({ action, context, resolve }) => {
+        expect(action).to.equal('saveDocument');
+        expect(comparisonContextKey(context))
+          .to.equal(comparisonContextKey({ org: 'testorg', site: 'testsite', path: 'test/page' }));
+        resolve({ ok: true });
+      });
+      const response = new Promise((resolve) => { port.onmessage = ({ data }) => resolve(data); });
+
+      port.postMessage({ action: 'saveDocument', requestId: 'save-1' });
+
+      expect(await response).to.deep.equal({ action: 'sdkResponse', requestId: 'save-1', result: { ok: true } });
+    });
+
+    it('forwards comparison requests and ignores saves without a request ID', async () => {
+      el = await fixture();
+      const port = await connectPlugin(el);
+      const requests = [];
+      const closed = new Promise((resolve) => {
+        unsubscribe = canvasBus.comparisonRequest.subscribe((request) => {
+          requests.push(request);
+          if (request.action === 'closeComparison') resolve();
+        });
+      });
+
+      port.postMessage({ action: 'saveDocument' });
+      port.postMessage({ action: 'openComparison', details: { candidate: 'url', baseline: 'live' } });
+      port.postMessage({ action: 'openComparison', details: { candidate: 'preview', baseline: 'live', path: '/other' } });
+      port.postMessage({ action: 'closeComparison' });
+      await closed;
+
+      expect(requests.map(({ action }) => action)).to.deep.equal(['openComparison', 'closeComparison']);
+      expect(requests[0].details).to.deep.equal({ candidate: 'preview', baseline: 'live' });
+      expect(requests[0].context.path).to.equal('/test/page');
+      expect(requests[0].resolve).to.equal(undefined);
+    });
+
+    it('stops routing plugin messages once the dialog closes', async () => {
+      el = await fixture();
+      const port = await connectPlugin(el);
+      const requests = [];
+      unsubscribe = canvasBus.comparisonRequest.subscribe(({ action }) => requests.push(action));
+
+      el.handleCloseDialog();
+      port.postMessage({ action: 'saveDocument', requestId: 'late' });
+      await wait(50);
+
+      expect(requests).to.deep.equal([]);
+    });
+
+    it('steps the dialog aside while the comparison it opened is shown', async () => {
+      el = await fixture();
+      const { daDialog, slDialog } = await showDialog(el);
+      expect(slDialog.open).to.equal(true);
+      const port = await connectPlugin(el);
+
+      port.postMessage({ action: 'openComparison', details: { candidate: 'preview', baseline: 'live' } });
+      await wait();
+      canvasBus.comparisonState.emit({ open: true });
+
+      expect(slDialog.open).to.equal(false);
+      expect(el._dialogItem.title).to.equal('Request publish');
+      expect(el.shadowRoot.querySelector('da-dialog')).to.equal(daDialog);
+
+      canvasBus.comparisonState.emit({ open: false });
+
+      expect(slDialog.open).to.equal(true);
+      el.handleCloseDialog();
+      expect(el._dialogItem).to.be.undefined;
+    });
+
+    it('leaves the dialog in place for a comparison it did not ask for', async () => {
+      el = await fixture();
+      const { slDialog } = await showDialog(el);
+      await connectPlugin(el);
+
+      canvasBus.comparisonState.emit({ open: true });
+
+      expect(slDialog.open).to.equal(true);
+    });
+
+    it('steps a full-size dialog aside without unloading its plugin', async () => {
+      el = await fixture();
+      el._fullsizeDialogItem = { title: 'Request publish', path: '/test/fixtures/nx/public/sl/styles.css', experience: 'fullsize-dialog' };
+      await el.updateComplete;
+      const dialog = el.shadowRoot.querySelector('.prepare-fullsize-dialog');
+      const iframe = dialog.querySelector('iframe');
+      await new Promise((resolve) => { iframe.addEventListener('load', resolve, { once: true }); });
+      const port = await connectPlugin(el);
+
+      port.postMessage({ action: 'openComparison', details: { candidate: 'document', baseline: 'live' } });
+      await wait();
+      canvasBus.comparisonState.emit({ open: true });
+      await wait();
+
+      expect(dialog.open).to.equal(false);
+      expect(iframe.isConnected).to.equal(true);
+      expect(el._fullsizeDialogItem.title).to.equal('Request publish');
+
+      canvasBus.comparisonState.emit({ open: false });
+
+      expect(dialog.open).to.equal(true);
+    });
+
+    it('drops a dialog left behind an open comparison when another action is picked', async () => {
+      el = await fixture();
+      stubPopover(el);
+      const { daDialog } = await showDialog(el);
+      const port = await connectPlugin(el);
+      port.postMessage({ action: 'openComparison', details: { candidate: 'preview', baseline: 'live' } });
+      await wait();
+      canvasBus.comparisonState.emit({ open: true });
+
+      await el.handleItemClick({ title: 'Unpublish', render: async () => document.createElement('p') });
+      await el.updateComplete;
+      await wait(60);
+
+      const next = el.shadowRoot.querySelector('da-dialog');
+      expect(next).to.not.equal(daDialog);
+      expect(next.shadowRoot.querySelector('sl-dialog').open).to.equal(true);
+      expect(el._dialogItem.title).to.equal('Unpublish');
+    });
+  });
 });
