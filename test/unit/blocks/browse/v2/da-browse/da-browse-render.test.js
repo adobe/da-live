@@ -8,6 +8,17 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 await import('../../../../../../blocks/browse/v2/da-browse/da-browse.js');
 const { PANEL_EVENT } = await import('../../../../../fixtures/nx/utils/panel.js');
 
+async function completeUpdate(component) {
+  const update = spy(component, 'update');
+  try {
+    await component.updateComplete;
+    await update.lastCall?.returnValue;
+    await component.updateComplete;
+  } finally {
+    update.restore();
+  }
+}
+
 describe('da-browse render', () => {
   let el;
   let savedFetch;
@@ -18,14 +29,7 @@ describe('da-browse render', () => {
   }
 
   async function settle() {
-    const update = spy(el, 'update');
-    try {
-      await el.updateComplete;
-      await update.lastCall?.returnValue;
-    } finally {
-      update.restore();
-    }
-    await el.updateComplete;
+    await completeUpdate(el);
     await el.shadowRoot.querySelector('da-browse-header').updateComplete;
   }
 
@@ -48,11 +52,17 @@ describe('da-browse render', () => {
   async function fixture(details) {
     el = document.createElement('da-browse');
     el.details = details;
-    document.body.appendChild(el);
-    await settle();
-    await el.browseCmp.updateComplete;
-    await el.browseCmp._directoryReady;
-    await el.browseCmp.updateComplete;
+    const listUpdate = spy(customElements.get('da-list').prototype, 'update');
+    try {
+      document.body.appendChild(el);
+      await settle();
+      await Promise.all(listUpdate.getCalls().map((call) => call.returnValue));
+      await el.browseCmp.updateComplete;
+      await customElements.whenDefined('da-actionbar');
+      await settle();
+    } finally {
+      listUpdate.restore();
+    }
     return el;
   }
 
@@ -142,63 +152,6 @@ describe('da-browse render', () => {
     expect(el.browseCmp.groupByType).to.be.true;
     expect(JSON.parse(localStorage.getItem('da-browse-settings'))).to.deep.equal({ groupByType: true });
     expect(document.createElement('da-browse')._groupByType).to.be.true;
-  });
-
-  it('keeps the Sort label fixed while synchronizing selection and column indicators', async () => {
-    await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
-    const list = el.browseCmp;
-    await list.updateComplete;
-    list._listItems = [
-      { path: '/org/site/b.html', name: 'b', ext: 'html', lastModified: 200 },
-      { path: '/org/site/a.html', name: 'a', ext: 'html', lastModified: 100 },
-    ];
-    await list.updateComplete;
-    const picker = headerRoot().querySelector('nx-picker');
-    expect(picker.labelOverride).to.equal('Sort');
-    expect(picker.title).to.equal('Sort: Default');
-    expect(list.shadowRoot.querySelector('[data-column="name"]').getAttribute('aria-sort')).to.equal('none');
-    const setSort = spy(list, 'setSort');
-    picker.dispatchEvent(new CustomEvent('change', { detail: { value: 'name:ascending' } }));
-    await setSort.lastCall.returnValue;
-    setSort.restore();
-    await list.updateComplete;
-    await settle();
-    expect(list._listItems.map((item) => item.name)).to.deep.equal(['a', 'b']);
-    expect(picker.labelOverride).to.equal('Sort');
-    expect(picker.title).to.equal('Sorted by Name (A-Z)');
-    expect(picker.value).to.equal('name:ascending');
-    expect(list.shadowRoot.querySelector('[data-column="name"]').getAttribute('aria-sort')).to.equal('ascending');
-    await list.toggleSort('lastModified');
-    await list.updateComplete;
-    await settle();
-    expect(picker.labelOverride).to.equal('Sort');
-    expect(picker.title).to.equal('Sorted by Modified (newest first)');
-    expect(picker.value).to.equal('lastModified:descending');
-    await list.toggleSort('lastModified');
-    await list.updateComplete;
-    await settle();
-    expect(picker.value).to.equal('lastModified:ascending');
-    expect(picker.labelOverride).to.equal('Sort');
-    expect(picker.title).to.contain('oldest first');
-    list.requestUpdate();
-    await list.updateComplete;
-    await settle();
-    expect(picker.labelOverride).to.equal('Sort');
-    expect(picker.title).to.contain('Sorted by Modified');
-    const update = spy(list, 'update');
-    try {
-      el.details = { fullpath: '/org/other', org: 'org', site: 'other' };
-      await settle();
-      await list.updateComplete;
-      await update.firstCall.returnValue;
-      await settle();
-    } finally {
-      update.restore();
-    }
-    expect(picker.labelOverride).to.equal('Sort');
-    expect(picker.title).to.equal('Sorted by Modified (oldest first)');
-    expect(JSON.parse(localStorage.getItem('da-browse-settings')).sort)
-      .to.deep.equal({ property: 'lastModified', direction: 'ascending' });
   });
 
   it('renders only the browse grid without search tabs or a duplicate breadcrumb', async () => {

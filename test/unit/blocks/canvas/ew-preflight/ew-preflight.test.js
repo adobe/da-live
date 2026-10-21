@@ -58,6 +58,43 @@ describe('ew-preflight preflight gate', () => {
     hashChange._set({});
   });
 
+  it('uses the shared icon button and swaps refresh for a spinner while busy', () => {
+    const el = createGateElement();
+    const btn = el.getHeaderActions();
+    expect(btn.matches('.nx-action-btn-icon.nx-btn-sm')).to.be.true;
+    expect(btn.getAttribute('aria-label')).to.equal('Refresh evaluation');
+    expect(btn.querySelector('svg use')).to.exist;
+    expect(btn.disabled).to.be.false;
+
+    el._setRefreshBusy(true);
+    expect(btn.disabled).to.be.true;
+    expect(btn.querySelector('.nx-loading-spinner')).to.exist;
+    expect(btn.querySelector('svg')).to.be.null;
+
+    el._setRefreshBusy(false);
+    expect(btn.disabled).to.be.false;
+    expect(btn.querySelector('.nx-loading-spinner')).to.be.null;
+    expect(btn.querySelector('svg use')).to.exist;
+    expect(el.getHeaderActions()).to.equal(btn);
+  });
+
+  it('shows shared spinners in the loading view and a header created during evaluation', async () => {
+    const el = createGateElement();
+    el._evaluate = async () => { el._loading = true; };
+    document.body.appendChild(el);
+    try {
+      await el.updateComplete;
+      expect(el.shadowRoot.querySelector('.ew-preflight-status .nx-loading-spinner')).to.exist;
+      expect(el.shadowRoot.textContent).to.include('Evaluating page');
+      const btn = el.getHeaderActions();
+      expect(btn.disabled).to.be.true;
+      expect(btn.querySelector('.nx-loading-spinner')).to.exist;
+      expect(btn.querySelector('svg')).to.be.null;
+    } finally {
+      el.remove();
+    }
+  });
+
   it('reports success when no checks failed, echoing the run path + requestId', async () => {
     const el = stubEvaluate(createGateElement(), { failed: 0 });
     const cap = captureStatus();
