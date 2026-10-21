@@ -4,58 +4,18 @@
   justify-content: center;
   width: 100%;
   height: 100%;
-  position: relative;
-  overflow: hidden;
 }
 
 img {
   width: 100%;
   height: 100%;
-  object-fit: var(--da-card-preview-object-fit, cover);
+  object-fit: cover;
 }
 
 svg {
-  width: var(--da-card-preview-icon-size, 48px);
-  height: var(--da-card-preview-icon-size, 48px);
+  width: 48px;
+  height: 48px;
   color: var(--s2-gray-600);
-}
-
-.type-icon {
-  width: var(--da-card-preview-icon-size, 48px);
-  height: var(--da-card-preview-icon-size, 48px);
-  background: var(--s2-gray-600);
-  mask: var(--preview-icon) center / contain no-repeat;
-}
-
-.document-preview {
-  position: absolute;
-  top: 14px;
-  width: 80px;
-  min-height: 107px;
-  padding: 6px;
-  box-sizing: border-box;
-  background: white;
-  color: #292929;
-  font: 3px / 1.5 sans-serif;
-}
-
-.document-preview strong {
-  display: block;
-  margin-bottom: 4px;
-  font-size: 5px;
-}
-
-.document-preview img {
-  height: 42px;
-  object-fit: contain;
-}
-
-.preview-error {
-  position: absolute;
-  inset: auto 4px 4px;
-  color: var(--s2-gray-600);
-  font-size: 10px;
-  text-align: center;
 }
 
 .spinner {

@@ -1,17 +1,21 @@
 import { expect } from '@esm-bundle/chai';
-import { getBrowsePath, resolveBrowsePath } from '../../../../blocks/browse/utils.js';
+import { resolveBrowsePath } from '../../../../blocks/browse/utils.js';
 
 describe('browse implementation selection', () => {
-  it('defaults to legacy browse without an explicit opt-in', () => {
-    ['', '?nx=local', '?browse=', '?browse=1', '?browse=02', '?browse=other'].forEach((search) => {
-      expect(getBrowsePath({ search })).to.equal('./legacy');
-    });
+  const none = () => [];
+
+  it('defaults to legacy browse without an explicit opt-in', async () => {
+    const searches = ['', '?nx=local', '?browse=', '?browse=1', '?browse=02', '?browse=other'];
+    await Promise.all(searches.map(async (search) => {
+      expect(await resolveBrowsePath({ search, fetchConfigs: none })).to.equal('./legacy');
+    }));
   });
 
-  it('selects the redesign with browse=2 alongside existing query parameters', () => {
-    ['?browse=2', '?nx=local&browse=2', '?browse=2&da-admin=stage'].forEach((search) => {
-      expect(getBrowsePath({ search })).to.equal('./v2');
-    });
+  it('selects the redesign with browse=2 alongside existing query parameters', async () => {
+    const searches = ['?browse=2', '?nx=local&browse=2', '?browse=2&da-admin=stage'];
+    await Promise.all(searches.map(async (search) => {
+      expect(await resolveBrowsePath({ search, fetchConfigs: none })).to.equal('./v2');
+    }));
   });
 });
 

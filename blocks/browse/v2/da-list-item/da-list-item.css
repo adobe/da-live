@@ -9,8 +9,7 @@
   margin-bottom: -1px;
 }
 
-:host(:hover) {
-  z-index: 1;
+:host(:hover), :host([ischecked="true"]) {
   background: var(--s2-blue-100);
 }
 
@@ -24,7 +23,7 @@
   align-items: center;
   column-gap: var(--da-list-column-gap, var(--s2-spacing-200));
   padding: 0 var(--da-list-pad-inline, 24px);
-  min-height: 64px;
+  min-height: var(--da-list-min-height);
 }
 
 .da-item-list-item-selection-placeholder {
@@ -38,7 +37,7 @@
   gap: var(--s2-spacing-100);
   align-items: center;
   text-decoration: none;
-  color: var(--s2-gray-900);
+  color: var(--s2-gray-800);
 }
 
 .da-item-list-item-title {
@@ -49,7 +48,6 @@
 .da-item-list-item-rename {
   grid-column: 2 / 5;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  padding: var(--s2-spacing-300) 0;
 }
 
 .da-item-list-item-info {
@@ -88,7 +86,7 @@
 
 .da-item-list-item-meta {
   line-height: 20px;
-  color: var(--s2-gray-600);
+  color: var(--s2-gray-700);
   min-width: 0;
 }
 
@@ -100,15 +98,33 @@
   white-space: nowrap;
 }
 
+.da-item-list-item-name-cell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: var(--s2-spacing-100);
+
+  .da-item-list-item-title {
+    flex: 1;
+  }
+}
+
 .da-item-list-item-favorite {
-  position: absolute;
-  bottom: 4px;
-  left: 5px;
-  width: 10px;
-  height: 10px;
-  pointer-events: none;
-  filter: drop-shadow(0 0 1.5px var(--s2-gray-25));
-  color: var(--s2-yellow-500);
+  opacity: 0;
+  flex-shrink: 0;
+}
+
+:host(:hover) .da-item-list-item-favorite,
+.da-item-list-item-inner:has(:focus-visible) .da-item-list-item-favorite,
+.da-item-list-item-favorite[aria-pressed="true"] {
+  opacity: 1;
+  color: var(--s2-gray-600);
+}
+
+@media (hover: none) {
+  .da-item-list-item-favorite {
+    opacity: 1;
+  }
 }
 
 .icon.rename-icon,
@@ -177,6 +193,7 @@
 .da-item-details {
   display: none;
   max-width: calc(100vw - 32px);
+  min-width: 200px;
   padding: var(--s2-spacing-200);
   color: var(--s2-gray-900);
   font-size: var(--s2-component-m-regular-font-size);
@@ -304,6 +321,13 @@
   margin-bottom: 0;
 }
 
+.nx-action-btn-icon.is-active {
+  &, &:hover:not(:disabled) {
+    background: var(--s2-gray-100);
+    color: inherit;
+  }
+}
+
 .card {
   display: flex;
   flex-direction: column;
@@ -334,13 +358,6 @@
 
   .da-item-list-item-type {
     display: none;
-  }
-
-  .nx-action-btn-icon.is-active {
-    &, &:hover:not(:disabled) {
-      background: var(--s2-gray-100);
-      color: inherit;
-    }
   }
 }
 

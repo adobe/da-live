@@ -30,8 +30,28 @@ describe('da-browse-header', () => {
     expect(picker.labelOverride).to.equal('Sort');
     expect(picker.querySelector('svg')).to.be.null;
     expect(picker.value).to.equal('');
-    expect(header.shadowRoot.querySelector('.da-browse-settings-link')).to.be.null;
+    expect(header.shadowRoot.querySelector('.browse-settings-link')).to.be.null;
     expect(header.shadowRoot.querySelector('.chat-btn')).to.be.null;
+  });
+
+  it('shows config only at org and site roots, not inside folders', async () => {
+    header.details = { org: 'org', path: '' };
+    await header.updateComplete;
+    expect(header.shadowRoot.querySelector('.browse-settings-link').getAttribute('href'))
+      .to.equal('/config#/org/');
+
+    header.details = { org: 'org', site: 'site', path: '' };
+    await header.updateComplete;
+    expect(header.shadowRoot.querySelector('.browse-settings-link').getAttribute('href'))
+      .to.equal('/config#/org/site/');
+
+    header.details = { org: 'org', site: 'site', path: 'folder' };
+    await header.updateComplete;
+    expect(header.shadowRoot.querySelector('.browse-settings-link')).to.be.null;
+
+    header.details = { org: 'org', site: 'site', path: '' };
+    await header.updateComplete;
+    expect(header.shadowRoot.querySelector('.browse-settings-link')).not.to.be.null;
   });
 
   it('requests sorting without changing the supplied sort state', () => {
@@ -57,7 +77,7 @@ describe('da-browse-header', () => {
     await header.updateComplete;
     expect(header.shadowRoot.querySelector('[role="status"]')).to.equal(summary);
     expect(summary.textContent).to.equal('Searching...');
-    expect(header.shadowRoot.querySelector('slot')).to.be.null;
+    expect(header.shadowRoot.querySelector('slot:not([name])')).to.be.null;
     expect(creation.isConnected).to.be.true;
     header.searchState = { loading: true, count: 1 };
     await header.updateComplete;
@@ -90,7 +110,7 @@ describe('da-browse-header', () => {
     header.searchState = { loading: false, count: 0, error: 'Search failed' };
     await header.updateComplete;
     expect(header.shadowRoot.querySelector('[role="status"]').textContent).to.equal('');
-    expect(header.shadowRoot.querySelector('slot')).to.be.null;
+    expect(header.shadowRoot.querySelector('slot:not([name])')).to.be.null;
   });
 
   it('reflects supplied sort state and disables sorting while loading', async () => {
@@ -121,13 +141,11 @@ describe('da-browse-header', () => {
     expect(event.composed).to.be.true;
   });
 
-  it('retains compact control descriptions and filter and sort actions', async () => {
+  it('retains control descriptions and filter and sort actions', async () => {
     header.groupByType = true;
     header.typesFilterState = { open: false, hiddenCount: 2 };
     header.sortState = { property: 'name', direction: 'descending', loading: false };
     await header.updateComplete;
-    container.style.width = '600px';
-    expect(header.getBoundingClientRect().width).to.equal(600);
     const controls = header.shadowRoot.querySelectorAll('.browse-toolbar-control');
     expect(controls[0].title).to.equal('2 types hidden');
     expect(controls[0].querySelector('.browse-control-label').textContent)

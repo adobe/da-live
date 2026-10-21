@@ -20,7 +20,7 @@ const VIEW_ITEMS = [
 export default class DaBrowseHeader extends LitElement {
   static properties = {
     details: { attribute: false },
-    chatEnabled: { type: Boolean },
+    chatEnabled: { type: Boolean, reflect: true },
     groupByType: { type: Boolean },
     view: { type: String },
     typesFilterState: { attribute: false },
@@ -71,7 +71,7 @@ export default class DaBrowseHeader extends LitElement {
   }
 
   renderSettingsActions() {
-    if (!this.details?.org) return nothing;
+    if (!this.details?.org || this.details.path) return nothing;
     const href = this.details.site
       ? `/config#/${this.details.org}/${this.details.site}/`
       : `/config#/${this.details.org}/`;
@@ -128,6 +128,7 @@ export default class DaBrowseHeader extends LitElement {
         <nx-segmented-btn class="browse-view-control" label="View" .items=${VIEW_ITEMS}
           .value=${this.view} @change=${this.requestView}></nx-segmented-btn>
         ${this.renderSettingsActions()}
+        <slot name="actions"></slot>
       </div>`;
   }
 

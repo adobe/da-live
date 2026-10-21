@@ -1,11 +1,23 @@
 :host {
   display: block;
   font-family: var(--s2-font-family);
+  container: browse-workspace / inline-size;
+}
+
+da-browse-header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--s2-gray-25);
+  padding-inline: var(--s2-spacing-100);
+
+  nx-breadcrumb:is(:first-child) {
+    padding-left: var(--s2-spacing-100);
+  }
 }
 
 .da-browse-content {
+  box-sizing: border-box;
   width: 100%;
-  max-width: none;
-  margin: 0;
-  padding: 0;
+  margin-inline: auto;
 }

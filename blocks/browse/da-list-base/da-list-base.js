@@ -357,8 +357,12 @@ export default class DaListBase extends LitElement {
     this._deleteCountLoading = false;
   }
 
+  get selectableItems() {
+    return this._listItems;
+  }
+
   handleSelectionState() {
-    this._selectedItems = this._listItems.filter((item) => item.isChecked);
+    this._selectedItems = this.selectableItems.filter((item) => item.isChecked);
     // If more than one item is selected, force everything to not be in a rename state
     if (this._selectedItems.length > 1) {
       this._listItems.forEach((item) => { item.rename = false; });
@@ -380,14 +384,23 @@ export default class DaListBase extends LitElement {
   handleFavorite() {
     const item = this._selectedItems?.[0];
     if (!item) return;
-    const nowFavorite = toggleFavorite(this.fullpath, item.path);
-    item.isFavorited = nowFavorite;
-    this.applyFavoriteOrder();
+    this.toggleItemFavorite(item);
     this.handleClear();
   }
 
+  toggleItemFavorite(item) {
+    const nowFavorite = toggleFavorite(this.fullpath, item.path);
+    item.isFavorited = nowFavorite;
+    this.requestUpdate();
+    if (this.actionBar) {
+      this.actionBar.isFavorite = this._selectedItems.length === 1
+        && !!this._selectedItems[0].isFavorited;
+    }
+  }
+
   handleRename() {
-    const item = this._listItems.find((lItem) => lItem.isChecked);
+    const [item] = this._selectedItems;
+    if (!item) return;
     item.rename = true;
     this.requestUpdate();
   }

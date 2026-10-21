@@ -34,6 +34,47 @@ describe('DaActionBar', () => {
     });
   });
 
+  describe('handleShortcut', () => {
+    it('uses the rendered Copy, Cut and Paste actions and their availability', async () => {
+      const el = new DaActionBar();
+      el.items = [{ path: '/org/site/file.html' }];
+      el.permissions = ['write'];
+      el.currentPath = '/org/site/destination';
+      document.body.append(el);
+      try {
+        await el.updateComplete;
+        el.shadowRoot.querySelectorAll('button').forEach((button) => {
+          expect(button.getAttribute('aria-label')).to.equal(button.textContent.trim()
+            || 'Unselect items');
+          expect(button.title).to.equal(button.getAttribute('aria-label'));
+        });
+        expect(el.handleShortcut('v')).to.be.false;
+        expect(el.handleShortcut('c')).to.be.true;
+        await el.updateComplete;
+        expect(el._isCopying).to.be.true;
+        expect(el.handleShortcut('c')).to.be.false;
+        let move;
+        el.addEventListener('onpaste', (e) => { move = e.detail.move; });
+        expect(el.handleShortcut('v')).to.be.true;
+        expect(move).not.to.be.true;
+
+        el._isCopying = false;
+        await el.updateComplete;
+        el.permissions = ['read'];
+        await el.updateComplete;
+        expect(el.handleShortcut('x')).to.be.false;
+        el.permissions = ['write'];
+        await el.updateComplete;
+        expect(el.handleShortcut('x')).to.be.true;
+        await el.updateComplete;
+        expect(el.handleShortcut('v')).to.be.true;
+        expect(move).to.be.true;
+      } finally {
+        el.remove();
+      }
+    });
+  });
+
   describe('inNewDir', () => {
     it('Returns false when item directory matches currentPath', () => {
       const el = new DaActionBar();
@@ -303,7 +344,54 @@ describe('DaActionBar', () => {
     });
   });
 
+  describe('Ask Coworker', () => {
+    it('offers the action only when available and requests the existing chat panel', async () => {
+      const el = new DaActionBar();
+      el.items = [{ path: '/org/site/page.html' }];
+      document.body.append(el);
+      try {
+        await el.updateComplete;
+        expect(el.shadowRoot.querySelector('[aria-label="Ask Coworker"]')).to.be.null;
+        el.canAskCoworker = true;
+        await el.updateComplete;
+        let event;
+        el.addEventListener('askcoworker', (e) => { event = e; });
+        el.shadowRoot.querySelector('[aria-label="Ask Coworker"]').click();
+        expect(event.bubbles).to.be.true;
+        expect(event.composed).to.be.true;
+        el.canAskCoworker = false;
+        await el.updateComplete;
+        expect(el.shadowRoot.querySelector('[aria-label="Ask Coworker"]')).to.be.null;
+      } finally {
+        el.remove();
+      }
+    });
+  });
+
   describe('handleFavorite', () => {
+    it('updates the favorite label and hover title for a favorited item', async () => {
+      const el = new DaActionBar();
+      el.items = [{ path: '/org/site/page.html' }];
+      document.body.append(el);
+      try {
+        await el.updateComplete;
+        const button = el.shadowRoot.querySelector('.favorite-button');
+        expect(button.textContent.trim()).to.equal('Favorite');
+        el.isFavorite = true;
+        await el.updateComplete;
+        expect(button.textContent.trim()).to.equal('Remove favorite');
+        expect(button.getAttribute('aria-label')).to.equal('Remove favorite');
+        expect(button.title).to.equal('Remove favorite');
+        el.isFavorite = false;
+        await el.updateComplete;
+        expect(button.textContent.trim()).to.equal('Favorite');
+        expect(button.getAttribute('aria-label')).to.equal('Favorite');
+        expect(button.title).to.equal('Favorite');
+      } finally {
+        el.remove();
+      }
+    });
+
     it('Dispatches an onfavorite event', () => {
       const el = new DaActionBar();
       let dispatched;

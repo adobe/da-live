@@ -10,6 +10,8 @@ import '../da-list/da-list.js';
 import '../da-browse-header/da-browse-header.js';
 import { toggleToolsPanel, closeToolsPanel, registerToolsPanel, watchToolsPanel } from '../search/panel.js';
 
+await import(`${getNx()}/blocks/shared/breadcrumb/breadcrumb.js`);
+
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT, wasPanelOpen, registerPanelSection } = await import(`${getNx()}/utils/panel.js`);
@@ -97,12 +99,15 @@ export default class DaBrowse extends LitElement {
     this._handleShortcuts = this.handleShortcuts.bind(this);
     document.addEventListener('keydown', this._handleShortcuts);
     this.mountSearch();
+    this.observeHeader();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('keydown', this._handleShortcuts);
     this.destroySearch();
+    this._headerResizeObserver?.disconnect();
+    this._headerResizeObserver = undefined;
   }
 
   get canWrite() {
@@ -110,10 +115,42 @@ export default class DaBrowse extends LitElement {
   }
 
   updated() {
+    this.observeHeader();
     this.syncSearch();
   }
 
+  observeHeader() {
+    if (!this.isConnected || this._headerResizeObserver) return;
+    const header = this.shadowRoot.querySelector('da-browse-header');
+    if (!header) return;
+    this._headerResizeObserver = new ResizeObserver(([entry]) => {
+      this.style.setProperty('--da-browse-header-height', `${entry.borderBoxSize[0].blockSize}px`);
+    });
+    this._headerResizeObserver.observe(header, { box: 'border-box' });
+  }
+
+  canHandleClipboardShortcut(e) {
+    if (e.defaultPrevented) return false;
+    const path = e.composedPath();
+    const pageFocused = [document.body, document.documentElement].includes(path[0]);
+    if (!path.includes(this) && !pageFocused) return false;
+
+    const editingSelector = 'input:not([type="checkbox"]):not([type="radio"]), '
+      + 'textarea, select, dialog, [role="dialog"]';
+    return !path.some((node) => {
+      if (!(node instanceof Element)) return false;
+      return node.matches(editingSelector) || node.isContentEditable
+        || !!node.getRootNode().getSelection?.()?.toString();
+    });
+  }
+
   handleShortcuts(e) {
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey
+      && ['c', 'x', 'v'].includes(e.key?.toLowerCase())) {
+      if (this.canHandleClipboardShortcut(e)
+        && this.activeListCmp?.actionBar?.handleShortcut(e.key)) e.preventDefault();
+      return;
+    }
     // Check for Command / Control + Option + T
     if ((e.metaKey || e.ctrlKey) && e.altKey && e.code === 'KeyT') {
       e.preventDefault();
@@ -133,7 +170,6 @@ export default class DaBrowse extends LitElement {
 
   handlePermissions(e) {
     this._permissions = e.detail;
-    if (this.newCmp) this.newCmp.permissions = e.detail;
   }
 
   async update(props) {
@@ -163,6 +199,12 @@ export default class DaBrowse extends LitElement {
             position: 'before',
             width: '400px',
             getContent: getChatPanelContent(),
+            onShow: async (aside, id, options) => {
+              if (!options?.focus) return;
+              const chat = aside.querySelector('nx-chat, nx-chat-ao');
+              await chat?.updateComplete;
+              chat?.shadowRoot.querySelector('.chat-input')?.focus();
+            },
           });
           if (wasPanelOpen('chat')) openChatPanel();
         } else {
@@ -457,10 +499,18 @@ export default class DaBrowse extends LitElement {
     }
   }
 
+  askCoworker() {
+    const detail = { section: 'chat', options: { focus: true } };
+    document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail }));
+  }
+
   renderSearchResults() {
     return html`
       <div role="grid" aria-label="Search results">
         <da-list class="da-list-type-search"
+          .canAskCoworker=${this._chatEnabled}
+          @askcoworker=${this.askCoworker}
+          @selectionchanged=${this._chatEnabled ? this._handleBrowseSelection : nothing}
           editor=${this.editor}
           .listItems=${this._search.items}
           .hidePublishConfs=${this.hidePublishConfs}
@@ -477,6 +527,8 @@ export default class DaBrowse extends LitElement {
     return html`
       <da-list
         class="da-list-type-browse"
+        .canAskCoworker=${this._chatEnabled}
+        @askcoworker=${this.askCoworker}
         fullpath="${this.details.fullpath}"
         editor="${this.editor}"
         .hidePublishConfs=${this.hidePublishConfs}
@@ -513,15 +565,18 @@ export default class DaBrowse extends LitElement {
         .typesFilterState=${this._typesFilterState}
         .sortState=${this._sortState}
         .searchState=${this._searchEngine || search.loading || search.error ? {
-          loading: search.loading,
-          count: search.items?.length ?? 0,
-          error: search.error,
-        } : undefined}
+        loading: search.loading,
+        count: search.items?.length ?? 0,
+        error: search.error,
+      } : undefined}
         @typesfilterrequest=${({ detail }) => this.activeListCmp.toggleTypesPopover(detail.anchor)}
         @sortrequest=${({ detail }) => this.activeListCmp.setSort(detail.property, detail.direction)}
         @viewchange=${({ detail }) => this.setView(detail.view)}
         @groupbytypechange=${({ detail }) => this.setGroupByType(detail.group)}>
-        <da-new variant="accent" @newitem=${this.handleNewItem} fullpath="${this.details.fullpath}" editor="${this.editor}"></da-new>
+        <nx-breadcrumb .pathSegments=${this.details.fullpath.split('/').filter(Boolean)}></nx-breadcrumb>
+        <da-new slot="actions" variant="accent" .permissions=${this._permissions}
+          @newitem=${this.handleNewItem}
+          fullpath="${this.details.fullpath}" editor="${this.editor}"></da-new>
       </da-browse-header>
       <div class="da-browse-content">
         ${search.error ? html`<p role="alert">${search.error}</p>` : nothing}
