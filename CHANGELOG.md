@@ -1,3 +1,10 @@
+## [1.11.5](https://github.com/adobe/da-live/compare/v1.11.4...v1.11.5) (2026-10-21)
+
+
+### Bug Fixes
+
+* **ew:** record RUM click events from WYSIWYG layout mode ([#1324](https://github.com/adobe/da-live/issues/1324)) ([#1384](https://github.com/adobe/da-live/issues/1384)) ([aeb4563](https://github.com/adobe/da-live/commit/aeb4563cf8ea1d8143a06724aa28af45f71e067b))
+
 ## [1.11.4](https://github.com/adobe/da-live/compare/v1.11.3...v1.11.4) (2026-10-21)
 
 
