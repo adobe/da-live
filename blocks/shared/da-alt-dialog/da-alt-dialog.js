@@ -1,12 +1,12 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 
 const nx = getNx();
 await import(`${nx}/blocks/shared/dialog/dialog.js`);
 
 const { loadStyle } = await import(`${nx}/utils/utils.js`);
-const [base, styles] = await Promise.all([
-  loadStyle(new URL('../styles/base.css', import.meta.url).href),
+const [form, styles] = await Promise.all([
+  loadStyle(`${getNx2()}/styles/form.css`),
   loadStyle(import.meta.url),
 ]);
 
@@ -18,7 +18,7 @@ class DaAltDialog extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [base, styles];
+    this.shadowRoot.adoptedStyleSheets = [form, styles];
   }
 
   _onSave() {
@@ -44,15 +44,15 @@ class DaAltDialog extends LitElement {
     return html`
       <nx-dialog title="Edit alt text">
         <form class="alt-form" @submit=${this._onSubmit}>
-          <label class="da-form-field">
+          <label class="nx-form-field">
             <span>Alt text</span>
-            <input class="da-input" name="alt-text" type="text" autofocus placeholder="Describe the image"
+            <input class="nx-input" name="alt-text" type="text" autofocus placeholder="Describe the image"
                    autocomplete="off" .value=${this.alt ?? ''} />
           </label>
         </form>
-        <button type="button" slot="actions" class="da-btn-secondary"
+        <button type="button" slot="actions" class="nx-form-btn-secondary"
           @click=${this._onCancel}>Cancel</button>
-        <button type="button" slot="actions" class="da-btn-primary"
+        <button type="button" slot="actions" class="nx-form-btn-primary"
           @click=${this._onSave}>Save</button>
       </nx-dialog>
     `;
