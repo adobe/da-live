@@ -12,6 +12,10 @@ import {
   buildSlots,
   siteNames,
   filterSlots,
+  parseMembers,
+  hasPermissionsSheet,
+  addMembers,
+  removeMember,
 } from '../../../../blocks/permissions/utils.js';
 
 describe('permissions utils', () => {
@@ -212,6 +216,148 @@ describe('permissions utils', () => {
     it('returns everything for an empty or whitespace query', () => {
       expect(filterSlots(slots, '')).to.deep.equal(slots);
       expect(filterSlots(slots, '   ')).to.deep.equal(slots);
+    });
+  });
+
+  describe('parseMembers', () => {
+    it('splits on commas and newlines, trims, and dedupes', () => {
+      expect(parseMembers(' a@x.com, b@x.com\nb@x.com ')).to.deep.equal(['a@x.com', 'b@x.com']);
+    });
+
+    it('returns an empty array for a blank input', () => {
+      expect(parseMembers('  ')).to.deep.equal([]);
+    });
+  });
+
+  describe('hasPermissionsSheet', () => {
+    function makeMultiConfig() {
+      return {
+        ':names': ['data', 'permissions'],
+        ':type': 'multi-sheet',
+        ':version': 3,
+        data: { total: 1, limit: 1, offset: 0, data: [{ key: 'k', value: 'v' }] },
+        permissions: {
+          total: 1,
+          limit: 1,
+          offset: 0,
+          data: [{ path: '/s/ + **', groups: 'a@x.com', actions: 'write' }],
+        },
+      };
+    }
+
+    it('is true for a config with a permissions sheet', () => {
+      expect(hasPermissionsSheet(makeMultiConfig())).to.be.true;
+    });
+
+    it('is false when there is no permissions sheet', () => {
+      expect(hasPermissionsSheet({ data: {} })).to.be.false;
+    });
+
+    it('is false for null', () => {
+      expect(hasPermissionsSheet(null)).to.be.false;
+    });
+  });
+
+  describe('addMembers / removeMember', () => {
+    function makeMultiConfig() {
+      return {
+        ':names': ['data', 'permissions'],
+        ':type': 'multi-sheet',
+        ':version': 3,
+        data: { total: 1, limit: 1, offset: 0, data: [{ key: 'k', value: 'v' }] },
+        permissions: {
+          total: 1,
+          limit: 1,
+          offset: 0,
+          data: [{ path: '/s/ + **', groups: 'a@x.com', actions: 'write' }],
+        },
+      };
+    }
+
+    it('appends a member to an existing rule without mutating the input', () => {
+      const original = makeMultiConfig();
+      const originalData = structuredClone(original.data);
+      const { config, changed } = addMembers(original, '/s/+**', 'write', ['c@x.com']);
+
+      expect(changed).to.be.true;
+      const rule = config.permissions.data.find((r) => r.path === '/s/ + **' && r.actions === 'write');
+      expect(rule.groups).to.equal('a@x.com, c@x.com');
+      expect(original.permissions.data[0].groups).to.equal('a@x.com');
+      expect(original.data).to.deep.equal(originalData);
+      expect(config.data).to.deep.equal(originalData);
+    });
+
+    it('skips a duplicate member compared case-insensitively', () => {
+      const { changed } = addMembers(makeMultiConfig(), '/s/+**', 'write', ['A@x.com']);
+      expect(changed).to.be.false;
+    });
+
+    it('creates a new rule for a new path/level and updates total/limit', () => {
+      const cfg = makeMultiConfig();
+      const { config, changed } = addMembers(cfg, '/s/CONFIG', 'read', ['d@x.com']);
+
+      expect(changed).to.be.true;
+      expect(config.permissions.data).to.have.lengthOf(2);
+      const rule = config.permissions.data.find((r) => r.path === '/s/CONFIG' && r.actions === 'read');
+      expect(rule).to.deep.include({ path: '/s/CONFIG', groups: 'd@x.com', actions: 'read' });
+      expect(config.permissions.total).to.equal(2);
+      expect(config.permissions.limit).to.equal(2);
+    });
+
+    it('addMembers splits pasted lists into one rule, not one rule per member', () => {
+      const cfg = makeMultiConfig();
+      const who = parseMembers('x@x.com, y@x.com');
+      const { config } = addMembers(cfg, '/s/CONFIG', 'read', who);
+
+      const rules = config.permissions.data.filter((r) => r.path === '/s/CONFIG' && r.actions === 'read');
+      expect(rules).to.have.lengthOf(1);
+      expect(rules[0].groups).to.equal('x@x.com, y@x.com');
+      rules[0].groups.split(', ').forEach((g) => expect(g).to.not.include(','));
+    });
+
+    it('addMembers with an empty who list is a no-op', () => {
+      const { changed } = addMembers(makeMultiConfig(), '/s/CONFIG', 'read', []);
+      expect(changed).to.be.false;
+    });
+
+    it('removes one member from a rule with several', () => {
+      const cfg = makeMultiConfig();
+      const { config, changed } = addMembers(cfg, '/s/+**', 'write', ['c@x.com']);
+      const { config: after, changed: removedChanged } = removeMember(config, '/s/+**', 'write', 'a@x.com');
+
+      expect(removedChanged).to.be.true;
+      expect(changed).to.be.true;
+      const rule = after.permissions.data.find((r) => r.path === '/s/ + **' && r.actions === 'write');
+      expect(rule.groups).to.equal('c@x.com');
+    });
+
+    it('deletes the rule and updates total/limit when removing the last member', () => {
+      const cfg = makeMultiConfig();
+      const { config, changed } = removeMember(cfg, '/s/+**', 'write', 'a@x.com');
+
+      expect(changed).to.be.true;
+      expect(config.permissions.data).to.have.lengthOf(0);
+      expect(config.permissions.total).to.equal(0);
+      expect(config.permissions.limit).to.equal(0);
+    });
+
+    it('removes a member from every path-variant rule at once', () => {
+      const cfg = makeMultiConfig();
+      cfg.permissions.data = [
+        { path: '/s/+**', groups: 'a@x.com, b@x.com', actions: 'write' },
+        { path: '/s/ + **', groups: 'a@x.com', actions: 'write' },
+      ];
+      const { config, changed } = removeMember(cfg, '/s/+**', 'write', 'a@x.com');
+
+      expect(changed).to.be.true;
+      config.permissions.data.forEach((rule) => {
+        expect(splitGroups(rule.groups)).to.not.include('a@x.com');
+      });
+    });
+
+    it('is a no-op when the member is absent', () => {
+      const { changed } = removeMember(makeMultiConfig(), '/s/+**', 'write', 'nobody@x.com');
+      expect(changed).to.be.false;
     });
   });
 });

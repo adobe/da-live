@@ -231,6 +231,116 @@ const MEMBER_LIST_KEYS = [
 ];
 
 /**
+ * Parse a pasted list of members, splitting on commas and/or newlines,
+ * trimming whitespace, dropping blanks, and deduping exact repeats while
+ * preserving first-seen order and casing.
+ * @param {string} input
+ * @returns {string[]}
+ */
+export function parseMembers(input) {
+  const seen = new Set();
+  const members = [];
+  (input || '').split(/[,\n]/).map((m) => m.trim()).filter(Boolean).forEach((m) => {
+    if (seen.has(m)) return;
+    seen.add(m);
+    members.push(m);
+  });
+  return members;
+}
+
+/**
+ * Whether a config has a `permissions` sheet with a `data` array.
+ * @param {object|null} config
+ * @returns {boolean}
+ */
+export function hasPermissionsSheet(config) {
+  return !!(config && config.permissions && Array.isArray(config.permissions.data));
+}
+
+/**
+ * Add one or more members to a rule's `read`/`write`/`none` level at `path`,
+ * creating the rule if it doesn't exist yet. Members already present in the
+ * rule (compared case-insensitively) are skipped. Never mutates `config`.
+ * @param {object} config
+ * @param {string} path
+ * @param {Level} level
+ * @param {string[]} who
+ * @returns {{ config: object, changed: boolean }}
+ */
+export function addMembers(config, path, level, who) {
+  const next = structuredClone(config);
+  if (!who || who.length === 0) return { config: next, changed: false };
+
+  const actions = levelToActions(level);
+  const normalizedPath = normPath(path);
+  const sheet = next.permissions;
+  const rule = sheet.data.find(
+    (r) => normPath(r.path) === normalizedPath && r.actions === actions,
+  );
+
+  const current = rule ? splitGroups(rule.groups) : [];
+  const seen = new Set(current.map((m) => m.toLowerCase()));
+  const added = [];
+  who.forEach((w) => {
+    const key = w.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    added.push(w);
+  });
+  if (added.length === 0) return { config: next, changed: false };
+
+  const merged = [...current, ...added].join(', ');
+  if (rule) {
+    rule.groups = merged;
+  } else {
+    sheet.data.push({ path: normalizedPath, groups: merged, actions });
+  }
+  sheet.total = sheet.data.length;
+  sheet.limit = sheet.data.length;
+  return { config: next, changed: true };
+}
+
+/**
+ * Remove a single member from every rule matching `path`/`level` (including
+ * path variants normalized to the same value), deleting a rule once it has
+ * no members left. Never mutates `config`.
+ * @param {object} config
+ * @param {string} path
+ * @param {Level} level
+ * @param {string} who
+ * @returns {{ config: object, changed: boolean }}
+ */
+export function removeMember(config, path, level, who) {
+  const next = structuredClone(config);
+  const actions = levelToActions(level);
+  const normalizedPath = normPath(path);
+  const sheet = next.permissions;
+
+  let changed = false;
+  const kept = [];
+  sheet.data.forEach((rule) => {
+    if (normPath(rule.path) !== normalizedPath || rule.actions !== actions) {
+      kept.push(rule);
+      return;
+    }
+    const current = splitGroups(rule.groups);
+    const filtered = current.filter((m) => m !== who);
+    if (filtered.length !== current.length) changed = true;
+    if (filtered.length > 0) {
+      rule.groups = filtered.join(', ');
+      kept.push(rule);
+    }
+  });
+
+  if (!changed) return { config: next, changed: false };
+
+  sheet.data = kept;
+  sheet.total = sheet.data.length;
+  sheet.limit = sheet.data.length;
+  return { config: next, changed: true };
+}
+
+/**
  * Filter slots by a case-insensitive query matched against the scope label,
  * path, or any direct/inherited member.
  * @param {Slot[]} slots
