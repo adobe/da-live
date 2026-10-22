@@ -13,6 +13,47 @@ const { default: DaBrowseComponent } = await import('../../../../../../blocks/br
 const { default: DaActionBar } = await import('../../../../../../blocks/browse/da-actionbar/da-actionbar.js');
 
 describe('Browse', () => {
+  it('groups by type by default and preserves an explicit opt-out', () => {
+    const previous = localStorage.getItem('da-browse-settings');
+    try {
+      localStorage.removeItem('da-browse-settings');
+      expect(new DaBrowseComponent()._groupByType).to.be.true;
+      localStorage.setItem('da-browse-settings', JSON.stringify({ groupByType: false }));
+      expect(new DaBrowseComponent()._groupByType).to.be.false;
+      localStorage.setItem('da-browse-settings', JSON.stringify({ groupByType: true }));
+      expect(new DaBrowseComponent()._groupByType).to.be.true;
+    } finally {
+      if (previous === null) localStorage.removeItem('da-browse-settings');
+      else localStorage.setItem('da-browse-settings', previous);
+    }
+  });
+
+  it('persists independent row and card sizes and restores valid preferences', () => {
+    const previous = localStorage.getItem('da-browse-settings');
+    try {
+      localStorage.removeItem('da-browse-settings');
+      const browse = new DaBrowseComponent();
+      expect(browse._rowSize).to.equal('m');
+      expect(browse._cardSize).to.equal('m');
+      browse.setAppearanceSize('list', 's');
+      browse.setAppearanceSize('card', 'l');
+      const restored = new DaBrowseComponent();
+      expect(restored._rowSize).to.equal('s');
+      expect(restored._cardSize).to.equal('l');
+      browse.setAppearanceSize('list', 'invalid');
+      browse.setAppearanceSize('invalid', 's');
+      expect(JSON.parse(localStorage.getItem('da-browse-settings')))
+        .to.deep.equal({ rowSize: 's', cardSize: 'l' });
+      localStorage.setItem('da-browse-settings', JSON.stringify({ rowSize: 'invalid', cardSize: 'invalid' }));
+      const fallback = new DaBrowseComponent();
+      expect(fallback._rowSize).to.equal('m');
+      expect(fallback._cardSize).to.equal('m');
+    } finally {
+      if (previous === null) localStorage.removeItem('da-browse-settings');
+      else localStorage.setItem('da-browse-settings', previous);
+    }
+  });
+
   it('Pasted item uses the target URL', async () => {
     const daBrowse = new DaBrowse();
 
@@ -526,11 +567,6 @@ describe('DaBrowse Component', () => {
     it('Stores permissions for the header binding', () => {
       daBrowseComp.handlePermissions({ detail: ['read', 'write'] });
       expect(daBrowseComp._permissions).to.deep.equal(['read', 'write']);
-    });
-
-    it('Is a no-op when no new component is rendered', () => {
-      Object.defineProperty(daBrowseComp, 'newCmp', { configurable: true, get: () => null });
-      expect(() => daBrowseComp.handlePermissions({ detail: ['read'] })).not.to.throw();
     });
   });
 

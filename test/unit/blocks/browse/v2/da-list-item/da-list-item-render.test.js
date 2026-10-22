@@ -4,8 +4,6 @@ import { setNx } from '../../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
-
 await import('../../../../../../blocks/browse/v2/da-list-item/da-list-item.js');
 
 describe('da-list-item render', () => {
@@ -23,8 +21,7 @@ describe('da-list-item render', () => {
       ...props,
     });
     document.body.appendChild(el);
-    await nextFrame();
-    await nextFrame();
+    await el.updateComplete;
     return el;
   }
 
@@ -79,7 +76,7 @@ describe('da-list-item render', () => {
     await fixture({ _isRenaming: true });
     el._isRenaming = true;
     el.requestUpdate();
-    await nextFrame();
+    await el.updateComplete;
     expect(el.shadowRoot.querySelector('.rename-icon')).to.exist;
   });
 
@@ -99,7 +96,7 @@ describe('da-list-item render', () => {
   async function openDetails() {
     el.updateAEMStatus = () => { };
     el.updateDAStatus = () => { };
-    el.shadowRoot.querySelector('.da-item-list-item-expand-btn').click();
+    el.shadowRoot.querySelector('button[aria-label="More info"]').click();
     await el.updateComplete;
     await el.updateComplete;
   }
@@ -127,7 +124,7 @@ describe('da-list-item render', () => {
     el._version = 5;
     el._lastModifiedBy = 'alice';
     el.requestUpdate();
-    await nextFrame();
+    await el.updateComplete;
     const versionEl = el.shadowRoot.querySelectorAll('.da-list-item-da-details-version p')[1];
     expect(versionEl.textContent).to.equal('5');
     const modifierEl = el.shadowRoot.querySelectorAll('.da-list-item-da-details-modified p')[1];
@@ -140,7 +137,7 @@ describe('da-list-item render', () => {
     el._preview = { status: 401 };
     el._live = { status: 401 };
     el.requestUpdate();
-    await nextFrame();
+    await el.updateComplete;
     const dates = el.shadowRoot.querySelectorAll('.da-aem-icon-date');
     const text = [...dates].map((d) => d.textContent).join(' ');
     expect(text).to.contain('Not authorized');
@@ -152,7 +149,7 @@ describe('da-list-item render', () => {
     el._preview = { status: 200, url: 'https://x', lastModified: { date: '2024-01-01', time: '12:00' } };
     el._live = { status: 200, url: 'https://y', lastModified: { date: '2024-01-02', time: '13:00' } };
     el.requestUpdate();
-    await nextFrame();
+    await el.updateComplete;
     expect(el.shadowRoot.querySelectorAll('.da-item-list-item-aem-icon')).to.have.length(0);
     expect(el.shadowRoot.querySelector('#preview-date').textContent).to.equal('2024-01-01 12:00');
     expect(el.shadowRoot.querySelector('#live-date').textContent).to.equal('2024-01-02 13:00');
@@ -175,29 +172,26 @@ describe('da-list-item render', () => {
     expect(el.shadowRoot.querySelector('#live-label').textContent).to.equal('Published');
   });
 
-  it('toggles the details popover from the more button', async () => {
+  it('toggles the details popover from the More info button', async () => {
     await fixture();
     el.updateAEMStatus = () => { };
     el.updateDAStatus = () => { };
-    const button = el.shadowRoot.querySelector('.da-item-list-item-expand-btn');
+    const button = el.shadowRoot.querySelector('button[aria-label="More info"]');
     expect(button.getAttribute('aria-expanded')).to.equal('false');
     expect(button.getAttribute('aria-haspopup')).to.equal('dialog');
-    expect(button.querySelector('use').getAttribute('href')).to.contain('s2-icon-more-20-n.svg#icon');
+    expect(button.getAttribute('aria-label')).to.equal('More info');
+    expect(button.title).to.equal('More info');
     button.click();
     await el.updateComplete;
     await el.updateComplete;
     const popover = el.shadowRoot.querySelector('nx-popover');
     expect(button.getAttribute('aria-expanded')).to.equal('true');
-    expect(button.getAttribute('aria-label')).to.equal('Hide details');
-    expect(button.classList.contains('is-active')).to.be.true;
-    expect(button.querySelector('use').getAttribute('href')).to.contain('s2-icon-chevronup-20-n.svg#icon');
+    expect(button.getAttribute('aria-label')).to.equal('More info');
     expect(popover.open).to.be.true;
     button.click();
     await el.updateComplete;
     expect(button.getAttribute('aria-expanded')).to.equal('false');
-    expect(button.getAttribute('aria-label')).to.equal('Show details');
-    expect(button.classList.contains('is-active')).to.be.false;
-    expect(button.querySelector('use').getAttribute('href')).to.contain('s2-icon-more-20-n.svg#icon');
+    expect(button.getAttribute('aria-label')).to.equal('More info');
     expect(el.shadowRoot.querySelector('nx-popover')).to.be.null;
   });
 
@@ -207,7 +201,7 @@ describe('da-list-item render', () => {
     el.path = '/org/repo/next.html';
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('nx-popover')).to.be.null;
-    expect(el.shadowRoot.querySelector('.da-item-list-item-expand-btn')
+    expect(el.shadowRoot.querySelector('button[aria-label="More info"]')
       .getAttribute('aria-expanded')).to.equal('false');
   });
 
@@ -220,7 +214,7 @@ describe('da-list-item render', () => {
 
   it('Hides the details button for folders and link items', async () => {
     await fixture({ ext: '' });
-    expect(el.shadowRoot.querySelector('.da-item-list-item-expand-btn')).to.be.null;
+    expect(el.shadowRoot.querySelector('button[aria-label="More info"]')).to.be.null;
   });
 
   it('Hides the details button for link items', async () => {
@@ -231,7 +225,7 @@ describe('da-list-item render', () => {
     ));
     try {
       await fixture({ ext: 'link' });
-      expect(el.shadowRoot.querySelector('.da-item-list-item-expand-btn')).to.be.null;
+      expect(el.shadowRoot.querySelector('button[aria-label="More info"]')).to.be.null;
     } finally {
       window.fetch = savedFetch;
     }
@@ -239,19 +233,7 @@ describe('da-list-item render', () => {
 
   it('Shows the details button for file items', async () => {
     await fixture({ ext: 'html' });
-    expect(el.shadowRoot.querySelector('.da-item-list-item-expand-btn')).to.exist;
-  });
-
-  it('Opens the same details popover from the card heading', async () => {
-    await fixture({ view: 'card', ext: 'json' });
-    el.updateAEMStatus = () => { };
-    el.updateDAStatus = () => { };
-    const button = el.shadowRoot.querySelector('.card-heading .da-item-list-item-expand-btn');
-    expect(button).to.exist;
-    button.click();
-    await el.updateComplete;
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('.card nx-popover.da-item-details')).to.exist;
+    expect(el.shadowRoot.querySelector('button[aria-label="More info"]')).to.exist;
   });
 
   it('Reflects checked state on checkbox input', async () => {
@@ -260,7 +242,7 @@ describe('da-list-item render', () => {
     expect(cb.checked).to.be.true;
   });
 
-  it('Renders card title and metadata below the preview with details on the right', async () => {
+  it('binds card metadata and exposes selection and More actions', async () => {
     await fixture({
       view: 'card',
       allowselect: true,
@@ -275,9 +257,7 @@ describe('da-list-item render', () => {
     expect(el.shadowRoot.querySelector('.card-name-text').textContent).to.equal('brand.xlsx');
     expect(el.shadowRoot.querySelector('.card-date').textContent).to.equal(el.renderDate());
     expect(el.shadowRoot.querySelector('.card-type').textContent).not.to.be.empty;
-    expect(el.shadowRoot.querySelector('.card-heading .da-item-list-item-expand-btn')).to.exist;
-    expect(preview.querySelector('.da-item-list-item-expand-btn')).to.be.null;
-    expect(el.shadowRoot.querySelector('.da-item-list-item-inner')).to.be.null;
+    expect(el.shadowRoot.querySelector('.card-heading button[aria-label="More"]')).to.exist;
   });
 
   it('Renders a card preview and passes the renaming state to it', async () => {
@@ -296,12 +276,10 @@ describe('da-list-item render', () => {
     expect(el.shadowRoot.querySelector('.card form.da-item-list-item-rename')).to.exist;
   });
 
-  it('renders a separate favorite action at the end of the name cell', async () => {
+  it('requests favorite changes without selecting the row', async () => {
     await fixture();
     const button = el.shadowRoot.querySelector('.da-item-list-item-favorite');
-    expect(button.closest('a')).to.be.null;
     expect(button.getAttribute('aria-label')).to.equal('Add to favorites');
-    expect(button.querySelector('use').getAttribute('href')).to.contain('s2-icon-star-20-n.svg');
     let event;
     el.addEventListener('favoritechange', (e) => { event = e; });
     button.click();
@@ -312,24 +290,51 @@ describe('da-list-item render', () => {
     await el.updateComplete;
     expect(button.getAttribute('aria-pressed')).to.equal('true');
     expect(button.getAttribute('aria-label')).to.equal('Remove from favorites');
-    expect(button.querySelector('use').getAttribute('href')).to.contain('s2-icon-starfilled-20-n.svg');
   });
 
-  it('uses the shared favorite action on cards and updates its filled state', async () => {
+  it('offers favorites in the card menu and renders a remove button only for favorites', async () => {
     await fixture({ view: 'card' });
-    const button = el.shadowRoot.querySelector('.card-preview .card-favorite');
-    expect(button.getAttribute('aria-pressed')).to.equal('false');
-    expect(button.querySelector('use').getAttribute('href')).to.contain('s2-icon-star-20-n.svg');
+    expect(el.shadowRoot.querySelector('.card-favorite')).to.be.null;
+    el.updateAEMStatus = () => { };
+    el.updateDAStatus = () => { };
+    el.shadowRoot.querySelector('.card-more').click();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.card-details')).to.exist;
     let event;
     el.addEventListener('favoritechange', (e) => { event = e; });
-    button.click();
+    el.shadowRoot.querySelector('.card-favorite-action').click();
     expect(event.bubbles).to.be.true;
     expect(event.composed).to.be.true;
     expect(el.isChecked).not.to.be.true;
     el.isFavorited = true;
     await el.updateComplete;
+    const button = el.shadowRoot.querySelector('.card-preview .card-favorite');
     expect(button.getAttribute('aria-label')).to.equal('Remove from favorites');
     expect(button.getAttribute('aria-pressed')).to.equal('true');
-    expect(button.querySelector('use').getAttribute('href')).to.contain('s2-icon-starfilled-20-n.svg');
+    event = undefined;
+    button.click();
+    expect(event.type).to.equal('favoritechange');
+    el.isFavorited = false;
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.card-favorite')).to.be.null;
+  });
+
+  it('offers favorites but no file details in folder card menus', async () => {
+    await fixture({ view: 'card', ext: '', allowselect: true });
+    el.shadowRoot.querySelector('.card-more').click();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.card-details')).to.be.null;
+    expect(el.shadowRoot.querySelector('.card-favorite-action')).to.exist;
+  });
+
+  it('clears an open card menu when reused for another path', async () => {
+    await fixture({ view: 'card', ext: 'html' });
+    el.updateAEMStatus = () => { };
+    el.updateDAStatus = () => { };
+    el.shadowRoot.querySelector('.card-more').click();
+    await el.updateComplete;
+    el.path = '/org/repo/next';
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.da-item-details')).to.be.null;
   });
 });

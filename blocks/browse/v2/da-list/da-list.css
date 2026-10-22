@@ -7,11 +7,25 @@
   container: browse-list / inline-size;
 
   --da-list-pad-inline: 16px;
-  --da-list-action-width: 32px;
+  --da-list-action-width: 72px;
   --da-list-type-width: 120px;
   --da-list-date-width: 180px;
   --da-list-select-width: 40px;
   --da-list-min-height: 56px;
+  --da-card-width: 226px;
+  --da-card-height: 300px;
+}
+
+:host([size="s"]) {
+  --da-list-min-height: 40px;
+  --da-card-width: 151px;
+  --da-card-height: 200px;
+}
+
+:host([size="l"]) {
+  --da-list-min-height: 72px;
+  --da-card-width: 301px;
+  --da-card-height: 400px;
 }
 
 /* Item List */
@@ -81,31 +95,68 @@
 }
 
 .da-list-types-popover {
+  box-sizing: border-box;
   font-size: var(--s2-component-m-regular-font-size);
-  width: 200px;
+  width: 280px;
+  max-width: calc(100vw - 16px);
+  padding: 8px;
+  border-radius: 10px;
 }
 
 .da-list-types-title {
   color: var(--s2-gray-900);
-  font-size: 12px;
-  line-height: 20px;
+  font-size: 14px;
+  line-height: 18px;
   font-weight: 500;
   margin: 0;
+  padding: 7px 12px;
+}
+
+.da-list-types-options {
+  display: grid;
+  gap: 8px;
+  margin-block: 8px;
 }
 
 .da-list-types-row {
   width: 100%;
-  padding: var(--s2-spacing-100) 0;
+  box-sizing: border-box;
+  min-height: 26px;
+  padding: 4px 12px;
+  gap: 6px;
+  line-height: 18px;
+}
+
+.da-list-types-row input {
+  width: 16px;
+  height: 16px;
+}
+
+.da-list-types-row .da-list-type-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.da-list-types-select-all {
+  min-height: 32px;
 }
 
 .da-list-types-select-all .nx-checkbox {
   flex-direction: row-reverse;
   justify-content: space-between;
+  width: 100%;
 }
 
 /* List Item */
 da-list-item {
   font-size: var(--s2-component-m-regular-font-size, 14px);
+}
+
+da-list-item:hover::before,
+da-list-item.is-expanded::before,
+da-list-item:hover::after,
+da-list-item.is-expanded::after {
+  margin: 0;
 }
 
 .da-browse-panel:not(.card-view) {
@@ -119,13 +170,6 @@ da-list-item {
     bottom: 0;
     width: 100%;
   }
-}
-
-da-list-item:hover::before,
-da-list-item.is-expanded::before,
-da-list-item:hover::after,
-da-list-item.is-expanded::after {
-  margin: 0;
 }
 
 .da-list-group-header + da-list-item::before {
@@ -183,9 +227,10 @@ da-list-item.is-expanded::after {
 
 .da-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(0, min(100%, var(--da-card-width))));
   gap: var(--s2-spacing-200);
   padding: var(--s2-spacing-200) var(--da-list-pad-inline, 24px);
+  justify-content: center;
 }
 
 .da-browse-header-cell {
@@ -434,12 +479,12 @@ da-list-item.is-expanded::after {
   font-family: var(--s2-font-family);
   font-size: var(--s2-component-m-regular-font-size);
   background-color: var(--s2-gray-75);
-
 }
 
 @container browse-list (width < 600px) {
   .da-browse-table-header {
     grid-template-columns: var(--da-list-select-width) minmax(0, 1fr) var(--da-list-date-width) var(--da-list-action-width);
+    column-gap: var(--s2-spacing-100);
   }
 
   .da-browse-header-cell-type {
@@ -449,10 +494,6 @@ da-list-item.is-expanded::after {
   .da-browse-table-header,
   .da-item-list {
     --da-list-select-width: 24px;
-  }
-
-  .da-browse-table-header {
-    column-gap: var(--s2-spacing-100);
   }
 }
 

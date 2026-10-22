@@ -508,9 +508,10 @@ export default class DaList extends DaListBase {
       <nx-popover class="da-list-types-popover" role="dialog" aria-label="Show all types"
         aria-busy=${!!this._bulkLoading} @close=${this.notifyTypesFilter}>
         <h4 class="da-list-types-title">Types</h4>
+        <div class="da-list-types-options">
         ${labels.map((label) => {
-    const item = this._listItems.find((entry) => getTypeLabel(entry.ext) === label);
-    return html`
+      const item = this._listItems.find((entry) => getTypeLabel(entry.ext) === label);
+      return html`
           <label class="nx-checkbox da-list-types-row">
             <input
               type="checkbox"
@@ -523,7 +524,8 @@ export default class DaList extends DaListBase {
             <span>${label}</span>
           </label>
         `;
-  })}
+    })}
+        </div>
         <div class="da-list-types-row da-list-types-select-all">
           <label class="nx-checkbox">
             <input

@@ -26,10 +26,10 @@ describe('da-browse-header', () => {
   afterEach(() => container.remove());
 
   it('renders independently with default sort and no config or chat action', () => {
-    const picker = header.shadowRoot.querySelector('nx-picker');
-    expect(picker.labelOverride).to.equal('Sort');
-    expect(picker.querySelector('svg')).to.be.null;
-    expect(picker.value).to.equal('');
+    const sort = header.shadowRoot.querySelector('.browse-sort-control');
+    expect(sort.textContent.trim()).to.equal('Sort');
+    expect(sort.title).to.equal('Sort: Default');
+    expect(header.shadowRoot.querySelector('[aria-pressed="true"]')).to.be.null;
     expect(header.shadowRoot.querySelector('.browse-settings-link')).to.be.null;
     expect(header.shadowRoot.querySelector('.chat-btn')).to.be.null;
   });
@@ -39,11 +39,15 @@ describe('da-browse-header', () => {
     await header.updateComplete;
     expect(header.shadowRoot.querySelector('.browse-settings-link').getAttribute('href'))
       .to.equal('/config#/org/');
+    expect(header.shadowRoot.querySelector('.browse-settings-link').textContent.trim())
+      .to.equal('Configure Org');
 
     header.details = { org: 'org', site: 'site', path: '' };
     await header.updateComplete;
     expect(header.shadowRoot.querySelector('.browse-settings-link').getAttribute('href'))
       .to.equal('/config#/org/site/');
+    expect(header.shadowRoot.querySelector('.browse-settings-link').textContent.trim())
+      .to.equal('Configure Site');
 
     header.details = { org: 'org', site: 'site', path: 'folder' };
     await header.updateComplete;
@@ -57,12 +61,26 @@ describe('da-browse-header', () => {
   it('requests sorting without changing the supplied sort state', () => {
     let event;
     header.addEventListener('sortrequest', (e) => { event = e; });
-    const picker = header.shadowRoot.querySelector('nx-picker');
-    picker.dispatchEvent(new CustomEvent('change', { detail: { value: 'name:ascending' } }));
+    header.shadowRoot.querySelector('.browse-sort-option').click();
     expect(event.detail).to.deep.equal({ property: 'name', direction: 'ascending' });
     expect(event.bubbles).to.be.true;
     expect(event.composed).to.be.true;
     expect(header.sortState.property).to.be.null;
+  });
+
+  it('opens Sort and dismisses it with Escape while restoring trigger focus', async () => {
+    const button = header.shadowRoot.querySelector('.browse-sort-control');
+    button.click();
+    await header.updateComplete;
+    const popover = header.shadowRoot.querySelector('.browse-sort-popover');
+    expect(popover.open).to.be.true;
+    expect(button.getAttribute('aria-expanded')).to.equal('true');
+    popover.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    popover.dispatchEvent(new CustomEvent('close'));
+    await header.updateComplete;
+    expect(popover.open).to.be.false;
+    expect(button.getAttribute('aria-expanded')).to.equal('false');
+    expect(header.shadowRoot.activeElement).to.equal(button);
   });
 
   it('replaces the creation slot with a stable search status and restores it afterwards', async () => {
@@ -116,19 +134,15 @@ describe('da-browse-header', () => {
   it('reflects supplied sort state and disables sorting while loading', async () => {
     header.sortState = { property: 'lastModified', direction: 'descending', loading: true };
     await header.updateComplete;
-    const picker = header.shadowRoot.querySelector('nx-picker');
-    expect(picker.labelOverride).to.equal('Sort');
+    const picker = header.shadowRoot.querySelector('.browse-sort-control');
     expect(picker.title).to.equal('Sorted by Modified (newest first)');
-    expect(picker.querySelector('svg')).to.be.null;
     expect(picker.getAttribute('aria-busy')).to.equal('true');
-    expect(picker.inert).to.be.true;
-    expect(picker.value).to.equal('lastModified:descending');
-    expect(picker.items.map(({ value }) => value)).to.deep.equal([
-      'name:ascending', 'name:descending', 'lastModified:descending', 'lastModified:ascending',
-    ]);
+    expect(picker.disabled).to.be.true;
+    const options = [...header.shadowRoot.querySelectorAll('.browse-sort-option')];
+    expect(options[2].getAttribute('aria-pressed')).to.equal('true');
     let requests = 0;
     header.addEventListener('sortrequest', () => { requests += 1; });
-    picker.dispatchEvent(new CustomEvent('change', { detail: { value: 'name:ascending' } }));
+    options[0].click();
     expect(requests).to.equal(0);
   });
 
@@ -141,38 +155,41 @@ describe('da-browse-header', () => {
     expect(event.composed).to.be.true;
   });
 
-  it('retains control descriptions and filter and sort actions', async () => {
-    header.groupByType = true;
+  it('describes hidden types and restores the default filter label', async () => {
     header.typesFilterState = { open: false, hiddenCount: 2 };
-    header.sortState = { property: 'name', direction: 'descending', loading: false };
     await header.updateComplete;
     const controls = header.shadowRoot.querySelectorAll('.browse-toolbar-control');
     expect(controls[0].title).to.equal('2 types hidden');
     expect(controls[0].querySelector('.browse-control-label').textContent)
       .to.equal('2 types hidden');
-    const picker = header.shadowRoot.querySelector('nx-picker');
-    expect(picker.title).to.equal('Sorted by Name (Z-A)');
-    let filterRequest;
-    let sortRequest;
-    header.addEventListener('typesfilterrequest', (event) => { filterRequest = event.detail; });
-    header.addEventListener('sortrequest', (event) => { sortRequest = event.detail; });
-    controls[0].click();
-    expect(filterRequest.anchor).to.equal(controls[0]);
-    picker.dispatchEvent(new CustomEvent('change', { detail: { value: 'name:ascending' } }));
-    expect(sortRequest).to.deep.equal({ property: 'name', direction: 'ascending' });
-    header.groupByType = false;
     header.typesFilterState = { open: false, hiddenCount: 0 };
     await header.updateComplete;
     expect(controls[0].title).to.equal('Show All');
   });
 
   it('emits viewchange from the view segmented control', async () => {
-    const control = header.shadowRoot.querySelector('nx-segmented-btn');
+    const control = header.shadowRoot.querySelector('.browse-view-control');
     expect(control.value).to.equal('list');
-    expect(control.items.map(({ value }) => value)).to.deep.equal(['list', 'card']);
     let detail;
     header.addEventListener('viewchange', (e) => { detail = e.detail; });
     control.dispatchEvent(new CustomEvent('change', { detail: { value: 'card' } }));
     expect(detail).to.deep.equal({ view: 'card' });
+  });
+
+  it('reports size changes for the current layout', async () => {
+    const popover = header.shadowRoot.querySelector('.browse-appearance-popover');
+    let detail;
+    header.addEventListener('appearancesizechange', (e) => { detail = e.detail; });
+    const sizeControl = () => popover.querySelector('nx-segmented-btn:not(.browse-view-control)');
+    expect(sizeControl().value).to.equal('m');
+    sizeControl().dispatchEvent(new CustomEvent('change', { detail: { value: 's' } }));
+    expect(detail).to.deep.equal({ view: 'list', size: 's' });
+    header.view = 'card';
+    header.cardSize = 'l';
+    await header.updateComplete;
+    expect(sizeControl().getAttribute('label')).to.equal('Card size');
+    expect(sizeControl().value).to.equal('l');
+    sizeControl().dispatchEvent(new CustomEvent('change', { detail: { value: 'm' } }));
+    expect(detail).to.deep.equal({ view: 'card', size: 'm' });
   });
 });

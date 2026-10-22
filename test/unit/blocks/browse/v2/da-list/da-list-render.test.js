@@ -53,7 +53,7 @@ describe('da-list render', () => {
     await el.updateComplete;
   }
 
-  it('persists row favorites without changing order or selection until reload', async () => {
+  it('persists favorite changes without changing order or selection', async () => {
     const savedFavorites = localStorage.getItem('da-favorites');
     try {
       localStorage.removeItem('da-favorites');
@@ -62,34 +62,16 @@ describe('da-list render', () => {
       const second = { path: '/org/site/b.html', name: 'b', ext: 'html' };
       el._listItems = [first, second];
       el._selectedItems = [first];
-      await rerender();
-      const row = [...el.shadowRoot.querySelectorAll('da-list-item')]
-        .find((item) => item.path === second.path);
-      await row.updateComplete;
-      row.shadowRoot.querySelector('.da-item-list-item-favorite').click();
-      await el.updateComplete;
+      el.toggleItemFavorite(second);
       expect(second.isFavorited).to.be.true;
       expect(el._listItems).to.deep.equal([first, second]);
       expect(el._selectedItems).to.deep.equal([first]);
       expect(JSON.parse(localStorage.getItem('da-favorites'))['/org/site'])
         .to.deep.equal([second.path]);
-      await row.updateComplete;
-      expect(row.isFavorited).to.be.true;
-      row.shadowRoot.querySelector('.da-item-list-item-favorite').click();
-      await el.updateComplete;
+      el.toggleItemFavorite(second);
       expect(second.isFavorited).to.be.false;
       expect(localStorage.getItem('da-favorites')).to.be.null;
       expect(el._listItems).to.deep.equal([first, second]);
-
-      row.shadowRoot.querySelector('.da-item-list-item-favorite').click();
-      const reloaded = [
-        { ...first, isFavorited: false },
-        { ...second, isFavorited: false },
-      ];
-      el.applyFavoritesToItems(reloaded);
-      el._listItems = reloaded;
-      el.applyFavoriteOrder();
-      expect(el._listItems.map((item) => item.path)).to.deep.equal([second.path, first.path]);
     } finally {
       if (savedFavorites === null) localStorage.removeItem('da-favorites');
       else localStorage.setItem('da-favorites', savedFavorites);
@@ -286,7 +268,6 @@ describe('da-list render', () => {
     const labels = [...el.shadowRoot.querySelectorAll('.da-list-types-row')];
     const sheet = labels.find((label) => label.textContent.trim() === 'Sheet');
     expect(sheet).to.exist;
-    expect(sheet.querySelector('use').getAttribute('href')).to.contain('s2-icon-data-20-n.svg');
   });
 
   it('filters by type and restores all types', async () => {

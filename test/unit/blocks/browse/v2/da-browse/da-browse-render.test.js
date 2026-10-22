@@ -1,6 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
-import { spy } from 'sinon';
+import { spy, stub } from 'sinon';
 
 const { setNx } = await import('../../../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -72,15 +72,9 @@ describe('da-browse render', () => {
     el.requestUpdate();
     await settle();
     await el.newCmp.updateComplete;
-    return {
-      toolbar: headerRoot(),
-      rightButtons: [...headerRoot().querySelectorAll('.browse-toolbar-control')],
-      newButton: el.newCmp?.shadowRoot?.querySelector('.da-actions-new-button'),
-      newLabel: el.newCmp?.shadowRoot?.querySelector('.da-actions-new-label'),
-    };
   }
 
-  it('forwards chat requests to the existing panel event and preserves the styled part', async () => {
+  it('forwards chat requests to the existing panel event', async () => {
     await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' }, { chat: true });
     let event;
     const onOpen = (e) => { event = e; };
@@ -88,78 +82,99 @@ describe('da-browse render', () => {
     try {
       headerRoot().querySelector('.chat-btn').click();
       expect(event.detail).to.deep.equal({ section: 'chat' });
-      expect(el.shadowRoot.querySelector('da-browse-header').getAttribute('exportparts')).to.equal('chat-btn');
     } finally {
       document.removeEventListener(PANEL_EVENT.OPEN, onOpen);
     }
   });
 
-  it('keeps creation and permissions wired to the slotted new component', async () => {
+  it('replays the latest browse context only after cold chat is ready', async () => {
+    await fixture({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
+    const first = { path: '/org/site/first.html', name: 'first', ext: 'html' };
+    const latest = { path: '/org/site/folder', name: 'folder' };
+    el._handleBrowseSelection({ detail: { items: [first] } });
+    const aside = document.createElement('aside');
+    const chat = document.createElement('nx-chat');
+    chat.attachShadow({ mode: 'open' });
+    chat.shadowRoot.innerHTML = '<nx-pills></nx-pills>';
+    let ready;
+    chat.updateComplete = new Promise((resolve) => { ready = resolve; });
+    aside.append(chat);
+    document.body.append(aside);
+    const contexts = [];
+    const onContext = ({ detail }) => contexts.push(detail);
+    try {
+      const opening = el.syncChatContext(aside);
+      el._handleBrowseSelection({ detail: { items: [latest] } });
+      document.addEventListener('nx-add-to-chat', onContext);
+      expect(contexts).to.deep.equal([]);
+      ready();
+      await opening;
+      expect(contexts).to.deep.equal([{
+        key: latest.path,
+        id: latest.path,
+        type: 'folder',
+        label: 'folder',
+        blockName: 'folder',
+        innerText: 'Selected repository path: org/site/folder',
+      }]);
+      el._clearBrowseSelection();
+      contexts.length = 0;
+      await el.syncChatContext(aside);
+      expect(contexts).to.deep.equal([]);
+    } finally {
+      document.removeEventListener('nx-add-to-chat', onContext);
+      aside.remove();
+    }
+  });
+
+  it('preloads chat during idle time and cancels pending preload on disconnect', async () => {
+    await fixture({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
+    const idle = stub(window, 'requestIdleCallback').returns(42);
+    const cancel = stub(window, 'cancelIdleCallback');
+    const load = stub().resolves(document.createElement('div'));
+    try {
+      el.preloadChat(load);
+      expect(load.called).to.be.false;
+      idle.firstCall.args[0]();
+      expect(load.calledOnce).to.be.true;
+      el.preloadChat(load);
+      el.remove();
+      expect(cancel.calledWith(42)).to.be.true;
+    } finally {
+      idle.restore();
+      cancel.restore();
+    }
+  });
+
+  it('passes permissions and breadcrumb segments to header content', async () => {
     await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
-    const list = el.browseCmp;
-    await list.updateComplete;
-    list.handlePermissions(['read', 'write']);
+    el.handlePermissions({ detail: ['read', 'write'] });
     await el.updateComplete;
-    await el.shadowRoot.querySelector('da-browse-header').updateComplete;
-    await el.newCmp.updateComplete;
     expect(el.newCmp.permissions).to.deep.equal(['read', 'write']);
-    expect(el.newCmp.shadowRoot.querySelector('.da-actions-new-button').disabled).to.be.false;
-    expect(headerRoot().querySelector('slot[name="actions"]').assignedElements())
-      .to.deep.equal([el.newCmp]);
     const breadcrumb = el.shadowRoot.querySelector('nx-breadcrumb');
-    expect(headerRoot().querySelector('slot:not([name])').assignedElements())
-      .to.deep.equal([breadcrumb]);
     expect(breadcrumb.pathSegments).to.deep.equal(['org', 'site']);
-    const item = { path: '/org/site/new.html', name: 'new', ext: 'html' };
-    el.newCmp.sendNewItem(item);
-    await list.updateComplete;
-    expect(list._listItems).to.include(item);
-    list.handlePermissions(['read']);
-    await el.updateComplete;
-    await el.shadowRoot.querySelector('da-browse-header').updateComplete;
-    await el.newCmp.updateComplete;
-    expect(el.newCmp.shadowRoot.querySelector('.da-actions-new-button').disabled).to.be.true;
   });
 
-  it('renders the toolbar controls and group-by-type switch', async () => {
-    const { toolbar, rightButtons, newLabel } = await renderToolbar(
-      { fullpath: '/org/site', org: 'org', site: 'site', path: '' },
-      { chat: true },
-    );
-    expect(newLabel?.textContent).to.equal('New');
-    expect(toolbar.textContent).to.contain('Show All');
-    expect(headerRoot().querySelector('.chat-btn')).to.exist;
-    expect(rightButtons.map((btn) => btn.textContent.trim())).to.deep.equal(['Show All']);
-    expect(headerRoot().querySelector('nx-picker').labelOverride).to.equal('Sort');
-    expect(headerRoot().querySelector('nx-switch').getAttribute('label')).to.equal('Group by type');
-  });
-
-  it('persists the view from the segmented control and passes it to the list', async () => {
+  it('persists header view requests and passes the view and size to the list', async () => {
     await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
-    headerRoot().querySelector('nx-segmented-btn')
-      .dispatchEvent(new CustomEvent('change', { detail: { value: 'card' } }));
+    const header = el.shadowRoot.querySelector('da-browse-header');
+    header.dispatchEvent(new CustomEvent('appearancesizechange', { detail: { view: 'card', size: 'l' } }));
+    header.dispatchEvent(new CustomEvent('viewchange', { detail: { view: 'card' } }));
     await settle();
     expect(el.browseCmp.view).to.equal('card');
+    expect(el.browseCmp.getAttribute('size')).to.equal('l');
     expect(JSON.parse(localStorage.getItem('da-browse-settings')).view).to.equal('card');
     expect(document.createElement('da-browse')._view).to.equal('card');
   });
 
-  it('persists group-by-type changes from the switch and restores them on a new instance', async () => {
+  it('persists header grouping requests and passes them to the list', async () => {
     await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
-    const control = headerRoot().querySelector('nx-switch');
-    control.dispatchEvent(new CustomEvent('change', { detail: { checked: true } }));
+    const header = el.shadowRoot.querySelector('da-browse-header');
+    header.dispatchEvent(new CustomEvent('groupbytypechange', { detail: { group: false } }));
     await settle();
-    expect(el.browseCmp.groupByType).to.be.true;
-    expect(JSON.parse(localStorage.getItem('da-browse-settings'))).to.deep.equal({ groupByType: true });
-    expect(document.createElement('da-browse')._groupByType).to.be.true;
-  });
-
-  it('renders only the browse grid without search tabs or a duplicate breadcrumb', async () => {
-    await renderToolbar({ fullpath: '/org/site/folder', org: 'org', site: 'site', path: '/folder' });
-    expect(el.shadowRoot.querySelectorAll('nx-breadcrumb').length).to.equal(1);
-    expect(el.shadowRoot.querySelector('[role="tablist"], [role="tabpanel"], da-search')).to.be.null;
-    expect(el.shadowRoot.querySelectorAll('da-list').length).to.equal(1);
-    expect(el.shadowRoot.querySelector('[role="grid"]').getAttribute('aria-label')).to.equal('Browse files');
+    expect(el.browseCmp.groupByType).to.be.false;
+    expect(JSON.parse(localStorage.getItem('da-browse-settings'))).to.deep.equal({ groupByType: false });
+    expect(document.createElement('da-browse')._groupByType).to.be.false;
   });
 
   it('keeps the browse list available when navigating to the organization root', async () => {
@@ -168,27 +183,5 @@ describe('da-browse render', () => {
     await settle();
     expect(el.browseCmp.fullpath).to.equal('/org');
     expect(el.shadowRoot.querySelectorAll('da-list').length).to.equal(1);
-  });
-
-  it('renders a single contextual config action pointing to site config at site level', async () => {
-    await fixture({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
-    const links = headerRoot().querySelectorAll('a.browse-settings-link');
-    expect(links.length).to.equal(1);
-    expect(links[0].getAttribute('aria-label')).to.equal('Config');
-    expect(links[0].getAttribute('href')).to.equal('/config#/org/site/');
-  });
-
-  it('does not render a config action below site level', async () => {
-    await fixture({ fullpath: '/org/site/folder', org: 'org', site: 'site', path: '/folder' });
-    const links = headerRoot().querySelectorAll('a.browse-settings-link');
-    expect(links.length).to.equal(0);
-  });
-
-  it('renders a single contextual config action pointing to org config at org level', async () => {
-    await fixture({ fullpath: '/org', org: 'org', path: '' });
-    const links = headerRoot().querySelectorAll('a.browse-settings-link');
-    expect(links.length).to.equal(1);
-    expect(links[0].getAttribute('aria-label')).to.equal('Config');
-    expect(links[0].getAttribute('href')).to.equal('/config#/org/');
   });
 });

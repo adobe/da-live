@@ -90,32 +90,50 @@
   position: relative;
 }
 
-.browse-sort-control {
-  --nx-picker-radius: var(--s2-corner-radius-400);
-}
-
-.browse-sort-control:hover {
-  --nx-picker-background: var(--s2-gray-200);
-}
-
-.browse-sort-control::part(label) {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s2-spacing-100, 8px);
-}
-
-.browse-sort-control::part(label)::before {
-  content: "";
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  background-color: currentcolor;
-  mask: url("/img/icons/s2-icon-sort-20-n.svg") center / contain no-repeat;
-}
-
 .browse-settings-link {
-  margin-left: 2px;
+  position: relative;
+  margin-inline-start: var(--s2-spacing-100, 8px);
+  padding-inline: var(--s2-spacing-100, 8px);
   box-sizing: border-box;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.browse-sort-popover,
+.browse-appearance-popover {
+  box-sizing: border-box;
+  width: 280px;
+  max-width: calc(100vw - 16px);
+  padding: var(--s2-spacing-100, 8px);
+  border-radius: 10px;
+  color: var(--s2-gray-800);
+  font-size: var(--s2-component-m-regular-font-size, 14px);
+}
+
+.browse-sort-options {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.browse-sort-option {
+  width: 100%;
+  justify-content: flex-start;
+  padding: 7px 12px;
+}
+
+.browse-sort-option svg {
+  width: 16px;
+  height: 18px;
+}
+
+.browse-appearance-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+  padding-inline: 12px;
+  gap: 6px;
 }
 
 ::slotted(da-new[slot="actions"]) {
@@ -124,6 +142,7 @@
   margin-inline-start: var(--s2-spacing-100, 8px);
 }
 
+.browse-settings-link::before,
 ::slotted(da-new[slot="actions"])::before {
   content: "";
   position: absolute;
@@ -132,6 +151,10 @@
   height: 16px;
   border-inline-start: 1px solid var(--s2-gray-300);
   transform: translateY(-50%);
+}
+
+.browse-settings-link::before {
+  inset-inline-start: calc(-1 * var(--s2-spacing-100, 8px));
 }
 
 @container browse-header (width < 800px) {
@@ -149,10 +172,5 @@
   .browse-toolbar-control {
     width: 32px;
     padding: 7px;
-  }
-
-  .browse-sort-control::part(label) {
-    gap: 0;
-    font-size: 0;
   }
 }
