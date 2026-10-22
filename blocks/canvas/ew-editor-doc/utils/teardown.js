@@ -1,3 +1,5 @@
+import { removeActiveView } from '../../../edit/prose/diff/diff-utils.js';
+
 export function teardownEditorDocResources({
   clearPortHandler,
   awarenessOff,
@@ -12,6 +14,7 @@ export function teardownEditorDocResources({
     awarenessOff();
   }
   if (view) {
+    removeActiveView(view);
     view.destroy();
   }
   if (wsProvider) {

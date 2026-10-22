@@ -1,7 +1,8 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { yUndo, yRedo, NodeSelection, TextSelection } from 'da-y-wrapper';
 import { doc2aem } from 'da-parser';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
+import getSheet from '../../shared/sheet.js';
 import { updateDocument, updateCursors, getInstrumentedHTML, getEditor } from '../editor-utils/editor-utils.js';
 import { bindFirstSectionName } from '../../shared/section-name.js';
 import { getActiveBlockIndex, getBlockPositions, getTableBlockName } from '../editor-utils/blocks.js';
@@ -44,7 +45,6 @@ import mediaBusImage from './prose-plugins/mediaBusImage.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { createEditorComments } from './utils/editor-comments.js';
-import getSheet from '../../shared/sheet.js';
 
 // Maps ew-page-outline's default-content `kind` to the PM node type(s) it can back,
 // so a matching node at proseIndex can be selected as a whole (see _scrollDocToProseIndex).
@@ -61,6 +61,8 @@ const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 
 const style = await loadStyle(import.meta.url);
+const buttons = await getSheet(`${getNx2()}/styles/buttons.css`);
+const diffStyle = await getSheet('/blocks/canvas/ew-editor-doc/ew-editor-doc-diff.css');
 const commentHighlightStyle = await getSheet('/blocks/canvas/comments/comment-highlight.css');
 
 export class EwEditorDoc extends LitElement {
@@ -134,6 +136,10 @@ export class EwEditorDoc extends LitElement {
     const canUndo = mgr ? mgr.undoStack.length > 0 : false;
     const canRedo = mgr ? mgr.redoStack.length > 0 : false;
     canvasBus.undoState.emit({ canUndo, canRedo });
+  }
+
+  _emitMergeConflictsState(hasMergeConflicts) {
+    canvasBus.mergeConflictsState.emit({ hasMergeConflicts });
   }
 
   _observeUndoManager(mgr) {
@@ -341,7 +347,12 @@ export class EwEditorDoc extends LitElement {
   /** The doc surface owns the toolbar only while the ProseMirror DOM holds focus. */
   _wireProseFocus(view, proseEl) {
     this._unwireProseFocus?.();
-    const onFocusIn = () => canvasBus.toolbarSurfaceRequest.emit({ surface: 'doc', active: true });
+    const onFocusIn = () => {
+      // Focus on a control inside the doc (a merge-conflict tab or button sits in a
+      // contenteditable=false node view) is not text editing: no formatting toolbar.
+      if (!view.hasFocus?.()) return;
+      canvasBus.toolbarSurfaceRequest.emit({ surface: 'doc', active: true });
+    };
     const onFocusOut = () => {
       // Defer so focus can settle. If it landed on a toolbar (button/dialog) or back
       // in the prose, stay active; otherwise the user left the doc surface.
@@ -445,6 +456,8 @@ export class EwEditorDoc extends LitElement {
         initialMetadata: localDoc?.initialMetadata,
         setEditable: (editable) => this._setEditable(editable),
         getToken: () => token,
+        onMergeConflictsChange: (hasConflicts) => this._emitMergeConflictsState(hasConflicts),
+        hostEl: this,
         extraPlugins: ({ wsProvider: ws }) => {
           const commentsPlugin = this._comments.createPlugin(editorSession, context, ws);
           return [
@@ -530,7 +543,7 @@ export class EwEditorDoc extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style, commentHighlightStyle];
+    this.shadowRoot.adoptedStyleSheets = [style, commentHighlightStyle, buttons, diffStyle];
     this._unsubscribeEditorActive = canvasBus.editorViewState.subscribe(({ view }) => {
       this._editorView = view;
       this.hidden = view === 'layout';
