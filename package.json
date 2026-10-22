@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@adobe/da-parser": "2.1.0",
+    "@adobe/da-sc-sdk": "0.5.0",
     "@open-wc/lit-helpers": "0.7.0",
     "esbuild": "0.21.0",
     "github-slugger": "2.0.0",
@@ -60,7 +61,7 @@
     "lint:css": "stylelint blocks/**/*.css styles/*.css",
     "lint": "npm run lint:js && npm run lint:css",
     "copy:deps": "node ./deps/copy.js",
-    "postinstall": "npm run build:da-y-wrapper && npm run build:da-lit && npm run build:da-parser && npm run build:github-slugger",
+    "postinstall": "npm run build:da-y-wrapper && npm run build:da-lit && npm run build:da-parser && npm run build:github-slugger && npm run build:da-sc-sdk",
     "test": "wtr \"./test/unit/**/*.test.js\" --node-resolve --port=2000 --coverage",
     "test:watch": "npm test -- --watch",
     "test:e2e": "cd test/e2e && npm i && npm run test:all",
@@ -68,6 +69,7 @@
     "build:da-y-wrapper": "esbuild --format=esm --minify ./deps/da-y-wrapper/src/index.js --bundle --outfile=./deps/da-y-wrapper/dist/index.js",
     "build:da-parser": "./tools/build-da-parser.sh",
     "build:github-slugger": "esbuild --format=esm --minify ./deps/github-slugger/src/index.js --bundle --outfile=./deps/github-slugger/dist/index.js",
+    "build:da-sc-sdk": "esbuild --format=esm --minify ./deps/da-sc-sdk/src/index.js --bundle --outfile=./deps/da-sc-sdk/dist/index.js",
     "semantic-release": "semantic-release",
     "semantic-release-dry": "semantic-release --dry-run --no-ci --branches $CI_BRANCH",
     "prepare": "husky"

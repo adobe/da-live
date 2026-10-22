@@ -1,0 +1,150 @@
+:host {
+  display: block;
+  min-height: 0;
+
+  /* Pin the Spectrum font so the nav text (and its <button> items, which only
+     pick it up via their `font: inherit`) never falls back to the UA serif. */
+  font-family: var(--s2-font-family, 'Adobe Clean', adobe-clean, 'Trebuchet MS', sans-serif);
+}
+
+:host p {
+  line-height: 1;
+}
+
+:host form-picker {
+  margin-bottom: 12px;
+}
+
+.nx-sidebar-section {
+  margin-bottom: 16px;
+}
+
+:host .nx-sidebar-title {
+  position: relative;
+  font-weight: 700;
+  font-size: var(--s2-body-size-m);
+  line-height: 1.5;
+  margin: 0 0 14px;
+
+  /* Bottom padding matches the editor group title so the dividers line up. */
+  padding: 0 12px var(--s2-spacing-100);
+}
+
+:host .nx-sidebar-title::after {
+  /* Spectrum 2 medium divider: 2px thick, gray-200, rounded ends — the same
+     divider the editor uses under group titles. */
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  min-width: min(100%, 200px);
+  height: 2px;
+  border-radius: 2px;
+  background-color: var(--s2-gray-200);
+}
+
+.nav-list,
+.nav-list ul,
+.nav-list li {
+  position: relative;
+}
+
+.nav-list {
+  line-height: 28px;
+  max-height: calc(100vh - 6rem - 24px - 5.5rem);
+  max-height: calc(100dvh - 6rem - 24px - 5.5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+  scrollbar-gutter: stable;
+}
+
+.nav-list ul {
+  list-style: none;
+  margin: 0;
+  padding-left: 22px;
+}
+
+.nav-list button.item {
+  display: inline-block;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+
+  /* Don't inherit the font on the <button> (it falls back to the UA serif);
+     declare it explicitly with the same Spectrum font + body size the editor
+     fields use. */
+  font-family: var(--s2-font-family, adobe-clean, 'Source Sans Pro', system-ui, sans-serif);
+  font-size: var(--s2-body-size-s, 14px);
+
+  /* Spectrum sidenav item color (neutral-content-color-default = gray-800);
+     don't inherit the host's pure-#fff page text color in dark mode. */
+  color: var(--s2-gray-800);
+  text-align: inherit;
+  cursor: pointer;
+  width: 100%;
+}
+
+.nav-list button.item:first-child {
+  margin-left: 4px;
+}
+
+.nav-list button.item:hover {
+  text-decoration: underline;
+}
+
+.nav-list button.item.is-active {
+  color: var(--s2-blue-800);
+}
+
+.nav-list button.item::before {
+  content: "";
+  position: absolute;
+  top: 11px;
+  left: -13px;
+  width: 7px;
+  height: 7px;
+  border-radius: 4px;
+  background-color: var(--s2-gray-300);
+}
+
+.nav-list button.item.is-active::before {
+  background-color: var(--s2-blue-400);
+}
+
+.nav-list li::before,
+.nav-list li::after {
+  content: "";
+  position: absolute;
+  left: -32px;
+}
+
+.nav-list li::before {
+  border-top: 1px solid var(--s2-gray-300);
+  top: 14px;
+  width: 24px;
+  height: 0;
+}
+
+.nav-list li::after {
+  border-left: 1px solid var(--s2-gray-300);
+  width: 0;
+  bottom: 0;
+  top: -14px;
+}
+
+.nav-list > ul > li:first-child::after {
+  top: 12px;
+}
+
+.nav-list ul > li:last-child::after {
+  height: 28px;
+  top: -14px;
+}
+
+.nav-list > ul:first-child > li:first-child::before,
+.nav-list > ul:first-child > li:first-child::after {
+  display: none;
+}

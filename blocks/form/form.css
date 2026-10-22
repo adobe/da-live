@@ -1,0 +1,83 @@
+/* Form workspace: the nx2 form fills main; nx-chat is docked on the left. */
+
+:root {
+  --form-content-top: 32px;
+
+  /* Top gap for scrolled-to groups + the sticky nav, applied by the editor
+     content. Apply it there only — padding the .nx-form scroll container would
+     misalign the two. */
+  --nx-scroll-offset-top: var(--form-content-top);
+}
+
+/* Nested scroll (like /canvas): the form scrolls inside a fixed-height region
+   below the global nav. */
+.nx-form {
+  box-sizing: border-box;
+  height: calc(100vh - var(--s2-nav-height));
+  overflow-y: auto;
+}
+
+/* At this width main scrolls and has a border, so fill main instead of the viewport to avoid a second scrollbar. */
+@media (width >= 600px) {
+  main:has(.nx-form) > .section {
+    min-height: 0;
+  }
+
+  .block-content:has(> .nx-form),
+  .nx-form {
+    height: 100%;
+  }
+}
+
+/* Never override the chat's `display` here, or its flex layout collapses. */
+aside.panel[data-position='before'] nx-chat {
+  height: 100%;
+}
+
+/* Floating chat toggle at the top-left of the canvas. The anchor is a
+   zero-height element in the main flow, so it establishes the canvas left edge
+   (right of the app rail) without reserving vertical space or scrolling. */
+.form-chat-toggle-anchor {
+  position: relative;
+  height: 0;
+}
+
+.form-chat-toggle {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 8px;
+  color: var(--s2-gray-800);
+  background: transparent;
+  cursor: pointer;
+}
+
+.form-chat-toggle:hover {
+  background-color: var(--s2-gray-75);
+}
+
+.form-chat-toggle:focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: 2px;
+}
+
+.form-chat-toggle svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+/* Hide the toggle while the chat is open (it has its own close). */
+html:has(aside.panel[data-position='before']:not([hidden])) .form-chat-toggle {
+  display: none;
+}
