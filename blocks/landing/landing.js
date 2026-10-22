@@ -719,7 +719,7 @@ export class DaLanding extends LitElement {
             <div class="tasks-scroll" role="region" aria-label="Need Attention" tabindex="0">
               <table aria-labelledby="tasks-heading" aria-describedby="tasks-availability">
                 <thead><tr>
-                  ${['Page / Content Fragment', 'Process Description', 'Status', 'Requester'].map((label) => html`
+                  ${['Item', 'Description', 'Status', 'Assignee'].map((label) => html`
                     <th scope="col">
                       <div class="task-column-heading">
                         <span>${label}</span>

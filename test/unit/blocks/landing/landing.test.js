@@ -201,7 +201,7 @@ describe('landing page', () => {
   it('shows site-themed sample tasks with translation first, without presenting them as live data', () => {
     expect(el.shadowRoot.querySelector('#tasks-heading').textContent).to.equal('Need Attention');
     expect([...el.shadowRoot.querySelectorAll('.task-column-heading > span')].map((label) => label.textContent)).to.deep.equal([
-      'Page / Content Fragment', 'Process Description', 'Status', 'Requester',
+      'Item', 'Description', 'Status', 'Assignee',
     ]);
     expect(el.shadowRoot.querySelector('.tasks-preview-note').textContent).to.equal('Sample tasks for layout preview. Not live site data.');
     expect(el.shadowRoot.querySelector('.tasks-panel').textContent).not.to.include('No tasks');
