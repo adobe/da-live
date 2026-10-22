@@ -1,5 +1,6 @@
 import { TextSelection } from 'da-y-wrapper';
 import prose2aem from '../../shared/prose2aem.js';
+import { wrapTablesInWrappers } from '../../shared/version/compare.js';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
 import { toolbarController } from './toolbar-controller.js';
@@ -257,30 +258,26 @@ export function extractCursors(view) {
   return [...cursorMap.values()];
 }
 
-// The node views render a block as a bare table, but prose2aem only turns a
-// table inside a .tableWrapper into a block. Give it that wrapper back.
-function wrapBareTables(nodes) {
-  return [...nodes].map((node) => {
-    if (node.nodeName !== 'TABLE') return node;
-    const wrapper = document.createElement('div');
-    wrapper.className = 'tableWrapper';
-    wrapper.append(node);
-    return wrapper;
-  });
-}
-
 // Merge-conflict node views render their own UI (tabs, buttons, overlays).
 // Serialize what the author sees by default instead: the local version of a
 // pair, the content of a lone node. The hidden second half of a pair goes.
+// The node views render a block as a bare table, but prose2aem only turns a
+// table inside a .tableWrapper into a block, so each table gets its wrapper back.
 function unwrapDiffViews(root) {
   root.querySelectorAll('.loc-pair-hidden').forEach((el) => el.remove());
   root.querySelectorAll('.loc-tabbed-container').forEach((container) => {
     const local = container.querySelector('.diff-tab-pane[data-tab="added"]');
-    container.replaceWith(...wrapBareTables(local ? local.childNodes : []));
+    if (!local) {
+      container.remove();
+      return;
+    }
+    wrapTablesInWrappers(local);
+    container.replaceWith(...local.childNodes);
   });
   root.querySelectorAll('.loc-single-container').forEach((container) => {
     container.querySelectorAll(':scope > .loc-color-overlay').forEach((el) => el.remove());
-    container.replaceWith(...wrapBareTables(container.childNodes));
+    wrapTablesInWrappers(container);
+    container.replaceWith(...container.childNodes);
   });
 }
 
