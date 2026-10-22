@@ -1,3 +1,107 @@
+## [1.12.2](https://github.com/adobe/da-live/compare/v1.12.1...v1.12.2) (2026-10-21)
+
+
+### Bug Fixes
+
+* refresh and spinner icons not loading ([#1472](https://github.com/adobe/da-live/issues/1472)) ([f6b392f](https://github.com/adobe/da-live/commit/f6b392f35101842549aaf6505b048b5319586a07))
+
+## [1.12.1](https://github.com/adobe/da-live/compare/v1.12.0...v1.12.1) (2026-10-21)
+
+
+### Bug Fixes
+
+* reload media viewer on hash navigation ([#1471](https://github.com/adobe/da-live/issues/1471)) ([ddec8fa](https://github.com/adobe/da-live/commit/ddec8fa6206062903ea42909a511c36d916e260c))
+
+# [1.12.0](https://github.com/adobe/da-live/compare/v1.11.7...v1.12.0) (2026-10-21)
+
+
+### Features
+
+* **canvas:** answer save and comparison requests from prepare menu plugins ([#1467](https://github.com/adobe/da-live/issues/1467)) ([a280ad2](https://github.com/adobe/da-live/commit/a280ad29c948000acdc29d4de4d17eead0dd7cef))
+
+## [1.11.7](https://github.com/adobe/da-live/compare/v1.11.6...v1.11.7) (2026-10-21)
+
+
+### Bug Fixes
+
+* show config only on org or site level ([#1463](https://github.com/adobe/da-live/issues/1463)) ([0b92c0d](https://github.com/adobe/da-live/commit/0b92c0db6583575c79c287e099ec70666b3bbecd))
+
+## [1.11.6](https://github.com/adobe/da-live/compare/v1.11.5...v1.11.6) (2026-10-21)
+
+
+### Bug Fixes
+
+* allow AVIF and WebP image uploads in document editors ([#1464](https://github.com/adobe/da-live/issues/1464)) ([29db317](https://github.com/adobe/da-live/commit/29db317bed521211869f6edc6b961751bceba4ac))
+
+## [1.11.5](https://github.com/adobe/da-live/compare/v1.11.4...v1.11.5) (2026-10-21)
+
+
+### Bug Fixes
+
+* **ew:** record RUM click events from WYSIWYG layout mode ([#1324](https://github.com/adobe/da-live/issues/1324)) ([#1384](https://github.com/adobe/da-live/issues/1384)) ([aeb4563](https://github.com/adobe/da-live/commit/aeb4563cf8ea1d8143a06724aa28af45f71e067b))
+
+## [1.11.4](https://github.com/adobe/da-live/compare/v1.11.3...v1.11.4) (2026-10-21)
+
+
+### Bug Fixes
+
+* **ew:** route block library through DA Preview Proxy ([#1372](https://github.com/adobe/da-live/issues/1372)) ([28c2f89](https://github.com/adobe/da-live/commit/28c2f897f1e17a3c38089c1245dc2da6e1927797)), closes [#1201](https://github.com/adobe/da-live/issues/1201) [#1201](https://github.com/adobe/da-live/issues/1201)
+
+## [1.11.3](https://github.com/adobe/da-live/compare/v1.11.2...v1.11.3) (2026-10-21)
+
+
+### Bug Fixes
+
+* **ew:** highlight only the open HTML page in files panel ([#1456](https://github.com/adobe/da-live/issues/1456)) ([c6d7979](https://github.com/adobe/da-live/commit/c6d79793a57e0310ce505070f8871d09cf8cfeb9)), closes [#1363](https://github.com/adobe/da-live/issues/1363)
+* **ew:** scroll block library previews to variant headings ([#1420](https://github.com/adobe/da-live/issues/1420)) ([96ee337](https://github.com/adobe/da-live/commit/96ee337a420892b623c02582f76c13401523bc70)), closes [#1225](https://github.com/adobe/da-live/issues/1225)
+
+## [1.11.2](https://github.com/adobe/da-live/compare/v1.11.1...v1.11.2) (2026-10-21)
+
+
+### Bug Fixes
+
+* **canvas:** align tool panel toggle with toolbar ([#1466](https://github.com/adobe/da-live/issues/1466)) ([4b56c09](https://github.com/adobe/da-live/commit/4b56c09da46a7a2be127c73b0b6601ce11338d19))
+
+## [1.11.1](https://github.com/adobe/da-live/compare/v1.11.0...v1.11.1) (2026-10-20)
+
+
+### Bug Fixes
+
+* read block variant from library-metadata name in canvas toolbar ([#1455](https://github.com/adobe/da-live/issues/1455)) ([a7dfcad](https://github.com/adobe/da-live/commit/a7dfcad3a010342dd7aa5e4036a9cae85d0eeaed))
+
+# [1.11.0](https://github.com/adobe/da-live/compare/v1.10.0...v1.11.0) (2026-10-20)
+
+
+### Features
+
+* **canvas:** outline and file explorer treegrids with shared da-nx nav ([#1422](https://github.com/adobe/da-live/issues/1422)) ([4beb87a](https://github.com/adobe/da-live/commit/4beb87ae0ed54220966c6c9e371f6de98d771791)), closes [#1165](https://github.com/adobe/da-live/issues/1165)
+
+# [1.10.0](https://github.com/adobe/da-live/compare/v1.9.0...v1.10.0) (2026-10-20)
+
+
+### Features
+
+* **canvas:** preflight sidepanel using experience context api ([#1369](https://github.com/adobe/da-live/issues/1369)) ([1eec09d](https://github.com/adobe/da-live/commit/1eec09d617fa4433d5a7f8c0e7d0d768270b25c0))
+
+# [1.9.0](https://github.com/adobe/da-live/compare/v1.8.0...v1.9.0) (2026-10-20)
+
+
+### Bug Fixes
+
+* preserve preview image URLs during serialization ([#1457](https://github.com/adobe/da-live/issues/1457)) ([58d6a8e](https://github.com/adobe/da-live/commit/58d6a8e399814a92f42666f78e6a383186c2f879))
+
+
+### Features
+
+* update extension SDK to support html subscription and html replacement ([#1453](https://github.com/adobe/da-live/issues/1453)) ([36f7f6f](https://github.com/adobe/da-live/commit/36f7f6f440ba8bb7d33bd310c06c79f3e8de6295))
+
+# [1.8.0](https://github.com/adobe/da-live/compare/v1.7.1...v1.8.0) (2026-10-19)
+
+
+### Features
+
+* new browse UI ([#1401](https://github.com/adobe/da-live/issues/1401)) ([6e0dd84](https://github.com/adobe/da-live/commit/6e0dd848d0965059f015ad241d780dba5c94a2ae))
+
 ## [1.7.1](https://github.com/adobe/da-live/compare/v1.7.0...v1.7.1) (2026-10-19)
 
 

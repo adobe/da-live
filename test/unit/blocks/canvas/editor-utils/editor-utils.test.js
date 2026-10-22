@@ -19,6 +19,8 @@ let parseSections;
 let updateDocument;
 let getEditor;
 let mirror;
+let getInstrumentedHTML;
+let mediaBusImage;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
@@ -28,6 +30,38 @@ before(async () => {
   updateDocument = mod.updateDocument;
   getEditor = mod.getEditor;
   mirror = mod.dispatchMirror;
+  getInstrumentedHTML = mod.getInstrumentedHTML;
+  ({ default: mediaBusImage } = await import('../../../../../blocks/canvas/ew-editor-doc/prose-plugins/mediaBusImage.js'));
+});
+
+describe('getInstrumentedHTML media bus images', () => {
+  let view;
+
+  afterEach(() => {
+    view?.destroy();
+  });
+
+  it('preserves the preview image path without changing the relative document source', () => {
+    const schema = getSchema();
+    const src = './media_123.png?width=750#width=2048&height=1368';
+    const image = schema.nodes.image.create({ src });
+    view = new EditorView(document.createElement('div'), {
+      state: EditorState.create({
+        schema,
+        doc: schema.nodes.doc.create(null, schema.nodes.paragraph.create(null, image)),
+        plugins: [mediaBusImage({ org: 'org', repo: 'site' })],
+      }),
+    });
+    const expected = `${getPreviewOrigin('org', 'site')}/${src.slice(2)}`;
+    expect(view.dom.querySelector('img').getAttribute('src')).to.equal(expected);
+
+    const result = new DOMParser().parseFromString(getInstrumentedHTML(view), 'text/html');
+    expect(result.querySelector('img').getAttribute('src')).to.equal(expected);
+    result.querySelectorAll('source').forEach((source) => {
+      expect(source.getAttribute('srcset')).to.equal(expected);
+    });
+    expect(view.state.doc.firstChild.firstChild.attrs.src).to.equal(src);
+  });
 });
 
 describe('getPreviewOrigin', () => {

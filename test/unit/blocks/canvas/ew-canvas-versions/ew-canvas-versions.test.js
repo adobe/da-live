@@ -301,6 +301,8 @@ describe('version history refresh', () => {
       await panel.updateComplete;
       expect(panel.shadowRoot.querySelector('.tool-panel-header-actions').contains(button)).to.be.true;
       expect(inst.getHeaderActions()).to.equal(button);
+      expect(button.classList.contains('nx-action-btn-icon')).to.be.true;
+      expect(button.classList.contains('nx-btn-sm')).to.be.true;
     } finally {
       panel.remove();
     }
@@ -339,7 +341,7 @@ describe('version history refresh', () => {
     await inst.updateComplete;
     expect(button.getAttribute('aria-disabled')).to.equal('true');
     expect(document.activeElement).to.equal(button);
-    expect(button.querySelector('.da-loading-spinner')).to.exist;
+    expect(button.querySelector('.nx-loading-spinner')).to.exist;
     expect(inst.shadowRoot.querySelector('.versionlist')).to.equal(list);
     expect(inst._versions).to.equal(entries);
     button.click();
@@ -419,7 +421,7 @@ describe('version history refresh', () => {
     inst = await createInstance({ path, _versions: [ver(old)] });
     inst.handleNew();
     await inst.updateComplete;
-    inst.shadowRoot.querySelector('.da-input').value = 'Saved version';
+    inst.shadowRoot.querySelector('.nx-input').value = 'Saved version';
     inst.shadowRoot.querySelector('.ew-cv-new-row').requestSubmit();
     await waitFor(() => listCalls === 1 && !inst._refreshing);
     expect(createCalls).to.equal(1);
@@ -517,12 +519,12 @@ describe('version history refresh', () => {
     inst._compareCtx = comparison;
     inst._restoreEntry = old;
     await inst.updateComplete;
-    const input = inst.shadowRoot.querySelector('.da-input');
+    const input = inst.shadowRoot.querySelector('.nx-input');
     input.value = 'Unsubmitted name';
     await inst._refreshVersions();
     expect(inst._compareCtx).to.equal(comparison);
     expect(inst._restoreEntry).to.equal(old);
-    expect(inst.shadowRoot.querySelector('.da-input')).to.equal(input);
+    expect(inst.shadowRoot.querySelector('.nx-input')).to.equal(input);
     expect(input.value).to.equal('Unsubmitted name');
   });
 
@@ -630,7 +632,7 @@ describe('create-version form', () => {
     await inst.updateComplete;
     inst.handleNew();
     await inst.updateComplete;
-    const input = inst.shadowRoot.querySelector('.da-input');
+    const input = inst.shadowRoot.querySelector('.nx-input');
     expect(input).to.exist;
     expect(input.value).to.equal(`Version ${inst._newVersion.date}`);
     expect(inst.shadowRoot.activeElement).to.equal(input);
@@ -646,7 +648,7 @@ describe('create-version form', () => {
     inst.handleCancel();
     await inst.updateComplete;
     expect(inst._newVersion).to.be.null;
-    expect(inst.shadowRoot.querySelector('.da-input')).to.not.exist;
+    expect(inst.shadowRoot.querySelector('.nx-input')).to.not.exist;
     expect(inst.shadowRoot.querySelector('.versionname').textContent).to.equal('Current');
   });
 
@@ -659,7 +661,7 @@ describe('create-version form', () => {
     form.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await inst.updateComplete;
     expect(inst._newVersion).to.be.null;
-    expect(inst.shadowRoot.querySelector('.da-input')).to.not.exist;
+    expect(inst.shadowRoot.querySelector('.nx-input')).to.not.exist;
   });
 
   it('pressing a non-Escape key in the form leaves it open', async () => {
@@ -671,7 +673,7 @@ describe('create-version form', () => {
     form.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     await inst.updateComplete;
     expect(inst._newVersion).to.not.be.null;
-    expect(inst.shadowRoot.querySelector('.da-input')).to.exist;
+    expect(inst.shadowRoot.querySelector('.nx-input')).to.exist;
   });
 
   it('while saving, disables the actions, makes the input read-only, and swaps Save for a labelled spinner', async () => {
@@ -680,15 +682,15 @@ describe('create-version form', () => {
     inst.handleNew();
     inst._savingVersion = true;
     await inst.updateComplete;
-    const input = inst.shadowRoot.querySelector('.da-input');
+    const input = inst.shadowRoot.querySelector('.nx-input');
     const saveBtn = inst.shadowRoot.querySelector('.ew-cv-save-btn');
-    const cancelBtn = inst.shadowRoot.querySelector('.ew-cv-new-actions .da-icon-btn');
+    const cancelBtn = inst.shadowRoot.querySelector('.ew-cv-new-actions .nx-action-btn-icon');
     expect(input.readOnly).to.be.true;
     expect(input.disabled).to.be.false;
     expect(cancelBtn.disabled).to.be.true;
     expect(saveBtn.disabled).to.be.true;
     expect(saveBtn.getAttribute('aria-label')).to.equal('Saving');
-    expect(saveBtn.querySelector('.da-loading-spinner')).to.exist;
+    expect(saveBtn.querySelector('.nx-loading-spinner')).to.exist;
   });
 });
 
