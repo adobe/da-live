@@ -23,11 +23,6 @@
   font-weight: var(--s2-component-m-bold-font-weight);
 }
 
-.permissions-table th:first-child,
-.permissions-table td:first-child {
-  width: 22%;
-}
-
 .section-row td {
   padding-top: var(--s2-spacing-300);
   color: var(--s2-gray-600);
@@ -36,6 +31,11 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   border-bottom: 1px solid var(--s2-gray-300);
+}
+
+.permissions-table th:first-child,
+.permissions-table td:first-child {
+  width: 22%;
 }
 
 .scope-cell {
