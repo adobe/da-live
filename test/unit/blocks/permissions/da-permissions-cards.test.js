@@ -25,7 +25,6 @@ async function mount(props) {
   Object.assign(el, {
     slots: [],
     org: 'myorg',
-    expanded: new Set(),
     editable: true,
     busy: false,
     adding: null,
@@ -78,29 +77,17 @@ describe('da-permissions-cards', () => {
     expect(sections.map((s) => s.dataset.section)).to.deep.equal(['folders']);
   });
 
-  it('caps a 20-member row at 6 pills + "+14 more", expands to 20 via card-toggle', async () => {
+  it('renders all 20 pills for a 20-member row with no .card-toggle / .row-more', async () => {
     const writers = Array.from({ length: 20 }, (_, i) => `user${i}@example.com`);
     const slot = baseSlot({ path: '/ + **', kind: 'content', label: 'All sites', write: writers });
     const el = await mount({ slots: [slot] });
 
-    expect(allPillItems(el)).to.have.length(6);
-    const more = el.shadowRoot.querySelector('.row-more');
-    expect(more).to.not.equal(null);
-    expect(more.textContent.trim()).to.equal('+14 more');
-
-    const toggle = el.shadowRoot.querySelector('.card-toggle');
-    expect(toggle).to.not.equal(null);
-    expect(toggle.getAttribute('aria-expanded')).to.equal('false');
-    expect(toggle.textContent.trim()).to.equal('Show all');
-
-    el.expanded = new Set([slot.path]);
-    await el.updateComplete;
     expect(allPillItems(el)).to.have.length(20);
-    expect(el.shadowRoot.querySelector('.card-toggle').textContent.trim()).to.equal('Show less');
     expect(el.shadowRoot.querySelector('.row-more')).to.equal(null);
+    expect(el.shadowRoot.querySelector('.card-toggle')).to.equal(null);
   });
 
-  it('caps mixed direct and inherited at 6', async () => {
+  it('renders all direct and inherited members together, uncapped', async () => {
     const direct = ['a@x.com', 'b@x.com'];
     const inherited = Array.from({ length: 18 }, (_, i) => `inh${i}@example.com`);
     const slot = baseSlot({
@@ -116,35 +103,10 @@ describe('da-permissions-cards', () => {
     const directPills = row.querySelector('nx-pills.direct-pills');
     const inheritedPills = row.querySelector('nx-pills.inherited-pills');
     expect(directPills.items).to.have.length(2);
-    expect(inheritedPills.items).to.have.length(4);
+    expect(inheritedPills.items).to.have.length(18);
     expect(inheritedPills.items.every((i) => i.removable === false)).to.be.true;
     expect(row.querySelector('.from-label').textContent.trim()).to.equal('From myorg');
-    expect(row.querySelector('.row-more').textContent.trim()).to.equal('+14 more');
-  });
-
-  it('renders no card-toggle when no row exceeds 6 members', async () => {
-    const slot = baseSlot({ path: '/ + **', kind: 'content', label: 'All sites', write: ['a@x.com', 'b@x.com'] });
-    const el = await mount({ slots: [slot] });
-
-    expect(el.shadowRoot.querySelector('.card-toggle')).to.equal(null);
-  });
-
-  it('clicking .card-toggle or .row-more dispatches permissions-toggle {path}', async () => {
-    const writers = Array.from({ length: 10 }, (_, i) => `user${i}@example.com`);
-    const slot = baseSlot({ path: '/ + **', kind: 'content', label: 'All sites', write: writers });
-    const el = await mount({ slots: [slot] });
-
-    let events = [];
-    el.addEventListener('permissions-toggle', (e) => events.push(e));
-
-    el.shadowRoot.querySelector('.card-toggle').click();
-    expect(events).to.have.length(1);
-    expect(events[0].detail.path).to.equal(slot.path);
-
-    events = [];
-    el.shadowRoot.querySelector('.row-more').click();
-    expect(events).to.have.length(1);
-    expect(events[0].detail.path).to.equal(slot.path);
+    expect(row.querySelector('.row-more')).to.equal(null);
   });
 
   it('shows "No one" for an empty read row, and no row-add when not editable', async () => {
@@ -241,15 +203,6 @@ describe('da-permissions-cards', () => {
     expect(cancelCount).to.equal(2);
   });
 
-  it('suppresses card-toggle and row-more when filtering is true, even for an expanded 20-member slot', async () => {
-    const writers = Array.from({ length: 20 }, (_, i) => `user${i}@example.com`);
-    const slot = baseSlot({ path: '/ + **', kind: 'content', label: 'All sites', write: writers });
-    const el = await mount({ slots: [slot], expanded: new Set([slot.path]), filtering: true });
-
-    expect(el.shadowRoot.querySelector('.card-toggle')).to.equal(null);
-    expect(el.shadowRoot.querySelector('.row-more')).to.equal(null);
-  });
-
   it('sets nx-pills label for direct and inherited pills', async () => {
     const slot = baseSlot({
       path: '/myorg/site1/CONFIG',
@@ -287,15 +240,6 @@ describe('da-permissions-cards', () => {
 
     const row = el.shadowRoot.querySelector('.level-row[data-level="write"]');
     expect(row.querySelector('nx-pills.direct-pills')).to.not.equal(null);
-  });
-
-  it('sets aria-label on .row-more to "Show all members of {label}"', async () => {
-    const writers = Array.from({ length: 10 }, (_, i) => `user${i}@example.com`);
-    const slot = baseSlot({ path: '/ + **', kind: 'content', label: 'All sites', write: writers });
-    const el = await mount({ slots: [slot] });
-
-    const more = el.shadowRoot.querySelector('.row-more');
-    expect(more.getAttribute('aria-label')).to.equal('Show all members of All sites');
   });
 
   it('nx-pill-remove on direct-pills emits permissions-remove with { path, level, who }', async () => {

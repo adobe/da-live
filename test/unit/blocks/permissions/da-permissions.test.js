@@ -364,7 +364,7 @@ describe('da-permissions', () => {
     expect(window.daTestToasts.some((t) => t.variant === 'error')).to.equal(true);
   });
 
-  it('filtering narrows rows, auto-expands matches, and clearing restores the prior expand state', async () => {
+  it('filtering narrows which cards render, and clearing restores all of them', async () => {
     const SITE_CONFIG_BODY = {
       ':names': ['permissions'],
       ':version': 3,
@@ -386,17 +386,12 @@ describe('da-permissions', () => {
     const contentPath = '/mysite/ + **';
     const blogPath = '/mysite/blog/ + **';
 
-    // Expand the CONFIG row before filtering, so we can verify it's restored.
-    el._expanded = new Set([configPath]);
-    await el.updateComplete;
-
     search.value = 'blog';
     search.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
     await el.updateComplete;
 
     let cards = el.shadowRoot.querySelector('da-permissions-cards');
     expect(cards.slots.map((s) => s.path)).to.deep.equal([blogPath]);
-    expect(cards.expanded.has(blogPath)).to.equal(true);
 
     search.value = 'orgwriter@example.com';
     search.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
@@ -404,7 +399,6 @@ describe('da-permissions', () => {
 
     cards = el.shadowRoot.querySelector('da-permissions-cards');
     expect(cards.slots.map((s) => s.path)).to.deep.equal([contentPath]);
-    expect(cards.expanded.has(contentPath)).to.equal(true);
 
     search.value = '';
     search.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
@@ -412,35 +406,6 @@ describe('da-permissions', () => {
 
     cards = el.shadowRoot.querySelector('da-permissions-cards');
     expect(cards.slots.map((s) => s.path)).to.include.members([configPath, contentPath, blogPath]);
-    expect(cards.expanded.has(configPath)).to.equal(true);
-    expect(cards.expanded.has(blogPath)).to.equal(false);
-    expect(cards.expanded.has(contentPath)).to.equal(false);
-  });
-
-  it('a filter query that matches a big card passes filtering=true, hiding its card-toggle', async () => {
-    const writers = Array.from({ length: 20 }, (_, i) => `writer${i}@example.com`);
-    const SITE_CONFIG_BODY = {
-      ':names': ['permissions'],
-      ':version': 3,
-      permissions: {
-        total: 1,
-        limit: 1,
-        data: [{ path: '/mysite/ + **', groups: writers.join(', '), actions: 'write' }],
-      },
-    };
-    mockFetch({ configFor: () => SITE_CONFIG_BODY });
-    const el = await mount('myorg', 'mysite');
-    const search = el.shadowRoot.querySelector('nx-search');
-
-    search.value = 'writer';
-    search.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
-    await el.updateComplete;
-
-    const cards = el.shadowRoot.querySelector('da-permissions-cards');
-    expect(cards.filtering).to.equal(true);
-    await cards.updateComplete;
-    expect(cards.shadowRoot.querySelector('.card-toggle')).to.equal(null);
-    expect(cards.shadowRoot.querySelector('.row-more')).to.equal(null);
   });
 
   it('no match -> shows "No scopes match "zzz"" and no cards', async () => {
@@ -597,7 +562,7 @@ describe('da-permissions folder permission', () => {
     btn.click();
   }
 
-  it('folder-select: dialog closes, the row is pending + expanded, and the Read add input is open', async () => {
+  it('folder-select: dialog closes, the row is pending, and the Read add input is open', async () => {
     mockFetch({
       configFor: () => SITE_CONFIG_BODY,
       foldersFor: () => [{ name: 'blog', path: '/myorg/mysite/blog' }],
@@ -618,7 +583,6 @@ describe('da-permissions folder permission', () => {
     const cards = el.shadowRoot.querySelector('da-permissions-cards');
     const blogPath = '/mysite/blog/ + **';
     expect(cards.slots.some((s) => s.path === blogPath && s.pending)).to.equal(true);
-    expect(cards.expanded.has(blogPath)).to.equal(true);
     expect(cards.adding).to.deep.equal({ path: blogPath, level: 'read' });
   });
 

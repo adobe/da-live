@@ -40,7 +40,6 @@ class DaPermissions extends LitElement {
     _rules: { state: true },
     _httpStatus: { state: true },
     _sites: { state: true },
-    _expanded: { state: true },
     _query: { state: true },
     _readOnly: { state: true },
     _busy: { state: true },
@@ -59,7 +58,6 @@ class DaPermissions extends LitElement {
     this._rules = [];
     this._httpStatus = null;
     this._sites = [];
-    this._expanded = new Set();
     this._readOnly = false;
     this._busy = false;
     this._query = '';
@@ -77,7 +75,6 @@ class DaPermissions extends LitElement {
 
   willUpdate(changed) {
     if (changed.has('org') && this.org !== changed.get('org')) {
-      this._expanded = new Set();
       this._readOnly = false;
       this._busy = false;
       this._adding = null;
@@ -87,7 +84,6 @@ class DaPermissions extends LitElement {
       this._folderDialogOpen = false;
       this._load();
     } else if (changed.has('site') && this.site !== changed.get('site')) {
-      this._expanded = new Set();
       this._query = '';
       this._pendingFolder = null;
       this._folderDialogOpen = false;
@@ -125,11 +121,6 @@ class DaPermissions extends LitElement {
     return filterSlots(this._slots, this._query);
   }
 
-  get _cardsExpanded() {
-    if (!this._query.trim()) return this._expanded;
-    return new Set(this._filteredSlots.map((slot) => slot.path));
-  }
-
   get _siteNames() {
     return siteNames(this._sites, this._rules);
   }
@@ -140,13 +131,6 @@ class DaPermissions extends LitElement {
 
   _onFilterInput({ target }) {
     this._query = target.value;
-  }
-
-  _onToggle({ detail }) {
-    const next = new Set(this._expanded);
-    if (next.has(detail.path)) next.delete(detail.path);
-    else next.add(detail.path);
-    this._expanded = next;
   }
 
   _onAddOpen({ detail }) {
@@ -240,9 +224,6 @@ class DaPermissions extends LitElement {
     this._pendingFolder = detail.folder;
     this._query = '';
     const path = folderRulePath(this.site, detail.folder);
-    const next = new Set(this._expanded);
-    next.add(path);
-    this._expanded = next;
     this._adding = { path, level: 'read' };
   }
 
@@ -341,12 +322,9 @@ class DaPermissions extends LitElement {
       <da-permissions-cards
         .slots=${filtered}
         .org=${this.org}
-        .expanded=${this._cardsExpanded}
         .editable=${this._editable}
         .busy=${this._busy}
         .adding=${this._adding}
-        .filtering=${!!trimmedQuery}
-        @permissions-toggle=${(e) => this._onToggle(e)}
         @permissions-add-open=${(e) => this._onAddOpen(e)}
         @permissions-add-cancel=${() => this._onAddCancel()}
         @permissions-add=${(e) => this._onAdd(e)}

@@ -39,10 +39,6 @@
   font-weight: var(--s2-component-m-bold-font-weight);
 }
 
-.card-toggle {
-  flex-shrink: 0;
-}
-
 .card-body {
   display: flex;
   flex-direction: column;
@@ -79,7 +75,7 @@
   color: var(--s2-red-900);
 }
 
-/* Rows already cap visible members by count (6 while collapsed), so let every list grow.
+/* All members are always shown, so let every pill list grow with its content.
    Needs da-nx's --nx-pills-max-height (nx-pills otherwise clamps at two rows). */
 nx-pills {
   --nx-pills-max-height: none;
@@ -98,10 +94,6 @@ nx-pills {
 .from-label {
   color: var(--s2-gray-600);
   font-size: var(--s2-component-xs-medium-font-size, 12px);
-}
-
-.row-more {
-  white-space: nowrap;
 }
 
 .row-add {
