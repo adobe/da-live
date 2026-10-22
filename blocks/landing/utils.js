@@ -132,12 +132,33 @@ export function getSiteOptions({ recentSites, current }) {
   });
 }
 
+export async function checkSiteAccess({ value, source, signal }) {
+  signal.throwIfAborted();
+  const result = await source.list(`/${value}`, { opts: { signal } });
+  signal.throwIfAborted();
+  if (result.ok) return true;
+  const response = await source.getMetadata(`/${value}/`);
+  signal.throwIfAborted();
+  if (response.status === 403) return false;
+  if (response.status === 401) throw new Error(`Sign in to check access to ${value}.`);
+  throw new Error(`Could not verify access to ${value}. Please try again.`);
+}
+
 export function getBrowseHref({ path = '', href = window.location.href }) {
   const url = new URL(href);
   if (getHomeHref({ href })) url.searchParams.set('landing', 'home');
   else url.searchParams.delete('landing');
   url.searchParams.set('browse', '2');
   url.hash = path ? `#${path}` : '';
+  return url.href;
+}
+
+export function getCreateSiteHref({ org, href = window.location.href }) {
+  const url = new URL(getBrowseHref({ href }));
+  url.pathname = '/start';
+  url.searchParams.delete('browse');
+  url.searchParams.delete('site');
+  url.searchParams.set('org', org);
   return url.href;
 }
 

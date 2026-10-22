@@ -1,0 +1,47 @@
+:host {
+  display: contents;
+}
+
+form {
+  display: grid;
+  gap: var(--s2-spacing-200);
+}
+
+p {
+  margin: 0;
+}
+
+#site-help, .permission-error {
+  font-size: var(--s2-body-size-s);
+}
+
+#site-error {
+  color: var(--s2-red-900);
+}
+
+#site-error:empty {
+  display: none;
+}
+
+.site-creation {
+  margin-top: var(--s2-spacing-300);
+  padding-top: var(--s2-spacing-300);
+  border-top: 1px solid var(--s2-gray-200);
+}
+
+.site-creation a {
+  color: var(--s2-blue-900);
+}
+
+.permission-error {
+  margin-top: var(--s2-spacing-200);
+}
+
+.permission-retry {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

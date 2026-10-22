@@ -37,8 +37,35 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
 ## Scope
 
 - The workspace dropdown is mounted in the existing navigation slot and lists
-  browser-local recent sites, the site in the hash, and a Browse sites action.
-  It is removed when the landing page disconnects and retains the topbar size.
+  browser-local recent sites and the site in the hash under **Your Sites**.
+  A divider separates the **Add site** action, replacing the old Browse sites
+  detour. Add site lazily opens the shared dialog, also available from the
+  no-site state. Anyone can enter an existing AEM/Helix preview or live URL.
+  It reuses Browse's URL parser and eight-site browser-local list, checks source
+  read access and the organization's paginated site listing, then remembers the
+  site and opens its landing page. Adding a site does not create content, grant
+  permission or synchronize an account-level site list. Cancelled checks cannot
+  add a site later. Invalid URLs, denied access and failed saves remain in the
+  dialog with an explicit error.
+  Known sites are checked for access. Confirmed denials are removed from the
+  picker; failed checks keep an explicit retry rather than pretending the user
+  has no access. Previously denied sites stay hidden until access is confirmed.
+  This checks known sites, not a new global site-discovery service.
+  In a selected organization, verified admins also see **Create new site** in
+  the same dialog. This opens the existing `/start` template setup with the org
+  prefilled, without auto-submitting. The dialog and LP-origin setup require an
+  explicit write grant on the organization's CONFIG response (`x-da-actions`).
+  The backend treats CONFIG writes separately from content writes
+  ([authorization contract](https://github.com/adobe/da-admin/blob/main/src/utils/auth.js)).
+  Content-write permissions, synthetic API fallbacks and IMS membership do not
+  establish administration. Missing or failed permission checks cannot expose
+  creation. Setup rechecks the org grant before writing; the backend remains
+  responsible for authorization. Without a selected org, Add existing remains
+  available but no admin org is guessed. Successful setup preserves the LP
+  branch/theme flags and returns to that site's landing page. Successfully
+  opened sites are remembered in the same browser-local list, including a
+  return from setup. Ordinary `/start` visits retain their existing flow.
+  The picker is removed when the landing page disconnects and retains the topbar size.
   The shared picker's field variant provides the full clickable pill, 32px
   height, fixed 14px topbar text and right-aligned chevron. Its border and
   background are on the actual trigger, not the noninteractive host.
@@ -187,6 +214,13 @@ can change that shared site. Use a separate content site for write testing.
 
 Sign in with access to the selected site. Check the greeting, site switching,
 file navigation, Favorites, card/list switching, Show all files and prompt handoff.
+Open Add site from the picker and the no-site state. Check a valid existing URL,
+an invalid URL, a denied site, an unavailable check and cancelling an in-flight
+request. Confirm the added site appears in the current browser's picker and
+reopens in LP without changing preview flags. Compare a normal user with an org
+admin: only an explicit org CONFIG write grant exposes creation. Check missing
+permission headers and failed checks without hiding Add existing. Do not submit
+creation against shared demo content when checking the setup entry.
 Switch S/M in the profile popover without losing the typed prompt or active
 filter. Check dark mode, narrow layouts, keyboard focus and a site without chat.
 The unparameterized Browse and Canvas routes should retain their existing UI.

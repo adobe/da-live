@@ -99,6 +99,15 @@ with fictional requester names. These are still labelled sample tasks.
   to the tab, empty state, accessibility labels and storage error. Keep existing
   browser-local entries, filtering and star icons unchanged. This does not
   change the site picker, add a site dialog or introduce creation permissions.
+- [x] **Add site on `lp`, with role-specific options.** Follow
+  [Markus's add-existing versus create-new distinction](https://cq-dev.slack.com/archives/C0BAAAFRX5L/p1792605223479409?thread_ts=1792423413.463079&cid=C0BAAAFRX5L).
+  Replace the old Browse sites detour with Add site in the picker. Everyone can
+  add an existing site after access and existence checks. Only users with an
+  explicit org CONFIG write grant see the existing creation setup, and LP-origin
+  setup rechecks that grant. Reuse shared dialog/form styles and Browse's URL
+  parser and recent-site storage. Check known-site visibility, distinguish access
+  failures from denials and preserve Show All Files. The list remains browser-local;
+  complete discovery and account synchronization are not implemented by this batch.
 - [ ] **Define and implement Recent.** Agree whether this means personal recent
   activity or recently modified content. If personal, persist actual open events
   with timestamps under the signed-in account. Support nested content, dedupe

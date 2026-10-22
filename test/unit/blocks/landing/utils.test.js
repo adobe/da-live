@@ -5,12 +5,65 @@ import { getHomeHref } from '../../../../scripts/utils.js';
 import { getBrowseItemHref } from '../../../../blocks/browse/v2/shared/navigation.js';
 import {
   getSiteOptions, getBrowseHref, getFileHref, loadFiles, getLandingIconHref, formatModified,
-  fetchFileModifier, loadMyOpenComments, isCommentAuthor,
+  fetchFileModifier, loadMyOpenComments, isCommentAuthor, checkSiteAccess, getCreateSiteHref,
 } from '../../../../blocks/landing/utils.js';
 
 const HREF = 'https://lp--da-live--adobe.aem.live/?landing=true&nx=devlive&quick-edit=devlive&theme=light#/org/site';
 
 describe('landing page data and navigation', () => {
+  it('allows accessible empty sites without requiring content-write permission', async () => {
+    const source = { list: sinon.stub().resolves({ ok: true, items: [], permissions: ['read'] }) };
+    const { signal } = new AbortController();
+    expect(await checkSiteAccess({ value: 'org/site', source, signal })).to.equal(true);
+    expect(source.list.calledOnceWithExactly('/org/site', { opts: { signal } })).to.equal(true);
+  });
+
+  it('distinguishes confirmed access denial from expired sign-in and unavailable access checks', async () => {
+    const source = {
+      list: sinon.stub().resolves({ ok: false }),
+      getMetadata: sinon.stub(),
+    };
+    const { signal } = new AbortController();
+    source.getMetadata.onCall(0).resolves(new Response(null, { status: 403 }));
+    source.getMetadata.onCall(1).resolves(new Response(null, { status: 401 }));
+    source.getMetadata.onCall(2).resolves(new Response(null, { status: 503 }));
+    expect(await checkSiteAccess({ value: 'org/site', source, signal })).to.equal(false);
+    for (const message of ['Sign in', 'Could not verify']) {
+      try {
+        await checkSiteAccess({ value: 'org/site', source, signal });
+        expect.fail('Expected a failed access check');
+      } catch (error) {
+        expect(error.message).to.include(message);
+      }
+    }
+  });
+
+  it('does not start an access check after its workspace request was aborted', async () => {
+    const request = new AbortController();
+    request.abort();
+    const source = { list: sinon.spy() };
+    try {
+      await checkSiteAccess({ value: 'org/site', source, signal: request.signal });
+      expect.fail('Expected cancellation');
+    } catch (error) {
+      expect(error.name).to.equal('AbortError');
+    }
+    expect(source.list.called).to.equal(false);
+  });
+
+  it('opens existing site setup with LP flags and without an auto-submit site parameter', () => {
+    const url = new URL(getCreateSiteHref({ org: 'org', href: `${HREF.replace('#', '&site=stale#')}` }));
+    expect(url.pathname).to.equal('/start');
+    expect(url.hash).to.equal('');
+    expect(url.searchParams.get('org')).to.equal('org');
+    expect(url.searchParams.has('site')).to.equal(false);
+    expect(url.searchParams.has('browse')).to.equal(false);
+    expect(url.searchParams.get('landing')).to.equal('home');
+    expect(url.searchParams.get('nx')).to.equal('devlive');
+    expect(url.searchParams.get('quick-edit')).to.equal('devlive');
+    expect(url.searchParams.get('theme')).to.equal('light');
+  });
+
   it('reads the real modifier from source metadata instead of inventing a user', async () => {
     const getMetadata = sinon.stub().resolves(new Response(null, { headers: { 'x-last-modified-by': 'alex@example.test' } }));
     expect(await fetchFileModifier({ path: '/org/site/index.html', source: { getMetadata } }))

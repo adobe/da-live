@@ -7,7 +7,7 @@ import loadLanding, { DaLanding } from '../../../../blocks/landing/landing.js';
 import { getNx, getNx2Api } from '../../../../scripts/utils.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
-const { source } = await getNx2Api();
+const { source, config } = await getNx2Api();
 
 const ITEMS = [
   { name: 'Welcome', path: '/org/site/index.html', ext: 'html', lastModified: 1792152000000 },
@@ -25,6 +25,7 @@ describe('landing page', () => {
   let el;
   let nav;
   let loadSite;
+  let checkSites;
 
   beforeEach(async () => {
     localStorage.removeItem('da-favorites');
@@ -34,6 +35,7 @@ describe('landing page', () => {
     hashChange._set({ org: 'org', site: 'site', fullpath: '/org/site' });
     sinon.stub(DaLanding.prototype, 'loadProfile').resolves();
     loadSite = sinon.stub(DaLanding.prototype, 'loadSite').resolves();
+    checkSites = sinon.stub(DaLanding.prototype, 'checkSites').resolves();
     nav = document.createElement('nx-nav');
     document.body.append(nav);
     el = document.createElement('da-landing');
@@ -74,7 +76,9 @@ describe('landing page', () => {
     expect(nav.querySelector('[slot="search"]')).to.equal(el._sitePicker);
     expect(el._sitePicker.variant).to.equal('field');
     expect(el._sitePicker.size).to.equal('m');
-    expect(el._sitePicker.items.at(-1).label).to.equal('Browse sites...');
+    expect(el._sitePicker.items[0]).to.deep.equal({ section: 'Your Sites' });
+    expect(el._sitePicker.items.at(-2)).to.deep.equal({ divider: true });
+    expect(el._sitePicker.items.at(-1).label).to.equal('Add site...');
     expect(nav.querySelector('[slot="brand"], [slot="actions"]')).to.equal(null);
     hashChange._set({ org: 'org', site: 'other', fullpath: '/org/other' });
     await el.updateComplete;
@@ -86,6 +90,97 @@ describe('landing page', () => {
     await el.updateComplete;
     expect(nav.querySelectorAll('nx-picker')).to.have.length(1);
     expect(el._sitePicker.value).to.equal('org/other');
+  });
+
+  it('opens Add site from the picker instead of navigating to the old landing page', () => {
+    const show = sinon.stub(el, 'showAddSite').resolves();
+    const { href } = window.location;
+    el._sitePicker.dispatchEvent(new CustomEvent('change', { detail: { value: 'add-site' } }));
+    expect(show.calledOnce).to.equal(true);
+    expect(window.location.href).to.equal(href);
+  });
+
+  it('lazily opens the shared Add site dialog and removes it on close or site change', async () => {
+    sinon.stub(config, 'get').resolves(new Response('{}', { headers: { 'x-da-actions': '/=read' } }));
+    await el.showAddSite();
+    await el.updateComplete;
+    const dialog = el.shadowRoot.querySelector('da-add-site');
+    expect(dialog.org).to.equal('org');
+    await dialog.updateComplete;
+    dialog.close();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('da-add-site')).to.equal(null);
+    await el.showAddSite();
+    await el.updateComplete;
+    hashChange._set({ org: 'other', site: 'site' });
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('da-add-site')).to.equal(null);
+  });
+
+  it('does not open a late-loading dialog in a different workspace', async () => {
+    const opening = el.showAddSite();
+    hashChange._set({ org: 'other', site: 'site' });
+    await opening;
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('da-add-site')).to.equal(null);
+  });
+
+  it('hides confirmed inaccessible sites but retains uncertain sites with an explicit retry', async () => {
+    checkSites.restore();
+    const list = sinon.stub(source, 'list');
+    list.withArgs('/org/site').resolves({ ok: true, items: [] });
+    list.withArgs('/org/other').resolves({ ok: false });
+    sinon.stub(source, 'getMetadata').resolves(new Response(null, { status: 403 }));
+    const sites = el._sites;
+    await el.checkSites(sites);
+    await el.updateComplete;
+    expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/site']);
+    expect(el._sitePicker.items.some(({ value }) => value === 'org/other')).to.equal(false);
+    list.resetBehavior();
+    list.rejects(new Error('Offline'));
+    await el.checkSites(sites);
+    await el.updateComplete;
+    expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/site']);
+    expect(el._siteError).to.include('Offline');
+    expect(el.shadowRoot.querySelector('[role="status"]').textContent).to.include('Try again');
+    list.resolves({ ok: true, items: [] });
+    await el.checkSites(sites);
+    expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/site', 'org/other']);
+  });
+
+  it('does not interpret a network failure as a confirmed access denial', async () => {
+    checkSites.restore();
+    sinon.stub(source, 'list').rejects(new Error('Offline'));
+    await el.checkSites(el._sites);
+    expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/site', 'org/other']);
+    expect(el._inaccessibleSites.size).to.equal(0);
+    expect(el._siteError).to.include('Offline');
+  });
+
+  it('ignores stale site-access results after cancellation', async () => {
+    checkSites.restore();
+    let finish;
+    sinon.stub(source, 'list').returns(new Promise((resolve) => { finish = resolve; }));
+    const sites = el._sites;
+    const pending = el.checkSites(sites);
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+    el._sitesRequest.abort();
+    finish({ ok: false });
+    await pending;
+    expect(el._sites).to.equal(sites);
+    expect(el._siteError).to.equal(undefined);
+  });
+
+  it('offers Add site directly when no workspace is selected', async () => {
+    const show = sinon.stub(el, 'showAddSite').resolves();
+    hashChange._set(undefined);
+    await el.updateComplete;
+    const empty = el.shadowRoot.querySelector('.empty-state');
+    expect(empty.querySelector('a')).to.equal(null);
+    const button = empty.querySelector('button');
+    expect(button.textContent).to.equal('Add site');
+    button.click();
+    expect(show.calledOnce).to.equal(true);
   });
 
   it('leaves shell-owned branding intact when disconnected and reconnected', async () => {
@@ -174,6 +269,15 @@ describe('landing page', () => {
     await new Promise((resolve) => { setTimeout(resolve, 0); });
     expect(el._comments).to.deep.equal([]);
     expect(el._commentsError).to.include('Sign in');
+  });
+
+  it('remembers a successfully opened site, including a return from site setup', async () => {
+    loadSite.restore();
+    localStorage.setItem('da-sites', JSON.stringify(['org/other']));
+    sinon.stub(source, 'list').resolves({ ok: true, items: ITEMS });
+    sinon.stub(DaLanding.prototype, 'loadImsProfile').resolves({});
+    await el.loadSite();
+    expect(JSON.parse(localStorage.getItem('da-sites'))).to.deep.equal(['org/site', 'org/other']);
   });
 
   it('explains the comment scope above the sample rows when no threads match', async () => {

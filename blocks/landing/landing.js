@@ -4,9 +4,10 @@ import { getChatPanelContent, setChatPrompt, addChatContext } from '../shared/ch
 import { getTypeLabel } from '../shared/icons.js';
 import { getFavorites, toggleFavorite } from '../browse/shared/favorites.js';
 import { getBrowseSettings, updateBrowseSettings } from '../browse/v2/shared/settings.js';
+import { setRecentSite } from '../browse/da-sites/utils.js';
 import {
   getSiteOptions, getBrowseHref, getFileHref, loadFiles, getLandingIconHref, formatModified,
-  fetchFileModifier, loadMyOpenComments,
+  fetchFileModifier, loadMyOpenComments, checkSiteAccess,
 } from './utils.js';
 import { buildDeepLinkUrl } from '../canvas/comments/helpers/deep-link.js';
 import '../browse/v2/da-card-preview/da-card-preview.js';
@@ -71,6 +72,7 @@ export class DaLanding extends LitElement {
     _comments: { state: true },
     _commentsError: { state: true },
     _commentsMessage: { state: true },
+    _addingSite: { state: true },
   };
 
   _sizing = sizing && new sizing.UISizeController(this);
@@ -107,6 +109,8 @@ export class DaLanding extends LitElement {
     this._dragging = false;
     this._unsubscribe?.();
     this._request?.abort();
+    this._sitesRequest?.abort();
+    this._addingSite = false;
     this._sitePicker?.remove();
     window.removeEventListener('storage', this._onStorage);
     document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
@@ -132,7 +136,7 @@ export class DaLanding extends LitElement {
     picker.size = 'm';
     picker.variant = 'field';
     picker.addEventListener('change', ({ detail: { value } }) => {
-      if (value === 'browse-sites') window.location.href = getBrowseHref({});
+      if (value === 'add-site') this.showAddSite();
       else window.location.hash = `#/${value}`;
     });
     this._sitePicker = picker;
@@ -148,8 +152,10 @@ export class DaLanding extends LitElement {
   syncWorkspace() {
     if (!this._sitePicker) return;
     this._sitePicker.items = [
+      { section: 'Your Sites' },
       ...(this._sites || []),
-      { value: 'browse-sites', label: 'Browse sites...', action: true },
+      { divider: true },
+      { value: 'add-site', label: 'Add site...', action: true },
     ];
     this._sitePicker.value = this._scope || '';
   }
@@ -164,6 +170,60 @@ export class DaLanding extends LitElement {
       this._sites = getSiteOptions({ recentSites: [], current: this._scope });
       this._siteError = `Could not read recent sites: ${error.message}`;
     }
+    const sites = this._sites;
+    this._sites = sites.filter(({ value }) => !this._inaccessibleSites?.has(value));
+    this.checkSites(sites);
+  }
+
+  async checkSites(sites) {
+    this._sitesRequest?.abort();
+    const request = new AbortController();
+    this._sitesRequest = request;
+    try {
+      const { source } = await getNx2Api();
+      const { signal } = request;
+      const checks = sites.map(({ value }) => checkSiteAccess({ value, source, signal }));
+      const results = await Promise.allSettled(checks);
+      if (request.signal.aborted || !this.isConnected) return;
+      const inaccessible = new Set(this._inaccessibleSites);
+      results.forEach((result, index) => {
+        if (result.status !== 'fulfilled') return;
+        if (result.value) inaccessible.delete(sites[index].value);
+        else inaccessible.add(sites[index].value);
+      });
+      this._inaccessibleSites = inaccessible;
+      this._sites = sites.filter(({ value }) => !inaccessible.has(value));
+      const errors = results.filter((result) => result.status === 'rejected')
+        .map((result) => result.reason.message);
+      if (errors.length) this._siteError = [this._siteError, ...errors].filter(Boolean).join(' ');
+    } catch (error) {
+      if (!request.signal.aborted && this.isConnected) {
+        this._siteError = `Could not check your sites: ${error.message}`;
+      }
+    }
+  }
+
+  async showAddSite() {
+    const scope = this._scope;
+    try {
+      await import('./add-site.js');
+      if (this.isConnected && this._scope === scope) this._addingSite = true;
+    } catch (error) {
+      if (this.isConnected && this._scope === scope) {
+        this._siteError = `Could not open Add site: ${error.message}`;
+      }
+    }
+  }
+
+  closeAddSite() {
+    this._addingSite = false;
+    this._sitePicker?.shadowRoot?.querySelector('button')?.focus();
+  }
+
+  siteAdded({ detail: { value } }) {
+    this.closeAddSite();
+    this.loadSites();
+    window.location.hash = `#/${value}`;
   }
 
   async loadImsProfile() {
@@ -184,6 +244,7 @@ export class DaLanding extends LitElement {
     const scope = state?.org && state?.site ? `${state.org}/${state.site}` : undefined;
     if (this._scope === scope && this._sites && !this._request?.signal.aborted) return;
     this._scope = scope;
+    this._addingSite = false;
     this._tab = 'recent';
     this._limit = PAGE_SIZE;
     this._prompt = '';
@@ -217,6 +278,12 @@ export class DaLanding extends LitElement {
       const files = await loadFiles({ path: this.path, source, signal: request.signal });
       if (!this.isConnected || request.signal.aborted) return;
       this._files = files;
+      try {
+        const [org, site] = this._scope.split('/');
+        setRecentSite({ org, site });
+      } catch (error) {
+        this._siteError = `Could not save the current site in this browser: ${error.message}`;
+      }
       this.loadComments(files, request);
     } catch (error) {
       if (!request.signal.aborted && this.isConnected) this._error = error.message;
@@ -538,7 +605,8 @@ export class DaLanding extends LitElement {
     if (!this._scope) {
       return html`<div class="empty-state">${icon('folder')}
         <h3>Choose a site to get started</h3>
-        <p>Select a site in the navigation, or find one in <a href=${getBrowseHref({})}>Browse sites</a>.</p>
+        <p>Select a site in the navigation, or add an existing site.</p>
+        <button class="nx-action-btn" @click=${this.showAddSite}>Add site</button>
       </div>`;
     }
     if (this._error) {
@@ -577,7 +645,11 @@ export class DaLanding extends LitElement {
   render() {
     return html`
       <div class="landing">
-        ${this._siteError ? html`<p role="status">${this._siteError}</p>` : nothing}
+        ${this._siteError ? html`<p role="status">${this._siteError}
+          <button class="nx-action-btn-quiet" @click=${this.loadSites}>Try again</button></p>` : nothing}
+        ${this._addingSite ? html`
+          <da-add-site .org=${this._scope?.split('/')[0]} @site-added=${this.siteAdded}
+            @close=${this.closeAddSite}></da-add-site>` : nothing}
         <section class="welcome" aria-labelledby="welcome-heading">
           <h1 id="welcome-heading">Hi${this._name ? html` ${this._name}` : nothing}, how can I help?</h1>
           <form class="composer ${this._dragging && this._chatEnabled && !this._handingOff ? 'is-dropzone' : ''}"
