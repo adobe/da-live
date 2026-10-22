@@ -22,20 +22,35 @@ const NO_SHEET_BODY = {
   data: { total: 0, limit: 0, data: [] },
 };
 
-function mockFetch({ configFor, sitesFor = () => [] }) {
+function mockFetch({ configFor, sitesFor = () => [], foldersFor = () => [] }) {
   const putCalls = [];
   const pending = [];
   window.fetch = async (url, opts = {}) => {
     const href = String(url);
+    // isHlx6's upgrade-status probe — answer plain (no upgrade header) so
+    // `source.list` falls through to the legacy list endpoint below.
+    if (href.includes('/ping/')) return new Response('', { status: 200 });
     if (opts.method === 'PUT') {
       putCalls.push({ url: href, opts });
       return new Promise((resolve) => { pending.push(resolve); });
     }
-    const match = href.match(/\/(?:config|list)\/([^/]+)/);
-    const org = match ? match[1] : null;
     if (href.includes('/list/')) {
-      return new Response(JSON.stringify(sitesFor(org)), { status: 200 });
+      const afterList = href.split('/list/')[1];
+      const orgEnd = afterList.indexOf('/');
+      if (orgEnd === -1) {
+        // `/list/{org}` — site list.
+        return new Response(JSON.stringify(sitesFor(afterList)), { status: 200 });
+      }
+      // `/list/{org}/{site}{path}` — folder list.
+      const org = afterList.slice(0, orgEnd);
+      const rest = afterList.slice(orgEnd + 1);
+      const siteEnd = rest.indexOf('/');
+      const site = siteEnd === -1 ? rest : rest.slice(0, siteEnd);
+      const path = siteEnd === -1 ? '/' : rest.slice(siteEnd);
+      return new Response(JSON.stringify(foldersFor(org, site, path)), { status: 200 });
     }
+    const match = href.match(/\/config\/([^/]+)/);
+    const org = match ? match[1] : null;
     return new Response(JSON.stringify(configFor(org)), { status: 200 });
   };
   return {
@@ -52,6 +67,19 @@ async function waitUntil(predicate, { tries = 50, intervalMs = 10 } = {}) {
     // eslint-disable-next-line no-await-in-loop
     await new Promise((resolve) => { setTimeout(resolve, intervalMs); });
   }
+}
+
+// Like `waitUntil`, but always flushes one more `updateComplete` after the
+// predicate is met — a reactive property can satisfy the predicate before
+// its corresponding render has actually committed to the DOM.
+async function settle(el, predicate, { tries = 50, intervalMs = 10 } = {}) {
+  for (let i = 0; i < tries && !predicate(); i += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((resolve) => { setTimeout(resolve, intervalMs); });
+    // eslint-disable-next-line no-await-in-loop
+    await el.updateComplete;
+  }
+  await el.updateComplete;
 }
 
 async function mount(org, site = null) {
@@ -456,5 +484,168 @@ describe('da-permissions', () => {
 
     expect(el._rules).to.deep.equal(OTHER_CONFIG_BODY.permissions.data);
     expect(window.daTestToasts.length).to.equal(toastCountBefore);
+  });
+});
+
+describe('da-permissions folder permission', () => {
+  let savedFetch;
+
+  beforeEach(() => {
+    savedFetch = window.fetch;
+    localStorage.removeItem(INFO_KEY);
+  });
+
+  afterEach(() => {
+    window.fetch = savedFetch;
+    document.querySelectorAll('da-permissions').forEach((el) => el.remove());
+    localStorage.removeItem(INFO_KEY);
+  });
+
+  const SITE_CONFIG_BODY = {
+    ':names': ['permissions'],
+    ':version': 3,
+    permissions: {
+      total: 1,
+      limit: 1,
+      data: [{ path: '/mysite/ + **', groups: 'a@x.com', actions: 'write' }],
+    },
+  };
+
+  async function openFolderDialog(el) {
+    const openBtn = [...el.shadowRoot.querySelectorAll('button')]
+      .find((btn) => btn.textContent.includes('Add folder permission'));
+    openBtn.click();
+    await el.updateComplete;
+    const picker = el.shadowRoot.querySelector('da-folder-picker');
+    await settle(picker, () => picker._columns.length > 0);
+    return picker;
+  }
+
+  function pickFolder(picker, name) {
+    const btn = [...picker.shadowRoot.querySelectorAll('.folder-item')]
+      .find((b) => b.textContent.trim() === name);
+    btn.click();
+  }
+
+  it('folder-select: dialog closes, the row is pending + expanded, and the Read add input is open', async () => {
+    mockFetch({
+      configFor: () => SITE_CONFIG_BODY,
+      foldersFor: () => [{ name: 'blog', path: '/myorg/mysite/blog' }],
+    });
+    const el = await mount('myorg', 'mysite');
+
+    const picker = await openFolderDialog(el);
+    pickFolder(picker, 'blog');
+    await settle(picker, () => picker._selected === 'blog' && !picker._loading);
+
+    const addBtn = picker.shadowRoot.querySelector('.nx-btn-accent');
+    addBtn.click();
+    await el.updateComplete;
+
+    expect(el.shadowRoot.querySelector('nx-dialog')).to.equal(null);
+    expect(el._pendingFolder).to.equal('blog');
+
+    const table = el.shadowRoot.querySelector('da-permissions-table');
+    const blogPath = '/mysite/blog/ + **';
+    expect(table.slots.some((s) => s.path === blogPath && s.pending)).to.equal(true);
+    expect(table.expanded.has(blogPath)).to.equal(true);
+    expect(table.adding).to.deep.equal({ path: blogPath, level: 'read' });
+  });
+
+  it('cancelling the add leaves the pending row without saving', async () => {
+    const { putCalls } = mockFetch({
+      configFor: () => SITE_CONFIG_BODY,
+      foldersFor: () => [{ name: 'blog', path: '/myorg/mysite/blog' }],
+    });
+    const el = await mount('myorg', 'mysite');
+
+    const picker = await openFolderDialog(el);
+    pickFolder(picker, 'blog');
+    await settle(picker, () => picker._selected === 'blog' && !picker._loading);
+    picker.shadowRoot.querySelector('.nx-btn-accent').click();
+    await el.updateComplete;
+
+    const table = el.shadowRoot.querySelector('da-permissions-table');
+    await table.updateComplete;
+    const blogPath = '/mysite/blog/ + **';
+    const input = table.shadowRoot.querySelector('.cell-add-input');
+    expect(input).to.not.equal(null);
+    input.dispatchEvent(new FocusEvent('blur'));
+    await el.updateComplete;
+    await table.updateComplete;
+
+    expect(putCalls.length).to.equal(0);
+    expect(el._pendingFolder).to.equal('blog');
+    expect(table.slots.some((s) => s.path === blogPath && s.pending)).to.equal(true);
+    expect(table.shadowRoot.querySelector('.cell-add-input')).to.equal(null);
+  });
+
+  it('adding a member saves a rule with path "/s/blog/ + **", and the row is no longer pending', async () => {
+    const SITE_S_CONFIG_BODY = {
+      ':names': ['permissions'],
+      ':version': 3,
+      permissions: {
+        total: 1,
+        limit: 1,
+        data: [{ path: '/s/ + **', groups: 'a@x.com', actions: 'write' }],
+      },
+    };
+    const { putCalls, resolvePut } = mockFetch({
+      configFor: () => SITE_S_CONFIG_BODY,
+      foldersFor: () => [{ name: 'blog', path: '/myorg/s/blog' }],
+    });
+    const el = await mount('myorg', 's');
+
+    const picker = await openFolderDialog(el);
+    pickFolder(picker, 'blog');
+    await settle(picker, () => picker._selected === 'blog' && !picker._loading);
+    picker.shadowRoot.querySelector('.nx-btn-accent').click();
+    await el.updateComplete;
+
+    const blogPath = '/s/blog/ + **';
+    expect(el._pendingFolder).to.equal('blog');
+
+    const table = el.shadowRoot.querySelector('da-permissions-table');
+    await table.updateComplete;
+    const input = table.shadowRoot.querySelector('.cell-add-input');
+    input.value = 'reader@x.com';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await waitUntil(() => putCalls.length === 1);
+    await el.updateComplete;
+
+    expect(putCalls.length).to.equal(1);
+    const saved = JSON.parse(putCalls[0].opts.body.get('config'));
+    const rule = saved.permissions.data.find((r) => r.path === blogPath && r.actions === 'read');
+    expect(rule).to.not.equal(undefined);
+    expect(rule.groups).to.equal('reader@x.com');
+
+    resolvePut(200);
+    await settle(el, () => el._pendingFolder === null);
+
+    expect(el._pendingFolder).to.equal(null);
+    const updatedTable = el.shadowRoot.querySelector('da-permissions-table');
+    expect(updatedTable.slots.some((s) => s.path === blogPath && s.pending)).to.equal(false);
+  });
+
+  it('navigating to another site clears the pending folder', async () => {
+    mockFetch({
+      configFor: () => SITE_CONFIG_BODY,
+      sitesFor: () => [{ name: 'mysite' }, { name: 'othersite' }],
+      foldersFor: () => [{ name: 'blog', path: '/myorg/mysite/blog' }],
+    });
+    const el = await mount('myorg', 'mysite');
+
+    const picker = await openFolderDialog(el);
+    pickFolder(picker, 'blog');
+    await settle(picker, () => picker._selected === 'blog' && !picker._loading);
+    picker.shadowRoot.querySelector('.nx-btn-accent').click();
+    await el.updateComplete;
+
+    expect(el._pendingFolder).to.equal('blog');
+
+    el.site = 'othersite';
+    await el.updateComplete;
+
+    expect(el._pendingFolder).to.equal(null);
   });
 });

@@ -48,6 +48,11 @@
   color: var(--s2-gray-700);
 }
 
+.permissions-folder-action {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .permissions-org-form {
   display: flex;
   align-items: flex-end;

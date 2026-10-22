@@ -4,6 +4,7 @@ import getSheet from '../../shared/sheet.js';
 import { loadOrgConfig, listSites, mutatePermissions } from '../api.js';
 import {
   buildSlots, siteNames, parseMembers, addMembers, removeMember, scopeLabel, filterSlots,
+  folderRulePath,
 } from '../utils.js';
 
 await import(`${getNx()}/blocks/shared/breadcrumb/breadcrumb.js`);
@@ -11,6 +12,7 @@ await import(`${getNx()}/blocks/shared/picker/picker.js`);
 await import(`${getNx()}/blocks/shared/search/search.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 await import('../da-permissions-table/da-permissions-table.js');
+await import('../folder-picker/folder-picker.js');
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -45,6 +47,8 @@ class DaPermissions extends LitElement {
     _infoDismissed: { state: true },
     _adding: { state: true },
     _confirmRemove: { state: true },
+    _pendingFolder: { state: true },
+    _folderDialogOpen: { state: true },
   };
 
   constructor() {
@@ -61,6 +65,8 @@ class DaPermissions extends LitElement {
     this._infoDismissed = localStorage.getItem(INFO_DISMISSED_KEY) === 'true';
     this._adding = null;
     this._confirmRemove = null;
+    this._pendingFolder = null;
+    this._folderDialogOpen = false;
   }
 
   connectedCallback() {
@@ -76,10 +82,14 @@ class DaPermissions extends LitElement {
       this._adding = null;
       this._confirmRemove = null;
       this._query = '';
+      this._pendingFolder = null;
+      this._folderDialogOpen = false;
       this._load();
     } else if (changed.has('site') && this.site !== changed.get('site')) {
       this._expanded = new Set();
       this._query = '';
+      this._pendingFolder = null;
+      this._folderDialogOpen = false;
     }
   }
 
@@ -104,7 +114,7 @@ class DaPermissions extends LitElement {
   }
 
   get _slots() {
-    return buildSlots(this._rules, this.site);
+    return buildSlots(this._rules, this.site, this._pendingFolder);
   }
 
   get _filteredSlots() {
@@ -148,7 +158,7 @@ class DaPermissions extends LitElement {
     this._adding = null;
     const who = parseMembers(value);
     if (who.length === 0) return;
-    await this._mutate((config) => addMembers(config, path, level, who));
+    await this._mutate((config) => addMembers(config, path, level, who), path);
   }
 
   _onRemoveRequest({ detail }) {
@@ -162,14 +172,15 @@ class DaPermissions extends LitElement {
   async _confirmRemoveNow() {
     const { path, level, who } = this._confirmRemove;
     this._confirmRemove = null;
-    await this._mutate((config) => removeMember(config, path, level, who));
+    await this._mutate((config) => removeMember(config, path, level, who), path);
   }
 
   // Captures `org` before the request and drops the result if the container
   // has since routed to a different org (consistent with `_load`'s guard).
   // All rules are org-wide, so a site-only change within the same org still
-  // applies the saved result.
-  async _mutate(mutateFn) {
+  // applies the saved result. `path` is the rule path the mutation targeted,
+  // used to clear a pending folder once its first member saves successfully.
+  async _mutate(mutateFn, path = null) {
     const { org } = this;
     this._busy = true;
     const result = await mutatePermissions(org, mutateFn);
@@ -178,6 +189,9 @@ class DaPermissions extends LitElement {
 
     if (result.ok) {
       this._rules = result.rules;
+      if (this._pendingFolder && path === folderRulePath(this.site, this._pendingFolder)) {
+        this._pendingFolder = null;
+      }
       return;
     }
     if (result.status === 401 || result.status === 403) {
@@ -201,6 +215,25 @@ class DaPermissions extends LitElement {
     const value = new FormData(e.currentTarget).get('org')?.toString().trim();
     if (!value) return;
     window.location.hash = `/${value}`;
+  }
+
+  _onOpenFolderDialog() {
+    this._folderDialogOpen = true;
+  }
+
+  _onFolderSelect({ detail }) {
+    this._folderDialogOpen = false;
+    this._pendingFolder = detail.folder;
+    this._query = '';
+    const path = folderRulePath(this.site, detail.folder);
+    const next = new Set(this._expanded);
+    next.add(path);
+    this._expanded = next;
+    this._adding = { path, level: 'read' };
+  }
+
+  _onFolderCancel() {
+    this._folderDialogOpen = false;
   }
 
   _dismissInfo() {
@@ -285,7 +318,9 @@ class DaPermissions extends LitElement {
       return html`
         ${this._readOnly ? html`<p class="permissions-message">You have read-only access to this configuration.</p>` : nothing}
         <p class="permissions-message">No scopes match "${trimmedQuery}"</p>
-        ${this._renderRemoveDialog()}`;
+        ${this._renderAddFolderButton()}
+        ${this._renderRemoveDialog()}
+        ${this._renderFolderDialog()}`;
     }
     return html`
       ${this._readOnly ? html`<p class="permissions-message">You have read-only access to this configuration.</p>` : nothing}
@@ -303,7 +338,32 @@ class DaPermissions extends LitElement {
         @permissions-add=${(e) => this._onAdd(e)}
         @permissions-remove=${(e) => this._onRemoveRequest(e)}
       ></da-permissions-table>
-      ${this._renderRemoveDialog()}`;
+      ${this._renderAddFolderButton()}
+      ${this._renderRemoveDialog()}
+      ${this._renderFolderDialog()}`;
+  }
+
+  _renderAddFolderButton() {
+    if (!this.site || !this._editable) return nothing;
+    return html`
+      <div class="permissions-folder-action">
+        <button type="button" class="nx-action-btn" @click=${() => this._onOpenFolderDialog()}>
+          + Add folder permission
+        </button>
+      </div>`;
+  }
+
+  _renderFolderDialog() {
+    if (!this._folderDialogOpen) return nothing;
+    return html`
+      <nx-dialog title="Add folder permission" @close=${() => this._onFolderCancel()}>
+        <da-folder-picker
+          .org=${this.org}
+          .site=${this.site}
+          @folder-select=${(e) => this._onFolderSelect(e)}
+          @folder-cancel=${() => this._onFolderCancel()}
+        ></da-folder-picker>
+      </nx-dialog>`;
   }
 
   _renderRemoveDialog() {

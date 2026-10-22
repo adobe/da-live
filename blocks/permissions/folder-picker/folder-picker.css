@@ -1,0 +1,101 @@
+:host {
+  display: block;
+  font-family: var(--s2-font-family);
+}
+
+.folder-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2-spacing-300);
+}
+
+.folder-picker-path {
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-100);
+  font-size: var(--s2-component-s-regular-font-size, 14px);
+}
+
+.folder-path-label {
+  color: var(--s2-gray-700);
+}
+
+.folder-path-value {
+  color: var(--s2-gray-900);
+  font-weight: var(--s2-component-m-bold-font-weight);
+}
+
+.folder-path-hint {
+  color: var(--s2-gray-600);
+}
+
+.folder-columns-wrap {
+  display: flex;
+  gap: var(--s2-spacing-100);
+  overflow-x: auto;
+  border: 1px solid var(--s2-gray-200);
+  border-radius: var(--s2-corner-radius-400);
+}
+
+.folder-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 10rem;
+  max-width: 10rem;
+  border-right: 1px solid var(--s2-gray-200);
+}
+
+.folder-column:last-child {
+  border-right: none;
+}
+
+.folder-column-header {
+  padding: var(--s2-spacing-100) var(--s2-spacing-200);
+  color: var(--s2-gray-700);
+  font-size: var(--s2-component-xs-medium-font-size, 12px);
+  font-weight: var(--s2-component-s-bold-font-weight);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--s2-gray-200);
+}
+
+.folder-column-items {
+  display: flex;
+  flex-direction: column;
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+.folder-item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  padding: var(--s2-spacing-100) var(--s2-spacing-200);
+  text-align: left;
+  border-radius: 0;
+}
+
+.folder-item.folder-item-selected {
+  background: var(--s2-blue-100);
+  color: var(--s2-blue-900);
+}
+
+.folder-item-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-empty,
+.folder-loading-col {
+  padding: var(--s2-spacing-200);
+  color: var(--s2-gray-600);
+  font-size: var(--s2-component-s-regular-font-size, 14px);
+}
+
+.folder-picker-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s2-spacing-200);
+}
