@@ -279,7 +279,7 @@ describe('da-list-item render', () => {
   it('requests favorite changes without selecting the row', async () => {
     await fixture();
     const button = el.shadowRoot.querySelector('.da-item-list-item-favorite');
-    expect(button.getAttribute('aria-label')).to.equal('Add to favorites');
+    expect(button.getAttribute('aria-label')).to.equal('Mark as Favorite');
     let event;
     el.addEventListener('favoritechange', (e) => { event = e; });
     button.click();
@@ -289,7 +289,7 @@ describe('da-list-item render', () => {
     el.isFavorited = true;
     await el.updateComplete;
     expect(button.getAttribute('aria-pressed')).to.equal('true');
-    expect(button.getAttribute('aria-label')).to.equal('Remove from favorites');
+    expect(button.getAttribute('aria-label')).to.equal('Remove as Favorite');
   });
 
   it('offers favorites in the card menu and renders a remove button only for favorites', async () => {
@@ -300,6 +300,8 @@ describe('da-list-item render', () => {
     el.shadowRoot.querySelector('.card-more').click();
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('.card-details')).to.exist;
+    expect(el.shadowRoot.querySelector('.card-favorite-action').textContent.trim())
+      .to.equal('Mark as Favorite');
     let event;
     el.addEventListener('favoritechange', (e) => { event = e; });
     el.shadowRoot.querySelector('.card-favorite-action').click();
@@ -309,8 +311,12 @@ describe('da-list-item render', () => {
     el.isFavorited = true;
     await el.updateComplete;
     const button = el.shadowRoot.querySelector('.card-preview .card-favorite');
-    expect(button.getAttribute('aria-label')).to.equal('Remove from favorites');
+    expect(button.getAttribute('aria-label')).to.equal('Remove as Favorite');
     expect(button.getAttribute('aria-pressed')).to.equal('true');
+    el.shadowRoot.querySelector('.card-more').click();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.card-favorite-action').textContent.trim())
+      .to.equal('Remove as Favorite');
     event = undefined;
     button.click();
     expect(event.type).to.equal('favoritechange');

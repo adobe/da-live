@@ -257,8 +257,8 @@ export default class DaListItem extends LitElement {
   renderFavorite(className = 'da-item-list-item-favorite') {
     return html`
       <button type="button" class="${className} nx-action-btn-icon"
-        aria-label=${this.isFavorited ? 'Remove from favorites' : 'Add to favorites'}
-        title=${this.isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+        aria-label=${this.isFavorited ? 'Remove as Favorite' : 'Mark as Favorite'}
+        title=${this.isFavorited ? 'Remove as Favorite' : 'Mark as Favorite'}
         aria-pressed=${this.isFavorited ? 'true' : 'false'}
         @click=${this.requestFavorite}>
         <svg viewBox="0 0 20 20" aria-hidden="true">
@@ -356,7 +356,7 @@ export default class DaListItem extends LitElement {
           this.closeDetails();
           this.shadowRoot.querySelector('.card-more')?.focus();
         }}>
-            <span>${this.isFavorited ? 'Remove from favorites' : 'Mark as Favorite'}</span>
+            <span>${this.isFavorited ? 'Remove as Favorite' : 'Mark as Favorite'}</span>
             <svg viewBox="0 0 20 20" aria-hidden="true"><use href="${this.isFavorited ? ICONS.favorite : '/img/icons/s2-icon-star-20-n.svg'}#icon"></use></svg>
           </button>` : this.renderDetailsContent()}
       </nx-popover>` : nothing;

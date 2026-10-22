@@ -334,8 +334,8 @@
 }
 
 .card {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 80px;
   gap: var(--s2-spacing-50, 4px);
   box-sizing: border-box;
   height: var(--da-card-height, 300px);
@@ -368,7 +368,6 @@
 
 .card-preview {
   position: relative;
-  flex: 1;
   min-height: 0;
   border-radius: var(--s2-corner-radius-400, 8px);
   background: var(--s2-gray-200);
@@ -393,7 +392,6 @@
 
 .card-info {
   min-width: 0;
-  flex-shrink: 0;
   padding: var(--s2-spacing-50, 4px) var(--s2-spacing-150, 12px);
 }
 
