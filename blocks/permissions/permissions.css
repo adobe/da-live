@@ -1,0 +1,7 @@
+.permissions {
+  display: block;
+  width: 100%;
+  max-width: 83.4%;
+  margin: 0 auto;
+  padding: var(--s2-spacing-600, var(--spacing-600)) var(--s2-spacing-400, var(--spacing-400));
+}
