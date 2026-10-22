@@ -25,7 +25,9 @@
 
 .permissions-title {
   margin: 0;
-  font-size: var(--s2-heading-size-s, 1.25rem);
+  font-size: var(--s2-heading-size-m);
+  font-weight: var(--s2-heading-font-weight);
+  line-height: var(--s2-heading-line-height);
 }
 
 .permissions-info-note {
@@ -37,7 +39,8 @@
   background: var(--s2-gray-100);
   border-radius: var(--s2-corner-radius-400);
   color: var(--s2-gray-700);
-  font-size: var(--s2-component-s-regular-font-size, 14px);
+  font-size: var(--s2-component-m-regular-font-size);
+  line-height: var(--s2-component-m-regular-line-height);
 }
 
 .permissions-info-note p {

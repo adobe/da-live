@@ -133,7 +133,7 @@ class DaPermissionsCards extends LitElement {
         ${canAdd && this.editable && !isAdding ? html`
           <button
             type="button"
-            class="row-add nx-action-btn-quiet nx-btn-sm"
+            class="row-add nx-action-btn-quiet"
             aria-label="Add to ${slot.label} ${LEVEL_LABEL[level]}"
             ?disabled=${this.busy}
             @click=${() => this._openAdd(slot.path, level)}

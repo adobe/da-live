@@ -11,7 +11,8 @@
   margin: 0 0 var(--s2-spacing-200);
   color: var(--s2-gray-800);
   font-size: var(--s2-heading-size-xs);
-  font-weight: var(--s2-component-m-bold-font-weight);
+  font-weight: var(--s2-heading-font-weight);
+  line-height: var(--s2-heading-line-height);
 }
 
 .scope-card {
@@ -35,7 +36,7 @@
 .card-title {
   margin: 0;
   color: var(--s2-gray-900);
-  font-size: var(--s2-component-m-bold-font-size);
+  font-size: var(--s2-body-size-m);
   font-weight: var(--s2-component-m-bold-font-weight);
 }
 
@@ -62,8 +63,9 @@
 .level-label {
   min-width: 3.5rem;
   color: var(--s2-blue-900);
-  font-size: var(--s2-component-xs-medium-font-size, 12px);
-  font-weight: var(--s2-component-s-bold-font-weight);
+  font-size: var(--s2-component-m-bold-font-size);
+  font-weight: var(--s2-component-m-bold-font-weight);
+  line-height: var(--s2-component-m-bold-line-height);
   letter-spacing: 0.04em;
 }
 
@@ -79,6 +81,8 @@
    Needs da-nx's --nx-pills-max-height (nx-pills otherwise clamps at two rows). */
 nx-pills {
   --nx-pills-max-height: none;
+  --nx-pill-font-size: var(--s2-component-m-regular-font-size);
+  --nx-pill-line-height: var(--s2-component-m-regular-line-height);
 }
 
 .level-row[data-level='none'] nx-pills {
@@ -88,12 +92,14 @@ nx-pills {
 
 .row-empty {
   color: var(--s2-gray-600);
-  font-size: var(--s2-component-s-regular-font-size, 14px);
+  font-size: var(--s2-component-m-regular-font-size);
+  line-height: var(--s2-component-m-regular-line-height);
 }
 
 .from-label {
   color: var(--s2-gray-600);
-  font-size: var(--s2-component-xs-medium-font-size, 12px);
+  font-size: var(--s2-component-m-regular-font-size);
+  line-height: var(--s2-component-m-regular-line-height);
 }
 
 .row-add {
