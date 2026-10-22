@@ -347,7 +347,7 @@ export class DaLanding extends LitElement {
     const starred = toggleFavorite(this.path, item.path);
     this.refreshFavorites();
     this._actionError = this._favorites.has(item.path) !== starred
-      ? 'Could not save your starred files. Check that browser storage is available.' : undefined;
+      ? 'Could not save your favorites. Check that browser storage is available.' : undefined;
   }
 
   changeTab(value) {
@@ -483,7 +483,7 @@ export class DaLanding extends LitElement {
   renderStar(item) {
     const starred = this._favorites?.has(item.path);
     return html`<button class="file-star" type="button"
-      aria-label="${starred ? 'Unstar' : 'Star'} ${item.name}" aria-pressed=${starred}
+      aria-label="${starred ? 'Remove' : 'Add'} ${item.name} ${starred ? 'from' : 'to'} favorites" aria-pressed=${starred}
       @click=${() => this.starFile(item)}>${starred
         ? html`<img src=${new URL('./star-filled.svg', import.meta.url).href} width="20" height="20" alt="">`
         : icon('star')}</button>`;
@@ -550,22 +550,22 @@ export class DaLanding extends LitElement {
       ? this._files.filter((item) => this._favorites.has(item.path)) : this._files;
     if (!files.length) {
       return html`<div class="empty-state">${icon(this._tab === 'starred' ? 'star' : 'folder')}
-        <h3>${this._tab === 'starred' ? 'No starred files yet' : 'No files here yet'}</h3>
-        <p>${this._tab === 'starred' ? 'Star a file in this folder to keep it close.' : 'Open Files to add content to this site.'}</p>
+        <h3>${this._tab === 'starred' ? 'No favorites yet' : 'No files here yet'}</h3>
+        <p>${this._tab === 'starred' ? 'Add a file in this folder to favorites to keep it close.' : 'Open Files to add content to this site.'}</p>
       </div>`;
     }
     return html`
       ${this._view === 'list' ? html`
         <div class="file-table-scroll" role="region" aria-label="Files list" tabindex="0">
-          <table class="file-table" aria-label=${this._tab === 'starred' ? 'Starred files' : 'Recently modified files'}>
+          <table class="file-table" aria-label=${this._tab === 'starred' ? 'Favorite files' : 'Recently modified files'}>
             <colgroup><col><col><col><col><col></colgroup>
             <thead><tr><th scope="col">Name</th><th scope="col">Folder</th>
               <th scope="col">Modified at</th><th scope="col">Modified by</th>
-              <th scope="col"><span class="sr-only">Star</span></th></tr></thead>
+              <th scope="col"><span class="sr-only">Favorite</span></th></tr></thead>
             <tbody>${repeat(this.visibleFiles(), (item) => item.path, (item) => this.renderListFile(item))}</tbody>
           </table>
         </div>` : html`
-        <ul class="files" aria-label=${this._tab === 'starred' ? 'Starred files' : 'Recently modified files'}>
+        <ul class="files" aria-label=${this._tab === 'starred' ? 'Favorite files' : 'Recently modified files'}>
           ${repeat(this.visibleFiles(), (item) => item.path, (item) => this.renderFile(item))}
         </ul>`}
       ${files.length > this._limit ? html`
@@ -633,7 +633,7 @@ export class DaLanding extends LitElement {
                 title="Recently modified files in this site"
                 @click=${() => this.changeTab('recent')}>${icon('history')}Recent</button>
               <button class="filter" type="button" aria-pressed=${this._tab === 'starred'}
-                @click=${() => this.changeTab('starred')}>${icon('star')}Starred</button>
+                @click=${() => this.changeTab('starred')}>${icon('star')}Favorites</button>
             </div>
             ${this._scope ? html`<a class="all-files" href=${getBrowseHref({ path: this.path })}>Show All Files</a>` : nothing}
           </div>

@@ -94,6 +94,11 @@ with fictional requester names. These are still labelled sample tasks.
 
 ## P1: product correctness after the demo
 
+- [x] **Rename Starred to Favorites on `lp`.** Apply
+  [Silvia's requested wording](https://cq-dev.slack.com/archives/C0BAAAFRX5L/p1792516357262869?thread_ts=1792423413.463079&cid=C0BAAAFRX5L)
+  to the tab, empty state, accessibility labels and storage error. Keep existing
+  browser-local entries, filtering and star icons unchanged. This does not
+  change the site picker, add a site dialog or introduce creation permissions.
 - [ ] **Define and implement Recent.** Agree whether this means personal recent
   activity or recently modified content. If personal, persist actual open events
   with timestamps under the signed-in account. Support nested content, dedupe

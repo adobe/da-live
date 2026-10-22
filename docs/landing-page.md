@@ -74,7 +74,9 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
   All root-listing pages are loaded before sorting by modification date.
 - The mock's Recent tab shows recently modified files, not personal
   recently opened history. The root scope is not added as a visible subtitle.
-- Starred uses the existing browser-local `da-favorites` entries for that root.
+- Favorites uses the existing browser-local `da-favorites` entries for that root.
+  The tab, empty state, storage error and accessible file actions use Favorites
+  wording. This is a label change only; existing saved entries remain unchanged.
   Favorites in nested folders are outside this first version.
   Its 24px translucent control uses the Figma grey filled star, placed at the
   lower-left of the card preview. The same control works in list rows.
@@ -184,7 +186,7 @@ can change that shared site. Use a separate content site for write testing.
 ## Manual checks
 
 Sign in with access to the selected site. Check the greeting, site switching,
-file navigation, Starred, card/list switching, Show all files and prompt handoff.
+file navigation, Favorites, card/list switching, Show all files and prompt handoff.
 Switch S/M in the profile popover without losing the typed prompt or active
 filter. Check dark mode, narrow layouts, keyboard focus and a site without chat.
 The unparameterized Browse and Canvas routes should retain their existing UI.
