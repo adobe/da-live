@@ -300,6 +300,36 @@ describe('da-permissions', () => {
     expect(window.daTestToasts.some((t) => t.variant === 'error')).to.equal(true);
   });
 
+  it('PUT network failure (rejected fetch) -> _busy returns to false and shows an error toast', async () => {
+    window.fetch = async (url, opts = {}) => {
+      const href = String(url);
+      if (opts.method === 'PUT') return Promise.reject(new TypeError('Failed to fetch'));
+      if (href.includes('/list/')) return new Response(JSON.stringify([]), { status: 200 });
+      return new Response(JSON.stringify(CONFIG_BODY), { status: 200 });
+    };
+    const el = await mount('myorg');
+    const table = el.shadowRoot.querySelector('da-permissions-table');
+    await table.updateComplete;
+    const addBtn = table.shadowRoot.querySelector('tr[data-path="CONFIG"] td:nth-child(2) .cell-add');
+    addBtn.click();
+    await el.updateComplete;
+    await table.updateComplete;
+    const input = table.shadowRoot.querySelector('.cell-add-input');
+    input.value = 'reader@x.com';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    await waitUntil(() => el._busy === false);
+    await waitUntil(() => window.daTestToasts.length > 0);
+    await el.updateComplete;
+    await table.updateComplete;
+
+    expect(el._busy).to.equal(false);
+    const addButtons = [...table.shadowRoot.querySelectorAll('.cell-add')];
+    expect(addButtons.length).to.be.greaterThan(0);
+    addButtons.forEach((btn) => expect(btn.disabled).to.equal(false));
+    expect(window.daTestToasts.some((t) => t.variant === 'error')).to.equal(true);
+  });
+
   it('save result ignored after org change', async () => {
     const OTHER_CONFIG_BODY = {
       ':names': ['permissions'],

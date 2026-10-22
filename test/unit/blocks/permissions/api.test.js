@@ -66,6 +66,12 @@ describe('permissions/api loadOrgConfig', () => {
     const result = await loadOrgConfig('myorg');
     expect(result.status).to.equal('error');
   });
+
+  it('network failure (rejected fetch) -> status error, no throw', async () => {
+    window.fetch = () => Promise.reject(new TypeError('Failed to fetch'));
+    const result = await loadOrgConfig('myorg');
+    expect(result).to.deep.equal({ status: 'error', config: null, rules: [] });
+  });
 });
 
 describe('permissions/api mutatePermissions', () => {
@@ -166,6 +172,31 @@ describe('permissions/api mutatePermissions', () => {
     const result = await mutatePermissions('myorg', mutate);
     expect(result).to.deep.equal({ ok: false, status: 403 });
   });
+
+  it('GET network failure (rejected fetch) -> { ok: false, status: 0, error: <message> }, no throw', async () => {
+    window.fetch = () => Promise.reject(new TypeError('Failed to fetch'));
+    const mutate = (config) => ({ config, changed: true });
+    const result = await mutatePermissions('myorg', mutate);
+    expect(result.ok).to.equal(false);
+    expect(result.status).to.equal(0);
+    expect(result.error).to.be.a('string');
+  });
+
+  it('PUT network failure (rejected fetch) -> { ok: false, status: 0, error: <message> }, no throw', async () => {
+    window.fetch = async (url, opts = {}) => {
+      if (opts.method === 'PUT') return Promise.reject(new TypeError('Failed to fetch'));
+      return new Response(JSON.stringify(CONFIG_BODY), { status: 200 });
+    };
+    const mutate = (config) => {
+      const next = structuredClone(config);
+      next.permissions.data.push({ path: '/ + **', groups: 'readers@example.com', actions: 'read' });
+      return { config: next, changed: true };
+    };
+    const result = await mutatePermissions('myorg', mutate);
+    expect(result.ok).to.equal(false);
+    expect(result.status).to.equal(0);
+    expect(result.error).to.be.a('string');
+  });
 });
 
 describe('permissions/api listSites', () => {
@@ -187,6 +218,12 @@ describe('permissions/api listSites', () => {
 
   it('returns [] on failure', async () => {
     window.fetch = async () => new Response('', { status: 500 });
+    const sites = await listSites('myorg');
+    expect(sites).to.deep.equal([]);
+  });
+
+  it('returns [] on network failure (rejected fetch), no throw', async () => {
+    window.fetch = () => Promise.reject(new TypeError('Failed to fetch'));
     const sites = await listSites('myorg');
     expect(sites).to.deep.equal([]);
   });
@@ -217,6 +254,16 @@ describe('permissions/api listFolders', () => {
       const href = String(url);
       if (href.includes('/ping/')) return new Response('', { status: 200 });
       return new Response('', { status: 500 });
+    };
+    const folders = await listFolders('myorg', 'mysite');
+    expect(folders).to.deep.equal([]);
+  });
+
+  it('returns [] on network failure (rejected fetch), no throw', async () => {
+    window.fetch = (url) => {
+      const href = String(url);
+      if (href.includes('/ping/')) return Promise.resolve(new Response('', { status: 200 }));
+      return Promise.reject(new TypeError('Failed to fetch'));
     };
     const folders = await listFolders('myorg', 'mysite');
     expect(folders).to.deep.equal([]);

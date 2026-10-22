@@ -14,7 +14,12 @@ import { hasPermissionsSheet } from './utils.js';
  */
 export async function loadOrgConfig(org) {
   const { config, asJson } = await getNx2Api();
-  const resp = await config.get({ org, cachebust: true });
+  let resp;
+  try {
+    resp = await config.get({ org, cachebust: true });
+  } catch {
+    return { status: 'error', config: null, rules: [] };
+  }
 
   if (resp.status === 401 || resp.status === 403 || resp.status === 404) {
     return { status: 'no-access', config: null, rules: [] };
@@ -49,7 +54,12 @@ export async function loadOrgConfig(org) {
  */
 export async function mutatePermissions(org, mutate) {
   const { config, asJson } = await getNx2Api();
-  const resp = await config.get({ org, cachebust: true });
+  let resp;
+  try {
+    resp = await config.get({ org, cachebust: true });
+  } catch (e) {
+    return { ok: false, status: 0, error: e.message };
+  }
   if (!resp.ok) {
     return { ok: false, status: resp.status };
   }
@@ -68,7 +78,12 @@ export async function mutatePermissions(org, mutate) {
     return { ok: true, status: 200, rules: next.permissions.data };
   }
 
-  const saveResp = await config.save({ org, body: JSON.stringify(next) });
+  let saveResp;
+  try {
+    saveResp = await config.save({ org, body: JSON.stringify(next) });
+  } catch (e) {
+    return { ok: false, status: 0, error: e.message };
+  }
   if (!saveResp.ok) {
     return { ok: false, status: saveResp.status };
   }
@@ -82,7 +97,13 @@ export async function mutatePermissions(org, mutate) {
  */
 export async function listSites(org) {
   const { source } = await getNx2Api();
-  const { ok, items } = await source.list({ org });
+  let ok;
+  let items;
+  try {
+    ({ ok, items } = await source.list({ org }));
+  } catch {
+    return [];
+  }
   if (!ok) return [];
   return items.filter((item) => !item.ext).map((item) => item.name);
 }
@@ -96,7 +117,13 @@ export async function listSites(org) {
  */
 export async function listFolders(org, site, path = '/') {
   const { source } = await getNx2Api();
-  const { ok, items } = await source.list({ org, site, path });
+  let ok;
+  let items;
+  try {
+    ({ ok, items } = await source.list({ org, site, path }));
+  } catch {
+    return [];
+  }
   if (!ok) return [];
   return items
     .filter((item) => !item.ext)
