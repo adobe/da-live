@@ -1,0 +1,59 @@
+:host {
+  display: block;
+  font-family: var(--s2-font-family);
+}
+
+.permissions-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2-spacing-300);
+}
+
+.permissions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2-spacing-200);
+  flex-wrap: wrap;
+}
+
+.permissions-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-200);
+}
+
+.permissions-title {
+  margin: 0;
+  font-size: var(--s2-heading-size-s, 1.25rem);
+}
+
+.permissions-info-note {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s2-spacing-200);
+  padding: var(--s2-spacing-200) var(--s2-spacing-300);
+  background: var(--s2-gray-100);
+  border-radius: var(--s2-corner-radius-400);
+  color: var(--s2-gray-700);
+  font-size: var(--s2-component-s-regular-font-size, 14px);
+}
+
+.permissions-info-note p {
+  margin: 0;
+}
+
+.permissions-message {
+  color: var(--s2-gray-700);
+}
+
+.permissions-org-form {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s2-spacing-200);
+}
+
+.nx-loading-spinner {
+  margin: var(--s2-spacing-600) auto;
+}
