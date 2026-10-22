@@ -1,12 +1,15 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
-import { loadOrgConfig, listSites } from '../api.js';
-import { buildSlots, siteNames } from '../utils.js';
+import { loadOrgConfig, listSites, mutatePermissions } from '../api.js';
+import {
+  buildSlots, siteNames, parseMembers, addMembers, removeMember, scopeLabel,
+} from '../utils.js';
 
 await import(`${getNx()}/blocks/shared/breadcrumb/breadcrumb.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
 await import(`${getNx()}/blocks/shared/search/search.js`);
+await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 await import('../da-permissions-table/da-permissions-table.js');
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -20,6 +23,7 @@ const [form, buttons, style] = await Promise.all([
 const INFO_DISMISSED_KEY = 'da-permissions-info-dismissed';
 const DOCS_URL = 'https://docs.da.live/administrators/guides/permissions';
 const CLOSE_ICON_SRC = '/img/icons/s2-icon-close-20-n.svg';
+const LEVEL_LABEL = { read: 'Read', write: 'Write', none: 'None' };
 
 /**
  * Container component for the permissions block. Routes on `org`/`site`
@@ -38,6 +42,8 @@ class DaPermissions extends LitElement {
     _readOnly: { state: true },
     _busy: { state: true },
     _infoDismissed: { state: true },
+    _adding: { state: true },
+    _confirmRemove: { state: true },
   };
 
   constructor() {
@@ -51,6 +57,8 @@ class DaPermissions extends LitElement {
     this._readOnly = false;
     this._busy = false;
     this._infoDismissed = localStorage.getItem(INFO_DISMISSED_KEY) === 'true';
+    this._adding = null;
+    this._confirmRemove = null;
   }
 
   connectedCallback() {
@@ -62,6 +70,9 @@ class DaPermissions extends LitElement {
     if (changed.has('org') && this.org !== changed.get('org')) {
       this._expanded = new Set();
       this._readOnly = false;
+      this._busy = false;
+      this._adding = null;
+      this._confirmRemove = null;
       this._load();
     } else if (changed.has('site') && this.site !== changed.get('site')) {
       this._expanded = new Set();
@@ -105,6 +116,63 @@ class DaPermissions extends LitElement {
     if (next.has(detail.path)) next.delete(detail.path);
     else next.add(detail.path);
     this._expanded = next;
+  }
+
+  _onAddOpen({ detail }) {
+    this._adding = { path: detail.path, level: detail.level };
+  }
+
+  _onAddCancel() {
+    this._adding = null;
+  }
+
+  async _onAdd({ detail }) {
+    const { path, level, value } = detail;
+    this._adding = null;
+    const who = parseMembers(value);
+    if (who.length === 0) return;
+    await this._mutate((config) => addMembers(config, path, level, who));
+  }
+
+  _onRemoveRequest({ detail }) {
+    this._confirmRemove = { path: detail.path, level: detail.level, who: detail.who };
+  }
+
+  _cancelRemove() {
+    this._confirmRemove = null;
+  }
+
+  async _confirmRemoveNow() {
+    const { path, level, who } = this._confirmRemove;
+    this._confirmRemove = null;
+    await this._mutate((config) => removeMember(config, path, level, who));
+  }
+
+  // Captures `org` before the request and drops the result if the container
+  // has since routed to a different org (consistent with `_load`'s guard).
+  // All rules are org-wide, so a site-only change within the same org still
+  // applies the saved result.
+  async _mutate(mutateFn) {
+    const { org } = this;
+    this._busy = true;
+    const result = await mutatePermissions(org, mutateFn);
+    if (this.org !== org) return;
+    this._busy = false;
+
+    if (result.ok) {
+      this._rules = result.rules;
+      return;
+    }
+    if (result.status === 401 || result.status === 403) {
+      this._readOnly = true;
+      return;
+    }
+    if (result.status === 409 && result.error === 'no-sheet') {
+      this._status = 'no-sheet';
+      return;
+    }
+    const { showToast, VARIANT_ERROR } = await import(`${getNx2()}/blocks/shared/toast/toast.js`);
+    showToast({ text: 'Could not save changes.', variant: VARIANT_ERROR });
   }
 
   _onPickerChange({ detail }) {
@@ -190,6 +258,7 @@ class DaPermissions extends LitElement {
         </p>`;
     }
     return html`
+      ${this._readOnly ? html`<p class="permissions-message">You have read-only access to this configuration.</p>` : nothing}
       <da-permissions-table
         .slots=${this._slots}
         .org=${this.org}
@@ -197,9 +266,25 @@ class DaPermissions extends LitElement {
         .expanded=${this._expanded}
         .editable=${this._editable}
         .busy=${this._busy}
-        .adding=${null}
+        .adding=${this._adding}
         @permissions-toggle=${(e) => this._onToggle(e)}
-      ></da-permissions-table>`;
+        @permissions-add-open=${(e) => this._onAddOpen(e)}
+        @permissions-add-cancel=${() => this._onAddCancel()}
+        @permissions-add=${(e) => this._onAdd(e)}
+        @permissions-remove=${(e) => this._onRemoveRequest(e)}
+      ></da-permissions-table>
+      ${this._renderRemoveDialog()}`;
+  }
+
+  _renderRemoveDialog() {
+    if (!this._confirmRemove) return nothing;
+    const { path, level, who } = this._confirmRemove;
+    return html`
+      <nx-dialog title="Remove member" @close=${() => this._cancelRemove()}>
+        <p>Remove ${who} from ${scopeLabel(path, this.site)} · ${LEVEL_LABEL[level]}?</p>
+        <button type="button" slot="actions" class="nx-action-btn" @click=${() => this._cancelRemove()}>Cancel</button>
+        <button type="button" slot="actions" class="nx-btn-primary" @click=${() => this._confirmRemoveNow()}>Remove</button>
+      </nx-dialog>`;
   }
 
   render() {

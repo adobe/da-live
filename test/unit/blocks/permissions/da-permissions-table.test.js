@@ -104,6 +104,47 @@ describe('da-permissions-table', () => {
     expect(el.shadowRoot.querySelector('.scope-none')).to.equal(null);
   });
 
+  it('renders a focused input for a matching `adding` cell; Enter with a value emits permissions-add, Enter on empty emits nothing, Escape and blur emit permissions-add-cancel', async () => {
+    const slot = baseSlot({ path: '/ + **', kind: 'content', label: 'All sites', write: ['a@x.com'] });
+    const el = await mount({ slots: [slot], adding: { path: slot.path, level: 'write' } });
+
+    const input = el.shadowRoot.querySelector('.cell-add-input.nx-input');
+    expect(input).to.not.equal(null);
+    expect(el.shadowRoot.activeElement).to.equal(input);
+
+    let addEvent = null;
+    el.addEventListener('permissions-add', (e) => { addEvent = e; });
+    input.value = '  ';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(addEvent).to.equal(null);
+
+    input.value = 'a@x.com';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(addEvent).to.not.equal(null);
+    expect(addEvent.detail.value).to.equal('a@x.com');
+
+    let cancelCount = 0;
+    el.addEventListener('permissions-add-cancel', () => { cancelCount += 1; });
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(cancelCount).to.equal(1);
+
+    input.dispatchEvent(new Event('blur', { bubbles: true }));
+    expect(cancelCount).to.equal(2);
+  });
+
+  it('nx-pill-remove on a direct nx-pills emits permissions-remove with { path, level, who }', async () => {
+    const slot = baseSlot({ path: '/ + **', kind: 'content', label: 'All sites', write: ['a@x.com'] });
+    const el = await mount({ slots: [slot] });
+
+    let removeEvent = null;
+    el.addEventListener('permissions-remove', (e) => { removeEvent = e; });
+    const directPills = el.shadowRoot.querySelector('nx-pills');
+    directPills.dispatchEvent(new CustomEvent('nx-pill-remove', { detail: { id: 'a@x.com' }, bubbles: true }));
+
+    expect(removeEvent).to.not.equal(null);
+    expect(removeEvent.detail).to.deep.equal({ path: '/ + **', level: 'write', who: 'a@x.com' });
+  });
+
   it('groups slots into Config and Content section rows (org view)', async () => {
     const configSlot = baseSlot({ path: 'CONFIG', kind: 'config', label: 'DA configurations' });
     const contentSlot = baseSlot({ path: '/ + **', kind: 'content', label: 'All sites' });

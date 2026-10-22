@@ -78,6 +78,12 @@ class DaPermissionsTable extends LitElement {
     }));
   }
 
+  updated(changed) {
+    if (changed.has('adding') && this.adding) {
+      this.shadowRoot.querySelector('.cell-add-input')?.focus();
+    }
+  }
+
   _onAddKeydown(e, path, level) {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -95,7 +101,6 @@ class DaPermissionsTable extends LitElement {
       <input
         type="text"
         class="cell-add-input nx-input"
-        autofocus
         @keydown=${(e) => this._onAddKeydown(e, path, level)}
         @blur=${() => this._cancelAdd()}
       >`;
