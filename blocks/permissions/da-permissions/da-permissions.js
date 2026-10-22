@@ -3,7 +3,7 @@ import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import { loadOrgConfig, listSites, mutatePermissions } from '../api.js';
 import {
-  buildSlots, siteNames, parseMembers, addMembers, removeMember, scopeLabel,
+  buildSlots, siteNames, parseMembers, addMembers, removeMember, scopeLabel, filterSlots,
 } from '../utils.js';
 
 await import(`${getNx()}/blocks/shared/breadcrumb/breadcrumb.js`);
@@ -39,6 +39,7 @@ class DaPermissions extends LitElement {
     _rules: { state: true },
     _sites: { state: true },
     _expanded: { state: true },
+    _query: { state: true },
     _readOnly: { state: true },
     _busy: { state: true },
     _infoDismissed: { state: true },
@@ -56,6 +57,7 @@ class DaPermissions extends LitElement {
     this._expanded = new Set();
     this._readOnly = false;
     this._busy = false;
+    this._query = '';
     this._infoDismissed = localStorage.getItem(INFO_DISMISSED_KEY) === 'true';
     this._adding = null;
     this._confirmRemove = null;
@@ -73,9 +75,11 @@ class DaPermissions extends LitElement {
       this._busy = false;
       this._adding = null;
       this._confirmRemove = null;
+      this._query = '';
       this._load();
     } else if (changed.has('site') && this.site !== changed.get('site')) {
       this._expanded = new Set();
+      this._query = '';
     }
   }
 
@@ -103,12 +107,25 @@ class DaPermissions extends LitElement {
     return buildSlots(this._rules, this.site);
   }
 
+  get _filteredSlots() {
+    return filterSlots(this._slots, this._query);
+  }
+
+  get _tableExpanded() {
+    if (!this._query.trim()) return this._expanded;
+    return new Set(this._filteredSlots.map((slot) => slot.path));
+  }
+
   get _siteNames() {
     return siteNames(this._sites, this._rules);
   }
 
   get _editable() {
     return this._status === 'ok' && !this._readOnly;
+  }
+
+  _onFilterInput({ target }) {
+    this._query = target.value;
   }
 
   _onToggle({ detail }) {
@@ -229,7 +246,12 @@ class DaPermissions extends LitElement {
       <div class="permissions-header">
         <nx-breadcrumb .pathSegments=${pathSegments}></nx-breadcrumb>
         <div class="permissions-header-actions">
-          <nx-search variant="field" placeholder="Filter by person or folder…"></nx-search>
+          <nx-search
+            variant="field"
+            placeholder="Filter by person or folder…"
+            .value=${this._query}
+            @input=${(e) => this._onFilterInput(e)}
+          ></nx-search>
           <nx-picker
             variant="field"
             .items=${pickerItems}
@@ -257,13 +279,21 @@ class DaPermissions extends LitElement {
           <a href="/config#/${this.org}/">Open org config</a>
         </p>`;
     }
+    const filtered = this._filteredSlots;
+    const trimmedQuery = this._query.trim();
+    if (trimmedQuery && filtered.length === 0) {
+      return html`
+        ${this._readOnly ? html`<p class="permissions-message">You have read-only access to this configuration.</p>` : nothing}
+        <p class="permissions-message">No scopes match "${trimmedQuery}"</p>
+        ${this._renderRemoveDialog()}`;
+    }
     return html`
       ${this._readOnly ? html`<p class="permissions-message">You have read-only access to this configuration.</p>` : nothing}
       <da-permissions-table
-        .slots=${this._slots}
+        .slots=${filtered}
         .org=${this.org}
         .site=${this.site}
-        .expanded=${this._expanded}
+        .expanded=${this._tableExpanded}
         .editable=${this._editable}
         .busy=${this._busy}
         .adding=${this._adding}

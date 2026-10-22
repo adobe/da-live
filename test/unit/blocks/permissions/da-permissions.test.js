@@ -330,6 +330,89 @@ describe('da-permissions', () => {
     expect(window.daTestToasts.some((t) => t.variant === 'error')).to.equal(true);
   });
 
+  it('filtering narrows rows, auto-expands matches, and clearing restores the prior expand state', async () => {
+    const SITE_CONFIG_BODY = {
+      ':names': ['permissions'],
+      ':version': 3,
+      permissions: {
+        total: 3,
+        limit: 3,
+        data: [
+          { path: '/ + **', groups: 'orgwriter@example.com', actions: 'write' },
+          { path: '/mysite/ + **', groups: 'sitewriter@example.com', actions: 'write' },
+          { path: '/mysite/blog/ + **', groups: 'blogwriter@example.com', actions: 'write' },
+        ],
+      },
+    };
+    mockFetch({ configFor: () => SITE_CONFIG_BODY });
+    const el = await mount('myorg', 'mysite');
+    const search = el.shadowRoot.querySelector('nx-search');
+
+    const configPath = '/mysite/CONFIG';
+    const contentPath = '/mysite/ + **';
+    const blogPath = '/mysite/blog/ + **';
+
+    // Expand the CONFIG row before filtering, so we can verify it's restored.
+    el._expanded = new Set([configPath]);
+    await el.updateComplete;
+
+    search.value = 'blog';
+    search.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    await el.updateComplete;
+
+    let table = el.shadowRoot.querySelector('da-permissions-table');
+    expect(table.slots.map((s) => s.path)).to.deep.equal([blogPath]);
+    expect(table.expanded.has(blogPath)).to.equal(true);
+
+    search.value = 'orgwriter@example.com';
+    search.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    await el.updateComplete;
+
+    table = el.shadowRoot.querySelector('da-permissions-table');
+    expect(table.slots.map((s) => s.path)).to.deep.equal([contentPath]);
+    expect(table.expanded.has(contentPath)).to.equal(true);
+
+    search.value = '';
+    search.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    await el.updateComplete;
+
+    table = el.shadowRoot.querySelector('da-permissions-table');
+    expect(table.slots.map((s) => s.path)).to.include.members([configPath, contentPath, blogPath]);
+    expect(table.expanded.has(configPath)).to.equal(true);
+    expect(table.expanded.has(blogPath)).to.equal(false);
+    expect(table.expanded.has(contentPath)).to.equal(false);
+  });
+
+  it('no match -> shows "No scopes match "zzz"" and no table', async () => {
+    mockFetch({ configFor: () => CONFIG_BODY });
+    const el = await mount('myorg');
+    const search = el.shadowRoot.querySelector('nx-search');
+
+    search.value = '  zzz  ';
+    search.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    await el.updateComplete;
+
+    expect(el.shadowRoot.querySelector('da-permissions-table')).to.equal(null);
+    expect(el.shadowRoot.textContent).to.contain('No scopes match "zzz"');
+  });
+
+  it('changing site resets the filter query and the nx-search value', async () => {
+    mockFetch({ configFor: () => CONFIG_BODY });
+    const el = await mount('myorg');
+    const search = el.shadowRoot.querySelector('nx-search');
+
+    search.value = 'blog';
+    search.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    await el.updateComplete;
+    expect(el._query).to.equal('blog');
+
+    el.site = 'mysite';
+    await el.updateComplete;
+
+    expect(el._query).to.equal('');
+    expect(el.shadowRoot.querySelector('nx-search').value).to.equal('');
+  });
+
   it('save result ignored after org change', async () => {
     const OTHER_CONFIG_BODY = {
       ':names': ['permissions'],
