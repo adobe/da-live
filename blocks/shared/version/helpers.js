@@ -72,6 +72,12 @@ export function formatVersions(json) {
   }, []);
 }
 
+export function entryKey(entry) {
+  if (entry.isVersion) return entry.url || entry.versionId || entry;
+  const oldest = entry.audits.at(-1);
+  return `audit-${oldest.timestamp ?? `${oldest.date}-${oldest.time}`}`;
+}
+
 export function buildDisplayItems(versions) {
   const items = [];
   let auditGroup = null;

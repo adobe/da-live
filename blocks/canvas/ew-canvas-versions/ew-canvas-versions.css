@@ -105,9 +105,6 @@ button {
     outline-offset: 2px;
   }
 
-  .da-icon-btn:hover {
-    background: var(--s2-gray-300);
-  }
 
   &:last-of-type {
     margin-bottom: var(--s2-spacing-200);
@@ -287,25 +284,15 @@ summary {
 }
 
 .is-new {
-  .da-input {
+  .nx-input {
     height: 24px;
     font-size: var(--s2-component-s-regular-font-size);
   }
 
-  .da-btn-secondary {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 24px;
-    padding: 0 var(--s2-spacing-100);
-    font-size: var(--s2-component-s-regular-font-size);
-    font-weight: normal;
-    border-radius: var(--s2-corner-radius-400);
-
-    &:has(.da-loading-spinner) {
-      background: transparent;
-    }
+  .nx-action-btn:has(.nx-loading-spinner) {
+    background: transparent;
   }
+
 }
 
 .ew-cv-new-actions {
@@ -318,5 +305,3 @@ summary {
 nx-dialog {
   --nx-dialog-padding: var(--s2-spacing-200);
 }
-
-

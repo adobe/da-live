@@ -30,7 +30,7 @@ describe('imageDrop plugin', () => {
 
   it('Exposes the supported image MIME types', () => {
     expect(SUPPORTED_IMAGE_TYPES).to.include.members([
-      'image/svg+xml', 'image/png', 'image/jpeg', 'image/gif',
+      'image/svg+xml', 'image/png', 'image/jpeg', 'image/gif', 'image/avif', 'image/webp',
     ]);
   });
 
@@ -39,6 +39,33 @@ describe('imageDrop plugin', () => {
     const before = editor.view.state.doc.content.size;
     await uploadImageFile(editor.view, file);
     expect(editor.view.state.doc.content.size).to.equal(before);
+  });
+
+  ['png', 'avif', 'webp'].forEach((ext) => {
+    it(`uploads and inserts a ${ext} image`, async () => {
+      const savedFetch = window.fetch;
+      const contentUrl = `./media_abc123.${ext}`;
+      let uploadedFile;
+      window.fetch = (url, opts) => {
+        uploadedFile = opts.body;
+        return Promise.resolve(new Response(
+          JSON.stringify({ source: { contentUrl } }),
+          { status: 200 },
+        ));
+      };
+      try {
+        const file = new File(['x'], `pic.${ext}`, { type: `image/${ext}` });
+        await uploadImageFile(editor.view, file);
+        expect(uploadedFile).to.equal(file);
+        const sources = [];
+        editor.view.state.doc.descendants((node) => {
+          if (node.type.name === 'image') sources.push(node.attrs.src);
+        });
+        expect(sources).to.deep.equal([contentUrl]);
+      } finally {
+        window.fetch = savedFetch;
+      }
+    });
   });
 
   it('uploadImageFile inserts an FPO image immediately for supported types', async () => {

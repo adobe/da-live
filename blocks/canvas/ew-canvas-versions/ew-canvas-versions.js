@@ -1,6 +1,6 @@
-import { LitElement, html, nothing } from 'da-lit';
+import { LitElement, html, nothing, repeat } from 'da-lit';
 import { DOMParser as PMDOMParser } from 'da-y-wrapper';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { initIms } from '../../shared/utils.js';
 import {
   fetchVersions,
@@ -9,11 +9,13 @@ import {
   fetchVersionHtml,
   getVersionId,
 } from '../../shared/version/version-actions.js';
-import { buildDisplayItems, formatUser } from '../../shared/version/helpers.js';
+import { buildDisplayItems, entryKey, formatUser } from '../../shared/version/helpers.js';
 import { docToHtml, domToHtml, buildCompareDom } from '../../shared/version/compare.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { trackingPluginKey } from '../editor-utils/prose-diff.js';
+import { initVersionBridge } from '../editor-utils/version-bridge.js';
+import { REFRESH_ICON_HTML, REFRESH_SPINNER_HTML } from './constants.js';
 import '../ew-comparison/ew-canvas-compare.js';
 
 const IS_MAC = typeof navigator !== 'undefined' && /Mac|iP(hone|[oa]d)/.test(navigator.platform);
@@ -28,7 +30,9 @@ const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 const style = await loadStyle(import.meta.url);
-const baseStyle = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
+const form = await loadStyle(`${getNx2()}/styles/form.css`);
+const buttons = await loadStyle(`${getNx2()}/styles/buttons.css`);
+const hints = await loadStyle(new URL('../../shared/styles/hints.css', import.meta.url).href);
 
 export function buildDocPath(state) {
   const { org, site, path } = state ?? {};
@@ -52,6 +56,8 @@ class EwCanvasVersions extends LitElement {
     _filter: { state: true },
     _imsEmail: { state: true },
     _versions: { state: true },
+    _refreshing: { state: true },
+    _loadError: { state: true },
     _newVersion: { state: true },
     _savingVersion: { state: true },
     _restoreEntry: { state: true },
@@ -62,13 +68,17 @@ class EwCanvasVersions extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [baseStyle, style];
+    this.shadowRoot.adoptedStyleSheets = [form, buttons, hints, style];
     this._filter = 'all';
     this._canWrite = getExtensionsBridge().view?.editable ?? false;
     this._unsubHtml = canvasBus.editorHtmlState.subscribe(() => {
       this._canWrite = getExtensionsBridge().view?.editable ?? false;
     });
     initIms().then((ims) => { this._imsEmail = ims?.email ?? null; });
+    initVersionBridge();
+    this._unsubVersion = canvasBus.versionCreatedState.subscribe(({ path }) => {
+      if (path === this.path) this._refreshVersions();
+    });
     this._unsubHash = hashChange?.subscribe((state) => {
       const next = buildDocPath(state);
       if (next !== this.path) {
@@ -77,7 +87,15 @@ class EwCanvasVersions extends LitElement {
         this.handleRestoreCancel();
         this.handleCancel();
         if (next) this._load();
+      } else if (next && this._versions === undefined) {
+        this._load();
       }
+    });
+    const [org, site, ...parts] = location.hash.slice(2).split('/');
+    canvasBus.comparisonRequest.emit({
+      action: 'openComparison',
+      details: { candidate: 'document', baseline: 'live' },
+      context: { org, site, path: parts.join('/') },
     });
   }
 
@@ -85,25 +103,67 @@ class EwCanvasVersions extends LitElement {
     super.disconnectedCallback();
     this._unsubHash?.();
     this._unsubHtml?.();
+    this._unsubVersion?.();
+    this._loadRequest = (this._loadRequest ?? 0) + 1;
+    this._refreshing = false;
+    this._syncHeaderRefreshButton();
   }
 
   updated(changed) {
+    this._syncHeaderRefreshButton();
     if (changed.has('_newVersion') && this._newVersion) {
-      const input = this.shadowRoot.querySelector('.da-input');
+      const input = this.shadowRoot.querySelector('.nx-input');
       input?.focus();
       input?.select();
     }
   }
 
   async _load({ showLoading = true } = {}) {
+    const { path } = this;
+    if (!path) return;
+    const request = (this._loadRequest ?? 0) + 1;
+    this._loadRequest = request;
     if (showLoading) this._versions = undefined;
-    const versions = await fetchVersions(this.path);
+    this._refreshing = true;
+    this._loadError = false;
+    const versions = await fetchVersions(path);
+    if (request !== this._loadRequest || path !== this.path || !this.isConnected) return;
+    this._refreshing = false;
     if (versions === null) {
-      showError('Could not load version history. Please try again.');
-      this._versions = [];
+      this._loadError = true;
+      await showError('Could not load version history. Please try again.');
       return;
     }
+
     this._versions = versions;
+    await this.updateComplete;
+  }
+
+  _refreshVersions() {
+    return this._load({ showLoading: false });
+  }
+
+  _syncHeaderRefreshButton() {
+    if (!this._headerRefreshBtn) return;
+    this._headerRefreshBtn.setAttribute('aria-disabled', this._refreshing || !this.path ? 'true' : 'false');
+    this._headerRefreshBtn.setAttribute('aria-label', this._refreshing ? 'Refreshing version history' : 'Refresh version history');
+    this._headerRefreshBtn.innerHTML = this._refreshing
+      ? REFRESH_SPINNER_HTML : REFRESH_ICON_HTML;
+  }
+
+  getHeaderActions() {
+    if (!this._headerRefreshBtn) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'nx-action-btn-icon nx-btn-sm';
+      btn.title = 'Refresh version history';
+      btn.addEventListener('click', () => {
+        if (!this._refreshing && this.path) this._refreshVersions();
+      });
+      this._headerRefreshBtn = btn;
+    }
+    this._syncHeaderRefreshButton();
+    return this._headerRefreshBtn;
   }
 
   _setFilter(val) {
@@ -119,15 +179,17 @@ class EwCanvasVersions extends LitElement {
     e.preventDefault();
     if (this._savingVersion) return;
     const label = e.target.elements.label?.value || '';
+    const { path } = this;
     this._savingVersion = true;
-    const ok = await createVersion(this.path, label);
+    const ok = await createVersion(path, label);
     this._savingVersion = false;
+    if (path !== this.path || !this.isConnected) return;
     if (!ok) {
       showError('Could not save version. Please try again.');
       return;
     }
     this._newVersion = null;
-    this._load({ showLoading: false });
+    this._refreshVersions();
   }
 
   handleCancel() {
@@ -268,15 +330,15 @@ class EwCanvasVersions extends LitElement {
         <span class="versionicon"></span>
         <form class="ew-cv-new-row" @submit=${this.handleNewSubmit} @keydown=${this.handleNewKeydown}>
           <input type="text" name="label" placeholder="Version name"
-            class="da-input" .value=${`Version ${this._newVersion.date}`}
+            class="nx-input" .value=${`Version ${this._newVersion.date}`}
             ?readonly=${this._savingVersion} />
           <div class="ew-cv-new-actions">
-            <button type="submit" class="ew-cv-save-btn da-btn-secondary"
+            <button type="submit" class="ew-cv-save-btn nx-action-btn nx-btn-sm"
               ?disabled=${this._savingVersion}
               aria-label=${this._savingVersion ? 'Saving' : nothing}>
-              ${this._savingVersion ? html`<span class="da-loading-spinner" aria-hidden="true"></span>` : 'Save'}
+              ${this._savingVersion ? html`<span class="nx-loading-spinner" aria-hidden="true"></span>` : 'Save'}
             </button>
-            <button type="button" class="da-icon-btn" aria-label="Cancel"
+            <button type="button" class="nx-action-btn-icon nx-btn-sm" aria-label="Cancel"
               ?disabled=${this._savingVersion}
               @click=${this.handleCancel}>
               <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
@@ -385,9 +447,9 @@ class EwCanvasVersions extends LitElement {
       <nx-dialog class="ew-cv-restore" title="Restore version"
         @close=${this.handleRestoreCancel}>
         <span>Replace the current document with the content from <strong>${label}</strong>?</span>
-        <button slot="actions" class="da-btn-secondary"
+        <button slot="actions" class="nx-form-btn-secondary"
           @click=${this.handleRestoreCancel}>Cancel</button>
-        <button slot="actions" class="da-btn-primary"
+        <button slot="actions" class="nx-form-btn-primary"
           @click=${this.handleRestoreConfirm}>Restore</button>
       </nx-dialog>
     `;
@@ -402,8 +464,12 @@ class EwCanvasVersions extends LitElement {
       `;
     }
 
+    const loading = html`<p class="loading" role=${this._loadError ? 'alert' : nothing}>
+      ${this._loadError ? 'Could not load version history. Use Refresh to try again.' : 'Loading…'}
+    </p>`;
+
     return html`
-      <div class="ew-canvas-versions">
+      <div class="ew-canvas-versions" aria-busy=${this._refreshing ? 'true' : 'false'}>
         <div class="toolbar">
           <div class="segment" role="group" aria-label="Filter versions">
             <button type="button"
@@ -416,7 +482,7 @@ class EwCanvasVersions extends LitElement {
               @click=${() => this._setFilter('me')}>Only me</button>
           </div>
           ${this._canWrite ? html`
-            <button type="button" class="da-icon-btn" aria-label="Create version"
+            <button type="button" class="nx-action-btn-icon nx-btn-sm" aria-label="Create version"
               ?disabled=${!!this._newVersion} @click=${this.handleNew}>
               <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
                 <use href="${ICON_ADD}#icon"></use>
@@ -425,11 +491,11 @@ class EwCanvasVersions extends LitElement {
         </div>
         ${this._canWrite ? html`<p class="da-hint">Press <kbd class="da-kbd">${SHORTCUT_HINT}</kbd> to add to version history while editing.</p>` : nothing}
         ${this._versions === undefined
-        ? html`<p class="loading">Loading…</p>`
+        ? loading
         : html`<ul class="versionlist">
               ${this._newVersion ? this.renderNewRow() : nothing}
               ${this.renderCurrentRow()}
-              ${buildDisplayItems(this._filteredVersions).map((entry) => (
+              ${repeat(buildDisplayItems(this._filteredVersions), entryKey, (entry) => (
           entry.isVersion ? this.renderVersion(entry) : this.renderAudits(entry)
         ))}
             </ul>`}

@@ -5,7 +5,7 @@ import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/previ
 import { getPreviewOrigin } from './editor-utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { getCanvasBranch } from '../utils/branch.js';
-import { initPreflightBridge, reportPreflightStatus } from './preflight-bridge.js';
+import { routeComparisonMessage } from '../ew-comparison/comparison.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
@@ -40,11 +40,6 @@ export function readSdkMode(item) {
 
 const OOTB_ACTIONS = [
   {
-    title: 'Preflight',
-    render: async (details) => (await import('../../edit/da-prepare/actions/preflight/preflight.js')).default(details),
-    icon: '/img/icons/s2-icon-filetext-20-n.svg#icon',
-  },
-  {
     title: 'Schedule Publish',
     render: async (details) => (await import('../../edit/da-prepare/actions/scheduler/scheduler.js')).default(details),
     icon: '/img/icons/s2-icon-clock-pending-20-n.svg#icon',
@@ -74,19 +69,22 @@ export default class PrepareMenu extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
-    initPreflightBridge();
-    this._unsubs = [
-      canvasBus.preflightRunRequest.subscribe(this.handlePreflightRun),
-      canvasBus.preflightStatusState.subscribe(this.handlePreflightStatus),
-      canvasBus.branchState.subscribe(() => { if (this.details) this.loadMenu(); }),
-    ];
+    this._unsubBranch = canvasBus.branchState.subscribe(() => {
+      if (this.details) this.loadMenu();
+    });
+    this._unsubComparison = canvasBus.comparisonState.subscribe(
+      ({ open }) => this.handleComparisonState(open),
+    );
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this.closeExtension();
-    this._unsubs?.forEach((unsub) => unsub());
-    this._unsubs = null;
+    this._unsubBranch?.();
+    this._unsubBranch = null;
+    this._unsubComparison?.();
+    this._unsubComparison = null;
+    this.closePort();
   }
 
   update(props) {
@@ -141,6 +139,7 @@ export default class PrepareMenu extends LitElement {
 
   reset() {
     this.closeExtension();
+    this.closePort();
     const dialog = this.shadowRoot.querySelector('.prepare-fullsize-dialog');
     if (dialog?.open) dialog.close();
     this._menuItems = undefined;
@@ -177,6 +176,9 @@ export default class PrepareMenu extends LitElement {
     const merged = new Map(
       configs.flatMap((items) => items.map((item) => [item.title, item])),
     );
+    // Legacy extension model added a custom preflight in the prepare menu
+    // Preflight has moved in a side panel and should not longer appear in the prepare menu
+    merged.delete('Preflight');
 
     // For config items without path or render, fallback to OOTB if available
     this._menuItems = [...merged.values()].filter((item) => {
@@ -203,8 +205,13 @@ export default class PrepareMenu extends LitElement {
 
   async handleItemClick(item) {
     if (item.disabled) return;
-    this._preflightRequestId = undefined;
     this.shadowRoot.querySelector('nx-popover').close();
+    if (this._comparison === 'open') {
+      this.closePort();
+      this._dialogItem = undefined;
+      this._fullsizeDialogItem = undefined;
+      await this.updateComplete;
+    }
     if (item.render) {
       const cmp = await item.render(this.details);
       this._dialogItem = { ...item, cmp };
@@ -226,43 +233,39 @@ export default class PrepareMenu extends LitElement {
     this._dialogItem = item;
   }
 
-  handlePreflightRun = async (detail) => {
-    const { paths, requestId } = detail || {};
-    if (!paths || paths.length !== 1 || paths[0] !== this.details?.fullpath) return;
-    this.shadowRoot.querySelector('nx-popover')?.close();
-    const render = (await import('../../edit/da-prepare/actions/preflight/preflight.js')).default;
-    const cmp = render(this.details, requestId);
-    this._preflightRequestId = requestId;
-    this._dialogItem = { title: 'Preflight', cmp };
-  };
-
-  handlePreflightStatus = (detail) => {
-    const { requestId, status } = detail || {};
-    if (!this._preflightRequestId || requestId !== this._preflightRequestId) return;
-    if (status === 'success') {
-      this._dialogItem = undefined;
-      this._preflightRequestId = undefined;
-    }
-  };
-
   handleCloseDialog() {
-    if (this._preflightRequestId) {
-      reportPreflightStatus({
-        path: this.details?.fullpath,
-        status: 'cancelled',
-        requestId: this._preflightRequestId,
-      });
-    }
+    if (this._comparison === 'open') return;
     this.closeExtension();
+    this.closePort();
     this._dialogItem = undefined;
-    this._preflightRequestId = undefined;
   }
 
   handleCloseFullsizeDialog({ target } = {}) {
+    if (this._comparison === 'open') return;
+    this.closePort();
     const dialog = target?.closest?.('.prepare-fullsize-dialog');
     if (dialog?.open) dialog.close();
     this.closeExtension();
     this._fullsizeDialogItem = undefined;
+  }
+
+  // While a comparison the plugin asked for is shown, the modal dialog steps aside with its
+  // iframe still loaded, and comes back when the comparison closes.
+  handleComparisonState(open) {
+    const dialog = this.shadowRoot.querySelector(this._fullsizeDialogItem ? '.prepare-fullsize-dialog' : 'da-dialog');
+    if (open && this._comparison === 'requested') {
+      this._comparison = 'open';
+      dialog?.close();
+    } else if (!open && this._comparison === 'open') {
+      this._comparison = undefined;
+      dialog?.showModal();
+    }
+  }
+
+  closePort() {
+    this._port?.close();
+    this._port = undefined;
+    this._comparison = undefined;
   }
 
   handleIframeLoad({ target }) {
@@ -270,6 +273,13 @@ export default class PrepareMenu extends LitElement {
     const loadedSrc = target.src;
     const targetOrigin = getPostMessageTargetOrigin(loadedSrc);
     const channel = new MessageChannel();
+    const { org, site, path } = this.details;
+    this.closePort();
+    this._port = channel.port1;
+    channel.port1.onmessage = ({ data }) => {
+      if (data?.action === 'openComparison' && !this._comparison) this._comparison = 'requested';
+      routeComparisonMessage(data || {}, { context: { org, site, path }, port: channel.port1 });
+    };
 
     setTimeout(() => {
       // Lit can reuse this iframe for an SDK2 row before the timer fires.

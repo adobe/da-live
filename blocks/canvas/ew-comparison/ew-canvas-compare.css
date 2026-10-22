@@ -61,23 +61,13 @@ nx-popover {
   align-items: center;
   gap: var(--s2-spacing-100);
 
-  .da-btn-secondary {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 24px;
-    padding: 0 var(--s2-spacing-100);
-    font-size: var(--s2-component-s-regular-font-size);
-    font-weight: normal;
-    border-radius: var(--s2-corner-radius-400);
+  .nx-action-btn.is-active {
+    background: var(--s2-gray-900);
+    color: var(--s2-gray-25);
 
-    &.is-active {
-      background: var(--s2-gray-900);
+    &:hover:not(:disabled) {
       color: var(--s2-gray-25);
-
-      &:hover {
-        background: var(--s2-gray-1000);
-      }
+      background: var(--s2-gray-1000);
     }
   }
 }
