@@ -10,12 +10,13 @@ import {
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-function makeBridgedView(json) {
+function makeBridgedView(json, sourceUrl) {
   const schema = getSchema();
   const doc = schema.nodeFromJSON(json);
   const dom = document.createElement('div');
   document.body.appendChild(dom);
-  const state = EditorState.create({ schema, doc, plugins: [createExtensionsBridgePlugin()] });
+  const plugins = [createExtensionsBridgePlugin(sourceUrl)];
+  const state = EditorState.create({ schema, doc, plugins });
   const view = new EditorView(dom, {
     state,
     dispatchTransaction(tr) { view.updateState(view.state.apply(tr)); },
@@ -26,6 +27,15 @@ function makeBridgedView(json) {
 describe('createExtensionsBridgePlugin', () => {
   afterEach(() => {
     getExtensionsBridge().view = null;
+    getExtensionsBridge().sourceUrl = null;
+  });
+
+  it('exposes the document source URL while the editor is mounted', () => {
+    const sourceUrl = 'https://admin.da.live/source/org/site/page.html';
+    const view = makeBridgedView({ type: 'doc', content: [{ type: 'paragraph' }] }, sourceUrl);
+    expect(getExtensionsBridge()).to.include({ view, sourceUrl });
+    view.destroy();
+    expect(getExtensionsBridge()).to.include({ view: null, sourceUrl: null });
   });
 
   it('emits canvasBus.editorDocState whenever a transaction changes the doc', () => {

@@ -8,6 +8,20 @@ export { SUPPORTED_IMAGE_FILES };
 
 const FPO_IMG_URL = '/blocks/edit/img/fpo.svg';
 
+/**
+ * Upload an image next to the document and return its content URL, without touching an
+ * editor. Returns null when the image is over the site's size limit (a toast explains why).
+ */
+export async function uploadImageMedia(file, details) {
+  if (await refuseOversizedImage(file.size, details.parent)) return null;
+  const { source } = await getNx2Api();
+  const resp = await source.uploadMedia(`${details.parent}/.${details.name}/${file.name}`, { body: file });
+  if (!resp.ok) throw new Error(`Image upload failed (${resp.status}).`);
+  const { source: { contentUrl } = {} } = await resp.json();
+  if (!contentUrl) throw new Error('Image upload did not return a content URL.');
+  return contentUrl;
+}
+
 export async function uploadImageFile(view, file, details) {
   if (!SUPPORTED_IMAGE_FILES.some((type) => type === file.type)) return;
   if (await refuseOversizedImage(file.size, details.parent)) return;
