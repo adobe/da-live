@@ -266,7 +266,7 @@ class DaPermissions extends LitElement {
   _renderHeader() {
     const pathSegments = this.site ? [this.org, this.site] : [this.org];
     const pickerItems = [
-      { value: '', label: 'All sites' },
+      { value: '', label: 'Org Permissions' },
       { divider: true },
       ...this._siteNames.map((name) => ({ value: name, label: name })),
     ];

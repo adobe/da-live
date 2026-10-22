@@ -152,6 +152,7 @@ describe('da-permissions', () => {
     const labels = picker.items.filter((i) => !i.divider).map((i) => i.label);
     expect(labels).to.include('site1');
     expect(labels).to.include('site2');
+    expect(picker.items[0]).to.deep.equal({ value: '', label: 'Org Permissions' });
   });
 
   it('dismissing the info note sets localStorage, and the note stays hidden on remount', async () => {
