@@ -346,8 +346,8 @@ export default class DaListItem extends LitElement {
     const card = this.view === 'card';
     return this._detailsOpen ? html`<nx-popover placement='auto' class="da-item-details" role="dialog" aria-label="Details for ${this.name}" @close=${this.closeDetails}>
         ${card ? html`
-          ${this.ext ? html`<section class="card-details" aria-label="Details Information">
-            <h3>Details Information</h3>
+          ${this.ext ? html`<section class="card-details" aria-label="Details">
+            <h3>Details</h3>
             ${this.renderDetailsContent()}
           </section><hr>` : nothing}
           <button type="button" class="card-favorite-action nx-action-btn-quiet" @click=${() => {
