@@ -79,6 +79,12 @@
   color: var(--s2-red-900);
 }
 
+/* Rows already cap visible members by count (6 while collapsed), so let every list grow.
+   Needs da-nx's --nx-pills-max-height (nx-pills otherwise clamps at two rows). */
+nx-pills {
+  --nx-pills-max-height: none;
+}
+
 .level-row[data-level='none'] nx-pills {
   --nx-pill-background: var(--s2-red-200);
   --nx-pill-color: var(--s2-red-1100);
