@@ -223,7 +223,9 @@ export class EwEditorDoc extends LitElement {
       }
     }
     const key = node ? `${node.anchorType}:${node.proseIndex}` : 'null';
-    const scrollToNode = scrollIntoView && Boolean(node);
+    // Acknowledge iframe selections without scrolling the pane the user is already in.
+    const scrollToNode = scrollIntoView && Boolean(node)
+      && !this._controllerCtx?.mirroringFromIframe;
     // A real node anchor re-scrolls on every re-select; the content fallback only when
     // the target block changes, so dragging a text selection doesn't spam the iframe.
     const forceScroll = scrollToNode && !contentFallback;

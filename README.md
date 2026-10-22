@@ -59,4 +59,4 @@ npm run build:da-y-wrapper
 
 Additional details can be [found here](https://github.com/adobe/da-live/wiki/Dependencies).
 
-
+Canvas library behavior is documented in [docs/canvas-library.md](docs/canvas-library.md).

@@ -155,8 +155,8 @@ describe('PrepareMenu', () => {
       el = await fixture();
 
       const titles = el._menuItems.map((item) => item.title);
-      expect(titles).to.include('Preflight');
       expect(titles).to.include('Unpublish');
+      expect(titles).to.not.include('Preflight');
     });
 
     it('excludes optional OOTB actions by default', async () => {
@@ -242,7 +242,7 @@ describe('PrepareMenu', () => {
       const prevFetch = window.fetch;
       window.fetch = async (url) => {
         if (url.includes('/config/orgC/siteC')) {
-          const body = { prepare: { data: [{ title: 'Preflight' }] } };
+          const body = { prepare: { data: [{ title: 'Unpublish' }] } };
           return new Response(JSON.stringify(body), { status: 200 });
         }
         if (url.includes('/config/orgC')) {
@@ -253,8 +253,30 @@ describe('PrepareMenu', () => {
 
       el = await fixture({ details: createDetails({ org: 'orgC', site: 'siteC' }) });
 
-      const preflight = el._menuItems.find((item) => item.title === 'Preflight');
-      expect(preflight.render).to.be.a('function');
+      const unpublish = el._menuItems.find((item) => item.title === 'Unpublish');
+      expect(unpublish.render).to.be.a('function');
+
+      window.fetch = prevFetch;
+    });
+
+    it('skips Preflight sheet rows, which configure the Preflight side panel', async () => {
+      const prevFetch = window.fetch;
+      window.fetch = async (url) => {
+        if (url.includes('/config/orgP/siteP')) {
+          const body = { prepare: { data: [{ title: 'Preflight', path: 'https://example.com/pf' }] } };
+          return new Response(JSON.stringify(body), { status: 200 });
+        }
+        if (url.includes('/config/orgP')) {
+          const body = { prepare: { data: [{ title: 'Preflight' }] } };
+          return new Response(JSON.stringify(body), { status: 200 });
+        }
+        return prevFetch(url);
+      };
+
+      el = await fixture({ details: createDetails({ org: 'orgP', site: 'siteP' }) });
+
+      expect(el._menuItems.map((item) => item.title)).to.not.include('Preflight');
+      expect(el._menuItems.map((item) => item.title)).to.include('Unpublish');
 
       window.fetch = prevFetch;
     });
@@ -380,7 +402,6 @@ describe('PrepareMenu', () => {
 
       const titles = [...el.shadowRoot.querySelectorAll('.prepare-menu-item span')]
         .map((s) => s.textContent);
-      expect(titles).to.include('Preflight');
       expect(titles).to.include('Unpublish');
     });
 
@@ -551,41 +572,6 @@ describe('PrepareMenu', () => {
 
       expect(el._dialogItem).to.be.undefined;
     });
-
-    it('emits a cancelled status via the bridge when a gate request is active', async () => {
-      el = await fixture();
-      el._dialogItem = { title: 'Preflight' };
-      el._preflightRequestId = 'req-close';
-
-      let detail;
-      const onStatus = (e) => { detail = e.detail; };
-      document.addEventListener('nx-preflight-status', onStatus);
-      el.handleCloseDialog();
-      document.removeEventListener('nx-preflight-status', onStatus);
-
-      expect(detail).to.deep.equal({
-        path: '/testorg/testsite/test/page',
-        status: 'cancelled',
-        requestId: 'req-close',
-      });
-      expect(el._dialogItem).to.be.undefined;
-      expect(el._preflightRequestId).to.be.undefined;
-    });
-
-    it('does not emit a status for a manually opened dialog (no request id)', async () => {
-      el = await fixture();
-      el._dialogItem = { title: 'Preflight' };
-      el._preflightRequestId = undefined;
-
-      let fired = false;
-      const onStatus = () => { fired = true; };
-      document.addEventListener('nx-preflight-status', onStatus);
-      el.handleCloseDialog();
-      document.removeEventListener('nx-preflight-status', onStatus);
-
-      expect(fired).to.be.false;
-      expect(el._dialogItem).to.be.undefined;
-    });
   });
 
   describe('handleCloseFullsizeDialog', () => {
@@ -747,30 +733,170 @@ describe('PrepareMenu', () => {
     });
   });
 
-  describe('preflight dialog lifecycle', () => {
-    it('closes the gate-triggered dialog on success', async () => {
+  describe('plugin messages', () => {
+    const wait = (ms = 30) => new Promise((resolve) => { setTimeout(resolve, ms); });
+    let comparisonContextKey;
+    let savedIMS;
+    let unsubscribe;
+
+    before(async () => {
+      ({ comparisonContextKey } = await import('../../../../../blocks/canvas/ew-comparison/comparison.js'));
+    });
+
+    beforeEach(() => {
+      savedIMS = window.adobeIMS;
+      window.adobeIMS = { getAccessToken: () => ({ token: 'T' }) };
+    });
+
+    afterEach(() => {
+      unsubscribe?.();
+      unsubscribe = undefined;
+      window.adobeIMS = savedIMS;
+    });
+
+    // Resolves with the plugin's end of the channel once the 750 ms ready message is sent.
+    function connectPlugin(element) {
+      return new Promise((resolve) => {
+        element.handleIframeLoad({
+          target: {
+            src: 'https://example.com/plugin.html',
+            contentWindow: { postMessage: (data, origin, ports) => resolve(ports[0]) },
+          },
+        });
+      });
+    }
+
+    async function showDialog(element) {
+      element._dialogItem = { title: 'Request publish', cmp: document.createElement('div') };
+      await element.updateComplete;
+      await wait(60);
+      const daDialog = element.shadowRoot.querySelector('da-dialog');
+      return { daDialog, slDialog: daDialog.shadowRoot.querySelector('sl-dialog') };
+    }
+
+    it('answers a save request through the comparison controller for the open page', async () => {
+      el = await fixture({ details: createDetails({ path: '/test/page.html' }) });
+      const port = await connectPlugin(el);
+      unsubscribe = canvasBus.comparisonRequest.subscribe(({ action, context, resolve }) => {
+        expect(action).to.equal('saveDocument');
+        expect(comparisonContextKey(context))
+          .to.equal(comparisonContextKey({ org: 'testorg', site: 'testsite', path: 'test/page' }));
+        resolve({ ok: true });
+      });
+      const response = new Promise((resolve) => { port.onmessage = ({ data }) => resolve(data); });
+
+      port.postMessage({ action: 'saveDocument', requestId: 'save-1' });
+
+      expect(await response).to.deep.equal({ action: 'sdkResponse', requestId: 'save-1', result: { ok: true } });
+    });
+
+    it('forwards comparison requests and ignores saves without a request ID', async () => {
       el = await fixture();
-      el._preflightRequestId = 'req-1';
-      el._dialogItem = { title: 'Preflight' };
-      document.dispatchEvent(new CustomEvent('nx-preflight-status', { detail: { requestId: 'req-1', status: 'success' } }));
+      const port = await connectPlugin(el);
+      const requests = [];
+      const closed = new Promise((resolve) => {
+        unsubscribe = canvasBus.comparisonRequest.subscribe((request) => {
+          requests.push(request);
+          if (request.action === 'closeComparison') resolve();
+        });
+      });
+
+      port.postMessage({ action: 'saveDocument' });
+      port.postMessage({ action: 'openComparison', details: { candidate: 'url', baseline: 'live' } });
+      port.postMessage({ action: 'openComparison', details: { candidate: 'preview', baseline: 'live', path: '/other' } });
+      port.postMessage({ action: 'closeComparison' });
+      await closed;
+
+      expect(requests.map(({ action }) => action)).to.deep.equal(['openComparison', 'closeComparison']);
+      expect(requests[0].details).to.deep.equal({ candidate: 'preview', baseline: 'live' });
+      expect(requests[0].context.path).to.equal('/test/page');
+      expect(requests[0].resolve).to.equal(undefined);
+    });
+
+    it('stops routing plugin messages once the dialog closes', async () => {
+      el = await fixture();
+      const port = await connectPlugin(el);
+      const requests = [];
+      unsubscribe = canvasBus.comparisonRequest.subscribe(({ action }) => requests.push(action));
+
+      el.handleCloseDialog();
+      port.postMessage({ action: 'saveDocument', requestId: 'late' });
+      await wait(50);
+
+      expect(requests).to.deep.equal([]);
+    });
+
+    it('steps the dialog aside while the comparison it opened is shown', async () => {
+      el = await fixture();
+      const { daDialog, slDialog } = await showDialog(el);
+      expect(slDialog.open).to.equal(true);
+      const port = await connectPlugin(el);
+
+      port.postMessage({ action: 'openComparison', details: { candidate: 'preview', baseline: 'live' } });
+      await wait();
+      canvasBus.comparisonState.emit({ open: true });
+
+      expect(slDialog.open).to.equal(false);
+      expect(el._dialogItem.title).to.equal('Request publish');
+      expect(el.shadowRoot.querySelector('da-dialog')).to.equal(daDialog);
+
+      canvasBus.comparisonState.emit({ open: false });
+
+      expect(slDialog.open).to.equal(true);
+      el.handleCloseDialog();
       expect(el._dialogItem).to.be.undefined;
-      expect(el._preflightRequestId).to.be.undefined;
     });
 
-    it('keeps the dialog open on failure', async () => {
+    it('leaves the dialog in place for a comparison it did not ask for', async () => {
       el = await fixture();
-      el._preflightRequestId = 'req-2';
-      el._dialogItem = { title: 'Preflight' };
-      document.dispatchEvent(new CustomEvent('nx-preflight-status', { detail: { requestId: 'req-2', status: 'fail' } }));
-      expect(el._dialogItem).to.not.be.undefined;
+      const { slDialog } = await showDialog(el);
+      await connectPlugin(el);
+
+      canvasBus.comparisonState.emit({ open: true });
+
+      expect(slDialog.open).to.equal(true);
     });
 
-    it('does not auto-close a manually opened dialog (no request id)', async () => {
+    it('steps a full-size dialog aside without unloading its plugin', async () => {
       el = await fixture();
-      el._preflightRequestId = undefined;
-      el._dialogItem = { title: 'Preflight' };
-      document.dispatchEvent(new CustomEvent('nx-preflight-status', { detail: { status: 'success' } }));
-      expect(el._dialogItem).to.not.be.undefined;
+      el._fullsizeDialogItem = { title: 'Request publish', path: '/test/fixtures/nx/public/sl/styles.css', experience: 'fullsize-dialog' };
+      await el.updateComplete;
+      const dialog = el.shadowRoot.querySelector('.prepare-fullsize-dialog');
+      const iframe = dialog.querySelector('iframe');
+      await new Promise((resolve) => { iframe.addEventListener('load', resolve, { once: true }); });
+      const port = await connectPlugin(el);
+
+      port.postMessage({ action: 'openComparison', details: { candidate: 'document', baseline: 'live' } });
+      await wait();
+      canvasBus.comparisonState.emit({ open: true });
+      await wait();
+
+      expect(dialog.open).to.equal(false);
+      expect(iframe.isConnected).to.equal(true);
+      expect(el._fullsizeDialogItem.title).to.equal('Request publish');
+
+      canvasBus.comparisonState.emit({ open: false });
+
+      expect(dialog.open).to.equal(true);
+    });
+
+    it('drops a dialog left behind an open comparison when another action is picked', async () => {
+      el = await fixture();
+      stubPopover(el);
+      const { daDialog } = await showDialog(el);
+      const port = await connectPlugin(el);
+      port.postMessage({ action: 'openComparison', details: { candidate: 'preview', baseline: 'live' } });
+      await wait();
+      canvasBus.comparisonState.emit({ open: true });
+
+      await el.handleItemClick({ title: 'Unpublish', render: async () => document.createElement('p') });
+      await el.updateComplete;
+      await wait(60);
+
+      const next = el.shadowRoot.querySelector('da-dialog');
+      expect(next).to.not.equal(daDialog);
+      expect(next.shadowRoot.querySelector('sl-dialog').open).to.equal(true);
+      expect(el._dialogItem.title).to.equal('Unpublish');
     });
   });
 });
