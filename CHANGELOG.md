@@ -1,3 +1,10 @@
+## [1.12.3](https://github.com/adobe/da-live/compare/v1.12.2...v1.12.3) (2026-10-22)
+
+
+### Bug Fixes
+
+* **ew:** refresh version history without reload ([#1430](https://github.com/adobe/da-live/issues/1430)) ([10411fe](https://github.com/adobe/da-live/commit/10411fe7c25832e8a93671e203099a5ee86e4630)), closes [#1269](https://github.com/adobe/da-live/issues/1269)
+
 ## [1.12.2](https://github.com/adobe/da-live/compare/v1.12.1...v1.12.2) (2026-10-21)
 
 
