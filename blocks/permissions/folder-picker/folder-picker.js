@@ -37,6 +37,7 @@ class DaFolderPicker extends LitElement {
     this._columns = [];
     this._selected = '';
     this._loading = false;
+    this._requestId = 0;
   }
 
   connectedCallback() {
@@ -53,6 +54,9 @@ class DaFolderPicker extends LitElement {
   }
 
   async _onFolderClick(columnIndex, name) {
+    this._requestId += 1;
+    const requestId = this._requestId;
+
     const updated = this._columns
       .slice(0, columnIndex + 1)
       .map((col, i) => (i === columnIndex ? { ...col, selectedName: name } : col));
@@ -64,6 +68,7 @@ class DaFolderPicker extends LitElement {
 
     const subPath = `/${parts.join('/')}/`;
     const subItems = await this.listFolders(this.org, this.site, subPath);
+    if (requestId !== this._requestId) return;
     this._columns = subItems.length > 0
       ? [...updated, { path: subPath, items: subItems }]
       : updated;

@@ -146,6 +146,51 @@ describe('da-folder-picker', () => {
     expect(detail).to.deep.equal({ folder: 'blog' });
   });
 
+  it('ignores a stale click resolution when a newer click has already resolved', async () => {
+    const deferreds = {};
+    function deferred(path) {
+      let resolve;
+      const promise = new Promise((res) => { resolve = res; });
+      deferreds[path] = resolve;
+      return promise;
+    }
+    const root = [
+      { name: 'blog', path: '/mysite/blog' },
+      { name: 'docs', path: '/mysite/docs' },
+    ];
+    const listFolders = async (org, site, path) => {
+      if (path === '/') return root;
+      return deferred(path);
+    };
+    const el = await mount({ listFolders });
+
+    const blogBtn = [...columnButtons(el, 0)].find((btn) => btn.textContent.trim() === 'blog');
+    const docsBtn = [...columnButtons(el, 0)].find((btn) => btn.textContent.trim() === 'docs');
+
+    // Click A (blog), then click B (docs) before A's fetch resolves.
+    blogBtn.click();
+    await el.updateComplete;
+    docsBtn.click();
+    await el.updateComplete;
+
+    // Resolve B first, then the stale A resolution.
+    deferreds['/docs/']([{ name: 'guides', path: '/mysite/docs/guides' }]);
+    await settle(el, () => el._selected === 'docs' && !el._loading);
+    deferreds['/blog/']([{ name: 'drafts', path: '/mysite/blog/drafts' }]);
+    await new Promise((resolve) => { setTimeout(resolve, 50); });
+    await el.updateComplete;
+
+    expect(el._selected).to.equal('docs');
+    const columns = el.shadowRoot.querySelectorAll('.folder-column');
+    expect(columns.length).to.equal(2);
+    const names = [...columnButtons(el, 1)].map((btn) => btn.textContent.trim());
+    expect(names).to.deep.equal(['guides']);
+    const col0Selected = [...columnButtons(el, 0)].find((btn) => btn.classList.contains('folder-item-selected'));
+    expect(col0Selected.textContent.trim()).to.equal('docs');
+    const normalized = el.shadowRoot.textContent.replace(/\s+/g, ' ').trim();
+    expect(normalized).to.contain('Selected: docs');
+  });
+
   it('"Cancel" emits folder-cancel', async () => {
     const el = await mount({ listFolders: makeListFolders({ '/': [] }) });
     let fired = false;
