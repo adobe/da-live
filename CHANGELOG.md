@@ -1,3 +1,10 @@
+# [1.13.0](https://github.com/adobe/da-live/compare/v1.12.3...v1.13.0) (2026-10-22)
+
+
+### Features
+
+* show LOC and MSM merge conflicts in the canvas editor ([#1189](https://github.com/adobe/da-live/issues/1189)) ([54fe9f7](https://github.com/adobe/da-live/commit/54fe9f7db6d714cfd415b1eb7488fb9aa5e40c12))
+
 ## [1.12.3](https://github.com/adobe/da-live/compare/v1.12.2...v1.12.3) (2026-10-22)
 
 
