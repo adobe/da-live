@@ -195,6 +195,38 @@ describe('diff-utils getDiffClass — paired node views', () => {
     expect(instance.dom.style.display).to.equal('none');
   });
 
+  it('Renders the second of two adjacent pairs instead of hiding it', async () => {
+    const { schema } = editor.view.state;
+    const docSize = editor.view.state.doc.content.size;
+    editor.view.dispatch(editor.view.state.tr.insert(docSize, [
+      buildDiffPara(schema, 'diff_deleted', 'first upstream'),
+      buildDiffPara(schema, 'diff_added', 'first local'),
+      buildDiffPara(schema, 'diff_deleted', 'second upstream'),
+      buildDiffPara(schema, 'diff_added', 'second local'),
+    ]));
+    const positions = [];
+    editor.view.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'diff_deleted' || node.type.name === 'diff_added') positions.push(pos);
+      return true;
+    });
+    expect(positions.length).to.equal(4);
+
+    const render = (pos) => {
+      const node = editor.view.state.doc.nodeAt(pos);
+      const type = node.type.name === 'diff_deleted' ? 'da-loc-deleted' : 'da-loc-added';
+      const NodeViewClass = getDiffClass(type, () => schema, () => {}, { isUpstream: type === 'da-loc-deleted' });
+      return new NodeViewClass(node, editor.view, () => pos).dom;
+    };
+    const [first, second, third, fourth] = positions.map(render);
+
+    expect(first.classList.contains('loc-tabbed-container')).to.be.true;
+    expect(second.style.display).to.equal('none');
+    expect(third.classList.contains('loc-tabbed-container')).to.be.true;
+    expect(third.textContent).to.include('second upstream');
+    expect(third.textContent).to.include('second local');
+    expect(fourth.style.display).to.equal('none');
+  });
+
   it('canFormLocPair returns true for matching deleted/added pair', async () => {
     const deletedPos = insertPair();
     const { schema } = editor.view.state;
@@ -417,5 +449,45 @@ describe('diff-utils flow helpers', () => {
     editor.view.dispatch(tr);
     expect(checkForLocNodes(editor.view)).to.be.true;
     await nextFrame();
+  });
+
+  it('checkForLocNodes gives every host the diff stylesheet, also after the host resets its sheets', async () => {
+    const { schema } = editor.view.state;
+    editor.view.dispatch(editor.view.state.tr.insert(
+      editor.view.state.doc.content.size,
+      buildDiffPara(schema, 'diff_added', 'new'),
+    ));
+    const makeHost = () => {
+      const host = document.createElement('div');
+      host.attachShadow({ mode: 'open' });
+      document.body.append(host);
+      return host;
+    };
+    const sheetCount = async (host) => {
+      for (let i = 0; i < 50 && !host.shadowRoot.adoptedStyleSheets.length; i += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        await waitFor(10);
+      }
+      return host.shadowRoot.adoptedStyleSheets.length;
+    };
+    const first = makeHost();
+    const second = makeHost();
+
+    checkForLocNodes(editor.view, first);
+    expect(await sheetCount(first)).to.equal(1);
+    checkForLocNodes(editor.view, second);
+    expect(await sheetCount(second)).to.equal(1);
+
+    // The canvas editor re-adopts its own sheets when it is re-attached on navigation.
+    first.shadowRoot.adoptedStyleSheets = [];
+    checkForLocNodes(editor.view, first);
+    expect(await sheetCount(first)).to.equal(1);
+
+    checkForLocNodes(editor.view, first);
+    await waitFor(50);
+    expect(first.shadowRoot.adoptedStyleSheets.length).to.equal(1);
+
+    first.remove();
+    second.remove();
   });
 });
