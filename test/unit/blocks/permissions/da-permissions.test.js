@@ -417,6 +417,32 @@ describe('da-permissions', () => {
     expect(cards.expanded.has(contentPath)).to.equal(false);
   });
 
+  it('a filter query that matches a big card passes filtering=true, hiding its card-toggle', async () => {
+    const writers = Array.from({ length: 20 }, (_, i) => `writer${i}@example.com`);
+    const SITE_CONFIG_BODY = {
+      ':names': ['permissions'],
+      ':version': 3,
+      permissions: {
+        total: 1,
+        limit: 1,
+        data: [{ path: '/mysite/ + **', groups: writers.join(', '), actions: 'write' }],
+      },
+    };
+    mockFetch({ configFor: () => SITE_CONFIG_BODY });
+    const el = await mount('myorg', 'mysite');
+    const search = el.shadowRoot.querySelector('nx-search');
+
+    search.value = 'writer';
+    search.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    await el.updateComplete;
+
+    const cards = el.shadowRoot.querySelector('da-permissions-cards');
+    expect(cards.filtering).to.equal(true);
+    await cards.updateComplete;
+    expect(cards.shadowRoot.querySelector('.card-toggle')).to.equal(null);
+    expect(cards.shadowRoot.querySelector('.row-more')).to.equal(null);
+  });
+
   it('no match -> shows "No scopes match "zzz"" and no cards', async () => {
     mockFetch({ configFor: () => CONFIG_BODY });
     const el = await mount('myorg');

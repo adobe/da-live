@@ -241,6 +241,63 @@ describe('da-permissions-cards', () => {
     expect(cancelCount).to.equal(2);
   });
 
+  it('suppresses card-toggle and row-more when filtering is true, even for an expanded 20-member slot', async () => {
+    const writers = Array.from({ length: 20 }, (_, i) => `user${i}@example.com`);
+    const slot = baseSlot({ path: '/ + **', kind: 'content', label: 'All sites', write: writers });
+    const el = await mount({ slots: [slot], expanded: new Set([slot.path]), filtering: true });
+
+    expect(el.shadowRoot.querySelector('.card-toggle')).to.equal(null);
+    expect(el.shadowRoot.querySelector('.row-more')).to.equal(null);
+  });
+
+  it('sets nx-pills label for direct and inherited pills', async () => {
+    const slot = baseSlot({
+      path: '/myorg/site1/CONFIG',
+      kind: 'config',
+      label: 'Site configurations',
+      write: ['a@x.com'],
+      inheritedWrite: ['b@example.com'],
+    });
+    const el = await mount({ slots: [slot], org: 'myorg' });
+
+    const row = el.shadowRoot.querySelector('.level-row[data-level="write"]');
+    expect(row.querySelector('nx-pills.direct-pills').label).to.equal('Site configurations Write');
+    expect(row.querySelector('nx-pills.inherited-pills').label).to.equal('Site configurations Write inherited from myorg');
+  });
+
+  it('renders inherited-only read row with .from-label, inherited pills, and no .direct-pills', async () => {
+    const slot = baseSlot({
+      path: '/myorg/site1/ + **',
+      kind: 'content',
+      label: 'All site content',
+      inheritedRead: ['inherited@example.com'],
+    });
+    const el = await mount({ slots: [slot], org: 'myorg' });
+
+    const row = el.shadowRoot.querySelector('.level-row[data-level="read"]');
+    expect(row.querySelector('.direct-pills')).to.equal(null);
+    expect(row.querySelector('.from-label').textContent.trim()).to.equal('From myorg');
+    const inheritedPills = row.querySelector('nx-pills.inherited-pills');
+    expect(inheritedPills.items.map((i) => i.id)).to.deep.equal(['inherited@example.com']);
+  });
+
+  it('still renders .direct-pills on a row with visible direct members', async () => {
+    const slot = baseSlot({ path: '/ + **', kind: 'content', label: 'All sites', write: ['a@x.com'] });
+    const el = await mount({ slots: [slot] });
+
+    const row = el.shadowRoot.querySelector('.level-row[data-level="write"]');
+    expect(row.querySelector('nx-pills.direct-pills')).to.not.equal(null);
+  });
+
+  it('sets aria-label on .row-more to "Show all members of {label}"', async () => {
+    const writers = Array.from({ length: 10 }, (_, i) => `user${i}@example.com`);
+    const slot = baseSlot({ path: '/ + **', kind: 'content', label: 'All sites', write: writers });
+    const el = await mount({ slots: [slot] });
+
+    const more = el.shadowRoot.querySelector('.row-more');
+    expect(more.getAttribute('aria-label')).to.equal('Show all members of All sites');
+  });
+
   it('nx-pill-remove on direct-pills emits permissions-remove with { path, level, who }', async () => {
     const slot = baseSlot({ path: '/ + **', kind: 'content', label: 'All sites', write: ['a@x.com'] });
     const el = await mount({ slots: [slot] });

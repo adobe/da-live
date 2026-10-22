@@ -32,6 +32,7 @@ class DaPermissionsCards extends LitElement {
     editable: { type: Boolean },
     busy: { type: Boolean },
     adding: { attribute: false },
+    filtering: { type: Boolean },
   };
 
   constructor() {
@@ -42,6 +43,7 @@ class DaPermissionsCards extends LitElement {
     this.editable = false;
     this.busy = false;
     this.adding = null;
+    this.filtering = false;
   }
 
   connectedCallback() {
@@ -117,6 +119,7 @@ class DaPermissionsCards extends LitElement {
   }
 
   _renderCardToggle(slot) {
+    if (this.filtering) return nothing;
     if (!this._hasMoreMembers(slot)) return nothing;
     const isExpanded = this.expanded instanceof Set && this.expanded.has(slot.path);
     const ariaLabel = `${isExpanded ? 'Show fewer' : 'Show all'} members of ${slot.label}`;
@@ -138,24 +141,31 @@ class DaPermissionsCards extends LitElement {
     const visibleCount = isExpanded ? total : Math.min(VISIBLE_LIMIT, total);
     const directVisible = direct.slice(0, visibleCount);
     const inheritedVisible = inherited.slice(0, Math.max(0, visibleCount - directVisible.length));
-    const more = total - visibleCount;
+    const more = this.filtering ? 0 : total - visibleCount;
     const isAdding = this.adding?.path === slot.path && this.adding?.level === level;
     const canAdd = level !== 'none';
     const removable = this.editable && !this.busy;
+    const levelLabel = LEVEL_LABEL[level];
+    const directLabel = `${slot.label} ${levelLabel}`;
+    const inheritedLabel = `${directLabel} inherited from ${this.org}`;
 
     return html`
       <div class="level-row" data-level=${level}>
-        <span class="level-label">${LEVEL_LABEL[level].toUpperCase()}</span>
+        <span class="level-label">${levelLabel.toUpperCase()}</span>
         ${total === 0 ? html`<span class="row-empty">No one</span>` : html`
-          <nx-pills
-            class="direct-pills"
-            .items=${directVisible.map((who) => ({ id: who, label: who, removable }))}
-            @nx-pill-remove=${(e) => this._requestRemove(slot.path, level, e.detail.id)}
-          ></nx-pills>
+          ${directVisible.length ? html`
+            <nx-pills
+              class="direct-pills"
+              .label=${directLabel}
+              .items=${directVisible.map((who) => ({ id: who, label: who, removable }))}
+              @nx-pill-remove=${(e) => this._requestRemove(slot.path, level, e.detail.id)}
+            ></nx-pills>
+          ` : nothing}
           ${inheritedVisible.length ? html`
             <span class="from-label">From ${this.org}</span>
             <nx-pills
               class="inherited-pills"
+              .label=${inheritedLabel}
               .items=${inheritedVisible.map((who) => ({ id: who, label: who, removable: false }))}
             ></nx-pills>
           ` : nothing}
@@ -163,6 +173,7 @@ class DaPermissionsCards extends LitElement {
             <button
               type="button"
               class="row-more nx-action-btn-quiet nx-btn-sm"
+              aria-label="Show all members of ${slot.label}"
               @click=${() => this._toggle(slot.path)}
             >+${more} more</button>
           ` : nothing}

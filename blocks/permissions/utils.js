@@ -54,7 +54,7 @@ export function levelToActions(level) {
   return '';
 }
 
-/** Human-readable label for a permission level, shared by the container and table. */
+/** Human-readable label for a permission level, shared by the container and cards. */
 export const LEVEL_LABEL = { read: 'Read', write: 'Write', none: 'None' };
 
 /**

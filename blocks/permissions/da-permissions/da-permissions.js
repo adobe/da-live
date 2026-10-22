@@ -345,6 +345,7 @@ class DaPermissions extends LitElement {
         .editable=${this._editable}
         .busy=${this._busy}
         .adding=${this._adding}
+        .filtering=${!!trimmedQuery}
         @permissions-toggle=${(e) => this._onToggle(e)}
         @permissions-add-open=${(e) => this._onAddOpen(e)}
         @permissions-add-cancel=${() => this._onAddCancel()}

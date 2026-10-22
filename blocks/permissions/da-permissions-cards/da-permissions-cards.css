@@ -10,7 +10,7 @@
 .scope-section h3 {
   margin: 0 0 var(--s2-spacing-200);
   color: var(--s2-gray-800);
-  font-size: var(--s2-component-m-medium-font-size, 16px);
+  font-size: var(--s2-heading-size-xs);
   font-weight: var(--s2-component-m-bold-font-weight);
 }
 
@@ -35,7 +35,7 @@
 .card-title {
   margin: 0;
   color: var(--s2-gray-900);
-  font-size: var(--s2-component-s-bold-font-size, 14px);
+  font-size: var(--s2-component-m-bold-font-size);
   font-weight: var(--s2-component-m-bold-font-weight);
 }
 
@@ -46,7 +46,7 @@
 .card-body {
   display: flex;
   flex-direction: column;
-  gap: var(--s2-spacing-150);
+  gap: var(--s2-spacing-100);
 }
 
 .level-row {
@@ -54,7 +54,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--s2-spacing-100);
-  padding-top: var(--s2-spacing-150);
+  padding-top: var(--s2-spacing-100);
   border-top: 1px solid var(--s2-gray-200);
 }
 
