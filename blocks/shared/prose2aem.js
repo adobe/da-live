@@ -198,6 +198,25 @@ function removeMetadata(editor) {
   editor.querySelector('.metadata')?.remove();
 }
 
+function convertLinkImages(editor) {
+  const images = editor.querySelectorAll('img[data-edit-as="image"]');
+  images.forEach((img) => {
+    const a = document.createElement('a');
+    a.setAttribute('href', img.src);
+    if (img.alt) a.setAttribute('title', img.alt);
+    a.setAttribute('data-edit-as', 'image');
+    a.textContent = img.src;
+
+    [...img.attributes].forEach((attr) => {
+      if (attr.name.startsWith('data-image-')) {
+        a.setAttribute(attr.name, attr.value);
+      }
+    });
+
+    img.replaceWith(a);
+  });
+}
+
 function applySectionMetadata(editor) {
   editor.querySelectorAll('.section-metadata').forEach((block) => {
     const section = block.parentElement;
@@ -302,6 +321,9 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
   convertListItems(editor);
 
   convertParagraphs(editor);
+
+  // to do: feature flag?
+  convertLinkImages(editor);
 
   convertBlocks(editor, isFragment);
 

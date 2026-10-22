@@ -208,6 +208,7 @@ export default async function initProse({
       'Mod-Shift-z': (state) => yRedo(state) || false,
       'Mod-k': (_state, _dispatch, view) => {
         if (!view.editable) return false;
+        if (view.state.selection.node && view.state.selection.node.type.name === 'image' && view.state.selection.node.attrs.editAs) return false;
         openLinkDialog(view);
         return true;
       },

@@ -121,6 +121,7 @@ class ImageWithFocalPointView {
 
   update(node) {
     if (node.type.name !== 'image') return false;
+    if (node.attrs.editAs) return false;
 
     this.node = node;
     updateImageAttributes(this.img, node.attrs);
@@ -148,6 +149,7 @@ export default function imageFocalPoint() {
       nodeViews: {
         image(node, view, getPos) {
           if (isInTableCell(view.state, getPos())) {
+            if (node.attrs.editAs) return null;
             return new ImageWithFocalPointView(node, view, getPos);
           }
           return null;

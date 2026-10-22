@@ -27,6 +27,7 @@ import {
   canSplitCell,
   isImageNodeSelected,
   selectionHasLink,
+  selectionHasLinkImage,
   removeLink,
   requestComment,
   canComment,
@@ -305,7 +306,7 @@ export const COMMANDS = [
     label: 'Create link',
     icon: 'link',
     showIn: ['toolbar-link'],
-    visible: (state) => !selectionHasLink(state),
+    visible: (state) => !selectionHasLink(state) && !selectionHasLinkImage(state),
     apply: openLinkDialog,
   },
   {

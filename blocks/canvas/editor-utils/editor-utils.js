@@ -376,9 +376,19 @@ export function getInstrumentedHTMLForSDK(view) {
 
 const SKIP_BLOCK_CLASSES = new Set(['default-content-wrapper', 'metadata', 'section-metadata', 'library-metadata', 'block-marker']);
 
+function getRealTextContent(el) {
+  const clone = el.cloneNode(true);
+  clone.querySelectorAll('a[data-edit-as="image"]').forEach((a) => a.remove());
+  return clone.textContent?.trim() || '';
+}
+
+function hasLinkImage(el) {
+  return el.querySelector('a[data-edit-as="image"]');
+}
+
 function hasDefaultContent(el) {
-  if (el.textContent?.trim()) return true;
-  return el.matches?.('img') || !!el.querySelector?.('img');
+  if (getRealTextContent(el)) return true;
+  return el.matches?.('img') || !!el.querySelector?.('img') || hasLinkImage(el);
 }
 
 function getDefaultContentProseIndex(el, kind) {
@@ -399,6 +409,7 @@ function getDefaultContentProseIndex(el, kind) {
 
 function firstLineText(el) {
   const clone = el.cloneNode(true);
+  clone.querySelectorAll('a[data-edit-as="image"]').forEach((a) => a.remove());
   clone.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
   return clone.textContent.trim().split('\n')[0].trim();
 }
@@ -406,6 +417,7 @@ function firstLineText(el) {
 function getContentSnippet(el, kind) {
   if (kind === 'list') return firstLineText(el.querySelector(':scope > li') ?? el);
   if (kind === 'quote') return firstLineText(el.querySelector(':scope > p') ?? el);
+
   return firstLineText(el);
 }
 
@@ -416,7 +428,8 @@ function getDefaultContentKind(el) {
   if (tag === 'UL') return { kind: 'list', ordered: false };
   if (tag === 'PRE') return { kind: 'code' };
   if (tag === 'BLOCKQUOTE') return { kind: 'quote' };
-  if (el.textContent?.trim()) return { kind: 'paragraph' };
+  if (getRealTextContent(el)) return { kind: 'paragraph' };
+  if (hasLinkImage(el)) return { kind: 'image' };
   // A text-less <p> wraps only an image, as does a bare <picture>/<img> — but a text-less
   // <p> with no image at all is just an empty paragraph, not an image wrapper.
   if (el.matches?.('img') || el.querySelector?.('img')) return { kind: 'image' };
@@ -437,14 +450,14 @@ export function parseSections(htmlText) {
         items.push({
           type: 'content',
           proseIndex: getDefaultContentProseIndex(currentRun[0]),
-          innerText: currentRun.map((el) => el.textContent.trim()).filter(Boolean).join(' '),
+          innerText: currentRun.map((el) => getRealTextContent(el)).filter(Boolean).join(' '),
           children: currentRun.map((el) => {
             const kindInfo = getDefaultContentKind(el);
             return {
               type: 'content',
               ...kindInfo,
               proseIndex: getDefaultContentProseIndex(el, kindInfo.kind),
-              innerText: el.textContent.trim(),
+              innerText: getRealTextContent(el),
               snippet: getContentSnippet(el, kindInfo.kind),
             };
           }),
@@ -461,7 +474,7 @@ export function parseSections(htmlText) {
         flushRun();
         const rawProseIndex = el.getAttribute('data-block-index');
         const proseIndex = rawProseIndex != null ? Number(rawProseIndex) : undefined;
-        const innerText = el.textContent?.trim() ?? '';
+        const innerText = getRealTextContent(el);
         // Classes after the block name are its variant(s) — the same descriptor the
         // doc editor's header row shows in parentheses (e.g. `cards (highlight)`).
         const variant = [...el.classList].slice(1).join(', ');
