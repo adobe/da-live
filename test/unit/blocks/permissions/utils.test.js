@@ -142,6 +142,24 @@ describe('permissions utils', () => {
       expect(contentSlot.inheritedRead).to.deep.equal(['all@x.com']);
     });
 
+    it('inherits all matching org rules per level, not just the first', () => {
+      const rules = [
+        { path: 'CONFIG', actions: 'read', groups: 'reader@x.com' },
+        { path: 'CONFIG', actions: 'write', groups: 'writer@x.com' },
+        { path: '/ + **', actions: 'read', groups: 'content-reader@x.com' },
+        { path: '/ + **', actions: 'write', groups: 'content-writer@x.com' },
+      ];
+      const slots = buildSlots(rules, 'mysite');
+
+      const configSlot = slots.find((s) => s.path === '/mysite/CONFIG');
+      expect(configSlot.inheritedRead).to.deep.equal(['reader@x.com']);
+      expect(configSlot.inheritedWrite).to.deep.equal(['writer@x.com']);
+
+      const contentSlot = slots.find((s) => s.path === '/mysite/ + **');
+      expect(contentSlot.inheritedRead).to.deep.equal(['content-reader@x.com']);
+      expect(contentSlot.inheritedWrite).to.deep.equal(['content-writer@x.com']);
+    });
+
     it('merges path variants into one slot', () => {
       const rules = [
         { path: '/s/+**', groups: 'a@x.com', actions: 'write' },

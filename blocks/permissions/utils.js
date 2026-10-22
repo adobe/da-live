@@ -149,13 +149,15 @@ function inheritedListKey(level) {
   return 'inheritedNone';
 }
 
-function applyInheritance(slot, orgRule) {
-  if (!slot || !orgRule) return;
-  const level = actionsToLevel(orgRule.actions);
-  const members = splitGroups(orgRule.groups);
-  const direct = slot[levelListKey(level)];
-  const inherited = members.filter((m) => !direct.includes(m));
-  slot[inheritedListKey(level)].push(...inherited);
+function applyInheritance(slot, orgRules) {
+  if (!slot) return;
+  orgRules.forEach((orgRule) => {
+    const level = actionsToLevel(orgRule.actions);
+    const members = splitGroups(orgRule.groups);
+    const direct = slot[levelListKey(level)];
+    const inherited = members.filter((m) => !direct.includes(m));
+    slot[inheritedListKey(level)].push(...inherited);
+  });
 }
 
 /**
@@ -172,8 +174,8 @@ export function buildSlots(rules, site, pendingFolder = null) {
   const defaults = defaultPaths(site);
   defaults.forEach((path) => ensureSlot(slotsMap, path, site));
 
-  const orgConfigRule = rules.find((r) => normPath(r.path) === 'CONFIG');
-  const orgContentRule = rules.find((r) => normPath(r.path) === '/ + **');
+  const orgConfigRules = rules.filter((r) => normPath(r.path) === 'CONFIG');
+  const orgContentRules = rules.filter((r) => normPath(r.path) === '/ + **');
 
   rules.forEach((rule) => {
     const norm = normPath(rule.path);
@@ -189,8 +191,8 @@ export function buildSlots(rules, site, pendingFolder = null) {
   });
 
   if (site) {
-    applyInheritance(slotsMap.get(`/${site}/CONFIG`), orgConfigRule);
-    applyInheritance(slotsMap.get(normPath(`/${site}/+**`)), orgContentRule);
+    applyInheritance(slotsMap.get(`/${site}/CONFIG`), orgConfigRules);
+    applyInheritance(slotsMap.get(normPath(`/${site}/+**`)), orgContentRules);
   }
 
   if (site && pendingFolder) {
