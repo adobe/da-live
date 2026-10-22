@@ -8,6 +8,7 @@ import { createAssetListing } from './asset-list.js';
 import { createLocalAssetListing } from './local-asset-list.js';
 import { getBlockProperties, replaceBlockText, replaceBlockImage } from './properties.js';
 import { canvasBus } from '../utils/canvas-bus.js';
+import { getSelectedBlock, getTableBlockName } from '../editor-utils/blocks.js';
 import { getCanvasBranch } from '../utils/branch.js';
 
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
@@ -19,6 +20,7 @@ const { DA_ADMIN } = await import(`${getNx2()}/utils/utils.js`);
  * Asset requests use postMessage: ew-asset-list-request { more?: boolean } →
  * ew-asset-list-result { assets: [{ asset, thumbnail, name }], hasMore }
  * or ew-asset-list-error { error }.
+ * Block selection changes post ew-block-selection { name } to the plugin.
  * Authentication and pagination URLs stay in the host, never in the iframe.
  *
  * @param {object} opts
@@ -68,6 +70,19 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose, 
       sendProperties();
     });
   };
+  // Tracked while hidden too, so re-showing the plugin with the same block selected stays quiet.
+  let lastSelectedFrom = null;
+  const checkBlockSelection = () => {
+    const block = getSelectedBlock(getView()?.state);
+    const from = block?.from ?? null;
+    if (from === lastSelectedFrom) return;
+    lastSelectedFrom = from;
+    if (from === null || destroyed) return;
+    if (iframe.checkVisibility?.() === false) return;
+    respondToPicker('ew-block-selection', { name: getTableBlockName(block.node) });
+  };
+  const unsubscribeBlockSelection = canvasBus.toolbarSelectionState.subscribe(checkBlockSelection);
+  const unsubscribeBlockDoc = canvasBus.editorDocState.subscribe(checkBlockSelection);
   const unsubscribeSelection = canvasBus.editorSelectState.subscribe(scheduleProperties);
   const unsubscribeDocument = canvasBus.editorHtmlState.subscribe(scheduleProperties);
   const localMock = window.location.port === '3000'
@@ -355,6 +370,8 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose, 
     frameObserver.disconnect();
     unsubscribeSelection();
     unsubscribeDocument();
+    unsubscribeBlockSelection();
+    unsubscribeBlockDoc();
     dragHandleLayer.remove();
     window.dispatchEvent(new Event('ew-table-drag-end'));
     window.dispatchEvent(new Event('ew-asset-drag-end'));

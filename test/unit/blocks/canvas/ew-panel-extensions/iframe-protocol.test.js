@@ -703,3 +703,130 @@ describe('setupIframeChannel getSelection', () => {
     });
   });
 });
+
+describe('setupIframeChannel block selection', () => {
+  const HOST = { org: 'myorg', site: 'mysite' };
+  let destroyChannel;
+  let visible;
+  const DOC_SURFACE = { surface: 'doc', showable: false };
+
+  const cell = (text) => ({
+    type: 'table_cell',
+    content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+  });
+  const tableJSON = (name) => ({
+    type: 'table',
+    content: [
+      { type: 'table_row', content: [cell(name)] },
+      { type: 'table_row', content: [cell('content')] },
+    ],
+  });
+
+  function makeDocView() {
+    return makeView({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'Intro' }] },
+        tableJSON('cards'),
+        tableJSON('hero'),
+      ],
+    });
+  }
+
+  // Position of the first character of `text` inside the doc.
+  function posOfText(view, text) {
+    let found;
+    view.state.doc.descendants((node, pos) => {
+      if (found === undefined && node.isText && node.text === text) found = pos;
+    });
+    return found + 1;
+  }
+
+  function select(view, text) {
+    const pos = posOfText(view, text);
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, pos)));
+    canvasBus.toolbarSelectionState.emit(DOC_SURFACE);
+  }
+
+  function selections(iframe) {
+    return iframe.contentWindow.postMessage.getCalls()
+      .filter((call) => call.args[0]?.type === 'ew-block-selection');
+  }
+
+  async function connect(view) {
+    const iframe = { ...makeIframe(), checkVisibility: () => visible };
+    const options = { iframe, hashState: HOST, getView: () => view, onClose: () => { } };
+    const { destroy } = await setupIframeChannel(options);
+    destroyChannel = destroy;
+    return iframe;
+  }
+
+  beforeEach(() => { visible = true; });
+
+  afterEach(() => {
+    destroyChannel?.();
+    destroyChannel = undefined;
+  });
+
+  it('posts the block name when the cursor moves into a block', async () => {
+    const view = makeDocView();
+    const iframe = await connect(view);
+    select(view, 'Intro');
+    expect(selections(iframe)).to.have.length(0);
+    select(view, 'cards');
+    const calls = selections(iframe);
+    expect(calls).to.have.length(1);
+    expect(calls[0].args).to.deep.equal([
+      { type: 'ew-block-selection', name: 'cards' },
+      'https://plugin.example.com',
+    ]);
+  });
+
+  it('posts again when a different block is selected', async () => {
+    const view = makeDocView();
+    const iframe = await connect(view);
+    select(view, 'cards');
+    select(view, 'hero');
+    const calls = selections(iframe);
+    expect(calls).to.have.length(2);
+    expect(calls[1].args[0]).to.deep.equal({ type: 'ew-block-selection', name: 'hero' });
+  });
+
+  it('does not repeat for the same block on selection or doc changes', async () => {
+    const view = makeDocView();
+    const iframe = await connect(view);
+    select(view, 'cards');
+    canvasBus.toolbarSelectionState.emit(DOC_SURFACE);
+    canvasBus.editorDocState.emit();
+    expect(selections(iframe)).to.have.length(1);
+  });
+
+  it('does not post while hidden and stays quiet when shown with the same block', async () => {
+    const view = makeDocView();
+    const iframe = await connect(view);
+    visible = false;
+    select(view, 'cards');
+    expect(selections(iframe)).to.have.length(0);
+    visible = true;
+    canvasBus.toolbarSelectionState.emit(DOC_SURFACE);
+    expect(selections(iframe)).to.have.length(0);
+  });
+
+  it('posts after leaving and re-entering the same block', async () => {
+    const view = makeDocView();
+    const iframe = await connect(view);
+    select(view, 'cards');
+    select(view, 'Intro');
+    select(view, 'cards');
+    expect(selections(iframe)).to.have.length(2);
+  });
+
+  it('stops after destroy', async () => {
+    const view = makeDocView();
+    const iframe = await connect(view);
+    destroyChannel();
+    destroyChannel = undefined;
+    select(view, 'cards');
+    expect(selections(iframe)).to.have.length(0);
+  });
+});
