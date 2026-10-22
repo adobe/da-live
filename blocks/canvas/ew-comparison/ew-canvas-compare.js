@@ -114,6 +114,29 @@ class EwCanvasCompare extends LitElement {
     this.dispatchEvent(new CustomEvent('toggle-split', { bubbles: true, composed: true }));
   }
 
+  // Keeps the two side-by-side panes at the same relative scroll position. The
+  // panes differ in height, so the position is matched as a fraction of each
+  // pane's scroll range. The scroll this sets on the other pane is skipped when
+  // it comes back, so the panes don't keep moving each other.
+  _syncScroll(e) {
+    const source = e.currentTarget;
+    const echo = this._scrollEcho;
+    if (echo?.pane === source) {
+      this._scrollEcho = null;
+      if (Math.abs(source.scrollTop - echo.top) <= 1) return;
+    }
+    const target = [...this.shadowRoot.querySelectorAll('.ew-cc-pane')]
+      .find((pane) => pane !== source);
+    if (!target) return;
+    const sourceRange = source.scrollHeight - source.clientHeight;
+    const targetRange = target.scrollHeight - target.clientHeight;
+    const fraction = sourceRange > 0 ? source.scrollTop / sourceRange : 0;
+    const top = Math.round(fraction * targetRange);
+    if (Math.abs(target.scrollTop - top) <= 1) return;
+    this._scrollEcho = { pane: target, top };
+    target.scrollTop = top;
+  }
+
   _displayDom(source) {
     const dom = source.cloneNode(true);
     const [, org, repo] = (this.path ?? '').split('/');
@@ -203,8 +226,8 @@ class EwCanvasCompare extends LitElement {
               <div class="ew-cc-pane ProseMirror">${row.current}</div>
               <div class="ew-cc-pane ProseMirror">${row.version}</div>
             `) : html`
-              <div class="ew-cc-pane ProseMirror">${panes.current}</div>
-              <div class="ew-cc-pane ProseMirror">${panes.version}</div>
+              <div class="ew-cc-pane ProseMirror" @scroll=${this._syncScroll}>${panes.current}</div>
+              <div class="ew-cc-pane ProseMirror" @scroll=${this._syncScroll}>${panes.version}</div>
             `}
           </div>
         ` : html`

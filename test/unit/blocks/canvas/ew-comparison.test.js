@@ -202,6 +202,60 @@ describe('embedded existing comparison view', () => {
   });
 });
 
+describe('version compare side-by-side scrolling', () => {
+  let element;
+  let popoverPrototype;
+  let originalShow;
+
+  const nextFrame = () => new Promise((resolve) => { requestAnimationFrame(() => resolve()); });
+  const settle = async () => {
+    await nextFrame();
+    await nextFrame();
+  };
+  const ratio = (pane) => pane.scrollTop / (pane.scrollHeight - pane.clientHeight);
+
+  beforeEach(async () => {
+    popoverPrototype = customElements.get('nx-popover').prototype;
+    originalShow = popoverPrototype.show;
+    popoverPrototype.show = () => {};
+    const current = Array.from({ length: 40 }, (_, i) => `<p>Line ${i}</p>`).join('');
+    const version = Array.from({ length: 80 }, (_, i) => `<p>Line ${i}</p>`).join('');
+    element = document.createElement('ew-canvas-compare');
+    element.label = 'Saved version';
+    element.split = true;
+    element.diffDom = new DOMParser().parseFromString(`<del>${current}</del><ins>${version}</ins>`, 'text/html').body;
+    document.body.append(element);
+    await element.updateComplete;
+    element.shadowRoot.querySelectorAll('.ew-cc-pane').forEach((pane) => {
+      pane.style.height = '200px';
+      pane.style.overflow = 'auto';
+    });
+  });
+
+  afterEach(() => {
+    element?.remove();
+    if (originalShow) popoverPrototype.show = originalShow;
+    else delete popoverPrototype.show;
+  });
+
+  it('scrolls the other pane to the same relative position', async () => {
+    const [currentPane, versionPane] = element.shadowRoot.querySelectorAll('.ew-cc-pane');
+    expect(versionPane.scrollHeight).to.be.greaterThan(currentPane.scrollHeight);
+
+    currentPane.scrollTop = (currentPane.scrollHeight - currentPane.clientHeight) / 2;
+    await settle();
+    expect(ratio(versionPane)).to.be.closeTo(ratio(currentPane), 0.02);
+
+    versionPane.scrollTop = versionPane.scrollHeight - versionPane.clientHeight;
+    await settle();
+    expect(ratio(currentPane)).to.be.closeTo(1, 0.02);
+
+    versionPane.scrollTop = 0;
+    await settle();
+    expect(currentPane.scrollTop).to.equal(0);
+  });
+});
+
 describe('standalone workspace comparison', () => {
   let mountRoot;
   let editor;
