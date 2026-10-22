@@ -829,4 +829,28 @@ describe('setupIframeChannel block selection', () => {
     select(view, 'cards');
     expect(selections(iframe)).to.have.length(0);
   });
+
+  it('does not post when an edit above the selected block shifts its position', async () => {
+    const view = makeDocView();
+    const iframe = await connect(view);
+    select(view, 'cards');
+    view.dispatch(view.state.tr.insertText('More ', 1));
+    canvasBus.toolbarSelectionState.emit(DOC_SURFACE);
+    expect(selections(iframe)).to.have.length(1);
+  });
+
+  ['ew-table-drag', 'ew-asset-drag'].forEach((event) => {
+    it(`ignores selections caused by an ${event} drop`, async () => {
+      const view = makeDocView();
+      const iframe = await connect(view);
+      window.dispatchEvent(new CustomEvent(`${event}-start`, { detail: {} }));
+      select(view, 'cards');
+      window.dispatchEvent(new Event(`${event}-end`));
+      select(view, 'hero');
+      expect(selections(iframe)).to.have.length(0);
+      await wait(550);
+      select(view, 'cards');
+      expect(selections(iframe)).to.have.length(1);
+    });
+  });
 });

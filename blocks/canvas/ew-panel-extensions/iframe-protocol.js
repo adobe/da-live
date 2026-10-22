@@ -71,13 +71,29 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose, 
     });
   };
   // Tracked while hidden too, so re-showing the plugin with the same block selected stays quiet.
-  let lastSelectedFrom = null;
+  // Same block = same start or the very same (unchanged) node, so edits above it don't re-fire.
+  let lastSelected = null;
+  // Drops from the plugin's drag handles move the selection; those aren't author selections.
+  const DROP_GUARD_MS = 500;
+  let dragging = false;
+  let dragEndedAt = -Infinity;
+  const onPluginDragStart = () => { dragging = true; };
+  const onPluginDragEnd = () => {
+    dragging = false;
+    dragEndedAt = Date.now();
+  };
+  const dragEvents = ['ew-table-drag', 'ew-asset-drag'];
+  dragEvents.forEach((name) => {
+    window.addEventListener(`${name}-start`, onPluginDragStart);
+    window.addEventListener(`${name}-end`, onPluginDragEnd);
+  });
   const checkBlockSelection = () => {
     const block = getSelectedBlock(getView()?.state);
-    const from = block?.from ?? null;
-    if (from === lastSelectedFrom) return;
-    lastSelectedFrom = from;
-    if (from === null || destroyed) return;
+    const previous = lastSelected;
+    lastSelected = block && { from: block.from, node: block.node };
+    if (!block || destroyed) return;
+    if (previous && (previous.from === block.from || previous.node === block.node)) return;
+    if (dragging || Date.now() - dragEndedAt <= DROP_GUARD_MS) return;
     if (iframe.checkVisibility?.() === false) return;
     respondToPicker('ew-block-selection', { name: getTableBlockName(block.node) });
   };
@@ -372,6 +388,10 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose, 
     unsubscribeDocument();
     unsubscribeBlockSelection();
     unsubscribeBlockDoc();
+    dragEvents.forEach((name) => {
+      window.removeEventListener(`${name}-start`, onPluginDragStart);
+      window.removeEventListener(`${name}-end`, onPluginDragEnd);
+    });
     dragHandleLayer.remove();
     window.dispatchEvent(new Event('ew-table-drag-end'));
     window.dispatchEvent(new Event('ew-asset-drag-end'));
