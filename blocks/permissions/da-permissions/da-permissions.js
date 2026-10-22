@@ -11,7 +11,7 @@ await import(`${getNx()}/blocks/shared/breadcrumb/breadcrumb.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
 await import(`${getNx()}/blocks/shared/search/search.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
-await import('../da-permissions-table/da-permissions-table.js');
+await import('../da-permissions-cards/da-permissions-cards.js');
 await import('../folder-picker/folder-picker.js');
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -29,7 +29,7 @@ const CLOSE_ICON_SRC = '/img/icons/s2-icon-close-20-n.svg';
 /**
  * Container component for the permissions block. Routes on `org`/`site`
  * (set by `permissions.js` on every hash change, same element reused), loads
- * the org config, and renders the B2 table — or the empty/loading/error
+ * the org config, and renders the A1 cards — or the empty/loading/error
  * states in its place.
  */
 class DaPermissions extends LitElement {
@@ -125,7 +125,7 @@ class DaPermissions extends LitElement {
     return filterSlots(this._slots, this._query);
   }
 
-  get _tableExpanded() {
+  get _cardsExpanded() {
     if (!this._query.trim()) return this._expanded;
     return new Set(this._filteredSlots.map((slot) => slot.path));
   }
@@ -338,10 +338,10 @@ class DaPermissions extends LitElement {
     }
     return html`
       ${this._readOnly ? html`<p class="permissions-message">You have read-only access to this configuration.</p>` : nothing}
-      <da-permissions-table
+      <da-permissions-cards
         .slots=${filtered}
         .org=${this.org}
-        .expanded=${this._tableExpanded}
+        .expanded=${this._cardsExpanded}
         .editable=${this._editable}
         .busy=${this._busy}
         .adding=${this._adding}
@@ -350,7 +350,7 @@ class DaPermissions extends LitElement {
         @permissions-add-cancel=${() => this._onAddCancel()}
         @permissions-add=${(e) => this._onAdd(e)}
         @permissions-remove=${(e) => this._onRemoveRequest(e)}
-      ></da-permissions-table>
+      ></da-permissions-cards>
       ${this._renderAddFolderButton()}
       ${this._renderRemoveDialog()}
       ${this._renderFolderDialog()}`;

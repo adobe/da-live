@@ -125,16 +125,16 @@ describe('da-permissions', () => {
     expect(el.shadowRoot.textContent).to.contain('Could not load permissions (500).');
   });
 
-  it('no permissions sheet -> the no-sheet copy, a link to /config#/myorg/, and no table "+" buttons', async () => {
+  it('no permissions sheet -> the no-sheet copy, a link to /config#/myorg/, and no card "+" buttons', async () => {
     window.fetch = async () => new Response(JSON.stringify(NO_SHEET_BODY), { status: 200 });
     const el = await mount('myorg');
     expect(el.shadowRoot.textContent).to.contain('This org has no permissions sheet yet');
     const link = el.shadowRoot.querySelector('a[href="/config#/myorg/"]');
     expect(link).to.not.equal(null);
-    expect(el.shadowRoot.querySelector('da-permissions-table')).to.equal(null);
+    expect(el.shadowRoot.querySelector('da-permissions-cards')).to.equal(null);
   });
 
-  it('ok -> renders a table with slots from buildSlots, and the picker items include site names', async () => {
+  it('ok -> renders cards with slots from buildSlots, and the picker items include site names', async () => {
     window.fetch = async (url) => {
       const href = String(url);
       if (href.includes('/list/')) {
@@ -144,9 +144,9 @@ describe('da-permissions', () => {
     };
     const el = await mount('myorg');
 
-    const table = el.shadowRoot.querySelector('da-permissions-table');
-    expect(table).to.not.equal(null);
-    expect(table.slots.some((s) => s.path === 'CONFIG')).to.be.true;
+    const cards = el.shadowRoot.querySelector('da-permissions-cards');
+    expect(cards).to.not.equal(null);
+    expect(cards.slots.some((s) => s.path === 'CONFIG')).to.be.true;
 
     const picker = el.shadowRoot.querySelector('nx-picker');
     const labels = picker.items.filter((i) => !i.divider).map((i) => i.label);
@@ -185,51 +185,51 @@ describe('da-permissions', () => {
   it('add saves one PUT, renders the new pill, closes the input, clears _busy; "+" buttons disable while pending', async () => {
     const { putCalls, resolvePut } = mockFetch({ configFor: () => CONFIG_BODY });
     const el = await mount('myorg');
-    const table = el.shadowRoot.querySelector('da-permissions-table');
-    await table.updateComplete;
+    const cards = el.shadowRoot.querySelector('da-permissions-cards');
+    await cards.updateComplete;
 
-    const addBtn = table.shadowRoot.querySelector('tr[data-path="CONFIG"] td:nth-child(2) .cell-add');
+    const addBtn = cards.shadowRoot.querySelector('article.scope-card[data-path="CONFIG"] .level-row[data-level="read"] .row-add');
     addBtn.click();
     await el.updateComplete;
-    await table.updateComplete;
+    await cards.updateComplete;
 
-    const input = table.shadowRoot.querySelector('.cell-add-input');
+    const input = cards.shadowRoot.querySelector('.row-add-input');
     expect(input).to.not.equal(null);
     input.value = 'reader@x.com';
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     await waitUntil(() => putCalls.length === 1);
     await el.updateComplete;
-    await table.updateComplete;
+    await cards.updateComplete;
 
     expect(putCalls.length).to.equal(1);
-    expect(table.shadowRoot.querySelector('.cell-add-input')).to.equal(null);
+    expect(cards.shadowRoot.querySelector('.row-add-input')).to.equal(null);
     expect(el._busy).to.equal(true);
-    const addButtons = [...table.shadowRoot.querySelectorAll('.cell-add')];
+    const addButtons = [...cards.shadowRoot.querySelectorAll('.row-add')];
     expect(addButtons.length).to.be.greaterThan(0);
     addButtons.forEach((btn) => expect(btn.disabled).to.equal(true));
 
     resolvePut(200);
     await waitUntil(() => el._busy === false);
     await el.updateComplete;
-    await table.updateComplete;
+    await cards.updateComplete;
 
     expect(el._busy).to.equal(false);
-    const readPills = table.shadowRoot.querySelector('tr[data-path="CONFIG"] td:nth-child(2) nx-pills');
+    const readPills = cards.shadowRoot.querySelector('article.scope-card[data-path="CONFIG"] .level-row[data-level="read"] nx-pills');
     expect(readPills.items.some((i) => i.id === 'reader@x.com')).to.equal(true);
   });
 
   it('add input with comma list saves both', async () => {
     const { putCalls, resolvePut } = mockFetch({ configFor: () => CONFIG_BODY });
     const el = await mount('myorg');
-    const table = el.shadowRoot.querySelector('da-permissions-table');
-    await table.updateComplete;
+    const cards = el.shadowRoot.querySelector('da-permissions-cards');
+    await cards.updateComplete;
 
-    const addBtn = table.shadowRoot.querySelector('tr[data-path="CONFIG"] td:nth-child(3) .cell-add');
+    const addBtn = cards.shadowRoot.querySelector('article.scope-card[data-path="CONFIG"] .level-row[data-level="write"] .row-add');
     addBtn.click();
     await el.updateComplete;
-    await table.updateComplete;
+    await cards.updateComplete;
 
-    const input = table.shadowRoot.querySelector('.cell-add-input');
+    const input = cards.shadowRoot.querySelector('.row-add-input');
     input.value = 'x@x.com, y@x.com';
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     await waitUntil(() => putCalls.length === 1);
@@ -256,10 +256,10 @@ describe('da-permissions', () => {
     };
     const { putCalls, resolvePut } = mockFetch({ configFor: () => SITE_CONFIG_BODY });
     const el = await mount('myorg', 'mysite');
-    const table = el.shadowRoot.querySelector('da-permissions-table');
-    await table.updateComplete;
+    const cards = el.shadowRoot.querySelector('da-permissions-cards');
+    await cards.updateComplete;
 
-    const writePills = table.shadowRoot.querySelector('tr[data-path="/mysite/ + **"] td:nth-child(3) nx-pills');
+    const writePills = cards.shadowRoot.querySelector('article.scope-card[data-path="/mysite/ + **"] .level-row[data-level="write"] nx-pills');
     expect(writePills).to.not.equal(null);
 
     writePills.dispatchEvent(new CustomEvent('nx-pill-remove', { detail: { id: 'a@x.com' }, bubbles: true }));
@@ -290,14 +290,14 @@ describe('da-permissions', () => {
   it('PUT 403 -> shows the read-only copy and removes the "+" buttons', async () => {
     const { putCalls, resolvePut } = mockFetch({ configFor: () => CONFIG_BODY });
     const el = await mount('myorg');
-    const table = el.shadowRoot.querySelector('da-permissions-table');
-    await table.updateComplete;
+    const cards = el.shadowRoot.querySelector('da-permissions-cards');
+    await cards.updateComplete;
 
-    const addBtn = table.shadowRoot.querySelector('tr[data-path="CONFIG"] td:nth-child(2) .cell-add');
+    const addBtn = cards.shadowRoot.querySelector('article.scope-card[data-path="CONFIG"] .level-row[data-level="read"] .row-add');
     addBtn.click();
     await el.updateComplete;
-    await table.updateComplete;
-    const input = table.shadowRoot.querySelector('.cell-add-input');
+    await cards.updateComplete;
+    const input = cards.shadowRoot.querySelector('.row-add-input');
     input.value = 'reader@x.com';
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     await waitUntil(() => putCalls.length === 1);
@@ -306,22 +306,22 @@ describe('da-permissions', () => {
     resolvePut(403);
     await waitUntil(() => el._readOnly === true);
     await el.updateComplete;
-    await table.updateComplete;
+    await cards.updateComplete;
 
     expect(el.shadowRoot.textContent).to.contain('You have read-only access to this configuration.');
-    expect(table.shadowRoot.querySelector('.cell-add')).to.equal(null);
+    expect(cards.shadowRoot.querySelector('.row-add')).to.equal(null);
   });
 
   it('PUT 500 -> shows an error toast', async () => {
     const { putCalls, resolvePut } = mockFetch({ configFor: () => CONFIG_BODY });
     const el = await mount('myorg');
-    const table = el.shadowRoot.querySelector('da-permissions-table');
-    await table.updateComplete;
-    const addBtn = table.shadowRoot.querySelector('tr[data-path="CONFIG"] td:nth-child(2) .cell-add');
+    const cards = el.shadowRoot.querySelector('da-permissions-cards');
+    await cards.updateComplete;
+    const addBtn = cards.shadowRoot.querySelector('article.scope-card[data-path="CONFIG"] .level-row[data-level="read"] .row-add');
     addBtn.click();
     await el.updateComplete;
-    await table.updateComplete;
-    const input = table.shadowRoot.querySelector('.cell-add-input');
+    await cards.updateComplete;
+    const input = cards.shadowRoot.querySelector('.row-add-input');
     input.value = 'reader@x.com';
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     await waitUntil(() => putCalls.length === 1);
@@ -342,23 +342,23 @@ describe('da-permissions', () => {
       return new Response(JSON.stringify(CONFIG_BODY), { status: 200 });
     };
     const el = await mount('myorg');
-    const table = el.shadowRoot.querySelector('da-permissions-table');
-    await table.updateComplete;
-    const addBtn = table.shadowRoot.querySelector('tr[data-path="CONFIG"] td:nth-child(2) .cell-add');
+    const cards = el.shadowRoot.querySelector('da-permissions-cards');
+    await cards.updateComplete;
+    const addBtn = cards.shadowRoot.querySelector('article.scope-card[data-path="CONFIG"] .level-row[data-level="read"] .row-add');
     addBtn.click();
     await el.updateComplete;
-    await table.updateComplete;
-    const input = table.shadowRoot.querySelector('.cell-add-input');
+    await cards.updateComplete;
+    const input = cards.shadowRoot.querySelector('.row-add-input');
     input.value = 'reader@x.com';
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
 
     await waitUntil(() => el._busy === false);
     await waitUntil(() => window.daTestToasts.length > 0);
     await el.updateComplete;
-    await table.updateComplete;
+    await cards.updateComplete;
 
     expect(el._busy).to.equal(false);
-    const addButtons = [...table.shadowRoot.querySelectorAll('.cell-add')];
+    const addButtons = [...cards.shadowRoot.querySelectorAll('.row-add')];
     expect(addButtons.length).to.be.greaterThan(0);
     addButtons.forEach((btn) => expect(btn.disabled).to.equal(false));
     expect(window.daTestToasts.some((t) => t.variant === 'error')).to.equal(true);
@@ -394,30 +394,30 @@ describe('da-permissions', () => {
     search.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
     await el.updateComplete;
 
-    let table = el.shadowRoot.querySelector('da-permissions-table');
-    expect(table.slots.map((s) => s.path)).to.deep.equal([blogPath]);
-    expect(table.expanded.has(blogPath)).to.equal(true);
+    let cards = el.shadowRoot.querySelector('da-permissions-cards');
+    expect(cards.slots.map((s) => s.path)).to.deep.equal([blogPath]);
+    expect(cards.expanded.has(blogPath)).to.equal(true);
 
     search.value = 'orgwriter@example.com';
     search.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
     await el.updateComplete;
 
-    table = el.shadowRoot.querySelector('da-permissions-table');
-    expect(table.slots.map((s) => s.path)).to.deep.equal([contentPath]);
-    expect(table.expanded.has(contentPath)).to.equal(true);
+    cards = el.shadowRoot.querySelector('da-permissions-cards');
+    expect(cards.slots.map((s) => s.path)).to.deep.equal([contentPath]);
+    expect(cards.expanded.has(contentPath)).to.equal(true);
 
     search.value = '';
     search.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
     await el.updateComplete;
 
-    table = el.shadowRoot.querySelector('da-permissions-table');
-    expect(table.slots.map((s) => s.path)).to.include.members([configPath, contentPath, blogPath]);
-    expect(table.expanded.has(configPath)).to.equal(true);
-    expect(table.expanded.has(blogPath)).to.equal(false);
-    expect(table.expanded.has(contentPath)).to.equal(false);
+    cards = el.shadowRoot.querySelector('da-permissions-cards');
+    expect(cards.slots.map((s) => s.path)).to.include.members([configPath, contentPath, blogPath]);
+    expect(cards.expanded.has(configPath)).to.equal(true);
+    expect(cards.expanded.has(blogPath)).to.equal(false);
+    expect(cards.expanded.has(contentPath)).to.equal(false);
   });
 
-  it('no match -> shows "No scopes match "zzz"" and no table', async () => {
+  it('no match -> shows "No scopes match "zzz"" and no cards', async () => {
     mockFetch({ configFor: () => CONFIG_BODY });
     const el = await mount('myorg');
     const search = el.shadowRoot.querySelector('nx-search');
@@ -426,7 +426,7 @@ describe('da-permissions', () => {
     search.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
     await el.updateComplete;
 
-    expect(el.shadowRoot.querySelector('da-permissions-table')).to.equal(null);
+    expect(el.shadowRoot.querySelector('da-permissions-cards')).to.equal(null);
     expect(el.shadowRoot.textContent).to.contain('No scopes match "zzz"');
   });
 
@@ -465,15 +465,15 @@ describe('da-permissions', () => {
   it('adding only members that already exist (case-insensitive) shows a warning toast and makes no PUT', async () => {
     const { putCalls } = mockFetch({ configFor: () => CONFIG_BODY });
     const el = await mount('myorg');
-    const table = el.shadowRoot.querySelector('da-permissions-table');
-    await table.updateComplete;
+    const cards = el.shadowRoot.querySelector('da-permissions-cards');
+    await cards.updateComplete;
 
-    const addBtn = table.shadowRoot.querySelector('tr[data-path="CONFIG"] td:nth-child(3) .cell-add');
+    const addBtn = cards.shadowRoot.querySelector('article.scope-card[data-path="CONFIG"] .level-row[data-level="write"] .row-add');
     addBtn.click();
     await el.updateComplete;
-    await table.updateComplete;
+    await cards.updateComplete;
 
-    const input = table.shadowRoot.querySelector('.cell-add-input');
+    const input = cards.shadowRoot.querySelector('.row-add-input');
     input.value = 'Admin@example.com';
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     await waitUntil(() => window.daTestToasts.length > 0);
@@ -497,14 +497,14 @@ describe('da-permissions', () => {
     };
     const { putCalls, resolvePut } = mockFetch({ configFor: (org) => (org === 'other' ? OTHER_CONFIG_BODY : CONFIG_BODY) });
     const el = await mount('myorg');
-    const table = el.shadowRoot.querySelector('da-permissions-table');
-    await table.updateComplete;
+    const cards = el.shadowRoot.querySelector('da-permissions-cards');
+    await cards.updateComplete;
 
-    const addBtn = table.shadowRoot.querySelector('tr[data-path="CONFIG"] td:nth-child(2) .cell-add');
+    const addBtn = cards.shadowRoot.querySelector('article.scope-card[data-path="CONFIG"] .level-row[data-level="read"] .row-add');
     addBtn.click();
     await el.updateComplete;
-    await table.updateComplete;
-    const input = table.shadowRoot.querySelector('.cell-add-input');
+    await cards.updateComplete;
+    const input = cards.shadowRoot.querySelector('.row-add-input');
     input.value = 'reader@x.com';
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     await waitUntil(() => putCalls.length === 1);
@@ -589,11 +589,11 @@ describe('da-permissions folder permission', () => {
     expect(el.shadowRoot.querySelector('nx-dialog')).to.equal(null);
     expect(el._pendingFolder).to.equal('blog');
 
-    const table = el.shadowRoot.querySelector('da-permissions-table');
+    const cards = el.shadowRoot.querySelector('da-permissions-cards');
     const blogPath = '/mysite/blog/ + **';
-    expect(table.slots.some((s) => s.path === blogPath && s.pending)).to.equal(true);
-    expect(table.expanded.has(blogPath)).to.equal(true);
-    expect(table.adding).to.deep.equal({ path: blogPath, level: 'read' });
+    expect(cards.slots.some((s) => s.path === blogPath && s.pending)).to.equal(true);
+    expect(cards.expanded.has(blogPath)).to.equal(true);
+    expect(cards.adding).to.deep.equal({ path: blogPath, level: 'read' });
   });
 
   it('cancelling the add leaves the pending row without saving', async () => {
@@ -609,19 +609,19 @@ describe('da-permissions folder permission', () => {
     picker.shadowRoot.querySelector('.nx-btn-accent').click();
     await el.updateComplete;
 
-    const table = el.shadowRoot.querySelector('da-permissions-table');
-    await table.updateComplete;
+    const cards = el.shadowRoot.querySelector('da-permissions-cards');
+    await cards.updateComplete;
     const blogPath = '/mysite/blog/ + **';
-    const input = table.shadowRoot.querySelector('.cell-add-input');
+    const input = cards.shadowRoot.querySelector('.row-add-input');
     expect(input).to.not.equal(null);
     input.dispatchEvent(new FocusEvent('blur'));
     await el.updateComplete;
-    await table.updateComplete;
+    await cards.updateComplete;
 
     expect(putCalls.length).to.equal(0);
     expect(el._pendingFolder).to.equal('blog');
-    expect(table.slots.some((s) => s.path === blogPath && s.pending)).to.equal(true);
-    expect(table.shadowRoot.querySelector('.cell-add-input')).to.equal(null);
+    expect(cards.slots.some((s) => s.path === blogPath && s.pending)).to.equal(true);
+    expect(cards.shadowRoot.querySelector('.row-add-input')).to.equal(null);
   });
 
   it('adding a member saves a rule with path "/s/blog/ + **", and the row is no longer pending', async () => {
@@ -649,9 +649,9 @@ describe('da-permissions folder permission', () => {
     const blogPath = '/s/blog/ + **';
     expect(el._pendingFolder).to.equal('blog');
 
-    const table = el.shadowRoot.querySelector('da-permissions-table');
-    await table.updateComplete;
-    const input = table.shadowRoot.querySelector('.cell-add-input');
+    const cards = el.shadowRoot.querySelector('da-permissions-cards');
+    await cards.updateComplete;
+    const input = cards.shadowRoot.querySelector('.row-add-input');
     input.value = 'reader@x.com';
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     await waitUntil(() => putCalls.length === 1);
@@ -667,8 +667,8 @@ describe('da-permissions folder permission', () => {
     await settle(el, () => el._pendingFolder === null);
 
     expect(el._pendingFolder).to.equal(null);
-    const updatedTable = el.shadowRoot.querySelector('da-permissions-table');
-    expect(updatedTable.slots.some((s) => s.path === blogPath && s.pending)).to.equal(false);
+    const updatedCards = el.shadowRoot.querySelector('da-permissions-cards');
+    expect(updatedCards.slots.some((s) => s.path === blogPath && s.pending)).to.equal(false);
   });
 
   it('navigating to another site clears the pending folder', async () => {

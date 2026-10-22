@@ -156,6 +156,14 @@ describe('da-permissions-cards', () => {
     expect(row.querySelector('.row-add')).to.equal(null);
   });
 
+  it('shows the row-add button for an empty read row when editable', async () => {
+    const slot = baseSlot();
+    const el = await mount({ slots: [slot], editable: true });
+
+    const row = el.shadowRoot.querySelector('.level-row[data-level="read"]');
+    expect(row.querySelector('.row-add')).to.not.equal(null);
+  });
+
   it('shows the row-add button when editable, disabled and pills non-removable while busy', async () => {
     const slot = baseSlot({ write: ['a@x.com'] });
     const el = await mount({ slots: [slot], editable: true, busy: true });
