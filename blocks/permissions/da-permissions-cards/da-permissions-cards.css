@@ -1,0 +1,107 @@
+:host {
+  display: block;
+  font-family: var(--s2-font-family);
+}
+
+.scope-section + .scope-section {
+  margin-top: var(--s2-spacing-500);
+}
+
+.scope-section h3 {
+  margin: 0 0 var(--s2-spacing-200);
+  color: var(--s2-gray-800);
+  font-size: var(--s2-component-m-medium-font-size, 16px);
+  font-weight: var(--s2-component-m-bold-font-weight);
+}
+
+.scope-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2-spacing-200);
+  margin-bottom: var(--s2-spacing-300);
+  padding: var(--s2-spacing-300);
+  border: 1px solid var(--s2-gray-300);
+  border-radius: var(--s2-corner-radius-400, 8px);
+  background: var(--s2-gray-50, #fff);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2-spacing-200);
+}
+
+.card-title {
+  margin: 0;
+  color: var(--s2-gray-900);
+  font-size: var(--s2-component-s-bold-font-size, 14px);
+  font-weight: var(--s2-component-m-bold-font-weight);
+}
+
+.card-toggle {
+  flex-shrink: 0;
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2-spacing-150);
+}
+
+.level-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2-spacing-100);
+  padding-top: var(--s2-spacing-150);
+  border-top: 1px solid var(--s2-gray-200);
+}
+
+.card-body .level-row:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.level-label {
+  min-width: 3.5rem;
+  color: var(--s2-blue-900);
+  font-size: var(--s2-component-xs-medium-font-size, 12px);
+  font-weight: var(--s2-component-s-bold-font-weight);
+  letter-spacing: 0.04em;
+}
+
+.level-row[data-level='write'] .level-label {
+  color: var(--s2-green-900);
+}
+
+.level-row[data-level='none'] .level-label {
+  color: var(--s2-red-900);
+}
+
+.level-row[data-level='none'] nx-pills {
+  --nx-pill-background: var(--s2-red-200);
+  --nx-pill-color: var(--s2-red-1100);
+}
+
+.row-empty {
+  color: var(--s2-gray-600);
+  font-size: var(--s2-component-s-regular-font-size, 14px);
+}
+
+.from-label {
+  color: var(--s2-gray-600);
+  font-size: var(--s2-component-xs-medium-font-size, 12px);
+}
+
+.row-more {
+  white-space: nowrap;
+}
+
+.row-add {
+  white-space: nowrap;
+}
+
+.row-add-input {
+  min-width: 10rem;
+}
