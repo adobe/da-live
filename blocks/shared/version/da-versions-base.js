@@ -2,15 +2,18 @@ import { LitElement, html, nothing } from 'da-lit';
 import { formatDate } from '../utils.js';
 import { getNx2Api } from '../../../scripts/utils.js';
 import { formatVersions, formatUser } from './helpers.js';
-import { getVersionId } from './version-actions.js';
+import { getVersionId, createVersion } from './version-actions.js';
 
 export default class DaVersionsBase extends LitElement {
   static properties = {
     open: { attribute: false },
     path: { type: String },
+    forceSave: { attribute: false },
     _versions: { state: true },
     _newVersion: { state: true },
     _loading: { state: true },
+    _saveError: { state: true },
+    _savingVersion: { state: true },
   };
 
   async getVersions() {
@@ -58,20 +61,38 @@ export default class DaVersionsBase extends LitElement {
 
   async handleNewSubmit(e) {
     e.preventDefault();
+    if (this._savingVersion) return;
+    this._saveError = null;
+    this._savingVersion = true;
+    const { path } = this;
     const entry = { ...this._newVersion };
     if (e.target.elements.label?.value) entry.label = e.target.elements.label.value;
 
-    const { versions } = await getNx2Api();
-    const res = await versions.create(this.path, entry.label ? { comment: entry.label } : {});
-    if (res.status !== 201) return;
-
-    this._newVersion = null;
-    this._versions.unshift(entry);
-    // TODO: The server does not respond with version details, so get a fresh list
-    this.getVersions();
+    try {
+      if (this.forceSave) {
+        const saved = await this.forceSave();
+        if (path !== this.path) return;
+        if (!saved.ok) {
+          this._saveError = saved.error || 'Could not save the document before creating a version.';
+          return;
+        }
+      }
+      const ok = await createVersion(path, entry.label);
+      if (path !== this.path) return;
+      if (!ok) {
+        this._saveError = 'Could not save version. Please try again.';
+        return;
+      }
+      this._newVersion = null;
+      this._versions.unshift(entry);
+      this.getVersions();
+    } finally {
+      this._savingVersion = false;
+    }
   }
 
   handleNew(e) {
+    this._saveError = null;
     e.target.disabled = true;
     const { date, time } = formatDate();
     this._newVersion = { date, time, isVersion: true, users: [] };
@@ -112,11 +133,12 @@ export default class DaVersionsBase extends LitElement {
     return html`
       <li class="da-version-entry is-new">
         <form @submit=${this.handleNewSubmit}>
-          <button class="da-version-btn" click=${this.handleSave}>Save</button>
+          <button class="da-version-btn" ?disabled=${this._savingVersion}>Save</button>
           <p class="da-version-date">${entry.date}</p>
-          <input type="text" name="label" placeholder="Label" class="da-version-new-input" />
+          <input type="text" name="label" placeholder="Label" class="da-version-new-input" ?readonly=${this._savingVersion} />
         </form>
-        <button class="da-version-btn da-version-btn-cancel" @click=${this.handleCancel}>Save</button>
+        <button class="da-version-btn da-version-btn-cancel" @click=${this.handleCancel} ?disabled=${this._savingVersion}>Cancel</button>
+        ${this._saveError ? html`<p role="alert">${this._saveError}</p>` : nothing}
       </li>
     `;
   }

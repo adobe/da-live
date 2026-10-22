@@ -22,8 +22,23 @@ export async function buildSourceUrl(path) {
 
 // da-admin keeps da-live's own fetcher, which reads the token live and retries once on a 401.
 // nx2's is the one that allowlists api.aem.live for the bearer.
-export async function checkDoc(sourceUrl) {
-  if (sourceUrl.startsWith(DA_ADMIN)) return daFetch(sourceUrl, { method: 'HEAD' });
+async function fetchSource(sourceUrl, opts) {
+  if (sourceUrl.startsWith(DA_ADMIN)) return daFetch(sourceUrl, opts);
   const { daFetch: nx2Fetch } = await getNx2Api();
-  return nx2Fetch({ url: sourceUrl, opts: { method: 'HEAD' } });
+  return nx2Fetch({ url: sourceUrl, opts });
+}
+
+export function checkDoc(sourceUrl) {
+  return fetchSource(sourceUrl, { method: 'HEAD' });
+}
+
+export function fetchDoc(sourceUrl) {
+  return fetchSource(sourceUrl, { cache: 'no-store' });
+}
+
+export async function saveDoc(path, body) {
+  const normalized = normalizeSourcePath(path);
+  if (!normalized) throw new Error('Cannot save a document without a source path.');
+  const { source } = await getNx2Api();
+  return source.save(`/${normalized}.html`, { body });
 }

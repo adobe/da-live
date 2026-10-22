@@ -1,6 +1,7 @@
 import getPathDetails from '../shared/pathDetails.js';
 import { contentLogin, livePreviewLogin } from '../shared/utils.js';
 import { getNx, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
+import { OFFLINE_MODE } from '../shared/constants.js';
 
 import './da-title/da-title.js';
 import './da-content/da-content.js';
@@ -14,6 +15,7 @@ const DOMPARSER = new DOMParser();
 
 let prose;
 let prosePromise;
+let editorLoadCount = 0;
 
 async function getDoc(path) {
   const { source } = await getNx2Api();
@@ -37,113 +39,169 @@ function initArea(areaName, details, el) {
   return areaEl;
 }
 
-async function setUI(el) {
+async function flushPendingEditor(daContent) {
+  if (!daContent?.hasPendingSave) return true;
+  const saved = await daContent.forceSave();
+  if (!saved.ok) window.location.hash = `#${daContent.details.fullpath}`;
+  return saved.ok;
+}
+
+export async function setUI(el) {
+  editorLoadCount += 1;
+  const loadCount = editorLoadCount;
   const details = getPathDetails();
   if (!details) return;
+  const currentContent = document.querySelector('da-content');
+  if (currentContent?.hasPendingSave
+    && currentContent.details?.fullpath === details.fullpath) return;
+  const offline = currentContent?.offline ?? OFFLINE_MODE;
 
+  let useCanvas = false;
   try {
     const { isEWEnabled } = await getNxEWFlags();
-    if (await isEWEnabled({ org: details.org, site: details.site })) {
-      window.location.href = `/canvas#${details.fullpath.replace(/\.html$/, '')}`;
-      return;
-    }
+    useCanvas = await isEWEnabled({ org: details.org, site: details.site });
   } catch {
     // Flag check unavailable — fall through to the normal editor.
+  }
+  if (loadCount !== editorLoadCount) return;
+  if (useCanvas) {
+    if (!await flushPendingEditor(currentContent) || loadCount !== editorLoadCount) return;
+    window.location.href = `/canvas#${details.fullpath.replace(/\.html$/, '')}`;
+    return;
   }
 
   // Warm the hlx6 probe cache up front so createConnection's `await isHlx6(...)`
   // resolves from cache instead of gating the WebSocket on a network round-trip.
-  getNx2Api().then(({ isHlx6 }) => isHlx6(details.org, details.site)).catch(() => {});
+  if (!offline) getNx2Api().then(({ isHlx6 }) => isHlx6(details.org, details.site)).catch(() => {});
 
   const docPromise = getDoc(details.fullpath);
   prosePromise ??= import('./prose/index.js');
 
   // Start WebSocket as soon as prose module loads (don't wait for logins/doc)
-  const wsPromise = prosePromise.then(
+  const wsPromise = offline ? undefined : prosePromise.then(
     (mod) => mod.createConnection(details.sourceUrl),
   );
+  const connectionResult = wsPromise?.then(
+    (connection) => ({ connection }),
+    (error) => {
+      // The initializer will surface this error if it adopts the connection.
+      // eslint-disable-next-line no-console
+      console.error('[editor] Could not connect to collaboration', error);
+      return {};
+    },
+  );
+  let adopted = false;
 
-  document.title = `Edit ${details.name} - DA`;
+  try {
+    const { owner, repo } = details;
+    const contentCookiePromise = contentLogin(owner, repo);
 
-  const { owner, repo } = details;
-  const contentCookiePromise = contentLogin(owner, repo);
+    const resp = await docPromise;
+    if (loadCount !== editorLoadCount) return;
 
-  const daTitle = initArea('da-title', details, el);
-
-  const daContent = initArea('da-content', details, el);
-
-  if (daContent.wsProvider) {
-    daContent.wsProvider.disconnect({ data: 'Client navigation' });
-    daContent.wsProvider = undefined;
-  }
-
-  const resp = await docPromise;
-
-  let permissions;
-  let doc;
-  if (resp.status === 404) {
-    const { default: showNotFoundDialog } = await import('./da-not-found/da-not-found.js');
-    const choice = await showNotFoundDialog(details);
-    // A hashchange spawns a parallel setUI for the new path — bail out of
-    // this one so the two don't race over window.location / editor state.
-    if (choice === 'hashchange') return;
-    if (choice === 'folder') {
-      const folderPath = details.fullpath.replace(/\.html$/, '');
-      const hashPath = folderPath.startsWith('/') ? folderPath : `/${folderPath}`;
-      window.location = `/#${hashPath}`;
-      return;
-    }
-    if (choice !== 'create') {
-      window.location = `/#${details.parent}`;
-      return;
-    }
-    const createResp = await createDoc(details.fullpath);
-    permissions = createResp.permissions;
-    doc = DOMPARSER.parseFromString(EMPTY_DOC, 'text/html');
-  } else {
-    permissions = resp.permissions;
-    const respText = await resp.text();
-    doc = DOMPARSER.parseFromString(respText, 'text/html');
-  }
-
-  daTitle.permissions = permissions;
-  daContent.permissions = permissions;
-
-  // If content cookie hasn't loaded yet, wait for it
-  await contentCookiePromise;
-
-  const metadataEl = doc.querySelector('main > .metadata');
-  // Check if the metadata div has no additional classes (or doesn't exist)
-  const isDefaultMetadata = !(metadataEl?.classList.length > 1);
-  if (isDefaultMetadata) {
-    // Load Default ProseMirrorEditor
-
-    if (!prose) {
-      prose = await prosePromise;
+    let permissions;
+    let doc;
+    if (resp.status === 404) {
+      const { default: showNotFoundDialog } = await import('./da-not-found/da-not-found.js');
+      const choice = await showNotFoundDialog(details);
+      // A hashchange spawns a parallel setUI for the new path — bail out of
+      // this one so the two don't race over window.location / editor state.
+      if (choice === 'hashchange' || loadCount !== editorLoadCount) return;
+      if (choice === 'folder') {
+        if (!await flushPendingEditor(currentContent) || loadCount !== editorLoadCount) return;
+        const folderPath = details.fullpath.replace(/\.html$/, '');
+        const hashPath = folderPath.startsWith('/') ? folderPath : `/${folderPath}`;
+        window.location = `/#${hashPath}`;
+        return;
+      }
+      if (choice !== 'create') {
+        if (!await flushPendingEditor(currentContent) || loadCount !== editorLoadCount) return;
+        window.location = `/#${details.parent}`;
+        return;
+      }
+      const createResp = await createDoc(details.fullpath);
+      if (loadCount !== editorLoadCount) return;
+      if (!createResp.ok) throw new Error(`Could not create the document (${createResp.status}).`);
+      permissions = createResp.permissions || ['read'];
+      doc = DOMPARSER.parseFromString(EMPTY_DOC, 'text/html');
+    } else {
+      if (!resp.ok) throw new Error(`Could not load the document (${resp.status}).`);
+      permissions = resp.permissions || ['read'];
+      const respText = await resp.text();
+      doc = DOMPARSER.parseFromString(respText, 'text/html');
     }
 
-    await prose.default({
-      path: details.sourceUrl,
-      permissions,
-      doc,
-      daContent,
-      wsPromise,
-    });
+    // If content cookie hasn't loaded yet, wait for it
+    await contentCookiePromise;
+    if (loadCount !== editorLoadCount) return;
+    if (!await flushPendingEditor(currentContent) || loadCount !== editorLoadCount) return;
+    currentContent?.destroyEditor?.();
 
-    // Load editor tabs (live preview, versions, etc.)
-    setTimeout(() => daContent.handleEditorLoaded(), 1000);
+    document.title = `Edit ${details.name} - DA`;
+    const daTitle = initArea('da-title', details, el);
+    const daContent = initArea('da-content', details, el);
+    daTitle.permissions = permissions;
+    daContent.permissions = permissions;
+    daContent.handleVersionReset();
 
-    // set the live preview cookie async
-    livePreviewLogin(owner, repo);
+    const metadataEl = doc.querySelector('main > .metadata');
+    // Check if the metadata div has no additional classes (or doesn't exist)
+    const isDefaultMetadata = !(metadataEl?.classList.length > 1);
+    if (isDefaultMetadata) {
+      if (!prose) {
+        prose = await prosePromise;
+      }
+      if (loadCount !== editorLoadCount) return;
+
+      await prose.default({
+        path: details.sourceUrl,
+        permissions,
+        doc,
+        daContent,
+        wsPromise,
+        sourcePath: details.fullpath,
+        offline,
+        isCurrent: () => loadCount === editorLoadCount,
+      });
+      adopted = true;
+      if (loadCount !== editorLoadCount) return;
+
+      // Load editor tabs (live preview, versions, etc.)
+      setTimeout(() => {
+        if (loadCount === editorLoadCount) daContent.handleEditorLoaded();
+      }, 1000);
+
+      // set the live preview cookie async
+      livePreviewLogin(owner, repo);
+    }
+
+    // FUTURE: else load BYO Editor
+  } finally {
+    if (!adopted && connectionResult) {
+      const { connection } = await connectionResult;
+      if (connection) {
+        connection.wsProvider.destroy();
+        connection.ydoc.destroy();
+      }
+    }
   }
+}
 
-  // FUTURE: else load BYO Editor
+async function loadUI(el) {
+  try {
+    await setUI(el);
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[editor] Could not load document', error);
+    const { showToast } = await import(`${getNx()}/blocks/shared/toast/toast.js`);
+    showToast({ text: error.message || 'Could not load the document.', variant: 'error' });
+  }
 }
 
 export default async function init(el) {
-  setUI(el);
+  loadUI(el);
 
   window.addEventListener('hashchange', () => {
-    setUI(el);
+    loadUI(el);
   });
 }

@@ -22,6 +22,12 @@ const ICONS = {
 };
 
 const EDITOR_VIEWS = /** @type {const} */ (['layout', 'content', 'split']);
+const SAVE_STATUS_LABELS = {
+  saved: 'Saved',
+  pending: 'Unsaved changes',
+  saving: 'Saving...',
+  error: 'Could not save',
+};
 
 class EWCanvasHeader extends LitElement {
   static properties = {
@@ -34,6 +40,7 @@ class EWCanvasHeader extends LitElement {
     _chatDisabled: { state: true },
     _commentsVisible: { state: true },
     _commentCount: { state: true },
+    _saveState: { state: true },
   };
 
   constructor() {
@@ -56,6 +63,8 @@ class EWCanvasHeader extends LitElement {
     this._unsubControllerChange = canvasBus.commentsControllerState
       .subscribe(() => this._bindComments());
     this._bindComments();
+    this._unsubSaveState = canvasBus.editorSaveState
+      .subscribe((state) => { this._saveState = state; });
   }
 
   disconnectedCallback() {
@@ -63,6 +72,7 @@ class EWCanvasHeader extends LitElement {
     this._unsubHash?.();
     this._unsubControllerChange?.();
     this._unbindComments?.();
+    this._unsubSaveState?.();
   }
 
   _bindComments() {
@@ -187,6 +197,15 @@ class EWCanvasHeader extends LitElement {
         </div>
 
         <div class="group group-end" part="group-end">
+          ${this._saveState ? html`
+            <span role="status" title=${this._saveState.error ?? ''}>
+              ${SAVE_STATUS_LABELS[this._saveState.status]}
+            </span>
+            ${this._saveState.status === 'error' ? html`
+              <button type="button" class="nx-action-btn" data-action="retry-save"
+                @click=${() => canvasBus.editorSaveRequest.emit()}>Retry save</button>
+            ` : nothing}
+          ` : nothing}
           <button
             type="button"
             class="nx-action-btn-icon comments-toggle ${this._commentsVisible ? 'is-active' : ''}"

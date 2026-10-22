@@ -5,12 +5,10 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let buildSourceUrl;
 let checkDoc;
+let fetchDoc;
+let saveDoc;
 
-before(async () => {
-  ({ buildSourceUrl, checkDoc } = await import('../../../../../../blocks/canvas/ew-editor-doc/utils/source.js'));
-});
-
-// isHlx6 memoizes its answer per site, so each case needs its own org/site
+// isHlx6 memoizes its answer per site, so each case needs its own org/site.
 function stubPing({ upgraded }) {
   const saved = window.fetch;
   const calls = [];
@@ -21,6 +19,39 @@ function stubPing({ upgraded }) {
   };
   return { calls, restore: () => { window.fetch = saved; } };
 }
+
+before(async () => {
+  ({ buildSourceUrl, checkDoc, fetchDoc, saveDoc } = await import('../../../../../../blocks/canvas/ew-editor-doc/utils/source.js'));
+});
+
+describe('canvas direct-source reads and saves', () => {
+  it('reads fresh source-bus content through the authenticated API route', async () => {
+    const { calls, restore } = stubPing({ upgraded: true });
+    try {
+      const url = await buildSourceUrl('/offlinebus/offlinebus/page');
+      await fetchDoc(url);
+      const read = calls.find((call) => call.url === url);
+      expect(read).to.exist;
+      expect(read.opts.cache).to.equal('no-store');
+      expect(new Headers(read.opts.headers).has('Authorization')).to.be.true;
+    } finally {
+      restore();
+    }
+  });
+
+  it('saves canonical paths through the source-bus API rather than da-admin', async () => {
+    const { calls, restore } = stubPing({ upgraded: true });
+    try {
+      await saveDoc('offlinewrite/offlinewrite/page', '<body><main></main></body>');
+      const write = calls.find((call) => call.opts?.method === 'POST');
+      expect(write.url)
+        .to.equal('https://api.aem.live/offlinewrite/sites/offlinewrite/source/page.html');
+      expect(write.opts.body).to.equal('<body><main></main></body>');
+    } finally {
+      restore();
+    }
+  });
+});
 
 afterEach(() => {
   window.localStorage.removeItem('hlx6-upgrade');

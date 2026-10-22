@@ -91,6 +91,25 @@ describe('PrepareMenu', () => {
     canvasBus.branchState.emit({ path: null, status: 'pending' });
   });
 
+  it('keeps Prepare actions closed until source saves succeed', async () => {
+    const { getExtensionsBridge } = await import('../../../../../blocks/canvas/editor-utils/extensions-bridge.js');
+    const bridge = getExtensionsBridge();
+    el = await fixture();
+    stubPopover(el);
+    let rendered = false;
+    const item = { title: 'Test', render: async () => { rendered = true; } };
+    try {
+      bridge.forceSave = async () => ({ ok: false, error: 'Write denied' });
+      await el.handleItemClick(item);
+      expect(rendered).to.be.false;
+      bridge.forceSave = async () => ({ ok: true });
+      await el.handleItemClick(item);
+      expect(rendered).to.be.true;
+    } finally {
+      bridge.forceSave = null;
+    }
+  });
+
   it('is defined as a custom element', () => {
     expect(customElements.get('prepare-menu')).to.exist;
   });

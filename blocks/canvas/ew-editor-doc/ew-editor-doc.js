@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { yUndo, yRedo, NodeSelection, TextSelection } from 'da-y-wrapper';
+import { doc2aem } from 'da-parser';
 import { getNx } from '../../../scripts/utils.js';
 import { updateDocument, updateCursors, getInstrumentedHTML, getEditor } from '../editor-utils/editor-utils.js';
 import { bindFirstSectionName } from '../../shared/section-name.js';
@@ -24,6 +25,12 @@ import {
 } from './utils/quick-edit-host.js';
 import { initIms as loadIms } from '../../shared/utils.js';
 import { forceSave } from '../../shared/forcesave.js';
+import { OFFLINE_MODE } from '../../shared/constants.js';
+import { createSourcePersistence } from '../../shared/source-persistence.js';
+import { loadLocalDocument } from './utils/local-document.js';
+import { saveDoc } from './utils/source.js';
+import { getCollabIdentity } from './utils/collab.js';
+import { generateColor } from '../editor-utils/author-color.js';
 import initProse from './prose.js';
 import { setBlockFocus, clearBlockFocus } from './prose-plugins/blockFocus.js';
 import { createTrackingPlugin } from '../editor-utils/prose-diff.js';
@@ -60,6 +67,7 @@ export class EwEditorDoc extends LitElement {
   static properties = {
     ctx: { type: Object },
     session: { type: Object },
+    offline: { type: Boolean },
     quickEditPort: { type: Object },
     _error: { state: true },
     _blockEditMode: { state: true },
@@ -68,6 +76,8 @@ export class EwEditorDoc extends LitElement {
 
   constructor() {
     super();
+    this.offline = OFFLINE_MODE;
+    this._loadCount = 0;
     this._comments = createEditorComments({
       getView: () => this._proseContext?.view,
       getPort: () => this._controllerCtx?.port,
@@ -77,7 +87,7 @@ export class EwEditorDoc extends LitElement {
 
   willUpdate(changed) {
     super.willUpdate(changed);
-    if (changed.has('ctx')) {
+    if (changed.has('ctx') || changed.has('offline')) {
       this.quickEditPort = undefined;
       this._canWrite = false;
       this._teardown();
@@ -249,13 +259,40 @@ export class EwEditorDoc extends LitElement {
     if (view) yRedo(view.state, view.dispatch);
   }
 
-  // Flush pending collab updates to da-admin before an external read (e.g. AEM
-  // preview/publish). Without this, da-collab's debounced writer can leave the
-  // last ~2s of edits unflushed when the preview action reads from da-admin.
+  get hasPendingSave() {
+    return this._sourcePersistence?.hasPending ?? false;
+  }
+
+  // External readers must wait for the current source snapshot.
   forceSave() {
+    if (this._sourcePersistence) return this._sourcePersistence.flush();
     const { wsProvider } = this._proseContext ?? {};
-    if (!wsProvider) return Promise.resolve({ ok: true });
+    if (!wsProvider) return Promise.resolve({ ok: false, error: 'The editor is not ready to save.' });
+    if (this.offline) return Promise.resolve({ ok: true });
     return forceSave(wsProvider);
+  }
+
+  async _showSaveError(error, path) {
+    // eslint-disable-next-line no-console
+    console.error(`[canvas] Save failed for ${path}: ${error}`);
+    const { showToast } = await import(`${getNx()}/blocks/shared/toast/toast.js`);
+    showToast({ text: `${error} (${path})`, variant: 'error' });
+  }
+
+  _setupSourcePersistence(ydoc, ctx) {
+    const persistence = createSourcePersistence({
+      initialBody: doc2aem(ydoc),
+      save: (body) => saveDoc(ctx.path, body),
+      onState: (state) => {
+        if (this._sourcePersistence === persistence) canvasBus.editorSaveState.emit(state);
+        if (state.status === 'error') this._showSaveError(state.error, ctx.path);
+      },
+    });
+    this._sourcePersistence = persistence;
+    const onUpdate = () => persistence.schedule(doc2aem(ydoc));
+    ydoc.on('update', onUpdate);
+    this._sourceUpdateOff = () => ydoc.off('update', onUpdate);
+    canvasBus.editorSaveState.emit({ status: 'saved' });
   }
 
   getComparisonSession({ org, site, path } = {}) {
@@ -270,7 +307,7 @@ export class EwEditorDoc extends LitElement {
     if (!session) return { ok: false, error: 'no-document' };
     if (!session.view.editable) return { ok: false, error: 'not-writable' };
     if (!session.wsProvider) return { ok: false, error: 'no-document' };
-    const result = await forceSave(session.wsProvider);
+    const result = await this.forceSave();
     return session === this.getComparisonSession(context)
       ? result : { ok: false, error: 'stale-context' };
   }
@@ -348,14 +385,21 @@ export class EwEditorDoc extends LitElement {
   }
 
   _teardown() {
+    this._loadCount += 1;
+    this._sourceUpdateOff?.();
+    this._sourceUpdateOff = undefined;
+    this._sourcePersistence?.dispose();
+    this._sourcePersistence = undefined;
+    canvasBus.editorSaveState.emit(null);
     this._stopObservingUndoManager();
     this._unwireProseFocus?.();
-    const { wsProvider, view, proseEl } = this._proseContext ?? {};
+    const { wsProvider, view, proseEl, ydoc } = this._proseContext ?? {};
     teardownEditorDocResources({
       clearPortHandler: () => this._clearControllerPort(),
       awarenessOff: this._awarenessOff,
       wsProvider,
       view,
+      ydoc,
       proseEl,
       onCollabUsersCleared: () => this._emitCollabUsers([]),
     });
@@ -373,26 +417,39 @@ export class EwEditorDoc extends LitElement {
     }
 
     const context = this.ctx;
+    const { offline } = this;
+    this._loadCount += 1;
+    const loadCount = this._loadCount;
     const session = this.session ?? await resolveEditorDocSession(context);
+    if (loadCount !== this._loadCount) return;
     if (!session.ok) {
       this._error = session.error;
+      this.requestUpdate();
       return;
     }
     const { sourceUrl } = session;
 
     try {
-      const { token, permissions } = session;
+      const localDoc = offline ? await loadLocalDocument(sourceUrl) : null;
+      const identity = offline ? await getCollabIdentity() : null;
+      if (loadCount !== this._loadCount) return;
+      const editorSession = localDoc?.docId ? { ...session, docId: localDoc.docId } : session;
+      const { token } = session;
+      const permissions = localDoc?.permissions ?? session.permissions;
       this._canWrite = permissions.some((permission) => permission === 'write');
       const { proseEl, wsProvider, view, ydoc, undoManager } = await initProse({
         path: sourceUrl,
         permissions,
+        offline,
+        initialDoc: localDoc?.initialDoc,
+        initialMetadata: localDoc?.initialMetadata,
         setEditable: (editable) => this._setEditable(editable),
         getToken: () => token,
         extraPlugins: ({ wsProvider: ws }) => {
-          const commentsPlugin = this._comments.createPlugin(session, this.ctx, ws);
+          const commentsPlugin = this._comments.createPlugin(editorSession, context, ws);
           return [
-            mediaBusImage(this.ctx),
-            createExtensionsBridgePlugin(),
+            mediaBusImage(context),
+            createExtensionsBridgePlugin({ forceSave: () => this.forceSave() }),
             createTrackingPlugin(
               (details) => {
                 const body = this._controllerCtx
@@ -427,11 +484,21 @@ export class EwEditorDoc extends LitElement {
         },
       });
 
+      if (loadCount !== this._loadCount) {
+        view.destroy();
+        wsProvider.destroy();
+        ydoc.destroy();
+        return;
+      }
       this._proseContext = {
         proseEl, wsProvider, view, ydoc, undoManager, context,
       };
+      if (identity) {
+        wsProvider.awareness.setLocalStateField('user', { ...identity, color: generateColor(identity.colorSeed) });
+      }
       this._comments.publish();
       this._unbindSectionName = bindFirstSectionName(ydoc, view, () => this._emitHtmlChange());
+      if (offline && this._canWrite) this._setupSourcePersistence(ydoc, context);
 
       setSelectionToolbarCtx({
         org: this.ctx?.org,
@@ -442,17 +509,19 @@ export class EwEditorDoc extends LitElement {
       toolbarController.setDocView(view);
       this._wireProseFocus(view, proseEl);
 
-      this._comments.loadStore(wsProvider);
+      this._comments.loadStore(wsProvider, { offline });
 
-      this._setupAwareness(wsProvider);
+      if (!offline) this._setupAwareness(wsProvider);
       this._observeUndoManager(undoManager);
       this._emitHtmlChange();
       this._comments.setupGutter();
 
       this._setupController();
     } catch (e) {
+      if (loadCount !== this._loadCount) return;
+      this._teardown();
       this._error = e?.message || 'Failed to load editor';
-      this._proseContext = undefined;
+      this.requestUpdate();
       return;
     }
 
@@ -466,6 +535,13 @@ export class EwEditorDoc extends LitElement {
       this._editorView = view;
       this.hidden = view === 'layout';
     });
+    this._unsubscribeSaveRequest = canvasBus.editorSaveRequest.subscribe(() => this.forceSave());
+    this._onBeforeUnload = (event) => {
+      if (!this.hasPendingSave) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', this._onBeforeUnload);
     this._unsubscribeWysiwygPortReady = canvasBus.wysiwygPortReady.subscribe(
       ({ port, iframe } = {}) => {
         if (port) {
@@ -566,6 +642,8 @@ export class EwEditorDoc extends LitElement {
   }
 
   disconnectedCallback() {
+    this._unsubscribeSaveRequest?.();
+    window.removeEventListener('beforeunload', this._onBeforeUnload);
     this._unsubscribeEditorActive?.();
     this._unsubscribeWysiwygPortReady?.();
     document.removeEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
@@ -580,7 +658,7 @@ export class EwEditorDoc extends LitElement {
 
   updated(changed) {
     super.updated(changed);
-    if (changed.has('ctx')) {
+    if (changed.has('ctx') || changed.has('offline')) {
       this._loadEditor();
     }
     if (changed.has('quickEditPort')) {

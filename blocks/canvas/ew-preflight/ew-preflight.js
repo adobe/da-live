@@ -5,6 +5,7 @@ import { whenCanvasBranch } from '../utils/branch.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { reportPreflightStatus } from '../editor-utils/preflight-bridge.js';
 import { takePendingPreflightRequest } from '../editor-utils/preflight-responder.js';
+import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { adaptEvaluation } from './adapter.js';
 import { evaluatePage } from './api.js';
 
@@ -208,6 +209,15 @@ class EwPreflight extends LitElement {
     this._loading = true;
     this._setRefreshBusy(true);
     try {
+      const { forceSave: flush } = getExtensionsBridge();
+      if (flush) {
+        const saved = await flush();
+        if (this._runId !== runId) return null;
+        if (!saved.ok) {
+          this._error = saved.error || 'Could not save the document before evaluating.';
+          return this._verdictFor({ error: this._error });
+        }
+      }
       const [pageUrl] = await Promise.all([this._resolvePageUrl(), ensureRenderer()]);
       if (this._runId !== runId) return null;
       const response = await evaluatePage(pageUrl);

@@ -13,6 +13,7 @@ import {
   yUndoPluginKey,
   yUndo,
   yRedo,
+  prosemirrorToYXmlFragment,
   buildKeymap,
   tableEditing,
   columnResizing,
@@ -72,15 +73,19 @@ function addSyncedListener(wsProvider, canWrite, setEditable) {
   wsProvider.on('synced', handleSynced);
 }
 
+function checkLibraryConfigured() {
+  const unsub = hashChange.subscribe((s) => {
+    if (s?.org && s?.site) checkBlockLibraryConfigured({ org: s.org, site: s.site });
+  });
+  unsub?.();
+}
+
 function checkLibraryConfiguredOnSync(wsProvider, canWrite) {
   if (!canWrite) return;
   const handleSynced = (isSynced) => {
     if (!isSynced) return;
     wsProvider.off('synced', handleSynced);
-    const unsub = hashChange.subscribe((s) => {
-      if (s?.org && s?.site) checkBlockLibraryConfigured({ org: s.org, site: s.site });
-    });
-    unsub?.();
+    checkLibraryConfigured();
   };
   wsProvider.on('synced', handleSynced);
 }
@@ -88,22 +93,40 @@ function checkLibraryConfiguredOnSync(wsProvider, canWrite) {
 export default async function initProse({
   path, permissions, setEditable, getToken,
   extraPlugins = [],
+  offline = false,
+  initialDoc,
+  initialMetadata,
 }) {
+  if ((initialDoc || initialMetadata) && !offline) {
+    throw new Error('Initial content requires offline mode; connected editors load content from collab.');
+  }
   const editor = document.createElement('div');
   editor.className = 'da-prose-mirror';
   editor.setAttribute('data-gramm', 'false');
   editor.setAttribute('data-gramm_editor', 'false');
 
   const schema = getSchema();
+  if (initialDoc) {
+    if (initialDoc.type.name !== schema.topNodeType.name) {
+      throw new Error('initialDoc must be a ProseMirror document node.');
+    }
+    initialDoc.check();
+  }
   const ydoc = new Y.Doc();
+  const yXmlFragment = ydoc.getXmlFragment('prosemirror');
+  if (initialDoc) prosemirrorToYXmlFragment(initialDoc, yXmlFragment);
+  if (initialMetadata) {
+    const metadata = ydoc.getMap('daMetadata');
+    Object.entries(initialMetadata).forEach(([key, value]) => metadata.set(key, value));
+  }
 
   const server = DA_COLLAB;
   // da-collab reads the store off the room name, and `path` is already the store's source url.
   const roomName = path;
 
-  const wsOpts = { protocols: ['yjs'] };
+  const wsOpts = { protocols: ['yjs'], connect: !offline, disableBc: offline };
   let lastSentToken = null;
-  if (typeof getToken === 'function') {
+  if (!offline && typeof getToken === 'function') {
     const t = getToken();
     if (t) {
       wsOpts.protocols.push(t);
@@ -116,41 +139,41 @@ export default async function initProse({
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, wsOpts);
   wsProvider.maxBackoffTime = 30000;
 
-  wsProvider.on('connection-close', async (event) => {
-    // Server close codes: 4401 = token expired (refresh + retry), 4403 = forbidden (stop).
-    if (event?.code === 4403) {
-      wsProvider.shouldConnect = false;
-      return;
-    }
-    if (event?.code === 4401) {
-      try { await window.adobeIMS?.refreshToken?.(); } catch { /* ignore */ }
-      const fresh = await getAuthToken();
-      if (!fresh || fresh === lastSentToken) {
+  if (!offline) {
+    wsProvider.on('connection-close', async (event) => {
+      // Server close codes: 4401 = token expired (refresh + retry), 4403 = forbidden (stop).
+      if (event?.code === 4403) {
         wsProvider.shouldConnect = false;
-        if (lastSentToken) {
-          try {
-            const { showAuthBanner } = await import('../../shared/da-auth-banner/da-auth-banner.js');
-            showAuthBanner();
-          } catch { /* ignore */ }
-        }
         return;
       }
-      wsProvider.protocols = ['yjs', fresh];
+      if (event?.code === 4401) {
+        try { await window.adobeIMS?.refreshToken?.(); } catch { /* ignore */ }
+        const fresh = await getAuthToken();
+        if (!fresh || fresh === lastSentToken) {
+          wsProvider.shouldConnect = false;
+          if (lastSentToken) {
+            try {
+              const { showAuthBanner } = await import('../../shared/da-auth-banner/da-auth-banner.js');
+              showAuthBanner();
+            } catch { /* ignore */ }
+          }
+          return;
+        }
+        wsProvider.protocols = ['yjs', fresh];
+        lastSentToken = fresh;
+        return;
+      }
+      const fresh = await getAuthToken();
+      wsProvider.protocols = fresh ? ['yjs', fresh] : ['yjs'];
       lastSentToken = fresh;
-      return;
-    }
-    const fresh = await getAuthToken();
-    wsProvider.protocols = fresh ? ['yjs', fresh] : ['yjs'];
-    lastSentToken = fresh;
-  });
+    });
 
-  addSyncedListener(wsProvider, canWrite, setEditable);
-  checkLibraryConfiguredOnSync(wsProvider, canWrite);
-  registerErrorHandler(ydoc);
+    addSyncedListener(wsProvider, canWrite, setEditable);
+    checkLibraryConfiguredOnSync(wsProvider, canWrite);
+    registerErrorHandler(ydoc);
+  }
 
-  const yXmlFragment = ydoc.getXmlFragment('prosemirror');
-
-  const identity = await getCollabIdentity();
+  const identity = offline ? null : await getCollabIdentity();
   if (typeof getToken === 'function' && getToken() && identity) {
     wsProvider.awareness.setLocalStateField('user', {
       color: generateColor(identity.colorSeed),
@@ -247,6 +270,11 @@ export default async function initProse({
   });
 
   const undoManager = yUndoPluginKey.getState(viewRef.state)?.undoManager ?? null;
+
+  if (offline) {
+    if (canWrite) checkLibraryConfigured();
+    if (typeof setEditable === 'function') setEditable(canWrite);
+  }
 
   return { proseEl: editor, wsProvider, view: viewRef, ydoc, undoManager };
 }

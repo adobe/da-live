@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { fetchDaConfigs, getPostMessageTargetOrigin } from '../../shared/utils.js';
 import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
-import { getNx2, sanitizeName } from '../../../scripts/utils.js';
+import { getNx, getNx2, sanitizeName } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
@@ -141,6 +141,7 @@ export default class DaPrepare extends LitElement {
   }
 
   async handleItemClick(item) {
+    if (!await this._flushSource()) return;
     this._preflightRequestId = undefined;
     this._showMenu = false;
     if (item.render) {
@@ -167,12 +168,26 @@ export default class DaPrepare extends LitElement {
   handlePreflightRun = async (e) => {
     const { paths, requestId } = e.detail || {};
     if (!paths || paths.length !== 1 || paths[0] !== this.details?.fullpath) return;
+    if (!await this._flushSource()) {
+      document.dispatchEvent(new CustomEvent(PREFLIGHT_EVENT.STATUS, { detail: { path: this.details.fullpath, status: 'fail', requestId } }));
+      return;
+    }
     this._showMenu = false;
     const render = (await import('./actions/preflight/preflight.js')).default;
     const cmp = render(this.details, requestId);
     this._preflightRequestId = requestId;
     this._dialogItem = { title: 'Preflight', cmp };
   };
+
+  async _flushSource() {
+    const daContent = document.querySelector('da-content');
+    if (this.details?.view !== 'edit' || !daContent?.forceSave) return true;
+    const result = await daContent.forceSave();
+    if (result.ok) return true;
+    const { showToast } = await import(`${getNx()}/blocks/shared/toast/toast.js`);
+    showToast({ text: result.error || 'Could not save the document.', variant: 'error' });
+    return false;
+  }
 
   handlePreflightStatus = (e) => {
     const { requestId, status } = e.detail || {};

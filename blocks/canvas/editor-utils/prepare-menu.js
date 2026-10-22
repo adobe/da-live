@@ -6,6 +6,7 @@ import { getPreviewOrigin } from './editor-utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { getCanvasBranch } from '../utils/branch.js';
 import { routeComparisonMessage } from '../ew-comparison/comparison.js';
+import { getExtensionsBridge } from './extensions-bridge.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
@@ -151,6 +152,7 @@ export default class PrepareMenu extends LitElement {
 
   async handleItemClick(item) {
     if (item.disabled) return;
+    if (!await this._flushSource()) return;
     this.shadowRoot.querySelector('nx-popover').close();
     if (this._comparison === 'open') {
       this.closePort();
@@ -158,6 +160,7 @@ export default class PrepareMenu extends LitElement {
       this._fullsizeDialogItem = undefined;
       await this.updateComplete;
     }
+
     if (item.render) {
       const cmp = await item.render(this.details);
       this._dialogItem = { ...item, cmp };
@@ -177,6 +180,16 @@ export default class PrepareMenu extends LitElement {
       return;
     }
     this._dialogItem = item;
+  }
+
+  async _flushSource() {
+    const { forceSave: flush } = getExtensionsBridge();
+    if (!flush) return true;
+    const result = await flush();
+    if (result.ok) return true;
+    const { showToast } = await import(`${getNx()}/blocks/shared/toast/toast.js`);
+    showToast({ text: result.error || 'Could not save the document.', variant: 'error' });
+    return false;
   }
 
   handleCloseDialog() {

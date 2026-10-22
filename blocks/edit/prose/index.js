@@ -22,7 +22,7 @@ import {
   Y,
 } from 'da-y-wrapper';
 
-import { getSchema } from 'da-parser';
+import { getSchema, aem2doc, doc2aem, yDocToProsemirror } from 'da-parser';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import { getAuthToken } from '../../shared/utils.js';
 import { getNx2Api } from '../../../scripts/utils.js';
@@ -30,6 +30,7 @@ import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils
 import { debounce, initDaMetadata } from '../utils/helpers.js';
 import { forceSave } from '../../shared/forcesave.js';
 import { bindFirstSectionName } from '../../shared/section-name.js';
+import { createSourcePersistence } from '../../shared/source-persistence.js';
 
 // Rapid-reconnect guard (COR-44): y-websocket resets its backoff counter on
 // every successful onopen, so a close that follows a brief successful
@@ -81,17 +82,21 @@ export async function createConnection(path) {
   let lastSentToken = token || null;
   let lastOpenAt = 0;
   let failedShortSessions = 0;
+  let reconnectTimer;
+  ydoc.on('destroy', () => { clearTimeout(reconnectTimer); });
 
   provider.on('status', (st) => {
     if (st?.status === 'connected') lastOpenAt = Date.now();
   });
 
   provider.on('connection-close', async (event) => {
+    if (ydoc.isDestroyed) return;
     if (event?.code === 4401 || event?.code === 4403) {
       provider.shouldConnect = false;
       // Force imslib to attempt a refresh before deciding to give up.
       try { await window.adobeIMS?.refreshToken?.(); } catch { /* ignore */ }
       const fresh = await getAuthToken();
+      if (ydoc.isDestroyed) return;
       if (!fresh || fresh === lastSentToken) {
         // No new token to try — retrying would loop on the same 4401. Stop
         // the reconnect loop, and surface the modal if the user was signed in.
@@ -125,13 +130,15 @@ export async function createConnection(path) {
       failedShortSessions += 1;
       provider.shouldConnect = false;
       provider.disconnect();
-      setTimeout(() => {
+      reconnectTimer = setTimeout(() => {
+        if (ydoc.isDestroyed) return;
         provider.shouldConnect = true;
         provider.connect();
       }, delay);
     }
 
     const fresh = await getAuthToken();
+    if (ydoc.isDestroyed) return;
     provider.protocols = fresh ? ['yjs', fresh] : ['yjs'];
     lastSentToken = fresh;
   });
@@ -195,6 +202,7 @@ async function loadCustomPlugins() {
 }
 
 let lastCursorPosition = null;
+let currentEditorCleanup;
 
 function dispatchTransaction(transaction) {
   if (!window.view) return;
@@ -208,7 +216,7 @@ function dispatchTransaction(transaction) {
 }
 
 function setPreviewBody() {
-  const daPreview = document.querySelector('da-content').shadowRoot.querySelector('da-preview');
+  const daPreview = document.querySelector('da-content')?.shadowRoot?.querySelector('da-preview');
   if (!daPreview) return;
   daPreview.setBody();
 }
@@ -288,6 +296,7 @@ function trackCursorAndChanges() {
             lastBlockPos = currentBlockPos;
           }
         },
+        destroy() { clearTimeout(updateTimeout); },
       };
     },
   });
@@ -338,8 +347,10 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
   else daTitle.collabStatus = 'connecting';
 
   wsProvider.on('connection-close', async (event) => {
+    if (wsProvider.doc?.isDestroyed) return;
     if (event?.code === 4401 || event?.code === 4403) return;
     const resp = await checkDoc(path);
+    if (wsProvider.doc?.isDestroyed) return;
     if (resp.status === 404) {
       const { hash } = window.location;
       // Guard: hash must start with '#/' — during an IMS redirect the hash is '#access_token=...'
@@ -351,20 +362,31 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
       window.location.replace(`/#/${split.join('/')}`);
     }
   });
-  win.addEventListener('online', () => { daTitle.collabStatus = 'online'; });
-  win.addEventListener('offline', () => { daTitle.collabStatus = 'offline'; });
+  const onOnline = () => { daTitle.collabStatus = 'online'; };
+  const onOffline = () => { daTitle.collabStatus = 'offline'; };
   const DISCONNECT_TIMEOUT = 10 * 60 * 1000;
   let disconnectTimeout = null;
-  win.addEventListener('focus', () => {
+  const onFocus = () => {
     // cancel any pending disconnect
     if (disconnectTimeout) clearTimeout(disconnectTimeout);
     if (!wsProvider.wsconnected) wsProvider.connect();
-  });
-  win.addEventListener('blur', () => {
+  };
+  const onBlur = () => {
     if (disconnectTimeout) clearTimeout(disconnectTimeout);
     disconnectTimeout = setTimeout(() => {
       wsProvider.disconnect();
     }, DISCONNECT_TIMEOUT);
+  };
+  win.addEventListener('online', onOnline);
+  win.addEventListener('offline', onOffline);
+  win.addEventListener('focus', onFocus);
+  win.addEventListener('blur', onBlur);
+  wsProvider.doc?.on('destroy', () => {
+    clearTimeout(disconnectTimeout);
+    win.removeEventListener('online', onOnline);
+    win.removeEventListener('offline', onOffline);
+    win.removeEventListener('focus', onFocus);
+    win.removeEventListener('blur', onBlur);
   });
 }
 
@@ -442,8 +464,9 @@ function addSyncedListener(wsProvider, canWrite) {
   });
 }
 
-function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
-  pluginsPromise.then((plugins) => {
+function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins, editorView) {
+  return pluginsPromise.then((plugins) => {
+    if (window.view !== editorView || editorView.isDestroyed) return;
     const {
       syncPlugin,
       cursorPlugin,
@@ -508,23 +531,33 @@ function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
     }
 
     // Reconfigure the view with the full plugin list
-    const newState = window.view.state.reconfigure({ plugins: pluginList });
-    window.view.updateState(newState);
+    const newState = editorView.state.reconfigure({ plugins: pluginList });
+    editorView.updateState(newState);
     // reconfigure() destroys/recreates all plugin views, incl. the cursor plugin, which
     // nulls collab cursor awareness on destroy. Force an update pass to re-broadcast it.
-    window.view.dispatch(window.view.state.tr);
+    editorView.dispatch(editorView.state.tr);
   });
 }
 
-// eslint-disable-next-line no-unused-vars
-export default async function initProse({ path, permissions, doc, daContent, wsPromise }) {
+export default async function initProse({
+  path, permissions, doc, daContent, wsPromise, sourcePath, offline = false,
+  isCurrent = () => true,
+}) {
+  if (offline && wsPromise) throw new Error('wsPromise requires offline: false.');
+  if (offline && !doc?.body) {
+    throw new Error('Offline editing requires a source document.');
+  }
+  if (daContent.sourcePersistence?.hasPending) {
+    const saved = await daContent.forceSave();
+    if (!saved.ok) throw new Error(saved.error);
+  }
+  if (!isCurrent()) return;
+  currentEditorCleanup?.();
   // Destroy ProseMirror if it already exists - GH-212
   if (window.view) {
     window.view.destroy();
     delete window.view;
   }
-
-  const connectionPromise = wsPromise || createConnection(path);
 
   const editor = document.createElement('div');
   editor.className = 'da-prose-mirror';
@@ -532,16 +565,34 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
   const schema = getSchema();
   const canWrite = permissions.some((permission) => permission === 'write');
 
-  const { wsProvider, ydoc } = await connectionPromise;
-
-  addSyncedListener(wsProvider, canWrite);
-  createAwarenessStatusWidget(wsProvider, window, path);
-  registerErrorHandler(ydoc);
+  let wsProvider;
+  let ydoc;
+  if (offline) {
+    ydoc = new Y.Doc();
+    aem2doc(doc.body.outerHTML, ydoc);
+    wsProvider = new WebsocketProvider(COLLAB_ORIGIN, path, ydoc, {
+      connect: false,
+      disableBc: true,
+    });
+  } else {
+    ({ wsProvider, ydoc } = await (wsPromise || createConnection(path)));
+  }
+  if (!isCurrent()) {
+    wsProvider.destroy?.();
+    ydoc.destroy();
+    return;
+  }
+  if (!offline) {
+    addSyncedListener(wsProvider, canWrite);
+    createAwarenessStatusWidget(wsProvider, window, path);
+    registerErrorHandler(ydoc);
+  }
 
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
 
   if (window.adobeIMS?.isSignedInUser()) {
     window.adobeIMS.getProfile().then((profile) => {
+      if (ydoc.isDestroyed) return;
       wsProvider.awareness.setLocalStateField('user', {
         color: generateColor(profile.email || profile.userId),
         name: profile.displayName,
@@ -559,7 +610,11 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
   const syncPlugin = ySyncPlugin(yXmlFragment);
   const cursorPlugin = yCursorPlugin(wsProvider.awareness);
 
-  let state = EditorState.create({ schema, plugins: [syncPlugin, cursorPlugin] });
+  let state = EditorState.create({
+    schema,
+    doc: offline ? yDocToProsemirror(schema, ydoc) : undefined,
+    plugins: [syncPlugin, cursorPlugin],
+  });
 
   const fix = fixTables(state);
   if (fix) state = state.apply(fix.setMeta('addToHistory', false));
@@ -590,22 +645,86 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
     editable() { return canWrite; },
   });
 
-  addActiveView(window.view);
+  const { view } = window;
+  let persistence;
+  let stopSourceUpdates;
+  let unbindSectionName;
+  let destroyed = false;
+  const destroyEditor = () => {
+    if (destroyed) return;
+    destroyed = true;
+    stopSourceUpdates?.();
+    persistence?.dispose();
+    unbindSectionName?.();
+    view.destroy();
+    wsProvider.destroy?.();
+    ydoc.destroy();
+    if (window.view === view) delete window.view;
+    if (currentEditorCleanup === destroyEditor) currentEditorCleanup = undefined;
+    if (daContent.destroyEditor === destroyEditor) {
+      daContent.destroyEditor = undefined;
+      daContent.sourcePersistence = undefined;
+      daContent.wsProvider = undefined;
+      daContent.proseEl = undefined;
+      daContent.forceSave = undefined;
+    }
+  };
+  currentEditorCleanup = destroyEditor;
+  daContent.destroyEditor = destroyEditor;
+
+  addActiveView(view);
 
   // yMap for storing document metadata (not synced to ProseMirror doc.attrs)
   initDaMetadata(ydoc.getMap('daMetadata'));
-  bindFirstSectionName(ydoc, window.view);
-
   const pluginsPromise = loadCustomPlugins();
-  applyDelayedPlugins(pluginsPromise, schema, canWrite, {
-    syncPlugin,
-    cursorPlugin,
-  });
+  try {
+    await applyDelayedPlugins(pluginsPromise, schema, canWrite, { syncPlugin, cursorPlugin }, view);
+  } catch (error) {
+    destroyEditor();
+    throw error;
+  }
+  if (window.view !== view || view.isDestroyed) return;
+  unbindSectionName = bindFirstSectionName(ydoc, view);
 
   document.execCommand('enableObjectResizing', false, 'false');
   document.execCommand('enableInlineTableEditing', false, 'false');
 
   daContent.proseEl = editor;
   daContent.wsProvider = wsProvider;
-  daContent.forceSave = () => forceSave(wsProvider);
+  daContent.offline = offline;
+  const title = document.querySelector('da-title');
+  if (offline) {
+    const onState = (saveState) => {
+      if (daContent.proseEl === editor && title) {
+        title.saveState = saveState;
+        title.collabStatus = ({ saved: 'connected', pending: 'unsaved', saving: 'unsaved', error: 'error' })[saveState.status];
+      }
+      if (saveState.status === 'error') {
+        // eslint-disable-next-line no-console
+        console.error(`[editor] Save failed for ${path}: ${saveState.error}`);
+      }
+    };
+    if (title) title.collabUsers = [];
+    if (canWrite) {
+      const fullPath = sourcePath || daContent.details?.fullpath
+        || new URL(path).pathname.replace(/^\/source(?=\/)/, '');
+      persistence = createSourcePersistence({
+        initialBody: doc2aem(ydoc),
+        save: async (body) => {
+          const { source } = await getNx2Api();
+          return source.save(fullPath, { body });
+        },
+        onState,
+      });
+      daContent.sourcePersistence = persistence;
+      const onUpdate = () => persistence.schedule(doc2aem(ydoc));
+      ydoc.on('update', onUpdate);
+      stopSourceUpdates = () => ydoc.off('update', onUpdate);
+    }
+    daContent.forceSave = () => persistence?.flush() ?? Promise.resolve({ ok: true });
+    onState({ status: 'saved' });
+  } else {
+    if (title) title.saveState = undefined;
+    daContent.forceSave = () => forceSave(wsProvider);
+  }
 }

@@ -3,6 +3,7 @@ export function teardownEditorDocResources({
   awarenessOff,
   wsProvider,
   view,
+  ydoc,
   proseEl,
   onCollabUsersCleared,
 }) {
@@ -10,12 +11,14 @@ export function teardownEditorDocResources({
   if (awarenessOff) {
     awarenessOff();
   }
-  if (wsProvider) {
-    wsProvider.disconnect({ data: 'unmount' });
-  }
   if (view) {
     view.destroy();
   }
+  if (wsProvider) {
+    wsProvider.disconnect({ data: 'unmount' });
+    wsProvider.destroy?.();
+  }
+  ydoc?.destroy();
   if (proseEl?.parentNode) {
     proseEl.remove();
   }

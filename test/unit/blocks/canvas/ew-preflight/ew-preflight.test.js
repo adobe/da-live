@@ -53,6 +53,24 @@ describe('ew-preflight preflight gate', () => {
     hashChange._set(GATE_PAGE);
   });
 
+  it('does not evaluate persisted content when flushing the editor fails', async () => {
+    const { getExtensionsBridge } = await import('../../../../../blocks/canvas/editor-utils/extensions-bridge.js');
+    const bridge = getExtensionsBridge();
+    const el = createGateElement();
+    let resolvedUrl = false;
+    el._resolvePageUrl = async () => { resolvedUrl = true; };
+    bridge.forceSave = async () => ({ ok: false, error: 'Write denied' });
+    try {
+      const verdict = await el._evaluate();
+      expect(verdict.status).to.equal('error');
+      expect(el._error).to.equal('Write denied');
+      expect(resolvedUrl).to.be.false;
+      expect(el._loading).to.be.false;
+    } finally {
+      bridge.forceSave = null;
+    }
+  });
+
   afterEach(() => {
     takePendingPreflightRequest();
     hashChange._set({});

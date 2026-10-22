@@ -62,6 +62,7 @@ function buildFakeWsProvider({ withSynced = false } = {}) {
         states.set(clientID, { ...cur, [field]: value });
       },
       getStates() { return states; },
+      getLocalState() { return states.get(clientID); },
       on(event, cb) {
         if (!awarenessListeners.has(event)) awarenessListeners.set(event, []);
         awarenessListeners.get(event).push(cb);
@@ -806,8 +807,10 @@ describe('prose/index initProse default export', () => {
         set(v) {
           this._proseEl = v;
           // Wrap so getRootNode returns our host
-          v.getRootNode = () => ({ host });
-          resolve(v);
+          if (v) {
+            v.getRootNode = () => ({ host });
+            resolve(v);
+          }
         },
         get() { return this._proseEl; },
       });
@@ -828,7 +831,7 @@ describe('prose/index initProse default export', () => {
     Object.defineProperty(fakeContent, 'proseEl', {
       configurable: true,
       set(v) {
-        v.getRootNode = () => ({ host: document.createElement('div') });
+        if (v) v.getRootNode = () => ({ host: document.createElement('div') });
         this._proseEl = v;
       },
       get() { return this._proseEl; },
@@ -845,7 +848,7 @@ describe('prose/index initProse default export', () => {
     Object.defineProperty(fakeContent, 'proseEl', {
       configurable: true,
       set(v) {
-        v.getRootNode = () => ({ host: document.createElement('div') });
+        if (v) v.getRootNode = () => ({ host: document.createElement('div') });
         this._proseEl = v;
       },
       get() { return this._proseEl; },
@@ -865,7 +868,7 @@ describe('prose/index initProse default export', () => {
     Object.defineProperty(fakeContent, 'proseEl', {
       configurable: true,
       set(v) {
-        v.getRootNode = () => ({ host: document.createElement('div') });
+        if (v) v.getRootNode = () => ({ host: document.createElement('div') });
         this._proseEl = v;
       },
       get() { return this._proseEl; },
@@ -895,7 +898,7 @@ describe('prose/index initProse default export', () => {
     Object.defineProperty(fakeContent, 'proseEl', {
       configurable: true,
       set(v) {
-        v.getRootNode = () => ({ host: document.createElement('div') });
+        if (v) v.getRootNode = () => ({ host: document.createElement('div') });
         this._proseEl = v;
       },
       get() { return this._proseEl; },
@@ -917,7 +920,7 @@ describe('prose/index registerErrorHandler', () => {
     Object.defineProperty(fakeContent, 'proseEl', {
       configurable: true,
       set(v) {
-        v.getRootNode = () => ({ host: document.createElement('div') });
+        if (v) v.getRootNode = () => ({ host: document.createElement('div') });
         this._proseEl = v;
       },
       get() { return this._proseEl; },

@@ -74,6 +74,28 @@ describe('DaPrepare', () => {
     el = null;
   });
 
+  it('blocks editor Prepare actions after failed source saves but leaves other views alone', async () => {
+    const content = document.createElement('da-content');
+    content.forceSave = async () => ({ ok: false, error: 'Write denied' });
+    // Keep this test focused on the Prepare component without initializing an editor.
+    const savedQuery = document.querySelector.bind(document);
+    document.querySelector = (selector) => (
+      selector === 'da-content' ? content : savedQuery(selector)
+    );
+    try {
+      el = await fixture();
+      let rendered = false;
+      const item = { title: 'Test', render: async () => { rendered = true; } };
+      await el.handleItemClick(item);
+      expect(rendered).to.be.false;
+      el.details = { ...el.details, view: 'sheet' };
+      await el.handleItemClick(item);
+      expect(rendered).to.be.true;
+    } finally {
+      document.querySelector = savedQuery;
+    }
+  });
+
   it('is defined as a custom element', () => {
     expect(customElements.get('da-prepare')).to.exist;
   });
