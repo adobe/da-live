@@ -65,6 +65,38 @@ describe('permissions handleRoute', () => {
     expect(cmp.site).to.equal(null);
   });
 
+  it('ignores a stale route: an earlier isHlx6 resolving after a later route does not redirect or remount with the old site', async () => {
+    let resolveA;
+    const isHlx6A = () => new Promise((resolve) => { resolveA = resolve; });
+    let replaceCalled = false;
+    const replace = () => { replaceCalled = true; };
+
+    const promiseA = handleRoute(el, { org: 'o', site: 'A' }, { isHlx6: isHlx6A, replace });
+    await handleRoute(el, { org: 'o', site: 'B' }, { isHlx6: async () => false, replace });
+
+    expect(el.querySelector('da-permissions').site).to.equal('B');
+
+    resolveA(true);
+    await promiseA;
+
+    expect(replaceCalled).to.equal(false);
+    expect(el.querySelector('da-permissions').site).to.equal('B');
+  });
+
+  it('a stale route resolving isHlx6 false also does not remount with the old site', async () => {
+    let resolveA;
+    const isHlx6A = () => new Promise((resolve) => { resolveA = resolve; });
+    const replace = () => { throw new Error('should not redirect'); };
+
+    const promiseA = handleRoute(el, { org: 'o', site: 'A' }, { isHlx6: isHlx6A, replace });
+    await handleRoute(el, { org: 'o', site: 'B' }, { isHlx6: async () => false, replace });
+
+    resolveA(false);
+    await promiseA;
+
+    expect(el.querySelector('da-permissions').site).to.equal('B');
+  });
+
   it('reuses the same element across route changes', async () => {
     const replace = () => { throw new Error('should not redirect'); };
     await handleRoute(el, { org: 'o', site: null }, { isHlx6: async () => false, replace });

@@ -54,6 +54,9 @@ export function levelToActions(level) {
   return '';
 }
 
+/** Human-readable label for a permission level, shared by the container and table. */
+export const LEVEL_LABEL = { read: 'Read', write: 'Write', none: 'None' };
+
 /**
  * The two default scope paths for a view: org scopes when `site` is null/empty,
  * otherwise the site's config and content scopes.

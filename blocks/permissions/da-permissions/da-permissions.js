@@ -4,7 +4,7 @@ import getSheet from '../../shared/sheet.js';
 import { loadOrgConfig, listSites, mutatePermissions } from '../api.js';
 import {
   buildSlots, siteNames, parseMembers, addMembers, removeMember, scopeLabel, filterSlots,
-  folderRulePath,
+  folderRulePath, LEVEL_LABEL,
 } from '../utils.js';
 
 await import(`${getNx()}/blocks/shared/breadcrumb/breadcrumb.js`);
@@ -25,7 +25,6 @@ const [form, buttons, style] = await Promise.all([
 const INFO_DISMISSED_KEY = 'da-permissions-info-dismissed';
 const DOCS_URL = 'https://docs.da.live/administrators/guides/permissions';
 const CLOSE_ICON_SRC = '/img/icons/s2-icon-close-20-n.svg';
-const LEVEL_LABEL = { read: 'Read', write: 'Write', none: 'None' };
 
 /**
  * Container component for the permissions block. Routes on `org`/`site`
@@ -39,6 +38,7 @@ class DaPermissions extends LitElement {
     site: { attribute: false },
     _status: { state: true },
     _rules: { state: true },
+    _httpStatus: { state: true },
     _sites: { state: true },
     _expanded: { state: true },
     _query: { state: true },
@@ -57,6 +57,7 @@ class DaPermissions extends LitElement {
     this.site = null;
     this._status = 'empty';
     this._rules = [];
+    this._httpStatus = null;
     this._sites = [];
     this._expanded = new Set();
     this._readOnly = false;
@@ -90,6 +91,8 @@ class DaPermissions extends LitElement {
       this._query = '';
       this._pendingFolder = null;
       this._folderDialogOpen = false;
+      this._adding = null;
+      this._confirmRemove = null;
     }
   }
 
@@ -110,6 +113,7 @@ class DaPermissions extends LitElement {
     if (this.org !== org) return;
     this._status = configResult.status;
     this._rules = configResult.rules;
+    this._httpStatus = configResult.httpStatus ?? null;
     this._sites = sites;
   }
 
@@ -158,6 +162,16 @@ class DaPermissions extends LitElement {
     this._adding = null;
     const who = parseMembers(value);
     if (who.length === 0) return;
+
+    const slot = this._slots.find((s) => s.path === path);
+    const currentLower = new Set((slot?.[level] || []).map((m) => m.toLowerCase()));
+    const allDuplicate = who.every((w) => currentLower.has(w.toLowerCase()));
+    if (allDuplicate) {
+      const { showToast, VARIANT_WARNING } = await import(`${getNx2()}/blocks/shared/toast/toast.js`);
+      showToast({ text: `Already has access: ${who.join(', ')}`, variant: VARIANT_WARNING });
+      return;
+    }
+
     await this._mutate((config) => addMembers(config, path, level, who), path);
   }
 
@@ -303,7 +317,7 @@ class DaPermissions extends LitElement {
       return html`<p class="permissions-message">You don't have admin access to this org.</p>`;
     }
     if (this._status === 'error') {
-      return html`<p class="permissions-message">Could not load permissions (${this._status}).</p>`;
+      return html`<p class="permissions-message">Could not load permissions (${this._httpStatus}).</p>`;
     }
     if (this._status === 'no-sheet') {
       return html`
@@ -327,7 +341,6 @@ class DaPermissions extends LitElement {
       <da-permissions-table
         .slots=${filtered}
         .org=${this.org}
-        .site=${this.site}
         .expanded=${this._tableExpanded}
         .editable=${this._editable}
         .busy=${this._busy}

@@ -49,6 +49,10 @@
   color: var(--s2-gray-900);
 }
 
+.scope-toggle {
+  align-self: flex-start;
+}
+
 .scope-none {
   display: flex;
   flex-direction: column;

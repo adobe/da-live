@@ -10,6 +10,7 @@ import { hasPermissionsSheet } from './utils.js';
  *   status: 'ok'|'no-access'|'no-sheet'|'error',
  *   config: object|null,
  *   rules: Rule[],
+ *   httpStatus?: number,
  * }>}
  */
 export async function loadOrgConfig(org) {
@@ -18,19 +19,19 @@ export async function loadOrgConfig(org) {
   try {
     resp = await config.get({ org, cachebust: true });
   } catch {
-    return { status: 'error', config: null, rules: [] };
+    return { status: 'error', config: null, rules: [], httpStatus: 0 };
   }
 
   if (resp.status === 401 || resp.status === 403 || resp.status === 404) {
     return { status: 'no-access', config: null, rules: [] };
   }
   if (!resp.ok) {
-    return { status: 'error', config: null, rules: [] };
+    return { status: 'error', config: null, rules: [], httpStatus: resp.status };
   }
 
   const { data, error } = await asJson(resp);
   if (error || !data) {
-    return { status: 'error', config: null, rules: [] };
+    return { status: 'error', config: null, rules: [], httpStatus: resp.status };
   }
 
   if (!hasPermissionsSheet(data)) {

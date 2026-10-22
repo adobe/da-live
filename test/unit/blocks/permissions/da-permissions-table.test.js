@@ -145,6 +145,64 @@ describe('da-permissions-table', () => {
     expect(removeEvent.detail).to.deep.equal({ path: '/ + **', level: 'write', who: 'a@x.com' });
   });
 
+  it('renders a per-row expand toggle when a cell has more than 4 members, and clicking it dispatches permissions-toggle', async () => {
+    const writers = Array.from({ length: 6 }, (_, i) => `user${i}@example.com`);
+    const slot = baseSlot({ path: '/ + **', kind: 'content', label: 'All sites', write: writers });
+    const el = await mount({ slots: [slot], expanded: new Set([slot.path]) });
+
+    const toggle = el.shadowRoot.querySelector('.scope-toggle');
+    expect(toggle).to.not.equal(null);
+    expect(toggle.getAttribute('aria-expanded')).to.equal('true');
+
+    let toggleEvent = null;
+    el.addEventListener('permissions-toggle', (e) => { toggleEvent = e; });
+    toggle.click();
+    expect(toggleEvent).to.not.equal(null);
+    expect(toggleEvent.detail.path).to.equal(slot.path);
+  });
+
+  it('renders no expand toggle when every cell has 4 or fewer members', async () => {
+    const slot = baseSlot({ path: '/ + **', kind: 'content', label: 'All sites', write: ['a@x.com', 'b@x.com'] });
+    const el = await mount({ slots: [slot] });
+
+    expect(el.shadowRoot.querySelector('.scope-toggle')).to.equal(null);
+  });
+
+  it('renders inherited-only None members in a non-removable pills list with the "From {org}" label', async () => {
+    const slot = baseSlot({
+      path: '/myorg/site1/ + **',
+      kind: 'content',
+      label: 'All site content',
+      inheritedNone: ['blocked@example.com'],
+    });
+    const el = await mount({ slots: [slot], site: 'site1', org: 'myorg' });
+
+    const noneBlock = el.shadowRoot.querySelector('.scope-none');
+    expect(noneBlock).to.not.equal(null);
+    const inheritedPills = [...noneBlock.querySelectorAll('nx-pills')]
+      .find((p) => (p.items ?? []).some((i) => i.removable === false));
+    expect(inheritedPills).to.not.equal(undefined);
+    expect(noneBlock.textContent).to.contain('From myorg');
+  });
+
+  it('skips a section row ("Config"/"Content") when that section has no slots', async () => {
+    const contentSlot = baseSlot({ path: '/ + **', kind: 'content', label: 'All sites' });
+    const el = await mount({ slots: [contentSlot], site: null });
+
+    const rows = [...el.shadowRoot.querySelectorAll('tr')];
+    const textRows = rows.map((r) => r.textContent.trim());
+    expect(textRows).to.not.include('Config');
+    expect(textRows).to.include('Content');
+  });
+
+  it('the inline add input has an aria-label matching the "+" button text', async () => {
+    const slot = baseSlot({ path: '/ + **', kind: 'content', label: 'All sites', write: ['a@x.com'] });
+    const el = await mount({ slots: [slot], adding: { path: slot.path, level: 'write' } });
+
+    const input = el.shadowRoot.querySelector('.cell-add-input');
+    expect(input.getAttribute('aria-label')).to.equal('Add to All sites Write');
+  });
+
   it('groups slots into Config and Content section rows (org view)', async () => {
     const configSlot = baseSlot({ path: 'CONFIG', kind: 'config', label: 'DA configurations' });
     const contentSlot = baseSlot({ path: '/ + **', kind: 'content', label: 'All sites' });

@@ -119,6 +119,12 @@ describe('da-permissions', () => {
     expect(el.shadowRoot.textContent).to.contain("You don't have admin access to this org.");
   });
 
+  it('500 -> "Could not load permissions (500)."', async () => {
+    window.fetch = async () => new Response('', { status: 500 });
+    const el = await mount('myorg');
+    expect(el.shadowRoot.textContent).to.contain('Could not load permissions (500).');
+  });
+
   it('no permissions sheet -> the no-sheet copy, a link to /config#/myorg/, and no table "+" buttons', async () => {
     window.fetch = async () => new Response(JSON.stringify(NO_SHEET_BODY), { status: 200 });
     const el = await mount('myorg');
@@ -439,6 +445,44 @@ describe('da-permissions', () => {
 
     expect(el._query).to.equal('');
     expect(el.shadowRoot.querySelector('nx-search').value).to.equal('');
+  });
+
+  it('changing site resets a pending remove-confirmation dialog', async () => {
+    mockFetch({ configFor: () => CONFIG_BODY });
+    const el = await mount('myorg');
+
+    el._confirmRemove = { path: 'CONFIG', level: 'write', who: 'admin@example.com' };
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('nx-dialog')).to.not.equal(null);
+
+    el.site = 'mysite';
+    await el.updateComplete;
+
+    expect(el._confirmRemove).to.equal(null);
+    expect(el.shadowRoot.querySelector('nx-dialog')).to.equal(null);
+  });
+
+  it('adding only members that already exist (case-insensitive) shows a warning toast and makes no PUT', async () => {
+    const { putCalls } = mockFetch({ configFor: () => CONFIG_BODY });
+    const el = await mount('myorg');
+    const table = el.shadowRoot.querySelector('da-permissions-table');
+    await table.updateComplete;
+
+    const addBtn = table.shadowRoot.querySelector('tr[data-path="CONFIG"] td:nth-child(3) .cell-add');
+    addBtn.click();
+    await el.updateComplete;
+    await table.updateComplete;
+
+    const input = table.shadowRoot.querySelector('.cell-add-input');
+    input.value = 'Admin@example.com';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await waitUntil(() => window.daTestToasts.length > 0);
+    await el.updateComplete;
+
+    expect(putCalls.length).to.equal(0);
+    expect(window.daTestToasts.length).to.equal(1);
+    expect(window.daTestToasts[0].variant).to.equal('warning');
+    expect(window.daTestToasts[0].text).to.equal('Already has access: Admin@example.com');
   });
 
   it('save result ignored after org change', async () => {

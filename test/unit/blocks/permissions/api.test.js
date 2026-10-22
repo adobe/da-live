@@ -47,6 +47,12 @@ describe('permissions/api loadOrgConfig', () => {
     expect(result.status).to.equal('error');
   });
 
+  it('500 -> httpStatus 500', async () => {
+    window.fetch = async () => new Response('', { status: 500 });
+    const result = await loadOrgConfig('myorg');
+    expect(result.httpStatus).to.equal(500);
+  });
+
   it('200 without a permissions sheet -> status no-sheet', async () => {
     window.fetch = async () => new Response(JSON.stringify(NO_SHEET_BODY), { status: 200 });
     const result = await loadOrgConfig('myorg');
@@ -67,10 +73,10 @@ describe('permissions/api loadOrgConfig', () => {
     expect(result.status).to.equal('error');
   });
 
-  it('network failure (rejected fetch) -> status error, no throw', async () => {
+  it('network failure (rejected fetch) -> status error, no throw, httpStatus 0', async () => {
     window.fetch = () => Promise.reject(new TypeError('Failed to fetch'));
     const result = await loadOrgConfig('myorg');
-    expect(result).to.deep.equal({ status: 'error', config: null, rules: [] });
+    expect(result).to.deep.equal({ status: 'error', config: null, rules: [], httpStatus: 0 });
   });
 });
 

@@ -26,6 +26,11 @@ async function mountComponent(el, org, site) {
   cmp.site = site;
 }
 
+// Monotonically increasing token guarding against a stale route: an earlier
+// route's `isHlx6` probe resolving after a later route has already started
+// must not redirect or remount for a site the user has since left.
+let routeToken = 0;
+
 /**
  * Route a hash-change detail to either the Helix 6 redirect or the mounted
  * `<da-permissions>` component. Path segments after the site are ignored.
@@ -38,11 +43,14 @@ async function mountComponent(el, org, site) {
  * @returns {Promise<void>}
  */
 export async function handleRoute(el, details, { isHlx6, replace }) {
+  routeToken += 1;
+  const token = routeToken;
   const org = details?.org ?? null;
   const site = details?.site ?? null;
 
   if (site) {
     const hlx6 = await isHlx6(org, site);
+    if (token !== routeToken) return;
     if (hlx6) {
       replace(userAdminUrl(org, site));
       return;
