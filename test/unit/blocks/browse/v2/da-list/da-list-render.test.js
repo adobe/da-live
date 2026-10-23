@@ -334,18 +334,28 @@ describe('da-list render', () => {
     expect(bar.hidePublishConfs).to.deep.equal(['/o/r/blog']);
   });
 
-  it('renders items in a card grid and keeps only select-all in the header', async () => {
-    await fixture({ select: true, view: 'card' });
-    el._listItems = [
-      { path: '/org/site/a.html', name: 'a', ext: 'html' },
-      { path: '/org/site/b.png', name: 'b', ext: 'png' },
-    ];
-    await rerender();
+  it('renders supplied items in a card grid with select-all', async () => {
+    await fixture({
+      select: true,
+      view: 'card',
+      listItems: [
+        { path: '/org/site/a.html', name: 'a', ext: 'html' },
+        { path: '/org/site/b.png', name: 'b', ext: 'png' },
+      ],
+    });
     const items = el.shadowRoot.querySelectorAll('.da-card-grid da-list-item');
     expect(items).to.have.length(2);
     expect(items[0].getAttribute('view')).to.equal('card');
     expect(el.shadowRoot.querySelector('.da-browse-table-header').classList.contains('is-card')).to.be.true;
-    expect(el.shadowRoot.querySelector('.da-browse-header-name').textContent).to.equal('Select all');
+    expect(el.shadowRoot.querySelector('input[name="select-all"]')).to.exist;
+    el.view = 'list';
+    await rerender();
+    expect(el.shadowRoot.querySelector('.da-card-grid')).to.be.null;
+    expect(el.shadowRoot.querySelector('da-list-item').hasAttribute('view')).to.be.false;
+  });
+
+  it('shows the card sort control only for an active sort', async () => {
+    await fixture({ view: 'card', listItems: [] });
     expect(el.shadowRoot.querySelector('.da-card-sort')).to.be.null;
     el._sort = { property: 'lastModified', direction: 'descending' };
     await rerender();
@@ -360,7 +370,6 @@ describe('da-list render', () => {
     await rerender();
     expect(el.shadowRoot.querySelector('.da-card-grid')).to.be.null;
     expect(el.shadowRoot.querySelector('.da-card-sort')).to.be.null;
-    expect(el.shadowRoot.querySelector('da-list-item').hasAttribute('view')).to.be.false;
   });
 });
 
