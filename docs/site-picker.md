@@ -15,7 +15,9 @@ updateSitePicker({ picker, sites, value: 'adobe/example' });
 
 `sites` contains `{ value: 'org/site', label: 'site (org)' }` entries.
 `getSiteOptions({ recentSites, current })` builds validated, deduplicated options
-from browser-local recent sites and the current site. The current site remains
+from browser-local recent sites and the current site. Its pure implementation
+is in `site-picker-utils.js`, so data helpers need not import picker UI.
+The current site remains
 available even when it is outside recent history. Identifiers are real repository
 identifiers, not invented friendly names or public domains.
 
@@ -29,6 +31,8 @@ site's root, and opens the existing sites screen for Add site. It preserves the
 current URL's query parameters. Landing retains its access-aware Add site dialog.
 The picker does not create sites, change permissions, or discover account sites.
 Browse removes both controls and its storage listener when disconnected.
+Invalid or unavailable recent-site storage produces an explicit alert while
+keeping the current site, Add site and search available.
 
 The production dependency is generic Nexter picker support for `description`,
 `leadingIcon` and menu CSS parts. Release that support before merging the
