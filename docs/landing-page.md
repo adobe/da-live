@@ -63,6 +63,10 @@ List image files reuse lazy previews in 28px thumbnail slots; information and
 favorite controls use 20px icons in separate 48px visual slots.
 Sheet items use the plain folded-corner `S2_Icon_File_20_N`, not FileText.
 The latest card metadata uses the design's bullet separator.
+Filled favorite controls use the linked design's #808080 in light mode,
+matching the card badge rather than inheriting the darker button text color.
+There is no exact equivalent in the current generated S2 gray palette; dark
+mode uses the existing gray-700 token.
 
 Friendly site names/domains, approved Spectrum VF fonts, published-page
 screenshots and live task data remain data/asset dependencies. Existing source
@@ -160,6 +164,7 @@ intentional differences rather than substitutes for those missing inputs.
   of the published site. Source HTML is never inserted into the live DOM or executed.
   These additions are opt-in and do not change ordinary Browse previews.
   Preview failures are identified rather than presented as successful thumbnails.
+  The 80px by 107px paper frame wraps unbroken headings/URLs and clips its content.
 - The Figma Ready Recent frame (`1852:83848`) supplies the gradient artwork and
   semantic page, fragment and image assets. Sheets now use the shared generic
   Document icon, as requested in the updated design; their editor routes and file
@@ -227,6 +232,8 @@ intentional differences rather than substitutes for those missing inputs.
   ArrowRight (16px), Home (80px) and End (1200px). Resizing stays local to the
   current table; it does not imply working column menus or live task actions.
   Initial columns follow the design's proportions (230/553/133/120 at 1036px).
+  Resize hit areas are transparent; each boundary has one header divider, not
+  a second line painted by the resize handle.
   Comment loading/empty/error notices sit below the table so they do not displace
   its header; the live-comment/sample distinction remains visible.
 - Need Attention also lists the signed-in user's **open comment threads**: unresolved

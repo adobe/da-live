@@ -60,6 +60,25 @@ describe('da-card-preview', () => {
     expect(el.shadowRoot.querySelector('.document-preview')).to.be.null;
   });
 
+  it('wraps long document text inside a bounded paper frame', async () => {
+    const longText = 'VeryLongUnbrokenDocumentTitle'.repeat(12);
+    sinon.stub(source, 'get').resolves(new Response(`<main><h1>${longText}</h1><p>${longText}</p></main>`));
+    await fixture({ ext: 'html', path: '/o/s/a.html', documentPreview: true });
+    await el.loadImage();
+    await el.updateComplete;
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync(await (await fetch('/blocks/browse/v2/da-card-preview/da-card-preview.css')).text());
+    el.shadowRoot.adoptedStyleSheets = [sheet];
+    el.style.width = '200px';
+    el.style.height = '80px';
+    const paper = el.shadowRoot.querySelector('.document-preview');
+    expect(paper.getBoundingClientRect().height).to.equal(107);
+    expect(getComputedStyle(paper).overflow).to.equal('hidden');
+    [...paper.querySelectorAll('strong, p')].forEach((text) => {
+      expect(text.scrollWidth).to.be.at.most(text.clientWidth + 1);
+    });
+  });
+
   it('does not attach a stale document preview to a different path', async () => {
     let finish;
     sinon.stub(source, 'get').returns(new Promise((resolve) => { finish = resolve; }));

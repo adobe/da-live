@@ -31,12 +31,14 @@ svg {
   position: absolute;
   top: 14px;
   width: 80px;
-  min-height: 107px;
+  height: 107px;
   padding: 6px;
   box-sizing: border-box;
   background: white;
   color: #292929;
   font: 3px / 1.5 sans-serif;
+  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 .document-preview strong {

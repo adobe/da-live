@@ -72,6 +72,7 @@ describe('shared file actions', () => {
     el.isFavorited = true;
     await open();
     expect(el.shadowRoot.querySelector('.favorite-action').textContent).to.include('Remove as Favorite');
+    expect(el.shadowRoot.querySelector('.favorite-action svg').classList.contains('is-favorite')).to.equal(true);
   });
 
   it('restores focus when a focused menu closes but does not steal an outside click', async () => {
@@ -108,9 +109,11 @@ describe('shared file actions', () => {
     const toggle = el.shadowRoot.querySelector('.favorite');
     expect(toggle.getAttribute('aria-pressed')).to.equal('false');
     expect(toggle.getAttribute('aria-label')).to.equal('Mark as Favorite: Welcome');
+    expect(toggle.querySelector('svg').classList.contains('is-favorite')).to.equal(false);
     el.isFavorited = true;
     await el.updateComplete;
     expect(toggle.getAttribute('aria-pressed')).to.equal('true');
+    expect(toggle.querySelector('svg').classList.contains('is-favorite')).to.equal(true);
     await open();
     expect(el.shadowRoot.querySelector('.favorite-action')).to.equal(null);
   });

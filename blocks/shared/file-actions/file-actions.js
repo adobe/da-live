@@ -118,7 +118,8 @@ export default class DaFileActions extends LitElement {
       </button>
       ${!card ? html`<button class="favorite nx-action-btn-icon" type="button"
         aria-label=${`${favoriteLabel}: ${this.name}`} aria-pressed=${!!this.isFavorited}
-        @click=${this.favorite}><svg viewBox="0 0 20 20" aria-hidden="true">
+        @click=${this.favorite}><svg class=${this.isFavorited ? 'is-favorite' : nothing}
+          viewBox="0 0 20 20" aria-hidden="true">
           <use href="${favoriteIcon}#icon"></use></svg></button>` : nothing}
       ${this._open ? html`<nx-popover role="dialog" aria-label=${`Details for ${this.name}`} @close=${this.close}>
         ${this.ext && this.ext !== 'link' ? html`<section aria-label="Detail Information">
@@ -134,7 +135,8 @@ export default class DaFileActions extends LitElement {
         </section>` : nothing}
         ${card ? html`<hr><button class="favorite-action nx-action-btn-quiet" type="button"
           aria-label=${`${favoriteLabel}: ${this.name}`} @click=${this.favorite}>
-          <span>${favoriteLabel}</span><svg viewBox="0 0 20 20" aria-hidden="true">
+          <span>${favoriteLabel}</span><svg class=${this.isFavorited ? 'is-favorite' : nothing}
+            viewBox="0 0 20 20" aria-hidden="true">
             <use href="${favoriteIcon}#icon"></use></svg></button>` : nothing}
       </nx-popover>` : nothing}`;
   }

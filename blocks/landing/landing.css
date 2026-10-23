@@ -690,15 +690,6 @@ da-card-preview {
   touch-action: none;
 }
 
-.column-resizer::after {
-  position: absolute;
-  inset-block: 6px;
-  left: 4px;
-  width: 1px;
-  background: var(--s2-gray-300);
-  content: "";
-}
-
 .column-resizer:focus-visible {
   outline: 2px solid var(--s2-blue-800);
   outline-offset: -2px;

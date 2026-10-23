@@ -110,6 +110,11 @@ a:hover {
   fill: currentcolor;
 }
 
+.favorite svg.is-favorite,
+.favorite-action svg.is-favorite {
+  color: light-dark(#808080, var(--s2-gray-700));
+}
+
 hr {
   width: 100%;
   margin: 0;
