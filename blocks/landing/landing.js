@@ -638,7 +638,7 @@ export class DaLanding extends LitElement {
         </section>
         <section class="files-panel" aria-labelledby="files-heading">
           <div class="panel-heading">
-            <h2 id="files-heading">Files</h2>
+            <h2 id="files-heading">Content</h2>
             <nx-segmented-btn label="File view" size="m" variant="quiet" .items=${VIEW_ITEMS}
               .value=${this._view} @change=${this.changeView}></nx-segmented-btn>
           </div>
@@ -650,7 +650,7 @@ export class DaLanding extends LitElement {
               <button class="filter" type="button" aria-pressed=${this._tab === 'starred'}
                 @click=${() => this.changeTab('starred')}>${icon('star')}Favorite</button>
             </div>
-            ${this._scope ? html`<a class="all-files" href=${getBrowseHref({ path: this.path })}>Show All Files</a>` : nothing}
+            ${this._scope ? html`<a class="all-files" href=${getBrowseHref({ path: this.path })}>Show all</a>` : nothing}
           </div>
           ${this._actionError ? html`<p role="alert">${this._actionError}</p>` : nothing}
           <div aria-busy=${!!this._scope && !this._files && !this._error}>${this.renderFiles()}</div>
