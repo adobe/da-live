@@ -7,7 +7,6 @@ import {
   folderRulePath, LEVEL_LABEL,
 } from '../utils.js';
 
-await import(`${getNx()}/blocks/shared/breadcrumb/breadcrumb.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
 await import(`${getNx()}/blocks/shared/search/search.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
@@ -264,7 +263,6 @@ class DaPermissions extends LitElement {
   }
 
   _renderHeader() {
-    const pathSegments = this.site ? [this.org, this.site] : [this.org];
     const pickerItems = [
       { value: '', label: 'Org Permissions' },
       { divider: true },
@@ -272,7 +270,6 @@ class DaPermissions extends LitElement {
     ];
     return html`
       <div class="permissions-header">
-        <nx-breadcrumb .pathSegments=${pathSegments}></nx-breadcrumb>
         <div class="permissions-header-actions">
           <nx-search
             variant="field"

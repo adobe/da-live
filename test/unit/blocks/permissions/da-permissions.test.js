@@ -154,6 +154,7 @@ describe('da-permissions', () => {
     expect(labels).to.include('site1');
     expect(labels).to.include('site2');
     expect(picker.items[0]).to.deep.equal({ value: '', label: 'Org Permissions' });
+    expect(!!el.shadowRoot.querySelector('nx-breadcrumb')).to.equal(false);
   });
 
   it('dismissing the info note sets localStorage, and the note stays hidden on remount', async () => {

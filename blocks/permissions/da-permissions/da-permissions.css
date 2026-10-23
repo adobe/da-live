@@ -19,8 +19,16 @@
 
 .permissions-header-actions {
   display: flex;
+  flex: 1;
   align-items: center;
+  justify-content: space-between;
   gap: var(--s2-spacing-200);
+}
+
+/* Filter gets the room; the site picker keeps its natural width on the right. */
+.permissions-header-actions nx-search {
+  flex: 1 1 auto;
+  max-width: 40rem;
 }
 
 .permissions-title {
