@@ -40,6 +40,7 @@ export default class DaBrowse extends LitElement {
     _permissions: { state: true },
     _search: { state: true },
     _toolsOpen: { state: true },
+    _sitePickerError: { state: true },
   };
 
   _browseSelKeys = new Set();
@@ -96,12 +97,14 @@ export default class DaBrowse extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [style];
     this._handleShortcuts = this.handleShortcuts.bind(this);
     document.addEventListener('keydown', this._handleShortcuts);
+    window.addEventListener('storage', this.handleSitesStorage);
     this.mountSearch();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('keydown', this._handleShortcuts);
+    window.removeEventListener('storage', this.handleSitesStorage);
     this.destroySearch();
   }
 
@@ -111,6 +114,31 @@ export default class DaBrowse extends LitElement {
 
   updated() {
     this.syncSearch();
+    this.syncSitePicker();
+  }
+
+  handleSitesStorage = ({ key }) => {
+    if (key === 'da-sites' || key === null) this.syncSitePicker();
+  };
+
+  syncSitePicker() {
+    if (!this._sitePicker) return;
+    const { org, site } = this.details ?? {};
+    const value = org && site ? `${org}/${site}` : '';
+    const { sites, error } = (() => {
+      try {
+        const recentSites = JSON.parse(localStorage.getItem('da-sites') || '[]');
+        if (!Array.isArray(recentSites)) throw new TypeError('Recent sites must be a list.');
+        return { sites: this._sitePickerModule.getSiteOptions({ recentSites, current: value }) };
+      } catch (cause) {
+        return {
+          error: `Could not read recent sites: ${cause.message}`,
+          sites: this._sitePickerModule.getSiteOptions({ current: value }),
+        };
+      }
+    })();
+    this._sitePickerError = error;
+    this._sitePickerModule.updateSitePicker({ picker: this._sitePicker, sites, value });
   }
 
   handleShortcuts(e) {
@@ -265,12 +293,18 @@ export default class DaBrowse extends LitElement {
     }
     this.clearSearch();
     this._navField?.remove();
+    this._workspace?.remove();
+    this._workspace = undefined;
+    this._sitePicker = undefined;
   }
 
   async mountNavField() {
     const nav = document.querySelector('nx-nav');
     if (!nav) return;
-    await import('../da-browse-search/da-browse-search.js');
+    const [, sitePickerModule] = await Promise.all([
+      import('../da-browse-search/da-browse-search.js'),
+      import('../../../shared/site-picker.js'),
+    ]);
     if (!this.isConnected) return;
     if (!this._navField) {
       const field = document.createElement('da-browse-search');
@@ -284,7 +318,19 @@ export default class DaBrowse extends LitElement {
       field.addEventListener('toolstoggle', () => toggleToolsPanel(this._toolsOpen));
       this._navField = field;
     }
-    nav.append(this._navField);
+    if (!this._workspace) {
+      this._sitePickerModule = sitePickerModule;
+      this._sitePicker = sitePickerModule.createSitePicker({
+        onSelect: (value) => { window.location.hash = `/${value}`; },
+        onAdd: () => { window.location.hash = ''; },
+      });
+      this._workspace = document.createElement('div');
+      this._workspace.className = 'browse-workspace';
+      this._workspace.slot = 'search';
+      this._workspace.append(this._sitePicker, this._navField);
+    }
+    nav.append(this._workspace);
+    this.syncSitePicker();
     this.updateNavField();
     this.syncSearch();
     this.getToolsPanel().catch(() => { });
@@ -505,6 +551,7 @@ export default class DaBrowse extends LitElement {
   render() {
     const search = this._search;
     return html`
+      ${this._sitePickerError ? html`<p role="alert">${this._sitePickerError}</p>` : nothing}
       <da-browse-header exportparts="chat-btn"
         .details=${this.details}
         .chatEnabled=${this._chatEnabled}

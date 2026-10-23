@@ -1,11 +1,18 @@
 import { getNx } from '../../scripts/utils.js';
 
-await import(`${getNx()}/blocks/shared/picker/picker.js`);
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const [style] = await Promise.all([
+  loadStyle(import.meta.url),
+  import(`${getNx()}/blocks/shared/picker/picker.js`),
+]);
+document.adoptedStyleSheets.push(style);
 
-export function updateSitePicker({ picker, sites, value }) {
+export { getSiteOptions } from './site-picker-utils.js';
+
+export function updateSitePicker({ picker, sites = [], value }) {
   picker.items = [
     { section: 'Your Sites' },
-    ...(sites || []).map((site) => ({
+    ...sites.map((site) => ({
       ...site,
       label: site.value.split('/').at(-1),
       description: site.value,
@@ -15,16 +22,16 @@ export function updateSitePicker({ picker, sites, value }) {
     { value: 'add-site', label: 'Add site...', action: true, leadingIcon: '/img/icons/s2-icon-add-20-n.svg' },
   ];
   picker.value = value || '';
-  picker.labelOverride = sites?.find((site) => site.value === value)?.label || '';
+  picker.labelOverride = sites.find((site) => site.value === value)?.label || '';
 }
 
 export function createSitePicker({ onSelect, onAdd }) {
   const picker = document.createElement('nx-picker');
+  picker.className = 'da-site-picker';
   picker.setAttribute('aria-label', 'Workspace site');
   picker.placeholder = 'Choose a site';
   picker.size = 'm';
   picker.variant = 'field';
-  picker.menuVariant = 'site';
   picker.addEventListener('change', ({ detail: { value } }) => {
     if (value === 'add-site') onAdd();
     else onSelect(value);

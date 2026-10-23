@@ -1,0 +1,91 @@
+.da-site-picker {
+  --nx-picker-height: var(--s2-spacing-500);
+  --nx-picker-padding: var(--s2-spacing-75) var(--s2-spacing-300);
+  --nx-picker-border: 1px solid var(--s2-gray-300);
+  --nx-picker-radius: var(--s2-corner-radius-800);
+  --nx-picker-background: var(--s2-gray-25);
+  --nx-picker-max-width: 100%;
+
+  display: block;
+  box-sizing: border-box;
+  width: max-content;
+  min-width: min(220px, 100%);
+  max-width: min(100%, 280px);
+}
+
+.da-site-picker:hover {
+  --nx-picker-border: 1px solid var(--s2-gray-500);
+}
+
+.da-site-picker::part(label) {
+  font-weight: var(--s2-component-m-bold-font-weight);
+}
+
+.da-site-picker::part(menu) {
+  min-width: min(240px, calc(100vw - 20px));
+  max-width: calc(100vw - 20px);
+  padding: var(--s2-spacing-100);
+}
+
+.da-site-picker::part(section) {
+  margin: 0;
+  padding: 7px var(--s2-spacing-200);
+  color: var(--s2-gray-800);
+  font-size: var(--s2-component-m-bold-font-size);
+  line-height: 18px;
+  font-weight: var(--s2-component-m-bold-font-weight);
+  letter-spacing: normal;
+}
+
+.da-site-picker::part(item) {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 6px;
+  margin: 0;
+  padding: 7px var(--s2-spacing-200);
+  background: transparent;
+  font-size: var(--s2-component-m-medium-font-size);
+  line-height: 18px;
+  font-weight: 500;
+  text-align: start;
+}
+
+.da-site-picker::part(item-label) {
+  grid-area: 1 / 2;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.da-site-picker::part(check),
+.da-site-picker::part(leading-icon) {
+  grid-area: 1 / 1;
+  align-self: start;
+}
+
+.da-site-picker::part(check) {
+  width: 16px;
+  height: 18px;
+  color: var(--s2-blue-900);
+}
+
+.da-site-picker::part(divider) {
+  margin: var(--s2-spacing-100) 0;
+}
+
+.da-site-picker::part(item):hover {
+  background: var(--s2-gray-200);
+}
+
+.da-site-picker::part(item):focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: -2px;
+}
+
+@media (width < 600px) {
+  .da-site-picker {
+    --nx-picker-padding: var(--s2-spacing-75) var(--s2-spacing-100);
+
+    min-width: 32px;
+    max-width: min(100%, 176px);
+  }
+}

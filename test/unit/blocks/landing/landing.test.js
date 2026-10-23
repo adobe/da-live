@@ -76,7 +76,8 @@ describe('landing page', () => {
     expect(nav.querySelector('[slot="search"]')).to.equal(el._sitePicker);
     expect(el._sitePicker.variant).to.equal('field');
     expect(el._sitePicker.size).to.equal('m');
-    expect(el._sitePicker.menuVariant).to.equal('site');
+    expect(el._sitePicker.classList.contains('da-site-picker')).to.equal(true);
+    expect(el._sitePicker.menuVariant).to.equal(undefined);
     expect(el._sitePicker.items[1]).to.include({ label: 'site', description: 'org/site', ariaLabel: 'site (org)' });
     expect(el._sitePicker.labelOverride).to.equal('site (org)');
     expect(el._sitePicker.items[0]).to.deep.equal({ section: 'Your Sites' });

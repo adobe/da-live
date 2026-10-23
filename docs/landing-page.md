@@ -37,7 +37,9 @@ adobe/da-live#1416 is modified or merged by this work.
   Landing uses one compact thumbnail size. Ordinary Browse keeps its existing
   renderer until the shared component is available on its supported shell branches.
 - da-live owns `blocks/shared/site-picker.js`, the site-picker composition around
-  `nx-picker`, including Your Sites and Add site. Access checks remain in Landing's
+  `nx-picker`, including Your Sites and Add site. Browse v2 uses the same picker
+  beside its nav search. Site option formatting lives in `site-picker-utils.js`.
+  Access checks remain in Landing's
   existing data helpers; no account-wide discovery or invented display metadata is added.
 - Files and Need Attention table markup lives in detached da-live render helpers
   (`file-table.js` and `attention-table.js`), not a new general table framework.
@@ -56,7 +58,8 @@ Ten compact cards are 142px tall with 4px frame padding, 80px thumbnails,
 The quiet view switcher has two 32px buttons. Need Attention follows after 40px.
 These are the default-size design dimensions, not a claim of live S/M integration.
 
-The app-level site picker uses the shared `menu-variant="site"` presentation:
+The app-level site picker owns its presentation in `blocks/shared/site-picker.css`,
+using generic Nexter CSS parts rather than a site-specific framework variant:
 leading selected checkmark, two-line entries and a leading Add site icon.
 Its secondary line is the real org/site identifier, not a fabricated domain.
 List image files reuse lazy previews in 28px thumbnail slots; information and
