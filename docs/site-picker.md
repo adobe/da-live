@@ -25,15 +25,30 @@ The menu shows site names with `org/site` below them and marks the current site.
 The trigger includes the organization to distinguish identically named sites.
 Add site emits an action without changing the selection.
 
-Hosts own mounting, navigation, site loading/access checks and Add site behavior.
+Hosts own mounting and navigation. `blocks/shared/site-access.js` owns site access
+checks, supported URL parsing, browser-local additions and the explicit
+organization-config write-grant check. `blocks/shared/add-site.js` provides the
+lazy-loaded Add dialog for both hosts.
 Browse mounts the picker in the nav's left `context` slot, independently of its
 centered `search` slot. It switches to a selected
-site's root, and opens the existing sites screen for Add site. It preserves the
-current URL's query parameters. Landing retains its access-aware Add site dialog.
+site's root, and opens the shared Add dialog without leaving Browse. It preserves
+the current URL's query parameters. Landing uses the same dialog and supplies its
+own creation URL to preserve its Home navigation.
 The picker does not create sites, change permissions, or discover account sites.
 Browse removes both controls and its storage listener when disconnected.
+Both hosts remove confirmed inaccessible sites from choices. Uncertain failures
+remain visible with an explicit error; they are not treated as permission denials.
+In-flight checks and additions are cancelled when their host/dialog is removed.
 Invalid or unavailable recent-site storage produces an explicit alert while
 keeping the current site, Add site and search available.
+
+Anyone with access to an existing site can add it to this browser's recent list.
+The dialog verifies both access and existence, including paginated organization
+listings. Adding never creates a site, grants access or writes to the backend.
+Only an explicit `write` action on the selected organization's configuration
+response exposes Create new site. Content-write, child and inferred/fallback
+permissions do not qualify. If admin lookup fails, creation stays hidden with
+an error and retry; adding an existing accessible site stays available.
 
 The production dependency is generic Nexter picker support for `description`,
 `leadingIcon`, menu CSS parts and the nav's independent `context` slot.

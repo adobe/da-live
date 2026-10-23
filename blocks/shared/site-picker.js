@@ -8,6 +8,7 @@ const [style] = await Promise.all([
 document.adoptedStyleSheets.push(style);
 
 export { getSiteOptions } from './site-picker-utils.js';
+export { checkSiteChoices } from './site-access.js';
 
 export function updateSitePicker({ picker, sites = [], value }) {
   picker.items = [

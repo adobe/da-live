@@ -13,9 +13,11 @@ import { getQuery } from '../../utils/page.js';
  * document at /da-testautomation/ewtest-nochat/demo.
  */
 
-const EW_SITE = `${ENV}/${getQuery()}#/da-testautomation/ewtest`;
-const EW_SITE_NO_CHAT = `${ENV}/${getQuery()}#/da-testautomation/ewtest-nochat`;
-const NON_EW_SITE = `${ENV}/${getQuery()}#/da-testautomation/acltest/testdocs/subdir`;
+const query = new URLSearchParams(getQuery());
+query.set('browse', '2');
+const EW_SITE = `${ENV}/?${query}#/da-testautomation/ewtest`;
+const EW_SITE_NO_CHAT = `${ENV}/?${query}#/da-testautomation/ewtest-nochat`;
+const NON_EW_SITE = `${ENV}/?${query}#/da-testautomation/acltest/testdocs/subdir`;
 
 test('Chat button is visible on EW-enabled site', async ({ page }) => {
   await page.goto(EW_SITE);
