@@ -16,19 +16,6 @@ async function getBrowsePath({ org, site }) {
   }
 }
 
-const V2_NAV_PATH = '/nx/fragments/browse2-nav';
-
-// to be removed when the v2 nav is fully integrated
-function useV2Nav() {
-  if (document.head.querySelector('meta[name="nav-path"]')) return;
-  const meta = document.createElement('meta');
-  meta.name = 'nav-path';
-  meta.content = V2_NAV_PATH;
-  document.head.append(meta);
-  const nav = document.querySelector('header nx-nav');
-  if (typeof nav?.loadNav === 'function') nav.loadNav();
-}
-
 async function loadComponent(el, cmpName, pathDetails) {
   const existing = el.querySelector(cmpName);
   if (existing && pathDetails) {
@@ -38,7 +25,6 @@ async function loadComponent(el, cmpName, pathDetails) {
   // Swapping views — remove whichever component is currently mounted.
   el.querySelector('da-sites, da-browse')?.remove();
   const componentPath = cmpName === 'da-sites' ? '.' : await getBrowsePath(pathDetails);
-  if (componentPath === './v2') useV2Nav();
   await import(`${componentPath}/${cmpName}/${cmpName}.js`);
   const cmp = document.createElement(cmpName);
   cmp.details = pathDetails;
