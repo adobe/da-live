@@ -6,6 +6,19 @@ html:has(aside.panel[data-position="before"]:not([hidden])) da-browse::part(chat
   container-type: inline-size;
 }
 
+.browse-workspace {
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-100);
+  min-width: 0;
+  width: 100%;
+}
+
+.browse-workspace > da-browse-search {
+  flex: 1;
+  min-width: 0;
+}
+
 @container (width < 1440px) {
   da-browse {
     --se-grid-container-width: 83.4cqi;

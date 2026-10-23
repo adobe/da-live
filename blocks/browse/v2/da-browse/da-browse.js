@@ -96,6 +96,7 @@ export default class DaBrowse extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [style];
     this._handleShortcuts = this.handleShortcuts.bind(this);
     document.addEventListener('keydown', this._handleShortcuts);
+    window.addEventListener('storage', this.handleSitesStorage);
     this.mountSearch();
     this.observeHeader();
   }
@@ -103,6 +104,7 @@ export default class DaBrowse extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('keydown', this._handleShortcuts);
+    window.removeEventListener('storage', this.handleSitesStorage);
     this.destroySearch();
     this._headerResizeObserver?.disconnect();
     this._headerResizeObserver = undefined;
@@ -115,6 +117,22 @@ export default class DaBrowse extends LitElement {
   updated() {
     this.observeHeader();
     this.syncSearch();
+    this.syncSitePicker();
+  }
+
+  handleSitesStorage = ({ key }) => {
+    if (key === 'da-sites' || key === null) this.syncSitePicker();
+  };
+
+  syncSitePicker() {
+    if (!this._sitePicker) return;
+    const { org, site } = this.details ?? {};
+    const value = org && site ? `${org}/${site}` : '';
+    const sites = this._sitePickerModule.getSiteOptions({
+      recentSites: JSON.parse(localStorage.getItem('da-sites')) || [],
+      current: value,
+    });
+    this._sitePickerModule.updateSitePicker({ picker: this._sitePicker, sites, value });
   }
 
   observeHeader() {
@@ -300,12 +318,18 @@ export default class DaBrowse extends LitElement {
     }
     this.clearSearch();
     this._navField?.remove();
+    this._workspace?.remove();
+    this._workspace = undefined;
+    this._sitePicker = undefined;
   }
 
   async mountNavField() {
     const nav = document.querySelector('nx-nav');
     if (!nav) return;
-    await import('../da-browse-search/da-browse-search.js');
+    const [, sitePickerModule] = await Promise.all([
+      import('../da-browse-search/da-browse-search.js'),
+      import('../../../shared/site-picker.js'),
+    ]);
     if (!this.isConnected) return;
     if (!this._navField) {
       const field = document.createElement('da-browse-search');
@@ -319,7 +343,19 @@ export default class DaBrowse extends LitElement {
       field.addEventListener('toolstoggle', () => toggleToolsPanel(this._toolsOpen));
       this._navField = field;
     }
-    nav.append(this._navField);
+    if (!this._workspace) {
+      this._sitePickerModule = sitePickerModule;
+      this._sitePicker = sitePickerModule.createSitePicker({
+        onSelect: (value) => { window.location.hash = `/${value}`; },
+        onAdd: () => { window.location.hash = ''; },
+      });
+      this._workspace = document.createElement('div');
+      this._workspace.className = 'browse-workspace';
+      this._workspace.slot = 'search';
+      this._workspace.append(this._sitePicker, this._navField);
+    }
+    nav.append(this._workspace);
+    this.syncSitePicker();
     this.updateNavField();
     this.syncSearch();
     this.getToolsPanel().catch(() => { });
