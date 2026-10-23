@@ -22,8 +22,8 @@
   margin-bottom: var(--s2-spacing-300);
   padding: var(--s2-spacing-300);
   border: 1px solid var(--s2-gray-300);
-  border-radius: var(--s2-corner-radius-400, 8px);
-  background: var(--s2-gray-50, #fff);
+  border-radius: var(--s2-corner-radius-400);
+  background: var(--s2-gray-50);
 }
 
 .card-header {
@@ -48,8 +48,7 @@
 
 .level-row {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  align-items: baseline;
   gap: var(--s2-spacing-100);
   padding-top: var(--s2-spacing-100);
   border-top: 1px solid var(--s2-gray-200);
@@ -61,6 +60,7 @@
 }
 
 .level-label {
+  flex: none;
   min-width: 3.5rem;
   color: var(--s2-blue-900);
   font-size: var(--s2-component-m-bold-font-size);
@@ -88,6 +88,41 @@ nx-pills {
   --nx-pill-color: var(--s2-red-1100);
 }
 
+/* Members of the row: site members first, then the inherited group. */
+.row-members {
+  display: flex;
+  flex: 1 1 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2-spacing-100);
+  min-width: 0;
+}
+
+/* Site and inherited members in the same row: inherited starts on its own line. */
+.row-members.stacked {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.inherited-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2-spacing-100);
+  min-width: 0;
+}
+
+/* Inherited pills are a shade lighter than the site's own members. */
+.inherited-pills {
+  --nx-pill-background: color-mix(in srgb, var(--s2-blue-200) 55%, var(--s2-gray-25));
+  --nx-pill-color: var(--s2-blue-900);
+}
+
+.level-row[data-level='none'] .inherited-pills {
+  --nx-pill-background: color-mix(in srgb, var(--s2-red-200) 55%, var(--s2-gray-25));
+  --nx-pill-color: var(--s2-red-900);
+}
+
 .row-empty {
   color: var(--s2-gray-600);
   font-size: var(--s2-component-m-regular-font-size);
@@ -101,6 +136,8 @@ nx-pills {
 }
 
 .row-add {
+  flex: none;
+  margin-left: auto;
   white-space: nowrap;
 }
 

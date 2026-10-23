@@ -105,8 +105,23 @@ describe('da-permissions-cards', () => {
     expect(directPills.items).to.have.length(2);
     expect(inheritedPills.items).to.have.length(18);
     expect(inheritedPills.items.every((i) => i.removable === false)).to.be.true;
-    expect(row.querySelector('.from-label').textContent.trim()).to.equal('From myorg');
+    expect(row.querySelector('.from-label').textContent.trim()).to.equal('Inherited from myorg:');
     expect(row.querySelector('.row-more')).to.equal(null);
+  });
+
+  it('puts inherited members on their own line only when the row also has site members', async () => {
+    const mixed = baseSlot({ write: ['a@x.com'], inheritedWrite: ['b@x.com'] });
+    let el = await mount({ slots: [mixed], org: 'myorg' });
+    let members = el.shadowRoot.querySelector('.level-row[data-level="write"] .row-members');
+    expect(members.classList.contains('stacked')).to.be.true;
+    expect(members.querySelector('.inherited-group .from-label')).to.not.equal(null);
+    expect(members.querySelector('.inherited-group nx-pills.inherited-pills')).to.not.equal(null);
+    el.remove();
+
+    const inheritedOnly = baseSlot({ write: [], inheritedWrite: ['b@x.com'] });
+    el = await mount({ slots: [inheritedOnly], org: 'myorg' });
+    members = el.shadowRoot.querySelector('.level-row[data-level="write"] .row-members');
+    expect(members.classList.contains('stacked')).to.be.false;
   });
 
   it('shows "No one" for an empty read row, and no row-add when not editable', async () => {
@@ -241,7 +256,7 @@ describe('da-permissions-cards', () => {
 
     const row = el.shadowRoot.querySelector('.level-row[data-level="read"]');
     expect(row.querySelector('.direct-pills')).to.equal(null);
-    expect(row.querySelector('.from-label').textContent.trim()).to.equal('From myorg');
+    expect(row.querySelector('.from-label').textContent.trim()).to.equal('Inherited from myorg:');
     const inheritedPills = row.querySelector('nx-pills.inherited-pills');
     expect(inheritedPills.items.map((i) => i.id)).to.deep.equal(['inherited@example.com']);
   });

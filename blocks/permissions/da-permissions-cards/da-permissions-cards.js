@@ -113,24 +113,28 @@ class DaPermissionsCards extends LitElement {
       <div class="level-row" data-level=${level}>
         <span class="level-label">${levelLabel.toUpperCase()}</span>
         ${total === 0 ? html`<span class="row-empty">No one</span>` : html`
-          ${direct.length ? html`
-            <nx-pills
-              size="m"
-              class="direct-pills"
-              .label=${directLabel}
-              .items=${direct.map((who) => ({ id: who, label: who, removable }))}
-              @nx-pill-remove=${(e) => this._requestRemove(slot.path, level, e.detail.id)}
-            ></nx-pills>
-          ` : nothing}
-          ${inherited.length ? html`
-            <span class="from-label">From ${this.org}</span>
-            <nx-pills
-              size="m"
-              class="inherited-pills"
-              .label=${inheritedLabel}
-              .items=${inherited.map((who) => ({ id: who, label: who, removable: false }))}
-            ></nx-pills>
-          ` : nothing}
+          <div class="row-members ${direct.length && inherited.length ? 'stacked' : ''}">
+            ${direct.length ? html`
+              <nx-pills
+                size="m"
+                class="direct-pills"
+                .label=${directLabel}
+                .items=${direct.map((who) => ({ id: who, label: who, removable }))}
+                @nx-pill-remove=${(e) => this._requestRemove(slot.path, level, e.detail.id)}
+              ></nx-pills>
+            ` : nothing}
+            ${inherited.length ? html`
+              <div class="inherited-group">
+                <span class="from-label">Inherited from ${this.org}:</span>
+                <nx-pills
+                  size="m"
+                  class="inherited-pills"
+                  .label=${inheritedLabel}
+                  .items=${inherited.map((who) => ({ id: who, label: who, removable: false }))}
+                ></nx-pills>
+              </div>
+            ` : nothing}
+          </div>
         `}
         ${canAdd && this.editable && !isAdding ? html`
           <button
