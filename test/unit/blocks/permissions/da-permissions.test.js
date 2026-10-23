@@ -165,8 +165,15 @@ describe('da-permissions', () => {
 
   it('org === null -> renders an org form; submitting "myorg" sets location.hash', async () => {
     const el = await mount(null);
-    const form = el.shadowRoot.querySelector('form');
-    expect(form).to.not.equal(null);
+    expect(el.shadowRoot.querySelector('.permissions-title')?.textContent.trim()).to.equal('Permissions');
+    const form = el.shadowRoot.querySelector('.permissions-info-note form.permissions-org-form');
+    expect(!!form).to.equal(true);
+    expect(form.textContent).to.include('No organization in the URL. Enter one to manage its permissions.');
+    const field = form.querySelector('input.nx-input[name="org"]');
+    expect(field?.getAttribute('aria-label')).to.equal('Organization');
+    expect(field?.getAttribute('placeholder')).to.equal('Organization');
+    const submit = form.querySelector('button[type="submit"]');
+    expect([submit?.textContent.trim(), submit?.className]).to.deep.equal(['Open', 'nx-form-btn-secondary']);
 
     window.location.hash = '';
     const input = el.shadowRoot.querySelector('input[name="org"]');

@@ -69,10 +69,16 @@
 }
 
 
+/* No org in the URL: explanation, field and button on one line inside the info note panel. */
 .permissions-org-form {
   display: flex;
-  align-items: flex-end;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--s2-spacing-200);
+}
+
+.permissions-org-form .nx-input {
+  width: 16rem;
 }
 
 .nx-loading-spinner {

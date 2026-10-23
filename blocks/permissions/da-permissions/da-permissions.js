@@ -242,13 +242,21 @@ class DaPermissions extends LitElement {
 
   _renderOrgForm() {
     return html`
-      <form class="permissions-org-form" @submit=${(e) => this._onOrgSubmit(e)}>
-        <div class="nx-form-field">
-          <label for="permissions-org-input">Organization</label>
-          <input id="permissions-org-input" class="nx-input" name="org" type="text" placeholder="Org name" required>
-        </div>
-        <button type="submit" class="nx-btn-accent">Open</button>
-      </form>`;
+      <div class="permissions-info-note" role="note">
+        <form class="permissions-org-form" @submit=${(e) => this._onOrgSubmit(e)}>
+          <p>No organization in the URL. Enter one to manage its permissions.</p>
+          <input
+            class="nx-input"
+            name="org"
+            type="text"
+            placeholder="Organization"
+            aria-label="Organization"
+            autocomplete="off"
+            required
+          >
+          <button type="submit" class="nx-form-btn-secondary">Open</button>
+        </form>
+      </div>`;
   }
 
   _renderInfoNote() {
@@ -378,7 +386,11 @@ class DaPermissions extends LitElement {
 
   render() {
     if (!this.org) {
-      return html`<div class="permissions-shell">${this._renderOrgForm()}</div>`;
+      return html`
+        <div class="permissions-shell">
+          <h2 class="permissions-title">Permissions</h2>
+          ${this._renderOrgForm()}
+        </div>`;
     }
     return html`
       <div class="permissions-shell">
