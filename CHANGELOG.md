@@ -1,3 +1,24 @@
+# [1.13.0](https://github.com/adobe/da-live/compare/v1.12.3...v1.13.0) (2026-10-22)
+
+
+### Features
+
+* show LOC and MSM merge conflicts in the canvas editor ([#1189](https://github.com/adobe/da-live/issues/1189)) ([54fe9f7](https://github.com/adobe/da-live/commit/54fe9f7db6d714cfd415b1eb7488fb9aa5e40c12))
+
+## [1.12.3](https://github.com/adobe/da-live/compare/v1.12.2...v1.12.3) (2026-10-22)
+
+
+### Bug Fixes
+
+* **ew:** refresh version history without reload ([#1430](https://github.com/adobe/da-live/issues/1430)) ([10411fe](https://github.com/adobe/da-live/commit/10411fe7c25832e8a93671e203099a5ee86e4630)), closes [#1269](https://github.com/adobe/da-live/issues/1269)
+
+## [1.12.2](https://github.com/adobe/da-live/compare/v1.12.1...v1.12.2) (2026-10-21)
+
+
+### Bug Fixes
+
+* refresh and spinner icons not loading ([#1472](https://github.com/adobe/da-live/issues/1472)) ([f6b392f](https://github.com/adobe/da-live/commit/f6b392f35101842549aaf6505b048b5319586a07))
+
 ## [1.12.1](https://github.com/adobe/da-live/compare/v1.12.0...v1.12.1) (2026-10-21)
 
 

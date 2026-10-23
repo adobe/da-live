@@ -502,6 +502,17 @@ describe('comparison content normalization', () => {
     expect(html).to.include('<table>');
   });
 
+  it('leaves out content the publish pipeline ignores, such as the upstream side of a merge', () => {
+    const html = comparison.normalizeComparisonHtml(
+      '<da-diff-deleted data-mdast="ignore" contenteditable="false"><p>Upstream text</p></da-diff-deleted>'
+      + '<p da-diff-added="">Local text</p>'
+      + '<da-diff-deleted data-mdast="ignore" contenteditable="false"><table><tr><td><p>Upstream block</p></td></tr></table></da-diff-deleted>',
+      page,
+    );
+    expect(html).to.include('<p>Local text</p>');
+    expect(html).not.to.include('Upstream');
+  });
+
   it('collapses single-paragraph table cells so editor rows match live rows', () => {
     const editorCell = comparison.normalizeComparisonHtml('<div class="tableWrapper"><table><tbody><tr><td><p>Omnichannel</p></td></tr></tbody></table></div>', page);
     const liveCell = comparison.normalizeComparisonHtml('<table><tbody><tr><td>Omnichannel</td></tr></tbody></table>', page);

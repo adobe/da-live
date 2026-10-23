@@ -20,10 +20,10 @@ export function getLangOverlay(upstream) {
   const labelBtn = createElement('span', 'diff-label da-diff-btn-base-element');
   labelBtn.textContent = text;
 
-  const acceptBtn = createButton('diff-accept da-diff-btn-base-element', 'button', { 'aria-label': `Accept ${text}` });
+  const acceptBtn = createButton('nx-action-btn-icon diff-accept da-diff-btn-base-element', 'button', { 'aria-label': `Accept ${text}` });
   acceptBtn.appendChild(createTooltip(`Accept ${text}`, 'diff-tooltip'));
 
-  const deleteBtn = createButton('diff-delete da-diff-btn-base-element', 'button', { 'aria-label': `Delete ${text}` });
+  const deleteBtn = createButton('nx-action-btn-icon diff-delete da-diff-btn-base-element', 'button', { 'aria-label': `Delete ${text}` });
   deleteBtn.appendChild(createTooltip(`Delete ${text}`, 'diff-tooltip'));
 
   compositeBtn.appendChild(labelBtn);
