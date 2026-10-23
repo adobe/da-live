@@ -37,6 +37,7 @@ class DaPermissionsCards extends LitElement {
     org: { type: String },
     scopeName: { type: String },
     canAddFolder: { type: Boolean },
+    query: { type: String },
     editable: { type: Boolean },
     busy: { type: Boolean },
     adding: { attribute: false },
@@ -48,6 +49,7 @@ class DaPermissionsCards extends LitElement {
     this.org = '';
     this.scopeName = '';
     this.canAddFolder = false;
+    this.query = '';
     this.editable = false;
     this.busy = false;
     this.adding = null;
@@ -151,6 +153,9 @@ class DaPermissionsCards extends LitElement {
     const levelLabel = LEVEL_LABEL[level];
     const directLabel = `${slot.label} ${levelLabel}`;
     const inheritedLabel = `${directLabel} inherited from ${this.org}`;
+    const needle = (this.query || '').trim().toLowerCase();
+    // Filter hits get nx-pills' highlight so a match is easy to spot in long lists.
+    const isMatch = (who) => !!needle && who.toLowerCase().includes(needle);
 
     return html`
       <div class="level-row" data-level=${level}>
@@ -162,7 +167,7 @@ class DaPermissionsCards extends LitElement {
               size="m"
               class="direct-pills"
               .label=${directLabel}
-              .items=${direct.map((who) => ({ id: who, label: who, removable }))}
+              .items=${direct.map((who) => ({ id: who, label: who, removable, highlighted: isMatch(who) }))}
               @nx-pill-remove=${(e) => this._requestRemove(slot.path, level, e.detail.id)}
             ></nx-pills>
           ` : nothing}
@@ -173,7 +178,7 @@ class DaPermissionsCards extends LitElement {
                 size="m"
                 class="inherited-pills"
                 .label=${inheritedLabel}
-                .items=${inherited.map((who) => ({ id: who, label: who, removable: false }))}
+                .items=${inherited.map((who) => ({ id: who, label: who, removable: false, highlighted: isMatch(who) }))}
               ></nx-pills>
             </div>
           ` : nothing}

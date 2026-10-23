@@ -341,6 +341,7 @@ class DaPermissions extends LitElement {
         .busy=${this._busy}
         .adding=${this._adding}
         .canAddFolder=${!!this.site && this._editable && !trimmedQuery}
+        .query=${trimmedQuery}
         @permissions-add-folder=${() => this._onOpenFolderDialog()}
         @permissions-add-open=${(e) => this._onAddOpen(e)}
         @permissions-add-cancel=${() => this._onAddCancel()}

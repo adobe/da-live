@@ -323,6 +323,24 @@ describe('da-permissions-cards', () => {
     expect(row.querySelector('nx-pills.inherited-pills').label).to.equal('Site configurations Write inherited from myorg');
   });
 
+  it('highlights every member that matches the filter query, case-insensitively', async () => {
+    const slot = baseSlot({
+      write: ['buergi@adobe.com', 'amendola@adobe.com'],
+      inheritedWrite: ['BUERGI-team@adobe.com', 'voss@adobe.com'],
+      none: ['buergi@guest.com'],
+    });
+    const highlightedIn = (el, selector) => [...el.shadowRoot.querySelectorAll(selector)]
+      .flatMap((p) => p.items).filter((i) => i.highlighted).map((i) => i.id);
+
+    let el = await mount({ slots: [slot], query: 'Buergi' });
+    expect(highlightedIn(el, 'nx-pills.direct-pills')).to.deep.equal(['buergi@adobe.com', 'buergi@guest.com']);
+    expect(highlightedIn(el, 'nx-pills.inherited-pills')).to.deep.equal(['BUERGI-team@adobe.com']);
+    el.remove();
+
+    el = await mount({ slots: [slot], query: '' });
+    expect(highlightedIn(el, 'nx-pills')).to.deep.equal([]);
+  });
+
   it('renders every pill list at nx-pills size m', async () => {
     const slot = baseSlot({
       write: ['a@x.com'],

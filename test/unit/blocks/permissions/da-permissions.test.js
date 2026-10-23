@@ -387,12 +387,13 @@ describe('da-permissions', () => {
     let cards = el.shadowRoot.querySelector('da-permissions-cards');
     expect(cards.slots.map((s) => s.path)).to.deep.equal([blogPath]);
 
-    search.value = 'orgwriter@example.com';
+    search.value = '  OrgWriter@example.com ';
     search.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
     await el.updateComplete;
 
     cards = el.shadowRoot.querySelector('da-permissions-cards');
     expect(cards.slots.map((s) => s.path)).to.deep.equal([contentPath]);
+    expect(cards.query).to.equal('OrgWriter@example.com');
 
     search.value = '';
     search.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
@@ -400,6 +401,7 @@ describe('da-permissions', () => {
 
     cards = el.shadowRoot.querySelector('da-permissions-cards');
     expect(cards.slots.map((s) => s.path)).to.include.members([configPath, contentPath, blogPath]);
+    expect(cards.query).to.equal('');
   });
 
   it('no match -> shows "No scopes match "zzz"" and no cards', async () => {
