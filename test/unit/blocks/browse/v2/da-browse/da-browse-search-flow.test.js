@@ -16,7 +16,7 @@ describe('browse-owned nav search', () => {
 
   beforeEach(async () => {
     nav = document.createElement('nx-nav');
-    nav.attachShadow({ mode: 'open' }).innerHTML = '<slot name="search"></slot>';
+    nav.attachShadow({ mode: 'open' }).innerHTML = '<slot name="context"></slot><slot name="search"></slot>';
     document.body.append(nav);
     browse = new DaBrowse();
     browse.details = { fullpath: '/org/site/products' };
@@ -70,8 +70,10 @@ describe('browse-owned nav search', () => {
   it('injects a scoped field into nav without nav owning search logic', () => {
     const field = browse._navField;
     expect(field.localName).to.equal('da-browse-search');
-    expect(nav.shadowRoot.querySelector('slot').assignedElements()).to.deep.equal([browse._workspace]);
-    expect(browse._workspace.contains(field)).to.be.true;
+    expect(nav.shadowRoot.querySelector('[name="search"]').assignedElements()).to.deep.equal([field]);
+    expect(nav.shadowRoot.querySelector('[name="context"]').assignedElements()).to.deep.equal([browse._sitePicker]);
+    expect(field.parentElement).to.equal(nav);
+    expect(browse._sitePicker.slot).to.equal('context');
     expect(field.getAttribute('role')).to.equal('search');
     expect(field.children).to.have.length(0);
     expect(field.slot).to.equal('search');
@@ -92,18 +94,18 @@ describe('browse-owned nav search', () => {
     expect(browse._sitePicker.value).to.equal('org/site');
   });
 
-  it('refreshes recent sites across tabs and removes the complete workspace on disconnect', () => {
+  it('refreshes recent sites across tabs and removes both nav controls on disconnect', () => {
     const getSites = stub(Storage.prototype, 'getItem').callThrough();
     getSites.withArgs('da-sites').returns(JSON.stringify(['other/site']));
     try {
       window.dispatchEvent(new StorageEvent('storage', { key: 'da-sites' }));
       expect(browse._sitePicker.items.some(({ value }) => value === 'other/site')).to.be.true;
       const sync = spy(browse, 'syncSitePicker');
-      const workspace = browse._workspace;
+      const picker = browse._sitePicker;
       browse.remove();
       window.dispatchEvent(new StorageEvent('storage', { key: 'da-sites' }));
       expect(sync.called).to.be.false;
-      expect(workspace.isConnected).to.be.false;
+      expect(picker.isConnected).to.be.false;
       sync.restore();
     } finally {
       getSites.restore();
@@ -683,9 +685,10 @@ describe('browse-owned nav search', () => {
     browse.remove();
     document.body.append(browse);
     await browse._searchReady;
-    expect(nav.shadowRoot.querySelector('slot').assignedElements()).to.deep.equal([browse._workspace]);
-    expect(browse._workspace.querySelectorAll('da-browse-search')).to.have.length(1);
-    expect(browse._workspace.querySelectorAll('.da-site-picker')).to.have.length(1);
+    expect(nav.shadowRoot.querySelector('[name="search"]').assignedElements()).to.deep.equal([field]);
+    expect(nav.shadowRoot.querySelector('[name="context"]').assignedElements()).to.deep.equal([browse._sitePicker]);
+    expect(nav.querySelectorAll('da-browse-search')).to.have.length(1);
+    expect(nav.querySelectorAll('.da-site-picker')).to.have.length(1);
     expect(browse._navField).to.equal(field);
     expect(field.actionButton).to.equal(action);
     const opened = spy();

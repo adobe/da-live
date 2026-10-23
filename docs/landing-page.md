@@ -38,7 +38,8 @@ adobe/da-live#1416 is modified or merged by this work.
   renderer until the shared component is available on its supported shell branches.
 - da-live owns `blocks/shared/site-picker.js`, the site-picker composition around
   `nx-picker`, including Your Sites and Add site. Browse v2 uses the same picker
-  beside its nav search. Site option formatting lives in `site-picker-utils.js`.
+  in the left nav context slot, separately from centered search.
+  Site option formatting lives in `site-picker-utils.js`.
   Access checks remain in Landing's
   existing data helpers; no account-wide discovery or invented display metadata is added.
 - Files and Need Attention table markup lives in detached da-live render helpers
