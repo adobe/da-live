@@ -2,7 +2,7 @@ import { TextSelection } from 'da-y-wrapper';
 import prose2aem from '../../shared/prose2aem.js';
 import { wrapTablesInWrappers } from '../../shared/version/compare.js';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
-import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
+import { daFetch, fetchDaConfigs, getFirstSheet, getRenderingVersion } from '../../shared/utils.js';
 import { toolbarController } from './toolbar-controller.js';
 import {
   diffTopLevel,
@@ -367,7 +367,7 @@ export function getInstrumentedHTML(view) {
 
   // Serialize clone to HTML, then move block-marker index onto wrapper as data-block-index
   // (same pattern as da-nx qe-advanced: getInstrumentedHTML in prose2aem.js).
-  let htmlString = prose2aem(editorClone, true, false);
+  let htmlString = prose2aem(editorClone, true, false, getRenderingVersion());
   htmlString = htmlString.replace(
     /<div class="block-marker" data-prose-index="(\d+)"><\/div>\s*<div([^>]*?)>/gi,
     (_match, proseIndex, divAttributes) => `<div${divAttributes} data-block-index="${proseIndex}">`,

@@ -120,10 +120,10 @@ export class EwEditorWysiwyg extends LitElement {
     this._resetCookieStateForCtxChange();
     this._syncCanvasVisibility();
     const { ctx } = this;
-    const { org, repo, path, branchPromise } = ctx ?? {};
+    const { org, repo, path, branchPromise, renderingVersionPromise } = ctx ?? {};
     if (!org || !repo || !path || !branchPromise) return;
 
-    branchPromise.then((branch) => {
+    Promise.all([branchPromise, renderingVersionPromise]).then(([branch]) => {
       if (this.ctx !== ctx || !this.isConnected) return false;
       this._wysiwygBranch = branch;
       return tryLoadWysiwygPreviewCookies({
