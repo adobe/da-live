@@ -20,7 +20,7 @@ const [form, buttons, style] = await Promise.all([
   loadStyle(import.meta.url),
 ]);
 
-const DOCS_URL = 'https://docs.da.live/administrators/guides/permissions';
+const DOCS_URL = 'https://www.aem.live/docs/ew/administering/permissions';
 
 /**
  * Container component for the permissions block. Routes on `org`/`site`
@@ -255,8 +255,9 @@ class DaPermissions extends LitElement {
     return html`
       <div class="permissions-info-note" role="note">
         <p>
-          <strong>Read</strong> = view &middot; <strong>Write</strong> = create/edit/delete &middot;
-          <strong>None</strong> = deny &middot; emails or IMS group IDs &middot;
+          <strong>Read</strong> = view &middot;
+          <strong>Write</strong> = create, edit and delete (includes Read) &middot;
+          emails or IMS group IDs &middot;
           <a href=${DOCS_URL} target="_blank" rel="noopener">Docs</a>
         </p>
         <p>Changes save directly to the org config. If someone else saves at the same time, the last save wins.</p>
