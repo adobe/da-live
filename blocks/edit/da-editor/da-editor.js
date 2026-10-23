@@ -30,6 +30,7 @@ export default class DaEditor extends LitElement {
     versionLabel: { attribute: false },
     proseEl: { attribute: false },
     wsProvider: { attribute: false },
+    offline: { type: Boolean },
     permissions: { state: true },
     _imsLoaded: { state: false },
     _versionDom: { state: true },
@@ -142,9 +143,13 @@ export default class DaEditor extends LitElement {
 
     if (props.has('proseEl') && this.path && this.permissions) {
       if (this._proseEl) this._proseEl.remove();
+      if (!this.proseEl) return;
       this.shadowRoot.append(this.proseEl);
       const pm = this.shadowRoot.querySelector('.ProseMirror');
-      if (pm) pm.contentEditable = 'false';
+      if (pm) {
+        pm.contentEditable = this._canWrite && (this.offline || this.wsProvider?.synced)
+          ? 'true' : 'false';
+      }
     }
   }
 }

@@ -79,17 +79,14 @@ export function createEditorComments({ getView, getPort, getContainer }) {
       if (parseDeepLink(new URL(window.location.href)).commentId) openCommentsPanel();
     },
 
-    loadStore(wsProvider) {
-      if (!store) return;
-      const doLoad = () => {
-        store.load().catch((err) => {
-          // eslint-disable-next-line no-console
-          console.warn('[comments] store load failed', err);
-        });
-      };
-      if (wsProvider.synced) {
-        doLoad();
-        return;
+    loadStore(wsProvider, { offline = false } = {}) {
+      if (!store) return undefined;
+      const doLoad = () => store.load().catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn('[comments] store load failed', err);
+      });
+      if (offline || wsProvider.synced) {
+        return doLoad();
       }
       const onSynced = (isSynced) => {
         if (!isSynced) return;
@@ -97,6 +94,7 @@ export function createEditorComments({ getView, getPort, getContainer }) {
         doLoad();
       };
       wsProvider.on('synced', onSynced);
+      return undefined;
     },
 
     setupGutter() {

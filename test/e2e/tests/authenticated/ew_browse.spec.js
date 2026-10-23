@@ -7,6 +7,8 @@ import { getQuery } from '../../utils/page.js';
  *   path                    groups                      actions
  *   /ewtest/+**             907136ED5D35CBF50A495CD4    read
  * And a document at /da-testautomation/ewtest/demo with EW enabled on the site.
+ * The test user must also be able to read the org and site config documents.
+ * A 401/403 on either config intentionally disables chat, even with EW enabled.
  *
  * The disableChat case additionally requires a site with EW enabled and
  * `ew.disableChat` set to `true` at /da-testautomation/ewtest-nochat, with a

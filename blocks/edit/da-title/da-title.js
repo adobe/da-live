@@ -44,6 +44,7 @@ export default class DaTitle extends LitElement {
     permissions: { attribute: false },
     collabStatus: { attribute: false },
     collabUsers: { attribute: false },
+    saveState: { attribute: false },
     previewPrefix: { attribute: false },
     livePrefix: { attribute: false },
     disabledText: { attribute: false },
@@ -473,7 +474,11 @@ export default class DaTitle extends LitElement {
     const status = isUnsaved && this.details?.view === 'config'
       ? 'unsaved-config'
       : this.collabStatus;
-    const tooltip = isUnsaved ? 'Unsaved changes' : this.collabStatus;
+    let tooltip = isUnsaved ? 'Unsaved changes' : this.collabStatus;
+    if (this.saveState) {
+      const labels = { saved: 'Saved', pending: 'Unsaved changes', saving: 'Saving...', error: this.saveState.error };
+      tooltip = labels[this.saveState.status];
+    }
     return html`
       <div class="collab-status">
         ${this.collabUsers ? this.renderCollabUsers() : nothing}
@@ -481,6 +486,20 @@ export default class DaTitle extends LitElement {
          <svg class="icon"><use href="#${CLOUD_ICONS[status]}"/></svg>
         </div>
       </div>`;
+  }
+
+  retrySave() {
+    return document.querySelector('da-content')?.forceSave?.();
+  }
+
+  renderSaveError() {
+    if (this.saveState?.status !== 'error') return nothing;
+    return html`
+      <div class="da-title-error" role="alert">
+        <p><strong>${this.saveState.error}</strong></p>
+        <button @click=${this.retrySave}>Retry save</button>
+      </div>
+    `;
   }
 
   renderError() {
@@ -505,6 +524,7 @@ export default class DaTitle extends LitElement {
           ${this.collabStatus ? this.renderCollab() : nothing}
           ${this._canPrepare ? html`<da-prepare .details=${this.details}></da-prepare>` : nothing}
           ${this._status ? this.renderError() : nothing}
+          ${this.renderSaveError()}
           <div class="da-title-actions ${this._actions.available?.length === 1 && !this._isSending ? 'has-one-action' : ''} ${this._actions.open ? 'is-open' : ''} ${this._actions.fixed ? 'is-fixed' : ''}">
             ${this.renderActions()}
             <button @click=${this.toggleActions} class="con-button blue da-title-action-send ${this._status ? 'is-error' : ''}" aria-label="Send">

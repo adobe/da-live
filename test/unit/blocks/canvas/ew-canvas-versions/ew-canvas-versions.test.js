@@ -37,6 +37,35 @@ const ver = (overrides = {}) => ({ isVersion: true, date: 'Jan 1', time: '10:00'
 
 const auditGroup = (audits = [{ date: 'Jan 1', time: '09:00', users: [] }]) => ({ date: 'Jan 1', audits });
 
+describe('canvas version source flush', () => {
+  it('does not create a version if the editor cannot save', async () => {
+    const bridge = getExtensionsBridge();
+    const savedFetch = window.fetch;
+    const calls = [];
+    window.fetch = async (url, opts) => {
+      calls.push({ url, opts });
+      return new Response('[]', { status: 200 });
+    };
+    let inst;
+    try {
+      inst = await createInstance({ path: '/org/site/page.html', _newVersion: ver() });
+      bridge.forceSave = async () => ({ ok: false, error: 'Write denied' });
+      calls.length = 0;
+      await inst.handleNewSubmit({
+        preventDefault() {},
+        target: { elements: { label: { value: 'Test' } } },
+      });
+      expect(calls.some((call) => call.opts?.method === 'POST')).to.be.false;
+      expect(inst._newVersion).to.exist;
+      expect(inst._savingVersion).to.be.false;
+    } finally {
+      bridge.forceSave = null;
+      inst?.remove();
+      window.fetch = savedFetch;
+    }
+  });
+});
+
 describe('version image previews', () => {
   let inst;
   afterEach(() => { inst?.remove(); });

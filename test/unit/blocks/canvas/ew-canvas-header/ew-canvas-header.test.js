@@ -20,7 +20,29 @@ describe('ew-canvas-header segments', () => {
     await header.updateComplete;
   });
 
-  afterEach(() => header.remove());
+  afterEach(() => {
+    header.remove();
+    canvasBus.editorSaveState.emit(null);
+  });
+
+  it('shows source-save state and emits retry requests only after a failure', async () => {
+    expect(header.shadowRoot.querySelector('[role="status"]')).to.be.null;
+    canvasBus.editorSaveState.emit({ status: 'saving' });
+    await header.updateComplete;
+    expect(header.shadowRoot.querySelector('[role="status"]').textContent).to.include('Saving...');
+    expect(header.shadowRoot.querySelector('[data-action="retry-save"]')).to.be.null;
+    canvasBus.editorSaveState.emit({ status: 'error', error: 'Write denied' });
+    await header.updateComplete;
+    expect(header.shadowRoot.querySelector('[role="status"]').title).to.equal('Write denied');
+    let retries = 0;
+    const off = canvasBus.editorSaveRequest.subscribe(() => { retries += 1; });
+    header.shadowRoot.querySelector('[data-action="retry-save"]').click();
+    off();
+    expect(retries).to.equal(1);
+    canvasBus.editorSaveState.emit(null);
+    await header.updateComplete;
+    expect(header.shadowRoot.querySelector('[role="status"]')).to.be.null;
+  });
 
   it('renders the Layout, Content and Split segments', async () => {
     header.editorView = 'layout';

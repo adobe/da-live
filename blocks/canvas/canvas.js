@@ -152,12 +152,26 @@ async function handleCanvasNotFound({ mountRoot, header, ctx, session, loadCount
   });
 }
 
-async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
+export async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
   editorLoadCount += 1;
   const loadCount = editorLoadCount;
+  const fullPath = buildCanvasDocPath(state);
+  const currentEditor = mountRoot.querySelector('ew-editor-doc');
+  if (currentEditor?.hasPendingSave && currentEditor.ctx?.path === fullPath) return;
+  const editorCtx = fullPath ? editorCtxFromHashState(state, fullPath) : null;
+  const session = editorCtx ? await resolveEditorDocSession(editorCtx) : null;
+  if (loadCount !== editorLoadCount) return;
+  // Include edits made while looking up the destination.
+  if (currentEditor?.hasPendingSave) {
+    const saved = await currentEditor.forceSave();
+    if (loadCount !== editorLoadCount) return;
+    if (!saved.ok) {
+      window.location.hash = `#/${currentEditor.ctx.path}`;
+      return;
+    }
+  }
   header.undoAvailable = false;
   header.redoAvailable = false;
-  const fullPath = buildCanvasDocPath(state);
   const name = state?.path?.split('/').pop();
   document.title = `${name ? `Edit ${name} | ` : ''}Experience Workspace`;
   if (!fullPath) {
@@ -168,10 +182,7 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
     header.canWrite = true;
     return;
   }
-  const editorCtx = editorCtxFromHashState(state, fullPath);
   const ctx = { ...editorCtx, branchPromise: resolveCanvasBranch(editorCtx) };
-  const session = await resolveEditorDocSession(ctx);
-  if (loadCount !== editorLoadCount) return;
   if (session.notFound) {
     await handleCanvasNotFound({ mountRoot, header, ctx, session, loadCount });
     return;
