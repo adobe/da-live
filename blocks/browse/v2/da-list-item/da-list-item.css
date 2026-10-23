@@ -469,7 +469,7 @@
   background: var(--s2-gray-25);
 }
 
-.card-favorite.nx-btn-sm {
+.card-favorite {
   position: absolute;
   top: var(--s2-spacing-100);
   right: var(--s2-spacing-100);

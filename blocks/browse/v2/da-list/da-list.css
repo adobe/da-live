@@ -203,12 +203,12 @@ da-list-item.is-expanded::after {
   display: grid;
   grid-template-columns: var(--da-list-select-width) minmax(0, 1fr) var(--da-list-type-width) var(--da-list-date-width) var(--da-list-action-width);
   align-items: center;
-  min-height: 52px;
+  min-height: 46px;
 }
 
 .da-browse-table-header.is-card {
   display: flex;
-  min-height: 40px;
+  min-height: 46px;
   padding-right: var(--da-list-pad-inline);
 
   > :not(.da-browse-header-cell-select, .da-card-sort) {
