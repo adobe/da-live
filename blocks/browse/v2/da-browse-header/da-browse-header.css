@@ -109,18 +109,12 @@
 .browse-sort-popover,
 .browse-appearance-popover {
   box-sizing: border-box;
-  width: 280px;
+  width: 200px;
   max-width: calc(100vw - 16px);
   padding: var(--s2-spacing-100, 8px);
   border-radius: 10px;
   color: var(--s2-gray-800);
   font-size: var(--s2-component-m-regular-font-size, 14px);
-}
-
-.browse-sort-options {
-  display: grid;
-  gap: 8px;
-  margin-top: 8px;
 }
 
 .browse-sort-option {

@@ -346,13 +346,16 @@ describe('da-list render', () => {
     expect(items[0].getAttribute('view')).to.equal('card');
     expect(el.shadowRoot.querySelector('.da-browse-table-header').classList.contains('is-card')).to.be.true;
     expect(el.shadowRoot.querySelector('.da-browse-header-name').textContent).to.equal('Select all');
-    expect(el.shadowRoot.querySelector('.da-card-sort button').textContent.trim()).to.equal('Name');
+    expect(el.shadowRoot.querySelector('.da-card-sort')).to.be.null;
     el._sort = { property: 'lastModified', direction: 'descending' };
     await rerender();
     expect(el.shadowRoot.querySelector('.da-card-sort button').textContent.trim())
       .to.equal('Modified');
     expect(el.shadowRoot.querySelector('.da-card-sort').getAttribute('aria-sort'))
       .to.equal('descending');
+    el._sort = { property: 'name', direction: 'none' };
+    await rerender();
+    expect(el.shadowRoot.querySelector('.da-card-sort')).to.be.null;
     el.view = 'list';
     await rerender();
     expect(el.shadowRoot.querySelector('.da-card-grid')).to.be.null;
