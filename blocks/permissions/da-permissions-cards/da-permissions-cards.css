@@ -142,12 +142,18 @@ nx-pills {
   line-height: var(--s2-component-m-regular-line-height);
 }
 
+/* The add field opens on its own line under the members, so the pills never reflow. */
+.row-add-field {
+  width: 100%;
+}
+
+.row-add-field .row-add-input {
+  width: min(100%, 28rem);
+  min-width: 10rem;
+}
+
 .row-add {
   flex: none;
   margin-left: auto;
   white-space: nowrap;
-}
-
-.row-add-input {
-  min-width: 10rem;
 }

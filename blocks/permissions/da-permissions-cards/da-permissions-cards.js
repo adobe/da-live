@@ -98,13 +98,41 @@ class DaPermissionsCards extends LitElement {
 
   _renderAddInput(path, level, label) {
     return html`
-      <input
-        type="text"
-        class="row-add-input nx-input"
-        aria-label="Add to ${label} ${LEVEL_LABEL[level]}"
-        @keydown=${(e) => this._onAddKeydown(e, path, level)}
-        @blur=${() => this._cancelAdd()}
-      >`;
+      <div class="row-add-field">
+        <input
+          type="text"
+          class="row-add-input nx-input"
+          placeholder="Email or IMS group ID, then press Enter"
+          aria-label="Add to ${label} ${LEVEL_LABEL[level]}"
+          @keydown=${(e) => this._onAddKeydown(e, path, level)}
+          @blur=${() => this._cancelAdd()}
+        >
+      </div>`;
+  }
+
+  _renderAddButton(slot, level, isAdding) {
+    const levelLabel = LEVEL_LABEL[level];
+    if (isAdding) {
+      // Keep the button (and so the members column width) in place while the field is open.
+      // preventDefault on mousedown keeps focus in the input, so its blur doesn't cancel first
+      // and let this click reopen the field.
+      return html`
+        <button
+          type="button"
+          class="row-add nx-action-btn-quiet"
+          aria-label="Cancel adding to ${slot.label} ${levelLabel}"
+          @mousedown=${(e) => e.preventDefault()}
+          @click=${() => this._cancelAdd()}
+        >Cancel</button>`;
+    }
+    return html`
+      <button
+        type="button"
+        class="row-add nx-action-btn-quiet"
+        aria-label="Add to ${slot.label} ${levelLabel}"
+        ?disabled=${this.busy}
+        @click=${() => this._openAdd(slot.path, level)}
+      >+ Add</button>`;
   }
 
   _renderLevelRow(slot, level) {
@@ -121,40 +149,31 @@ class DaPermissionsCards extends LitElement {
     return html`
       <div class="level-row" data-level=${level}>
         <span class="level-label">${levelLabel.toUpperCase()}</span>
-        ${total === 0 ? html`<span class="row-empty">No one</span>` : html`
-          <div class="row-members ${direct.length && inherited.length ? 'stacked' : ''}">
-            ${direct.length ? html`
+        <div class="row-members ${(direct.length && inherited.length) || isAdding ? 'stacked' : ''}">
+          ${total === 0 ? html`<span class="row-empty">No one</span>` : nothing}
+          ${direct.length ? html`
+            <nx-pills
+              size="m"
+              class="direct-pills"
+              .label=${directLabel}
+              .items=${direct.map((who) => ({ id: who, label: who, removable }))}
+              @nx-pill-remove=${(e) => this._requestRemove(slot.path, level, e.detail.id)}
+            ></nx-pills>
+          ` : nothing}
+          ${inherited.length ? html`
+            <div class="inherited-group">
+              <span class="from-label">Inherited from ${this.org}:</span>
               <nx-pills
                 size="m"
-                class="direct-pills"
-                .label=${directLabel}
-                .items=${direct.map((who) => ({ id: who, label: who, removable }))}
-                @nx-pill-remove=${(e) => this._requestRemove(slot.path, level, e.detail.id)}
+                class="inherited-pills"
+                .label=${inheritedLabel}
+                .items=${inherited.map((who) => ({ id: who, label: who, removable: false }))}
               ></nx-pills>
-            ` : nothing}
-            ${inherited.length ? html`
-              <div class="inherited-group">
-                <span class="from-label">Inherited from ${this.org}:</span>
-                <nx-pills
-                  size="m"
-                  class="inherited-pills"
-                  .label=${inheritedLabel}
-                  .items=${inherited.map((who) => ({ id: who, label: who, removable: false }))}
-                ></nx-pills>
-              </div>
-            ` : nothing}
-          </div>
-        `}
-        ${canAdd && this.editable && !isAdding ? html`
-          <button
-            type="button"
-            class="row-add nx-action-btn-quiet"
-            aria-label="Add to ${slot.label} ${LEVEL_LABEL[level]}"
-            ?disabled=${this.busy}
-            @click=${() => this._openAdd(slot.path, level)}
-          >+ Add</button>
-        ` : nothing}
-        ${canAdd && isAdding ? this._renderAddInput(slot.path, level, slot.label) : nothing}
+            </div>
+          ` : nothing}
+          ${canAdd && isAdding ? this._renderAddInput(slot.path, level, slot.label) : nothing}
+        </div>
+        ${canAdd && this.editable ? this._renderAddButton(slot, level, isAdding) : nothing}
       </div>`;
   }
 

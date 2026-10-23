@@ -173,13 +173,35 @@ describe('da-permissions-cards', () => {
     expect(directPills.items.every((i) => i.removable === false)).to.be.true;
   });
 
-  it('hides the row-add button while that row has an open inline input', async () => {
-    const slot = baseSlot({ write: ['a@x.com'] });
+  it('keeps the row-add button in place as "Cancel" and opens the field below the members', async () => {
+    const slot = baseSlot({ label: 'All sites', write: ['a@x.com'], inheritedWrite: ['b@x.com'] });
     const el = await mount({ slots: [slot], editable: true, adding: { path: slot.path, level: 'write' } });
 
     const row = el.shadowRoot.querySelector('.level-row[data-level="write"]');
-    expect(row.querySelector('.row-add')).to.equal(null);
-    expect(row.querySelector('.row-add-input')).to.not.equal(null);
+    const btn = row.querySelector('.row-add');
+    expect(btn?.textContent.trim()).to.equal('Cancel');
+    expect(btn?.getAttribute('aria-label')).to.equal('Cancel adding to All sites Write');
+    // The field is the last thing in the members column, after every pill list.
+    const members = row.querySelector('.row-members');
+    expect(members?.lastElementChild?.classList.contains('row-add-field')).to.equal(true);
+    expect(!!members.querySelector('.row-add-field .row-add-input')).to.equal(true);
+
+    let cancelCount = 0;
+    el.addEventListener('permissions-add-cancel', () => { cancelCount += 1; });
+    // mousedown must not steal focus from the input (blur would cancel, then the click reopen it).
+    const down = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+    btn.dispatchEvent(down);
+    expect(down.defaultPrevented).to.equal(true);
+    btn.click();
+    expect(cancelCount).to.equal(1);
+  });
+
+  it('opens the field under "No one" for an empty row', async () => {
+    const slot = baseSlot();
+    const el = await mount({ slots: [slot], editable: true, adding: { path: slot.path, level: 'read' } });
+    const members = el.shadowRoot.querySelector('.level-row[data-level="read"] .row-members');
+    expect(members?.querySelector('.row-empty')?.textContent.trim()).to.equal('No one');
+    expect(members?.lastElementChild?.classList.contains('row-add-field')).to.equal(true);
   });
 
   it('renders a NONE row only when slot.none or slot.inheritedNone is non-empty', async () => {
