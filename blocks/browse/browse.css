@@ -6,6 +6,10 @@ html:has(aside.panel[data-position="before"]:not([hidden])) da-browse::part(chat
   container-type: inline-size;
 }
 
+nx-nav:has(> .browse-workspace) {
+  grid-template-columns: minmax(0, 1fr) minmax(0, min(600px, 55%)) minmax(0, 1fr);
+}
+
 .browse-workspace {
   display: flex;
   align-items: center;

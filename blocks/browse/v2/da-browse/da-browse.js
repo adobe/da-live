@@ -40,6 +40,7 @@ export default class DaBrowse extends LitElement {
     _permissions: { state: true },
     _search: { state: true },
     _toolsOpen: { state: true },
+    _sitePickerError: { state: true },
   };
 
   _browseSelKeys = new Set();
@@ -128,10 +129,19 @@ export default class DaBrowse extends LitElement {
     if (!this._sitePicker) return;
     const { org, site } = this.details ?? {};
     const value = org && site ? `${org}/${site}` : '';
-    const sites = this._sitePickerModule.getSiteOptions({
-      recentSites: JSON.parse(localStorage.getItem('da-sites')) || [],
-      current: value,
-    });
+    const { sites, error } = (() => {
+      try {
+        const recentSites = JSON.parse(localStorage.getItem('da-sites') || '[]');
+        if (!Array.isArray(recentSites)) throw new TypeError('Recent sites must be a list.');
+        return { sites: this._sitePickerModule.getSiteOptions({ recentSites, current: value }) };
+      } catch (cause) {
+        return {
+          error: `Could not read recent sites: ${cause.message}`,
+          sites: this._sitePickerModule.getSiteOptions({ current: value }),
+        };
+      }
+    })();
+    this._sitePickerError = error;
     this._sitePickerModule.updateSitePicker({ picker: this._sitePicker, sites, value });
   }
 
@@ -576,6 +586,7 @@ export default class DaBrowse extends LitElement {
   render() {
     const search = this._search;
     return html`
+      ${this._sitePickerError ? html`<p role="alert">${this._sitePickerError}</p>` : nothing}
       <da-browse-header exportparts="chat-btn"
         .details=${this.details}
         .chatEnabled=${this._chatEnabled}

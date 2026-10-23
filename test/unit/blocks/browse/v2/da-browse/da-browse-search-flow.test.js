@@ -93,9 +93,9 @@ describe('browse-owned nav search', () => {
   });
 
   it('refreshes recent sites across tabs and removes the complete workspace on disconnect', () => {
-    const saved = localStorage.getItem('da-sites');
+    const getSites = stub(Storage.prototype, 'getItem').callThrough();
+    getSites.withArgs('da-sites').returns(JSON.stringify(['other/site']));
     try {
-      localStorage.setItem('da-sites', JSON.stringify(['other/site']));
       window.dispatchEvent(new StorageEvent('storage', { key: 'da-sites' }));
       expect(browse._sitePicker.items.some(({ value }) => value === 'other/site')).to.be.true;
       const sync = spy(browse, 'syncSitePicker');
@@ -106,8 +106,27 @@ describe('browse-owned nav search', () => {
       expect(workspace.isConnected).to.be.false;
       sync.restore();
     } finally {
-      if (saved === null) localStorage.removeItem('da-sites');
-      else localStorage.setItem('da-sites', saved);
+      getSites.restore();
+    }
+  });
+
+  it('reports invalid recent-site storage without losing Add site or search', async () => {
+    const getSites = stub(Storage.prototype, 'getItem').callThrough();
+    try {
+      for (const invalid of ['[', '{}']) {
+        getSites.withArgs('da-sites').returns(invalid);
+        browse.syncSitePicker();
+        await browse.updateComplete;
+        expect(browse.shadowRoot.querySelector('[role="alert"]').textContent).to.include('Could not read recent sites');
+        expect(browse._sitePicker.items.at(-1).value).to.equal('add-site');
+        expect(browse._navField.isConnected).to.be.true;
+      }
+      getSites.withArgs('da-sites').returns('[]');
+      browse.syncSitePicker();
+      await browse.updateComplete;
+      expect(browse.shadowRoot.querySelector('[role="alert"]')).to.be.null;
+    } finally {
+      getSites.restore();
     }
   });
 
