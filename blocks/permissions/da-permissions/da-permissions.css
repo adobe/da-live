@@ -6,7 +6,7 @@
 .permissions-shell {
   display: flex;
   flex-direction: column;
-  gap: var(--s2-spacing-300);
+  gap: var(--s2-spacing-400);
 }
 
 .permissions-header {
@@ -47,13 +47,13 @@
   line-height: var(--s2-heading-line-height);
 }
 
+/* Always-on help text: two short lines, stacked, on a light gray panel. */
 .permissions-info-note {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--s2-spacing-200);
+  flex-direction: column;
+  gap: var(--s2-spacing-75);
   padding: var(--s2-spacing-200) var(--s2-spacing-300);
-  background: var(--s2-gray-100);
+  background: var(--s2-gray-75);
   border-radius: var(--s2-corner-radius-400);
   color: var(--s2-gray-700);
   font-size: var(--s2-component-m-regular-font-size);

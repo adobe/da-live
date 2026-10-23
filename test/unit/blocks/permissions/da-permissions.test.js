@@ -148,19 +148,15 @@ describe('da-permissions', () => {
     expect(!!el.shadowRoot.querySelector('nx-breadcrumb')).to.equal(false);
   });
 
-  it('dismissing the info note sets localStorage, and the note stays hidden on remount', async () => {
+  it('always shows the info note, without a dismiss button (even if it was dismissed before)', async () => {
+    localStorage.setItem(INFO_KEY, 'true');
     window.fetch = async () => new Response('', { status: 403 });
-    let el = await mount('myorg');
+    const el = await mount('myorg');
 
-    expect(el.shadowRoot.querySelector('.permissions-info-note')).to.not.equal(null);
-    el.shadowRoot.querySelector('.permissions-info-note button').click();
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('.permissions-info-note')).to.equal(null);
-    expect(localStorage.getItem(INFO_KEY)).to.equal('true');
-    el.remove();
-
-    el = await mount('myorg');
-    expect(el.shadowRoot.querySelector('.permissions-info-note')).to.equal(null);
+    const note = el.shadowRoot.querySelector('.permissions-info-note');
+    expect(!!note).to.equal(true);
+    expect(note.querySelectorAll('button').length).to.equal(0);
+    expect(note.textContent).to.include('the last save wins');
   });
 
   it('org === null -> renders an org form; submitting "myorg" sets location.hash', async () => {

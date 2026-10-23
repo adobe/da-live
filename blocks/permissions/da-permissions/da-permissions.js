@@ -20,9 +20,7 @@ const [form, buttons, style] = await Promise.all([
   loadStyle(import.meta.url),
 ]);
 
-const INFO_DISMISSED_KEY = 'da-permissions-info-dismissed';
 const DOCS_URL = 'https://docs.da.live/administrators/guides/permissions';
-const CLOSE_ICON_SRC = '/img/icons/s2-icon-close-20-n.svg';
 
 /**
  * Container component for the permissions block. Routes on `org`/`site`
@@ -41,7 +39,6 @@ class DaPermissions extends LitElement {
     _query: { state: true },
     _readOnly: { state: true },
     _busy: { state: true },
-    _infoDismissed: { state: true },
     _adding: { state: true },
     _confirmRemove: { state: true },
     _pendingFolder: { state: true },
@@ -60,7 +57,6 @@ class DaPermissions extends LitElement {
     this._readOnly = false;
     this._busy = false;
     this._query = '';
-    this._infoDismissed = localStorage.getItem(INFO_DISMISSED_KEY) === 'true';
     this._adding = null;
     this._confirmRemove = null;
     this._pendingFolder = null;
@@ -244,11 +240,6 @@ class DaPermissions extends LitElement {
     this._folderDialogOpen = false;
   }
 
-  _dismissInfo() {
-    this._infoDismissed = true;
-    localStorage.setItem(INFO_DISMISSED_KEY, 'true');
-  }
-
   _renderOrgForm() {
     return html`
       <form class="permissions-org-form" @submit=${(e) => this._onOrgSubmit(e)}>
@@ -261,7 +252,6 @@ class DaPermissions extends LitElement {
   }
 
   _renderInfoNote() {
-    if (this._infoDismissed) return nothing;
     return html`
       <div class="permissions-info-note" role="note">
         <p>
@@ -270,9 +260,6 @@ class DaPermissions extends LitElement {
           <a href=${DOCS_URL} target="_blank" rel="noopener">Docs</a>
         </p>
         <p>Changes save directly to the org config. If someone else saves at the same time, the last save wins.</p>
-        <button type="button" class="nx-action-btn-icon" aria-label="Dismiss" @click=${() => this._dismissInfo()}>
-          <svg aria-hidden="true" viewBox="0 0 20 20"><use href="${CLOSE_ICON_SRC}#icon"></use></svg>
-        </button>
       </div>`;
   }
 
