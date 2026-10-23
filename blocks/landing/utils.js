@@ -1,6 +1,7 @@
 import { getBrowseItemHref } from '../browse/v2/shared/navigation.js';
 import { iconPathForExt, isImageExt } from '../shared/icons.js';
 import { getHomeHref } from '../../scripts/utils.js';
+import { getCreateSiteHref as getSharedCreateSiteHref } from '../shared/site-access.js';
 import { DA_ORIGIN } from '../shared/constants.js';
 import { daFetch } from '../shared/utils.js';
 import { createCommentsStore } from '../canvas/comments/helpers/comments-store.js';
@@ -124,17 +125,7 @@ export function formatModified({ modified, now = new Date() }) {
 
 export { getSiteOptions } from '../shared/site-picker-utils.js';
 
-export async function checkSiteAccess({ value, source, signal }) {
-  signal.throwIfAborted();
-  const result = await source.list(`/${value}`, { opts: { signal } });
-  signal.throwIfAborted();
-  if (result.ok) return true;
-  const response = await source.getMetadata(`/${value}/`);
-  signal.throwIfAborted();
-  if (response.status === 403) return false;
-  if (response.status === 401) throw new Error(`Sign in to check access to ${value}.`);
-  throw new Error(`Could not verify access to ${value}. Please try again.`);
-}
+export { checkSiteAccess } from '../shared/site-access.js';
 
 export function getBrowseHref({ path = '', href = window.location.href }) {
   const url = new URL(href);
@@ -146,12 +137,7 @@ export function getBrowseHref({ path = '', href = window.location.href }) {
 }
 
 export function getCreateSiteHref({ org, href = window.location.href }) {
-  const url = new URL(getBrowseHref({ href }));
-  url.pathname = '/start';
-  url.searchParams.delete('browse');
-  url.searchParams.delete('site');
-  url.searchParams.set('org', org);
-  return url.href;
+  return getSharedCreateSiteHref({ org, href: getBrowseHref({ href }) });
 }
 
 export function getFileHref({ item, href = window.location.href, editor = '/canvas#' }) {

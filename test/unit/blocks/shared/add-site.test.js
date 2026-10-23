@@ -11,9 +11,15 @@ describe('shared Add site dialog', () => {
   let el;
   let list;
   let permission;
+  let recentSites;
+  let saveSites;
 
   beforeEach(async () => {
-    localStorage.setItem('da-sites', JSON.stringify(['org/other']));
+    recentSites = JSON.stringify(['org/other']);
+    const readSites = sinon.stub(Storage.prototype, 'getItem').callThrough();
+    readSites.withArgs('da-sites').callsFake(() => recentSites);
+    saveSites = sinon.stub(Storage.prototype, 'setItem').callThrough();
+    saveSites.withArgs('da-sites').callsFake((key, value) => { recentSites = value; });
     permission = sinon.stub(config, 'get').resolves(new Response('{}', { headers: { 'x-da-actions': '/=read' } }));
     list = sinon.stub(source, 'list').callsFake(async (path) => ({ ok: true, items: path === '/org' ? [{ name: 'site', path: '/org/site' }] : [] }));
     el = document.createElement('da-add-site');
@@ -28,7 +34,6 @@ describe('shared Add site dialog', () => {
   afterEach(() => {
     el.remove();
     sinon.restore();
-    localStorage.removeItem('da-sites');
   });
 
   it('lets a non-admin add an existing accessible site without server writes', async () => {
@@ -130,7 +135,7 @@ describe('shared Add site dialog', () => {
   it('does not claim success when the browser cannot save the site', async () => {
     const added = sinon.spy();
     el.addEventListener('site-added', added);
-    sinon.stub(Storage.prototype, 'setItem').throws(new DOMException('Storage unavailable', 'QuotaExceededError'));
+    saveSites.withArgs('da-sites').throws(new DOMException('Storage unavailable', 'QuotaExceededError'));
     await el.submitForm({ preventDefault() {} });
     expect(added.called).to.equal(false);
     expect(el._error).to.include('Storage unavailable');

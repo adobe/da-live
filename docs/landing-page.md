@@ -40,8 +40,10 @@ adobe/da-live#1416 is modified or merged by this work.
   `nx-picker`, including Your Sites and Add site. Browse v2 uses the same picker
   in the left nav context slot, separately from centered search.
   Site option formatting lives in `site-picker-utils.js`.
-  Access checks remain in Landing's
-  existing data helpers; no account-wide discovery or invented display metadata is added.
+  Both hosts use `blocks/shared/site-access.js` for access checks and
+  `blocks/shared/add-site.js` for the permission-aware Add/Create dialog.
+  Landing supplies its Home-aware creation URL. No account-wide discovery or
+  invented display metadata is added.
 - Files and Need Attention table markup lives in detached da-live render helpers
   (`file-table.js` and `attention-table.js`), not a new general table framework.
 - `da-file-actions` supplies the card menu and list information/favorite controls.

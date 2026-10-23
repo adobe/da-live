@@ -7,14 +7,14 @@ import { getBrowseSettings, updateBrowseSettings } from '../browse/v2/shared/set
 import { setRecentSite } from '../browse/da-sites/utils.js';
 import {
   getSiteOptions, getBrowseHref, getFileHref, loadFiles, getLandingIconHref, formatModified,
-  loadMyOpenComments, checkSiteAccess,
+  loadMyOpenComments, getCreateSiteHref,
 } from './utils.js';
 import { buildDeepLinkUrl } from '../canvas/comments/helpers/deep-link.js';
 import '../browse/v2/da-card-preview/da-card-preview.js';
 import '../shared/file-actions/file-actions.js';
 import renderFileTable from '../shared/file-table.js';
 import renderAttentionTable from '../shared/attention-table.js';
-import { createSitePicker, updateSitePicker } from '../shared/site-picker.js';
+import { createSitePicker, updateSitePicker, checkSiteChoices } from '../shared/site-picker.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { registerPanelSection, PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
@@ -166,20 +166,12 @@ export class DaLanding extends LitElement {
     try {
       const { source } = await getNx2Api();
       const { signal } = request;
-      const checks = sites.map(({ value }) => checkSiteAccess({ value, source, signal }));
-      const results = await Promise.allSettled(checks);
+      const inaccessibleSites = this._inaccessibleSites;
+      const result = await checkSiteChoices({ sites, source, signal, inaccessibleSites });
       if (request.signal.aborted || !this.isConnected) return;
-      const inaccessible = new Set(this._inaccessibleSites);
-      results.forEach((result, index) => {
-        if (result.status !== 'fulfilled') return;
-        if (result.value) inaccessible.delete(sites[index].value);
-        else inaccessible.add(sites[index].value);
-      });
-      this._inaccessibleSites = inaccessible;
-      this._sites = sites.filter(({ value }) => !inaccessible.has(value));
-      const errors = results.filter((result) => result.status === 'rejected')
-        .map((result) => result.reason.message);
-      if (errors.length) this._siteError = [this._siteError, ...errors].filter(Boolean).join(' ');
+      this._inaccessibleSites = result.inaccessibleSites;
+      this._sites = result.sites;
+      if (result.error) this._siteError = [this._siteError, result.error].filter(Boolean).join(' ');
     } catch (error) {
       if (!request.signal.aborted && this.isConnected) {
         this._siteError = `Could not check your sites: ${error.message}`;
@@ -190,7 +182,7 @@ export class DaLanding extends LitElement {
   async showAddSite() {
     const scope = this._scope;
     try {
-      await import('./add-site.js');
+      await import('../shared/add-site.js');
       if (this.isConnected && this._scope === scope) this._addingSite = true;
     } catch (error) {
       if (this.isConnected && this._scope === scope) {
@@ -597,7 +589,9 @@ export class DaLanding extends LitElement {
         ${this._siteError ? html`<p role="status">${this._siteError}
           <button class="nx-action-btn-quiet" @click=${this.loadSites}>Try again</button></p>` : nothing}
         ${this._addingSite ? html`
-          <da-add-site .org=${this._scope?.split('/')[0]} @site-added=${this.siteAdded}
+          <da-add-site .org=${this._scope?.split('/')[0]}
+            .createHref=${getCreateSiteHref({ org: this._scope?.split('/')[0] })}
+            @site-added=${this.siteAdded}
             @close=${this.closeAddSite}></da-add-site>` : nothing}
         <section class="welcome" aria-labelledby="welcome-heading">
           <h1 id="welcome-heading">Hi${this._name ? html` ${this._name}` : nothing}, how can I help?</h1>
