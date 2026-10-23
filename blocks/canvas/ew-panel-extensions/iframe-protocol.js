@@ -1,11 +1,12 @@
 import { insertText, insertHTML, getEditorSelection } from './helpers.js';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2, getUISize } from '../../../scripts/utils.js';
 import { getPostMessageTargetOrigin, isRequestId, isValidHref, replyToGetSelection } from '../../shared/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { getCanvasBranch } from '../utils/branch.js';
 
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
+const { UI_SIZE_EVENT } = await import(`${getNx2()}/utils/ui-size.js`);
 
 /**
  * Wire a two-way MessageChannel between the host and a BYO plugin iframe.
@@ -117,7 +118,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   const readyTimer = setTimeout(() => {
     if (!iframe.contentWindow) return;
     // Keep ref's plugin-development meaning; branch is the selected site code.
-    const context = { ...project, branch: getCanvasBranch({ org, site }) };
+    const context = { ...project, branch: getCanvasBranch({ org, site }), uiSize: getUISize() };
     iframe.contentWindow.postMessage(
       {
         ready: true,
@@ -136,9 +137,16 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   };
   document.addEventListener(CHAT_EVENT.AGENT_CHANGE, onAgentChange);
 
+  const onUISizeChange = ({ detail }) => {
+    if (!iframe.contentWindow) return;
+    iframe.contentWindow.postMessage({ action: 'uiSizeChange', detail: { uiSize: detail.size } }, targetOrigin);
+  };
+  document.addEventListener(UI_SIZE_EVENT, onUISizeChange);
+
   const destroy = () => {
     clearTimeout(readyTimer);
     document.removeEventListener(CHAT_EVENT.AGENT_CHANGE, onAgentChange);
+    document.removeEventListener(UI_SIZE_EVENT, onUISizeChange);
     channel.port1.close();
     channel.port2.close();
   };

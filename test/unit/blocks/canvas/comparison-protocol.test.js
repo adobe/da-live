@@ -22,10 +22,8 @@ describe('comparison plugin protocol', () => {
       branch: 'configured-branch',
     });
     const initialized = new Promise((resolve) => {
-      const iframe = {
-        src: `${location.origin}/test-plugin`,
-        contentWindow: { postMessage: (data, origin, ports) => resolve({ data, port: ports[0] }) },
-      };
+      const postMessage = (data, origin, ports) => data.ready && resolve({ data, port: ports[0] });
+      const iframe = { src: `${location.origin}/test-plugin`, contentWindow: { postMessage } };
       setupIframeChannel({ iframe, hashState: { org: 'example', site: 'site', path: 'page' }, getView: () => null }).then((value) => { connection = value; });
     });
     ({ data: ready, port: clientPort } = await initialized);
