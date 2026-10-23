@@ -147,6 +147,7 @@ describe('da-permissions', () => {
     const cards = el.shadowRoot.querySelector('da-permissions-cards');
     expect(cards).to.not.equal(null);
     expect(cards.slots.some((s) => s.path === 'CONFIG')).to.be.true;
+    expect(cards.scopeName).to.equal('myorg');
 
     const picker = el.shadowRoot.querySelector('nx-picker');
     const labels = picker.items.filter((i) => !i.divider).map((i) => i.label);

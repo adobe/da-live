@@ -15,7 +15,14 @@ const [form, buttons, style] = await Promise.all([
 
 const INHERITED_KEY = { read: 'inheritedRead', write: 'inheritedWrite', none: 'inheritedNone' };
 
-const SECTION_LABEL = { config: 'Config permissions', content: 'Content permissions', folders: 'Folders' };
+const SECTION_LABEL = {
+  config: (name) => `${name} Configuration Permissions`,
+  content: (name) => `${name} Content Permissions`,
+  folders: () => 'Folders',
+};
+
+// The section heading already names config/content scopes; only these need a card title.
+const TITLED_KINDS = ['folder', 'other'];
 
 /**
  * Presentational A1 cards: renders `Slot[]` as one column of scope cards,
@@ -26,6 +33,7 @@ class DaPermissionsCards extends LitElement {
   static properties = {
     slots: { attribute: false },
     org: { type: String },
+    scopeName: { type: String },
     editable: { type: Boolean },
     busy: { type: Boolean },
     adding: { attribute: false },
@@ -35,6 +43,7 @@ class DaPermissionsCards extends LitElement {
     super();
     this.slots = [];
     this.org = '';
+    this.scopeName = '';
     this.editable = false;
     this.busy = false;
     this.adding = null;
@@ -152,10 +161,12 @@ class DaPermissionsCards extends LitElement {
   _renderCard(slot) {
     const hasNone = (slot.none?.length || 0) > 0 || (slot.inheritedNone?.length || 0) > 0;
     return html`
-      <article class="scope-card" data-path=${slot.path}>
-        <div class="card-header">
-          <h4 class="card-title">${slot.label}</h4>
-        </div>
+      <article class="scope-card" data-path=${slot.path} aria-label=${slot.label}>
+        ${TITLED_KINDS.includes(slot.kind) ? html`
+          <div class="card-header">
+            <h4 class="card-title">${slot.label}</h4>
+          </div>
+        ` : nothing}
         <div class="card-body">
           ${this._renderLevelRow(slot, 'read')}
           ${this._renderLevelRow(slot, 'write')}
@@ -168,7 +179,7 @@ class DaPermissionsCards extends LitElement {
     if (!slots.length) return nothing;
     return html`
       <section class="scope-section" data-section=${kind}>
-        <h3>${SECTION_LABEL[kind]}</h3>
+        <h3>${SECTION_LABEL[kind](this.scopeName)}</h3>
         ${slots.map((slot) => this._renderCard(slot))}
       </section>`;
   }

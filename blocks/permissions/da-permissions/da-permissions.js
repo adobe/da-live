@@ -324,6 +324,7 @@ class DaPermissions extends LitElement {
       <da-permissions-cards
         .slots=${filtered}
         .org=${this.org}
+        .scopeName=${this.site ?? this.org}
         .editable=${this._editable}
         .busy=${this._busy}
         .adding=${this._adding}

@@ -48,12 +48,12 @@ describe('da-permissions-cards', () => {
   it('groups slots into config and content sections in order (org view)', async () => {
     const configSlot = baseSlot({ path: 'CONFIG', kind: 'config', label: 'DA configurations' });
     const contentSlot = baseSlot({ path: '/ + **', kind: 'content', label: 'All sites' });
-    const el = await mount({ slots: [configSlot, contentSlot] });
+    const el = await mount({ slots: [configSlot, contentSlot], scopeName: 'myorg' });
 
     const sections = [...el.shadowRoot.querySelectorAll('section.scope-section')];
     expect(sections.map((s) => s.dataset.section)).to.deep.equal(['config', 'content']);
-    expect(sections[0].querySelector('h3').textContent.trim()).to.equal('Config permissions');
-    expect(sections[1].querySelector('h3').textContent.trim()).to.equal('Content permissions');
+    expect(sections[0].querySelector('h3').textContent.trim()).to.equal('myorg Configuration Permissions');
+    expect(sections[1].querySelector('h3').textContent.trim()).to.equal('myorg Content Permissions');
     expect(sections[0].querySelector('.scope-card').dataset.path).to.equal('CONFIG');
     expect(sections[1].querySelector('.scope-card').dataset.path).to.equal('/ + **');
   });
@@ -62,11 +62,31 @@ describe('da-permissions-cards', () => {
     const configSlot = baseSlot({ path: '/myorg/site1/CONFIG', kind: 'config', label: 'Site configurations' });
     const contentSlot = baseSlot({ path: '/myorg/site1/ + **', kind: 'content', label: 'All site content' });
     const folderSlot = baseSlot({ path: '/myorg/site1/blog/ + **', kind: 'folder', label: 'blog/' });
-    const el = await mount({ slots: [configSlot, contentSlot, folderSlot], org: 'myorg' });
+    const el = await mount({ slots: [configSlot, contentSlot, folderSlot], org: 'myorg', scopeName: 'site1' });
 
     const sections = [...el.shadowRoot.querySelectorAll('section.scope-section')];
     expect(sections.map((s) => s.dataset.section)).to.deep.equal(['config', 'content', 'folders']);
+    expect(sections[0].querySelector('h3').textContent.trim()).to.equal('site1 Configuration Permissions');
+    expect(sections[1].querySelector('h3').textContent.trim()).to.equal('site1 Content Permissions');
     expect(sections[2].querySelector('h3').textContent.trim()).to.equal('Folders');
+  });
+
+  it('shows card titles only for folder and other rules, and names every card', async () => {
+    const configSlot = baseSlot({ path: '/myorg/site1/CONFIG', kind: 'config', label: 'Site configurations' });
+    const contentSlot = baseSlot({ path: '/myorg/site1/ + **', kind: 'content', label: 'All site content' });
+    const otherSlot = baseSlot({ path: '/myorg/site1/doc.html', kind: 'other', label: '/myorg/site1/doc.html' });
+    const folderSlot = baseSlot({ path: '/myorg/site1/blog/ + **', kind: 'folder', label: 'blog/' });
+    const el = await mount({ slots: [configSlot, contentSlot, otherSlot, folderSlot], scopeName: 'site1' });
+
+    const card = (path) => el.shadowRoot.querySelector(`article.scope-card[data-path="${path}"]`);
+    const title = (path) => card(path).querySelector('.card-title')?.textContent.trim() ?? null;
+    expect(title(configSlot.path)).to.equal(null);
+    expect(title(contentSlot.path)).to.equal(null);
+    expect(title(otherSlot.path)).to.equal('/myorg/site1/doc.html');
+    expect(title(folderSlot.path)).to.equal('blog/');
+    [configSlot, contentSlot, otherSlot, folderSlot].forEach((slot) => {
+      expect(card(slot.path).getAttribute('aria-label')).to.equal(slot.label);
+    });
   });
 
   it('hides empty sections: only folder slots renders no config or content section', async () => {

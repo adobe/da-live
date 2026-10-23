@@ -54,6 +54,12 @@
   border-top: 1px solid var(--s2-gray-200);
 }
 
+/* Rows are separated from each other, not from the card edge or title. */
+.level-row:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
 .card-body .level-row:first-child {
   padding-top: 0;
   border-top: none;
