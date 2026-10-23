@@ -3,8 +3,9 @@ import { expect } from '@esm-bundle/chai';
 import { html } from 'da-lit';
 import { stub, spy } from 'sinon';
 
-const { setNx } = await import('../../../../../../scripts/utils.js');
+const { setNx, getNx2Api } = await import('../../../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
+const { source, config } = await getNx2Api();
 const { default: DaBrowse } = await import('../../../../../../blocks/browse/v2/da-browse/da-browse.js');
 const { default: SearchEngine } = await import('../../../../../../blocks/browse/v2/search/search.js');
 const { PANEL_EVENT } = await import('../../../../../fixtures/nx/utils/panel.js');
@@ -13,8 +14,10 @@ describe('browse-owned nav search', () => {
   let nav;
   let browse;
   let getMatches;
+  let siteList;
 
   beforeEach(async () => {
+    siteList = stub(source, 'list').resolves({ ok: true, items: [] });
     nav = document.createElement('nx-nav');
     nav.attachShadow({ mode: 'open' }).innerHTML = '<slot name="context"></slot><slot name="search"></slot>';
     document.body.append(nav);
@@ -49,6 +52,7 @@ describe('browse-owned nav search', () => {
     browse.remove();
     nav.remove();
     getMatches.restore();
+    siteList.restore();
   });
 
   async function submit(value) {
@@ -129,6 +133,42 @@ describe('browse-owned nav search', () => {
       expect(browse.shadowRoot.querySelector('[role="alert"]')).to.be.null;
     } finally {
       getSites.restore();
+    }
+  });
+
+  it('opens the shared Add dialog without leaving Browse and restores picker focus on cancel', async () => {
+    const permission = stub(config, 'get').resolves(new Response(null, { headers: { 'x-da-actions': '/=read' } }));
+    const { hash } = window.location;
+    try {
+      await browse.showAddSite();
+      await browse.updateComplete;
+      const dialog = browse.shadowRoot.querySelector('da-add-site');
+      expect(dialog).not.to.equal(null);
+      await dialog.updateComplete;
+      expect(window.location.hash).to.equal(hash);
+      expect(browse._navField.isConnected).to.equal(true);
+      expect(dialog.shadowRoot.querySelector('.site-creation')).to.equal(null);
+      browse.closeAddSite();
+      await browse.updateComplete;
+      expect(browse.shadowRoot.querySelector('da-add-site')).to.equal(null);
+    } finally {
+      permission.restore();
+    }
+  });
+
+  it('aborts site checks on disconnect and does not recheck on unrelated renders', async () => {
+    const check = spy(browse, 'checkSites');
+    try {
+      browse.details = { org: 'org', site: 'site', fullpath: '/org/site' };
+      await browse.updateComplete;
+      const request = browse._sitesRequest;
+      browse.syncSitePicker();
+      browse.syncSitePicker();
+      expect(check.calledOnce).to.equal(true);
+      browse.remove();
+      expect(request.signal.aborted).to.equal(true);
+    } finally {
+      check.restore();
     }
   });
 

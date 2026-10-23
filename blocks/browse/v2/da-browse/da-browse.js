@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getFirstSheet, fetchDaConfigs } from '../../../shared/utils.js';
-import { getNx, sanitizePathParts, getNxEWFlags } from '../../../../scripts/utils.js';
+import { getNx, sanitizePathParts, getNxEWFlags, getNx2Api } from '../../../../scripts/utils.js';
 import { getChatPanelContent } from '../../../shared/chat-panel.js';
 import { getBrowseSettings, updateBrowseSettings } from '../shared/settings.js';
 
@@ -41,6 +41,7 @@ export default class DaBrowse extends LitElement {
     _search: { state: true },
     _toolsOpen: { state: true },
     _sitePickerError: { state: true },
+    _addingSite: { state: true },
   };
 
   _browseSelKeys = new Set();
@@ -141,8 +142,64 @@ export default class DaBrowse extends LitElement {
         };
       }
     })();
+    const key = JSON.stringify({ value, sites, error });
+    if (key === this._siteChoicesKey) return;
+    this._siteChoicesKey = key;
+    this._sitesRequest?.abort();
+    if (this._sitePickerScope !== value) this._addingSite = false;
+    this._sitePickerScope = value;
     this._sitePickerError = error;
-    this._sitePickerModule.updateSitePicker({ picker: this._sitePicker, sites, value });
+    const visibleSites = sites.filter(({ value: choice }) => !this._inaccessibleSites?.has(choice));
+    this._sitePickerModule.updateSitePicker(
+      { picker: this._sitePicker, sites: visibleSites, value },
+    );
+    if (sites.length) this.checkSites({ sites, value, error });
+  }
+
+  async checkSites({ sites, value, error }) {
+    const request = new AbortController();
+    this._sitesRequest = request;
+    try {
+      const { source } = await getNx2Api();
+      const { checkSiteChoices } = this._sitePickerModule;
+      const inaccessibleSites = this._inaccessibleSites;
+      const result = await checkSiteChoices(
+        { sites, source, signal: request.signal, inaccessibleSites },
+      );
+      if (request.signal.aborted || !this.isConnected) return;
+      this._inaccessibleSites = result.inaccessibleSites;
+      this._sitePickerError = [error, result.error].filter(Boolean).join(' ') || undefined;
+      this._sitePickerModule.updateSitePicker(
+        { picker: this._sitePicker, sites: result.sites, value },
+      );
+    } catch (cause) {
+      if (!request.signal.aborted && this.isConnected) {
+        this._sitePickerError = [error, `Could not check your sites: ${cause.message}`].filter(Boolean).join(' ');
+      }
+    }
+  }
+
+  async showAddSite() {
+    const { org, site } = this.details;
+    try {
+      await import('../../../shared/add-site.js');
+      if (this.isConnected && org === this.details.org && site === this.details.site) {
+        this._addingSite = true;
+      }
+    } catch (error) {
+      if (this.isConnected) this._sitePickerError = `Could not open Add site: ${error.message}`;
+    }
+  }
+
+  closeAddSite() {
+    this._addingSite = false;
+    this._sitePicker?.shadowRoot?.querySelector('button')?.focus();
+  }
+
+  siteAdded({ detail: { value } }) {
+    this.closeAddSite();
+    this.syncSitePicker();
+    window.location.hash = `/${value}`;
   }
 
   observeHeader() {
@@ -320,6 +377,9 @@ export default class DaBrowse extends LitElement {
   }
 
   destroySearch() {
+    this._sitesRequest?.abort();
+    this._siteChoicesKey = undefined;
+    this._addingSite = false;
     this._unwatchTools?.();
     if (this._toolsPanel) {
       closeToolsPanel();
@@ -356,7 +416,7 @@ export default class DaBrowse extends LitElement {
       this._sitePickerModule = sitePickerModule;
       this._sitePicker = sitePickerModule.createSitePicker({
         onSelect: (value) => { window.location.hash = `/${value}`; },
-        onAdd: () => { window.location.hash = ''; },
+        onAdd: () => this.showAddSite(),
       });
       this._sitePicker.slot = 'context';
       this._sitePicker.classList.add('browse-site-picker');
@@ -609,6 +669,9 @@ export default class DaBrowse extends LitElement {
           ${this.renderList()}
         </div>
       </div>
+      ${this._addingSite ? html`
+        <da-add-site .org=${this.details.org}
+          @site-added=${this.siteAdded} @close=${this.closeAddSite}></da-add-site>` : nothing}
     `;
   }
 }
