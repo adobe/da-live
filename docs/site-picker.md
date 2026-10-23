@@ -26,7 +26,8 @@ The trigger includes the organization to distinguish identically named sites.
 Add site emits an action without changing the selection.
 
 Hosts own mounting, navigation, site loading/access checks and Add site behavior.
-Browse mounts the picker beside its existing nav search, switches to a selected
+Browse mounts the picker in the nav's left `context` slot, independently of its
+centered `search` slot. It switches to a selected
 site's root, and opens the existing sites screen for Add site. It preserves the
 current URL's query parameters. Landing retains its access-aware Add site dialog.
 The picker does not create sites, change permissions, or discover account sites.
@@ -35,6 +36,7 @@ Invalid or unavailable recent-site storage produces an explicit alert while
 keeping the current site, Add site and search available.
 
 The production dependency is generic Nexter picker support for `description`,
-`leadingIcon` and menu CSS parts. Release that support before merging the
+`leadingIcon`, menu CSS parts and the nav's independent `context` slot.
+Release that support before merging the
 application integration. Production code does not pin Nexter to a preview branch.
 Landing integration remains on its review branch until the landing page is merged.

@@ -6,20 +6,8 @@ html:has(aside.panel[data-position="before"]:not([hidden])) da-browse::part(chat
   container-type: inline-size;
 }
 
-nx-nav:has(> .browse-workspace) {
-  grid-template-columns: minmax(0, 1fr) minmax(0, min(600px, 55%)) minmax(0, 1fr);
-}
-
-.browse-workspace {
-  display: flex;
-  align-items: center;
-  gap: var(--s2-spacing-100);
-  min-width: 0;
-  width: 100%;
-}
-
-.browse-workspace > da-browse-search {
-  flex: 1;
+nx-nav > .browse-site-picker {
+  width: 220px;
   min-width: 0;
 }
 

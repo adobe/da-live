@@ -328,8 +328,7 @@ export default class DaBrowse extends LitElement {
     }
     this.clearSearch();
     this._navField?.remove();
-    this._workspace?.remove();
-    this._workspace = undefined;
+    this._sitePicker?.remove();
     this._sitePicker = undefined;
   }
 
@@ -353,18 +352,16 @@ export default class DaBrowse extends LitElement {
       field.addEventListener('toolstoggle', () => toggleToolsPanel(this._toolsOpen));
       this._navField = field;
     }
-    if (!this._workspace) {
+    if (!this._sitePicker) {
       this._sitePickerModule = sitePickerModule;
       this._sitePicker = sitePickerModule.createSitePicker({
         onSelect: (value) => { window.location.hash = `/${value}`; },
         onAdd: () => { window.location.hash = ''; },
       });
-      this._workspace = document.createElement('div');
-      this._workspace.className = 'browse-workspace';
-      this._workspace.slot = 'search';
-      this._workspace.append(this._sitePicker, this._navField);
+      this._sitePicker.slot = 'context';
+      this._sitePicker.classList.add('browse-site-picker');
     }
-    nav.append(this._workspace);
+    nav.append(this._sitePicker, this._navField);
     this.syncSitePicker();
     this.updateNavField();
     this.syncSearch();
