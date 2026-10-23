@@ -7,10 +7,14 @@ import { getBrowseSettings, updateBrowseSettings } from '../browse/v2/shared/set
 import { setRecentSite } from '../browse/da-sites/utils.js';
 import {
   getSiteOptions, getBrowseHref, getFileHref, loadFiles, getLandingIconHref, formatModified,
-  fetchFileModifier, loadMyOpenComments, checkSiteAccess,
+  loadMyOpenComments, checkSiteAccess,
 } from './utils.js';
 import { buildDeepLinkUrl } from '../canvas/comments/helpers/deep-link.js';
 import '../browse/v2/da-card-preview/da-card-preview.js';
+import '../shared/file-actions/file-actions.js';
+import renderFileTable from '../shared/file-table.js';
+import renderAttentionTable from '../shared/attention-table.js';
+import { createSitePicker, updateSitePicker } from '../shared/site-picker.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { registerPanelSection, PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
@@ -21,7 +25,7 @@ const nx = await import(`${getNx2()}/scripts/nx.js`);
 // PR #816 supplies live sizing; the opt-in page also works on the current shell.
 const sizing = nx.getUISize ? await import(`${getNx2()}/utils/ui-size.js`) : undefined;
 await Promise.all([
-  import(`${getNx()}/blocks/shared/picker/picker.js`),
+  import(`${getNx2()}/blocks/shared/card/card.js`),
   import(`${getNx()}/blocks/shared/segmented-btn/segmented.js`),
   import(`${getNx()}/blocks/shared/menu/menu.js`),
 ]);
@@ -36,13 +40,6 @@ const VIEW_ITEMS = [
   { value: 'list', label: 'List view', icon: '/img/icons/s2-icon-viewlist-20-n.svg', iconOnly: true },
 ];
 const PAGE_SIZE = 10;
-const SAMPLE_TASKS = [
-  { page: 'Frescopa Homepage', description: 'Translation rollout, de, fr', status: 'Need Approval', state: 'approval', requester: 'Eva' },
-  { page: 'Atelier Nova', description: 'Review product copy', status: 'Need Approval', state: 'approval', requester: 'Steven' },
-  { page: 'Taste Profiles', description: 'Review coffee taste profiles', status: 'In-Progress', state: 'in-progress', requester: 'Michael' },
-  { page: 'Coffee Machines', description: 'Update product details', status: 'Scheduled', state: 'scheduled', requester: 'Sara' },
-  { page: 'Atelier Nova Campaign', description: 'Publish launch campaign', status: 'Scheduled', state: 'scheduled', requester: 'Karina' },
-];
 
 function icon(name) {
   return html`<svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-${name}-20-n.svg#icon"></use></svg>`;
@@ -68,7 +65,6 @@ export class DaLanding extends LitElement {
     _chatError: { state: true },
     _handingOff: { state: true },
     _dragging: { state: true },
-    _modifiers: { state: true },
     _comments: { state: true },
     _commentsError: { state: true },
     _commentsMessage: { state: true },
@@ -128,17 +124,12 @@ export class DaLanding extends LitElement {
   mountWorkspace() {
     const nav = document.querySelector('nx-nav');
     if (!nav) return;
-    const picker = document.createElement('nx-picker');
+    const picker = createSitePicker({
+      onSelect: (value) => { window.location.hash = `#/${value}`; },
+      onAdd: () => this.showAddSite(),
+    });
     picker.slot = 'search';
     picker.classList.add('landing-workspace');
-    picker.setAttribute('aria-label', 'Workspace site');
-    picker.placeholder = 'Choose a site';
-    picker.size = 'm';
-    picker.variant = 'field';
-    picker.addEventListener('change', ({ detail: { value } }) => {
-      if (value === 'add-site') this.showAddSite();
-      else window.location.hash = `#/${value}`;
-    });
     this._sitePicker = picker;
     nav.append(picker);
   }
@@ -146,18 +137,11 @@ export class DaLanding extends LitElement {
   updated() {
     this.syncWorkspace();
     if (!this._prompt) this.shadowRoot.querySelector('textarea')?.style.removeProperty('height');
-    this.loadModifiers();
   }
 
   syncWorkspace() {
     if (!this._sitePicker) return;
-    this._sitePicker.items = [
-      { section: 'Your Sites' },
-      ...(this._sites || []),
-      { divider: true },
-      { value: 'add-site', label: 'Add site...', action: true },
-    ];
-    this._sitePicker.value = this._scope || '';
+    updateSitePicker({ picker: this._sitePicker, sites: this._sites, value: this._scope });
   }
 
   loadSites() {
@@ -266,7 +250,6 @@ export class DaLanding extends LitElement {
     const request = new AbortController();
     this._request = request;
     this._files = undefined;
-    this._modifiers = undefined;
     this._comments = undefined;
     this._commentsError = undefined;
     this._commentsMessage = undefined;
@@ -517,43 +500,17 @@ export class DaLanding extends LitElement {
     target.style.height = `${Math.min(target.scrollHeight, 240)}px`;
   }
 
-  loadModifiers() {
-    if (this._view !== 'list' || !this._files || !this._request || this._request.signal.aborted) return;
-    if (!this._modifiers) this._modifiers = {};
-    this.visibleFiles().forEach((item) => {
-      if (this._modifiers[item.path]) return;
-      this._modifiers = { ...this._modifiers, [item.path]: {} };
-      this.loadModifier(item, this._request);
-    });
-  }
-
-  async loadModifier(item, request) {
-    try {
-      const { source } = await getNx2Api();
-      const result = await fetchFileModifier({ path: item.path, source });
-      if (this.isConnected && !request.signal.aborted) {
-        this._modifiers = { ...this._modifiers, [item.path]: result };
-      }
-    } catch (error) {
-      if (this.isConnected && !request.signal.aborted) {
-        this._modifiers = { ...this._modifiers, [item.path]: { error: `Could not load the modifier: ${error.message}` } };
-      }
-    }
-  }
-
   visibleFiles() {
     const files = this._tab === 'starred'
       ? this._files.filter((item) => this._favorites.has(item.path)) : this._files;
-    return files.slice(0, this._limit);
+    return files.slice(0, this._tab === 'starred' ? PAGE_SIZE : this._limit);
   }
 
-  renderStar(item) {
-    const starred = this._favorites?.has(item.path);
-    return html`<button class="file-star" type="button"
-      aria-label="${starred ? 'Remove' : 'Add'} ${item.name} ${starred ? 'from' : 'to'} favorites" aria-pressed=${starred}
-      @click=${() => this.starFile(item)}>${starred
-        ? html`<img src=${new URL('./star-filled.svg', import.meta.url).href} width="20" height="20" alt="">`
-        : icon('star')}</button>`;
+  renderFileActions(item) {
+    if (!item.ext && this._view === 'list') return nothing;
+    return html`<da-file-actions .path=${item.path} .name=${item.name}
+      .ext=${item.ext} .view=${this._view} .isFavorited=${this._favorites?.has(item.path)}
+      @favoritechange=${() => this.starFile(item)}></da-file-actions>`;
   }
 
   renderFile(item) {
@@ -562,42 +519,37 @@ export class DaLanding extends LitElement {
     const editor = this._editor || '/canvas#';
     return html`
       <li class="file">
-        <a class="file-link" href=${getFileHref({ item, editor })} title=${item.ext === 'link' ? `Open ${item.name} in Files` : `${item.name} (${getTypeLabel(item.ext)})`}>
-          <div class="file-preview">
+        <nx-card>
+          <a slot="preview" class="file-preview" href=${getFileHref({ item, editor })}
+            tabindex="-1" aria-hidden="true">
             <da-card-preview .path=${item.path} .ext=${item.ext} .iconHref=${iconHref}
               .documentPreview=${item.ext === 'html'}></da-card-preview>
-          </div>
-          <div class="file-details">
-            <div class="file-name">
-              <span class="file-type-icon" aria-hidden="true" style="--file-icon: url('${iconHref}')"></span>
-              <span>${item.name}</span>
-            </div>
-            <p class="file-date">${modified ? html`Last Edited <time datetime=${modified.date.toISOString()}>${modified.label}</time>` : 'Date unavailable'}</p>
-          </div>
-        </a>
-        ${this.renderStar(item)}
+          </a>
+          <a slot="title" class="file-link file-name" href=${getFileHref({ item, editor })}
+            title=${item.ext === 'link' ? `Open ${item.name} in Files` : `${item.name} (${getTypeLabel(item.ext)})`}>
+            <span class="file-type-icon" aria-hidden="true" style="--file-icon: url('${iconHref}')"></span>
+            <span>${item.name}</span>
+          </a>
+          <span slot="actions">${this.renderFileActions(item)}</span>
+          <p slot="metadata" class="file-date">${modified ? html`Modified at · <time datetime=${modified.date.toISOString()}>${modified.label}</time>` : 'Date unavailable'}</p>
+          ${this._favorites?.has(item.path) ? html`<img slot="badge" class="file-favorite-badge"
+            src=${new URL('./star-filled.svg', import.meta.url).href} width="20" height="20" alt="Favorite">` : nothing}
+        </nx-card>
       </li>`;
   }
 
   renderListFile(item) {
     const modified = formatModified({ modified: item.lastModified });
     const folder = item.path.slice(0, item.path.lastIndexOf('/'));
-    const modifier = this._modifiers?.[item.path];
-    const modifierStatus = modifier?.error ? 'Unavailable' : 'Loading...';
     return html`<tr class="file-row">
       <td><a class="list-file-link" href=${getFileHref({ item, editor: this._editor || '/canvas#' })}>
         <span class="file-type-icon" aria-hidden="true"
           style="--file-icon: url('${getLandingIconHref(item)}')"></span>
         <span>${item.name}</span>
       </a></td>
-      <td><a class="file-folder" href=${getBrowseHref({ path: folder })}>${folder.slice(this.path.length) || '/'}</a></td>
+      <td><a class="file-folder" href=${getBrowseHref({ path: folder })} title=${folder}>${folder.slice(this.path.length) || '/'}</a></td>
       <td>${modified ? html`<time datetime=${modified.date.toISOString()}>${modified.label}</time>` : 'Date unavailable'}</td>
-      <td title=${modifier?.error || modifier?.name || ''}>
-        <span class="file-modifier">${modifier?.name
-          ? html`<span class="modifier-avatar" aria-hidden="true">${modifier.name[0].toUpperCase()}</span>${modifier.name}`
-          : modifierStatus}</span>
-      </td>
-      <td>${this.renderStar(item)}</td>
+      <td>${this.renderFileActions(item)}</td>
     </tr>`;
   }
 
@@ -623,20 +575,15 @@ export class DaLanding extends LitElement {
       </div>`;
     }
     return html`
-      ${this._view === 'list' ? html`
-        <div class="file-table-scroll" role="region" aria-label="Files list" tabindex="0">
-          <table class="file-table" aria-label=${this._tab === 'starred' ? 'Favorite files' : 'Recently modified files'}>
-            <colgroup><col><col><col><col><col></colgroup>
-            <thead><tr><th scope="col">Name</th><th scope="col">Folder</th>
-              <th scope="col">Modified at</th><th scope="col">Modified by</th>
-              <th scope="col"><span class="sr-only">Favorite</span></th></tr></thead>
-            <tbody>${repeat(this.visibleFiles(), (item) => item.path, (item) => this.renderListFile(item))}</tbody>
-          </table>
-        </div>` : html`
+      ${this._view === 'list' ? renderFileTable({
+    files: this.visibleFiles(),
+    label: this._tab === 'starred' ? 'Favorite files' : 'Recently modified files',
+    renderRow: (item) => this.renderListFile(item),
+  }) : html`
         <ul class="files" aria-label=${this._tab === 'starred' ? 'Favorite files' : 'Recently modified files'}>
           ${repeat(this.visibleFiles(), (item) => item.path, (item) => this.renderFile(item))}
         </ul>`}
-      ${files.length > this._limit ? html`
+      ${this._tab !== 'starred' && files.length > this._limit ? html`
         <button class="show-more nx-action-btn-quiet" @click=${() => { this._limit += PAGE_SIZE; }}>
           Show more files
         </button>` : nothing}`;
@@ -705,7 +652,7 @@ export class DaLanding extends LitElement {
                 title="Recently modified files in this site"
                 @click=${() => this.changeTab('recent')}>${icon('history')}Recent</button>
               <button class="filter" type="button" aria-pressed=${this._tab === 'starred'}
-                @click=${() => this.changeTab('starred')}>${icon('star')}Favorites</button>
+                @click=${() => this.changeTab('starred')}>${icon('star')}Favorite</button>
             </div>
             ${this._scope ? html`<a class="all-files" href=${getBrowseHref({ path: this.path })}>Show All Files</a>` : nothing}
           </div>
@@ -714,49 +661,11 @@ export class DaLanding extends LitElement {
         </section>
         <section class="tasks-panel" aria-labelledby="tasks-heading">
           <h2 id="tasks-heading">Need Attention</h2>
-          <div class="tasks-table">
-            ${this.renderCommentsStatus()}
-            <div class="tasks-scroll" role="region" aria-label="Need Attention" tabindex="0">
-              <table aria-labelledby="tasks-heading" aria-describedby="tasks-availability">
-                <thead><tr>
-                  ${['Item', 'Description', 'Status', 'Assignee'].map((label) => html`
-                    <th scope="col">
-                      <div class="task-column-heading">
-                        <span>${label}</span>
-                        <button class="task-column-options" type="button" disabled
-                          aria-label=${`${label} column options`} aria-describedby="tasks-availability"
-                          title="Column options are unavailable for sample tasks.">
-                          <span class="column-options-icon" aria-hidden="true"></span>
-                        </button>
-                      </div>
-                    </th>`)}
-                </tr></thead>
-                <tbody>
-                  ${repeat(this._comments || [], (comment) => comment.id, (comment) => this.renderCommentRow(comment))}
-                  ${SAMPLE_TASKS.map((task) => html`
-                    <tr>
-                      <td title=${task.page}>${task.page}</td>
-                      <td title=${task.description}>${task.description}</td>
-                      <td>
-                        <span class="task-status" title=${task.status}>
-                          <span class="task-status-dot ${task.state}" aria-hidden="true"></span>
-                          <span>${task.status}</span>
-                        </span>
-                      </td>
-                      <td>
-                        <span class="task-requester" title=${task.requester}>
-                          <img src=${new URL('./sample-avatar.svg', import.meta.url).href} width="20" height="20" alt="">
-                          <span>${task.requester}</span>
-                        </span>
-                      </td>
-                    </tr>`)}
-                </tbody>
-              </table>
-            </div>
-            <p id="tasks-availability" class="tasks-preview-note">${this._comments?.length
-              ? 'Open Comment rows are your live unresolved comment threads. Other rows are sample tasks for layout preview.'
-              : 'Sample tasks for layout preview. Not live site data.'}</p>
-          </div>
+          ${renderAttentionTable({
+    comments: this._comments,
+    renderCommentRow: (comment) => this.renderCommentRow(comment),
+    status: this.renderCommentsStatus(),
+  })}
         </section>
       </div>`;
   }

@@ -103,7 +103,7 @@ export async function fetchFileModifier({ path, source }) {
 
 export function getLandingIconHref(item) {
   const type = item.type === 'content-fragment' || item.type === 'fragment' ? 'fragment'
-    : { html: 'page', json: 'sheet', csv: 'sheet', xlsx: 'sheet' }[item.ext];
+    : { html: 'page' }[item.ext];
   const name = type || (isImageExt(item.ext) ? 'image' : undefined);
   return name ? new URL(`./${name}.svg`, import.meta.url).href : iconPathForExt(item.ext);
 }

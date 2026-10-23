@@ -94,6 +94,17 @@ with fictional requester names. These are still labelled sample tasks.
 
 ## P1: product correctness after the demo
 
+- [x] **Apply Jiawei's revised LP presentation on `lp`.** Singular Favorite tab,
+  persistent card more/details/favorite menu and selected badge, visible list
+  information/star actions, shared Document icon for sheets, truncated folder
+  paths and a ten-item Favorite widget without limiting saved favorites.
+  Modified by is available on demand in details instead of a table column.
+  Need Attention retains Markus's headings and gains pointer/keyboard resizing.
+  The shared Nexter card and detached da-live picker/table helpers prepare the
+  issue-sized follow-ups. Ordinary Browse's card renderer is not migrated ahead
+  of the shared component's release. Friendly site metadata, favorite-added
+  ordering, the exact chat.io module and global S/M integration remain unconfirmed.
+
 - [x] **Rename Starred to Favorites on `lp`.** Apply
   [Silvia's requested wording](https://cq-dev.slack.com/archives/C0BAAAFRX5L/p1792516357262869?thread_ts=1792423413.463079&cid=C0BAAAFRX5L)
   to the tab, empty state, accessibility labels and storage error. Keep existing

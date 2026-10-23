@@ -80,9 +80,11 @@ describe('landing page data and navigation', () => {
       .to.equal('The source did not provide a modifier.');
   });
 
-  it('uses the design’s semantic icons without changing shared file mappings', () => {
+  it('uses semantic icons and shares the Document icon for sheets with Browse', () => {
     expect(getLandingIconHref({ ext: 'html' })).to.include('/landing/page.svg');
-    expect(getLandingIconHref({ ext: 'json' })).to.include('/landing/sheet.svg');
+    expect(getLandingIconHref({ ext: 'json' })).to.include('s2-icon-filetext-20-n.svg');
+    expect(getLandingIconHref({ ext: 'csv' })).to.include('s2-icon-filetext-20-n.svg');
+    expect(getLandingIconHref({ ext: 'xlsx' })).to.include('s2-icon-filetext-20-n.svg');
     expect(getLandingIconHref({ ext: 'jpg' })).to.include('/landing/image.svg');
     expect(getLandingIconHref({ ext: 'html', type: 'content-fragment' })).to.include('/landing/fragment.svg');
     expect(getLandingIconHref({})).to.include('folder');

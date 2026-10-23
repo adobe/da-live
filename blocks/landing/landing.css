@@ -316,15 +316,16 @@ h2 {
   background: var(--s2-gray-75);
 }
 
+nx-card {
+  --nx-card-preview-height: 80px;
+  --nx-card-preview-ratio: auto;
+}
+
 .file:hover {
   box-shadow: inset 0 0 0 1px var(--s2-gray-300);
 }
 
 .file-link {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 4px;
   text-decoration: none;
   border-radius: inherit;
 }
@@ -339,10 +340,6 @@ h2 {
 da-card-preview {
   --da-card-preview-icon-size: 20px;
   --da-card-preview-object-fit: contain;
-}
-
-.file-details {
-  padding: 4px 12px;
 }
 
 .file-name {
@@ -385,37 +382,22 @@ da-card-preview {
 }
 
 .file-date {
-  margin-top: 4px;
+  margin: 0;
   color: var(--s2-gray-600);
   font-size: var(--s2-component-s-regular-font-size);
   line-height: 18px;
 }
 
-.file-star {
-  position: absolute;
-  left: 12px;
-  top: 52px;
+.file-favorite-badge {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 24px;
   height: 24px;
   padding: 2px;
-  border: 0;
-  background: light-dark(#ffffffa8, #111a);
+  background: var(--s2-gray-25);
   color: var(--s2-gray-600);
   border-radius: 12px;
-  cursor: pointer;
-}
-
-.file-star img, .file-star svg {
-  display: block;
-  width: 20px;
-  height: 20px;
-}
-
-.file-star:hover {
-  background: var(--s2-gray-25);
 }
 
 .file-table-scroll {
@@ -440,10 +422,11 @@ da-card-preview {
 }
 
 .file-table col:last-child {
-  width: 36px;
+  width: 80px;
 }
 
 .file-table th {
+  position: relative;
   height: 40px;
   padding: 10px 18px;
   color: var(--s2-gray-600);
@@ -489,7 +472,7 @@ da-card-preview {
   border-bottom: 0;
 }
 
-.list-file-link, .file-modifier {
+.list-file-link {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -505,6 +488,10 @@ da-card-preview {
 }
 
 .file-folder {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   text-decoration: none;
 }
 
@@ -523,11 +510,6 @@ da-card-preview {
   background: var(--s2-gray-200);
   color: var(--s2-gray-800);
   font-size: 12px;
-}
-
-.file-table .file-star {
-  position: static;
-  background: transparent;
 }
 
 .empty-state {
@@ -593,6 +575,7 @@ da-card-preview {
 }
 
 .tasks-panel th {
+  position: relative;
   height: 32px;
   padding: 7px 18px;
   border-bottom: 0;
@@ -684,6 +667,30 @@ da-card-preview {
   align-items: center;
 }
 
+.column-resizer {
+  position: absolute;
+  inset-block: 0;
+  right: -4px;
+  z-index: 1;
+  width: 9px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.column-resizer::after {
+  position: absolute;
+  inset-block: 6px;
+  left: 4px;
+  width: 1px;
+  background: var(--s2-gray-300);
+  content: "";
+}
+
+.column-resizer:focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: -2px;
+}
+
 .task-column-options {
   display: flex;
   flex-shrink: 0;
@@ -712,7 +719,7 @@ da-card-preview {
   text-align: start;
 }
 
-a:focus-visible, .filter:focus-visible, .file-star:focus-visible,
+a:focus-visible, .filter:focus-visible,
 .tasks-scroll:focus-visible, .file-table-scroll:focus-visible {
   outline: 2px solid var(--s2-blue-800);
   outline-offset: 4px;
@@ -752,16 +759,6 @@ a:focus-visible, .filter:focus-visible, .file-star:focus-visible,
   svg {
     width: 20px;
     height: 20px;
-  }
-}
-
-@media (hover: hover) {
-  .file-star:not([aria-pressed="true"]) {
-    opacity: 0;
-  }
-
-  .file-table .file-star, .file:hover .file-star, .file:focus-within .file-star {
-    opacity: 1;
   }
 }
 

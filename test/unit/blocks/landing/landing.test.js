@@ -59,7 +59,7 @@ describe('landing page', () => {
     expect(el.shadowRoot.textContent).not.to.include('Site root');
     expect(el.shadowRoot.querySelector('nx-picker')).to.equal(null);
     expect(nav.querySelector('nx-picker').value).to.equal('org/site');
-    expect(el.shadowRoot.querySelector('.file-date').textContent).to.include('Last Edited');
+    expect(el.shadowRoot.querySelector('.file-date').textContent).to.include('Modified at');
   });
 
   it('matches the mock composer branding, placeholder and disclaimer', () => {
@@ -357,14 +357,15 @@ describe('landing page', () => {
     }
   });
 
-  it('uses Favorites wording while preserving existing saved favorites and filtering', async () => {
+  it('uses Favorite wording while preserving existing saved favorites and filtering', async () => {
     localStorage.setItem('da-favorites', JSON.stringify({ '/org/site': [ITEMS[0].path] }));
     el.refreshFavorites();
     await el.updateComplete;
     const filter = el.shadowRoot.querySelectorAll('.filter')[1];
-    expect(filter.textContent.trim()).to.equal('Favorites');
+    expect(filter.textContent.trim()).to.equal('Favorite');
     expect(filter.getAttribute('aria-pressed')).to.equal('false');
-    expect(el.shadowRoot.querySelector('.file-star').getAttribute('aria-label')).to.equal('Remove Welcome from favorites');
+    expect(el.shadowRoot.querySelector('da-file-actions').isFavorited).to.equal(true);
+    expect(el.shadowRoot.querySelector('.file-favorite-badge').getAttribute('slot')).to.equal('badge');
     const saved = localStorage.getItem('da-favorites');
     filter.click();
     await el.updateComplete;
@@ -374,7 +375,7 @@ describe('landing page', () => {
     expect(el.shadowRoot.querySelector('.files').getAttribute('aria-label')).to.equal('Favorite files');
     expect(getFavorites('/org/site')).to.deep.equal([ITEMS[0].path]);
     expect(el.shadowRoot.querySelectorAll('.file')).to.have.length(1);
-    el.shadowRoot.querySelector('.file-star').click();
+    el.shadowRoot.querySelector('da-file-actions').favorite();
     await el.updateComplete;
     expect(getFavorites('/org/site')).to.deep.equal([]);
     expect(el.shadowRoot.querySelector('.empty-state h3').textContent).to.equal('No favorites yet');
@@ -386,27 +387,27 @@ describe('landing page', () => {
     for (const value of ['card', 'list']) {
       el.changeView({ detail: { value } });
       await el.updateComplete;
-      const button = el.shadowRoot.querySelector('.file-star');
-      expect(button.getAttribute('aria-label')).to.equal('Add Welcome to favorites');
-      expect(button.getAttribute('aria-pressed')).to.equal('false');
-      button.click();
+      const actions = el.shadowRoot.querySelector('da-file-actions');
+      expect(actions.path).to.equal(ITEMS[0].path);
+      expect(actions.view).to.equal(value);
+      expect(actions.isFavorited).to.equal(false);
+      actions.favorite();
       await el.updateComplete;
-      const favorite = el.shadowRoot.querySelector('.file-star');
-      expect(favorite.getAttribute('aria-label')).to.equal('Remove Welcome from favorites');
-      expect(favorite.getAttribute('aria-pressed')).to.equal('true');
-      favorite.click();
+      const favorite = el.shadowRoot.querySelector('da-file-actions');
+      expect(favorite.isFavorited).to.equal(true);
+      favorite.favorite();
       await el.updateComplete;
     }
   });
 
   it('uses Favorites wording when browser storage cannot save a favorite', async () => {
     sinon.stub(Storage.prototype, 'setItem').throws(new DOMException('Quota exceeded', 'QuotaExceededError'));
-    el.shadowRoot.querySelector('.file-star').click();
+    el.shadowRoot.querySelector('da-file-actions').favorite();
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('[role="alert"]').textContent).to.equal(
       'Could not save your favorites. Check that browser storage is available.',
     );
-    expect(el.shadowRoot.querySelector('.file-star').getAttribute('aria-pressed')).to.equal('false');
+    expect(el.shadowRoot.querySelector('da-file-actions').isFavorited).to.equal(false);
     expect(getFavorites('/org/site')).to.deep.equal([]);
   });
 
@@ -424,7 +425,7 @@ describe('landing page', () => {
     expect(el.shadowRoot.querySelector('.files')).to.equal(null);
     expect(el.shadowRoot.querySelectorAll('.file-table .file-row')).to.have.length(2);
     expect([...el.shadowRoot.querySelectorAll('.file-table th')].map((th) => th.textContent))
-      .to.deep.equal(['Name', 'Folder', 'Modified at', 'Modified by', 'Favorite']);
+      .to.deep.equal(['Name', 'Folder', 'Modified at', 'File information and Favorite']);
     expect(el.shadowRoot.querySelector('.list-file-link').textContent).to.include('Welcome');
     expect(el.shadowRoot.querySelector('da-card-preview')).to.equal(null);
     expect(JSON.parse(localStorage.getItem('da-browse-settings')).view).to.equal('list');
@@ -668,46 +669,57 @@ describe('landing page', () => {
     el.starFile(ITEMS[0]);
     el.changeTab('starred');
     await el.updateComplete;
-    expect(el.shadowRoot.querySelector('.file-star img').src).to.include('/landing/star-filled.svg');
+    expect(el.shadowRoot.querySelector('.file-favorite-badge').src).to.include('/landing/star-filled.svg');
     el.changeView({ detail: { value: 'list' } });
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('.file-table').getAttribute('aria-label')).to.equal('Favorite files');
-    expect(el.shadowRoot.querySelector('.file-row .file-star').getAttribute('aria-pressed')).to.equal('true');
-    el.shadowRoot.querySelector('.file-row .file-star').click();
+    expect(el.shadowRoot.querySelector('.file-row da-file-actions').isFavorited).to.equal(true);
+    el.shadowRoot.querySelector('.file-row da-file-actions').favorite();
     await el.updateComplete;
     expect(el.shadowRoot.textContent).to.include('No favorites yet');
   });
 
-  it('does not apply stale modifier metadata after a site request is aborted', async () => {
-    const request = new AbortController();
-    let finish;
-    sinon.stub(source, 'getMetadata').returns(new Promise((resolve) => { finish = resolve; }));
-    const pending = el.loadModifier(ITEMS[0], request);
-    await new Promise((resolve) => { setTimeout(resolve); });
-    request.abort();
-    finish(new Response(null, { headers: { 'x-last-modified-by': 'old@example.test' } }));
-    await pending;
-    expect(el._modifiers).to.equal(undefined);
-  });
-
-  it('loads visible list modifiers once and identifies unreadable metadata', async () => {
+  it('does not fetch modifier metadata for every row before details are requested', async () => {
     const metadata = sinon.stub(source, 'getMetadata');
-    metadata.onFirstCall().resolves(new Response(null, { headers: { 'x-last-modified-by': 'alex@example.test' } }));
-    metadata.onSecondCall().resolves(new Response(null, { status: 403 }));
     el._request = new AbortController();
     el.changeView({ detail: { value: 'list' } });
     await el.updateComplete;
     await new Promise((resolve) => { setTimeout(resolve); });
     await el.updateComplete;
-    expect(metadata.callCount).to.equal(2);
-    const cells = el.shadowRoot.querySelectorAll('.file-modifier');
-    expect(cells[0].textContent).to.include('alex');
-    expect(cells[1].textContent).to.equal('Unavailable');
+    expect(metadata.callCount).to.equal(0);
+    expect(el.shadowRoot.querySelectorAll('.file-row da-file-actions')).to.have.length(2);
+    expect(el.shadowRoot.querySelector('.file-modifier')).to.equal(null);
     el.changeView({ detail: { value: 'card' } });
     await el.updateComplete;
     el.changeView({ detail: { value: 'list' } });
     await el.updateComplete;
-    expect(metadata.callCount).to.equal(2);
+    expect(metadata.callCount).to.equal(0);
+  });
+
+  it('caps Favorite at ten without deleting saved favorites or expanding the widget', async () => {
+    el._files = Array.from({ length: 12 }, (_, i) => ({ name: `Page ${i}`, path: `/org/site/page-${i}.html`, ext: 'html' }));
+    const paths = el._files.map((item) => item.path);
+    localStorage.setItem('da-favorites', JSON.stringify({ '/org/site': paths }));
+    el.refreshFavorites();
+    el.changeTab('starred');
+    el._limit = 50;
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelectorAll('.file')).to.have.length(10);
+    expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
+    expect(getFavorites('/org/site')).to.deep.equal(paths);
+    expect(el.shadowRoot.querySelector('.all-files')).not.to.equal(null);
+  });
+
+  it('resizes Need Attention columns with a keyboard without changing task data', async () => {
+    const handle = el.shadowRoot.querySelector('.column-resizer');
+    const before = handle.closest('th').getBoundingClientRect().width;
+    handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', cancelable: true }));
+    const width = Number(handle.getAttribute('aria-valuenow'));
+    expect(width).to.be.greaterThan(before);
+    expect(el.shadowRoot.querySelector('col').style.width).to.equal(`${width}px`);
+    expect(el.shadowRoot.querySelectorAll('.tasks-panel tbody tr')).to.have.length(5);
+    handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', cancelable: true }));
+    expect(handle.getAttribute('aria-valuenow')).to.equal('80');
   });
 
   it('shows more than ten files only when requested', async () => {

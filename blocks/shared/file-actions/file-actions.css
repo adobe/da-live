@@ -1,0 +1,87 @@
+:host {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2-spacing-100, 4px);
+  color: var(--s2-gray-700);
+}
+
+svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+  fill: currentcolor;
+}
+
+.details-trigger {
+  width: 24px;
+  height: 24px;
+  padding: 2px;
+}
+
+nx-popover {
+  display: none;
+  box-sizing: border-box;
+  width: 240px;
+  max-width: calc(100vw - 32px);
+  padding: var(--s2-spacing-200, 8px);
+  color: var(--s2-gray-900);
+  font: var(--s2-component-s-regular-font-size, 12px) / 1.5 var(--s2-font-family);
+  overflow-wrap: anywhere;
+}
+
+nx-popover[open],
+nx-popover:popover-open {
+  display: block;
+}
+
+section {
+  padding: var(--s2-spacing-200, 8px);
+  border-radius: var(--s2-corner-radius-400, 8px);
+  background: var(--s2-gray-75);
+}
+
+h3 {
+  margin: 0 0 var(--s2-spacing-200, 8px);
+  font-size: inherit;
+  font-weight: var(--s2-component-s-bold-font-weight, 700);
+}
+
+.detail {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s2-spacing-200, 8px);
+  padding-block: var(--s2-spacing-75, 3px);
+}
+
+.detail > :last-child {
+  min-width: 0;
+  text-align: end;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.favorite-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2-spacing-200, 8px);
+  width: 100%;
+  margin-top: var(--s2-spacing-200, 8px);
+  padding: var(--s2-spacing-200, 8px);
+  border-top: 1px solid var(--s2-gray-200);
+  border-radius: 0;
+  font: inherit;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: 2px;
+}

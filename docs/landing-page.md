@@ -19,20 +19,30 @@ After publishing the `lp` branch, open:
 https://lp--da-live--adobe.aem.live/?landing=true&theme=light&nx=lp&quick-edit=devlive#/aemsites/devlive
 ```
 
-After integration into Martin's `devlive` branches, use:
-
-```text
-https://devlive--da-live--adobe.aem.live/?landing=true&theme=light&nx=devlive&quick-edit=devlive#/aemsites/devlive
-```
+The latest card implementation requires the paired Nexter `lp` branch.
+It has not been transferred to Martin's `devlive` branches.
 
 Add `&theme=light` for a light-mode preview without changing the saved theme.
 The override applies only while this landing page is present.
 
-Use `nx=ui-size-scale` to exercise the live S/M sizing from adobe/da-nx#816.
-The landing page uses its `UISizeController`, text tokens, shared button classes
-and explicitly sized picker/segmented controls, following adobe/da-live#1416.
-It also runs on the current shell at the default size, without importing a
-missing sizing module. Neither sizing PR is modified or merged by this work.
+Landing retains its S/M hooks, shared button classes and explicitly sized
+picker/segmented controls. The `lp` shell does not include the live sizing runtime.
+Do not substitute `nx=ui-size-scale`: that branch does not yet contain the new
+shared card. Sizing integration remains separate; neither adobe/da-nx#816 nor
+adobe/da-live#1416 is modified or merged by this work.
+
+## Component ownership
+
+- Nexter owns the presentation-only `nx-card`, based on Browse's card layout.
+  Landing uses one compact thumbnail size. Ordinary Browse keeps its existing
+  renderer until the shared component is available on its supported shell branches.
+- da-live owns `blocks/shared/site-picker.js`, the site-picker composition around
+  `nx-picker`, including Your Sites and Add site. Access checks remain in Landing's
+  existing data helpers; no account-wide discovery or invented display metadata is added.
+- Files and Need Attention table markup lives in detached da-live render helpers
+  (`file-table.js` and `attention-table.js`), not a new general table framework.
+- `da-file-actions` supplies the card menu and list information/favorite controls.
+  It reuses Browse's source/version and preview/publish status helpers.
 
 ## Scope
 
@@ -101,25 +111,34 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
   All root-listing pages are loaded before sorting by modification date.
 - The mock's Recent tab shows recently modified files, not personal
   recently opened history. The root scope is not added as a visible subtitle.
-- Favorites uses the existing browser-local `da-favorites` entries for that root.
-  The tab, empty state, storage error and accessible file actions use Favorites
-  wording. This is a label change only; existing saved entries remain unchanged.
-  Favorites in nested folders are outside this first version.
-  Its 24px translucent control uses the Figma grey filled star, placed at the
-  lower-left of the card preview. The same control works in list rows.
+- **Favorite** uses the existing browser-local `da-favorites` entries for that root.
+  Saved entries are not capped, but this widget displays at most ten, without
+  Show more. Show All Files opens Browse. Existing modification-date ordering is
+  retained; favorite-added timestamps are not tracked. Favorites in nested folders
+  remain outside this first version.
+  Cards have an always-visible more button beside the truncated title. Its popover
+  shows file details and Mark as Favorite / Remove as Favorite. Selected cards have
+  a persistent star at the thumbnail's top-right. Actions do not depend on hover;
+  keyboard focus and contextual accessible labels remain.
 - List view is a separate semantic table, not a single-column stack of cards.
-  It follows `1852:84732`: Name, Folder, Modified at, Modified by and a star action,
-  a 40px header and 56px rows. Modifier names come from the source metadata
-  `x-last-modified-by` header, loaded only for visible list rows and retained
-  until the site listing is refreshed. Missing or unreadable metadata is marked
-  unavailable; no author names or profile photos are invented.
+  It shows Name, Folder, Modified at and visible information/favorite controls
+  for non-folder files, with a 40px header and 56px rows. Long folder paths truncate
+  and retain the full path in their title. The information popover contains details
+  only; the separate star toggles favorite with an outlined/filled state.
+  Modified by is omitted from the table and loaded on demand in file details,
+  alongside source version and preview/publish dates. Partial failures have an
+  explicit retry, absent metadata is unavailable, and closed or stale requests
+  cannot update another file's details. No author names or profile photos are invented.
+  Folders and links do not request unsupported metadata.
 - Images reuse browse-v2's lazy previews. Pages opt into read-only, source-backed
   document thumbnails (heading, representative image and excerpt), not screenshots
   of the published site. Source HTML is never inserted into the live DOM or executed.
   These additions are opt-in and do not change ordinary Browse previews.
   Preview failures are identified rather than presented as successful thumbnails.
 - The Figma Ready Recent frame (`1852:83848`) supplies the gradient artwork and
-  semantic page, fragment, image and spreadsheet assets. Panels use its 1068px
+  semantic page, fragment and image assets. Sheets now use the shared generic
+  Document icon, as requested in the updated design; their editor routes and file
+  formats are unchanged. Panels use its 1068px
   desktop width, 16px radius, translucent fill and three-layer shadow. The composer
   uses its 664px desktop width and 109px idle height. Its neutral translucent
   fill, border and soft shadows follow the Spectrum AI Toolkit's Subtle prompt
@@ -159,7 +178,8 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
   shared add-to-chat event, without uploading or auto-sending. Other selected
   actions continue in the existing assistant through `openAddAction(id)`,
   supported by both `nx-chat` and `nx-chat-ao`. Typed drafts are preserved.
-- The Need Attention table uses the Process Description heading and a 32px
+- The Need Attention table preserves the Item, Description, Status and Assignee
+  headings and a 32px
   header, a separate 46px heading area and a white 6px-radius table surface,
   following `1852:85554`. The `lp` preview includes five static Frescopa-themed
   sample rows: Frescopa Homepage, Atelier Nova, Taste Profiles, Coffee Machines
@@ -178,6 +198,9 @@ missing sizing module. Neither sizing PR is modified or merged by this work.
   scrolling on narrow screens. Each header includes the 18px vertical
   three-dot column-options icon from `1852:86574`. These controls are explicitly
   disabled for the sample rows, rather than offering fake actions.
+  Separate resize handles support pointer dragging and keyboard ArrowLeft /
+  ArrowRight (16px), Home (80px) and End (1200px). Resizing stays local to the
+  current table; it does not imply working column menus or live task actions.
 - Need Attention also lists the signed-in user's **open comment threads**: unresolved
   threads in root-level pages that the user started or replied to, newest activity
   first, above the sample rows. They read the same `.da/comments/{docId}/` store as
@@ -213,7 +236,10 @@ can change that shared site. Use a separate content site for write testing.
 ## Manual checks
 
 Sign in with access to the selected site. Check the greeting, site switching,
-file navigation, Favorites, card/list switching, Show all files and prompt handoff.
+file navigation, Favorite, card/list switching, Show all files and prompt handoff.
+Check card menus, persistent selected stars, list information-only popovers,
+favorite toggles, unavailable metadata/retry, the ten-item Favorite cap and
+Need Attention resizing with both pointer and keyboard.
 Open Add site from the picker and the no-site state. Check a valid existing URL,
 an invalid URL, a denied site, an unavailable check and cancelling an in-flight
 request. Confirm the added site appears in the current browser's picker and
@@ -221,6 +247,8 @@ reopens in LP without changing preview flags. Compare a normal user with an org
 admin: only an explicit org CONFIG write grant exposes creation. Check missing
 permission headers and failed checks without hiding Add existing. Do not submit
 creation against shared demo content when checking the setup entry.
-Switch S/M in the profile popover without losing the typed prompt or active
-filter. Check dark mode, narrow layouts, keyboard focus and a site without chat.
+Check dark mode, narrow layouts, keyboard focus and a site without chat.
+Verify chat availability after changing sites; the existing assistant handoff is
+preserved. The separate chat.io module and sizing-branch integration still need
+confirmation before replacing that flow or claiming live S/M support.
 The unparameterized Browse and Canvas routes should retain their existing UI.
