@@ -97,4 +97,20 @@ describe('decorateArea', () => {
     expect(light.hasAttribute('loading')).to.be.false;
     expect(light.fetchPriority).to.equal('high');
   });
+
+  it('routes the nx-form block to da-live\'s form block', () => {
+    container.innerHTML = '<div class="nx-form"></div>';
+    decorateArea({ area: container });
+
+    const block = container.firstElementChild;
+    expect(block.classList.contains('form')).to.be.true;
+    expect(block.classList.contains('nx-form')).to.be.false;
+  });
+
+  it('leaves a form block untouched', () => {
+    container.innerHTML = '<div class="form"></div>';
+    decorateArea({ area: container });
+
+    expect(container.firstElementChild.className).to.equal('form');
+  });
 });
