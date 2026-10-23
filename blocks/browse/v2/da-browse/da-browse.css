@@ -10,6 +10,7 @@ da-browse-header {
   z-index: 3;
   background: var(--s2-gray-25);
   padding-inline: var(--s2-spacing-100);
+  padding-left: var(--s2-spacing-200);
 }
 
 

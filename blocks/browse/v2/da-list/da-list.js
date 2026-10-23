@@ -442,10 +442,11 @@ export default class DaList extends DaListBase {
         <div class="da-browse-header-cell da-browse-header-cell-select" data-column="select">
           ${this.renderCheckBox()}
         </div>
-        ${this.view === 'card' ? html`
+        ${this.view === 'card' && this._sort?.property
+          && ['ascending', 'descending'].includes(this._sort.direction) ? html`
           <div class="da-browse-header-cell da-card-sort" role="columnheader"
-            aria-sort=${this.sortDirectionFor(this._sort?.property || 'name')}>
-            ${this.renderSortButton(this._sort?.property || 'name')}
+            aria-sort=${this._sort.direction}>
+            ${this.renderSortButton(this._sort.property)}
           </div>` : nothing}
         <div class="da-browse-header-cell da-browse-header-cell-name" data-column="name" role="columnheader" aria-sort="${this.sortDirectionFor('name')}">
           <div class="da-browse-header-container">
