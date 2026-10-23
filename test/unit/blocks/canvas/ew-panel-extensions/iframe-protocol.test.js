@@ -10,6 +10,7 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 const { setupIframeChannel } = await import('../../../../../blocks/canvas/ew-panel-extensions/iframe-protocol.js');
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
+const { UI_SIZE_EVENT } = await import('../../../../fixtures/nx2/utils/ui-size.js');
 
 const wait = (ms = 50) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
@@ -83,6 +84,7 @@ describe('setupIframeChannel', () => {
       path: '/a/b',
       view: 'split',
       hash: '#/myorg/mysite/a/b',
+      uiSize: 's',
     });
     expect(message.context).to.equal(message.project);
     expect(targetOrigin).to.equal('https://plugin.example.com');
@@ -271,6 +273,46 @@ describe('setupIframeChannel', () => {
 
     document.dispatchEvent(new CustomEvent(CHAT_EVENT.AGENT_CHANGE, { detail: { agent: 'writer' } }));
 
+    expect(iframe.contentWindow.postMessage.called).to.be.false;
+  });
+
+  it('includes the current ui size in the ready context', async () => {
+    document.body.classList.add('ui-size-m');
+    const iframe = makeIframe();
+    const { destroy } = await setupIframeChannel({
+      iframe,
+      hashState: { org: 'myorg', site: 'mysite' },
+      getView: () => null,
+      onClose: () => {},
+    });
+    try {
+      await wait(800);
+      const [message] = iframe.contentWindow.postMessage.firstCall.args;
+      expect(message.context.uiSize).to.equal('m');
+    } finally {
+      document.body.classList.remove('ui-size-m');
+      destroy();
+    }
+  });
+
+  it('forwards ui size changes to the iframe until destroy', async () => {
+    const iframe = makeIframe();
+    const { destroy } = await setupIframeChannel({
+      iframe,
+      hashState: { org: 'myorg', site: 'mysite' },
+      getView: () => null,
+      onClose: () => {},
+    });
+
+    document.dispatchEvent(new CustomEvent(UI_SIZE_EVENT, { detail: { size: 'm' } }));
+    expect(iframe.contentWindow.postMessage.calledWith(
+      { action: 'uiSizeChange', detail: { uiSize: 'm' } },
+      'https://plugin.example.com',
+    )).to.be.true;
+
+    destroy();
+    iframe.contentWindow.postMessage.resetHistory();
+    document.dispatchEvent(new CustomEvent(UI_SIZE_EVENT, { detail: { size: 's' } }));
     expect(iframe.contentWindow.postMessage.called).to.be.false;
   });
 
