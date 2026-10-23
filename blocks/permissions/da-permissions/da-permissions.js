@@ -314,7 +314,6 @@ class DaPermissions extends LitElement {
       return html`
         ${this._readOnly ? html`<p class="permissions-message">You have read-only access to this configuration.</p>` : nothing}
         <p class="permissions-message">No scopes match "${trimmedQuery}"</p>
-        ${this._renderAddFolderButton()}
         ${this._renderRemoveDialog()}
         ${this._renderFolderDialog()}`;
     }
@@ -327,24 +326,15 @@ class DaPermissions extends LitElement {
         .editable=${this._editable}
         .busy=${this._busy}
         .adding=${this._adding}
+        .canAddFolder=${!!this.site && this._editable && !trimmedQuery}
+        @permissions-add-folder=${() => this._onOpenFolderDialog()}
         @permissions-add-open=${(e) => this._onAddOpen(e)}
         @permissions-add-cancel=${() => this._onAddCancel()}
         @permissions-add=${(e) => this._onAdd(e)}
         @permissions-remove=${(e) => this._onRemoveRequest(e)}
       ></da-permissions-cards>
-      ${this._renderAddFolderButton()}
       ${this._renderRemoveDialog()}
       ${this._renderFolderDialog()}`;
-  }
-
-  _renderAddFolderButton() {
-    if (!this.site || !this._editable) return nothing;
-    return html`
-      <div class="permissions-folder-action">
-        <button type="button" class="nx-action-btn" @click=${() => this._onOpenFolderDialog()}>
-          + Add folder permission
-        </button>
-      </div>`;
   }
 
   _renderFolderDialog() {

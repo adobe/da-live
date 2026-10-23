@@ -7,8 +7,21 @@
   margin-top: var(--s2-spacing-500);
 }
 
+/* Heading on the left, an optional action (Add folder) right-aligned on the same row. */
+.scope-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2-spacing-200);
+  margin-bottom: var(--s2-spacing-200);
+}
+
+.section-empty {
+  margin: 0;
+}
+
 .scope-section h3 {
-  margin: 0 0 var(--s2-spacing-200);
+  margin: 0;
   color: var(--s2-gray-800);
   font-size: var(--s2-heading-size-xs);
   font-weight: var(--s2-heading-font-weight);

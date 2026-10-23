@@ -36,6 +36,7 @@ class DaPermissionsCards extends LitElement {
     slots: { attribute: false },
     org: { type: String },
     scopeName: { type: String },
+    canAddFolder: { type: Boolean },
     editable: { type: Boolean },
     busy: { type: Boolean },
     adding: { attribute: false },
@@ -46,6 +47,7 @@ class DaPermissionsCards extends LitElement {
     this.slots = [];
     this.org = '';
     this.scopeName = '';
+    this.canAddFolder = false;
     this.editable = false;
     this.busy = false;
     this.adding = null;
@@ -64,6 +66,10 @@ class DaPermissionsCards extends LitElement {
 
   _openAdd(path, level) {
     this.dispatchEvent(new CustomEvent('permissions-add-open', { detail: { path, level }, bubbles: true, composed: true }));
+  }
+
+  _requestAddFolder() {
+    this.dispatchEvent(new CustomEvent('permissions-add-folder', { bubbles: true, composed: true }));
   }
 
   _cancelAdd() {
@@ -132,7 +138,7 @@ class DaPermissionsCards extends LitElement {
         aria-label="Add to ${slot.label} ${LEVEL_LABEL[level]}"
         ?disabled=${this.busy || isAdding}
         @click=${() => this._openAdd(slot.path, level)}
-      >+ Add</button>`;
+      >Add</button>`;
   }
 
   _renderLevelRow(slot, level) {
@@ -195,11 +201,25 @@ class DaPermissionsCards extends LitElement {
   }
 
   _renderSection(kind, slots) {
-    if (!slots.length) return nothing;
+    const withAddFolder = kind === 'folders' && this.canAddFolder;
+    if (!slots.length && !withAddFolder) return nothing;
+    const body = slots.length
+      ? slots.map((slot) => this._renderCard(slot))
+      : html`<p class="row-empty section-empty">No folder permissions yet.</p>`;
     return html`
       <section class="scope-section" data-section=${kind}>
-        <h3>${SECTION_LABEL[kind](this.scopeName)}</h3>
-        ${slots.map((slot) => this._renderCard(slot))}
+        <div class="scope-section-header">
+          <h3>${SECTION_LABEL[kind](this.scopeName)}</h3>
+          ${withAddFolder ? html`
+            <button
+              type="button"
+              class="add-folder nx-form-btn-secondary"
+              ?disabled=${this.busy}
+              @click=${() => this._requestAddFolder()}
+            >Add folder</button>
+          ` : nothing}
+        </div>
+        ${body}
       </section>`;
   }
 

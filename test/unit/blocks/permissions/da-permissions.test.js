@@ -148,6 +148,7 @@ describe('da-permissions', () => {
     expect(cards).to.not.equal(null);
     expect(cards.slots.some((s) => s.path === 'CONFIG')).to.be.true;
     expect(cards.scopeName).to.equal('myorg');
+    expect(cards.canAddFolder).to.equal(false);
 
     const picker = el.shadowRoot.querySelector('nx-picker');
     const labels = picker.items.filter((i) => !i.divider).map((i) => i.label);
@@ -550,9 +551,9 @@ describe('da-permissions folder permission', () => {
   };
 
   async function openFolderDialog(el) {
-    const openBtn = [...el.shadowRoot.querySelectorAll('button')]
-      .find((btn) => btn.textContent.includes('Add folder permission'));
-    openBtn.click();
+    const cards = el.shadowRoot.querySelector('da-permissions-cards');
+    expect(cards.canAddFolder).to.equal(true);
+    cards.shadowRoot.querySelector('button.add-folder').click();
     await el.updateComplete;
     const picker = el.shadowRoot.querySelector('da-folder-picker');
     await settle(picker, () => picker._columns.length > 0);

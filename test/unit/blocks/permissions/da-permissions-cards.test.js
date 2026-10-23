@@ -89,6 +89,39 @@ describe('da-permissions-cards', () => {
     });
   });
 
+  it('puts a secondary "Add folder" button on the Folder Permissions heading row', async () => {
+    const folderSlot = baseSlot({ path: '/myorg/site1/blog/ + **', kind: 'folder', label: 'blog/' });
+    const el = await mount({ slots: [folderSlot], scopeName: 'site1', canAddFolder: true });
+
+    const header = el.shadowRoot.querySelector('section[data-section="folders"] .scope-section-header');
+    expect(header?.querySelector('h3')?.textContent.trim()).to.equal('Folder Permissions');
+    const btn = header?.querySelector('button.add-folder');
+    expect(btn?.textContent.trim()).to.equal('Add folder');
+    expect(btn?.classList.contains('nx-form-btn-secondary')).to.equal(true);
+    expect(!!el.shadowRoot.querySelector('.section-empty')).to.equal(false);
+
+    let opened = 0;
+    el.addEventListener('permissions-add-folder', () => { opened += 1; });
+    btn.click();
+    expect(opened).to.equal(1);
+  });
+
+  it('shows the Folder Permissions section with an empty note when folders can be added but none exist', async () => {
+    const configSlot = baseSlot({ path: '/myorg/site1/CONFIG', kind: 'config', label: 'Site configurations' });
+    const el = await mount({ slots: [configSlot], scopeName: 'site1', canAddFolder: true, busy: true });
+
+    const section = el.shadowRoot.querySelector('section[data-section="folders"]');
+    expect(section?.querySelector('.section-empty')?.textContent.trim()).to.equal('No folder permissions yet.');
+    expect(section?.querySelector('button.add-folder')?.disabled).to.equal(true);
+  });
+
+  it('has no Folder Permissions section or button when folders cannot be added and none exist', async () => {
+    const configSlot = baseSlot({ path: '/myorg/site1/CONFIG', kind: 'config', label: 'Site configurations' });
+    const el = await mount({ slots: [configSlot], scopeName: 'site1', canAddFolder: false });
+    expect(!!el.shadowRoot.querySelector('section[data-section="folders"]')).to.equal(false);
+    expect(!!el.shadowRoot.querySelector('button.add-folder')).to.equal(false);
+  });
+
   it('hides empty sections: only folder slots renders no config or content section', async () => {
     const folderSlot = baseSlot({ path: '/myorg/site1/blog/ + **', kind: 'folder', label: 'blog/' });
     const el = await mount({ slots: [folderSlot] });
@@ -173,18 +206,18 @@ describe('da-permissions-cards', () => {
     expect(directPills.items.every((i) => i.removable === false)).to.be.true;
   });
 
-  it('uses a secondary "+ Add" button that stays in place (disabled) while the field is open', async () => {
+  it('uses a secondary "Add" button that stays in place (disabled) while the field is open', async () => {
     const slot = baseSlot({ label: 'All sites', write: ['a@x.com'] });
     let el = await mount({ slots: [slot], editable: true });
     let btn = el.shadowRoot.querySelector('.level-row[data-level="write"] .row-add');
-    expect(btn?.textContent.trim()).to.equal('+ Add');
+    expect(btn?.textContent.trim()).to.equal('Add');
     expect(btn?.classList.contains('nx-form-btn-secondary')).to.equal(true);
     expect(btn?.disabled).to.equal(false);
     el.remove();
 
     el = await mount({ slots: [slot], editable: true, adding: { path: slot.path, level: 'write' } });
     btn = el.shadowRoot.querySelector('.level-row[data-level="write"] .row-add');
-    expect(btn?.textContent.trim()).to.equal('+ Add');
+    expect(btn?.textContent.trim()).to.equal('Add');
     expect(btn?.disabled).to.equal(true);
   });
 
