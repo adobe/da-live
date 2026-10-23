@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { fetchDaConfigs, getPostMessageTargetOrigin } from '../../shared/utils.js';
 import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
 import { getPreviewOrigin } from './editor-utils.js';
@@ -28,6 +28,14 @@ function resolveMenuItem(item, details) {
 function isSvgSymbol(icon) {
   if (typeof icon !== 'string' || !icon) return false;
   return icon.startsWith('#') || icon.includes('.svg#');
+}
+
+export function readSdkMode(item) {
+  const raw = item?.sdk;
+  const value = raw === undefined || raw === null ? '' : String(raw).trim();
+  if (value === '' || value === '1') return 'legacy';
+  if (value === '2') return 'sdk2';
+  return 'invalid';
 }
 
 const OOTB_ACTIONS = [
@@ -71,6 +79,7 @@ export default class PrepareMenu extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    this.closeExtension();
     this._unsubBranch?.();
     this._unsubBranch = null;
     this._unsubComparison?.();
@@ -90,7 +99,46 @@ export default class PrepareMenu extends LitElement {
     import('../../shared/da-dialog/da-dialog.js');
   }
 
+  closeExtension() {
+    this._extGen = (this._extGen || 0) + 1;
+    this._ext?.close();
+    this._ext = undefined;
+    this._extIframe = undefined;
+  }
+
+  getExtensionContext() {
+    const { view, org, site, path } = this.details;
+    return {
+      view,
+      org,
+      site,
+      repo: site,
+      ref: new URLSearchParams(window.location.search).get('ref') || 'main',
+      branch: getCanvasBranch({ org, site }),
+      path,
+    };
+  }
+
+  async connectExtension(iframe) {
+    this.closeExtension();
+    this._extIframe = iframe;
+    const gen = this._extGen;
+    const { connectExtension } = await import(`${getNx2()}/utils/extension-host.js`);
+    if (gen !== this._extGen) return;
+    this._ext = connectExtension({ iframe, context: this.getExtensionContext() });
+  }
+
+  syncExtension() {
+    const iframe = this.shadowRoot.querySelector('iframe[data-sdk2]');
+    if (!iframe) {
+      if (this._extIframe) this.closeExtension();
+      return;
+    }
+    if (iframe !== this._extIframe) this.connectExtension(iframe);
+  }
+
   reset() {
+    this.closeExtension();
     this.closePort();
     const dialog = this.shadowRoot.querySelector('.prepare-fullsize-dialog');
     if (dialog?.open) dialog.close();
@@ -100,6 +148,7 @@ export default class PrepareMenu extends LitElement {
   }
 
   updated(changed) {
+    this.syncExtension();
     if (changed.has('_fullsizeDialogItem') && this._fullsizeDialogItem) {
       const dialog = this.shadowRoot.querySelector('.prepare-fullsize-dialog');
       if (dialog && !dialog.open) dialog.showModal();
@@ -132,7 +181,12 @@ export default class PrepareMenu extends LitElement {
     merged.delete('Preflight');
 
     // For config items without path or render, fallback to OOTB if available
-    this._menuItems = [...merged.values()].map((item) => {
+    this._menuItems = [...merged.values()].filter((item) => {
+      if (readSdkMode(item) !== 'invalid') return true;
+      // eslint-disable-next-line no-console
+      console.warn(`prepare menu: hiding "${item.title}", invalid sdk value "${item.sdk}"`);
+      return false;
+    }).map((item) => {
       const resolved = item.path || item.render ? item : ootbLookup.get(item.title) || item;
       return resolveMenuItem(resolved, this.details);
     });
@@ -181,6 +235,7 @@ export default class PrepareMenu extends LitElement {
 
   handleCloseDialog() {
     if (this._comparison === 'open') return;
+    this.closeExtension();
     this.closePort();
     this._dialogItem = undefined;
   }
@@ -190,6 +245,7 @@ export default class PrepareMenu extends LitElement {
     this.closePort();
     const dialog = target?.closest?.('.prepare-fullsize-dialog');
     if (dialog?.open) dialog.close();
+    this.closeExtension();
     this._fullsizeDialogItem = undefined;
   }
 
@@ -213,9 +269,11 @@ export default class PrepareMenu extends LitElement {
   }
 
   handleIframeLoad({ target }) {
-    const targetOrigin = getPostMessageTargetOrigin(target.src);
+    if (target.hasAttribute('data-sdk2')) return;
+    const loadedSrc = target.src;
+    const targetOrigin = getPostMessageTargetOrigin(loadedSrc);
     const channel = new MessageChannel();
-    const { view, org, site, path } = this.details;
+    const { org, site, path } = this.details;
     this.closePort();
     this._port = channel.port1;
     channel.port1.onmessage = ({ data }) => {
@@ -224,17 +282,10 @@ export default class PrepareMenu extends LitElement {
     };
 
     setTimeout(() => {
-      if (!target.contentWindow) return;
+      // Lit can reuse this iframe for an SDK2 row before the timer fires.
+      if (!target.contentWindow || target.hasAttribute('data-sdk2') || target.src !== loadedSrc) return;
 
-      const context = {
-        view,
-        org,
-        site,
-        repo: site,
-        ref: new URLSearchParams(window.location.search).get('ref') || 'main',
-        branch: getCanvasBranch({ org, site }),
-        path,
-      };
+      const context = this.getExtensionContext();
       const { token } = window.adobeIMS.getAccessToken();
 
       const message = { ready: true, context, token };
@@ -257,6 +308,7 @@ export default class PrepareMenu extends LitElement {
         @close=${this.handleCloseDialog}>
         ${cmp || html`<iframe
           src=${this._dialogItem.path}
+          ?data-sdk2=${readSdkMode(this._dialogItem) === 'sdk2'}
           @load=${this.handleIframeLoad}
           allow="clipboard-write *"></iframe>`}
       </da-dialog>
@@ -286,6 +338,7 @@ export default class PrepareMenu extends LitElement {
           <iframe
             src=${this._fullsizeDialogItem.path}
             title=${this._fullsizeDialogItem.title}
+            ?data-sdk2=${readSdkMode(this._fullsizeDialogItem) === 'sdk2'}
             @load=${this.handleIframeLoad}
             allow="clipboard-write *"></iframe>
         </div>

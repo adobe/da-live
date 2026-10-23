@@ -10,6 +10,7 @@ const waitForMenu = () => new Promise((resolve) => { setTimeout(resolve, 50); })
 
 describe('PrepareMenu', () => {
   let PrepareMenu;
+  let readSdkMode;
   let savedFetch;
 
   before(async () => {
@@ -39,6 +40,7 @@ describe('PrepareMenu', () => {
 
     const mod = await import('../../../../../blocks/canvas/editor-utils/prepare-menu.js');
     PrepareMenu = mod.default;
+    ({ readSdkMode } = mod);
     window.history.replaceState({}, '', initialUrl);
   });
 
@@ -101,6 +103,23 @@ describe('PrepareMenu', () => {
   });
 
   describe('reset', () => {
+    it('closes both SDK2 and legacy connections', async () => {
+      el = await fixture();
+      let extensionsClosed = 0;
+      let portsClosed = 0;
+      el._ext = { close: () => { extensionsClosed += 1; } };
+      el._port = { close: () => { portsClosed += 1; } };
+      el._comparison = 'requested';
+
+      el.reset();
+
+      expect(extensionsClosed).to.equal(1);
+      expect(portsClosed).to.equal(1);
+      expect(el._ext).to.be.undefined;
+      expect(el._port).to.be.undefined;
+      expect(el._comparison).to.be.undefined;
+    });
+
     it('clears _menuItems and _dialogItem', async () => {
       el = await fixture();
       el._menuItems = [{ title: 'Test' }];
@@ -370,6 +389,192 @@ describe('PrepareMenu', () => {
       expect(item.icon).to.equal('https://main--siteg--orgg.stage-preview.da.live/tools/plugins/plugin-action/icon.svg');
 
       window.fetch = prevFetch;
+    });
+  });
+
+  describe('readSdkMode', () => {
+    [
+      [{}, 'legacy'],
+      [{ sdk: '' }, 'legacy'],
+      [{ sdk: undefined }, 'legacy'],
+      [{ sdk: '1' }, 'legacy'], [{ sdk: 1 }, 'legacy'], [{ sdk: ' 1 ' }, 'legacy'],
+      [{ sdk: '2' }, 'sdk2'], [{ sdk: 2 }, 'sdk2'], [{ sdk: ' 2 ' }, 'sdk2'],
+      [{ sdk: '3' }, 'invalid'], [{ sdk: 'true' }, 'invalid'], [{ sdk: '0' }, 'invalid'],
+    ].forEach(([item, mode]) => {
+      it(`${JSON.stringify(item)} -> ${mode}`, () => {
+        expect(readSdkMode(item)).to.equal(mode);
+      });
+    });
+  });
+
+  describe('sdk2 rows', () => {
+    let savedIMS;
+    let tokenCalls;
+
+    const sdkItem = { title: 'Snap', path: 'https://ext.example.com/snap.html', experience: 'fullsize-dialog', sdk: '2' };
+
+    async function openItem(item) {
+      el = await fixture();
+      stubPopover(el);
+      el.handleItemClick = PrepareMenu.prototype.handleItemClick;
+      el._fullsizeDialogItem = undefined;
+      if (item.experience === 'fullsize-dialog') el._fullsizeDialogItem = item;
+      else el._dialogItem = item;
+      await new Promise((r) => { setTimeout(r, 150); });
+      return el.shadowRoot.querySelector('iframe');
+    }
+
+    beforeEach(() => {
+      globalThis.__extHostCalls = [];
+      tokenCalls = 0;
+      savedIMS = window.adobeIMS;
+      window.adobeIMS = {
+        getAccessToken: () => {
+          tokenCalls += 1;
+          return { token: 'T' };
+        },
+      };
+    });
+
+    afterEach(() => {
+      window.adobeIMS = savedIMS;
+      delete globalThis.__extHostCalls;
+    });
+
+    it('connects the extension host with iframe and context, without token or legacy message', async () => {
+      const initialUrl = window.location.href;
+      const testUrl = new URL(initialUrl);
+      testUrl.searchParams.set('ref', 'feature/foo');
+      window.history.replaceState({}, '', testUrl);
+      let iframe;
+      try {
+        iframe = await openItem(sdkItem);
+        iframe.dispatchEvent(new Event('load'));
+        await new Promise((r) => { setTimeout(r, 800); });
+      } finally {
+        window.history.replaceState({}, '', initialUrl);
+      }
+
+      expect(globalThis.__extHostCalls).to.have.length(1);
+      const [call] = globalThis.__extHostCalls;
+      expect(call.iframe).to.equal(iframe);
+      expect(call.context).to.deep.equal({
+        view: 'edit',
+        org: 'testorg',
+        site: 'testsite',
+        repo: 'testsite',
+        ref: 'feature/foo',
+        branch: 'feature-foo',
+        path: '/test/page',
+      });
+      expect(tokenCalls).to.equal(0);
+    });
+
+    it('keeps legacy behavior for empty and 1 rows', async function legacy() {
+      this.timeout(8000);
+      for (const sdk of [undefined, '', '1']) {
+        const iframe = await openItem({ ...sdkItem, sdk });
+        expect(iframe.hasAttribute('data-sdk2')).to.be.false;
+        iframe.dispatchEvent(new Event('load'));
+        await new Promise((r) => { setTimeout(r, 800); });
+        expect(tokenCalls, `sdk=${sdk}`).to.be.greaterThan(0);
+        expect(globalThis.__extHostCalls).to.have.length(0);
+        tokenCalls = 0;
+        el.remove();
+      }
+    });
+
+    it('never sends the token when a loaded legacy iframe becomes an sdk2 row before the timer', async () => {
+      const iframe = await openItem({ ...sdkItem, sdk: '1' });
+      iframe.dispatchEvent(new Event('load'));
+      iframe.setAttribute('data-sdk2', '');
+      iframe.src = 'https://ext.example.com/other.html';
+      await new Promise((r) => { setTimeout(r, 900); });
+
+      expect(tokenCalls).to.equal(0);
+    });
+
+    it('hides rows with an invalid sdk value', async () => {
+      const prevFetch = window.fetch;
+      window.fetch = async (url) => {
+        if (url.includes('/config/orgI/siteI')) {
+          const data = [
+            { title: 'Bad', path: 'https://example.com/b', sdk: 'x' },
+            { title: 'Good', path: 'https://example.com/g', sdk: '2' },
+          ];
+          return new Response(JSON.stringify({ prepare: { data } }), { status: 200 });
+        }
+        if (url.includes('/config/orgI')) return new Response('{}', { status: 200 });
+        return prevFetch(url);
+      };
+      const { warn } = console;
+      const warnings = [];
+      console.warn = (msg) => { warnings.push(msg); };
+      try {
+        el = await fixture({ details: createDetails({ org: 'orgI', site: 'siteI' }) });
+      } finally {
+        console.warn = warn;
+        window.fetch = prevFetch;
+      }
+      const titles = el._menuItems.map((i) => i.title);
+      expect(titles).to.include('Good');
+      expect(titles).to.not.include('Bad');
+      // loadMenu can run twice (details update + branchState replay), so check content, not count.
+      expect(warnings).to.not.be.empty;
+      expect(warnings.every((w) => w.includes('"Bad"'))).to.be.true;
+    });
+
+    it('closes the handle on fullsize dialog close', async () => {
+      await openItem(sdkItem);
+      const [{ handle }] = globalThis.__extHostCalls;
+      el.handleCloseFullsizeDialog();
+      await nextFrame();
+      expect(handle.closed).to.equal(1);
+    });
+
+    it('closes the handle on da-dialog close', async () => {
+      await openItem({ ...sdkItem, experience: undefined });
+      expect(globalThis.__extHostCalls).to.have.length(1);
+      const [{ handle }] = globalThis.__extHostCalls;
+      el.handleCloseDialog();
+      await nextFrame();
+      expect(handle.closed).to.equal(1);
+    });
+
+    it('closes the handle on details change', async () => {
+      await openItem(sdkItem);
+      const [{ handle }] = globalThis.__extHostCalls;
+      el.details = createDetails({ org: 'other', site: 'other' });
+      await nextFrame();
+      expect(handle.closed).to.be.greaterThan(0);
+    });
+
+    it('closes the handle on reset', async () => {
+      await openItem(sdkItem);
+      const [{ handle }] = globalThis.__extHostCalls;
+      el.reset();
+      expect(handle.closed).to.equal(1);
+    });
+
+    it('closes the handle on disconnect', async () => {
+      await openItem(sdkItem);
+      const [{ handle }] = globalThis.__extHostCalls;
+      el.remove();
+      expect(handle.closed).to.equal(1);
+      expect(el._unsubBranch).to.be.null;
+      expect(el._unsubComparison).to.be.null;
+    });
+
+    it('keeps the handle while a comparison temporarily hides the dialog', async () => {
+      await openItem({ ...sdkItem, experience: undefined });
+      const [{ handle }] = globalThis.__extHostCalls;
+      el._comparison = 'open';
+
+      el.handleCloseDialog();
+      await nextFrame();
+
+      expect(handle.closed).to.equal(0);
+      expect(el._dialogItem).to.exist;
     });
   });
 
@@ -760,6 +965,7 @@ describe('PrepareMenu', () => {
         element.handleIframeLoad({
           target: {
             src: 'https://example.com/plugin.html',
+            hasAttribute: () => false,
             contentWindow: { postMessage: (data, origin, ports) => resolve(ports[0]) },
           },
         });
