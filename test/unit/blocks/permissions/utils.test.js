@@ -16,6 +16,7 @@ import {
   hasPermissionsSheet,
   addMembers,
   removeMember,
+  parseFolderPath,
 } from '../../../../blocks/permissions/utils.js';
 
 describe('permissions utils', () => {
@@ -358,6 +359,24 @@ describe('permissions utils', () => {
     it('is a no-op when the member is absent', () => {
       const { changed } = removeMember(makeMultiConfig(), '/s/+**', 'write', 'nobody@x.com');
       expect(changed).to.be.false;
+    });
+  });
+
+  describe('parseFolderPath', () => {
+    it('accepts a path starting with / and returns the folder without outer slashes', () => {
+      expect(parseFolderPath('/blog')).to.deep.equal({ folder: 'blog' });
+      expect(parseFolderPath('  /blog/drafts/  ')).to.deep.equal({ folder: 'blog/drafts' });
+      expect(parseFolderPath('//blog//drafts')).to.deep.equal({ folder: 'blog/drafts' });
+    });
+
+    it('rejects a path that does not start with /', () => {
+      expect(parseFolderPath('blog')).to.deep.equal({ error: 'Folder paths start with /, e.g. /blog.' });
+    });
+
+    it('rejects an empty value and the site root', () => {
+      expect(parseFolderPath('   ')).to.deep.equal({ error: 'Enter a folder path, e.g. /blog.' });
+      expect(parseFolderPath('/')).to.deep.equal({ error: 'Enter a folder below the site root, e.g. /blog.' });
+      expect(parseFolderPath('///')).to.deep.equal({ error: 'Enter a folder below the site root, e.g. /blog.' });
     });
   });
 });

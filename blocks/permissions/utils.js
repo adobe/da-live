@@ -79,6 +79,21 @@ export function folderRulePath(site, folder) {
 }
 
 /**
+ * Validate a folder path typed by the user ("/blog/drafts") and return the
+ * folder relative to the site ("blog/drafts"), or an error message.
+ * @param {string} value
+ * @returns {{ folder: string } | { error: string }}
+ */
+export function parseFolderPath(value) {
+  const trimmed = (value || '').trim();
+  if (!trimmed) return { error: 'Enter a folder path, e.g. /blog.' };
+  if (!trimmed.startsWith('/')) return { error: 'Folder paths start with /, e.g. /blog.' };
+  const folder = trimmed.split('/').filter(Boolean).join('/');
+  if (!folder) return { error: 'Enter a folder below the site root, e.g. /blog.' };
+  return { folder };
+}
+
+/**
  * Classify a rule path's scope kind. String comparisons only — never builds a
  * RegExp from `site`, so sites with regex-special characters (`my.site`) are
  * matched literally.

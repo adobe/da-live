@@ -108,25 +108,3 @@ export async function listSites(org) {
   if (!ok) return [];
   return items.filter((item) => !item.ext).map((item) => item.name);
 }
-
-/**
- * List the folders under a path within a site (folders only).
- * @param {string} org
- * @param {string} site
- * @param {string} [path]
- * @returns {Promise<{ name: string, path: string }[]>}
- */
-export async function listFolders(org, site, path = '/') {
-  const { source } = await getNx2Api();
-  let ok;
-  let items;
-  try {
-    ({ ok, items } = await source.list({ org, site, path }));
-  } catch {
-    return [];
-  }
-  if (!ok) return [];
-  return items
-    .filter((item) => !item.ext)
-    .map((item) => ({ name: item.name, path: item.path }));
-}

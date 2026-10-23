@@ -22,7 +22,7 @@ const NO_SHEET_BODY = {
   data: { total: 0, limit: 0, data: [] },
 };
 
-function mockFetch({ configFor, sitesFor = () => [], foldersFor = () => [] }) {
+function mockFetch({ configFor, sitesFor = () => [] }) {
   const putCalls = [];
   const pending = [];
   window.fetch = async (url, opts = {}) => {
@@ -35,19 +35,9 @@ function mockFetch({ configFor, sitesFor = () => [], foldersFor = () => [] }) {
       return new Promise((resolve) => { pending.push(resolve); });
     }
     if (href.includes('/list/')) {
-      const afterList = href.split('/list/')[1];
-      const orgEnd = afterList.indexOf('/');
-      if (orgEnd === -1) {
-        // `/list/{org}` — site list.
-        return new Response(JSON.stringify(sitesFor(afterList)), { status: 200 });
-      }
-      // `/list/{org}/{site}{path}` — folder list.
-      const org = afterList.slice(0, orgEnd);
-      const rest = afterList.slice(orgEnd + 1);
-      const siteEnd = rest.indexOf('/');
-      const site = siteEnd === -1 ? rest : rest.slice(0, siteEnd);
-      const path = siteEnd === -1 ? '/' : rest.slice(siteEnd);
-      return new Response(JSON.stringify(foldersFor(org, site, path)), { status: 200 });
+      // `/list/{org}` — site list.
+      const org = href.split('/list/')[1].split('/')[0];
+      return new Response(JSON.stringify(sitesFor(org)), { status: 200 });
     }
     const match = href.match(/\/config\/([^/]+)/);
     const org = match ? match[1] : null;
@@ -555,31 +545,66 @@ describe('da-permissions folder permission', () => {
     expect(cards.canAddFolder).to.equal(true);
     cards.shadowRoot.querySelector('button.add-folder').click();
     await el.updateComplete;
-    const picker = el.shadowRoot.querySelector('da-folder-picker');
-    await settle(picker, () => picker._columns.length > 0);
-    return picker;
+    return el.shadowRoot.querySelector('nx-dialog');
   }
 
-  function pickFolder(picker, name) {
-    const btn = [...picker.shadowRoot.querySelectorAll('.folder-item')]
-      .find((b) => b.textContent.trim() === name);
-    btn.click();
+  async function submitFolder(el, value) {
+    const dialog = el.shadowRoot.querySelector('nx-dialog');
+    dialog.querySelector('input.folder-path-input').value = value;
+    dialog.querySelector('button.folder-add-submit').click();
+    await el.updateComplete;
   }
 
-  it('folder-select: dialog closes, the row is pending, and the Read add input is open', async () => {
-    mockFetch({
-      configFor: () => SITE_CONFIG_BODY,
-      foldersFor: () => [{ name: 'blog', path: '/myorg/mysite/blog' }],
-    });
+  async function addFolder(el, value) {
+    await openFolderDialog(el);
+    await submitFolder(el, value);
+  }
+
+  it('opens a dialog with a single folder path field', async () => {
+    mockFetch({ configFor: () => SITE_CONFIG_BODY });
     const el = await mount('myorg', 'mysite');
 
-    const picker = await openFolderDialog(el);
-    pickFolder(picker, 'blog');
-    await settle(picker, () => picker._selected === 'blog' && !picker._loading);
+    const dialog = await openFolderDialog(el);
+    expect(dialog?.getAttribute('title')).to.equal('Add folder permission');
+    const input = dialog?.querySelector('input.folder-path-input.nx-input');
+    expect(input?.getAttribute('placeholder')).to.equal('/blog/drafts');
+    expect(!!dialog.querySelector('da-folder-picker')).to.equal(false);
+  });
 
-    const addBtn = picker.shadowRoot.querySelector('.nx-btn-accent');
-    addBtn.click();
+  it('submits the folder path with Enter (form submit)', async () => {
+    mockFetch({ configFor: () => SITE_CONFIG_BODY });
+    const el = await mount('myorg', 'mysite');
+
+    const dialog = await openFolderDialog(el);
+    dialog.querySelector('input.folder-path-input').value = '/blog/drafts/';
+    dialog.querySelector('form.folder-add-form').requestSubmit();
     await el.updateComplete;
+
+    expect(!!el.shadowRoot.querySelector('nx-dialog')).to.equal(false);
+    expect(el._pendingFolder).to.equal('blog/drafts');
+  });
+
+  it('shows a validation error and keeps the dialog open when the path does not start with /', async () => {
+    mockFetch({ configFor: () => SITE_CONFIG_BODY });
+    const el = await mount('myorg', 'mysite');
+
+    await addFolder(el, 'blog');
+    const dialog = el.shadowRoot.querySelector('nx-dialog');
+    expect(!!dialog).to.equal(true);
+    expect(dialog.querySelector('.nx-input-error-msg')?.textContent.trim())
+      .to.equal('Folder paths start with /, e.g. /blog.');
+    expect(el._pendingFolder).to.equal(null);
+
+    await submitFolder(el, '/blog');
+    expect(!!el.shadowRoot.querySelector('nx-dialog')).to.equal(false);
+    expect(el._pendingFolder).to.equal('blog');
+  });
+
+  it('folder-select: dialog closes, the row is pending, and the Read add input is open', async () => {
+    mockFetch({ configFor: () => SITE_CONFIG_BODY });
+    const el = await mount('myorg', 'mysite');
+
+    await addFolder(el, '/blog');
 
     expect(el.shadowRoot.querySelector('nx-dialog')).to.equal(null);
     expect(el._pendingFolder).to.equal('blog');
@@ -591,17 +616,10 @@ describe('da-permissions folder permission', () => {
   });
 
   it('cancelling the add leaves the pending row without saving', async () => {
-    const { putCalls } = mockFetch({
-      configFor: () => SITE_CONFIG_BODY,
-      foldersFor: () => [{ name: 'blog', path: '/myorg/mysite/blog' }],
-    });
+    const { putCalls } = mockFetch({ configFor: () => SITE_CONFIG_BODY });
     const el = await mount('myorg', 'mysite');
 
-    const picker = await openFolderDialog(el);
-    pickFolder(picker, 'blog');
-    await settle(picker, () => picker._selected === 'blog' && !picker._loading);
-    picker.shadowRoot.querySelector('.nx-btn-accent').click();
-    await el.updateComplete;
+    await addFolder(el, '/blog');
 
     const cards = el.shadowRoot.querySelector('da-permissions-cards');
     await cards.updateComplete;
@@ -628,17 +646,10 @@ describe('da-permissions folder permission', () => {
         data: [{ path: '/s/ + **', groups: 'a@x.com', actions: 'write' }],
       },
     };
-    const { putCalls, resolvePut } = mockFetch({
-      configFor: () => SITE_S_CONFIG_BODY,
-      foldersFor: () => [{ name: 'blog', path: '/myorg/s/blog' }],
-    });
+    const { putCalls, resolvePut } = mockFetch({ configFor: () => SITE_S_CONFIG_BODY });
     const el = await mount('myorg', 's');
 
-    const picker = await openFolderDialog(el);
-    pickFolder(picker, 'blog');
-    await settle(picker, () => picker._selected === 'blog' && !picker._loading);
-    picker.shadowRoot.querySelector('.nx-btn-accent').click();
-    await el.updateComplete;
+    await addFolder(el, '/blog');
 
     const blogPath = '/s/blog/ + **';
     expect(el._pendingFolder).to.equal('blog');
@@ -669,15 +680,10 @@ describe('da-permissions folder permission', () => {
     mockFetch({
       configFor: () => SITE_CONFIG_BODY,
       sitesFor: () => [{ name: 'mysite' }, { name: 'othersite' }],
-      foldersFor: () => [{ name: 'blog', path: '/myorg/mysite/blog' }],
     });
     const el = await mount('myorg', 'mysite');
 
-    const picker = await openFolderDialog(el);
-    pickFolder(picker, 'blog');
-    await settle(picker, () => picker._selected === 'blog' && !picker._loading);
-    picker.shadowRoot.querySelector('.nx-btn-accent').click();
-    await el.updateComplete;
+    await addFolder(el, '/blog');
 
     expect(el._pendingFolder).to.equal('blog');
 

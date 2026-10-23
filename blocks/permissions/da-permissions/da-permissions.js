@@ -4,14 +4,13 @@ import getSheet from '../../shared/sheet.js';
 import { loadOrgConfig, listSites, mutatePermissions } from '../api.js';
 import {
   buildSlots, siteNames, parseMembers, addMembers, removeMember, scopeLabel, filterSlots,
-  folderRulePath, LEVEL_LABEL,
+  folderRulePath, parseFolderPath, LEVEL_LABEL,
 } from '../utils.js';
 
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
 await import(`${getNx()}/blocks/shared/search/search.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 await import('../da-permissions-cards/da-permissions-cards.js');
-await import('../folder-picker/folder-picker.js');
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -47,6 +46,7 @@ class DaPermissions extends LitElement {
     _confirmRemove: { state: true },
     _pendingFolder: { state: true },
     _folderDialogOpen: { state: true },
+    _folderError: { state: true },
   };
 
   constructor() {
@@ -65,6 +65,7 @@ class DaPermissions extends LitElement {
     this._confirmRemove = null;
     this._pendingFolder = null;
     this._folderDialogOpen = false;
+    this._folderError = null;
   }
 
   connectedCallback() {
@@ -215,7 +216,20 @@ class DaPermissions extends LitElement {
   }
 
   _onOpenFolderDialog() {
+    this._folderError = null;
     this._folderDialogOpen = true;
+  }
+
+  _onFolderSubmit(e) {
+    e?.preventDefault();
+    const input = this.shadowRoot.querySelector('.folder-path-input');
+    const result = parseFolderPath(input?.value);
+    if (result.error) {
+      this._folderError = result.error;
+      return;
+    }
+    this._folderError = null;
+    this._onFolderSelect({ detail: { folder: result.folder } });
   }
 
   _onFolderSelect({ detail }) {
@@ -339,14 +353,26 @@ class DaPermissions extends LitElement {
 
   _renderFolderDialog() {
     if (!this._folderDialogOpen) return nothing;
+    const error = this._folderError;
     return html`
       <nx-dialog title="Add folder permission" @close=${() => this._onFolderCancel()}>
-        <da-folder-picker
-          .org=${this.org}
-          .site=${this.site}
-          @folder-select=${(e) => this._onFolderSelect(e)}
-          @folder-cancel=${() => this._onFolderCancel()}
-        ></da-folder-picker>
+        <form class="folder-add-form" @submit=${(e) => this._onFolderSubmit(e)}>
+          <div class="nx-form-field ${error ? 'nx-field-error' : ''}">
+            <label for="permissions-folder-path">Folder path</label>
+            <input
+              id="permissions-folder-path"
+              class="folder-path-input nx-input"
+              type="text"
+              placeholder="/blog/drafts"
+              autocomplete="off"
+              autofocus
+              aria-invalid=${error ? 'true' : 'false'}
+            >
+            ${error ? html`<p class="nx-input-error-msg" role="alert">${error}</p>` : nothing}
+          </div>
+        </form>
+        <button type="button" slot="actions" class="nx-action-btn" @click=${() => this._onFolderCancel()}>Cancel</button>
+        <button type="button" slot="actions" class="folder-add-submit nx-btn-primary" @click=${() => this._onFolderSubmit()}>Add</button>
       </nx-dialog>`;
   }
 

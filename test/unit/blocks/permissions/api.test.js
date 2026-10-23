@@ -3,7 +3,7 @@ import { expect } from '@esm-bundle/chai';
 const { setNx } = await import('../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { loadOrgConfig, mutatePermissions, listSites, listFolders } = await import('../../../../blocks/permissions/api.js');
+const { loadOrgConfig, mutatePermissions, listSites } = await import('../../../../blocks/permissions/api.js');
 
 const CONFIG_BODY = {
   ':names': ['data', 'permissions'],
@@ -232,46 +232,5 @@ describe('permissions/api listSites', () => {
     window.fetch = () => Promise.reject(new TypeError('Failed to fetch'));
     const sites = await listSites('myorg');
     expect(sites).to.deep.equal([]);
-  });
-});
-
-describe('permissions/api listFolders', () => {
-  let savedFetch;
-
-  beforeEach(() => { savedFetch = window.fetch; });
-  afterEach(() => { window.fetch = savedFetch; });
-
-  it('returns folders only, as { name, path }', async () => {
-    window.fetch = async (url) => {
-      const href = String(url);
-      if (href.includes('/ping/')) return new Response('', { status: 200 });
-      const items = [
-        { name: 'assets', path: '/myorg/mysite/docs/assets' },
-        { name: 'page.html', path: '/myorg/mysite/docs/page.html', ext: 'html' },
-      ];
-      return new Response(JSON.stringify(items), { status: 200 });
-    };
-    const folders = await listFolders('myorg', 'mysite', '/docs');
-    expect(folders).to.deep.equal([{ name: 'assets', path: '/myorg/mysite/docs/assets' }]);
-  });
-
-  it('returns [] on failure', async () => {
-    window.fetch = async (url) => {
-      const href = String(url);
-      if (href.includes('/ping/')) return new Response('', { status: 200 });
-      return new Response('', { status: 500 });
-    };
-    const folders = await listFolders('myorg', 'mysite');
-    expect(folders).to.deep.equal([]);
-  });
-
-  it('returns [] on network failure (rejected fetch), no throw', async () => {
-    window.fetch = (url) => {
-      const href = String(url);
-      if (href.includes('/ping/')) return Promise.resolve(new Response('', { status: 200 }));
-      return Promise.reject(new TypeError('Failed to fetch'));
-    };
-    const folders = await listFolders('myorg', 'mysite');
-    expect(folders).to.deep.equal([]);
   });
 });
