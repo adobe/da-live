@@ -218,6 +218,18 @@ describe('da-permissions-cards', () => {
     expect(row.querySelector('nx-pills.inherited-pills').label).to.equal('Site configurations Write inherited from myorg');
   });
 
+  it('renders every pill list at nx-pills size m', async () => {
+    const slot = baseSlot({
+      write: ['a@x.com'],
+      inheritedWrite: ['b@example.com'],
+      none: ['c@x.com'],
+    });
+    const el = await mount({ slots: [slot], org: 'myorg' });
+    const lists = [...el.shadowRoot.querySelectorAll('nx-pills')];
+    expect(lists.length).to.equal(3);
+    lists.forEach((list) => expect(list.getAttribute('size')).to.equal('m'));
+  });
+
   it('renders inherited-only read row with .from-label, inherited pills, and no .direct-pills', async () => {
     const slot = baseSlot({
       path: '/myorg/site1/ + **',

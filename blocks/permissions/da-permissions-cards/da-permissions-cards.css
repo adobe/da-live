@@ -81,8 +81,6 @@
    Needs da-nx's --nx-pills-max-height (nx-pills otherwise clamps at two rows). */
 nx-pills {
   --nx-pills-max-height: none;
-  --nx-pill-font-size: var(--s2-component-m-regular-font-size);
-  --nx-pill-line-height: var(--s2-component-m-regular-line-height);
 }
 
 .level-row[data-level='none'] nx-pills {

@@ -115,6 +115,7 @@ class DaPermissionsCards extends LitElement {
         ${total === 0 ? html`<span class="row-empty">No one</span>` : html`
           ${direct.length ? html`
             <nx-pills
+              size="m"
               class="direct-pills"
               .label=${directLabel}
               .items=${direct.map((who) => ({ id: who, label: who, removable }))}
@@ -124,6 +125,7 @@ class DaPermissionsCards extends LitElement {
           ${inherited.length ? html`
             <span class="from-label">From ${this.org}</span>
             <nx-pills
+              size="m"
               class="inherited-pills"
               .label=${inheritedLabel}
               .items=${inherited.map((who) => ({ id: who, label: who, removable: false }))}
