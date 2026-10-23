@@ -25,10 +25,17 @@
   gap: var(--s2-spacing-200);
 }
 
-/* Filter gets the room; the site picker keeps its natural width on the right. */
+/* Filter gets the room (40rem, shrinking on narrow screens). */
 .permissions-header-actions nx-search {
-  flex: 1 1 auto;
-  max-width: 40rem;
+  flex: 0 1 40rem;
+  min-width: 12rem;
+}
+
+/* nx-picker's host is display: contents and its field trigger is width: 100%, so wrap it in a
+   box that only takes the width it needs, pinned to the right. */
+.permissions-site-picker {
+  flex: none;
+  margin-left: auto;
 }
 
 .permissions-title {

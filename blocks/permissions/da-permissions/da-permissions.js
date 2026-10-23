@@ -278,13 +278,15 @@ class DaPermissions extends LitElement {
             .value=${this._query}
             @input=${(e) => this._onFilterInput(e)}
           ></nx-search>
-          <nx-picker
-            variant="field"
-            size="m"
-            .items=${pickerItems}
-            .value=${this.site ?? ''}
-            @change=${(e) => this._onPickerChange(e)}
-          ></nx-picker>
+          <div class="permissions-site-picker">
+            <nx-picker
+              variant="field"
+              size="m"
+              .items=${pickerItems}
+              .value=${this.site ?? ''}
+              @change=${(e) => this._onPickerChange(e)}
+            ></nx-picker>
+          </div>
         </div>
       </div>`;
   }
