@@ -112,15 +112,16 @@ nx-pills {
   min-width: 0;
 }
 
-/* Inherited pills are a shade lighter than the site's own members. */
+/* Inherited pills are neutral gray so they read as "managed at the org", unlike the
+   site's own (blue / red) members. Inherited deny members keep red text. */
 .inherited-pills {
-  --nx-pill-background: color-mix(in srgb, var(--s2-blue-200) 55%, var(--s2-gray-25));
-  --nx-pill-color: var(--s2-blue-900);
+  --nx-pill-background: var(--s2-gray-200);
+  --nx-pill-color: var(--s2-gray-800);
 }
 
 .level-row[data-level='none'] .inherited-pills {
-  --nx-pill-background: color-mix(in srgb, var(--s2-red-200) 55%, var(--s2-gray-25));
-  --nx-pill-color: var(--s2-red-900);
+  --nx-pill-background: var(--s2-gray-200);
+  --nx-pill-color: var(--s2-red-1000);
 }
 
 .row-empty {
