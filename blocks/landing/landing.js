@@ -1,7 +1,7 @@
 import { LitElement, html, nothing, repeat } from 'da-lit';
 import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
 import { getChatPanelContent, setChatPrompt, addChatContext } from '../shared/chat-panel.js';
-import { getTypeLabel } from '../shared/icons.js';
+import { getTypeLabel, isImageExt } from '../shared/icons.js';
 import { getFavorites, toggleFavorite } from '../browse/shared/favorites.js';
 import { getBrowseSettings, updateBrowseSettings } from '../browse/v2/shared/settings.js';
 import { setRecentSite } from '../browse/da-sites/utils.js';
@@ -531,7 +531,7 @@ export class DaLanding extends LitElement {
             <span>${item.name}</span>
           </a>
           <span slot="actions">${this.renderFileActions(item)}</span>
-          <p slot="metadata" class="file-date">${modified ? html`Modified at · <time datetime=${modified.date.toISOString()}>${modified.label}</time>` : 'Date unavailable'}</p>
+          <p slot="metadata" class="file-date">${modified ? html`Modified at • <time datetime=${modified.date.toISOString()}>${modified.label}</time>` : 'Date unavailable'}</p>
           ${this._favorites?.has(item.path) ? html`<img slot="badge" class="file-favorite-badge"
             src=${new URL('./star-filled.svg', import.meta.url).href} width="20" height="20" alt="Favorite">` : nothing}
         </nx-card>
@@ -543,8 +543,10 @@ export class DaLanding extends LitElement {
     const folder = item.path.slice(0, item.path.lastIndexOf('/'));
     return html`<tr class="file-row">
       <td><a class="list-file-link" href=${getFileHref({ item, editor: this._editor || '/canvas#' })}>
-        <span class="file-type-icon" aria-hidden="true"
-          style="--file-icon: url('${getLandingIconHref(item)}')"></span>
+        ${isImageExt(item.ext) ? html`<da-card-preview class="list-file-preview"
+          .path=${item.path} .ext=${item.ext} .iconHref=${getLandingIconHref(item)}
+          aria-hidden="true"></da-card-preview>` : html`<span class="file-type-icon" aria-hidden="true"
+          style="--file-icon: url('${getLandingIconHref(item)}')"></span>`}
         <span>${item.name}</span>
       </a></td>
       <td><a class="file-folder" href=${getBrowseHref({ path: folder })} title=${folder}>${folder.slice(this.path.length) || '/'}</a></td>
@@ -643,7 +645,7 @@ export class DaLanding extends LitElement {
         <section class="files-panel" aria-labelledby="files-heading">
           <div class="panel-heading">
             <h2 id="files-heading">Files</h2>
-            <nx-segmented-btn label="File view" size=${this.uiSize} .items=${VIEW_ITEMS}
+            <nx-segmented-btn label="File view" size="m" variant="quiet" .items=${VIEW_ITEMS}
               .value=${this._view} @change=${this.changeView}></nx-segmented-btn>
           </div>
           <div class="files-toolbar">

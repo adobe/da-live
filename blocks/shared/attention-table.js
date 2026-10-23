@@ -50,7 +50,6 @@ function resizePointer(event) {
 
 export default function renderAttentionTable({ comments, renderCommentRow, status }) {
   return html`<div class="tasks-table">
-    ${status}
     <div class="tasks-scroll" role="region" aria-label="Need Attention" tabindex="0">
       <table aria-labelledby="tasks-heading" aria-describedby="tasks-availability">
         <colgroup>${HEADINGS.map(() => html`<col>`)}</colgroup>
@@ -84,6 +83,7 @@ export default function renderAttentionTable({ comments, renderCommentRow, statu
         </tbody>
       </table>
     </div>
+    ${status}
     <p id="tasks-availability" class="tasks-preview-note">${comments?.length
       ? 'Open Comment rows are your live unresolved comment threads. Other rows are sample tasks for layout preview.'
       : 'Sample tasks for layout preview. Not live site data.'}</p>

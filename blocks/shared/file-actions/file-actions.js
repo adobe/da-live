@@ -15,7 +15,7 @@ export default class DaFileActions extends LitElement {
     path: {},
     name: {},
     ext: {},
-    view: {},
+    view: { reflect: true },
     isFavorited: { type: Boolean },
     _open: { state: true },
     _status: { state: true },
@@ -42,11 +42,13 @@ export default class DaFileActions extends LitElement {
   }
 
   close = () => {
+    const restoreFocus = this.popover?.contains(this.shadowRoot.activeElement);
     this._request?.abort();
     this._open = false;
     this._status = undefined;
     this._aem = undefined;
     this._error = undefined;
+    if (restoreFocus && this.isConnected) this.shadowRoot.querySelector('.details-trigger')?.focus();
   };
 
   async loadDetails() {
@@ -73,7 +75,7 @@ export default class DaFileActions extends LitElement {
     this._open = true;
     const loading = this.ext && this.ext !== 'link' ? this.loadDetails() : Promise.resolve();
     await this.updateComplete;
-    if (this._open) this.popover?.show({ anchor: currentTarget, placement: 'auto' });
+    if (this._open) this.popover?.show({ anchor: currentTarget, placement: this.view === 'card' ? 'right' : 'auto' });
     await loading;
   }
 
@@ -130,7 +132,7 @@ export default class DaFileActions extends LitElement {
           ${this._error ? html`<p role="status">${this._error}
             <button type="button" class="nx-action-btn-quiet" @click=${this.loadDetails}>Try again</button></p>` : nothing}
         </section>` : nothing}
-        ${card ? html`<button class="favorite-action nx-action-btn-quiet" type="button"
+        ${card ? html`<hr><button class="favorite-action nx-action-btn-quiet" type="button"
           aria-label=${`${favoriteLabel}: ${this.name}`} @click=${this.favorite}>
           <span>${favoriteLabel}</span><svg viewBox="0 0 20 20" aria-hidden="true">
             <use href="${favoriteIcon}#icon"></use></svg></button>` : nothing}

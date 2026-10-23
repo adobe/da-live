@@ -43,6 +43,31 @@ adobe/da-live#1416 is modified or merged by this work.
   (`file-table.js` and `attention-table.js`), not a new general table framework.
 - `da-file-actions` supplies the card menu and list information/favorite controls.
   It reuses Browse's source/version and preview/publish status helpers.
+  The card popover opens beside its trigger, flips near viewport edges and
+  follows scrolling. Its normal details/favorite state is 240px by 193px.
+  Closing a keyboard-focused menu returns focus to its trigger without stealing
+  focus from an outside click.
+
+## Figma fidelity
+
+The 1920px Ready frame (`1852:83848`) has a 1068px Files panel starting at y=395.
+Ten compact cards are 142px tall with 4px frame padding, 80px thumbnails,
+12px title/metadata insets and a 12px radius; the panel is 406px tall.
+The quiet view switcher has two 32px buttons. Need Attention follows after 40px.
+These are the default-size design dimensions, not a claim of live S/M integration.
+
+The app-level site picker uses the shared `menu-variant="site"` presentation:
+leading selected checkmark, two-line entries and a leading Add site icon.
+Its secondary line is the real org/site identifier, not a fabricated domain.
+List image files reuse lazy previews in 28px thumbnail slots; information and
+favorite controls use 20px icons in separate 48px visual slots.
+Sheet items use the plain folded-corner `S2_Icon_File_20_N`, not FileText.
+The latest card metadata uses the design's bullet separator.
+
+Friendly site names/domains, approved Spectrum VF fonts, published-page
+screenshots and live task data remain data/asset dependencies. Existing source
+previews, permission rules, Subtle composer states and live/sample notices are
+intentional differences rather than substitutes for those missing inputs.
 
 ## Scope
 
@@ -201,6 +226,9 @@ adobe/da-live#1416 is modified or merged by this work.
   Separate resize handles support pointer dragging and keyboard ArrowLeft /
   ArrowRight (16px), Home (80px) and End (1200px). Resizing stays local to the
   current table; it does not imply working column menus or live task actions.
+  Initial columns follow the design's proportions (230/553/133/120 at 1036px).
+  Comment loading/empty/error notices sit below the table so they do not displace
+  its header; the live-comment/sample distinction remains visible.
 - Need Attention also lists the signed-in user's **open comment threads**: unresolved
   threads in root-level pages that the user started or replied to, newest activity
   first, above the sample rows. They read the same `.da/comments/{docId}/` store as

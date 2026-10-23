@@ -59,7 +59,7 @@ describe('landing page', () => {
     expect(el.shadowRoot.textContent).not.to.include('Site root');
     expect(el.shadowRoot.querySelector('nx-picker')).to.equal(null);
     expect(nav.querySelector('nx-picker').value).to.equal('org/site');
-    expect(el.shadowRoot.querySelector('.file-date').textContent).to.include('Modified at');
+    expect(el.shadowRoot.querySelector('.file-date').textContent).to.include('Modified at •');
   });
 
   it('matches the mock composer branding, placeholder and disclaimer', () => {
@@ -76,9 +76,13 @@ describe('landing page', () => {
     expect(nav.querySelector('[slot="search"]')).to.equal(el._sitePicker);
     expect(el._sitePicker.variant).to.equal('field');
     expect(el._sitePicker.size).to.equal('m');
+    expect(el._sitePicker.menuVariant).to.equal('site');
+    expect(el._sitePicker.items[1]).to.include({ label: 'site', description: 'org/site', ariaLabel: 'site (org)' });
+    expect(el._sitePicker.labelOverride).to.equal('site (org)');
     expect(el._sitePicker.items[0]).to.deep.equal({ section: 'Your Sites' });
     expect(el._sitePicker.items.at(-2)).to.deep.equal({ divider: true });
     expect(el._sitePicker.items.at(-1).label).to.equal('Add site...');
+    expect(el._sitePicker.items.at(-1).leadingIcon).to.equal('/img/icons/s2-icon-add-20-n.svg');
     expect(nav.querySelector('[slot="brand"], [slot="actions"]')).to.equal(null);
     hashChange._set({ org: 'org', site: 'other', fullpath: '/org/other' });
     await el.updateComplete;
@@ -209,6 +213,7 @@ describe('landing page', () => {
     expect(el.shadowRoot.querySelector('.tasks-panel table').getAttribute('aria-describedby')).to.equal('tasks-availability');
     expect(el.shadowRoot.querySelector('.tasks-table .tasks-preview-note')).not.to.equal(null);
     expect(el.shadowRoot.querySelector('.tasks-scroll .tasks-preview-note')).to.equal(null);
+    expect(el.shadowRoot.querySelector('.tasks-table').firstElementChild.matches('.tasks-scroll')).to.equal(true);
     const rows = [...el.shadowRoot.querySelectorAll('.tasks-panel tbody tr')];
     expect(rows.map((row) => row.cells[0].textContent)).to.deep.equal([
       'Frescopa Homepage', 'Atelier Nova', 'Taste Profiles', 'Coffee Machines', 'Atelier Nova Campaign',
@@ -280,13 +285,13 @@ describe('landing page', () => {
     expect(JSON.parse(localStorage.getItem('da-sites'))).to.deep.equal(['org/site', 'org/other']);
   });
 
-  it('explains the comment scope above the sample rows when no threads match', async () => {
+  it('explains the comment scope below the table when no threads match', async () => {
     el._comments = [];
     await el.updateComplete;
     const status = el.shadowRoot.querySelector('.tasks-comments-status');
     expect(status.textContent).to.include('No unresolved comment threads you started or replied to');
     expect(status.textContent).to.include('root-level pages');
-    expect(el.shadowRoot.querySelector('.tasks-table').firstElementChild).to.equal(status);
+    expect(status.previousElementSibling.matches('.tasks-scroll')).to.equal(true);
     expect(el.shadowRoot.querySelectorAll('.tasks-panel tbody tr')).to.have.length(5);
   });
 
@@ -432,6 +437,18 @@ describe('landing page', () => {
     expect(el._files).to.equal(ITEMS);
   });
 
+  it('reuses lazy image previews in list rows without adding page thumbnails to the list', async () => {
+    el._files = [...ITEMS, { name: 'Image', path: '/org/site/image.png', ext: 'png' }];
+    el.changeView({ detail: { value: 'list' } });
+    await el.updateComplete;
+    const previews = el.shadowRoot.querySelectorAll('da-card-preview');
+    expect(previews).to.have.length(1);
+    expect(previews[0].classList.contains('list-file-preview')).to.equal(true);
+    expect(previews[0].path).to.equal('/org/site/image.png');
+    expect(previews[0].getAttribute('aria-hidden')).to.equal('true');
+    expect(previews[0].documentPreview).not.to.equal(true);
+  });
+
   it('keeps the Canvas route when EW is enabled but chat is disabled', async () => {
     el._editor = '/canvas#';
     el._chatEnabled = false;
@@ -460,7 +477,7 @@ describe('landing page', () => {
     expect(loadSite.callCount).to.equal(2);
   });
 
-  it('switches S/M live without losing the prompt, filter or files', async () => {
+  it('keeps compact picker/view dimensions while S/M changes preserve page state', async () => {
     el._prompt = 'Update this page';
     el._tab = 'starred';
     setUISize({ size: 'm' });
@@ -468,13 +485,14 @@ describe('landing page', () => {
     expect(el.dataset.uiSize).to.equal('m');
     expect(nav.querySelector('nx-picker').size).to.equal('m');
     expect(el.shadowRoot.querySelector('nx-segmented-btn').getAttribute('size')).to.equal('m');
+    expect(el.shadowRoot.querySelector('nx-segmented-btn').getAttribute('variant')).to.equal('quiet');
     expect(el.shadowRoot.querySelector('button[type="submit"]').classList.contains('nx-btn-lg')).to.equal(true);
     expect(el._prompt).to.equal('Update this page');
     expect(el._tab).to.equal('starred');
     expect(el._files).to.equal(ITEMS);
     setUISize({ size: 's' });
     await el.updateComplete;
-    expect(el.shadowRoot.querySelector('nx-segmented-btn').getAttribute('size')).to.equal('s');
+    expect(el.shadowRoot.querySelector('nx-segmented-btn').getAttribute('size')).to.equal('m');
     expect(el.shadowRoot.querySelector('button[type="submit"]').classList.contains('nx-btn-lg')).to.equal(false);
   });
 

@@ -74,6 +74,25 @@ describe('shared file actions', () => {
     expect(el.shadowRoot.querySelector('.favorite-action').textContent).to.include('Remove as Favorite');
   });
 
+  it('restores focus when a focused menu closes but does not steal an outside click', async () => {
+    await open();
+    el.shadowRoot.querySelector('.favorite-action').focus();
+    el.popover.dispatchEvent(new Event('close'));
+    await el.updateComplete;
+    expect(el.shadowRoot.activeElement?.classList.contains('details-trigger')).to.equal(true);
+    const outside = document.createElement('button');
+    document.body.append(outside);
+    try {
+      await open();
+      outside.focus();
+      el.popover.dispatchEvent(new Event('close'));
+      await el.updateComplete;
+      expect(document.activeElement === outside).to.equal(true);
+    } finally {
+      outside.remove();
+    }
+  });
+
   it('offers folder favorites without requesting unsupported file details', async () => {
     el.ext = undefined;
     await open();
