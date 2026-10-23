@@ -350,7 +350,7 @@ export default class DaListItem extends LitElement {
             <h3>Details</h3>
             ${this.renderDetailsContent()}
           </section><hr>` : nothing}
-          <button type="button" class="card-favorite-action nx-action-btn-quiet" @click=${() => {
+          <button type="button" class="card-favorite-action nx-action-btn-quiet nx-btn-sm" @click=${() => {
           this.requestFavorite();
           this.popover?.close();
           this.closeDetails();
