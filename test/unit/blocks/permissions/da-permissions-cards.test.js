@@ -52,8 +52,8 @@ describe('da-permissions-cards', () => {
 
     const sections = [...el.shadowRoot.querySelectorAll('section.scope-section')];
     expect(sections.map((s) => s.dataset.section)).to.deep.equal(['config', 'content']);
-    expect(sections[0].querySelector('h3').textContent.trim()).to.equal('myorg Configuration Permissions');
-    expect(sections[1].querySelector('h3').textContent.trim()).to.equal('myorg Content Permissions');
+    expect(sections[0].querySelector('h3').textContent.trim()).to.equal('Configuration Permissions for: myorg');
+    expect(sections[1].querySelector('h3').textContent.trim()).to.equal('Content Permissions for: myorg');
     expect(sections[0].querySelector('.scope-card').dataset.path).to.equal('CONFIG');
     expect(sections[1].querySelector('.scope-card').dataset.path).to.equal('/ + **');
   });
@@ -66,9 +66,9 @@ describe('da-permissions-cards', () => {
 
     const sections = [...el.shadowRoot.querySelectorAll('section.scope-section')];
     expect(sections.map((s) => s.dataset.section)).to.deep.equal(['config', 'content', 'folders']);
-    expect(sections[0].querySelector('h3').textContent.trim()).to.equal('site1 Configuration Permissions');
-    expect(sections[1].querySelector('h3').textContent.trim()).to.equal('site1 Content Permissions');
-    expect(sections[2].querySelector('h3').textContent.trim()).to.equal('Folders');
+    expect(sections[0].querySelector('h3').textContent.trim()).to.equal('Configuration Permissions for: site1');
+    expect(sections[1].querySelector('h3').textContent.trim()).to.equal('Content Permissions for: site1');
+    expect(sections[2].querySelector('h3').textContent.trim()).to.equal('Folder Permissions');
   });
 
   it('shows card titles only for folder and other rules, and names every card', async () => {

@@ -16,9 +16,9 @@ const [form, buttons, style] = await Promise.all([
 const INHERITED_KEY = { read: 'inheritedRead', write: 'inheritedWrite', none: 'inheritedNone' };
 
 const SECTION_LABEL = {
-  config: (name) => `${name} Configuration Permissions`,
-  content: (name) => `${name} Content Permissions`,
-  folders: () => 'Folders',
+  config: (name) => `Configuration Permissions for: ${name}`,
+  content: (name) => `Content Permissions for: ${name}`,
+  folders: () => 'Folder Permissions',
 };
 
 // The section heading already names config/content scopes; only these need a card title.
