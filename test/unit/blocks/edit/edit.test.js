@@ -11,6 +11,7 @@ const SOURCE_HTML = '<body><header></header><main><div><h1>Existing title</h1></
 describe('legacy explicitly configured offline navigation', () => {
   let root;
   let originalUrl;
+  let originalTitle;
   let fetchStub;
   let websocket;
 
@@ -20,6 +21,7 @@ describe('legacy explicitly configured offline navigation', () => {
 
   beforeEach(() => {
     originalUrl = window.location.href;
+    originalTitle = document.title;
     navigate('page');
     root = document.createElement('div');
     const content = document.createElement('da-content');
@@ -42,9 +44,11 @@ describe('legacy explicitly configured offline navigation', () => {
 
   afterEach(async () => {
     const content = root.querySelector('da-content');
+    fetchStub.resolves(new Response('', { status: 200 }));
     if (content.hasPendingSave) await content.forceSave();
     root.remove();
     window.history.replaceState(null, '', originalUrl);
+    document.title = originalTitle;
     sinon.restore();
   });
 
@@ -75,6 +79,57 @@ describe('legacy explicitly configured offline navigation', () => {
     websocket.resetHistory();
     window.dispatchEvent(new Event('focus'));
     expect(websocket.called).to.be.false;
+  });
+
+  [false, true].forEach((offline) => {
+    it(`keeps the denied document title without an editor when offline is ${offline}`, async () => {
+      const content = root.querySelector('da-content');
+      content.offline = offline;
+      fetchStub.callsFake(async (url) => new Response(
+        String(url).includes('/source/') ? 'Forbidden' : '{}',
+        { status: String(url).includes('/source/') ? 403 : 200 },
+      ));
+
+      await setUI(root).then(
+        () => expect.fail('Expected the denied source read to fail'),
+        (error) => expect(error.message).to.equal('Could not load the document (403).'),
+      );
+
+      const title = root.querySelector('da-title');
+      expect(title).not.to.be.null;
+      await title.updateComplete;
+      expect(title.shadowRoot.querySelector('h1').textContent).to.include('page');
+      expect(document.title).to.equal('Edit page - DA');
+      expect(content.proseEl).to.be.undefined;
+      expect(content.wsProvider).to.be.undefined;
+      expect(content.sourcePersistence).to.be.undefined;
+    });
+  });
+
+  it('retains unsaved content and its title when the destination source is denied', async () => {
+    await setUI(root);
+    const content = root.querySelector('da-content');
+    const title = root.querySelector('da-title');
+    const { view } = window;
+    view.dispatch(view.state.tr.insertText('Unsaved ', 1));
+    fetchStub.callsFake(async (url) => new Response(
+      String(url).includes('/source/') ? 'Forbidden' : '{}',
+      { status: String(url).includes('/source/') ? 403 : 200 },
+    ));
+    navigate('denied');
+
+    await setUI(root).then(
+      () => expect.fail('Expected the denied source read to fail'),
+      (error) => expect(error.message).to.equal('Could not load the document (403).'),
+    );
+
+    expect(window.location.hash).to.equal('#/navigationorg/navigationsite/page.html');
+    expect(window.view).to.equal(view);
+    expect(view.isDestroyed).to.be.false;
+    expect(view.state.doc.textContent).to.include('Unsaved Existing title');
+    expect(title.details.fullpath).to.equal('/navigationorg/navigationsite/page.html');
+    expect(content.hasPendingSave).to.be.true;
+    fetchStub.resolves(new Response('', { status: 200 }));
   });
 
   it('restores the hash and retains the editable document if saving fails', async () => {

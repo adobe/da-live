@@ -125,7 +125,16 @@ export async function setUI(el) {
       permissions = createResp.permissions || ['read'];
       doc = DOMPARSER.parseFromString(EMPTY_DOC, 'text/html');
     } else {
-      if (!resp.ok) throw new Error(`Could not load the document (${resp.status}).`);
+      if (!resp.ok) {
+        if (currentContent?.proseEl) {
+          window.location.hash = `#${currentContent.details.fullpath}`;
+        } else {
+          document.title = `Edit ${details.name} - DA`;
+          const daTitle = initArea('da-title', details, el);
+          daTitle.permissions = [];
+        }
+        throw new Error(`Could not load the document (${resp.status}).`);
+      }
       permissions = resp.permissions || ['read'];
       const respText = await resp.text();
       doc = DOMPARSER.parseFromString(respText, 'text/html');
