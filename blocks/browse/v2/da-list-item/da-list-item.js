@@ -256,7 +256,7 @@ export default class DaListItem extends LitElement {
 
   renderFavorite(className = 'da-item-list-item-favorite') {
     return html`
-      <button type="button" class="${className} nx-action-btn-icon"
+      <button type="button" class="${className} nx-action-btn-icon nx-btn-sm"
         aria-label=${this.isFavorited ? 'Remove as Favorite' : 'Mark as Favorite'}
         title=${this.isFavorited ? 'Remove as Favorite' : 'Mark as Favorite'}
         aria-pressed=${this.isFavorited ? 'true' : 'false'}
@@ -350,7 +350,7 @@ export default class DaListItem extends LitElement {
             <h3>Details</h3>
             ${this.renderDetailsContent()}
           </section><hr>` : nothing}
-          <button type="button" class="card-favorite-action nx-action-btn-quiet nx-btn-sm" @click=${() => {
+          <button type="button" class="card-favorite-action nx-action-btn-quiet" @click=${() => {
           this.requestFavorite();
           this.popover?.close();
           this.closeDetails();
