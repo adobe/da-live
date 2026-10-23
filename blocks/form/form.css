@@ -3,15 +3,21 @@
 :root {
   --form-content-top: 32px;
 
-  /* Top gap for scrolled-to groups + the sticky nav, applied by the editor
-     content. Apply it there only — padding the .nx-form scroll container would
-     misalign the two. */
+  /* Top offset for groups scrolled into view and for the sticky nav. Only
+     the editor content applies it. Padding the .form scroll container as
+     well would misalign the two. */
   --nx-scroll-offset-top: var(--form-content-top);
 }
 
-/* Nested scroll (like /canvas): the form scrolls inside a fixed-height region
-   below the global nav. */
-.nx-form {
+/* Nested scroll like /canvas. The form scrolls inside a fixed-height region
+   below the global nav.
+
+   `.form` is the block div, not the `<nx-form>` element inside it. That
+   element styles itself through editor.css in its shadow root. da-nx names
+   the block div `nx-form`, and routeStructuredContentBlock in
+   scripts/scripts.js renames it to `form` so da-live's copy loads. Hence
+   `.form` here instead of da-nx's `.nx-form`. */
+.form {
   box-sizing: border-box;
   height: calc(100vh - var(--s2-nav-height));
   overflow-y: auto;
@@ -19,12 +25,12 @@
 
 /* At this width main scrolls and has a border, so fill main instead of the viewport to avoid a second scrollbar. */
 @media (width >= 600px) {
-  main:has(.nx-form) > .section {
+  main:has(.form) > .section {
     min-height: 0;
   }
 
-  .block-content:has(> .nx-form),
-  .nx-form {
+  .block-content:has(> .form),
+  .form {
     height: 100%;
   }
 }

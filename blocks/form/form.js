@@ -89,11 +89,22 @@ async function setupChat(block) {
   if (wasPanelOpen('chat')) openChatPanel();
 }
 
-// Block entry: EW surfaces the form via an `nx-form` content block, which NX
-// loads as `nx/blocks/form/form.js`. This wrapper sets up the canvas-style
-// workspace (app-frame grid, and — when EW is enabled — a floating chat toggle
-// + docked chat) around the form editor (editor.js). The form and chat both
-// read the `#/org/site/path` hash, so they stay in sync.
+/**
+ * Decorates the `form` block as the structured content editor workspace.
+ *
+ * Sets up a canvas-style workspace with the app-frame grid around the form
+ * editor (editor.js). When EW is enabled, it also adds a floating chat toggle
+ * and a docked chat. The form and the chat both read the `#/org/site/path`
+ * hash, so they stay in sync.
+ *
+ * This block was migrated from da-nx's `nx/blocks/form`. The `/form` page
+ * content still declares it as `nx-form`, which the nx2 loader would load
+ * from da-nx. Until the content says `form`, `routeStructuredContentBlock` in
+ * `scripts/scripts.js` renames the class before blocks load, so this file
+ * loads instead.
+ *
+ * @param {HTMLElement} block - The block element to decorate.
+ */
 export default async function decorate(block) {
   ensureAppFrame();
   ensureNavPath();
