@@ -32,9 +32,11 @@
 }
 
 /* nx-picker's host is display: contents and its field trigger is width: 100%, so wrap it in a
-   box that only takes the width it needs, pinned to the right. */
+   box that only takes the width it needs, pinned to the right. The field's menu is exactly as
+   wide as the trigger, so keep it wide enough for "Org Permissions" without wrapping. */
 .permissions-site-picker {
   flex: none;
+  min-width: 12rem;
   margin-left: auto;
 }
 
