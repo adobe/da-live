@@ -72,6 +72,21 @@ describe('da-list-item render', () => {
     expect(buttons[1].getAttribute('value')).to.equal('cancel');
   });
 
+  it('Cancels rename when Escape is pressed in the input', async () => {
+    await fixture({ rename: true, isChecked: true });
+    let detail;
+    el.addEventListener('checked', (e) => { detail = e.detail; });
+    el.shadowRoot.querySelector('input[name="new-name"]')
+      .dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(detail.checked).to.equal(false);
+  });
+
+  it('Keeps the type and modified columns while renaming', async () => {
+    await fixture({ rename: true });
+    expect(el.shadowRoot.querySelector('[data-column="type"]')).to.exist;
+    expect(el.shadowRoot.querySelector('[data-column="modified"]')).to.exist;
+  });
+
   it('Renders rename icon while _isRenaming is true', async () => {
     await fixture({ _isRenaming: true });
     el._isRenaming = true;

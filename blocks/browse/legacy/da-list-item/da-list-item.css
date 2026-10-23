@@ -144,6 +144,11 @@
   display: flex;
 }
 
+.card .da-item-list-item-rename-actions {
+  justify-content: center;
+}
+
+
 .da-item-list-item-rename-actions button {
   width: 32px;
   height: 32px;

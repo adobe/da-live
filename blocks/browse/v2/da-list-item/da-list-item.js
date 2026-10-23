@@ -112,6 +112,10 @@ export default class DaListItem extends LitElement {
     return doesFileExist(path);
   }
 
+  handleRenameKeydown(e) {
+    if (e.key === 'Escape') this.handleChecked();
+  }
+
   async handleRenameSubmit(e) {
     e.preventDefault();
 
@@ -214,7 +218,7 @@ export default class DaListItem extends LitElement {
         <span class="da-item-list-item-type">
           ${this.renderIcon()}
         </span>
-        <input type="text" value="${this.name}" @input=${this.handleRename} name="new-name" aria-label="Rename item">
+        <input type="text" class="nx-input" value="${this.name}" @input=${this.handleRename} @keydown=${this.handleRenameKeydown} name="new-name" aria-label="Rename item">
         <div class="da-item-list-item-rename-actions">
           <button aria-label="Confirm" value="confirm">
             <div class="icon checkmark-icon"></div>
@@ -234,8 +238,6 @@ export default class DaListItem extends LitElement {
   renderItem() {
     const href = getBrowseItemHref(this);
 
-    const type = getTypeLabel(this.ext);
-
     return html`
       <a href="${this.ext === 'link' ? until(href) : href}" class="da-item-list-item-title" data-column="name">
         <div class="da-item-list-item-info">
@@ -250,7 +252,12 @@ export default class DaListItem extends LitElement {
           </div>
         </div>
       </a>
-      <div class="da-item-list-item-meta da-item-list-item-type-label" data-column="type">${type}</div>
+      ${this.renderRowMeta()}`;
+  }
+
+  renderRowMeta() {
+    return html`
+      <div class="da-item-list-item-meta da-item-list-item-type-label" data-column="type">${getTypeLabel(this.ext)}</div>
       <div class="da-item-list-item-meta da-item-list-item-date" data-column="modified">${this.ext === 'link' ? '—' : (this.renderDate() || '—')}</div>`;
   }
 
@@ -309,20 +316,20 @@ export default class DaListItem extends LitElement {
           ${this.allowselect ? this.renderCheckBox('card-select') : nothing}
           ${this.isFavorited ? this.renderFavorite('card-favorite') : nothing}
         </div>
-        ${this.rename ? this.renderRename() : html`
-          <div class="card-info">
+        <div class="card-info">
+          ${this.rename ? this.renderRename() : html`
             <div class="card-heading">
               <a href="${this.ext === 'link' ? until(href) : href}" class="card-name">
                 <span class="card-name-text" title=${this.name}>${this.name}</span>
               </a>
               ${this.renderCardMenu()}
               ${this.renderDetailsPopover()}
-            </div>
-            <div class="card-meta">
-              <span class="card-type">${getTypeLabel(this.ext)}</span>
-              <span class="card-date">${this.ext === 'link' ? '—' : (this.renderDate() || '—')}</span>
-            </div>
-          </div>`}
+            </div>`}
+          <div class="card-meta">
+            <span class="card-type">${getTypeLabel(this.ext)}</span>
+            <span class="card-date">${this.ext === 'link' ? '—' : (this.renderDate() || '—')}</span>
+          </div>
+        </div>
       </div>`;
   }
 
@@ -395,7 +402,7 @@ export default class DaListItem extends LitElement {
     return html`
       <div class="da-item-list-item-inner">
         ${this.allowselect ? this.renderCheckBox() : html`<span class="da-item-list-item-selection-placeholder" data-column="select" aria-hidden="true"></span>`}
-        ${this.rename ? this.renderRename() : this.renderItem()}
+        ${this.rename ? html`${this.renderRename()}${this.renderRowMeta()}` : this.renderItem()}
         <div class="da-item-list-item-actions" data-column="actions">
           ${this.renderDetailsControl()}
           ${this.renderFavorite()}

@@ -48,8 +48,9 @@
 }
 
 .da-item-list-item-rename {
-  grid-column: 2 / 5;
+  grid-column: 2;
   grid-template-columns: auto minmax(0, 1fr) auto;
+  margin-right: var(--s2-spacing-300);
 }
 
 .da-item-list-item-info {
@@ -134,7 +135,7 @@
 }
 
 .icon.cancel-icon {
-  mask: no-repeat center / 18px url('/img/icons/s2-icon-cancel-20-n.svg');
+  mask: no-repeat center / 18px url('/img/icons/s2-icon-close-20-n.svg');
 }
 
 .icon.checkmark-icon {
@@ -145,21 +146,6 @@
 .da-item-list-item-rename input {
   display: block;
   min-width: 0;
-  font-family: var(--s2-font-family);
-  font-size: var(--s2-component-m-regular-font-size);
-  background: none;
-  border: none;
-  border-bottom: 1px dotted var(--s2-gray-900);
-  padding: 0;
-  margin: 1px 0 0;
-  line-height: 24px;
-  box-sizing: border-box;
-}
-
-.da-item-list-item-rename input:focus-visible {
-  outline: none;
-  border: none;
-  border-bottom: 1px dotted var(--s2-blue-900);
 }
 
 .da-item-list-item-rename-actions {
@@ -180,6 +166,17 @@
 .da-item-list-item-rename-actions svg {
   width: 18px;
   height: 18px;
+}
+
+:host([view="card"]) .da-item-list-item-rename-actions button {
+  width: 24px;
+  height: 24px;
+}
+
+:host([view="card"]) .da-item-list-item-rename-actions .icon {
+  width: 16px;
+  height: 16px;
+  mask-size: 16px;
 }
 
 /* Details popover */
@@ -327,6 +324,7 @@
 
 .card {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) 80px;
   gap: var(--s2-spacing-50, 4px);
   box-sizing: border-box;
@@ -343,13 +341,15 @@
 
   .da-item-list-item-rename {
     grid-column: auto;
-    padding: 0;
-    padding-left: var(--s2-spacing-100);
     display: flex;
-    justify-content: space-between;
+    align-items: center;
+    min-width: 0;
+    min-height: 32px;
+    padding: 0;
 
     input {
       flex: 1;
+      width: 0;
     }
   }
 
@@ -375,6 +375,7 @@
 }
 
 .card-heading {
+  min-height: 32px;
   display: flex;
   align-items: center;
   gap: var(--s2-spacing-100);
