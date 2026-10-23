@@ -15,6 +15,8 @@ const [form, buttons, style] = await Promise.all([
 
 const INHERITED_KEY = { read: 'inheritedRead', write: 'inheritedWrite', none: 'inheritedNone' };
 
+const CLOSE_ICON_SRC = '/img/icons/s2-icon-close-20-n.svg';
+
 const SECTION_LABEL = {
   config: (name) => `Configuration Permissions for: ${name}`,
   content: (name) => `Content Permissions for: ${name}`,
@@ -97,6 +99,8 @@ class DaPermissionsCards extends LitElement {
   }
 
   _renderAddInput(path, level, label) {
+    // preventDefault on the X's mousedown keeps focus in the input, so the input's blur
+    // doesn't cancel first and swallow the click.
     return html`
       <div class="row-add-field">
         <input
@@ -107,30 +111,26 @@ class DaPermissionsCards extends LitElement {
           @keydown=${(e) => this._onAddKeydown(e, path, level)}
           @blur=${() => this._cancelAdd()}
         >
+        <button
+          type="button"
+          class="row-add-cancel nx-action-btn-icon"
+          aria-label="Cancel adding to ${label} ${LEVEL_LABEL[level]}"
+          @mousedown=${(e) => e.preventDefault()}
+          @click=${() => this._cancelAdd()}
+        >
+          <svg aria-hidden="true" viewBox="0 0 20 20"><use href="${CLOSE_ICON_SRC}#icon"></use></svg>
+        </button>
       </div>`;
   }
 
   _renderAddButton(slot, level, isAdding) {
-    const levelLabel = LEVEL_LABEL[level];
-    if (isAdding) {
-      // Keep the button (and so the members column width) in place while the field is open.
-      // preventDefault on mousedown keeps focus in the input, so its blur doesn't cancel first
-      // and let this click reopen the field.
-      return html`
-        <button
-          type="button"
-          class="row-add nx-action-btn-quiet"
-          aria-label="Cancel adding to ${slot.label} ${levelLabel}"
-          @mousedown=${(e) => e.preventDefault()}
-          @click=${() => this._cancelAdd()}
-        >Cancel</button>`;
-    }
+    // Stays in place (disabled) while the field is open, so the members column keeps its width.
     return html`
       <button
         type="button"
-        class="row-add nx-action-btn-quiet"
-        aria-label="Add to ${slot.label} ${levelLabel}"
-        ?disabled=${this.busy}
+        class="row-add nx-form-btn-secondary"
+        aria-label="Add to ${slot.label} ${LEVEL_LABEL[level]}"
+        ?disabled=${this.busy || isAdding}
         @click=${() => this._openAdd(slot.path, level)}
       >+ Add</button>`;
   }

@@ -173,26 +173,41 @@ describe('da-permissions-cards', () => {
     expect(directPills.items.every((i) => i.removable === false)).to.be.true;
   });
 
-  it('keeps the row-add button in place as "Cancel" and opens the field below the members', async () => {
+  it('uses a secondary "+ Add" button that stays in place (disabled) while the field is open', async () => {
+    const slot = baseSlot({ label: 'All sites', write: ['a@x.com'] });
+    let el = await mount({ slots: [slot], editable: true });
+    let btn = el.shadowRoot.querySelector('.level-row[data-level="write"] .row-add');
+    expect(btn?.textContent.trim()).to.equal('+ Add');
+    expect(btn?.classList.contains('nx-form-btn-secondary')).to.equal(true);
+    expect(btn?.disabled).to.equal(false);
+    el.remove();
+
+    el = await mount({ slots: [slot], editable: true, adding: { path: slot.path, level: 'write' } });
+    btn = el.shadowRoot.querySelector('.level-row[data-level="write"] .row-add');
+    expect(btn?.textContent.trim()).to.equal('+ Add');
+    expect(btn?.disabled).to.equal(true);
+  });
+
+  it('opens the field below the members with an X right after it that cancels', async () => {
     const slot = baseSlot({ label: 'All sites', write: ['a@x.com'], inheritedWrite: ['b@x.com'] });
     const el = await mount({ slots: [slot], editable: true, adding: { path: slot.path, level: 'write' } });
 
-    const row = el.shadowRoot.querySelector('.level-row[data-level="write"]');
-    const btn = row.querySelector('.row-add');
-    expect(btn?.textContent.trim()).to.equal('Cancel');
-    expect(btn?.getAttribute('aria-label')).to.equal('Cancel adding to All sites Write');
+    const members = el.shadowRoot.querySelector('.level-row[data-level="write"] .row-members');
     // The field is the last thing in the members column, after every pill list.
-    const members = row.querySelector('.row-members');
     expect(members?.lastElementChild?.classList.contains('row-add-field')).to.equal(true);
-    expect(!!members.querySelector('.row-add-field .row-add-input')).to.equal(true);
+    const field = members.lastElementChild;
+    expect(field.firstElementChild?.classList.contains('row-add-input')).to.equal(true);
+    const cancel = field.querySelector('.row-add-input + .row-add-cancel');
+    expect(cancel?.classList.contains('nx-action-btn-icon')).to.equal(true);
+    expect(cancel?.getAttribute('aria-label')).to.equal('Cancel adding to All sites Write');
 
     let cancelCount = 0;
     el.addEventListener('permissions-add-cancel', () => { cancelCount += 1; });
-    // mousedown must not steal focus from the input (blur would cancel, then the click reopen it).
+    // mousedown must not steal focus from the input (blur would cancel before the click lands).
     const down = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
-    btn.dispatchEvent(down);
+    cancel.dispatchEvent(down);
     expect(down.defaultPrevented).to.equal(true);
-    btn.click();
+    cancel.click();
     expect(cancelCount).to.equal(1);
   });
 

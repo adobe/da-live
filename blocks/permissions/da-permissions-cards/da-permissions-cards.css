@@ -144,6 +144,9 @@ nx-pills {
 
 /* The add field opens on its own line under the members, so the pills never reflow. */
 .row-add-field {
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-75);
   width: 100%;
 }
 
