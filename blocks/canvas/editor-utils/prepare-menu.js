@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2 } from '../../../scripts/utils.js';
+import { getNx, getNx2, getUISize } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import { fetchDaConfigs, getPostMessageTargetOrigin } from '../../shared/utils.js';
 import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
@@ -59,7 +59,7 @@ const OOTB_ACTIONS = [
 ];
 
 export default class PrepareMenu extends LitElement {
-  _uiSize = new UISizeController(this);
+  _uiSize = new UISizeController(this, { onChange: (size) => this.postUISize(size) });
 
   static properties = {
     details: { attribute: false },
@@ -214,9 +214,15 @@ export default class PrepareMenu extends LitElement {
     this._fullsizeDialogItem = undefined;
   }
 
+  postUISize(uiSize) {
+    const { target, targetOrigin } = this._iframe ?? {};
+    target?.contentWindow?.postMessage({ action: 'uiSizeChange', detail: { uiSize } }, targetOrigin);
+  }
+
   handleIframeLoad({ target }) {
     const targetOrigin = getPostMessageTargetOrigin(target.src);
     const channel = new MessageChannel();
+    this._iframe = { target, targetOrigin };
 
     setTimeout(() => {
       if (!target.contentWindow) return;
@@ -231,6 +237,7 @@ export default class PrepareMenu extends LitElement {
         ref: new URLSearchParams(window.location.search).get('ref') || 'main',
         branch: getCanvasBranch({ org, site }),
         path,
+        uiSize: getUISize(),
       };
       const { token } = window.adobeIMS.getAccessToken();
 

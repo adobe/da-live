@@ -1,5 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
 import { setNx } from '../../../../../scripts/utils.js';
 import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 
@@ -771,6 +772,37 @@ describe('PrepareMenu', () => {
       el._dialogItem = { title: 'Preflight' };
       document.dispatchEvent(new CustomEvent('nx-preflight-status', { detail: { status: 'success' } }));
       expect(el._dialogItem).to.not.be.undefined;
+    });
+  });
+
+  describe('ui size', () => {
+    let savedIms;
+
+    beforeEach(() => {
+      savedIms = window.adobeIMS;
+      window.adobeIMS = { getAccessToken: () => ({ token: 't' }) };
+    });
+
+    afterEach(() => {
+      window.adobeIMS = savedIms;
+      sinon.restore();
+    });
+
+    it('sends uiSize in the ready context and forwards changes', async () => {
+      el = await fixture();
+      const posted = [];
+      const target = {
+        src: 'https://plugin.example.com/app',
+        contentWindow: { postMessage: (data) => posted.push(data) },
+      };
+      el.handleIframeLoad({ target });
+      await new Promise((resolve) => { setTimeout(resolve, 800); });
+      expect(posted[0].context.uiSize).to.equal('s');
+
+      // Stub storage: a real write fires storage events in parallel test pages.
+      sinon.stub(Storage.prototype, 'getItem').returns('m');
+      document.dispatchEvent(new CustomEvent('nx-ui-size-change', { detail: { size: 'm' } }));
+      expect(posted[1]).to.deep.equal({ action: 'uiSizeChange', detail: { uiSize: 'm' } });
     });
   });
 });
