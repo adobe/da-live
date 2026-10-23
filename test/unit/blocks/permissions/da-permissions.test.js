@@ -158,7 +158,7 @@ describe('da-permissions', () => {
     expect(note.querySelectorAll('button').length).to.equal(0);
     expect(note.textContent).to.include('the last save wins');
     const text = note.textContent.replace(/\s+/g, ' ');
-    expect(text).to.include('Read = view · Write = create, edit and delete (includes Read) · emails or IMS group IDs · Docs');
+    expect(text).to.include('Write = view, create, edit and delete · Read = view · emails or IMS group IDs · Docs');
     expect(text).to.not.include('None');
     expect(note.querySelector('a')?.getAttribute('href')).to.equal('https://www.aem.live/docs/ew/administering/permissions');
   });

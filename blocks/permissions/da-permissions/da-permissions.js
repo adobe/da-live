@@ -255,8 +255,8 @@ class DaPermissions extends LitElement {
     return html`
       <div class="permissions-info-note" role="note">
         <p>
+          <strong>Write</strong> = view, create, edit and delete &middot;
           <strong>Read</strong> = view &middot;
-          <strong>Write</strong> = create, edit and delete (includes Read) &middot;
           emails or IMS group IDs &middot;
           <a href=${DOCS_URL} target="_blank" rel="noopener">Docs</a>
         </p>
