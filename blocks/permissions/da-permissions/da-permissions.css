@@ -81,6 +81,21 @@
   width: 16rem;
 }
 
-.nx-loading-spinner {
-  margin: var(--s2-spacing-600) auto;
+/* Page-level loading state: nx2's shared spinner (spinner.css), scaled up from its 14px
+   inline size, with a short message next to it. */
+.permissions-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2-spacing-200);
+  padding: var(--s2-spacing-600) 0;
+  color: var(--s2-gray-700);
+  font-size: var(--s2-component-m-regular-font-size);
+  line-height: var(--s2-component-m-regular-line-height);
+}
+
+.permissions-loading .nx-loading-spinner {
+  width: 24px;
+  height: 24px;
+  border-width: 3px;
 }

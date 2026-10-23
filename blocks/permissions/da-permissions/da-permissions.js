@@ -14,9 +14,10 @@ await import('../da-permissions-cards/da-permissions-cards.js');
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
-const [form, buttons, style] = await Promise.all([
+const [form, buttons, spinner, style] = await Promise.all([
   getSheet(`${getNx2()}/styles/form.css`),
   getSheet(`${getNx2()}/styles/buttons.css`),
+  getSheet(`${getNx2()}/styles/spinner.css`),
   loadStyle(import.meta.url),
 ]);
 
@@ -66,7 +67,7 @@ class DaPermissions extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [form, buttons, style];
+    this.shadowRoot.adoptedStyleSheets = [form, buttons, spinner, style];
   }
 
   willUpdate(changed) {
@@ -303,7 +304,12 @@ class DaPermissions extends LitElement {
 
   _renderBody() {
     if (this._status === 'loading') {
-      return html`<div class="nx-loading-spinner" role="status" aria-label="Loading"></div>`;
+      // Large org configs can take a while; say what is loading next to the spinner.
+      return html`
+        <div class="permissions-loading" role="status">
+          <span class="nx-loading-spinner" aria-hidden="true"></span>
+          <span>Loading permissions for ${this.org}…</span>
+        </div>`;
     }
     if (this._status === 'no-access') {
       return html`<p class="permissions-message">You don't have admin access to this org.</p>`;

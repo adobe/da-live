@@ -148,6 +148,44 @@ describe('da-permissions', () => {
     expect(!!el.shadowRoot.querySelector('nx-breadcrumb')).to.equal(false);
   });
 
+  it('shows a spinner with a loading message while the org config is loading', async () => {
+    let release;
+    window.fetch = (url) => {
+      if (String(url).includes('/config/')) {
+        return new Promise((resolve) => {
+          release = () => resolve(new Response(JSON.stringify(CONFIG_BODY), { status: 200 }));
+        });
+      }
+      return Promise.resolve(new Response('[]', { status: 200 }));
+    };
+    const el = document.createElement('da-permissions');
+    el.org = 'myorg';
+    el.site = null;
+    document.body.append(el);
+    await el.updateComplete;
+
+    const loading = el.shadowRoot.querySelector('.permissions-loading[role="status"]');
+    expect(!!loading?.querySelector('.nx-loading-spinner')).to.equal(true);
+    expect(loading?.textContent.trim()).to.equal('Loading permissions for myorg…');
+    expect(!!el.shadowRoot.querySelector('da-permissions-cards')).to.equal(false);
+
+    // config.get resolves its URL asynchronously, so wait for the request to be in flight.
+    for (let i = 0; i < 50 && !release; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => { setTimeout(resolve, 10); });
+    }
+    release();
+    for (let i = 0; i < 50 && el._status === 'loading'; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => { setTimeout(resolve, 10); });
+      // eslint-disable-next-line no-await-in-loop
+      await el.updateComplete;
+    }
+    expect(!!el.shadowRoot.querySelector('.permissions-loading')).to.equal(false);
+    expect(!!el.shadowRoot.querySelector('da-permissions-cards')).to.equal(true);
+    el.remove();
+  });
+
   it('always shows the info note, without a dismiss button (even if it was dismissed before)', async () => {
     localStorage.setItem(INFO_KEY, 'true');
     window.fetch = async () => new Response('', { status: 403 });
