@@ -371,8 +371,8 @@ class DaPermissions extends LitElement {
             ${error ? html`<p class="nx-input-error-msg" role="alert">${error}</p>` : nothing}
           </div>
         </form>
-        <button type="button" slot="actions" class="nx-action-btn" @click=${() => this._onFolderCancel()}>Cancel</button>
-        <button type="button" slot="actions" class="folder-add-submit nx-btn-primary" @click=${() => this._onFolderSubmit()}>Add</button>
+        <button type="button" slot="actions" class="nx-form-btn-secondary" @click=${() => this._onFolderCancel()}>Cancel</button>
+        <button type="button" slot="actions" class="folder-add-submit nx-form-btn-primary" @click=${() => this._onFolderSubmit()}>Add</button>
       </nx-dialog>`;
   }
 
@@ -382,8 +382,8 @@ class DaPermissions extends LitElement {
     return html`
       <nx-dialog title="Remove member" @close=${() => this._cancelRemove()}>
         <p>Remove ${who} from ${scopeLabel(path, this.site)} · ${LEVEL_LABEL[level]}?</p>
-        <button type="button" slot="actions" class="nx-action-btn" @click=${() => this._cancelRemove()}>Cancel</button>
-        <button type="button" slot="actions" class="nx-btn-primary" @click=${() => this._confirmRemoveNow()}>Remove</button>
+        <button type="button" slot="actions" class="nx-form-btn-secondary" @click=${() => this._cancelRemove()}>Cancel</button>
+        <button type="button" slot="actions" class="nx-form-btn-primary" @click=${() => this._confirmRemoveNow()}>Remove</button>
       </nx-dialog>`;
   }
 

@@ -264,7 +264,7 @@ describe('da-permissions', () => {
     expect(dialog.getAttribute('title')).to.equal('Remove member');
     expect(el.shadowRoot.textContent).to.contain('Remove a@x.com from All site content · Write?');
 
-    dialog.querySelector('[slot="actions"].nx-action-btn').click();
+    dialog.querySelector('[slot="actions"].nx-form-btn-secondary').click();
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('nx-dialog')).to.equal(null);
     expect(putCalls.length).to.equal(0);
@@ -272,7 +272,7 @@ describe('da-permissions', () => {
     writePills.dispatchEvent(new CustomEvent('nx-pill-remove', { detail: { id: 'a@x.com' }, bubbles: true }));
     await el.updateComplete;
     dialog = el.shadowRoot.querySelector('nx-dialog');
-    dialog.querySelector('[slot="actions"].nx-btn-primary').click();
+    dialog.querySelector('[slot="actions"].nx-form-btn-primary').click();
     await waitUntil(() => putCalls.length === 1);
     await el.updateComplete;
 
@@ -568,6 +568,11 @@ describe('da-permissions folder permission', () => {
     expect(dialog?.getAttribute('title')).to.equal('Add folder permission');
     const input = dialog?.querySelector('input.folder-path-input.nx-input');
     expect(input?.getAttribute('placeholder')).to.equal('/blog/drafts');
+    const actions = [...dialog.querySelectorAll('[slot="actions"]')].map((b) => [b.textContent.trim(), b.className]);
+    expect(actions).to.deep.equal([
+      ['Cancel', 'nx-form-btn-secondary'],
+      ['Add', 'folder-add-submit nx-form-btn-primary'],
+    ]);
     expect(!!dialog.querySelector('da-folder-picker')).to.equal(false);
   });
 
