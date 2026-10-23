@@ -247,14 +247,16 @@ export default class DaList extends DaListBase {
     `;
   }
 
-  get sortPillLabel() {
-    const { property, direction } = this._sort ?? {};
-    if (!property || direction === 'none') return 'Sort: Default';
-    const name = property === 'name';
-    const asc = direction === 'ascending';
-    const labels = name ? ['A-Z', 'Z-A'] : ['oldest first', 'newest first'];
-    const detail = labels[asc ? 0 : 1];
-    return `Sorted by ${name ? 'Name' : 'Modified'} (${detail})`;
+  renderSortButton(property) {
+    return html`
+      <button
+        class="da-browse-header-name ${this.sortDirectionFor(property)} ${this._bulkLoading ? 'loading' : ''}"
+        @click=${() => this.toggleSort(property)}
+        ?disabled=${this._bulkLoading}
+        aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
+        ${this.renderSortIcon()}
+        ${property === 'lastModified' ? 'Modified' : 'Name'}
+      </button>`;
   }
 
   get selectableItems() {
@@ -425,7 +427,7 @@ export default class DaList extends DaListBase {
     return html`
       <label class="nx-checkbox ${this._bulkLoading ? 'loading' : ''} ${this._selectedItems.length > 0 && !this.isSelectAll ? 'indeterminate' : ''}" role="columnheader">
         <input type="checkbox" id="select-all" name="select-all" .checked="${this.isSelectAll}" @click="${this.handleCheckAll}" aria-label="Select all items" ?disabled=${this._bulkLoading} aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
-        ${this.view === 'card' ? html`<span class="da-card-select-all-label">Select all</span>` : nothing}
+        ${this.view === 'card' ? html`<span class="da-browse-header-name">Select all</span>` : nothing}
       </label>
     `;
   }
@@ -440,30 +442,20 @@ export default class DaList extends DaListBase {
         <div class="da-browse-header-cell da-browse-header-cell-select" data-column="select">
           ${this.renderCheckBox()}
         </div>
-        ${this.view === 'card' ? html`<span class="tag da-card-sort-pill">${this.sortPillLabel}</span>` : nothing}
+        ${this.view === 'card' ? html`
+          <div class="da-browse-header-cell da-card-sort" role="columnheader"
+            aria-sort=${this.sortDirectionFor(this._sort?.property || 'name')}>
+            ${this.renderSortButton(this._sort?.property || 'name')}
+          </div>` : nothing}
         <div class="da-browse-header-cell da-browse-header-cell-name" data-column="name" role="columnheader" aria-sort="${this.sortDirectionFor('name')}">
           <div class="da-browse-header-container">
-            <button
-              class="da-browse-header-name ${this.sortDirectionFor('name')} ${this._bulkLoading ? 'loading' : ''}"
-              @click=${() => this.toggleSort('name')}
-              ?disabled=${this._bulkLoading}
-              aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
-              Name
-              ${this.renderSortIcon()}
-            </button>
+            ${this.renderSortButton('name')}
           </div>
         </div>
         <div class="da-browse-header-cell da-browse-header-cell-type" data-column="type" role="columnheader">Type</div>
         <div class="da-browse-header-cell da-browse-header-cell-modified" data-column="modified" role="columnheader" aria-sort="${this.sortDirectionFor('lastModified')}">
           <div class="da-browse-header-container">
-            <button
-              class="da-browse-header-name ${this.sortDirectionFor('lastModified')} ${this._bulkLoading ? 'loading' : ''}"
-              @click=${() => this.toggleSort('lastModified')}
-              ?disabled=${this._bulkLoading}
-              aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
-              Modified
-              ${this.renderSortIcon()}
-            </button>
+            ${this.renderSortButton('lastModified')}
           </div>
         </div>
         <div class="da-browse-header-cell da-browse-header-cell-actions" data-column="actions" aria-hidden="true"></div>

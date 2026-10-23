@@ -7,10 +7,10 @@
   container: browse-list / inline-size;
 
   --da-list-pad-inline: 16px;
-  --da-list-action-width: 72px;
+  --da-list-action-width: 112px;
   --da-list-type-width: 120px;
   --da-list-date-width: 180px;
-  --da-list-select-width: 40px;
+  --da-list-select-width: 56px;
   --da-list-min-height: 56px;
   --da-card-width: 226px;
   --da-card-height: 300px;
@@ -42,14 +42,18 @@
 .da-list-group-header {
   display: flex;
   align-items: center;
-  gap: var(--s2-spacing-200);
-  padding: var(--s2-spacing-100) var(--da-list-pad-inline);
+  padding: var(--s2-spacing-100) 0;
   font-family: var(--s2-font-family);
   color: var(--s2-gray-600);
   font-size: var(--s2-component-m-regular-font-size);
   box-sizing: border-box;
   min-height: var(--da-list-min-height);
   background: var(--s2-gray-50);
+
+  .nx-checkbox {
+    justify-content: center;
+    width: var(--da-list-select-width);
+  }
 }
 
 .da-list-group-count {
@@ -188,7 +192,6 @@ da-list-item.is-expanded::after {
 
 .da-browse-panel-header {
   margin: 0;
-  padding: 0 var(--da-list-pad-inline);
   border-bottom: 1px solid var(--s2-gray-200);
 }
 
@@ -200,29 +203,21 @@ da-list-item.is-expanded::after {
   display: grid;
   grid-template-columns: var(--da-list-select-width) minmax(0, 1fr) var(--da-list-type-width) var(--da-list-date-width) var(--da-list-action-width);
   align-items: center;
-  column-gap: var(--s2-spacing-200);
   min-height: 52px;
 }
 
 .da-browse-table-header.is-card {
   display: flex;
   min-height: 40px;
-  padding-inline: var(--da-list-pad-inline, 24px);
-  align-items: center;
-  gap: var(--s2-spacing-200);
+  padding-right: var(--da-list-pad-inline);
 
-  > :not(.da-browse-header-cell-select, .da-card-sort-pill) {
+  > :not(.da-browse-header-cell-select, .da-card-sort) {
     display: none;
   }
 }
 
-.da-card-sort-pill {
+.da-card-sort {
   margin-inline-start: auto;
-}
-
-.da-card-select-all-label {
-  color: var(--s2-gray-800);
-  font-size: var(--s2-component-m-regular-font-size, 14px);
 }
 
 .da-card-grid {
@@ -230,7 +225,8 @@ da-list-item.is-expanded::after {
   grid-template-columns: repeat(auto-fill, minmax(0, min(100%, var(--da-card-width))));
   gap: var(--s2-spacing-200);
   padding: var(--s2-spacing-200) var(--da-list-pad-inline, 24px);
-  justify-content: center;
+  justify-content: flex-start;
+  padding-left: var(--da-list-select-width);
 }
 
 .da-browse-header-cell {
@@ -286,6 +282,17 @@ da-list-item.is-expanded::after {
 .da-browse-header-cell-select .nx-checkbox {
   gap: var(--s2-spacing-300);
   margin: 0;
+  justify-content: center;
+}
+
+.is-card .da-browse-header-cell-select .nx-checkbox {
+  display: grid;
+  grid-template-columns: var(--da-list-select-width) auto;
+  gap: 0;
+
+  input {
+    justify-self: center;
+  }
 }
 
 .da-browse-sort-icon {
@@ -468,19 +475,6 @@ da-list-item.is-expanded::after {
   text-transform: uppercase;
 }
 
-.tag {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
-  height: 24px;
-  border-radius: var(--s2-corner-radius-400);
-  padding: 3px 12px;
-  box-sizing: border-box;
-  font-family: var(--s2-font-family);
-  font-size: var(--s2-component-m-regular-font-size);
-  background-color: var(--s2-gray-75);
-}
-
 @container browse-list (width < 600px) {
   .da-browse-table-header {
     grid-template-columns: var(--da-list-select-width) minmax(0, 1fr) var(--da-list-date-width) var(--da-list-action-width);
@@ -493,7 +487,7 @@ da-list-item.is-expanded::after {
   
   .da-browse-table-header,
   .da-item-list {
-    --da-list-select-width: 24px;
+    --da-list-select-width: 48px;
   }
 }
 

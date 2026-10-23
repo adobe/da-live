@@ -22,7 +22,6 @@
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
-  gap: var(--da-list-pad-inline, 24px);
   padding: 0 var(--da-list-pad-inline, 24px);
 }
 

@@ -7,7 +7,6 @@
   gap: var(--s2-spacing-100);
   min-height: 48px;
   padding: var(--s2-spacing-100);
-  border-bottom: 1px solid var(--s2-gray-200);
   font-family: var(--s2-font-family);
   container: browse-header / inline-size;
 }
@@ -21,7 +20,15 @@
 }
 
 .browse-toolbar-leading {
+  box-sizing: border-box;
   flex: 1;
+  min-width: min(100%, 160px);
+}
+
+::slotted(nx-breadcrumb) {
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .browse-toolbar-leading:not(:has(.chat-btn)):has(slot:not([name])) {
@@ -138,8 +145,7 @@
 
 ::slotted(da-new[slot="actions"]) {
   position: relative;
-  padding-inline-start: var(--s2-spacing-300, 24px);
-  margin-inline-start: var(--s2-spacing-100, 8px);
+  padding-inline-start: var(--s2-spacing-100, 8px);
 }
 
 .browse-settings-link::before,

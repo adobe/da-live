@@ -345,17 +345,18 @@ describe('da-list render', () => {
     expect(items).to.have.length(2);
     expect(items[0].getAttribute('view')).to.equal('card');
     expect(el.shadowRoot.querySelector('.da-browse-table-header').classList.contains('is-card')).to.be.true;
-    expect(el.shadowRoot.querySelector('.da-card-select-all-label').textContent).to.equal('Select all');
-    expect(el.shadowRoot.querySelector('.da-card-sort-pill').textContent).to.equal('Sort: Default');
+    expect(el.shadowRoot.querySelector('.da-browse-header-name').textContent).to.equal('Select all');
+    expect(el.shadowRoot.querySelector('.da-card-sort button').textContent.trim()).to.equal('Name');
     el._sort = { property: 'lastModified', direction: 'descending' };
     await rerender();
-    expect(el.shadowRoot.querySelector('.da-card-sort-pill').textContent)
-      .to.equal('Sorted by Modified (newest first)');
+    expect(el.shadowRoot.querySelector('.da-card-sort button').textContent.trim())
+      .to.equal('Modified');
+    expect(el.shadowRoot.querySelector('.da-card-sort').getAttribute('aria-sort'))
+      .to.equal('descending');
     el.view = 'list';
     await rerender();
     expect(el.shadowRoot.querySelector('.da-card-grid')).to.be.null;
-    expect(el.shadowRoot.querySelector('.da-card-sort-pill')).to.be.null;
-    expect(el.shadowRoot.querySelector('.da-card-select-all-label')).to.be.null;
+    expect(el.shadowRoot.querySelector('.da-card-sort')).to.be.null;
     expect(el.shadowRoot.querySelector('da-list-item').hasAttribute('view')).to.be.false;
   });
 });

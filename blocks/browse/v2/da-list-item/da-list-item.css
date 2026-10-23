@@ -19,11 +19,13 @@
 
 .da-item-list-item-inner {
   display: grid;
-  grid-template-columns: var(--da-list-select-width, 40px) minmax(0, 1fr) var(--da-list-type-width, 120px) var(--da-list-date-width, 180px) var(--da-list-action-width, 72px);
+  grid-template-columns: var(--da-list-select-width, 40px) minmax(0, 1fr) var(--da-list-type-width, 120px) var(--da-list-date-width, 180px) var(--da-list-action-width, 112px);
   align-items: center;
-  column-gap: var(--da-list-column-gap, var(--s2-spacing-200));
-  padding: 0 var(--da-list-pad-inline, 24px);
   min-height: var(--da-list-min-height);
+
+  .nx-checkbox {
+    justify-content: center;
+  }
 }
 
 .da-item-list-item-selection-placeholder {
@@ -60,11 +62,10 @@
 .da-item-list-item-type {
   position: relative;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
-  width: 32px;
+  width: 20px;
   height: 32px;
-  flex: 0 0 32px;
 }
 
 .da-item-list-item-name {
@@ -98,34 +99,25 @@
   white-space: nowrap;
 }
 
-.da-item-list-item-favorite {
-  opacity: 0;
-  flex-shrink: 0;
+.da-item-list-item-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  place-items: center start;
+  width: var(--da-list-action-width, 112px);
 }
 
-.da-item-list-item-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--s2-spacing-300);
+.da-item-list-item-actions > button {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+.da-item-list-item-actions > .da-item-list-item-favorite {
+  grid-column: 2;
 }
 
 .card-select input {
   width: 16px;
   height: 16px;
-}
-
-:host(:hover) .da-item-list-item-favorite,
-.da-item-list-item-inner:has(:focus-visible) .da-item-list-item-favorite,
-.da-item-list-item-favorite[aria-pressed="true"] {
-  opacity: 1;
-  color: var(--s2-gray-600);
-}
-
-@media (hover: none) {
-  .da-item-list-item-favorite {
-    opacity: 1;
-  }
 }
 
 .icon.rename-icon,
@@ -276,7 +268,7 @@
 
 @container browse-list-item (width < 600px) {
   .da-item-list-item-inner {
-    grid-template-columns: var(--da-list-select-width, 40px) minmax(0, 1fr) var(--da-list-date-width, 180px) var(--da-list-action-width, 72px);
+    grid-template-columns: var(--da-list-select-width, 40px) minmax(0, 1fr) var(--da-list-date-width, 180px) var(--da-list-action-width, 112px);
   }
 
   .da-item-list-item-type-label {
@@ -291,14 +283,14 @@
 @container browse-list-item (width < 600px) {
   .da-item-list-item-inner {
     --da-list-pad-inline: 8px;
-    --da-list-select-width: 24px;
+    --da-list-select-width: 48px;
     --da-list-column-gap: var(--s2-spacing-100);
   }
 }
 
 @container browse-list-item (width < 500px) {
   .da-item-list-item-inner {
-    grid-template-columns: var(--da-list-select-width, 24px) minmax(0, 1fr) var(--da-list-action-width, 72px);
+    grid-template-columns: var(--da-list-select-width, 24px) minmax(0, 1fr) var(--da-list-action-width, 112px);
   }
 
   .da-item-list-item-date {
@@ -339,7 +331,7 @@
   gap: var(--s2-spacing-50, 4px);
   box-sizing: border-box;
   height: var(--da-card-height, 300px);
-  padding: var(--s2-spacing-50, 4px);
+  padding: 3px;
   border-radius: 12px;
   background: var(--s2-gray-75, var(--s2-gray-50));
   transition: background-color 0.12s ease;
