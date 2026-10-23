@@ -341,6 +341,7 @@
 
   .da-item-list-item-rename {
     grid-column: auto;
+    margin-right: 0;
     display: flex;
     align-items: center;
     min-width: 0;
