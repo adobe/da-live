@@ -6,6 +6,7 @@ import {
   getEnterInputRulesPlugin,
   getURLInputRulesPlugin,
   getListInputRulesPlugin,
+  handleTableTab,
 } from '../../../../../../blocks/edit/prose/plugins/keyHandlers.js';
 import { createTestEditor, destroyEditor } from '../test-helpers.js';
 
@@ -151,5 +152,99 @@ describe('keyHandlers dashes input rule', () => {
       if (node.type.name === 'horizontal_rule') hasHr = true;
     });
     expect(hasHr).to.be.true;
+  });
+});
+
+function buildTable(view, rows, width) {
+  const { state, dispatch } = view;
+  const { schema } = state;
+  const { table, table_row: tableRow, table_cell: tableCell, paragraph } = schema.nodes;
+  const tableRows = rows.map((row) => tableRow.create(null, row.map((text) => tableCell.create(
+    row.length === 1 && width > 1 ? { colspan: width, colwidth: null } : null,
+    paragraph.create(null, schema.text(text)),
+  ))));
+  dispatch(state.tr.replaceWith(0, state.doc.content.size, table.create(null, tableRows)));
+}
+
+function placeCursorIn(view, text) {
+  let found;
+  view.state.doc.descendants((node, pos) => {
+    if (!found && node.isText && node.text === text) found = pos;
+  });
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, found)));
+}
+
+function pressTab(view) {
+  return handleTableTab(1)(view.state, view.dispatch, view);
+}
+
+function lastRowColspans(view) {
+  const spans = [];
+  view.state.doc.firstChild.lastChild.forEach((cell) => spans.push(cell.attrs.colspan));
+  return spans;
+}
+
+describe('handleTableTab', () => {
+  let editor;
+
+  beforeEach(async () => {
+    editor = await createTestEditor();
+  });
+
+  afterEach(() => destroyEditor(editor));
+
+  it('adds a row when tabbing from the last cell of a multi-cell row', () => {
+    const { view } = editor;
+    buildTable(view, [['block'], ['a', 'b']], 2);
+    placeCursorIn(view, 'b');
+
+    expect(pressTab(view)).to.be.true;
+    expect(lastRowColspans(view)).to.deep.equal([1, 1]);
+    expect(view.state.doc.firstChild.childCount).to.equal(3);
+    expect(view.state.selection.$from.node(-2)).to.equal(view.state.doc.firstChild.lastChild);
+  });
+
+  it('adds a row when tabbing from a single merged cell in the last row', () => {
+    const { view } = editor;
+    buildTable(view, [['block'], ['a', 'b'], ['last']], 2);
+    placeCursorIn(view, 'last');
+
+    expect(pressTab(view)).to.be.true;
+    expect(lastRowColspans(view)).to.deep.equal([2]);
+    expect(view.state.doc.firstChild.childCount).to.equal(4);
+    expect(view.state.selection.$from.node(-2)).to.equal(view.state.doc.firstChild.lastChild);
+  });
+
+  it('adds a row when tabbing from the last row of a single-column table', () => {
+    const { view } = editor;
+    buildTable(view, [['block'], ['only']], 1);
+    placeCursorIn(view, 'only');
+
+    expect(pressTab(view)).to.be.true;
+    expect(lastRowColspans(view)).to.deep.equal([1]);
+    expect(view.state.doc.firstChild.childCount).to.equal(3);
+    expect(view.state.selection.$from.node(-2)).to.equal(view.state.doc.firstChild.lastChild);
+  });
+
+  it('falls back to a full-width row when a cell above spans into the last row', () => {
+    const { view } = editor;
+    const { schema } = view.state;
+    const { table, table_row: tableRow, table_cell: tableCell, paragraph } = schema.nodes;
+    const cell = (text, attrs) => tableCell.create(
+      attrs,
+      paragraph.create(null, schema.text(text)),
+    );
+    const doc = table.create(null, [
+      tableRow.create(null, [cell('block', { colspan: 2 })]),
+      tableRow.create(null, [cell('tall', { rowspan: 2 }), cell('b')]),
+      tableRow.create(null, [cell('c')]),
+    ]);
+    view.dispatch(view.state.tr.replaceWith(0, view.state.doc.content.size, doc));
+    placeCursorIn(view, 'c');
+
+    expect(pressTab(view)).to.be.true;
+    expect(view.state.doc.firstChild.childCount).to.equal(4);
+    expect(lastRowColspans(view)).to.deep.equal([1, 1]);
+    expect(view.state.selection.$from.node(-2)).to.equal(view.state.doc.firstChild.lastChild);
   });
 });
