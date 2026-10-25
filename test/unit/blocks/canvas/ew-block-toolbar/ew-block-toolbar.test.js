@@ -3,6 +3,10 @@ import { setNx } from '../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
+const { NodeSelection } = await import('da-y-wrapper');
+const { setDaConfigs } = await import('../../../../fixtures/nx/utils/daConfig.js');
+const { createTestEditor, destroyEditor } = await import('../../edit/prose/test-helpers.js');
+const { resetBlockLibraryCache } = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
 const { default: EwBlockToolbar, collectLibraryVariants, nextVariants } = await import('../../../../../blocks/canvas/ew-block-toolbar/ew-block-toolbar.js');
 const { canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js');
 const { setCommentsController } = await import('../../../../../blocks/canvas/editor-utils/comments-bridge.js');
@@ -190,6 +194,151 @@ describe('ew-block-toolbar', () => {
 
     expect(toolbar._variantOptions).to.deep.equal(['highlight', 'blue']);
     expect(picker().values).to.deep.equal(['highlight']);
+  });
+
+  describe('re-show', () => {
+    let loads;
+
+    beforeEach(() => {
+      loads = [];
+      toolbar._loadVariants = (name) => loads.push(`variants:${name}`);
+      toolbar._loadMultiBlock = (name) => loads.push(`multi:${name}`);
+    });
+
+    it('does not reload for the same open block', () => {
+      toolbar.show('cards');
+      toolbar.show('cards', 'dark');
+      expect(loads).to.deep.equal(['variants:cards', 'multi:cards']);
+    });
+
+    it('reloads after the toolbar was hidden', () => {
+      toolbar.show('cards');
+      toolbar.hide();
+      toolbar.show('cards');
+      expect(loads).to.deep.equal(['variants:cards', 'multi:cards', 'variants:cards', 'multi:cards']);
+    });
+
+    it('reloads for a different block', () => {
+      toolbar.show('cards');
+      toolbar.show('hero');
+      expect(loads).to.deep.equal(['variants:cards', 'multi:cards', 'variants:hero', 'multi:hero']);
+    });
+  });
+
+  describe('variant toggles', () => {
+    let editor;
+    let focusCalls;
+    let variantAtDispatch;
+
+    beforeEach(async () => {
+      editor = await createTestEditor();
+      const { state } = editor.view;
+      const { schema } = state;
+      const cell = schema.nodes.table_cell.create(null, schema.nodes.paragraph.create(null, schema.text('cards (dark)')));
+      const table = schema.nodes.table.create(null, schema.nodes.table_row.create(null, cell));
+      editor.view.dispatch(state.tr.replaceWith(0, state.doc.content.size, table));
+      let tablePos = -1;
+      editor.view.state.doc.descendants((node, pos) => {
+        if (node.type.name === 'table' && tablePos < 0) tablePos = pos;
+      });
+      editor.view.dispatch(editor.view.state.tr.setSelection(
+        NodeSelection.create(editor.view.state.doc, tablePos),
+      ));
+
+      focusCalls = 0;
+      editor.view.focus = () => { focusCalls += 1; };
+      const dispatch = editor.view.dispatch.bind(editor.view);
+      editor.view.dispatch = (tr) => {
+        variantAtDispatch = toolbar.blockVariant;
+        dispatch(tr);
+      };
+
+      toolbar.view = editor.view;
+      toolbar.show('cards', 'dark');
+      toolbar._variantOptions = ['dark', 'wide'];
+      await toolbar.updateComplete;
+    });
+
+    afterEach(() => destroyEditor(editor));
+
+    function header() {
+      return editor.view.state.selection.node.firstChild.firstChild.textContent;
+    }
+
+    function change(detail) {
+      picker().dispatchEvent(new CustomEvent('change', { detail }));
+    }
+
+    it('appends a toggled-on variant to the header without moving focus', () => {
+      change({ value: 'wide', values: ['dark', 'wide'], selected: true });
+      expect(header()).to.equal('cards (dark, wide)');
+      expect(toolbar.blockVariant).to.equal('dark, wide');
+      expect(focusCalls).to.equal(0);
+    });
+
+    it('removes a toggled-off variant from the header', () => {
+      change({ value: 'dark', values: [], selected: false });
+      expect(header()).to.equal('cards');
+      expect(toolbar.blockVariant).to.equal('');
+    });
+
+    it('updates the current variant before dispatching so the controller skips a re-show', () => {
+      change({ value: 'wide', values: ['dark', 'wide'], selected: true });
+      expect(variantAtDispatch).to.equal('dark, wide');
+    });
+
+    it('clears every variant and refocuses the editor for Clear all', () => {
+      change({ value: 'wide', values: ['dark', 'wide'], selected: true });
+      change({ value: '' });
+      expect(header()).to.equal('cards');
+      expect(focusCalls).to.equal(1);
+    });
+  });
+
+  describe('library variants', () => {
+    let savedFetch;
+
+    beforeEach(() => {
+      savedFetch = window.fetch;
+      resetBlockLibraryCache();
+      setDaConfigs([{ library: { data: [{ title: 'Blocks', path: '/blocks.json' }] }, data: [] }]);
+      const pages = {
+        '/blocks.json': JSON.stringify({ data: [{ name: 'Cards', path: '/cards' }, { name: 'Promo', path: '/promo' }] }),
+        '/cards': `<body><div>
+          <h2>Fancy Cards</h2>
+          <div class="cards dark wide"><div><div>c</div></div></div>
+          <h2>Cards (Horizontal)</h2>
+          <div class="cards"><div><div>c</div></div></div>
+          <div class="hero big"><div><div>h</div></div></div>
+        </div></body>`,
+        '/promo': `<body><div>
+          <div class="library-container-start"></div>
+          <h2>Promo heading</h2>
+          <div class="cards Dark promo"><div><div>c</div></div></div>
+          <div class="library-metadata"><div><div>name</div><div>Promo bundle</div></div></div>
+          <div class="library-container-end"></div>
+        </div></body>`,
+      };
+      window.fetch = (url) => {
+        const pathname = new URL(url, window.location.href).pathname.replace(/\.plain\.html$/, '');
+        const key = Object.keys(pages).find((p) => pathname.endsWith(p));
+        return Promise.resolve(key ? new Response(pages[key]) : new Response('', { status: 404 }));
+      };
+    });
+
+    afterEach(() => {
+      window.fetch = savedFetch;
+      setDaConfigs([]);
+      resetBlockLibraryCache();
+    });
+
+    it('collects class, legacy-label and group variants for the selected block', async () => {
+      toolbar.org = 'tborg';
+      toolbar.site = 'tbsite';
+      toolbar._blockName = 'cards';
+      await toolbar._loadVariants('cards');
+      expect(toolbar._variantOptions).to.deep.equal(['dark', 'wide', 'Horizontal', 'promo']);
+    });
   });
 
   function editBtn() {

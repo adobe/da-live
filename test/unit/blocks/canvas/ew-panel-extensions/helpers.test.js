@@ -325,6 +325,20 @@ describe('EW panel helpers transformBlock', () => {
       ]);
     });
 
+    it('adds a legacy identity from a "Name (x)" metadata name', async () => {
+      mockHtml(`
+        <body><div>
+          <div class="cards"><div><div>content</div></div></div>
+          <div class="library-metadata"><div><div>name</div><div>Cards (Promo)</div></div></div>
+        </div></body>
+      `);
+      const [item] = await getBlockVariants('/mock-path');
+      expect(item.identities).to.deep.equal([
+        { name: 'cards', variants: [] },
+        { name: 'Cards', variants: ['Promo'] },
+      ]);
+    });
+
     it('derives one identity per block inside a container group', async () => {
       mockHtml(`
         <body><div>
