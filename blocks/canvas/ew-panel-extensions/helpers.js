@@ -9,7 +9,7 @@ import { getPreviewOrigin } from '../editor-utils/editor-utils.js';
 import { getCanvasBranch } from '../utils/branch.js';
 import { htmlToProse } from '../../edit/utils/helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
-import { getBlockPositions } from '../editor-utils/blocks.js';
+import { getBlockPositions, replaceBlockRange } from '../editor-utils/blocks.js';
 import { getCommentsBridge, formatCommentsViewLabel } from '../editor-utils/comments-bridge.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
@@ -713,15 +713,17 @@ export function replaceHTMLAtCursor(view, html) {
 
 export function insertLibraryBlock(view, dom) {
   const { from, to } = view.state.selection;
-  const inBlock = getBlockPositions(view).some((pos) => {
+  const blockPos = getBlockPositions(view).find((pos) => {
     const end = pos + view.state.doc.nodeAt(pos).nodeSize;
     return from >= pos && from < end && to <= end;
   });
-  if (inBlock && dom.tagName === 'TABLE') {
+  if (blockPos === undefined) {
+    insertBlock(view, dom);
+  } else if (dom.tagName === 'TABLE') {
     replaceHTMLAtCursor(view, dom.outerHTML);
-    return;
+  } else {
+    replaceBlockRange(view, blockPos, blockPos + view.state.doc.nodeAt(blockPos).nodeSize, dom);
   }
-  insertBlock(view, dom);
 }
 
 export function getEditorSelection(view) {

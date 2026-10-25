@@ -180,14 +180,29 @@ describe('Ew panel library block insertion', () => {
     expect(view.state.doc.lastChild.textContent).to.equal('OtherKeep');
   });
 
-  it('keeps insertion for library groups with multiple content nodes', () => {
+  it('replaces the enclosing block with every node of a library group', () => {
     selectBody();
     const group = document.createElement('div');
     group.append(dom, document.createElement('p'));
     group.lastChild.textContent = 'Grouped text';
     el._insertBlock({ dom: group });
-    expect(view.state.doc.textContent).to.include('Replacement');
-    expect(view.state.doc.textContent).to.include('Grouped text');
+    expect(contents()).to.deep.equal([
+      ['paragraph', 'Intro'], ['table', 'NewReplacement'], ['paragraph', 'Grouped text'],
+      ['paragraph', 'Outro'], ['table', 'OtherKeep'],
+    ]);
+  });
+
+  it('replaces an explicitly selected block with a library group', () => {
+    const pos = view.state.doc.firstChild.nodeSize;
+    view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos)));
+    const group = document.createElement('div');
+    group.append(dom, document.createElement('p'));
+    group.lastChild.textContent = 'Grouped text';
+    el._insertBlock({ dom: group });
+    expect(contents()).to.deep.equal([
+      ['paragraph', 'Intro'], ['table', 'NewReplacement'], ['paragraph', 'Grouped text'],
+      ['paragraph', 'Outro'], ['table', 'OtherKeep'],
+    ]);
   });
 });
 
