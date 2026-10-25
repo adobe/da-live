@@ -148,16 +148,15 @@ describe('ew-block-toolbar', () => {
     expect(picker().values).to.deep.equal([]);
   });
 
-  it('offers Clear all only when the block has variants', async () => {
+  it('always offers Clear all so the menu keeps the same height', async () => {
     toolbar.show('cards');
     toolbar._variantOptions = ['highlight'];
     await toolbar.updateComplete;
-    expect(picker().items.some((i) => i.action)).to.be.false;
+    expect(picker().items.find((i) => i.action)).to.include({ label: 'Clear all', value: '' });
 
     toolbar.show('cards', 'highlight');
     await toolbar.updateComplete;
-    const clear = picker().items.find((i) => i.action);
-    expect(clear).to.include({ label: 'Clear all', value: '' });
+    expect(picker().items.find((i) => i.action)).to.include({ label: 'Clear all', value: '' });
   });
 
   it('checks every current variant, mapped to the library spelling', async () => {
@@ -293,6 +292,15 @@ describe('ew-block-toolbar', () => {
       change({ value: '' });
       expect(header()).to.equal('cards');
       expect(focusCalls).to.equal(1);
+    });
+
+    it('does nothing for Clear all when the block has no variants', () => {
+      change({ value: 'dark', values: [], selected: false });
+      const { doc } = editor.view.state;
+      focusCalls = 0;
+      change({ value: '' });
+      expect(editor.view.state.doc === doc).to.be.true;
+      expect(focusCalls).to.equal(0);
     });
   });
 

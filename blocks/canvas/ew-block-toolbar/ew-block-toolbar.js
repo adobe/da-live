@@ -151,16 +151,18 @@ class EwBlockToolbar extends LitElement {
     return { options, values };
   }
 
-  _variantPickerItems(options, values) {
+  _variantPickerItems(options) {
     return [
       { section: 'Variants' },
       ...options.map((v) => ({ value: v, label: v })),
-      ...(values.length ? [{ divider: true }, { value: '', label: 'Clear all', action: true }] : []),
+      { divider: true },
+      { value: '', label: 'Clear all', action: true },
     ];
   }
 
   _onVariantChange(e) {
     if (!this.view) return;
+    if (!e.detail.values && !parseVariants(this._currentVariant).length) return;
     const next = nextVariants(this._currentVariant, e.detail);
     this._currentVariant = next;
     setTableBlockVariant(this.view, next);
@@ -276,7 +278,7 @@ class EwBlockToolbar extends LitElement {
               ignoreFocus
               .multiple=${true}
               placeholder="No variant"
-              .items=${this._variantPickerItems(options, values)}
+              .items=${this._variantPickerItems(options)}
               .values=${values}
               @change=${(e) => this._onVariantChange(e)}
             ></nx-picker>
