@@ -203,6 +203,16 @@ function handleDivLineBreaks(doc) {
   return true;
 }
 
+function asCodeText(slice, schema, marks) {
+  const text = slice.content.textBetween(0, slice.content.size, '\n');
+  if (!text) return slice;
+  const nodes = text.split('\n').map((line) => schema.nodes.paragraph.create(
+    null,
+    line ? schema.text(line, marks) : null,
+  ));
+  return new Slice(Fragment.from(nodes), 1, 1);
+}
+
 /* When text is pasted, handle section breaks. */
 export default function sectionPasteHandler(schema) {
   return new Plugin({
@@ -267,7 +277,12 @@ export default function sectionPasteHandler(schema) {
       /* Convert 3 dashes on a line by itself (top level only) to a horizontal rule,
        * which is then interpreted as a section break.
        */
-      transformPasted: (slice) => {
+      transformPasted: (slice, view) => {
+        const $from = view?.state.selection.$from;
+        if ($from && schema.marks.code.isInSet($from.marks())) {
+          return asCodeText(slice, schema, $from.marks());
+        }
+
         const jslice = slice.toJSON();
         if (!jslice) return slice;
         const { content } = jslice;

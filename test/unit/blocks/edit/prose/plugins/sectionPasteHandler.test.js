@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { baseSchema, Slice } from 'da-y-wrapper';
+import { baseSchema, EditorState, Slice, TextSelection } from 'da-y-wrapper';
 import { setNx } from '../../../../../../scripts/utils.js';
 
 // Seed nx so the dynamic import inside showSpaceNormalizationDialog (triggered
@@ -438,6 +438,64 @@ describe('Section paste handler', () => {
 
     const newJSON = JSON.stringify(newSlice.content.toJSON());
     expect(newJSON).to.equal(JSON.stringify(expectedJSON.content));
+  });
+});
+
+describe('Paste inside inline code', () => {
+  const { code, strong } = baseSchema.marks;
+  const doc = baseSchema.node('doc', null, [
+    baseSchema.node('paragraph', null, [
+      baseSchema.text('ab'),
+      baseSchema.text('cd', [code.create()]),
+      baseSchema.text('ef'),
+    ]),
+  ]);
+  const viewAt = (pos) => {
+    const selection = TextSelection.create(doc, pos);
+    return { state: EditorState.create({ doc, selection }) };
+  };
+  const transform = sectionPasteHandler(baseSchema).props.transformPasted;
+
+  const richSlice = Slice.fromJSON(baseSchema, {
+    content: [{
+      type: 'paragraph',
+      content: [
+        { type: 'text', text: 'bold', marks: [{ type: 'strong' }] },
+        { type: 'text', text: ' plain' },
+      ],
+    }],
+    openStart: 1,
+    openEnd: 1,
+  });
+
+  it('pastes as code-marked plain text when cursor is inside code', () => {
+    const json = transform(richSlice, viewAt(4)).content.toJSON();
+    expect(json).to.deep.equal([{
+      type: 'paragraph',
+      content: [{ type: 'text', text: 'bold plain', marks: [{ type: 'code' }] }],
+    }]);
+  });
+
+  it('keeps each pasted line as a code-marked paragraph', () => {
+    const slice = Slice.fromJSON(baseSchema, {
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'one' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: '---' }] },
+      ],
+      openStart: 1,
+      openEnd: 1,
+    });
+    const json = transform(slice, viewAt(4)).content.toJSON();
+    expect(json).to.deep.equal([
+      { type: 'paragraph', content: [{ type: 'text', text: 'one', marks: [{ type: 'code' }] }] },
+      { type: 'paragraph', content: [{ type: 'text', text: '---', marks: [{ type: 'code' }] }] },
+    ]);
+  });
+
+  it('leaves formatting alone when cursor is outside code', () => {
+    const [para] = transform(richSlice, viewAt(2)).content.content;
+    expect(strong.isInSet(para.firstChild.marks)).to.exist;
+    expect(code.isInSet(para.firstChild.marks)).to.not.exist;
   });
 });
 
