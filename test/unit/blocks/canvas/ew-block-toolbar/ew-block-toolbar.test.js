@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
 import { setNx } from '../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -400,5 +401,116 @@ describe('ew-block-toolbar', () => {
     } finally {
       setCommentsController(null);
     }
+  });
+});
+
+describe('ew-block-toolbar with the toolbar controller', () => {
+  let editor;
+  let frame;
+  let btb;
+  let toolbarController;
+  let selectionToolbar;
+
+  before(async () => {
+    ({ toolbarController } = await import('../../../../../blocks/canvas/editor-utils/toolbar-controller.js'));
+    selectionToolbar = await import('../../../../../blocks/canvas/editor-utils/selection-toolbar.js');
+    await import('../../../../../blocks/canvas/ew-selection-toolbar/ew-selection-toolbar.js');
+  });
+
+  beforeEach(async () => {
+    frame = sinon.stub(window, 'requestAnimationFrame').callsFake((cb) => {
+      cb();
+      return 0;
+    });
+    toolbarController.reset();
+    canvasBus.blockEditState.emit({ open: false });
+    const plugin = selectionToolbar.createSelectionToolbarPlugin();
+    editor = await createTestEditor({ additionalPlugins: [plugin] });
+    const { state } = editor.view;
+    const { schema } = state;
+    const cell = schema.nodes.table_cell.create(null, schema.nodes.paragraph.create(null, schema.text('cards (dark)')));
+    const table = schema.nodes.table.create(null, schema.nodes.table_row.create(null, cell));
+    editor.view.dispatch(state.tr.replaceWith(0, state.doc.content.size, table));
+    toolbarController.setDocView(editor.view);
+    btb = toolbarController.ensureBlockToolbar();
+  });
+
+  afterEach(() => {
+    destroyEditor(editor);
+    toolbarController.reset();
+    frame.restore();
+  });
+
+  function tablePos() {
+    let found = -1;
+    editor.view.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'table' && found < 0) found = pos;
+    });
+    return found;
+  }
+
+  function selectFromDoc() {
+    canvasBus.toolbarSurfaceRequest.emit({ surface: 'doc', active: true });
+    const { state } = editor.view;
+    editor.view.dispatch(state.tr.setSelection(NodeSelection.create(state.doc, tablePos())));
+  }
+
+  function selectFromIframe() {
+    const { state } = editor.view;
+    editor.view.dispatch(state.tr
+      .setSelection(NodeSelection.create(state.doc, tablePos()))
+      .setMeta(selectionToolbar.NX_QUICK_EDIT_IFRAME_SELECTION_META, true));
+    const block = selectionToolbar.selectedBlockDescriptor(editor.view.state);
+    canvasBus.toolbarSelectionState.emit({ surface: 'wysiwyg', showable: false, block });
+  }
+
+  async function toggleOn(value) {
+    btb._variantOptions = ['dark', 'wide', 'blue'];
+    await btb.updateComplete;
+    const picker = btb.shadowRoot.querySelector('nx-picker');
+    const values = [...picker.values, value];
+    picker.dispatchEvent(new CustomEvent('change', { detail: { value, values, selected: true } }));
+    await btb.updateComplete;
+  }
+
+  function header() {
+    return editor.view.state.doc.nodeAt(tablePos()).firstChild.firstChild.textContent;
+  }
+
+  it('keeps successive toggles in layout mode (wysiwyg surface)', async () => {
+    canvasBus.editorViewState.emit({ view: 'layout' });
+    selectFromIframe();
+    expect(btb.blockVariant).to.equal('dark');
+
+    await toggleOn('wide');
+    await toggleOn('blue');
+
+    expect(header()).to.equal('cards (dark, wide, blue)');
+    expect(btb.blockVariant).to.equal('dark, wide, blue');
+    expect(toolbarController.activeSurface).to.equal('wysiwyg');
+  });
+
+  it('keeps successive toggles in split view with the block selected in the iframe', async () => {
+    canvasBus.editorViewState.emit({ view: 'split' });
+    selectFromIframe();
+
+    await toggleOn('wide');
+    await toggleOn('blue');
+
+    expect(header()).to.equal('cards (dark, wide, blue)');
+    expect(btb.blockVariant).to.equal('dark, wide, blue');
+  });
+
+  it('does not claim the wysiwyg surface when toggling from the doc pane in split view', async () => {
+    canvasBus.editorViewState.emit({ view: 'split' });
+    selectFromDoc();
+    expect(toolbarController.activeSurface).to.equal('doc');
+
+    await toggleOn('wide');
+    await toggleOn('blue');
+
+    expect(header()).to.equal('cards (dark, wide, blue)');
+    expect(btb.blockVariant).to.equal('dark, wide, blue');
+    expect(toolbarController.activeSurface).to.equal('doc');
   });
 });

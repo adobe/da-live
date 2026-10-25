@@ -5,6 +5,7 @@ import { replaceBlockRange, setTableBlockVariant, appendBlockRow } from '../edit
 import { isMultiBlock, getMultiBlockTemplateRow } from '../editor-utils/multi-block.js';
 import { requestComment } from '../editor-utils/command-helpers.js';
 import { canvasBus } from '../utils/canvas-bus.js';
+import { toolbarController } from '../editor-utils/toolbar-controller.js';
 
 const nx = getNx();
 const { loadStyle } = await import(`${nx}/utils/utils.js`);
@@ -135,6 +136,10 @@ class EwBlockToolbar extends LitElement {
     const next = nextVariants(this._currentVariant, e.detail);
     this._currentVariant = next;
     setTableBlockVariant(this.view, next);
+    if (toolbarController.activeSurface === 'wysiwyg') {
+      const block = { name: this._blockName, variant: next };
+      canvasBus.toolbarSelectionState.emit({ surface: 'wysiwyg', showable: false, block });
+    }
     if (!e.detail.values) this.view.focus();
   }
 
