@@ -513,4 +513,71 @@ describe('ew-block-toolbar with the toolbar controller', () => {
     expect(btb.blockVariant).to.equal('dark, wide, blue');
     expect(toolbarController.activeSurface).to.equal('doc');
   });
+
+  describe('closing the open picker', () => {
+    let closes;
+
+    async function openPicker() {
+      btb._variantOptions = ['dark', 'wide', 'blue'];
+      await btb.updateComplete;
+      const picker = btb.shadowRoot.querySelector('nx-picker');
+      closes = 0;
+      picker.open = true;
+      picker.close = () => {
+        closes += 1;
+        picker.open = false;
+      };
+    }
+
+    function addSecondCards() {
+      const { state } = editor.view;
+      const { schema } = state;
+      const cell = schema.nodes.table_cell.create(null, schema.nodes.paragraph.create(null, schema.text('cards (dark)')));
+      const table = schema.nodes.table.create(null, schema.nodes.table_row.create(null, cell));
+      editor.view.dispatch(state.tr.insert(state.doc.content.size, table));
+      let last = -1;
+      editor.view.state.doc.descendants((node, pos) => {
+        if (node.type.name === 'table') last = pos;
+      });
+      return last;
+    }
+
+    beforeEach(() => {
+      canvasBus.editorViewState.emit({ view: 'layout' });
+    });
+
+    it('stays open while toggling variants', async () => {
+      selectFromIframe();
+      await openPicker();
+      await toggleOn('wide');
+      expect(closes).to.equal(0);
+    });
+
+    it('closes when the user clicks to a caret in the iframe', async () => {
+      selectFromIframe();
+      await openPicker();
+      canvasBus.toolbarSelectionState.emit({ surface: 'wysiwyg', showable: true });
+      expect(closes).to.equal(1);
+    });
+
+    it('closes when the user selects another block with the same name and variant', async () => {
+      const second = addSecondCards();
+      selectFromIframe();
+      await openPicker();
+      const { state } = editor.view;
+      editor.view.dispatch(state.tr
+        .setSelection(NodeSelection.create(state.doc, second))
+        .setMeta(selectionToolbar.NX_QUICK_EDIT_IFRAME_SELECTION_META, true));
+      const block = selectionToolbar.selectedBlockDescriptor(editor.view.state);
+      canvasBus.toolbarSelectionState.emit({ surface: 'wysiwyg', showable: false, block });
+      expect(closes).to.equal(1);
+    });
+
+    it('ignores doc-surface updates such as collaborator edits', async () => {
+      selectFromIframe();
+      await openPicker();
+      canvasBus.toolbarSelectionState.emit({ surface: 'doc', showable: true, block: null });
+      expect(closes).to.equal(0);
+    });
+  });
 });

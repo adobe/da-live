@@ -1,4 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
+import { NodeSelection } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
 import { getBlocksExtension, loadBlockLibrary } from '../ew-panel-extensions/helpers.js';
 import { replaceBlockRange, setTableBlockVariant, appendBlockRow } from '../editor-utils/blocks.js';
@@ -63,6 +64,33 @@ class EwBlockToolbar extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [styles];
+    this._unsubscribeSelection = canvasBus.toolbarSelectionState
+      .subscribe((detail) => this._onSelectionState(detail));
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this._unsubscribeSelection?.();
+  }
+
+  _selectedBlockPos() {
+    const selection = this.view?.state.selection;
+    return selection instanceof NodeSelection ? selection.from : null;
+  }
+
+  /** Clicks in the cross-origin iframe never reach the picker's outside-click
+   * handler, so close it when the user's selection leaves this block instead.
+   * Our own toggles keep the same block selected, so they don't close it. */
+  _onSelectionState({ surface, block }) {
+    if (surface !== 'wysiwyg') return;
+    const pos = this._selectedBlockPos();
+    const moved = !block || pos === null || pos !== this._blockPos;
+    if (pos !== null) this._blockPos = pos;
+    const picker = this.shadowRoot?.querySelector('nx-picker');
+    if (moved && picker?.open) {
+      picker.close();
+      toolbarController.refresh();
+    }
   }
 
   updated(changed) {
@@ -150,6 +178,7 @@ class EwBlockToolbar extends LitElement {
       this.style.setProperty('--toolbar-anchor-x', `${left + width / 2}px`);
     }
     const sameBlock = this.open && this._blockName === blockName;
+    this._blockPos = this._selectedBlockPos();
     this._blockName = blockName;
     this._currentVariant = variant;
     if (!sameBlock) {
