@@ -70,7 +70,8 @@ export function createEditorComments({ getView, getPort, getContainer }) {
 
     createPlugin(session, ctx, wsProvider) {
       store = createCommentsStoreFor(session, ctx);
-      controller = createCommentsController({ commentsStore: store, wsProvider });
+      const rosterPath = ctx?.path;
+      controller = createCommentsController({ commentsStore: store, wsProvider, rosterPath });
       return commentPlugin({ controller, store });
     },
 

@@ -3,6 +3,7 @@
 import { html, nothing } from 'da-lit';
 import * as formatUtils from './format-utils.js';
 import { DRAFT_MODES } from './draft-state.js';
+import { splitMentions } from './mentions.js';
 import { generateColorSet } from '../../editor-utils/author-color.js';
 
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.userAgent);
@@ -31,6 +32,32 @@ export function renderAvatar(panel, author) {
   `;
 }
 
+export function renderBody(comment) {
+  return splitMentions(comment.body, comment.mentions).map((seg) => (seg.mention
+    ? html`<span class="ew-comment-mention" title=${seg.mention.email}>@${seg.mention.name}</span>`
+    : seg.text));
+}
+
+function renderMentionMenu(panel) {
+  const menu = panel._mentionMenu;
+  if (!menu) return nothing;
+  return html`
+    <ul class="ew-mention-menu" role="listbox" aria-label="Mention someone">
+      ${menu.items.map((user, i) => html`
+        <li
+          role="option"
+          aria-selected=${i === menu.index}
+          class=${i === menu.index ? 'is-active' : ''}
+          @mousedown=${(e) => { e.preventDefault(); panel.pickMention(user); }}>
+          ${renderAvatar(panel, { name: user.name, email: user.email })}
+          <span class="ew-mention-name">${user.name}</span>
+          <span class="ew-mention-email">${user.email}</span>
+        </li>
+      `)}
+    </ul>
+  `;
+}
+
 export function renderForm(panel, {
   placeholder, submitLabel = 'Submit', value, formClass = '', showActions = true, onFocus,
 }) {
@@ -48,6 +75,7 @@ export function renderForm(panel, {
         @focus=${onFocus}
         @keydown=${panel.handleDraftKeydown}
       ></textarea>
+      ${renderMentionMenu(panel)}
       ${showActions ? html`
         <div class="ew-comment-form-actions">
           <button type="button" class="nx-form-btn-secondary" @click=${panel.cancelDraft}>Cancel</button>
@@ -146,7 +174,7 @@ export function renderComment(panel, {
         value: panel._draft?.text || '',
         formClass: 'ew-comment-edit-form',
       }) : html`
-        <div class="ew-comment-content ${isPreview ? 'is-clamped' : ''}">${comment.body}</div>
+        <div class="ew-comment-content ${isPreview ? 'is-clamped' : ''}">${renderBody(comment)}</div>
       `}
     </div>
   `;

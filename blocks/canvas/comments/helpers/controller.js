@@ -10,9 +10,12 @@ import { createAwarenessSync } from './awareness-sync.js';
 import { computeCounts, buildThreadGroups } from './thread-grouping.js';
 import { buildAuthorColorMap, authorColorSet } from './author-colors.js';
 import { createChannel } from '../../utils/canvas-bus.js';
+import { DA_ORIGIN } from '../../../shared/constants.js';
+import { daFetch } from '../../../shared/utils.js';
 
-export function createCommentsController({ commentsStore: store, wsProvider }) {
+export function createCommentsController({ commentsStore: store, wsProvider, rosterPath }) {
   let authorColors = null;
+  let rosterPromise = null;
 
   const getAuthorColorMap = () => {
     if (!authorColors) authorColors = buildAuthorColorMap(store);
@@ -114,7 +117,18 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
       return ids;
     },
 
-    async createRootComment({ user, anchor, body, now = Date.now() }) {
+    loadRoster() {
+      if (!rosterPath) return Promise.resolve([]);
+      if (!rosterPromise) {
+        rosterPromise = daFetch(`${DA_ORIGIN}/users/${rosterPath}`)
+          .then((resp) => (resp.ok ? resp.json() : {}))
+          .then((json) => json.users ?? [])
+          .catch(() => []);
+      }
+      return rosterPromise;
+    },
+
+    async createRootComment({ user, anchor, body, mentions = [], now = Date.now() }) {
       const id = crypto.randomUUID();
       await store.set(id, {
         id,
@@ -122,6 +136,7 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
         ...anchor,
         author: user,
         body,
+        mentions,
         createdAt: now,
         resolved: false,
         resolvedBy: null,
@@ -131,23 +146,25 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
       return id;
     },
 
-    async createReply({ threadId, user, body, now = Date.now() }) {
+    async createReply({ threadId, user, body, mentions = [], now = Date.now() }) {
       const id = crypto.randomUUID();
       await store.set(id, {
         id,
         threadId,
         author: user,
         body,
+        mentions,
         createdAt: now,
       });
       broadcastChange();
       return id;
     },
 
-    async editComment({ commentId, body, now = Date.now() }) {
+    async editComment({ commentId, body, mentions, now = Date.now() }) {
       const comment = store.get(commentId);
       if (!comment) return;
-      await store.set(commentId, { ...comment, body, editedAt: now });
+      const nextMentions = mentions ?? comment.mentions ?? [];
+      await store.set(commentId, { ...comment, body, mentions: nextMentions, editedAt: now });
       broadcastChange();
     },
 

@@ -430,3 +430,54 @@
   min-width: 0;
   font-style: italic;
 }
+.ew-comment-form {
+  position: relative;
+}
+
+.ew-mention-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  margin: 2px 0 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--s2-gray-25, #fff);
+  border: 1px solid var(--s2-gray-300);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 12%);
+}
+
+.ew-mention-menu li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.ew-mention-menu li.is-active,
+.ew-mention-menu li:hover {
+  background: var(--s2-gray-100);
+}
+
+.ew-mention-menu .ew-comment-avatar {
+  grid-row: span 2;
+}
+
+.ew-mention-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ew-mention-email {
+  font-size: 11px;
+  color: var(--s2-gray-600);
+}
+
+.ew-comment-mention {
+  color: var(--s2-blue-900, #274dea);
+  font-weight: 600;
+}

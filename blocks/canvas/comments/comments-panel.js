@@ -11,8 +11,15 @@ import {
   makeReplyDraft,
   makeEditDraft,
   setDraftText,
+  addDraftMention,
   shouldAdoptPendingAnchor,
 } from './helpers/draft-state.js';
+import {
+  mentionQuery,
+  insertMention,
+  filterRoster,
+  activeMentions,
+} from './helpers/mentions.js';
 import {
   renderListView,
   renderThreadView,
@@ -45,6 +52,7 @@ export class CommentsPanel extends LitElement {
     currentUser: { state: true },
     _activeTab: { state: true },
     _draft: { state: true },
+    _mentionMenu: { state: true },
     _submitting: { state: true },
     _submittingId: { state: true },
     _pendingDelete: { state: true },
@@ -174,7 +182,10 @@ export class CommentsPanel extends LitElement {
       this.setupObservers();
       this.syncPanelOpen();
     }
-    if (changedProps.has('_draft') && this._draft) this.focusDraftTextarea();
+    if (changedProps.has('_draft') && this._draft) {
+      this.focusDraftTextarea();
+      if (!this._roster) this.controller?.loadRoster?.().then((users) => { this._roster = users; });
+    }
     this.resolvePendingCommentLink();
   }
 
@@ -231,14 +242,58 @@ export class CommentsPanel extends LitElement {
 
   cancelDraft() {
     this._draft = null;
+    this._mentionMenu = null;
     this.controller?.clearPendingAnchor();
   }
 
   updateDraftText(event) {
     this._draft = setDraftText(this._draft, event.target.value);
+    this.refreshMentionMenu(event.target);
+  }
+
+  refreshMentionMenu(textarea) {
+    const found = this._roster && mentionQuery(textarea.value, textarea.selectionStart);
+    const items = found ? filterRoster(this._roster, found.query) : [];
+    this._mentionMenu = items.length ? { items, index: 0 } : null;
+  }
+
+  getDraftTextarea() {
+    return this.shadowRoot?.querySelector('.ew-comment-form .ew-comment-textarea');
+  }
+
+  async pickMention(user) {
+    const textarea = this.getDraftTextarea();
+    if (!textarea) return;
+    const caret = textarea.selectionStart;
+    const next = insertMention({ text: textarea.value, caret, user });
+    this._mentionMenu = null;
+    this._draft = addDraftMention(setDraftText(this._draft, next.text), user);
+    await this.updateComplete;
+    textarea.value = next.text;
+    textarea.setSelectionRange(next.caret, next.caret);
+    textarea.focus();
+  }
+
+  handleMentionMenuKeydown(event) {
+    const menu = this._mentionMenu;
+    if (!menu) return false;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      const step = event.key === 'ArrowDown' ? 1 : -1;
+      const index = (menu.index + step + menu.items.length) % menu.items.length;
+      this._mentionMenu = { ...menu, index };
+    } else if (event.key === 'Enter' || event.key === 'Tab') {
+      this.pickMention(menu.items[menu.index]);
+    } else if (event.key === 'Escape') {
+      this._mentionMenu = null;
+    } else {
+      return false;
+    }
+    event.preventDefault();
+    return true;
   }
 
   handleDraftKeydown(event) {
+    if (this.handleMentionMenuKeydown(event)) return;
     if (event.key === 'Escape') this.cancelDraft();
     if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
@@ -257,22 +312,24 @@ export class CommentsPanel extends LitElement {
 
     const user = this.currentUser;
     const draft = this._draft;
+    const mentions = activeMentions(body, draft.mentions);
     this._submitting = true;
     try {
       if (draft.mode === DRAFT_MODES.NEW) {
         const id = await this.controller.createRootComment(
-          { user, anchor: draft.anchorData, body },
+          { user, anchor: draft.anchorData, body, mentions },
         );
         this.controller.setSelectedThread(id);
       } else if (draft.mode === DRAFT_MODES.REPLY) {
-        await this.controller.createReply({ user, threadId: draft.threadId, body });
+        await this.controller.createReply({ user, threadId: draft.threadId, body, mentions });
       } else if (draft.mode === DRAFT_MODES.EDIT) {
-        await this.controller.editComment({ commentId: draft.commentId, body });
+        await this.controller.editComment({ commentId: draft.commentId, body, mentions });
       }
       this.controller.collapseSelection();
       this.controller.clearPendingAnchor();
       (this.shadowRoot?.activeElement ?? document.activeElement)?.blur();
       this._draft = null;
+      this._mentionMenu = null;
     } catch (err) {
       // eslint-disable-next-line no-console
       console.warn('[comments] submit failed', err);
