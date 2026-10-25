@@ -17,13 +17,34 @@ function normalizeBlockName(name) {
   return (name || '').toLowerCase().replace(/[\s_-]+/g, ' ').trim();
 }
 
-/** Split a library variant entry into its base block name and variant descriptor. */
-export function splitLibraryVariant(variant) {
-  const name = variant?.name || '';
-  const match = name.match(/^(.*\S)\s*\(([^)]+)\)\s*$/);
-  if (match) return { base: match[1].trim(), variant: match[2].trim() };
-  if (variant?.variants) return { base: name, variant: variant.variants };
-  return { base: name, variant: '' };
+function parseVariants(variant) {
+  return (variant || '').split(',').map((v) => v.trim()).filter(Boolean);
+}
+
+/** Variants the library offers for `blockName`, deduped loosely (first spelling wins). */
+export function collectLibraryVariants(items, blockName) {
+  const target = normalizeBlockName(blockName);
+  const found = new Map();
+  (items || []).forEach((item) => {
+    (item?.identities || []).forEach(({ name, variants }) => {
+      if (normalizeBlockName(name) !== target) return;
+      variants.forEach((v) => {
+        const key = normalizeBlockName(v);
+        if (!found.has(key)) found.set(key, v);
+      });
+    });
+  });
+  return [...found.values()];
+}
+
+/** The header variant string after a picker `change` (no `values` = Clear all). */
+export function nextVariants(current, { value, values, selected }) {
+  if (!values) return '';
+  const list = parseVariants(current);
+  const next = selected
+    ? [...list, value]
+    : list.filter((v) => normalizeBlockName(v) !== normalizeBlockName(value));
+  return next.join(', ');
 }
 
 class EwBlockToolbar extends LitElement {
@@ -47,7 +68,6 @@ class EwBlockToolbar extends LitElement {
     if (changed.has('org') || changed.has('site')) {
       this._checkBlockLibrary();
     }
-    this._syncVariantPicker();
   }
 
   async _checkBlockLibrary() {
@@ -65,17 +85,10 @@ class EwBlockToolbar extends LitElement {
     this._variantOptions = [];
     if (!this.org || !this.site || !blockName) return;
     const { blocks } = await loadBlockLibrary(this.org, this.site);
-    const target = normalizeBlockName(blockName);
-    const found = new Set();
-    await Promise.all((blocks || []).map(async (block) => {
-      const variants = (await block.loadVariants) || [];
-      variants.forEach((v) => {
-        const { base, variant } = splitLibraryVariant(v);
-        if (variant && normalizeBlockName(base) === target) found.add(variant);
-      });
-    }));
+    const items = (await Promise.all((blocks || []).map((block) => block.loadVariants)))
+      .flatMap((variants) => variants || []);
     if (this._blockName !== blockName) return;
-    this._variantOptions = [...found];
+    this._variantOptions = collectLibraryVariants(items, blockName);
   }
 
   async _loadMultiBlock(blockName) {
@@ -96,35 +109,33 @@ class EwBlockToolbar extends LitElement {
     this.view.focus();
   }
 
-  get _picker() { return this.shadowRoot?.querySelector('nx-picker'); }
-
-  _variantPickerItems() {
-    return [
-      { section: 'Variant' },
-      { value: '', label: 'No variant' },
-      ...(this._variantOptions || []).map((v) => ({ value: v, label: v })),
-    ];
+  /** Library options plus any current variant the library doesn't list; `values` uses
+   * the option spelling so the picker's exact-match checkmarks line up. */
+  _variantState() {
+    const options = [...(this._variantOptions || [])];
+    const values = parseVariants(this._currentVariant).map((v) => {
+      const match = options.find((o) => normalizeBlockName(o) === normalizeBlockName(v));
+      if (match) return match;
+      options.push(v);
+      return v;
+    });
+    return { options, values };
   }
 
-  _syncVariantPicker() {
-    const picker = this._picker;
-    if (!picker) return;
-    const current = this._currentVariant ?? '';
-    const match = (this._variantOptions || [])
-      .find((v) => normalizeBlockName(v) === normalizeBlockName(current));
-    if (match) {
-      picker.value = match;
-      picker.labelOverride = '';
-    } else {
-      picker.value = '';
-      picker.labelOverride = current;
-    }
+  _variantPickerItems(options, values) {
+    return [
+      { section: 'Variants' },
+      ...options.map((v) => ({ value: v, label: v })),
+      ...(values.length ? [{ divider: true }, { value: '', label: 'Clear all', action: true }] : []),
+    ];
   }
 
   _onVariantChange(e) {
     if (!this.view) return;
-    setTableBlockVariant(this.view, e.detail.value);
-    this.view.focus();
+    const next = nextVariants(this._currentVariant, e.detail);
+    this._currentVariant = next;
+    setTableBlockVariant(this.view, next);
+    if (!e.detail.values) this.view.focus();
   }
 
   show(blockName, variant = '') {
@@ -133,10 +144,13 @@ class EwBlockToolbar extends LitElement {
       const { left, width } = main.getBoundingClientRect();
       this.style.setProperty('--toolbar-anchor-x', `${left + width / 2}px`);
     }
+    const sameBlock = this.open && this._blockName === blockName;
     this._blockName = blockName;
     this._currentVariant = variant;
-    this._loadVariants(blockName);
-    this._loadMultiBlock(blockName);
+    if (!sameBlock) {
+      this._loadVariants(blockName);
+      this._loadMultiBlock(blockName);
+    }
     this.classList.add('open');
     this.requestUpdate();
   }
@@ -204,7 +218,8 @@ class EwBlockToolbar extends LitElement {
 
   render() {
     const name = this._blockName || 'Block';
-    const hasVariants = (this._variantOptions?.length ?? 0) > 0;
+    const { options, values } = this._variantState();
+    const hasVariants = options.length > 0;
     return html`
       <div class="toolbar-wrap" @mousedown=${(e) => e.preventDefault()}>
         <button
@@ -225,8 +240,10 @@ class EwBlockToolbar extends LitElement {
               class="toolbar-variant"
               placement="above"
               ignoreFocus
-              .items=${this._variantPickerItems()}
-              value=""
+              .multiple=${true}
+              placeholder="No variant"
+              .items=${this._variantPickerItems(options, values)}
+              .values=${values}
               @change=${(e) => this._onVariantChange(e)}
             ></nx-picker>
           </span>` : nothing}

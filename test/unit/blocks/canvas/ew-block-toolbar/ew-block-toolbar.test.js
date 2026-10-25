@@ -3,28 +3,51 @@ import { setNx } from '../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { default: EwBlockToolbar, splitLibraryVariant } = await import('../../../../../blocks/canvas/ew-block-toolbar/ew-block-toolbar.js');
+const { default: EwBlockToolbar, collectLibraryVariants, nextVariants } = await import('../../../../../blocks/canvas/ew-block-toolbar/ew-block-toolbar.js');
 const { canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js');
 const { setCommentsController } = await import('../../../../../blocks/canvas/editor-utils/comments-bridge.js');
 
-describe('splitLibraryVariant', () => {
-  it('prefers a "Name (variant)" name over class-derived variants (library-metadata override)', () => {
-    expect(splitLibraryVariant({ name: 'Cards (promo)', variants: 'promo' }))
-      .to.deep.equal({ base: 'Cards', variant: 'promo' });
+describe('collectLibraryVariants', () => {
+  const items = [
+    { identities: [{ name: 'cards', variants: ['dark', 'wide'] }] },
+    { identities: [{ name: 'Cards', variants: ['Dark', 'Horizontal'] }] },
+    { identities: [{ name: 'cards', variants: [] }, { name: 'button', variants: ['primary'] }] },
+    { identities: [] },
+    {},
+  ];
+
+  it('collects variants from every identity matching the block, first spelling wins', () => {
+    expect(collectLibraryVariants(items, 'cards')).to.deep.equal(['dark', 'wide', 'Horizontal']);
   });
 
-  it('parses a "Name (variant)" heading name', () => {
-    expect(splitLibraryVariant({ name: 'Cards (Horizontal)' }))
-      .to.deep.equal({ base: 'Cards', variant: 'Horizontal' });
+  it('matches block names ignoring case and separators', () => {
+    const list = [{ identities: [{ name: 'card-list', variants: ['two-up'] }] }];
+    expect(collectLibraryVariants(list, 'Card List')).to.deep.equal(['two-up']);
   });
 
-  it('falls back to class-derived variants when the name has no parentheses', () => {
-    expect(splitLibraryVariant({ name: 'cards', variants: 'promo' }))
-      .to.deep.equal({ base: 'cards', variant: 'promo' });
+  it('ignores identities of other blocks', () => {
+    expect(collectLibraryVariants(items, 'button')).to.deep.equal(['primary']);
+    expect(collectLibraryVariants(items, 'hero')).to.deep.equal([]);
+  });
+});
+
+describe('nextVariants', () => {
+  it('appends a toggled-on variant', () => {
+    expect(nextVariants('dark', { value: 'wide', values: ['dark', 'wide'], selected: true }))
+      .to.equal('dark, wide');
   });
 
-  it('returns no variant for a plain name', () => {
-    expect(splitLibraryVariant({ name: 'Cards' })).to.deep.equal({ base: 'Cards', variant: '' });
+  it('adds the first variant to a block without one', () => {
+    expect(nextVariants('', { value: 'dark', values: ['dark'], selected: true })).to.equal('dark');
+  });
+
+  it('removes a toggled-off variant matching loosely and keeps the rest as written', () => {
+    expect(nextVariants('Two Up, dark', { value: 'two-up', values: ['dark'], selected: false }))
+      .to.equal('dark');
+  });
+
+  it('clears all variants for the Clear all action', () => {
+    expect(nextVariants('dark, wide', { value: '' })).to.equal('');
   });
 });
 
@@ -97,62 +120,76 @@ describe('ew-block-toolbar', () => {
     expect(toolbar.open).to.be.false;
   });
 
+  function picker() {
+    return toolbar.shadowRoot.querySelector('nx-picker');
+  }
+
   it('shows no variant picker when the block has no variants', async () => {
     toolbar.show('cards');
     await toolbar.updateComplete;
 
-    expect(toolbar.shadowRoot.querySelector('nx-picker')).to.be.null;
+    expect(picker()).to.be.null;
   });
 
-  it('renders a variant picker with the available variants when present', async () => {
+  it('renders a multi-select picker with one toggle per library variant', async () => {
     toolbar.show('cards');
     toolbar._variantOptions = ['highlight', 'blue'];
     await toolbar.updateComplete;
 
-    const picker = toolbar.shadowRoot.querySelector('nx-picker');
-    expect(picker).to.exist;
-    const labels = picker.items.map((i) => i.label);
-    expect(labels).to.include('No variant');
-    expect(labels).to.include('highlight');
-    expect(labels).to.include('blue');
+    expect(picker()).to.exist;
+    expect(picker().multiple).to.be.true;
+    const options = picker().items.filter((i) => i.label && !i.action).map((i) => i.value);
+    expect(options).to.deep.equal(['highlight', 'blue']);
+    expect(picker().values).to.deep.equal([]);
   });
 
-  it('reflects the current variant on the picker', async () => {
+  it('offers Clear all only when the block has variants', async () => {
+    toolbar.show('cards');
+    toolbar._variantOptions = ['highlight'];
+    await toolbar.updateComplete;
+    expect(picker().items.some((i) => i.action)).to.be.false;
+
     toolbar.show('cards', 'highlight');
+    await toolbar.updateComplete;
+    const clear = picker().items.find((i) => i.action);
+    expect(clear).to.include({ label: 'Clear all', value: '' });
+  });
+
+  it('checks every current variant, mapped to the library spelling', async () => {
+    toolbar.show('cards', 'wide, two up');
+    toolbar._variantOptions = ['Wide', 'Two-Up', 'blue'];
+    await toolbar.updateComplete;
+
+    expect(picker().values).to.deep.equal(['Wide', 'Two-Up']);
+  });
+
+  it('lists current variants missing from the library as checked toggles', async () => {
+    toolbar.show('cards', 'custom');
+    toolbar._variantOptions = ['blue'];
+    await toolbar.updateComplete;
+
+    const options = picker().items.filter((i) => i.label && !i.action).map((i) => i.value);
+    expect(options).to.deep.equal(['blue', 'custom']);
+    expect(picker().values).to.deep.equal(['custom']);
+  });
+
+  it('shows the picker for a block whose only variants are not in the library', async () => {
+    toolbar.show('cards', 'custom');
+    await toolbar.updateComplete;
+
+    expect(picker()).to.exist;
+  });
+
+  it('keeps the variant options when re-shown for the same open block', async () => {
+    toolbar.show('cards');
     toolbar._variantOptions = ['highlight', 'blue'];
     await toolbar.updateComplete;
 
-    expect(toolbar.shadowRoot.querySelector('nx-picker').value).to.equal('highlight');
-  });
-
-  it('selects "No variant" when there is no current variant', async () => {
-    toolbar.show('cards');
-    toolbar._variantOptions = ['wide', 'blue'];
+    toolbar.show('cards', 'highlight');
     await toolbar.updateComplete;
 
-    const picker = toolbar.shadowRoot.querySelector('nx-picker');
-    expect(picker.value).to.equal('');
-    expect(picker.labelOverride).to.equal('');
-  });
-
-  it('matches the current variant case-insensitively', async () => {
-    toolbar.show('cards', 'wide');
-    toolbar._variantOptions = ['Wide'];
-    await toolbar.updateComplete;
-
-    const picker = toolbar.shadowRoot.querySelector('nx-picker');
-    expect(picker.value).to.equal('Wide');
-    expect(picker.labelOverride).to.equal('');
-  });
-
-  it('matches the current variant ignoring spacing differences', async () => {
-    toolbar.show('cards', 'two up');
-    toolbar._variantOptions = ['Two-Up'];
-    await toolbar.updateComplete;
-
-    const picker = toolbar.shadowRoot.querySelector('nx-picker');
-    expect(picker.value).to.equal('Two-Up');
-    expect(picker.labelOverride).to.equal('');
+    expect(toolbar._variantOptions).to.deep.equal(['highlight', 'blue']);
+    expect(picker().values).to.deep.equal(['highlight']);
   });
 
   function editBtn() {
