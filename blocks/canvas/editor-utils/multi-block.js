@@ -11,10 +11,16 @@ function normalize(name) {
   return (name || '').toLowerCase().replace(/[\s_-]+/g, ' ').trim();
 }
 
-function variantBaseName(variant) {
-  if (variant?.variants) return variant.name || '';
-  const match = (variant?.name || '').match(/^(.*\S)\s*\(([^)]+)\)\s*$/);
-  return match ? match[1].trim() : (variant?.name || '');
+function tableBlockName(table) {
+  const header = table.rows?.[0]?.cells?.[0]?.textContent || '';
+  return header.replace(/\s*\([^)]*\)\s*$/, '');
+}
+
+function templateRowIn(dom, target) {
+  if (!dom) return null;
+  const tables = dom.tagName === 'TABLE' ? [dom] : [...(dom.querySelectorAll?.('table') || [])];
+  const table = tables.find((t) => t.rows?.[1] && normalize(tableBlockName(t)) === target);
+  return table?.rows[1] ?? null;
 }
 
 /** Pure check: does the "editor" sheet mark `blockName` as a multi block? */
@@ -28,17 +34,14 @@ export async function isMultiBlock(org, site, blockName) {
   return isMultiBlockConfigured(await loadBlockEditor(org, site), blockName);
 }
 
-/** The library block's first item row (the row after the header), or null. */
+/** First item row (the row after the header) of a library table for `blockName`, or null. */
 export async function findTemplateRow(blocks, blockName) {
   const target = normalize(blockName);
-  const matches = await Promise.all((blocks || []).map(async (block) => {
+  const rows = await Promise.all((blocks || []).map(async (block) => {
     const variants = (await block.loadVariants) || [];
-    return variants.find((v) => v.dom && normalize(variantBaseName(v)) === target) || null;
+    return variants.reduce((row, v) => row || templateRowIn(v.dom, target), null);
   }));
-  const match = matches.find(Boolean);
-  if (!match) return null;
-  const table = match.dom.tagName === 'TABLE' ? match.dom : match.dom.querySelector?.('table');
-  return table?.rows?.[1] ?? null;
+  return rows.find(Boolean) ?? null;
 }
 
 export async function getMultiBlockTemplateRow(org, site, blockName) {
