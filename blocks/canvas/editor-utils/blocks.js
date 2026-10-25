@@ -1,4 +1,10 @@
-import { DOMParser as PMDOMParser, NodeSelection } from 'da-y-wrapper';
+import {
+  DOMParser as PMDOMParser,
+  NodeSelection,
+  Y,
+  ySyncPluginKey,
+  relativePositionToAbsolutePosition,
+} from 'da-y-wrapper';
 import { getFirstSectionName, setFirstSectionName } from '../../shared/section-name.js';
 
 export const MAX_SECTION_NAME = 100;
@@ -199,7 +205,46 @@ export function insertBlockAtSectionStart(view, dom, sectionIndex) {
 export function replaceBlockRange(view, from, to, dom) {
   if (!view) return;
   const parsed = PMDOMParser.fromSchema(view.state.schema).parse(dom);
-  view.dispatch(view.state.tr.replaceWith(from, to, parsed.content).scrollIntoView());
+  const tr = view.state.tr.replaceWith(from, to, parsed.content);
+  if (tr.doc.nodeAt(from)?.type.name === 'table') {
+    tr.setSelection(NodeSelection.create(tr.doc, from));
+  }
+  view.dispatch(tr.scrollIntoView());
+}
+
+/**
+ * Track the selected block across later edits, including remote Yjs updates (which
+ * rebuild the whole doc, so plain position mapping can't follow them). Returns
+ * `resolve(state)` → the block's current `{ from, to }`, or null once it's gone.
+ */
+export function trackSelectedBlock(state) {
+  const { selection, doc } = state;
+  if (!(selection instanceof NodeSelection) || selection.node.type.name !== 'table') {
+    return () => null;
+  }
+  const { from, to } = selection;
+  const binding = ySyncPluginKey.getState(state)?.binding;
+  const $from = doc.resolve(from);
+  const relative = binding && $from.depth === 0 && [0, 1]
+    .map((n) => Y.createRelativePositionFromTypeIndex(binding.type, $from.index() + n));
+  return (current) => {
+    let start = from;
+    let end = to;
+    if (relative) {
+      [start, end] = relative.map((rel) => relativePositionToAbsolutePosition(
+        binding.doc,
+        binding.type,
+        rel,
+        binding.mapping,
+      ));
+    } else if (current.doc !== doc) {
+      return null;
+    }
+    if (start == null || end == null || start >= end) return null;
+    const node = current.doc.nodeAt(start);
+    if (node?.type.name !== 'table' || start + node.nodeSize > end) return null;
+    return { from: start, to: start + node.nodeSize };
+  };
 }
 
 /** Append a copy of `rowDom` (a library <tr>) as a new last row of the table at `tablePos`. */

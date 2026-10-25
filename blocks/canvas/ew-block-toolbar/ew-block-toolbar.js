@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { getBlocksExtension, loadBlockLibrary } from '../ew-panel-extensions/helpers.js';
-import { replaceBlockRange, setTableBlockVariant, appendBlockRow } from '../editor-utils/blocks.js';
+import { replaceBlockRange, setTableBlockVariant, appendBlockRow, trackSelectedBlock } from '../editor-utils/blocks.js';
 import { isMultiBlock, getMultiBlockTemplateRow } from '../editor-utils/multi-block.js';
 import { requestComment } from '../editor-utils/command-helpers.js';
 import { canvasBus } from '../utils/canvas-bus.js';
@@ -190,13 +190,15 @@ class EwBlockToolbar extends LitElement {
 
   async _onReplaceBlock() {
     if (!this.view || !this._hasBlockLibrary) return;
-    const { from, to } = this.view.state.selection;
     const { view } = this;
+    const resolveBlock = trackSelectedBlock(view.state);
     const { openBlockLibraryModal } = await import('../ew-block-library-modal/ew-block-library-modal.js');
     openBlockLibraryModal({
       heading: 'Replace block',
       onInsert: (dom) => {
-        replaceBlockRange(view, from, to, dom);
+        const block = resolveBlock(view.state);
+        if (!block) return;
+        replaceBlockRange(view, block.from, block.to, dom);
         view.focus();
       },
     });
