@@ -12,6 +12,7 @@ button {
   z-index: 400;
   filter: drop-shadow(rgb(0 0 0 / 15%) 0 1px 4px);
   display: flex;
+  container: browse-actions / inline-size;
   justify-content: space-between;
   align-items: center;
   padding: var(--s2-spacing-200);
@@ -19,6 +20,11 @@ button {
   color: #FFF;
   font-size: 14px;
   gap: var(--s2-spacing-100);
+}
+
+:host(.full-width) .da-action-bar {
+  margin: 0 var(--da-list-pad-inline);
+  width: calc(100cqi - var(--da-list-pad-inline) * 2);
 }
 
 .da-action-bar button {
@@ -48,12 +54,29 @@ button {
   display: flex;
   align-items: center;
   gap: var(--s2-spacing-100);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .da-action-bar-right-rail {
   margin-right: 3px;
   display: flex;
   gap: var(--s2-spacing-75);
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+@container browse-actions (width < 600px) {
+  .da-action-bar-right-rail button {
+    width: 32px;
+    padding: 0;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .da-action-bar-right-rail button > span {
+    display: none;
+  }
 }
 
 .da-action-bar .preview-button img,

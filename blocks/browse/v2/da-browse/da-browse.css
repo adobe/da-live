@@ -1,0 +1,33 @@
+:host {
+  --da-browse-max-width: 1440px;
+
+  display: block;
+  font-family: var(--s2-font-family);
+  container: browse-workspace / inline-size;
+}
+
+da-browse-header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--s2-gray-25);
+  padding-inline: max(
+    var(--s2-spacing-100),
+    calc((100% - var(--da-browse-max-width)) / 2)
+  );
+}
+
+.da-browse-content {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--da-browse-max-width);
+  margin-inline: auto;
+}
+
+@container browse-workspace (width >= 1568px) {
+  da-browse-header::part(chat-btn) {
+    position: absolute;
+    inset-inline-start: 16px;
+    inset-block-start: var(--s2-spacing-100);
+  }
+}

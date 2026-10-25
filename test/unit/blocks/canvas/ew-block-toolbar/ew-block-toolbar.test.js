@@ -3,9 +3,30 @@ import { setNx } from '../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { default: EwBlockToolbar } = await import('../../../../../blocks/canvas/ew-block-toolbar/ew-block-toolbar.js');
+const { default: EwBlockToolbar, splitLibraryVariant } = await import('../../../../../blocks/canvas/ew-block-toolbar/ew-block-toolbar.js');
 const { canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js');
 const { setCommentsController } = await import('../../../../../blocks/canvas/editor-utils/comments-bridge.js');
+
+describe('splitLibraryVariant', () => {
+  it('prefers a "Name (variant)" name over class-derived variants (library-metadata override)', () => {
+    expect(splitLibraryVariant({ name: 'Cards (promo)', variants: 'promo' }))
+      .to.deep.equal({ base: 'Cards', variant: 'promo' });
+  });
+
+  it('parses a "Name (variant)" heading name', () => {
+    expect(splitLibraryVariant({ name: 'Cards (Horizontal)' }))
+      .to.deep.equal({ base: 'Cards', variant: 'Horizontal' });
+  });
+
+  it('falls back to class-derived variants when the name has no parentheses', () => {
+    expect(splitLibraryVariant({ name: 'cards', variants: 'promo' }))
+      .to.deep.equal({ base: 'cards', variant: 'promo' });
+  });
+
+  it('returns no variant for a plain name', () => {
+    expect(splitLibraryVariant({ name: 'Cards' })).to.deep.equal({ base: 'Cards', variant: '' });
+  });
+});
 
 describe('ew-block-toolbar', () => {
   let toolbar;

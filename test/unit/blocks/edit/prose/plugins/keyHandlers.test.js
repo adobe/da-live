@@ -95,6 +95,34 @@ describe('keyHandlers Enter input rules plugin', () => {
     const fakeView = { state: { selection: { $cursor: null } } };
     expect(handleKeyDown(fakeView, { key: 'Enter' })).to.be.false;
   });
+
+  it('consumes Enter after three dashes with exactly one transaction', async () => {
+    const editor = await createTestEditor();
+    try {
+      const { view } = editor;
+      setParagraph(view, '---');
+      const plugin = getEnterInputRulesPlugin();
+      view.updateState(view.state.reconfigure({ plugins: [plugin] }));
+      view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 4)));
+      let dispatches = 0;
+      const handled = plugin.props.handleKeyDown({
+        state: view.state,
+        composing: false,
+        dispatch: (tr) => { dispatches += 1; view.dispatch(tr); },
+      }, { key: 'Enter' });
+
+      expect(handled).to.be.true;
+      expect(dispatches).to.equal(1);
+      const separators = [];
+      view.state.doc.descendants((node) => {
+        if (node.type.name === 'horizontal_rule') separators.push(node);
+      });
+      expect(separators).to.have.lengthOf(1);
+      expect(view.state.doc.textContent).to.equal('');
+    } finally {
+      destroyEditor(editor);
+    }
+  });
 });
 
 describe('keyHandlers dashes input rule', () => {
@@ -112,13 +140,12 @@ describe('keyHandlers dashes input rule', () => {
 
   afterEach(() => destroyEditor(editor));
 
-  it('Calls dispatchTransaction with a replaced HR node', () => {
-    let dispatched;
-    const rule = getDashesInputRule((tr) => { dispatched = tr; });
+  it('Returns a transaction with a replaced HR node', () => {
+    const rule = getDashesInputRule();
     // simulate the rule handler
-    rule.handler(editor.view.state, ['---\n'], 1, 5);
-    expect(dispatched).to.exist;
-    const newState = editor.view.state.apply(dispatched);
+    const transaction = rule.handler(editor.view.state, ['---\n'], 1, 5);
+    expect(transaction).to.exist;
+    const newState = editor.view.state.apply(transaction);
     let hasHr = false;
     newState.doc.descendants((node) => {
       if (node.type.name === 'horizontal_rule') hasHr = true;

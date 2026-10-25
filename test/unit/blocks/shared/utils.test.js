@@ -29,15 +29,24 @@ describe('getSheetByIndex', () => {
     expect(getSheetByIndex(json)).to.deep.equal([{ a: 1 }]);
   });
 
-  it('Returns first sheet data for multi-sheet at index 1', () => {
-    // index 0 is the ':type' key, so the first sheet is at index 1
-    const json = { ':type': 'multi-sheet', sheet1: { data: [{ a: 1 }] }, sheet2: { data: [{ b: 2 }] } };
-    expect(getSheetByIndex(json, 1)).to.deep.equal([{ a: 1 }]);
+  it('Returns first declared sheet data at index 0, independent of metadata order', () => {
+    const json = {
+      ':type': 'multi-sheet',
+      ':names': ['sheet1', 'sheet2'],
+      sheet2: { data: [{ b: 2 }] },
+      sheet1: { data: [{ a: 1 }] },
+    };
+    expect(getSheetByIndex(json, 0)).to.deep.equal([{ a: 1 }]);
   });
 
-  it('Returns second sheet data for multi-sheet at index 2', () => {
-    const json = { ':type': 'multi-sheet', sheet1: { data: [{ a: 1 }] }, sheet2: { data: [{ b: 2 }] } };
-    expect(getSheetByIndex(json, 2)).to.deep.equal([{ b: 2 }]);
+  it('Returns second declared sheet data at index 1', () => {
+    const json = {
+      ':type': 'multi-sheet',
+      ':names': ['sheet1', 'sheet2'],
+      sheet1: { data: [{ a: 1 }] },
+      sheet2: { data: [{ b: 2 }] },
+    };
+    expect(getSheetByIndex(json, 1)).to.deep.equal([{ b: 2 }]);
   });
 
   it('Returns undefined for out-of-bounds index', () => {
@@ -45,10 +54,13 @@ describe('getSheetByIndex', () => {
     expect(getSheetByIndex(json, 5)).to.equal(undefined);
   });
 
-  it('Defaults to index 0 which is the type key', () => {
-    // index 0 is ':type' which has no .data, so returns undefined
-    const json = { ':type': 'multi-sheet', sheet1: { data: [{ x: 99 }] } };
-    expect(getSheetByIndex(json)).to.equal(undefined);
+  it('Defaults to the first declared sheet, not the type key', () => {
+    const json = {
+      ':type': 'multi-sheet',
+      ':names': ['sheet1'],
+      sheet1: { data: [{ x: 99 }] },
+    };
+    expect(getSheetByIndex(json)).to.deep.equal([{ x: 99 }]);
   });
 });
 
@@ -260,7 +272,7 @@ describe('livePreviewLogin', () => {
       return new Response('', { status: 200 });
     };
 
-    await livePreviewLogin('org', 'site', 'main');
+    expect(await livePreviewLogin('org', 'site', 'main')).to.equal(false);
 
     expect(called).to.be.false;
   });
@@ -287,11 +299,20 @@ describe('livePreviewLogin', () => {
       return new Response('', { status: 200 });
     };
 
-    await livePreviewLogin('org', 'site', 'feat');
+    expect(await livePreviewLogin('org', 'site', 'feat')).to.equal(true);
 
     expect(calls).to.have.lengthOf(1);
     expect(calls[0].url).to.equal('https://feat--site--org.preview.da.live/gimme_cookie');
     expect(calls[0].headers.Authorization).to.equal('Bearer T1');
+  });
+
+  [401, 403, 503].forEach((status) => {
+    it(`reports a failed cookie exchange for HTTP ${status}`, async () => {
+      window.localStorage.setItem('nx-ims', 'true');
+      window.adobeIMS = { getAccessToken: () => ({ token: 'T1' }) };
+      window.fetch = async () => new Response('', { status });
+      expect(await livePreviewLogin('org', 'site', 'feat')).to.equal(false);
+    });
   });
 
   it('requests /gimme_cookie from a custom origin builder when provided', async () => {

@@ -39,7 +39,7 @@ class DaScheduler extends LitElement {
 
     // Check existing schedule
     this._statusText = 'Checking for schedule…';
-    const schedule = await getExistingSchedule(org, site, path);
+    const schedule = await getExistingSchedule(org, site, path.replace(/\.html$/, ''));
     if (schedule?.scheduled) {
       this._statusText = null;
       const d = new Date(schedule.scheduledPublish);
