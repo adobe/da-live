@@ -32,6 +32,7 @@ describe('shared site picker', () => {
     expect(picker.labelOverride).to.equal('one (adobe)');
     expect(picker.items[1]).to.include({ value: 'adobe/one', label: 'one', description: 'adobe/one', ariaLabel: 'one (adobe)' });
     expect(picker.items[2].description).to.equal('other/one');
+    expect(picker.items.at(-1)).to.deep.equal({ value: 'add-site', label: 'Add site...', action: true });
     picker.dispatchEvent(new CustomEvent('change', { detail: { value: 'other/one' } }));
     picker.dispatchEvent(new CustomEvent('change', { detail: { value: 'add-site' } }));
     expect(selections).to.deep.equal(['other/one']);

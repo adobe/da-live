@@ -20,7 +20,7 @@ export function updateSitePicker({ picker, sites = [], value }) {
       ariaLabel: site.label,
     })),
     { divider: true },
-    { value: 'add-site', label: 'Add site...', action: true, leadingIcon: '/img/icons/s2-icon-add-20-n.svg' },
+    { value: 'add-site', label: 'Add site...', action: true },
   ];
   picker.value = value || '';
   picker.labelOverride = sites.find((site) => site.value === value)?.label || '';

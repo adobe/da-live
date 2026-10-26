@@ -82,8 +82,7 @@ describe('landing page', () => {
     expect(el._sitePicker.labelOverride).to.equal('site (org)');
     expect(el._sitePicker.items[0]).to.deep.equal({ section: 'Your Sites' });
     expect(el._sitePicker.items.at(-2)).to.deep.equal({ divider: true });
-    expect(el._sitePicker.items.at(-1).label).to.equal('Add site...');
-    expect(el._sitePicker.items.at(-1).leadingIcon).to.equal('/img/icons/s2-icon-add-20-n.svg');
+    expect(el._sitePicker.items.at(-1)).to.deep.equal({ value: 'add-site', label: 'Add site...', action: true });
     expect(nav.querySelector('[slot="brand"], [slot="actions"]')).to.equal(null);
     hashChange._set({ org: 'org', site: 'other', fullpath: '/org/other' });
     await el.updateComplete;
