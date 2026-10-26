@@ -283,16 +283,13 @@ describe('ew-comments — suggestion cards', () => {
     expect(request.action).to.equal('reject');
   });
 
-  it('scrolls to the suggestion when the card is clicked', async () => {
-    let scrolledTo = null;
-    el = await makeEl();
-    el.controller = makeCtrl({ scrollToPos(pos) { scrolledTo = pos; } });
-    canvasBus.suggestModeState.emit({ on: true });
-    await el.updateComplete;
-    canvasBus.suggestionsState.emit({ items: [replace] });
-    await el.updateComplete;
-    el.shadowRoot.querySelector('.ew-suggestion-card').click();
-    expect(scrolledTo).to.equal(7);
+  it('reveals the suggestion in the doc when the card is clicked', async () => {
+    const card = await showing([replace]);
+    let request = null;
+    const off = canvasBus.suggestionRevealRequest.subscribe((d) => { request = d; });
+    card.click();
+    off();
+    expect(request).to.deep.equal({ pos: 7 });
   });
 
   it('hides suggestions on the resolved tab', async () => {
@@ -533,7 +530,7 @@ describe('ew-comments — resolved suggestions', () => {
   });
 });
 
-describe('ew-comments — suggesting drives the list', () => {
+describe('ew-comments — suggestions in the list', () => {
   let el;
   const suggestion = {
     id: '7-22', from: 7, to: 22, kind: 'replace', deleted: 'ipsum', inserted: 'lorem', username: 'Ada',
@@ -591,45 +588,46 @@ describe('ew-comments — suggesting drives the list', () => {
   const counts = () => [...el.shadowRoot.querySelectorAll('.ew-comment-tab-count')]
     .map((n) => n.textContent.trim());
 
-  it('shows comments and hides suggestions by default', async () => {
+  it('lists suggestions alongside comments when not suggesting', async () => {
     await mount();
-    expect(el.shadowRoot.querySelector('.ew-suggestion-card')).to.be.null;
-    expect(el.shadowRoot.querySelector('.ew-comment-card')).to.exist;
-    expect(counts()).to.deep.equal(['(1)', '(1)']);
+    expect(el.shadowRoot.querySelectorAll('.ew-suggestion-card').length).to.equal(1);
+    expect(el.shadowRoot.querySelectorAll('.ew-comment-card').length).to.equal(2);
+    expect(counts()).to.deep.equal(['(2)', '(2)']);
   });
 
-  it('shows only suggestions while suggesting', async () => {
+  it('keeps the same list when suggesting is toggled', async () => {
     await mount();
+    el._activeTab = 'resolved';
     await suggest(true);
-    const cards = el.shadowRoot.querySelectorAll('.ew-comment-card');
-    expect(cards.length).to.equal(1);
-    expect(cards[0].dataset.suggestion).to.equal('7-22');
-    expect(counts()).to.deep.equal(['(1)', '(1)']);
+    expect(el._activeTab).to.equal('resolved');
+    expect(counts()).to.deep.equal(['(2)', '(2)']);
   });
 
-  it('goes back to comments when suggesting stops', async () => {
+  it('lists resolved suggestions and comments on the resolved tab', async () => {
     await mount();
-    await suggest(true);
-    await suggest(false);
-    expect(el.shadowRoot.querySelector('.ew-suggestion-card')).to.be.null;
-    expect(el.shadowRoot.querySelector('.ew-comment-card')).to.exist;
-  });
-
-  it('counts and lists resolved suggestions on the resolved tab', async () => {
-    await mount();
-    await suggest(true);
     el._activeTab = 'resolved';
     await el.updateComplete;
     const cards = el.shadowRoot.querySelectorAll('.ew-comment-card');
-    expect(cards.length).to.equal(1);
+    expect(cards.length).to.equal(2);
     expect(cards[0].dataset.suggestionOutcome).to.equal('accepted');
   });
 
-  it('returns to the active tab when suggesting is toggled', async () => {
+  it('selects the card a layout click points at', async () => {
     await mount();
     el._activeTab = 'resolved';
-    await suggest(true);
+    canvasBus.suggestionFocusRequest.emit({ pos: 10 });
+    await el.updateComplete;
     expect(el._activeTab).to.equal('active');
+    const card = el.shadowRoot.querySelector('.ew-suggestion-card');
+    expect(card.classList.contains('is-selected')).to.equal(true);
+  });
+
+  it('ignores a focus request outside every suggestion', async () => {
+    await mount();
+    canvasBus.suggestionFocusRequest.emit({ pos: 40 });
+    await el.updateComplete;
+    const card = el.shadowRoot.querySelector('.ew-suggestion-card');
+    expect(card.classList.contains('is-selected')).to.equal(false);
   });
 
   it('has no filter control of its own', async () => {

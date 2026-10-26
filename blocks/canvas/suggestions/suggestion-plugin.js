@@ -134,7 +134,7 @@ function suggestionUnits(doc) {
   return [...suggestionRuns(doc), ...nodeUnits(doc)].sort((a, b) => a.from - b.from);
 }
 
-function suggestionRange(state) {
+export function suggestionRange(state) {
   const { from, to } = state.selection;
   const hits = suggestionUnits(state.doc).filter((unit) => unit.from <= to && unit.to >= from);
   if (!hits.length) return null;
@@ -147,8 +147,6 @@ function suggestionRange(state) {
 export function selectionHasSuggestion(state) {
   return suggestionRange(state) != null;
 }
-
-export { suggestionRange };
 
 function runText(doc, run) {
   let deleted = '';

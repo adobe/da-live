@@ -169,18 +169,14 @@ export function renderStatusLine(label, user, at) {
 }
 
 function renderSuggestionBody({ kind, subject = 'text', deleted, inserted }) {
-  if (subject !== 'text') {
-    if (kind === 'replace') {
-      return html`<strong>Replace ${subject}:</strong> <em>${deleted}</em> with <em>${inserted}</em>`;
-    }
-    if (kind === 'delete') return html`<strong>Delete ${subject}:</strong> <em>${deleted}</em>`;
-    return html`<strong>Insert ${subject}:</strong> <em>${inserted}</em>`;
-  }
+  const isText = subject === 'text';
+  const noun = isText ? '' : ` ${subject}`;
+  const quote = (value) => (isText ? `“${value}”` : value);
   if (kind === 'replace') {
-    return html`<strong>Replace:</strong> <em>“${deleted}”</em> with <em>“${inserted}”</em>`;
+    return html`<strong>Replace${noun}:</strong> <em>${quote(deleted)}</em> with <em>${quote(inserted)}</em>`;
   }
-  if (kind === 'delete') return html`<strong>Delete:</strong> <em>“${deleted}”</em>`;
-  return html`<strong>Insert:</strong> <em>“${inserted}”</em>`;
+  if (kind === 'delete') return html`<strong>Delete${noun}:</strong> <em>${quote(deleted)}</em>`;
+  return html`<strong>Insert${noun}:</strong> <em>${quote(inserted)}</em>`;
 }
 
 function renderResolvedSuggestion(panel, thread) {
@@ -244,10 +240,10 @@ export function renderSuggestionPreview(panel, suggestion) {
   return html`
     <li>
       <div
-        class="ew-comment-card ew-comments-thread-surface ew-suggestion-card"
+        class="ew-comment-card ew-comments-thread-surface ew-suggestion-card ${panel._selectedSuggestionId === id ? 'is-selected' : ''}"
         style="--ew-suggestion-accent: ${accent}"
         data-suggestion=${id}
-        @click=${() => panel.scrollToSuggestion(suggestion)}>
+        @click=${() => panel.revealSuggestion(suggestion)}>
         <div class="ew-comment-header">
           ${renderAvatar(panel, author)}
           <div class="ew-comment-meta">
@@ -306,10 +302,6 @@ export function renderListView(panel, viewModel) {
   }
 
   const { tabCounts, visibleThreads, suggestions = [] } = viewModel;
-  const noun = panel._suggesting ? 'suggestions' : 'comments';
-  const emptyLabel = panel._activeTab === 'resolved'
-    ? `No resolved ${noun}`
-    : `No ${noun} yet`;
   const tabs = [
     { id: 'active', label: 'Active', count: tabCounts.active },
     { id: 'resolved', label: 'Resolved', count: tabCounts.resolved },
@@ -345,7 +337,7 @@ export function renderListView(panel, viewModel) {
           ${visibleThreads.map((thread) => renderThreadPreview(panel, thread))}
         </ul>
       ` : html`
-        <p class="ew-comments-empty">${emptyLabel}</p>
+        <p class="ew-comments-empty">${panel._activeTab === 'resolved' ? 'No resolved comments' : 'No comments yet'}</p>
       `}
     </div>
   `;

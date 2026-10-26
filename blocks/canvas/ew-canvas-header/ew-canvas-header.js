@@ -3,7 +3,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2, getNxEWFlags } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import { canvasBus } from '../utils/canvas-bus.js';
-import { getCommentsBridge, toggleComments, getCommentsVisible } from '../editor-utils/comments-bridge.js';
+import { getCommentsBridge, toggleComments, getCommentsVisible, openCommentsPanel } from '../editor-utils/comments-bridge.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { PANEL_EVENT, getSectionAtPosition } = await import(`${getNx()}/utils/panel.js`);
@@ -35,6 +35,7 @@ class EWCanvasHeader extends LitElement {
     _chatDisabled: { state: true },
     _commentsVisible: { state: true },
     _commentCount: { state: true },
+    _suggestions: { state: true },
   };
 
   constructor() {
@@ -58,10 +59,13 @@ class EWCanvasHeader extends LitElement {
     this._unsubControllerChange = canvasBus.commentsControllerState
       .subscribe(() => this._bindComments());
     this._bindComments();
+    this._unsubSuggestions = canvasBus.suggestionsState
+      .subscribe(({ items } = {}) => { this._suggestions = items; });
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    this._unsubSuggestions?.();
     this._unsubHash?.();
     this._unsubControllerChange?.();
     this._unbindComments?.();
@@ -86,6 +90,22 @@ class EWCanvasHeader extends LitElement {
 
   _toggleComments() {
     toggleComments();
+  }
+
+  _openSuggestions() {
+    canvasBus.suggestionFocusRequest.emit({ pos: this._suggestions[0].from });
+    openCommentsPanel();
+  }
+
+  _renderSuggestions() {
+    const count = this._suggestions?.length;
+    if (!count) return nothing;
+    return html`
+      <button type="button" class="nx-action-btn nx-btn-sm" part="btn suggestions"
+        data-action="open-suggestions" @click=${this._openSuggestions}>
+        ${count === 1 ? '1 suggestion' : `${count} suggestions`}
+      </button>
+    `;
   }
 
   async _syncChatDisabled(org, site) {
@@ -193,6 +213,7 @@ class EWCanvasHeader extends LitElement {
         </div>
 
         <div class="group group-end" part="group-end">
+          ${this._renderSuggestions()}
           <button
             type="button"
             class="nx-action-btn-icon comments-toggle ${this._commentsVisible ? 'is-active' : ''}"

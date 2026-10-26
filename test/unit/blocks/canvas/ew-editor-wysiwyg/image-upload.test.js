@@ -450,7 +450,7 @@ describe('handleImageReplace with a pending suggestion', () => {
       }, ctx);
 
       expect(calls.some((c) => c.opts?.method === 'POST')).to.be.false;
-      expect(posted[0].payload.error).to.contain('Switch to Content');
+      expect(posted[0].payload.error).to.contain('pending suggestion');
       expect(editor.view.state.doc.firstChild.firstChild.attrs.src).to.equal('/old.png');
     } finally {
       restore();

@@ -52,3 +52,41 @@ describe('ew-canvas-header segments', () => {
     expect(header.editorView).to.equal('content');
   });
 });
+
+describe('ew-canvas-header pending suggestions', () => {
+  let header;
+  const suggestionsButton = () => header.shadowRoot.querySelector('[data-action="open-suggestions"]');
+
+  beforeEach(async () => {
+    header = document.createElement('ew-canvas-header');
+    document.body.append(header);
+    await header.updateComplete;
+  });
+
+  afterEach(() => {
+    header.remove();
+    canvasBus.suggestionsState.emit({ items: [] });
+  });
+
+  it('stays out of the header when nothing is pending', async () => {
+    canvasBus.suggestionsState.emit({ items: [] });
+    await header.updateComplete;
+    expect(suggestionsButton()).to.equal(null);
+  });
+
+  it('shows the count and focuses the first suggestion in the comments panel', async () => {
+    canvasBus.suggestionsState.emit({ items: [{ from: 4, to: 9 }, { from: 20, to: 25 }] });
+    await header.updateComplete;
+    expect(suggestionsButton().textContent.trim()).to.equal('2 suggestions');
+
+    const focused = [];
+    const off = canvasBus.suggestionFocusRequest.subscribe((d) => focused.push(d));
+    const opened = new Promise((resolve) => {
+      document.addEventListener('nx-panel-open', resolve, { once: true });
+    });
+    suggestionsButton().click();
+    off();
+    expect(focused.at(-1)).to.deep.equal({ pos: 4 });
+    expect((await opened).detail).to.deep.equal({ section: 'tools', id: 'comments' });
+  });
+});

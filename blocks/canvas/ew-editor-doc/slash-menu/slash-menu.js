@@ -16,8 +16,6 @@ import {
 import { suggestionTransactionKey } from '../../suggestions/suggestion-plugin.js';
 import { getSlashContext } from '../../editor-utils/slash-context.js';
 
-export { getSlashContext };
-
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 

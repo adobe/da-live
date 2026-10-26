@@ -508,6 +508,22 @@ export class EwEditorDoc extends LitElement {
     canvasBus.suggestModeState.emit({ on: true });
   }
 
+  // The caret opens the suggestion's accept/reject popover; layout can only scroll to it.
+  _revealSuggestion(pos) {
+    const { view } = this._proseContext ?? {};
+    if (!view || pos == null) return;
+    const { doc } = view.state;
+    if (pos < 0 || pos > doc.content.size) return;
+    if (this._editorView === 'layout') {
+      const payload = { proseIndex: pos };
+      this._controllerCtx?.port?.postMessage({ type: MESSAGE_TYPES.SCROLL_TO_POS, payload });
+      return;
+    }
+    const sel = TextSelection.near(doc.resolve(pos));
+    view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
+    view.focus();
+  }
+
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [
@@ -536,6 +552,8 @@ export class EwEditorDoc extends LitElement {
         inRange(from, to)(view.state, view.dispatch);
         this._recordSuggestionOutcome(resolved, action);
       });
+    this._unsubscribeSuggestionReveal = canvasBus.suggestionRevealRequest
+      .subscribe(({ pos } = {}) => this._revealSuggestion(pos));
     this._unsubscribeWysiwygPortReady = canvasBus.wysiwygPortReady.subscribe(
       ({ port, iframe } = {}) => {
         if (port) {
@@ -639,6 +657,7 @@ export class EwEditorDoc extends LitElement {
     this._unsubscribeEditorActive?.();
     this._unsubscribeSuggestMode?.();
     this._unsubscribeSuggestionResolve?.();
+    this._unsubscribeSuggestionReveal?.();
     this._unsubscribeWysiwygPortReady?.();
     document.removeEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
     this._unsubscribeSelect?.();

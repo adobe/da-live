@@ -3,17 +3,16 @@ import { EditorState, TextSelection, Fragment } from 'da-y-wrapper';
 import { CellSelection } from 'prosemirror-tables';
 import { getSchema } from 'da-parser';
 import { setNx } from '../../../../../../scripts/utils.js';
+import { getSlashContext } from '../../../../../../blocks/canvas/editor-utils/slash-context.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const schema = getSchema();
 
-let getSlashContext;
 let hasCellSelection;
 
 before(async () => {
   const mod = await import('../../../../../../blocks/canvas/ew-editor-doc/slash-menu/slash-menu.js');
-  getSlashContext = mod.getSlashContext;
   hasCellSelection = mod.hasCellSelection;
 });
 

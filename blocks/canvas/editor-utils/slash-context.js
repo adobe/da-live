@@ -15,7 +15,7 @@ export function getSlashContext(state) {
   const head = state.selection.from;
   if (head <= paraStart) return null;
 
-  const prefix = state.doc.textBetween(paraStart, head, '￼', '￼');
+  const prefix = state.doc.textBetween(paraStart, head, '\ufffc', '\ufffc');
   const slashIndex = prefix.lastIndexOf('/');
   if (slashIndex === -1) return null;
 

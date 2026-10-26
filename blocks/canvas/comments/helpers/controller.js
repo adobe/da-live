@@ -241,18 +241,6 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
       targetEl?.scrollIntoView({ behavior, block: 'start' });
     },
 
-    // Used by suggestion cards, which anchor to a doc position rather than a comment id.
-    scrollToPos(pos, { behavior = 'smooth' } = {}) {
-      if (!boundView || boundView.isDestroyed || pos == null) return;
-      const { doc } = boundView.state;
-      if (pos < 0 || pos > doc.content.size) return;
-      boundView.dispatch(boundView.state.tr.setSelection(TextSelection.create(doc, pos)));
-      const { node } = boundView.domAtPos(pos);
-      const targetEl = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
-      targetEl?.scrollIntoView({ behavior, block: 'center' });
-      boundView.focus();
-    },
-
     selectThreadRange(threadId) {
       if (!boundView || boundView.isDestroyed || !threadId || !store) return false;
       const comment = store.get(threadId);

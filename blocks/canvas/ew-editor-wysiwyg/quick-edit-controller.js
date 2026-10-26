@@ -10,6 +10,7 @@ import {
   handleStoredMarks,
 } from './utils/handlers.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 
 const MUTATING_MESSAGES = new Set(['node-update', 'image-replace', 'history']);
 
@@ -40,6 +41,11 @@ export function handleCommentMarkerClick({ threadId }) {
 
 export function handleCommentMarkerClear() {
   getCommentsBridge().controller?.setSelectedThread(null);
+}
+
+export function handleSuggestionClick({ proseIndex }) {
+  canvasBus.suggestionFocusRequest.emit({ pos: proseIndex });
+  openCommentsPanel();
 }
 
 export function createControllerOnMessage(ctx) {
@@ -74,6 +80,8 @@ export function createControllerOnMessage(ctx) {
       handleCommentMarkerClear();
     } else if (type === MESSAGE_TYPES.COMMENT_SHORTCUT) {
       handleCommentShortcut();
+    } else if (type === MESSAGE_TYPES.SUGGESTION_CLICK) {
+      handleSuggestionClick(payload);
     } else if (type === MESSAGE_TYPES.QUICK_EDIT_IFRAME_CLICK) {
       // The iframe boundary identifies layout clicks, even with an older sender's doc source.
       window.hlx?.rum?.sampleRUM?.('click', { source: 'ew-wysiwyg-layout', target: payload?.target });

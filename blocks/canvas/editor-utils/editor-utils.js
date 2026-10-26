@@ -13,7 +13,7 @@ import {
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { canvasBus, registerEditorSelectEnricher } from '../utils/canvas-bus.js';
 import { normalizeBranch } from '../utils/branch.js';
-import { hasPendingSuggestion } from '../suggestions/suggestion-plugin.js';
+import { hasPendingSuggestion, inPendingNode, listSuggestions } from '../suggestions/suggestion-plugin.js';
 
 const { DA_CONTENT } = await import(`${getNx()}/utils/utils.js`);
 const { getImageDocumentVersion } = await import(`${getNx2()}/public/utils/quick-edit-images.js`);
@@ -108,6 +108,11 @@ export function resolveEditableNode(doc, cursorOffset) {
   return { node: null, cursorOffset };
 }
 
+// Layout's editor can't see suggestion marks, so its copy of the node would erase them.
+function isLockedInLayout(doc, { node, cursorOffset }) {
+  return hasPendingSuggestion(node) || inPendingNode(doc.resolve(cursorOffset));
+}
+
 export function updateState(data, ctx) {
   const { view } = ctx;
   // Capture stored marks before the transaction — these are marks the user toggled
@@ -116,9 +121,8 @@ export function updateState(data, ctx) {
   // application on input never runs; we must apply them ourselves here.
   const { storedMarks } = view.state;
   const node = view.state.schema.nodeFromJSON(data.node);
-  // Layout's editor can't see suggestion marks, so its copy of the node would erase them.
-  const editing = resolveEditableNode(view.state.doc, data.cursorOffset).node;
-  if (editing && hasPendingSuggestion(editing)) {
+  const editing = resolveEditableNode(view.state.doc, data.cursorOffset);
+  if (editing.node && isLockedInLayout(view.state.doc, editing)) {
     ctx.port?.postMessage({
       type: MESSAGE_TYPES.NODE_UPDATE,
       payload: {
@@ -220,9 +224,9 @@ export function getEditor(data, ctx) {
   if (cursorOffset < 0 || cursorOffset > maxPos) return;
 
   try {
-    const { node, cursorOffset: newCursorOffset } = resolveEditableNode(doc, cursorOffset);
-    if (!node) return;
-    if (hasPendingSuggestion(node)) return;
+    const editable = resolveEditableNode(doc, cursorOffset);
+    const { node, cursorOffset: newCursorOffset } = editable;
+    if (!node || isLockedInLayout(doc, editable)) return;
     ctx.port.postMessage({
       type: MESSAGE_TYPES.SET_EDITOR_STATE,
       payload: {
@@ -245,26 +249,28 @@ export function isOutermostWysiwygEditable(el) {
   return !el.parentElement?.closest(EDITABLE_SELECTORS);
 }
 
-// Layout can't edit these without erasing the suggestions (see updateState).
-export const SUGGESTION_LOCK_HINT = 'Pending suggestions. Switch to Content to edit, or accept or reject them first.';
-const SUGGESTION_PENDING_HINT = 'Proposed for deletion. Review in Content.';
+// The quick-edit iframe turns a click on a locked element into SUGGESTION_CLICK.
+const SUGGESTION_LOCK_HINT = 'Pending suggestion. Click to review.';
 // Hard-coded values: this lands in the customer's page, which has none of our tokens.
 const SUGGESTION_STYLE = `<style>
-[data-suggestion-lock],[data-suggestion-pending]{position:relative}
-[data-suggestion-lock]{cursor:not-allowed}
+[data-suggestion-lock]{position:relative;cursor:pointer}
 [data-suggestion-lock]::before{content:'';position:absolute;left:-10px;top:2px;bottom:2px;width:3px;border-radius:2px;background:#959595}
-[data-suggestion-pending]{outline:1px dashed #959595;outline-offset:4px}
+[data-suggestion-lock]:hover::after{content:attr(data-suggestion-lock);position:absolute;left:0;top:100%;z-index:10;margin-top:6px;padding:4px 10px;border-radius:8px;background:#fff;color:#505050;box-shadow:0 2px 10px rgb(0 0 0 / 18%);font:400 12px/1.4 system-ui,sans-serif;letter-spacing:normal;text-transform:none;white-space:nowrap;pointer-events:none}
+[data-suggestion-lock] [data-suggestion-lock]::before,[data-suggestion-lock] [data-suggestion-lock]:hover::after{content:none}
 [data-suggestion-placeholder]{display:block;margin:8px 0;padding:6px 12px;border:1px dashed #959595;border-radius:8px;background:#f5f5f5;color:#505050;font:400 12px/1.4 system-ui,sans-serif;letter-spacing:normal;text-transform:none}
 span[data-suggestion-placeholder]{display:inline-block;margin:0}
-[data-suggestion-lock]:hover::after,[data-suggestion-pending]:hover::after{position:absolute;left:0;top:100%;z-index:10;margin-top:6px;padding:4px 10px;border-radius:8px;background:#fff;color:#505050;box-shadow:0 2px 10px rgb(0 0 0 / 18%);font:400 12px/1.4 system-ui,sans-serif;letter-spacing:normal;text-transform:none;white-space:nowrap;pointer-events:none}
-[data-suggestion-lock]:hover::after{content:attr(data-suggestion-lock)}
-[data-suggestion-pending]:hover::after{content:attr(data-suggestion-pending)}
 </style>`;
 
-function placeholder(tag, kind, label) {
+function lock(el, suggestionPos) {
+  el.setAttribute('data-suggestion-lock', SUGGESTION_LOCK_HINT);
+  el.setAttribute('data-suggestion-pos', suggestionPos);
+}
+
+function placeholder(tag, kind, label, suggestionPos) {
   const el = document.createElement(tag);
   el.setAttribute('data-suggestion-placeholder', kind);
   el.textContent = label;
+  lock(el, suggestionPos);
   return el;
 }
 
@@ -277,44 +283,16 @@ function isEmptyAfterStrip(el) {
   return !el.querySelector('img:not(.ProseMirror-separator), table, [data-suggestion-placeholder]');
 }
 
-// Layout shows the approved page: proposed insertions are not part of it yet, proposed
-// deletions still are. Whole blocks leave a placeholder so the composition stays readable.
-function applyApprovedView(clone) {
+// Layout shows the approved page: proposed insertions are not part of it yet, deletions still are.
+function applyApprovedText(clone) {
   const emptied = new Set();
-  let changed = false;
-
   clone.querySelectorAll('da-suggestion-added').forEach((el) => {
     const owner = el.closest('[data-prose-index]');
     if (owner) emptied.add(owner);
     el.remove();
-    changed = true;
   });
-
-  clone.querySelectorAll('da-suggestion-deleted').forEach((el) => {
-    el.replaceWith(...el.childNodes);
-    changed = true;
-  });
-
-  clone.querySelectorAll('table[suggestion="insert"]').forEach((table) => {
-    const marker = table.previousElementSibling;
-    if (marker?.classList.contains('block-marker')) marker.remove();
-    table.replaceWith(placeholder('p', 'block', `Suggested block: ${suggestedBlockName(table)}`));
-    changed = true;
-  });
-
-  clone.querySelectorAll('table[suggestion="delete"]').forEach((table) => {
-    table.setAttribute('data-suggestion-pending', SUGGESTION_PENDING_HINT);
-    changed = true;
-  });
-
-  clone.querySelectorAll('img[data-suggestion="insert"]').forEach((img) => {
-    img.replaceWith(placeholder('span', 'image', 'Suggested image'));
-    changed = true;
-  });
-
+  clone.querySelectorAll('da-suggestion-deleted').forEach((el) => el.replaceWith(...el.childNodes));
   emptied.forEach((el) => { if (isEmptyAfterStrip(el)) el.remove(); });
-
-  return changed;
 }
 
 export function extractCursors(view) {
@@ -375,10 +353,12 @@ function unwrapDiffViews(root) {
 
 export function getInstrumentedHTML(view) {
   const editorClone = view.dom.cloneNode(true);
+  const { doc } = view.state;
+  const suggestions = listSuggestions(doc);
+  const suggestionIn = (from, to) => suggestions.find((s) => s.from < to && s.to > from);
 
   const originalElements = view.dom.querySelectorAll(EDITABLE_SELECTORS);
   const clonedElements = editorClone.querySelectorAll(EDITABLE_SELECTORS);
-  let hasLocked = false;
 
   originalElements.forEach((originalElement, index) => {
     if (!isOutermostWysiwygEditable(originalElement)) return;
@@ -386,11 +366,10 @@ export function getInstrumentedHTML(view) {
       try {
         const editableElementStartPos = view.posAtDOM(originalElement, 0);
         clonedElements[index].setAttribute('data-prose-index', editableElementStartPos);
-        const { node } = resolveEditableNode(view.state.doc, editableElementStartPos);
-        if (node && hasPendingSuggestion(node)) {
-          clonedElements[index].setAttribute('data-suggestion-lock', SUGGESTION_LOCK_HINT);
-          hasLocked = true;
-        }
+        const { node } = resolveEditableNode(doc, editableElementStartPos);
+        const start = editableElementStartPos - 1;
+        const suggestion = node && suggestionIn(start, start + node.nodeSize);
+        if (suggestion) lock(clonedElements[index], suggestion.from);
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn('Could not find position for element:', e);
@@ -402,6 +381,8 @@ export function getInstrumentedHTML(view) {
   // sentinel with data-prose-index, then after serialization move it to wrapper as data-block-index
   const originalTables = view.dom.querySelectorAll('table');
   const clonedTables = editorClone.querySelectorAll('table');
+  // Swapped in after the image pass, which pairs original and cloned images by index.
+  const suggestedBlocks = [];
   clonedTables.forEach((table, index) => {
     const firstRow = table.querySelector('tr');
     const firstCellText = firstRow?.cells?.[0]?.textContent?.trim().toLowerCase();
@@ -414,6 +395,16 @@ export function getInstrumentedHTML(view) {
     try {
       const position = view.posAtDOM(originalTables[index], 0);
       blockMarker.setAttribute('data-prose-index', position);
+      const tableNode = doc.nodeAt(position - 1);
+      const kind = tableNode?.type.name === 'table' && tableNode.attrs.suggestion;
+      if (kind) {
+        const { from } = suggestionIn(position - 1, position - 1 + tableNode.nodeSize);
+        if (kind === 'insert') {
+          suggestedBlocks.push({ div, from, name: suggestedBlockName(table) });
+          return;
+        }
+        lock(blockMarker, from);
+      }
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn('Could not find position for table block:', e);
@@ -432,14 +423,20 @@ export function getInstrumentedHTML(view) {
       const pos = view.posAtDOM(originalImage, 0);
       clonedImage.setAttribute('data-image-index', pos);
       clonedImage.setAttribute('data-image-version', imageVersion);
+      if (pos <= doc.content.size && doc.nodeAt(pos)?.attrs.suggestion === 'insert') {
+        clonedImage.replaceWith(placeholder('span', 'image', 'Suggested image', pos));
+      }
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn('Could not find position for image:', e);
     }
   });
 
+  suggestedBlocks.forEach(({ div, from, name }) => {
+    div.replaceWith(placeholder('p', 'block', `Suggested block: ${name}`, from));
+  });
   unwrapDiffViews(editorClone);
-  const hasSuggestions = applyApprovedView(editorClone);
+  applyApprovedText(editorClone);
 
   const remoteCursors = editorClone.querySelectorAll('.ProseMirror-yjs-cursor');
 
@@ -464,12 +461,12 @@ export function getInstrumentedHTML(view) {
   // (same pattern as da-nx qe-advanced: getInstrumentedHTML in prose2aem.js).
   let htmlString = prose2aem(editorClone, true, false);
   htmlString = htmlString.replace(
-    /<div class="block-marker" data-prose-index="(\d+)"><\/div>\s*<div([^>]*?)>/gi,
-    (_match, proseIndex, divAttributes) => `<div${divAttributes} data-block-index="${proseIndex}">`,
+    /<div class="block-marker" data-prose-index="(\d+)"([^>]*)><\/div>\s*<div([^>]*?)>/gi,
+    (_match, proseIndex, markerAttributes, divAttributes) => `<div${divAttributes} data-block-index="${proseIndex}"${markerAttributes}>`,
   );
   // Any marker that didn't pair with a wrapper would be decorated as a real block.
   htmlString = htmlString.replace(/<div class="block-marker"[^>]*><\/div>/gi, '');
-  return hasLocked || hasSuggestions ? `${htmlString}${SUGGESTION_STYLE}` : htmlString;
+  return suggestions.length ? `${htmlString}${SUGGESTION_STYLE}` : htmlString;
 }
 
 export function getInstrumentedHTMLForSDK(view) {

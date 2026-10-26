@@ -448,6 +448,11 @@
   background: var(--s2-gray-75);
 }
 
+.ew-suggestion-card.is-selected {
+  border-color: var(--ew-suggestion-accent, var(--s2-gray-500));
+  background: var(--s2-gray-75);
+}
+
 .ew-suggestion-badge {
   display: inline-flex;
   align-items: center;

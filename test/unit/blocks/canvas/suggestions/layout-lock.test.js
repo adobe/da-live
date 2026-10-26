@@ -1,12 +1,12 @@
 import { expect } from '@esm-bundle/chai';
+import { EditorState, EditorView, columnResizing } from 'da-y-wrapper';
+import { getSchema } from 'da-parser';
 import { setNx } from '../../../../../scripts/utils.js';
 import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { updateState, getEditor, getInstrumentedHTML } = await import(
-  '../../../../../blocks/canvas/editor-utils/editor-utils.js'
-);
+const { updateState, getEditor, getInstrumentedHTML, parseSections } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
 
 describe('layout mode leaves pending suggestions alone', () => {
   let editor;
@@ -67,15 +67,12 @@ describe('layout mode leaves pending suggestions alone', () => {
     expect(editor.view.state.doc.lastChild.textContent).to.equal('Plain edited');
   });
 
-  it('marks locked paragraphs in the layout HTML with a hint', () => {
+  it('locks the paragraph and points the click-through at its suggestion', () => {
     const html = new DOMParser().parseFromString(getInstrumentedHTML(editor.view), 'text/html');
     const [locked, plain] = html.querySelectorAll('p');
-    expect(locked.hasAttribute('data-suggestion-lock')).to.be.true;
-    expect(locked.dataset.suggestionLock).to.contain('Switch to Content');
+    expect(locked.dataset.suggestionLock).to.contain('Click to review');
+    expect(locked.dataset.suggestionPos).to.equal('5');
     expect(plain.hasAttribute('data-suggestion-lock')).to.be.false;
-    const style = html.querySelector('style')?.textContent;
-    expect(style).to.contain('[data-suggestion-lock]:hover::after');
-    expect(style).to.contain('[data-suggestion-lock]::before');
   });
 
   it('shows the approved text, not the suggestion markup', () => {
@@ -86,7 +83,7 @@ describe('layout mode leaves pending suggestions alone', () => {
     expect(doc.querySelector('p').textContent).to.equal('Amet');
   });
 
-  it('gives the lock a visible marker, not just a tooltip', () => {
+  it('gives the lock a visible, clickable marker', () => {
     const host = document.createElement('div');
     host.innerHTML = new DOMParser()
       .parseFromString(getInstrumentedHTML(editor.view), 'text/html').body.innerHTML;
@@ -94,7 +91,7 @@ describe('layout mode leaves pending suggestions alone', () => {
     try {
       const locked = host.querySelector('[data-suggestion-lock]');
       expect(getComputedStyle(locked).position).to.equal('relative');
-      expect(getComputedStyle(locked).cursor).to.equal('not-allowed');
+      expect(getComputedStyle(locked).cursor).to.equal('pointer');
       expect(getComputedStyle(locked, '::before').width).to.equal('3px');
     } finally {
       host.remove();
@@ -114,102 +111,102 @@ describe('layout mode leaves pending suggestions alone', () => {
   });
 });
 
-describe('layout mode hides proposed content', () => {
-  let editor;
+describe('layout mode with suggested blocks and images', () => {
+  const schema = getSchema();
+  let view;
+  let dom;
 
-  const build = async (content) => {
-    editor = await createTestEditor();
-    const { state } = editor.view;
-    editor.view.dispatch(state.tr.replaceWith(0, state.doc.content.size, content(state.schema)));
-    return new DOMParser().parseFromString(getInstrumentedHTML(editor.view), 'text/html');
-  };
-
-  const cell = (schema, text) => schema.nodes.table_cell.create(
+  const cell = (text) => schema.nodes.table_cell.create(
     null,
     schema.nodes.paragraph.create(null, schema.text(text)),
   );
-  const suggestedBlock = (schema, suggestion, name) => schema.nodes.table.create(
-    { suggestion, suggestionUsername: 'Ada' },
-    [
-      schema.nodes.table_row.create(null, cell(schema, name)),
-      schema.nodes.table_row.create(null, cell(schema, 'Body')),
-    ],
-  );
+  const block = (name, attrs = null) => schema.nodes.table.create(attrs, [
+    schema.nodes.table_row.create(null, cell(name)),
+    schema.nodes.table_row.create(null, cell('Body')),
+  ]);
+  const suggested = (suggestion) => ({ suggestion, suggestionUsername: 'Ada' });
+  const plain = (text) => schema.nodes.paragraph.create(null, schema.text(text));
 
-  afterEach(() => destroyEditor(editor));
+  // columnResizing renders tables through TableView, inside a .tableWrapper like the real editor.
+  const mount = (content) => {
+    dom = document.createElement('div');
+    document.body.append(dom);
+    const doc = schema.nodes.doc.create(null, content);
+    const state = EditorState.create({ schema, doc, plugins: [columnResizing()] });
+    view = new EditorView(dom, { state });
+    return new DOMParser().parseFromString(getInstrumentedHTML(view), 'text/html');
+  };
 
-  it('replaces a proposed block with a placeholder naming it', async () => {
-    const html = await build((schema) => [
-      suggestedBlock(schema, 'insert', 'Cards'),
-      schema.nodes.paragraph.create(null, schema.text('Plain')),
-    ]);
-    expect(html.querySelector('table')).to.be.null;
+  afterEach(() => {
+    view?.destroy();
+    dom?.remove();
+  });
+
+  it('replaces a proposed block with a clickable placeholder naming it', () => {
+    const html = mount([block('Cards', suggested('insert')), plain('Plain')]);
+    expect(html.querySelector('.cards')).to.be.null;
     const slot = html.querySelector('[data-suggestion-placeholder="block"]');
     expect(slot.textContent).to.equal('Suggested block: Cards');
+    expect(slot.dataset.suggestionPos).to.equal('0');
+    expect(slot.hasAttribute('data-suggestion-lock')).to.be.true;
     expect(slot.hasAttribute('data-prose-index')).to.be.false;
+    expect(html.querySelector('[data-block-index]')).to.be.null;
   });
 
-  it('keeps a block proposed for deletion, flagged as pending', async () => {
-    const html = await build((schema) => [suggestedBlock(schema, 'delete', 'Columns')]);
-    const table = html.querySelector('table');
-    expect(table).to.exist;
-    expect(table.dataset.suggestionPending).to.contain('Proposed for deletion');
+  it('locks a block proposed for deletion, and the text inside it', () => {
+    const html = mount([plain('Intro'), block('Columns', suggested('delete'))]);
+    const columns = html.querySelector('.columns');
+    expect(columns.dataset.blockIndex).to.exist;
+    expect(columns.dataset.suggestionLock).to.contain('Click to review');
+    expect(columns.dataset.suggestionPos).to.equal(String(view.state.doc.firstChild.nodeSize));
+    expect(columns.querySelector('p').hasAttribute('data-suggestion-lock')).to.be.true;
   });
 
-  it('drops a paragraph that is entirely a proposed insertion', async () => {
-    const html = await build((schema) => [
+  it('does not open text inside a block proposed for deletion', () => {
+    mount([block('Columns', suggested('delete'))]);
+    const posted = [];
+    getEditor({ cursorOffset: 4 }, { view, port: { postMessage: (m) => posted.push(m) } });
+    expect(posted).to.deep.equal([]);
+  });
+
+  it('leaves an untouched block unlocked', () => {
+    const html = mount([block('Columns')]);
+    expect(html.querySelector('.columns').hasAttribute('data-suggestion-lock')).to.be.false;
+  });
+
+  it('drops a paragraph that is entirely a proposed insertion', () => {
+    const html = mount([
       schema.nodes.paragraph.create(null, [
         schema.text('all new', [schema.marks.suggestion_insert.create({ username: 'Ada' })]),
       ]),
-      schema.nodes.paragraph.create(null, schema.text('Plain')),
+      plain('Plain'),
     ]);
     const paragraphs = [...html.querySelectorAll('p')];
     expect(paragraphs.map((p) => p.textContent)).to.deep.equal(['Plain']);
   });
 
-  it('replaces a proposed image and keeps its paragraph locked', async () => {
-    const html = await build((schema) => [
+  it('replaces a proposed image and locks its paragraph', () => {
+    const html = mount([
       schema.nodes.paragraph.create(null, [
-        schema.nodes.image.create({ src: '/a.png', suggestion: 'insert', suggestionUsername: 'Ada' }),
+        schema.nodes.image.create({ src: '/a.png', ...suggested('insert') }),
       ]),
     ]);
     expect(html.querySelector('img')).to.be.null;
-    expect(html.querySelector('[data-suggestion-placeholder="image"]').textContent)
-      .to.equal('Suggested image');
-    expect(html.querySelector('p').hasAttribute('data-suggestion-lock')).to.be.true;
+    const slot = html.querySelector('[data-suggestion-placeholder="image"]');
+    expect(slot.textContent).to.equal('Suggested image');
+    expect(slot.dataset.suggestionPos).to.equal('1');
+    expect(html.querySelector('p').dataset.suggestionPos).to.equal('1');
   });
 
-  it('leaves a clean document alone', async () => {
-    const html = await build((schema) => [schema.nodes.paragraph.create(null, schema.text('Plain'))]);
+  it('leaves a clean document alone', () => {
+    const html = mount([plain('Plain'), block('Columns')]);
     expect(html.querySelector('style')).to.be.null;
-    expect(html.querySelector('[data-suggestion-placeholder]')).to.be.null;
+    expect(html.querySelector('[data-suggestion-lock], [data-suggestion-placeholder]')).to.be.null;
   });
-});
 
-describe('page outline ignores suggestion placeholders', () => {
-  let editor;
-  afterEach(() => destroyEditor(editor));
-
-  it('lists the real content only', async () => {
-    const { parseSections } = await import(
-      '../../../../../blocks/canvas/editor-utils/editor-utils.js'
-    );
-    editor = await createTestEditor();
-    const { state } = editor.view;
-    const { schema } = state;
-    const cell = (text) => schema.nodes.table_cell.create(
-      null,
-      schema.nodes.paragraph.create(null, schema.text(text)),
-    );
-    editor.view.dispatch(state.tr.replaceWith(0, state.doc.content.size, [
-      schema.nodes.table.create({ suggestion: 'insert', suggestionUsername: 'Ada' }, [
-        schema.nodes.table_row.create(null, cell('Cards')),
-        schema.nodes.table_row.create(null, cell('Body')),
-      ]),
-      schema.nodes.paragraph.create(null, schema.text('Plain')),
-    ]));
-
-    const [section] = parseSections(getInstrumentedHTML(editor.view));
+  it('keeps placeholders out of the page outline', () => {
+    const html = mount([block('Cards', suggested('insert')), plain('Plain')]);
+    const [section] = parseSections(html.documentElement.outerHTML);
     expect(section.blocks).to.deep.equal([]);
     expect(section.items.flatMap((i) => i.children ?? [i]).map((i) => i.innerText))
       .to.deep.equal(['Plain']);

@@ -24,7 +24,6 @@ import {
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
-
 const sheet = await getSheet('/blocks/canvas/comments/comments-panel.css');
 const buttons = await getSheet(`${getNx2()}/styles/buttons.css`);
 const form = await getSheet(`${getNx2()}/styles/form.css`);
@@ -55,6 +54,7 @@ export class CommentsPanel extends LitElement {
     _pendingDelete: { state: true },
     _threadGroups: { state: true },
     _suggestions: { state: true },
+    _selectedSuggestionId: { state: true },
     _suggesting: { state: true },
     _canSuggest: { state: true },
     chatDisabled: { state: true },
@@ -130,10 +130,15 @@ export class CommentsPanel extends LitElement {
     this.teardownBusSubscriptions();
     this._unsubControllerState = canvasBus.commentsControllerState
       .subscribe((controller) => { this.controller = controller; });
-    this._unsubSuggestions = canvasBus.suggestionsState
-      .subscribe(({ items } = {}) => { this._suggestions = items ?? []; });
+    this._unsubSuggestions = canvasBus.suggestionsState.subscribe(({ items } = {}) => {
+      this._suggestions = items ?? [];
+      if (!this._suggestions.some((s) => s.id === this._selectedSuggestionId)) {
+        this._selectedSuggestionId = null;
+      }
+    });
+    this._unsubSuggestionFocus = canvasBus.suggestionFocusRequest
+      .subscribe(({ pos } = {}) => this.focusSuggestion(pos));
     this._unsubSuggestMode = canvasBus.suggestModeState.subscribe(({ on } = {}) => {
-      if (Boolean(on) !== this._suggesting) this._activeTab = 'active';
       this._suggesting = Boolean(on);
       this.syncHeaderToggle();
     });
@@ -175,6 +180,8 @@ export class CommentsPanel extends LitElement {
     this._unsubToolView = null;
     this._unsubSuggestions?.();
     this._unsubSuggestions = null;
+    this._unsubSuggestionFocus?.();
+    this._unsubSuggestionFocus = null;
     this._unsubSuggestMode?.();
     this._unsubSuggestMode = null;
     this._unsubEditorView?.();
@@ -484,26 +491,33 @@ export class CommentsPanel extends LitElement {
     canvasBus.suggestionResolveRequest.emit({ from: suggestion.from, to: suggestion.to, action });
   }
 
-  scrollToSuggestion(suggestion) {
-    this.controller?.scrollToPos?.(suggestion.from);
+  revealSuggestion(suggestion) {
+    this._selectedSuggestionId = suggestion.id;
+    canvasBus.suggestionRevealRequest.emit({ pos: suggestion.from });
+  }
+
+  async focusSuggestion(pos) {
+    const match = this._suggestions.find((s) => s.from <= pos && s.to >= pos);
+    if (!match) return;
+    this.controller?.setSelectedThread(null);
+    this._draft = null;
+    this._activeTab = 'active';
+    this._selectedSuggestionId = match.id;
+    await this.updateComplete;
+    this.shadowRoot.querySelector(`[data-suggestion="${match.id}"]`)
+      ?.scrollIntoView({ block: 'nearest' });
   }
 
   render() {
     const { active, detached, resolved } = this._threadGroups
       ?? { active: [], detached: [], resolved: [] };
-    const onSuggestions = this._suggesting;
     const isResolvedTab = this._activeTab === 'resolved';
     const activeThreads = [...active, ...detached];
-    const resolvedSuggestions = resolved.filter((t) => t.kind === 'suggestion');
-    const resolvedComments = resolved.filter((t) => t.kind !== 'suggestion');
-
-    const tabCounts = onSuggestions
-      ? { active: this._suggestions.length, resolved: resolvedSuggestions.length }
-      : { active: activeThreads.length, resolved: resolvedComments.length };
-
-    let visibleThreads;
-    if (onSuggestions) visibleThreads = isResolvedTab ? resolvedSuggestions : [];
-    else visibleThreads = isResolvedTab ? resolvedComments : activeThreads;
+    const tabCounts = {
+      active: activeThreads.length + this._suggestions.length,
+      resolved: resolved.length,
+    };
+    const visibleThreads = isResolvedTab ? resolved : activeThreads;
 
     const selectedThread = this.getThreadById(this.controller?.selectedThreadId);
     const isComposing = this._draft?.mode === DRAFT_MODES.NEW && this.currentUser;
@@ -521,7 +535,7 @@ export class CommentsPanel extends LitElement {
       content = renderListView(this, {
         visibleThreads,
         tabCounts,
-        suggestions: onSuggestions && !isResolvedTab ? this._suggestions : [],
+        suggestions: isResolvedTab ? [] : this._suggestions,
       });
     }
 

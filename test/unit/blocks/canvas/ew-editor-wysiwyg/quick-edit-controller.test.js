@@ -73,7 +73,10 @@ describe('quick-edit-controller RELOAD coalescing', () => {
     return {
       canWrite: true,
       suppressRerender: false,
-      view: { dom: document.createElement('div'), state: { doc: { forEach: () => {} } } },
+      view: {
+        dom: document.createElement('div'),
+        state: { doc: { forEach: () => {}, descendants: () => {} } },
+      },
       port: { postMessage: sinon.spy() },
     };
   }
@@ -170,5 +173,25 @@ describe('quick-edit-controller QUICK_EDIT_IFRAME_CLICK forwarding', () => {
     const onMessage = createControllerOnMessage(ctx);
     expect(() => onMessage({ data: { type: 'quick-edit-iframe-click', payload: { target: 'p' } } }))
       .to.not.throw();
+  });
+});
+
+describe('quick-edit-controller SUGGESTION_CLICK', () => {
+  it('opens the comments panel on the suggestion, even for read-only users', async () => {
+    const { canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js');
+    const requests = [];
+    const unsubscribe = canvasBus.suggestionFocusRequest
+      .subscribe((detail) => requests.push(detail));
+    try {
+      const opened = new Promise((resolve) => {
+        document.addEventListener('nx-panel-open', resolve, { once: true });
+      });
+      const onMessage = createControllerOnMessage(makeCtx(false));
+      onMessage({ data: { type: 'suggestion-click', payload: { proseIndex: 7 } } });
+      expect(requests).to.deep.equal([{ pos: 7 }]);
+      expect((await opened).detail).to.deep.equal({ section: 'tools', id: 'comments' });
+    } finally {
+      unsubscribe();
+    }
   });
 });

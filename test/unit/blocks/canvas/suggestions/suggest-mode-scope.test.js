@@ -86,3 +86,61 @@ describe('suggest mode is scoped to the doc editor', () => {
     expect(isSuggesting(view.state)).to.be.false;
   });
 });
+
+describe('revealing a suggestion', () => {
+  let el;
+  let view;
+
+  beforeEach(async () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const added = schema.marks.suggestion_insert.create({ username: 'ada' });
+    view = new EditorView(host, {
+      state: EditorState.create({
+        doc: schema.node('doc', null, [
+          schema.node('paragraph', null, [schema.text('Intro')]),
+          schema.node('paragraph', null, [schema.text('Hello '), schema.text('new', [added])]),
+        ]),
+        plugins: [createSuggestionPlugin({ username: 'ada' })],
+      }),
+    });
+    el = document.createElement('ew-editor-doc');
+    document.body.append(el);
+    await el.updateComplete;
+    el._proseContext = { view };
+    el._editorView = 'layout';
+  });
+
+  afterEach(() => {
+    view?.destroy();
+    el?.remove();
+  });
+
+  it('scrolls layout to the suggestion instead of switching views', () => {
+    const posted = [];
+    el._controllerCtx = { port: { postMessage: (m) => posted.push(m), close() {} } };
+    const requested = [];
+    const off = canvasBus.editorViewRequest.subscribe((d) => requested.push(d));
+    canvasBus.suggestionRevealRequest.emit({ pos: 14 });
+    off();
+    expect(requested).to.deep.equal([]);
+    expect(posted).to.deep.equal([{ type: 'scroll-to-pos', payload: { proseIndex: 14 } }]);
+    expect(view.state.selection.from).to.equal(1);
+  });
+
+  it('puts the caret on the suggestion when the doc is visible', () => {
+    el._editorView = 'content';
+    canvasBus.suggestionRevealRequest.emit({ pos: 14 });
+    expect(view.state.selection.from).to.equal(14);
+    expect(isSuggesting(view.state)).to.be.false;
+  });
+
+  it('ignores a position past the end of the document', () => {
+    const requested = [];
+    const off = canvasBus.editorViewRequest.subscribe((d) => requested.push(d));
+    canvasBus.suggestionRevealRequest.emit({ pos: 999 });
+    off();
+    expect(requested).to.deep.equal([]);
+    expect(view.state.selection.from).to.equal(1);
+  });
+});

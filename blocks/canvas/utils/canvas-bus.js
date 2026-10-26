@@ -47,6 +47,9 @@ export const canvasBus = Object.freeze({
   toolbarSurfaceRequest: createChannel(),
   suggestModeRequest: createChannel(),
   suggestionResolveRequest: createChannel(),
+  suggestionRevealRequest: createChannel(),
+  // Replays because the comments panel may only mount once the request opens it.
+  suggestionFocusRequest: createChannel({ replay: true }),
 
   undoState: createChannel(),
   mergeConflictsState: createChannel(),
