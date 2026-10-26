@@ -1,3 +1,24 @@
+## [1.13.2](https://github.com/adobe/da-live/compare/v1.13.1...v1.13.2) (2026-10-26)
+
+
+### Bug Fixes
+
+* update browse UI ([#1469](https://github.com/adobe/da-live/issues/1469)) ([46fb729](https://github.com/adobe/da-live/commit/46fb7293914aa23223c3f00e7e227e72693db61b))
+
+## [1.13.1](https://github.com/adobe/da-live/compare/v1.13.0...v1.13.1) (2026-10-26)
+
+
+### Bug Fixes
+
+* preflight spinners not loading ([#1488](https://github.com/adobe/da-live/issues/1488)) ([4251141](https://github.com/adobe/da-live/commit/4251141d2e5fd49518b3fd9fb17334ccfc6e2e33))
+
+# [1.13.0](https://github.com/adobe/da-live/compare/v1.12.3...v1.13.0) (2026-10-22)
+
+
+### Features
+
+* show LOC and MSM merge conflicts in the canvas editor ([#1189](https://github.com/adobe/da-live/issues/1189)) ([54fe9f7](https://github.com/adobe/da-live/commit/54fe9f7db6d714cfd415b1eb7488fb9aa5e40c12))
+
 ## [1.12.3](https://github.com/adobe/da-live/compare/v1.12.2...v1.12.3) (2026-10-22)
 
 

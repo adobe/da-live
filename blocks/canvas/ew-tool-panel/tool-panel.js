@@ -12,8 +12,10 @@ const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
 
-const [buttons, style] = await Promise.all([
+// Spinner styles cover first-party header actions (e.g. refresh) mounted in this shadow root.
+const [buttons, spinner, style] = await Promise.all([
   loadStyle(`${getNx2()}/styles/buttons.css`),
+  loadStyle(`${getNx2()}/styles/spinner.css`),
   loadStyle(import.meta.url),
 ]);
 
@@ -36,7 +38,7 @@ class EwToolPanel extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [buttons, style];
+    this.shadowRoot.adoptedStyleSheets = [buttons, spinner, style];
     this._bindCommentCountUpdates();
     this._onRailToggle = () => this._broadcastActiveView();
     document.addEventListener(PANEL_EVENT.OPEN, this._onRailToggle);
