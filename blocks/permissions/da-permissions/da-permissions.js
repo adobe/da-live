@@ -101,7 +101,7 @@ class DaPermissions extends LitElement {
     super();
     this.org = null;
     this.site = null;
-    this._status = 'empty';
+    this._status = null;
     this._rules = [];
     this._httpStatus = null;
     this._sites = [];
@@ -140,7 +140,6 @@ class DaPermissions extends LitElement {
   async _load() {
     const { org } = this;
     if (!org) {
-      this._status = 'empty';
       this._rules = [];
       this._sites = [];
       return;
@@ -447,5 +446,3 @@ class DaPermissions extends LitElement {
 if (!customElements.get('da-permissions')) {
   customElements.define('da-permissions', DaPermissions);
 }
-
-export default DaPermissions;
