@@ -16,23 +16,9 @@ permissions:
 
 jobs:
   test:
-    name: ${{ matrix.name }}
+    name: test
     timeout-minutes: 60
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      # Both runs share the pw-<branch> test folder, so they must not overlap.
-      max-parallel: 1
-      matrix:
-        include:
-          - name: test
-            browse: '1'
-            script: test:all
-            artifact: playwright
-          - name: browse v2
-            browse: '2'
-            script: test:browse
-            artifact: browse-v2
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4
@@ -45,17 +31,16 @@ jobs:
     - name: Run Playwright tests
       env:
         TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
-        BROWSE: ${{ matrix.browse }}
-      run: cd test/e2e && npm run ${{ matrix.script }}
+      run: cd test/e2e && npm run test:all
     - uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: ${{ matrix.artifact }}-report
+        name: playwright-report
         path: test/e2e/playwright-report/
         retention-days: 30
     - uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: ${{ matrix.artifact }}-screenshots
+        name: playwright-screenshots
         path: test/e2e/.playwright/shots/
         retention-days: 30

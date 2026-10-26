@@ -34,6 +34,3 @@ export function runFolderFor(branch) {
 
 // The folder every resource in this run is created under: pw-{branch}.
 export const RUN_FOLDER = runFolderFor(process.env.GITHUB_HEAD_REF);
-
-// Which browse implementation the specs run against: '1' (legacy, default) or '2'.
-export const BROWSE = process.env.BROWSE === '2' ? '2' : '1';

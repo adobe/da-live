@@ -11,7 +11,7 @@
  */
 import { expect } from '@playwright/test';
 import ENV, {
-  TEST_ORG, TEST_SITE, RUN_FOLDER, BROWSE,
+  TEST_ORG, TEST_SITE, RUN_FOLDER,
 } from './env.js';
 
 export { TEST_ORG, TEST_SITE };
@@ -19,11 +19,11 @@ export { RUN_FOLDER } from './env.js';
 
 export function getQuery() {
   const { GITHUB_HEAD_REF: branch } = process.env;
-  const params = [];
+  // Remove this opt-in when browse v2 becomes the only implementation.
+  const params = ['browse=2'];
   if (branch === 'local' || branch === 'local-https') {
     params.push(`da-admin=local`, `da-collab=local`);
   }
-  if (BROWSE === '2') params.push('browse=2');
   return params.length ? `?${params.join('&')}` : '';
 }
 
