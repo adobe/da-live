@@ -384,10 +384,18 @@ export default class DaListBase extends LitElement {
   handleFavorite() {
     const item = this._selectedItems?.[0];
     if (!item) return;
+    this.toggleItemFavorite(item);
+    this.handleClear();
+  }
+
+  toggleItemFavorite(item) {
     const nowFavorite = toggleFavorite(this.fullpath, item.path);
     item.isFavorited = nowFavorite;
-    this.applyFavoriteOrder();
-    this.handleClear();
+    this.requestUpdate();
+    if (this.actionBar) {
+      this.actionBar.isFavorite = this._selectedItems.length === 1
+        && !!this._selectedItems[0].isFavorited;
+    }
   }
 
   handleRename() {
