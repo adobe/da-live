@@ -25,15 +25,11 @@
   gap: var(--s2-spacing-200);
 }
 
-/* Filter gets the room (40rem, shrinking on narrow screens). */
 .permissions-header-actions nx-search {
   flex: 0 1 40rem;
   min-width: 12rem;
 }
 
-/* nx-picker's host is display: contents and its field trigger is width: 100%, so wrap it in a
-   box that only takes the width it needs, pinned to the right. The field's menu is exactly as
-   wide as the trigger, so keep it wide enough for "Org Permissions" without wrapping. */
 .permissions-site-picker {
   flex: none;
   min-width: 12rem;
@@ -47,7 +43,6 @@
   line-height: var(--s2-heading-line-height);
 }
 
-/* Always-on help text: two short lines, stacked, on a light gray panel. */
 .permissions-info-note {
   display: flex;
   flex-direction: column;
@@ -69,7 +64,6 @@
 }
 
 
-/* No org in the URL: explanation, field and button on one line inside the info note panel. */
 .permissions-org-form {
   display: flex;
   flex-wrap: wrap;
@@ -81,8 +75,6 @@
   width: 16rem;
 }
 
-/* Page-level loading state: nx2's shared spinner (spinner.css), scaled up from its 14px
-   inline size, with a short message next to it. */
 .permissions-loading {
   display: flex;
   align-items: center;

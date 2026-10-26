@@ -7,7 +7,6 @@
   margin-top: var(--s2-spacing-500);
 }
 
-/* Heading on the left, an optional action (Add folder) right-aligned on the same row. */
 .scope-section-header {
   display: flex;
   align-items: center;
@@ -67,7 +66,6 @@
   border-top: 1px solid var(--s2-gray-200);
 }
 
-/* Rows are separated from each other, not from the card edge or title. */
 .level-row:first-child {
   padding-top: 0;
   border-top: none;
@@ -96,8 +94,6 @@
   color: var(--s2-red-900);
 }
 
-/* All members are always shown, so let every pill list grow with its content.
-   Needs da-nx's --nx-pills-max-height (nx-pills otherwise clamps at two rows). */
 nx-pills {
   --nx-pills-max-height: none;
 }
@@ -107,7 +103,6 @@ nx-pills {
   --nx-pill-color: var(--s2-red-1100);
 }
 
-/* Members of the row: site members first, then the inherited group. */
 .row-members {
   display: flex;
   flex: 1 1 0;
@@ -117,7 +112,6 @@ nx-pills {
   min-width: 0;
 }
 
-/* Site and inherited members in the same row: inherited starts on its own line. */
 .row-members.stacked {
   flex-direction: column;
   align-items: flex-start;
@@ -131,8 +125,6 @@ nx-pills {
   min-width: 0;
 }
 
-/* Inherited pills are neutral gray so they read as "managed at the org", unlike the
-   site's own (blue / red) members. Inherited deny members keep red text. */
 .inherited-pills {
   --nx-pill-background: var(--s2-gray-200);
   --nx-pill-color: var(--s2-gray-800);
@@ -155,7 +147,6 @@ nx-pills {
   line-height: var(--s2-component-m-regular-line-height);
 }
 
-/* The add field opens on its own line under the members, so the pills never reflow. */
 .row-add-field {
   display: flex;
   align-items: center;
