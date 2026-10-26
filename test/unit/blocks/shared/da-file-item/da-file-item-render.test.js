@@ -1,16 +1,16 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
-import { setNx } from '../../../../../../scripts/utils.js';
+import { setNx } from '../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-await import('../../../../../../blocks/browse/v2/da-list-item/da-list-item.js');
+await import('../../../../../blocks/shared/da-file-item/da-file-item.js');
 
-describe('da-list-item render', () => {
+describe('da-file-item render', () => {
   let el;
 
   async function fixture(props = {}) {
-    el = document.createElement('da-list-item');
+    el = document.createElement('da-file-item');
     Object.assign(el, {
       idx: 0,
       name: 'page',
@@ -266,29 +266,61 @@ describe('da-list-item render', () => {
       date: new Date('2024-01-01T12:00:00Z').getTime(),
     });
     const preview = el.shadowRoot.querySelector('.card-preview');
-    expect(preview.querySelector('da-card-preview').ext).to.equal('json');
-    const select = preview.querySelector('.card-select');
-    expect(select.querySelector('input[type="checkbox"]')).to.exist;
-    expect(el.shadowRoot.querySelector('.card-name-text').textContent).to.equal('brand.xlsx');
+    expect(preview.querySelector('svg use').getAttribute('href')).to.contain('s2-icon-data-20-n.svg');
+    const card = el.shadowRoot.querySelector('nx-card');
+    expect(card.selectable).to.equal(true);
+    expect(card.selected).to.equal(false);
+    expect(preview.slot).to.equal('media');
+    expect(el.shadowRoot.querySelector('[slot="heading"]').textContent.trim()).to.equal('brand.xlsx');
     expect(el.shadowRoot.querySelector('.card-date').textContent).to.equal(el.renderDate());
     expect(el.shadowRoot.querySelector('.card-type').textContent).not.to.be.empty;
-    expect(el.shadowRoot.querySelector('.card-heading button[aria-label="More"]')).to.exist;
+    expect(el.shadowRoot.querySelector('[slot="actions"] button[aria-label="More"]')).to.exist;
   });
 
-  it('Renders a card preview and passes the renaming state to it', async () => {
+  it('bridges card selection and shift-click to browse selection', async () => {
+    await fixture({ view: 'card', allowselect: true });
+    const card = el.shadowRoot.querySelector('nx-card');
+    let event;
+    el.addEventListener('checked', (e) => { event = e; });
+    card.dispatchEvent(new CustomEvent('selectionchange', {
+      detail: { selected: true, shiftKey: true },
+      bubbles: true,
+      composed: true,
+    }));
+    await el.updateComplete;
+    expect(event.detail).to.deep.equal({ checked: true, shiftKey: true });
+    expect(event.bubbles).to.equal(true);
+    expect(event.composed).to.equal(true);
+    expect(card.selected).to.equal(true);
+
+    el.isChecked = false;
+    el.allowselect = false;
+    await el.updateComplete;
+    expect(card.selected).to.equal(false);
+    expect(card.selectable).to.equal(false);
+  });
+
+  it('Renders a file icon and a busy preview while renaming', async () => {
     await fixture({ view: 'card', ext: 'png', path: '/org/site/a.png' });
-    const preview = el.shadowRoot.querySelector('.card-preview da-card-preview');
-    expect(preview.path).to.equal('/org/site/a.png');
-    expect(preview.ext).to.equal('png');
-    expect(preview.busy).to.not.be.ok;
+    const preview = el.shadowRoot.querySelector('.card-preview');
+    expect(preview.querySelector('svg use').getAttribute('href')).to.contain('s2-icon-image-20-n.svg');
+    expect(preview.querySelector('[role="status"]')).to.be.null;
     el._isRenaming = true;
     await el.updateComplete;
-    expect(preview.busy).to.be.true;
+    expect(preview.querySelector('[aria-label="Renaming"]')).to.exist;
   });
 
   it('Renders the rename form in card view', async () => {
-    await fixture({ view: 'card', rename: true });
-    expect(el.shadowRoot.querySelector('.card form.da-item-list-item-rename')).to.exist;
+    await fixture({ view: 'card', rename: true, isChecked: true });
+    const form = el.shadowRoot.querySelector('nx-card form.da-item-list-item-rename');
+    expect(form.slot).to.equal('content');
+    expect(form.querySelector('input').value).to.equal('page');
+    expect(el.shadowRoot.querySelector('[slot="heading"]')).to.be.null;
+    expect(el.shadowRoot.querySelector('[slot="actions"]')).to.be.null;
+    expect(el.shadowRoot.querySelector('.card-type').slot).to.equal('metadata');
+    expect(el.shadowRoot.querySelector('.card-date').slot).to.equal('metadata');
+    form.querySelector('input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(el.isChecked).to.equal(false);
   });
 
   it('requests favorite changes without selecting the row', async () => {
@@ -325,7 +357,7 @@ describe('da-list-item render', () => {
     expect(el.isChecked).not.to.be.true;
     el.isFavorited = true;
     await el.updateComplete;
-    const button = el.shadowRoot.querySelector('.card-preview .card-favorite');
+    const button = el.shadowRoot.querySelector('[slot="overlay-actions"].card-favorite');
     expect(button.getAttribute('aria-label')).to.equal('Remove as Favorite');
     expect(button.getAttribute('aria-pressed')).to.equal('true');
     el.shadowRoot.querySelector('.card-more').click();

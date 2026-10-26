@@ -311,7 +311,7 @@ export default class DaListBase extends LitElement {
     const index = this._lastCheckedIndex;
     this.handleClear();
     await this.updateComplete;
-    const rows = [...this.shadowRoot.querySelectorAll('da-list-item')];
+    const rows = [...this.shadowRoot.querySelectorAll('da-list-item, da-file-item')];
     const row = rows.find((item) => item.idx === index) ?? rows[0];
     await row?.updateComplete;
     const target = row?.shadowRoot?.querySelector('input[name="item-selected"]')
