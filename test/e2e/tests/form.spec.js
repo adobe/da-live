@@ -12,9 +12,8 @@
 import { test as base, expect } from '../utils/fixtures.js';
 import ENV, { TEST_ORG, TEST_SITE, RUN_FOLDER } from '../utils/env.js';
 import { getQuery, getTestResourceName, waitForSave } from '../utils/page.js';
-import { createResource, deleteResource } from '../utils/cleanup.js';
+import { createResource, deleteResource, FORM_SCHEMAS_FOLDER } from '../utils/cleanup.js';
 
-const SCHEMAS_FOLDER = '/.da/forms/schemas';
 const RUN_FOLDER_PATH = `/tests/${RUN_FOLDER}`;
 const ENV_ORIGIN = new URL(ENV).origin;
 const TITLE_SCHEMA = {
@@ -74,7 +73,7 @@ const test = base.extend({
 
   schemaName: async ({ source }, use, testInfo) => {
     const schemaName = getTestResourceName('formschema', testInfo);
-    const schemaPath = `${SCHEMAS_FOLDER}/${schemaName}`;
+    const schemaPath = `${FORM_SCHEMAS_FOLDER}/${schemaName}`;
     const response = await source.create(schemaPath, toSchemaDocument(TITLE_SCHEMA));
     await expect(response).toBeOK();
 
