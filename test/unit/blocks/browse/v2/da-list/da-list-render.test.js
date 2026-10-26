@@ -53,6 +53,45 @@ describe('da-list render', () => {
     await el.updateComplete;
   }
 
+  ['selection', 'copy', 'cut'].forEach((mode) => {
+    it(`clears folder selection on navigation unless ${mode} has a pending paste`, async () => {
+      el = document.createElement('da-list');
+      el.fullpath = '/org/site/one';
+      el.getList = async () => [{ path: `${el.fullpath}/a.html`, name: 'a', ext: 'html' }];
+      el.updateDeletePermission = async () => {};
+      await updateList(el, () => document.body.append(el));
+      await customElements.whenDefined('da-actionbar');
+      const { actionBar } = el;
+      const list = el;
+      el._listItems[0].isChecked = true;
+      el._lastCheckedIndex = 0;
+      el.handleSelectionState();
+      await el.updateComplete;
+      await actionBar.updateComplete;
+      const selected = el._selectedItems;
+      if (mode === 'copy') actionBar.handleCopy();
+      if (mode === 'cut') actionBar.handleMove();
+      await actionBar.updateComplete;
+      const pendingPaste = mode !== 'selection';
+      expect(actionBar.hasPendingPaste).to.equal(pendingPaste);
+      const selectionChanges = [];
+      el.addEventListener('selectionchanged', (e) => { selectionChanges.push(e.detail.items); });
+
+      for (const path of ['/org/site/two', '/org/site/one']) {
+        await updateList(list, () => { list.fullpath = path; });
+        await actionBar.updateComplete;
+        expect(el._lastCheckedIndex).to.equal(null);
+        expect(el._listItems.some((item) => item.isChecked)).to.equal(false);
+        expect(el._selectedItems).to.deep.equal(pendingPaste ? selected : []);
+        expect(actionBar.items).to.deep.equal(pendingPaste ? selected : []);
+        expect(actionBar.currentPath).to.equal(path);
+        expect(actionBar.getAttribute('data-visible')).to.equal(String(pendingPaste));
+        expect(actionBar.hasPendingPaste).to.equal(pendingPaste);
+      }
+      expect(selectionChanges).to.deep.equal(pendingPaste ? [] : [[]]);
+    });
+  });
+
   it('persists favorite changes without changing order or selection', async () => {
     const savedFavorites = localStorage.getItem('da-favorites');
     try {
@@ -124,7 +163,7 @@ describe('da-list render', () => {
     ];
     el.select = true;
     await rerender();
-    const items = el.shadowRoot.querySelectorAll('da-list-item');
+    const items = el.shadowRoot.querySelectorAll('da-file-item');
     expect(items.length).to.equal(2);
   });
 
@@ -148,7 +187,7 @@ describe('da-list render', () => {
     ];
     el._hiddenTypes = new Set(['Sheet']);
     await rerender();
-    const items = el.shadowRoot.querySelectorAll('da-list-item');
+    const items = el.shadowRoot.querySelectorAll('da-file-item');
     expect(items.length).to.equal(1);
     expect(items[0].getAttribute('name')).to.equal('alpha');
   });
@@ -254,7 +293,7 @@ describe('da-list render', () => {
     el._continuationToken = 'next';
     el._allPagesLoaded = false;
     await rerender();
-    expect(el.shadowRoot.querySelector('da-list-item')).to.be.null;
+    expect(el.shadowRoot.querySelector('da-file-item')).to.be.null;
     expect(el.shadowRoot.querySelector('.da-list-sentinel')).to.exist;
   });
 
@@ -290,11 +329,11 @@ describe('da-list render', () => {
     el._listItems = [{ path: '/o/r/page.html', name: 'page', ext: 'html' }];
     el.toggleTypeGroup('Page');
     await rerender();
-    expect(el.shadowRoot.querySelector('da-list-item')).to.be.null;
+    expect(el.shadowRoot.querySelector('da-file-item')).to.be.null;
     expect(el.shadowRoot.querySelector('.da-list-group-toggle').getAttribute('aria-expanded')).to.equal('false');
     el.toggleTypeGroup('Page');
     await rerender();
-    expect(el.shadowRoot.querySelector('da-list-item')).to.exist;
+    expect(el.shadowRoot.querySelector('da-file-item')).to.exist;
   });
 
   it('loads remaining pages before presenting the complete type selection', async () => {
@@ -343,7 +382,7 @@ describe('da-list render', () => {
         { path: '/org/site/b.png', name: 'b', ext: 'png' },
       ],
     });
-    const items = el.shadowRoot.querySelectorAll('.da-card-grid da-list-item');
+    const items = el.shadowRoot.querySelectorAll('.da-card-grid da-file-item');
     expect(items).to.have.length(2);
     expect(items[0].getAttribute('view')).to.equal('card');
     expect(el.shadowRoot.querySelector('.da-browse-table-header').classList.contains('is-card')).to.be.true;
@@ -351,7 +390,7 @@ describe('da-list render', () => {
     el.view = 'list';
     await rerender();
     expect(el.shadowRoot.querySelector('.da-card-grid')).to.be.null;
-    expect(el.shadowRoot.querySelector('da-list-item').hasAttribute('view')).to.be.false;
+    expect(el.shadowRoot.querySelector('da-file-item').hasAttribute('view')).to.be.false;
   });
 
   it('shows the card sort control only for an active sort', async () => {

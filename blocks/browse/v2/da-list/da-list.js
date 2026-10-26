@@ -3,7 +3,7 @@ import { getTypeLabel, iconPathForExt } from '../../../shared/icons.js';
 import { getNx, getNx2 } from '../../../../scripts/utils.js';
 import DaListBase from '../../da-list-base/da-list-base.js';
 
-import '../da-list-item/da-list-item.js';
+import '../../../shared/da-file-item/da-file-item.js';
 
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
 
@@ -114,6 +114,8 @@ export default class DaList extends DaListBase {
 
     if (props.has('fullpath') && this.fullpath) {
       const path = this.fullpath;
+      if (!this.actionBar?.hasPendingPaste) this.handleClear();
+      this._lastCheckedIndex = null;
       this._sort = undefined;
       this.notifySortState();
       this._allPagesLoaded = false;
@@ -350,7 +352,7 @@ export default class DaList extends DaListBase {
     return repeat(items, (item) => item.path, (item) => {
       const idx = indexByPath.get(item.path);
       return html`
-        <da-list-item
+        <da-file-item
           role="row"
           @checked=${(e) => this.handleItemChecked(e, item, idx)}
           @favoritechange=${() => this.toggleItemFavorite(item)}
@@ -367,7 +369,7 @@ export default class DaList extends DaListBase {
           ext="${item.ext}"
           editor="${this.editor}"
           idx=${idx}>
-        </da-list-item>`;
+        </da-file-item>`;
     });
   }
 
