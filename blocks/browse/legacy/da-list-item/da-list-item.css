@@ -22,12 +22,11 @@
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
-  gap: var(--da-list-pad-inline, 24px);
   padding: 0 var(--da-list-pad-inline, 24px);
 }
 
 .da-item-list-item-inner.can-select {
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 32px 1fr auto;
 }
 
 .da-item-list-item-title,
@@ -144,6 +143,11 @@
 .da-item-list-item-rename-actions {
   display: flex;
 }
+
+.card .da-item-list-item-rename-actions {
+  justify-content: center;
+}
+
 
 .da-item-list-item-rename-actions button {
   width: 32px;
