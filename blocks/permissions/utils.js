@@ -1,33 +1,12 @@
-/** @typedef {'read'|'write'|'none'} Level */
-/** @typedef {{ path: string, groups: string, actions: string }} Rule */
-/** @typedef {{ path: string, kind: 'config'|'content'|'folder'|'other', label: string,
- *   read: string[], write: string[], none: string[],
- *   inheritedRead: string[], inheritedWrite: string[], inheritedNone: string[],
- *   pending?: boolean }} Slot */
-
-// Trailing "+**" variants (with or without spaces around the `+`) normalized to " + **".
 const WILDCARD_SUFFIX_RE = /\s*\+\s*\*\*\s*$/;
 const WILDCARD_SUFFIX = ' + **';
 const FOLDER_SUFFIX = `/${WILDCARD_SUFFIX}`;
 
-/**
- * Normalize a rule path so variants like `/s/+**`, `/s/ +**` and `/s/+ **`
- * all become `/s/ + **`. Paths without a wildcard suffix (e.g. `CONFIG`) are
- * returned unchanged. `undefined`/`null` pass through unchanged.
- * @param {string|undefined|null} path
- * @returns {string|undefined|null}
- */
 export function normPath(path) {
   if (path === undefined || path === null) return path;
   return path.replace(WILDCARD_SUFFIX_RE, WILDCARD_SUFFIX);
 }
 
-/**
- * Split a groups string into trimmed, non-empty members.
- * @param {string} groups
- * @param {string|RegExp} [separator]
- * @returns {string[]}
- */
 export function splitGroups(groups, separator = ',') {
   return (groups || '')
     .split(separator)
@@ -35,58 +14,31 @@ export function splitGroups(groups, separator = ',') {
     .filter(Boolean);
 }
 
-/**
- * Map a rule's `actions` string to a permission level.
- * @param {string} actions
- * @returns {Level}
- */
 export function actionsToLevel(actions) {
   if (actions === 'read') return 'read';
   if (actions === 'write') return 'write';
   return 'none';
 }
 
-/**
- * Map a permission level back to a rule's `actions` string.
- * @param {Level} level
- * @returns {string}
- */
 export function levelToActions(level) {
   if (level === 'read') return 'read';
   if (level === 'write') return 'write';
   return '';
 }
 
-/** Human-readable label for a permission level, shared by the container and cards. */
+export const INHERITED_KEY = { read: 'inheritedRead', write: 'inheritedWrite', none: 'inheritedNone' };
+
 export const LEVEL_LABEL = { read: 'Read', write: 'Write', none: 'None' };
 
-/**
- * The two default scope paths for a view: org scopes when `site` is null/empty,
- * otherwise the site's config and content scopes.
- * @param {string|null} site
- * @returns {string[]}
- */
 export function defaultPaths(site) {
   if (!site) return ['CONFIG', '/ + **'];
   return [`/${site}/CONFIG`, normPath(`/${site}/+**`)];
 }
 
-/**
- * Build the normalized rule path for a folder scope.
- * @param {string} site
- * @param {string} folder
- * @returns {string}
- */
 export function folderRulePath(site, folder) {
   return normPath(`/${site}/${folder}/+**`);
 }
 
-/**
- * Validate a folder path typed by the user ("/blog/drafts") and return the
- * folder relative to the site ("blog/drafts"), or an error message.
- * @param {string} value
- * @returns {{ folder: string } | { error: string }}
- */
 export function parseFolderPath(value) {
   const trimmed = (value || '').trim();
   if (!trimmed) return { error: 'Enter a folder path, e.g. /blog.' };
@@ -96,14 +48,6 @@ export function parseFolderPath(value) {
   return { folder };
 }
 
-/**
- * Classify a rule path's scope kind. String comparisons only — never builds a
- * RegExp from `site`, so sites with regex-special characters (`my.site`) are
- * matched literally.
- * @param {string} path
- * @param {string|null} site
- * @returns {Slot['kind']}
- */
 export function scopeKind(path, site) {
   const norm = normPath(path);
   if (!site) {
@@ -119,12 +63,6 @@ export function scopeKind(path, site) {
   return 'other';
 }
 
-/**
- * Human-readable label for a rule path's scope.
- * @param {string} path
- * @param {string|null} site
- * @returns {string}
- */
 export function scopeLabel(path, site) {
   const kind = scopeKind(path, site);
   if (kind === 'config') return site ? 'Site configurations' : 'DA configurations';
@@ -154,12 +92,6 @@ function ensureSlot(slotsMap, path, site) {
   return slotsMap.get(norm);
 }
 
-function inheritedListKey(level) {
-  if (level === 'read') return 'inheritedRead';
-  if (level === 'write') return 'inheritedWrite';
-  return 'inheritedNone';
-}
-
 function applyInheritance(slot, orgRules) {
   if (!slot) return;
   orgRules.forEach((orgRule) => {
@@ -167,19 +99,10 @@ function applyInheritance(slot, orgRules) {
     const members = splitGroups(orgRule.groups);
     const direct = slot[level];
     const inherited = members.filter((m) => !direct.includes(m));
-    slot[inheritedListKey(level)].push(...inherited);
+    slot[INHERITED_KEY[level]].push(...inherited);
   });
 }
 
-/**
- * Group rules into display slots: one row per scope, with direct and
- * inherited members per level. Path variants (e.g. `/s/+**` and `/s/ + **`)
- * are merged into a single slot.
- * @param {Rule[]} rules
- * @param {string|null} site
- * @param {string|null} [pendingFolder]
- * @returns {Slot[]}
- */
 export function buildSlots(rules, site, pendingFolder = null) {
   const slotsMap = new Map();
   const defaults = defaultPaths(site);
@@ -220,13 +143,6 @@ export function buildSlots(rules, site, pendingFolder = null) {
   return [...orderedPaths, ...rest].map((path) => slotsMap.get(path));
 }
 
-/**
- * Combine a known site list with sites mentioned in rule paths (e.g.
- * `/foo/...`), deduped and sorted.
- * @param {string[]} siteList
- * @param {Rule[]} rules
- * @returns {string[]}
- */
 export function siteNames(siteList, rules) {
   const fromRules = rules
     .map((r) => normPath(r.path))
@@ -241,13 +157,6 @@ const MEMBER_LIST_KEYS = [
   'read', 'write', 'none', 'inheritedRead', 'inheritedWrite', 'inheritedNone',
 ];
 
-/**
- * Parse a pasted list of members, splitting on commas and/or newlines,
- * trimming whitespace, dropping blanks, and deduping exact repeats while
- * preserving first-seen order and casing.
- * @param {string} input
- * @returns {string[]}
- */
 export function parseMembers(input) {
   return [...new Set(splitGroups(input, /[,\n]/))];
 }
@@ -257,25 +166,10 @@ function syncSheetCounts(sheet) {
   sheet.limit = sheet.data.length;
 }
 
-/**
- * Whether a config has a `permissions` sheet with a `data` array.
- * @param {object|null} config
- * @returns {boolean}
- */
 export function hasPermissionsSheet(config) {
   return !!(config && config.permissions && Array.isArray(config.permissions.data));
 }
 
-/**
- * Add one or more members to a rule's `read`/`write`/`none` level at `path`,
- * creating the rule if it doesn't exist yet. Members already present in the
- * rule (compared case-insensitively) are skipped. Never mutates `config`.
- * @param {object} config
- * @param {string} path
- * @param {Level} level
- * @param {string[]} who
- * @returns {{ config: object, changed: boolean }}
- */
 export function addMembers(config, path, level, who) {
   const next = structuredClone(config);
   if (!who || who.length === 0) return { config: next, changed: false };
@@ -308,16 +202,6 @@ export function addMembers(config, path, level, who) {
   return { config: next, changed: true };
 }
 
-/**
- * Remove a single member from every rule matching `path`/`level` (including
- * path variants normalized to the same value), deleting a rule once it has
- * no members left. Never mutates `config`.
- * @param {object} config
- * @param {string} path
- * @param {Level} level
- * @param {string} who
- * @returns {{ config: object, changed: boolean }}
- */
 export function removeMember(config, path, level, who) {
   const next = structuredClone(config);
   const actions = levelToActions(level);
@@ -347,13 +231,6 @@ export function removeMember(config, path, level, who) {
   return { config: next, changed: true };
 }
 
-/**
- * Filter slots by a case-insensitive query matched against the scope label,
- * path, or any direct/inherited member.
- * @param {Slot[]} slots
- * @param {string} query
- * @returns {Slot[]}
- */
 export function filterSlots(slots, query) {
   const q = (query || '').trim().toLowerCase();
   if (!q) return slots;

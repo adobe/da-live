@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
-import { LEVEL_LABEL } from '../utils.js';
+import { INHERITED_KEY, LEVEL_LABEL } from '../utils.js';
 
 await import(`${getNx()}/blocks/shared/pills/pills.js`);
 
@@ -12,8 +12,6 @@ const [form, buttons, style] = await Promise.all([
   getSheet(`${getNx2()}/styles/buttons.css`),
   loadStyle(import.meta.url),
 ]);
-
-const INHERITED_KEY = { read: 'inheritedRead', write: 'inheritedWrite', none: 'inheritedNone' };
 
 const CLOSE_ICON_SRC = '/img/icons/s2-icon-close-20-n.svg';
 
@@ -26,11 +24,6 @@ const SECTION_LABEL = {
 // The section heading already names config/content scopes; only these need a card title.
 const TITLED_KINDS = ['folder', 'other'];
 
-/**
- * Presentational A1 cards: renders `Slot[]` as one column of scope cards,
- * one per scope, with a READ/WRITE/NONE row each. Owns no permission state
- * itself — every change is an outbound event for `<da-permissions>` to act on.
- */
 class DaPermissionsCards extends LitElement {
   static properties = {
     slots: { attribute: false },
@@ -154,7 +147,6 @@ class DaPermissionsCards extends LitElement {
     const directLabel = `${slot.label} ${levelLabel}`;
     const inheritedLabel = `${directLabel} inherited from ${this.org}`;
     const needle = (this.query || '').trim().toLowerCase();
-    // Filter hits get nx-pills' highlight so a match is easy to spot in long lists.
     const isMatch = (who) => !!needle && who.toLowerCase().includes(needle);
 
     return html`

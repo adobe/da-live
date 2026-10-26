@@ -20,14 +20,6 @@ const [form, buttons, spinner, style] = await Promise.all([
   loadStyle(import.meta.url),
 ]);
 
-/** @typedef {import('../utils.js').Rule} Rule */
-
-/**
- * Fetch the org config, bypassing caches. Never throws: a network failure is
- * reported as `status: 0` with the error message.
- * @param {string} org
- * @returns {Promise<{ ok: boolean, data: object|null, status: number, error: string|null }>}
- */
 async function readOrgConfig(org) {
   const { config, asJson } = await getNx2Api();
   try {
@@ -37,16 +29,6 @@ async function readOrgConfig(org) {
   }
 }
 
-/**
- * Load the org's config and, if present, its `permissions` sheet rules.
- * @param {string} org
- * @returns {Promise<{
- *   status: 'ok'|'no-access'|'no-sheet'|'error',
- *   config: object|null,
- *   rules: Rule[],
- *   httpStatus?: number,
- * }>}
- */
 export async function loadOrgConfig(org) {
   const { ok, data, status, error } = await readOrgConfig(org);
   if (status === 401 || status === 403 || status === 404) {
@@ -62,18 +44,8 @@ export async function loadOrgConfig(org) {
   return { status: 'ok', config: data, rules: data.permissions.data };
 }
 
-// Concurrent writers: last write wins (accepted, documented). da-admin stores
-// org config in Cloudflare KV and the `/config` route ignores `If-Match` (KV
-// has no conditional writes), so there's no way to detect a conflicting save
-// between our GET and our PUT. Fetch-latest-then-save keeps the window to one
-// round trip, matching the plugin and the `/config` sheet editor. Proper
-// conflict detection needs ETag / If-Match support in da-admin first.
-/**
- * Read the org config, apply a pure mutation, and save if it changed.
- * @param {string} org
- * @param {(config: object) => { config: object, changed: boolean }} mutate
- * @returns {Promise<{ ok: boolean, status: number, rules?: Rule[], error?: string }>}
- */
+// Last write wins: da-admin's /config ignores If-Match, so re-read right before saving
+// to keep the conflict window to one round trip.
 export async function mutatePermissions(org, mutate) {
   const { ok, data, status, error } = await readOrgConfig(org);
   if (!ok) {
@@ -107,12 +79,6 @@ export async function mutatePermissions(org, mutate) {
 
 const DOCS_URL = 'https://www.aem.live/docs/ew/administering/permissions';
 
-/**
- * Container component for the permissions block. Routes on `org`/`site`
- * (set by `permissions.js` on every hash change, same element reused), loads
- * the org config, and renders the A1 cards — or the empty/loading/error
- * states in its place.
- */
 class DaPermissions extends LitElement {
   static properties = {
     org: { attribute: false },
@@ -255,11 +221,7 @@ class DaPermissions extends LitElement {
     await this._mutate((config) => removeMember(config, path, level, who), path);
   }
 
-  // Captures `org` before the request and drops the result if the container
-  // has since routed to a different org (consistent with `_load`'s guard).
-  // All rules are org-wide, so a site-only change within the same org still
-  // applies the saved result. `path` is the rule path the mutation targeted,
-  // used to clear a pending folder once its first member saves successfully.
+  // Drop the result if the org changed mid-save; a site change still applies (rules are org-wide).
   async _mutate(mutateFn, path = null) {
     const { org } = this;
     this._busy = true;
@@ -390,7 +352,6 @@ class DaPermissions extends LitElement {
 
   _renderBody() {
     if (this._status === 'loading') {
-      // Large org configs can take a while; say what is loading next to the spinner.
       return html`
         <div class="permissions-loading" role="status">
           <span class="nx-loading-spinner" aria-hidden="true"></span>
