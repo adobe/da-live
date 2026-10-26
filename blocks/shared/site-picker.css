@@ -56,13 +56,9 @@
   overflow-wrap: anywhere;
 }
 
-.da-site-picker::part(check),
-.da-site-picker::part(leading-icon) {
+.da-site-picker::part(check) {
   grid-area: 1 / 1;
   align-self: start;
-}
-
-.da-site-picker::part(check) {
   width: 16px;
   height: 18px;
   color: var(--s2-blue-900);

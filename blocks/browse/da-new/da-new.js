@@ -146,10 +146,10 @@ export default class DaNew extends LitElement {
         { id: 'link', label: 'Link', icon: 'link' },
       ]} @select=${this.handleNewType}>
           <button slot="trigger" class="da-actions-new-button ${accent ? 'nx-btn-accent' : 'nx-action-btn-icon'}" ?disabled=${this._disabled || this._loading} aria-label="New">
+            ${accent ? html`<span class="da-actions-new-label">New</span>` : nothing}
             ${this._loading
         ? html`<span class="nx-loading-spinner" aria-hidden="true"></span>`
-        : html`<svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-addcircle-20-n.svg#icon"></svg>`}
-            ${accent ? html`<span class="da-actions-new-label">New</span>` : nothing}
+        : html`<svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-${accent ? 'chevrondown' : 'addcircle'}-20-n.svg#icon"></svg>`} 
           </button>
         </nx-menu>
         <input type="file" id="da-actions-file" class="da-actions-file" @change=${this.handleAddFile} />

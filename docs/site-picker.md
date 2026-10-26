@@ -51,7 +51,7 @@ permissions do not qualify. If admin lookup fails, creation stays hidden with
 an error and retry; adding an existing accessible site stays available.
 
 The production dependency is generic Nexter picker support for `description`,
-`leadingIcon`, menu CSS parts and the nav's independent `context` slot.
+menu CSS parts and the nav's independent `context` slot.
 Release that support before merging the
 application integration. Production code does not pin Nexter to a preview branch.
 Landing integration remains on its review branch until the landing page is merged.

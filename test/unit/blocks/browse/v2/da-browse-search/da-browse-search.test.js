@@ -96,12 +96,18 @@ describe('browse-owned search combobox', () => {
     snapshot.continuationToken = 'one';
     const original = snapshot.items;
     let finish;
-    list.returns(new Promise((resolve) => { finish = resolve; }));
+    let signalStarted;
+    const started = new Promise((resolve) => { signalStarted = resolve; });
+    const response = new Promise((resolve) => { finish = resolve; });
+    list.callsFake(() => {
+      signalStarted();
+      return response;
+    });
     field.value = 'late';
     await field.updateComplete;
     input.focus();
     const loading = field.refreshSuggestions();
-    await new Promise((resolve) => { setTimeout(resolve); });
+    await started;
     expect(field._status).to.contain('Loading');
     expect(field._suggestions.at(-1).action).to.be.true;
     field.value = 'plan';

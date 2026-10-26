@@ -32,16 +32,17 @@ async function insertLoremIpsum(page) {
   await page.waitForTimeout(500);
 }
 
-async function getFirstParagraphStart(page) {
+async function getLoremParagraphStart(page) {
   return page.evaluate(() => {
     const { view } = window;
     const { state } = view;
     let pos = -1;
-    state.doc.forEach((node, offset) => {
-      if (pos === -1 && node.type.name === 'paragraph') {
+    state.doc.descendants((node, offset) => {
+      if (pos === -1 && node.type.name === 'paragraph' && node.textContent.startsWith('Lorem ipsum')) {
         pos = offset + 1;
       }
     });
+    if (pos === -1) throw new Error('Lorem ipsum paragraph was not found.');
     return pos;
   });
 }
@@ -97,7 +98,7 @@ test('Text formatting and links persist after reload', async ({ page }, workerIn
   // --- Apply inline formatting to words in the first lorem paragraph ---
   // Using absolute ProseMirror positions avoids browser-specific mark boundary
   // cursor behavior that causes off-by-one errors with keyboard navigation.
-  const paraStart = await getFirstParagraphStart(page);
+  const paraStart = await getLoremParagraphStart(page);
 
   // "Lorem" → Bold
   await applyMarkToRange(
@@ -149,6 +150,13 @@ test('Text formatting and links persist after reload', async ({ page }, workerIn
   await page.locator('da-palette').waitFor();
   await page.locator('da-palette').locator('#field-href').fill('https://adobe.com');
   await page.keyboard.press('Enter');
+
+  await expect(proseMirror.locator('p strong').first()).toHaveText('Lorem');
+  await expect(proseMirror.locator('p em').first()).toHaveText('ipsum');
+  await expect(proseMirror.locator('p u').first()).toHaveText('dolor');
+  await expect(proseMirror.locator('p sup').first()).toHaveText('sit');
+  await expect(proseMirror.locator('p sub').first()).toHaveText('amet');
+  await expect(proseMirror.locator('a[href="https://adobe.com"]')).toHaveText('consectetur');
 
   // Wait for Y.js to persist the content to the server
   await page.waitForTimeout(5000);
