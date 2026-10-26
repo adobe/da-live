@@ -7,6 +7,8 @@
 
 // Trailing "+**" variants (with or without spaces around the `+`) normalized to " + **".
 const WILDCARD_SUFFIX_RE = /\s*\+\s*\*\*\s*$/;
+const WILDCARD_SUFFIX = ' + **';
+const FOLDER_SUFFIX = `/${WILDCARD_SUFFIX}`;
 
 /**
  * Normalize a rule path so variants like `/s/+**`, `/s/ +**` and `/s/+ **`
@@ -17,17 +19,18 @@ const WILDCARD_SUFFIX_RE = /\s*\+\s*\*\*\s*$/;
  */
 export function normPath(path) {
   if (path === undefined || path === null) return path;
-  return path.replace(WILDCARD_SUFFIX_RE, ' + **');
+  return path.replace(WILDCARD_SUFFIX_RE, WILDCARD_SUFFIX);
 }
 
 /**
- * Split a comma-separated groups string into trimmed, non-empty members.
+ * Split a groups string into trimmed, non-empty members.
  * @param {string} groups
+ * @param {string|RegExp} [separator]
  * @returns {string[]}
  */
-export function splitGroups(groups) {
+export function splitGroups(groups, separator = ',') {
   return (groups || '')
-    .split(',')
+    .split(separator)
     .map((g) => g.trim())
     .filter(Boolean);
 }
@@ -112,8 +115,7 @@ export function scopeKind(path, site) {
   if (!norm.startsWith(prefix)) return 'other';
   if (norm === `${prefix}CONFIG`) return 'config';
   if (norm === normPath(`${prefix}+**`)) return 'content';
-  const rest = norm.slice(prefix.length);
-  if (rest.endsWith('/ + **')) return 'folder';
+  if (norm.endsWith(FOLDER_SUFFIX)) return 'folder';
   return 'other';
 }
 
@@ -125,14 +127,11 @@ export function scopeKind(path, site) {
  */
 export function scopeLabel(path, site) {
   const kind = scopeKind(path, site);
-  const norm = normPath(path);
   if (kind === 'config') return site ? 'Site configurations' : 'DA configurations';
   if (kind === 'content') return site ? 'All site content' : 'All sites';
   if (kind === 'folder') {
-    const prefix = `/${site}/`;
-    const rest = norm.slice(prefix.length);
-    const folder = rest.slice(0, rest.length - '/ + **'.length);
-    return `${folder}/`;
+    const norm = normPath(path);
+    return `${norm.slice(`/${site}/`.length, -FOLDER_SUFFIX.length)}/`;
   }
   return path;
 }
@@ -155,12 +154,6 @@ function ensureSlot(slotsMap, path, site) {
   return slotsMap.get(norm);
 }
 
-function levelListKey(level) {
-  if (level === 'read') return 'read';
-  if (level === 'write') return 'write';
-  return 'none';
-}
-
 function inheritedListKey(level) {
   if (level === 'read') return 'inheritedRead';
   if (level === 'write') return 'inheritedWrite';
@@ -172,7 +165,7 @@ function applyInheritance(slot, orgRules) {
   orgRules.forEach((orgRule) => {
     const level = actionsToLevel(orgRule.actions);
     const members = splitGroups(orgRule.groups);
-    const direct = slot[levelListKey(level)];
+    const direct = slot[level];
     const inherited = members.filter((m) => !direct.includes(m));
     slot[inheritedListKey(level)].push(...inherited);
   });
@@ -205,7 +198,7 @@ export function buildSlots(rules, site, pendingFolder = null) {
     const slot = ensureSlot(slotsMap, norm, site);
     const level = actionsToLevel(rule.actions);
     const members = splitGroups(rule.groups);
-    slot[levelListKey(level)].push(...members);
+    slot[level].push(...members);
   });
 
   if (site) {
@@ -256,14 +249,12 @@ const MEMBER_LIST_KEYS = [
  * @returns {string[]}
  */
 export function parseMembers(input) {
-  const seen = new Set();
-  const members = [];
-  (input || '').split(/[,\n]/).map((m) => m.trim()).filter(Boolean).forEach((m) => {
-    if (seen.has(m)) return;
-    seen.add(m);
-    members.push(m);
-  });
-  return members;
+  return [...new Set(splitGroups(input, /[,\n]/))];
+}
+
+function syncSheetCounts(sheet) {
+  sheet.total = sheet.data.length;
+  sheet.limit = sheet.data.length;
 }
 
 /**
@@ -313,8 +304,7 @@ export function addMembers(config, path, level, who) {
   } else {
     sheet.data.push({ path: normalizedPath, groups: merged, actions });
   }
-  sheet.total = sheet.data.length;
-  sheet.limit = sheet.data.length;
+  syncSheetCounts(sheet);
   return { config: next, changed: true };
 }
 
@@ -353,8 +343,7 @@ export function removeMember(config, path, level, who) {
   if (!changed) return { config: next, changed: false };
 
   sheet.data = kept;
-  sheet.total = sheet.data.length;
-  sheet.limit = sheet.data.length;
+  syncSheetCounts(sheet);
   return { config: next, changed: true };
 }
 
