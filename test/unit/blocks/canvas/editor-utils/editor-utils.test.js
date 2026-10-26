@@ -17,6 +17,7 @@ let getPreviewOrigin;
 let fetchWysiwygBranch;
 let parseSections;
 let updateDocument;
+let flushMetadataRerender;
 let getEditor;
 let mirror;
 let getInstrumentedHTML;
@@ -28,6 +29,7 @@ before(async () => {
   fetchWysiwygBranch = mod.fetchWysiwygBranch;
   parseSections = mod.parseSections;
   updateDocument = mod.updateDocument;
+  flushMetadataRerender = mod.flushMetadataRerender;
   getEditor = mod.getEditor;
   mirror = mod.dispatchMirror;
   getInstrumentedHTML = mod.getInstrumentedHTML;
@@ -597,6 +599,17 @@ describe('updateDocument rerender scopes', () => {
       replaceChild(1, table('metadata', 'one', 'two'));
       clock.tick(2000);
       expect(lastScope()).to.deep.equal({ type: 'page' });
+    });
+
+    it('flushMetadataRerender renders a pending metadata change immediately', () => {
+      mount([p('a'), hr(), p('b'), table('section-metadata', 'one')]);
+      replaceChild(3, table('section-metadata', 'one', 'two'));
+      flushMetadataRerender(ctx);
+      expect(bodies()).to.have.lengthOf(2);
+      expect(lastScope()).to.deep.equal({ type: 'section', sectionIndex: 1 });
+      expect(clock.countTimers()).to.equal(0);
+      flushMetadataRerender(ctx);
+      expect(bodies()).to.have.lengthOf(2);
     });
 
     it('flushes a pending metadata rerender with the next rerender', () => {

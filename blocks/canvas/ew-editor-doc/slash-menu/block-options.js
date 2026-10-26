@@ -1,7 +1,7 @@
 /* eslint-disable import/no-unresolved -- importmap */
 import { goToNextCell } from 'da-y-wrapper';
 import { loadBlockOptions } from '../../ew-panel-extensions/helpers.js';
-import { getTableInfo } from '../../editor-utils/blocks.js';
+import { getTableInfo, normalizeForSlashMenu } from '../../editor-utils/blocks.js';
 import { isColorCode } from '../../editor-utils/color-code.js';
 
 /**
@@ -10,10 +10,6 @@ import { isColorCode } from '../../editor-utils/color-code.js';
  * Ported from the legacy edit block's slash-menu keyAutocomplete, adapted to the
  * canvas slash menu (nx-menu id-based selection).
  */
-
-export function normalizeForSlashMenu(str) {
-  return str?.toLowerCase().trim().replace(/\s+/g, '-');
-}
 
 function buildBlockMap(data) {
   const blockMap = new Map();

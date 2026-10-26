@@ -1,0 +1,16 @@
+.section-name {
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+.toolbar-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.toolbar-field-label {
+  padding-inline-start: 8px;
+  text-transform: capitalize;
+}

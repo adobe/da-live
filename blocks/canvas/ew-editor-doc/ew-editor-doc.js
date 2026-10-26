@@ -2,9 +2,9 @@ import { LitElement, html, nothing } from 'da-lit';
 import { yUndo, yRedo, NodeSelection, TextSelection } from 'da-y-wrapper';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
-import { updateDocument, updateCursors, getInstrumentedHTML, getEditor } from '../editor-utils/editor-utils.js';
+import { updateDocument, updateCursors, getInstrumentedHTML, getEditor, flushMetadataRerender } from '../editor-utils/editor-utils.js';
 import { bindFirstSectionName } from '../../shared/section-name.js';
-import { getActiveBlockIndex, getBlockPositions, getTableBlockName } from '../editor-utils/blocks.js';
+import { getActiveBlockIndex, getBlockPositions, getTableBlockName, getSectionStartOffset } from '../editor-utils/blocks.js';
 import {
   editorDocCanLoad,
   controllerPathnameFromEditorCtx,
@@ -161,6 +161,17 @@ export class EwEditorDoc extends LitElement {
     view.dispatch(view.state.tr.setSelection(sel).scrollIntoView());
   }
 
+  _scrollDocToSection(sectionIndex) {
+    if (sectionIndex == null || sectionIndex < 0) return;
+    const { view } = this._proseContext ?? {};
+    if (!view) return;
+    const pos = getSectionStartOffset(view, sectionIndex);
+    if (pos == null || pos < 0 || pos > view.state.doc.content.size) return;
+    const dom = view.nodeDOM(pos) ?? view.domAtPos(pos)?.node;
+    const el = dom?.nodeType === 1 ? dom : dom?.parentElement;
+    el?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
+
   // TextSelection.near is the fallback for a drifted/mid-node proseIndex. A kind match
   // selects a NodeSelection instead, for the block-style highlight. Either way, broadcasts
   // the raw proseIndex, since that's what layout-view's data-prose-index carries.
@@ -228,7 +239,7 @@ export class EwEditorDoc extends LitElement {
         contentFallback = Boolean(node);
       }
     }
-    const key = node ? `${node.anchorType}:${node.proseIndex}` : 'null';
+    const key = node ? `${node.anchorType}:${node.proseIndex}:${node.sectionIndex}` : 'null';
     // Acknowledge iframe selections without scrolling the pane the user is already in.
     const scrollToNode = scrollIntoView && Boolean(node)
       && !this._controllerCtx?.mirroringFromIframe;
@@ -444,7 +455,10 @@ export class EwEditorDoc extends LitElement {
         proseEl, wsProvider, view, ydoc, undoManager, context,
       };
       this._comments.publish();
-      this._unbindSectionName = bindFirstSectionName(ydoc, view, () => this._emitHtmlChange());
+      this._unbindSectionName = bindFirstSectionName(ydoc, view, () => {
+        this._emitHtmlChange();
+        if (this._controllerCtx?.port) updateDocument(this._controllerCtx);
+      });
 
       setSelectionToolbarCtx({
         org: this.ctx?.org,
@@ -495,8 +509,17 @@ export class EwEditorDoc extends LitElement {
       });
     this._unsubscribeProseSelect = canvasBus.editorProseSelectState
       .subscribe(({ proseIndex, kind }) => this._scrollDocToProseIndex(proseIndex, kind));
+    this._unsubscribeMetadataRerender = canvasBus.metadataRerenderRequest
+      .subscribe(() => flushMetadataRerender(this._controllerCtx));
     this._unsubscribeBlockEditRequest = canvasBus.blockEditRequest
       .subscribe(({ pos } = {}) => this.enterBlockEdit(pos));
+    this._unsubscribeSectionSelect = canvasBus.editorSectionSelectState
+      .subscribe(({ sectionIndex, source }) => {
+        const node = sectionIndex == null ? null : { anchorType: 'section', sectionIndex };
+        const fromOutline = source === 'outline';
+        this._broadcastSelectedNode(fromOutline, node);
+        if (fromOutline) this._scrollDocToSection(sectionIndex);
+      });
     this._onCanvasHighlight = (e) => this._applyHighlight(e.detail);
     document.addEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
   }
@@ -585,6 +608,8 @@ export class EwEditorDoc extends LitElement {
     this._unsubscribeSelect?.();
     this._unsubscribeProseSelect?.();
     this._unsubscribeBlockEditRequest?.();
+    this._unsubscribeMetadataRerender?.();
+    this._unsubscribeSectionSelect?.();
     this._teardown();
     setSelectionToolbarCtx();
     toolbarController.reset();

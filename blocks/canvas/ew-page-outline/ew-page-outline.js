@@ -86,6 +86,7 @@ class EwPageOutline extends LitElement {
     _sections: { state: true },
     _selectedBlockIndex: { state: true },
     _selectedProseIndex: { state: true },
+    _selectedSectionIndex: { state: true },
     _hashState: { state: true },
     _hasBlockLibrary: { state: true },
     _expandedContent: { state: true },
@@ -128,7 +129,18 @@ class EwPageOutline extends LitElement {
         if (source === 'outline') return;
         this._selectedBlockIndex = blockIndex;
         this._selectedProseIndex = proseIndex;
+        this._selectedSectionIndex = undefined;
         if (proseIndex != null) this._expandRunForProse(proseIndex);
+      });
+    this._unsubscribeSectionSelect = canvasBus.editorSectionSelectState
+      .subscribe(({ sectionIndex, source }) => {
+        if (source === 'outline') return;
+        this._selectedSectionIndex = sectionIndex;
+        this._selectedBlockIndex = undefined;
+        this._selectedProseIndex = undefined;
+        this.updateComplete.then(() => {
+          this.shadowRoot.querySelector('.section-header.selected')?.scrollIntoView({ block: 'nearest' });
+        });
       });
   }
 
@@ -137,6 +149,7 @@ class EwPageOutline extends LitElement {
     this._unsubHash?.();
     this._unsubscribeHtml?.();
     this._unsubscribeSelect?.();
+    this._unsubscribeSectionSelect?.();
     document.removeEventListener('pointerdown', this._onPickupOutside, true);
   }
 
@@ -176,6 +189,7 @@ class EwPageOutline extends LitElement {
     this._sections = undefined;
     this._selectedBlockIndex = undefined;
     this._selectedProseIndex = undefined;
+    this._selectedSectionIndex = undefined;
     this._cancelRename();
     this._pendingDelete = null;
     this._pendingFocus = null;
@@ -236,14 +250,23 @@ class EwPageOutline extends LitElement {
   _select(blockIndex) {
     this._selectedBlockIndex = blockIndex;
     this._selectedProseIndex = undefined;
+    this._selectedSectionIndex = undefined;
     canvasBus.editorSelectState.emit({ blockIndex, source: 'outline' });
   }
 
   _selectProse(proseIndex, kind) {
     this._selectedProseIndex = proseIndex;
     this._selectedBlockIndex = undefined;
+    this._selectedSectionIndex = undefined;
     this._expandRunForProse(proseIndex);
     canvasBus.editorProseSelectState.emit({ proseIndex, kind });
+  }
+
+  _selectSection(sectionIndex) {
+    this._selectedSectionIndex = sectionIndex;
+    this._selectedBlockIndex = undefined;
+    this._selectedProseIndex = undefined;
+    canvasBus.editorSectionSelectState.emit({ sectionIndex, source: 'outline' });
   }
 
   _toggleContentGroup(key) {
@@ -961,14 +984,16 @@ class EwPageOutline extends LitElement {
     const editing = this._editingSection === sec.sectionIndex;
     const label = sectionLabel(sec);
     const setsize = sec.items.length;
+    const selected = this._selectedSectionIndex === sec.sectionIndex;
     return html`
       <li class="outline-section" role="none">
-        <div class="section-header" data-section-header role="row"
+        <div class="section-header ${selected ? 'selected' : ''}" data-section-header role="row"
              aria-level="1" aria-posinset="${sec.sectionIndex + 1}" aria-setsize="${sectionCount}"
              aria-label="${label}"
              aria-description="${setsize === 0 ? 'Empty section' : nothing}"
-             tabindex="-1"
+             tabindex="-1" aria-selected="${selected}"
              draggable="${this._canWrite && !editing}"
+             @click=${() => this._selectSection(sec.sectionIndex)}
              @dragstart=${(e) => this._onDragStart(e, OUTLINE_TYPES.SECTION, sec.sectionIndex)}
              @dragend=${this._onDragEnd}>
           <div class="row-cell" role="gridcell">

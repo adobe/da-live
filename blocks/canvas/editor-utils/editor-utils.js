@@ -554,6 +554,10 @@ function postBody(ctx) {
   return body;
 }
 
+export function flushMetadataRerender(ctx) {
+  if (ctx?.metadataRerenderTimer && !ctx.suppressRerender) postBody(ctx);
+}
+
 export function updateDocument(ctx, { previousDoc, doc, useConfirmedBaseline = false } = {}) {
   if (ctx.suppressRerender) {
     if (ctx.mirroringFromIframe) markPreviewSynced(ctx, { previousDoc, doc }, { confirmed: true });
