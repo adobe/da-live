@@ -3,7 +3,7 @@ import { expect } from '@esm-bundle/chai';
 const { setNx } = await import('../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-await import('../../../../blocks/permissions/da-permissions/da-permissions.js');
+const { loadOrgConfig, mutatePermissions } = await import('../../../../blocks/permissions/da-permissions/da-permissions.js');
 
 const INFO_KEY = 'da-permissions-info-dismissed';
 
@@ -146,6 +146,37 @@ describe('da-permissions', () => {
     expect(labels).to.include('site2');
     expect(picker.items[0]).to.deep.equal({ value: '', label: 'Org Permissions' });
     expect(!!el.shadowRoot.querySelector('nx-breadcrumb')).to.equal(false);
+  });
+
+  it('site list keeps folders only', async () => {
+    mockFetch({
+      configFor: () => CONFIG_BODY,
+      sitesFor: () => [{ name: 'site-a' }, { name: 'site-b' }, { name: 'notes.json', ext: 'json' }],
+    });
+    const el = await mount('myorg');
+    expect(el._sites).to.deep.equal(['site-a', 'site-b']);
+  });
+
+  it('site list failure still loads the config with no sites', async () => {
+    window.fetch = async (url) => {
+      const href = String(url);
+      if (href.includes('/list/')) return new Response('', { status: 500 });
+      return new Response(JSON.stringify(CONFIG_BODY), { status: 200 });
+    };
+    const el = await mount('myorg');
+    expect(el._status).to.equal('ok');
+    expect(el._sites).to.deep.equal([]);
+  });
+
+  it('site list network failure still loads the config with no sites', async () => {
+    window.fetch = async (url) => {
+      const href = String(url);
+      if (href.includes('/list/')) throw new TypeError('Failed to fetch');
+      return new Response(JSON.stringify(CONFIG_BODY), { status: 200 });
+    };
+    const el = await mount('myorg');
+    expect(el._status).to.equal('ok');
+    expect(el._sites).to.deep.equal([]);
   });
 
   it('shows a spinner with a loading message while the org config is loading', async () => {
@@ -742,5 +773,206 @@ describe('da-permissions folder permission', () => {
     await el.updateComplete;
 
     expect(el._pendingFolder).to.equal(null);
+  });
+});
+
+const ORG_CONFIG_BODY = {
+  ':names': ['data', 'permissions'],
+  ':version': 3,
+  data: { total: 1, limit: 1, data: [{ key: 'foo', value: 'bar' }] },
+  permissions: {
+    total: 1,
+    limit: 1,
+    data: [{ path: 'CONFIG', groups: 'admins@example.com', actions: 'write' }],
+  },
+};
+
+const ORG_NO_SHEET_BODY = {
+  ':names': ['data'],
+  data: { total: 1, limit: 1, data: [{ key: 'foo', value: 'bar' }] },
+};
+
+describe('da-permissions loadOrgConfig', () => {
+  let savedFetch;
+
+  beforeEach(() => { savedFetch = window.fetch; });
+  afterEach(() => { window.fetch = savedFetch; });
+
+  it('403 -> status no-access', async () => {
+    window.fetch = async () => new Response('', { status: 403 });
+    const result = await loadOrgConfig('myorg');
+    expect(result.status).to.equal('no-access');
+    expect(result.config).to.equal(null);
+    expect(result.rules).to.deep.equal([]);
+  });
+
+  it('404 -> status no-access', async () => {
+    window.fetch = async () => new Response('', { status: 404 });
+    const result = await loadOrgConfig('myorg');
+    expect(result.status).to.equal('no-access');
+  });
+
+  it('500 -> status error', async () => {
+    window.fetch = async () => new Response('', { status: 500 });
+    const result = await loadOrgConfig('myorg');
+    expect(result.status).to.equal('error');
+  });
+
+  it('500 -> httpStatus 500', async () => {
+    window.fetch = async () => new Response('', { status: 500 });
+    const result = await loadOrgConfig('myorg');
+    expect(result.httpStatus).to.equal(500);
+  });
+
+  it('200 without a permissions sheet -> status no-sheet', async () => {
+    window.fetch = async () => new Response(JSON.stringify(ORG_NO_SHEET_BODY), { status: 200 });
+    const result = await loadOrgConfig('myorg');
+    expect(result.status).to.equal('no-sheet');
+    expect(result.rules).to.deep.equal([]);
+  });
+
+  it('200 with a permissions sheet -> status ok, rules equal permissions.data', async () => {
+    window.fetch = async () => new Response(JSON.stringify(ORG_CONFIG_BODY), { status: 200 });
+    const result = await loadOrgConfig('myorg');
+    expect(result.status).to.equal('ok');
+    expect(result.rules).to.deep.equal(ORG_CONFIG_BODY.permissions.data);
+  });
+
+  it('200 with an unparsable body -> status error', async () => {
+    window.fetch = async () => new Response('not json', { status: 200 });
+    const result = await loadOrgConfig('myorg');
+    expect(result.status).to.equal('error');
+  });
+
+  it('network failure (rejected fetch) -> status error, no throw, httpStatus 0', async () => {
+    window.fetch = () => Promise.reject(new TypeError('Failed to fetch'));
+    const result = await loadOrgConfig('myorg');
+    expect(result).to.deep.equal({ status: 'error', config: null, rules: [], httpStatus: 0 });
+  });
+});
+
+describe('da-permissions mutatePermissions', () => {
+  let savedFetch;
+  let getCalls;
+  let putCalls;
+
+  beforeEach(() => {
+    savedFetch = window.fetch;
+    getCalls = [];
+    putCalls = [];
+  });
+  afterEach(() => { window.fetch = savedFetch; });
+
+  function stubFetch(getBody, putStatus = 200) {
+    window.fetch = async (url, opts = {}) => {
+      if (opts.method === 'PUT') {
+        putCalls.push({ url: String(url), opts });
+        return new Response('', { status: putStatus });
+      }
+      getCalls.push(String(url));
+      return new Response(JSON.stringify(getBody), { status: 200 });
+    };
+  }
+
+  it('sends exactly one GET then one PUT to /config/myorg/ (not /myorg/site)', async () => {
+    stubFetch(ORG_CONFIG_BODY);
+    const mutate = (config) => {
+      const next = structuredClone(config);
+      next.permissions.data.push({ path: '/ + **', groups: 'readers@example.com', actions: 'read' });
+      return { config: next, changed: true };
+    };
+    const result = await mutatePermissions('myorg', mutate);
+
+    expect(getCalls.length).to.equal(1);
+    expect(putCalls.length).to.equal(1);
+    expect(putCalls[0].url).to.contain('/config/myorg/');
+    expect(putCalls[0].url).to.not.contain('/myorg/site');
+    expect(result.ok).to.equal(true);
+
+    const config = putCalls[0].opts.body.get('config');
+    const parsed = JSON.parse(config);
+    expect(parsed.permissions.data).to.have.length(2);
+  });
+
+  it('preserves other sheets: PUT body data/:names deep-equal the GET response', async () => {
+    stubFetch(ORG_CONFIG_BODY);
+    const mutate = (config) => {
+      const next = structuredClone(config);
+      next.permissions.data.push({ path: '/ + **', groups: 'readers@example.com', actions: 'read' });
+      return { config: next, changed: true };
+    };
+    await mutatePermissions('myorg', mutate);
+
+    const saved = JSON.parse(putCalls[0].opts.body.get('config'));
+    expect(saved.data).to.deep.equal(ORG_CONFIG_BODY.data);
+    expect(saved[':names']).to.deep.equal(ORG_CONFIG_BODY[':names']);
+  });
+
+  it('changed: false makes no PUT', async () => {
+    stubFetch(ORG_CONFIG_BODY);
+    const mutate = (config) => ({ config, changed: false });
+    const result = await mutatePermissions('myorg', mutate);
+
+    expect(getCalls.length).to.equal(1);
+    expect(putCalls.length).to.equal(0);
+    const { data: rules } = ORG_CONFIG_BODY.permissions;
+    expect(result).to.deep.equal({ ok: true, status: 200, rules });
+  });
+
+  it('GET 403 -> { ok: false, status: 403 }, no PUT', async () => {
+    window.fetch = async (url, opts = {}) => {
+      if (opts.method === 'PUT') {
+        putCalls.push({ url, opts });
+        return new Response('', { status: 200 });
+      }
+      return new Response('', { status: 403 });
+    };
+    const mutate = (config) => ({ config, changed: true });
+    const result = await mutatePermissions('myorg', mutate);
+    expect(result).to.deep.equal({ ok: false, status: 403 });
+    expect(putCalls.length).to.equal(0);
+  });
+
+  it('GET 200 without a permissions sheet -> { ok: false, status: 409, error: no-sheet }', async () => {
+    stubFetch(ORG_NO_SHEET_BODY);
+    const mutate = (config) => ({ config, changed: true });
+    const result = await mutatePermissions('myorg', mutate);
+    expect(result).to.deep.equal({ ok: false, status: 409, error: 'no-sheet' });
+  });
+
+  it('PUT 403 -> { ok: false, status: 403 }', async () => {
+    stubFetch(ORG_CONFIG_BODY, 403);
+    const mutate = (config) => {
+      const next = structuredClone(config);
+      next.permissions.data.push({ path: '/ + **', groups: 'readers@example.com', actions: 'read' });
+      return { config: next, changed: true };
+    };
+    const result = await mutatePermissions('myorg', mutate);
+    expect(result).to.deep.equal({ ok: false, status: 403 });
+  });
+
+  it('GET network failure (rejected fetch) -> { ok: false, status: 0, error: <message> }, no throw', async () => {
+    window.fetch = () => Promise.reject(new TypeError('Failed to fetch'));
+    const mutate = (config) => ({ config, changed: true });
+    const result = await mutatePermissions('myorg', mutate);
+    expect(result.ok).to.equal(false);
+    expect(result.status).to.equal(0);
+    expect(result.error).to.be.a('string');
+  });
+
+  it('PUT network failure (rejected fetch) -> { ok: false, status: 0, error: <message> }, no throw', async () => {
+    window.fetch = async (url, opts = {}) => {
+      if (opts.method === 'PUT') return Promise.reject(new TypeError('Failed to fetch'));
+      return new Response(JSON.stringify(ORG_CONFIG_BODY), { status: 200 });
+    };
+    const mutate = (config) => {
+      const next = structuredClone(config);
+      next.permissions.data.push({ path: '/ + **', groups: 'readers@example.com', actions: 'read' });
+      return { config: next, changed: true };
+    };
+    const result = await mutatePermissions('myorg', mutate);
+    expect(result.ok).to.equal(false);
+    expect(result.status).to.equal(0);
+    expect(result.error).to.be.a('string');
   });
 });
