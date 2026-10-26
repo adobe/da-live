@@ -59,32 +59,8 @@ class DaPermissionsCards extends LitElement {
     }
   }
 
-  _openAdd(path, level) {
-    this.dispatchEvent(new CustomEvent('permissions-add-open', { detail: { path, level }, bubbles: true, composed: true }));
-  }
-
-  _requestAddFolder() {
-    this.dispatchEvent(new CustomEvent('permissions-add-folder', { bubbles: true, composed: true }));
-  }
-
-  _cancelAdd() {
-    this.dispatchEvent(new CustomEvent('permissions-add-cancel', { bubbles: true, composed: true }));
-  }
-
-  _requestAdd(path, level, value) {
-    this.dispatchEvent(new CustomEvent('permissions-add', {
-      detail: { path, level, value },
-      bubbles: true,
-      composed: true,
-    }));
-  }
-
-  _requestRemove(path, level, who) {
-    this.dispatchEvent(new CustomEvent('permissions-remove', {
-      detail: { path, level, who },
-      bubbles: true,
-      composed: true,
-    }));
+  _emit(name, detail = null) {
+    this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
   }
 
   _onAddKeydown(e, path, level) {
@@ -92,10 +68,10 @@ class DaPermissionsCards extends LitElement {
       e.preventDefault();
       const value = e.target.value.trim();
       if (!value) return;
-      this._requestAdd(path, level, value);
+      this._emit('permissions-add', { path, level, value });
     } else if (e.key === 'Escape') {
       e.preventDefault();
-      this._cancelAdd();
+      this._emit('permissions-add-cancel');
     }
   }
 
@@ -110,14 +86,14 @@ class DaPermissionsCards extends LitElement {
           placeholder="Email or IMS group ID, then press Enter"
           aria-label="Add to ${label} ${LEVEL_LABEL[level]}"
           @keydown=${(e) => this._onAddKeydown(e, path, level)}
-          @blur=${() => this._cancelAdd()}
+          @blur=${() => this._emit('permissions-add-cancel')}
         >
         <button
           type="button"
           class="row-add-cancel nx-action-btn-icon"
           aria-label="Cancel adding to ${label} ${LEVEL_LABEL[level]}"
           @mousedown=${(e) => e.preventDefault()}
-          @click=${() => this._cancelAdd()}
+          @click=${() => this._emit('permissions-add-cancel')}
         >
           <svg aria-hidden="true" viewBox="0 0 20 20"><use href="${CLOSE_ICON_SRC}#icon"></use></svg>
         </button>
@@ -132,21 +108,20 @@ class DaPermissionsCards extends LitElement {
         class="row-add nx-form-btn-secondary"
         aria-label="Add to ${slot.label} ${LEVEL_LABEL[level]}"
         ?disabled=${this.busy || isAdding}
-        @click=${() => this._openAdd(slot.path, level)}
+        @click=${() => this._emit('permissions-add-open', { path: slot.path, level })}
       >Add</button>`;
   }
 
   _renderLevelRow(slot, level) {
-    const direct = slot[level] || [];
-    const inherited = slot[INHERITED_KEY[level]] || [];
+    const direct = slot[level];
+    const inherited = slot[INHERITED_KEY[level]];
     const total = direct.length + inherited.length;
     const isAdding = this.adding?.path === slot.path && this.adding?.level === level;
-    const canAdd = level !== 'none';
     const removable = this.editable && !this.busy;
     const levelLabel = LEVEL_LABEL[level];
     const directLabel = `${slot.label} ${levelLabel}`;
     const inheritedLabel = `${directLabel} inherited from ${this.org}`;
-    const needle = (this.query || '').trim().toLowerCase();
+    const needle = this.query.toLowerCase();
     const isMatch = (who) => !!needle && who.toLowerCase().includes(needle);
 
     return html`
@@ -160,7 +135,7 @@ class DaPermissionsCards extends LitElement {
               class="direct-pills"
               .label=${directLabel}
               .items=${direct.map((who) => ({ id: who, label: who, removable, highlighted: isMatch(who) }))}
-              @nx-pill-remove=${(e) => this._requestRemove(slot.path, level, e.detail.id)}
+              @nx-pill-remove=${(e) => this._emit('permissions-remove', { path: slot.path, level, who: e.detail.id })}
             ></nx-pills>
           ` : nothing}
           ${inherited.length ? html`
@@ -174,14 +149,14 @@ class DaPermissionsCards extends LitElement {
               ></nx-pills>
             </div>
           ` : nothing}
-          ${canAdd && isAdding ? this._renderAddInput(slot.path, level, slot.label) : nothing}
+          ${isAdding ? this._renderAddInput(slot.path, level, slot.label) : nothing}
         </div>
-        ${canAdd && this.editable ? this._renderAddButton(slot, level, isAdding) : nothing}
+        ${level !== 'none' && this.editable ? this._renderAddButton(slot, level, isAdding) : nothing}
       </div>`;
   }
 
   _renderCard(slot) {
-    const hasNone = (slot.none?.length || 0) > 0 || (slot.inheritedNone?.length || 0) > 0;
+    const hasNone = slot.none.length > 0 || slot.inheritedNone.length > 0;
     return html`
       <article class="scope-card" data-path=${slot.path} aria-label=${slot.label}>
         ${TITLED_KINDS.includes(slot.kind) ? html`
@@ -212,7 +187,7 @@ class DaPermissionsCards extends LitElement {
               type="button"
               class="add-folder nx-form-btn-secondary"
               ?disabled=${this.busy}
-              @click=${() => this._requestAddFolder()}
+              @click=${() => this._emit('permissions-add-folder')}
             >Add folder</button>
           ` : nothing}
         </div>
@@ -236,5 +211,3 @@ class DaPermissionsCards extends LitElement {
 if (!customElements.get('da-permissions-cards')) {
   customElements.define('da-permissions-cards', DaPermissionsCards);
 }
-
-export default DaPermissionsCards;

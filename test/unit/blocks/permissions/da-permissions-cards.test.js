@@ -130,14 +130,12 @@ describe('da-permissions-cards', () => {
     expect(sections.map((s) => s.dataset.section)).to.deep.equal(['folders']);
   });
 
-  it('renders all 20 pills for a 20-member row with no .card-toggle / .row-more', async () => {
+  it('renders all 20 pills for a 20-member row', async () => {
     const writers = Array.from({ length: 20 }, (_, i) => `user${i}@example.com`);
     const slot = baseSlot({ path: '/ + **', kind: 'content', label: 'All sites', write: writers });
     const el = await mount({ slots: [slot] });
 
     expect(allPillItems(el)).to.have.length(20);
-    expect(el.shadowRoot.querySelector('.row-more')).to.equal(null);
-    expect(el.shadowRoot.querySelector('.card-toggle')).to.equal(null);
   });
 
   it('renders all direct and inherited members together, uncapped', async () => {
@@ -159,7 +157,6 @@ describe('da-permissions-cards', () => {
     expect(inheritedPills.items).to.have.length(18);
     expect(inheritedPills.items.every((i) => i.removable === false)).to.be.true;
     expect(row.querySelector('.from-label').textContent.trim()).to.equal('Inherited from myorg:');
-    expect(row.querySelector('.row-more')).to.equal(null);
   });
 
   it('puts inherited members on their own line only when the row also has site members', async () => {
