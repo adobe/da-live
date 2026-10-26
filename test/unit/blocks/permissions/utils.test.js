@@ -320,5 +320,15 @@ describe('permissions utils', () => {
       expect(parseFolderPath('/')).to.deep.equal({ error: 'Enter a folder below the site root, e.g. /blog.' });
       expect(parseFolderPath('///')).to.deep.equal({ error: 'Enter a folder below the site root, e.g. /blog.' });
     });
+
+    it('rejects traversal segments', () => {
+      expect(parseFolderPath('/blog/../private')).to.deep.equal({ error: 'Folder paths cannot contain traversal or wildcard segments.' });
+      expect(parseFolderPath('/blog/./drafts')).to.deep.equal({ error: 'Folder paths cannot contain traversal or wildcard segments.' });
+    });
+
+    it('rejects wildcard syntax in folder names', () => {
+      expect(parseFolderPath('/blog/+**/drafts')).to.deep.equal({ error: 'Folder paths cannot contain traversal or wildcard segments.' });
+      expect(parseFolderPath('/blog/*')).to.deep.equal({ error: 'Folder paths cannot contain traversal or wildcard segments.' });
+    });
   });
 });

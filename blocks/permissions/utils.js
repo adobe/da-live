@@ -44,6 +44,9 @@ export function parseFolderPath(value) {
   if (!trimmed.startsWith('/')) return { error: 'Folder paths start with /, e.g. /blog.' };
   const folder = trimmed.split('/').filter(Boolean).join('/');
   if (!folder) return { error: 'Enter a folder below the site root, e.g. /blog.' };
+  if (folder.split('/').some((segment) => segment === '.' || segment === '..' || segment.includes('*'))) {
+    return { error: 'Folder paths cannot contain traversal or wildcard segments.' };
+  }
   return { folder };
 }
 
