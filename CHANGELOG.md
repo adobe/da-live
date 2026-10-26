@@ -1,3 +1,10 @@
+## [1.13.2](https://github.com/adobe/da-live/compare/v1.13.1...v1.13.2) (2026-10-26)
+
+
+### Bug Fixes
+
+* update browse UI ([#1469](https://github.com/adobe/da-live/issues/1469)) ([46fb729](https://github.com/adobe/da-live/commit/46fb7293914aa23223c3f00e7e227e72693db61b))
+
 ## [1.13.1](https://github.com/adobe/da-live/compare/v1.13.0...v1.13.1) (2026-10-26)
 
 
