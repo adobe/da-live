@@ -15,7 +15,8 @@ import { setNx, nxJS, nxCSS } from './utils.js';
 
 if (window.trustedTypes && window.trustedTypes.createPolicy) {
   const innerTT = window.trustedTypes.createPolicy('tt-inner', {
-    createHTML: (s) => s, // avoid stack overflow
+    // avoid stack overflow
+    createHTML: (s) => s,
   });
 
   window.trustedTypes.createPolicy('default', {
