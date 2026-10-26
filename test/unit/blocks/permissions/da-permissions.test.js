@@ -5,8 +5,6 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { loadOrgConfig, mutatePermissions } = await import('../../../../blocks/permissions/da-permissions/da-permissions.js');
 
-const INFO_KEY = 'da-permissions-info-dismissed';
-
 const CONFIG_BODY = {
   ':names': ['permissions'],
   ':version': 3,
@@ -22,7 +20,11 @@ const NO_SHEET_BODY = {
   data: { total: 0, limit: 0, data: [] },
 };
 
-function mockFetch({ configFor, sitesFor = () => [] }) {
+const toResponse = (value) => (value instanceof Response
+  ? value
+  : new Response(JSON.stringify(value), { status: 200 }));
+
+function mockFetch({ configFor, sitesFor = () => [], putFor = null }) {
   const putCalls = [];
   const pending = [];
   window.fetch = async (url, opts = {}) => {
@@ -32,16 +34,15 @@ function mockFetch({ configFor, sitesFor = () => [] }) {
     if (href.includes('/ping/')) return new Response('', { status: 200 });
     if (opts.method === 'PUT') {
       putCalls.push({ url: href, opts });
+      if (putFor) return putFor();
       return new Promise((resolve) => { pending.push(resolve); });
     }
     if (href.includes('/list/')) {
-      // `/list/{org}` — site list.
       const org = href.split('/list/')[1].split('/')[0];
-      return new Response(JSON.stringify(sitesFor(org)), { status: 200 });
+      return toResponse(await sitesFor(org));
     }
     const match = href.match(/\/config\/([^/]+)/);
-    const org = match ? match[1] : null;
-    return new Response(JSON.stringify(configFor(org)), { status: 200 });
+    return toResponse(await configFor(match ? match[1] : null));
   };
   return {
     putCalls,
@@ -52,24 +53,15 @@ function mockFetch({ configFor, sitesFor = () => [] }) {
   };
 }
 
-async function waitUntil(predicate, { tries = 50, intervalMs = 10 } = {}) {
-  for (let i = 0; i < tries && !predicate(); i += 1) {
+// Polls until `predicate` holds; with `el`, also flushes its render each round and once after.
+async function waitUntil(predicate, el = null) {
+  for (let i = 0; i < 50 && !predicate(); i += 1) {
     // eslint-disable-next-line no-await-in-loop
-    await new Promise((resolve) => { setTimeout(resolve, intervalMs); });
+    await new Promise((resolve) => { setTimeout(resolve, 10); });
+    // eslint-disable-next-line no-await-in-loop
+    await el?.updateComplete;
   }
-}
-
-// Like `waitUntil`, but always flushes one more `updateComplete` after the
-// predicate is met — a reactive property can satisfy the predicate before
-// its corresponding render has actually committed to the DOM.
-async function settle(el, predicate, { tries = 50, intervalMs = 10 } = {}) {
-  for (let i = 0; i < tries && !predicate(); i += 1) {
-    // eslint-disable-next-line no-await-in-loop
-    await new Promise((resolve) => { setTimeout(resolve, intervalMs); });
-    // eslint-disable-next-line no-await-in-loop
-    await el.updateComplete;
-  }
-  await el.updateComplete;
+  await el?.updateComplete;
 }
 
 async function mount(org, site = null) {
@@ -78,31 +70,23 @@ async function mount(org, site = null) {
   el.site = site;
   document.body.append(el);
   await el.updateComplete;
-  // _load() is async (fetch-backed); poll until it settles past 'loading'.
-  for (let i = 0; i < 50 && el._status === 'loading'; i += 1) {
-    // eslint-disable-next-line no-await-in-loop
-    await new Promise((resolve) => { setTimeout(resolve, 10); });
-    // eslint-disable-next-line no-await-in-loop
-    await el.updateComplete;
-  }
+  await waitUntil(() => el._status !== 'loading', el);
   return el;
 }
 
+let savedFetch;
+
+beforeEach(() => {
+  savedFetch = window.fetch;
+  window.daTestToasts = [];
+});
+
+afterEach(() => {
+  window.fetch = savedFetch;
+  document.querySelectorAll('da-permissions').forEach((el) => el.remove());
+});
+
 describe('da-permissions', () => {
-  let savedFetch;
-
-  beforeEach(() => {
-    savedFetch = window.fetch;
-    localStorage.removeItem(INFO_KEY);
-    window.daTestToasts = [];
-  });
-
-  afterEach(() => {
-    window.fetch = savedFetch;
-    document.querySelectorAll('da-permissions').forEach((el) => el.remove());
-    localStorage.removeItem(INFO_KEY);
-  });
-
   it('403 -> "You don\'t have admin access to this org."', async () => {
     window.fetch = async () => new Response('', { status: 403 });
     const el = await mount('myorg');
@@ -125,13 +109,7 @@ describe('da-permissions', () => {
   });
 
   it('ok -> renders cards with slots from buildSlots, and the picker items include site names', async () => {
-    window.fetch = async (url) => {
-      const href = String(url);
-      if (href.includes('/list/')) {
-        return new Response(JSON.stringify([{ name: 'site1' }, { name: 'site2' }]), { status: 200 });
-      }
-      return new Response(JSON.stringify(CONFIG_BODY), { status: 200 });
-    };
+    mockFetch({ configFor: () => CONFIG_BODY, sitesFor: () => [{ name: 'site1' }, { name: 'site2' }] });
     const el = await mount('myorg');
 
     const cards = el.shadowRoot.querySelector('da-permissions-cards');
@@ -158,22 +136,17 @@ describe('da-permissions', () => {
   });
 
   it('site list failure still loads the config with no sites', async () => {
-    window.fetch = async (url) => {
-      const href = String(url);
-      if (href.includes('/list/')) return new Response('', { status: 500 });
-      return new Response(JSON.stringify(CONFIG_BODY), { status: 200 });
-    };
+    mockFetch({ configFor: () => CONFIG_BODY, sitesFor: () => new Response('', { status: 500 }) });
     const el = await mount('myorg');
     expect(el._status).to.equal('ok');
     expect(el._sites).to.deep.equal([]);
   });
 
   it('site list network failure still loads the config with no sites', async () => {
-    window.fetch = async (url) => {
-      const href = String(url);
-      if (href.includes('/list/')) throw new TypeError('Failed to fetch');
-      return new Response(JSON.stringify(CONFIG_BODY), { status: 200 });
-    };
+    mockFetch({
+      configFor: () => CONFIG_BODY,
+      sitesFor: () => { throw new TypeError('Failed to fetch'); },
+    });
     const el = await mount('myorg');
     expect(el._status).to.equal('ok');
     expect(el._sites).to.deep.equal([]);
@@ -181,14 +154,8 @@ describe('da-permissions', () => {
 
   it('shows a spinner with a loading message while the org config is loading', async () => {
     let release;
-    window.fetch = (url) => {
-      if (String(url).includes('/config/')) {
-        return new Promise((resolve) => {
-          release = () => resolve(new Response(JSON.stringify(CONFIG_BODY), { status: 200 }));
-        });
-      }
-      return Promise.resolve(new Response('[]', { status: 200 }));
-    };
+    const pendingConfig = new Promise((resolve) => { release = () => resolve(CONFIG_BODY); });
+    mockFetch({ configFor: () => pendingConfig });
     const el = document.createElement('da-permissions');
     el.org = 'myorg';
     el.site = null;
@@ -200,25 +167,14 @@ describe('da-permissions', () => {
     expect(loading?.textContent.trim()).to.equal('Loading permissions for myorg…');
     expect(!!el.shadowRoot.querySelector('da-permissions-cards')).to.equal(false);
 
-    // config.get resolves its URL asynchronously, so wait for the request to be in flight.
-    for (let i = 0; i < 50 && !release; i += 1) {
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise((resolve) => { setTimeout(resolve, 10); });
-    }
     release();
-    for (let i = 0; i < 50 && el._status === 'loading'; i += 1) {
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise((resolve) => { setTimeout(resolve, 10); });
-      // eslint-disable-next-line no-await-in-loop
-      await el.updateComplete;
-    }
+    await waitUntil(() => el._status !== 'loading', el);
     expect(!!el.shadowRoot.querySelector('.permissions-loading')).to.equal(false);
     expect(!!el.shadowRoot.querySelector('da-permissions-cards')).to.equal(true);
     el.remove();
   });
 
-  it('always shows the info note, without a dismiss button (even if it was dismissed before)', async () => {
-    localStorage.setItem(INFO_KEY, 'true');
+  it('always shows the info note, without a dismiss button', async () => {
     window.fetch = async () => new Response('', { status: 403 });
     const el = await mount('myorg');
 
@@ -404,12 +360,10 @@ describe('da-permissions', () => {
   });
 
   it('PUT network failure (rejected fetch) -> _busy returns to false and shows an error toast', async () => {
-    window.fetch = async (url, opts = {}) => {
-      const href = String(url);
-      if (opts.method === 'PUT') return Promise.reject(new TypeError('Failed to fetch'));
-      if (href.includes('/list/')) return new Response(JSON.stringify([]), { status: 200 });
-      return new Response(JSON.stringify(CONFIG_BODY), { status: 200 });
-    };
+    mockFetch({
+      configFor: () => CONFIG_BODY,
+      putFor: () => Promise.reject(new TypeError('Failed to fetch')),
+    });
     const el = await mount('myorg');
     const cards = el.shadowRoot.querySelector('da-permissions-cards');
     await cards.updateComplete;
@@ -591,188 +545,174 @@ describe('da-permissions', () => {
     expect(el._rules).to.deep.equal(OTHER_CONFIG_BODY.permissions.data);
     expect(window.daTestToasts.length).to.equal(toastCountBefore);
   });
-});
-
-describe('da-permissions folder permission', () => {
-  let savedFetch;
-
-  beforeEach(() => {
-    savedFetch = window.fetch;
-    localStorage.removeItem(INFO_KEY);
-  });
-
-  afterEach(() => {
-    window.fetch = savedFetch;
-    document.querySelectorAll('da-permissions').forEach((el) => el.remove());
-    localStorage.removeItem(INFO_KEY);
-  });
-
-  const SITE_CONFIG_BODY = {
-    ':names': ['permissions'],
-    ':version': 3,
-    permissions: {
-      total: 1,
-      limit: 1,
-      data: [{ path: '/mysite/ + **', groups: 'a@x.com', actions: 'write' }],
-    },
-  };
-
-  async function openFolderDialog(el) {
-    const cards = el.shadowRoot.querySelector('da-permissions-cards');
-    expect(cards.canAddFolder).to.equal(true);
-    cards.shadowRoot.querySelector('button.add-folder').click();
-    await el.updateComplete;
-    return el.shadowRoot.querySelector('nx-dialog');
-  }
-
-  async function submitFolder(el, value) {
-    const dialog = el.shadowRoot.querySelector('nx-dialog');
-    dialog.querySelector('input.folder-path-input').value = value;
-    dialog.querySelector('button.folder-add-submit').click();
-    await el.updateComplete;
-  }
-
-  async function addFolder(el, value) {
-    await openFolderDialog(el);
-    await submitFolder(el, value);
-  }
-
-  it('opens a dialog with a single folder path field', async () => {
-    mockFetch({ configFor: () => SITE_CONFIG_BODY });
-    const el = await mount('myorg', 'mysite');
-
-    const dialog = await openFolderDialog(el);
-    expect(dialog?.getAttribute('title')).to.equal('Add folder permission');
-    const input = dialog?.querySelector('input.folder-path-input.nx-input');
-    expect(input?.getAttribute('placeholder')).to.equal('/blog/drafts');
-    const actions = [...dialog.querySelectorAll('[slot="actions"]')].map((b) => [b.textContent.trim(), b.className]);
-    expect(actions).to.deep.equal([
-      ['Cancel', 'nx-form-btn-secondary'],
-      ['Add', 'folder-add-submit nx-form-btn-primary'],
-    ]);
-    expect(!!dialog.querySelector('da-folder-picker')).to.equal(false);
-  });
-
-  it('submits the folder path with Enter (form submit)', async () => {
-    mockFetch({ configFor: () => SITE_CONFIG_BODY });
-    const el = await mount('myorg', 'mysite');
-
-    const dialog = await openFolderDialog(el);
-    dialog.querySelector('input.folder-path-input').value = '/blog/drafts/';
-    dialog.querySelector('form.folder-add-form').requestSubmit();
-    await el.updateComplete;
-
-    expect(!!el.shadowRoot.querySelector('nx-dialog')).to.equal(false);
-    expect(el._pendingFolder).to.equal('blog/drafts');
-  });
-
-  it('shows a validation error and keeps the dialog open when the path does not start with /', async () => {
-    mockFetch({ configFor: () => SITE_CONFIG_BODY });
-    const el = await mount('myorg', 'mysite');
-
-    await addFolder(el, 'blog');
-    const dialog = el.shadowRoot.querySelector('nx-dialog');
-    expect(!!dialog).to.equal(true);
-    expect(dialog.querySelector('.nx-input-error-msg')?.textContent.trim())
-      .to.equal('Folder paths start with /, e.g. /blog.');
-    expect(el._pendingFolder).to.equal(null);
-
-    await submitFolder(el, '/blog');
-    expect(!!el.shadowRoot.querySelector('nx-dialog')).to.equal(false);
-    expect(el._pendingFolder).to.equal('blog');
-  });
-
-  it('folder-select: dialog closes, the row is pending, and the Read add input is open', async () => {
-    mockFetch({ configFor: () => SITE_CONFIG_BODY });
-    const el = await mount('myorg', 'mysite');
-
-    await addFolder(el, '/blog');
-
-    expect(el.shadowRoot.querySelector('nx-dialog')).to.equal(null);
-    expect(el._pendingFolder).to.equal('blog');
-
-    const cards = el.shadowRoot.querySelector('da-permissions-cards');
-    const blogPath = '/mysite/blog/ + **';
-    expect(cards.slots.some((s) => s.path === blogPath && s.pending)).to.equal(true);
-    expect(cards.adding).to.deep.equal({ path: blogPath, level: 'read' });
-  });
-
-  it('cancelling the add leaves the pending row without saving', async () => {
-    const { putCalls } = mockFetch({ configFor: () => SITE_CONFIG_BODY });
-    const el = await mount('myorg', 'mysite');
-
-    await addFolder(el, '/blog');
-
-    const cards = el.shadowRoot.querySelector('da-permissions-cards');
-    await cards.updateComplete;
-    const blogPath = '/mysite/blog/ + **';
-    const input = cards.shadowRoot.querySelector('.row-add-input');
-    expect(input).to.not.equal(null);
-    input.dispatchEvent(new FocusEvent('blur'));
-    await el.updateComplete;
-    await cards.updateComplete;
-
-    expect(putCalls.length).to.equal(0);
-    expect(el._pendingFolder).to.equal('blog');
-    expect(cards.slots.some((s) => s.path === blogPath && s.pending)).to.equal(true);
-    expect(cards.shadowRoot.querySelector('.row-add-input')).to.equal(null);
-  });
-
-  it('adding a member saves a rule with path "/s/blog/ + **", and the row is no longer pending', async () => {
-    const SITE_S_CONFIG_BODY = {
+  describe('folder permission', () => {
+    const SITE_CONFIG_BODY = {
       ':names': ['permissions'],
       ':version': 3,
       permissions: {
         total: 1,
         limit: 1,
-        data: [{ path: '/s/ + **', groups: 'a@x.com', actions: 'write' }],
+        data: [{ path: '/mysite/ + **', groups: 'a@x.com', actions: 'write' }],
       },
     };
-    const { putCalls, resolvePut } = mockFetch({ configFor: () => SITE_S_CONFIG_BODY });
-    const el = await mount('myorg', 's');
 
-    await addFolder(el, '/blog');
+    async function openFolderDialog(el) {
+      const cards = el.shadowRoot.querySelector('da-permissions-cards');
+      expect(cards.canAddFolder).to.equal(true);
+      cards.shadowRoot.querySelector('button.add-folder').click();
+      await el.updateComplete;
+      return el.shadowRoot.querySelector('nx-dialog');
+    }
 
-    const blogPath = '/s/blog/ + **';
-    expect(el._pendingFolder).to.equal('blog');
+    async function submitFolder(el, value) {
+      const dialog = el.shadowRoot.querySelector('nx-dialog');
+      dialog.querySelector('input.folder-path-input').value = value;
+      dialog.querySelector('button.folder-add-submit').click();
+      await el.updateComplete;
+    }
 
-    const cards = el.shadowRoot.querySelector('da-permissions-cards');
-    await cards.updateComplete;
-    const input = cards.shadowRoot.querySelector('.row-add-input');
-    input.value = 'reader@x.com';
-    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-    await waitUntil(() => putCalls.length === 1);
-    await el.updateComplete;
+    async function addFolder(el, value) {
+      await openFolderDialog(el);
+      await submitFolder(el, value);
+    }
 
-    expect(putCalls.length).to.equal(1);
-    const saved = JSON.parse(putCalls[0].opts.body.get('config'));
-    const rule = saved.permissions.data.find((r) => r.path === blogPath && r.actions === 'read');
-    expect(rule).to.not.equal(undefined);
-    expect(rule.groups).to.equal('reader@x.com');
+    it('opens a dialog with a single folder path field', async () => {
+      mockFetch({ configFor: () => SITE_CONFIG_BODY });
+      const el = await mount('myorg', 'mysite');
 
-    resolvePut(200);
-    await settle(el, () => el._pendingFolder === null);
-
-    expect(el._pendingFolder).to.equal(null);
-    const updatedCards = el.shadowRoot.querySelector('da-permissions-cards');
-    expect(updatedCards.slots.some((s) => s.path === blogPath && s.pending)).to.equal(false);
-  });
-
-  it('navigating to another site clears the pending folder', async () => {
-    mockFetch({
-      configFor: () => SITE_CONFIG_BODY,
-      sitesFor: () => [{ name: 'mysite' }, { name: 'othersite' }],
+      const dialog = await openFolderDialog(el);
+      expect(dialog?.getAttribute('title')).to.equal('Add folder permission');
+      const input = dialog?.querySelector('input.folder-path-input.nx-input');
+      expect(input?.getAttribute('placeholder')).to.equal('/blog/drafts');
+      const actions = [...dialog.querySelectorAll('[slot="actions"]')].map((b) => [b.textContent.trim(), b.className]);
+      expect(actions).to.deep.equal([
+        ['Cancel', 'nx-form-btn-secondary'],
+        ['Add', 'folder-add-submit nx-form-btn-primary'],
+      ]);
+      expect(!!dialog.querySelector('da-folder-picker')).to.equal(false);
     });
-    const el = await mount('myorg', 'mysite');
 
-    await addFolder(el, '/blog');
+    it('submits the folder path with Enter (form submit)', async () => {
+      mockFetch({ configFor: () => SITE_CONFIG_BODY });
+      const el = await mount('myorg', 'mysite');
 
-    expect(el._pendingFolder).to.equal('blog');
+      const dialog = await openFolderDialog(el);
+      dialog.querySelector('input.folder-path-input').value = '/blog/drafts/';
+      dialog.querySelector('form.folder-add-form').requestSubmit();
+      await el.updateComplete;
 
-    el.site = 'othersite';
-    await el.updateComplete;
+      expect(!!el.shadowRoot.querySelector('nx-dialog')).to.equal(false);
+      expect(el._pendingFolder).to.equal('blog/drafts');
+    });
 
-    expect(el._pendingFolder).to.equal(null);
+    it('shows a validation error and keeps the dialog open when the path does not start with /', async () => {
+      mockFetch({ configFor: () => SITE_CONFIG_BODY });
+      const el = await mount('myorg', 'mysite');
+
+      await addFolder(el, 'blog');
+      const dialog = el.shadowRoot.querySelector('nx-dialog');
+      expect(!!dialog).to.equal(true);
+      expect(dialog.querySelector('.nx-input-error-msg')?.textContent.trim())
+        .to.equal('Folder paths start with /, e.g. /blog.');
+      expect(el._pendingFolder).to.equal(null);
+
+      await submitFolder(el, '/blog');
+      expect(!!el.shadowRoot.querySelector('nx-dialog')).to.equal(false);
+      expect(el._pendingFolder).to.equal('blog');
+    });
+
+    it('folder-select: dialog closes, the row is pending, and the Read add input is open', async () => {
+      mockFetch({ configFor: () => SITE_CONFIG_BODY });
+      const el = await mount('myorg', 'mysite');
+
+      await addFolder(el, '/blog');
+
+      expect(el.shadowRoot.querySelector('nx-dialog')).to.equal(null);
+      expect(el._pendingFolder).to.equal('blog');
+
+      const cards = el.shadowRoot.querySelector('da-permissions-cards');
+      const blogPath = '/mysite/blog/ + **';
+      expect(cards.slots.some((s) => s.path === blogPath && s.pending)).to.equal(true);
+      expect(cards.adding).to.deep.equal({ path: blogPath, level: 'read' });
+    });
+
+    it('cancelling the add leaves the pending row without saving', async () => {
+      const { putCalls } = mockFetch({ configFor: () => SITE_CONFIG_BODY });
+      const el = await mount('myorg', 'mysite');
+
+      await addFolder(el, '/blog');
+
+      const cards = el.shadowRoot.querySelector('da-permissions-cards');
+      await cards.updateComplete;
+      const blogPath = '/mysite/blog/ + **';
+      const input = cards.shadowRoot.querySelector('.row-add-input');
+      expect(input).to.not.equal(null);
+      input.dispatchEvent(new FocusEvent('blur'));
+      await el.updateComplete;
+      await cards.updateComplete;
+
+      expect(putCalls.length).to.equal(0);
+      expect(el._pendingFolder).to.equal('blog');
+      expect(cards.slots.some((s) => s.path === blogPath && s.pending)).to.equal(true);
+      expect(cards.shadowRoot.querySelector('.row-add-input')).to.equal(null);
+    });
+
+    it('adding a member saves a rule with path "/s/blog/ + **", and the row is no longer pending', async () => {
+      const SITE_S_CONFIG_BODY = {
+        ':names': ['permissions'],
+        ':version': 3,
+        permissions: {
+          total: 1,
+          limit: 1,
+          data: [{ path: '/s/ + **', groups: 'a@x.com', actions: 'write' }],
+        },
+      };
+      const { putCalls, resolvePut } = mockFetch({ configFor: () => SITE_S_CONFIG_BODY });
+      const el = await mount('myorg', 's');
+
+      await addFolder(el, '/blog');
+
+      const blogPath = '/s/blog/ + **';
+      expect(el._pendingFolder).to.equal('blog');
+
+      const cards = el.shadowRoot.querySelector('da-permissions-cards');
+      await cards.updateComplete;
+      const input = cards.shadowRoot.querySelector('.row-add-input');
+      input.value = 'reader@x.com';
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      await waitUntil(() => putCalls.length === 1);
+      await el.updateComplete;
+
+      expect(putCalls.length).to.equal(1);
+      const saved = JSON.parse(putCalls[0].opts.body.get('config'));
+      const rule = saved.permissions.data.find((r) => r.path === blogPath && r.actions === 'read');
+      expect(rule).to.not.equal(undefined);
+      expect(rule.groups).to.equal('reader@x.com');
+
+      resolvePut(200);
+      await waitUntil(() => el._pendingFolder === null, el);
+
+      expect(el._pendingFolder).to.equal(null);
+      const updatedCards = el.shadowRoot.querySelector('da-permissions-cards');
+      expect(updatedCards.slots.some((s) => s.path === blogPath && s.pending)).to.equal(false);
+    });
+
+    it('navigating to another site clears the pending folder', async () => {
+      mockFetch({
+        configFor: () => SITE_CONFIG_BODY,
+        sitesFor: () => [{ name: 'mysite' }, { name: 'othersite' }],
+      });
+      const el = await mount('myorg', 'mysite');
+
+      await addFolder(el, '/blog');
+
+      expect(el._pendingFolder).to.equal('blog');
+
+      el.site = 'othersite';
+      await el.updateComplete;
+
+      expect(el._pendingFolder).to.equal(null);
+    });
   });
 });
 
@@ -793,11 +733,6 @@ const ORG_NO_SHEET_BODY = {
 };
 
 describe('da-permissions loadOrgConfig', () => {
-  let savedFetch;
-
-  beforeEach(() => { savedFetch = window.fetch; });
-  afterEach(() => { window.fetch = savedFetch; });
-
   it('403 -> status no-access', async () => {
     window.fetch = async () => new Response('', { status: 403 });
     const result = await loadOrgConfig('myorg');
@@ -851,16 +786,13 @@ describe('da-permissions loadOrgConfig', () => {
 });
 
 describe('da-permissions mutatePermissions', () => {
-  let savedFetch;
   let getCalls;
   let putCalls;
 
   beforeEach(() => {
-    savedFetch = window.fetch;
     getCalls = [];
     putCalls = [];
   });
-  afterEach(() => { window.fetch = savedFetch; });
 
   function stubFetch(getBody, putStatus = 200) {
     window.fetch = async (url, opts = {}) => {
