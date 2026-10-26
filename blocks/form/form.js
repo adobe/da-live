@@ -1,15 +1,20 @@
 import { getNx2 } from '../../scripts/utils.js';
 import decorateEditor from './editor.js';
 
-const { loadStyle, hashChange } = await import(`${getNx2()}/utils/utils.js`);
-const {
-  registerPanelSection,
-  wasPanelOpen,
-  PANEL_EVENT,
-} = await import(`${getNx2()}/utils/panel.js`);
-const { getEWFlags } = await import(`${getNx2()}/utils/ewFlags.js`);
-const { loadChat } = await import(`${getNx2()}/utils/chat.js`);
-const { getConfig } = await import(`${getNx2()}/scripts/nx.js`);
+const nx2 = getNx2();
+const [
+  { loadStyle, hashChange },
+  { registerPanelSection, wasPanelOpen, PANEL_EVENT },
+  { getEWFlags },
+  { loadChat },
+  { getConfig },
+] = await Promise.all([
+  import(`${nx2}/utils/utils.js`),
+  import(`${nx2}/utils/panel.js`),
+  import(`${nx2}/utils/ewFlags.js`),
+  import(`${nx2}/utils/chat.js`),
+  import(`${nx2}/scripts/nx.js`),
+]);
 
 // Workspace layout is light-DOM (it sizes the block container and the docked
 // chat panel), so it adopts on the document rather than an element shadow.
