@@ -390,9 +390,9 @@ export const COMMANDS = [
     icon: iconName('CCLibrary'),
     showIn: ['slash-blocks'],
     apply: async (view) => {
-      const { insertBlock } = await import('../ew-panel-extensions/helpers.js');
+      const { insertLibraryBlock } = await import('../ew-panel-extensions/helpers.js');
       const { openBlockLibraryModal } = await import('../ew-block-library-modal/ew-block-library-modal.js');
-      openBlockLibraryModal({ onInsert: (dom) => insertBlock(view, dom) });
+      openBlockLibraryModal({ onInsert: (dom) => insertLibraryBlock(view, dom) });
     },
   },
   {

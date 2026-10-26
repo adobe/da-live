@@ -1,5 +1,6 @@
 import { TextSelection } from 'da-y-wrapper';
 import prose2aem from '../../shared/prose2aem.js';
+import { wrapTablesInWrappers } from '../../shared/version/compare.js';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { daFetch, fetchDaConfigs, getFirstSheet, getRenderingVersion } from '../../shared/utils.js';
 import { toolbarController } from './toolbar-controller.js';
@@ -261,6 +262,29 @@ export function extractCursors(view) {
   return [...cursorMap.values()];
 }
 
+// Merge-conflict node views render their own UI (tabs, buttons, overlays).
+// Serialize what the author sees by default instead: the local version of a
+// pair, the content of a lone node. The hidden second half of a pair goes.
+// The node views render a block as a bare table, but prose2aem only turns a
+// table inside a .tableWrapper into a block, so each table gets its wrapper back.
+function unwrapDiffViews(root) {
+  root.querySelectorAll('.loc-pair-hidden').forEach((el) => el.remove());
+  root.querySelectorAll('.loc-tabbed-container').forEach((container) => {
+    const local = container.querySelector('.diff-tab-pane[data-tab="added"]');
+    if (!local) {
+      container.remove();
+      return;
+    }
+    wrapTablesInWrappers(local);
+    container.replaceWith(...local.childNodes);
+  });
+  root.querySelectorAll('.loc-single-container').forEach((container) => {
+    container.querySelectorAll(':scope > .loc-color-overlay').forEach((el) => el.remove());
+    wrapTablesInWrappers(container);
+    container.replaceWith(...container.childNodes);
+  });
+}
+
 export function getInstrumentedHTML(view) {
   const editorClone = view.dom.cloneNode(true);
 
@@ -320,6 +344,8 @@ export function getInstrumentedHTML(view) {
     }
   });
 
+  unwrapDiffViews(editorClone);
+
   const remoteCursors = editorClone.querySelectorAll('.ProseMirror-yjs-cursor');
 
   remoteCursors.forEach((remoteCursor) => {
@@ -349,6 +375,29 @@ export function getInstrumentedHTML(view) {
   // Any marker that didn't pair with a wrapper would be decorated as a real block.
   htmlString = htmlString.replace(/<div class="block-marker"[^>]*><\/div>/gi, '');
   return htmlString;
+}
+
+export function getInstrumentedHTMLForSDK(view) {
+  const doc = new DOMParser().parseFromString(getInstrumentedHTML(view), 'text/html');
+  doc.querySelectorAll('[data-cursor-remote], [data-cursor-remote-color]').forEach((element) => {
+    element.removeAttribute('data-cursor-remote');
+    element.removeAttribute('data-cursor-remote-color');
+  });
+  doc.querySelectorAll('img[data-image-index]').forEach((image) => {
+    try {
+      const pos = Number(image.getAttribute('data-image-index'));
+      const node = view.state.doc.nodeAt(pos);
+      if (node?.type.name !== 'image') throw new Error(`No editor image at position ${pos}`);
+      image.setAttribute('src', node.attrs.src);
+      image.closest('picture')?.querySelectorAll('source').forEach((source) => {
+        source.setAttribute('srcset', node.attrs.src);
+      });
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('Could not preserve original image URL:', e);
+    }
+  });
+  return doc.body.outerHTML;
 }
 
 const SKIP_BLOCK_CLASSES = new Set(['default-content-wrapper', 'metadata', 'section-metadata', 'library-metadata', 'block-marker']);

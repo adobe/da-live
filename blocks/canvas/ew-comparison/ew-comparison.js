@@ -1,10 +1,10 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import './ew-canvas-compare.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const style = await loadStyle(import.meta.url);
-const base = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
+const buttons = await loadStyle(`${getNx2()}/styles/buttons.css`);
 
 class EwComparison extends LitElement {
   static properties = {
@@ -28,7 +28,7 @@ class EwComparison extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [base, style];
+    this.shadowRoot.adoptedStyleSheets = [buttons, style];
   }
 
   focusHeading() {
@@ -38,15 +38,15 @@ class EwComparison extends LitElement {
   render() {
     return html`
       <section class="comparison" aria-label="Page comparison" @keydown=${(e) => {
-    if (e.key === 'Escape') {
-      e.stopPropagation();
-      this.onClose();
-    }
-  }}>
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          this.onClose();
+        }
+      }}>
         <header>
           <div><h2 tabindex="-1">Review changes</h2><p class="path">${this.path}</p></div>
-          <button class="da-btn-secondary" ?disabled=${this.loading} @click=${() => this.onRefresh()}>Refresh comparison</button>
-          ${!this.diffDom ? html`<button class="da-btn-secondary" @click=${() => this.onClose()}>Close</button>` : nothing}
+          <button class="nx-action-btn nx-btn-sm" ?disabled=${this.loading} @click=${() => this.onRefresh()}>Refresh comparison</button>
+          ${!this.diffDom ? html`<button class="nx-action-btn nx-btn-sm" @click=${() => this.onClose()}>Close</button>` : nothing}
         </header>
         <div class="status" role="status" aria-live="polite">
           ${this.loading ? 'Loading comparison…' : nothing}

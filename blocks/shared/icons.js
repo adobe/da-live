@@ -6,19 +6,46 @@ export const ICONS = {
   link: '/img/icons/s2-icon-link-20-n.svg',
   jpg: '/img/icons/s2-icon-image-20-n.svg',
   jpeg: '/img/icons/s2-icon-image-20-n.svg',
+  ico: '/img/icons/s2-icon-image-20-n.svg',
   png: '/img/icons/s2-icon-image-20-n.svg',
   svg: '/img/icons/s2-icon-image-20-n.svg',
   gif: '/img/icons/s2-icon-image-20-n.svg',
   avif: '/img/icons/s2-icon-image-20-n.svg',
   webp: '/img/icons/s2-icon-image-20-n.svg',
   mp4: '/img/icons/s2-icon-video-20-n.svg',
+  webm: '/img/icons/s2-icon-video-20-n.svg',
+  mov: '/img/icons/s2-icon-video-20-n.svg',
+  m4v: '/img/icons/s2-icon-video-20-n.svg',
+  ogv: '/img/icons/s2-icon-video-20-n.svg',
   media: '/img/icons/s2-icon-image-20-n.svg',
   pdf: '/img/icons/s2-icon-acrobatsolid-20-n.svg',
   folderClock: '/img/icons/s2-icon-folderclock-20-n.svg',
   favorite: '/img/icons/s2-icon-starfilled-20-n.svg',
 };
 
+const VIDEO_EXTS = ['mp4', 'webm', 'mov', 'm4v', 'ogv'];
+
+const IMG_EXTS = ['jpg', 'jpeg', 'ico', 'png', 'gif', 'svg', 'webp', 'avif'];
+
+export function isImageExt(ext) {
+  return IMG_EXTS.includes(ext);
+}
+
+export function isMediaExt(ext) {
+  return ext === 'pdf' || IMG_EXTS.includes(ext) || VIDEO_EXTS.includes(ext);
+}
+
 export function iconPathForExt(ext) {
   const type = !ext ? 'folder' : ext;
   return ICONS[type] || ICONS.file;
+}
+
+export function getTypeLabel(ext) {
+  if (!ext) return 'Folder';
+  if (ext === 'html') return 'Page';
+  if (ext === 'link') return 'Link';
+  if (ext === 'json') return 'Sheet';
+  if (isImageExt(ext)) return 'Image';
+  if (VIDEO_EXTS.includes(ext)) return 'Video';
+  return ext.toUpperCase();
 }

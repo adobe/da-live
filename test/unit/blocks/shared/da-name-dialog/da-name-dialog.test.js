@@ -57,7 +57,7 @@ describe('da-name-dialog', () => {
     el.addEventListener('da-name-submit', (e) => { detail = e.detail; });
 
     el.shadowRoot.querySelector('.nx-input').value = 'My New Page-';
-    el.shadowRoot.querySelector('.da-btn-primary').click();
+    el.shadowRoot.querySelector('.nx-form-btn-primary').click();
     await nextFrame();
 
     expect(detail).to.deep.equal({ name: 'my-new-page', openAfter: false });
@@ -77,7 +77,7 @@ describe('da-name-dialog', () => {
   });
 
   function findCreateAndOpenButton() {
-    return [...el.shadowRoot.querySelectorAll('.da-btn-primary')]
+    return [...el.shadowRoot.querySelectorAll('.nx-form-btn-primary')]
       .find((btn) => btn.textContent.includes('and open'));
   }
 
@@ -103,7 +103,7 @@ describe('da-name-dialog', () => {
     let fired = false;
     el.addEventListener('da-name-submit', () => { fired = true; });
 
-    el.shadowRoot.querySelector('.da-btn-primary').click();
+    el.shadowRoot.querySelector('.nx-form-btn-primary').click();
     await el.updateComplete;
 
     expect(fired).to.be.false;
@@ -113,7 +113,7 @@ describe('da-name-dialog', () => {
 
   it('clears the name error when the input changes', async () => {
     await mount({ open: true });
-    el.shadowRoot.querySelector('.da-btn-primary').click();
+    el.shadowRoot.querySelector('.nx-form-btn-primary').click();
     await el.updateComplete;
     expect(el._nameError).to.be.true;
 
@@ -130,21 +130,21 @@ describe('da-name-dialog', () => {
 
   it('disables the Create button while saving', async () => {
     await mount({ open: true, saving: true });
-    expect(el.shadowRoot.querySelector('.da-btn-primary').disabled).to.be.true;
+    expect(el.shadowRoot.querySelector('.nx-form-btn-primary').disabled).to.be.true;
   });
 
   it('emits close when Cancel is clicked', async () => {
     await mount({ open: true });
     let cancelled = false;
     el.addEventListener('close', () => { cancelled = true; });
-    el.shadowRoot.querySelector('.da-btn-secondary').click();
+    el.shadowRoot.querySelector('.nx-form-btn-secondary').click();
     await nextFrame();
     expect(cancelled).to.be.true;
   });
 
   it('clears the name error when the dialog closes', async () => {
     await mount({ open: true });
-    el.shadowRoot.querySelector('.da-btn-primary').click();
+    el.shadowRoot.querySelector('.nx-form-btn-primary').click();
     await el.updateComplete;
     expect(el._nameError).to.be.true;
 

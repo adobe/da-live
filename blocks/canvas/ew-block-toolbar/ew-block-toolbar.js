@@ -18,11 +18,12 @@ function normalizeBlockName(name) {
 }
 
 /** Split a library variant entry into its base block name and variant descriptor. */
-function splitLibraryVariant(variant) {
-  if (variant?.variants) return { base: variant.name || '', variant: variant.variants };
-  const match = (variant?.name || '').match(/^(.*\S)\s*\(([^)]+)\)\s*$/);
+export function splitLibraryVariant(variant) {
+  const name = variant?.name || '';
+  const match = name.match(/^(.*\S)\s*\(([^)]+)\)\s*$/);
   if (match) return { base: match[1].trim(), variant: match[2].trim() };
-  return { base: variant?.name || '', variant: '' };
+  if (variant?.variants) return { base: name, variant: variant.variants };
+  return { base: name, variant: '' };
 }
 
 class EwBlockToolbar extends LitElement {
