@@ -1,16 +1,13 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
+import { splitMultiValue, joinMultiValue } from '../editor-utils/metadata-fields.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const [formStyle, style] = await Promise.all([
   getSheet(`${getNx2()}/styles/form.css`),
   loadStyle(import.meta.url),
 ]);
-
-function parseSelected(value) {
-  return (value || '').split(',').map((v) => v.trim()).filter(Boolean);
-}
 
 class EwMetadataMultiselect extends LitElement {
   static properties = {
@@ -26,14 +23,14 @@ class EwMetadataMultiselect extends LitElement {
   }
 
   _onToggle(itemValue) {
-    const selected = new Set(parseSelected(this.value));
+    const selected = new Set(splitMultiValue(this.value));
     if (selected.has(itemValue)) selected.delete(itemValue); else selected.add(itemValue);
-    const ordered = (this.items || []).map((i) => i.value).filter((v) => selected.has(v));
-    this.dispatchEvent(new CustomEvent('change', { detail: { value: ordered.join(', ') } }));
+    const value = joinMultiValue(selected, this.items);
+    this.dispatchEvent(new CustomEvent('change', { detail: { value } }));
   }
 
   render() {
-    const selected = new Set(parseSelected(this.value));
+    const selected = new Set(splitMultiValue(this.value));
     return html`
       <ul class="ew-metadata-multiselect" role="group" aria-label=${this.label ?? nothing}>
         ${(this.items || []).map((item) => html`

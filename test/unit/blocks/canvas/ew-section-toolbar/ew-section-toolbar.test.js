@@ -6,16 +6,16 @@ import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { processBlockOptions } = await import('../../../../../blocks/canvas/ew-editor-doc/slash-menu/block-options.js');
-
 const p = (text) => ({ type: 'paragraph', content: text ? [{ type: 'text', text }] : [] });
 const cell = (text, attrs) => ({ type: 'table_cell', ...(attrs ? { attrs } : {}), content: [p(text)] });
 
 describe('ew-section-toolbar', () => {
   let toolbar;
 
+  let sectionMetadataFields;
+
   before(async () => {
-    await import('../../../../../blocks/canvas/ew-section-toolbar/ew-section-toolbar.js');
+    ({ sectionMetadataFields } = await import('../../../../../blocks/canvas/ew-section-toolbar/ew-section-toolbar.js'));
   });
 
   afterEach(() => {
@@ -27,7 +27,7 @@ describe('ew-section-toolbar', () => {
     toolbar = document.createElement('ew-section-toolbar');
     toolbar._loadOptions = async () => {};
     document.body.append(toolbar);
-    toolbar._options = processBlockOptions(rows).get('section-metadata') ?? null;
+    toolbar._fields = sectionMetadataFields(rows);
     toolbar.view = view;
     toolbar.show(sectionIndex);
     await toolbar.updateComplete;
@@ -44,11 +44,11 @@ describe('ew-section-toolbar', () => {
 
     const labels = [...toolbar.shadowRoot.querySelectorAll('.toolbar-field-label')]
       .map((el) => el.textContent);
-    expect(labels).to.deep.equal(['style', 'background']);
+    expect(labels).to.deep.equal(['Style', 'Background']);
     expect(toolbar.shadowRoot.querySelector('.section-name').textContent).to.equal('Section 1');
     const [style, background] = pickers();
     expect(style.items).to.deep.equal([
-      { section: 'style' },
+      { section: 'Style' },
       { value: '', label: 'None' },
       { value: 'highlight', label: 'Highlight' },
       { value: 'plain', label: 'Plain' },
@@ -64,7 +64,7 @@ describe('ew-section-toolbar', () => {
 
     const table = view.state.doc.lastChild;
     expect(table.type.name).to.equal('table');
-    expect(table.child(1).child(0).textContent).to.equal('style');
+    expect(table.child(1).child(0).textContent).to.equal('Style');
     expect(table.child(1).child(1).textContent).to.equal('highlight');
     expect(view.state.doc.firstChild.textContent).to.equal('Hello');
   });
@@ -107,6 +107,37 @@ describe('ew-section-toolbar', () => {
     pickers()[0].dispatchEvent(new CustomEvent('change', { detail: { value: 'highlight' } }));
     expect(view.state.doc.lastChild.type.name).to.equal('table');
     pickers()[0].dispatchEvent(new CustomEvent('change', { detail: { value: '' } }));
+    expect(view.state.doc.childCount).to.equal(1);
+  });
+
+  it('uses the sheet label and skips free-text and json fields', async () => {
+    await mount(makeRealView({ type: 'doc', content: [p()] }), 0, [
+      { blocks: 'Section Metadata', key: 'style', label: 'Look', values: 'Dark=dark' },
+      { blocks: 'section-metadata', key: 'id' },
+      { blocks: 'section-metadata', key: 'data', type: 'json', values: 'A=a' },
+      { blocks: 'metadata', key: 'theme', values: 'Light=light' },
+    ]);
+    const labels = [...toolbar.shadowRoot.querySelectorAll('.toolbar-field-label')]
+      .map((el) => el.textContent);
+    expect(labels).to.deep.equal(['Look']);
+  });
+
+  it('toggles multi values in option order and clears the row when none are left', async () => {
+    const view = makeRealView({ type: 'doc', content: [p('Hello')] });
+    await mount(view, 0, [
+      { blocks: 'section-metadata', key: 'Style', type: 'multi', values: 'Dark=dark|Wide=wide|Tall=tall' },
+    ]);
+    const picker = pickers()[0];
+    expect(picker.multiple).to.equal(true);
+    expect(picker.items.some((i) => i.label === 'None')).to.equal(false);
+
+    picker.dispatchEvent(new CustomEvent('change', { detail: { values: ['tall', 'dark'] } }));
+    expect(view.state.doc.lastChild.child(1).child(1).textContent).to.equal('dark, tall');
+    canvasBus.editorDocState.emit({});
+    await toolbar.updateComplete;
+    expect(pickers()[0].values).to.deep.equal(['dark', 'tall']);
+
+    pickers()[0].dispatchEvent(new CustomEvent('change', { detail: { values: [] } }));
     expect(view.state.doc.childCount).to.equal(1);
   });
 
