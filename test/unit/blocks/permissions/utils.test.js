@@ -1,13 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 
 import {
-  normPath,
-  splitGroups,
-  levelToActions,
-  actionsToLevel,
-  defaultPaths,
   folderRulePath,
-  scopeKind,
   scopeLabel,
   buildSlots,
   siteNames,
@@ -20,87 +14,28 @@ import {
 } from '../../../../blocks/permissions/utils.js';
 
 describe('permissions utils', () => {
-  describe('normPath', () => {
-    it('normalizes +** variants with no, leading, or trailing space', () => {
-      expect(normPath('/s/+**')).to.equal('/s/ + **');
-      expect(normPath('/s/ +**')).to.equal('/s/ + **');
-      expect(normPath('/s/+ **')).to.equal('/s/ + **');
-    });
-
-    it('leaves non-wildcard paths unchanged', () => {
-      expect(normPath('CONFIG')).to.equal('CONFIG');
-    });
-
-    it('passes through undefined', () => {
-      expect(normPath(undefined)).to.equal(undefined);
-    });
-  });
-
-  describe('splitGroups', () => {
-    it('trims, drops blanks, and splits on comma', () => {
-      expect(splitGroups(' a@x.com, ,b@x.com ')).to.deep.equal(['a@x.com', 'b@x.com']);
-    });
-
-    it('returns an empty array for an empty string', () => {
-      expect(splitGroups('')).to.deep.equal([]);
-    });
-  });
-
-  describe('actionsToLevel / levelToActions', () => {
-    it('maps actions to levels', () => {
-      expect(actionsToLevel('')).to.equal('none');
-      expect(actionsToLevel('read')).to.equal('read');
-      expect(actionsToLevel('garbage')).to.equal('none');
-    });
-
-    it('maps none back to empty actions', () => {
-      expect(levelToActions('none')).to.equal('');
-    });
-  });
-
-  describe('defaultPaths', () => {
-    it('returns org scopes when site is null', () => {
-      expect(defaultPaths(null)).to.deep.equal(['CONFIG', '/ + **']);
-    });
-
-    it('returns site scopes when site is given', () => {
-      expect(defaultPaths('s')).to.deep.equal(['/s/CONFIG', '/s/ + **']);
-    });
-  });
-
   describe('folderRulePath', () => {
     it('builds a normalized folder rule path', () => {
       expect(folderRulePath('s', 'blog/drafts')).to.equal('/s/blog/drafts/ + **');
     });
   });
 
-  describe('scopeLabel / scopeKind', () => {
+  describe('scopeLabel', () => {
     it('labels org scopes', () => {
       expect(scopeLabel('CONFIG', null)).to.equal('DA configurations');
-      expect(scopeKind('CONFIG', null)).to.equal('config');
       expect(scopeLabel('/ + **', null)).to.equal('All sites');
-      expect(scopeKind('/ + **', null)).to.equal('content');
     });
 
     it('labels site scopes', () => {
       expect(scopeLabel('/s/CONFIG', 's')).to.equal('Site configurations');
-      expect(scopeKind('/s/CONFIG', 's')).to.equal('config');
-
       expect(scopeLabel('/s/ + **', 's')).to.equal('All site content');
-      expect(scopeKind('/s/ + **', 's')).to.equal('content');
-
       expect(scopeLabel('/s/blog/ + **', 's')).to.equal('blog/');
-      expect(scopeKind('/s/blog/ + **', 's')).to.equal('folder');
-
       expect(scopeLabel('/s/doc.html', 's')).to.equal('/s/doc.html');
-      expect(scopeKind('/s/doc.html', 's')).to.equal('other');
     });
 
     it('handles regex characters in site', () => {
       expect(scopeLabel('/my.site/blog/ + **', 'my.site')).to.equal('blog/');
-      expect(scopeKind('/my.site/blog/ + **', 'my.site')).to.equal('folder');
-
-      expect(scopeKind('/myXsite/blog/ + **', 'my.site')).to.equal('other');
+      expect(scopeLabel('/myXsite/blog/ + **', 'my.site')).to.equal('/myXsite/blog/ + **');
     });
   });
 
@@ -124,6 +59,7 @@ describe('permissions utils', () => {
         { path: 'CONFIG', groups: 'org@x.com', actions: 'write' },
         { path: '/s/CONFIG', groups: 'me@x.com, org@x.com', actions: 'write' },
         { path: '/s/blog/ + **', groups: 'b@x.com', actions: '' },
+        { path: '/s/blog/ + **', groups: 'g@x.com', actions: 'garbage' },
         { path: '/other/ + **', groups: 'z@x.com', actions: 'read' },
       ];
       const slots = buildSlots(rules, 's');
@@ -135,7 +71,7 @@ describe('permissions utils', () => {
       expect(configSlot.inheritedWrite).to.deep.equal([]);
 
       const blogSlot = slots.find((s) => s.path === '/s/blog/ + **');
-      expect(blogSlot.none).to.deep.equal(['b@x.com']);
+      expect(blogSlot.none).to.deep.equal(['b@x.com', 'g@x.com']);
 
       expect(slots.some((s) => s.path.startsWith('/other/'))).to.be.false;
     });
@@ -305,6 +241,12 @@ describe('permissions utils', () => {
       expect(config.permissions.limit).to.equal(2);
     });
 
+    it('adds a none member as a rule with empty actions', () => {
+      const { config } = addMembers(makeMultiConfig(), '/s/CONFIG', 'none', ['n@x.com']);
+      const rule = config.permissions.data.find((r) => r.path === '/s/CONFIG');
+      expect(rule).to.deep.equal({ path: '/s/CONFIG', groups: 'n@x.com', actions: '' });
+    });
+
     it('addMembers splits pasted lists into one rule, not one rule per member', () => {
       const cfg = makeMultiConfig();
       const who = parseMembers('x@x.com, y@x.com');
@@ -352,7 +294,7 @@ describe('permissions utils', () => {
 
       expect(changed).to.be.true;
       config.permissions.data.forEach((rule) => {
-        expect(splitGroups(rule.groups)).to.not.include('a@x.com');
+        expect(rule.groups.split(', ')).to.not.include('a@x.com');
       });
     });
 

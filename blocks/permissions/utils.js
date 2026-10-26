@@ -2,25 +2,24 @@ const WILDCARD_SUFFIX_RE = /\s*\+\s*\*\*\s*$/;
 const WILDCARD_SUFFIX = ' + **';
 const FOLDER_SUFFIX = `/${WILDCARD_SUFFIX}`;
 
-export function normPath(path) {
-  if (path === undefined || path === null) return path;
-  return path.replace(WILDCARD_SUFFIX_RE, WILDCARD_SUFFIX);
+function normPath(path) {
+  return path?.replace(WILDCARD_SUFFIX_RE, WILDCARD_SUFFIX);
 }
 
-export function splitGroups(groups, separator = ',') {
+function splitGroups(groups, separator = ',') {
   return (groups || '')
     .split(separator)
     .map((g) => g.trim())
     .filter(Boolean);
 }
 
-export function actionsToLevel(actions) {
+function actionsToLevel(actions) {
   if (actions === 'read') return 'read';
   if (actions === 'write') return 'write';
   return 'none';
 }
 
-export function levelToActions(level) {
+function levelToActions(level) {
   if (level === 'read') return 'read';
   if (level === 'write') return 'write';
   return '';
@@ -30,7 +29,7 @@ export const INHERITED_KEY = { read: 'inheritedRead', write: 'inheritedWrite', n
 
 export const LEVEL_LABEL = { read: 'Read', write: 'Write', none: 'None' };
 
-export function defaultPaths(site) {
+function defaultPaths(site) {
   if (!site) return ['CONFIG', '/ + **'];
   return [`/${site}/CONFIG`, normPath(`/${site}/+**`)];
 }
@@ -48,7 +47,7 @@ export function parseFolderPath(value) {
   return { folder };
 }
 
-export function scopeKind(path, site) {
+function scopeKind(path, site) {
   const norm = normPath(path);
   if (!site) {
     if (norm === 'CONFIG') return 'config';
