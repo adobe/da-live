@@ -98,6 +98,40 @@ describe('browse-owned nav search', () => {
     expect(browse._sitePicker.value).to.equal('org/site');
   });
 
+  it('keeps the denied current site selected through cached refreshes and route changes', async () => {
+    const metadata = stub(source, 'getMetadata').resolves(new Response(null, { status: 403 }));
+    const getSites = stub(Storage.prototype, 'getItem').callThrough();
+    const check = spy(browse, 'checkSites');
+    try {
+      siteList.resolves({ ok: false, items: [] });
+      getSites.withArgs('da-sites').returns(JSON.stringify(['org/site', 'org/other']));
+      browse.details = { org: 'org', site: 'site', fullpath: '/org/site' };
+      await browse.updateComplete;
+      await Promise.all(check.returnValues);
+      expect(browse._sitePicker.items.filter(({ value }) => value && value !== 'add-site'))
+        .to.deep.equal([{ value: 'org/site', label: 'site', description: 'org/site', ariaLabel: 'site (org)' }]);
+      expect(browse._sitePicker.value).to.equal('org/site');
+      expect(browse._sitePicker.labelOverride).to.equal('site (org)');
+      expect(browse._inaccessibleSites.has('org/site')).to.be.true;
+      getSites.withArgs('da-sites').returns(JSON.stringify(['org/site', 'org/other', 'org/new']));
+      browse.syncSitePicker();
+      expect(browse._sitePicker.items.some(({ value }) => value === 'org/site')).to.be.true;
+      expect(browse._sitePicker.items.some(({ value }) => value === 'org/other')).to.be.false;
+      await Promise.all(check.returnValues);
+      browse.details = { org: 'org', site: 'other', fullpath: '/org/other' };
+      await browse.updateComplete;
+      browse.syncSitePicker();
+      await Promise.all(check.returnValues);
+      expect(browse._sitePicker.items.some(({ value }) => value === 'org/site')).to.be.false;
+      expect(browse._sitePicker.value).to.equal('org/other');
+      expect(browse._sitePicker.labelOverride).to.equal('other (org)');
+    } finally {
+      metadata.restore();
+      getSites.restore();
+      check.restore();
+    }
+  });
+
   it('refreshes recent sites across tabs and removes both nav controls on disconnect', () => {
     const getSites = stub(Storage.prototype, 'getItem').callThrough();
     getSites.withArgs('da-sites').returns(JSON.stringify(['other/site']));

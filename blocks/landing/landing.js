@@ -155,7 +155,9 @@ export class DaLanding extends LitElement {
       this._siteError = `Could not read recent sites: ${error.message}`;
     }
     const sites = this._sites;
-    this._sites = sites.filter(({ value }) => !this._inaccessibleSites?.has(value));
+    this._sites = sites.filter(
+      ({ value }) => value === this._scope || !this._inaccessibleSites?.has(value),
+    );
     this.checkSites(sites);
   }
 
@@ -167,7 +169,9 @@ export class DaLanding extends LitElement {
       const { source } = await getNx2Api();
       const { signal } = request;
       const inaccessibleSites = this._inaccessibleSites;
-      const result = await checkSiteChoices({ sites, source, signal, inaccessibleSites });
+      const result = await checkSiteChoices(
+        { sites, current: this._scope, source, signal, inaccessibleSites },
+      );
       if (request.signal.aborted || !this.isConnected) return;
       this._inaccessibleSites = result.inaccessibleSites;
       this._sites = result.sites;

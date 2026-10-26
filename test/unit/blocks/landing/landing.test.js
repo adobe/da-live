@@ -152,6 +152,30 @@ describe('landing page', () => {
     expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/site', 'org/other']);
   });
 
+  it('keeps the denied current workspace selected through refreshes and route changes', async () => {
+    checkSites.restore();
+    sinon.stub(source, 'list').resolves({ ok: false, items: [] });
+    sinon.stub(source, 'getMetadata').resolves(new Response(null, { status: 403 }));
+    await el.checkSites(el._sites);
+    await el.updateComplete;
+    expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/site']);
+    expect(el._sitePicker.value).to.equal('org/site');
+    expect(el._sitePicker.labelOverride).to.equal('site (org)');
+    expect(el._inaccessibleSites.has('org/site')).to.equal(true);
+    const check = sinon.spy(el, 'checkSites');
+    el.loadSites();
+    expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/site']);
+    await Promise.all(check.returnValues);
+    hashChange._set({ org: 'org', site: 'other', fullpath: '/org/other' });
+    await el.updateComplete;
+    await Promise.all(check.returnValues);
+    await el.updateComplete;
+    expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/other']);
+    expect(el._sitePicker.value).to.equal('org/other');
+    expect(el._sitePicker.labelOverride).to.equal('other (org)');
+    expect(el._inaccessibleSites.has('org/site')).to.equal(true);
+  });
+
   it('does not interpret a network failure as a confirmed access denial', async () => {
     checkSites.restore();
     sinon.stub(source, 'list').rejects(new Error('Offline'));
