@@ -86,6 +86,15 @@ afterEach(() => {
   document.querySelectorAll('da-permissions').forEach((el) => el.remove());
 });
 
+const SITE_ONE_CHAR_BODY = {
+  ':names': ['permissions'],
+  permissions: {
+    total: 1,
+    limit: 1,
+    data: [{ path: '/mysite/ + **', groups: 'a@x.com', actions: 'write' }],
+  },
+};
+
 describe('da-permissions', () => {
   it('403 -> "You don\'t have admin access to this org."', async () => {
     window.fetch = async () => new Response('', { status: 403 });
@@ -269,6 +278,49 @@ describe('da-permissions', () => {
     expect(rule.groups.endsWith('x@x.com, y@x.com')).to.equal(true);
   });
 
+  it('adding a member clears the filter so the new member is visible', async () => {
+    const { putCalls } = mockFetch({ configFor: () => CONFIG_BODY });
+    const el = await mount('myorg');
+    const search = el.shadowRoot.querySelector('nx-search');
+    search.value = 'admin';
+    search.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    await el.updateComplete;
+    const cards = el.shadowRoot.querySelector('da-permissions-cards');
+    await cards.updateComplete;
+
+    cards.shadowRoot.querySelector('.level-row[data-level="write"] .row-add').click();
+    await el.updateComplete;
+    await cards.updateComplete;
+    const input = cards.shadowRoot.querySelector('.row-add-input');
+    input.value = 'new@x.com';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await waitUntil(() => putCalls.length === 1);
+    await el.updateComplete;
+
+    expect(el._query).to.equal('');
+    expect(el.shadowRoot.querySelector('nx-search').value).to.equal('');
+  });
+
+  it('a one-character filter does not filter yet', async () => {
+    mockFetch({ configFor: () => SITE_ONE_CHAR_BODY });
+    const el = await mount('myorg', 'mysite');
+    const search = el.shadowRoot.querySelector('nx-search');
+    const cards = () => el.shadowRoot.querySelector('da-permissions-cards');
+    const allCount = cards().slots.length;
+
+    search.value = 'z';
+    search.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    await el.updateComplete;
+    expect(cards().slots.length).to.equal(allCount);
+    expect(cards().canAddFolder).to.equal(true);
+
+    search.value = 'zz';
+    search.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    await el.updateComplete;
+    expect(cards()).to.equal(null);
+    expect(el.shadowRoot.textContent).to.contain('No scopes match "zz"');
+  });
+
   it('remove opens an nx-dialog with title "Remove member" and the scope/level text; Confirm PUTs, Cancel does not', async () => {
     const SITE_CONFIG_BODY = {
       ':names': ['permissions'],
@@ -422,7 +474,8 @@ describe('da-permissions', () => {
 
     cards = el.shadowRoot.querySelector('da-permissions-cards');
     expect(cards.slots.map((s) => s.path)).to.deep.equal([contentPath]);
-    expect(cards.query).to.equal('OrgWriter@example.com');
+    expect(cards.slots[0].inheritedWrite).to.deep.equal(['orgwriter@example.com']);
+    expect(cards.slots[0].write).to.deep.equal([]);
 
     search.value = '';
     search.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
@@ -430,7 +483,6 @@ describe('da-permissions', () => {
 
     cards = el.shadowRoot.querySelector('da-permissions-cards');
     expect(cards.slots.map((s) => s.path)).to.include.members([configPath, contentPath, blogPath]);
-    expect(cards.query).to.equal('');
   });
 
   it('no match -> shows "No scopes match "zzz"" and no cards', async () => {

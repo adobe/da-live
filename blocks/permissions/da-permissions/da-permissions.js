@@ -3,7 +3,7 @@ import { getNx, getNx2, getNx2Api } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import {
   buildSlots, siteNames, parseMembers, addMembers, removeMember, scopeLabel, filterSlots,
-  folderRulePath, parseFolderPath, hasPermissionsSheet, LEVEL_LABEL,
+  activeQuery, folderRulePath, parseFolderPath, hasPermissionsSheet, LEVEL_LABEL,
 } from '../utils.js';
 
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
@@ -201,6 +201,8 @@ class DaPermissions extends LitElement {
       return;
     }
 
+    // Clear the filter so the new member is visible even if it doesn't match.
+    this._query = '';
     await this._mutate((config) => addMembers(config, path, level, who), path);
   }
 
@@ -365,7 +367,7 @@ class DaPermissions extends LitElement {
     }
     const filtered = this._filteredSlots;
     const trimmedQuery = this._query.trim();
-    const content = trimmedQuery && filtered.length === 0
+    const content = filtered.length === 0
       ? html`<p class="permissions-message">No scopes match "${trimmedQuery}"</p>`
       : html`<da-permissions-cards
         .slots=${filtered}
@@ -374,8 +376,7 @@ class DaPermissions extends LitElement {
         .editable=${this._editable}
         .busy=${this._busy}
         .adding=${this._adding}
-        .canAddFolder=${!!this.site && this._editable && !trimmedQuery}
-        .query=${trimmedQuery}
+        .canAddFolder=${!!this.site && this._editable && !activeQuery(this._query)}
         @permissions-add-folder=${() => this._onOpenFolderDialog()}
         @permissions-add-open=${(e) => this._onAddOpen(e)}
         @permissions-add-cancel=${() => this._onAddCancel()}

@@ -150,9 +150,27 @@ describe('permissions utils', () => {
       expect(filtered.some((s) => s.path === '/s/ + **')).to.be.true;
     });
 
-    it('returns everything for an empty or whitespace query', () => {
+    it('returns everything for an empty, whitespace, or one-character query', () => {
       expect(filterSlots(slots, '')).to.deep.equal(slots);
       expect(filterSlots(slots, '   ')).to.deep.equal(slots);
+      expect(filterSlots(slots, ' b ')).to.deep.equal(slots);
+    });
+
+    it('keeps every member of a scope whose label or path matches', () => {
+      const [blog] = filterSlots(slots, 'blog/');
+      expect(blog.write).to.deep.equal(['blog-ed@x.com']);
+      expect(blog.hidden).to.equal(undefined);
+    });
+
+    it('keeps only matching members otherwise, and counts the hidden ones per level', () => {
+      const [slot] = filterSlots(buildSlots([
+        { path: '/ + **', groups: 'org@x.com, other@x.com', actions: 'write' },
+        { path: '/s/ + **', groups: 'me@x.com, orgfan@x.com', actions: 'read' },
+      ], 's'), 'org');
+      expect(slot.path).to.equal('/s/ + **');
+      expect(slot.read).to.deep.equal(['orgfan@x.com']);
+      expect(slot.inheritedWrite).to.deep.equal(['org@x.com']);
+      expect(slot.hidden).to.deep.equal({ read: 1, write: 1, none: 0 });
     });
   });
 

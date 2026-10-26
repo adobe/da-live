@@ -30,7 +30,6 @@ class DaPermissionsCards extends LitElement {
     org: { type: String },
     scopeName: { type: String },
     canAddFolder: { type: Boolean },
-    query: { type: String },
     editable: { type: Boolean },
     busy: { type: Boolean },
     adding: { attribute: false },
@@ -42,7 +41,6 @@ class DaPermissionsCards extends LitElement {
     this.org = '';
     this.scopeName = '';
     this.canAddFolder = false;
-    this.query = '';
     this.editable = false;
     this.busy = false;
     this.adding = null;
@@ -116,13 +114,14 @@ class DaPermissionsCards extends LitElement {
     const direct = slot[level];
     const inherited = slot[INHERITED_KEY[level]];
     const total = direct.length + inherited.length;
+    // `hidden` is only set while a member filter is active; rows without matches drop out then.
+    const hidden = slot.hidden?.[level];
+    if (total === 0 && (level === 'none' || slot.hidden)) return nothing;
     const isAdding = this.adding?.path === slot.path && this.adding?.level === level;
     const removable = this.editable && !this.busy;
     const levelLabel = LEVEL_LABEL[level];
     const directLabel = `${slot.label} ${levelLabel}`;
     const inheritedLabel = `${directLabel} inherited from ${this.org}`;
-    const needle = this.query.toLowerCase();
-    const isMatch = (who) => !!needle && who.toLowerCase().includes(needle);
 
     return html`
       <div class="level-row" data-level=${level}>
@@ -134,7 +133,7 @@ class DaPermissionsCards extends LitElement {
               size="m"
               class="direct-pills"
               .label=${directLabel}
-              .items=${direct.map((who) => ({ id: who, label: who, removable, highlighted: isMatch(who) }))}
+              .items=${direct.map((who) => ({ id: who, label: who, removable }))}
               @nx-pill-remove=${(e) => this._emit('permissions-remove', { path: slot.path, level, who: e.detail.id })}
             ></nx-pills>
           ` : nothing}
@@ -145,10 +144,11 @@ class DaPermissionsCards extends LitElement {
                 size="m"
                 class="inherited-pills"
                 .label=${inheritedLabel}
-                .items=${inherited.map((who) => ({ id: who, label: who, removable: false, highlighted: isMatch(who) }))}
+                .items=${inherited.map((who) => ({ id: who, label: who, removable: false }))}
               ></nx-pills>
             </div>
           ` : nothing}
+          ${hidden ? html`<span class="row-hidden">+${hidden} hidden by filter</span>` : nothing}
           ${isAdding ? this._renderAddInput(slot.path, level, slot.label) : nothing}
         </div>
         ${level !== 'none' && this.editable ? this._renderAddButton(slot, level, isAdding) : nothing}
@@ -156,7 +156,6 @@ class DaPermissionsCards extends LitElement {
   }
 
   _renderCard(slot) {
-    const hasNone = slot.none.length > 0 || slot.inheritedNone.length > 0;
     return html`
       <article class="scope-card" data-path=${slot.path} aria-label=${slot.label}>
         ${TITLED_KINDS.includes(slot.kind) ? html`
@@ -167,7 +166,7 @@ class DaPermissionsCards extends LitElement {
         <div class="card-body">
           ${this._renderLevelRow(slot, 'read')}
           ${this._renderLevelRow(slot, 'write')}
-          ${hasNone ? this._renderLevelRow(slot, 'none') : nothing}
+          ${this._renderLevelRow(slot, 'none')}
         </div>
       </article>`;
   }

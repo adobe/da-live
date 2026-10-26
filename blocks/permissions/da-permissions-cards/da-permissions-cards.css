@@ -141,7 +141,8 @@ nx-pills {
   line-height: var(--s2-component-m-regular-line-height);
 }
 
-.from-label {
+.from-label,
+.row-hidden {
   color: var(--s2-gray-600);
   font-size: var(--s2-component-m-regular-font-size);
   line-height: var(--s2-component-m-regular-line-height);

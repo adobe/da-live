@@ -4,6 +4,7 @@ const { setNx } = await import('../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 await import('../../../../blocks/permissions/da-permissions-cards/da-permissions-cards.js');
+const { filterSlots } = await import('../../../../blocks/permissions/utils.js');
 
 function baseSlot(overrides = {}) {
   return {
@@ -320,22 +321,34 @@ describe('da-permissions-cards', () => {
     expect(row.querySelector('nx-pills.inherited-pills').label).to.equal('Site configurations Write inherited from myorg');
   });
 
-  it('highlights every member that matches the filter query, case-insensitively', async () => {
-    const slot = baseSlot({
+  it('while filtering, shows only matching members, hides rows without matches, and counts the rest', async () => {
+    const [slot] = filterSlots([baseSlot({
+      path: '/ + **',
+      kind: 'content',
+      label: 'All sites',
+      read: ['reader@adobe.com'],
       write: ['buergi@adobe.com', 'amendola@adobe.com'],
       inheritedWrite: ['BUERGI-team@adobe.com', 'voss@adobe.com'],
       none: ['buergi@guest.com'],
-    });
-    const highlightedIn = (el, selector) => [...el.shadowRoot.querySelectorAll(selector)]
-      .flatMap((p) => p.items).filter((i) => i.highlighted).map((i) => i.id);
+    })], 'Buergi');
+    const el = await mount({ slots: [slot] });
+    const row = (level) => el.shadowRoot.querySelector(`.level-row[data-level="${level}"]`);
+    const ids = (r, selector) => r.querySelector(selector).items.map((i) => i.id);
 
-    let el = await mount({ slots: [slot], query: 'Buergi' });
-    expect(highlightedIn(el, 'nx-pills.direct-pills')).to.deep.equal(['buergi@adobe.com', 'buergi@guest.com']);
-    expect(highlightedIn(el, 'nx-pills.inherited-pills')).to.deep.equal(['BUERGI-team@adobe.com']);
-    el.remove();
+    expect(row('read')).to.equal(null);
+    expect(ids(row('write'), 'nx-pills.direct-pills')).to.deep.equal(['buergi@adobe.com']);
+    expect(ids(row('write'), 'nx-pills.inherited-pills')).to.deep.equal(['BUERGI-team@adobe.com']);
+    expect(row('write').querySelector('.row-hidden').textContent.trim()).to.equal('+2 hidden by filter');
+    expect(ids(row('none'), 'nx-pills.direct-pills')).to.deep.equal(['buergi@guest.com']);
+    expect(row('none').querySelector('.row-hidden')).to.equal(null);
+    expect(allPillItems(el).some((i) => 'highlighted' in i)).to.equal(false);
+  });
 
-    el = await mount({ slots: [slot], query: '' });
-    expect(highlightedIn(el, 'nx-pills')).to.deep.equal([]);
+  it('without a filter, shows empty read/write rows as "No one" and no hidden count', async () => {
+    const el = await mount({ slots: [baseSlot({ write: ['a@x.com'] })] });
+    const read = el.shadowRoot.querySelector('.level-row[data-level="read"]');
+    expect(read.querySelector('.row-empty').textContent.trim()).to.equal('No one');
+    expect(el.shadowRoot.querySelector('.row-hidden')).to.equal(null);
   });
 
   it('renders every pill list at nx-pills size m', async () => {

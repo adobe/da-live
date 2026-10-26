@@ -25,6 +25,8 @@ function levelToActions(level) {
   return '';
 }
 
+const LEVELS = ['read', 'write', 'none'];
+
 export const INHERITED_KEY = { read: 'inheritedRead', write: 'inheritedWrite', none: 'inheritedNone' };
 
 export const LEVEL_LABEL = { read: 'Read', write: 'Write', none: 'None' };
@@ -155,10 +157,6 @@ export function siteNames(siteList, rules) {
   return [...new Set([...siteList, ...fromRules])].sort();
 }
 
-const MEMBER_LIST_KEYS = [
-  'read', 'write', 'none', 'inheritedRead', 'inheritedWrite', 'inheritedNone',
-];
-
 export function parseMembers(input) {
   return [...new Set(splitGroups(input, /[,\n]/))];
 }
@@ -233,14 +231,29 @@ export function removeMember(config, path, level, who) {
   return { config: next, changed: true };
 }
 
-export function filterSlots(slots, query) {
+const MIN_QUERY_LENGTH = 2;
+
+// The normalized filter text, or '' while it's too short to filter on.
+export function activeQuery(query) {
   const q = (query || '').trim().toLowerCase();
+  return q.length >= MIN_QUERY_LENGTH ? q : '';
+}
+
+// Scopes whose label or path match keep all members. Otherwise only matching members stay,
+// and `hidden` counts the rest per level so the UI can say members are filtered out.
+export function filterSlots(slots, query) {
+  const q = activeQuery(query);
   if (!q) return slots;
-  return slots.filter((slot) => {
-    if (slot.label.toLowerCase().includes(q)) return true;
-    if (slot.path.toLowerCase().includes(q)) return true;
-    return MEMBER_LIST_KEYS.some(
-      (key) => (slot[key] || []).some((m) => m.toLowerCase().includes(q)),
-    );
+  return slots.flatMap((slot) => {
+    if (slot.label.toLowerCase().includes(q) || slot.path.toLowerCase().includes(q)) return [slot];
+    const next = { ...slot, hidden: { read: 0, write: 0, none: 0 } };
+    LEVELS.forEach((level) => {
+      [level, INHERITED_KEY[level]].forEach((key) => {
+        next[key] = slot[key].filter((m) => m.toLowerCase().includes(q));
+        next.hidden[level] += slot[key].length - next[key].length;
+      });
+    });
+    const matched = LEVELS.some((level) => next[level].length || next[INHERITED_KEY[level]].length);
+    return matched ? [next] : [];
   });
 }
