@@ -3,106 +3,118 @@ import { expect } from '@esm-bundle/chai';
 const { setNx } = await import('../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { userAdminUrl, handleRoute } = await import('../../../../blocks/permissions/permissions.js');
+const { handleRoute } = await import('../../../../blocks/permissions/permissions.js');
 
-describe('permissions userAdminUrl', () => {
-  it('builds the Helix 6 user-admin URL with encoded org and site', () => {
-    const url = userAdminUrl('my org', 's/1');
-    expect(url).to.equal('https://tools.aem.live/tools/user-admin/index.html?org=my%20org&site=s%2F1');
-  });
-});
+const HLX6_KEY = 'hlx6-upgrade';
+
+// isHlx6 caches per /org/site for the page's lifetime, so every test uses its own site names.
+function stubPing(pingFor) {
+  const pinged = [];
+  window.fetch = async (url) => {
+    const href = String(url);
+    if (href.includes('/ping/')) {
+      const path = href.split('/ping')[1];
+      pinged.push(path);
+      return pingFor(path);
+    }
+    return new Response('', { status: 404 });
+  };
+  return pinged;
+}
+
+const plain = () => new Response('', { status: 200 });
+const upgraded = () => new Response('', { status: 200, headers: { 'x-api-upgrade-available': 'true' } });
 
 describe('permissions handleRoute', () => {
   let el;
+  let savedFetch;
 
   beforeEach(() => {
     el = document.createElement('div');
+    savedFetch = window.fetch;
   });
 
-  it('redirects to the Helix 6 user-admin URL and does not mount the component', async () => {
-    let replacedUrl;
-    const replace = (url) => { replacedUrl = url; };
-    await handleRoute(el, { org: 'o', site: 's' }, { isHlx6: async () => true, replace });
+  afterEach(() => {
+    window.fetch = savedFetch;
+    localStorage.removeItem(HLX6_KEY);
+  });
 
-    expect(replacedUrl).to.equal(userAdminUrl('o', 's'));
+  it('returns the Helix 6 user-admin URL with encoded org and site, and does not mount', async () => {
+    stubPing(upgraded);
+    const redirect = await handleRoute(el, { org: 'my org', site: 'hlx6site' });
+
+    expect(redirect).to.equal('https://tools.aem.live/tools/user-admin/index.html?org=my%20org&site=hlx6site');
     expect(el.querySelector('da-permissions')).to.equal(null);
   });
 
   it('mounts da-permissions with org/site when not Helix 6', async () => {
-    const replace = () => { throw new Error('should not redirect'); };
-    await handleRoute(el, { org: 'o', site: 's' }, { isHlx6: async () => false, replace });
+    stubPing(plain);
+    const redirect = await handleRoute(el, { org: 'o', site: 'plainsite' });
 
+    expect(redirect).to.equal(null);
     const cmp = el.querySelector('da-permissions');
-    expect(cmp).to.not.equal(null);
     expect(cmp.org).to.equal('o');
-    expect(cmp.site).to.equal('s');
+    expect(cmp.site).to.equal('plainsite');
   });
 
-  it('does not call isHlx6 when site is null, and mounts with site null', async () => {
-    let called = false;
-    const isHlx6 = async () => {
-      called = true;
-      return true;
-    };
-    const replace = () => { throw new Error('should not redirect'); };
-    await handleRoute(el, { org: 'o', site: null }, { isHlx6, replace });
+  it('does not probe Helix 6 when site is null, and mounts with site null', async () => {
+    const pinged = stubPing(upgraded);
+    const redirect = await handleRoute(el, { org: 'o', site: null });
 
-    expect(called).to.be.false;
+    expect(redirect).to.equal(null);
+    expect(pinged).to.deep.equal([]);
     const cmp = el.querySelector('da-permissions');
-    expect(cmp).to.not.equal(null);
     expect(cmp.org).to.equal('o');
     expect(cmp.site).to.equal(null);
   });
 
   it('mounts with org null and site null when details is null', async () => {
-    const isHlx6 = async () => { throw new Error('should not be called'); };
-    const replace = () => { throw new Error('should not redirect'); };
-    await handleRoute(el, null, { isHlx6, replace });
+    const pinged = stubPing(upgraded);
+    await handleRoute(el, null);
 
+    expect(pinged).to.deep.equal([]);
     const cmp = el.querySelector('da-permissions');
-    expect(cmp).to.not.equal(null);
     expect(cmp.org).to.equal(null);
     expect(cmp.site).to.equal(null);
   });
 
-  it('ignores a stale route: an earlier isHlx6 resolving after a later route does not redirect or remount with the old site', async () => {
+  it('ignores a stale route: an earlier Helix 6 probe resolving late neither redirects nor remounts', async () => {
     let resolveA;
-    const isHlx6A = () => new Promise((resolve) => { resolveA = resolve; });
-    let replaceCalled = false;
-    const replace = () => { replaceCalled = true; };
+    stubPing((path) => {
+      if (path === '/o/staleA1') return new Promise((resolve) => { resolveA = resolve; });
+      return plain();
+    });
 
-    const promiseA = handleRoute(el, { org: 'o', site: 'A' }, { isHlx6: isHlx6A, replace });
-    await handleRoute(el, { org: 'o', site: 'B' }, { isHlx6: async () => false, replace });
+    const promiseA = handleRoute(el, { org: 'o', site: 'staleA1' });
+    await handleRoute(el, { org: 'o', site: 'freshB1' });
+    expect(el.querySelector('da-permissions').site).to.equal('freshB1');
 
-    expect(el.querySelector('da-permissions').site).to.equal('B');
-
-    resolveA(true);
-    await promiseA;
-
-    expect(replaceCalled).to.equal(false);
-    expect(el.querySelector('da-permissions').site).to.equal('B');
+    resolveA(upgraded());
+    expect(await promiseA).to.equal(null);
+    expect(el.querySelector('da-permissions').site).to.equal('freshB1');
   });
 
-  it('a stale route resolving isHlx6 false also does not remount with the old site', async () => {
+  it('a stale route resolving as not Helix 6 also does not remount with the old site', async () => {
     let resolveA;
-    const isHlx6A = () => new Promise((resolve) => { resolveA = resolve; });
-    const replace = () => { throw new Error('should not redirect'); };
+    stubPing((path) => {
+      if (path === '/o/staleA2') return new Promise((resolve) => { resolveA = resolve; });
+      return plain();
+    });
 
-    const promiseA = handleRoute(el, { org: 'o', site: 'A' }, { isHlx6: isHlx6A, replace });
-    await handleRoute(el, { org: 'o', site: 'B' }, { isHlx6: async () => false, replace });
+    const promiseA = handleRoute(el, { org: 'o', site: 'staleA2' });
+    await handleRoute(el, { org: 'o', site: 'freshB2' });
 
-    resolveA(false);
+    resolveA(plain());
     await promiseA;
-
-    expect(el.querySelector('da-permissions').site).to.equal('B');
+    expect(el.querySelector('da-permissions').site).to.equal('freshB2');
   });
 
   it('reuses the same element across route changes', async () => {
-    const replace = () => { throw new Error('should not redirect'); };
-    await handleRoute(el, { org: 'o', site: null }, { isHlx6: async () => false, replace });
+    stubPing(plain);
+    await handleRoute(el, { org: 'o', site: null });
     const first = el.querySelector('da-permissions');
 
-    await handleRoute(el, { org: 'o2', site: null }, { isHlx6: async () => false, replace });
+    await handleRoute(el, { org: 'o2', site: null });
     const second = el.querySelector('da-permissions');
 
     expect(second).to.equal(first);
