@@ -23,7 +23,8 @@ identifiers, not invented friendly names or public domains.
 
 The menu shows site names with `org/site` below them and marks the current site.
 The trigger includes the organization to distinguish identically named sites.
-Add site emits an action without changing the selection.
+Add site aligns with the menu's left padding, without reserving a checkmark column,
+and emits an action without changing the selection.
 
 Hosts own mounting and navigation. `blocks/shared/site-access.js` owns site access
 checks, supported URL parsing, browser-local additions and the explicit
@@ -51,7 +52,7 @@ permissions do not qualify. If admin lookup fails, creation stays hidden with
 an error and retry; adding an existing accessible site stays available.
 
 The production dependency is generic Nexter picker support for `description`,
-menu CSS parts and the nav's independent `context` slot.
+menu CSS parts (including `action`) and the nav's independent `context` slot.
 Release that support before merging the
 application integration. Production code does not pin Nexter to a preview branch.
 Landing integration remains on its review branch until the landing page is merged.

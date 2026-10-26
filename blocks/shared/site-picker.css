@@ -56,6 +56,10 @@
   overflow-wrap: anywhere;
 }
 
+.da-site-picker::part(action) {
+  display: flex;
+}
+
 .da-site-picker::part(check) {
   grid-area: 1 / 1;
   align-self: start;
