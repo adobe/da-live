@@ -15,7 +15,14 @@
 
 .ew-pm-header h3 {
   margin: 0;
-  font-size: var(--s2-component-m-regular-font-size);
+  font-size: var(--nx-ui-text-content);
+}
+
+.ew-pm-row,
+.ew-pm-add .nx-form-field,
+.ew-pm-control .nx-input,
+.ew-pm-add .nx-input {
+  font-size: var(--nx-ui-text-content);
 }
 
 .ew-pm-fields {

@@ -1,5 +1,6 @@
 import { LitElement, html } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2, getUISize, getBtnSizeClass } from '../../../scripts/utils.js';
+import getSheet from '../../shared/sheet.js';
 import { SUPPORTED_IMAGE_TYPES } from '../../shared/constants.js';
 import { commandsFor, COMMAND_BY_ID } from '../editor-utils/command-defs.js';
 import {
@@ -11,6 +12,7 @@ import {
 import { toolbarController } from '../editor-utils/toolbar-controller.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
@@ -20,6 +22,7 @@ await import('../../shared/da-link-dialog/da-link-dialog.js');
 await import('../../shared/da-alt-dialog/da-alt-dialog.js');
 
 const styles = await loadStyle(import.meta.url);
+const buttonsStyle = await getSheet(`${getNx2()}/styles/buttons.css`);
 
 const MARK_ITEMS = commandsFor('toolbar-marks');
 const STRUCTURE_ITEMS = commandsFor('toolbar-structure');
@@ -43,6 +46,8 @@ function blockTypeLabelForRaw(raw) {
 }
 
 class EwSelectionToolbar extends LitElement {
+  _uiSize = new UISizeController(this);
+
   static properties = {
     view: { attribute: false },
     activeSurface: { attribute: false },
@@ -60,7 +65,7 @@ class EwSelectionToolbar extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [styles];
+    this.shadowRoot.adoptedStyleSheets = [buttonsStyle, styles];
   }
 
   get _picker() { return this.shadowRoot?.querySelector('nx-picker'); }
@@ -306,7 +311,7 @@ class EwSelectionToolbar extends LitElement {
     return html`
       <button
         type="button"
-        class="toolbar-btn"
+        class="toolbar-btn nx-action-btn-icon ${getBtnSizeClass()}"
         aria-label=${label}
         title=${label}
         aria-pressed=${pressed ? 'true' : 'false'}
@@ -327,12 +332,12 @@ class EwSelectionToolbar extends LitElement {
       { id: 'aem-assets', label: 'AEM Assets' },
     ];
     return html`
-      <nx-menu placement="above" .items=${menuItems}
+      <nx-menu placement="above" size=${getUISize()} .items=${menuItems}
         @select=${(e) => {
           if (e.detail.id === 'upload') this._triggerUpload();
           else this._openAemAssets();
         }}>
-        <button slot="trigger" type="button" class="toolbar-btn"
+        <button slot="trigger" type="button" class="toolbar-btn nx-action-btn-icon ${getBtnSizeClass()}"
           aria-label=${imageItem.label} title=${imageItem.label}>
           ${this._icon(imageItem.icon)}
         </button>
@@ -358,9 +363,9 @@ class EwSelectionToolbar extends LitElement {
       .filter(({ id }) => this._isCommandVisible(id))
       .map(({ id, label, icon }) => ({ id, label, icon }));
     return html`
-      <nx-menu placement="above" .items=${items}
+      <nx-menu placement="above" size=${getUISize()} .items=${items}
         @select=${(e) => this._onTableMenuSelect(e)}>
-        <button slot="trigger" type="button" class="toolbar-btn"
+        <button slot="trigger" type="button" class="toolbar-btn nx-action-btn-icon ${getBtnSizeClass()}"
           aria-label="Edit table" title="Edit table">
           ${this._icon('tableedit')}
         </button>
@@ -373,6 +378,7 @@ class EwSelectionToolbar extends LitElement {
       <span class="toolbar-block-type-wrap">
         <nx-picker
           class="toolbar-block-type"
+          size=${getUISize()}
           placement="above"
           ignoreFocus
           .items=${BLOCK_TYPE_PICKER_ITEMS}

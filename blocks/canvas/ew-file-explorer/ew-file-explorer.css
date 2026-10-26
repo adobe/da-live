@@ -45,7 +45,7 @@
   align-items: center;
   min-height: 32px;
   padding-inline: calc(var(--depth, 0) * var(--s2-spacing-300) + var(--s2-spacing-100)) 0;
-  font-size: var(--s2-body-size-s);
+  font-size: var(--nx-ui-text-content);
   font-weight: 500;
   cursor: pointer;
   gap: var(--s2-spacing-75);
@@ -76,23 +76,22 @@
   gap: var(--s2-spacing-75);
 }
 
-.row[aria-expanded]::before {
-  content: '›';
-  display: inline-block;
+.row-caret {
   flex-shrink: 0;
-  width: 1rem;
-  text-align: center;
-  transition: transform 0.15s;
+  width: 10px;
+  height: 10px;
+  color: var(--s2-gray-600);
+  transition: transform 0.1s ease-out;
 }
 
-.row[aria-expanded="true"]::before {
+.row[aria-expanded="true"] .row-caret {
   transform: rotate(90deg);
 }
 
 /* Files have no chevron — indent to align with folder labels */
 .row.file,
 .empty-note {
-  padding-inline-start: calc(var(--depth, 0) * var(--s2-spacing-300) + var(--s2-spacing-100) + 1rem + var(--s2-spacing-75));
+  padding-inline-start: calc(var(--depth, 0) * var(--s2-spacing-300) + var(--s2-spacing-100) + 10px + var(--s2-spacing-75));
 }
 
 .empty-note {
@@ -100,7 +99,7 @@
   align-items: center;
   min-height: 32px;
   box-sizing: border-box;
-  font-size: var(--s2-body-size-s);
+  font-size: var(--nx-ui-text-content);
   font-style: italic;
   color: var(--s2-gray-600);
 }
@@ -123,7 +122,7 @@
   margin-inline-start: var(--s2-spacing-75);
   color: var(--s2-gray-600);
   font-weight: 400;
-  font-size: var(--s2-body-size-xs, 12px);
+  font-size: var(--s2-component-s-regular-font-size);
 }
 
 .copy-url {
@@ -144,7 +143,7 @@
 
 .notice {
   padding: var(--s2-spacing-75) var(--s2-spacing-100);
-  font-size: var(--s2-body-size-s);
+  font-size: var(--nx-ui-text-content);
   color: var(--s2-gray-600);
   margin: 0;
 
@@ -160,13 +159,14 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    font: var(--nx-font-body, 14px/1.4 system-ui, sans-serif);
+    font-family: var(--s2-font-family);
+    font-size: var(--nx-ui-text-content);
   }
 }
 
 .placeholder {
   padding: var(--s2-spacing-300) var(--s2-spacing-100);
-  font-size: var(--s2-body-size-s);
+  font-size: var(--nx-ui-text-content);
   color: var(--s2-gray-600);
   text-align: center;
   margin: 0;
@@ -186,4 +186,25 @@
 .row:hover .action-btn,
 .row:focus-within .action-btn {
   visibility: visible;
+}
+
+:host([data-ui-size="m"]) {
+  .row-caret {
+    width: 12px;
+    height: 12px;
+  }
+
+  .row.file,
+  .empty-note {
+    padding-inline-start: calc(var(--depth, 0) * var(--s2-spacing-300) + var(--s2-spacing-100) + 12px + var(--s2-spacing-75));
+  }
+
+  .icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .path-hint {
+    font-size: var(--s2-component-m-regular-font-size);
+  }
 }

@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2 } from '../../../scripts/utils.js';
+import { getNx, getNx2, getBtnSizeClass } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import {
   fetchBlocks,
@@ -15,6 +15,7 @@ import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 const [buttonsStyle, style] = await Promise.all([
   getSheet(`${getNx2()}/styles/buttons.css`),
   loadStyle(import.meta.url),
@@ -22,6 +23,8 @@ const [buttonsStyle, style] = await Promise.all([
 
 const SEARCH_ICON_SRC = '/img/icons/s2-icon-search-20-n.svg';
 const CLEAR_ICON_SRC = '/img/icons/s2-icon-close-20-n.svg';
+const CHEVRON_ICON_SRC = '/img/icons/s2-icon-chevronright-20-n.svg';
+const INFO_ICON_SRC = '/img/icons/s2-icon-infocircle-20-n.svg';
 
 const iconAdd = () => html`<svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-experienceadd-20-n.svg#icon"></use></svg>`;
 const iconPreview = () => html`<svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-experiencepreview-20-n.svg#icon"></use></svg>`;
@@ -35,6 +38,8 @@ function andMatch(query, target) {
  * First-party library panel: blocks, templates, icons, placeholders (OOTB sheet-driven tools).
  */
 class EwPanelLibrary extends LitElement {
+  _uiSize = new UISizeController(this);
+
   static properties = {
     extension: { attribute: false },
     _items: { state: true },
@@ -223,7 +228,9 @@ class EwPanelLibrary extends LitElement {
               <div class="ext-variant-actions">
                 ${v.description ? html`
                   <button class="nx-action-btn-icon nx-btn-sm" aria-label="Info"
-                    @click=${() => this._toggleTooltip(v.name)}>ℹ</button>` : nothing}
+                    @click=${() => this._toggleTooltip(v.name)}>
+                    <svg aria-hidden="true" viewBox="0 0 20 20"><use href="${INFO_ICON_SRC}#icon"></use></svg>
+                  </button>` : nothing}
                 <button class="nx-action-btn-icon nx-btn-sm" aria-label="Add"
                   @click=${() => this._insertBlock(v)}>${iconAdd()}</button>
               </div>
@@ -249,8 +256,11 @@ class EwPanelLibrary extends LitElement {
           <li class="ext-group">
             <div class="ext-group-header">
               <button class="ext-group-title" @click=${() => this._toggleBlock(block)}>
+                <svg aria-hidden="true" viewBox="0 0 20 20"
+                  class="ext-expand-icon ${this._expandedBlock === block.path ? 'is-expanded' : ''}">
+                  <use href="${CHEVRON_ICON_SRC}#icon"></use>
+                </svg>
                 <span class="ext-item-name">${block.name}</span>
-                <span class="ext-expand-icon">${this._expandedBlock === block.path ? '▾' : '▸'}</span>
               </button>
               <button class="nx-action-btn-icon nx-btn-sm" aria-label="Preview"
                 @click=${() => this._openPreview(block)}>${iconPreview()}</button>
@@ -293,7 +303,7 @@ class EwPanelLibrary extends LitElement {
           aria-label="Search ${label}"
           .value=${this._search || ''}
           @input=${this._onSearchInput}>
-        <button type="button" class="ext-search-clear" aria-label="Clear search" @click=${this._onSearchClear}>
+        <button type="button" class="nx-action-btn-icon nx-btn-sm ext-search-clear" aria-label="Clear search" @click=${this._onSearchClear}>
           <svg viewBox="0 0 20 20" aria-hidden="true"><use href="${CLEAR_ICON_SRC}#icon"></use></svg>
         </button>
       </div>
@@ -349,7 +359,7 @@ class EwPanelLibrary extends LitElement {
       <dialog class="ext-preview-dialog" @close=${() => this._closePreview()}>
         <div class="ext-preview-header">
           <p class="ext-preview-title">${name} preview</p>
-          <button class="nx-action-btn-icon nx-btn-sm" aria-label="Close" @click=${() => this._closePreview()}>✕</button>
+          <button class="nx-action-btn-icon ext-preview-close ${getBtnSizeClass()}" aria-label="Close" @click=${() => this._closePreview()}><svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-close-20-n.svg#icon"></use></svg></button>
         </div>
         <div class="ext-preview-body">
           ${error ? html`<div class="ext-preview-error"><p>${error}</p></div>` : nothing}

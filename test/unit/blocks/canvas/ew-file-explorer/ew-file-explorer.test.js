@@ -388,7 +388,7 @@ describe('EwFileExplorer', () => {
 
       expect(first).to.equal(second);
       expect(first.tagName).to.equal('BUTTON');
-      expect(first.className).to.equal('nx-action-btn-icon nx-btn-sm');
+      expect(first.classList.contains('nx-action-btn-icon')).to.be.true;
     });
 
     it('clicking the returned button invokes _onRefreshClick', () => {

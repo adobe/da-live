@@ -28,12 +28,12 @@ nx-popover {
 .ew-cc-chip {
   display: inline-flex;
   align-items: center;
-  height: 28px;
+  height: 24px;
   padding: 0 var(--s2-spacing-200);
   border-radius: var(--s2-corner-radius-400);
   background: var(--s2-blue-200);
   color: var(--s2-gray-800);
-  font-size: var(--s2-component-s-regular-font-size);
+  font-size: var(--nx-ui-text-content);
 }
 
 .ew-cc-chip.is-neutral {
@@ -254,4 +254,8 @@ nx-popover {
   width: auto;
   flex: 1;
   gap: var(--s2-spacing-300);
+}
+
+:host([data-ui-size="m"]) .ew-cc-chip {
+  height: 32px;
 }

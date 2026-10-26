@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2 } from '../../../scripts/utils.js';
+import { getNx, getNx2, getBtnSizeClass } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
@@ -16,6 +16,7 @@ const fieldId = (field) => `ew-pm-${field.key.trim().toLowerCase().replace(/\s+/
 const isTextField = (field) => field.type === 'json' || !field.values?.length;
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
 await import('./ew-metadata-multiselect.js');
@@ -27,6 +28,8 @@ const [formStyle, buttonsStyle, style] = await Promise.all([
 ]);
 
 class EwPageMetadata extends LitElement {
+  _uiSize = new UISizeController(this);
+
   static properties = {
     _docRows: { state: true },
     _libraryFields: { state: true },
@@ -185,7 +188,7 @@ class EwPageMetadata extends LitElement {
         <div class="ew-pm-control-row">
           <div class="ew-pm-control">${this._renderField(field)}</div>
           ${field.removable && this._canWrite ? html`
-            <button type="button" class="nx-action-btn-icon nx-btn-sm delete-btn" aria-label="Delete ${field.label}"
+            <button type="button" class="nx-action-btn-icon delete-btn ${getBtnSizeClass()}" aria-label="Delete ${field.label}"
                     @click=${() => this._onDeleteClick(field.key)}>
               <svg aria-hidden="true" viewBox="0 0 20 20">
                 <use href="${DELETE_ICON_SRC}#icon"></use>
@@ -237,7 +240,7 @@ class EwPageMetadata extends LitElement {
         <div class="ew-pm-header">
           <h3>Page Metadata</h3>
           ${this._canWrite ? html`
-            <button type="button" class="nx-action-btn-icon nx-btn-sm add-btn" aria-label="Add page metadata field"
+            <button type="button" class="nx-action-btn-icon add-btn ${getBtnSizeClass()}" aria-label="Add page metadata field"
                     @click=${() => this._onAddClick()}>
               <svg aria-hidden="true" viewBox="0 0 20 20">
                 <use href="${ADD_ICON_SRC}#icon"></use>

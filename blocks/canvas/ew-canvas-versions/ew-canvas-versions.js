@@ -1,6 +1,6 @@
 import { LitElement, html, nothing, repeat } from 'da-lit';
 import { DOMParser as PMDOMParser } from 'da-y-wrapper';
-import { getNx, getNx2 } from '../../../scripts/utils.js';
+import { getNx, getNx2, getUISize, getBtnSizeClass } from '../../../scripts/utils.js';
 import { initIms } from '../../shared/utils.js';
 import {
   fetchVersions,
@@ -27,6 +27,7 @@ const ICON_CHEVRON = '/img/icons/s2-icon-chevrondown-20-n.svg';
 const ICON_CLOSE = '/img/icons/s2-icon-close-20-n.svg';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 const style = await loadStyle(import.meta.url);
@@ -51,6 +52,8 @@ async function showError(text) {
 }
 
 class EwCanvasVersions extends LitElement {
+  _uiSize = new UISizeController(this);
+
   static properties = {
     path: { type: String },
     _filter: { state: true },
@@ -145,6 +148,7 @@ class EwCanvasVersions extends LitElement {
 
   _syncHeaderRefreshButton() {
     if (!this._headerRefreshBtn) return;
+    this._headerRefreshBtn.className = `nx-action-btn-icon ${getBtnSizeClass()}`;
     this._headerRefreshBtn.setAttribute('aria-disabled', this._refreshing || !this.path ? 'true' : 'false');
     this._headerRefreshBtn.setAttribute('aria-label', this._refreshing ? 'Refreshing version history' : 'Refresh version history');
     this._headerRefreshBtn.innerHTML = this._refreshing
@@ -155,7 +159,6 @@ class EwCanvasVersions extends LitElement {
     if (!this._headerRefreshBtn) {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'nx-action-btn-icon nx-btn-sm';
       btn.title = 'Refresh version history';
       btn.addEventListener('click', () => {
         if (!this._refreshing && this.path) this._refreshVersions();
@@ -333,12 +336,12 @@ class EwCanvasVersions extends LitElement {
             class="nx-input" .value=${`Version ${this._newVersion.date}`}
             ?readonly=${this._savingVersion} />
           <div class="ew-cv-new-actions">
-            <button type="submit" class="ew-cv-save-btn nx-action-btn nx-btn-sm"
+            <button type="submit" class="ew-cv-save-btn nx-action-btn ${getBtnSizeClass()}"
               ?disabled=${this._savingVersion}
               aria-label=${this._savingVersion ? 'Saving' : nothing}>
               ${this._savingVersion ? html`<span class="nx-loading-spinner" aria-hidden="true"></span>` : 'Save'}
             </button>
-            <button type="button" class="nx-action-btn-icon nx-btn-sm" aria-label="Cancel"
+            <button type="button" class="nx-action-btn-icon ${getBtnSizeClass()}" aria-label="Cancel"
               ?disabled=${this._savingVersion}
               @click=${this.handleCancel}>
               <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
@@ -397,14 +400,14 @@ class EwCanvasVersions extends LitElement {
             <span class="meta">${entry.date}, ${entry.time}</span>
             ${users ? html`<span class="user">${users}</span>` : nothing}
           </div>
-          <nx-menu .items=${menuItems} placement="auto"
+          <nx-menu size=${getUISize()} .items=${menuItems} placement="auto"
             @click=${(e) => e.stopPropagation()}
             @keydown=${(e) => e.stopPropagation()}
             @select=${(e) => {
         if (e.detail.id === 'restore') this.handleRestoreClick(entry);
         else this.handleCompare(e, entry);
       }}>
-            <button slot="trigger" type="button" class="version-more-btn" aria-label="More actions">
+            <button slot="trigger" type="button" class="nx-action-btn-icon version-more-btn ${getBtnSizeClass()}" aria-label="More actions">
               <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
                 <use href="${ICON_MORE}#icon"></use>
               </svg>
@@ -482,7 +485,7 @@ class EwCanvasVersions extends LitElement {
               @click=${() => this._setFilter('me')}>Only me</button>
           </div>
           ${this._canWrite ? html`
-            <button type="button" class="nx-action-btn-icon nx-btn-sm" aria-label="Create version"
+            <button type="button" class="nx-action-btn-icon ${getBtnSizeClass()}" aria-label="Create version"
               ?disabled=${!!this._newVersion} @click=${this.handleNew}>
               <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
                 <use href="${ICON_ADD}#icon"></use>

@@ -24,6 +24,7 @@ import {
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 const sheet = await getSheet('/blocks/canvas/comments/comments-panel.css');
 const buttons = await getSheet(`${getNx2()}/styles/buttons.css`);
 const form = await getSheet(`${getNx2()}/styles/form.css`);
@@ -44,6 +45,8 @@ function formatToastMessage(text, description) {
 }
 
 export class CommentsPanel extends LitElement {
+  _uiSize = new UISizeController(this);
+
   static properties = {
     controller: { attribute: false },
     currentUser: { state: true },

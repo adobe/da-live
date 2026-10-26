@@ -11,7 +11,7 @@
 .ext-state {
   padding: 16px;
   color: var(--s2-gray-700);
-  font-size: 14px;
+  font-size: var(--nx-ui-text-content);
 }
 
 .ext-list {
@@ -40,7 +40,7 @@
   border: none;
   cursor: pointer;
   text-align: left;
-  font-size: 14px;
+  font-size: var(--nx-ui-text-content);
   color: inherit;
   gap: 8px;
 }
@@ -50,9 +50,15 @@
 }
 
 .ext-expand-icon {
-  font-size: 12px;
+  width: 12px;
+  height: 12px;
   color: var(--s2-gray-600);
   flex-shrink: 0;
+  transition: transform 0.1s ease-out;
+
+  &.is-expanded {
+    transform: rotate(90deg);
+  }
 }
 
 .ext-variant-list {
@@ -64,12 +70,12 @@
 
 .ext-variants-loading {
   padding: 8px 24px;
-  font-size: 13px;
+  font-size: var(--s2-component-s-regular-font-size);
   color: var(--s2-gray-600);
 }
 
 .ext-variant-item {
-  padding: 8px 0 8px 24px;
+  padding: 8px 0 8px 32px;
   border-bottom: 1px solid var(--s2-gray-100);
 }
 
@@ -96,12 +102,12 @@
 }
 
 .ext-variant-name {
-  font-size: 13px;
+  font-size: var(--s2-component-s-regular-font-size);
   font-weight: 500;
 }
 
 .ext-variant-subtitle {
-  font-size: 11px;
+  font-size: var(--s2-component-xs-regular-font-size);
   color: var(--s2-gray-500);
   margin-top: 2px;
 }
@@ -115,7 +121,7 @@
 
 .ext-description {
   padding: 6px 16px 6px 0;
-  font-size: 12px;
+  font-size: var(--s2-component-s-regular-font-size);
   line-height: 1.4;
   color: var(--s2-gray-600);
 }
@@ -141,7 +147,7 @@
   border: none;
   cursor: pointer;
   text-align: left;
-  font-size: 14px;
+  font-size: var(--nx-ui-text-content);
   color: inherit;
   gap: 8px;
 }
@@ -202,7 +208,7 @@
   outline: none;
   background: none;
   font-family: inherit;
-  font-size: var(--s2-body-size-xs);
+  font-size: var(--s2-component-s-regular-font-size);
   color: var(--s2-gray-900);
   padding: 0;
 }
@@ -218,17 +224,7 @@
 .ext-search-clear {
   display: none;
   flex-shrink: 0;
-  border: none;
-  background: none;
-  padding: 0;
-  cursor: pointer;
   color: var(--s2-gray-600);
-}
-
-.ext-search-clear svg {
-  width: 16px;
-  height: 16px;
-  display: block;
 }
 
 .ext-search-clear:focus-visible {
@@ -237,13 +233,13 @@
 }
 
 .ext-search-input:not(:placeholder-shown) + .ext-search-clear {
-  display: block;
+  display: flex;
 }
 
 .ext-item-value {
   flex-shrink: 0;
   margin-left: 8px;
-  font-size: 12px;
+  font-size: var(--s2-component-s-regular-font-size);
   color: var(--s2-gray-600);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -282,7 +278,7 @@
 
 .ext-preview-title {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--nx-ui-text-content);
   font-weight: 600;
 }
 
@@ -311,6 +307,36 @@
   justify-content: center;
   padding: 24px;
   background: var(--s2-gray-50);
-  font-size: 14px;
+  font-size: var(--nx-ui-text-content);
   color: var(--s2-gray-700);
+}
+
+:host([data-ui-size="m"]) .ext-search-icon {
+  width: 18px;
+  height: 18px;
+}
+
+:host([data-ui-size="m"]) .ext-expand-icon {
+  width: 14px;
+  height: 14px;
+}
+
+:host([data-ui-size="m"]) .ext-variant-item {
+  padding-left: 34px;
+}
+
+:host([data-ui-size="m"]) {
+  :is(
+    .ext-variants-loading,
+    .ext-variant-name,
+    .ext-description,
+    .ext-search-input,
+    .ext-item-value
+  ) {
+    font-size: var(--s2-component-m-regular-font-size);
+  }
+
+  .ext-variant-subtitle {
+    font-size: var(--s2-component-s-regular-font-size);
+  }
 }

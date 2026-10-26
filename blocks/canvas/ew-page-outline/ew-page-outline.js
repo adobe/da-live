@@ -31,9 +31,11 @@ import {
 const DELETE_ICON_SRC = '/img/icons/s2-icon-delete-20-n.svg';
 const DRAG_ICON_SRC = '/img/icons/s2-icon-draghandle-20-n.svg';
 const MORE_ICON_SRC = '/img/icons/s2-icon-more-20-n.svg';
+const CHEVRON_ICON_SRC = '/img/icons/s2-icon-chevronright-10-n.svg';
 const FOCUS_TARGETS = '[role="row"]';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
 const { treegridEnsureTabStop, treegridFocusIn, treegridKeydown } = await import(`${getNx2()}/blocks/shared/utils/treegrid-nav.js`);
@@ -82,6 +84,8 @@ function sectionsEqual(a, b) {
 }
 
 class EwPageOutline extends LitElement {
+  _uiSize = new UISizeController(this);
+
   static properties = {
     _sections: { state: true },
     _selectedBlockIndex: { state: true },
@@ -840,8 +844,10 @@ class EwPageOutline extends LitElement {
       </button>`;
   }
 
-  _renderChevron(level) {
-    return html`<span class="chevron" style="--level: ${level}" aria-hidden="true"></span>`;
+  _renderChevron(level, expandable = false) {
+    return html`<span class="chevron" style="--level: ${level}" aria-hidden="true">
+      ${expandable ? html`<svg viewBox="0 0 10 10"><use href="${CHEVRON_ICON_SRC}#icon"></use></svg>` : nothing}
+    </span>`;
   }
 
   _renderSectionMenu(sec) {
@@ -908,7 +914,7 @@ class EwPageOutline extends LitElement {
              @click=${() => this._toggleContentGroup(key)}>
           <div class="row-cell" role="gridcell">
             <span class="drag-handle" aria-hidden="true"></span>
-            ${this._renderChevron(0)}
+            ${this._renderChevron(0, true)}
             <span class="block-name content-label">Default content</span>
           </div>
         </div>

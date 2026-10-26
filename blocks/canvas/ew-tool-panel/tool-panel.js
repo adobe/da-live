@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2 } from '../../../scripts/utils.js';
+import { getNx, getNx2, getUISize, getLgBtnClass } from '../../../scripts/utils.js';
 import { getCommentsBridge } from '../editor-utils/comments-bridge.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import {
@@ -8,6 +8,7 @@ import {
 } from '../utils/panel.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
@@ -23,6 +24,8 @@ const CLOSE_ICON_SRC = '/img/icons/s2-icon-splitright-20-n.svg';
 const OPEN_IN_ICON_URL = '/img/icons/s2-icon-openin-20-n.svg';
 
 class EwToolPanel extends LitElement {
+  _uiSize = new UISizeController(this);
+
   static properties = {
     views: { attribute: false },
     activeId: { type: String },
@@ -85,6 +88,7 @@ class EwToolPanel extends LitElement {
     let lastSection;
     for (const v of this.views) {
       if (v.section && v.section !== lastSection) {
+        if (lastSection) items.push({ divider: true });
         items.push({ section: v.section });
         lastSection = v.section;
       }
@@ -272,14 +276,15 @@ class EwToolPanel extends LitElement {
     return html`
       <div class="tool-panel-header">
         <nx-picker
+          size=${getUISize()}
           .items=${items}
           .value=${this.activeId}
           placement="below-start"
           @change=${(e) => this.showPanel(e.detail.value)}
         ></nx-picker>
         <div class="tool-panel-header-actions"></div>
-        <button type="button" class="tool-panel-close" aria-label="Close panel" @click=${this._close}>
-          <svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${CLOSE_ICON_SRC}#icon"></use></svg>
+        <button type="button" class="nx-action-btn-icon tool-panel-close ${getLgBtnClass()}" aria-label="Close panel" @click=${this._close}>
+          <svg aria-hidden="true" viewBox="0 0 20 20"><use href="${CLOSE_ICON_SRC}#icon"></use></svg>
         </button>
       </div>
       <div class="tool-panel-content"></div>
@@ -293,8 +298,8 @@ class EwToolPanel extends LitElement {
               ${this._renderDialogIcon(dialogIcon)}
               <p>${dialogTitle}</p>
             </div>
-            <button type="button" class="tool-panel-fullsize-dialog-close" aria-label="Close"
-              @click=${(e) => e.target.closest('dialog').close()}>✕</button>
+            <button type="button" class="nx-action-btn-icon tool-panel-fullsize-dialog-close" aria-label="Close"
+              @click=${(e) => e.target.closest('dialog').close()}><svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-close-20-n.svg#icon"></use></svg></button>
           </div>
           <div class="tool-panel-fullsize-dialog-body"></div>
         </dialog>
