@@ -83,8 +83,9 @@ describe('da-browse-header', () => {
     expect(header.shadowRoot.activeElement).to.equal(button);
   });
 
-  it('replaces the creation slot with a stable search status and restores it afterwards', async () => {
+  it('keeps creation actions mounted alongside a stable search status', async () => {
     const creation = document.createElement('button');
+    creation.slot = 'actions';
     creation.textContent = 'New';
     header.append(creation);
     const summary = header.shadowRoot.querySelector('[role="status"]');

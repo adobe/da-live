@@ -10,8 +10,6 @@ import '../da-list/da-list.js';
 import '../da-browse-header/da-browse-header.js';
 import { toggleToolsPanel, closeToolsPanel, registerToolsPanel, watchToolsPanel } from '../search/panel.js';
 
-await import(`${getNx()}/blocks/shared/breadcrumb/breadcrumb.js`);
-
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT, wasPanelOpen, registerPanelSection } = await import(`${getNx()}/utils/panel.js`);
@@ -639,7 +637,6 @@ export default class DaBrowse extends LitElement {
         @viewchange=${({ detail }) => this.setView(detail.view)}
         @appearancesizechange=${({ detail }) => this.setAppearanceSize(detail.view, detail.size)}
         @groupbytypechange=${({ detail }) => this.setGroupByType(detail.group)}>
-        <nx-breadcrumb .pathSegments=${this.details.fullpath.split('/').filter(Boolean)}></nx-breadcrumb>
         <da-new slot="actions" variant="accent" .permissions=${this._permissions}
           @newitem=${this.handleNewItem}
           fullpath="${this.details.fullpath}" editor="${this.editor}"></da-new>

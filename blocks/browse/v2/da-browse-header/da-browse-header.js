@@ -245,7 +245,6 @@ export default class DaBrowseHeader extends LitElement {
           <button type="button" part="chat-btn" class="chat-btn nx-action-btn-icon" aria-label="Open chat panel" @click=${this.requestChat}>
             <svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-splitleft-20-n.svg#icon"></use></svg>
           </button>` : nothing}
-        ${this.searchState ? nothing : html`<slot></slot>`}
         <p class="browse-search-summary" aria-hidden="true" ?data-loading=${this.searchState?.loading}>${this.searchState && !this.searchState.error ? html`
           <span class="browse-search-progress">Searching...${this.searchState.count
           ? html` &#183; ${this.searchState.count} found` : nothing}</span>
