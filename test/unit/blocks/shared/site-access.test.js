@@ -51,6 +51,29 @@ describe('shared site access', () => {
     expect(result.error).to.equal('Offline');
   });
 
+  it('retains only the current denied site as context without clearing its denial', async () => {
+    const sites = ['current', 'denied', 'allowed'].map((site) => ({ value: `org/${site}` }));
+    const source = {
+      list: async (path) => ({ ok: path.endsWith('allowed') }),
+      getMetadata: async () => new Response(null, { status: 403 }),
+    };
+    const { signal } = new AbortController();
+    const result = await checkSiteChoices({ sites, current: 'org/current', source, signal });
+    expect(result.sites.map(({ value }) => value)).to.deep.equal(['org/current', 'org/allowed']);
+    expect([...result.inaccessibleSites]).to.deep.equal(['org/current', 'org/denied']);
+    const next = await checkSiteChoices({ sites, current: 'org/allowed', source, signal, inaccessibleSites: result.inaccessibleSites });
+    expect(next.sites.map(({ value }) => value)).to.deep.equal(['org/allowed']);
+    expect(next.inaccessibleSites.has('org/current')).to.equal(true);
+    const save = sinon.stub(Storage.prototype, 'setItem');
+    try {
+      await addExistingSite({ value: 'org/current', source, signal });
+      expect.fail('Expected access denial');
+    } catch (error) {
+      expect(error.message).to.include('You do not have access');
+    }
+    expect(save.called).to.equal(false);
+  });
+
   it('rejects cancelled checks instead of publishing stale choices', async () => {
     const request = new AbortController();
     const source = {
