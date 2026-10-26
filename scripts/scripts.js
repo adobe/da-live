@@ -48,10 +48,23 @@ link.setAttribute('rel', 'stylesheet');
 link.setAttribute('href', `${nx}${nxCSS}`);
 document.head.appendChild(link);
 
+const EW_ORIGINS = {
+  dev: 'http://localhost:3001',
+  stage: 'https://main--ew-extensions--adobe-rnd.aem.page',
+  prod: 'https://main--ew-extensions--adobe-rnd.aem.live',
+};
+
+const ewEnv = (() => {
+  const { host } = window.location;
+  if (host.includes('local')) return 'dev';
+  if (host.includes('.aem.')) return 'stage';
+  return 'prod';
+})();
+
 const CONFIG = {
   hostnames: ['da.live', 'da.page'],
   codeBase: import.meta.url.replace('/scripts/scripts.js', ''),
-  providers: { da: window.location.origin },
+  providers: { da: window.location.origin, ew: EW_ORIGINS[ewEnv] },
   decorateArea,
   imsClientId: 'darkalley',
   imsScope: 'ab.manage,AdobeID,gnav,openid,org.read,read_organizations,session,aem.frontend.all,additional_info.ownerOrg,additional_info.projectedProductContext,account_cluster.read',
