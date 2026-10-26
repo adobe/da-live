@@ -32,16 +32,16 @@ async function readOrgConfig(org) {
 export async function loadOrgConfig(org) {
   const { ok, data, status, error } = await readOrgConfig(org);
   if (status === 401 || status === 403 || status === 404) {
-    return { status: 'no-access', config: null, rules: [] };
+    return { status: 'no-access', rules: [] };
   }
   if (!ok || error || !data) {
-    return { status: 'error', config: null, rules: [], httpStatus: status };
+    return { status: 'error', rules: [], httpStatus: status };
   }
 
   if (!hasPermissionsSheet(data)) {
-    return { status: 'no-sheet', config: data, rules: [] };
+    return { status: 'no-sheet', rules: [] };
   }
-  return { status: 'ok', config: data, rules: data.permissions.data };
+  return { status: 'ok', rules: data.permissions.data };
 }
 
 // Last write wins: da-admin's /config ignores If-Match, so re-read right before saving
@@ -121,21 +121,19 @@ class DaPermissions extends LitElement {
   }
 
   willUpdate(changed) {
-    if (changed.has('org') && this.org !== changed.get('org')) {
+    const orgChanged = changed.has('org') && this.org !== changed.get('org');
+    const siteChanged = changed.has('site') && this.site !== changed.get('site');
+    if (!orgChanged && !siteChanged) return;
+
+    this._query = '';
+    this._pendingFolder = null;
+    this._folderDialogOpen = false;
+    this._adding = null;
+    this._confirmRemove = null;
+    if (orgChanged) {
       this._readOnly = false;
       this._busy = false;
-      this._adding = null;
-      this._confirmRemove = null;
-      this._query = '';
-      this._pendingFolder = null;
-      this._folderDialogOpen = false;
       this._load();
-    } else if (changed.has('site') && this.site !== changed.get('site')) {
-      this._query = '';
-      this._pendingFolder = null;
-      this._folderDialogOpen = false;
-      this._adding = null;
-      this._confirmRemove = null;
     }
   }
 
@@ -273,15 +271,10 @@ class DaPermissions extends LitElement {
       return;
     }
     this._folderError = null;
-    this._onFolderSelect({ detail: { folder: result.folder } });
-  }
-
-  _onFolderSelect({ detail }) {
     this._folderDialogOpen = false;
-    this._pendingFolder = detail.folder;
+    this._pendingFolder = result.folder;
     this._query = '';
-    const path = folderRulePath(this.site, detail.folder);
-    this._adding = { path, level: 'read' };
+    this._adding = { path: folderRulePath(this.site, result.folder), level: 'read' };
   }
 
   _onFolderCancel() {
@@ -373,16 +366,9 @@ class DaPermissions extends LitElement {
     }
     const filtered = this._filteredSlots;
     const trimmedQuery = this._query.trim();
-    if (trimmedQuery && filtered.length === 0) {
-      return html`
-        ${this._readOnly ? html`<p class="permissions-message">You have read-only access to this configuration.</p>` : nothing}
-        <p class="permissions-message">No scopes match "${trimmedQuery}"</p>
-        ${this._renderRemoveDialog()}
-        ${this._renderFolderDialog()}`;
-    }
-    return html`
-      ${this._readOnly ? html`<p class="permissions-message">You have read-only access to this configuration.</p>` : nothing}
-      <da-permissions-cards
+    const content = trimmedQuery && filtered.length === 0
+      ? html`<p class="permissions-message">No scopes match "${trimmedQuery}"</p>`
+      : html`<da-permissions-cards
         .slots=${filtered}
         .org=${this.org}
         .scopeName=${this.site ?? this.org}
@@ -396,7 +382,10 @@ class DaPermissions extends LitElement {
         @permissions-add-cancel=${() => this._onAddCancel()}
         @permissions-add=${(e) => this._onAdd(e)}
         @permissions-remove=${(e) => this._onRemoveRequest(e)}
-      ></da-permissions-cards>
+      ></da-permissions-cards>`;
+    return html`
+      ${this._readOnly ? html`<p class="permissions-message">You have read-only access to this configuration.</p>` : nothing}
+      ${content}
       ${this._renderRemoveDialog()}
       ${this._renderFolderDialog()}`;
   }

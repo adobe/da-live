@@ -802,7 +802,6 @@ describe('da-permissions loadOrgConfig', () => {
     window.fetch = async () => new Response('', { status: 403 });
     const result = await loadOrgConfig('myorg');
     expect(result.status).to.equal('no-access');
-    expect(result.config).to.equal(null);
     expect(result.rules).to.deep.equal([]);
   });
 
@@ -847,7 +846,7 @@ describe('da-permissions loadOrgConfig', () => {
   it('network failure (rejected fetch) -> status error, no throw, httpStatus 0', async () => {
     window.fetch = () => Promise.reject(new TypeError('Failed to fetch'));
     const result = await loadOrgConfig('myorg');
-    expect(result).to.deep.equal({ status: 'error', config: null, rules: [], httpStatus: 0 });
+    expect(result).to.deep.equal({ status: 'error', rules: [], httpStatus: 0 });
   });
 });
 
