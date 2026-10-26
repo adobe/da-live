@@ -14,9 +14,8 @@
 
    `.form` is the block div, not the `<nx-form>` element inside it. That
    element styles itself through editor.css in its shadow root. da-nx names
-   the block div `nx-form`, and routeStructuredContentBlock in
-   scripts/scripts.js renames it to `form` so da-live's copy loads. Hence
-   `.form` here instead of da-nx's `.nx-form`. */
+   the block div `nx-form`. Pages that declare a `form` block load this
+   copy instead. Hence `.form` here instead of da-nx's `.nx-form`. */
 .form {
   box-sizing: border-box;
   height: calc(100vh - var(--s2-nav-height));

@@ -103,10 +103,8 @@ async function setupChat(block) {
  * hash, so they stay in sync.
  *
  * This block was migrated from da-nx's `nx/blocks/form`. The `/form` page
- * content still declares it as `nx-form`, which the nx2 loader would load
- * from da-nx. Until the content says `form`, `routeStructuredContentBlock` in
- * `scripts/scripts.js` renames the class before blocks load, so this file
- * loads instead.
+ * content still declares it as `nx-form`, which the nx2 loader loads from
+ * da-nx. Pages that declare a `form` block load this copy instead.
  *
  * @param {HTMLElement} block - The block element to decorate.
  */

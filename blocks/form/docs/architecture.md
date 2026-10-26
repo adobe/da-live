@@ -9,7 +9,9 @@ The block runs inside the Experience Workspace (EW) and has two entry files.
 
 The code was moved from da-nx's `nx/blocks/form` to da-live's `blocks/form`.
 
-The `/form` page content declares the block as `nx-form`. The nx2 loader loads `nx-` blocks listed in `NX_BLOCKS` ([`nx2/scripts/nx.js`](https://github.com/adobe/da-nx/blob/main/nx2/scripts/nx.js)) from da-nx. `routeStructuredContentBlock` in `scripts/scripts.js`, called from `decorateArea`, renames the class to `form` before any block loads, so the loader resolves it to `blocks/form/form.js` in da-live's codeBase. The rename is temporary. Its JSDoc lists the removal steps.
+The `/form` page content declares the block as `nx-form`. The nx2 loader loads `nx-` blocks listed in `NX_BLOCKS` ([`nx2/scripts/nx.js`](https://github.com/adobe/da-nx/blob/main/nx2/scripts/nx.js)) from da-nx. Pages that declare a `form` block load `blocks/form/form.js` from da-live's codeBase instead.
+
+> The steps to switch `/form` over to this copy are in the migration plan of the `routeStructuredContentBlock` JSDoc in `scripts/scripts.js`.
 
 The block imports nx2 exports such as `loadStyle`, `hashChange`, `openPanel`, `getEWFlags` and the `source` api at runtime through `` await import(`${getNx2()}/...`) ``, with `getNx2()` from `scripts/utils.js`. Pages with `<meta name="nxver" content="2">` load nx2 from the same base URL, so these imports return the module instances the page already loaded. This includes the stateful `nx2/scripts/nx.js`.
 

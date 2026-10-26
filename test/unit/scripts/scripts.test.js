@@ -98,7 +98,9 @@ describe('decorateArea', () => {
     expect(light.fetchPriority).to.equal('high');
   });
 
-  it('routes the nx-form block to da-live\'s form block', () => {
+  // TODO: This test needs the routeStructuredContentBlock call in decorateArea,
+  // which stays commented out. Unskip it whenever that call is uncommented.
+  it.skip('routes the nx-form block to da-live\'s form block', () => {
     container.innerHTML = '<div class="nx-form"></div>';
     decorateArea({ area: container });
 
