@@ -13,7 +13,7 @@ The `/form` page content declares the block as `nx-form`. The nx2 loader loads `
 
 The block imports nx2 exports such as `loadStyle`, `hashChange`, `openPanel`, `getEWFlags` and the `source` api at runtime through `` await import(`${getNx2()}/...`) ``, with `getNx2()` from `scripts/utils.js`. Pages with `<meta name="nxver" content="2">` load nx2 from the same base URL, so these imports return the module instances the page already loaded. This includes the stateful `nx2/scripts/nx.js`.
 
-For engine internals — schema compilation, model build, validation, defaults policy, persistence semantics — see the SDK's [architecture.md](https://github.com/adobe-rnd/da-sc-sdk/blob/main/docs/architecture.md). This document only covers the nexter shell and what it adds on top.
+For engine internals such as schema compilation, model build, validation, defaults policy and persistence semantics, see the SDK's [architecture.md](https://github.com/adobe-rnd/da-sc-sdk/blob/main/docs/architecture.md). This document only covers the da-live form block and what it adds on top.
 
 ---
 
@@ -41,7 +41,7 @@ blocks/form/
   docs/                 (this directory)
 ```
 
-The SDK is consumed via the bundled artifact at [`deps/da-sc-sdk/dist/index.js`](../../../deps/da-sc-sdk/dist/index.js), built from the published [`@adobe/da-sc-sdk`](https://www.npmjs.com/package/@adobe/da-sc-sdk) npm package (see [`deps/da-sc-sdk/src/index.js`](../../../deps/da-sc-sdk/src/index.js) for the re-export shim). It lives in the shared `deps/` shelf alongside `lit`, `da-y-wrapper`, `da-parser`, etc. To rev the version, bump the dep in `package.json`, `npm install`, then `npm run build:da-sc-sdk` from the repo root. To rev the version, bump the dep in `package.json`, `npm install`, then `npm run build:da-sc-sdk` from the repo root.
+The block uses the bundled SDK at [`deps/da-sc-sdk/dist/index.js`](../../../deps/da-sc-sdk/dist/index.js). It is built from the published [`@adobe/da-sc-sdk`](https://www.npmjs.com/package/@adobe/da-sc-sdk) npm package, which [`deps/da-sc-sdk/src/index.js`](../../../deps/da-sc-sdk/src/index.js) re-exports. To update the SDK, bump its version in `package.json`, run `npm install`, then run `npm run build:da-sc-sdk` from the repo root.
 
 ---
 
@@ -57,7 +57,7 @@ utils/persistence.js → da-sc-sdk        (convertJsonToHtml)
 views/           →  (SDK engine only via prop binding from the element — no direct imports)
 ```
 
-The SDK is the only piece that holds canonical state. Everything in `utils/` and `views/` is nexter-specific: DA I/O, UI components, schema discovery, single-flight save.
+The SDK is the only piece that holds canonical state. Everything in `utils/` and `views/` is specific to the form block. That covers DA I/O, UI components, schema discovery and single-flight save.
 
 ---
 
@@ -131,7 +131,7 @@ Note: a navigation away within the debounce window currently drops the last keys
 - `no-schemas` — empty document, project has no schemas, link to the schema editor.
 - `blocked` — not a document / wrong shape / no access / load failed / missing schema.
 
-Schema discovery (`utils/schemas.js`) and DA storage (`utils/da-api.js`) live in nexter — the SDK only operates on a schema object.
+Schema discovery (`utils/schemas.js`) and DA storage (`utils/da-api.js`) live in the form block. The SDK only operates on a schema object.
 
 ---
 

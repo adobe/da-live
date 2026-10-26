@@ -25,10 +25,8 @@ decorate(block)                                  ← form.js (EW workspace wrapp
             ├─ loadFormContext({ details })      ← network
             │    ├─ loadSchemas({ owner, repo })     ← DA list + N source GETs
             │    └─ fetchSourceHtml({ sourceUrl })    ← single GET
-            ├─ if status !== 'blocked':
-            │    └─ await import(`${getNx2()}/public/sl/components.js`)  ← SL components
             ├─ Route by status:
-            │    ├─ 'blocked'        → inline message (no modal, no extra import)
+            │    ├─ 'blocked'        → inline message
             │    ├─ 'select-schema'  → schema picker
             │    ├─ 'no-schemas'     → "Create a schema" CTA
             │    └─ 'ready'          → _start({ schema, json })
@@ -56,7 +54,7 @@ decorate(block)                                  ← form.js (EW workspace wrapp
 | HTML has unknown `schemaName`     | `blocked: missing-schema`   | "Schema not found"     |
 | Otherwise                         | `ready`                     | Editor                 |
 
-**What's lazy.** `sl/components` is dynamic-imported inside `_loadContext` for every non-`blocked` status (editor and both empty-document screens render SL form fields). `array-menu` and `reorder` are dynamic-imported from the editor's `firstUpdated`. Nothing gates first paint — the transient `loading` status renders nothing at all.
+**What's lazy.** `views/editor.js` dynamically imports `array-menu`, `reorder` and the nx2 dialog in `firstUpdated`, which Lit calls after the first render. While the status is `loading`, the editor renders nothing.
 
 ---
 

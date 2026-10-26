@@ -7,27 +7,9 @@ import {
 } from '../../../../deps/da-sc-sdk/dist/index.js';
 import { attachPersistence } from '../../../../blocks/form/utils/persistence.js';
 
-// Integration tests for the form block ↔ da-sc-sdk contract, exercising
-// the REAL bundled SDK at `nx/deps/da-sc-sdk/dist/index.js`.
-//
-// Goal: detect SDK breaking changes before they reach production. Every
-// SDK surface the form block depends on is exercised here:
-//
-//   imports          createEngine, convertJsonToHtml, convertHtmlToJson
-//   engine methods   getState, setField, addItem, insertItem, removeItem, moveItem
-//   state shape      document, model.root (kind / pointer / label / value /
-//                    required / children / items / enumValues / semanticType /
-//                    minItems / maxItems), validation.errors[p].message, schemaIssues
-//                    (reason / message / schemaPath / pointer / details)
-//   semantics        onChange fires once per real mutation; not at construction;
-//                    not on no-ops; defaults materialize into empty data
-//   error shapes     convertJsonToHtml / convertHtmlToJson return { error }
-//                    on bad input (persistence.js depends on this branch)
-//   end-to-end       attachPersistence saves after a real engine mutation
-//
-// These tests intentionally avoid stubbing the SDK. The stub-based tests in
-// utils/persistence.test.js cover persistence's behavioral edge cases under
-// deterministic timing; this file covers the SDK ↔ form-block boundary.
+// These tests create a real engine with the bundled SDK in
+// deps/da-sc-sdk/dist/index.js. The persistence tests in
+// utils/persistence.test.js use a stub editor and a stub save instead.
 
 const demoSchema = {
   type: 'object',
