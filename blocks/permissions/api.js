@@ -4,6 +4,21 @@ import { hasPermissionsSheet } from './utils.js';
 /** @typedef {import('./utils.js').Rule} Rule */
 
 /**
+ * Fetch the org config, bypassing caches. Never throws: a network failure is
+ * reported as `status: 0` with the error message.
+ * @param {string} org
+ * @returns {Promise<{ ok: boolean, data: object|null, status: number, error: string|null }>}
+ */
+async function readOrgConfig(org) {
+  const { config, asJson } = await getNx2Api();
+  try {
+    return await asJson(config.get({ org, cachebust: true }));
+  } catch (e) {
+    return { ok: false, data: null, status: 0, error: e.message };
+  }
+}
+
+/**
  * Load the org's config and, if present, its `permissions` sheet rules.
  * @param {string} org
  * @returns {Promise<{
@@ -14,24 +29,12 @@ import { hasPermissionsSheet } from './utils.js';
  * }>}
  */
 export async function loadOrgConfig(org) {
-  const { config, asJson } = await getNx2Api();
-  let resp;
-  try {
-    resp = await config.get({ org, cachebust: true });
-  } catch {
-    return { status: 'error', config: null, rules: [], httpStatus: 0 };
-  }
-
-  if (resp.status === 401 || resp.status === 403 || resp.status === 404) {
+  const { ok, data, status, error } = await readOrgConfig(org);
+  if (status === 401 || status === 403 || status === 404) {
     return { status: 'no-access', config: null, rules: [] };
   }
-  if (!resp.ok) {
-    return { status: 'error', config: null, rules: [], httpStatus: resp.status };
-  }
-
-  const { data, error } = await asJson(resp);
-  if (error || !data) {
-    return { status: 'error', config: null, rules: [], httpStatus: resp.status };
+  if (!ok || error || !data) {
+    return { status: 'error', config: null, rules: [], httpStatus: status };
   }
 
   if (!hasPermissionsSheet(data)) {
@@ -54,20 +57,12 @@ export async function loadOrgConfig(org) {
  * @returns {Promise<{ ok: boolean, status: number, rules?: Rule[], error?: string }>}
  */
 export async function mutatePermissions(org, mutate) {
-  const { config, asJson } = await getNx2Api();
-  let resp;
-  try {
-    resp = await config.get({ org, cachebust: true });
-  } catch (e) {
-    return { ok: false, status: 0, error: e.message };
+  const { ok, data, status, error } = await readOrgConfig(org);
+  if (!ok) {
+    return status ? { ok: false, status } : { ok: false, status: 0, error };
   }
-  if (!resp.ok) {
-    return { ok: false, status: resp.status };
-  }
-
-  const { data, error } = await asJson(resp);
   if (error || !data) {
-    return { ok: false, status: resp.status, error: 'parse-failed' };
+    return { ok: false, status, error: 'parse-failed' };
   }
 
   if (!hasPermissionsSheet(data)) {
@@ -79,6 +74,7 @@ export async function mutatePermissions(org, mutate) {
     return { ok: true, status: 200, rules: next.permissions.data };
   }
 
+  const { config } = await getNx2Api();
   let saveResp;
   try {
     saveResp = await config.save({ org, body: JSON.stringify(next) });
