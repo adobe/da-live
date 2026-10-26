@@ -272,7 +272,7 @@ describe('livePreviewLogin', () => {
       return new Response('', { status: 200 });
     };
 
-    await livePreviewLogin('org', 'site', 'main');
+    expect(await livePreviewLogin('org', 'site', 'main')).to.equal(false);
 
     expect(called).to.be.false;
   });
@@ -299,11 +299,20 @@ describe('livePreviewLogin', () => {
       return new Response('', { status: 200 });
     };
 
-    await livePreviewLogin('org', 'site', 'feat');
+    expect(await livePreviewLogin('org', 'site', 'feat')).to.equal(true);
 
     expect(calls).to.have.lengthOf(1);
     expect(calls[0].url).to.equal('https://feat--site--org.preview.da.live/gimme_cookie');
     expect(calls[0].headers.Authorization).to.equal('Bearer T1');
+  });
+
+  [401, 403, 503].forEach((status) => {
+    it(`reports a failed cookie exchange for HTTP ${status}`, async () => {
+      window.localStorage.setItem('nx-ims', 'true');
+      window.adobeIMS = { getAccessToken: () => ({ token: 'T1' }) };
+      window.fetch = async () => new Response('', { status });
+      expect(await livePreviewLogin('org', 'site', 'feat')).to.equal(false);
+    });
   });
 
   it('requests /gimme_cookie from a custom origin builder when provided', async () => {

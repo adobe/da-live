@@ -148,6 +148,9 @@ export default class DaPrepare extends LitElement {
       this._dialogItem = { ...item, cmp };
       return;
     }
+    if (item.title === 'Preflight') {
+      window.hlx?.rum?.sampleRUM?.('click', { source: 'custom-preflight', target: item.path });
+    }
     await ensurePreviewProxySession(item.path, {
       org: this.details?.org,
       site: this.details?.site,

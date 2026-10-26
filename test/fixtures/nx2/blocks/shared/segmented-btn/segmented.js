@@ -49,6 +49,8 @@ class NxSegmentedBtn extends HTMLElement {
         btn.setAttribute('aria-label', item.label);
         btn.title = item.label;
       }
+      if (item.title) btn.title = item.title;
+      btn.disabled = !!item.disabled;
       btn.textContent = item.iconOnly ? '' : item.label;
       btn.addEventListener('click', () => this.#select(item.value));
       wrap.append(btn);

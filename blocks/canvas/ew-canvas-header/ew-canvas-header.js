@@ -23,6 +23,7 @@ class EWCanvasHeader extends LitElement {
     undoAvailable: { type: Boolean },
     redoAvailable: { type: Boolean },
     authorized: { type: Boolean },
+    hasUnresolvedMergeConflicts: { type: Boolean, reflect: true, attribute: 'has-conflicts' },
     canWrite: { type: Boolean },
     _chatDisabled: { state: true },
     _commentsVisible: { state: true },
@@ -35,6 +36,7 @@ class EWCanvasHeader extends LitElement {
     this.undoAvailable = false;
     this.redoAvailable = false;
     this.authorized = true;
+    this.hasUnresolvedMergeConflicts = false;
     this.canWrite = true;
     this._commentsVisible = false;
     this._commentCount = 0;
@@ -106,7 +108,13 @@ class EWCanvasHeader extends LitElement {
     canvasBus.redoRequest.emit();
   }
 
-  _setEditorView(view) {
+  _editorViewItems() {
+    if (!this.hasUnresolvedMergeConflicts) return EDITOR_VIEW_ITEMS;
+    return EDITOR_VIEW_ITEMS.map((item) => (item.value === 'content' ? item : { ...item, disabled: true, title: 'Resolve conflicts to switch views' }));
+  }
+
+  setEditorView(view) {
+    if (this.hasUnresolvedMergeConflicts && view !== 'content') return;
     if (!EDITOR_VIEWS.includes(view) || view === this.editorView) return;
     this.editorView = view;
     canvasBus.editorViewRequest.emit({ view });
@@ -158,9 +166,9 @@ class EWCanvasHeader extends LitElement {
             part="editor-view-toggle"
             label="Editor view"
             size=${getUISize()}
-            .items=${EDITOR_VIEW_ITEMS}
+            .items=${this._editorViewItems()}
             .value=${this.editorView}
-            @change=${(e) => this._setEditorView(e.detail.value)}
+            @change=${(e) => this.setEditorView(e.detail.value)}
           ></nx-segmented-btn>
           ` : nothing}
         </div>

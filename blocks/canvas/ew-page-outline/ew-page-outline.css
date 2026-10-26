@@ -68,12 +68,39 @@ input {
   margin-inline-start: var(--s2-spacing-50);
 }
 
+.section-menu-trigger.nx-action-btn-icon:focus-visible {
+  outline-offset: 0;
+}
+
+.row-cell {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--s2-spacing-75);
+  min-width: 0;
+}
+
 .drag-handle {
-  display: block;
+  display: flex;
   flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-  margin-inline-end: var(--s2-spacing-75);
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  margin-block: -4px;
+  margin-inline: -4px 0;
+  cursor: grab;
+
+  &.nx-action-btn-icon {
+    color: inherit;
+  }
+
+  &.nx-action-btn-icon:focus-visible {
+    outline-offset: 0;
+  }
+
+  &[aria-pressed="true"] {
+    background: var(--s2-gray-200);
+  }
 }
 
 .section-name-input {
@@ -122,7 +149,7 @@ input {
   }
 }
 
-[role="treeitem"]:focus-visible {
+[role="row"]:focus-visible {
   outline: 2px solid var(--s2-blue-700);
   outline-offset: -2px;
   border-radius: var(--s2-corner-radius-75);
@@ -153,6 +180,11 @@ input {
 
 [data-drop-position="after"]::after {
   bottom: -1px;
+}
+
+.block-item[data-drop-position="after"]::after,
+.section-header[data-drop-position="after"]::after {
+  bottom: -2px;
 }
 
 .block-empty {
@@ -190,7 +222,7 @@ input {
   }
 }
 
-.content-item[aria-expanded="true"] > .chevron svg {
+.content-item[aria-expanded="true"] > .row-cell > .chevron svg {
   transform: rotate(90deg);
 }
 
@@ -243,7 +275,7 @@ input {
 }
 
 .action-btn {
-  visibility: hidden;
+  opacity: 0;
 }
 
   svg.icon {
@@ -254,8 +286,18 @@ input {
 
 .selected .action-btn,
 .action-btn:focus-visible,
-.block-item:hover .action-btn {
-  visibility: visible;
+.block-item:hover .action-btn,
+.block-item:focus-within .action-btn {
+  opacity: 1;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .placeholder {
@@ -278,6 +320,7 @@ input {
     height: 18px;
   }
 
+  /* stylelint-disable-next-line no-descending-specificity */
   .chevron svg {
     width: 12px;
     height: 12px;

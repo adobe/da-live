@@ -61,14 +61,13 @@ nx-popover {
   align-items: center;
   gap: var(--s2-spacing-100);
 
-  .nx-action-btn {
-    &.is-active {
-      background: var(--s2-gray-900);
-      color: var(--s2-gray-25);
+  .nx-action-btn.is-active {
+    background: var(--s2-gray-900);
+    color: var(--s2-gray-25);
 
-      &:hover {
-        background: var(--s2-gray-1000);
-      }
+    &:hover:not(:disabled) {
+      color: var(--s2-gray-25);
+      background: var(--s2-gray-1000);
     }
   }
 }

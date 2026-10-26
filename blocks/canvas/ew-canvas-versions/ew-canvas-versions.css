@@ -298,14 +298,15 @@ summary {
 }
 
 .is-new {
-  .da-input {
+  .nx-input {
     height: 24px;
     font-size: var(--s2-component-s-regular-font-size);
   }
 
-  .ew-cv-save-btn:has(.da-loading-spinner) {
+  .nx-action-btn:has(.nx-loading-spinner) {
     background: transparent;
   }
+
 }
 
 .ew-cv-new-actions {
@@ -333,7 +334,7 @@ nx-dialog {
     height: 14px;
   }
 
-  .is-new .da-input,
+  .is-new .nx-input,
   .seg-btn {
     height: 32px;
   }
@@ -343,7 +344,7 @@ nx-dialog {
     .versionname,
     .meta,
     .user,
-    .is-new .da-input,
+    .is-new .nx-input,
     .seg-btn
   ) {
     font-size: var(--s2-component-m-regular-font-size);

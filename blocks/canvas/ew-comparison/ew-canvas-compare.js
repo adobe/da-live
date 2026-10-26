@@ -1,6 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2, getBtnSizeClass } from '../../../scripts/utils.js';
-import getSheet from '../../shared/sheet.js';
 import { getRenderableSrc } from '../ew-editor-doc/prose-plugins/mediaBusImage.js';
 
 const ICON_CLOSE = '/img/icons/s2-icon-close-20-n.svg';
@@ -9,8 +8,7 @@ const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
 const style = await loadStyle(import.meta.url);
-const baseStyle = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
-const buttonsStyle = await getSheet(`${getNx2()}/styles/buttons.css`);
+const buttons = await loadStyle(`${getNx2()}/styles/buttons.css`);
 
 function getCanvasSection() {
   return document.querySelector('ew-canvas-header')?.parentElement
@@ -37,7 +35,7 @@ class EwCanvasCompare extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [baseStyle, buttonsStyle, style];
+    this.shadowRoot.adoptedStyleSheets = [buttons, style];
     this._onKeydown = (e) => {
       if (this.embedded) return;
       if (e.key === 'Escape') {
