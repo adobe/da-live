@@ -2,9 +2,11 @@ import { Plugin, TextSelection } from 'da-y-wrapper';
 import { getNx2Api } from '../../../../scripts/utils.js';
 import { getSourceUploadContext } from './sourceUploadContext.js';
 import { refuseOversizedImage } from '../../utils/image-upload.js';
+import { SUPPORTED_IMAGE_TYPES as SUPPORTED_IMAGE_FILES } from '../../../shared/constants.js';
+
+export { SUPPORTED_IMAGE_FILES };
 
 const FPO_IMG_URL = '/blocks/edit/img/fpo.svg';
-export const SUPPORTED_IMAGE_FILES = ['image/svg+xml', 'image/png', 'image/jpeg', 'image/gif'];
 
 export async function uploadImageFile(view, file, details) {
   if (!SUPPORTED_IMAGE_FILES.some((type) => type === file.type)) return;

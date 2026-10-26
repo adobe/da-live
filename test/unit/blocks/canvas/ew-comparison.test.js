@@ -448,6 +448,34 @@ describe('standalone workspace comparison', () => {
     expect(surface.shadowRoot.textContent).to.include('changed');
   });
 
+  it('broadcasts when a comparison is shown and when it closes, but not while it refreshes', async () => {
+    const states = [];
+    const unsubscribe = canvasBus.comparisonState.subscribe((state) => states.push(state));
+    try {
+      controller.close();
+      await controller.open({ candidate: 'document', baseline: 'live' });
+      await controller.open({ candidate: 'document', baseline: 'live' });
+      controller.close();
+      controller.close();
+    } finally {
+      unsubscribe();
+    }
+    expect(states).to.deep.equal([{ open: true }, { open: true }, { open: false }]);
+  });
+
+  it('broadcasts a close when the page changes under an open comparison', async () => {
+    await controller.open({ candidate: 'preview', baseline: 'live' });
+    const states = [];
+    const unsubscribe = canvasBus.comparisonState.subscribe((state) => states.push(state));
+    try {
+      context = { ...page, path: 'next' };
+      controller.contextChanged();
+    } finally {
+      unsubscribe();
+    }
+    expect(states).to.deep.equal([{ open: false }]);
+  });
+
   it('preserves the separately acknowledged save handshake without opening comparison', async () => {
     const result = await new Promise((resolve) => {
       canvasBus.comparisonRequest.emit({ action: 'saveDocument', context: page, resolve });
@@ -472,6 +500,17 @@ describe('comparison content normalization', () => {
     const html = comparison.normalizeComparisonHtml('<div class="tableWrapper"><table><tr><td><p>A</p></td></tr></table></div><img src="javascript:bad" onerror="bad()"><script>bad()</script>', page);
     expect(html).not.to.match(/script|onerror|javascript:|tableWrapper/);
     expect(html).to.include('<table>');
+  });
+
+  it('leaves out content the publish pipeline ignores, such as the upstream side of a merge', () => {
+    const html = comparison.normalizeComparisonHtml(
+      '<da-diff-deleted data-mdast="ignore" contenteditable="false"><p>Upstream text</p></da-diff-deleted>'
+      + '<p da-diff-added="">Local text</p>'
+      + '<da-diff-deleted data-mdast="ignore" contenteditable="false"><table><tr><td><p>Upstream block</p></td></tr></table></da-diff-deleted>',
+      page,
+    );
+    expect(html).to.include('<p>Local text</p>');
+    expect(html).not.to.include('Upstream');
   });
 
   it('collapses single-paragraph table cells so editor rows match live rows', () => {

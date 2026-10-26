@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { getCommentsBridge } from '../editor-utils/comments-bridge.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import {
@@ -12,8 +12,8 @@ const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
 
-const [base, style] = await Promise.all([
-  loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href),
+const [buttons, style] = await Promise.all([
+  loadStyle(`${getNx2()}/styles/buttons.css`),
   loadStyle(import.meta.url),
 ]);
 
@@ -36,7 +36,7 @@ class EwToolPanel extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [base, style];
+    this.shadowRoot.adoptedStyleSheets = [buttons, style];
     this._bindCommentCountUpdates();
     this._onRailToggle = () => this._broadcastActiveView();
     document.addEventListener(PANEL_EVENT.OPEN, this._onRailToggle);
@@ -269,9 +269,6 @@ class EwToolPanel extends LitElement {
 
     return html`
       <div class="tool-panel-header">
-        <button type="button" class="tool-panel-close" aria-label="Close panel" @click=${this._close}>
-          <svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${CLOSE_ICON_SRC}#icon"></use></svg>
-        </button>
         <nx-picker
           .items=${items}
           .value=${this.activeId}
@@ -279,6 +276,9 @@ class EwToolPanel extends LitElement {
           @change=${(e) => this.showPanel(e.detail.value)}
         ></nx-picker>
         <div class="tool-panel-header-actions"></div>
+        <button type="button" class="tool-panel-close" aria-label="Close panel" @click=${this._close}>
+          <svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${CLOSE_ICON_SRC}#icon"></use></svg>
+        </button>
       </div>
       <div class="tool-panel-content"></div>
       ${this._fullsizeDialogViewId ? html`

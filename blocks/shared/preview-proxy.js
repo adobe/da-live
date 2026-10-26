@@ -111,8 +111,9 @@ export function toPreviewProxyUrl(input, fallback) {
   return getPreviewProxyDetails(input, fallback).url;
 }
 
+/** Return whether a proxy session was established; callers must not cache a refusal. */
 export async function ensurePreviewProxySession(url, fallback = {}) {
   const { org, site, branch } = getPreviewProxyDetails(url, fallback);
-  if (!org || !site) return;
-  await livePreviewLogin(org, site, branch, fallback.getUrl);
+  if (!org || !site) return false;
+  return livePreviewLogin(org, site, branch, fallback.getUrl);
 }

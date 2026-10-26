@@ -74,6 +74,9 @@ export function createControllerOnMessage(ctx) {
       handleCommentMarkerClear();
     } else if (type === MESSAGE_TYPES.COMMENT_SHORTCUT) {
       handleCommentShortcut();
+    } else if (type === MESSAGE_TYPES.QUICK_EDIT_IFRAME_CLICK) {
+      // The iframe boundary identifies layout clicks, even with an older sender's doc source.
+      window.hlx?.rum?.sampleRUM?.('click', { source: 'ew-wysiwyg-layout', target: payload?.target });
     }
   };
 }
