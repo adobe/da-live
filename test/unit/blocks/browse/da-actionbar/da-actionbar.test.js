@@ -110,6 +110,22 @@ describe('DaActionBar', () => {
     });
   });
 
+  describe('_canPreflight', () => {
+    it('Allows read-only users when a page is selected', () => {
+      const el = new DaActionBar();
+      el.permissions = ['read'];
+      el.items = [{ path: '/o/s/a.html', ext: 'html' }];
+      expect(el._canPreflight).to.be.true;
+    });
+
+    it('Returns false when no page is selected', () => {
+      const el = new DaActionBar();
+      el.permissions = ['read', 'write'];
+      el.items = [{ path: '/o/s/a.json', ext: 'json' }];
+      expect(el._canPreflight).to.be.false;
+    });
+  });
+
   describe('_canDelete', () => {
     it('Defaults to true when user can write', () => {
       const el = new DaActionBar();

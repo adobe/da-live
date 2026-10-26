@@ -1,8 +1,9 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
-import { getPreviewOrigin } from '../../canvas/editor-utils/editor-utils.js';
+import { fetchWysiwygBranch, getPreviewOrigin } from '../../canvas/editor-utils/editor-utils.js';
 import { adaptEvaluation } from '../../canvas/ew-preflight/adapter.js';
 import { evaluatePage } from '../../canvas/ew-preflight/api.js';
+import { getAuthToken } from '../../shared/utils.js';
 import '../../shared/da-dialog/da-dialog.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -35,6 +36,7 @@ export default class DaBrowsePreflight extends LitElement {
     items: { attribute: false },
     canPublish: { attribute: false },
     _rows: { state: true },
+    _authError: { state: true },
   };
 
   constructor() {
@@ -42,29 +44,52 @@ export default class DaBrowsePreflight extends LitElement {
     this.items = [];
     this.canPublish = false;
     this._rows = [];
+    this._authError = null;
   }
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [BUTTONS, STYLE];
-    this._rows = this.items.map((item) => ({ item, status: 'loading', data: null, error: null, runId: 0 }));
+    // Only pages are evaluated; other publishable files have no checks and pass as-is.
+    this._rows = this.items.map((item) => {
+      const isPage = item.ext === 'html';
+      return {
+        item, isPage, status: isPage ? 'loading' : 'pass', data: null, error: null, runId: 0,
+      };
+    });
     this._evaluateAll();
   }
 
   async _evaluateAll() {
+    const pages = this._rows.filter((row) => row.isPage);
+    if (!pages.length) return;
+    // Check auth once so a missing token yields one message, not one per page.
+    if (!await getAuthToken()) {
+      this._authError = 'You need to be signed in to run preflight.';
+      pages.forEach((row) => {
+        row.status = 'error';
+        row.error = this._authError;
+      });
+      this._rows = [...this._rows];
+      return;
+    }
     await ensureRenderer();
     const { Queue } = await import(`${getNx()}/public/utils/tree.js`);
     const queue = new Queue((row) => this._evaluateRow(row), 5, null, 250);
-    await Promise.all(this._rows.map((row) => queue.push(row)));
+    await Promise.all(pages.map((row) => queue.push(row)));
   }
 
-  // Build the page's preview URL exactly as the canvas does: preview origin +
-  // the page path relative to the site, with the trailing .html stripped.
-  _pageUrl(item) {
+  // Build the page's preview URL as the canvas does: preview origin for the page's
+  // branch + the page path relative to the site, with the trailing .html stripped.
+  // eslint-disable-next-line class-methods-use-this
+  async _pageUrl(item) {
     const [, org, site, ...rest] = item.path.split('/');
     const rel = rest.join('/').replace(/\.html$/, '');
+    // Same resolver the canvas uses (?ref, then `ew.wysiwygBranch` config); main if it fails.
+    const branch = await fetchWysiwygBranch({ org, site, path: `${org}/${site}/${rel}` })
+      .catch(() => 'main');
     const suffix = rel ? `/${rel}` : '';
-    return `${getPreviewOrigin(org, site)}${suffix}`;
+    return `${getPreviewOrigin(org, site, branch)}${suffix}`;
   }
 
   async _evaluateRow(row) {
@@ -75,7 +100,7 @@ export default class DaBrowsePreflight extends LitElement {
     row.error = null;
     this._rows = [...this._rows];
     try {
-      const response = await evaluatePage(this._pageUrl(row.item));
+      const response = await evaluatePage(await this._pageUrl(row.item));
       if (row.runId !== runId) return;
       row.data = adaptEvaluation(response);
       row.status = row.data.failed === 0 ? 'pass' : 'fail';
@@ -127,6 +152,7 @@ export default class DaBrowsePreflight extends LitElement {
 
   // eslint-disable-next-line class-methods-use-this
   _renderRowBody(row) {
+    if (!row.isPage) return html`<p class="da-preflight-note">No checks needed for this file type.</p>`;
     if (row.status === 'error') {
       return html`<p class="da-preflight-error" role="alert">${row.error}</p>`;
     }
@@ -143,14 +169,14 @@ export default class DaBrowsePreflight extends LitElement {
           </span>
           <span class="da-preflight-path" title=${row.item.path}>${row.item.path}</span>
           <span class="da-preflight-row-actions">
-            <button
+            ${row.isPage ? html`<button
               class="nx-action-btn-icon nx-btn-sm"
               type="button"
               aria-label="Re-run evaluation"
               ?disabled=${row.status === 'loading'}
               @click=${(e) => this._rerun(e, row)}>
               <svg viewBox="0 0 20 20" aria-hidden="true"><use href="${REFRESH_ICON}#icon"></use></svg>
-            </button>
+            </button>` : nothing}
             ${this._renderStatusIcon(row)}
           </span>
         </summary>
@@ -169,6 +195,7 @@ export default class DaBrowsePreflight extends LitElement {
         emphasis="quiet"
         .action=${DIALOG_FOOTER}
         @close=${this._handleDialogClose}>
+        ${this._authError ? html`<p class="da-preflight-error" role="alert">${this._authError}</p>` : nothing}
         <div class="da-preflight-rows">
           ${this._rows.map((row) => this._renderRow(row))}
         </div>

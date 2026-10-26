@@ -174,8 +174,8 @@ export default class DaActionBar extends LitElement {
   }
 
   get _canPreflight() {
-    // Pages only, for now — the preflight modal evaluates html pages.
-    return this._canWrite && this.items.some((item) => item.ext === 'html') && !this._isCopying;
+    // Read-only check, so no write permission needed. Pages only, for now.
+    return this.items.some((item) => item.ext === 'html') && !this._isCopying;
   }
 
   get _canRename() {
@@ -292,7 +292,7 @@ export default class DaActionBar extends LitElement {
             @click=${this.handlePreflight}
             aria-label="Preflight"
             title="Preflight"
-            class="preflight-button ${this._canPreflight ? '' : 'hide'} ${this._isCopying ? 'hide' : ''}">
+            class="preflight-button ${this._canPreflight ? '' : 'hide'}">
             ${icon('preflight')}
             <span>Preflight</span>
           </button>

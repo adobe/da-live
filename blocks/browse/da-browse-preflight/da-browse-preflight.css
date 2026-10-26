@@ -95,3 +95,10 @@
   color: var(--s2-orange-900);
   mask-image: url("/img/icons/s2-icon-closecircle-20-n.svg");
 }
+
+.da-preflight-note {
+  margin: 0;
+  padding: 12px 0;
+  color: var(--s2-gray-700);
+  font-size: 14px;
+}

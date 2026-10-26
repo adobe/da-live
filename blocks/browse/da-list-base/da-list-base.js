@@ -13,6 +13,7 @@ import { createVersion } from '../../shared/version/version-actions.js';
 
 export const MAX_DELETE_COUNT = 1000;
 export const DELETE_CONFIRM_THRESHOLD = 10;
+export const MAX_PREFLIGHT_COUNT = 200;
 
 /**
  * Behaviour shared by the legacy and v2 browse lists: listing and pagination,
@@ -126,9 +127,14 @@ export default class DaListBase extends LitElement {
     this._timers.add(id);
   }
 
-  // Pages the preflight modal evaluates/publishes — html only, for now.
+  // Pages the preflight modal evaluates — html only, for now.
   get _selectedPages() {
     return this._selectedItems.filter((item) => item.ext === 'html');
+  }
+
+  // Everything publish acts on: pages plus other files (no folders or links).
+  get _selectedPublishable() {
+    return this._selectedItems.filter((item) => item.ext && item.ext !== 'link');
   }
 
   setStatus(text, description, type = 'info') {
@@ -644,9 +650,15 @@ export default class DaListBase extends LitElement {
   // `publish` controls whether the modal offers "Publish Passing" (Publish entry)
   // or is review-only (Preflight-button entry).
   _openPreflight(publish) {
-    const items = this._selectedPages;
-    if (!items.length) return;
-    this._preflight = { items, publish };
+    const pageCount = this._selectedPages.length;
+    if (!pageCount) return;
+    if (pageCount > MAX_PREFLIGHT_COUNT) {
+      this.setStatus('Too many pages', `Select at most ${MAX_PREFLIGHT_COUNT} pages to run preflight.`);
+      this.later(() => this.setStatus(), 5000);
+      return;
+    }
+    // Non-page files ride along so "Publish Passing" publishes the whole selection minus failures.
+    this._preflight = { items: this._selectedPublishable, publish };
   }
 
   handleClosePreflight() {
@@ -656,13 +668,14 @@ export default class DaListBase extends LitElement {
   async handlePublishPassing(items) {
     this._preflight = null;
     if (!items?.length) return;
-    await this.publishItems(items);
+    // Keep failed pages selected so they can be fixed and retried.
+    await this.publishItems(items, { keepUnpublished: true });
   }
 
   // Run the schedule check for `items` and either surface the scheduled-override
   // dialog or publish straight away. Shared by the confirm dialog and the
   // preflight modal's "Publish Passing".
-  async publishItems(items) {
+  async publishItems(items, { keepUnpublished = false } = {}) {
     const scheduleChecks = await Promise.all(items.map(async (item) => {
       const [, org, site, ...rest] = item.path.toLowerCase().split('/');
       const pagePath = `/${rest.join('/')}`.replace(/\.html$/, '');
@@ -673,12 +686,12 @@ export default class DaListBase extends LitElement {
 
     const scheduled = scheduleChecks.filter(Boolean);
     if (scheduled.length > 0) {
-      this._confirm = { type: 'publish', scheduled, items };
+      this._confirm = { type: 'publish', scheduled, items, keepUnpublished };
       return;
     }
 
     this.handleConfirmClose();
-    await this.runAemQueue('publish', { skipSchedule: true, items });
+    await this.runAemQueue('publish', { skipSchedule: true, items, keepUnpublished });
   }
 
   async handleConfirmPublish() {
@@ -692,7 +705,18 @@ export default class DaListBase extends LitElement {
     await this.runAemQueue('preview');
   }
 
-  async runAemQueue(action, { skipSchedule = false, items: itemsArg } = {}) {
+  // Deselect only `published`, leaving the rest of the selection intact.
+  deselectItems(published) {
+    const paths = new Set(published.map((item) => item.path));
+    this._listItems = this._listItems.map((item) => (
+      paths.has(item.path) ? { ...item, isChecked: false } : item
+    ));
+    this.handleConfirmClose();
+    this.handleSelectionState();
+  }
+
+  async runAemQueue(action, opts = {}) {
+    const { skipSchedule = false, items: itemsArg, keepUnpublished = false } = opts;
     const { Queue } = await import(`${getNx()}/public/utils/tree.js`);
     const source = itemsArg ?? this._selectedItems;
     const items = source.filter((item) => item.ext && item.ext !== 'link');
@@ -708,6 +732,7 @@ export default class DaListBase extends LitElement {
     }
     let remaining = items.length;
     const results = [];
+    const published = [];
 
     const callback = async (item) => {
       const aemPath = item.ext === 'html' ? item.path.replace(/\.html$/, '') : item.path;
@@ -719,6 +744,7 @@ export default class DaListBase extends LitElement {
       } else {
         if (!isMediaExt(item.ext)) createVersion(item.path, `${verb}ed`);
         results.push({ name: item.name, url: json[urlKey]?.url });
+        published.push(item);
       }
       remaining -= 1;
       if (remaining === 0) {
@@ -728,7 +754,8 @@ export default class DaListBase extends LitElement {
             if (this._confirm?.type !== 'results') this._aemActionState = null;
           }, 5000);
           this.handleErrorClose();
-          this.handleClear();
+          if (keepUnpublished) this.deselectItems(published);
+          else this.handleClear();
         } else {
           this._aemActionState = null;
         }
@@ -1084,9 +1111,9 @@ export default class DaListBase extends LitElement {
         style: 'accent',
         label: 'Confirm Publish',
         click: async () => {
-          const { items } = this._confirm;
+          const { items, keepUnpublished } = this._confirm;
           this.handleConfirmClose();
-          await this.runAemQueue('publish', { skipSchedule: true, items });
+          await this.runAemQueue('publish', { skipSchedule: true, items, keepUnpublished });
         },
       };
       const overrideCount = scheduled.length === 1 ? 'This item has' : `${scheduled.length} items have`;

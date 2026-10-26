@@ -5,6 +5,7 @@ import { setNx, getNx2Api } from '../../../../../../scripts/utils.js';
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { default: DaList } = await import('../../../../../../blocks/browse/v2/da-list/da-list.js');
+const { MAX_PREFLIGHT_COUNT } = await import('../../../../../../blocks/browse/da-list-base/da-list-base.js');
 
 function makeList() {
   const el = new DaList();
@@ -681,6 +682,47 @@ describe('DaList helpers', () => {
       const el = makeList();
       el.handlePublish();
       expect(el._confirm).to.deep.equal({ type: 'publish' });
+    });
+  });
+
+  describe('preflight', () => {
+    const page = { name: 'a', ext: 'html', path: '/o/s/a.html' };
+    const json = { name: 'd', ext: 'json', path: '/o/s/d.json' };
+    const folder = { name: 'f', path: '/o/s/f' };
+
+    it('Gates publish behind preflight with all publishable items when enforced', () => {
+      const el = makeList();
+      el.enforcePreflight = true;
+      el._selectedItems = [page, json, folder];
+      el.handlePublish();
+      expect(el._confirm).to.not.be.ok;
+      expect(el._preflight).to.deep.equal({ items: [page, json], publish: true });
+    });
+
+    it('Uses the normal confirm when enforced but no page is selected', () => {
+      const el = makeList();
+      el.enforcePreflight = true;
+      el._selectedItems = [json];
+      el.handlePublish();
+      expect(el._preflight).to.not.be.ok;
+      expect(el._confirm).to.deep.equal({ type: 'publish' });
+    });
+
+    it('Refuses to open over the page cap', () => {
+      const el = makeList();
+      el._selectedItems = Array.from({ length: MAX_PREFLIGHT_COUNT + 1 }, (_, i) => ({ ext: 'html', path: `/o/s/${i}.html` }));
+      el.handleOpenPreflight();
+      expect(el._preflight).to.not.be.ok;
+      expect(el._status.text).to.equal('Too many pages');
+    });
+
+    it('Keeps unpublished items selected after Publish Passing', () => {
+      const el = makeList();
+      const failed = { ...page, path: '/o/s/b.html', isChecked: true };
+      el._listItems = [{ ...page, isChecked: true }, failed, { ...json, isChecked: true }];
+      Object.defineProperty(el, 'actionBar', { value: {} });
+      el.deselectItems([page, json]);
+      expect(el._selectedItems.map((i) => i.path)).to.deep.equal([failed.path]);
     });
   });
 
