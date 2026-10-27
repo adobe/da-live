@@ -8,7 +8,7 @@ import {
 import { decodeAnchor, resolveAnchor, encodeAnchor, getSelectionData } from './anchor.js';
 import { createAwarenessSync } from './awareness-sync.js';
 import { computeCounts, buildThreadGroups } from './thread-grouping.js';
-import { buildAuthorColorMap, authorColorSet } from './author-colors.js';
+import { buildAuthorColorMap, authorColorSet, personColorSet } from './author-colors.js';
 import { createChannel } from '../../utils/canvas-bus.js';
 import { fetchDaConfigs, getSheetByName } from '../../../shared/utils.js';
 import { emailsFromPermissions, buildRoster } from './mentions.js';
@@ -92,6 +92,10 @@ export function createCommentsController({ commentsStore: store, wsProvider, org
 
     authorColorSet(author) {
       return authorColorSet(store, author, getAuthorColorMap());
+    },
+
+    personColorSet(person) {
+      return personColorSet(store, person, getAuthorColorMap());
     },
 
     getThreadGroups(attachedIds) {

@@ -7,6 +7,15 @@ import {
 } from '../../../../../../blocks/canvas/comments/helpers/format-utils.js';
 
 describe('format-utils', () => {
+  describe('getInitials for emails', () => {
+    it('uses the local part of an email', () => {
+      expect(getInitials('amol@adobe.com')).to.equal('A');
+      expect(getInitials('chris.helms@adobe.com')).to.equal('CH');
+      expect(getInitials('mary-ann_guzman@adobe.com')).to.equal('MG');
+      expect(getInitials('@adobe.com')).to.equal('?');
+    });
+  });
+
   describe('formatAnchorPreview', () => {
     it('wraps text anchors in quotes', () => {
       expect(formatAnchorPreview({ anchorType: 'text', anchorText: 'hello' })).to.equal('"hello"');

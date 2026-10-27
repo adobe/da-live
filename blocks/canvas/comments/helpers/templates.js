@@ -38,6 +38,15 @@ export function renderBody(comment) {
     : seg.text));
 }
 
+function renderMentionAvatar(panel, user) {
+  const set = panel.controller?.personColorSet?.(user) ?? generateColorSet(user.email);
+  return html`
+    <div class="ew-comment-avatar ew-mention-avatar" style="background-color: ${set.bg}; color: ${set.text}">
+      ${formatUtils.getInitials(user.name)}
+    </div>
+  `;
+}
+
 function renderMentionMenu(panel) {
   const menu = panel._mentionMenu;
   if (!menu) return nothing;
@@ -49,7 +58,7 @@ function renderMentionMenu(panel) {
           aria-selected=${i === menu.index}
           class=${i === menu.index ? 'is-active' : ''}
           @mousedown=${(e) => { e.preventDefault(); panel.pickMention(user); }}>
-          ${renderAvatar(panel, { name: user.name, email: user.email })}
+          ${renderMentionAvatar(panel, user)}
           <span class="ew-mention-name">${user.name}</span>
           ${user.name !== user.email ? html`<span class="ew-mention-email">${user.email}</span>` : nothing}
         </li>

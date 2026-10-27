@@ -1,4 +1,4 @@
-import { slotColorSet } from '../../editor-utils/author-color.js';
+import { slotColorSet, generateColorSet } from '../../editor-utils/author-color.js';
 
 export function authorKey(author) {
   return author?.email || author?.id || '';
@@ -23,4 +23,9 @@ export function buildAuthorColorMap(store) {
 export function authorColorSet(store, author, map) {
   const colorMap = map ?? buildAuthorColorMap(store);
   return colorMap.get(authorKey(author)) ?? slotColorSet(colorMap.size);
+}
+
+export function personColorSet(store, person, map) {
+  const colorMap = map ?? buildAuthorColorMap(store);
+  return colorMap.get(authorKey(person)) ?? generateColorSet(authorKey(person));
 }

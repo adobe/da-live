@@ -58,7 +58,7 @@ export function emailsFromPermissions(rows = []) {
     .filter((row) => /read|write/.test(row.actions ?? ''))
     .flatMap((row) => (row.groups ?? '').split(','))
     .map((entry) => entry.trim().split('/').pop().toLowerCase())
-    .filter((entry) => EMAIL_RE.test(entry));
+    .filter((entry) => EMAIL_RE.test(entry) && !entry.endsWith('@techacct.adobe.com'));
   return [...new Set(emails)];
 }
 

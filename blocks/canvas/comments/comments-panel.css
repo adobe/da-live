@@ -461,17 +461,28 @@
   background: var(--s2-gray-100);
 }
 
-.ew-mention-menu .ew-comment-avatar {
+.ew-mention-avatar {
   grid-row: span 2;
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
 }
 
-.ew-mention-menu li:not(:has(.ew-mention-email)) .ew-comment-avatar {
+.ew-mention-menu li:not(:has(.ew-mention-email)) .ew-mention-avatar {
   grid-row: auto;
+}
+
+.ew-mention-name,
+.ew-mention-email {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ew-mention-name {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .ew-mention-email {

@@ -84,6 +84,11 @@ describe('mentions', () => {
       ]);
     });
 
+    it('skips technical accounts', () => {
+      const rows = [{ groups: '9729f428-31e5@techacct.adobe.com, amol@adobe.com', actions: 'read' }];
+      expect(emailsFromPermissions(rows)).to.deep.equal(['amol@adobe.com']);
+    });
+
     it('handles a missing sheet', () => {
       expect(emailsFromPermissions(undefined)).to.deep.equal([]);
     });
