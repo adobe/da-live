@@ -381,9 +381,9 @@ export async function getBlockVariants(path, context) {
 const OOTB_PLUGINS = new Set(['blocks', 'templates', 'icons', 'placeholders']);
 
 /** First-party library tools + AEM Assets (not flagged `ootb` in plugin metadata). */
-const LIBRARY_PLUGIN_NAMES = new Set([...OOTB_PLUGINS, 'aem-assets']);
+const LIBRARY_PLUGIN_NAMES = new Set([...OOTB_PLUGINS, 'aem-assets', 'aem-assets-panel']);
 
-const LIBRARY_PANEL_ORDER = ['blocks', 'icons', 'templates', 'placeholders', 'aem-assets'];
+const LIBRARY_PANEL_ORDER = ['blocks', 'icons', 'templates', 'placeholders', 'aem-assets', 'aem-assets-panel'];
 
 function isLibraryExtension(ext) {
   return LIBRARY_PLUGIN_NAMES.has(ext.name);
@@ -453,9 +453,11 @@ export async function fetchExtensions(org, site) {
     const entries = validConfigs.flatMap((conf) => getFirstSheet(conf) || []);
     const hasRepo = entries.find((entry) => entry.key === 'aem.repositoryId')?.value;
     if (hasRepo) {
-      const { getAssetsPlugin } = await import('./aem-assets.js');
+      const { getAssetsPlugin, getAssetsPanelPlugin } = await import('./aem-assets.js');
       const plugin = getAssetsPlugin({ org, site });
       if (plugin) mergePlugin(extensions, plugin);
+      const panelPlugin = getAssetsPanelPlugin({ org, site });
+      if (panelPlugin) mergePlugin(extensions, panelPlugin);
     }
   } catch { /* proceed without assets */ }
 
@@ -943,6 +945,13 @@ export function extensionToPanelView(ext, section) {
       ),
     icon: ext.ootb ? ext.icon : toPreviewProxyUrl(ext.icon, proxyOpts),
     load: async () => {
+      if (ext.name === 'aem-assets-panel') {
+        await import('../ew-canvas-assets/ew-canvas-assets.js');
+        const el = document.createElement('ew-canvas-assets');
+        el.org = ext.org;
+        el.site = ext.site;
+        return el;
+      }
       await import('./ew-panel-extensions.js');
       const el = document.createElement('ew-panel-extension');
       el.extension = ext;

@@ -1265,6 +1265,18 @@ describe('extensionToPanelView', () => {
     expect(view.openModal).to.be.undefined;
   });
 
+  it('loads the aem-assets-panel extension as an ew-canvas-assets element', async () => {
+    const ext = { name: 'aem-assets-panel', title: 'AEM Assets Panel', experience: 'inline', org: 'org', site: 'site' };
+    const view = extensionToPanelView(ext, 'Library');
+    expect(view.id).to.equal('aem-assets-panel');
+    expect(view.experience).to.equal('inline');
+    expect(view.cacheKey).to.equal('[]');
+    const el = await view.load();
+    expect(el.tagName).to.equal('EW-CANVAS-ASSETS');
+    expect(el.org).to.equal('org');
+    expect(el.site).to.equal('site');
+  });
+
   it('gives configured extensions a source cache key', () => {
     const ext = { name: 'configured-tool', title: 'Configured tool', experience: 'inline', sources: ['/tool'], icon: '' };
     expect(extensionToPanelView(ext, 'Extensions').cacheKey).to.equal('["/tool"]');
@@ -1505,6 +1517,19 @@ describe('getCanvasToolPanelViews', () => {
     expect(preflight).to.include({ label: 'Preflight', firstParty: true });
     expect(preflight.cacheKey).to.equal(undefined);
   });
+
+  it('includes the AEM assets rail panel right after the AEM assets dialog', async () => {
+    const REPO = { key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' };
+    setDaConfigs([{ data: [REPO] }]);
+    const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
+    const panelView = views.find((v) => v.id === 'aem-assets-panel');
+    expect(panelView).to.exist;
+    expect(panelView.section).to.equal('Library');
+    expect(panelView.experience).to.equal('inline');
+    expect(panelView.cacheKey).to.not.equal(undefined);
+    const ids = views.map((v) => v.id);
+    expect(ids.indexOf('aem-assets-panel')).to.equal(ids.indexOf('aem-assets') + 1);
+  });
 });
 
 describe('EW panel helpers fetchExtensions', () => {
@@ -1517,6 +1542,7 @@ describe('EW panel helpers fetchExtensions', () => {
     setDaConfigs([{ data: [REPO] }]);
     const names = (await fetchExtensions('org', 'site')).map((e) => e.name);
     expect(names).to.include('aem-assets');
+    expect(names).to.include('aem-assets-panel');
   });
 
   it('loads the AEM assets panel alongside configured library tools', async () => {
@@ -1524,6 +1550,7 @@ describe('EW panel helpers fetchExtensions', () => {
     const names = (await fetchExtensions('org', 'site')).map((e) => e.name);
     expect(names).to.include('blocks');
     expect(names).to.include('aem-assets');
+    expect(names).to.include('aem-assets-panel');
   });
 
   it('omits the AEM assets panel when no repository is configured', async () => {
@@ -1531,6 +1558,7 @@ describe('EW panel helpers fetchExtensions', () => {
     const names = (await fetchExtensions('org', 'site')).map((e) => e.name);
     expect(names).to.include('blocks');
     expect(names).to.not.include('aem-assets');
+    expect(names).to.not.include('aem-assets-panel');
   });
 
   it('returns an empty list when there are no valid configs', async () => {
