@@ -1,3 +1,10 @@
+# [1.15.0](https://github.com/adobe/da-live/compare/v1.14.2...v1.15.0) (2026-10-27)
+
+
+### Features
+
+* set image focal point from canvas toolbar in layout mode ([#1479](https://github.com/adobe/da-live/issues/1479)) ([824f44f](https://github.com/adobe/da-live/commit/824f44f5d8fad645eccbffb772d71a54ee52d9c5))
+
 ## [1.14.2](https://github.com/adobe/da-live/compare/v1.14.1...v1.14.2) (2026-10-27)
 
 
