@@ -12,6 +12,7 @@
 import { test, expect } from '../../utils/fixtures.js';
 import ENV from '../../utils/env.js';
 import { getTestPageURL, getQuery, tabBackward, fill, TEST_SITE } from '../../utils/page.js';
+import { dismissAlertBanner } from '../../utils/utils.js';
 
 test('Read-only directory', async ({ page }) => {
   test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
@@ -65,6 +66,7 @@ test('Read-write directory', async ({ browser, page }, workerInfo) => {
   newPage.close();
 
   await page.goto(browseURL);
+  await dismissAlertBanner(page);
   await expect(page.locator(`a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir1/${pageName}"]`)).toBeVisible();
   await page.locator(`a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir1/${pageName}"]`).focus();
 

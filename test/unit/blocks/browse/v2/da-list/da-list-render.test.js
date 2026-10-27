@@ -1,18 +1,21 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
+import { spy } from 'sinon';
 
 const { setNx } = await import('../../../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 await import('../../../../../../blocks/browse/v2/da-list/da-list.js');
 
-const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
-
-async function waitForRender(listEl) {
-  const deadline = Date.now() + 5000;
-  while (Date.now() < deadline) {
-    if (listEl.shadowRoot?.querySelector('.da-browse-panel-header')) return;
-    await nextFrame();
+async function updateList(el, change) {
+  const update = spy(el, 'update');
+  try {
+    change();
+    await el.updateComplete;
+    await update.firstCall.returnValue;
+    await el.updateComplete;
+  } finally {
+    update.restore();
   }
 }
 
@@ -41,8 +44,7 @@ describe('da-list render', () => {
   async function fixture(props = {}) {
     el = document.createElement('da-list');
     Object.assign(el, props);
-    document.body.appendChild(el);
-    await waitForRender(el);
+    await updateList(el, () => document.body.appendChild(el));
     return el;
   }
 
@@ -50,6 +52,31 @@ describe('da-list render', () => {
     el.requestUpdate();
     await el.updateComplete;
   }
+
+  it('persists favorite changes without changing order or selection', async () => {
+    const savedFavorites = localStorage.getItem('da-favorites');
+    try {
+      localStorage.removeItem('da-favorites');
+      await fixture({ fullpath: '/org/site' });
+      const first = { path: '/org/site/a.html', name: 'a', ext: 'html', isChecked: true };
+      const second = { path: '/org/site/b.html', name: 'b', ext: 'html' };
+      el._listItems = [first, second];
+      el._selectedItems = [first];
+      el.toggleItemFavorite(second);
+      expect(second.isFavorited).to.be.true;
+      expect(el._listItems).to.deep.equal([first, second]);
+      expect(el._selectedItems).to.deep.equal([first]);
+      expect(JSON.parse(localStorage.getItem('da-favorites'))['/org/site'])
+        .to.deep.equal([second.path]);
+      el.toggleItemFavorite(second);
+      expect(second.isFavorited).to.be.false;
+      expect(localStorage.getItem('da-favorites')).to.be.null;
+      expect(el._listItems).to.deep.equal([first, second]);
+    } finally {
+      if (savedFavorites === null) localStorage.removeItem('da-favorites');
+      else localStorage.setItem('da-favorites', savedFavorites);
+    }
+  });
 
   it('applies the sort preference on initial load and applies it again when changing folders', async () => {
     el = document.createElement('da-list');
@@ -61,14 +88,10 @@ describe('da-list render', () => {
     ];
     el.updateDeletePermission = async () => { };
     el.fullpath = '/org/site/one';
-    document.body.append(el);
-    await nextFrame();
-    await el.updateComplete;
+    await updateList(el, () => document.body.append(el));
     expect(el._listItems.map((item) => item.name)).to.deep.equal(['a', 'b']);
     expect(el.sortState.property).to.equal('name');
-    el.fullpath = '/org/site/two';
-    await nextFrame();
-    await el.updateComplete;
+    await updateList(el, () => { el.fullpath = '/org/site/two'; });
     expect(el._listItems.map((item) => item.path)).to.deep.equal([
       '/org/site/two/a.html', '/org/site/two/b.html',
     ]);
@@ -235,13 +258,16 @@ describe('da-list render', () => {
     expect(el.shadowRoot.querySelector('.da-list-sentinel')).to.exist;
   });
 
-  it('uses the same Sheet tag styling for groups and the type filter', async () => {
+  it('renders Sheet labels in groups and the type filter', async () => {
     await fixture();
     el.groupByType = true;
     el._listItems = [{ path: '/o/r/data.json', name: 'data', ext: 'json' }];
     await rerender();
-    expect(el.shadowRoot.querySelector('.da-list-group-header .tag').classList.contains('sheet')).to.be.true;
-    expect(el.shadowRoot.querySelector('.da-list-types-popover .tag').classList.contains('sheet')).to.be.true;
+    expect(el.shadowRoot.querySelector('.da-list-group-label').textContent).to.equal('Sheet');
+    expect(el.shadowRoot.querySelector('.da-list-group-count').textContent).to.equal('1');
+    const labels = [...el.shadowRoot.querySelectorAll('.da-list-types-row')];
+    const sheet = labels.find((label) => label.textContent.trim() === 'Sheet');
+    expect(sheet).to.exist;
   });
 
   it('filters by type and restores all types', async () => {
@@ -308,29 +334,42 @@ describe('da-list render', () => {
     expect(bar.hidePublishConfs).to.deep.equal(['/o/r/blog']);
   });
 
-  it('renders items in a card grid and keeps only select-all in the header', async () => {
-    await fixture({ select: true, view: 'card' });
-    el._listItems = [
-      { path: '/org/site/a.html', name: 'a', ext: 'html' },
-      { path: '/org/site/b.png', name: 'b', ext: 'png' },
-    ];
-    await rerender();
+  it('renders supplied items in a card grid with select-all', async () => {
+    await fixture({
+      select: true,
+      view: 'card',
+      listItems: [
+        { path: '/org/site/a.html', name: 'a', ext: 'html' },
+        { path: '/org/site/b.png', name: 'b', ext: 'png' },
+      ],
+    });
     const items = el.shadowRoot.querySelectorAll('.da-card-grid da-list-item');
     expect(items).to.have.length(2);
     expect(items[0].getAttribute('view')).to.equal('card');
     expect(el.shadowRoot.querySelector('.da-browse-table-header').classList.contains('is-card')).to.be.true;
-    expect(el.shadowRoot.querySelector('.da-card-select-all-label').textContent).to.equal('Select all');
-    expect(el.shadowRoot.querySelector('.da-card-sort-pill').textContent).to.equal('Sort: Default');
-    el._sort = { property: 'lastModified', direction: 'descending' };
-    await rerender();
-    expect(el.shadowRoot.querySelector('.da-card-sort-pill').textContent)
-      .to.equal('Sorted by Modified (newest first)');
+    expect(el.shadowRoot.querySelector('input[name="select-all"]')).to.exist;
     el.view = 'list';
     await rerender();
     expect(el.shadowRoot.querySelector('.da-card-grid')).to.be.null;
-    expect(el.shadowRoot.querySelector('.da-card-sort-pill')).to.be.null;
-    expect(el.shadowRoot.querySelector('.da-card-select-all-label')).to.be.null;
     expect(el.shadowRoot.querySelector('da-list-item').hasAttribute('view')).to.be.false;
+  });
+
+  it('shows the card sort control only for an active sort', async () => {
+    await fixture({ view: 'card', listItems: [] });
+    expect(el.shadowRoot.querySelector('.da-card-sort')).to.be.null;
+    el._sort = { property: 'lastModified', direction: 'descending' };
+    await rerender();
+    expect(el.shadowRoot.querySelector('.da-card-sort button').textContent.trim())
+      .to.equal('Modified');
+    expect(el.shadowRoot.querySelector('.da-card-sort').getAttribute('aria-sort'))
+      .to.equal('descending');
+    el._sort = { property: 'name', direction: 'none' };
+    await rerender();
+    expect(el.shadowRoot.querySelector('.da-card-sort')).to.be.null;
+    el.view = 'list';
+    await rerender();
+    expect(el.shadowRoot.querySelector('.da-card-grid')).to.be.null;
+    expect(el.shadowRoot.querySelector('.da-card-sort')).to.be.null;
   });
 });
 
@@ -347,8 +386,14 @@ describe('da-list pagination observer', () => {
     el = document.createElement('da-list');
     // Initialize so renderCheckBox()/isSelectAll don't throw on first render
     el._listItems = [];
-    document.body.appendChild(el);
-    await nextFrame();
+    const initialized = spy(el, 'firstUpdated');
+    try {
+      document.body.appendChild(el);
+      await el.updateComplete;
+      await initialized.firstCall.returnValue;
+    } finally {
+      initialized.restore();
+    }
   });
 
   afterEach(() => {
