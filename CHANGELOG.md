@@ -1,3 +1,10 @@
+# [1.14.0](https://github.com/adobe/da-live/compare/v1.13.2...v1.14.0) (2026-10-27)
+
+
+### Features
+
+* add permission management UI ([#1503](https://github.com/adobe/da-live/issues/1503)) ([50c7830](https://github.com/adobe/da-live/commit/50c78306768b3d675b1f3657967845f4081cefe3)), closes [#1](https://github.com/adobe/da-live/issues/1) [#2](https://github.com/adobe/da-live/issues/2) [#4](https://github.com/adobe/da-live/issues/4) [#5](https://github.com/adobe/da-live/issues/5) [#6](https://github.com/adobe/da-live/issues/6) [#7](https://github.com/adobe/da-live/issues/7) [#8](https://github.com/adobe/da-live/issues/8) [#9](https://github.com/adobe/da-live/issues/9) [#11](https://github.com/adobe/da-live/issues/11) [#13](https://github.com/adobe/da-live/issues/13)
+
 ## [1.13.2](https://github.com/adobe/da-live/compare/v1.13.1...v1.13.2) (2026-10-26)
 
 
