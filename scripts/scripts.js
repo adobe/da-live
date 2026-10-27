@@ -13,39 +13,7 @@
 import { initIms } from '../blocks/shared/utils.js';
 import { setNx, nxJS, nxCSS } from './utils.js';
 
-/**
- * Routes the structured content editor block to da-live's copy.
- *
- * Testing bridge for the structured content editor migration from da-nx to
- * da-live. The /form page (DA document adobe/da-live/form) holds an `nx-form`
- * block. The nx2 loader sends every `nx-` block listed in its NX_BLOCKS to
- * da-nx, so that class loads da-nx's nx/blocks/form. Renaming the class to
- * `form` before any block loads makes the loader fall back to this codebase
- * instead, so a branch preview of /form runs da-live's copy.
- *
- * Migration plan:
- *
- * 1. Merge the block with this rename disabled, so /form keeps running
- *    da-nx's copy.
- * 2. Test da-live's copy on main with a test page in the da.live content
- *    repository that holds a `form` block.
- * 3. Change the block header in adobe/da-live/form from `nx-form` to `form`
- *    and publish it. Pages cached with `nx-form` keep loading da-nx's copy
- *    until their caches expire.
- * 4. Delete nx/blocks/form from da-nx, and this function from da-live.
- *
- * @param {Document|Element} area - The area that may hold the block.
- */
-// eslint-disable-next-line no-unused-vars -- Only for testing branch previews.
-function routeStructuredContentBlock(area) {
-  area.querySelector('.nx-form')?.classList.replace('nx-form', 'form');
-}
-
 export function decorateArea({ area = document } = {}) {
-  // TODO: Remove in step 4 of the routeStructuredContentBlock migration plan.
-  // Uncomment only to test a branch preview of /form with da-live's copy.
-  // routeStructuredContentBlock(area);
-
   // Find all dark & light images
   const lcpImgs = [...area.querySelectorAll('[alt="light"], [alt="dark"]')].filter((img) => {
     const pic = img.parentElement;
