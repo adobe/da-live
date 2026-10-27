@@ -7,6 +7,10 @@
   height: 100%;
 }
 
+.assets-rail[hidden] {
+  display: none !important;
+}
+
 .assets-rail-error {
   margin: var(--s2-spacing-200);
   font-family: var(--s2-font-family);

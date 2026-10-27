@@ -7,6 +7,8 @@ const { setImsResult, handleSignInCalls } = await import(`${getNx()}/utils/ims.j
 const { setRepositoryConfig } = await import(`${getNx2()}/utils/aem-assets/repository-config.js`);
 const { selectorLoadCalls, setSelectorLoadResult } = await import(`${getNx2()}/utils/aem-assets/selector.js`);
 
+const { canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js');
+
 const {
   renderAssetsRail,
   NOT_CONFIGURED_ERROR,
@@ -57,7 +59,7 @@ describe('renderAssetsRail', () => {
     const container = document.createElement('div');
     const result = await renderAssetsRail({ container, org: 'org', site: 'site' });
 
-    expect(result).to.deep.equal({});
+    expect(result).to.deep.equal({ token: 'test-token' });
     expect(renderCalls).to.have.length(1);
     const [{ el, props }] = renderCalls;
     expect(el).to.equal(container);
@@ -115,6 +117,7 @@ describe('ew-canvas-assets element', () => {
     teardown();
     window.PureJSSelectors.renderAssetSelector = orgRenderAssetSelector;
     inst?.remove();
+    canvasBus.toolPanelViewState.emit(null);
   });
 
   async function createInstance(props = {}) {
@@ -150,5 +153,67 @@ describe('ew-canvas-assets element', () => {
     inst = await createInstance({ org: 'org', site: 'site' });
     const errorEl = inst.shadowRoot.querySelector('.assets-rail-error');
     expect(errorEl.textContent).to.equal(NOT_CONFIGURED_ERROR);
+    const rail = inst.shadowRoot.querySelector('.assets-rail');
+    expect(rail.hidden).to.equal(true);
+  });
+
+  it('re-renders when a new IMS token is seen while the panel is active', async () => {
+    inst = await createInstance({ org: 'org', site: 'site' });
+    expect(renderCalls).to.have.length(1);
+
+    setImsResult({ accessToken: { token: 'rotated-token' } });
+    canvasBus.toolPanelViewState.emit('aem-assets-panel');
+    await new Promise((r) => { setTimeout(r, 0); });
+
+    expect(renderCalls).to.have.length(2);
+    expect(renderCalls[1].props.imsToken).to.equal('rotated-token');
+  });
+
+  it('does not re-render when the token is unchanged', async () => {
+    inst = await createInstance({ org: 'org', site: 'site' });
+    expect(renderCalls).to.have.length(1);
+
+    canvasBus.toolPanelViewState.emit('aem-assets-panel');
+    await new Promise((r) => { setTimeout(r, 0); });
+
+    expect(renderCalls).to.have.length(1);
+  });
+
+  it('ignores view-state updates for other panel ids', async () => {
+    inst = await createInstance({ org: 'org', site: 'site' });
+    expect(renderCalls).to.have.length(1);
+
+    setImsResult({ accessToken: { token: 'rotated-token' } });
+    canvasBus.toolPanelViewState.emit('comments');
+    await new Promise((r) => { setTimeout(r, 0); });
+
+    expect(renderCalls).to.have.length(1);
+  });
+
+  it('skips rendering when detached mid-render, and renders once on reconnect', async () => {
+    let resolveRepo;
+    const pendingRepo = new Promise((resolve) => { resolveRepo = resolve; });
+    setRepositoryConfig(pendingRepo);
+
+    const el = document.createElement('ew-canvas-assets');
+    Object.assign(el, { org: 'org', site: 'site' });
+    document.body.append(el);
+    inst = el;
+    await el.updateComplete;
+
+    // Detach while renderAssetsRail is still awaiting the repo config.
+    el.remove();
+    resolveRepo(REPO_CONFIG);
+    await new Promise((r) => { setTimeout(r, 0); });
+    await new Promise((r) => { setTimeout(r, 0); });
+
+    expect(renderCalls).to.have.length(0);
+
+    document.body.append(el);
+    await el.updateComplete;
+    await new Promise((r) => { setTimeout(r, 0); });
+    await el.updateComplete;
+
+    expect(renderCalls).to.have.length(1);
   });
 });

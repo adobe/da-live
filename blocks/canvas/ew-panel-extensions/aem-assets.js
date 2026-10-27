@@ -33,7 +33,6 @@ export async function renderAssets({ container, org, site, onClose }) {
   if (!repoConfig) return;
 
   const { selectors, error } = await loadAssetSelector();
-  if (error) return;
 
   // The panel is rendered inside a shadow root, so link the shared asset-picker
   // styles (blocks/edit/da-assets/da-assets.css) that style the smart-crop / error UI.
@@ -41,6 +40,14 @@ export async function renderAssets({ container, org, site, onClose }) {
   styleLink.rel = 'stylesheet';
   styleLink.href = new URL('../../edit/da-assets/da-assets.css', import.meta.url).href;
   container.append(styleLink);
+
+  if (error) {
+    const errorEl = document.createElement('p');
+    errorEl.className = 'da-dialog-asset-error';
+    errorEl.textContent = error;
+    container.append(errorEl);
+    return;
+  }
 
   // Two-panel layout (shared with the classic editor): the selector lives in `assetPanel`;
   // the smart-crop picker / error messages take over `secondaryPanel` when needed.
