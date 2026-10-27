@@ -37,10 +37,12 @@ the current URL's query parameters. Landing uses the same dialog and supplies it
 own creation URL to preserve its Home navigation.
 The picker does not create sites, change permissions, or discover account sites.
 Browse removes both controls and its storage listener when disconnected.
-Both hosts keep the routed current site selected as navigation context, even
-when its content is inaccessible. Other confirmed inaccessible sites are removed
-from choices. Keeping the current entry does not grant content access or bypass
-Add site validation. Uncertain failures
+Both hosts keep the current site and remembered recent sites as navigation
+history, including when their content is inaccessible. Switching sites never
+prunes remembered entries based on permission checks. Landing remembers the
+current route before loading its files, matching Browse's history behavior.
+Keeping an entry does not grant content access or bypass Add site validation.
+Uncertain failures
 remain visible with an explicit error; they are not treated as permission denials.
 In-flight checks and additions are cancelled when their host/dialog is removed.
 Invalid or unavailable recent-site storage produces an explicit alert while

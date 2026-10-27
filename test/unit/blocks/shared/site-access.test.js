@@ -36,7 +36,7 @@ describe('shared site access', () => {
     expect(url.hash).to.equal('');
   });
 
-  it('filters confirmed denials but keeps uncertain sites with an explicit error', async () => {
+  it('reports access failures without removing remembered sites', async () => {
     const sites = ['allowed', 'denied', 'offline'].map((site) => ({ value: `org/${site}` }));
     const source = {
       list: async (path) => {
@@ -46,23 +46,25 @@ describe('shared site access', () => {
       getMetadata: async () => new Response(null, { status: 403 }),
     };
     const result = await checkSiteChoices({ sites, source, signal: new AbortController().signal });
-    expect(result.sites.map(({ value }) => value)).to.deep.equal(['org/allowed', 'org/offline']);
+    expect(result.sites).to.equal(sites);
     expect(result.inaccessibleSites.has('org/denied')).to.equal(true);
     expect(result.error).to.equal('Offline');
   });
 
-  it('retains only the current denied site as context without clearing its denial', async () => {
+  it('retains denied history without clearing denials or permitting unauthorized additions', async () => {
     const sites = ['current', 'denied', 'allowed'].map((site) => ({ value: `org/${site}` }));
     const source = {
       list: async (path) => ({ ok: path.endsWith('allowed') }),
       getMetadata: async () => new Response(null, { status: 403 }),
     };
     const { signal } = new AbortController();
-    const result = await checkSiteChoices({ sites, current: 'org/current', source, signal });
-    expect(result.sites.map(({ value }) => value)).to.deep.equal(['org/current', 'org/allowed']);
+    const result = await checkSiteChoices({ sites, source, signal });
+    expect(result.sites).to.equal(sites);
     expect([...result.inaccessibleSites]).to.deep.equal(['org/current', 'org/denied']);
-    const next = await checkSiteChoices({ sites, current: 'org/allowed', source, signal, inaccessibleSites: result.inaccessibleSites });
-    expect(next.sites.map(({ value }) => value)).to.deep.equal(['org/allowed']);
+    const next = await checkSiteChoices(
+      { sites, source, signal, inaccessibleSites: result.inaccessibleSites },
+    );
+    expect(next.sites).to.equal(sites);
     expect(next.inaccessibleSites.has('org/current')).to.equal(true);
     const save = sinon.stub(Storage.prototype, 'setItem');
     try {
@@ -91,7 +93,7 @@ describe('shared site access', () => {
   });
 
   it('finds an existing site on a later organization-list page', async () => {
-    const storage = sinon.stub(Storage.prototype, 'getItem').returns('[]');
+    const storage = sinon.stub(Storage.prototype, 'getItem').returns('["aemsites/devlive"]');
     const save = sinon.stub(Storage.prototype, 'setItem');
     const source = { list: sinon.stub() };
     source.list.onCall(0).resolves({ ok: true });
@@ -100,7 +102,7 @@ describe('shared site access', () => {
     await addExistingSite({ value: 'org/site', source, signal: new AbortController().signal });
     expect(source.list.thirdCall.args[1].continuationToken).to.equal('next');
     expect(storage.calledWith('da-sites')).to.equal(true);
-    expect(save.calledOnceWithExactly('da-sites', '["org/site"]')).to.equal(true);
+    expect(save.calledOnceWithExactly('da-sites', '["org/site","aemsites/devlive"]')).to.equal(true);
   });
 
   it('rejects repeated pagination tokens without saving or claiming success', async () => {
