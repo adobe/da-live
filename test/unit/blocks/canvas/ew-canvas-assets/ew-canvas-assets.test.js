@@ -64,6 +64,7 @@ describe('renderAssetsRail', () => {
     const [{ el, props }] = renderCalls;
     expect(el).to.equal(container);
     expect(props.rail).to.equal(true);
+    expect(props.dragAndDrop).to.equal(true);
     expect(props.imsToken).to.equal('test-token');
     expect(props).to.not.have.property('handleSelection');
   });

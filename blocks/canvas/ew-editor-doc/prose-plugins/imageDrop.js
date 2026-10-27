@@ -1,8 +1,9 @@
 import { Plugin, TextSelection } from 'da-y-wrapper';
-import { getNx2Api } from '../../../../scripts/utils.js';
-import { getSourceUploadContext } from './sourceUploadContext.js';
+import { getNx2Api, getNx2 } from '../../../../scripts/utils.js';
+import { getSourceUploadContext, getSourceOrgSite } from './sourceUploadContext.js';
 import { refuseOversizedImage } from '../../utils/image-upload.js';
 import { SUPPORTED_IMAGE_TYPES as SUPPORTED_IMAGE_FILES } from '../../../shared/constants.js';
+import { readDroppedAssets, dropAssets } from './assetDrop.js';
 
 export { SUPPORTED_IMAGE_FILES };
 
@@ -43,6 +44,21 @@ export async function uploadImageFile(view, file, details) {
   docImg.src = contentUrl;
 }
 
+// Loaded lazily, and only once, the first time an asset is dropped, so editors that
+// never drop an asset don't pay for it.
+let repositoryConfigModulePromise;
+function loadRepositoryConfigModule() {
+  repositoryConfigModulePromise ??= import(`${getNx2()}/utils/aem-assets/repository-config.js`);
+  return repositoryConfigModulePromise;
+}
+
+async function resolveRepoConfig(getSourceUrl) {
+  const orgSite = getSourceOrgSite(getSourceUrl() ?? '');
+  if (!orgSite) return null;
+  const { getRepositoryConfig } = await loadRepositoryConfigModule();
+  return getRepositoryConfig(orgSite.org, orgSite.site);
+}
+
 /**
  * @param {import('prosemirror-model').Schema} schema
  * @param {() => string | null} getSourceUrl
@@ -53,6 +69,16 @@ export default function imageDrop(schema, getSourceUrl) {
       handleDOMEvents: {
         drop: (view, event) => {
           event.preventDefault();
+
+          const assets = readDroppedAssets(event.dataTransfer);
+          if (assets) {
+            dropAssets(view, {
+              assets,
+              coords: { left: event.clientX, top: event.clientY },
+              getRepoConfig: () => resolveRepoConfig(getSourceUrl),
+            });
+            return true;
+          }
 
           const { files } = event.dataTransfer;
           if (files.length === 0) return false;

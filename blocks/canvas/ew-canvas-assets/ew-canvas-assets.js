@@ -49,6 +49,7 @@ export async function renderAssetsRail({ container, org, site, isLive = () => tr
     imsToken: token,
     repoConfig,
     rail: true,
+    dragAndDrop: true,
   }));
 
   return { token };
