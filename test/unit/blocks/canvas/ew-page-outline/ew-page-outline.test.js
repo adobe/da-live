@@ -306,7 +306,7 @@ describe('ew-page-outline — content drag & delete', () => {
 
     el.shadowRoot.querySelector('.content-child .delete-btn').click();
     await el.updateComplete;
-    expect(el.shadowRoot.querySelector('nx-dialog.ew-po-delete')).to.exist;
+    expect(el.shadowRoot.querySelector('da-confirm-dialog.ew-po-delete')).to.exist;
 
     el._confirmDelete();
 
@@ -338,7 +338,7 @@ describe('ew-page-outline — content drag & delete', () => {
     el._cancelDelete();
     await el.updateComplete;
 
-    expect(el.shadowRoot.querySelector('nx-dialog.ew-po-delete')).to.not.exist;
+    expect(el.shadowRoot.querySelector('da-confirm-dialog.ew-po-delete')).to.not.exist;
     expect(docSeq(bridge.view.state.doc)).to.deep.equal(['Keep me', 'const x = 1;']);
   });
 
@@ -546,7 +546,7 @@ describe('ew-page-outline - read-only', () => {
     await renderOutline({ editable: true });
     el.shadowRoot.querySelector('.outline-section nx-menu').choose('delete');
     await el.updateComplete;
-    expect(el.shadowRoot.querySelectorAll('nx-dialog.ew-po-delete')).to.have.lengthOf(1);
+    expect(el.shadowRoot.querySelectorAll('da-confirm-dialog.ew-po-delete')).to.have.lengthOf(1);
 
     const reader = makeRealView({
       type: 'doc',
@@ -557,7 +557,7 @@ describe('ew-page-outline - read-only', () => {
     el._hashState = { org: 'org', site: 'site', path: 'reader-page' };
     await el.updateComplete;
 
-    expect(el.shadowRoot.querySelectorAll('nx-dialog.ew-po-delete').length).to.equal(0);
+    expect(el.shadowRoot.querySelectorAll('da-confirm-dialog.ew-po-delete').length).to.equal(0);
     expect(el._pendingDelete ?? null).to.equal(null);
     expect(docSeq(reader.state.doc)).to.deep.equal(['Reader']);
   });
@@ -570,7 +570,7 @@ describe('ew-page-outline - read-only', () => {
     canvasBus.editorHtmlState.emit('');
     await el.updateComplete;
 
-    expect(el.shadowRoot.querySelectorAll('nx-dialog.ew-po-delete').length).to.equal(0);
+    expect(el.shadowRoot.querySelectorAll('da-confirm-dialog.ew-po-delete').length).to.equal(0);
     expect(el._pendingDelete ?? null).to.equal(null);
   });
 
@@ -916,7 +916,7 @@ describe('ew-page-outline - section menu', () => {
 
     menuOf(1).choose('delete');
     await el.updateComplete;
-    expect(root().querySelector('nx-dialog.ew-po-delete')).to.exist;
+    expect(root().querySelector('da-confirm-dialog.ew-po-delete')).to.exist;
     el._confirmDelete();
     await settle();
 
