@@ -130,6 +130,17 @@ export default class DaFileItem extends LitElement {
     input?.select();
   }
 
+  async focusSelection() {
+    await this.updateComplete;
+    const card = this.shadowRoot.querySelector('nx-card');
+    await card?.updateComplete;
+    const input = card
+      ? card.shadowRoot?.querySelector('input[type="checkbox"]')
+      : this.shadowRoot.querySelector('input[name="item-selected"]');
+    input?.focus();
+    return Boolean(input);
+  }
+
   async updateAEMStatus() {
     const { preview, live } = await fetchAemStatus(this);
     this._preview = preview;

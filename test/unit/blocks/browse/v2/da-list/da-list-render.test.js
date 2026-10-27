@@ -53,6 +53,34 @@ describe('da-list render', () => {
     await el.updateComplete;
   }
 
+  ['list', 'card'].forEach((view) => {
+    it(`restores focus to the last selected item after clearing ${view} selection`, async () => {
+      await fixture({
+        view,
+        select: true,
+        listItems: [
+          { path: '/org/site/a.html', name: 'a', ext: 'html' },
+          { path: '/org/site/b.html', name: 'b', ext: 'html', isChecked: true },
+        ],
+      });
+      el._lastCheckedIndex = 1;
+      el._selectedItems = [el._listItems[1]];
+      await rerender();
+      const row = el.shadowRoot.querySelectorAll('da-file-item')[1];
+      await row.updateComplete;
+      const card = row.shadowRoot.querySelector('nx-card');
+      if (card) {
+        // Model the dependency's shadow boundary without vendoring nx-card.
+        card.attachShadow({ mode: 'open' }).innerHTML = '<input type="checkbox">';
+      }
+      await el.handleClearSelection();
+      const root = card?.shadowRoot ?? row.shadowRoot;
+      expect(root.activeElement).to.equal(root.querySelector('input[type="checkbox"]'));
+      expect(el._selectedItems).to.deep.equal([]);
+      expect(el._listItems[1].isChecked).to.equal(false);
+    });
+  });
+
   ['selection', 'copy', 'cut'].forEach((mode) => {
     it(`clears folder selection on navigation unless ${mode} has a pending paste`, async () => {
       el = document.createElement('da-list');
