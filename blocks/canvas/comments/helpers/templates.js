@@ -51,7 +51,7 @@ function renderMentionMenu(panel) {
           @mousedown=${(e) => { e.preventDefault(); panel.pickMention(user); }}>
           ${renderAvatar(panel, { name: user.name, email: user.email })}
           <span class="ew-mention-name">${user.name}</span>
-          <span class="ew-mention-email">${user.email}</span>
+          ${user.name !== user.email ? html`<span class="ew-mention-email">${user.email}</span>` : nothing}
         </li>
       `)}
     </ul>

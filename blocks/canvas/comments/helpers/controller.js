@@ -10,12 +10,12 @@ import { createAwarenessSync } from './awareness-sync.js';
 import { computeCounts, buildThreadGroups } from './thread-grouping.js';
 import { buildAuthorColorMap, authorColorSet } from './author-colors.js';
 import { createChannel } from '../../utils/canvas-bus.js';
-import { DA_ORIGIN } from '../../../shared/constants.js';
-import { daFetch } from '../../../shared/utils.js';
+import { fetchDaConfigs, getSheetByName } from '../../../shared/utils.js';
+import { emailsFromPermissions, buildRoster } from './mentions.js';
 
-export function createCommentsController({ commentsStore: store, wsProvider, rosterPath }) {
+export function createCommentsController({ commentsStore: store, wsProvider, org }) {
   let authorColors = null;
-  let rosterPromise = null;
+  let rosterEmails = null;
 
   const getAuthorColorMap = () => {
     if (!authorColors) authorColors = buildAuthorColorMap(store);
@@ -117,15 +117,16 @@ export function createCommentsController({ commentsStore: store, wsProvider, ros
       return ids;
     },
 
-    loadRoster() {
-      if (!rosterPath) return Promise.resolve([]);
-      if (!rosterPromise) {
-        rosterPromise = daFetch(`${DA_ORIGIN}/users/${rosterPath}`)
-          .then((resp) => (resp.ok ? resp.json() : {}))
-          .then((json) => json.users ?? [])
-          .catch(() => []);
-      }
-      return rosterPromise;
+    async loadRoster() {
+      if (!org) return [];
+      // ponytail: sheet emails only; IMS org/group entries need the da-admin directory route
+      rosterEmails ??= fetchDaConfigs({ org })[0]
+        .then((json) => (json && !json.error ? getSheetByName(json, 'permissions') : []))
+        .then(emailsFromPermissions)
+        .catch(() => []);
+      const people = [awareness.getCurrentUser()];
+      store?.forEach((comment) => people.push(comment.author));
+      return buildRoster(await rosterEmails, people);
     },
 
     async createRootComment({ user, anchor, body, mentions = [], now = Date.now() }) {

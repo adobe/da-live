@@ -5,6 +5,8 @@ import {
   filterRoster,
   activeMentions,
   splitMentions,
+  emailsFromPermissions,
+  buildRoster,
 } from '../../../../../../blocks/canvas/comments/helpers/mentions.js';
 
 const alice = { name: 'Alice Smith', email: 'alice@example.com' };
@@ -64,6 +66,36 @@ describe('mentions', () => {
     it('returns plain text when there are no mentions', () => {
       expect(splitMentions('just text', [])).to.deep.equal([{ text: 'just text' }]);
       expect(splitMentions('@Alice Smith', undefined)).to.deep.equal([{ text: '@Alice Smith' }]);
+    });
+  });
+
+  describe('emailsFromPermissions', () => {
+    it('collects unique emails from rows that grant access', () => {
+      const rows = [
+        { path: 'CONFIG', groups: 'Admin@Example.com', actions: 'write' },
+        { path: '/ + **', groups: 'admin@example.com, bob@example.com', actions: 'read' },
+        { path: '/locked/**', groups: 'carol@example.com', actions: '' },
+        { path: '/x/**', groups: '613E19736765B4B80A494030/dana@example.com', actions: 'read' },
+        { path: '/y/**', groups: '613E19736765B4B80A494030, 613E19736765B4B80A494030/Authors', actions: 'write' },
+        { path: '', groups: '', actions: '' },
+      ];
+      expect(emailsFromPermissions(rows)).to.deep.equal([
+        'admin@example.com', 'bob@example.com', 'dana@example.com',
+      ]);
+    });
+
+    it('handles a missing sheet', () => {
+      expect(emailsFromPermissions(undefined)).to.deep.equal([]);
+    });
+  });
+
+  describe('buildRoster', () => {
+    it('fills names from known people and sorts by name', () => {
+      const people = [null, { name: 'Zed Admin', email: 'Admin@example.com' }, { name: 'No Email' }];
+      expect(buildRoster(['bob@example.com', 'admin@example.com'], people)).to.deep.equal([
+        { email: 'bob@example.com', name: 'bob@example.com' },
+        { email: 'admin@example.com', name: 'Zed Admin' },
+      ]);
     });
   });
 });

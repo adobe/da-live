@@ -266,6 +266,7 @@
 }
 
 .ew-comment-form {
+  position: relative;
   margin-top: 12px;
 }
 
@@ -430,9 +431,6 @@
   min-width: 0;
   font-style: italic;
 }
-.ew-comment-form {
-  position: relative;
-}
 
 .ew-mention-menu {
   position: absolute;
@@ -465,6 +463,10 @@
 
 .ew-mention-menu .ew-comment-avatar {
   grid-row: span 2;
+}
+
+.ew-mention-menu li:not(:has(.ew-mention-email)) .ew-comment-avatar {
+  grid-row: auto;
 }
 
 .ew-mention-name {

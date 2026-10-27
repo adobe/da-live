@@ -184,7 +184,7 @@ export class CommentsPanel extends LitElement {
     }
     if (changedProps.has('_draft') && this._draft) {
       this.focusDraftTextarea();
-      if (!this._roster) this.controller?.loadRoster?.().then((users) => { this._roster = users; });
+      this.controller?.loadRoster?.().then((users) => { this._roster = users; });
     }
     this.resolvePendingCommentLink();
   }

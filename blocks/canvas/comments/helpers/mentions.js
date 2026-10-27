@@ -1,4 +1,5 @@
 const QUERY_RE = /(?:^|\s)@([^\s@]*)$/;
+const EMAIL_RE = /^[^@\s/]+@[^@\s/]+\.[^@\s/]+$/;
 
 function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -50,4 +51,22 @@ export function splitMentions(body = '', mentions = []) {
   });
   if (last < body.length) segments.push({ text: body.slice(last) });
   return segments;
+}
+
+export function emailsFromPermissions(rows = []) {
+  const emails = rows
+    .filter((row) => /read|write/.test(row.actions ?? ''))
+    .flatMap((row) => (row.groups ?? '').split(','))
+    .map((entry) => entry.trim().split('/').pop().toLowerCase())
+    .filter((entry) => EMAIL_RE.test(entry));
+  return [...new Set(emails)];
+}
+
+export function buildRoster(emails, people = []) {
+  const names = new Map(people
+    .filter((person) => person?.email && person.name)
+    .map((person) => [person.email.toLowerCase(), person.name]));
+  return emails
+    .map((email) => ({ email, name: names.get(email) ?? email }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
