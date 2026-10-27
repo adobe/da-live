@@ -1,3 +1,31 @@
+## [1.14.1](https://github.com/adobe/da-live/compare/v1.14.0...v1.14.1) (2026-10-27)
+
+
+### Bug Fixes
+
+* **ew:** add confirm dialog to block delete from toolbar, consolidate dialogs for outline & toolbar ([#1496](https://github.com/adobe/da-live/issues/1496)) ([6d8a138](https://github.com/adobe/da-live/commit/6d8a13862f105877cff6302a65db45e81322342f))
+
+# [1.14.0](https://github.com/adobe/da-live/compare/v1.13.2...v1.14.0) (2026-10-27)
+
+
+### Features
+
+* add permission management UI ([#1503](https://github.com/adobe/da-live/issues/1503)) ([50c7830](https://github.com/adobe/da-live/commit/50c78306768b3d675b1f3657967845f4081cefe3)), closes [#1](https://github.com/adobe/da-live/issues/1) [#2](https://github.com/adobe/da-live/issues/2) [#4](https://github.com/adobe/da-live/issues/4) [#5](https://github.com/adobe/da-live/issues/5) [#6](https://github.com/adobe/da-live/issues/6) [#7](https://github.com/adobe/da-live/issues/7) [#8](https://github.com/adobe/da-live/issues/8) [#9](https://github.com/adobe/da-live/issues/9) [#11](https://github.com/adobe/da-live/issues/11) [#13](https://github.com/adobe/da-live/issues/13)
+
+## [1.13.2](https://github.com/adobe/da-live/compare/v1.13.1...v1.13.2) (2026-10-26)
+
+
+### Bug Fixes
+
+* update browse UI ([#1469](https://github.com/adobe/da-live/issues/1469)) ([46fb729](https://github.com/adobe/da-live/commit/46fb7293914aa23223c3f00e7e227e72693db61b))
+
+## [1.13.1](https://github.com/adobe/da-live/compare/v1.13.0...v1.13.1) (2026-10-26)
+
+
+### Bug Fixes
+
+* preflight spinners not loading ([#1488](https://github.com/adobe/da-live/issues/1488)) ([4251141](https://github.com/adobe/da-live/commit/4251141d2e5fd49518b3fd9fb17334ccfc6e2e33))
+
 # [1.13.0](https://github.com/adobe/da-live/compare/v1.12.3...v1.13.0) (2026-10-22)
 
 

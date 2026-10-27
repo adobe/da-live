@@ -7,6 +7,7 @@ import { isMultiBlock, getMultiBlockTemplateRow } from '../editor-utils/multi-bl
 import { requestComment } from '../editor-utils/command-helpers.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { toolbarController } from '../editor-utils/toolbar-controller.js';
+import { blockLabel } from '../ew-page-outline/drop-targets.js';
 
 const nx = getNx();
 const { loadStyle } = await import(`${nx}/utils/utils.js`);
@@ -59,6 +60,7 @@ class EwBlockToolbar extends LitElement {
     _variantOptions: { state: true },
     _hasBlockLibrary: { state: true },
     _multiTemplateRow: { state: true },
+    _pendingDelete: { state: true },
   };
 
   connectedCallback() {
@@ -207,7 +209,7 @@ class EwBlockToolbar extends LitElement {
   /** A picker left open is the single source of truth for "is interacting", so a
    * re-render can't close it underneath the user. */
   get isInteracting() {
-    return this.shadowRoot?.querySelector('nx-picker')?.open ?? false;
+    return (this.shadowRoot?.querySelector('nx-picker')?.open ?? false) || !!this._pendingDelete;
   }
 
   _icon(name) {
@@ -227,7 +229,18 @@ class EwBlockToolbar extends LitElement {
     this.hide();
   }
 
-  _onDeleteBlock() {
+  async _onDeleteBlock() {
+    await import('../../shared/da-confirm-dialog/da-confirm-dialog.js');
+    this._pendingDelete = true;
+  }
+
+  _cancelDelete() {
+    this._pendingDelete = false;
+    this.view?.focus();
+  }
+
+  _confirmDelete() {
+    this._pendingDelete = false;
     const { view } = this;
     if (!view) return;
     const { from } = view.state.selection;
@@ -250,6 +263,15 @@ class EwBlockToolbar extends LitElement {
         view.focus();
       },
     });
+  }
+
+  _renderDeleteDialog() {
+    const label = blockLabel({ name: this._blockName || 'block', variant: this._currentVariant });
+    const action = { style: 'negative', label: 'Delete', click: () => this._confirmDelete() };
+    return html`
+      <da-confirm-dialog title="Delete block" .action=${action} @close=${() => this._cancelDelete()}>
+        <span>Are you sure you want to delete the <strong>${label}</strong> block?</span>
+      </da-confirm-dialog>`;
   }
 
   render() {
@@ -317,6 +339,7 @@ class EwBlockToolbar extends LitElement {
           @click=${() => this._onComment()}
         >${this._icon('comment')}</button>
       </div>
+      ${this._pendingDelete ? this._renderDeleteDialog() : nothing}
     `;
   }
 }
