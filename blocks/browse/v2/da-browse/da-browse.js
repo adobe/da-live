@@ -145,11 +145,8 @@ export default class DaBrowse extends LitElement {
     if (this._sitePickerScope !== value) this._addingSite = false;
     this._sitePickerScope = value;
     this._sitePickerError = error;
-    const visibleSites = sites.filter(
-      ({ value: choice }) => choice === value || !this._inaccessibleSites?.has(choice),
-    );
     this._sitePickerModule.updateSitePicker(
-      { picker: this._sitePicker, sites: visibleSites, value },
+      { picker: this._sitePicker, sites, value },
     );
     if (sites.length) this.checkSites({ sites, value, error });
   }
@@ -162,7 +159,7 @@ export default class DaBrowse extends LitElement {
       const { checkSiteChoices } = this._sitePickerModule;
       const inaccessibleSites = this._inaccessibleSites;
       const result = await checkSiteChoices(
-        { sites, current: value, source, signal: request.signal, inaccessibleSites },
+        { sites, source, signal: request.signal, inaccessibleSites },
       );
       if (request.signal.aborted || !this.isConnected) return;
       this._inaccessibleSites = result.inaccessibleSites;

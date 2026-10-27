@@ -2,6 +2,7 @@
 import { expect } from '@esm-bundle/chai';
 import { html } from 'da-lit';
 import { stub, spy } from 'sinon';
+import { addExistingSite } from '../../../../../../blocks/shared/site-access.js';
 
 const { setNx, getNx2Api } = await import('../../../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -98,7 +99,7 @@ describe('browse-owned nav search', () => {
     expect(browse._sitePicker.value).to.equal('org/site');
   });
 
-  it('keeps the denied current site selected through cached refreshes and route changes', async () => {
+  it('keeps remembered sites through denied checks, refreshes and route changes', async () => {
     const metadata = stub(source, 'getMetadata').resolves(new Response(null, { status: 403 }));
     const getSites = stub(Storage.prototype, 'getItem').callThrough();
     const check = spy(browse, 'checkSites');
@@ -108,26 +109,64 @@ describe('browse-owned nav search', () => {
       browse.details = { org: 'org', site: 'site', fullpath: '/org/site' };
       await browse.updateComplete;
       await Promise.all(check.returnValues);
-      expect(browse._sitePicker.items.filter(({ value }) => value && value !== 'add-site'))
-        .to.deep.equal([{ value: 'org/site', label: 'site', description: 'org/site', ariaLabel: 'site (org)' }]);
+      expect(browse._sitePicker.items.filter(({ value }) => value && value !== 'add-site')
+        .map(({ value }) => value)).to.deep.equal(['org/site', 'org/other']);
       expect(browse._sitePicker.value).to.equal('org/site');
       expect(browse._sitePicker.labelOverride).to.equal('site (org)');
       expect(browse._inaccessibleSites.has('org/site')).to.be.true;
       getSites.withArgs('da-sites').returns(JSON.stringify(['org/site', 'org/other', 'org/new']));
       browse.syncSitePicker();
       expect(browse._sitePicker.items.some(({ value }) => value === 'org/site')).to.be.true;
-      expect(browse._sitePicker.items.some(({ value }) => value === 'org/other')).to.be.false;
+      expect(browse._sitePicker.items.some(({ value }) => value === 'org/other')).to.be.true;
       await Promise.all(check.returnValues);
       browse.details = { org: 'org', site: 'other', fullpath: '/org/other' };
       await browse.updateComplete;
       browse.syncSitePicker();
       await Promise.all(check.returnValues);
-      expect(browse._sitePicker.items.some(({ value }) => value === 'org/site')).to.be.false;
+      expect(browse._sitePicker.items.some(({ value }) => value === 'org/site')).to.be.true;
       expect(browse._sitePicker.value).to.equal('org/other');
       expect(browse._sitePicker.labelOverride).to.equal('other (org)');
     } finally {
       metadata.restore();
       getSites.restore();
+      check.restore();
+    }
+  });
+
+  it('keeps devlive after successfully adding and selecting Frescopaco', async () => {
+    const metadata = stub(source, 'getMetadata').resolves(new Response(null, { status: 403 }));
+    const check = spy(browse, 'checkSites');
+    const previousSites = localStorage.getItem('da-sites');
+    const { href } = window.location;
+    try {
+      localStorage.setItem('da-sites', '["aemsites/devlive"]');
+      siteList.callsFake(async (path) => ({
+        ok: path.startsWith('/exp-workspace'),
+        items: path === '/exp-workspace' ? [{ name: 'frescopaco' }] : [],
+      }));
+      browse.details = { org: 'aemsites', site: 'devlive', fullpath: '/aemsites/devlive' };
+      await browse.updateComplete;
+      browse.syncSitePicker();
+      await Promise.all(check.returnValues);
+      expect(browse._inaccessibleSites.has('aemsites/devlive')).to.be.true;
+      const value = 'exp-workspace/frescopaco';
+      await addExistingSite({ value, source, signal: new AbortController().signal });
+      browse.siteAdded({ detail: { value } });
+      browse.details = { org: 'exp-workspace', site: 'frescopaco', fullpath: `/${value}` };
+      await browse.updateComplete;
+      browse.syncSitePicker();
+      await Promise.all(check.returnValues);
+      expect(browse._sitePicker.items.filter((item) => item.value && item.value !== 'add-site')
+        .map((item) => item.value)).to.deep.equal([value, 'aemsites/devlive']);
+      expect(browse._sitePicker.value).to.equal(value);
+      expect(browse._sitePicker.labelOverride).to.equal('frescopaco (exp-workspace)');
+      expect(JSON.parse(localStorage.getItem('da-sites'))).to.deep.equal([value, 'aemsites/devlive']);
+      expect(browse._inaccessibleSites.has('aemsites/devlive')).to.be.true;
+    } finally {
+      window.history.replaceState(null, '', href);
+      if (previousSites === null) localStorage.removeItem('da-sites');
+      else localStorage.setItem('da-sites', previousSites);
+      metadata.restore();
       check.restore();
     }
   });

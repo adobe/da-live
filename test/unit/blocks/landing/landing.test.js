@@ -5,6 +5,7 @@ import { getFavorites, toggleFavorite } from '../../../../blocks/browse/shared/f
 import { setUISize } from '../../../fixtures/nx2/utils/ui-size.js';
 import loadLanding, { DaLanding } from '../../../../blocks/landing/landing.js';
 import { getNx, getNx2Api } from '../../../../scripts/utils.js';
+import { addExistingSite } from '../../../../blocks/shared/site-access.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { source, config } = await getNx2Api();
@@ -129,7 +130,7 @@ describe('landing page', () => {
     expect(el.shadowRoot.querySelector('da-add-site')).to.equal(null);
   });
 
-  it('hides confirmed inaccessible sites but retains uncertain sites with an explicit retry', async () => {
+  it('keeps remembered sites while reporting access-check failures with an explicit retry', async () => {
     checkSites.restore();
     const list = sinon.stub(source, 'list');
     list.withArgs('/org/site').resolves({ ok: true, items: [] });
@@ -138,13 +139,13 @@ describe('landing page', () => {
     const sites = el._sites;
     await el.checkSites(sites);
     await el.updateComplete;
-    expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/site']);
-    expect(el._sitePicker.items.some(({ value }) => value === 'org/other')).to.equal(false);
+    expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/site', 'org/other']);
+    expect(el._sitePicker.items.some(({ value }) => value === 'org/other')).to.equal(true);
     list.resetBehavior();
     list.rejects(new Error('Offline'));
     await el.checkSites(sites);
     await el.updateComplete;
-    expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/site']);
+    expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/site', 'org/other']);
     expect(el._siteError).to.include('Offline');
     expect(el.shadowRoot.querySelector('[role="status"]').textContent).to.include('Try again');
     list.resolves({ ok: true, items: [] });
@@ -152,28 +153,63 @@ describe('landing page', () => {
     expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/site', 'org/other']);
   });
 
-  it('keeps the denied current workspace selected through refreshes and route changes', async () => {
+  it('keeps remembered workspaces through denied checks, refreshes and route changes', async () => {
     checkSites.restore();
     sinon.stub(source, 'list').resolves({ ok: false, items: [] });
     sinon.stub(source, 'getMetadata').resolves(new Response(null, { status: 403 }));
     await el.checkSites(el._sites);
     await el.updateComplete;
-    expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/site']);
+    expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/site', 'org/other']);
     expect(el._sitePicker.value).to.equal('org/site');
     expect(el._sitePicker.labelOverride).to.equal('site (org)');
     expect(el._inaccessibleSites.has('org/site')).to.equal(true);
     const check = sinon.spy(el, 'checkSites');
     el.loadSites();
-    expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/site']);
+    expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/site', 'org/other']);
     await Promise.all(check.returnValues);
     hashChange._set({ org: 'org', site: 'other', fullpath: '/org/other' });
     await el.updateComplete;
     await Promise.all(check.returnValues);
     await el.updateComplete;
-    expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/other']);
+    expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/other', 'org/site']);
     expect(el._sitePicker.value).to.equal('org/other');
     expect(el._sitePicker.labelOverride).to.equal('other (org)');
     expect(el._inaccessibleSites.has('org/site')).to.equal(true);
+  });
+
+  it('remembers devlive before files load and retains it after adding Frescopaco', async () => {
+    checkSites.restore();
+    const check = sinon.spy(el, 'checkSites');
+    sinon.stub(source, 'list').callsFake(async (path) => ({
+      ok: path.startsWith('/exp-workspace'),
+      items: path === '/exp-workspace' ? [{ name: 'frescopaco' }] : [],
+    }));
+    sinon.stub(source, 'getMetadata').resolves(new Response(null, { status: 403 }));
+    const { href } = window.location;
+    try {
+      localStorage.removeItem('da-sites');
+      hashChange._set({ org: 'aemsites', site: 'devlive', fullpath: '/aemsites/devlive' });
+      await el.updateComplete;
+      await Promise.all(check.returnValues);
+      expect(JSON.parse(localStorage.getItem('da-sites'))).to.deep.equal(['aemsites/devlive']);
+      expect(el._inaccessibleSites.has('aemsites/devlive')).to.equal(true);
+      const value = 'exp-workspace/frescopaco';
+      await addExistingSite({ value, source, signal: new AbortController().signal });
+      el.siteAdded({ detail: { value } });
+      hashChange._set({ org: 'exp-workspace', site: 'frescopaco', fullpath: `/${value}` });
+      await el.updateComplete;
+      await Promise.all(check.returnValues);
+      await el.updateComplete;
+      expect(el._sites.map((site) => site.value)).to.deep.equal([value, 'aemsites/devlive']);
+      expect(el._sitePicker.value).to.equal(value);
+      expect(el._sitePicker.labelOverride).to.equal('frescopaco (exp-workspace)');
+      expect(JSON.parse(localStorage.getItem('da-sites'))).to.deep.equal([value, 'aemsites/devlive']);
+      el.loadSites();
+      expect(el._sites.map((site) => site.value)).to.deep.equal([value, 'aemsites/devlive']);
+      await Promise.all(check.returnValues);
+    } finally {
+      window.history.replaceState(null, '', href);
+    }
   });
 
   it('does not interpret a network failure as a confirmed access denial', async () => {

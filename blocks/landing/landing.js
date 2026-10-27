@@ -154,11 +154,17 @@ export class DaLanding extends LitElement {
       this._sites = getSiteOptions({ recentSites: [], current: this._scope });
       this._siteError = `Could not read recent sites: ${error.message}`;
     }
-    const sites = this._sites;
-    this._sites = sites.filter(
-      ({ value }) => value === this._scope || !this._inaccessibleSites?.has(value),
-    );
-    this.checkSites(sites);
+    this.checkSites(this._sites);
+  }
+
+  rememberCurrentSite() {
+    if (!this._scope) return;
+    try {
+      const [org, site] = this._scope.split('/');
+      setRecentSite({ org, site });
+    } catch (error) {
+      this._siteError = `Could not save the current site in this browser: ${error.message}`;
+    }
   }
 
   async checkSites(sites) {
@@ -169,9 +175,7 @@ export class DaLanding extends LitElement {
       const { source } = await getNx2Api();
       const { signal } = request;
       const inaccessibleSites = this._inaccessibleSites;
-      const result = await checkSiteChoices(
-        { sites, current: this._scope, source, signal, inaccessibleSites },
-      );
+      const result = await checkSiteChoices({ sites, source, signal, inaccessibleSites });
       if (request.signal.aborted || !this.isConnected) return;
       this._inaccessibleSites = result.inaccessibleSites;
       this._sites = result.sites;
@@ -236,6 +240,7 @@ export class DaLanding extends LitElement {
     this._error = undefined;
     this._actionError = undefined;
     this.loadSites();
+    this.rememberCurrentSite();
     this.refreshFavorites();
     document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
     this.loadSite();
@@ -257,12 +262,7 @@ export class DaLanding extends LitElement {
       const files = await loadFiles({ path: this.path, source, signal: request.signal });
       if (!this.isConnected || request.signal.aborted) return;
       this._files = files;
-      try {
-        const [org, site] = this._scope.split('/');
-        setRecentSite({ org, site });
-      } catch (error) {
-        this._siteError = `Could not save the current site in this browser: ${error.message}`;
-      }
+      this.rememberCurrentSite();
       this.loadComments(files, request);
     } catch (error) {
       if (!request.signal.aborted && this.isConnected) this._error = error.message;
