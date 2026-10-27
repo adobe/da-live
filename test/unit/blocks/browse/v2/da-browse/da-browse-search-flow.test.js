@@ -416,8 +416,8 @@ describe('browse-owned nav search', () => {
     expect(browse.shadowRoot.querySelector('.da-list-type-search')).to.be.null;
     expect(browse.shadowRoot.querySelector('[aria-label="Browse files"]').hidden).to.be.false;
     expect((await searchSummary()).textContent).to.equal('');
-    expect(header.shadowRoot.querySelector('slot:not([name])').assignedElements())
-      .to.deep.equal([browse.shadowRoot.querySelector('nx-breadcrumb')]);
+    expect(header.shadowRoot.querySelector('slot:not([name])')).to.be.null;
+    expect(browse.shadowRoot.querySelector('nx-breadcrumb')).to.be.null;
     expect(browse.newCmp).to.equal(creation);
   });
 
