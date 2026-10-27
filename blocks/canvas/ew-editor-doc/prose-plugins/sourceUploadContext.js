@@ -16,6 +16,22 @@ function orgSiteAndRest(pathname) {
 
 /**
  * @param {string} sourceUrl a document url on either store
+ * @returns {{ org: string, site: string } | null} the org and site the document lives in
+ */
+export function getSourceOrgSite(sourceUrl) {
+  if (!sourceUrl || typeof sourceUrl !== 'string') return null;
+  try {
+    const segments = orgSiteAndRest(new URL(sourceUrl).pathname);
+    if (!segments || segments.length < 2) return null;
+    const [org, site] = segments;
+    return { org, site };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * @param {string} sourceUrl a document url on either store
  * @returns {{ parent: string, name: string } | null} the parent in the `/org/site/dir` form the
  * source api takes, and the document name without its extension
  */

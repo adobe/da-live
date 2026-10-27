@@ -5,6 +5,7 @@ import { createTestEditor, destroyEditor } from '../../../edit/prose/test-helper
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let getSourceUploadContext;
+let getSourceOrgSite;
 let uploadImageFile;
 let HLX6_MAX_IMAGE_BYTES;
 let toasts;
@@ -12,7 +13,7 @@ let toasts;
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 
 before(async () => {
-  ({ getSourceUploadContext } = await import('../../../../../../blocks/canvas/ew-editor-doc/prose-plugins/sourceUploadContext.js'));
+  ({ getSourceUploadContext, getSourceOrgSite } = await import('../../../../../../blocks/canvas/ew-editor-doc/prose-plugins/sourceUploadContext.js'));
   ({ uploadImageFile } = await import('../../../../../../blocks/canvas/ew-editor-doc/prose-plugins/imageDrop.js'));
   ({ HLX6_MAX_IMAGE_BYTES } = await import('../../../../../../blocks/canvas/utils/image-upload.js'));
   ({ toasts } = await import('../../../../../fixtures/nx2/blocks/shared/toast/toast.js'));
@@ -65,6 +66,24 @@ describe('getSourceUploadContext', () => {
     expect(getSourceUploadContext('')).to.equal(null);
     expect(getSourceUploadContext('https://admin.da.live/list/org/site')).to.equal(null);
     expect(getSourceUploadContext(null)).to.equal(null);
+  });
+});
+
+describe('getSourceOrgSite', () => {
+  it('reads a da-admin source url', () => {
+    expect(getSourceOrgSite('https://admin.da.live/source/org/site/dir/doc.html'))
+      .to.deep.equal({ org: 'org', site: 'site' });
+  });
+
+  it('reads a source-bus source url', () => {
+    expect(getSourceOrgSite('https://api.aem.live/org/sites/site/source/dir/doc.html'))
+      .to.deep.equal({ org: 'org', site: 'site' });
+  });
+
+  it('answers null for a url it cannot read', () => {
+    expect(getSourceOrgSite('')).to.equal(null);
+    expect(getSourceOrgSite('https://admin.da.live/list/org/site')).to.equal(null);
+    expect(getSourceOrgSite(null)).to.equal(null);
   });
 });
 
