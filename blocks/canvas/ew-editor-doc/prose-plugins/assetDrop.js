@@ -43,9 +43,15 @@ function loadToastModule() {
 }
 
 async function toastError(text) {
-  const { showToast, VARIANT_ERROR } = await loadToastModule();
-  showToast({ text, variant: VARIANT_ERROR });
+  try {
+    const { showToast, VARIANT_ERROR } = await loadToastModule();
+    showToast({ text, variant: VARIANT_ERROR });
+  } catch {
+    // Swallow: a broken toast module must not itself produce an unhandled rejection.
+  }
 }
+
+export const DROP_FAILED_ERROR_MSG = 'The assets could not be added. Please try again.';
 
 /**
  * Resolves each dropped asset against the repository config and builds the ProseMirror
@@ -54,13 +60,14 @@ async function toastError(text) {
  * @param {import('prosemirror-model').Schema} schema
  * @param {Array<object>} assets
  * @param {object} repoConfig
- * @returns {Promise<{ nodes: Array, errors: Array<string> }>}
+ * @returns {Promise<{ nodes: Array, errors: Array<string>, rejected: number }>}
  */
 export async function buildAssetNodes(schema, assets, repoConfig) {
   const { resolveAssetSelection, MISSING_FORMAT_ERROR_MSG } = await loadSelectionModule();
 
   const nodes = [];
   const errors = [];
+  let rejected = 0;
 
   assets.forEach((asset) => {
     const selection = resolveAssetSelection({ asset, repoConfig });
@@ -68,6 +75,7 @@ export async function buildAssetNodes(schema, assets, repoConfig) {
     if (selection.error === MISSING_FORMAT_ERROR_MSG) return;
 
     if (selection.error) {
+      rejected += 1;
       if (!errors.includes(selection.error)) errors.push(selection.error);
       return;
     }
@@ -82,7 +90,7 @@ export async function buildAssetNodes(schema, assets, repoConfig) {
     }
   });
 
-  return { nodes, errors };
+  return { nodes, errors, rejected };
 }
 
 /**
@@ -98,27 +106,36 @@ export async function buildAssetNodes(schema, assets, repoConfig) {
 export async function dropAssets(view, { assets, coords, getRepoConfig }) {
   if (!view.editable) return 0;
 
-  const repoConfig = await getRepoConfig();
-  if (!repoConfig) {
-    await toastError(NOT_CONFIGURED_ERROR);
+  try {
+    const repoConfig = await getRepoConfig();
+    if (!repoConfig) {
+      await toastError(NOT_CONFIGURED_ERROR);
+      return 0;
+    }
+
+    // Computed after the await above, so a doc change that arrived while the repo config
+    // was resolving (e.g. a collab edit) is reflected in the position.
+    const pos = view.posAtCoords(coords)?.pos ?? view.state.selection.from;
+
+    const { nodes, errors, rejected } = await buildAssetNodes(
+      view.state.schema,
+      assets,
+      repoConfig,
+    );
+
+    if (nodes.length) {
+      const tr = view.state.tr.insert(pos, Fragment.fromArray(nodes)).scrollIntoView();
+      view.dispatch(tr);
+    }
+
+    if (errors.length) {
+      const suffix = rejected > 1 ? ` (${rejected} assets skipped)` : '';
+      await toastError(`${errors[0]}${suffix}`);
+    }
+
+    return nodes.length;
+  } catch {
+    await toastError(DROP_FAILED_ERROR_MSG);
     return 0;
   }
-
-  // Computed after the await above, so a doc change that arrived while the repo config
-  // was resolving (e.g. a collab edit) is reflected in the position.
-  const pos = view.posAtCoords(coords)?.pos ?? view.state.selection.from;
-
-  const { nodes, errors } = await buildAssetNodes(view.state.schema, assets, repoConfig);
-
-  if (nodes.length) {
-    const tr = view.state.tr.insert(pos, Fragment.fromArray(nodes)).scrollIntoView();
-    view.dispatch(tr);
-  }
-
-  if (errors.length) {
-    const suffix = errors.length > 1 ? ` (${errors.length} assets skipped)` : '';
-    await toastError(`${errors[0]}${suffix}`);
-  }
-
-  return nodes.length;
 }

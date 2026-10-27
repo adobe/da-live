@@ -10,6 +10,7 @@ let dropAssets;
 let imageDrop;
 let ASSET_DRAG_DATA_TYPE;
 let DM_ERROR_MSG;
+let PUBLISH_ERROR_MSG;
 let MISSING_FORMAT_ERROR_MSG;
 let setSelectionFor;
 let resetSelections;
@@ -24,6 +25,7 @@ before(async () => {
   ({ ASSET_DRAG_DATA_TYPE } = await import(`${getNx2()}/utils/aem-assets/selector-props.js`));
   ({
     DM_ERROR_MSG,
+    PUBLISH_ERROR_MSG,
     MISSING_FORMAT_ERROR_MSG,
     setSelectionFor,
     resetSelections,
@@ -144,13 +146,21 @@ describe('buildAssetNodes', () => {
     const assetB = { id: 'dm-2' };
     setSelectionFor(assetA, { error: DM_ERROR_MSG });
     setSelectionFor(assetB, { error: DM_ERROR_MSG });
-    const { nodes, errors } = await buildAssetNodes(
+    const { nodes, errors, rejected } = await buildAssetNodes(
       editor.view.state.schema,
       [assetA, assetB],
       REPO_CONFIG,
     );
     expect(nodes).to.deep.equal([]);
     expect(errors).to.deep.equal([DM_ERROR_MSG]);
+    expect(rejected).to.equal(2);
+  });
+
+  it('does not count a missing-format asset as rejected', async () => {
+    const asset = { id: 'bad-1' };
+    setSelectionFor(asset, { error: MISSING_FORMAT_ERROR_MSG });
+    const { rejected } = await buildAssetNodes(editor.view.state.schema, [asset], REPO_CONFIG);
+    expect(rejected).to.equal(0);
   });
 });
 
@@ -277,6 +287,48 @@ describe('dropAssets', () => {
       if (node.type.name === 'image') images += 1;
     });
     expect(images).to.equal(1);
+  });
+
+  it('resolves to 0 and shows exactly one error toast when getRepoConfig rejects', async () => {
+    const asset = { id: 'a' };
+    setSelectionFor(asset, { href: 'https://example.com/a.png', isImage: true, alt: 'A' });
+
+    const { view } = editor;
+    view.posAtCoords = () => ({ pos: 1 });
+    const docBefore = view.state.doc.toString();
+
+    const count = await dropAssets(view, {
+      assets: [asset],
+      coords: { left: 10, top: 10 },
+      getRepoConfig: async () => { throw new Error('network failure'); },
+    });
+
+    expect(count).to.equal(0);
+    expect(toasts).to.have.length(1);
+    expect(toasts[0].text).to.equal('The assets could not be added. Please try again.');
+    expect(view.state.doc.toString()).to.equal(docBefore);
+  });
+
+  it('counts assets, not distinct messages, toward the skipped suffix', async () => {
+    const dmA = { id: 'dm-a' };
+    const dmB = { id: 'dm-b' };
+    const published = { id: 'pub' };
+    setSelectionFor(dmA, { error: DM_ERROR_MSG });
+    setSelectionFor(dmB, { error: DM_ERROR_MSG });
+    setSelectionFor(published, { error: PUBLISH_ERROR_MSG });
+
+    const { view } = editor;
+    view.posAtCoords = () => ({ pos: 1 });
+
+    const count = await dropAssets(view, {
+      assets: [dmA, dmB, published],
+      coords: { left: 10, top: 10 },
+      getRepoConfig: async () => REPO_CONFIG,
+    });
+
+    expect(count).to.equal(0);
+    expect(toasts).to.have.length(1);
+    expect(toasts[0].text).to.equal(`${DM_ERROR_MSG} (3 assets skipped)`);
   });
 
   it('computes the drop position after a doc change during getRepoConfig', async () => {
