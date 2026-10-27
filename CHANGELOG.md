@@ -1,3 +1,10 @@
+## [1.14.2](https://github.com/adobe/da-live/compare/v1.14.1...v1.14.2) (2026-10-27)
+
+
+### Bug Fixes
+
+* **ew:** position slash menu correctly when it opens above cursor and user starts typing ([#1497](https://github.com/adobe/da-live/issues/1497)) ([6a9d91c](https://github.com/adobe/da-live/commit/6a9d91cf587d373ea24f970ace626947eb70e089))
+
 ## [1.14.1](https://github.com/adobe/da-live/compare/v1.14.0...v1.14.1) (2026-10-27)
 
 
