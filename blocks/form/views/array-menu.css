@@ -60,6 +60,7 @@
   gap: var(--s2-spacing-100);
   width: 100%;
   padding: var(--s2-spacing-100) var(--s2-spacing-200);
+  font-family: inherit;
   font-size: 13px;
   text-align: left;
   background: transparent;
