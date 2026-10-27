@@ -22,6 +22,70 @@ function setUrl(url) {
   window.history.replaceState(null, '', url);
 }
 
+describe('extension chat turn subscriptions', () => {
+  let connection;
+  let received;
+  const detail = { org: 'org', site: 'site', path: '/page', turnId: 'turn', status: 'completed' };
+  beforeEach(async () => {
+    connection = await setupIframeChannel({
+      iframe: makeIframe(),
+      hashState: { org: 'org', site: 'site', path: 'page' },
+      getView: () => null,
+      onClose() {},
+    });
+    received = [];
+    connection.channel.port2.onmessage = ({ data }) => received.push(data);
+  });
+  afterEach(() => {
+    connection.destroy();
+    sinon.restore();
+  });
+  function command(action) {
+    connection.channel.port1.onmessage({ data: { action } });
+  }
+
+  it('forwards only new events for the extension document and supports unsubscribe', async () => {
+    canvasBus.chatTurnCompleted.emit(detail);
+    command('subscribeChatTurnCompleted');
+    command('subscribeChatTurnCompleted');
+    canvasBus.chatTurnCompleted.emit({ ...detail, org: 'other' });
+    canvasBus.chatTurnCompleted.emit({ ...detail, site: 'other' });
+    canvasBus.chatTurnCompleted.emit({ ...detail, path: 'other' });
+    await wait();
+    expect(received).to.deep.equal([]);
+    canvasBus.chatTurnCompleted.emit(detail);
+    await wait();
+    expect(received).to.deep.equal([{ action: 'chatTurnCompleted', detail }]);
+    command('unsubscribeChatTurnCompleted');
+    command('unsubscribeChatTurnCompleted');
+    canvasBus.chatTurnCompleted.emit(detail);
+    command('subscribeChatTurnCompleted');
+    await wait();
+    expect(received).to.have.lengthOf(1);
+    canvasBus.chatTurnCompleted.emit({ ...detail, status: 'aborted' });
+    await wait();
+    expect(received).to.have.lengthOf(2);
+    expect(received[1].detail.status).to.equal('aborted');
+  });
+
+  it('removes its bus subscription when the iframe channel is destroyed', () => {
+    command('subscribeChatTurnCompleted');
+    const postMessage = sinon.spy(connection.channel.port1, 'postMessage');
+    connection.destroy();
+    canvasBus.chatTurnCompleted.emit(detail);
+    expect(postMessage.called).to.equal(false);
+  });
+
+  it('receives the chat document event through the canvas bridge', async () => {
+    const { initChatBridge } = await import('../../../../../blocks/canvas/editor-utils/chat-bridge.js');
+    initChatBridge();
+    command('subscribeChatTurnCompleted');
+    document.dispatchEvent(new CustomEvent(CHAT_EVENT.TURN_COMPLETED, { detail }));
+    await wait();
+    expect(received).to.deep.equal([{ action: 'chatTurnCompleted', detail }]);
+  });
+});
+
 describe('acknowledged live HTML replacement', () => {
   let view;
   let connection;
@@ -302,7 +366,8 @@ describe('setupIframeChannel', () => {
       hash: '#/myorg/mysite/a/b',
     });
     expect(message.context).to.equal(message.project);
-    expect(message.capabilities).to.deep.equal({ liveDocument: 1, sendHTMLReplace: 1 });
+    const capabilities = { liveDocument: 1, sendHTMLReplace: 1, chatTurnCompleted: 1 };
+    expect(message.capabilities).to.deep.equal(capabilities);
     expect(targetOrigin).to.equal('https://plugin.example.com');
     expect(transfer).to.have.lengthOf(1);
 

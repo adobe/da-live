@@ -1,8 +1,8 @@
 import { createChannel } from '../../shared/channel.js';
 
 // In-process pub/sub for canvas-local UI events (undo, selection, editor view, ...).
-// Not for panel or chat — those cross into da-nx and use its PANEL_EVENT/CHAT_EVENT
-// DOM CustomEvents instead, since components outside this block need to reach them too.
+// Panel/chat commands cross into da-nx via PANEL_EVENT/CHAT_EVENT DOM CustomEvents.
+// Bridges relay cross-repo notifications onto canvas-local channels.
 
 // editor-utils.js owns selection enrichment (blockName/proseIndex/innerText lookup) and
 // registers it here — importing it directly would cycle back through this file.
@@ -54,6 +54,7 @@ export const canvasBus = Object.freeze({
 
   commentsControllerState: createChannel(),
   versionCreatedState: createChannel(),
+  chatTurnCompleted: createChannel(),
 
   preflightStatusState: createChannel(),
 });

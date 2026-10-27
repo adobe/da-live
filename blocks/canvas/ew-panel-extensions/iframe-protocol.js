@@ -32,6 +32,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   let unsubscribeDoc;
   let unsubscribeHtml;
   let unsubscribeSelect;
+  let unsubscribeTurn;
   let lastBlockIndex = null;
 
   const selectionFor = (editorView) => {
@@ -83,6 +84,19 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
 
   channel.port1.onmessage = (e) => {
     const { action, details } = e.data || {};
+    if (action === 'subscribeChatTurnCompleted') {
+      unsubscribeTurn ??= canvasBus.chatTurnCompleted.subscribe((detail) => {
+        if (detail?.org !== org || detail.site !== site
+          || (detail.path || '').replace(/^\/+/, '') !== (path || '').replace(/^\/+/, '')) return;
+        channel.port1.postMessage({ action: 'chatTurnCompleted', detail });
+      });
+      return;
+    }
+    if (action === 'unsubscribeChatTurnCompleted') {
+      unsubscribeTurn?.();
+      unsubscribeTurn = undefined;
+      return;
+    }
     if (action === 'subscribeLiveDocument') {
       if (!subscribed) {
         subscribed = true;
@@ -221,7 +235,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
         project: context,
         context,
         token,
-        capabilities: { liveDocument: 1, sendHTMLReplace: 1 },
+        capabilities: { liveDocument: 1, sendHTMLReplace: 1, chatTurnCompleted: 1 },
       },
       targetOrigin,
       [channel.port2],
@@ -236,6 +250,8 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
 
   const destroy = () => {
     stopSubscription();
+    unsubscribeTurn?.();
+    unsubscribeTurn = undefined;
     clearTimeout(readyTimer);
     document.removeEventListener(CHAT_EVENT.AGENT_CHANGE, onAgentChange);
     channel.port1.close();
