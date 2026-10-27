@@ -1,6 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
-import { getNx, setNx } from '../../../../../scripts/utils.js';
+import { getNx, getNx2, setNx } from '../../../../../scripts/utils.js';
 import { adaptEvaluation } from '../../../../../blocks/canvas/ew-preflight/adapter.js';
 
 const tick = () => new Promise((resolve) => { setTimeout(resolve, 20); });
@@ -93,6 +93,107 @@ describe('ew-preflight preflight gate', () => {
     } finally {
       el.remove();
     }
+  });
+
+  describe('UI size', () => {
+    let el;
+    let setUISize;
+    let savedSize;
+    let shellStyle;
+
+    before(async () => {
+      ({ setUISize } = await import(`${getNx2()}/utils/ui-size.js`));
+      shellStyle = new CSSStyleSheet();
+      const response = await fetch('/blocks/canvas/ew-preflight/ew-preflight.css');
+      shellStyle.replaceSync(await response.text());
+    });
+
+    beforeEach(() => {
+      savedSize = localStorage.getItem('ui-size');
+      setUISize({ size: 's' });
+      el = createGateElement();
+    });
+
+    afterEach(() => {
+      el.remove();
+      setUISize({ size: savedSize === 'm' ? 'm' : 's' });
+      if (savedSize === null) localStorage.removeItem('ui-size');
+      else localStorage.setItem('ui-size', savedSize);
+    });
+
+    it('updates the existing header action and loading shell without restarting the run', async () => {
+      let evaluations = 0;
+      el._evaluate = async () => {
+        evaluations += 1;
+        el._loading = true;
+      };
+      document.body.append(el);
+      await el.updateComplete;
+      el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, shellStyle];
+      const btn = el.getHeaderActions();
+      const status = el.shadowRoot.querySelector('.ew-preflight-status');
+      const loadingSpinner = status.querySelector('.nx-loading-spinner');
+      expect(el.dataset.uiSize).to.equal('s');
+      expect(btn.classList.contains('nx-btn-sm')).to.be.true;
+      expect(btn.disabled).to.be.true;
+
+      setUISize({ size: 'm' });
+      await el.updateComplete;
+      expect(el.dataset.uiSize).to.equal('m');
+      expect(el.getHeaderActions()).to.equal(btn);
+      expect(btn.classList.contains('nx-btn-sm')).to.be.false;
+      expect(btn.disabled).to.be.true;
+      expect(getComputedStyle(loadingSpinner).width).to.equal('16px');
+      expect(getComputedStyle(loadingSpinner).height).to.equal('16px');
+      expect(btn.querySelector('.nx-loading-spinner').style.width).to.equal('16px');
+      expect(evaluations).to.equal(1);
+
+      setUISize({ size: 's' });
+      await el.updateComplete;
+      expect(btn.classList.contains('nx-btn-sm')).to.be.true;
+      expect(btn.querySelector('.nx-loading-spinner').style.width).to.equal('14px');
+      expect(evaluations).to.equal(1);
+    });
+
+    it('starts in M and resizes the retry action while preserving the error and retry handler', async () => {
+      setUISize({ size: 'm' });
+      let evaluations = 0;
+      el._evaluate = async () => {
+        evaluations += 1;
+        el._error = 'Could not evaluate the page.';
+      };
+      document.body.append(el);
+      await el.updateComplete;
+      const retry = el.shadowRoot.querySelector('.ew-preflight-retry');
+      const btn = el.getHeaderActions();
+      expect(el.dataset.uiSize).to.equal('m');
+      expect(retry.matches('.nx-action-btn.nx-btn-lg')).to.be.true;
+      expect(btn.classList.contains('nx-btn-sm')).to.be.false;
+
+      setUISize({ size: 's' });
+      await el.updateComplete;
+      expect(el.shadowRoot.querySelector('.ew-preflight-retry')).to.equal(retry);
+      expect(retry.className.trim()).to.equal('ew-preflight-retry');
+      expect(el.shadowRoot.querySelector('[role="alert"]').textContent).to.include(el._error);
+      expect(evaluations).to.equal(1);
+      retry.click();
+      await el.updateComplete;
+      expect(evaluations).to.equal(2);
+    });
+
+    it('stops reacting when detached and applies the current size on reconnect', async () => {
+      stubEvaluate(el);
+      document.body.append(el);
+      await el.updateComplete;
+      const data = el._data;
+      el.remove();
+      setUISize({ size: 'm' });
+      expect(el.dataset.uiSize).to.equal('s');
+      document.body.append(el);
+      await el.updateComplete;
+      expect(el.dataset.uiSize).to.equal('m');
+      expect(el.shadowRoot.querySelector('nx-page-eval').data).to.equal(data);
+    });
   });
 
   it('reports success when no checks failed, echoing the run path + requestId', async () => {
