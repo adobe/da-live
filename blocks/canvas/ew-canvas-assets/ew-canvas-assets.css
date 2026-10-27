@@ -1,0 +1,15 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+.assets-rail {
+  height: 100%;
+}
+
+.assets-rail-error {
+  margin: var(--s2-spacing-200);
+  font-family: var(--s2-font-family);
+  font-size: var(--s2-component-s-regular-font-size);
+  color: var(--s2-gray-700);
+}
