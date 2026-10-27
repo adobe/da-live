@@ -113,15 +113,15 @@ export async function dropAssets(view, { assets, coords, getRepoConfig }) {
       return 0;
     }
 
-    // Computed after the await above, so a doc change that arrived while the repo config
-    // was resolving (e.g. a collab edit) is reflected in the position.
-    const pos = view.posAtCoords(coords)?.pos ?? view.state.selection.from;
-
     const { nodes, errors, rejected } = await buildAssetNodes(
       view.state.schema,
       assets,
       repoConfig,
     );
+
+    // Computed after all awaits above, so a doc change that arrived while the repo config
+    // or asset nodes were resolving (e.g. a collab edit) is reflected in the position.
+    const pos = view.posAtCoords(coords)?.pos ?? view.state.selection.from;
 
     if (nodes.length) {
       const tr = view.state.tr.insert(pos, Fragment.fromArray(nodes)).scrollIntoView();

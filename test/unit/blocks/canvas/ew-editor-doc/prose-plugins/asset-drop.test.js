@@ -362,6 +362,50 @@ describe('dropAssets', () => {
     expect(calls).to.have.length(1);
   });
 
+  it('computes the drop position after a doc change during buildAssetNodes', async () => {
+    // buildAssetNodes's own async work (its lazy module load) is already cached by the
+    // time this test runs, so its forEach over resolveAssetSelection executes fully
+    // synchronously -- but its promise is still *pending* for the whole duration from the
+    // caller's point of view. A Proxy on the selection result lets us land a doc change
+    // inside that synchronous stretch, which is functionally the same hazard described in
+    // the bug report: a change that arrives before buildAssetNodes's returned promise
+    // settles must still be visible to the position computed from it.
+    const asset = { id: 'a' };
+    const { view } = editor;
+
+    let changed = false;
+    let posComputedAfterChange = null;
+    view.posAtCoords = () => {
+      posComputedAfterChange = changed;
+      return { pos: 1 };
+    };
+
+    const selection = { href: 'https://example.com/a.png', isImage: true, alt: 'A' };
+    const proxiedSelection = new Proxy(selection, {
+      get(target, prop, receiver) {
+        if (prop === 'error' && !changed) {
+          changed = true;
+          // simulate a doc change (e.g. a collab edit) arriving while buildAssetNodes is
+          // still doing its work
+          const { tr } = view.state;
+          view.dispatch(tr.insertText('x', 0));
+        }
+        return Reflect.get(target, prop, receiver);
+      },
+    });
+    setSelectionFor(asset, proxiedSelection);
+
+    const count = await dropAssets(view, {
+      assets: [asset],
+      coords: { left: 10, top: 10 },
+      getRepoConfig: async () => REPO_CONFIG,
+    });
+
+    expect(count).to.equal(1);
+    expect(posComputedAfterChange).to.equal(true);
+    expect(() => view.state.doc.check()).to.not.throw();
+  });
+
   it('keeps the document valid when dropping at a block boundary', async () => {
     const asset = { id: 'a' };
     setSelectionFor(asset, { href: 'https://example.com/a.png', isImage: true, alt: 'A' });
