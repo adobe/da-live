@@ -1,3 +1,10 @@
+## [1.14.1](https://github.com/adobe/da-live/compare/v1.14.0...v1.14.1) (2026-10-27)
+
+
+### Bug Fixes
+
+* **ew:** add confirm dialog to block delete from toolbar, consolidate dialogs for outline & toolbar ([#1496](https://github.com/adobe/da-live/issues/1496)) ([6d8a138](https://github.com/adobe/da-live/commit/6d8a13862f105877cff6302a65db45e81322342f))
+
 # [1.14.0](https://github.com/adobe/da-live/compare/v1.13.2...v1.14.0) (2026-10-27)
 
 
