@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import { Fragment } from 'da-y-wrapper';
 import { setNx, getNx2 } from '../../../../../../scripts/utils.js';
 import { createTestEditor, destroyEditor } from '../../../edit/prose/test-helpers.js';
 
@@ -7,6 +8,7 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 let readDroppedAssets;
 let buildAssetNodes;
 let dropAssets;
+let installAssetDropGuard;
 let imageDrop;
 let ASSET_DRAG_DATA_TYPE;
 let DM_ERROR_MSG;
@@ -20,7 +22,7 @@ let toasts;
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 
 before(async () => {
-  ({ readDroppedAssets, buildAssetNodes, dropAssets } = await import('../../../../../../blocks/canvas/ew-editor-doc/prose-plugins/assetDrop.js'));
+  ({ readDroppedAssets, buildAssetNodes, dropAssets, installAssetDropGuard } = await import('../../../../../../blocks/canvas/ew-editor-doc/prose-plugins/assetDrop.js'));
   ({ default: imageDrop } = await import('../../../../../../blocks/canvas/ew-editor-doc/prose-plugins/imageDrop.js'));
   ({ ASSET_DRAG_DATA_TYPE } = await import(`${getNx2()}/utils/aem-assets/selector-props.js`));
   ({
@@ -81,6 +83,11 @@ describe('readDroppedAssets', () => {
     const assets = [{ id: 'one' }, { id: 'two' }];
     const dt = dataTransferWithAssets(assets);
     expect(readDroppedAssets(dt)).to.deep.equal(assets);
+  });
+
+  it('returns null for an empty array', () => {
+    const dt = dataTransferWithAssets([]);
+    expect(readDroppedAssets(dt)).to.equal(null);
   });
 });
 
@@ -161,6 +168,47 @@ describe('buildAssetNodes', () => {
     setSelectionFor(asset, { error: MISSING_FORMAT_ERROR_MSG });
     const { rejected } = await buildAssetNodes(editor.view.state.schema, [asset], REPO_CONFIG);
     expect(rejected).to.equal(0);
+  });
+
+  it('keeps 3 consecutive PDF links separate after Fragment.fromArray', async () => {
+    const pdfs = [{ id: 'pdf-1' }, { id: 'pdf-2' }, { id: 'pdf-3' }];
+    setSelectionFor(pdfs[0], { href: 'https://example.com/1.pdf', isImage: false, alt: '' });
+    setSelectionFor(pdfs[1], { href: 'https://example.com/2.pdf', isImage: false, alt: '' });
+    setSelectionFor(pdfs[2], { href: 'https://example.com/3.pdf', isImage: false, alt: '' });
+
+    const { nodes } = await buildAssetNodes(editor.view.state.schema, pdfs, REPO_CONFIG);
+    const fragment = Fragment.fromArray(nodes);
+    const hrefs = [];
+    fragment.forEach((node) => {
+      const link = node.marks.find((m) => m.type.name === 'link');
+      if (link) hrefs.push(link.attrs.href);
+    });
+    expect(hrefs).to.deep.equal([
+      'https://example.com/1.pdf',
+      'https://example.com/2.pdf',
+      'https://example.com/3.pdf',
+    ]);
+  });
+
+  it('keeps the same PDF dropped twice as two separate links with correct text', async () => {
+    const assetA = { id: 'pdf-same-a' };
+    const assetB = { id: 'pdf-same-b' };
+    setSelectionFor(assetA, { href: 'https://example.com/same.pdf', isImage: false, alt: '' });
+    setSelectionFor(assetB, { href: 'https://example.com/same.pdf', isImage: false, alt: '' });
+
+    const { nodes } = await buildAssetNodes(
+      editor.view.state.schema,
+      [assetA, assetB],
+      REPO_CONFIG,
+    );
+    const fragment = Fragment.fromArray(nodes);
+    const links = [];
+    fragment.forEach((node) => {
+      const link = node.marks.find((m) => m.type.name === 'link');
+      if (link) links.push({ text: node.text, href: link.attrs.href });
+    });
+    expect(links).to.have.length(2);
+    links.forEach((link) => expect(link.text).to.equal(link.href));
   });
 });
 
@@ -297,16 +345,77 @@ describe('dropAssets', () => {
     view.posAtCoords = () => ({ pos: 1 });
     const docBefore = view.state.doc.toString();
 
-    const count = await dropAssets(view, {
-      assets: [asset],
-      coords: { left: 10, top: 10 },
-      getRepoConfig: async () => { throw new Error('network failure'); },
-    });
+    const orgConsoleError = console.error;
+    const consoleErrors = [];
+    console.error = (...args) => consoleErrors.push(args);
+
+    let count;
+    try {
+      count = await dropAssets(view, {
+        assets: [asset],
+        coords: { left: 10, top: 10 },
+        getRepoConfig: async () => { throw new Error('network failure'); },
+      });
+    } finally {
+      console.error = orgConsoleError;
+    }
 
     expect(count).to.equal(0);
     expect(toasts).to.have.length(1);
     expect(toasts[0].text).to.equal('The assets could not be added. Please try again.');
     expect(view.state.doc.toString()).to.equal(docBefore);
+    expect(consoleErrors).to.have.length(1);
+    expect(consoleErrors[0][0]).to.equal('[asset-drop]');
+  });
+
+  it('resolves 0 without toasting or throwing when the view is destroyed while getRepoConfig is pending', async () => {
+    const asset = { id: 'a' };
+    setSelectionFor(asset, { href: 'https://example.com/a.png', isImage: true, alt: 'A' });
+
+    const { view } = editor;
+    view.posAtCoords = () => ({ pos: 1 });
+
+    const count = await dropAssets(view, {
+      assets: [asset],
+      coords: { left: 10, top: 10 },
+      getRepoConfig: async () => {
+        destroyEditor(editor);
+        return REPO_CONFIG;
+      },
+    });
+
+    expect(count).to.equal(0);
+    expect(toasts).to.have.length(0);
+  });
+
+  it('sets the selection right after the inserted fragment and focuses the view', async () => {
+    const asset = { id: 'a' };
+    setSelectionFor(asset, { href: 'https://example.com/a.png', isImage: true, alt: 'A' });
+
+    const { view } = editor;
+    const dropPos = 1;
+    view.posAtCoords = () => ({ pos: dropPos });
+
+    let focused = false;
+    const orgFocus = view.focus.bind(view);
+    view.focus = () => {
+      focused = true;
+      orgFocus();
+    };
+
+    const count = await dropAssets(view, {
+      assets: [asset],
+      coords: { left: 10, top: 10 },
+      getRepoConfig: async () => REPO_CONFIG,
+    });
+
+    expect(count).to.equal(1);
+    let fragmentSize;
+    view.state.doc.descendants((node) => {
+      if (node.type.name === 'image') fragmentSize = node.nodeSize;
+    });
+    expect(view.state.selection.head).to.equal(dropPos + fragmentSize);
+    expect(focused).to.equal(true);
   });
 
   it('counts assets, not distinct messages, toward the skipped suffix', async () => {
@@ -501,5 +610,69 @@ describe('imageDrop integration', () => {
 
     const upload = calls.find((c) => c.opts?.method === 'POST');
     expect(upload, 'nothing was uploaded').to.exist;
+  });
+});
+
+describe('installAssetDropGuard', () => {
+  let plainDiv;
+  let editor;
+
+  beforeEach(async () => {
+    plainDiv = document.createElement('div');
+    document.body.appendChild(plainDiv);
+    editor = await createTestEditor();
+    await nextFrame();
+    installAssetDropGuard();
+  });
+
+  afterEach(() => {
+    plainDiv.remove();
+    destroyEditor(editor);
+  });
+
+  function dragEventWithAssetType(type) {
+    const dt = new DataTransfer();
+    dt.setData(ASSET_DRAG_DATA_TYPE, '[]');
+    if (type === 'drop') return new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true });
+    return new DragEvent('dragover', { dataTransfer: dt, bubbles: true, cancelable: true });
+  }
+
+  it('prevents default for an asset drop outside the editor', () => {
+    const dropEvent = dragEventWithAssetType('drop');
+    const notPrevented = plainDiv.dispatchEvent(dropEvent);
+    expect(notPrevented).to.equal(false);
+  });
+
+  it('prevents default for an asset dragover outside the editor', () => {
+    const dragoverEvent = dragEventWithAssetType('dragover');
+    const notPrevented = plainDiv.dispatchEvent(dragoverEvent);
+    expect(notPrevented).to.equal(false);
+  });
+
+  it('does not prevent default for a drop without the asset drag type', () => {
+    const dt = new DataTransfer();
+    dt.setData('text/plain', 'https://example.com');
+    const event = new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true });
+    const notPrevented = plainDiv.dispatchEvent(event);
+    expect(notPrevented).to.equal(true);
+  });
+
+  it('does not prevent default for an asset drop inside the editor', () => {
+    const event = dragEventWithAssetType('drop');
+    const notPrevented = editor.view.dom.dispatchEvent(event);
+    expect(notPrevented).to.equal(true);
+  });
+
+  it('does not double-register when installed twice', () => {
+    installAssetDropGuard();
+    const event = dragEventWithAssetType('drop');
+    let preventDefaultCalls = 0;
+    const orgPreventDefault = event.preventDefault.bind(event);
+    event.preventDefault = () => {
+      preventDefaultCalls += 1;
+      orgPreventDefault();
+    };
+    plainDiv.dispatchEvent(event);
+    expect(preventDefaultCalls).to.equal(1);
   });
 });

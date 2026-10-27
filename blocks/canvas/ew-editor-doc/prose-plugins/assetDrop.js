@@ -3,7 +3,7 @@
  * Handles dropping AEM assets (dragged out of the AEM Assets rail selector) into the
  * canvas doc editor's ProseMirror view.
  */
-import { Fragment } from 'da-y-wrapper';
+import { Fragment, TextSelection } from 'da-y-wrapper';
 import { getNx2 } from '../../../../scripts/utils.js';
 
 // Matches da-nx's ASSET_DRAG_DATA_TYPE (nx2/utils/aem-assets/selector-props.js). Hardcoded
@@ -22,10 +22,40 @@ export function readDroppedAssets(dataTransfer) {
   if (!dataTransfer?.types?.includes(ASSET_DRAG_DATA_TYPE)) return null;
   try {
     const parsed = JSON.parse(dataTransfer.getData(ASSET_DRAG_DATA_TYPE));
-    return Array.isArray(parsed) ? parsed : null;
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
   } catch {
     return null;
   }
+}
+
+// Whether a host document has a `dragover`/`drop` guard installed to stop asset drags
+// from navigating the page when they land outside the ProseMirror view.
+let dropGuardInstalled = false;
+
+function isInsideProseMirror(event) {
+  return event.composedPath().some(
+    (node) => node instanceof Element && node.classList?.contains('ProseMirror'),
+  );
+}
+
+function guardStrayAssetDrag(event) {
+  if (!event.dataTransfer?.types?.includes(ASSET_DRAG_DATA_TYPE)) return;
+  if (isInsideProseMirror(event)) return;
+  event.preventDefault();
+}
+
+/**
+ * Installs a document-level guard that stops an asset drag (carrying the
+ * `collectionviewdata` dataTransfer type) from navigating the page when it is dropped,
+ * or dragged over, anywhere outside a ProseMirror view -- including shadow DOM, which is
+ * why `composedPath()` is used instead of `event.target`. Idempotent: safe to call more
+ * than once.
+ */
+export function installAssetDropGuard() {
+  if (dropGuardInstalled) return;
+  dropGuardInstalled = true;
+  document.addEventListener('dragover', guardStrayAssetDrag);
+  document.addEventListener('drop', guardStrayAssetDrag);
 }
 
 // Loaded lazily, and only once, the first time an asset is actually dropped, so editors
@@ -86,6 +116,10 @@ export async function buildAssetNodes(schema, assets, repoConfig) {
       if (alt) attrs.alt = alt;
       nodes.push(schema.nodes.image.create(attrs));
     } else {
+      const prev = nodes[nodes.length - 1];
+      const prevIsLinkText = prev?.isText
+        && prev.marks.some((mark) => mark.type === schema.marks.link);
+      if (prevIsLinkText) nodes.push(schema.text(' '));
       nodes.push(schema.text(href, [schema.marks.link.create({ href })]));
     }
   });
@@ -119,13 +153,21 @@ export async function dropAssets(view, { assets, coords, getRepoConfig }) {
       repoConfig,
     );
 
+    // The view may have been torn down (e.g. the editor unmounted) while the repo config
+    // or asset nodes were resolving above.
+    if (view.isDestroyed) return 0;
+
     // Computed after all awaits above, so a doc change that arrived while the repo config
     // or asset nodes were resolving (e.g. a collab edit) is reflected in the position.
     const pos = view.posAtCoords(coords)?.pos ?? view.state.selection.from;
 
     if (nodes.length) {
-      const tr = view.state.tr.insert(pos, Fragment.fromArray(nodes)).scrollIntoView();
+      const fragment = Fragment.fromArray(nodes);
+      let tr = view.state.tr.insert(pos, fragment).scrollIntoView();
+      const selection = TextSelection.near(tr.doc.resolve(pos + fragment.size));
+      tr = tr.setSelection(selection);
       view.dispatch(tr);
+      view.focus();
     }
 
     if (errors.length) {
@@ -134,7 +176,9 @@ export async function dropAssets(view, { assets, coords, getRepoConfig }) {
     }
 
     return nodes.length;
-  } catch {
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('[asset-drop]', e);
     await toastError(DROP_FAILED_ERROR_MSG);
     return 0;
   }
