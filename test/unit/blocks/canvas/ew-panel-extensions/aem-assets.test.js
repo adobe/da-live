@@ -54,4 +54,17 @@ describe('aem-assets dialog shares the selector loader with the rail', () => {
     expect(renderCalls.length).to.equal(2);
     expect(document.head.querySelectorAll('script').length).to.equal(scriptCountBefore);
   });
+
+  it('renders an error message in the container when the selector fails to load', async () => {
+    const loaderError = 'The AEM Assets selector could not be loaded.';
+    setSelectorLoadResult({ error: loaderError });
+
+    const container = document.createElement('div');
+    await renderAssets({ container, org: 'org', site: 'site' });
+
+    expect(renderCalls).to.have.length(0);
+    const errorEl = container.querySelector('.da-dialog-asset-error');
+    expect(errorEl).to.exist;
+    expect(errorEl.textContent).to.equal(loaderError);
+  });
 });
