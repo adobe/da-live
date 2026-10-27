@@ -1,9 +1,11 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
+import { canvasBus } from '../utils/canvas-bus.js';
 import {
   loadBlockLibrary,
-  getItemPreviewUrl,
+  ensureItemPreviewAccess,
+  LIBRARY_AUTH_MESSAGE,
   getPreviewStatus,
 } from '../ew-panel-extensions/helpers.js';
 
@@ -69,11 +71,22 @@ class EwBlockLibraryModal extends LitElement {
     this._openDescriptions = new Set();
     this._viewport = 'desktop';
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
+    this._unsubBranch = canvasBus.branchState.subscribe((state) => {
+      if (!state?.path) {
+        this._previewRequest = null;
+        this._previewInfo = null;
+        this._previewBlock = undefined;
+      } else if (this._previewBlock) {
+        this._loadPreview(this._previewBlock, this._previewRequest?.anchor);
+      }
+    });
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
+    this._previewRequest = null;
+    this._unsubBranch?.();
   }
 
   willUpdate(changed) {
@@ -139,6 +152,8 @@ class EwBlockLibraryModal extends LitElement {
   }
 
   async _selectBlock(block) {
+    this._selectedPath = block.path;
+    this._loadPreview(block);
     const willExpand = this._expandedPath !== block.path;
     this._expandedPath = willExpand ? block.path : null;
     if (willExpand && !this._variantsByPath.has(block.path)) {
@@ -147,25 +162,50 @@ class EwBlockLibraryModal extends LitElement {
       next.set(block.path, variants ?? []);
       this._variantsByPath = next;
     }
-    this._selectedPath = block.path;
-    this._loadPreview(block);
   }
 
-  async _loadPreview(block) {
+  async _selectVariant(block, variant) {
+    if (!variant.anchor) return;
+    this._selectedPath = block.path;
+    if (this._previewInfo?.path === block.path && this._previewBlock?.path === block.path) {
+      if (this._previewRequest) this._previewRequest.anchor = variant.anchor;
+      const url = new URL(this._previewInfo.url);
+      url.hash = encodeURIComponent(variant.anchor);
+      if (url.href === this._previewInfo.url) {
+        // Lit skips unchanged attributes; reapply the fragment to restore scroll.
+        this.shadowRoot.querySelector('.modal-preview-frame')?.setAttribute('src', url.href);
+      }
+      this._previewInfo = { ...this._previewInfo, url: url.href };
+    } else {
+      await this._loadPreview(block, variant.anchor);
+    }
+  }
+
+  async _loadPreview(block, anchor) {
+    const request = { anchor };
+    this._previewRequest = request;
+    this._previewBlock = block;
     const { org, site } = this._hashState || {};
     if (!org || !site) {
       this._previewInfo = null;
       return;
     }
-    const details = getItemPreviewUrl(block, { org, site });
-    const url = details.previewUrl;
+    const details = await ensureItemPreviewAccess(block, { org, site });
+    if (this._previewRequest !== request) return;
+    if (!details || details.error) {
+      this._previewInfo = { error: details?.error || 'Preview branch unavailable. Please try again once the editor preview is ready.' };
+      return;
+    }
+    const previewUrl = new URL(details.previewUrl);
+    if (request.anchor) previewUrl.hash = encodeURIComponent(request.anchor);
+    const url = previewUrl.href;
     this._previewInfo = { path: block.path, name: block.name, url, ok: undefined };
-    const ok = await getPreviewStatus({
+    const ok = details.org?.toLowerCase() === org.toLowerCase() ? await getPreviewStatus({
       org: details.org,
       site: details.site,
       pathname: details.pathname,
-    });
-    if (this._previewInfo?.url === url) {
+    }) : null;
+    if (this._previewRequest === request) {
       this._previewInfo = { ...this._previewInfo, ok };
     }
   }
@@ -202,7 +242,7 @@ class EwBlockLibraryModal extends LitElement {
       return html`<div class="modal-tree-loading">Loading variants…</div>`;
     }
     if (!variants.length) {
-      return html`<div class="modal-tree-loading">No variants found.</div>`;
+      return html`<div class="modal-tree-loading">${variants.authError ? LIBRARY_AUTH_MESSAGE : 'No variants found.'}</div>`;
     }
     return html`
       <ul class="modal-tree-variants" role="group">
@@ -216,13 +256,16 @@ class EwBlockLibraryModal extends LitElement {
     return html`
       <li role="treeitem">
         <div class="modal-tree-variant-row">
-          <span class="modal-tree-row modal-tree-row-variant">
+          <button type="button"
+                  class="modal-tree-row modal-tree-row-variant"
+                  ?disabled=${!v.anchor}
+                  @click=${() => this._selectVariant(block, v)}>
             <span class="modal-tree-label">
               ${v.name}${v.variants
     ? html` <span class="modal-tree-subtitle">${v.variants}</span>`
     : nothing}
             </span>
-          </span>
+          </button>
           ${description ? html`
             <button type="button"
                     class="nx-action-btn-icon nx-btn-sm modal-tree-info"
@@ -252,7 +295,7 @@ class EwBlockLibraryModal extends LitElement {
       return html`<div class="modal-state">Loading blocks…</div>`;
     }
     if (!this._blocks.length) {
-      return html`<div class="modal-state">No blocks found.</div>`;
+      return html`<div class="modal-state">${this._blocks.authError ? LIBRARY_AUTH_MESSAGE : 'No blocks found.'}</div>`;
     }
     const filtered = this._filteredBlocks();
     if (!filtered.length) {
@@ -295,6 +338,9 @@ class EwBlockLibraryModal extends LitElement {
   }
 
   _renderPreview() {
+    if (this._previewInfo?.error) {
+      return html`<div class="modal-preview-error"><p>${this._previewInfo.error}</p></div>`;
+    }
     if (!this._previewInfo) {
       return html`<div class="modal-preview-placeholder">
         Select a block to see a preview.

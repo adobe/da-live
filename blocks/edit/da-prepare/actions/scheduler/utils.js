@@ -28,7 +28,7 @@ export async function schedulePagePublish(org, site, path, userId, scheduledPubl
   const resp = await daFetch(`${SNAPSHOT_SCHEDULER_URL}/schedule/page`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ org, site, path, userId, scheduledPublish }),
+    body: JSON.stringify({ org, site, path: path.replace(/\.html$/, ''), userId, scheduledPublish }),
   });
   return resp;
 }

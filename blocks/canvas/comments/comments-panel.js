@@ -1,9 +1,12 @@
 import { LitElement, html } from 'da-lit';
-import { getNx, getNx2 } from '../../../scripts/utils.js';
+import { getNx, getNx2, getNxEWFlags } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import { openCommentsPanel, getCommentsBridge } from '../editor-utils/comments-bridge.js';
+import { setChatPrompt, addChatContext } from '../../shared/chat-panel.js';
 import { canvasBus } from '../utils/canvas-bus.js';
+import { SEL_BLOCK } from '../ew-editor-doc/utils/selection.js';
 import { buildDeepLinkUrl, parseDeepLink } from './helpers/deep-link.js';
+import { formatCommentPrompt } from './helpers/format-utils.js';
 import { authorKey } from './helpers/author-colors.js';
 import {
   DRAFT_MODES,
@@ -26,11 +29,12 @@ import {
   renderConfirmDeleteDialog,
 } from './helpers/templates.js';
 
+const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
 const sheet = await getSheet('/blocks/canvas/comments/comments-panel.css');
 const buttons = await getSheet(`${getNx2()}/styles/buttons.css`);
 const form = await getSheet(`${getNx2()}/styles/form.css`);
-const base = await getSheet('/blocks/shared/styles/base.css');
+const hints = await getSheet('/blocks/shared/styles/hints.css');
 
 let toastModulePromise;
 
@@ -57,6 +61,7 @@ export class CommentsPanel extends LitElement {
     _submittingId: { state: true },
     _pendingDelete: { state: true },
     _threadGroups: { state: true },
+    chatDisabled: { state: true },
   };
 
   constructor() {
@@ -130,6 +135,9 @@ export class CommentsPanel extends LitElement {
       this._activeToolView = view;
       this.syncPanelOpen();
     });
+    this._unsubHash = hashChange.subscribe((state) => {
+      this.syncChatDisabled(state?.org, state?.site);
+    });
     this.syncPanelOpen();
   }
 
@@ -137,17 +145,32 @@ export class CommentsPanel extends LitElement {
     this.controller?.setPanelOpen(this._activeToolView === 'comments');
   }
 
+  async syncChatDisabled(org, site) {
+    const key = org && site ? `${org}/${site}` : '';
+    this._chatDisabledKey = key;
+    if (!key) {
+      this.chatDisabled = false;
+      return;
+    }
+    const { isEwChatDisabled } = await getNxEWFlags();
+    const disabled = await isEwChatDisabled({ org, site });
+    if (this._chatDisabledKey !== key) return;
+    this.chatDisabled = disabled;
+  }
+
   teardownBusSubscriptions() {
     this._unsubControllerState?.();
     this._unsubControllerState = null;
     this._unsubToolView?.();
     this._unsubToolView = null;
+    this._unsubHash?.();
+    this._unsubHash = null;
   }
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [
-      ...this.shadowRoot.adoptedStyleSheets, base, buttons, form, sheet,
+      ...this.shadowRoot.adoptedStyleSheets, hints, buttons, form, sheet,
     ];
     if (this.controller === undefined) this.controller = getCommentsBridge().controller;
     this.setupObservers();
@@ -408,6 +431,7 @@ export class CommentsPanel extends LitElement {
     if (id === 'edit') this.startEditDraft(comment);
     else if (id === 'delete') this.handleDeleteComment(comment.id, threadId);
     else if (id === 'reopen') this.handleUnresolveThread(threadId);
+    else if (id === 'chat') this.addThreadToChat(threadId);
     else if (id === 'link') this.copyThreadLink(threadId);
   }
 
@@ -415,6 +439,36 @@ export class CommentsPanel extends LitElement {
     if (!comment || !this.currentUser) return false;
     const me = authorKey(this.currentUser);
     return Boolean(me) && me === authorKey(comment.author);
+  }
+
+  async attachThreadContext(threadId) {
+    const block = this.controller?.blockContext(threadId);
+    if (!block) return;
+    await addChatContext({
+      id: `comment-${threadId}`,
+      type: SEL_BLOCK,
+      selectionType: SEL_BLOCK,
+      label: block.blockName,
+      blockName: block.blockName,
+      innerText: block.innerText,
+      proseIndex: block.selFrom,
+      selFrom: block.selFrom,
+      selTo: block.selTo,
+      pinnable: true,
+      pinned: true,
+    });
+  }
+
+  addThreadToChat(threadId = this.controller?.selectedThreadId) {
+    const thread = this.getThreadById(threadId);
+    if (!thread) return;
+    setChatPrompt(
+      formatCommentPrompt(thread),
+      async () => {
+        await this.attachThreadContext(threadId);
+        this.controller?.selectThreadRange(threadId);
+      },
+    );
   }
 
   copyThreadLink(threadId = this.controller?.selectedThreadId) {

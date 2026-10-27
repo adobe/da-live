@@ -1,11 +1,11 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { sanitizeName } from '../utils.js';
-import getSheet from '../sheet.js';
 
 const nx = getNx();
 await import(`${nx}/blocks/shared/dialog/dialog.js`);
-const form = await getSheet(`${getNx2()}/styles/form.css`);
+const { loadStyle } = await import(`${nx}/utils/utils.js`);
+const form = await loadStyle(`${getNx2()}/styles/form.css`);
 
 class DaNameDialog extends LitElement {
   static properties = {
@@ -72,11 +72,11 @@ class DaNameDialog extends LitElement {
             ${this._nameError ? 'Please fill out this field.' : (this.error ?? '')}
           </span>
         </label>
-        <button type="button" slot="actions" class="da-btn-secondary" @click=${this._onCancel}>Cancel</button>
-        <button type="button" slot="actions" class="da-btn-primary" ?disabled=${this.saving}
+        <button type="button" slot="actions" class="nx-form-btn-secondary" @click=${this._onCancel}>Cancel</button>
+        <button type="button" slot="actions" class="nx-form-btn-primary" ?disabled=${this.saving}
           @click=${() => this._onSave(false)}>${this.saveLabel ?? 'Create'}</button>
         ${this.showCreateAndOpen ? html`
-        <button type="button" slot="actions" class="da-btn-primary" ?disabled=${this.saving}
+        <button type="button" slot="actions" class="nx-form-btn-primary" ?disabled=${this.saving}
           @click=${() => this._onSave(true)}>${this.saveLabel ?? 'Create'} and open</button>` : nothing}
       </nx-dialog>
     `;

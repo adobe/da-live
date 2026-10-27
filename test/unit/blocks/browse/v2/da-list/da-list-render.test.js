@@ -1,0 +1,427 @@
+/* eslint-disable no-underscore-dangle */
+import { expect } from '@esm-bundle/chai';
+import { spy } from 'sinon';
+
+const { setNx } = await import('../../../../../../scripts/utils.js');
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
+
+await import('../../../../../../blocks/browse/v2/da-list/da-list.js');
+
+async function updateList(el, change) {
+  const update = spy(el, 'update');
+  try {
+    change();
+    await el.updateComplete;
+    await update.firstCall.returnValue;
+    await el.updateComplete;
+  } finally {
+    update.restore();
+  }
+}
+
+describe('da-list render', () => {
+  let el;
+  let savedFetch;
+  let storageDescriptor;
+
+  beforeEach(() => {
+    storageDescriptor = Object.getOwnPropertyDescriptor(window, 'localStorage');
+    Object.defineProperty(window, 'localStorage', { configurable: true, value: sessionStorage });
+    savedFetch = window.fetch;
+    localStorage.removeItem('da-browse-settings');
+    // Stub fetch to avoid real network calls during getList()
+    window.fetch = () => Promise.resolve(new Response('[]', { status: 200 }));
+  });
+
+  afterEach(() => {
+    window.fetch = savedFetch;
+    if (el && el.parentElement) el.remove();
+    el = null;
+    localStorage.removeItem('da-browse-settings');
+    Object.defineProperty(window, 'localStorage', storageDescriptor);
+  });
+
+  async function fixture(props = {}) {
+    el = document.createElement('da-list');
+    Object.assign(el, props);
+    await updateList(el, () => document.body.appendChild(el));
+    return el;
+  }
+
+  async function rerender() {
+    el.requestUpdate();
+    await el.updateComplete;
+  }
+
+  it('persists favorite changes without changing order or selection', async () => {
+    const savedFavorites = localStorage.getItem('da-favorites');
+    try {
+      localStorage.removeItem('da-favorites');
+      await fixture({ fullpath: '/org/site' });
+      const first = { path: '/org/site/a.html', name: 'a', ext: 'html', isChecked: true };
+      const second = { path: '/org/site/b.html', name: 'b', ext: 'html' };
+      el._listItems = [first, second];
+      el._selectedItems = [first];
+      el.toggleItemFavorite(second);
+      expect(second.isFavorited).to.be.true;
+      expect(el._listItems).to.deep.equal([first, second]);
+      expect(el._selectedItems).to.deep.equal([first]);
+      expect(JSON.parse(localStorage.getItem('da-favorites'))['/org/site'])
+        .to.deep.equal([second.path]);
+      el.toggleItemFavorite(second);
+      expect(second.isFavorited).to.be.false;
+      expect(localStorage.getItem('da-favorites')).to.be.null;
+      expect(el._listItems).to.deep.equal([first, second]);
+    } finally {
+      if (savedFavorites === null) localStorage.removeItem('da-favorites');
+      else localStorage.setItem('da-favorites', savedFavorites);
+    }
+  });
+
+  it('applies the sort preference on initial load and applies it again when changing folders', async () => {
+    el = document.createElement('da-list');
+    el.sort = true;
+    el.sortPreference = { property: 'name', direction: 'ascending' };
+    el.getList = async () => [
+      { path: `${el.fullpath}/b.html`, name: 'b', ext: 'html' },
+      { path: `${el.fullpath}/a.html`, name: 'a', ext: 'html' },
+    ];
+    el.updateDeletePermission = async () => { };
+    el.fullpath = '/org/site/one';
+    await updateList(el, () => document.body.append(el));
+    expect(el._listItems.map((item) => item.name)).to.deep.equal(['a', 'b']);
+    expect(el.sortState.property).to.equal('name');
+    await updateList(el, () => { el.fullpath = '/org/site/two'; });
+    expect(el._listItems.map((item) => item.path)).to.deep.equal([
+      '/org/site/two/a.html', '/org/site/two/b.html',
+    ]);
+    expect(el.shadowRoot.querySelector('[data-column="name"]').getAttribute('aria-sort')).to.equal('ascending');
+  });
+
+  it('uses default ordering for an invalid stored sort', async () => {
+    localStorage.setItem('da-browse-settings', '{"sort":{"property":"unknown","direction":"ascending"}}');
+    await fixture({ fullpath: '/o/r', sort: true });
+    await el.updateComplete;
+    expect(el.sortState.direction).to.equal('none');
+  });
+
+  it('Renders an empty list message when no items', async () => {
+    await fixture({ fullpath: '/o/r' });
+    el._listItems = [];
+    el._continuationToken = null;
+    el._allPagesLoaded = true;
+    el._emptyMessage = 'Nothing here';
+    await rerender();
+    expect(el.shadowRoot.querySelector('.empty-list')).to.exist;
+    expect(el.shadowRoot.querySelector('.empty-list h3').textContent).to.equal('Nothing here');
+  });
+
+  it('Renders the list when items are present', async () => {
+    await fixture({ fullpath: '/o/r' });
+    el._listItems = [
+      { path: '/o/r/page.html', name: 'page', ext: 'html', lastModified: 1704067200000 },
+      { path: '/o/r/img.png', name: 'img', ext: 'png', lastModified: 1704067200000 },
+    ];
+    el.select = true;
+    await rerender();
+    const items = el.shadowRoot.querySelectorAll('da-list-item');
+    expect(items.length).to.equal(2);
+  });
+
+  it('Renders the load-more sentinel when continuationToken is set', async () => {
+    // Mock fetch to return continuation header
+    window.fetch = () => Promise.resolve(new Response('[]', {
+      status: 200,
+      headers: { 'da-continuation-token': 'tok' },
+    }));
+    await fixture({ fullpath: '/o/r' });
+    el._listItems = [{ path: '/o/r/a', name: 'a', ext: 'html' }];
+    await rerender();
+    expect(el.shadowRoot.querySelector('.da-list-sentinel')).to.exist;
+  });
+
+  it('Filters items by type without a Name text filter', async () => {
+    await fixture({ fullpath: '/o/r' });
+    el._listItems = [
+      { path: '/o/r/alpha', name: 'alpha', ext: 'html' },
+      { path: '/o/r/beta', name: 'beta', ext: 'json' },
+    ];
+    el._hiddenTypes = new Set(['Sheet']);
+    await rerender();
+    const items = el.shadowRoot.querySelectorAll('da-list-item');
+    expect(items.length).to.equal(1);
+    expect(items[0].getAttribute('name')).to.equal('alpha');
+  });
+
+  it('Renders the status toast when _status is set', async () => {
+    await fixture({ fullpath: '/o/r' });
+    el._status = { type: 'success', text: 'Hello', description: 'desc' };
+    await rerender();
+    const toast = el.shadowRoot.querySelector('.da-list-status');
+    expect(toast).to.exist;
+    expect(toast.textContent).to.contain('Hello');
+    expect(toast.textContent).to.contain('desc');
+  });
+
+  it('Renders the drop-conflicts dialog when _dropConflicts is set', async () => {
+    await fixture({ fullpath: '/o/r' });
+    el._dropConflicts = ['a.html', 'b.html'];
+    await rerender();
+    const dialog = el.shadowRoot.querySelector('da-confirm-dialog');
+    expect(dialog).to.exist;
+    expect(dialog.title).to.contain('Replace 2');
+    const items = dialog.querySelectorAll('.da-drop-conflicts li');
+    expect(items.length).to.equal(2);
+  });
+
+  it('Renders singular text when there is exactly 1 conflict', async () => {
+    await fixture({ fullpath: '/o/r' });
+    el._dropConflicts = ['a.html'];
+    await rerender();
+    const dialog = el.shadowRoot.querySelector('da-confirm-dialog');
+    expect(dialog.title).to.contain('1 existing item');
+  });
+
+  it('Renders the errors dialog when _itemErrors has entries', async () => {
+    await fixture({ fullpath: '/o/r' });
+    el._itemErrors = [{ name: 'a', message: 'Failed' }];
+    await rerender();
+    const dialog = el.shadowRoot.querySelector('da-confirm-dialog');
+    expect(dialog).to.exist;
+    expect(dialog.textContent).to.contain('Failed');
+    expect(dialog.textContent).to.contain('a');
+  });
+
+  it('Renders the confirm dialog when _confirm is set', async () => {
+    await fixture({ fullpath: '/o/r' });
+    el._selectedItems = [{ path: '/o/r/x.html', ext: 'html' }];
+    el._confirm = { type: 'delete' };
+    el._itemsRemaining = 0;
+    await rerender();
+    const dialog = el.shadowRoot.querySelector('da-confirm-dialog');
+    expect(dialog).to.exist;
+    expect(dialog.title).to.contain('Deleting');
+  });
+
+  it('Renders the drop area when drag is enabled', async () => {
+    await fixture({ fullpath: '/o/r' });
+    el._listItems = [];
+    el._continuationToken = null;
+    el.drag = true;
+    el._dropMessage = 'Drop here';
+    await rerender();
+    expect(el.shadowRoot.querySelector('.da-drop-area')).to.exist;
+  });
+
+  it('Keeps Name sorting without a filter input or toggle', async () => {
+    await fixture({ fullpath: '/o/r' });
+    el._listItems = [];
+    await rerender();
+    expect(el.shadowRoot.querySelector('button.da-browse-filter')).to.be.null;
+    expect(el.shadowRoot.querySelector('input[name="filter"]')).to.be.null;
+    expect(el.shadowRoot.querySelector('.da-browse-header-cell-name button').textContent).to.contain('Name');
+  });
+
+  it('Renders a table-style header with Name, Type, and Modified columns', async () => {
+    await fixture({ fullpath: '/o/r' });
+    el._listItems = [{ path: '/o/r/page.html', name: 'page', ext: 'html', lastModified: 1704067200000 }];
+    await rerender();
+    const header = el.shadowRoot.querySelector('.da-browse-table-header');
+    expect(header).to.exist;
+    const columns = [...header.querySelectorAll('[data-column]')].map((node) => node.getAttribute('data-column'));
+    expect(columns).to.deep.equal(['select', 'name', 'type', 'modified', 'actions']);
+    expect(header.textContent).to.contain('Name');
+    expect(header.textContent).to.contain('Type');
+    expect(header.textContent).to.contain('Modified');
+  });
+
+  it('sortDirectionFor returns the active direction or "none"', async () => {
+    await fixture({ fullpath: '/o/r' });
+    el._sort = { property: 'name', direction: 'ascending' };
+    expect(el.sortDirectionFor('name')).to.equal('ascending');
+    expect(el.sortDirectionFor('lastModified')).to.equal('none');
+    el._sort = undefined;
+    expect(el.sortDirectionFor('name')).to.equal('none');
+  });
+
+  it('retains the sentinel when a grouped, filtered page has no visible items', async () => {
+    await fixture();
+    el.loadMore = () => { };
+    el._bulkLoading = true;
+    el.groupByType = true;
+    el._listItems = [{ path: '/o/r/page.html', name: 'page', ext: 'html' }];
+    el._hiddenTypes = new Set(['Page']);
+    el._continuationToken = 'next';
+    el._allPagesLoaded = false;
+    await rerender();
+    expect(el.shadowRoot.querySelector('da-list-item')).to.be.null;
+    expect(el.shadowRoot.querySelector('.da-list-sentinel')).to.exist;
+  });
+
+  it('renders Sheet labels in groups and the type filter', async () => {
+    await fixture();
+    el.groupByType = true;
+    el._listItems = [{ path: '/o/r/data.json', name: 'data', ext: 'json' }];
+    await rerender();
+    expect(el.shadowRoot.querySelector('.da-list-group-label').textContent).to.equal('Sheet');
+    expect(el.shadowRoot.querySelector('.da-list-group-count').textContent).to.equal('1');
+    const labels = [...el.shadowRoot.querySelectorAll('.da-list-types-row')];
+    const sheet = labels.find((label) => label.textContent.trim() === 'Sheet');
+    expect(sheet).to.exist;
+  });
+
+  it('filters by type and restores all types', async () => {
+    await fixture();
+    el._listItems = [
+      { path: '/o/r/page.html', name: 'page', ext: 'html' },
+      { path: '/o/r/data.json', name: 'data', ext: 'json' },
+    ];
+    el.toggleTypeVisibility('Page');
+    await rerender();
+    expect(el.filteredItems.map((item) => item.ext)).to.deep.equal(['json']);
+    el.toggleAllTypesVisibility();
+    await rerender();
+    expect(el.filteredItems.length).to.equal(2);
+  });
+
+  it('collapses and expands type groups without changing the data', async () => {
+    await fixture();
+    el.groupByType = true;
+    el._listItems = [{ path: '/o/r/page.html', name: 'page', ext: 'html' }];
+    el.toggleTypeGroup('Page');
+    await rerender();
+    expect(el.shadowRoot.querySelector('da-list-item')).to.be.null;
+    expect(el.shadowRoot.querySelector('.da-list-group-toggle').getAttribute('aria-expanded')).to.equal('false');
+    el.toggleTypeGroup('Page');
+    await rerender();
+    expect(el.shadowRoot.querySelector('da-list-item')).to.exist;
+  });
+
+  it('loads remaining pages before presenting the complete type selection', async () => {
+    await fixture();
+    el._continuationToken = 'next';
+    el._allPagesLoaded = false;
+    el.loadAllPages = async () => {
+      el._listItems = [{ path: '/o/r/data.json', name: 'data', ext: 'json' }];
+      el._allPagesLoaded = true;
+      el._continuationToken = null;
+    };
+    await el.toggleTypesPopover(document.createElement('button'));
+    expect(el.allTypeLabels).to.deep.equal(['Sheet']);
+    expect(el._bulkLoading).to.be.false;
+  });
+
+  it('Hides the action bar when no items are selected', async () => {
+    await fixture({ fullpath: '/o/r' });
+    el._selectedItems = [];
+    await rerender();
+    const bar = el.shadowRoot.querySelector('da-actionbar');
+    expect(bar.getAttribute('data-visible')).to.equal('false');
+  });
+
+  it('Shows the action bar when items are selected', async () => {
+    await fixture({ fullpath: '/o/r' });
+    el._selectedItems = [{ path: '/x' }];
+    await rerender();
+    const bar = el.shadowRoot.querySelector('da-actionbar');
+    expect(bar.getAttribute('data-visible')).to.equal('true');
+  });
+
+  it('Forwards hidePublishConfs to the action bar', async () => {
+    await fixture({ fullpath: '/o/r', hidePublishConfs: ['/o/r/blog'] });
+    await rerender();
+    const bar = el.shadowRoot.querySelector('da-actionbar');
+    expect(bar.hidePublishConfs).to.deep.equal(['/o/r/blog']);
+  });
+
+  it('renders supplied items in a card grid with select-all', async () => {
+    await fixture({
+      select: true,
+      view: 'card',
+      listItems: [
+        { path: '/org/site/a.html', name: 'a', ext: 'html' },
+        { path: '/org/site/b.png', name: 'b', ext: 'png' },
+      ],
+    });
+    const items = el.shadowRoot.querySelectorAll('.da-card-grid da-list-item');
+    expect(items).to.have.length(2);
+    expect(items[0].getAttribute('view')).to.equal('card');
+    expect(el.shadowRoot.querySelector('.da-browse-table-header').classList.contains('is-card')).to.be.true;
+    expect(el.shadowRoot.querySelector('input[name="select-all"]')).to.exist;
+    el.view = 'list';
+    await rerender();
+    expect(el.shadowRoot.querySelector('.da-card-grid')).to.be.null;
+    expect(el.shadowRoot.querySelector('da-list-item').hasAttribute('view')).to.be.false;
+  });
+
+  it('shows the card sort control only for an active sort', async () => {
+    await fixture({ view: 'card', listItems: [] });
+    expect(el.shadowRoot.querySelector('.da-card-sort')).to.be.null;
+    el._sort = { property: 'lastModified', direction: 'descending' };
+    await rerender();
+    expect(el.shadowRoot.querySelector('.da-card-sort button').textContent.trim())
+      .to.equal('Modified');
+    expect(el.shadowRoot.querySelector('.da-card-sort').getAttribute('aria-sort'))
+      .to.equal('descending');
+    el._sort = { property: 'name', direction: 'none' };
+    await rerender();
+    expect(el.shadowRoot.querySelector('.da-card-sort')).to.be.null;
+    el.view = 'list';
+    await rerender();
+    expect(el.shadowRoot.querySelector('.da-card-grid')).to.be.null;
+    expect(el.shadowRoot.querySelector('.da-card-sort')).to.be.null;
+  });
+});
+
+describe('da-list pagination observer', () => {
+  let el;
+  let savedFetch;
+
+  beforeEach(async () => {
+    // Setting _continuationToken in tests below renders the sentinel, which
+    // the IntersectionObserver may immediately consider intersecting and
+    // trigger loadMore() → fetch. Stub fetch so it stays in-process.
+    savedFetch = window.fetch;
+    window.fetch = () => Promise.resolve(new Response('[]', { status: 200 }));
+    el = document.createElement('da-list');
+    // Initialize so renderCheckBox()/isSelectAll don't throw on first render
+    el._listItems = [];
+    const initialized = spy(el, 'firstUpdated');
+    try {
+      document.body.appendChild(el);
+      await el.updateComplete;
+      await initialized.firstCall.returnValue;
+    } finally {
+      initialized.restore();
+    }
+  });
+
+  afterEach(() => {
+    if (el.parentElement) el.remove();
+    window.fetch = savedFetch;
+  });
+
+  it('setupObserver creates an IntersectionObserver only once', () => {
+    el.setupObserver();
+    const first = el._observer;
+    el.setupObserver();
+    expect(el._observer).to.equal(first);
+  });
+
+  it('checkLoadMore is callable without throwing', async () => {
+    el._continuationToken = 'tok';
+    el._allPagesLoaded = false;
+    el._isLoadingMore = false;
+    // checkLoadMore looks at intersection state via _observer — without an
+    // observer/sentinel it's a no-op. Just verify it doesn't throw.
+    expect(() => el.checkLoadMore()).not.to.throw();
+  });
+
+  it('disconnectedCallback disconnects the observer', () => {
+    el.setupObserver();
+    let disconnected = false;
+    el._observer.disconnect = () => { disconnected = true; };
+    el.disconnectedCallback();
+    expect(disconnected).to.be.true;
+  });
+});

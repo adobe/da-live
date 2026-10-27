@@ -1,6 +1,7 @@
 import { getNx, getNx2Api } from '../../scripts/utils.js';
 import { EMPTY_DOC } from '../shared/utils.js';
 import { getCommentsBridge } from './editor-utils/comments-bridge.js';
+import { initPreflightResponder } from './editor-utils/preflight-responder.js';
 import {
   normalizeCanvasEditorView,
   readInitialCanvasEditorView,
@@ -20,6 +21,10 @@ import { resolveEditorDocSession, createdDocSession } from './ew-editor-doc/util
 import { SEL_BLOCK, SEL_ITEM, SEL_TEXT } from './ew-editor-doc/utils/selection.js';
 import { getChatPanelContent } from '../shared/chat-panel.js';
 import { canvasBus } from './utils/canvas-bus.js';
+import { initBranchBridge } from './editor-utils/branch-bridge.js';
+import { resolveCanvasBranch } from './editor-utils/branch-state.js';
+import { installComparison } from './ew-comparison/comparison.js';
+import { docToHtml } from '../shared/version/compare.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
@@ -156,13 +161,15 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
   const name = state?.path?.split('/').pop();
   document.title = `${name ? `Edit ${name} | ` : ''}Experience Workspace`;
   if (!fullPath) {
+    resolveCanvasBranch();
     removeCanvasEditors(mountRoot);
     removeNotPermitted(mountRoot);
     header.authorized = true;
     header.canWrite = true;
     return;
   }
-  const ctx = editorCtxFromHashState(state, fullPath);
+  const editorCtx = editorCtxFromHashState(state, fullPath);
+  const ctx = { ...editorCtx, branchPromise: resolveCanvasBranch(editorCtx) };
   const session = await resolveEditorDocSession(ctx);
   if (loadCount !== editorLoadCount) return;
   if (session.notFound) {
@@ -211,6 +218,7 @@ async function installCanvasHeader(block, { org, site }) {
   header.editorView = await readInitialCanvasEditorView({ org, site });
   canvasBus.editorViewRequest.subscribe(({ view: rawView }) => {
     const view = normalizeCanvasEditorView(rawView);
+    header.editorView = view;
     persistCanvasEditorView(view);
     notifyCanvasEditorActive(view);
     syncEditorSplitLayout({ mountRoot: canvasEditorMountRoot(block), view });
@@ -273,12 +281,20 @@ canvasBus.commentComposeRequest.subscribe(() => {
 export default async function decorate(block) {
   const { org, site } = hashState();
 
+  // Make the "Preflight" side panel the responder for the publish gate's run request.
+  initPreflightResponder();
+
   registerPanelSection('chat', {
     position: 'before',
     width: '400px',
     getContent: getChatPanelContent(),
-    onShow: (aside, id, options) => {
-      if (!options?.text) return;
+    onShow: async (aside, id, options) => {
+      if (!options?.text && !options?.onReady) return;
+      if (options.onReady) {
+        await aside?.querySelector('nx-chat, nx-chat-ao')?.updateComplete;
+        await options.onReady();
+      }
+      if (!options.text) return;
       const detail = { text: options.text, autoSend: options.autoSend };
       document.dispatchEvent(new CustomEvent(CHAT_EVENT.SET_PROMPT, { detail }));
     },
@@ -313,12 +329,34 @@ export default async function decorate(block) {
   syncEditorSplitLayout({ mountRoot, view: header.editorView });
   installEditorSplitDrag(mountRoot);
 
+  canvasBus.mergeConflictsState.subscribe((detail) => {
+    header.hasUnresolvedMergeConflicts = detail?.hasMergeConflicts ?? false;
+    if (header.hasUnresolvedMergeConflicts && header.editorView !== 'content') {
+      canvasBus.editorViewRequest.emit({ view: 'content' });
+    }
+  });
+
+  let comparisonContext;
+  const comparison = installComparison({
+    mountRoot,
+    getContext: () => comparisonContext,
+    getDocument: () => {
+      const { view } = mountRoot.querySelector('ew-editor-doc')
+        ?.getComparisonSession(comparisonContext) || {};
+      return view ? docToHtml(view) : undefined;
+    },
+    saveDocument: () => mountRoot.querySelector('ew-editor-doc')?.saveForComparison(comparisonContext),
+  });
+
   canvasBus.undoState.subscribe((detail) => {
     header.undoAvailable = detail?.canUndo ?? false;
     header.redoAvailable = detail?.canRedo ?? false;
   });
 
+  initBranchBridge();
   hashChange.subscribe((state) => {
+    comparisonContext = state;
+    comparison.contextChanged();
     syncCanvasEditorsToHash({ mountRoot, header, state });
     const toolPanel = document.querySelector('aside.panel[data-position="after"] ew-tool-panel');
     if (toolPanel) syncToolPanelViews(toolPanel, state);

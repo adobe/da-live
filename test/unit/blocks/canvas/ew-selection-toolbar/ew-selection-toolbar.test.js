@@ -48,6 +48,22 @@ describe('ew-selection-toolbar buttons', () => {
     return editor.view.state.doc.rangeHasMark(from, to, editor.view.state.schema.marks[name]);
   }
 
+  it('allows all supported image formats in the upload picker', () => {
+    const savedClick = HTMLInputElement.prototype.click;
+    let accepted;
+    HTMLInputElement.prototype.click = function click() {
+      accepted = this.accept.split(',');
+    };
+    try {
+      toolbar.triggerAddImage();
+      expect(accepted).to.include.members([
+        'image/svg+xml', 'image/png', 'image/jpeg', 'image/gif', 'image/avif', 'image/webp',
+      ]);
+    } finally {
+      HTMLInputElement.prototype.click = savedClick;
+    }
+  });
+
   it('applies superscript to the selected range', async () => {
     setText('hello');
     selectText(1, 6);

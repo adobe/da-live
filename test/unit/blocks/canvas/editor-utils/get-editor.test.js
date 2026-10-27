@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import { EditorState } from 'da-y-wrapper';
 import { setNx } from '../../../../../scripts/utils.js';
 import { makeView, makeRealView } from '../test-helpers.js';
 
@@ -6,11 +7,15 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let getEditor;
 let resolveEditableNode;
+let updateState;
+let getInstrumentedHTML;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
   getEditor = mod.getEditor;
   resolveEditableNode = mod.resolveEditableNode;
+  updateState = mod.updateState;
+  getInstrumentedHTML = mod.getInstrumentedHTML;
 });
 
 // A "cards" block is authored as a table; each card is a multi-block table cell
@@ -74,6 +79,111 @@ describe('getEditor with a table-backed (cards) block', () => {
     expect(editorState.type).to.not.equal('table_cell');
     expect(editorState.type).to.equal('heading');
     expect(imageVersion).to.be.a('string');
+  });
+
+  describe('quick-edit nested formatting', () => {
+    let view;
+
+    afterEach(() => {
+      view?.destroy();
+      document.body.innerHTML = '';
+    });
+
+    function mount(content) {
+      view = makeRealView({ type: 'doc', content });
+      return capture(view);
+    }
+
+    const heading = {
+      type: 'heading',
+      attrs: { level: 1 },
+      content: [
+        { type: 'text', text: 'Every Morning, Perfected.' },
+        { type: 'hard_break' },
+        { type: 'text', text: 'Brew Just for You.' },
+      ],
+    };
+    const quote = (content) => ({ type: 'blockquote', content });
+
+    it('opens and edits the whole quoted heading without losing its wrapper or line break', () => {
+      const { ctx, posted } = mount([
+        { type: 'paragraph', content: [{ type: 'text', text: 'Before' }] },
+        quote([heading]),
+        { type: 'paragraph', content: [{ type: 'text', text: 'After' }] },
+      ]);
+      const cursorOffset = view.posAtDOM(view.dom.querySelector('blockquote'), 0);
+      getEditor({ cursorOffset }, ctx);
+      const { payload } = posted[0];
+      expect(payload.cursorOffset).to.equal(cursorOffset);
+      expect(payload.editorState.type).to.equal('blockquote');
+
+      const edited = view.state.schema.nodeFromJSON(payload.editorState);
+      const miniDoc = view.state.schema.node('doc', null, [edited]);
+      const miniState = EditorState.create({ doc: miniDoc });
+      const tr = miniState.tr.insertText('!', 2);
+      updateState({
+        cursorOffset,
+        node: tr.doc.firstChild.toJSON(),
+      }, ctx);
+
+      const result = view.state.doc.child(1);
+      expect(result.type.name).to.equal('blockquote');
+      expect(result.firstChild.type.name).to.equal('heading');
+      expect(result.firstChild.attrs.level).to.equal(1);
+      expect(result.firstChild.textContent).to.equal('!Every Morning, Perfected.Brew Just for You.');
+      expect(result.firstChild.child(1).type.name).to.equal('hard_break');
+      expect(view.state.doc.firstChild.textContent).to.equal('Before');
+      expect(view.state.doc.lastChild.textContent).to.equal('After');
+      expect(getInstrumentedHTML(view)).to.include(`<blockquote data-prose-index="${cursorOffset}">`);
+    });
+
+    it('applies stored marks to inserted text inside a quote, including after a line break', () => {
+      const { ctx, posted } = mount([quote([heading])]);
+      const cursorOffset = view.posAtDOM(view.dom.querySelector('blockquote'), 0);
+      const insertPos = view.posAtDOM(view.dom.querySelector('h1'), 2);
+      const miniState = EditorState.create({ doc: view.state.doc });
+      const edited = miniState.tr.insertText('X', insertPos).doc.firstChild;
+      view.dispatch(view.state.tr.setStoredMarks([view.state.schema.marks.strong.create()]));
+
+      updateState({ cursorOffset, node: edited.toJSON() }, ctx);
+
+      expect(view.state.doc.nodeAt(insertPos).text).to.equal('X');
+      expect(view.state.doc.nodeAt(insertPos).marks.map((mark) => mark.type.name))
+        .to.deep.equal(['strong']);
+      expect(view.state.doc.firstChild.firstChild.firstChild.marks).to.have.lengthOf(0);
+      expect(view.state.doc.nodeAt(insertPos - 1).type.name).to.equal('hard_break');
+      const sync = posted.find(({ type }) => type === 'set-editor-state');
+      expect(sync.payload.editorState.type).to.equal('blockquote');
+    });
+
+    [
+      quote([quote([heading])]),
+      quote([heading, { type: 'paragraph', content: [{ type: 'text', text: 'Keep me' }] }]),
+      {
+        type: 'bullet_list',
+        content: [{ type: 'list_item', content: [quote([heading])] }],
+      },
+      quote([{
+        type: 'ordered_list',
+        content: [{ type: 'list_item', content: [heading] }],
+      }]),
+    ].forEach((wrapper, i) => {
+      it(`resolves the outermost instrumented wrapper for nested case ${i + 1}`, () => {
+        mount([wrapper]);
+        const outer = view.dom.firstElementChild;
+        const cursorOffset = view.posAtDOM(outer, 0);
+        const nestedOffset = view.posAtDOM(view.dom.querySelector('h1'), 0);
+        [cursorOffset, nestedOffset].forEach((offset) => {
+          const result = resolveEditableNode(view.state.doc, offset);
+          expect(result.node === view.state.doc.firstChild).to.equal(true);
+          expect(result.cursorOffset).to.equal(cursorOffset);
+        });
+        const miniState = EditorState.create({ doc: view.state.doc });
+        const edited = miniState.tr.insertText('!', nestedOffset).doc;
+        updateState({ cursorOffset, node: edited.firstChild.toJSON() }, capture(view).ctx);
+        expect(view.state.doc.eq(edited)).to.equal(true);
+      });
+    });
   });
 
   it('sends the cell paragraph, never the enclosing table_cell', () => {

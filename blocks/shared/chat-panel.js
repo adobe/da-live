@@ -10,3 +10,21 @@ export function getChatPanelContent() {
     return loadChat();
   };
 }
+
+let panelEventsPromise;
+const panelEvents = () => {
+  panelEventsPromise ??= import(`${getNx()}/utils/panel.js`);
+  return panelEventsPromise;
+};
+
+export async function setChatPrompt(text, onReady) {
+  if (!text) return;
+  const { PANEL_EVENT } = await panelEvents();
+  const detail = { section: 'chat', options: { text, onReady } };
+  document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail }));
+}
+
+export async function addChatContext(item) {
+  const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
+  document.dispatchEvent(new CustomEvent(CHAT_EVENT.ADD_TO_CHAT, { detail: item }));
+}
