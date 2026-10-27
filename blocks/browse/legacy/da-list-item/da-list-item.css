@@ -26,7 +26,7 @@
 }
 
 .da-item-list-item-inner.can-select {
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 32px 1fr auto;
 }
 
 .da-item-list-item-title,

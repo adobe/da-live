@@ -146,13 +146,13 @@ describe('da-browse render', () => {
     }
   });
 
-  it('passes permissions and breadcrumb segments to header content', async () => {
+  it('passes permissions to creation controls and leaves breadcrumbs to nav', async () => {
     await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
     el.handlePermissions({ detail: ['read', 'write'] });
     await el.updateComplete;
     expect(el.newCmp.permissions).to.deep.equal(['read', 'write']);
-    const breadcrumb = el.shadowRoot.querySelector('nx-breadcrumb');
-    expect(breadcrumb.pathSegments).to.deep.equal(['org', 'site']);
+    expect(el.shadowRoot.querySelector('nx-breadcrumb')).to.be.null;
+    expect(headerRoot().querySelector('slot:not([name])')).to.be.null;
   });
 
   it('persists header view requests and passes the view and size to the list', async () => {

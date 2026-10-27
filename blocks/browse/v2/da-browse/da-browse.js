@@ -639,7 +639,6 @@ export default class DaBrowse extends LitElement {
         @viewchange=${({ detail }) => this.setView(detail.view)}
         @appearancesizechange=${({ detail }) => this.setAppearanceSize(detail.view, detail.size)}
         @groupbytypechange=${({ detail }) => this.setGroupByType(detail.group)}>
-        <nx-breadcrumb .pathSegments=${this.details.fullpath.split('/').filter(Boolean)}></nx-breadcrumb>
         <da-new slot="actions" variant="accent" .permissions=${this._permissions}
           @newitem=${this.handleNewItem}
           fullpath="${this.details.fullpath}" editor="${this.editor}"></da-new>
