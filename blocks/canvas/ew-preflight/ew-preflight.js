@@ -281,7 +281,7 @@ class EwPreflight extends LitElement {
         <div class="ew-preflight-status" role="alert">
           <p>${this._error}</p>
           <button
-            class="ew-preflight-retry ${getUISize() === 'm' ? `nx-action-btn ${getLgBtnClass()}` : ''}"
+            class="nx-action-btn ew-preflight-retry ${getLgBtnClass()}"
             @click=${() => this._evaluateAndReport()}
           >Try again</button>
         </div>`;

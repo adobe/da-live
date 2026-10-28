@@ -19,21 +19,6 @@
   font-size: var(--nx-ui-text-content);
 }
 
-.ew-preflight-retry {
-  padding: 6px 14px;
-  background: var(--s2-gray-100);
-  color: var(--s2-gray-800);
-  border: 1px solid var(--s2-gray-300);
-  border-radius: var(--s2-corner-radius-400);
-  font-family: var(--s2-font-family);
-  font-size: var(--nx-ui-text-content);
-  cursor: pointer;
-}
-
-.ew-preflight-retry:hover {
-  background: var(--s2-gray-200);
-}
-
 :host([data-ui-size="m"]) .ew-preflight-status .nx-loading-spinner {
   width: 16px;
   height: 16px;

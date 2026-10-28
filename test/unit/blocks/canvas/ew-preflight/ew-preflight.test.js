@@ -173,7 +173,8 @@ describe('ew-preflight preflight gate', () => {
       setUISize({ size: 's' });
       await el.updateComplete;
       expect(el.shadowRoot.querySelector('.ew-preflight-retry')).to.equal(retry);
-      expect(retry.className.trim()).to.equal('ew-preflight-retry');
+      expect(retry.classList.contains('nx-action-btn')).to.be.true;
+      expect(retry.classList.contains('nx-btn-lg')).to.be.false;
       expect(el.shadowRoot.querySelector('[role="alert"]').textContent).to.include(el._error);
       expect(evaluations).to.equal(1);
       retry.click();
