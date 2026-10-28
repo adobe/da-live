@@ -3,6 +3,7 @@ import { getFirstSheet, fetchDaConfigs } from '../../../shared/utils.js';
 import { getNx, sanitizePathParts, getNxEWFlags, getNx2Api } from '../../../../scripts/utils.js';
 import { getChatPanelContent } from '../../../shared/chat-panel.js';
 import { getBrowseSettings, updateBrowseSettings } from '../shared/settings.js';
+import { getConfiguredEditor } from '../../shared.js';
 
 // Components
 import '../../da-new/da-new.js';
@@ -372,19 +373,7 @@ export default class DaBrowse extends LitElement {
       }, []);
     }
 
-    if (!this.editorConfs || this.editorConfs.length === 0) return DEF_EDIT;
-
-    // Filter down all matched confs
-    const matchedConfs = this.editorConfs.filter(
-      (conf) => this.details.fullpath.startsWith(conf.split('=')[0]),
-    );
-
-    if (matchedConfs.length === 0) return DEF_EDIT;
-
-    // Sort by length in descending order (longest first)
-    const matchedConf = matchedConfs.sort((a, b) => b.split('=')[0].length - a.split('=')[0].length)[0];
-
-    return matchedConf.split('=')[1];
+    return getConfiguredEditor(this.details.fullpath, this.editorConfs, DEF_EDIT);
   }
 
   handleNewItem(e) {
@@ -494,6 +483,8 @@ export default class DaBrowse extends LitElement {
     this._navField.label = label;
     this._navField.placeholder = label;
     this._navField.fullpath = fullpath;
+    this._navField.editorConfs = this.editorConfs;
+    this._navField.defaultEditor = this._ewEnabled ? '/canvas#' : '/edit#';
     this._navField.setAttribute('aria-label', label);
   }
 
@@ -594,6 +585,8 @@ export default class DaBrowse extends LitElement {
       field.disabled = !!search.replacement?.loading;
       field.matchCase = search.matchCase;
       field.editor = this.editor;
+      field.editorConfs = this.editorConfs;
+      field.defaultEditor = this._ewEnabled ? '/canvas#' : '/edit#';
       field.toolsOpen = this._toolsOpen;
       const value = search.draft ?? search.term ?? '';
       if (field.value !== value) field.value = value;
@@ -666,6 +659,8 @@ export default class DaBrowse extends LitElement {
           @askcoworker=${this.askCoworker}
           @selectionchanged=${this._chatEnabled ? this._handleBrowseSelection : nothing}
           editor=${this.editor}
+          .editorConfs=${this.editorConfs}
+          .defaultEditor=${this._ewEnabled ? '/canvas#' : '/edit#'}
           .listItems=${this._search.items}
           .hidePublishConfs=${this.hidePublishConfs}
           .groupByType=${this._groupByType}
@@ -686,6 +681,8 @@ export default class DaBrowse extends LitElement {
         @askcoworker=${this.askCoworker}
         fullpath="${this.details.fullpath}"
         editor="${this.editor}"
+        .editorConfs=${this.editorConfs}
+        .defaultEditor=${this._ewEnabled ? '/canvas#' : '/edit#'}
         .hidePublishConfs=${this.hidePublishConfs}
         @onpermissions=${this.handlePermissions}
         @typesfilterchange=${this.handleTypesFilterChange}
