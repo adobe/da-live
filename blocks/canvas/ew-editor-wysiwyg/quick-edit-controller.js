@@ -1,4 +1,4 @@
-import { updateDocument, updateState, getEditor } from '../editor-utils/editor-utils.js';
+import { updateDocument, updateState, getEditor, reloadBlock } from '../editor-utils/editor-utils.js';
 import { getCommentsBridge, openCommentsPanel } from '../editor-utils/comments-bridge.js';
 import { handleImageReplace } from './utils/image.js';
 import {
@@ -51,7 +51,8 @@ export function createControllerOnMessage(ctx) {
     if (type === MESSAGE_TYPES.CURSOR_MOVE) {
       handleCursorMove(payload, ctx);
     } else if (type === MESSAGE_TYPES.RELOAD) {
-      scheduleReload(ctx);
+      if (Number.isSafeInteger(payload.blockIndex)) reloadBlock(ctx, payload.blockIndex);
+      else scheduleReload(ctx);
     } else if (type === MESSAGE_TYPES.IMAGE_REPLACE) {
       handleImageReplace(payload, ctx);
     } else if (type === MESSAGE_TYPES.GET_EDITOR) {

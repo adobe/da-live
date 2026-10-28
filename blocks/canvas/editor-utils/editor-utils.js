@@ -6,6 +6,7 @@ import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
 import { toolbarController } from './toolbar-controller.js';
 import {
   diffTopLevel,
+  getBlockRerenderScope,
   getRerenderScope,
   touchesMetadata,
   touchesUnrendered,
@@ -543,11 +544,11 @@ function clearMetadataRerenderTimer(ctx) {
 
 const getBaseline = (ctx) => (ctx.useConfirmedBaseline ? ctx.confirmedDoc : ctx.syncedDoc);
 
-function postBody(ctx) {
+function postBody(ctx, getScope = getRerenderScope) {
   clearMetadataRerenderTimer(ctx);
   const { doc } = ctx.view.state;
   const body = getInstrumentedHTML(ctx.view);
-  const rerenderScope = getRerenderScope({ previousDoc: getBaseline(ctx), doc, body });
+  const rerenderScope = getScope({ previousDoc: getBaseline(ctx), doc, body });
   ctx.port.postMessage({ type: MESSAGE_TYPES.SET_BODY, payload: { body, rerenderScope } });
   ctx.syncedDoc = doc;
   ctx.confirmedDoc = doc;
@@ -572,6 +573,13 @@ export function updateDocument(ctx, { previousDoc, doc, useConfirmedBaseline = f
     if (!ctx.suppressRerender) postBody(ctx);
   }, METADATA_RERENDER_DEBOUNCE_MS);
   return getInstrumentedHTML(ctx.view);
+}
+
+// The iframe asks for a whole block whose decoration depends on its text (`RELOAD` with
+// `blockIndex`), since inline text edits only re-decorate the edited element.
+export function reloadBlock(ctx, pos) {
+  if (ctx.suppressRerender) return;
+  postBody(ctx, (args) => getBlockRerenderScope({ ...args, pos }));
 }
 
 export function updateCursors(ctx) {

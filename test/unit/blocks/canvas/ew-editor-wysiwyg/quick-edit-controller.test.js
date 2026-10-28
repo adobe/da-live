@@ -100,6 +100,22 @@ describe('quick-edit-controller RELOAD coalescing', () => {
     clock.tick(200);
     expect(setBodyCount(ctx)).to.equal(2);
   });
+
+  it('answers a block RELOAD right away, with a scope for that block', () => {
+    const ctx = makeReloadCtx();
+    send(createControllerOnMessage(ctx), { type: 'reload', payload: { blockIndex: 12 } });
+    expect(setBodyCount(ctx)).to.equal(1);
+    // The fake doc has no block at 12, so the scope safely widens to the page.
+    expect(ctx.port.postMessage.lastCall.args[0].payload.rerenderScope)
+      .to.deep.equal({ type: 'page' });
+  });
+
+  it('ignores a block RELOAD while re-rendering is suppressed', () => {
+    const ctx = { ...makeReloadCtx(), suppressRerender: true };
+    send(createControllerOnMessage(ctx), { type: 'reload', payload: { blockIndex: 12 } });
+    clock.tick(200);
+    expect(setBodyCount(ctx)).to.equal(0);
+  });
 });
 
 describe('quick-edit-controller QUICK_EDIT_IFRAME_CLICK forwarding', () => {

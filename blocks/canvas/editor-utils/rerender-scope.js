@@ -96,6 +96,35 @@ function countRendered(body) {
   return { sections: sections.length, blocks };
 }
 
+// Scope for re-rendering the top-level block at `pos`, requested by the iframe even when
+// only its text changed. Anything else unsynced in `previousDoc` widens it to the page.
+export function getBlockRerenderScope({ previousDoc, doc, body, pos }) {
+  if (!doc || !body || !Number.isSafeInteger(pos)) return PAGE_SCOPE;
+  const nodes = topLevel(doc);
+  let offset = 0;
+  const index = nodes.findIndex((node) => {
+    if (offset === pos) return true;
+    offset += node.nodeSize;
+    return false;
+  });
+  if (index === -1 || !isRenderedBlock(nodes[index])) return PAGE_SCOPE;
+
+  const diff = previousDoc && diffTopLevel(previousDoc, doc);
+  const onlyThisBlock = !diff || (diff.start === index
+    && diff.removed.length === 1 && diff.added.length === 1 && isRenderedBlock(diff.removed[0]));
+  if (!onlyThisBlock) return PAGE_SCOPE;
+
+  const rendered = countRendered(body);
+  if (rendered.sections !== nodes.filter(isSectionBreak).length + 1
+    || rendered.blocks !== nodes.filter(isRenderedBlock).length) return PAGE_SCOPE;
+  const preceding = nodes.slice(0, index);
+  return {
+    type: 'block',
+    sectionIndex: preceding.filter(isSectionBreak).length,
+    blockIndex: preceding.filter(isRenderedBlock).length,
+  };
+}
+
 // Falls back to the page whenever `doc` and the rendered `body` disagree on sections/blocks.
 export function getRerenderScope({ previousDoc, doc, body }) {
   if (!previousDoc || !doc || !body) return PAGE_SCOPE;
