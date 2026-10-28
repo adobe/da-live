@@ -186,33 +186,6 @@ h1 {
   opacity: 0.12;
 }
 
-.composer.is-processing .composer-surface {
-  background:
-    linear-gradient(to bottom, light-dark(#fff6, #ffffff0a) 37.305%, light-dark(#ffffff21, #ffffff03) 83.398%),
-    radial-gradient(ellipse at bottom right,
-      #d8deff7a,
-      #fde9ff7a 34.964%,
-      #ffeccf7a 81.972%,
-      #f7b5ff7a),
-    light-dark(#fffc, #222c);
-}
-
-.composer.is-processing .composer-surface::before {
-  opacity: 0.48;
-}
-
-.composer.is-processing .composer-surface::after {
-  content: "";
-  position: absolute;
-  inset: 2px;
-  border: 2px solid transparent;
-  border-radius: inherit;
-  background: conic-gradient(from 90deg, #fef6ff, #fde9ff 12.409%, #f7b5ff 31.026%, transparent 60.61%, transparent 89.095%) border-box;
-  mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  filter: blur(4px);
-}
-
 .composer.is-dropzone .composer-surface {
   border: 2px solid #7a6afd;
   background: linear-gradient(#ec69ff1a, #ec69ff1a), light-dark(#fffc, #222c);

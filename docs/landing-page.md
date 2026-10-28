@@ -219,8 +219,10 @@ intentional differences rather than substitutes for those missing inputs.
   overwritten: the landing draft and attachments remain available for retry.
   Only accepted submission clears the central input. During processing,
   even a hidden left panel keeps the central textarea and Add menu disabled.
-  Both composers show a pink/lilac generating highlight and an enabled Stop
-  button. The central Stop calls the same mounted chat's public `stop()` method;
+  The working state follows Figma `3231:202678`: the center retains a faint
+  16% pastel tint and 12% diffused hue, while the left input stays neutral.
+  Neither has a colored inner ring. Both show an enabled Stop button.
+  The central Stop calls the same mounted chat's public `stop()` method;
   either Stop cancels that response, and the next input-state update restores
   both composers without clearing retained drafts or sending another message.
   There is no queue.
@@ -329,7 +331,7 @@ Shift+Enter stays multiline. Attach a Markdown file or image and
 confirm one pill per file. Leave another draft in the left input and confirm
 that a central handoff preserves both drafts rather than replacing it.
 Send only on a separate writable test site: both inputs should show the working
-message and generating highlight, disable Add, and offer Stop. Cancel once from
+message, faint center tint and neutral left input, disable Add, and offer Stop. Cancel once from
 the middle and once from the left: each should stop the same response, restore
 both inputs, and preserve any unsent draft without sending another message. Closing the
 panel must not unlock the central input during processing. Open/close without

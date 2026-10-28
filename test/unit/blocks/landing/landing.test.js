@@ -1017,7 +1017,7 @@ describe('landing page', () => {
     expect(submit.calledOnce).to.equal(true);
   });
 
-  it('keeps the composer within the remaining page width and shows the generating highlight in both themes', async () => {
+  it('keeps the working composer within the page width and retains the faint Figma palette in both themes', async () => {
     const sheet = new CSSStyleSheet();
     sheet.replaceSync(await (await fetch('/blocks/landing/landing.css')).text());
     el.shadowRoot.adoptedStyleSheets = [sheet];
@@ -1039,9 +1039,9 @@ describe('landing page', () => {
         expect(getComputedStyle(input.querySelector('textarea')).display).to.equal('none');
         expect(getComputedStyle(composer, '::after').content).to.equal('""');
         const surface = composer.querySelector('.composer-surface');
-        expect(getComputedStyle(surface).backgroundImage).to.include('radial-gradient');
-        expect(getComputedStyle(surface, '::after').backgroundImage).to.include('conic-gradient');
-        expect(getComputedStyle(surface, '::after').pointerEvents).to.equal('none');
+        expect(getComputedStyle(surface).backgroundImage).to.include('rgba(235, 238, 255, 0.16)');
+        expect(getComputedStyle(surface, '::before').opacity).to.equal('0.12');
+        expect(getComputedStyle(surface, '::after').content).to.equal('none');
         const status = input.querySelector('.composer-working').getBoundingClientRect();
         const spinner = input.querySelector('.nx-loading-spinner').getBoundingClientRect();
         expect(status.height).to.be.greaterThan(0);
