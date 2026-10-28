@@ -1,6 +1,7 @@
 :host {
   display: block;
   contain: inline-size;
+  container-type: inline-size;
   min-height: calc(100dvh - var(--s2-nav-height));
   color: var(--s2-gray-800);
   font-family: var(--landing-font-family, var(--s2-font-family));
@@ -556,6 +557,27 @@ da-card-preview {
 
 .show-more {
   margin: 24px auto 0;
+}
+
+.quick-links {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s2-spacing-200);
+  margin: 40px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+@container (width < 900px) {
+  .quick-links {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (width < 600px) {
+  .quick-links {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .tasks-panel {

@@ -22,6 +22,13 @@ function dragEvent({ type, relatedTarget, text = false }) {
   return new DragEvent(type, { dataTransfer, relatedTarget, bubbles: true, cancelable: true });
 }
 
+async function quickTiles(el) {
+  await el.updateComplete;
+  const tiles = [...el.shadowRoot.querySelectorAll('da-landing-tile')];
+  await Promise.all(tiles.map((tile) => tile.updateComplete));
+  return tiles;
+}
+
 describe('landing page', () => {
   let el;
   let nav;
@@ -61,6 +68,105 @@ describe('landing page', () => {
     expect(el.shadowRoot.querySelector('nx-picker')).to.equal(null);
     expect(nav.querySelector('nx-picker').value).to.equal('org/site');
     expect(el.shadowRoot.querySelector('.file-date').textContent).to.include('Modified at •');
+  });
+
+  it('renders six quick-link tiles in design order below Content', async () => {
+    const grid = el.shadowRoot.querySelector('.quick-links');
+    const tiles = await quickTiles(el);
+    expect(grid.previousElementSibling.matches('.files-panel')).to.equal(true);
+    expect(tiles.map((tile) => tile.shadowRoot.querySelector('h3').textContent)).to.deep.equal([
+      'Browse Content', 'Authoring', 'Publishing & Workflow',
+      'Localization & Multi-site', 'Governance & Operation', 'Develop & Extend',
+    ]);
+    expect(tiles).to.have.length(6);
+    expect(tiles.filter((tile) => tile.shadowRoot.querySelector('a'))).to.have.length(1);
+    tiles.slice(1).forEach((tile) => {
+      expect(tile.shadowRoot.querySelector('a, button, input, [tabindex], [role="button"], [role="link"]')).to.equal(null);
+      expect(tile.tabIndex).to.equal(-1);
+      expect(tile.shadowRoot.textContent).not.to.include('Coming soon');
+    });
+  });
+
+  it('routes Browse Content through the current site and preserves preview parameters after switching', async () => {
+    const { href } = window.location;
+    try {
+      window.history.replaceState(null, '', '/?landing=true&nx=lp&quick-edit=preview&ew=true&nx-chat-ao=true&theme=light#/org/site');
+      el.requestUpdate();
+      const [browse] = await quickTiles(el);
+      const current = new URL(browse.shadowRoot.querySelector('a').href);
+      expect(current.hash).to.equal('#/org/site');
+      expect(current.searchParams.get('browse')).to.equal('2');
+      expect(current.searchParams.get('landing')).to.equal('home');
+      expect(current.searchParams.get('nx')).to.equal('lp');
+      expect(current.searchParams.get('quick-edit')).to.equal('preview');
+      expect(current.searchParams.get('ew')).to.equal('true');
+      expect(current.searchParams.get('nx-chat-ao')).to.equal('true');
+      expect(current.searchParams.get('theme')).to.equal('light');
+      expect(current.href).to.equal(el.shadowRoot.querySelector('.all-files').href);
+      hashChange._set({ org: 'other-org', site: 'other-site', fullpath: '/other-org/other-site' });
+      await quickTiles(el);
+      const switched = new URL(browse.shadowRoot.querySelector('a').href);
+      expect(switched.hash).to.equal('#/other-org/other-site');
+      expect(switched.search).to.equal(current.search);
+      hashChange._set(undefined);
+      await quickTiles(el);
+      expect(el.shadowRoot.querySelectorAll('.quick-links > li')).to.have.length(6);
+      expect(browse.shadowRoot.querySelector('a')).to.equal(null);
+    } finally {
+      window.history.replaceState(null, '', href);
+    }
+  });
+
+  it('passes live UI scale changes to every tile', async () => {
+    setUISize({ size: 'm' });
+    const tiles = await quickTiles(el);
+    expect(tiles.every((tile) => tile.getAttribute('size') === 'm')).to.equal(true);
+    setUISize({ size: 's' });
+    await quickTiles(el);
+    expect(tiles.every((tile) => tile.getAttribute('size') === 's')).to.equal(true);
+  });
+
+  describe('quick-link presentation', () => {
+    beforeEach(async () => {
+      const [sheet, tileSheet] = await Promise.all(['landing', 'tile'].map(async (name) => {
+        const css = new CSSStyleSheet();
+        await css.replace(await (await fetch(`/blocks/landing/${name}.css`)).text());
+        return css;
+      }));
+      el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
+      (await quickTiles(el)).forEach((tile) => {
+        tile.shadowRoot.adoptedStyleSheets = [tileSheet];
+      });
+      el.style.cssText = `
+        --s2-spacing-200: 12px;
+        --s2-spacing-300: 16px;
+        --s2-component-s-regular-font-size: 12px;
+        --s2-component-m-regular-font-size: 14px;
+        --s2-component-l-regular-font-size: 16px;
+        --s2-body-line-height: 1.5;
+        --s2-gray-900: light-dark(#292929, #eee);
+        --s2-gray-600: light-dark(#717171, #aaa);
+        --s2-blue-800: light-dark(#0265dc, #54a3ff);
+        width: 1116px;
+      `;
+    });
+
+    it('wraps against available content width, including a chat-sized reduction', () => {
+      const grid = el.shadowRoot.querySelector('.quick-links');
+      const files = el.shadowRoot.querySelector('.files-panel');
+      const columns = () => getComputedStyle(grid).gridTemplateColumns.split(' ').length;
+      expect(columns()).to.equal(3);
+      expect(grid.getBoundingClientRect().left).to.equal(files.getBoundingClientRect().left);
+      expect(grid.getBoundingClientRect().width).to.equal(files.getBoundingClientRect().width);
+      el.style.width = '780px';
+      expect(columns()).to.equal(2);
+      el.style.width = '360px';
+      expect(columns()).to.equal(1);
+      [...grid.querySelectorAll('da-landing-tile')].forEach((component) => {
+        const tile = component.shadowRoot.querySelector('.tile');
+        expect(tile.scrollWidth).to.be.at.most(tile.clientWidth);
+      });
+    });
   });
 
   it('matches the mock composer branding, placeholder and disclaimer', () => {

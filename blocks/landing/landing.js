@@ -15,6 +15,8 @@ import '../shared/file-actions/file-actions.js';
 import renderFileTable from '../shared/file-table.js';
 import renderAttentionTable from '../shared/attention-table.js';
 import { createSitePicker, updateSitePicker, checkSiteChoices } from '../shared/site-picker.js';
+import { PLACEHOLDER_TILES } from './constants.js';
+import './tile.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { registerPanelSection, PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
@@ -587,6 +589,18 @@ export class DaLanding extends LitElement {
         </button>` : nothing}`;
   }
 
+  renderQuickLinks() {
+    return html`<ul class="quick-links" aria-label="Quick links">
+      <li><da-landing-tile heading="Browse Content"
+        description="View your recent, favorite, or other content by their organization"
+        iconHref="/img/icons/s2-icon-folderopen-20-n.svg" .size=${this.uiSize}
+        .href=${this._scope ? getBrowseHref({ path: this.path }) : undefined}></da-landing-tile></li>
+      ${PLACEHOLDER_TILES.map(({ title, description, iconHref, tone }) => html`
+        <li><da-landing-tile .heading=${title} .description=${description}
+          .iconHref=${iconHref} .tone=${tone} .size=${this.uiSize}></da-landing-tile></li>`)}
+    </ul>`;
+  }
+
   render() {
     return html`
       <div class="landing">
@@ -659,6 +673,7 @@ export class DaLanding extends LitElement {
           ${this._actionError ? html`<p role="alert">${this._actionError}</p>` : nothing}
           <div aria-busy=${!!this._scope && !this._files && !this._error}>${this.renderFiles()}</div>
         </section>
+        ${this.renderQuickLinks()}
         <section class="tasks-panel" aria-labelledby="tasks-heading">
           <h2 id="tasks-heading">Need Attention</h2>
           ${renderAttentionTable({
