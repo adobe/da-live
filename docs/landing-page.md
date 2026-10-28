@@ -193,7 +193,7 @@ intentional differences rather than substitutes for those missing inputs.
   Unsupported or unreadable files produce an explicit error.
   Shared buttons retain their keyboard focus indicators, and forced-colors
   mode provides a system-color focus outline for the prompt.
-  Dimensions, spacing, prompt text, actions and assistant handoff are unchanged.
+  Dimensions, spacing, prompt text and Add actions follow the mock.
   This does not add a generation state to the landing composer.
   The background includes the separate white fade over the coloured artwork:
   transparent at -794px, reaching white at about 604px in the 1024px canvas.
@@ -205,8 +205,11 @@ intentional differences rather than substitutes for those missing inputs.
   font binaries were not supplied; exact font-family parity needs approved assets.
 - Folders and link files open in Browse. Pages, sheets and media open in their
   editors, preserving the Nexter/quick-edit preview parameters.
-- The prompt opens the site's existing assistant and fills its composer.
-  It does **not** auto-send. The existing EW/chat flags still apply.
+- Send opens the site's existing left assistant panel and submits the prompt
+  through its public `setPrompt(text, { autoSend: true })` API. It also opens
+  a chat panel previously hidden by Browse. The existing EW/chat flags still apply.
+  While the panel opens, repeated sends are blocked. A busy assistant retains the
+  central draft with a retry message; a site change cancels a pending handoff.
   The coworker icon, prompt placeholder and AI disclaimer follow the mock.
   The composer uses `--s2-body-size-m` (16px) at both UI sizes and
   `--s2-gray-600` for the placeholder, including dark mode.

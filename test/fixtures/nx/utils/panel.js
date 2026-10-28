@@ -10,5 +10,6 @@ export const wasPanelOpen = (section) => {
     return false;
   }
 };
-export const registerPanelSection = () => {};
+export const panelSections = new Map();
+export const registerPanelSection = (section, options) => panelSections.set(section, options);
 export const getSectionAtPosition = () => undefined;

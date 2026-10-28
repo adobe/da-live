@@ -4,11 +4,13 @@ import '../../setup-nx.js';
 import { getFavorites, toggleFavorite } from '../../../../blocks/browse/shared/favorites.js';
 import { setUISize } from '../../../fixtures/nx2/utils/ui-size.js';
 import loadLanding, { DaLanding } from '../../../../blocks/landing/landing.js';
-import { getNx, getNx2Api } from '../../../../scripts/utils.js';
+import { getNx, getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
 import { addExistingSite } from '../../../../blocks/shared/site-access.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { source, config } = await getNx2Api();
+const ewFlags = await getNxEWFlags();
+const { panelSections } = await import(`${getNx()}/utils/panel.js`);
 
 const ITEMS = [
   { name: 'Welcome', path: '/org/site/index.html', ext: 'html', lastModified: 1792152000000 },
@@ -55,6 +57,8 @@ describe('landing page', () => {
   });
 
   afterEach(() => {
+    ewFlags.setEWEnabled(false);
+    panelSections.clear();
     el.remove();
     nav.remove();
     sinon.restore();
@@ -727,7 +731,7 @@ describe('landing page', () => {
     expect(el.shadowRoot.textContent).not.to.include('No files here yet');
   });
 
-  it('hands a prompt to the existing chat panel without auto-sending', async () => {
+  it('opens the existing chat panel and sends the central prompt', async () => {
     el._chatEnabled = true;
     el._prompt = '  Update the hero  ';
     let detail;
@@ -738,9 +742,77 @@ describe('landing page', () => {
     await el.submitPrompt({ preventDefault() {} });
     expect(detail.section).to.equal('chat');
     expect(detail.options.text).to.equal('Update the hero');
-    expect(detail.options.autoSend).to.equal(undefined);
+    expect(detail.options.autoSend).to.equal(true);
     expect(el._prompt).to.equal('');
     expect(el._handingOff).to.equal(false);
+  });
+
+  ['nx-chat', 'nx-chat-ao'].forEach((tag) => {
+    it(`submits through ${tag}'s public prompt API after the panel opens`, async () => {
+      ewFlags.setEWEnabled(true);
+      await el.loadChatAvailability(new AbortController());
+      const aside = document.createElement('aside');
+      const chat = document.createElement(tag);
+      chat.setPrompt = sinon.stub().resolves();
+      aside.append(chat);
+      el._prompt = 'Update the hero';
+      let handoff;
+      document.addEventListener('nx-panel-open', ({ detail }) => {
+        handoff = panelSections.get('chat').onShow(aside, 'chat', detail.options);
+      }, { once: true });
+      await el.submitPrompt({ preventDefault() {} });
+      await handoff;
+      expect(chat.setPrompt.calledOnceWithExactly('Update the hero', { autoSend: true })).to.equal(true);
+      expect(el._prompt).to.equal('');
+      expect(el._handingOff).to.equal(false);
+    });
+  });
+
+  it('does not send twice while the assistant is opening', async () => {
+    el._chatEnabled = true;
+    el._prompt = 'Update the hero';
+    const listener = sinon.spy();
+    document.addEventListener('nx-panel-open', listener);
+    await el.submitPrompt({ preventDefault() {} });
+    await el.submitPrompt({ preventDefault() {} });
+    document.removeEventListener('nx-panel-open', listener);
+    expect(listener.calledOnce).to.equal(true);
+    expect(el._prompt).to.equal('Update the hero');
+    listener.firstCall.args[0].detail.options.onReady();
+    expect(el._prompt).to.equal('');
+  });
+
+  it('retains the central draft when the assistant is still responding', async () => {
+    ewFlags.setEWEnabled(true);
+    await el.loadChatAvailability(new AbortController());
+    const chat = { thinking: true, setPrompt: sinon.spy() };
+    const onReady = sinon.spy();
+    el._prompt = 'Update the hero';
+    el._handingOff = true;
+    await panelSections.get('chat').onShow({ querySelector: () => chat }, 'chat', { text: el._prompt, autoSend: true, onReady });
+    expect(chat.setPrompt.called).to.equal(false);
+    expect(onReady.called).to.equal(false);
+    expect(el._prompt).to.equal('Update the hero');
+    expect(el._chatError).to.include('still responding');
+    expect(el._handingOff).to.equal(false);
+  });
+
+  it('does not send an old-site prompt if the scope changes while chat is rendering', async () => {
+    ewFlags.setEWEnabled(true);
+    const request = new AbortController();
+    await el.loadChatAvailability(request);
+    let ready;
+    const chat = {
+      updateComplete: new Promise((resolve) => { ready = resolve; }),
+      setPrompt: sinon.spy(),
+    };
+    const onReady = sinon.spy();
+    const showing = panelSections.get('chat').onShow({ querySelector: () => chat }, 'chat', { text: 'Old-site task', autoSend: true, onReady });
+    request.abort();
+    ready();
+    await showing;
+    expect(chat.setPrompt.called).to.equal(false);
+    expect(onReady.called).to.equal(false);
   });
 
   it('does not submit while chat is disabled', async () => {
