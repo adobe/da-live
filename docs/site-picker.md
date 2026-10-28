@@ -26,6 +26,13 @@ The trigger includes the organization to distinguish identically named sites.
 Add site aligns with the menu's left padding, without reserving a checkmark column,
 and emits an action without changing the selection.
 
+Site headings and trigger labels use bold M component tokens; site and action
+rows use medium M component tokens. Descriptions inherit row size and line
+height while retaining regular component weight. Add dialog labels, input,
+help, status, errors and links use component typography; retry text inherits
+its regular component typography. Dialog headings and actions use the shared
+dialog/button component tokens.
+
 Hosts own mounting and navigation. `blocks/shared/site-access.js` owns site access
 checks, supported URL parsing, browser-local additions and the explicit
 organization-config write-grant check. `blocks/shared/add-site.js` provides the
