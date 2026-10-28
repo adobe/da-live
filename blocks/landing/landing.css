@@ -118,6 +118,9 @@ h1 {
 
 .composer-input .nx-loading-spinner {
   flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-top-color: var(--s2-blue-900);
   margin-top: 2px;
 }
 
