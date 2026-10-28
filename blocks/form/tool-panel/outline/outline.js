@@ -8,7 +8,9 @@ const style = await loadStyle(import.meta.url);
 
 const EL_NAME = 'ew-form-outline';
 
-const isGroup = (node) => node?.kind === 'object' || node?.kind === 'array';
+// Values of a `$ref` type, such as assets, are objects but single fields, not groups.
+const isGroup = (node) => node?.typeRef === undefined
+  && (node?.kind === 'object' || node?.kind === 'array');
 
 // Array items carry their 1-based position, which the outline shows as "#n".
 function childGroups(node) {
