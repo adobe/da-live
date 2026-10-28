@@ -1,0 +1,252 @@
+:host {
+  --asset-preview-height: 194px;
+  --asset-row-height: 56px;
+  --asset-transparency-grid-size: 8px;
+  --asset-preview-fade: 130ms;
+  --asset-menu-icon-size: 16px;
+  --asset-action-icon-size: 18px;
+
+  display: block;
+  font-family: var(--s2-font-family, adobe-clean, "Source Sans Pro", system-ui, sans-serif);
+}
+
+/* Fields start as a single row. Images add the preview panel above it. */
+.asset {
+  display: grid;
+  grid-template-rows: var(--asset-row-height);
+  overflow: hidden;
+  border: 1px solid var(--s2-gray-300);
+  border-radius: var(--s2-corner-radius-500);
+  background: var(--s2-gray-25);
+}
+
+.asset.has-preview {
+  grid-template-rows: var(--asset-preview-height) var(--asset-row-height);
+}
+
+.has-error .asset {
+  border-color: var(--s2-red-900);
+}
+
+.asset-preview {
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  place-items: center;
+  overflow: hidden;
+  background: var(--s2-gray-100);
+}
+
+/* The image covers the file type badge once it has loaded. */
+.asset-preview > * {
+  grid-area: 1 / 1;
+}
+
+.asset-file-type {
+  padding: var(--s2-spacing-75) var(--s2-spacing-200);
+  border-radius: var(--s2-corner-radius-200);
+  background: var(--s2-gray-25);
+  color: var(--s2-gray-800);
+  font-size: var(--s2-body-size-s);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.asset-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity var(--asset-preview-fade) ease-out;
+  background-color: var(--s2-gray-25);
+  background-image: conic-gradient(
+    var(--s2-gray-200) 90deg, transparent 90deg 180deg,
+    var(--s2-gray-200) 180deg 270deg, transparent 270deg
+  );
+  background-size: var(--asset-transparency-grid-size) var(--asset-transparency-grid-size);
+}
+
+.asset-preview img.is-loaded {
+  opacity: 1;
+}
+
+.asset-row {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-200);
+  min-width: 0;
+  padding: 0 var(--s2-spacing-200) 0 var(--s2-spacing-300);
+}
+
+.has-preview .asset-row {
+  border-top: 1px solid var(--s2-gray-200);
+}
+
+.asset-placeholder,
+.asset-url {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--s2-body-size-s);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.asset-url {
+  display: flex;
+  color: var(--s2-gray-900);
+  font-weight: 600;
+}
+
+/* Long URLs shorten only their path while the file name fits, so it stays readable. A file
+   name wider than the row shortens its stem and keeps the extension. */
+.asset-url-base,
+.asset-url-stem {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.asset-url-file {
+  display: flex;
+  flex: none;
+  max-width: 100%;
+}
+
+.asset-url-tail {
+  flex: none;
+  white-space: nowrap;
+}
+
+.asset-placeholder {
+  color: var(--s2-gray-700);
+}
+
+.asset-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--s2-spacing-100);
+}
+
+.asset-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: var(--s2-corner-radius-500);
+  background: transparent;
+  color: var(--s2-gray-700);
+  cursor: pointer;
+
+  svg {
+    width: var(--asset-action-icon-size);
+    height: var(--asset-action-icon-size);
+  }
+}
+
+.asset-icon-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.asset-icon-button:focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: 4px;
+}
+
+.asset-icon-button:hover:not(:disabled) {
+  background: var(--s2-gray-200);
+  color: var(--s2-gray-900);
+}
+
+/* Announces the copy to screen readers without taking space. */
+.asset-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.asset-source-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2-spacing-75);
+}
+
+/* Select matches the quiet Add buttons of the form, with a light wash on hover. */
+.asset-select {
+  min-height: 32px;
+  padding: 0 var(--s2-spacing-300);
+  border: none;
+  border-radius: var(--s2-corner-radius-800);
+  background: transparent;
+  color: var(--s2-gray-700);
+  font-family: inherit;
+  font-size: var(--s2-body-size-s);
+  font-weight: 700;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--s2-blue-800);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    color: var(--s2-gray-400);
+    cursor: not-allowed;
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--s2-gray-100);
+    color: var(--s2-gray-900);
+  }
+
+  &:active:not(:disabled) {
+    background: var(--s2-gray-300);
+  }
+}
+
+/* A busy trigger keeps its size because its content stays in the layout under the spinner. */
+.asset-source-trigger.is-pending {
+  position: relative;
+  opacity: 1;
+  cursor: progress;
+
+  .asset-trigger-content {
+    display: contents;
+    visibility: hidden;
+  }
+
+  .nx-loading-spinner {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+  }
+}
+
+.asset-menu-chevron {
+  width: var(--asset-menu-icon-size);
+  height: var(--asset-menu-icon-size);
+}
+
+nx-dialog p {
+  margin: 0;
+}
+
+.asset-alt-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2-spacing-75);
+
+  input {
+    width: 100%;
+  }
+}

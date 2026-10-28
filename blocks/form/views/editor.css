@@ -134,7 +134,8 @@
 .editor-root ew-form-number-field,
 .editor-root ew-form-picker,
 .editor-root ew-form-checkbox,
-.editor-root ew-form-date {
+.editor-root ew-form-date,
+.editor-root ew-form-asset {
   display: block;
   margin: 16px 0 8px;
 }
@@ -145,7 +146,8 @@
 .editor-root .form-array-item-primitive ew-form-number-field,
 .editor-root .form-array-item-primitive ew-form-picker,
 .editor-root .form-array-item-primitive ew-form-checkbox,
-.editor-root .form-array-item-primitive ew-form-date {
+.editor-root .form-array-item-primitive ew-form-date,
+.editor-root .form-array-item-primitive ew-form-asset {
   margin: 0;
 }
 
@@ -155,7 +157,8 @@
 .editor-root .form-array-item-input-row > ew-form-number-field,
 .editor-root .form-array-item-input-row > ew-form-picker,
 .editor-root .form-array-item-input-row > ew-form-checkbox,
-.editor-root .form-array-item-input-row > ew-form-date {
+.editor-root .form-array-item-input-row > ew-form-date,
+.editor-root .form-array-item-input-row > ew-form-asset {
   flex: 1;
   min-width: 0;
 }
