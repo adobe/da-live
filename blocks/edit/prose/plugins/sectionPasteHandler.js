@@ -278,10 +278,8 @@ export default function sectionPasteHandler(schema) {
        * which is then interpreted as a section break.
        */
       transformPasted: (slice, view) => {
-        const $from = view?.state.selection.$from;
-        if ($from && schema.marks.code.isInSet($from.marks())) {
-          return asCodeText(slice, schema, $from.marks());
-        }
+        const marks = view?.state.storedMarks ?? view?.state.selection.$from.marks();
+        if (marks && schema.marks.code.isInSet(marks)) return asCodeText(slice, schema, marks);
 
         const jslice = slice.toJSON();
         if (!jslice) return slice;

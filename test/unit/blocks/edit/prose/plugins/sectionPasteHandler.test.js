@@ -492,6 +492,14 @@ describe('Paste inside inline code', () => {
     ]);
   });
 
+  it('leaves formatting alone when code was toggled off before pasting', () => {
+    const { state } = viewAt(5);
+    const toggledOff = { state: state.apply(state.tr.setStoredMarks([])) };
+    const [para] = transform(richSlice, toggledOff).content.content;
+    expect(strong.isInSet(para.firstChild.marks)).to.exist;
+    expect(code.isInSet(para.firstChild.marks)).to.not.exist;
+  });
+
   it('leaves formatting alone when cursor is outside code', () => {
     const [para] = transform(richSlice, viewAt(2)).content.content;
     expect(strong.isInSet(para.firstChild.marks)).to.exist;
