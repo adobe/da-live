@@ -10,7 +10,13 @@
  * governing permissions and limitations under the License.
  */
 import { test, expect } from '@playwright/test';
-import { createResource, MARKER_DOC, listStaleRunFolders } from '../utils/cleanup.js';
+import {
+  createResource,
+  MARKER_DOC,
+  listStaleRunFolders,
+  listStaleTestFiles,
+  FORM_SCHEMAS_FOLDER,
+} from '../utils/cleanup.js';
 
 function fakePage(record) {
   return {
@@ -56,10 +62,15 @@ function fakeListPage(byPath) {
   };
 }
 
+// Encodes the time like getTestResourceName does, so getTestResourceAge can parse it.
+function timestampHoursAgo(hours) {
+  return (Date.now() - hours * 60 * 60 * 1000).toString(36);
+}
+
 test('listStaleRunFolders yields only pw- folders with an old marker', async ({}, workerInfo) => {
   if (workerInfo.project.name !== 'chromium') return;
-  const oldTs = (Date.now() - 3 * 60 * 60 * 1000).toString(36); // 3h ago
-  const newTs = Date.now().toString(36);
+  const oldTs = timestampHoursAgo(3);
+  const newTs = timestampHoursAgo(0);
   // Keys are backend-agnostic path substrings (the list URL differs per
   // backend). Fixtures use the hlx6 list shape (folders end with '/', files
   // carry their extension), which listChildren also resolves correctly for
@@ -78,4 +89,21 @@ test('listStaleRunFolders yields only pw- folders with an old marker', async ({}
   const out = [];
   for await (const f of listStaleRunFolders(page, 'Bearer x', 'da-sites', 'da-status', 2)) out.push(f);
   expect(out).toEqual([{ path: '/tests/pw-main', isFolder: true }]);
+});
+
+test('listStaleTestFiles yields only old pw- files without their extension', async ({}, workerInfo) => {
+  if (workerInfo.project.name !== 'chromium') return;
+  const oldTs = timestampHoursAgo(3);
+  const newTs = timestampHoursAgo(0);
+  const page = fakeListPage({
+    '.da/forms/schemas': [
+      { name: `pw-formschema-${oldTs}-chromium.html`, ext: 'html' },
+      { name: `pw-formschema-${newTs}-chromium.html`, ext: 'html' },
+      { name: `pw-folder-${oldTs}-chromium/`, ext: undefined },
+      { name: 'product.html', ext: 'html' },
+    ],
+  });
+  const out = [];
+  for await (const f of listStaleTestFiles(page, 'Bearer x', 'da-sites', 'da-status', FORM_SCHEMAS_FOLDER, 2)) out.push(f);
+  expect(out).toEqual([{ path: `${FORM_SCHEMAS_FOLDER}/pw-formschema-${oldTs}-chromium`, isFolder: false }]);
 });
