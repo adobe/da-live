@@ -32,7 +32,7 @@
   padding: 7px var(--s2-spacing-200);
   color: var(--s2-gray-800);
   font-size: var(--s2-component-m-bold-font-size);
-  line-height: 18px;
+  line-height: var(--s2-component-m-bold-line-height);
   font-weight: var(--s2-component-m-bold-font-weight);
   letter-spacing: normal;
 }
@@ -45,8 +45,8 @@
   padding: 7px var(--s2-spacing-200);
   background: transparent;
   font-size: var(--s2-component-m-medium-font-size);
-  line-height: 18px;
-  font-weight: 500;
+  line-height: var(--s2-component-m-medium-line-height);
+  font-weight: var(--s2-component-m-medium-font-weight);
   text-align: start;
 }
 

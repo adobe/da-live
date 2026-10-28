@@ -36,6 +36,39 @@ describe('shared Add site dialog', () => {
     sinon.restore();
   });
 
+  it('uses component typography for labels, input, help, status and retry text', async () => {
+    const response = await fetch('/blocks/shared/add-site.css');
+    expect(response.ok).to.equal(true);
+    const styles = new CSSStyleSheet();
+    styles.replaceSync(await response.text());
+    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, styles];
+    for (const [weight, fontSize, lineHeight, fontWeight] of [
+      ['regular', '13px', '19px', '350'],
+      ['medium', '15px', '21px', '550'],
+    ]) {
+      el.style.setProperty(`--s2-component-m-${weight}-font-size`, fontSize);
+      el.style.setProperty(`--s2-component-m-${weight}-line-height`, lineHeight);
+      el.style.setProperty(`--s2-component-m-${weight}-font-weight`, fontWeight);
+    }
+    el._canCreate = true;
+    el._saving = true;
+    el._error = 'Access denied';
+    el._permissionError = 'Offline';
+    await el.updateComplete;
+    const selectors = [
+      '.nx-form-field > span', '.nx-input', '#site-help', '#site-error',
+      'form [role="status"]', '.site-creation a', '.permission-error', '.permission-retry',
+    ];
+    for (const selector of selectors) {
+      const weight = selector === '.nx-form-field > span' ? 'medium' : 'regular';
+      const style = getComputedStyle(el.shadowRoot.querySelector(selector));
+      for (const property of ['font-size', 'line-height', 'font-weight']) {
+        expect(style.getPropertyValue(property), `${selector} ${property}`)
+          .to.equal(el.style.getPropertyValue(`--s2-component-m-${weight}-${property}`));
+      }
+    }
+  });
+
   it('lets a non-admin add an existing accessible site without server writes', async () => {
     const added = sinon.spy();
     const saveSource = sinon.spy(source, 'save');

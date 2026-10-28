@@ -11,8 +11,16 @@ p {
   margin: 0;
 }
 
-#site-help, .permission-error {
-  font-size: var(--s2-body-size-s);
+form, .nx-input, .site-creation, .permission-error {
+  font-size: var(--s2-component-m-regular-font-size);
+  line-height: var(--s2-component-m-regular-line-height);
+  font-weight: var(--s2-component-m-regular-font-weight);
+}
+
+.nx-form-field {
+  font-size: var(--s2-component-m-medium-font-size);
+  line-height: var(--s2-component-m-medium-line-height);
+  font-weight: var(--s2-component-m-medium-font-weight);
 }
 
 #site-error {
@@ -38,6 +46,7 @@ p {
 }
 
 .permission-retry {
+  font: inherit;
   background: none;
   border: 0;
   padding: 0;
