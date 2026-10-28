@@ -210,6 +210,77 @@ describe('prose2aem section-metadata handling', () => {
     expect(section.dataset.image).to.equal('https://example.com/bg.jpg');
   });
 
+  function sectionFor(rows) {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          ${rows}
+        </table>
+      </div>
+    `);
+    return parseMain(prose2aem(editor, true, false)).querySelector(':scope > div');
+  }
+
+  it('sets a normalized id on the section', () => {
+    const section = sectionFor('<tr><td>ID</td><td>1 My Section!</td></tr>');
+    expect(section.id).to.equal('my-section');
+    expect(section.hasAttribute('data-id')).to.be.false;
+  });
+
+  it('skips an id that normalizes to empty', () => {
+    const section = sectionFor('<tr><td>id</td><td>123</td></tr>');
+    expect(section.hasAttribute('id')).to.be.false;
+    expect(section.hasAttribute('data-id')).to.be.false;
+  });
+
+  it('splits style options like block names', () => {
+    const section = sectionFor('<tr><td>Style</td><td>Columns (wide, dark)</td></tr>');
+    expect([...section.classList]).to.deep.equal(['columns', 'wide', 'dark']);
+  });
+
+  it('treats paragraphs and line breaks as style separators', () => {
+    const section = sectionFor('<tr><td>Style</td><td><p>light</p><p>wide<br>dark</p></td></tr>');
+    expect([...section.classList]).to.deep.equal(['light', 'wide', 'dark']);
+  });
+
+  it('normalizes keys like the pipeline', () => {
+    const section = sectionFor(`
+      <tr><td>My_Key:One</td><td>a</td></tr>
+      <tr><td>Background Color</td><td>b</td></tr>
+    `);
+    expect(section.getAttribute('data-my_key:one')).to.equal('a');
+    expect(section.getAttribute('data-background-color')).to.equal('b');
+  });
+
+  it('keeps the cursor marker when the cursor is in an id row', () => {
+    const section = sectionFor('<tr><td>id</td><td>my-<span data-da-cursor-position></span>section</td></tr>');
+    expect(section.id).to.equal('my-section');
+    expect(section.hasAttribute('data-da-cursor-position')).to.be.true;
+  });
+
+  it('leaves section metadata to project code on rendering version 1', () => {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          <tr><td>Style</td><td>highlight</td></tr>
+        </table>
+      </div>
+    `);
+    const main = parseMain(prose2aem(editor, true, false, 1));
+    const section = main.querySelector(':scope > div');
+    expect(main.querySelector('.section-metadata')).to.exist;
+    expect(section.classList.contains('highlight')).to.be.false;
+  });
+
+  it('keeps relative link hrefs relative', () => {
+    const section = sectionFor('<tr><td>Source</td><td><a href="/foo">Label</a></td></tr>');
+    expect(section.dataset.source).to.equal('/foo');
+  });
+
   it('does not apply section metadata when livePreview is false', () => {
     const editor = makeEditor(`
       <p>Content</p>
