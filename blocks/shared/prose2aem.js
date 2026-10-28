@@ -322,7 +322,6 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
 
   convertParagraphs(editor);
 
-  // to do: feature flag?
   convertLinkImages(editor);
 
   convertBlocks(editor, isFragment);
