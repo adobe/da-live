@@ -22,6 +22,12 @@ https://lp--da-live--adobe.aem.live/?landing=true&theme=light&nx=lp&quick-edit=d
 The latest card implementation requires the paired Nexter `lp` branch.
 It has not been transferred to Martin's `devlive` branches.
 
+For the chat integration preview, use `lpchat` for both repositories:
+
+```text
+https://lpchat--da-live--adobe.aem.live/?landing=true&nx=lpchat&quick-edit=devlive#/exp-workspace/frescopaco
+```
+
 Add `&theme=light` for a light-mode preview without changing the saved theme.
 The override applies only while this landing page is present.
 
@@ -177,11 +183,10 @@ intentional differences rather than substitutes for those missing inputs.
   formats are unchanged. Panels use its 1068px
   desktop width, 16px radius, translucent fill and three-layer shadow. The composer
   uses its 664px desktop width and 109px idle height. Its neutral translucent
-  fill, border and soft shadows follow the Spectrum AI Toolkit's Subtle prompt
-  field (`24045:21639` in branch `1ypHt0RiJxnGKoZGlIT6eY`). Hover uses that
-  theme's faint colored hue and surface gradients (`24045:21695`), only on fine
-  pointers while the assistant is available. Focus and typing return to a neutral
-  frame (`24045:21088`, `24045:21059`), without a blue focus outline.
+  fill, border and soft shadows follow the Balanced prompt field in the chat
+  design (`3231:201921`, `3231:206692`). The idle field has a faint colored hue;
+  fine-pointer hover strengthens its surface gradients. Focus and typing return
+  to a neutral frame, without a blue focus outline.
   Only dragging files over the available composer shows the dropzone's 2px
   blue-violet ring and faint pink fill (`24045:21667`). The ring follows the
   inner 24px-radius surface, leaving the outer 6px frosted frame untouched.
@@ -192,7 +197,9 @@ intentional differences rather than substitutes for those missing inputs.
   Shared buttons retain their keyboard focus indicators, and forced-colors
   mode provides a system-color focus outline for the prompt.
   Dimensions, spacing, prompt text, actions and assistant handoff are unchanged.
-  This does not add a generation state to the landing composer.
+  Processing shows a spinner and "Working on your question, please wait..."
+  in both composers. Inputs and Add are disabled until processing finishes.
+  Stop and approval controls remain available in the left chat.
   The background includes the separate white fade over the coloured artwork:
   transparent at -794px, reaching white at about 604px in the 1024px canvas.
   Labels use explicit component line heights; modified dates use Today/Yesterday.
@@ -205,6 +212,21 @@ intentional differences rather than substitutes for those missing inputs.
   editors, preserving the Nexter/quick-edit preview parameters.
 - The prompt opens the site's existing assistant and fills its composer.
   It does **not** auto-send. The existing EW/chat flags still apply.
+  Enter continues in chat; Shift+Enter inserts a newline, and IME composition
+  does not submit. The same chat instance/session is reused after closing and
+  reopening its panel. A different unsent draft in the left composer is never
+  overwritten: the landing draft and attachments remain available for retry.
+  Only confirmed draft acceptance clears the central input. During processing,
+  even a hidden left panel keeps the central composer disabled. There is no queue.
+  Landing consumes the public `inputState`/`INPUT_STATE_CHANGE` contract and
+  opts the left chat into `showInputStatus`; it does not inspect a controller.
+  Panel opening and file reading have separate, announced loading states.
+  Site changes cancel pending panel loads, remove the old chat and its listener,
+  and clear the old draft/attachments before rechecking the site's chat flags.
+  Failed loads retain the draft and readable attachments for retry.
+  The panel's initial width is 320px; existing user-resized widths remain respected.
+  This integration requires the paired Nexter `lpchat` branch for the public
+  input-state, safe draft acceptance and panel-cancellation contracts.
   The coworker icon, prompt placeholder and AI disclaimer follow the mock.
   The composer uses `--s2-body-size-m` (16px) at both UI sizes and
   `--s2-gray-600` for the placeholder, including dark mode.
@@ -289,7 +311,17 @@ admin: only an explicit org CONFIG write grant exposes creation. Check missing
 permission headers and failed checks without hiding Add existing. Do not submit
 creation against shared demo content when checking the setup entry.
 Check dark mode, narrow layouts, keyboard focus and a site without chat.
-Verify chat availability after changing sites; the existing assistant handoff is
-preserved. The separate chat.io module and sizing-branch integration still need
-confirmation before replacing that flow or claiming live S/M support.
+Verify chat availability after changing sites. In the chat preview, hand off a
+draft with Enter or Continue in chat: it appears in the left input without
+being sent. Shift+Enter stays multiline. Attach a Markdown file or image and
+confirm one pill per file. Leave another draft in the left input and confirm
+that a central handoff preserves both drafts rather than replacing it.
+Send only on a separate writable test site: both inputs should show the working
+message and disable Add until the answer finishes or is stopped. Closing the
+panel must not unlock the central input during processing. Open/close without
+changing sites preserves the conversation. Switching sites during loading or
+file reading must not open the old chat or copy the old draft into the new site.
+With a failed chat-module request, the central draft and readable attachments
+remain available to retry. Check these flows in light/dark mode and a narrow
+window. Live S/M integration remains separate from the `lp` shell.
 The unparameterized Browse and Canvas routes should retain their existing UI.

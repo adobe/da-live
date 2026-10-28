@@ -4,11 +4,13 @@ import '../../setup-nx.js';
 import { getFavorites, toggleFavorite } from '../../../../blocks/browse/shared/favorites.js';
 import { setUISize } from '../../../fixtures/nx2/utils/ui-size.js';
 import loadLanding, { DaLanding } from '../../../../blocks/landing/landing.js';
-import { getNx, getNx2Api } from '../../../../scripts/utils.js';
+import { getNx, getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
 import { addExistingSite } from '../../../../blocks/shared/site-access.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { source, config } = await getNx2Api();
+const { flags } = await getNxEWFlags();
+const { sections } = await import(`${getNx()}/utils/panel.js`);
 
 const ITEMS = [
   { name: 'Welcome', path: '/org/site/index.html', ext: 'html', lastModified: 1792152000000 },
@@ -48,10 +50,40 @@ describe('landing page', () => {
   afterEach(() => {
     el.remove();
     nav.remove();
+    document.querySelectorAll('aside.panel').forEach((aside) => aside.remove());
+    flags.enabled = false;
+    flags.chatDisabled = false;
+    sections.clear();
     sinon.restore();
     ['da-sites', 'da-favorites', 'da-browse-settings', 'ui-size'].forEach((key) => localStorage.removeItem(key));
     document.body.classList.remove('ui-size-m');
   });
+
+  async function mountAssistant(tag = 'nx-chat') {
+    flags.enabled = true;
+    el._request = new AbortController();
+    await el.loadChatAvailability(el._request);
+    expect(el._chatEnabled, el._chatError).to.equal(true);
+    const section = sections.get('chat');
+    const aside = document.createElement('aside');
+    aside.className = 'panel';
+    const chat = document.createElement(tag);
+    chat.inputState = { busy: false, disabled: false };
+    chat.updateComplete = Promise.resolve();
+    chat.setPrompt = sinon.stub().resolves(true);
+    chat.openAddAction = sinon.stub().resolves();
+    aside.append(chat);
+    document.body.append(aside);
+    await section.onShow(aside);
+    return { chat, aside, section };
+  }
+
+  async function openDraft() {
+    let options;
+    document.addEventListener('nx-panel-open', ({ detail }) => { options = detail.options; }, { once: true });
+    await el.submitPrompt({ preventDefault() {} });
+    return options;
+  }
 
   it('renders files without adding site-root copy to the mock', () => {
     expect(el.shadowRoot.querySelector('h1').textContent).to.include('how can I help?');
@@ -65,7 +97,7 @@ describe('landing page', () => {
 
   it('matches the mock composer branding, placeholder and disclaimer', () => {
     expect(el.shadowRoot.querySelector('.composer-input .coworker-icon')).not.to.equal(null);
-    expect(el.shadowRoot.querySelector('textarea').placeholder).to.equal('Let me know your task — I can route you to the right app or tool');
+    expect(el.shadowRoot.querySelector('textarea').placeholder).to.equal('Ask a question, share an idea, or add a task.');
     const note = el.shadowRoot.querySelector('#assistant-note');
     expect(note.textContent).to.include('AI responses may be inaccurate.');
     expect(note.querySelector('a').textContent).to.equal('AI User Guidelines');
@@ -739,7 +771,7 @@ describe('landing page', () => {
     expect(el._prompt).to.equal('Update the hero');
     const open = sinon.stub(el, 'openAssistant').resolves();
     menu.choose('command');
-    expect(open.calledOnceWithExactly({ text: 'Update the hero', action: 'command' })).to.equal(true);
+    expect(open.calledOnceWithExactly({ text: 'Update the hero', action: 'command', attachments: undefined })).to.equal(true);
     expect(el._prompt).to.equal('Update the hero');
   });
 
@@ -755,6 +787,176 @@ describe('landing page', () => {
     el.shadowRoot.querySelector('.file-row da-file-actions').favorite();
     await el.updateComplete;
     expect(el.shadowRoot.textContent).to.include('No favorites yet');
+  });
+
+  ['nx-chat', 'nx-chat-ao'].forEach((tag) => {
+    it(`locks the landing composer from ${tag} processing state, including while its panel is hidden`, async () => {
+      const { chat, aside } = await mountAssistant(tag);
+      el._prompt = 'Next question';
+      aside.hidden = true;
+      chat.dispatchEvent(new CustomEvent('nx-chat-input-state-change', { detail: { busy: true, disabled: true } }));
+      await el.updateComplete;
+      expect(el.shadowRoot.querySelector('textarea').disabled).to.equal(true);
+      expect(el.shadowRoot.querySelector('.chat-add').disabled).to.equal(true);
+      expect(el.shadowRoot.querySelector('button[type="submit"]').disabled).to.equal(true);
+      expect(el.shadowRoot.querySelector('.composer').getAttribute('aria-busy')).to.equal('true');
+      expect(el.shadowRoot.querySelector('.composer-working').textContent).to.include('Working on your question, please wait...');
+      expect(await openDraft()).to.equal(undefined);
+      expect(el._prompt).to.equal('Next question');
+      chat.dispatchEvent(new CustomEvent('nx-chat-input-state-change', { detail: { busy: false, disabled: false } }));
+      await el.updateComplete;
+      expect(el.shadowRoot.querySelector('textarea').disabled).to.equal(false);
+      expect(el.shadowRoot.querySelector('textarea').value).to.equal('Next question');
+    });
+
+    it(`hands text and attachments to the same ${tag} once without auto-sending`, async () => {
+      const { chat, aside, section } = await mountAssistant(tag);
+      const attachment = { id: 'draft-file', label: 'draft.md', dataBase64: 'ZmlsZQ==' };
+      el._prompt = 'Use this draft';
+      el._attachments = [attachment];
+      const add = sinon.spy();
+      document.addEventListener('nx-add-to-chat', add);
+      try {
+        const options = await openDraft();
+        await openDraft();
+        expect(el._handingOff).to.equal(true);
+        await section.onShow(aside, undefined, options);
+        expect(chat.setPrompt.calledOnceWithExactly('Use this draft', { replace: false })).to.equal(true);
+        expect(add.calledOnce).to.equal(true);
+        expect(add.firstCall.args[0].detail).to.equal(attachment);
+        expect(el._prompt).to.equal('');
+        expect(el._attachments).to.equal(undefined);
+        expect(el._handingOff).to.equal(false);
+        expect(aside.querySelectorAll(tag)).to.have.length(1);
+      } finally {
+        document.removeEventListener('nx-add-to-chat', add);
+      }
+    });
+  });
+
+  it('keeps both drafts and attachments when the assistant refuses a handoff, then allows a retry', async () => {
+    const { chat, aside, section } = await mountAssistant();
+    el._prompt = 'Landing draft';
+    el._attachments = [{ id: 'file', label: 'draft.md', dataBase64: 'ZmlsZQ==' }];
+    chat.setPrompt.resolves(false);
+    await section.onShow(aside, undefined, await openDraft());
+    await el.updateComplete;
+    expect(el._prompt).to.equal('Landing draft');
+    expect(el._attachments).to.have.length(1);
+    expect(el._handingOff).to.equal(false);
+    expect(el._chatError).to.include('Finish or clear the draft in chat');
+    expect(el.shadowRoot.querySelector('nx-pills').items).to.equal(el._attachments);
+    chat.setPrompt.resolves(true);
+    await section.onShow(aside, undefined, await openDraft());
+    expect(el._prompt).to.equal('');
+    expect(el._attachments).to.equal(undefined);
+  });
+
+  it('reports a panel load failure without discarding the draft or locking out retries', async () => {
+    flags.enabled = true;
+    el._request = new AbortController();
+    await el.loadChatAvailability(el._request);
+    el._prompt = 'Keep this draft';
+    await openDraft();
+    sections.get('chat').onError(new Error('Offline'));
+    expect(el._handingOff).to.equal(false);
+    expect(el._chatError).to.include('Offline');
+    expect(el._prompt).to.equal('Keep this draft');
+    expect(await openDraft()).not.to.equal(undefined);
+  });
+
+  it('ignores a stale handoff completion and removes the old chat when switching sites', async () => {
+    const { chat, aside, section } = await mountAssistant();
+    el._prompt = 'Old draft';
+    const options = await openDraft();
+    let finish;
+    chat.updateComplete = new Promise((resolve) => { finish = resolve; });
+    const opening = section.onShow(aside, undefined, options);
+    hashChange._set({ org: 'org', site: 'other' });
+    el._prompt = 'New site draft';
+    el._handingOff = true;
+    finish();
+    await opening;
+    chat.dispatchEvent(new CustomEvent('nx-chat-input-state-change', { detail: { busy: true, disabled: true } }));
+    expect(chat.setPrompt.called).to.equal(false);
+    expect(el._prompt).to.equal('New site draft');
+    expect(el._handingOff).to.equal(true);
+    expect(el._chatInputState).to.equal(undefined);
+    expect(aside.isConnected).to.equal(false);
+  });
+
+  it('reads an attachment only once while a file selection is pending and retains it on load failure', async () => {
+    const { section } = await mountAssistant();
+    el._prompt = 'Keep this';
+    const file = new File(['A draft'], 'draft.md', { type: 'text/markdown' });
+    const reading = el.addFiles([file]);
+    await el.addFiles([file]);
+    await reading;
+    expect(el._attachments).to.have.length(1);
+    expect(el._attachments[0].label).to.equal('draft.md');
+    section.onError(new Error('Offline'));
+    expect(el._attachments).to.have.length(1);
+    expect(el._prompt).to.equal('Keep this');
+  });
+
+  it('continues with Enter, keeps Shift+Enter and IME composition, and never submits a disabled composer', async () => {
+    el._chatEnabled = true;
+    el._prompt = 'Draft';
+    await el.updateComplete;
+    const input = el.shadowRoot.querySelector('textarea');
+    const submit = sinon.stub(input.form, 'requestSubmit');
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true }));
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true }));
+    expect(submit.called).to.equal(false);
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    expect(submit.calledOnce).to.equal(true);
+    el._chatInputState = { busy: true, disabled: true };
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    expect(submit.calledOnce).to.equal(true);
+  });
+
+  it('keeps the composer within the remaining page width and shows a neutral processing surface in both themes', async () => {
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync(await (await fetch('/blocks/landing/landing.css')).text());
+    el.shadowRoot.adoptedStyleSheets = [sheet];
+    el._chatEnabled = true;
+    await el.updateComplete;
+    for (const scheme of ['light', 'dark']) {
+      el.style.colorScheme = scheme;
+      for (const width of [1200, 800, 360]) {
+        el.style.width = `${width}px`;
+        const composer = el.shadowRoot.querySelector('.composer');
+        expect(composer.getBoundingClientRect().width).to.be.at.most(664);
+        const pageRight = el.getBoundingClientRect().right;
+        expect(composer.getBoundingClientRect().right).to.be.at.most(pageRight);
+        expect(getComputedStyle(composer, '::after').content).to.equal('""');
+        el._chatInputState = { busy: true, disabled: true };
+        await el.updateComplete;
+        const input = el.shadowRoot.querySelector('.composer-input');
+        expect(getComputedStyle(input).display).to.equal('none');
+        expect(getComputedStyle(composer, '::after').content).to.equal('none');
+        expect(el.shadowRoot.querySelector('.composer-working').getBoundingClientRect().height).to.be.greaterThan(0);
+        el._chatInputState = { busy: false, disabled: false };
+        await el.updateComplete;
+      }
+    }
+  });
+
+  it('does not deliver files read for an old site after switching away and back', async () => {
+    await mountAssistant();
+    const file = new File(['A draft'], 'draft.md', { type: 'text/markdown' });
+    let finish;
+    sinon.stub(file, 'text').returns(new Promise((resolve) => { finish = resolve; }));
+    const reading = el.addFiles([file]);
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+    hashChange._set({ org: 'org', site: 'other' });
+    hashChange._set({ org: 'org', site: 'site' });
+    el._prompt = 'New draft';
+    finish('A draft');
+    await reading;
+    expect(el._attachments).to.equal(undefined);
+    expect(el._prompt).to.equal('New draft');
+    expect(el._handingOff).to.equal(false);
   });
 
   it('does not fetch modifier metadata for every row before details are requested', async () => {
