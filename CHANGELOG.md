@@ -1,3 +1,10 @@
+## [1.15.1](https://github.com/adobe/da-live/compare/v1.15.0...v1.15.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* **browse v2:** honor editor.path for search results ([#1514](https://github.com/adobe/da-live/issues/1514)) ([f9edea5](https://github.com/adobe/da-live/commit/f9edea542f4f40e5fce55285b4c7025fbeddc77a))
+
 # [1.15.0](https://github.com/adobe/da-live/compare/v1.14.2...v1.15.0) (2026-10-27)
 
 
