@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2 } from '../../../scripts/utils.js';
+import { getNx, getNx2, getUISize, getBtnSizeClass, getLgBtnClass } from '../../../scripts/utils.js';
 import { getPreviewOrigin } from '../editor-utils/editor-utils.js';
 import { whenCanvasBranch } from '../utils/branch.js';
 import { canvasBus } from '../utils/canvas-bus.js';
@@ -9,6 +9,7 @@ import { adaptEvaluation } from './adapter.js';
 import { evaluatePage } from './api.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { UISizeController } = await import(`${getNx2()}/utils/ui-size.js`);
 
 const [buttons, spinner, style] = await Promise.all([
   loadStyle(`${getNx2()}/styles/buttons.css`),
@@ -35,6 +36,8 @@ function ensureRenderer() {
 }
 
 class EwPreflight extends LitElement {
+  _uiSize = new UISizeController(this, { onChange: () => this._syncHeaderSize() });
+
   static properties = {
     _loading: { state: true },
     _error: { state: true },
@@ -232,18 +235,31 @@ class EwPreflight extends LitElement {
     if (!btn) return;
     btn.disabled = busy;
     btn.innerHTML = busy ? REFRESH_SPINNER_HTML : REFRESH_ICON_HTML;
+    this._syncHeaderSize();
+  }
+
+  _syncHeaderSize() {
+    const btn = this._headerRefreshBtn;
+    if (!btn) return;
+    btn.className = `nx-action-btn-icon ${getBtnSizeClass()}`.trim();
+    const loadingSpinner = btn.querySelector('.nx-loading-spinner');
+    if (loadingSpinner) {
+      const size = getUISize() === 'm' ? '16px' : '14px';
+      loadingSpinner.style.width = size;
+      loadingSpinner.style.height = size;
+    }
   }
 
   _getHeaderRefreshButton() {
     if (this._headerRefreshBtn) return this._headerRefreshBtn;
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'nx-action-btn-icon nx-btn-sm';
     btn.setAttribute('aria-label', 'Refresh evaluation');
     btn.disabled = !!this._loading;
     btn.innerHTML = this._loading ? REFRESH_SPINNER_HTML : REFRESH_ICON_HTML;
     btn.addEventListener('click', () => this._evaluateAndReport());
     this._headerRefreshBtn = btn;
+    this._syncHeaderSize();
     return btn;
   }
 
@@ -264,7 +280,10 @@ class EwPreflight extends LitElement {
       return html`
         <div class="ew-preflight-status" role="alert">
           <p>${this._error}</p>
-          <button class="ew-preflight-retry" @click=${() => this._evaluateAndReport()}>Try again</button>
+          <button
+            class="nx-action-btn ew-preflight-retry ${getLgBtnClass()}"
+            @click=${() => this._evaluateAndReport()}
+          >Try again</button>
         </div>`;
     }
     if (!this._data) return nothing;
