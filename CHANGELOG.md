@@ -1,3 +1,45 @@
+# [1.16.0](https://github.com/adobe/da-live/compare/v1.15.1...v1.16.0) (2026-10-28)
+
+
+### Features
+
+* **sc:** move structured content editor ([#1477](https://github.com/adobe/da-live/issues/1477)) ([ed60122](https://github.com/adobe/da-live/commit/ed601228892efd08bce42162b54097783f55e23e))
+
+## [1.15.1](https://github.com/adobe/da-live/compare/v1.15.0...v1.15.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* **browse v2:** honor editor.path for search results ([#1514](https://github.com/adobe/da-live/issues/1514)) ([f9edea5](https://github.com/adobe/da-live/commit/f9edea542f4f40e5fce55285b4c7025fbeddc77a))
+
+# [1.15.0](https://github.com/adobe/da-live/compare/v1.14.2...v1.15.0) (2026-10-27)
+
+
+### Features
+
+* set image focal point from canvas toolbar in layout mode ([#1479](https://github.com/adobe/da-live/issues/1479)) ([824f44f](https://github.com/adobe/da-live/commit/824f44f5d8fad645eccbffb772d71a54ee52d9c5))
+
+## [1.14.2](https://github.com/adobe/da-live/compare/v1.14.1...v1.14.2) (2026-10-27)
+
+
+### Bug Fixes
+
+* **ew:** position slash menu correctly when it opens above cursor and user starts typing ([#1497](https://github.com/adobe/da-live/issues/1497)) ([6a9d91c](https://github.com/adobe/da-live/commit/6a9d91cf587d373ea24f970ace626947eb70e089))
+
+## [1.14.1](https://github.com/adobe/da-live/compare/v1.14.0...v1.14.1) (2026-10-27)
+
+
+### Bug Fixes
+
+* **ew:** add confirm dialog to block delete from toolbar, consolidate dialogs for outline & toolbar ([#1496](https://github.com/adobe/da-live/issues/1496)) ([6d8a138](https://github.com/adobe/da-live/commit/6d8a13862f105877cff6302a65db45e81322342f))
+
+# [1.14.0](https://github.com/adobe/da-live/compare/v1.13.2...v1.14.0) (2026-10-27)
+
+
+### Features
+
+* add permission management UI ([#1503](https://github.com/adobe/da-live/issues/1503)) ([50c7830](https://github.com/adobe/da-live/commit/50c78306768b3d675b1f3657967845f4081cefe3)), closes [#1](https://github.com/adobe/da-live/issues/1) [#2](https://github.com/adobe/da-live/issues/2) [#4](https://github.com/adobe/da-live/issues/4) [#5](https://github.com/adobe/da-live/issues/5) [#6](https://github.com/adobe/da-live/issues/6) [#7](https://github.com/adobe/da-live/issues/7) [#8](https://github.com/adobe/da-live/issues/8) [#9](https://github.com/adobe/da-live/issues/9) [#11](https://github.com/adobe/da-live/issues/11) [#13](https://github.com/adobe/da-live/issues/13)
+
 ## [1.13.2](https://github.com/adobe/da-live/compare/v1.13.1...v1.13.2) (2026-10-26)
 
 
