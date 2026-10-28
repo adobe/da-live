@@ -27,7 +27,7 @@ await import(`${getNx()}/blocks/shared/menu/menu.js`);
 const sheet = await getSheet('/blocks/canvas/comments/comments-panel.css');
 const buttons = await getSheet(`${getNx2()}/styles/buttons.css`);
 const form = await getSheet(`${getNx2()}/styles/form.css`);
-const base = await getSheet('/blocks/shared/styles/base.css');
+const hints = await getSheet('/blocks/shared/styles/hints.css');
 
 let toastModulePromise;
 
@@ -162,7 +162,7 @@ export class CommentsPanel extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [
-      ...this.shadowRoot.adoptedStyleSheets, base, buttons, form, sheet,
+      ...this.shadowRoot.adoptedStyleSheets, hints, buttons, form, sheet,
     ];
     if (this.controller === undefined) this.controller = getCommentsBridge().controller;
     this.setupObservers();

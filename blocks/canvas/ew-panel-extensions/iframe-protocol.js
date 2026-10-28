@@ -1,8 +1,11 @@
-import { insertText, insertHTML, getEditorSelection } from './helpers.js';
+import { insertText, insertHTML, replaceHTMLAtCursor, getEditorSelection } from './helpers.js';
+import { getActiveBlockIndex } from '../editor-utils/blocks.js';
+import { getInstrumentedHTMLForSDK } from '../editor-utils/editor-utils.js';
 import { getNx } from '../../../scripts/utils.js';
 import { getPostMessageTargetOrigin, isRequestId, isValidHref, replyToGetSelection } from '../../shared/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { getCanvasBranch } from '../utils/branch.js';
+import { routeComparisonMessage } from '../ew-comparison/comparison.js';
 
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
@@ -24,31 +27,125 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   const targetOrigin = getPostMessageTargetOrigin(iframe.src);
 
   const channel = new MessageChannel();
+  let subscribed = false;
+  let htmlTimer;
+  let unsubscribeDoc;
+  let unsubscribeHtml;
+  let unsubscribeSelect;
+  let lastBlockIndex = null;
+
+  const selectionFor = (editorView) => {
+    const index = getActiveBlockIndex(editorView);
+    return { blockIndex: index < 0 ? null : index };
+  };
+  const broadcastDocument = (snapshot) => {
+    clearTimeout(htmlTimer);
+    htmlTimer = undefined;
+    if (!subscribed) return;
+    let documentState = snapshot;
+    if (!documentState) {
+      const editorView = getView();
+      documentState = {
+        html: editorView ? getInstrumentedHTMLForSDK(editorView) : '',
+        selection: selectionFor(editorView),
+        editable: !!editorView?.editable,
+      };
+    }
+    lastBlockIndex = documentState.selection.blockIndex;
+    channel.port1.postMessage({
+      action: 'liveDocument',
+      ...documentState,
+    });
+  };
+  const scheduleDocument = () => {
+    if (!subscribed) return;
+    clearTimeout(htmlTimer);
+    htmlTimer = setTimeout(broadcastDocument, 150);
+  };
+  const broadcastSelection = ({ blockIndex }) => {
+    if (!subscribed || htmlTimer !== undefined) return;
+    const index = Number.isInteger(blockIndex) && blockIndex >= 0 ? blockIndex : null;
+    if (lastBlockIndex === index) return;
+    lastBlockIndex = index;
+    channel.port1.postMessage({ action: 'liveSelection', selection: { blockIndex: index } });
+  };
+  const stopSubscription = () => {
+    subscribed = false;
+    clearTimeout(htmlTimer);
+    htmlTimer = undefined;
+    unsubscribeDoc?.();
+    unsubscribeHtml?.();
+    unsubscribeSelect?.();
+    unsubscribeDoc = undefined;
+    unsubscribeHtml = undefined;
+    unsubscribeSelect = undefined;
+  };
 
   channel.port1.onmessage = (e) => {
     const { action, details } = e.data || {};
-
-    if (action === 'openComparison' || action === 'closeComparison') {
-      if (action === 'openComparison'
-        && (!['document', 'preview'].includes(details?.candidate) || details?.baseline !== 'live')) return;
-      canvasBus.comparisonRequest.emit({
-        action,
-        details: action === 'openComparison' ? { candidate: details.candidate, baseline: details.baseline } : undefined,
-        context: { org, site, path },
-      });
+    if (action === 'subscribeLiveDocument') {
+      if (!subscribed) {
+        subscribed = true;
+        unsubscribeDoc = canvasBus.editorDocState.subscribe(scheduleDocument);
+        unsubscribeHtml = canvasBus.editorHtmlState.subscribe(scheduleDocument);
+        unsubscribeSelect = canvasBus.editorSelectState.subscribe(broadcastSelection);
+      }
+      broadcastDocument();
       return;
     }
-    if (action === 'saveDocument') {
+    if (action === 'unsubscribeLiveDocument') {
+      stopSubscription();
+      return;
+    }
+
+    const port = channel.port1;
+    if (routeComparisonMessage(e.data || {}, { context: { org, site, path }, port })) return;
+    const editorView = getView();
+
+    if (action === 'sendHTML' && typeof details === 'object') {
       const { requestId } = e.data;
       if (!isRequestId(requestId)) return;
-      canvasBus.comparisonRequest.emit({
-        action,
-        context: { org, site, path },
-        resolve: (result) => channel.port1.postMessage({ action: 'sdkResponse', requestId, result }),
-      });
+      try {
+        if (!editorView) throw Object.assign(new Error('No editor view'), { code: 'NO_EDITOR' });
+        if (details?.replace !== true) throw Object.assign(new Error('Invalid replacement request'), { code: 'INVALID_HTML' });
+        if (details.expected !== undefined) {
+          const { expected } = details;
+          if (typeof expected?.html !== 'string' || !Number.isSafeInteger(expected.blockIndex) || expected.blockIndex < 0) {
+            throw Object.assign(new Error('Invalid replacement precondition'), { code: 'INVALID_EXPECTED' });
+          }
+          if (getActiveBlockIndex(editorView) !== expected.blockIndex) {
+            throw Object.assign(new Error('The selected block changed'), { code: 'WRONG_SELECTION' });
+          }
+          if (getInstrumentedHTMLForSDK(editorView) !== expected.html) {
+            throw Object.assign(new Error('The live document changed while editing'), { code: 'STALE_LIVE' });
+          }
+        }
+        replaceHTMLAtCursor(editorView, details.html);
+      } catch (error) {
+        channel.port1.postMessage({
+          action: 'sdkResponse',
+          requestId,
+          result: { ok: false, error: error.code || 'REPLACE_FAILED', message: error.message },
+        });
+        return;
+      }
+      const result = { ok: true, html: null };
+      try {
+        result.selection = selectionFor(editorView);
+        result.editable = !!editorView.editable;
+        result.html = getInstrumentedHTMLForSDK(editorView);
+        broadcastDocument({
+          html: result.html,
+          selection: result.selection,
+          editable: result.editable,
+        });
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.warn('Could not serialize or broadcast the live document after replacement:', error);
+      }
+      channel.port1.postMessage({ action: 'sdkResponse', requestId, result });
       return;
     }
-    const editorView = getView();
 
     if (action === 'sendText' && editorView) {
       insertText(editorView, details);
@@ -124,6 +221,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
         project: context,
         context,
         token,
+        capabilities: { liveDocument: 1, sendHTMLReplace: 1 },
       },
       targetOrigin,
       [channel.port2],
@@ -137,6 +235,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   document.addEventListener(CHAT_EVENT.AGENT_CHANGE, onAgentChange);
 
   const destroy = () => {
+    stopSubscription();
     clearTimeout(readyTimer);
     document.removeEventListener(CHAT_EVENT.AGENT_CHANGE, onAgentChange);
     channel.port1.close();

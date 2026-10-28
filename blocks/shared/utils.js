@@ -318,14 +318,16 @@ export async function contentLogin(owner, repo) {
 export async function livePreviewLogin(owner, repo, branch = 'main', getUrl = getLivePreviewUrl) {
   try {
     const token = await getAuthToken();
-    if (!token) return;
-    await fetch(`${getUrl(owner, repo, branch)}/gimme_cookie`, {
+    if (!token) return false;
+    const resp = await fetch(`${getUrl(owner, repo, branch)}/gimme_cookie`, {
       credentials: 'include',
       headers: { Authorization: `Bearer ${token}` },
     });
+    return resp.ok;
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('Live Preview Login failed', e);
+    return false;
   }
 }
 

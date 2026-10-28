@@ -34,6 +34,11 @@ import {
 } from './command-helpers.js';
 import { openLinkDialog, openAltDialog, triggerAddImage } from './selection-toolbar.js';
 import { blockItemsForQuery, hasLibrary, insertBlockItem, getState } from './block-slash.js';
+import {
+  canSetFocalPoint,
+  hasFocalPointData,
+  openSelectedFocalPoint,
+} from '../../edit/prose/plugins/imageFocalPoint.js';
 
 const notImageSelected = (state) => !isImageNodeSelected(state);
 
@@ -336,6 +341,15 @@ export const COMMANDS = [
     apply: openAltDialog,
   },
   {
+    id: 'image-focal-point',
+    label: 'Set focal point',
+    icon: 'target',
+    showIn: ['toolbar-image'],
+    visible: canSetFocalPoint,
+    active: (state) => hasFocalPointData(state.selection.node?.attrs ?? {}),
+    apply: openSelectedFocalPoint,
+  },
+  {
     id: 'image-add',
     label: 'Add image',
     icon: iconName('imageadd'),
@@ -391,9 +405,9 @@ export const COMMANDS = [
     icon: iconName('CCLibrary'),
     showIn: ['slash-blocks'],
     apply: async (view) => {
-      const { insertBlock } = await import('../ew-panel-extensions/helpers.js');
+      const { insertLibraryBlock } = await import('../ew-panel-extensions/helpers.js');
       const { openBlockLibraryModal } = await import('../ew-block-library-modal/ew-block-library-modal.js');
-      openBlockLibraryModal({ onInsert: (dom) => insertBlock(view, dom) });
+      openBlockLibraryModal({ onInsert: (dom) => insertLibraryBlock(view, dom) });
     },
   },
   {

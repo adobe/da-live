@@ -89,7 +89,7 @@ function makePictures(editor, live) {
     if (live && clone.src) {
       try {
         const source = new URL(clone.src);
-        if (source.host.endsWith('.da.live')) {
+        if (source.hostname === 'content.da.live' || source.hostname === 'stage-content.da.live') {
           source.pathname = `/${source.pathname
             .split('/')
             .slice(3) // remove org and site
