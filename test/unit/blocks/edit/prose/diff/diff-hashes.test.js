@@ -164,4 +164,23 @@ describe('diff-actions review hashes', () => {
       hash('<div class="metadata"><div><div><p>title</p></div><div><p>Hello</p></div></div></div>'),
     ]);
   });
+
+  it('stores no hash for a block that is saved as nothing', async () => {
+    const rejections = [];
+    const onRejection = (e) => {
+      rejections.push(String(e.reason));
+      e.preventDefault();
+    };
+    window.addEventListener('unhandledrejection', onRejection);
+    const view = openPage([
+      '<da-diff-deleted><p>Hello</p></da-diff-deleted><p da-diff-added="">&nbsp;</p>',
+      '<da-diff-deleted><p> </p></da-diff-deleted><p da-diff-added="">Welcome</p>',
+    ].join(''));
+    keepAll(view, 'local');
+    await settle();
+    window.removeEventListener('unhandledrejection', onRejection);
+    expect(rejections).to.deep.equal([]);
+    expect(stored(ACCEPTED_KEY)).to.deep.equal([hash('<p>Welcome</p>')]);
+    expect(stored(REJECTED_KEY)).to.deep.equal([hash('<p>Hello</p>')]);
+  });
 });
