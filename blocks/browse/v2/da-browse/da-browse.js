@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getFirstSheet, fetchDaConfigs } from '../../../shared/utils.js';
 import { getNx, sanitizePathParts, getNxEWFlags } from '../../../../scripts/utils.js';
-import { getChatPanelContent } from '../../../shared/chat-panel.js';
+import { getChatPanelContent, chatAvailability } from '../../../shared/chat-panel.js';
 import { getBrowseSettings, updateBrowseSettings } from '../shared/settings.js';
 
 // Components
@@ -110,6 +110,7 @@ export default class DaBrowse extends LitElement {
     document.addEventListener('keydown', this._handleShortcuts);
     this.mountSearch();
     this.observeHeader();
+    this._unsubChat = chatAvailability.subscribe((enabled) => this.syncChatAvailability(enabled));
   }
 
   disconnectedCallback() {
@@ -119,6 +120,34 @@ export default class DaBrowse extends LitElement {
     this._headerResizeObserver?.disconnect();
     this._headerResizeObserver = undefined;
     this.cancelChatPreload();
+    this._unsubChat?.();
+  }
+
+  syncChatAvailability(enabled) {
+    this.cancelChatPreload();
+    this._chatEnabled = enabled;
+    if (enabled === undefined) return;
+    if (!enabled) {
+      closeChatPanel();
+      return;
+    }
+    const loadContent = getChatPanelContent();
+    let content;
+    const getContent = () => {
+      content ??= loadContent().catch((error) => {
+        content = undefined;
+        throw error;
+      });
+      return content;
+    };
+    registerPanelSection('chat', {
+      position: 'before',
+      width: '400px',
+      getContent,
+      onShow: (aside, id, options) => this.syncChatContext(aside, options),
+    });
+    if (wasPanelOpen('chat')) openChatPanel();
+    this._preloadChatContent = getContent;
   }
 
   cancelChatPreload() {
@@ -232,36 +261,9 @@ export default class DaBrowse extends LitElement {
       // EW flag lives at site level — re-check whenever org or site changes,
       // and do this before getEditor so the default editor reflects EW state
       if (orgChanged || prevDetails?.site !== this.details.site) {
-        this.cancelChatPreload();
         const { org, site } = this.details;
-        const { isEWEnabled, isEwChatDisabled } = await getNxEWFlags();
-        const [ewEnabled, chatDisabled] = await Promise.all([
-          isEWEnabled({ org, site }),
-          isEwChatDisabled({ org, site }),
-        ]);
-        this._ewEnabled = ewEnabled;
-        this._chatEnabled = ewEnabled && !chatDisabled;
-        if (this._chatEnabled) {
-          const loadContent = getChatPanelContent();
-          let content;
-          const getContent = () => {
-            content ??= loadContent().catch((error) => {
-              content = undefined;
-              throw error;
-            });
-            return content;
-          };
-          registerPanelSection('chat', {
-            position: 'before',
-            width: '400px',
-            getContent,
-            onShow: (aside, id, options) => this.syncChatContext(aside, options),
-          });
-          if (wasPanelOpen('chat')) openChatPanel();
-          this._preloadChatContent = getContent;
-        } else {
-          closeChatPanel();
-        }
+        const { isEWEnabled } = await getNxEWFlags();
+        this._ewEnabled = await isEWEnabled({ org, site });
       }
 
       // Only re-fetch editor configs if the org changes

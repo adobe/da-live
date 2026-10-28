@@ -1,4 +1,39 @@
-import { getNx } from '../../scripts/utils.js';
+import { getNx, getNxEWFlags } from '../../scripts/utils.js';
+import { createChannel } from './channel.js';
+
+const { hashChange } = await import(`${getNx()}/utils/utils.js`);
+const availabilityChannel = createChannel({ replay: true });
+let chatContext;
+let unsubscribeHash;
+
+async function syncChatAvailability({ org, site } = {}) {
+  if (chatContext && chatContext.org === org && chatContext.site === site) return;
+  const context = { org, site };
+  chatContext = context;
+  availabilityChannel.emit(undefined);
+  const enabled = org
+    ? await getNxEWFlags().then((flags) => flags.isEwChatEnabled(context)).catch(() => false)
+    : false;
+  if (chatContext === context) availabilityChannel.emit(enabled);
+}
+
+// Undefined availability means the current org/site is still being checked.
+export const chatAvailability = Object.freeze({
+  subscribe(callback) {
+    if (!availabilityChannel.subscriberCount) {
+      unsubscribeHash = hashChange.subscribe(syncChatAvailability);
+    }
+    const unsubscribe = availabilityChannel.subscribe(callback);
+    return () => {
+      unsubscribe();
+      if (availabilityChannel.subscriberCount) return;
+      unsubscribeHash?.();
+      unsubscribeHash = undefined;
+      chatContext = undefined;
+      availabilityChannel.emit(undefined);
+    };
+  },
+});
 
 // Shared getContent for registering the default chat panel section — used by every
 // da-live host page (canvas, browse). Host pages keep full control of
