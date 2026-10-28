@@ -235,3 +235,18 @@ describe('add-comment command', () => {
     expect(evt.detail).to.deep.equal({ section: 'tools', id: 'comments' });
   });
 });
+
+describe('image-focal-point command', () => {
+  it('is an image toolbar command hidden when no image is selected', () => {
+    const cmd = COMMAND_BY_ID.get('image-focal-point');
+    expect(cmd.showIn).to.deep.equal(['toolbar-image']);
+    expect(cmd.visible({ selection: {} })).to.be.false;
+  });
+
+  it('is active when the selected image has a focal point', () => {
+    const cmd = COMMAND_BY_ID.get('image-focal-point');
+    const state = (attrs) => ({ selection: { node: { type: { name: 'image' }, attrs } } });
+    expect(!!cmd.active(state({ dataFocalX: '10', dataFocalY: '20' }))).to.be.true;
+    expect(!!cmd.active(state({}))).to.be.false;
+  });
+});
