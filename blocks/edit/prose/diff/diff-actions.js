@@ -92,6 +92,7 @@ function nodeToHtml(node) {
   const saved = new DOMParser().parseFromString(doc2aem(ydoc), 'text/html');
   saved.querySelectorAll('[da-diff-added]').forEach((el) => el.removeAttribute('da-diff-added'));
   const block = saved.querySelector('main > div > *');
+  if (!block) return null;
   trimTextNodes(block);
   return getOuterHTMLWithSortedAttributes(block)
     .replace(/>\s+</g, '><')
@@ -101,7 +102,9 @@ function nodeToHtml(node) {
 }
 
 export const addToHashMetadata = async (node, mdKey) => {
-  const hash = await objHash(nodeToHtml(node));
+  const html = nodeToHtml(node);
+  if (!html) return;
+  const hash = await objHash(html);
   const hashStr = getDaMetadata(mdKey);
   const hashes = hashStr ? new Set(hashStr.split(',')) : new Set();
   hashes.add(hash);
