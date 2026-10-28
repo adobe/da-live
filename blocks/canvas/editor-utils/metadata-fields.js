@@ -19,7 +19,7 @@ function parseValues(raw) {
   });
 }
 
-const FIELD_TYPES = ['multi', 'json'];
+const FIELD_TYPES = ['multi', 'json', 'image'];
 
 /** Build metadata field descriptors from the library "options" sheet. */
 export function buildMetadataFields(data) {
@@ -70,9 +70,16 @@ const DEFAULT_FIELDS = [
   { key: 'Description', label: 'Description', type: 'single', values: null },
 ];
 
-function findDocValue(docRows, key) {
+function findDocRow(docRows, key) {
   const target = normalize(key);
-  return docRows.find((row) => normalize(row.key) === target)?.value ?? '';
+  return docRows.find((row) => normalize(row.key) === target);
+}
+
+// Image fields carry the page image (or null) and use its src as their value. A row that
+// holds an image is always an image field, so editing it as text cannot remove the image.
+function withDocValue(field, row) {
+  if (field.type !== 'image' && !row?.image) return { ...field, value: row?.value ?? '' };
+  return { ...field, type: 'image', value: row?.image?.src ?? '', image: row?.image ?? null };
 }
 
 /**
@@ -82,8 +89,7 @@ function findDocValue(docRows, key) {
 export function resolveMetadataFields(docRows, configuredFields) {
   const baseFields = configuredFields?.length ? configuredFields : DEFAULT_FIELDS;
   const visibleFields = baseFields.map((field) => ({
-    ...field,
-    value: findDocValue(docRows, field.key),
+    ...withDocValue(field, findDocRow(docRows || [], field.key)),
     removable: false,
   }));
 
@@ -91,11 +97,7 @@ export function resolveMetadataFields(docRows, configuredFields) {
   const extraFields = (docRows || [])
     .filter((row) => !usedKeys.has(normalize(row.key)))
     .map((row) => ({
-      key: row.key,
-      label: row.key,
-      type: 'single',
-      values: null,
-      value: row.value,
+      ...withDocValue({ key: row.key, label: row.key, type: 'single', values: null }, row),
       removable: true,
     }));
 

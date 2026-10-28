@@ -1,4 +1,4 @@
-import { Fragment } from 'da-y-wrapper';
+import { Fragment, NodeSelection, TextSelection } from 'da-y-wrapper';
 import { getTableBlockName } from './blocks.js';
 
 const METADATA_BLOCK_NAME = 'metadata';
@@ -52,7 +52,30 @@ function findMetadataRow(tableNode, key) {
   return result;
 }
 
-/** Read the metadata key/value rows from the live doc. */
+// The value cell of a row, with its absolute doc position.
+function valueCell(tablePos, row, offset) {
+  if (row.childCount < 2) return null;
+  return { pos: tablePos + 1 + offset + 1 + row.child(0).nodeSize, node: row.child(1) };
+}
+
+// First image inside `node`, whose content starts at absolute position `start`.
+function findImage(node, start) {
+  let found = null;
+  node.descendants((child, pos) => {
+    if (found) return false;
+    if (child.type.name === 'image') {
+      found = { pos: start + pos, node: child };
+      return false;
+    }
+    return true;
+  });
+  return found;
+}
+
+/**
+ * Read the metadata key/value rows from the live doc. A row whose value cell holds an
+ * image also gets `image: { pos, src, alt }`; its text value is then empty.
+ */
 export function readMetadataRows(view) {
   const found = view ? findMetadataTable(view) : null;
   if (!found) return [];
@@ -61,9 +84,27 @@ export function readMetadataRows(view) {
     if (index === 0) return;
     const key = row.child(0).textContent;
     if (!key.trim()) return;
-    rows.push({ key, value: row.child(1).textContent });
+    const cell = valueCell(found.pos, row, offset);
+    const image = cell && findImage(cell.node, cell.pos + 1);
+    const entry = { key, value: cell?.node.textContent ?? '' };
+    if (image) {
+      entry.image = { pos: image.pos, src: image.node.attrs.src, alt: image.node.attrs.alt ?? '' };
+    }
+    rows.push(entry);
   });
   return rows;
+}
+
+export function findMetadataValueCell(view, key) {
+  const found = findMetadataTable(view);
+  const match = found && findMetadataRow(found.node, key);
+  return match ? valueCell(found.pos, match.row, match.offset) : null;
+}
+
+/** The image in a metadata row's value cell, as `{ pos, node }`, or null. */
+export function findMetadataImage(view, key) {
+  const cell = view && key?.trim() ? findMetadataValueCell(view, key) : null;
+  return cell ? findImage(cell.node, cell.pos + 1) : null;
 }
 
 /** Append an empty metadata table if missing; returns its position. */
@@ -138,4 +179,50 @@ export function deleteMetadataRow(view, key) {
   const { row, offset } = match;
   const rowPos = found.pos + 1 + offset;
   view.dispatch(view.state.tr.delete(rowPos, rowPos + row.nodeSize));
+}
+
+function ensureMetadataValueCell(view, key) {
+  if (!findMetadataValueCell(view, key)) addMetadataRow(view, key, '');
+  return findMetadataValueCell(view, key);
+}
+
+/**
+ * Put an image into a metadata row, adding the row when missing. An existing image keeps
+ * its other attributes; otherwise the cell's content is replaced by the image.
+ */
+export function setMetadataImage(view, key, { src, alt } = {}) {
+  if (!view || !key?.trim() || !src) return;
+  const image = findMetadataImage(view, key);
+  if (image) {
+    const attrs = { ...image.node.attrs, src, ...(alt !== undefined ? { alt } : {}) };
+    view.dispatch(view.state.tr.setNodeMarkup(image.pos, null, attrs));
+    return;
+  }
+  const cell = ensureMetadataValueCell(view, key);
+  const { schema } = view.state;
+  const node = schema.nodes.image.create({ src, ...(alt ? { alt } : {}) });
+  const paragraph = schema.nodes.paragraph.create(null, node);
+  const end = cell.pos + cell.node.nodeSize - 1;
+  view.dispatch(view.state.tr.replaceWith(cell.pos + 1, end, paragraph));
+}
+
+/**
+ * Select where an inserted image should go: the row's existing image, or else the text of
+ * its value cell (adding the row when missing). Asset pickers insert at the selection.
+ */
+export function selectMetadataImageTarget(view, key) {
+  if (!view || !key?.trim()) return false;
+  const image = findMetadataImage(view, key);
+  if (image) {
+    view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, image.pos)));
+    return true;
+  }
+  const cell = ensureMetadataValueCell(view, key);
+  const { doc } = view.state;
+  const block = cell.node.firstChild;
+  const selection = block?.isTextblock
+    ? TextSelection.create(doc, cell.pos + 2, cell.pos + 2 + block.content.size)
+    : TextSelection.near(doc.resolve(cell.pos + 1));
+  view.dispatch(view.state.tr.setSelection(selection));
+  return true;
 }

@@ -3,9 +3,14 @@ import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
-import { readMetadataRows, setMetadataValue, addMetadataRow, deleteMetadataRow } from '../editor-utils/metadata.js';
+import {
+  readMetadataRows, setMetadataValue, addMetadataRow, deleteMetadataRow,
+  findMetadataImage, findMetadataValueCell, setMetadataImage, selectMetadataImageTarget,
+} from '../editor-utils/metadata.js';
 import { buildMetadataFields, resolveMetadataFields, formatJsonValue, compactJsonValue, isValidJson } from '../editor-utils/metadata-fields.js';
 import { loadBlockOptions } from '../ew-panel-extensions/helpers.js';
+import { SUPPORTED_IMAGE_FILES, uploadImageMedia } from '../ew-editor-doc/prose-plugins/imageDrop.js';
+import { getSourceUploadContext } from '../ew-editor-doc/prose-plugins/sourceUploadContext.js';
 
 const DELETE_ICON_SRC = '/img/icons/s2-icon-delete-20-n.svg';
 const ADD_ICON_SRC = '/img/icons/s2-icon-addcircle-20-n.svg';
@@ -13,11 +18,18 @@ const EMPTY_OPTION = { value: '', label: 'None' };
 
 const fieldId = (field) => `ew-pm-${field.key.trim().toLowerCase().replace(/\s+/g, '-')}`;
 // Only native text controls can be targeted by <label for>.
-const isTextField = (field) => field.type === 'json' || !field.values?.length;
+const isTextField = (field) => field.type === 'json' || (field.type !== 'image' && !field.values?.length);
+
+const IMAGE_MENU_ITEMS = [{ id: 'upload', label: 'Upload' }, { id: 'aem-assets', label: 'AEM Assets' }];
+const IMAGE_TYPES_LABEL = 'SVG, PNG, JPEG, GIF, AVIF or WebP';
+
+// Loaded on demand: the asset selector pulls in the AEM Assets integration.
+const loadAemAssets = () => import('../ew-panel-extensions/aem-assets.js');
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
+await import(`${getNx()}/blocks/shared/menu/menu.js`);
 await import('./ew-metadata-multiselect.js');
 
 const [formStyle, buttonsStyle, style] = await Promise.all([
@@ -36,6 +48,10 @@ class EwPageMetadata extends LitElement {
     _draftValue: { state: true },
     _keyError: { state: true },
     _pendingDeleteKey: { state: true },
+    _hasAemAssets: { state: true },
+    _uploadingKey: { state: true },
+    _imageError: { state: true },
+    _assetTarget: { state: true },
   };
 
   connectedCallback() {
@@ -48,7 +64,10 @@ class EwPageMetadata extends LitElement {
     this._unsubHash = hashChange.subscribe((state) => {
       const prev = this._hashState;
       this._hashState = state;
-      if (state?.org !== prev?.org || state?.site !== prev?.site) this._loadLibraryFields();
+      if (state?.org !== prev?.org || state?.site !== prev?.site) {
+        this._loadLibraryFields();
+        this._loadAssetsConfig();
+      }
     });
     // Rows refresh on editorDocState; an empty editorHtmlState means the doc was unloaded.
     this._unsubscribeHtml = canvasBus.editorHtmlState.subscribe((aemHtml) => {
@@ -81,6 +100,22 @@ class EwPageMetadata extends LitElement {
     }
   }
 
+  // Image fields offer AEM Assets only when the site has an assets repository configured.
+  async _loadAssetsConfig() {
+    const loadId = (this._assetsLoadId ?? 0) + 1;
+    this._assetsLoadId = loadId;
+    this._hasAemAssets = false;
+    const { org, site } = this._hashState ?? {};
+    if (!org || !site) return;
+    try {
+      const { getRepositoryConfig } = await loadAemAssets();
+      const config = await getRepositoryConfig(org, site);
+      if (loadId === this._assetsLoadId && this.isConnected) this._hasAemAssets = !!config;
+    } catch {
+      // Without a repository config, images can still be uploaded.
+    }
+  }
+
   get _fields() {
     return resolveMetadataFields(this._docRows ?? [], this._libraryFields ?? []);
   }
@@ -93,7 +128,7 @@ class EwPageMetadata extends LitElement {
   // Empty values remove the row; unchanged values are not written.
   _commit(field, value) {
     const { view } = getExtensionsBridge();
-    if (!view || !this._canWrite || value === field.value) return;
+    if (!view || !this._canWrite || field.type === 'image' || value === field.value) return;
     if (value.trim()) setMetadataValue(view, field.key, value);
     else deleteMetadataRow(view, field.key);
     this._docRows = readMetadataRows(view);
@@ -145,7 +180,123 @@ class EwPageMetadata extends LitElement {
     this._showAddDialog = false;
   }
 
+  // Pins an image change to the page and to the row's value cell as it was when the change
+  // started. Doc nodes are immutable, so an unchanged cell also means an unchanged image;
+  // a missing row is pinned as null, so adding it in the meantime also cancels the change.
+  _captureImageTarget(field) {
+    const { view, sourceUrl } = getExtensionsBridge();
+    if (!view || !this._canWrite || field.type !== 'image') return null;
+    const cell = findMetadataValueCell(view, field.key)?.node ?? null;
+    const hasImage = !!findMetadataImage(view, field.key);
+    return { view, sourceUrl, key: field.key, cell, hasImage };
+  }
+
+  _isImageTargetCurrent(target) {
+    const { view, sourceUrl } = getExtensionsBridge();
+    return this.isConnected && !!target && view === target.view && sourceUrl === target.sourceUrl
+      && view.editable !== false
+      && (findMetadataValueCell(view, target.key)?.node ?? null) === target.cell;
+  }
+
+  _triggerImageUpload(field) {
+    const target = this._captureImageTarget(field);
+    if (!target) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = SUPPORTED_IMAGE_FILES.join(',');
+    input.addEventListener('change', () => {
+      const file = input.files?.[0];
+      if (file) this._uploadImage(field, target, file);
+    }, { once: true });
+    input.click();
+  }
+
+  async _uploadImage(field, target, file) {
+    if (!this._isImageTargetCurrent(target)) return;
+    this._imageError = null;
+    const details = getSourceUploadContext(target.sourceUrl);
+    if (!details) {
+      this._imageError = { key: field.key, message: 'Unable to upload an image: the document source is unavailable.' };
+      return;
+    }
+    if (!SUPPORTED_IMAGE_FILES.includes(file.type)) {
+      this._imageError = { key: field.key, message: `Select an ${IMAGE_TYPES_LABEL} image.` };
+      return;
+    }
+    this._uploadingKey = field.key;
+    try {
+      const src = await uploadImageMedia(file, details);
+      // The upload can outlast the page or the row: only write to the image it started from.
+      if (!src || !this._isImageTargetCurrent(target)) return;
+      setMetadataImage(target.view, field.key, { src });
+      this._docRows = readMetadataRows(target.view);
+    } catch (error) {
+      if (this._isImageTargetCurrent(target)) {
+        this._imageError = { key: field.key, message: `Unable to upload the image: ${error.message}` };
+      }
+    } finally {
+      if (this._uploadingKey === field.key) this._uploadingKey = null;
+    }
+  }
+
+  async _openImageAssets(field) {
+    const target = this._captureImageTarget(field);
+    if (!target) return;
+    this._assetTarget = target;
+    this._imageError = null;
+    await this.updateComplete;
+    const container = this.shadowRoot.querySelector('.ew-pm-assets');
+    if (!container || this._assetTarget !== target) return;
+    try {
+      const { renderAssets } = await loadAemAssets();
+      await renderAssets({
+        container,
+        org: this._hashState?.org,
+        site: this._hashState?.site,
+        onClose: () => { this._assetTarget = null; },
+        // The selector inserts at the selection: point it at this row's image or value cell.
+        getView: () => {
+          if (this._assetTarget !== target || !this._isImageTargetCurrent(target)) return null;
+          selectMetadataImageTarget(target.view, target.key);
+          return target.view;
+        },
+      });
+    } catch (error) {
+      if (this._assetTarget !== target) return;
+      this._assetTarget = null;
+      this._imageError = { key: field.key, message: `Unable to open AEM Assets: ${error.message}` };
+    }
+  }
+
+  _renderImageField(field) {
+    const disabled = !this._canWrite || !!this._uploadingKey;
+    const label = field.image ? 'Replace image' : 'Add image';
+    // The editor's own image resolves media URLs that are relative to the published page.
+    const src = field.image
+      ? getExtensionsBridge().view?.nodeDOM?.(field.image.pos)?.src ?? field.image.src : '';
+    return html`
+      <div class="ew-pm-image">
+        ${src
+          ? html`<img class="ew-pm-image-preview" src=${src} alt=${field.image.alt}>`
+          : html`<p class="ew-pm-image-empty">No image</p>`}
+        ${this._hasAemAssets ? html`
+          <nx-menu placement="below-start" .items=${IMAGE_MENU_ITEMS} ?inert=${disabled}
+            @select=${(e) => {
+              if (e.detail.id === 'upload') this._triggerImageUpload(field);
+              else if (e.detail.id === 'aem-assets') this._openImageAssets(field);
+            }}>
+            <button slot="trigger" type="button" class="nx-form-btn-secondary" ?disabled=${disabled}>${label}</button>
+          </nx-menu>` : html`
+          <button type="button" class="nx-form-btn-secondary" ?disabled=${disabled}
+            @click=${() => this._triggerImageUpload(field)}>${label}</button>`}
+        ${this._uploadingKey === field.key ? html`<span role="status">Uploading image...</span>` : nothing}
+        ${this._imageError?.key === field.key
+          ? html`<span class="nx-input-error-msg" role="alert">${this._imageError.message}</span>` : nothing}
+      </div>`;
+  }
+
   _renderField(field) {
+    if (field.type === 'image') return this._renderImageField(field);
     const readOnly = !this._canWrite;
     const id = fieldId(field);
     if (field.type === 'json') {
@@ -249,6 +400,11 @@ class EwPageMetadata extends LitElement {
         </div>
         ${this._showAddDialog ? this._renderAddDialog() : nothing}
         ${this._pendingDeleteKey != null ? this._renderDeleteDialog() : nothing}
+        ${this._assetTarget ? html`
+          <nx-dialog title=${this._assetTarget.hasImage ? 'Replace image' : 'Add image'}
+            @close=${() => { this._assetTarget = null; }}>
+            <div class="ew-pm-assets"></div>
+          </nx-dialog>` : nothing}
       </div>`;
   }
 }
