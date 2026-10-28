@@ -3,6 +3,8 @@ import '../../../setup-nx.js';
 import { createEngine } from '../../../../../deps/da-sc-sdk/dist/index.js';
 import '../../../../../blocks/form/views/editor.js';
 
+const IMAGE_URL = 'https://raw.githubusercontent.com/adobe/da-sc-sdk/main/schemas/image/v1.0.0.json';
+
 // Component-level UI tests for nx-editor. The engine is the real bundled SDK
 // (same one the form block ships); we feed its getState() into the component
 // and assert on the rendered shadow DOM — the repo's standard UI-test idiom.
@@ -16,6 +18,7 @@ const settle = async (el) => {
 
 const CONTROL_TAGS = [
   'FORM-INPUT', 'FORM-TEXTAREA', 'FORM-RICH-TEXT', 'FORM-NUMBER-FIELD', 'FORM-CHECKBOX', 'FORM-PICKER',
+  'FORM-ASSET',
 ];
 
 const mounted = [];
@@ -31,6 +34,7 @@ async function mountEditor(schema, doc) {
   });
   el.editor = engine;
   el.onSelect = () => {};
+  el.assetSources = [];
   el.nav = {};
   el.state = engine.getState();
   window.document.body.append(el);
@@ -46,6 +50,7 @@ const groupAt = (el, ptr) => allAt(el, ptr)
   .find((n) => n.matches('fieldset.form-node, section.form-node, article.form-array-item'));
 
 function expectedTag(node) {
+  if (node.typeName === 'image' || node.typeName === 'file') return 'FORM-ASSET';
   if (Array.isArray(node.enumValues)) return 'FORM-PICKER';
   if (node.kind === 'boolean') return 'FORM-CHECKBOX';
   if (node.kind === 'number' || node.kind === 'integer') return 'FORM-NUMBER-FIELD';
@@ -63,6 +68,7 @@ const FEATURE_SCHEMA = {
     title: { type: 'string', title: 'Title', minLength: 3, maxLength: 255 },
     status: { type: 'string', title: 'Status', enum: ['draft', 'in-review', 'published', 'archived'], default: 'draft' },
     body: { type: 'string', title: 'Body', 'x-semantic-type': 'long-text' },
+    heroImage: { $ref: IMAGE_URL, title: 'Hero image' },
     priority: { type: 'integer', title: 'Priority', minimum: 1, maximum: 10 },
     featured: { type: 'boolean', title: 'Featured', default: false },
     tags: { type: 'array', title: 'Tags', minItems: 1, items: { type: 'string', title: 'Tag' } },
@@ -95,6 +101,7 @@ const featureDoc = (data = {}) => ({
     title: 'Launch Announcement',
     status: 'published',
     body: 'Body copy.',
+    heroImage: { src: './media_example.png', altText: 'A hero' },
     priority: 3,
     featured: true,
     tags: ['news', 'launch'],
@@ -122,7 +129,7 @@ describe('nx-editor loads', () => {
 describe('nx-editor renders the model state', () => {
   function walk(el, node) {
     expect(allAt(el, node.pointer).length, `element for ${node.pointer}`).to.be.greaterThan(0);
-    if (node.kind === 'object') {
+    if (node.kind === 'object' && node.typeRef === undefined) {
       (node.children ?? []).forEach((child) => walk(el, child));
       return;
     }
