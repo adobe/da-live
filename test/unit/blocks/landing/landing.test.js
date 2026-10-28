@@ -1021,7 +1021,6 @@ describe('landing page', () => {
     const sheet = new CSSStyleSheet();
     sheet.replaceSync(await (await fetch('/blocks/landing/landing.css')).text());
     el.shadowRoot.adoptedStyleSheets = [sheet];
-    el.style.setProperty('--s2-blue-900', 'light-dark(rgb(59 99 251), rgb(86 129 255))');
     el._chatEnabled = true;
     await el.updateComplete;
     for (const scheme of ['light', 'dark']) {
@@ -1049,6 +1048,8 @@ describe('landing page', () => {
         expect(spinner.height).to.equal(16);
         expect(getComputedStyle(input.querySelector('.nx-loading-spinner')).borderTopColor)
           .to.equal(scheme === 'light' ? 'rgb(59, 99, 251)' : 'rgb(86, 129, 255)');
+        expect(getComputedStyle(input.querySelector('.nx-loading-spinner')).borderRightColor)
+          .to.equal(scheme === 'light' ? 'rgb(218, 218, 218)' : 'rgb(57, 57, 57)');
         expect(status.height).to.be.greaterThan(0);
         expect(status.left).to.be.greaterThan(spinner.right);
         expect(status.top).to.be.lessThan(spinner.bottom);
