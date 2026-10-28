@@ -16,20 +16,33 @@ h3, p {
   align-items: flex-start;
   gap: var(--s2-spacing-200);
   height: 100%;
+  width: 100%;
   padding: var(--s2-spacing-200) var(--s2-spacing-300);
+  border: 0;
   border-radius: 12px;
   background: light-dark(#fff, #222);
   box-shadow: 0 0 1px #00000014, 0 1px 4px #0000000a, 0 2px 8px #00000014;
   text-decoration: none;
+  font: inherit;
+  text-align: start;
 }
 
-a:hover {
+a, button {
+  cursor: pointer;
+}
+
+a:hover, button:where(:enabled):hover {
   outline: 1px solid var(--s2-gray-300);
 }
 
-a:focus-visible {
+a:focus-visible, button:focus-visible {
   outline: 2px solid var(--s2-blue-800);
   outline-offset: 4px;
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.5;
 }
 
 .content {
@@ -72,10 +85,6 @@ p {
 
 .icon.purple {
   background: light-dark(#f4ebfc, #291b3a);
-}
-
-.icon.pink {
-  background: var(--s2-pink-200);
 }
 
 .icon::before {

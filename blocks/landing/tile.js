@@ -1,4 +1,4 @@
-import { LitElement, html } from 'da-lit';
+import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../scripts/utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -11,6 +11,9 @@ export default class DaLandingTile extends LitElement {
     iconHref: {},
     tone: {},
     href: {},
+    action: { type: Boolean },
+    disabled: { type: Boolean },
+    actionId: {},
     size: { reflect: true },
   };
 
@@ -20,13 +23,22 @@ export default class DaLandingTile extends LitElement {
   }
 
   render() {
+    const source = this.actionId ? `landing-action-${this.actionId}` : nothing;
+    // Optel reads data-rum-source on the clicked element, not its ancestors.
     const content = html`
-      <span class="icon ${this.tone || ''}" aria-hidden="true"
+      <span class="icon ${this.tone || ''}" aria-hidden="true" data-rum-source=${source}
         style="--tile-icon: url('${this.iconHref}')"></span>
-      <div class="content"><h3>${this.heading}</h3><p>${this.description}</p></div>`;
-    return this.href
-      ? html`<a class="tile" href=${this.href}>${content}</a>`
-      : html`<div class="tile">${content}</div>`;
+      <div class="content" data-rum-source=${source}>
+        <h3 data-rum-source=${source}>${this.heading}</h3>
+        <p data-rum-source=${source}>${this.description}</p>
+      </div>`;
+    const classes = `${this.actionId ? `${source} ` : ''}tile`;
+    if (this.href) return html`<a class=${classes} href=${this.href} data-rum-source=${source}>${content}</a>`;
+    if (this.action) {
+      return html`<button class=${classes} type="button" ?disabled=${this.disabled}
+        data-rum-source=${source}>${content}</button>`;
+    }
+    return html`<div class="tile">${content}</div>`;
   }
 }
 

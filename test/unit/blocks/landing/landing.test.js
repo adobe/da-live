@@ -49,6 +49,8 @@ describe('landing page', () => {
     el = document.createElement('da-landing');
     document.body.append(el);
     el._files = ITEMS;
+    el._permissions = ['read', 'write'];
+    el._editor = '/canvas#';
     await el.updateComplete;
   });
 
@@ -70,27 +72,29 @@ describe('landing page', () => {
     expect(el.shadowRoot.querySelector('.file-date').textContent).to.include('Modified at •');
   });
 
-  it('renders six quick-link tiles in design order below Content', async () => {
+  it('renders the approved quick actions below Content, without Governance or Need Attention', async () => {
     const grid = el.shadowRoot.querySelector('.quick-links');
     const tiles = await quickTiles(el);
     expect(grid.previousElementSibling.matches('.files-panel')).to.equal(true);
     expect(tiles.map((tile) => tile.shadowRoot.querySelector('h3').textContent)).to.deep.equal([
-      'Browse Content', 'Authoring', 'Publishing & Workflow',
-      'Localization & Multi-site', 'Governance & Operation', 'Develop & Extend',
+      'Browse Content', 'Create a page', 'Publishing & Workflow',
+      'Localization & Multi-site', 'Develop & Extend',
     ]);
-    expect(tiles).to.have.length(6);
-    expect(tiles.filter((tile) => tile.shadowRoot.querySelector('a'))).to.have.length(1);
-    tiles.slice(1).forEach((tile) => {
-      expect(tile.shadowRoot.querySelector('a, button, input, [tabindex], [role="button"], [role="link"]')).to.equal(null);
-      expect(tile.tabIndex).to.equal(-1);
-      expect(tile.shadowRoot.textContent).not.to.include('Coming soon');
-    });
+    expect(tiles.filter((tile) => tile.shadowRoot.querySelector('a'))).to.have.length(4);
+    expect(tiles[1].shadowRoot.querySelector('button').disabled).to.equal(false);
+    expect(tiles.slice(2).map((tile) => tile.shadowRoot.querySelector('a').href)).to.deep.equal([
+      'https://www.aem.live/docs/ew/authoring/publishing',
+      'https://www.aem.live/docs/ew/administering/multi-site-manager',
+      'https://www.aem.live/developer/tutorial',
+    ]);
+    expect(el.shadowRoot.querySelector('.tasks-panel')).to.equal(null);
+    expect(el.shadowRoot.textContent).not.to.include('Need Attention');
   });
 
   it('routes Browse Content through the current site and preserves preview parameters after switching', async () => {
     const { href } = window.location;
     try {
-      window.history.replaceState(null, '', '/?landing=true&nx=lp&quick-edit=preview&ew=true&nx-chat-ao=true&theme=light#/org/site');
+      window.history.replaceState(null, '', '/?landing=true&nx=lp&quick-edit=preview&ew=true&nx-chat-ao=true&theme=light&rum=on#/org/site');
       el.requestUpdate();
       const [browse] = await quickTiles(el);
       const current = new URL(browse.shadowRoot.querySelector('a').href);
@@ -102,7 +106,11 @@ describe('landing page', () => {
       expect(current.searchParams.get('ew')).to.equal('true');
       expect(current.searchParams.get('nx-chat-ao')).to.equal('true');
       expect(current.searchParams.get('theme')).to.equal('light');
-      expect(current.href).to.equal(el.shadowRoot.querySelector('.all-files').href);
+      expect(current.searchParams.get('rum')).to.equal('on');
+      expect(current.searchParams.get('chat')).to.equal('closed');
+      const showAll = new URL(el.shadowRoot.querySelector('.all-files').href);
+      expect(showAll.searchParams.has('chat')).to.equal(false);
+      expect(showAll.hash).to.equal(current.hash);
       hashChange._set({ org: 'other-org', site: 'other-site', fullpath: '/other-org/other-site' });
       await quickTiles(el);
       const switched = new URL(browse.shadowRoot.querySelector('a').href);
@@ -110,11 +118,130 @@ describe('landing page', () => {
       expect(switched.search).to.equal(current.search);
       hashChange._set(undefined);
       await quickTiles(el);
-      expect(el.shadowRoot.querySelectorAll('.quick-links > li')).to.have.length(6);
+      expect(el.shadowRoot.querySelectorAll('.quick-links > li')).to.have.length(5);
       expect(browse.shadowRoot.querySelector('a')).to.equal(null);
     } finally {
       window.history.replaceState(null, '', href);
     }
+  });
+
+  it('closes chat synchronously before Browse Content follows its native link', async () => {
+    const close = sinon.spy();
+    const onPanelClose = ({ detail }) => close(detail);
+    document.addEventListener('nx-panel-close', onPanelClose);
+    try {
+      const [browse] = await quickTiles(el);
+      const link = browse.shadowRoot.querySelector('a');
+      link.addEventListener('click', (event) => {
+        event.preventDefault();
+        expect(close.called).to.equal(false);
+      });
+      link.click();
+      expect(close.calledOnceWithExactly({ section: 'chat' })).to.equal(true);
+    } finally {
+      document.removeEventListener('nx-panel-close', onPanelClose);
+    }
+  });
+
+  describe('Create a page', () => {
+    async function openDialog() {
+      await el._onCreatePage();
+      await el.updateComplete;
+      const dialog = el.shadowRoot.querySelector('da-name-dialog');
+      await dialog.updateComplete;
+      return dialog;
+    }
+
+    it('reuses the New page dialog and cancels without writing', async () => {
+      const save = sinon.stub(source, 'save');
+      const dialog = await openDialog();
+      expect(dialog.title).to.equal('New page in site');
+      dialog.shadowRoot.querySelector('.da-btn-secondary').click();
+      await el.updateComplete;
+      expect(el.shadowRoot.querySelector('da-name-dialog')).to.equal(null);
+      expect(save.called).to.equal(false);
+    });
+
+    it('creates a sanitized page at the selected site root and refreshes the listing', async () => {
+      const metadata = sinon.stub(source, 'getMetadata').resolves({ ok: false, status: 404 });
+      const save = sinon.stub(source, 'save').resolves({ ok: true });
+      const dialog = await openDialog();
+      const input = dialog.shadowRoot.querySelector('.nx-input');
+      input.value = 'My New Page';
+      dialog.shadowRoot.querySelector('.da-btn-primary').click();
+      await new Promise((resolve) => { setTimeout(resolve, 0); });
+      expect(metadata.calledOnceWithExactly('/org/site/my-new-page.html')).to.equal(true);
+      expect(save.calledOnce).to.equal(true);
+      expect(save.firstCall.args[0]).to.equal('/org/site/my-new-page.html');
+      expect(save.firstCall.args[1].body).to.include('<body>');
+      expect(el._createDialog).to.equal(undefined);
+      expect(loadSite.callCount).to.equal(2);
+    });
+
+    it('does not overwrite an existing page and displays a retryable error', async () => {
+      sinon.stub(source, 'getMetadata').resolves({ ok: true });
+      const save = sinon.stub(source, 'save');
+      await openDialog();
+      await el._onCreatePageSubmit({ detail: { name: 'index', openAfter: false } });
+      await el.updateComplete;
+      expect(save.called).to.equal(false);
+      expect(el._createDialog.error).to.include('already exists');
+      expect(el._createDialog.saving).to.equal(false);
+    });
+
+    it('keeps the name dialog open after denied or failed saves and permits retry', async () => {
+      sinon.stub(source, 'getMetadata').resolves({ ok: false, status: 404 });
+      const save = sinon.stub(source, 'save');
+      save.onFirstCall().resolves({ ok: false, status: 403 });
+      save.onSecondCall().rejects(new Error('Network unavailable'));
+      await openDialog();
+      await el._onCreatePageSubmit({ detail: { name: 'draft', openAfter: false } });
+      expect(el._createDialog.error).to.include('permissions');
+      await el._onCreatePageSubmit({ detail: { name: 'draft', openAfter: false } });
+      expect(el._createDialog.error).to.equal('Network unavailable');
+      expect(el._createDialog.saving).to.equal(false);
+    });
+
+    it('does not save when the name cannot be checked', async () => {
+      sinon.stub(source, 'getMetadata').resolves({ ok: false, status: 503 });
+      const save = sinon.stub(source, 'save');
+      await openDialog();
+      await el._onCreatePageSubmit({ detail: { name: 'draft', openAfter: false } });
+      expect(save.called).to.equal(false);
+      expect(el._createDialog.error).to.include('Could not check');
+    });
+
+    it('requires a selected site, known write permissions and a resolved editor', async () => {
+      for (const permissions of [undefined, [], ['read']]) {
+        el._permissions = permissions;
+        const [, create] = await quickTiles(el);
+        expect(create.shadowRoot.querySelector('button').disabled).to.equal(true);
+        await el._onCreatePage();
+        expect(el._createDialog).to.equal(undefined);
+      }
+      el._permissions = ['write'];
+      el._editor = undefined;
+      const [, create] = await quickTiles(el);
+      expect(create.shadowRoot.querySelector('button').disabled).to.equal(true);
+      hashChange._set(undefined);
+      await el._onCreatePage();
+      expect(el._createDialog).to.equal(undefined);
+    });
+
+    it('ignores double submissions and a pending name check after changing sites', async () => {
+      let finish;
+      const metadata = sinon.stub(source, 'getMetadata').returns(new Promise((resolve) => { finish = resolve; }));
+      const save = sinon.stub(source, 'save');
+      await openDialog();
+      const pending = el._onCreatePageSubmit({ detail: { name: 'draft', openAfter: false } });
+      await el._onCreatePageSubmit({ detail: { name: 'draft', openAfter: false } });
+      expect(metadata.calledOnce).to.equal(true);
+      hashChange._set({ org: 'org', site: 'other', fullpath: '/org/other' });
+      finish({ ok: false, status: 404 });
+      await pending;
+      expect(save.called).to.equal(false);
+      expect(el._createDialog).to.equal(undefined);
+    });
   });
 
   it('passes live UI scale changes to every tile', async () => {
@@ -368,78 +495,16 @@ describe('landing page', () => {
     expect(nav.querySelectorAll('[slot="search"]')).to.have.length(1);
   });
 
-  it('shows site-themed sample tasks with translation first, without presenting them as live data', () => {
-    expect(el.shadowRoot.querySelector('#tasks-heading').textContent).to.equal('Need Attention');
-    expect([...el.shadowRoot.querySelectorAll('.task-column-heading > span')].map((label) => label.textContent)).to.deep.equal([
-      'Item', 'Description', 'Status', 'Assignee',
-    ]);
-    expect(el.shadowRoot.querySelector('.tasks-preview-note').textContent).to.equal('Sample tasks for layout preview. Not live site data.');
-    expect(el.shadowRoot.querySelector('.tasks-panel').textContent).not.to.include('No tasks');
-    expect(el.shadowRoot.querySelector('.tasks-panel table').getAttribute('aria-labelledby')).to.equal('tasks-heading');
-    expect(el.shadowRoot.querySelector('.tasks-panel table').getAttribute('aria-describedby')).to.equal('tasks-availability');
-    expect(el.shadowRoot.querySelector('.tasks-table .tasks-preview-note')).not.to.equal(null);
-    expect(el.shadowRoot.querySelector('.tasks-scroll .tasks-preview-note')).to.equal(null);
-    expect(el.shadowRoot.querySelector('.tasks-table').firstElementChild.matches('.tasks-scroll')).to.equal(true);
-    const rows = [...el.shadowRoot.querySelectorAll('.tasks-panel tbody tr')];
-    expect(rows.map((row) => row.cells[0].textContent)).to.deep.equal([
-      'Frescopa Homepage', 'Atelier Nova', 'Taste Profiles', 'Coffee Machines', 'Atelier Nova Campaign',
-    ]);
-    expect(rows.map((row) => row.cells[1].textContent)).to.deep.equal([
-      'Translation rollout, de, fr', 'Review product copy', 'Review coffee taste profiles',
-      'Update product details', 'Publish launch campaign',
-    ]);
-    expect(rows.map((row) => row.querySelector('.task-status').textContent.trim())).to.deep.equal([
-      'Need Approval', 'Need Approval', 'In-Progress', 'Scheduled', 'Scheduled',
-    ]);
-    expect(rows.map((row) => row.querySelector('.task-requester').textContent.trim())).to.deep.equal([
-      'Eva', 'Steven', 'Michael', 'Sara', 'Karina',
-    ]);
-    expect(el.shadowRoot.querySelector('.tasks-panel').textContent).not.to.match(/nike|pegasus|jersey|just-do-it/i);
-    expect(el.shadowRoot.querySelectorAll('.tasks-panel tbody a, .tasks-panel tbody button')).to.have.length(0);
-    expect(el.shadowRoot.querySelectorAll('.task-requester img')).to.have.length(5);
-  });
-
-  it('lists the user’s open comment threads above the sample tasks, deep-linked to the editor', async () => {
-    el._comments = [{
-      id: 'thread-1',
-      file: { name: 'index', path: '/org/site/index.html', ext: 'html' },
-      body: 'Please tighten the hero copy',
-      author: { name: 'alex', email: 'alex@example.test' },
-      replyCount: 1,
-      updatedAt: 50,
-    }];
-    await el.updateComplete;
-    const rows = [...el.shadowRoot.querySelectorAll('.tasks-panel tbody tr')];
-    expect(rows).to.have.length(6);
-    expect(rows[0].classList.contains('comment-task')).to.equal(true);
-    expect(rows[0].cells[1].textContent).to.equal('Please tighten the hero copy');
-    expect(rows[0].querySelector('.task-status').textContent.trim()).to.equal('Open Comment');
-    expect(rows[0].querySelector('.task-requester > span:last-child').textContent).to.equal('alex');
-    const link = new URL(rows[0].querySelector('a.task-link').href);
-    expect(link.searchParams.get('comment')).to.equal('thread-1');
-    expect(link.hash).to.include('/org/site/index');
-    expect(rows[1].cells[0].textContent).to.equal('Frescopa Homepage');
-    expect(el.shadowRoot.querySelector('.tasks-preview-note').textContent).to.include('live unresolved comment threads');
-    expect(el.shadowRoot.querySelector('.tasks-comments-status')).to.equal(null);
-  });
-
-  it('shows comment loading and failure states without hiding the sample tasks', async () => {
-    expect(el.shadowRoot.querySelector('.tasks-comments-status').textContent).to.include('Loading');
-    el._comments = [];
-    el._commentsError = 'Could not load your comments: nope';
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('.tasks-comments-status').textContent).to.include('nope');
-    expect(el.shadowRoot.querySelectorAll('.tasks-panel tbody tr')).to.have.length(5);
-  });
-
-  it('loads comments for the signed-in user after the file listing', async () => {
+  it('loads files without fetching the removed comment feed or page metadata', async () => {
     loadSite.restore();
-    sinon.stub(source, 'list').resolves({ ok: true, items: ITEMS });
-    sinon.stub(DaLanding.prototype, 'loadImsProfile').resolves({});
+    const list = sinon.stub(source, 'list').resolves({ ok: true, items: ITEMS, permissions: ['write'] });
+    const metadata = sinon.stub(source, 'getMetadata');
+    const profile = sinon.stub(DaLanding.prototype, 'loadImsProfile');
     await el.loadSite();
-    await new Promise((resolve) => { setTimeout(resolve, 0); });
-    expect(el._comments).to.deep.equal([]);
-    expect(el._commentsError).to.include('Sign in');
+    expect(list.calledOnceWithExactly('/org/site', { continuationToken: undefined })).to.equal(true);
+    expect(metadata.called).to.equal(false);
+    expect(profile.called).to.equal(false);
+    expect(el._permissions).to.deep.equal(['write']);
   });
 
   it('remembers a successfully opened site, including a return from site setup', async () => {
@@ -449,48 +514,6 @@ describe('landing page', () => {
     sinon.stub(DaLanding.prototype, 'loadImsProfile').resolves({});
     await el.loadSite();
     expect(JSON.parse(localStorage.getItem('da-sites'))).to.deep.equal(['org/site', 'org/other']);
-  });
-
-  it('explains the comment scope below the table when no threads match', async () => {
-    el._comments = [];
-    await el.updateComplete;
-    const status = el.shadowRoot.querySelector('.tasks-comments-status');
-    expect(status.textContent).to.include('No unresolved comment threads you started or replied to');
-    expect(status.textContent).to.include('root-level pages');
-    expect(status.previousElementSibling.matches('.tasks-scroll')).to.equal(true);
-    expect(el.shadowRoot.querySelectorAll('.tasks-panel tbody tr')).to.have.length(5);
-  });
-
-  it('asks for a workspace instead of silently hiding the comment feed', async () => {
-    hashChange._set(undefined);
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('.tasks-comments-status').textContent).to.include('Choose a site');
-  });
-
-  it('shows the actual empty-result reason from comment discovery', async () => {
-    el._comments = [];
-    el._commentsMessage = 'All comment threads found on root-level pages are resolved.';
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('.tasks-comments-status').textContent).to.equal(el._commentsMessage);
-  });
-
-  it('does not show an endless comment-loading state when the files fail to load', async () => {
-    el._error = 'Could not load files.';
-    await el.updateComplete;
-    const status = el.shadowRoot.querySelector('.tasks-comments-status');
-    expect(status.textContent).to.include("this site's files could not be loaded");
-    expect(status.textContent).not.to.include('Loading');
-  });
-
-  it('shows each task column’s options without pretending task controls are connected', () => {
-    const buttons = [...el.shadowRoot.querySelectorAll('.task-column-options')];
-    expect(buttons).to.have.length(4);
-    buttons.forEach((button) => {
-      expect(button.disabled).to.equal(true);
-      expect(button.getAttribute('aria-label')).to.include('column options');
-      expect(button.getAttribute('aria-describedby')).to.equal('tasks-availability');
-      expect(button.querySelector('.column-options-icon')).not.to.equal(null);
-    });
   });
 
   it('keeps the plus icon when the Add menu marks its trigger active', () => {
@@ -892,18 +915,6 @@ describe('landing page', () => {
     expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
     expect(getFavorites('/org/site')).to.deep.equal(paths);
     expect(el.shadowRoot.querySelector('.all-files')).not.to.equal(null);
-  });
-
-  it('resizes Need Attention columns with a keyboard without changing task data', async () => {
-    const handle = el.shadowRoot.querySelector('.column-resizer');
-    const before = handle.closest('th').getBoundingClientRect().width;
-    handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', cancelable: true }));
-    const width = Number(handle.getAttribute('aria-valuenow'));
-    expect(width).to.be.greaterThan(before);
-    expect(el.shadowRoot.querySelector('col').style.width).to.equal(`${width}px`);
-    expect(el.shadowRoot.querySelectorAll('.tasks-panel tbody tr')).to.have.length(5);
-    handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', cancelable: true }));
-    expect(handle.getAttribute('aria-valuenow')).to.equal('80');
   });
 
   it('shows more than ten files only when requested', async () => {

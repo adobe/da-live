@@ -8,7 +8,7 @@ import {
   fetchFileModifier, loadMyOpenComments, isCommentAuthor, checkSiteAccess, getCreateSiteHref,
 } from '../../../../blocks/landing/utils.js';
 
-const HREF = 'https://lp--da-live--adobe.aem.live/?landing=true&nx=devlive&quick-edit=devlive&theme=light#/org/site';
+const HREF = 'https://lp--da-live--adobe.aem.live/?landing=true&nx=devlive&quick-edit=devlive&theme=light&rum=on#/org/site';
 
 describe('landing page data and navigation', () => {
   it('allows accessible empty sites without requiring content-write permission', async () => {
@@ -62,6 +62,7 @@ describe('landing page data and navigation', () => {
     expect(url.searchParams.get('nx')).to.equal('devlive');
     expect(url.searchParams.get('quick-edit')).to.equal('devlive');
     expect(url.searchParams.get('theme')).to.equal('light');
+    expect(url.searchParams.get('rum')).to.equal('on');
   });
 
   it('reads the real modifier from source metadata instead of inventing a user', async () => {
@@ -201,10 +202,11 @@ describe('landing page data and navigation', () => {
     const older = { path: '/org/site/a.html', name: 'a', ext: 'html', lastModified: 10 };
     const newer = { path: '/org/site/b.html', name: 'b', ext: 'html', lastModified: 20 };
     const list = sinon.stub();
-    list.onFirstCall().resolves({ ok: true, items: [older, { path: '/org/site/.da', name: '.da' }], continuationToken: 'next' });
+    list.onFirstCall().resolves({ ok: true, items: [older, { path: '/org/site/.da', name: '.da' }], continuationToken: 'next', permissions: ['write'] });
     list.onSecondCall().resolves({ ok: true, items: [older, newer] });
-    const files = await loadFiles({ path: '/org/site', source: { list }, signal: new AbortController().signal });
+    const { files, permissions } = await loadFiles({ path: '/org/site', source: { list }, signal: new AbortController().signal });
     expect(files).to.deep.equal([newer, older]);
+    expect(permissions).to.deep.equal(['write']);
     expect(list.secondCall.args).to.deep.equal(['/org/site', { continuationToken: 'next' }]);
   });
 

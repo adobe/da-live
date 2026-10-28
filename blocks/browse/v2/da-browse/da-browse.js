@@ -248,7 +248,14 @@ export default class DaBrowse extends LitElement {
             width: '400px',
             getContent: getChatPanelContent(),
           });
-          if (wasPanelOpen('chat')) openChatPanel();
+          const url = new URL(window.location.href);
+          if (url.searchParams.get('chat') === 'closed') {
+            closeChatPanel();
+            url.searchParams.delete('chat');
+            window.history.replaceState(window.history.state, '', url);
+          } else if (wasPanelOpen('chat')) {
+            openChatPanel();
+          }
         } else {
           closeChatPanel();
         }

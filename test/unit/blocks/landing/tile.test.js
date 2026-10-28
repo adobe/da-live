@@ -91,4 +91,22 @@ describe('landing tile', () => {
     expect(parseFloat(getComputedStyle(title).fontSize)).to.equal(smallTitle + 2);
     expect(parseFloat(getComputedStyle(description).fontSize)).to.equal(smallText + 2);
   });
+
+  it('activates a native action button with Enter or Space, but never when disabled', async () => {
+    tile.action = true;
+    tile.actionId = 'create-page';
+    await tile.updateComplete;
+    const clicks = [];
+    const button = tile.shadowRoot.querySelector('button');
+    button.addEventListener('click', (event) => clicks.push(event));
+    button.focus();
+    await sendKeys({ press: 'Enter' });
+    await sendKeys({ press: 'Space' });
+    expect(clicks).to.have.length(2);
+    tile.disabled = true;
+    await tile.updateComplete;
+    button.click();
+    expect(clicks).to.have.length(2);
+    expect(tile.shadowRoot.querySelector('a')).to.equal(null);
+  });
 });

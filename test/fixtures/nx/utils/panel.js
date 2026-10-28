@@ -3,6 +3,12 @@ export const PANEL_EVENT = Object.freeze({
   OPEN: 'nx-panel-open',
 });
 
-export const wasPanelOpen = () => false;
+export const wasPanelOpen = (section) => {
+  try {
+    return !!JSON.parse(localStorage.getItem('nx-panels') || '{}')[section];
+  } catch {
+    return false;
+  }
+};
 export const registerPanelSection = () => {};
 export const getSectionAtPosition = () => undefined;
