@@ -148,7 +148,7 @@ class ImageWithFocalPointView {
 /** True when the selected node is an image in a block that enables focal points. */
 export function canSetFocalPoint(state) {
   const { selection } = state;
-  if (selection.node?.type.name !== 'image') return false;
+  if (selection.node?.type.name !== 'image' || selection.node.attrs.editAs) return false;
   if (!blocksData) {
     getBlocksData();
     return false;
@@ -159,7 +159,7 @@ export function canSetFocalPoint(state) {
 
 export function openSelectedFocalPoint(view) {
   const { from, node } = view.state.selection;
-  if (node?.type.name !== 'image') return;
+  if (node?.type.name !== 'image' || node.attrs.editAs) return;
   openFocalPointDialog(view, from, node);
 }
 

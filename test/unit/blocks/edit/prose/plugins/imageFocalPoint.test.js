@@ -309,5 +309,22 @@ describe('imageFocalPoint Plugin', () => {
       await new Promise((resolve) => { setTimeout(resolve, 50); });
       expect(document.querySelector('da-dialog.focal-point-dialog')).to.not.exist;
     });
+
+    it('is false for a link-image in a focal-point enabled block', async () => {
+      const linkImage = { type: { name: 'image' }, attrs: { src: 'test.jpg', editAs: 'image' } };
+      canSetFocalPoint(stateFor('hero'));
+      await new Promise((resolve) => { setTimeout(resolve, 100); });
+      expect(canSetFocalPoint(stateFor('hero'))).to.be.true;
+      expect(canSetFocalPoint(stateFor('hero', linkImage))).to.be.false;
+    });
+
+    it('does not open a dialog for a link-image', async () => {
+      const linkImage = { type: { name: 'image' }, attrs: { src: 'test.jpg', editAs: 'image' } };
+      openSelectedFocalPoint({ state: stateFor('hero', linkImage), dispatch: () => {} });
+      await new Promise((resolve) => { setTimeout(resolve, 100); });
+      const dialog = document.querySelector('da-dialog.focal-point-dialog');
+      dialog?.remove();
+      expect(dialog).to.not.exist;
+    });
   });
 });
