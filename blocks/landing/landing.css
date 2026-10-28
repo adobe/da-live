@@ -527,6 +527,20 @@ da-card-preview {
   list-style: none;
 }
 
+@container (width >= 900px) {
+  .quick-links {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .quick-links > li {
+    grid-column: span 2;
+  }
+
+  .quick-links > li:nth-child(4) {
+    grid-column: 2 / span 2;
+  }
+}
+
 @container (width < 900px) {
   .quick-links {
     grid-template-columns: repeat(2, minmax(0, 1fr));

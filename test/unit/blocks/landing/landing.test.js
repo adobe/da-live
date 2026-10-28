@@ -281,7 +281,10 @@ describe('landing page', () => {
     it('wraps against available content width, including a chat-sized reduction', () => {
       const grid = el.shadowRoot.querySelector('.quick-links');
       const files = el.shadowRoot.querySelector('.files-panel');
-      const columns = () => getComputedStyle(grid).gridTemplateColumns.split(' ').length;
+      const columns = () => {
+        const rows = [...grid.children].map((item) => item.getBoundingClientRect().top);
+        return rows.filter((top) => top === rows[0]).length;
+      };
       expect(columns()).to.equal(3);
       expect(grid.getBoundingClientRect().left).to.equal(files.getBoundingClientRect().left);
       expect(grid.getBoundingClientRect().width).to.equal(files.getBoundingClientRect().width);
@@ -293,6 +296,21 @@ describe('landing page', () => {
         const tile = component.shadowRoot.querySelector('.tile');
         expect(tile.scrollWidth).to.be.at.most(tile.clientWidth);
       });
+    });
+
+    it('centers the two bottom actions together without changing tile widths', () => {
+      const grid = el.shadowRoot.querySelector('.quick-links');
+      const [browse, create, publish, localization, develop] = [...grid.children]
+        .map((item) => item.getBoundingClientRect());
+      const bounds = grid.getBoundingClientRect();
+      expect(browse.top).to.equal(create.top);
+      expect(create.top).to.equal(publish.top);
+      expect(localization.top).to.be.greaterThan(browse.top);
+      expect(develop.top).to.equal(localization.top);
+      expect(localization.width).to.be.closeTo(browse.width, 0.1);
+      expect(develop.width).to.be.closeTo(browse.width, 0.1);
+      expect((localization.left + develop.right) / 2)
+        .to.be.closeTo((bounds.left + bounds.right) / 2, 0.5);
     });
   });
 

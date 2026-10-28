@@ -232,6 +232,10 @@ intentional differences rather than substitutes for those missing inputs.
   - Localization & Multi-site opens the EW Multi-Site Manager documentation.
   - Develop & Extend opens the developer tutorial.
   Governance & Operation is not shown. Customizable actions are out of scope.
+  At desktop widths, the final two tiles are centered below the first three;
+  narrower layouts retain two columns or one column.
+  Hover raises interactive tiles with a stronger shadow; keyboard focus retains
+  its visible outline.
 - Each action has a stable `landing-action-*` class and matching
   `data-rum-source` identifier. The existing Optel enhancer's web-component
   plugin follows nested shadow roots and collects native clicks, including
