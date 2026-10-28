@@ -7,6 +7,8 @@ import {
 } from '../../../../deps/da-sc-sdk/dist/index.js';
 import { attachPersistence } from '../../../../blocks/form/utils/persistence.js';
 
+const IMAGE_URL = 'https://raw.githubusercontent.com/adobe/da-sc-sdk/main/schemas/image/v1.0.0.json';
+
 // These tests create a real engine with the bundled SDK in
 // deps/da-sc-sdk/dist/index.js. The persistence tests in
 // utils/persistence.test.js use a stub editor and a stub save instead.
@@ -117,6 +119,65 @@ describe('SDK state shape', () => {
     expect(findByPointer(root, '/data/body').semanticType).to.equal('long-text');
     // Unrecognized value is not surfaced — the node carries no hint.
     expect(findByPointer(root, '/data/swatch').semanticType).to.equal(undefined);
+  });
+
+  it('surfaces an asset as an object with src and altText children (read by editor.js)', () => {
+    const schema = {
+      type: 'object',
+      properties: { heroImage: { $ref: IMAGE_URL, title: 'Hero image' } },
+    };
+    const asset = { src: './media_example.png', altText: 'A hero' };
+    const engine = createEngine({ schema, document: validDoc({ heroImage: asset }) });
+    const node = findByPointer(engine.getState().model.root, '/data/heroImage');
+    expect(node.kind).to.equal('object');
+    expect(node.typeName).to.equal('image');
+    expect(node.value).to.deep.equal(asset);
+    expect(node.children.map((child) => child.key)).to.deep.equal(['src', 'altText']);
+    expect(engine.getState().document.data.heroImage).to.deep.equal(asset);
+  });
+
+  it('reports a filled asset without a file on its src (read by editor.js)', () => {
+    const schema = {
+      type: 'object',
+      properties: { heroImage: { $ref: IMAGE_URL } },
+    };
+    const engine = createEngine({ schema, document: validDoc({ heroImage: { altText: 'A hero' } }) });
+    expect(engine.getState().validation.errors['/data/heroImage/src']?.message).to.be.a('string');
+  });
+
+  it('writes image fields as HTML images with their alt text, and round-trips them', () => {
+    const schema = {
+      type: 'object',
+      properties: { heroImage: { $ref: IMAGE_URL } },
+    };
+    const engine = createEngine({ schema, document: validDoc() });
+    [
+      './media_1a2b3c.png',
+      'https://content.da.live/org/site/drafts/.page/hero.png',
+      'https://delivery.example.com/assets/hero.avif?smartcrop=wide&width=1920',
+    ].forEach((href) => {
+      const asset = { src: href, altText: 'A hero' };
+      engine.setField('/data/heroImage', asset);
+      const { document, model } = engine.getState();
+      const { html, error } = convertJsonToHtml({ json: document, model });
+      expect(error).to.equal(undefined);
+      const img = new DOMParser().parseFromString(html, 'text/html').querySelector('img');
+      expect(img?.getAttribute('src')).to.equal(href);
+      expect(img?.getAttribute('alt')).to.equal('A hero');
+      expect(convertHtmlToJson({ html }).json.data.heroImage).to.deep.equal(asset);
+    });
+
+    engine.setField('/data/heroImage', undefined);
+    const { document, model } = engine.getState();
+    const { html } = convertJsonToHtml({ json: document, model });
+    expect(html).to.not.include('<img');
+    expect(convertHtmlToJson({ html }).json.data.heroImage).to.equal(undefined);
+  });
+
+  it('reads a delivered media bus image without its rendition parameters', () => {
+    const html = convertJsonToHtml({ json: validDoc({ heroImage: { src: 'x' } }) }).html
+      .replace('<p>x</p>', '<picture><img src="./media_1c0072.jpg?width=750&amp;format=jpg&amp;optimize=medium" alt=""></picture>');
+    expect(convertHtmlToJson({ html }).json.data.heroImage).to.deep.equal({ src: './media_1c0072.jpg' });
   });
 
   it('validation.errors entries carry a .message field (read by editor.js)', () => {
@@ -265,6 +326,25 @@ describe('SDK × attachPersistence (end-to-end)', () => {
     expect(calls).to.have.lengthOf(1);
     expect(calls[0].path).to.equal('/smoke');
     expect(calls[0].html).to.include('Alice');
+    p.detach();
+  });
+
+  it('saves image fields as HTML images from the engine model', async () => {
+    let p;
+    const calls = [];
+    const save = async ({ html }) => { calls.push(html); };
+    const schema = {
+      type: 'object',
+      properties: { heroImage: { $ref: IMAGE_URL } },
+    };
+
+    const editor = createEngine({ schema, document: validDoc(), onChange: () => p?.notify() });
+    p = attachPersistence(editor, { path: '/smoke', save });
+
+    editor.setField('/data/heroImage', { src: 'https://content.da.live/org/site/hero.png' });
+    await new Promise((r) => { setTimeout(r, 0); });
+
+    expect(calls[0]).to.include('<img src="https://content.da.live/org/site/hero.png" alt="">');
     p.detach();
   });
 
