@@ -41,6 +41,14 @@ const MIN_HEALTHY_SESSION_MS = 5000;
 const SHORT_SESSION_BASE_MS = 1000;
 const SHORT_SESSION_MAX_MS = 30000;
 
+// Set when collab gives up on auth: local edits could never be saved, so they are blocked.
+let collabAuthLost = false;
+
+function setCollabAuthLost(lost) {
+  collabAuthLost = lost;
+  window.view?.setProps({});
+}
+
 async function checkDoc(path) {
   const { source } = await getNx2Api();
   const { pathname } = new URL(path);
@@ -86,6 +94,12 @@ export async function createConnection(path) {
     if (st?.status === 'connected') lastOpenAt = Date.now();
   });
 
+  collabAuthLost = false;
+  // A re-sync proves the session works again (e.g. after signing in from another tab).
+  provider.on('synced', (synced) => {
+    if (synced && collabAuthLost) setCollabAuthLost(false);
+  });
+
   provider.on('connection-close', async (event) => {
     if (event?.code === 4401 || event?.code === 4403) {
       provider.shouldConnect = false;
@@ -95,6 +109,7 @@ export async function createConnection(path) {
       if (!fresh || fresh === lastSentToken) {
         // No new token to try — retrying would loop on the same 4401. Stop
         // the reconnect loop, and surface the modal if the user was signed in.
+        setCollabAuthLost(true);
         if (lastSentToken) {
           try {
             const { showAuthBanner } = await import('../../shared/da-auth-banner/da-auth-banner.js');
@@ -200,6 +215,7 @@ let diffHostEl = null;
 
 function dispatchTransaction(transaction) {
   if (!window.view) return;
+  if (collabAuthLost && transaction.docChanged) return;
 
   const newState = window.view.state.apply(transaction);
   window.view.updateState(newState);
@@ -591,7 +607,7 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
         return false;
       },
     },
-    editable() { return canWrite; },
+    editable() { return canWrite && !collabAuthLost; },
   });
 
   addActiveView(window.view);
