@@ -6,7 +6,8 @@ const availabilityChannel = createChannel({ replay: true });
 let chatContext;
 let unsubscribeHash;
 
-async function syncChatAvailability({ org, site } = {}) {
+async function syncChatAvailability(state) {
+  const { org, site } = state ?? {};
   if (chatContext && chatContext.org === org && chatContext.site === site) return;
   const context = { org, site };
   chatContext = context;

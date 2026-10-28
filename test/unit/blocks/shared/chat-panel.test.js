@@ -112,6 +112,49 @@ describe('shared chat availability', () => {
     }
   });
 
+  it('starts disabled for a null hash without checking flags', async () => {
+    const contexts = [];
+    setChatAvailability(async (context) => {
+      contexts.push(context);
+      return true;
+    });
+    hashChange._set(null);
+    const values = [];
+    observe(values);
+    await flush();
+    expect(values).to.deep.equal([false]);
+    expect(contexts).to.have.length(0);
+  });
+
+  it('clears enabled availability on a null hash and rechecks when returning to the site', async () => {
+    const contexts = [];
+    setChatAvailability(async (context) => {
+      contexts.push(context);
+      return true;
+    });
+    const values = [];
+    observe(values);
+    await flush();
+    expect(values.at(-1)).to.be.true;
+
+    hashChange._set(null);
+    await flush();
+    expect(values.at(-1)).to.be.false;
+    const late = [];
+    observe(late);
+    expect(late).to.deep.equal([false]);
+    expect(contexts).to.have.length(1);
+
+    hashChange._set({ org: 'org', site: 'site' });
+    await flush();
+    expect(values.at(-1)).to.be.true;
+    expect(late.at(-1)).to.be.true;
+    expect(contexts).to.deep.equal([
+      { org: 'org', site: 'site' },
+      { org: 'org', site: 'site' },
+    ]);
+  });
+
   it('does not check without an org and fails closed before recovering on navigation', async () => {
     const contexts = [];
     setChatAvailability(async (context) => {
