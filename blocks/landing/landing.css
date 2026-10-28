@@ -28,7 +28,7 @@
   box-sizing: border-box;
 }
 
-.composer-input[hidden] {
+.composer textarea[hidden] {
   display: none;
 }
 
@@ -117,16 +117,14 @@ h1 {
 }
 
 .composer-working {
-  display: flex;
-  align-items: center;
-  gap: var(--s2-spacing-200);
   color: var(--s2-gray-700);
   font-size: var(--s2-body-size-m);
   min-height: 21px;
 }
 
-.composer-working .nx-loading-spinner {
+.composer-input .nx-loading-spinner {
   flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .composer nx-pills {

@@ -27,6 +27,7 @@ function dragEvent({ type, relatedTarget, text = false }) {
 describe('landing page', () => {
   let el;
   let nav;
+  let sidenav;
   let loadSite;
   let checkSites;
 
@@ -41,6 +42,8 @@ describe('landing page', () => {
     checkSites = sinon.stub(DaLanding.prototype, 'checkSites').resolves();
     nav = document.createElement('nx-nav');
     document.body.append(nav);
+    sidenav = document.createElement('nx-sidenav');
+    document.body.append(sidenav);
     el = document.createElement('da-landing');
     document.body.append(el);
     el._files = ITEMS;
@@ -50,6 +53,7 @@ describe('landing page', () => {
   afterEach(() => {
     el.remove();
     nav.remove();
+    sidenav.remove();
     document.querySelectorAll('aside.panel').forEach((aside) => aside.remove());
     flags.enabled = false;
     flags.chatDisabled = false;
@@ -612,7 +616,7 @@ describe('landing page', () => {
     expect(el.shadowRoot.textContent).not.to.include('No files here yet');
   });
 
-  it('hands a prompt to the existing chat panel without auto-sending', async () => {
+  it('sends a central prompt through the existing chat panel', async () => {
     el._chatEnabled = true;
     el._prompt = '  Update the hero  ';
     let detail;
@@ -623,9 +627,38 @@ describe('landing page', () => {
     await el.submitPrompt({ preventDefault() {} });
     expect(detail.section).to.equal('chat');
     expect(detail.options.text).to.equal('Update the hero');
-    expect(detail.options.autoSend).to.equal(undefined);
+    expect(detail.options.autoSend).to.equal(true);
     expect(el._prompt).to.equal('');
     expect(el._handingOff).to.equal(false);
+  });
+
+  it('opens the same chat from the AI menu icon without sending or discarding a central draft', async () => {
+    const { aside, section } = await mountAssistant();
+    el._prompt = 'Unsent central draft';
+    await el.updateComplete;
+    const [action] = sidenav.actions;
+    expect(action.icon).to.equal('/blocks/landing/assistant.svg');
+    const image = new Image();
+    image.src = action.icon;
+    await image.decode();
+    expect(image.naturalWidth).to.equal(32);
+    expect(image.naturalHeight).to.equal(32);
+    expect(action.disabled).to.equal(false);
+    const open = sinon.spy();
+    document.addEventListener('nx-panel-open', open);
+    action.onClick();
+    document.removeEventListener('nx-panel-open', open);
+    expect(open.calledOnce).to.equal(true);
+    expect(open.firstCall.args[0].detail).to.deep.equal({ section: 'chat' });
+    await section.onShow(aside);
+    expect(el._prompt).to.equal('Unsent central draft');
+    el._chatEnabled = false;
+    await el.updateComplete;
+    expect(sidenav.actions[0].disabled).to.equal(true);
+    const otherAction = { label: 'Other action' };
+    sidenav.actions = [...sidenav.actions, otherAction];
+    el.remove();
+    expect(sidenav.actions).to.deep.equal([otherAction]);
   });
 
   it('does not submit while chat is disabled', async () => {
@@ -809,7 +842,7 @@ describe('landing page', () => {
       expect(el.shadowRoot.querySelector('textarea').value).to.equal('Next question');
     });
 
-    it(`hands text and attachments to the same ${tag} once without auto-sending`, async () => {
+    it(`sends once through ${tag} after attaching files and protecting the existing draft`, async () => {
       const { chat, aside, section } = await mountAssistant(tag);
       const attachment = { id: 'draft-file', label: 'draft.md', dataBase64: 'ZmlsZQ==' };
       el._prompt = 'Use this draft';
@@ -821,8 +854,12 @@ describe('landing page', () => {
         await openDraft();
         expect(el._handingOff).to.equal(true);
         await section.onShow(aside, undefined, options);
-        expect(chat.setPrompt.calledOnceWithExactly('Use this draft', { replace: false })).to.equal(true);
+        expect(chat.setPrompt.callCount).to.equal(2);
+        expect(chat.setPrompt.firstCall.args).to.deep.equal(['Use this draft', { replace: false }]);
+        expect(chat.setPrompt.secondCall.args).to.deep.equal(['Use this draft', { replace: false, autoSend: true }]);
         expect(add.calledOnce).to.equal(true);
+        expect(add.firstCall.calledAfter(chat.setPrompt.firstCall)).to.equal(true);
+        expect(add.firstCall.calledBefore(chat.setPrompt.secondCall)).to.equal(true);
         expect(add.firstCall.args[0].detail).to.equal(attachment);
         expect(el._prompt).to.equal('');
         expect(el._attachments).to.equal(undefined);
@@ -832,6 +869,29 @@ describe('landing page', () => {
         document.removeEventListener('nx-add-to-chat', add);
       }
     });
+  });
+
+  it('retains the central draft and attachments if submission is refused after staging them', async () => {
+    const { chat, aside, section } = await mountAssistant();
+    el._prompt = 'Keep this draft';
+    el._attachments = [{ id: 'file', label: 'draft.md', dataBase64: 'ZmlsZQ==' }];
+    chat.setPrompt.onSecondCall().resolves(false);
+    await section.onShow(aside, undefined, await openDraft());
+    expect(el._prompt).to.equal('Keep this draft');
+    expect(el._attachments).to.have.length(1);
+    expect(el._chatError).to.include('could not send yet');
+    expect(el._handingOff).to.equal(false);
+    await section.onShow(aside, undefined, await openDraft());
+    expect(el._prompt).to.equal('');
+    expect(el._attachments).to.equal(undefined);
+  });
+
+  it('supplies a file-only message when explicitly sending retained attachments', async () => {
+    const { chat, aside, section } = await mountAssistant();
+    el._attachments = [{ id: 'file', label: 'draft.md', dataBase64: 'ZmlsZQ==' }];
+    await section.onShow(aside, undefined, await openDraft());
+    expect(chat.setPrompt.secondCall.args).to.deep.equal(['Attached file', { replace: false, autoSend: true }]);
+    expect(el._attachments).to.equal(undefined);
   });
 
   it('keeps both drafts and attachments when the assistant refuses a handoff, then allows a retry', async () => {
@@ -899,7 +959,7 @@ describe('landing page', () => {
     expect(el._prompt).to.equal('Keep this');
   });
 
-  it('continues with Enter, keeps Shift+Enter and IME composition, and never submits a disabled composer', async () => {
+  it('sends with Enter, keeps Shift+Enter and IME composition, and never submits a disabled composer', async () => {
     el._chatEnabled = true;
     el._prompt = 'Draft';
     await el.updateComplete;
@@ -933,10 +993,22 @@ describe('landing page', () => {
         el._chatInputState = { busy: true, disabled: true };
         await el.updateComplete;
         const input = el.shadowRoot.querySelector('.composer-input');
-        expect(getComputedStyle(input).display).to.equal('none');
+        expect(getComputedStyle(input).display).to.equal('flex');
+        expect(getComputedStyle(input.querySelector('textarea')).display).to.equal('none');
         expect(getComputedStyle(composer, '::after').content).to.equal('none');
-        expect(el.shadowRoot.querySelector('.composer-working').getBoundingClientRect().height).to.be.greaterThan(0);
+        const status = input.querySelector('.composer-working').getBoundingClientRect();
+        const spinner = input.querySelector('.nx-loading-spinner').getBoundingClientRect();
+        expect(status.height).to.be.greaterThan(0);
+        expect(status.left).to.be.greaterThan(spinner.right);
+        expect(status.top).to.be.lessThan(spinner.bottom);
         el._chatInputState = { busy: false, disabled: false };
+        await el.updateComplete;
+        el._handingOff = true;
+        await el.updateComplete;
+        expect(input.querySelector('.composer-working').textContent).to.include('Opening chat...');
+        expect(input.querySelector('.composer-working').getBoundingClientRect().left)
+          .to.be.greaterThan(input.querySelector('.nx-loading-spinner').getBoundingClientRect().right);
+        el._handingOff = false;
         await el.updateComplete;
       }
     }

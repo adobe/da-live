@@ -25,10 +25,10 @@ It has not been transferred to Martin's `devlive` branches.
 For the chat integration preview, use `lpchat` for both repositories:
 
 ```text
-https://lpchat--da-live--adobe.aem.live/?landing=true&nx=lpchat&quick-edit=devlive#/exp-workspace/frescopaco
+https://lpchat--da-live--adobe.aem.live/?landing=true&theme=light&nx=lpchat&quick-edit=devlive#/exp-workspace/frescopaco
 ```
 
-Add `&theme=light` for a light-mode preview without changing the saved theme.
+The `theme=light` preview override does not change the saved theme.
 The override applies only while this landing page is present.
 
 Landing retains its S/M hooks, shared button classes and explicitly sized
@@ -210,17 +210,22 @@ intentional differences rather than substitutes for those missing inputs.
   font binaries were not supplied; exact font-family parity needs approved assets.
 - Folders and link files open in Browse. Pages, sheets and media open in their
   editors, preserving the Nexter/quick-edit preview parameters.
-- The prompt opens the site's existing assistant and fills its composer.
-  It does **not** auto-send. The existing EW/chat flags still apply.
-  Enter continues in chat; Shift+Enter inserts a newline, and IME composition
+- The prompt's Send button opens the site's existing assistant and submits
+  immediately, adding any retained attachments before sending through the public
+  `setPrompt(..., { autoSend: true })` API. The existing EW/chat flags still apply.
+  Enter sends; Shift+Enter inserts a newline, and IME composition
   does not submit. The same chat instance/session is reused after closing and
   reopening its panel. A different unsent draft in the left composer is never
   overwritten: the landing draft and attachments remain available for retry.
-  Only confirmed draft acceptance clears the central input. During processing,
+  Only accepted submission clears the central input. During processing,
   even a hidden left panel keeps the central composer disabled. There is no queue.
   Landing consumes the public `inputState`/`INPUT_STATE_CHANGE` contract and
   opts the left chat into `showInputStatus`; it does not inspect a controller.
-  Panel opening and file reading have separate, announced loading states.
+  Panel opening and file reading have separate, announced loading states,
+  with their text beside the spinner in the composer's input row.
+  The Figma AI icon (`3231:201857`) appears above the existing left-menu links.
+  It opens the same chat without sending or clearing the central draft, remains
+  available during processing, and is disabled on sites without chat.
   Site changes cancel pending panel loads, remove the old chat and its listener,
   and clear the old draft/attachments before rechecking the site's chat flags.
   Failed loads retain the draft and readable attachments for retry.
@@ -311,9 +316,11 @@ admin: only an explicit org CONFIG write grant exposes creation. Check missing
 permission headers and failed checks without hiding Add existing. Do not submit
 creation against shared demo content when checking the setup entry.
 Check dark mode, narrow layouts, keyboard focus and a site without chat.
-Verify chat availability after changing sites. In the chat preview, hand off a
-draft with Enter or Continue in chat: it appears in the left input without
-being sent. Shift+Enter stays multiline. Attach a Markdown file or image and
+Verify chat availability after changing sites. On a writable test site, send a
+prompt with Enter or Send: the left conversation starts without another Send.
+Check that Opening chat appears beside its spinner, not below it. Click the AI
+menu icon to reopen the same conversation without submitting another message.
+Shift+Enter stays multiline. Attach a Markdown file or image and
 confirm one pill per file. Leave another draft in the left input and confirm
 that a central handoff preserves both drafts rather than replacing it.
 Send only on a separate writable test site: both inputs should show the working

@@ -120,6 +120,11 @@ export class DaLanding extends LitElement {
     this.clearAttachments();
     this._addingSite = false;
     this._sitePicker?.remove();
+    if (this._sidenav) {
+      this._sidenav.actions = this._sidenav.actions?.filter(
+        (action) => action !== this._chatAction,
+      );
+    }
     window.removeEventListener('storage', this._onStorage);
     super.disconnectedCallback();
   }
@@ -159,6 +164,19 @@ export class DaLanding extends LitElement {
   }
 
   mountWorkspace() {
+    this._sidenav = document.querySelector('nx-sidenav');
+    if (this._sidenav) {
+      this._chatAction = {
+        label: 'Open chat',
+        icon: '/blocks/landing/assistant.svg',
+        disabled: true,
+        onClick: () => {
+          if (!this._chatEnabled) return;
+          document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat' } }));
+        },
+      };
+      this._sidenav.actions = [this._chatAction, ...this._sidenav.actions || []];
+    }
     const nav = document.querySelector('nx-nav');
     if (!nav) return;
     const picker = createSitePicker({
@@ -177,6 +195,13 @@ export class DaLanding extends LitElement {
   }
 
   syncWorkspace() {
+    if (this._chatAction && this._chatAction.disabled !== !this._chatEnabled) {
+      const previous = this._chatAction;
+      this._chatAction = { ...previous, disabled: !this._chatEnabled };
+      this._sidenav.actions = this._sidenav.actions.map((action) => (
+        action === previous ? this._chatAction : action
+      ));
+    }
     if (!this._sitePicker) return;
     updateSitePicker({ picker: this._sitePicker, sites: this._sites, value: this._scope });
   }
@@ -433,6 +458,18 @@ export class DaLanding extends LitElement {
               await addChatContext(item);
             }
             if (!current()) return;
+            if (options.autoSend) {
+              const accepted = await chat.setPrompt(
+                options.text,
+                { replace: false, autoSend: true },
+              );
+              if (!current()) return;
+              if (accepted === false) {
+                throw new Error(
+                  'The assistant could not send yet. Your landing page draft is unchanged.',
+                );
+              }
+            }
             if (options.action) {
               if (!chat.openAddAction) throw new Error('This assistant cannot open the selected Add action.');
               await chat.openAddAction(options.action);
@@ -442,7 +479,7 @@ export class DaLanding extends LitElement {
           } catch (error) {
             if (current()) this._chatError = error.message;
           } finally {
-            if (current()) this._handingOff = false;
+            if (current() && options) this._handingOff = false;
           }
         },
       });
@@ -478,7 +515,9 @@ export class DaLanding extends LitElement {
 
   async submitPrompt(event) {
     event.preventDefault();
-    await this.openAssistant({ text: this._prompt.trim(), attachments: this._attachments });
+    const text = this._prompt.trim()
+      || (this._attachments?.length ? `Attached file${this._attachments.length > 1 ? 's' : ''}` : '');
+    await this.openAssistant({ text, attachments: this._attachments, autoSend: true });
   }
 
   _onPromptKeydown(event) {
@@ -487,7 +526,7 @@ export class DaLanding extends LitElement {
     if (!this.composerDisabled) event.target.form.requestSubmit();
   }
 
-  async openAssistant({ text, action, attachments }) {
+  async openAssistant({ text, action, attachments, autoSend }) {
     if (this.composerDisabled) return;
     if (!text && !action && !attachments?.length) return;
     this._handingOff = true;
@@ -500,7 +539,7 @@ export class DaLanding extends LitElement {
         this._attachments = undefined;
         this._handingOff = false;
       };
-      document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat', options: { text, action, attachments, onReady } } }));
+      document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat', options: { text, action, attachments, autoSend, onReady } } }));
     } catch (error) {
       this._handingOff = false;
       this._chatError = `Could not open the assistant: ${error.message}`;
@@ -673,6 +712,7 @@ export class DaLanding extends LitElement {
 
   render() {
     const loadingMessage = this._readingFiles ? 'Reading files...' : 'Opening chat...';
+    const working = this._chatInputState?.busy || this._handingOff || this._readingFiles;
     return html`
       <div class="landing">
         ${this._siteError ? html`<p role="status">${this._siteError}
@@ -692,15 +732,14 @@ export class DaLanding extends LitElement {
             <div class="composer-surface" aria-hidden="true"></div>
             ${this._attachments?.length ? html`<nx-pills .items=${this._attachments}
               @nx-pill-remove=${this._onRemoveAttachment}></nx-pills>` : nothing}
-            ${this._chatInputState?.busy || this._handingOff || this._readingFiles ? html`
-              <div class="composer-working" role="status">
-                <span class="nx-loading-spinner" aria-hidden="true"></span>
+            <div class="composer-input">
+              <span class=${working ? 'nx-loading-spinner' : 'coworker-icon'} aria-hidden="true"></span>
+              ${working ? html`<span class="composer-working" role="status">
                 ${this._chatInputState?.busy ? CHAT_WORKING_MESSAGE : loadingMessage}
-              </div>` : nothing}
-            <div class="composer-input" ?hidden=${this._chatInputState?.busy || this._handingOff || this._readingFiles}>
-              <span class="coworker-icon" aria-hidden="true"></span>
+              </span>` : nothing}
               <label class="sr-only" for="landing-prompt">Let me know your task</label>
               <textarea id="landing-prompt" rows="1" .value=${this._prompt}
+                ?hidden=${working}
                 ?disabled=${this.composerDisabled} aria-describedby="assistant-note assistant-context"
                 placeholder="Ask a question, share an idea, or add a task."
                 @input=${this.updatePrompt} @keydown=${this._onPromptKeydown}></textarea>
@@ -717,8 +756,8 @@ export class DaLanding extends LitElement {
                 </button>
               </nx-menu>
               <button type="submit" class="composer-send nx-action-btn-icon is-active ${this.uiSize === 'm' ? 'nx-btn-lg' : ''}"
-                aria-label=${this._handingOff ? 'Opening chat' : 'Continue in chat'}
-                title="Continue in chat"
+                aria-label=${this._handingOff ? 'Opening chat' : 'Send'}
+                title="Send"
                 ?disabled=${this.composerDisabled || (!this._prompt.trim() && !this._attachments?.length)}>${icon('arrowupsend')}</button>
             </div>
           </form>
@@ -727,7 +766,7 @@ export class DaLanding extends LitElement {
             <a href=${ADOBE_AI_GUIDELINES_URL} target="_blank" rel="noopener noreferrer">AI User Guidelines</a>
           </p>
           <p id="assistant-context" class="sr-only">
-            ${this._scope ? `Working in ${this._scope}. Continue in your site assistant. Review your prompt before sending.` : 'Choose a site to use the assistant.'}
+            ${this._scope ? `Working in ${this._scope}. Send a message to your site assistant.` : 'Choose a site to use the assistant.'}
           </p>
           ${this._chatError || (this._scope && this._chatEnabled === false) ? html`
             <p class="assistant-note" role="status">${this._chatError || 'The assistant is not enabled for this site.'}</p>` : nothing}
