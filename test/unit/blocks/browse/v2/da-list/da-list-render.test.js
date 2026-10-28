@@ -195,6 +195,26 @@ describe('da-list render', () => {
     expect(items.length).to.equal(2);
   });
 
+  it('uses the editor configured for each result path', async () => {
+    await fixture({
+      editor: '/canvas#',
+      defaultEditor: '/canvas#',
+      editorConfs: ['/o/r/forms=https://da.live/form#'],
+      listItems: [
+        { path: '/o/r/forms/contact.html', name: 'contact', ext: 'html' },
+        { path: '/o/r/page.html', name: 'page', ext: 'html' },
+      ],
+    });
+    const items = el.shadowRoot.querySelectorAll('da-file-item');
+    expect(items[0].getAttribute('editor')).to.equal('https://da.live/form#');
+    expect(items[1].getAttribute('editor')).to.equal('/canvas#');
+    await Promise.all([...items].map((item) => item.updateComplete));
+    expect(items[0].shadowRoot.querySelector('a.da-item-list-item-title').getAttribute('href'))
+      .to.equal('https://da.live/form#/o/r/forms/contact');
+    expect(items[1].shadowRoot.querySelector('a.da-item-list-item-title').getAttribute('href'))
+      .to.equal('/canvas#/o/r/page');
+  });
+
   it('Renders the load-more sentinel when continuationToken is set', async () => {
     // Mock fetch to return continuation header
     window.fetch = () => Promise.resolve(new Response('[]', {

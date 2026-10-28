@@ -34,7 +34,7 @@ const MORE_ICON_SRC = '/img/icons/s2-icon-more-20-n.svg';
 const FOCUS_TARGETS = '[role="row"]';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
-await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
+await import('../../shared/da-confirm-dialog/da-confirm-dialog.js');
 await import(`${getNx()}/blocks/shared/menu/menu.js`);
 const { treegridEnsureTabStop, treegridFocusIn, treegridKeydown } = await import(`${getNx2()}/blocks/shared/utils/treegrid-nav.js`);
 
@@ -802,14 +802,12 @@ class EwPageOutline extends LitElement {
   _renderDeleteDialog() {
     const { type, index } = this._pendingDelete;
     const { title, message } = this._deleteInfo(type, index);
+    const action = { style: 'negative', label: 'Delete', click: () => this._confirmDelete() };
     return html`
-      <nx-dialog class="ew-po-delete" title="${title}" @close=${() => this._cancelDelete()}>
+      <da-confirm-dialog class="ew-po-delete" title="${title}" .action=${action}
+        @close=${() => this._cancelDelete()}>
         <span>${message}</span>
-        <button slot="actions" class="nx-form-btn-secondary"
-          @click=${() => this._cancelDelete()}>Cancel</button>
-        <button slot="actions" class="nx-form-btn-primary"
-          @click=${() => this._confirmDelete()}>Delete</button>
-      </nx-dialog>`;
+      </da-confirm-dialog>`;
   }
 
   _renderDeleteButton(type, index) {
