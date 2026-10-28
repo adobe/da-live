@@ -75,6 +75,7 @@ describe('landing page', () => {
     chat.inputState = { busy: false, disabled: false };
     chat.updateComplete = Promise.resolve();
     chat.setPrompt = sinon.stub().resolves(true);
+    chat.stop = sinon.stub();
     chat.openAddAction = sinon.stub().resolves();
     aside.append(chat);
     document.body.append(aside);
@@ -831,7 +832,9 @@ describe('landing page', () => {
       await el.updateComplete;
       expect(el.shadowRoot.querySelector('textarea').disabled).to.equal(true);
       expect(el.shadowRoot.querySelector('.chat-add').disabled).to.equal(true);
-      expect(el.shadowRoot.querySelector('button[type="submit"]').disabled).to.equal(true);
+      expect(el.shadowRoot.querySelector('.composer-send').disabled).to.equal(false);
+      expect(el.shadowRoot.querySelector('.composer-send').type).to.equal('button');
+      expect(el.shadowRoot.querySelector('.composer-send').getAttribute('aria-label')).to.equal('Stop');
       expect(el.shadowRoot.querySelector('.composer').getAttribute('aria-busy')).to.equal('true');
       expect(el.shadowRoot.querySelector('.composer-working').textContent).to.include('Working on your question, please wait...');
       expect(await openDraft()).to.equal(undefined);
@@ -840,6 +843,34 @@ describe('landing page', () => {
       await el.updateComplete;
       expect(el.shadowRoot.querySelector('textarea').disabled).to.equal(false);
       expect(el.shadowRoot.querySelector('textarea').value).to.equal('Next question');
+    });
+
+    it(`stops the same hidden ${tag} from the middle and restores retained drafts without sending`, async () => {
+      const { chat, aside } = await mountAssistant(tag);
+      aside.hidden = true;
+      el._prompt = 'Next question';
+      const attachments = [{ id: 'draft', label: 'draft.md', dataBase64: 'ZmlsZQ==' }];
+      el._attachments = attachments;
+      chat.inputState = { busy: true, disabled: true };
+      chat.dispatchEvent(new CustomEvent('nx-chat-input-state-change', { detail: chat.inputState }));
+      chat.stop.callsFake(() => {
+        chat.inputState = { busy: false, disabled: false };
+        chat.dispatchEvent(new CustomEvent('nx-chat-input-state-change', { detail: chat.inputState }));
+      });
+      await el.updateComplete;
+      const stop = el.shadowRoot.querySelector('.composer-send');
+      expect(stop.disabled).to.equal(false);
+      stop.click();
+      stop.click();
+      await el.updateComplete;
+      expect(chat.stop.calledOnce).to.equal(true);
+      expect(chat.setPrompt.called).to.equal(false);
+      expect(el._prompt).to.equal('Next question');
+      expect(el._attachments).to.equal(attachments);
+      expect(el.shadowRoot.querySelector('textarea').disabled).to.equal(false);
+      expect(stop.type).to.equal('submit');
+      expect(stop.getAttribute('aria-label')).to.equal('Send');
+      expect(el.shadowRoot.querySelector('.composer').classList.contains('is-processing')).to.equal(false);
     });
 
     it(`sends once through ${tag} after attaching files and protecting the existing draft`, async () => {
@@ -869,6 +900,17 @@ describe('landing page', () => {
         document.removeEventListener('nx-add-to-chat', add);
       }
     });
+  });
+
+  it('does not stop a former site chat from a stale middle Stop button', async () => {
+    const { chat } = await mountAssistant();
+    chat.inputState = { busy: true, disabled: true };
+    chat.dispatchEvent(new CustomEvent('nx-chat-input-state-change', { detail: chat.inputState }));
+    await el.updateComplete;
+    const stop = el.shadowRoot.querySelector('.composer-send');
+    hashChange._set({ org: 'org', site: 'other' });
+    stop.click();
+    expect(chat.stop.called).to.equal(false);
   });
 
   it('retains the central draft and attachments if submission is refused after staging them', async () => {
@@ -975,7 +1017,7 @@ describe('landing page', () => {
     expect(submit.calledOnce).to.equal(true);
   });
 
-  it('keeps the composer within the remaining page width and shows a neutral processing surface in both themes', async () => {
+  it('keeps the composer within the remaining page width and shows the generating highlight in both themes', async () => {
     const sheet = new CSSStyleSheet();
     sheet.replaceSync(await (await fetch('/blocks/landing/landing.css')).text());
     el.shadowRoot.adoptedStyleSheets = [sheet];
@@ -995,7 +1037,11 @@ describe('landing page', () => {
         const input = el.shadowRoot.querySelector('.composer-input');
         expect(getComputedStyle(input).display).to.equal('flex');
         expect(getComputedStyle(input.querySelector('textarea')).display).to.equal('none');
-        expect(getComputedStyle(composer, '::after').content).to.equal('none');
+        expect(getComputedStyle(composer, '::after').content).to.equal('""');
+        const surface = composer.querySelector('.composer-surface');
+        expect(getComputedStyle(surface).backgroundImage).to.include('radial-gradient');
+        expect(getComputedStyle(surface, '::after').backgroundImage).to.include('conic-gradient');
+        expect(getComputedStyle(surface, '::after').pointerEvents).to.equal('none');
         const status = input.querySelector('.composer-working').getBoundingClientRect();
         const spinner = input.querySelector('.nx-loading-spinner').getBoundingClientRect();
         expect(status.height).to.be.greaterThan(0);

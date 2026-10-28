@@ -102,12 +102,6 @@ h1 {
   box-shadow: 0 8px 32px #00000008, inset 0 24px 32px #ffffff0a, inset 0 -5px 20px #ffffff0a;
 }
 
-.composer.is-dropzone .composer-surface {
-  border: 2px solid #7a6afd;
-  background: linear-gradient(#ec69ff1a, #ec69ff1a), light-dark(#fffc, #222c);
-  box-shadow: 0 8px 32px #00000008, inset 0 24px 32px #ffffff0a, inset 0 -5px 21.6px #ffffff0a;
-}
-
 .composer-input {
   display: flex;
   align-items: flex-start;
@@ -141,11 +135,13 @@ h1 {
   mask: url('/blocks/landing/coworker.svg') center / 20px no-repeat;
 }
 
-.composer:has(textarea:enabled):not(:focus-within, .is-dropzone)::before {
+.composer:has(textarea:enabled):not(:focus-within, .is-dropzone)::before,
+.composer.is-processing::before {
   box-shadow: 0 2px 4px #ec69ff1a;
 }
 
-.composer:has(textarea:enabled):not(:focus-within, .is-dropzone)::after {
+.composer:has(textarea:enabled):not(:focus-within, .is-dropzone)::after,
+.composer.is-processing::after {
   content: "";
   position: absolute;
   inset: 6px -7px -6px -6px;
@@ -157,7 +153,8 @@ h1 {
   opacity: 0.32;
 }
 
-.composer:has(textarea:enabled):not(:focus-within, .is-dropzone) .composer-surface {
+.composer:where(:has(textarea:enabled):not(:focus-within, .is-dropzone)) .composer-surface,
+.composer.is-processing .composer-surface {
   overflow: clip;
   border-color: #ec69ff1a;
   background:
@@ -172,7 +169,8 @@ h1 {
     inset 0 -5px 21.6px #ffffff0a, inset 0 24px 32px #ffffff0a;
 }
 
-.composer:has(textarea:enabled):not(:focus-within, .is-dropzone) .composer-surface::before {
+.composer:where(:has(textarea:enabled):not(:focus-within, .is-dropzone)) .composer-surface::before,
+.composer.is-processing .composer-surface::before {
   content: "";
   position: absolute;
   inset: 23px -1px -25px;
@@ -186,6 +184,39 @@ h1 {
     transparent 66.241%);
   filter: blur(40px);
   opacity: 0.12;
+}
+
+.composer.is-processing .composer-surface {
+  background:
+    linear-gradient(to bottom, light-dark(#fff6, #ffffff0a) 37.305%, light-dark(#ffffff21, #ffffff03) 83.398%),
+    radial-gradient(ellipse at bottom right,
+      #d8deff7a,
+      #fde9ff7a 34.964%,
+      #ffeccf7a 81.972%,
+      #f7b5ff7a),
+    light-dark(#fffc, #222c);
+}
+
+.composer.is-processing .composer-surface::before {
+  opacity: 0.48;
+}
+
+.composer.is-processing .composer-surface::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border: 2px solid transparent;
+  border-radius: inherit;
+  background: conic-gradient(from 90deg, #fef6ff, #fde9ff 12.409%, #f7b5ff 31.026%, transparent 60.61%, transparent 89.095%) border-box;
+  mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  filter: blur(4px);
+}
+
+.composer.is-dropzone .composer-surface {
+  border: 2px solid #7a6afd;
+  background: linear-gradient(#ec69ff1a, #ec69ff1a), light-dark(#fffc, #222c);
+  box-shadow: 0 8px 32px #00000008, inset 0 24px 32px #ffffff0a, inset 0 -5px 21.6px #ffffff0a;
 }
 
 .composer:has(textarea:enabled):focus-within:not(.is-dropzone)::before {
@@ -213,6 +244,7 @@ h1 {
 
 @media (forced-colors: active) {
   .composer.is-dropzone .composer-surface,
+  .composer.is-processing .composer-surface,
   .composer:has(textarea:focus-visible) .composer-surface {
     outline: 2px solid Highlight;
     outline-offset: -2px;
@@ -265,6 +297,15 @@ textarea::placeholder {
 .composer-send:disabled {
   background: light-dark(#0000000a, #ffffff0a);
   color: var(--s2-gray-400);
+}
+
+.composer.is-processing .composer-send {
+  background: var(--s2-gray-800);
+  color: var(--s2-gray-25);
+}
+
+.composer.is-processing .composer-send:hover:not(:disabled) {
+  background: var(--s2-gray-900);
 }
 
 .assistant-note {

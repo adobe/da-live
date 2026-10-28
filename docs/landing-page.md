@@ -218,7 +218,12 @@ intentional differences rather than substitutes for those missing inputs.
   reopening its panel. A different unsent draft in the left composer is never
   overwritten: the landing draft and attachments remain available for retry.
   Only accepted submission clears the central input. During processing,
-  even a hidden left panel keeps the central composer disabled. There is no queue.
+  even a hidden left panel keeps the central textarea and Add menu disabled.
+  Both composers show a pink/lilac generating highlight and an enabled Stop
+  button. The central Stop calls the same mounted chat's public `stop()` method;
+  either Stop cancels that response, and the next input-state update restores
+  both composers without clearing retained drafts or sending another message.
+  There is no queue.
   Landing consumes the public `inputState`/`INPUT_STATE_CHANGE` contract and
   opts the left chat into `showInputStatus`; it does not inspect a controller.
   Panel opening and file reading have separate, announced loading states,
@@ -324,7 +329,9 @@ Shift+Enter stays multiline. Attach a Markdown file or image and
 confirm one pill per file. Leave another draft in the left input and confirm
 that a central handoff preserves both drafts rather than replacing it.
 Send only on a separate writable test site: both inputs should show the working
-message and disable Add until the answer finishes or is stopped. Closing the
+message and generating highlight, disable Add, and offer Stop. Cancel once from
+the middle and once from the left: each should stop the same response, restore
+both inputs, and preserve any unsent draft without sending another message. Closing the
 panel must not unlock the central input during processing. Open/close without
 changing sites preserves the conversation. Switching sites during loading or
 file reading must not open the old chat or copy the old draft into the new site.

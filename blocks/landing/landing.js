@@ -520,6 +520,15 @@ export class DaLanding extends LitElement {
     await this.openAssistant({ text, attachments: this._attachments, autoSend: true });
   }
 
+  _onStop() {
+    if (!this._chat?.inputState?.busy) return;
+    try {
+      this._chat.stop();
+    } catch (error) {
+      this._chatError = `Could not stop the assistant: ${error.message}`;
+    }
+  }
+
   _onPromptKeydown(event) {
     if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
     event.preventDefault();
@@ -712,7 +721,11 @@ export class DaLanding extends LitElement {
 
   render() {
     const loadingMessage = this._readingFiles ? 'Reading files...' : 'Opening chat...';
-    const working = this._chatInputState?.busy || this._handingOff || this._readingFiles;
+    const busy = !!this._chatInputState?.busy;
+    const working = busy || this._handingOff || this._readingFiles;
+    const sendLabel = busy ? 'Stop' : 'Send';
+    const sendDisabled = busy ? !this._chat
+      : this.composerDisabled || (!this._prompt.trim() && !this._attachments?.length);
     return html`
       <div class="landing">
         ${this._siteError ? html`<p role="status">${this._siteError}
@@ -724,7 +737,7 @@ export class DaLanding extends LitElement {
             @close=${this.closeAddSite}></da-add-site>` : nothing}
         <section class="welcome" aria-labelledby="welcome-heading">
           <h1 id="welcome-heading">Hi${this._name ? html` ${this._name}` : nothing}, how can I help?</h1>
-          <form class="composer ${this._dragging && !this.composerDisabled ? 'is-dropzone' : ''}"
+          <form class="composer ${this._dragging && !this.composerDisabled ? 'is-dropzone' : ''} ${busy ? 'is-processing' : ''}"
             aria-busy=${!!this._chatInputState?.busy || !!this._handingOff || !!this._readingFiles}
             @submit=${this.submitPrompt} @dragenter=${this.handleFileDrag}
             @dragleave=${this.handleFileDrag} @dragover=${this.handleFileDrag}
@@ -755,10 +768,12 @@ export class DaLanding extends LitElement {
                   ${icon('add')}
                 </button>
               </nx-menu>
-              <button type="submit" class="composer-send nx-action-btn-icon is-active ${this.uiSize === 'm' ? 'nx-btn-lg' : ''}"
-                aria-label=${this._handingOff ? 'Opening chat' : 'Send'}
-                title="Send"
-                ?disabled=${this.composerDisabled || (!this._prompt.trim() && !this._attachments?.length)}>${icon('arrowupsend')}</button>
+              <button type=${busy ? 'button' : 'submit'}
+                class="composer-send nx-action-btn-icon is-active ${this.uiSize === 'm' ? 'nx-btn-lg' : ''}"
+                aria-label=${!busy && this._handingOff ? 'Opening chat' : sendLabel}
+                title=${sendLabel}
+                @click=${busy ? this._onStop : nothing} ?disabled=${sendDisabled}
+              >${icon(busy ? 'stopprocessing' : 'arrowupsend')}</button>
             </div>
           </form>
           <p id="assistant-note" class="assistant-note">
