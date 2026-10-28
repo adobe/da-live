@@ -1,0 +1,18 @@
+nx-dialog.nx-form-aem-dialog {
+  --nx-form-aem-dialog-width: 80vw;
+  --nx-form-aem-dialog-height: 80vh;
+  --nx-dialog-max-width: var(--nx-form-aem-dialog-width);
+  --nx-dialog-max-height: var(--nx-form-aem-dialog-height);
+}
+
+nx-dialog.nx-form-aem-dialog::part(panel) {
+  width: var(--nx-form-aem-dialog-width);
+  height: var(--nx-form-aem-dialog-height);
+  overflow: hidden;
+}
+
+.nx-form-aem-selector {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}

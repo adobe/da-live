@@ -7,7 +7,31 @@ import '../fields/checkbox.js';
 import '../fields/button.js';
 import '../fields/number.js';
 import '../fields/date.js';
+import '../fields/asset.js';
 import { icon } from '../icons.js';
+import { ASSET_TYPES } from '../utils/assets.js';
+
+// The SDK types edited as one asset field, an object with `src` (and `altText` for images).
+// Only images are delivered as images, so only they preview. Files are delivered as links.
+const ASSET_FIELDS = new Map([
+  [ASSET_TYPES.image, { showsPreview: true }],
+  [ASSET_TYPES.file, { showsPreview: false }],
+]);
+
+function isAsset(node) {
+  return ASSET_FIELDS.has(node?.typeName);
+}
+
+// A value of a `$ref` type is one field even though it is an object.
+function isStructured(node) {
+  return node?.typeRef === undefined && (node?.kind === 'object' || node?.kind === 'array');
+}
+
+// Removing the file clears the whole asset, alt text included.
+function assetValue(field) {
+  if (!field.value) return undefined;
+  return field.altText ? { src: field.value, altText: field.altText } : { src: field.value };
+}
 
 const { loadStyle } = await import(`${getNx2()}/utils/utils.js`);
 
@@ -29,7 +53,9 @@ function describeIssue(issue) {
     case 'missing-type':
       return 'is missing a "type" declaration';
     case 'external-ref':
-      return `uses external $ref "${ref}" (only same-document refs are supported)`;
+      return `uses external $ref "${ref}" (only same-document refs and the image and file definitions are supported)`;
+    case 'type-ref-keywords':
+      return `sets ${(issue.details?.properties ?? []).map((k) => `"${k}"`).join(', ')} next to the asset $ref (only title, description, readOnly, default and, on an image, required: ["altText"] are allowed)`;
     case 'unresolved-ref':
       return `uses $ref "${ref}" which does not resolve in the document`;
     default:
@@ -43,9 +69,14 @@ class Editor extends LitElement {
     state: { attribute: false },
     nav: { attribute: false },
     onSelect: { attribute: false },
+
+    assetSources: { attribute: false },
+    previewOrigin: { attribute: false },
+
     _reorderPointer: { state: true },
     _reorderTargetIndex: { state: true },
     _reorderConfirmed: { state: true },
+
     _issuesOpen: { state: true },
     _openMenuPointer: { state: true },
   };
@@ -188,6 +219,40 @@ class Editor extends LitElement {
     this._mutate((editor) => editor.setField(node.pointer, raw === '' ? undefined : raw));
   }
 
+  // Selecting, removing or describing an asset saves at once.
+  _onAssetChange(node, e) {
+    const field = e.target;
+    this._mutate((editor) => editor.setField(node.pointer, assetValue(field)));
+  }
+
+  _renderAsset(node, { hideLabel = false } = {}) {
+    const { pointer } = node;
+    const { src, altText } = node.value ?? {};
+    // A filled asset without a file reports the error on its `src`.
+    const error = this._error(pointer) || this._error(`${pointer}/src`);
+    const altNode = node.children?.find((child) => child.pointer === `${pointer}/altText`);
+    return html`
+      <form-asset
+        data-pointer=${pointer}
+        .label=${hideLabel ? '' : (node.label ?? '')}
+        .required=${!hideLabel && !!node.required}
+        .error=${error}
+        .description=${hideLabel ? '' : (node.description ?? '')}
+        .value=${src}
+        .altText=${altText}
+        .assetType=${node.typeName}
+        .showsPreview=${ASSET_FIELDS.get(node.typeName).showsPreview}
+        .acceptsAltText=${!!altNode}
+        .altRequired=${!!altNode?.required}
+        .altError=${this._error(`${pointer}/altText`)}
+        .sources=${this.assetSources}
+        .previewOrigin=${this.previewOrigin}
+        ?disabled=${!!node.readonly}
+        @change=${(e) => this._onAssetChange(node, e)}
+      ></form-asset>
+    `;
+  }
+
   _renderPrimitive(node, { hideLabel = false } = {}) {
     const required = !!node?.required;
     const readonly = !!node?.readonly;
@@ -327,7 +392,7 @@ class Editor extends LitElement {
       return;
     }
     const item = node?.items?.find((i) => i.pointer === pointer);
-    const structured = item?.kind === 'object' || item?.kind === 'array';
+    const structured = isStructured(item);
     this._openMenu(pointer);
     this._select(structured ? pointer : (node?.pointer ?? pointer));
     if (this._reorderPointer) this._resetReorder();
@@ -464,10 +529,10 @@ class Editor extends LitElement {
         ${showDesc ? html`<p class="form-node-description">${node.description}</p>` : nothing}
 
         ${displayItems.map((item, index) => {
-      const structured = item.kind === 'object' || item.kind === 'array';
+      const structured = isStructured(item);
       const reorderActive = this._reorderPointer === item.pointer && !this._reorderConfirmed;
       const title = `#${index + 1} ${item.label ?? node.itemLabel ?? 'Item'}`;
-      const content = item.kind === 'object'
+      const content = structured && item.kind === 'object'
         ? (item.children ?? []).map((c) => this._renderNode(c))
         : this._renderNode(item, { itemLabel: `#${index + 1}` });
       const menu = html`
@@ -508,7 +573,9 @@ class Editor extends LitElement {
               ` : html`
                 <p class="form-array-item-simple-label">${title}</p>
                 <div class="form-array-item-input-row">
-                  ${this._renderPrimitive(item, { hideLabel: true })}
+                  ${isAsset(item)
+          ? this._renderAsset(item, { hideLabel: true })
+          : this._renderPrimitive(item, { hideLabel: true })}
                   <div class="form-array-item-actions">${menu}</div>
                 </div>
               `}
@@ -544,6 +611,7 @@ class Editor extends LitElement {
     // Unsupported subtrees are skipped — the schema-issues dialog explains
     // what was dropped. The document value is preserved untouched.
     if (node.kind === 'unsupported') return nothing;
+    if (isAsset(node)) return this._renderAsset(node);
     if (node.kind === 'object') return this._renderObject(node, options);
     if (node.kind === 'array') return this._renderArray(node);
     return this._renderPrimitive(node);

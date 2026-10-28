@@ -22,6 +22,10 @@ const FILES = {
   settingsEdit: 's2-icon-settingsedit-20-n',
   confirm: 's2-icon-checkmarkcircle-20-n',
   cancel: 's2-icon-closecircle-20-n',
+  replace: 's2-icon-replace-20-n',
+  copy: 's2-icon-copy-20-n',
+  copied: 's2-icon-checkmark-20-n',
+  altText: 's2-icon-imagetext-20-n',
 };
 
 const NODES = Object.fromEntries(

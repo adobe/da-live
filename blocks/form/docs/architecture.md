@@ -13,6 +13,8 @@ The `/form` page content declares the block as `nx-form`. The nx2 loader loads `
 
 The block imports nx2 exports such as `loadStyle`, `hashChange`, `openPanel`, `getEWFlags` and the `source` api at runtime through `` await import(`${getNx2()}/...`) ``, with `getNx2()` from `scripts/utils.js`. Pages with `<meta name="nxver" content="2">` load nx2 from the same base URL, so these imports return the module instances the page already loaded. This includes the stateful `nx2/scripts/nx.js`.
 
+The form block also imports nx2's `utils/aem-assets/` modules, `utils/media-upload.js`, `ensurePreviewLogin` and `getLivePreviewUrl` for its asset fields. `/form` fails to load when the da-nx deployment that `getNx2()` resolves to doesn't ship them.
+
 For engine internals such as schema compilation, model build, validation, defaults policy and persistence semantics, see the SDK's [architecture.md](https://github.com/adobe-rnd/da-sc-sdk/blob/main/docs/architecture.md). This document only covers the da-live form block and what it adds on top.
 
 ---
@@ -25,12 +27,15 @@ blocks/form/
   form.css              workspace layout
   editor.js / .css      nx-form Lit element: routes (ctx/hash), mounts SDK, state snapshot + nav
   icons.js              sprite-backed icon() helper
-  fields/               Spectrum 2 field components (input, picker, checkbox, button, number)
+  fields/               Spectrum 2 field components (input, picker, checkbox, button, number, asset)
   utils/
     context.js          loadFormContext — routes documents to ready / blocked / select-schema
     da-api.js           fetch/save against DA source via the nx2 source api
     schemas.js          loadSchemas — schema discovery + module cache
     persistence.js      attachPersistence — single-flight save with re-queue
+    assets.js           asset sources for image and file fields (upload, AEM Assets)
+    aem-selector.js     AEM Assets selector dialog
+    media.js            asset URL and file type helpers
   views/
     editor.js / .css    field rendering + array rendering
     sidebar.js / .css   navigation tree
