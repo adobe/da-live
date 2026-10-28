@@ -1,5 +1,4 @@
 /* eslint-disable max-len */
-/* global view */
 // User action handlers - only loaded when user actually clicks action buttons
 
 import { DOMSerializer, Fragment, Slice } from 'da-y-wrapper';
@@ -84,7 +83,8 @@ function getOuterHTMLWithSortedAttributes(element) {
 }
 
 function nodeToHtml(node) {
-  const serializer = DOMSerializer.fromSchema(view.state.schema);
+  // The canvas has no global `view`; the node carries its own schema.
+  const serializer = DOMSerializer.fromSchema(node.type.schema);
   const fragment = serializer.serializeFragment(node.content);
 
   const div = document.createElement('div');
@@ -117,7 +117,7 @@ function createCompositeButton({
     switchBtn.appendChild(createTooltip(switchTooltip, 'diff-tooltip'));
   }
 
-  const confirmBtn = createButton('confirm-btn da-diff-btn-base-element', 'button', { 'aria-label': `${tooltip}` });
+  const confirmBtn = createButton('nx-action-btn-icon confirm-btn da-diff-btn-base-element', 'button', { 'aria-label': `${tooltip}` });
   confirmBtn.addEventListener('click', handler);
   if (tooltip) {
     confirmBtn.appendChild(createTooltip(tooltip, 'diff-tooltip'));

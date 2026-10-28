@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { formatDate } from '../../../../../blocks/shared/utils.js';
-import { formatVersions, buildDisplayItems, formatUser } from '../../../../../blocks/shared/version/helpers.js';
+import { formatVersions, buildDisplayItems, entryKey, formatUser } from '../../../../../blocks/shared/version/helpers.js';
 
 const TIME_OPTS = { hour: 'numeric', minute: '2-digit' };
 const DATE_OPTS = { year: 'numeric', month: 'short', day: 'numeric' };
@@ -8,6 +8,36 @@ const DATE_OPTS = { year: 'numeric', month: 'short', day: 'numeric' };
 const ver = (overrides = {}) => ({ isVersion: true, date: 'Jan 1', time: '10:00', users: [], ...overrides });
 
 const auditGroup = (audits = [{ date: 'Jan 1', time: '09:00', users: [] }]) => ({ date: 'Jan 1', audits });
+
+describe('entryKey', () => {
+  it('uses the legacy version URL before the version ID', () => {
+    expect(entryKey(ver({ url: '/versionsource/org/page.html', versionId: 'version-1' })))
+      .to.equal('/versionsource/org/page.html');
+  });
+
+  it('uses the version ID for versions without a URL', () => {
+    expect(entryKey(ver({ versionId: 'version-1' }))).to.equal('version-1');
+  });
+
+  it('keeps the entry itself as the fallback identity', () => {
+    const entry = ver();
+    expect(entryKey(entry)).to.equal(entry);
+  });
+
+  it('keeps an audit group key stable when newer audits are added', () => {
+    const oldest = { timestamp: 1000 };
+    expect(entryKey(auditGroup([oldest]))).to.equal('audit-1000');
+    expect(entryKey(auditGroup([{ timestamp: 2000 }, oldest]))).to.equal('audit-1000');
+  });
+
+  it('preserves a zero timestamp', () => {
+    expect(entryKey(auditGroup([{ timestamp: 0 }]))).to.equal('audit-0');
+  });
+
+  it('uses date and time when the audit timestamp is missing', () => {
+    expect(entryKey(auditGroup())).to.equal('audit-Jan 1-09:00');
+  });
+});
 
 describe('Versions helper', () => {
   it('Format user returns the plain email for a human', () => {

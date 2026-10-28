@@ -344,7 +344,47 @@ describe('DaActionBar', () => {
     });
   });
 
+  describe('Ask Coworker', () => {
+    it('offers the action only when available and requests the existing chat panel', async () => {
+      const el = new DaActionBar();
+      el.items = [{ path: '/org/site/page.html' }];
+      document.body.append(el);
+      try {
+        await el.updateComplete;
+        expect(el.shadowRoot.querySelector('[aria-label="Ask Coworker"]')).to.be.null;
+        el.canAskCoworker = true;
+        await el.updateComplete;
+        let event;
+        el.addEventListener('askcoworker', (e) => { event = e; });
+        el.shadowRoot.querySelector('[aria-label="Ask Coworker"]').click();
+        expect(event.bubbles).to.be.true;
+        expect(event.composed).to.be.true;
+        el.canAskCoworker = false;
+        await el.updateComplete;
+        expect(el.shadowRoot.querySelector('[aria-label="Ask Coworker"]')).to.be.null;
+      } finally {
+        el.remove();
+      }
+    });
+  });
+
   describe('handleFavorite', () => {
+    it('describes whether the favorite action adds or removes a favorite', async () => {
+      const el = new DaActionBar();
+      el.items = [{ path: '/org/site/page.html' }];
+      document.body.append(el);
+      try {
+        await el.updateComplete;
+        const button = el.shadowRoot.querySelector('.favorite-button');
+        expect(button.getAttribute('aria-label')).to.equal('Favorite');
+        el.isFavorite = true;
+        await el.updateComplete;
+        expect(button.getAttribute('aria-label')).to.equal('Remove favorite');
+      } finally {
+        el.remove();
+      }
+    });
+
     it('Dispatches an onfavorite event', () => {
       const el = new DaActionBar();
       let dispatched;

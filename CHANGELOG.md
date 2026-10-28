@@ -1,3 +1,59 @@
+# [1.15.0](https://github.com/adobe/da-live/compare/v1.14.2...v1.15.0) (2026-10-27)
+
+
+### Features
+
+* set image focal point from canvas toolbar in layout mode ([#1479](https://github.com/adobe/da-live/issues/1479)) ([824f44f](https://github.com/adobe/da-live/commit/824f44f5d8fad645eccbffb772d71a54ee52d9c5))
+
+## [1.14.2](https://github.com/adobe/da-live/compare/v1.14.1...v1.14.2) (2026-10-27)
+
+
+### Bug Fixes
+
+* **ew:** position slash menu correctly when it opens above cursor and user starts typing ([#1497](https://github.com/adobe/da-live/issues/1497)) ([6a9d91c](https://github.com/adobe/da-live/commit/6a9d91cf587d373ea24f970ace626947eb70e089))
+
+## [1.14.1](https://github.com/adobe/da-live/compare/v1.14.0...v1.14.1) (2026-10-27)
+
+
+### Bug Fixes
+
+* **ew:** add confirm dialog to block delete from toolbar, consolidate dialogs for outline & toolbar ([#1496](https://github.com/adobe/da-live/issues/1496)) ([6d8a138](https://github.com/adobe/da-live/commit/6d8a13862f105877cff6302a65db45e81322342f))
+
+# [1.14.0](https://github.com/adobe/da-live/compare/v1.13.2...v1.14.0) (2026-10-27)
+
+
+### Features
+
+* add permission management UI ([#1503](https://github.com/adobe/da-live/issues/1503)) ([50c7830](https://github.com/adobe/da-live/commit/50c78306768b3d675b1f3657967845f4081cefe3)), closes [#1](https://github.com/adobe/da-live/issues/1) [#2](https://github.com/adobe/da-live/issues/2) [#4](https://github.com/adobe/da-live/issues/4) [#5](https://github.com/adobe/da-live/issues/5) [#6](https://github.com/adobe/da-live/issues/6) [#7](https://github.com/adobe/da-live/issues/7) [#8](https://github.com/adobe/da-live/issues/8) [#9](https://github.com/adobe/da-live/issues/9) [#11](https://github.com/adobe/da-live/issues/11) [#13](https://github.com/adobe/da-live/issues/13)
+
+## [1.13.2](https://github.com/adobe/da-live/compare/v1.13.1...v1.13.2) (2026-10-26)
+
+
+### Bug Fixes
+
+* update browse UI ([#1469](https://github.com/adobe/da-live/issues/1469)) ([46fb729](https://github.com/adobe/da-live/commit/46fb7293914aa23223c3f00e7e227e72693db61b))
+
+## [1.13.1](https://github.com/adobe/da-live/compare/v1.13.0...v1.13.1) (2026-10-26)
+
+
+### Bug Fixes
+
+* preflight spinners not loading ([#1488](https://github.com/adobe/da-live/issues/1488)) ([4251141](https://github.com/adobe/da-live/commit/4251141d2e5fd49518b3fd9fb17334ccfc6e2e33))
+
+# [1.13.0](https://github.com/adobe/da-live/compare/v1.12.3...v1.13.0) (2026-10-22)
+
+
+### Features
+
+* show LOC and MSM merge conflicts in the canvas editor ([#1189](https://github.com/adobe/da-live/issues/1189)) ([54fe9f7](https://github.com/adobe/da-live/commit/54fe9f7db6d714cfd415b1eb7488fb9aa5e40c12))
+
+## [1.12.3](https://github.com/adobe/da-live/compare/v1.12.2...v1.12.3) (2026-10-22)
+
+
+### Bug Fixes
+
+* **ew:** refresh version history without reload ([#1430](https://github.com/adobe/da-live/issues/1430)) ([10411fe](https://github.com/adobe/da-live/commit/10411fe7c25832e8a93671e203099a5ee86e4630)), closes [#1269](https://github.com/adobe/da-live/issues/1269)
+
 ## [1.12.2](https://github.com/adobe/da-live/compare/v1.12.1...v1.12.2) (2026-10-21)
 
 

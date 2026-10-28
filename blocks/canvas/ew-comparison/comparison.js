@@ -40,6 +40,9 @@ export function routeComparisonMessage({ action, details, requestId }, { context
 
 export function normalizeComparisonHtml(html, context) {
   const dom = new DOMParser().parseFromString(html, 'text/html');
+  // The publish pipeline drops elements marked data-mdast="ignore", such as the
+  // upstream side of an unresolved merge, so they never reach the live page.
+  dom.querySelectorAll('[data-mdast="ignore"]').forEach((el) => el.remove());
   dom.querySelectorAll('script, style, iframe, object, embed, form, input, button, base, link, meta, template, svg, math').forEach((el) => el.remove());
   dom.querySelectorAll('div.tableWrapper').forEach((el) => el.replaceWith(...el.childNodes));
   [...dom.body.querySelectorAll('*')].reverse().forEach((el) => {
