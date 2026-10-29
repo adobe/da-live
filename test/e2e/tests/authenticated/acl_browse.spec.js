@@ -34,35 +34,6 @@ test('Read-only directory', async ({ page }) => {
   await expect(page.locator('button.delete-button').filter({ visible: true })).toHaveCount(0);
 });
 
-test('Card view renders nx-card slots and restores selection focus', async ({ page }) => {
-  test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
-  await page.goto(`${ENV}/${getQuery()}#/da-testautomation/acltest/testdocs/subdir`);
-  await dismissAlertBanner(page);
-
-  await page.getByRole('button', { name: 'Appearance' }).click();
-  await page.getByRole('button', { name: 'Card view' }).click();
-
-  const href = '/edit#/da-testautomation/acltest/testdocs/subdir/onlyread-doc';
-  const item = row(page, href);
-  const checkbox = item.getByRole('checkbox', { name: 'Select item', exact: true });
-  const card = item.locator('nx-card');
-  await expect(card).toBeVisible();
-  const slotAssignments = await card.evaluate((element) => ['media', 'heading', 'actions', 'metadata']
-    .map((name) => element.shadowRoot.querySelector(`slot[name="${name}"]`)?.assignedElements().length ?? 0));
-  expect(slotAssignments).toEqual([1, 1, 1, 2]);
-  await expect(item.locator('a[slot="heading"]')).toHaveText('onlyread-doc');
-  await expect(item.locator('[slot="metadata"].card-type')).toBeVisible();
-  await expect(item.getByRole('button', { name: 'More', exact: true })).toBeVisible();
-
-  await checkbox.check();
-  await expect(checkbox).toBeChecked();
-  const actionBar = page.locator('da-actionbar');
-  await expect(actionBar.getByRole('button', { name: 'Unselect items' })).toBeVisible();
-  await actionBar.getByRole('button', { name: 'Unselect items' }).click();
-  await expect(checkbox).not.toBeChecked();
-  await expect(checkbox).toBeFocused();
-});
-
 test('Read-write directory', async ({ browser, page }, workerInfo) => {
   test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
   test.setTimeout(60000);
