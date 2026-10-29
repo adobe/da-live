@@ -29,6 +29,7 @@ export function createAssetDragHandlers({ container, isLive, getPreview = () => 
   let shield;
   let pointer;
   let listeners;
+  let hoveredPreview;
   let completed = false;
 
   const sourcePoint = (mouse) => {
@@ -39,22 +40,46 @@ export function createAssetDragHandlers({ container, isLive, getPreview = () => 
     return { x: rect.left + mouse.x, y: rect.top + mouse.y };
   };
 
+  const clearPreview = () => {
+    // Empty assets make feedback a no-op in older preview receivers.
+    hoveredPreview?.port.postMessage({
+      type: MESSAGE_TYPES.IMAGE_REPLACE,
+      payload: { assets: [], phase: 'leave' },
+    });
+    hoveredPreview = undefined;
+  };
+
   const updatePreview = () => {
     if (!layer) return;
     const preview = getPreview();
     const iframe = preview?.port && preview.iframe;
     const bounds = iframe?.isConnected && iframe.getBoundingClientRect();
     shield.hidden = !bounds || !bounds.width || !bounds.height;
-    if (shield.hidden) return;
+    if (shield.hidden) {
+      clearPreview();
+      return;
+    }
     Object.assign(shield.style, {
       left: `${bounds.left}px`,
       top: `${bounds.top}px`,
       width: `${bounds.width}px`,
       height: `${bounds.height}px`,
     });
+    if (!pointer || pointer.x < bounds.left || pointer.x >= bounds.left + bounds.width
+      || pointer.y < bounds.top || pointer.y >= bounds.top + bounds.height) {
+      clearPreview();
+      return;
+    }
+    if (hoveredPreview?.port !== preview.port || hoveredPreview?.iframe !== iframe) clearPreview();
+    hoveredPreview = preview;
+    preview.port.postMessage({
+      type: MESSAGE_TYPES.IMAGE_REPLACE,
+      payload: { assets: [], phase: 'hover', x: pointer.x - bounds.left, y: pointer.y - bounds.top },
+    });
   };
 
   const destroy = () => {
+    clearPreview();
     completed = true;
     draggedAssets = undefined;
     pointer = undefined;
@@ -103,9 +128,11 @@ export function createAssetDragHandlers({ container, isLive, getPreview = () => 
       return false;
     }
     const bounds = preview.iframe.getBoundingClientRect();
+    // SDK metadata may contain callbacks; use the same JSON boundary as document drops.
+    const serializableAssets = JSON.parse(JSON.stringify(normalized));
     preview.port.postMessage({
       type: MESSAGE_TYPES.IMAGE_REPLACE,
-      payload: { assets: normalized, x: x - bounds.left, y: y - bounds.top },
+      payload: { assets: serializableAssets, x: x - bounds.left, y: y - bounds.top },
     });
     return true;
   };
@@ -144,6 +171,8 @@ export function createAssetDragHandlers({ container, isLive, getPreview = () => 
     shield.addEventListener('pointermove', (event) => {
       move({ point: { x: event.clientX, y: event.clientY } });
     });
+    shield.addEventListener('pointerleave', clearPreview);
+    shield.addEventListener('dragleave', clearPreview);
     const release = (event) => {
       if (event.button !== 0) return;
       event.preventDefault();
