@@ -4,6 +4,7 @@ import { getSourceUploadContext, getSourceOrgSite } from './sourceUploadContext.
 import { refuseOversizedImage } from '../../utils/image-upload.js';
 import { SUPPORTED_IMAGE_TYPES as SUPPORTED_IMAGE_FILES } from '../../../shared/constants.js';
 import { readDroppedAssets, dropAssets } from './assetDrop.js';
+import { insertDroppedHtml } from '../../editor-utils/html-drop.js';
 
 export { SUPPORTED_IMAGE_FILES };
 
@@ -67,11 +68,28 @@ export default function imageDrop(schema, getSourceUrl) {
   return new Plugin({
     props: {
       handleDOMEvents: {
-        drop: (view, event) => {
+        dragover: (view, event) => {
+          if (!view.editable || view.dragging || !event.dataTransfer?.types.some(
+            (type) => ['text/html', 'Files', 'collectionviewdata'].includes(type),
+          )) return false;
           event.preventDefault();
-
+          event.dataTransfer.dropEffect = 'copy';
+          return true;
+        },
+        drop: (view, event) => {
+          if (!view.editable) return false;
+          const position = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
           const assets = readDroppedAssets(event.dataTransfer);
+          if (!view.dragging && !event.dataTransfer.files.length
+            && event.dataTransfer.types.includes('text/html')
+            && !assets) {
+            const html = event.dataTransfer.getData('text/html');
+            event.preventDefault();
+            return insertDroppedHtml({ view, html, position });
+          }
+
           if (assets) {
+            event.preventDefault();
             dropAssets(view, {
               assets,
               coords: { left: event.clientX, top: event.clientY },
@@ -80,12 +98,17 @@ export default function imageDrop(schema, getSourceUrl) {
             return true;
           }
 
-          const { files } = event.dataTransfer;
+          const files = [...event.dataTransfer.files];
           if (files.length === 0) return false;
 
           const details = getSourceUploadContext(getSourceUrl() ?? '');
           if (!details) return false;
 
+          event.preventDefault();
+          if (position != null) {
+            const selection = TextSelection.near(view.state.doc.resolve(position));
+            view.dispatch(view.state.tr.setSelection(selection));
+          }
           ([...files]).forEach(async (file) => {
             await uploadImageFile(view, file, details);
           });
