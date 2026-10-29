@@ -32,6 +32,18 @@ Do not substitute `nx=ui-size-scale`: that branch does not yet contain the new
 shared card. Sizing integration remains separate; neither adobe/da-nx#816 nor
 adobe/da-live#1416 is modified or merged by this work.
 
+For a temporary M-size preview of only the quick-action tiles, run this in the
+DevTools console with the context set to **top**, after the tiles have loaded:
+
+```js
+document.querySelector('da-landing').shadowRoot
+  .querySelectorAll('da-landing-tile')
+  .forEach((tile) => { tile.size = 'm'; });
+```
+
+This does not enable whole-shell sizing. Reloading or a parent render restores
+the shell-selected size.
+
 ## Component ownership
 
 - Nexter owns the presentation-only `nx-card`, based on Browse's card layout.

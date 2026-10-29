@@ -239,7 +239,7 @@ textarea::placeholder {
   line-height: 16px;
 }
 
-.files-panel, .tasks-panel {
+.files-panel {
   padding: 12px 16px 16px;
   border-radius: 16px;
   background: light-dark(#fff9, #222222b3);
