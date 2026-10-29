@@ -13,6 +13,15 @@
 import { initIms } from '../blocks/shared/utils.js';
 import { setNx, nxJS, nxCSS, getHomeHref, getNavigationHref } from './utils.js';
 
+export function configureLandingNav() {
+  const landing = new URLSearchParams(window.location.search).get('landing');
+  if (!['true', 'home'].includes(landing) || document.head.querySelector('meta[name="nav-path"]')) return;
+  const meta = document.createElement('meta');
+  meta.name = 'nav-path';
+  meta.content = '/nx/fragments/nav-new-landing';
+  document.head.append(meta);
+}
+
 export function decorateArea(options = {}) {
   const area = options instanceof Node ? options : options.area || document;
   area.querySelectorAll('a[href]').forEach((link) => {
@@ -72,6 +81,20 @@ const CONFIG = {
   imsScope: 'ab.manage,AdobeID,gnav,openid,org.read,read_organizations,session,aem.frontend.all,additional_info.ownerOrg,additional_info.projectedProductContext,account_cluster.read',
 };
 
+if (nx2) {
+  document.addEventListener('site-selector-ready', async ({ detail: { selector, signal } }) => {
+    try {
+      const { connectSiteSelector } = await import('../blocks/shared/site-picker.js');
+      if (!signal.aborted) connectSiteSelector({ selector, signal });
+    } catch (error) {
+      if (!signal.aborted) {
+        selector.error = `Could not load your sites: ${error.message}`;
+        selector.addEventListener('site-retry', () => window.location.reload(), { once: true, signal });
+      }
+    }
+  });
+}
+
 export default async function loadPage() {
   if (!nx2) {
     // pin to light scheme
@@ -95,6 +118,7 @@ export default async function loadPage() {
     }
   }
 
+  if (nx2) configureLandingNav();
   await loadArea();
 }
 

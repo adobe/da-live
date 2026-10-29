@@ -15,18 +15,6 @@ html:has(meta[content="app-frame"]) body main:has(da-landing) {
   border: 0;
 }
 
-nx-nav:has(> .landing-workspace) {
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  column-gap: 16px;
-}
-
-@media (width < 600px) {
-  nx-nav:has(> .landing-workspace) {
-    column-gap: var(--s2-spacing-100);
-  }
-
-}
-
 @font-face {
   font-family: landing-clean;
   src: url('/blocks/landing/adobe-clean-regular.woff2') format('woff2');

@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getFirstSheet, fetchDaConfigs } from '../../../shared/utils.js';
-import { getNx, sanitizePathParts, getNxEWFlags, getNx2Api } from '../../../../scripts/utils.js';
+import { getNx, sanitizePathParts, getNxEWFlags } from '../../../../scripts/utils.js';
 import { getChatPanelContent } from '../../../shared/chat-panel.js';
 import { getBrowseSettings, updateBrowseSettings } from '../shared/settings.js';
 
@@ -40,8 +40,6 @@ export default class DaBrowse extends LitElement {
     _permissions: { state: true },
     _search: { state: true },
     _toolsOpen: { state: true },
-    _sitePickerError: { state: true },
-    _addingSite: { state: true },
   };
 
   _browseSelKeys = new Set();
@@ -98,14 +96,12 @@ export default class DaBrowse extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [style];
     this._handleShortcuts = this.handleShortcuts.bind(this);
     document.addEventListener('keydown', this._handleShortcuts);
-    window.addEventListener('storage', this.handleSitesStorage);
     this.mountSearch();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('keydown', this._handleShortcuts);
-    window.removeEventListener('storage', this.handleSitesStorage);
     this.destroySearch();
   }
 
@@ -115,86 +111,6 @@ export default class DaBrowse extends LitElement {
 
   updated() {
     this.syncSearch();
-    this.syncSitePicker();
-  }
-
-  handleSitesStorage = ({ key }) => {
-    if (key === 'da-sites' || key === null) this.syncSitePicker();
-  };
-
-  syncSitePicker() {
-    if (!this._sitePicker) return;
-    const { org, site } = this.details ?? {};
-    const value = org && site ? `${org}/${site}` : '';
-    const { sites, error } = (() => {
-      try {
-        const recentSites = JSON.parse(localStorage.getItem('da-sites') || '[]');
-        if (!Array.isArray(recentSites)) throw new TypeError('Recent sites must be a list.');
-        return { sites: this._sitePickerModule.getSiteOptions({ recentSites, current: value }) };
-      } catch (cause) {
-        return {
-          error: `Could not read recent sites: ${cause.message}`,
-          sites: this._sitePickerModule.getSiteOptions({ current: value }),
-        };
-      }
-    })();
-    const key = JSON.stringify({ value, sites, error });
-    if (key === this._siteChoicesKey) return;
-    this._siteChoicesKey = key;
-    this._sitesRequest?.abort();
-    if (this._sitePickerScope !== value) this._addingSite = false;
-    this._sitePickerScope = value;
-    this._sitePickerError = error;
-    this._sitePickerModule.updateSitePicker(
-      { picker: this._sitePicker, sites, value },
-    );
-    if (sites.length) this.checkSites({ sites, value, error });
-  }
-
-  async checkSites({ sites, value, error }) {
-    const request = new AbortController();
-    this._sitesRequest = request;
-    try {
-      const { source } = await getNx2Api();
-      const { checkSiteChoices } = this._sitePickerModule;
-      const inaccessibleSites = this._inaccessibleSites;
-      const result = await checkSiteChoices(
-        { sites, source, signal: request.signal, inaccessibleSites },
-      );
-      if (request.signal.aborted || !this.isConnected) return;
-      this._inaccessibleSites = result.inaccessibleSites;
-      this._sitePickerError = [error, result.error].filter(Boolean).join(' ') || undefined;
-      this._sitePickerModule.updateSitePicker(
-        { picker: this._sitePicker, sites: result.sites, value },
-      );
-    } catch (cause) {
-      if (!request.signal.aborted && this.isConnected) {
-        this._sitePickerError = [error, `Could not check your sites: ${cause.message}`].filter(Boolean).join(' ');
-      }
-    }
-  }
-
-  async showAddSite() {
-    const { org, site } = this.details;
-    try {
-      await import('../../../shared/add-site.js');
-      if (this.isConnected && org === this.details.org && site === this.details.site) {
-        this._addingSite = true;
-      }
-    } catch (error) {
-      if (this.isConnected) this._sitePickerError = `Could not open Add site: ${error.message}`;
-    }
-  }
-
-  closeAddSite() {
-    this._addingSite = false;
-    this._sitePicker?.shadowRoot?.querySelector('button')?.focus();
-  }
-
-  siteAdded({ detail: { value } }) {
-    this.closeAddSite();
-    this.syncSitePicker();
-    window.location.hash = `/${value}`;
   }
 
   handleShortcuts(e) {
@@ -248,7 +164,14 @@ export default class DaBrowse extends LitElement {
             width: '400px',
             getContent: getChatPanelContent(),
           });
-          if (wasPanelOpen('chat')) openChatPanel();
+          const url = new URL(window.location.href);
+          if (url.searchParams.get('chat') === 'closed') {
+            closeChatPanel();
+            url.searchParams.delete('chat');
+            window.history.replaceState(window.history.state, '', url);
+          } else if (wasPanelOpen('chat')) {
+            openChatPanel();
+          }
         } else {
           closeChatPanel();
         }
@@ -341,9 +264,6 @@ export default class DaBrowse extends LitElement {
   }
 
   destroySearch() {
-    this._sitesRequest?.abort();
-    this._siteChoicesKey = undefined;
-    this._addingSite = false;
     this._unwatchTools?.();
     if (this._toolsPanel) {
       closeToolsPanel();
@@ -352,17 +272,12 @@ export default class DaBrowse extends LitElement {
     }
     this.clearSearch();
     this._navField?.remove();
-    this._sitePicker?.remove();
-    this._sitePicker = undefined;
   }
 
   async mountNavField() {
     const nav = document.querySelector('nx-nav');
     if (!nav) return;
-    const [, sitePickerModule] = await Promise.all([
-      import('../da-browse-search/da-browse-search.js'),
-      import('../../../shared/site-picker.js'),
-    ]);
+    await import('../da-browse-search/da-browse-search.js');
     if (!this.isConnected) return;
     if (!this._navField) {
       const field = document.createElement('da-browse-search');
@@ -376,17 +291,7 @@ export default class DaBrowse extends LitElement {
       field.addEventListener('toolstoggle', () => toggleToolsPanel(this._toolsOpen));
       this._navField = field;
     }
-    if (!this._sitePicker) {
-      this._sitePickerModule = sitePickerModule;
-      this._sitePicker = sitePickerModule.createSitePicker({
-        onSelect: (value) => { window.location.hash = `/${value}`; },
-        onAdd: () => this.showAddSite(),
-      });
-      this._sitePicker.slot = 'context';
-      this._sitePicker.classList.add('browse-site-picker');
-    }
-    nav.append(this._sitePicker, this._navField);
-    this.syncSitePicker();
+    nav.append(this._navField);
     this.updateNavField();
     this.syncSearch();
     this.getToolsPanel().catch(() => { });
@@ -607,7 +512,6 @@ export default class DaBrowse extends LitElement {
   render() {
     const search = this._search;
     return html`
-      ${this._sitePickerError ? html`<p role="alert">${this._sitePickerError}</p>` : nothing}
       <da-browse-header exportparts="chat-btn"
         .details=${this.details}
         .chatEnabled=${this._chatEnabled}
@@ -633,9 +537,6 @@ export default class DaBrowse extends LitElement {
           ${this.renderList()}
         </div>
       </div>
-      ${this._addingSite ? html`
-        <da-add-site .org=${this.details.org}
-          @site-added=${this.siteAdded} @close=${this.closeAddSite}></da-add-site>` : nothing}
     `;
   }
 }

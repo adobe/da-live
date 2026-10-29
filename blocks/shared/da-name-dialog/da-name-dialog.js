@@ -63,7 +63,7 @@ class DaNameDialog extends LitElement {
     if (!this.open) return nothing;
     return html`
       <nx-dialog title="${this.title ?? 'New item'}" @close=${this._onClose}>
-        <label class="nx-form-field ${this._nameError ? 'nx-field-error' : ''}">
+        <label class="nx-form-field ${this._nameError || this.error ? 'nx-field-error' : ''}">
           <span>Name</span>
           <input autofocus type="text" class="nx-input" placeholder="${this.namePlaceholder ?? 'name'}"
                  autocomplete="off"

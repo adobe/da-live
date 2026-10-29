@@ -4,17 +4,13 @@ import { getChatPanelContent, addChatContext } from '../shared/chat-panel.js';
 import { getTypeLabel, isImageExt } from '../shared/icons.js';
 import { getFavorites, toggleFavorite } from '../browse/shared/favorites.js';
 import { getBrowseSettings, updateBrowseSettings } from '../browse/v2/shared/settings.js';
-import { setRecentSite } from '../browse/da-sites/utils.js';
-import {
-  getSiteOptions, getBrowseHref, getFileHref, loadFiles, getLandingIconHref, formatModified,
-  loadMyOpenComments, getCreateSiteHref,
-} from './utils.js';
-import { buildDeepLinkUrl } from '../canvas/comments/helpers/deep-link.js';
+import { getBrowseHref, getFileHref, loadFiles, getLandingIconHref, formatModified } from './utils.js';
+import { EMPTY_DOC } from '../shared/utils.js';
 import '../browse/v2/da-card-preview/da-card-preview.js';
 import '../shared/file-actions/file-actions.js';
 import renderFileTable from '../shared/file-table.js';
-import renderAttentionTable from '../shared/attention-table.js';
-import { createSitePicker, updateSitePicker, checkSiteChoices } from '../shared/site-picker.js';
+import { DOC_TILES } from './constants.js';
+import './tile.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { registerPanelSection, PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
@@ -52,12 +48,10 @@ function icon(name) {
 export class DaLanding extends LitElement {
   static properties = {
     _scope: { state: true },
-    _sites: { state: true },
     _name: { state: true },
     _files: { state: true },
     _error: { state: true },
     _profileError: { state: true },
-    _siteError: { state: true },
     _actionError: { state: true },
     _favorites: { state: true },
     _tab: { state: true },
@@ -74,10 +68,9 @@ export class DaLanding extends LitElement {
     _chatOpen: { state: true },
     _aoInput: { state: true },
     _dragging: { state: true },
-    _comments: { state: true },
-    _commentsError: { state: true },
-    _commentsMessage: { state: true },
-    _addingSite: { state: true },
+    _permissions: { state: true },
+    _openingPage: { state: true },
+    _createDialog: { state: true },
   };
 
   _sizing = sizing && new sizing.UISizeController(this);
@@ -118,7 +111,6 @@ export class DaLanding extends LitElement {
 
   _onStorage = ({ key }) => {
     if (key === 'da-favorites' || key === null) this.refreshFavorites();
-    if (key === 'da-sites' || key === null) this.loadSites();
   };
 
   constructor() {
@@ -132,11 +124,10 @@ export class DaLanding extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = styles;
-    this.mountWorkspace();
     this._unsubscribe = hashChange.subscribe((state) => this.setScope(state));
-    this.syncWorkspace();
     window.addEventListener('storage', this._onStorage);
     document.addEventListener(PANEL_EVENT.CLOSE, this._onChatPanelClose);
+    this._mountChatAction();
     this.loadProfile();
   }
 
@@ -144,16 +135,15 @@ export class DaLanding extends LitElement {
     this._dragging = false;
     this._unsubscribe?.();
     this._request?.abort();
-    this._sitesRequest?.abort();
     this.resetChat();
     this.clearAttachments();
-    this._addingSite = false;
-    this._sitePicker?.remove();
     if (this._sidenav) {
       this._sidenav.actions = this._sidenav.actions?.filter(
         (action) => action !== this._chatAction,
       );
     }
+    this._openingPage = undefined;
+    this._createDialog = undefined;
     window.removeEventListener('storage', this._onStorage);
     document.removeEventListener(PANEL_EVENT.CLOSE, this._onChatPanelClose);
     super.disconnectedCallback();
@@ -195,7 +185,7 @@ export class DaLanding extends LitElement {
     return this._scope ? `/${this._scope}` : '';
   }
 
-  mountWorkspace() {
+  _mountChatAction() {
     this._sidenav = document.querySelector('nx-sidenav');
     if (this._sidenav) {
       this._chatAction = {
@@ -211,20 +201,10 @@ export class DaLanding extends LitElement {
       };
       this._sidenav.actions = [this._chatAction, ...this._sidenav.actions || []];
     }
-    const nav = document.querySelector('nx-nav');
-    if (!nav) return;
-    const picker = createSitePicker({
-      onSelect: (value) => { window.location.hash = `#/${value}`; },
-      onAdd: () => this.showAddSite(),
-    });
-    picker.slot = 'search';
-    picker.classList.add('landing-workspace');
-    this._sitePicker = picker;
-    nav.append(picker);
   }
 
   updated() {
-    this.syncWorkspace();
+    this._syncChatAction();
     if (this._chat) this._chat.size = this.uiSize;
     if (this._aoInput) {
       Object.assign(this._aoInput, {
@@ -243,7 +223,7 @@ export class DaLanding extends LitElement {
     if (!this._prompt) this.shadowRoot.querySelector('textarea')?.style.removeProperty('height');
   }
 
-  syncWorkspace() {
+  _syncChatAction() {
     const active = !!this._chatOpen;
     if (this._chatAction && (this._chatAction.disabled !== !this._chatEnabled
       || this._chatAction.active !== active)) {
@@ -253,74 +233,10 @@ export class DaLanding extends LitElement {
         action === previous ? this._chatAction : action
       ));
     }
-    if (!this._sitePicker) return;
-    updateSitePicker({ picker: this._sitePicker, sites: this._sites, value: this._scope });
   }
 
-  loadSites() {
-    this._siteError = undefined;
-    try {
-      const recentSites = JSON.parse(localStorage.getItem('da-sites') || '[]');
-      if (!Array.isArray(recentSites)) throw new TypeError('Recent sites must be a list.');
-      this._sites = getSiteOptions({ recentSites, current: this._scope });
-    } catch (error) {
-      this._sites = getSiteOptions({ recentSites: [], current: this._scope });
-      this._siteError = `Could not read recent sites: ${error.message}`;
-    }
-    this.checkSites(this._sites);
-  }
-
-  rememberCurrentSite() {
-    if (!this._scope) return;
-    try {
-      const [org, site] = this._scope.split('/');
-      setRecentSite({ org, site });
-    } catch (error) {
-      this._siteError = `Could not save the current site in this browser: ${error.message}`;
-    }
-  }
-
-  async checkSites(sites) {
-    this._sitesRequest?.abort();
-    const request = new AbortController();
-    this._sitesRequest = request;
-    try {
-      const { source } = await getNx2Api();
-      const { signal } = request;
-      const inaccessibleSites = this._inaccessibleSites;
-      const result = await checkSiteChoices({ sites, source, signal, inaccessibleSites });
-      if (request.signal.aborted || !this.isConnected) return;
-      this._inaccessibleSites = result.inaccessibleSites;
-      this._sites = result.sites;
-      if (result.error) this._siteError = [this._siteError, result.error].filter(Boolean).join(' ');
-    } catch (error) {
-      if (!request.signal.aborted && this.isConnected) {
-        this._siteError = `Could not check your sites: ${error.message}`;
-      }
-    }
-  }
-
-  async showAddSite() {
-    const scope = this._scope;
-    try {
-      await import('../shared/add-site.js');
-      if (this.isConnected && this._scope === scope) this._addingSite = true;
-    } catch (error) {
-      if (this.isConnected && this._scope === scope) {
-        this._siteError = `Could not open Add site: ${error.message}`;
-      }
-    }
-  }
-
-  closeAddSite() {
-    this._addingSite = false;
-    this._sitePicker?.shadowRoot?.querySelector('button')?.focus();
-  }
-
-  siteAdded({ detail: { value } }) {
-    this.closeAddSite();
-    this.loadSites();
-    window.location.hash = `#/${value}`;
+  showAddSite() {
+    this.dispatchEvent(new CustomEvent('site-add', { bubbles: true, composed: true }));
   }
 
   async loadImsProfile() {
@@ -339,13 +255,15 @@ export class DaLanding extends LitElement {
 
   setScope(state) {
     const scope = state?.org && state?.site ? `${state.org}/${state.site}` : undefined;
-    if (this._scope === scope && this._sites && !this._request?.signal.aborted) return;
+    if (this._scope === scope && this._request && !this._request.signal.aborted) return;
     this._request?.abort();
     this.resetChat();
     this.clearAttachments();
     this._scopeToken = {};
     this._scope = scope;
-    this._addingSite = false;
+    this._openingPage = undefined;
+    this._createDialog = undefined;
+    this._permissions = undefined;
     this._tab = 'recent';
     this._limit = PAGE_SIZE;
     this._prompt = '';
@@ -358,8 +276,6 @@ export class DaLanding extends LitElement {
     this._dragging = false;
     this._error = undefined;
     this._actionError = undefined;
-    this.loadSites();
-    this.rememberCurrentSite();
     this.refreshFavorites();
     this.loadSite();
   }
@@ -371,87 +287,73 @@ export class DaLanding extends LitElement {
     const request = new AbortController();
     this._request = request;
     this._files = undefined;
-    this._comments = undefined;
-    this._commentsError = undefined;
-    this._commentsMessage = undefined;
+    this._permissions = undefined;
     this._error = undefined;
     if (!this._scope) return;
     this.loadChatAvailability(request);
     try {
       const { source } = await getNx2Api();
-      const files = await loadFiles({ path: this.path, source, signal: request.signal });
+      const { signal } = request;
+      const { files, permissions } = await loadFiles({ path: this.path, source, signal });
       if (!this.isConnected || request.signal.aborted) return;
       this._files = files;
-      this.rememberCurrentSite();
-      this.loadComments(files, request);
+      this._permissions = permissions;
     } catch (error) {
       if (!request.signal.aborted && this.isConnected) this._error = error.message;
     }
   }
 
-  async loadComments(files, request) {
-    const [org, site] = this._scope.split('/');
+  _onBrowse() {
+    document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
+  }
+
+  async _onCreatePage() {
+    if (!this._scope || !this._permissions?.includes('write') || !this._editor || this._openingPage) return;
+    const opening = {};
+    this._openingPage = opening;
     try {
-      const profile = await this.loadImsProfile();
-      if (!profile?.email && !profile?.userId) throw new Error('Sign in to see your comments.');
-      const { source } = await getNx2Api();
-      const { comments, message } = await loadMyOpenComments({
-        org, site, files, source, signal: request.signal, user: profile,
-      });
-      if (this.isConnected && !request.signal.aborted) {
-        this._comments = comments;
-        this._commentsMessage = message;
+      await import('../shared/da-name-dialog/da-name-dialog.js');
+      if (this.isConnected && this._openingPage === opening) {
+        this._createDialog = { folder: this.path, editor: this._editor };
       }
     } catch (error) {
-      if (this.isConnected && !request.signal.aborted) {
-        this._comments = [];
-        this._commentsError = `Could not load your comments: ${error.message}`;
+      if (this.isConnected && this._openingPage === opening) {
+        this._actionError = `Could not open New page: ${error.message}`;
+      }
+    } finally {
+      if (this._openingPage === opening) this._openingPage = undefined;
+    }
+  }
+
+  _onCloseCreatePage() {
+    this._createDialog = undefined;
+  }
+
+  async _onCreatePageSubmit({ detail: { name, openAfter } }) {
+    if (!this._createDialog || this._createDialog.saving) return;
+    const dialog = { ...this._createDialog, saving: true, error: undefined };
+    this._createDialog = dialog;
+    const path = `${dialog.folder}/${name}.html`;
+    try {
+      const { source } = await getNx2Api();
+      const existing = await source.getMetadata(path);
+      if (!this.isConnected || this._createDialog !== dialog) return;
+      if (existing.ok) throw new Error('A page with this name already exists. Choose another name.');
+      if (existing.status !== 404) throw new Error('Could not check the page name. Please try again.');
+      const response = await source.save(path, { body: EMPTY_DOC });
+      if (!this.isConnected || this._createDialog !== dialog) return;
+      if (!response?.ok) throw new Error('Could not create the page. Check your permissions and try again.');
+      this._onCloseCreatePage();
+      if (openAfter) {
+        window.location.href = getFileHref({ item: { path, ext: 'html' }, editor: dialog.editor });
+      } else {
+        await this.loadSite();
+      }
+    } catch (error) {
+      if (this.isConnected && this._createDialog === dialog) {
+        this._createDialog = { ...dialog, saving: false, error: error.message };
       }
     }
-  }
-
-  commentHref(comment) {
-    const href = getFileHref({ item: comment.file, editor: this._editor || '/canvas#' });
-    return buildDeepLinkUrl(href, comment.id).href;
-  }
-
-  renderCommentRow(comment) {
-    const name = comment.author?.name || comment.author?.email || 'Unknown';
-    return html`
-      <tr class="comment-task">
-        <td title=${comment.file.path}>
-          <a class="task-link" href=${this.commentHref(comment)}>${comment.file.name}</a>
-        </td>
-        <td title=${comment.body}>${comment.body}</td>
-        <td>
-          <span class="task-status" title="Open comment">
-            <span class="task-status-dot comment" aria-hidden="true"></span>
-            <span>Open Comment</span>
-          </span>
-        </td>
-        <td>
-          <span class="task-requester" title=${name}>
-            <span class="modifier-avatar" aria-hidden="true">${name[0].toUpperCase()}</span>
-            <span>${name}</span>
-          </span>
-        </td>
-      </tr>`;
-  }
-
-  renderCommentsStatus() {
-    if (!this._scope) {
-      return html`<p class="tasks-comments-status" role="status">Choose a site in the workspace picker to see your open comments.</p>`;
-    }
-    if (this._commentsError) return html`<p class="tasks-comments-status" role="status">${this._commentsError}</p>`;
-    if (this._error) {
-      return html`<p class="tasks-comments-status" role="status">Comments could not be checked because this site's files could not be loaded.</p>`;
-    }
-    if (!this._comments) return html`<p class="tasks-comments-status" role="status">Loading your open comments...</p>`;
-    if (!this._comments.length) {
-      return html`<p class="tasks-comments-status" role="status">${this._commentsMessage
-        || 'No unresolved comment threads you started or replied to were found on this site\'s root-level pages.'}</p>`;
-    }
-    return nothing;
   }
 
   async loadChatAvailability(request) {
@@ -786,6 +688,24 @@ export class DaLanding extends LitElement {
         </button>` : nothing}`;
   }
 
+  renderQuickLinks() {
+    return html`<ul class="quick-links" aria-label="Quick links">
+      <li><da-landing-tile heading="Browse Content"
+        description="View your recent, favorite, or other content by their organization"
+        iconHref="/img/icons/s2-icon-folderopen-20-n.svg" .size=${this.uiSize}
+        actionId="browse" @click=${this._onBrowse}
+        .href=${this._scope ? getBrowseHref({ path: this.path, closeChat: true }) : undefined}></da-landing-tile></li>
+      <li><da-landing-tile heading="Create a page" description="Create a new page in the selected site"
+        iconHref="/img/icons/s2-icon-edit-20-n.svg" tone="green" .size=${this.uiSize}
+        action actionId="create-page" .disabled=${!this._permissions?.includes('write') || !this._editor || !!this._openingPage}
+        @click=${this._onCreatePage}></da-landing-tile></li>
+      ${DOC_TILES.map((tile) => html`
+        <li><da-landing-tile .heading=${tile.title} .description=${tile.description}
+          .iconHref=${tile.iconHref} .tone=${tile.tone} .size=${this.uiSize}
+          .actionId=${tile.id} .href=${tile.href}></da-landing-tile></li>`)}
+    </ul>`;
+  }
+
   render() {
     const loadingMessage = this._readingFiles ? 'Reading files...' : 'Opening chat...';
     const busy = !!this._chatInputState?.busy;
@@ -795,13 +715,6 @@ export class DaLanding extends LitElement {
       : this.composerDisabled || (!this._prompt.trim() && !this._attachments?.length);
     return html`
       <div class="landing">
-        ${this._siteError ? html`<p role="status">${this._siteError}
-          <button class="nx-action-btn-quiet" @click=${this.loadSites}>Try again</button></p>` : nothing}
-        ${this._addingSite ? html`
-          <da-add-site .org=${this._scope?.split('/')[0]}
-            .createHref=${getCreateSiteHref({ org: this._scope?.split('/')[0] })}
-            @site-added=${this.siteAdded}
-            @close=${this.closeAddSite}></da-add-site>` : nothing}
         <section class="welcome" aria-labelledby="welcome-heading">
           <h1 id="welcome-heading">Hi${this._name ? html` ${this._name}` : nothing}, how can I help?</h1>
           ${this._aoInput ? html`
@@ -853,7 +766,7 @@ export class DaLanding extends LitElement {
             <a href=${ADOBE_AI_GUIDELINES_URL} target="_blank" rel="noopener noreferrer">AI User Guidelines</a>
           </p>
           <p id="assistant-context" class="sr-only">
-            ${this._scope ? `Working in ${this._scope}. Send a message to your site assistant.` : 'Choose a site to use the assistant.'}
+            ${this._scope ? `Working in ${this._scope}. Send opens your site assistant and starts the conversation.` : 'Choose a site to use the assistant.'}
           </p>
           ${this._chatError || (this._scope && this._chatEnabled === false) ? html`
             <p class="assistant-note" role="status">${this._chatError || 'The assistant is not enabled for this site.'}</p>` : nothing}
@@ -878,14 +791,13 @@ export class DaLanding extends LitElement {
           ${this._actionError ? html`<p role="alert">${this._actionError}</p>` : nothing}
           <div aria-busy=${!!this._scope && !this._files && !this._error}>${this.renderFiles()}</div>
         </section>
-        <section class="tasks-panel" aria-labelledby="tasks-heading">
-          <h2 id="tasks-heading">Need Attention</h2>
-          ${renderAttentionTable({
-    comments: this._comments,
-    renderCommentRow: (comment) => this.renderCommentRow(comment),
-    status: this.renderCommentsStatus(),
-  })}
-        </section>
+        ${this.renderQuickLinks()}
+        ${this._createDialog ? html`<da-name-dialog open
+          dialog-title="New page in ${this._scope?.split('/')[1]}"
+          name-placeholder="page name" show-create-and-open
+          ?saving=${this._createDialog.saving} .error=${this._createDialog.error || ''}
+          @da-name-submit=${this._onCreatePageSubmit}
+          @close=${this._onCloseCreatePage}></da-name-dialog>` : nothing}
       </div>`;
   }
 }

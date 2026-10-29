@@ -16,7 +16,7 @@ so returning Home stays light even when the saved preference is dark.
 After publishing the `lp` branch, open:
 
 ```text
-https://lp--da-live--adobe.aem.live/?landing=true&theme=light&nx=lp&quick-edit=devlive#/aemsites/devlive
+https://lp--da-live--adobe.aem.live/?landing=true&theme=light&nx=lp&quick-edit=devlive&rum=on#/aemsites/devlive
 ```
 
 The latest card implementation requires the paired Nexter `lp` branch.
@@ -32,10 +32,23 @@ The `theme=light` preview override does not change the saved theme.
 The override applies only while this landing page is present.
 
 Landing retains its S/M hooks, shared button classes and explicitly sized
-picker/segmented controls. The `lp` shell does not include the live sizing runtime.
+segmented controls. The standalone picker uses matching S/M component tokens.
+The `lp` shell does not include the live sizing runtime.
 Do not substitute `nx=ui-size-scale`: that branch does not yet contain the new
 shared card. Sizing integration remains separate; neither adobe/da-nx#816 nor
 adobe/da-live#1416 is modified or merged by this work.
+
+For a temporary M-size preview of only the quick-action tiles, run this in the
+DevTools console with the context set to **top**, after the tiles have loaded:
+
+```js
+document.querySelector('da-landing').shadowRoot
+  .querySelectorAll('da-landing-tile')
+  .forEach((tile) => { tile.size = 'm'; });
+```
+
+This does not enable whole-shell sizing. Reloading or a parent render restores
+the shell-selected size.
 
 ## Component ownership
 
@@ -50,16 +63,17 @@ adobe/da-live#1416 is modified or merged by this work.
 - Nexter owns the presentation-only `nx-card`, based on Browse's card layout.
   Landing uses one compact thumbnail size. Ordinary Browse keeps its existing
   renderer until the shared component is available on its supported shell branches.
-- da-live owns `blocks/shared/site-picker.js`, the site-picker composition around
-  `nx-picker`, including Your Sites and Add site. Browse v2 uses the same picker
-  in the left nav context slot, separately from centered search.
-  Site option formatting lives in `site-picker-utils.js`.
-  Both hosts use `blocks/shared/site-access.js` for access checks and
-  `blocks/shared/add-site.js` for the permission-aware Add/Create dialog.
-  Landing supplies its Home-aware creation URL. No account-wide discovery or
-  invented display metadata is added.
-- Files and Need Attention table markup lives in detached da-live render helpers
-  (`file-table.js` and `attention-table.js`), not a new general table framework.
+- Nexter owns the standalone `nx-siteselector` presentation in fragment-driven
+  site navigation, separately from centered Browse search. da-live's
+  `blocks/shared/site-picker.js` adapter owns browser history, routing, access
+  checks and the shared permission-aware Add/Create dialog. Landing does not
+  mount a picker or own its lifecycle; its empty-state Add button requests the
+  same adapter-owned dialog. Site option formatting lives in `site-picker-utils.js`.
+  No account-wide discovery or invented display metadata is added.
+- Files table markup lives in the detached da-live `file-table.js` render helper,
+  not a new general table framework.
+- `da-landing-tile` owns quick-action presentation in da-live. Landing supplies
+  the navigation, page creation and documentation destinations.
 - `da-file-actions` supplies the card menu and list information/favorite controls.
   It reuses Browse's source/version and preview/publish status helpers.
   The card popover opens beside its trigger, flips near viewport edges and
@@ -98,12 +112,11 @@ These component variants do not install the global profile sizing runtime.
 The 1920px Ready frame (`1852:83848`) has a 1068px Files panel starting at y=395.
 Ten compact cards are 142px tall with 4px frame padding, 80px thumbnails,
 12px title/metadata insets and a 12px radius; the panel is 406px tall.
-The quiet view switcher has two 32px buttons. Need Attention follows after 40px.
+The quiet view switcher has two 32px buttons. Quick actions follow after 40px.
 These are the default-size design dimensions, not a claim of live S/M integration.
 
-The app-level site picker owns its presentation in `blocks/shared/site-picker.css`,
-using generic Nexter CSS parts rather than a site-specific framework variant:
-leading selected checkmark, two-line entries and a leading Add site icon.
+The standalone selector uses the shared Nexter picker defaults, leading selected
+checkmarks, two-line entries and matching S/M typography without app-level menu styling.
 Its secondary line is the real org/site identifier, not a fabricated domain.
 List image files reuse lazy previews in 28px thumbnail slots; information and
 favorite controls use 20px icons in separate 48px visual slots.
@@ -121,8 +134,10 @@ intentional differences rather than substitutes for those missing inputs.
 
 ## Scope
 
-- The workspace dropdown is mounted in the existing navigation slot and lists
-  browser-local recent sites and the site in the hash under **Your Sites**.
+- Opt-in NX2 pages (`landing=true` or `landing=home`) default to
+  `/nx/fragments/nav-new-landing` before shell loading, unless an explicit
+  `nav-path` is authored. The fragment mounts the standalone selector and lists
+  browser-local recent sites and the site in the hash under **Your recent sites**.
   A divider separates the **Add site** action, replacing the old Browse sites
   detour. Add site lazily opens the shared dialog, also available from the
   no-site state. Anyone can enter an existing AEM/Helix preview or live URL.
@@ -132,9 +147,9 @@ intentional differences rather than substitutes for those missing inputs.
   permission or synchronize an account-level site list. Cancelled checks cannot
   add a site later. Invalid URLs, denied access and failed saves remain in the
   dialog with an explicit error.
-  Known sites are checked for access. Confirmed denials are removed from the
-  picker; failed checks keep an explicit retry rather than pretending the user
-  has no access. Previously denied sites stay hidden until access is confirmed.
+  Known sites are checked for access without deleting remembered choices.
+  Routed sites are remembered before access checks, including denied sites;
+  network errors remain distinct from confirmed denials.
   This checks known sites, not a new global site-discovery service.
   In a selected organization, verified admins also see **Create new site** in
   the same dialog. This opens the existing `/start` template setup with the org
@@ -150,9 +165,10 @@ intentional differences rather than substitutes for those missing inputs.
   branch/theme flags and returns to that site's landing page. Successfully
   opened sites are remembered in the same browser-local list, including a
   return from setup. Ordinary `/start` visits retain their existing flow.
-  The picker is removed when the landing page disconnects and retains the topbar size.
+  The selector remains when Landing or Browse disconnects; its adapter cleans up
+  listeners, pending checks and dialogs when the selector itself disconnects.
   The shared picker's field variant provides the full clickable pill, 32px
-  height, fixed 14px topbar text and right-aligned chevron. Its border and
+  height, tokenized S/M text and right-aligned chevron. Its border and
   background are on the actual trigger, not the noninteractive host.
   Navigation, What’s New, Feedback and the profile retain their existing
   fragment-driven appearance. On `lp`, da-live's shell configuration supplies
@@ -273,11 +289,11 @@ intentional differences rather than substitutes for those missing inputs.
   and clear the old draft/attachments before rechecking the site's chat flags.
   Failed loads retain the draft and readable attachments for retry.
   The panel's initial width is 320px; existing user-resized widths remain respected.
-  This integration requires the paired Nexter `lpchat` branch for the public
+  This integration requires Nexter's shared chat changes for the public
   input-state, safe draft acceptance and panel-cancellation contracts.
   The coworker icon, prompt placeholder and AI disclaimer follow the mock.
-  The expanded AO input uses 16px text in S and 18px in M; the legacy composer
-  retains 16px in both. Both use `--s2-gray-600` for the placeholder in each theme.
+  Both middle inputs use 16px text in S and 18px in M.
+  Both use `--s2-gray-600` for the placeholder in each theme.
   The plus button opens the existing Add menu locally. The AO input retains its
   shared prompt/menu behavior. Files or images opens the native picker; cancelling
   does not open chat. Selected files use the existing attachment builder and
@@ -285,54 +301,44 @@ intentional differences rather than substitutes for those missing inputs.
   by selecting files. AO prompts and commands stay in the shared central input;
   parent-owned actions continue in the existing assistant through `openAddAction(id)`,
   supported by both `nx-chat` and `nx-chat-ao`. Typed drafts are preserved.
-- The Need Attention table preserves the Item, Description, Status and Assignee
-  headings and a 32px
-  header, a separate 46px heading area and a white 6px-radius table surface,
-  following `1852:85554`. The `lp` preview includes five static Frescopa-themed
-  sample rows: Frescopa Homepage, Atelier Nova, Taste Profiles, Coffee Machines
-  and Atelier Nova Campaign. Homepage translation stays first, followed by
-  content review, product updates and campaign publication. Requesters use
-  fictional names, not real task assignments. Status dots and the design's
-  20px placeholder avatars from `1852:86574` retain the 40px row layout, with
-  more width for requesters.
-  These illustrative labels are not verified source paths or a site-specific feed.
-  The table is explicitly labelled as sample
-  data, not live site tasks. Rows do not open or update real content.
-  Existing scheduler, translation and background-job APIs are not a source
-  for the mock's general task list (description, status, requester).
-  Table styling follows the [Spectrum table guidance](https://spectrum.adobe.com/web/rsp/components/table):
-  start-aligned text, a compact neutral header, column dividers and horizontal
-  scrolling on narrow screens. Each header includes the 18px vertical
-  three-dot column-options icon from `1852:86574`. These controls are explicitly
-  disabled for the sample rows, rather than offering fake actions.
-  Separate resize handles support pointer dragging and keyboard ArrowLeft /
-  ArrowRight (16px), Home (80px) and End (1200px). Resizing stays local to the
-  current table; it does not imply working column menus or live task actions.
-  Initial columns follow the design's proportions (230/553/133/120 at 1036px).
-  Resize hit areas are transparent; each boundary has one header divider, not
-  a second line painted by the resize handle.
-  Comment loading/empty/error notices sit below the table so they do not displace
-  its header; the live-comment/sample distinction remains visible.
-- Need Attention also lists the signed-in user's **open comment threads**: unresolved
-  threads in root-level pages that the user started or replied to, newest activity
-  first, above the sample rows. They read the same `.da/comments/{docId}/` store as
-  the Canvas comments panel (`createCommentsStore`, `buildThreadGroups`). Comments do
-  not record their page, so the site's `.da/comments/` folder is listed once and root
-  pages are probed with `HEAD` (`x-da-id`, at most six at a time) only until every
-  commented document is found. Rows open the editor with `?comment=<id>`, which
-  opens that thread in Canvas. Nested folders are not covered. Requester is the
-  thread starter. There are no assignments or mentions yet, so "open comments I
-  took part in" stands in for "waiting on me".
-  Above the sample rows, the feed explains when a workspace must be selected,
-  comments are loading, no qualifying threads were found, or the file/comment
-  lookup failed. Page metadata permission and network failures are reported
-  rather than silently becoming an empty feed; pages deleted since listing are
-  skipped. This does not broaden the root-page or participant filters.
-  Empty results distinguish no saved comments, no mapping to root-level pages,
-  only resolved threads, and open threads the current user has not participated
-  in. Landing opts into strict comment-store reads, so unreadable comment folders
-  or thread files appear as errors instead of an empty feed. Canvas retains its
-  existing tolerant load behavior.
+- Five quick actions replace Need Attention. Landing does not load the comment
+  feed or probe page metadata for that removed table.
+  - Browse Content opens the selected site in Browse v2 and closes chat before
+    the native link navigates, using Nexter's existing panel-close event.
+    Its `chat=closed` entry parameter also skips restoration of a remembered
+    panel in the destination, including when opened in a new tab. Browse consumes
+    this parameter once; normal Browse navigation and manual chat remain available.
+  - Create a page opens the shared New page/name dialog. It requires a selected
+    site, explicit source-list write permission and a resolved editor. Creation
+    checks for an existing name, saves an empty document at the site root and
+    refreshes Content; Create and open continues in the site's editor. Errors
+    remain visible in the dialog. Switching sites invalidates pending dialog work.
+  - Publishing & Workflow opens the EW publishing documentation.
+  - Localization & Multi-site opens the EW Multi-Site Manager documentation.
+  - Develop & Extend opens the developer tutorial.
+  Governance & Operation is not shown. Customizable actions are out of scope.
+  At desktop widths, the final two tiles are centered below the first three;
+  narrower layouts retain two columns or one column.
+  Hover raises interactive tiles with a stronger shadow; keyboard focus retains
+  its visible outline.
+  Icon backgrounds use Spectrum's turquoise, green, orange and purple 200 tokens,
+  including Spectrum's dark-mode values. Tile surfaces retain white in light mode
+  and gray 75 in dark mode through the shared gray tokens. Spacing and the 32px
+  icon background use shared spacing tokens. The glyph remains component-owned:
+  20px in S and 22px in M.
+  Quick-action SVGs use the shared `/img/icons/` location. Report Suite Mapping and
+  Data Streams are stored there alongside the other shared icon assets; their
+  SVG artwork is unchanged and the tiles continue to use CSS masks.
+  The 12px tile radius and the rest/hover shadows are component-local values,
+  named `--da-landing-tile-radius`, `--da-landing-tile-shadow` and
+  `--da-landing-tile-hover-shadow`; they are not shared Spectrum tokens.
+- Each action has a stable `landing-action-*` class and matching
+  `data-rum-source` identifier. The existing Optel enhancer's web-component
+  plugin follows nested shadow roots and collects native clicks, including
+  keyboard activation. No second click collector or eager RUM import is added.
+  The source is the fixed action identifier; link targets are their destinations.
+  `rum=on` enables full sampling in the testing link and is preserved on
+  Browse/editor navigation.
 - Notification counts, published-page screenshots and global AI routing are not
   mocked. The routing placeholder does not add a global routing backend.
 
@@ -343,15 +349,19 @@ The `lp` branch keeps preview code isolated. Explicitly integrating it into
 Loading the landing page reads the site's listing and configuration; favorites
 and view choices are browser-local. However, `aemsites/devlive` is shared content,
 not a sandbox copy. Editing an opened file or sending a prompt in the assistant
-can change that shared site. Use a separate content site for write testing.
+can change that shared site. Create a page also writes real content.
+Use a separate content site for write testing.
 
 ## Manual checks
 
 Sign in with access to the selected site. Check the greeting, site switching,
 file navigation, Favorite, card/list switching, Show all files and prompt handoff.
 Check card menus, persistent selected stars, list information-only popovers,
-favorite toggles, unavailable metadata/retry, the ten-item Favorite cap and
-Need Attention resizing with both pointer and keyboard.
+favorite toggles, unavailable metadata/retry and the ten-item Favorite cap.
+Check the five quick actions, Browse with chat closed, New page cancellation,
+duplicate names and save errors, and all three documentation destinations.
+With `rum=on`, confirm one distinct click checkpoint per action and keyboard
+activation, without sending real page names in telemetry.
 Open Add site from the picker and the no-site state. Check a valid existing URL,
 an invalid URL, a denied site, an unavailable check and cancelling an in-flight
 request. Confirm the added site appears in the current browser's picker and
