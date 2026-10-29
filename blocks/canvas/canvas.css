@@ -14,6 +14,11 @@ html:has(aside.panel[data-position="after"]:not([hidden])) ew-canvas-header::par
   display: none;
 }
 
+html:has(ew-canvas-header[has-conflicts]) aside.panel[data-position="before"] {
+  pointer-events: none;
+  opacity: 0.45;
+}
+
 .fragment-content:has(nx-chat) {
   height: 100%;
 

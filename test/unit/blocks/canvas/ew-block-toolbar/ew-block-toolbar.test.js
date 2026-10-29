@@ -1,13 +1,35 @@
 import { expect } from '@esm-bundle/chai';
-import { NodeSelection } from 'da-y-wrapper';
+import { EditorState, NodeSelection } from 'da-y-wrapper';
+import { getSchema } from 'da-parser';
 import { setNx } from '../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { default: EwBlockToolbar } = await import('../../../../../blocks/canvas/ew-block-toolbar/ew-block-toolbar.js');
 const { PANEL_EVENT } = await import('../../../../fixtures/nx/utils/panel.js');
 const { makeView } = await import('../test-helpers.js');
+const { default: EwBlockToolbar, splitLibraryVariant } = await import('../../../../../blocks/canvas/ew-block-toolbar/ew-block-toolbar.js');
 const { setCommentsController } = await import('../../../../../blocks/canvas/editor-utils/comments-bridge.js');
+
+describe('splitLibraryVariant', () => {
+  it('prefers a "Name (variant)" name over class-derived variants (library-metadata override)', () => {
+    expect(splitLibraryVariant({ name: 'Cards (promo)', variants: 'promo' }))
+      .to.deep.equal({ base: 'Cards', variant: 'promo' });
+  });
+
+  it('parses a "Name (variant)" heading name', () => {
+    expect(splitLibraryVariant({ name: 'Cards (Horizontal)' }))
+      .to.deep.equal({ base: 'Cards', variant: 'Horizontal' });
+  });
+
+  it('falls back to class-derived variants when the name has no parentheses', () => {
+    expect(splitLibraryVariant({ name: 'cards', variants: 'promo' }))
+      .to.deep.equal({ base: 'cards', variant: 'promo' });
+  });
+
+  it('returns no variant for a plain name', () => {
+    expect(splitLibraryVariant({ name: 'Cards' })).to.deep.equal({ base: 'Cards', variant: '' });
+  });
+});
 
 describe('ew-block-toolbar', () => {
   let toolbar;
@@ -232,5 +254,79 @@ describe('ew-block-toolbar', () => {
     } finally {
       setCommentsController(null);
     }
+  });
+});
+
+describe('ew-block-toolbar delete confirmation', () => {
+  let toolbar;
+  let view;
+
+  function makeBlockView() {
+    const schema = getSchema();
+    const cell = (text) => schema.nodes.table_cell.create(
+      null,
+      schema.nodes.paragraph.create(null, schema.text(text)),
+    );
+    const table = schema.nodes.table.create(null, [
+      schema.nodes.table_row.create(null, [cell('cards (promo)')]),
+      schema.nodes.table_row.create(null, [cell('body')]),
+    ]);
+    const doc = schema.nodes.doc.create(null, [
+      schema.nodes.paragraph.create(null, schema.text('Keep me')),
+      table,
+    ]);
+    const tablePos = doc.firstChild.nodeSize;
+    const state = EditorState.create({ doc, selection: NodeSelection.create(doc, tablePos) });
+    const fake = {
+      state,
+      dispatch(tr) { fake.state = fake.state.apply(tr); },
+      focus() {},
+    };
+    return fake;
+  }
+
+  const dialog = () => toolbar.shadowRoot.querySelector('da-confirm-dialog');
+  const blockTypes = () => {
+    const types = [];
+    view.state.doc.forEach((node) => types.push(node.type.name));
+    return types;
+  };
+
+  beforeEach(async () => {
+    toolbar = document.createElement('ew-block-toolbar');
+    document.body.append(toolbar);
+    view = makeBlockView();
+    toolbar.view = view;
+    toolbar.show('cards', 'promo');
+    await toolbar.updateComplete;
+    await toolbar._onDeleteBlock();
+    await toolbar.updateComplete;
+  });
+
+  afterEach(() => toolbar.remove());
+
+  it('asks for confirmation instead of deleting immediately', () => {
+    expect(dialog()).to.exist;
+    expect(dialog().textContent).to.contain('cards (promo)');
+    expect(blockTypes()).to.deep.equal(['paragraph', 'table']);
+    expect(toolbar.isInteracting).to.be.true;
+  });
+
+  it('deletes the block when confirmed', async () => {
+    dialog().action.click();
+    await toolbar.updateComplete;
+
+    expect(blockTypes()).to.deep.equal(['paragraph']);
+    expect(dialog()).to.not.exist;
+    expect(toolbar.open).to.be.false;
+  });
+
+  it('keeps the block when cancelled', async () => {
+    dialog().shadowRoot.querySelector('nx-dialog').close();
+    await toolbar.updateComplete;
+
+    expect(blockTypes()).to.deep.equal(['paragraph', 'table']);
+    expect(dialog()).to.not.exist;
+    expect(toolbar.isInteracting).to.be.false;
   });
 });

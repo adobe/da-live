@@ -9,8 +9,7 @@
   margin-bottom: -1px;
 }
 
-:host(:hover) {
-  z-index: 1;
+:host(:hover), :host([ischecked="true"]) {
   background: var(--s2-blue-100);
 }
 
@@ -20,11 +19,13 @@
 
 .da-item-list-item-inner {
   display: grid;
-  grid-template-columns: var(--da-list-select-width, 40px) minmax(0, 1fr) var(--da-list-type-width, 120px) var(--da-list-date-width, 180px) var(--da-list-action-width, 32px);
+  grid-template-columns: var(--da-list-select-width, 40px) minmax(0, 1fr) var(--da-list-type-width, 120px) var(--da-list-date-width, 180px) var(--da-list-action-width, 112px);
   align-items: center;
-  column-gap: var(--da-list-column-gap, var(--s2-spacing-200));
-  padding: 0 var(--da-list-pad-inline, 24px);
-  min-height: 64px;
+  min-height: var(--da-list-min-height);
+
+  .nx-checkbox {
+    justify-content: center;
+  }
 }
 
 .da-item-list-item-selection-placeholder {
@@ -38,7 +39,7 @@
   gap: var(--s2-spacing-100);
   align-items: center;
   text-decoration: none;
-  color: var(--s2-gray-900);
+  color: var(--s2-gray-800);
 }
 
 .da-item-list-item-title {
@@ -47,9 +48,9 @@
 }
 
 .da-item-list-item-rename {
-  grid-column: 2 / 5;
+  grid-column: 2;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  padding: var(--s2-spacing-300) 0;
+  margin-right: var(--s2-spacing-300);
 }
 
 .da-item-list-item-info {
@@ -62,11 +63,10 @@
 .da-item-list-item-type {
   position: relative;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
-  width: 32px;
+  width: 20px;
   height: 32px;
-  flex: 0 0 32px;
 }
 
 .da-item-list-item-name {
@@ -88,7 +88,7 @@
 
 .da-item-list-item-meta {
   line-height: 20px;
-  color: var(--s2-gray-600);
+  color: var(--s2-gray-700);
   min-width: 0;
 }
 
@@ -98,17 +98,6 @@
 
 .da-item-list-item-date {
   white-space: nowrap;
-}
-
-.da-item-list-item-favorite {
-  position: absolute;
-  bottom: 4px;
-  left: 5px;
-  width: 10px;
-  height: 10px;
-  pointer-events: none;
-  filter: drop-shadow(0 0 1.5px var(--s2-gray-25));
-  color: var(--s2-yellow-500);
 }
 
 .da-item-list-item-actions {
@@ -141,7 +130,7 @@
 }
 
 .icon.cancel-icon {
-  mask: no-repeat center / 18px url('/img/icons/s2-icon-cancel-20-n.svg');
+  mask: no-repeat center / 18px url('/img/icons/s2-icon-close-20-n.svg');
 }
 
 .icon.checkmark-icon {
@@ -152,21 +141,6 @@
 .da-item-list-item-rename input {
   display: block;
   min-width: 0;
-  font-family: var(--s2-font-family);
-  font-size: var(--s2-component-m-regular-font-size);
-  background: none;
-  border: none;
-  border-bottom: 1px dotted var(--s2-gray-900);
-  padding: 0;
-  margin: 1px 0 0;
-  line-height: 24px;
-  box-sizing: border-box;
-}
-
-.da-item-list-item-rename input:focus-visible {
-  outline: none;
-  border: none;
-  border-bottom: 1px dotted var(--s2-blue-900);
 }
 
 .da-item-list-item-rename-actions {
@@ -189,10 +163,22 @@
   height: 18px;
 }
 
+:host([view="card"]) .da-item-list-item-rename-actions button {
+  width: 24px;
+  height: 24px;
+}
+
+:host([view="card"]) .da-item-list-item-rename-actions .icon {
+  width: 16px;
+  height: 16px;
+  mask-size: 16px;
+}
+
 /* Details popover */
 .da-item-details {
   display: none;
-  max-width: calc(100vw - var(--s2-spacing-500));
+  max-width: calc(100vw - 32px);
+  min-width: 200px;
   padding: var(--s2-spacing-200);
   color: var(--s2-gray-900);
   font-size: var(--s2-component-m-regular-font-size);
@@ -230,7 +216,6 @@
   border-radius: var(--s2-corner-radius-400);
 }
 
-.da-item-list-item-expand-btn:focus-visible,
 .da-item-list-item-aem-btn:focus-visible {
   outline: 2px solid var(--s2-blue-800);
   outline-offset: 2px;
@@ -274,9 +259,14 @@
   height: 18px;
 }
 
+.card-more.nx-btn-sm svg {
+  width: 14px;
+  height: 14px;
+}
+
 @container browse-list-item (width < 600px) {
   .da-item-list-item-inner {
-    grid-template-columns: var(--da-list-select-width, 40px) minmax(0, 1fr) var(--da-list-date-width, 180px) var(--da-list-action-width, 32px);
+    grid-template-columns: var(--da-list-select-width, 40px) minmax(0, 1fr) var(--da-list-date-width, 180px) var(--da-list-action-width, 112px);
   }
 
   .da-item-list-item-type-label {
@@ -291,14 +281,14 @@
 @container browse-list-item (width < 600px) {
   .da-item-list-item-inner {
     --da-list-pad-inline: 8px;
-    --da-list-select-width: 24px;
+    --da-list-select-width: 48px;
     --da-list-column-gap: var(--s2-spacing-100);
   }
 }
 
 @container browse-list-item (width < 500px) {
   .da-item-list-item-inner {
-    grid-template-columns: var(--da-list-select-width, 24px) minmax(0, 1fr) var(--da-list-action-width, 32px);
+    grid-template-columns: var(--da-list-select-width, 24px) minmax(0, 1fr) var(--da-list-action-width, 112px);
   }
 
   .da-item-list-item-date {
@@ -326,31 +316,34 @@
   margin-bottom: 0;
 }
 
+.nx-action-btn-icon.is-active {
+  &, &:hover:not(:disabled) {
+    background: var(--s2-gray-100);
+    color: inherit;
+  }
+}
+
 .card {
   --nx-card-width: var(--da-card-width, var(--nx-card-default-width));
   --nx-card-height: var(--da-card-height, var(--nx-card-default-height));
 
   .da-item-list-item-rename {
     grid-column: auto;
-    padding: 0;
-    padding-left: var(--s2-spacing-100);
+    margin-right: 0;
     display: flex;
-    justify-content: space-between;
+    align-items: center;
+    min-width: 0;
+    min-height: 32px;
+    padding: 0;
 
     input {
       flex: 1;
+      width: 0;
     }
   }
 
   .da-item-list-item-type {
     display: none;
-  }
-
-  .nx-action-btn-icon.is-active {
-    &, &:hover:not(:disabled) {
-      background: var(--s2-gray-100);
-      color: inherit;
-    }
   }
 }
 
@@ -521,7 +514,7 @@
 ::slotted([slot="metadata"]) {
   margin: 0;
   font-size: var(--s2-component-s-regular-font-size);
-  line-height: 1.5;
+  line-height: var(--s2-body-line-height);
 }
 
 :host([size="m"]) {
@@ -540,11 +533,11 @@
 
   .card-details {
     font-size: var(--s2-component-m-regular-font-size);
-    line-height: 1.5;
+    line-height: var(--s2-body-line-height);
   }
 }
 
-a:focus-visible {
+:host([layout="compact"]) a:focus-visible {
   outline: 2px solid var(--s2-blue-800);
   outline-offset: -2px;
 }

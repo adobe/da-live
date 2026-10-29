@@ -11,6 +11,9 @@ label. Compact cards fill their container and use an 80px preview. `size` (`s` o
 `m`) controls typography and controls independently from `dimensions` (`s`, `m`,
 `l`) and the `--da-card-width` / `--da-card-height` footprint overrides. Compact
 height follows content rather than a portrait height preset.
+Landing selects the existing `m` preset in both UI scales, without a card-size
+selector. Compact presentation adapts that shared card to the mock; it does not
+add another dimension preset.
 
 An optional `href` overrides the destination for both preview and title links.
 Without it, folders, documents, sheets, media and `.link` files retain the shared

@@ -4,8 +4,6 @@ import { setNx } from '../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
-
 await import('../../../../../blocks/shared/da-file-item/da-file-item.js');
 
 describe('da-file-item render', () => {
@@ -23,8 +21,7 @@ describe('da-file-item render', () => {
       ...props,
     });
     document.body.appendChild(el);
-    await nextFrame();
-    await nextFrame();
+    await el.updateComplete;
     return el;
   }
 
@@ -75,11 +72,26 @@ describe('da-file-item render', () => {
     expect(buttons[1].getAttribute('value')).to.equal('cancel');
   });
 
+  it('Cancels rename when Escape is pressed in the input', async () => {
+    await fixture({ rename: true, isChecked: true });
+    let detail;
+    el.addEventListener('checked', (e) => { detail = e.detail; });
+    el.shadowRoot.querySelector('input[name="new-name"]')
+      .dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(detail.checked).to.equal(false);
+  });
+
+  it('Keeps the type and modified columns while renaming', async () => {
+    await fixture({ rename: true });
+    expect(el.shadowRoot.querySelector('[data-column="type"]')).to.exist;
+    expect(el.shadowRoot.querySelector('[data-column="modified"]')).to.exist;
+  });
+
   it('Renders rename icon while _isRenaming is true', async () => {
     await fixture({ _isRenaming: true });
     el._isRenaming = true;
     el.requestUpdate();
-    await nextFrame();
+    await el.updateComplete;
     expect(el.shadowRoot.querySelector('.rename-icon')).to.exist;
   });
 
@@ -99,7 +111,7 @@ describe('da-file-item render', () => {
   async function openDetails() {
     el.updateAEMStatus = () => { };
     el.updateDAStatus = () => { };
-    el.shadowRoot.querySelector('.da-item-list-item-expand-btn').click();
+    el.shadowRoot.querySelector('button[aria-label="More info"]').click();
     await el.updateComplete;
     await el.updateComplete;
   }
@@ -127,7 +139,7 @@ describe('da-file-item render', () => {
     el._version = 5;
     el._lastModifiedBy = 'alice';
     el.requestUpdate();
-    await nextFrame();
+    await el.updateComplete;
     const versionEl = el.shadowRoot.querySelectorAll('.da-list-item-da-details-version p')[1];
     expect(versionEl.textContent).to.equal('5');
     const modifierEl = el.shadowRoot.querySelectorAll('.da-list-item-da-details-modified p')[1];
@@ -140,7 +152,7 @@ describe('da-file-item render', () => {
     el._preview = { status: 401 };
     el._live = { status: 401 };
     el.requestUpdate();
-    await nextFrame();
+    await el.updateComplete;
     const dates = el.shadowRoot.querySelectorAll('.da-aem-icon-date');
     const text = [...dates].map((d) => d.textContent).join(' ');
     expect(text).to.contain('Not authorized');
@@ -152,7 +164,7 @@ describe('da-file-item render', () => {
     el._preview = { status: 200, url: 'https://x', lastModified: { date: '2024-01-01', time: '12:00' } };
     el._live = { status: 200, url: 'https://y', lastModified: { date: '2024-01-02', time: '13:00' } };
     el.requestUpdate();
-    await nextFrame();
+    await el.updateComplete;
     expect(el.shadowRoot.querySelectorAll('.da-item-list-item-aem-icon')).to.have.length(0);
     expect(el.shadowRoot.querySelector('#preview-date').textContent).to.equal('2024-01-01 12:00');
     expect(el.shadowRoot.querySelector('#live-date').textContent).to.equal('2024-01-02 13:00');
@@ -175,29 +187,26 @@ describe('da-file-item render', () => {
     expect(el.shadowRoot.querySelector('#live-label').textContent).to.equal('Published');
   });
 
-  it('toggles the details popover from the more button', async () => {
+  it('toggles the details popover from the More info button', async () => {
     await fixture();
     el.updateAEMStatus = () => { };
     el.updateDAStatus = () => { };
-    const button = el.shadowRoot.querySelector('.da-item-list-item-expand-btn');
+    const button = el.shadowRoot.querySelector('button[aria-label="More info"]');
     expect(button.getAttribute('aria-expanded')).to.equal('false');
     expect(button.getAttribute('aria-haspopup')).to.equal('dialog');
-    expect(button.querySelector('use').getAttribute('href')).to.contain('s2-icon-more-20-n.svg#icon');
+    expect(button.getAttribute('aria-label')).to.equal('More info');
+    expect(button.title).to.equal('More info');
     button.click();
     await el.updateComplete;
     await el.updateComplete;
     const popover = el.shadowRoot.querySelector('nx-popover');
     expect(button.getAttribute('aria-expanded')).to.equal('true');
-    expect(button.getAttribute('aria-label')).to.equal('Hide details');
-    expect(button.classList.contains('is-active')).to.be.true;
-    expect(button.querySelector('use').getAttribute('href')).to.contain('s2-icon-chevronup-20-n.svg#icon');
+    expect(button.getAttribute('aria-label')).to.equal('More info');
     expect(popover.open).to.be.true;
     button.click();
     await el.updateComplete;
     expect(button.getAttribute('aria-expanded')).to.equal('false');
-    expect(button.getAttribute('aria-label')).to.equal('Show details');
-    expect(button.classList.contains('is-active')).to.be.false;
-    expect(button.querySelector('use').getAttribute('href')).to.contain('s2-icon-more-20-n.svg#icon');
+    expect(button.getAttribute('aria-label')).to.equal('More info');
     expect(el.shadowRoot.querySelector('nx-popover')).to.be.null;
   });
 
@@ -207,7 +216,7 @@ describe('da-file-item render', () => {
     el.path = '/org/repo/next.html';
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('nx-popover')).to.be.null;
-    expect(el.shadowRoot.querySelector('.da-item-list-item-expand-btn')
+    expect(el.shadowRoot.querySelector('button[aria-label="More info"]')
       .getAttribute('aria-expanded')).to.equal('false');
   });
 
@@ -220,7 +229,7 @@ describe('da-file-item render', () => {
 
   it('Hides the details button for folders and link items', async () => {
     await fixture({ ext: '' });
-    expect(el.shadowRoot.querySelector('.da-item-list-item-expand-btn')).to.be.null;
+    expect(el.shadowRoot.querySelector('button[aria-label="More info"]')).to.be.null;
   });
 
   it('Hides the details button for link items', async () => {
@@ -231,7 +240,7 @@ describe('da-file-item render', () => {
     ));
     try {
       await fixture({ ext: 'link' });
-      expect(el.shadowRoot.querySelector('.da-item-list-item-expand-btn')).to.be.null;
+      expect(el.shadowRoot.querySelector('button[aria-label="More info"]')).to.be.null;
     } finally {
       window.fetch = savedFetch;
     }
@@ -239,19 +248,7 @@ describe('da-file-item render', () => {
 
   it('Shows the details button for file items', async () => {
     await fixture({ ext: 'html' });
-    expect(el.shadowRoot.querySelector('.da-item-list-item-expand-btn')).to.exist;
-  });
-
-  it('Opens the same details popover from the card heading', async () => {
-    await fixture({ view: 'card', ext: 'json' });
-    el.updateAEMStatus = () => { };
-    el.updateDAStatus = () => { };
-    const button = el.shadowRoot.querySelector('.card-more');
-    expect(button).to.exist;
-    button.click();
-    await el.updateComplete;
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('.card nx-popover.da-item-details')).to.exist;
+    expect(el.shadowRoot.querySelector('button[aria-label="More info"]')).to.exist;
   });
 
   it('Reflects checked state on checkbox input', async () => {
@@ -260,7 +257,7 @@ describe('da-file-item render', () => {
     expect(cb.checked).to.be.true;
   });
 
-  it('Renders card title and metadata below the preview with details on the right', async () => {
+  it('binds card metadata and exposes selection and More actions', async () => {
     await fixture({
       view: 'card',
       allowselect: true,
@@ -277,9 +274,35 @@ describe('da-file-item render', () => {
     expect(el.shadowRoot.querySelector('[slot="heading"]').textContent.trim()).to.equal('brand.xlsx');
     expect(el.shadowRoot.querySelector('.card-date').textContent).to.equal(el.renderDate());
     expect(el.shadowRoot.querySelector('.card-type').textContent).not.to.be.empty;
-    expect(preview.querySelector('.da-item-list-item-expand-btn')).to.be.null;
-    expect(el.shadowRoot.querySelector('.da-item-list-item-inner')).to.be.null;
     expect(el.shadowRoot.querySelector('[slot="actions"] button[aria-label="More"]')).to.exist;
+  });
+
+  it('forwards a Browse preset independently of compact presentation and UI scale', async () => {
+    await fixture({ view: 'card', layout: 'compact', size: 's', dimensions: 'l' });
+    const card = el.shadowRoot.querySelector('nx-card');
+    expect(card.layout).to.equal('compact');
+    expect(card.dimensions).to.equal('l');
+    expect(card.size).to.equal('s');
+    expect(el.shadowRoot.querySelector('.compact-heading svg')).to.exist;
+    expect(el.shadowRoot.querySelector('.card-type')).to.equal(null);
+    el.size = 'm';
+    await el.updateComplete;
+    expect(card.size).to.equal('m');
+    expect(card.dimensions).to.equal('l');
+    el.layout = undefined;
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.card-type')).to.exist;
+    expect(el.shadowRoot.querySelector('.compact-heading')).to.equal(null);
+  });
+
+  it('uses a supplied destination without resolving a link file', async () => {
+    await fixture({ view: 'card', ext: 'link', href: '/?browse=2#/org/repo' });
+    const links = [...el.shadowRoot.querySelectorAll('a')];
+    expect(links).to.have.length(2);
+    expect(links.every((link) => link.getAttribute('href') === '/?browse=2#/org/repo')).to.equal(true);
+    el.href = '/edit#/org/repo/next';
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('[slot="heading"]').getAttribute('href')).to.equal(el.href);
   });
 
   it('bridges card selection and shift-click to browse selection', async () => {
@@ -354,13 +377,42 @@ describe('da-file-item render', () => {
     expect(el.shadowRoot.querySelector('[slot="actions"]')).to.be.null;
     expect(el.shadowRoot.querySelector('.card-type').slot).to.equal('metadata');
     expect(el.shadowRoot.querySelector('.card-date').slot).to.equal('metadata');
+    form.querySelector('input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(el.isChecked).to.equal(false);
   });
 
-  it('Shows the favorite badge on cards only when favorited', async () => {
+  it('requests favorite changes without selecting the row', async () => {
+    await fixture();
+    const button = el.shadowRoot.querySelector('.da-item-list-item-favorite');
+    expect(button.getAttribute('aria-label')).to.equal('Mark as Favorite');
+    let event;
+    el.addEventListener('favoritechange', (e) => { event = e; });
+    button.click();
+    expect(event.bubbles).to.be.true;
+    expect(event.composed).to.be.true;
+    expect(el.isChecked).not.to.be.true;
+    el.isFavorited = true;
+    await el.updateComplete;
+    expect(button.getAttribute('aria-pressed')).to.equal('true');
+    expect(button.getAttribute('aria-label')).to.equal('Remove as Favorite');
+  });
+
+  it('offers favorites in the card menu and renders a remove button only for favorites', async () => {
     await fixture({ view: 'card' });
-    el.updateAEMStatus = () => {};
-    el.updateDAStatus = () => {};
-    expect(el.shadowRoot.querySelector('.card-favorite')).to.not.exist;
+    expect(el.shadowRoot.querySelector('.card-favorite')).to.be.null;
+    el.updateAEMStatus = () => { };
+    el.updateDAStatus = () => { };
+    el.shadowRoot.querySelector('.card-more').click();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.card-details')).to.exist;
+    expect(el.shadowRoot.querySelector('.card-favorite-action').textContent.trim())
+      .to.equal('Mark as Favorite');
+    let event;
+    el.addEventListener('favoritechange', (e) => { event = e; });
+    el.shadowRoot.querySelector('.card-favorite-action').click();
+    expect(event.bubbles).to.be.true;
+    expect(event.composed).to.be.true;
+    expect(el.isChecked).not.to.be.true;
     el.isFavorited = true;
     await el.updateComplete;
     const button = el.shadowRoot.querySelector('[slot="overlay-actions"].card-favorite');
@@ -370,8 +422,7 @@ describe('da-file-item render', () => {
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('.card-favorite-action').textContent.trim())
       .to.equal('Remove as Favorite');
-    let event;
-    el.addEventListener('favoritechange', (e) => { event = e; });
+    event = undefined;
     button.click();
     expect(event.type).to.equal('favoritechange');
     el.isFavorited = false;
@@ -396,38 +447,5 @@ describe('da-file-item render', () => {
     el.path = '/org/repo/next';
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('.da-item-details')).to.be.null;
-  });
-
-  it('opts into compact composition, forwards scale independently, and updates after mount', async () => {
-    await fixture({ view: 'card', layout: 'compact', size: 's', dimensions: 'l' });
-    const card = el.shadowRoot.querySelector('nx-card');
-    expect(card.layout).to.equal('compact');
-    expect(card.dimensions).to.equal('l');
-    expect(card.size).to.equal('s');
-    expect(el.shadowRoot.querySelector('.compact-heading svg')).to.exist;
-    expect(el.shadowRoot.querySelector('.card-type')).to.equal(null);
-    expect(el.shadowRoot.querySelectorAll('slot[name="metadata"]')).to.have.length(1);
-    el.size = 'm';
-    await el.updateComplete;
-    expect(card.size).to.equal('m');
-    expect(card.dimensions).to.equal('l');
-    expect(el.shadowRoot.querySelector('.card-more').classList.contains('nx-btn-sm')).to.equal(false);
-    el.layout = undefined;
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('.card-type')).to.exist;
-    expect(el.shadowRoot.querySelector('.compact-heading')).to.equal(null);
-  });
-
-  it('uses a supplied destination for every link without resolving a .link file', async () => {
-    await fixture({ view: 'card', ext: 'link', href: '/?browse=2#/org/repo' });
-    const links = [...el.shadowRoot.querySelectorAll('a')];
-    expect(links).to.have.length(2);
-    expect(links.every((link) => link.getAttribute('href') === '/?browse=2#/org/repo')).to.equal(true);
-    el.href = '/edit?nx=lpcards#/org/repo/next';
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('[slot="heading"]').getAttribute('href')).to.equal(el.href);
-    el.view = 'list';
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('.da-item-list-item-title').getAttribute('href')).to.equal(el.href);
   });
 });

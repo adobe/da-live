@@ -163,8 +163,8 @@ export default class DaFileItem extends LitElement {
     }
     if (props.has('path')) {
       if (props.get('path') !== this.path) {
-        this.popover?.close();
         this.closeDetails();
+        this.popover?.close();
       }
     }
 
@@ -251,6 +251,10 @@ export default class DaFileItem extends LitElement {
 
   doesFileExist(path) {
     return doesFileExist(path);
+  }
+
+  handleRenameKeydown(e) {
+    if (e.key === 'Escape') this.handleChecked();
   }
 
   async handleRenameSubmit(e) {
@@ -358,7 +362,7 @@ export default class DaFileItem extends LitElement {
         <span class="da-item-list-item-type">
           ${this.renderIcon()}
         </span>
-        <input type="text" value="${this.name}" @input=${this.handleRename} name="new-name" aria-label="Rename item">
+        <input type="text" class="nx-input" value="${this.name}" @input=${this.handleRename} @keydown=${this.handleRenameKeydown} name="new-name" aria-label="Rename item">
         <div class="da-item-list-item-rename-actions">
           <button aria-label="Confirm" value="confirm">
             <div class="icon checkmark-icon"></div>
@@ -390,8 +394,6 @@ export default class DaFileItem extends LitElement {
   renderItem() {
     const href = this.destination;
 
-    const type = getTypeLabel(this.ext);
-
     return html`
       <a href="${this.ext === 'link' ? until(href) : href}" class="da-item-list-item-title" data-column="name">
         <div class="da-item-list-item-info">
@@ -399,7 +401,6 @@ export default class DaFileItem extends LitElement {
           ` : html`
             <span class="da-item-list-item-type">
               ${this.renderIcon()}
-              ${this.isFavorited ? html`<svg class="da-item-list-item-favorite" viewBox="0 0 20 20" aria-label="Favorited"><use href="${ICONS.favorite}#icon"></use></svg>` : nothing}
             </span>
           `}
           <div class="da-item-list-item-name">
@@ -407,7 +408,12 @@ export default class DaFileItem extends LitElement {
           </div>
         </div>
       </a>
-      <div class="da-item-list-item-meta da-item-list-item-type-label" data-column="type">${type}</div>
+      ${this.renderRowMeta()}`;
+  }
+
+  renderRowMeta() {
+    return html`
+      <div class="da-item-list-item-meta da-item-list-item-type-label" data-column="type">${getTypeLabel(this.ext)}</div>
       <div class="da-item-list-item-meta da-item-list-item-date" data-column="modified">${this.ext === 'link' ? '—' : (this.renderDate() || '—')}</div>`;
   }
 
@@ -464,10 +470,10 @@ export default class DaFileItem extends LitElement {
         .layout=${this.layout} .dimensions=${this.dimensions || 'm'} .size=${this.size || 's'}
         @nx-card-selection-change=${(e) => this.handleChecked(e.detail)}>
         <div slot="media" class="card-media">
-        <a class="card-preview" href="${this.ext === 'link' ? until(href) : href}" tabindex="-1" aria-hidden="true">
-          ${this.renderFilePreview()}
-        </a>
-        ${this._previewError ? html`<span class="preview-error" role="status">${this._previewError}</span>` : nothing}
+          <a class="card-preview" href="${this.ext === 'link' ? until(href) : href}" tabindex="-1" aria-hidden="true">
+            ${this.renderFilePreview()}
+          </a>
+          ${this._previewError ? html`<span class="preview-error" role="status">${this._previewError}</span>` : nothing}
         </div>
         ${this.isFavorited ? this.renderFavorite('card-favorite', 'overlay-actions') : nothing}
         ${this.rename ? this.renderRename('content') : html`
@@ -487,13 +493,13 @@ export default class DaFileItem extends LitElement {
     return html`
       <button
         type="button"
-        aria-label=${this._detailsOpen ? 'Hide details' : 'Show details'}
+        aria-label="More info"
+        title="More info"
         aria-haspopup="dialog"
         aria-expanded=${Boolean(this._detailsOpen)}
-        data-column="actions"
         @click=${this.toggleDetails}
-        class="nx-action-btn-icon da-item-list-item-expand-btn is-visible ${this._detailsOpen ? 'is-active' : ''}">
-        <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/${this._detailsOpen ? 's2-icon-chevronup-20-n' : 's2-icon-more-20-n'}.svg#icon"></use></svg>
+        class="nx-action-btn-icon is-visible ${this._detailsOpen ? 'is-active' : ''}">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-infocircle-20-n.svg#icon"></use></svg>
       </button>
       ${this.renderDetailsPopover()}`;
   }
@@ -503,16 +509,18 @@ export default class DaFileItem extends LitElement {
     return this._detailsOpen ? html`<nx-popover placement='auto' class="da-item-details" role="dialog" aria-label="Details for ${this.name}" @close=${this.closeDetails}>
         ${card ? html`
           ${this.ext ? html`<section class="card-details" aria-label="Details">
-            <h3>Details</h3>${this.renderDetailsContent()}
+            <h3>Details</h3>
+            ${this.renderDetailsContent()}
           </section><hr>` : nothing}
-          <button type="button" class="card-favorite-action nx-action-btn-quiet ${this.size === 'm' ? 'nx-btn-lg' : ''}"
-          @click=${() => {
-            this.requestFavorite();
-            this.popover?.close();
-            this.closeDetails();
-            this.shadowRoot.querySelector('.card-more')?.focus();
-          }}>${this.isFavorited ? 'Remove as Favorite' : 'Mark as Favorite'}</button>`
-    : this.renderDetailsContent()}
+          <button type="button" class="card-favorite-action nx-action-btn-quiet ${this.size === 'm' ? 'nx-btn-lg' : ''}" @click=${() => {
+          this.requestFavorite();
+          this.popover?.close();
+          this.closeDetails();
+          this.shadowRoot.querySelector('.card-more')?.focus();
+        }}>
+            <span>${this.isFavorited ? 'Remove as Favorite' : 'Mark as Favorite'}</span>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><use href="${this.isFavorited ? ICONS.favorite : '/img/icons/s2-icon-star-20-n.svg'}#icon"></use></svg>
+          </button>` : this.renderDetailsContent()}
       </nx-popover>` : nothing;
   }
 
@@ -550,8 +558,11 @@ export default class DaFileItem extends LitElement {
     return html`
       <div class="da-item-list-item-inner">
         ${this.allowselect ? this.renderCheckBox() : html`<span class="da-item-list-item-selection-placeholder" data-column="select" aria-hidden="true"></span>`}
-        ${this.rename ? this.renderRename() : this.renderItem()}
-        ${this.renderDetailsControl()}
+        ${this.rename ? html`${this.renderRename()}${this.renderRowMeta()}` : this.renderItem()}
+        <div class="da-item-list-item-actions" data-column="actions">
+          ${this.renderDetailsControl()}
+          ${this.renderFavorite()}
+        </div>
       </div>
     `;
   }

@@ -159,7 +159,7 @@ describe('landing page', () => {
       const save = sinon.stub(source, 'save');
       const dialog = await openDialog();
       expect(dialog.title).to.equal('New page in site');
-      dialog.shadowRoot.querySelector('.da-btn-secondary').click();
+      dialog.shadowRoot.querySelector('.nx-form-btn-secondary').click();
       await el.updateComplete;
       expect(el.shadowRoot.querySelector('da-name-dialog')).to.equal(null);
       expect(save.called).to.equal(false);
@@ -171,7 +171,7 @@ describe('landing page', () => {
       const dialog = await openDialog();
       const input = dialog.shadowRoot.querySelector('.nx-input');
       input.value = 'My New Page';
-      dialog.shadowRoot.querySelector('.da-btn-primary').click();
+      dialog.shadowRoot.querySelector('.nx-form-btn-primary').click();
       await new Promise((resolve) => { setTimeout(resolve, 0); });
       expect(metadata.calledOnceWithExactly('/org/site/my-new-page.html')).to.equal(true);
       expect(save.calledOnce).to.equal(true);
@@ -411,6 +411,7 @@ describe('landing page', () => {
     expect(preview.documentPreview).to.equal(true);
     expect(preview.iconHref).to.include('/blocks/landing/page.svg');
     expect(preview.layout).to.equal('compact');
+    expect(preview.dimensions).to.equal('m');
     expect(el.shadowRoot.querySelector('nx-card, .file-name')).to.equal(null);
   });
 

@@ -410,7 +410,7 @@ export class DaLanding extends LitElement {
     const modified = formatModified({ modified: item.lastModified });
     return html`
       <li class="file">
-        <da-file-item view="card" layout="compact" .size=${this.uiSize}
+        <da-file-item view="card" layout="compact" dimensions="m" .size=${this.uiSize}
           .name=${item.name} .path=${item.path} .ext=${item.ext} .date=${item.lastModified}
           .editor=${this._editor || '/canvas#'} .iconHref=${getLandingIconHref(item)}
           .documentPreview=${item.ext === 'html'}

@@ -22,12 +22,11 @@
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
-  gap: var(--da-list-pad-inline, 24px);
   padding: 0 var(--da-list-pad-inline, 24px);
 }
 
 .da-item-list-item-inner.can-select {
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 32px 1fr auto;
 }
 
 .da-item-list-item-title,
@@ -145,6 +144,11 @@
   display: flex;
 }
 
+.card .da-item-list-item-rename-actions {
+  justify-content: center;
+}
+
+
 .da-item-list-item-rename-actions button {
   width: 32px;
   height: 32px;
@@ -209,7 +213,7 @@
 }
 
 .da-item-list-item-details.can-select {
-  padding: 24px var(--da-list-action-width, 32px) 24px calc(var(--da-checkbox-size, 14px) + var(--da-list-pad-inline, 24px));
+  padding: 24px var(--da-list-action-width, 32px) 24px calc(var(--nx-checkbox-size, 14px) + var(--da-list-pad-inline, 24px));
 }
 
 :host(.is-expanded) .da-item-list-item-details {

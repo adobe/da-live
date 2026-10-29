@@ -524,11 +524,29 @@ describe('DaList helpers', () => {
   });
 
   describe('handleRename', () => {
-    it('Marks the checked item for rename', () => {
+    it('Marks the selected item for rename', () => {
       const el = makeList();
       el._listItems = [{ isChecked: false }, { isChecked: true }];
+      el._selectedItems = [el._listItems[1]];
       el.handleRename();
       expect(el._listItems[1].rename).to.be.true;
+    });
+
+    it('Skips checked items outside the active selection', () => {
+      const el = makeList();
+      el._listItems = [{ isChecked: true }, { isChecked: true }];
+      el._selectedItems = [el._listItems[1]];
+      el.handleRename();
+      expect(el._listItems[0].rename).not.to.be.true;
+      expect(el._listItems[1].rename).to.be.true;
+    });
+
+    it('Does nothing without an active selection', () => {
+      const el = makeList();
+      el._listItems = [{ isChecked: true }];
+      el._selectedItems = [];
+      el.handleRename();
+      expect(el._listItems[0].rename).not.to.be.true;
     });
   });
 

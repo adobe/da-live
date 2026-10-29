@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
-import { fetchAemStatus, fetchDaStatus } from '../da-file-item/item.js';
+import { fetchAemStatus, fetchDaStatus } from '../../browse/shared/item.js';
 import { ICONS } from '../icons.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);

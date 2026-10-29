@@ -307,7 +307,7 @@ h2 {
   padding: 0;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--s2-spacing-200);
 }
 
 .file {
@@ -335,7 +335,7 @@ h2 {
   margin: 0;
   color: var(--s2-gray-600);
   font-size: var(--s2-component-s-regular-font-size);
-  line-height: 18px;
+  line-height: var(--s2-body-line-height);
 }
 
 .file-table-scroll {
@@ -533,10 +533,6 @@ a:focus-visible, .filter:focus-visible,
 
   .file-date, .assistant-note {
     font-size: var(--s2-component-m-regular-font-size);
-  }
-
-  .file-date {
-    line-height: 21px;
   }
 
   .assistant-note {

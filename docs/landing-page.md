@@ -160,6 +160,9 @@ intentional differences rather than substitutes for those missing inputs.
   Site labels retain real identifiers; no Nike name or custom domain is fabricated.
 - Files are the selected site's **root directory**, not a recursive site index.
   All root-listing pages are loaded before sorting by modification date.
+  Browse uses the shared `da-file-item` list/card renderer; Landing keeps its
+  compact card layout. Both use shared item navigation that preserves the
+  Landing Home destination and preview flags for same-origin editor links.
 - The mock's Recent tab shows recently modified files, not personal
   recently opened history. The root scope is not added as a visible subtitle.
 - **Favorite** uses the existing browser-local `da-favorites` entries for that root.

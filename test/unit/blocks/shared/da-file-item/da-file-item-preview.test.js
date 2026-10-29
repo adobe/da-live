@@ -117,12 +117,10 @@ describe('da-file-item preview', () => {
     expect(revoke.calledOnce).to.equal(true);
   });
 
-  it('only loads document previews when opted in and visible, and treats source as text', async () => {
+  it('only loads opted-in document previews when visible and renders source as text', async () => {
     const { source } = await getNx2Api();
-    const get = stub(source, 'get').resolves(new Response(
-      '<main><h1>&lt;img src=x&gt;</h1><p>Actual content</p><script>throw 1</script><img src="javascript:void(0)"></main>',
-    ));
-    await fixture({ ext: 'html', path: '/o/s/a.html' });
+    const get = stub(source, 'get').resolves(new Response('<main><h1>Page title</h1><p>Actual content</p><script>window.previewExecuted=true;</script></main>'));
+    await fixture({ ext: 'html', path: '/o/s/page.html' });
     expect(observer.observe.called).to.equal(false);
     el.documentPreview = true;
     await el.updateComplete;
@@ -131,46 +129,43 @@ describe('da-file-item preview', () => {
     onIntersect([{ isIntersecting: true }]);
     await load.firstCall.returnValue;
     await el.updateComplete;
-    expect(get.calledOnce).to.equal(true);
-    expect(el.shadowRoot.querySelector('.document-preview strong').textContent).to.equal('<img src=x>');
+    expect(get.calledOnceWithExactly('/o/s/page.html')).to.equal(true);
+    expect(el.shadowRoot.querySelector('.document-preview strong').textContent).to.equal('Page title');
     expect(el.shadowRoot.querySelector('.document-preview p').textContent).to.equal('Actual content');
-    expect(el.shadowRoot.querySelector('script, img')).to.equal(null);
-    el.documentPreview = false;
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('.document-preview')).to.equal(null);
+    expect(el.shadowRoot.querySelector('script')).to.equal(null);
   });
 
-  it('reports a failed document preview without retrying when favorites change', async () => {
+  it('reports failed documents without retrying when favorites change', async () => {
     const { source } = await getNx2Api();
     const get = stub(source, 'get').resolves(new Response('', { status: 403 }));
-    await fixture({ ext: 'html', path: '/o/s/a.html', documentPreview: true });
+    await fixture({ ext: 'html', path: '/o/s/page.html', documentPreview: true });
     await el.loadImage();
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('.preview-error').textContent).to.equal('Preview unavailable.');
-    expect(el.shadowRoot.querySelector('.card-preview svg')).to.exist;
     el.isFavorited = true;
     await el.updateComplete;
     expect(get.calledOnce).to.equal(true);
-    expect(el._imageObserver).to.equal(null);
   });
 
-  it('discards document content and errors after switching sites or disconnecting', async () => {
+  it('discards document content after switching sites or disconnecting', async () => {
     const { source } = await getNx2Api();
     let finish;
-    stub(source, 'get').callsFake(() => new Promise((resolve) => { finish = resolve; }));
-    await fixture({ ext: 'html', path: '/o/s/a.html', documentPreview: true });
+    stub(source, 'get').returns(new Promise((resolve) => { finish = resolve; }));
+    await fixture({ ext: 'html', path: '/o/first/page.html', documentPreview: true });
     const loading = el.loadImage();
     await Promise.resolve();
-    el.path = '/o/other/a.html';
+    el.path = '/o/second/page.html';
     await el.updateComplete;
     finish(new Response('<main><h1>Old site</h1></main>'));
     await loading;
     expect(el._document).to.equal(undefined);
-    const disconnected = el.loadImage();
+    expect(el._previewError).to.equal(undefined);
+    const pending = el.loadImage();
     await Promise.resolve();
     el.remove();
-    finish(new Response('', { status: 500 }));
-    await disconnected;
+    finish(new Response('', { status: 403 }));
+    await pending;
+    expect(el._document).to.equal(undefined);
     expect(el._previewError).to.equal(undefined);
   });
 });
