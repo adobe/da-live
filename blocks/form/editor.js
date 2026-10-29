@@ -5,6 +5,7 @@ import { getNx2 } from '../../scripts/utils.js';
 import { createAssetSources } from './utils/assets.js';
 import { loadFormContext } from './utils/context.js';
 import { attachPersistence } from './utils/persistence.js';
+import { loadPreviewOrigin } from './utils/preview.js';
 import { isJsonPreviewEnabled } from './utils/config.js';
 
 import './views/editor.js';
@@ -15,7 +16,7 @@ import './views/sidebar.js';
 import './fields/button.js';
 import './fields/picker.js';
 
-const { ensurePreviewLogin, getLivePreviewUrl, hashChange, loadStyle } = await import(`${getNx2()}/utils/utils.js`);
+const { hashChange, loadStyle } = await import(`${getNx2()}/utils/utils.js`);
 
 const style = await loadStyle(import.meta.url);
 
@@ -215,9 +216,9 @@ class Form extends LitElement {
     const { owner, repo } = this._details;
     const isCurrent = () => version === this._loadVersion;
 
-    ensurePreviewLogin({ org: owner, repo }).then(() => {
+    loadPreviewOrigin({ owner, repo }).then((previewOrigin) => {
       if (isCurrent()) {
-        this._previewOrigin = getLivePreviewUrl({ org: owner, repo });
+        this._previewOrigin = previewOrigin;
       }
     });
 
