@@ -83,7 +83,7 @@ describe('da-list-item render', () => {
   it('Adds the file icon class for the configured ext', async () => {
     await fixture({ ext: 'json' });
     const use = el.shadowRoot.querySelector('span.da-item-list-item-type svg use');
-    expect(use.getAttribute('href')).to.contain('s2-icon-data-20-n.svg');
+    expect(use.getAttribute('href')).to.contain('s2-icon-file-20-n.svg');
   });
 
   it('Renders details panel with version "Checking" by default', async () => {
