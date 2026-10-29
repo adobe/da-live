@@ -67,6 +67,28 @@ function getBlockName(className) {
   return { name, variants: rest.length ? rest.join(', ') : undefined };
 }
 
+function getClassIdentity(className) {
+  const [name, ...variants] = (className || '').split(/\s+/).filter(Boolean);
+  return name ? { name, variants } : null;
+}
+
+function getLabelIdentity(label) {
+  const match = (label || '').match(/^(.*\S)\s*\(([^)]+)\)\s*$/);
+  if (!match) return null;
+  const variants = match[2].split(',').map((v) => v.trim()).filter(Boolean);
+  return { name: match[1].trim(), variants };
+}
+
+function getIdentities(block, label) {
+  const sources = block.dataset?.isgroup
+    ? [...block.children].filter((child) => child.tagName === 'DIV')
+    : [block];
+  const identities = sources.map((el) => getClassIdentity(el.className)).filter(Boolean);
+  const legacy = getLabelIdentity(label);
+  if (legacy) identities.push(legacy);
+  return identities;
+}
+
 function getBlockTableHtml(block) {
   const { name, variants } = getBlockName(block.className);
   const rows = [...block.children];
@@ -345,6 +367,7 @@ function transformBlock(block) {
     metaEl.remove();
   }
 
+  item.identities = getIdentities(block, item.name);
   item.dom = block.dataset?.isgroup ? processGroupBlock(block) : getBlockTableHtml(block);
   return item;
 }
