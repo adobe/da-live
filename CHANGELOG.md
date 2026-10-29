@@ -1,3 +1,17 @@
+# [1.17.0](https://github.com/adobe/da-live/compare/v1.16.1...v1.17.0) (2026-10-29)
+
+
+### Features
+
+* extract shared list/card view ([#1504](https://github.com/adobe/da-live/issues/1504)) ([e26e1f2](https://github.com/adobe/da-live/commit/e26e1f21c1d519ec6b90947c8d5a433833f9cd6e))
+
+## [1.16.1](https://github.com/adobe/da-live/compare/v1.16.0...v1.16.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* **diff:** hash a review decision on the block as the editor saves it ([#1516](https://github.com/adobe/da-live/issues/1516)) ([8de3b1d](https://github.com/adobe/da-live/commit/8de3b1d660d09a6b5182792a2937428e8e6ed619))
+
 # [1.16.0](https://github.com/adobe/da-live/compare/v1.15.1...v1.16.0) (2026-10-28)
 
 
