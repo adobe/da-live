@@ -41,7 +41,8 @@ adobe/da-live#1416 is modified or merged by this work.
 
 - AO sites reuse Nexter's extracted `nx-ao-input` in both the landing page and
   conversation. The input owns draft, attachments, menus, voice and working/Stop
-  presentation. Landing owns the gradient frame, site availability and handoff
+  presentation. Nexter's shared composer skin owns the gradient frame. Landing
+  owns page layout, site availability and handoff
   to the existing conversation; it does not create another controller. The
   configured `loadChatInput()` loader leaves legacy sites on their existing form.
   Standalone context events stay isolated from the panel's add-to-chat event.
@@ -76,12 +77,14 @@ Coworker marks in both text boxes use `--s2-gray-800` in either theme.
 
 Chat-family defaults come from Nexter's `nx2/blocks/shared/chat/input.css`:
 working fill/border/text, spinner/logo dimensions and input inset/height limits.
-The centered composer keeps its own `--landing-composer-*` properties in
-`blocks/landing/landing.css`, not the global generated S2 token block.
-These name the 664px width, 24px inner radius, 6px frame and derived 30px outer
-radius, plus gradient artwork, blur/opacity and state-specific shadows.
+The centered composer adopts Nexter's `nx2/blocks/shared/chat/composer.css`.
+Its `--nx-chat-composer-*` properties name the 24px inner radius, 6px frame
+and derived 30px outer radius, plus gradient artwork, blur/opacity and
+state-specific shadows. Landing retains the page's 664px width and positioning.
 Idle, ready, focus-frame, working and drop shadows stay separate; working
 defaults to the current ready shadow. Existing S2 spacing is reused directly.
+The legacy center working label uses the shared working-text color. Disclaimer
+spacing and S/M line heights use the existing S2 spacing and typography tokens.
 The legacy text line remains 20px and the expanded AO row 21px; tokenization
 does not resize either chat or flatten the center/sidebar variants.
 The legacy S line uses the existing S2 component line-height token; AO keeps

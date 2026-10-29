@@ -645,6 +645,8 @@ describe('landing page', () => {
     const input = el.shadowRoot.querySelector('nx-ao-input');
     expect(input).to.equal(el._aoInput);
     expect(input.variant).to.equal('expanded');
+    expect(input.parentElement.classList.contains('nx-chat-composer')).to.equal(true);
+    expect(input.parentElement.querySelector('.nx-chat-composer-surface')).not.to.equal(null);
     expect(input.altHarness).to.equal(true);
     expect(input.addEvent).to.equal(undefined);
     expect(el.shadowRoot.querySelector('textarea')).to.equal(null);
@@ -1165,6 +1167,7 @@ describe('landing page', () => {
   it('keeps the working composer within the page width and retains the faint Figma palette in both themes', async () => {
     el.shadowRoot.adoptedStyleSheets = await Promise.all([
       '/test/fixtures/nx/blocks/shared/chat/input.css',
+      '/test/fixtures/nx/blocks/shared/chat/composer.css',
       '/blocks/landing/landing.css',
     ].map(async (href) => {
       const sheet = new CSSStyleSheet();
@@ -1198,6 +1201,8 @@ describe('landing page', () => {
         expect(getComputedStyle(surface, '::before').opacity).to.equal('0.12');
         expect(getComputedStyle(surface, '::after').content).to.equal('none');
         const status = input.querySelector('.composer-working').getBoundingClientRect();
+        expect(getComputedStyle(input.querySelector('.composer-working')).color)
+          .to.equal(scheme === 'light' ? 'rgba(0, 0, 0, 0.56)' : 'rgba(255, 255, 255, 0.56)');
         const spinner = input.querySelector('.nx-loading-spinner').getBoundingClientRect();
         expect(spinner.width).to.equal(16);
         expect(spinner.height).to.equal(16);
@@ -1221,20 +1226,27 @@ describe('landing page', () => {
     }
 
     el.style.setProperty('--landing-composer-width', '600px');
-    el.style.setProperty('--landing-composer-radius', '20px');
+    el.style.setProperty('--nx-chat-composer-radius', '20px');
     el.style.width = '1200px';
     const composer = el.shadowRoot.querySelector('.composer');
     expect(composer.getBoundingClientRect().width).to.equal(600);
     expect(getComputedStyle(composer).borderRadius).to.equal('20px');
     expect(getComputedStyle(composer, '::before').borderRadius).to.equal('26px');
-    el.style.setProperty('--landing-composer-working-shadow', 'none');
+    el.style.setProperty('--nx-chat-composer-working-shadow', 'none');
     el._chatInputState = { busy: true, disabled: true };
     await el.updateComplete;
     expect(getComputedStyle(composer.querySelector('.composer-surface')).boxShadow).to.equal('none');
     el._chatInputState = { busy: false, disabled: false };
     await el.updateComplete;
     expect(getComputedStyle(composer.querySelector('.composer-surface')).boxShadow).not.to.equal('none');
+    const note = el.shadowRoot.querySelector('#assistant-note');
+    el.style.setProperty('--s2-spacing-200', '10px');
+    el.style.setProperty('--s2-component-s-regular-line-height', '19px');
+    expect(getComputedStyle(note).marginTop).to.equal('10px');
+    expect(getComputedStyle(note).lineHeight).to.equal('19px');
     el.setAttribute('data-ui-size', 'm');
+    el.style.setProperty('--s2-component-m-regular-line-height', '22px');
+    expect(getComputedStyle(note).lineHeight).to.equal('22px');
     expect(getComputedStyle(composer.querySelector('textarea')).lineHeight).to.equal('27px');
     expect(getComputedStyle(composer.querySelector('.coworker-icon')).width).to.equal('22px');
   });

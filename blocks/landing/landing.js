@@ -34,6 +34,7 @@ await Promise.all([
 const [shellStyle, ...styles] = await Promise.all([
   loadStyle(new URL('./shell.css', import.meta.url).href),
   loadStyle(`${getNx2()}/blocks/shared/chat/input.css`),
+  loadStyle(`${getNx2()}/blocks/shared/chat/composer.css`),
   loadStyle(`${getNx2()}/styles/buttons.css`),
   loadStyle(import.meta.url),
 ]);
@@ -804,16 +805,16 @@ export class DaLanding extends LitElement {
         <section class="welcome" aria-labelledby="welcome-heading">
           <h1 id="welcome-heading">Hi${this._name ? html` ${this._name}` : nothing}, how can I help?</h1>
           ${this._aoInput ? html`
-            <div class="composer ${!this.composerDisabled ? 'is-enabled' : ''} ${busy ? 'is-processing' : ''}">
-              <div class="composer-surface" aria-hidden="true"></div>
+            <div class="composer nx-chat-composer ${!this.composerDisabled ? 'is-enabled' : ''} ${busy ? 'is-processing' : ''}">
+              <div class="composer-surface nx-chat-composer-surface" aria-hidden="true"></div>
               ${this._aoInput}
             </div>` : html`
-          <form class="composer ${this._dragging && !this.composerDisabled ? 'is-dropzone' : ''} ${busy ? 'is-processing' : ''}"
+          <form class="composer nx-chat-composer ${this._dragging && !this.composerDisabled ? 'is-dropzone' : ''} ${busy ? 'is-processing' : ''}"
             aria-busy=${!!this._chatInputState?.busy || !!this._handingOff || !!this._readingFiles}
             @submit=${this.submitPrompt} @dragenter=${this.handleFileDrag}
             @dragleave=${this.handleFileDrag} @dragover=${this.handleFileDrag}
             @drop=${this.handleFileDrag}>
-            <div class="composer-surface" aria-hidden="true"></div>
+            <div class="composer-surface nx-chat-composer-surface" aria-hidden="true"></div>
             ${this._attachments?.length ? html`<nx-pills .items=${this._attachments}
               @nx-pill-remove=${this._onRemoveAttachment}></nx-pills>` : nothing}
             <div class="composer-input">
