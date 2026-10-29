@@ -1,4 +1,5 @@
 import { fetchDaConfigs, getFirstSheet } from '../../../shared/utils.js';
+import { getAppUrl, getSiteUrl, parseSiteUrl, toSiteUrl } from '../../../../scripts/urls.js';
 
 async function getConfSheet(org, site) {
   const configs = await Promise.all(fetchDaConfigs({ org, site }));
@@ -13,17 +14,18 @@ export async function getUeUrl(ueConf, previewUrl) {
   const dxOrg = value.split('/').find((split) => split.startsWith('@'));
   if (!dxOrg) return null;
   const prefix = UE_PREFIX.replace('{{DX_ORG}}', dxOrg);
-  // TODO: INFRA
-  let ueDomain = previewUrl.replace('https://', '').replace('.aem.', '.ue.da.');
-  ueDomain = window.location.origin === 'https://da.page' ? ueDomain.replace('.ue.da.live', '.ue.da.page') : ueDomain;
+  const details = parseSiteUrl(previewUrl);
+  const tier = window.location.origin === getAppUrl('', true) || details?.tier === 'preview' ? 'uePage' : 'ue';
+  const target = details ? getSiteUrl(tier, { ...details, path: details.pathname }) : previewUrl;
+  const ueDomain = target.replace(/^https?:\/\//, '');
   return `${prefix}${ueDomain}`;
 }
 
 export async function getQeUrl(previewUrl) {
-  const finalUrl = previewUrl
-    .replace('.aem.live', '.aem.page')
-    .replace(/\/index$/, '/');
-  return `${finalUrl}?quick-edit=on`;
+  const url = new URL(toSiteUrl(previewUrl, 'preview'));
+  url.pathname = url.pathname.replace(/\/index$/, '/');
+  url.searchParams.set('quick-edit', 'on');
+  return url.href;
 }
 
 export default async function getExternalUrl(org, repo, previewUrl) {

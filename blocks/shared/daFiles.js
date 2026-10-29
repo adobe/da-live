@@ -1,4 +1,5 @@
 import { getNx2Api, sanitizePathParts } from '../../scripts/utils.js';
+import { getSiteUrl } from '../../scripts/urls.js';
 
 export async function listFolder(fullpath) {
   try {
@@ -24,5 +25,5 @@ export function getAemUrl(item) {
   const [org, site, ...pathParts] = sanitizePathParts(item.path.replace(/\.html$/, ''));
   const pageName = pathParts.pop();
   pathParts.push(pageName === 'index' ? '' : pageName);
-  return `https://main--${site}--${org}.aem.page/${pathParts.join('/')}`;
+  return getSiteUrl('preview', { org, site, path: `/${pathParts.join('/')}` });
 }

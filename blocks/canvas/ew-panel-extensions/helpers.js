@@ -2,6 +2,9 @@
 import { DOMParser as PMDOMParser, DOMSerializer, NodeSelection, Slice, TextSelection } from 'da-y-wrapper';
 import { slug } from '../../../deps/github-slugger/dist/index.js';
 import { getNx, getNx2Api, sanitizeName } from '../../../scripts/utils.js';
+import {
+  getSiteUrl, parseSiteUrl, parsePreviewUrl, parseDaUrl, getStoredContentOrigin, appendUrlPath,
+} from '../../../scripts/urls.js';
 import { daFetch, getAuthToken } from '../../shared/utils.js';
 import { CON_ORIGIN } from '../../shared/constants.js';
 import { getPreviewProxyDetails, ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
@@ -18,11 +21,9 @@ const { fetchDaConfigs, getFirstSheet } = await import(`${getNx()}/utils/daConfi
 const ref = new URLSearchParams(window.location.search).get('ref') || 'main';
 const branch = sanitizeName(ref, false, false) || 'main';
 
-const AEM_ORIGINS = ['hlx.page', 'hlx.live', 'aem.page', 'aem.live'];
 const REPLACE_CONTENT = '<content>';
 const blockLibraryCache = new Map();
 const librarySessions = new Map();
-const CONTENT_HOSTS = new Set(['content.da.live', 'stage-content.da.live']);
 
 export const LIBRARY_AUTH_MESSAGE = 'Library access was denied. Check that you are signed in '
   + 'to DA and have access to this site. For a library hosted by another organization, open '
@@ -121,15 +122,16 @@ function libraryProxyOptions({ org, site, branch: sourceBranch = branch } = {}) 
 
 function libraryContentUrl(path, { org, site, branch: sourceBranch = branch } = {}) {
   if (!path.startsWith('/') || !org || !site) return path;
-  const origin = ref === 'local' ? 'http://localhost:3000' : `https://${sourceBranch}--${site}--${org}.aem.live`;
-  return new URL(path, origin).href;
+  return ref === 'local' ? appendUrlPath('http://localhost:3000', path)
+    : getSiteUrl('live', { org, site, branch: sourceBranch, path });
 }
 
 function resolveLibraryImages(element, path, context, { variant = false } = {}) {
   const source = new URL(libraryContentUrl(path, context), window.location.href);
-  const isAemSource = AEM_ORIGINS.some((domain) => source.hostname.endsWith(`.${domain}`));
-  const isProxySource = /\.(?:stage-)?preview\.da\.live$/.test(source.hostname);
-  const isContentSource = CONTENT_HOSTS.has(source.hostname);
+  const isAemSource = !!parseSiteUrl(source.href, context);
+  const isProxySource = !!parsePreviewUrl(source.href, context);
+  const content = parseDaUrl(source.href);
+  const isContentSource = content?.service === 'content';
   const proxyOpts = libraryProxyOptions(context);
   const details = getPreviewProxyDetails(source.href, { ...proxyOpts, currentOrg: undefined });
   const proxied = isProxySource || (proxyOpts.currentOrg
@@ -139,11 +141,11 @@ function resolveLibraryImages(element, path, context, { variant = false } = {}) 
   const isDaSource = (isContentSource || proxied) && !aemHtml;
   let contentRoot;
   if (isDaSource && details.org) {
-    const origin = isContentSource ? source.origin : CON_ORIGIN;
-    contentRoot = `${origin}/${details.org}/${details.site}`;
+    const base = isContentSource ? content.base : CON_ORIGIN;
+    contentRoot = `${base}/${details.org}/${details.site}`;
     source.href = `${contentRoot}${details.pathname}${source.search}${source.hash}`;
   } else if (!isAemSource && proxied && details.org) {
-    source.href = `https://${details.branch}--${details.site}--${details.org}.aem.page${details.pathname}${source.search}${source.hash}`;
+    source.href = getSiteUrl('preview', { ...details, path: details.pathname, search: source.search, hash: source.hash });
   }
   element.querySelectorAll('img[src]').forEach((img) => {
     const src = img.getAttribute('src');
@@ -151,10 +153,11 @@ function resolveLibraryImages(element, path, context, { variant = false } = {}) 
     try {
       const base = new URL(source.href);
       const { daImgHost: storedHost } = img.dataset;
-      if (contentRoot && CONTENT_HOSTS.has(storedHost)) {
-        base.protocol = 'https:';
-        base.hostname = storedHost;
-        base.port = '';
+      const storedOrigin = storedHost && getStoredContentOrigin(storedHost, source.href);
+      if (contentRoot && storedOrigin) {
+        const stored = new URL(storedOrigin);
+        base.protocol = stored.protocol;
+        base.host = stored.host;
       }
       if (contentRoot && src.startsWith('/') && !src.startsWith('//')) {
         // DA composition strips the org/site prefix from stored content image URLs.
@@ -164,7 +167,12 @@ function resolveLibraryImages(element, path, context, { variant = false } = {}) 
       } else {
         const rootMedia = !isDaSource && (isAemSource || proxied)
           && (variant ? src.startsWith('./') : /^\.\/media_[^/?#]+(?:[?#].*)?$/.test(src));
-        img.setAttribute('src', new URL(src, rootMedia ? `${base.origin}/` : base.href).href);
+        const site = parseSiteUrl(base.href, context);
+        const root = site ? `${getSiteUrl(site.tier, { ...site, search: '', hash: '' })}/` : `${base.origin}/`;
+        const imageBase = rootMedia ? root : base.href;
+        const target = !isDaSource && site && src.startsWith('/') && !src.startsWith('//')
+          ? getSiteUrl(site.tier, { ...site, path: src, search: '', hash: '' }) : new URL(src, imageBase).href;
+        img.setAttribute('src', target);
       }
       img.removeAttribute('data-da-img-host');
     } catch { /* a malformed image URL must not discard the entire block/template */ }
@@ -175,8 +183,8 @@ async function ensureLibraryPreviewSession(url, context) {
   const proxyOpts = libraryProxyOptions(context);
   const details = getPreviewProxyDetails(url, proxyOpts);
   if (!proxyOpts.currentOrg || !details.org) return undefined;
-  // The origin includes org/site/branch and the stage/production environment.
-  const { origin } = new URL(details.url);
+  // Path-based deployments can share an origin across sites and branches.
+  const origin = getPreviewOrigin(details.org, details.site, details.branch);
   const token = await getAuthToken();
   if (!token) {
     librarySessions.delete(origin);
@@ -353,7 +361,7 @@ export async function getBlockVariants(path, context) {
   const source = libraryContentUrl(path, context);
   let isAemHosted = false;
   try {
-    isAemHosted = AEM_ORIGINS.some((o) => new URL(source).hostname.endsWith(`.${o}`));
+    isAemHosted = !!parseSiteUrl(source, context);
   } catch { /* relative path */ }
 
   const { doc, authError } = await fetchAndParseHtml(source, isAemHosted, context);
@@ -409,7 +417,7 @@ function calculateSources(org, site, sheetPath) {
     const trimmed = p.trim();
     if (!trimmed.startsWith('/')) return trimmed;
     if (ref === 'local') return `http://localhost:3000${trimmed}`;
-    return `https://${branch}--${site}--${org}.aem.live${trimmed}`;
+    return getSiteUrl('live', { org, site, branch, path: trimmed });
   });
 }
 
@@ -775,12 +783,19 @@ export function getItemPreviewUrl(item, { org, site }) {
   const metadata = getPreviewProxyDetails(input, { ...proxyOpts, currentOrg: undefined });
   if (target.org) {
     // Item previews render with the canvas branch, not the library source's branch.
-    const { pathname, search, hash } = new URL(target.url);
-    target.url = `${getPreviewOrigin(target.org, target.site, previewBranch)}${pathname}${search}${hash}`;
+    const { search, hash } = new URL(target.url);
+    target.url = `${getPreviewOrigin(target.org, target.site, previewBranch)}${target.pathname}${search}${hash}`;
   } else if (metadata.org) {
     // Cross-org item previews still need rendered HTML, not a raw DA source endpoint.
     const { search, hash } = new URL(input);
-    target.url = `https://${previewBranch}--${metadata.site}--${metadata.org}.aem.page${metadata.pathname}${search}${hash}`;
+    target.url = getSiteUrl('preview', {
+      org: metadata.org,
+      site: metadata.site,
+      branch: previewBranch,
+      path: metadata.pathname,
+      search,
+      hash,
+    });
   }
 
   return {

@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import config, { createConfig } from '../../../../../../scripts/config.js';
 
 // Setup Nx
 const { setNx } = await import('../../../../../../scripts/utils.js');
@@ -27,6 +28,27 @@ function pingSafe(respond) {
 }
 
 describe('UE URLs', () => {
+  it('uses custom UE and quick-edit routes without dropping document query or fragment', async () => {
+    const original = { ...config };
+    try {
+      Object.assign(config, createConfig({
+        aem: {
+          liveUrl: 'https://publish.example/sites/{org}/{site}/{branch}',
+          previewUrl: 'https://preview.example/render/{org}/{site}/{branch}',
+          ueUrl: 'https://ue.example/edit/{org}/{site}/{branch}',
+        },
+      }));
+      const { getUeUrl, getQeUrl } = await import('../../../../../../blocks/edit/da-content/helpers/index.js');
+      const input = 'https://publish.example/sites/org/site/main/folder/page?foo=bar#part';
+      expect(await getUeUrl({ value: '/@customer/' }, input))
+        .to.equal('https://experience.adobe.com/#/@customer/aem/editor/canvas/ue.example/edit/org/site/main/folder/page?foo=bar#part');
+      expect(await getQeUrl(input))
+        .to.equal('https://preview.example/render/org/site/main/folder/page?foo=bar&quick-edit=on#part');
+    } finally {
+      Object.assign(config, original);
+    }
+  });
+
   it('Supports single sheet configs', async () => {
     const mockFetch = pingSafe(async () => ({ ok: true, json: async () => (SINGLE_SHEET) }));
     const orgFetch = window.fetch;

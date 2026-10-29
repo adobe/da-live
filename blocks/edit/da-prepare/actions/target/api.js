@@ -1,11 +1,10 @@
 import { etcFetch } from '../../../../shared/utils.js';
+import { getAppUrl, parseSiteUrl } from '../../../../../scripts/urls.js';
 
 function getEditUrl(aemUrl) {
   const parsed = new URL(aemUrl);
-  const hostParts = parsed.hostname.split('.')[0].split('--');
-  const repo = hostParts[1];
-  const org = hostParts[2];
-  return `https://da.live/edit#/${org}/${repo}${parsed.pathname}`;
+  const { org, site, pathname } = parseSiteUrl(parsed.href) || {};
+  return getAppUrl(`/edit#/${org}/${site}${pathname || parsed.pathname}`);
 }
 
 export async function saveOffer(config, name, content, aemUrl, displayName, offerId) {

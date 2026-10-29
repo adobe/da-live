@@ -1,4 +1,5 @@
 import getPathDetails from './pathDetails.js';
+import { getServiceOrigins, parseDaUrl, parseSiteUrl } from '../../scripts/urls.js';
 
 function setCursor(cursor, el) {
   el.id = cursor.id;
@@ -89,11 +90,9 @@ function makePictures(editor, live) {
     if (live && clone.src) {
       try {
         const source = new URL(clone.src);
-        if (source.hostname === 'content.da.live' || source.hostname === 'stage-content.da.live') {
-          source.pathname = `/${source.pathname
-            .split('/')
-            .slice(3) // remove org and site
-            .join('/')}`;
+        const details = parseDaUrl(source.href);
+        if (details?.service === 'content') {
+          source.pathname = details.pathname;
           clone.src = source.toString();
         }
       } catch {
@@ -250,11 +249,9 @@ function convertLocalUrlsToRelative(editor) {
     if (!url || !url.startsWith('https://')) return;
 
     try {
-      const { hostname, pathname, search, hash } = new URL(url);
-
-      const sameSitePattern = `--${site}--${org}.aem.`;
-      if (hostname.includes(sameSitePattern)) {
-        link.setAttribute('href', `${pathname}${search}${hash}`);
+      const details = parseSiteUrl(url);
+      if (details?.site === site && details.org === org) {
+        link.setAttribute('href', `${details.pathname}${details.search}${details.hash}`);
       }
     } catch {
       // ignore
@@ -330,8 +327,9 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
   `;
 
   if (livePreview) {
-    html = html.replaceAll('https://content.da.live/', '/');
-    html = html.replaceAll('https://stage-content.da.live/', '/');
+    getServiceOrigins('content').forEach((origin) => {
+      html = html.replaceAll(`${origin}/`, '/');
+    });
   }
 
   return html;

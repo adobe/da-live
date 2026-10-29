@@ -1,5 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
+import config, { createConfig } from '../../../../../scripts/config.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -150,6 +151,27 @@ describe('da-library/helpers exports', () => {
   });
 
   describe('getItemDetails', () => {
+    it('distinguishes admin and content paths on the same host with different ports', () => {
+      const original = { ...config };
+      try {
+        Object.assign(config, createConfig({
+          da: {
+            services: {
+              admin: { prod: 'https://bus.example:9443' },
+              content: { prod: 'https://bus.example:8443' },
+            },
+          },
+        }));
+        expect(getItemDetails({ path: 'https://bus.example:9443/source/org/site/folder/page' }))
+          .to.deep.equal({ org: 'org', site: 'site', pathname: '/folder/page' });
+        expect(getItemDetails({ path: 'https://bus.example:8443/org/site/folder/page' }))
+          .to.deep.equal({ org: 'org', site: 'site', pathname: '/folder/page' });
+        expect(getAemUrlVars('https://bus.example:7443/org/site/page')).to.be.false;
+      } finally {
+        Object.assign(config, original);
+      }
+    });
+
     it('Parses an aem.live URL', () => {
       const result = getItemDetails({ path: 'https://main--repo--org.aem.live/folder/page' });
       expect(result).to.deep.equal({ org: 'org', site: 'repo', pathname: '/folder/page' });

@@ -4,6 +4,7 @@ import {
   ySyncPlugin, yUndoPlugin, yUndo,
 } from 'da-y-wrapper';
 import { setNx } from '../../../../../scripts/utils.js';
+import config, { createConfig } from '../../../../../scripts/config.js';
 import { setCommentsController } from '../../../../../blocks/canvas/editor-utils/comments-bridge.js';
 import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 import { setDaConfigs } from '../../../../fixtures/nx/utils/daConfig.js';
@@ -1186,6 +1187,39 @@ describe('DA Preview Proxy routing', () => {
         });
         expect(calls).to.have.lengthOf(0);
       });
+    });
+
+    it('retains the configured HTTP scheme and port when restoring image metadata', async () => {
+      const original = { ...config };
+      try {
+        Object.assign(config, createConfig({ da: { services: { content: { prod: 'http://media.example:8788' } } } }));
+        respond = () => new Response('<body><div><div class="hero"><div><div><img src="/library/image.png" data-da-img-host="media.example"></div></div></div></div></body>');
+        const [variant] = await getBlockVariants('http://media.example:8788/proxyorg/proxysite/library/hero', LIBRARY_CONTEXT);
+        const img = variant.dom.querySelector('img');
+        expect(img.getAttribute('src')).to.equal('http://media.example:8788/proxyorg/proxysite/library/image.png');
+        expect(img.hasAttribute('data-da-img-host')).to.equal(false);
+      } finally {
+        Object.assign(config, original);
+      }
+    });
+
+    it('preserves custom site and proxy mount paths for library content and images', async () => {
+      const original = { ...config };
+      try {
+        Object.assign(config, createConfig({
+          aem: { previewUrl: 'https://preview.example/render/{org}/{site}/{branch}' },
+          da: { services: { preview: { stage: 'https://proxy.example/author/{org}/{site}/{branch}' } } },
+        }));
+        respond = () => new Response('<body><div><div class="hero"><div><div><img src="./media.png"><img src="/assets/logo.png"></div></div></div></div></body>');
+        const [variant] = await getBlockVariants('https://preview.example/render/proxyorg/proxysite/main/blocks/hero', LIBRARY_CONTEXT);
+        expect(calls[0].url).to.equal('https://proxy.example/author/proxyorg/proxysite/main/blocks/hero.plain.html');
+        expect([...variant.dom.querySelectorAll('img')].map((img) => img.getAttribute('src'))).to.deep.equal([
+          'https://preview.example/render/proxyorg/proxysite/main/media.png',
+          'https://preview.example/render/proxyorg/proxysite/main/assets/logo.png',
+        ]);
+      } finally {
+        Object.assign(config, original);
+      }
     });
 
     ['content.da.live', 'stage-content.da.live'].forEach((host) => {

@@ -1,4 +1,5 @@
-import { getNx, getNx2Api } from '../../../scripts/utils.js';
+import { getNx1, getNx2Api } from '../../../scripts/utils.js';
+import { getSiteUrl, toSiteUrl } from '../../../scripts/urls.js';
 import { buildCompareDom } from '../../shared/version/compare.js';
 import { isRequestId } from '../../shared/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
@@ -55,18 +56,20 @@ export function normalizeComparisonHtml(html, context) {
   dom.querySelectorAll('td > p:only-child, th > p:only-child').forEach((p) => {
     p.replaceWith(...p.childNodes);
   });
-  const base = `https://main--${context.site}--${context.org}.aem.live/${context.path.replace(/^\//, '').replace(/\.html$/, '')}`;
+  const base = getSiteUrl('live', { org: context.org, site: context.site, path: context.path.replace(/^\//, '').replace(/\.html$/, '') });
   dom.body.querySelectorAll('*').forEach((el) => {
     [...el.attributes].forEach(({ name, value }) => {
       if (!['href', 'src', 'alt', 'title', 'colspan', 'rowspan', 'start'].includes(name)) {
         el.removeAttribute(name);
       } else if (name === 'src' || name === 'href') {
         try {
-          const url = new URL(value, base);
+          const resource = value.startsWith('/') && !value.startsWith('//')
+            ? getSiteUrl('live', { org: context.org, site: context.site, path: value }) : value;
+          const url = new URL(resource, base);
           if (!['https:', 'http:', ...(name === 'href' ? ['mailto:', 'tel:'] : [])].includes(url.protocol)) {
             el.removeAttribute(name);
           } else {
-            url.hostname = url.hostname.replace(/\.(?:hlx|aem)\.(?:page|live)$/, '.aem.live');
+            url.href = toSiteUrl(url.href, 'live');
             if (name === 'src' && url.hash.startsWith('#width')) url.hash = '';
             el.setAttribute(name, url.href);
           }
@@ -88,7 +91,7 @@ export async function readDeliveredContent(partition, context, { api, convert } 
   const response = await (partition === 'live' ? aem.getPublish : aem.getPreview)({ org: context.org, site: context.site, path: resourcePath });
   if (partition === 'live' && response.status === 404) return { html: '', missing: true };
   if (!response.ok) throw new Error(`Could not load ${partition} content (${response.status}).`);
-  const converter = convert || (await import(`${getNx().replace(/\/nx2$/, '/nx')}/utils/converters.js`)).mdToDocDom;
+  const converter = convert || (await import(`${getNx1()}/utils/converters.js`)).mdToDocDom;
   return { html: converter(await response.text()).body.innerHTML };
 }
 

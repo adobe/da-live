@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, sanitizeName } from '../../../scripts/utils.js';
+import { getSiteUrl, parseSiteUrl } from '../../../scripts/urls.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const styles = await loadStyle(import.meta.url);
@@ -68,13 +69,7 @@ export default class DaSites extends LitElement {
 
   parseSubdomain(siteUrl) {
     try {
-      const url = new URL(siteUrl);
-      if (!url.hostname.match(/hlx\.live$|aem\.live$|hlx\.page$|aem\.page$/)) {
-        return null;
-      }
-      const helixString = url.hostname.split('.')[0];
-      if (!helixString) return null;
-      const [, site, org] = helixString.split('--');
+      const { site, org } = parseSiteUrl(siteUrl) || {};
       if (!site || !org) return null;
       return `#/${sanitizeName(org, false)}/${sanitizeName(site, false)}`;
     } catch (_) {
@@ -122,7 +117,7 @@ export default class DaSites extends LitElement {
             @change="${() => { this._urlError = false; }}" 
             type="text" name="siteUrl" 
             aria-label="Site URL"
-            placeholder="https://main--site--org.aem.page" 
+            placeholder="${getSiteUrl('preview', { org: 'org', site: 'site' })}"
             class="${this._urlError ? 'error' : nothing}" 
         />
         <div class="da-form-btn-offset">

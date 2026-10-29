@@ -2,6 +2,7 @@ import { TextSelection } from 'da-y-wrapper';
 import prose2aem from '../../shared/prose2aem.js';
 import { wrapTablesInWrappers } from '../../shared/version/compare.js';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
+import { getCanvasPreviewUrl } from '../../../scripts/urls.js';
 import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
 import { toolbarController } from './toolbar-controller.js';
 import {
@@ -581,11 +582,7 @@ export function updateCursors(ctx) {
 // --- preview.js ---
 
 export function getPreviewOrigin(org, repo, branch = 'main') {
-  const hostname = window?.location?.hostname ?? '';
-  const domain = hostname.endsWith('aem.page') || hostname.endsWith('localhost')
-    ? 'stage-preview.da.live'
-    : 'preview.da.live';
-  return `https://${normalizeBranch(branch)}--${repo}--${org}.${domain}`;
+  return getCanvasPreviewUrl({ org, site: repo, branch: normalizeBranch(branch) });
 }
 
 export async function fetchWysiwygBranch({ org, site, path }) {

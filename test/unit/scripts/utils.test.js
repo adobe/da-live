@@ -1,5 +1,8 @@
 import { expect } from '@esm-bundle/chai';
-import { setNx, sanitizePath, sanitizePathParts, sanitizeName } from '../../../scripts/utils.js';
+import {
+  setNx, getNx1, getNx2, isNx2, sanitizePath, sanitizePathParts, sanitizeName,
+} from '../../../scripts/utils.js';
+import config, { createConfig } from '../../../scripts/config.js';
 
 describe('Libs', () => {
   it('Default Libs', () => {
@@ -38,6 +41,39 @@ describe('Libs', () => {
     };
     const libs = setNx('/nx', location);
     expect(libs).to.equal('http://localhost:6456/nx');
+  });
+
+  it('uses independent NX directory templates without inferring the version from their names', async () => {
+    const original = { ...config };
+    try {
+      Object.assign(config, createConfig({
+        nx: {
+          url: 'https://assets.example/{branch}/legacy',
+          urlV2: 'https://runtime.example/{branch}/current',
+        },
+      }));
+      expect(setNx('/nx', { hostname: 'da.live', search: '?nx=feature' }))
+        .to.equal('https://assets.example/feature/legacy');
+      expect(getNx1()).to.equal('https://assets.example/feature/legacy');
+      expect(getNx2()).to.equal('https://runtime.example/feature/current');
+      expect(isNx2()).to.equal(false);
+      const meta = document.createElement('meta');
+      meta.name = 'nxver';
+      meta.content = '2';
+      document.head.append(meta);
+      try {
+        // eslint-disable-next-line import/no-unresolved -- reload module-level version selection
+        const v2 = await import('../../../scripts/utils.js?custom-nx-version');
+        expect(v2.setNx('/nx', { hostname: 'da.live' })).to.equal('https://runtime.example/main/current');
+        expect(v2.getNx1()).to.equal('https://assets.example/main/legacy');
+        expect(v2.isNx2()).to.equal(true);
+      } finally {
+        meta.remove();
+      }
+    } finally {
+      Object.assign(config, original);
+      setNx('/nx');
+    }
   });
 
   describe('sanitizeName', () => {

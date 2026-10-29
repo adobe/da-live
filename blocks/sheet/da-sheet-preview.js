@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../scripts/utils.js';
+import { getSiteUrl } from '../../scripts/urls.js';
 import getPathDetails from '../shared/pathDetails.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -42,7 +43,7 @@ class DaSheetPreview extends LitElement {
 
   getUrl(value) {
     if (value.startsWith('http')) return value;
-    return `https://main--${this.details.repo}--${this.details.owner}.aem.page${value}`;
+    return getSiteUrl('preview', { org: this.details.owner, site: this.details.repo, path: value });
   }
 
   renderValue(value) {

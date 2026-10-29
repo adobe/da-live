@@ -3,6 +3,7 @@ import { getNx } from '../../../../../../scripts/utils.js';
 import getSheet from '../../../../../shared/sheet.js';
 import { etcFetch, getAemSiteToken, getSidekickConfig } from '../../../../../shared/utils.js';
 import { ICONS, REASONS } from '../utils/constants.js';
+import { getSiteUrl, parseSiteUrl } from '../../../../../../scripts/urls.js';
 
 await import(`${getNx()}/blocks/loc/views/url-details/url-details.js`);
 
@@ -46,19 +47,20 @@ class PreflightLink extends LitElement {
 
   async normalizeHref(supplied) {
     const { org, site } = this.details;
-    const aemOrigin = `https://main--${site}--${org}.aem.live`;
+    const liveUrl = (path) => getSiteUrl('live', { org, site, path });
 
     // Path only — build full AEM URL
     const href = supplied.startsWith('/')
-      ? `${aemOrigin}${supplied}`
+      ? liveUrl(supplied)
       : supplied;
 
     const url = new URL(href);
     const path = url.pathname;
 
     // Already an AEM URL — rebuild with correct org/site
-    if (url.hostname.includes('.aem.')) {
-      return new URL(`${aemOrigin}${path}`);
+    const details = parseSiteUrl(url.href);
+    if (details) {
+      return new URL(liveUrl(details.pathname));
     }
 
     // Production URL — check if hostname matches sidekick config
@@ -66,7 +68,7 @@ class PreflightLink extends LitElement {
       const { host } = await getSidekickConfig({ org, site });
       const prod = host;
       if (url.hostname === prod) {
-        return new URL(`${aemOrigin}${path}`);
+        return new URL(liveUrl(path));
       }
     } catch {
       // Do nothing, could not get SK config
