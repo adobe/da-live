@@ -158,13 +158,6 @@ export function createAssetDragHandlers({ container, isLive, getPreview = () => 
       img.alt = '';
       ghost.append(img);
     }
-    const label = document.createElement('span');
-    label.textContent = assets.length > 1 ? `${assets.length} assets`
-      : normalizeAsset(assets[0]).name || 'Asset';
-    const badge = document.createElement('span');
-    badge.className = 'assets-rail-drag-copy';
-    badge.textContent = '+';
-    ghost.append(label, badge);
     shield = document.createElement('div');
     shield.className = 'assets-rail-preview-shield';
     shield.hidden = true;
