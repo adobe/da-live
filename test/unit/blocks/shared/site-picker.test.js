@@ -142,6 +142,18 @@ describe('shared site selector adapter', () => {
     expect(focus.calledOnce).to.be.true;
   });
 
+  it('retries an uncertain access failure even when history and route are unchanged', async () => {
+    list.rejects(new Error('Offline'));
+    localStorage.setItem('da-sites', '["other/site"]');
+    await adapter.refresh();
+    expect(selector.error).to.include('Offline');
+    list.resolves({ ok: true, items: [] });
+    selector.dispatchEvent(new CustomEvent('site-retry'));
+    await tick();
+    expect(selector.error).to.be.undefined;
+    expect(selector.sites.map(({ value }) => value)).to.deep.equal(['aemsites/devlive', 'other/site']);
+  });
+
   it('closes Add on route changes and updates the landing heading', async () => {
     document.dispatchEvent(new CustomEvent('site-add'));
     await tick();
