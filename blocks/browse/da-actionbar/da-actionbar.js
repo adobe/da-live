@@ -93,10 +93,6 @@ export default class DaActionBar extends LitElement {
     this._isCopying = true;
   }
 
-  get hasPendingPaste() {
-    return Boolean(this._isCopying);
-  }
-
   handleShortcut(key) {
     if (!this.items.length || !['c', 'x', 'v'].includes(key.toLowerCase())) return false;
     const button = this.shadowRoot.querySelector(

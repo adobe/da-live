@@ -282,7 +282,9 @@ describe('da-file-item render', () => {
     const card = el.shadowRoot.querySelector('nx-card');
     let event;
     el.addEventListener('checked', (e) => { event = e; });
-    card.dispatchEvent(new CustomEvent('selectionchange', {
+    card.dispatchEvent(new Event('selectionchange', { bubbles: true, composed: true }));
+    expect(event).to.equal(undefined);
+    card.dispatchEvent(new CustomEvent('nx-card-selection-change', {
       detail: { selected: true, shiftKey: true },
       bubbles: true,
       composed: true,
@@ -298,6 +300,34 @@ describe('da-file-item render', () => {
     await el.updateComplete;
     expect(card.selected).to.equal(false);
     expect(card.selectable).to.equal(false);
+  });
+
+  it('focuses card selection through its public API after the card finishes updating', async () => {
+    await fixture({ view: 'card', allowselect: true });
+    const card = el.shadowRoot.querySelector('nx-card');
+    expect(card.shadowRoot).to.equal(null);
+    let finishUpdate;
+    card.updateComplete = new Promise((resolve) => { finishUpdate = resolve; });
+    let focused = false;
+    card.focus = () => { focused = true; };
+
+    const result = el.focusSelection();
+    await Promise.resolve();
+    expect(focused).to.equal(false);
+    finishUpdate();
+
+    expect(await result).to.equal(true);
+    expect(focused).to.equal(true);
+  });
+
+  it('does not claim to focus selection on a non-selectable card', async () => {
+    await fixture({ view: 'card', allowselect: false });
+    const card = el.shadowRoot.querySelector('nx-card');
+    let focused = false;
+    card.focus = () => { focused = true; };
+
+    expect(await el.focusSelection()).to.equal(false);
+    expect(focused).to.equal(false);
   });
 
   it('Renders a file icon and a busy preview while renaming', async () => {

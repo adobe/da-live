@@ -53,42 +53,32 @@ describe('da-list render', () => {
     await el.updateComplete;
   }
 
-  ['selection', 'copy', 'cut'].forEach((mode) => {
-    it(`clears folder selection on navigation unless ${mode} has a pending paste`, async () => {
-      el = document.createElement('da-list');
-      el.fullpath = '/org/site/one';
-      el.getList = async () => [{ path: `${el.fullpath}/a.html`, name: 'a', ext: 'html' }];
-      el.updateDeletePermission = async () => {};
-      await updateList(el, () => document.body.append(el));
-      await customElements.whenDefined('da-actionbar');
-      const { actionBar } = el;
-      const list = el;
-      el._listItems[0].isChecked = true;
-      el._lastCheckedIndex = 0;
-      el.handleSelectionState();
-      await el.updateComplete;
-      await actionBar.updateComplete;
-      const selected = el._selectedItems;
-      if (mode === 'copy') actionBar.handleCopy();
-      if (mode === 'cut') actionBar.handleMove();
-      await actionBar.updateComplete;
-      const pendingPaste = mode !== 'selection';
-      expect(actionBar.hasPendingPaste).to.equal(pendingPaste);
-      const selectionChanges = [];
-      el.addEventListener('selectionchanged', (e) => { selectionChanges.push(e.detail.items); });
-
-      for (const path of ['/org/site/two', '/org/site/one']) {
-        await updateList(list, () => { list.fullpath = path; });
-        await actionBar.updateComplete;
-        expect(el._lastCheckedIndex).to.equal(null);
-        expect(el._listItems.some((item) => item.isChecked)).to.equal(false);
-        expect(el._selectedItems).to.deep.equal(pendingPaste ? selected : []);
-        expect(actionBar.items).to.deep.equal(pendingPaste ? selected : []);
-        expect(actionBar.currentPath).to.equal(path);
-        expect(actionBar.getAttribute('data-visible')).to.equal(String(pendingPaste));
-        expect(actionBar.hasPendingPaste).to.equal(pendingPaste);
+  ['list', 'card'].forEach((view) => {
+    it(`restores focus to the last selected item after clearing ${view} selection`, async () => {
+      await fixture({
+        view,
+        select: true,
+        listItems: [
+          { path: '/org/site/a.html', name: 'a', ext: 'html' },
+          { path: '/org/site/b.html', name: 'b', ext: 'html', isChecked: true },
+        ],
+      });
+      el._lastCheckedIndex = 1;
+      el._selectedItems = [el._listItems[1]];
+      await rerender();
+      const row = el.shadowRoot.querySelectorAll('da-file-item')[1];
+      await row.updateComplete;
+      const card = row.shadowRoot.querySelector('nx-card');
+      const focus = card ? spy(card, 'focus') : null;
+      await el.handleClearSelection();
+      if (card) {
+        expect(focus.calledOnce).to.equal(true);
+      } else {
+        expect(row.shadowRoot.activeElement)
+          .to.equal(row.shadowRoot.querySelector('input[type="checkbox"]'));
       }
-      expect(selectionChanges).to.deep.equal(pendingPaste ? [] : [[]]);
+      expect(el._selectedItems).to.deep.equal([]);
+      expect(el._listItems[1].isChecked).to.equal(false);
     });
   });
 
@@ -165,6 +155,26 @@ describe('da-list render', () => {
     await rerender();
     const items = el.shadowRoot.querySelectorAll('da-file-item');
     expect(items.length).to.equal(2);
+  });
+
+  it('uses the editor configured for each result path', async () => {
+    await fixture({
+      editor: '/canvas#',
+      defaultEditor: '/canvas#',
+      editorConfs: ['/o/r/forms=https://da.live/form#'],
+      listItems: [
+        { path: '/o/r/forms/contact.html', name: 'contact', ext: 'html' },
+        { path: '/o/r/page.html', name: 'page', ext: 'html' },
+      ],
+    });
+    const items = el.shadowRoot.querySelectorAll('da-file-item');
+    expect(items[0].getAttribute('editor')).to.equal('https://da.live/form#');
+    expect(items[1].getAttribute('editor')).to.equal('/canvas#');
+    await Promise.all([...items].map((item) => item.updateComplete));
+    expect(items[0].shadowRoot.querySelector('a.da-item-list-item-title').getAttribute('href'))
+      .to.equal('https://da.live/form#/o/r/forms/contact');
+    expect(items[1].shadowRoot.querySelector('a.da-item-list-item-title').getAttribute('href'))
+      .to.equal('/canvas#/o/r/page');
   });
 
   it('Renders the load-more sentinel when continuationToken is set', async () => {

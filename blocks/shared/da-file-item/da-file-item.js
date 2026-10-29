@@ -99,7 +99,7 @@ export default class DaFileItem extends LitElement {
       else URL.revokeObjectURL(url);
     } catch (error) {
       // eslint-disable-next-line no-console
-      console.error(`Could not load file preview for ${path}.`, error);
+      console.warn(`Could not load file preview for ${path}.`, error);
     }
   }
 
@@ -128,6 +128,20 @@ export default class DaFileItem extends LitElement {
     const input = this.shadowRoot.querySelector('.da-item-list-item-rename input');
     input?.focus();
     input?.select();
+  }
+
+  async focusSelection() {
+    await this.updateComplete;
+    const card = this.shadowRoot.querySelector('nx-card');
+    if (card) {
+      await card.updateComplete;
+      if (!card.selectable) return false;
+      card.focus();
+      return true;
+    }
+    const input = this.shadowRoot.querySelector('input[name="item-selected"]');
+    input?.focus();
+    return Boolean(input);
   }
 
   async updateAEMStatus() {
@@ -372,7 +386,7 @@ export default class DaFileItem extends LitElement {
     const href = getFileItemHref(this);
     return html`
       <nx-card class="card" .selectable=${Boolean(this.allowselect)} .selected=${Boolean(this.isChecked)}
-        @selectionchange=${(e) => this.handleChecked(e.detail)}>
+        @nx-card-selection-change=${(e) => this.handleChecked(e.detail)}>
         <a slot="media" class="card-preview" href="${this.ext === 'link' ? until(href) : href}" tabindex="-1" aria-hidden="true">
           ${this.renderFilePreview()}
         </a>
