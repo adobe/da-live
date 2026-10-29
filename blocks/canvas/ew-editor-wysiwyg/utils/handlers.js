@@ -215,11 +215,16 @@ export function handleNodeSelect({ node }, ctx) {
   if (!view) return;
   const { state } = view;
   try {
+    if (node?.anchorType === 'section') {
+      canvasBus.editorSectionSelectState.emit({ sectionIndex: node.sectionIndex, source: 'layout' });
+      return;
+    }
     if (!node) {
       const tr = state.tr
         .setSelection(TextSelection.near(state.doc.resolve(state.selection.from), 1))
         .setMeta('addToHistory', false);
       dispatchMirror(view, tr, ctx);
+      canvasBus.editorSectionSelectState.emit({ sectionIndex: null, source: 'layout' });
       return;
     }
     const pos = resolveNodeSelectPos(node, state.doc);

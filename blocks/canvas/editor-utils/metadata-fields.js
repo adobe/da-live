@@ -1,13 +1,13 @@
 import { isColorCode } from './color-code.js';
 
-const BLOCKS_FILTER = 'metadata';
-
 function normalize(str) {
   return (str || '').toLowerCase().trim();
 }
 
-function matchesMetadata(row) {
-  return (row.blocks || '').split(',').some((b) => normalize(b) === BLOCKS_FILTER);
+const blockKey = (name) => normalize(name).replace(/\s+/g, '-');
+
+function matchesBlock(row, blockName) {
+  return (row.blocks || '').split(',').some((b) => blockKey(b) === blockKey(blockName));
 }
 
 function parseValues(raw) {
@@ -22,9 +22,9 @@ function parseValues(raw) {
 const FIELD_TYPES = ['multi', 'json'];
 
 /** Build metadata field descriptors from the library "options" sheet. */
-export function buildMetadataFields(data) {
+export function buildMetadataFields(data, blockName = 'metadata') {
   return (data || [])
-    .filter((row) => row.key && matchesMetadata(row))
+    .filter((row) => row.key && matchesBlock(row, blockName))
     .map((row) => {
       const type = normalize(row.type);
       return {
@@ -34,6 +34,16 @@ export function buildMetadataFields(data) {
         values: parseValues(row.values),
       };
     });
+}
+
+export function splitMultiValue(value) {
+  return (value || '').split(',').map((v) => v.trim()).filter(Boolean);
+}
+
+/** Join selected values in option order, the format multi fields are stored in. */
+export function joinMultiValue(selected, values) {
+  const set = new Set(selected);
+  return (values || []).map((v) => v.value).filter((v) => set.has(v)).join(', ');
 }
 
 /** True for empty or parseable JSON. */

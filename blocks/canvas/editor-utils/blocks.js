@@ -3,6 +3,10 @@ import { getFirstSectionName, setFirstSectionName } from '../../shared/section-n
 
 export const MAX_SECTION_NAME = 100;
 
+export function normalizeForSlashMenu(str) {
+  return str?.toLowerCase().trim().replace(/\s+/g, '-');
+}
+
 const NON_BLOCK_TABLE_NAMES = new Set(['metadata', 'section metadata', 'section-metadata']);
 
 export function getTableBlockName(tableNode) {
@@ -175,7 +179,7 @@ export function deleteContentItem(view, child) {
   view.dispatch(view.state.tr.delete(range.pos, range.pos + range.size));
 }
 
-function getSectionStartOffset(view, sectionIndex) {
+export function getSectionStartOffset(view, sectionIndex) {
   const { doc, schema } = view.state;
   if (sectionIndex === 0) return 0;
   let hrCount = 0;
@@ -319,6 +323,91 @@ export function moveSection(view, fromSectionIndex, toSectionIndex, dropPosition
   if (moved.length) tr.setSelection(NodeSelection.create(tr.doc, starts[insertIdx]));
   view.dispatch(tr);
   setFirstSectionName(names[0]);
+}
+
+function buildMetadataRow(schema, keyText, valueText) {
+  const { table_row: tableRow, table_cell: tableCell, paragraph } = schema.nodes;
+  const cell = (text) => tableCell.create(
+    null,
+    text ? paragraph.create(null, schema.text(text)) : paragraph.create(),
+  );
+  return tableRow.create(null, [cell(keyText), cell(valueText)]);
+}
+
+function findSectionMetadata(doc, schema, sectionIndex) {
+  let section = 0;
+  let end = null;
+  let meta = null;
+  doc.forEach((node, offset) => {
+    if (end !== null) return;
+    if (node.type === schema.nodes.horizontal_rule) {
+      if (section === sectionIndex) end = offset;
+      section += 1;
+      return;
+    }
+    if (section === sectionIndex && !meta && node.type === schema.nodes.table
+      && NON_BLOCK_TABLE_NAMES.has(getTableBlockName(node))) meta = { node, pos: offset };
+  });
+  if (sectionIndex < 0 || section < sectionIndex) return null;
+  return { meta, end: end ?? doc.content.size };
+}
+
+export function setSectionMetadata(view, sectionIndex, key, value) {
+  if (!view) return;
+  const { doc, schema } = view.state;
+  const found = findSectionMetadata(doc, schema, sectionIndex);
+  if (!found) return;
+  const { table, table_row: tableRow, table_cell: tableCell, paragraph } = schema.nodes;
+  const { meta, end } = found;
+
+  if (!meta) {
+    if (!value) return;
+    const nameRow = tableRow.create(
+      null,
+      tableCell.create({ colspan: 2 }, paragraph.create(null, schema.text('section-metadata'))),
+    );
+    const metaTable = table.create(null, [nameRow, buildMetadataRow(schema, key, value)]);
+    view.dispatch(view.state.tr.insert(end, metaTable));
+    return;
+  }
+
+  const rows = [];
+  meta.node.forEach((row) => rows.push(row));
+  let matched = false;
+  const newRows = rows.flatMap((row, i) => {
+    if (i === 0) return [row];
+    const rowKey = row.firstChild?.textContent?.trim();
+    if (normalizeForSlashMenu(rowKey) !== normalizeForSlashMenu(key)) return [row];
+    matched = true;
+    return value ? [buildMetadataRow(schema, key, value)] : [];
+  });
+  if (!matched) {
+    if (!value) return;
+    newRows.push(buildMetadataRow(schema, key, value));
+  }
+  const range = [meta.pos, meta.pos + meta.node.nodeSize];
+  const tr = newRows.length > 1
+    ? view.state.tr.replaceWith(...range, table.create(meta.node.attrs, newRows))
+    : view.state.tr.delete(...range);
+  view.dispatch(tr);
+}
+
+export function getSectionMetadata(view, sectionIndex) {
+  if (!view) return {};
+  const { meta } = findSectionMetadata(view.state.doc, view.state.schema, sectionIndex) ?? {};
+  if (!meta) return {};
+  const result = {};
+  meta.node.forEach((row, _offset, index) => {
+    if (index === 0) return;
+    const key = normalizeForSlashMenu(row.child(0)?.textContent?.trim());
+    if (key) result[key] = row.child(1)?.textContent ?? '';
+  });
+  return result;
+}
+
+export function getSectionName(view, sectionIndex) {
+  if (!view) return null;
+  return splitSections(view).names[sectionIndex] ?? null;
 }
 
 // Counterpart to getSectionStartOffset — the hr position bounding the previous section.

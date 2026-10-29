@@ -9,6 +9,8 @@ const {
   formatJsonValue,
   compactJsonValue,
   isValidJson,
+  splitMultiValue,
+  joinMultiValue,
 } = await import('../../../../../blocks/canvas/editor-utils/metadata-fields.js');
 
 describe('buildMetadataFields', () => {
@@ -28,6 +30,16 @@ describe('buildMetadataFields', () => {
 
   it('matches a comma-separated blocks column that includes metadata', () => {
     const rows = [{ blocks: 'cards, metadata', key: 'theme', values: 'Dark=dark' }];
+    expect(buildMetadataFields(rows).map((f) => f.key)).to.deep.equal(['theme']);
+  });
+
+  it('builds fields for another block name, matching spaced or dashed names', () => {
+    const rows = [
+      { blocks: 'Section Metadata', key: 'style', values: 'Dark=dark' },
+      { blocks: 'section-metadata', key: 'width', values: 'Full=full' },
+      { blocks: 'metadata', key: 'theme', values: 'Light=light' },
+    ];
+    expect(buildMetadataFields(rows, 'section-metadata').map((f) => f.key)).to.deep.equal(['style', 'width']);
     expect(buildMetadataFields(rows).map((f) => f.key)).to.deep.equal(['theme']);
   });
 
@@ -177,5 +189,18 @@ describe('isValidJson', () => {
 
   it('rejects invalid JSON', () => {
     expect(isValidJson('{broken')).to.equal(false);
+  });
+});
+
+describe('multi values', () => {
+  it('splits a stored value into trimmed entries', () => {
+    expect(splitMultiValue(' dark, wide ,')).to.deep.equal(['dark', 'wide']);
+    expect(splitMultiValue('')).to.deep.equal([]);
+  });
+
+  it('joins selected values in option order', () => {
+    const values = [{ value: 'dark' }, { value: 'wide' }, { value: 'tall' }];
+    expect(joinMultiValue(['tall', 'dark'], values)).to.equal('dark, tall');
+    expect(joinMultiValue([], values)).to.equal('');
   });
 });

@@ -15,6 +15,8 @@ let toolbarEl;
 let toolbarLoading;
 let blockToolbarEl;
 let blockToolbarLoading;
+let sectionToolbarEl;
+let sectionToolbarLoading;
 let pointerdownInstalled = false;
 let windowBlurInstalled = false;
 
@@ -34,6 +36,7 @@ const state = {
   // The single-block edit modal hosts the doc view in a dialog, on top of and
   // regardless of the current editor mode.
   blockEditOpen: false,
+  sectionIndex: null,
 };
 
 function ensureToolbar() {
@@ -56,6 +59,16 @@ function ensureBlockToolbar() {
     // eslint-disable-next-line no-use-before-define -- mutually recursive with render
     .then(() => scheduleRender());
   return blockToolbarEl;
+}
+
+function ensureSectionToolbar() {
+  if (sectionToolbarEl) return sectionToolbarEl;
+  sectionToolbarEl = document.createElement('ew-section-toolbar');
+  document.body.append(sectionToolbarEl);
+  sectionToolbarLoading ??= import('../ew-section-toolbar/ew-section-toolbar.js')
+    // eslint-disable-next-line no-use-before-define -- mutually recursive with render
+    .then(() => scheduleRender());
+  return sectionToolbarEl;
 }
 
 /**
@@ -109,6 +122,19 @@ function syncBlockToolbar(block) {
   btb.show(block.name, block.variant);
 }
 
+function syncSectionToolbar() {
+  const stb = ensureSectionToolbar();
+  if (typeof stb.show !== 'function') return false;
+  const show = state.sectionIndex !== null && !state.blockEditOpen;
+  if (!show) {
+    if (stb.open) stb.hide();
+    return false;
+  }
+  if (state.docView) stb.view = state.docView;
+  if (!stb.open || stb.sectionIndex !== state.sectionIndex) stb.show(state.sectionIndex);
+  return true;
+}
+
 let renderQueued = false;
 function render() {
   const tb = ensureToolbar();
@@ -121,14 +147,15 @@ function render() {
   // block-level structure, so it gets inline/link/image controls only.
   tb.activeSurface = state.activeSurface;
 
+  const showSection = syncSectionToolbar();
   const { activeSurface } = state;
-  const block = activeSurface ? state.blockBySurface[activeSurface] : null;
+  const block = !showSection && activeSurface ? state.blockBySurface[activeSurface] : null;
   // The block toolbar is body-hosted, so inside the modal it would render behind the
   // backdrop — and its commands target the block already being edited.
   const showBlock = block !== null && !state.blockEditOpen && editorModeAllows(activeSurface);
   syncBlockToolbar(showBlock ? block : null);
 
-  if (!showBlock && shouldShow(tb)) {
+  if (!showSection && !showBlock && shouldShow(tb)) {
     tb.show();
   } else if (!tb.linkDialogOpen && !tb.altDialogOpen && !tb.isInteracting) {
     tb.hide();
@@ -142,6 +169,16 @@ function scheduleRender() {
     renderQueued = false;
     render();
   });
+}
+
+function setSection(sectionIndex) {
+  if (state.sectionIndex === sectionIndex) return;
+  state.sectionIndex = sectionIndex;
+  if (sectionIndex !== null) {
+    state.showableBySurface.wysiwyg = false;
+    state.blockBySurface.wysiwyg = null;
+  }
+  scheduleRender();
 }
 
 /** Pierce shadow roots to find the truly focused element. `document.activeElement`
@@ -172,6 +209,7 @@ function installIframeFocusDetection() {
           surface: 'wysiwyg',
           showable: true,
           block: state.blockBySurface.wysiwyg,
+          focusOnly: true,
         });
       }
     }, 0);
@@ -203,6 +241,7 @@ function installOutsidePointerdown() {
     const path = e.composedPath();
     if (toolbarEl && path.includes(toolbarEl)) return;
     if (blockToolbarEl && path.includes(blockToolbarEl)) return;
+    if (sectionToolbarEl && path.includes(sectionToolbarEl)) return;
     // The doc *surface* is the mount container, not just `view.dom`: editor chrome
     // such as the table select handle and the comments gutter renders as a sibling
     // of the ProseMirror dom, and clicking it is not leaving the editor.
@@ -236,7 +275,7 @@ canvasBus.toolbarSurfaceState.subscribe(({ activeSurface }) => {
   scheduleRender();
 });
 
-canvasBus.toolbarSelectionState.subscribe(({ surface, showable, block = null }) => {
+canvasBus.toolbarSelectionState.subscribe(({ surface, showable, block = null, focusOnly }) => {
   if (surface !== 'doc' && surface !== 'wysiwyg') {
     throw new Error(`Unknown toolbar selection surface: ${surface}`);
   }
@@ -244,6 +283,7 @@ canvasBus.toolbarSelectionState.subscribe(({ surface, showable, block = null }) 
   if (surface === 'wysiwyg') {
     setSurface(surface);
     installOutsidePointerdown();
+    if (!focusOnly) setSection(null);
   }
   state.showableBySurface[surface] = showable;
   state.blockBySurface[surface] = block;
@@ -254,6 +294,7 @@ canvasBus.toolbarSurfaceRequest.subscribe(({ surface, active, iframeEl }) => {
   if (active) {
     if (surface !== 'doc' && surface !== 'wysiwyg') return;
     if (iframeEl !== undefined) state.iframeEl = iframeEl;
+    if (surface === 'doc') setSection(null);
     setSurface(surface);
     installOutsidePointerdown();
   } else {
@@ -264,9 +305,20 @@ canvasBus.toolbarSurfaceRequest.subscribe(({ surface, active, iframeEl }) => {
   scheduleRender();
 });
 
+canvasBus.editorSectionSelectState.subscribe(({ sectionIndex }) => {
+  setSection(sectionIndex ?? null);
+});
+
+canvasBus.editorSelectState.subscribe(({ source }) => {
+  if (source === 'outline') setSection(null);
+});
+
+canvasBus.editorProseSelectState.subscribe(() => setSection(null));
+
 export const toolbarController = {
   ensureToolbar,
   ensureBlockToolbar,
+  ensureSectionToolbar,
 
   /** Read-only: which surface currently owns editing. Read by the doc view's
    * cursor plugin to decide whether to publish this user's caret. */
@@ -304,6 +356,7 @@ export const toolbarController = {
     state.showableBySurface.wysiwyg = false;
     state.blockBySurface.doc = null;
     state.blockBySurface.wysiwyg = null;
+    state.sectionIndex = null;
     state.docView = null;
     scheduleRender();
   },

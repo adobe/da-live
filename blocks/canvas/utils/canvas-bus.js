@@ -45,6 +45,7 @@ export const canvasBus = Object.freeze({
   blockEditRequest: createChannel(),
   preflightRunRequest: createChannel(),
   toolbarSurfaceRequest: createChannel(),
+  metadataRerenderRequest: createChannel(),
 
   undoState: createChannel(),
   mergeConflictsState: createChannel(),
@@ -61,6 +62,7 @@ export const canvasBus = Object.freeze({
     emit: (detail) => editorSelectChannel.emit(enrichEditorSelect(detail)),
   },
   editorProseSelectState: createChannel(),
+  editorSectionSelectState: createChannel(),
   toolPanelViewState: createChannel({ replay: true }),
   comparisonState: createChannel(),
 
