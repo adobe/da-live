@@ -7,22 +7,22 @@ async function getConfSheet(org, site) {
   return rows.length ? rows : null;
 }
 
-export async function getUeUrl(ueConf, previewUrl) {
+export async function getUeUrl(ueConf, previewUrl, context = {}) {
   const UE_PREFIX = 'https://experience.adobe.com/#/{{DX_ORG}}/aem/editor/canvas/';
   const { value } = ueConf;
   if (!value) return null;
   const dxOrg = value.split('/').find((split) => split.startsWith('@'));
   if (!dxOrg) return null;
   const prefix = UE_PREFIX.replace('{{DX_ORG}}', dxOrg);
-  const details = parseSiteUrl(previewUrl);
+  const details = parseSiteUrl(previewUrl, context);
   const tier = window.location.origin === getAppUrl('', true) || details?.tier === 'preview' ? 'uePage' : 'ue';
   const target = details ? getSiteUrl(tier, { ...details, path: details.pathname }) : previewUrl;
   const ueDomain = target.replace(/^https?:\/\//, '');
   return `${prefix}${ueDomain}`;
 }
 
-export async function getQeUrl(previewUrl) {
-  const url = new URL(toSiteUrl(previewUrl, 'preview'));
+export async function getQeUrl(previewUrl, context = {}) {
+  const url = new URL(toSiteUrl(previewUrl, 'preview', undefined, context));
   url.pathname = url.pathname.replace(/\/index$/, '/');
   url.searchParams.set('quick-edit', 'on');
   return url.href;
@@ -31,8 +31,9 @@ export async function getQeUrl(previewUrl) {
 export default async function getExternalUrl(org, repo, previewUrl) {
   const confSheet = await getConfSheet(org, repo);
   const qeConf = confSheet?.find((row) => row.key === 'quick-edit' && row.value.split(',').find((split) => split.startsWith(repo)));
-  if (qeConf) return getQeUrl(previewUrl);
+  const context = { org, site: repo };
+  if (qeConf) return getQeUrl(previewUrl, context);
   const ueConf = confSheet?.find((row) => row.key === 'editor.path');
-  if (ueConf) return getUeUrl(ueConf, previewUrl);
+  if (ueConf) return getUeUrl(ueConf, previewUrl, context);
   return null;
 }

@@ -57,6 +57,33 @@ describe('Deployment URL routing', () => {
     expect(parseSiteUrl('https://site-org.example/other/feature', {}, custom)).to.equal(null);
   });
 
+  it('prefers the most specific site route when mount paths overlap', () => {
+    const custom = createConfig({
+      aem: {
+        previewUrl: 'https://sites.example/{org}/{site}/{branch}',
+        liveUrl: 'https://sites.example/live/{org}/{site}/{branch}',
+        reviewUrl: 'https://sites.example/live/review/{org}/{site}/{snapshot}/{branch}',
+      },
+    });
+    for (const tier of ['preview', 'live', 'review']) {
+      const url = getSiteUrl(tier, { ...values, snapshot: 'release', path: '/folder/page' }, custom);
+      expect(parseSiteUrl(url, {}, custom)).to.include({ ...values, tier, pathname: '/folder/page' });
+      expect(toSiteUrl(url, 'preview', custom))
+        .to.equal('https://sites.example/org/site/feature/folder/page');
+    }
+  });
+
+  it('round-trips mixed-case repeated tokens without relaxing path casing', () => {
+    const custom = createConfig({ aem: { liveUrl: 'https://{site}-{org}.example/Sites/{site}/{org}/{org}/{branch}' } });
+    const mixed = { ...values, org: 'Customer-Org', site: 'Content-Site' };
+    const url = getSiteUrl('live', { ...mixed, path: '/folder/page' }, custom);
+    expect(parseSiteUrl(url, {}, custom)).to.include({ ...mixed, pathname: '/folder/page' });
+    expect(parseSiteUrl(url.replace('/Sites/', '/sites/'), {}, custom)).to.equal(null);
+    expect(parseSiteUrl(url.replace('/Customer-Org/Customer-Org/', '/Customer-Org/customer-org/'), {}, custom))
+      .to.equal(null);
+    expect(parseSiteUrl(url.replace('/Content-Site/', '/other/'), {}, custom)).to.equal(null);
+  });
+
   it('preserves HTTP legacy recognition without relaxing explicit template origins', () => {
     expect(parseSiteUrl('http://main--site--org.aem.live/page')?.pathname).to.equal('/page');
     expect(parsePreviewUrl('http://main--site--org.preview.da.live/page')?.pathname).to.equal('/page');
@@ -72,6 +99,25 @@ describe('Deployment URL routing', () => {
     expect(getCanvasPreviewUrl(values, location, settings)).to.equal('https://test-proxy.example/org/site/feature');
     expect(getCanvasPreviewUrl(values, new URL(getAppUrl('', false, settings)), settings))
       .to.equal('https://proxy.example/author/org/site/feature');
+  });
+
+  it('prefers the most specific proxy mount across environments and app domains', () => {
+    const custom = createConfig({
+      da: {
+        services: {
+          preview: {
+            stage: 'https://proxy.example/{org}/{site}/{branch}',
+            prod: 'https://proxy.example/prod/{org}/{site}/{branch}',
+          },
+        },
+        pageServices: { preview: { prod: 'https://proxy.example/prod/page/{org}/{site}/{branch}' } },
+      },
+    });
+    for (const endpoint of [custom.da.services.preview.stage, custom.da.services.preview.prod,
+      custom.da.pageServices.preview.prod]) {
+      const url = getPreviewUrl(endpoint, { ...values, path: '/folder/page' });
+      expect(parsePreviewUrl(url, {}, custom)).to.include({ ...values, pathname: '/folder/page' });
+    }
   });
 
   it('requires context when a static site URL cannot identify its org and site', () => {
@@ -114,6 +160,20 @@ describe('Deployment URL routing', () => {
     expect(isAuthoringOrigin('https://preview.example:8443', explicit)).to.equal(true);
     expect(isAuthoringOrigin('https://preview.example', explicit)).to.equal(false);
     expect(isAuthoringOrigin('null', explicit)).to.equal(false);
+  });
+
+  it('requires explicit trust when either org or site identity exists only in the path', () => {
+    for (const previewUrl of [
+      'https://{branch}.preview.example/{org}/{site}',
+      'https://{branch}--{org}.preview.example/{site}',
+      'https://{branch}--{site}.preview.example/{org}',
+    ]) {
+      const custom = createConfig({ aem: { previewUrl } });
+      const { origin } = new URL(getSiteUrl('preview', { org: custom.da.owner, site: custom.da.repo, branch: 'main' }, custom));
+      expect(isAuthoringOrigin(origin, custom), previewUrl).to.equal(false);
+      custom.da.previewOrigins = [origin];
+      expect(isAuthoringOrigin(origin, custom), previewUrl).to.equal(true);
+    }
   });
 
   it('resolves independently hosted NX versions and branch routes', () => {

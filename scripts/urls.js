@@ -69,63 +69,72 @@ function matchTemplate(input, template, fallback = {}) {
     if (!['https:', 'http:'].includes(base.protocol) || base.username || base.password
       || base.search || base.hash) return null;
     let pattern = escapeRegex(`${base.origin}${trimSlash(base.pathname)}`);
-    const captures = [];
     keys.forEach((key, index) => {
-      let replacement = `\\${captures.indexOf(key) + 1}`;
-      if (!captures.includes(key)) {
-        captures.push(key);
-        replacement = '([a-zA-Z0-9_.%-]+?)';
-      }
+      const first = keys.indexOf(key);
+      const replacement = first === index ? '([a-z0-9_.%-]+?)' : `(\\${first + 1})`;
       pattern = pattern.replace(`zzurltoken${index + 1}zz`, () => replacement);
     });
-    const match = new RegExp(`^${pattern}(/.*)?$`).exec(`${url.origin}${url.pathname}`);
+    // DNS is case-insensitive; rebuilding below enforces exact path casing.
+    const match = new RegExp(`^${pattern}(/.*)?$`, 'i').exec(`${url.origin}${url.pathname}`);
     if (!match) return null;
     const values = { branch: 'main', ...fallback };
-    for (let index = 0; index < captures.length; index += 1) {
-      const key = captures[index];
+    for (let index = 0; index < keys.length; index += 1) {
+      const key = keys[index];
       const value = decodeURIComponent(match[index + 1]);
       if (!/^[a-z0-9_.-]+$/i.test(value) || ['.', '..'].includes(value)) return null;
       values[key] = value;
     }
     if (!values.org || !values.site) return null;
-    return { ...values, pathname: match[captures.length + 1] || '/', search: url.search, hash: url.hash };
+    const path = match[keys.length + 1] || '';
+    const basePath = url.pathname.slice(0, url.pathname.length - path.length);
+    if (resolveUrlTemplate(template, values) !== `${url.origin}${trimSlash(basePath)}`) return null;
+    return { ...values, pathname: path || '/', search: url.search, hash: url.hash };
   } catch {
     return null;
   }
 }
 
-export function parseSiteUrl(input, fallback = {}, settings = config) {
-  for (const tier of ['preview', 'live', 'review']) {
-    const template = siteTemplate(tier, settings);
-    const details = matchTemplate(input, template, fallback)
-      || (!settings.aem[`${tier}Url`] && matchTemplate(input, template.replace(/^https:/, 'http:'), fallback));
-    if (details) return { ...details, tier };
-  }
-  for (const host of settings.aem.legacyHosts) {
-    const template = `://{branch}--{site}--{org}.${host}`;
-    const details = matchTemplate(input, `https${template}`, fallback)
-      || matchTemplate(input, `http${template}`, fallback);
-    if (details) return { ...details, tier: host.endsWith('.page') ? 'preview' : 'live' };
+function matchTemplates(input, templates, fallback) {
+  templates.sort((a, b) => b.template.replace(TOKEN, '').length - a.template.replace(TOKEN, '').length);
+  for (const { template, ...context } of templates) {
+    const details = matchTemplate(input, template, fallback);
+    if (details) return { ...details, ...context };
   }
   return null;
+}
+
+export function parseSiteUrl(input, fallback = {}, settings = config) {
+  const templates = ['preview', 'live', 'review'].flatMap((tier) => {
+    const template = siteTemplate(tier, settings);
+    return [{ template, tier }, ...(!settings.aem[`${tier}Url`]
+      ? [{ template: template.replace(/^https:/, 'http:'), tier }] : [])];
+  });
+  templates.push(...settings.aem.legacyHosts.flatMap((host) => {
+    const template = `://{branch}--{site}--{org}.${host}`;
+    const tier = host.endsWith('.page') ? 'preview' : 'live';
+    return [{ template: `https${template}`, tier }, { template: `http${template}`, tier }];
+  }));
+  return matchTemplates(input, templates, fallback);
 }
 
 export function parsePreviewUrl(input, fallback = {}, settings = config) {
   const endpoints = [settings.da.services.preview, settings.da.pageServices.preview]
     .flatMap((envs) => Object.values(envs));
-  for (const endpoint of endpoints) {
+  const templates = endpoints.flatMap((endpoint) => {
     const template = previewTemplate(endpoint);
-    const details = matchTemplate(input, template, fallback)
-      || (!endpoint.includes('://') && matchTemplate(input, template.replace(/^https:/, 'http:'), fallback));
-    if (details) return details;
-  }
+    return [{ template }, ...(!endpoint.includes('://')
+      ? [{ template: template.replace(/^https:/, 'http:') }] : [])];
+  });
   // Local wildcard preview hosts have historically omitted the configured port.
-  return matchTemplate(input, 'https://{branch}--{site}--{org}.localhost', fallback)
-    || matchTemplate(input, 'http://{branch}--{site}--{org}.localhost', fallback);
+  templates.push(
+    { template: 'https://{branch}--{site}--{org}.localhost' },
+    { template: 'http://{branch}--{site}--{org}.localhost' },
+  );
+  return matchTemplates(input, templates, fallback);
 }
 
-export function toSiteUrl(input, tier, settings = config) {
-  const details = parseSiteUrl(input, {}, settings);
+export function toSiteUrl(input, tier, settings = config, fallback = {}) {
+  const details = parseSiteUrl(input, fallback, settings);
   return details ? getSiteUrl(tier, { ...details, path: details.pathname }, settings) : input;
 }
 
@@ -195,10 +204,13 @@ export function isAuthoringOrigin(input, settings = config) {
       'http://localhost:3000', 'https://localhost', ...(settings.da.previewOrigins || [])];
     if (allowed.some((origin) => new URL(origin).origin === url.origin)) return true;
     for (const tier of ['preview', 'live']) {
-      const base = resolveUrlTemplate(siteTemplate(tier, settings), { org: settings.da.owner, site: settings.da.repo, branch: 'zzbranchzz' });
-      const { origin } = new URL(base);
-      // Path-based deployments share an origin: require explicit trust instead of inferring it.
-      if (origin.includes('zzbranchzz')) {
+      const template = siteTemplate(tier, settings);
+      const markers = { org: 'zzorgzz', site: 'zzsitezz', branch: 'zzbranchzz' };
+      const templateOrigin = new URL(resolveUrlTemplate(template, markers)).origin;
+      // Paths cannot isolate org/site identity at a browser origin boundary.
+      if (Object.values(markers).every((marker) => templateOrigin.includes(marker))) {
+        const base = resolveUrlTemplate(template, { org: settings.da.owner, site: settings.da.repo, branch: 'zzbranchzz' });
+        const { origin } = new URL(base);
         const pattern = escapeRegex(origin).replace('zzbranchzz', '[a-z0-9-]+');
         if (new RegExp(`^${pattern}$`).test(url.origin)) return true;
       }

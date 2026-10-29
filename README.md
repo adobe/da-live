@@ -103,7 +103,11 @@ letters, digits, dots, underscores or hyphens, but cannot be `.` or `..`.
 Templates must be HTTP(S) base URLs without credentials, queries or fragments.
 Document paths, queries and fragments are appended separately, preserving mount
 paths. Parsing uses the same templates; routes must identify the org/site, or
-the caller must supply that context for a single-site URL.
+the caller must supply that context for a single-site URL. When routes overlap,
+the template with the most literal characters (excluding placeholders) wins;
+equal specificity preserves existing tier/environment order. Avoid equally specific,
+ambiguous routes. Hostnames are case-insensitive; path identifiers and literal
+mount paths retain their case.
 
 `nx.url` and `nx.urlV2` are complete runtime directory URLs, independent of site
 routes. Without overrides, existing CDN, branch and localhost behavior is
@@ -112,8 +116,10 @@ unchanged. If only `nx.url` is supplied, the V2 default appends `2`; supply
 
 `da.previewOrigins` optionally lists additional trusted authoring-app origins for
 preview messages. Conventional hostname-based branch previews of `da.owner` /
-`da.repo` are recognized automatically. Path-based authoring previews sharing an
-origin require explicit trust: paths do not isolate browser origins. Only list
+`da.repo` are recognized automatically when `{org}`, `{site}` and `{branch}` are
+in the hostname.
+Path-based authoring previews sharing an origin require explicit trust, even if
+the branch is in the hostname: paths do not isolate browser origins. Only list
 origins wholly controlled by the deployment, and register them with the preview
 service as needed. Site/proxy servers must independently support the configured
 routes, CORS, cookies and authentication; this file does not configure them.

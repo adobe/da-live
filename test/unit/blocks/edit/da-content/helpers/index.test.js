@@ -28,6 +28,30 @@ function pingSafe(respond) {
 }
 
 describe('UE URLs', () => {
+  it('uses the editor site context for static custom UE and quick-edit domains', async () => {
+    const original = { ...config };
+    const originalFetch = window.fetch;
+    try {
+      Object.assign(config, createConfig({
+        aem: {
+          liveUrl: 'https://live.customer.example',
+          previewUrl: 'https://preview.customer.example',
+          ueUrl: 'https://ue.customer.example',
+        },
+      }));
+      const input = 'https://live.customer.example/folder/index?foo=bar#part';
+      window.fetch = pingSafe(async () => ({ ok: true, json: async () => ({ data: [{ key: 'editor.path', value: '/@customer/' }] }) }));
+      expect(await ueUrlHelper('static-ue', 'site', input))
+        .to.equal('https://experience.adobe.com/#/@customer/aem/editor/canvas/ue.customer.example/folder/index?foo=bar#part');
+      window.fetch = pingSafe(async () => ({ ok: true, json: async () => ({ data: [{ key: 'quick-edit', value: 'site' }] }) }));
+      expect(await ueUrlHelper('static-qe', 'site', input))
+        .to.equal('https://preview.customer.example/folder/?foo=bar&quick-edit=on#part');
+    } finally {
+      Object.assign(config, original);
+      window.fetch = originalFetch;
+    }
+  });
+
   it('uses custom UE and quick-edit routes without dropping document query or fragment', async () => {
     const original = { ...config };
     try {
