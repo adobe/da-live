@@ -4,9 +4,7 @@ JSON Schema-driven structured content editor. A thin Lit element wires [da-sc-sd
 
 The `/form` page loads da-live's `blocks/form/form.js` as a `form` block in Experience Workspace (EW). The block sets up the app-frame grid, canvas header, tools panel and docked chat, then mounts the `ew-form-editor` Lit element defined in `editor.js`, which owns the SDK and editing UI. The block's elements use the `ew-form-` prefix, like canvas's `ew-canvas-`. The block was moved from da-nx's `nx/blocks/form`.
 
-The block imports nx2 exports such as `loadStyle`, `hashChange`, `openPanel`, `getEWFlags` and the `source` api at runtime through `` await import(`${getNx2()}/...`) ``, with `getNx2()` from `scripts/utils.js`. Pages with `<meta name="nxver" content="2">` load nx2 from the same base URL, so these imports return the module instances the page already loaded. This includes the stateful `nx2/scripts/nx.js`.
-
-The form block also imports nx2's `utils/aem-assets/` modules, `utils/media-upload.js`, `ensurePreviewLogin` and `getLivePreviewUrl` for its asset fields. `/form` fails to load when the da-nx deployment that `getNx2()` resolves to doesn't ship them.
+The block imports nx2 at runtime through `getNx2()` instead of bundling it, so it shares the module instances the page already loaded, including the stateful `nx2/scripts/nx.js`.
 
 For engine internals such as schema compilation, model build, validation, defaults policy and persistence semantics, see the SDK's [architecture.md](https://github.com/adobe-rnd/da-sc-sdk/blob/main/docs/architecture.md). This document only covers the da-live form block and what it adds on top.
 
@@ -63,6 +61,8 @@ editor.js          →  events.js           (publishes state and selection, hand
 tool-panel/outline/ →  events.js           (subscribes to state and selection, publishes jumps)
 utils/context.js   →  da-sc-sdk          (convertHtmlToJson)
 utils/persistence.js → da-sc-sdk        (convertJsonToHtml)
+utils/assets.js    →  blocks/shared/      (Canvas image types and size limit)
+utils/assets.js    →  nx2 aem-assets      (AEM Assets source, loaded on demand)
 views/editor.js  →  fields/rich-text.js (loaded once a form renders a rich-text field)
 fields/rich-text.js → utils/rich-text/  (schema, commands, tools)
 fields/rich-text.js → da-y-wrapper      (ProseMirror)
