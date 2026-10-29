@@ -407,10 +407,11 @@ describe('landing page', () => {
   });
 
   it('uses source-backed page previews and local semantic file icons', () => {
-    const preview = el.shadowRoot.querySelector('da-card-preview');
+    const preview = el.shadowRoot.querySelector('da-file-item');
     expect(preview.documentPreview).to.equal(true);
     expect(preview.iconHref).to.include('/blocks/landing/page.svg');
-    expect(el.shadowRoot.querySelector('.file-type-icon').getAttribute('style')).to.include('page.svg');
+    expect(preview.layout).to.equal('compact');
+    expect(el.shadowRoot.querySelector('nx-card, .file-name')).to.equal(null);
   });
 
   it('opts into a light preview without saving a theme preference', () => {
@@ -440,8 +441,10 @@ describe('landing page', () => {
     const filter = el.shadowRoot.querySelectorAll('.filter')[1];
     expect(filter.textContent.trim()).to.equal('Favorite');
     expect(filter.getAttribute('aria-pressed')).to.equal('false');
-    expect(el.shadowRoot.querySelector('da-file-actions').isFavorited).to.equal(true);
-    expect(el.shadowRoot.querySelector('.file-favorite-badge').getAttribute('slot')).to.equal('badge');
+    const item = el.shadowRoot.querySelector('da-file-item');
+    await item.updateComplete;
+    expect(item.isFavorited).to.equal(true);
+    expect(item.shadowRoot.querySelector('.card-favorite').slot).to.equal('overlay-actions');
     const saved = localStorage.getItem('da-favorites');
     filter.click();
     await el.updateComplete;
@@ -451,7 +454,7 @@ describe('landing page', () => {
     expect(el.shadowRoot.querySelector('.files').getAttribute('aria-label')).to.equal('Favorite files');
     expect(getFavorites('/org/site')).to.deep.equal([ITEMS[0].path]);
     expect(el.shadowRoot.querySelectorAll('.file')).to.have.length(1);
-    el.shadowRoot.querySelector('da-file-actions').favorite();
+    el.shadowRoot.querySelector('da-file-item').requestFavorite();
     await el.updateComplete;
     expect(getFavorites('/org/site')).to.deep.equal([]);
     expect(el.shadowRoot.querySelector('.empty-state h3').textContent).to.equal('No favorites yet');
@@ -463,27 +466,29 @@ describe('landing page', () => {
     for (const value of ['card', 'list']) {
       el.changeView({ detail: { value } });
       await el.updateComplete;
-      const actions = el.shadowRoot.querySelector('da-file-actions');
+      const actions = el.shadowRoot.querySelector(value === 'card' ? 'da-file-item' : 'da-file-actions');
       expect(actions.path).to.equal(ITEMS[0].path);
       expect(actions.view).to.equal(value);
       expect(actions.isFavorited).to.equal(false);
-      actions.favorite();
+      if (value === 'card') actions.requestFavorite();
+      else actions.favorite();
       await el.updateComplete;
-      const favorite = el.shadowRoot.querySelector('da-file-actions');
+      const favorite = el.shadowRoot.querySelector(value === 'card' ? 'da-file-item' : 'da-file-actions');
       expect(favorite.isFavorited).to.equal(true);
-      favorite.favorite();
+      if (value === 'card') favorite.requestFavorite();
+      else favorite.favorite();
       await el.updateComplete;
     }
   });
 
   it('uses Favorites wording when browser storage cannot save a favorite', async () => {
     sinon.stub(Storage.prototype, 'setItem').throws(new DOMException('Quota exceeded', 'QuotaExceededError'));
-    el.shadowRoot.querySelector('da-file-actions').favorite();
+    el.shadowRoot.querySelector('da-file-item').requestFavorite();
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('[role="alert"]').textContent).to.equal(
       'Could not save your favorites. Check that browser storage is available.',
     );
-    expect(el.shadowRoot.querySelector('da-file-actions').isFavorited).to.equal(false);
+    expect(el.shadowRoot.querySelector('da-file-item').isFavorited).to.equal(false);
     expect(getFavorites('/org/site')).to.deep.equal([]);
   });
 
@@ -512,7 +517,7 @@ describe('landing page', () => {
     el._files = [...ITEMS, { name: 'Image', path: '/org/site/image.png', ext: 'png' }];
     el.changeView({ detail: { value: 'list' } });
     await el.updateComplete;
-    const previews = el.shadowRoot.querySelectorAll('da-card-preview');
+    const previews = el.shadowRoot.querySelectorAll('da-file-item[view="preview"]');
     expect(previews).to.have.length(1);
     expect(previews[0].classList.contains('list-file-preview')).to.equal(true);
     expect(previews[0].path).to.equal('/org/site/image.png');
@@ -524,7 +529,7 @@ describe('landing page', () => {
     el._editor = '/canvas#';
     el._chatEnabled = false;
     await el.updateComplete;
-    const href = new URL(el.shadowRoot.querySelector('.file-link').href);
+    const href = new URL(el.shadowRoot.querySelector('da-file-item').href);
     expect(href.pathname).to.equal('/canvas');
     expect(el.shadowRoot.querySelector('textarea').disabled).to.equal(true);
   });
@@ -824,11 +829,13 @@ describe('landing page', () => {
     expect(el._prompt).to.equal('Update the hero');
   });
 
-  it('uses the same grey starred asset in grid and table without losing the star state', async () => {
+  it('uses shared favorite behavior in grid without losing the star state in the table', async () => {
     el.starFile(ITEMS[0]);
     el.changeTab('starred');
     await el.updateComplete;
-    expect(el.shadowRoot.querySelector('.file-favorite-badge').src).to.include('/landing/star-filled.svg');
+    const item = el.shadowRoot.querySelector('da-file-item');
+    await item.updateComplete;
+    expect(item.shadowRoot.querySelector('.card-favorite').getAttribute('aria-pressed')).to.equal('true');
     el.changeView({ detail: { value: 'list' } });
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('.file-table').getAttribute('aria-label')).to.equal('Favorite files');
