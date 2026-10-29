@@ -18,7 +18,3 @@ export const loadStyle = (supplied) => {
 };
 
 export const loadPageStyle = async () => {};
-
-export const getLivePreviewUrl = ({ org, repo, ref = 'main' }) => `https://${ref}--${repo}--${org}.aem.live`;
-
-export const ensurePreviewLogin = async () => true;
