@@ -244,6 +244,9 @@ intentional differences rather than substitutes for those missing inputs.
   and gray 75 in dark mode through the shared gray tokens. Spacing and the 32px
   icon background use shared spacing tokens. The glyph remains component-owned:
   20px in S and 22px in M.
+  Quick-action SVGs use the shared `/img/icons/` location. Report Suite Mapping and
+  Data Streams are stored there alongside the other shared icon assets; their
+  SVG artwork is unchanged and the tiles continue to use CSS masks.
   The 12px tile radius and the rest/hover shadows are component-local values,
   named `--da-landing-tile-radius`, `--da-landing-tile-shadow` and
   `--da-landing-tile-hover-shadow`; they are not shared Spectrum tokens.

@@ -13,7 +13,7 @@ describe('landing tile', () => {
     tile = document.createElement('da-landing-tile');
     tile.heading = 'Browse Content';
     tile.description = 'View your recent, favorite, or other content by their organization';
-    tile.iconHref = '/blocks/landing/data-streams.svg';
+    tile.iconHref = '/img/icons/S2_Icon_DataStreams_20_N.svg';
     tile.style.cssText = `
       --s2-spacing-75: 4px;
       --s2-spacing-200: 12px;

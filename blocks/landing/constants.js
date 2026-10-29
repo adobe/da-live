@@ -11,7 +11,7 @@ export const DOC_TILES = [
     id: 'localization',
     title: 'Localization & Multi-site',
     description: 'Translate, roll out to markets, and manage base/satellite site inheritance',
-    iconHref: new URL('./report-suite-mapping.svg', import.meta.url).href,
+    iconHref: '/img/icons/S2_Icon_ReportSuiteMapping_20_N.svg',
     tone: 'purple',
     href: 'https://www.aem.live/docs/ew/administering/multi-site-manager',
   },
@@ -19,7 +19,7 @@ export const DOC_TILES = [
     id: 'develop',
     title: 'Develop & Extend',
     description: 'Build custom fullscreen apps, library plugins, and automate via the Admin API',
-    iconHref: new URL('./data-streams.svg', import.meta.url).href,
+    iconHref: '/img/icons/S2_Icon_DataStreams_20_N.svg',
     href: 'https://www.aem.live/developer/tutorial',
   },
 ];
