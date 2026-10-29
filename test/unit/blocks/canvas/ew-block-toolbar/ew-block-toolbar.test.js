@@ -1,7 +1,9 @@
 import { expect } from '@esm-bundle/chai';
-import { EditorState, NodeSelection } from 'da-y-wrapper';
+import { EditorState, NodeSelection, Y, prosemirrorToYDoc, ySyncPlugin } from 'da-y-wrapper';
 import { getSchema } from 'da-parser';
-import { setNx } from '../../../../../scripts/utils.js';
+import { setNx, getNx } from '../../../../../scripts/utils.js';
+import { makeRealView } from '../test-helpers.js';
+import { setDaConfigs } from '../../../../fixtures/nx/utils/daConfig.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -216,6 +218,138 @@ describe('ew-block-toolbar', () => {
     } finally {
       setCommentsController(null);
     }
+  });
+
+  describe('replace block', () => {
+    const paragraph = (text) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
+    const table = (name, body) => ({
+      type: 'table',
+      content: [name, body].map((text) => ({
+        type: 'table_row',
+        content: [{ type: 'table_cell', content: [paragraph(text)] }],
+      })),
+    });
+    let view;
+    let ydoc;
+    let savedFetch;
+    let hashChange;
+    let resetBlockLibraryCache;
+
+    beforeEach(async () => {
+      ({ hashChange } = await import(`${getNx()}/utils/utils.js`));
+      ({ resetBlockLibraryCache } = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js'));
+      savedFetch = window.fetch;
+      window.fetch = async (url, opts) => {
+        if (url.startsWith('/') || url.startsWith(window.location.origin)) return savedFetch(url, opts);
+        return new Response('[]');
+      };
+      hashChange._set({ org: 'org', site: 'site' });
+      setDaConfigs([{ library: { data: [{ title: 'Blocks', path: '/blocks.json' }] } }]);
+      resetBlockLibraryCache();
+
+      view = makeRealView({
+        type: 'doc',
+        content: [paragraph('Intro'), table('cards', 'Original'), paragraph('Outro'), table('other', 'Keep')],
+      });
+      const { schema, doc } = view.state;
+      ydoc = prosemirrorToYDoc(doc);
+      view.updateState(EditorState.create({
+        schema,
+        plugins: [ySyncPlugin(ydoc.getXmlFragment('prosemirror'))],
+      }));
+      const pos = view.state.doc.firstChild.nodeSize;
+      view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos)));
+      toolbar.view = view;
+      toolbar._hasBlockLibrary = true;
+    });
+
+    afterEach(() => {
+      document.querySelector('ew-block-library-modal')?.remove();
+      window.fetch = savedFetch;
+      setDaConfigs([]);
+      hashChange._set({});
+      resetBlockLibraryCache();
+      const mount = view.dom.parentElement;
+      view.destroy();
+      mount.remove();
+      ydoc.destroy();
+    });
+
+    const contents = () => {
+      const result = [];
+      view.state.doc.forEach((node) => result.push([node.type.name, node.textContent]));
+      return result;
+    };
+
+    function libraryTable() {
+      const dom = document.createElement('table');
+      dom.innerHTML = '<tbody><tr><td><p>hero</p></td></tr><tr><td><p>New</p></td></tr></tbody>';
+      return dom;
+    }
+
+    async function openModal() {
+      await toolbar._onReplaceBlock();
+      for (let i = 0; i < 50 && !document.querySelector('ew-block-library-modal'); i += 1) {
+        await new Promise((resolve) => { setTimeout(resolve, 10); });
+      }
+      const modal = document.querySelector('ew-block-library-modal');
+      expect(modal).to.exist;
+      return modal;
+    }
+
+    function remoteEdit(fn) {
+      const fragment = ydoc.getXmlFragment('prosemirror');
+      ydoc.transact(() => fn(fragment), 'remote');
+    }
+
+    function remoteParagraph(text) {
+      const p = new Y.XmlElement('paragraph');
+      p.insert(0, [new Y.XmlText(text)]);
+      return p;
+    }
+
+    it('replaces the selected block and keeps it selected', async () => {
+      const modal = await openModal();
+      modal.onInsert(libraryTable());
+      expect(contents()).to.deep.equal([
+        ['paragraph', 'Intro'], ['table', 'heroNew'], ['paragraph', 'Outro'], ['table', 'otherKeep'],
+      ]);
+      const { selection } = view.state;
+      expect(selection instanceof NodeSelection).to.equal(true);
+      expect(selection.node?.textContent).to.equal('heroNew');
+    });
+
+    it('replaces the right block after a collaborator edits above it', async () => {
+      const modal = await openModal();
+      remoteEdit((fragment) => fragment.insert(0, [remoteParagraph('Remote')]));
+      modal.onInsert(libraryTable());
+      expect(contents()).to.deep.equal([
+        ['paragraph', 'Remote'], ['paragraph', 'Intro'], ['table', 'heroNew'],
+        ['paragraph', 'Outro'], ['table', 'otherKeep'],
+      ]);
+    });
+
+    it('replaces the right block when it is first and a collaborator inserts above it', async () => {
+      view.dispatch(view.state.tr.delete(0, view.state.doc.firstChild.nodeSize));
+      view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, 0)));
+      const modal = await openModal();
+      remoteEdit((fragment) => fragment.insert(0, [remoteParagraph('Remote')]));
+      modal.onInsert(libraryTable());
+      expect(contents()).to.deep.equal([
+        ['paragraph', 'Remote'], ['table', 'heroNew'], ['paragraph', 'Outro'], ['table', 'otherKeep'],
+      ]);
+    });
+
+    it('leaves the doc alone when a collaborator deleted the block', async () => {
+      const modal = await openModal();
+      remoteEdit((fragment) => fragment.delete(1, 1));
+      const before = contents();
+      modal.onInsert(libraryTable());
+      expect(contents()).to.deep.equal(before);
+      expect(before).to.deep.equal([
+        ['paragraph', 'Intro'], ['paragraph', 'Outro'], ['table', 'otherKeep'],
+      ]);
+    });
   });
 });
 
