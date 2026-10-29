@@ -206,6 +206,77 @@ describe('renderAssetsRail', () => {
     expect(layer.isConnected).to.equal(false);
   });
 
+  it('sends SDK asset metadata containing callbacks through a real preview port', async () => {
+    const iframe = document.createElement('iframe');
+    document.body.append(iframe);
+    nodes.push(iframe);
+    sinon.stub(document, 'elementFromPoint').returns(iframe);
+    sinon.stub(iframe, 'getBoundingClientRect').returns({ left: 25, top: 45 });
+    const channel = new MessageChannel();
+    const received = new Promise((resolve) => {
+      channel.port2.onmessage = ({ data }) => resolve(data);
+    });
+    const metadata = {
+      name: 'image.png',
+      path: '/image.png',
+      mimetype: 'image/png',
+      'repo:id': 'asset',
+      'aem:formatName': 'original',
+    };
+    const asset = {
+      __original: {
+        ...metadata,
+        onSelect: () => {},
+        details: { title: 'Image', render: () => {} },
+      },
+    };
+    try {
+      await renderAssetsRail({
+        container: createSource(),
+        org: 'org',
+        site: 'site',
+        getPreview: () => ({ iframe, port: channel.port1 }),
+      });
+      const [{ props }] = renderCalls;
+      props.iframe_dragStart({ assets: [asset] });
+      expect(props.iframe_dragEnd({ mouse: { x: 10, y: 20 } })).to.equal(true);
+      expect(await received).to.deep.equal({
+        type: 'image-replace',
+        payload: { assets: [{ ...metadata, details: { title: 'Image' } }], x: 5, y: 15 },
+      });
+    } finally {
+      channel.port1.close();
+      channel.port2.close();
+    }
+  });
+
+  it('bridges preview hover, leave, and cancellation without sending replacement requests', async () => {
+    const iframe = document.createElement('iframe');
+    document.body.append(iframe);
+    nodes.push(iframe);
+    sinon.stub(iframe, 'getBoundingClientRect').returns({ left: 25, top: 45, width: 200, height: 150 });
+    const port = { postMessage: sinon.spy() };
+    await renderAssetsRail({
+      container: createSource(),
+      org: 'org',
+      site: 'site',
+      getPreview: () => ({ iframe, port }),
+    });
+    const [{ props }] = renderCalls;
+    props.iframe_dragStart({ assets: [{ name: 'image.png' }], mouse: { x: 10, y: 20 } });
+    props.iframe_dragMove({ mouse: { x: 15, y: 25 } });
+    props.iframe_dragMove({ mouse: { x: 300, y: 300 } });
+    props.iframe_dragMove({ mouse: { x: 10, y: 20 } });
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(port.postMessage.getCalls().map(({ args: [message] }) => message)).to.deep.equal([
+      { type: 'image-replace', payload: { assets: [], phase: 'hover', x: 5, y: 15 } },
+      { type: 'image-replace', payload: { assets: [], phase: 'hover', x: 10, y: 20 } },
+      { type: 'image-replace', payload: { assets: [], phase: 'leave' } },
+      { type: 'image-replace', payload: { assets: [], phase: 'hover', x: 5, y: 15 } },
+      { type: 'image-replace', payload: { assets: [], phase: 'leave' } },
+    ]);
+  });
+
   it('clears drag feedback on Escape and ignores a late drag-end callback', async () => {
     const hit = sinon.stub(document, 'elementFromPoint').returns(null);
     await renderAssetsRail({ container: createSource(), org: 'org', site: 'site' });
@@ -226,7 +297,9 @@ describe('renderAssetsRail', () => {
     nodes.push(iframe);
     const channel = new MessageChannel();
     const messages = [];
-    channel.port2.onmessage = ({ data }) => messages.push(data);
+    channel.port2.onmessage = ({ data }) => {
+      if (data.payload.assets?.length) messages.push(data);
+    };
     try {
       await renderAssetsRail({
         container: createSource(),
