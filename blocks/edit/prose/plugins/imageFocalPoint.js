@@ -8,6 +8,8 @@ const imageFocalPointKey = new PluginKey('imageFocalPoint');
 
 // Cache blocks data at module level
 let blocksDataPromise = null;
+// Resolved blocks list, for synchronous checks (e.g. toolbar visibility)
+let blocksData = null;
 async function getBlocksData() {
   if (!blocksDataPromise) {
     blocksDataPromise = (async () => {
@@ -22,11 +24,12 @@ async function getBlocksData() {
         return [];
       }
     })();
+    blocksDataPromise.then((blocks) => { blocksData = blocks; });
   }
   return blocksDataPromise;
 }
 
-function hasFocalPointData(attrs) {
+export function hasFocalPointData(attrs) {
   return (attrs.dataFocalX && attrs.dataFocalX !== '')
     || (attrs.dataFocalY && attrs.dataFocalY !== '');
 }
@@ -139,6 +142,24 @@ class ImageWithFocalPointView {
       this.icon.removeEventListener('click', this.handleIconClick);
     }
   }
+}
+
+/** True when the selected node is an image in a block that enables focal points. */
+export function canSetFocalPoint(state) {
+  const { selection } = state;
+  if (selection.node?.type.name !== 'image') return false;
+  if (!blocksData) {
+    getBlocksData();
+    return false;
+  }
+  const tableInfo = getTableInfo(state, selection.from);
+  return !!tableInfo && shouldShowFocalPoint(tableInfo.tableName, blocksData);
+}
+
+export function openSelectedFocalPoint(view) {
+  const { from, node } = view.state.selection;
+  if (node?.type.name !== 'image') return;
+  openFocalPointDialog(view, from, node);
 }
 
 export default function imageFocalPoint() {

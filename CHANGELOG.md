@@ -1,3 +1,45 @@
+# [1.17.0](https://github.com/adobe/da-live/compare/v1.16.1...v1.17.0) (2026-10-29)
+
+
+### Features
+
+* extract shared list/card view ([#1504](https://github.com/adobe/da-live/issues/1504)) ([e26e1f2](https://github.com/adobe/da-live/commit/e26e1f21c1d519ec6b90947c8d5a433833f9cd6e))
+
+## [1.16.1](https://github.com/adobe/da-live/compare/v1.16.0...v1.16.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* **diff:** hash a review decision on the block as the editor saves it ([#1516](https://github.com/adobe/da-live/issues/1516)) ([8de3b1d](https://github.com/adobe/da-live/commit/8de3b1d660d09a6b5182792a2937428e8e6ed619))
+
+# [1.16.0](https://github.com/adobe/da-live/compare/v1.15.1...v1.16.0) (2026-10-28)
+
+
+### Features
+
+* **sc:** move structured content editor ([#1477](https://github.com/adobe/da-live/issues/1477)) ([ed60122](https://github.com/adobe/da-live/commit/ed601228892efd08bce42162b54097783f55e23e))
+
+## [1.15.1](https://github.com/adobe/da-live/compare/v1.15.0...v1.15.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* **browse v2:** honor editor.path for search results ([#1514](https://github.com/adobe/da-live/issues/1514)) ([f9edea5](https://github.com/adobe/da-live/commit/f9edea542f4f40e5fce55285b4c7025fbeddc77a))
+
+# [1.15.0](https://github.com/adobe/da-live/compare/v1.14.2...v1.15.0) (2026-10-27)
+
+
+### Features
+
+* set image focal point from canvas toolbar in layout mode ([#1479](https://github.com/adobe/da-live/issues/1479)) ([824f44f](https://github.com/adobe/da-live/commit/824f44f5d8fad645eccbffb772d71a54ee52d9c5))
+
+## [1.14.2](https://github.com/adobe/da-live/compare/v1.14.1...v1.14.2) (2026-10-27)
+
+
+### Bug Fixes
+
+* **ew:** position slash menu correctly when it opens above cursor and user starts typing ([#1497](https://github.com/adobe/da-live/issues/1497)) ([6a9d91c](https://github.com/adobe/da-live/commit/6a9d91cf587d373ea24f970ace626947eb70e089))
+
 ## [1.14.1](https://github.com/adobe/da-live/compare/v1.14.0...v1.14.1) (2026-10-27)
 
 

@@ -59,9 +59,9 @@ describe('focalPointDialog', () => {
   //   expect(indicator).to.exist;
   // });
 
-  it('updates focal point on interaction', async () => {
-    let dispatched = null;
-    view.dispatch = (tr) => { dispatched = tr; };
+  it('only writes the focal point on Accept, not while dragging', async () => {
+    const dispatched = [];
+    view.dispatch = (tr) => { dispatched.push(tr); };
 
     await openFocalPointDialog(view, 10, node);
     const dialog = document.querySelector('da-dialog');
@@ -71,11 +71,40 @@ describe('focalPointDialog', () => {
     // Mock rects for calculation
     img.getBoundingClientRect = () => ({ left: 0, top: 0, width: 100, height: 100 });
 
-    // Simulate mousedown which triggers update
     container.dispatchEvent(new MouseEvent('mousedown', { clientX: 25, clientY: 75, bubbles: true }));
+    document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    expect(dispatched).to.have.length(0);
 
-    expect(dispatched).to.exist;
-    expect(dispatched.attrs.dataFocalX).to.equal('25.00');
-    expect(dispatched.attrs.dataFocalY).to.equal('75.00');
+    dialog.action.click();
+    expect(dispatched).to.have.length(1);
+    expect(dispatched[0].attrs.dataFocalX).to.equal('25.00');
+    expect(dispatched[0].attrs.dataFocalY).to.equal('75.00');
+  });
+
+  it('does not write anything on Cancel', async () => {
+    const dispatched = [];
+    view.dispatch = (tr) => { dispatched.push(tr); };
+
+    await openFocalPointDialog(view, 10, node);
+    const dialog = document.querySelector('da-dialog');
+    const img = dialog.querySelector('.focal-point-image');
+    img.getBoundingClientRect = () => ({ left: 0, top: 0, width: 100, height: 100 });
+    dialog.querySelector('.focal-point-image-container')
+      .dispatchEvent(new MouseEvent('mousedown', { clientX: 25, clientY: 75, bubbles: true }));
+
+    dialog.querySelector('sl-button.primary').click();
+    expect(dispatched).to.have.length(0);
+  });
+
+  it('clears the focal point on Clear', async () => {
+    const dispatched = [];
+    view.dispatch = (tr) => { dispatched.push(tr); };
+    node.attrs = { ...node.attrs, dataFocalX: '10.00', dataFocalY: '20.00' };
+
+    await openFocalPointDialog(view, 10, node);
+    document.querySelector('da-dialog sl-button.negative').click();
+    expect(dispatched).to.have.length(1);
+    expect(dispatched[0].attrs.dataFocalX).to.equal(null);
+    expect(dispatched[0].attrs.dataFocalY).to.equal(null);
   });
 });
