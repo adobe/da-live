@@ -4,6 +4,6 @@ export function getSiteOptions({ recentSites = [], current }) {
   ))];
   return sites.map((value) => {
     const [org, site] = value.split('/');
-    return { value, label: `${site} (${org})` };
+    return { value, label: `(${org}, ${site})` };
   });
 }
