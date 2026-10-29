@@ -548,7 +548,18 @@ describe('landing page', () => {
     expect(loadSite.callCount).to.equal(2);
   });
 
-  it('keeps compact picker/view dimensions while S/M changes preserve page state', async () => {
+  it('loads the same scope once until its request is aborted', async () => {
+    hashChange._set({ org: 'org', site: 'site', fullpath: '/org/site/folder' });
+    hashChange._set({ org: 'org', site: 'site', fullpath: '/org/site/other' });
+    await el.updateComplete;
+    expect(loadSite.callCount).to.equal(1);
+    el._request.abort();
+    hashChange._set({ org: 'org', site: 'site', fullpath: '/org/site' });
+    await el.updateComplete;
+    expect(loadSite.callCount).to.equal(2);
+  });
+
+  it('keeps compact view dimensions while S/M changes preserve page state', async () => {
     el._prompt = 'Update this page';
     el._tab = 'starred';
     setUISize({ size: 'm' });

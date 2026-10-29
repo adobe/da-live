@@ -143,8 +143,11 @@ describe('shared site selector adapter', () => {
   });
 
   it('retries an uncertain access failure even when history and route are unchanged', async () => {
+    const history = sinon.stub(Storage.prototype, 'getItem').callThrough();
+    history.withArgs('da-sites').returns('["aemsites/devlive","other/site"]');
+    const save = sinon.stub(Storage.prototype, 'setItem').callThrough();
+    save.withArgs('da-sites').returns();
     list.rejects(new Error('Offline'));
-    localStorage.setItem('da-sites', '["other/site"]');
     await adapter.refresh();
     expect(selector.error).to.include('Offline');
     list.resolves({ ok: true, items: [] });
