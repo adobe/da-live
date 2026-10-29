@@ -45,8 +45,8 @@ describe('shared site selector adapter', () => {
       current: 'adobe/current',
       recentSites: ['adobe/other', 'adobe/current', '/bad/path', 'adobe/.trash', null],
     })).to.deep.equal([
-      { value: 'adobe/current', label: '(adobe, current)' },
-      { value: 'adobe/other', label: '(adobe, other)' },
+      { value: 'adobe/current', label: 'Current, adobe/current' },
+      { value: 'adobe/other', label: 'Other, adobe/other' },
     ]);
   });
 
@@ -57,6 +57,17 @@ describe('shared site selector adapter', () => {
     await adapter.refresh();
     expect(selector.value).to.equal('aemsites/devlive');
     expect(list.called).to.be.false;
+  });
+
+  it('uses the stored site name followed by its unchanged full path without parentheses', () => {
+    expect(getSiteOptions({
+      current: 'exp-workspace/frescopa',
+      recentSites: ['other/frescopa', 'org/my-site_2'],
+    })).to.deep.equal([
+      { value: 'exp-workspace/frescopa', label: 'Frescopa, exp-workspace/frescopa' },
+      { value: 'other/frescopa', label: 'Frescopa, other/frescopa' },
+      { value: 'org/my-site_2', label: 'My-site_2, org/my-site_2' },
+    ]);
   });
 
   it('leaves Landing unselected despite remembered sites, selects explicitly and resets on Home', async () => {
@@ -71,7 +82,7 @@ describe('shared site selector adapter', () => {
     selector.dispatchEvent(new CustomEvent('site-select', { detail: { value } }));
     await adapter.refresh();
     expect(selector.value).to.equal(value);
-    expect(selector.sites.find((site) => site.value === value).label).to.equal('(exp-workspace, frescopaco)');
+    expect(selector.sites.find((site) => site.value === value).label).to.equal('Frescopaco, exp-workspace/frescopaco');
     window.history.replaceState(null, '', '?landing=true');
     await adapter.refresh();
     expect(selector.value).to.equal('');
