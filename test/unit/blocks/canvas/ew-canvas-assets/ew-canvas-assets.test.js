@@ -184,6 +184,99 @@ describe('renderAssetsRail', () => {
     });
   });
 
+  it('shows an asset preview that follows the pointer and clears on drag end', async () => {
+    sinon.stub(document, 'elementFromPoint').returns(null);
+    await renderAssetsRail({ container: createSource(), org: 'org', site: 'site' });
+    const [{ props }] = renderCalls;
+    props.iframe_dragStart({
+      assets: [{ name: 'image.png' }],
+      dataUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==',
+      mouse: { x: 10, y: 20 },
+    });
+    const layer = document.querySelector('.assets-rail-drag-layer');
+    expect(layer).to.not.equal(null);
+    const ghost = layer.shadowRoot.querySelector('.assets-rail-drag-preview');
+    expect(ghost.textContent).to.include('image.png');
+    expect(ghost.querySelector('img')).to.not.equal(null);
+    expect(ghost.style.transform).to.equal('translate(42px, 72px)');
+    props.iframe_dragMove({ mouse: { x: 20, y: 30 } });
+    expect(ghost.style.transform).to.equal('translate(52px, 82px)');
+
+    props.iframe_dragEnd({ mouse: { x: 20, y: 30 } });
+    expect(layer.isConnected).to.equal(false);
+  });
+
+  it('clears drag feedback on Escape and ignores a late drag-end callback', async () => {
+    const hit = sinon.stub(document, 'elementFromPoint').returns(null);
+    await renderAssetsRail({ container: createSource(), org: 'org', site: 'site' });
+    const [{ props }] = renderCalls;
+    props.iframe_dragStart({ assets: [{ name: 'image.png' }], mouse: { x: 10, y: 20 } });
+    const layer = document.querySelector('.assets-rail-drag-layer');
+    expect(layer).to.not.equal(null);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(layer.isConnected).to.equal(false);
+    expect(props.iframe_dragEnd({ mouse: { x: 10, y: 20 } })).to.equal(false);
+    expect(hit.called).to.equal(false);
+  });
+
+  it('delivers native and pointer preview drops once per gesture through a real port', async () => {
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;left:25px;top:45px;width:200px;height:150px;border:0';
+    document.body.append(iframe);
+    nodes.push(iframe);
+    const channel = new MessageChannel();
+    const messages = [];
+    channel.port2.onmessage = ({ data }) => messages.push(data);
+    try {
+      await renderAssetsRail({
+        container: createSource(),
+        org: 'org',
+        site: 'site',
+        getPreview: () => ({ iframe, port: channel.port1 }),
+      });
+      const asset = { name: 'image.png', path: '/image.png', mimetype: 'image/png' };
+      const [{ props }] = renderCalls;
+      props.iframe_dragStart({ assets: [asset], mouse: { x: 10, y: 20 } });
+      const layer = document.querySelector('.assets-rail-drag-layer');
+      expect(layer).to.not.equal(null);
+      const css = await (await fetch('/blocks/canvas/ew-canvas-assets/ew-canvas-assets.css')).text();
+      layer.shadowRoot.adoptedStyleSheets[0].replaceSync(css);
+      const shield = layer.shadowRoot.querySelector('.assets-rail-preview-shield');
+      expect(document.elementFromPoint(35, 60)).to.equal(layer);
+      expect(layer.shadowRoot.elementFromPoint(35, 60)).to.equal(shield);
+      expect(getComputedStyle(layer).pointerEvents).to.equal('none');
+      const dataTransfer = new DataTransfer();
+      dataTransfer.setData('collectionviewdata', '');
+      const dragover = new DragEvent('dragover', { cancelable: true, dataTransfer });
+      shield.dispatchEvent(dragover);
+      expect(dragover.defaultPrevented).to.equal(true);
+      const drop = new DragEvent('drop', { cancelable: true, dataTransfer, clientX: 35, clientY: 60 });
+      shield.dispatchEvent(drop);
+      expect(drop.defaultPrevented).to.equal(true);
+      expect(layer.isConnected).to.equal(false);
+      expect(props.iframe_dragEnd({ assets: [asset], mouse: { x: 15, y: 20 } })).to.equal(false);
+      await new Promise((resolve) => { setTimeout(resolve, 0); });
+      await new Promise((resolve) => { setTimeout(resolve, 0); });
+      expect(messages).to.deep.equal([{
+        type: 'image-replace',
+        payload: { assets: [asset], x: 10, y: 15 },
+      }]);
+
+      props.iframe_dragStart({ assets: [asset], mouse: { x: 10, y: 20 } });
+      const pointerShield = document.querySelector('.assets-rail-drag-layer')
+        .shadowRoot.querySelector('.assets-rail-preview-shield');
+      pointerShield.dispatchEvent(new PointerEvent('pointerup', { cancelable: true, clientX: 35, clientY: 60 }));
+      expect(props.iframe_dragEnd({ assets: [asset], mouse: { x: 15, y: 20 } })).to.equal(false);
+      await new Promise((resolve) => { setTimeout(resolve, 0); });
+      await new Promise((resolve) => { setTimeout(resolve, 0); });
+      expect(messages).to.have.length(2);
+      expect(messages[1]).to.deep.equal(messages[0]);
+    } finally {
+      channel.port1.close();
+      channel.port2.close();
+    }
+  });
+
   it('does not bridge a drop into a read-only document', async () => {
     editor = await createTestEditor({ editable: false });
     sinon.stub(document, 'elementFromPoint').returns(editor.view.dom);
@@ -235,6 +328,7 @@ describe('ew-canvas-assets element', () => {
   });
 
   afterEach(() => {
+    sinon.restore();
     teardown();
     window.PureJSSelectors.renderAssetSelector = orgRenderAssetSelector;
     inst?.remove();
@@ -269,6 +363,50 @@ describe('ew-canvas-assets element', () => {
     expect(renderCalls).to.have.length(1);
   });
 
+  it('removes active drag feedback when the rail disconnects', async () => {
+    inst = await createInstance({ org: 'org', site: 'site' });
+    renderCalls[0].props.iframe_dragStart({ assets: [{ name: 'image.png' }] });
+    const layer = document.querySelector('.assets-rail-drag-layer');
+    expect(layer).to.not.equal(null);
+    inst.remove();
+    expect(layer.isConnected).to.equal(false);
+  });
+
+  it('uses the preview port replayed when the rail opens after the preview', async () => {
+    const iframe = document.createElement('iframe');
+    document.body.append(iframe);
+    sinon.stub(document, 'elementFromPoint').returns(iframe);
+    sinon.stub(iframe, 'getBoundingClientRect').returns({ left: 25, top: 45, width: 200, height: 150 });
+    const channel = new MessageChannel();
+    const received = new Promise((resolve) => {
+      channel.port2.onmessage = ({ data }) => resolve(data);
+    });
+    try {
+      canvasBus.wysiwygPortReady.emit({ iframe, port: channel.port1 });
+      inst = await createInstance({ org: 'org', site: 'site' });
+      inst.shadowRoot.querySelector('.assets-rail').append(document.createElement('iframe'));
+      const [{ props }] = renderCalls;
+      const asset = { name: 'image.png', path: '/image.png', mimetype: 'image/png' };
+      props.iframe_dragStart({ assets: [asset], mouse: { x: 10, y: 20 } });
+      const shield = document.querySelector('.assets-rail-drag-layer')
+        .shadowRoot.querySelector('.assets-rail-preview-shield');
+      const dataTransfer = new DataTransfer();
+      dataTransfer.setData('collectionviewdata', '');
+      shield.dispatchEvent(new DragEvent('drop', { cancelable: true, dataTransfer, clientX: 35, clientY: 60 }));
+      expect(await received).to.deep.equal({
+        type: 'image-replace',
+        payload: { assets: [asset], x: 10, y: 15 },
+      });
+    } finally {
+      inst?._destroyDrag?.();
+      iframe.remove();
+      channel.port1.close();
+      channel.port2.close();
+      canvasBus.wysiwygPortReady.emit(null);
+      sinon.restore();
+    }
+  });
+
   it('shows the error message', async () => {
     setRepositoryConfig(null);
     inst = await createInstance({ org: 'org', site: 'site' });
@@ -283,8 +421,9 @@ describe('ew-canvas-assets element', () => {
     expect(renderCalls).to.have.length(1);
 
     setImsResult({ accessToken: { token: 'rotated-token' } });
+    const refresh = sinon.spy(inst, '_onViewState');
     canvasBus.toolPanelViewState.emit('aem-assets-panel');
-    await new Promise((r) => { setTimeout(r, 0); });
+    await refresh.firstCall.returnValue;
 
     expect(renderCalls).to.have.length(2);
     expect(renderCalls[1].props.imsToken).to.equal('rotated-token');

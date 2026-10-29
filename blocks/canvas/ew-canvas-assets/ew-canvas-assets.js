@@ -30,7 +30,9 @@ const VIEW_ID = 'aem-assets-panel';
  * selector is not rendered (the caller may have removed `container` in the meantime)
  * and `{ skipped: true }` is returned instead.
  */
-export async function renderAssetsRail({ container, org, site, isLive = () => true, getPreview }) {
+export async function renderAssetsRail({
+  container, org, site, isLive = () => true, getPreview, onCleanup,
+}) {
   const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
   const ims = await loadIms();
   if (ims?.anonymous) handleSignIn();
@@ -52,13 +54,17 @@ export async function renderAssetsRail({ container, org, site, isLive = () => tr
     rail: true,
     dragAndDrop: true,
   });
+  const { destroy, ...dragHandlers } = createAssetDragHandlers(
+    { container, isLive, getPreview, style },
+  );
+  onCleanup?.(destroy);
   selectors.renderAssetSelector(container, {
     ...props,
     acvConfig: {
       ...props.acvConfig,
       dragOptions: { ...props.acvConfig?.dragOptions, iframe: true },
     },
-    ...createAssetDragHandlers({ container, isLive, getPreview }),
+    ...dragHandlers,
   });
 
   return { token };
@@ -87,6 +93,7 @@ class EwCanvasAssets extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    this._destroyDrag?.();
     this._unsubViewState?.();
     this._unsubPreview?.();
     this._preview = undefined;
@@ -100,6 +107,7 @@ class EwCanvasAssets extends LitElement {
   }
 
   async _renderSelector() {
+    this._destroyDrag?.();
     const container = this.shadowRoot.querySelector('.assets-rail');
     const isLive = () => this.isConnected;
     const result = await renderAssetsRail({
@@ -108,6 +116,7 @@ class EwCanvasAssets extends LitElement {
       site: this.site,
       isLive,
       getPreview: () => this._preview,
+      onCleanup: (destroy) => { this._destroyDrag = destroy; },
     });
     if (result.skipped) return;
     this._attempted = true;
