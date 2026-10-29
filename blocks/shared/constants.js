@@ -1,5 +1,7 @@
 export const AEM_ORIGIN = 'https://admin.hlx.page';
 
+export const OFFLINE_MODE = false;
+
 export const SUPPORTED_IMAGE_TYPES = [
   'image/svg+xml', 'image/png', 'image/jpeg', 'image/gif', 'image/avif', 'image/webp',
 ];

@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 
 import getSheet from '../../shared/sheet.js';
 import '../da-editor/da-editor.js';
-import { getLivePreviewUrl } from '../../shared/constants.js';
+import { getLivePreviewUrl, OFFLINE_MODE } from '../../shared/constants.js';
 
 const sheet = await getSheet('/blocks/edit/da-content/da-content.css');
 
@@ -12,6 +12,7 @@ export default class DaContent extends LitElement {
     permissions: { attribute: false },
     proseEl: { attribute: false },
     wsProvider: { attribute: false },
+    offline: { type: Boolean },
     _editorLoaded: { state: true },
     _showPane: { state: true },
     _versionId: { state: true },
@@ -19,9 +20,30 @@ export default class DaContent extends LitElement {
     _externalUrl: { state: true },
   };
 
+  constructor() {
+    super();
+    this.offline = OFFLINE_MODE;
+  }
+
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
+    this._onBeforeUnload = (event) => {
+      if (!this.hasPendingSave) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', this._onBeforeUnload);
+  }
+
+  disconnectedCallback() {
+    window.removeEventListener('beforeunload', this._onBeforeUnload);
+    this.destroyEditor?.();
+    super.disconnectedCallback();
+  }
+
+  get hasPendingSave() {
+    return this.sourcePersistence?.hasPending ?? false;
   }
 
   disconnectWebsocket() {
@@ -86,6 +108,7 @@ export default class DaContent extends LitElement {
           .permissions=${this.permissions}
           .proseEl=${this.proseEl}
           .wsProvider=${this.wsProvider}
+          .offline=${this.offline}
           @versionreset=${this.handleVersionReset}>
         </da-editor>
         ${this._editorLoaded ? html`
@@ -110,6 +133,7 @@ export default class DaContent extends LitElement {
           @close=${this.togglePane}></da-preview>
         <da-versions
           path=${this.details.fullpath}
+          .forceSave=${() => this.forceSave?.() ?? Promise.resolve({ ok: false, error: 'The editor is not ready to save.' })}
           .open=${this._showPane === 'versions'}
           class="${this._showPane === 'versions' ? 'is-visible' : ''}"
           @preview=${this.handleVersionPreview}
