@@ -1,6 +1,6 @@
 import { DOMParser as PMDOMParser, Slice } from 'da-y-wrapper';
 import { getNx2, getNx2Api } from '../../../scripts/utils.js';
-import { refuseOversizedImage } from '../utils/image-upload.js';
+import { refuseOversizedImage } from '../../shared/image-upload.js';
 
 /**
  * Upload context for files: `parent` is `/org/site/dir`, `name` is the page name
