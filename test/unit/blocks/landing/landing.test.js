@@ -1105,9 +1105,14 @@ describe('landing page', () => {
   });
 
   it('keeps the working composer within the page width and retains the faint Figma palette in both themes', async () => {
-    const sheet = new CSSStyleSheet();
-    sheet.replaceSync(await (await fetch('/blocks/landing/landing.css')).text());
-    el.shadowRoot.adoptedStyleSheets = [sheet];
+    el.shadowRoot.adoptedStyleSheets = await Promise.all([
+      '/test/fixtures/nx/blocks/shared/chat/input.css',
+      '/blocks/landing/landing.css',
+    ].map(async (href) => {
+      const sheet = new CSSStyleSheet();
+      sheet.replaceSync(await (await fetch(href)).text());
+      return sheet;
+    }));
     el._chatEnabled = true;
     await el.updateComplete;
     for (const scheme of ['light', 'dark']) {
@@ -1116,6 +1121,8 @@ describe('landing page', () => {
         el.style.width = `${width}px`;
         const composer = el.shadowRoot.querySelector('.composer');
         expect(composer.getBoundingClientRect().width).to.be.at.most(664);
+        expect(getComputedStyle(composer).borderRadius).to.equal('24px');
+        expect(getComputedStyle(composer, '::before').borderRadius).to.equal('30px');
         const pageRight = el.getBoundingClientRect().right;
         expect(composer.getBoundingClientRect().right).to.be.at.most(pageRight);
         expect(getComputedStyle(composer, '::after').content).to.equal('""');
@@ -1151,6 +1158,21 @@ describe('landing page', () => {
         await el.updateComplete;
       }
     }
+
+    el.style.setProperty('--landing-composer-width', '600px');
+    el.style.setProperty('--landing-composer-radius', '20px');
+    el.style.width = '1200px';
+    const composer = el.shadowRoot.querySelector('.composer');
+    expect(composer.getBoundingClientRect().width).to.equal(600);
+    expect(getComputedStyle(composer).borderRadius).to.equal('20px');
+    expect(getComputedStyle(composer, '::before').borderRadius).to.equal('26px');
+    el.style.setProperty('--landing-composer-working-shadow', 'none');
+    el._chatInputState = { busy: true, disabled: true };
+    await el.updateComplete;
+    expect(getComputedStyle(composer.querySelector('.composer-surface')).boxShadow).to.equal('none');
+    el._chatInputState = { busy: false, disabled: false };
+    await el.updateComplete;
+    expect(getComputedStyle(composer.querySelector('.composer-surface')).boxShadow).not.to.equal('none');
   });
 
   it('does not deliver files read for an old site after switching away and back', async () => {

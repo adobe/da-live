@@ -68,6 +68,17 @@ adobe/da-live#1416 is modified or merged by this work.
 
 ## Figma fidelity
 
+Chat-family defaults come from Nexter's `nx2/blocks/shared/chat/input.css`:
+working fill/border/text, spinner/logo dimensions and input inset/height limits.
+The centered composer keeps its own `--landing-composer-*` properties in
+`blocks/landing/landing.css`, not the global generated S2 token block.
+These name the 664px width, 24px inner radius, 6px frame and derived 30px outer
+radius, plus gradient artwork, blur/opacity and state-specific shadows.
+Idle, ready, focus-frame, working and drop shadows stay separate; working
+defaults to the current ready shadow. Existing S2 spacing is reused directly.
+The legacy text line remains 20px and the expanded AO row 21px; tokenization
+does not resize either chat or flatten the center/sidebar variants.
+
 The 1920px Ready frame (`1852:83848`) has a 1068px Files panel starting at y=395.
 Ten compact cards are 142px tall with 4px frame padding, 80px thumbnails,
 12px title/metadata insets and a 12px radius; the panel is 406px tall.

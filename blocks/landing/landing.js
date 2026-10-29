@@ -33,6 +33,7 @@ await Promise.all([
 ]);
 const [shellStyle, ...styles] = await Promise.all([
   loadStyle(new URL('./shell.css', import.meta.url).href),
+  loadStyle(`${getNx2()}/blocks/shared/chat/input.css`),
   loadStyle(`${getNx2()}/styles/buttons.css`),
   loadStyle(import.meta.url),
 ]);
