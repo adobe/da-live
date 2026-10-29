@@ -4,16 +4,11 @@ import { getChatPanelContent, setChatPrompt, addChatContext } from '../shared/ch
 import { getTypeLabel, isImageExt } from '../shared/icons.js';
 import { getFavorites, toggleFavorite } from '../browse/shared/favorites.js';
 import { getBrowseSettings, updateBrowseSettings } from '../browse/v2/shared/settings.js';
-import { setRecentSite } from '../browse/da-sites/utils.js';
-import {
-  getSiteOptions, getBrowseHref, getFileHref, loadFiles, getLandingIconHref, formatModified,
-  getCreateSiteHref,
-} from './utils.js';
+import { getBrowseHref, getFileHref, loadFiles, getLandingIconHref, formatModified } from './utils.js';
 import { EMPTY_DOC } from '../shared/utils.js';
 import '../browse/v2/da-card-preview/da-card-preview.js';
 import '../shared/file-actions/file-actions.js';
 import renderFileTable from '../shared/file-table.js';
-import { createSitePicker, updateSitePicker, checkSiteChoices } from '../shared/site-picker.js';
 import { DOC_TILES } from './constants.js';
 import './tile.js';
 
@@ -49,12 +44,10 @@ function icon(name) {
 export class DaLanding extends LitElement {
   static properties = {
     _scope: { state: true },
-    _sites: { state: true },
     _name: { state: true },
     _files: { state: true },
     _error: { state: true },
     _profileError: { state: true },
-    _siteError: { state: true },
     _actionError: { state: true },
     _favorites: { state: true },
     _tab: { state: true },
@@ -69,7 +62,6 @@ export class DaLanding extends LitElement {
     _permissions: { state: true },
     _openingPage: { state: true },
     _createDialog: { state: true },
-    _addingSite: { state: true },
   };
 
   _sizing = sizing && new sizing.UISizeController(this);
@@ -81,7 +73,6 @@ export class DaLanding extends LitElement {
 
   _onStorage = ({ key }) => {
     if (key === 'da-favorites' || key === null) this.refreshFavorites();
-    if (key === 'da-sites' || key === null) this.loadSites();
   };
 
   constructor() {
@@ -95,9 +86,7 @@ export class DaLanding extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = styles;
-    this.mountWorkspace();
     this._unsubscribe = hashChange.subscribe((state) => this.setScope(state));
-    this.syncWorkspace();
     window.addEventListener('storage', this._onStorage);
     this.loadProfile();
   }
@@ -106,11 +95,8 @@ export class DaLanding extends LitElement {
     this._dragging = false;
     this._unsubscribe?.();
     this._request?.abort();
-    this._sitesRequest?.abort();
-    this._addingSite = false;
     this._openingPage = undefined;
     this._createDialog = undefined;
-    this._sitePicker?.remove();
     window.removeEventListener('storage', this._onStorage);
     document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
     super.disconnectedCallback();
@@ -124,93 +110,12 @@ export class DaLanding extends LitElement {
     return this._scope ? `/${this._scope}` : '';
   }
 
-  mountWorkspace() {
-    const nav = document.querySelector('nx-nav');
-    if (!nav) return;
-    const picker = createSitePicker({
-      onSelect: (value) => { window.location.hash = `#/${value}`; },
-      onAdd: () => this.showAddSite(),
-    });
-    picker.slot = 'search';
-    picker.classList.add('landing-workspace');
-    this._sitePicker = picker;
-    nav.append(picker);
-  }
-
   updated() {
-    this.syncWorkspace();
     if (!this._prompt) this.shadowRoot.querySelector('textarea')?.style.removeProperty('height');
   }
 
-  syncWorkspace() {
-    if (!this._sitePicker) return;
-    updateSitePicker({ picker: this._sitePicker, sites: this._sites, value: this._scope });
-  }
-
-  loadSites() {
-    this._siteError = undefined;
-    try {
-      const recentSites = JSON.parse(localStorage.getItem('da-sites') || '[]');
-      if (!Array.isArray(recentSites)) throw new TypeError('Recent sites must be a list.');
-      this._sites = getSiteOptions({ recentSites, current: this._scope });
-    } catch (error) {
-      this._sites = getSiteOptions({ recentSites: [], current: this._scope });
-      this._siteError = `Could not read recent sites: ${error.message}`;
-    }
-    this.checkSites(this._sites);
-  }
-
-  rememberCurrentSite() {
-    if (!this._scope) return;
-    try {
-      const [org, site] = this._scope.split('/');
-      setRecentSite({ org, site });
-    } catch (error) {
-      this._siteError = `Could not save the current site in this browser: ${error.message}`;
-    }
-  }
-
-  async checkSites(sites) {
-    this._sitesRequest?.abort();
-    const request = new AbortController();
-    this._sitesRequest = request;
-    try {
-      const { source } = await getNx2Api();
-      const { signal } = request;
-      const inaccessibleSites = this._inaccessibleSites;
-      const result = await checkSiteChoices({ sites, source, signal, inaccessibleSites });
-      if (request.signal.aborted || !this.isConnected) return;
-      this._inaccessibleSites = result.inaccessibleSites;
-      this._sites = result.sites;
-      if (result.error) this._siteError = [this._siteError, result.error].filter(Boolean).join(' ');
-    } catch (error) {
-      if (!request.signal.aborted && this.isConnected) {
-        this._siteError = `Could not check your sites: ${error.message}`;
-      }
-    }
-  }
-
-  async showAddSite() {
-    const scope = this._scope;
-    try {
-      await import('../shared/add-site.js');
-      if (this.isConnected && this._scope === scope) this._addingSite = true;
-    } catch (error) {
-      if (this.isConnected && this._scope === scope) {
-        this._siteError = `Could not open Add site: ${error.message}`;
-      }
-    }
-  }
-
-  closeAddSite() {
-    this._addingSite = false;
-    this._sitePicker?.shadowRoot?.querySelector('button')?.focus();
-  }
-
-  siteAdded({ detail: { value } }) {
-    this.closeAddSite();
-    this.loadSites();
-    window.location.hash = `#/${value}`;
+  showAddSite() {
+    this.dispatchEvent(new CustomEvent('site-add', { bubbles: true, composed: true }));
   }
 
   async loadImsProfile() {
@@ -229,9 +134,8 @@ export class DaLanding extends LitElement {
 
   setScope(state) {
     const scope = state?.org && state?.site ? `${state.org}/${state.site}` : undefined;
-    if (this._scope === scope && this._sites && !this._request?.signal.aborted) return;
+    if (this._scope === scope && this._request && !this._request.signal.aborted) return;
     this._scope = scope;
-    this._addingSite = false;
     this._openingPage = undefined;
     this._createDialog = undefined;
     this._permissions = undefined;
@@ -245,8 +149,6 @@ export class DaLanding extends LitElement {
     this._dragging = false;
     this._error = undefined;
     this._actionError = undefined;
-    this.loadSites();
-    this.rememberCurrentSite();
     this.refreshFavorites();
     document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
     this.loadSite();
@@ -268,7 +170,6 @@ export class DaLanding extends LitElement {
       if (!this.isConnected || request.signal.aborted) return;
       this._files = files;
       this._permissions = permissions;
-      this.rememberCurrentSite();
     } catch (error) {
       if (!request.signal.aborted && this.isConnected) this._error = error.message;
     }
@@ -605,13 +506,6 @@ export class DaLanding extends LitElement {
   render() {
     return html`
       <div class="landing">
-        ${this._siteError ? html`<p role="status">${this._siteError}
-          <button class="nx-action-btn-quiet" @click=${this.loadSites}>Try again</button></p>` : nothing}
-        ${this._addingSite ? html`
-          <da-add-site .org=${this._scope?.split('/')[0]}
-            .createHref=${getCreateSiteHref({ org: this._scope?.split('/')[0] })}
-            @site-added=${this.siteAdded}
-            @close=${this.closeAddSite}></da-add-site>` : nothing}
         <section class="welcome" aria-labelledby="welcome-heading">
           <h1 id="welcome-heading">Hi${this._name ? html` ${this._name}` : nothing}, how can I help?</h1>
           <form class="composer ${this._dragging && this._chatEnabled && !this._handingOff ? 'is-dropzone' : ''}"

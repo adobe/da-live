@@ -3,7 +3,54 @@ import { setNx } from '../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { decorateArea } = await import('../../../scripts/scripts.js');
+const { decorateArea, configureLandingNav } = await import('../../../scripts/scripts.js');
+
+describe('landing nav fragment', () => {
+  let originalHref;
+  let originalMeta;
+
+  beforeEach(() => {
+    originalHref = window.location.href;
+    originalMeta = document.head.querySelector('meta[name="nav-path"]');
+    originalMeta?.remove();
+  });
+
+  afterEach(() => {
+    document.head.querySelector('meta[name="nav-path"]')?.remove();
+    if (originalMeta) document.head.append(originalMeta);
+    window.history.replaceState(null, '', originalHref);
+  });
+
+  it('opts root previews and return routes into the standalone selector fragment', () => {
+    ['true', 'home'].forEach((value) => {
+      document.head.querySelector('meta[name="nav-path"]')?.remove();
+      window.history.replaceState(null, '', `/?nxver=2&landing=${value}`);
+      configureLandingNav();
+      configureLandingNav();
+      const metas = document.head.querySelectorAll('meta[name="nav-path"]');
+      expect(metas).to.have.length(1);
+      expect(metas[0].content).to.equal('/nx/fragments/nav-new-landing');
+    });
+  });
+
+  it('preserves an explicitly authored custom nav path', () => {
+    window.history.replaceState(null, '', '/?landing=true');
+    const meta = document.createElement('meta');
+    meta.name = 'nav-path';
+    meta.content = '/custom/nav';
+    document.head.append(meta);
+    configureLandingNav();
+    expect(meta.content).to.equal('/custom/nav');
+  });
+
+  it('does not change ordinary pages or disabled landing previews', () => {
+    ['', '?landing=false'].forEach((search) => {
+      window.history.replaceState(null, '', `/${search}`);
+      configureLandingNav();
+      expect(document.head.querySelector('meta[name="nav-path"]')).to.be.null;
+    });
+  });
+});
 
 describe('decorateArea', () => {
   let container;

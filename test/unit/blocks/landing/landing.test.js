@@ -5,10 +5,9 @@ import { getFavorites, toggleFavorite } from '../../../../blocks/browse/shared/f
 import { setUISize } from '../../../fixtures/nx2/utils/ui-size.js';
 import loadLanding, { DaLanding } from '../../../../blocks/landing/landing.js';
 import { getNx, getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
-import { addExistingSite } from '../../../../blocks/shared/site-access.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
-const { source, config } = await getNx2Api();
+const { source } = await getNx2Api();
 const ewFlags = await getNxEWFlags();
 const { panelSections } = await import(`${getNx()}/utils/panel.js`);
 
@@ -35,7 +34,6 @@ describe('landing page', () => {
   let el;
   let nav;
   let loadSite;
-  let checkSites;
 
   beforeEach(async () => {
     localStorage.removeItem('da-favorites');
@@ -44,8 +42,9 @@ describe('landing page', () => {
     localStorage.setItem('da-sites', JSON.stringify(['org/site', 'org/other']));
     hashChange._set({ org: 'org', site: 'site', fullpath: '/org/site' });
     sinon.stub(DaLanding.prototype, 'loadProfile').resolves();
-    loadSite = sinon.stub(DaLanding.prototype, 'loadSite').resolves();
-    checkSites = sinon.stub(DaLanding.prototype, 'checkSites').resolves();
+    loadSite = sinon.stub(DaLanding.prototype, 'loadSite').callsFake(async function loadSiteForTest() {
+      this._request = new AbortController();
+    });
     nav = document.createElement('nx-nav');
     document.body.append(nav);
     el = document.createElement('da-landing');
@@ -72,7 +71,7 @@ describe('landing page', () => {
     expect(el.shadowRoot.querySelector('.scope-label')).to.equal(null);
     expect(el.shadowRoot.textContent).not.to.include('Site root');
     expect(el.shadowRoot.querySelector('nx-picker')).to.equal(null);
-    expect(nav.querySelector('nx-picker').value).to.equal('org/site');
+    expect(nav.querySelector('nx-picker, nx-siteselector')).to.equal(null);
     expect(el.shadowRoot.querySelector('.file-date').textContent).to.include('Modified at •');
   });
 
@@ -328,170 +327,27 @@ describe('landing page', () => {
     expect(el.shadowRoot.querySelector('.composer-actions').textContent.trim()).to.equal('');
   });
 
-  it('mounts the workspace dropdown in nav and cleans it up on disconnect', async () => {
-    expect(nav.querySelector('[slot="search"]')).to.equal(el._sitePicker);
-    expect(el._sitePicker.variant).to.equal('field');
-    expect(el._sitePicker.size).to.equal('m');
-    expect(el._sitePicker.classList.contains('da-site-picker')).to.equal(true);
-    expect(el._sitePicker.menuVariant).to.equal(undefined);
-    expect(el._sitePicker.items[1]).to.include({ label: 'site', description: 'org/site', ariaLabel: 'site (org)' });
-    expect(el._sitePicker.labelOverride).to.equal('site (org)');
-    expect(el._sitePicker.items[0]).to.deep.equal({ section: 'Your Sites' });
-    expect(el._sitePicker.items.at(-2)).to.deep.equal({ divider: true });
-    expect(el._sitePicker.items.at(-1)).to.deep.equal({ value: 'add-site', label: 'Add site...', action: true });
-    expect(nav.querySelector('[slot="brand"], [slot="actions"]')).to.equal(null);
+  it('leaves the standalone nav selector intact without mounting a duplicate', async () => {
+    const shell = nav.attachShadow({ mode: 'open' });
+    const selector = document.createElement('nx-siteselector');
+    shell.append(selector);
+    expect(nav.children).to.have.length(0);
     hashChange._set({ org: 'org', site: 'other', fullpath: '/org/other' });
     await el.updateComplete;
-    expect(el._sitePicker.value).to.equal('org/other');
+    expect(shell.firstElementChild).to.equal(selector);
     el.remove();
-    expect(nav.querySelector('nx-picker')).to.equal(null);
+    expect(selector.isConnected).to.equal(true);
     expect(nav.children).to.have.length(0);
     document.body.append(el);
     await el.updateComplete;
-    expect(nav.querySelectorAll('nx-picker')).to.have.length(1);
-    expect(el._sitePicker.value).to.equal('org/other');
-  });
-
-  it('opens Add site from the picker instead of navigating to the old landing page', () => {
-    const show = sinon.stub(el, 'showAddSite').resolves();
-    const { href } = window.location;
-    el._sitePicker.dispatchEvent(new CustomEvent('change', { detail: { value: 'add-site' } }));
-    expect(show.calledOnce).to.equal(true);
-    expect(window.location.href).to.equal(href);
-  });
-
-  it('lazily opens the shared Add site dialog and removes it on close or site change', async () => {
-    sinon.stub(config, 'get').resolves(new Response('{}', { headers: { 'x-da-actions': '/=read' } }));
-    await el.showAddSite();
-    await el.updateComplete;
-    const dialog = el.shadowRoot.querySelector('da-add-site');
-    expect(dialog.org).to.equal('org');
-    await dialog.updateComplete;
-    dialog.close();
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('da-add-site')).to.equal(null);
-    await el.showAddSite();
-    await el.updateComplete;
-    hashChange._set({ org: 'other', site: 'site' });
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('da-add-site')).to.equal(null);
-  });
-
-  it('does not open a late-loading dialog in a different workspace', async () => {
-    const opening = el.showAddSite();
-    hashChange._set({ org: 'other', site: 'site' });
-    await opening;
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('da-add-site')).to.equal(null);
-  });
-
-  it('keeps remembered sites while reporting access-check failures with an explicit retry', async () => {
-    checkSites.restore();
-    const list = sinon.stub(source, 'list');
-    list.withArgs('/org/site').resolves({ ok: true, items: [] });
-    list.withArgs('/org/other').resolves({ ok: false });
-    sinon.stub(source, 'getMetadata').resolves(new Response(null, { status: 403 }));
-    const sites = el._sites;
-    await el.checkSites(sites);
-    await el.updateComplete;
-    expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/site', 'org/other']);
-    expect(el._sitePicker.items.some(({ value }) => value === 'org/other')).to.equal(true);
-    list.resetBehavior();
-    list.rejects(new Error('Offline'));
-    await el.checkSites(sites);
-    await el.updateComplete;
-    expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/site', 'org/other']);
-    expect(el._siteError).to.include('Offline');
-    expect(el.shadowRoot.querySelector('[role="status"]').textContent).to.include('Try again');
-    list.resolves({ ok: true, items: [] });
-    await el.checkSites(sites);
-    expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/site', 'org/other']);
-  });
-
-  it('keeps remembered workspaces through denied checks, refreshes and route changes', async () => {
-    checkSites.restore();
-    sinon.stub(source, 'list').resolves({ ok: false, items: [] });
-    sinon.stub(source, 'getMetadata').resolves(new Response(null, { status: 403 }));
-    await el.checkSites(el._sites);
-    await el.updateComplete;
-    expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/site', 'org/other']);
-    expect(el._sitePicker.value).to.equal('org/site');
-    expect(el._sitePicker.labelOverride).to.equal('site (org)');
-    expect(el._inaccessibleSites.has('org/site')).to.equal(true);
-    const check = sinon.spy(el, 'checkSites');
-    el.loadSites();
-    expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/site', 'org/other']);
-    await Promise.all(check.returnValues);
-    hashChange._set({ org: 'org', site: 'other', fullpath: '/org/other' });
-    await el.updateComplete;
-    await Promise.all(check.returnValues);
-    await el.updateComplete;
-    expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/other', 'org/site']);
-    expect(el._sitePicker.value).to.equal('org/other');
-    expect(el._sitePicker.labelOverride).to.equal('other (org)');
-    expect(el._inaccessibleSites.has('org/site')).to.equal(true);
-  });
-
-  it('remembers devlive before files load and retains it after adding Frescopaco', async () => {
-    checkSites.restore();
-    const check = sinon.spy(el, 'checkSites');
-    sinon.stub(source, 'list').callsFake(async (path) => ({
-      ok: path.startsWith('/exp-workspace'),
-      items: path === '/exp-workspace' ? [{ name: 'frescopaco' }] : [],
-    }));
-    sinon.stub(source, 'getMetadata').resolves(new Response(null, { status: 403 }));
-    const { href } = window.location;
-    try {
-      localStorage.removeItem('da-sites');
-      hashChange._set({ org: 'aemsites', site: 'devlive', fullpath: '/aemsites/devlive' });
-      await el.updateComplete;
-      await Promise.all(check.returnValues);
-      expect(JSON.parse(localStorage.getItem('da-sites'))).to.deep.equal(['aemsites/devlive']);
-      expect(el._inaccessibleSites.has('aemsites/devlive')).to.equal(true);
-      const value = 'exp-workspace/frescopaco';
-      await addExistingSite({ value, source, signal: new AbortController().signal });
-      el.siteAdded({ detail: { value } });
-      hashChange._set({ org: 'exp-workspace', site: 'frescopaco', fullpath: `/${value}` });
-      await el.updateComplete;
-      await Promise.all(check.returnValues);
-      await el.updateComplete;
-      expect(el._sites.map((site) => site.value)).to.deep.equal([value, 'aemsites/devlive']);
-      expect(el._sitePicker.value).to.equal(value);
-      expect(el._sitePicker.labelOverride).to.equal('frescopaco (exp-workspace)');
-      expect(JSON.parse(localStorage.getItem('da-sites'))).to.deep.equal([value, 'aemsites/devlive']);
-      el.loadSites();
-      expect(el._sites.map((site) => site.value)).to.deep.equal([value, 'aemsites/devlive']);
-      await Promise.all(check.returnValues);
-    } finally {
-      window.history.replaceState(null, '', href);
-    }
-  });
-
-  it('does not interpret a network failure as a confirmed access denial', async () => {
-    checkSites.restore();
-    sinon.stub(source, 'list').rejects(new Error('Offline'));
-    await el.checkSites(el._sites);
-    expect(el._sites.map(({ value }) => value)).to.deep.equal(['org/site', 'org/other']);
-    expect(el._inaccessibleSites.size).to.equal(0);
-    expect(el._siteError).to.include('Offline');
-  });
-
-  it('ignores stale site-access results after cancellation', async () => {
-    checkSites.restore();
-    let finish;
-    sinon.stub(source, 'list').returns(new Promise((resolve) => { finish = resolve; }));
-    const sites = el._sites;
-    const pending = el.checkSites(sites);
-    await new Promise((resolve) => { setTimeout(resolve, 0); });
-    el._sitesRequest.abort();
-    finish({ ok: false });
-    await pending;
-    expect(el._sites).to.equal(sites);
-    expect(el._siteError).to.equal(undefined);
+    expect(shell.firstElementChild).to.equal(selector);
+    expect(nav.children).to.have.length(0);
   });
 
   it('offers Add site directly when no workspace is selected', async () => {
-    const show = sinon.stub(el, 'showAddSite').resolves();
+    const requested = sinon.spy();
+    document.addEventListener('site-add', requested, { once: true });
+    const { href } = window.location;
     hashChange._set(undefined);
     await el.updateComplete;
     const empty = el.shadowRoot.querySelector('.empty-state');
@@ -499,7 +355,11 @@ describe('landing page', () => {
     const button = empty.querySelector('button');
     expect(button.textContent).to.equal('Add site');
     button.click();
-    expect(show.calledOnce).to.equal(true);
+    expect(requested.calledOnce).to.equal(true);
+    expect(requested.firstCall.args[0].bubbles).to.equal(true);
+    expect(requested.firstCall.args[0].composed).to.equal(true);
+    expect(window.location.href).to.equal(href);
+    expect(el.shadowRoot.querySelector('da-add-site')).to.equal(null);
   });
 
   it('leaves shell-owned branding intact when disconnected and reconnected', async () => {
@@ -514,7 +374,7 @@ describe('landing page', () => {
     await el.updateComplete;
     expect(shell.firstElementChild).to.equal(brand);
     expect(nav.querySelector('[slot="brand"]')).to.equal(null);
-    expect(nav.querySelectorAll('[slot="search"]')).to.have.length(1);
+    expect(nav.querySelectorAll('[slot="search"]')).to.have.length(0);
   });
 
   it('loads files without fetching the removed comment feed or page metadata', async () => {
@@ -529,13 +389,13 @@ describe('landing page', () => {
     expect(el._permissions).to.deep.equal(['write']);
   });
 
-  it('remembers a successfully opened site, including a return from site setup', async () => {
+  it('leaves recent-site storage to the standalone selector when files load', async () => {
     loadSite.restore();
     localStorage.setItem('da-sites', JSON.stringify(['org/other']));
     sinon.stub(source, 'list').resolves({ ok: true, items: ITEMS });
     sinon.stub(DaLanding.prototype, 'loadImsProfile').resolves({});
     await el.loadSite();
-    expect(JSON.parse(localStorage.getItem('da-sites'))).to.deep.equal(['org/site', 'org/other']);
+    expect(JSON.parse(localStorage.getItem('da-sites'))).to.deep.equal(['org/other']);
   });
 
   it('keeps the plus icon when the Add menu marks its trigger active', () => {
@@ -688,13 +548,23 @@ describe('landing page', () => {
     expect(loadSite.callCount).to.equal(2);
   });
 
-  it('keeps compact picker/view dimensions while S/M changes preserve page state', async () => {
+  it('loads the same scope once until its request is aborted', async () => {
+    hashChange._set({ org: 'org', site: 'site', fullpath: '/org/site/folder' });
+    hashChange._set({ org: 'org', site: 'site', fullpath: '/org/site/other' });
+    await el.updateComplete;
+    expect(loadSite.callCount).to.equal(1);
+    el._request.abort();
+    hashChange._set({ org: 'org', site: 'site', fullpath: '/org/site' });
+    await el.updateComplete;
+    expect(loadSite.callCount).to.equal(2);
+  });
+
+  it('keeps compact view dimensions while S/M changes preserve page state', async () => {
     el._prompt = 'Update this page';
     el._tab = 'starred';
     setUISize({ size: 'm' });
     await el.updateComplete;
     expect(el.dataset.uiSize).to.equal('m');
-    expect(nav.querySelector('nx-picker').size).to.equal('m');
     expect(el.shadowRoot.querySelector('nx-segmented-btn').getAttribute('size')).to.equal('m');
     expect(el.shadowRoot.querySelector('nx-segmented-btn').getAttribute('variant')).to.equal('quiet');
     expect(el.shadowRoot.querySelector('button[type="submit"]').classList.contains('nx-btn-lg')).to.equal(true);
@@ -712,14 +582,6 @@ describe('landing page', () => {
     await el.updateComplete;
     expect(el.shadowRoot.textContent).to.include('Choose a site to get started');
     expect(el.shadowRoot.querySelector('textarea').disabled).to.equal(true);
-  });
-
-  it('surfaces malformed recent-site storage and retains the hash site', async () => {
-    localStorage.setItem('da-sites', '{invalid');
-    el.loadSites();
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('[role="status"]').textContent).to.include('Could not read recent sites');
-    expect(el._sites[0].value).to.equal('org/site');
   });
 
   it('shows permission errors with a retry instead of an empty file panel', async () => {
