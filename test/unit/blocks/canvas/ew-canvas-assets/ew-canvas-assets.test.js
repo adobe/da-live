@@ -1,4 +1,6 @@
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
+import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.js';
 
 const { setNx, getNx, getNx2 } = await import('../../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -6,6 +8,8 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 const { setImsResult, handleSignInCalls } = await import(`${getNx()}/utils/ims.js`);
 const { setRepositoryConfig } = await import(`${getNx2()}/utils/aem-assets/repository-config.js`);
 const { selectorLoadCalls, setSelectorLoadResult } = await import(`${getNx2()}/utils/aem-assets/selector.js`);
+const { setSelection, resetSelections, selectionCalls } = await import(`${getNx2()}/utils/aem-assets/selection.js`);
+const { default: imageDrop } = await import('../../../../../blocks/canvas/ew-editor-doc/prose-plugins/imageDrop.js');
 
 const { canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js');
 
@@ -39,10 +43,13 @@ function teardown() {
 describe('renderAssetsRail', () => {
   let renderCalls;
   let orgRenderAssetSelector;
+  let editor;
+  let nodes;
 
   beforeEach(() => {
     setup();
     renderCalls = [];
+    nodes = [];
     orgRenderAssetSelector = window.PureJSSelectors?.renderAssetSelector;
     window.PureJSSelectors = {
       ...window.PureJSSelectors,
@@ -51,6 +58,11 @@ describe('renderAssetsRail', () => {
   });
 
   afterEach(() => {
+    destroyEditor(editor);
+    editor = undefined;
+    nodes.forEach((node) => node.remove());
+    sinon.restore();
+    resetSelections();
     teardown();
     window.PureJSSelectors.renderAssetSelector = orgRenderAssetSelector;
   });
@@ -65,6 +77,7 @@ describe('renderAssetsRail', () => {
     expect(el).to.equal(container);
     expect(props.rail).to.equal(true);
     expect(props.dragAndDrop).to.equal(true);
+    expect(props.acvConfig.dragOptions.iframe).to.equal(true);
     expect(props.imsToken).to.equal('test-token');
     expect(props).to.not.have.property('handleSelection');
   });
@@ -96,6 +109,113 @@ describe('renderAssetsRail', () => {
     expect(result).to.deep.equal({ error: SIGN_IN_ERROR });
     expect(handleSignInCalls).to.have.length(1);
     expect(renderCalls).to.have.length(0);
+  });
+
+  function createSource() {
+    const container = document.createElement('div');
+    const iframe = document.createElement('iframe');
+    container.append(iframe);
+    document.body.append(container);
+    nodes.push(container);
+    sinon.stub(iframe, 'getBoundingClientRect').returns({ left: 20, top: 40 });
+    return container;
+  }
+
+  it('bridges selector metadata through nested shadow roots into the document editor', async () => {
+    editor = await createTestEditor({ additionalPlugins: [imageDrop(null, () => 'https://admin.da.live/source/org/site/doc.html')] });
+    const host = document.createElement('div');
+    const nested = document.createElement('div');
+    host.attachShadow({ mode: 'open' }).append(nested);
+    nested.attachShadow({ mode: 'open' }).append(editor.view.dom.parentElement);
+    document.body.append(host);
+    nodes.push(host);
+    const target = editor.view.dom.querySelector('p');
+    sinon.stub(document, 'elementFromPoint').returns(host);
+    sinon.stub(host.shadowRoot, 'elementFromPoint').returns(nested);
+    sinon.stub(nested.shadowRoot, 'elementFromPoint').returns(target);
+    const position = sinon.stub(editor.view, 'posAtCoords').returns({ pos: 1 });
+    setSelection({ href: 'https://example.com/image.png', isImage: true });
+
+    await renderAssetsRail({ container: createSource(), org: 'org', site: 'site' });
+    const [{ props }] = renderCalls;
+    const asset = {
+      __original: {
+        'repo:id': 'asset',
+        'repo:name': 'image.png',
+        'repo:path': '/content/dam/image.png',
+        'dc:format': 'image/png',
+        'aem:formatName': 'original',
+      },
+    };
+    props.iframe_dragStart({ assets: [asset] });
+    props.iframe_dragMove({ mouse: { x: 10, y: 20 } });
+    expect(props.iframe_dragEnd({ mouse: { x: 10, y: 20 } })).to.equal(true);
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+
+    expect(position.firstCall.args[0]).to.deep.equal({ left: 30, top: 60 });
+    expect(selectionCalls[0].asset).to.include({
+      name: 'image.png',
+      path: '/content/dam/image.png',
+      mimetype: 'image/png',
+      'repo:id': 'asset',
+      'aem:formatName': 'original',
+    });
+    let images = 0;
+    editor.view.state.doc.descendants((node) => { if (node.type.name === 'image') images += 1; });
+    expect(images).to.equal(1);
+  });
+
+  it('routes a preview drop through the existing image replacement channel', async () => {
+    const iframe = document.createElement('iframe');
+    document.body.append(iframe);
+    nodes.push(iframe);
+    sinon.stub(document, 'elementFromPoint').returns(iframe);
+    sinon.stub(iframe, 'getBoundingClientRect').returns({ left: 25, top: 45 });
+    const port = { postMessage: sinon.spy() };
+    await renderAssetsRail({ container: createSource(), org: 'org', site: 'site', getPreview: () => ({ iframe, port }) });
+    const asset = { name: 'image.png', path: '/image.png', mimetype: 'image/png' };
+    const [{ props }] = renderCalls;
+    props.iframe_dragStart({ assets: [asset] });
+    expect(props.iframe_dragEnd({ assets: [asset], mouse: { x: 10, y: 20 } })).to.equal(true);
+    expect(port.postMessage.firstCall.args[0]).to.deep.equal({
+      type: 'image-replace',
+      payload: { assets: [asset], x: 5, y: 15 },
+    });
+  });
+
+  it('does not bridge a drop into a read-only document', async () => {
+    editor = await createTestEditor({ editable: false });
+    sinon.stub(document, 'elementFromPoint').returns(editor.view.dom);
+    const drop = sinon.spy();
+    editor.view.dom.addEventListener('drop', drop);
+    await renderAssetsRail({ container: createSource(), org: 'org', site: 'site' });
+    const [{ props }] = renderCalls;
+
+    expect(props.iframe_dragEnd({ assets: [{ name: 'image.png' }], mouse: { x: 10, y: 20 } })).to.equal(false);
+    expect(drop.called).to.equal(false);
+  });
+
+  it('ignores malformed callbacks, unrelated targets, and drops after the panel disconnects', async () => {
+    let live = true;
+    const port = { postMessage: sinon.spy() };
+    const target = document.createElement('p');
+    sinon.stub(document, 'elementFromPoint').returns(target);
+    await renderAssetsRail({
+      container: createSource(),
+      org: 'org',
+      site: 'site',
+      isLive: () => live,
+      getPreview: () => ({ iframe: target, port }),
+    });
+    const [{ props }] = renderCalls;
+    const assets = [{ name: 'image.png' }];
+    expect(props.iframe_dragEnd()).to.equal(false);
+    expect(props.iframe_dragEnd({ assets: [null], mouse: { x: 1, y: 2 } })).to.equal(false);
+    expect(props.iframe_dragEnd({ assets, mouse: { x: 1, y: 2 } })).to.equal(false);
+    live = false;
+    expect(props.iframe_dragEnd({ assets, mouse: { x: 1, y: 2 } })).to.equal(false);
+    expect(port.postMessage.called).to.equal(false);
   });
 });
 

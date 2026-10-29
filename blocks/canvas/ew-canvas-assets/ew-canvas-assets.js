@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
+import { createAssetDragHandlers } from './drop.js';
 
 const nx2 = getNx2();
 const [
@@ -22,14 +23,14 @@ export const SIGN_IN_ERROR = 'Sign in to browse AEM Assets.';
 const VIEW_ID = 'aem-assets-panel';
 
 /**
- * Renders the AEM asset selector in rail (display-only, no insertion) mode into `container`.
- * No handlers are passed; nothing is inserted on selection.
+ * Renders the AEM asset selector in rail mode into `container`.
+ * Clicking an asset does not insert it; dragging uses the selector's iframe bridge.
  *
  * `isLive`, when provided, is re-checked after every await; if it returns false the
  * selector is not rendered (the caller may have removed `container` in the meantime)
  * and `{ skipped: true }` is returned instead.
  */
-export async function renderAssetsRail({ container, org, site, isLive = () => true }) {
+export async function renderAssetsRail({ container, org, site, isLive = () => true, getPreview }) {
   const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
   const ims = await loadIms();
   if (ims?.anonymous) handleSignIn();
@@ -45,12 +46,20 @@ export async function renderAssetsRail({ container, org, site, isLive = () => tr
   if (error) return { error };
   if (!isLive()) return { skipped: true };
 
-  selectors.renderAssetSelector(container, buildAssetSelectorProps({
+  const props = buildAssetSelectorProps({
     imsToken: token,
     repoConfig,
     rail: true,
     dragAndDrop: true,
-  }));
+  });
+  selectors.renderAssetSelector(container, {
+    ...props,
+    acvConfig: {
+      ...props.acvConfig,
+      dragOptions: { ...props.acvConfig?.dragOptions, iframe: true },
+    },
+    ...createAssetDragHandlers({ container, isLive, getPreview }),
+  });
 
   return { token };
 }
@@ -65,6 +74,9 @@ class EwCanvasAssets extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
+    this._unsubPreview = canvasBus.wysiwygPortReady.subscribe((preview) => {
+      this._preview = preview;
+    });
     this._unsubViewState = canvasBus.toolPanelViewState.subscribe((activeId) => {
       this._onViewState(activeId);
     });
@@ -76,6 +88,8 @@ class EwCanvasAssets extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubViewState?.();
+    this._unsubPreview?.();
+    this._preview = undefined;
   }
 
   async firstUpdated() {
@@ -88,7 +102,13 @@ class EwCanvasAssets extends LitElement {
   async _renderSelector() {
     const container = this.shadowRoot.querySelector('.assets-rail');
     const isLive = () => this.isConnected;
-    const result = await renderAssetsRail({ container, org: this.org, site: this.site, isLive });
+    const result = await renderAssetsRail({
+      container,
+      org: this.org,
+      site: this.site,
+      isLive,
+      getPreview: () => this._preview,
+    });
     if (result.skipped) return;
     this._attempted = true;
     if (result.error) {
