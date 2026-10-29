@@ -7,6 +7,7 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 const { createTestEditor, destroyEditor } = await import('../../edit/prose/test-helpers.js');
 const { isMultiBlockConfigured, findTemplateRow } = await import('../../../../../blocks/canvas/editor-utils/multi-block.js');
 const { appendBlockRow } = await import('../../../../../blocks/canvas/editor-utils/blocks.js');
+const { getBlockVariants } = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
 
 const EDITOR_ROWS = [
   { block: 'section-metadata', property: 'kv' },
@@ -53,6 +54,91 @@ describe('findTemplateRow', () => {
   it('returns null when no library block matches', async () => {
     const blocks = [{ loadVariants: Promise.resolve([{ name: 'columns', dom: libraryTable('<tr><td>columns</td></tr><tr><td>a</td></tr>') }]) }];
     expect(await findTemplateRow(blocks, 'cards')).to.equal(null);
+  });
+});
+
+describe('findTemplateRow with parsed library docs', () => {
+  let savedFetch;
+  beforeEach(() => { savedFetch = window.fetch; });
+  afterEach(() => { window.fetch = savedFetch; });
+
+  const CARDS = '<div class="cards"><div><div>img</div><div>card text</div></div><div><div>img2</div><div>card two</div></div></div>';
+
+  async function templateRowText(body, blockName = 'cards') {
+    window.fetch = () => Promise.resolve(new Response(`<body><div>${body}</div></body>`, { status: 200 }));
+    const blocks = [{ loadVariants: getBlockVariants('/mock-path') }];
+    const row = await findTemplateRow(blocks, blockName);
+    return row ? row.textContent : null;
+  }
+
+  it('finds the row of a standalone block named by its heading', async () => {
+    const text = await templateRowText(`<h2>Cards</h2>${CARDS}`);
+    expect(text).to.be.a('string').that.contains('card text');
+  });
+
+  it('finds the row when the heading label differs from the block class', async () => {
+    const text = await templateRowText(`<h2>Fancy Cards</h2>${CARDS}`);
+    expect(text).to.be.a('string').that.contains('card text');
+  });
+
+  it('finds the row when library metadata renames the block', async () => {
+    const text = await templateRowText(`${CARDS}<div class="library-metadata"><div><div>name</div><div>Promo</div></div></div>`);
+    expect(text).to.be.a('string').that.contains('card text');
+  });
+
+  it('finds the row inside a container group whose heading differs from the block', async () => {
+    const text = await templateRowText(`
+      <h2>Card Grid</h2>
+      <div class="library-container-start"></div>
+      ${CARDS}
+      <div class="library-container-end"></div>`);
+    expect(text).to.be.a('string').that.contains('card text');
+  });
+
+  it('finds the row inside a container group without a heading', async () => {
+    const text = await templateRowText(`
+      <div class="library-container-start"></div>
+      ${CARDS}
+      <div class="library-container-end"></div>`);
+    expect(text).to.be.a('string').that.contains('card text');
+  });
+
+  it('uses the matching block, not the first table, inside a container group', async () => {
+    const text = await templateRowText(`
+      <h2>Cards</h2>
+      <div class="library-container-start"></div>
+      <div class="columns"><div><div>col a</div><div>col b</div></div></div>
+      ${CARDS}
+      <div class="library-container-end"></div>`);
+    expect(text).to.be.a('string').that.contains('card text');
+    expect(text).to.not.contain('col a');
+  });
+
+  it('skips a header-only block preceding the match inside a container group', async () => {
+    const text = await templateRowText(`
+      <h2>Cards</h2>
+      <div class="library-container-start"></div>
+      <div class="divider"></div>
+      ${CARDS}
+      <div class="library-container-end"></div>`);
+    expect(text).to.be.a('string').that.contains('card text');
+  });
+
+  it('matches a block whose class carries variants', async () => {
+    const text = await templateRowText(`
+      <div class="library-container-start"></div>
+      <div class="cards dark wide"><div><div>img</div><div>card text</div></div></div>
+      <div class="library-container-end"></div>`);
+    expect(text).to.be.a('string').that.contains('card text');
+  });
+
+  it('does not match a group that lacks the block', async () => {
+    const text = await templateRowText(`
+      <h2>Cards</h2>
+      <div class="library-container-start"></div>
+      <div class="columns"><div><div>col a</div><div>col b</div></div></div>
+      <div class="library-container-end"></div>`);
+    expect(text).to.equal(null);
   });
 });
 
