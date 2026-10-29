@@ -58,6 +58,43 @@ describe('ew-preflight preflight gate', () => {
     hashChange._set({});
   });
 
+  it('uses the shared icon button and swaps refresh for a spinner while busy', () => {
+    const el = createGateElement();
+    const btn = el.getHeaderActions();
+    expect(btn.matches('.nx-action-btn-icon.nx-btn-sm')).to.be.true;
+    expect(btn.getAttribute('aria-label')).to.equal('Refresh evaluation');
+    expect(btn.querySelector('svg use')).to.exist;
+    expect(btn.disabled).to.be.false;
+
+    el._setRefreshBusy(true);
+    expect(btn.disabled).to.be.true;
+    expect(btn.querySelector('.nx-loading-spinner')).to.exist;
+    expect(btn.querySelector('svg')).to.be.null;
+
+    el._setRefreshBusy(false);
+    expect(btn.disabled).to.be.false;
+    expect(btn.querySelector('.nx-loading-spinner')).to.be.null;
+    expect(btn.querySelector('svg use')).to.exist;
+    expect(el.getHeaderActions()).to.equal(btn);
+  });
+
+  it('shows shared spinners in the loading view and a header created during evaluation', async () => {
+    const el = createGateElement();
+    el._evaluate = async () => { el._loading = true; };
+    document.body.appendChild(el);
+    try {
+      await el.updateComplete;
+      expect(el.shadowRoot.querySelector('.ew-preflight-status .nx-loading-spinner')).to.exist;
+      expect(el.shadowRoot.textContent).to.include('Evaluating page');
+      const btn = el.getHeaderActions();
+      expect(btn.disabled).to.be.true;
+      expect(btn.querySelector('.nx-loading-spinner')).to.exist;
+      expect(btn.querySelector('svg')).to.be.null;
+    } finally {
+      el.remove();
+    }
+  });
+
   it('reports success when no checks failed, echoing the run path + requestId', async () => {
     const el = stubEvaluate(createGateElement(), { failed: 0 });
     const cap = captureStatus();
@@ -592,21 +629,46 @@ describe('ew-preflight document navigation', () => {
 });
 
 describe('ew-preflight page URL', () => {
-  let originalUrl;
+  const state = { org: 'org', site: 'site', path: '/org/site/a' };
+  const PAGE_URL = /^https:\/\/feat-one--site--org\.[^/]+\/a$/;
+  let canvasBus;
 
   before(async () => {
     await import('../../../../../blocks/canvas/ew-preflight/ew-preflight.js');
+    ({ canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js'));
   });
 
-  beforeEach(() => { originalUrl = window.location.href; });
-  afterEach(() => { window.history.replaceState(null, '', originalUrl); });
+  afterEach(() => canvasBus.branchState.emit({ path: null, status: 'pending' }));
 
-  it('evaluates the ?ref= branch instead of main', async () => {
-    const url = new URL(window.location.href);
-    url.searchParams.set('ref', 'feat');
-    window.history.replaceState(null, '', url);
-    const el = createGateElement();
-    const pageUrl = await el._resolvePageUrl();
-    expect(pageUrl).to.match(/^https:\/\/feat--site--org\.[^/]+\/a$/);
+  it('evaluates the canvas branch instead of main', async () => {
+    canvasBus.branchState.emit({ ...state, status: 'ready', branch: 'Feat/One' });
+    const pageUrl = await createGateElement()._resolvePageUrl();
+    expect(pageUrl).to.match(PAGE_URL);
+  });
+
+  it('waits for a pending branch to resolve instead of failing', async () => {
+    canvasBus.branchState.emit({ ...state, status: 'pending' });
+    const resolving = createGateElement()._resolvePageUrl();
+    canvasBus.branchState.emit({ ...state, status: 'ready', branch: 'Feat/One' });
+    expect(await resolving).to.match(PAGE_URL);
+  });
+
+  it('ignores the previous page branch while the new page resolves', async () => {
+    canvasBus.branchState.emit({ ...state, path: '/org/site/b', status: 'ready', branch: 'old' });
+    const resolving = createGateElement()._resolvePageUrl();
+    canvasBus.branchState.emit({ ...state, status: 'pending' });
+    canvasBus.branchState.emit({ ...state, status: 'ready', branch: 'Feat/One' });
+    expect(await resolving).to.match(PAGE_URL);
+  });
+
+  it('fails instead of guessing a branch when resolution fails', async () => {
+    canvasBus.branchState.emit({ ...state, status: 'error', error: 'down' });
+    let error;
+    try {
+      await createGateElement()._resolvePageUrl();
+    } catch (e) {
+      error = e;
+    }
+    expect(error?.detail).to.contain('preview branch');
   });
 });

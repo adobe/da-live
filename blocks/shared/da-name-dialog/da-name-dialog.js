@@ -72,11 +72,11 @@ class DaNameDialog extends LitElement {
             ${this._nameError ? 'Please fill out this field.' : (this.error ?? '')}
           </span>
         </label>
-        <button type="button" slot="actions" class="da-btn-secondary" @click=${this._onCancel}>Cancel</button>
-        <button type="button" slot="actions" class="da-btn-primary" ?disabled=${this.saving}
+        <button type="button" slot="actions" class="nx-form-btn-secondary" @click=${this._onCancel}>Cancel</button>
+        <button type="button" slot="actions" class="nx-form-btn-primary" ?disabled=${this.saving}
           @click=${() => this._onSave(false)}>${this.saveLabel ?? 'Create'}</button>
         ${this.showCreateAndOpen ? html`
-        <button type="button" slot="actions" class="da-btn-primary" ?disabled=${this.saving}
+        <button type="button" slot="actions" class="nx-form-btn-primary" ?disabled=${this.saving}
           @click=${() => this._onSave(true)}>${this.saveLabel ?? 'Create'} and open</button>` : nothing}
       </nx-dialog>
     `;

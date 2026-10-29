@@ -1,11 +1,11 @@
 import { html, nothing, repeat } from 'da-lit';
-import { getNx } from '../../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../../scripts/utils.js';
 import DaListBase from '../../da-list-base/da-list-base.js';
 
 import '../da-list-item/da-list-item.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const SHARED = await loadStyle(new URL('../../../shared/styles/base.css', import.meta.url).href);
+const SHARED = await loadStyle(`${getNx2()}/styles/form.css`);
 const STYLE = await loadStyle(import.meta.url);
 
 export default class DaList extends DaListBase {
@@ -198,7 +198,7 @@ export default class DaList extends DaListBase {
 
   renderCheckBox() {
     return html`
-      <label class="da-checkbox ${this._bulkLoading ? 'loading' : ''} ${this._selectedItems.length > 0 && !this.isSelectAll ? 'indeterminate' : ''}" role="columnheader">
+      <label class="nx-checkbox ${this._bulkLoading ? 'loading' : ''} ${this._selectedItems.length > 0 && !this.isSelectAll ? 'indeterminate' : ''}" role="columnheader">
         <input type="checkbox" id="select-all" name="select-all" .checked="${this.isSelectAll}" @click="${this.handleCheckAll}" aria-label="Select all items" ?disabled=${this._bulkLoading} aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
       </label>
     `;

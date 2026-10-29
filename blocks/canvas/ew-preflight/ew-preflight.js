@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
-import { getPreviewOrigin, fetchWysiwygBranch } from '../editor-utils/editor-utils.js';
+import { getPreviewOrigin } from '../editor-utils/editor-utils.js';
+import { whenCanvasBranch } from '../utils/branch.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { reportPreflightStatus } from '../editor-utils/preflight-bridge.js';
 import { takePendingPreflightRequest } from '../editor-utils/preflight-responder.js';
@@ -9,8 +10,11 @@ import { evaluatePage } from './api.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
-const style = await loadStyle(import.meta.url);
-const baseStyle = await loadStyle(new URL('../../shared/styles/base.css', import.meta.url).href);
+const [buttons, spinner, style] = await Promise.all([
+  loadStyle(`${getNx2()}/styles/buttons.css`),
+  loadStyle(`${getNx2()}/styles/spinner.css`),
+  loadStyle(import.meta.url),
+]);
 
 const VIEW_ID = 'preflight';
 
@@ -20,7 +24,7 @@ function pageKey({ org, site, path } = {}) {
 
 const REFRESH_ICON_SRC = '/img/icons/s2-icon-refresh-20-n.svg';
 const REFRESH_ICON_HTML = `<svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${REFRESH_ICON_SRC}#icon"></use></svg>`;
-const REFRESH_SPINNER_HTML = '<span class="da-loading-spinner" aria-hidden="true"></span>';
+const REFRESH_SPINNER_HTML = '<span class="nx-loading-spinner" aria-hidden="true"></span>';
 
 // The renderer lives in da-nx; importing it defines <nx-page-eval> and loads its
 // CSS as a side effect. Memoized so repeated evaluations don't re-import.
@@ -39,7 +43,7 @@ class EwPreflight extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [baseStyle, style];
+    this.shadowRoot.adoptedStyleSheets = [buttons, spinner, style];
     this._unsubHash = hashChange.subscribe((state) => {
       this._hashState = state;
       if (this._started && pageKey(state) !== this._evaluatedKey) this._onPageChange();
@@ -72,7 +76,13 @@ class EwPreflight extends LitElement {
     const { org, site, path } = this._hashState ?? {};
     if (!org || !site) return '';
     const relPath = path ? path.replace(/^\//, '') : '';
-    const branch = await fetchWysiwygBranch({ org, site, path: `${org}/${site}/${relPath}` });
+    // The panel can evaluate before canvas finishes resolving this page's branch.
+    const branch = await whenCanvasBranch({ org, site, path: relPath || undefined });
+    if (!branch) {
+      const error = new Error('Branch not resolved');
+      error.detail = 'Could not determine the preview branch for this page. Try again.';
+      throw error;
+    }
     const origin = getPreviewOrigin(org, site, branch);
     return relPath ? `${origin}/${relPath}` : origin;
   }
@@ -228,7 +238,7 @@ class EwPreflight extends LitElement {
     if (this._headerRefreshBtn) return this._headerRefreshBtn;
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'da-icon-btn';
+    btn.className = 'nx-action-btn-icon nx-btn-sm';
     btn.setAttribute('aria-label', 'Refresh evaluation');
     btn.disabled = !!this._loading;
     btn.innerHTML = this._loading ? REFRESH_SPINNER_HTML : REFRESH_ICON_HTML;
@@ -246,7 +256,7 @@ class EwPreflight extends LitElement {
     if (this._loading && !this._data) {
       return html`
         <div class="ew-preflight-status">
-          <span class="da-loading-spinner"></span>
+          <span class="nx-loading-spinner" aria-hidden="true"></span>
           <span>Evaluating page…</span>
         </div>`;
     }

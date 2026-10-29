@@ -46,7 +46,7 @@ export const canvasBus = Object.freeze({
   toolbarSurfaceRequest: createChannel(),
 
   undoState: createChannel(),
-  // Fires on every doc change (no payload), unlike the throttled editorHtmlState.
+  mergeConflictsState: createChannel(),
   editorDocState: createChannel(),
   editorViewState: createChannel({ replay: true }),
   branchState: createChannel({ replay: true }),
@@ -61,12 +61,14 @@ export const canvasBus = Object.freeze({
   },
   editorProseSelectState: createChannel(),
   toolPanelViewState: createChannel({ replay: true }),
+  comparisonState: createChannel(),
 
   // Replays because the split layout re-appends `ew-editor-doc` on every hash
   // sync, so a late resubscribe would otherwise miss an already-emitted port.
   wysiwygPortReady: createChannel({ replay: true }),
 
   commentsControllerState: createChannel(),
+  versionCreatedState: createChannel(),
 
   preflightStatusState: createChannel(),
 });

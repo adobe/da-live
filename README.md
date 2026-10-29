@@ -43,6 +43,17 @@ If you wish to do any testing that involves Edge Delivery, please note the follo
 1. Edge Delivery cannot validate a Stage Adobe Identity. Your stage project should have auth turned off: `requireAuth: false`
 
 ## Additional details
+### Version history in Experience Workspace
+The Versions panel refreshes automatically after the current page is successfully
+previewed or published and its history version is saved. The Refresh icon reloads
+history on demand, including versions created by other authors. Both preserve the
+current filter and review state and do not replace document content.
+Refresh keeps keyboard focus while loading and ignores repeated manual activation.
+Automatic version-created notifications still refresh history during an existing request.
+
+The automatic refresh consumes Nexter's `VERSION_EVENT.CREATED` contract from
+`nx2/utils/version-events.js`, through the canvas version bridge.
+
 ### Recommendations
 1. We recommend running `npm install` for linting.
 
@@ -59,4 +70,4 @@ npm run build:da-y-wrapper
 
 Additional details can be [found here](https://github.com/adobe/da-live/wiki/Dependencies).
 
-
+Canvas library behavior is documented in [docs/canvas-library.md](docs/canvas-library.md).
