@@ -2,7 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import '../../setup-nx.js';
 import { getHomeHref } from '../../../../scripts/utils.js';
-import { getFileItemHref as getBrowseItemHref } from '../../../../blocks/shared/da-file-item/navigation.js';
+import { getBrowseItemHref } from '../../../../blocks/browse/v2/shared/navigation.js';
 import {
   getSiteOptions, getBrowseHref, getFileHref, loadFiles, getLandingIconHref, formatModified,
   fetchFileModifier, checkSiteAccess, getCreateSiteHref,
