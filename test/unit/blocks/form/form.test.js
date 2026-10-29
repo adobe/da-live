@@ -54,7 +54,7 @@ async function mountReady() {
   el._editor = engine;
   el._state = engine.getState();
   el._context = { status: 'ready', schemaName: 'demo', schema: demoSchema, json };
-  el._nav = { pointer: '/data', origin: null, seq: 0 };
+  el._navigation = { pointer: '/data', origin: null, seq: 0 };
   el.ctx = { org: 'adobe', repo: 'demo', path: 'adobe/demo/page' };
 
   await el.updateComplete;
@@ -107,13 +107,13 @@ describe('ew-form-editor', () => {
     ];
     unsubscribers.forEach((unsubscribe) => unsubscribe());
     expect(seen.state).to.equal(form._state);
-    expect(seen.nav).to.equal(form._nav);
+    expect(seen.nav).to.equal(form._navigation);
   });
 
   it('selects the pointer an outline jump asks for', async () => {
     const form = await mountReady();
     formEvents.jumpRequest.emit({ pointer: '/data/name' });
-    expect(form._nav).to.include({ pointer: '/data/name', origin: 'outline' });
+    expect(form._navigation).to.include({ pointer: '/data/name', origin: 'outline' });
   });
 
   it('clears the broadcast state when removed', async () => {
