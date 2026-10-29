@@ -45,7 +45,11 @@ test('Card view renders nx-card slots and restores selection focus', async ({ pa
   const href = '/edit#/da-testautomation/acltest/testdocs/subdir/onlyread-doc';
   const item = row(page, href);
   const checkbox = item.getByRole('checkbox', { name: 'Select item', exact: true });
-  await expect(item.locator('nx-card')).toBeVisible();
+  const card = item.locator('nx-card');
+  await expect(card).toBeVisible();
+  const slotAssignments = await card.evaluate((element) => ['media', 'heading', 'actions', 'metadata']
+    .map((name) => element.shadowRoot.querySelector(`slot[name="${name}"]`)?.assignedElements().length ?? 0));
+  expect(slotAssignments).toEqual([1, 1, 1, 2]);
   await expect(item.locator('a[slot="heading"]')).toHaveText('onlyread-doc');
   await expect(item.locator('[slot="metadata"].card-type')).toBeVisible();
   await expect(item.getByRole('button', { name: 'More', exact: true })).toBeVisible();
