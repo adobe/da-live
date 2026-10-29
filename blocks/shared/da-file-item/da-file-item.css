@@ -192,7 +192,7 @@
 /* Details popover */
 .da-item-details {
   display: none;
-  max-width: calc(100vw - 32px);
+  max-width: calc(100vw - var(--s2-spacing-500));
   padding: var(--s2-spacing-200);
   color: var(--s2-gray-900);
   font-size: var(--s2-component-m-regular-font-size);
@@ -361,21 +361,21 @@
 :host([view="card"]) .da-item-details {
   box-sizing: border-box;
   width: 240px;
-  padding: 8px;
-  border-radius: 10px;
+  padding: var(--s2-spacing-100);
+  border-radius: var(--s2-corner-radius-700);
 }
 
 .card-details {
-  padding: 4px;
-  border-radius: 8px;
+  padding: var(--s2-spacing-75);
+  border-radius: var(--s2-corner-radius-500);
   background: var(--s2-gray-75);
-  font-size: 12px;
-  line-height: 16px;
+  font-size: var(--s2-component-s-regular-font-size);
+  line-height: var(--s2-component-s-regular-line-height);
 }
 
 .card-details h3 {
   margin: 0;
-  padding: 4px 10px;
+  padding: var(--s2-spacing-75) 10px;
   font-size: inherit;
   color: var(--s2-gray-800);
 }
@@ -384,10 +384,10 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 4px;
+  gap: var(--s2-spacing-75);
   min-height: 24px;
   box-sizing: border-box;
-  padding: 4px 10px;
+  padding: var(--s2-spacing-75) 10px;
 }
 
 .card-details .da-list-item-details-title {
@@ -410,7 +410,7 @@
 .card-favorite-action {
   width: 100%;
   justify-content: space-between;
-  padding-inline: 12px;
+  padding-inline: var(--s2-spacing-200);
 }
 
 .card-type {
@@ -512,7 +512,7 @@
 
 .preview-error {
   position: absolute;
-  inset: auto 4px 4px;
+  inset: auto var(--s2-spacing-75) var(--s2-spacing-75);
   color: var(--s2-gray-600);
   font-size: var(--s2-component-xs-regular-font-size);
   text-align: center;
