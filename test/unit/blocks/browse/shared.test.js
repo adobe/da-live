@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import getEditPath from '../../../../blocks/browse/shared.js';
+import getEditPath from '../../../../blocks/shared/da-file-item/edit-path.js';
 
 describe('browse/shared getEditPath', () => {
   it('Builds an edit path for html using the editor route', () => {
