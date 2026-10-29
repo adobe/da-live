@@ -10,8 +10,9 @@ import {
   handleStoredMarks,
 } from './utils/handlers.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
+import { handleHtmlDrop } from './utils/html-drop.js';
 
-const MUTATING_MESSAGES = new Set(['node-update', 'image-replace', 'history']);
+const MUTATING_MESSAGES = new Set(['node-update', 'image-replace', 'history', MESSAGE_TYPES.HTML_DROP]);
 
 // Coalesce RELOAD bursts (each rebuilds the full body) into one refresh per window;
 // a concurrent remote edit can otherwise fire many in a row and peg the main thread.
@@ -54,6 +55,8 @@ export function createControllerOnMessage(ctx) {
       scheduleReload(ctx);
     } else if (type === MESSAGE_TYPES.IMAGE_REPLACE) {
       handleImageReplace(payload, ctx);
+    } else if (type === MESSAGE_TYPES.HTML_DROP) {
+      handleHtmlDrop(payload, ctx);
     } else if (type === MESSAGE_TYPES.GET_EDITOR) {
       getEditor(payload, ctx);
     } else if (type === MESSAGE_TYPES.NODE_UPDATE) {

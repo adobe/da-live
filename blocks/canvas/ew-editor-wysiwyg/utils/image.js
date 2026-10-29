@@ -37,6 +37,30 @@ export async function handleImageReplace(payload, ctx) {
     const originalDoc = view.state.doc;
     const imagePos = resolveImagePosition({ ...payload, doc: originalDoc });
     const target = originalDoc.nodeAt(imagePos);
+    if (payload.assets) {
+      if (!Array.isArray(payload.assets) || payload.assets.length !== 1) {
+        throw new Error('Drop a single image asset to replace this image.');
+      }
+      const [
+        { getRepositoryConfig }, { buildAssetNodes, NOT_CONFIGURED_ERROR },
+      ] = await Promise.all([
+        import(`${getNx2()}/utils/aem-assets/repository-config.js`),
+        import('../../ew-editor-doc/prose-plugins/assetDrop.js'),
+      ]);
+      const config = await getRepositoryConfig(ctx.owner, ctx.repo);
+      if (!config) throw new Error(NOT_CONFIGURED_ERROR);
+      const { nodes, errors } = await buildAssetNodes(view.state.schema, payload.assets, config);
+      if (nodes.length !== 1 || nodes[0].type.name !== 'image') {
+        throw new Error(errors[0] || 'The dropped asset cannot replace an image.');
+      }
+      if (ctx.view !== view || !view.editable || ctx.canWrite === false) {
+        throw new Error('Image editor changed during the drop. Please try again.');
+      }
+      const newSrc = nodes[0].attrs.src;
+      updateImageInDocument({ view, target, newSrc });
+      reply({ newSrc });
+      return;
+    }
     const sitePath = `/${ctx.owner}/${ctx.repo}`;
     if (await refuseOversizedImage(dataUrlByteLength(imageData), sitePath)) {
       reply({ error: 'Image is too large' });
