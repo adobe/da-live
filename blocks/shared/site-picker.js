@@ -108,6 +108,10 @@ export function connectSiteSelector({ selector, signal }) {
     window.location.hash = `/${value}`;
     refresh();
   }, { signal });
+  selector.addEventListener('site-retry', () => {
+    choicesKey = undefined;
+    refresh();
+  }, { signal });
   document.addEventListener('site-add', showAddSite, { signal });
   window.addEventListener('hashchange', refresh, { signal });
   window.addEventListener('storage', ({ key }) => {
