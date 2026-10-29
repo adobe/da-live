@@ -1,4 +1,4 @@
-<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg id="icon" overflow="visible" width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g filter="url(#filter0_dddi_3231_201857)">
 <g clip-path="url(#clip0_3231_201857)">
 <rect width="32" height="32" rx="16" fill="url(#paint0_radial_3231_201857)" fill-opacity="0.2" shape-rendering="crispEdges"/>

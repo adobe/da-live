@@ -68,6 +68,12 @@ adobe/da-live#1416 is modified or merged by this work.
 
 ## Figma fidelity
 
+The sidebar coworker action uses overflowing SVG artwork while chat is closed,
+preserving the blob's outer shadows. Once the chat panel is shown it uses the
+selected circular action style with an 18px light coworker glyph. Closing chat
+or changing sites restores the blob; opening another panel does not change it.
+Coworker marks in both text boxes use `--s2-gray-800` in either theme.
+
 Chat-family defaults come from Nexter's `nx2/blocks/shared/chat/input.css`:
 working fill/border/text, spinner/logo dimensions and input inset/height limits.
 The centered composer keeps its own `--landing-composer-*` properties in

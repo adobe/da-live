@@ -70,6 +70,7 @@ export class DaLanding extends LitElement {
     _readingFiles: { state: true },
     _attachments: { state: true },
     _chatInputState: { state: true },
+    _chatOpen: { state: true },
     _aoInput: { state: true },
     _dragging: { state: true },
     _comments: { state: true },
@@ -96,6 +97,13 @@ export class DaLanding extends LitElement {
   _onAoMenuSelect = (action) => this.openAssistant({ action });
 
   _onAoStop = () => this._onStop();
+
+  _onChatPanelClose = (event) => {
+    if (event.detail?.section === 'chat'
+      || this._chat?.closest('aside.panel')?.contains(event.target)) {
+      this._chatOpen = false;
+    }
+  };
 
   _finishInputSubmit(accepted) {
     this._inputResolve?.(accepted);
@@ -127,6 +135,7 @@ export class DaLanding extends LitElement {
     this._unsubscribe = hashChange.subscribe((state) => this.setScope(state));
     this.syncWorkspace();
     window.addEventListener('storage', this._onStorage);
+    document.addEventListener(PANEL_EVENT.CLOSE, this._onChatPanelClose);
     this.loadProfile();
   }
 
@@ -145,6 +154,7 @@ export class DaLanding extends LitElement {
       );
     }
     window.removeEventListener('storage', this._onStorage);
+    document.removeEventListener(PANEL_EVENT.CLOSE, this._onChatPanelClose);
     super.disconnectedCallback();
   }
 
@@ -155,6 +165,7 @@ export class DaLanding extends LitElement {
 
   resetChat() {
     this._finishInputSubmit(false);
+    this._chatOpen = false;
     document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
     this._chat?.removeEventListener(CHAT_EVENT.INPUT_STATE_CHANGE, this._onChatInputState);
     this._chat?.closest('aside.panel')?.remove();
@@ -188,7 +199,9 @@ export class DaLanding extends LitElement {
     if (this._sidenav) {
       this._chatAction = {
         label: 'Open chat',
-        icon: '/blocks/landing/assistant.svg',
+        icon: '/blocks/landing/assistant.svg#icon',
+        activeIcon: '/img/icons/s2-icon-coworker-20-n.svg#icon',
+        active: false,
         disabled: true,
         onClick: () => {
           if (!this._chatEnabled) return;
@@ -230,9 +243,11 @@ export class DaLanding extends LitElement {
   }
 
   syncWorkspace() {
-    if (this._chatAction && this._chatAction.disabled !== !this._chatEnabled) {
+    const active = !!this._chatOpen;
+    if (this._chatAction && (this._chatAction.disabled !== !this._chatEnabled
+      || this._chatAction.active !== active)) {
       const previous = this._chatAction;
-      this._chatAction = { ...previous, disabled: !this._chatEnabled };
+      this._chatAction = { ...previous, disabled: !this._chatEnabled, active };
       this._sidenav.actions = this._sidenav.actions.map((action) => (
         action === previous ? this._chatAction : action
       ));
@@ -478,6 +493,7 @@ export class DaLanding extends LitElement {
           try {
             const chat = aside.querySelector('nx-chat, nx-chat-ao');
             if (!chat) throw new Error('The assistant could not be opened.');
+            this._chatOpen = !aside.hidden;
             if (this._chat !== chat) {
               const previous = this._chat;
               previous?.removeEventListener(CHAT_EVENT.INPUT_STATE_CHANGE, this._onChatInputState);

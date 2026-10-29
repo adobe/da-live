@@ -182,7 +182,7 @@ h1 {
   width: var(--nx-chat-input-logo-size);
   height: var(--nx-chat-input-logo-size);
   flex-shrink: 0;
-  background: currentcolor;
+  background: var(--s2-gray-800);
   mask: url('/blocks/landing/coworker.svg') center / var(--nx-chat-input-logo-size) no-repeat;
 }
 

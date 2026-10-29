@@ -730,7 +730,7 @@ describe('landing page', () => {
     el._prompt = 'Unsent central draft';
     await el.updateComplete;
     const [action] = sidenav.actions;
-    expect(action.icon).to.equal('/blocks/landing/assistant.svg');
+    expect(action.icon).to.equal('/blocks/landing/assistant.svg#icon');
     const image = new Image();
     image.src = action.icon;
     await image.decode();
@@ -752,6 +752,59 @@ describe('landing page', () => {
     sidenav.actions = [...sidenav.actions, otherAction];
     el.remove();
     expect(sidenav.actions).to.deep.equal([otherAction]);
+  });
+
+  it('selects the coworker action only while its chat panel is open', async () => {
+    flags.enabled = true;
+    el._request = new AbortController();
+    await el.loadChatAvailability(el._request);
+    await el.updateComplete;
+    expect(sidenav.actions[0].active).to.equal(false);
+    expect(sidenav.actions[0].activeIcon).to.equal('/img/icons/s2-icon-coworker-20-n.svg#icon');
+    const { chat, aside, section } = await mountAssistant();
+    await el.updateComplete;
+    expect(sidenav.actions[0].active).to.equal(true);
+    document.dispatchEvent(new CustomEvent('nx-panel-close', { detail: { section: 'tools' } }));
+    await el.updateComplete;
+    expect(sidenav.actions[0].active).to.equal(true);
+    chat.dispatchEvent(new CustomEvent('nx-panel-close', { bubbles: true, composed: true }));
+    await el.updateComplete;
+    expect(sidenav.actions[0].active).to.equal(false);
+    await section.onShow(aside);
+    await el.updateComplete;
+    expect(sidenav.actions[0].active).to.equal(true);
+    document.dispatchEvent(new CustomEvent('nx-panel-close', { detail: { section: 'chat' } }));
+    await el.updateComplete;
+    expect(sidenav.actions[0].active).to.equal(false);
+    await section.onShow(aside);
+    hashChange._set({ org: 'org', site: 'other' });
+    await el.updateComplete;
+    expect(sidenav.actions[0].active).to.equal(false);
+  });
+
+  it('keeps the assistant artwork filter outside its SVG viewport', async () => {
+    const markup = await (await fetch('/blocks/landing/assistant.svg')).text();
+    const artwork = new DOMParser().parseFromString(markup, 'image/svg+xml').documentElement;
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '136');
+    svg.setAttribute('height', '142');
+    svg.setAttribute('viewBox', '-50 -50 136 142');
+    const defs = document.createElementNS(svg.namespaceURI, 'defs');
+    defs.append(artwork);
+    const use = document.createElementNS(svg.namespaceURI, 'use');
+    use.setAttribute('href', '#icon');
+    use.setAttribute('width', '32');
+    use.setAttribute('height', '32');
+    svg.append(defs, use);
+    const image = new Image();
+    image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}`;
+    await image.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = 136;
+    canvas.height = 142;
+    const context = canvas.getContext('2d');
+    context.drawImage(image, 0, 0);
+    expect(context.getImageData(46, 66, 1, 1).data[3], 'shadow outside the 32px button').to.be.greaterThan(0);
   });
 
   it('does not submit while chat is disabled', async () => {
@@ -1122,6 +1175,7 @@ describe('landing page', () => {
     await el.updateComplete;
     for (const scheme of ['light', 'dark']) {
       el.style.colorScheme = scheme;
+      el.style.setProperty('--s2-gray-800', scheme === 'light' ? 'rgb(41 41 41)' : 'rgb(219 219 219)');
       for (const width of [1200, 800, 360]) {
         el.style.width = `${width}px`;
         const composer = el.shadowRoot.querySelector('.composer');
@@ -1131,6 +1185,8 @@ describe('landing page', () => {
         const pageRight = el.getBoundingClientRect().right;
         expect(composer.getBoundingClientRect().right).to.be.at.most(pageRight);
         expect(getComputedStyle(composer, '::after').content).to.equal('""');
+        expect(getComputedStyle(composer.querySelector('.coworker-icon')).backgroundColor)
+          .to.equal(scheme === 'light' ? 'rgb(41, 41, 41)' : 'rgb(219, 219, 219)');
         el._chatInputState = { busy: true, disabled: true };
         await el.updateComplete;
         const input = el.shadowRoot.querySelector('.composer-input');
