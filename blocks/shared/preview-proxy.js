@@ -1,19 +1,6 @@
 import { getLivePreviewUrl } from './constants.js';
 import { livePreviewLogin } from './utils.js';
-import { getServiceHosts, getServiceOrigins, isAemHost, isPreviewHost } from '../../scripts/config.js';
-
-const CONTENT_ORIGINS = new Set(getServiceOrigins('content'));
-const ADMIN_ORIGINS = new Set(getServiceOrigins('admin'));
-const CONTENT_HOSTS = getServiceHosts('content');
-const ADMIN_HOSTS = getServiceHosts('admin');
-
-function parseBranchHost(hostname) {
-  const [branch, site, orgWithDomain] = hostname.split('--');
-  if (!branch || !site || !orgWithDomain) return null;
-  const [org] = orgWithDomain.split('.');
-  if (!org) return null;
-  return { org, site, branch };
-}
+import { parseSiteUrl, parsePreviewUrl, parseDaUrl } from '../../scripts/urls.js';
 
 function buildPreviewUrl({
   org, site, branch, pathname, search = '', hash = '', getUrl = getLivePreviewUrl,
@@ -41,46 +28,22 @@ function resolvePreviewProxyDetails(input, fallback) {
   }
 
   try {
-    const url = new URL(input);
-    const hosted = parseBranchHost(url.hostname);
-    const { pathname, search, hash } = url;
-    if (hosted && (isAemHost(url.hostname) || isPreviewHost(url.hostname))) {
+    // Host-only compatibility here rewrites URLs, never authorizes credentials.
+    const parsed = parseSiteUrl(input, fallback) || parsePreviewUrl(input, fallback)
+      || parseDaUrl(input, undefined, true);
+    if (parsed) {
+      const {
+        org, site, branch: sourceBranch, pathname, search, hash,
+      } = parsed;
+      const resolvedBranch = parsed.service ? branch : sourceBranch;
       return {
-        url: buildPreviewUrl({ ...hosted, pathname, search, hash, getUrl }),
-        ...hosted,
+        url: buildPreviewUrl({
+          org, site, branch: resolvedBranch, pathname, search, hash, getUrl,
+        }),
+        org,
+        site,
+        branch: resolvedBranch,
         pathname,
-      };
-    }
-
-    if (CONTENT_ORIGINS.has(url.origin)
-      || (CONTENT_HOSTS.has(url.hostname) && !ADMIN_HOSTS.has(url.hostname))) {
-      const [, org, site, ...rest] = url.pathname.split('/');
-      if (!org || !site) return { url: input };
-      const targetPath = `/${rest.join('/')}`;
-      return {
-        url: buildPreviewUrl({
-          org, site, branch, pathname: targetPath, search: url.search, hash: url.hash, getUrl,
-        }),
-        org,
-        site,
-        branch,
-        pathname: targetPath,
-      };
-    }
-
-    if (ADMIN_ORIGINS.has(url.origin)
-      || (ADMIN_HOSTS.has(url.hostname) && !CONTENT_HOSTS.has(url.hostname))) {
-      const [, , org, site, ...rest] = url.pathname.split('/');
-      if (!org || !site) return { url: input };
-      const targetPath = `/${rest.join('/')}`;
-      return {
-        url: buildPreviewUrl({
-          org, site, branch, pathname: targetPath, search: url.search, hash: url.hash, getUrl,
-        }),
-        org,
-        site,
-        branch,
-        pathname: targetPath,
       };
     }
   } catch {

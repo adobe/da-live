@@ -1,6 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import { readFile } from '@web/test-runner-commands';
 import { setNx } from '../../../../scripts/utils.js';
+import config, { createConfig } from '../../../../scripts/config.js';
 import { canvasBus } from '../../../../blocks/canvas/utils/canvas-bus.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -488,6 +489,29 @@ describe('standalone workspace comparison', () => {
 });
 
 describe('comparison content normalization', () => {
+  it('retains configured site mount paths for root-relative images and cross-tier links', () => {
+    const original = { ...config };
+    try {
+      Object.assign(config, createConfig({
+        aem: {
+          liveUrl: 'https://publish.example/sites/{org}/{site}/{branch}',
+          previewUrl: 'https://preview.example/render/{org}/{site}/{branch}',
+        },
+      }));
+      const html = comparison.normalizeComparisonHtml(
+        '<img src="/media.png"><a href="https://preview.example/render/example/site/main/other?x=1#part">Link</a>',
+        page,
+      );
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      expect(doc.querySelector('img').getAttribute('src'))
+        .to.equal('https://publish.example/sites/example/site/main/media.png');
+      expect(doc.querySelector('a').getAttribute('href'))
+        .to.equal('https://publish.example/sites/example/site/main/other?x=1#part');
+    } finally {
+      Object.assign(config, original);
+    }
+  });
+
   it('keeps top-level separators when serializing document blocks', async () => {
     const { stripEmptyTopLevelBlocks } = await import('../../../../blocks/shared/version/compare.js');
     const root = new DOMParser().parseFromString('<hr><p> </p><p>Content</p>', 'text/html').body;

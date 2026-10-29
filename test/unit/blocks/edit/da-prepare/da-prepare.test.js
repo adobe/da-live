@@ -236,8 +236,8 @@ describe('DaPrepare', () => {
       await waitForMenu();
 
       const item = el._menuItems.find(({ title }) => title === 'Plugin Action');
-      expect(item.path).to.equal('https://evil-example-x--siteD--orgD.preview.da.live/tools/plugins/plugin-action/index.html');
-      expect(item.icon).to.equal('https://evil-example-x--siteD--orgD.preview.da.live/tools/plugins/plugin-action/icon.svg');
+      expect(item.path).to.equal('https://evil-example-x--sited--orgd.preview.da.live/tools/plugins/plugin-action/index.html');
+      expect(item.icon).to.equal('https://evil-example-x--sited--orgd.preview.da.live/tools/plugins/plugin-action/icon.svg');
 
       window.fetch = prevFetch;
     });

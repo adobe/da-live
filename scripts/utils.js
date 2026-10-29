@@ -10,7 +10,8 @@
  * governing permissions and limitations under the License.
  */
 
-import config, { isAemHost } from './config.js';
+import config from './config.js';
+import { getNxUrl, parseSiteUrl } from './urls.js';
 
 export function sanitizeName(name, preserveDots = true, allowUnderscores = true) {
   if (!name) return null;
@@ -54,40 +55,34 @@ if (!nxVer) nxVer = sanitizeName(new URLSearchParams(window.location.search).get
 export const nxJS = nxVer ? '/scripts/nx.js' : '/scripts/nexter.js';
 export const nxCSS = nxVer ? '/styles/styles.css' : '/styles/nexter.css';
 
-export const [setNx, getNx] = (() => {
+export const [setNx, getNx, getNx2, getNx1] = (() => {
   let nx;
+  let nx2;
+  let nx1;
 
   return [
     (nxBase, location) => {
-      // Version nxBase if supplied from query param
-      const nxVerBase = nxVer ? `${nxBase}2` : nxBase;
-
-      nx = (() => {
-        const { hostname, search } = location || window.location;
-        const nxBaseParam = sanitizeName(new URLSearchParams(search).get('nx'));
-        const isProd = !(isAemHost(hostname) || hostname.includes('local'));
-
-        // If no custom nexter branch & on prod, use the default CDN route
-        if (!nxBaseParam && isProd) return nxVerBase;
-
-        // Determine set a branch regardless of param
-        const branch = nxBaseParam || 'main';
-
-        // Local is a special key to use nexter from localhost
-        if (branch === 'local') return `http://localhost:6456${nxVerBase}`;
-
-        // Otherwise use a fully qualified branch
-        return `https://${branch}--${config.nx.repo}--${config.nx.owner}.${config.aem.liveHost}${nxVerBase}`;
-      })();
+      const { hostname, search, href, pathname } = location || window.location;
+      const nxParam = sanitizeName(new URLSearchParams(search).get('nx'));
+      const branch = nxParam || 'main';
+      const isProd = !(parseSiteUrl(href || `https://${hostname}${pathname || '/'}`) || hostname.includes('local'));
+      const remote = !isProd || !!nxParam;
+      if (branch === 'local') {
+        nx1 = `http://localhost:6456${nxBase}`;
+        nx2 = `${nx1}2`;
+      } else {
+        nx1 = config.nx.url || remote ? getNxUrl(nxBase, branch) : nxBase;
+        nx2 = nx1.endsWith('/nx') ? `${nx1}2` : nx1;
+        if (config.nx.url || config.nx.urlV2) nx2 = getNxUrl(nxBase, branch, true);
+      }
+      nx = nxVer ? nx2 : nx1;
+      if (!config.nx.url) nx1 = nx1.replace(/\/nx2$/, '/nx');
       return nx;
-    }, () => nx,
+    }, () => nx, () => nx2, () => nx1,
   ];
 })();
 
-export const getNx2 = () => {
-  const nx = getNx();
-  return nx.endsWith('/nx') ? `${nx}2` : nx;
-};
+export const isNx2 = () => !!nxVer || (!config.nx.url && getNx().endsWith('/nx2'));
 
 let nx2ApiPromise;
 export const getNx2Api = () => {

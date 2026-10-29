@@ -79,6 +79,21 @@ describe('prose2aem image URL handling', () => {
     { host: 'example.com' },
   ];
 
+  [
+    'http://localhost:3000/img/logo.png',
+    'http://localhost:8787/source/org/site/media.png',
+  ].forEach((src) => {
+    it(`does not strip unrelated or admin image paths from ${src}`, () => {
+      const editor = document.createElement('div');
+      editor.innerHTML = `<p><img src="${src}"></p>`;
+      const result = new DOMParser().parseFromString(prose2aem(editor, true), 'text/html');
+      expect(result.querySelector('img').getAttribute('src')).to.equal(src);
+      result.querySelectorAll('source').forEach((source) => {
+        expect(source.getAttribute('srcset')).to.equal(src);
+      });
+    });
+  });
+
   cases.forEach(({ host, contentStore }) => {
     [false, true].forEach((livePreview) => {
       [false, true].forEach((isFragment) => {

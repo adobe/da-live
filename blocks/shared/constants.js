@@ -1,4 +1,5 @@
 import config, { getServiceEnvs } from '../../scripts/config.js';
+import { getPreviewUrl } from '../../scripts/urls.js';
 
 export const AEM_ORIGIN = config.aem.adminOrigin;
 
@@ -48,6 +49,5 @@ export const LIVE_PREVIEW_DOMAIN = getDaEnv(window.location, 'da-live-preview', 
 export const DA_ETC_ORIGIN = getDaEnv(window.location, 'da-etc', 'etc');
 
 export function getLivePreviewUrl(owner, repo, branch = 'main') {
-  const protocol = LIVE_PREVIEW_DOMAIN.startsWith('localhost') ? 'http' : 'https';
-  return `${protocol}://${branch}--${repo}--${owner}.${LIVE_PREVIEW_DOMAIN}`;
+  return getPreviewUrl(LIVE_PREVIEW_DOMAIN, { org: owner, site: repo, branch });
 }

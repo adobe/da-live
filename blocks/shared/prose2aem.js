@@ -1,7 +1,5 @@
 import getPathDetails from './pathDetails.js';
-import { getServiceHosts, getServiceOrigins, isAemHost } from '../../scripts/config.js';
-
-const CONTENT_HOSTS = getServiceHosts('content');
+import { getServiceOrigins, parseDaUrl, parseSiteUrl } from '../../scripts/urls.js';
 
 function setCursor(cursor, el) {
   el.id = cursor.id;
@@ -92,11 +90,9 @@ function makePictures(editor, live) {
     if (live && clone.src) {
       try {
         const source = new URL(clone.src);
-        if (CONTENT_HOSTS.has(source.hostname)) {
-          source.pathname = `/${source.pathname
-            .split('/')
-            .slice(3) // remove org and site
-            .join('/')}`;
+        const details = parseDaUrl(source.href);
+        if (details?.service === 'content') {
+          source.pathname = details.pathname;
           clone.src = source.toString();
         }
       } catch {
@@ -253,11 +249,9 @@ function convertLocalUrlsToRelative(editor) {
     if (!url || !url.startsWith('https://')) return;
 
     try {
-      const { hostname, pathname, search, hash } = new URL(url);
-
-      const sameSitePattern = `--${site}--${org}.`;
-      if (isAemHost(hostname) && hostname.includes(sameSitePattern)) {
-        link.setAttribute('href', `${pathname}${search}${hash}`);
+      const details = parseSiteUrl(url);
+      if (details?.site === site && details.org === org) {
+        link.setAttribute('href', `${details.pathname}${details.search}${details.hash}`);
       }
     } catch {
       // ignore

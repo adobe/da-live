@@ -11,7 +11,7 @@
  */
 
 import { initIms } from '../blocks/shared/utils.js';
-import { setNx, nxJS, nxCSS } from './utils.js';
+import { setNx, nxJS, nxCSS, isNx2 } from './utils.js';
 import config from './config.js';
 
 export function decorateArea({ area = document } = {}) {
@@ -37,7 +37,7 @@ export function decorateArea({ area = document } = {}) {
 
 // Where to load NX
 const nx = setNx('/nx');
-const nx2 = nx.endsWith('nx2');
+const nx2 = isNx2();
 const { loadArea, setConfig, getColorScheme } = await import(`${nx}${nxJS}`);
 
 // Set color scheme once

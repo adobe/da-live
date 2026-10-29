@@ -1,6 +1,6 @@
 import { SUPPORTED_FILES } from '../../shared/constants.js';
 import { getNx2Api, sanitizePath, sanitizePathParts } from '../../../scripts/utils.js';
-import config from '../../../scripts/config.js';
+import { getSiteUrl } from '../../../scripts/urls.js';
 
 const MAX_DEPTH = 1000;
 
@@ -143,7 +143,7 @@ export function items2Clipboard(items) {
       const pageName = pathParts.pop();
       pathParts.push(pageName === 'index' ? '' : pageName);
 
-      const url = `https://main--${site}--${org}.${config.aem.previewHost}/${pathParts.join('/')}`;
+      const url = getSiteUrl('preview', { org, site, path: `/${pathParts.join('/')}` });
       const toPush = item.message ? `${url} - ${item.message}` : url;
 
       acc.push(toPush);

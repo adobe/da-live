@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { DOMParser as proseDOMParser, DOMSerializer, Slice, TextSelection } from 'da-y-wrapper';
 import { htmlToProse } from '../utils/helpers.js';
-import { getNx, sanitizePathParts } from '../../../scripts/utils.js';
+import { getNx1, sanitizePathParts } from '../../../scripts/utils.js';
 import { getPostMessageTargetOrigin, isValidHref, replyToGetSelection } from '../../shared/utils.js';
 import { ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
 import getSheet from '../../shared/sheet.js';
@@ -17,7 +17,7 @@ import {
 } from './helpers/helpers.js';
 
 const sheet = await getSheet('/blocks/edit/da-library/da-library.css');
-const buttons = await getSheet(`${getNx().replace(/\/nx2$/, '/nx')}/styles/buttons.css`);
+const buttons = await getSheet(`${getNx1()}/styles/buttons.css`);
 
 const getCurrentOrg = () => sanitizePathParts(window.location.hash.slice(1))[0];
 

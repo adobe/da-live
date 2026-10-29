@@ -50,57 +50,6 @@ const config = createConfig(deployment);
 export default config;
 
 export function getServiceEnvs(name, origin, settings = config) {
-  return origin === `https://${settings.da.pageDomain}`
+  return origin === new URL(`https://${settings.da.pageDomain}`).origin
     ? settings.da.pageServices[name] : settings.da.services[name];
-}
-
-export function getServiceOrigins(name, settings = config) {
-  return [...new Set([settings.da.services, settings.da.pageServices]
-    .flatMap((services) => Object.values(services[name]))
-    .map((value) => new URL(value).origin))];
-}
-
-export function getServiceHosts(name, settings = config) {
-  return new Set(getServiceOrigins(name, settings).map((origin) => new URL(origin).hostname));
-}
-
-export function getAemHosts(settings = config) {
-  return [settings.aem.previewHost, settings.aem.liveHost, ...settings.aem.legacyHosts];
-}
-
-export function isAemHost(hostname, settings = config) {
-  return getAemHosts(settings).some((host) => hostname.endsWith(`.${host}`));
-}
-
-export function isPreviewHost(hostname, settings = config) {
-  const hosts = [settings.da.services.preview, settings.da.pageServices.preview]
-    .flatMap((envs) => Object.values(envs))
-    .map((host) => new URL(`https://${host}`).hostname);
-  return hosts.some((host) => hostname.endsWith(`.${host}`))
-    || hostname.endsWith('.localhost');
-}
-
-export function isStageHost(hostname, settings = config) {
-  return hostname.endsWith(`.${settings.aem.previewHost}`)
-    || hostname === 'localhost' || hostname.endsWith('.localhost');
-}
-
-export function toAemHost(hostname, target, settings = config) {
-  const suffix = getAemHosts(settings).find((host) => hostname.endsWith(`.${host}`));
-  return suffix ? `${hostname.slice(0, -suffix.length)}${target}` : hostname;
-}
-
-export function isAuthoringOrigin(value, settings = config) {
-  try {
-    const url = new URL(value);
-    if ([`https://${settings.da.domain}`, `https://${settings.da.pageDomain}`,
-      'http://localhost:3000', 'https://localhost'].includes(url.origin)) return true;
-    if (url.protocol !== 'https:' || url.port) return false;
-    const suffixes = [settings.aem.previewHost, settings.aem.liveHost]
-      .map((host) => `--${settings.da.repo}--${settings.da.owner}.${host}`);
-    return suffixes.some((suffix) => url.hostname.endsWith(suffix)
-      && /^[a-z0-9-]+$/.test(url.hostname.slice(0, -suffix.length)));
-  } catch {
-    return false;
-  }
 }

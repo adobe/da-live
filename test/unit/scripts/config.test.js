@@ -1,8 +1,8 @@
 import { expect } from '@esm-bundle/chai';
-import config, {
-  createConfig, getServiceEnvs, getServiceOrigins, getServiceHosts,
-  isAemHost, isPreviewHost, isStageHost, toAemHost, isAuthoringOrigin,
-} from '../../../scripts/config.js';
+import config, { createConfig, getServiceEnvs } from '../../../scripts/config.js';
+import {
+  getServiceOrigins, parseSiteUrl, parsePreviewUrl, isStageLocation, toSiteUrl, isAuthoringOrigin,
+} from '../../../scripts/urls.js';
 import { setNx } from '../../../scripts/utils.js';
 import { getDaAdmin } from '../../../blocks/shared/constants.js';
 import getPathDetails from '../../../blocks/shared/pathDetails.js';
@@ -59,31 +59,31 @@ describe('Deployment configuration', () => {
   });
 
   it('recognizes configured content suffixes and preserves legacy hosts', () => {
-    expect(isAemHost('main--site--org.customer.page', custom)).to.equal(true);
-    expect(isAemHost('main--site--org.hlx.live', custom)).to.equal(true);
-    expect(isAemHost('main--site--org.customer.live.attacker.test', custom)).to.equal(false);
-    expect(isAemHost('main--site--org.notcustomer.page', custom)).to.equal(false);
-    expect(isAemHost('main--site--org.hlx.live', createConfig({ aem: { legacyHosts: [] } }))).to.equal(false);
-    expect(isStageHost('main--site--org.customer.page', custom)).to.equal(true);
-    expect(isStageHost('main--site--org.customer.live', custom)).to.equal(false);
-    expect(isStageHost('localhost', custom)).to.equal(true);
+    expect(parseSiteUrl('https://main--site--org.customer.page', {}, custom)).to.exist;
+    expect(parseSiteUrl('https://main--site--org.hlx.live', {}, custom)).to.exist;
+    expect(parseSiteUrl('https://main--site--org.customer.live.attacker.test', {}, custom)).to.equal(null);
+    expect(parseSiteUrl('https://main--site--org.notcustomer.page', {}, custom)).to.equal(null);
+    expect(parseSiteUrl('https://main--site--org.hlx.live', {}, createConfig({ aem: { legacyHosts: [] } }))).to.equal(null);
+    expect(isStageLocation({ hostname: 'main--site--org.customer.page' }, custom)).to.equal(true);
+    expect(isStageLocation({ hostname: 'main--site--org.customer.live' }, custom)).to.equal(false);
+    expect(isStageLocation({ hostname: 'localhost' }, custom)).to.equal(true);
   });
 
   it('rewrites only a recognized trailing content suffix', () => {
-    expect(toAemHost('main--site--org.customer.live', custom.aem.previewHost, custom))
-      .to.equal('main--site--org.customer.page');
-    expect(toAemHost('main--site--org.hlx.page', custom.aem.liveHost, custom))
-      .to.equal('main--site--org.customer.live');
-    expect(toAemHost('main--site--org.customer.live.attacker.test', custom.aem.previewHost, custom))
-      .to.equal('main--site--org.customer.live.attacker.test');
+    expect(toSiteUrl('https://main--site--org.customer.live/page', 'preview', custom))
+      .to.equal('https://main--site--org.customer.page/page');
+    expect(toSiteUrl('https://main--site--org.hlx.page/page', 'live', custom))
+      .to.equal('https://main--site--org.customer.live/page');
+    expect(toSiteUrl('https://main--site--org.customer.live.attacker.test/page', 'preview', custom))
+      .to.equal('https://main--site--org.customer.live.attacker.test/page');
   });
 
   it('recognizes configured preview services and independent service origins', () => {
-    expect(isPreviewHost('main--site--org.preview.author.example.com', custom)).to.equal(true);
-    expect(isPreviewHost('main--site--org.stage-preview.author-test.example.com', custom)).to.equal(true);
-    expect(isPreviewHost('main--site--org.preview.author.example.com.attacker.test', custom)).to.equal(false);
+    expect(parsePreviewUrl('https://main--site--org.preview.author.example.com', {}, custom)).to.exist;
+    expect(parsePreviewUrl('https://main--site--org.stage-preview.author-test.example.com', {}, custom)).to.exist;
+    expect(parsePreviewUrl('https://main--site--org.preview.author.example.com.attacker.test', {}, custom)).to.equal(null);
     expect(getServiceOrigins('admin', custom)).to.include('https://api.example.net');
-    expect(getServiceHosts('content', custom).has('test-content.example.net')).to.equal(true);
+    expect(getServiceOrigins('content', custom)).to.include('https://test-content.example.net');
   });
 
   it('trusts only configured app origins and branch previews of the configured repository', () => {

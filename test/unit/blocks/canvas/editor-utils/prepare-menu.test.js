@@ -305,8 +305,8 @@ describe('PrepareMenu', () => {
       el = await fixture({ details: createDetails({ org: 'orgE', site: 'siteE' }) });
 
       const item = el._menuItems.find(({ title }) => title === 'Plugin Action');
-      expect(item.path).to.equal('https://feature-foo--siteE--orgE.stage-preview.da.live/tools/plugins/plugin-action/index.html');
-      expect(item.icon).to.equal('https://feature-foo--siteE--orgE.stage-preview.da.live/tools/plugins/plugin-action/icon.svg');
+      expect(item.path).to.equal('https://feature-foo--sitee--orge.stage-preview.da.live/tools/plugins/plugin-action/index.html');
+      expect(item.icon).to.equal('https://feature-foo--sitee--orge.stage-preview.da.live/tools/plugins/plugin-action/icon.svg');
 
       window.fetch = prevFetch;
     });
