@@ -87,7 +87,10 @@ if (nx2) {
       const { connectSiteSelector } = await import('../blocks/shared/site-picker.js');
       if (!signal.aborted) connectSiteSelector({ selector, signal });
     } catch (error) {
-      if (!signal.aborted) selector.error = `Could not load your sites: ${error.message}`;
+      if (!signal.aborted) {
+        selector.error = `Could not load your sites: ${error.message}`;
+        selector.addEventListener('site-retry', () => window.location.reload(), { once: true, signal });
+      }
     }
   });
 }
