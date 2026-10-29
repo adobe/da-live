@@ -45,8 +45,8 @@ describe('shared site selector adapter', () => {
       current: 'adobe/current',
       recentSites: ['adobe/other', 'adobe/current', '/bad/path', 'adobe/.trash', null],
     })).to.deep.equal([
-      { value: 'adobe/current', label: 'current (adobe)' },
-      { value: 'adobe/other', label: 'other (adobe)' },
+      { value: 'adobe/current', label: '(adobe, current)' },
+      { value: 'adobe/other', label: '(adobe, other)' },
     ]);
   });
 
@@ -57,6 +57,30 @@ describe('shared site selector adapter', () => {
     await adapter.refresh();
     expect(selector.value).to.equal('aemsites/devlive');
     expect(list.called).to.be.false;
+  });
+
+  it('leaves Landing unselected despite remembered sites, selects explicitly and resets on Home', async () => {
+    const remembered = localStorage.getItem('da-sites');
+    window.history.replaceState(null, '', '?landing=true');
+    await adapter.refresh();
+    expect(selector.value).to.equal('');
+    expect(selector.heading).to.equal('Your recent sites');
+    expect(selector.sites).to.have.length(2);
+    expect(localStorage.getItem('da-sites')).to.equal(remembered);
+    const value = 'exp-workspace/frescopaco';
+    selector.dispatchEvent(new CustomEvent('site-select', { detail: { value } }));
+    await adapter.refresh();
+    expect(selector.value).to.equal(value);
+    expect(selector.sites.find((site) => site.value === value).label).to.equal('(exp-workspace, frescopaco)');
+    window.history.replaceState(null, '', '?landing=true');
+    await adapter.refresh();
+    expect(selector.value).to.equal('');
+    expect(selector.heading).to.equal('Your recent sites');
+    expect(selector.sites.map((site) => site.value)).to.have.members(['aemsites/devlive', value]);
+    localStorage.setItem('da-sites', '[]');
+    await adapter.refresh();
+    expect(selector.value).to.equal('');
+    expect(selector.sites).to.deep.equal([]);
   });
 
   it('remembers denied routed sites before checking access and retains all choices', async () => {
