@@ -1,6 +1,6 @@
 // In-process pub/sub for canvas-local UI events (undo, selection, editor view, ...).
-// Not for panel or chat — those cross into da-nx and use its PANEL_EVENT/CHAT_EVENT
-// DOM CustomEvents instead, since components outside this block need to reach them too.
+// Panel/chat commands cross into da-nx via PANEL_EVENT/CHAT_EVENT DOM CustomEvents.
+// Bridges relay cross-repo notifications onto canvas-local channels.
 
 // Each channel is a private listener Set — no DOM element involved. `replay: true`
 // re-delivers the last truthy emitted value to a subscriber that joins later.
@@ -70,6 +70,7 @@ export const canvasBus = Object.freeze({
 
   commentsControllerState: createChannel(),
   versionCreatedState: createChannel(),
+  chatTurnCompleted: createChannel(),
 
   preflightStatusState: createChannel(),
 });

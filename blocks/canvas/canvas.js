@@ -22,6 +22,7 @@ import { SEL_BLOCK, SEL_ITEM, SEL_TEXT } from './ew-editor-doc/utils/selection.j
 import { getChatPanelContent } from '../shared/chat-panel.js';
 import { canvasBus } from './utils/canvas-bus.js';
 import { initBranchBridge } from './editor-utils/branch-bridge.js';
+import { initChatBridge } from './editor-utils/chat-bridge.js';
 import { resolveCanvasBranch } from './editor-utils/branch-state.js';
 import { installComparison } from './ew-comparison/comparison.js';
 import { docToHtml } from '../shared/version/compare.js';
@@ -354,6 +355,7 @@ export default async function decorate(block) {
   });
 
   initBranchBridge();
+  initChatBridge();
   hashChange.subscribe((state) => {
     comparisonContext = state;
     comparison.contextChanged();
