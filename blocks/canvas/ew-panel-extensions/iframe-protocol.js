@@ -25,6 +25,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   if (!org || !site || !iframe.contentWindow) return { channel: null, destroy() { } };
 
   const targetOrigin = getPostMessageTargetOrigin(iframe.src);
+  const documentHref = window.location.href;
 
   const channel = new MessageChannel();
   let subscribed = false;
@@ -33,6 +34,8 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   let unsubscribeHtml;
   let unsubscribeSelect;
   let lastBlockIndex = null;
+  let dragController;
+  let destroyed = false;
 
   const selectionFor = (editorView) => {
     const index = getActiveBlockIndex(editorView);
@@ -83,6 +86,27 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
 
   channel.port1.onmessage = (e) => {
     const { action, details } = e.data || {};
+    if (['dragStart', 'dragMove', 'dragFinish', 'dragCancel'].includes(action)) {
+      if (['dragStart', 'dragFinish'].includes(action) && !isRequestId(e.data.requestId)) return;
+      dragController ??= import('./drag.js').then(({ createDragController }) => (
+        destroyed ? null : createDragController({
+          iframe,
+          getView: () => (!destroyed && window.location.href === documentHref ? getView() : null),
+          context: { org, site, path },
+          notify: (result) => {
+            if (!destroyed) channel.port1.postMessage({ action: 'dragResult', details: result });
+          },
+        })
+      ));
+      dragController.then((controller) => controller?.handle(e.data))
+        .catch(() => ({ ok: false, error: 'invalid-drag-data' }))
+        .then((result) => {
+          if (!destroyed && isRequestId(e.data.requestId)) {
+            channel.port1.postMessage({ action: 'sdkResponse', requestId: e.data.requestId, result });
+          }
+        });
+      return;
+    }
     if (action === 'subscribeLiveDocument') {
       if (!subscribed) {
         subscribed = true;
@@ -221,7 +245,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
         project: context,
         context,
         token,
-        capabilities: { liveDocument: 1, sendHTMLReplace: 1 },
+        capabilities: { liveDocument: 1, sendHTMLReplace: 1, dragDrop: 1 },
       },
       targetOrigin,
       [channel.port2],
@@ -235,6 +259,8 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   document.addEventListener(CHAT_EVENT.AGENT_CHANGE, onAgentChange);
 
   const destroy = () => {
+    destroyed = true;
+    dragController?.then((controller) => controller?.destroy(), () => {});
     stopSubscription();
     clearTimeout(readyTimer);
     document.removeEventListener(CHAT_EVENT.AGENT_CHANGE, onAgentChange);

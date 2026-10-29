@@ -17,3 +17,36 @@
   font-size: var(--s2-component-s-regular-font-size);
   color: var(--s2-gray-700);
 }
+
+:host(.assets-rail-drag-layer) {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+  pointer-events: none;
+}
+
+.assets-rail-drag-preview {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  transform: translate(-10000px, -10000px);
+}
+
+.assets-rail-drag-preview img {
+  display: block;
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: var(--s2-corner-radius-75, 4px);
+}
+
+.assets-rail-preview-shield {
+  position: fixed;
+  pointer-events: auto;
+  cursor: copy;
+}
+
+.assets-rail-preview-shield[hidden] {
+  display: none;
+}
