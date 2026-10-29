@@ -1,3 +1,10 @@
+# [1.16.0](https://github.com/adobe/da-live/compare/v1.15.1...v1.16.0) (2026-10-28)
+
+
+### Features
+
+* **sc:** move structured content editor ([#1477](https://github.com/adobe/da-live/issues/1477)) ([ed60122](https://github.com/adobe/da-live/commit/ed601228892efd08bce42162b54097783f55e23e))
+
 ## [1.15.1](https://github.com/adobe/da-live/compare/v1.15.0...v1.15.1) (2026-10-28)
 
 
