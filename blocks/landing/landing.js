@@ -19,7 +19,7 @@ import { createSitePicker, updateSitePicker, checkSiteChoices } from '../shared/
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { registerPanelSection, PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 const { ADOBE_AI_GUIDELINES_URL, CHAT_WORKING_MESSAGE, MENU_OPTIONS } = await import(`${getNx()}/blocks/shared/chat/constants.js`);
-const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
+const { CHAT_EVENT, loadChatInput } = await import(`${getNx()}/utils/chat.js`);
 const { ADD_MENU_ITEMS } = await import(`${getNx()}/blocks/chat/constants.js`);
 const { createFileDropHandlers } = await import(`${getNx()}/blocks/shared/chat/dnd.js`);
 const nx = await import(`${getNx2()}/scripts/nx.js`);
@@ -69,6 +69,7 @@ export class DaLanding extends LitElement {
     _readingFiles: { state: true },
     _attachments: { state: true },
     _chatInputState: { state: true },
+    _aoInput: { state: true },
     _dragging: { state: true },
     _comments: { state: true },
     _commentsError: { state: true },
@@ -82,6 +83,23 @@ export class DaLanding extends LitElement {
     this._chatInputState = detail;
     if (detail.disabled) this._dragging = false;
   };
+
+  _onAoSubmit = ({ text, context, attachments }) => {
+    if (this.composerDisabled) return false;
+    return new Promise((resolve) => {
+      this._inputResolve = resolve;
+      this.openAssistant({ text, attachments: [...context, ...attachments], autoSend: true });
+    });
+  };
+
+  _onAoMenuSelect = (action) => this.openAssistant({ action });
+
+  _onAoStop = () => this._onStop();
+
+  _finishInputSubmit(accepted) {
+    this._inputResolve?.(accepted);
+    this._inputResolve = undefined;
+  }
 
   _dnd = createFileDropHandlers({
     onDragging: (dragging) => { this._dragging = dragging; },
@@ -135,6 +153,7 @@ export class DaLanding extends LitElement {
   }
 
   resetChat() {
+    this._finishInputSubmit(false);
     document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
     this._chat?.removeEventListener(CHAT_EVENT.INPUT_STATE_CHANGE, this._onChatInputState);
     this._chat?.closest('aside.panel')?.remove();
@@ -191,6 +210,20 @@ export class DaLanding extends LitElement {
 
   updated() {
     this.syncWorkspace();
+    if (this._aoInput) {
+      Object.assign(this._aoInput, {
+        blocked: !!this._chatInputState?.busy,
+        disabled: !!this.composerDisabled,
+        showInputStatus: true,
+        statusMessage: this._handingOff ? 'Opening chat...' : '',
+        placeholder: 'Ask a question, share an idea, or add a task.',
+        variant: 'expanded',
+        size: this.uiSize,
+        onSubmit: this._onAoSubmit,
+        onStop: this._onAoStop,
+        onMenuSelect: this._onAoMenuSelect,
+      });
+    }
     if (!this._prompt) this.shadowRoot.querySelector('textarea')?.style.removeProperty('height');
   }
 
@@ -299,6 +332,7 @@ export class DaLanding extends LitElement {
     this._limit = PAGE_SIZE;
     this._prompt = '';
     this._chatEnabled = undefined;
+    this._aoInput = undefined;
     this._editor = undefined;
     this._chatError = undefined;
     this._handingOff = false;
@@ -314,6 +348,7 @@ export class DaLanding extends LitElement {
 
   async loadSite() {
     this._request?.abort();
+    this._finishInputSubmit(false);
     this._handingOff = false;
     const request = new AbortController();
     this._request = request;
@@ -410,8 +445,14 @@ export class DaLanding extends LitElement {
       ]);
       if (request.signal.aborted || !this.isConnected) return;
       this._editor = enabled ? '/canvas#' : '/edit#';
-      this._chatEnabled = enabled && !disabled;
-      if (!this._chatEnabled) return;
+      if (!enabled || disabled) {
+        this._chatEnabled = false;
+        return;
+      }
+      const input = await loadChatInput();
+      if (request.signal.aborted || !this.isConnected) return;
+      this._aoInput = input && (this._aoInput ?? input);
+      this._chatEnabled = true;
       registerPanelSection('chat', {
         position: 'before',
         width: '320px',
@@ -425,6 +466,7 @@ export class DaLanding extends LitElement {
           if (!request.signal.aborted && this.isConnected) {
             this._chatError = `Could not open the assistant: ${error.message}`;
             this._handingOff = false;
+            this._finishInputSubmit(false);
           }
         },
         onShow: async (aside, id, options) => {
@@ -477,7 +519,10 @@ export class DaLanding extends LitElement {
             if (!current()) return;
             options.onReady?.();
           } catch (error) {
-            if (current()) this._chatError = error.message;
+            if (current()) {
+              this._chatError = error.message;
+              this._finishInputSubmit(false);
+            }
           } finally {
             if (current() && options) this._handingOff = false;
           }
@@ -547,11 +592,13 @@ export class DaLanding extends LitElement {
         this._prompt = '';
         this._attachments = undefined;
         this._handingOff = false;
+        this._finishInputSubmit(true);
       };
       document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat', options: { text, action, attachments, autoSend, onReady } } }));
     } catch (error) {
       this._handingOff = false;
       this._chatError = `Could not open the assistant: ${error.message}`;
+      this._finishInputSubmit(false);
     }
   }
 
@@ -737,6 +784,11 @@ export class DaLanding extends LitElement {
             @close=${this.closeAddSite}></da-add-site>` : nothing}
         <section class="welcome" aria-labelledby="welcome-heading">
           <h1 id="welcome-heading">Hi${this._name ? html` ${this._name}` : nothing}, how can I help?</h1>
+          ${this._aoInput ? html`
+            <div class="composer ${!this.composerDisabled ? 'is-enabled' : ''} ${busy ? 'is-processing' : ''}">
+              <div class="composer-surface" aria-hidden="true"></div>
+              ${this._aoInput}
+            </div>` : html`
           <form class="composer ${this._dragging && !this.composerDisabled ? 'is-dropzone' : ''} ${busy ? 'is-processing' : ''}"
             aria-busy=${!!this._chatInputState?.busy || !!this._handingOff || !!this._readingFiles}
             @submit=${this.submitPrompt} @dragenter=${this.handleFileDrag}
@@ -775,7 +827,7 @@ export class DaLanding extends LitElement {
                 @click=${busy ? this._onStop : nothing} ?disabled=${sendDisabled}
               >${icon(busy ? 'stopprocessing' : 'arrowupsend')}</button>
             </div>
-          </form>
+          </form>`}
           <p id="assistant-note" class="assistant-note">
             AI responses may be inaccurate.
             <a href=${ADOBE_AI_GUIDELINES_URL} target="_blank" rel="noopener noreferrer">AI User Guidelines</a>

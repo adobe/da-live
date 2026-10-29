@@ -39,6 +39,13 @@ adobe/da-live#1416 is modified or merged by this work.
 
 ## Component ownership
 
+- AO sites reuse Nexter's extracted `nx-ao-input` in both the landing page and
+  conversation. The input owns draft, attachments, menus, voice and working/Stop
+  presentation. Landing owns the gradient frame, site availability and handoff
+  to the existing conversation; it does not create another controller. The
+  configured `loadChatInput()` loader leaves legacy sites on their existing form.
+  Standalone context events stay isolated from the panel's add-to-chat event.
+  Async handoff must be accepted before the central draft and pills clear.
 - Nexter owns the presentation-only `nx-card`, based on Browse's card layout.
   Landing uses one compact thumbnail size. Ordinary Browse keeps its existing
   renderer until the shared component is available on its supported shell branches.
@@ -191,8 +198,10 @@ intentional differences rather than substitutes for those missing inputs.
   blue-violet ring and faint pink fill (`24045:21667`). The ring follows the
   inner 24px-radius surface, leaving the outer 6px frosted frame untouched.
   Leaving or dropping clears the highlight; dragging text does not activate it.
-  Dropped images, PDFs and Markdown files reuse the Add menu's attachment
+  Legacy dropped images, PDFs and Markdown files reuse the Add menu's attachment
   builder and assistant handoff, preserving the draft without auto-sending.
+  AO inputs use the shared input's AO file allowlist and 100 MB per-file limit;
+  selected or dropped attachments remain local until explicit Send.
   Unsupported or unreadable files produce an explicit error.
   Shared buttons retain their keyboard focus indicators, and forced-colors
   mode provides a system-color focus outline for the prompt.
@@ -240,13 +249,14 @@ intentional differences rather than substitutes for those missing inputs.
   This integration requires the paired Nexter `lpchat` branch for the public
   input-state, safe draft acceptance and panel-cancellation contracts.
   The coworker icon, prompt placeholder and AI disclaimer follow the mock.
-  The composer uses `--s2-body-size-m` (16px) at both UI sizes and
-  `--s2-gray-600` for the placeholder, including dark mode.
-  The plus button opens the existing Add menu locally and remains a plus
-  while open. Files or images opens the native file picker directly; cancelling
+  The expanded AO input uses 16px text in S and 18px in M; the legacy composer
+  retains 16px in both. Both use `--s2-gray-600` for the placeholder in each theme.
+  The plus button opens the existing Add menu locally. The AO input retains its
+  shared prompt/menu behavior. Files or images opens the native picker; cancelling
   does not open chat. Selected files use the existing attachment builder and
-  shared add-to-chat event, without uploading or auto-sending. Other selected
-  actions continue in the existing assistant through `openAddAction(id)`,
+  shared add-to-chat event on handoff, without uploading or auto-sending merely
+  by selecting files. AO prompts and commands stay in the shared central input;
+  parent-owned actions continue in the existing assistant through `openAddAction(id)`,
   supported by both `nx-chat` and `nx-chat-ao`. Typed drafts are preserved.
 - The Need Attention table preserves the Item, Description, Status and Assignee
   headings and a 32px

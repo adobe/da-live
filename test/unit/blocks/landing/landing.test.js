@@ -11,6 +11,7 @@ const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { source, config } = await getNx2Api();
 const { flags } = await getNxEWFlags();
 const { sections } = await import(`${getNx()}/utils/panel.js`);
+const { chatConfig } = await import(`${getNx()}/utils/chat.js`);
 
 const ITEMS = [
   { name: 'Welcome', path: '/org/site/index.html', ext: 'html', lastModified: 1792152000000 },
@@ -57,6 +58,9 @@ describe('landing page', () => {
     document.querySelectorAll('aside.panel').forEach((aside) => aside.remove());
     flags.enabled = false;
     flags.chatDisabled = false;
+    chatConfig.useAo = false;
+    chatConfig.altHarness = false;
+    chatConfig.inputReady = undefined;
     sections.clear();
     sinon.restore();
     ['da-sites', 'da-favorites', 'da-browse-settings', 'ui-size'].forEach((key) => localStorage.removeItem(key));
@@ -631,6 +635,89 @@ describe('landing page', () => {
     expect(detail.options.autoSend).to.equal(true);
     expect(el._prompt).to.equal('');
     expect(el._handingOff).to.equal(false);
+  });
+
+  it('uses the configured extracted AO input without duplicating its form or context subscription', async () => {
+    chatConfig.useAo = true;
+    chatConfig.altHarness = true;
+    const { chat, aside, section } = await mountAssistant('nx-chat-ao');
+    await el.updateComplete;
+    const input = el.shadowRoot.querySelector('nx-ao-input');
+    expect(input).to.equal(el._aoInput);
+    expect(input.variant).to.equal('expanded');
+    expect(input.altHarness).to.equal(true);
+    expect(input.addEvent).to.equal(undefined);
+    expect(el.shadowRoot.querySelector('textarea')).to.equal(null);
+    expect(el.shadowRoot.querySelector('.composer-actions')).to.equal(null);
+    const attachment = { id: 'file', label: 'draft.md', dataBase64: 'ZmlsZQ==' };
+    let options;
+    document.addEventListener('nx-panel-open', ({ detail }) => { options = detail.options; }, { once: true });
+    const accepted = input.onSubmit({ text: 'Read this', context: [], attachments: [attachment] });
+    await el.updateComplete;
+    expect(input.disabled).to.equal(true);
+    expect(input.statusMessage).to.equal('Opening chat...');
+    await section.onShow(aside, undefined, options);
+    expect(await accepted).to.equal(true);
+    expect(chat.setPrompt.secondCall.args).to.deep.equal(['Read this', { replace: false, autoSend: true }]);
+    chat.inputState = { busy: true, disabled: true };
+    chat.dispatchEvent(new CustomEvent('nx-chat-input-state-change', { detail: chat.inputState }));
+    await el.updateComplete;
+    expect(input.blocked).to.equal(true);
+    input.onStop();
+    expect(chat.stop.calledOnce).to.equal(true);
+  });
+
+  it('keeps the composer disabled until the configured input finishes loading', async () => {
+    flags.enabled = true;
+    chatConfig.useAo = true;
+    let finish;
+    chatConfig.inputReady = new Promise((resolve) => { finish = resolve; });
+    el._request = new AbortController();
+    const loading = el.loadChatAvailability(el._request);
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+    await el.updateComplete;
+    expect(el._chatEnabled).to.equal(undefined);
+    expect(el.shadowRoot.querySelector('textarea').disabled).to.equal(true);
+    finish();
+    await loading;
+    await el.updateComplete;
+    expect(el._chatEnabled).to.equal(true);
+    expect(el.shadowRoot.querySelector('nx-ao-input')).to.equal(el._aoInput);
+    expect(el._aoInput.disabled).to.equal(false);
+  });
+
+  it('rejects AO input handoff on panel failure and allows a retry', async () => {
+    chatConfig.useAo = true;
+    const { chat, aside, section } = await mountAssistant('nx-chat-ao');
+    await el.updateComplete;
+    const input = el._aoInput;
+    const payload = { text: 'Keep this draft', context: [], attachments: [] };
+    const accepted = input.onSubmit(payload);
+    section.onError(new Error('Offline'));
+    expect(await accepted).to.equal(false);
+    await el.updateComplete;
+    expect(input.disabled).to.equal(false);
+    let options;
+    document.addEventListener('nx-panel-open', ({ detail }) => { options = detail.options; }, { once: true });
+    const retry = input.onSubmit(payload);
+    await section.onShow(aside, undefined, options);
+    expect(await retry).to.equal(true);
+    expect(chat.setPrompt.callCount).to.equal(2);
+  });
+
+  it('cancels the former AO input handoff when the selected site changes', async () => {
+    chatConfig.useAo = true;
+    const { chat, aside, section } = await mountAssistant('nx-chat-ao');
+    await el.updateComplete;
+    let options;
+    document.addEventListener('nx-panel-open', ({ detail }) => { options = detail.options; }, { once: true });
+    const accepted = el._aoInput.onSubmit({ text: 'Old site', context: [], attachments: [] });
+    hashChange._set({ org: 'org', site: 'other' });
+    expect(await accepted).to.equal(false);
+    await section.onShow(aside, undefined, options);
+    expect(chat.setPrompt.called).to.equal(false);
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('nx-ao-input')).to.equal(null);
   });
 
   it('opens the same chat from the AI menu icon without sending or discarding a central draft', async () => {

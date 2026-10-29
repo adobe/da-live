@@ -10,3 +10,13 @@ export const CHAT_EVENT = {
 export async function loadChat() {
   return document.createElement('nx-chat');
 }
+
+export const chatConfig = { useAo: false, altHarness: false };
+
+export async function loadChatInput() {
+  await chatConfig.inputReady;
+  if (!chatConfig.useAo) return undefined;
+  const input = document.createElement('nx-ao-input');
+  input.altHarness = chatConfig.altHarness;
+  return input;
+}

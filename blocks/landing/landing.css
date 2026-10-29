@@ -139,12 +139,12 @@ h1 {
   mask: url('/blocks/landing/coworker.svg') center / 20px no-repeat;
 }
 
-.composer:has(textarea:enabled):not(:focus-within, .is-dropzone)::before,
+.composer:is(:has(textarea:enabled), .is-enabled):not(:focus-within, .is-dropzone)::before,
 .composer.is-processing::before {
   box-shadow: 0 2px 4px #ec69ff1a;
 }
 
-.composer:has(textarea:enabled):not(:focus-within, .is-dropzone)::after,
+.composer:is(:has(textarea:enabled), .is-enabled):not(:focus-within, .is-dropzone)::after,
 .composer.is-processing::after {
   content: "";
   position: absolute;
@@ -157,7 +157,7 @@ h1 {
   opacity: 0.32;
 }
 
-.composer:where(:has(textarea:enabled):not(:focus-within, .is-dropzone)) .composer-surface,
+.composer:where(:is(:has(textarea:enabled), .is-enabled):not(:focus-within, .is-dropzone)) .composer-surface,
 .composer.is-processing .composer-surface {
   overflow: clip;
   border-color: #ec69ff1a;
@@ -173,7 +173,7 @@ h1 {
     inset 0 -5px 21.6px #ffffff0a, inset 0 24px 32px #ffffff0a;
 }
 
-.composer:where(:has(textarea:enabled):not(:focus-within, .is-dropzone)) .composer-surface::before,
+.composer:where(:is(:has(textarea:enabled), .is-enabled):not(:focus-within, .is-dropzone)) .composer-surface::before,
 .composer.is-processing .composer-surface::before {
   content: "";
   position: absolute;
@@ -196,14 +196,14 @@ h1 {
   box-shadow: 0 8px 32px #00000008, inset 0 24px 32px #ffffff0a, inset 0 -5px 21.6px #ffffff0a;
 }
 
-.composer:has(textarea:enabled):focus-within:not(.is-dropzone)::before {
+.composer:is(:has(textarea:enabled), .is-enabled):focus-within:not(.is-dropzone)::before {
   backdrop-filter: none;
   background: light-dark(#ffffff7a, #3030307a);
   box-shadow: 0 2px 4px #0000000f;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .composer:has(textarea:enabled):hover:not(:focus-within, .is-dropzone) .composer-surface {
+  .composer:is(:has(textarea:enabled), .is-enabled):hover:not(:focus-within, .is-dropzone) .composer-surface {
     background:
       linear-gradient(to bottom, light-dark(#ffffff8f, #ffffff0f) 37.305%, light-dark(#ffffff2e, #ffffff05) 83.398%),
       radial-gradient(ellipse at bottom right,
@@ -214,7 +214,7 @@ h1 {
       light-dark(#fffc, #222c);
   }
 
-  .composer:has(textarea:enabled):hover:not(:focus-within, .is-dropzone) .composer-surface::before {
+  .composer:is(:has(textarea:enabled), .is-enabled):hover:not(:focus-within, .is-dropzone) .composer-surface::before {
     opacity: 0.2;
   }
 }
@@ -222,7 +222,7 @@ h1 {
 @media (forced-colors: active) {
   .composer.is-dropzone .composer-surface,
   .composer.is-processing .composer-surface,
-  .composer:has(textarea:focus-visible) .composer-surface {
+  .composer:focus-within .composer-surface {
     outline: 2px solid Highlight;
     outline-offset: -2px;
   }
