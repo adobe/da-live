@@ -9,7 +9,6 @@ describe('toolbar controller bus subscriptions', () => {
   beforeEach(() => {
     frame = sinon.stub(window, 'requestAnimationFrame');
     toolbarController.reset();
-    canvasBus.blockEditState.emit({ open: false });
     canvasBus.editorViewState.emit({ view: 'content' });
   });
 
@@ -37,14 +36,9 @@ describe('toolbar controller bus subscriptions', () => {
     expect(focus.callCount).to.equal(2);
   });
 
-  it('lets block edit claim doc focus and prevents iframe selections from taking it back', () => {
-    canvasBus.toolbarSurfaceRequest.emit({ surface: 'wysiwyg', active: true });
-    canvasBus.blockEditState.emit({ open: true });
+  it('lets iframe selections take over editing from the doc surface', () => {
+    canvasBus.toolbarSurfaceRequest.emit({ surface: 'doc', active: true });
     expect(toolbarController.activeSurface).to.equal('doc');
-    canvasBus.toolbarSelectionState.emit({ surface: 'wysiwyg', showable: true });
-    expect(toolbarController.activeSurface).to.equal('doc');
-
-    canvasBus.blockEditState.emit({ open: false });
     canvasBus.toolbarSelectionState.emit({ surface: 'wysiwyg', showable: true });
     expect(toolbarController.activeSurface).to.equal('wysiwyg');
   });
@@ -62,13 +56,9 @@ describe('toolbar controller bus subscriptions', () => {
     expect(toolbarController.activeSurface).to.equal('wysiwyg');
   });
 
-  it('clears replayed block-edit state when the doc controller resets', () => {
-    canvasBus.blockEditState.emit({ open: true });
+  it('releases the active surface when the doc controller resets', () => {
+    canvasBus.toolbarSurfaceRequest.emit({ surface: 'doc', active: true });
     toolbarController.reset();
-    let current;
-    const unsub = canvasBus.blockEditState.subscribe((value) => { current = value; });
-    unsub();
-    expect(current).to.deep.equal({ open: false });
     expect(toolbarController.activeSurface).to.equal(null);
   });
 });

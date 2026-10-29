@@ -16,8 +16,11 @@ let extensionToPanelView;
 let getPreviewStatus;
 let createCommentsView;
 let createMetadataView;
+let createBlockView;
 let getCanvasToolPanelViews;
 let fetchExtensions;
+let resolvePreflightConfig;
+let createPreflightView;
 let getItemPreviewUrl;
 let loadBlockLibrary;
 let resetBlockLibraryCache;
@@ -34,11 +37,14 @@ let replaceHTMLAtCursor;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
+  resolvePreflightConfig = mod.resolvePreflightConfig;
+  createPreflightView = mod.createPreflightView;
   getBlockVariants = mod.getBlockVariants;
   extensionToPanelView = mod.extensionToPanelView;
   getPreviewStatus = mod.getPreviewStatus;
   createCommentsView = mod.createCommentsView;
   createMetadataView = mod.createMetadataView;
+  createBlockView = mod.createBlockView;
   getCanvasToolPanelViews = mod.getCanvasToolPanelViews;
   fetchExtensions = mod.fetchExtensions;
   getItemPreviewUrl = mod.getItemPreviewUrl;
@@ -544,6 +550,27 @@ describe('EW panel helpers transformBlock', () => {
     `);
     const variants = await getBlockVariants('/mock-path');
     expect(variants[0].description).to.equal('A hero block');
+  });
+
+  it('preserves structured fields metadata without inserting it into block content', async () => {
+    mockHtml(`
+      <body><div><h2>Hero (Text Start)</h2>
+        <div class="hero left"><div><div><picture><img src="/hero.png"></picture></div></div>
+          <div><div><h1>Author Kit</h1><p>Subheading</p></div></div></div>
+        <div class="library-metadata">
+          <div><div>fields</div><div><table><tbody>
+            <tr><td><p>fields</p></td></tr><tr><td><p>image</p></td></tr>
+            <tr><td><p>title</p><p>subheading</p></td></tr>
+          </tbody></table></div></div>
+        </div>
+      </div></body>
+    `);
+    const [variant] = await getBlockVariants('/mock-path');
+    expect(variant.fields).to.be.instanceOf(window.HTMLTableElement);
+    expect(variant.fields.rows[2].cells[0].children.length).to.equal(2);
+    expect(variant.dom.rows.length).to.equal(3);
+    expect(variant.dom.textContent).not.to.include('fields');
+    expect(variant.dom.querySelector('.library-metadata')).to.equal(null);
   });
 
   it('Sets item.tags from searchtags in embedded library-metadata', async () => {
@@ -1334,7 +1361,7 @@ describe('extensionToPanelView', () => {
     const container = document.createElement('div');
 
     try {
-      await view.loadModal(container, () => {});
+      await view.loadModal(container, () => { });
     } finally {
       window.fetch = savedFetch;
       if (savedAdobeIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedAdobeIMS;
@@ -1406,10 +1433,10 @@ describe('createCommentsView', () => {
 
   it('load() returns an ew-comments element that binds to the current controller', async () => {
     const controller = {
-      subscribe() { return () => {}; },
+      subscribe() { return () => { }; },
       getCurrentUser() { return null; },
-      onCurrentUserChange() { return () => {}; },
-      setPanelOpen() {},
+      onCurrentUserChange() { return () => { }; },
+      setPanelOpen() { },
     };
     setCommentsController(controller);
     const el = await createCommentsView().load();
@@ -1424,9 +1451,9 @@ describe('ew-comments panel visibility', () => {
   let el;
 
   const stubController = (calls) => ({
-    subscribe() { return () => {}; },
+    subscribe() { return () => { }; },
     getCurrentUser() { return null; },
-    onCurrentUserChange() { return () => {}; },
+    onCurrentUserChange() { return () => { }; },
     setPanelOpen(value) { calls.push(value); },
   });
 
@@ -1492,18 +1519,108 @@ describe('createMetadataView', () => {
 describe('getCanvasToolPanelViews', () => {
   afterEach(() => setDaConfigs([]));
 
-  it('includes the metadata view alongside the other first-party Editor views', async () => {
+  it('includes Page and Block alongside the other first-party Editor views', async () => {
     setDaConfigs([{ data: [] }]);
     const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
-    expect(views.map((v) => v.id)).to.include('metadata');
+    expect(views.map((v) => v.id)).to.include.members(['metadata', 'block']);
+  });
+});
+
+describe('createBlockView', () => {
+  it('is a first-party Editor-section view', () => {
+    const view = createBlockView();
+    expect(view.id).to.equal('block');
+    expect(view.label).to.equal('Block');
+    expect(view.section).to.equal('Editor');
+    expect(view.firstParty).to.equal(true);
   });
 
-  it('ignores a custom Preflight configured in the prepare sheet', async () => {
+  it('load() returns an ew-block-properties element', async () => {
+    const el = await createBlockView().load();
+    expect(el.localName).to.equal('ew-block-properties');
+  });
+
+  it('uses the built-in Preflight view when no custom Preflight is configured', async () => {
+    setDaConfigs([{ data: [] }]);
+    const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
+    const preflight = views.find((v) => v.id === 'preflight');
+    expect(preflight.cacheKey).to.equal(undefined);
+  });
+
+  it('uses the custom Preflight view when the prepare sheet configures a path', async () => {
+    setDaConfigs([{ prepare: { data: [{ title: 'Preflight', path: 'https://example.com/pf' }] } }]);
+    const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
+    const preflight = views.find((v) => v.id === 'preflight');
+    expect(preflight.cacheKey).to.equal(JSON.stringify(['https://example.com/pf']));
+  });
+});
+
+describe('resolvePreflightConfig', () => {
+  afterEach(() => setDaConfigs([]));
+
+  it('returns null without a Preflight row', async () => {
+    setDaConfigs([{ prepare: { data: [{ title: 'Other', path: '/x' }] } }, {}]);
+    expect(await resolvePreflightConfig({ org: 'org', site: 'site' })).to.equal(null);
+  });
+
+  it('returns null without an org', async () => {
+    expect(await resolvePreflightConfig({})).to.equal(null);
+  });
+
+  it('uses an org row with a path', async () => {
+    setDaConfigs([{ prepare: { data: [{ title: 'Preflight', path: '/org-pf' }] } }, {}]);
+    expect(await resolvePreflightConfig({ org: 'org', site: 'site' }))
+      .to.deep.equal({ title: 'Preflight', path: '/org-pf' });
+  });
+
+  it('lets the site row override the org row', async () => {
+    setDaConfigs([
+      { prepare: { data: [{ title: 'Preflight', path: '/org-pf' }] } },
+      { prepare: { data: [{ title: 'Preflight', path: '/site-pf' }] } },
+    ]);
+    expect(await resolvePreflightConfig({ org: 'org', site: 'site' }))
+      .to.deep.equal({ title: 'Preflight', path: '/site-pf' });
+  });
+
+  it('falls back to built-in when the winning row has no path', async () => {
+    setDaConfigs([
+      { prepare: { data: [{ title: 'Preflight', path: '/org-pf' }] } },
+      { prepare: { data: [{ title: 'Preflight' }] } },
+    ]);
+    expect(await resolvePreflightConfig({ org: 'org', site: 'site' })).to.equal(null);
+  });
+
+  it('ignores errored configs', async () => {
+    setDaConfigs([{ error: 'nope' }, { prepare: { data: [{ title: 'Preflight', path: '/pf' }] } }]);
+    expect(await resolvePreflightConfig({ org: 'org', site: 'site' }))
+      .to.deep.equal({ title: 'Preflight', path: '/pf' });
+  });
+});
+
+describe('createPreflightView', () => {
+  it('loads the built-in ew-preflight without a custom config', async () => {
+    const view = createPreflightView({ org: 'org', site: 'site' });
+    expect(view).to.include({ id: 'preflight', label: 'Preflight', firstParty: true });
+    expect(view.cacheKey).to.equal(undefined);
+  });
+
+  it('resolves a relative custom path through the preview proxy', () => {
+    const view = createPreflightView({
+      custom: { title: 'Preflight', path: '/tools/preflight.html' },
+      org: 'org',
+      site: 'site',
+    });
+    const [source] = JSON.parse(view.cacheKey);
+    expect(source).to.match(/^https?:\/\//);
+    expect(source).to.contain('/tools/preflight.html');
+  });
+
+  it('retains the configured custom Preflight alongside the built-in default', async () => {
     setDaConfigs([{ prepare: { data: [{ title: 'Preflight', path: 'https://example.com/pf' }] } }]);
     const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
     const preflight = views.find((v) => v.id === 'preflight');
     expect(preflight).to.include({ label: 'Preflight', firstParty: true });
-    expect(preflight.cacheKey).to.equal(undefined);
+    expect(preflight.cacheKey).to.equal(JSON.stringify(['https://example.com/pf']));
   });
 });
 

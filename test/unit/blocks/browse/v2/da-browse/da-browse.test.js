@@ -5,7 +5,7 @@ import { expect } from '@esm-bundle/chai';
 
 // This is needed to make a dynamic import work that is indirectly referenced
 // from da-browse.js
-const { setNx } = await import('../../../../../../scripts/utils.js');
+const { setNx, getNxEWFlags } = await import('../../../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { default: DaBrowse } = await import('../../../../../../blocks/browse/v2/da-list/da-list.js');
@@ -13,6 +13,47 @@ const { default: DaBrowseComponent } = await import('../../../../../../blocks/br
 const { default: DaActionBar } = await import('../../../../../../blocks/browse/da-actionbar/da-actionbar.js');
 
 describe('Browse', () => {
+  it('honors one closed-chat entry without disabling normal remembered-chat restoration', async () => {
+    const { href } = window.location;
+    const { setEWEnabled } = await getNxEWFlags();
+    const stored = localStorage.getItem('nx-panels');
+    const events = [];
+    const onOpen = ({ detail }) => events.push(['open', detail.section]);
+    const onClose = ({ detail }) => events.push(['close', detail.section]);
+    document.addEventListener('nx-panel-open', onOpen);
+    document.addEventListener('nx-panel-close', onClose);
+    setEWEnabled(true);
+    localStorage.setItem('nx-panels', JSON.stringify({ chat: { width: '400px' } }));
+    try {
+      for (const closeChat of [true, false]) {
+        const url = new URL(href);
+        url.search = `?browse=2&landing=home&nx=lp&rum=on${closeChat ? '&chat=closed' : ''}`;
+        window.history.replaceState(null, '', url);
+        const browse = new DaBrowseComponent();
+        browse.renderRoot = browse.createRenderRoot();
+        browse.render = () => undefined;
+        browse.updateNavField = () => {};
+        browse.clearSearch = () => {};
+        browse._clearBrowseSelection = () => {};
+        browse.getEditor = async () => '/canvas#';
+        browse.details = { org: 'org', site: 'site', fullpath: '/org/site' };
+        await browse.update(new Map([['details', undefined]]));
+        expect(browse._ewEnabled, 'EW flag enabled for this fixture').to.be.true;
+        expect(browse._chatEnabled, 'chat enabled for this fixture').to.be.true;
+        expect(new URL(window.location.href).searchParams.has('chat')).to.be.false;
+        expect(new URL(window.location.href).searchParams.get('rum')).to.equal('on');
+      }
+      expect(events).to.deep.equal([['close', 'chat'], ['open', 'chat']]);
+    } finally {
+      setEWEnabled(false);
+      document.removeEventListener('nx-panel-open', onOpen);
+      document.removeEventListener('nx-panel-close', onClose);
+      window.history.replaceState(null, '', href);
+      if (stored === null) localStorage.removeItem('nx-panels');
+      else localStorage.setItem('nx-panels', stored);
+    }
+  });
+
   it('groups by type by default and preserves an explicit opt-out', () => {
     const previous = localStorage.getItem('da-browse-settings');
     try {

@@ -1,7 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import { NodeSelection, TextSelection } from 'da-y-wrapper';
-import { setNx, getNx } from '../../../../../scripts/utils.js';
+import { setNx, getNx, getNx2 } from '../../../../../scripts/utils.js';
 import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 import { makeRealView, makeView } from '../test-helpers.js';
 
@@ -10,6 +10,7 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 const { setupIframeChannel } = await import('../../../../../blocks/canvas/ew-panel-extensions/iframe-protocol.js');
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
+const { setRepositoryConfig } = await import(`${getNx2()}/utils/aem-assets/repository-config.js`);
 const { getInstrumentedHTML, getInstrumentedHTMLForSDK } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
 
 const wait = (ms = 50) => new Promise((resolve) => { setTimeout(resolve, ms); });
@@ -247,6 +248,7 @@ describe('setupIframeChannel', () => {
 
   afterEach(() => {
     setUrl(originalUrl);
+    setRepositoryConfig(null);
     canvasBus.branchState.emit({ path: null, status: 'pending' });
   });
 
@@ -256,7 +258,7 @@ describe('setupIframeChannel', () => {
       iframe,
       hashState: { site: 'mysite' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
 
     expect(result.channel).to.equal(null);
@@ -268,7 +270,7 @@ describe('setupIframeChannel', () => {
       iframe: { contentWindow: null },
       hashState: { org: 'myorg', site: 'mysite' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
 
     expect(result.channel).to.equal(null);
@@ -282,7 +284,7 @@ describe('setupIframeChannel', () => {
       iframe,
       hashState: { org: 'myorg', site: 'mysite', path: 'a/b', view: 'split' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
 
     await wait(800);
@@ -300,8 +302,11 @@ describe('setupIframeChannel', () => {
       path: '/a/b',
       view: 'split',
       hash: '#/myorg/mysite/a/b',
+      daAdmin: 'https://admin.da.live',
+      editorOrigin: window.location.origin,
     });
     expect(message.context).to.equal(message.project);
+    expect(message).to.have.property('token');
     expect(message.capabilities).to.deep.equal({ liveDocument: 1, sendHTMLReplace: 1 });
     expect(targetOrigin).to.equal('https://plugin.example.com');
     expect(transfer).to.have.lengthOf(1);
@@ -317,7 +322,7 @@ describe('setupIframeChannel', () => {
       iframe,
       hashState: { org: 'myorg', site: 'mysite' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
 
     await wait(800);
@@ -344,7 +349,7 @@ describe('setupIframeChannel', () => {
       iframe,
       hashState: { org: 'myorg', site: 'mysite', path: 'page' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
     try {
       await wait(800);
@@ -373,13 +378,294 @@ describe('setupIframeChannel', () => {
     destroy();
   });
 
+  it('relays HTML drags only from the connected plugin frame and origin', async () => {
+    const iframe = makeIframe();
+    iframe.contentWindow = window;
+    const { destroy } = await setupIframeChannel({
+      iframe,
+      hashState: { org: 'myorg', site: 'mysite' },
+      getView: () => null,
+      onClose: () => { },
+    });
+    const starts = [];
+    let ends = 0;
+    const onStart = (event) => starts.push(event.detail.html);
+    const onEnd = () => { ends += 1; };
+    window.addEventListener('ew-table-drag-start', onStart);
+    window.addEventListener('ew-table-drag-end', onEnd);
+    const data = { type: 'ew-table-drag-start', html: '<table><tr><td>Hero</td></tr></table>' };
+    const wrongSource = new MessageChannel();
+    const emit = (source, origin, payload) => window.dispatchEvent(
+      new MessageEvent('message', { source, origin, data: payload }),
+    );
+    emit(wrongSource.port1, 'https://plugin.example.com', data);
+    emit(window, 'https://other.example.com', data);
+    emit(window, 'https://plugin.example.com', { ...data, html: '' });
+    expect(starts).to.have.length(0);
+    emit(iframe.contentWindow, 'https://plugin.example.com', data);
+    emit(iframe.contentWindow, 'https://plugin.example.com', { ...data, html: '<h2>Heading</h2>' });
+    expect(starts).to.deep.equal([data.html, '<h2>Heading</h2>']);
+    emit(iframe.contentWindow, 'https://plugin.example.com', { type: 'ew-table-drag-end' });
+    expect(ends).to.equal(1);
+    destroy();
+    emit(iframe.contentWindow, 'https://plugin.example.com', data);
+    expect(starts).to.have.length(2);
+    wrongSource.port1.close();
+    wrongSource.port2.close();
+    window.removeEventListener('ew-table-drag-start', onStart);
+    window.removeEventListener('ew-table-drag-end', onEnd);
+  });
+
+  it('rejects asset listing requests without host authentication', async () => {
+    const iframe = makeIframe();
+    iframe.contentWindow = window;
+    const postMessage = sinon.stub(window, 'postMessage');
+    const { destroy } = await setupIframeChannel({
+      iframe,
+      hashState: { org: 'myorg', site: 'mysite' },
+      getView: () => null,
+      onClose: () => { },
+    });
+    const emit = (source, origin, type) => window.dispatchEvent(new MessageEvent('message', { source, origin, data: { type } }));
+    const wrongSource = new MessageChannel();
+    try {
+      emit(wrongSource.port1, 'https://plugin.example.com', 'ew-asset-list-request');
+      emit(window, 'https://other.example.com', 'ew-asset-list-request');
+      expect(postMessage.called).to.be.false;
+      emit(window, 'https://plugin.example.com', 'ew-asset-list-request');
+      await wait();
+      expect(postMessage.firstCall.args[0]).to.deep.equal({
+        type: 'ew-asset-list-error',
+        error: 'Sign in to Experience Workspace to browse assets.',
+      });
+    } finally {
+      destroy();
+      wrongSource.port1.close();
+      wrongSource.port2.close();
+      postMessage.restore();
+    }
+  });
+
+  it('uses live IMS authentication without forwarding it in asset list responses', async () => {
+    const previousIms = window.adobeIMS;
+    const previousImsFlag = localStorage.getItem('nx-ims');
+    const previousFetch = window.fetch;
+    localStorage.setItem('nx-ims', 'true');
+    const getAccessToken = sinon.stub().returns({ token: 'initial-token' });
+    window.adobeIMS = { getAccessToken };
+    window.fetch = async () => new Response('', { status: 404 });
+    const iframe = makeIframe();
+    iframe.contentWindow = window;
+    const postMessage = sinon.stub(window, 'postMessage');
+    let destroy;
+    try {
+      ({ destroy } = await setupIframeChannel({
+        iframe,
+        hashState: { org: 'myorg', site: 'mysite' },
+        getView: () => null,
+        onClose: () => { },
+      }));
+      await wait(800);
+      expect(postMessage.firstCall.args[0].token).to.equal('initial-token');
+      getAccessToken.returns({ token: 'refreshed-token' });
+      window.dispatchEvent(new MessageEvent('message', {
+        source: window,
+        origin: 'https://plugin.example.com',
+        data: { type: 'ew-asset-list-request' },
+      }));
+      await wait(150);
+      const listReply = postMessage.getCalls().find((call) => (
+        call.args[0].type === 'ew-asset-list-error'
+      ))?.args[0];
+      expect(listReply).to.deep.equal({
+        type: 'ew-asset-list-error',
+        error: 'No AEM Assets repository is configured for this site.',
+      });
+    } finally {
+      destroy?.();
+      postMessage.restore();
+      window.adobeIMS = previousIms;
+      window.fetch = previousFetch;
+      if (previousImsFlag === null) localStorage.removeItem('nx-ims');
+      else localStorage.setItem('nx-ims', previousImsFlag);
+    }
+  });
+
+  it('lists only host-fetched assets without forwarding authentication', async () => {
+    setRepositoryConfig({
+      repositoryId: 'author-p1-e1.adobeaemcloud.com',
+      tierType: 'author',
+      isDmEnabled: false,
+    });
+    const previousIms = window.adobeIMS;
+    const previousImsFlag = localStorage.getItem('nx-ims');
+    const previousFetch = window.fetch;
+    localStorage.setItem('nx-ims', 'true');
+    window.adobeIMS = { getAccessToken: () => ({ token: 'live-token' }) };
+    const requests = [];
+    window.fetch = async (url, options) => {
+      if (url.includes('/ping/')) return new Response('', { status: 200 });
+      if (url.includes('/config/asset-list-bridge-org/asset-list-bridge-site/')) {
+        return new Response(JSON.stringify({
+          data: [
+            { key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' },
+          ],
+        }), { status: 200 });
+      }
+      if (url.startsWith('https://author-p1-e1.adobeaemcloud.com/adobe/repository/;api=search')) {
+        requests.push({ url, options });
+        return new Response(JSON.stringify({
+          children: [{
+            'repo:path': '/content/dam/listed.jpg',
+            'repo:name': 'listed.jpg',
+            'repo:id': 'urn:aaid:aem:listed',
+            'dc:format': 'image/jpeg',
+            'aem:formatName': 'jpeg',
+          }],
+        }), { status: 200 });
+      }
+      if (url === 'https://author-p1-e1.adobeaemcloud.com/content/dam/listed.jpg') {
+        requests.push({ url, options });
+        return new Response(new Blob(['jpeg bytes'], { type: 'image/jpeg' }));
+      }
+      return new Response('', { status: 404 });
+    };
+    const iframe = document.createElement('iframe');
+    document.body.append(iframe);
+    Object.defineProperty(iframe, 'src', { value: 'https://plugin.example.com/app' });
+    iframe.getBoundingClientRect = () => ({ left: 100, top: 40, right: 400, bottom: 340 });
+    const postMessage = sinon.stub(iframe.contentWindow, 'postMessage');
+    let destroy;
+    try {
+      ({ destroy } = await setupIframeChannel({
+        iframe,
+        hashState: { org: 'asset-list-bridge-org', site: 'asset-list-bridge-site' },
+        getView: () => null,
+        onClose: () => { },
+      }));
+      const emit = (data) => window.dispatchEvent(new MessageEvent('message', { source: iframe.contentWindow, origin: 'https://plugin.example.com', data }));
+      emit({ type: 'ew-asset-list-request' });
+      await wait(150);
+      const result = postMessage.getCalls().find(({ args }) => args[0].type === 'ew-asset-list-result')?.args[0];
+      expect(result, JSON.stringify(postMessage.getCalls().map(({ args }) => args[0]))).to.exist;
+      expect(result.assets[0].name).to.equal('listed.jpg');
+      expect(result.assets[0]).not.to.have.property('html');
+      expect(result).not.to.have.property('token');
+      expect(requests).to.have.lengthOf(1);
+      expect(requests[0].options.headers.Authorization).to.equal('Bearer live-token');
+      emit({ type: 'ew-asset-list-request', more: true, url: 'https://evil.org/steal' });
+      await wait();
+      expect(requests).to.have.lengthOf(1);
+      expect(postMessage.getCalls().filter(({ args }) => args[0].type === 'ew-asset-list-result')[1].args[0]).to.include({ hasMore: false });
+      emit({
+        type: 'ew-table-drag-handles',
+        handles: [{
+          x: 10,
+          y: 10,
+          width: 100,
+          height: 40,
+          assetId: 'urn:aaid:aem:listed',
+          clickable: false,
+        }],
+      });
+      const handle = document.querySelector('.ew-table-drag-handle');
+      expect(handle).to.exist;
+      const pending = new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: new DataTransfer() });
+      expect(handle.dispatchEvent(pending)).to.be.false;
+      expect(pending.dataTransfer.files).to.have.lengthOf(0);
+      handle.dispatchEvent(new PointerEvent('pointerenter'));
+      await wait();
+      expect(requests).to.have.lengthOf(2);
+      const authorization = requests[0].options.headers.Authorization;
+      expect(requests[1].options.headers.Authorization).to.equal(authorization);
+      const transfer = new DataTransfer();
+      const starts = [];
+      const files = [];
+      const onStart = () => starts.push('html');
+      const onAssetStart = (event) => files.push(event.detail.file);
+      window.addEventListener('ew-table-drag-start', onStart);
+      window.addEventListener('ew-asset-drag-start', onAssetStart);
+      try {
+        handle.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: transfer }));
+        expect(transfer.files).to.have.lengthOf(0);
+        expect(transfer.getData('application/x-ew-image')).to.equal('image');
+        expect(files).to.have.lengthOf(1);
+        expect(files[0].name).to.equal('listed.jpg');
+        expect(await files[0].text()).to.equal('jpeg bytes');
+        expect(transfer.getData('text/html')).to.equal('');
+        expect(starts).to.have.lengthOf(0);
+        handle.click();
+        expect(postMessage.getCalls().some(({ args }) => args[0].type === 'ew-table-drag-handle-click')).to.be.false;
+      } finally {
+        window.removeEventListener('ew-table-drag-start', onStart);
+        window.removeEventListener('ew-asset-drag-start', onAssetStart);
+      }
+    } finally {
+      destroy?.();
+      postMessage.restore();
+      iframe.remove();
+      window.adobeIMS = previousIms;
+      window.fetch = previousFetch;
+      if (previousImsFlag === null) localStorage.removeItem('nx-ims');
+      else localStorage.setItem('nx-ims', previousImsFlag);
+    }
+  });
+
+  it('creates host-document drag sources over variants and removes them on teardown', async () => {
+    const iframe = document.createElement('iframe');
+    document.body.append(iframe);
+    Object.defineProperty(iframe, 'src', { value: 'https://plugin.example.com/app' });
+    iframe.getBoundingClientRect = () => ({ left: 100, top: 40, right: 400, bottom: 340 });
+    const { destroy } = await setupIframeChannel({
+      iframe,
+      hashState: { org: 'myorg', site: 'mysite' },
+      getView: () => null,
+      onClose: () => { },
+    });
+    const markup = '<table><tr><td>Hero</td></tr></table>';
+    const heading = '<h2>Heading</h2>';
+    const handles = [
+      { x: 0, y: 0, width: 0, height: 20, html: markup },
+      { x: 30, y: 50, width: 100, height: 40, html: heading },
+      {
+        x: 150, y: 50, width: 100, height: 40, html: '<img src="/asset.jpg">', clickable: false,
+      },
+    ];
+    window.dispatchEvent(new MessageEvent('message', {
+      source: iframe.contentWindow,
+      origin: 'https://plugin.example.com',
+      data: { type: 'ew-table-drag-handles', handles },
+    }));
+    const handle = document.querySelector('.ew-table-drag-handle');
+    expect(document.querySelectorAll('.ew-table-drag-handle')).to.have.length(2);
+    expect(handle.getBoundingClientRect().left).to.equal(130);
+    expect(handle.getBoundingClientRect().top).to.equal(90);
+    const transfer = new DataTransfer();
+    const starts = [];
+    const onStart = (event) => starts.push(event.detail.html);
+    window.addEventListener('ew-table-drag-start', onStart);
+    handle.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: transfer }));
+    expect(transfer.getData('text/html')).to.equal(heading);
+    expect(starts).to.deep.equal([heading]);
+    const postMessage = sinon.stub(iframe.contentWindow, 'postMessage');
+    handle.click();
+    expect(postMessage.calledWith({ type: 'ew-table-drag-handle-click', index: 1 })).to.be.true;
+    postMessage.resetHistory();
+    document.querySelectorAll('.ew-table-drag-handle')[1].click();
+    expect(postMessage.called).to.be.false;
+    destroy();
+    expect(document.querySelector('.ew-table-drag-handles')).to.equal(null);
+    window.removeEventListener('ew-table-drag-start', onStart);
+    iframe.remove();
+  });
+
   it('opens the tools panel for a showPanel action', async () => {
     const iframe = makeIframe();
     const { channel, destroy } = await setupIframeChannel({
       iframe,
       hashState: { org: 'myorg', site: 'mysite' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
 
     let received;
@@ -400,7 +686,7 @@ describe('setupIframeChannel', () => {
       iframe,
       hashState: { org: 'myorg', site: 'mysite' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
 
     let received;
@@ -421,7 +707,7 @@ describe('setupIframeChannel', () => {
       iframe,
       hashState: { org: 'myorg', site: 'mysite' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
 
     let received;
@@ -442,7 +728,7 @@ describe('setupIframeChannel', () => {
       iframe,
       hashState: { org: 'myorg', site: 'mysite' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
 
     const reply = new Promise((resolve) => {
@@ -462,7 +748,7 @@ describe('setupIframeChannel', () => {
       iframe,
       hashState: { org: 'myorg', site: 'mysite' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
 
     document.dispatchEvent(new CustomEvent(CHAT_EVENT.AGENT_CHANGE, { detail: { agent: 'writer' } }));
@@ -481,7 +767,7 @@ describe('setupIframeChannel', () => {
       iframe,
       hashState: { org: 'myorg', site: 'mysite' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
 
     destroy();
@@ -498,7 +784,7 @@ describe('setupIframeChannel', () => {
       iframe,
       hashState: { org: 'myorg', site: 'mysite' },
       getView: () => null,
-      onClose: () => {},
+      onClose: () => { },
     });
 
     destroy();
@@ -524,7 +810,7 @@ describe('setupIframeChannel getSelection', () => {
 
   async function connect(view) {
     const iframe = makeIframe();
-    const options = { iframe, hashState: HOST, getView: () => view, onClose: () => {} };
+    const options = { iframe, hashState: HOST, getView: () => view, onClose: () => { } };
     const { channel, destroy } = await setupIframeChannel(options);
     destroyChannel = destroy;
     return { iframe, channel };

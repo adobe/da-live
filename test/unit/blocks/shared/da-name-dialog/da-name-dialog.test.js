@@ -126,6 +126,7 @@ describe('da-name-dialog', () => {
     await mount({ open: true, error: 'Could not create the page. Try a different name.' });
     expect(el.shadowRoot.querySelector('.nx-input-error-msg').textContent.trim())
       .to.equal('Could not create the page. Try a different name.');
+    expect(el.shadowRoot.querySelector('.nx-form-field').classList.contains('nx-field-error')).to.be.true;
   });
 
   it('disables the Create button while saving', async () => {

@@ -3,19 +3,98 @@ import { setNx } from '../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { decorateArea } = await import('../../../scripts/scripts.js');
+const { decorateArea, configureLandingNav } = await import('../../../scripts/scripts.js');
+
+describe('landing nav fragment', () => {
+  let originalHref;
+  let originalMeta;
+
+  beforeEach(() => {
+    originalHref = window.location.href;
+    originalMeta = document.head.querySelector('meta[name="nav-path"]');
+    originalMeta?.remove();
+  });
+
+  afterEach(() => {
+    document.head.querySelector('meta[name="nav-path"]')?.remove();
+    if (originalMeta) document.head.append(originalMeta);
+    window.history.replaceState(null, '', originalHref);
+  });
+
+  it('opts root previews and return routes into the standalone selector fragment', () => {
+    ['true', 'home'].forEach((value) => {
+      document.head.querySelector('meta[name="nav-path"]')?.remove();
+      window.history.replaceState(null, '', `/?nxver=2&landing=${value}`);
+      configureLandingNav();
+      configureLandingNav();
+      const metas = document.head.querySelectorAll('meta[name="nav-path"]');
+      expect(metas).to.have.length(1);
+      expect(metas[0].content).to.equal('/nx/fragments/nav-new-landing');
+    });
+  });
+
+  it('preserves an explicitly authored custom nav path', () => {
+    window.history.replaceState(null, '', '/?landing=true');
+    const meta = document.createElement('meta');
+    meta.name = 'nav-path';
+    meta.content = '/custom/nav';
+    document.head.append(meta);
+    configureLandingNav();
+    expect(meta.content).to.equal('/custom/nav');
+  });
+
+  it('does not change ordinary pages or disabled landing previews', () => {
+    ['', '?landing=false'].forEach((search) => {
+      window.history.replaceState(null, '', `/${search}`);
+      configureLandingNav();
+      expect(document.head.querySelector('meta[name="nav-path"]')).to.be.null;
+    });
+  });
+});
 
 describe('decorateArea', () => {
   let container;
+  let originalHref;
 
   beforeEach(() => {
+    originalHref = window.location.href;
     container = document.createElement('div');
     document.body.appendChild(container);
   });
 
   afterEach(() => {
     container.remove();
-    window.location.hash = '';
+    window.history.replaceState(null, '', originalHref);
+  });
+
+  it('preserves preview navigation in sidebar fragments even without images', () => {
+    window.history.replaceState(null, '', '/?landing=true&nx=lp&theme=light#/org/site');
+    container.innerHTML = '<a href="/apps">Apps</a><a href="/marketplace">Marketplace</a><a href="https://www.aem.live/docs/ew/about">Learn</a>';
+    decorateArea({ area: container });
+    const [apps, marketplace, learn] = container.querySelectorAll('a');
+    [apps, marketplace].forEach((link) => {
+      expect(link.search).to.equal('?nx=lp&theme=light&landing=home');
+    });
+    expect(learn.href).to.equal('https://www.aem.live/docs/ew/about');
+  });
+
+  it('adapts the legacy shell decoration callback to its actual fragment argument', () => {
+    window.history.replaceState(null, '', '/apps/loc?landing=home&nx=lp');
+    const fragment = document.createElement('div');
+    fragment.innerHTML = '<a href="/apps">Apps</a>';
+    decorateArea(fragment);
+    const link = fragment.querySelector('a');
+    expect(link.search).to.equal('?nx=lp&landing=home');
+    expect(link.pathname).to.equal('/apps');
+  });
+
+  it('does not alter local anchors, downloads or brand assets', () => {
+    window.history.replaceState(null, '', '/?landing=true&nx=lp');
+    container.innerHTML = '<a href="#section">Section</a><a href="/export" download>Export</a><a href="/brand.svg">Author</a>';
+    const links = [...container.querySelectorAll('a')];
+    const hrefs = links.map((link) => link.getAttribute('href'));
+    decorateArea({ area: container });
+    expect(links.map((link) => link.getAttribute('href'))).to.deep.equal(hrefs);
   });
 
   it('eager-loads a light-background image in light-scheme', () => {

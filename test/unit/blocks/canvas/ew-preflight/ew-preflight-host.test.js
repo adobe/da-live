@@ -1,6 +1,17 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
-import { getNx, setNx } from '../../../../../scripts/utils.js';
+import { setNx } from '../../../../../scripts/utils.js';
+
+const tick = () => new Promise((resolve) => { setTimeout(resolve, 30); });
+
+const EXTENSION = {
+  name: 'preflight',
+  title: 'Preflight',
+  sources: ['https://example.com/pf'],
+  experience: 'inline',
+  org: 'org',
+  site: 'site',
+};
 
 function captureStatus() {
   const events = [];
@@ -14,7 +25,6 @@ function captureStatus() {
 
 describe('ew-preflight-host', () => {
   let canvasBus;
-  let hashChange;
   let peekPendingPreflightRequest;
   let takePendingPreflightRequest;
   let el;
@@ -26,52 +36,120 @@ describe('ew-preflight-host', () => {
     responder.initPreflightResponder();
     await import('../../../../../blocks/canvas/ew-preflight/ew-preflight-host.js');
     ({ canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js'));
-    ({ hashChange } = await import(`${getNx()}/utils/utils.js`));
   });
 
-  async function mount(host = document.createElement('ew-preflight-host')) {
+  async function mount() {
+    const host = document.createElement('ew-preflight-host');
+    host.extension = EXTENSION;
     document.body.append(host);
     await host.updateComplete;
     return host;
   }
 
+  const custom = (host) => host.shadowRoot.querySelector('ew-panel-extension');
   const builtin = (host) => host.shadowRoot.querySelector('ew-preflight');
+  const run = (requestId) => canvasBus.preflightRunRequest.emit({ paths: ['/org/site/a.html'], requestId });
 
   afterEach(() => {
     el?.remove();
     el = null;
     takePendingPreflightRequest();
-    hashChange._set({});
   });
 
-  it('renders the built-in Preflight and exposes its header actions', async () => {
+  it('shows the custom content by default', async () => {
     el = await mount();
-    expect(builtin(el)).to.exist;
-    expect(el.getHeaderActions()).to.equal(builtin(el).getHeaderActions());
+    expect(custom(el)).to.exist;
+    expect(custom(el).hidden).to.equal(false);
+    expect(custom(el).extension).to.equal(EXTENSION);
+    expect(builtin(el)).to.equal(null);
+    expect(el.getHeaderActions().childElementCount).to.equal(0);
   });
 
-  it('lets the built-in Preflight claim a publish gate parked before mount', async () => {
-    hashChange._set({ org: 'org', site: 'site', path: '/a' });
-    el = document.createElement('ew-preflight-host');
-    let evaluations = 0;
-    el._preflight._evaluate = async () => {
-      evaluations += 1;
-      el._preflight._data = { failed: 0 };
-      return el._preflight._verdictFor({ data: el._preflight._data });
-    };
+  it('switches to the built-in Preflight for a publish gate and reports its verdict', async () => {
+    el = await mount();
     const cap = captureStatus();
-    try {
-      canvasBus.preflightRunRequest.emit({ paths: ['/org/site/a.html'], requestId: 'h1' });
-      expect(peekPendingPreflightRequest()?.requestId).to.equal('h1');
-      await mount(el);
-      await builtin(el).updateComplete;
-      expect(peekPendingPreflightRequest()).to.equal(null);
-      expect(evaluations).to.equal(1);
-      expect(cap.events).to.deep.equal([
-        { path: '/org/site/a.html', status: 'success', requestId: 'h1' },
-      ]);
-    } finally {
-      cap.stop();
-    }
+    run('h1');
+    await el.updateComplete;
+    await tick();
+    cap.stop();
+    expect(builtin(el)).to.exist;
+    expect(custom(el).hidden).to.equal(true);
+    expect(el.getHeaderActions().childElementCount).to.equal(1);
+    expect(peekPendingPreflightRequest()).to.equal(null);
+    const gate = cap.events.filter((d) => d.requestId === 'h1');
+    expect(gate).to.have.length(1);
+    expect(gate[0].path).to.equal('/org/site/a.html');
+  });
+
+  it('claims a request parked before mount exactly once', async () => {
+    const cap = captureStatus();
+    run('h2');
+    expect(peekPendingPreflightRequest()?.requestId).to.equal('h2');
+    el = await mount();
+    await tick();
+    cap.stop();
+    expect(builtin(el)).to.exist;
+    expect(peekPendingPreflightRequest()).to.equal(null);
+    expect(cap.events.filter((d) => d.requestId === 'h2')).to.have.length(1);
+  });
+
+  it('returns to the custom content when the tools panel closes', async () => {
+    el = await mount();
+    run('h3');
+    await el.updateComplete;
+    await tick();
+    canvasBus.toolPanelViewState.emit(null);
+    await el.updateComplete;
+    expect(builtin(el)).to.equal(null);
+    expect(custom(el).hidden).to.equal(false);
+    expect(el.getHeaderActions().childElementCount).to.equal(0);
+    canvasBus.toolPanelViewState.emit('preflight');
+  });
+
+  it('ignores other panels closing (e.g. chat)', async () => {
+    el = await mount();
+    run('h4');
+    await el.updateComplete;
+    await tick();
+    el._gateSettled = false;
+    document.dispatchEvent(new CustomEvent('nx-panel-close', { bubbles: true, composed: true }));
+    document.dispatchEvent(new CustomEvent('nx-panel-close', { detail: { section: 'chat' } }));
+    // The still-open tool panel re-broadcasts its current view.
+    canvasBus.toolPanelViewState.emit('preflight');
+    await el.updateComplete;
+    expect(builtin(el)).to.exist;
+  });
+
+  it('returns to the custom content on a view switch only after the gate settled', async () => {
+    el = await mount();
+    run('h5');
+    await el.updateComplete;
+    await tick();
+    el._gateSettled = false;
+    canvasBus.toolPanelViewState.emit('files');
+    await el.updateComplete;
+    expect(builtin(el)).to.exist;
+
+    canvasBus.preflightStatusState.emit({ requestId: 'h5', status: 'fail' });
+    canvasBus.toolPanelViewState.emit('files');
+    await el.updateComplete;
+    expect(builtin(el)).to.equal(null);
+    canvasBus.toolPanelViewState.emit('preflight');
+  });
+
+  it('reuses a mounted built-in for a second gate and drops the parked copy', async () => {
+    el = await mount();
+    run('h6');
+    await el.updateComplete;
+    await tick();
+    const first = builtin(el);
+    const cap = captureStatus();
+    run('h7');
+    await el.updateComplete;
+    await tick();
+    cap.stop();
+    expect(builtin(el)).to.equal(first);
+    expect(peekPendingPreflightRequest()).to.equal(null);
+    expect(cap.events.filter((d) => d.requestId === 'h7')).to.have.length(1);
   });
 });

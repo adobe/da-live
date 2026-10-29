@@ -1,0 +1,44 @@
+body:has(da-landing) {
+  --landing-font-family: landing-clean, var(--s2-font-family);
+  --landing-display-family: landing-display, var(--landing-font-family);
+}
+
+body.dark-scheme:has(da-landing) {
+  color-scheme: dark;
+}
+
+body:has(da-landing[data-theme="light"]) {
+  color-scheme: light;
+}
+
+html:has(meta[content="app-frame"]) body main:has(da-landing) {
+  border: 0;
+}
+
+@font-face {
+  font-family: landing-clean;
+  src: url('/blocks/landing/adobe-clean-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: landing-clean;
+  src: url('/blocks/landing/adobe-clean-medium.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: landing-clean;
+  src: url('/blocks/landing/adobe-clean-bold.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: landing-display;
+  src: local('Adobe Clean Display SemiBold'), local('AdobeCleanDisplay-SemiBold');
+  font-weight: 600;
+  font-display: swap;
+}

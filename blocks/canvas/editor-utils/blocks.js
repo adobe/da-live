@@ -56,19 +56,36 @@ export function getTableBlockVariant(tableNode) {
   return match ? match[1].trim() : '';
 }
 
+/** The whole block selected directly or containing both ends of the selection. */
+export function getSelectedBlock(state) {
+  const { selection } = state ?? {};
+  if (!selection) return null;
+  if (selection instanceof NodeSelection && selection.node.type.name === 'table') {
+    return { node: selection.node, from: selection.from, to: selection.to };
+  }
+  const { $from, to } = selection;
+  for (let { depth } = $from; depth > 0; depth -= 1) {
+    const node = $from.node(depth);
+    if (node.type.name === 'table') {
+      const from = $from.before(depth);
+      if (to < from + node.nodeSize) return { node, from, to: from + node.nodeSize };
+    }
+  }
+  return null;
+}
+
 /**
- * Rewrite the selected block's header cell to carry `variant` (e.g. `name (variant)`),
+ * Rewrite the selected or enclosing block's header cell to carry `variant`,
  * or just `name` when `variant` is empty, keeping the block node selected.
  */
 export function setTableBlockVariant(view, variant) {
   if (!view) return;
-  const { selection } = view.state;
-  if (!(selection instanceof NodeSelection)) return;
-  const table = selection.node;
-  if (table?.type?.name !== 'table') return;
+  const block = getSelectedBlock(view.state);
+  if (!block) return;
+  const table = block.node;
   const para = table.firstChild?.firstChild?.firstChild;
   if (!para) return;
-  const tablePos = selection.from;
+  const tablePos = block.from;
   // table > row > cell > paragraph: content of the paragraph starts 4 tokens in.
   const from = tablePos + 4;
   const to = from + para.content.size;
@@ -222,6 +239,36 @@ export function appendBlockRow(view, tablePos, rowDom) {
   });
   if (!rowNode) return;
   const tr = state.tr.insert(tablePos + table.nodeSize - 1, rowNode);
+  tr.setSelection(NodeSelection.create(tr.doc, tablePos));
+  view.dispatch(tr.scrollIntoView());
+}
+
+function getBlockItemRow(view, tablePos, rowIndex) {
+  if (!view || !Number.isInteger(rowIndex) || rowIndex < 1) return null;
+  const table = view.state.doc.nodeAt(tablePos);
+  if (table?.type.name !== 'table' || rowIndex >= table.childCount) return null;
+  let from = tablePos + 1;
+  for (let i = 0; i < rowIndex; i += 1) from += table.child(i).nodeSize;
+  const node = table.child(rowIndex);
+  return { from, to: from + node.nodeSize, node };
+}
+
+export function deleteBlockRow(view, tablePos, rowIndex) {
+  const row = getBlockItemRow(view, tablePos, rowIndex);
+  if (!row) return;
+  const tr = view.state.tr.delete(row.from, row.to);
+  tr.setSelection(NodeSelection.create(tr.doc, tablePos));
+  view.dispatch(tr.scrollIntoView());
+}
+
+export function moveBlockRow(view, tablePos, fromIndex, toIndex) {
+  if (fromIndex === toIndex) return;
+  const source = getBlockItemRow(view, tablePos, fromIndex);
+  const target = getBlockItemRow(view, tablePos, toIndex);
+  if (!source || !target) return;
+  const destination = fromIndex < toIndex ? target.to : target.from;
+  const tr = view.state.tr.delete(source.from, source.to);
+  tr.insert(tr.mapping.map(destination, -1), source.node);
   tr.setSelection(NodeSelection.create(tr.doc, tablePos));
   view.dispatch(tr.scrollIntoView());
 }

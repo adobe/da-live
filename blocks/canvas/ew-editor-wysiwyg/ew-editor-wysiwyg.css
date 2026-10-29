@@ -6,11 +6,18 @@
 }
 
 .ew-editor-wysiwyg-surface {
+  position: relative;
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
   min-width: 0;
+}
+
+.ew-editor-wysiwyg-drop-surface {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
 }
 
 .ew-editor-wysiwyg-surface[hidden] {

@@ -44,6 +44,35 @@ export function sanitizePath(path) {
   return `/${sanitizePathParts(path).join('/')}`;
 }
 
+export function getHomeHref({ href = window.location.href } = {}) {
+  const homeUrl = new URL(href);
+  if (!['true', 'home'].includes(homeUrl.searchParams.get('landing'))) return undefined;
+  const [org, site] = homeUrl.hash.startsWith('#/') ? homeUrl.hash.slice(2).split('/') : [];
+  homeUrl.pathname = '/';
+  homeUrl.searchParams.set('landing', 'true');
+  homeUrl.searchParams.delete('browse');
+  homeUrl.hash = org && site ? `#/${org}/${site}` : '';
+  return homeUrl.href;
+}
+
+export function getNavigationHref({ href, currentHref = window.location.href }) {
+  if (!getHomeHref({ href: currentHref })) return href;
+  const currentUrl = new URL(currentHref);
+  const url = new URL(href, currentUrl);
+  if (url.origin !== currentUrl.origin) {
+    if (!['https://da.live', 'https://da.page'].includes(url.origin)) return href;
+    url.protocol = currentUrl.protocol;
+    url.host = currentUrl.host;
+  }
+  ['nx', 'nxver', 'quick-edit', 'ew', 'nx-chat-ao', 'theme'].forEach((key) => {
+    if (!url.searchParams.has(key) && currentUrl.searchParams.has(key)) {
+      url.searchParams.set(key, currentUrl.searchParams.get(key));
+    }
+  });
+  if (!url.searchParams.has('landing')) url.searchParams.set('landing', 'home');
+  return url.href;
+}
+
 // Determine what version of NX to load
 let nxVer = document.head.querySelector('[name="nxver"]')?.getAttribute('content');
 if (!nxVer) nxVer = sanitizeName(new URLSearchParams(window.location.search).get('nxver'));

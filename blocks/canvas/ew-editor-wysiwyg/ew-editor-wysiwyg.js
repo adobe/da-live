@@ -52,11 +52,30 @@ export class EwEditorWysiwyg extends LitElement {
     ctx: { type: Object },
     canWrite: { type: Boolean },
     _cookieReady: { state: true },
+    _tableDragging: { state: true },
     _previewError: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
+    this._onTableDragStart = ({ detail }) => {
+      if (!this.canWrite || this.hidden || !this.shadowRoot?.querySelector('iframe')) return;
+      this._dragHtml = detail.html;
+      this._tableDragging = true;
+    };
+    this._onTableDragEnd = () => this._finishTableDrag();
+    this._onAssetDragStart = ({ detail }) => {
+      if (!this.canWrite || this.hidden || !this.shadowRoot?.querySelector('iframe')
+        || !(detail?.file instanceof File)) return;
+      this._dragFile = detail.file;
+      this._tableDragging = true;
+    };
+    window.addEventListener('ew-table-drag-start', this._onTableDragStart);
+    window.addEventListener('ew-table-drag-end', this._onTableDragEnd);
+    window.addEventListener('ew-asset-drag-start', this._onAssetDragStart);
+    window.addEventListener('ew-asset-drag-end', this._onTableDragEnd);
+    document.addEventListener('drop', this._onTableDragEnd);
+    document.addEventListener('dragend', this._onTableDragEnd);
     this.shadowRoot.adoptedStyleSheets = [style];
     this._unsubscribeEditorActive = canvasBus.editorViewState.subscribe(({ view }) => {
       this._canvasActiveView = view;
@@ -66,6 +85,13 @@ export class EwEditorWysiwyg extends LitElement {
   }
 
   disconnectedCallback() {
+    window.removeEventListener('ew-table-drag-start', this._onTableDragStart);
+    window.removeEventListener('ew-table-drag-end', this._onTableDragEnd);
+    window.removeEventListener('ew-asset-drag-start', this._onAssetDragStart);
+    window.removeEventListener('ew-asset-drag-end', this._onTableDragEnd);
+    document.removeEventListener('drop', this._onTableDragEnd);
+    document.removeEventListener('dragend', this._onTableDragEnd);
+    this._finishTableDrag();
     this._unsubscribeEditorActive?.();
     this._clearQuickEditRetry();
     super.disconnectedCallback();
@@ -105,9 +131,64 @@ export class EwEditorWysiwyg extends LitElement {
     const view = this._canvasActiveView ?? 'layout';
     const showWysiwyg = view === 'layout' || view === 'split';
     this.hidden = !showWysiwyg;
+    if (!showWysiwyg) this._finishTableDrag();
+  }
+
+  _relayTableDrag(phase, event, markup) {
+    const iframe = this.shadowRoot?.querySelector('iframe');
+    if (!iframe?.contentWindow) return;
+    const rect = iframe.getBoundingClientRect();
+    const x = event ? (event.clientX - rect.left) * (iframe.clientWidth / rect.width) : 0;
+    const y = event ? (event.clientY - rect.top) * (iframe.clientHeight / rect.height) : 0;
+    iframe.contentWindow.postMessage({
+      type: 'ew-table-drag-preview',
+      phase,
+      x,
+      y,
+      ...(markup ? { html: markup } : {}),
+    }, new URL(iframe.src).origin);
+  }
+
+  _relayAssetDrag(phase, event, file) {
+    const iframe = this.shadowRoot?.querySelector('iframe');
+    if (!iframe?.contentWindow) return;
+    const rect = iframe.getBoundingClientRect();
+    const x = event ? (event.clientX - rect.left) * (iframe.clientWidth / rect.width) : 0;
+    const y = event ? (event.clientY - rect.top) * (iframe.clientHeight / rect.height) : 0;
+    iframe.contentWindow.postMessage({ type: 'ew-asset-drag-preview', phase, x, y, ...(file ? { file } : {}) }, new URL(iframe.src).origin);
+  }
+
+  _finishTableDrag() {
+    if (this._tableDragging) {
+      if (this._dragFile) this._relayAssetDrag('leave');
+      else this._relayTableDrag('leave');
+    }
+    this._tableDragging = false;
+    this._dragHtml = null;
+    this._dragFile = null;
+  }
+
+  _onDropSurfaceDragOver(event) {
+    if (!this._tableDragging || !this.canWrite
+      || (!this._dragFile && event.dataTransfer?.types.includes('Files'))) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+    if (this._dragFile) this._relayAssetDrag('over', event);
+    else this._relayTableDrag('over', event);
+  }
+
+  _onDropSurfaceDrop(event) {
+    if (!this._tableDragging || !this.canWrite
+      || (!this._dragFile && event.dataTransfer?.types.includes('Files'))) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (this._dragFile) this._relayAssetDrag('drop', event, this._dragFile);
+    else this._relayTableDrag('drop', event, event.dataTransfer?.getData('text/html') || this._dragHtml);
+    this._finishTableDrag();
   }
 
   _resetCookieStateForCtxChange() {
+    this._finishTableDrag();
     this._clearQuickEditRetry();
     this._cookieReady = false;
     this._previewError = false;
@@ -115,6 +196,7 @@ export class EwEditorWysiwyg extends LitElement {
 
   updated(changed) {
     super.updated(changed);
+    if (changed.has('canWrite') && !this.canWrite) this._finishTableDrag();
     if (!changed.has('ctx')) return;
     this.removeAttribute(WYSIWYG_PORT_READY_ATTR);
     this._resetCookieStateForCtxChange();
@@ -257,6 +339,14 @@ export class EwEditorWysiwyg extends LitElement {
           @focus=${this._onIframeFocus}
           @blur=${this._onIframeBlur}
         ></iframe>
+        ${this._tableDragging ? html`<div class="ew-editor-wysiwyg-drop-surface"
+          @dragover=${this._onDropSurfaceDragOver}
+          @drop=${this._onDropSurfaceDrop}
+          @dragleave=${() => {
+            if (this._dragFile) this._relayAssetDrag('leave');
+            else this._relayTableDrag('leave');
+          }}
+        ></div>` : ''}
       `;
     }
     return html`

@@ -297,7 +297,8 @@ function getLibraryMetadata(el) {
     if (row.children) {
       const key = row.children[0]?.textContent.trim().toLowerCase();
       const val = row.children[1]?.textContent.trim();
-      if (key && val) acc[key] = val;
+      if (key === 'fields') acc.fields = row.children[1]?.querySelector('table')?.cloneNode(true) ?? val;
+      else if (key && val) acc[key] = val;
     }
     return acc;
   }, {});
@@ -342,6 +343,7 @@ function transformBlock(block) {
     if (md.name) item.name = md.name;
     if (md.searchtags) item.tags = md.searchtags;
     if (md.description) item.description = md.description;
+    if ('fields' in md) item.fields = md.fields;
     metaEl.remove();
   }
 
@@ -862,17 +864,58 @@ function createVersioningView() {
   };
 }
 
-export function createPreflightView() {
-  return {
+export const PREFLIGHT_TITLE = 'Preflight';
+
+/**
+ * Resolve a custom Preflight from the org/site `prepare` sheets, using the same rules
+ * the Prepare menu had: rows merge by title with site overriding org, and only a row
+ * with a `path` replaces the built-in Preflight.
+ * @returns {Promise<{ title: string, path: string } | null>}
+ */
+export async function resolvePreflightConfig({ org, site }) {
+  if (!org) return null;
+  const configs = await Promise.all(fetchDaConfigs({ org, site }));
+  const row = configs
+    .flatMap((conf) => conf?.prepare?.data || [])
+    .filter((item) => item?.title === PREFLIGHT_TITLE)
+    .pop();
+  if (!row?.path) return null;
+  return { title: row.title, path: row.path };
+}
+
+export function createPreflightView({ custom, org, site } = {}) {
+  const view = {
     id: 'preflight',
-    label: 'Preflight',
+    label: PREFLIGHT_TITLE,
     section: 'Editor',
     firstParty: true,
-    load: async () => {
+  };
+
+  if (!custom) {
+    view.load = async () => {
       await import('../ew-preflight/ew-preflight-host.js');
       return document.createElement('ew-preflight-host');
-    },
+    };
+    return view;
+  }
+
+  const proxyOpts = { org, site, branch: ref, currentOrg: org, getUrl: getPreviewOrigin };
+  const source = toPreviewProxyUrl(custom.path, proxyOpts);
+  view.cacheKey = JSON.stringify([source]);
+  view.load = async () => {
+    await import('../ew-preflight/ew-preflight-host.js');
+    const el = document.createElement('ew-preflight-host');
+    el.extension = {
+      name: 'preflight',
+      title: custom.title,
+      sources: [source],
+      experience: 'inline',
+      org,
+      site,
+    };
+    return el;
   };
+  return view;
 }
 
 export function createCommentsView() {
@@ -900,6 +943,19 @@ export function createMetadataView() {
     load: async () => {
       await import('../ew-page-metadata/ew-page-metadata.js');
       return document.createElement('ew-page-metadata');
+    },
+  };
+}
+
+export function createBlockView() {
+  return {
+    id: 'block',
+    label: 'Block',
+    section: 'Editor',
+    firstParty: true,
+    load: async () => {
+      await import('../ew-block-properties/ew-block-properties.js');
+      return document.createElement('ew-block-properties');
     },
   };
 }
@@ -990,21 +1046,25 @@ export function extensionToPanelView(ext, section) {
 }
 
 /**
- * Tool panel: Editor placeholder, Library (blocks / AEM Assets / icons / templates / placeholders),
+ * Tool panel: Editor views, Library (blocks / AEM Assets / icons / templates / placeholders),
  * Extensions (other plugins).
  */
 export async function getCanvasToolPanelViews({ org, site }) {
-  const extensions = await fetchExtensions(org, site);
+  const [extensions, customPreflight] = await Promise.all([
+    fetchExtensions(org, site),
+    resolvePreflightConfig({ org, site }).catch(() => null),
+  ]);
   const library = sortLibraryExtensions(extensions.filter(isLibraryExtension));
   const thirdParty = extensions.filter((ext) => !isLibraryExtension(ext));
 
   return [
     createOutlineView(),
     createMetadataView(),
+    createBlockView(),
     createFileExplorerView(),
     createVersioningView(),
     createCommentsView(),
-    createPreflightView(),
+    createPreflightView({ custom: customPreflight, org, site }),
     ...library.map((ext) => extensionToPanelView(ext, 'Library')),
     ...thirdParty.map((ext) => extensionToPanelView(ext, 'Extensions')),
   ];

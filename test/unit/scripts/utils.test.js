@@ -1,5 +1,78 @@
 import { expect } from '@esm-bundle/chai';
-import { setNx, sanitizePath, sanitizePathParts, sanitizeName } from '../../../scripts/utils.js';
+import {
+  setNx, sanitizePath, sanitizePathParts, sanitizeName, getHomeHref, getNavigationHref,
+} from '../../../scripts/utils.js';
+
+describe('landing navigation links', () => {
+  const currentHref = 'https://lp--da-live--adobe.aem.live/?landing=true&nx=lp&quick-edit=devlive&theme=light&nxver=2#/org/site';
+
+  it('keeps the preview shell and landing return on sidebar and app destinations', () => {
+    ['/apps', '/marketplace', '/apps/loc'].forEach((href) => {
+      const url = new URL(getNavigationHref({ href, currentHref }));
+      expect(url.origin).to.equal(new URL(currentHref).origin);
+      expect(url.pathname).to.equal(href);
+      expect(url.searchParams.get('nx')).to.equal('lp');
+      expect(url.searchParams.get('nxver')).to.equal('2');
+      expect(url.searchParams.get('quick-edit')).to.equal('devlive');
+      expect(url.searchParams.get('theme')).to.equal('light');
+      expect(url.searchParams.get('landing')).to.equal('home');
+      expect(new URL(getHomeHref({ href: url.href })).searchParams.get('landing')).to.equal('true');
+    });
+  });
+
+  it('keeps published internal app links on the current preview origin', () => {
+    ['https://da.live', 'https://da.page'].forEach((origin) => {
+      const url = new URL(getNavigationHref({ href: `${origin}/apps/scheduler`, currentHref }));
+      expect(url.origin).to.equal(new URL(currentHref).origin);
+      expect(url.searchParams.get('nx')).to.equal('lp');
+    });
+  });
+
+  it('preserves explicit destination settings and workspace hashes', () => {
+    const url = new URL(getNavigationHref({
+      href: '/apps?nx=other&theme=dark&landing=false#/other/site',
+      currentHref,
+    }));
+    expect(url.searchParams.get('nx')).to.equal('other');
+    expect(url.searchParams.get('theme')).to.equal('dark');
+    expect(url.searchParams.get('landing')).to.equal('false');
+    expect(url.hash).to.equal('#/other/site');
+  });
+
+  it('does not leak preview settings to external destinations', () => {
+    ['https://www.aem.live/docs/ew/about', 'https://tools.aem.live/', 'mailto:user@example.com'].forEach((href) => {
+      expect(getNavigationHref({ href, currentHref })).to.equal(href);
+    });
+  });
+
+  it('leaves non-opted-in navigation unchanged', () => {
+    expect(getNavigationHref({ href: '/apps', currentHref: 'https://da.live/?nx=lp' })).to.equal('/apps');
+  });
+});
+
+describe('landing Home destination', () => {
+  it('leaves ordinary Home navigation unconfigured', () => {
+    expect(getHomeHref({ href: 'https://da.live/canvas?nx=lp#/org/site/page' })).to.equal(undefined);
+    expect(getHomeHref({ href: 'https://da.live/?landing=false' })).to.equal(undefined);
+  });
+
+  it('returns to the selected workspace from Browse and editors without losing preview flags', () => {
+    const url = new URL(getHomeHref({ href: 'https://da.live/canvas?landing=home&browse=2&nx=lp&quick-edit=devlive&theme=light#/org/site/folder/page' }));
+    expect(url.pathname).to.equal('/');
+    expect(url.hash).to.equal('#/org/site');
+    expect(url.searchParams.get('landing')).to.equal('true');
+    expect(url.searchParams.has('browse')).to.equal(false);
+    expect(url.searchParams.get('nx')).to.equal('lp');
+    expect(url.searchParams.get('quick-edit')).to.equal('devlive');
+    expect(url.searchParams.get('theme')).to.equal('light');
+  });
+
+  it('returns to workspace selection without inventing a site for empty or authentication hashes', () => {
+    ['#', '#/org', '#access_token=token'].forEach((hash) => {
+      expect(new URL(getHomeHref({ href: `https://da.live/?landing=true${hash}` })).hash).to.equal('');
+    });
+  });
+});
 
 describe('Libs', () => {
   it('Default Libs', () => {

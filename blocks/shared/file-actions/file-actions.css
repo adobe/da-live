@@ -1,0 +1,134 @@
+:host {
+  display: inline-flex;
+  align-items: center;
+  color: var(--s2-gray-700);
+}
+
+.nx-action-btn-icon svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+  fill: currentcolor;
+  flex-shrink: 0;
+}
+
+.details-trigger,
+.favorite {
+  width: 24px;
+  height: 24px;
+  padding: 2px;
+}
+
+:host([view="card"]) .details-trigger {
+  height: 20px;
+  padding-block: 0;
+}
+
+:host([view="list"]) {
+  display: inline-grid;
+  grid-template-columns: repeat(2, 48px);
+  justify-items: start;
+  width: 96px;
+}
+
+nx-popover {
+  display: none;
+  box-sizing: border-box;
+  width: 240px;
+  max-width: calc(100vw - 32px);
+  padding: var(--s2-spacing-100, 8px);
+  gap: var(--s2-spacing-100, 8px);
+  color: var(--s2-gray-800);
+  font: var(--s2-component-s-regular-font-size, 12px) / 16px var(--s2-font-family);
+  overflow-wrap: anywhere;
+}
+
+nx-popover[open],
+nx-popover:popover-open {
+  display: flex;
+}
+
+:host([view="card"]) nx-popover {
+  --popover-gap: 20px;
+  --popover-block-offset: -4px;
+}
+
+section {
+  padding: var(--s2-spacing-75, 4px);
+  border-radius: var(--s2-corner-radius-500, 8px);
+  background: var(--s2-gray-50);
+  flex-shrink: 0;
+}
+
+h3 {
+  margin: 0;
+  padding: var(--s2-spacing-75, 4px) 10px;
+  font-size: inherit;
+  font-weight: var(--s2-component-s-bold-font-weight, 700);
+}
+
+.detail {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s2-spacing-75, 4px);
+  padding: var(--s2-spacing-75, 4px) 10px;
+  font-weight: 500;
+}
+
+.detail > :last-child {
+  min-width: 0;
+  text-align: end;
+  color: var(--s2-gray-700);
+  font-weight: 400;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.favorite-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  padding: 7px var(--s2-spacing-200, 12px);
+  border-radius: var(--s2-corner-radius-400, 7px);
+  font-size: var(--s2-component-m-medium-font-size, 14px);
+  line-height: var(--s2-component-m-medium-line-height, 18px);
+  flex-shrink: 0;
+}
+
+.favorite-action svg {
+  width: 18px;
+  height: 18px;
+  fill: currentcolor;
+}
+
+.favorite svg.is-favorite,
+.favorite-action svg.is-favorite {
+  color: light-dark(#808080, var(--s2-gray-700));
+}
+
+hr {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--s2-gray-200);
+  flex-shrink: 0;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: 2px;
+}
+
+:host([view="list"]) button {
+  margin-inline-start: var(--s2-spacing-100, 8px);
+}

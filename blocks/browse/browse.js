@@ -1,10 +1,8 @@
 import { getNx, getNx2 } from '../../scripts/utils.js';
 import { resolveBrowsePath } from './utils.js';
+import { setRecentSite } from './da-sites/utils.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
-
-const styles = await loadStyle(import.meta.url);
-document.adoptedStyleSheets.push(styles);
 
 async function getBrowsePath({ org, site }) {
   const { search } = window.location;
@@ -45,19 +43,15 @@ async function loadComponent(el, cmpName, pathDetails) {
   el.append(cmp);
 }
 
-function setRecentSite(details) {
-  if (!details.site) return;
-  // .trash, .da, .helix, .versions
-  if (details.site.startsWith('.')) return;
-  const currentSites = JSON.parse(localStorage.getItem('da-sites')) || [];
-  const siteString = `${details.org}/${details.site}`;
-  const foundIdx = currentSites.indexOf(siteString);
-  if (foundIdx === 0) return;
-  if (foundIdx !== -1) currentSites.splice(foundIdx, 1);
-  localStorage.setItem('da-sites', JSON.stringify([siteString, ...currentSites].slice(0, 8)));
-}
+export default async function init(el) {
+  if (new URLSearchParams(window.location.search).get('landing') === 'true') {
+    const { default: loadLanding } = await import('../landing/landing.js');
+    loadLanding(el);
+    return;
+  }
 
-export default function init(el) {
+  const styles = await loadStyle(import.meta.url);
+  document.adoptedStyleSheets.push(styles);
   hashChange.subscribe((pathDetails) => {
     const cmpName = pathDetails ? 'da-browse' : 'da-sites';
     loadComponent(el, cmpName, pathDetails);

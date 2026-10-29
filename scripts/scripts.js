@@ -11,9 +11,27 @@
  */
 
 import { initIms } from '../blocks/shared/utils.js';
-import { setNx, nxJS, nxCSS } from './utils.js';
+import { setNx, nxJS, nxCSS, getHomeHref, getNavigationHref } from './utils.js';
 
-export function decorateArea({ area = document } = {}) {
+export function configureLandingNav() {
+  const landing = new URLSearchParams(window.location.search).get('landing');
+  if (!['true', 'home'].includes(landing) || document.head.querySelector('meta[name="nav-path"]')) return;
+  const meta = document.createElement('meta');
+  meta.name = 'nav-path';
+  meta.content = '/nx/fragments/nav-new-landing';
+  document.head.append(meta);
+}
+
+export function decorateArea(options = {}) {
+  const area = options instanceof Node ? options : options.area || document;
+  area.querySelectorAll('a[href]').forEach((link) => {
+    const href = link.getAttribute('href');
+    if (href.startsWith('#') || link.hasAttribute('download')) return;
+    if (/\.[^/]+$/.test(link.pathname) && !link.pathname.endsWith('.html')) return;
+    const navigationHref = getNavigationHref({ href: link.href });
+    if (navigationHref !== link.href) link.href = navigationHref;
+  });
+
   // Find all dark & light images
   const lcpImgs = [...area.querySelectorAll('[alt="light"], [alt="dark"]')].filter((img) => {
     const pic = img.parentElement;
@@ -52,6 +70,12 @@ const CONFIG = {
   hostnames: ['da.live', 'da.page'],
   codeBase: import.meta.url.replace('/scripts/scripts.js', ''),
   providers: { da: window.location.origin },
+  homeHref: getHomeHref,
+  brand: {
+    title: 'Adobe Experience Manager',
+    logoHref: new URL('../img/experience-cloud.svg', import.meta.url).href,
+    logoSize: 24,
+  },
   decorateArea,
   imsClientId: 'darkalley',
   imsScope: 'ab.manage,AdobeID,gnav,openid,org.read,read_organizations,session,aem.frontend.all,additional_info.ownerOrg,additional_info.projectedProductContext,account_cluster.read',
@@ -94,6 +118,7 @@ export default async function loadPage() {
     }
   }
 
+  if (nx2) configureLandingNav();
   await loadArea();
 }
 
