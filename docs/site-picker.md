@@ -13,16 +13,22 @@ const picker = createSitePicker({
 updateSitePicker({ picker, sites, value: 'adobe/example' });
 ```
 
-`sites` contains `{ value: 'org/site', label: 'site (org)' }` entries.
+`sites` contains `{ value: 'org/site', label: 'Site, org/site' }` entries.
 `getSiteOptions({ recentSites, current })` builds validated, deduplicated options
 from browser-local recent sites and the current site. Its pure implementation
 is in `site-picker-utils.js`, so data helpers need not import picker UI.
 The current site remains
 available even when it is outside recent history. Identifiers are real repository
-identifiers, not invented friendly names or public domains.
+identifiers, not invented friendly names or public domains. The display name comes
+from the site segment of the stored `org/site` identifier, matching the existing
+DA recent-site cards. Only its first character is capitalized for display.
+There is no separate friendly-name field in this history; no business name or
+page title is guessed. For example, `exp-workspace/frescopa` displays
+`Frescopa, exp-workspace/frescopa`, without parentheses or a metadata request.
 
 The menu shows site names with `org/site` below them and marks the current site.
-The trigger includes the organization to distinguish identically named sites.
+The trigger shows the site name first, then its unchanged full `org/site` path to
+distinguish identically named sites. This formatting never changes routing or history.
 Add site aligns with the menu's left padding, without reserving a checkmark column,
 and emits an action without changing the selection.
 

@@ -3,7 +3,8 @@ export function getSiteOptions({ recentSites = [], current }) {
     (site) => typeof site === 'string' && /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/.test(site),
   ))];
   return sites.map((value) => {
-    const [org, site] = value.split('/');
-    return { value, label: `(${org}, ${site})` };
+    const [, site] = value.split('/');
+    const name = site.charAt(0).toUpperCase() + site.slice(1);
+    return { value, label: `${name}, ${value}` };
   });
 }
