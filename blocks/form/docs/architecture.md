@@ -33,6 +33,7 @@ blocks/form/
     assets.js             asset sources for image and file fields (upload, AEM Assets)
     aem-selector.js       AEM Assets selector dialog
     media.js              asset URL and file type helpers
+    preview.js            preview login and origin for uploaded images
     safe-href.js          safeHref — drops links that run script or local programs
     rich-text/            rich-text schema with its HTML conversion, commands and toolset
   views/
@@ -63,6 +64,7 @@ utils/context.js   →  da-sc-sdk          (convertHtmlToJson)
 utils/persistence.js → da-sc-sdk        (convertJsonToHtml)
 utils/assets.js    →  blocks/shared/      (Canvas image types and size limit)
 utils/assets.js    →  nx2 aem-assets      (AEM Assets source, loaded on demand)
+utils/preview.js   →  blocks/shared/      (Canvas preview login)
 views/editor.js  →  fields/rich-text.js (loaded once a form renders a rich-text field)
 fields/rich-text.js → utils/rich-text/  (schema, commands, tools)
 fields/rich-text.js → da-y-wrapper      (ProseMirror)
