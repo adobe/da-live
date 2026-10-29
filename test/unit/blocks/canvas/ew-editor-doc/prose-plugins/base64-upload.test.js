@@ -22,7 +22,7 @@ async function until(done, tries = 50) {
 
 before(async () => {
   ({ default: base64Uploader, uploadBase64Image } = await import('../../../../../../blocks/canvas/ew-editor-doc/prose-plugins/base64Uploader.js'));
-  ({ HLX6_MAX_IMAGE_BYTES } = await import('../../../../../../blocks/canvas/utils/image-upload.js'));
+  ({ HLX6_MAX_IMAGE_BYTES } = await import('../../../../../../blocks/shared/image-upload.js'));
   ({ toasts } = await import('../../../../../fixtures/nx2/blocks/shared/toast/toast.js'));
 });
 

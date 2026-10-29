@@ -1,4 +1,4 @@
-import { getNx2, getNx2Api } from '../../../scripts/utils.js';
+import { getNx2, getNx2Api } from '../../scripts/utils.js';
 
 // hlx6 sites upload via the source-bus Lambda, which 413s once a base64 body
 // passes ~4.5 MB (measured 2026-08-18; the 413 has no CORS header, so it reads
