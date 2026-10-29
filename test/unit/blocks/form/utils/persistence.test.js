@@ -2,6 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import '../../../setup-nx.js';
 import { attachPersistence } from '../../../../../blocks/form/utils/persistence.js';
 import { createEngine } from '../../../../../deps/da-sc-sdk/dist/index.js';
+import { IMAGE_URL } from '../helpers/sdk-types.js';
 
 // Minimal editor stub. `setValues(next, model)` simulates a real mutation by
 // replacing `state.document` with a NEW reference — persistence uses
@@ -195,8 +196,6 @@ describe('attachPersistence', () => {
     expect(calls).to.have.lengthOf(1);
     p.detach();
   });
-
-  const IMAGE_URL = 'https://raw.githubusercontent.com/adobe/da-sc-sdk/main/schemas/image/v1.0.0.json';
   const assetSchema = {
     type: 'object',
     properties: { hero: { $ref: IMAGE_URL }, logo: { $ref: IMAGE_URL } },

@@ -3,7 +3,7 @@ import '../../../setup-nx.js';
 import {
   createAssetSources,
   uploadFile,
-} from '../../../../../blocks/form/utils/assets.js';
+} from '../../../../../blocks/form/assets/sources.js';
 import { SUPPORTED_IMAGE_TYPES } from '../../../../../blocks/shared/constants.js';
 
 const ERRORS = {
@@ -125,7 +125,7 @@ describe('form asset sources', () => {
   });
 
   it('adds AEM Assets when the site has a repository', () => {
-    const sources = createAssetSources({ details, repoConfig: REPO_CONFIG, isCurrent });
+    const sources = createAssetSources({ details, repositoryConfig: REPO_CONFIG, isCurrent });
     expect(labelsOf(sources)).to.deep.equal([
       { id: 'upload', label: 'Upload' },
       { id: 'aem-assets', label: 'AEM Assets' },
@@ -133,13 +133,13 @@ describe('form asset sources', () => {
   });
 
   it('lets Upload pick only Canvas image types and AEM Assets pick in its own selector', () => {
-    const [upload, aem] = createAssetSources({ details, repoConfig: REPO_CONFIG, isCurrent });
+    const [upload, aem] = createAssetSources({ details, repositoryConfig: REPO_CONFIG, isCurrent });
     expect(upload.fileTypes).to.deep.equal(SUPPORTED_IMAGE_TYPES);
     expect(aem.fileTypes).to.equal(undefined);
   });
 
   it('limits Upload to image fields and leaves AEM Assets open to every field', () => {
-    const [upload, aem] = createAssetSources({ details, repoConfig: REPO_CONFIG, isCurrent });
+    const [upload, aem] = createAssetSources({ details, repositoryConfig: REPO_CONFIG, isCurrent });
     expect(upload.assetTypes).to.deep.equal(['image']);
     expect(aem.assetTypes).to.equal(undefined);
   });

@@ -4,12 +4,14 @@ import { getNx2 } from '../../scripts/utils.js';
 const { getConfig } = await import(`${getNx2()}/scripts/nx.js`);
 const { loadHrefSvg } = await import(`${getNx2()}/utils/svg.js`);
 
+/** The base URL of the code that serves the icon files. */
 const { codeBase } = getConfig();
 
-// Form icons, loaded once from the content-repository sprites via the nx2 svg
-// helper (same mechanism as schema-editor / media-library). Each file is a
-// standalone S2 icon; `icon()` hands out a clone so the same glyph can render
-// in multiple places.
+/**
+ * The file names of the form icons, by icon name. The icons load once from the
+ * content-repository sprites through the nx2 svg helper, the same mechanism as the schema
+ * editor and the media library. Each file is a standalone S2 icon.
+ */
 const FILES = {
   add: 's2-icon-add-20-n',
   alert: 's2-icon-alerttriangle-20-n',
@@ -28,6 +30,7 @@ const FILES = {
   altText: 's2-icon-imagetext-20-n',
 };
 
+/** The loaded icon elements, by icon name. Icons that failed to load are left out. */
 const NODES = Object.fromEntries(
   (await Promise.all(
     Object.entries(FILES).map(async ([name, file]) => [
@@ -37,11 +40,23 @@ const NODES = Object.fromEntries(
   )).filter(([, svg]) => svg),
 );
 
+/**
+ * Renders a form icon. Each call hands out a clone, so the same glyph can render in
+ * several places. Icons are decorative, so they are hidden from assistive technology.
+ * @param {string} name The icon name, see `FILES`.
+ * @param {string} [className] The classes of the icon element.
+ * @returns {SVGElement|typeof nothing} The icon, or nothing when it did not load.
+ */
 export function icon(name, className) {
   const svg = NODES[name];
-  if (!svg) return nothing;
+  if (!svg) {
+    return nothing;
+  }
+
   const node = svg.cloneNode(true);
   node.setAttribute('aria-hidden', 'true');
-  if (className) node.setAttribute('class', className);
+  if (className) {
+    node.setAttribute('class', className);
+  }
   return node;
 }

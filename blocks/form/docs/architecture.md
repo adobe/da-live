@@ -26,18 +26,22 @@ blocks/form/
   editor.js / .css      nx-form Lit element: routes (ctx/hash), mounts SDK, state snapshot + nav
   icons.js              sprite-backed icon() helper
   fields/               Spectrum 2 field components (input, picker, checkbox, button, number, asset)
+  assets/
+    asset-types.js      asset type descriptors (image, file) and their capabilities
+    sources.js          asset sources for image and file fields (upload, AEM Assets)
+    aem-selector.js     AEM Assets selector dialog
+    media.js            asset URL and file type helpers
   utils/
     context.js          loadFormContext — routes documents to ready / blocked / select-schema
     da-api.js           fetch/save against DA source via the nx2 source api
     schemas.js          loadSchemas — schema discovery + module cache
     persistence.js      attachPersistence — single-flight save with re-queue
-    assets.js           asset sources for image and file fields (upload, AEM Assets)
-    aem-selector.js     AEM Assets selector dialog
-    media.js            asset URL and file type helpers
+    model.js            shared predicates over SDK model nodes
     preview.js          preview login and origin for uploaded images
   views/
     editor.js / .css    field rendering + array rendering
     sidebar.js / .css   navigation tree
+    navigation.js       origins the editor and sidebar report selections with
     preview.js / .css   read-only JSON preview
     array-menu.js       per-item actions
     reorder.js          reorder dialog
@@ -58,13 +62,15 @@ editor.js          →  utils/              (loadFormContext, attachPersistence)
 editor.js          →  views/ + fields/    (editor, sidebar, preview; S2 field components)
 utils/context.js   →  da-sc-sdk          (convertHtmlToJson)
 utils/persistence.js → da-sc-sdk        (convertJsonToHtml)
-utils/assets.js    →  blocks/shared/      (Canvas image types and size limit)
-utils/assets.js    →  nx2 aem-assets      (AEM Assets source, loaded on demand)
+assets/sources.js  →  blocks/shared/      (Canvas image types and size limit)
+assets/sources.js  →  nx2 aem-assets      (AEM Assets source, loaded on demand)
 utils/preview.js   →  blocks/shared/      (Canvas preview login)
 views/           →  (SDK engine only via prop binding from the element — no direct imports)
 ```
 
 The SDK is the only piece that holds canonical state. Everything in `utils/` and `views/` is specific to the form block. That covers DA I/O, UI components, schema discovery and single-flight save.
+
+Asset types are descriptors in `assets/asset-types.js` that declare what each type can do, such as previews, uploads and the file extensions the SDK delivers as it. Fields, sources and the editor ask a descriptor for a capability instead of comparing type names, so supporting a new SDK asset type means adding one descriptor.
 
 ---
 
@@ -76,13 +82,13 @@ The SDK is the only piece that holds canonical state. Everything in `utils/` and
 <nx-editor
   .editor=${this._editor}
   .state=${this._state}
-  .nav=${this._nav}
+  .nav=${this._navigation}
   .onSelect=${this._onSelect}
 ></nx-editor>
 
 <nx-sidebar
   .state=${this._state}
-  .nav=${this._nav}
+  .nav=${this._navigation}
   .onSelect=${this._onSelect}
 ></nx-sidebar>
 ```
@@ -114,12 +120,12 @@ Components receive `nav` as a prop and call `onSelect(pointer, origin)` to updat
 Lives in [views/editor.js](../views/editor.js), keyed per pointer, default 350ms. Boolean, select, and array mutations are immediate.
 
 ```js
-_mutateDebounced(pointer, fn) {
+_mutateDebounced(pointer, mutation) {
   clearTimeout(this._inputTimers.get(pointer));
   this._inputTimers.set(pointer, setTimeout(() => {
     this._inputTimers.delete(pointer);
-    this._mutate(fn);   // → fn(this.editor); state notification flows through editor.onChange
-  }, DEBOUNCE_MS));
+    this._mutate(mutation);   // → mutation(this.editor); state notification flows through editor.onChange
+  }, DEBOUNCE_DELAY_MILLISECONDS));
 }
 ```
 
@@ -190,6 +196,6 @@ The form reads these keys from the Experience Workspace config sheet. Site confi
 
 ### ALWAYS
 
-- Keep UI/navigation state local to the shell (`_nav`, focus, scroll, debounce).
+- Keep UI/navigation state local to the shell (`_navigation`, focus, scroll, debounce).
 - Use JSON Pointer for canonical addressing in props and event payloads.
 - Refresh the bundled SDK via `npm install` + `npm run build:da-sc-sdk` after bumping `@adobe/da-sc-sdk` in `package.json`.

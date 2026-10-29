@@ -165,7 +165,8 @@
   color: var(--s2-gray-900);
 }
 
-/* Announces the copy to screen readers without taking space. */
+/* Announces status changes, such as progress and copying, to screen readers without taking
+   space. */
 .asset-status {
   position: absolute;
   width: 1px;

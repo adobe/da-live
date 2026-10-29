@@ -20,7 +20,7 @@ decorate(block)                                  ← form.js (EW workspace wrapp
        ├─ hashChange emits → set `ctx`            sync
        ├─ updated(changed) sees `ctx`             sync
        └─ _loadContext()
-            ├─ _details = detailsFromCtx(ctx); bail if none
+            ├─ _details = detailsFromContext(ctx); bail if none
             ├─ status = 'loading' → render nothing (no spinner, no message)
             ├─ loadFormContext({ details })      ← network
             │    ├─ loadSchemas({ owner, repo })     ← DA list + N source GETs
@@ -195,7 +195,7 @@ Result: an empty doc loaded with the picked schema, defaults already materialize
 ```txt
 window hash changes
   └─ hashChange emits new { org, site, path }   ← editor.js subscribed in startRouting()
-       └─ ctxFromHashState(state) → set `ctx`
+       └─ contextFromHashState(state) → set `ctx`
             └─ updated() sees `ctx` → _loadContext() → see §1
 ```
 

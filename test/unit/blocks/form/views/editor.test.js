@@ -1,12 +1,9 @@
 import { expect } from '@esm-bundle/chai';
 import '../../../setup-nx.js';
 import '../../../../../blocks/form/views/editor.js';
+import { IMAGE_URL, FILE_URL } from '../helpers/sdk-types.js';
 
 const tick = () => new Promise((resolve) => { setTimeout(resolve); });
-
-// The SDK still accepts the GitHub URLs of its types.
-const IMAGE_URL = 'https://raw.githubusercontent.com/adobe/da-sc-sdk/main/schemas/image/v1.0.0.json';
-const FILE_URL = 'https://raw.githubusercontent.com/adobe/da-sc-sdk/main/schemas/file/v1.0.0.json';
 
 const mediaNode = (extra = {}) => ({
   kind: 'object',

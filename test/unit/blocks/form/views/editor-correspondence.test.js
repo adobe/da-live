@@ -2,8 +2,8 @@ import { expect } from '@esm-bundle/chai';
 import '../../../setup-nx.js';
 import { createEngine } from '../../../../../deps/da-sc-sdk/dist/index.js';
 import '../../../../../blocks/form/views/editor.js';
-
-const IMAGE_URL = 'https://raw.githubusercontent.com/adobe/da-sc-sdk/main/schemas/image/v1.0.0.json';
+import { isAssetType } from '../../../../../blocks/form/assets/asset-types.js';
+import { IMAGE_URL } from '../helpers/sdk-types.js';
 
 // Component-level UI tests for nx-editor. The engine is the real bundled SDK
 // (same one the form block ships); we feed its getState() into the component
@@ -47,11 +47,21 @@ const groupAt = (el, ptr) => allAt(el, ptr)
   .find((n) => n.matches('fieldset.form-node, section.form-node, article.form-array-item'));
 
 function expectedTag(node) {
-  if (node.typeName === 'image' || node.typeName === 'file') return 'FORM-ASSET';
-  if (Array.isArray(node.enumValues)) return 'FORM-PICKER';
-  if (node.kind === 'boolean') return 'FORM-CHECKBOX';
-  if (node.kind === 'number' || node.kind === 'integer') return 'FORM-NUMBER-FIELD';
-  if (node.kind === 'string' && node.semanticType === 'long-text') return 'FORM-TEXTAREA';
+  if (isAssetType(node.typeName)) {
+    return 'FORM-ASSET';
+  }
+  if (Array.isArray(node.enumValues)) {
+    return 'FORM-PICKER';
+  }
+  if (node.kind === 'boolean') {
+    return 'FORM-CHECKBOX';
+  }
+  if (node.kind === 'number' || node.kind === 'integer') {
+    return 'FORM-NUMBER-FIELD';
+  }
+  if (node.kind === 'string' && node.semanticType === 'long-text') {
+    return 'FORM-TEXTAREA';
+  }
   return 'FORM-INPUT';
 }
 
@@ -251,7 +261,7 @@ describe('nx-editor array item menu actions', () => {
   });
 });
 
-const DEBOUNCE_MS = 350; // mirrors editor.js text-input debounce
+const DEBOUNCE_DELAY_MILLISECONDS = 350; // mirrors editor.js text-input debounce
 const aTimeout = (ms) => new Promise((r) => { setTimeout(r, ms); });
 
 // Leaf errors live in the field's own shadow (.form-field-error); array/object
@@ -282,7 +292,7 @@ async function typeInto(el, ptr, value) {
   const input = controlAt(el, ptr).shadowRoot.querySelector('input, textarea');
   input.value = value;
   input.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
-  await aTimeout(DEBOUNCE_MS + 80);
+  await aTimeout(DEBOUNCE_DELAY_MILLISECONDS + 80);
   await settle(el);
 }
 

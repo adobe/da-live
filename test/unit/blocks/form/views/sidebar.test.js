@@ -1,10 +1,11 @@
 import { expect } from '@esm-bundle/chai';
 import '../../../setup-nx.js';
 import '../../../../../blocks/form/views/sidebar.js';
+import { IMAGE_URL } from '../helpers/sdk-types.js';
 
 const asset = (pointer) => ({
   kind: 'object',
-  typeRef: 'https://raw.githubusercontent.com/adobe/da-sc-sdk/main/schemas/image/v1.0.0.json',
+  typeRef: IMAGE_URL,
   typeName: 'image',
   pointer,
   label: 'Image',

@@ -51,7 +51,7 @@ async function mountReady() {
   el._editor = engine;
   el._state = engine.getState();
   el._context = { status: 'ready', schemaName: 'demo', schema: demoSchema, json };
-  el._nav = { pointer: '/data', origin: null, seq: 0 };
+  el._navigation = { pointer: '/data', origin: null, seq: 0 };
   el.ctx = { org: 'adobe', repo: 'demo', path: 'adobe/demo/page' };
 
   await el.updateComplete;
