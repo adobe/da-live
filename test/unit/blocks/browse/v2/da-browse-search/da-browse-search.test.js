@@ -96,12 +96,18 @@ describe('browse-owned search combobox', () => {
     snapshot.continuationToken = 'one';
     const original = snapshot.items;
     let finish;
-    list.returns(new Promise((resolve) => { finish = resolve; }));
+    let signalStarted;
+    const started = new Promise((resolve) => { signalStarted = resolve; });
+    const response = new Promise((resolve) => { finish = resolve; });
+    list.callsFake(() => {
+      signalStarted();
+      return response;
+    });
     field.value = 'late';
     await field.updateComplete;
     input.focus();
     const loading = field.refreshSuggestions();
-    await new Promise((resolve) => { setTimeout(resolve); });
+    await started;
     expect(field._status).to.contain('Loading');
     expect(field._suggestions.at(-1).action).to.be.true;
     field.value = 'plan';
@@ -203,5 +209,15 @@ describe('browse-owned search combobox', () => {
     await field.selectSuggestion(field._suggestions[0]);
     expect(field._status).to.contain('Could not open file');
     expect(navigate.callCount).to.equal(1);
+  });
+
+  it('uses the editor configured for a filename suggestion path', async () => {
+    snapshot.items = [{ path: '/o/r/forms/plan.html', name: 'plan', ext: 'html' }];
+    snapshot.version = snapshot.items;
+    field.editorConfs = ['/o/r/forms=https://da.live/form#'];
+    field.defaultEditor = '/canvas#';
+    await open();
+    await field.selectSuggestion(field._suggestions[0]);
+    expect(navigate.calledOnceWithExactly('https://da.live/form#/o/r/forms/plan')).to.be.true;
   });
 });

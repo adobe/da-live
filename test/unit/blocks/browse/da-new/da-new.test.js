@@ -311,8 +311,8 @@ describe('DaNew', () => {
       const el = new DaNew();
       el.variant = 'accent';
       document.body.appendChild(el);
-      await new Promise((resolve) => { setTimeout(resolve, 0); });
       try {
+        await el.updateComplete;
         const btn = el.shadowRoot.querySelector('.da-actions-new-button');
         expect(btn).to.exist;
         expect(btn.textContent).to.contain('New');

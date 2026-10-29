@@ -101,8 +101,8 @@ with fictional requester names. These are still labelled sample tasks.
   Modified by is available on demand in details instead of a table column.
   Need Attention retains Markus's headings and gains pointer/keyboard resizing.
   The shared Nexter card and detached da-live picker/table helpers prepare the
-  issue-sized follow-ups. Ordinary Browse's card renderer is not migrated ahead
-  of the shared component's release. Friendly site metadata, favorite-added
+  issue-sized follow-ups. Browse now uses main's shared file-item renderer;
+  Landing retains its compact 142px cards and legacy card slots. Friendly site metadata, favorite-added
   ordering, the exact chat.io module and global S/M integration remain unconfirmed.
 
 - [x] **Rename Starred to Favorites on `lp`.** Apply

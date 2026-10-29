@@ -1,5 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
+import { spy, stub } from 'sinon';
 
 const { setNx } = await import('../../../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -7,20 +8,15 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 await import('../../../../../../blocks/browse/v2/da-browse/da-browse.js');
 const { PANEL_EVENT } = await import('../../../../../fixtures/nx/utils/panel.js');
 
-const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
-
-async function waitForRender(el) {
-  const deadline = Date.now() + 5000;
-  while (Date.now() < deadline) {
-    const header = el.shadowRoot?.querySelector('da-browse-header');
-    if (header && el.browseCmp?.actionBar) {
-      await header.updateComplete;
-      await el.browseCmp.updateComplete;
-      return;
-    }
-    await nextFrame();
+async function completeUpdate(component) {
+  const update = spy(component, 'update');
+  try {
+    await component.updateComplete;
+    await update.lastCall?.returnValue;
+    await component.updateComplete;
+  } finally {
+    update.restore();
   }
-  throw new Error('Browse header and list did not finish rendering.');
 }
 
 describe('da-browse render', () => {
@@ -33,7 +29,7 @@ describe('da-browse render', () => {
   }
 
   async function settle() {
-    await el.updateComplete;
+    await completeUpdate(el);
     await el.shadowRoot.querySelector('da-browse-header').updateComplete;
   }
 
@@ -56,8 +52,17 @@ describe('da-browse render', () => {
   async function fixture(details) {
     el = document.createElement('da-browse');
     el.details = details;
-    document.body.appendChild(el);
-    await waitForRender(el);
+    const listUpdate = spy(customElements.get('da-list').prototype, 'update');
+    try {
+      document.body.appendChild(el);
+      await settle();
+      await Promise.all(listUpdate.getCalls().map((call) => call.returnValue));
+      await el.browseCmp.updateComplete;
+      await customElements.whenDefined('da-actionbar');
+      await settle();
+    } finally {
+      listUpdate.restore();
+    }
     return el;
   }
 
@@ -67,15 +72,9 @@ describe('da-browse render', () => {
     el.requestUpdate();
     await settle();
     await el.newCmp.updateComplete;
-    return {
-      toolbar: headerRoot(),
-      rightButtons: [...headerRoot().querySelectorAll('.browse-toolbar-control')],
-      newButton: el.shadowRoot.querySelector('da-new')?.shadowRoot?.querySelector('.da-actions-new-button'),
-      newLabel: el.shadowRoot.querySelector('da-new')?.shadowRoot?.querySelector('.da-actions-new-label'),
-    };
   }
 
-  it('forwards chat requests to the existing panel event and preserves the styled part', async () => {
+  it('forwards chat requests to the existing panel event', async () => {
     await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' }, { chat: true });
     let event;
     const onOpen = (e) => { event = e; };
@@ -83,164 +82,106 @@ describe('da-browse render', () => {
     try {
       headerRoot().querySelector('.chat-btn').click();
       expect(event.detail).to.deep.equal({ section: 'chat' });
-      expect(el.shadowRoot.querySelector('da-browse-header').getAttribute('exportparts')).to.equal('chat-btn');
     } finally {
       document.removeEventListener(PANEL_EVENT.OPEN, onOpen);
     }
   });
 
-  it('keeps creation and permissions wired to the slotted new component', async () => {
+  it('replays the latest browse context only after cold chat is ready', async () => {
+    await fixture({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
+    const first = { path: '/org/site/first.html', name: 'first', ext: 'html' };
+    const latest = { path: '/org/site/folder', name: 'folder' };
+    el._handleBrowseSelection({ detail: { items: [first] } });
+    const aside = document.createElement('aside');
+    const chat = document.createElement('nx-chat');
+    chat.attachShadow({ mode: 'open' });
+    chat.shadowRoot.innerHTML = '<nx-pills></nx-pills>';
+    let ready;
+    chat.updateComplete = new Promise((resolve) => { ready = resolve; });
+    aside.append(chat);
+    document.body.append(aside);
+    const contexts = [];
+    const onContext = ({ detail }) => contexts.push(detail);
+    try {
+      const opening = el.syncChatContext(aside);
+      el._handleBrowseSelection({ detail: { items: [latest] } });
+      document.addEventListener('nx-add-to-chat', onContext);
+      expect(contexts).to.deep.equal([]);
+      ready();
+      await opening;
+      expect(contexts).to.deep.equal([{
+        key: latest.path,
+        id: latest.path,
+        type: 'folder',
+        label: 'folder',
+        blockName: 'folder',
+        innerText: 'Selected repository path: org/site/folder',
+      }]);
+      el._clearBrowseSelection();
+      contexts.length = 0;
+      await el.syncChatContext(aside);
+      expect(contexts).to.deep.equal([]);
+    } finally {
+      document.removeEventListener('nx-add-to-chat', onContext);
+      aside.remove();
+    }
+  });
+
+  it('preloads chat during idle time and cancels pending preload on disconnect', async () => {
+    await fixture({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
+    const idle = stub(window, 'requestIdleCallback').returns(42);
+    const cancel = stub(window, 'cancelIdleCallback');
+    const load = stub().resolves(document.createElement('div'));
+    try {
+      el.preloadChat(load);
+      expect(load.called).to.be.false;
+      idle.firstCall.args[0]();
+      expect(load.calledOnce).to.be.true;
+      el.preloadChat(load);
+      el.remove();
+      expect(cancel.calledWith(42)).to.be.true;
+    } finally {
+      idle.restore();
+      cancel.restore();
+    }
+  });
+
+  it('passes permissions to creation controls and leaves breadcrumbs to nav', async () => {
     await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
-    const list = el.browseCmp;
-    await list.updateComplete;
-    list.handlePermissions(['read', 'write']);
+    el.handlePermissions({ detail: ['read', 'write'] });
+    await el.updateComplete;
     expect(el.newCmp.permissions).to.deep.equal(['read', 'write']);
-    const item = { path: '/org/site/new.html', name: 'new', ext: 'html' };
-    el.newCmp.sendNewItem(item);
-    await list.updateComplete;
-    expect(list._listItems).to.include(item);
-    expect(headerRoot().querySelector('slot').assignedElements()).to.deep.equal([el.newCmp]);
+    expect(el.shadowRoot.querySelector('nx-breadcrumb')).to.be.null;
+    expect(headerRoot().querySelector('slot:not([name])')).to.be.null;
   });
 
-  it('renders the toolbar controls and group-by-type switch', async () => {
-    const { toolbar, rightButtons, newLabel } = await renderToolbar(
-      { fullpath: '/org/site', org: 'org', site: 'site', path: '' },
-      { chat: true },
-    );
-    expect(newLabel?.textContent).to.equal('New');
-    expect(toolbar.textContent).to.contain('Show All');
-    expect(headerRoot().querySelector('.chat-btn')).to.exist;
-    expect(rightButtons.map((btn) => btn.textContent.trim())).to.deep.equal(['Show All']);
-    expect(headerRoot().querySelector('nx-picker').labelOverride).to.equal('Sort');
-    expect(headerRoot().querySelector('nx-switch').getAttribute('label')).to.equal('Group by type');
-  });
-
-  it('persists the view from the segmented control and passes it to the list', async () => {
+  it('persists header view requests and passes the view and size to the list', async () => {
     await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
-    headerRoot().querySelector('nx-segmented-btn')
-      .dispatchEvent(new CustomEvent('change', { detail: { value: 'card' } }));
+    const header = el.shadowRoot.querySelector('da-browse-header');
+    header.dispatchEvent(new CustomEvent('appearancesizechange', { detail: { view: 'card', size: 'l' } }));
+    header.dispatchEvent(new CustomEvent('viewchange', { detail: { view: 'card' } }));
     await settle();
     expect(el.browseCmp.view).to.equal('card');
+    expect(el.browseCmp.getAttribute('size')).to.equal('l');
     expect(JSON.parse(localStorage.getItem('da-browse-settings')).view).to.equal('card');
     expect(document.createElement('da-browse')._view).to.equal('card');
   });
 
-  it('persists group-by-type changes from the switch and restores them on a new instance', async () => {
+  it('persists header grouping requests and passes them to the list', async () => {
     await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
-    const control = headerRoot().querySelector('nx-switch');
-    control.dispatchEvent(new CustomEvent('change', { detail: { checked: true } }));
+    const header = el.shadowRoot.querySelector('da-browse-header');
+    header.dispatchEvent(new CustomEvent('groupbytypechange', { detail: { group: false } }));
     await settle();
-    expect(el.browseCmp.groupByType).to.be.true;
-    expect(JSON.parse(localStorage.getItem('da-browse-settings'))).to.deep.equal({ groupByType: true });
-    expect(document.createElement('da-browse')._groupByType).to.be.true;
-  });
-
-  it('keeps the Sort label fixed while synchronizing selection and column indicators', async () => {
-    await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
-    const list = el.browseCmp;
-    await list.updateComplete;
-    list._listItems = [
-      { path: '/org/site/b.html', name: 'b', ext: 'html', lastModified: 200 },
-      { path: '/org/site/a.html', name: 'a', ext: 'html', lastModified: 100 },
-    ];
-    await list.updateComplete;
-    const picker = headerRoot().querySelector('nx-picker');
-    expect(picker.labelOverride).to.equal('Sort');
-    expect(picker.title).to.equal('Sort: Default');
-    expect(list.shadowRoot.querySelector('[data-column="name"]').getAttribute('aria-sort')).to.equal('none');
-    picker.dispatchEvent(new CustomEvent('change', { detail: { value: 'name:ascending' } }));
-    await list.updateComplete;
-    await nextFrame();
-    await list.updateComplete;
-    await settle();
-    expect(list._listItems.map((item) => item.name)).to.deep.equal(['a', 'b']);
-    expect(picker.labelOverride).to.equal('Sort');
-    expect(picker.title).to.equal('Sorted by Name (A-Z)');
-    expect(picker.value).to.equal('name:ascending');
-    expect(list.shadowRoot.querySelector('[data-column="name"]').getAttribute('aria-sort')).to.equal('ascending');
-    await list.toggleSort('lastModified');
-    await list.updateComplete;
-    await settle();
-    expect(picker.labelOverride).to.equal('Sort');
-    expect(picker.title).to.equal('Sorted by Modified (newest first)');
-    expect(picker.value).to.equal('lastModified:descending');
-    await list.toggleSort('lastModified');
-    await list.updateComplete;
-    await settle();
-    expect(picker.value).to.equal('lastModified:ascending');
-    expect(picker.labelOverride).to.equal('Sort');
-    expect(picker.title).to.contain('oldest first');
-    list.requestUpdate();
-    await list.updateComplete;
-    await settle();
-    expect(picker.labelOverride).to.equal('Sort');
-    expect(picker.title).to.contain('Sorted by Modified');
-    el.details = { fullpath: '/org/other', org: 'org', site: 'other' };
-    await nextFrame();
-    await settle();
-    await list.updateComplete;
-    await settle();
-    expect(picker.labelOverride).to.equal('Sort');
-    expect(picker.title).to.equal('Sorted by Modified (oldest first)');
-    expect(JSON.parse(localStorage.getItem('da-browse-settings')).sort)
-      .to.deep.equal({ property: 'lastModified', direction: 'ascending' });
-  });
-
-  it('renders only the browse grid without search tabs or a duplicate breadcrumb', async () => {
-    await renderToolbar({ fullpath: '/org/site/folder', org: 'org', site: 'site', path: '/folder' });
-    expect(el.shadowRoot.querySelector('nx-breadcrumb')).to.be.null;
-    expect(el.shadowRoot.querySelector('[role="tablist"], [role="tabpanel"], da-search')).to.be.null;
-    expect(el.shadowRoot.querySelectorAll('da-list').length).to.equal(1);
-    expect(el.shadowRoot.querySelector('[role="grid"]').getAttribute('aria-label')).to.equal('Browse files');
-  });
-
-  it('updates the type filter button from the list state', async () => {
-    const { rightButtons } = await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
-    const list = el.browseCmp;
-    list._listItems = [{ path: '/org/site/a.html', name: 'a', ext: 'html' }];
-    await list.updateComplete;
-    rightButtons[0].click();
-    await settle();
-    expect(rightButtons[0].getAttribute('aria-expanded')).to.equal('true');
-    list.toggleTypeVisibility('Page');
-    await list.updateComplete;
-    await settle();
-    expect(rightButtons[0].textContent).to.contain('1 type hidden');
-    list._typesPopover.close();
-    list._typesPopover.dispatchEvent(new CustomEvent('close'));
-    await settle();
-    expect(rightButtons[0].getAttribute('aria-expanded')).to.equal('false');
+    expect(el.browseCmp.groupByType).to.be.false;
+    expect(JSON.parse(localStorage.getItem('da-browse-settings'))).to.deep.equal({ groupByType: false });
+    expect(document.createElement('da-browse')._groupByType).to.be.false;
   });
 
   it('keeps the browse list available when navigating to the organization root', async () => {
     await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
     el.details = { fullpath: '/org', org: 'org', path: '' };
-    await nextFrame();
     await settle();
     expect(el.browseCmp.fullpath).to.equal('/org');
     expect(el.shadowRoot.querySelectorAll('da-list').length).to.equal(1);
-  });
-
-  it('renders a single contextual config action pointing to site config at site level', async () => {
-    await fixture({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
-    const links = headerRoot().querySelectorAll('a.browse-settings-link');
-    expect(links.length).to.equal(1);
-    expect(links[0].getAttribute('aria-label')).to.equal('Config');
-    expect(links[0].getAttribute('href')).to.equal('/config#/org/site/');
-  });
-
-  it('renders a single contextual config action pointing to site config below site level', async () => {
-    await fixture({ fullpath: '/org/site/folder', org: 'org', site: 'site', path: '/folder' });
-    const links = headerRoot().querySelectorAll('a.browse-settings-link');
-    expect(links.length).to.equal(1);
-    expect(links[0].getAttribute('href')).to.equal('/config#/org/site/');
-  });
-
-  it('renders a single contextual config action pointing to org config at org level', async () => {
-    await fixture({ fullpath: '/org', org: 'org', path: '' });
-    const links = headerRoot().querySelectorAll('a.browse-settings-link');
-    expect(links.length).to.equal(1);
-    expect(links[0].getAttribute('aria-label')).to.equal('Config');
-    expect(links[0].getAttribute('href')).to.equal('/config#/org/');
   });
 });

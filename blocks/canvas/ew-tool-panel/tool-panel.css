@@ -11,7 +11,7 @@
   align-items: center;
   flex-shrink: 0;
   min-height: 48px;
-  padding: 0 var(--s2-spacing-100);
+  padding: 0 var(--s2-spacing-200);
   border-bottom: 1px solid var(--s2-gray-200);
   box-sizing: border-box;
 }
@@ -40,8 +40,8 @@
 
   svg.icon {
     display: block;
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     overflow: hidden;
   }
 
