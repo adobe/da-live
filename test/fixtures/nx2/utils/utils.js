@@ -17,19 +17,6 @@ export const loadStyle = (supplied) => {
   return styleCache[path];
 };
 
-export const SUPPORTED_FILES = {
-  html: 'text/html',
-  jpeg: 'image/jpeg',
-  json: 'application/json',
-  jpg: 'image/jpeg',
-  png: 'image/png',
-  gif: 'image/gif',
-  mp4: 'video/mp4',
-  pdf: 'application/pdf',
-  svg: 'image/svg+xml',
-  ico: 'image/x-icon',
-};
-
 export const loadPageStyle = async () => {};
 
 export const getLivePreviewUrl = ({ org, repo, ref = 'main' }) => `https://${ref}--${repo}--${org}.aem.live`;

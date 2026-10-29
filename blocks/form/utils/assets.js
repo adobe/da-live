@@ -1,23 +1,13 @@
-import { getNx2 } from '../../../scripts/utils.js';
-import { extensionOf, isAssetHref } from './media.js';
-
-const nx2 = getNx2();
-const [
-  {
-    SUPPORTED_IMAGE_TYPES,
-    getImageUploadLimit,
-    getMediaUploadPath,
-    imageTooLargeMessage,
-    uploadMedia,
-  },
-  { SUPPORTED_FILES },
-] = await Promise.all([
-  import(`${nx2}/utils/media-upload.js`),
-  import(`${nx2}/utils/utils.js`),
-]);
+import { getNx2Api } from '../../../scripts/utils.js';
+import { SUPPORTED_IMAGE_TYPES } from '../../shared/constants.js';
+import { refuseOversizedImage } from '../../shared/image-upload.js';
+import { isAssetHref } from './media.js';
 
 // The SDK type names of asset fields.
 export const ASSET_TYPES = Object.freeze({ image: 'image', file: 'file' });
+
+/** The result of a selection that ended without a value or an error. */
+export const CANCELLED = Object.freeze({ cancelled: true });
 
 const INVALID_FILE_NAME = /[/\\?#]|^\.{1,2}$/;
 
@@ -26,37 +16,93 @@ const UPLOAD_ERRORS = {
   fileName: 'The file name is invalid.',
   fileType: 'This file type cannot be uploaded here.',
   response: 'The upload did not return a usable file URL.',
+  status: (status) => `Upload failed with status ${status}.`,
 };
 
-const isValidFileName = (fileName) => !!fileName && !INVALID_FILE_NAME.test(fileName);
+/**
+ * @param {string} [fileName] The name of the picked file.
+ * @returns {boolean} Whether the name is safe to use as the last segment of a media path.
+ */
+function isValidFileName(fileName) {
+  return !!fileName && !INVALID_FILE_NAME.test(fileName);
+}
 
-// The upload API derives the content type from the extension, so validation does too.
-export async function uploadFile({ details, file, upload, checkHlx6 }) {
-  const type = SUPPORTED_FILES[extensionOf(file?.name)];
-  if (!SUPPORTED_IMAGE_TYPES.includes(type)) {
+/**
+ * Builds the media path Canvas uploads to, a hidden folder named after the document.
+ * @param {object} options The document and file names.
+ * @param {string} options.parent The document's folder, `/org/site/dir`.
+ * @param {string} options.name The document's name without its extension.
+ * @param {string} options.fileName The name of the uploaded file.
+ * @returns {string} The media path.
+ */
+function mediaPathOf({ parent, name, fileName }) {
+  return `${parent}/.${name}/${fileName}`;
+}
+
+/**
+ * Uploads a file through the nx2 source api.
+ * @param {string} path The media path.
+ * @param {{ body: File }} options The request options.
+ * @returns {Promise<Response>} The upload response.
+ */
+async function uploadMedia(path, options) {
+  const { source } = await getNx2Api();
+  return source.uploadMedia(path, options);
+}
+
+/**
+ * Reads the URL of the uploaded file from an upload response.
+ * @param {Response} response The upload response.
+ * @returns {Promise<string|undefined>} The content URL, or undefined for an unreadable body.
+ */
+async function readContentUrl(response) {
+  const json = await response.json().catch(() => undefined);
+  return json?.source?.contentUrl;
+}
+
+/**
+ * Uploads an image the way Canvas does, including its size limit toast.
+ * @param {object} options The upload request.
+ * @param {{ parent: string, name: string }} options.details The form document's path details.
+ * @param {File} options.file The picked file.
+ * @param {Function} [options.upload] Posts the file body to a media path.
+ * @param {Function} [options.refuseOversized] Shows the size limit toast and answers whether
+ *   the file is too large.
+ * @returns {Promise<object>} The uploaded `href` and `name`, an `error`, or `CANCELLED` once
+ *   the size limit toast has been shown.
+ */
+export async function uploadFile({
+  details,
+  file,
+  upload = uploadMedia,
+  refuseOversized = refuseOversizedImage,
+}) {
+  if (!SUPPORTED_IMAGE_TYPES.includes(file?.type)) {
     return { error: UPLOAD_ERRORS.fileType };
   }
 
-  const { owner, repo, parent, name } = details ?? {};
-  if (!owner || !repo || !parent || !name) {
+  const { parent, name } = details ?? {};
+  if (!parent || !name) {
     return { error: UPLOAD_ERRORS.document };
   }
   if (!isValidFileName(file.name)) {
     return { error: UPLOAD_ERRORS.fileName };
   }
+  if (await refuseOversized(file.size, parent)) {
+    return CANCELLED;
+  }
 
-  const size = file.size ?? 0;
-  const limitBytes = await getImageUploadLimit({ org: owner, site: repo, size, checkHlx6 });
-  if (size > limitBytes) return { error: imageTooLargeMessage({ limitBytes }) };
+  const response = await upload(mediaPathOf({ parent, name, fileName: file.name }), { body: file });
+  if (!response.ok) {
+    return { error: UPLOAD_ERRORS.status(response.status) };
+  }
 
-  const path = getMediaUploadPath({ parent, name, fileName: file.name });
-  const { href, error } = await uploadMedia({ path, body: file, upload });
-  if (error) return { error };
-  if (!isAssetHref(href)) return { error: UPLOAD_ERRORS.response };
+  const href = await readContentUrl(response);
+  if (!isAssetHref(href)) {
+    return { error: UPLOAD_ERRORS.response };
+  }
   return { href, name: file.name };
 }
-
-export const CANCELLED = Object.freeze({ cancelled: true });
 
 const SOURCE_IDS = {
   upload: 'upload',

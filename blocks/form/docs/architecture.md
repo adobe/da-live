@@ -11,9 +11,7 @@ The code was moved from da-nx's `nx/blocks/form` to da-live's `blocks/form`.
 
 The `/form` page content declares the block as `nx-form`. The nx2 loader loads `nx-` blocks listed in `NX_BLOCKS` ([`nx2/scripts/nx.js`](https://github.com/adobe/da-nx/blob/main/nx2/scripts/nx.js)) from da-nx. Pages that declare a `form` block load `blocks/form/form.js` from da-live's codeBase instead.
 
-The block imports nx2 exports such as `loadStyle`, `hashChange`, `openPanel`, `getEWFlags` and the `source` api at runtime through `` await import(`${getNx2()}/...`) ``, with `getNx2()` from `scripts/utils.js`. Pages with `<meta name="nxver" content="2">` load nx2 from the same base URL, so these imports return the module instances the page already loaded. This includes the stateful `nx2/scripts/nx.js`.
-
-The form block also imports nx2's `utils/aem-assets/` modules, `utils/media-upload.js`, `ensurePreviewLogin` and `getLivePreviewUrl` for its asset fields. `/form` fails to load when the da-nx deployment that `getNx2()` resolves to doesn't ship them.
+The block imports nx2 at runtime through `getNx2()` instead of bundling it, so it shares the module instances the page already loaded, including the stateful `nx2/scripts/nx.js`.
 
 For engine internals such as schema compilation, model build, validation, defaults policy and persistence semantics, see the SDK's [architecture.md](https://github.com/adobe-rnd/da-sc-sdk/blob/main/docs/architecture.md). This document only covers the da-live form block and what it adds on top.
 
@@ -59,6 +57,8 @@ editor.js          →  utils/              (loadFormContext, attachPersistence)
 editor.js          →  views/ + fields/    (editor, sidebar, preview; S2 field components)
 utils/context.js   →  da-sc-sdk          (convertHtmlToJson)
 utils/persistence.js → da-sc-sdk        (convertJsonToHtml)
+utils/assets.js    →  blocks/shared/      (Canvas image types and size limit)
+utils/assets.js    →  nx2 aem-assets      (AEM Assets source, loaded on demand)
 views/           →  (SDK engine only via prop binding from the element — no direct imports)
 ```
 
