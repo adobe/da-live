@@ -12,11 +12,10 @@ const RUN_TESTS_DIR = `${ENV}/${getQuery()}#/${TEST_ORG}/${TEST_SITE}/tests/${RU
 const BULK_PAGE_COUNT = 12;
 
 async function selectItem(page, name) {
-  const checkbox = page
-    .locator('div.da-item-list-item-inner').filter({ hasText: name, exact: true })
-    .locator('input[type="checkbox"][name="item-selected"]').first();
-  await checkbox.focus();
-  await page.keyboard.press(' ');
+  const item = page.locator('da-file-item', {
+    has: page.getByRole('link', { name, exact: true }),
+  });
+  await item.getByRole('checkbox', { name: 'Select item', exact: true }).check();
 }
 
 // Creates a folder under the tests directory and returns both its URL and the
@@ -73,7 +72,7 @@ async function createPagesInFolder(page, workerInfo, folderPath, prefix, count) 
 async function expectFolderHasPages(page, folderURL, count) {
   await expect(async () => {
     await page.goto(folderURL);
-    await expect(page.locator('div.da-item-list-item-inner')).toHaveCount(count, { timeout: 3000 });
+    await expect(page.locator('da-list.da-list-type-browse da-file-item')).toHaveCount(count, { timeout: 3000 });
   }).toPass({ timeout: 90000 });
 }
 
@@ -96,8 +95,8 @@ test('Clicking Preview opens a confirmation dialog', async ({ page }) => {
   await selectItem(page, 'pingtest');
   await page.locator('button.preview-button').filter({ visible: true }).click();
 
-  await expect(page.locator('sl-button.accent').filter({ visible: true })).toBeVisible();
-  await expect(page.locator('da-dialog')).toContainText('Preview the');
+  await expect(page.locator('da-confirm-dialog').getByRole('button', { name: 'Preview', exact: true })).toBeEnabled();
+  await expect(page.locator('da-confirm-dialog')).toContainText('Preview the');
 });
 
 test('Preview the selected page', async ({ page, context }, workerInfo) => {
@@ -121,16 +120,16 @@ test('Preview the selected page', async ({ page, context }, workerInfo) => {
   await selectItem(page, pageName);
   await page.locator('button.preview-button').filter({ visible: true }).click();
 
-  await expect(page.locator('da-dialog')).toContainText('Preview the');
-  await page.locator('sl-button.accent').filter({ visible: true }).click();
+  await expect(page.locator('da-confirm-dialog')).toContainText('Preview the');
+  await page.locator('da-confirm-dialog').getByRole('button', { name: 'Preview', exact: true }).click();
 
   await expect(page.locator('button.da-aem-results-btn')).toBeVisible({ timeout: 30000 });
   await expect(page.locator('button.da-aem-results-btn')).toContainText('Previewed 1 item');
-  await expect(page.locator('da-dialog').filter({ hasText: 'Errors' })).toHaveCount(0);
+  await expect(page.locator('da-confirm-dialog').filter({ hasText: 'Errors' })).toHaveCount(0);
 
   // Open the previewed page in its own browser tab and confirm it actually rendered
   await page.locator('button.da-aem-results-btn').click();
-  const previewLink = page.locator('da-dialog a').first();
+  const previewLink = page.locator('da-confirm-dialog a').first();
   await expect(previewLink).toBeVisible();
   const previewUrl = await previewLink.getAttribute('href');
 
@@ -161,16 +160,16 @@ test('Publish the selected page', async ({ page, context }, workerInfo) => {
   await selectItem(page, pageName);
   await page.locator('button.publish-button').filter({ visible: true }).click();
 
-  await expect(page.locator('da-dialog')).toContainText('Publish the');
-  await page.locator('sl-button.accent').filter({ visible: true }).click();
+  await expect(page.locator('da-confirm-dialog')).toContainText('Publish the');
+  await page.locator('da-confirm-dialog').getByRole('button', { name: 'Publish', exact: true }).click();
 
   await expect(page.locator('button.da-aem-results-btn')).toBeVisible({ timeout: 30000 });
   await expect(page.locator('button.da-aem-results-btn')).toContainText('Published 1 item');
-  await expect(page.locator('da-dialog').filter({ hasText: 'Errors' })).toHaveCount(0);
+  await expect(page.locator('da-confirm-dialog').filter({ hasText: 'Errors' })).toHaveCount(0);
 
   // Open the published page in its own browser tab and confirm it actually rendered
   await page.locator('button.da-aem-results-btn').click();
-  const publishLink = page.locator('da-dialog a').first();
+  const publishLink = page.locator('da-confirm-dialog a').first();
   await expect(publishLink).toBeVisible();
   const publishUrl = await publishLink.getAttribute('href');
 
@@ -212,12 +211,12 @@ test.describe.serial('Bulk preview/publish 12 pages in a folder', () => {
     await page.locator('da-list.da-list-type-browse input#select-all').click();
     await page.locator('button.preview-button').filter({ visible: true }).click();
 
-    await expect(page.locator('da-dialog')).toContainText('Preview the');
-    await page.locator('sl-button.accent').filter({ visible: true }).click();
+    await expect(page.locator('da-confirm-dialog')).toContainText('Preview the');
+    await page.locator('da-confirm-dialog').getByRole('button', { name: 'Preview', exact: true }).click();
 
     await expect(page.locator('button.da-aem-results-btn')).toBeVisible({ timeout: 60000 });
     await expect(page.locator('button.da-aem-results-btn')).toContainText(`Previewed ${BULK_PAGE_COUNT} items`);
-    await expect(page.locator('da-dialog').filter({ hasText: 'Errors' })).toHaveCount(0);
+    await expect(page.locator('da-confirm-dialog').filter({ hasText: 'Errors' })).toHaveCount(0);
   });
 
   test('Publish 12 pages in a folder', async ({ page }) => {
@@ -229,12 +228,12 @@ test.describe.serial('Bulk preview/publish 12 pages in a folder', () => {
     await page.locator('da-list.da-list-type-browse input#select-all').click();
     await page.locator('button.publish-button').filter({ visible: true }).click();
 
-    await expect(page.locator('da-dialog')).toContainText('Publish the');
-    await page.locator('sl-button.accent').filter({ visible: true }).click();
+    await expect(page.locator('da-confirm-dialog')).toContainText('Publish the');
+    await page.locator('da-confirm-dialog').getByRole('button', { name: 'Publish', exact: true }).click();
 
     await expect(page.locator('button.da-aem-results-btn')).toBeVisible({ timeout: 60000 });
     await expect(page.locator('button.da-aem-results-btn')).toContainText(`Published ${BULK_PAGE_COUNT} items`);
-    await expect(page.locator('da-dialog').filter({ hasText: 'Errors' })).toHaveCount(0);
+    await expect(page.locator('da-confirm-dialog').filter({ hasText: 'Errors' })).toHaveCount(0);
   });
 });
 

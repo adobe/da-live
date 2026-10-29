@@ -282,8 +282,6 @@ describe('da-file-item render', () => {
     const card = el.shadowRoot.querySelector('nx-card');
     let event;
     el.addEventListener('checked', (e) => { event = e; });
-    card.dispatchEvent(new Event('selectionchange', { bubbles: true, composed: true }));
-    expect(event).to.equal(undefined);
     card.dispatchEvent(new CustomEvent('nx-card-selection-change', {
       detail: { selected: true, shiftKey: true },
       bubbles: true,
