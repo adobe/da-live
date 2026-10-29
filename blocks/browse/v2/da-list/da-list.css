@@ -92,37 +92,35 @@
 }
 
 /* List Item */
-da-list-item {
+da-file-item {
   font-size: var(--s2-component-m-regular-font-size, 14px);
 }
 
 .da-browse-panel:not(.card-view) {
-  da-list-item::before {
+  da-file-item::before {
     display: block;
     content: "";
     height: 1px;
     background: var(--s2-gray-300);
   }
 
-  da-list-item::after {
+  da-file-item::after {
     display: block;
     content: "";
     height: 1px;
     background: var(--s2-gray-200);
   }
-}
 
+  da-file-item:hover::before,
+  da-file-item.is-expanded::before,
+  da-file-item:hover::after,
+  da-file-item.is-expanded::after {
+    margin: 0;
+  }
 
-
-da-list-item:hover::before,
-da-list-item.is-expanded::before,
-da-list-item:hover::after,
-da-list-item.is-expanded::after {
-  margin: 0;
-}
-
-.da-list-group-header + da-list-item::before {
-  display: none;
+  .da-list-group-header + da-file-item::before {
+    display: none;
+  }
 }
 
 /* Empty list */

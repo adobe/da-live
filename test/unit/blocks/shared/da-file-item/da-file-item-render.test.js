@@ -1,18 +1,18 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
-import { setNx } from '../../../../../../scripts/utils.js';
+import { setNx } from '../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 
-await import('../../../../../../blocks/browse/v2/da-list-item/da-list-item.js');
+await import('../../../../../blocks/shared/da-file-item/da-file-item.js');
 
-describe('da-list-item render', () => {
+describe('da-file-item render', () => {
   let el;
 
   async function fixture(props = {}) {
-    el = document.createElement('da-list-item');
+    el = document.createElement('da-file-item');
     Object.assign(el, {
       idx: 0,
       name: 'page',
@@ -246,7 +246,7 @@ describe('da-list-item render', () => {
     await fixture({ view: 'card', ext: 'json' });
     el.updateAEMStatus = () => { };
     el.updateDAStatus = () => { };
-    const button = el.shadowRoot.querySelector('.card-heading .da-item-list-item-expand-btn');
+    const button = el.shadowRoot.querySelector('.card-more');
     expect(button).to.exist;
     button.click();
     await el.updateComplete;
@@ -269,39 +269,165 @@ describe('da-list-item render', () => {
       date: new Date('2024-01-01T12:00:00Z').getTime(),
     });
     const preview = el.shadowRoot.querySelector('.card-preview');
-    expect(preview.querySelector('da-card-preview').ext).to.equal('json');
-    const select = preview.querySelector('.card-select');
-    expect(select.querySelector('input[type="checkbox"]')).to.exist;
-    expect(el.shadowRoot.querySelector('.card-name-text').textContent).to.equal('brand.xlsx');
+    expect(preview.querySelector('svg use').getAttribute('href')).to.contain('s2-icon-file-20-n.svg');
+    const card = el.shadowRoot.querySelector('nx-card');
+    expect(card.selectable).to.equal(true);
+    expect(card.selected).to.equal(false);
+    expect(preview.parentElement.slot).to.equal('media');
+    expect(el.shadowRoot.querySelector('[slot="heading"]').textContent.trim()).to.equal('brand.xlsx');
     expect(el.shadowRoot.querySelector('.card-date').textContent).to.equal(el.renderDate());
     expect(el.shadowRoot.querySelector('.card-type').textContent).not.to.be.empty;
-    expect(el.shadowRoot.querySelector('.card-heading .da-item-list-item-expand-btn')).to.exist;
     expect(preview.querySelector('.da-item-list-item-expand-btn')).to.be.null;
     expect(el.shadowRoot.querySelector('.da-item-list-item-inner')).to.be.null;
+    expect(el.shadowRoot.querySelector('[slot="actions"] button[aria-label="More"]')).to.exist;
   });
 
-  it('Renders a card preview and passes the renaming state to it', async () => {
+  it('bridges card selection and shift-click to browse selection', async () => {
+    await fixture({ view: 'card', allowselect: true });
+    const card = el.shadowRoot.querySelector('nx-card');
+    let event;
+    el.addEventListener('checked', (e) => { event = e; });
+    card.dispatchEvent(new Event('selectionchange', { bubbles: true, composed: true }));
+    expect(event).to.equal(undefined);
+    card.dispatchEvent(new CustomEvent('nx-card-selection-change', {
+      detail: { selected: true, shiftKey: true },
+      bubbles: true,
+      composed: true,
+    }));
+    await el.updateComplete;
+    expect(event.detail).to.deep.equal({ checked: true, shiftKey: true });
+    expect(event.bubbles).to.equal(true);
+    expect(event.composed).to.equal(true);
+    expect(card.selected).to.equal(true);
+
+    el.isChecked = false;
+    el.allowselect = false;
+    await el.updateComplete;
+    expect(card.selected).to.equal(false);
+    expect(card.selectable).to.equal(false);
+  });
+
+  it('focuses card selection through its public API after the card finishes updating', async () => {
+    await fixture({ view: 'card', allowselect: true });
+    const card = el.shadowRoot.querySelector('nx-card');
+    expect(card.shadowRoot).to.equal(null);
+    let finishUpdate;
+    card.updateComplete = new Promise((resolve) => { finishUpdate = resolve; });
+    let focused = false;
+    card.focus = () => { focused = true; };
+
+    const result = el.focusSelection();
+    await Promise.resolve();
+    expect(focused).to.equal(false);
+    finishUpdate();
+
+    expect(await result).to.equal(true);
+    expect(focused).to.equal(true);
+  });
+
+  it('does not claim to focus selection on a non-selectable card', async () => {
+    await fixture({ view: 'card', allowselect: false });
+    const card = el.shadowRoot.querySelector('nx-card');
+    let focused = false;
+    card.focus = () => { focused = true; };
+
+    expect(await el.focusSelection()).to.equal(false);
+    expect(focused).to.equal(false);
+  });
+
+  it('Renders a file icon and a busy preview while renaming', async () => {
     await fixture({ view: 'card', ext: 'png', path: '/org/site/a.png' });
-    const preview = el.shadowRoot.querySelector('.card-preview da-card-preview');
-    expect(preview.path).to.equal('/org/site/a.png');
-    expect(preview.ext).to.equal('png');
-    expect(preview.busy).to.not.be.ok;
+    const preview = el.shadowRoot.querySelector('.card-preview');
+    expect(preview.querySelector('svg use').getAttribute('href')).to.contain('s2-icon-image-20-n.svg');
+    expect(preview.querySelector('[role="status"]')).to.be.null;
     el._isRenaming = true;
     await el.updateComplete;
-    expect(preview.busy).to.be.true;
+    expect(preview.querySelector('[aria-label="Renaming"]')).to.exist;
   });
 
   it('Renders the rename form in card view', async () => {
-    await fixture({ view: 'card', rename: true });
-    expect(el.shadowRoot.querySelector('.card form.da-item-list-item-rename')).to.exist;
+    await fixture({ view: 'card', rename: true, isChecked: true });
+    const form = el.shadowRoot.querySelector('nx-card form.da-item-list-item-rename');
+    expect(form.slot).to.equal('content');
+    expect(form.querySelector('input').value).to.equal('page');
+    expect(el.shadowRoot.querySelector('[slot="heading"]')).to.be.null;
+    expect(el.shadowRoot.querySelector('[slot="actions"]')).to.be.null;
+    expect(el.shadowRoot.querySelector('.card-type').slot).to.equal('metadata');
+    expect(el.shadowRoot.querySelector('.card-date').slot).to.equal('metadata');
   });
 
   it('Shows the favorite badge on cards only when favorited', async () => {
     await fixture({ view: 'card' });
+    el.updateAEMStatus = () => {};
+    el.updateDAStatus = () => {};
     expect(el.shadowRoot.querySelector('.card-favorite')).to.not.exist;
     el.isFavorited = true;
     await el.updateComplete;
-    const badge = el.shadowRoot.querySelector('.card-preview .card-favorite');
-    expect(badge.getAttribute('aria-label')).to.equal('Favorited');
+    const button = el.shadowRoot.querySelector('[slot="overlay-actions"].card-favorite');
+    expect(button.getAttribute('aria-label')).to.equal('Remove as Favorite');
+    expect(button.getAttribute('aria-pressed')).to.equal('true');
+    el.shadowRoot.querySelector('.card-more').click();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.card-favorite-action').textContent.trim())
+      .to.equal('Remove as Favorite');
+    let event;
+    el.addEventListener('favoritechange', (e) => { event = e; });
+    button.click();
+    expect(event.type).to.equal('favoritechange');
+    el.isFavorited = false;
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.card-favorite')).to.be.null;
+  });
+
+  it('offers favorites but no file details in folder card menus', async () => {
+    await fixture({ view: 'card', ext: '', allowselect: true });
+    el.shadowRoot.querySelector('.card-more').click();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.card-details')).to.be.null;
+    expect(el.shadowRoot.querySelector('.card-favorite-action')).to.exist;
+  });
+
+  it('clears an open card menu when reused for another path', async () => {
+    await fixture({ view: 'card', ext: 'html' });
+    el.updateAEMStatus = () => { };
+    el.updateDAStatus = () => { };
+    el.shadowRoot.querySelector('.card-more').click();
+    await el.updateComplete;
+    el.path = '/org/repo/next';
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.da-item-details')).to.be.null;
+  });
+
+  it('opts into compact composition, forwards scale independently, and updates after mount', async () => {
+    await fixture({ view: 'card', layout: 'compact', size: 's', dimensions: 'l' });
+    const card = el.shadowRoot.querySelector('nx-card');
+    expect(card.layout).to.equal('compact');
+    expect(card.dimensions).to.equal('l');
+    expect(card.size).to.equal('s');
+    expect(el.shadowRoot.querySelector('.compact-heading svg')).to.exist;
+    expect(el.shadowRoot.querySelector('.card-type')).to.equal(null);
+    expect(el.shadowRoot.querySelectorAll('slot[name="metadata"]')).to.have.length(1);
+    el.size = 'm';
+    await el.updateComplete;
+    expect(card.size).to.equal('m');
+    expect(card.dimensions).to.equal('l');
+    expect(el.shadowRoot.querySelector('.card-more').classList.contains('nx-btn-sm')).to.equal(false);
+    el.layout = undefined;
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.card-type')).to.exist;
+    expect(el.shadowRoot.querySelector('.compact-heading')).to.equal(null);
+  });
+
+  it('uses a supplied destination for every link without resolving a .link file', async () => {
+    await fixture({ view: 'card', ext: 'link', href: '/?browse=2#/org/repo' });
+    const links = [...el.shadowRoot.querySelectorAll('a')];
+    expect(links).to.have.length(2);
+    expect(links.every((link) => link.getAttribute('href') === '/?browse=2#/org/repo')).to.equal(true);
+    el.href = '/edit?nx=lpcards#/org/repo/next';
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('[slot="heading"]').getAttribute('href')).to.equal(el.href);
+    el.view = 'list';
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.da-item-list-item-title').getAttribute('href')).to.equal(el.href);
   });
 });

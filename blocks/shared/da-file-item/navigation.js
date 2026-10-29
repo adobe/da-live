@@ -1,7 +1,7 @@
-import getEditPath from '../../shared.js';
-import { getNx2Api, getHomeHref } from '../../../../scripts/utils.js';
+import getEditPath from './edit-path.js';
+import { getNx2Api, getHomeHref } from '../../../scripts/utils.js';
 
-export function getBrowseItemHref({ path, ext, editor }) {
+export function getFileItemHref({ path, ext, editor }) {
   if (ext !== 'link') {
     const href = ext ? getEditPath({ path, ext, editor }) : `#${path}`;
     if (!ext || !getHomeHref()) return href;
