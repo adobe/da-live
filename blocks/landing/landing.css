@@ -3,7 +3,7 @@
   --landing-composer-radius: 24px;
   --landing-composer-frame-width: 6px;
   --landing-composer-frame-radius: calc(var(--landing-composer-radius) + var(--landing-composer-frame-width));
-  --landing-composer-line-height: 20px;
+  --landing-composer-line-height: var(--s2-component-l-regular-line-height, 20px);
   --landing-composer-frame-blur: 4px;
   --landing-composer-frame-background: linear-gradient(to top,
     light-dark(#ffffff7a, #3030307a), light-dark(#fff, #303030));
@@ -826,6 +826,12 @@ a:focus-visible, .filter:focus-visible,
 }
 
 :host([data-ui-size="m"]) {
+  --landing-composer-line-height: var(--s2-body-line-height, 1.5);
+
+  textarea, .composer-working {
+    font-size: var(--s2-body-size-l, 18px);
+  }
+
   h1 {
     font-size: 36px;
     line-height: 46px;

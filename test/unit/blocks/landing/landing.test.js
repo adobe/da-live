@@ -665,6 +665,11 @@ describe('landing page', () => {
     expect(input.blocked).to.equal(true);
     input.onStop();
     expect(chat.stop.calledOnce).to.equal(true);
+    sinon.stub(el, 'uiSize').get(() => 'm');
+    el.requestUpdate();
+    await el.updateComplete;
+    expect(input.size).to.equal('m');
+    expect(chat.size).to.equal('m');
   });
 
   it('keeps the composer disabled until the configured input finishes loading', async () => {
@@ -1173,6 +1178,9 @@ describe('landing page', () => {
     el._chatInputState = { busy: false, disabled: false };
     await el.updateComplete;
     expect(getComputedStyle(composer.querySelector('.composer-surface')).boxShadow).not.to.equal('none');
+    el.setAttribute('data-ui-size', 'm');
+    expect(getComputedStyle(composer.querySelector('textarea')).lineHeight).to.equal('27px');
+    expect(getComputedStyle(composer.querySelector('.coworker-icon')).width).to.equal('22px');
   });
 
   it('does not deliver files read for an old site after switching away and back', async () => {

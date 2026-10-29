@@ -211,6 +211,7 @@ export class DaLanding extends LitElement {
 
   updated() {
     this.syncWorkspace();
+    if (this._chat) this._chat.size = this.uiSize;
     if (this._aoInput) {
       Object.assign(this._aoInput, {
         blocked: !!this._chatInputState?.busy,
@@ -461,6 +462,7 @@ export class DaLanding extends LitElement {
         getContent: async () => {
           const chat = await getChatPanelContent()();
           chat.showInputStatus = true;
+          chat.size = this.uiSize;
           return chat;
         },
         onError: (error) => {

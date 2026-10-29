@@ -78,6 +78,13 @@ Idle, ready, focus-frame, working and drop shadows stay separate; working
 defaults to the current ready shadow. Existing S2 spacing is reused directly.
 The legacy text line remains 20px and the expanded AO row 21px; tokenization
 does not resize either chat or flatten the center/sidebar variants.
+The legacy S line uses the existing S2 component line-height token; AO keeps
+the Figma-specific `--nx-chat-input-expanded-line-height`. In M both middle
+inputs use 18px text and body line height 1.5 (27px). Shared button classes
+advance sidebar actions 24→32px and middle actions 32→40px; Stop is no longer
+sized separately. Landing passes the same size to the existing conversation
+and its standalone AO input. Spinner/logo sizes advance 16→18px and 20→22px.
+These component variants do not install the global profile sizing runtime.
 
 The 1920px Ready frame (`1852:83848`) has a 1068px Files panel starting at y=395.
 Ten compact cards are 142px tall with 4px frame padding, 80px thumbnails,

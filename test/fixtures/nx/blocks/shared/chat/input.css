@@ -9,9 +9,17 @@
   --nx-chat-input-spinner-arc: var(--s2-blue-900, light-dark(#3b63fb, #5681ff));
   --nx-chat-input-stroke-width: var(--s2-spacing-50, 2px);
   --nx-chat-input-logo-size: 20px;
-  --nx-chat-input-stop-size: var(--s2-spacing-400, 24px);
   --nx-chat-input-expanded-inset: 6px;
   --nx-chat-input-row-height: 21px;
+  --nx-chat-input-expanded-line-height: 21px;
   --nx-chat-input-max-height: 240px;
   --nx-chat-input-max-width: 720px;
+  --nx-chat-input-disabled-opacity: 0.5;
+}
+
+:host([size="m"]), :host([data-ui-size="m"]) {
+  --nx-chat-input-spinner-size: 18px;
+  --nx-chat-input-logo-size: 22px;
+  --nx-chat-input-expanded-line-height: var(--s2-body-line-height, 1.5);
+  --nx-chat-input-row-height: calc(var(--s2-body-size-l, 18px) * var(--s2-body-line-height, 1.5));
 }
