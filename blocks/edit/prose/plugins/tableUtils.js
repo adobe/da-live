@@ -1,3 +1,5 @@
+import { addRowAfter, addRowBefore, isInTable, selectedRect } from 'da-y-wrapper';
+
 export function getTableInfo(state, pos) {
   const $pos = state.doc.resolve(pos);
   let tableCellDepth = -1;
@@ -46,4 +48,35 @@ export function isInTableCell(state, pos) {
     }
   }
   return false;
+}
+
+function isSelfContained(row, width) {
+  let rowWidth = 0;
+  let spansRows = false;
+  row.forEach((cell) => {
+    rowWidth += cell.attrs.colspan;
+    if (cell.attrs.rowspan > 1) spansRows = true;
+  });
+  return rowWidth === width && !spansRows;
+}
+
+export function addRowLike(side) {
+  const fallback = side === 'before' ? addRowBefore : addRowAfter;
+  return (state, dispatch) => {
+    if (!isInTable(state)) return false;
+    const { table, tableStart, map, top, bottom } = selectedRect(state);
+    const index = side === 'before' ? top : bottom - 1;
+    const row = table.child(index);
+    if (!isSelfContained(row, map.width)) return fallback(state, dispatch);
+
+    if (dispatch) {
+      let pos = tableStart;
+      for (let i = 0; i < index; i += 1) pos += table.child(i).nodeSize;
+      if (side !== 'before') pos += row.nodeSize;
+      const cells = [];
+      row.forEach((cell) => cells.push(cell.type.createAndFill(cell.attrs)));
+      dispatch(state.tr.insert(pos, row.type.create(row.attrs, cells)));
+    }
+    return true;
+  };
 }
