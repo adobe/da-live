@@ -1,4 +1,5 @@
 import { getNx, getNx2Api } from '../../../scripts/utils.js';
+import config, { toAemHost } from '../../../scripts/config.js';
 import { buildCompareDom } from '../../shared/version/compare.js';
 import { isRequestId } from '../../shared/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
@@ -55,7 +56,7 @@ export function normalizeComparisonHtml(html, context) {
   dom.querySelectorAll('td > p:only-child, th > p:only-child').forEach((p) => {
     p.replaceWith(...p.childNodes);
   });
-  const base = `https://main--${context.site}--${context.org}.aem.live/${context.path.replace(/^\//, '').replace(/\.html$/, '')}`;
+  const base = `https://main--${context.site}--${context.org}.${config.aem.liveHost}/${context.path.replace(/^\//, '').replace(/\.html$/, '')}`;
   dom.body.querySelectorAll('*').forEach((el) => {
     [...el.attributes].forEach(({ name, value }) => {
       if (!['href', 'src', 'alt', 'title', 'colspan', 'rowspan', 'start'].includes(name)) {
@@ -66,7 +67,7 @@ export function normalizeComparisonHtml(html, context) {
           if (!['https:', 'http:', ...(name === 'href' ? ['mailto:', 'tel:'] : [])].includes(url.protocol)) {
             el.removeAttribute(name);
           } else {
-            url.hostname = url.hostname.replace(/\.(?:hlx|aem)\.(?:page|live)$/, '.aem.live');
+            url.hostname = toAemHost(url.hostname, config.aem.liveHost);
             if (name === 'src' && url.hash.startsWith('#width')) url.hash = '';
             el.setAttribute(name, url.href);
           }

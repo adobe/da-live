@@ -7,6 +7,7 @@ import { getPreviewProxyDetails, toPreviewProxyUrl } from '../../../shared/previ
 import { openAssets } from '../../da-assets/da-assets.js';
 import { fetchKeyAutocompleteData } from '../../prose/plugins/slashMenu/keyAutocomplete.js';
 import { getNx2Api, sanitizeName } from '../../../../scripts/utils.js';
+import deploymentConfig, { isAemHost, getServiceHosts } from '../../../../scripts/config.js';
 import { getBlocks } from './index.js';
 
 export const OOTB_PLUGINS = ['blocks', 'templates', 'icons', 'placeholders'];
@@ -46,12 +47,13 @@ function setupBlockOptions(library) {
   if (blockJsonUrl) fetchKeyAutocompleteData(blockJsonUrl);
 }
 
-const AEM_CONTENT_HOST = /\.(aem|hlx)\.(page|live)$/;
+const CONTENT_HOSTS = getServiceHosts('content');
+const ADMIN_HOSTS = getServiceHosts('admin');
 
 export function aemToContentUrl(url) {
   try {
     const { hostname, pathname, search } = new URL(url);
-    if (!AEM_CONTENT_HOST.test(hostname)) return url;
+    if (!isAemHost(hostname)) return url;
     const parts = hostname.split('--');
     if (parts.length !== 3) return url;
     const [, site, orgWithTld] = parts;
@@ -132,7 +134,7 @@ function calculateSources(org, repo, sheetPath) {
     if (ref === 'local') return `http://localhost:3000${path}`;
 
     // Fallback to the ref in search param (defaults to main)
-    return `https://${ref}--${repo}--${org}.aem.live${path}`;
+    return `https://${ref}--${repo}--${org}.${deploymentConfig.aem.liveHost}${path}`;
   });
 }
 
@@ -251,11 +253,11 @@ export function getAemUrlVars(url) {
       return [org, site, branch];
     }
 
-    if (urlObj.origin.includes('content.da.live')) {
+    if (CONTENT_HOSTS.has(urlObj.hostname)) {
       const [, org, site] = urlObj.pathname.split('/');
       return [org, site, 'main'];
     }
-    if (urlObj.origin.includes('admin.da.live')) {
+    if (ADMIN_HOSTS.has(urlObj.hostname)) {
       const [, , org, site] = urlObj.pathname.split('/');
       return [org, site, 'main'];
     }
@@ -285,7 +287,7 @@ export function getItemDetails(item) {
     return { org, site, pathname };
   }
   // DA Content Flavor
-  if (hostname.includes('content.da.live')) {
+  if (CONTENT_HOSTS.has(hostname)) {
     const [org, site, ...rest] = pathname.slice(1).split('/');
     return { org, site, pathname: `/${rest.join('/')}` };
   }

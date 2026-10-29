@@ -1,4 +1,5 @@
 import { getNx, getNx2Api } from '../../scripts/utils.js';
+import config from '../../scripts/config.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -29,7 +30,7 @@ export async function handleRoute(el, details) {
   const hlx6 = await isHlx6(org, site);
   if (token !== routeToken) return null;
   if (hlx6) {
-    return `https://tools.aem.live/tools/user-admin/index.html?org=${encodeURIComponent(org)}&site=${encodeURIComponent(site)}`;
+    return `${config.aem.toolsOrigin}/tools/user-admin/index.html?org=${encodeURIComponent(org)}&site=${encodeURIComponent(site)}`;
   }
 
   await mountComponent(el, org, site);

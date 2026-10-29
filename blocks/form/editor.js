@@ -4,6 +4,7 @@ import { createEngine } from '../../deps/da-sc-sdk/dist/index.js';
 import { loadFormContext } from './utils/context.js';
 import { attachPersistence } from './utils/persistence.js';
 import { getNx2 } from '../../scripts/utils.js';
+import config from '../../scripts/config.js';
 import { isJsonPreviewEnabled } from './utils/config.js';
 
 import './views/editor.js';
@@ -205,8 +206,8 @@ class Form extends LitElement {
   // own schema authoring rather than linking out.
   _schemaEditorHref() {
     const { owner, repo } = this._details ?? {};
-    if (!owner || !repo) return 'https://da.live/apps/schema';
-    return `https://da.live/apps/schema#/${owner}/${repo}`;
+    if (!owner || !repo) return `https://${config.da.domain}/apps/schema`;
+    return `https://${config.da.domain}/apps/schema#/${owner}/${repo}`;
   }
 
   // TODO(EW): cross-app nav back to the da.live home. Revisit if EW should
@@ -215,7 +216,7 @@ class Form extends LitElement {
     const { owner, repo } = this._details ?? {};
     if (!owner || !repo) return;
     const query = window.location.search ?? '';
-    window.location.href = `https://da.live${query}#/${owner}/${repo}`;
+    window.location.href = `https://${config.da.domain}${query}#/${owner}/${repo}`;
   }
 
   _renderCentered(content) {

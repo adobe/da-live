@@ -72,6 +72,15 @@ describe('getPreviewProxyDetails', () => {
     expect(getPreviewProxyDetails(input).url).to.equal(input);
   });
 
+  it('distinguishes content and admin services sharing a local hostname', () => {
+    const content = getPreviewProxyDetails('http://localhost:8788/org/site/page');
+    const admin = getPreviewProxyDetails('http://localhost:8787/source/org/site/page');
+    expect(content.url).to.equal('https://main--site--org.preview.da.live/page');
+    expect(admin.url).to.equal(content.url);
+    const unrelated = 'http://localhost:9999/org/site/page';
+    expect(getPreviewProxyDetails(unrelated).url).to.equal(unrelated);
+  });
+
   it('rewrites a stage-content.da.live URL', () => {
     const details = getPreviewProxyDetails('https://stage-content.da.live/org/site/path', { branch: 'feat' });
     expect(details.url).to.equal('https://feat--site--org.preview.da.live/path');

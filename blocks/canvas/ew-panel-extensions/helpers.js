@@ -2,6 +2,7 @@
 import { DOMParser as PMDOMParser, DOMSerializer, NodeSelection, Slice, TextSelection } from 'da-y-wrapper';
 import { slug } from '../../../deps/github-slugger/dist/index.js';
 import { getNx, getNx2Api, sanitizeName } from '../../../scripts/utils.js';
+import config, { getAemHosts, getServiceHosts, isPreviewHost } from '../../../scripts/config.js';
 import { daFetch, getAuthToken } from '../../shared/utils.js';
 import { CON_ORIGIN } from '../../shared/constants.js';
 import { getPreviewProxyDetails, ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
@@ -18,11 +19,11 @@ const { fetchDaConfigs, getFirstSheet } = await import(`${getNx()}/utils/daConfi
 const ref = new URLSearchParams(window.location.search).get('ref') || 'main';
 const branch = sanitizeName(ref, false, false) || 'main';
 
-const AEM_ORIGINS = ['hlx.page', 'hlx.live', 'aem.page', 'aem.live'];
+const AEM_ORIGINS = getAemHosts();
 const REPLACE_CONTENT = '<content>';
 const blockLibraryCache = new Map();
 const librarySessions = new Map();
-const CONTENT_HOSTS = new Set(['content.da.live', 'stage-content.da.live']);
+const CONTENT_HOSTS = getServiceHosts('content');
 
 export const LIBRARY_AUTH_MESSAGE = 'Library access was denied. Check that you are signed in '
   + 'to DA and have access to this site. For a library hosted by another organization, open '
@@ -121,14 +122,14 @@ function libraryProxyOptions({ org, site, branch: sourceBranch = branch } = {}) 
 
 function libraryContentUrl(path, { org, site, branch: sourceBranch = branch } = {}) {
   if (!path.startsWith('/') || !org || !site) return path;
-  const origin = ref === 'local' ? 'http://localhost:3000' : `https://${sourceBranch}--${site}--${org}.aem.live`;
+  const origin = ref === 'local' ? 'http://localhost:3000' : `https://${sourceBranch}--${site}--${org}.${config.aem.liveHost}`;
   return new URL(path, origin).href;
 }
 
 function resolveLibraryImages(element, path, context, { variant = false } = {}) {
   const source = new URL(libraryContentUrl(path, context), window.location.href);
   const isAemSource = AEM_ORIGINS.some((domain) => source.hostname.endsWith(`.${domain}`));
-  const isProxySource = /\.(?:stage-)?preview\.da\.live$/.test(source.hostname);
+  const isProxySource = isPreviewHost(source.hostname);
   const isContentSource = CONTENT_HOSTS.has(source.hostname);
   const proxyOpts = libraryProxyOptions(context);
   const details = getPreviewProxyDetails(source.href, { ...proxyOpts, currentOrg: undefined });
@@ -143,7 +144,7 @@ function resolveLibraryImages(element, path, context, { variant = false } = {}) 
     contentRoot = `${origin}/${details.org}/${details.site}`;
     source.href = `${contentRoot}${details.pathname}${source.search}${source.hash}`;
   } else if (!isAemSource && proxied && details.org) {
-    source.href = `https://${details.branch}--${details.site}--${details.org}.aem.page${details.pathname}${source.search}${source.hash}`;
+    source.href = `https://${details.branch}--${details.site}--${details.org}.${config.aem.previewHost}${details.pathname}${source.search}${source.hash}`;
   }
   element.querySelectorAll('img[src]').forEach((img) => {
     const src = img.getAttribute('src');
@@ -409,7 +410,7 @@ function calculateSources(org, site, sheetPath) {
     const trimmed = p.trim();
     if (!trimmed.startsWith('/')) return trimmed;
     if (ref === 'local') return `http://localhost:3000${trimmed}`;
-    return `https://${branch}--${site}--${org}.aem.live${trimmed}`;
+    return `https://${branch}--${site}--${org}.${config.aem.liveHost}${trimmed}`;
   });
 }
 
@@ -780,7 +781,7 @@ export function getItemPreviewUrl(item, { org, site }) {
   } else if (metadata.org) {
     // Cross-org item previews still need rendered HTML, not a raw DA source endpoint.
     const { search, hash } = new URL(input);
-    target.url = `https://${previewBranch}--${metadata.site}--${metadata.org}.aem.page${metadata.pathname}${search}${hash}`;
+    target.url = `https://${previewBranch}--${metadata.site}--${metadata.org}.${config.aem.previewHost}${metadata.pathname}${search}${hash}`;
   }
 
   return {

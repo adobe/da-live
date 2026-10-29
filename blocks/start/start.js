@@ -4,6 +4,7 @@ import getSheet from '../shared/sheet.js';
 import { daFetch } from '../shared/utils.js';
 import { copyConfig, copyContent, previewContent } from './index.js';
 import { getNx2Api, sanitizePathParts } from '../../scripts/utils.js';
+import deploymentConfig from '../../scripts/config.js';
 
 const sheet = await getSheet('/blocks/start/start.css');
 
@@ -314,7 +315,7 @@ class DaStart extends LitElement {
           </ul>
         </div>
         <div class="text-container">
-          <p>Don't forget to add the <a href="https://da.live/bot">AEM Code Sync App</a> to your repository.</p>
+          <p>Don't forget to add the <a href="https://${deploymentConfig.da.domain}/bot">AEM Code Sync App</a> to your repository.</p>
         </div>
       </div>
     `;

@@ -3,6 +3,7 @@ import { aem2doc, getSchema, yDocToProsemirror } from 'da-parser';
 import prose2aem from '../../shared/prose2aem.js';
 import { getSidekickConfig, parseAemError } from '../../shared/utils.js';
 import { getNx2Api } from '../../../scripts/utils.js';
+import deploymentConfig from '../../../scripts/config.js';
 
 export function isURL(text) {
   try {
@@ -36,7 +37,7 @@ export async function getAemHrefs({ path }) {
 
   if (snapshot) {
     const snapPath = `/${parts.join('/')}`;
-    hrefs.review = new URL(snapPath, `https://${snapshot}--main--${site}--${org}.aem.reviews`);
+    hrefs.review = new URL(snapPath, `https://${snapshot}--main--${site}--${org}.${deploymentConfig.aem.reviewHost}`);
   }
 
   return hrefs;

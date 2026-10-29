@@ -1,15 +1,11 @@
 import { getLivePreviewUrl } from './constants.js';
 import { livePreviewLogin } from './utils.js';
+import { getServiceHosts, getServiceOrigins, isAemHost, isPreviewHost } from '../../scripts/config.js';
 
-const AEM_HOST = /\.aem\.(page|live)$/;
-const CONTENT_HOSTS = new Set(['content.da.live', 'stage-content.da.live']);
-const ADMIN_HOSTS = new Set(['admin.da.live', 'stage-admin.da.live']);
-
-function isPreviewHost(hostname) {
-  return hostname.endsWith('.preview.da.live')
-    || hostname.endsWith('.stage-preview.da.live')
-    || hostname.endsWith('.localhost');
-}
+const CONTENT_ORIGINS = new Set(getServiceOrigins('content'));
+const ADMIN_ORIGINS = new Set(getServiceOrigins('admin'));
+const CONTENT_HOSTS = getServiceHosts('content');
+const ADMIN_HOSTS = getServiceHosts('admin');
 
 function parseBranchHost(hostname) {
   const [branch, site, orgWithDomain] = hostname.split('--');
@@ -48,7 +44,7 @@ function resolvePreviewProxyDetails(input, fallback) {
     const url = new URL(input);
     const hosted = parseBranchHost(url.hostname);
     const { pathname, search, hash } = url;
-    if (hosted && (AEM_HOST.test(url.hostname) || isPreviewHost(url.hostname))) {
+    if (hosted && (isAemHost(url.hostname) || isPreviewHost(url.hostname))) {
       return {
         url: buildPreviewUrl({ ...hosted, pathname, search, hash, getUrl }),
         ...hosted,
@@ -56,7 +52,8 @@ function resolvePreviewProxyDetails(input, fallback) {
       };
     }
 
-    if (CONTENT_HOSTS.has(url.hostname)) {
+    if (CONTENT_ORIGINS.has(url.origin)
+      || (CONTENT_HOSTS.has(url.hostname) && !ADMIN_HOSTS.has(url.hostname))) {
       const [, org, site, ...rest] = url.pathname.split('/');
       if (!org || !site) return { url: input };
       const targetPath = `/${rest.join('/')}`;
@@ -71,7 +68,8 @@ function resolvePreviewProxyDetails(input, fallback) {
       };
     }
 
-    if (ADMIN_HOSTS.has(url.hostname)) {
+    if (ADMIN_ORIGINS.has(url.origin)
+      || (ADMIN_HOSTS.has(url.hostname) && !CONTENT_HOSTS.has(url.hostname))) {
       const [, , org, site, ...rest] = url.pathname.split('/');
       if (!org || !site) return { url: input };
       const targetPath = `/${rest.join('/')}`;

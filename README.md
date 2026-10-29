@@ -1,6 +1,73 @@
 # Edge Delivery Authoring
 This repo provides the author experience for https://da.live.
 
+## Deployment configuration
+
+`scripts/deployment.js` is the single runtime override file. Its empty default
+export preserves Adobe's deployment. `scripts/config.js` synchronously merges
+overrides with defaults using native ES modules; no build or configuration fetch
+is required. For example:
+
+```js
+export default {
+  da: {
+    domain: 'author.example.com',
+    pageDomain: 'author-test.example.com',
+    owner: 'customer-org',
+    repo: 'customer-author',
+    services: {
+      admin: { prod: 'https://author-api.example.net' },
+    },
+  },
+  aem: {
+    previewHost: 'customer.page',
+    liveHost: 'customer.live',
+    reviewHost: 'customer.reviews',
+    adminOrigin: 'https://admin.customer.page',
+    apiOrigin: 'https://api.customer.live',
+    toolsOrigin: 'https://tools.customer.live',
+    adminOrigins: [],
+    legacyHosts: [],
+  },
+  nx: { owner: 'customer-org', repo: 'customer-nx' },
+  ims: { clientId: 'customer-authoring' },
+};
+```
+
+DA admin, content, collab and preview endpoints default to the corresponding
+subdomains of `da.domain`, with `stage-` prefixes for stage. Local endpoints remain
+unchanged. `da.services` accepts `admin`, `content`, `collab`, `preview` and `etc`,
+each with individual environment overrides; omitted values keep their defaults.
+The `etc` default remains `https://da-etc.adobeaem.workers.dev` (prod) and
+`http://localhost:8787` (local). Preview values are hostnames (with an optional
+port), collab values are WebSocket URLs, and other service values are origins.
+Use origins without paths or trailing slashes.
+
+The alternate app at `da.pageDomain` uses independently derived endpoints,
+overridable through `da.pageServices` with the same shape. Primary service
+overrides do not affect the alternate app. Existing query/localStorage selectors
+(`da-admin`, `da-content`, `da-collab`, `da-live-preview`, `da-etc`) still select
+configured environments, never arbitrary endpoint URLs; `reset` clears them.
+
+AEM content suffixes are independent of admin, API and tools origins. Adobe
+defaults retain `admin.hlx.page` and legacy `hlx.page`/`hlx.live` recognition.
+`aem.adminOrigins` lists additional trusted AEM admin origins (default:
+`https://admin.aem.live`); `aem.legacyHosts` lists additional content suffixes.
+These arrays can be replaced with empty arrays for an isolated deployment.
+Configured service origins form the bearer-token allowlist; do not point them
+at untrusted servers.
+
+`da.owner`/`da.repo` identify this app's branch previews for preview-message
+validation; `nx.owner`/`nx.repo` select the NX repository independently. Production
+still uses `/nx` (or `/nx2`), and `?nx=local` still uses localhost. Configure the
+NX deployment itself separately; this file does not change settings inside NX
+or remote services. The public IMS client ID must be registered for the chosen
+app domains; authentication providers and scopes are unchanged.
+
+Keep deployment overrides when syncing upstream. This browser-visible file must
+never contain credentials or secrets. `fstab.yaml` and `tools/sidekick/config.json`
+are separate static consumers and are **not** rewritten by runtime configuration.
+
 ## Developing
 ### Run
 1. Clone this repo to your computer.

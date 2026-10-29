@@ -1,10 +1,12 @@
 import { DA_ORIGIN, CON_ORIGIN, DA_ETC_ORIGIN, getLivePreviewUrl, AEM_ORIGIN } from './constants.js';
 import { getNx, getNx2Api } from '../../scripts/utils.js';
+import deploymentConfig, { getServiceOrigins } from '../../scripts/config.js';
 
-const DA_ORIGINS = ['https://da.live', 'https://da.page', 'https://admin.da.live', 'https://admin.da.page', 'https://stage-admin.da.live', 'https://content.da.live', 'http://localhost:8787'];
-const AEM_API_ORIGIN = 'https://api.aem.live';
-const AEM_ORIGINS = ['https://admin.hlx.page', 'https://admin.aem.live', AEM_API_ORIGIN];
-const ETC_ORIGINS = ['https://stage-content.da.live', 'https://helix-snapshot-scheduler-ci.adobeaem.workers.dev', 'https://helix-snapshot-scheduler-prod.adobeaem.workers.dev'];
+const DA_ORIGINS = [`https://${deploymentConfig.da.domain}`, `https://${deploymentConfig.da.pageDomain}`,
+  ...getServiceOrigins('admin'), ...getServiceOrigins('content')];
+const AEM_API_ORIGIN = deploymentConfig.aem.apiOrigin;
+const AEM_ORIGINS = [AEM_ORIGIN, ...deploymentConfig.aem.adminOrigins, AEM_API_ORIGIN];
+const ETC_ORIGINS = [...getServiceOrigins('etc'), 'https://helix-snapshot-scheduler-ci.adobeaem.workers.dev', 'https://helix-snapshot-scheduler-prod.adobeaem.workers.dev'];
 const ALLOWED_TOKEN = [...DA_ORIGINS, ...AEM_ORIGINS, ...ETC_ORIGINS];
 
 let imsDetails;
@@ -76,7 +78,7 @@ export const daFetch = async (url, opts = {}) => {
   let resp = await fetch(url, opts);
 
   if (resp.status === 401 && opts.noRedirect !== true
-    && DA_ORIGINS.some((origin) => url.startsWith(origin))) {
+    && DA_ORIGINS.includes(new URL(url).origin)) {
     // Silent recovery: another tab may have just refreshed/signed in. Ask imslib
     // for a fresh token and retry once before any user-visible disruption.
     let refreshed = null;

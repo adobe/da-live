@@ -1,11 +1,12 @@
 import { etcFetch } from '../../../../shared/utils.js';
+import deploymentConfig from '../../../../../scripts/config.js';
 
 function getEditUrl(aemUrl) {
   const parsed = new URL(aemUrl);
   const hostParts = parsed.hostname.split('.')[0].split('--');
   const repo = hostParts[1];
   const org = hostParts[2];
-  return `https://da.live/edit#/${org}/${repo}${parsed.pathname}`;
+  return `https://${deploymentConfig.da.domain}/edit#/${org}/${repo}${parsed.pathname}`;
 }
 
 export async function saveOffer(config, name, content, aemUrl, displayName, offerId) {

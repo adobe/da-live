@@ -3,6 +3,7 @@ import { getNx } from '../../../../../../scripts/utils.js';
 import getSheet from '../../../../../shared/sheet.js';
 import { etcFetch, getAemSiteToken, getSidekickConfig } from '../../../../../shared/utils.js';
 import { ICONS, REASONS } from '../utils/constants.js';
+import config, { isAemHost } from '../../../../../../scripts/config.js';
 
 await import(`${getNx()}/blocks/loc/views/url-details/url-details.js`);
 
@@ -46,7 +47,7 @@ class PreflightLink extends LitElement {
 
   async normalizeHref(supplied) {
     const { org, site } = this.details;
-    const aemOrigin = `https://main--${site}--${org}.aem.live`;
+    const aemOrigin = `https://main--${site}--${org}.${config.aem.liveHost}`;
 
     // Path only — build full AEM URL
     const href = supplied.startsWith('/')
@@ -57,7 +58,7 @@ class PreflightLink extends LitElement {
     const path = url.pathname;
 
     // Already an AEM URL — rebuild with correct org/site
-    if (url.hostname.includes('.aem.')) {
+    if (isAemHost(url.hostname)) {
       return new URL(`${aemOrigin}${path}`);
     }
 
