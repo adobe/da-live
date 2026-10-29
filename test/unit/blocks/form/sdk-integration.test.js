@@ -6,8 +6,7 @@ import {
   convertHtmlToJson,
 } from '../../../../deps/da-sc-sdk/dist/index.js';
 import { attachPersistence } from '../../../../blocks/form/utils/persistence.js';
-
-const IMAGE_URL = 'https://raw.githubusercontent.com/adobe/da-sc-sdk/main/schemas/image/v1.0.0.json';
+import { IMAGE_URL } from './helpers/sdk-types.js';
 
 // These tests create a real engine with the bundled SDK in
 // deps/da-sc-sdk/dist/index.js. The persistence tests in

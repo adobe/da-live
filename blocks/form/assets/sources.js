@@ -1,16 +1,27 @@
 import { getNx2Api } from '../../../scripts/utils.js';
 import { SUPPORTED_IMAGE_TYPES } from '../../shared/constants.js';
 import { refuseOversizedImage } from '../../shared/image-upload.js';
+import { ASSET_TYPES, findAssetType } from './asset-types.js';
 import { isAssetHref } from './media.js';
 
-// The SDK type names of asset fields.
-export const ASSET_TYPES = Object.freeze({ image: 'image', file: 'file' });
+/** The identifiers of the asset sources, which the source menu reports on selection. */
+const SOURCE_IDS = Object.freeze({ upload: 'upload', aemAssets: 'aem-assets' });
+
+/** The names of the asset sources as shown to authors. */
+export const SOURCE_LABELS = Object.freeze({ upload: 'Upload', aemAssets: 'AEM Assets' });
 
 /** The result of a selection that ended without a value or an error. */
 export const CANCELLED = Object.freeze({ cancelled: true });
 
+/** The names of the asset types authors can upload files for. */
+const UPLOADABLE_ASSET_TYPE_NAMES = Object.freeze(ASSET_TYPES
+  .filter(({ uploadable }) => uploadable)
+  .map(({ name }) => name));
+
+/** Matches file names that would escape or break the media path they are uploaded to. */
 const INVALID_FILE_NAME = /[/\\?#]|^\.{1,2}$/;
 
+/** The errors an upload reports to the author. */
 const UPLOAD_ERRORS = {
   document: 'The form document path is unavailable for upload.',
   fileName: 'The file name is invalid.',
@@ -20,6 +31,7 @@ const UPLOAD_ERRORS = {
 };
 
 /**
+ * Checks whether a file name can be uploaded without changing the media path.
  * @param {string} [fileName] The name of the picked file.
  * @returns {boolean} Whether the name is safe to use as the last segment of a media path.
  */
@@ -104,35 +116,48 @@ export async function uploadFile({
   return { href, name: file.name };
 }
 
-const SOURCE_IDS = {
-  upload: 'upload',
-  aemAssets: 'aem-assets',
-};
-
+/**
+ * Creates the source that uploads a picked image to the document's media folder.
+ * @param {object} options The source settings.
+ * @param {object} options.details The form document's path details.
+ * @returns {object} The Upload source.
+ */
 function uploadSource({ details }) {
   return {
     id: SOURCE_IDS.upload,
-    label: 'Upload',
-    // Uploaded files reach the site only through the image media bus, so file fields
-    // must reference published assets from AEM Assets instead.
-    assetTypes: [ASSET_TYPES.image],
+    label: SOURCE_LABELS.upload,
+    assetTypes: UPLOADABLE_ASSET_TYPE_NAMES,
     fileTypes: SUPPORTED_IMAGE_TYPES,
     select: ({ file }) => uploadFile({ details, file }),
   };
 }
 
-function aemAssetsSource({ repoConfig }) {
+/**
+ * Creates the source that selects an asset in the AEM Assets selector.
+ * @param {object} options The source settings.
+ * @param {object} options.repositoryConfig The site's AEM Assets repository configuration.
+ * @returns {object} The AEM Assets source.
+ */
+function aemAssetsSource({ repositoryConfig }) {
   return {
     id: SOURCE_IDS.aemAssets,
-    label: 'AEM Assets',
+    label: SOURCE_LABELS.aemAssets,
     select: async ({ assetType }) => {
       const { selectAemAsset } = await import('./aem-selector.js');
-      return selectAemAsset({ repoConfig, imagesOnly: assetType === ASSET_TYPES.image });
+      const imagesOnly = findAssetType(assetType)?.aemSelectsImagesOnly ?? false;
+      return selectAemAsset({ repositoryConfig, imagesOnly });
     },
   };
 }
 
-// A source whose result arrives after the document changed must not write into the new one.
+/**
+ * Wraps a source so a result that arrives after the document changed is cancelled
+ * instead of written into the new document.
+ * @param {object} options The source and its guard.
+ * @param {object} options.source The source to wrap.
+ * @param {() => boolean} options.isCurrent Answers whether the document is still open.
+ * @returns {object} The wrapped source.
+ */
 function ignoreStaleResults({ source, isCurrent }) {
   return {
     ...source,
@@ -143,9 +168,20 @@ function ignoreStaleResults({ source, isCurrent }) {
   };
 }
 
-export function createAssetSources({ details, repoConfig, isCurrent }) {
-  return [
-    uploadSource({ details }),
-    ...(repoConfig ? [aemAssetsSource({ repoConfig })] : []),
-  ].map((source) => ignoreStaleResults({ source, isCurrent }));
+/**
+ * Creates the sources an asset field selects from. AEM Assets is offered only when the
+ * site has a repository configuration.
+ * @param {object} options The sources settings.
+ * @param {object} options.details The form document's path details.
+ * @param {object} [options.repositoryConfig] The site's AEM Assets repository
+ *   configuration.
+ * @param {() => boolean} options.isCurrent Answers whether the document is still open.
+ * @returns {object[]} The sources, each with an `id`, a `label` and a `select` function.
+ */
+export function createAssetSources({ details, repositoryConfig, isCurrent }) {
+  const sources = [uploadSource({ details })];
+  if (repositoryConfig) {
+    sources.push(aemAssetsSource({ repositoryConfig }));
+  }
+  return sources.map((source) => ignoreStaleResults({ source, isCurrent }));
 }

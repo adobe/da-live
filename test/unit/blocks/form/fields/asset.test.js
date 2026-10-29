@@ -2,8 +2,8 @@ import { expect } from '@esm-bundle/chai';
 import '../../../setup-nx.js';
 import sinon from 'sinon';
 import '../../../../../blocks/form/fields/asset.js';
+import { CANCELLED } from '../../../../../blocks/form/assets/sources.js';
 
-const CANCELLED = { cancelled: true };
 const mounted = [];
 
 afterEach(() => {
@@ -32,10 +32,22 @@ async function mount(options = {}) {
   return field;
 }
 
+const nextTask = () => new Promise((done) => { setTimeout(done, 0); });
+
 const settle = async (field) => {
-  await new Promise((done) => { setTimeout(done, 0); });
+  await nextTask();
   await field.updateComplete;
 };
+
+/**
+ * Creates a source `select` that stays pending until the test resolves it.
+ * @returns {{ select: () => Promise<object>, resolve: (result: object) => void }}
+ */
+function deferredSelect() {
+  let finish;
+  const select = () => new Promise((done) => { finish = done; });
+  return { select, resolve: (result) => finish(result) };
+}
 
 const query = (field, selector) => field.shadowRoot.querySelector(selector);
 // Finds a button by its text, or an icon button by its label.
@@ -324,10 +336,10 @@ describe('form-asset', () => {
   });
 
   it('commits only a finished result and shows progress meanwhile', async () => {
-    let resolve;
+    const { select: pendingSelect, resolve } = deferredSelect();
     const field = await mount({
       value: './media_old.png',
-      sources: [upload(), aem({ select: () => new Promise((done) => { resolve = done; }) })],
+      sources: [upload(), aem({ select: pendingSelect })],
     });
     const changes = recordChanges(field);
     await pick(field, 'aem-assets');
@@ -344,8 +356,7 @@ describe('form-asset', () => {
   });
 
   it('announces progress from a status outside the buttons and the busy group', async () => {
-    let resolve;
-    const pendingSelect = () => new Promise((done) => { resolve = done; });
+    const { select: pendingSelect, resolve } = deferredSelect();
     const field = await mount({ sources: [upload(), aem({ select: pendingSelect })] });
     const status = query(field, '[role="status"]');
     expect(status.textContent).to.equal('');
@@ -362,8 +373,7 @@ describe('form-asset', () => {
   });
 
   it('shows progress inside the Select button without moving it', async () => {
-    let resolve;
-    const pendingSelect = () => new Promise((done) => { resolve = done; });
+    const { select: pendingSelect, resolve } = deferredSelect();
     const field = await mount({ sources: [upload(), aem({ select: pendingSelect })] });
     const select = query(field, '.asset-select');
     const before = select.getBoundingClientRect();
@@ -396,7 +406,9 @@ describe('form-asset', () => {
     for (const outcome of outcomes) {
       field.sources = [upload(), aem({
         select: async () => {
-          if (outcome instanceof Error) throw outcome;
+          if (outcome instanceof Error) {
+            throw outcome;
+          }
           return outcome;
         },
       })];
@@ -422,8 +434,7 @@ describe('form-asset', () => {
   });
 
   it('forgets an in-flight selection and its details when the value changes from outside', async () => {
-    let resolve;
-    const pendingSelect = () => new Promise((done) => { resolve = done; });
+    const { select: pendingSelect, resolve } = deferredSelect();
     const field = await mount({ sources: [aem({ select: pendingSelect })] });
     const changes = recordChanges(field);
     button(field, 'Select').click();
@@ -665,14 +676,13 @@ describe('form-asset', () => {
   });
 
   it('ignores a selection that finishes after the field is disconnected', async () => {
-    let resolve;
-    const pendingSelect = () => new Promise((done) => { resolve = done; });
+    const { select: pendingSelect, resolve } = deferredSelect();
     const field = await mount({ sources: [aem({ select: pendingSelect })] });
     const changes = recordChanges(field);
     button(field, 'Select').click();
     field.remove();
     resolve({ href: './media_late.png' });
-    await new Promise((done) => { setTimeout(done, 0); });
+    await nextTask();
     expect(changes).to.deep.equal([]);
   });
 });

@@ -1,9 +1,8 @@
 import { expect } from '@esm-bundle/chai';
 import '../../../setup-nx.js';
 import { convertJsonToHtml, createEngine } from '../../../../../deps/da-sc-sdk/dist/index.js';
-import { describeAsset, isAssetHref, splitHrefForDisplay } from '../../../../../blocks/form/utils/media.js';
-
-const IMAGE_URL = 'https://raw.githubusercontent.com/adobe/da-sc-sdk/main/schemas/image/v1.0.0.json';
+import { describeAsset, isAssetHref, splitHrefForDisplay } from '../../../../../blocks/form/assets/media.js';
+import { IMAGE_URL } from '../helpers/sdk-types.js';
 
 const previewOrigin = 'https://main--site--example.preview.da.live';
 
@@ -33,9 +32,9 @@ describe('form media values', () => {
 
   it('describes values that are not file references as an empty file', () => {
     expect(describeAsset({ href: 'data:text/html,example', previewOrigin }))
-      .to.deep.equal({ name: '', kind: 'file', previewHref: undefined });
+      .to.deep.equal({ name: '', assetType: 'file', previewHref: undefined });
     expect(describeAsset({ href: undefined }))
-      .to.deep.equal({ name: '', kind: 'file', previewHref: undefined });
+      .to.deep.equal({ name: '', assetType: 'file', previewHref: undefined });
   });
 
   it('names a stored value after the decoded last path segment', () => {
@@ -45,33 +44,33 @@ describe('form media values', () => {
   });
 
   it('detects images the same way the SDK saves them', () => {
-    expect(describeAsset({ href: 'https://x.test/photo.png' }).kind).to.equal('image');
-    expect(describeAsset({ href: 'https://images.example.com/photo-1.jpg?w=750' }).kind).to.equal('image');
-    expect(describeAsset({ href: 'https://images.example.com/photo-1?w=750' }).kind).to.equal('file');
+    expect(describeAsset({ href: 'https://x.test/photo.png' }).assetType).to.equal('image');
+    expect(describeAsset({ href: 'https://images.example.com/photo-1.jpg?w=750' }).assetType).to.equal('image');
+    expect(describeAsset({ href: 'https://images.example.com/photo-1?w=750' }).assetType).to.equal('file');
     expect(describeAsset({ href: 'https://x.test/spec.pdf' }))
-      .to.deep.equal({ name: 'spec.pdf', kind: 'file', previewHref: undefined });
-    expect(describeAsset({ href: 'https://x.test/theme.mp3' }).kind).to.equal('file');
+      .to.deep.equal({ name: 'spec.pdf', assetType: 'file', previewHref: undefined });
+    expect(describeAsset({ href: 'https://x.test/theme.mp3' }).assetType).to.equal('file');
   });
 
   it('describes videos as files without a preview', () => {
     const video = 'https://publish-p1-e1.adobeaemcloud.com/content/dam/site/biker%20video.mp4';
     expect(describeAsset({ href: video }))
-      .to.deep.equal({ name: 'biker video.mp4', kind: 'file', previewHref: undefined });
+      .to.deep.equal({ name: 'biker video.mp4', assetType: 'file', previewHref: undefined });
     expect(describeAsset({ href: './media_abc.mp4', previewOrigin }))
-      .to.deep.equal({ name: 'media_abc.mp4', kind: 'file', previewHref: undefined });
+      .to.deep.equal({ name: 'media_abc.mp4', assetType: 'file', previewHref: undefined });
   });
 
   it('describes AEM delivery video players as files, since they have no extension', () => {
     const player = 'https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:1/play';
     expect(describeAsset({ href: player, name: 'clip.mp4' }))
-      .to.deep.equal({ name: 'clip.mp4', kind: 'file', previewHref: undefined });
+      .to.deep.equal({ name: 'clip.mp4', assetType: 'file', previewHref: undefined });
   });
 
-  it('prefers the name of a file picked in this session, but judges the kind by the URL', () => {
+  it('prefers the name of a file picked in this session, but judges the asset type by the URL', () => {
     expect(describeAsset({
       href: 'https://delivery.example.com/urn:aaid:aem:1/as/photo',
       name: 'photo.webp',
-    })).to.include({ name: 'photo.webp', kind: 'file' });
+    })).to.include({ name: 'photo.webp', assetType: 'file' });
   });
 });
 
@@ -102,7 +101,7 @@ describe('image rule parity with the SDK', () => {
 
   it('previews a value as an image exactly when the SDK writes it as an image', () => {
     const mismatches = hrefs.filter(
-      (href) => (describeAsset({ href }).kind === 'image') !== writesImage(href),
+      (href) => (describeAsset({ href }).assetType === 'image') !== writesImage(href),
     );
     expect(mismatches).to.deep.equal([]);
   });

@@ -9,4 +9,6 @@ export const handleSignIn = sinon.spy();
 export const setMockIms = ({ anonymous = false } = {}) => {
   loadIms.resolves(anonymous ? { anonymous: true } : SIGNED_IN);
 };
-export const resetMockIms = () => { loadIms.resolves(SIGNED_IN); };
+export const resetMockIms = () => {
+  loadIms.resolves(SIGNED_IN);
+};

@@ -1,7 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import '../../../setup-nx.js';
 import { getNx2 } from '../../../../../scripts/utils.js';
-import { selectAemAsset } from '../../../../../blocks/form/utils/aem-selector.js';
+import { selectAemAsset } from '../../../../../blocks/form/assets/aem-selector.js';
 
 // The import-maps plugin adds a query to the URLs it can rewrite, which would load a second
 // fixture instance. Building the URL from getNx2() shares the instance aem-selector.js loads.
@@ -51,7 +51,7 @@ function stubSelector() {
 function start({ repoConfig = REPO_CONFIG, imagesOnly, loadSelector } = {}) {
   const selector = stubSelector();
   const pick = selectAemAsset({
-    repoConfig,
+    repositoryConfig: repoConfig,
     imagesOnly,
     loadSelector: loadSelector ?? selector.loadSelector,
   });
@@ -66,7 +66,7 @@ const waitForRender = async (calls) => {
   return calls[0];
 };
 
-const openDialog = () => document.querySelector('.nx-form-aem-dialog');
+const openDialog = () => document.querySelector('.aem-selector-dialog');
 
 async function expectError(pick, message) {
   expect(await pick).to.deep.equal({ error: message });
@@ -79,7 +79,7 @@ describe('selectAemAsset', () => {
   });
 
   afterEach(() => {
-    document.querySelectorAll('.nx-form-aem-dialog').forEach((dialog) => dialog.remove());
+    document.querySelectorAll('.aem-selector-dialog').forEach((dialog) => dialog.remove());
     resetMockIms();
   });
 
