@@ -184,7 +184,7 @@ describe('renderAssetsRail', () => {
     });
   });
 
-  it('shows an asset preview that follows the pointer and clears on drag end', async () => {
+  it('shows only a thumbnail that follows the pointer and clears on drag end', async () => {
     sinon.stub(document, 'elementFromPoint').returns(null);
     await renderAssetsRail({ container: createSource(), org: 'org', site: 'site' });
     const [{ props }] = renderCalls;
@@ -196,8 +196,16 @@ describe('renderAssetsRail', () => {
     const layer = document.querySelector('.assets-rail-drag-layer');
     expect(layer).to.not.equal(null);
     const ghost = layer.shadowRoot.querySelector('.assets-rail-drag-preview');
-    expect(ghost.textContent).to.include('image.png');
+    expect(ghost.textContent).to.equal('');
+    expect(ghost.children).to.have.length(1);
     expect(ghost.querySelector('img')).to.not.equal(null);
+    const css = await (await fetch('/blocks/canvas/ew-canvas-assets/ew-canvas-assets.css')).text();
+    layer.shadowRoot.adoptedStyleSheets[0].replaceSync(css);
+    const appearance = getComputedStyle(ghost);
+    expect(appearance.backgroundColor).to.equal('rgba(0, 0, 0, 0)');
+    expect(appearance.borderTopWidth).to.equal('0px');
+    expect(appearance.paddingTop).to.equal('0px');
+    expect(appearance.boxShadow).to.equal('none');
     expect(ghost.style.transform).to.equal('translate(42px, 72px)');
     props.iframe_dragMove({ mouse: { x: 20, y: 30 } });
     expect(ghost.style.transform).to.equal('translate(52px, 82px)');
