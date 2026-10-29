@@ -1,3 +1,10 @@
+# [1.17.0](https://github.com/adobe/da-live/compare/v1.16.1...v1.17.0) (2026-10-29)
+
+
+### Features
+
+* extract shared list/card view ([#1504](https://github.com/adobe/da-live/issues/1504)) ([e26e1f2](https://github.com/adobe/da-live/commit/e26e1f21c1d519ec6b90947c8d5a433833f9cd6e))
+
 ## [1.16.1](https://github.com/adobe/da-live/compare/v1.16.0...v1.16.1) (2026-10-29)
 
 
