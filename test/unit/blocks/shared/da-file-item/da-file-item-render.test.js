@@ -270,11 +270,39 @@ describe('da-file-item render', () => {
     const card = el.shadowRoot.querySelector('nx-card');
     expect(card.selectable).to.equal(true);
     expect(card.selected).to.equal(false);
-    expect(preview.slot).to.equal('media');
+    expect(preview.parentElement.slot).to.equal('media');
     expect(el.shadowRoot.querySelector('[slot="heading"]').textContent.trim()).to.equal('brand.xlsx');
     expect(el.shadowRoot.querySelector('.card-date').textContent).to.equal(el.renderDate());
     expect(el.shadowRoot.querySelector('.card-type').textContent).not.to.be.empty;
     expect(el.shadowRoot.querySelector('[slot="actions"] button[aria-label="More"]')).to.exist;
+  });
+
+  it('forwards a Browse preset independently of compact presentation and UI scale', async () => {
+    await fixture({ view: 'card', layout: 'compact', size: 's', dimensions: 'l' });
+    const card = el.shadowRoot.querySelector('nx-card');
+    expect(card.layout).to.equal('compact');
+    expect(card.dimensions).to.equal('l');
+    expect(card.size).to.equal('s');
+    expect(el.shadowRoot.querySelector('.compact-heading svg')).to.exist;
+    expect(el.shadowRoot.querySelector('.card-type')).to.equal(null);
+    el.size = 'm';
+    await el.updateComplete;
+    expect(card.size).to.equal('m');
+    expect(card.dimensions).to.equal('l');
+    el.layout = undefined;
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.card-type')).to.exist;
+    expect(el.shadowRoot.querySelector('.compact-heading')).to.equal(null);
+  });
+
+  it('uses a supplied destination without resolving a link file', async () => {
+    await fixture({ view: 'card', ext: 'link', href: '/?browse=2#/org/repo' });
+    const links = [...el.shadowRoot.querySelectorAll('a')];
+    expect(links).to.have.length(2);
+    expect(links.every((link) => link.getAttribute('href') === '/?browse=2#/org/repo')).to.equal(true);
+    el.href = '/edit#/org/repo/next';
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('[slot="heading"]').getAttribute('href')).to.equal(el.href);
   });
 
   it('bridges card selection and shift-click to browse selection', async () => {

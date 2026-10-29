@@ -32,6 +32,12 @@ export default class DaFileItem extends LitElement {
     rename: { type: Boolean },
     allowselect: { type: Boolean },
     view: { type: String, reflect: true },
+    layout: { type: String, reflect: true },
+    dimensions: { type: String },
+    size: { type: String, reflect: true },
+    href: { type: String },
+    iconHref: { attribute: false },
+    documentPreview: { type: Boolean },
     isChecked: { attribute: 'ischecked', type: Boolean },
     isFavorited: { attribute: 'isfavorited', type: Boolean },
     _isRenaming: { state: true },
@@ -41,6 +47,8 @@ export default class DaFileItem extends LitElement {
     _version: { state: true },
     _lastModifiedBy: { state: true },
     _imageUrl: { state: true },
+    _document: { state: true },
+    _previewError: { state: true },
   };
 
   connectedCallback() {
@@ -49,16 +57,20 @@ export default class DaFileItem extends LitElement {
   }
 
   disconnectedCallback() {
+    this.popover?.close();
+    this.closeDetails();
     this.resetImage();
     super.disconnectedCallback();
   }
 
   willUpdate(props) {
-    if (props.has('path') || props.has('ext') || props.has('view')) this.resetImage();
+    if (props.has('size') && !['s', 'm'].includes(this.size)) this.size = 's';
+    if (['path', 'ext', 'view', 'documentPreview'].some((key) => props.has(key))) this.resetImage();
   }
 
   updated() {
-    if (!this.isConnected || this.view !== 'card' || !isImageExt(this.ext)
+    if (!this.isConnected || !['card', 'preview'].includes(this.view)
+      || (!isImageExt(this.ext) && !(this.documentPreview && this.ext === 'html'))
       || this._imageRequested || this._imageObserver) return;
     this._imageObserver = new IntersectionObserver(([entry]) => {
       if (!entry?.isIntersecting) return;
@@ -77,6 +89,8 @@ export default class DaFileItem extends LitElement {
     this.stopObservingImage();
     this._imageRequest = null;
     this._imageRequested = false;
+    this._document = undefined;
+    this._previewError = undefined;
     this.dropImage();
   }
 
@@ -86,26 +100,60 @@ export default class DaFileItem extends LitElement {
   }
 
   async loadImage() {
+    if (this._imageRequested) return;
+    this.stopObservingImage();
     const { path } = this;
+    const documentPreview = this.documentPreview && this.ext === 'html';
     const request = {};
     this._imageRequest = request;
     this._imageRequested = true;
     try {
       const { source } = await getNx2Api();
       const resp = await source.get(path);
-      if (!resp.ok) return;
+      if (!resp.ok) throw new Error('Preview unavailable.');
+      if (documentPreview) {
+        const doc = new DOMParser().parseFromString(await resp.text(), 'text/html');
+        const main = doc.querySelector('main') || doc.body;
+        const title = main.querySelector('h1, h2')?.textContent.trim() || doc.title;
+        const text = [...main.querySelectorAll('p')].map((p) => p.textContent.trim()).join(' ').slice(0, 600);
+        const src = main.querySelector('img[src]')?.getAttribute('src');
+        const imageUrl = src ? new URL(src, `https://content.da.live${path}`) : undefined;
+        const imageHref = ['https:', 'http:'].includes(imageUrl?.protocol) ? imageUrl.href : undefined;
+        if (!title && !text && !imageHref) throw new Error('Page preview unavailable.');
+        if (this._imageRequest === request && this.isConnected) {
+          this._document = { title, text, imageHref };
+        }
+        return;
+      }
       const url = URL.createObjectURL(await resp.blob());
       if (this._imageRequest === request && this.isConnected) this._imageUrl = url;
       else URL.revokeObjectURL(url);
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.warn(`Could not load file preview for ${path}.`, error);
+      if (this._imageRequest === request && this.isConnected) this._previewError = error.message;
     }
   }
 
   renderFilePreview() {
     if (this._isRenaming) return html`<div class="file-preview-spinner" role="status" aria-label="Renaming"></div>`;
-    if (this._imageUrl) return html`<img src=${this._imageUrl} alt="" @error=${this.dropImage}>`;
+    if (this._imageUrl) {
+      return html`<img src=${this._imageUrl} alt="" @error=${({ target }) => {
+        if (target.getAttribute('src') === this._imageUrl) this.dropImage();
+      }}>`;
+    }
+    if (this._document) {
+      const preview = this._document;
+      const { title, text, imageHref } = preview;
+      return html`<article class="document-preview" aria-hidden="true">
+        <strong>${title}</strong>
+        ${imageHref ? html`<img src=${imageHref} alt="" referrerpolicy="no-referrer"
+          @error=${() => {
+            if (this._document !== preview || !this.isConnected) return;
+            this._document = { ...this._document, imageHref: undefined };
+            this._previewError = 'Image preview unavailable.';
+          }}>` : nothing}
+        <p>${text}</p>
+      </article>`;
+    }
     return this.renderIcon();
   }
 
@@ -145,16 +193,33 @@ export default class DaFileItem extends LitElement {
   }
 
   async updateAEMStatus() {
-    const { preview, live } = await fetchAemStatus(this);
-    this._preview = preview;
-    this._live = live;
+    const { path } = this;
+    const request = this._detailsRequest;
+    try {
+      const { preview, live } = await fetchAemStatus(this);
+      if (this.path !== path || this._detailsRequest !== request) return;
+      this._preview = preview;
+      this._live = live;
+    } catch {
+      if (this.path !== path || this._detailsRequest !== request) return;
+      this._preview = { error: true };
+      this._live = { error: true };
+    }
   }
 
   async updateDAStatus() {
-    const status = await fetchDaStatus(this);
-    if (!status) return;
-    this._version = status.version;
-    this._lastModifiedBy = status.lastModifiedBy;
+    const { path } = this;
+    const request = this._detailsRequest;
+    try {
+      const status = await fetchDaStatus(this);
+      if (!status || this.path !== path || this._detailsRequest !== request) return;
+      this._version = status.version;
+      this._lastModifiedBy = status.lastModifiedBy;
+    } catch {
+      if (this.path !== path || this._detailsRequest !== request) return;
+      this._version = 'Unavailable';
+      this._lastModifiedBy = 'Unavailable';
+    }
   }
 
   handleChecked(e) {
@@ -251,7 +316,7 @@ export default class DaFileItem extends LitElement {
   renderCardMenu() {
     return html`
       <div slot="actions" class="card-menu">
-        <button type="button" class="card-more nx-action-btn-icon nx-btn-sm"
+        <button type="button" class="card-more nx-action-btn-icon ${this.size === 'm' ? '' : 'nx-btn-sm'}"
           aria-label="More" title="More" aria-haspopup="dialog" aria-expanded=${Boolean(this._detailsOpen)}
           @click=${this.toggleDetails}>
           <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-more-20-n.svg#icon"></use></svg>
@@ -267,6 +332,7 @@ export default class DaFileItem extends LitElement {
       return;
     }
     this._detailsOpen = true;
+    this._detailsRequest = {};
     if (this.view !== 'card' || this.ext) {
       this.updateAEMStatus();
       this.updateDAStatus();
@@ -276,6 +342,7 @@ export default class DaFileItem extends LitElement {
   }
 
   closeDetails = () => {
+    this._detailsRequest = null;
     this._detailsOpen = false;
     this._preview = null;
     this._live = null;
@@ -309,11 +376,23 @@ export default class DaFileItem extends LitElement {
   }
 
   renderIcon() {
-    return html`<svg viewBox="0 0 20 20"><use href="${iconPathForExt(this.ext)}#icon"></use></svg>`;
+    if (this.iconHref) return html`<span class="type-icon" aria-hidden="true" style="--file-icon: url('${this.iconHref}')"></span>`;
+    return html`<svg viewBox="0 0 20 20" aria-hidden="true"><use href="${iconPathForExt(this.ext)}#icon"></use></svg>`;
+  }
+
+  get destination() {
+    if (this.href !== undefined) return this.href;
+    if (this.ext !== 'link') return getFileItemHref(this);
+    const key = `${this.path}:${this.ext}:${this.editor}`;
+    if (this._destinationKey !== key) {
+      this._destinationKey = key;
+      this._destination = getFileItemHref(this);
+    }
+    return this._destination;
   }
 
   renderItem() {
-    const href = getFileItemHref(this);
+    const href = this.destination;
 
     return html`
       <a href="${this.ext === 'link' ? until(href) : href}" class="da-item-list-item-title" data-column="name">
@@ -340,7 +419,7 @@ export default class DaFileItem extends LitElement {
 
   renderFavorite(className = 'da-item-list-item-favorite', slot = nothing) {
     return html`
-      <button slot=${slot} type="button" class="${className} nx-action-btn-icon nx-btn-sm"
+      <button slot=${slot} type="button" class="${className} nx-action-btn-icon ${this.size === 'm' ? '' : 'nx-btn-sm'}"
         aria-label=${this.isFavorited ? 'Remove as Favorite' : 'Mark as Favorite'}
         title=${this.isFavorited ? 'Remove as Favorite' : 'Mark as Favorite'}
         aria-pressed=${this.isFavorited ? 'true' : 'false'}
@@ -373,6 +452,7 @@ export default class DaFileItem extends LitElement {
   }
 
   renderAemDate(env) {
+    if (this[env]?.error) return 'Unavailable';
     if (!this[env]) {
       return 'Checking';
     }
@@ -383,21 +463,28 @@ export default class DaFileItem extends LitElement {
   }
 
   renderCard() {
-    const href = getFileItemHref(this);
+    const href = this.destination;
+    const compact = this.layout === 'compact';
     return html`
       <nx-card class="card" .selectable=${Boolean(this.allowselect)} .selected=${Boolean(this.isChecked)}
+        .layout=${this.layout} .dimensions=${this.dimensions || 'm'} .size=${this.size || 's'}
         @nx-card-selection-change=${(e) => this.handleChecked(e.detail)}>
-        <a slot="media" class="card-preview" href="${this.ext === 'link' ? until(href) : href}" tabindex="-1" aria-hidden="true">
-          ${this.renderFilePreview()}
-        </a>
+        <div slot="media" class="card-media">
+          <a class="card-preview" href="${this.ext === 'link' ? until(href) : href}" tabindex="-1" aria-hidden="true">
+            ${this.renderFilePreview()}
+          </a>
+          ${this._previewError ? html`<span class="preview-error" role="status">${this._previewError}</span>` : nothing}
+        </div>
         ${this.isFavorited ? this.renderFavorite('card-favorite', 'overlay-actions') : nothing}
         ${this.rename ? this.renderRename('content') : html`
-          <a slot="heading" href="${this.ext === 'link' ? until(href) : href}" title=${this.name}>
-            ${this.name}
+          <a slot="heading" class=${compact ? 'compact-heading' : ''} href="${this.ext === 'link' ? until(href) : href}" title=${this.name}>
+            ${compact ? this.renderIcon() : nothing}<span>${this.name}</span>
           </a>
           ${this.renderCardMenu()}`}
-        <span slot="metadata" class="card-type">${getTypeLabel(this.ext)}</span>
-        <span slot="metadata" class="card-date">${this.ext === 'link' ? '—' : (this.renderDate() || '—')}</span>
+        ${compact ? html`<slot name="metadata" slot="metadata">
+          <span class="card-date">${this.renderDate() || 'Date unavailable'}</span>
+        </slot>` : html`<span slot="metadata" class="card-type">${getTypeLabel(this.ext)}</span>
+          <span slot="metadata" class="card-date">${this.ext === 'link' ? '—' : (this.renderDate() || '—')}</span>`}
       </nx-card>`;
   }
 
@@ -425,7 +512,7 @@ export default class DaFileItem extends LitElement {
             <h3>Details</h3>
             ${this.renderDetailsContent()}
           </section><hr>` : nothing}
-          <button type="button" class="card-favorite-action nx-action-btn-quiet" @click=${() => {
+          <button type="button" class="card-favorite-action nx-action-btn-quiet ${this.size === 'm' ? 'nx-btn-lg' : ''}" @click=${() => {
           this.requestFavorite();
           this.popover?.close();
           this.closeDetails();
@@ -466,6 +553,7 @@ export default class DaFileItem extends LitElement {
   }
 
   render() {
+    if (this.view === 'preview') return this.renderFilePreview();
     if (this.view === 'card') return this.renderCard();
     return html`
       <div class="da-item-list-item-inner">

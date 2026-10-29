@@ -462,10 +462,11 @@ describe('DaFileItem', () => {
       el.updateAEMStatus = () => { aem = true; };
       el.updateDAStatus = () => { da = true; };
       await el.toggleDetails({ currentTarget: document.createElement('button') });
-      el.remove();
       expect(el._detailsOpen).to.be.true;
       expect(aem).to.be.true;
       expect(da).to.be.true;
+      el.remove();
+      expect(el._detailsOpen).to.be.false;
     });
 
     it('Clears state when closing', () => {
