@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { sanitizeName, EMPTY_DOC } from '../../shared/utils.js';
 import { getNx, getNx2, getNx2Api } from '../../../scripts/utils.js';
-import getEditPath from '../shared.js';
+import getEditPath from '../../shared/da-file-item/edit-path.js';
 import '../../shared/da-link-dialog/da-link-dialog.js';
 import '../../shared/da-name-dialog/da-name-dialog.js';
 

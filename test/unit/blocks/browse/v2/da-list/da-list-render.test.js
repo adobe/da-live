@@ -101,8 +101,32 @@ describe('da-list render', () => {
     ];
     el.select = true;
     await rerender();
-    const items = el.shadowRoot.querySelectorAll('da-list-item');
+    const items = el.shadowRoot.querySelectorAll('da-file-item');
     expect(items.length).to.equal(2);
+  });
+
+  it('persists shared-card favorites without selecting or reordering files', async () => {
+    const saved = localStorage.getItem('da-favorites');
+    try {
+      localStorage.removeItem('da-favorites');
+      await fixture({ fullpath: '/o/r', view: 'card' });
+      el._listItems = [
+        { path: '/o/r/a.html', name: 'a', ext: 'html' },
+        { path: '/o/r/b.html', name: 'b', ext: 'html' },
+      ];
+      await rerender();
+      const item = el.shadowRoot.querySelectorAll('da-file-item')[1];
+      await item.updateComplete;
+      item.requestFavorite();
+      await rerender();
+      expect(el._selectedItems).to.deep.equal([]);
+      expect(el._listItems.map((file) => file.name)).to.deep.equal(['a', 'b']);
+      expect(JSON.parse(localStorage.getItem('da-favorites'))['/o/r']).to.deep.equal(['/o/r/b.html']);
+      expect(el._listItems[1].isFavorited).to.equal(true);
+    } finally {
+      if (saved === null) localStorage.removeItem('da-favorites');
+      else localStorage.setItem('da-favorites', saved);
+    }
   });
 
   it('Renders the load-more sentinel when continuationToken is set', async () => {
@@ -125,7 +149,7 @@ describe('da-list render', () => {
     ];
     el._hiddenTypes = new Set(['Sheet']);
     await rerender();
-    const items = el.shadowRoot.querySelectorAll('da-list-item');
+    const items = el.shadowRoot.querySelectorAll('da-file-item');
     expect(items.length).to.equal(1);
     expect(items[0].getAttribute('name')).to.equal('alpha');
   });
@@ -231,7 +255,7 @@ describe('da-list render', () => {
     el._continuationToken = 'next';
     el._allPagesLoaded = false;
     await rerender();
-    expect(el.shadowRoot.querySelector('da-list-item')).to.be.null;
+    expect(el.shadowRoot.querySelector('da-file-item')).to.be.null;
     expect(el.shadowRoot.querySelector('.da-list-sentinel')).to.exist;
   });
 
@@ -264,11 +288,11 @@ describe('da-list render', () => {
     el._listItems = [{ path: '/o/r/page.html', name: 'page', ext: 'html' }];
     el.toggleTypeGroup('Page');
     await rerender();
-    expect(el.shadowRoot.querySelector('da-list-item')).to.be.null;
+    expect(el.shadowRoot.querySelector('da-file-item')).to.be.null;
     expect(el.shadowRoot.querySelector('.da-list-group-toggle').getAttribute('aria-expanded')).to.equal('false');
     el.toggleTypeGroup('Page');
     await rerender();
-    expect(el.shadowRoot.querySelector('da-list-item')).to.exist;
+    expect(el.shadowRoot.querySelector('da-file-item')).to.exist;
   });
 
   it('loads remaining pages before presenting the complete type selection', async () => {
@@ -315,7 +339,7 @@ describe('da-list render', () => {
       { path: '/org/site/b.png', name: 'b', ext: 'png' },
     ];
     await rerender();
-    const items = el.shadowRoot.querySelectorAll('.da-card-grid da-list-item');
+    const items = el.shadowRoot.querySelectorAll('.da-card-grid da-file-item');
     expect(items).to.have.length(2);
     expect(items[0].getAttribute('view')).to.equal('card');
     expect(el.shadowRoot.querySelector('.da-browse-table-header').classList.contains('is-card')).to.be.true;
@@ -330,7 +354,7 @@ describe('da-list render', () => {
     expect(el.shadowRoot.querySelector('.da-card-grid')).to.be.null;
     expect(el.shadowRoot.querySelector('.da-card-sort-pill')).to.be.null;
     expect(el.shadowRoot.querySelector('.da-card-select-all-label')).to.be.null;
-    expect(el.shadowRoot.querySelector('da-list-item').hasAttribute('view')).to.be.false;
+    expect(el.shadowRoot.querySelector('da-file-item').hasAttribute('view')).to.be.false;
   });
 });
 

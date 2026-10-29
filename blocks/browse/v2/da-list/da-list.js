@@ -3,7 +3,7 @@ import { getTypeLabel } from '../../../shared/icons.js';
 import { getNx, getNx2 } from '../../../../scripts/utils.js';
 import DaListBase from '../../da-list-base/da-list-base.js';
 
-import '../da-list-item/da-list-item.js';
+import '../../../shared/da-file-item/da-file-item.js';
 
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
 
@@ -354,9 +354,10 @@ export default class DaList extends DaListBase {
     return repeat(items, (item) => item.path, (item) => {
       const idx = indexByPath.get(item.path);
       return html`
-        <da-list-item
+        <da-file-item
           role="row"
           @checked=${(e) => this.handleItemChecked(e, item, idx)}
+          @favoritechange=${() => this.toggleItemFavorite(item)}
           @onstatus=${({ detail }) => this.setStatus(detail.text, detail.description, detail.type)}
           @renamecompleted=${(e) => this.handleRenameCompleted(e)}
           allowselect="${this.select ? true : nothing}"
@@ -370,7 +371,7 @@ export default class DaList extends DaListBase {
           ext="${item.ext}"
           editor="${this.editor}"
           idx=${idx}>
-        </da-list-item>`;
+        </da-file-item>`;
     });
   }
 
