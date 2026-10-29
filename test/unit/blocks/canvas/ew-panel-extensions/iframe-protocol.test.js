@@ -274,6 +274,53 @@ describe('setupIframeChannel', () => {
     expect(result.channel).to.equal(null);
   });
 
+  it('routes acknowledged SDK drags over the channel and rejects an old page context', async () => {
+    const iframe = document.createElement('iframe');
+    const loaded = new Promise((resolve) => { iframe.onload = resolve; });
+    document.body.append(iframe);
+    await loaded;
+    const editor = makeRealView({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Keep' }] }] });
+    sinon.stub(editor.dom, 'getBoundingClientRect').returns({ left: 100, right: 400, top: 100, bottom: 250 });
+    sinon.stub(editor.root, 'elementFromPoint').returns(editor.dom.firstChild);
+    sinon.stub(editor, 'posAtCoords').returns({ pos: editor.state.doc.content.size });
+    iframe.style.cssText = 'position:fixed;left:0;top:0;width:100px;height:100px;border:0';
+    const connection = await setupIframeChannel({
+      iframe,
+      hashState: { org: 'org', site: 'site', path: 'page' },
+      getView: () => editor,
+      onClose: () => {},
+    });
+    const results = [];
+    let requestId = 0;
+    const request = (action, details) => new Promise((resolve) => {
+      requestId += 1;
+      const id = `drag-${requestId}`;
+      connection.channel.port2.onmessage = ({ data }) => {
+        if (data.action === 'dragResult') results.push(data.details);
+        if (data.requestId === id) resolve(data.result);
+      };
+      connection.channel.port2.postMessage({ action, details, requestId: id });
+    });
+    try {
+      const details = { payload: { data: { 'text/html': '<h2>Heading</h2>' } }, point: { x: 150, y: 180 } };
+      const start = await request('dragStart', details);
+      expect(start.ok).to.equal(true);
+      expect(await request('dragFinish', { dragId: start.dragId, point: details.point }))
+        .to.deep.equal({ ok: true });
+      expect(editor.state.doc.textContent).to.equal('KeepHeading');
+      expect(results).to.deep.equal([{ dragId: start.dragId, result: { ok: true } }]);
+      setUrl('/changed/page');
+      expect((await request('dragStart', details)).ok).to.equal(false);
+    } finally {
+      connection.destroy();
+      const mount = editor.dom.parentElement;
+      editor.destroy();
+      mount.remove();
+      iframe.remove();
+      sinon.restore();
+    }
+  });
+
   it('posts a ready message with project details derived from hashState and the URL', async () => {
     setUrl('/some/page?ref=feature123#/myorg/mysite/a/b');
 
@@ -302,7 +349,8 @@ describe('setupIframeChannel', () => {
       hash: '#/myorg/mysite/a/b',
     });
     expect(message.context).to.equal(message.project);
-    expect(message.capabilities).to.deep.equal({ liveDocument: 1, sendHTMLReplace: 1 });
+    expect(message.capabilities)
+      .to.deep.equal({ liveDocument: 1, sendHTMLReplace: 1, dragDrop: 1 });
     expect(targetOrigin).to.equal('https://plugin.example.com');
     expect(transfer).to.have.lengthOf(1);
 

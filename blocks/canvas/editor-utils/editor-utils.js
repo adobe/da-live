@@ -547,7 +547,10 @@ function postBody(ctx) {
   const { doc } = ctx.view.state;
   const body = getInstrumentedHTML(ctx.view);
   const rerenderScope = getRerenderScope({ previousDoc: getBaseline(ctx), doc, body });
-  ctx.port.postMessage({ type: MESSAGE_TYPES.SET_BODY, payload: { body, rerenderScope } });
+  ctx.port.postMessage({
+    type: MESSAGE_TYPES.SET_BODY,
+    payload: { body, rerenderScope, documentVersion: getImageDocumentVersion(doc) },
+  });
   ctx.syncedDoc = doc;
   ctx.confirmedDoc = doc;
   ctx.useConfirmedBaseline = false;
