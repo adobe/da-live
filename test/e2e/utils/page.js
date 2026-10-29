@@ -29,9 +29,21 @@ export function getQuery() {
 
 const QUERY = getQuery();
 
-function getTestURL(type, testIdentifier, workerInfo, dir = `/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}`) {
+/**
+ * Returns a unique name for a single-use test resource. getTestResourceAge()
+ * parses the timestamp back out, so testIdentifier must not contain dashes.
+ *
+ * @param {string} testIdentifier - A identifier for the test
+ * @param {object} workerInfo - workerInfo as passed in by Playwright
+ * @returns {string} The resource name.
+ */
+export function getTestResourceName(testIdentifier, workerInfo) {
   const dateStamp = Date.now().toString(36);
-  const pageName = `pw-${testIdentifier}-${dateStamp}-${workerInfo.project.name}`;
+  return `pw-${testIdentifier}-${dateStamp}-${workerInfo.project.name}`;
+}
+
+function getTestURL(type, testIdentifier, workerInfo, dir = `/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}`) {
+  const pageName = getTestResourceName(testIdentifier, workerInfo);
   return `${ENV}/${type}${QUERY}#${dir}/${pageName}`;
 }
 

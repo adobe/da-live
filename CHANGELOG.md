@@ -1,3 +1,17 @@
+## [1.16.1](https://github.com/adobe/da-live/compare/v1.16.0...v1.16.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* **diff:** hash a review decision on the block as the editor saves it ([#1516](https://github.com/adobe/da-live/issues/1516)) ([8de3b1d](https://github.com/adobe/da-live/commit/8de3b1d660d09a6b5182792a2937428e8e6ed619))
+
+# [1.16.0](https://github.com/adobe/da-live/compare/v1.15.1...v1.16.0) (2026-10-28)
+
+
+### Features
+
+* **sc:** move structured content editor ([#1477](https://github.com/adobe/da-live/issues/1477)) ([ed60122](https://github.com/adobe/da-live/commit/ed601228892efd08bce42162b54097783f55e23e))
+
 ## [1.15.1](https://github.com/adobe/da-live/compare/v1.15.0...v1.15.1) (2026-10-28)
 
 
