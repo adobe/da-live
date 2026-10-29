@@ -72,6 +72,17 @@ const CONFIG = {
   imsScope: 'ab.manage,AdobeID,gnav,openid,org.read,read_organizations,session,aem.frontend.all,additional_info.ownerOrg,additional_info.projectedProductContext,account_cluster.read',
 };
 
+if (nx2) {
+  document.addEventListener('site-selector-ready', async ({ detail: { selector, signal } }) => {
+    try {
+      const { connectSiteSelector } = await import('../blocks/shared/site-picker.js');
+      if (!signal.aborted) connectSiteSelector({ selector, signal });
+    } catch (error) {
+      if (!signal.aborted) selector.error = `Could not load your sites: ${error.message}`;
+    }
+  });
+}
+
 export default async function loadPage() {
   if (!nx2) {
     // pin to light scheme
