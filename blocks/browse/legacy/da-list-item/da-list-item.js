@@ -2,14 +2,14 @@ import { LitElement, html, nothing, until } from 'da-lit';
 import { delay, sanitizeName, formatDate } from '../../../shared/utils.js';
 import { getNx, getNx2, getNx2Api } from '../../../../scripts/utils.js';
 import { ICONS, iconPathForExt } from '../../../shared/icons.js';
-import getEditPath from '../../shared.js';
+import getEditPath from '../../../shared/da-file-item/edit-path.js';
 
 import {
   fetchAemStatus,
   fetchDaStatus,
   doesFileExist,
   getRenamedPath,
-} from '../../shared/item.js';
+} from '../../../shared/da-file-item/item.js';
 
 // Styles
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
