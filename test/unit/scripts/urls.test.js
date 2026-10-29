@@ -9,7 +9,7 @@ import {
 describe('Deployment URL routing', () => {
   const settings = createConfig({
     da: {
-      domain: 'dhsomanipoc.da-aemlive.us',
+      domain: 'author.customer.example',
       owner: 'Adobe-SSA-EDS',
       services: {
         admin: { prod: 'https://bus.example:9443' },
@@ -33,7 +33,7 @@ describe('Deployment URL routing', () => {
   const values = { org: 'org', site: 'site', branch: 'feature' };
 
   it('builds arbitrary DA, site and review URLs without losing a mount path', () => {
-    expect(getAppUrl('/apps/schema', false, settings)).to.equal('https://dhsomanipoc.da-aemlive.us/apps/schema');
+    expect(getAppUrl('/apps/schema', false, settings)).to.equal('https://author.customer.example/apps/schema');
     expect(getSiteUrl('live', { ...values, path: '/folder/page', search: '?a=1', hash: '#part' }, settings))
       .to.equal('https://publish.example/sites/org/site/feature/folder/page?a=1#part');
     expect(getSiteUrl('review', { ...values, snapshot: 'release', path: '/page' }, settings))

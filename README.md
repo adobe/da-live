@@ -75,7 +75,7 @@ For example, the following override uses unrelated app, site, proxy and NX URLs:
 ```js
 export default {
   da: {
-    domain: 'dhsomanipoc.da-aemlive.us',
+    domain: 'author.customer.example',
     services: {
       preview: {
         prod: 'https://proxy.example.net/author/{org}/{site}/{branch}',
