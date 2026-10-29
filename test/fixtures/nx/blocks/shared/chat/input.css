@@ -1,0 +1,25 @@
+:host {
+  --nx-chat-input-working-background: light-dark(#fffc, #222c);
+  --nx-chat-input-working-border: light-dark(rgb(0 0 0 / 6%), rgb(255 255 255 / 6%));
+  --nx-chat-input-working-color: light-dark(rgb(0 0 0 / 56%), rgb(255 255 255 / 56%));
+  --nx-chat-input-working-shadow: 0 8px 32px #0000000f,
+    inset 0 24px 32px #ffffff0a, inset 0 -5px 21.6px #ffffff0a;
+  --nx-chat-input-spinner-size: 16px;
+  --nx-chat-input-spinner-track: var(--s2-gray-300, light-dark(#dadada, #393939));
+  --nx-chat-input-spinner-arc: var(--s2-blue-900, light-dark(#3b63fb, #5681ff));
+  --nx-chat-input-stroke-width: var(--s2-spacing-50, 2px);
+  --nx-chat-input-logo-size: 20px;
+  --nx-chat-input-expanded-inset: 6px;
+  --nx-chat-input-row-height: 21px;
+  --nx-chat-input-expanded-line-height: 21px;
+  --nx-chat-input-max-height: 240px;
+  --nx-chat-input-max-width: 720px;
+  --nx-chat-input-disabled-opacity: 0.5;
+}
+
+:host([size="m"]), :host([data-ui-size="m"]) {
+  --nx-chat-input-spinner-size: 18px;
+  --nx-chat-input-logo-size: 22px;
+  --nx-chat-input-expanded-line-height: var(--s2-body-line-height, 1.5);
+  --nx-chat-input-row-height: calc(var(--s2-body-size-l, 18px) * var(--s2-body-line-height, 1.5));
+}

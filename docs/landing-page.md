@@ -22,7 +22,13 @@ https://lp--da-live--adobe.aem.live/?landing=true&theme=light&nx=lp&quick-edit=d
 The latest card implementation requires the paired Nexter `lp` branch.
 It has not been transferred to Martin's `devlive` branches.
 
-Add `&theme=light` for a light-mode preview without changing the saved theme.
+For the chat integration preview, use `lpchat` for both repositories:
+
+```text
+https://lpchat--da-live--adobe.aem.live/?landing=true&theme=light&nx=lpchat&quick-edit=devlive#/exp-workspace/frescopaco
+```
+
+The `theme=light` preview override does not change the saved theme.
 The override applies only while this landing page is present.
 
 Landing retains its S/M hooks, shared button classes and explicitly sized
@@ -46,6 +52,14 @@ the shell-selected size.
 
 ## Component ownership
 
+- AO sites reuse Nexter's extracted `nx-ao-input` in both the landing page and
+  conversation. The input owns draft, attachments, menus, voice and working/Stop
+  presentation. Nexter's shared composer skin owns the gradient frame. Landing
+  owns page layout, site availability and handoff
+  to the existing conversation; it does not create another controller. The
+  configured `loadChatInput()` loader leaves legacy sites on their existing form.
+  Standalone context events stay isolated from the panel's add-to-chat event.
+  Async handoff must be accepted before the central draft and pills clear.
 - Nexter owns the presentation-only `nx-card`, based on Browse's card layout.
   Landing uses one compact thumbnail size. Ordinary Browse keeps its existing
   renderer until the shared component is available on its supported shell branches.
@@ -68,6 +82,32 @@ the shell-selected size.
   focus from an outside click.
 
 ## Figma fidelity
+
+The sidebar coworker action uses colored SVG artwork without an outer shadow
+while chat is closed. Once the chat panel is shown it uses the
+selected circular action style with an 18px light coworker glyph. Closing chat
+or changing sites restores the blob; opening another panel does not change it.
+Coworker marks in both text boxes use `--s2-gray-800` in either theme.
+
+Chat-family defaults come from Nexter's `nx2/blocks/shared/chat/input.css`:
+working fill/border/text, spinner/logo dimensions and input inset/height limits.
+The centered composer adopts Nexter's `nx2/blocks/shared/chat/composer.css`.
+Its `--nx-chat-composer-*` properties name the 24px inner radius, 6px frame
+and derived 30px outer radius, plus gradient artwork, blur/opacity and
+state-specific shadows. Landing retains the page's 664px width and positioning.
+Idle, ready, focus-frame, working and drop shadows stay separate; working
+defaults to the current ready shadow. Existing S2 spacing is reused directly.
+The legacy center working label uses the shared working-text color. Disclaimer
+spacing and S/M line heights use the existing S2 spacing and typography tokens.
+The legacy text line remains 20px and the expanded AO row 21px; tokenization
+does not resize either chat or flatten the center/sidebar variants.
+The legacy S line uses the existing S2 component line-height token; AO keeps
+the Figma-specific `--nx-chat-input-expanded-line-height`. In M both middle
+inputs use 18px text and body line height 1.5 (27px). Shared button classes
+advance sidebar actions 24→32px and middle actions 32→40px; Stop is no longer
+sized separately. Landing passes the same size to the existing conversation
+and its standalone AO input. Spinner/logo sizes advance 16→18px and 20→22px.
+These component variants do not install the global profile sizing runtime.
 
 The 1920px Ready frame (`1852:83848`) has a 1068px Files panel starting at y=395.
 Ten compact cards are 142px tall with 4px frame padding, 80px thumbnails,
@@ -196,22 +236,25 @@ intentional differences rather than substitutes for those missing inputs.
   formats are unchanged. Panels use its 1068px
   desktop width, 16px radius, translucent fill and three-layer shadow. The composer
   uses its 664px desktop width and 109px idle height. Its neutral translucent
-  fill, border and soft shadows follow the Spectrum AI Toolkit's Subtle prompt
-  field (`24045:21639` in branch `1ypHt0RiJxnGKoZGlIT6eY`). Hover uses that
-  theme's faint colored hue and surface gradients (`24045:21695`), only on fine
-  pointers while the assistant is available. Focus and typing return to a neutral
-  frame (`24045:21088`, `24045:21059`), without a blue focus outline.
+  fill, border and soft shadows follow the Balanced prompt field in the chat
+  design (`3231:201921`, `3231:206692`). The idle field has a faint colored hue;
+  fine-pointer hover strengthens its surface gradients. Focus and typing return
+  to a neutral frame, without a blue focus outline.
   Only dragging files over the available composer shows the dropzone's 2px
   blue-violet ring and faint pink fill (`24045:21667`). The ring follows the
   inner 24px-radius surface, leaving the outer 6px frosted frame untouched.
   Leaving or dropping clears the highlight; dragging text does not activate it.
-  Dropped images, PDFs and Markdown files reuse the Add menu's attachment
+  Legacy dropped images, PDFs and Markdown files reuse the Add menu's attachment
   builder and assistant handoff, preserving the draft without auto-sending.
+  AO inputs use the shared input's AO file allowlist and 100 MB per-file limit;
+  selected or dropped attachments remain local until explicit Send.
   Unsupported or unreadable files produce an explicit error.
   Shared buttons retain their keyboard focus indicators, and forced-colors
   mode provides a system-color focus outline for the prompt.
-  Dimensions, spacing, prompt text and Add actions follow the mock.
-  This does not add a generation state to the landing composer.
+  Dimensions, spacing, prompt text, actions and assistant handoff are unchanged.
+  Processing shows a spinner and "Working on your question, please wait..."
+  in both composers. Inputs and Add are disabled until processing finishes.
+  Stop and approval controls remain available in the left chat.
   The background includes the separate white fade over the coloured artwork:
   transparent at -794px, reaching white at about 604px in the 1024px canvas.
   Labels use explicit component line heights; modified dates use Today/Yesterday.
@@ -222,19 +265,44 @@ intentional differences rather than substitutes for those missing inputs.
   font binaries were not supplied; exact font-family parity needs approved assets.
 - Folders and link files open in Browse. Pages, sheets and media open in their
   editors, preserving the Nexter/quick-edit preview parameters.
-- Send opens the site's existing left assistant panel and submits the prompt
-  through its public `setPrompt(text, { autoSend: true })` API. It also opens
-  a chat panel previously hidden by Browse. The existing EW/chat flags still apply.
-  While the panel opens, repeated sends are blocked. A busy assistant retains the
-  central draft with a retry message; a site change cancels a pending handoff.
+- The prompt's Send button opens the site's existing assistant and submits
+  immediately, adding any retained attachments before sending through the public
+  `setPrompt(..., { autoSend: true })` API. The existing EW/chat flags still apply.
+  Enter sends; Shift+Enter inserts a newline, and IME composition
+  does not submit. The same chat instance/session is reused after closing and
+  reopening its panel. A different unsent draft in the left composer is never
+  overwritten: the landing draft and attachments remain available for retry.
+  Only accepted submission clears the central input. During processing,
+  even a hidden left panel keeps the central textarea and Add menu disabled.
+  The working state follows Figma `3231:202678`: the center retains a faint
+  16% pastel tint and 12% diffused hue, while the left input stays neutral.
+  Neither has a colored inner ring. Both show an enabled Stop button.
+  The central Stop calls the same mounted chat's public `stop()` method;
+  either Stop cancels that response, and the next input-state update restores
+  both composers without clearing retained drafts or sending another message.
+  There is no queue.
+  Landing consumes the public `inputState`/`INPUT_STATE_CHANGE` contract and
+  opts the left chat into `showInputStatus`; it does not inspect a controller.
+  Panel opening and file reading have separate, announced loading states,
+  with their text beside the spinner in the composer's input row.
+  The Figma AI icon (`3231:201857`) appears above the existing left-menu links.
+  It opens the same chat without sending or clearing the central draft, remains
+  available during processing, and is disabled on sites without chat.
+  Site changes cancel pending panel loads, remove the old chat and its listener,
+  and clear the old draft/attachments before rechecking the site's chat flags.
+  Failed loads retain the draft and readable attachments for retry.
+  The panel's initial width is 320px; existing user-resized widths remain respected.
+  This integration requires Nexter's shared chat changes for the public
+  input-state, safe draft acceptance and panel-cancellation contracts.
   The coworker icon, prompt placeholder and AI disclaimer follow the mock.
-  The composer uses `--s2-body-size-m` (16px) at both UI sizes and
-  `--s2-gray-600` for the placeholder, including dark mode.
-  The plus button opens the existing Add menu locally and remains a plus
-  while open. Files or images opens the native file picker directly; cancelling
+  Both middle inputs use 16px text in S and 18px in M.
+  Both use `--s2-gray-600` for the placeholder in each theme.
+  The plus button opens the existing Add menu locally. The AO input retains its
+  shared prompt/menu behavior. Files or images opens the native picker; cancelling
   does not open chat. Selected files use the existing attachment builder and
-  shared add-to-chat event, without uploading or auto-sending. Other selected
-  actions continue in the existing assistant through `openAddAction(id)`,
+  shared add-to-chat event on handoff, without uploading or auto-sending merely
+  by selecting files. AO prompts and commands stay in the shared central input;
+  parent-owned actions continue in the existing assistant through `openAddAction(id)`,
   supported by both `nx-chat` and `nx-chat-ao`. Typed drafts are preserved.
 - Five quick actions replace Need Attention. Landing does not load the comment
   feed or probe page metadata for that removed table.
@@ -305,7 +373,21 @@ admin: only an explicit org CONFIG write grant exposes creation. Check missing
 permission headers and failed checks without hiding Add existing. Do not submit
 creation against shared demo content when checking the setup entry.
 Check dark mode, narrow layouts, keyboard focus and a site without chat.
-Verify chat availability after changing sites; the existing assistant handoff is
-preserved. The separate chat.io module and sizing-branch integration still need
-confirmation before replacing that flow or claiming live S/M support.
+Verify chat availability after changing sites. On a writable test site, send a
+prompt with Enter or Send: the left conversation starts without another Send.
+Check that Opening chat appears beside its spinner, not below it. Click the AI
+menu icon to reopen the same conversation without submitting another message.
+Shift+Enter stays multiline. Attach a Markdown file or image and
+confirm one pill per file. Leave another draft in the left input and confirm
+that a central handoff preserves both drafts rather than replacing it.
+Send only on a separate writable test site: both inputs should show the working
+message, faint center tint and neutral left input, disable Add, and offer Stop. Cancel once from
+the middle and once from the left: each should stop the same response, restore
+both inputs, and preserve any unsent draft without sending another message. Closing the
+panel must not unlock the central input during processing. Open/close without
+changing sites preserves the conversation. Switching sites during loading or
+file reading must not open the old chat or copy the old draft into the new site.
+With a failed chat-module request, the central draft and readable attachments
+remain available to retry. Check these flows in light/dark mode and a narrow
+window. Live S/M integration remains separate from the `lp` shell.
 The unparameterized Browse and Canvas routes should retain their existing UI.

@@ -1,6 +1,6 @@
 import { LitElement, html, nothing, repeat } from 'da-lit';
 import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
-import { getChatPanelContent, setChatPrompt, addChatContext } from '../shared/chat-panel.js';
+import { getChatPanelContent, addChatContext } from '../shared/chat-panel.js';
 import { getTypeLabel, isImageExt } from '../shared/icons.js';
 import { getFavorites, toggleFavorite } from '../browse/shared/favorites.js';
 import { getBrowseSettings, updateBrowseSettings } from '../browse/v2/shared/settings.js';
@@ -14,7 +14,8 @@ import './tile.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { registerPanelSection, PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
-const { ADOBE_AI_GUIDELINES_URL, MENU_OPTIONS } = await import(`${getNx()}/blocks/shared/chat/constants.js`);
+const { ADOBE_AI_GUIDELINES_URL, CHAT_WORKING_MESSAGE, MENU_OPTIONS } = await import(`${getNx()}/blocks/shared/chat/constants.js`);
+const { CHAT_EVENT, loadChatInput } = await import(`${getNx()}/utils/chat.js`);
 const { ADD_MENU_ITEMS } = await import(`${getNx()}/blocks/chat/constants.js`);
 const { createFileDropHandlers } = await import(`${getNx()}/blocks/shared/chat/dnd.js`);
 const nx = await import(`${getNx2()}/scripts/nx.js`);
@@ -24,9 +25,12 @@ await Promise.all([
   import(`${getNx2()}/blocks/shared/card/card.js`),
   import(`${getNx()}/blocks/shared/segmented-btn/segmented.js`),
   import(`${getNx()}/blocks/shared/menu/menu.js`),
+  import(`${getNx()}/blocks/shared/pills/pills.js`),
 ]);
 const [shellStyle, ...styles] = await Promise.all([
   loadStyle(new URL('./shell.css', import.meta.url).href),
+  loadStyle(`${getNx2()}/blocks/shared/chat/input.css`),
+  loadStyle(`${getNx2()}/blocks/shared/chat/composer.css`),
   loadStyle(`${getNx2()}/styles/buttons.css`),
   loadStyle(import.meta.url),
 ]);
@@ -58,6 +62,11 @@ export class DaLanding extends LitElement {
     _editor: { state: true },
     _chatError: { state: true },
     _handingOff: { state: true },
+    _readingFiles: { state: true },
+    _attachments: { state: true },
+    _chatInputState: { state: true },
+    _chatOpen: { state: true },
+    _aoInput: { state: true },
     _dragging: { state: true },
     _permissions: { state: true },
     _openingPage: { state: true },
@@ -65,6 +74,35 @@ export class DaLanding extends LitElement {
   };
 
   _sizing = sizing && new sizing.UISizeController(this);
+
+  _onChatInputState = ({ detail }) => {
+    this._chatInputState = detail;
+    if (detail.disabled) this._dragging = false;
+  };
+
+  _onAoSubmit = ({ text, context, attachments }) => {
+    if (this.composerDisabled) return false;
+    return new Promise((resolve) => {
+      this._inputResolve = resolve;
+      this.openAssistant({ text, attachments: [...context, ...attachments], autoSend: true });
+    });
+  };
+
+  _onAoMenuSelect = (action) => this.openAssistant({ action });
+
+  _onAoStop = () => this._onStop();
+
+  _onChatPanelClose = (event) => {
+    if (event.detail?.section === 'chat'
+      || this._chat?.closest('aside.panel')?.contains(event.target)) {
+      this._chatOpen = false;
+    }
+  };
+
+  _finishInputSubmit(accepted) {
+    this._inputResolve?.(accepted);
+    this._inputResolve = undefined;
+  }
 
   _dnd = createFileDropHandlers({
     onDragging: (dragging) => { this._dragging = dragging; },
@@ -88,6 +126,8 @@ export class DaLanding extends LitElement {
     this.shadowRoot.adoptedStyleSheets = styles;
     this._unsubscribe = hashChange.subscribe((state) => this.setScope(state));
     window.addEventListener('storage', this._onStorage);
+    document.addEventListener(PANEL_EVENT.CLOSE, this._onChatPanelClose);
+    this._mountChatAction();
     this.loadProfile();
   }
 
@@ -95,11 +135,46 @@ export class DaLanding extends LitElement {
     this._dragging = false;
     this._unsubscribe?.();
     this._request?.abort();
+    this.resetChat();
+    this.clearAttachments();
+    if (this._sidenav) {
+      this._sidenav.actions = this._sidenav.actions?.filter(
+        (action) => action !== this._chatAction,
+      );
+    }
     this._openingPage = undefined;
     this._createDialog = undefined;
     window.removeEventListener('storage', this._onStorage);
-    document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
+    document.removeEventListener(PANEL_EVENT.CLOSE, this._onChatPanelClose);
     super.disconnectedCallback();
+  }
+
+  get composerDisabled() {
+    return !this._chatEnabled || this._handingOff || this._readingFiles
+      || this._chatInputState?.disabled;
+  }
+
+  resetChat() {
+    this._finishInputSubmit(false);
+    this._chatOpen = false;
+    document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
+    this._chat?.removeEventListener(CHAT_EVENT.INPUT_STATE_CHANGE, this._onChatInputState);
+    this._chat?.closest('aside.panel')?.remove();
+    this._chat = undefined;
+    this._chatInputState = undefined;
+  }
+
+  clearAttachments() {
+    this._attachments?.forEach((item) => {
+      if (item.thumbnail) URL.revokeObjectURL(item.thumbnail);
+    });
+    this._attachments = undefined;
+  }
+
+  _onRemoveAttachment({ detail: { id } }) {
+    const item = this._attachments?.find((attachment) => attachment.id === id);
+    if (item?.thumbnail) URL.revokeObjectURL(item.thumbnail);
+    this._attachments = this._attachments?.filter((attachment) => attachment.id !== id);
   }
 
   get uiSize() {
@@ -110,8 +185,54 @@ export class DaLanding extends LitElement {
     return this._scope ? `/${this._scope}` : '';
   }
 
+  _mountChatAction() {
+    this._sidenav = document.querySelector('nx-sidenav');
+    if (this._sidenav) {
+      this._chatAction = {
+        label: 'Open chat',
+        icon: '/blocks/landing/assistant.svg#icon',
+        activeIcon: '/img/icons/s2-icon-coworker-20-n.svg#icon',
+        active: false,
+        disabled: true,
+        onClick: () => {
+          if (!this._chatEnabled) return;
+          document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat' } }));
+        },
+      };
+      this._sidenav.actions = [this._chatAction, ...this._sidenav.actions || []];
+    }
+  }
+
   updated() {
+    this._syncChatAction();
+    if (this._chat) this._chat.size = this.uiSize;
+    if (this._aoInput) {
+      Object.assign(this._aoInput, {
+        blocked: !!this._chatInputState?.busy,
+        disabled: !!this.composerDisabled,
+        showInputStatus: true,
+        statusMessage: this._handingOff ? 'Opening chat...' : '',
+        placeholder: 'Ask a question, share an idea, or add a task.',
+        variant: 'expanded',
+        size: this.uiSize,
+        onSubmit: this._onAoSubmit,
+        onStop: this._onAoStop,
+        onMenuSelect: this._onAoMenuSelect,
+      });
+    }
     if (!this._prompt) this.shadowRoot.querySelector('textarea')?.style.removeProperty('height');
+  }
+
+  _syncChatAction() {
+    const active = !!this._chatOpen;
+    if (this._chatAction && (this._chatAction.disabled !== !this._chatEnabled
+      || this._chatAction.active !== active)) {
+      const previous = this._chatAction;
+      this._chatAction = { ...previous, disabled: !this._chatEnabled, active };
+      this._sidenav.actions = this._sidenav.actions.map((action) => (
+        action === previous ? this._chatAction : action
+      ));
+    }
   }
 
   showAddSite() {
@@ -135,6 +256,10 @@ export class DaLanding extends LitElement {
   setScope(state) {
     const scope = state?.org && state?.site ? `${state.org}/${state.site}` : undefined;
     if (this._scope === scope && this._request && !this._request.signal.aborted) return;
+    this._request?.abort();
+    this.resetChat();
+    this.clearAttachments();
+    this._scopeToken = {};
     this._scope = scope;
     this._openingPage = undefined;
     this._createDialog = undefined;
@@ -143,19 +268,22 @@ export class DaLanding extends LitElement {
     this._limit = PAGE_SIZE;
     this._prompt = '';
     this._chatEnabled = undefined;
+    this._aoInput = undefined;
     this._editor = undefined;
     this._chatError = undefined;
     this._handingOff = false;
+    this._readingFiles = false;
     this._dragging = false;
     this._error = undefined;
     this._actionError = undefined;
     this.refreshFavorites();
-    document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
     this.loadSite();
   }
 
   async loadSite() {
     this._request?.abort();
+    this._finishInputSubmit(false);
+    this._handingOff = false;
     const request = new AbortController();
     this._request = request;
     this._files = undefined;
@@ -237,41 +365,88 @@ export class DaLanding extends LitElement {
       ]);
       if (request.signal.aborted || !this.isConnected) return;
       this._editor = enabled ? '/canvas#' : '/edit#';
-      this._chatEnabled = enabled && !disabled;
-      if (!this._chatEnabled) return;
+      if (!enabled || disabled) {
+        this._chatEnabled = false;
+        return;
+      }
+      const input = await loadChatInput();
+      if (request.signal.aborted || !this.isConnected) return;
+      this._aoInput = input && (this._aoInput ?? input);
+      this._chatEnabled = true;
       registerPanelSection('chat', {
         position: 'before',
-        width: '400px',
+        width: '320px',
+        signal: request.signal,
         getContent: async () => {
-          try {
-            return await getChatPanelContent()();
-          } catch (error) {
+          const chat = await getChatPanelContent()();
+          chat.showInputStatus = true;
+          chat.size = this.uiSize;
+          return chat;
+        },
+        onError: (error) => {
+          if (!request.signal.aborted && this.isConnected) {
             this._chatError = `Could not open the assistant: ${error.message}`;
             this._handingOff = false;
-            throw error;
+            this._finishInputSubmit(false);
           }
         },
         onShow: async (aside, id, options) => {
-          if (!options || request.signal.aborted) return;
+          if (request.signal.aborted || !this.isConnected) return;
+          const current = () => !request.signal.aborted && this.isConnected;
           try {
             const chat = aside.querySelector('nx-chat, nx-chat-ao');
             if (!chat) throw new Error('The assistant could not be opened.');
-            await chat.updateComplete;
-            if (request.signal.aborted || !this.isConnected) return;
-            if (options.autoSend && chat.thinking && !chat.pendingPlanApproval) {
-              throw new Error('The assistant is still responding. Try again when it finishes.');
+            this._chatOpen = !aside.hidden;
+            if (this._chat !== chat) {
+              const previous = this._chat;
+              previous?.removeEventListener(CHAT_EVENT.INPUT_STATE_CHANGE, this._onChatInputState);
+              this._chat = chat;
+              chat.addEventListener(CHAT_EVENT.INPUT_STATE_CHANGE, this._onChatInputState);
             }
-            if (options.text) await chat.setPrompt(options.text, { autoSend: options.autoSend });
-            for (const item of options.attachments || []) await addChatContext(item);
+            await chat.updateComplete;
+            if (!current()) return;
+            this._chatInputState = chat.inputState;
+            if (!options) return;
+            if (chat.inputState?.busy || (!options.text && chat.inputState?.disabled)) {
+              throw new Error('The assistant is not ready. Your landing page draft is unchanged.');
+            }
+            if (options.text) {
+              const accepted = await chat.setPrompt(options.text, { replace: false });
+              if (!current()) return;
+              if (accepted === false) {
+                throw new Error('Finish or clear the draft in chat before continuing. Your landing page draft is unchanged.');
+              }
+            }
+            for (const item of options.attachments || []) {
+              if (!current()) return;
+              await addChatContext(item);
+            }
+            if (!current()) return;
+            if (options.autoSend) {
+              const accepted = await chat.setPrompt(
+                options.text,
+                { replace: false, autoSend: true },
+              );
+              if (!current()) return;
+              if (accepted === false) {
+                throw new Error(
+                  'The assistant could not send yet. Your landing page draft is unchanged.',
+                );
+              }
+            }
             if (options.action) {
               if (!chat.openAddAction) throw new Error('This assistant cannot open the selected Add action.');
               await chat.openAddAction(options.action);
             }
+            if (!current()) return;
             options.onReady?.();
           } catch (error) {
-            if (!request.signal.aborted) this._chatError = error.message;
+            if (current()) {
+              this._chatError = error.message;
+              this._finishInputSubmit(false);
+            }
           } finally {
-            if (!request.signal.aborted) this._handingOff = false;
+            if (current() && options) this._handingOff = false;
           }
         },
       });
@@ -307,38 +482,56 @@ export class DaLanding extends LitElement {
 
   async submitPrompt(event) {
     event.preventDefault();
-    await this.openAssistant({ text: this._prompt.trim(), autoSend: true });
+    const text = this._prompt.trim()
+      || (this._attachments?.length ? `Attached file${this._attachments.length > 1 ? 's' : ''}` : '');
+    await this.openAssistant({ text, attachments: this._attachments, autoSend: true });
+  }
+
+  _onStop() {
+    if (!this._chat?.inputState?.busy) return;
+    try {
+      this._chat.stop();
+    } catch (error) {
+      this._chatError = `Could not stop the assistant: ${error.message}`;
+    }
+  }
+
+  _onPromptKeydown(event) {
+    if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
+    event.preventDefault();
+    if (!this.composerDisabled) event.target.form.requestSubmit();
   }
 
   async openAssistant({ text, action, attachments, autoSend }) {
-    if (!this._chatEnabled || this._handingOff) return;
+    if (this.composerDisabled) return;
     if (!text && !action && !attachments?.length) return;
     this._handingOff = true;
     this._chatError = undefined;
     try {
-      const scope = this._scope;
+      const token = this._scopeToken;
       const onReady = () => {
-        if (this._scope !== scope) return;
+        if (this._scopeToken !== token || !this.isConnected) return;
         this._prompt = '';
+        this._attachments = undefined;
         this._handingOff = false;
+        this._finishInputSubmit(true);
       };
-      if (autoSend || action || attachments?.length) {
-        document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat', options: { text, action, attachments, autoSend, onReady } } }));
-      } else {
-        await setChatPrompt(text, onReady);
-      }
+      document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat', options: { text, action, attachments, autoSend, onReady } } }));
     } catch (error) {
       this._handingOff = false;
       this._chatError = `Could not open the assistant: ${error.message}`;
+      this._finishInputSubmit(false);
     }
   }
 
   selectAddAction({ detail: { id } }) {
+    if (this.composerDisabled) return undefined;
     if (id === MENU_OPTIONS.FILES) {
       this.shadowRoot.querySelector('.landing-file-input').click();
       return undefined;
     }
-    return this.openAssistant({ text: this._prompt.trim(), action: id });
+    const attachments = this._attachments;
+    return this.openAssistant({ text: this._prompt.trim(), action: id, attachments });
   }
 
   async attachFiles({ target }) {
@@ -352,7 +545,7 @@ export class DaLanding extends LitElement {
   handleFileDrag(event) {
     if (!Array.from(event.dataTransfer?.types || []).includes('Files')) return undefined;
     event.preventDefault();
-    if (!this._chatEnabled || this._handingOff) {
+    if (this.composerDisabled) {
       this._dragging = false;
       event.dataTransfer.dropEffect = 'none';
       return undefined;
@@ -367,9 +560,11 @@ export class DaLanding extends LitElement {
   }
 
   async addFiles(files) {
-    if (!this._chatEnabled || this._handingOff) return;
+    if (this.composerDisabled) return;
     if (!files.length) return;
-    const scope = this._scope;
+    const token = this._scopeToken;
+    const current = () => this._scopeToken === token && this.isConnected;
+    this._readingFiles = true;
     try {
       if (files.some((file) => !file.type?.startsWith('image/')
         && !['application/pdf', 'text/markdown'].includes(file.type)
@@ -377,14 +572,22 @@ export class DaLanding extends LitElement {
         throw new Error('Use images, PDFs or Markdown files.');
       }
       const { buildAttachmentItems } = await import(`${getNx()}/blocks/shared/chat/files.js`);
-      const attachments = await buildAttachmentItems(files);
-      if (this._scope !== scope || !this.isConnected) return;
-      if (attachments.length !== files.length) throw new Error('Some files could not be read or exceed the attachment limit.');
-      await this.openAssistant({ text: this._prompt.trim(), attachments });
+      const currentCount = this._attachments?.length || 0;
+      const attachments = await buildAttachmentItems(files, { currentCount });
+      if (!current()) {
+        attachments.forEach((item) => { if (item.thumbnail) URL.revokeObjectURL(item.thumbnail); });
+        return;
+      }
+      this._attachments = [...(this._attachments || []), ...attachments];
+      if (attachments.length !== files.length) throw new Error('Some files could not be read or exceed the attachment limit. Readable files are kept below.');
+      this._readingFiles = false;
+      await this.openAssistant({ text: this._prompt.trim(), attachments: this._attachments });
     } catch (error) {
-      if (this._scope === scope && this.isConnected) {
+      if (current()) {
         this._chatError = `Could not attach files: ${error.message}`;
       }
+    } finally {
+      if (current()) this._readingFiles = false;
     }
   }
 
@@ -504,40 +707,60 @@ export class DaLanding extends LitElement {
   }
 
   render() {
+    const loadingMessage = this._readingFiles ? 'Reading files...' : 'Opening chat...';
+    const busy = !!this._chatInputState?.busy;
+    const working = busy || this._handingOff || this._readingFiles;
+    const sendLabel = busy ? 'Stop' : 'Send';
+    const sendDisabled = busy ? !this._chat
+      : this.composerDisabled || (!this._prompt.trim() && !this._attachments?.length);
     return html`
       <div class="landing">
         <section class="welcome" aria-labelledby="welcome-heading">
           <h1 id="welcome-heading">Hi${this._name ? html` ${this._name}` : nothing}, how can I help?</h1>
-          <form class="composer ${this._dragging && this._chatEnabled && !this._handingOff ? 'is-dropzone' : ''}"
+          ${this._aoInput ? html`
+            <div class="composer nx-chat-composer ${!this.composerDisabled ? 'is-enabled' : ''} ${busy ? 'is-processing' : ''}">
+              <div class="composer-surface nx-chat-composer-surface" aria-hidden="true"></div>
+              ${this._aoInput}
+            </div>` : html`
+          <form class="composer nx-chat-composer ${this._dragging && !this.composerDisabled ? 'is-dropzone' : ''} ${busy ? 'is-processing' : ''}"
+            aria-busy=${!!this._chatInputState?.busy || !!this._handingOff || !!this._readingFiles}
             @submit=${this.submitPrompt} @dragenter=${this.handleFileDrag}
             @dragleave=${this.handleFileDrag} @dragover=${this.handleFileDrag}
             @drop=${this.handleFileDrag}>
-            <div class="composer-surface" aria-hidden="true"></div>
+            <div class="composer-surface nx-chat-composer-surface" aria-hidden="true"></div>
+            ${this._attachments?.length ? html`<nx-pills .items=${this._attachments}
+              @nx-pill-remove=${this._onRemoveAttachment}></nx-pills>` : nothing}
             <div class="composer-input">
-              <span class="coworker-icon" aria-hidden="true"></span>
+              <span class=${working ? 'nx-loading-spinner' : 'coworker-icon'} aria-hidden="true"></span>
+              ${working ? html`<span class="composer-working" role="status">
+                ${this._chatInputState?.busy ? CHAT_WORKING_MESSAGE : loadingMessage}
+              </span>` : nothing}
               <label class="sr-only" for="landing-prompt">Let me know your task</label>
               <textarea id="landing-prompt" rows="1" .value=${this._prompt}
-                ?disabled=${!this._chatEnabled || this._handingOff} aria-describedby="assistant-note assistant-context"
-                placeholder="Let me know your task — I can route you to the right app or tool"
-                @input=${this.updatePrompt}></textarea>
+                ?hidden=${working}
+                ?disabled=${this.composerDisabled} aria-describedby="assistant-note assistant-context"
+                placeholder="Ask a question, share an idea, or add a task."
+                @input=${this.updatePrompt} @keydown=${this._onPromptKeydown}></textarea>
             </div>
             <div class="composer-actions">
               <input class="landing-file-input" type="file" hidden multiple
                 accept="image/*,application/pdf,text/markdown,.md"
-                ?disabled=${!this._chatEnabled || this._handingOff} @change=${this.attachFiles}>
-              <nx-menu .items=${ADD_MENU_ITEMS} placement="above" @select=${this.selectAddAction}>
+                ?disabled=${this.composerDisabled} @change=${this.attachFiles}>
+              <nx-menu .items=${ADD_MENU_ITEMS} size="m" placement="above" @select=${this.selectAddAction}>
                 <button slot="trigger" type="button"
                   class="chat-add nx-action-btn-icon ${this.uiSize === 'm' ? 'nx-btn-lg' : ''}"
-                  aria-label="Add" ?disabled=${!this._chatEnabled || this._handingOff}>
+                  aria-label="Add" ?disabled=${this.composerDisabled}>
                   ${icon('add')}
                 </button>
               </nx-menu>
-              <button type="submit" class="composer-send nx-action-btn-icon is-active ${this.uiSize === 'm' ? 'nx-btn-lg' : ''}"
-                aria-label=${this._handingOff ? 'Opening chat' : 'Send message'}
-                title="Send message"
-                ?disabled=${!this._chatEnabled || !this._prompt.trim() || this._handingOff}>${icon('arrowupsend')}</button>
+              <button type=${busy ? 'button' : 'submit'}
+                class="composer-send nx-action-btn-icon is-active ${this.uiSize === 'm' ? 'nx-btn-lg' : ''}"
+                aria-label=${!busy && this._handingOff ? 'Opening chat' : sendLabel}
+                title=${sendLabel}
+                @click=${busy ? this._onStop : nothing} ?disabled=${sendDisabled}
+              >${icon(busy ? 'stopprocessing' : 'arrowupsend')}</button>
             </div>
-          </form>
+          </form>`}
           <p id="assistant-note" class="assistant-note">
             AI responses may be inaccurate.
             <a href=${ADOBE_AI_GUIDELINES_URL} target="_blank" rel="noopener noreferrer">AI User Guidelines</a>
