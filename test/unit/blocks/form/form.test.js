@@ -47,11 +47,11 @@ async function mountReady() {
   const json = validDoc({ name: 'Ada' });
   const engine = createEngine({ schema: demoSchema, document: json });
 
-  el._details = { owner: 'adobe', repo: 'demo', name: 'page', fullpath: '/adobe/demo/page.html' };
+  el._details = { owner: 'adobe', repo: 'demo', parent: '/adobe/demo', name: 'page', fullpath: '/adobe/demo/page.html' };
   el._editor = engine;
   el._state = engine.getState();
   el._context = { status: 'ready', schemaName: 'demo', schema: demoSchema, json };
-  el._nav = { pointer: '/data', origin: null, seq: 0 };
+  el._navigation = { pointer: '/data', origin: null, seq: 0 };
   el.ctx = { org: 'adobe', repo: 'demo', path: 'adobe/demo/page' };
 
   await el.updateComplete;
@@ -91,6 +91,20 @@ describe('nx-form', () => {
     const editor = el.shadowRoot.querySelector('nx-editor');
     expect(editor.editor).to.equal(el._editor);
     expect(editor.state).to.equal(el._state);
+  });
+
+  it('passes file sources and the preview origin to the editor once they are loaded', async () => {
+    const el = await mountReady();
+    const editor = el.shadowRoot.querySelector('nx-editor');
+    expect(editor.assetSources).to.equal(undefined);
+    expect(editor.previewOrigin).to.equal(undefined);
+
+    const sources = [{ id: 'upload', label: 'Upload' }];
+    el._assetSources = sources;
+    el._previewOrigin = 'https://main--site--example.preview.da.live';
+    await el.updateComplete;
+    expect(editor.assetSources).to.equal(sources);
+    expect(editor.previewOrigin).to.equal('https://main--site--example.preview.da.live');
   });
 
   it('renders a blocked message for a missing schema', async () => {

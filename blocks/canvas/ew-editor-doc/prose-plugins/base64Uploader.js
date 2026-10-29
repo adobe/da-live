@@ -1,7 +1,7 @@
 import { Plugin } from 'da-y-wrapper';
 import { getNx2Api } from '../../../../scripts/utils.js';
 import { getSourceUploadContext } from './sourceUploadContext.js';
-import { dataUrlByteLength, refuseOversizedImage } from '../../utils/image-upload.js';
+import { dataUrlByteLength, refuseOversizedImage } from '../../../shared/image-upload.js';
 
 const FPO_IMG_URL = '/blocks/edit/img/fpo.svg';
 

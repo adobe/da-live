@@ -1,95 +1,199 @@
 import { LitElement, html, nothing } from 'da-lit';
 
 import { createEngine } from '../../deps/da-sc-sdk/dist/index.js';
+import { getNx2 } from '../../scripts/utils.js';
+import { createAssetSources } from './assets/sources.js';
 import { loadFormContext } from './utils/context.js';
 import { attachPersistence } from './utils/persistence.js';
-import { getNx2 } from '../../scripts/utils.js';
+import { loadPreviewOrigin } from './utils/preview.js';
 import { isJsonPreviewEnabled } from './utils/config.js';
 
 import './views/editor.js';
-import './views/sidebar.js';
 import './views/preview.js';
+import './views/sidebar.js';
 // Fields the shell renders directly (schema selector + messages); the editor
 // imports the rest.
-import './fields/picker.js';
 import './fields/button.js';
+import './fields/picker.js';
 
-const { loadStyle, hashChange } = await import(`${getNx2()}/utils/utils.js`);
+const { hashChange, loadStyle } = await import(`${getNx2()}/utils/utils.js`);
 
+/** The stylesheet of the form, adopted by its shadow root. */
 const style = await loadStyle(import.meta.url);
 
-const EL_NAME = 'nx-form';
+/** The tag name the form is registered as. */
+const ELEMENT_NAME = 'nx-form';
 
-// Derive the legacy `details` shape the form utils expect from the EW-supplied
-// `ctx`. `ctx.path` is the full `org/site/path` locator; the DA source is the
-// `.html` document at that path.
-function detailsFromCtx(ctx) {
-  if (!ctx?.org || !ctx?.repo || !ctx?.path) return null;
-  const raw = `/${String(ctx.path).replace(/^\/+/, '')}`;
-  const fullpath = raw.toLowerCase().endsWith('.html') ? raw : `${raw}.html`;
-  const name = fullpath.slice(fullpath.lastIndexOf('/') + 1, -'.html'.length);
+/** Matches the slashes a locator path starts with. */
+const LEADING_SLASHES = /^\/+/;
+
+/** The extension of the DA source document behind a form. */
+const HTML_EXTENSION = '.html';
+
+/** The pointer of the document's data, which is selected when a form starts. */
+const DATA_POINTER = '/data';
+
+/** The nx2 module that reads the site's AEM Assets repository configuration. */
+const REPOSITORY_CONFIG_MODULE = `${getNx2()}/utils/aem-assets/repository-config.js`;
+
+/** The form statuses that edit or pick a schema, so asset fields can appear. */
+const ASSET_CONTEXT_STATUSES = new Set(['ready', 'select-schema']);
+
+/** The da.live origin the form links back to. */
+const DA_ORIGIN = 'https://da.live';
+
+/** The da.live schema editor, which authors open to create or fix schemas. */
+const SCHEMA_EDITOR_URL = `${DA_ORIGIN}/apps/schema`;
+
+/**
+ * Derives the legacy `details` shape the form utils expect from the EW supplied `ctx`. The
+ * DA source is the `.html` document at `ctx.path`. `parent` and `name` match the upload
+ * context Canvas uses.
+ * @param {{ org?: string, repo?: string, path?: string }} [context] The editor context,
+ *   where `path` is the full `org/site/path` locator.
+ * @returns {object|null} The document details, or null when the context is incomplete.
+ */
+function detailsFromContext(context) {
+  if (!context?.org || !context?.repo || !context?.path) {
+    return null;
+  }
+
+  const absolutePath = `/${String(context.path).replace(LEADING_SLASHES, '')}`;
+  const fullpath = absolutePath.toLowerCase().endsWith(HTML_EXTENSION)
+    ? absolutePath
+    : `${absolutePath}${HTML_EXTENSION}`;
+  const separatorIndex = fullpath.lastIndexOf('/');
   return {
-    owner: ctx.org,
-    repo: ctx.repo,
-    name,
+    owner: context.org,
+    repo: context.repo,
+    parent: fullpath.slice(0, separatorIndex),
+    name: fullpath.slice(separatorIndex + 1, -HTML_EXTENSION.length),
     fullpath,
     sourceUrl: fullpath,
   };
 }
 
-// hashChange emits `{ org, site, path, fullpath }`; the element wants
-// `ctx = { org, repo, path }` with `path` as the full `org/site/path` locator.
-function ctxFromHashState(state) {
-  if (!state?.org || !state?.site || !state?.path) return null;
+/**
+ * Converts the state `hashChange` emits, `{ org, site, path, fullpath }`, into the
+ * element's `ctx`, `{ org, repo, path }` with `path` as the full `org/site/path` locator.
+ * @param {{ org?: string, site?: string, path?: string, fullpath?: string }} [state] The
+ *   hash state.
+ * @returns {{ org: string, repo: string, path: string }|null} The editor context, or null
+ *   when the hash names no document.
+ */
+function contextFromHashState(state) {
+  if (!state?.org || !state?.site || !state?.path) {
+    return null;
+  }
   return { org: state.org, repo: state.site, path: state.fullpath.slice(1) };
 }
 
+/**
+ * Loads the site's AEM Assets configuration and the asset sources it allows. Without a
+ * usable configuration the form offers Upload only.
+ * @param {object} options The document to load the sources for.
+ * @param {object} options.details The document details, see `detailsFromContext`.
+ * @param {() => boolean} options.isCurrent Whether the document is still the one loaded.
+ * @returns {Promise<{ repositoryConfig: object|null, sources: object[] }>} The
+ *   configuration, null when unavailable, and the sources, see `createAssetSources`.
+ */
+async function loadAssetSources({ details, isCurrent }) {
+  try {
+    const { getRepositoryConfig } = await import(REPOSITORY_CONFIG_MODULE);
+    const repositoryConfig = await getRepositoryConfig(details.owner, details.repo);
+    return {
+      repositoryConfig,
+      sources: createAssetSources({ details, repositoryConfig, isCurrent }),
+    };
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn('AEM Assets configuration unavailable. Offering Upload only.', error);
+    return { repositoryConfig: null, sources: createAssetSources({ details, isCurrent }) };
+  }
+}
+
+/**
+ * The structured content form of a DA document. It loads the document's schema and
+ * content, renders the editor, preview and sidebar, and saves every change.
+ * @property {{ org: string, repo: string, path: string }} [ctx] The editor context, where
+ *   `path` is the full `org/site/path` locator. The Experience Workspace host sets it, and
+ *   `startRouting` derives it from the hash when the form runs standalone.
+ */
 class Form extends LitElement {
   static properties = {
     ctx: { attribute: false },
+
     _context: { state: true },
     _state: { state: true },
-    _nav: { state: true },
+    _navigation: { state: true },
     _pendingSchemaId: { state: true },
     _previewEnabled: { state: true },
+
+    _assetSources: { state: true },
+    _previewOrigin: { state: true },
   };
 
   // Reactive properties (declared in static properties) must NOT have class-
   // field initializers — they would shadow Lit's reactive setter. See
   // https://lit.dev/docs/components/properties/#avoiding-issues-with-class-fields
+
+  /** Counts context loads, so results of an older load are ignored. */
   _loadVersion = 0;
 
+  /** The details of the loaded document, see `detailsFromContext`. */
   _details = null;
 
+  /** The site's AEM Assets repository configuration, or null when unavailable. */
+  _repositoryConfig = null;
+
+  /** The engine of the loaded document, see `createEngine`. */
   _editor = null;
 
+  /** Saves the document on change, see `attachPersistence`. */
   _persistence = null;
 
+  /** Stops the hash subscription of standalone routing. */
   _unsubscribe = null;
 
+  /**
+   * Re-renders on every engine state change. The engine has a single onChange slot, used
+   * here for Lit reactivity, so the notification is forwarded to the persistence, which
+   * saves when the document has actually changed.
+   */
   _onChange = () => {
-    if (!this._editor) return;
+    if (!this._editor) {
+      return;
+    }
+
     this._state = this._editor.getState();
-    // The editor has a single onChange slot — used here for Lit reactivity.
-    // Forward the notification to the persistence so it can save when the
-    // document has actually changed (it filters non-mutation transitions).
     this._persistence?.notify();
   };
 
+  /**
+   * Selects a field. The counter changes on every selection, so selecting the same field
+   * again still scrolls to it.
+   * @param {string} pointer The JSON pointer of the field.
+   * @param {string|null} [origin] The view that made the selection, `editor` or `sidebar`.
+   */
   _onSelect = (pointer, origin = null) => {
-    if (!pointer) return;
-    this._nav = {
+    if (!pointer) {
+      return;
+    }
+
+    this._navigation = {
       pointer,
       origin,
-      seq: (this._nav?.seq ?? 0) + 1,
+      seq: (this._navigation?.seq ?? 0) + 1,
     };
   };
 
+  /** Adopts the form stylesheet once the shadow root exists. */
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
   }
 
+  /** Stops routing and saving when the form leaves the page. */
   disconnectedCallback() {
     this._unsubscribe?.();
     this._unsubscribe = null;
@@ -98,43 +202,75 @@ class Form extends LitElement {
     super.disconnectedCallback();
   }
 
-  // Standalone (nx2-served) routing: subscribe the element's own ctx to the
-  // hash. The EW host pushes `ctx` directly instead and never calls this.
+  /**
+   * Subscribes the element's own `ctx` to the hash for standalone, nx2 served routing. The
+   * Experience Workspace host pushes `ctx` directly instead and never calls this.
+   */
   startRouting() {
     this._unsubscribe?.();
     this._unsubscribe = hashChange.subscribe((state) => {
-      const ctx = ctxFromHashState(state);
-      if (ctx) this.ctx = ctx;
+      const context = contextFromHashState(state);
+      if (context) {
+        this.ctx = context;
+      }
     });
   }
 
-  updated(changed) {
-    if (changed.has('ctx')) {
+  /**
+   * Loads the document whenever the editor context changes.
+   * @param {Map<string, unknown>} changedProperties The properties that changed, with their
+   *   previous values.
+   */
+  updated(changedProperties) {
+    if (changedProperties.has('ctx')) {
       this._loadContext();
     }
   }
 
+  /**
+   * Starts editing a document with its schema. Persistence attaches after the load, so the
+   * loaded document is its baseline: later mutations save, the load itself does not.
+   * @param {object} options The document to edit.
+   * @param {object} options.schema The JSON schema of the document.
+   * @param {object} options.json The document content.
+   */
   _start({ schema, json }) {
     this._editor = createEngine({ schema, document: json, onChange: this._onChange });
-    // Seed empty rows for required arrays (UI convenience). Runs before
-    // persistence so seeded rows are the baseline (no save); empty rows don't
-    // count toward minItems and prune on save. The SDK never seeds.
+    // Seeded rows run before persistence attaches, so they are part of the baseline and
+    // do not save. Empty rows do not count toward minItems and are pruned on save.
     this._seedRequiredArrays();
     this._state = this._editor.getState();
-    // Attach AFTER load so the loaded document is the persistence's baseline —
-    // mutations after this point trigger saves; the load itself does not.
-    this._persistence = attachPersistence(this._editor, { path: this._details?.fullpath });
-    this._nav = { pointer: '/data', origin: null, seq: 0 };
+    // Like Canvas, AEM images are saved as links when the site sets
+    // `aem.assets.image.type` to `link`. The configuration is read on every save, because
+    // it loads after the form starts.
+    this._persistence = attachPersistence(this._editor, {
+      path: this._details?.fullpath,
+      getConfig: () => ({ externalImagesAsLinks: this._repositoryConfig?.insertAsLink === true }),
+    });
+    this._navigation = { pointer: DATA_POINTER, origin: null, seq: 0 };
   }
 
-  // Recurses object groups, not array items (those are dynamic and start empty).
+  /**
+   * Adds empty rows to required arrays as a UI convenience, so authors see a row to fill
+   * in. The SDK never seeds. Object groups are searched recursively, array items are not,
+   * because they are dynamic and start empty.
+   */
   _seedRequiredArrays() {
+    /**
+     * Seeds the rows of a required array, or searches the fields of an object.
+     * @param {object} [node] A node of the engine's model.
+     */
     const seed = (node) => {
-      if (!node) return;
+      if (!node) {
+        return;
+      }
+
       if (node.kind === 'array' && node.required) {
-        const target = Math.max(node.minItems ?? 0, 1);
-        const have = node.items?.length ?? 0;
-        for (let i = have; i < target; i += 1) this._editor.addItem(node.pointer);
+        const targetCount = Math.max(node.minItems ?? 0, 1);
+        const existingCount = node.items?.length ?? 0;
+        for (let count = existingCount; count < targetCount; count += 1) {
+          this._editor.addItem(node.pointer);
+        }
       } else if (node.kind === 'object' && Array.isArray(node.children)) {
         node.children.forEach(seed);
       }
@@ -142,6 +278,11 @@ class Form extends LitElement {
     seed(this._editor.getState().model.root);
   }
 
+  /**
+   * Resets the form and loads the document of the current context, its schemas and
+   * whether the JSON preview is enabled. A newer load supersedes this one.
+   * @returns {Promise<void>} Settles once the document and its asset sources are loaded.
+   */
   async _loadContext() {
     this._loadVersion += 1;
     const version = this._loadVersion;
@@ -150,7 +291,12 @@ class Form extends LitElement {
     this._editor = null;
     this._persistence?.detach();
     this._persistence = null;
-    this._details = detailsFromCtx(this.ctx);
+
+    this._assetSources = undefined;
+    this._previewOrigin = undefined;
+    this._repositoryConfig = null;
+
+    this._details = detailsFromContext(this.ctx);
 
     if (!this._details) {
       this._context = undefined;
@@ -163,24 +309,66 @@ class Form extends LitElement {
       loadFormContext({ details: this._details }),
       isJsonPreviewEnabled({ org: this.ctx.org, site: this.ctx.repo }),
     ]);
-    if (version !== this._loadVersion) return;
+    if (version !== this._loadVersion) {
+      return;
+    }
 
     this._previewEnabled = previewEnabled;
     this._context = context;
-
     if (context.status === 'ready') {
       this._start({ schema: context.schema, json: context.json });
     }
+
+    if (ASSET_CONTEXT_STATUSES.has(context.status)) {
+      await this._loadAssetContext(version);
+    }
   }
 
-  _onPendingSchemaChange(e) {
-    this._pendingSchemaId = e.currentTarget?.value ?? '';
+  /**
+   * Loads the asset sources and the preview origin of the document. They load
+   * independently, so a slow preview login never delays the sources.
+   * @param {number} version The load version the context belongs to.
+   * @returns {Promise<void>} Settles once the sources are loaded.
+   */
+  async _loadAssetContext(version) {
+    const { owner, repo } = this._details;
+    /** Answers whether the load is still the latest one. */
+    const isCurrent = () => version === this._loadVersion;
+
+    loadPreviewOrigin({ owner, repo }).then((previewOrigin) => {
+      if (isCurrent()) {
+        this._previewOrigin = previewOrigin;
+      }
+    });
+
+    const { repositoryConfig, sources } = await loadAssetSources({
+      details: this._details,
+      isCurrent,
+    });
+    if (isCurrent()) {
+      this._repositoryConfig = repositoryConfig;
+      this._assetSources = sources;
+    }
   }
 
+  /**
+   * Remembers the schema the author picked, until they create the document with it.
+   * @param {Event} event The schema picker's `change` event.
+   */
+  _onPendingSchemaChange(event) {
+    this._pendingSchemaId = event.currentTarget?.value ?? '';
+  }
+
+  /**
+   * Starts a new document with the picked schema, its title set to the document name.
+   * @returns {Promise<void>} Settles once the document is started.
+   */
   async _applySelectedSchema() {
     const schemaName = this._pendingSchemaId;
     const schema = this._context?.schemas?.[schemaName];
-    if (!schema || !schemaName) return;
+    if (!schema || !schemaName) {
+      return;
+    }
 
     const json = {
       metadata: {
@@ -201,23 +389,40 @@ class Form extends LitElement {
     this._start({ schema, json });
   }
 
-  // TODO(EW): cross-app nav to the da.live schema editor. Revisit if EW should
-  // own schema authoring rather than linking out.
+  /**
+   * Links to the da.live schema editor of the site.
+   * TODO(EW): cross-app nav to the da.live schema editor. Revisit if EW should own schema
+   * authoring rather than linking out.
+   * @returns {string} The schema editor URL, for the site when it is known.
+   */
   _schemaEditorHref() {
     const { owner, repo } = this._details ?? {};
-    if (!owner || !repo) return 'https://da.live/apps/schema';
-    return `https://da.live/apps/schema#/${owner}/${repo}`;
+    if (!owner || !repo) {
+      return SCHEMA_EDITOR_URL;
+    }
+    return `${SCHEMA_EDITOR_URL}#/${owner}/${repo}`;
   }
 
-  // TODO(EW): cross-app nav back to the da.live home. Revisit if EW should
-  // provide its own "home" target.
+  /**
+   * Navigates to the da.live home of the site, keeping the current query.
+   * TODO(EW): cross-app nav back to the da.live home. Revisit if EW should provide its own
+   * "home" target.
+   */
   _goHome() {
     const { owner, repo } = this._details ?? {};
-    if (!owner || !repo) return;
+    if (!owner || !repo) {
+      return;
+    }
+
     const query = window.location.search ?? '';
-    window.location.href = `https://da.live${query}#/${owner}/${repo}`;
+    window.location.href = `${DA_ORIGIN}${query}#/${owner}/${repo}`;
   }
 
+  /**
+   * Centers content in the form area.
+   * @param {import('da-lit').TemplateResult} content The content to center.
+   * @returns {import('da-lit').TemplateResult} The centered content.
+   */
   _renderCentered(content) {
     return html`
       <div class="nx-form-wrapper nx-form-wrapper-centered">
@@ -226,6 +431,15 @@ class Form extends LitElement {
     `;
   }
 
+  /**
+   * Renders a centered message, such as why the document cannot be opened.
+   * @param {string} [title] The message heading.
+   * @param {string|import('da-lit').TemplateResult} body The message text.
+   * @param {object} [options] The message settings.
+   * @param {boolean} [options.showHomeAction] Whether a button leads back to the da.live
+   *   home.
+   * @returns {import('da-lit').TemplateResult} The message.
+   */
   _renderMessage(title, body, { showHomeAction = false } = {}) {
     return this._renderCentered(html`
       <div class="nx-form-schema-shell">
@@ -245,6 +459,10 @@ class Form extends LitElement {
     `);
   }
 
+  /**
+   * Explains why the document cannot be opened, by the blocker the context reports.
+   * @returns {import('da-lit').TemplateResult} The message.
+   */
   _renderBlocked() {
     const { blocker = {}, displayPath } = this._context ?? {};
     const schemaEditorHref = this._schemaEditorHref();
@@ -283,6 +501,10 @@ class Form extends LitElement {
     return this._renderMessage(title, body);
   }
 
+  /**
+   * Renders the picker that starts a new document with one of the site's schemas.
+   * @returns {import('da-lit').TemplateResult} The schema picker.
+   */
   _renderSchemaSelector() {
     const schemas = this._context?.schemas ?? {};
     const schemaEditorHref = this._schemaEditorHref();
@@ -326,6 +548,10 @@ class Form extends LitElement {
     `;
   }
 
+  /**
+   * Asks the author to create a schema first, because the site has none.
+   * @returns {import('da-lit').TemplateResult} The message.
+   */
   _renderNoSchemas() {
     return html`
       <div class="nx-form-schema-shell">
@@ -347,8 +573,15 @@ class Form extends LitElement {
     `;
   }
 
+  /**
+   * Renders the editor, the optional preview and the sidebar of a started document.
+   * @returns {import('da-lit').TemplateResult|typeof nothing} The form, a message when the
+   *   document has no structured content, or nothing before the engine starts.
+   */
   _renderReady() {
-    if (!this._state) return nothing;
+    if (!this._state) {
+      return nothing;
+    }
 
     const root = this._state?.model?.root;
     if (!root) {
@@ -367,42 +600,64 @@ class Form extends LitElement {
           <nx-editor
             .editor=${this._editor}
             .state=${this._state}
-            .nav=${this._nav}
+            .nav=${this._navigation}
             .onSelect=${this._onSelect}
+            .assetSources=${this._assetSources}
+            .previewOrigin=${this._previewOrigin}
           ></nx-editor>
           ${showPreview ? html`<nx-preview .state=${this._state}></nx-preview>` : nothing}
         </div>
         <nx-sidebar
           .state=${this._state}
-          .nav=${this._nav}
+          .nav=${this._navigation}
           .onSelect=${this._onSelect}
         ></nx-sidebar>
       </div>
     `;
   }
 
+  /**
+   * Renders the view of the current load status.
+   * @returns {import('da-lit').TemplateResult|typeof nothing} The view, or nothing without
+   *   a context or while loading.
+   */
   render() {
-    if (!this.ctx) return nothing;
+    if (!this.ctx) {
+      return nothing;
+    }
 
     const { status } = this._context ?? {};
-    if (!status || status === 'loading') return nothing;
-    if (status === 'blocked') return this._renderBlocked();
-    if (status === 'select-schema') return this._renderCentered(this._renderSchemaSelector());
-    if (status === 'no-schemas') return this._renderCentered(this._renderNoSchemas());
-    if (status === 'ready') return this._renderReady();
+    if (!status || status === 'loading') {
+      return nothing;
+    }
+    if (status === 'blocked') {
+      return this._renderBlocked();
+    }
+    if (status === 'select-schema') {
+      return this._renderCentered(this._renderSchemaSelector());
+    }
+    if (status === 'no-schemas') {
+      return this._renderCentered(this._renderNoSchemas());
+    }
+    if (status === 'ready') {
+      return this._renderReady();
+    }
 
     return nothing;
   }
 }
 
-if (!customElements.get(EL_NAME)) {
-  customElements.define(EL_NAME, Form);
+if (!customElements.get(ELEMENT_NAME)) {
+  customElements.define(ELEMENT_NAME, Form);
 }
 
-// Mount the ctx-driven `nx-form` element and feed it the hash. The wrapper
-// (form.js) calls this after setting up the surrounding workspace.
+/**
+ * Mounts the ctx-driven `nx-form` element and feeds it the hash. The wrapper, form.js,
+ * calls this after setting up the surrounding workspace.
+ * @param {HTMLElement} block The form block.
+ */
 export default function decorate(block) {
-  const nxForm = document.createElement(EL_NAME);
+  const nxForm = document.createElement(ELEMENT_NAME);
   block.append(nxForm);
   nxForm.startRouting();
 }

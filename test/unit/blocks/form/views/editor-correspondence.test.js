@@ -2,6 +2,8 @@ import { expect } from '@esm-bundle/chai';
 import '../../../setup-nx.js';
 import { createEngine } from '../../../../../deps/da-sc-sdk/dist/index.js';
 import '../../../../../blocks/form/views/editor.js';
+import { isAssetType } from '../../../../../blocks/form/assets/asset-types.js';
+import { IMAGE_URL } from '../helpers/sdk-types.js';
 
 // Component-level UI tests for nx-editor. The engine is the real bundled SDK
 // (same one the form block ships); we feed its getState() into the component
@@ -14,7 +16,7 @@ const settle = async (el) => {
   await el.updateComplete;
 };
 
-const CONTROL_TAGS = ['FORM-INPUT', 'FORM-TEXTAREA', 'FORM-NUMBER-FIELD', 'FORM-CHECKBOX', 'FORM-PICKER'];
+const CONTROL_TAGS = ['FORM-INPUT', 'FORM-TEXTAREA', 'FORM-NUMBER-FIELD', 'FORM-CHECKBOX', 'FORM-PICKER', 'FORM-ASSET'];
 
 const mounted = [];
 afterEach(() => { while (mounted.length) mounted.pop().remove(); });
@@ -29,6 +31,7 @@ async function mountEditor(schema, doc) {
   });
   el.editor = engine;
   el.onSelect = () => {};
+  el.assetSources = [];
   el.nav = {};
   el.state = engine.getState();
   window.document.body.append(el);
@@ -44,10 +47,21 @@ const groupAt = (el, ptr) => allAt(el, ptr)
   .find((n) => n.matches('fieldset.form-node, section.form-node, article.form-array-item'));
 
 function expectedTag(node) {
-  if (Array.isArray(node.enumValues)) return 'FORM-PICKER';
-  if (node.kind === 'boolean') return 'FORM-CHECKBOX';
-  if (node.kind === 'number' || node.kind === 'integer') return 'FORM-NUMBER-FIELD';
-  if (node.kind === 'string' && node.semanticType === 'long-text') return 'FORM-TEXTAREA';
+  if (isAssetType(node.typeName)) {
+    return 'FORM-ASSET';
+  }
+  if (Array.isArray(node.enumValues)) {
+    return 'FORM-PICKER';
+  }
+  if (node.kind === 'boolean') {
+    return 'FORM-CHECKBOX';
+  }
+  if (node.kind === 'number' || node.kind === 'integer') {
+    return 'FORM-NUMBER-FIELD';
+  }
+  if (node.kind === 'string' && node.semanticType === 'long-text') {
+    return 'FORM-TEXTAREA';
+  }
   return 'FORM-INPUT';
 }
 
@@ -60,6 +74,7 @@ const FEATURE_SCHEMA = {
     title: { type: 'string', title: 'Title', minLength: 3, maxLength: 255 },
     status: { type: 'string', title: 'Status', enum: ['draft', 'in-review', 'published', 'archived'], default: 'draft' },
     body: { type: 'string', title: 'Body', 'x-semantic-type': 'long-text' },
+    heroImage: { $ref: IMAGE_URL, title: 'Hero image' },
     priority: { type: 'integer', title: 'Priority', minimum: 1, maximum: 10 },
     featured: { type: 'boolean', title: 'Featured', default: false },
     tags: { type: 'array', title: 'Tags', minItems: 1, items: { type: 'string', title: 'Tag' } },
@@ -92,6 +107,7 @@ const featureDoc = (data = {}) => ({
     title: 'Launch Announcement',
     status: 'published',
     body: 'Body copy.',
+    heroImage: { src: './media_example.png', altText: 'A hero' },
     priority: 3,
     featured: true,
     tags: ['news', 'launch'],
@@ -119,7 +135,7 @@ describe('nx-editor loads', () => {
 describe('nx-editor renders the model state', () => {
   function walk(el, node) {
     expect(allAt(el, node.pointer).length, `element for ${node.pointer}`).to.be.greaterThan(0);
-    if (node.kind === 'object') {
+    if (node.kind === 'object' && node.typeRef === undefined) {
       (node.children ?? []).forEach((child) => walk(el, child));
       return;
     }
@@ -245,7 +261,7 @@ describe('nx-editor array item menu actions', () => {
   });
 });
 
-const DEBOUNCE_MS = 350; // mirrors editor.js text-input debounce
+const DEBOUNCE_DELAY_MILLISECONDS = 350; // mirrors editor.js text-input debounce
 const aTimeout = (ms) => new Promise((r) => { setTimeout(r, ms); });
 
 // Leaf errors live in the field's own shadow (.form-field-error); array/object
@@ -276,7 +292,7 @@ async function typeInto(el, ptr, value) {
   const input = controlAt(el, ptr).shadowRoot.querySelector('input, textarea');
   input.value = value;
   input.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
-  await aTimeout(DEBOUNCE_MS + 80);
+  await aTimeout(DEBOUNCE_DELAY_MILLISECONDS + 80);
   await settle(el);
 }
 
