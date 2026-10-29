@@ -1,4 +1,4 @@
-import { getBrowseItemHref } from '../browse/v2/shared/navigation.js';
+import { getFileItemHref } from '../shared/da-file-item/navigation.js';
 import { iconPathForExt, isImageExt } from '../shared/icons.js';
 import { getHomeHref } from '../../scripts/utils.js';
 import { getCreateSiteHref as getSharedCreateSiteHref } from '../shared/site-access.js';
@@ -54,7 +54,7 @@ export function getFileHref({ item, href = window.location.href, editor = '/canv
     const path = item.ext ? item.path.slice(0, item.path.lastIndexOf('/')) : item.path;
     return getBrowseHref({ path, href });
   }
-  const url = new URL(getBrowseItemHref({ ...item, editor }), href);
+  const url = new URL(getFileItemHref({ ...item, editor }), href);
   const current = new URL(href);
   ['nx', 'quick-edit', 'ew', 'nx-chat-ao', 'theme', 'rum'].forEach((key) => {
     if (current.searchParams.has(key)) url.searchParams.set(key, current.searchParams.get(key));
