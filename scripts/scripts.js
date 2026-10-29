@@ -13,6 +13,15 @@
 import { initIms } from '../blocks/shared/utils.js';
 import { setNx, nxJS, nxCSS, getHomeHref, getNavigationHref } from './utils.js';
 
+export function configureLandingNav() {
+  const landing = new URLSearchParams(window.location.search).get('landing');
+  if (!['true', 'home'].includes(landing) || document.head.querySelector('meta[name="nav-path"]')) return;
+  const meta = document.createElement('meta');
+  meta.name = 'nav-path';
+  meta.content = '/nx/fragments/nav-new-landing';
+  document.head.append(meta);
+}
+
 export function decorateArea(options = {}) {
   const area = options instanceof Node ? options : options.area || document;
   area.querySelectorAll('a[href]').forEach((link) => {
@@ -106,6 +115,7 @@ export default async function loadPage() {
     }
   }
 
+  if (nx2) configureLandingNav();
   await loadArea();
 }
 

@@ -26,7 +26,8 @@ Add `&theme=light` for a light-mode preview without changing the saved theme.
 The override applies only while this landing page is present.
 
 Landing retains its S/M hooks, shared button classes and explicitly sized
-picker/segmented controls. The `lp` shell does not include the live sizing runtime.
+segmented controls. The standalone picker uses matching S/M component tokens.
+The `lp` shell does not include the live sizing runtime.
 Do not substitute `nx=ui-size-scale`: that branch does not yet contain the new
 shared card. Sizing integration remains separate; neither adobe/da-nx#816 nor
 adobe/da-live#1416 is modified or merged by this work.
@@ -36,14 +37,13 @@ adobe/da-live#1416 is modified or merged by this work.
 - Nexter owns the presentation-only `nx-card`, based on Browse's card layout.
   Landing uses one compact thumbnail size. Ordinary Browse keeps its existing
   renderer until the shared component is available on its supported shell branches.
-- da-live owns `blocks/shared/site-picker.js`, the site-picker composition around
-  `nx-picker`, including Your Sites and Add site. Browse v2 uses the same picker
-  in the left nav context slot, separately from centered search.
-  Site option formatting lives in `site-picker-utils.js`.
-  Both hosts use `blocks/shared/site-access.js` for access checks and
-  `blocks/shared/add-site.js` for the permission-aware Add/Create dialog.
-  Landing supplies its Home-aware creation URL. No account-wide discovery or
-  invented display metadata is added.
+- Nexter owns the standalone `nx-siteselector` presentation in fragment-driven
+  site navigation, separately from centered Browse search. da-live's
+  `blocks/shared/site-picker.js` adapter owns browser history, routing, access
+  checks and the shared permission-aware Add/Create dialog. Landing does not
+  mount a picker or own its lifecycle; its empty-state Add button requests the
+  same adapter-owned dialog. Site option formatting lives in `site-picker-utils.js`.
+  No account-wide discovery or invented display metadata is added.
 - Files table markup lives in the detached da-live `file-table.js` render helper,
   not a new general table framework.
 - `da-landing-tile` owns quick-action presentation in da-live. Landing supplies
@@ -63,9 +63,8 @@ Ten compact cards are 142px tall with 4px frame padding, 80px thumbnails,
 The quiet view switcher has two 32px buttons. Quick actions follow after 40px.
 These are the default-size design dimensions, not a claim of live S/M integration.
 
-The app-level site picker owns its presentation in `blocks/shared/site-picker.css`,
-using generic Nexter CSS parts rather than a site-specific framework variant:
-leading selected checkmark, two-line entries and a leading Add site icon.
+The standalone selector uses the shared Nexter picker defaults, leading selected
+checkmarks, two-line entries and matching S/M typography without app-level menu styling.
 Its secondary line is the real org/site identifier, not a fabricated domain.
 List image files reuse lazy previews in 28px thumbnail slots; information and
 favorite controls use 20px icons in separate 48px visual slots.
@@ -83,8 +82,10 @@ intentional differences rather than substitutes for those missing inputs.
 
 ## Scope
 
-- The workspace dropdown is mounted in the existing navigation slot and lists
-  browser-local recent sites and the site in the hash under **Your Sites**.
+- Opt-in NX2 pages (`landing=true` or `landing=home`) default to
+  `/nx/fragments/nav-new-landing` before shell loading, unless an explicit
+  `nav-path` is authored. The fragment mounts the standalone selector and lists
+  browser-local recent sites and the site in the hash under **Your recent sites**.
   A divider separates the **Add site** action, replacing the old Browse sites
   detour. Add site lazily opens the shared dialog, also available from the
   no-site state. Anyone can enter an existing AEM/Helix preview or live URL.
@@ -94,9 +95,9 @@ intentional differences rather than substitutes for those missing inputs.
   permission or synchronize an account-level site list. Cancelled checks cannot
   add a site later. Invalid URLs, denied access and failed saves remain in the
   dialog with an explicit error.
-  Known sites are checked for access. Confirmed denials are removed from the
-  picker; failed checks keep an explicit retry rather than pretending the user
-  has no access. Previously denied sites stay hidden until access is confirmed.
+  Known sites are checked for access without deleting remembered choices.
+  Routed sites are remembered before access checks, including denied sites;
+  network errors remain distinct from confirmed denials.
   This checks known sites, not a new global site-discovery service.
   In a selected organization, verified admins also see **Create new site** in
   the same dialog. This opens the existing `/start` template setup with the org
@@ -112,9 +113,10 @@ intentional differences rather than substitutes for those missing inputs.
   branch/theme flags and returns to that site's landing page. Successfully
   opened sites are remembered in the same browser-local list, including a
   return from setup. Ordinary `/start` visits retain their existing flow.
-  The picker is removed when the landing page disconnects and retains the topbar size.
+  The selector remains when Landing or Browse disconnects; its adapter cleans up
+  listeners, pending checks and dialogs when the selector itself disconnects.
   The shared picker's field variant provides the full clickable pill, 32px
-  height, fixed 14px topbar text and right-aligned chevron. Its border and
+  height, tokenized S/M text and right-aligned chevron. Its border and
   background are on the actual trigger, not the noninteractive host.
   Navigation, What’s New, Feedback and the profile retain their existing
   fragment-driven appearance. On `lp`, da-live's shell configuration supplies
