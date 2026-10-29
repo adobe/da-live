@@ -784,7 +784,7 @@ describe('landing page', () => {
     expect(sidenav.actions[0].active).to.equal(false);
   });
 
-  it('keeps the assistant artwork filter outside its SVG viewport', async () => {
+  it('keeps the colored assistant artwork without an outer shadow', async () => {
     const markup = await (await fetch('/blocks/landing/assistant.svg')).text();
     const artwork = new DOMParser().parseFromString(markup, 'image/svg+xml').documentElement;
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -806,7 +806,10 @@ describe('landing page', () => {
     canvas.height = 142;
     const context = canvas.getContext('2d');
     context.drawImage(image, 0, 0);
-    expect(context.getImageData(46, 66, 1, 1).data[3], 'shadow outside the 32px button').to.be.greaterThan(0);
+    [[46, 66], [85, 66], [66, 46], [66, 85]].forEach(([x, y]) => {
+      expect(context.getImageData(x, y, 1, 1).data[3], 'no shadow outside the 32px button').to.equal(0);
+    });
+    expect(context.getImageData(66, 66, 1, 1).data[3], 'colored artwork remains visible').to.be.greaterThan(0);
   });
 
   it('does not submit while chat is disabled', async () => {
