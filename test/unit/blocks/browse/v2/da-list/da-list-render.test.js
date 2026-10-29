@@ -69,54 +69,16 @@ describe('da-list render', () => {
       const row = el.shadowRoot.querySelectorAll('da-file-item')[1];
       await row.updateComplete;
       const card = row.shadowRoot.querySelector('nx-card');
-      if (card) {
-        // Model the dependency's shadow boundary without vendoring nx-card.
-        card.attachShadow({ mode: 'open' }).innerHTML = '<input type="checkbox">';
-      }
+      const focus = card ? spy(card, 'focus') : null;
       await el.handleClearSelection();
-      const root = card?.shadowRoot ?? row.shadowRoot;
-      expect(root.activeElement).to.equal(root.querySelector('input[type="checkbox"]'));
+      if (card) {
+        expect(focus.calledOnce).to.equal(true);
+      } else {
+        expect(row.shadowRoot.activeElement)
+          .to.equal(row.shadowRoot.querySelector('input[type="checkbox"]'));
+      }
       expect(el._selectedItems).to.deep.equal([]);
       expect(el._listItems[1].isChecked).to.equal(false);
-    });
-  });
-
-  ['selection', 'copy', 'cut'].forEach((mode) => {
-    it(`clears folder selection on navigation unless ${mode} has a pending paste`, async () => {
-      el = document.createElement('da-list');
-      el.fullpath = '/org/site/one';
-      el.getList = async () => [{ path: `${el.fullpath}/a.html`, name: 'a', ext: 'html' }];
-      el.updateDeletePermission = async () => {};
-      await updateList(el, () => document.body.append(el));
-      await customElements.whenDefined('da-actionbar');
-      const { actionBar } = el;
-      const list = el;
-      el._listItems[0].isChecked = true;
-      el._lastCheckedIndex = 0;
-      el.handleSelectionState();
-      await el.updateComplete;
-      await actionBar.updateComplete;
-      const selected = el._selectedItems;
-      if (mode === 'copy') actionBar.handleCopy();
-      if (mode === 'cut') actionBar.handleMove();
-      await actionBar.updateComplete;
-      const pendingPaste = mode !== 'selection';
-      expect(actionBar.hasPendingPaste).to.equal(pendingPaste);
-      const selectionChanges = [];
-      el.addEventListener('selectionchanged', (e) => { selectionChanges.push(e.detail.items); });
-
-      for (const path of ['/org/site/two', '/org/site/one']) {
-        await updateList(list, () => { list.fullpath = path; });
-        await actionBar.updateComplete;
-        expect(el._lastCheckedIndex).to.equal(null);
-        expect(el._listItems.some((item) => item.isChecked)).to.equal(false);
-        expect(el._selectedItems).to.deep.equal(pendingPaste ? selected : []);
-        expect(actionBar.items).to.deep.equal(pendingPaste ? selected : []);
-        expect(actionBar.currentPath).to.equal(path);
-        expect(actionBar.getAttribute('data-visible')).to.equal(String(pendingPaste));
-        expect(actionBar.hasPendingPaste).to.equal(pendingPaste);
-      }
-      expect(selectionChanges).to.deep.equal(pendingPaste ? [] : [[]]);
     });
   });
 

@@ -117,8 +117,6 @@ export default class DaList extends DaListBase {
 
     if (props.has('fullpath') && this.fullpath) {
       const path = this.fullpath;
-      if (!this.actionBar?.hasPendingPaste) this.handleClear();
-      this._lastCheckedIndex = null;
       this._sort = undefined;
       this.notifySortState();
       this._allPagesLoaded = false;

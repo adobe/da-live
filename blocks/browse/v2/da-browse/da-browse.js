@@ -11,8 +11,6 @@ import '../da-list/da-list.js';
 import '../da-browse-header/da-browse-header.js';
 import { toggleToolsPanel, closeToolsPanel, registerToolsPanel, watchToolsPanel } from '../search/panel.js';
 
-await import(`${getNx()}/blocks/shared/breadcrumb/breadcrumb.js`);
-
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT, wasPanelOpen, registerPanelSection } = await import(`${getNx()}/utils/panel.js`);
