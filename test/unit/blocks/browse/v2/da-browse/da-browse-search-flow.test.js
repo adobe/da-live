@@ -99,6 +99,24 @@ describe('browse-owned nav search', () => {
     expect(nav.querySelector('nx-picker')).to.be.null;
   });
 
+  it('schedules chat preload once after an update', async () => {
+    const preload = stub(browse, 'preloadChat');
+    const loadContent = stub().resolves(document.createElement('div'));
+    try {
+      browse._preloadChatContent = loadContent;
+      browse.requestUpdate();
+      await browse.updateComplete;
+      expect(preload.calledOnceWithExactly(loadContent)).to.be.true;
+      expect(browse._preloadChatContent).to.be.undefined;
+      expect(loadContent.called).to.be.false;
+      browse.requestUpdate();
+      await browse.updateComplete;
+      expect(preload.calledOnce).to.be.true;
+    } finally {
+      preload.restore();
+    }
+  });
+
   it('starts a search from the panel without requiring a prior nav search', async () => {
     const panel = await browse.getToolsPanel();
     document.body.append(panel);
