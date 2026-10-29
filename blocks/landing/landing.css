@@ -183,7 +183,7 @@ h1 {
   height: var(--nx-chat-input-logo-size);
   flex-shrink: 0;
   background: var(--s2-gray-800);
-  mask: url('/blocks/landing/coworker.svg') center / var(--nx-chat-input-logo-size) no-repeat;
+  mask: url('/img/icons/s2-icon-coworker-20-n.svg') center / var(--nx-chat-input-logo-size) no-repeat;
 }
 
 .composer:is(:has(textarea:enabled), .is-enabled):not(:focus-within, .is-dropzone)::before,
