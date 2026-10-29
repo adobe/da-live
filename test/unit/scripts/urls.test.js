@@ -10,7 +10,7 @@ describe('Deployment URL routing', () => {
   const settings = createConfig({
     da: {
       domain: 'author.customer.example',
-      owner: 'Adobe-SSA-EDS',
+      owner: 'Customer-Org',
       services: {
         admin: { prod: 'https://bus.example:9443' },
         content: { prod: 'http://media.example:8788' },
@@ -103,9 +103,9 @@ describe('Deployment URL routing', () => {
   });
 
   it('normalizes GitHub DNS labels and requires explicit trust for path-based authoring previews', () => {
-    const defaults = createConfig({ da: { owner: 'Adobe-SSA-EDS' } });
-    expect(isAuthoringOrigin('https://main--da-live--Adobe-SSA-EDS.aem.page', defaults)).to.equal(true);
-    expect(isAuthoringOrigin('https://main--da-live--Adobe-SSA-EDS.aem.page.attacker.test', defaults)).to.equal(false);
+    const defaults = createConfig({ da: { owner: 'Customer-Org' } });
+    expect(isAuthoringOrigin('https://main--da-live--Customer-Org.aem.page', defaults)).to.equal(true);
+    expect(isAuthoringOrigin('https://main--da-live--Customer-Org.aem.page.attacker.test', defaults)).to.equal(false);
     expect(isAuthoringOrigin('https://preview.example', settings)).to.equal(false);
     const explicit = createConfig({
       da: { previewOrigins: ['https://preview.example:8443'] },
