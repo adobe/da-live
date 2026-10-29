@@ -9,7 +9,7 @@ import { decodeAnchor, resolveAnchor, encodeAnchor, getSelectionData } from './a
 import { createAwarenessSync } from './awareness-sync.js';
 import { computeCounts, buildThreadGroups } from './thread-grouping.js';
 import { buildAuthorColorMap, authorColorSet } from './author-colors.js';
-import { createChannel } from '../../utils/canvas-bus.js';
+import { createChannel } from '../../../shared/channel.js';
 import { getTableInfo } from '../../../edit/prose/plugins/tableUtils.js';
 
 export function createCommentsController({ commentsStore: store, wsProvider }) {

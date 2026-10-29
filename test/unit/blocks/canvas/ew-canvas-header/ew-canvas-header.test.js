@@ -1,8 +1,11 @@
 import { expect } from '@esm-bundle/chai';
-import { setNx } from '../../../../../scripts/utils.js';
+import { setNx, getNx, getNxEWFlags } from '../../../../../scripts/utils.js';
 import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
+const { setChatAvailability } = await getNxEWFlags();
+const { hashChange } = await import(`${getNx()}/utils/utils.js`);
+const flush = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 
 await import('../../../../../blocks/canvas/ew-canvas-header/ew-canvas-header.js');
 
@@ -15,12 +18,18 @@ describe('ew-canvas-header segments', () => {
   let header;
 
   beforeEach(async () => {
+    setChatAvailability(async () => false);
+    hashChange._set({});
     header = document.createElement('ew-canvas-header');
     document.body.append(header);
     await header.updateComplete;
   });
 
-  afterEach(() => header.remove());
+  afterEach(() => {
+    header.remove();
+    setChatAvailability(async () => false);
+    hashChange._set({});
+  });
 
   it('renders the Layout, Content and Split segments', async () => {
     header.editorView = 'layout';
@@ -50,5 +59,45 @@ describe('ew-canvas-header segments', () => {
 
     expect(requestedView).to.equal('content');
     expect(header.editorView).to.equal('content');
+  });
+
+  it('uses shared chat availability at org level and site level', async () => {
+    const contexts = [];
+    setChatAvailability(async (context) => {
+      contexts.push(context);
+      return context.org === 'allowed' && context.site !== 'disabled';
+    });
+    hashChange._set({ org: 'allowed' });
+    await flush();
+    await header.updateComplete;
+    expect(header.shadowRoot.querySelector('[data-action="open-panel-before"]')).to.exist;
+    const requestCount = contexts.length;
+    hashChange._set({ org: 'allowed', path: '/folder' });
+    expect(header._chatDisabled).to.be.false;
+    await flush();
+    expect(contexts).to.have.length(requestCount);
+    hashChange._set({ org: 'allowed', site: 'disabled' });
+    await flush();
+    await header.updateComplete;
+    expect(header.shadowRoot.querySelector('[data-action="open-panel-before"]')).to.be.null;
+    expect(contexts).to.deep.include.members([
+      { org: 'allowed', site: undefined },
+      { org: 'allowed', site: 'disabled' },
+    ]);
+  });
+
+  it('hides chat while checking availability and ignores stale enabled results', async () => {
+    let release;
+    const delayed = new Promise((resolve) => { release = resolve; });
+    setChatAvailability(({ site }) => (site === 'slow' ? delayed : false));
+    hashChange._set({ org: 'org', site: 'slow' });
+    await header.updateComplete;
+    expect(header.shadowRoot.querySelector('[data-action="open-panel-before"]')).to.be.null;
+    hashChange._set({ org: 'org', site: 'disabled' });
+    await flush();
+    release(true);
+    await flush();
+    await header.updateComplete;
+    expect(header.shadowRoot.querySelector('[data-action="open-panel-before"]')).to.be.null;
   });
 });
