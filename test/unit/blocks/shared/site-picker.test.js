@@ -128,7 +128,7 @@ describe('shared site selector adapter', () => {
     const { hash } = window.location;
     document.dispatchEvent(new CustomEvent('site-add'));
     document.dispatchEvent(new CustomEvent('site-add'));
-    await tick();
+    await customElements.whenDefined('da-add-site');
     await tick();
     const dialogs = document.querySelectorAll('da-add-site');
     expect(dialogs).to.have.length(1);
@@ -156,7 +156,7 @@ describe('shared site selector adapter', () => {
 
   it('closes Add on route changes and updates the landing heading', async () => {
     document.dispatchEvent(new CustomEvent('site-add'));
-    await tick();
+    await customElements.whenDefined('da-add-site');
     await tick();
     window.history.replaceState(null, '', '?landing=true#/exp-workspace/frescopaco');
     await adapter.refresh();
