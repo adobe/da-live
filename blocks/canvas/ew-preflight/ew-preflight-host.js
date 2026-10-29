@@ -11,11 +11,7 @@ const style = await loadStyle(import.meta.url);
 
 const VIEW_ID = 'preflight';
 
-// Preflight panel content when the org/site `prepare` sheet configures a custom Preflight.
-// Shows the custom iframe by default, but an enforced publish (`preflightRunRequest`)
-// always runs the built-in <ew-preflight>, the same as the modal did on main. It goes
-// back to the custom content once the panel closes, or once the gate has settled and
-// the user switches to another tool view.
+// Custom content yields to the built-in evaluator while a publish gate is active.
 class EwPreflightHost extends LitElement {
   static properties = {
     extension: { attribute: false },
@@ -24,6 +20,7 @@ class EwPreflightHost extends LitElement {
 
   constructor() {
     super();
+    this._preflight = document.createElement('ew-preflight');
     this._actionsZone = document.createElement('span');
     this._actionsZone.style.display = 'contents';
   }
@@ -31,6 +28,7 @@ class EwPreflightHost extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
+    if (!this.extension) return;
     this._unsubs = [
       canvasBus.preflightRunRequest.subscribe(this._onRunRequest),
       canvasBus.preflightStatusState.subscribe(this._onStatus),
@@ -88,10 +86,12 @@ class EwPreflightHost extends LitElement {
 
   // Honored by the tool panel for first-party views (see tool-panel.js).
   getHeaderActions() {
+    if (!this.extension) return this._preflight.getHeaderActions?.();
     return this._actionsZone;
   }
 
   render() {
+    if (!this.extension) return html`${this._preflight}`;
     return html`
       <ew-panel-extension
         ?hidden=${!!this._builtin}

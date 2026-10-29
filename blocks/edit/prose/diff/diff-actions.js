@@ -1,8 +1,8 @@
 /* eslint-disable max-len */
-/* global view */
 // User action handlers - only loaded when user actually clicks action buttons
 
-import { DOMSerializer, Fragment, Slice } from 'da-y-wrapper';
+import { Fragment, Slice, Y } from 'da-y-wrapper';
+import { doc2aem, prosemirrorToYXmlFragment } from 'da-parser';
 import {
   createElement,
   createButton,
@@ -11,7 +11,6 @@ import {
   setDaMetadata,
   getDiffLabels,
 } from '../../utils/helpers.js';
-import prose2aem from '../../../shared/prose2aem.js';
 
 const HASH_LENGTH = 12;
 export const REJECTED_KEY = 'rejectedHashes';
@@ -25,8 +24,6 @@ const objHash = async (obj) => {
   }
   return window.objectHash(obj).substring(0, HASH_LENGTH);
 };
-
-const isTableNode = (node) => (node.content?.content?.length === 3 && node.content.content[1].type.name === 'table');
 
 // When content is parsed from <da-diff-added>, each direct child gets a
 // `daDiffAdded: ''` attribute (added by the diff_added parseDOM contentElement
@@ -52,11 +49,15 @@ function escapeHTML(str) {
     .replace(/>/g, '&gt;');
 }
 
-function getOuterHTMLWithSortedAttributes(element) {
-  if (!(element instanceof Element)) {
-    // eslint-disable-next-line no-param-reassign
-    element = new DOMParser().parseFromString(element, 'text/html').body.firstChild;
+function trimTextNodes(node) {
+  if (node.nodeType === Node.TEXT_NODE) {
+    node.textContent = node.textContent.trim();
+  } else if (node.nodeType === Node.ELEMENT_NODE) {
+    node.childNodes.forEach(trimTextNodes);
   }
+}
+
+function getOuterHTMLWithSortedAttributes(element) {
   const tagName = element.tagName.toLowerCase();
   const attrs = Array.from(element.attributes)
     .sort((a, b) => a.name.localeCompare(b.name))
@@ -83,21 +84,27 @@ function getOuterHTMLWithSortedAttributes(element) {
   return `<${tagName}${attrs ? ` ${attrs}` : ''}>${inner}</${tagName}>`;
 }
 
+// Serialize like the editor saves, normalized like the loc merge, so both compute the same hash
 function nodeToHtml(node) {
-  const serializer = DOMSerializer.fromSchema(view.state.schema);
-  const fragment = serializer.serializeFragment(node.content);
-
-  const div = document.createElement('div');
-  if (isTableNode(node)) {
-    div.classList.add('tableWrapper');
-  }
-  div.appendChild(fragment);
-  const aem = prose2aem(div, true, true);
-  return getOuterHTMLWithSortedAttributes(aem);
+  const ydoc = new Y.Doc();
+  const doc = node.type.schema.topNodeType.create(null, node.content);
+  prosemirrorToYXmlFragment(doc, ydoc.getXmlFragment('prosemirror'));
+  const saved = new DOMParser().parseFromString(doc2aem(ydoc), 'text/html');
+  saved.querySelectorAll('[da-diff-added]').forEach((el) => el.removeAttribute('da-diff-added'));
+  const block = saved.querySelector('main > div > *');
+  if (!block) return null;
+  trimTextNodes(block);
+  return getOuterHTMLWithSortedAttributes(block)
+    .replace(/>\s+</g, '><')
+    .replace(/[\n\r\t]/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 }
 
 export const addToHashMetadata = async (node, mdKey) => {
-  const hash = await objHash(nodeToHtml(node));
+  const html = nodeToHtml(node);
+  if (!html) return;
+  const hash = await objHash(html);
   const hashStr = getDaMetadata(mdKey);
   const hashes = hashStr ? new Set(hashStr.split(',')) : new Set();
   hashes.add(hash);
@@ -117,7 +124,7 @@ function createCompositeButton({
     switchBtn.appendChild(createTooltip(switchTooltip, 'diff-tooltip'));
   }
 
-  const confirmBtn = createButton('confirm-btn da-diff-btn-base-element', 'button', { 'aria-label': `${tooltip}` });
+  const confirmBtn = createButton('nx-action-btn-icon confirm-btn da-diff-btn-base-element', 'button', { 'aria-label': `${tooltip}` });
   confirmBtn.addEventListener('click', handler);
   if (tooltip) {
     confirmBtn.appendChild(createTooltip(tooltip, 'diff-tooltip'));

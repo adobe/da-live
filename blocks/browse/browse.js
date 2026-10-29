@@ -5,13 +5,13 @@ import { setRecentSite } from './da-sites/utils.js';
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
 async function getBrowsePath({ org, site }) {
-  const { fetchDaConfigs } = await import(`${getNx2()}/utils/daConfig.js`);
-  return resolveBrowsePath({
-    search: window.location.search,
-    org,
-    site,
-    fetchConfigs: fetchDaConfigs,
-  });
+  const { search } = window.location;
+  try {
+    const { fetchDaConfigs } = await import(`${getNx2()}/utils/daConfig.js`);
+    return await resolveBrowsePath({ search, org, site, fetchConfigs: fetchDaConfigs });
+  } catch {
+    return resolveBrowsePath({ search, org, site, fetchConfigs: () => [] });
+  }
 }
 
 const V2_NAV_PATH = '/nx/fragments/browse2-nav';

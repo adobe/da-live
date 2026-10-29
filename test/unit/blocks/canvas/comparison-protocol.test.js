@@ -37,9 +37,9 @@ describe('comparison plugin protocol', () => {
     canvasBus.branchState.emit({ path: null, status: 'pending' });
   });
 
-  it('initializes the existing ready handshake without capability negotiation', () => {
+  it('initializes the ready handshake with live document and HTML replacement capabilities', () => {
     expect(ready.ready).to.equal(true);
-    expect(ready.capabilities).to.equal(undefined);
+    expect(ready.capabilities).to.deep.equal({ liveDocument: 1, sendHTMLReplace: 1 });
     expect(ready.context).to.equal(ready.project);
     expect(ready.context.branch).to.equal('configured-branch');
   });

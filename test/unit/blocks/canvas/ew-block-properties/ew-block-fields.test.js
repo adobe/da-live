@@ -1495,7 +1495,7 @@ describe('ew-block-properties library fields', () => {
     });
     fieldElement('image').querySelector('button').click();
     expect(input.type).to.equal('file');
-    expect(input.accept).to.equal('image/svg+xml,image/png,image/jpeg,image/gif');
+    expect(input.accept).to.equal('image/svg+xml,image/png,image/jpeg,image/gif,image/avif,image/webp');
     expect(input.click.calledOnce).to.equal(true);
   });
 
