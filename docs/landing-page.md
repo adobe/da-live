@@ -239,6 +239,14 @@ intentional differences rather than substitutes for those missing inputs.
   narrower layouts retain two columns or one column.
   Hover raises interactive tiles with a stronger shadow; keyboard focus retains
   its visible outline.
+  Icon backgrounds use Spectrum's turquoise, green, orange and purple 200 tokens,
+  including Spectrum's dark-mode values. Tile surfaces retain white in light mode
+  and gray 75 in dark mode through the shared gray tokens. Spacing and the 32px
+  icon background use shared spacing tokens. The glyph remains component-owned:
+  20px in S and 22px in M.
+  The 12px tile radius and the rest/hover shadows are component-local values,
+  named `--da-landing-tile-radius`, `--da-landing-tile-shadow` and
+  `--da-landing-tile-hover-shadow`; they are not shared Spectrum tokens.
 - Each action has a stable `landing-action-*` class and matching
   `data-rum-source` identifier. The existing Optel enhancer's web-component
   plugin follows nested shadow roots and collects native clicks, including

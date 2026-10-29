@@ -522,7 +522,7 @@ da-card-preview {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--s2-spacing-200);
-  margin: 40px 0 0;
+  margin: var(--s2-spacing-600) 0 0;
   padding: 0;
   list-style: none;
 }

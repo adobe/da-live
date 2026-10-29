@@ -15,13 +15,17 @@ describe('landing tile', () => {
     tile.description = 'View your recent, favorite, or other content by their organization';
     tile.iconHref = '/blocks/landing/data-streams.svg';
     tile.style.cssText = `
+      --s2-spacing-75: 4px;
       --s2-spacing-200: 12px;
       --s2-spacing-300: 16px;
+      --s2-spacing-500: 32px;
       --s2-component-s-regular-font-size: 12px;
       --s2-component-m-regular-font-size: 14px;
       --s2-component-l-regular-font-size: 16px;
       --s2-component-xl-regular-font-size: 18px;
       --s2-body-line-height: 1.5;
+      --s2-gray-25: light-dark(#fff, #111);
+      --s2-gray-75: light-dark(#f3f3f3, #222);
       --s2-gray-900: light-dark(#292929, #eee);
       --s2-gray-600: light-dark(#717171, #aaa);
       --s2-blue-800: light-dark(#0265dc, #54a3ff);
@@ -90,6 +94,26 @@ describe('landing tile', () => {
     expect(parseFloat(getComputedStyle(icon, '::before').width)).to.equal(smallIcon + 2);
     expect(parseFloat(getComputedStyle(title).fontSize)).to.equal(smallTitle + 2);
     expect(parseFloat(getComputedStyle(description).fontSize)).to.equal(smallText + 2);
+  });
+
+  it('uses shared palette and surface tokens instead of fixed component colors', async () => {
+    tile.style.setProperty('--s2-turquoise-200', 'light-dark(#d1f5f5, #002529)');
+    tile.style.setProperty('--s2-purple-200', 'light-dark(#f4ebfc, #320060)');
+    const surface = tile.shadowRoot.querySelector('.tile');
+    const icon = tile.shadowRoot.querySelector('.icon');
+    tile.style.colorScheme = 'light';
+    expect(getComputedStyle(surface).backgroundColor).to.equal('rgb(255, 255, 255)');
+    expect(getComputedStyle(icon).backgroundColor).to.equal('rgb(209, 245, 245)');
+    tile.style.colorScheme = 'dark';
+    expect(getComputedStyle(surface).backgroundColor).to.equal('rgb(34, 34, 34)');
+    expect(getComputedStyle(icon).backgroundColor).to.equal('rgb(0, 37, 41)');
+    tile.tone = 'purple';
+    await tile.updateComplete;
+    expect(getComputedStyle(icon).backgroundColor).to.equal('rgb(50, 0, 96)');
+    tile.style.setProperty('--s2-purple-200', 'rgb(80 40 100)');
+    tile.style.setProperty('--s2-gray-75', 'rgb(40 40 40)');
+    expect(getComputedStyle(icon).backgroundColor).to.equal('rgb(80, 40, 100)');
+    expect(getComputedStyle(surface).backgroundColor).to.equal('rgb(40, 40, 40)');
   });
 
   it('activates a native action button with Enter or Space, but never when disabled', async () => {

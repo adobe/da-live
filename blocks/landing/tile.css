@@ -1,4 +1,8 @@
 :host {
+  --da-landing-tile-radius: 12px;
+  --da-landing-tile-shadow: 0 0 1px #00000014, 0 1px 4px #0000000a, 0 2px 8px #00000014;
+  --da-landing-tile-hover-shadow: 0 0 1px #00000014, 0 1px 6px #0000000a, 0 3px 10px #0000001a;
+
   display: block;
   height: 100%;
 }
@@ -19,9 +23,9 @@ h3, p {
   width: 100%;
   padding: var(--s2-spacing-200) var(--s2-spacing-300);
   border: 0;
-  border-radius: 12px;
-  background: light-dark(#fff, #222);
-  box-shadow: 0 0 1px #00000014, 0 1px 4px #0000000a, 0 2px 8px #00000014;
+  border-radius: var(--da-landing-tile-radius);
+  background: light-dark(var(--s2-gray-25), var(--s2-gray-75));
+  box-shadow: var(--da-landing-tile-shadow);
   text-decoration: none;
   font: inherit;
   text-align: start;
@@ -32,12 +36,12 @@ a, button {
 }
 
 a:hover, button:where(:enabled):hover {
-  box-shadow: 0 0 1px #00000014, 0 1px 6px #0000000a, 0 3px 10px #0000001a;
+  box-shadow: var(--da-landing-tile-hover-shadow);
 }
 
 a:focus-visible, button:focus-visible {
   outline: 2px solid var(--s2-blue-800);
-  outline-offset: 4px;
+  outline-offset: var(--s2-spacing-75);
 }
 
 button:disabled {
@@ -57,7 +61,7 @@ h3 {
 }
 
 p {
-  margin-top: 4px;
+  margin-top: var(--s2-spacing-75);
   color: var(--s2-gray-600);
   font-size: var(--s2-component-s-regular-font-size);
   line-height: var(--s2-body-line-height);
@@ -68,11 +72,11 @@ p {
   align-items: center;
   justify-content: center;
   flex: none;
-  width: 32px;
-  height: 32px;
+  width: var(--s2-spacing-500);
+  height: var(--s2-spacing-500);
   border-radius: var(--s2-corner-radius-500);
   color: var(--s2-gray-900);
-  background: light-dark(#d1f5f5, #003331);
+  background: var(--s2-turquoise-200);
 }
 
 .icon.green {
@@ -84,7 +88,7 @@ p {
 }
 
 .icon.purple {
-  background: light-dark(#f4ebfc, #291b3a);
+  background: var(--s2-purple-200);
 }
 
 .icon::before {
