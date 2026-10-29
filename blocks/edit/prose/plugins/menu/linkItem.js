@@ -69,7 +69,7 @@ export function linkItem(linkMarkType) {
     enable(state) {
       // Check if an image node is selected
       if (state.selection.node && state.selection.node.type.name === 'image') {
-        return true;
+        return !state.selection.node.attrs.editAs;
       }
 
       const selContent = state.selection.content();
@@ -83,6 +83,12 @@ export function linkItem(linkMarkType) {
     run(initialState, dispatch, view) {
       if (linkPromptState.lastPrompt.isOpen()) {
         linkPromptState.lastPrompt.close();
+        return;
+      }
+
+      if (view.state.selection.node
+          && view.state.selection.node.type.name === 'image'
+          && view.state.selection.node.attrs.editAs) {
         return;
       }
 
