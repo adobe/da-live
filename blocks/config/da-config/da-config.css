@@ -161,7 +161,10 @@
 /* Type and colors follow the shared file list (blocks/shared/da-file-item, browse). */
 .config-table {
   width: 100%;
-  border-collapse: collapse;
+
+  /* Separate borders belong to their cells, so the pinned actions cell keeps its borders. */
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: var(--s2-component-m-regular-font-size);
   line-height: var(--s2-component-m-regular-line-height);
 }
