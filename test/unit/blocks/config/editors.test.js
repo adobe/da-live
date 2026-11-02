@@ -1,7 +1,9 @@
 import { expect } from '@esm-bundle/chai';
-import { render } from 'da-lit';
+import { html, render } from 'da-lit';
 import { fieldStates, pendingChanges } from '../../../../blocks/config/editors/settings.js';
-import { rowStates, cleanRow, rowErrors, renderRowDialog } from '../../../../blocks/config/editors/rows.js';
+import {
+  rowStates, cleanRow, rowErrors, renderRowDialog, renderRows, cellText, listColumns,
+} from '../../../../blocks/config/editors/rows.js';
 import prepare from '../../../../blocks/config/panels/prepare.js';
 import { renderFileStatus, renderLibraryStatus } from '../../../../blocks/config/editors/file-status.js';
 import { library } from '../../../../blocks/config/stores.js';
@@ -92,6 +94,71 @@ describe('rows', () => {
     const own = multi('prepare', [A]);
     expect(rowStates(prepare, { own, inherited: null, pending: [A], sheet: 'prepare' }).dirty).to.equal(false);
     expect(rowStates(prepare, { own, inherited: null, pending: [A, B], sheet: 'prepare' }).dirty).to.equal(true);
+  });
+
+  describe('table', () => {
+    const panel = {
+      noun: 'plugin',
+      idKey: 'title',
+      columns: [
+        { key: 'title', label: 'Title' },
+        { key: 'path', label: 'Path' },
+        { key: 'experience', label: 'Opens in', options: [{ value: 'window', label: 'New window' }] },
+        { key: 'secret', label: 'Secret', list: false },
+      ],
+    };
+    const T = { title: 'Tool', path: '/tools/t.html', experience: 'window', secret: 'x' };
+    const O = { title: 'Org tool', path: '/o.html', experience: 'unknown' };
+    const table = (items, handlers = {}) => {
+      const el = document.createElement('div');
+      const noop = () => {};
+      const all = { onAdd: noop, onEdit: noop, onRemove: noop, onOverride: noop, ...handlers };
+      render(renderRows(panel, { items }, all), el);
+      const cells = (tr) => [...tr.querySelectorAll('th, td:not(.config-table-actions)')]
+        .map((c) => c.textContent.replace(/\s+/g, ' ').trim());
+      return {
+        headers: [...el.querySelectorAll('thead th')].map((th) => th.textContent.trim()),
+        rows: [...el.querySelectorAll('tbody tr')].map(cells),
+        buttons: [...el.querySelectorAll('tbody button')].map((b) => b.textContent.trim()),
+        el,
+      };
+    };
+
+    it('labels columns, shows option labels and hides list: false columns', () => {
+      expect(listColumns(panel).map((c) => c.key)).to.deep.equal(['title', 'path', 'experience']);
+      expect([cellText(panel.columns[2], T), cellText(panel.columns[2], O)]).to.deep.equal(['New window', 'unknown']);
+      const { headers, rows } = table([{ row: T, index: 0 }]);
+      expect(headers).to.deep.equal(['Title', 'Path', 'Opens in', 'Actions']);
+      expect(rows).to.deep.equal([['Tool', '/tools/t.html', 'New window']]);
+    });
+
+    it('marks inherited and overriding rows and offers the matching actions', () => {
+      const { rows, buttons, el } = table([
+        { row: O, inherited: true },
+        { row: T, index: 0, overrides: true },
+      ]);
+      const pills = [...el.querySelectorAll('tbody tr')]
+        .map((tr) => [...tr.querySelectorAll('nx-pills')].map((p) => p.items[0].label));
+      expect(rows.map((r) => r[0])).to.deep.equal(['Org tool', 'Tool']);
+      expect(pills).to.deep.equal([['Inherited from org'], ['Overrides org']]);
+      expect(buttons).to.deep.equal(['Override', 'Edit', 'Remove']);
+      expect(el.querySelector('tbody tr').classList.contains('is-inherited')).to.equal(true);
+      expect(el.querySelector('tbody .config-table-text').title).to.equal('Org tool');
+    });
+
+    it('puts the list actions above the table, with Add last', () => {
+      const { el } = table([{ row: T, index: 0 }], { actions: html`<button type="button">Import</button>` });
+      const order = [...el.children].map((child) => child.className);
+      expect(order).to.deep.equal(['config-row-buttons', 'config-table-wrap']);
+      const labels = [...el.querySelectorAll('.config-row-buttons button')].map((b) => b.textContent.trim());
+      expect(labels).to.deep.equal(['Import', 'Add plugin']);
+    });
+
+    it('drops the actions column when editing is off', () => {
+      const { headers, buttons, el } = table([{ row: T, index: 0 }], { disabled: true });
+      expect(headers).to.deep.equal(['Title', 'Path', 'Opens in']);
+      expect([buttons, !!el.querySelector('.config-row-buttons')]).to.deep.equal([[], false]);
+    });
   });
 
   it('focuses the first field when the dialog opens', () => {

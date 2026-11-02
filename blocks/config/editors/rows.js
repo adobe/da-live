@@ -1,11 +1,11 @@
 import { html, nothing } from 'da-lit';
 import { getRows } from '../sheets.js';
-import { renderField, renderPill } from './fields.js';
+import { optionLabel, renderField, renderPill } from './fields.js';
 import { INHERITANCE, ROWS } from '../messages.js';
 
 // Panel options: `idOf(row)` matches site rows to org rows and finds duplicates (default: the
-// `idKey` column; `duplicate` overrides the message), `owns(row)` limits the panel to some rows of
-// a shared sheet, and `label(row)` / `details(row)` describe a row in the list.
+// `idKey` column; `duplicate` overrides the message), and `owns(row)` limits the panel to some
+// rows of a shared sheet.
 const idOf = (panel) => panel.idOf ?? ((row) => row[panel.idKey]);
 const ownedRows = (panel, json, sheet) => getRows(json, sheet).filter(panel.owns ?? Boolean);
 
@@ -53,41 +53,65 @@ export function rowsToSave(panel, json, rows, sheet) {
   return [...others, ...rows];
 }
 
-function renderItem(panel, { row, index, inherited, overrides }, handlers) {
-  const { disabled } = handlers;
-  const details = panel.details?.(row)
-    ?? panel.columns.slice(1).map((c) => row[c.key]).filter(Boolean).join(' · ');
+// What a cell shows: the column's `display(row)`, else an option's label, else the raw value.
+export function cellText(column, row) {
+  if (column.display) return column.display(row);
+  const value = row[column.key] ?? '';
+  return column.options ? optionLabel(column, value) : value;
+}
+
+// Columns shown in the table; `list: false` keeps a column to the add/edit dialog.
+export const listColumns = (panel) => panel.columns.filter((column) => column.list !== false);
+
+function renderActions({ row, index, inherited }, handlers) {
+  const button = (label, onClick) => html`
+    <button type="button" class="nx-action-btn-quiet nx-btn-sm" @click=${onClick}>${label}</button>`;
+  if (inherited) return button('Override', () => handlers.onOverride(row));
+  return html`${button('Edit', () => handlers.onEdit(index))}${button('Remove', () => handlers.onRemove(index))}`;
+}
+
+function renderRow(columns, item, handlers) {
+  const { row, inherited, overrides } = item;
+  const [first, ...rest] = columns;
   return html`
-    <li class="config-row ${inherited ? 'is-inherited' : ''}">
-      <div class="config-row-text">
-        <span class="config-row-title">
-          ${panel.label?.(row) ?? row[panel.idKey]}
+    <tr class=${inherited ? 'is-inherited' : ''}>
+      <th scope="row">
+        <span class="config-table-name">
+          <span class="config-table-text" title=${cellText(first, row)}>${cellText(first, row)}</span>
           ${inherited ? renderPill(INHERITANCE.inheritedPill, 'neutral') : nothing}
           ${overrides ? renderPill(INHERITANCE.overridesPill, 'override') : nothing}
         </span>
-        ${details ? html`<span class="config-row-details">${details}</span>` : nothing}
-      </div>
-      ${disabled ? nothing : html`
-        <div class="config-row-actions">
-          ${inherited
-    ? html`<button type="button" class="nx-action-btn-quiet nx-btn-sm" @click=${() => handlers.onOverride(row)}>Override</button>`
-    : html`
-              <button type="button" class="nx-action-btn-quiet nx-btn-sm" @click=${() => handlers.onEdit(index)}>Edit</button>
-              <button type="button" class="nx-action-btn-quiet nx-btn-sm" @click=${() => handlers.onRemove(index)}>Remove</button>`}
-        </div>`}
-    </li>`;
+      </th>
+      ${rest.map((column) => {
+    const text = cellText(column, row);
+    return html`<td><span class="config-table-text" title=${text}>${text}</span></td>`;
+  })}
+      ${handlers.disabled ? nothing : html`
+        <td class="config-table-actions"><div class="config-table-buttons">${renderActions(item, handlers)}</div></td>`}
+    </tr>`;
 }
 
 export function renderRows(panel, { items }, handlers) {
+  const columns = listColumns(panel);
   return html`
-    ${items.length
-    ? html`<ul class="config-rows">${items.map((item) => renderItem(panel, item, handlers))}</ul>`
-    : handlers.empty ?? html`<p class="config-message">${ROWS.empty(panel.noun)}</p>`}
     ${handlers.disabled ? nothing : html`
       <div class="config-row-buttons">
-        <button type="button" class="nx-form-btn-secondary" @click=${handlers.onAdd}>Add ${panel.noun}</button>
         ${handlers.actions ?? nothing}
-      </div>`}`;
+        <button type="button" class="nx-form-btn-secondary" @click=${handlers.onAdd}>Add ${panel.noun}</button>
+      </div>`}
+    ${items.length ? html`
+      <div class="config-table-wrap">
+        <table class="config-table">
+          <thead>
+            <tr>
+              ${columns.map((column) => html`<th scope="col">${column.label}</th>`)}
+              ${handlers.disabled ? nothing : html`<th scope="col"><span class="config-visually-hidden">Actions</span></th>`}
+            </tr>
+          </thead>
+          <tbody>${items.map((item) => renderRow(columns, item, handlers))}</tbody>
+        </table>
+      </div>`
+    : handlers.empty ?? html`<p class="config-message">${ROWS.empty(panel.noun)}</p>`}`;
 }
 
 // Errors show once the user has tried to apply.
