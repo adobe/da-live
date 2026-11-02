@@ -377,8 +377,14 @@ export const fetchDaConfigs = (() => {
     const { config: configApi } = await getNx2Api();
     const resp = await configApi.get({ org, site });
     const pathname = site ? `/${org}/${site}` : `/${org}`;
-    if (!resp.ok) return { error: `Error loading ${pathname}`, status: resp.status };
-    return resp.json();
+    const result = resp.ok
+      ? await resp.json()
+      : { error: `Error loading ${pathname}`, status: resp.status };
+    // Keep the X-da-actions hint (CONFIG access) without changing the config shape.
+    if (result && typeof result === 'object') {
+      Object.defineProperty(result, 'permissions', { value: resp.permissions, enumerable: false });
+    }
+    return result;
   };
 
   const cacheConfig = (key, org, site) => {

@@ -821,6 +821,32 @@ describe('fetchDaConfigs', () => {
     const [orgConfig] = await Promise.all(fetchDaConfigs({ org: 'cfgfail' }));
     expect(orgConfig).to.deep.equal({ error: 'Error loading /cfgfail', status: 500 });
   });
+
+  it('keeps the x-da-actions permissions as a non-enumerable property', async () => {
+    window.fetch = async (url) => {
+      if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+      return new Response(JSON.stringify({ data: [] }), {
+        status: 200,
+        headers: { 'X-da-actions': '/cfgperm=read,write' },
+      });
+    };
+
+    const [orgConfig] = await Promise.all(fetchDaConfigs({ org: 'cfgperm' }));
+    expect(orgConfig.permissions).to.deep.equal(['read', 'write']);
+    expect(Object.keys(orgConfig)).not.to.include('permissions');
+    expect(orgConfig).to.deep.equal({ data: [] });
+  });
+
+  it('keeps the x-da-actions permissions on a failed config fetch', async () => {
+    window.fetch = async (url) => {
+      if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+      return new Response('', { status: 403, headers: { 'X-da-actions': '/cfgdenied=read' } });
+    };
+
+    const [orgConfig] = await Promise.all(fetchDaConfigs({ org: 'cfgdenied' }));
+    expect(orgConfig.permissions).to.deep.equal(['read']);
+    expect(orgConfig).to.deep.equal({ error: 'Error loading /cfgdenied', status: 403 });
+  });
 });
 
 describe('aemAction', () => {
