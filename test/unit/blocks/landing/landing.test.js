@@ -4,6 +4,7 @@ import '../../setup-nx.js';
 import { getFavorites, toggleFavorite } from '../../../../blocks/browse/shared/favorites.js';
 import { DaLanding } from '../../../../blocks/landing/landing.js';
 import { getNx, getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
+import { axAll, axTree } from '../../helpers/ax-tree.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { source } = await getNx2Api();
@@ -15,6 +16,7 @@ describe('landing Content section', () => {
   let loadSite;
 
   beforeEach(async () => {
+    sinon.stub(window, 'IntersectionObserver').callsFake(() => ({ observe: sinon.spy(), disconnect: sinon.spy() }));
     ['da-favorites', 'da-browse-settings'].forEach((key) => localStorage.removeItem(key));
     hashChange._set({ org: 'org', site: 'site', fullpath: '/org/site' });
     loadSite = sinon.stub(DaLanding.prototype, 'loadSite').callsFake(async function loadSiteForTest() {
@@ -83,12 +85,12 @@ describe('landing Content section', () => {
     expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
   });
 
-  it('preserves independent ten-row list pagination and its existing columns', async () => {
+  it('preserves independent ten-row list pagination with the requested columns', async () => {
     el.shadowRoot.querySelector('.show-more').click();
     el.changeView({ detail: { value: 'list' } });
     await el.updateComplete;
-    expect([...el.shadowRoot.querySelectorAll('th')].map((cell) => cell.textContent))
-      .to.deep.equal(['Name', 'Folder', 'Modified at', 'File information and Favorite']);
+    expect([...el.shadowRoot.querySelectorAll('[role="columnheader"]')].map((cell) => cell.textContent))
+      .to.deep.equal(['Name', 'Folder', 'Modified at', 'Modified by', 'File information and Favorite']);
     expect(el.shadowRoot.querySelectorAll('.file-row')).to.have.length(10);
     el.shadowRoot.querySelector('.show-more').click();
     await el.updateComplete;
@@ -173,15 +175,146 @@ describe('landing Content section', () => {
     expect(loadSite.callCount).to.equal(2);
   });
 
-  it('keeps lazy list image previews and omits unsupported folder detail controls', async () => {
+  it('uses shared rows and standard image icons without a second landing renderer', async () => {
     el._files = [
       { name: 'Image', path: '/org/site/image.png', ext: 'png' },
       { name: 'Folder', path: '/org/site/folder' },
     ];
     el.changeView({ detail: { value: 'list' } });
     await el.updateComplete;
-    expect(el.shadowRoot.querySelector('da-landing-preview').path).to.equal('/org/site/image.png');
-    expect(el.shadowRoot.querySelectorAll('da-landing-file-actions')).to.have.length(1);
+    const rows = [...el.shadowRoot.querySelectorAll('da-file-item')];
+    await Promise.all(rows.map((row) => row.updateComplete));
+    expect(rows).to.have.length(2);
+    expect(rows[0].shadowRoot.querySelector('.da-item-list-item-type svg use').getAttribute('href')).to.include('s2-icon-image');
+    expect(rows[1].shadowRoot.querySelector('button[aria-label="More info"]')).to.equal(null);
+    expect(el.shadowRoot.querySelector('da-landing-preview, da-landing-file-actions')).to.equal(null);
+  });
+
+  it('retains the Favorite filter and shared row favorites when switching views', async () => {
+    toggleFavorite('/org/site', ITEMS[0].path);
+    toggleFavorite('/org/site', ITEMS[1].path);
+    el.refreshFavorites();
+    el.changeTab('starred');
+    el.changeView({ detail: { value: 'list' } });
+    await el.updateComplete;
+    const rows = [...el.shadowRoot.querySelectorAll('da-file-item')];
+    await Promise.all(rows.map((row) => row.updateComplete));
+    expect(rows).to.have.length(2);
+    rows[0].shadowRoot.querySelector('button[aria-label="Remove as Favorite"]').click();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelectorAll('da-file-item')).to.have.length(1);
+    el.changeView({ detail: { value: 'card' } });
+    await el.updateComplete;
+    expect(el._tab).to.equal('starred');
+    expect(el.shadowRoot.querySelectorAll('da-file-item')).to.have.length(1);
+    expect(el.shadowRoot.querySelector('da-file-item').path).to.equal(ITEMS[1].path);
+  });
+
+  it('keeps shared row destinations and folder context independent of information and star controls', async () => {
+    el._files = [{ ...ITEMS[0], path: '/org/site/articles/page.html' }];
+    el.changeView({ detail: { value: 'list' } });
+    await el.updateComplete;
+    const row = el.shadowRoot.querySelector('da-file-item');
+    await row.updateComplete;
+    expect(new URL(row.href).pathname).to.equal('/canvas');
+    expect(new URL(row.href).hash).to.equal('#/org/site/articles/page');
+    const folder = row.shadowRoot.querySelector('[data-column="folder"] a');
+    expect(folder.textContent).to.equal('/articles');
+    expect(new URL(folder.href).hash).to.equal('#/org/site/articles');
+    expect(new URL(folder.href).searchParams.get('landing')).to.equal('home');
+    sinon.stub(row, 'updateAEMStatus');
+    sinon.stub(row, 'updateDAStatus');
+    const { href } = window.location;
+    const info = row.shadowRoot.querySelector('button[aria-label="More info"]');
+    info.focus();
+    info.click();
+    await row.updateComplete;
+    expect(info.getAttribute('aria-expanded')).to.equal('true');
+    expect(row.shadowRoot.querySelector('[role="dialog"]')).to.exist;
+    expect(window.location.href).to.equal(href);
+    row.shadowRoot.querySelector('button[aria-label="Mark as Favorite"]').click();
+    await el.updateComplete;
+    expect(row.isFavorited).to.equal(true);
+    expect(window.location.href).to.equal(href);
+    expect(row.shadowRoot.activeElement).to.equal(info);
+  });
+
+  it('exposes matching accessible headers and cells across the shared shadow boundary', async () => {
+    el._files = [ITEMS[0]];
+    el.changeView({ detail: { value: 'list' } });
+    await el.updateComplete;
+    await el.shadowRoot.querySelector('da-file-item').updateComplete;
+    const tree = await axTree('da-landing >>> [role="table"]');
+    const table = axAll(tree, 'table')[0];
+    expect(table.name).to.equal('Recently modified files');
+    expect(axAll(table, 'columnheader').map((header) => header.name)).to.deep.equal([
+      'Name', 'Folder', 'Modified at', 'Modified by', 'File information and Favorite',
+    ]);
+    expect(axAll(table, 'row')).to.have.length(2);
+    expect(axAll(table, 'cell')).to.have.length(5);
+    expect(axAll(table, 'link').map((link) => link.name)).to.include.members(['Page 0', '/']);
+  });
+
+  it('keeps all columns aligned and horizontally scrollable at narrow widths in both text sizes', async () => {
+    const sheet = new CSSStyleSheet();
+    await sheet.replace(await (await fetch('/blocks/landing/landing.css')).text());
+    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
+    el.style.setProperty('--s2-spacing-100', '8px');
+    el._files = [ITEMS[0]];
+    el.changeView({ detail: { value: 'list' } });
+    await el.updateComplete;
+    const row = el.shadowRoot.querySelector('da-file-item');
+    const rowSheet = new CSSStyleSheet();
+    await rowSheet.replace(await (await fetch('/blocks/shared/da-file-item/da-file-item.css')).text());
+    row.shadowRoot.adoptedStyleSheets = [...row.shadowRoot.adoptedStyleSheets, rowSheet];
+    for (const width of [1200, 360]) {
+      el.style.width = `${width}px`;
+      for (const size of ['s', 'm']) {
+        el.setAttribute('data-ui-size', size);
+        el.style.setProperty('--nx-ui-text-content', size === 'm' ? '16px' : '14px');
+        el.requestUpdate();
+        await el.updateComplete;
+        await row.updateComplete;
+        const header = el.shadowRoot.querySelector('.file-table-header');
+        const cells = [...row.shadowRoot.querySelector('.da-item-list-item-inner').children];
+        expect(cells).to.have.length(5);
+        cells.forEach((cell, index) => {
+          const offset = cell.getBoundingClientRect().left
+            - header.children[index].getBoundingClientRect().left;
+          expect(Math.abs(offset)).to.be.lessThan(1);
+        });
+        expect(row.size).to.equal(size);
+        expect(getComputedStyle(row.shadowRoot.querySelector('[data-column="modified"]')).fontSize)
+          .to.equal(size === 'm' ? '16px' : '14px');
+        expect(row.shadowRoot.querySelector('button[aria-label="More info"]').classList.contains('nx-btn-lg')).to.equal(size === 'm');
+        if (width === 360) {
+          const scroll = el.shadowRoot.querySelector('.file-table-scroll');
+          expect(scroll.scrollWidth).to.be.greaterThan(scroll.clientWidth);
+          expect(getComputedStyle(scroll).overflowX).to.equal('auto');
+        }
+      }
+    }
+  });
+
+  it('removes old shared rows and their active details when changing sites', async () => {
+    el.changeView({ detail: { value: 'list' } });
+    await el.updateComplete;
+    const row = el.shadowRoot.querySelector('da-file-item');
+    await row.updateComplete;
+    sinon.stub(row, 'updateAEMStatus');
+    sinon.stub(row, 'updateDAStatus');
+    row.shadowRoot.querySelector('button[aria-label="More info"]').click();
+    await row.updateComplete;
+    loadSite.callsFake(async function resetSiteForTest() {
+      this._request?.abort();
+      this._request = new AbortController();
+      this._files = undefined;
+    });
+    el.setScope({ org: 'other', site: 'site' });
+    await el.updateComplete;
+    expect(row.isConnected).to.equal(false);
+    expect(el.shadowRoot.querySelector('da-file-item')).to.equal(null);
+    expect(el._view).to.equal('list');
   });
 
   it('loads the root listing with main APIs and selects the classic editor when EW is off', async () => {

@@ -19,8 +19,11 @@ the initial section taller, so six keeps the default desktop view compact.
 
 Favorite uses browser-local `da-favorites` entries for the selected site root.
 It displays at most six cards or ten list rows without deleting saved entries.
-The list keeps Name, Folder, Modified at and information/favorite controls,
-with independent ten-row pagination. Changing the site resets filters and
+The list reuses `da-file-item` rows with Name, Folder, Modified at, Modified by
+and information/favorite controls, with independent ten-row pagination.
+Folder links preserve Browse navigation and site-relative folder context.
+Changing between cards and rows keeps the selected filter and both view limits.
+Changing the site resets filters and
 pagination and aborts the previous listing. Favorite changes in another tab
 are reflected while the component is connected.
 
@@ -29,9 +32,12 @@ are reflected while the component is connected.
 All root-listing pages are loaded, deduplicated and sorted by modification
 date. Permission/network failures have a retry state, not an empty success.
 Cards keep Browse's type icons, lazy image thumbnails, menus and favorites.
-List image thumbnails are lazy and release object URLs on file/site changes
-or removal. There are no HTML document thumbnails or screenshot services.
-List details reuse main's file-item status helpers and load only on demand.
+Rows keep shared file-type icons instead of a separate landing thumbnail
+implementation. There are no HTML document thumbnails or screenshot services.
+Visible rows lazily load modifier metadata through the existing DA status helper;
+the information control reuses that request. Failed or missing modifier data is
+shown as a dash, not an invented author. Pending metadata is invalidated on
+file/site changes or removal. Preview/publish details load only on demand.
 
 HTML uses Canvas when EW is enabled and the classic editor otherwise. Sheets
 and media use the existing shared routing helper. Folders and `.link` files
@@ -54,3 +60,10 @@ when the configured Nexter version exposes it.
 adobe/da-live#1616 supplies the optional shared destination override. Its small
 diff is included in adobe/da-live#1531 for a working combined preview. Merge
 the shared change first, then update the integration with main.
+
+The list integration also depends on the opt-in shared row columns documented
+in `docs/da-file-item-rows.md`. Default Browse columns and controllers are not
+replaced. The landing list owns matching accessible headers and horizontal
+scrolling at narrow widths; all four data columns stay available.
+
+Design: https://www.figma.com/design/aliOqnaMYpvWLbnjrg5DFK/Experience-Workspace?node-id=1852-84464

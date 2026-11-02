@@ -80,6 +80,33 @@ describe('shared row modifier metadata', () => {
     expect(el._lastModifiedBy).not.to.equal('old');
   });
 
+  it('refreshes changed files without sharing cached status between row instances', async () => {
+    await el.updateDAStatus();
+    const other = document.createElement('da-file-item');
+    Object.assign(other, {
+      name: 'Other',
+      ext: 'html',
+      path: '/rowtest/site/other.html',
+      editor: '/edit#',
+      columns: ['modifiedBy'],
+    });
+    document.body.append(other);
+    try {
+      await other.updateComplete;
+      list.resolves(statusResponse('sam'));
+      await other.updateDAStatus();
+      el.date = 123;
+      await el.updateComplete;
+      list.resolves(statusResponse('new'));
+      await el.updateDAStatus();
+      expect(el._lastModifiedBy).to.equal('new');
+      expect(other._lastModifiedBy).to.equal('sam');
+      expect(list.callCount).to.equal(3);
+    } finally {
+      other.remove();
+    }
+  });
+
   it('keeps failure explicit in details without an unhandled rejection or fake modifier', async () => {
     list.rejects(new Error('Offline'));
     await el.updateDAStatus();

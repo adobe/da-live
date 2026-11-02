@@ -1,12 +1,9 @@
 import { LitElement, html, nothing, repeat } from 'da-lit';
 import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
-import { iconPathForExt, isImageExt } from '../shared/icons.js';
 import { getFavorites, toggleFavorite } from '../browse/shared/favorites.js';
 import { getBrowseSettings, updateBrowseSettings } from '../browse/v2/shared/settings.js';
-import { getBrowseHref, getFileHref, loadFiles, formatModified } from './utils.js';
+import { getBrowseHref, getFileHref, loadFiles } from './utils.js';
 import '../shared/da-file-item/da-file-item.js';
-import './file-preview.js';
-import './file-actions.js';
 import renderFileTable from './file-table.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
@@ -25,6 +22,7 @@ const VIEW_ITEMS = [
 const PAGE_SIZE = 10;
 const CARD_PAGE_SIZE = 6;
 const CARD_MAX = 18;
+const LIST_COLUMNS = ['name', 'folder', 'modified', 'modifiedBy', 'actions'];
 
 function icon(name) {
   return html`<svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-${name}-20-n.svg#icon"></use></svg>`;
@@ -156,22 +154,15 @@ export class DaLanding extends LitElement {
   }
 
   renderListFile(item) {
-    const modified = formatModified({ modified: item.lastModified });
     const folder = item.path.slice(0, item.path.lastIndexOf('/'));
-    return html`<tr class="file-row">
-      <td><a class="list-file-link" href=${getFileHref({ item, editor: this._editor || '/edit#' })}>
-        ${isImageExt(item.ext) ? html`<da-landing-preview class="list-file-preview"
-          .path=${item.path} .ext=${item.ext} aria-hidden="true"></da-landing-preview>`
-    : html`<span class="file-type-icon" aria-hidden="true"
-          style="--file-icon: url('${iconPathForExt(item.ext)}')"></span>`}
-        <span>${item.name}</span>
-      </a></td>
-      <td><a class="file-folder" href=${getBrowseHref({ path: folder })} title=${folder}>${folder.slice(this.path.length) || '/'}</a></td>
-      <td>${modified ? html`<time datetime=${modified.date.toISOString()}>${modified.label}</time>` : 'Date unavailable'}</td>
-      <td>${item.ext ? html`<da-landing-file-actions .path=${item.path} .name=${item.name}
-        .ext=${item.ext} .isFavorited=${this._favorites?.has(item.path)}
-        @favoritechange=${() => this.starFile(item)}></da-landing-file-actions>` : nothing}</td>
-    </tr>`;
+    const editor = this._editor || '/edit#';
+    return html`<da-file-item class="file-row" role="row"
+      .columns=${LIST_COLUMNS} .name=${item.name} .path=${item.path} .ext=${item.ext}
+      .date=${item.lastModified} .editor=${editor} .href=${getFileHref({ item, editor })}
+      .folder=${{ label: folder.slice(this.path.length) || '/', href: getBrowseHref({ path: folder }) }}
+      .size=${this.getAttribute('data-ui-size') || 's'}
+      .isFavorited=${this._favorites?.has(item.path)}
+      @favoritechange=${() => this.starFile(item)}></da-file-item>`;
   }
 
   renderFiles() {
