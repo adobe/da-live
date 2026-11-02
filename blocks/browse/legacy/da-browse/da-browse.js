@@ -144,7 +144,6 @@ export default class DaBrowse extends LitElement {
         this._canEditOrgConfig = false;
         const { org } = this.details;
         canEditOrgConfig(org).then((canEdit) => {
-          // Ignore stale org results.
           if (this.details?.org === org) this._canEditOrgConfig = canEdit;
         });
       }
