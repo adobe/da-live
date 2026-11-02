@@ -3,7 +3,7 @@ import { getFirstSheet, fetchDaConfigs } from '../../../shared/utils.js';
 import { getNx, sanitizePathParts, getNxEWFlags } from '../../../../scripts/utils.js';
 import { getChatPanelContent } from '../../../shared/chat-panel.js';
 import { getBrowseSettings, updateBrowseSettings } from '../shared/settings.js';
-import { getConfiguredEditor } from '../../shared.js';
+import { getConfiguredEditor } from '../../../shared/da-file-item/edit-path.js';
 
 // Components
 import '../../da-new/da-new.js';

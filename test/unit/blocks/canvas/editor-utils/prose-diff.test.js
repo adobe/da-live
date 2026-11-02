@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { EditorState } from 'da-y-wrapper';
+import { EditorState, ySyncPluginKey } from 'da-y-wrapper';
 import { getSchema } from 'da-parser';
 import { createTrackingPlugin, trackingPluginKey } from '../../../../../blocks/canvas/editor-utils/prose-diff.js';
 
@@ -268,5 +268,49 @@ describe('createTrackingPlugin — attrs changes outside EDITABLE_TYPES', () => 
     plugin.spec.view().update({ state: nextState }, prevState);
 
     expect(counts()).to.deep.equal({ rerenderCalls: 0, getEditorCalls: 1 });
+  });
+});
+
+describe('createTrackingPlugin — edit origin', () => {
+  function setupOrigin() {
+    const calls = [];
+    const plugin = createTrackingPlugin(undefined, undefined, (data) => calls.push(data.origin));
+    const state = EditorState.create({ schema, doc: docWithParagraph('hello'), plugins: [plugin] });
+    const update = (prevState, ...metas) => {
+      const nextState = metas.reduce(
+        (current, meta) => current.apply(meta
+          ? current.tr.insertText('!', 1).setMeta(ySyncPluginKey, meta)
+          : current.tr.insertText('!', 1)),
+        prevState,
+      );
+      plugin.spec.view().update({ state: nextState }, prevState);
+      return nextState;
+    };
+    return { state, update, calls };
+  }
+
+  it('tags local edits as local', () => {
+    const { state, update, calls } = setupOrigin();
+    update(state, null);
+    expect(calls).to.deep.equal(['local']);
+  });
+
+  it('tags collaborator edits applied through Yjs as remote', () => {
+    const { state, update, calls } = setupOrigin();
+    update(state, { isChangeOrigin: true });
+    expect(calls).to.deep.equal(['remote']);
+  });
+
+  it('treats a local undo/redo through Yjs as local', () => {
+    const { state, update, calls } = setupOrigin();
+    update(state, { isChangeOrigin: true, isUndoRedoOperation: true });
+    expect(calls).to.deep.equal(['local']);
+  });
+
+  it('treats a coalesced update with any local change as local, then resets', () => {
+    const { state, update, calls } = setupOrigin();
+    const next = update(state, { isChangeOrigin: true }, null);
+    update(next, { isChangeOrigin: true });
+    expect(calls).to.deep.equal(['local', 'remote']);
   });
 });
