@@ -1,0 +1,115 @@
+:host {
+  --da-landing-tile-radius: 12px;
+  --da-landing-tile-shadow: 0 0 1px #00000014, 0 1px 4px #0000000a, 0 2px 8px #00000014;
+  --da-landing-tile-hover-shadow: 0 0 1px #00000014, 0 1px 6px #0000000a, 0 3px 10px #0000001a;
+
+  display: block;
+  height: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+h3, p {
+  margin: 0;
+}
+
+.tile {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2-spacing-200);
+  height: 100%;
+  width: 100%;
+  padding: var(--s2-spacing-200) var(--s2-spacing-300);
+  border: 0;
+  border-radius: var(--da-landing-tile-radius);
+  background: light-dark(var(--s2-gray-25), var(--s2-gray-75));
+  box-shadow: var(--da-landing-tile-shadow);
+  text-decoration: none;
+  font: inherit;
+  text-align: start;
+}
+
+a, button {
+  cursor: pointer;
+}
+
+a:hover, button:where(:enabled):hover {
+  box-shadow: var(--da-landing-tile-hover-shadow);
+}
+
+a:focus-visible, button:focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: var(--s2-spacing-75);
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+h3 {
+  color: var(--s2-gray-900);
+  font-size: var(--nx-ui-text-title, var(--s2-component-l-regular-font-size));
+  line-height: var(--s2-body-line-height);
+}
+
+p {
+  margin-top: var(--s2-spacing-75);
+  color: var(--s2-gray-600);
+  font-size: var(--s2-component-s-regular-font-size);
+  line-height: var(--s2-body-line-height);
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--s2-spacing-500);
+  height: var(--s2-spacing-500);
+  border-radius: var(--s2-corner-radius-500);
+  color: var(--s2-gray-900);
+  background: var(--s2-turquoise-200);
+}
+
+.icon.green {
+  background: var(--s2-green-200);
+}
+
+.icon.orange {
+  background: var(--s2-orange-200);
+}
+
+.icon.purple {
+  background: var(--s2-purple-200);
+}
+
+.icon::before {
+  content: "";
+  width: 20px;
+  height: 20px;
+  background: currentcolor;
+  mask: var(--tile-icon) center / contain no-repeat;
+}
+
+:host([size="m"]) {
+  h3 {
+    font-size: var(--s2-component-xl-regular-font-size);
+  }
+
+  p {
+    font-size: var(--s2-component-m-regular-font-size);
+  }
+
+  .icon::before {
+    width: 22px;
+    height: 22px;
+  }
+}

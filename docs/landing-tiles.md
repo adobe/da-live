@@ -1,0 +1,23 @@
+# Landing quick-action tile
+
+`blocks/landing/tile.js` defines the presentation-only `da-landing-tile`.
+It is not loaded or mounted by an application page.
+
+The owner supplies `heading`, `description`, `iconHref`, and an optional
+`tone` (`green`, `orange`, `purple`, or the default turquoise).
+Use `size="m"` for the larger text and icon scale; the default is S.
+Styles inherit the owner's font, color scheme and Spectrum tokens.
+Turquoise and purple 200 tokens must be available in the consuming Nexter
+shell before using those tones.
+
+With `href`, the surface is a native anchor. With `action` and no `href`,
+it is a native button, disabled by `disabled`. Otherwise it is a
+non-interactive tile. The component does not choose routes or perform actions.
+The owner handles native clicks, site permissions and any page-creation dialog.
+
+An `actionId` adds `landing-action-{actionId}` to the interactive surface and
+matching `data-rum-source` attributes to its contents for the existing click
+collector. No separate telemetry collector is installed.
+
+This component does not provide the landing-page grid, application entry point,
+site-selection state or documentation destinations.
