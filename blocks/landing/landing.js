@@ -419,7 +419,7 @@ export class DaLanding extends LitElement {
         </ul>`}
       ${canShowMore ? html`
         <button class="show-more nx-action-btn-quiet" @click=${() => {
-    if (this._view === 'card') this._cardLimit = Math.min(this._cardLimit + CARD_PAGE_SIZE, CARD_MAX);
+    if (this._view === 'card') this._cardLimit = CARD_MAX;
     else this._limit += PAGE_SIZE;
   }}>
           Show more files

@@ -656,10 +656,10 @@ describe('landing page', () => {
     expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
   });
 
-  it('expands Recent cards from six to twelve to eighteen and then hides Show more', async () => {
+  it('expands Recent cards directly from six to eighteen and then hides Show more', async () => {
     el._files = Array.from({ length: 24 }, (_, i) => ({ name: `Page ${i}`, path: `/org/site/page-${i}.html`, ext: 'html' }));
     await el.updateComplete;
-    for (const count of [6, 12, 18]) {
+    for (const count of [6, 18]) {
       expect([...el.shadowRoot.querySelectorAll('da-file-item')].map((item) => item.path))
         .to.deep.equal(el._files.slice(0, count).map((item) => item.path));
       if (count < 18) {
