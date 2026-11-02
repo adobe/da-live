@@ -362,7 +362,6 @@ export async function checkLockdownImages(owner) {
 
 const configPermissions = new WeakMap();
 
-/** X-da-actions of a `fetchDaConfigs` result. */
 export function getConfigPermissions(config) {
   return config && typeof config === 'object' ? configPermissions.get(config) : undefined;
 }
@@ -427,7 +426,6 @@ export const fetchDaConfigs = (() => {
 
 export async function canEditOrgConfig(org) {
   const config = await fetchDaConfigs({ org })[0].catch(() => null);
-  // 404: org has no config yet.
   if (config?.error && config.status !== 404) return false;
   return !!getConfigPermissions(config)?.includes('write');
 }
