@@ -302,11 +302,14 @@ h2 {
 }
 
 .files {
+  --da-card-width: 151px;
+  --da-card-height: 200px;
+
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(0, min(100%, var(--da-card-width, 226px))));
+  grid-template-columns: repeat(auto-fill, minmax(0, min(100%, var(--da-card-width))));
   gap: var(--s2-spacing-200);
 }
 

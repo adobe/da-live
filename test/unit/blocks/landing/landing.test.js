@@ -70,13 +70,13 @@ describe('landing page', () => {
     expect(el.shadowRoot.textContent).not.to.include('Need Attention');
   });
 
-  it('keeps Browse card width and wraps columns instead of stretching cards', async () => {
+  it('keeps Browse small card width and wraps columns instead of stretching cards', async () => {
     const sheet = new CSSStyleSheet();
     await sheet.replace(await (await fetch('/blocks/landing/landing.css')).text());
     el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
     el.style.setProperty('--s2-spacing-200', '12px');
     const grid = el.shadowRoot.querySelector('.files');
-    for (const [width, columns] of [[500, '226px 226px'], [300, '226px'], [150, '150px']]) {
+    for (const [width, columns] of [[500, '151px 151px 151px'], [320, '151px 151px'], [300, '151px'], [150, '150px']]) {
       grid.style.width = `${width}px`;
       expect(getComputedStyle(grid).gridTemplateColumns).to.equal(columns);
     }

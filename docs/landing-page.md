@@ -54,10 +54,10 @@ adobe/da-live#1416 is modified or merged by this work.
 ## Figma fidelity
 
 The 1920px Ready frame (`1852:83848`) shows 142px compact cards. Landing instead
-reuses the standard Browse card with its default 226px width, 300px portrait
-height, title, file type and date. The grid uses Browse's auto-fill tracks:
+reuses the standard Browse card with its existing small preset: 151px width,
+200px portrait height, title, file type and date. The grid uses Browse's auto-fill tracks:
 columns wrap instead of stretching or shrinking cards to force five per row.
-No custom card geometry or S/M sizing override is added.
+Page S/M changes do not change the card preset. Browse defaults are unchanged.
 The quiet view switcher has two 32px buttons.
 
 The standalone selector uses the shared Nexter picker defaults, leading selected
