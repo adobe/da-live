@@ -3,6 +3,11 @@
 `blocks/landing/tile.js` defines the presentation-only `da-landing-tile`.
 It is not loaded or mounted by an application page.
 
+Open [the component reference](landing-tiles.html) for live examples of links,
+actions, disabled buttons, non-interactive tiles and S/M/light/dark settings.
+The existing `nx` query parameter selects the Nexter shell supplying the tokens.
+This reference does not create content or mount the landing application.
+
 The owner supplies `heading`, `description`, `iconHref`, and an optional
 `tone` (`green`, `orange`, `purple`, or the default turquoise).
 Use `size="m"` for the larger text and icon scale; the default is S.
