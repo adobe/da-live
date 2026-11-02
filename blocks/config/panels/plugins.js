@@ -59,8 +59,10 @@ export default {
       key: 'experience',
       label: 'Opens in',
       hint: 'How the plugin opens.',
+      // The classic editor opens any value containing "dialog" in a dialog; the canvas only knows
+      // fullsize-dialog and window and shows everything else in the side panel.
       options: [
-        { value: 'modal', label: 'Dialog' },
+        { value: 'dialog', label: 'Dialog (classic editor)' },
         { value: 'fullsize-dialog', label: 'Full-size dialog' },
         { value: 'window', label: 'New window' },
       ],

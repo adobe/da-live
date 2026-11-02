@@ -93,13 +93,18 @@ const options = {
   owns: (row) => !SETTING_KEYS.has(row.key),
   idKey: 'key',
   noun: 'option',
-  details: (row) => (SECRET.test(row.key) ? '••••••••' : row.value),
   description: 'Endpoints, credentials and custom project fields of the service, e.g. '
     + 'translation.service.prod.origin. Keep secrets in a separate credentials sheet where access matters.',
   validate: validateOption,
   columns: [
     { key: 'key', label: 'Key', required: true, placeholder: 'translation.service.prod.origin' },
-    { key: 'value', label: 'Value', required: true, placeholder: 'https://translate.da.live/google' },
+    {
+      key: 'value',
+      label: 'Value',
+      required: true,
+      placeholder: 'https://translate.da.live/google',
+      display: (row) => (SECRET.test(row.key) ? '••••••••' : row.value),
+    },
   ],
 };
 
@@ -124,7 +129,6 @@ const languages = {
   kind: 'rows',
   idKey: 'name',
   noun: 'language',
-  details: (row) => [row.code, row.location, row.actions].filter(Boolean).join(' · '),
   description: 'Languages and locales projects can translate, copy or roll out to.',
   validate: validateLanguage,
   columns: [
@@ -133,11 +137,11 @@ const languages = {
     { key: 'location', label: 'Location', hint: 'Folder containing the language\'s content.', required: true, placeholder: '/de' },
     { key: 'actions', label: 'Actions', hint: 'Comma-separated: Translate, Copy, Rollout.', placeholder: 'Translate, Rollout' },
     { key: 'locales', label: 'Locales', hint: 'Comma-separated locale paths available for rollout.', placeholder: '/de-at, /de-ch' },
-    { key: 'default locales', label: 'Default locales', hint: 'Locales selected by default.', placeholder: '/de-at' },
-    { key: 'source', label: 'Source', hint: 'Content path override; URLs under it count as already in the source.', placeholder: '/en' },
-    { key: 'source language', label: 'Source language', hint: 'Another language this one waits for before translating.', placeholder: 'English' },
-    { key: 'trados location', label: 'Trados location', hint: 'Trados target folder.' },
-    { key: 'trados project template', label: 'Trados project template', hint: 'Trados project-template ID.' },
+    { key: 'default locales', label: 'Default locales', list: false, hint: 'Locales selected by default.', placeholder: '/de-at' },
+    { key: 'source', label: 'Source', list: false, hint: 'Content path override; URLs under it count as already in the source.', placeholder: '/en' },
+    { key: 'source language', label: 'Source language', list: false, hint: 'Another language this one waits for before translating.', placeholder: 'English' },
+    { key: 'trados location', label: 'Trados location', list: false, hint: 'Trados target folder.' },
+    { key: 'trados project template', label: 'Trados project template', list: false, hint: 'Trados project-template ID.' },
   ],
 };
 

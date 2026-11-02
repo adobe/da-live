@@ -650,7 +650,7 @@ describe('da-config', () => {
       await type('path', ROLLOUT.path);
       await click('nx-dialog .nx-form-btn-primary');
       expect(has('nx-dialog')).to.equal(false);
-      expect(q('.config-row-title').textContent).to.include('Rollout');
+      expect(q('.config-table tbody th').textContent).to.include('Rollout');
       expect(q('.config-savebar-count').textContent).to.equal('Unsaved changes');
 
       await click('.config-savebar .nx-form-btn-primary');
@@ -664,7 +664,7 @@ describe('da-config', () => {
       const org = multi('prepare', [ROLLOUT, { title: 'Send to Adobe Target' }]);
       const puts = mockFetch({ configFor: (o, s) => (s ? status(404)() : org), sitesFor: () => [{ name: 'alpha' }] });
       await open({ org: 'pr2', site: 'alpha' });
-      const rows = [...el.shadowRoot.querySelectorAll('.config-row')];
+      const rows = [...el.shadowRoot.querySelectorAll('.config-table tbody tr')];
       expect(rows).to.have.length(2);
       expect(rows[0].querySelector('nx-pills').items[0].label).to.equal('Inherited from org');
 
@@ -673,7 +673,7 @@ describe('da-config', () => {
       expect(dialogInput('title').value).to.equal('Rollout');
       await type('ref', 'uat');
       await click('nx-dialog .nx-form-btn-primary');
-      const first = q('.config-row');
+      const first = q('.config-table tbody tr');
       expect(!!first.querySelector('nx-pills.config-pill-override')).to.equal(true);
 
       await click('.config-savebar .nx-form-btn-primary');
@@ -685,18 +685,18 @@ describe('da-config', () => {
     it('edits and removes own rows, and discards pending changes', async () => {
       mockFetch({ configFor: () => multi('prepare', [ROLLOUT]), sitesFor: () => [{ name: 'alpha' }] });
       await open({ org: 'pr3' });
-      buttonIn(q('.config-row'), 'Edit').click();
+      buttonIn(q('.config-table tbody tr'), 'Edit').click();
       await el.updateComplete;
       await type('title', 'Rollout 2');
       await click('nx-dialog .nx-form-btn-primary');
-      expect(q('.config-row-title').textContent).to.include('Rollout 2');
+      expect(q('.config-table tbody th').textContent).to.include('Rollout 2');
 
-      buttonIn(q('.config-row'), 'Remove').click();
+      buttonIn(q('.config-table tbody tr'), 'Remove').click();
       await el.updateComplete;
-      expect(has('.config-row')).to.equal(false);
+      expect(has('.config-table tbody tr')).to.equal(false);
 
       await click('.config-savebar .nx-form-btn-secondary');
-      expect(q('.config-row-title').textContent).to.include('Rollout');
+      expect(q('.config-table tbody th').textContent).to.include('Rollout');
       expect(has('.config-savebar')).to.equal(false);
     });
   });
@@ -712,7 +712,7 @@ describe('da-config', () => {
       el.site = 'alpha';
       el._sectionId = 'apps';
       await ready();
-      const rows = [...el.shadowRoot.querySelectorAll('.config-row')];
+      const rows = [...el.shadowRoot.querySelectorAll('.config-table tbody tr')];
       expect(rows).to.have.length(1);
       expect(rows[0].textContent).to.include('Search');
       expect(el.shadowRoot.textContent).to.not.include('inherited');
@@ -739,8 +739,8 @@ describe('da-config', () => {
       el.org = 'pl1';
       el._sectionId = 'plugins';
       await ready();
-      const rows = [...el.shadowRoot.querySelectorAll('.config-row')];
-      expect(rows.map((r) => r.querySelector('.config-row-title').textContent.trim())).to.deep.equal(['Tool']);
+      const rows = [...el.shadowRoot.querySelectorAll('.config-table tbody tr')];
+      expect(rows.map((r) => r.querySelector('th').textContent.trim())).to.deep.equal(['Tool']);
 
       [...rows[0].querySelectorAll('button')].find((b) => b.textContent.trim() === 'Remove').click();
       await el.updateComplete;
@@ -775,7 +775,7 @@ describe('da-config', () => {
         putFor: () => new Promise((resolve) => { finishSave = () => resolve(new Response('', { status: 200 })); }),
       });
       await openSection('blocks', 'lb9');
-      buttonIn(q('.config-row'), 'Remove').click();
+      buttonIn(q('.config-table tbody tr'), 'Remove').click();
       await el.updateComplete;
       q('.config-savebar .nx-form-btn-primary').click();
       await waitUntil(() => !!finishSave, el);
@@ -822,7 +822,7 @@ describe('da-config', () => {
       });
       await openSection('blocks', 'lb2');
       expect(el.shadowRoot.textContent).to.not.include('previewed and published');
-      const row = q('.config-row');
+      const row = q('.config-table tbody tr');
       expect(row.textContent).to.include('Cards');
       buttonIn(row, 'Remove').click();
       await el.updateComplete;
@@ -872,7 +872,7 @@ describe('da-config', () => {
 
       action('Done').click();
       await waitUntil(() => el._file?.status === 'ok' && !has('da-config-blocks-import'), el);
-      expect(q('.config-row').textContent).to.include('Hero');
+      expect(q('.config-table tbody tr').textContent).to.include('Hero');
     });
 
     it('disables the import while the list has unsaved changes', async () => {
@@ -883,7 +883,7 @@ describe('da-config', () => {
       });
       await openSection('blocks', 'lb6');
       expect(buttonIn(q('.config-row-buttons'), 'Import blocks').disabled).to.equal(false);
-      buttonIn(q('.config-row'), 'Remove').click();
+      buttonIn(q('.config-table tbody tr'), 'Remove').click();
       await el.updateComplete;
       expect(buttonIn(q('.config-row-buttons'), 'Import blocks').disabled).to.equal(true);
     });
@@ -914,7 +914,7 @@ describe('da-config', () => {
       });
       await openSection('icons', 'lb3');
       expect(el.shadowRoot.textContent).to.include("isn't a file of this site");
-      expect(has('.config-rows')).to.equal(false);
+      expect(has('.config-table')).to.equal(false);
     });
   });
 
@@ -946,8 +946,11 @@ describe('da-config', () => {
       q('nx-dialog .nx-form-btn-secondary').click();
       await el.updateComplete;
 
-      const titles = [...el.shadowRoot.querySelectorAll('.config-row-title')].map((t) => t.textContent.trim());
-      expect(titles).to.deep.equal(['Base Site', 'satellite-1']);
+      const cells = [...el.shadowRoot.querySelectorAll('.config-table tbody tr')]
+        .map((tr) => [...tr.querySelectorAll('th, td:not(.config-table-actions)')].map((c) => c.textContent.trim()));
+      expect(cells).to.deep.equal([['my-base', '', 'Base Site'], ['my-base', 'satellite-1', '']]);
+      const headers = [...el.shadowRoot.querySelectorAll('.config-table thead th')].map((t) => t.textContent.trim());
+      expect(headers).to.deep.equal(['Base site', 'Satellite site', 'Title', 'Actions']);
       q('.config-savebar .nx-form-btn-primary').click();
       await waitUntil(() => !el._busy, el);
       expect(puts[0].site).to.equal(null);
@@ -998,10 +1001,10 @@ describe('da-config', () => {
     it('switches parts and lists each tab', async () => {
       await open('tr2', () => TRANSLATE);
       await showPart('options');
-      expect(q('.config-row').textContent).to.include('translation.service.prod.origin');
-      expect(el.shadowRoot.querySelectorAll('.config-row').length).to.equal(1);
+      expect(q('.config-table tbody tr').textContent).to.include('translation.service.prod.origin');
+      expect(el.shadowRoot.querySelectorAll('.config-table tbody tr').length).to.equal(1);
       await showPart('languages');
-      expect(q('.config-row').textContent).to.include('English');
+      expect(q('.config-table tbody tr').textContent).to.include('English');
       await showPart('dnt');
       expect(el.shadowRoot.textContent).to.include('No exclusions yet.');
       expect(q('.config-parts nx-picker').items.every((item) => item.label)).to.equal(true);
