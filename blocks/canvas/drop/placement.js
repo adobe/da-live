@@ -57,8 +57,8 @@ export function resolvePlacement({ view, target, payload }) {
     try {
       const node = doc.nodeAt(resolveImagePosition({ ...target, doc }));
       return { type: 'replace', node };
-    } catch {
-      return { error: 'stale-target' };
+    } catch (e) {
+      return { error: 'stale-target', message: e.message };
     }
   }
   return { error: 'invalid-target' };

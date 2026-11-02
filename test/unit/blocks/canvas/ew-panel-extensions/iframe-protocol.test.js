@@ -341,6 +341,8 @@ describe('setupIframeChannel', () => {
   });
 
   it('routes acknowledged SDK drags over the channel and rejects an old page context', async () => {
+    const { hashChange } = await import(`${getNx()}/utils/utils.js`);
+    hashChange._set({ org: 'org', site: 'site', path: 'page' });
     const iframe = document.createElement('iframe');
     const loaded = new Promise((resolve) => { iframe.onload = resolve; });
     document.body.append(iframe);
@@ -374,11 +376,13 @@ describe('setupIframeChannel', () => {
       expect(await request('dragFinish', { dragId: start.dragId, point: details.point }))
         .to.deep.equal({ ok: true });
       expect(editor.state.doc.textContent).to.equal('KeepHeading');
-      expect(results).to.deep.equal([{ dragId: start.dragId, result: { ok: true } }]);
-      setUrl('/changed/page');
-      expect((await request('dragStart', details)).ok).to.equal(false);
+      // dragFinish answers with the result itself, so no dragResult is pushed for it
+      expect(results).to.deep.equal([]);
+      hashChange._set({ org: 'org', site: 'site', path: 'other-page' });
+      expect(await request('dragStart', details)).to.deep.equal({ ok: false, error: 'unavailable' });
     } finally {
       connection.destroy();
+      hashChange._set({});
       const mount = editor.dom.parentElement;
       editor.destroy();
       mount.remove();

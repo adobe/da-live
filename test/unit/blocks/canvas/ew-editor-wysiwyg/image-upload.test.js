@@ -6,6 +6,8 @@ import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.j
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let handleImageReplace;
+let performDrop;
+let fromAssets;
 let getImageDocumentVersion;
 let HLX6_MAX_IMAGE_BYTES;
 let toasts;
@@ -18,6 +20,8 @@ const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 before(async () => {
   ({ getImageDocumentVersion } = await import(`${getNx2()}/public/utils/quick-edit-images.js`));
   ({ handleImageReplace } = await import('../../../../../blocks/canvas/ew-editor-wysiwyg/utils/image.js'));
+  ({ performDrop } = await import('../../../../../blocks/canvas/drop/pipeline.js'));
+  ({ fromAssets } = await import('../../../../../blocks/canvas/drop/payload.js'));
   ({ HLX6_MAX_IMAGE_BYTES } = await import('../../../../../blocks/canvas/utils/image-upload.js'));
   ({ toasts } = await import('../../../../fixtures/nx2/blocks/shared/toast/toast.js'));
   ({ setRepositoryConfig } = await import(`${getNx2()}/utils/aem-assets/repository-config.js`));
@@ -97,50 +101,62 @@ describe('handleImageReplace', () => {
     destroyEditor(editor);
   });
 
-  it('resolves an Assets image using the site config without uploading a thumbnail', async () => {
-    setRepositoryConfig({ tierType: 'author' });
-    setSelection({ href: 'https://assets.example.com/image.png', isImage: true });
+  it('refuses an Assets request, which the rail now resolves through the host drop session', async () => {
     const { ctx, posted } = ctxFor('assetorg', 'assetsite');
     const { calls, restore } = stubStore();
     try {
       await handleImageReplace(request({ imageData: undefined, assets: [{ id: 'asset' }] }), ctx);
       expect(calls).to.have.length(0);
-      expect(editor.view.state.doc.nodeAt(imagePos).attrs)
-        .to.include({ src: 'https://assets.example.com/image.png', alt: 'Original alt' });
-      expect(posted.at(-1).payload).to.include({ newSrc: 'https://assets.example.com/image.png', requestId: 'upload-1' });
+      expect(posted.at(-1).payload).to.include({ requestId: 'upload-1' });
+      expect(posted.at(-1).payload.error).to.be.a('string');
+      expect(editor.view.state.doc.nodeAt(imagePos).attrs.src).to.equal('/old.png');
     } finally { restore(); }
   });
 
-  it('reports unconfigured, rejected and non-image Assets without replacing the target', async () => {
-    const { ctx, posted } = ctxFor('assetorg', 'assetsite');
-    const payload = request({ imageData: undefined, assets: [{ id: 'asset' }] });
-    await handleImageReplace(payload, ctx);
-    expect(posted.at(-1).payload.error).to.contain('not configured');
-    setRepositoryConfig({ tierType: 'author' });
-    setSelection({ error: 'Asset not approved' });
-    await handleImageReplace(payload, ctx);
-    expect(posted.at(-1).payload.error).to.equal('Asset not approved');
-    setSelection({ href: 'https://assets.example.com/file.pdf', isImage: false });
-    await handleImageReplace(payload, ctx);
-    expect(posted.at(-1).payload.error).to.contain('cannot replace an image');
-    expect(editor.view.state.doc.nodeAt(imagePos).attrs.src).to.equal('/old.png');
-  });
+  describe('Assets dropped on a preview image', () => {
+    const dropAssets = ({ isLive } = {}) => performDrop({
+      payload: fromAssets([{ id: 'asset' }]),
+      target: { editor: 'wysiwyg', type: 'image', ...request() },
+      view: editor.view,
+      context: { org: 'assetorg', site: 'assetsite' },
+      isLive,
+    });
 
-  it('does not replace a removed image or mutate after permissions change while resolving Assets', async () => {
-    setRepositoryConfig({ tierType: 'author' });
-    setSelection({ href: 'https://assets.example.com/image.png', isImage: true });
-    const { ctx, posted } = ctxFor('assetorg', 'assetsite');
-    const payload = request({ imageData: undefined, assets: [{ id: 'asset' }] });
-    const denied = handleImageReplace(payload, ctx);
-    ctx.canWrite = false;
-    await denied;
-    expect(posted.at(-1).payload.error).to.contain('editor changed');
-    expect(editor.view.state.doc.nodeAt(imagePos).attrs.src).to.equal('/old.png');
-    ctx.canWrite = true;
-    const removed = handleImageReplace(payload, ctx);
-    editor.view.dispatch(editor.view.state.tr.delete(imagePos, imagePos + 1));
-    await removed;
-    expect(posted.at(-1).payload.error).to.contain('no longer available');
+    it('resolves an Assets image using the site config without uploading a thumbnail', async () => {
+      setRepositoryConfig({ tierType: 'author' });
+      setSelection({ href: 'https://assets.example.com/image.png', isImage: true });
+      const { calls, restore } = stubStore();
+      try {
+        const result = await dropAssets();
+        expect(calls).to.have.length(0);
+        expect(editor.view.state.doc.nodeAt(imagePos).attrs)
+          .to.include({ src: 'https://assets.example.com/image.png', alt: 'Original alt' });
+        expect(result).to.include({ ok: true, src: 'https://assets.example.com/image.png' });
+      } finally { restore(); }
+    });
+
+    it('reports unconfigured, rejected and non-image Assets without replacing the target', async () => {
+      expect((await dropAssets()).message).to.contain('not configured');
+      setRepositoryConfig({ tierType: 'author' });
+      setSelection({ error: 'Asset not approved' });
+      expect((await dropAssets()).message).to.equal('Asset not approved');
+      setSelection({ href: 'https://assets.example.com/file.pdf', isImage: false });
+      expect((await dropAssets()).message).to.contain('single image');
+      expect(editor.view.state.doc.nodeAt(imagePos).attrs.src).to.equal('/old.png');
+    });
+
+    it('does not replace a removed image or mutate after permissions change while resolving Assets', async () => {
+      setRepositoryConfig({ tierType: 'author' });
+      setSelection({ href: 'https://assets.example.com/image.png', isImage: true });
+      let canWrite = true;
+      const denied = dropAssets({ isLive: () => canWrite });
+      canWrite = false;
+      expect((await denied).message).to.contain('changed');
+      expect(editor.view.state.doc.nodeAt(imagePos).attrs.src).to.equal('/old.png');
+      const removed = dropAssets();
+      editor.view.dispatch(editor.view.state.tr.delete(imagePos, imagePos + 1));
+      expect((await removed).message).to.contain('no longer available');
+    });
   });
 
   it('uploads to the source bus for a migrated site', async () => {

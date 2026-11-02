@@ -24,6 +24,17 @@ const ERROR_MESSAGES = {
 
 const fail = (error, message) => ({ ok: false, error, message: message ?? ERROR_MESSAGES[error] });
 
+const uploadFailure = ({ error, status }) => fail(error, status ? `Upload failed with status ${status}` : undefined);
+
+function replaceImage({ view, node, src }) {
+  try {
+    updateImageInDocument({ view, target: node, newSrc: src });
+    return null;
+  } catch (e) {
+    return fail('stale-target', e.message);
+  }
+}
+
 function findNodePos(doc, predicate) {
   let found = null;
   doc.descendants((node, pos) => {
@@ -65,15 +76,15 @@ async function insertUploads({ view, placement, payload, context, isLive }) {
     return result;
   }));
   const failed = results.find((result) => result.error);
-  return failed ? fail(failed.error) : { ok: true };
+  return failed ? uploadFailure(failed) : { ok: true };
 }
 
 async function replaceWithUpload({ view, placement, payload, context, isLive }) {
   const result = await uploadFile({ file: payload.files[0], context });
-  if (result.error) return fail(result.error);
+  if (result.error) return uploadFailure(result);
   if (!isLive()) return fail('stale-target');
-  updateImageInDocument({ view, target: placement.node, newSrc: result.src });
-  return { ok: true, src: result.src };
+  return replaceImage({ view, node: placement.node, src: result.src })
+    ?? { ok: true, src: result.src };
 }
 
 async function dropAssets({ view, placement, payload, context, isLive }) {
@@ -86,8 +97,8 @@ async function dropAssets({ view, placement, payload, context, isLive }) {
     if (resolved.nodes.length !== 1 || node.type.name !== 'image') {
       return fail('single-image-required', resolved.message);
     }
-    updateImageInDocument({ view, target: placement.node, newSrc: node.attrs.src });
-    return { ok: true, src: node.attrs.src, message: resolved.message };
+    return replaceImage({ view, node: placement.node, src: node.attrs.src })
+      ?? { ok: true, src: node.attrs.src, message: resolved.message };
   }
   const pos = currentInsertPosition(view, placement);
   if (pos === null) return fail('stale-target');
@@ -121,7 +132,7 @@ export async function performDrop({ payload, target, view, context, isLive = () 
   const live = () => !!view && !view.isDestroyed && view.editable && isLive();
   if (!payload || !live()) return fail('unavailable');
   const placement = resolvePlacement({ view, target, payload });
-  if (placement.error) return fail(placement.error);
+  if (placement.error) return fail(placement.error, placement.message);
   const opts = { view, placement, payload, context, isLive: live };
   try {
     if (payload.kind === PAYLOAD_KIND.HTML) return insertHtml(opts);
