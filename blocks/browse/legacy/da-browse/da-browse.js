@@ -144,7 +144,7 @@ export default class DaBrowse extends LitElement {
         this._canEditOrgConfig = false;
         const { org } = this.details;
         canEditOrgConfig(org).then((canEdit) => {
-          // Ignore results for an org the user has already left.
+          // Ignore stale org results.
           if (this.details?.org === org) this._canEditOrgConfig = canEdit;
         });
       }

@@ -11,7 +11,7 @@ describe('da-browse-header', () => {
   let savedFetch;
 
   beforeEach(async () => {
-    // The settings menu checks org config access; keep it off the network.
+    // Keep the org config access check offline.
     savedFetch = window.fetch;
     window.fetch = async () => new Response('{}', { status: 200, headers: { 'X-da-actions': '/x=read' } });
     container = document.createElement('div');

@@ -1,7 +1,4 @@
-/**
- * Items for the browse settings menu; the id is the target URL.
- * Site permissions need write on the org CONFIG, since that page edits the org config.
- */
+// Item ids are the target URLs.
 export function getSettingsMenuItems({ org, site, canEditOrgConfig: canEdit = false }) {
   const path = site ? `/${org}/${site}` : `/${org}`;
   const items = [{ id: `/config#${path}/`, label: 'Configuration' }];

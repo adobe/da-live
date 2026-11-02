@@ -362,7 +362,7 @@ export async function checkLockdownImages(owner) {
 
 const configPermissions = new WeakMap();
 
-/** X-da-actions (e.g. `['read', 'write']`) of the request behind a `fetchDaConfigs` result. */
+/** X-da-actions of a `fetchDaConfigs` result. */
 export function getConfigPermissions(config) {
   return config && typeof config === 'object' ? configPermissions.get(config) : undefined;
 }
@@ -387,8 +387,7 @@ export const fetchDaConfigs = (() => {
     const result = resp.ok
       ? await resp.json()
       : { error: `Error loading ${pathname}`, status: resp.status };
-    // Keep the X-da-actions hint (CONFIG access) beside the config, not on it:
-    // org configs carry their own `permissions` sheet.
+    // Not on the config itself: org configs have a `permissions` sheet.
     if (result && typeof result === 'object') configPermissions.set(result, resp.permissions);
     return result;
   };
@@ -426,10 +425,9 @@ export const fetchDaConfigs = (() => {
   };
 })();
 
-/** Whether the user can write the org config (org `CONFIG` actions from the cached org config). */
 export async function canEditOrgConfig(org) {
   const config = await fetchDaConfigs({ org })[0].catch(() => null);
-  // 404 = org has no config yet; da-admin still reports the CONFIG actions for it.
+  // 404: org has no config yet.
   if (config?.error && config.status !== 404) return false;
   return !!getConfigPermissions(config)?.includes('write');
 }
