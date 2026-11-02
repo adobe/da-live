@@ -19,7 +19,7 @@ After publishing the `lp` branch, open:
 https://lp--da-live--adobe.aem.live/?landing=true&theme=light&nx=lp&quick-edit=devlive&rum=on#/aemsites/devlive
 ```
 
-The latest card implementation requires the paired Nexter `lp` branch.
+Cards reuse the standard Nexter card without an additional compact variant.
 It has not been transferred to Martin's `devlive` branches.
 
 Add `&theme=light` for a light-mode preview without changing the saved theme.
@@ -34,9 +34,8 @@ adobe/da-live#1416 is modified or merged by this work.
 
 ## Component ownership
 
-- Nexter owns the presentation-only `nx-card`, based on Browse's card layout.
-  Landing uses one compact thumbnail size. Ordinary Browse keeps its existing
-  renderer until the shared component is available on its supported shell branches.
+- Nexter owns the presentation-only `nx-card`. Browse and Landing use
+  `da-file-item` with the same standard card presentation.
 - Nexter owns the standalone `nx-siteselector` presentation in fragment-driven
   site navigation, separately from centered Browse search. da-live's
   `blocks/shared/site-picker.js` adapter owns browser history, routing, access
@@ -46,20 +45,19 @@ adobe/da-live#1416 is modified or merged by this work.
   No account-wide discovery or invented display metadata is added.
 - Files table markup lives in the detached da-live `file-table.js` render helper,
   not a new general table framework.
-- `da-file-actions` supplies the card menu and list information/favorite controls.
-  It reuses Browse's source/version and preview/publish status helpers.
-  The card popover opens beside its trigger, flips near viewport edges and
-  follows scrolling. Its normal details/favorite state is 240px by 193px.
+- `da-file-item` supplies card menus and favorite controls. `da-file-actions`
+  keeps the existing list information/favorite controls. Both reuse Browse's
+  source/version and preview/publish status helpers.
   Closing a keyboard-focused menu returns focus to its trigger without stealing
   focus from an outside click.
 
 ## Figma fidelity
 
-The 1920px Ready frame (`1852:83848`) has a 1068px Files panel starting at y=395.
-Ten compact cards are 142px tall with 4px frame padding, 80px thumbnails,
-12px title/metadata insets and a 12px radius; the panel is 406px tall.
+The 1920px Ready frame (`1852:83848`) shows 142px compact cards. Landing instead
+reuses the standard Browse card with its default 300px portrait height, title,
+file type and date. The responsive grid remains page-owned. No custom card
+geometry or S/M sizing override is added.
 The quiet view switcher has two 32px buttons.
-These are the default-size design dimensions, not a claim of live S/M integration.
 
 The standalone selector uses the shared Nexter picker defaults, leading selected
 checkmarks, two-line entries and matching S/M typography without app-level menu styling.
@@ -67,11 +65,7 @@ Its secondary line is the real org/site identifier, not a fabricated domain.
 List image files reuse lazy previews in 28px thumbnail slots; information and
 favorite controls use 20px icons in separate 48px visual slots.
 Sheet items use the plain folded-corner `S2_Icon_File_20_N`, not FileText.
-The latest card metadata uses the design's bullet separator.
-Filled favorite controls use the linked design's #808080 in light mode,
-matching the card badge rather than inheriting the darker button text color.
-There is no exact equivalent in the current generated S2 gray palette; dark
-mode uses the existing gray-700 token.
+Card metadata, icons and favorite controls follow the shared Browse defaults.
 
 Friendly site names/domains, approved Spectrum VF fonts, published-page
 screenshots and live task data remain data/asset dependencies. Existing source
@@ -146,8 +140,8 @@ intentional differences rather than substitutes for those missing inputs.
   Site labels retain real identifiers; no Nike name or custom domain is fabricated.
 - Files are the selected site's **root directory**, not a recursive site index.
   All root-listing pages are loaded before sorting by modification date.
-  Browse uses the shared `da-file-item` list/card renderer; Landing keeps its
-  compact card layout. Both use shared item navigation that preserves the
+  Browse and Landing use the shared `da-file-item` card renderer.
+  Landing supplies its existing navigation helper to preserve the
   Landing Home destination and preview flags for same-origin editor links.
 - The mock's Recent tab shows recently modified files, not personal
   recently opened history. The root scope is not added as a visible subtitle.
@@ -170,14 +164,16 @@ intentional differences rather than substitutes for those missing inputs.
   explicit retry, absent metadata is unavailable, and closed or stale requests
   cannot update another file's details. No author names or profile photos are invented.
   Folders and links do not request unsupported metadata.
-- Images reuse browse-v2's lazy previews. Pages opt into read-only, source-backed
+- Cards reuse shared lazy image previews; list thumbnails keep browse-v2 previews.
+  Pages opt into read-only, source-backed
   document thumbnails (heading, representative image and excerpt), not screenshots
   of the published site. Source HTML is never inserted into the live DOM or executed.
   These additions are opt-in and do not change ordinary Browse previews.
   Preview failures are identified rather than presented as successful thumbnails.
   The 80px by 107px paper frame wraps unbroken headings/URLs and clips its content.
 - The Figma Ready Recent frame (`1852:83848`) supplies the gradient artwork and
-  semantic page, fragment and image assets. Sheets now use the shared generic
+  semantic page, fragment and image assets for the existing list. Cards use
+  shared Browse icons. Sheets use the shared generic
   Document icon, as requested in the updated design; their editor routes and file
   formats are unchanged. Panels use its 1068px
   desktop width, 16px radius, translucent fill and three-layer shadow. The composer
