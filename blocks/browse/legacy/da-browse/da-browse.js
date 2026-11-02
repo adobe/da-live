@@ -136,7 +136,7 @@ export default class DaBrowse extends LitElement {
     const { org, site } = this.details;
     const items = getSettingsMenuItems({ org, site, canEditOrgConfig: this._canEditOrgConfig });
     return html`
-      <nx-menu placement="auto" .items=${items}
+      <nx-menu size="m" placement="auto" .items=${items}
         @select=${({ detail }) => {
         const href = getSettingsHref(items, detail.id);
         if (href) this.navigate(href);

@@ -49,6 +49,7 @@ describe('da-browse-header', () => {
     header.details = { org: 'org', path: '' };
     await header.updateComplete;
     expect(settingsLabels()).to.deep.equal(['Configuration', 'Permissions']);
+    expect(settingsMenu().getAttribute('size')).to.equal('m');
     const trigger = settingsMenu().querySelector('button[slot="trigger"]');
     expect(trigger.textContent.trim()).to.equal('Settings');
     expect(trigger.title).to.equal('Settings');
