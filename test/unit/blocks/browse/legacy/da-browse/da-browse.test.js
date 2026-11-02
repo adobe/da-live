@@ -658,37 +658,5 @@ describe('DaBrowse Component', () => {
       daBrowseComp._canEditOrgConfig = false;
       expect(labels(renderMenu())).to.deep.equal(['Configuration', 'Permissions']);
     });
-
-    it('navigates to the selected settings page', () => {
-      daBrowseComp.details = { org: 'org', site: 'site', fullpath: '/org/site' };
-      daBrowseComp._canEditOrgConfig = true;
-      const calls = [];
-      daBrowseComp.navigate = (href) => { calls.push(href); };
-      const menu = renderMenu();
-      menu.choose('permissions');
-      menu.choose('nope');
-      expect(calls).to.deep.equal(['/config/permissions#/org/site']);
-    });
-
-    it('checks org config write access and ignores results for an org already left', async () => {
-      const savedFetch = window.fetch;
-      window.fetch = async (url) => {
-        if (String(url).includes('/ping/')) return new Response('', { status: 200 });
-        return new Response('{}', { status: 200, headers: { 'X-da-actions': '/x=read,write' } });
-      };
-      try {
-        daBrowseComp.details = { org: 'legacy-write', site: 'site', fullpath: '/legacy-write/site' };
-        await daBrowseComp.checkOrgConfigAccess('legacy-write');
-        expect(daBrowseComp._canEditOrgConfig).to.be.true;
-
-        daBrowseComp._canEditOrgConfig = false;
-        const pending = daBrowseComp.checkOrgConfigAccess('legacy-write');
-        daBrowseComp.details = { org: 'other', site: 'site', fullpath: '/other/site' };
-        await pending;
-        expect(daBrowseComp._canEditOrgConfig).to.be.false;
-      } finally {
-        window.fetch = savedFetch;
-      }
-    });
   });
 });

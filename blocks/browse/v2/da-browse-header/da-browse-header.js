@@ -51,10 +51,6 @@ export default class DaBrowseHeader extends LitElement {
     });
   }
 
-  navigate(href) {
-    window.location.href = href;
-  }
-
   requestTypesFilter({ currentTarget }) {
     this.dispatchEvent(new CustomEvent('typesfilterrequest', {
       detail: { anchor: currentTarget },
@@ -156,7 +152,7 @@ export default class DaBrowseHeader extends LitElement {
       <nx-menu class="browse-settings-menu" size="m" placement="auto" .items=${items}
         @select=${({ detail }) => {
         const href = getSettingsHref(items, detail.id);
-        if (href) this.navigate(href);
+        if (href) window.location.href = href;
       }}>
         <button slot="trigger" type="button" class="browse-settings-trigger browse-toolbar-control nx-action-btn-quiet" title="Settings">
           <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-settings-20-n.svg#icon"></use></svg>

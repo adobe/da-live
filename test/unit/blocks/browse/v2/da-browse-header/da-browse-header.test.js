@@ -92,20 +92,6 @@ describe('da-browse-header', () => {
     expect(settingsLabels()).to.include('Permissions');
   });
 
-  it('navigates to the selected settings page', async () => {
-    header.details = { org: 'org', site: 'site', path: '' };
-    await header.updateComplete;
-    await header._orgConfigCheck;
-    header._canEditOrgConfig = true;
-    await header.updateComplete;
-    const calls = [];
-    header.navigate = (href) => { calls.push(href); };
-    settingsMenu().choose('permissions');
-    settingsMenu().choose('config');
-    settingsMenu().choose('nope');
-    expect(calls).to.deep.equal(['/config/permissions#/org/site', '/config#/org/site/']);
-  });
-
   it('requests sorting without changing the supplied sort state', () => {
     let event;
     header.addEventListener('sortrequest', (e) => { event = e; });

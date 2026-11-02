@@ -122,16 +122,6 @@ export default class DaBrowse extends LitElement {
     if (this.newCmp) this.newCmp.permissions = e.detail;
   }
 
-  async checkOrgConfigAccess(org) {
-    const canEdit = await canEditOrgConfig(org);
-    // Ignore results for an org the user has already left.
-    if (this.details?.org === org) this._canEditOrgConfig = canEdit;
-  }
-
-  navigate(href) {
-    window.location.href = href;
-  }
-
   renderSettingsMenu() {
     const { org, site } = this.details;
     const items = getSettingsMenuItems({ org, site, canEditOrgConfig: this._canEditOrgConfig });
@@ -139,7 +129,7 @@ export default class DaBrowse extends LitElement {
       <nx-menu size="m" placement="auto" .items=${items}
         @select=${({ detail }) => {
         const href = getSettingsHref(items, detail.id);
-        if (href) this.navigate(href);
+        if (href) window.location.href = href;
       }}>
         <button slot="trigger" type="button" class="da-breadcrumb-config" aria-label="Settings" title="Settings">
           <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-settings-20-n.svg#icon"></use></svg>
@@ -155,7 +145,11 @@ export default class DaBrowse extends LitElement {
 
       if (orgChanged) {
         this._canEditOrgConfig = false;
-        this.checkOrgConfigAccess(this.details.org);
+        const { org } = this.details;
+        canEditOrgConfig(org).then((canEdit) => {
+          // Ignore results for an org the user has already left.
+          if (this.details?.org === org) this._canEditOrgConfig = canEdit;
+        });
       }
 
       // EW flag lives at site level — re-check whenever org or site changes,
