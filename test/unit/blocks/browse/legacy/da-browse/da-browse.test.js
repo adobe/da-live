@@ -653,10 +653,10 @@ describe('DaBrowse Component', () => {
       expect(labels(renderMenu())).to.deep.equal(['Configuration']);
     });
 
-    it('always offers org permissions at the org root', () => {
+    it('hides org permissions when the user cannot edit the org config', () => {
       daBrowseComp.details = { org: 'org', fullpath: '/org' };
       daBrowseComp._canEditOrgConfig = false;
-      expect(labels(renderMenu())).to.deep.equal(['Configuration', 'Permissions']);
+      expect(labels(renderMenu())).to.deep.equal(['Configuration']);
     });
   });
 });

@@ -48,7 +48,7 @@ describe('da-browse-header', () => {
   it('shows the settings menu only at org and site roots, not inside folders', async () => {
     header.details = { org: 'org', path: '' };
     await header.updateComplete;
-    expect(settingsLabels()).to.deep.equal(['Configuration', 'Permissions']);
+    expect(settingsLabels()).to.deep.equal(['Configuration']);
     const trigger = settingsMenu().querySelector('button[slot="trigger"]');
     expect(trigger.textContent.trim()).to.equal('Settings');
     expect(trigger.title).to.equal('Settings');
@@ -63,7 +63,7 @@ describe('da-browse-header', () => {
     expect(settingsMenu()).not.to.be.null;
   });
 
-  it('offers site permissions only when the user can edit the org config', async () => {
+  it('offers permissions only when the user can edit the org config', async () => {
     header.details = { org: 'org', site: 'site', path: '' };
     await header.updateComplete;
     await header._orgConfigCheck;

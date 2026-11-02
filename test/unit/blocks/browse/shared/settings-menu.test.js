@@ -7,10 +7,16 @@ const { getSettingsMenuItems } = await import('../../../../../blocks/browse/shar
 
 describe('settings menu', () => {
   describe('getSettingsMenuItems', () => {
-    it('returns org configuration and permissions at the org root', () => {
-      expect(getSettingsMenuItems({ org: 'org' })).to.deep.equal([
+    it('returns org configuration and permissions when the user can edit the org config', () => {
+      expect(getSettingsMenuItems({ org: 'org', canEditOrgConfig: true })).to.deep.equal([
         { id: '/config#/org/', label: 'Configuration' },
         { id: '/config/permissions#/org', label: 'Permissions' },
+      ]);
+    });
+
+    it('hides org permissions when the user cannot edit the org config', () => {
+      expect(getSettingsMenuItems({ org: 'org' })).to.deep.equal([
+        { id: '/config#/org/', label: 'Configuration' },
       ]);
     });
 
