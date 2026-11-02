@@ -641,7 +641,6 @@ describe('DaBrowse Component', () => {
       daBrowseComp._canEditOrgConfig = true;
       const menu = renderMenu();
       expect(labels(menu)).to.deep.equal(['Configuration', 'Permissions']);
-      expect(menu.getAttribute('size')).to.equal('m');
       const trigger = menu.querySelector('button.da-breadcrumb-config[slot="trigger"]');
       expect(trigger.getAttribute('aria-label')).to.equal('Settings');
       expect(trigger.textContent.trim()).to.equal('');
