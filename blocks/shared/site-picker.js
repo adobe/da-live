@@ -2,7 +2,7 @@ import { getNx2Api } from '../../scripts/utils.js';
 import { getSiteOptions } from './site-picker-utils.js';
 import { checkSiteChoices, getCreateSiteHref, setRecentSite } from './site-access.js';
 
-export function connectSiteSelector({ selector, signal }) {
+export function connectSiteSelector({ selector, signal, onSelect }) {
   if (signal.aborted || !selector.isConnected) return undefined;
   selector.size ??= 's';
   let request;
@@ -11,6 +11,8 @@ export function connectSiteSelector({ selector, signal }) {
   let dialog;
   let opening = false;
   let inaccessibleSites;
+  let hash;
+  let selection;
 
   const closeDialog = () => {
     dialog?.remove();
@@ -19,7 +21,11 @@ export function connectSiteSelector({ selector, signal }) {
 
   const refresh = async () => {
     if (signal.aborted) return;
-    const current = window.location.hash.replace(/^#\//, '').split('/').slice(0, 2).join('/');
+    if (hash !== window.location.hash) {
+      hash = window.location.hash;
+      selection = undefined;
+    }
+    const current = selection ?? hash.replace(/^#\//, '').split('/').slice(0, 2).join('/');
     const value = getSiteOptions({ current })[0]?.value ?? '';
     let recentSites = [];
     let error;
@@ -73,6 +79,13 @@ export function connectSiteSelector({ selector, signal }) {
     }
   };
 
+  const selectSite = (value) => {
+    hash = window.location.hash;
+    selection = value;
+    onSelect?.({ value });
+    refresh();
+  };
+
   const showAddSite = async () => {
     if (opening || dialog) return;
     opening = true;
@@ -89,8 +102,7 @@ export function connectSiteSelector({ selector, signal }) {
       });
       dialog.addEventListener('site-added', ({ detail: { value } }) => {
         closeDialog();
-        window.location.hash = `/${value}`;
-        refresh();
+        selectSite(value);
         selector.focus();
       });
       document.body.append(dialog);
@@ -106,8 +118,7 @@ export function connectSiteSelector({ selector, signal }) {
       selector.error = 'This site is no longer available. Reload the page and try again.';
       return;
     }
-    window.location.hash = `/${value}`;
-    refresh();
+    selectSite(value);
   }, { signal });
   selector.addEventListener('site-retry', () => {
     choicesKey = undefined;

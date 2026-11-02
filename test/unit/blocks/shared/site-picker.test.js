@@ -91,10 +91,14 @@ describe('shared site selector adapter', () => {
     expect(selector.sites.map(({ value }) => value)).to.include('exp-workspace/frescopaco');
     expect(localStorage.getItem('da-sites')).to.equal(remembered);
     const value = 'exp-workspace/frescopaco';
+    const unscopedHref = window.location.href;
     selector.dispatchEvent(new CustomEvent('site-select', { detail: { value } }));
     await adapter.refresh();
+    expect(window.location.href).to.equal(unscopedHref);
     expect(selector.value).to.equal(value);
     expect(selector.sites.find((site) => site.value === value).label).to.equal('Frescopaco, exp-workspace/frescopaco');
+    window.history.replaceState(null, '', '#/aemsites/devlive');
+    await adapter.refresh();
     window.history.replaceState(null, '', window.location.pathname);
     await adapter.refresh();
     expect(selector.value).to.equal('');
@@ -135,7 +139,7 @@ describe('shared site selector adapter', () => {
     expect(JSON.parse(localStorage.getItem('da-sites'))).to.deep.equal([value, 'aemsites/devlive']);
     expect(selector.error).to.equal(undefined);
     selector.dispatchEvent(new CustomEvent('site-select', { detail: { value: 'aemsites/devlive' } }));
-    expect(window.location.hash).to.equal('#/exp-workspace/frescopaco');
+    expect(window.location.hash).to.equal('#/aemsites/devlive/folder');
     expect(selector.error).to.include('no longer available');
   });
 
@@ -262,13 +266,64 @@ describe('shared site selector adapter', () => {
     expect(selector.heading).to.equal('Choose a site');
   });
 
-  it('preserves query parameters when switching sites', async () => {
+  it('keeps selection and history without navigating or dispatching a hash change', async () => {
     window.history.replaceState(null, '', '?nx=siteselector-main&theme=dark#/aemsites/devlive');
+    await adapter.refresh();
+    const currentHref = window.location.href;
+    const hashchange = sinon.spy();
+    window.addEventListener('hashchange', hashchange, { signal: connection.signal });
+    const value = 'exp-workspace/frescopaco';
+    selector.dispatchEvent(new CustomEvent('site-select', { detail: { value } }));
+    await adapter.refresh();
+    selector.dispatchEvent(new CustomEvent('site-retry'));
+    window.dispatchEvent(new StorageEvent('storage', { key: 'da-sites' }));
+    await tick();
+    expect(window.location.href).to.equal(currentHref);
+    expect(hashchange.called).to.be.false;
+    expect(selector.value).to.equal(value);
+    expect(JSON.parse(localStorage.getItem('da-sites'))[0]).to.equal(value);
+  });
+
+  it('selects an added site without navigating', async () => {
+    const currentHref = window.location.href;
+    document.dispatchEvent(new CustomEvent('site-add'));
+    await customElements.whenDefined('da-add-site');
+    await tick();
+    const dialog = document.querySelector('da-add-site');
+    const value = 'other/site';
+    dialog.dispatchEvent(new CustomEvent('site-added', { detail: { value } }));
+    await tick();
+    expect(dialog.isConnected).to.be.false;
+    expect(window.location.href).to.equal(currentHref);
+    expect(selector.value).to.equal(value);
+    expect(JSON.parse(localStorage.getItem('da-sites'))[0]).to.equal(value);
+  });
+
+  it('lets an explicit host callback route both selected and added sites', async () => {
+    connection.abort();
+    connection = new AbortController();
+    const onSelect = sinon.spy(({ value }) => { window.location.hash = `/${value}`; });
+    adapter = connectSiteSelector({ selector, signal: connection.signal, onSelect });
+    await adapter.ready;
     const { search } = window.location;
     selector.dispatchEvent(new CustomEvent('site-select', { detail: { value: 'exp-workspace/frescopaco' } }));
-    await adapter.refresh();
-    expect(window.location.search).to.equal(search);
+    await tick();
     expect(window.location.hash).to.equal('#/exp-workspace/frescopaco');
+    expect(selector.value).to.equal('exp-workspace/frescopaco');
+    expect(onSelect.calledOnceWithExactly({ value: 'exp-workspace/frescopaco' })).to.be.true;
+    document.dispatchEvent(new CustomEvent('site-add'));
+    await customElements.whenDefined('da-add-site');
+    await tick();
+    document.querySelector('da-add-site').dispatchEvent(new CustomEvent('site-added', { detail: { value: 'other/site' } }));
+    await tick();
+    expect(window.location.hash).to.equal('#/other/site');
+    expect(selector.value).to.equal('other/site');
+    expect(window.location.search).to.equal(search);
+    expect(onSelect.calledTwice).to.be.true;
+    expect(onSelect.secondCall.args).to.deep.equal([{ value: 'other/site' }]);
+    selector.dispatchEvent(new CustomEvent('site-select', { detail: { value: 'unknown/site' } }));
+    expect(onSelect.calledTwice).to.be.true;
+    expect(window.location.hash).to.equal('#/other/site');
   });
 
   it('aborts pending checks and removes all listeners and dialogs on disconnect', async () => {
