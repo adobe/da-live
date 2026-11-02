@@ -53,12 +53,17 @@ export function rowsToSave(panel, json, rows, sheet) {
   return [...others, ...rows];
 }
 
-// What a cell shows: the column's `display(row)`, else an option's label, else the raw value.
+// What a cell shows: the column's `display(row)`, else an option's label, else the value, with
+// URLs (comma-separated in some sheets) shown without their scheme.
 export function cellText(column, row) {
   if (column.display) return column.display(row);
   const value = row[column.key] ?? '';
-  return column.options ? optionLabel(column, value) : value;
+  if (column.options) return optionLabel(column, value);
+  return value.replace(/(^|,\s*)https?:\/\//gi, '$1');
 }
+
+// Long URLs wrap after each slash rather than mid-word.
+const wrappable = (text) => String(text).split(/(?<=\/)/).map((part) => html`${part}<wbr>`);
 
 // Columns shown in the table; `list: false` keeps a column to the add/edit dialog.
 export const listColumns = (panel) => panel.columns.filter((column) => column.list !== false);
@@ -77,15 +82,12 @@ function renderRow(columns, item, handlers) {
     <tr class=${inherited ? 'is-inherited' : ''}>
       <th scope="row">
         <span class="config-table-name">
-          <span class="config-table-text" title=${cellText(first, row)}>${cellText(first, row)}</span>
+          <span class="config-table-name-text">${cellText(first, row)}</span>
           ${inherited ? renderPill(INHERITANCE.inheritedPill, 'neutral') : nothing}
           ${overrides ? renderPill(INHERITANCE.overridesPill, 'override') : nothing}
         </span>
       </th>
-      ${rest.map((column) => {
-    const text = cellText(column, row);
-    return html`<td><span class="config-table-text" title=${text}>${text}</span></td>`;
-  })}
+      ${rest.map((column) => html`<td><span class="config-table-text">${wrappable(cellText(column, row))}</span></td>`)}
       ${handlers.disabled ? nothing : html`
         <td class="config-table-actions"><div class="config-table-buttons">${renderActions(item, handlers)}</div></td>`}
     </tr>`;
@@ -105,7 +107,7 @@ export function renderRows(panel, { items }, handlers) {
           <thead>
             <tr>
               ${columns.map((column) => html`<th scope="col">${column.label}</th>`)}
-              ${handlers.disabled ? nothing : html`<th scope="col"><span class="config-visually-hidden">Actions</span></th>`}
+              ${handlers.disabled ? nothing : html`<th scope="col"><span class="config-visually-hidden">Row actions</span></th>`}
             </tr>
           </thead>
           <tbody>${items.map((item) => renderRow(columns, item, handlers))}</tbody>

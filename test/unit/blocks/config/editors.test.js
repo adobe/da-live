@@ -128,7 +128,7 @@ describe('rows', () => {
       expect(listColumns(panel).map((c) => c.key)).to.deep.equal(['title', 'path', 'experience']);
       expect([cellText(panel.columns[2], T), cellText(panel.columns[2], O)]).to.deep.equal(['New window', 'unknown']);
       const { headers, rows } = table([{ row: T, index: 0 }]);
-      expect(headers).to.deep.equal(['Title', 'Path', 'Opens in', 'Actions']);
+      expect(headers).to.deep.equal(['Title', 'Path', 'Opens in', 'Row actions']);
       expect(rows).to.deep.equal([['Tool', '/tools/t.html', 'New window']]);
     });
 
@@ -143,7 +143,18 @@ describe('rows', () => {
       expect(pills).to.deep.equal([['Inherited from org'], ['Overrides org']]);
       expect(buttons).to.deep.equal(['Override', 'Edit', 'Remove']);
       expect(el.querySelector('tbody tr').classList.contains('is-inherited')).to.equal(true);
-      expect(el.querySelector('tbody .config-table-text').title).to.equal('Org tool');
+    });
+
+    it('shows full URLs without their scheme, breakable after each slash', () => {
+      const path = { key: 'path', label: 'Path' };
+      expect(cellText(path, { path: 'https://content.da.live/o/s/docs/library/blocks/cards' }))
+        .to.equal('content.da.live/o/s/docs/library/blocks/cards');
+      expect(cellText(path, { path: 'https://a.com/x/y.html, http://b.com/q.html' })).to.equal('a.com/x/y.html, b.com/q.html');
+      expect(cellText(path, { path: '/tools/plugins/tags/tags.html' })).to.equal('/tools/plugins/tags/tags.html');
+      const url = 'https://da.live/nx/public/plugins/media-library/media-library.html';
+      const { rows, el } = table([{ row: { ...T, path: url }, index: 0 }]);
+      expect(rows[0][1]).to.equal('da.live/nx/public/plugins/media-library/media-library.html');
+      expect(el.querySelectorAll('tbody td:nth-of-type(1) wbr').length).to.equal(6);
     });
 
     it('puts the list actions above the table, with Add last', () => {

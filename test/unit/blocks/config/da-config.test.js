@@ -950,7 +950,7 @@ describe('da-config', () => {
         .map((tr) => [...tr.querySelectorAll('th, td:not(.config-table-actions)')].map((c) => c.textContent.trim()));
       expect(cells).to.deep.equal([['my-base', '', 'Base Site'], ['my-base', 'satellite-1', '']]);
       const headers = [...el.shadowRoot.querySelectorAll('.config-table thead th')].map((t) => t.textContent.trim());
-      expect(headers).to.deep.equal(['Base site', 'Satellite site', 'Title', 'Actions']);
+      expect(headers).to.deep.equal(['Base site', 'Satellite site', 'Title', 'Row actions']);
       q('.config-savebar .nx-form-btn-primary').click();
       await waitUntil(() => !el._busy, el);
       expect(puts[0].site).to.equal(null);
