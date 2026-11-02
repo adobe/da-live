@@ -19,7 +19,7 @@
 
 .da-item-list-item-inner {
   display: grid;
-  grid-template-columns: var(--da-list-select-width, 40px) minmax(0, 1fr) var(--da-list-type-width, 120px) var(--da-list-date-width, 180px) var(--da-list-action-width, 112px);
+  grid-template-columns: var(--da-list-columns, var(--da-list-select-width, 40px) minmax(0, 1fr) var(--da-list-type-width, 120px) var(--da-list-date-width, 180px) var(--da-list-action-width, 112px));
   align-items: center;
   min-height: var(--da-list-min-height);
 
@@ -33,8 +33,34 @@
   height: 100%;
 }
 
+.da-item-list-item-name-cell {
+  min-width: 0;
+}
+
+.da-item-list-item-folder,
+.da-item-list-item-modifier {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.da-item-list-item-folder a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.da-item-list-item-folder a:hover {
+  text-decoration: underline;
+}
+
+.da-item-list-item-folder a:focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: -2px;
+}
+
 .da-item-list-item-title,
 .da-item-list-item-rename {
+  grid-column: 2;
   display: grid;
   gap: var(--s2-spacing-100);
   align-items: center;
@@ -48,7 +74,6 @@
 }
 
 .da-item-list-item-rename {
-  grid-column: 2;
   grid-template-columns: auto minmax(0, 1fr) auto;
   margin-right: var(--s2-spacing-300);
 }
@@ -265,15 +290,15 @@
 }
 
 @container browse-list-item (width < 600px) {
-  .da-item-list-item-inner {
+  :host(:not([columns])) .da-item-list-item-inner {
     grid-template-columns: var(--da-list-select-width, 40px) minmax(0, 1fr) var(--da-list-date-width, 180px) var(--da-list-action-width, 112px);
   }
 
-  .da-item-list-item-type-label {
+  :host(:not([columns])) .da-item-list-item-type-label {
     display: none;
   }
 
-  .da-item-list-item-rename {
+  :host(:not([columns])) .da-item-list-item-rename {
     grid-column: 2 / 4;
   }
 }
@@ -287,17 +312,22 @@
 }
 
 @container browse-list-item (width < 500px) {
-  .da-item-list-item-inner {
+  :host(:not([columns])) .da-item-list-item-inner {
     grid-template-columns: var(--da-list-select-width, 24px) minmax(0, 1fr) var(--da-list-action-width, 112px);
   }
 
-  .da-item-list-item-date {
+  :host(:not([columns])) .da-item-list-item-date {
     display: none;
   }
 
-  .da-item-list-item-rename {
+  :host(:not([columns])) .da-item-list-item-rename {
     grid-column: 2;
   }
+}
+
+:host([size="m"]:not([view="card"])) .da-item-list-item-type > svg:first-child {
+  width: 20px;
+  height: 20px;
 }
 
 @media (prefers-reduced-motion: reduce) {
