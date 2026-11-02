@@ -4,6 +4,7 @@ import { checkSiteChoices, getCreateSiteHref, setRecentSite } from './site-acces
 
 export function connectSiteSelector({ selector, signal }) {
   if (signal.aborted || !selector.isConnected) return undefined;
+  selector.size ??= 's';
   let request;
   let choicesKey;
   let scope;
@@ -45,10 +46,10 @@ export function connectSiteSelector({ selector, signal }) {
     request?.abort();
     if (scope !== value) closeDialog();
     scope = value;
-    selector.sites = sites;
+    selector.sites = sites.filter(({ value: siteValue }) => !inaccessibleSites?.has(siteValue));
     selector.value = value;
     selector.error = error;
-    if (document.querySelector('.landing') || new URLSearchParams(window.location.search).has('landing')) {
+    if (new URLSearchParams(window.location.search).get('landing') === 'true') {
       selector.heading = 'Your recent sites';
     }
     if (!sites.length) return;
@@ -64,7 +65,10 @@ export function connectSiteSelector({ selector, signal }) {
       });
       if (checking.signal.aborted || signal.aborted) return;
       inaccessibleSites = result.inaccessibleSites;
-      selector.error = [error, result.error].filter(Boolean).join(' ') || undefined;
+      selector.sites = result.sites;
+      const currentError = inaccessibleSites.has(value)
+        ? `You do not have access to ${value}. Choose another site or try again.` : undefined;
+      selector.error = [error, currentError, result.error].filter(Boolean).join(' ') || undefined;
     } catch (cause) {
       if (!checking.signal.aborted && !signal.aborted) {
         selector.error = [error, `Could not check your sites: ${cause.message}`].filter(Boolean).join(' ');

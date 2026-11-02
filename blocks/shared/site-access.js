@@ -53,10 +53,14 @@ export async function checkSiteChoices({ sites, source, signal, inaccessibleSite
     if (result.value) inaccessible.delete(sites[index].value);
     else inaccessible.add(sites[index].value);
   });
-  const errors = results.filter((result) => result.status === 'rejected')
-    .map((result) => result.reason.message);
+  const errors = results.flatMap((result, index) => {
+    if (result.status !== 'rejected') return [];
+    const reason = typeof result.reason === 'string' && result.reason ? ` (${result.reason})` : '';
+    return [result.reason?.message
+      || `Could not verify access to ${sites[index].value}${reason}. Please try again.`];
+  });
   return {
-    sites,
+    sites: sites.filter(({ value }) => !inaccessible.has(value)),
     inaccessibleSites: inaccessible,
     error: errors.length ? errors.join(' ') : undefined,
   };
