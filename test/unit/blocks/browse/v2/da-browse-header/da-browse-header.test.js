@@ -1,3 +1,4 @@
+/* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../../scripts/utils.js';
 
@@ -7,8 +8,12 @@ await import('../../../../../../blocks/browse/v2/da-browse-header/da-browse-head
 describe('da-browse-header', () => {
   let header;
   let container;
+  let savedFetch;
 
   beforeEach(async () => {
+    // The settings menu checks org config access; keep it off the network.
+    savedFetch = window.fetch;
+    window.fetch = async () => new Response('{}', { status: 200, headers: { 'X-da-actions': '/x=read' } });
     container = document.createElement('div');
     header = document.createElement('da-browse-header');
     // da-browse always supplies these.
@@ -23,39 +28,82 @@ describe('da-browse-header', () => {
     await header.updateComplete;
   });
 
-  afterEach(() => container.remove());
+  afterEach(() => {
+    container.remove();
+    window.fetch = savedFetch;
+  });
 
   it('renders independently with default sort and no config or chat action', () => {
     const sort = header.shadowRoot.querySelector('.browse-sort-control');
     expect(sort.textContent.trim()).to.equal('Sort');
     expect(sort.title).to.equal('Sort: Default');
     expect(header.shadowRoot.querySelector('[aria-pressed="true"]')).to.be.null;
-    expect(header.shadowRoot.querySelector('.browse-settings-link')).to.be.null;
+    expect(header.shadowRoot.querySelector('.browse-settings-menu')).to.be.null;
     expect(header.shadowRoot.querySelector('.chat-btn')).to.be.null;
   });
 
-  it('shows config only at org and site roots, not inside folders', async () => {
+  const settingsMenu = () => header.shadowRoot.querySelector('nx-menu.browse-settings-menu');
+  const settingsLabels = () => settingsMenu().items.map(({ label }) => label);
+
+  it('shows the settings menu only at org and site roots, not inside folders', async () => {
     header.details = { org: 'org', path: '' };
     await header.updateComplete;
-    expect(header.shadowRoot.querySelector('.browse-settings-link').getAttribute('href'))
-      .to.equal('/config#/org/');
-    expect(header.shadowRoot.querySelector('.browse-settings-link').textContent.trim())
-      .to.equal('Configure Org');
-
-    header.details = { org: 'org', site: 'site', path: '' };
-    await header.updateComplete;
-    expect(header.shadowRoot.querySelector('.browse-settings-link').getAttribute('href'))
-      .to.equal('/config#/org/site/');
-    expect(header.shadowRoot.querySelector('.browse-settings-link').textContent.trim())
-      .to.equal('Configure Site');
+    expect(settingsLabels()).to.deep.equal(['Org Configuration', 'Org Permissions']);
+    const trigger = settingsMenu().querySelector('button[slot="trigger"]');
+    expect(trigger.textContent.trim()).to.equal('Settings');
+    expect(trigger.title).to.equal('Settings');
+    expect(trigger.querySelector('use[href="/img/icons/s2-icon-settings-20-n.svg#icon"]')).not.to.be.null;
 
     header.details = { org: 'org', site: 'site', path: 'folder' };
     await header.updateComplete;
-    expect(header.shadowRoot.querySelector('.browse-settings-link')).to.be.null;
+    expect(settingsMenu()).to.be.null;
 
     header.details = { org: 'org', site: 'site', path: '' };
     await header.updateComplete;
-    expect(header.shadowRoot.querySelector('.browse-settings-link')).not.to.be.null;
+    expect(settingsMenu()).not.to.be.null;
+  });
+
+  it('offers site permissions only when the user can edit the org config', async () => {
+    header.details = { org: 'org', site: 'site', path: '' };
+    await header.updateComplete;
+    await header._orgConfigCheck;
+    header._canEditOrgConfig = true;
+    await header.updateComplete;
+    expect(settingsLabels()).to.deep.equal(['Site Configuration', 'Site Permissions']);
+
+    header._canEditOrgConfig = false;
+    await header.updateComplete;
+    expect(settingsLabels()).to.deep.equal(['Site Configuration']);
+  });
+
+  it('checks org config write access when the org changes', async () => {
+    window.fetch = async (url) => {
+      if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+      return new Response(JSON.stringify({ data: [] }), {
+        status: 200,
+        headers: { 'X-da-actions': '/hdr-write=read,write' },
+      });
+    };
+    header.details = { org: 'hdr-write', site: 'site', path: '' };
+    await header.updateComplete;
+    expect(settingsLabels()).to.deep.equal(['Site Configuration']);
+    await header._orgConfigCheck;
+    await header.updateComplete;
+    expect(settingsLabels()).to.include('Site Permissions');
+  });
+
+  it('navigates to the selected settings page', async () => {
+    header.details = { org: 'org', site: 'site', path: '' };
+    await header.updateComplete;
+    await header._orgConfigCheck;
+    header._canEditOrgConfig = true;
+    await header.updateComplete;
+    const calls = [];
+    header.navigate = (href) => { calls.push(href); };
+    settingsMenu().choose('permissions');
+    settingsMenu().choose('config');
+    settingsMenu().choose('nope');
+    expect(calls).to.deep.equal(['/config/permissions#/org/site', '/config#/org/site/']);
   });
 
   it('requests sorting without changing the supplied sort state', () => {
