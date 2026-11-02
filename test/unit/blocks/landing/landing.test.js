@@ -70,7 +70,7 @@ describe('landing page', () => {
     expect(el.shadowRoot.textContent).not.to.include('Need Attention');
   });
 
-  it('keeps Browse small card width and wraps columns instead of stretching cards', async () => {
+  it('keeps small cards fixed and hugs complete rows with 16px panel insets', async () => {
     const sheet = new CSSStyleSheet();
     await sheet.replace(await (await fetch('/blocks/landing/landing.css')).text());
     el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
@@ -79,6 +79,16 @@ describe('landing page', () => {
     for (const [width, columns] of [[500, '151px 151px 151px'], [320, '151px 151px'], [300, '151px'], [150, '150px']]) {
       grid.style.width = `${width}px`;
       expect(getComputedStyle(grid).gridTemplateColumns).to.equal(columns);
+    }
+    grid.style.removeProperty('width');
+    for (const width of [1360, 960, 560]) {
+      el.style.width = `${width}px`;
+      const panel = el.shadowRoot.querySelector('.files-panel').getBoundingClientRect();
+      const row = grid.getBoundingClientRect();
+      const columns = getComputedStyle(grid).gridTemplateColumns.split(' ');
+      expect(row.left - panel.left).to.equal(16);
+      expect(panel.right - row.right).to.equal(16);
+      expect(row.width).to.equal(columns.length * 151 + (columns.length - 1) * 12);
     }
   });
 
@@ -628,7 +638,7 @@ describe('landing page', () => {
     expect(metadata.callCount).to.equal(0);
   });
 
-  it('caps Favorite at ten without deleting saved favorites or expanding the widget', async () => {
+  it('caps Favorite cards at six without deleting saved favorites or expanding the widget', async () => {
     el._files = Array.from({ length: 12 }, (_, i) => ({ name: `Page ${i}`, path: `/org/site/page-${i}.html`, ext: 'html' }));
     const paths = el._files.map((item) => item.path);
     localStorage.setItem('da-favorites', JSON.stringify({ '/org/site': paths }));
@@ -636,19 +646,34 @@ describe('landing page', () => {
     el.changeTab('starred');
     el._limit = 50;
     await el.updateComplete;
-    expect(el.shadowRoot.querySelectorAll('.file')).to.have.length(10);
+    expect(el.shadowRoot.querySelectorAll('.file')).to.have.length(6);
     expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
     expect(getFavorites('/org/site')).to.deep.equal(paths);
     expect(el.shadowRoot.querySelector('.all-files')).not.to.equal(null);
+    el.changeView({ detail: { value: 'list' } });
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelectorAll('.file-row')).to.have.length(10);
+    expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
   });
 
-  it('shows more than ten files only when requested', async () => {
+  it('keeps only the first six Recent cards and links to Browse for the rest', async () => {
     el._files = Array.from({ length: 12 }, (_, i) => ({ name: `Page ${i}`, path: `/org/site/page-${i}.html`, ext: 'html' }));
     await el.updateComplete;
-    expect(el.shadowRoot.querySelectorAll('.file')).to.have.length(10);
+    expect([...el.shadowRoot.querySelectorAll('da-file-item')].map((item) => item.path))
+      .to.deep.equal(el._files.slice(0, 6).map((item) => item.path));
+    expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
+    expect(el.shadowRoot.querySelector('.all-files')).not.to.equal(null);
+    expect(el._files).to.have.length(12);
+  });
+
+  it('keeps list pagination at ten files and expands only when requested', async () => {
+    el._files = Array.from({ length: 12 }, (_, i) => ({ name: `Page ${i}`, path: `/org/site/page-${i}.html`, ext: 'html' }));
+    el.changeView({ detail: { value: 'list' } });
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelectorAll('.file-row')).to.have.length(10);
     el.shadowRoot.querySelector('.show-more').click();
     await el.updateComplete;
-    expect(el.shadowRoot.querySelectorAll('.file')).to.have.length(12);
+    expect(el.shadowRoot.querySelectorAll('.file-row')).to.have.length(12);
   });
 
   it('ignores a stale listing response after changing sites', async () => {

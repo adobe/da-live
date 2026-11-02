@@ -46,6 +46,7 @@ svg {
 
 .landing {
   display: flow-root;
+  container-type: inline-size;
   max-width: 1116px;
   margin-inline: auto;
   padding: 0 24px 64px;
@@ -246,6 +247,20 @@ textarea::placeholder {
   box-shadow: 0 0 1px #00000014, 0 1px 4px #0000000a, 0 2px 8px #00000014;
 }
 
+.files-panel:has(.files) {
+  --da-card-width: 151px;
+  --da-card-height: 200px;
+  --file-column-width: calc(var(--da-card-width) + var(--s2-spacing-200));
+
+  width: min(100%, calc(clamp(
+    var(--file-column-width),
+    round(down, calc(100cqw - 32px + var(--s2-spacing-200)), var(--file-column-width)),
+    6 * var(--file-column-width)
+  ) - var(--s2-spacing-200) + 32px));
+  min-width: min(100%, calc(2 * var(--da-card-width) + var(--s2-spacing-200) + 32px));
+  margin-inline: auto;
+}
+
 .panel-heading, .files-toolbar {
   display: flex;
   justify-content: space-between;
@@ -302,9 +317,6 @@ h2 {
 }
 
 .files {
-  --da-card-width: 151px;
-  --da-card-height: 200px;
-
   list-style: none;
   margin: 0;
   padding: 0;

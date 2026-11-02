@@ -33,6 +33,7 @@ const VIEW_ITEMS = [
   { value: 'list', label: 'List view', icon: '/img/icons/s2-icon-viewlist-20-n.svg', iconOnly: true },
 ];
 const PAGE_SIZE = 10;
+const CARD_LIMIT = 6;
 
 function icon(name) {
   return html`<svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-${name}-20-n.svg#icon"></use></svg>`;
@@ -335,6 +336,7 @@ export class DaLanding extends LitElement {
   visibleFiles() {
     const files = this._tab === 'starred'
       ? this._files.filter((item) => this._favorites.has(item.path)) : this._files;
+    if (this._view === 'card') return files.slice(0, CARD_LIMIT);
     return files.slice(0, this._tab === 'starred' ? PAGE_SIZE : this._limit);
   }
 
@@ -405,7 +407,7 @@ export class DaLanding extends LitElement {
         <ul class="files" aria-label=${this._tab === 'starred' ? 'Favorite files' : 'Recently modified files'}>
           ${repeat(this.visibleFiles(), (item) => item.path, (item) => this.renderFile(item))}
         </ul>`}
-      ${this._tab !== 'starred' && files.length > this._limit ? html`
+      ${this._view === 'list' && this._tab !== 'starred' && files.length > this._limit ? html`
         <button class="show-more nx-action-btn-quiet" @click=${() => { this._limit += PAGE_SIZE; }}>
           Show more files
         </button>` : nothing}`;

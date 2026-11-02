@@ -57,6 +57,8 @@ The 1920px Ready frame (`1852:83848`) shows 142px compact cards. Landing instead
 reuses the standard Browse card with its existing small preset: 151px width,
 200px portrait height, title, file type and date. The grid uses Browse's auto-fill tracks:
 columns wrap instead of stretching or shrinking cards to force five per row.
+The centered Content panel fits up to six fixed-width columns with 16px
+horizontal padding. Narrow layouts wrap cards without changing their preset.
 Page S/M changes do not change the card preset. Browse defaults are unchanged.
 The quiet view switcher has two 32px buttons.
 
@@ -146,9 +148,11 @@ intentional differences rather than substitutes for those missing inputs.
   Landing Home destination and preview flags for same-origin editor links.
 - The mock's Recent tab shows recently modified files, not personal
   recently opened history. The root scope is not added as a visible subtitle.
+  Card view shows the first six files; Show all opens Browse for the rest.
+  List view keeps its ten-row pagination and Show more control.
 - **Favorite** uses the existing browser-local `da-favorites` entries for that root.
-  Saved entries are not capped, but this widget displays at most ten, without
-  Show more. Show All Files opens Browse. Existing modification-date ordering is
+  Saved entries are not capped, but this widget displays at most six cards or
+  ten list rows, without Show more. Show All Files opens Browse. Existing modification-date ordering is
   retained; favorite-added timestamps are not tracked. Favorites in nested folders
   remain outside this first version.
   Cards have an always-visible more button beside the truncated title. Its popover
@@ -240,7 +244,7 @@ Use a separate content site for write testing.
 Sign in with access to the selected site. Check the greeting, site switching,
 file navigation, Favorite, card/list switching, Show all files and prompt handoff.
 Check card menus, persistent selected stars, list information-only popovers,
-favorite toggles, unavailable metadata/retry and the ten-item Favorite cap.
+favorite toggles, unavailable metadata/retry and the six-card/ten-row Favorite cap.
 Open Add site from the picker and the no-site state. Check a valid existing URL,
 an invalid URL, a denied site, an unavailable check and cancelling an in-flight
 request. Confirm the added site appears in the current browser's picker and
