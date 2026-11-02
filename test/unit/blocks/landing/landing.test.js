@@ -132,6 +132,30 @@ describe('landing page', () => {
     expect(el.shadowRoot.textContent).not.to.include('Need Attention');
   });
 
+  it('compares tiles off and on without replacing the greeting, composer or Content', async () => {
+    const { href } = window.location;
+    const heading = el.shadowRoot.querySelector('h1');
+    const composer = el.shadowRoot.querySelector('.composer');
+    const content = el.shadowRoot.querySelector('.files-panel');
+    try {
+      for (const [value, count] of [['off', 0], ['on', 5]]) {
+        const url = new URL(href);
+        url.searchParams.set('preview-tiles', value);
+        window.history.replaceState(null, '', url.href);
+        el.requestUpdate();
+        await el.updateComplete;
+        expect(await quickTiles(el)).to.have.length(count);
+        expect(el.shadowRoot.querySelector('h1')).to.equal(heading);
+        expect(el.shadowRoot.querySelector('.composer')).to.equal(composer);
+        expect(el.shadowRoot.querySelector('.files-panel')).to.equal(content);
+        expect(el._scope).to.equal('org/site');
+        expect(el.shadowRoot.querySelectorAll('.file')).to.have.length(2);
+      }
+    } finally {
+      window.history.replaceState(null, '', href);
+    }
+  });
+
   it('routes Browse Content through the current site and preserves preview parameters after switching', async () => {
     const { href } = window.location;
     try {

@@ -16,6 +16,23 @@ This preview does not release the page to production or replace component review
 
 ## Preview
 
+### Matched tile review
+
+The preview-only `tilefull` branch retains the complete LP: site selector,
+greeting/composer, existing chat and Content/cards. Both links use the same
+frozen Nexter `tilecontext` branch and differ only in mounting the five tiles:
+
+- Before: https://tilefull--da-live--adobe.aem.live/?nx=tilecontext&nxver=2&landing=true&nx-chat-ao=true&preview-tiles=off#/exp-workspace/frescopaco
+- After: https://tilefull--da-live--adobe.aem.live/?nx=tilecontext&nxver=2&landing=true&nx-chat-ao=true&preview-tiles=on#/exp-workspace/frescopaco
+
+`preview-tiles=off` is a comparison switch on this preview branch, not a feature
+included in the standalone tile PR. Without it, the full LP includes the tiles.
+The component and palette match adobe/da-live#1627 and adobe/da-nx#949.
+Cards and chat are the stable LP context, not changes under review in those PRs.
+The component PRs, `main`, and the manager's `lp` branches remain unchanged.
+
+### Manager showcase
+
 The existing Browse page opts into the landing page with `?landing=true`.
 Without that parameter, Home, Browse and Canvas are unchanged.
 Links out of the preview carry `landing=home`: this keeps Browse and editors

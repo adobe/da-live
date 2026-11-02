@@ -690,6 +690,7 @@ export class DaLanding extends LitElement {
   }
 
   renderQuickLinks() {
+    if (new URLSearchParams(window.location.search).get('preview-tiles') === 'off') return nothing;
     return html`<ul class="quick-links" aria-label="Quick links">
       <li><da-landing-tile heading="Browse Content"
         description="View your recent, favorite, or other content by their organization"

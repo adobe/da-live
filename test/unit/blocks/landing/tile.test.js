@@ -133,4 +133,26 @@ describe('landing tile', () => {
     expect(clicks).to.have.length(2);
     expect(tile.shadowRoot.querySelector('a')).to.equal(null);
   });
+
+  it('keeps nested clicks native and labels their telemetry source without adding a click collector', async () => {
+    tile.href = '/?browse=2#/org/site';
+    tile.actionId = 'browse';
+    await tile.updateComplete;
+    const clicks = [];
+    tile.addEventListener('click', (event) => {
+      event.preventDefault();
+      clicks.push(event);
+    });
+    tile.shadowRoot.querySelector('h3').click();
+    expect(clicks).to.have.length(1);
+    const link = tile.shadowRoot.querySelector('a');
+    expect(link.classList.contains('landing-action-browse')).to.equal(true);
+    expect([link, ...link.querySelectorAll('*')].every(
+      (element) => element.dataset.rumSource === 'landing-action-browse',
+    )).to.equal(true);
+    tile.actionId = undefined;
+    await tile.updateComplete;
+    expect(link.classList.contains('landing-action-browse')).to.equal(false);
+    expect(tile.shadowRoot.querySelector('[data-rum-source]')).to.equal(null);
+  });
 });
