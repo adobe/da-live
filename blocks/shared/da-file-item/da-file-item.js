@@ -1,27 +1,27 @@
 import { LitElement, html, nothing, until } from 'da-lit';
-import { delay, sanitizeName, formatDate } from '../../../shared/utils.js';
-import { getNx, getNx2, getNx2Api } from '../../../../scripts/utils.js';
-import { ICONS, iconPathForExt, getTypeLabel } from '../../../shared/icons.js';
-import '../da-card-preview/da-card-preview.js';
-import { getBrowseItemHref } from '../shared/navigation.js';
+import { delay, sanitizeName, formatDate } from '../utils.js';
+import { getNx, getNx2, getNx2Api } from '../../../scripts/utils.js';
+import { ICONS, iconPathForExt, getTypeLabel, isImageExt } from '../icons.js';
+import { getFileItemHref } from './navigation.js';
 
 import {
   fetchAemStatus,
   fetchDaStatus,
   doesFileExist,
   getRenamedPath,
-} from '../../shared/item.js';
+} from './item.js';
 
 // Styles
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
+await import(`${getNx2()}/blocks/shared/card/card.js`);
 const [FORM, BUTTONS, STYLE] = await Promise.all([
   loadStyle(`${getNx2()}/styles/form.css`),
   loadStyle(`${getNx2()}/styles/buttons.css`),
   loadStyle(import.meta.url),
 ]);
 
-export default class DaListItem extends LitElement {
+export default class DaFileItem extends LitElement {
   static properties = {
     idx: { type: Number },
     name: { type: String },
@@ -40,11 +40,73 @@ export default class DaListItem extends LitElement {
     _live: { state: true },
     _version: { state: true },
     _lastModifiedBy: { state: true },
+    _imageUrl: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [FORM, BUTTONS, STYLE];
+  }
+
+  disconnectedCallback() {
+    this.resetImage();
+    super.disconnectedCallback();
+  }
+
+  willUpdate(props) {
+    if (props.has('path') || props.has('ext') || props.has('view')) this.resetImage();
+  }
+
+  updated() {
+    if (!this.isConnected || this.view !== 'card' || !isImageExt(this.ext)
+      || this._imageRequested || this._imageObserver) return;
+    this._imageObserver = new IntersectionObserver(([entry]) => {
+      if (!entry?.isIntersecting) return;
+      this.stopObservingImage();
+      this.loadImage();
+    });
+    this._imageObserver.observe(this);
+  }
+
+  stopObservingImage() {
+    this._imageObserver?.disconnect();
+    this._imageObserver = null;
+  }
+
+  resetImage() {
+    this.stopObservingImage();
+    this._imageRequest = null;
+    this._imageRequested = false;
+    this.dropImage();
+  }
+
+  dropImage() {
+    if (this._imageUrl) URL.revokeObjectURL(this._imageUrl);
+    this._imageUrl = null;
+  }
+
+  async loadImage() {
+    const { path } = this;
+    const request = {};
+    this._imageRequest = request;
+    this._imageRequested = true;
+    try {
+      const { source } = await getNx2Api();
+      const resp = await source.get(path);
+      if (!resp.ok) return;
+      const url = URL.createObjectURL(await resp.blob());
+      if (this._imageRequest === request && this.isConnected) this._imageUrl = url;
+      else URL.revokeObjectURL(url);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.warn(`Could not load file preview for ${path}.`, error);
+    }
+  }
+
+  renderFilePreview() {
+    if (this._isRenaming) return html`<div class="file-preview-spinner" role="status" aria-label="Renaming"></div>`;
+    if (this._imageUrl) return html`<img src=${this._imageUrl} alt="" @error=${this.dropImage}>`;
+    return this.renderIcon();
   }
 
   async update(props) {
@@ -66,6 +128,20 @@ export default class DaListItem extends LitElement {
     const input = this.shadowRoot.querySelector('.da-item-list-item-rename input');
     input?.focus();
     input?.select();
+  }
+
+  async focusSelection() {
+    await this.updateComplete;
+    const card = this.shadowRoot.querySelector('nx-card');
+    if (card) {
+      await card.updateComplete;
+      if (!card.selectable) return false;
+      card.focus();
+      return true;
+    }
+    const input = this.shadowRoot.querySelector('input[name="item-selected"]');
+    input?.focus();
+    return Boolean(input);
   }
 
   async updateAEMStatus() {
@@ -174,12 +250,13 @@ export default class DaListItem extends LitElement {
 
   renderCardMenu() {
     return html`
-      <div class="card-menu">
+      <div slot="actions" class="card-menu">
         <button type="button" class="card-more nx-action-btn-icon nx-btn-sm"
           aria-label="More" title="More" aria-haspopup="dialog" aria-expanded=${Boolean(this._detailsOpen)}
           @click=${this.toggleDetails}>
           <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-more-20-n.svg#icon"></use></svg>
         </button>
+        ${this.renderDetailsPopover()}
       </div>`;
   }
 
@@ -212,9 +289,9 @@ export default class DaListItem extends LitElement {
     return `${date} ${time}`;
   }
 
-  renderRename() {
+  renderRename(slot = nothing) {
     return html`
-      <form class="da-item-list-item-rename" @submit=${this.handleRenameSubmit}>
+      <form slot=${slot} class="da-item-list-item-rename" @submit=${this.handleRenameSubmit}>
         <span class="da-item-list-item-type">
           ${this.renderIcon()}
         </span>
@@ -236,7 +313,7 @@ export default class DaListItem extends LitElement {
   }
 
   renderItem() {
-    const href = getBrowseItemHref(this);
+    const href = getFileItemHref(this);
 
     return html`
       <a href="${this.ext === 'link' ? until(href) : href}" class="da-item-list-item-title" data-column="name">
@@ -261,9 +338,9 @@ export default class DaListItem extends LitElement {
       <div class="da-item-list-item-meta da-item-list-item-date" data-column="modified">${this.ext === 'link' ? '—' : (this.renderDate() || '—')}</div>`;
   }
 
-  renderFavorite(className = 'da-item-list-item-favorite') {
+  renderFavorite(className = 'da-item-list-item-favorite', slot = nothing) {
     return html`
-      <button type="button" class="${className} nx-action-btn-icon nx-btn-sm"
+      <button slot=${slot} type="button" class="${className} nx-action-btn-icon nx-btn-sm"
         aria-label=${this.isFavorited ? 'Remove as Favorite' : 'Mark as Favorite'}
         title=${this.isFavorited ? 'Remove as Favorite' : 'Mark as Favorite'}
         aria-pressed=${this.isFavorited ? 'true' : 'false'}
@@ -274,9 +351,9 @@ export default class DaListItem extends LitElement {
       </button>`;
   }
 
-  renderCheckBox(className = 'da-item-list-item-select') {
+  renderCheckBox() {
     return html`
-      <label class="nx-checkbox ${className}" data-column="select">
+      <label class="nx-checkbox da-item-list-item-select" data-column="select">
         <input type="checkbox" name="item-selected" id="item-selected-${this.idx}" .checked="${this.isChecked}" @click="${this.handleChecked}" aria-label="Select item">
       </label>
     `;
@@ -306,31 +383,22 @@ export default class DaListItem extends LitElement {
   }
 
   renderCard() {
-    const href = getBrowseItemHref(this);
+    const href = getFileItemHref(this);
     return html`
-      <div class="card">
-        <div class="card-preview">
-          <a href="${this.ext === 'link' ? until(href) : href}" tabindex="-1" aria-hidden="true">
-            <da-card-preview .path=${this.path} .ext=${this.ext} ?busy=${this._isRenaming}></da-card-preview>
+      <nx-card class="card" .selectable=${Boolean(this.allowselect)} .selected=${Boolean(this.isChecked)}
+        @nx-card-selection-change=${(e) => this.handleChecked(e.detail)}>
+        <a slot="media" class="card-preview" href="${this.ext === 'link' ? until(href) : href}" tabindex="-1" aria-hidden="true">
+          ${this.renderFilePreview()}
+        </a>
+        ${this.isFavorited ? this.renderFavorite('card-favorite', 'overlay-actions') : nothing}
+        ${this.rename ? this.renderRename('content') : html`
+          <a slot="heading" href="${this.ext === 'link' ? until(href) : href}" title=${this.name}>
+            ${this.name}
           </a>
-          ${this.allowselect ? this.renderCheckBox('card-select') : nothing}
-          ${this.isFavorited ? this.renderFavorite('card-favorite') : nothing}
-        </div>
-        <div class="card-info">
-          ${this.rename ? this.renderRename() : html`
-            <div class="card-heading">
-              <a href="${this.ext === 'link' ? until(href) : href}" class="card-name">
-                <span class="card-name-text" title=${this.name}>${this.name}</span>
-              </a>
-              ${this.renderCardMenu()}
-              ${this.renderDetailsPopover()}
-            </div>`}
-          <div class="card-meta">
-            <span class="card-type">${getTypeLabel(this.ext)}</span>
-            <span class="card-date">${this.ext === 'link' ? '—' : (this.renderDate() || '—')}</span>
-          </div>
-        </div>
-      </div>`;
+          ${this.renderCardMenu()}`}
+        <span slot="metadata" class="card-type">${getTypeLabel(this.ext)}</span>
+        <span slot="metadata" class="card-date">${this.ext === 'link' ? '—' : (this.renderDate() || '—')}</span>
+      </nx-card>`;
   }
 
   renderDetailsControl() {
@@ -412,4 +480,4 @@ export default class DaListItem extends LitElement {
   }
 }
 
-customElements.define('da-list-item', DaListItem);
+customElements.define('da-file-item', DaFileItem);

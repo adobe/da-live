@@ -1,8 +1,8 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2Api } from '../../../../scripts/utils.js';
 import { getTypeLabel, iconPathForExt } from '../../../shared/icons.js';
-import { getConfiguredEditor } from '../../shared.js';
-import { getBrowseItemHref } from '../shared/navigation.js';
+import { getConfiguredEditor } from '../../../shared/da-file-item/edit-path.js';
+import { getFileItemHref } from '../../../shared/da-file-item/navigation.js';
 import { loadFilenames, matchFilenames } from './utils.js';
 
 const { listKeydown } = await import(`${getNx()}/blocks/shared/utils/list-nav.js`);
@@ -220,7 +220,7 @@ export default class DaBrowseSearch extends LitElement {
       const editor = this.editorConfs
         ? getConfiguredEditor(option.item.path, this.editorConfs, this.defaultEditor)
         : this.editor;
-      const href = await getBrowseItemHref({ ...option.item, editor });
+      const href = await getFileItemHref({ ...option.item, editor });
       if (this._navigationRequest === request && this.isConnected && !this.disabled) {
         this.navigate(href);
       }
