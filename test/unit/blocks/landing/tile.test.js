@@ -156,3 +156,69 @@ describe('landing tile', () => {
     expect(tile.shadowRoot.querySelector('[data-rum-source]')).to.equal(null);
   });
 });
+
+describe('landing tile group', () => {
+  let container;
+  let group;
+  const groupSheet = new CSSStyleSheet();
+
+  before(async () => {
+    await groupSheet.replace(await (await fetch('/blocks/landing/tiles.css')).text());
+  });
+
+  beforeEach(async () => {
+    container = document.createElement('div');
+    container.style.cssText = `
+      width: 1068px;
+      container-type: inline-size;
+      --s2-spacing-200: 12px;
+      --s2-spacing-300: 16px;
+    `;
+    const root = container.attachShadow({ mode: 'open' });
+    root.adoptedStyleSheets = [groupSheet];
+    group = document.createElement('ul');
+    group.className = 'landing-tiles';
+    const tiles = Array.from({ length: 5 }, (_, index) => {
+      const item = document.createElement('li');
+      const tile = document.createElement('da-landing-tile');
+      tile.heading = `Action ${index}`;
+      tile.description = 'A quick link to content and documentation';
+      item.append(tile);
+      group.append(item);
+      return tile;
+    });
+    root.append(group);
+    document.body.append(container);
+    await Promise.all(tiles.map((tile) => tile.updateComplete));
+    tiles.forEach((tile) => { tile.shadowRoot.adoptedStyleSheets = [sheet]; });
+  });
+
+  afterEach(() => container.remove());
+
+  it('matches the loaded Content panel width at whole-card breakpoints', () => {
+    for (const [available, expected] of [
+      [1068, 998], [940, 835], [850, 835], [700, 672], [550, 509], [358, 346], [250, 250],
+    ]) {
+      container.style.width = `${available}px`;
+      const bounds = group.getBoundingClientRect();
+      const parent = container.getBoundingClientRect();
+      expect(bounds.width).to.be.closeTo(expected, 0.1);
+      expect((bounds.left + bounds.right) / 2).to.be.closeTo((parent.left + parent.right) / 2, 0.1);
+    }
+  });
+
+  it('centers incomplete rows and keeps the final single tile centered when wrapping', () => {
+    for (const [available, rowStart] of [[1068, 3], [850, 4], [700, 4], [358, 4], [250, 4]]) {
+      container.style.width = `${available}px`;
+      const bounds = group.getBoundingClientRect();
+      const items = [...group.children].map((item) => item.getBoundingClientRect());
+      const lastRow = items.slice(rowStart);
+      expect((lastRow[0].left + lastRow.at(-1).right) / 2)
+        .to.be.closeTo((bounds.left + bounds.right) / 2, 0.1);
+      expect(items.every((item) => item.left >= bounds.left && item.right <= bounds.right + 0.1))
+        .to.equal(true);
+      expect(lastRow.every((item) => item.top === lastRow[0].top)).to.equal(true);
+      expect(lastRow[0].top).to.be.greaterThan(items[rowStart - 1].top);
+    }
+  });
+});

@@ -8,7 +8,10 @@ import './tile.js';
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const nx = await import(`${getNx2()}/scripts/nx.js`);
 const sizing = nx.getUISize ? await import(`${getNx2()}/utils/ui-size.js`) : undefined;
-const styles = await loadStyle(import.meta.url);
+const styles = await Promise.all([
+  loadStyle(import.meta.url),
+  loadStyle(new URL('./tiles.css', import.meta.url).href),
+]);
 
 export class DaLanding extends LitElement {
   static properties = {
@@ -25,7 +28,7 @@ export class DaLanding extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [styles];
+    this.shadowRoot.adoptedStyleSheets = styles;
     this._unsubscribe = hashChange.subscribe((state) => this.setScope(state));
   }
 
@@ -128,7 +131,7 @@ export class DaLanding extends LitElement {
   }
 
   renderQuickLinks() {
-    return html`<ul class="quick-links" aria-label="Quick links">
+    return html`<ul class="quick-links landing-tiles" aria-label="Quick links">
       <li><da-landing-tile heading="Browse Content"
         description="View your recent, favorite, or other content by their organization"
         iconHref="/img/icons/s2-icon-folderopen-20-n.svg" .size=${this.dataset.uiSize || 's'}
