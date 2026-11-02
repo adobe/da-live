@@ -72,7 +72,6 @@ describe('landing page', () => {
     expect(el.shadowRoot.textContent).not.to.include('Site root');
     expect(el.shadowRoot.querySelector('nx-picker')).to.equal(null);
     expect(nav.querySelector('nx-picker, nx-siteselector')).to.equal(null);
-    expect(el.shadowRoot.querySelector('.file-date').textContent).to.include('Modified at •');
   });
 
   it('renders the approved quick actions below Content, without Governance or Need Attention', async () => {
@@ -406,12 +405,12 @@ describe('landing page', () => {
     expect(trigger.querySelector('.icon-up')).to.equal(null);
   });
 
-  it('uses source-backed page previews and local semantic file icons', () => {
+  it('uses standard shared cards with source-backed page previews', () => {
     const preview = el.shadowRoot.querySelector('da-file-item');
     expect(preview.documentPreview).to.equal(true);
-    expect(preview.iconHref).to.include('/blocks/landing/page.svg');
-    expect(preview.layout).to.equal('compact');
-    expect(preview.dimensions).to.equal('m');
+    expect(preview.hasAttribute('layout')).to.equal(false);
+    expect(preview.hasAttribute('dimensions')).to.equal(false);
+    expect(preview.querySelector('[slot="metadata"]')).to.equal(null);
     expect(el.shadowRoot.querySelector('nx-card, .file-name')).to.equal(null);
   });
 
@@ -518,7 +517,7 @@ describe('landing page', () => {
     el._files = [...ITEMS, { name: 'Image', path: '/org/site/image.png', ext: 'png' }];
     el.changeView({ detail: { value: 'list' } });
     await el.updateComplete;
-    const previews = el.shadowRoot.querySelectorAll('da-file-item[view="preview"]');
+    const previews = el.shadowRoot.querySelectorAll('da-card-preview');
     expect(previews).to.have.length(1);
     expect(previews[0].classList.contains('list-file-preview')).to.equal(true);
     expect(previews[0].path).to.equal('/org/site/image.png');

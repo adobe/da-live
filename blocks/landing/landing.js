@@ -6,6 +6,7 @@ import { getFavorites, toggleFavorite } from '../browse/shared/favorites.js';
 import { getBrowseSettings, updateBrowseSettings } from '../browse/v2/shared/settings.js';
 import { getBrowseHref, getFileHref, loadFiles, getLandingIconHref, formatModified } from './utils.js';
 import { EMPTY_DOC } from '../shared/utils.js';
+import '../browse/v2/da-card-preview/da-card-preview.js';
 import '../shared/da-file-item/da-file-item.js';
 import '../shared/file-actions/file-actions.js';
 import renderFileTable from '../shared/file-table.js';
@@ -407,18 +408,15 @@ export class DaLanding extends LitElement {
   }
 
   renderFile(item) {
-    const modified = formatModified({ modified: item.lastModified });
     return html`
       <li class="file">
-        <da-file-item view="card" layout="compact" dimensions="m" .size=${this.uiSize}
+        <da-file-item view="card"
           .name=${item.name} .path=${item.path} .ext=${item.ext} .date=${item.lastModified}
-          .editor=${this._editor || '/canvas#'} .iconHref=${getLandingIconHref(item)}
+          .editor=${this._editor || '/canvas#'}
           .documentPreview=${item.ext === 'html'}
           .href=${getFileHref({ item, editor: this._editor || '/canvas#' })}
           .isFavorited=${this._favorites?.has(item.path)}
-          @favoritechange=${() => this.starFile(item)}>
-          <p slot="metadata" class="file-date">${modified ? html`Modified at • <time datetime=${modified.date.toISOString()}>${modified.label}</time>` : 'Date unavailable'}</p>
-        </da-file-item>
+          @favoritechange=${() => this.starFile(item)}></da-file-item>
       </li>`;
   }
 
@@ -427,9 +425,9 @@ export class DaLanding extends LitElement {
     const folder = item.path.slice(0, item.path.lastIndexOf('/'));
     return html`<tr class="file-row">
       <td><a class="list-file-link" href=${getFileHref({ item, editor: this._editor || '/canvas#' })}>
-        ${isImageExt(item.ext) ? html`<da-file-item view="preview" class="list-file-preview"
+        ${isImageExt(item.ext) ? html`<da-card-preview class="list-file-preview"
           .path=${item.path} .ext=${item.ext} .iconHref=${getLandingIconHref(item)}
-          aria-hidden="true"></da-file-item>` : html`<span class="file-type-icon" aria-hidden="true"
+          aria-hidden="true"></da-card-preview>` : html`<span class="file-type-icon" aria-hidden="true"
           style="--file-icon: url('${getLandingIconHref(item)}')"></span>`}
         <span>${item.name}</span>
       </a></td>

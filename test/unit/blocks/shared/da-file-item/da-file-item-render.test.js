@@ -277,22 +277,15 @@ describe('da-file-item render', () => {
     expect(el.shadowRoot.querySelector('[slot="actions"] button[aria-label="More"]')).to.exist;
   });
 
-  it('forwards a Browse preset independently of compact presentation and UI scale', async () => {
-    await fixture({ view: 'card', layout: 'compact', size: 's', dimensions: 'l' });
+  it('keeps the standard Browse composition when document previews are enabled', async () => {
+    await fixture({ view: 'card', ext: 'html', documentPreview: true });
     const card = el.shadowRoot.querySelector('nx-card');
-    expect(card.layout).to.equal('compact');
-    expect(card.dimensions).to.equal('l');
-    expect(card.size).to.equal('s');
-    expect(el.shadowRoot.querySelector('.compact-heading svg')).to.exist;
-    expect(el.shadowRoot.querySelector('.card-type')).to.equal(null);
-    el.size = 'm';
-    await el.updateComplete;
-    expect(card.size).to.equal('m');
-    expect(card.dimensions).to.equal('l');
-    el.layout = undefined;
-    await el.updateComplete;
+    expect(card.hasAttribute('layout')).to.equal(false);
+    expect(card.hasAttribute('dimensions')).to.equal(false);
     expect(el.shadowRoot.querySelector('.card-type')).to.exist;
-    expect(el.shadowRoot.querySelector('.compact-heading')).to.equal(null);
+    expect(el.shadowRoot.querySelector('.card-date')).to.exist;
+    expect(el.shadowRoot.querySelector('[slot="heading"] svg')).to.equal(null);
+    expect(el.shadowRoot.querySelector('.card-more').classList.contains('nx-btn-sm')).to.equal(true);
   });
 
   it('uses a supplied destination without resolving a link file', async () => {

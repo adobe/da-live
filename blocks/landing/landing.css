@@ -307,7 +307,7 @@ h2 {
   padding: 0;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: var(--s2-spacing-200);
+  gap: 12px;
 }
 
 .file {
@@ -329,13 +329,6 @@ h2 {
   color: var(--s2-gray-700);
   background: currentcolor;
   mask: var(--file-icon) center / 20px no-repeat;
-}
-
-.file-date {
-  margin: 0;
-  color: var(--s2-gray-600);
-  font-size: var(--s2-component-s-regular-font-size);
-  line-height: var(--s2-body-line-height);
 }
 
 .file-table-scroll {
@@ -411,6 +404,9 @@ h2 {
 }
 
 .list-file-preview {
+  --da-card-preview-icon-size: 20px;
+  --da-card-preview-object-fit: cover;
+
   width: 28px;
   height: 28px;
   flex: none;
@@ -531,11 +527,8 @@ a:focus-visible, .filter:focus-visible,
     line-height: 46px;
   }
 
-  .file-date, .assistant-note {
-    font-size: var(--s2-component-m-regular-font-size);
-  }
-
   .assistant-note {
+    font-size: var(--s2-component-m-regular-font-size);
     line-height: 18px;
   }
 
