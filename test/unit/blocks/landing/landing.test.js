@@ -181,9 +181,14 @@ describe('landing page', () => {
     expect(trigger.querySelector('.icon-up')).to.equal(null);
   });
 
-  it('uses standard shared cards with source-backed page previews', () => {
+  it('uses standard Browse document icons without fetching page content', async () => {
+    const get = sinon.spy(source, 'get');
     const preview = el.shadowRoot.querySelector('da-file-item');
-    expect(preview.documentPreview).to.equal(true);
+    await preview.updateComplete;
+    expect(preview.shadowRoot.querySelector('.card-preview svg use').getAttribute('href'))
+      .to.include('s2-icon-filehtml-20-n.svg');
+    expect(preview.shadowRoot.querySelector('.document-preview, .card-preview img')).to.equal(null);
+    expect(get.called).to.equal(false);
     expect(preview.hasAttribute('layout')).to.equal(false);
     expect(preview.hasAttribute('dimensions')).to.equal(false);
     expect(preview.querySelector('[slot="metadata"]')).to.equal(null);

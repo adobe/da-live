@@ -360,7 +360,6 @@ export class DaLanding extends LitElement {
         <da-file-item view="card"
           .name=${item.name} .path=${item.path} .ext=${item.ext} .date=${item.lastModified}
           .editor=${this._editor || '/canvas#'}
-          .documentPreview=${item.ext === 'html'}
           .href=${getFileHref({ item, editor: this._editor || '/canvas#' })}
           .isFavorited=${this._favorites?.has(item.path)}
           @favoritechange=${() => this.starFile(item)}></da-file-item>

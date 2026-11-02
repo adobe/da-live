@@ -171,13 +171,10 @@ intentional differences rather than substitutes for those missing inputs.
   explicit retry, absent metadata is unavailable, and closed or stale requests
   cannot update another file's details. No author names or profile photos are invented.
   Folders and links do not request unsupported metadata.
-- Cards reuse shared lazy image previews; list thumbnails keep browse-v2 previews.
-  Pages opt into read-only, source-backed
-  document thumbnails (heading, representative image and excerpt), not screenshots
-  of the published site. Source HTML is never inserted into the live DOM or executed.
-  These additions are opt-in and do not change ordinary Browse previews.
-  Preview failures are identified rather than presented as successful thumbnails.
-  The 80px by 107px paper frame wraps unbroken headings/URLs and clips its content.
+- Cards use Browse's standard file-type icons for documents, sheets and folders.
+  Image files retain Browse's existing lazy thumbnails and error fallback.
+  No source-backed document thumbnails or page-content requests are added.
+  List thumbnails keep browse-v2 previews.
 - The Figma Ready Recent frame (`1852:83848`) supplies the gradient artwork and
   semantic page, fragment and image assets for the existing list. Cards use
   shared Browse icons. Sheets use the shared generic

@@ -270,7 +270,7 @@ describe('da-file-item render', () => {
     const card = el.shadowRoot.querySelector('nx-card');
     expect(card.selectable).to.equal(true);
     expect(card.selected).to.equal(false);
-    expect(preview.parentElement.slot).to.equal('media');
+    expect(preview.slot).to.equal('media');
     expect(el.shadowRoot.querySelector('[slot="heading"]').textContent.trim()).to.equal('brand.xlsx');
     expect(el.shadowRoot.querySelector('.card-date').textContent).to.equal(el.renderDate());
     expect(el.shadowRoot.querySelector('.card-type').textContent).not.to.be.empty;
