@@ -40,6 +40,16 @@ describe('shared site selector adapter', () => {
     sinon.restore();
   });
 
+  it('defaults DA selectors to S without replacing an explicit M size', async () => {
+    expect(selector.size).to.equal('s');
+    selector.size = 'm';
+    connection.abort();
+    connection = new AbortController();
+    adapter = connectSiteSelector({ selector, signal: connection.signal });
+    await adapter.ready;
+    expect(selector.size).to.equal('m');
+  });
+
   it('deduplicates valid identifiers and includes current site outside history', () => {
     expect(getSiteOptions({
       current: 'adobe/current',
@@ -78,6 +88,7 @@ describe('shared site selector adapter', () => {
     expect(selector.value).to.equal('');
     expect(selector.heading).to.equal('Your recent sites');
     expect(selector.sites).to.have.length(2);
+    expect(selector.sites.map(({ value }) => value)).to.include('exp-workspace/frescopaco');
     expect(localStorage.getItem('da-sites')).to.equal(remembered);
     const value = 'exp-workspace/frescopaco';
     selector.dispatchEvent(new CustomEvent('site-select', { detail: { value } }));

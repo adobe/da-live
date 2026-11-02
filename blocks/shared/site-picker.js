@@ -4,6 +4,7 @@ import { checkSiteChoices, getCreateSiteHref, setRecentSite } from './site-acces
 
 export function connectSiteSelector({ selector, signal }) {
   if (signal.aborted || !selector.isConnected) return undefined;
+  selector.size ??= 's';
   let request;
   let choicesKey;
   let scope;

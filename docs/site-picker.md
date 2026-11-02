@@ -15,6 +15,8 @@ releases the adapter's listeners, requests and dialog.
 The adapter supplies `sites` as `{ value: 'org/site', label: 'Site, org/site' }`
 entries and `value` from the current hash. It handles `site-select`, `site-add`
 and `site-retry`. Hosts own `heading`, placement and page-specific integration.
+DA defaults to size S (14px/18px bold trigger text), preserving an explicitly
+authored M size (16px/20px). Recent history does not select a site on an unscoped URL.
 Menu presentation belongs to Nexter's shared navigation picker variant, not
 application CSS or a custom nav slot.
 
