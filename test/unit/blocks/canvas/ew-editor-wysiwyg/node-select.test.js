@@ -6,6 +6,7 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { createTestEditor, destroyEditor } = await import('../../edit/prose/test-helpers.js');
 const { handleNodeSelect, resolveNodeSelectPos, handleCursorMove } = await import('../../../../../blocks/canvas/ew-editor-wysiwyg/utils/handlers.js');
+const { setCommentsController } = await import('../../../../../blocks/canvas/editor-utils/comments-bridge.js');
 
 function insertTable(editor) {
   const { state } = editor.view;
@@ -25,7 +26,10 @@ function insertTable(editor) {
 describe('handleNodeSelect', () => {
   let editor;
   beforeEach(async () => { editor = await createTestEditor(); });
-  afterEach(() => destroyEditor(editor));
+  afterEach(() => {
+    destroyEditor(editor);
+    setCommentsController(null);
+  });
 
   it('selects a table for a block payload (proseIndex = table.from + 1)', () => {
     const tablePos = insertTable(editor);
@@ -51,6 +55,53 @@ describe('handleNodeSelect', () => {
     const sel = editor.view.state.selection;
     expect(sel instanceof NodeSelection).to.equal(true);
     expect(sel.node.type.name).to.equal('image');
+  });
+
+  it('selects the image comment thread in layout mode', () => {
+    const { state } = editor.view;
+    const { schema } = state;
+    const image = schema.nodes.image.create({ src: '/x.png' });
+    editor.view.dispatch(state.tr.replaceWith(0, state.doc.content.size, image));
+    let imgPos = -1;
+    editor.view.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'image') imgPos = pos;
+    });
+    let received;
+    setCommentsController({
+      findThreadForNode(anchor) {
+        received = anchor;
+        return 'image-thread';
+      },
+      setSelectedThread(threadId) { received = { ...received, threadId }; },
+    });
+
+    handleNodeSelect({ node: { anchorType: 'image', proseIndex: imgPos } }, { view: editor.view });
+
+    expect(received).to.deep.equal({
+      anchorType: 'image',
+      from: imgPos,
+      threadId: 'image-thread',
+    });
+  });
+
+  it('clears the selected comment when the clicked image has no comment', () => {
+    const { state } = editor.view;
+    const { schema } = state;
+    const image = schema.nodes.image.create({ src: '/x.png' });
+    editor.view.dispatch(state.tr.replaceWith(0, state.doc.content.size, image));
+    let imgPos = -1;
+    editor.view.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'image') imgPos = pos;
+    });
+    let selected = 'previous-thread';
+    setCommentsController({
+      findThreadForNode() { return null; },
+      setSelectedThread(threadId) { selected = threadId; },
+    });
+
+    handleNodeSelect({ node: { anchorType: 'image', proseIndex: imgPos } }, { view: editor.view });
+
+    expect(selected).to.equal(null);
   });
 
   it('ignores a payload whose type does not match the resolved node', () => {

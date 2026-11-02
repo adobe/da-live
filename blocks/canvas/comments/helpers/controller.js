@@ -102,6 +102,18 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
       return entry.threadId ?? commentId;
     },
 
+    findThreadForNode({ anchorType, from }) {
+      if (!boundView || !store || !anchorType || from == null) return null;
+      let threadId = null;
+      store.forEach((comment, id) => {
+        if (threadId || comment.threadId != null || comment.resolved
+          || comment.anchorType !== anchorType) return;
+        const { range } = resolveAnchor({ anchor: comment, state: boundView.state });
+        if (range?.from === from) threadId = id;
+      });
+      return threadId;
+    },
+
     getAttachedThreadIds() {
       if (!boundView || !store) return null;
       const ids = new Set();

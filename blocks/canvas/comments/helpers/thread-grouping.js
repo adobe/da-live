@@ -37,7 +37,7 @@ export function buildThreadGroups({ store, attachedIds }) {
       resolved.push({ ...root, replies, isDetached: false, isResolved: true });
     } else if (attachedIds == null || attachedIds.has(root.id)) {
       active.push({ ...root, replies, isDetached: false, isResolved: false });
-    } else {
+    } else if (root.anchorType !== 'image') {
       detached.push({ ...root, replies, isDetached: true, isResolved: false });
     }
   });

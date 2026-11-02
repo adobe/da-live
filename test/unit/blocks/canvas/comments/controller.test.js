@@ -178,6 +178,36 @@ describe('comments helpers/controller', () => {
     expect(controller.getAttachedThreadIds()).to.be.null;
   });
 
+  it('finds an active image thread by its selected node position', async () => {
+    const { controller: c, editor, store: m } = await createControllerWithPlugin();
+    const { schema } = editor.view.state;
+    const image = schema.nodes.image.create({ src: '/x.png' });
+    editor.view.dispatch(editor.view.state.tr.replaceSelectionWith(image));
+    let from = null;
+    editor.view.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'image') from = pos;
+    });
+    const { encodeAnchor } = await import('../../../../../blocks/canvas/comments/helpers/anchor.js');
+    const encoded = encodeAnchor({
+      selectionData: { from, to: from + 1, anchorType: 'image', anchorText: '' },
+      state: editor.view.state,
+    });
+    m.set('image-thread', {
+      id: 'image-thread',
+      ...encoded,
+      author: { id: 'u' },
+      body: '',
+      createdAt: 0,
+      resolved: false,
+    });
+
+    expect(c.findThreadForNode({ anchorType: 'image', from })).to.equal('image-thread');
+    expect(c.findThreadForNode({ anchorType: 'image', from: from + 1 })).to.equal(null);
+
+    destroyEditor(editor);
+    c.destroy();
+  });
+
   it('getAttachedThreadIds returns the set of root threads whose anchors decode', async () => {
     const { controller: c, editor, store: m } = await createControllerWithPlugin();
     editor.view.dispatch(editor.view.state.tr.insertText('hello world'));
