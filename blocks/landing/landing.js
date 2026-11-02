@@ -19,8 +19,8 @@ const styles = await Promise.all([
 ]);
 
 const VIEW_ITEMS = [
-  { value: 'card', label: 'Grid view', icon: '/img/icons/s2-icon-viewgrid-20-n.svg', iconOnly: true },
   { value: 'list', label: 'List view', icon: '/img/icons/s2-icon-viewlist-20-n.svg', iconOnly: true },
+  { value: 'card', label: 'Grid view', icon: '/img/icons/s2-icon-viewgrid-20-n.svg', iconOnly: true },
 ];
 const PAGE_SIZE = 10;
 const CARD_PAGE_SIZE = 6;
