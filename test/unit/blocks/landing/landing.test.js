@@ -70,6 +70,18 @@ describe('landing page', () => {
     expect(el.shadowRoot.textContent).not.to.include('Need Attention');
   });
 
+  it('keeps Browse card width and wraps columns instead of stretching cards', async () => {
+    const sheet = new CSSStyleSheet();
+    await sheet.replace(await (await fetch('/blocks/landing/landing.css')).text());
+    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
+    el.style.setProperty('--s2-spacing-200', '12px');
+    const grid = el.shadowRoot.querySelector('.files');
+    for (const [width, columns] of [[500, '226px 226px'], [300, '226px'], [150, '150px']]) {
+      grid.style.width = `${width}px`;
+      expect(getComputedStyle(grid).gridTemplateColumns).to.equal(columns);
+    }
+  });
+
   it('matches the mock composer branding, placeholder and disclaimer', () => {
     expect(el.shadowRoot.querySelector('.composer-input .coworker-icon')).not.to.equal(null);
     expect(el.shadowRoot.querySelector('textarea').placeholder).to.equal('Let me know your task — I can route you to the right app or tool');
