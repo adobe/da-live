@@ -53,6 +53,35 @@ describe('da-list render', () => {
     await el.updateComplete;
   }
 
+  ['list', 'card'].forEach((view) => {
+    it(`restores focus to the last selected item after clearing ${view} selection`, async () => {
+      await fixture({
+        view,
+        select: true,
+        listItems: [
+          { path: '/org/site/a.html', name: 'a', ext: 'html' },
+          { path: '/org/site/b.html', name: 'b', ext: 'html', isChecked: true },
+        ],
+      });
+      el._lastCheckedIndex = 1;
+      el._selectedItems = [el._listItems[1]];
+      await rerender();
+      const row = el.shadowRoot.querySelectorAll('da-file-item')[1];
+      await row.updateComplete;
+      const card = row.shadowRoot.querySelector('nx-card');
+      const focus = card ? spy(card, 'focus') : null;
+      await el.handleClearSelection();
+      if (card) {
+        expect(focus.calledOnce).to.equal(true);
+      } else {
+        expect(row.shadowRoot.activeElement)
+          .to.equal(row.shadowRoot.querySelector('input[type="checkbox"]'));
+      }
+      expect(el._selectedItems).to.deep.equal([]);
+      expect(el._listItems[1].isChecked).to.equal(false);
+    });
+  });
+
   it('persists favorite changes without changing order or selection', async () => {
     const savedFavorites = localStorage.getItem('da-favorites');
     try {
@@ -124,8 +153,28 @@ describe('da-list render', () => {
     ];
     el.select = true;
     await rerender();
-    const items = el.shadowRoot.querySelectorAll('da-list-item');
+    const items = el.shadowRoot.querySelectorAll('da-file-item');
     expect(items.length).to.equal(2);
+  });
+
+  it('uses the editor configured for each result path', async () => {
+    await fixture({
+      editor: '/canvas#',
+      defaultEditor: '/canvas#',
+      editorConfs: ['/o/r/forms=https://da.live/form#'],
+      listItems: [
+        { path: '/o/r/forms/contact.html', name: 'contact', ext: 'html' },
+        { path: '/o/r/page.html', name: 'page', ext: 'html' },
+      ],
+    });
+    const items = el.shadowRoot.querySelectorAll('da-file-item');
+    expect(items[0].getAttribute('editor')).to.equal('https://da.live/form#');
+    expect(items[1].getAttribute('editor')).to.equal('/canvas#');
+    await Promise.all([...items].map((item) => item.updateComplete));
+    expect(items[0].shadowRoot.querySelector('a.da-item-list-item-title').getAttribute('href'))
+      .to.equal('https://da.live/form#/o/r/forms/contact');
+    expect(items[1].shadowRoot.querySelector('a.da-item-list-item-title').getAttribute('href'))
+      .to.equal('/canvas#/o/r/page');
   });
 
   it('Renders the load-more sentinel when continuationToken is set', async () => {
@@ -148,7 +197,7 @@ describe('da-list render', () => {
     ];
     el._hiddenTypes = new Set(['Sheet']);
     await rerender();
-    const items = el.shadowRoot.querySelectorAll('da-list-item');
+    const items = el.shadowRoot.querySelectorAll('da-file-item');
     expect(items.length).to.equal(1);
     expect(items[0].getAttribute('name')).to.equal('alpha');
   });
@@ -254,7 +303,7 @@ describe('da-list render', () => {
     el._continuationToken = 'next';
     el._allPagesLoaded = false;
     await rerender();
-    expect(el.shadowRoot.querySelector('da-list-item')).to.be.null;
+    expect(el.shadowRoot.querySelector('da-file-item')).to.be.null;
     expect(el.shadowRoot.querySelector('.da-list-sentinel')).to.exist;
   });
 
@@ -290,11 +339,11 @@ describe('da-list render', () => {
     el._listItems = [{ path: '/o/r/page.html', name: 'page', ext: 'html' }];
     el.toggleTypeGroup('Page');
     await rerender();
-    expect(el.shadowRoot.querySelector('da-list-item')).to.be.null;
+    expect(el.shadowRoot.querySelector('da-file-item')).to.be.null;
     expect(el.shadowRoot.querySelector('.da-list-group-toggle').getAttribute('aria-expanded')).to.equal('false');
     el.toggleTypeGroup('Page');
     await rerender();
-    expect(el.shadowRoot.querySelector('da-list-item')).to.exist;
+    expect(el.shadowRoot.querySelector('da-file-item')).to.exist;
   });
 
   it('loads remaining pages before presenting the complete type selection', async () => {
@@ -343,7 +392,7 @@ describe('da-list render', () => {
         { path: '/org/site/b.png', name: 'b', ext: 'png' },
       ],
     });
-    const items = el.shadowRoot.querySelectorAll('.da-card-grid da-list-item');
+    const items = el.shadowRoot.querySelectorAll('.da-card-grid da-file-item');
     expect(items).to.have.length(2);
     expect(items[0].getAttribute('view')).to.equal('card');
     expect(el.shadowRoot.querySelector('.da-browse-table-header').classList.contains('is-card')).to.be.true;
@@ -351,7 +400,7 @@ describe('da-list render', () => {
     el.view = 'list';
     await rerender();
     expect(el.shadowRoot.querySelector('.da-card-grid')).to.be.null;
-    expect(el.shadowRoot.querySelector('da-list-item').hasAttribute('view')).to.be.false;
+    expect(el.shadowRoot.querySelector('da-file-item').hasAttribute('view')).to.be.false;
   });
 
   it('shows the card sort control only for an active sort', async () => {

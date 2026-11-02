@@ -107,11 +107,9 @@ export async function openFocalPointDialog(view, pos, node) {
   }
 
   const parseCoord = (val) => (val ? parseFloat(val) : null);
-  let originalFocalX = parseCoord(node.attrs.dataFocalX);
-  let originalFocalY = parseCoord(node.attrs.dataFocalY);
 
-  let currentX = originalFocalX ?? 50;
-  let currentY = originalFocalY ?? 50;
+  let currentX = parseCoord(node.attrs.dataFocalX) ?? 50;
+  let currentY = parseCoord(node.attrs.dataFocalY) ?? 50;
 
   const shouldDetectFace = !hasFocalPointData(node.attrs);
 
@@ -206,7 +204,6 @@ export async function openFocalPointDialog(view, pos, node) {
             currentX = faceCenter.x;
             currentY = faceCenter.y;
             updateIndicatorPosition(currentX, currentY);
-            updateNodeFocalPoint(view, pos, node, currentX, currentY);
           }
         }
       } catch (e) {
@@ -232,7 +229,6 @@ export async function openFocalPointDialog(view, pos, node) {
       imageContainer.style.cursor = 'grabbing';
       e.preventDefault();
       updatePositionFromEvent(e);
-      updateNodeFocalPoint(view, pos, node, currentX, currentY);
     }
   };
 
@@ -245,7 +241,6 @@ export async function openFocalPointDialog(view, pos, node) {
     if (isDragging) {
       isDragging = false;
       imageContainer.style.cursor = '';
-      updateNodeFocalPoint(view, pos, node, currentX, currentY);
     }
   };
 
@@ -257,15 +252,13 @@ export async function openFocalPointDialog(view, pos, node) {
     label: 'Accept',
     style: 'accent',
     click: () => {
-      originalFocalX = currentX;
-      originalFocalY = currentY;
+      updateNodeFocalPoint(view, pos, node, currentX, currentY);
       cleanupEventListeners(handleMouseMove, handleMouseUp);
       dialog.close();
     },
   };
 
   dialog.addEventListener('close', () => {
-    updateNodeFocalPoint(view, pos, node, originalFocalX, originalFocalY);
     cleanupEventListeners(handleMouseMove, handleMouseUp);
     currentDialog = null;
     dialog.remove();
@@ -276,7 +269,6 @@ export async function openFocalPointDialog(view, pos, node) {
   cancelBtn.textContent = 'Cancel';
   cancelBtn.slot = 'footer-left';
   cancelBtn.addEventListener('click', () => {
-    updateNodeFocalPoint(view, pos, node, originalFocalX, originalFocalY);
     dialog.close();
   });
 
@@ -290,8 +282,7 @@ export async function openFocalPointDialog(view, pos, node) {
   }
 
   clearBtn.addEventListener('click', () => {
-    originalFocalX = null;
-    originalFocalY = null;
+    updateNodeFocalPoint(view, pos, node, null, null);
     cleanupEventListeners(handleMouseMove, handleMouseUp);
     dialog.close();
   });

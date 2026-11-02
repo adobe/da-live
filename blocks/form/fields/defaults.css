@@ -1,0 +1,48 @@
+:host {
+  display: block;
+  font-family: var(--s2-font-family, adobe-clean, 'Source Sans Pro', system-ui, sans-serif);
+}
+
+:host([disabled]) {
+  pointer-events: none;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2-spacing-75);
+
+  label {
+    font-size: var(--s2-component-s-regular-font-size, 12px);
+    color: var(--s2-gray-700);
+  }
+}
+
+.form-required {
+  color: var(--s2-red-900);
+  margin-left: 2px;
+}
+
+.form-field-error {
+  margin: 0;
+  font-size: var(--s2-component-s-regular-font-size, 12px);
+  color: var(--s2-red-900);
+}
+
+.form-field-description {
+  margin: 0;
+  font-size: var(--s2-component-s-regular-font-size, 12px);
+  color: var(--s2-gray-700);
+}
+
+.form-field-icon {
+  /* Validation icon (alert) shown at the field's inline-end when invalid.
+     Each field positions it via inset-inline-end in its own stylesheet. */
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translateY(-50%);
+  color: var(--s2-red-900);
+  pointer-events: none;
+}

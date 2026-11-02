@@ -1,0 +1,92 @@
+:host {
+  display: block;
+  font-family: var(
+    --s2-font-family,
+    adobe-clean,
+    "Source Sans Pro",
+    system-ui,
+    sans-serif
+  );
+}
+
+:host([disabled]) {
+  pointer-events: none;
+}
+
+/* Shared structure: Spectrum 2 pill shape and bold label. */
+.form-button {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 5px 14px;
+  border: 2px solid transparent;
+  border-radius: 16px;
+  font-family: inherit;
+  font-size: var(--s2-body-size-s, 14px);
+  font-weight: 700;
+  line-height: 18px;
+  cursor: pointer;
+  transition: 0.13s cubic-bezier(0.45, 0, 0.4, 1);
+  transition-property:
+    outline, color, background-color, border-color, transform;
+
+  &:focus-visible {
+    outline: 2px solid var(--s2-blue-800);
+    outline-offset: 2px;
+  }
+
+  &:active {
+    transform: perspective(32px) translate3d(0, 0, -2px);
+  }
+}
+
+/* Accent (default variant): blue fill, static white label. */
+:host([variant="accent"]) .form-button {
+  background: var(--s2-blue-900);
+  color: white;
+
+  &:hover,
+  &:focus-visible,
+  &:active {
+    background: var(--s2-blue-1000);
+  }
+
+  &:disabled {
+    background: var(--s2-gray-100);
+    color: var(--s2-gray-400);
+  }
+}
+
+/* Secondary: transparent at rest; neutral text with a gray wash on state. */
+:host([variant="secondary"]) .form-button {
+  background: transparent;
+  color: var(--s2-gray-700);
+
+  &:hover,
+  &:focus-visible {
+    background: var(--s2-gray-100);
+    color: var(--s2-gray-900);
+  }
+
+  &:active {
+    background: var(--s2-gray-300);
+    color: var(--s2-gray-900);
+  }
+
+  &:disabled {
+    background: transparent;
+    color: var(--s2-gray-400);
+  }
+}
+
+/* Slotted icon (e.g. the Add glyph): 20px, nudged to the edge-to-visual inset. */
+::slotted(svg) {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-block: calc((20px - 1lh) / 2 * -1);
+  margin-inline-start: -2px;
+}

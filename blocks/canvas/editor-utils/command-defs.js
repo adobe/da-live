@@ -33,6 +33,11 @@ import {
 } from './command-helpers.js';
 import { openLinkDialog, openAltDialog, triggerAddImage } from './selection-toolbar.js';
 import { blockItemsForQuery, hasLibrary, insertBlockItem, getState } from './block-slash.js';
+import {
+  canSetFocalPoint,
+  hasFocalPointData,
+  openSelectedFocalPoint,
+} from '../../edit/prose/plugins/imageFocalPoint.js';
 
 const notImageSelected = (state) => !isImageNodeSelected(state);
 
@@ -333,6 +338,15 @@ export const COMMANDS = [
     showIn: ['toolbar-image'],
     visible: isImageNodeSelected,
     apply: openAltDialog,
+  },
+  {
+    id: 'image-focal-point',
+    label: 'Set focal point',
+    icon: 'target',
+    showIn: ['toolbar-image'],
+    visible: canSetFocalPoint,
+    active: (state) => hasFocalPointData(state.selection.node?.attrs ?? {}),
+    apply: openSelectedFocalPoint,
   },
   {
     id: 'image-add',

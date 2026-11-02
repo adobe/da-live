@@ -1,0 +1,153 @@
+:host {
+  display: block;
+  font-family: var(
+    --s2-font-family,
+    "Adobe Clean",
+    adobe-clean,
+    "Trebuchet MS",
+    sans-serif
+  );
+}
+
+.nx-form-message {
+  background: var(--s2-gray-25);
+  border: none;
+  border-radius: var(--s2-corner-radius-500);
+  padding: 16px;
+  text-align: center;
+}
+
+.nx-form-message h2 {
+  margin: 0 0 8px;
+}
+
+.nx-form-message p {
+  margin: 0 0 12px;
+}
+
+.nx-form-actions {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.nx-form-wrapper {
+  width: min(880px, 100%);
+  max-width: 880px;
+  margin: 0 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  box-sizing: border-box;
+}
+
+.nx-form-wrapper.nx-form-wrapper-centered {
+  justify-content: center;
+  padding-top: var(--form-content-top, 32px);
+}
+
+.nx-editor-pane {
+  flex: 1 1 560px;
+  width: 560px;
+  min-width: 0;
+  max-width: 560px;
+}
+
+.nx-editor-pane-with-preview nx-editor {
+  --nx-editor-padding-bottom: 16px;
+}
+
+nx-sidebar {
+  position: sticky;
+  top: var(--nx-scroll-offset-top, 0);
+  flex: 0 0 300px;
+  width: 300px;
+  max-width: 300px;
+  align-self: flex-start;
+}
+
+.nx-form-schema-shell {
+  flex: 1 1 700px;
+  width: 700px;
+  min-width: 0;
+  max-width: 700px;
+}
+
+.nx-form-schema-card {
+  box-sizing: border-box;
+  border-radius: var(--s2-corner-radius-800);
+  background: var(--s2-gray-25);
+  box-shadow:
+    light-dark(rgb(0 0 0 / 8%), rgb(0 0 0 / 50%)) 0 4px 24px,
+    light-dark(rgb(0 0 0 / 6%), rgb(0 0 0 / 40%)) 0 1px 3px;
+  padding: 28px;
+}
+
+.nx-form-title {
+  margin: 0 0 8px;
+}
+
+.nx-form-schema-heading {
+  margin: 0 0 16px;
+}
+
+.nx-form-schema-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nx-form-schema-start {
+  align-self: flex-end;
+}
+
+.nx-form-schema-hint {
+  margin: 0;
+}
+
+.nx-form-schema-select-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2-spacing-75);
+}
+
+.nx-form-schema-form .nx-form-schema-hint {
+  font-size: var(--s2-component-s-regular-font-size, 12px);
+  color: var(--s2-gray-700);
+}
+
+.nx-form-schema-text-link {
+  color: var(--s2-blue-900);
+  text-underline-offset: 2px;
+}
+
+.nx-form-schema-text-link:hover {
+  color: var(--s2-blue-1000);
+}
+
+.nx-form-schema-field-link {
+  text-align: center;
+}
+
+.nx-form-schema-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 var(--s2-spacing-200);
+  border: 2px solid var(--s2-blue-900);
+  border-radius: var(--s2-corner-radius-800);
+  background: var(--s2-blue-900);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    background 0.13s ease,
+    border-color 0.13s ease;
+}
+
+.nx-form-schema-cta:hover {
+  background: var(--s2-blue-1000);
+  border-color: var(--s2-blue-1000);
+}
