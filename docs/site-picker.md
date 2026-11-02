@@ -22,8 +22,11 @@ application CSS or a custom nav slot.
 
 Recent sites use the existing browser-local `da-sites` history. An unscoped
 route stays unselected. Switching sites preserves query parameters and never
-prunes history because of denied access. Failed storage or uncertain access
-checks produce an explicit error and retry.
+prunes history because of denied access. Confirmed-denied choices are hidden
+from the menu, not removed from storage. Checks that fail because of authentication,
+network or server errors keep unchecked choices visible with an error and retry.
+Previously confirmed denials stay hidden until a successful recheck restores access.
+A denied current route is not changed; the selector reports it explicitly.
 
 `site-access.js` validates existing AEM URLs and site access. `add-site.js`
 provides the lazy Add dialog. Adding remembers an accessible existing site;

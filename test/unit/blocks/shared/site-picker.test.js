@@ -106,18 +106,21 @@ describe('shared site selector adapter', () => {
     expect(selector.sites).to.deep.equal([]);
   });
 
-  it('remembers denied routed sites before checking access and retains all choices', async () => {
+  it('hides denied choices without deleting history or changing a denied current route', async () => {
     list.resolves({ ok: false });
     sinon.stub(source, 'getMetadata').resolves(new Response(null, { status: 403 }));
     localStorage.setItem('da-sites', '["exp-workspace/frescopaco"]');
-    await adapter.refresh();
-    expect(selector.sites.map(({ value }) => value))
+    selector.dispatchEvent(new CustomEvent('site-retry'));
+    await tick();
+    expect(selector.sites).to.deep.equal([]);
+    expect(JSON.parse(localStorage.getItem('da-sites')))
       .to.deep.equal(['aemsites/devlive', 'exp-workspace/frescopaco']);
-    expect(JSON.parse(localStorage.getItem('da-sites'))).to.include('aemsites/devlive');
-    expect(selector.error).to.be.undefined;
+    expect(window.location.hash).to.equal('#/aemsites/devlive/folder');
+    expect(selector.value).to.equal('aemsites/devlive');
+    expect(selector.error).to.include('You do not have access to aemsites/devlive');
   });
 
-  it('keeps Devlive after successfully adding and selecting Frescopaco', async () => {
+  it('hides denied Devlive after selecting Frescopaco but keeps both in saved history', async () => {
     list.callsFake(async (path) => ({
       ok: path.startsWith('/exp-workspace'),
       items: path === '/exp-workspace' ? [{ name: 'frescopaco' }] : [],
@@ -126,10 +129,54 @@ describe('shared site selector adapter', () => {
     const value = 'exp-workspace/frescopaco';
     await addExistingSite({ value, source, signal: connection.signal });
     selector.dispatchEvent(new CustomEvent('site-select', { detail: { value } }));
-    await adapter.refresh();
+    await tick();
     expect(selector.value).to.equal(value);
-    expect(selector.sites.map((site) => site.value)).to.deep.equal([value, 'aemsites/devlive']);
+    expect(selector.sites.map((site) => site.value)).to.deep.equal([value]);
     expect(JSON.parse(localStorage.getItem('da-sites'))).to.deep.equal([value, 'aemsites/devlive']);
+    expect(selector.error).to.equal(undefined);
+    selector.dispatchEvent(new CustomEvent('site-select', { detail: { value: 'aemsites/devlive' } }));
+    expect(window.location.hash).to.equal('#/exp-workspace/frescopaco');
+    expect(selector.error).to.include('no longer available');
+  });
+
+  it('keeps known denials hidden while retrying and restores choices when access returns', async () => {
+    list.callsFake(async (path) => ({ ok: path.includes('aemsites') }));
+    sinon.stub(source, 'getMetadata').resolves(new Response(null, { status: 403 }));
+    selector.dispatchEvent(new CustomEvent('site-retry'));
+    await tick();
+    expect(selector.sites.map(({ value }) => value)).to.deep.equal(['aemsites/devlive']);
+    const saved = localStorage.getItem('da-sites');
+    let finish;
+    list.callsFake((path) => (path.includes('aemsites')
+      ? Promise.resolve({ ok: true }) : new Promise((resolve) => { finish = resolve; })));
+    localStorage.setItem('da-sites', '["exp-workspace/frescopaco"]');
+    selector.dispatchEvent(new CustomEvent('site-retry'));
+    await tick();
+    expect(selector.sites.map(({ value }) => value)).to.deep.equal(['aemsites/devlive']);
+    list.resolves({ ok: true });
+    finish({ ok: true });
+    await tick();
+    expect(selector.sites.map(({ value }) => value))
+      .to.deep.equal(['aemsites/devlive', 'exp-workspace/frescopaco']);
+    expect(localStorage.getItem('da-sites')).to.equal(saved);
+  });
+
+  it('does not apply an old denial after the route changes', async () => {
+    let finish;
+    list.resetHistory();
+    list.onFirstCall().returns(new Promise((resolve) => { finish = resolve; }));
+    selector.dispatchEvent(new CustomEvent('site-retry'));
+    await tick();
+    const checking = list.firstCall.args[1].opts.signal;
+    window.history.replaceState(null, '', '#/other/site');
+    await adapter.refresh();
+    expect(checking.aborted).to.equal(true);
+    finish({ ok: false });
+    await tick();
+    expect(selector.value).to.equal('other/site');
+    expect(selector.sites.map(({ value }) => value))
+      .to.deep.equal(['other/site', 'aemsites/devlive', 'exp-workspace/frescopaco']);
+    expect(selector.error).to.equal(undefined);
   });
 
   it('rejects unknown selection without changing the route', () => {
