@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="nxver" content="2">
+    <title>Site selector integration</title>
+    <link rel="icon" href="data:,">
+    <script type="importmap">
+      {
+        "imports": {
+          "da-lit": "/deps/lit/dist/index.js",
+          "da-y-wrapper": "/deps/da-y-wrapper/dist/index.js"
+        }
+      }
+    </script>
+    <script type="module">
+      import '../scripts/scripts.js';
+      import { getNx } from '../scripts/utils.js';
+
+      await import(`${getNx()}/blocks/siteselector/siteselector.js`);
+    </script>
+  </head>
+  <body>
+    <header></header>
+    <main>
+      <div>
+        <h1>Site selector integration</h1>
+        <p>This example uses your browser's recent sites and the real DA access checks.
+          Sign in through the profile menu before checking access or adding a site.</p>
+        <nx-siteselector heading="Your recent sites"></nx-siteselector>
+        <p>Selecting a site updates this page's hash. Add remembers an existing accessible site;
+          it does not create a site or grant access.</p>
+      </div>
+    </main>
+  </body>
+</html>

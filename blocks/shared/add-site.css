@@ -1,0 +1,56 @@
+:host {
+  display: contents;
+}
+
+form {
+  display: grid;
+  gap: var(--s2-spacing-200);
+}
+
+p {
+  margin: 0;
+}
+
+form, .nx-input, .site-creation, .permission-error {
+  font-size: var(--s2-component-m-regular-font-size);
+  line-height: var(--s2-component-m-regular-line-height);
+  font-weight: var(--s2-component-m-regular-font-weight);
+}
+
+.nx-form-field {
+  font-size: var(--s2-component-m-medium-font-size);
+  line-height: var(--s2-component-m-medium-line-height);
+  font-weight: var(--s2-component-m-medium-font-weight);
+}
+
+#site-error {
+  color: var(--s2-red-900);
+}
+
+#site-error:empty {
+  display: none;
+}
+
+.site-creation {
+  margin-top: var(--s2-spacing-300);
+  padding-top: var(--s2-spacing-300);
+  border-top: 1px solid var(--s2-gray-200);
+}
+
+.site-creation a {
+  color: var(--s2-blue-900);
+}
+
+.permission-error {
+  margin-top: var(--s2-spacing-200);
+}
+
+.permission-retry {
+  font: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
