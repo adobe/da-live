@@ -214,7 +214,7 @@ export class DaLanding extends LitElement {
 
   render() {
     return html`<div class="landing">
-      <section class="files-panel" aria-labelledby="files-heading">
+      <section class="files-panel" data-view=${this._view} aria-labelledby="files-heading">
         <div class="panel-heading">
           <h2 id="files-heading">Content</h2>
           <nx-segmented-btn label="File view" size="m" .items=${VIEW_ITEMS}

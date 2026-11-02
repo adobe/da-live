@@ -13,6 +13,7 @@ the LP-only Add site dialog.
 
 Cards use Browse's fixed 151x200 small preset, independently of page text scale.
 The centered panel hugs whole columns, up to six, with 16px side padding.
+Card-mode panel width stays the same while loading, empty or showing an error.
 Recent starts with six cards. Show more expands directly to eighteen, or all
 available files if fewer exist, then disappears. Two portrait-card rows make
 the initial section taller, so six keeps the default desktop view compact.
