@@ -1,8 +1,8 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getFirstSheet, fetchDaConfigs } from '../../../shared/utils.js';
+import { getFirstSheet, fetchDaConfigs, canEditOrgConfig } from '../../../shared/utils.js';
 import { getNx, sanitizePathParts, getNxEWFlags } from '../../../../scripts/utils.js';
 import { getChatPanelContent } from '../../../shared/chat-panel.js';
-import { getSettingsMenuItems, canEditOrgConfig } from '../../shared/settings-menu.js';
+import { getSettingsMenuItems } from '../../shared/settings-menu.js';
 
 // Components
 import '../../da-new/da-new.js';

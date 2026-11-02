@@ -426,6 +426,14 @@ export const fetchDaConfigs = (() => {
   };
 })();
 
+/** Whether the user can write the org config (org `CONFIG` actions from the cached org config). */
+export async function canEditOrgConfig(org) {
+  const config = await fetchDaConfigs({ org })[0].catch(() => null);
+  // 404 = org has no config yet; da-admin still reports the CONFIG actions for it.
+  if (config?.error && config.status !== 404) return false;
+  return !!getConfigPermissions(config)?.includes('write');
+}
+
 export const getSidekickConfig = (() => {
   const configCache = {};
 

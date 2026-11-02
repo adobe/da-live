@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../../scripts/utils.js';
-import { getSettingsMenuItems, canEditOrgConfig } from '../../shared/settings-menu.js';
+import { canEditOrgConfig } from '../../../shared/utils.js';
+import { getSettingsMenuItems } from '../../shared/settings-menu.js';
 
 await import(`${getNx()}/blocks/shared/switch/switch.js`);
 await import(`${getNx()}/blocks/shared/segmented-btn/segmented.js`);
