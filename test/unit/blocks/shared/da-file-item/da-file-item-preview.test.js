@@ -116,4 +116,15 @@ describe('da-file-item preview', () => {
     expect(el._imageUrl).to.equal(null);
     expect(revoke.calledOnce).to.equal(true);
   });
+
+  it('uses the standard document icon without fetching page content', async () => {
+    const { source } = await getNx2Api();
+    const get = spy(source, 'get');
+    await fixture({ ext: 'html', path: '/o/s/page.html' });
+    expect(observer.observe.called).to.equal(false);
+    expect(get.called).to.equal(false);
+    expect(el.shadowRoot.querySelector('.card-preview svg use').getAttribute('href'))
+      .to.include('s2-icon-filehtml-20-n.svg');
+    expect(el.shadowRoot.querySelector('.card-preview img, .document-preview')).to.equal(null);
+  });
 });

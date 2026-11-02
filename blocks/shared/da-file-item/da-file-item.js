@@ -32,6 +32,7 @@ export default class DaFileItem extends LitElement {
     rename: { type: Boolean },
     allowselect: { type: Boolean },
     view: { type: String, reflect: true },
+    href: { type: String },
     isChecked: { attribute: 'ischecked', type: Boolean },
     isFavorited: { attribute: 'isfavorited', type: Boolean },
     _isRenaming: { state: true },
@@ -313,7 +314,7 @@ export default class DaFileItem extends LitElement {
   }
 
   renderItem() {
-    const href = getFileItemHref(this);
+    const href = this.href ?? getFileItemHref(this);
 
     return html`
       <a href="${this.ext === 'link' ? until(href) : href}" class="da-item-list-item-title" data-column="name">
@@ -383,7 +384,7 @@ export default class DaFileItem extends LitElement {
   }
 
   renderCard() {
-    const href = getFileItemHref(this);
+    const href = this.href ?? getFileItemHref(this);
     return html`
       <nx-card class="card" .selectable=${Boolean(this.allowselect)} .selected=${Boolean(this.isChecked)}
         @nx-card-selection-change=${(e) => this.handleChecked(e.detail)}>

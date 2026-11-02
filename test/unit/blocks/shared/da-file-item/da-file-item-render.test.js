@@ -277,6 +277,27 @@ describe('da-file-item render', () => {
     expect(el.shadowRoot.querySelector('[slot="actions"] button[aria-label="More"]')).to.exist;
   });
 
+  it('keeps the standard Browse composition when document previews are enabled', async () => {
+    await fixture({ view: 'card', ext: 'html', documentPreview: true });
+    const card = el.shadowRoot.querySelector('nx-card');
+    expect(card.hasAttribute('layout')).to.equal(false);
+    expect(card.hasAttribute('dimensions')).to.equal(false);
+    expect(el.shadowRoot.querySelector('.card-type')).to.exist;
+    expect(el.shadowRoot.querySelector('.card-date')).to.exist;
+    expect(el.shadowRoot.querySelector('[slot="heading"] svg')).to.equal(null);
+    expect(el.shadowRoot.querySelector('.card-more').classList.contains('nx-btn-sm')).to.equal(true);
+  });
+
+  it('uses a supplied destination without resolving a link file', async () => {
+    await fixture({ view: 'card', ext: 'link', href: '/?browse=2#/org/repo' });
+    const links = [...el.shadowRoot.querySelectorAll('a')];
+    expect(links).to.have.length(2);
+    expect(links.every((link) => link.getAttribute('href') === '/?browse=2#/org/repo')).to.equal(true);
+    el.href = '/edit#/org/repo/next';
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('[slot="heading"]').getAttribute('href')).to.equal(el.href);
+  });
+
   it('bridges card selection and shift-click to browse selection', async () => {
     await fixture({ view: 'card', allowselect: true });
     const card = el.shadowRoot.querySelector('nx-card');
