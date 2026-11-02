@@ -262,6 +262,41 @@ h2 {
   text-decoration: underline;
 }
 
+.quick-links {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s2-spacing-200);
+  margin: var(--s2-spacing-600) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+@container (width >= 900px) {
+  .quick-links {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .quick-links > li {
+    grid-column: span 2;
+  }
+
+  .quick-links > li:nth-child(4) {
+    grid-column: 2 / span 2;
+  }
+}
+
+@container (width < 900px) {
+  .quick-links {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (width < 600px) {
+  .quick-links {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 a:focus-visible, .filter:focus-visible,
 .file-table-scroll:focus-visible {
   outline: 2px solid var(--s2-blue-800);

@@ -35,12 +35,103 @@ describe('landing Content section', () => {
     ['da-favorites', 'da-browse-settings'].forEach((key) => localStorage.removeItem(key));
   });
 
-  it('renders only Content and reuses shared file cards', () => {
+  it('preserves Content and shared file cards beside the preview tiles', () => {
     expect(el.shadowRoot.querySelector('#files-heading').textContent).to.equal('Content');
     expect(el.shadowRoot.querySelectorAll('da-file-item')).to.have.length(6);
     expect(el.shadowRoot.querySelector('h1, textarea, .composer, nx-nav, nx-siteselector')).to.equal(null);
     expect(el.shadowRoot.querySelector('da-file-item').href).to.include('/canvas');
     expect(el.shadowRoot.querySelector('da-landing-file-actions')).to.equal(null);
+  });
+
+  it('renders the five approved tiles below Content without changing its view controls', async () => {
+    const grid = el.shadowRoot.querySelector('.quick-links');
+    const tiles = [...grid.querySelectorAll('da-landing-tile')];
+    await Promise.all(tiles.map((tile) => tile.updateComplete));
+    expect(grid.previousElementSibling.classList.contains('files-panel')).to.equal(true);
+    expect(tiles.map((tile) => tile.heading)).to.deep.equal([
+      'Browse Content', 'Create a page', 'Publishing & Workflow',
+      'Localization & Multi-site', 'Develop & Extend',
+    ]);
+    expect(el.shadowRoot.querySelector('nx-segmented-btn').items.map(({ value }) => value))
+      .to.deep.equal(['list', 'card']);
+    expect(tiles.slice(2).map((tile) => tile.href)).to.deep.equal([
+      'https://www.aem.live/docs/ew/authoring/publishing',
+      'https://www.aem.live/docs/ew/administering/multi-site-manager',
+      'https://www.aem.live/developer/tutorial',
+    ]);
+  });
+
+  it('routes Browse through the current site while retaining preview settings', async () => {
+    const { href } = window.location;
+    try {
+      window.history.replaceState(null, '', '/?nx=tileclr&nxver=2&landing=true#/org/site');
+      el.requestUpdate();
+      await el.updateComplete;
+      const tile = el.shadowRoot.querySelector('da-landing-tile');
+      expect(new URL(tile.href).searchParams.get('nx')).to.equal('tileclr');
+      expect(new URL(tile.href).searchParams.get('nxver')).to.equal('2');
+      expect(new URL(tile.href).hash).to.equal('#/org/site');
+      hashChange._set({ org: 'other', site: 'site', fullpath: '/other/site' });
+      await el.updateComplete;
+      expect(new URL(tile.href).hash).to.equal('#/other/site');
+    } finally {
+      window.history.replaceState(null, '', href);
+    }
+  });
+
+  it('requires write permission for page creation and cancels without writing', async () => {
+    const save = sinon.stub(source, 'save');
+    await el._onCreatePage();
+    expect(el._createDialog).to.equal(undefined);
+    el._permissions = ['write'];
+    await el._onCreatePage();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('da-name-dialog')).not.to.equal(null);
+    el._onCloseCreatePage();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('da-name-dialog')).to.equal(null);
+    expect(save.called).to.equal(false);
+  });
+
+  it('creates at the selected site root and refreshes Content without navigating', async () => {
+    const metadata = sinon.stub(source, 'getMetadata').resolves({ ok: false, status: 404 });
+    const save = sinon.stub(source, 'save').resolves({ ok: true });
+    el._permissions = ['write'];
+    await el._onCreatePage();
+    await el._onCreatePageSubmit({ detail: { name: 'draft', openAfter: false } });
+    expect(metadata.calledOnceWithExactly('/org/site/draft.html')).to.equal(true);
+    expect(save.calledOnce).to.equal(true);
+    expect(save.firstCall.args[0]).to.equal('/org/site/draft.html');
+    expect(el._createDialog).to.equal(undefined);
+    expect(loadSite.callCount).to.equal(2);
+  });
+
+  it('does not overwrite a page and keeps failed saves retryable', async () => {
+    const metadata = sinon.stub(source, 'getMetadata').resolves({ ok: true });
+    const save = sinon.stub(source, 'save').resolves({ ok: false, status: 403 });
+    el._permissions = ['write'];
+    await el._onCreatePage();
+    await el._onCreatePageSubmit({ detail: { name: 'draft', openAfter: false } });
+    expect(save.called).to.equal(false);
+    expect(el._createDialog.error).to.include('already exists');
+    metadata.resolves({ ok: false, status: 404 });
+    await el._onCreatePageSubmit({ detail: { name: 'draft', openAfter: false } });
+    expect(el._createDialog.error).to.include('permissions');
+    expect(el._createDialog.saving).to.equal(false);
+  });
+
+  it('ignores a pending name check after the selected site changes', async () => {
+    let finish;
+    sinon.stub(source, 'getMetadata').returns(new Promise((resolve) => { finish = resolve; }));
+    const save = sinon.stub(source, 'save');
+    el._permissions = ['write'];
+    await el._onCreatePage();
+    const pending = el._onCreatePageSubmit({ detail: { name: 'draft', openAfter: false } });
+    hashChange._set({ org: 'other', site: 'site', fullpath: '/other/site' });
+    finish({ ok: false, status: 404 });
+    await pending;
+    expect(save.called).to.equal(false);
+    expect(el._createDialog).to.equal(undefined);
   });
 
   it('keeps fixed cards, whole columns and 16px panel insets at narrower widths', async () => {
