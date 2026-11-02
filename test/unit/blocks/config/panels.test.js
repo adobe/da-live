@@ -1,7 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import aemAssets, { validateRepositoryId, validateHost, validateBasePath, validateMimeRenditions } from '../../../../blocks/config/panels/aem-assets.js';
 import { validateRow } from '../../../../blocks/config/panels/prepare.js';
-import { rowStates, rowErrors, rowsToSave } from '../../../../blocks/config/editors/rows.js';
+import { rowStates, rowErrors, rowsToSave, cellText, listColumns } from '../../../../blocks/config/editors/rows.js';
 import plugins, { validateRow as validatePlugin } from '../../../../blocks/config/panels/plugins.js';
 import msm, { validateRow as validateMsm } from '../../../../blocks/config/panels/msm.js';
 import { validateBlock, validateTemplate, validateIcon, validatePlaceholder } from '../../../../blocks/config/panels/library.js';
@@ -88,6 +88,11 @@ describe('plugins panel', () => {
   const BLOCKS = { title: 'Blocks', path: 'https://x.com/blocks.json' };
   const TOOL = { title: 'My Tool', path: '/tools/my-tool.html' };
 
+  it('offers the opening modes the editors understand', () => {
+    const opensIn = plugins.columns.find((c) => c.key === 'experience');
+    expect(opensIn.options.map((o) => o.value)).to.deep.equal(['dialog', 'fullsize-dialog', 'window']);
+  });
+
   it('validates title, comma-separated paths, icon and ref, and reserves library names', () => {
     expect(validatePlugin({})).to.have.keys('title', 'path');
     expect(validatePlugin({ title: 'Templates', path: '/t' })).to.have.keys('title');
@@ -162,9 +167,9 @@ describe('msm panel', () => {
     expect(rowErrors(msm, [SAT], { index: null, row: BASE })).to.deep.equal({});
   });
 
-  it('describes base and satellite rows', () => {
-    expect([msm.label(SAT), msm.details(SAT)]).to.deep.equal(['Satellite Site 1', 'satellite-1 · satellite of my-base']);
-    expect([msm.label({ base: 'my-base' }), msm.details(BASE)]).to.deep.equal(['my-base', 'my-base · base site']);
+  it('lists base, satellite and title as table columns', () => {
+    expect(listColumns(msm).map((c) => c.label)).to.deep.equal(['Base site', 'Satellite site', 'Title']);
+    expect(listColumns(msm).map((c) => cellText(c, SAT))).to.deep.equal(['my-base', 'satellite-1', 'Satellite Site 1']);
   });
 });
 
@@ -196,7 +201,13 @@ describe('translation panel', () => {
     expect(url('translation.service.prod.link', 'javascript:alert(1)')).to.include('https://');
     expect(url('translation.service.stage.authEndpoint', 'http://api.example.com')).to.include('https://');
     expect(url('translation.service.prod.clientId', 'anything')).to.equal(null);
-    expect(options.details({ key: 'translation.service.prod.clientSecret', value: 'shh' })).to.not.include('shh');
+    const [, value] = listColumns(options);
+    expect(cellText(value, { key: 'translation.service.prod.clientSecret', value: 'shh' })).to.equal('••••••••');
+    expect(cellText(value, { key: 'translation.service.prod.origin', value: 'https://x' })).to.equal('https://x');
+  });
+
+  it('lists the main language columns and keeps the rest to the dialog', () => {
+    expect(listColumns(part('languages')).map((c) => c.key)).to.deep.equal(['name', 'code', 'location', 'actions', 'locales']);
   });
 
   it('validates languages', () => {

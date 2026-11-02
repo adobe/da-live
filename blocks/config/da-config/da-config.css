@@ -54,7 +54,7 @@
 
 /* Bordered boxes: settings list, row list and save bar. */
 .config-settings,
-.config-rows,
+.config-table-wrap,
 .config-savebar {
   border: 1px solid var(--s2-gray-200);
   border-radius: var(--s2-corner-radius-400);
@@ -85,17 +85,8 @@
 }
 
 .config-setting-label,
-.config-row-title {
-  display: flex;
-  align-items: center;
-  gap: var(--s2-spacing-100);
-  color: var(--s2-gray-900);
-  font-weight: var(--s2-heading-font-weight);
-}
-
 .config-setting-hint,
-.config-setting-note,
-.config-row-details {
+.config-setting-note {
   margin: 0;
   color: var(--s2-gray-700);
   font-size: var(--s2-component-s-regular-font-size);
@@ -154,51 +145,94 @@
   }
 }
 
-.config-rows,
-.config-import-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.config-row {
-  display: flex;
-  align-items: center;
-  gap: var(--s2-spacing-300);
-  padding: var(--s2-spacing-200) var(--s2-spacing-300);
-}
-
-.config-setting + .config-setting,
-.config-row + .config-row {
+.config-setting + .config-setting {
   border-top: 1px solid var(--s2-gray-200);
 }
 
-.config-row.is-inherited {
+/* Scrolls sideways on narrow screens instead of squeezing the columns. Containing its inline
+   size keeps the table's width from stretching the page (body is a grid sized to its content);
+   `position: relative` keeps the visually hidden header inside the scroll box too. */
+.config-table-wrap {
+  position: relative;
+  overflow-x: auto;
+  contain: inline-size;
+}
+
+/* Type and colors follow the shared file list (blocks/shared/da-file-item, browse). */
+.config-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--s2-component-m-regular-font-size);
+  line-height: var(--s2-component-m-regular-line-height);
+}
+
+.config-table th,
+.config-table td {
+  padding: var(--s2-spacing-200) var(--s2-spacing-300);
+  text-align: start;
+  vertical-align: middle;
+  color: var(--s2-gray-800);
+}
+
+.config-table thead th {
+  color: var(--s2-gray-600);
+  font-weight: var(--s2-component-m-medium-font-weight);
+  white-space: nowrap;
+  border-bottom: 1px solid var(--s2-gray-200);
+}
+
+.config-table tbody tr + tr {
+  border-top: 1px solid var(--s2-gray-200);
+}
+
+.config-table tbody th {
+  color: var(--s2-gray-900);
+  font-weight: var(--s2-component-m-medium-font-weight);
+}
+
+.config-table tr.is-inherited {
   background: var(--s2-gray-50);
 }
 
-.config-row-text {
+.config-table-name {
   display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: var(--s2-spacing-75);
-  min-width: 0;
+  align-items: center;
+  gap: var(--s2-spacing-100);
 }
 
-.config-row-details {
+/* Long values (URLs) stay on one line; the full text is in the title tooltip. */
+.config-table-text {
+  display: block;
+  max-width: 28ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.config-row-actions {
+.config-table-actions {
+  width: 1%;
+}
+
+.config-table-buttons {
   display: flex;
+  justify-content: flex-end;
   gap: var(--s2-spacing-100);
 }
 
+.config-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* List actions sit above the table, right-aligned, so they stay in reach on long lists. */
 .config-row-buttons {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: var(--s2-spacing-200);
 }
 
@@ -222,6 +256,9 @@
 }
 
 .config-import-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
   display: flex;
   flex-direction: column;
   gap: var(--s2-spacing-100);
