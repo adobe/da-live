@@ -640,7 +640,7 @@ describe('DaBrowse Component', () => {
       daBrowseComp.details = { org: 'org', site: 'site', fullpath: '/org/site' };
       daBrowseComp._canEditOrgConfig = true;
       const menu = renderMenu();
-      expect(labels(menu)).to.deep.equal(['Site Configuration', 'Site Permissions']);
+      expect(labels(menu)).to.deep.equal(['Configuration', 'Permissions']);
       const trigger = menu.querySelector('button.da-breadcrumb-config[slot="trigger"]');
       expect(trigger.getAttribute('aria-label')).to.equal('Settings');
       expect(trigger.textContent.trim()).to.equal('');
@@ -650,13 +650,13 @@ describe('DaBrowse Component', () => {
     it('hides site permissions when the user cannot edit the org config', () => {
       daBrowseComp.details = { org: 'org', site: 'site', fullpath: '/org/site' };
       daBrowseComp._canEditOrgConfig = false;
-      expect(labels(renderMenu())).to.deep.equal(['Site Configuration']);
+      expect(labels(renderMenu())).to.deep.equal(['Configuration']);
     });
 
     it('always offers org permissions at the org root', () => {
       daBrowseComp.details = { org: 'org', fullpath: '/org' };
       daBrowseComp._canEditOrgConfig = false;
-      expect(labels(renderMenu())).to.deep.equal(['Org Configuration', 'Org Permissions']);
+      expect(labels(renderMenu())).to.deep.equal(['Configuration', 'Permissions']);
     });
 
     it('navigates to the selected settings page', () => {

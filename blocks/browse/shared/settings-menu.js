@@ -6,11 +6,10 @@ import { fetchDaConfigs, getConfigPermissions } from '../../shared/utils.js';
  * since the permissions page edits the org-level config.
  */
 export function getSettingsMenuItems({ org, site, canEditOrgConfig: canEdit = false }) {
-  const scope = site ? 'Site' : 'Org';
   const path = site ? `/${org}/${site}` : `/${org}`;
-  const items = [{ id: 'config', label: `${scope} Configuration`, href: `/config#${path}/` }];
+  const items = [{ id: 'config', label: 'Configuration', href: `/config#${path}/` }];
   if (!site || canEdit) {
-    items.push({ id: 'permissions', label: `${scope} Permissions`, href: `/config/permissions#${path}` });
+    items.push({ id: 'permissions', label: 'Permissions', href: `/config/permissions#${path}` });
   }
   return items;
 }

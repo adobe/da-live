@@ -13,21 +13,21 @@ describe('settings menu', () => {
   describe('getSettingsMenuItems', () => {
     it('returns org configuration and permissions at the org root', () => {
       expect(getSettingsMenuItems({ org: 'org' })).to.deep.equal([
-        { id: 'config', label: 'Org Configuration', href: '/config#/org/' },
-        { id: 'permissions', label: 'Org Permissions', href: '/config/permissions#/org' },
+        { id: 'config', label: 'Configuration', href: '/config#/org/' },
+        { id: 'permissions', label: 'Permissions', href: '/config/permissions#/org' },
       ]);
     });
 
     it('returns site configuration and permissions when the user can edit the org config', () => {
       expect(getSettingsMenuItems({ org: 'org', site: 'site', canEditOrgConfig: true })).to.deep.equal([
-        { id: 'config', label: 'Site Configuration', href: '/config#/org/site/' },
-        { id: 'permissions', label: 'Site Permissions', href: '/config/permissions#/org/site' },
+        { id: 'config', label: 'Configuration', href: '/config#/org/site/' },
+        { id: 'permissions', label: 'Permissions', href: '/config/permissions#/org/site' },
       ]);
     });
 
     it('hides site permissions when the user cannot edit the org config', () => {
       expect(getSettingsMenuItems({ org: 'org', site: 'site', canEditOrgConfig: false })).to.deep.equal([
-        { id: 'config', label: 'Site Configuration', href: '/config#/org/site/' },
+        { id: 'config', label: 'Configuration', href: '/config#/org/site/' },
       ]);
       expect(getSettingsMenuItems({ org: 'org', site: 'site' }).map(({ id }) => id))
         .to.deep.equal(['config']);
