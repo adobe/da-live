@@ -19,7 +19,7 @@ import {
 } from './ew-editor-split/ew-editor-split.js';
 import { resolveEditorDocSession, createdDocSession } from './ew-editor-doc/utils/load-editor-doc.js';
 import { SEL_BLOCK, SEL_ITEM, SEL_TEXT } from './ew-editor-doc/utils/selection.js';
-import { getChatPanelContent } from '../shared/chat-panel.js';
+import { getChatPanelContent, chatAvailability } from '../shared/chat-panel.js';
 import { canvasBus } from './utils/canvas-bus.js';
 import { initBranchBridge } from './editor-utils/branch-bridge.js';
 import { resolveCanvasBranch } from './editor-utils/branch-state.js';
@@ -284,20 +284,28 @@ export default async function decorate(block) {
   // Make the "Preflight" side panel the responder for the publish gate's run request.
   initPreflightResponder();
 
-  registerPanelSection('chat', {
-    position: 'before',
-    width: '400px',
-    getContent: getChatPanelContent(),
-    onShow: async (aside, id, options) => {
-      if (!options?.text && !options?.onReady) return;
-      if (options.onReady) {
-        await aside?.querySelector('nx-chat, nx-chat-ao')?.updateComplete;
-        await options.onReady();
-      }
-      if (!options.text) return;
-      const detail = { text: options.text, autoSend: options.autoSend };
-      document.dispatchEvent(new CustomEvent(CHAT_EVENT.SET_PROMPT, { detail }));
-    },
+  chatAvailability.subscribe((enabled) => {
+    if (enabled === undefined) return;
+    if (!enabled) {
+      document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
+      return;
+    }
+    registerPanelSection('chat', {
+      position: 'before',
+      width: '400px',
+      getContent: getChatPanelContent(),
+      onShow: async (aside, id, options) => {
+        if (!options?.text && !options?.onReady) return;
+        if (options.onReady) {
+          await aside?.querySelector('nx-chat, nx-chat-ao')?.updateComplete;
+          await options.onReady();
+        }
+        if (!options.text) return;
+        const detail = { text: options.text, autoSend: options.autoSend };
+        document.dispatchEvent(new CustomEvent(CHAT_EVENT.SET_PROMPT, { detail }));
+      },
+    });
+    if (wasPanelOpen('chat')) openPanelSection('chat');
   });
 
   registerPanelSection('tools', {
@@ -362,7 +370,6 @@ export default async function decorate(block) {
     if (toolPanel) syncToolPanelViews(toolPanel, state);
   });
 
-  if (wasPanelOpen('chat')) openPanelSection('chat');
   if (wasPanelOpen('tools')) {
     openPanelSection('tools');
   } else {
