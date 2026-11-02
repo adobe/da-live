@@ -34,7 +34,6 @@ import { createSelectionToolbarPlugin, openLinkDialog } from '../editor-utils/se
 import codemark from '../../edit/prose/plugins/codemark.js';
 import tableSelectHandle from '../../edit/prose/plugins/tableSelectHandle.js';
 import imageDrop from './prose-plugins/imageDrop.js';
-import { installAssetDropGuard } from './prose-plugins/assetDrop.js';
 import imageFocalPoint from '../../edit/prose/plugins/imageFocalPoint.js';
 import sectionPasteHandler from '../../edit/prose/plugins/sectionPasteHandler.js';
 import linkConverter from '../../edit/prose/plugins/linkConverter.js';
@@ -93,8 +92,6 @@ export default async function initProse({
   path, permissions, setEditable, getToken,
   extraPlugins = [], onMergeConflictsChange, hostEl,
 }) {
-  installAssetDropGuard();
-
   const editor = document.createElement('div');
   editor.className = 'da-prose-mirror';
   editor.setAttribute('data-gramm', 'false');

@@ -26,7 +26,6 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   if (!org || !site || !iframe.contentWindow) return { channel: null, destroy() { } };
 
   const targetOrigin = getPostMessageTargetOrigin(iframe.src);
-  const documentHref = window.location.href;
 
   const channel = new MessageChannel();
   let subscribed = false;
@@ -36,7 +35,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   let unsubscribeSelect;
   let unsubscribeTurn;
   let lastBlockIndex = null;
-  let dragController;
+  let dragSource;
   let destroyed = false;
 
   const selectionFor = (editorView) => {
@@ -103,17 +102,17 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     }
     if (['dragStart', 'dragMove', 'dragFinish', 'dragCancel'].includes(action)) {
       if (['dragStart', 'dragFinish'].includes(action) && !isRequestId(e.data.requestId)) return;
-      dragController ??= import('./drag.js').then(({ createDragController }) => (
-        destroyed ? null : createDragController({
+      dragSource ??= import('../drop/sources/sdk.js').then(({ createSdkDragSource }) => (
+        destroyed ? null : createSdkDragSource({
           iframe,
-          getView: () => (!destroyed && window.location.href === documentHref ? getView() : null),
-          context: { org, site, path },
+          getView,
+          page: { org, site, path },
           notify: (result) => {
             if (!destroyed) channel.port1.postMessage({ action: 'dragResult', details: result });
           },
         })
       ));
-      dragController.then((controller) => controller?.handle(e.data))
+      dragSource.then((source) => source?.handle(e.data))
         .catch(() => ({ ok: false, error: 'invalid-drag-data' }))
         .then((result) => {
           if (!destroyed && isRequestId(e.data.requestId)) {
@@ -275,7 +274,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
 
   const destroy = () => {
     destroyed = true;
-    dragController?.then((controller) => controller?.destroy(), () => {});
+    dragSource?.then((source) => source?.destroy(), () => {});
     stopSubscription();
     unsubscribeTurn?.();
     unsubscribeTurn = undefined;

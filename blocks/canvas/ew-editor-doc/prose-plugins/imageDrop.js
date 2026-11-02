@@ -1,10 +1,10 @@
 import { Plugin, TextSelection } from 'da-y-wrapper';
-import { getNx2Api, getNx2 } from '../../../../scripts/utils.js';
+import { getNx2Api } from '../../../../scripts/utils.js';
 import { getSourceUploadContext, getSourceOrgSite } from './sourceUploadContext.js';
 import { refuseOversizedImage } from '../../utils/image-upload.js';
 import { SUPPORTED_IMAGE_TYPES as SUPPORTED_IMAGE_FILES } from '../../../shared/constants.js';
-import { readDroppedAssets, dropAssets } from './assetDrop.js';
-import { insertDroppedHtml } from '../../editor-utils/html-drop.js';
+import { fromDataTransfer } from '../../drop/payload.js';
+import { performDrop, notifyDropResult } from '../../drop/pipeline.js';
 
 export { SUPPORTED_IMAGE_FILES };
 
@@ -45,22 +45,12 @@ export async function uploadImageFile(view, file, details) {
   docImg.src = contentUrl;
 }
 
-// Loaded lazily, and only once, the first time an asset is dropped, so editors that
-// never drop an asset don't pay for it.
-let repositoryConfigModulePromise;
-function loadRepositoryConfigModule() {
-  repositoryConfigModulePromise ??= import(`${getNx2()}/utils/aem-assets/repository-config.js`);
-  return repositoryConfigModulePromise;
-}
-
-async function resolveRepoConfig(getSourceUrl) {
-  const orgSite = getSourceOrgSite(getSourceUrl() ?? '');
-  if (!orgSite) return null;
-  const { getRepositoryConfig } = await loadRepositoryConfigModule();
-  return getRepositoryConfig(orgSite.org, orgSite.site);
-}
+const isExternalDrag = (view, event) => !view.dragging && !!event.dataTransfer;
 
 /**
+ * Native drops from outside the browser. Only image files are accepted; other external
+ * content is refused. Extension and assets rail drops never reach this plugin: their
+ * session overlay sits above the editor and calls the drop pipeline directly.
  * @param {import('prosemirror-model').Schema} schema
  * @param {() => string | null} getSourceUrl
  */
@@ -69,49 +59,28 @@ export default function imageDrop(schema, getSourceUrl) {
     props: {
       handleDOMEvents: {
         dragover: (view, event) => {
-          if (!view.editable || view.dragging || !event.dataTransfer?.types.some(
-            (type) => ['text/html', 'Files', 'collectionviewdata'].includes(type),
-          )) return false;
+          if (!isExternalDrag(view, event)) return false;
           event.preventDefault();
-          event.dataTransfer.dropEffect = 'copy';
+          const accepted = view.editable && event.dataTransfer.types.includes('Files');
+          event.dataTransfer.dropEffect = accepted ? 'copy' : 'none';
           return true;
         },
         drop: (view, event) => {
-          if (!view.editable) return false;
-          const position = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
-          const assets = readDroppedAssets(event.dataTransfer);
-          if (!view.dragging && !event.dataTransfer.files.length
-            && event.dataTransfer.types.includes('text/html')
-            && !assets) {
-            const html = event.dataTransfer.getData('text/html');
-            event.preventDefault();
-            return insertDroppedHtml({ view, html, position });
-          }
-
-          if (assets) {
-            event.preventDefault();
-            dropAssets(view, {
-              assets,
-              coords: { left: event.clientX, top: event.clientY },
-              getRepoConfig: () => resolveRepoConfig(getSourceUrl),
-            });
-            return true;
-          }
-
-          const files = [...event.dataTransfer.files];
-          if (files.length === 0) return false;
-
-          const details = getSourceUploadContext(getSourceUrl() ?? '');
-          if (!details) return false;
-
+          if (!isExternalDrag(view, event)) return false;
           event.preventDefault();
-          if (position != null) {
-            const selection = TextSelection.near(view.state.doc.resolve(position));
-            view.dispatch(view.state.tr.setSelection(selection));
-          }
-          ([...files]).forEach(async (file) => {
-            await uploadImageFile(view, file, details);
-          });
+          const payload = view.editable && fromDataTransfer(event.dataTransfer);
+          const url = getSourceUrl() ?? '';
+          const upload = getSourceUploadContext(url);
+          const orgSite = getSourceOrgSite(url);
+          if (!payload || !upload || !orgSite) return true;
+          const coords = { left: event.clientX, top: event.clientY };
+          const pos = view.posAtCoords(coords)?.pos ?? view.state.selection.from;
+          performDrop({
+            payload,
+            target: { editor: 'doc', pos, doc: view.state.doc, coords },
+            view,
+            context: { ...orgSite, ...upload },
+          }).then(notifyDropResult);
           return true;
         },
       },

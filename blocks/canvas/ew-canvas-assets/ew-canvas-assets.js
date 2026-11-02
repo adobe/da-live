@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
-import { createAssetDragHandlers } from './drop.js';
+import { createAssetRailSource } from '../drop/sources/asset-rail.js';
 
 const nx2 = getNx2();
 const [
@@ -30,9 +30,7 @@ const VIEW_ID = 'aem-assets-panel';
  * selector is not rendered (the caller may have removed `container` in the meantime)
  * and `{ skipped: true }` is returned instead.
  */
-export async function renderAssetsRail({
-  container, org, site, isLive = () => true, getPreview, onCleanup,
-}) {
+export async function renderAssetsRail({ container, org, site, isLive = () => true, onCleanup }) {
   const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
   const ims = await loadIms();
   if (ims?.anonymous) handleSignIn();
@@ -54,8 +52,8 @@ export async function renderAssetsRail({
     rail: true,
     dragAndDrop: true,
   });
-  const { destroy, ...dragHandlers } = createAssetDragHandlers(
-    { container, isLive, getPreview, style },
+  const { destroy, ...dragHandlers } = createAssetRailSource(
+    { container, context: { org, site }, isLive },
   );
   onCleanup?.(destroy);
   selectors.renderAssetSelector(container, {
@@ -80,9 +78,6 @@ class EwCanvasAssets extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
-    this._unsubPreview = canvasBus.wysiwygPortReady.subscribe((preview) => {
-      this._preview = preview;
-    });
     this._unsubViewState = canvasBus.toolPanelViewState.subscribe((activeId) => {
       this._onViewState(activeId);
     });
@@ -95,8 +90,6 @@ class EwCanvasAssets extends LitElement {
     super.disconnectedCallback();
     this._destroyDrag?.();
     this._unsubViewState?.();
-    this._unsubPreview?.();
-    this._preview = undefined;
   }
 
   async firstUpdated() {
@@ -115,7 +108,6 @@ class EwCanvasAssets extends LitElement {
       org: this.org,
       site: this.site,
       isLive,
-      getPreview: () => this._preview,
       onCleanup: (destroy) => { this._destroyDrag = destroy; },
     });
     if (result.skipped) return;
