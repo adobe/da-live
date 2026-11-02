@@ -210,4 +210,14 @@ describe('browse-owned search combobox', () => {
     expect(field._status).to.contain('Could not open file');
     expect(navigate.callCount).to.equal(1);
   });
+
+  it('uses the editor configured for a filename suggestion path', async () => {
+    snapshot.items = [{ path: '/o/r/forms/plan.html', name: 'plan', ext: 'html' }];
+    snapshot.version = snapshot.items;
+    field.editorConfs = ['/o/r/forms=https://da.live/form#'];
+    field.defaultEditor = '/canvas#';
+    await open();
+    await field.selectSuggestion(field._suggestions[0]);
+    expect(navigate.calledOnceWithExactly('https://da.live/form#/o/r/forms/plan')).to.be.true;
+  });
 });

@@ -1,0 +1,221 @@
+:host {
+  display: block;
+  box-sizing: border-box;
+  min-height: 400px;
+  border-radius: var(--s2-corner-radius-500);
+  overflow: hidden;
+  background: var(--s2-gray-25);
+}
+
+.hint {
+  color: var(--s2-gray-700);
+  margin: 0;
+}
+
+.editor-root {
+  padding: var(--nx-scroll-offset-top, 0) 48px var(--nx-editor-padding-bottom, 48px);
+}
+
+.editor-root .form-node,
+.editor-root .form-array-item {
+  border: none;
+  margin: 24px 0 4px;
+  min-inline-size: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.editor-root .form-node[data-pointer="/data"] {
+  margin-top: 0;
+}
+
+.editor-root .form-array-item {
+  margin-top: 14px;
+}
+
+.editor-root .form-array-item.move-item-picked {
+  position: relative;
+  z-index: 2;
+}
+
+.editor-root .form-array-item.move-item-picked::before {
+  content: "";
+  position: absolute;
+  inset: -8px -6px -7px;
+  border: 2px dashed var(--s2-blue-400);
+  border-radius: var(--s2-corner-radius-500);
+  pointer-events: none;
+}
+
+.editor-root .form-node-header,
+.editor-root .form-array-item-header {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-start;
+  position: relative;
+}
+
+.editor-root .form-node-title,
+.editor-root .form-array-item-title {
+  cursor: pointer;
+  display: block;
+  flex: 1;
+  min-width: 0;
+
+  /* Set explicitly so it doesn't inherit the host's page text (#fff in dark mode). */
+  color: var(--s2-gray-900);
+  font-size: var(--s2-body-size-m);
+  font-weight: 600;
+  line-height: 1.5;
+  margin: 0;
+  padding-bottom: var(--s2-spacing-100);
+  position: relative;
+  width: 100%;
+}
+
+.editor-root legend.form-node-title {
+  padding-inline-start: 0;
+}
+
+.editor-root .form-node-title::after,
+.editor-root .form-array-item-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  min-width: min(100%, 200px);
+  height: 2px;
+  border-radius: 2px;
+  background-color: var(--s2-gray-200);
+}
+
+.editor-root .form-array-item-actions,
+.editor-root .form-node-header > .form-action {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+  padding-left: 8px;
+  background: var(--s2-gray-25);
+}
+
+.editor-root .form-array-item-simple-label {
+  color: var(--s2-gray-700);
+  font-size: var(--s2-component-s-regular-font-size, 12px);
+  line-height: 1;
+  margin: 0 0 6px;
+}
+
+.editor-root .form-array-item-input-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-100);
+}
+
+.editor-root .form-array-item-input-row:has(> form-textarea) {
+  align-items: flex-start;
+}
+
+.editor-root .form-node.is-active > .form-node-title,
+.editor-root .form-node.is-active > .form-node-header > .form-node-title,
+.editor-root
+  .form-array-item.is-active
+  > .form-array-item-header
+  > .form-array-item-title {
+  color: var(--s2-blue-800);
+}
+
+.editor-root form-input,
+.editor-root form-textarea,
+.editor-root form-number-field,
+.editor-root form-picker,
+.editor-root form-checkbox,
+.editor-root form-date {
+  display: block;
+  margin: 16px 0 8px;
+}
+
+.editor-root .form-array-item-primitive form-input,
+.editor-root .form-array-item-primitive form-textarea,
+.editor-root .form-array-item-primitive form-number-field,
+.editor-root .form-array-item-primitive form-picker,
+.editor-root .form-array-item-primitive form-checkbox,
+.editor-root .form-array-item-primitive form-date {
+  margin: 0;
+}
+
+.editor-root .form-array-item-input-row > form-input,
+.editor-root .form-array-item-input-row > form-textarea,
+.editor-root .form-array-item-input-row > form-number-field,
+.editor-root .form-array-item-input-row > form-picker,
+.editor-root .form-array-item-input-row > form-checkbox,
+.editor-root .form-array-item-input-row > form-date {
+  flex: 1;
+  min-width: 0;
+}
+
+.editor-root .form-array-footer {
+  margin-top: 8px;
+}
+
+.editor-root .add-item-btn {
+  display: inline-block;
+}
+
+.editor-root .form-array-item-primitive .form-array-item-actions {
+  display: flex;
+  align-items: center;
+  flex: none;
+  padding: 0;
+  background: transparent;
+}
+
+.editor-root .form-array-item.menu-open .form-array-item-actions {
+  z-index: 5;
+}
+
+.schema-issues-list {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.schema-issues-list li {
+  margin-bottom: 6px;
+}
+
+.schema-issues-list code {
+  background: var(--s2-gray-100);
+  padding: 0 4px;
+  border-radius: var(--s2-corner-radius-100);
+}
+
+.form-item-label {
+  color: var(--s2-gray-700);
+  margin-right: 6px;
+}
+
+.is-required {
+  color: var(--s2-red-900);
+  margin-left: 2px;
+}
+
+.editor-root .form-node-error {
+  margin: var(--s2-spacing-75) 0;
+  font-size: var(--s2-component-s-regular-font-size, 12px);
+  color: var(--s2-red-900);
+}
+
+.editor-root .form-node-description {
+  margin: var(--s2-spacing-75) 0;
+  font-size: var(--s2-component-s-regular-font-size, 12px);
+  color: var(--s2-gray-700);
+}
+
+.editor-root [data-pointer] {
+  scroll-margin-top: var(
+    --nx-scroll-offset-top,
+    calc(var(--s2-spacing-300) + var(--s2-spacing-100))
+  );
+}

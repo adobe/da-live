@@ -3,7 +3,7 @@ import { getNx, getNx2, getNx2Api } from '../../../scripts/utils.js';
 import { listFolder, itemHashPath, getAemUrl } from '../../shared/daFiles.js';
 import { iconPathForExt } from '../../shared/icons.js';
 import { EMPTY_DOC } from '../../shared/utils.js';
-import getEditPath from '../../browse/shared.js';
+import getEditPath from '../../shared/da-file-item/edit-path.js';
 import getSheet from '../../shared/sheet.js';
 import '../../shared/da-name-dialog/da-name-dialog.js';
 
