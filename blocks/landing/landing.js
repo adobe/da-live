@@ -1,13 +1,7 @@
-import { LitElement, html, nothing, repeat } from 'da-lit';
+import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
 import { getChatPanelContent, setChatPrompt, addChatContext } from '../shared/chat-panel.js';
-import { getTypeLabel, isImageExt } from '../shared/icons.js';
-import { getFavorites, toggleFavorite } from '../browse/shared/favorites.js';
-import { getBrowseSettings, updateBrowseSettings } from '../browse/v2/shared/settings.js';
-import { getBrowseHref, getFileHref, loadFiles, getLandingIconHref, formatModified } from './utils.js';
-import '../browse/v2/da-card-preview/da-card-preview.js';
-import '../shared/file-actions/file-actions.js';
-import renderFileTable from '../shared/file-table.js';
+import { loadFiles } from './utils.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { registerPanelSection, PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
@@ -17,22 +11,12 @@ const { createFileDropHandlers } = await import(`${getNx()}/blocks/shared/chat/d
 const nx = await import(`${getNx2()}/scripts/nx.js`);
 // PR #816 supplies live sizing; the opt-in page also works on the current shell.
 const sizing = nx.getUISize ? await import(`${getNx2()}/utils/ui-size.js`) : undefined;
-await Promise.all([
-  import(`${getNx2()}/blocks/shared/card/card.js`),
-  import(`${getNx()}/blocks/shared/segmented-btn/segmented.js`),
-  import(`${getNx()}/blocks/shared/menu/menu.js`),
-]);
+await import(`${getNx()}/blocks/shared/menu/menu.js`);
 const [shellStyle, ...styles] = await Promise.all([
   loadStyle(new URL('./shell.css', import.meta.url).href),
   loadStyle(`${getNx2()}/styles/buttons.css`),
   loadStyle(import.meta.url),
 ]);
-
-const VIEW_ITEMS = [
-  { value: 'card', label: 'Grid view', icon: '/img/icons/s2-icon-viewgrid-20-n.svg', iconOnly: true },
-  { value: 'list', label: 'List view', icon: '/img/icons/s2-icon-viewlist-20-n.svg', iconOnly: true },
-];
-const PAGE_SIZE = 10;
 
 function icon(name) {
   return html`<svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-${name}-20-n.svg#icon"></use></svg>`;
@@ -45,11 +29,6 @@ export class DaLanding extends LitElement {
     _files: { state: true },
     _error: { state: true },
     _profileError: { state: true },
-    _actionError: { state: true },
-    _favorites: { state: true },
-    _tab: { state: true },
-    _view: { state: true },
-    _limit: { state: true },
     _prompt: { state: true },
     _chatEnabled: { state: true },
     _editor: { state: true },
@@ -66,15 +45,8 @@ export class DaLanding extends LitElement {
     onFiles: (files) => this.addFiles(files),
   });
 
-  _onStorage = ({ key }) => {
-    if (key === 'da-favorites' || key === null) this.refreshFavorites();
-  };
-
   constructor() {
     super();
-    this._tab = 'recent';
-    this._view = getBrowseSettings().view === 'list' ? 'list' : 'card';
-    this._limit = PAGE_SIZE;
     this._prompt = '';
   }
 
@@ -82,7 +54,6 @@ export class DaLanding extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = styles;
     this._unsubscribe = hashChange.subscribe((state) => this.setScope(state));
-    window.addEventListener('storage', this._onStorage);
     this.loadProfile();
   }
 
@@ -90,7 +61,6 @@ export class DaLanding extends LitElement {
     this._dragging = false;
     this._unsubscribe?.();
     this._request?.abort();
-    window.removeEventListener('storage', this._onStorage);
     document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
     super.disconnectedCallback();
   }
@@ -105,10 +75,6 @@ export class DaLanding extends LitElement {
 
   updated() {
     if (!this._prompt) this.shadowRoot.querySelector('textarea')?.style.removeProperty('height');
-  }
-
-  showAddSite() {
-    this.dispatchEvent(new CustomEvent('site-add', { bubbles: true, composed: true }));
   }
 
   async loadImsProfile() {
@@ -130,8 +96,6 @@ export class DaLanding extends LitElement {
     if (this._scope === scope && this._request && !this._request.signal.aborted) return;
     this._scope = scope;
     this._permissions = undefined;
-    this._tab = 'recent';
-    this._limit = PAGE_SIZE;
     this._prompt = '';
     this._chatEnabled = undefined;
     this._editor = undefined;
@@ -139,8 +103,6 @@ export class DaLanding extends LitElement {
     this._handingOff = false;
     this._dragging = false;
     this._error = undefined;
-    this._actionError = undefined;
-    this.refreshFavorites();
     document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
     this.loadSite();
   }
@@ -219,28 +181,6 @@ export class DaLanding extends LitElement {
         this._chatError = `Could not load the assistant: ${error.message}`;
       }
     }
-  }
-
-  refreshFavorites() {
-    this._favorites = new Set(getFavorites(this.path));
-  }
-
-  starFile(item) {
-    const starred = toggleFavorite(this.path, item.path);
-    this.refreshFavorites();
-    this._actionError = this._favorites.has(item.path) !== starred
-      ? 'Could not save your favorites. Check that browser storage is available.' : undefined;
-  }
-
-  changeTab(value) {
-    this._tab = value;
-    this._limit = PAGE_SIZE;
-  }
-
-  changeView({ detail: { value } }) {
-    if (!['card', 'list'].includes(value)) return;
-    this._view = value;
-    updateBrowseSettings({ view: value });
   }
 
   async submitPrompt(event) {
@@ -332,97 +272,6 @@ export class DaLanding extends LitElement {
     target.style.height = `${Math.min(target.scrollHeight, 240)}px`;
   }
 
-  visibleFiles() {
-    const files = this._tab === 'starred'
-      ? this._files.filter((item) => this._favorites.has(item.path)) : this._files;
-    return files.slice(0, this._tab === 'starred' ? PAGE_SIZE : this._limit);
-  }
-
-  renderFileActions(item) {
-    if (!item.ext && this._view === 'list') return nothing;
-    return html`<da-file-actions .path=${item.path} .name=${item.name}
-      .ext=${item.ext} .view=${this._view} .isFavorited=${this._favorites?.has(item.path)}
-      @favoritechange=${() => this.starFile(item)}></da-file-actions>`;
-  }
-
-  renderFile(item) {
-    const modified = formatModified({ modified: item.lastModified });
-    const iconHref = getLandingIconHref(item);
-    const editor = this._editor || '/canvas#';
-    return html`
-      <li class="file">
-        <nx-card>
-          <a slot="preview" class="file-preview" href=${getFileHref({ item, editor })}
-            tabindex="-1" aria-hidden="true">
-            <da-card-preview .path=${item.path} .ext=${item.ext} .iconHref=${iconHref}
-              .documentPreview=${item.ext === 'html'}></da-card-preview>
-          </a>
-          <a slot="title" class="file-link file-name" href=${getFileHref({ item, editor })}
-            title=${item.ext === 'link' ? `Open ${item.name} in Files` : `${item.name} (${getTypeLabel(item.ext)})`}>
-            <span class="file-type-icon" aria-hidden="true" style="--file-icon: url('${iconHref}')"></span>
-            <span>${item.name}</span>
-          </a>
-          <span slot="actions">${this.renderFileActions(item)}</span>
-          <p slot="metadata" class="file-date">${modified ? html`Modified at • <time datetime=${modified.date.toISOString()}>${modified.label}</time>` : 'Date unavailable'}</p>
-          ${this._favorites?.has(item.path) ? html`<img slot="badge" class="file-favorite-badge"
-            src=${new URL('./star-filled.svg', import.meta.url).href} width="20" height="20" alt="Favorite">` : nothing}
-        </nx-card>
-      </li>`;
-  }
-
-  renderListFile(item) {
-    const modified = formatModified({ modified: item.lastModified });
-    const folder = item.path.slice(0, item.path.lastIndexOf('/'));
-    return html`<tr class="file-row">
-      <td><a class="list-file-link" href=${getFileHref({ item, editor: this._editor || '/canvas#' })}>
-        ${isImageExt(item.ext) ? html`<da-card-preview class="list-file-preview"
-          .path=${item.path} .ext=${item.ext} .iconHref=${getLandingIconHref(item)}
-          aria-hidden="true"></da-card-preview>` : html`<span class="file-type-icon" aria-hidden="true"
-          style="--file-icon: url('${getLandingIconHref(item)}')"></span>`}
-        <span>${item.name}</span>
-      </a></td>
-      <td><a class="file-folder" href=${getBrowseHref({ path: folder })} title=${folder}>${folder.slice(this.path.length) || '/'}</a></td>
-      <td>${modified ? html`<time datetime=${modified.date.toISOString()}>${modified.label}</time>` : 'Date unavailable'}</td>
-      <td>${this.renderFileActions(item)}</td>
-    </tr>`;
-  }
-
-  renderFiles() {
-    if (!this._scope) {
-      return html`<div class="empty-state">${icon('folder')}
-        <h3>Choose a site to get started</h3>
-        <p>Select a site in the navigation, or add an existing site.</p>
-        <button class="nx-action-btn" @click=${this.showAddSite}>Add site</button>
-      </div>`;
-    }
-    if (this._error) {
-      return html`<div class="empty-state"><p role="alert">${this._error}</p>
-        <button class="nx-action-btn" @click=${this.loadSite}>Try again</button></div>`;
-    }
-    if (!this._files) return html`<p class="loading" role="status">Loading files...</p>`;
-    const files = this._tab === 'starred'
-      ? this._files.filter((item) => this._favorites.has(item.path)) : this._files;
-    if (!files.length) {
-      return html`<div class="empty-state">${icon(this._tab === 'starred' ? 'star' : 'folder')}
-        <h3>${this._tab === 'starred' ? 'No favorites yet' : 'No files here yet'}</h3>
-        <p>${this._tab === 'starred' ? 'Add a file in this folder to favorites to keep it close.' : 'Open Files to add content to this site.'}</p>
-      </div>`;
-    }
-    return html`
-      ${this._view === 'list' ? renderFileTable({
-    files: this.visibleFiles(),
-    label: this._tab === 'starred' ? 'Favorite files' : 'Recently modified files',
-    renderRow: (item) => this.renderListFile(item),
-  }) : html`
-        <ul class="files" aria-label=${this._tab === 'starred' ? 'Favorite files' : 'Recently modified files'}>
-          ${repeat(this.visibleFiles(), (item) => item.path, (item) => this.renderFile(item))}
-        </ul>`}
-      ${this._tab !== 'starred' && files.length > this._limit ? html`
-        <button class="show-more nx-action-btn-quiet" @click=${() => { this._limit += PAGE_SIZE; }}>
-          Show more files
-        </button>` : nothing}`;
-  }
-
   render() {
     return html`
       <div class="landing">
@@ -468,25 +317,6 @@ export class DaLanding extends LitElement {
           ${this._chatError || (this._scope && this._chatEnabled === false) ? html`
             <p class="assistant-note" role="status">${this._chatError || 'The assistant is not enabled for this site.'}</p>` : nothing}
           ${this._profileError ? html`<p class="assistant-note" role="status">${this._profileError}</p>` : nothing}
-        </section>
-        <section class="files-panel" aria-labelledby="files-heading">
-          <div class="panel-heading">
-            <h2 id="files-heading">Content</h2>
-            <nx-segmented-btn label="File view" size="m" variant="quiet" .items=${VIEW_ITEMS}
-              .value=${this._view} @change=${this.changeView}></nx-segmented-btn>
-          </div>
-          <div class="files-toolbar">
-            <div class="file-filters" role="group" aria-label="Filter files">
-              <button class="filter" type="button" aria-pressed=${this._tab === 'recent'}
-                title="Recently modified files in this site"
-                @click=${() => this.changeTab('recent')}>${icon('history')}Recent</button>
-              <button class="filter" type="button" aria-pressed=${this._tab === 'starred'}
-                @click=${() => this.changeTab('starred')}>${icon('star')}Favorite</button>
-            </div>
-            ${this._scope ? html`<a class="all-files" href=${getBrowseHref({ path: this.path })}>Show all</a>` : nothing}
-          </div>
-          ${this._actionError ? html`<p role="alert">${this._actionError}</p>` : nothing}
-          <div aria-busy=${!!this._scope && !this._files && !this._error}>${this.renderFiles()}</div>
         </section>
       </div>`;
   }

@@ -1,7 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import '../../setup-nx.js';
-import { getFavorites, toggleFavorite } from '../../../../blocks/browse/shared/favorites.js';
 import { setUISize } from '../../../fixtures/nx2/utils/ui-size.js';
 import loadLanding, { DaLanding } from '../../../../blocks/landing/landing.js';
 import { getNx, getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
@@ -58,14 +57,13 @@ describe('landing page', () => {
     document.body.classList.remove('ui-size-m');
   });
 
-  it('renders files without adding site-root copy to the mock', () => {
+  it('keeps the Content section separate from the landing shell', () => {
     expect(el.shadowRoot.querySelector('h1').textContent).to.include('how can I help?');
-    expect(el.shadowRoot.querySelectorAll('.file')).to.have.length(2);
+    expect(el.shadowRoot.querySelector('.files-panel, .files, .file-table')).to.equal(null);
     expect(el.shadowRoot.querySelector('.scope-label')).to.equal(null);
     expect(el.shadowRoot.textContent).not.to.include('Site root');
     expect(el.shadowRoot.querySelector('nx-picker')).to.equal(null);
     expect(nav.querySelector('nx-picker, nx-siteselector')).to.equal(null);
-    expect(el.shadowRoot.querySelector('.file-date').textContent).to.include('Modified at •');
     expect(el.shadowRoot.querySelector('.quick-links, da-landing-tile')).to.equal(null);
     expect(el.shadowRoot.querySelector('.tasks-panel')).to.equal(null);
     expect(el.shadowRoot.textContent).not.to.include('Need Attention');
@@ -96,24 +94,6 @@ describe('landing page', () => {
     await el.updateComplete;
     expect(shell.firstElementChild).to.equal(selector);
     expect(nav.children).to.have.length(0);
-  });
-
-  it('offers Add site directly when no workspace is selected', async () => {
-    const requested = sinon.spy();
-    document.addEventListener('site-add', requested, { once: true });
-    const { href } = window.location;
-    hashChange._set(undefined);
-    await el.updateComplete;
-    const empty = el.shadowRoot.querySelector('.empty-state');
-    expect(empty.querySelector('a')).to.equal(null);
-    const button = empty.querySelector('button');
-    expect(button.textContent).to.equal('Add site');
-    button.click();
-    expect(requested.calledOnce).to.equal(true);
-    expect(requested.firstCall.args[0].bubbles).to.equal(true);
-    expect(requested.firstCall.args[0].composed).to.equal(true);
-    expect(window.location.href).to.equal(href);
-    expect(el.shadowRoot.querySelector('da-add-site')).to.equal(null);
   });
 
   it('leaves shell-owned branding intact when disconnected and reconnected', async () => {
@@ -160,13 +140,6 @@ describe('landing page', () => {
     expect(trigger.querySelector('.icon-up')).to.equal(null);
   });
 
-  it('uses source-backed page previews and local semantic file icons', () => {
-    const preview = el.shadowRoot.querySelector('da-card-preview');
-    expect(preview.documentPreview).to.equal(true);
-    expect(preview.iconHref).to.include('/blocks/landing/page.svg');
-    expect(el.shadowRoot.querySelector('.file-type-icon').getAttribute('style')).to.include('page.svg');
-  });
-
   it('opts into a light preview without saving a theme preference', () => {
     const { href } = window.location;
     const preference = localStorage.getItem('color-scheme');
@@ -187,117 +160,11 @@ describe('landing page', () => {
     }
   });
 
-  it('uses Favorite wording while preserving existing saved favorites and filtering', async () => {
-    localStorage.setItem('da-favorites', JSON.stringify({ '/org/site': [ITEMS[0].path] }));
-    el.refreshFavorites();
-    await el.updateComplete;
-    const filter = el.shadowRoot.querySelectorAll('.filter')[1];
-    expect(filter.textContent.trim()).to.equal('Favorite');
-    expect(filter.getAttribute('aria-pressed')).to.equal('false');
-    expect(el.shadowRoot.querySelector('da-file-actions').isFavorited).to.equal(true);
-    expect(el.shadowRoot.querySelector('.file-favorite-badge').getAttribute('slot')).to.equal('badge');
-    const saved = localStorage.getItem('da-favorites');
-    filter.click();
-    await el.updateComplete;
-    expect(filter.getAttribute('aria-pressed')).to.equal('true');
-    expect(el._tab).to.equal('starred');
-    expect(localStorage.getItem('da-favorites')).to.equal(saved);
-    expect(el.shadowRoot.querySelector('.files').getAttribute('aria-label')).to.equal('Favorite files');
-    expect(getFavorites('/org/site')).to.deep.equal([ITEMS[0].path]);
-    expect(el.shadowRoot.querySelectorAll('.file')).to.have.length(1);
-    el.shadowRoot.querySelector('da-file-actions').favorite();
-    await el.updateComplete;
-    expect(getFavorites('/org/site')).to.deep.equal([]);
-    expect(el.shadowRoot.querySelector('.empty-state h3').textContent).to.equal('No favorites yet');
-    expect(el.shadowRoot.querySelector('.empty-state p').textContent).to.equal('Add a file in this folder to favorites to keep it close.');
-    expect(el.shadowRoot.textContent).not.to.match(/starred|unstar/i);
-  });
-
-  it('labels favorite actions consistently in grid and list views', async () => {
-    for (const value of ['card', 'list']) {
-      el.changeView({ detail: { value } });
-      await el.updateComplete;
-      const actions = el.shadowRoot.querySelector('da-file-actions');
-      expect(actions.path).to.equal(ITEMS[0].path);
-      expect(actions.view).to.equal(value);
-      expect(actions.isFavorited).to.equal(false);
-      actions.favorite();
-      await el.updateComplete;
-      const favorite = el.shadowRoot.querySelector('da-file-actions');
-      expect(favorite.isFavorited).to.equal(true);
-      favorite.favorite();
-      await el.updateComplete;
-    }
-  });
-
-  it('uses Favorites wording when browser storage cannot save a favorite', async () => {
-    sinon.stub(Storage.prototype, 'setItem').throws(new DOMException('Quota exceeded', 'QuotaExceededError'));
-    el.shadowRoot.querySelector('da-file-actions').favorite();
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('[role="alert"]').textContent).to.equal(
-      'Could not save your favorites. Check that browser storage is available.',
-    );
-    expect(el.shadowRoot.querySelector('da-file-actions').isFavorited).to.equal(false);
-    expect(getFavorites('/org/site')).to.deep.equal([]);
-  });
-
-  it('does not leak another site’s favorites into this site', async () => {
-    toggleFavorite('/org/other', ITEMS[0].path);
-    el.refreshFavorites();
-    el.changeTab('starred');
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelectorAll('.file')).to.have.length(0);
-  });
-
-  it('keeps files and preferences when switching between grid and list', async () => {
-    el.changeView({ detail: { value: 'list' } });
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('.files')).to.equal(null);
-    expect(el.shadowRoot.querySelectorAll('.file-table .file-row')).to.have.length(2);
-    expect([...el.shadowRoot.querySelectorAll('.file-table th')].map((th) => th.textContent))
-      .to.deep.equal(['Name', 'Folder', 'Modified at', 'File information and Favorite']);
-    expect(el.shadowRoot.querySelector('.list-file-link').textContent).to.include('Welcome');
-    expect(el.shadowRoot.querySelector('da-card-preview')).to.equal(null);
-    expect(JSON.parse(localStorage.getItem('da-browse-settings')).view).to.equal('list');
-    expect(el._files).to.equal(ITEMS);
-  });
-
-  it('reuses lazy image previews in list rows without adding page thumbnails to the list', async () => {
-    el._files = [...ITEMS, { name: 'Image', path: '/org/site/image.png', ext: 'png' }];
-    el.changeView({ detail: { value: 'list' } });
-    await el.updateComplete;
-    const previews = el.shadowRoot.querySelectorAll('da-card-preview');
-    expect(previews).to.have.length(1);
-    expect(previews[0].classList.contains('list-file-preview')).to.equal(true);
-    expect(previews[0].path).to.equal('/org/site/image.png');
-    expect(previews[0].getAttribute('aria-hidden')).to.equal('true');
-    expect(previews[0].documentPreview).not.to.equal(true);
-  });
-
-  it('keeps the Canvas route when EW is enabled but chat is disabled', async () => {
-    el._editor = '/canvas#';
-    el._chatEnabled = false;
-    await el.updateComplete;
-    const href = new URL(el.shadowRoot.querySelector('.file-link').href);
-    expect(href.pathname).to.equal('/canvas');
-    expect(el.shadowRoot.querySelector('textarea').disabled).to.equal(true);
-  });
-
-  it('refreshes starred files when another tab changes them', async () => {
-    toggleFavorite('/org/site', ITEMS[0].path);
-    window.dispatchEvent(new StorageEvent('storage', { key: 'da-favorites' }));
-    el.changeTab('starred');
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelectorAll('.file')).to.have.length(1);
-  });
-
-  it('clears the previous site prompt and filter when switching sites', async () => {
+  it('clears the previous site prompt when switching sites', async () => {
     el._prompt = 'A task for the old site';
-    el.changeTab('starred');
     hashChange._set({ org: 'org', site: 'other', fullpath: '/org/other' });
     await el.updateComplete;
     expect(el._prompt).to.equal('');
-    expect(el._tab).to.equal('recent');
     expect(el._scope).to.equal('org/other');
     expect(loadSite.callCount).to.equal(2);
   });
@@ -313,38 +180,17 @@ describe('landing page', () => {
     expect(loadSite.callCount).to.equal(2);
   });
 
-  it('keeps compact view dimensions while S/M changes preserve page state', async () => {
+  it('keeps composer sizing while S/M changes preserve page state', async () => {
     el._prompt = 'Update this page';
-    el._tab = 'starred';
     setUISize({ size: 'm' });
     await el.updateComplete;
     expect(el.dataset.uiSize).to.equal('m');
-    expect(el.shadowRoot.querySelector('nx-segmented-btn').getAttribute('size')).to.equal('m');
-    expect(el.shadowRoot.querySelector('nx-segmented-btn').getAttribute('variant')).to.equal('quiet');
     expect(el.shadowRoot.querySelector('button[type="submit"]').classList.contains('nx-btn-lg')).to.equal(true);
     expect(el._prompt).to.equal('Update this page');
-    expect(el._tab).to.equal('starred');
     expect(el._files).to.equal(ITEMS);
     setUISize({ size: 's' });
     await el.updateComplete;
-    expect(el.shadowRoot.querySelector('nx-segmented-btn').getAttribute('size')).to.equal('m');
     expect(el.shadowRoot.querySelector('button[type="submit"]').classList.contains('nx-btn-lg')).to.equal(false);
-  });
-
-  it('shows a choose-site state without pretending there are no files', async () => {
-    hashChange._set(undefined);
-    await el.updateComplete;
-    expect(el.shadowRoot.textContent).to.include('Choose a site to get started');
-    expect(el.shadowRoot.querySelector('textarea').disabled).to.equal(true);
-  });
-
-  it('shows permission errors with a retry instead of an empty file panel', async () => {
-    el._files = undefined;
-    el._error = 'Check your site permissions.';
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('[role="alert"]').textContent).to.include('permissions');
-    expect(el.shadowRoot.textContent).to.include('Try again');
-    expect(el.shadowRoot.textContent).not.to.include('No files here yet');
   });
 
   it('opens the existing chat panel and sends the central prompt', async () => {
@@ -576,60 +422,6 @@ describe('landing page', () => {
     menu.choose('command');
     expect(open.calledOnceWithExactly({ text: 'Update the hero', action: 'command' })).to.equal(true);
     expect(el._prompt).to.equal('Update the hero');
-  });
-
-  it('uses the same grey starred asset in grid and table without losing the star state', async () => {
-    el.starFile(ITEMS[0]);
-    el.changeTab('starred');
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('.file-favorite-badge').src).to.include('/landing/star-filled.svg');
-    el.changeView({ detail: { value: 'list' } });
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('.file-table').getAttribute('aria-label')).to.equal('Favorite files');
-    expect(el.shadowRoot.querySelector('.file-row da-file-actions').isFavorited).to.equal(true);
-    el.shadowRoot.querySelector('.file-row da-file-actions').favorite();
-    await el.updateComplete;
-    expect(el.shadowRoot.textContent).to.include('No favorites yet');
-  });
-
-  it('does not fetch modifier metadata for every row before details are requested', async () => {
-    const metadata = sinon.stub(source, 'getMetadata');
-    el._request = new AbortController();
-    el.changeView({ detail: { value: 'list' } });
-    await el.updateComplete;
-    await new Promise((resolve) => { setTimeout(resolve); });
-    await el.updateComplete;
-    expect(metadata.callCount).to.equal(0);
-    expect(el.shadowRoot.querySelectorAll('.file-row da-file-actions')).to.have.length(2);
-    expect(el.shadowRoot.querySelector('.file-modifier')).to.equal(null);
-    el.changeView({ detail: { value: 'card' } });
-    await el.updateComplete;
-    el.changeView({ detail: { value: 'list' } });
-    await el.updateComplete;
-    expect(metadata.callCount).to.equal(0);
-  });
-
-  it('caps Favorite at ten without deleting saved favorites or expanding the widget', async () => {
-    el._files = Array.from({ length: 12 }, (_, i) => ({ name: `Page ${i}`, path: `/org/site/page-${i}.html`, ext: 'html' }));
-    const paths = el._files.map((item) => item.path);
-    localStorage.setItem('da-favorites', JSON.stringify({ '/org/site': paths }));
-    el.refreshFavorites();
-    el.changeTab('starred');
-    el._limit = 50;
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelectorAll('.file')).to.have.length(10);
-    expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
-    expect(getFavorites('/org/site')).to.deep.equal(paths);
-    expect(el.shadowRoot.querySelector('.all-files')).not.to.equal(null);
-  });
-
-  it('shows more than ten files only when requested', async () => {
-    el._files = Array.from({ length: 12 }, (_, i) => ({ name: `Page ${i}`, path: `/org/site/page-${i}.html`, ext: 'html' }));
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelectorAll('.file')).to.have.length(10);
-    el.shadowRoot.querySelector('.show-more').click();
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelectorAll('.file')).to.have.length(12);
   });
 
   it('ignores a stale listing response after changing sites', async () => {
