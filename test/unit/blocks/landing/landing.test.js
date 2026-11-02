@@ -49,6 +49,26 @@ describe('isolated landing tiles preview', () => {
     ]);
   });
 
+  it('changes only tile mounting for the same-page Before comparison', async () => {
+    const { href } = window.location;
+    const url = new URL(href);
+    try {
+      url.searchParams.set('preview-tiles', 'off');
+      window.history.replaceState(null, '', url);
+      el.requestUpdate();
+      await el.updateComplete;
+      expect(el.shadowRoot.querySelector('.landing').children).to.have.length(0);
+      url.searchParams.delete('preview-tiles');
+      window.history.replaceState(null, '', url);
+      el.requestUpdate();
+      await el.updateComplete;
+      expect(el.shadowRoot.querySelectorAll('da-landing-tile')).to.have.length(5);
+      expect(el.shadowRoot.querySelector('.files-panel, .composer')).to.equal(null);
+    } finally {
+      window.history.replaceState(null, '', href);
+    }
+  });
+
   it('routes Browse through the selected site while retaining preview settings', async () => {
     const { href } = window.location;
     try {

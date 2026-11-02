@@ -146,8 +146,9 @@ export class DaLanding extends LitElement {
   }
 
   render() {
+    const showTiles = new URLSearchParams(window.location.search).get('preview-tiles') !== 'off';
     return html`<div class="landing">
-      ${this.renderQuickLinks()}
+      ${showTiles ? this.renderQuickLinks() : nothing}
       ${this._error || this._actionError ? html`
         <p role="alert">${this._error || this._actionError}</p>` : nothing}
       ${this._createDialog ? html`<da-name-dialog open
