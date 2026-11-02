@@ -32,18 +32,6 @@ Do not substitute `nx=ui-size-scale`: that branch does not yet contain the new
 shared card. Sizing integration remains separate; neither adobe/da-nx#816 nor
 adobe/da-live#1416 is modified or merged by this work.
 
-For a temporary M-size preview of only the quick-action tiles, run this in the
-DevTools console with the context set to **top**, after the tiles have loaded:
-
-```js
-document.querySelector('da-landing').shadowRoot
-  .querySelectorAll('da-landing-tile')
-  .forEach((tile) => { tile.size = 'm'; });
-```
-
-This does not enable whole-shell sizing. Reloading or a parent render restores
-the shell-selected size.
-
 ## Component ownership
 
 - Nexter owns the presentation-only `nx-card`, based on Browse's card layout.
@@ -58,8 +46,6 @@ the shell-selected size.
   No account-wide discovery or invented display metadata is added.
 - Files table markup lives in the detached da-live `file-table.js` render helper,
   not a new general table framework.
-- `da-landing-tile` owns quick-action presentation in da-live. Landing supplies
-  the navigation, page creation and documentation destinations.
 - `da-file-actions` supplies the card menu and list information/favorite controls.
   It reuses Browse's source/version and preview/publish status helpers.
   The card popover opens beside its trigger, flips near viewport edges and
@@ -72,7 +58,7 @@ the shell-selected size.
 The 1920px Ready frame (`1852:83848`) has a 1068px Files panel starting at y=395.
 Ten compact cards are 142px tall with 4px frame padding, 80px thumbnails,
 12px title/metadata insets and a 12px radius; the panel is 406px tall.
-The quiet view switcher has two 32px buttons. Quick actions follow after 40px.
+The quiet view switcher has two 32px buttons.
 These are the default-size design dimensions, not a claim of live S/M integration.
 
 The standalone selector uses the shared Nexter picker defaults, leading selected
@@ -236,44 +222,9 @@ intentional differences rather than substitutes for those missing inputs.
   shared add-to-chat event, without uploading or auto-sending. Other selected
   actions continue in the existing assistant through `openAddAction(id)`,
   supported by both `nx-chat` and `nx-chat-ao`. Typed drafts are preserved.
-- Five quick actions replace Need Attention. Landing does not load the comment
-  feed or probe page metadata for that removed table.
-  - Browse Content opens the selected site in Browse v2 and closes chat before
-    the native link navigates, using Nexter's existing panel-close event.
-    Its `chat=closed` entry parameter also skips restoration of a remembered
-    panel in the destination, including when opened in a new tab. Browse consumes
-    this parameter once; normal Browse navigation and manual chat remain available.
-  - Create a page opens the shared New page/name dialog. It requires a selected
-    site, explicit source-list write permission and a resolved editor. Creation
-    checks for an existing name, saves an empty document at the site root and
-    refreshes Content; Create and open continues in the site's editor. Errors
-    remain visible in the dialog. Switching sites invalidates pending dialog work.
-  - Publishing & Workflow opens the EW publishing documentation.
-  - Localization & Multi-site opens the EW Multi-Site Manager documentation.
-  - Develop & Extend opens the developer tutorial.
-  Governance & Operation is not shown. Customizable actions are out of scope.
-  At desktop widths, the final two tiles are centered below the first three;
-  narrower layouts retain two columns or one column.
-  Hover raises interactive tiles with a stronger shadow; keyboard focus retains
-  its visible outline.
-  Icon backgrounds use Spectrum's turquoise, green, orange and purple 200 tokens,
-  including Spectrum's dark-mode values. Tile surfaces retain white in light mode
-  and gray 75 in dark mode through the shared gray tokens. Spacing and the 32px
-  icon background use shared spacing tokens. The glyph remains component-owned:
-  20px in S and 22px in M.
-  Quick-action SVGs use the shared `/img/icons/` location. Report Suite Mapping and
-  Data Streams are stored there alongside the other shared icon assets; their
-  SVG artwork is unchanged and the tiles continue to use CSS masks.
-  The 12px tile radius and the rest/hover shadows are component-local values,
-  named `--da-landing-tile-radius`, `--da-landing-tile-shadow` and
-  `--da-landing-tile-hover-shadow`; they are not shared Spectrum tokens.
-- Each action has a stable `landing-action-*` class and matching
-  `data-rum-source` identifier. The existing Optel enhancer's web-component
-  plugin follows nested shadow roots and collects native clicks, including
-  keyboard activation. No second click collector or eager RUM import is added.
-  The source is the fixed action identifier; link targets are their destinations.
-  `rum=on` enables full sampling in the testing link and is preserved on
-  Browse/editor navigation.
+- Quick-action tiles are not included on `lp`; they are reviewed separately.
+  Need Attention remains removed. Landing does not load the comment feed or
+  probe page metadata for that removed table.
 - Notification counts, published-page screenshots and global AI routing are not
   mocked. The routing placeholder does not add a global routing backend.
 
@@ -284,7 +235,7 @@ The `lp` branch keeps preview code isolated. Explicitly integrating it into
 Loading the landing page reads the site's listing and configuration; favorites
 and view choices are browser-local. However, `aemsites/devlive` is shared content,
 not a sandbox copy. Editing an opened file or sending a prompt in the assistant
-can change that shared site. Create a page also writes real content.
+can change that shared site.
 Use a separate content site for write testing.
 
 ## Manual checks
@@ -293,10 +244,6 @@ Sign in with access to the selected site. Check the greeting, site switching,
 file navigation, Favorite, card/list switching, Show all files and prompt handoff.
 Check card menus, persistent selected stars, list information-only popovers,
 favorite toggles, unavailable metadata/retry and the ten-item Favorite cap.
-Check the five quick actions, Browse with chat closed, New page cancellation,
-duplicate names and save errors, and all three documentation destinations.
-With `rum=on`, confirm one distinct click checkpoint per action and keyboard
-activation, without sending real page names in telemetry.
 Open Add site from the picker and the no-site state. Check a valid existing URL,
 an invalid URL, a denied site, an unavailable check and cancelling an in-flight
 request. Confirm the added site appears in the current browser's picker and
