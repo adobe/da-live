@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../../scripts/utils.js';
-import { getSettingsMenuItems, getSettingsHref, canEditOrgConfig } from '../../shared/settings-menu.js';
+import { getSettingsMenuItems, canEditOrgConfig } from '../../shared/settings-menu.js';
 
 await import(`${getNx()}/blocks/shared/switch/switch.js`);
 await import(`${getNx()}/blocks/shared/segmented-btn/segmented.js`);
@@ -150,10 +150,7 @@ export default class DaBrowseHeader extends LitElement {
     const items = getSettingsMenuItems({ org, site, canEditOrgConfig: this._canEditOrgConfig });
     return html`
       <nx-menu class="browse-settings-menu" size="m" placement="auto" .items=${items}
-        @select=${({ detail }) => {
-        const href = getSettingsHref(items, detail.id);
-        if (href) window.location.href = href;
-      }}>
+        @select=${({ detail }) => { window.location.href = detail.id; }}>
         <button slot="trigger" type="button" class="browse-settings-trigger browse-toolbar-control nx-action-btn-quiet" title="Settings">
           <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-settings-20-n.svg#icon"></use></svg>
           <span class="browse-control-label">Settings</span>

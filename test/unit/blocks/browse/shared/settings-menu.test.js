@@ -5,7 +5,6 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const {
   getSettingsMenuItems,
-  getSettingsHref,
   canEditOrgConfig,
 } = await import('../../../../../blocks/browse/shared/settings-menu.js');
 
@@ -13,33 +12,24 @@ describe('settings menu', () => {
   describe('getSettingsMenuItems', () => {
     it('returns org configuration and permissions at the org root', () => {
       expect(getSettingsMenuItems({ org: 'org' })).to.deep.equal([
-        { id: 'config', label: 'Configuration', href: '/config#/org/' },
-        { id: 'permissions', label: 'Permissions', href: '/config/permissions#/org' },
+        { id: '/config#/org/', label: 'Configuration' },
+        { id: '/config/permissions#/org', label: 'Permissions' },
       ]);
     });
 
     it('returns site configuration and permissions when the user can edit the org config', () => {
       expect(getSettingsMenuItems({ org: 'org', site: 'site', canEditOrgConfig: true })).to.deep.equal([
-        { id: 'config', label: 'Configuration', href: '/config#/org/site/' },
-        { id: 'permissions', label: 'Permissions', href: '/config/permissions#/org/site' },
+        { id: '/config#/org/site/', label: 'Configuration' },
+        { id: '/config/permissions#/org/site', label: 'Permissions' },
       ]);
     });
 
     it('hides site permissions when the user cannot edit the org config', () => {
       expect(getSettingsMenuItems({ org: 'org', site: 'site', canEditOrgConfig: false })).to.deep.equal([
-        { id: 'config', label: 'Configuration', href: '/config#/org/site/' },
+        { id: '/config#/org/site/', label: 'Configuration' },
       ]);
-      expect(getSettingsMenuItems({ org: 'org', site: 'site' }).map(({ id }) => id))
-        .to.deep.equal(['config']);
-    });
-  });
-
-  describe('getSettingsHref', () => {
-    it('returns the href of the selected item, undefined for unknown ids', () => {
-      const items = getSettingsMenuItems({ org: 'org', site: 'site', canEditOrgConfig: true });
-      expect(getSettingsHref(items, 'permissions')).to.equal('/config/permissions#/org/site');
-      expect(getSettingsHref(items, 'config')).to.equal('/config#/org/site/');
-      expect(getSettingsHref(items, 'nope')).to.be.undefined;
+      expect(getSettingsMenuItems({ org: 'org', site: 'site' }).map(({ label }) => label))
+        .to.deep.equal(['Configuration']);
     });
   });
 

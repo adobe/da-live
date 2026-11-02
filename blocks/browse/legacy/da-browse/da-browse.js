@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getFirstSheet, fetchDaConfigs } from '../../../shared/utils.js';
 import { getNx, sanitizePathParts, getNxEWFlags } from '../../../../scripts/utils.js';
 import { getChatPanelContent } from '../../../shared/chat-panel.js';
-import { getSettingsMenuItems, getSettingsHref, canEditOrgConfig } from '../../shared/settings-menu.js';
+import { getSettingsMenuItems, canEditOrgConfig } from '../../shared/settings-menu.js';
 
 // Components
 import '../../da-new/da-new.js';
@@ -127,10 +127,7 @@ export default class DaBrowse extends LitElement {
     const items = getSettingsMenuItems({ org, site, canEditOrgConfig: this._canEditOrgConfig });
     return html`
       <nx-menu size="m" placement="auto" .items=${items}
-        @select=${({ detail }) => {
-        const href = getSettingsHref(items, detail.id);
-        if (href) window.location.href = href;
-      }}>
+        @select=${({ detail }) => { window.location.href = detail.id; }}>
         <button slot="trigger" type="button" class="da-breadcrumb-config" aria-label="Settings" title="Settings">
           <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-settings-20-n.svg#icon"></use></svg>
         </button>
