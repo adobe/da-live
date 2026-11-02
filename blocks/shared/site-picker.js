@@ -48,9 +48,6 @@ export function connectSiteSelector({ selector, signal }) {
     selector.sites = sites;
     selector.value = value;
     selector.error = error;
-    if (document.querySelector('.landing') || new URLSearchParams(window.location.search).has('landing')) {
-      selector.heading = 'Your recent sites';
-    }
     if (!sites.length) return;
     request = new AbortController();
     const checking = request;

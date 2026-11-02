@@ -70,9 +70,10 @@ describe('shared site selector adapter', () => {
     ]);
   });
 
-  it('leaves Landing unselected despite remembered sites, selects explicitly and resets on Home', async () => {
+  it('leaves an unscoped host unselected, selects explicitly and preserves its heading on reset', async () => {
     const remembered = localStorage.getItem('da-sites');
-    window.history.replaceState(null, '', '?landing=true');
+    selector.heading = 'Your recent sites';
+    window.history.replaceState(null, '', window.location.pathname);
     await adapter.refresh();
     expect(selector.value).to.equal('');
     expect(selector.heading).to.equal('Your recent sites');
@@ -83,7 +84,7 @@ describe('shared site selector adapter', () => {
     await adapter.refresh();
     expect(selector.value).to.equal(value);
     expect(selector.sites.find((site) => site.value === value).label).to.equal('Frescopaco, exp-workspace/frescopaco');
-    window.history.replaceState(null, '', '?landing=true');
+    window.history.replaceState(null, '', window.location.pathname);
     await adapter.refresh();
     expect(selector.value).to.equal('');
     expect(selector.heading).to.equal('Your recent sites');
@@ -192,14 +193,24 @@ describe('shared site selector adapter', () => {
     expect(selector.sites.map(({ value }) => value)).to.deep.equal(['aemsites/devlive', 'other/site']);
   });
 
-  it('closes Add on route changes and updates the landing heading', async () => {
+  it('closes Add on route changes without replacing the host heading', async () => {
+    selector.heading = 'Choose a site';
     document.dispatchEvent(new CustomEvent('site-add'));
     await customElements.whenDefined('da-add-site');
     await tick();
-    window.history.replaceState(null, '', '?landing=true#/exp-workspace/frescopaco');
+    window.history.replaceState(null, '', '#/exp-workspace/frescopaco');
     await adapter.refresh();
     expect(document.querySelector('da-add-site')).to.be.null;
-    expect(selector.heading).to.equal('Your recent sites');
+    expect(selector.heading).to.equal('Choose a site');
+  });
+
+  it('preserves query parameters when switching sites', async () => {
+    window.history.replaceState(null, '', '?nx=siteselector-main&theme=dark#/aemsites/devlive');
+    const { search } = window.location;
+    selector.dispatchEvent(new CustomEvent('site-select', { detail: { value: 'exp-workspace/frescopaco' } }));
+    await adapter.refresh();
+    expect(window.location.search).to.equal(search);
+    expect(window.location.hash).to.equal('#/exp-workspace/frescopaco');
   });
 
   it('aborts pending checks and removes all listeners and dialogs on disconnect', async () => {

@@ -85,7 +85,12 @@ if (nx2) {
   document.addEventListener('site-selector-ready', async ({ detail: { selector, signal } }) => {
     try {
       const { connectSiteSelector } = await import('../blocks/shared/site-picker.js');
-      if (!signal.aborted) connectSiteSelector({ selector, signal });
+      if (!signal.aborted) {
+        if (document.querySelector('.landing') || new URLSearchParams(window.location.search).has('landing')) {
+          selector.heading = 'Your recent sites';
+        }
+        connectSiteSelector({ selector, signal });
+      }
     } catch (error) {
       if (!signal.aborted) {
         selector.error = `Could not load your sites: ${error.message}`;

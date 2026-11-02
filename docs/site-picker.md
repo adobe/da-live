@@ -1,76 +1,40 @@
-# Shared site picker
+# Shared site selector
 
-`blocks/shared/site-picker.js` provides the application-owned site picker for
-Browse v2 and Landing. It composes Nexter's existing `nx-picker`, including its
-popover, keyboard navigation and selection handling. Site menu styling lives in
-`blocks/shared/site-picker.css`, not in a Nexter site-specific variant.
+Nexter's `nx-siteselector` owns the UI. DA's `blocks/shared/site-picker.js`
+owns recent history, access checks, Add and hash routing.
 
-```js
-const picker = createSitePicker({
-  onSelect: (value) => openSite(value),
-  onAdd: () => openAddSite(),
-});
-updateSitePicker({ picker, sites, value: 'adobe/example' });
-```
+The Nx2 bootstrap listens for `site-selector-ready` and lazily loads the adapter.
+The listener is installed before navigation loads. Pages without a selector do
+not load the adapter or change their navigation.
 
-`sites` contains `{ value: 'org/site', label: 'Site, org/site' }` entries.
-`getSiteOptions({ recentSites, current })` builds validated, deduplicated options
-from browser-local recent sites and the current site. Its pure implementation
-is in `site-picker-utils.js`, so data helpers need not import picker UI.
-The current site remains
-available even when it is outside recent history. Identifiers are real repository
-identifiers, not invented friendly names or public domains. The display name comes
-from the site segment of the stored `org/site` identifier, matching the existing
-DA recent-site cards. Only its first character is capitalized for display.
-There is no separate friendly-name field in this history; no business name or
-page title is guessed. For example, `exp-workspace/frescopa` displays
-`Frescopa, exp-workspace/frescopa`, without parentheses or a metadata request.
+Hosts can add `siteselector` to an authored navigation fragment's site-nav list,
+or load the component independently. The selector emits `site-selector-ready`
+with `{ selector, signal }` on each connection. Removal aborts the signal and
+releases the adapter's listeners, requests and dialog.
 
-The menu shows site names with `org/site` below them and marks the current site.
-The trigger shows the site name first, then its unchanged full `org/site` path to
-distinguish identically named sites. This formatting never changes routing or history.
-Add site aligns with the menu's left padding, without reserving a checkmark column,
-and emits an action without changing the selection.
+The adapter supplies `sites` as `{ value: 'org/site', label: 'Site, org/site' }`
+entries and `value` from the current hash. It handles `site-select`, `site-add`
+and `site-retry`. Hosts own `heading`, placement and page-specific integration.
+Menu presentation belongs to Nexter's shared navigation picker variant, not
+application CSS or a custom nav slot.
 
-Site headings and trigger labels use bold M component tokens; site and action
-rows use medium M component tokens. Descriptions inherit row size and line
-height while retaining regular component weight. Add dialog labels, input,
-help, status, errors and links use component typography; retry text inherits
-its regular component typography. Dialog headings and actions use the shared
-dialog/button component tokens.
+Recent sites use the existing browser-local `da-sites` history. An unscoped
+route stays unselected. Switching sites preserves query parameters and never
+prunes history because of denied access. Failed storage or uncertain access
+checks produce an explicit error and retry.
 
-Hosts own mounting and navigation. `blocks/shared/site-access.js` owns site access
-checks, supported URL parsing, browser-local additions and the explicit
-organization-config write-grant check. `blocks/shared/add-site.js` provides the
-lazy-loaded Add dialog for both hosts.
-Browse mounts the picker in the nav's left `context` slot, independently of its
-centered `search` slot. It switches to a selected
-site's root, and opens the shared Add dialog without leaving Browse. It preserves
-the current URL's query parameters. Landing uses the same dialog and supplies its
-own creation URL to preserve its Home navigation.
-The picker does not create sites, change permissions, or discover account sites.
-Browse removes both controls and its storage listener when disconnected.
-Both hosts keep the current site and remembered recent sites as navigation
-history, including when their content is inaccessible. Switching sites never
-prunes remembered entries based on permission checks. Landing remembers the
-current route before loading its files, matching Browse's history behavior.
-Keeping an entry does not grant content access or bypass Add site validation.
-Uncertain failures
-remain visible with an explicit error; they are not treated as permission denials.
-In-flight checks and additions are cancelled when their host/dialog is removed.
-Invalid or unavailable recent-site storage produces an explicit alert while
-keeping the current site, Add site and search available.
+`site-access.js` validates existing AEM URLs and site access. `add-site.js`
+provides the lazy Add dialog. Adding remembers an accessible existing site;
+it does not create sites, grant access or write backend configuration.
+Only an explicit organization-config `write` grant exposes Create new site.
 
-Anyone with access to an existing site can add it to this browser's recent list.
-The dialog verifies both access and existence, including paginated organization
-listings. Adding never creates a site, grants access or writes to the backend.
-Only an explicit `write` action on the selected organization's configuration
-response exposes Create new site. Content-write, child and inferred/fallback
-permissions do not qualify. If admin lookup fails, creation stays hidden with
-an error and retry; adding an existing accessible site stays available.
+## Testing
 
-The production dependency is generic Nexter picker support for `description`,
-menu CSS parts (including `action`) and the nav's independent `context` slot.
-Release that support before merging the
-application integration. Production code does not pin Nexter to a preview branch.
-Landing integration remains on its review branch until the landing page is merged.
+Open `/docs/site-picker.html?nx=<nexter-branch>`. The example uses the real
+DA adapter and API, not sample sites. Sign in through the profile menu to
+check authenticated access. Recent history is separate for each browser origin.
+Select a site to test routing; Add validates an existing AEM URL.
+
+Nexter's style guide provides sample S/M controls and light/dark styling checks.
+Merge Nexter support first; production uses the normal Nexter URL without a
+branch pin. Landing layout, branding and mounting remain separate on `lp`.
