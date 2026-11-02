@@ -33,7 +33,8 @@ const VIEW_ITEMS = [
   { value: 'list', label: 'List view', icon: '/img/icons/s2-icon-viewlist-20-n.svg', iconOnly: true },
 ];
 const PAGE_SIZE = 10;
-const CARD_LIMIT = 6;
+const CARD_PAGE_SIZE = 6;
+const CARD_MAX = 18;
 
 function icon(name) {
   return html`<svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-${name}-20-n.svg#icon"></use></svg>`;
@@ -51,6 +52,7 @@ export class DaLanding extends LitElement {
     _tab: { state: true },
     _view: { state: true },
     _limit: { state: true },
+    _cardLimit: { state: true },
     _prompt: { state: true },
     _chatEnabled: { state: true },
     _editor: { state: true },
@@ -76,6 +78,7 @@ export class DaLanding extends LitElement {
     this._tab = 'recent';
     this._view = getBrowseSettings().view === 'list' ? 'list' : 'card';
     this._limit = PAGE_SIZE;
+    this._cardLimit = CARD_PAGE_SIZE;
     this._prompt = '';
   }
 
@@ -133,6 +136,7 @@ export class DaLanding extends LitElement {
     this._permissions = undefined;
     this._tab = 'recent';
     this._limit = PAGE_SIZE;
+    this._cardLimit = CARD_PAGE_SIZE;
     this._prompt = '';
     this._chatEnabled = undefined;
     this._editor = undefined;
@@ -236,6 +240,7 @@ export class DaLanding extends LitElement {
   changeTab(value) {
     this._tab = value;
     this._limit = PAGE_SIZE;
+    this._cardLimit = CARD_PAGE_SIZE;
   }
 
   changeView({ detail: { value } }) {
@@ -336,7 +341,9 @@ export class DaLanding extends LitElement {
   visibleFiles() {
     const files = this._tab === 'starred'
       ? this._files.filter((item) => this._favorites.has(item.path)) : this._files;
-    if (this._view === 'card') return files.slice(0, CARD_LIMIT);
+    if (this._view === 'card') {
+      return files.slice(0, this._tab === 'starred' ? CARD_PAGE_SIZE : Math.min(this._cardLimit, CARD_MAX));
+    }
     return files.slice(0, this._tab === 'starred' ? PAGE_SIZE : this._limit);
   }
 
@@ -398,6 +405,9 @@ export class DaLanding extends LitElement {
         <p>${this._tab === 'starred' ? 'Add a file in this folder to favorites to keep it close.' : 'Open Files to add content to this site.'}</p>
       </div>`;
     }
+    const canShowMore = this._tab !== 'starred' && (this._view === 'card'
+      ? this._cardLimit < CARD_MAX && files.length > this._cardLimit
+      : files.length > this._limit);
     return html`
       ${this._view === 'list' ? renderFileTable({
     files: this.visibleFiles(),
@@ -407,8 +417,11 @@ export class DaLanding extends LitElement {
         <ul class="files" aria-label=${this._tab === 'starred' ? 'Favorite files' : 'Recently modified files'}>
           ${repeat(this.visibleFiles(), (item) => item.path, (item) => this.renderFile(item))}
         </ul>`}
-      ${this._view === 'list' && this._tab !== 'starred' && files.length > this._limit ? html`
-        <button class="show-more nx-action-btn-quiet" @click=${() => { this._limit += PAGE_SIZE; }}>
+      ${canShowMore ? html`
+        <button class="show-more nx-action-btn-quiet" @click=${() => {
+    if (this._view === 'card') this._cardLimit = Math.min(this._cardLimit + CARD_PAGE_SIZE, CARD_MAX);
+    else this._limit += PAGE_SIZE;
+  }}>
           Show more files
         </button>` : nothing}`;
   }

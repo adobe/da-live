@@ -148,7 +148,9 @@ intentional differences rather than substitutes for those missing inputs.
   Landing Home destination and preview flags for same-origin editor links.
 - The mock's Recent tab shows recently modified files, not personal
   recently opened history. The root scope is not added as a visible subtitle.
-  Card view shows the first six files; Show all opens Browse for the rest.
+  Card view starts with six files. Show more adds six at a time, up to eighteen,
+  then disappears. It also disappears when all available files are visible.
+  Show all opens Browse for the rest.
   List view keeps its ten-row pagination and Show more control.
 - **Favorite** uses the existing browser-local `da-favorites` entries for that root.
   Saved entries are not capped, but this widget displays at most six cards or

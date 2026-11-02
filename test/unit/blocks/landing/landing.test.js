@@ -656,14 +656,47 @@ describe('landing page', () => {
     expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
   });
 
-  it('keeps only the first six Recent cards and links to Browse for the rest', async () => {
-    el._files = Array.from({ length: 12 }, (_, i) => ({ name: `Page ${i}`, path: `/org/site/page-${i}.html`, ext: 'html' }));
+  it('expands Recent cards from six to twelve to eighteen and then hides Show more', async () => {
+    el._files = Array.from({ length: 24 }, (_, i) => ({ name: `Page ${i}`, path: `/org/site/page-${i}.html`, ext: 'html' }));
     await el.updateComplete;
-    expect([...el.shadowRoot.querySelectorAll('da-file-item')].map((item) => item.path))
-      .to.deep.equal(el._files.slice(0, 6).map((item) => item.path));
+    for (const count of [6, 12, 18]) {
+      expect([...el.shadowRoot.querySelectorAll('da-file-item')].map((item) => item.path))
+        .to.deep.equal(el._files.slice(0, count).map((item) => item.path));
+      if (count < 18) {
+        el.shadowRoot.querySelector('.show-more').click();
+        await el.updateComplete;
+      }
+    }
     expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
     expect(el.shadowRoot.querySelector('.all-files')).not.to.equal(null);
-    expect(el._files).to.have.length(12);
+    expect(el._files).to.have.length(24);
+  });
+
+  it('hides Show more once all available cards are visible', async () => {
+    el._files = Array.from({ length: 8 }, (_, i) => ({ name: `Page ${i}`, path: `/org/site/page-${i}.html`, ext: 'html' }));
+    await el.updateComplete;
+    el.shadowRoot.querySelector('.show-more').click();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelectorAll('.file')).to.have.length(8);
+    expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
+  });
+
+  it('resets card expansion when changing tabs or sites', async () => {
+    const files = Array.from({ length: 24 }, (_, i) => ({ name: `Page ${i}`, path: `/org/site/page-${i}.html`, ext: 'html' }));
+    el._files = files;
+    await el.updateComplete;
+    el.shadowRoot.querySelector('.show-more').click();
+    await el.updateComplete;
+    el.changeTab('starred');
+    el.changeTab('recent');
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelectorAll('.file')).to.have.length(6);
+    el.shadowRoot.querySelector('.show-more').click();
+    await el.updateComplete;
+    hashChange._set({ org: 'org', site: 'other', fullpath: '/org/other' });
+    el._files = files;
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelectorAll('.file')).to.have.length(6);
   });
 
   it('keeps list pagination at ten files and expands only when requested', async () => {
@@ -674,6 +707,9 @@ describe('landing page', () => {
     el.shadowRoot.querySelector('.show-more').click();
     await el.updateComplete;
     expect(el.shadowRoot.querySelectorAll('.file-row')).to.have.length(12);
+    el.changeView({ detail: { value: 'card' } });
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelectorAll('.file')).to.have.length(6);
   });
 
   it('ignores a stale listing response after changing sites', async () => {
