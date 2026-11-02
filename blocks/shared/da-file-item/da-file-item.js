@@ -64,11 +64,11 @@ export default class DaFileItem extends LitElement {
 
   willUpdate(props) {
     if (props.has('path') || props.has('ext') || props.has('view')) this.resetImage();
-    if (props.has('path')) this.resetStatus();
+    if (props.has('path') || props.has('ext') || props.has('date')) this.resetStatus();
   }
 
   updated() {
-    if (this.columns?.includes('modifiedBy') && this.modifiedBy === undefined
+    if (this.isConnected && this.columns?.includes('modifiedBy') && this.modifiedBy === undefined
       && this.ext && this.ext !== 'link' && !this._daStatusRequest && !this._modifierObserver) {
       this._modifierObserver = new IntersectionObserver(([entry]) => {
         if (!entry?.isIntersecting) return;

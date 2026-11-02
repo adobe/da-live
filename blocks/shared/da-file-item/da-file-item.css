@@ -37,6 +37,11 @@
   min-width: 0;
 }
 
+:host([columns]) [role="cell"] {
+  box-sizing: border-box;
+  padding-inline: var(--s2-spacing-100);
+}
+
 .da-item-list-item-folder,
 .da-item-list-item-modifier {
   overflow: hidden;
