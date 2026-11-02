@@ -13,6 +13,35 @@
 import { initIms } from '../blocks/shared/utils.js';
 import { setNx, nxJS, nxCSS } from './utils.js';
 
+if (window.trustedTypes && window.trustedTypes.createPolicy) {
+  const innerTT = window.trustedTypes.createPolicy('tt-inner', {
+    // avoid stack overflow
+    createHTML: (s) => s,
+  });
+
+  window.trustedTypes.createPolicy('default', {
+    createHTML: (input, type, sink) => {
+      let processedInput = input;
+      if (/srcdoc\s*=/i.test(processedInput)) {
+        const doc = new DOMParser().parseFromString(innerTT.createHTML(processedInput), 'text/html');
+        const iframes = doc.querySelectorAll('iframe[srcdoc]');
+        if (iframes.length) {
+          iframes.forEach((el) => el.removeAttribute('srcdoc'));
+          processedInput = doc.body.innerHTML;
+        }
+      }
+      if (sink.includes('createContextualFragment') || sink.includes('Document write')) {
+        const doc = new DOMParser().parseFromString(innerTT.createHTML(processedInput), 'text/html');
+        doc.querySelectorAll('script').forEach((el) => el.remove());
+        processedInput = doc.body.innerHTML;
+      }
+      return processedInput;
+    },
+    createScriptURL: (input) => input,
+    createScript: (input) => input,
+  });
+}
+
 export function decorateArea({ area = document } = {}) {
   // Find all dark & light images
   const lcpImgs = [...area.querySelectorAll('[alt="light"], [alt="dark"]')].filter((img) => {
