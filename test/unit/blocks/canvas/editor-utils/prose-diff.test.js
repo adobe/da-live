@@ -269,6 +269,15 @@ describe('createTrackingPlugin — attrs changes outside EDITABLE_TYPES', () => 
 
     expect(counts()).to.deep.equal({ rerenderCalls: 0, getEditorCalls: 1 });
   });
+
+  it('rerenders after deleting an image so the outline removes it', () => {
+    const { plugin, prevState, counts } = setupImage('/a.png');
+    const nextState = prevState.apply(prevState.tr.delete(1, 2));
+
+    plugin.spec.view().update({ state: nextState }, prevState);
+
+    expect(counts()).to.deep.equal({ rerenderCalls: 1, getEditorCalls: 0 });
+  });
 });
 
 describe('createTrackingPlugin — edit origin', () => {

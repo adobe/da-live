@@ -76,6 +76,26 @@ export class CommentsPanel extends LitElement {
     this._threadGroups = this.controller.getThreadGroups(
       this.controller.getAttachedThreadIds() ?? null,
     );
+    this._clearHiddenImageSelection();
+  }
+
+  _clearHiddenImageSelection() {
+    const threadId = this.controller?.selectedThreadId;
+    if (!threadId || this._clearingHiddenImageSelection === threadId) return;
+    const selected = this.controller.getComment?.(threadId);
+    if (selected?.threadId != null || selected?.anchorType !== 'image') return;
+    const visible = [
+      ...this._threadGroups.active,
+      ...this._threadGroups.resolved,
+    ].some((thread) => thread.id === threadId);
+    if (visible) return;
+    this._clearingHiddenImageSelection = threadId;
+    queueMicrotask(() => {
+      if (this.controller?.selectedThreadId === threadId) {
+        this.controller.setSelectedThread(null);
+      }
+      this._clearingHiddenImageSelection = null;
+    });
   }
 
   syncDraftFromPendingAnchor() {
