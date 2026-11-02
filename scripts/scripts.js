@@ -89,7 +89,13 @@ if (nx2) {
         if (document.querySelector('.landing') || new URLSearchParams(window.location.search).has('landing')) {
           selector.heading = 'Your recent sites';
         }
-        connectSiteSelector({ selector, signal });
+        const isLanding = document.querySelector('.landing')
+          || new URLSearchParams(window.location.search).get('landing') === 'true';
+        connectSiteSelector({
+          selector,
+          signal,
+          onSelect: isLanding ? ({ value }) => { window.location.hash = `/${value}`; } : undefined,
+        });
       }
     } catch (error) {
       if (!signal.aborted) {
