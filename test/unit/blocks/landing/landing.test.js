@@ -152,6 +152,30 @@ describe('landing page', () => {
     expect(JSON.parse(localStorage.getItem('da-sites'))).to.deep.equal(['org/other']);
   });
 
+  it('exits loading for unstructured SDK failures and can retry the file listing', async () => {
+    loadSite.restore();
+    const list = sinon.stub(source, 'list');
+    for (const error of ['http', undefined, null, {}, new Error('Offline')]) {
+      list.callsFake(() => Promise.reject(error));
+      await el.loadSite();
+      await el.updateComplete;
+      const alert = el.shadowRoot.querySelector('[role="alert"]');
+      expect(alert, `visible error for ${String(error)}`).not.to.equal(null);
+      expect(alert.textContent.trim()).not.to.equal('');
+      if (typeof error === 'string') expect(alert.textContent).to.include(error);
+      if (error instanceof Error) expect(alert.textContent).to.equal(error.message);
+      expect(el.shadowRoot.textContent).not.to.include('Loading files...');
+      expect(el.shadowRoot.querySelector('[aria-busy]').getAttribute('aria-busy')).to.equal('false');
+      expect(el.shadowRoot.textContent).to.include('Try again');
+    }
+    list.resolves({ ok: true, items: ITEMS, permissions: ['read'] });
+    await el.loadSite();
+    await el.updateComplete;
+    expect(el._files).to.deep.equal(ITEMS);
+    expect(el._error).to.equal(undefined);
+    expect(el.shadowRoot.querySelectorAll('.file')).to.have.length(2);
+  });
+
   it('keeps the plus icon when the Add menu marks its trigger active', () => {
     const trigger = el.shadowRoot.querySelector('.chat-add');
     trigger.setAttribute('data-active', '');

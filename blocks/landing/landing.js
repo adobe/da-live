@@ -162,7 +162,10 @@ export class DaLanding extends LitElement {
       this._files = files;
       this._permissions = permissions;
     } catch (error) {
-      if (!request.signal.aborted && this.isConnected) this._error = error.message;
+      if (!request.signal.aborted && this.isConnected) {
+        const reason = typeof error === 'string' && error ? ` (${error})` : '';
+        this._error = error?.message || `Could not load files${reason}. Check your sign-in and connection.`;
+      }
     }
   }
 
