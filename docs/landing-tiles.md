@@ -27,9 +27,8 @@ collector. No separate telemetry collector is installed.
 Load `blocks/landing/tiles.css` and put tiles (or list items containing tiles) in
 `.landing-tiles` inside an inline-size container. The group matches the loaded
 Content panel's whole-card width, capped at six 151px cards with 12px gaps and
-16px panel insets (998px). It wraps from three columns to two below 900px and
-one below 600px. Incomplete rows are centered, including the final single tile
-in the two-column layout.
+16px panel insets (998px). Five tiles use two columns (2+2+1), then one below
+600px. The final tile is centered in both layouts.
 
 The component does not provide the application entry point, site-selection state
 or documentation destinations.

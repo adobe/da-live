@@ -208,17 +208,16 @@ describe('landing tile group', () => {
   });
 
   it('centers incomplete rows and keeps the final single tile centered when wrapping', () => {
-    for (const [available, rowStart] of [[1068, 3], [850, 4], [700, 4], [358, 4], [250, 4]]) {
+    for (const available of [1068, 850, 700, 358, 250]) {
       container.style.width = `${available}px`;
       const bounds = group.getBoundingClientRect();
       const items = [...group.children].map((item) => item.getBoundingClientRect());
-      const lastRow = items.slice(rowStart);
-      expect((lastRow[0].left + lastRow.at(-1).right) / 2)
+      const last = items.at(-1);
+      expect((last.left + last.right) / 2)
         .to.be.closeTo((bounds.left + bounds.right) / 2, 0.1);
       expect(items.every((item) => item.left >= bounds.left && item.right <= bounds.right + 0.1))
         .to.equal(true);
-      expect(lastRow.every((item) => item.top === lastRow[0].top)).to.equal(true);
-      expect(lastRow[0].top).to.be.greaterThan(items[rowStart - 1].top);
+      expect(last.top).to.be.greaterThan(items.at(-2).top);
     }
   });
 });
