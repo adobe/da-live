@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2 } from '../../../scripts/utils.js';
-import { fetchAemStatus, fetchDaStatus } from '../../browse/shared/item.js';
-import { ICONS } from '../icons.js';
+import { getNx, getNx2 } from '../../scripts/utils.js';
+import { fetchAemStatus, fetchDaStatus } from '../shared/da-file-item/item.js';
+import { ICONS } from '../shared/icons.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
@@ -10,12 +10,11 @@ const styles = await Promise.all([
   loadStyle(import.meta.url),
 ]);
 
-export default class DaFileActions extends LitElement {
+export default class DaLandingFileActions extends LitElement {
   static properties = {
     path: {},
     name: {},
     ext: {},
-    view: { reflect: true },
     isFavorited: { type: Boolean },
     _open: { state: true },
     _status: { state: true },
@@ -75,17 +74,12 @@ export default class DaFileActions extends LitElement {
     this._open = true;
     const loading = this.ext && this.ext !== 'link' ? this.loadDetails() : Promise.resolve();
     await this.updateComplete;
-    if (this._open) this.popover?.show({ anchor: currentTarget, placement: this.view === 'card' ? 'right' : 'auto' });
+    if (this._open) this.popover?.show({ anchor: currentTarget });
     await loading;
   }
 
   favorite() {
     this.dispatchEvent(new CustomEvent('favoritechange', { bubbles: true, composed: true }));
-    if (this.view === 'card') {
-      this.popover?.close();
-      this.close();
-      this.shadowRoot.querySelector('.details-trigger')?.focus();
-    }
   }
 
   renderDate(status, fallback) {
@@ -106,21 +100,18 @@ export default class DaFileActions extends LitElement {
   }
 
   render() {
-    const card = this.view === 'card';
     const favoriteLabel = this.isFavorited ? 'Remove as Favorite' : 'Mark as Favorite';
     const favoriteIcon = this.isFavorited ? ICONS.favorite : '/img/icons/s2-icon-star-20-n.svg';
     return html`
       <button class="details-trigger nx-action-btn-icon" type="button"
-        aria-label=${`${card ? 'More options' : 'File information'} for ${this.name}`}
-        aria-haspopup="dialog" aria-expanded=${!!this._open} @click=${this.toggleDetails}>
-        <svg viewBox="0 0 20 20" aria-hidden="true"><use
-          href="/img/icons/${card ? 's2-icon-more-20-n' : 's2-icon-infocircle-20-n'}.svg#icon"></use></svg>
+        aria-label=${`File information for ${this.name}`} aria-haspopup="dialog"
+        aria-expanded=${!!this._open} @click=${this.toggleDetails}>
+        <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-infocircle-20-n.svg#icon"></use></svg>
       </button>
-      ${!card ? html`<button class="favorite nx-action-btn-icon" type="button"
+      <button class="favorite nx-action-btn-icon" type="button"
         aria-label=${`${favoriteLabel}: ${this.name}`} aria-pressed=${!!this.isFavorited}
         @click=${this.favorite}><svg class=${this.isFavorited ? 'is-favorite' : nothing}
-          viewBox="0 0 20 20" aria-hidden="true">
-          <use href="${favoriteIcon}#icon"></use></svg></button>` : nothing}
+          viewBox="0 0 20 20" aria-hidden="true"><use href="${favoriteIcon}#icon"></use></svg></button>
       ${this._open ? html`<nx-popover role="dialog" aria-label=${`Details for ${this.name}`} @close=${this.close}>
         ${this.ext && this.ext !== 'link' ? html`<section aria-label="Detail Information">
           <h3>Detail Information</h3>
@@ -133,13 +124,8 @@ export default class DaFileActions extends LitElement {
           ${this._error ? html`<p role="status">${this._error}
             <button type="button" class="nx-action-btn-quiet" @click=${this.loadDetails}>Try again</button></p>` : nothing}
         </section>` : nothing}
-        ${card ? html`<hr><button class="favorite-action nx-action-btn-quiet" type="button"
-          aria-label=${`${favoriteLabel}: ${this.name}`} @click=${this.favorite}>
-          <span>${favoriteLabel}</span><svg class=${this.isFavorited ? 'is-favorite' : nothing}
-            viewBox="0 0 20 20" aria-hidden="true">
-            <use href="${favoriteIcon}#icon"></use></svg></button>` : nothing}
       </nx-popover>` : nothing}`;
   }
 }
 
-customElements.define('da-file-actions', DaFileActions);
+customElements.define('da-landing-file-actions', DaLandingFileActions);

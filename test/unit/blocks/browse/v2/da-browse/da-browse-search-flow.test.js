@@ -3,9 +3,8 @@ import { expect } from '@esm-bundle/chai';
 import { html } from 'da-lit';
 import { stub, spy } from 'sinon';
 
-const { setNx, getNx2Api } = await import('../../../../../../scripts/utils.js');
+const { setNx } = await import('../../../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
-const { source } = await getNx2Api();
 const { default: DaBrowse } = await import('../../../../../../blocks/browse/v2/da-browse/da-browse.js');
 const { default: SearchEngine } = await import('../../../../../../blocks/browse/v2/search/search.js');
 const { PANEL_EVENT } = await import('../../../../../fixtures/nx/utils/panel.js');
@@ -14,10 +13,8 @@ describe('browse-owned nav search', () => {
   let nav;
   let browse;
   let getMatches;
-  let siteList;
 
   beforeEach(async () => {
-    siteList = stub(source, 'list').resolves({ ok: true, items: [] });
     nav = document.createElement('nx-nav');
     nav.attachShadow({ mode: 'open' }).innerHTML = '<slot name="search"></slot>';
     document.body.append(nav);
@@ -52,7 +49,6 @@ describe('browse-owned nav search', () => {
     browse.remove();
     nav.remove();
     getMatches.restore();
-    siteList.restore();
   });
 
   async function submit(value) {
@@ -74,9 +70,7 @@ describe('browse-owned nav search', () => {
   it('injects a scoped field into nav without nav owning search logic', () => {
     const field = browse._navField;
     expect(field.localName).to.equal('da-browse-search');
-    expect(nav.shadowRoot.querySelector('[name="search"]').assignedElements()).to.deep.equal([field]);
-    expect(field.parentElement).to.equal(nav);
-    expect(nav.querySelector('nx-picker, nx-siteselector')).to.be.null;
+    expect(nav.shadowRoot.querySelector('slot').assignedElements()).to.deep.equal([field]);
     expect(field.getAttribute('role')).to.equal('search');
     expect(field.children).to.have.length(0);
     expect(field.slot).to.equal('search');
@@ -84,19 +78,6 @@ describe('browse-owned nav search', () => {
     expect(field.label).to.equal('Search products');
     expect(field.placeholder).to.equal('Search products');
     expect(field.getAttribute('aria-label')).to.equal('Search products');
-  });
-
-  it('leaves the standalone nav selector untouched when folders change or Browse disconnects', async () => {
-    const selector = document.createElement('nx-siteselector');
-    nav.shadowRoot.append(selector);
-    browse.details = { org: 'org', site: 'site', fullpath: '/org/site/products' };
-    await browse.updateComplete;
-    browse.details = { org: 'org', site: 'site', fullpath: '/org/site/other' };
-    await browse.updateComplete;
-    expect(browse._navField.isConnected).to.be.true;
-    browse.remove();
-    expect(selector.isConnected).to.be.true;
-    expect(nav.querySelector('nx-picker')).to.be.null;
   });
 
   it('starts a search from the panel without requiring a prior nav search', async () => {
@@ -295,95 +276,12 @@ describe('browse-owned nav search', () => {
     expect(browse._search.items[0].path).to.equal('/org/site/products/match.html');
   });
 
-  it('matches filenames and document content through the existing crawler and source API', async () => {
-    getMatches.restore();
-    getMatches = spy(SearchEngine.prototype, 'getMatches');
-    const originalCrawl = globalThis.__crawlMock;
-    const files = [
-      { path: '/org/site/products/content.html', name: 'content', ext: 'html' },
-      { path: '/org/site/products/needle.html', name: 'needle', ext: 'html' },
-      { path: '/org/site/products/other.html', name: 'other', ext: 'html' },
-      { path: '/org/site/products/ignored.md', name: 'ignored', ext: 'md' },
-    ];
-    const crawl = spy(({ callback }) => {
-      const results = Promise.all(files.map((file) => callback({ ...file })));
-      return { results };
-    });
-    globalThis.__crawlMock = crawl;
-    const fetch = stub(window, 'fetch').callsFake(async (resource) => {
-      const path = new URL(String(resource)).pathname;
-      const content = path.endsWith('/content.html') ? '<p>needle</p>' : 'unrelated';
-      return new Response(content, { status: 200 });
-    });
-    try {
-      await submit('needle');
-      expect(crawl.calledOnce).to.be.true;
-      expect(crawl.firstCall.args[0].path).to.deep.equal(['/org/site/products']);
-      expect(browse._search.items.map((item) => item.path)).to.have.members([
-        '/org/site/products/content.html',
-        '/org/site/products/needle.html',
-      ]);
-      expect((await searchSummary()).textContent).to.equal('2 results found');
-      const panel = await browse.getToolsPanel();
-      document.body.append(panel);
-      await panel.updateComplete;
-      expect(panel.searchState.items).to.equal(browse._search.items);
-      expect(panel.shadowRoot.querySelector('select')).to.be.null;
-      expect(panel.shadowRoot.querySelectorAll('[data-match-file]')).to.have.length(1);
-      const preview = panel.shadowRoot.querySelector(
-        '[data-match-file="/org/site/products/content.html"] [data-preview="match"]',
-      );
-      expect(preview.textContent).to.equal('<p>needle</p>');
-      expect(preview.querySelector('mark').textContent).to.equal('needle');
-      expect(panel.shadowRoot.querySelector('[data-match-group="filename"]')).to.exist;
-      expect(fetch.getCalls().filter(({ args }) => new URL(String(args[0])).pathname.endsWith('.html')))
-        .to.have.length(3);
-      browse.clearSearch();
-      await browse.updateComplete;
-      await panel.updateComplete;
-      expect(panel.shadowRoot.querySelector('.browse-match-context')).to.be.null;
-    } finally {
-      fetch.restore();
-      globalThis.__crawlMock = originalCrawl;
-    }
-  });
-
   it('preserves the case-sensitivity choice on subsequent submissions', async () => {
     await submit('one');
     await browse.changeMatchCase({ detail: { matchCase: false } });
     await submit('two');
     expect(browse._searchEngine._caseSensitive).to.be.false;
     expect(getMatches.thirdCall.args).to.deep.equal(['/org/site/products', 'two']);
-  });
-
-  it('opens lazy browse tools from a consumer-owned search action', async () => {
-    expect(browse._toolsPanel).to.be.undefined;
-    await browse._navField.updateComplete;
-    const action = browse._navField.actionButton;
-    expect(action.getAttribute('aria-label')).to.equal('Search options');
-    expect(action.querySelector('svg use').getAttribute('href'))
-      .to.equal('/img/icons/s2-icon-properties-20-n.svg#icon');
-    let opened;
-    const listener = (event) => { opened = event.detail; };
-    document.addEventListener(PANEL_EVENT.OPEN, listener);
-    try {
-      action.click();
-      expect(opened).to.deep.equal({ section: 'tools', id: 'search' });
-      await browse.updateComplete;
-      expect(action.getAttribute('aria-expanded')).to.equal('true');
-      const panel = await browse.getToolsPanel();
-      document.body.append(panel);
-      await panel.updateComplete;
-      expect(panel.searchState.scope).to.equal('/org/site/products');
-      expect(panel.searchState.matchCase).to.be.true;
-      expect(panel.shadowRoot.querySelector('#match-case').disabled).to.be.false;
-      expect(panel.shadowRoot.querySelector('#match-case').getAttribute('aria-pressed')).to.equal('true');
-      panel.close();
-      await browse.updateComplete;
-      expect(action.getAttribute('aria-expanded')).to.equal('false');
-    } finally {
-      document.removeEventListener(PANEL_EVENT.OPEN, listener);
-    }
   });
 
   it('sets match case before searching and retains it after clearing', async () => {
@@ -655,9 +553,7 @@ describe('browse-owned nav search', () => {
     browse.remove();
     document.body.append(browse);
     await browse._searchReady;
-    expect(nav.shadowRoot.querySelector('[name="search"]').assignedElements()).to.deep.equal([field]);
-    expect(nav.querySelectorAll('da-browse-search')).to.have.length(1);
-    expect(nav.querySelectorAll('nx-picker, nx-siteselector')).to.have.length(0);
+    expect(nav.shadowRoot.querySelector('slot').assignedElements()).to.deep.equal([field]);
     expect(browse._navField).to.equal(field);
     expect(field.actionButton).to.equal(action);
     const opened = spy();

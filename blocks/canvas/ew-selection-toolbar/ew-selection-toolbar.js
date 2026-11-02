@@ -85,7 +85,8 @@ class EwSelectionToolbar extends LitElement {
     this.requestUpdate();
   }
 
-  // Keep the top-layer toolbar popover in sync with the `.open` class after each render.
+  // The toolbar box is a top-layer popover so it renders above a modal <dialog> (block
+  // edit); keep its open state in sync with the `.open` class after each render.
   _syncPopover() {
     const wrap = this._wrap;
     if (!wrap?.showPopover) return;

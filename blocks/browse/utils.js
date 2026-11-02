@@ -8,10 +8,6 @@ function getBrowseOverride(search) {
   return undefined;
 }
 
-export function getBrowsePath({ search }) {
-  return getBrowseOverride(search) ?? './legacy';
-}
-
 /**
  * Query param wins; otherwise the `browseV2` flag in the `flags` sheet of the
  * org or site config (site overrides org) opts in.

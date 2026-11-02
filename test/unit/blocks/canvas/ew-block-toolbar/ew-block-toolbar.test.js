@@ -5,9 +5,8 @@ import { setNx } from '../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { PANEL_EVENT } = await import('../../../../fixtures/nx/utils/panel.js');
-const { makeView } = await import('../test-helpers.js');
 const { default: EwBlockToolbar, splitLibraryVariant } = await import('../../../../../blocks/canvas/ew-block-toolbar/ew-block-toolbar.js');
+const { canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js');
 const { setCommentsController } = await import('../../../../../blocks/canvas/editor-utils/comments-bridge.js');
 
 describe('splitLibraryVariant', () => {
@@ -187,54 +186,17 @@ describe('ew-block-toolbar', () => {
     expect(use.getAttribute('href')).to.equal('/img/icons/s2-icon-edit-20-n.svg#icon');
   });
 
-  it('opens the Block sidebar without changing the document or claiming doc focus', async () => {
+  it('requests the single-block edit modal via the canvas bus when the edit button is clicked', async () => {
     const calls = [];
-    const onOpen = ({ detail }) => calls.push(detail);
-    document.addEventListener(PANEL_EVENT.OPEN, onOpen);
+    const unsubscribe = canvasBus.blockEditRequest.subscribe((detail) => calls.push(detail));
     try {
-      const cell = (text) => ({
-        type: 'table_cell',
-        content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
-      });
-      const view = makeView({
-        type: 'doc',
-        content: [{
-          type: 'table',
-          content: [
-            { type: 'table_row', content: [cell('cards')] },
-            { type: 'table_row', content: [cell('content')] },
-          ],
-        }],
-      });
-      view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, 0)));
-      let focused = 0;
-      view.focus = () => { focused += 1; };
-      const { doc, selection } = view.state;
-      toolbar.view = view;
+      toolbar.view = { state: { selection: { from: 7 } } };
       toolbar.show('cards');
       await toolbar.updateComplete;
       editBtn().click();
-      expect(calls).to.deep.equal([{ section: 'tools', id: 'block' }]);
-      expect(view.state.doc).to.equal(doc);
-      expect(view.state.selection).to.equal(selection);
-      expect(focused).to.equal(0);
+      expect(calls).to.deep.equal([{ pos: 7 }]);
     } finally {
-      document.removeEventListener(PANEL_EVENT.OPEN, onOpen);
-    }
-  });
-
-  it('does not open the Block sidebar when the block selection is no longer current', async () => {
-    const calls = [];
-    const onOpen = ({ detail }) => calls.push(detail);
-    document.addEventListener(PANEL_EVENT.OPEN, onOpen);
-    try {
-      toolbar.view = makeView({ type: 'doc', content: [{ type: 'paragraph' }] });
-      toolbar.show('cards');
-      await toolbar.updateComplete;
-      editBtn().click();
-      expect(calls).to.have.lengthOf(0);
-    } finally {
-      document.removeEventListener(PANEL_EVENT.OPEN, onOpen);
+      unsubscribe();
     }
   });
 

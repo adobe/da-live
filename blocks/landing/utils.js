@@ -1,21 +1,4 @@
 import { getFileItemHref } from '../shared/da-file-item/navigation.js';
-import { iconPathForExt, isImageExt } from '../shared/icons.js';
-import { getHomeHref } from '../../scripts/utils.js';
-import { getCreateSiteHref as getSharedCreateSiteHref } from '../shared/site-access.js';
-
-export async function fetchFileModifier({ path, source }) {
-  const response = await source.getMetadata(path);
-  if (!response?.ok) return { error: `Could not load the modifier (${response?.status || 'no response'}).` };
-  const name = response.headers.get('x-last-modified-by');
-  return name ? { name: name.split('@')[0] } : { error: 'The source did not provide a modifier.' };
-}
-
-export function getLandingIconHref(item) {
-  const type = item.type === 'content-fragment' || item.type === 'fragment' ? 'fragment'
-    : { html: 'page' }[item.ext];
-  const name = type || (isImageExt(item.ext) ? 'image' : undefined);
-  return name ? new URL(`./${name}.svg`, import.meta.url).href : iconPathForExt(item.ext);
-}
 
 export function formatModified({ modified, now = new Date() }) {
   const date = new Date(Number(modified));
@@ -31,35 +14,26 @@ export function formatModified({ modified, now = new Date() }) {
   };
 }
 
-export { getSiteOptions } from '../shared/site-picker-utils.js';
-
-export { checkSiteAccess } from '../shared/site-access.js';
-
-export function getBrowseHref({ path = '', href = window.location.href, closeChat = false }) {
+export function getBrowseHref({ path = '', href = window.location.href }) {
   const url = new URL(href);
-  if (getHomeHref({ href })) url.searchParams.set('landing', 'home');
-  else url.searchParams.delete('landing');
+  url.searchParams.set('landing', 'home');
   url.searchParams.set('browse', '2');
-  if (closeChat) url.searchParams.set('chat', 'closed');
   url.hash = path ? `#${path}` : '';
   return url.href;
 }
 
-export function getCreateSiteHref({ org, href = window.location.href }) {
-  return getSharedCreateSiteHref({ org, href: getBrowseHref({ href }) });
-}
-
-export function getFileHref({ item, href = window.location.href, editor = '/canvas#' }) {
+export function getFileHref({ item, href = window.location.href, editor = '/edit#' }) {
   if (!item.ext || item.ext === 'link') {
     const path = item.ext ? item.path.slice(0, item.path.lastIndexOf('/')) : item.path;
     return getBrowseHref({ path, href });
   }
   const url = new URL(getFileItemHref({ ...item, editor }), href);
   const current = new URL(href);
-  ['nx', 'quick-edit', 'ew', 'nx-chat-ao', 'theme', 'rum'].forEach((key) => {
+  if (url.origin !== current.origin) return url.href;
+  ['nx', 'nxver', 'quick-edit', 'ew', 'nx-chat-ao', 'theme', 'rum'].forEach((key) => {
     if (current.searchParams.has(key)) url.searchParams.set(key, current.searchParams.get(key));
   });
-  if (getHomeHref({ href })) url.searchParams.set('landing', 'home');
+  url.searchParams.set('landing', 'home');
   return url.href;
 }
 
@@ -70,7 +44,7 @@ export async function loadFiles({ path, source, signal }) {
   let permissions;
   do {
     signal.throwIfAborted();
-    const result = await source.list(path, { continuationToken });
+    const result = await source.list(path, { continuationToken, opts: { signal } });
     signal.throwIfAborted();
     if (!result.ok) throw new Error('Could not load files. Check your sign-in and site permissions.');
     permissions ??= result.permissions;

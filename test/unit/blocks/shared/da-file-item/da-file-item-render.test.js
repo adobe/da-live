@@ -105,7 +105,7 @@ describe('da-file-item render', () => {
   it('Adds the file icon class for the configured ext', async () => {
     await fixture({ ext: 'json' });
     const use = el.shadowRoot.querySelector('span.da-item-list-item-type svg use');
-    expect(use.getAttribute('href')).to.contain('s2-icon-file-20-n.svg');
+    expect(use.getAttribute('href')).to.contain('s2-icon-data-20-n.svg');
   });
 
   async function openDetails() {
@@ -266,7 +266,7 @@ describe('da-file-item render', () => {
       date: new Date('2024-01-01T12:00:00Z').getTime(),
     });
     const preview = el.shadowRoot.querySelector('.card-preview');
-    expect(preview.querySelector('svg use').getAttribute('href')).to.contain('s2-icon-file-20-n.svg');
+    expect(preview.querySelector('svg use').getAttribute('href')).to.contain('s2-icon-data-20-n.svg');
     const card = el.shadowRoot.querySelector('nx-card');
     expect(card.selectable).to.equal(true);
     expect(card.selected).to.equal(false);

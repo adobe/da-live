@@ -1,4 +1,4 @@
-let enabled = false;
-export const isEWEnabled = async () => enabled;
-export const setEWEnabled = (value) => { enabled = value; };
+let ewEnabled = false;
+export const setEWEnabled = (value) => { ewEnabled = value; };
+export const isEWEnabled = async () => ewEnabled;
 export const isEwChatDisabled = async () => false;

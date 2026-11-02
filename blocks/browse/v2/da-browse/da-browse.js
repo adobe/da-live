@@ -258,14 +258,7 @@ export default class DaBrowse extends LitElement {
             getContent,
             onShow: (aside, id, options) => this.syncChatContext(aside, options),
           });
-          const url = new URL(window.location.href);
-          if (url.searchParams.get('chat') === 'closed') {
-            closeChatPanel();
-            url.searchParams.delete('chat');
-            window.history.replaceState(window.history.state, '', url);
-          } else if (wasPanelOpen('chat')) {
-            openChatPanel();
-          }
+          if (wasPanelOpen('chat')) openChatPanel();
           this._preloadChatContent = getContent;
         } else {
           closeChatPanel();

@@ -20,10 +20,9 @@ export function createCommentsStore({ docId, owner, repo }) {
     if (changed || !wasLoaded) fire();
   }
 
-  async function reload({ strict = false } = {}) {
+  async function reload() {
     const listResp = await daFetch(listUrl, { cache: 'no-store' });
     if (!listResp.ok) {
-      if (strict) throw new Error(`Could not load saved comments (${listResp.status}).`);
       settleLoaded(false);
       return;
     }
@@ -32,14 +31,8 @@ export function createCommentsStore({ docId, owner, repo }) {
 
     const fetched = await Promise.all(
       ids.map((id) => daFetch(`${base}/${id}.json`, { cache: 'no-store' })
-        .then((r) => {
-          if (!r.ok && strict) throw new Error(`Could not load a saved comment (${r.status}).`);
-          return r.ok ? r.json() : null;
-        })
-        .catch((error) => {
-          if (strict) throw error;
-          return null;
-        })),
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null)),
     );
 
     const next = new Map();
@@ -107,7 +100,7 @@ export function createCommentsStore({ docId, owner, repo }) {
       }
     },
 
-    async load(options) { await reload(options); },
+    async load() { await reload(); },
     async refresh() { await reload(); },
   };
 }

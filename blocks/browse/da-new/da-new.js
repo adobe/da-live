@@ -149,7 +149,7 @@ export default class DaNew extends LitElement {
             ${accent ? html`<span class="da-actions-new-label">New</span>` : nothing}
             ${this._loading
         ? html`<span class="nx-loading-spinner" aria-hidden="true"></span>`
-        : html`<svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-${accent ? 'chevrondown' : 'addcircle'}-20-n.svg#icon"></svg>`}
+        : html`<svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-${accent ? 'chevrondown' : 'addcircle'}-20-n.svg#icon"></svg>`} 
           </button>
         </nx-menu>
         <input type="file" id="da-actions-file" class="da-actions-file" @change=${this.handleAddFile} />

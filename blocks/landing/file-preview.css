@@ -1,0 +1,17 @@
+:host {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+svg {
+  width: 20px;
+  height: 20px;
+  fill: currentcolor;
+}

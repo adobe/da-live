@@ -3,8 +3,7 @@ import { getDaAdmin } from '../shared/constants.js';
 import getSheet from '../shared/sheet.js';
 import { daFetch } from '../shared/utils.js';
 import { copyConfig, copyContent, previewContent } from './index.js';
-import { getNx2Api, sanitizePathParts, getHomeHref, getNavigationHref } from '../../scripts/utils.js';
-import { hasOrgAdminGrant } from '../browse/da-sites/utils.js';
+import { getNx2Api, sanitizePathParts } from '../../scripts/utils.js';
 
 const sheet = await getSheet('/blocks/start/start.css');
 
@@ -69,22 +68,21 @@ const ORG_CONFIG = `{
 }`;
 
 export async function loadConfig(org) {
-  try {
-    const { config } = await getNx2Api();
-    const resp = await config.get({ org });
-    const result = { status: resp.status, canCreateSite: hasOrgAdminGrant(resp) };
-    if (!resp.ok) {
-      if (resp.status === 403 || resp.status === 401) {
-        result.message = 'You are not authorized to change this organization.';
-      }
-    } else {
-      const json = await resp.json();
-      if (json) result.json = json;
+  const { config } = await getNx2Api();
+  const resp = await config.get({ org });
+
+  const result = { status: resp.status };
+
+  if (!resp.ok) {
+    if (resp.status === 403 && resp.status === 401) {
+      result.message = 'You are not authorized to change this organization.';
     }
-    return result;
-  } catch (error) {
-    return { status: 0, canCreateSite: false, message: `Could not load organization configuration: ${error.message}` };
+  } else {
+    const json = await resp.json();
+    if (json) result.json = json;
   }
+
+  return result;
 }
 
 export async function saveConfig(org, email, existingConfig) {
@@ -197,8 +195,7 @@ class DaStart extends LitElement {
       this._goText = 'Opening site';
       this._statusText = '';
     }
-    const href = getNavigationHref({ href: `${window.location.origin}/#/${this.org}/${this.site}` });
-    window.location = getHomeHref({ href }) || href;
+    window.location = `${window.location.origin}/#/${this.org}/${this.site}`;
   }
 
   onInputChange(e) {
@@ -231,17 +228,7 @@ class DaStart extends LitElement {
 
     this._loading = true;
 
-    const { status: orgLoadStatus, canCreateSite, message } = await loadConfig(this.org);
-    if (![200, 404].includes(orgLoadStatus)) {
-      this._errorText = message || 'Could not load organization configuration. Please try again.';
-      this._loading = false;
-      return;
-    }
-    if (getHomeHref() && !canCreateSite) {
-      this._errorText = 'Only organization administrators can create a site. Check with your organization administrator.';
-      this._loading = false;
-      return;
-    }
+    const { status: orgLoadStatus } = await loadConfig(this.org);
     if (orgLoadStatus === 404) {
       // Check if user has an email address
       const { email } = await window.adobeIMS.getProfile();
