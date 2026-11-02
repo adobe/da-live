@@ -76,6 +76,40 @@ describe('landing Content section', () => {
     expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
   });
 
+  it('keeps each view panel width stable across loading, empty and error states', async () => {
+    const sheet = new CSSStyleSheet();
+    await sheet.replace(await (await fetch('/blocks/landing/landing.css')).text());
+    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
+    el.style.setProperty('--s2-spacing-200', '12px');
+    el.style.setProperty('--s2-spacing-300', '16px');
+    el.style.setProperty('--s2-spacing-400', '24px');
+    el.style.setProperty('--s2-spacing-800', '64px');
+    const states = [
+      { files: undefined, error: undefined },
+      { files: [], error: undefined },
+      { files: undefined, error: 'Permission denied' },
+    ];
+    for (const width of [1360, 960, 560]) {
+      el.style.width = `${width}px`;
+      const widths = {};
+      for (const view of ['card', 'list']) {
+        el.changeView({ detail: { value: view } });
+        el._files = ITEMS;
+        el._error = undefined;
+        await el.updateComplete;
+        const panel = el.shadowRoot.querySelector('.files-panel');
+        widths[view] = panel.getBoundingClientRect().width;
+        for (const { files, error } of states) {
+          el._files = files;
+          el._error = error;
+          await el.updateComplete;
+          expect(panel.getBoundingClientRect().width).to.equal(widths[view]);
+        }
+      }
+      expect(widths.list).to.be.greaterThan(widths.card);
+    }
+  });
+
   it('stops at the available files when fewer than eighteen exist', async () => {
     el._files = ITEMS.slice(0, 9);
     await el.updateComplete;
