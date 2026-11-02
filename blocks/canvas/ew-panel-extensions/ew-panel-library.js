@@ -13,6 +13,8 @@ import {
 } from './helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { canvasBus } from '../utils/canvas-bus.js';
+import { startSession } from '../drop/session.js';
+import { uploadContext } from '../drop/content.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const [buttonsStyle, style] = await Promise.all([
@@ -63,6 +65,8 @@ class EwPanelLibrary extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
+    this._dragListeners?.abort();
+    this._dragSession?.cancel();
     this._previewRequest = null;
     this._unsubBranch?.();
   }
@@ -92,11 +96,21 @@ class EwPanelLibrary extends LitElement {
     if (!ext) return;
 
     if (!ext.ootb) return;
-    const context = { org: this._hashState?.org || ext.org, site: this._hashState?.site };
+    const context = {
+      org: this._hashState?.org || ext.org,
+      site: this._hashState?.site || ext.site,
+    };
 
     if (ext.name === 'blocks') {
       const items = await fetchBlocks(ext.sources, context);
-      if (this.extension === ext) this._items = items;
+      if (this.extension === ext) {
+        this._items = items;
+        items.forEach(async (block) => {
+          const variants = await block.loadVariants;
+          if (this.extension !== ext) return;
+          this._blockVariants = new Map(this._blockVariants).set(block.path, variants ?? []);
+        });
+      }
       return;
     }
 
@@ -125,6 +139,38 @@ class EwPanelLibrary extends LitElement {
     const { view } = getExtensionsBridge();
     if (!view) return;
     insertLibraryBlock(view, variant.dom);
+  }
+
+  _onBlockPointerDown(event, variant) {
+    if (event.button !== 0 || !variant.dom) return;
+    this._dragListeners?.abort();
+    const listeners = new AbortController();
+    this._dragListeners = listeners;
+    const { clientX, clientY } = event;
+    const page = JSON.stringify(this._hashState);
+    const { extension } = this;
+    window.addEventListener('pointermove', (move) => {
+      if (Math.hypot(move.clientX - clientX, move.clientY - clientY) < 5) return;
+      listeners.abort();
+      move.preventDefault();
+      const getView = () => (this.isConnected && this.extension === extension
+        && JSON.stringify(this._hashState) === page ? getExtensionsBridge().view : null);
+      this._actionError = undefined;
+      this._dragSession = startSession({
+        payload: { kind: 'html', html: variant.dom.outerHTML },
+        getView,
+        getContext: () => uploadContext(this._hashState || {}),
+        onEnd: (result) => {
+          if (!['cancelled', 'invalid-target'].includes(result.error) && !result.ok) {
+            this._actionError = 'Unable to drop block. Please try again.';
+          }
+        },
+      });
+      this._dragSession?.move({ x: move.clientX, y: move.clientY });
+    }, { signal: listeners.signal, passive: false });
+    const stop = () => listeners.abort();
+    window.addEventListener('pointerup', stop, { signal: listeners.signal, once: true });
+    window.addEventListener('pointercancel', stop, { signal: listeners.signal, once: true });
   }
 
   _insertText(item) {
@@ -202,8 +248,15 @@ class EwPanelLibrary extends LitElement {
     });
   }
 
+  _matchesBlock(block, variant) {
+    const query = (this._search || '').trim().toLowerCase();
+    const text = [block.name, variant?.name, variant?.variants, variant?.description, variant?.tags]
+      .filter(Boolean).join(' ').toLowerCase();
+    return andMatch(query, text);
+  }
+
   _renderVariants(block) {
-    if (this._expandedBlock !== block.path) return nothing;
+    if (this._expandedBlock !== block.path && !this._search?.trim()) return nothing;
     const variants = this._blockVariants.get(block.path);
     if (variants === undefined) {
       return html`<div class="ext-variants-loading">Loading variants…</div>`;
@@ -213,10 +266,11 @@ class EwPanelLibrary extends LitElement {
     }
     return html`
       <ul class="ext-variant-list">
-        ${variants.map((v) => html`
+        ${variants.filter((v) => this._matchesBlock(block, v)).map((v) => html`
           <li class="ext-variant-item">
             <div class="ext-variant-header">
-              <button class="ext-variant-title" @click=${() => this._insertBlock(v)}>
+              <button class="ext-variant-title" @click=${() => this._insertBlock(v)}
+                @pointerdown=${(event) => this._onBlockPointerDown(event, v)}>
                 <span class="ext-variant-name">${v.name}</span>
                 ${v.variants ? html`<span class="ext-variant-subtitle">${v.variants}</span>` : nothing}
               </button>
@@ -225,6 +279,7 @@ class EwPanelLibrary extends LitElement {
                   <button class="nx-action-btn-icon nx-btn-sm" aria-label="Info"
                     @click=${() => this._toggleTooltip(v.name)}>ℹ</button>` : nothing}
                 <button class="nx-action-btn-icon nx-btn-sm" aria-label="Add"
+                  @pointerdown=${(event) => this._onBlockPointerDown(event, v)}
                   @click=${() => this._insertBlock(v)}>${iconAdd()}</button>
               </div>
             </div>
@@ -243,22 +298,30 @@ class EwPanelLibrary extends LitElement {
   _renderBlocks() {
     if (this._items === undefined) return html`<div class="ext-state">Loading…</div>`;
     if (!this._items.length) return this._renderEmpty('No blocks found.');
+    const blocks = this._items.filter((block) => this._matchesBlock(block)
+      || (this._blockVariants.get(block.path) || []).some((v) => this._matchesBlock(block, v)));
     return html`
-      <ul class="ext-list">
-        ${this._items.map((block) => html`
-          <li class="ext-group">
-            <div class="ext-group-header">
-              <button class="ext-group-title" @click=${() => this._toggleBlock(block)}>
-                <span class="ext-item-name">${block.name}</span>
-                <span class="ext-expand-icon">${this._expandedBlock === block.path ? '▾' : '▸'}</span>
-              </button>
-              <button class="nx-action-btn-icon nx-btn-sm" aria-label="Preview"
-                @click=${() => this._openPreview(block)}>${iconPreview()}</button>
-            </div>
-            ${this._renderVariants(block)}
-          </li>
-        `)}
-      </ul>
+      ${this._renderSearchInput('blocks')}
+      <div class="ext-scroll">
+        ${!blocks.length ? html`<div class="ext-state">${this._blockVariants.size < this._items.length ? 'Searching variants…' : 'No matching blocks.'}</div>` : nothing}
+        <ul class="ext-list">
+          ${blocks.map((block) => html`
+            <li class="ext-group">
+              <div class="ext-group-header">
+                <button class="ext-group-title"
+                  aria-expanded=${this._expandedBlock === block.path || !!this._search?.trim()}
+                  @click=${() => this._toggleBlock(block)}>
+                  <span class="ext-expand-icon">${this._expandedBlock === block.path || this._search?.trim() ? '▾' : '▸'}</span>
+                  <span class="ext-item-name">${block.name}</span>
+                </button>
+                <button class="nx-action-btn-icon nx-btn-sm" aria-label="Preview"
+                  @click=${() => this._openPreview(block)}>${iconPreview()}</button>
+              </div>
+              ${this._renderVariants(block)}
+            </li>
+          `)}
+        </ul>
+      </div>
     `;
   }
 

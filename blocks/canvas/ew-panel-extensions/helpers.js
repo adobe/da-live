@@ -453,9 +453,7 @@ export async function fetchExtensions(org, site) {
     const entries = validConfigs.flatMap((conf) => getFirstSheet(conf) || []);
     const hasRepo = entries.find((entry) => entry.key === 'aem.repositoryId')?.value;
     if (hasRepo) {
-      const { getAssetsPlugin, getAssetsPanelPlugin } = await import('./aem-assets.js');
-      const plugin = getAssetsPlugin({ org, site });
-      if (plugin) mergePlugin(extensions, plugin);
+      const { getAssetsPanelPlugin } = await import('./aem-assets.js');
       const panelPlugin = getAssetsPanelPlugin({ org, site });
       if (panelPlugin) mergePlugin(extensions, panelPlugin);
     }
@@ -908,16 +906,21 @@ export function createMetadataView() {
 
 export function extensionToPanelView(ext, section) {
   const proxyOpts = { getUrl: getPreviewOrigin, currentOrg: ext.org };
-  // Block library opens its own dedicated modal (used by the slash menu and
-  // outline "+" button) rather than the generic inline panel or iframe dialog.
   if (ext.name === 'blocks') {
     return {
       id: ext.name,
       label: ext.title,
       section,
       firstParty: ext.ootb,
-      experience: 'modal',
+      experience: 'inline',
       icon: ext.icon,
+      cacheKey: JSON.stringify([ext.org, ext.sources]),
+      load: async () => {
+        await import('./ew-panel-library.js');
+        const el = document.createElement('ew-panel-library');
+        el.extension = ext;
+        return el;
+      },
       openModal: async () => {
         const { openBlockLibraryModal } = await import('../ew-block-library-modal/ew-block-library-modal.js');
         openBlockLibraryModal({
@@ -959,9 +962,9 @@ export function extensionToPanelView(ext, section) {
     },
   };
 
-  if (ext.experience === 'fullsize-dialog') {
+  if (ext.experience === 'fullsize-dialog' || ext.name === 'aem-assets-panel') {
     view.loadModal = async (container, onClose) => {
-      if (ext.name === 'aem-assets') {
+      if (ext.name === 'aem-assets' || ext.name === 'aem-assets-panel') {
         const { renderAssets } = await import('./aem-assets.js');
         await renderAssets({ container, org: ext.org, site: ext.site, onClose });
         return () => { };
@@ -1004,7 +1007,9 @@ export function extensionToPanelView(ext, section) {
  */
 export async function getCanvasToolPanelViews({ org, site }) {
   const extensions = await fetchExtensions(org, site);
-  const library = sortLibraryExtensions(extensions.filter(isLibraryExtension));
+  const library = sortLibraryExtensions(extensions.filter(
+    (ext) => isLibraryExtension(ext) && ext.name !== 'aem-assets',
+  ));
   const thirdParty = extensions.filter((ext) => !isLibraryExtension(ext));
 
   return [

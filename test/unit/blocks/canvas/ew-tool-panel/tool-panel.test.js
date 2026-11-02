@@ -82,6 +82,67 @@ describe('EwToolPanel — loaded view cache', () => {
 
   afterEach(() => el.remove());
 
+  it('opens the block pop-out without switching or reloading the sidebar', async () => {
+    let opened = 0;
+    const content = document.createElement('div');
+    el.pendingView = 'blocks';
+    el.views = [{
+      id: 'blocks',
+      label: 'Blocks',
+      experience: 'inline',
+      load: async () => content,
+      openModal: () => { opened += 1; },
+    }];
+    await el.updateComplete;
+    await el.updateComplete;
+    const item = el._pickerItemsFromViews().find((i) => i.value === 'blocks');
+    expect(item.action).to.equal(undefined);
+    const button = el.shadowRoot.querySelector('.tool-panel-popout');
+    expect(button.getAttribute('aria-haspopup')).to.equal('dialog');
+    button.click();
+    expect(opened).to.equal(1);
+    expect(el.activeId).to.equal('blocks');
+    expect(el._loaded.blocks).to.equal(content);
+  });
+
+  it('opens and closes the assets modal while retaining the sidebar and its state', async () => {
+    const content = document.createElement('div');
+    let close;
+    el.pendingView = 'assets';
+    el.views = [{
+      id: 'assets',
+      label: 'AEM Assets',
+      experience: 'inline',
+      load: async () => content,
+      loadModal: async (body, onClose) => {
+        body.textContent = 'Asset selector';
+        close = onClose;
+      },
+    }];
+    await el.updateComplete;
+    await el.updateComplete;
+    el.shadowRoot.querySelector('.tool-panel-popout').click();
+    await el.updateComplete;
+    await nextTask();
+    const dialog = el.shadowRoot.querySelector('dialog');
+    expect(dialog.open).to.equal(true);
+    expect(dialog.textContent).to.include('Asset selector');
+    close();
+    await nextTask();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('dialog')).to.equal(null);
+    expect(el.activeId).to.equal('assets');
+    expect(el._loaded.assets).to.equal(content);
+  });
+
+  it('does not show a pop-out button for ordinary inline panels', async () => {
+    el.pendingView = 'files';
+    el.views = [{ id: 'files', label: 'Files', load: async () => document.createElement('div') }];
+    await el.updateComplete;
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.tool-panel-popout')).to.equal(null);
+  });
+
   it('reloads an active configured view when its source cache key changes', async () => {
     let loadCount = 0;
     const view = (cacheKey) => ({

@@ -91,7 +91,7 @@ export function getAssetsPlugin({ org, site }) {
 export function getAssetsPanelPlugin({ org, site }) {
   return {
     name: 'aem-assets-panel',
-    title: 'AEM Assets Panel',
+    title: 'AEM Assets',
     experience: 'inline',
     ootb: false,
     sources: [],

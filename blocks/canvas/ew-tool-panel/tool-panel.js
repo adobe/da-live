@@ -198,6 +198,12 @@ class EwToolPanel extends LitElement {
     }
   }
 
+  async _openPopout() {
+    const view = this.views?.find((v) => v.id === this.activeId);
+    if (view?.openModal) await view.openModal();
+    else if (view?.loadModal) this._fullsizeDialogViewId = view.id;
+  }
+
   async showPanel(name) {
     const consumer = this.views.find((c) => c.id === name);
     if (!consumer) return;
@@ -268,6 +274,7 @@ class EwToolPanel extends LitElement {
     const items = this._pickerItemsFromViews();
     const dialogTitle = this._fullsizeDialogView?.label ?? 'Extension';
     const dialogIcon = this._fullsizeDialogView?.icon;
+    const activeView = this.views?.find((v) => v.id === this.activeId);
 
     return html`
       <div class="tool-panel-header">
@@ -277,6 +284,14 @@ class EwToolPanel extends LitElement {
           placement="below-start"
           @change=${(e) => this.showPanel(e.detail.value)}
         ></nx-picker>
+        ${activeView?.openModal || activeView?.loadModal ? html`
+          <button type="button" class="tool-panel-popout"
+            aria-label=${`Open ${activeView.label} in dialog`}
+            title=${`Open ${activeView.label} in dialog`}
+            aria-haspopup="dialog" @click=${this._openPopout}>
+            <svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${OPEN_IN_ICON_URL}#icon"></use></svg>
+          </button>
+        ` : nothing}
         <div class="tool-panel-header-actions"></div>
         <button type="button" class="tool-panel-close" aria-label="Close panel" @click=${this._close}>
           <svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${CLOSE_ICON_SRC}#icon"></use></svg>

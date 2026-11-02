@@ -509,6 +509,74 @@ describe('Ew panel library icons: preview + search', () => {
   });
 });
 
+describe('Ew panel library blocks sidebar', () => {
+  let el;
+
+  beforeEach(async () => {
+    el = document.createElement('ew-panel-library');
+    el.extension = { name: 'blocks', ootb: true, sources: [] };
+    document.body.append(el);
+    await el.updateComplete;
+    await el._loadItems();
+    const dom = document.createElement('table');
+    dom.innerHTML = '<tr><td>Hero</td></tr>';
+    el._items = [{ name: 'Hero', path: '/hero' }, { name: 'Cards', path: '/cards' }];
+    el._blockVariants = new Map([
+      ['/hero', [{ name: 'Hero', variants: 'dark', description: 'Full bleed', dom }]],
+      ['/cards', [{ name: 'Cards', variants: 'grid', dom }]],
+    ]);
+    await el.updateComplete;
+  });
+
+  afterEach(() => el.remove());
+
+  it('expands groups and filters automatically expanded variants by metadata', async () => {
+    el.shadowRoot.querySelector('.ext-group-title').click();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelectorAll('.ext-variant-item')).to.have.lengthOf(1);
+    const input = el.shadowRoot.querySelector('input');
+    input.value = 'full dark';
+    input.dispatchEvent(new Event('input'));
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelectorAll('.ext-group')).to.have.lengthOf(1);
+    expect(el.shadowRoot.querySelector('.ext-variant-subtitle').textContent).to.equal('dark');
+    expect(el.shadowRoot.querySelector('.ext-group-title').getAttribute('aria-expanded')).to.equal('true');
+    el.shadowRoot.querySelector('.ext-search-clear').click();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelectorAll('.ext-group')).to.have.lengthOf(2);
+  });
+
+  it('shows feedback when no blocks or variants match', async () => {
+    el._search = 'missing';
+    await el.updateComplete;
+    expect(el.shadowRoot.textContent).to.include('No matching blocks.');
+    expect(el.shadowRoot.querySelectorAll('.ext-group')).to.have.lengthOf(0);
+  });
+
+  it('starts a host drop session only after moving beyond the drag threshold', async () => {
+    const previous = getExtensionsBridge().view;
+    const view = makeRealView({ type: 'doc', content: [{ type: 'paragraph' }] });
+    getExtensionsBridge().view = view;
+    try {
+      el._expandedBlock = '/hero';
+      await el.updateComplete;
+      const button = el.shadowRoot.querySelector('.ext-variant-title');
+      button.dispatchEvent(new PointerEvent('pointerdown', { button: 0, clientX: 10, clientY: 10 }));
+      window.dispatchEvent(new PointerEvent('pointermove', { clientX: 12, clientY: 10 }));
+      expect(el._dragSession).to.equal(undefined);
+      window.dispatchEvent(new PointerEvent('pointermove', { clientX: 25, clientY: 10 }));
+      expect(el._dragSession).to.exist;
+      el.remove();
+      expect(document.querySelector('[style*="2147483646"]')).to.equal(null);
+    } finally {
+      getExtensionsBridge().view = previous;
+      const mount = view.dom.parentElement;
+      view.destroy();
+      mount.remove();
+    }
+  });
+});
+
 describe('Ew panel library access errors', () => {
   let el;
 

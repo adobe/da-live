@@ -93,6 +93,8 @@
   text-align: left;
   padding: 0;
   color: inherit;
+  touch-action: none;
+  user-select: none;
 }
 
 .ext-variant-name {
