@@ -24,5 +24,12 @@ An `actionId` adds `landing-action-{actionId}` to the interactive surface and
 matching `data-rum-source` attributes to its contents for the existing click
 collector. No separate telemetry collector is installed.
 
-This component does not provide the landing-page grid, application entry point,
-site-selection state or documentation destinations.
+Load `blocks/landing/tiles.css` and put tiles (or list items containing tiles) in
+`.landing-tiles` inside an inline-size container. The group matches the loaded
+Content panel's whole-card width, capped at six 151px cards with 12px gaps and
+16px panel insets (998px). It wraps from three columns to two below 900px and
+one below 600px. Incomplete rows are centered, including the final single tile
+in the two-column layout.
+
+The component does not provide the application entry point, site-selection state
+or documentation destinations.

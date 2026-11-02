@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Landing tile component examples</title>
   <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../blocks/landing/tiles.css">
   <script type="importmap">
     { "imports": { "da-lit": "/deps/lit/dist/index.js" } }
   </script>
@@ -14,6 +15,7 @@
     }
 
     body {
+      container-type: inline-size;
       max-width: 1068px;
       margin: 0 auto;
       padding: var(--s2-spacing-400);
@@ -41,12 +43,6 @@
       border-radius: var(--s2-corner-radius-200);
     }
 
-    .examples {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
-      gap: var(--s2-spacing-300);
-    }
-
     da-landing-tile:not(:defined) {
       visibility: hidden;
     }
@@ -69,7 +65,7 @@
         <label><input type="radio" name="size" value="m"> M</label>
       </fieldset>
     </div>
-    <section class="examples" aria-label="Tile examples">
+    <section class="landing-tiles" aria-label="Tile examples">
       <da-landing-tile heading="Develop &amp; Extend"
         description="Build custom fullscreen apps, library plugins, and automate via the Admin API"
         iconhref="/img/icons/S2_Icon_DataStreams_20_N.svg" actionid="develop"
