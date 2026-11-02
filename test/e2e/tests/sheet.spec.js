@@ -19,10 +19,10 @@ test('New sheet', async ({ page }, workerInfo) => {
   await page.locator('input').fill('key');
 
   // Enter text into second cell
+  const saved = waitForSave(page);
   await page.locator('[data-x="0"][data-y="1"]').dblclick();
   await page.locator('td input').fill(enteredText);
-
-  await page.waitForTimeout(3000);
+  await saved;
   await page.close();
 });
 

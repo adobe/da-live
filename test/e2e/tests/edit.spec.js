@@ -21,7 +21,6 @@ test('Update Document', async ({ browser, page }, workerInfo) => {
 
   const url = getTestPageURL('edit1', workerInfo);
   await page.goto(url);
-  await page.waitForTimeout(2000);
   await page.getByText('Create document', { exact: true }).click();
   await expect(page.locator('div.ProseMirror')).toBeVisible();
   await expect(page.locator('div.ProseMirror')).toHaveAttribute('contenteditable', 'true');
