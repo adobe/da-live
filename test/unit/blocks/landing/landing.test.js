@@ -75,6 +75,7 @@ describe('landing page', () => {
     await sheet.replace(await (await fetch('/blocks/landing/landing.css')).text());
     el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
     el.style.setProperty('--s2-spacing-200', '12px');
+    el.style.setProperty('--s2-spacing-300', '16px');
     const grid = el.shadowRoot.querySelector('.files');
     for (const [width, columns] of [[500, '151px 151px 151px'], [320, '151px 151px'], [300, '151px'], [150, '150px']]) {
       grid.style.width = `${width}px`;
