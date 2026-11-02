@@ -47,7 +47,6 @@ export default class DaBrowseHeader extends LitElement {
     if (org === changed.get('details')?.org) return;
     this._canEditOrgConfig = false;
     this._orgConfigCheck = canEditOrgConfig(org).then((canEdit) => {
-      // Ignore stale org results.
       if (this.details?.org === org) this._canEditOrgConfig = canEdit;
     });
   }
