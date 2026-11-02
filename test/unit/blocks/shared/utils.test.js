@@ -847,6 +847,21 @@ describe('fetchDaConfigs', () => {
     expect(orgConfig.permissions).to.deep.equal(['read']);
     expect(orgConfig).to.deep.equal({ error: 'Error loading /cfgdenied', status: 403 });
   });
+
+  it('does not throw when the same config object is returned twice', async () => {
+    const shared = { data: [] };
+    window.fetch = async (url) => {
+      if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+      const resp = new Response('', { status: 200, headers: { 'X-da-actions': '/x=read' } });
+      resp.json = async () => shared;
+      return resp;
+    };
+
+    const [first] = await Promise.all(fetchDaConfigs({ org: 'cfgshared1' }));
+    const [second] = await Promise.all(fetchDaConfigs({ org: 'cfgshared2' }));
+    expect(first).to.equal(shared);
+    expect(second.permissions).to.deep.equal(['read']);
+  });
 });
 
 describe('aemAction', () => {

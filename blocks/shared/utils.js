@@ -382,7 +382,7 @@ export const fetchDaConfigs = (() => {
       : { error: `Error loading ${pathname}`, status: resp.status };
     // Keep the X-da-actions hint (CONFIG access) without changing the config shape.
     if (result && typeof result === 'object') {
-      Object.defineProperty(result, 'permissions', { value: resp.permissions, enumerable: false });
+      Object.defineProperty(result, 'permissions', { value: resp.permissions, enumerable: false, configurable: true });
     }
     return result;
   };
