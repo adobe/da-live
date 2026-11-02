@@ -40,6 +40,7 @@ const nx2 = nx.endsWith('nx2');
 const { loadArea, setConfig, getColorScheme } = await import(`${nx}${nxJS}`);
 
 // Set color scheme once
+localStorage.setItem('color-scheme', 'light-scheme');
 document.body.classList.add(getColorScheme());
 
 // Load NX styles
