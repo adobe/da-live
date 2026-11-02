@@ -2,9 +2,28 @@ import { getNx, getNxEWFlags } from '../../scripts/utils.js';
 import { createChannel } from './channel.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const availabilityChannel = createChannel({ replay: true });
+const turnCompletedChannel = createChannel();
+const turnCompletedEvent = CHAT_EVENT.TURN_COMPLETED || 'nx-chat-turn-completed';
+const onTurnCompleted = ({ detail }) => turnCompletedChannel.emit(detail);
 let chatContext;
 let unsubscribeHash;
+
+export const chatTurnCompleted = Object.freeze({
+  subscribe(callback) {
+    if (!turnCompletedChannel.subscriberCount) {
+      document.addEventListener(turnCompletedEvent, onTurnCompleted);
+    }
+    const unsubscribe = turnCompletedChannel.subscribe(callback);
+    return () => {
+      unsubscribe();
+      if (!turnCompletedChannel.subscriberCount) {
+        document.removeEventListener(turnCompletedEvent, onTurnCompleted);
+      }
+    };
+  },
+});
 
 async function syncChatAvailability(state) {
   const { org, site } = state ?? {};
@@ -61,6 +80,5 @@ export async function setChatPrompt(text, onReady) {
 }
 
 export async function addChatContext(item) {
-  const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
   document.dispatchEvent(new CustomEvent(CHAT_EVENT.ADD_TO_CHAT, { detail: item }));
 }

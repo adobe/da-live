@@ -4,6 +4,7 @@ import { getInstrumentedHTMLForSDK } from '../editor-utils/editor-utils.js';
 import { getNx } from '../../../scripts/utils.js';
 import { getPostMessageTargetOrigin, isRequestId, isValidHref, replyToGetSelection } from '../../shared/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
+import { chatTurnCompleted } from '../../shared/chat-panel.js';
 import { getCanvasBranch } from '../utils/branch.js';
 import { routeComparisonMessage } from '../ew-comparison/comparison.js';
 
@@ -85,7 +86,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   channel.port1.onmessage = (e) => {
     const { action, details } = e.data || {};
     if (action === 'subscribeChatTurnCompleted') {
-      unsubscribeTurn ??= canvasBus.chatTurnCompleted.subscribe((detail) => {
+      unsubscribeTurn ??= chatTurnCompleted.subscribe((detail) => {
         if (detail?.org !== org || detail.site !== site
           || (detail.path || '').replace(/^\/+/, '') !== (path || '').replace(/^\/+/, '')) return;
         channel.port1.postMessage({ action: 'chatTurnCompleted', detail });

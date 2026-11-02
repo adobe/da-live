@@ -22,6 +22,10 @@ function setUrl(url) {
   window.history.replaceState(null, '', url);
 }
 
+function completeChatTurn(detail) {
+  document.dispatchEvent(new CustomEvent(CHAT_EVENT.TURN_COMPLETED, { detail }));
+}
+
 describe('extension chat turn subscriptions', () => {
   let connection;
   let received;
@@ -45,40 +49,38 @@ describe('extension chat turn subscriptions', () => {
   }
 
   it('forwards only new events for the extension document and supports unsubscribe', async () => {
-    canvasBus.chatTurnCompleted.emit(detail);
+    completeChatTurn(detail);
     command('subscribeChatTurnCompleted');
     command('subscribeChatTurnCompleted');
-    canvasBus.chatTurnCompleted.emit({ ...detail, org: 'other' });
-    canvasBus.chatTurnCompleted.emit({ ...detail, site: 'other' });
-    canvasBus.chatTurnCompleted.emit({ ...detail, path: 'other' });
+    completeChatTurn({ ...detail, org: 'other' });
+    completeChatTurn({ ...detail, site: 'other' });
+    completeChatTurn({ ...detail, path: 'other' });
     await wait();
     expect(received).to.deep.equal([]);
-    canvasBus.chatTurnCompleted.emit(detail);
+    completeChatTurn(detail);
     await wait();
     expect(received).to.deep.equal([{ action: 'chatTurnCompleted', detail }]);
     command('unsubscribeChatTurnCompleted');
     command('unsubscribeChatTurnCompleted');
-    canvasBus.chatTurnCompleted.emit(detail);
+    completeChatTurn(detail);
     command('subscribeChatTurnCompleted');
     await wait();
     expect(received).to.have.lengthOf(1);
-    canvasBus.chatTurnCompleted.emit({ ...detail, status: 'aborted' });
+    completeChatTurn({ ...detail, status: 'aborted' });
     await wait();
     expect(received).to.have.lengthOf(2);
     expect(received[1].detail.status).to.equal('aborted');
   });
 
-  it('removes its bus subscription when the iframe channel is destroyed', () => {
+  it('removes its shared chat subscription when the iframe channel is destroyed', () => {
     command('subscribeChatTurnCompleted');
     const postMessage = sinon.spy(connection.channel.port1, 'postMessage');
     connection.destroy();
-    canvasBus.chatTurnCompleted.emit(detail);
+    completeChatTurn(detail);
     expect(postMessage.called).to.equal(false);
   });
 
-  it('receives the chat document event through the canvas bridge', async () => {
-    const { initChatBridge } = await import('../../../../../blocks/canvas/editor-utils/chat-bridge.js');
-    initChatBridge();
+  it('receives the chat document event without initializing canvas', async () => {
     command('subscribeChatTurnCompleted');
     document.dispatchEvent(new CustomEvent(CHAT_EVENT.TURN_COMPLETED, { detail }));
     await wait();
