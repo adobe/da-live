@@ -360,6 +360,13 @@ export async function checkLockdownImages(owner) {
   }
 }
 
+const configPermissions = new WeakMap();
+
+/** X-da-actions (e.g. `['read', 'write']`) of the request behind a `fetchDaConfigs` result. */
+export function getConfigPermissions(config) {
+  return config && typeof config === 'object' ? configPermissions.get(config) : undefined;
+}
+
 /**
  * Fetches org and (optionally) site configs, caching the in-flight/resolved
  * promises by path so repeated calls for the same org/site reuse one request
@@ -380,10 +387,9 @@ export const fetchDaConfigs = (() => {
     const result = resp.ok
       ? await resp.json()
       : { error: `Error loading ${pathname}`, status: resp.status };
-    // Keep the X-da-actions hint (CONFIG access) without changing the config shape.
-    if (result && typeof result === 'object') {
-      Object.defineProperty(result, 'permissions', { value: resp.permissions, enumerable: false, configurable: true });
-    }
+    // Keep the X-da-actions hint (CONFIG access) beside the config, not on it:
+    // org configs carry their own `permissions` sheet.
+    if (result && typeof result === 'object') configPermissions.set(result, resp.permissions);
     return result;
   };
 

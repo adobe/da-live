@@ -13,6 +13,7 @@ import {
   getSidekickConfig,
   sanitizeName,
   fetchDaConfigs,
+  getConfigPermissions,
   getAuthToken,
   isValidHref,
   livePreviewLogin,
@@ -822,7 +823,7 @@ describe('fetchDaConfigs', () => {
     expect(orgConfig).to.deep.equal({ error: 'Error loading /cfgfail', status: 500 });
   });
 
-  it('keeps the x-da-actions permissions as a non-enumerable property', async () => {
+  it('exposes the x-da-actions permissions without changing the config', async () => {
     window.fetch = async (url) => {
       if (String(url).includes('/ping/')) return new Response('', { status: 200 });
       return new Response(JSON.stringify({ data: [] }), {
@@ -832,8 +833,7 @@ describe('fetchDaConfigs', () => {
     };
 
     const [orgConfig] = await Promise.all(fetchDaConfigs({ org: 'cfgperm' }));
-    expect(orgConfig.permissions).to.deep.equal(['read', 'write']);
-    expect(Object.keys(orgConfig)).not.to.include('permissions');
+    expect(getConfigPermissions(orgConfig)).to.deep.equal(['read', 'write']);
     expect(orgConfig).to.deep.equal({ data: [] });
   });
 
@@ -844,7 +844,7 @@ describe('fetchDaConfigs', () => {
     };
 
     const [orgConfig] = await Promise.all(fetchDaConfigs({ org: 'cfgdenied' }));
-    expect(orgConfig.permissions).to.deep.equal(['read']);
+    expect(getConfigPermissions(orgConfig)).to.deep.equal(['read']);
     expect(orgConfig).to.deep.equal({ error: 'Error loading /cfgdenied', status: 403 });
   });
 
@@ -860,7 +860,23 @@ describe('fetchDaConfigs', () => {
     const [first] = await Promise.all(fetchDaConfigs({ org: 'cfgshared1' }));
     const [second] = await Promise.all(fetchDaConfigs({ org: 'cfgshared2' }));
     expect(first).to.equal(shared);
-    expect(second.permissions).to.deep.equal(['read']);
+    expect(getConfigPermissions(second)).to.deep.equal(['read']);
+  });
+
+  it('leaves the org config permissions sheet untouched', async () => {
+    const sheet = { data: [{ path: 'CONFIG', groups: 'a@b.c', actions: 'write' }] };
+    window.fetch = async (url) => {
+      if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+      return new Response(JSON.stringify({ ':names': ['permissions'], ':type': 'multi-sheet', permissions: sheet }), {
+        status: 200,
+        headers: { 'X-da-actions': '/x=read,write' },
+      });
+    };
+
+    const [orgConfig] = await Promise.all(fetchDaConfigs({ org: 'cfgsheet' }));
+    expect(orgConfig.permissions).to.deep.equal(sheet);
+    expect(JSON.parse(JSON.stringify(orgConfig)).permissions).to.deep.equal(sheet);
+    expect(getConfigPermissions(orgConfig)).to.deep.equal(['read', 'write']);
   });
 });
 

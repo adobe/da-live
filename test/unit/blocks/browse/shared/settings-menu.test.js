@@ -71,6 +71,27 @@ describe('settings menu', () => {
       expect(await canEditOrgConfig('settings-read')).to.be.false;
     });
 
+    it('is false when the config fetch fails without an x-da-actions header', async () => {
+      window.fetch = async (url) => {
+        if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+        return new Response('', { status: 500 });
+      };
+      expect(await canEditOrgConfig('settings-500')).to.be.false;
+      window.fetch = async (url) => {
+        if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+        return new Response('', { status: 403 });
+      };
+      expect(await canEditOrgConfig('settings-403')).to.be.false;
+    });
+
+    it('trusts the header on 404 (org without a config yet)', async () => {
+      window.fetch = async (url) => {
+        if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+        return new Response('', { status: 404, headers: { 'X-da-actions': '/x=read,write' } });
+      };
+      expect(await canEditOrgConfig('settings-404')).to.be.true;
+    });
+
     it('is false when the config fetch throws', async () => {
       window.fetch = async () => { throw new Error('offline'); };
       expect(await canEditOrgConfig('settings-throw')).to.be.false;

@@ -1,4 +1,4 @@
-import { fetchDaConfigs } from '../../shared/utils.js';
+import { fetchDaConfigs, getConfigPermissions } from '../../shared/utils.js';
 
 /**
  * Items for the browse settings (gear) menu at an org or site root.
@@ -25,7 +25,9 @@ export async function canEditOrgConfig(org) {
   try {
     const [orgConfig] = fetchDaConfigs({ org });
     const result = await orgConfig;
-    return !!result?.permissions?.includes('write');
+    // 404 = org has no config yet; da-admin still reports the CONFIG actions for it.
+    if (result?.error && result.status !== 404) return false;
+    return !!getConfigPermissions(result)?.includes('write');
   } catch {
     return false;
   }
