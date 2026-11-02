@@ -32,6 +32,10 @@ export default class DaFileItem extends LitElement {
     rename: { type: Boolean },
     allowselect: { type: Boolean },
     view: { type: String, reflect: true },
+    columns: { type: Array, reflect: true },
+    folder: { attribute: false },
+    modifiedBy: { type: String },
+    size: { type: String, reflect: true },
     isChecked: { attribute: 'ischecked', type: Boolean },
     isFavorited: { attribute: 'isfavorited', type: Boolean },
     _isRenaming: { state: true },
@@ -40,6 +44,7 @@ export default class DaFileItem extends LitElement {
     _live: { state: true },
     _version: { state: true },
     _lastModifiedBy: { state: true },
+    _daStatusError: { state: true },
     _imageUrl: { state: true },
   };
 
@@ -50,14 +55,29 @@ export default class DaFileItem extends LitElement {
 
   disconnectedCallback() {
     this.resetImage();
+    this._modifierObserver?.disconnect();
+    this._modifierObserver = null;
+    this._daStatusRequest = null;
+    this._statusToken = {};
     super.disconnectedCallback();
   }
 
   willUpdate(props) {
     if (props.has('path') || props.has('ext') || props.has('view')) this.resetImage();
+    if (props.has('path')) this.resetStatus();
   }
 
   updated() {
+    if (this.columns?.includes('modifiedBy') && this.modifiedBy === undefined
+      && this.ext && this.ext !== 'link' && !this._daStatusRequest && !this._modifierObserver) {
+      this._modifierObserver = new IntersectionObserver(([entry]) => {
+        if (!entry?.isIntersecting) return;
+        this._modifierObserver.disconnect();
+        this._modifierObserver = null;
+        this.updateDAStatus();
+      });
+      this._modifierObserver.observe(this);
+    }
     if (!this.isConnected || this.view !== 'card' || !isImageExt(this.ext)
       || this._imageRequested || this._imageObserver) return;
     this._imageObserver = new IntersectionObserver(([entry]) => {
@@ -145,16 +165,40 @@ export default class DaFileItem extends LitElement {
   }
 
   async updateAEMStatus() {
-    const { preview, live } = await fetchAemStatus(this);
-    this._preview = preview;
-    this._live = live;
+    const { path, _statusToken: token } = this;
+    try {
+      const { preview, live } = await fetchAemStatus(this);
+      if (this.path !== path || this._statusToken !== token) return;
+      this._preview = preview;
+      this._live = live;
+    } catch {
+      if (this.path !== path || this._statusToken !== token) return;
+      this._preview = { status: 500 };
+      this._live = { status: 500 };
+    }
   }
 
   async updateDAStatus() {
-    const status = await fetchDaStatus(this);
+    const { path, _statusToken: token } = this;
+    if (!this.columns?.includes('modifiedBy')) this._daStatusRequest = null;
+    this._daStatusRequest ??= fetchDaStatus(this).catch(() => undefined);
+    const status = await this._daStatusRequest;
+    if (this.path !== path || this._statusToken !== token) return;
+    this._daStatusError = !status;
     if (!status) return;
     this._version = status.version;
     this._lastModifiedBy = status.lastModifiedBy;
+  }
+
+  resetStatus() {
+    this._modifierObserver?.disconnect();
+    this._modifierObserver = null;
+    this._daStatusRequest = null;
+    this._statusToken = {};
+    this.closeDetails();
+    this._version = null;
+    this._lastModifiedBy = null;
+    this._daStatusError = false;
   }
 
   handleChecked(e) {
@@ -279,8 +323,10 @@ export default class DaFileItem extends LitElement {
     this._detailsOpen = false;
     this._preview = null;
     this._live = null;
-    this._version = null;
-    this._lastModifiedBy = null;
+    if (!this.columns?.includes('modifiedBy')) {
+      this._version = null;
+      this._lastModifiedBy = null;
+    }
   };
 
   renderDate() {
@@ -312,7 +358,7 @@ export default class DaFileItem extends LitElement {
     return html`<svg viewBox="0 0 20 20"><use href="${iconPathForExt(this.ext)}#icon"></use></svg>`;
   }
 
-  renderItem() {
+  renderItem({ includeMeta = true } = {}) {
     const href = getFileItemHref(this);
 
     return html`
@@ -329,7 +375,7 @@ export default class DaFileItem extends LitElement {
           </div>
         </div>
       </a>
-      ${this.renderRowMeta()}`;
+      ${includeMeta ? this.renderRowMeta() : nothing}`;
   }
 
   renderRowMeta() {
@@ -338,9 +384,35 @@ export default class DaFileItem extends LitElement {
       <div class="da-item-list-item-meta da-item-list-item-date" data-column="modified">${this.ext === 'link' ? '—' : (this.renderDate() || '—')}</div>`;
   }
 
+  renderRowColumn(column) {
+    switch (column) {
+      case 'select':
+        return this.allowselect ? html`<div role="cell">${this.renderCheckBox()}</div>`
+          : html`<span class="da-item-list-item-selection-placeholder" data-column="select" aria-hidden="true"></span>`;
+      case 'name':
+        return html`<div role="cell" class="da-item-list-item-name-cell">${this.rename ? this.renderRename() : this.renderItem({ includeMeta: false })}</div>`;
+      case 'type':
+        return html`<div role="cell" class="da-item-list-item-meta da-item-list-item-type-label" data-column="type">${getTypeLabel(this.ext)}</div>`;
+      case 'folder':
+        return html`<div role="cell" class="da-item-list-item-meta da-item-list-item-folder" data-column="folder">
+          ${this.folder?.href ? html`<a href=${this.folder.href} title=${this.folder.label}>${this.folder.label}</a>` : (this.folder?.label || '—')}
+        </div>`;
+      case 'modified':
+        return html`<div role="cell" class="da-item-list-item-meta da-item-list-item-date" data-column="modified">${this.ext === 'link' ? '—' : (this.renderDate() || '—')}</div>`;
+      case 'modifiedBy':
+        return html`<div role="cell" class="da-item-list-item-meta da-item-list-item-modifier" data-column="modifiedBy" title=${this.modifiedBy || this._lastModifiedBy || nothing}>${this.modifiedBy || this._lastModifiedBy || '—'}</div>`;
+      case 'actions':
+        return html`<div role="cell" class="da-item-list-item-actions" data-column="actions">
+          ${this.renderDetailsControl()}${this.renderFavorite()}
+        </div>`;
+      default:
+        return nothing;
+    }
+  }
+
   renderFavorite(className = 'da-item-list-item-favorite', slot = nothing) {
     return html`
-      <button slot=${slot} type="button" class="${className} nx-action-btn-icon nx-btn-sm"
+      <button slot=${slot} type="button" class="${className} nx-action-btn-icon ${this.view !== 'card' && this.size === 'm' ? '' : 'nx-btn-sm'}"
         aria-label=${this.isFavorited ? 'Remove as Favorite' : 'Mark as Favorite'}
         title=${this.isFavorited ? 'Remove as Favorite' : 'Mark as Favorite'}
         aria-pressed=${this.isFavorited ? 'true' : 'false'}
@@ -360,14 +432,15 @@ export default class DaFileItem extends LitElement {
   }
 
   renderDaDetails() {
+    const unavailable = this._daStatusError ? 'Unavailable' : 'Checking';
     return html`
       <div class="da-list-item-da-details-version">
         <p class="da-list-item-details-title">Version</p>
-        <p>${this._version || this._version === 0 ? this._version : 'Checking'}</p>
+        <p>${this._version || this._version === 0 ? this._version : unavailable}</p>
       </div>
       <div class="da-list-item-da-details-modified">
         <p class="da-list-item-details-title">Modified by</p>
-        <p>${this._lastModifiedBy ? this._lastModifiedBy : 'Checking'}</p>
+        <p>${this._lastModifiedBy || unavailable}</p>
       </div>
     `;
   }
@@ -376,6 +449,7 @@ export default class DaFileItem extends LitElement {
     if (!this[env]) {
       return 'Checking';
     }
+    if (this[env].status >= 400) return 'Unavailable';
     if (this[env].lastModified) {
       return `${this[env].lastModified.date} ${this[env].lastModified.time}`;
     }
@@ -411,7 +485,7 @@ export default class DaFileItem extends LitElement {
         aria-haspopup="dialog"
         aria-expanded=${Boolean(this._detailsOpen)}
         @click=${this.toggleDetails}
-        class="nx-action-btn-icon is-visible ${this._detailsOpen ? 'is-active' : ''}">
+        class="nx-action-btn-icon is-visible ${this.size === 'm' ? 'nx-btn-lg' : ''} ${this._detailsOpen ? 'is-active' : ''}">
         <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-infocircle-20-n.svg#icon"></use></svg>
       </button>
       ${this.renderDetailsPopover()}`;
@@ -467,6 +541,11 @@ export default class DaFileItem extends LitElement {
 
   render() {
     if (this.view === 'card') return this.renderCard();
+    if (this.columns) {
+      return html`<div class="da-item-list-item-inner">
+        ${this.columns.map((column) => this.renderRowColumn(column))}
+      </div>`;
+    }
     return html`
       <div class="da-item-list-item-inner">
         ${this.allowselect ? this.renderCheckBox() : html`<span class="da-item-list-item-selection-placeholder" data-column="select" aria-hidden="true"></span>`}

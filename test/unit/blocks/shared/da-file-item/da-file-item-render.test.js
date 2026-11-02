@@ -55,6 +55,50 @@ describe('da-file-item render', () => {
     expect(el.shadowRoot.querySelector('span.da-item-list-item-type svg')).to.exist;
   });
 
+  it('renders owner-selected columns with linked folder context and modifier', async () => {
+    await fixture({
+      columns: ['name', 'folder', 'modified', 'modifiedBy', 'actions'],
+      folder: { label: '/articles', href: '/?browse=2#/org/repo/articles' },
+      modifiedBy: 'Alex',
+      date: 1704067200000,
+    });
+    const root = el.shadowRoot;
+    expect([...root.querySelectorAll('[data-column]')].map((cell) => cell.dataset.column))
+      .to.deep.equal(['name', 'folder', 'modified', 'modifiedBy', 'actions']);
+    expect(root.querySelectorAll('[role="cell"]')).to.have.length(5);
+    expect(root.querySelector('[data-column="folder"] a').getAttribute('href'))
+      .to.equal('/?browse=2#/org/repo/articles');
+    expect(root.querySelector('[data-column="modifiedBy"]').textContent).to.equal('Alex');
+    expect(root.querySelector('input[type="checkbox"]')).to.equal(null);
+    expect(root.querySelector('button[aria-label="More info"]')).to.exist;
+    expect(root.querySelector('button[aria-label="Mark as Favorite"]')).to.exist;
+    el.folder = { label: '/', href: '/?browse=2#/other/site' };
+    el.modifiedBy = 'Sam';
+    await el.updateComplete;
+    expect(root.querySelector('[data-column="folder"] a').textContent).to.equal('/');
+    expect(root.querySelector('[data-column="modifiedBy"]').textContent).to.equal('Sam');
+  });
+
+  it('shows unavailable custom metadata without inventing a modifier or link', async () => {
+    await fixture({ columns: ['name', 'folder', 'modifiedBy', 'unknown'], modifiedBy: '' });
+    expect(el.shadowRoot.querySelector('[data-column="folder"]').textContent.trim()).to.equal('—');
+    expect(el.shadowRoot.querySelector('[data-column="folder"] a')).to.equal(null);
+    expect(el.shadowRoot.querySelector('[data-column="modifiedBy"]').textContent).to.equal('—');
+    expect(el.shadowRoot.querySelectorAll('[role="cell"]')).to.have.length(3);
+  });
+
+  it('keeps custom columns while renaming and advances only row action sizes', async () => {
+    await fixture({ columns: ['name', 'folder', 'modified', 'modifiedBy', 'actions'], rename: true, modifiedBy: '' });
+    expect(el.shadowRoot.querySelector('form')).to.exist;
+    expect(el.shadowRoot.querySelector('[data-column="folder"]')).to.exist;
+    expect(el.shadowRoot.querySelector('[data-column="type"]')).to.equal(null);
+    expect(el.shadowRoot.querySelector('button[aria-label="Mark as Favorite"]').classList.contains('nx-btn-sm')).to.equal(true);
+    el.size = 'm';
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('button[aria-label="Mark as Favorite"]').classList.contains('nx-btn-sm')).to.equal(false);
+    expect(el.shadowRoot.querySelector('button[aria-label="More info"]').classList.contains('nx-btn-lg')).to.equal(true);
+  });
+
   it('Renders rename form when rename property is true', async () => {
     await fixture({ rename: true });
     const form = el.shadowRoot.querySelector('form.da-item-list-item-rename');
