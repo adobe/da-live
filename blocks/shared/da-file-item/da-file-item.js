@@ -33,7 +33,6 @@ export default class DaFileItem extends LitElement {
     allowselect: { type: Boolean },
     view: { type: String, reflect: true },
     href: { type: String },
-    documentPreview: { type: Boolean },
     isChecked: { attribute: 'ischecked', type: Boolean },
     isFavorited: { attribute: 'isfavorited', type: Boolean },
     _isRenaming: { state: true },
@@ -43,8 +42,6 @@ export default class DaFileItem extends LitElement {
     _version: { state: true },
     _lastModifiedBy: { state: true },
     _imageUrl: { state: true },
-    _document: { state: true },
-    _previewError: { state: true },
   };
 
   connectedCallback() {
@@ -58,12 +55,11 @@ export default class DaFileItem extends LitElement {
   }
 
   willUpdate(props) {
-    if (['path', 'ext', 'view', 'documentPreview'].some((key) => props.has(key))) this.resetImage();
+    if (props.has('path') || props.has('ext') || props.has('view')) this.resetImage();
   }
 
   updated() {
-    if (!this.isConnected || this.view !== 'card'
-      || (!isImageExt(this.ext) && !(this.documentPreview && this.ext === 'html'))
+    if (!this.isConnected || this.view !== 'card' || !isImageExt(this.ext)
       || this._imageRequested || this._imageObserver) return;
     this._imageObserver = new IntersectionObserver(([entry]) => {
       if (!entry?.isIntersecting) return;
@@ -82,8 +78,6 @@ export default class DaFileItem extends LitElement {
     this.stopObservingImage();
     this._imageRequest = null;
     this._imageRequested = false;
-    this._document = undefined;
-    this._previewError = undefined;
     this.dropImage();
   }
 
@@ -93,60 +87,26 @@ export default class DaFileItem extends LitElement {
   }
 
   async loadImage() {
-    if (this._imageRequested) return;
-    this.stopObservingImage();
     const { path } = this;
-    const documentPreview = this.documentPreview && this.ext === 'html';
     const request = {};
     this._imageRequest = request;
     this._imageRequested = true;
     try {
       const { source } = await getNx2Api();
       const resp = await source.get(path);
-      if (!resp.ok) throw new Error('Preview unavailable.');
-      if (documentPreview) {
-        const doc = new DOMParser().parseFromString(await resp.text(), 'text/html');
-        const main = doc.querySelector('main') || doc.body;
-        const title = main.querySelector('h1, h2')?.textContent.trim() || doc.title;
-        const text = [...main.querySelectorAll('p')].map((p) => p.textContent.trim()).join(' ').slice(0, 600);
-        const src = main.querySelector('img[src]')?.getAttribute('src');
-        const imageUrl = src ? new URL(src, `https://content.da.live${path}`) : undefined;
-        const imageHref = ['https:', 'http:'].includes(imageUrl?.protocol) ? imageUrl.href : undefined;
-        if (!title && !text && !imageHref) throw new Error('Page preview unavailable.');
-        if (this._imageRequest === request && this.isConnected) {
-          this._document = { title, text, imageHref };
-        }
-        return;
-      }
+      if (!resp.ok) return;
       const url = URL.createObjectURL(await resp.blob());
       if (this._imageRequest === request && this.isConnected) this._imageUrl = url;
       else URL.revokeObjectURL(url);
     } catch (error) {
-      if (this._imageRequest === request && this.isConnected) this._previewError = error.message;
+      // eslint-disable-next-line no-console
+      console.warn(`Could not load file preview for ${path}.`, error);
     }
   }
 
   renderFilePreview() {
     if (this._isRenaming) return html`<div class="file-preview-spinner" role="status" aria-label="Renaming"></div>`;
-    if (this._imageUrl) {
-      return html`<img src=${this._imageUrl} alt="" @error=${({ target }) => {
-        if (target.getAttribute('src') === this._imageUrl) this.dropImage();
-      }}>`;
-    }
-    if (this._document) {
-      const preview = this._document;
-      const { title, text, imageHref } = preview;
-      return html`<article class="document-preview" aria-hidden="true">
-        <strong>${title}</strong>
-        ${imageHref ? html`<img src=${imageHref} alt="" referrerpolicy="no-referrer"
-          @error=${() => {
-            if (this._document !== preview || !this.isConnected) return;
-            this._document = { ...this._document, imageHref: undefined };
-            this._previewError = 'Image preview unavailable.';
-          }}>` : nothing}
-        <p>${text}</p>
-      </article>`;
-    }
+    if (this._imageUrl) return html`<img src=${this._imageUrl} alt="" @error=${this.dropImage}>`;
     return this.renderIcon();
   }
 
@@ -428,12 +388,9 @@ export default class DaFileItem extends LitElement {
     return html`
       <nx-card class="card" .selectable=${Boolean(this.allowselect)} .selected=${Boolean(this.isChecked)}
         @nx-card-selection-change=${(e) => this.handleChecked(e.detail)}>
-        <div slot="media" class="card-media">
-          <a class="card-preview" href="${this.ext === 'link' ? until(href) : href}" tabindex="-1" aria-hidden="true">
-            ${this.renderFilePreview()}
-          </a>
-          ${this._previewError ? html`<span class="preview-error" role="status">${this._previewError}</span>` : nothing}
-        </div>
+        <a slot="media" class="card-preview" href="${this.ext === 'link' ? until(href) : href}" tabindex="-1" aria-hidden="true">
+          ${this.renderFilePreview()}
+        </a>
         ${this.isFavorited ? this.renderFavorite('card-favorite', 'overlay-actions') : nothing}
         ${this.rename ? this.renderRename('content') : html`
           <a slot="heading" href="${this.ext === 'link' ? until(href) : href}" title=${this.name}>
