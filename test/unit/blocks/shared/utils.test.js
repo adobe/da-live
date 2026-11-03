@@ -13,6 +13,8 @@ import {
   getSidekickConfig,
   sanitizeName,
   fetchDaConfigs,
+  getRenderingVersion,
+  loadRenderingVersion,
   canEditOrgConfig,
   getConfigPermissions,
   getAuthToken,
@@ -943,6 +945,50 @@ describe('canEditOrgConfig', () => {
     };
     expect(await canEditOrgConfig('')).to.be.false;
     expect(called).to.be.false;
+  });
+});
+
+describe('loadRenderingVersion', () => {
+  let savedFetch;
+
+  beforeEach(() => {
+    savedFetch = window.fetch;
+    window.localStorage.removeItem('nx-ims');
+  });
+
+  afterEach(() => {
+    window.fetch = savedFetch;
+  });
+
+  const mockConfigs = (byPath) => {
+    window.fetch = async (url) => {
+      const u = String(url);
+      if (u.includes('/ping/')) return new Response('', { status: 200 });
+      const key = Object.keys(byPath).find((p) => u.endsWith(p));
+      const data = key ? byPath[key] : [];
+      return new Response(JSON.stringify({ data }), { status: 200 });
+    };
+  };
+
+  it('defaults to 2 without config', async () => {
+    mockConfigs({});
+    expect(await loadRenderingVersion({ org: 'rvnone', site: 'site' })).to.equal(2);
+    expect(getRenderingVersion()).to.equal(2);
+  });
+
+  it('uses 1 when editor.renderingVersion is 1', async () => {
+    mockConfigs({ '/rvorg/': [{ key: 'editor.renderingVersion', value: '1' }] });
+    expect(await loadRenderingVersion({ org: 'rvorg', site: 'site' })).to.equal(1);
+    expect(getRenderingVersion()).to.equal(1);
+  });
+
+  it('lets site config override org config', async () => {
+    mockConfigs({
+      '/rvover/': [{ key: 'editor.renderingVersion', value: '1' }],
+      '/rvover/site/': [{ key: 'editor.renderingVersion', value: '2' }],
+    });
+    expect(await loadRenderingVersion({ org: 'rvover', site: 'site' })).to.equal(2);
+    expect(getRenderingVersion()).to.equal(2);
   });
 });
 

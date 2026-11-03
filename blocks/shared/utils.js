@@ -430,6 +430,24 @@ export async function canEditOrgConfig(org) {
   return !!getConfigPermissions(config)?.includes('write');
 }
 
+let renderingVersion = 2;
+let renderingVersionRequest;
+
+export const getRenderingVersion = () => renderingVersion;
+
+export async function loadRenderingVersion({ org, site } = {}) {
+  const request = {};
+  renderingVersionRequest = request;
+  const configs = await Promise.all(fetchDaConfigs({ org, site })).catch(() => []);
+  const row = configs.filter((c) => c && !c.error).reverse()
+    .flatMap((c) => getFirstSheet(c) || [])
+    .find((r) => r?.key === 'editor.renderingVersion');
+  const configured = parseInt(row?.value, 10);
+  const version = configured >= 1 ? configured : 2;
+  if (renderingVersionRequest === request) renderingVersion = version;
+  return version;
+}
+
 export const getSidekickConfig = (() => {
   const configCache = {};
 

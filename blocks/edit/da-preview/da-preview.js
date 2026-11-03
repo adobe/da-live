@@ -2,6 +2,8 @@ import { LitElement, html, nothing } from 'da-lit';
 
 import getSheet from '../../shared/sheet.js';
 import { getHtmlWithCursor } from '../../shared/prose2aem.js';
+import getPathDetails from '../../shared/pathDetails.js';
+import { loadRenderingVersion } from '../../shared/utils.js';
 
 const sheet = await getSheet('/blocks/edit/da-preview/da-preview.css');
 
@@ -30,6 +32,22 @@ export default class DaPreview extends LitElement {
     this.setBody();
   }
 
+  updated(changed) {
+    if (changed.has('path')) this.loadRenderingVersion();
+  }
+
+  async loadRenderingVersion() {
+    const { org, site } = getPathDetails() || {};
+    const key = `${org}/${site}`;
+    if (key === this._renderingKey) return;
+    this._renderingKey = key;
+    this._renderingVersion = undefined;
+    const version = await loadRenderingVersion({ org, site });
+    if (this._renderingKey !== key) return;
+    this._renderingVersion = version;
+    this.setBody();
+  }
+
   handleView({ key }) {
     // If no key, close the preview
     if (!key) {
@@ -47,7 +65,7 @@ export default class DaPreview extends LitElement {
     if (!window.view) return;
 
     // Always cache the body for future use
-    this.body = getHtmlWithCursor(window.view);
+    this.body = getHtmlWithCursor(window.view, this._renderingVersion);
 
     // If initialized, send the preview to the iframe
     if (this.initialized && this.body) this.sendPreview();
