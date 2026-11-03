@@ -50,8 +50,8 @@ describe('da-browse-header', () => {
     await header.updateComplete;
     expect(settingsLabels()).to.deep.equal(['Configuration']);
     const trigger = settingsMenu().querySelector('button[slot="trigger"]');
-    expect(trigger.textContent.trim()).to.equal('Settings');
-    expect(trigger.title).to.equal('Settings');
+    expect(trigger.textContent.trim()).to.equal('Org Settings');
+    expect(trigger.title).to.equal('Org Settings');
     expect(trigger.querySelector('use[href="/img/icons/s2-icon-settings-20-n.svg#icon"]')).not.to.be.null;
 
     header.details = { org: 'org', site: 'site', path: 'folder' };
@@ -60,7 +60,9 @@ describe('da-browse-header', () => {
 
     header.details = { org: 'org', site: 'site', path: '' };
     await header.updateComplete;
-    expect(settingsMenu()).not.to.be.null;
+    const siteTrigger = settingsMenu().querySelector('button[slot="trigger"]');
+    expect(siteTrigger.textContent.trim()).to.equal('Site Settings');
+    expect(siteTrigger.title).to.equal('Site Settings');
   });
 
   it('offers permissions only when the user can edit the org config', async () => {

@@ -148,12 +148,13 @@ export default class DaBrowseHeader extends LitElement {
     if (!this.details?.org || this.details.path) return nothing;
     const { org, site } = this.details;
     const items = getSettingsMenuItems({ org, site, canEditOrgConfig: this._canEditOrgConfig });
+    const label = `${site ? 'Site' : 'Org'} Settings`;
     return html`
       <nx-menu class="browse-settings-menu" size="m" placement="auto" .items=${items}
         @select=${({ detail }) => { window.location.href = detail.id; }}>
-        <button slot="trigger" type="button" class="browse-settings-trigger browse-toolbar-control nx-action-btn-quiet" title="Settings">
+        <button slot="trigger" type="button" class="browse-settings-trigger browse-toolbar-control nx-action-btn-quiet" title=${label}>
           <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-settings-20-n.svg#icon"></use></svg>
-          <span class="browse-control-label">Settings</span>
+          <span class="browse-control-label">${label}</span>
         </button>
       </nx-menu>`;
   }
