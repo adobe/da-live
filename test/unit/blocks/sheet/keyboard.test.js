@@ -22,12 +22,24 @@ document.head.appendChild(link);
 
 const tick = () => new Promise((r) => { setTimeout(r, 10); });
 
+// Pages running in parallel start without window focus, so focus events would not fire.
+// Sending a key gives this page focus.
+before(async () => {
+  await sendKeys({ press: 'Shift' });
+});
+
+// Assert on identity rather than objects: the runner cannot serialize a failed
+// assertion whose actual value is the sheet or a DOM element, and hangs instead.
 describe('sheet keyboard access', () => {
   let before;
   let after;
   let container;
   let sheet;
   let gridEl;
+
+  const isCurrent = () => window.jspreadsheet.current === sheet;
+  const isReleased = () => window.jspreadsheet.current === null;
+  const isFocused = (el) => document.activeElement === el;
 
   beforeEach(() => {
     before = document.createElement('button');
@@ -58,7 +70,7 @@ describe('sheet keyboard access', () => {
     window.jspreadsheet.current = null;
     gridEl.focus();
     await tick();
-    expect(window.jspreadsheet.current).to.equal(sheet);
+    expect(isCurrent()).to.be.true;
     expect(sheet.selectedCell.map(Number)).to.deep.equal([0, 0, 0, 0]);
   });
 
@@ -66,22 +78,22 @@ describe('sheet keyboard access', () => {
     gridEl.focus();
     await sendKeys({ press: 'Tab' });
     await tick();
-    expect(document.activeElement).to.equal(after);
-    expect(window.jspreadsheet.current).to.be.null;
+    expect(isFocused(after)).to.be.true;
+    expect(isReleased()).to.be.true;
 
     gridEl.focus();
     await sendKeys({ down: 'Shift' });
     await sendKeys({ press: 'Tab' });
     await sendKeys({ up: 'Shift' });
     await tick();
-    expect(document.activeElement).to.equal(before);
-    expect(window.jspreadsheet.current).to.be.null;
+    expect(isFocused(before)).to.be.true;
+    expect(isReleased()).to.be.true;
   });
 
   it('Escape releases the keyboard from the grid', async () => {
     gridEl.focus();
     await sendKeys({ press: 'Escape' });
-    expect(window.jspreadsheet.current).to.be.null;
+    expect(isReleased()).to.be.true;
     expect(sheet.selectedCell).to.be.null;
   });
 
@@ -91,9 +103,9 @@ describe('sheet keyboard access', () => {
     expect(sheet.edition).to.exist;
     await sendKeys({ press: 'Enter' });
     await tick();
-    expect(sheet.edition).to.be.null;
+    expect(sheet.edition === null, 'editor closed').to.be.true;
     expect(sheet.getValueFromCoords(0, 0)).to.equal('x');
-    expect(document.activeElement).to.equal(gridEl);
-    expect(window.jspreadsheet.current).to.equal(sheet);
+    expect(isFocused(gridEl)).to.be.true;
+    expect(isCurrent()).to.be.true;
   });
 });
