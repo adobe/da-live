@@ -19,17 +19,24 @@ const SECTION_LABEL = {
   config: (name) => `Configuration Permissions for: ${name}`,
   content: (name) => `Content Permissions for: ${name}`,
   folders: () => 'Folder Permissions',
+  pages: () => 'Page Permissions',
+};
+
+// Sections that have an add button: its label, class and event, and the note when empty.
+const ADDABLE = {
+  folders: { label: 'Add folder', className: 'add-folder', event: 'permissions-add-folder', empty: 'No folder permissions yet.' },
+  pages: { label: 'Add page', className: 'add-page', event: 'permissions-add-page', empty: 'No page permissions yet.' },
 };
 
 // The section heading already names config/content scopes; only these need a card title.
-const TITLED_KINDS = ['folder', 'other'];
+const TITLED_KINDS = ['folder', 'page', 'other'];
 
 class DaPermissionsCards extends LitElement {
   static properties = {
     slots: { attribute: false },
     org: { type: String },
     scopeName: { type: String },
-    canAddFolder: { type: Boolean },
+    canAdd: { type: Boolean },
     editable: { type: Boolean },
     busy: { type: Boolean },
     adding: { attribute: false },
@@ -40,7 +47,7 @@ class DaPermissionsCards extends LitElement {
     this.slots = [];
     this.org = '';
     this.scopeName = '';
-    this.canAddFolder = false;
+    this.canAdd = false;
     this.editable = false;
     this.busy = false;
     this.adding = null;
@@ -172,22 +179,22 @@ class DaPermissionsCards extends LitElement {
   }
 
   _renderSection(kind, slots) {
-    const withAddFolder = kind === 'folders' && this.canAddFolder;
-    if (!slots.length && !withAddFolder) return nothing;
+    const add = this.canAdd ? ADDABLE[kind] : null;
+    if (!slots.length && !add) return nothing;
     const body = slots.length
       ? slots.map((slot) => this._renderCard(slot))
-      : html`<p class="row-empty section-empty">No folder permissions yet.</p>`;
+      : html`<p class="row-empty section-empty">${add.empty}</p>`;
     return html`
       <section class="scope-section" data-section=${kind}>
         <div class="scope-section-header">
           <h3>${SECTION_LABEL[kind](this.scopeName)}</h3>
-          ${withAddFolder ? html`
+          ${add ? html`
             <button
               type="button"
-              class="add-folder nx-form-btn-secondary"
+              class="${add.className} nx-form-btn-secondary"
               ?disabled=${this.busy}
-              @click=${() => this._emit('permissions-add-folder')}
-            >Add folder</button>
+              @click=${() => this._emit(add.event)}
+            >${add.label}</button>
           ` : nothing}
         </div>
         ${body}
@@ -197,12 +204,14 @@ class DaPermissionsCards extends LitElement {
   render() {
     const configSlots = this.slots.filter((slot) => slot.kind === 'config');
     const folderSlots = this.slots.filter((slot) => slot.kind === 'folder');
-    const contentSlots = this.slots.filter((slot) => slot.kind !== 'config' && slot.kind !== 'folder');
+    const pageSlots = this.slots.filter((slot) => slot.kind === 'page');
+    const contentSlots = this.slots.filter((slot) => !['config', 'folder', 'page'].includes(slot.kind));
 
     return html`
       ${this._renderSection('config', configSlots)}
       ${this._renderSection('content', contentSlots)}
       ${this._renderSection('folders', folderSlots)}
+      ${this._renderSection('pages', pageSlots)}
     `;
   }
 }

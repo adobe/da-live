@@ -99,7 +99,7 @@ describe('da-permissions-cards', () => {
     const btn = header?.querySelector('button.add-folder');
     expect(btn?.textContent.trim()).to.equal('Add folder');
     expect(btn?.classList.contains('nx-form-btn-secondary')).to.equal(true);
-    expect(!!el.shadowRoot.querySelector('.section-empty')).to.equal(false);
+    expect(!!el.shadowRoot.querySelector('section[data-section="folders"] .section-empty')).to.equal(false);
 
     let opened = 0;
     el.addEventListener('permissions-add-folder', () => { opened += 1; });

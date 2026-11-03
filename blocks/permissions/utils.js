@@ -52,6 +52,32 @@ export function parseFolderPath(value) {
   return { folder };
 }
 
+export function pageRulePath(site, page) {
+  return `/${site}/${page}`;
+}
+
+// A page's images live in its media folder `.{page}/`, which da-admin doesn't match from a
+// page rule. Files with an extension (sheets) have no media folder.
+export function mediaRulePath(pagePath) {
+  const slash = pagePath.lastIndexOf('/');
+  const name = pagePath.slice(slash + 1);
+  if (name.includes('.')) return null;
+  return normPath(`${pagePath.slice(0, slash + 1)}.${name}/+**`);
+}
+
+export function parsePagePath(value) {
+  const trimmed = (value || '').trim();
+  if (!trimmed) return { error: 'Enter a page path, e.g. /about.' };
+  if (!trimmed.startsWith('/')) return { error: 'Page paths start with /, e.g. /about.' };
+  const page = trimmed.split('/').filter(Boolean).join('/').replace(/\.html$/, '');
+  if (!page || page.endsWith('/')) return { error: 'Enter a page below the site root, e.g. /about.' };
+  if (trimmed.endsWith('/')) return { error: 'Page paths cannot end with /. Use Add folder for folders.' };
+  if (page.split('/').some((segment) => segment === '.' || segment === '..' || segment.includes('*'))) {
+    return { error: 'Page paths cannot contain traversal or wildcard segments.' };
+  }
+  return { page };
+}
+
 function scopeKind(path, site) {
   const norm = normPath(path);
   if (!site) {
@@ -64,6 +90,7 @@ function scopeKind(path, site) {
   if (norm === `${prefix}CONFIG`) return 'config';
   if (norm === normPath(`${prefix}+**`)) return 'content';
   if (norm.endsWith(FOLDER_SUFFIX)) return 'folder';
+  if (!norm.includes('*')) return 'page';
   return 'other';
 }
 
@@ -75,6 +102,7 @@ export function scopeLabel(path, site) {
     const norm = normPath(path);
     return `${norm.slice(`/${site}/`.length, -FOLDER_SUFFIX.length)}/`;
   }
+  if (kind === 'page') return path.slice(`/${site}/`.length);
   return path;
 }
 
@@ -107,7 +135,7 @@ function applyInheritance(slot, orgRules) {
   });
 }
 
-export function buildSlots(rules, site, pendingFolder = null) {
+export function buildSlots(rules, site, pendingPath = null) {
   const slotsMap = new Map();
   const defaults = defaultPaths(site);
   defaults.forEach((path) => ensureSlot(slotsMap, path, site));
@@ -133,10 +161,9 @@ export function buildSlots(rules, site, pendingFolder = null) {
     applyInheritance(slotsMap.get(normPath(`/${site}/+**`)), orgContentRules);
   }
 
-  if (site && pendingFolder) {
-    const folderPath = folderRulePath(site, pendingFolder);
-    const existed = slotsMap.has(folderPath);
-    const slot = ensureSlot(slotsMap, folderPath, site);
+  if (site && pendingPath) {
+    const existed = slotsMap.has(pendingPath);
+    const slot = ensureSlot(slotsMap, pendingPath, site);
     if (!existed) slot.pending = true;
   }
 
@@ -229,6 +256,20 @@ export function removeMember(config, path, level, who) {
   sheet.data = kept;
   syncSheetCounts(sheet);
   return { config: next, changed: true };
+}
+
+// The rule paths a change to this scope writes: a page also updates its media folder rule.
+export function scopePaths({ path, kind }) {
+  const media = kind === 'page' && mediaRulePath(path);
+  return media ? [path, media] : [path];
+}
+
+// Applies `update(config, path)` to each path in turn, e.g. addMembers or removeMember.
+export function updateScope(config, paths, update) {
+  return paths.reduce((acc, path) => {
+    const result = update(acc.config, path);
+    return { config: result.config, changed: acc.changed || result.changed };
+  }, { config, changed: false });
 }
 
 const MIN_QUERY_LENGTH = 2;
