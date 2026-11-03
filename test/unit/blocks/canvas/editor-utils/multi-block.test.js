@@ -140,6 +140,28 @@ describe('findTemplateRow with parsed library docs', () => {
       <div class="library-container-end"></div>`);
     expect(text).to.equal(null);
   });
+
+  const GROUP_WITH_CARDS = `
+    <div class="library-container-start"></div>
+    <div class="hero"><div><div>hero text</div></div></div>
+    <div class="cards"><div><div>img</div><div>group card</div></div></div>
+    <div class="library-container-end"></div>`;
+
+  it('prefers a standalone block over an earlier library entry grouping it', async () => {
+    const docs = { '/lib-hero': `<h2>Hero</h2>${GROUP_WITH_CARDS}`, '/lib-cards': `<h2>Cards</h2>${CARDS}` };
+    window.fetch = (url) => {
+      const body = Object.entries(docs).find(([path]) => String(url).includes(path))?.[1];
+      return Promise.resolve(new Response(`<body><div>${body}</div></body>`, { status: 200 }));
+    };
+    const blocks = [{ loadVariants: getBlockVariants('/lib-hero') }, { loadVariants: getBlockVariants('/lib-cards') }];
+    const row = await findTemplateRow(blocks, 'cards');
+    expect(row?.textContent).to.be.a('string').that.contains('card text');
+  });
+
+  it('prefers a standalone block over an earlier group in the same library doc', async () => {
+    const text = await templateRowText(`<h2>Hero</h2>${GROUP_WITH_CARDS}<h2>Cards</h2>${CARDS}`);
+    expect(text).to.be.a('string').that.contains('card text');
+  });
 });
 
 describe('appendBlockRow', () => {

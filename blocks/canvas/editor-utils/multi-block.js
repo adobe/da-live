@@ -37,11 +37,10 @@ export async function isMultiBlock(org, site, blockName) {
 /** First item row (the row after the header) of a library table for `blockName`, or null. */
 export async function findTemplateRow(blocks, blockName) {
   const target = normalize(blockName);
-  const rows = await Promise.all((blocks || []).map(async (block) => {
-    const variants = (await block.loadVariants) || [];
-    return variants.reduce((row, v) => row || templateRowIn(v.dom, target), null);
-  }));
-  return rows.find(Boolean) ?? null;
+  const items = (await Promise.all((blocks || []).map((block) => block.loadVariants)))
+    .flatMap((variants) => variants || []);
+  const pick = (list) => list.reduce((row, v) => row || templateRowIn(v.dom, target), null);
+  return pick(items.filter((v) => v.dom?.tagName === 'TABLE')) ?? pick(items);
 }
 
 export async function getMultiBlockTemplateRow(org, site, blockName) {
