@@ -78,19 +78,22 @@ function imgAltTextItem() {
           return;
         }
 
-        const { state, dispatch } = view;
-        if (state.selection?.node?.type.name !== 'image') return;
+        const { state } = view;
+        const { node, from: pos } = state.selection;
+        if (node?.type.name !== 'image') return;
 
         const fields = {
           altText: {
             placeholder: title,
             label: title,
-            value: state.selection.node.attrs.alt ?? '',
+            value: node.attrs.alt ?? '',
           },
         };
+        // Use the live state: the document may have changed while the palette was open.
         const callback = () => {
-          const { pos } = state.selection.$anchor;
-          dispatch(state.tr.setNodeAttribute(pos, 'alt', fields.altText.value?.trim()));
+          const current = view.state.doc.nodeAt(pos);
+          if (current?.type.name !== 'image' || current.attrs.src !== node.attrs.src) return;
+          view.dispatch(view.state.tr.setNodeAttribute(pos, 'alt', fields.altText.value?.trim()));
         };
 
         const promptOptions = { title, fields, callback, saveOnClose: true, useLabelsAbove: true };

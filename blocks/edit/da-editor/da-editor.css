@@ -621,8 +621,15 @@ span.ProseMirror-menuseparator {
   display: none;
 }
 
-.ProseMirror img.ProseMirror-selectednode {
+.ProseMirror img.ProseMirror-selectednode,
+.ProseMirror .focal-point-image-wrapper.ProseMirror-selectednode img {
   filter: brightness(0.5);
+  outline: 2px solid var(--s2-blue-900, #1373e6);
+  outline-offset: 2px;
+}
+
+.ProseMirror .focal-point-image-wrapper.ProseMirror-selectednode {
+  outline: none;
 }
 
 .ProseMirror table {

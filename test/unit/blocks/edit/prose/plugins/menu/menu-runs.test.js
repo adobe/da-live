@@ -194,7 +194,7 @@ describe('menu/removeLinkItem.run on image', () => {
   });
 });
 
-describe('menu/imgAltTextItem.run', () => {
+describe('menu/imgAltTextItem', () => {
   let editor;
   let shadowHost;
 
@@ -430,5 +430,41 @@ describe('menu/imgAltTextItem.run', () => {
     expect(palette).to.exist;
     await palette.updateComplete;
     expect(palette.shadowRoot.querySelector('input').value).to.equal('Original');
+  });
+
+  async function openPaletteAndType(pos, value) {
+    const selection = NodeSelection.create(editor.view.state.doc, pos);
+    editor.view.dispatch(editor.view.state.tr.setSelection(selection));
+    button().focus();
+    await sendKeys({ press: 'Enter' });
+    const palette = editor.view.dom.parentElement.querySelector('da-palette');
+    await palette.updateComplete;
+    const input = palette.shadowRoot.querySelector('input');
+    input.value = value;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    return input;
+  }
+
+  it('saves against the current document when it changed while the palette was open', async () => {
+    const pos = setImage();
+    const input = await openPaletteAndType(pos, 'Updated');
+    // Simulate a remote edit after the image, which keeps its position.
+    const { state } = editor.view;
+    editor.view.dispatch(state.tr.insertText('z', state.doc.content.size - 1));
+    input.focus();
+    await sendKeys({ press: 'Enter' });
+    expect(editor.view.state.doc.nodeAt(pos).attrs.alt).to.equal('Updated');
+    expect(editor.view.state.doc.textContent).to.equal('abz');
+  });
+
+  it('does not write the alt text elsewhere when the image moved while the palette was open', async () => {
+    const pos = setImage();
+    const input = await openPaletteAndType(pos, 'Updated');
+    // Simulate a remote edit before the image, which shifts it.
+    editor.view.dispatch(editor.view.state.tr.insertText('z', 1));
+    input.focus();
+    await sendKeys({ press: 'Enter' });
+    expect(editor.view.state.doc.nodeAt(pos + 1).attrs.alt).to.equal('Original');
+    expect(editor.view.state.doc.textContent).to.equal('zab');
   });
 });
