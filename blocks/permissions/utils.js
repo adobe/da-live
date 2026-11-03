@@ -57,25 +57,35 @@ export function pageRulePath(site, page) {
 }
 
 // A page's images live in its media folder `.{page}/`, which da-admin doesn't match from a
-// page rule. Files with an extension (sheets) have no media folder.
+// page rule. Other files with an extension (sheets) have no media folder.
 export function mediaRulePath(pagePath) {
-  const slash = pagePath.lastIndexOf('/');
-  const name = pagePath.slice(slash + 1);
-  if (name.includes('.')) return null;
-  return normPath(`${pagePath.slice(0, slash + 1)}.${name}/+**`);
+  const isHtml = pagePath.endsWith('.html');
+  const page = isHtml ? pagePath.slice(0, -'.html'.length) : pagePath;
+  const slash = page.lastIndexOf('/');
+  const name = page.slice(slash + 1);
+  if (!name || (!isHtml && name.includes('.'))) return null;
+  return normPath(`${page.slice(0, slash + 1)}.${name}/+**`);
 }
 
+// da-admin lowercases request paths and drops spaces from rule paths, so only names DA can
+// create would match. Pages keep .html: an exact rule without it also matches the folder.
+const PAGE_SEGMENT_RE = /^[a-z0-9_-][a-z0-9._-]*$/;
+
 export function parsePagePath(value) {
-  const trimmed = (value || '').trim();
+  const trimmed = (value || '').trim().toLowerCase();
   if (!trimmed) return { error: 'Enter a page path, e.g. /about.' };
   if (!trimmed.startsWith('/')) return { error: 'Page paths start with /, e.g. /about.' };
-  const page = trimmed.split('/').filter(Boolean).join('/').replace(/\.html$/, '');
-  if (!page || page.endsWith('/')) return { error: 'Enter a page below the site root, e.g. /about.' };
-  if (trimmed.endsWith('/')) return { error: 'Page paths cannot end with /. Use Add folder for folders.' };
-  if (page.split('/').some((segment) => segment === '.' || segment === '..' || segment.includes('*'))) {
-    return { error: 'Page paths cannot contain traversal or wildcard segments.' };
+  if (trimmed.endsWith('/')) {
+    return trimmed.replaceAll('/', '')
+      ? { error: 'Page paths cannot end with /. Use Add folder for folders.' }
+      : { error: 'Enter a page below the site root, e.g. /about.' };
   }
-  return { page };
+  const segments = trimmed.split('/').filter(Boolean);
+  if (segments.some((segment) => !PAGE_SEGMENT_RE.test(segment))) {
+    return { error: 'Page paths can only use letters, numbers, -, _ and dots, and no part can start with a dot.' };
+  }
+  const page = segments.join('/');
+  return { page: segments.at(-1).includes('.') ? page : `${page}.html` };
 }
 
 function scopeKind(path, site) {
@@ -90,7 +100,7 @@ function scopeKind(path, site) {
   if (norm === `${prefix}CONFIG`) return 'config';
   if (norm === normPath(`${prefix}+**`)) return 'content';
   if (norm.endsWith(FOLDER_SUFFIX)) return 'folder';
-  if (!norm.includes('*')) return 'page';
+  if (!norm.includes('*') && !norm.endsWith('/')) return 'page';
   return 'other';
 }
 
@@ -243,7 +253,7 @@ export function removeMember(config, path, level, who) {
       return;
     }
     const current = splitGroups(rule.groups);
-    const filtered = current.filter((m) => m !== who);
+    const filtered = current.filter((m) => m.toLowerCase() !== who.toLowerCase());
     if (filtered.length !== current.length) changed = true;
     if (filtered.length > 0) {
       rule.groups = filtered.join(', ');
@@ -258,13 +268,12 @@ export function removeMember(config, path, level, who) {
   return { config: next, changed: true };
 }
 
-// The rule paths a change to this scope writes: a page also updates its media folder rule.
-export function scopePaths({ path, kind }) {
-  const media = kind === 'page' && mediaRulePath(path);
+// A change to a page also goes to its media folder rule.
+export function scopePaths(path, site) {
+  const media = scopeKind(path, site) === 'page' && mediaRulePath(path);
   return media ? [path, media] : [path];
 }
 
-// Applies `update(config, path)` to each path in turn, e.g. addMembers or removeMember.
 export function updateScope(config, paths, update) {
   return paths.reduce((acc, path) => {
     const result = update(acc.config, path);

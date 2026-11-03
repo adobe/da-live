@@ -80,27 +80,6 @@ export async function mutatePermissions(org, mutate) {
 
 const DOCS_URL = 'https://www.aem.live/docs/ew/administering/permissions';
 
-const ADD_DIALOGS = {
-  folder: {
-    title: 'Add folder permission',
-    label: 'Folder path',
-    placeholder: '/blog/drafts',
-    rulePath: (site, value) => {
-      const { folder, error } = parseFolderPath(value);
-      return error ? { error } : { path: folderRulePath(site, folder) };
-    },
-  },
-  page: {
-    title: 'Add page permission',
-    label: 'Page path',
-    placeholder: '/about',
-    rulePath: (site, value) => {
-      const { page, error } = parsePagePath(value);
-      return error ? { error } : { path: pageRulePath(site, page) };
-    },
-  },
-};
-
 class DaPermissions extends LitElement {
   static properties = {
     org: { attribute: false },
@@ -115,8 +94,8 @@ class DaPermissions extends LitElement {
     _adding: { state: true },
     _confirmRemove: { state: true },
     _pendingPath: { state: true },
-    _addDialog: { state: true },
-    _addError: { state: true },
+    _pathDialog: { state: true },
+    _pathError: { state: true },
   };
 
   constructor() {
@@ -133,8 +112,8 @@ class DaPermissions extends LitElement {
     this._adding = null;
     this._confirmRemove = null;
     this._pendingPath = null;
-    this._addDialog = null;
-    this._addError = null;
+    this._pathDialog = null;
+    this._pathError = null;
   }
 
   connectedCallback() {
@@ -149,7 +128,7 @@ class DaPermissions extends LitElement {
 
     this._query = '';
     this._pendingPath = null;
-    this._addDialog = null;
+    this._pathDialog = null;
     this._adding = null;
     this._confirmRemove = null;
     if (orgChanged) {
@@ -214,9 +193,13 @@ class DaPermissions extends LitElement {
     const who = parseMembers(value);
     if (who.length === 0) return;
 
-    const slot = this._slots.find((s) => s.path === path);
-    const currentLower = new Set((slot?.[level] || []).map((m) => m.toLowerCase()));
-    const allDuplicate = who.every((w) => currentLower.has(w.toLowerCase()));
+    // A page also checks its media folder rule, so adding a member again can fill it in.
+    const paths = scopePaths(path, this.site);
+    const allDuplicate = paths.every((p) => {
+      const slot = this._slots.find((s) => s.path === p);
+      const currentLower = new Set((slot?.[level] || []).map((m) => m.toLowerCase()));
+      return who.every((w) => currentLower.has(w.toLowerCase()));
+    });
     if (allDuplicate) {
       const { showToast, VARIANT_WARNING } = await import(`${getNx2()}/blocks/shared/toast/toast.js`);
       showToast({ text: `Already has access: ${who.join(', ')}`, variant: VARIANT_WARNING });
@@ -226,7 +209,7 @@ class DaPermissions extends LitElement {
     // Clear the filter so the new member is visible even if it doesn't match.
     this._query = '';
     const add = (config, p) => addMembers(config, p, level, who);
-    await this._mutate((config) => updateScope(config, scopePaths(slot), add), path);
+    await this._mutate((config) => updateScope(config, paths, add), path);
   }
 
   _onRemoveRequest({ detail }) {
@@ -240,9 +223,8 @@ class DaPermissions extends LitElement {
   async _confirmRemoveNow() {
     const { path, level, who } = this._confirmRemove;
     this._confirmRemove = null;
-    const slot = this._slots.find((s) => s.path === path);
     const remove = (config, p) => removeMember(config, p, level, who);
-    await this._mutate((config) => updateScope(config, scopePaths(slot), remove), path);
+    await this._mutate((config) => updateScope(config, scopePaths(path, this.site), remove), path);
   }
 
   // Drop the result if the org changed mid-save; a site change still applies (rules are org-wide).
@@ -281,29 +263,31 @@ class DaPermissions extends LitElement {
     window.location.hash = `/${value}`;
   }
 
-  _onOpenAddDialog(kind) {
-    this._addError = null;
-    this._addDialog = kind;
+  _onOpenPathDialog(kind) {
+    this._pathError = null;
+    this._pathDialog = kind;
   }
 
-  _onAddDialogSubmit(e) {
+  _onPathSubmit(e) {
     e?.preventDefault();
-    const kind = this._addDialog;
-    const input = this.shadowRoot.querySelector(`.${kind}-path-input`);
-    const { path, error } = ADD_DIALOGS[kind].rulePath(this.site, input?.value);
-    if (error) {
-      this._addError = error;
+    const kind = this._pathDialog;
+    const { value } = this.shadowRoot.querySelector(`.${kind}-path-input`) ?? {};
+    const result = kind === 'page' ? parsePagePath(value) : parseFolderPath(value);
+    if (result.error) {
+      this._pathError = result.error;
       return;
     }
-    this._addError = null;
-    this._addDialog = null;
+    this._pathError = null;
+    this._pathDialog = null;
+    const path = kind === 'page'
+      ? pageRulePath(this.site, result.page) : folderRulePath(this.site, result.folder);
     this._pendingPath = path;
     this._query = '';
     this._adding = { path, level: 'read' };
   }
 
-  _onAddDialogCancel() {
-    this._addDialog = null;
+  _onPathCancel() {
+    this._pathDialog = null;
   }
 
   _renderOrgForm() {
@@ -351,7 +335,7 @@ class DaPermissions extends LitElement {
           <nx-search
             variant="field"
             size="m"
-            placeholder="Filter by person or folder…"
+            placeholder="Filter by person, folder or page…"
             .value=${this._query}
             @input=${(e) => this._onFilterInput(e)}
           ></nx-search>
@@ -401,8 +385,8 @@ class DaPermissions extends LitElement {
         .busy=${this._busy}
         .adding=${this._adding}
         .canAdd=${!!this.site && this._editable && !activeQuery(this._query)}
-        @permissions-add-folder=${() => this._onOpenAddDialog('folder')}
-        @permissions-add-page=${() => this._onOpenAddDialog('page')}
+        @permissions-add-folder=${() => this._onOpenPathDialog('folder')}
+        @permissions-add-page=${() => this._onOpenPathDialog('page')}
         @permissions-add-open=${(e) => this._onAddOpen(e)}
         @permissions-add-cancel=${() => this._onAddCancel()}
         @permissions-add=${(e) => this._onAdd(e)}
@@ -412,24 +396,23 @@ class DaPermissions extends LitElement {
       ${this._readOnly ? html`<p class="permissions-message">You have read-only access to this configuration.</p>` : nothing}
       ${content}
       ${this._renderRemoveDialog()}
-      ${this._renderAddDialog()}`;
+      ${this._renderPathDialog()}`;
   }
 
-  _renderAddDialog() {
-    const kind = this._addDialog;
+  _renderPathDialog() {
+    const kind = this._pathDialog;
     if (!kind) return nothing;
-    const { title, label, placeholder } = ADD_DIALOGS[kind];
-    const error = this._addError;
+    const error = this._pathError;
     return html`
-      <nx-dialog title=${title} @close=${() => this._onAddDialogCancel()}>
-        <form class="${kind}-add-form" @submit=${(e) => this._onAddDialogSubmit(e)}>
+      <nx-dialog title="Add ${kind} permission" @close=${() => this._onPathCancel()}>
+        <form class="${kind}-add-form" @submit=${(e) => this._onPathSubmit(e)}>
           <div class="nx-form-field ${error ? 'nx-field-error' : ''}">
-            <label for="permissions-${kind}-path">${label}</label>
+            <label for="permissions-${kind}-path">${kind === 'page' ? 'Page' : 'Folder'} path</label>
             <input
               id="permissions-${kind}-path"
               class="${kind}-path-input nx-input"
               type="text"
-              placeholder=${placeholder}
+              placeholder=${kind === 'page' ? '/about' : '/blog/drafts'}
               autocomplete="off"
               autofocus
               aria-invalid=${error ? 'true' : 'false'}
@@ -437,17 +420,18 @@ class DaPermissions extends LitElement {
             ${error ? html`<p class="nx-input-error-msg" role="alert">${error}</p>` : nothing}
           </div>
         </form>
-        <button type="button" slot="actions" class="nx-form-btn-secondary" @click=${() => this._onAddDialogCancel()}>Cancel</button>
-        <button type="button" slot="actions" class="${kind}-add-submit nx-form-btn-primary" @click=${() => this._onAddDialogSubmit()}>Add</button>
+        <button type="button" slot="actions" class="nx-form-btn-secondary" @click=${() => this._onPathCancel()}>Cancel</button>
+        <button type="button" slot="actions" class="${kind}-add-submit nx-form-btn-primary" @click=${() => this._onPathSubmit()}>Add</button>
       </nx-dialog>`;
   }
 
   _renderRemoveDialog() {
     if (!this._confirmRemove) return nothing;
     const { path, level, who } = this._confirmRemove;
+    const [, media] = scopePaths(path, this.site);
     return html`
       <nx-dialog title="Remove member" @close=${() => this._cancelRemove()}>
-        <p>Remove ${who} from ${scopeLabel(path, this.site)} · ${LEVEL_LABEL[level]}?</p>
+        <p>Remove ${who} from ${scopeLabel(path, this.site)} · ${LEVEL_LABEL[level]}?${media ? ` This also removes them from ${scopeLabel(media, this.site)}.` : ''}</p>
         <button type="button" slot="actions" class="nx-form-btn-secondary" @click=${() => this._cancelRemove()}>Cancel</button>
         <button type="button" slot="actions" class="nx-form-btn-primary" @click=${() => this._confirmRemoveNow()}>Remove</button>
       </nx-dialog>`;

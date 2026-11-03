@@ -22,12 +22,6 @@ const SECTION_LABEL = {
   pages: () => 'Page Permissions',
 };
 
-// Sections that have an add button: its label, class and event, and the note when empty.
-const ADDABLE = {
-  folders: { label: 'Add folder', className: 'add-folder', event: 'permissions-add-folder', empty: 'No folder permissions yet.' },
-  pages: { label: 'Add page', className: 'add-page', event: 'permissions-add-page', empty: 'No page permissions yet.' },
-};
-
 // The section heading already names config/content scopes; only these need a card title.
 const TITLED_KINDS = ['folder', 'page', 'other'];
 
@@ -179,11 +173,12 @@ class DaPermissionsCards extends LitElement {
   }
 
   _renderSection(kind, slots) {
-    const add = this.canAdd ? ADDABLE[kind] : null;
+    const add = this.canAdd && (kind === 'folders' || kind === 'pages');
     if (!slots.length && !add) return nothing;
+    const name = kind === 'pages' ? 'page' : 'folder';
     const body = slots.length
       ? slots.map((slot) => this._renderCard(slot))
-      : html`<p class="row-empty section-empty">${add.empty}</p>`;
+      : html`<p class="row-empty section-empty">No ${name} permissions yet.</p>`;
     return html`
       <section class="scope-section" data-section=${kind}>
         <div class="scope-section-header">
@@ -191,10 +186,10 @@ class DaPermissionsCards extends LitElement {
           ${add ? html`
             <button
               type="button"
-              class="${add.className} nx-form-btn-secondary"
+              class="add-${name} nx-form-btn-secondary"
               ?disabled=${this.busy}
-              @click=${() => this._emit(add.event)}
-            >${add.label}</button>
+              @click=${() => this._emit(`permissions-add-${name}`)}
+            >Add ${name}</button>
           ` : nothing}
         </div>
         ${body}
