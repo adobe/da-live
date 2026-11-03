@@ -41,7 +41,7 @@ describe('buildThreadGroups', () => {
     expect(groups.detached).to.deep.equal([]);
   });
 
-  it('continues showing non-image detached threads with their warning state', () => {
+  it('hides a text thread while its text anchor is detached', () => {
     const textThread = {
       ...imageThread,
       id: 'text-thread',
@@ -53,7 +53,8 @@ describe('buildThreadGroups', () => {
       attachedIds: new Set(),
     });
 
-    expect(groups.detached).to.have.lengthOf(1);
-    expect(groups.detached[0]).to.include({ id: 'text-thread', isDetached: true });
+    expect(groups.active).to.deep.equal([]);
+    expect(groups.detached).to.deep.equal([]);
+    expect(groups.resolved).to.deep.equal([]);
   });
 });
