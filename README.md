@@ -11,6 +11,7 @@ This repo provides the author experience for https://da.live.
 ### Authentication
 DA requires an Adobe Identity. You will need a _Stage_ Adobe Identity to work on `localhost` or `aem.page`.
 
+
 #### DA to IMS environment mapping
 | Domain | IMS Tier |
 | :--- | :--- |
