@@ -106,7 +106,7 @@ describe('landing Content section', () => {
           expect(panel.getBoundingClientRect().width).to.equal(widths[view]);
         }
       }
-      expect(widths.list).to.be.greaterThan(widths.card);
+      expect(widths.list).to.equal(widths.card);
     }
   });
 
@@ -119,23 +119,24 @@ describe('landing Content section', () => {
     expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
   });
 
-  it('preserves independent ten-row list pagination with the requested columns', async () => {
+  it('starts both views at six and expands each directly to eighteen with the requested columns', async () => {
     el.shadowRoot.querySelector('.show-more').click();
     el.changeView({ detail: { value: 'list' } });
     await el.updateComplete;
     expect([...el.shadowRoot.querySelectorAll('[role="columnheader"]')].map((cell) => cell.textContent))
       .to.deep.equal(['Name', 'Folder', 'Modified at', 'Modified by', 'File information and Favorite']);
-    expect(el.shadowRoot.querySelectorAll('.file-row')).to.have.length(10);
+    expect(el.shadowRoot.querySelectorAll('.file-row')).to.have.length(6);
     el.shadowRoot.querySelector('.show-more').click();
     await el.updateComplete;
-    expect(el.shadowRoot.querySelectorAll('.file-row')).to.have.length(20);
+    expect(el.shadowRoot.querySelectorAll('.file-row')).to.have.length(18);
+    expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
     el.changeView({ detail: { value: 'card' } });
     await el.updateComplete;
     expect(el.shadowRoot.querySelectorAll('da-file-item')).to.have.length(18);
     expect(JSON.parse(localStorage.getItem('da-browse-settings')).view).to.equal('card');
   });
 
-  it('caps Favorite at six cards or ten rows without deleting saved entries', async () => {
+  it('caps Favorite at six cards or rows without deleting saved entries', async () => {
     ITEMS.forEach((item) => toggleFavorite('/org/site', item.path));
     el.refreshFavorites();
     el.changeTab('starred');
@@ -144,7 +145,7 @@ describe('landing Content section', () => {
     expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
     el.changeView({ detail: { value: 'list' } });
     await el.updateComplete;
-    expect(el.shadowRoot.querySelectorAll('.file-row')).to.have.length(10);
+    expect(el.shadowRoot.querySelectorAll('.file-row')).to.have.length(6);
     expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
     expect(getFavorites('/org/site')).to.have.length(24);
   });
@@ -277,7 +278,9 @@ describe('landing Content section', () => {
     el._files = [ITEMS[0]];
     el.changeView({ detail: { value: 'list' } });
     await el.updateComplete;
-    await el.shadowRoot.querySelector('da-file-item').updateComplete;
+    const row = el.shadowRoot.querySelector('da-file-item');
+    row.modifiedBy = 'Alex';
+    await row.updateComplete;
     const tree = await axTree('da-landing >>> [role="table"]');
     const table = axAll(tree, 'table')[0];
     expect(table.name).to.equal('Recently modified files');
@@ -286,6 +289,7 @@ describe('landing Content section', () => {
     ]);
     expect(axAll(table, 'row')).to.have.length(2);
     expect(axAll(table, 'cell')).to.have.length(5);
+    expect(axAll(table, 'cell')[3].name).to.equal('Alex');
     expect(axAll(table, 'link').map((link) => link.name)).to.include.members(['Page 0', '/']);
   });
 
@@ -294,6 +298,9 @@ describe('landing Content section', () => {
     await sheet.replace(await (await fetch('/blocks/landing/landing.css')).text());
     el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
     el.style.setProperty('--s2-spacing-100', '8px');
+    el.style.setProperty('--s2-spacing-200', '12px');
+    el.style.setProperty('--s2-spacing-300', '16px');
+    el.style.setProperty('--s2-spacing-400', '24px');
     el._files = [ITEMS[0]];
     el.changeView({ detail: { value: 'list' } });
     await el.updateComplete;
@@ -325,6 +332,9 @@ describe('landing Content section', () => {
           const scroll = el.shadowRoot.querySelector('.file-table-scroll');
           expect(scroll.scrollWidth).to.be.greaterThan(scroll.clientWidth);
           expect(getComputedStyle(scroll).overflowX).to.equal('auto');
+        } else {
+          const scroll = el.shadowRoot.querySelector('.file-table-scroll');
+          expect(scroll.scrollWidth).to.equal(scroll.clientWidth);
         }
       }
     }

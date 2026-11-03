@@ -43,10 +43,24 @@
 }
 
 .da-item-list-item-folder,
-.da-item-list-item-modifier {
+.modifier-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.da-item-list-item-modifier {
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-100);
+}
+
+.modifier-icon {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  background-color: currentcolor;
+  mask: url('/img/icons/S2_Icon_UserAvatar_20_N.svg') center / contain no-repeat;
 }
 
 .da-item-list-item-folder a {
@@ -330,9 +344,16 @@
   }
 }
 
-:host([size="m"]:not([view="card"])) .da-item-list-item-type > svg:first-child {
-  width: 20px;
-  height: 20px;
+:host([size="m"]:not([view="card"])) {
+  .da-item-list-item-type > svg:first-child {
+    width: 20px;
+    height: 20px;
+  }
+
+  .modifier-icon {
+    width: 22px;
+    height: 22px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -69,6 +69,7 @@ describe('da-file-item render', () => {
     expect(root.querySelector('[data-column="folder"] a').getAttribute('href'))
       .to.equal('/?browse=2#/org/repo/articles');
     expect(root.querySelector('[data-column="modifiedBy"]').textContent).to.equal('Alex');
+    expect(root.querySelector('.modifier-icon').getAttribute('aria-hidden')).to.equal('true');
     expect(root.querySelector('input[type="checkbox"]')).to.equal(null);
     expect(root.querySelector('button[aria-label="More info"]')).to.exist;
     expect(root.querySelector('button[aria-label="Mark as Favorite"]')).to.exist;
@@ -77,6 +78,10 @@ describe('da-file-item render', () => {
     await el.updateComplete;
     expect(root.querySelector('[data-column="folder"] a').textContent).to.equal('/');
     expect(root.querySelector('[data-column="modifiedBy"]').textContent).to.equal('Sam');
+    el.modifiedBy = '';
+    await el.updateComplete;
+    expect(root.querySelector('[data-column="modifiedBy"]').textContent).to.equal('—');
+    expect(root.querySelector('.modifier-icon')).to.equal(null);
   });
 
   it('shows unavailable custom metadata without inventing a modifier or link', async () => {
@@ -84,7 +89,21 @@ describe('da-file-item render', () => {
     expect(el.shadowRoot.querySelector('[data-column="folder"]').textContent.trim()).to.equal('—');
     expect(el.shadowRoot.querySelector('[data-column="folder"] a')).to.equal(null);
     expect(el.shadowRoot.querySelector('[data-column="modifiedBy"]').textContent).to.equal('—');
+    expect(el.shadowRoot.querySelector('.modifier-icon')).to.equal(null);
     expect(el.shadowRoot.querySelectorAll('[role="cell"]')).to.have.length(3);
+  });
+
+  it('uses the standard user icon at 20px in S and 22px in M', async () => {
+    await fixture({ columns: ['modifiedBy'], modifiedBy: 'Alex' });
+    const sheet = new CSSStyleSheet();
+    await sheet.replace(await (await fetch('/blocks/shared/da-file-item/da-file-item.css')).text());
+    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
+    const icon = el.shadowRoot.querySelector('.modifier-icon');
+    expect(getComputedStyle(icon).width).to.equal('20px');
+    expect(getComputedStyle(icon).maskImage).to.include('/img/icons/S2_Icon_UserAvatar_20_N.svg');
+    el.size = 'm';
+    await el.updateComplete;
+    expect(getComputedStyle(icon).width).to.equal('22px');
   });
 
   it('keeps custom columns while renaming and advances only row action sizes', async () => {

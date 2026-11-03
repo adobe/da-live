@@ -39,9 +39,7 @@ svg {
   border-radius: var(--s2-corner-radius-800);
   background: light-dark(#fff9, #222222b3);
   box-shadow: 0 0 1px #00000014, 0 1px 4px #0000000a, 0 2px 8px #00000014;
-}
 
-.files-panel[data-view="card"] {
   --da-card-width: 151px;
   --da-card-height: 200px;
   --file-column-width: calc(var(--da-card-width) + var(--s2-spacing-200));
@@ -128,12 +126,12 @@ h2 {
 }
 
 .file-table {
-  --da-list-columns: minmax(340px, 1fr) 200px 200px 200px 96px;
+  --da-list-columns: minmax(0, 1.7fr) repeat(3, minmax(0, 1fr)) 96px;
   --da-list-action-width: 96px;
   --da-list-min-height: 56px;
 
   width: 100%;
-  min-width: 1036px;
+  min-width: calc(6 * var(--da-card-width) + 5 * var(--s2-spacing-200));
   text-align: start;
   font-size: inherit;
 }

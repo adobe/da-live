@@ -15,6 +15,8 @@ with a `modifiedBy` column lazily load the existing DA status helper. The same
 in-flight/result promise is reused by the information control. Folders and link
 files do not request modifier metadata. Missing values show a dash; no author is
 invented. Requests are invalidated on path changes and removal.
+Known modifiers have the standard decorative user icon beside their name,
+20px in the default size and 22px in M. Missing modifiers show no user icon.
 
 Modified dates keep the standard row date format. Information and favorite
 controls retain their existing events and on-demand details. Failed detail
