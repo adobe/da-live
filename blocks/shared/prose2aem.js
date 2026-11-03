@@ -273,6 +273,7 @@ function convertLocalUrlsToRelative(editor) {
  * @returns AEM-friendly HTML as a text string
  */
 export default function prose2aem(editor, livePreview, isFragment = false, renderingVersion = 2) {
+  const version = typeof renderingVersion === 'number' ? renderingVersion : 2;
   if (!isFragment) editor.removeAttribute('class');
 
   editor.removeAttribute('contenteditable');
@@ -307,7 +308,7 @@ export default function prose2aem(editor, livePreview, isFragment = false, rende
 
   if (!isFragment) {
     makeSections(editor);
-    if (livePreview && renderingVersion >= 2) applySectionMetadata(editor);
+    if (livePreview && version >= 2) applySectionMetadata(editor);
   }
 
   if (isFragment) {

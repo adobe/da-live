@@ -276,6 +276,22 @@ describe('prose2aem section-metadata handling', () => {
     expect(section.classList.contains('highlight')).to.be.false;
   });
 
+  it('applies section metadata when the rendering version is not a number', () => {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper">
+        <table>
+          <tr><td>Section Metadata</td></tr>
+          <tr><td>Style</td><td>highlight</td></tr>
+        </table>
+      </div>
+    `);
+    const main = parseMain(prose2aem(editor, true, false, true));
+    const section = main.querySelector(':scope > div');
+    expect(main.querySelector('.section-metadata') === null).to.be.true;
+    expect(section.classList.contains('highlight')).to.be.true;
+  });
+
   it('keeps relative link hrefs relative', () => {
     const section = sectionFor('<tr><td>Source</td><td><a href="/foo">Label</a></td></tr>');
     expect(section.dataset.source).to.equal('/foo');
