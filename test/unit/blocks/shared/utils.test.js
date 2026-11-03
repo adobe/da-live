@@ -13,6 +13,8 @@ import {
   getSidekickConfig,
   sanitizeName,
   fetchDaConfigs,
+  canEditOrgConfig,
+  getConfigPermissions,
   getAuthToken,
   isValidHref,
   livePreviewLogin,
@@ -820,6 +822,127 @@ describe('fetchDaConfigs', () => {
 
     const [orgConfig] = await Promise.all(fetchDaConfigs({ org: 'cfgfail' }));
     expect(orgConfig).to.deep.equal({ error: 'Error loading /cfgfail', status: 500 });
+  });
+
+  it('exposes the x-da-actions permissions without changing the config', async () => {
+    window.fetch = async (url) => {
+      if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+      return new Response(JSON.stringify({ data: [] }), {
+        status: 200,
+        headers: { 'X-da-actions': '/cfgperm=read,write' },
+      });
+    };
+
+    const [orgConfig] = await Promise.all(fetchDaConfigs({ org: 'cfgperm' }));
+    expect(getConfigPermissions(orgConfig)).to.deep.equal(['read', 'write']);
+    expect(orgConfig).to.deep.equal({ data: [] });
+  });
+
+  it('keeps the x-da-actions permissions on a failed config fetch', async () => {
+    window.fetch = async (url) => {
+      if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+      return new Response('', { status: 403, headers: { 'X-da-actions': '/cfgdenied=read' } });
+    };
+
+    const [orgConfig] = await Promise.all(fetchDaConfigs({ org: 'cfgdenied' }));
+    expect(getConfigPermissions(orgConfig)).to.deep.equal(['read']);
+    expect(orgConfig).to.deep.equal({ error: 'Error loading /cfgdenied', status: 403 });
+  });
+
+  it('does not throw when the same config object is returned twice', async () => {
+    const shared = { data: [] };
+    window.fetch = async (url) => {
+      if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+      const resp = new Response('', { status: 200, headers: { 'X-da-actions': '/x=read' } });
+      resp.json = async () => shared;
+      return resp;
+    };
+
+    const [first] = await Promise.all(fetchDaConfigs({ org: 'cfgshared1' }));
+    const [second] = await Promise.all(fetchDaConfigs({ org: 'cfgshared2' }));
+    expect(first).to.equal(shared);
+    expect(getConfigPermissions(second)).to.deep.equal(['read']);
+  });
+
+  it('leaves the org config permissions sheet untouched', async () => {
+    const sheet = { data: [{ path: 'CONFIG', groups: 'a@b.c', actions: 'write' }] };
+    window.fetch = async (url) => {
+      if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+      return new Response(JSON.stringify({ ':names': ['permissions'], ':type': 'multi-sheet', permissions: sheet }), {
+        status: 200,
+        headers: { 'X-da-actions': '/x=read,write' },
+      });
+    };
+
+    const [orgConfig] = await Promise.all(fetchDaConfigs({ org: 'cfgsheet' }));
+    expect(orgConfig.permissions).to.deep.equal(sheet);
+    expect(JSON.parse(JSON.stringify(orgConfig)).permissions).to.deep.equal(sheet);
+    expect(getConfigPermissions(orgConfig)).to.deep.equal(['read', 'write']);
+  });
+});
+
+describe('canEditOrgConfig', () => {
+  let savedFetch;
+  beforeEach(() => {
+    savedFetch = window.fetch;
+    window.localStorage.removeItem('nx-ims');
+  });
+  afterEach(() => { window.fetch = savedFetch; });
+
+  const mockActions = (actions) => {
+    window.fetch = async (url) => {
+      if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+      return new Response(JSON.stringify({ data: [] }), {
+        status: 200,
+        headers: { 'X-da-actions': `/x=${actions}` },
+      });
+    };
+  };
+
+  it('is true when the org config grants write', async () => {
+    mockActions('read,write');
+    expect(await canEditOrgConfig('settings-write')).to.be.true;
+  });
+
+  it('is false when the org config grants only read', async () => {
+    mockActions('read');
+    expect(await canEditOrgConfig('settings-read')).to.be.false;
+  });
+
+  it('is false when the config fetch fails without an x-da-actions header', async () => {
+    window.fetch = async (url) => {
+      if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+      return new Response('', { status: 500 });
+    };
+    expect(await canEditOrgConfig('settings-500')).to.be.false;
+    window.fetch = async (url) => {
+      if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+      return new Response('', { status: 403 });
+    };
+    expect(await canEditOrgConfig('settings-403')).to.be.false;
+  });
+
+  it('trusts the header on 404 (org without a config yet)', async () => {
+    window.fetch = async (url) => {
+      if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+      return new Response('', { status: 404, headers: { 'X-da-actions': '/x=read,write' } });
+    };
+    expect(await canEditOrgConfig('settings-404')).to.be.true;
+  });
+
+  it('is false when the config fetch throws', async () => {
+    window.fetch = async () => { throw new Error('offline'); };
+    expect(await canEditOrgConfig('settings-throw')).to.be.false;
+  });
+
+  it('is false without an org, without fetching', async () => {
+    let called = false;
+    window.fetch = async () => {
+      called = true;
+      return new Response('');
+    };
+    expect(await canEditOrgConfig('')).to.be.false;
+    expect(called).to.be.false;
   });
 });
 

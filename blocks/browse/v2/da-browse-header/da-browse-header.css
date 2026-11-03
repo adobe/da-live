@@ -87,7 +87,7 @@
   position: relative;
 }
 
-.browse-settings-link {
+.browse-settings-trigger {
   position: relative;
   margin-inline-start: var(--s2-spacing-100, 8px);
   padding-inline: var(--s2-spacing-100, 8px);
@@ -132,7 +132,7 @@
   padding-inline-start: var(--s2-spacing-100, 8px);
 }
 
-.browse-settings-link::before,
+.browse-settings-trigger::before,
 ::slotted(da-new[slot="actions"])::before {
   content: "";
   position: absolute;
@@ -143,7 +143,7 @@
   transform: translateY(-50%);
 }
 
-.browse-settings-link::before {
+.browse-settings-trigger::before {
   inset-inline-start: calc(-1 * var(--s2-spacing-100, 8px));
 }
 
