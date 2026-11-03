@@ -2,6 +2,7 @@
     eslint-disable no-underscore-dangle
 */
 import { expect } from '@esm-bundle/chai';
+import { render } from 'da-lit';
 
 // This is needed to make a dynamic import work that is indirectly referenced
 // from da-browse.js
@@ -624,6 +625,38 @@ describe('DaBrowse Component', () => {
       daBrowseComp.details = { owner: 'canvas-org2', org: 'canvas-org2', site: 'canvas-site2', fullpath: '/canvas-org2/canvas-site2/page' };
       const editor = await daBrowseComp.getEditor(true);
       expect(editor).to.equal('https://custom-editor');
+    });
+  });
+
+  describe('settings menu', () => {
+    const renderMenu = () => {
+      const div = document.createElement('div');
+      render(daBrowseComp.renderSettingsMenu(), div);
+      return div.querySelector('nx-menu');
+    };
+    const labels = (menu) => menu.items.map(({ label }) => label);
+
+    it('offers site configuration and permissions when the user can edit the org config', () => {
+      daBrowseComp.details = { org: 'org', site: 'site', fullpath: '/org/site' };
+      daBrowseComp._canEditOrgConfig = true;
+      const menu = renderMenu();
+      expect(labels(menu)).to.deep.equal(['Configuration', 'Permissions']);
+      const trigger = menu.querySelector('button.da-breadcrumb-config[slot="trigger"]');
+      expect(trigger.getAttribute('aria-label')).to.equal('Settings');
+      expect(trigger.textContent.trim()).to.equal('');
+      expect(trigger.querySelector('use[href="/img/icons/s2-icon-settings-20-n.svg#icon"]')).not.to.be.null;
+    });
+
+    it('hides site permissions when the user cannot edit the org config', () => {
+      daBrowseComp.details = { org: 'org', site: 'site', fullpath: '/org/site' };
+      daBrowseComp._canEditOrgConfig = false;
+      expect(labels(renderMenu())).to.deep.equal(['Configuration']);
+    });
+
+    it('hides org permissions when the user cannot edit the org config', () => {
+      daBrowseComp.details = { org: 'org', fullpath: '/org' };
+      daBrowseComp._canEditOrgConfig = false;
+      expect(labels(renderMenu())).to.deep.equal(['Configuration']);
     });
   });
 });
