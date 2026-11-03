@@ -5,6 +5,7 @@ import { getBrowseSettings, updateBrowseSettings } from '../browse/v2/shared/set
 import { getBrowseHref, getFileHref, loadFiles } from './utils.js';
 import '../shared/da-file-item/da-file-item.js';
 import renderFileTable from './file-table.js';
+import { LIST_COLUMN_KEYS } from './constants.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const nx = await import(`${getNx2()}/scripts/nx.js`);
@@ -21,7 +22,6 @@ const VIEW_ITEMS = [
 ];
 const PAGE_SIZE = 6;
 const MAX_FILES = 18;
-const LIST_COLUMNS = ['name', 'folder', 'modified', 'modifiedBy', 'actions'];
 
 function icon(name) {
   return html`<svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-${name}-20-n.svg#icon"></use></svg>`;
@@ -149,7 +149,7 @@ export class DaLanding extends LitElement {
     const folder = item.path.slice(0, item.path.lastIndexOf('/'));
     const editor = this._editor || '/edit#';
     return html`<da-file-item class="file-row" role="row"
-      .columns=${LIST_COLUMNS} .name=${item.name} .path=${item.path} .ext=${item.ext}
+      .columns=${LIST_COLUMN_KEYS} .name=${item.name} .path=${item.path} .ext=${item.ext}
       .date=${item.lastModified} .editor=${editor} .href=${getFileHref({ item, editor })}
       .folder=${{ label: folder.slice(this.path.length) || '/', href: getBrowseHref({ path: folder }) }}
       .size=${this.getAttribute('data-ui-size') || 's'}

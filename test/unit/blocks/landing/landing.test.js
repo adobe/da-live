@@ -330,7 +330,7 @@ describe('landing Content section', () => {
     const rowSheet = new CSSStyleSheet();
     await rowSheet.replace(await (await fetch('/blocks/shared/da-file-item/da-file-item.css')).text());
     row.shadowRoot.adoptedStyleSheets = [...row.shadowRoot.adoptedStyleSheets, rowSheet];
-    for (const width of [1200, 360]) {
+    for (const width of [1200, 900, 360]) {
       el.style.width = `${width}px`;
       for (const size of ['s', 'm']) {
         el.setAttribute('data-ui-size', size);
@@ -349,6 +349,7 @@ describe('landing Content section', () => {
         expect(row.size).to.equal(size);
         expect(getComputedStyle(row.shadowRoot.querySelector('[data-column="modified"]')).fontSize)
           .to.equal(size === 'm' ? '16px' : '14px');
+        expect(cells[2].scrollWidth).to.be.at.most(cells[2].clientWidth + 1);
         expect(row.shadowRoot.querySelector('button[aria-label="More info"]').classList.contains('nx-btn-lg')).to.equal(size === 'm');
         if (width === 360) {
           const scroll = el.shadowRoot.querySelector('.file-table-scroll');

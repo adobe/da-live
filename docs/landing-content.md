@@ -22,6 +22,9 @@ Favorite uses browser-local `da-favorites` entries for the selected site root.
 It displays at most six cards or list rows without deleting saved entries.
 The list reuses `da-file-item` rows with Name, Folder, Modified at, Modified by
 and information/favorite controls. Modifier names include the standard user icon.
+One landing column definition supplies header labels and row order.
+The table's minimum width follows its text-sized column minimums, not card geometry.
+It scrolls horizontally only when those columns no longer fit the shared panel.
 Both views share the same six-to-eighteen expansion.
 Folder links preserve Browse navigation and site-relative folder context.
 Changing between cards and rows keeps the selected filter and visible files.

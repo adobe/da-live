@@ -1,13 +1,14 @@
-import { html, repeat } from 'da-lit';
+import { html, nothing, repeat } from 'da-lit';
+import { LIST_COLUMNS } from './constants.js';
 
 export default function renderFileTable({ files, label, renderRow }) {
   return html`<div class="file-table-scroll" role="region" aria-label="Files list" tabindex="0">
     <div class="file-table" role="table" aria-label=${label}>
       <div role="rowgroup">
         <div class="file-table-header" role="row">
-          <div role="columnheader">Name</div><div role="columnheader">Folder</div>
-          <div role="columnheader">Modified at</div><div role="columnheader">Modified by</div>
-          <div role="columnheader"><span class="sr-only">File information and Favorite</span></div>
+          ${LIST_COLUMNS.map(({ label: title, hideLabel }) => html`<div role="columnheader">
+            <span class=${hideLabel ? 'sr-only' : nothing}>${title}</span>
+          </div>`)}
         </div>
       </div>
       <div role="rowgroup">${repeat(files, (item) => item.path, renderRow)}</div>

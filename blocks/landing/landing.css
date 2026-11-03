@@ -126,12 +126,12 @@ h2 {
 }
 
 .file-table {
-  --da-list-columns: minmax(0, 1.7fr) repeat(3, minmax(0, 1fr)) 96px;
+  --da-list-columns: minmax(12em, 1.7fr) minmax(8em, 1fr) minmax(12em, 1fr) minmax(10em, 1fr) var(--da-list-action-width);
   --da-list-action-width: 96px;
   --da-list-min-height: 56px;
 
   width: 100%;
-  min-width: calc(6 * var(--da-card-width) + 5 * var(--s2-spacing-200));
+  min-width: min-content;
   text-align: start;
   font-size: inherit;
 }
