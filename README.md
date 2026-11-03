@@ -1,6 +1,92 @@
 # Edge Delivery Authoring
 This repo provides the author experience for https://da.live.
 
+## Deployment configuration
+
+`scripts/deployment.js` is the single runtime override file. Its empty default
+export preserves Adobe's deployment. `scripts/config.js` synchronously merges
+overrides with defaults using native ES modules; no build or configuration fetch
+is required. This configures deployment locations, not URL routing: existing
+`branch--site--org` hostnames and document paths remain unchanged. For example:
+
+```js
+export default {
+  da: {
+    domain: 'author.example.com',
+    pageDomain: 'author-test.example.com',
+    owner: 'customer-org',
+    repo: 'customer-author',
+    services: {
+      admin: { prod: 'https://author-api.example.net' },
+    },
+  },
+  aem: {
+    previewHost: 'customer.page',
+    liveHost: 'customer.live',
+    reviewHost: 'customer.reviews',
+    adminOrigin: 'https://admin.customer.page',
+    apiOrigin: 'https://api.customer.live',
+    toolsOrigin: 'https://tools.customer.live',
+    adminOrigins: [],
+    legacyHosts: [],
+  },
+  nx: {
+    owner: 'customer-org',
+    repo: 'customer-nx',
+    // Optional fixed runtime directories; no placeholders.
+    url: 'https://assets.example.net/nx',
+    urlV2: 'https://assets.example.net/nx2',
+  },
+  ims: { clientId: 'customer-authoring' },
+};
+```
+
+DA admin, content, collab and preview endpoints default to the corresponding
+subdomains of `da.domain`, with `stage-` prefixes for stage. Local endpoints remain
+unchanged. `da.services` accepts `admin`, `content`, `collab`, `preview` and `etc`,
+each with individual environment overrides; omitted values keep their defaults.
+The `etc` default remains `https://da-etc.adobeaem.workers.dev` (prod) and
+`http://localhost:8787` (local). Preview values are hostname suffixes (with an
+optional port), collab values are WebSocket URLs, and other service values are
+origins. Use origins without paths, queries, fragments or trailing slashes.
+Independent application and service domains are supported; they need not share
+a suffix.
+
+The alternate app at `da.pageDomain` uses independently derived endpoints,
+overridable through `da.pageServices` with the same shape. Primary service
+overrides do not affect the alternate app. Existing query/localStorage selectors
+(`da-admin`, `da-content`, `da-collab`, `da-live-preview`, `da-etc`) still select
+configured environments, never arbitrary endpoint URLs; `reset` clears them.
+
+AEM content suffixes are independent of admin, API and tools origins. Adobe
+defaults retain `admin.hlx.page` and legacy `hlx.page`/`hlx.live` recognition.
+`aem.adminOrigins` lists additional trusted AEM admin origins (default:
+`https://admin.aem.live`); `aem.legacyHosts` lists additional content suffixes.
+These arrays can be replaced with empty arrays for an isolated deployment.
+Configured service origins form the bearer-token allowlist; do not point them
+at untrusted servers.
+
+`da.owner`/`da.repo` identify this app's conventional branch previews for
+preview-message validation. Additional authoring origins can be listed explicitly
+in `da.previewOrigins`; only trust origins wholly controlled by the deployment.
+
+`nx.owner`/`nx.repo` select the NX repository independently. Without fixed URLs,
+existing CDN, branch and localhost behavior is retained. `nx.url` and `nx.urlV2`
+optionally select fixed V1/V2 runtime directories, without trailing slashes,
+queries or fragments. They do not interpolate branch names. If only `nx.url` is
+supplied, V2 appends `2`; supply `nx.urlV2` when the directories differ.
+`?nx=local` still overrides both.
+
+Configure NX and remote services separately; this file does not change their
+settings, DNS, TLS, CORS, cookies or authentication. The public IMS client ID
+must be registered for the chosen app domains; providers and scopes are unchanged.
+Arbitrary site/proxy URL templates, path-mounted routes and static single-site
+domain parsing are outside this configuration-only change.
+
+Keep deployment overrides when syncing upstream. This browser-visible file must
+never contain credentials or secrets. `fstab.yaml` and `tools/sidekick/config.json`
+are separate static consumers and are **not** rewritten by runtime configuration.
+
 ## Developing
 ### Run
 1. Clone this repo to your computer.

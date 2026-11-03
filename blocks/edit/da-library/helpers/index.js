@@ -1,8 +1,7 @@
 import { daFetch, getFirstSheet, getSheetByName } from '../../../shared/utils.js';
 import { getMetadata } from '../../utils/helpers.js';
 import { parseDom, aemToContentUrl, daFetchLibrary } from './helpers.js';
-
-const AEM_ORIGIN = ['hlx.page', 'hlx.live', 'aem.page', 'aem.live'];
+import { isAemHost } from '../../../../scripts/config.js';
 
 function isHeading(element) {
   return ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].some((name) => element?.nodeName === name);
@@ -11,7 +10,6 @@ function isHeading(element) {
 function decorateImages(element, path) {
   if (!element || !path) return;
   try {
-    // eslint-disable-next-line no-unused-vars
     const url = new URL(path);
     element.querySelectorAll('img').forEach((img) => {
       if (img.getAttribute('src').startsWith('./')) {
@@ -76,8 +74,7 @@ function getBlockTableHtml(block) {
 
 function isAemHosted(path) {
   try {
-    const { origin } = new URL(path);
-    return AEM_ORIGIN.some((aemOrigin) => origin.endsWith(aemOrigin));
+    return isAemHost(new URL(path).hostname);
   } catch {
     return false;
   }

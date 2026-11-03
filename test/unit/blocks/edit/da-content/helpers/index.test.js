@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import config, { createConfig } from '../../../../../../scripts/config.js';
 
 // Setup Nx
 const { setNx } = await import('../../../../../../scripts/utils.js');
@@ -27,6 +28,24 @@ function pingSafe(respond) {
 }
 
 describe('UE URLs', () => {
+  it('uses configured suffixes without dropping document query or fragment', async () => {
+    const original = { ...config };
+    try {
+      Object.assign(config, createConfig({
+        da: { domain: 'author.example', pageDomain: 'author-test.example' },
+        aem: { liveHost: 'customer.live', previewHost: 'customer.page' },
+      }));
+      const { getUeUrl, getQeUrl } = await import('../../../../../../blocks/edit/da-content/helpers/index.js');
+      const input = 'https://main--site--org.customer.live/folder/index?foo=bar#part';
+      expect(await getUeUrl({ value: '/@customer/' }, input))
+        .to.equal('https://experience.adobe.com/#/@customer/aem/editor/canvas/main--site--org.ue.author.example/folder/index?foo=bar#part');
+      expect(await getQeUrl(input))
+        .to.equal('https://main--site--org.customer.page/folder/?foo=bar&quick-edit=on#part');
+    } finally {
+      Object.assign(config, original);
+    }
+  });
+
   it('Supports single sheet configs', async () => {
     const mockFetch = pingSafe(async () => ({ ok: true, json: async () => (SINGLE_SHEET) }));
     const orgFetch = window.fetch;
