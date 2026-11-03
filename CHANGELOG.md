@@ -1,3 +1,10 @@
+# [1.18.0](https://github.com/adobe/da-live/compare/v1.17.2...v1.18.0) (2026-11-03)
+
+
+### Features
+
+* **chat:** expose turn completion to extensions ([#1512](https://github.com/adobe/da-live/issues/1512)) ([b632239](https://github.com/adobe/da-live/commit/b63223996f2f2c29e71f3fb256eae7cfe7d5de87))
+
 ## [1.17.2](https://github.com/adobe/da-live/compare/v1.17.1...v1.17.2) (2026-11-03)
 
 
