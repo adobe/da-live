@@ -28,8 +28,6 @@ before(async () => {
   await sendKeys({ press: 'Shift' });
 });
 
-// Assert on identity rather than objects: the runner cannot serialize a failed
-// assertion whose actual value is the sheet or a DOM element, and hangs instead.
 describe('sheet keyboard access', () => {
   let before;
   let after;
