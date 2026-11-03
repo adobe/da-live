@@ -360,6 +360,12 @@ export async function checkLockdownImages(owner) {
   }
 }
 
+const configPermissions = new WeakMap();
+
+export function getConfigPermissions(config) {
+  return config && typeof config === 'object' ? configPermissions.get(config) : undefined;
+}
+
 /**
  * Fetches org and (optionally) site configs, caching the in-flight/resolved
  * promises by path so repeated calls for the same org/site reuse one request
@@ -377,8 +383,12 @@ export const fetchDaConfigs = (() => {
     const { config: configApi } = await getNx2Api();
     const resp = await configApi.get({ org, site });
     const pathname = site ? `/${org}/${site}` : `/${org}`;
-    if (!resp.ok) return { error: `Error loading ${pathname}`, status: resp.status };
-    return resp.json();
+    const result = resp.ok
+      ? await resp.json()
+      : { error: `Error loading ${pathname}`, status: resp.status };
+    // Not on the config itself: org configs have a `permissions` sheet.
+    if (result && typeof result === 'object') configPermissions.set(result, resp.permissions);
+    return result;
   };
 
   const cacheConfig = (key, org, site) => {
@@ -413,6 +423,12 @@ export const fetchDaConfigs = (() => {
     return configs;
   };
 })();
+
+export async function canEditOrgConfig(org) {
+  const config = await fetchDaConfigs({ org })[0].catch(() => null);
+  if (config?.error && config.status !== 404) return false;
+  return !!getConfigPermissions(config)?.includes('write');
+}
 
 let renderingVersion = 2;
 let renderingVersionRequest;
