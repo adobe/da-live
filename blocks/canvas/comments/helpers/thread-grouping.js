@@ -1,10 +1,10 @@
-export function computeCounts(store) {
+export function computeCounts(store, attachedIds = null) {
   let active = 0;
   let resolved = 0;
   store.forEach((c) => {
     if (c.threadId != null) return;
     if (c.resolved) resolved += 1;
-    else active += 1;
+    else if (attachedIds == null || attachedIds.has(c.id)) active += 1;
   });
   return { active, resolved };
 }
