@@ -27,15 +27,17 @@ describe('permissions utils', () => {
 
   describe('pageRulePath', () => {
     it('builds a page rule path without a wildcard', () => {
-      expect(pageRulePath('s', 'blog/post')).to.equal('/s/blog/post');
+      expect(pageRulePath('s', 'blog/post.html')).to.equal('/s/blog/post.html');
       expect(pageRulePath('s', 'redirects.json')).to.equal('/s/redirects.json');
     });
   });
 
   describe('mediaRulePath', () => {
     it('builds the rule path of the page media folder', () => {
+      expect(mediaRulePath('/s/promotions.html')).to.equal('/s/.promotions/ + **');
+      expect(mediaRulePath('/s/blog/post.html')).to.equal('/s/blog/.post/ + **');
+      expect(mediaRulePath('/s/about.us.html')).to.equal('/s/.about.us/ + **');
       expect(mediaRulePath('/s/promotions')).to.equal('/s/.promotions/ + **');
-      expect(mediaRulePath('/s/blog/post')).to.equal('/s/blog/.post/ + **');
     });
 
     it('returns null for files with an extension, which have no media folder', () => {
@@ -64,6 +66,11 @@ describe('permissions utils', () => {
 
     it('keeps the raw path for wildcard rules that are not folders', () => {
       expect(scopeLabel('/s/blog/**', 's')).to.equal('/s/blog/**');
+    });
+
+    it('keeps the raw path for rules ending in a slash', () => {
+      expect(scopeLabel('/s/foo/', 's')).to.equal('/s/foo/');
+      expect(scopeLabel('/s/CONFIG/', 's')).to.equal('/s/CONFIG/');
     });
 
     it('handles regex characters in site', () => {
@@ -158,8 +165,8 @@ describe('permissions utils', () => {
     });
 
     it('marks a pending page slot as a page', () => {
-      const slot = buildSlots([], 's', '/s/promotions').find((s) => s.path === '/s/promotions');
-      expect(slot).to.deep.include({ kind: 'page', label: 'promotions', pending: true });
+      const slot = buildSlots([], 's', '/s/promotions.html').find((s) => s.path === '/s/promotions.html');
+      expect(slot).to.deep.include({ kind: 'page', label: 'promotions.html', pending: true });
     });
 
     it('groups page rules as pages and their media folder rules as folders', () => {
@@ -367,6 +374,14 @@ describe('permissions utils', () => {
       });
     });
 
+    it('removes a member regardless of case', () => {
+      const cfg = makeMultiConfig();
+      cfg.permissions.data = [{ path: '/s/+**', groups: 'A@x.com, b@x.com', actions: 'write' }];
+      const { config, changed } = removeMember(cfg, '/s/+**', 'write', 'a@x.com');
+      expect(changed).to.be.true;
+      expect(config.permissions.data[0].groups).to.equal('b@x.com');
+    });
+
     it('is a no-op when the member is absent', () => {
       const { changed } = removeMember(makeMultiConfig(), '/s/+**', 'write', 'nobody@x.com');
       expect(changed).to.be.false;
@@ -377,38 +392,43 @@ describe('permissions utils', () => {
     function makeConfig(data = []) {
       return { ':names': ['permissions'], permissions: { total: data.length, limit: data.length, data } };
     }
-    const page = { path: '/s/promotions', kind: 'page' };
+    const pagePaths = scopePaths('/s/promotions.html', 's');
+    const add = (who) => (c, p) => addMembers(c, p, 'write', who);
+    const remove = (who) => (c, p) => removeMember(c, p, 'write', who);
 
     it('pairs a page with its media folder, and leaves other scopes alone', () => {
-      expect(scopePaths(page)).to.deep.equal(['/s/promotions', '/s/.promotions/ + **']);
-      expect(scopePaths({ path: '/s/redirects.json', kind: 'page' })).to.deep.equal(['/s/redirects.json']);
-      expect(scopePaths({ path: '/s/blog/ + **', kind: 'folder' })).to.deep.equal(['/s/blog/ + **']);
+      expect(pagePaths).to.deep.equal(['/s/promotions.html', '/s/.promotions/ + **']);
+      expect(scopePaths('/s/promotions', 's')).to.deep.equal(['/s/promotions', '/s/.promotions/ + **']);
+      expect(scopePaths('/s/redirects.json', 's')).to.deep.equal(['/s/redirects.json']);
+      expect(scopePaths('/s/blog/ + **', 's')).to.deep.equal(['/s/blog/ + **']);
+      expect(scopePaths('/s/foo/', 's')).to.deep.equal(['/s/foo/']);
+      expect(scopePaths('/s/CONFIG', 's')).to.deep.equal(['/s/CONFIG']);
     });
 
     it('adds a member to the page row and its media folder row', () => {
-      const { config, changed } = updateScope(makeConfig(), scopePaths(page), (c, p) => addMembers(c, p, 'write', ['legal@x.com']));
+      const { config, changed } = updateScope(makeConfig(), pagePaths, add(['legal@x.com']));
       expect(changed).to.be.true;
       expect(config.permissions.data).to.deep.equal([
-        { path: '/s/promotions', groups: 'legal@x.com', actions: 'write' },
+        { path: '/s/promotions.html', groups: 'legal@x.com', actions: 'write' },
         { path: '/s/.promotions/ + **', groups: 'legal@x.com', actions: 'write' },
       ]);
       expect(config.permissions.total).to.equal(2);
     });
 
     it('fills in a missing media folder row when the page row already has the member', () => {
-      const cfg = makeConfig([{ path: '/s/promotions', groups: 'legal@x.com', actions: 'write' }]);
-      const { config, changed } = updateScope(cfg, scopePaths(page), (c, p) => addMembers(c, p, 'write', ['legal@x.com']));
+      const cfg = makeConfig([{ path: '/s/promotions.html', groups: 'legal@x.com', actions: 'write' }]);
+      const { config, changed } = updateScope(cfg, pagePaths, add(['legal@x.com']));
       expect(changed).to.be.true;
-      expect(config.permissions.data.map((r) => r.path)).to.deep.equal(['/s/promotions', '/s/.promotions/ + **']);
+      expect(config.permissions.data.map((r) => r.path)).to.deep.equal(['/s/promotions.html', '/s/.promotions/ + **']);
     });
 
-    it('removing the last member deletes both rows', () => {
+    it('removes the member from both rows and keeps other members', () => {
       const cfg = makeConfig([
-        { path: '/s/promotions', groups: 'legal@x.com', actions: 'write' },
-        { path: '/s/.promotions/+**', groups: 'legal@x.com, img@x.com', actions: 'write' },
+        { path: '/s/promotions.html', groups: 'legal@x.com', actions: 'write' },
+        { path: '/s/.promotions/+**', groups: 'Legal@x.com, img@x.com', actions: 'write' },
         { path: '/s/ + **', groups: 'a@x.com', actions: 'write' },
       ]);
-      const { config, changed } = updateScope(cfg, scopePaths(page), (c, p) => removeMember(c, p, 'write', 'legal@x.com'));
+      const { config, changed } = updateScope(cfg, pagePaths, remove('legal@x.com'));
       expect(changed).to.be.true;
       expect(config.permissions.data).to.deep.equal([
         { path: '/s/.promotions/+**', groups: 'img@x.com', actions: 'write' },
@@ -418,16 +438,19 @@ describe('permissions utils', () => {
     });
 
     it('is unchanged when no row changes', () => {
-      const { changed } = updateScope(makeConfig(), scopePaths(page), (c, p) => removeMember(c, p, 'write', 'x@x.com'));
+      const { changed } = updateScope(makeConfig(), pagePaths, remove('x@x.com'));
       expect(changed).to.be.false;
     });
   });
 
   describe('parsePagePath', () => {
-    it('returns the page below the site, without .html', () => {
-      expect(parsePagePath('/promotions')).to.deep.equal({ page: 'promotions' });
-      expect(parsePagePath('  /blog/post.html ')).to.deep.equal({ page: 'blog/post' });
-      expect(parsePagePath('//blog//post')).to.deep.equal({ page: 'blog/post' });
+    it('returns the lowercased page below the site, as an .html file', () => {
+      expect(parsePagePath('/promotions')).to.deep.equal({ page: 'promotions.html' });
+      expect(parsePagePath('  /blog/post.html ')).to.deep.equal({ page: 'blog/post.html' });
+      expect(parsePagePath('//blog//post')).to.deep.equal({ page: 'blog/post.html' });
+      expect(parsePagePath('/About.HTML')).to.deep.equal({ page: 'about.html' });
+      expect(parsePagePath('/about.us.html')).to.deep.equal({ page: 'about.us.html' });
+      expect(parsePagePath('/CONFIG')).to.deep.equal({ page: 'config.html' });
     });
 
     it('keeps extensions other than .html', () => {
@@ -441,19 +464,18 @@ describe('permissions utils', () => {
     it('rejects an empty value and the site root', () => {
       expect(parsePagePath('  ')).to.deep.equal({ error: 'Enter a page path, e.g. /about.' });
       expect(parsePagePath('/')).to.deep.equal({ error: 'Enter a page below the site root, e.g. /about.' });
-      expect(parsePagePath('/.html')).to.deep.equal({ error: 'Enter a page below the site root, e.g. /about.' });
     });
 
     it('rejects a trailing slash', () => {
       expect(parsePagePath('/blog/')).to.deep.equal({ error: 'Page paths cannot end with /. Use Add folder for folders.' });
     });
 
-    it('rejects traversal and wildcard segments', () => {
-      const error = 'Page paths cannot contain traversal or wildcard segments.';
-      expect(parsePagePath('/blog/../about')).to.deep.equal({ error });
-      expect(parsePagePath('/./about')).to.deep.equal({ error });
-      expect(parsePagePath('/blog/*')).to.deep.equal({ error });
-      expect(parsePagePath('/blog/post*')).to.deep.equal({ error });
+    it('rejects names DA pages cannot have', () => {
+      const error = 'Page paths can only use letters, numbers, -, _ and dots, and no part can start with a dot.';
+      ['/blog/../about', '/./about', '/blog/*', '/blog/post*', '/my page', '/C O N F I G', '/a?b', '/a#b',
+        '/a%20b', '/café', '/.html', '/blog/.html', '/.promotions'].forEach((value) => {
+        expect(parsePagePath(value), value).to.deep.equal({ error });
+      });
     });
   });
 
