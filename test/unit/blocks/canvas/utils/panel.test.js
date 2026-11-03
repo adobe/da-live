@@ -1,4 +1,10 @@
 import { expect } from '@esm-bundle/chai';
+import { stub } from 'sinon';
+import {
+  readPinnedToolPanelViews,
+  persistPinnedToolPanelViews,
+  TOOL_PANEL_PINNED_VIEWS_KEY,
+} from '../../../../../blocks/canvas/utils/panel.js';
 
 const SESSION_KEY = 'nx-tool-panel-active-view';
 let persistToolPanelView;
@@ -32,6 +38,36 @@ describe('persistToolPanelView', () => {
   it('writes the view id to session storage', () => {
     persistToolPanelView('blocks');
     expect(sessionStorage.getItem(SESSION_KEY)).to.equal('blocks');
+  });
+});
+
+describe('pinned tool panel preferences', () => {
+  afterEach(() => {
+    sessionStorage.removeItem(TOOL_PANEL_PINNED_VIEWS_KEY);
+  });
+
+  it('restores pins in order and removes invalid or duplicate ids', () => {
+    persistPinnedToolPanelViews(['blocks', null, 'files', 'blocks', '', 3]);
+    expect(readPinnedToolPanelViews()).to.deep.equal(['blocks', 'files']);
+  });
+
+  it('falls back to no pins for malformed or non-array stored preferences', () => {
+    for (const value of ['invalid json', '{}', 'null']) {
+      sessionStorage.setItem(TOOL_PANEL_PINNED_VIEWS_KEY, value);
+      expect(readPinnedToolPanelViews()).to.deep.equal([]);
+    }
+  });
+
+  it('continues working when session storage is blocked', () => {
+    const get = stub(Storage.prototype, 'getItem').throws(new Error('blocked'));
+    const set = stub(Storage.prototype, 'setItem').throws(new Error('blocked'));
+    try {
+      expect(readPinnedToolPanelViews()).to.deep.equal([]);
+      expect(() => persistPinnedToolPanelViews(['blocks'])).not.to.throw();
+    } finally {
+      get.restore();
+      set.restore();
+    }
   });
 });
 

@@ -1,6 +1,7 @@
 import { getNxEWFlags } from '../../../scripts/utils.js';
 
 export const TOOL_PANEL_ACTIVE_VIEW_KEY = 'nx-tool-panel-active-view';
+export const TOOL_PANEL_PINNED_VIEWS_KEY = 'nx-tool-panel-pinned-views';
 
 const CONFIG_FLAG_KEY = 'ew.canvasDefaultPanel';
 
@@ -17,6 +18,21 @@ export function readPersistedToolPanelView() {
 export function persistToolPanelView(viewId) {
   try {
     if (viewId) sessionStorage.setItem(TOOL_PANEL_ACTIVE_VIEW_KEY, viewId);
+  } catch { /* ignore if browser disallows session storage */ }
+}
+
+export function readPinnedToolPanelViews() {
+  try {
+    const ids = JSON.parse(sessionStorage.getItem(TOOL_PANEL_PINNED_VIEWS_KEY));
+    return Array.isArray(ids) ? [...new Set(ids.filter((id) => typeof id === 'string' && id))] : [];
+  } catch {
+    return [];
+  }
+}
+
+export function persistPinnedToolPanelViews(ids) {
+  try {
+    sessionStorage.setItem(TOOL_PANEL_PINNED_VIEWS_KEY, JSON.stringify(ids));
   } catch { /* ignore if browser disallows session storage */ }
 }
 

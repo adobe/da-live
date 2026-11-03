@@ -4,6 +4,8 @@ import { getCommentsBridge } from '../editor-utils/comments-bridge.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import {
   persistToolPanelView,
+  persistPinnedToolPanelViews,
+  readPinnedToolPanelViews,
   resolveInitialToolPanelView,
 } from '../utils/panel.js';
 
@@ -21,6 +23,16 @@ const [buttons, spinner, style] = await Promise.all([
 
 const CLOSE_ICON_SRC = '/img/icons/s2-icon-splitright-20-n.svg';
 const OPEN_IN_ICON_URL = '/img/icons/s2-icon-openin-20-n.svg';
+const FULLSCREEN_ICON_SRC = '/img/icons/s2-icon-fullscreen-20-n.svg';
+const PIN_ICON_SRC = '/img/icons/s2-icon-pinon-20-n.svg';
+const UNPIN_ICON_SRC = '/img/icons/s2-icon-pinoff-20-n.svg';
+
+const pinIcon = (pinned = false) => html`
+  <svg aria-hidden="true" class="icon" viewBox="0 0 20 20">
+    <use href="${pinned ? UNPIN_ICON_SRC : PIN_ICON_SRC}#icon"></use>
+  </svg>`;
+
+const canPin = (view) => view && !['window', 'fullsize-dialog', 'modal'].includes(view.experience);
 
 class EwToolPanel extends LitElement {
   static properties = {
@@ -30,11 +42,17 @@ class EwToolPanel extends LitElement {
     site: { type: String },
     contextKey: { type: String },
     _fullsizeDialogViewId: { state: true },
+    _pinnedIds: { state: true },
   };
 
   _loaded = {};
 
   _loadedKeys = {};
+
+  constructor() {
+    super();
+    this._pinnedIds = readPinnedToolPanelViews();
+  }
 
   connectedCallback() {
     super.connectedCallback();
@@ -83,7 +101,10 @@ class EwToolPanel extends LitElement {
     if (!this.views?.length) return [];
     const items = [];
     let lastSection;
-    for (const v of this.views) {
+    const unpinned = this.views.filter(
+      (view) => !this._pinnedIds.includes(view.id) || !canPin(view),
+    );
+    for (const v of unpinned) {
       if (v.section && v.section !== lastSection) {
         items.push({ section: v.section });
         lastSection = v.section;
@@ -103,6 +124,22 @@ class EwToolPanel extends LitElement {
       });
     }
     return items;
+  }
+
+  async _togglePin(id) {
+    const view = this.views?.find((v) => v.id === id);
+    if (!canPin(view)) return;
+    const pinned = this._pinnedIds.includes(id);
+    this._pinnedIds = pinned
+      ? this._pinnedIds.filter((value) => value !== id)
+      : [...this._pinnedIds, id];
+    persistPinnedToolPanelViews(this._pinnedIds);
+    await this.updateComplete;
+    const target = pinned
+      ? this.shadowRoot.querySelector('.tool-panel-pin, .tool-panel-tab[aria-pressed="true"]')
+      : [...this.shadowRoot.querySelectorAll('.tool-panel-tab')]
+        .find((button) => button.dataset.viewId === id);
+    target?.focus();
   }
 
   _pruneLoadedViews() {
@@ -275,24 +312,49 @@ class EwToolPanel extends LitElement {
     const dialogTitle = this._fullsizeDialogView?.label ?? 'Extension';
     const dialogIcon = this._fullsizeDialogView?.icon;
     const activeView = this.views?.find((v) => v.id === this.activeId);
+    const activePinned = canPin(activeView) && this._pinnedIds.includes(this.activeId);
+    const pinnedViews = this._pinnedIds
+      .map((id) => this.views?.find((v) => v.id === id))
+      .filter(canPin);
 
     return html`
       <div class="tool-panel-header">
-        <nx-picker
-          .items=${items}
-          .value=${this.activeId}
-          placement="below-start"
-          @change=${(e) => this.showPanel(e.detail.value)}
-        ></nx-picker>
+        <div class="tool-panel-selector">
+          <nx-picker
+            .items=${items}
+            .value=${activePinned ? undefined : this.activeId}
+            placeholder="Panels"
+            placement="below-start"
+            @change=${(e) => this.showPanel(e.detail.value)}
+          ></nx-picker>
+        </div>
+        ${pinnedViews.length ? html`
+          <nav class="tool-panel-tabs" aria-label="Pinned panels">
+            ${pinnedViews.map((view) => html`
+              <div class="tool-panel-tab-item" data-active=${view.id === this.activeId}>
+                <button type="button" class="tool-panel-tab" data-view-id=${view.id}
+                  title=${view.getLabel?.() ?? view.label}
+                  aria-pressed=${view.id === this.activeId}
+                  @click=${() => this.showPanel(view.id)}>${view.getLabel?.() ?? view.label}</button>
+              </div>
+            `)}
+          </nav>
+        ` : nothing}
+        <div class="tool-panel-header-actions"></div>
         ${activeView?.openModal || activeView?.loadModal ? html`
           <button type="button" class="tool-panel-popout"
             aria-label=${`Open ${activeView.label} in dialog`}
             title=${`Open ${activeView.label} in dialog`}
             aria-haspopup="dialog" @click=${this._openPopout}>
-            <svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${OPEN_IN_ICON_URL}#icon"></use></svg>
+            <svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${FULLSCREEN_ICON_SRC}#icon"></use></svg>
           </button>
         ` : nothing}
-        <div class="tool-panel-header-actions"></div>
+        ${canPin(activeView) ? html`
+          <button type="button" class=${activePinned ? 'tool-panel-unpin' : 'tool-panel-pin'}
+            aria-label=${`${activePinned ? 'Unpin' : 'Pin'} ${activeView.label}`}
+            title=${`${activePinned ? 'Unpin' : 'Pin'} ${activeView.label}`}
+            @click=${() => this._togglePin(this.activeId)}>${pinIcon(activePinned)}</button>
+        ` : nothing}
         <button type="button" class="tool-panel-close" aria-label="Close panel" @click=${this._close}>
           <svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${CLOSE_ICON_SRC}#icon"></use></svg>
         </button>
