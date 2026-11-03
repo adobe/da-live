@@ -209,17 +209,17 @@ describe('ew-comments', () => {
     expect(commentsHintRule?.style.paddingTop).to.not.equal('');
   });
 
-  it('clears a selected image thread when its deleted image hides the thread', async () => {
-    let selected = 'image-thread';
-    const imageThread = {
-      id: 'image-thread',
+  it('clears a selected thread when its deleted anchor hides the thread', async () => {
+    let selected = 'text-thread';
+    const textThread = {
+      id: 'text-thread',
       threadId: null,
-      anchorType: 'image',
+      anchorType: 'text',
       resolved: false,
     };
     const ctrl = makeCtrl({
       selectedThreadId: selected,
-      getComment(id) { return id === 'image-thread' ? imageThread : null; },
+      getComment(id) { return id === 'text-thread' ? textThread : null; },
       setSelectedThread(id) { selected = id; this.selectedThreadId = id; },
     });
 
