@@ -1,3 +1,10 @@
+## [1.17.1](https://github.com/adobe/da-live/compare/v1.17.0...v1.17.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* shared chat availability check ([#1515](https://github.com/adobe/da-live/issues/1515)) ([64fdeda](https://github.com/adobe/da-live/commit/64fdeda2ff821de94063cc3173d028b8c19bb6ad))
+
 # [1.17.0](https://github.com/adobe/da-live/compare/v1.16.1...v1.17.0) (2026-10-29)
 
 
