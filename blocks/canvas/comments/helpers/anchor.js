@@ -69,11 +69,18 @@ function encodeStructural(state, { from, to, anchorType }) {
   };
 }
 
-function resolveNodeAnchorRange(state, from, anchorType) {
+function blockLabel(state, tablePos) {
+  const name = getTableInfo(state, tablePos + 3)?.tableName?.trim();
+  return name ? `block: ${name}` : '';
+}
+
+function resolveNodeAnchorRange(state, from, anchor) {
   if (!state.doc) return null;
-  const typeName = anchorType === 'image' ? 'image' : 'table';
+  const typeName = anchor.anchorType === 'image' ? 'image' : 'table';
   const node = state.doc.nodeAt(from);
   if (node?.type.name !== typeName) return null;
+  if (typeName === 'table'
+    && blockLabel(state, from).toLowerCase() !== (anchor.anchorText ?? '').toLowerCase()) return null;
   return { from, to: from + node.nodeSize };
 }
 
@@ -110,7 +117,7 @@ function decodeStructural(state, anchor) {
   if (anchor.anchorType === 'image' || anchor.anchorType === 'table') {
     const nodeFrom = located.start + structural.offset;
     if (nodeFrom < 0 || nodeFrom + structural.length > state.doc.content.size) return null;
-    return resolveNodeAnchorRange(state, nodeFrom, anchor.anchorType);
+    return resolveNodeAnchorRange(state, nodeFrom, anchor);
   }
   const docEnd = state.doc.content.size;
   const from = pmPosAtTextOffset(state.doc, located.start, docEnd, structural.offset);
@@ -165,7 +172,7 @@ export function resolveAnchor({ anchor, state }) {
     const to = relativePositionToAbsolutePosition(yDoc, type, relTo, mapping);
     if (from != null && to != null && from < to) {
       const relResult = anchor.anchorType === 'image' || anchor.anchorType === 'table'
-        ? resolveNodeAnchorRange(state, from, anchor.anchorType)
+        ? resolveNodeAnchorRange(state, from, anchor)
         : { from, to };
       if (relResult) {
         if (relPosMatchesHash(state, from, anchor)) return { range: relResult, source: 'relpos' };
@@ -191,13 +198,11 @@ function nodeAnchorData(state, node, from, to) {
     return { from, to, anchorType: 'image', anchorText: '' };
   }
   if (node.type.name === 'table') {
-    const tableInfo = getTableInfo(state, from + 3);
-    const name = tableInfo?.tableName?.trim();
     return {
       from,
       to,
       anchorType: 'table',
-      anchorText: name ? `block: ${name}` : '',
+      anchorText: blockLabel(state, from),
     };
   }
   return null;
