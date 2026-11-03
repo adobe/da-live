@@ -66,16 +66,6 @@ export async function checkSiteChoices({ sites, source, signal, inaccessibleSite
   };
 }
 
-export function getCreateSiteHref({ org, href = window.location.href }) {
-  const url = new URL(href);
-  url.pathname = '/start';
-  url.searchParams.delete('browse');
-  url.searchParams.delete('site');
-  url.searchParams.set('org', org);
-  url.hash = '';
-  return url.href;
-}
-
 export async function addExistingSite({ value, source, signal }) {
   const accessible = await checkSiteAccess({ value, source, signal });
   if (!accessible) throw new Error('You do not have access to this site. Ask its administrator for access.');

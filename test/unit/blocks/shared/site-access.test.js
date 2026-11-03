@@ -1,6 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
-import { parseSubdomain, hasOrgAdminGrant, getCreateSiteHref, checkSiteChoices, addExistingSite } from '../../../../blocks/shared/site-access.js';
+import { parseSubdomain, hasOrgAdminGrant, checkSiteChoices, addExistingSite } from '../../../../blocks/shared/site-access.js';
+import { getCreateSiteHref } from '../../../../blocks/shared/site-selector.js';
 
 describe('shared site access', () => {
   afterEach(() => {

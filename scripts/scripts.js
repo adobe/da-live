@@ -84,22 +84,19 @@ const CONFIG = {
 if (nx2) {
   document.addEventListener('site-selector-ready', async ({ detail: { selector, signal } }) => {
     try {
-      const { connectSiteSelector } = await import('../blocks/shared/site-picker.js');
+      const { getCreateSiteHref } = await import('../blocks/shared/site-selector.js');
       if (!signal.aborted) {
         if (document.querySelector('.landing') || new URLSearchParams(window.location.search).has('landing')) {
           selector.heading = 'Your recent sites';
         }
         const isLanding = document.querySelector('.landing')
           || new URLSearchParams(window.location.search).get('landing') === 'true';
-        connectSiteSelector({
-          selector,
-          signal,
-          onSelect: isLanding ? ({ value }) => { window.location.hash = `/${value}`; } : undefined,
-        });
+        selector.getCreateSiteHref = getCreateSiteHref;
+        selector.onSelect = isLanding ? ({ value }) => { window.location.hash = `/${value}`; } : undefined;
       }
     } catch (error) {
       if (!signal.aborted) {
-        selector.error = `Could not load your sites: ${error.message}`;
+        selector.error = `Could not configure site creation: ${error.message}`;
         selector.addEventListener('site-retry', () => window.location.reload(), { once: true, signal });
       }
     }

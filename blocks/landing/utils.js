@@ -1,7 +1,7 @@
 import { getBrowseItemHref } from '../browse/v2/shared/navigation.js';
 import { iconPathForExt, isImageExt } from '../shared/icons.js';
 import { getHomeHref } from '../../scripts/utils.js';
-import { getCreateSiteHref as getSharedCreateSiteHref } from '../shared/site-access.js';
+import { getCreateSiteHref as getSharedCreateSiteHref } from '../shared/site-selector.js';
 
 export async function fetchFileModifier({ path, source }) {
   const response = await source.getMetadata(path);
