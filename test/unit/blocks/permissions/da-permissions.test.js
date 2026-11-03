@@ -879,6 +879,51 @@ describe('da-permissions', () => {
       expect(saved.permissions.data.map((r) => r.path)).to.deep.equal(['/s/ + **', '/s/promotions', '/s/.promotions/ + **']);
     });
 
+    it('Add page for a page that has a rule without .html opens that rule', async () => {
+      const body = structuredClone(SITE_S_CONFIG_BODY);
+      body.permissions.data.push({ path: '/s/promotions', groups: 'legal@x.com', actions: 'write' });
+      mockFetch({ configFor: () => body });
+      const el = await mount('myorg', 's');
+
+      await openPageDialog(el);
+      await submitPage(el, '/promotions');
+
+      const cards = el.shadowRoot.querySelector('da-permissions-cards');
+      expect(cards.adding).to.deep.equal({ path: '/s/promotions', level: 'read' });
+      expect(cards.slots.some((s) => s.path === '/s/promotions.html')).to.equal(false);
+    });
+
+    it('removing a page member removes the media folder rule too when the site changes mid-save', async () => {
+      const body = structuredClone(SITE_S_CONFIG_BODY);
+      body.permissions.data.push(
+        { path: '/s/foo.html', groups: 'legal@x.com', actions: 'write' },
+        { path: '/s/.foo/+**', groups: 'legal@x.com', actions: 'write' },
+      );
+      mockFetch({ configFor: () => body });
+      const el = await mount('myorg', 's');
+      let resolveGet;
+      const puts = [];
+      window.fetch = async (url, opts = {}) => {
+        if (opts.method === 'PUT') {
+          puts.push(opts);
+          return new Response('', { status: 200 });
+        }
+        if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+        return new Promise((resolve) => { resolveGet = resolve; });
+      };
+
+      el._onRemoveRequest({ detail: { path: '/s/foo.html', level: 'write', who: 'legal@x.com' } });
+      const pending = el._confirmRemoveNow();
+      await waitUntil(() => resolveGet);
+      el.site = 't';
+      await el.updateComplete;
+      resolveGet(new Response(JSON.stringify(body), { status: 200 }));
+      await pending;
+
+      const saved = JSON.parse(puts[0].body.get('config'));
+      expect(saved.permissions.data).to.deep.equal(SITE_S_CONFIG_BODY.permissions.data);
+    });
+
     it('removing the last member of a page deletes the page and media folder rules', async () => {
       const body = structuredClone(SITE_S_CONFIG_BODY);
       body.permissions.data.push(

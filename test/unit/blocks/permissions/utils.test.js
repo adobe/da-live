@@ -43,6 +43,10 @@ describe('permissions utils', () => {
     it('returns null for files with an extension, which have no media folder', () => {
       expect(mediaRulePath('/s/redirects.json')).to.equal(null);
     });
+
+    it('returns null for names starting with a dot', () => {
+      expect(mediaRulePath('/s/.about.html')).to.equal(null);
+    });
   });
 
   describe('scopeLabel', () => {
@@ -393,8 +397,6 @@ describe('permissions utils', () => {
       return { ':names': ['permissions'], permissions: { total: data.length, limit: data.length, data } };
     }
     const pagePaths = scopePaths('/s/promotions.html', 's');
-    const add = (who) => (c, p) => addMembers(c, p, 'write', who);
-    const remove = (who) => (c, p) => removeMember(c, p, 'write', who);
 
     it('pairs a page with its media folder, and leaves other scopes alone', () => {
       expect(pagePaths).to.deep.equal(['/s/promotions.html', '/s/.promotions/ + **']);
@@ -402,11 +404,12 @@ describe('permissions utils', () => {
       expect(scopePaths('/s/redirects.json', 's')).to.deep.equal(['/s/redirects.json']);
       expect(scopePaths('/s/blog/ + **', 's')).to.deep.equal(['/s/blog/ + **']);
       expect(scopePaths('/s/foo/', 's')).to.deep.equal(['/s/foo/']);
+      expect(scopePaths('/s/foo/ ', 's')).to.deep.equal(['/s/foo/ ']);
       expect(scopePaths('/s/CONFIG', 's')).to.deep.equal(['/s/CONFIG']);
     });
 
     it('adds a member to the page row and its media folder row', () => {
-      const { config, changed } = updateScope(makeConfig(), pagePaths, add(['legal@x.com']));
+      const { config, changed } = updateScope(makeConfig(), pagePaths, (c, p) => addMembers(c, p, 'write', ['legal@x.com']));
       expect(changed).to.be.true;
       expect(config.permissions.data).to.deep.equal([
         { path: '/s/promotions.html', groups: 'legal@x.com', actions: 'write' },
@@ -417,7 +420,7 @@ describe('permissions utils', () => {
 
     it('fills in a missing media folder row when the page row already has the member', () => {
       const cfg = makeConfig([{ path: '/s/promotions.html', groups: 'legal@x.com', actions: 'write' }]);
-      const { config, changed } = updateScope(cfg, pagePaths, add(['legal@x.com']));
+      const { config, changed } = updateScope(cfg, pagePaths, (c, p) => addMembers(c, p, 'write', ['legal@x.com']));
       expect(changed).to.be.true;
       expect(config.permissions.data.map((r) => r.path)).to.deep.equal(['/s/promotions.html', '/s/.promotions/ + **']);
     });
@@ -428,7 +431,7 @@ describe('permissions utils', () => {
         { path: '/s/.promotions/+**', groups: 'Legal@x.com, img@x.com', actions: 'write' },
         { path: '/s/ + **', groups: 'a@x.com', actions: 'write' },
       ]);
-      const { config, changed } = updateScope(cfg, pagePaths, remove('legal@x.com'));
+      const { config, changed } = updateScope(cfg, pagePaths, (c, p) => removeMember(c, p, 'write', 'legal@x.com'));
       expect(changed).to.be.true;
       expect(config.permissions.data).to.deep.equal([
         { path: '/s/.promotions/+**', groups: 'img@x.com', actions: 'write' },
@@ -438,7 +441,7 @@ describe('permissions utils', () => {
     });
 
     it('is unchanged when no row changes', () => {
-      const { changed } = updateScope(makeConfig(), pagePaths, remove('x@x.com'));
+      const { changed } = updateScope(makeConfig(), pagePaths, (c, p) => removeMember(c, p, 'write', 'x@x.com'));
       expect(changed).to.be.false;
     });
   });
@@ -472,10 +475,19 @@ describe('permissions utils', () => {
 
     it('rejects names DA pages cannot have', () => {
       const error = 'Page paths can only use letters, numbers, -, _ and dots, and no part can start with a dot.';
-      ['/blog/../about', '/./about', '/blog/*', '/blog/post*', '/my page', '/C O N F I G', '/a?b', '/a#b',
-        '/a%20b', '/café', '/.html', '/blog/.html', '/.promotions'].forEach((value) => {
-        expect(parsePagePath(value), value).to.deep.equal({ error });
-      });
+      expect(parsePagePath('/blog/../about')).to.deep.equal({ error });
+      expect(parsePagePath('/./about')).to.deep.equal({ error });
+      expect(parsePagePath('/blog/*')).to.deep.equal({ error });
+      expect(parsePagePath('/blog/post*')).to.deep.equal({ error });
+      expect(parsePagePath('/my page')).to.deep.equal({ error });
+      expect(parsePagePath('/C O N F I G')).to.deep.equal({ error });
+      expect(parsePagePath('/a?b')).to.deep.equal({ error });
+      expect(parsePagePath('/a#b')).to.deep.equal({ error });
+      expect(parsePagePath('/a%20b')).to.deep.equal({ error });
+      expect(parsePagePath('/café')).to.deep.equal({ error });
+      expect(parsePagePath('/.html')).to.deep.equal({ error });
+      expect(parsePagePath('/blog/.html')).to.deep.equal({ error });
+      expect(parsePagePath('/.promotions')).to.deep.equal({ error });
     });
   });
 
