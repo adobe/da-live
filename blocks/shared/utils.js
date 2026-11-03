@@ -435,7 +435,7 @@ let renderingVersionRequest;
 
 export const getRenderingVersion = () => renderingVersion;
 
-export async function loadRenderingVersion({ org, site, fallback = 2 } = {}) {
+export async function loadRenderingVersion({ org, site } = {}) {
   const request = {};
   renderingVersionRequest = request;
   const configs = await Promise.all(fetchDaConfigs({ org, site })).catch(() => []);
@@ -443,7 +443,7 @@ export async function loadRenderingVersion({ org, site, fallback = 2 } = {}) {
     .flatMap((c) => getFirstSheet(c) || [])
     .find((r) => r?.key === 'editor.renderingVersion');
   const configured = parseInt(row?.value, 10);
-  const version = configured >= 1 ? configured : fallback;
+  const version = configured >= 1 ? configured : 2;
   if (renderingVersionRequest === request) renderingVersion = version;
   return version;
 }

@@ -30,11 +30,22 @@ export default class DaPreview extends LitElement {
     this._updating = true;
     this._size = SIZES.mobile;
     this.setBody();
+  }
+
+  updated(changed) {
+    if (changed.has('path')) this.loadRenderingVersion();
+  }
+
+  async loadRenderingVersion() {
     const { org, site } = getPathDetails() || {};
-    loadRenderingVersion({ org, site, fallback: 1 }).then((version) => {
-      this._renderingVersion = version;
-      this.setBody();
-    });
+    const key = `${org}/${site}`;
+    if (key === this._renderingKey) return;
+    this._renderingKey = key;
+    this._renderingVersion = undefined;
+    const version = await loadRenderingVersion({ org, site });
+    if (this._renderingKey !== key) return;
+    this._renderingVersion = version;
+    this.setBody();
   }
 
   handleView({ key }) {
@@ -54,7 +65,7 @@ export default class DaPreview extends LitElement {
     if (!window.view) return;
 
     // Always cache the body for future use
-    this.body = getHtmlWithCursor(window.view, this._renderingVersion ?? 1);
+    this.body = getHtmlWithCursor(window.view, this._renderingVersion);
 
     // If initialized, send the preview to the iframe
     if (this.initialized && this.body) this.sendPreview();

@@ -982,16 +982,6 @@ describe('loadRenderingVersion', () => {
     expect(getRenderingVersion()).to.equal(1);
   });
 
-  it('uses the fallback without config', async () => {
-    mockConfigs({});
-    expect(await loadRenderingVersion({ org: 'rvfb', site: 'site', fallback: 1 })).to.equal(1);
-  });
-
-  it('prefers config over the fallback', async () => {
-    mockConfigs({ '/rvfb2/': [{ key: 'editor.renderingVersion', value: '2' }] });
-    expect(await loadRenderingVersion({ org: 'rvfb2', site: 'site', fallback: 1 })).to.equal(2);
-  });
-
   it('lets site config override org config', async () => {
     mockConfigs({
       '/rvover/': [{ key: 'editor.renderingVersion', value: '1' }],
