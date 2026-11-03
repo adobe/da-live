@@ -103,6 +103,32 @@ describe('comments helpers/controller', () => {
     expect(controller.counts.resolved).to.equal(1);
   });
 
+  it('excludes detached threads from the active count after a document change', async () => {
+    const { controller: c, editor, store: m } = await createControllerWithPlugin();
+    editor.view.dispatch(editor.view.state.tr.insertText('commented text'));
+    const { encodeAnchor } = await import('../../../../../blocks/canvas/comments/helpers/anchor.js');
+    const encoded = encodeAnchor({
+      selectionData: { from: 1, to: 10, anchorType: 'text', anchorText: 'commented' },
+      state: editor.view.state,
+    });
+    m.set('t1', {
+      id: 't1',
+      ...encoded,
+      author: { id: 'u' },
+      body: '',
+      createdAt: 0,
+      resolved: false,
+    });
+    expect(c.counts.active).to.equal(1);
+
+    editor.view.dispatch(editor.view.state.tr.delete(1, 15));
+    c.notifyDocChange();
+
+    expect(c.counts.active).to.equal(0);
+    destroyEditor(editor);
+    c.destroy();
+  });
+
   it('delivers per-reason events only to matching subscribers', async () => {
     const { controller: c, editor } = await createControllerWithPlugin();
     let panelOpenHits = 0;
