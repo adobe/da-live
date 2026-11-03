@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getFirstSheet, fetchDaConfigs, canEditOrgConfig } from '../../../shared/utils.js';
 import { getNx, sanitizePathParts, getNxEWFlags } from '../../../../scripts/utils.js';
-import { getChatPanelContent } from '../../../shared/chat-panel.js';
+import { getChatPanelContent, chatAvailability } from '../../../shared/chat-panel.js';
 import { getSettingsMenuItems } from '../../shared/settings-menu.js';
 
 // Components
@@ -93,11 +93,28 @@ export default class DaBrowse extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [style];
     this._handleShortcuts = this.handleShortcuts.bind(this);
     document.addEventListener('keydown', this._handleShortcuts);
+    this._unsubChat = chatAvailability.subscribe((enabled) => this.syncChatAvailability(enabled));
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('keydown', this._handleShortcuts);
+    this._unsubChat?.();
+  }
+
+  syncChatAvailability(enabled) {
+    this._chatEnabled = enabled;
+    if (enabled === undefined) return;
+    if (enabled) {
+      registerPanelSection('chat', {
+        position: 'before',
+        width: '400px',
+        getContent: getChatPanelContent(),
+      });
+      if (wasPanelOpen('chat')) openChatPanel();
+    } else {
+      closeChatPanel();
+    }
   }
 
   handleShortcuts(e) {
@@ -152,23 +169,8 @@ export default class DaBrowse extends LitElement {
       // and do this before getEditor so the default editor reflects EW state
       if (orgChanged || prevDetails?.site !== this.details.site) {
         const { org, site } = this.details;
-        const { isEWEnabled, isEwChatDisabled } = await getNxEWFlags();
-        const [ewEnabled, chatDisabled] = await Promise.all([
-          isEWEnabled({ org, site }),
-          isEwChatDisabled({ org, site }),
-        ]);
-        this._ewEnabled = ewEnabled;
-        this._chatEnabled = ewEnabled && !chatDisabled;
-        if (this._chatEnabled) {
-          registerPanelSection('chat', {
-            position: 'before',
-            width: '400px',
-            getContent: getChatPanelContent(),
-          });
-          if (wasPanelOpen('chat')) openChatPanel();
-        } else {
-          closeChatPanel();
-        }
+        const { isEWEnabled } = await getNxEWFlags();
+        this._ewEnabled = await isEWEnabled({ org, site });
       }
 
       // Only re-fetch editor configs if the org changes
