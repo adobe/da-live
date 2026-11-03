@@ -23,10 +23,14 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
   let counts = store ? computeCounts(store) : { active: 0, resolved: 0 };
   let boundView = null;
 
-  const healing = new Set();
+  const healing = new Map();
+  const getComment = (id) => healing.get(id) ?? store?.get(id);
+
+  const awareness = createAwarenessSync({ wsProvider, commentsStore: store });
+  const { broadcastChange } = awareness;
 
   const reanchor = (id, comment, range) => {
-    if (!boundView || healing.has(id)) return;
+    if (!boundView || healing.has(id)) return null;
     const fresh = encodeAnchor({
       selectionData: {
         from: range.from,
@@ -36,9 +40,10 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
       },
       state: boundView.state,
     });
-    if (!fresh?.anchorFrom) return;
-    healing.add(id);
-    Promise.resolve(store.set(id, { ...comment, ...fresh }))
+    if (!fresh?.anchorFrom) return null;
+    const healed = { ...comment, ...fresh };
+    healing.set(id, healed);
+    return Promise.resolve(store.set(id, healed))
       .finally(() => healing.delete(id));
   };
 
@@ -62,9 +67,6 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
 
   if (store) store.observe(onStoreChange);
 
-  const awareness = createAwarenessSync({ wsProvider, commentsStore: store });
-  const { broadcastChange } = awareness;
-
   const controller = {
     getCurrentUser: awareness.getCurrentUser,
     onCurrentUserChange: awareness.onCurrentUserChange,
@@ -85,7 +87,7 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
 
     get counts() { return counts; },
 
-    getComment(id) { return store?.get(id); },
+    getComment,
     getCommentCount() { return store?.size ?? 0; },
 
     authorColorSet(author) {
@@ -107,12 +109,27 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
       const ids = new Set();
       store.forEach((comment, id) => {
         if (comment.threadId != null || comment.resolved) return;
-        const { range, source } = resolveAnchor({ anchor: comment, state: boundView.state });
+        const anchor = healing.get(id) ?? comment;
+        const { range, source } = resolveAnchor({ anchor, state: boundView.state });
         if (!range) return;
         ids.add(id);
         if (source === 'structural') reanchor(id, comment, range);
       });
       return ids;
+    },
+
+    healMoved(moved) {
+      if (!boundView || !store) return;
+      const writes = [];
+      moved.forEach((range, id) => {
+        const comment = store.get(id);
+        if (!comment) return;
+        const current = decodeAnchor({ anchor: comment, state: boundView.state });
+        if (current?.from === range.from && current?.to === range.to) return;
+        const write = reanchor(id, comment, range);
+        if (write) writes.push(write);
+      });
+      if (writes.length) Promise.allSettled(writes).then(broadcastChange);
     },
 
     async createRootComment({ user, anchor, body, now = Date.now() }) {
@@ -146,14 +163,14 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
     },
 
     async editComment({ commentId, body, now = Date.now() }) {
-      const comment = store.get(commentId);
+      const comment = getComment(commentId);
       if (!comment) return;
       await store.set(commentId, { ...comment, body, editedAt: now });
       broadcastChange();
     },
 
     async resolveThread({ threadId, user, now = Date.now() }) {
-      const comment = store.get(threadId);
+      const comment = getComment(threadId);
       if (!comment) return;
       await store.set(threadId, {
         ...comment,
@@ -167,7 +184,7 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
     },
 
     async unresolveThread({ threadId, user, now = Date.now() }) {
-      const comment = store.get(threadId);
+      const comment = getComment(threadId);
       if (!comment) return;
       await store.set(threadId, {
         ...comment,
@@ -181,7 +198,7 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
     },
 
     async deleteComment({ commentId }) {
-      const comment = store.get(commentId);
+      const comment = getComment(commentId);
       if (!comment) return;
       if (comment.threadId == null) {
         const replyIds = [];
@@ -197,7 +214,7 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
 
     scrollToThread(threadId, { behavior = 'smooth' } = {}) {
       if (!boundView || boundView.isDestroyed || !threadId || !store) return;
-      const comment = store.get(threadId);
+      const comment = getComment(threadId);
       if (!comment) return;
       const range = decodeAnchor({ anchor: comment, state: boundView.state });
       if (!range) return;
@@ -216,7 +233,7 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
 
     selectThreadRange(threadId) {
       if (!boundView || boundView.isDestroyed || !threadId || !store) return false;
-      const comment = store.get(threadId);
+      const comment = getComment(threadId);
       if (!comment) return false;
       const range = decodeAnchor({ anchor: comment, state: boundView.state });
       if (!range) return false;
@@ -236,7 +253,7 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
 
     blockContext(threadId) {
       if (!boundView || boundView.isDestroyed || !threadId || !store) return null;
-      const comment = store.get(threadId);
+      const comment = getComment(threadId);
       if (comment?.anchorType !== 'table') return null;
       const range = decodeAnchor({ anchor: comment, state: boundView.state });
       if (!range) return null;
