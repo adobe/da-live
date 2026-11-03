@@ -24,7 +24,6 @@ export default class DaLandingTile extends LitElement {
 
   render() {
     const source = this.actionId ? `landing-action-${this.actionId}` : nothing;
-    // Optel reads data-rum-source on the clicked element, not its ancestors.
     const content = html`
       <span class="icon ${this.tone || ''}" aria-hidden="true" data-rum-source=${source}
         style="--tile-icon: url('${this.iconHref}')"></span>
