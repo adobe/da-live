@@ -548,7 +548,7 @@ describe('comments helpers/controller', () => {
       expect(controller.findThreadForComment('missing')).to.be.null;
     });
 
-    it('getThreadGroups splits roots into active / detached / resolved', () => {
+    it('getThreadGroups hides detached roots while preserving active and resolved threads', () => {
       store.set('active', { id: 'active', resolved: false, createdAt: 2 });
       store.set('detached', { id: 'detached', resolved: false, createdAt: 1 });
       store.set('resolved', { id: 'resolved', resolved: true, resolvedAt: 5 });
@@ -556,7 +556,7 @@ describe('comments helpers/controller', () => {
 
       const groups = controller.getThreadGroups(new Set(['active']));
       expect(groups.active.map((t) => t.id)).to.deep.equal(['active']);
-      expect(groups.detached.map((t) => t.id)).to.deep.equal(['detached']);
+      expect(groups.detached).to.deep.equal([]);
       expect(groups.resolved.map((t) => t.id)).to.deep.equal(['resolved']);
       expect(groups.active[0].replies.map((r) => r.id)).to.deep.equal(['reply']);
     });

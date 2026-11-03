@@ -246,10 +246,15 @@ export function createTrackingPlugin(rerenderPage, updateCursors, getEditor, onS
                 : findCommonEditableAncestor(view, changes, prevState);
 
               const previousEditable = commonEditable && previousDoc.nodeAt(commonEditable.pos);
+              const currentEditable = commonEditable && view.state.doc.nodeAt(commonEditable.pos);
               const wasEmptyParagraph = previousEditable?.type.name === 'paragraph'
                 && previousEditable.content.size === 0;
+              // prose2aem omits empty editable nodes, so clearing an existing item removes
+              // its Outline entry and requires the full HTML refresh path.
+              const becameEmptyEditable = previousEditable?.content.size > 0
+                && currentEditable?.content.size === 0;
 
-              if (commonEditable && !wasEmptyParagraph) {
+              if (commonEditable && !wasEmptyParagraph && !becameEmptyEditable) {
                 getEditor?.({
                   cursorOffset: commonEditable.pos + 1,
                   previousDoc,
