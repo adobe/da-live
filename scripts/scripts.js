@@ -60,11 +60,11 @@ const CONFIG = {
 if (nx2) {
   document.addEventListener('site-selector-ready', async ({ detail: { selector, signal } }) => {
     try {
-      const { connectSiteSelector } = await import('../blocks/shared/site-picker.js');
-      if (!signal.aborted) connectSiteSelector({ selector, signal });
+      const { getCreateSiteHref } = await import('../blocks/shared/site-selector.js');
+      if (!signal.aborted) selector.getCreateSiteHref = getCreateSiteHref;
     } catch (error) {
       if (!signal.aborted) {
-        selector.error = `Could not load your sites: ${error.message}`;
+        selector.error = `Could not configure site creation: ${error.message}`;
         selector.addEventListener('site-retry', () => window.location.reload(), { once: true, signal });
       }
     }
