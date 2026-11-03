@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, sanitizeName } from '../../../scripts/utils.js';
-import { getSiteUrl, parseSiteUrl } from '../../../scripts/urls.js';
+import { getSiteUrl, isAemHost } from '../../../scripts/config.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const styles = await loadStyle(import.meta.url);
@@ -69,7 +69,9 @@ export default class DaSites extends LitElement {
 
   parseSubdomain(siteUrl) {
     try {
-      const { site, org } = parseSiteUrl(siteUrl) || {};
+      const url = new URL(siteUrl);
+      if (!isAemHost(url.hostname)) return null;
+      const [, site, org] = url.hostname.split('.')[0].split('--');
       if (!site || !org) return null;
       return `#/${sanitizeName(org, false)}/${sanitizeName(site, false)}`;
     } catch (_) {

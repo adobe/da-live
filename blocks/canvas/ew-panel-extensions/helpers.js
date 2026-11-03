@@ -2,9 +2,7 @@
 import { DOMParser as PMDOMParser, DOMSerializer, NodeSelection, Slice, TextSelection } from 'da-y-wrapper';
 import { slug } from '../../../deps/github-slugger/dist/index.js';
 import { getNx, getNx2Api, sanitizeName } from '../../../scripts/utils.js';
-import {
-  getSiteUrl, parseSiteUrl, parsePreviewUrl, parseDaUrl, getStoredContentOrigin, appendUrlPath,
-} from '../../../scripts/urls.js';
+import { getSiteUrl, getServiceOrigins, getStoredContentOrigin, isAemHost, isPreviewHost } from '../../../scripts/config.js';
 import { daFetch, getAuthToken } from '../../shared/utils.js';
 import { CON_ORIGIN } from '../../shared/constants.js';
 import { getPreviewProxyDetails, ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
@@ -122,16 +120,16 @@ function libraryProxyOptions({ org, site, branch: sourceBranch = branch } = {}) 
 
 function libraryContentUrl(path, { org, site, branch: sourceBranch = branch } = {}) {
   if (!path.startsWith('/') || !org || !site) return path;
-  return ref === 'local' ? appendUrlPath('http://localhost:3000', path)
-    : getSiteUrl('live', { org, site, branch: sourceBranch, path });
+  const origin = ref === 'local' ? 'http://localhost:3000'
+    : getSiteUrl('live', { org, site, branch: sourceBranch });
+  return new URL(path, origin).href;
 }
 
 function resolveLibraryImages(element, path, context, { variant = false } = {}) {
   const source = new URL(libraryContentUrl(path, context), window.location.href);
-  const isAemSource = !!parseSiteUrl(source.href, context);
-  const isProxySource = !!parsePreviewUrl(source.href, context);
-  const content = parseDaUrl(source.href);
-  const isContentSource = content?.service === 'content';
+  const isAemSource = isAemHost(source.hostname);
+  const isProxySource = isPreviewHost(source.hostname);
+  const isContentSource = getServiceOrigins('content').includes(source.origin);
   const proxyOpts = libraryProxyOptions(context);
   const details = getPreviewProxyDetails(source.href, { ...proxyOpts, currentOrg: undefined });
   const proxied = isProxySource || (proxyOpts.currentOrg
@@ -141,11 +139,11 @@ function resolveLibraryImages(element, path, context, { variant = false } = {}) 
   const isDaSource = (isContentSource || proxied) && !aemHtml;
   let contentRoot;
   if (isDaSource && details.org) {
-    const base = isContentSource ? content.base : CON_ORIGIN;
-    contentRoot = `${base}/${details.org}/${details.site}`;
+    const origin = isContentSource ? source.origin : CON_ORIGIN;
+    contentRoot = `${origin}/${details.org}/${details.site}`;
     source.href = `${contentRoot}${details.pathname}${source.search}${source.hash}`;
   } else if (!isAemSource && proxied && details.org) {
-    source.href = getSiteUrl('preview', { ...details, path: details.pathname, search: source.search, hash: source.hash });
+    source.href = `${getSiteUrl('preview', details)}${details.pathname}${source.search}${source.hash}`;
   }
   element.querySelectorAll('img[src]').forEach((img) => {
     const src = img.getAttribute('src');
@@ -167,12 +165,7 @@ function resolveLibraryImages(element, path, context, { variant = false } = {}) 
       } else {
         const rootMedia = !isDaSource && (isAemSource || proxied)
           && (variant ? src.startsWith('./') : /^\.\/media_[^/?#]+(?:[?#].*)?$/.test(src));
-        const site = parseSiteUrl(base.href, context);
-        const root = site ? `${getSiteUrl(site.tier, { ...site, search: '', hash: '' })}/` : `${base.origin}/`;
-        const imageBase = rootMedia ? root : base.href;
-        const target = !isDaSource && site && src.startsWith('/') && !src.startsWith('//')
-          ? getSiteUrl(site.tier, { ...site, path: src, search: '', hash: '' }) : new URL(src, imageBase).href;
-        img.setAttribute('src', target);
+        img.setAttribute('src', new URL(src, rootMedia ? `${base.origin}/` : base.href).href);
       }
       img.removeAttribute('data-da-img-host');
     } catch { /* a malformed image URL must not discard the entire block/template */ }
@@ -183,8 +176,7 @@ async function ensureLibraryPreviewSession(url, context) {
   const proxyOpts = libraryProxyOptions(context);
   const details = getPreviewProxyDetails(url, proxyOpts);
   if (!proxyOpts.currentOrg || !details.org) return undefined;
-  // Path-based deployments can share an origin across sites and branches.
-  const origin = getPreviewOrigin(details.org, details.site, details.branch);
+  const { origin } = new URL(details.url);
   const token = await getAuthToken();
   if (!token) {
     librarySessions.delete(origin);
@@ -361,7 +353,7 @@ export async function getBlockVariants(path, context) {
   const source = libraryContentUrl(path, context);
   let isAemHosted = false;
   try {
-    isAemHosted = !!parseSiteUrl(source, context);
+    isAemHosted = isAemHost(new URL(source).hostname);
   } catch { /* relative path */ }
 
   const { doc, authError } = await fetchAndParseHtml(source, isAemHosted, context);
@@ -783,19 +775,12 @@ export function getItemPreviewUrl(item, { org, site }) {
   const metadata = getPreviewProxyDetails(input, { ...proxyOpts, currentOrg: undefined });
   if (target.org) {
     // Item previews render with the canvas branch, not the library source's branch.
-    const { search, hash } = new URL(target.url);
-    target.url = `${getPreviewOrigin(target.org, target.site, previewBranch)}${target.pathname}${search}${hash}`;
+    const { pathname, search, hash } = new URL(target.url);
+    target.url = `${getPreviewOrigin(target.org, target.site, previewBranch)}${pathname}${search}${hash}`;
   } else if (metadata.org) {
     // Cross-org item previews still need rendered HTML, not a raw DA source endpoint.
     const { search, hash } = new URL(input);
-    target.url = getSiteUrl('preview', {
-      org: metadata.org,
-      site: metadata.site,
-      branch: previewBranch,
-      path: metadata.pathname,
-      search,
-      hash,
-    });
+    target.url = `${getSiteUrl('preview', { org: metadata.org, site: metadata.site, branch: previewBranch })}${metadata.pathname}${search}${hash}`;
   }
 
   return {

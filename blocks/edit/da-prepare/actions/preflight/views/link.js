@@ -3,7 +3,7 @@ import { getNx } from '../../../../../../scripts/utils.js';
 import getSheet from '../../../../../shared/sheet.js';
 import { etcFetch, getAemSiteToken, getSidekickConfig } from '../../../../../shared/utils.js';
 import { ICONS, REASONS } from '../utils/constants.js';
-import { getSiteUrl, parseSiteUrl } from '../../../../../../scripts/urls.js';
+import { getSiteUrl, isAemHost } from '../../../../../../scripts/config.js';
 
 await import(`${getNx()}/blocks/loc/views/url-details/url-details.js`);
 
@@ -58,9 +58,8 @@ class PreflightLink extends LitElement {
     const path = url.pathname;
 
     // Already an AEM URL — rebuild with correct org/site
-    const details = parseSiteUrl(url.href);
-    if (details) {
-      return new URL(liveUrl(details.pathname));
+    if (isAemHost(url.hostname)) {
+      return new URL(liveUrl(path));
     }
 
     // Production URL — check if hostname matches sidekick config

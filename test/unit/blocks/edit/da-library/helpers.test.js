@@ -122,6 +122,11 @@ describe('da-library/helpers exports', () => {
   });
 
   describe('aemToContentUrl', () => {
+    it('does not convert a snapshot review into current mutable content', () => {
+      const url = 'https://release--main--site--org.aem.reviews/library/hero';
+      expect(aemToContentUrl(url)).to.equal(url);
+    });
+
     it('Rewrites aem.page preview URLs to content.da.live', () => {
       expect(aemToContentUrl('https://main--site--org.aem.page/blocks/cards'))
         .to.equal('https://content.da.live/org/site/blocks/cards');

@@ -1,5 +1,5 @@
 import { getNx2Api, sanitizePathParts } from '../../scripts/utils.js';
-import { getSiteUrl } from '../../scripts/urls.js';
+import { getSiteUrl } from '../../scripts/config.js';
 
 export async function listFolder(fullpath) {
   try {

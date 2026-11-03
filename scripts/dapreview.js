@@ -1,4 +1,4 @@
-import { isAuthoringOrigin } from './urls.js';
+import { isAuthoringOrigin } from './config.js';
 
 let port;
 

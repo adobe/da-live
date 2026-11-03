@@ -1,8 +1,8 @@
 import { expect } from '@esm-bundle/chai';
-import config, { createConfig, getServiceEnvs } from '../../../scripts/config.js';
-import {
-  getServiceOrigins, parseSiteUrl, parsePreviewUrl, isStageLocation, toSiteUrl, isAuthoringOrigin,
-} from '../../../scripts/urls.js';
+import config, {
+  createConfig, getServiceEnvs, getServiceOrigins, isAemHost, isPreviewHost,
+  isStageHost, toAemHost, isAuthoringOrigin, getAppUrl, getSiteUrl,
+} from '../../../scripts/config.js';
 import { setNx } from '../../../scripts/utils.js';
 import { getDaAdmin } from '../../../blocks/shared/constants.js';
 import getPathDetails from '../../../blocks/shared/pathDetails.js';
@@ -59,29 +59,29 @@ describe('Deployment configuration', () => {
   });
 
   it('recognizes configured content suffixes and preserves legacy hosts', () => {
-    expect(parseSiteUrl('https://main--site--org.customer.page', {}, custom)).to.exist;
-    expect(parseSiteUrl('https://main--site--org.hlx.live', {}, custom)).to.exist;
-    expect(parseSiteUrl('https://main--site--org.customer.live.attacker.test', {}, custom)).to.equal(null);
-    expect(parseSiteUrl('https://main--site--org.notcustomer.page', {}, custom)).to.equal(null);
-    expect(parseSiteUrl('https://main--site--org.hlx.live', {}, createConfig({ aem: { legacyHosts: [] } }))).to.equal(null);
-    expect(isStageLocation({ hostname: 'main--site--org.customer.page' }, custom)).to.equal(true);
-    expect(isStageLocation({ hostname: 'main--site--org.customer.live' }, custom)).to.equal(false);
-    expect(isStageLocation({ hostname: 'localhost' }, custom)).to.equal(true);
+    expect(isAemHost('main--site--org.customer.page', custom)).to.equal(true);
+    expect(isAemHost('main--site--org.hlx.live', custom)).to.equal(true);
+    expect(isAemHost('main--site--org.customer.live.attacker.test', custom)).to.equal(false);
+    expect(isAemHost('main--site--org.notcustomer.page', custom)).to.equal(false);
+    expect(isAemHost('main--site--org.hlx.live', createConfig({ aem: { legacyHosts: [] } }))).to.equal(false);
+    expect(isStageHost('main--site--org.customer.page', custom)).to.equal(true);
+    expect(isStageHost('main--site--org.customer.live', custom)).to.equal(false);
+    expect(isStageHost('localhost', custom)).to.equal(true);
   });
 
   it('rewrites only a recognized trailing content suffix', () => {
-    expect(toSiteUrl('https://main--site--org.customer.live/page', 'preview', custom))
-      .to.equal('https://main--site--org.customer.page/page');
-    expect(toSiteUrl('https://main--site--org.hlx.page/page', 'live', custom))
-      .to.equal('https://main--site--org.customer.live/page');
-    expect(toSiteUrl('https://main--site--org.customer.live.attacker.test/page', 'preview', custom))
-      .to.equal('https://main--site--org.customer.live.attacker.test/page');
+    expect(toAemHost('main--site--org.customer.live', custom.aem.previewHost, custom))
+      .to.equal('main--site--org.customer.page');
+    expect(toAemHost('main--site--org.hlx.page', custom.aem.liveHost, custom))
+      .to.equal('main--site--org.customer.live');
+    expect(toAemHost('main--site--org.customer.live.attacker.test', custom.aem.previewHost, custom))
+      .to.equal('main--site--org.customer.live.attacker.test');
   });
 
   it('recognizes configured preview services and independent service origins', () => {
-    expect(parsePreviewUrl('https://main--site--org.preview.author.example.com', {}, custom)).to.exist;
-    expect(parsePreviewUrl('https://main--site--org.stage-preview.author-test.example.com', {}, custom)).to.exist;
-    expect(parsePreviewUrl('https://main--site--org.preview.author.example.com.attacker.test', {}, custom)).to.equal(null);
+    expect(isPreviewHost('main--site--org.preview.author.example.com', custom)).to.equal(true);
+    expect(isPreviewHost('main--site--org.stage-preview.author-test.example.com', custom)).to.equal(true);
+    expect(isPreviewHost('main--site--org.preview.author.example.com.attacker.test', custom)).to.equal(false);
     expect(getServiceOrigins('admin', custom)).to.include('https://api.example.net');
     expect(getServiceOrigins('content', custom)).to.include('https://test-content.example.net');
   });
@@ -92,6 +92,7 @@ describe('Deployment configuration', () => {
       'https://localhost'].forEach((origin) => {
       expect(isAuthoringOrigin(origin, custom), origin).to.equal(true);
     });
+
     ['null', 'not a URL', 'http://author.example.com', 'https://author.example.com:8443',
       'https://author.example.com.attacker.test',
       'https://main--other--customer.customer.page',
@@ -101,6 +102,16 @@ describe('Deployment configuration', () => {
       'https://main--author--customer.customer.page:8443'].forEach((origin) => {
       expect(isAuthoringOrigin(origin, custom), origin).to.equal(false);
     });
+  });
+
+  it('builds conventional site links and accepts explicitly trusted authoring origins', () => {
+    expect(getAppUrl('/apps/schema', false, custom)).to.equal('https://author.example.com/apps/schema');
+    expect(getSiteUrl('live', { org: 'org', site: 'site', path: '/folder/page' }, custom))
+      .to.equal('https://main--site--org.customer.live/folder/page');
+    const mixed = createConfig({ da: { owner: 'Customer-Org', previewOrigins: ['https://author-preview.example:8443'] } });
+    expect(isAuthoringOrigin('https://main--da-live--customer-org.aem.page', mixed)).to.equal(true);
+    expect(isAuthoringOrigin('https://author-preview.example:8443', mixed)).to.equal(true);
+    expect(isAuthoringOrigin('https://author-preview.example', mixed)).to.equal(false);
   });
 
   it('uses custom settings in endpoint selection, NX loading and generated content links', () => {

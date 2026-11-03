@@ -2,7 +2,7 @@ import { TextSelection } from 'da-y-wrapper';
 import prose2aem from '../../shared/prose2aem.js';
 import { wrapTablesInWrappers } from '../../shared/version/compare.js';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
-import { getCanvasPreviewUrl } from '../../../scripts/urls.js';
+import { getServiceEnvs, isStageHost } from '../../../scripts/config.js';
 import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
 import { toolbarController } from './toolbar-controller.js';
 import {
@@ -583,7 +583,9 @@ export function updateCursors(ctx) {
 // --- preview.js ---
 
 export function getPreviewOrigin(org, repo, branch = 'main') {
-  return getCanvasPreviewUrl({ org, site: repo, branch: normalizeBranch(branch) });
+  const envs = getServiceEnvs('preview', window.location.origin);
+  const domain = isStageHost(window.location.hostname) ? envs.stage : envs.prod;
+  return `https://${normalizeBranch(branch)}--${repo}--${org}.${domain}`;
 }
 
 export async function fetchWysiwygBranch({ org, site, path }) {

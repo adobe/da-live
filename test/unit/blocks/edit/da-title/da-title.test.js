@@ -1,7 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
-import config, { createConfig } from '../../../../../scripts/config.js';
 
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 
@@ -458,26 +457,6 @@ describe('DaTitle', () => {
         expect(opens[0][0]).to.contain('/test/page');
       } finally {
         window.open = savedOpen;
-      }
-    });
-
-    it('Preview path: retains a configured route when opening the published web path', async () => {
-      const original = { ...config };
-      const savedOpen = window.open;
-      const opens = [];
-      try {
-        Object.assign(config, createConfig({ aem: { previewUrl: 'https://preview.example/render/{org}/{site}/{branch}' } }));
-        const element = buildEl();
-        window.open = (...args) => { opens.push(args); };
-        window.fetch = () => Promise.resolve(new Response(JSON.stringify({
-          preview: { url: 'https://main--site--org.aem.page/test/page' },
-          webPath: '/test/page',
-        })));
-        await element.handleAction('preview');
-        expect(opens[0][0]).to.equal('https://preview.example/render/testorg/testsite/main/test/page');
-      } finally {
-        window.open = savedOpen;
-        Object.assign(config, original);
       }
     });
 

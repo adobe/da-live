@@ -1203,25 +1203,6 @@ describe('DA Preview Proxy routing', () => {
       }
     });
 
-    it('preserves custom site and proxy mount paths for library content and images', async () => {
-      const original = { ...config };
-      try {
-        Object.assign(config, createConfig({
-          aem: { previewUrl: 'https://preview.example/render/{org}/{site}/{branch}' },
-          da: { services: { preview: { stage: 'https://proxy.example/author/{org}/{site}/{branch}' } } },
-        }));
-        respond = () => new Response('<body><div><div class="hero"><div><div><img src="./media.png"><img src="/assets/logo.png"></div></div></div></div></body>');
-        const [variant] = await getBlockVariants('https://preview.example/render/proxyorg/proxysite/main/blocks/hero', LIBRARY_CONTEXT);
-        expect(calls[0].url).to.equal('https://proxy.example/author/proxyorg/proxysite/main/blocks/hero.plain.html');
-        expect([...variant.dom.querySelectorAll('img')].map((img) => img.getAttribute('src'))).to.deep.equal([
-          'https://preview.example/render/proxyorg/proxysite/main/media.png',
-          'https://preview.example/render/proxyorg/proxysite/main/assets/logo.png',
-        ]);
-      } finally {
-        Object.assign(config, original);
-      }
-    });
-
     ['content.da.live', 'stage-content.da.live'].forEach((host) => {
       it(`restores DA-content variant image URLs from ${host}`, async () => {
         respond = () => new Response('<body><div><div class="hero"><div><div><img src="/library/blocks/.hero/img.png?width=400#hero" width="800" height="400"></div></div></div></div></body>');

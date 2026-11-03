@@ -4,7 +4,7 @@ import { createEngine } from '../../deps/da-sc-sdk/dist/index.js';
 import { loadFormContext } from './utils/context.js';
 import { attachPersistence } from './utils/persistence.js';
 import { getNx2 } from '../../scripts/utils.js';
-import { getAppUrl } from '../../scripts/urls.js';
+import { getAppUrl } from '../../scripts/config.js';
 import { isJsonPreviewEnabled } from './utils/config.js';
 
 import './views/editor.js';

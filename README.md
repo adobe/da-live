@@ -6,9 +6,8 @@ This repo provides the author experience for https://da.live.
 `scripts/deployment.js` is the single runtime override file. Its empty default
 export preserves Adobe's deployment. `scripts/config.js` synchronously merges
 overrides with defaults using native ES modules; no build or configuration fetch
-is required. `scripts/urls.js` owns URL building, parsing and origin validation;
-components call helpers such as `getSiteUrl('live', { org, site, path })` rather
-than assembling deployment hostnames. For example:
+is required. This configures deployment locations, not URL routing: existing
+`branch--site--org` hostnames and document paths remain unchanged. For example:
 
 ```js
 export default {
@@ -31,7 +30,13 @@ export default {
     adminOrigins: [],
     legacyHosts: [],
   },
-  nx: { owner: 'customer-org', repo: 'customer-nx' },
+  nx: {
+    owner: 'customer-org',
+    repo: 'customer-nx',
+    // Optional fixed runtime directories; no placeholders.
+    url: 'https://assets.example.net/nx',
+    urlV2: 'https://assets.example.net/nx2',
+  },
   ims: { clientId: 'customer-authoring' },
 };
 ```
@@ -41,10 +46,11 @@ subdomains of `da.domain`, with `stage-` prefixes for stage. Local endpoints rem
 unchanged. `da.services` accepts `admin`, `content`, `collab`, `preview` and `etc`,
 each with individual environment overrides; omitted values keep their defaults.
 The `etc` default remains `https://da-etc.adobeaem.workers.dev` (prod) and
-`http://localhost:8787` (local). Preview values are hostnames (with an optional
-port) or complete URL templates as described below, collab values are WebSocket
-URLs, and other service values are origins. Use origins without paths or trailing
-slashes for non-preview services.
+`http://localhost:8787` (local). Preview values are hostname suffixes (with an
+optional port), collab values are WebSocket URLs, and other service values are
+origins. Use origins without paths, queries, fragments or trailing slashes.
+Independent application and service domains are supported; they need not share
+a suffix.
 
 The alternate app at `da.pageDomain` uses independently derived endpoints,
 overridable through `da.pageServices` with the same shape. Primary service
@@ -60,69 +66,22 @@ These arrays can be replaced with empty arrays for an isolated deployment.
 Configured service origins form the bearer-token allowlist; do not point them
 at untrusted servers.
 
-`da.owner`/`da.repo` identify this app's branch previews for preview-message
-validation; `nx.owner`/`nx.repo` select the NX repository independently. Production
-still uses `/nx` (or `/nx2`), and `?nx=local` still uses localhost. Configure the
-NX deployment itself separately; this file does not change settings inside NX
-or remote services. The public IMS client ID must be registered for the chosen
-app domains; authentication providers and scopes are unchanged.
+`da.owner`/`da.repo` identify this app's conventional branch previews for
+preview-message validation. Additional authoring origins can be listed explicitly
+in `da.previewOrigins`; only trust origins wholly controlled by the deployment.
 
-### Independent domains and path-based routes
+`nx.owner`/`nx.repo` select the NX repository independently. Without fixed URLs,
+existing CDN, branch and localhost behavior is retained. `nx.url` and `nx.urlV2`
+optionally select fixed V1/V2 runtime directories, without trailing slashes,
+queries or fragments. They do not interpolate branch names. If only `nx.url` is
+supplied, V2 appends `2`; supply `nx.urlV2` when the directories differ.
+`?nx=local` still overrides both.
 
-Complete URL templates take precedence over content suffixes and Sidekick hosts.
-For example, the following override uses unrelated app, site, proxy and NX URLs:
-
-```js
-export default {
-  da: {
-    domain: 'author.customer.example',
-    services: {
-      preview: {
-        prod: 'https://proxy.example.net/author/{org}/{site}/{branch}',
-        stage: 'https://test-proxy.example.net/author/{org}/{site}/{branch}',
-      },
-    },
-  },
-  aem: {
-    liveUrl: 'https://publish.example.net/sites/{org}/{site}/{branch}',
-    previewUrl: 'https://preview.example.net/render/{org}/{site}/{branch}',
-    reviewUrl: 'https://review.example.net/{org}/{site}/{snapshot}/{branch}',
-    ueUrl: 'https://ue.example.net/{org}/{site}/{branch}',
-    uePageUrl: 'https://ue-test.example.net/{org}/{site}/{branch}',
-  },
-  nx: {
-    url: 'https://assets.example.net/{branch}/legacy-runtime',
-    urlV2: 'https://other-assets.example.net/runtime-v2/{branch}',
-  },
-};
-```
-
-Site/proxy templates accept `{org}`, `{site}`, `{branch}` and `{snapshot}`;
-NX templates accept `{owner}`, `{repo}` and `{branch}`. Identifiers contain
-letters, digits, dots, underscores or hyphens, but cannot be `.` or `..`.
-Templates must be HTTP(S) base URLs without credentials, queries or fragments.
-Document paths, queries and fragments are appended separately, preserving mount
-paths. Parsing uses the same templates; routes must identify the org/site, or
-the caller must supply that context for a single-site URL. When routes overlap,
-the template with the most literal characters (excluding placeholders) wins;
-equal specificity preserves existing tier/environment order. Avoid equally specific,
-ambiguous routes. Hostnames are case-insensitive; path identifiers and literal
-mount paths retain their case.
-
-`nx.url` and `nx.urlV2` are complete runtime directory URLs, independent of site
-routes. Without overrides, existing CDN, branch and localhost behavior is
-unchanged. If only `nx.url` is supplied, the V2 default appends `2`; supply
-`nx.urlV2` when the directories differ. `?nx=local` still overrides both.
-
-`da.previewOrigins` optionally lists additional trusted authoring-app origins for
-preview messages. Conventional hostname-based branch previews of `da.owner` /
-`da.repo` are recognized automatically when `{org}`, `{site}` and `{branch}` are
-in the hostname.
-Path-based authoring previews sharing an origin require explicit trust, even if
-the branch is in the hostname: paths do not isolate browser origins. Only list
-origins wholly controlled by the deployment, and register them with the preview
-service as needed. Site/proxy servers must independently support the configured
-routes, CORS, cookies and authentication; this file does not configure them.
+Configure NX and remote services separately; this file does not change their
+settings, DNS, TLS, CORS, cookies or authentication. The public IMS client ID
+must be registered for the chosen app domains; providers and scopes are unchanged.
+Arbitrary site/proxy URL templates, path-mounted routes and static single-site
+domain parsing are outside this configuration-only change.
 
 Keep deployment overrides when syncing upstream. This browser-visible file must
 never contain credentials or secrets. `fstab.yaml` and `tools/sidekick/config.json`

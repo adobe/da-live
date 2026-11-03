@@ -1,5 +1,5 @@
 import { fetchDaConfigs, getFirstSheet } from '../../../shared/utils.js';
-import { getAppUrl, getSiteUrl, parseSiteUrl, toSiteUrl } from '../../../../scripts/urls.js';
+import config, { getAemHosts, getAppUrl, toAemHost } from '../../../../scripts/config.js';
 
 async function getConfSheet(org, site) {
   const configs = await Promise.all(fetchDaConfigs({ org, site }));
@@ -7,22 +7,26 @@ async function getConfSheet(org, site) {
   return rows.length ? rows : null;
 }
 
-export async function getUeUrl(ueConf, previewUrl, context = {}) {
+export async function getUeUrl(ueConf, previewUrl) {
   const UE_PREFIX = 'https://experience.adobe.com/#/{{DX_ORG}}/aem/editor/canvas/';
   const { value } = ueConf;
   if (!value) return null;
   const dxOrg = value.split('/').find((split) => split.startsWith('@'));
   if (!dxOrg) return null;
   const prefix = UE_PREFIX.replace('{{DX_ORG}}', dxOrg);
-  const details = parseSiteUrl(previewUrl, context);
-  const tier = window.location.origin === getAppUrl('', true) || details?.tier === 'preview' ? 'uePage' : 'ue';
-  const target = details ? getSiteUrl(tier, { ...details, path: details.pathname }) : previewUrl;
-  const ueDomain = target.replace(/^https?:\/\//, '');
+  const url = new URL(previewUrl);
+  const domain = window.location.origin === getAppUrl('', true)
+    || url.hostname.endsWith(`.${config.aem.previewHost}`)
+    ? config.da.pageDomain : config.da.domain;
+  const host = getAemHosts().find((suffix) => url.hostname.endsWith(`.${suffix}`));
+  if (host) url.hostname = `${url.hostname.slice(0, -host.length)}ue.${domain}`;
+  const ueDomain = url.href.replace(/^https?:\/\//, '');
   return `${prefix}${ueDomain}`;
 }
 
-export async function getQeUrl(previewUrl, context = {}) {
-  const url = new URL(toSiteUrl(previewUrl, 'preview', undefined, context));
+export async function getQeUrl(previewUrl) {
+  const url = new URL(previewUrl);
+  url.hostname = toAemHost(url.hostname, config.aem.previewHost);
   url.pathname = url.pathname.replace(/\/index$/, '/');
   url.searchParams.set('quick-edit', 'on');
   return url.href;
@@ -31,9 +35,8 @@ export async function getQeUrl(previewUrl, context = {}) {
 export default async function getExternalUrl(org, repo, previewUrl) {
   const confSheet = await getConfSheet(org, repo);
   const qeConf = confSheet?.find((row) => row.key === 'quick-edit' && row.value.split(',').find((split) => split.startsWith(repo)));
-  const context = { org, site: repo };
-  if (qeConf) return getQeUrl(previewUrl, context);
+  if (qeConf) return getQeUrl(previewUrl);
   const ueConf = confSheet?.find((row) => row.key === 'editor.path');
-  if (ueConf) return getUeUrl(ueConf, previewUrl, context);
+  if (ueConf) return getUeUrl(ueConf, previewUrl);
   return null;
 }

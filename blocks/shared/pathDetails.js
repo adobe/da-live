@@ -1,6 +1,6 @@
 import { CON_ORIGIN, DA_ORIGIN } from './constants.js';
 import { sanitizePathParts } from '../../scripts/utils.js';
-import { getSiteUrl } from '../../scripts/urls.js';
+import { getSiteUrl } from '../../scripts/config.js';
 
 let currpath;
 let currhash;

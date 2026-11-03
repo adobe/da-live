@@ -1,5 +1,5 @@
 import { getAuthToken } from '../../shared/utils.js';
-import { isStageLocation } from '../../../scripts/urls.js';
+import { isStageHost } from '../../../scripts/config.js';
 
 // Experience Governance (experience-context) origins.
 const EC_ENVS = {
@@ -10,8 +10,8 @@ const API_KEY = 'darkalley';
 const EC_KEY = 'ec';
 const EPHEMERAL_HOST = /^adobe-aem-foundation-brand-governance-agent-deploy-[0-9a-f]{6}\.stage\.cloud\.adobe\.io$/;
 
-function getDefaultOrigin(location) {
-  const isStage = isStageLocation(location);
+function getDefaultOrigin(hostname) {
+  const isStage = isStageHost(hostname);
   return isStage ? EC_ENVS.stage : EC_ENVS.prod;
 }
 
@@ -38,7 +38,7 @@ export function getEcOrigin(location = window.location) {
   const query = new URLSearchParams(location.search).get(EC_KEY);
   if (query === 'reset') localStorage.removeItem(EC_KEY);
   else if (query) localStorage.setItem(EC_KEY, query);
-  return resolveOrigin(localStorage.getItem(EC_KEY)) ?? getDefaultOrigin(location);
+  return resolveOrigin(localStorage.getItem(EC_KEY)) ?? getDefaultOrigin(location.hostname);
 }
 
 /**

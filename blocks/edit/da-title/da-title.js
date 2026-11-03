@@ -7,7 +7,6 @@ import {
 } from '../utils/helpers.js';
 import { delay, fetchDaConfigs, getFirstSheet, aemAction } from '../../shared/utils.js';
 import { getNx2 } from '../../../scripts/utils.js';
-import { getSiteUrl } from '../../../scripts/urls.js';
 import { createVersion } from '../../shared/version/version-actions.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
@@ -351,7 +350,7 @@ export default class DaTitle extends LitElement {
 
       let aemTier = url.pathname.startsWith('/.snapshots') ? 'review' : action;
       aemTier = action === 'publish' ? 'prod' : 'preview';
-      let toOpen = getSiteUrl(action === 'publish' ? 'live' : 'preview', { org, site, path: json.webPath, host: this._aemHrefs[aemTier].origin });
+      let toOpen = `${this._aemHrefs[aemTier].origin}${json.webPath}`;
 
       // Allow BYO editors to pick their own origin
       if (this.previewPrefix || this.livePrefix) {

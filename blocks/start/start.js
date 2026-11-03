@@ -4,7 +4,7 @@ import getSheet from '../shared/sheet.js';
 import { daFetch } from '../shared/utils.js';
 import { copyConfig, copyContent, previewContent } from './index.js';
 import { getNx2Api, sanitizePathParts } from '../../scripts/utils.js';
-import { getAppUrl } from '../../scripts/urls.js';
+import { getAppUrl } from '../../scripts/config.js';
 
 const sheet = await getSheet('/blocks/start/start.css');
 

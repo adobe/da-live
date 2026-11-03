@@ -1,7 +1,6 @@
 import { DA_ORIGIN, CON_ORIGIN, DA_ETC_ORIGIN, getLivePreviewUrl, AEM_ORIGIN } from './constants.js';
 import { getNx, getNx2Api } from '../../scripts/utils.js';
-import deploymentConfig from '../../scripts/config.js';
-import { getAppUrl, getServiceOrigins } from '../../scripts/urls.js';
+import deploymentConfig, { getAppUrl, getServiceOrigins } from '../../scripts/config.js';
 
 const DA_ORIGINS = [getAppUrl(), getAppUrl('', true),
   ...getServiceOrigins('admin'), ...getServiceOrigins('content')];

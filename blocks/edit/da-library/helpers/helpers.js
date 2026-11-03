@@ -7,7 +7,7 @@ import { getPreviewProxyDetails, toPreviewProxyUrl } from '../../../shared/previ
 import { openAssets } from '../../da-assets/da-assets.js';
 import { fetchKeyAutocompleteData } from '../../prose/plugins/slashMenu/keyAutocomplete.js';
 import { getNx2Api, sanitizeName } from '../../../../scripts/utils.js';
-import { getSiteUrl, parseSiteUrl, parsePreviewUrl, parseDaUrl } from '../../../../scripts/urls.js';
+import { getSiteUrl, getServiceOrigins, isAemHost } from '../../../../scripts/config.js';
 import { getBlocks } from './index.js';
 
 export const OOTB_PLUGINS = ['blocks', 'templates', 'icons', 'placeholders'];
@@ -49,8 +49,12 @@ function setupBlockOptions(library) {
 
 export function aemToContentUrl(url) {
   try {
-    const { org, site, pathname, search } = parseSiteUrl(url) || {};
-    if (!org || !site) return url;
+    const { hostname, pathname, search } = new URL(url);
+    if (!isAemHost(hostname)) return url;
+    const parts = hostname.split('--');
+    if (parts.length !== 3) return url;
+    const [, site, orgWithTld] = parts;
+    const [org] = orgWithTld.split('.');
     return `${CON_ORIGIN}/${org}/${site}${pathname}${search}`;
   } catch {
     return url;
@@ -239,8 +243,19 @@ export function getPreviewUrl(previewUrl) {
 
 export function getAemUrlVars(url) {
   try {
-    const details = parseSiteUrl(url) || parsePreviewUrl(url) || parseDaUrl(url);
-    if (details) return [details.org, details.site, details.branch];
+    const parsed = new URL(url);
+    if (parsed.hostname.includes('--')) {
+      const [branch, site, orgWithDomain] = parsed.hostname.split('--');
+      return [orgWithDomain.split('.')[0], site, branch];
+    }
+    if (getServiceOrigins('content').includes(parsed.origin)) {
+      const [, org, site] = parsed.pathname.split('/');
+      return [org, site, 'main'];
+    }
+    if (getServiceOrigins('admin').includes(parsed.origin)) {
+      const [, , org, site] = parsed.pathname.split('/');
+      return [org, site, 'main'];
+    }
   } catch {
     return false;
   }
@@ -259,11 +274,17 @@ export async function loadLibrary() {
 
 export function getItemDetails(item) {
   // Blocks will be path, templates will be value
-  const input = item.path || item.value;
-  const details = parseSiteUrl(input) || parsePreviewUrl(input) || parseDaUrl(input);
-  if (!details) return {};
-  const { org, site, pathname } = details;
-  return { org, site, pathname };
+  const { hostname, pathname, origin } = new URL(item.path || item.value);
+  if (hostname.includes('--')) {
+    const [org, site] = hostname.split('.')[0].split('--').reverse();
+    return { org, site, pathname };
+  }
+  if (getServiceOrigins('content').includes(origin)) {
+    const [org, site, ...rest] = pathname.slice(1).split('/');
+    return { org, site, pathname: `/${rest.join('/')}` };
+  }
+  const [, org, site, ...rest] = pathname.slice(1).split('/');
+  return { org, site, pathname: `/${rest.join('/')}` };
 }
 
 export async function getPreviewStatus({ org, site, pathname }) {

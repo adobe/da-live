@@ -43,19 +43,19 @@ describe('Libs', () => {
     expect(libs).to.equal('http://localhost:6456/nx');
   });
 
-  it('uses independent NX directory templates without inferring the version from their names', async () => {
+  it('uses fixed NX directory URLs without inferring the version from their names', async () => {
     const original = { ...config };
     try {
       Object.assign(config, createConfig({
         nx: {
-          url: 'https://assets.example/{branch}/legacy',
-          urlV2: 'https://runtime.example/{branch}/current',
+          url: 'https://assets.example/legacy',
+          urlV2: 'https://runtime.example/current',
         },
       }));
       expect(setNx('/nx', { hostname: 'da.live', search: '?nx=feature' }))
-        .to.equal('https://assets.example/feature/legacy');
-      expect(getNx1()).to.equal('https://assets.example/feature/legacy');
-      expect(getNx2()).to.equal('https://runtime.example/feature/current');
+        .to.equal('https://assets.example/legacy');
+      expect(getNx1()).to.equal('https://assets.example/legacy');
+      expect(getNx2()).to.equal('https://runtime.example/current');
       expect(isNx2()).to.equal(false);
       const meta = document.createElement('meta');
       meta.name = 'nxver';
@@ -64,16 +64,23 @@ describe('Libs', () => {
       try {
         // eslint-disable-next-line import/no-unresolved -- reload module-level version selection
         const v2 = await import('../../../scripts/utils.js?custom-nx-version');
-        expect(v2.setNx('/nx', { hostname: 'da.live' })).to.equal('https://runtime.example/main/current');
-        expect(v2.getNx1()).to.equal('https://assets.example/main/legacy');
+        expect(v2.setNx('/nx', { hostname: 'da.live' })).to.equal('https://runtime.example/current');
+        expect(v2.getNx1()).to.equal('https://assets.example/legacy');
         expect(v2.isNx2()).to.equal(true);
       } finally {
         meta.remove();
       }
+      expect(setNx('/nx', { hostname: 'da.live', search: '?nx=local' })).to.equal('http://localhost:6456/nx');
+      expect(getNx2()).to.equal('http://localhost:6456/nx2');
     } finally {
       Object.assign(config, original);
       setNx('/nx');
     }
+  });
+
+  it('retains the upstream CDN choice on legacy HLX hosts', () => {
+    expect(setNx('/nx', { hostname: 'main--site--org.hlx.live' })).to.equal('/nx');
+    setNx('/nx');
   });
 
   describe('sanitizeName', () => {

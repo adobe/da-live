@@ -11,7 +11,6 @@
  */
 
 import config from './config.js';
-import { getNxUrl, parseSiteUrl } from './urls.js';
 
 export function sanitizeName(name, preserveDots = true, allowUnderscores = true) {
   if (!name) return null;
@@ -62,18 +61,22 @@ export const [setNx, getNx, getNx2, getNx1] = (() => {
 
   return [
     (nxBase, location) => {
-      const { hostname, search, href, pathname } = location || window.location;
+      const { hostname, search } = location || window.location;
       const nxParam = sanitizeName(new URLSearchParams(search).get('nx'));
       const branch = nxParam || 'main';
-      const isProd = !(parseSiteUrl(href || `https://${hostname}${pathname || '/'}`) || hostname.includes('local'));
-      const remote = !isProd || !!nxParam;
+      const isAem = [config.aem.previewHost, config.aem.liveHost]
+        .some((host) => hostname.endsWith(`.${host}`));
+      const isProd = !(isAem || hostname.includes('.aem.') || hostname.includes('local'));
       if (branch === 'local') {
         nx1 = `http://localhost:6456${nxBase}`;
         nx2 = `${nx1}2`;
       } else {
-        nx1 = config.nx.url || remote ? getNxUrl(nxBase, branch) : nxBase;
+        const base = !nxParam && isProd ? nxBase
+          : `https://${branch}--${config.nx.repo}--${config.nx.owner}.${config.aem.liveHost}${nxBase}`;
+        nx1 = config.nx.url || base;
         nx2 = nx1.endsWith('/nx') ? `${nx1}2` : nx1;
-        if (config.nx.url || config.nx.urlV2) nx2 = getNxUrl(nxBase, branch, true);
+        if (config.nx.url) nx2 = `${nx1}2`;
+        if (config.nx.urlV2) nx2 = config.nx.urlV2;
       }
       nx = nxVer ? nx2 : nx1;
       if (!config.nx.url) nx1 = nx1.replace(/\/nx2$/, '/nx');

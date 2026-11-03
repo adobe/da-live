@@ -1,6 +1,6 @@
 import { SUPPORTED_FILES } from '../../shared/constants.js';
 import { getNx2Api, sanitizePath, sanitizePathParts } from '../../../scripts/utils.js';
-import { getSiteUrl } from '../../../scripts/urls.js';
+import { getSiteUrl } from '../../../scripts/config.js';
 
 const MAX_DEPTH = 1000;
 

@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../../../shared/sheet.js';
 import { initIms, saveToAem, getExistingSchedule } from '../../../../shared/utils.js';
 import { isRegistered, schedulePagePublish } from './utils.js';
-import { getAppUrl } from '../../../../../scripts/urls.js';
+import { getAppUrl } from '../../../../../scripts/config.js';
 
 const REGISTER_PATH = getAppUrl('/apps/scheduler');
 

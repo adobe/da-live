@@ -1,7 +1,7 @@
 import { daFetch, getFirstSheet, getSheetByName } from '../../../shared/utils.js';
 import { getMetadata } from '../../utils/helpers.js';
 import { parseDom, aemToContentUrl, daFetchLibrary } from './helpers.js';
-import { getSiteUrl, parseSiteUrl } from '../../../../scripts/urls.js';
+import { isAemHost } from '../../../../scripts/config.js';
 
 function isHeading(element) {
   return ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].some((name) => element?.nodeName === name);
@@ -11,12 +11,11 @@ function decorateImages(element, path) {
   if (!element || !path) return;
   try {
     const url = new URL(path);
-    const site = parseSiteUrl(path);
     element.querySelectorAll('img').forEach((img) => {
       if (img.getAttribute('src').startsWith('./')) {
         const srcSplit = img.src.split('/');
         const mediaPath = srcSplit.pop();
-        img.src = site ? getSiteUrl(site.tier, { ...site, path: mediaPath, search: '', hash: '' }) : `${url.origin}/${mediaPath}`;
+        img.src = `${url.origin}/${mediaPath}`;
       }
       const { width, height } = img;
       const ratio = width > 200 ? 200 / width : 1;
@@ -75,7 +74,7 @@ function getBlockTableHtml(block) {
 
 function isAemHosted(path) {
   try {
-    return !!parseSiteUrl(path);
+    return isAemHost(new URL(path).hostname);
   } catch {
     return false;
   }

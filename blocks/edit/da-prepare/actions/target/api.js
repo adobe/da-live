@@ -1,10 +1,10 @@
 import { etcFetch } from '../../../../shared/utils.js';
-import { getAppUrl, parseSiteUrl } from '../../../../../scripts/urls.js';
+import { getAppUrl } from '../../../../../scripts/config.js';
 
 function getEditUrl(aemUrl) {
   const parsed = new URL(aemUrl);
-  const { org, site, pathname } = parseSiteUrl(parsed.href) || {};
-  return getAppUrl(`/edit#/${org}/${site}${pathname || parsed.pathname}`);
+  const [, site, org] = parsed.hostname.split('.')[0].split('--');
+  return getAppUrl(`/edit#/${org}/${site}${parsed.pathname}`);
 }
 
 export async function saveOffer(config, name, content, aemUrl, displayName, offerId) {

@@ -1,5 +1,5 @@
 import { getNx1, getNx2Api } from '../../../scripts/utils.js';
-import { getSiteUrl, toSiteUrl } from '../../../scripts/urls.js';
+import config, { getSiteUrl, toAemHost } from '../../../scripts/config.js';
 import { buildCompareDom } from '../../shared/version/compare.js';
 import { isRequestId } from '../../shared/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
@@ -63,13 +63,11 @@ export function normalizeComparisonHtml(html, context) {
         el.removeAttribute(name);
       } else if (name === 'src' || name === 'href') {
         try {
-          const resource = value.startsWith('/') && !value.startsWith('//')
-            ? getSiteUrl('live', { org: context.org, site: context.site, path: value }) : value;
-          const url = new URL(resource, base);
+          const url = new URL(value, base);
           if (!['https:', 'http:', ...(name === 'href' ? ['mailto:', 'tel:'] : [])].includes(url.protocol)) {
             el.removeAttribute(name);
           } else {
-            url.href = toSiteUrl(url.href, 'live');
+            url.hostname = toAemHost(url.hostname, config.aem.liveHost);
             if (name === 'src' && url.hash.startsWith('#width')) url.hash = '';
             el.setAttribute(name, url.href);
           }

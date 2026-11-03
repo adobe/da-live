@@ -60,6 +60,11 @@ describe('getPreviewProxyDetails', () => {
     expect(getPreviewProxyDetails(input).url).to.equal(input);
   });
 
+  it('leaves immutable snapshot review URLs unchanged', () => {
+    const input = 'https://release--main--site--org.aem.reviews/page?x=1#part';
+    expect(getPreviewProxyDetails(input)).to.deep.equal({ url: input });
+  });
+
   it('rewrites a content.da.live URL', () => {
     const details = getPreviewProxyDetails('https://content.da.live/org/site/path/to/page?a=1', { branch: 'feat' });
     expect(details.url).to.equal('https://feat--site--org.preview.da.live/path/to/page?a=1');

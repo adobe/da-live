@@ -28,46 +28,19 @@ function pingSafe(respond) {
 }
 
 describe('UE URLs', () => {
-  it('uses the editor site context for static custom UE and quick-edit domains', async () => {
-    const original = { ...config };
-    const originalFetch = window.fetch;
-    try {
-      Object.assign(config, createConfig({
-        aem: {
-          liveUrl: 'https://live.customer.example',
-          previewUrl: 'https://preview.customer.example',
-          ueUrl: 'https://ue.customer.example',
-        },
-      }));
-      const input = 'https://live.customer.example/folder/index?foo=bar#part';
-      window.fetch = pingSafe(async () => ({ ok: true, json: async () => ({ data: [{ key: 'editor.path', value: '/@customer/' }] }) }));
-      expect(await ueUrlHelper('static-ue', 'site', input))
-        .to.equal('https://experience.adobe.com/#/@customer/aem/editor/canvas/ue.customer.example/folder/index?foo=bar#part');
-      window.fetch = pingSafe(async () => ({ ok: true, json: async () => ({ data: [{ key: 'quick-edit', value: 'site' }] }) }));
-      expect(await ueUrlHelper('static-qe', 'site', input))
-        .to.equal('https://preview.customer.example/folder/?foo=bar&quick-edit=on#part');
-    } finally {
-      Object.assign(config, original);
-      window.fetch = originalFetch;
-    }
-  });
-
-  it('uses custom UE and quick-edit routes without dropping document query or fragment', async () => {
+  it('uses configured suffixes without dropping document query or fragment', async () => {
     const original = { ...config };
     try {
       Object.assign(config, createConfig({
-        aem: {
-          liveUrl: 'https://publish.example/sites/{org}/{site}/{branch}',
-          previewUrl: 'https://preview.example/render/{org}/{site}/{branch}',
-          ueUrl: 'https://ue.example/edit/{org}/{site}/{branch}',
-        },
+        da: { domain: 'author.example', pageDomain: 'author-test.example' },
+        aem: { liveHost: 'customer.live', previewHost: 'customer.page' },
       }));
       const { getUeUrl, getQeUrl } = await import('../../../../../../blocks/edit/da-content/helpers/index.js');
-      const input = 'https://publish.example/sites/org/site/main/folder/page?foo=bar#part';
+      const input = 'https://main--site--org.customer.live/folder/index?foo=bar#part';
       expect(await getUeUrl({ value: '/@customer/' }, input))
-        .to.equal('https://experience.adobe.com/#/@customer/aem/editor/canvas/ue.example/edit/org/site/main/folder/page?foo=bar#part');
+        .to.equal('https://experience.adobe.com/#/@customer/aem/editor/canvas/main--site--org.ue.author.example/folder/index?foo=bar#part');
       expect(await getQeUrl(input))
-        .to.equal('https://preview.example/render/org/site/main/folder/page?foo=bar&quick-edit=on#part');
+        .to.equal('https://main--site--org.customer.page/folder/?foo=bar&quick-edit=on#part');
     } finally {
       Object.assign(config, original);
     }

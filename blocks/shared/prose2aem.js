@@ -1,5 +1,5 @@
 import getPathDetails from './pathDetails.js';
-import { getServiceOrigins, parseDaUrl, parseSiteUrl } from '../../scripts/urls.js';
+import { getServiceOrigins, isAemHost } from '../../scripts/config.js';
 import { parseIcons, removeEditorArtifacts } from './prose-cleanup.js';
 
 function setCursor(cursor, el) {
@@ -91,9 +91,8 @@ function makePictures(editor, live) {
     if (live && clone.src) {
       try {
         const source = new URL(clone.src);
-        const details = parseDaUrl(source.href);
-        if (details?.service === 'content') {
-          source.pathname = details.pathname;
+        if (getServiceOrigins('content').includes(source.origin)) {
+          source.pathname = `/${source.pathname.split('/').slice(3).join('/')}`;
           clone.src = source.toString();
         }
       } catch {
@@ -241,9 +240,9 @@ function convertLocalUrlsToRelative(editor) {
     if (!url || !url.startsWith('https://')) return;
 
     try {
-      const details = parseSiteUrl(url);
-      if (details?.site === site && details.org === org) {
-        link.setAttribute('href', `${details.pathname}${details.search}${details.hash}`);
+      const { hostname, pathname, search, hash } = new URL(url);
+      if (isAemHost(hostname) && hostname.includes(`--${site}--${org}.`)) {
+        link.setAttribute('href', `${pathname}${search}${hash}`);
       }
     } catch {
       // ignore

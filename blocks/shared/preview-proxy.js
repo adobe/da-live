@@ -1,6 +1,13 @@
 import { getLivePreviewUrl } from './constants.js';
 import { livePreviewLogin } from './utils.js';
-import { parseSiteUrl, parsePreviewUrl, parseDaUrl } from '../../scripts/urls.js';
+import { getServiceHosts, getServiceOrigins, isAemHost, isPreviewHost } from '../../scripts/config.js';
+
+function parseBranchHost(hostname) {
+  const [branch, site, orgWithDomain] = hostname.split('--');
+  if (!branch || !site || !orgWithDomain) return null;
+  const [org] = orgWithDomain.split('.');
+  return org ? { org, site, branch } : null;
+}
 
 function buildPreviewUrl({
   org, site, branch, pathname, search = '', hash = '', getUrl = getLivePreviewUrl,
@@ -28,22 +35,38 @@ function resolvePreviewProxyDetails(input, fallback) {
   }
 
   try {
-    // Host-only compatibility here rewrites URLs, never authorizes credentials.
-    const parsed = parseSiteUrl(input, fallback) || parsePreviewUrl(input, fallback)
-      || parseDaUrl(input, undefined, true);
-    if (parsed) {
-      const {
-        org, site, branch: sourceBranch, pathname, search, hash,
-      } = parsed;
-      const resolvedBranch = parsed.service ? branch : sourceBranch;
+    const url = new URL(input);
+    const hosted = parseBranchHost(url.hostname);
+    const { pathname, search, hash } = url;
+    if (hosted && (isAemHost(url.hostname) || isPreviewHost(url.hostname))) {
+      return {
+        url: buildPreviewUrl({ ...hosted, pathname, search, hash, getUrl }),
+        ...hosted,
+        pathname,
+      };
+    }
+
+    const contentHosts = getServiceHosts('content');
+    const adminHosts = getServiceHosts('admin');
+    // Host-only compatibility rewrites URLs; credentials use exact origins elsewhere.
+    const isContent = getServiceOrigins('content').includes(url.origin)
+      || (contentHosts.has(url.hostname) && !adminHosts.has(url.hostname));
+    const isAdmin = getServiceOrigins('admin').includes(url.origin)
+      || (adminHosts.has(url.hostname) && !contentHosts.has(url.hostname));
+    if (isContent || isAdmin) {
+      const parts = pathname.slice(1).split('/');
+      if (!isContent) parts.shift();
+      const [org, site, ...rest] = parts;
+      if (!org || !site) return { url: input };
+      const targetPath = `/${rest.join('/')}`;
       return {
         url: buildPreviewUrl({
-          org, site, branch: resolvedBranch, pathname, search, hash, getUrl,
+          org, site, branch, pathname: targetPath, search, hash, getUrl,
         }),
         org,
         site,
-        branch: resolvedBranch,
-        pathname,
+        branch,
+        pathname: targetPath,
       };
     }
   } catch {
