@@ -1,3 +1,10 @@
+## [1.17.2](https://github.com/adobe/da-live/compare/v1.17.1...v1.17.2) (2026-11-03)
+
+
+### Bug Fixes
+
+* **browse:** turn config action into settings menu with permissions ([#1629](https://github.com/adobe/da-live/issues/1629)) ([c05aace](https://github.com/adobe/da-live/commit/c05aacee06146914c77520530fa129d63819d908))
+
 ## [1.17.1](https://github.com/adobe/da-live/compare/v1.17.0...v1.17.1) (2026-11-02)
 
 
