@@ -22,9 +22,10 @@ Favorite uses browser-local `da-favorites` entries for the selected site root.
 It displays at most six cards or list rows without deleting saved entries.
 The list reuses `da-file-item` rows with Name, Folder, Modified at, Modified by
 and information/favorite controls. Modifier names include the standard user icon.
-Each view retains its own six-to-eighteen expansion.
+Both views share the same six-to-eighteen expansion.
 Folder links preserve Browse navigation and site-relative folder context.
-Changing between cards and rows keeps the selected filter and both view limits.
+Changing between cards and rows keeps the selected filter and visible files.
+Changing filters resets the visible count to six.
 Changing the site resets filters and
 pagination and aborts the previous listing. Favorite changes in another tab
 are reflected while the component is connected.

@@ -37,7 +37,6 @@ export class DaLanding extends LitElement {
     _tab: { state: true },
     _view: { state: true },
     _limit: { state: true },
-    _cardLimit: { state: true },
     _editor: { state: true },
   };
 
@@ -52,7 +51,6 @@ export class DaLanding extends LitElement {
     this._tab = 'recent';
     this._view = getBrowseSettings().view === 'list' ? 'list' : 'card';
     this._limit = PAGE_SIZE;
-    this._cardLimit = PAGE_SIZE;
   }
 
   connectedCallback() {
@@ -79,7 +77,6 @@ export class DaLanding extends LitElement {
     this._scope = scope;
     this._tab = 'recent';
     this._limit = PAGE_SIZE;
-    this._cardLimit = PAGE_SIZE;
     this._actionError = undefined;
     this.refreshFavorites();
     this.loadSite();
@@ -124,7 +121,6 @@ export class DaLanding extends LitElement {
   changeTab(value) {
     this._tab = value;
     this._limit = PAGE_SIZE;
-    this._cardLimit = PAGE_SIZE;
   }
 
   changeView({ detail: { value } }) {
@@ -136,9 +132,6 @@ export class DaLanding extends LitElement {
   visibleFiles() {
     const files = this._tab === 'starred'
       ? this._files.filter((item) => this._favorites.has(item.path)) : this._files;
-    if (this._view === 'card') {
-      return files.slice(0, this._tab === 'starred' ? PAGE_SIZE : Math.min(this._cardLimit, MAX_FILES));
-    }
     return files.slice(0, this._tab === 'starred' ? PAGE_SIZE : Math.min(this._limit, MAX_FILES));
   }
 
@@ -185,9 +178,8 @@ export class DaLanding extends LitElement {
         <p>${this._tab === 'starred' ? 'Add a file in this folder to favorites to keep it close.' : 'Open Files to add content to this site.'}</p>
       </div>`;
     }
-    const canShowMore = this._tab !== 'starred' && (this._view === 'card'
-      ? this._cardLimit < MAX_FILES && files.length > this._cardLimit
-      : this._limit < MAX_FILES && files.length > this._limit);
+    const canShowMore = this._tab !== 'starred'
+      && this._limit < MAX_FILES && files.length > this._limit;
     return html`
       ${this._view === 'list' ? renderFileTable({
     files: this.visibleFiles(),
@@ -197,8 +189,7 @@ export class DaLanding extends LitElement {
         ${repeat(this.visibleFiles(), (item) => item.path, (item) => this.renderFile(item))}
       </ul>`}
       ${canShowMore ? html`<button class="show-more nx-action-btn-quiet" @click=${() => {
-    if (this._view === 'card') this._cardLimit = MAX_FILES;
-    else this._limit = MAX_FILES;
+    this._limit = MAX_FILES;
   }}>Show more files</button>` : nothing}`;
   }
 

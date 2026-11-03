@@ -119,21 +119,45 @@ describe('landing Content section', () => {
     expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
   });
 
-  it('starts both views at six and expands each directly to eighteen with the requested columns', async () => {
+  ['card', 'list'].forEach((initialView) => it(`preserves the visible files when switching from ${initialView} and back`, async () => {
+    const switchView = async (value) => {
+      const switcher = el.shadowRoot.querySelector('nx-segmented-btn');
+      switcher.dispatchEvent(new CustomEvent('change', { detail: { value } }));
+      await el.updateComplete;
+      expect(switcher.value).to.equal(value);
+    };
+    const otherView = initialView === 'card' ? 'list' : 'card';
+    await switchView(initialView);
+    expect(el.shadowRoot.querySelectorAll('da-file-item')).to.have.length(6);
+    await switchView(otherView);
+    expect(el.shadowRoot.querySelectorAll('da-file-item')).to.have.length(6);
+    await switchView(initialView);
     el.shadowRoot.querySelector('.show-more').click();
-    el.changeView({ detail: { value: 'list' } });
     await el.updateComplete;
-    expect([...el.shadowRoot.querySelectorAll('[role="columnheader"]')].map((cell) => cell.textContent))
-      .to.deep.equal(['Name', 'Folder', 'Modified at', 'Modified by', 'File information and Favorite']);
-    expect(el.shadowRoot.querySelectorAll('.file-row')).to.have.length(6);
+    const paths = () => [...el.shadowRoot.querySelectorAll('da-file-item')].map((item) => item.path);
+    const expandedPaths = ITEMS.slice(0, 18).map((item) => item.path);
+    expect(paths()).to.deep.equal(expandedPaths);
+    for (const view of [otherView, initialView]) {
+      await switchView(view);
+      expect(paths()).to.deep.equal(expandedPaths);
+      expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
+    }
+    expect(JSON.parse(localStorage.getItem('da-browse-settings')).view).to.equal(initialView);
+  }));
+
+  it('resets expansion when changing filters or sites, not when switching views', async () => {
     el.shadowRoot.querySelector('.show-more').click();
     await el.updateComplete;
-    expect(el.shadowRoot.querySelectorAll('.file-row')).to.have.length(18);
-    expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
-    el.changeView({ detail: { value: 'card' } });
+    el.changeTab('starred');
+    el.changeTab('recent');
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelectorAll('da-file-item')).to.have.length(6);
+    el.shadowRoot.querySelector('.show-more').click();
     await el.updateComplete;
     expect(el.shadowRoot.querySelectorAll('da-file-item')).to.have.length(18);
-    expect(JSON.parse(localStorage.getItem('da-browse-settings')).view).to.equal('card');
+    hashChange._set({ org: 'other', site: 'site', fullpath: '/other/site' });
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelectorAll('da-file-item')).to.have.length(6);
   });
 
   it('caps Favorite at six cards or rows without deleting saved entries', async () => {
@@ -171,8 +195,7 @@ describe('landing Content section', () => {
     expect(el.shadowRoot.querySelector('da-file-item').isFavorited).to.equal(false);
   });
 
-  it('resets filters, expansion and favorites on a site change', async () => {
-    el._cardLimit = 18;
+  it('resets filters and favorites on a site change', async () => {
     toggleFavorite('/org/site', ITEMS[0].path);
     el.refreshFavorites();
     el.changeTab('starred');
@@ -181,7 +204,6 @@ describe('landing Content section', () => {
     await el.updateComplete;
     expect(request.signal.aborted).to.equal(true);
     expect(el._tab).to.equal('recent');
-    expect(el._cardLimit).to.equal(6);
     expect(el._favorites.size).to.equal(0);
     expect(loadSite.callCount).to.equal(2);
   });
