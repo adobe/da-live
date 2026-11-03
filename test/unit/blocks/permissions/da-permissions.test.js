@@ -125,7 +125,7 @@ describe('da-permissions', () => {
     expect(cards).to.not.equal(null);
     expect(cards.slots.some((s) => s.path === 'CONFIG')).to.be.true;
     expect(cards.scopeName).to.equal('myorg');
-    expect(cards.canAddFolder).to.equal(false);
+    expect(cards.canAdd).to.equal(false);
 
     const picker = el.shadowRoot.querySelector('nx-picker');
     const labels = picker.items.filter((i) => !i.divider).map((i) => i.label);
@@ -312,7 +312,7 @@ describe('da-permissions', () => {
     search.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
     await el.updateComplete;
     expect(cards().slots.length).to.equal(allCount);
-    expect(cards().canAddFolder).to.equal(true);
+    expect(cards().canAdd).to.equal(true);
 
     search.value = 'zz';
     search.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
@@ -610,7 +610,7 @@ describe('da-permissions', () => {
 
     async function openFolderDialog(el) {
       const cards = el.shadowRoot.querySelector('da-permissions-cards');
-      expect(cards.canAddFolder).to.equal(true);
+      expect(cards.canAdd).to.equal(true);
       cards.shadowRoot.querySelector('button.add-folder').click();
       await el.updateComplete;
       return el.shadowRoot.querySelector('nx-dialog');
@@ -654,7 +654,7 @@ describe('da-permissions', () => {
       await el.updateComplete;
 
       expect(!!el.shadowRoot.querySelector('nx-dialog')).to.equal(false);
-      expect(el._pendingFolder).to.equal('blog/drafts');
+      expect(el._pendingPath).to.equal('/mysite/blog/drafts/ + **');
     });
 
     it('shows a validation error and keeps the dialog open when the path does not start with /', async () => {
@@ -666,11 +666,11 @@ describe('da-permissions', () => {
       expect(!!dialog).to.equal(true);
       expect(dialog.querySelector('.nx-input-error-msg')?.textContent.trim())
         .to.equal('Folder paths start with /, e.g. /blog.');
-      expect(el._pendingFolder).to.equal(null);
+      expect(el._pendingPath).to.equal(null);
 
       await submitFolder(el, '/blog');
       expect(!!el.shadowRoot.querySelector('nx-dialog')).to.equal(false);
-      expect(el._pendingFolder).to.equal('blog');
+      expect(el._pendingPath).to.equal('/mysite/blog/ + **');
     });
 
     it('folder-select: dialog closes, the row is pending, and the Read add input is open', async () => {
@@ -680,7 +680,7 @@ describe('da-permissions', () => {
       await addFolder(el, '/blog');
 
       expect(el.shadowRoot.querySelector('nx-dialog')).to.equal(null);
-      expect(el._pendingFolder).to.equal('blog');
+      expect(el._pendingPath).to.equal('/mysite/blog/ + **');
 
       const cards = el.shadowRoot.querySelector('da-permissions-cards');
       const blogPath = '/mysite/blog/ + **';
@@ -704,7 +704,7 @@ describe('da-permissions', () => {
       await cards.updateComplete;
 
       expect(putCalls.length).to.equal(0);
-      expect(el._pendingFolder).to.equal('blog');
+      expect(el._pendingPath).to.equal('/mysite/blog/ + **');
       expect(cards.slots.some((s) => s.path === blogPath && s.pending)).to.equal(true);
       expect(cards.shadowRoot.querySelector('.row-add-input')).to.equal(null);
     });
@@ -725,7 +725,7 @@ describe('da-permissions', () => {
       await addFolder(el, '/blog');
 
       const blogPath = '/s/blog/ + **';
-      expect(el._pendingFolder).to.equal('blog');
+      expect(el._pendingPath).to.equal(blogPath);
 
       const cards = el.shadowRoot.querySelector('da-permissions-cards');
       await cards.updateComplete;
@@ -742,9 +742,9 @@ describe('da-permissions', () => {
       expect(rule.groups).to.equal('reader@x.com');
 
       resolvePut(200);
-      await waitUntil(() => el._pendingFolder === null, el);
+      await waitUntil(() => el._pendingPath === null, el);
 
-      expect(el._pendingFolder).to.equal(null);
+      expect(el._pendingPath).to.equal(null);
       const updatedCards = el.shadowRoot.querySelector('da-permissions-cards');
       expect(updatedCards.slots.some((s) => s.path === blogPath && s.pending)).to.equal(false);
     });
@@ -758,12 +758,138 @@ describe('da-permissions', () => {
 
       await addFolder(el, '/blog');
 
-      expect(el._pendingFolder).to.equal('blog');
+      expect(el._pendingPath).to.equal('/mysite/blog/ + **');
 
       el.site = 'othersite';
       await el.updateComplete;
 
-      expect(el._pendingFolder).to.equal(null);
+      expect(el._pendingPath).to.equal(null);
+    });
+  });
+
+  describe('page permission', () => {
+    const PAGE_CONFIG_BODY = {
+      ':names': ['permissions'],
+      ':version': 3,
+      permissions: {
+        total: 1,
+        limit: 1,
+        data: [{ path: '/s/ + **', groups: 'a@x.com', actions: 'write' }],
+      },
+    };
+
+    async function openPageDialog(el) {
+      const cards = el.shadowRoot.querySelector('da-permissions-cards');
+      expect(cards.canAdd).to.equal(true);
+      cards.shadowRoot.querySelector('button.add-page').click();
+      await el.updateComplete;
+      return el.shadowRoot.querySelector('nx-dialog');
+    }
+
+    async function submitPage(el, value) {
+      const dialog = el.shadowRoot.querySelector('nx-dialog');
+      dialog.querySelector('input.page-path-input').value = value;
+      dialog.querySelector('button.page-add-submit').click();
+      await el.updateComplete;
+    }
+
+    async function addMember(el, putCalls, value) {
+      const cards = el.shadowRoot.querySelector('da-permissions-cards');
+      await cards.updateComplete;
+      const input = cards.shadowRoot.querySelector('.row-add-input');
+      input.value = value;
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      await waitUntil(() => putCalls.length === 1);
+      return JSON.parse(putCalls[0].opts.body.get('config'));
+    }
+
+    it('opens a dialog with a single page path field', async () => {
+      mockFetch({ configFor: () => PAGE_CONFIG_BODY });
+      const el = await mount('myorg', 's');
+
+      const dialog = await openPageDialog(el);
+      expect(dialog?.getAttribute('title')).to.equal('Add page permission');
+      const input = dialog?.querySelector('input.page-path-input.nx-input');
+      expect(input?.getAttribute('placeholder')).to.equal('/about');
+      const actions = [...dialog.querySelectorAll('[slot="actions"]')].map((b) => [b.textContent.trim(), b.className]);
+      expect(actions).to.deep.equal([
+        ['Cancel', 'nx-form-btn-secondary'],
+        ['Add', 'page-add-submit nx-form-btn-primary'],
+      ]);
+    });
+
+    it('shows a validation error and keeps the dialog open for a trailing slash', async () => {
+      mockFetch({ configFor: () => PAGE_CONFIG_BODY });
+      const el = await mount('myorg', 's');
+
+      await openPageDialog(el);
+      await submitPage(el, '/blog/');
+      const dialog = el.shadowRoot.querySelector('nx-dialog');
+      expect(dialog.querySelector('.nx-input-error-msg')?.textContent.trim())
+        .to.equal('Page paths cannot end with /. Use Add folder for folders.');
+      expect(el._pendingPath).to.equal(null);
+    });
+
+    it('page-select: dialog closes, the page row is pending, and the Read add input is open', async () => {
+      mockFetch({ configFor: () => PAGE_CONFIG_BODY });
+      const el = await mount('myorg', 's');
+
+      await openPageDialog(el);
+      await submitPage(el, '/promotions.html');
+
+      expect(el.shadowRoot.querySelector('nx-dialog')).to.equal(null);
+      expect(el._pendingPath).to.equal('/s/promotions');
+      const cards = el.shadowRoot.querySelector('da-permissions-cards');
+      expect(cards.slots.some((s) => s.path === '/s/promotions' && s.kind === 'page' && s.pending)).to.equal(true);
+      expect(cards.adding).to.deep.equal({ path: '/s/promotions', level: 'read' });
+    });
+
+    it('adding a member saves the page rule and its media folder rule', async () => {
+      const { putCalls, resolvePut } = mockFetch({ configFor: () => PAGE_CONFIG_BODY });
+      const el = await mount('myorg', 's');
+
+      await openPageDialog(el);
+      await submitPage(el, '/promotions');
+      const saved = await addMember(el, putCalls, 'legal@x.com');
+
+      expect(putCalls.length).to.equal(1);
+      expect(saved.permissions.data).to.deep.equal([
+        { path: '/s/ + **', groups: 'a@x.com', actions: 'write' },
+        { path: '/s/promotions', groups: 'legal@x.com', actions: 'read' },
+        { path: '/s/.promotions/ + **', groups: 'legal@x.com', actions: 'read' },
+      ]);
+
+      resolvePut(200);
+      await waitUntil(() => el._pendingPath === null, el);
+      expect(el._pendingPath).to.equal(null);
+    });
+
+    it('adding a member to a sheet saves only the sheet rule', async () => {
+      const { putCalls } = mockFetch({ configFor: () => PAGE_CONFIG_BODY });
+      const el = await mount('myorg', 's');
+
+      await openPageDialog(el);
+      await submitPage(el, '/redirects.json');
+      const saved = await addMember(el, putCalls, 'seo@x.com');
+
+      expect(saved.permissions.data.map((r) => r.path)).to.deep.equal(['/s/ + **', '/s/redirects.json']);
+    });
+
+    it('removing the last member of a page deletes the page and media folder rules', async () => {
+      const body = structuredClone(PAGE_CONFIG_BODY);
+      body.permissions.data.push(
+        { path: '/s/promotions', groups: 'legal@x.com', actions: 'write' },
+        { path: '/s/.promotions/+**', groups: 'legal@x.com', actions: 'write' },
+      );
+      const { putCalls } = mockFetch({ configFor: () => body, putFor: () => new Response('', { status: 200 }) });
+      const el = await mount('myorg', 's');
+
+      el._onRemoveRequest({ detail: { path: '/s/promotions', level: 'write', who: 'legal@x.com' } });
+      await el._confirmRemoveNow();
+
+      expect(putCalls.length).to.equal(1);
+      const saved = JSON.parse(putCalls[0].opts.body.get('config'));
+      expect(saved.permissions.data).to.deep.equal([{ path: '/s/ + **', groups: 'a@x.com', actions: 'write' }]);
     });
   });
 });

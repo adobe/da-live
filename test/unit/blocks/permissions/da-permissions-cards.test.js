@@ -92,7 +92,7 @@ describe('da-permissions-cards', () => {
 
   it('puts a secondary "Add folder" button on the Folder Permissions heading row', async () => {
     const folderSlot = baseSlot({ path: '/myorg/site1/blog/ + **', kind: 'folder', label: 'blog/' });
-    const el = await mount({ slots: [folderSlot], scopeName: 'site1', canAddFolder: true });
+    const el = await mount({ slots: [folderSlot], scopeName: 'site1', canAdd: true });
 
     const header = el.shadowRoot.querySelector('section[data-section="folders"] .scope-section-header');
     expect(header?.querySelector('h3')?.textContent.trim()).to.equal('Folder Permissions');
@@ -109,7 +109,7 @@ describe('da-permissions-cards', () => {
 
   it('shows the Folder Permissions section with an empty note when folders can be added but none exist', async () => {
     const configSlot = baseSlot({ path: '/myorg/site1/CONFIG', kind: 'config', label: 'Site configurations' });
-    const el = await mount({ slots: [configSlot], scopeName: 'site1', canAddFolder: true, busy: true });
+    const el = await mount({ slots: [configSlot], scopeName: 'site1', canAdd: true, busy: true });
 
     const section = el.shadowRoot.querySelector('section[data-section="folders"]');
     expect(section?.querySelector('.section-empty')?.textContent.trim()).to.equal('No folder permissions yet.');
@@ -118,9 +118,45 @@ describe('da-permissions-cards', () => {
 
   it('has no Folder Permissions section or button when folders cannot be added and none exist', async () => {
     const configSlot = baseSlot({ path: '/myorg/site1/CONFIG', kind: 'config', label: 'Site configurations' });
-    const el = await mount({ slots: [configSlot], scopeName: 'site1', canAddFolder: false });
+    const el = await mount({ slots: [configSlot], scopeName: 'site1', canAdd: false });
     expect(!!el.shadowRoot.querySelector('section[data-section="folders"]')).to.equal(false);
     expect(!!el.shadowRoot.querySelector('button.add-folder')).to.equal(false);
+  });
+
+  it('renders a Page Permissions section after the folders, with titled page cards', async () => {
+    const folderSlot = baseSlot({ path: '/myorg/site1/.promotions/ + **', kind: 'folder', label: '.promotions/' });
+    const pageSlot = baseSlot({ path: '/myorg/site1/promotions', kind: 'page', label: 'promotions', write: ['legal@x.com'] });
+    const el = await mount({ slots: [pageSlot, folderSlot], scopeName: 'site1' });
+
+    const sections = [...el.shadowRoot.querySelectorAll('section.scope-section')];
+    expect(sections.map((s) => s.dataset.section)).to.deep.equal(['folders', 'pages']);
+    expect(sections[1].querySelector('h3').textContent.trim()).to.equal('Page Permissions');
+    const card = sections[1].querySelector('article.scope-card');
+    expect(card.dataset.path).to.equal('/myorg/site1/promotions');
+    expect(card.querySelector('.card-title').textContent.trim()).to.equal('promotions');
+  });
+
+  it('puts a secondary "Add page" button on the Page Permissions heading row', async () => {
+    const configSlot = baseSlot({ path: '/myorg/site1/CONFIG', kind: 'config', label: 'Site configurations' });
+    const el = await mount({ slots: [configSlot], scopeName: 'site1', canAdd: true });
+
+    const section = el.shadowRoot.querySelector('section[data-section="pages"]');
+    expect(section?.querySelector('.section-empty')?.textContent.trim()).to.equal('No page permissions yet.');
+    const btn = section?.querySelector('.scope-section-header button.add-page');
+    expect(btn?.textContent.trim()).to.equal('Add page');
+    expect(btn?.classList.contains('nx-form-btn-secondary')).to.equal(true);
+
+    let opened = 0;
+    el.addEventListener('permissions-add-page', () => { opened += 1; });
+    btn.click();
+    expect(opened).to.equal(1);
+  });
+
+  it('has no Page Permissions section when pages cannot be added and none exist', async () => {
+    const configSlot = baseSlot({ path: '/myorg/site1/CONFIG', kind: 'config', label: 'Site configurations' });
+    const el = await mount({ slots: [configSlot], scopeName: 'site1', canAdd: false });
+    expect(!!el.shadowRoot.querySelector('section[data-section="pages"]')).to.equal(false);
+    expect(!!el.shadowRoot.querySelector('button.add-page')).to.equal(false);
   });
 
   it('hides empty sections: only folder slots renders no config or content section', async () => {
