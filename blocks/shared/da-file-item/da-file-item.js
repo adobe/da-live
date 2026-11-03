@@ -400,7 +400,7 @@ export default class DaFileItem extends LitElement {
       case 'modified':
         return html`<div role="cell" class="da-item-list-item-meta da-item-list-item-date" data-column="modified">${this.ext === 'link' ? '—' : (this.renderDate() || '—')}</div>`;
       case 'modifiedBy':
-        return html`<div role="cell" class="da-item-list-item-meta da-item-list-item-modifier" data-column="modifiedBy" title=${this.modifiedBy || this._lastModifiedBy || nothing}>${this.modifiedBy || this._lastModifiedBy || '—'}</div>`;
+        return this.renderModifier();
       case 'actions':
         return html`<div role="cell" class="da-item-list-item-actions" data-column="actions">
           ${this.renderDetailsControl()}${this.renderFavorite()}
@@ -408,6 +408,11 @@ export default class DaFileItem extends LitElement {
       default:
         return nothing;
     }
+  }
+
+  renderModifier() {
+    const modifier = this.modifiedBy ?? this._lastModifiedBy;
+    return html`<div role="cell" class="da-item-list-item-meta da-item-list-item-modifier" data-column="modifiedBy" title=${modifier || nothing}>${modifier ? html`<span class="modifier-icon" aria-hidden="true"></span><span class="modifier-name">${modifier}</span>` : '—'}</div>`;
   }
 
   renderFavorite(className = 'da-item-list-item-favorite', slot = nothing) {
