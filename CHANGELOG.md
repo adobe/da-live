@@ -1,3 +1,24 @@
+# [1.18.0](https://github.com/adobe/da-live/compare/v1.17.2...v1.18.0) (2026-11-03)
+
+
+### Features
+
+* **chat:** expose turn completion to extensions ([#1512](https://github.com/adobe/da-live/issues/1512)) ([b632239](https://github.com/adobe/da-live/commit/b63223996f2f2c29e71f3fb256eae7cfe7d5de87))
+
+## [1.17.2](https://github.com/adobe/da-live/compare/v1.17.1...v1.17.2) (2026-11-03)
+
+
+### Bug Fixes
+
+* **browse:** turn config action into settings menu with permissions ([#1629](https://github.com/adobe/da-live/issues/1629)) ([c05aace](https://github.com/adobe/da-live/commit/c05aacee06146914c77520530fa129d63819d908))
+
+## [1.17.1](https://github.com/adobe/da-live/compare/v1.17.0...v1.17.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* shared chat availability check ([#1515](https://github.com/adobe/da-live/issues/1515)) ([64fdeda](https://github.com/adobe/da-live/commit/64fdeda2ff821de94063cc3173d028b8c19bb6ad))
+
 # [1.17.0](https://github.com/adobe/da-live/compare/v1.16.1...v1.17.0) (2026-10-29)
 
 
