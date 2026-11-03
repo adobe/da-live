@@ -110,119 +110,34 @@ h2 {
   line-height: var(--s2-body-line-height);
 }
 
-.files {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(0, min(100%, var(--da-card-width))));
-  gap: var(--s2-spacing-200);
-}
-
-.file {
-  min-width: 0;
-}
-
-.file-type-icon {
-  display: block;
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  color: var(--s2-gray-700);
-  background: currentcolor;
-  mask: var(--file-icon) center / 20px no-repeat;
-}
-
-.file-table-scroll {
+:where(.files-panel[data-view="list"]) .file-list {
   overflow-x: auto;
 }
 
-.file-table {
-  width: 100%;
+da-list {
+  --da-list-pad-inline: 0px;
+  --da-list-select-width: 0px;
+}
+
+da-list::part(items) {
+  overflow: visible;
+  padding-bottom: 0;
+}
+
+da-list::part(grid) {
+  padding: 0;
+}
+
+.files-panel[data-view="card"] da-list::part(header) {
+  display: none;
+}
+
+.files-panel[data-view="list"] da-list {
   min-width: 1036px;
-  border-collapse: collapse;
-  table-layout: fixed;
-  text-align: start;
-  font-size: inherit;
-}
 
-.file-table col {
-  width: 200px;
-}
-
-.file-table col:first-child {
-  width: calc(100% - 496px);
-}
-
-.file-table col:last-child {
-  width: 96px;
-}
-
-.file-table th {
-  position: relative;
-  height: 40px;
-  padding: 10px 18px;
-  color: var(--s2-gray-600);
-  font-weight: 500;
-  text-align: start;
-  border-bottom: 1px solid var(--s2-gray-100);
-}
-
-.file-table td {
-  height: 56px;
-  padding: 8px 18px;
-  border-bottom: 1px solid var(--s2-gray-100);
-  color: var(--s2-gray-700);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.file-table td:first-child {
-  padding-inline: 8px;
-}
-
-.file-table td:last-child {
-  padding-inline: 0;
-}
-
-.file-table tbody tr:last-child td {
-  border-bottom: 0;
-}
-
-.list-file-link {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--s2-gray-800);
-  text-decoration: none;
-}
-
-.list-file-link span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.list-file-preview {
-  width: 28px;
-  height: 28px;
-  flex: none;
-  border: 1px solid var(--s2-gray-100);
-  border-radius: 8px;
-}
-
-.file-folder {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-decoration: none;
-}
-
-.list-file-link:hover, .file-folder:hover {
-  text-decoration: underline;
+  --da-list-type-width: 200px;
+  --da-list-date-width: 200px;
+  --da-list-action-width: 96px;
 }
 
 .empty-state {
@@ -263,18 +178,9 @@ h2 {
 }
 
 a:focus-visible, .filter:focus-visible,
-.file-table-scroll:focus-visible {
+.file-list:focus-visible {
   outline: 2px solid var(--s2-blue-800);
   outline-offset: var(--s2-spacing-75);
-}
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 
 :host([data-ui-size="m"]) svg {

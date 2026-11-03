@@ -1,13 +1,9 @@
-import { LitElement, html, nothing, repeat } from 'da-lit';
+import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
-import { iconPathForExt, isImageExt } from '../shared/icons.js';
 import { getFavorites, toggleFavorite } from '../browse/shared/favorites.js';
 import { getBrowseSettings, updateBrowseSettings } from '../browse/v2/shared/settings.js';
-import { getBrowseHref, getFileHref, loadFiles, formatModified } from './utils.js';
-import '../shared/da-file-item/da-file-item.js';
-import './file-preview.js';
-import './file-actions.js';
-import renderFileTable from './file-table.js';
+import { getBrowseHref, getListItems, loadFiles } from './utils.js';
+import '../browse/v2/da-list/da-list.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const nx = await import(`${getNx2()}/scripts/nx.js`);
@@ -139,39 +135,10 @@ export class DaLanding extends LitElement {
   visibleFiles() {
     const files = this._tab === 'starred'
       ? this._files.filter((item) => this._favorites.has(item.path)) : this._files;
-    if (this._view === 'card') {
-      return files.slice(0, this._tab === 'starred' ? CARD_PAGE_SIZE : Math.min(this._cardLimit, CARD_MAX));
-    }
-    return files.slice(0, this._tab === 'starred' ? PAGE_SIZE : this._limit);
-  }
-
-  renderFile(item) {
-    const editor = this._editor || '/edit#';
-    return html`<li class="file">
-      <da-file-item view="card" .name=${item.name} .path=${item.path} .ext=${item.ext}
-        .date=${item.lastModified} .editor=${editor} .href=${getFileHref({ item, editor })}
-        .isFavorited=${this._favorites?.has(item.path)}
-        @favoritechange=${() => this.starFile(item)}></da-file-item>
-    </li>`;
-  }
-
-  renderListFile(item) {
-    const modified = formatModified({ modified: item.lastModified });
-    const folder = item.path.slice(0, item.path.lastIndexOf('/'));
-    return html`<tr class="file-row">
-      <td><a class="list-file-link" href=${getFileHref({ item, editor: this._editor || '/edit#' })}>
-        ${isImageExt(item.ext) ? html`<da-landing-preview class="list-file-preview"
-          .path=${item.path} .ext=${item.ext} aria-hidden="true"></da-landing-preview>`
-    : html`<span class="file-type-icon" aria-hidden="true"
-          style="--file-icon: url('${iconPathForExt(item.ext)}')"></span>`}
-        <span>${item.name}</span>
-      </a></td>
-      <td><a class="file-folder" href=${getBrowseHref({ path: folder })} title=${folder}>${folder.slice(this.path.length) || '/'}</a></td>
-      <td>${modified ? html`<time datetime=${modified.date.toISOString()}>${modified.label}</time>` : 'Date unavailable'}</td>
-      <td>${item.ext ? html`<da-landing-file-actions .path=${item.path} .name=${item.name}
-        .ext=${item.ext} .isFavorited=${this._favorites?.has(item.path)}
-        @favoritechange=${() => this.starFile(item)}></da-landing-file-actions>` : nothing}</td>
-    </tr>`;
+    const cardLimit = this._tab === 'starred' ? CARD_PAGE_SIZE : Math.min(this._cardLimit, CARD_MAX);
+    const listLimit = this._tab === 'starred' ? PAGE_SIZE : this._limit;
+    const limit = this._view === 'card' ? cardLimit : listLimit;
+    return getListItems({ files: files.slice(0, limit), favorites: this._favorites, editor: this._editor || '/edit#' });
   }
 
   renderFiles() {
@@ -199,13 +166,13 @@ export class DaLanding extends LitElement {
       ? this._cardLimit < CARD_MAX && files.length > this._cardLimit
       : files.length > this._limit);
     return html`
-      ${this._view === 'list' ? renderFileTable({
-    files: this.visibleFiles(),
-    label: this._tab === 'starred' ? 'Favorite files' : 'Recently modified files',
-    renderRow: (item) => this.renderListFile(item),
-  }) : html`<ul class="files" aria-label=${this._tab === 'starred' ? 'Favorite files' : 'Recently modified files'}>
-        ${repeat(this.visibleFiles(), (item) => item.path, (item) => this.renderFile(item))}
-      </ul>`}
+      <div class="file-list" role="grid" aria-label=${this._tab === 'starred' ? 'Favorite files' : 'Recently modified files'}
+        tabindex=${this._view === 'list' ? 0 : nothing}>
+        <da-list .listItems=${this.visibleFiles()} .view=${this._view}
+          .showFolder=${true} .sort=${false} .editor=${this._editor || '/edit#'}
+          size=${this._view === 'card' ? 's' : 'm'}
+          @favoritechange=${({ detail: { item } }) => this.starFile(item)}></da-list>
+      </div>
       ${canShowMore ? html`<button class="show-more nx-action-btn-quiet" @click=${() => {
     if (this._view === 'card') this._cardLimit = CARD_MAX;
     else this._limit += PAGE_SIZE;

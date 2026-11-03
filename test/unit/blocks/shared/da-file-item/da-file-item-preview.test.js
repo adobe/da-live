@@ -127,4 +127,29 @@ describe('da-file-item preview', () => {
       .to.include('s2-icon-filehtml-20-n.svg');
     expect(el.shadowRoot.querySelector('.card-preview img, .document-preview')).to.equal(null);
   });
+
+  it('reuses lazy image loading and cleanup for opt-in list thumbnails', async () => {
+    const { source } = await getNx2Api();
+    const blob = new Blob(['<svg xmlns="http://www.w3.org/2000/svg"/>'], { type: 'image/svg+xml' });
+    const get = stub(source, 'get').resolves({ ok: true, blob: async () => blob });
+    const revoke = spy(URL, 'revokeObjectURL');
+    await fixture({ ext: 'png', path: '/o/s/a.png', view: 'list', imagePreview: true });
+    const load = spy(el, 'loadImage');
+    expect(get.called).to.equal(false);
+    expect(el.shadowRoot.querySelector('.image-preview svg')).to.exist;
+    onIntersect([{ isIntersecting: true }]);
+    await load.firstCall.returnValue;
+    await el.updateComplete;
+    const url = el._imageUrl;
+    expect(get.calledOnceWithExactly('/o/s/a.png')).to.equal(true);
+    expect(el.shadowRoot.querySelector('.image-preview img').getAttribute('src')).to.equal(url);
+    el.path = '/o/s/b.png';
+    await el.updateComplete;
+    expect(revoke.calledWithExactly(url)).to.equal(true);
+    expect(el._imageUrl).to.equal(null);
+    el.imagePreview = false;
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.image-preview')).to.equal(null);
+    expect(el._imageObserver).to.equal(null);
+  });
 });

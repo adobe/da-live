@@ -167,6 +167,7 @@ describe('da-list render', () => {
         { path: '/o/r/page.html', name: 'page', ext: 'html' },
       ],
     });
+
     const items = el.shadowRoot.querySelectorAll('da-file-item');
     expect(items[0].getAttribute('editor')).to.equal('https://da.live/form#');
     expect(items[1].getAttribute('editor')).to.equal('/canvas#');
@@ -177,6 +178,52 @@ describe('da-list render', () => {
       .to.equal('/canvas#/o/r/page');
   });
 
+  it('opts into Folder instead of Type and forwards caller-owned destinations', async () => {
+    const getList = spy();
+    await fixture({
+      getList,
+      showFolder: true,
+      listItems: [
+        { path: '/o/r/nested/a.html', name: 'a', ext: 'html', href: '/canvas?nx=test#/o/r/nested/a', folderHref: '/?landing=home#/o/r/nested' },
+        { path: '/o/r/b.html', name: 'b', ext: 'html' },
+      ],
+    });
+    const rows = [...el.shadowRoot.querySelectorAll('da-file-item')];
+    await Promise.all(rows.map((row) => row.updateComplete));
+    expect(el.shadowRoot.querySelector('[data-column="folder"]').textContent).to.equal('Folder');
+    expect(el.shadowRoot.querySelector('[data-column="type"]')).to.equal(null);
+    const folder = rows[0].shadowRoot.querySelector('[data-column="folder"] a');
+    expect(folder.textContent).to.equal('/nested');
+    expect(folder.getAttribute('href')).to.equal('/?landing=home#/o/r/nested');
+    expect(rows[0].shadowRoot.querySelector('[data-column="name"]').getAttribute('href'))
+      .to.equal('/canvas?nx=test#/o/r/nested/a');
+    expect(rows[1].folder).to.deep.equal({ path: '/o/r', label: '/', href: '#/o/r' });
+    expect(el.shadowRoot.querySelector('input[name="select-all"]')).to.equal(null);
+    expect(el.shadowRoot.querySelector('da-actionbar').dataset.visible).to.equal('false');
+    expect(getList.called).to.equal(false);
+    await updateList(el, () => { el.showFolder = false; });
+    await Promise.all(rows.map((row) => row.updateComplete));
+    expect(el.shadowRoot.querySelector('[data-column="type"]').textContent).to.equal('Type');
+    expect(rows[0].shadowRoot.querySelector('[data-column="folder"]')).to.equal(null);
+  });
+
+  it('preserves external order and favorite flags and delegates favorite persistence once', async () => {
+    const items = [
+      { path: '/o/r/a.html', name: 'a', ext: 'html', isFavorited: false },
+      { path: '/o/r/b.html', name: 'b', ext: 'html', isFavorited: true },
+    ];
+    await fixture({ listItems: items });
+    const events = [];
+    el.addEventListener('favoritechange', ({ detail }) => events.push(detail));
+    const rows = [...el.shadowRoot.querySelectorAll('da-file-item')];
+    await Promise.all(rows.map((row) => row.updateComplete));
+    expect(rows.map((row) => row.path)).to.deep.equal(items.map((item) => item.path));
+    expect(rows[1].isFavorited).to.equal(true);
+    rows[0].requestFavorite();
+    expect(events).to.deep.equal([{ item: items[0] }]);
+    expect(items[0].isFavorited).to.equal(false);
+    expect(el._selectedItems).to.deep.equal([]);
+  });
   it('Renders the load-more sentinel when continuationToken is set', async () => {
     // Mock fetch to return continuation header
     window.fetch = () => Promise.resolve(new Response('[]', {

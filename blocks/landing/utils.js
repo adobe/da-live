@@ -1,19 +1,5 @@
 import { getFileItemHref } from '../shared/da-file-item/navigation.js';
 
-export function formatModified({ modified, now = new Date() }) {
-  const date = new Date(Number(modified));
-  if (!(Number(modified) > 0) || Number.isNaN(date.getTime())) return undefined;
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  if (date >= today && date <= now) return { date, label: 'Today' };
-  if (date >= yesterday && date < today) return { date, label: 'Yesterday' };
-  return {
-    date,
-    label: new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', ...(date.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}) }).format(date),
-  };
-}
-
 export function getBrowseHref({ path = '', href = window.location.href }) {
   const url = new URL(href);
   url.searchParams.set('landing', 'home');
@@ -35,6 +21,16 @@ export function getFileHref({ item, href = window.location.href, editor = '/edit
   });
   url.searchParams.set('landing', 'home');
   return url.href;
+}
+
+export function getListItems({ files, favorites, editor = '/edit#' }) {
+  return files.map((item) => ({
+    ...item,
+    href: getFileHref({ item, editor }),
+    folderHref: getBrowseHref({ path: item.path.slice(0, item.path.lastIndexOf('/')) }),
+    imagePreview: true,
+    isFavorited: favorites?.has(item.path) ?? false,
+  }));
 }
 
 export async function loadFiles({ path, source, signal }) {

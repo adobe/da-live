@@ -1,6 +1,6 @@
 # Landing Content
 
-The opt-in Content page uses the existing Browse `da-file-item` cards. Open
+The opt-in Content page uses Browse's `da-list` and `da-file-item` in both views. Open
 `/?landing=true&nx=main&nxver=2#/org/site` with access to that site.
 Without `landing=true`, Browse keeps its existing renderer and navigation.
 
@@ -20,7 +20,7 @@ the initial section taller, so six keeps the default desktop view compact.
 
 Favorite uses browser-local `da-favorites` entries for the selected site root.
 It displays at most six cards or ten list rows without deleting saved entries.
-The list keeps Name, Folder, Modified at and information/favorite controls,
+The list keeps Name, Folder, Modified and information/favorite controls,
 with independent ten-row pagination. Changing the site resets filters and
 pagination and aborts the previous listing. Favorite changes in another tab
 are reflected while the component is connected.
@@ -29,10 +29,12 @@ are reflected while the component is connected.
 
 All root-listing pages are loaded, deduplicated and sorted by modification
 date. Permission/network failures have a retry state, not an empty success.
-Cards keep Browse's type icons, lazy image thumbnails, menus and favorites.
-List image thumbnails are lazy and release object URLs on file/site changes
-or removal. There are no HTML document thumbnails or screenshot services.
-List details reuse main's file-item status helpers and load only on demand.
+Both views reuse Browse's file-item menus, details and favorites. Image thumbnails
+are lazy and release object URLs on file/site changes or removal. There are no
+HTML document thumbnails or screenshot services. Details load only on demand.
+Content owns filtering, pagination, destinations and favorite persistence; its
+external list does not fetch another directory or expose bulk actions. The
+opt-in Folder column leaves Browse's default Type column unchanged.
 
 HTML uses Canvas when EW is enabled and the classic editor otherwise. Sheets
 and media use the existing shared routing helper. Folders and `.link` files

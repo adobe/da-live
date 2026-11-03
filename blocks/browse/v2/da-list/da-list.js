@@ -40,6 +40,7 @@ export default class DaList extends DaListBase {
     sortPreference: { attribute: false },
     groupByType: { type: Boolean },
     view: { type: String },
+    showFolder: { type: Boolean },
     canAskCoworker: { type: Boolean },
     editorConfs: { attribute: false },
     defaultEditor: { type: String },
@@ -111,8 +112,10 @@ export default class DaList extends DaListBase {
     if (props.has('listItems') && this.listItems) {
       this._listItems = this.listItems;
       this.resetListItemPaths(this._listItems);
-      this.applyFavoritesToItems(this._listItems);
-      this.applyFavoriteOrder();
+      if (this.fullpath) {
+        this.applyFavoritesToItems(this._listItems);
+        this.applyFavoriteOrder();
+      }
     }
 
     if (props.has('fullpath') && this.fullpath) {
@@ -251,6 +254,8 @@ export default class DaList extends DaListBase {
   }
 
   renderSortButton(property) {
+    const label = property === 'lastModified' ? 'Modified' : 'Name';
+    if (this.sort === false) return label;
     return html`
       <button
         class="da-browse-header-name ${this.sortDirectionFor(property)} ${this._bulkLoading ? 'loading' : ''}"
@@ -258,7 +263,7 @@ export default class DaList extends DaListBase {
         ?disabled=${this._bulkLoading}
         aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
         ${this.renderSortIcon()}
-        ${property === 'lastModified' ? 'Modified' : 'Name'}
+        ${label}
       </button>`;
   }
 
@@ -352,17 +357,31 @@ export default class DaList extends DaListBase {
 
   renderGroupItems(items, indexByPath) {
     const rows = this.renderGroupRows(items, indexByPath);
-    return this.view === 'card' ? html`<div class="da-card-grid" role="presentation">${rows}</div>` : rows;
+    return this.view === 'card' ? html`<div class="da-card-grid" part="grid" role="presentation">${rows}</div>` : rows;
+  }
+
+  _onFavoriteChange(event, item) {
+    if (this.fullpath) {
+      this.toggleItemFavorite(item);
+      return;
+    }
+    event.stopPropagation();
+    this.dispatchEvent(new CustomEvent('favoritechange', {
+      detail: { item },
+      bubbles: true,
+      composed: true,
+    }));
   }
 
   renderGroupRows(items, indexByPath) {
     return repeat(items, (item) => item.path, (item) => {
       const idx = indexByPath.get(item.path);
+      const folder = this.showFolder ? item.path.slice(0, item.path.lastIndexOf('/')) : undefined;
       return html`
         <da-file-item
           role="row"
           @checked=${(e) => this.handleItemChecked(e, item, idx)}
-          @favoritechange=${() => this.toggleItemFavorite(item)}
+          @favoritechange=${(event) => this._onFavoriteChange(event, item)}
           @onstatus=${({ detail }) => this.setStatus(detail.text, detail.description, detail.type)}
           @renamecompleted=${(e) => this.handleRenameCompleted(e)}
           allowselect="${this.select ? true : nothing}"
@@ -375,6 +394,13 @@ export default class DaList extends DaListBase {
           date="${item.lastModified}"
           ext="${item.ext}"
           editor="${this.getEditorForItem(item)}"
+          .href=${item.href}
+          .imagePreview=${item.imagePreview}
+          .folder=${this.showFolder ? {
+    path: folder,
+    label: `/${folder.split('/').slice(3).join('/')}`,
+    href: item.folderHref ?? `#${folder}`,
+  } : undefined}
           idx=${idx}>
         </da-file-item>`;
     });
@@ -420,7 +446,7 @@ export default class DaList extends DaListBase {
     const groups = this.groupedItems;
 
     return html`
-      <div class="da-item-list" role="presentation">
+      <div class="da-item-list" part="items" role="presentation">
       ${!this.groupByType
         ? this.renderGroupItems(items, indexByPath)
         : groups.map(({ label, items: groupItems }) => html`
@@ -447,9 +473,9 @@ export default class DaList extends DaListBase {
     const showList = filteredItems?.length > 0 || hasMorePages;
 
     return html`
-      <div class="da-browse-panel-header da-browse-table-header ${this.view === 'card' ? 'is-card' : ''}" role="row">
+      <div class="da-browse-panel-header da-browse-table-header ${this.view === 'card' ? 'is-card' : ''}" part="header" role="row">
         <div class="da-browse-header-cell da-browse-header-cell-select" data-column="select">
-          ${this.renderCheckBox()}
+          ${this.select ? this.renderCheckBox() : nothing}
         </div>
         ${this.view === 'card' && this._sort?.property
           && ['ascending', 'descending'].includes(this._sort.direction) ? html`
@@ -462,7 +488,7 @@ export default class DaList extends DaListBase {
             ${this.renderSortButton('name')}
           </div>
         </div>
-        <div class="da-browse-header-cell da-browse-header-cell-type" data-column="type" role="columnheader">Type</div>
+        <div class="da-browse-header-cell da-browse-header-cell-type" data-column=${this.showFolder ? 'folder' : 'type'} role="columnheader">${this.showFolder ? 'Folder' : 'Type'}</div>
         <div class="da-browse-header-cell da-browse-header-cell-modified" data-column="modified" role="columnheader" aria-sort="${this.sortDirectionFor('lastModified')}">
           <div class="da-browse-header-container">
             ${this.renderSortButton('lastModified')}

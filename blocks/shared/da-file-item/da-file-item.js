@@ -33,6 +33,8 @@ export default class DaFileItem extends LitElement {
     allowselect: { type: Boolean },
     view: { type: String, reflect: true },
     href: { type: String },
+    folder: { attribute: false },
+    imagePreview: { type: Boolean },
     isChecked: { attribute: 'ischecked', type: Boolean },
     isFavorited: { attribute: 'isfavorited', type: Boolean },
     _isRenaming: { state: true },
@@ -55,11 +57,11 @@ export default class DaFileItem extends LitElement {
   }
 
   willUpdate(props) {
-    if (props.has('path') || props.has('ext') || props.has('view')) this.resetImage();
+    if (props.has('path') || props.has('ext') || props.has('view') || props.has('imagePreview')) this.resetImage();
   }
 
   updated() {
-    if (!this.isConnected || this.view !== 'card' || !isImageExt(this.ext)
+    if (!this.isConnected || (this.view !== 'card' && !this.imagePreview) || !isImageExt(this.ext)
       || this._imageRequested || this._imageObserver) return;
     this._imageObserver = new IntersectionObserver(([entry]) => {
       if (!entry?.isIntersecting) return;
@@ -315,14 +317,15 @@ export default class DaFileItem extends LitElement {
 
   renderItem() {
     const href = this.href ?? getFileItemHref(this);
+    const preview = this.imagePreview && isImageExt(this.ext);
 
     return html`
       <a href="${this.ext === 'link' ? until(href) : href}" class="da-item-list-item-title" data-column="name">
         <div class="da-item-list-item-info">
           ${this._isRenaming ? html`<span class="da-item-list-item-type"><div class="icon rename-icon"></div></span>
           ` : html`
-            <span class="da-item-list-item-type">
-              ${this.renderIcon()}
+            <span class="da-item-list-item-type ${preview ? 'image-preview' : ''}">
+              ${preview ? this.renderFilePreview() : this.renderIcon()}
             </span>
           `}
           <div class="da-item-list-item-name">
@@ -335,7 +338,9 @@ export default class DaFileItem extends LitElement {
 
   renderRowMeta() {
     return html`
-      <div class="da-item-list-item-meta da-item-list-item-type-label" data-column="type">${getTypeLabel(this.ext)}</div>
+      <div class="da-item-list-item-meta da-item-list-item-type-label" data-column=${this.folder ? 'folder' : 'type'}>
+        ${this.folder ? html`<a class="file-folder" href=${this.folder.href} title=${this.folder.path}>${this.folder.label}</a>` : getTypeLabel(this.ext)}
+      </div>
       <div class="da-item-list-item-meta da-item-list-item-date" data-column="modified">${this.ext === 'link' ? '—' : (this.renderDate() || '—')}</div>`;
   }
 

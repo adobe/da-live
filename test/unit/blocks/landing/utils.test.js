@@ -1,7 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import '../../setup-nx.js';
-import { getBrowseHref, getFileHref, loadFiles, formatModified } from '../../../../blocks/landing/utils.js';
+import { getBrowseHref, getFileHref, getListItems, loadFiles } from '../../../../blocks/landing/utils.js';
 
 const HREF = 'https://fileitem--da-live--adobe.aem.live/?landing=true&nx=main&nxver=2&quick-edit=test&theme=light&rum=on#/org/site';
 
@@ -41,12 +41,20 @@ describe('Content data and destinations on main', () => {
     expect(url.searchParams.has('theme')).to.equal(false);
   });
 
-  it('formats real modification dates without inventing missing metadata', () => {
-    const now = new Date(2026, 9, 19, 12);
-    expect(formatModified({ modified: new Date(2026, 9, 19, 8).getTime(), now }).label).to.equal('Today');
-    expect(formatModified({ modified: new Date(2026, 9, 18, 23).getTime(), now }).label).to.equal('Yesterday');
-    expect(formatModified({ modified: new Date(2025, 8, 14).getTime(), now }).label).to.include('2025');
-    expect(formatModified({ modified: undefined, now })).to.equal(undefined);
+  it('adapts controlled list items without mutating files or changing their order', () => {
+    const files = [
+      { path: '/org/site/nested/a.html', name: 'a', ext: 'html' },
+      { path: '/org/site/b.png', name: 'b', ext: 'png' },
+    ];
+    const items = getListItems({ files, favorites: new Set([files[1].path]), editor: '/canvas#' });
+    expect(items.map((item) => item.path)).to.deep.equal(files.map((item) => item.path));
+    expect(new URL(items[0].href).pathname).to.equal('/canvas');
+    expect(new URL(items[0].folderHref).hash).to.equal('#/org/site/nested');
+    expect(new URL(items[0].folderHref).searchParams.get('landing')).to.equal('home');
+    expect(items.map((item) => item.isFavorited)).to.deep.equal([false, true]);
+    expect(items.every((item) => item.imagePreview)).to.equal(true);
+    expect(files[0]).not.to.have.property('href');
+    expect(files[1]).not.to.have.property('isFavorited');
   });
 
   it('paginates the root listing, deduplicates entries and sorts newest first', async () => {
