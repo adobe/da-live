@@ -566,6 +566,16 @@ describe('ew-block-toolbar', () => {
       ]);
     });
 
+    it('keeps a paragraph a collaborator inserts directly above the block', async () => {
+      const modal = await openModal();
+      remoteEdit((fragment) => fragment.insert(1, [remoteParagraph('Above')]));
+      modal.onInsert(libraryTable());
+      expect(contents()).to.deep.equal([
+        ['paragraph', 'Intro'], ['paragraph', 'Above'], ['table', 'heroNew'],
+        ['paragraph', 'Outro'], ['table', 'otherKeep'],
+      ]);
+    });
+
     it('keeps a block a collaborator inserts right after the block', async () => {
       const modal = await openModal();
       remoteEdit((fragment) => fragment.insert(2, [remoteTable('Added')]));
