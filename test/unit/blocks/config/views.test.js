@@ -83,9 +83,12 @@ describe('config views', () => {
     const panel = { description: 'About.', setup: { rerun: { text: 'Stuck?', action: 'Run it' } } };
     const docs = 'https://www.aem.live/docs/x';
     const el = mount(renderIntro(panel, { docs, inheritance: 'Sites inherit.', setupUrl: 'https://app', readOnly: true }));
-    expect(text(el)).to.include('About. Sites inherit. Docs Stuck? Run it');
-    expect(el.querySelector('a').getAttribute('href')).to.equal(docs);
-    expect(text(el)).to.include('read-only');
+    const lines = [...el.querySelectorAll('.config-info[role="note"] p')].map((p) => p.textContent.replace(/\s+/g, ' ').trim());
+    expect(lines).to.deep.equal([
+      'About. Sites inherit.', 'Stuck? Run it', 'You have read-only access to this configuration.',
+    ]);
+    const learnMore = el.querySelector('.config-info a.nx-action-btn');
+    expect([learnMore.textContent.trim(), learnMore.getAttribute('href')]).to.deep.equal(['Learn more', docs]);
     const plain = mount(renderIntro(panel, { docs, inheritance: '', setupUrl: null, readOnly: false }));
     expect([text(plain).includes('Stuck?'), text(plain).includes('read-only')]).to.deep.equal([false, false]);
   });

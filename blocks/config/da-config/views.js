@@ -7,8 +7,6 @@ import { SHELL, failureDetail } from '../messages.js';
 // Section icons (img/<icon>.svg); nx-segmented-btn appends the #icon fragment.
 export const iconUrl = (icon) => new URL(`../img/${icon}.svg`, import.meta.url).pathname;
 
-const message = (content) => html`<p class="config-message">${content}</p>`;
-
 export function renderOrgForm(onSubmit) {
   return html`
     <div class="config-note" role="note">
@@ -79,18 +77,23 @@ export function renderTabs(tabs, { tab, section }, { onPrimaryChange, onSectionC
     </div>`;
 }
 
+const OPEN_ICON = '/img/icons/s2-icon-openin-20-n.svg#icon';
+
+// What the section is for, kept apart from the editor like the permissions note.
 export function renderIntro(panel, { docs, inheritance, setupUrl, readOnly }) {
   const { setup } = panel;
   return html`
-    <p class="config-message">
-      ${panel.description}
-      ${inheritance}
-      <a href=${docs} target="_blank" rel="noopener">Docs</a>
+    <div class="config-info" role="note">
+      <p>${panel.description} ${inheritance}</p>
       ${setupUrl ? html`
-        ${setup.rerun.text}
-        <a href=${setupUrl} target="_blank" rel="noopener">${setup.rerun.action}</a>` : nothing}
-    </p>
-    ${readOnly ? message(SHELL.readOnly) : nothing}`;
+        <p>${setup.rerun.text} <a href=${setupUrl} target="_blank" rel="noopener">${setup.rerun.action}</a></p>`
+    : nothing}
+      ${readOnly ? html`<p>${SHELL.readOnly}</p>` : nothing}
+      <a class="nx-action-btn nx-btn-sm" href=${docs} target="_blank" rel="noopener">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><use href=${OPEN_ICON}></use></svg>
+        <span>${SHELL.learnMore}</span>
+      </a>
+    </div>`;
 }
 
 // A setup step that replaces the panel until it's done (e.g. the ew-setup app).
