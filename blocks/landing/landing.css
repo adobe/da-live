@@ -1,27 +1,38 @@
-:host {
-  display: block;
-  contain: inline-size;
-  color: var(--s2-gray-800);
-  font-family: var(--s2-font-family);
-  font-size: var(--nx-ui-text-content, var(--s2-component-m-regular-font-size));
-  line-height: var(--s2-body-line-height);
+body.dark-scheme:has(.landing),
+body:has(.landing[data-theme="dark"]) {
+  color-scheme: dark;
 }
 
-* {
-  box-sizing: border-box;
+body:has(.landing[data-theme="light"]) {
+  color-scheme: light;
+}
+
+.section:has(.landing),
+.block-content:has(.landing),
+.browse:has(> .landing) {
+  height: 100%;
 }
 
 .landing {
-  display: flow-root;
-  container-type: inline-size;
-  max-width: 1116px;
-  margin-inline: auto;
-  padding: var(--s2-spacing-400) var(--s2-spacing-400) var(--s2-spacing-800);
+  min-height: 100%;
+  background:
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--s2-gray-25) 0%, transparent) 25%,
+      var(--s2-gray-25) 85%
+    ),
+    linear-gradient(
+      to right,
+      var(--s2-red-100) 0%,
+      var(--s2-red-100) 20%,
+      var(--s2-pink-200) 40%,
+      var(--s2-indigo-200) 50%,
+      var(--s2-blue-100) 100%
+    );
 }
 
-@container (width < 600px) {
+@media (forced-colors: active) {
   .landing {
-    padding: var(--s2-spacing-300) var(--s2-spacing-300) var(--s2-spacing-600);
+    background: Canvas;
   }
-
 }

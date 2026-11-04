@@ -1,0 +1,27 @@
+:host {
+  display: block;
+  contain: inline-size;
+  color: var(--s2-gray-800);
+  font-family: var(--s2-font-family);
+  font-size: var(--nx-ui-text-content, var(--s2-component-m-regular-font-size));
+  line-height: var(--s2-body-line-height);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.tile-preview {
+  display: flow-root;
+  container-type: inline-size;
+  max-width: 1116px;
+  margin-inline: auto;
+  padding: var(--s2-spacing-400) var(--s2-spacing-400) var(--s2-spacing-800);
+}
+
+@container (width < 600px) {
+  .tile-preview {
+    padding: var(--s2-spacing-300) var(--s2-spacing-300) var(--s2-spacing-600);
+  }
+
+}

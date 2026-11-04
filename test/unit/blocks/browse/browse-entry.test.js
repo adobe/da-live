@@ -1,43 +1,41 @@
 import { expect } from '@esm-bundle/chai';
-import sinon from 'sinon';
 import '../../setup-nx.js';
 import init from '../../../../blocks/browse/browse.js';
-import { getNx, getNx2Api } from '../../../../scripts/utils.js';
+import { getNx } from '../../../../scripts/utils.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
-const { source } = await getNx2Api();
 
-describe('Browse Content opt-in', () => {
-  it('loads only Content for landing=true and preserves ordinary Browse for landing=home', async () => {
+describe('isolated tile preview composition', () => {
+  it('mounts tiles inside the real gated landing surface instead of replacing its wrapper', async () => {
     const { href } = window.location;
-    const ordinary = document.createElement('div');
-    const content = document.createElement('div');
-    const browse = document.createElement('da-browse');
-    ordinary.append(browse);
-    document.body.append(ordinary, content);
-    const list = sinon.stub(source, 'list').resolves({ ok: true, items: [] });
+    const el = document.createElement('div');
+    el.innerHTML = '<picture></picture>';
+    document.body.append(el);
     try {
       const url = new URL(href);
-      url.searchParams.set('landing', 'home');
-      window.history.replaceState(null, '', url);
-      hashChange._set({ org: 'org', site: 'site' });
-      await init(ordinary);
-      expect(ordinary.firstElementChild).to.equal(browse);
-      expect(browse.details.site).to.equal('site');
-      expect(ordinary.querySelector('da-landing')).to.equal(null);
       url.searchParams.set('landing', 'true');
       window.history.replaceState(null, '', url);
-      const landing = await init(content);
+      hashChange._set(undefined);
+      const mounted = new Promise((resolve) => {
+        const observer = new MutationObserver(() => {
+          const preview = el.querySelector('.landing > da-landing');
+          if (!preview) return;
+          observer.disconnect();
+          resolve(preview);
+        });
+        observer.observe(el, { childList: true, subtree: true });
+      });
+      init(el);
+      const landing = await mounted;
       await landing.updateComplete;
-      expect(landing.localName).to.equal('da-landing');
-      expect(landing.shadowRoot.querySelector('.files-panel')).not.to.equal(null);
-      expect(landing.shadowRoot.querySelector('h1, textarea, .composer')).to.equal(null);
+      expect(el.children).to.have.length(1);
+      expect(landing.parentElement.className).to.equal('landing');
+      expect(el.querySelector('picture, da-sites, da-browse')).to.equal(null);
+      expect(landing.shadowRoot.querySelectorAll('da-landing-tile')).to.have.length(5);
+      expect(landing.shadowRoot.querySelector('.files-panel, .composer')).to.equal(null);
     } finally {
-      ordinary.remove();
-      content.remove();
-      list.restore();
+      el.remove();
       window.history.replaceState(null, '', href);
-      localStorage.removeItem('da-sites');
     }
   });
 });

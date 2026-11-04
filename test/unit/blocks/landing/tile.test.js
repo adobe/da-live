@@ -228,17 +228,19 @@ describe('landing tile group', () => {
     }
   });
 
-  it('centers incomplete rows and keeps the final single tile centered when wrapping', () => {
+  it('uses centered 3+2 rows on desktop and a single column on narrow containers', () => {
     for (const available of [1068, 850, 700, 358, 250]) {
       container.style.width = `${available}px`;
       const bounds = group.getBoundingClientRect();
       const items = [...group.children].map((item) => item.getBoundingClientRect());
       const last = items.at(-1);
-      expect((last.left + last.right) / 2)
+      const lastRow = items.filter((item) => Math.abs(item.top - last.top) < 0.1);
+      expect(lastRow).to.have.length(available >= 600 ? 2 : 1);
+      expect(new Set(items.map((item) => item.top)).size).to.equal(available >= 600 ? 2 : 5);
+      expect((lastRow[0].left + last.right) / 2)
         .to.be.closeTo((bounds.left + bounds.right) / 2, 0.1);
       expect(items.every((item) => item.left >= bounds.left && item.right <= bounds.right + 0.1))
         .to.equal(true);
-      expect(last.top).to.be.greaterThan(items.at(-2).top);
     }
   });
 });

@@ -19,7 +19,7 @@
 }
 
 .landing-tiles > * {
-  flex: 0 0 calc((100% - var(--s2-spacing-200)) / 2);
+  flex: 0 0 calc((100% - 2 * var(--s2-spacing-200)) / 3);
   min-width: 0;
 }
 

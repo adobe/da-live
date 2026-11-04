@@ -1,210 +1,112 @@
 import { expect } from '@esm-bundle/chai';
-import sinon from 'sinon';
-import '../../setup-nx.js';
-import { DaLanding } from '../../../../blocks/landing/landing.js';
-import { getNx, getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
+import { setNx } from '../../../../scripts/utils.js';
 
-const { hashChange } = await import(`${getNx()}/utils/utils.js`);
-const { source } = await getNx2Api();
-const { setEWEnabled } = await getNxEWFlags();
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
+const { default: init } = await import('../../../../blocks/landing/landing.js');
+const css = await fetch('/blocks/landing/landing.css').then((response) => response.text());
+const styles = new CSSStyleSheet();
+styles.replaceSync(css);
 
-describe('isolated landing tiles preview', () => {
+describe('landing background', () => {
   let el;
-  let loadSite;
+  let container;
+  let originalStyles;
+  let originalHref;
 
-  beforeEach(async () => {
-    hashChange._set({ org: 'org', site: 'site', fullpath: '/org/site' });
-    loadSite = sinon.stub(DaLanding.prototype, 'loadSite').callsFake(async function loadSiteForTest() {
-      this._request?.abort();
-      this._request = new AbortController();
-    });
-    el = document.createElement('da-landing');
-    document.body.append(el);
-    el._editor = '/canvas#';
-    await el.updateComplete;
+  beforeEach(() => {
+    originalHref = window.location.href;
+    originalStyles = document.adoptedStyleSheets;
+    document.adoptedStyleSheets = [...originalStyles, styles];
+    el = document.createElement('div');
+    el.className = 'browse';
+    container = document.createElement('div');
+    container.style.height = '400px';
+    container.innerHTML = '<div class="section"><div class="block-content"></div></div>';
+    container.querySelector('.block-content').append(el);
+    el.style.setProperty('--s2-red-100', '#fff6f5');
+    el.style.setProperty('--s2-pink-200', '#ffe8f7');
+    el.style.setProperty('--s2-indigo-200', '#ebeeff');
+    el.style.setProperty('--s2-blue-100', '#f5f9ff');
+    el.style.setProperty('--s2-gray-25', '#fff');
+    el.innerHTML = '<picture><img alt="Old background"></picture>';
+    document.body.append(container);
   });
 
   afterEach(() => {
-    el.remove();
-    sinon.restore();
-    setEWEnabled(false);
+    container.remove();
+    document.adoptedStyleSheets = originalStyles;
+    document.body.classList.remove('dark-scheme');
+    history.replaceState(null, '', originalHref);
   });
 
-  it('renders only the five approved tiles, without Content, cards or chat', async () => {
-    const root = el.shadowRoot;
-    expect(root.querySelector('#files-heading, .files-panel, da-file-item, .composer, textarea'))
-      .to.equal(null);
-    expect([...root.querySelector('.landing').children].map((node) => node.tagName))
-      .to.deep.equal(['UL']);
-    const tiles = [...root.querySelectorAll('da-landing-tile')];
-    await Promise.all(tiles.map((tile) => tile.updateComplete));
-    expect(tiles.map((tile) => tile.heading)).to.deep.equal([
-      'Browse Content', 'Create a page', 'Publishing & Workflow',
-      'Localization & Multi-site', 'Develop & Extend',
-    ]);
-    expect(tiles.slice(2).map((tile) => tile.href)).to.deep.equal([
-      'https://www.aem.live/docs/ew/authoring/publishing',
-      'https://www.aem.live/docs/ew/administering/multi-site-manager',
-      'https://www.aem.live/developer/tutorial',
-    ]);
+  it('replaces old content with only an empty background surface', () => {
+    init(el);
+    expect(el.children.length).to.equal(1);
+    expect(el.firstElementChild.className).to.equal('landing');
+    expect(el.firstElementChild.childNodes.length).to.equal(0);
+    expect(el.querySelector('img, picture')).to.equal(null);
   });
 
-  it('changes only tile mounting for the same-page Before comparison', async () => {
-    const { href } = window.location;
-    const url = new URL(href);
-    try {
-      url.searchParams.set('preview-tiles', 'off');
-      window.history.replaceState(null, '', url);
-      el.requestUpdate();
-      await el.updateComplete;
-      expect(el.shadowRoot.querySelector('.landing').children).to.have.length(0);
-      url.searchParams.delete('preview-tiles');
-      window.history.replaceState(null, '', url);
-      el.requestUpdate();
-      await el.updateComplete;
-      expect(el.shadowRoot.querySelectorAll('da-landing-tile')).to.have.length(5);
-      expect(el.shadowRoot.querySelector('.files-panel, .composer')).to.equal(null);
-    } finally {
-      window.history.replaceState(null, '', href);
-    }
+  it('fills its container with a wider warm left and narrow pink, fading to white at 85% height', () => {
+    init(el);
+    const surface = el.firstElementChild;
+    const computed = getComputedStyle(surface);
+    expect(surface.getBoundingClientRect().height).to.equal(400);
+    expect(computed.opacity).to.equal('1');
+    expect(computed.backgroundImage).to.match(
+      /^linear-gradient\(.*25%, rgb\(255, 255, 255\) 85%\), linear-gradient\(to right,/,
+    );
+    ['rgb(255, 246, 245) 0%', 'rgb(255, 246, 245) 20%', 'rgb(255, 232, 247) 40%',
+      'rgb(235, 238, 255) 50%', 'rgb(245, 249, 255) 100%']
+      .forEach((color) => expect(computed.backgroundImage).to.include(color));
   });
 
-  it('routes Browse through the selected site while retaining preview settings', async () => {
-    const { href } = window.location;
-    try {
-      window.history.replaceState(null, '', '/?nx=tileclr&nxver=2&landing=true#/org/site');
-      el.requestUpdate();
-      await el.updateComplete;
-      const tile = el.shadowRoot.querySelector('da-landing-tile');
-      expect(new URL(tile.href).searchParams.get('nx')).to.equal('tileclr');
-      expect(new URL(tile.href).searchParams.get('nxver')).to.equal('2');
-      expect(new URL(tile.href).hash).to.equal('#/org/site');
-      hashChange._set({ org: 'other', site: 'site', fullpath: '/other/site' });
-      await el.updateComplete;
-      expect(new URL(tile.href).hash).to.equal('#/other/site');
-    } finally {
-      window.history.replaceState(null, '', href);
-    }
+  it('keeps the dark scheme scoped to the mounted landing surface', () => {
+    document.body.classList.add('dark-scheme');
+    const before = getComputedStyle(document.body).colorScheme;
+    init(el);
+    expect(getComputedStyle(document.body).colorScheme).to.equal('dark');
+    el.replaceChildren();
+    expect(getComputedStyle(document.body).colorScheme).to.equal(before);
   });
 
-  it('does not expose site actions without a selected site', async () => {
-    hashChange._set(undefined);
-    await el.updateComplete;
-    const [browse, create] = el.shadowRoot.querySelectorAll('da-landing-tile');
-    expect(browse.href).to.equal(undefined);
-    expect(create.disabled).to.equal(true);
-    await el._onCreatePage();
-    expect(el._createDialog).to.equal(undefined);
+  it('previews light mode without changing the saved theme or other pages', () => {
+    const savedTheme = localStorage.getItem('color-scheme');
+    document.body.classList.add('dark-scheme');
+    history.replaceState(null, '', '?theme=light');
+    init(el);
+    expect(getComputedStyle(document.body).colorScheme).to.equal('light');
+    expect(localStorage.getItem('color-scheme')).to.equal(savedTheme);
+    el.replaceChildren();
+    expect(getComputedStyle(document.body).colorScheme).not.to.equal('light');
   });
 
-  it('requires write permission for page creation and cancels without writing', async () => {
-    const save = sinon.stub(source, 'save');
-    await el._onCreatePage();
-    expect(el._createDialog).to.equal(undefined);
-    el._permissions = ['write'];
-    await el._onCreatePage();
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('da-name-dialog')).not.to.equal(null);
-    el._onCloseCreatePage();
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('da-name-dialog')).to.equal(null);
-    expect(save.called).to.equal(false);
+  it('previews dark mode without changing the saved theme or other pages', () => {
+    const savedTheme = localStorage.getItem('color-scheme');
+    const before = getComputedStyle(document.body).colorScheme;
+    history.replaceState(null, '', '?theme=dark');
+    init(el);
+    expect(getComputedStyle(document.body).colorScheme).to.equal('dark');
+    expect(localStorage.getItem('color-scheme')).to.equal(savedTheme);
+    el.replaceChildren();
+    expect(getComputedStyle(document.body).colorScheme).to.equal(before);
   });
 
-  it('creates at the selected site root and refreshes permissions without navigating', async () => {
-    const metadata = sinon.stub(source, 'getMetadata').resolves({ ok: false, status: 404 });
-    const save = sinon.stub(source, 'save').resolves({ ok: true });
-    el._permissions = ['write'];
-    await el._onCreatePage();
-    await el._onCreatePageSubmit({ detail: { name: 'draft', openAfter: false } });
-    expect(metadata.calledOnceWithExactly('/org/site/draft.html')).to.equal(true);
-    expect(save.calledOnce).to.equal(true);
-    expect(save.firstCall.args[0]).to.equal('/org/site/draft.html');
-    expect(el._createDialog).to.equal(undefined);
-    expect(loadSite.callCount).to.equal(2);
-  });
-
-  it('does not overwrite a page and keeps failed saves retryable', async () => {
-    const metadata = sinon.stub(source, 'getMetadata').resolves({ ok: true });
-    const save = sinon.stub(source, 'save').resolves({ ok: false, status: 403 });
-    el._permissions = ['write'];
-    await el._onCreatePage();
-    await el._onCreatePageSubmit({ detail: { name: 'draft', openAfter: false } });
-    expect(save.called).to.equal(false);
-    expect(el._createDialog.error).to.include('already exists');
-    metadata.resolves({ ok: false, status: 404 });
-    await el._onCreatePageSubmit({ detail: { name: 'draft', openAfter: false } });
-    expect(el._createDialog.error).to.include('permissions');
-    expect(el._createDialog.saving).to.equal(false);
-  });
-
-  it('ignores a pending name check after the selected site changes', async () => {
-    let finish;
-    sinon.stub(source, 'getMetadata').returns(new Promise((resolve) => { finish = resolve; }));
-    const save = sinon.stub(source, 'save');
-    el._permissions = ['write'];
-    await el._onCreatePage();
-    const pending = el._onCreatePageSubmit({ detail: { name: 'draft', openAfter: false } });
-    hashChange._set({ org: 'other', site: 'site', fullpath: '/other/site' });
-    finish({ ok: false, status: 404 });
-    await pending;
-    expect(save.called).to.equal(false);
-    expect(el._createDialog).to.equal(undefined);
-  });
-
-  it('checks root permissions once without paginating or rendering file results', async () => {
-    loadSite.restore();
-    const list = sinon.stub(source, 'list').resolves({ ok: true, items: [{ path: '/org/site/page.html' }], permissions: ['write'], continuationToken: 'next' });
-    await el.loadSite();
-    await el.updateComplete;
-    expect(list.calledOnce).to.equal(true);
-    expect(list.firstCall.args[0]).to.equal('/org/site');
-    expect(list.firstCall.args[1].opts.signal).to.equal(el._request.signal);
-    expect(el._editor).to.equal('/edit#');
-    expect(el.shadowRoot.querySelectorAll('da-landing-tile')[1].disabled).to.equal(false);
-    expect(el.shadowRoot.querySelector('da-file-item, .files-panel')).to.equal(null);
-  });
-
-  it('does not allow creation when permission checks fail', async () => {
-    loadSite.restore();
-    sinon.stub(source, 'list').resolves({ ok: false, status: 403 });
-    await el.loadSite();
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('[role="alert"]').textContent).to.include('permissions');
-    expect(el.shadowRoot.querySelectorAll('da-landing-tile')[1].disabled).to.equal(true);
-  });
-
-  it('ignores a stale permission response and aborts on disconnect', async () => {
-    loadSite.restore();
-    let finish;
-    const list = sinon.stub(source, 'list');
-    list.onFirstCall().returns(new Promise((resolve) => { finish = resolve; }));
-    list.onSecondCall().resolves({ ok: true, permissions: ['read'] });
-    const pending = el.loadSite();
-    await Promise.resolve();
-    el._scope = 'other/site';
-    await el.loadSite();
-    finish({ ok: true, permissions: ['write'] });
-    await pending;
-    expect(el._permissions).to.deep.equal(['read']);
-    const request = el._request;
-    el.remove();
-    expect(request.signal.aborted).to.equal(true);
-  });
-
-  it('selects Canvas when EW is enabled', async () => {
-    loadSite.restore();
-    sinon.stub(source, 'list').resolves({ ok: true, permissions: ['write'] });
-    setEWEnabled(true);
-    await el.loadSite();
-    expect(el._editor).to.equal('/canvas#');
-  });
-
-  it('falls back to the classic editor when the EW flag fails', async () => {
-    loadSite.restore();
-    sinon.stub(source, 'list').resolves({ ok: true, permissions: ['write'] });
-    setEWEnabled(Promise.reject(new Error('Flag unavailable')));
-    await el.loadSite();
-    expect(el._editor).to.equal('/edit#');
+  it('mirrors light and dark positions with the original middle colors', () => {
+    init(el);
+    const lightPositions = getComputedStyle(el.firstElementChild).backgroundImage.match(/[\d.]+%/g);
+    history.replaceState(null, '', '?theme=dark');
+    el.style.setProperty('--s2-red-100', 'light-dark(#fff6f5, #360a03)');
+    el.style.setProperty('--s2-pink-200', 'light-dark(#ffe8f7, #47002c)');
+    el.style.setProperty('--s2-indigo-200', 'light-dark(#ebeeff, #23006e)');
+    el.style.setProperty('--s2-blue-100', 'light-dark(#f5f9ff, #0e173f)');
+    el.style.setProperty('--s2-gray-25', 'light-dark(#fff, #111)');
+    init(el);
+    const background = getComputedStyle(el.firstElementChild).backgroundImage;
+    expect(background.match(/[\d.]+%/g)).to.deep.equal(lightPositions);
+    expect(background).to.include('rgb(71, 0, 44) 40%');
+    expect(background).to.include('rgb(35, 0, 110) 50%');
+    expect(background).not.to.match(/color\(srgb [^)]+\) 50%/);
+    expect(background).to.include('rgb(17, 17, 17) 85%');
   });
 });

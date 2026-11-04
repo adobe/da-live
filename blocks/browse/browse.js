@@ -1,10 +1,7 @@
 import { getNx, getNx2 } from '../../scripts/utils.js';
-import { resolveBrowsePath } from './utils.js';
+import { getBrowseComponent, resolveBrowsePath } from './utils.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
-
-const styles = await loadStyle(import.meta.url);
-document.adoptedStyleSheets.push(styles);
 
 async function getBrowsePath({ org, site }) {
   const { search } = window.location;
@@ -30,13 +27,23 @@ function useV2Nav() {
 }
 
 async function loadComponent(el, cmpName, pathDetails) {
+  if (cmpName === 'da-landing') {
+    const { default: loadLanding } = await import('../landing/landing.js');
+    loadLanding(el);
+    const { default: loadTiles } = await import('../landing/tile-preview.js');
+    loadTiles(el.querySelector('.landing'));
+    return;
+  }
+
+  const styles = await loadStyle(import.meta.url);
+  if (!document.adoptedStyleSheets.includes(styles)) document.adoptedStyleSheets.push(styles);
   const existing = el.querySelector(cmpName);
   if (existing && pathDetails) {
     existing.details = pathDetails;
     return;
   }
   // Swapping views — remove whichever component is currently mounted.
-  el.querySelector('da-sites, da-browse')?.remove();
+  el.querySelector('da-sites, da-browse, .landing')?.remove();
   const componentPath = cmpName === 'da-sites' ? '.' : await getBrowsePath(pathDetails);
   if (componentPath === './v2') useV2Nav();
   await import(`${componentPath}/${cmpName}/${cmpName}.js`);
@@ -57,19 +64,13 @@ function setRecentSite(details) {
   localStorage.setItem('da-sites', JSON.stringify([siteString, ...currentSites].slice(0, 8)));
 }
 
-export default async function init(el) {
-  if (new URLSearchParams(window.location.search).get('landing') === 'true') {
-    const { default: loadLanding } = await import('../landing/landing.js');
-    return loadLanding(el);
-  }
-
+export default function init(el) {
   hashChange.subscribe((pathDetails) => {
-    const cmpName = pathDetails ? 'da-browse' : 'da-sites';
+    const cmpName = getBrowseComponent({ search: window.location.search, pathDetails });
     loadComponent(el, cmpName, pathDetails);
     if (pathDetails) setRecentSite(pathDetails);
   });
 
   // Lazily preload the editor
   setTimeout(() => { import('da-y-wrapper'); }, 3000);
-  return undefined;
 }
