@@ -3,6 +3,7 @@ import {
   EditorState,
   EditorView,
   NodeSelection,
+  TextSelection,
   prosemirrorToYDoc,
   ySyncPlugin,
 } from 'da-y-wrapper';
@@ -59,5 +60,13 @@ describe('da-y-wrapper ySyncPlugin', () => {
     const { selection } = view.state;
     expect(selection instanceof NodeSelection).to.equal(true);
     expect(selection.node.type.name).to.equal('table');
+  });
+
+  it('moves the caret past text a collaborator inserts at the caret', () => {
+    mount([paragraph('ab')]);
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 2)));
+    ydoc.transact(() => ydoc.getXmlFragment('prosemirror').get(0).get(0).insert(1, 'X'), 'remote');
+    expect(view.state.doc.textContent).to.equal('aXb');
+    expect(view.state.selection.head).to.equal(3);
   });
 });
