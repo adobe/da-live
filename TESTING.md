@@ -125,6 +125,8 @@ Tests create their content in `/{TEST_ORG}/{TEST_SITE}/tests/pw-<branch>`. Two v
 | `TEST_ORG` | `da-sites` |
 | `TEST_SITE` | `da-status` |
 
+The default `da-status` site uses the da-admin backend, and any other site uses Helix. See [Test backends](test/e2e/README.md#test-backends) for the differences.
+
 CI runs the suite twice. The `playwright.yml` workflow uses the defaults for da-admin. The `playwright-hlx.yml` workflow sets `TEST_ORG=da-testautomation` and `TEST_SITE=da-e2e-tests` for Helix.
 
 ```bash
