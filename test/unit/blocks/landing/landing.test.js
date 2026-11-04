@@ -56,8 +56,8 @@ describe('landing background', () => {
     expect(computed.backgroundImage).to.match(
       /^linear-gradient\(.*25%, rgb\(255, 255, 255\) 85%\), linear-gradient\(to right,/,
     );
-    ['rgb(255, 246, 245) 0%', 'rgb(255, 246, 245) 25%', 'rgb(255, 232, 247) 40%',
-      'rgb(235, 238, 255) 50%', 'rgb(245, 249, 255) 100%']
+    ['rgb(255, 246, 245) 0%', 'rgb(255, 246, 245) 20%', 'rgb(255, 232, 247) 32.5%',
+      'rgb(235, 238, 255) 62.5%', 'rgb(245, 249, 255) 100%']
       .forEach((color) => expect(computed.backgroundImage).to.include(color));
   });
 
@@ -92,7 +92,9 @@ describe('landing background', () => {
     expect(getComputedStyle(document.body).colorScheme).to.equal(before);
   });
 
-  it('moves dark pink and indigo toward the sides with a muted center', () => {
+  it('mirrors light and dark positions while keeping the dark center muted', () => {
+    init(el);
+    const lightPositions = getComputedStyle(el.firstElementChild).backgroundImage.match(/[\d.]+%/g);
     history.replaceState(null, '', '?theme=dark');
     el.style.setProperty('--s2-red-100', 'light-dark(#fff6f5, #360a03)');
     el.style.setProperty('--s2-pink-200', 'light-dark(#ffe8f7, #47002c)');
@@ -101,8 +103,9 @@ describe('landing background', () => {
     el.style.setProperty('--s2-gray-25', 'light-dark(#fff, #111)');
     init(el);
     const background = getComputedStyle(el.firstElementChild).backgroundImage;
-    expect(background).to.include('rgb(71, 0, 44) 25%');
-    expect(background).to.include('rgb(35, 0, 110) 75%');
+    expect(background.match(/[\d.]+%/g)).to.deep.equal(lightPositions);
+    expect(background).to.include('rgb(71, 0, 44) 32.5%');
+    expect(background).to.include('rgb(35, 0, 110) 62.5%');
     const center = background.match(/color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)\) 50%/);
     expect(center).not.to.equal(null);
     const channels = center.slice(1).map(Number);
