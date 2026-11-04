@@ -49,9 +49,32 @@ da-list-item.is-expanded::after {
   border: 1px solid var(--s2-gray-100);
   border-radius: 6px;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: var(--s2-spacing-100);
   min-height: 75px;
+  padding: var(--s2-spacing-200);
+  text-align: center;
+
+  h3 {
+    margin: 0;
+  }
+}
+
+.empty-list-hint {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--s2-gray-700);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--s2-gray-900);
+  }
 }
 
 .da-browse-panel-header {

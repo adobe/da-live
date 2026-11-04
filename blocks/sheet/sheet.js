@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getPathDetails from '../shared/pathDetails.js';
 import { getNx } from '../../scripts/utils.js';
-import { openProfileMenu } from '../shared/utils.js';
+import { openProfileMenu, NOT_PERMITTED_HINT } from '../shared/utils.js';
 import '../edit/da-title/da-title.js';
 import { getData } from './utils/index.js';
 import { staleCheck, showDaDialog, restoreVersion } from './utils/utils.js';
@@ -225,7 +225,7 @@ export default async function init(el) {
       const hint = document.createElement('button');
       hint.type = 'button';
       hint.className = 'da-sheet-not-permitted-hint';
-      hint.textContent = 'Please make sure you are logged in with the correct user and have selected the right Adobe org.';
+      hint.textContent = NOT_PERMITTED_HINT;
       hint.addEventListener('click', () => openProfileMenu());
       notPermitted.append(hint);
     }

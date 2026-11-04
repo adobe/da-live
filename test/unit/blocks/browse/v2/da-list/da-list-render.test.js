@@ -145,6 +145,47 @@ describe('da-list render', () => {
     expect(el.shadowRoot.querySelector('.empty-list h3').textContent).to.equal('Nothing here');
   });
 
+  it('Does not render the profile hint for a non-permission empty message', async () => {
+    await fixture({ fullpath: '/o/r' });
+    el._listItems = [];
+    el._continuationToken = null;
+    el._allPagesLoaded = true;
+    el._emptyMessage = 'Nothing here';
+    await rerender();
+    expect(el.shadowRoot.querySelector('.empty-list-hint')).to.not.exist;
+  });
+
+  it('Renders a profile hint below the Not permitted message', async () => {
+    await fixture({ fullpath: '/o/r' });
+    el._listItems = [];
+    el._continuationToken = null;
+    el._allPagesLoaded = true;
+    el._emptyMessage = 'Not permitted';
+    await rerender();
+    expect(el.shadowRoot.querySelector('.empty-list h3').textContent).to.equal('Not permitted');
+    const hint = el.shadowRoot.querySelector('.empty-list .empty-list-hint');
+    expect(hint).to.exist;
+    expect(hint.textContent.trim()).to.equal(
+      'Please make sure you are logged in with the correct user and have selected the right Adobe org.',
+    );
+
+    // Mirror da-nx: <nx-nav> shadow root -> <nx-profile> shadow root -> [popover]
+    const nav = document.createElement('nx-nav');
+    const profile = document.createElement('nx-profile');
+    const menu = document.createElement('div');
+    menu.setAttribute('popover', '');
+    profile.attachShadow({ mode: 'open' }).append(menu);
+    nav.attachShadow({ mode: 'open' }).append(profile);
+    document.body.append(nav);
+    try {
+      hint.click();
+      expect(menu.matches(':popover-open')).to.be.true;
+      menu.hidePopover();
+    } finally {
+      nav.remove();
+    }
+  });
+
   it('labels folders as sites only at the org root', async () => {
     await fixture({ fullpath: '/org', select: true, groupByType: true });
     el._listItems = [

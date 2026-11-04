@@ -8,6 +8,8 @@ import {
   fetchDaConfigs,
   getFirstSheet,
   initIms,
+  openProfileMenu,
+  NOT_PERMITTED_HINT,
 } from '../../shared/utils.js';
 import { createVersion } from '../../shared/version/version-actions.js';
 
@@ -908,7 +910,12 @@ export default class DaListBase extends LitElement {
   }
 
   renderEmpty() {
-    return html`<div class="empty-list"><h3>${this._emptyMessage}</h3></div>`;
+    const hint = this._emptyMessage === 'Not permitted'
+      ? html`<button type="button" class="empty-list-hint" @click=${() => openProfileMenu()}>
+          ${NOT_PERMITTED_HINT}
+        </button>`
+      : nothing;
+    return html`<div class="empty-list"><h3>${this._emptyMessage}</h3>${hint}</div>`;
   }
 
   renderStatus() {

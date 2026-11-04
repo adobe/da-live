@@ -56,6 +56,31 @@ describe('da-list render', () => {
     expect(el.shadowRoot.querySelector('.empty-list h3').textContent).to.equal('Nothing here');
   });
 
+  it('Does not render the profile hint for a non-permission empty message', async () => {
+    await fixture({ fullpath: '/o/r' });
+    el._listItems = [];
+    el._continuationToken = null;
+    el._allPagesLoaded = true;
+    el._emptyMessage = 'Nothing here';
+    await rerender();
+    expect(el.shadowRoot.querySelector('.empty-list-hint')).to.not.exist;
+  });
+
+  it('Renders a profile hint below the Not permitted message', async () => {
+    await fixture({ fullpath: '/o/r' });
+    el._listItems = [];
+    el._continuationToken = null;
+    el._allPagesLoaded = true;
+    el._emptyMessage = 'Not permitted';
+    await rerender();
+    expect(el.shadowRoot.querySelector('.empty-list h3').textContent).to.equal('Not permitted');
+    const hint = el.shadowRoot.querySelector('.empty-list .empty-list-hint');
+    expect(hint).to.exist;
+    expect(hint.textContent.trim()).to.equal(
+      'Please make sure you are logged in with the correct user and have selected the right Adobe org.',
+    );
+  });
+
   it('Renders the list when items are present', async () => {
     await fixture({ fullpath: '/o/r' });
     el._listItems = [

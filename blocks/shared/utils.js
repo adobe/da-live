@@ -491,6 +491,9 @@ export function formatDate(timestamp) {
   return { date, time };
 }
 
+// Shown under "Not permitted" messages; clicking it should call openProfileMenu().
+export const NOT_PERMITTED_HINT = 'Please make sure you are logged in with the correct user and have selected the right Adobe org.';
+
 // Opens the profile menu (user + org switcher) rendered by da-nx's <nx-profile>.
 // In both nx and nx2 it lives two shadow roots deep: <nx-nav> -> <nx-profile> -> [popover].
 // Returns true if the menu is (now) open, false if it isn't on the page (e.g. signed out).
