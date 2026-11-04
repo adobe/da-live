@@ -69,4 +69,16 @@ describe('da-y-wrapper ySyncPlugin', () => {
     expect(view.state.doc.textContent).to.equal('aXb');
     expect(view.state.selection.head).to.equal(3);
   });
+
+  it('syncs replacing an attribute-less mark with a different mark', () => {
+    mount([paragraph('ab')]);
+    const { contextHighlightingMark, link } = schema.marks;
+    view.dispatch(view.state.tr.addMark(1, 3, contextHighlightingMark.create()));
+    view.dispatch(view.state.tr
+      .removeMark(1, 3, contextHighlightingMark)
+      .addMark(1, 3, link.create({ href: 'https://adobe.com' })));
+    const [delta] = ydoc.getXmlFragment('prosemirror').get(0).get(0).toDelta();
+    expect(Object.keys(delta.attributes)).to.deep.equal(['link']);
+    expect(delta.attributes.link.href).to.equal('https://adobe.com');
+  });
 });

@@ -1,5 +1,5 @@
 diff --git a/node_modules/y-prosemirror/src/plugins/sync-plugin.js b/node_modules/y-prosemirror/src/plugins/sync-plugin.js
-index dccfb76..39cf6e7 100644
+index dccfb76..09c352c 100644
 --- a/node_modules/y-prosemirror/src/plugins/sync-plugin.js
 +++ b/node_modules/y-prosemirror/src/plugins/sync-plugin.js
 @@ -4,7 +4,7 @@
@@ -25,3 +25,13 @@ index dccfb76..39cf6e7 100644
      } else {
        const anchor = relativePositionToAbsolutePosition(
          binding.doc,
+@@ -964,7 +969,8 @@ const equalYTextPText = (ytext, ptexts) => {
+       object.every(d.attributes, (attr, yattrname) => {
+         const markname = yattr2markname(yattrname)
+         const pmarks = ptexts[i].marks
+-        return equalAttrs(attr, pmarks.find(/** @param {any} mark */ mark => mark.type.name === markname)?.attrs)
++        const pmark = pmarks.find(/** @param {any} mark */ mark => mark.type.name === markname)
++        return pmark !== undefined && equalAttrs(attr, pmark.attrs)
+       })
+     )
+ }
