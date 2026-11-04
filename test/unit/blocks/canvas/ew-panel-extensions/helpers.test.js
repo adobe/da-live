@@ -286,6 +286,92 @@ describe('EW panel helpers transformBlock', () => {
     expect(variants[0].variants).to.equal('wide');
   });
 
+  describe('identities', () => {
+    it('derives identity from the class even when a heading names the block', async () => {
+      mockHtml(`
+        <body><div>
+          <h2>Fancy Cards</h2>
+          <div class="cards dark  wide"><div><div>content</div></div></div>
+        </div></body>
+      `);
+      const [item] = await getBlockVariants('/mock-path');
+      expect(item.name).to.equal('Fancy Cards');
+      expect(item.identities).to.deep.equal([{ name: 'cards', variants: ['dark', 'wide'] }]);
+    });
+
+    it('ignores the metadata name for identity', async () => {
+      mockHtml(`
+        <body><div>
+          <div class="cards dark"><div><div>content</div></div></div>
+          <div class="library-metadata"><div><div>name</div><div>Promo</div></div></div>
+        </div></body>
+      `);
+      const [item] = await getBlockVariants('/mock-path');
+      expect(item.name).to.equal('Promo');
+      expect(item.identities).to.deep.equal([{ name: 'cards', variants: ['dark'] }]);
+    });
+
+    it('adds a legacy identity from a "Name (x, y)" label', async () => {
+      mockHtml(`
+        <body><div>
+          <h2>Cards (Dark, Wide)</h2>
+          <div class="cards"><div><div>content</div></div></div>
+        </div></body>
+      `);
+      const [item] = await getBlockVariants('/mock-path');
+      expect(item.identities).to.deep.equal([
+        { name: 'cards', variants: [] },
+        { name: 'Cards', variants: ['Dark', 'Wide'] },
+      ]);
+    });
+
+    it('adds a legacy identity from a "Name (x)" metadata name', async () => {
+      mockHtml(`
+        <body><div>
+          <div class="cards"><div><div>content</div></div></div>
+          <div class="library-metadata"><div><div>name</div><div>Cards (Promo)</div></div></div>
+        </div></body>
+      `);
+      const [item] = await getBlockVariants('/mock-path');
+      expect(item.identities).to.deep.equal([
+        { name: 'cards', variants: [] },
+        { name: 'Cards', variants: ['Promo'] },
+      ]);
+    });
+
+    it('derives one identity per block inside a container group', async () => {
+      mockHtml(`
+        <body><div>
+          <div class="library-container-start"></div>
+          <h2>Heading content</h2>
+          <div class="cards dark wide"><div><div>content</div></div></div>
+          <div class="button primary"><div><div>go</div></div></div>
+          <div class="library-metadata"><div><div>name</div><div>My Cards</div></div></div>
+          <div class="library-container-end"></div>
+        </div></body>
+      `);
+      const [item] = await getBlockVariants('/mock-path');
+      expect(item.name).to.equal('My Cards');
+      expect(item.identities).to.deep.equal([
+        { name: 'cards', variants: ['dark', 'wide'] },
+        { name: 'button', variants: ['primary'] },
+      ]);
+    });
+
+    it('has no identity for a container group without a block', async () => {
+      mockHtml(`
+        <body><div>
+          <div class="library-container-start"></div>
+          <h1>Auto-blocked hero</h1>
+          <p>text</p>
+          <div class="library-container-end"></div>
+        </div></body>
+      `);
+      const [item] = await getBlockVariants('/mock-path');
+      expect(item.identities).to.deep.equal([]);
+    });
+  });
+
   it('Preserves distinct heading IDs for variants, including metadata name overrides', async () => {
     mockHtml(`
       <main><div>

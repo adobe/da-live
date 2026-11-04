@@ -1,3 +1,10 @@
+# [1.20.0](https://github.com/adobe/da-live/compare/v1.19.2...v1.20.0) (2026-11-04)
+
+
+### Features
+
+* **ew:** multi-select block variants from library class names ([#1498](https://github.com/adobe/da-live/issues/1498)) ([a58a9d1](https://github.com/adobe/da-live/commit/a58a9d12e4a0e7be3d4d81ab8c3274f88c8526e6))
+
 ## [1.19.2](https://github.com/adobe/da-live/compare/v1.19.1...v1.19.2) (2026-11-04)
 
 
