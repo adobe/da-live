@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getFirstSheet, fetchDaConfigs, canEditOrgConfig } from '../../../shared/utils.js';
 import { getNx, sanitizePathParts, getNxEWFlags } from '../../../../scripts/utils.js';
-import { getChatPanelContent, chatAvailability } from '../../../shared/chat-panel.js';
+import { getChatPanelContent, chatAvailability, chatTurnCompleted } from '../../../shared/chat-panel.js';
 import { getSettingsMenuItems } from '../../shared/settings-menu.js';
 
 // Components
@@ -94,12 +94,18 @@ export default class DaBrowse extends LitElement {
     this._handleShortcuts = this.handleShortcuts.bind(this);
     document.addEventListener('keydown', this._handleShortcuts);
     this._unsubChat = chatAvailability.subscribe((enabled) => this.syncChatAvailability(enabled));
+    this._unsubChatTurn = chatTurnCompleted.subscribe((detail) => {
+      if (!detail?.org || detail.org !== this.details?.org
+        || detail.site !== this.details?.site) return;
+      this.shadowRoot.querySelector('.da-list-type-browse')?.requestUpdate('fullpath');
+    });
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('keydown', this._handleShortcuts);
     this._unsubChat?.();
+    this._unsubChatTurn?.();
   }
 
   syncChatAvailability(enabled) {
