@@ -58,7 +58,7 @@ describe('landing Content section', () => {
 
   it('keeps fixed cards, whole columns and 16px panel insets at narrower widths', async () => {
     const sheet = new CSSStyleSheet();
-    await sheet.replace(await (await fetch('/blocks/landing/landing.css')).text());
+    await sheet.replace(await (await fetch('/blocks/landing/content.css')).text());
     el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
     el.style.setProperty('--s2-spacing-200', '12px');
     el.style.setProperty('--s2-spacing-300', '16px');
@@ -94,7 +94,7 @@ describe('landing Content section', () => {
 
   it('matches panel widths across views and loading, empty and error states', async () => {
     const sheet = new CSSStyleSheet();
-    await sheet.replace(await (await fetch('/blocks/landing/landing.css')).text());
+    await sheet.replace(await (await fetch('/blocks/landing/content.css')).text());
     el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
     el.style.setProperty('--s2-spacing-200', '12px');
     el.style.setProperty('--s2-spacing-300', '16px');
@@ -128,7 +128,7 @@ describe('landing Content section', () => {
 
   it('scrolls the shared list only when its readable columns do not fit', async () => {
     const sheet = new CSSStyleSheet();
-    await sheet.replace(await (await fetch('/blocks/landing/landing.css')).text());
+    await sheet.replace(await (await fetch('/blocks/landing/content.css')).text());
     el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
     el.style.setProperty('--s2-spacing-200', '12px');
     el.style.setProperty('--s2-spacing-300', '16px');

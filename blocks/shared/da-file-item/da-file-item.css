@@ -19,7 +19,7 @@
 
 .da-item-list-item-inner {
   display: grid;
-  grid-template-columns: var(--da-list-select-width, 40px) minmax(0, 1fr) var(--da-list-type-width, 120px) var(--da-list-date-width, 180px) var(--da-list-action-width, 112px);
+  grid-template-columns: var(--da-list-select-width, 40px) minmax(0, 442px) var(--da-list-type-width, 120px) minmax(var(--da-list-date-width), 1fr) var(--da-list-action-width, 112px);
   align-items: center;
   min-height: var(--da-list-min-height);
 

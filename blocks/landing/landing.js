@@ -9,9 +9,10 @@ const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const nx = await import(`${getNx2()}/scripts/nx.js`);
 const sizing = nx.getUISize ? await import(`${getNx2()}/utils/ui-size.js`) : undefined;
 await import(`${getNx()}/blocks/shared/segmented-btn/segmented.js`);
+const background = await loadStyle(import.meta.url);
 const styles = await Promise.all([
   loadStyle(`${getNx2()}/styles/buttons.css`),
-  loadStyle(import.meta.url),
+  loadStyle(new URL('./content.css', import.meta.url).href),
 ]);
 
 const VIEW_ITEMS = [
@@ -194,7 +195,15 @@ export class DaLanding extends LitElement {
 customElements.define('da-landing', DaLanding);
 
 export default function init(el) {
-  const landing = document.createElement('da-landing');
-  el.append(landing);
-  return landing;
+  if (!document.adoptedStyleSheets.includes(background)) {
+    document.adoptedStyleSheets.push(background);
+  }
+  const landing = document.createElement('div');
+  landing.className = 'landing';
+  const theme = new URLSearchParams(window.location.search).get('theme');
+  if (['light', 'dark'].includes(theme)) landing.dataset.theme = theme;
+  const content = document.createElement('da-landing');
+  landing.append(content);
+  el.replaceChildren(landing);
+  return content;
 }

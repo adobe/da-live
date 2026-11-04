@@ -9,6 +9,10 @@ greeting, chat/composer, branding, site picker, page artwork or editor changes.
 The no-site state links to existing Browse site selection rather than requiring
 the LP-only Add site dialog.
 
+Content mounts inside the gradient landing surface already provided by main.
+`landing.css` retains that page background and its light/dark theme preview.
+`content.css` contains only the Content component's shadow styles.
+
 ## Presentation and state
 
 Cards use Browse's fixed 151x200 small preset, independently of page text scale.

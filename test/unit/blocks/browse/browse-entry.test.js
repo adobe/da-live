@@ -29,6 +29,8 @@ describe('Browse Content opt-in', () => {
       window.history.replaceState(null, '', url);
       const landing = await init(content);
       await landing.updateComplete;
+      expect(content.firstElementChild.className).to.equal('landing');
+      expect(content.firstElementChild.firstElementChild).to.equal(landing);
       expect(landing.localName).to.equal('da-landing');
       expect(landing.shadowRoot.querySelector('.files-panel')).not.to.equal(null);
       expect(landing.shadowRoot.querySelector('h1, textarea, .composer')).to.equal(null);

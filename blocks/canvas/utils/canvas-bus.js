@@ -1,24 +1,8 @@
+import { createChannel } from '../../shared/channel.js';
+
 // In-process pub/sub for canvas-local UI events (undo, selection, editor view, ...).
 // Not for panel or chat — those cross into da-nx and use its PANEL_EVENT/CHAT_EVENT
 // DOM CustomEvents instead, since components outside this block need to reach them too.
-
-// Each channel is a private listener Set — no DOM element involved. `replay: true`
-// re-delivers the last truthy emitted value to a subscriber that joins later.
-export function createChannel({ replay = false } = {}) {
-  const listeners = new Set();
-  let lastValue;
-  return {
-    emit(detail) {
-      lastValue = detail;
-      listeners.forEach((fn) => fn(detail));
-    },
-    subscribe(fn) {
-      listeners.add(fn);
-      if (replay && lastValue) fn(lastValue);
-      return () => listeners.delete(fn);
-    },
-  };
-}
 
 // editor-utils.js owns selection enrichment (blockName/proseIndex/innerText lookup) and
 // registers it here — importing it directly would cycle back through this file.
@@ -49,24 +33,24 @@ export const canvasBus = Object.freeze({
   undoState: createChannel(),
   mergeConflictsState: createChannel(),
   editorDocState: createChannel(),
-  editorViewState: createChannel({ replay: true }),
-  branchState: createChannel({ replay: true }),
-  blockEditState: createChannel({ replay: true }),
-  toolbarSurfaceState: createChannel({ replay: true }),
+  editorViewState: createChannel({ replay: Boolean }),
+  branchState: createChannel({ replay: Boolean }),
+  blockEditState: createChannel({ replay: Boolean }),
+  toolbarSurfaceState: createChannel({ replay: Boolean }),
   // Doc selection does not claim focus; an iframe selection does.
   toolbarSelectionState: createChannel(),
-  editorHtmlState: createChannel({ replay: true }),
+  editorHtmlState: createChannel({ replay: Boolean }),
   editorSelectState: {
     subscribe: editorSelectChannel.subscribe,
     emit: (detail) => editorSelectChannel.emit(enrichEditorSelect(detail)),
   },
   editorProseSelectState: createChannel(),
-  toolPanelViewState: createChannel({ replay: true }),
+  toolPanelViewState: createChannel({ replay: Boolean }),
   comparisonState: createChannel(),
 
   // Replays because the split layout re-appends `ew-editor-doc` on every hash
   // sync, so a late resubscribe would otherwise miss an already-emitted port.
-  wysiwygPortReady: createChannel({ replay: true }),
+  wysiwygPortReady: createChannel({ replay: Boolean }),
 
   commentsControllerState: createChannel(),
   versionCreatedState: createChannel(),
