@@ -8,6 +8,7 @@ import { addListNodes, wrapInList, splitListItem, liftListItem, sinkListItem } f
 import { keymap } from 'prosemirror-keymap';
 import { buildKeymap } from 'prosemirror-example-setup';
 import { gapCursor } from 'prosemirror-gapcursor';
+import { history, undo, redo } from 'prosemirror-history';
 
 import {
   tableEditing,
@@ -94,6 +95,9 @@ export {
   deleteTable,
   CellSelection,
   gapCursor,
+  history,
+  undo,
+  redo,
   MenuItem,
   Dropdown,
   renderGrouped,
