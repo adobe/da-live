@@ -551,3 +551,56 @@ describe('sheet-load-status event', () => {
     }
   });
 });
+
+describe('da-sheet-tabs on load errors', () => {
+  let el;
+  let daTitle;
+  let savedJspreadsheet;
+
+  async function load(mockFetch) {
+    const savedFetch = window.fetch;
+    window.fetch = mockFetch;
+    try {
+      return await sh.getData(SOURCE_DETAILS);
+    } finally {
+      window.fetch = savedFetch;
+    }
+  }
+
+  beforeEach(() => {
+    el = document.createElement('div');
+    el.className = 'da-sheet';
+    document.body.appendChild(el);
+
+    daTitle = document.createElement('da-title');
+    daTitle.permissions = [];
+    document.body.appendChild(daTitle);
+
+    savedJspreadsheet = window.jspreadsheet;
+    window.jspreadsheet = { tabs: mockJspreadsheetTabs };
+  });
+
+  afterEach(() => {
+    el.remove();
+    daTitle.remove();
+    window.jspreadsheet = savedJspreadsheet;
+    document.querySelectorAll('da-sheet-tabs').forEach((t) => t.remove());
+  });
+
+  it('does not render the sheet tabs when the sheet is not permitted', async () => {
+    await sh.default(el, await load(buildMockFetchStatus(403)));
+    expect(document.querySelectorAll('da-sheet-tabs').length).to.equal(0);
+  });
+
+  it('does not render the sheet tabs when sign in is required', async () => {
+    await sh.default(el, await load(buildMockFetchStatus(401)));
+    expect(document.querySelectorAll('da-sheet-tabs').length).to.equal(0);
+  });
+
+  it('renders the sheet tabs again once a load succeeds', async () => {
+    await sh.default(el, await load(buildMockFetchStatus(403)));
+    const json = '{ "total": 0, "limit": 0, "offset": 0, "data": [], ":type": "sheet" }';
+    await sh.default(el, await load(buildMockFetch(json)));
+    expect(document.querySelectorAll('da-sheet-tabs')).to.have.length(1);
+  });
+});

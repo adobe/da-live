@@ -24,6 +24,7 @@ const SHEET_TEMPLATE = { minDimensions: [20, 20], sheetName: 'data' };
 
 let permissions;
 let canWrite;
+let loadError;
 
 function resetSheets(el) {
   document.querySelector('da-sheet-tabs')?.remove();
@@ -49,6 +50,7 @@ function finishSetup(el, data) {
   });
 
   // Setup tabs
+  if (loadError) return;
   const daSheetTabs = document.createElement('da-sheet-tabs');
   daSheetTabs.permissions = permissions;
   el.insertAdjacentElement('beforebegin', daSheetTabs);
@@ -110,6 +112,7 @@ function sheetErrorFromResponse(resp) {
 }
 
 function emitLoadStatus(errMsg) {
+  loadError = errMsg;
   document.dispatchEvent(new CustomEvent('sheet-load-status', { detail: { errMsg } }));
 }
 
