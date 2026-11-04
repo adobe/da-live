@@ -11,5 +11,5 @@ routes and site permissions.
 `actionId` adds a `landing-action-{actionId}` class for the existing RUM collector.
 
 Load `blocks/landing/tiles.css` and place tiles in `.landing-tiles` inside an
-inline-size container. The group matches Content's width and centers the final
-tile, using two columns from 600px and one below.
+inline-size container. The group matches Content's width and centers incomplete
+rows: five tiles use 3+2 from 600px and one column below.
