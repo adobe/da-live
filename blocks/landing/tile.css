@@ -36,7 +36,7 @@ a:hover, button:where(:enabled):hover {
     var(--s2-drop-shadow-elevated),
     0 4px 12px color-mix(
       in srgb,
-      light-dark(var(--s2-gray-1000), var(--s2-gray-25)) 16%,
+      light-dark(var(--s2-gray-1000), var(--s2-gray-25)) 12%,
       transparent
     );
 }
