@@ -1,3 +1,10 @@
+## [1.19.1](https://github.com/adobe/da-live/compare/v1.19.0...v1.19.1) (2026-11-04)
+
+
+### Bug Fixes
+
+* refresh file lists after chat completion ([#1646](https://github.com/adobe/da-live/issues/1646)) ([9bd94fb](https://github.com/adobe/da-live/commit/9bd94fb0795da566be5c1d725d02027f06bc8158))
+
 # [1.19.0](https://github.com/adobe/da-live/compare/v1.18.1...v1.19.0) (2026-11-04)
 
 
