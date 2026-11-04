@@ -7,6 +7,10 @@ import {
   addMetadataRow,
   setMetadataValue,
   deleteMetadataRow,
+  findMetadataImage,
+  findMetadataValueCell,
+  setMetadataImage,
+  selectMetadataImageTarget,
 } from '../../../../../blocks/canvas/editor-utils/metadata.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -220,5 +224,113 @@ describe('deleteMetadataRow', () => {
     deleteMetadataRow(view, 'Nope');
     const pos = findTablePos(view);
     expect(view.state.doc.nodeAt(pos).childCount).to.equal(2);
+  });
+});
+
+// A metadata row whose value cell holds an image, the way DA stores og:image style rows.
+function imageRowJSON(key, attrs) {
+  const keyCell = { type: 'table_cell', attrs: { colspan: 1 }, content: [{ type: 'paragraph', content: [{ type: 'text', text: key }] }] };
+  const valueCell = { type: 'table_cell', attrs: { colspan: 1 }, content: [{ type: 'paragraph', content: [{ type: 'image', attrs }] }] };
+  return { type: 'table_row', content: [keyCell, valueCell] };
+}
+
+function docWithImageRow(rows, key = 'Image', attrs = { src: '/current.png', alt: 'Current alt' }) {
+  const table = metadataTableJSON(rows);
+  table.content.push(imageRowJSON(key, attrs));
+  return { type: 'doc', content: [table] };
+}
+
+describe('metadata image rows', () => {
+  it('reads an image row with its position, src and alt, leaving text rows unchanged', () => {
+    const view = makeRealView(docWithImageRow([['Title', 'My Page']]));
+    const [title, image] = readMetadataRows(view);
+    expect(title).to.deep.equal({ key: 'Title', value: 'My Page' });
+    expect(image).to.deep.include({ key: 'Image', value: '' });
+    expect(image.image).to.deep.include({ src: '/current.png', alt: 'Current alt' });
+    expect(view.state.doc.nodeAt(image.image.pos).type.name).to.equal('image');
+  });
+
+  it('finds the image in a row case-insensitively, or nothing for text rows and missing rows', () => {
+    const view = makeRealView(docWithImageRow([['Title', 'My Page']]));
+    const found = findMetadataImage(view, 'image');
+    expect(found.node.attrs.src).to.equal('/current.png');
+    expect(view.state.doc.nodeAt(found.pos)).to.equal(found.node);
+    expect(findMetadataImage(view, 'Title')).to.equal(null);
+    expect(findMetadataImage(view, 'Nope')).to.equal(null);
+    expect(findMetadataImage(null, 'Image')).to.equal(null);
+  });
+
+  it('finds a row value cell case-insensitively, with its doc position', () => {
+    const view = makeRealView(docWithImageRow([['Title', 'My Page']]));
+    const title = findMetadataValueCell(view, 'title');
+    expect(title.node.type.name).to.equal('table_cell');
+    expect(title.node.textContent).to.equal('My Page');
+    expect(view.state.doc.nodeAt(title.pos)).to.equal(title.node);
+    const image = findMetadataValueCell(view, 'IMAGE');
+    expect(view.state.doc.nodeAt(image.pos)).to.equal(image.node);
+    expect(image.node.firstChild.firstChild.type.name).to.equal('image');
+  });
+
+  it('finds no value cell for a missing row or a page without metadata', () => {
+    expect(findMetadataValueCell(makeRealView(docWithImageRow([])), 'Title')).to.equal(null);
+    const plain = makeRealView({ type: 'doc', content: [{ type: 'paragraph' }] });
+    expect(findMetadataValueCell(plain, 'Title')).to.equal(null);
+  });
+
+  it('keeps an unchanged value cell as the same node across edits to other rows', () => {
+    const view = makeRealView(docWithImageRow([['Title', 'My Page']]));
+    const before = findMetadataValueCell(view, 'Image').node;
+    setMetadataValue(view, 'Title', 'Renamed');
+    expect(findMetadataValueCell(view, 'Image').node).to.equal(before);
+    setMetadataImage(view, 'Image', { src: './media_new.png' });
+    expect(findMetadataValueCell(view, 'Image').node).not.to.equal(before);
+  });
+
+  it('replaces only the src of an existing image, keeping its other attributes', () => {
+    const view = makeRealView(docWithImageRow([['Title', 'My Page']]));
+    setMetadataImage(view, 'Image', { src: './media_new.png' });
+    const { node } = findMetadataImage(view, 'Image');
+    expect(node.attrs.src).to.equal('./media_new.png');
+    expect(node.attrs.alt).to.equal('Current alt');
+    expect(readMetadataRows(view)[0]).to.deep.equal({ key: 'Title', value: 'My Page' });
+  });
+
+  it('puts an image into an existing text row, replacing its text', () => {
+    const view = makeRealView({ type: 'doc', content: [metadataTableJSON([['Image', 'old text']])] });
+    setMetadataImage(view, 'Image', { src: './media_new.png', alt: 'New alt' });
+    const [row] = readMetadataRows(view);
+    expect(row.value).to.equal('');
+    expect(row.image).to.deep.include({ src: './media_new.png', alt: 'New alt' });
+  });
+
+  it('adds a missing row (and table) for a new image', () => {
+    const view = makeRealView({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hello' }] }] });
+    setMetadataImage(view, 'Image', { src: './media_new.png' });
+    const [row] = readMetadataRows(view);
+    expect(row.key).to.equal('Image');
+    expect(row.image.src).to.equal('./media_new.png');
+  });
+
+  it('selects the existing image so an inserted asset replaces it', () => {
+    const view = makeRealView(docWithImageRow([['Title', 'My Page']]));
+    expect(selectMetadataImageTarget(view, 'Image')).to.equal(true);
+    const { selection } = view.state;
+    expect(selection.node?.type.name).to.equal('image');
+    expect(selection.from).to.equal(findMetadataImage(view, 'Image').pos);
+  });
+
+  it('selects the value text, creating the row when missing, so an inserted asset fills it', () => {
+    const view = makeRealView({ type: 'doc', content: [metadataTableJSON([['Image', 'old text']])] });
+    expect(selectMetadataImageTarget(view, 'Image')).to.equal(true);
+    const { from, to } = view.state.selection;
+    expect(view.state.doc.textBetween(from, to)).to.equal('old text');
+
+    const empty = makeRealView({ type: 'doc', content: [{ type: 'paragraph' }] });
+    expect(selectMetadataImageTarget(empty, 'Image')).to.equal(true);
+    expect(readMetadataRows(empty)).to.deep.equal([{ key: 'Image', value: '' }]);
+    const { $from } = empty.state.selection;
+    expect($from.parent.type.name).to.equal('paragraph');
+    expect($from.node($from.depth - 1).type.name).to.equal('table_cell');
+    expect(selectMetadataImageTarget(null, 'Image')).to.equal(false);
   });
 });

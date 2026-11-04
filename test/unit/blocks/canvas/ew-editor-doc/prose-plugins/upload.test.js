@@ -6,6 +6,7 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let getSourceUploadContext;
 let uploadImageFile;
+let uploadImageMedia;
 let HLX6_MAX_IMAGE_BYTES;
 let toasts;
 
@@ -13,7 +14,7 @@ const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 
 before(async () => {
   ({ getSourceUploadContext } = await import('../../../../../../blocks/canvas/ew-editor-doc/prose-plugins/sourceUploadContext.js'));
-  ({ uploadImageFile } = await import('../../../../../../blocks/canvas/ew-editor-doc/prose-plugins/imageDrop.js'));
+  ({ uploadImageFile, uploadImageMedia } = await import('../../../../../../blocks/canvas/ew-editor-doc/prose-plugins/imageDrop.js'));
   ({ HLX6_MAX_IMAGE_BYTES } = await import('../../../../../../blocks/canvas/utils/image-upload.js'));
   ({ toasts } = await import('../../../../../fixtures/nx2/blocks/shared/toast/toast.js'));
 });
@@ -210,6 +211,48 @@ describe('uploadImageFile', () => {
 
       expect(calls.filter((c) => c.opts?.method === 'POST')).to.have.length(1);
       expect(toasts).to.have.length(0);
+    } finally {
+      restore();
+    }
+  });
+});
+
+describe('uploadImageMedia', () => {
+  const png = () => new File(['png'], 'pic.png', { type: 'image/png' });
+
+  it('uploads next to the document and returns the content URL without touching an editor', async () => {
+    const { calls, restore } = stubStore({ upgraded: false, contentUrl: './media_abc.png' });
+    try {
+      const src = await uploadImageMedia(png(), { parent: '/medorg/medsite/dir', name: 'doc' });
+      expect(src).to.equal('./media_abc.png');
+      const upload = calls.find((c) => c.opts?.method === 'POST');
+      expect(upload.url.endsWith('/medorg/medsite/dir/.doc/pic.png'), upload.url).to.equal(true);
+    } finally {
+      restore();
+    }
+  });
+
+  it('throws on a failed upload or a response without a content URL', async () => {
+    const saved = window.fetch;
+    try {
+      window.fetch = async () => new Response('nope', { status: 500 });
+      let error = await uploadImageMedia(png(), { parent: '/failorg/failsite', name: 'doc' }).catch((e) => e);
+      expect(error.message).to.include('500');
+      window.fetch = async () => new Response(JSON.stringify({ source: {} }), { status: 201 });
+      error = await uploadImageMedia(png(), { parent: '/failorg/failsite', name: 'doc' }).catch((e) => e);
+      expect(error.message).to.include('content URL');
+    } finally {
+      window.fetch = saved;
+    }
+  });
+
+  it('returns null without uploading an image over the size limit', async () => {
+    const { calls, restore } = stubStore({ upgraded: true });
+    toasts.length = 0;
+    try {
+      const big = new File([new Uint8Array(HLX6_MAX_IMAGE_BYTES + 1)], 'big.png', { type: 'image/png' });
+      expect(await uploadImageMedia(big, { parent: '/bigmed/bigmed', name: 'doc' })).to.equal(null);
+      expect(calls.filter((c) => c.opts?.method === 'POST')).to.have.length(0);
     } finally {
       restore();
     }

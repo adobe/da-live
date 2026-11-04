@@ -147,6 +147,37 @@ describe('resolveMetadataFields', () => {
   });
 });
 
+describe('metadata image fields', () => {
+  const image = { pos: 12, src: '/current.png', alt: 'Current alt' };
+
+  it('honors type=image from the options sheet', () => {
+    const [field] = buildMetadataFields([{ blocks: 'metadata', key: 'image', type: 'Image' }]);
+    expect(field).to.deep.include({ key: 'image', type: 'image', values: null });
+  });
+
+  it('keeps a configured image field without an image in the page empty', () => {
+    const configured = buildMetadataFields([{ blocks: 'metadata', key: 'image', type: 'image', label: 'Image' }]);
+    const [field] = resolveMetadataFields([], configured);
+    expect(field).to.deep.include({ key: 'image', type: 'image', value: '', image: null, removable: false });
+  });
+
+  it('fills an image field from the page image, case-insensitively', () => {
+    const configured = buildMetadataFields([{ blocks: 'metadata', key: 'image', type: 'image' }]);
+    const [field] = resolveMetadataFields([{ key: 'Image', value: '', image }], configured);
+    expect(field).to.deep.include({ type: 'image', value: '/current.png', image });
+  });
+
+  it('treats any row holding an image as an image field, so text editing cannot remove it', () => {
+    const configured = [{ key: 'og:image', label: 'OG image', type: 'single', values: null }];
+    const docRows = [{ key: 'og:image', value: '', image }, { key: 'Banner', value: '', image }];
+    const fields = resolveMetadataFields(docRows, configured);
+    expect(fields.map((f) => [f.key, f.type, f.removable])).to.deep.equal([
+      ['og:image', 'image', false], ['Banner', 'image', true],
+    ]);
+    expect(fields[1]).to.deep.include({ label: 'Banner', value: '/current.png', image });
+  });
+});
+
 describe('JSON value formatting', () => {
   it('pretty-prints valid JSON for editing', () => {
     expect(formatJsonValue('{"@type":"Article","name":"A"}'))
