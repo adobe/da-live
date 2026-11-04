@@ -3,7 +3,7 @@ import { setNx } from '../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { decorateArea, configureLandingNav } = await import('../../../scripts/scripts.js');
+const { decorateArea, configureLandingNav, configureLandingSelector } = await import('../../../scripts/scripts.js');
 
 describe('landing nav fragment', () => {
   let originalHref;
@@ -49,6 +49,44 @@ describe('landing nav fragment', () => {
       configureLandingNav();
       expect(document.head.querySelector('meta[name="nav-path"]')).to.be.null;
     });
+  });
+
+  it('lets Nexter own the picker while Landing reacts to site selection', () => {
+    ['true', 'home'].forEach((value) => {
+      window.history.replaceState(null, '', `/?nx=siteselector-main&nxver=2&landing=${value}`);
+      const selector = {};
+      configureLandingSelector({ selector });
+      selector.onSelect({ value: 'org/site' });
+      expect(window.location.hash).to.equal('#/org/site');
+      expect(window.location.search).to.equal(`?nx=siteselector-main&nxver=2&landing=${value}`);
+      expect(selector.sites).to.be.undefined;
+      expect(selector.getCreateSiteHref).to.be.undefined;
+    });
+  });
+
+  it('does not add Landing-specific selection routing to ordinary pages', () => {
+    ['', '?landing=false'].forEach((search) => {
+      window.history.replaceState(null, '', `/${search}`);
+      const selector = {};
+      configureLandingSelector({ selector });
+      expect(selector.onSelect).to.be.undefined;
+    });
+  });
+
+  it('configures an authored Landing block without the preview query parameter', () => {
+    window.history.replaceState(null, '', '/drafts/landing');
+    const landing = document.createElement('div');
+    landing.className = 'landing';
+    document.body.append(landing);
+    try {
+      const selector = {};
+      configureLandingSelector({ selector });
+      selector.onSelect({ value: 'other/site' });
+      expect(window.location.pathname).to.equal('/drafts/landing');
+      expect(window.location.hash).to.equal('#/other/site');
+    } finally {
+      landing.remove();
+    }
   });
 });
 

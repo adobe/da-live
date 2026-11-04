@@ -22,6 +22,12 @@ export function configureLandingNav() {
   document.head.append(meta);
 }
 
+export function configureLandingSelector({ selector }) {
+  const landing = new URLSearchParams(window.location.search).get('landing');
+  if (!['true', 'home'].includes(landing) && !document.querySelector('.landing')) return;
+  selector.onSelect = ({ value }) => { window.location.hash = `/${value}`; };
+}
+
 export function decorateArea(options = {}) {
   const area = options instanceof Node ? options : options.area || document;
   area.querySelectorAll('a[href]').forEach((link) => {
@@ -82,17 +88,7 @@ const CONFIG = {
 };
 
 if (nx2) {
-  document.addEventListener('site-selector-ready', async ({ detail: { selector, signal } }) => {
-    try {
-      const { connectSiteSelector } = await import('../blocks/shared/site-picker.js');
-      if (!signal.aborted) connectSiteSelector({ selector, signal });
-    } catch (error) {
-      if (!signal.aborted) {
-        selector.error = `Could not load your sites: ${error.message}`;
-        selector.addEventListener('site-retry', () => window.location.reload(), { once: true, signal });
-      }
-    }
-  });
+  document.addEventListener('site-selector-ready', ({ detail }) => configureLandingSelector(detail));
 }
 
 export default async function loadPage() {
