@@ -258,8 +258,9 @@ class EwBlockToolbar extends LitElement {
     openBlockLibraryModal({
       heading: 'Replace block',
       onInsert: (dom) => {
-        const { from, to } = selectedBlockRange(view.state);
-        replaceBlockRange(view, from, to, dom);
+        const range = selectedBlockRange(view.state);
+        if (!range) return;
+        replaceBlockRange(view, range.from, range.to, dom);
         view.focus();
       },
     });

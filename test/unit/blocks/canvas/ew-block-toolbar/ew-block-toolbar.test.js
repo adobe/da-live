@@ -531,6 +531,21 @@ describe('ew-block-toolbar', () => {
       ]);
     });
 
+    it('replaces the right block when it is first and collaborators insert above and after it', async () => {
+      view.dispatch(view.state.tr.delete(0, view.state.doc.firstChild.nodeSize));
+      view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, 0)));
+      const modal = await openModal();
+      remoteEdit((fragment) => {
+        fragment.insert(1, [remoteParagraph('After')]);
+        fragment.insert(0, [remoteParagraph('Above')]);
+      });
+      modal.onInsert(libraryTable());
+      expect(contents()).to.deep.equal([
+        ['paragraph', 'Above'], ['table', 'heroNew'], ['paragraph', 'After'],
+        ['paragraph', 'Outro'], ['table', 'otherKeep'],
+      ]);
+    });
+
     it('keeps a paragraph a collaborator inserts right after the block', async () => {
       const modal = await openModal();
       remoteEdit((fragment) => fragment.insert(2, [remoteParagraph('After')]));
