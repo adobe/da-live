@@ -126,7 +126,7 @@ describe('landing Content section', () => {
     }
   });
 
-  it('scrolls the shared list only when its readable columns do not fit', async () => {
+  it('aligns shared headers and rows and scrolls only when readable columns do not fit', async () => {
     const sheet = new CSSStyleSheet();
     await sheet.replace(await (await fetch('/blocks/landing/content.css')).text());
     el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
@@ -141,6 +141,12 @@ describe('landing Content section', () => {
       ...fileList().shadowRoot.adoptedStyleSheets,
       listSheet,
     ];
+    const itemSheet = new CSSStyleSheet();
+    await itemSheet.replace(await (await fetch('/blocks/shared/da-file-item/da-file-item.css')).text());
+    fileItems()[0].shadowRoot.adoptedStyleSheets = [
+      ...fileItems()[0].shadowRoot.adoptedStyleSheets,
+      itemSheet,
+    ];
     for (const size of [14, 16]) {
       el.style.setProperty('--nx-ui-text-content', `${size}px`);
       for (const width of [1200, 900, 360]) {
@@ -149,6 +155,12 @@ describe('landing Content section', () => {
         if (width > 360) expect(scroll.scrollWidth).to.equal(scroll.clientWidth);
         else expect(scroll.scrollWidth).to.be.greaterThan(scroll.clientWidth);
         expect(scroll.tabIndex).to.equal(0);
+        for (const column of ['name', 'folder', 'modified', 'actions']) {
+          expect(fileList().shadowRoot.querySelector(`[data-column="${column}"]`)
+            .getBoundingClientRect().left)
+            .to.equal(fileItems()[0].shadowRoot.querySelector(`[data-column="${column}"]`)
+              .getBoundingClientRect().left);
+        }
       }
     }
   });
