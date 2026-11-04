@@ -11,7 +11,6 @@ import {
   addMembers,
   removeMember,
   parseFolderPath,
-  pageRulePath,
   mediaRulePath,
   parsePagePath,
   scopePaths,
@@ -22,13 +21,6 @@ describe('permissions utils', () => {
   describe('folderRulePath', () => {
     it('builds a normalized folder rule path', () => {
       expect(folderRulePath('s', 'blog/drafts')).to.equal('/s/blog/drafts/ + **');
-    });
-  });
-
-  describe('pageRulePath', () => {
-    it('builds a page rule path without a wildcard', () => {
-      expect(pageRulePath('s', 'blog/post.html')).to.equal('/s/blog/post.html');
-      expect(pageRulePath('s', 'redirects.json')).to.equal('/s/redirects.json');
     });
   });
 
@@ -46,6 +38,12 @@ describe('permissions utils', () => {
 
     it('returns null for names starting with a dot', () => {
       expect(mediaRulePath('/s/.about.html')).to.equal(null);
+    });
+
+    it('returns null for pages named like DA\'s own dot folders', () => {
+      expect(mediaRulePath('/s/da.html')).to.equal(null);
+      expect(mediaRulePath('/s/sub/trash.html')).to.equal(null);
+      expect(mediaRulePath('/s/snapshots')).to.equal(null);
     });
   });
 
@@ -75,6 +73,10 @@ describe('permissions utils', () => {
     it('keeps the raw path for rules ending in a slash', () => {
       expect(scopeLabel('/s/foo/', 's')).to.equal('/s/foo/');
       expect(scopeLabel('/s/CONFIG/', 's')).to.equal('/s/CONFIG/');
+    });
+
+    it('keeps the raw path for rules that are CONFIG once spaces are removed', () => {
+      expect(scopeLabel('/s/CONFIG ', 's')).to.equal('/s/CONFIG ');
     });
 
     it('handles regex characters in site', () => {
@@ -405,6 +407,8 @@ describe('permissions utils', () => {
       expect(scopePaths('/s/blog/ + **', 's')).to.deep.equal(['/s/blog/ + **']);
       expect(scopePaths('/s/foo/', 's')).to.deep.equal(['/s/foo/']);
       expect(scopePaths('/s/foo/ ', 's')).to.deep.equal(['/s/foo/ ']);
+      expect(scopePaths('/s/foo.html ', 's')).to.deep.equal(['/s/foo.html ', '/s/.foo/ + **']);
+      expect(scopePaths('/s/C O N F I G', 's')).to.deep.equal(['/s/C O N F I G']);
       expect(scopePaths('/s/CONFIG', 's')).to.deep.equal(['/s/CONFIG']);
     });
 

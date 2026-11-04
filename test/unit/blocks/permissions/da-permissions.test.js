@@ -826,13 +826,13 @@ describe('da-permissions', () => {
       const el = await mount('myorg', 's');
 
       await openPageDialog(el);
-      await submitPage(el, '/Promotions');
+      await submitPage(el, '/Blog/Promotions');
 
       expect(el.shadowRoot.querySelector('nx-dialog')).to.equal(null);
-      expect(el._pendingPath).to.equal('/s/promotions.html');
+      expect(el._pendingPath).to.equal('/s/blog/promotions.html');
       const cards = el.shadowRoot.querySelector('da-permissions-cards');
-      expect(cards.slots.some((s) => s.path === '/s/promotions.html' && s.kind === 'page' && s.pending)).to.equal(true);
-      expect(cards.adding).to.deep.equal({ path: '/s/promotions.html', level: 'read' });
+      expect(cards.slots.some((s) => s.path === '/s/blog/promotions.html' && s.kind === 'page' && s.pending)).to.equal(true);
+      expect(cards.adding).to.deep.equal({ path: '/s/blog/promotions.html', level: 'read' });
     });
 
     it('adding a member saves the page rule and its media folder rule', async () => {
@@ -891,6 +891,47 @@ describe('da-permissions', () => {
       const cards = el.shadowRoot.querySelector('da-permissions-cards');
       expect(cards.adding).to.deep.equal({ path: '/s/promotions', level: 'read' });
       expect(cards.slots.some((s) => s.path === '/s/promotions.html')).to.equal(false);
+    });
+
+    it('Add page prefers an existing .html rule over the same page without .html', async () => {
+      const body = structuredClone(SITE_S_CONFIG_BODY);
+      body.permissions.data.push(
+        { path: '/s/foo', groups: 'legal@x.com', actions: 'write' },
+        { path: '/s/foo.html', groups: 'u@x.com', actions: '' },
+      );
+      mockFetch({ configFor: () => body });
+      const el = await mount('myorg', 's');
+
+      await openPageDialog(el);
+      await submitPage(el, '/foo');
+
+      const cards = el.shadowRoot.querySelector('da-permissions-cards');
+      expect(cards.adding).to.deep.equal({ path: '/s/foo.html', level: 'read' });
+    });
+
+    it('Add page for a dotted page doesn\'t open a rule for a file of the same name', async () => {
+      const body = structuredClone(SITE_S_CONFIG_BODY);
+      body.permissions.data.push({ path: '/s/about.us', groups: 'seo@x.com', actions: 'read' });
+      mockFetch({ configFor: () => body });
+      const el = await mount('myorg', 's');
+
+      await openPageDialog(el);
+      await submitPage(el, '/about.us.html');
+
+      const cards = el.shadowRoot.querySelector('da-permissions-cards');
+      expect(cards.adding).to.deep.equal({ path: '/s/about.us.html', level: 'read' });
+    });
+
+    it('the remove dialog only names the media folder when the member is on it', async () => {
+      const body = structuredClone(SITE_S_CONFIG_BODY);
+      body.permissions.data.push({ path: '/s/promotions.html', groups: 'legal@x.com', actions: 'write' });
+      mockFetch({ configFor: () => body });
+      const el = await mount('myorg', 's');
+
+      el._onRemoveRequest({ detail: { path: '/s/promotions.html', level: 'write', who: 'legal@x.com' } });
+      await el.updateComplete;
+      expect(el.shadowRoot.querySelector('nx-dialog p').textContent.trim())
+        .to.equal('Remove legal@x.com from promotions.html · Write?');
     });
 
     it('removing a page member removes the media folder rule too when the site changes mid-save', async () => {
