@@ -6,7 +6,8 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import {
-  ORG, SITE, tabsForScope, resolveSelection, tabFromUrl, urlWithTab,
+  ORG, SITE, tabsForScope, resolveSelection, tabFromUrl, urlWithTab, rememberSection,
+  rememberedSection,
 } from '../sections.js';
 import { inFile, readFile, save } from '../stores.js';
 import { loadConfigs, listSites, setupLibrary, isDenied } from '../api.js';
@@ -105,6 +106,8 @@ class DaConfig extends LitElement {
     if (orgChanged || siteChanged) {
       this._resetScope();
       this._load();
+      // Without `?tab=`, open the section last shown for this org/site.
+      this._sectionId ??= rememberedSection(this.org, this.site);
     }
     // File-stored sections are read once the configs are in (a library's path is in the config).
     const fileKey = this._fileKey;
@@ -122,11 +125,13 @@ class DaConfig extends LitElement {
         root.adoptedStyleSheets = [...root.adoptedStyleSheets, tabStyle];
       }
     });
-    // Keep `?tab=` in sync with the section shown.
-    const id = this._selection.section?.id;
-    if (this._status === 'ok' && id && tabFromUrl(window.location.href) !== id) {
-      window.history.replaceState(null, '', urlWithTab(window.location.href, id));
+    // Keep `?tab=` and the remembered section in sync with the section shown.
+    const { tab, section } = this._selection;
+    if (this._status !== 'ok' || !section) return;
+    if (tabFromUrl(window.location.href) !== section.id) {
+      window.history.replaceState(null, '', urlWithTab(window.location.href, section.id));
     }
+    rememberSection(this.org, this.site, tab.id, section.id);
   }
 
   async _load() {
@@ -269,9 +274,12 @@ class DaConfig extends LitElement {
     }, () => { target.value = current; });
   }
 
+  // A tab opens on the section last shown in it.
   _onPrimaryChange({ detail, target }) {
     const tab = this._tabs.find((t) => t.id === detail.value);
-    this._showSection(tab.sections[0].id, target, this._selection.tab.id);
+    const remembered = rememberedSection(this.org, this.site, tab.id);
+    const id = tab.sections.some((s) => s.id === remembered) ? remembered : tab.sections[0].id;
+    this._showSection(id, target, this._selection.tab.id);
   }
 
   _onSectionChange({ detail, target }) {

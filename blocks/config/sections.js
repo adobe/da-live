@@ -191,3 +191,31 @@ export function urlWithTab(href, sectionId) {
   url.searchParams.set('tab', sectionId);
   return url.toString();
 }
+
+// The last section shown per tab (and overall, as `last`), per org/site, kept across reloads:
+// { 'org/site': { library: 'templates', last: 'templates' } }.
+const MEMORY_KEY = 'da-config-sections';
+const scopeKey = (org, site) => `${org}/${site ?? ''}`;
+
+function readMemory() {
+  try {
+    return JSON.parse(localStorage.getItem(MEMORY_KEY)) ?? {};
+  } catch {
+    return {};
+  }
+}
+
+export const rememberedSection = (org, site, tabId = 'last') => (
+  readMemory()[scopeKey(org, site)]?.[tabId] ?? null);
+
+export function rememberSection(org, site, tabId, sectionId) {
+  const memory = readMemory();
+  const key = scopeKey(org, site);
+  if (memory[key]?.[tabId] === sectionId && memory[key]?.last === sectionId) return;
+  memory[key] = { ...memory[key], [tabId]: sectionId, last: sectionId };
+  try {
+    localStorage.setItem(MEMORY_KEY, JSON.stringify(memory));
+  } catch {
+    // Storage is unavailable or full; the selection just isn't remembered.
+  }
+}
