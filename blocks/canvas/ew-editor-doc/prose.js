@@ -206,9 +206,9 @@ export default async function initProse({
     keymap(baseKeymap),
     codemark(),
     keymap({
-      'Mod-z': (state) => yUndo(state) || false,
-      'Mod-y': (state) => yRedo(state) || false,
-      'Mod-Shift-z': (state) => yRedo(state) || false,
+      'Mod-z': (state) => { yUndo(state); return true; },
+      'Mod-y': (state) => { yRedo(state); return true; },
+      'Mod-Shift-z': (state) => { yRedo(state); return true; },
       'Mod-k': (_state, _dispatch, view) => {
         if (!view.editable) return false;
         openLinkDialog(view);
