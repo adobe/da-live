@@ -499,6 +499,16 @@ describe('ew-block-toolbar', () => {
       return p;
     }
 
+    function remoteTable(name) {
+      const cell = new Y.XmlElement('table_cell');
+      cell.insert(0, [remoteParagraph(name)]);
+      const row = new Y.XmlElement('table_row');
+      row.insert(0, [cell]);
+      const tbl = new Y.XmlElement('table');
+      tbl.insert(0, [row]);
+      return tbl;
+    }
+
     it('replaces the selected block and keeps it selected', async () => {
       const modal = await openModal();
       modal.onInsert(libraryTable());
@@ -553,6 +563,27 @@ describe('ew-block-toolbar', () => {
       expect(contents()).to.deep.equal([
         ['paragraph', 'Intro'], ['table', 'heroNew'], ['paragraph', 'After'],
         ['paragraph', 'Outro'], ['table', 'otherKeep'],
+      ]);
+    });
+
+    it('keeps a block a collaborator inserts right after the block', async () => {
+      const modal = await openModal();
+      remoteEdit((fragment) => fragment.insert(2, [remoteTable('Added')]));
+      modal.onInsert(libraryTable());
+      expect(contents()).to.deep.equal([
+        ['paragraph', 'Intro'], ['table', 'heroNew'], ['table', 'Added'],
+        ['paragraph', 'Outro'], ['table', 'otherKeep'],
+      ]);
+    });
+
+    it('keeps a block a collaborator inserts above the first block', async () => {
+      view.dispatch(view.state.tr.delete(0, view.state.doc.firstChild.nodeSize));
+      view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, 0)));
+      const modal = await openModal();
+      remoteEdit((fragment) => fragment.insert(0, [remoteTable('Added')]));
+      modal.onInsert(libraryTable());
+      expect(contents()).to.deep.equal([
+        ['table', 'Added'], ['table', 'heroNew'], ['paragraph', 'Outro'], ['table', 'otherKeep'],
       ]);
     });
 
