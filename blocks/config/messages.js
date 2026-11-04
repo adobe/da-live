@@ -53,7 +53,8 @@ export const INHERITANCE = {
 };
 
 export const ROWS = {
-  empty: (noun) => `No ${noun}s yet.`,
+  empty: (noun) => `No ${noun}s yet`,
+  emptyHint: (noun) => `Add ${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${noun} to get started.`,
   duplicate: (noun, column) => `Another ${noun} already uses this ${column.toLowerCase()}.`,
   alreadyListed: (noun) => `This ${noun} is already listed.`,
 };

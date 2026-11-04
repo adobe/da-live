@@ -678,7 +678,7 @@ describe('da-config', () => {
     it('adds a row through the dialog and saves the prepare sheet', async () => {
       const puts = mockFetch({ configFor: () => status(404)(), sitesFor: () => [{ name: 'alpha' }] });
       await open({ org: 'pr1' });
-      expect(el.shadowRoot.textContent).to.include('No menu items yet.');
+      expect(el.shadowRoot.textContent).to.include('No menu items yet');
       await click('.config-panel > div .nx-form-btn-secondary');
       await click('nx-dialog .nx-form-btn-primary');
       expect(has('nx-dialog .nx-input-error-msg')).to.equal(true);
@@ -845,7 +845,7 @@ describe('da-config', () => {
       q('.config-setup .nx-form-btn-primary').click();
       await waitUntil(() => el._file?.status === 'ok', el);
       expect(puts.map((p) => p.path ?? 'config')).to.deep.equal(['/docs/library/templates.json', 'config']);
-      expect(el.shadowRoot.textContent).to.include('No templates yet.');
+      expect(el.shadowRoot.textContent).to.include('No templates yet');
       expect(el.shadowRoot.textContent).to.include('previewed and published');
     });
 
@@ -1043,7 +1043,7 @@ describe('da-config', () => {
       await showPart('languages');
       expect(q('.config-table tbody tr').textContent).to.include('English');
       await showPart('dnt');
-      expect(el.shadowRoot.textContent).to.include('No exclusions yet.');
+      expect(el.shadowRoot.textContent).to.include('No exclusions yet');
       expect(q('.config-parts nx-picker').items.every((item) => item.label)).to.equal(true);
     });
 
