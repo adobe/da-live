@@ -1,9 +1,12 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../../scripts/utils.js';
+import { canEditOrgConfig } from '../../../shared/utils.js';
+import { getSettingsMenuItems } from '../../shared/settings-menu.js';
 
 await import(`${getNx()}/blocks/shared/switch/switch.js`);
 await import(`${getNx()}/blocks/shared/segmented-btn/segmented.js`);
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
+await import(`${getNx()}/blocks/shared/menu/menu.js`);
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
@@ -27,6 +30,7 @@ export default class DaBrowseHeader extends LitElement {
     cardSize: { type: String },
     _appearanceOpen: { state: true },
     _sortOpen: { state: true },
+    _canEditOrgConfig: { state: true },
     typesFilterState: { attribute: false },
     sortState: { attribute: false },
     searchState: { attribute: false },
@@ -35,6 +39,16 @@ export default class DaBrowseHeader extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [BUTTONS, style];
+  }
+
+  willUpdate(changed) {
+    if (!changed.has('details')) return;
+    const org = this.details?.org;
+    if (org === changed.get('details')?.org) return;
+    this._canEditOrgConfig = false;
+    this._orgConfigCheck = canEditOrgConfig(org).then((canEdit) => {
+      if (this.details?.org === org) this._canEditOrgConfig = canEdit;
+    });
   }
 
   requestTypesFilter({ currentTarget }) {
@@ -132,15 +146,17 @@ export default class DaBrowseHeader extends LitElement {
 
   renderSettingsActions() {
     if (!this.details?.org || this.details.path) return nothing;
-    const href = this.details.site
-      ? `/config#/${this.details.org}/${this.details.site}/`
-      : `/config#/${this.details.org}/`;
-    const label = `Configure ${this.details.site ? 'Site' : 'Org'}`;
+    const { org, site } = this.details;
+    const items = getSettingsMenuItems({ org, site, canEditOrgConfig: this._canEditOrgConfig });
+    const label = `${site ? 'Site' : 'Org'} Settings`;
     return html`
-      <a class="browse-settings-link browse-toolbar-control nx-action-btn-quiet" href="${href}" title=${label}>
-        <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-settings-20-n.svg#icon"></use></svg>
-        <span class="browse-control-label">${label}</span>
-      </a>`;
+      <nx-menu class="browse-settings-menu" size="m" placement="auto" .items=${items}
+        @select=${({ detail }) => { window.location.href = detail.id; }}>
+        <button slot="trigger" type="button" class="browse-settings-trigger browse-toolbar-control nx-action-btn-quiet" title=${label}>
+          <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-settings-20-n.svg#icon"></use></svg>
+          <span class="browse-control-label">${label}</span>
+        </button>
+      </nx-menu>`;
   }
 
   renderSortOptions() {

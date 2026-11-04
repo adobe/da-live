@@ -1,5 +1,10 @@
 const FLAG = 'browseV2';
 
+export function getBrowseComponent({ search, pathDetails }) {
+  if (pathDetails) return 'da-browse';
+  return new URLSearchParams(search).get('landing') === 'true' ? 'da-landing' : 'da-sites';
+}
+
 /** Explicit `?browse=2` / `?browse=1` override; undefined when not set. */
 function getBrowseOverride(search) {
   const value = new URLSearchParams(search).get('browse');

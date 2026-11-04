@@ -1,3 +1,52 @@
+# [1.20.0](https://github.com/adobe/da-live/compare/v1.19.2...v1.20.0) (2026-11-04)
+
+
+### Features
+
+* **ew:** multi-select block variants from library class names ([#1498](https://github.com/adobe/da-live/issues/1498)) ([a58a9d1](https://github.com/adobe/da-live/commit/a58a9d12e4a0e7be3d4d81ab8c3274f88c8526e6))
+
+## [1.19.2](https://github.com/adobe/da-live/compare/v1.19.1...v1.19.2) (2026-11-04)
+
+
+### Bug Fixes
+
+* **ew:** find Add item template row by block class, incl. container groups ([#1499](https://github.com/adobe/da-live/issues/1499)) ([a528da2](https://github.com/adobe/da-live/commit/a528da243e7d422022a94c2f7f5d47b300f7f4dd))
+
+## [1.19.1](https://github.com/adobe/da-live/compare/v1.19.0...v1.19.1) (2026-11-04)
+
+
+### Bug Fixes
+
+* refresh file lists after chat completion ([#1646](https://github.com/adobe/da-live/issues/1646)) ([9bd94fb](https://github.com/adobe/da-live/commit/9bd94fb0795da566be5c1d725d02027f06bc8158))
+
+# [1.19.0](https://github.com/adobe/da-live/compare/v1.18.1...v1.19.0) (2026-11-04)
+
+
+### Features
+
+* **landing:** add gated gradient home background ([#1645](https://github.com/adobe/da-live/issues/1645)) ([1926a7b](https://github.com/adobe/da-live/commit/1926a7b800c8439a83ef5698a83644a2a799647c))
+
+## [1.18.1](https://github.com/adobe/da-live/compare/v1.18.0...v1.18.1) (2026-11-04)
+
+
+### Bug Fixes
+
+* **ew:** avoid opening comparison with versions panel ([#1644](https://github.com/adobe/da-live/issues/1644)) ([2a2a361](https://github.com/adobe/da-live/commit/2a2a361e02010cb73adf1200d9b7a725736af497))
+
+# [1.18.0](https://github.com/adobe/da-live/compare/v1.17.2...v1.18.0) (2026-11-03)
+
+
+### Features
+
+* **chat:** expose turn completion to extensions ([#1512](https://github.com/adobe/da-live/issues/1512)) ([b632239](https://github.com/adobe/da-live/commit/b63223996f2f2c29e71f3fb256eae7cfe7d5de87))
+
+## [1.17.2](https://github.com/adobe/da-live/compare/v1.17.1...v1.17.2) (2026-11-03)
+
+
+### Bug Fixes
+
+* **browse:** turn config action into settings menu with permissions ([#1629](https://github.com/adobe/da-live/issues/1629)) ([c05aace](https://github.com/adobe/da-live/commit/c05aacee06146914c77520530fa129d63819d908))
+
 ## [1.17.1](https://github.com/adobe/da-live/compare/v1.17.0...v1.17.1) (2026-11-02)
 
 

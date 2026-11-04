@@ -1,11 +1,72 @@
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
 import { setNx, getNx, getNxEWFlags } from '../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
-const { chatAvailability } = await import('../../../../blocks/shared/chat-panel.js');
+const { chatAvailability, chatTurnCompleted } = await import('../../../../blocks/shared/chat-panel.js');
+const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { setChatAvailability } = await getNxEWFlags();
 const flush = () => new Promise((resolve) => { setTimeout(resolve, 0); });
+
+describe('shared chat turn completion', () => {
+  let unsubscribers;
+
+  function observe(values) {
+    const unsubscribe = chatTurnCompleted.subscribe((detail) => values.push(detail));
+    unsubscribers.push(unsubscribe);
+    return unsubscribe;
+  }
+
+  beforeEach(() => {
+    unsubscribers = [];
+  });
+
+  afterEach(() => {
+    unsubscribers.forEach((unsubscribe) => unsubscribe());
+    sinon.restore();
+  });
+
+  it('notifies shared consumers without canvas initialization or replaying previous turns', () => {
+    const detail = { org: 'org', site: 'site', path: 'page', turnId: 'turn', status: 'completed' };
+    const first = [];
+    const second = [];
+    const unsubscribe = observe(first);
+    observe(second);
+    document.dispatchEvent(new CustomEvent(CHAT_EVENT.TURN_COMPLETED, { detail }));
+    expect(first).to.deep.equal([detail]);
+    expect(second).to.deep.equal([detail]);
+
+    const late = [];
+    observe(late);
+    expect(late).to.deep.equal([]);
+    unsubscribe();
+    unsubscribe();
+    document.dispatchEvent(new CustomEvent(CHAT_EVENT.TURN_COMPLETED, { detail }));
+    expect(first).to.deep.equal([detail]);
+    expect(second).to.deep.equal([detail, detail]);
+    expect(late).to.deep.equal([detail]);
+  });
+
+  it('shares and cleans up the document listener and reconnects for new consumers', () => {
+    const add = sinon.spy(document, 'addEventListener');
+    const remove = sinon.spy(document, 'removeEventListener');
+    const unsubscribeFirst = observe([]);
+    const unsubscribeSecond = observe([]);
+    expect(add.withArgs(CHAT_EVENT.TURN_COMPLETED).callCount).to.equal(1);
+    unsubscribeFirst();
+    expect(remove.withArgs(CHAT_EVENT.TURN_COMPLETED).callCount).to.equal(0);
+    unsubscribeSecond();
+    expect(remove.withArgs(CHAT_EVENT.TURN_COMPLETED).callCount).to.equal(1);
+
+    const values = [];
+    observe(values);
+    expect(values).to.deep.equal([]);
+    const detail = { status: 'aborted' };
+    document.dispatchEvent(new CustomEvent(CHAT_EVENT.TURN_COMPLETED, { detail }));
+    expect(values).to.deep.equal([detail]);
+  });
+});
 
 describe('shared chat availability', () => {
   let unsubscribers;

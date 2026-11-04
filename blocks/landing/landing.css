@@ -1,0 +1,38 @@
+body.dark-scheme:has(.landing),
+body:has(.landing[data-theme="dark"]) {
+  color-scheme: dark;
+}
+
+body:has(.landing[data-theme="light"]) {
+  color-scheme: light;
+}
+
+.section:has(.landing),
+.block-content:has(.landing),
+.browse:has(> .landing) {
+  height: 100%;
+}
+
+.landing {
+  min-height: 100%;
+  background:
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--s2-gray-25) 0%, transparent) 25%,
+      var(--s2-gray-25) 85%
+    ),
+    linear-gradient(
+      to right,
+      var(--s2-red-100) 0%,
+      var(--s2-red-100) 20%,
+      var(--s2-pink-200) 40%,
+      var(--s2-indigo-200) 50%,
+      var(--s2-blue-100) 100%
+    );
+}
+
+@media (forced-colors: active) {
+  .landing {
+    background: Canvas;
+  }
+}
