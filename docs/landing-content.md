@@ -13,16 +13,17 @@ the LP-only Add site dialog.
 
 Cards use Browse's fixed 151x200 small preset, independently of page text scale.
 The centered panel hugs whole columns, up to six, with 16px side padding.
-Card-mode panel width stays the same while loading, empty or showing an error.
-Recent starts with six cards. Show more expands directly to eighteen, or all
-available files if fewer exist, then disappears. Two portrait-card rows make
-the initial section taller, so six keeps the default desktop view compact.
+Both views use the same panel width while loaded, loading, empty or showing
+an error. Recent starts with six files. Show more expands directly to eighteen,
+or all available files if fewer exist, then disappears. Switching cards/list
+preserves the visible files and expansion count. The shared list scrolls
+horizontally only when its readable columns cannot fit inside the panel.
 
 Favorite uses browser-local `da-favorites` entries for the selected site root.
-It displays at most six cards or ten list rows without deleting saved entries.
-The list keeps Name, Folder, Modified and information/favorite controls,
-with independent ten-row pagination. Changing the site resets filters and
-pagination and aborts the previous listing. Favorite changes in another tab
+It displays at most six files in either view without deleting saved entries.
+The list keeps Name, Folder, Modified and information/favorite controls.
+Changing the filter resets expansion to six. Changing the site also resets
+filters and aborts the previous listing. Favorite changes in another tab
 are reflected while the component is connected.
 
 ## Data, previews and destinations

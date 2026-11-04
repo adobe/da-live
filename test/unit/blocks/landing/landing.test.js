@@ -92,7 +92,7 @@ describe('landing Content section', () => {
     expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
   });
 
-  it('keeps each view panel width stable across loading, empty and error states', async () => {
+  it('matches panel widths across views and loading, empty and error states', async () => {
     const sheet = new CSSStyleSheet();
     await sheet.replace(await (await fetch('/blocks/landing/landing.css')).text());
     el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
@@ -122,7 +122,34 @@ describe('landing Content section', () => {
           expect(panel.getBoundingClientRect().width).to.equal(widths[view]);
         }
       }
-      expect(widths.list).to.be.greaterThan(widths.card);
+      expect(widths.list).to.equal(widths.card);
+    }
+  });
+
+  it('scrolls the shared list only when its readable columns do not fit', async () => {
+    const sheet = new CSSStyleSheet();
+    await sheet.replace(await (await fetch('/blocks/landing/landing.css')).text());
+    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
+    el.style.setProperty('--s2-spacing-200', '12px');
+    el.style.setProperty('--s2-spacing-300', '16px');
+    el.style.setProperty('--s2-spacing-400', '24px');
+    el.changeView({ detail: { value: 'list' } });
+    await updateLanding();
+    const listSheet = new CSSStyleSheet();
+    await listSheet.replace(await (await fetch('/blocks/browse/v2/da-list/da-list.css')).text());
+    fileList().shadowRoot.adoptedStyleSheets = [
+      ...fileList().shadowRoot.adoptedStyleSheets,
+      listSheet,
+    ];
+    for (const size of [14, 16]) {
+      el.style.setProperty('--nx-ui-text-content', `${size}px`);
+      for (const width of [1200, 900, 360]) {
+        el.style.width = `${width}px`;
+        const scroll = el.shadowRoot.querySelector('.file-list');
+        if (width > 360) expect(scroll.scrollWidth).to.equal(scroll.clientWidth);
+        else expect(scroll.scrollWidth).to.be.greaterThan(scroll.clientWidth);
+        expect(scroll.tabIndex).to.equal(0);
+      }
     }
   });
 
@@ -135,24 +162,34 @@ describe('landing Content section', () => {
     expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
   });
 
-  it('preserves independent ten-row list pagination and its existing columns', async () => {
-    el.shadowRoot.querySelector('.show-more').click();
-    el.changeView({ detail: { value: 'list' } });
-    await updateLanding();
-    expect([...fileList().shadowRoot.querySelectorAll('[role="columnheader"]')].map((cell) => cell.textContent.trim()))
-      .to.deep.equal(['Name', 'Folder', 'Modified']);
-    expect(fileList().shadowRoot.querySelector('.da-browse-table-header button')).to.equal(null);
-    expect(fileItems()).to.have.length(10);
-    el.shadowRoot.querySelector('.show-more').click();
-    await updateLanding();
-    expect(fileItems()).to.have.length(20);
-    el.changeView({ detail: { value: 'card' } });
-    await updateLanding();
-    expect(fileItems()).to.have.length(18);
-    expect(JSON.parse(localStorage.getItem('da-browse-settings')).view).to.equal('card');
+  ['card', 'list'].forEach((initialView) => {
+    it(`preserves six/eighteen files across shared toggle changes starting in ${initialView} view`, async () => {
+      el.changeView({ detail: { value: initialView } });
+      await updateLanding();
+      expect(fileItems()).to.have.length(6);
+      el.shadowRoot.querySelector('.show-more').click();
+      await updateLanding();
+      expect(fileItems()).to.have.length(18);
+      const switcher = el.shadowRoot.querySelector('nx-segmented-btn');
+      for (const view of [initialView === 'card' ? 'list' : 'card', initialView]) {
+        switcher.dispatchEvent(new CustomEvent('change', { detail: { value: view } }));
+        await updateLanding();
+        expect(el._view).to.equal(view);
+        expect([...fileItems()].map((item) => item.path))
+          .to.deep.equal(ITEMS.slice(0, 18).map((item) => item.path));
+        expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
+        expect(JSON.parse(localStorage.getItem('da-browse-settings')).view).to.equal(view);
+      }
+      el.changeView({ detail: { value: 'list' } });
+      await updateLanding();
+      expect([...fileList().shadowRoot.querySelectorAll('[role="columnheader"]')].map((cell) => cell.textContent.trim()))
+        .to.deep.equal(['Name', 'Folder', 'Modified']);
+      expect(fileList().shadowRoot.querySelector('.da-browse-table-header button')).to.equal(null);
+    });
   });
 
-  it('caps Favorite at six cards or ten rows without deleting saved entries', async () => {
+  it('caps Favorite at six files in both views without deleting saved entries', async () => {
+    el.shadowRoot.querySelector('.show-more').click();
     ITEMS.forEach((item) => toggleFavorite('/org/site', item.path));
     el.refreshFavorites();
     el.changeTab('starred');
@@ -161,9 +198,12 @@ describe('landing Content section', () => {
     expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
     el.changeView({ detail: { value: 'list' } });
     await updateLanding();
-    expect(fileItems()).to.have.length(10);
+    expect(fileItems()).to.have.length(6);
     expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
     expect(getFavorites('/org/site')).to.have.length(24);
+    el.changeTab('recent');
+    await updateLanding();
+    expect(fileItems()).to.have.length(6);
   });
 
   it('updates favorites through the shared card event and another tab', async () => {
@@ -188,16 +228,16 @@ describe('landing Content section', () => {
   });
 
   it('resets filters, expansion and favorites on a site change', async () => {
-    el._cardLimit = 18;
     toggleFavorite('/org/site', ITEMS[0].path);
     el.refreshFavorites();
     el.changeTab('starred');
+    el._limit = 18;
     const request = el._request;
     hashChange._set({ org: 'other', site: 'site', fullpath: '/other/site' });
     await updateLanding();
     expect(request.signal.aborted).to.equal(true);
     expect(el._tab).to.equal('recent');
-    expect(el._cardLimit).to.equal(6);
+    expect(el._limit).to.equal(6);
     expect(el._favorites.size).to.equal(0);
     expect(loadSite.callCount).to.equal(2);
   });
