@@ -2,3 +2,8 @@
 .light-scheme, .dark-scheme {
   color-scheme: light;
 }
+
+.da-edit-not-permitted {
+  width: var(--se-grid-container-width, var(--grid-container-width));
+  margin: 0 auto 120px;
+}
