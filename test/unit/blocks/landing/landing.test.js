@@ -11,8 +11,10 @@ describe('landing background', () => {
   let el;
   let container;
   let originalStyles;
+  let originalHref;
 
   beforeEach(() => {
+    originalHref = window.location.href;
     originalStyles = document.adoptedStyleSheets;
     document.adoptedStyleSheets = [...originalStyles, styles];
     el = document.createElement('div');
@@ -34,6 +36,7 @@ describe('landing background', () => {
     container.remove();
     document.adoptedStyleSheets = originalStyles;
     document.body.classList.remove('dark-scheme');
+    history.replaceState(null, '', originalHref);
   });
 
   it('replaces old content with only an empty background surface', () => {
@@ -64,5 +67,16 @@ describe('landing background', () => {
     expect(getComputedStyle(document.body).colorScheme).to.equal('dark');
     el.replaceChildren();
     expect(getComputedStyle(document.body).colorScheme).to.equal(before);
+  });
+
+  it('previews light mode without changing the saved theme or other pages', () => {
+    const savedTheme = localStorage.getItem('color-scheme');
+    document.body.classList.add('dark-scheme');
+    history.replaceState(null, '', '?theme=light');
+    init(el);
+    expect(getComputedStyle(document.body).colorScheme).to.equal('light');
+    expect(localStorage.getItem('color-scheme')).to.equal(savedTheme);
+    el.replaceChildren();
+    expect(getComputedStyle(document.body).colorScheme).not.to.equal('light');
   });
 });
