@@ -22,6 +22,72 @@ function setUrl(url) {
   window.history.replaceState(null, '', url);
 }
 
+function completeChatTurn(detail) {
+  document.dispatchEvent(new CustomEvent(CHAT_EVENT.TURN_COMPLETED, { detail }));
+}
+
+describe('extension chat turn subscriptions', () => {
+  let connection;
+  let received;
+  const detail = { org: 'org', site: 'site', path: '/page', turnId: 'turn', status: 'completed' };
+  beforeEach(async () => {
+    connection = await setupIframeChannel({
+      iframe: makeIframe(),
+      hashState: { org: 'org', site: 'site', path: 'page' },
+      getView: () => null,
+      onClose() {},
+    });
+    received = [];
+    connection.channel.port2.onmessage = ({ data }) => received.push(data);
+  });
+  afterEach(() => {
+    connection.destroy();
+    sinon.restore();
+  });
+  function command(action) {
+    connection.channel.port1.onmessage({ data: { action } });
+  }
+
+  it('forwards only new events for the extension document and supports unsubscribe', async () => {
+    completeChatTurn(detail);
+    command('subscribeChatTurnCompleted');
+    command('subscribeChatTurnCompleted');
+    completeChatTurn({ ...detail, org: 'other' });
+    completeChatTurn({ ...detail, site: 'other' });
+    completeChatTurn({ ...detail, path: 'other' });
+    await wait();
+    expect(received).to.deep.equal([]);
+    completeChatTurn(detail);
+    await wait();
+    expect(received).to.deep.equal([{ action: 'chatTurnCompleted', detail }]);
+    command('unsubscribeChatTurnCompleted');
+    command('unsubscribeChatTurnCompleted');
+    completeChatTurn(detail);
+    command('subscribeChatTurnCompleted');
+    await wait();
+    expect(received).to.have.lengthOf(1);
+    completeChatTurn({ ...detail, status: 'aborted' });
+    await wait();
+    expect(received).to.have.lengthOf(2);
+    expect(received[1].detail.status).to.equal('aborted');
+  });
+
+  it('removes its shared chat subscription when the iframe channel is destroyed', () => {
+    command('subscribeChatTurnCompleted');
+    const postMessage = sinon.spy(connection.channel.port1, 'postMessage');
+    connection.destroy();
+    completeChatTurn(detail);
+    expect(postMessage.called).to.equal(false);
+  });
+
+  it('receives the chat document event without initializing canvas', async () => {
+    command('subscribeChatTurnCompleted');
+    document.dispatchEvent(new CustomEvent(CHAT_EVENT.TURN_COMPLETED, { detail }));
+    await wait();
+    expect(received).to.deep.equal([{ action: 'chatTurnCompleted', detail }]);
+  });
+});
+
 describe('acknowledged live HTML replacement', () => {
   let view;
   let connection;
@@ -302,7 +368,8 @@ describe('setupIframeChannel', () => {
       hash: '#/myorg/mysite/a/b',
     });
     expect(message.context).to.equal(message.project);
-    expect(message.capabilities).to.deep.equal({ liveDocument: 1, sendHTMLReplace: 1 });
+    const capabilities = { liveDocument: 1, sendHTMLReplace: 1, chatTurnCompleted: 1 };
+    expect(message.capabilities).to.deep.equal(capabilities);
     expect(targetOrigin).to.equal('https://plugin.example.com');
     expect(transfer).to.have.lengthOf(1);
 
