@@ -608,7 +608,7 @@ describe('da-config', () => {
       await open({ org: 'ew5', site: 'alpha' });
       expect(has('.config-setup')).to.equal(false);
       expect(q('[id="config-ew.enabled"]').value).to.equal('false');
-      const link = [...el.shadowRoot.querySelectorAll('.config-message a')].find((a) => a.textContent.includes('setup app'));
+      const link = [...el.shadowRoot.querySelectorAll('.config-info a')].find((a) => a.textContent.includes('setup app'));
       expect(link.href).to.match(/#\/ew5\/alpha$/);
     });
 

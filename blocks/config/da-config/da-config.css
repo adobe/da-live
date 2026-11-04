@@ -243,6 +243,24 @@
   white-space: nowrap;
 }
 
+/* Section notes, styled like the permissions info note. */
+.config-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s2-spacing-100);
+  padding: var(--s2-spacing-200) var(--s2-spacing-300);
+  border-radius: var(--s2-corner-radius-400);
+  background: var(--s2-gray-75);
+  color: var(--s2-gray-700);
+  font-size: var(--s2-component-m-regular-font-size);
+  line-height: var(--s2-component-m-regular-line-height);
+}
+
+.config-info p {
+  margin: 0;
+}
+
 /* Like Coworker's load errors: red outline, title and reason, warning icon on the right. */
 .config-alert {
   display: flex;
