@@ -63,8 +63,7 @@ exercise S/M role values to check that card geometry stays fixed; they do not
 prove a production M toggle. The optional existing controller is used only
 when the configured Nexter version exposes it.
 
-## Review order
+## Delivery
 
-adobe/da-live#1616 supplies the optional shared destination override. Its small
-diff is included in adobe/da-live#1531 for a working combined preview. Merge
-the shared change first, then update the integration with main.
+adobe/da-live#1531 contains the complete Content integration, including the
+optional shared destination override.
