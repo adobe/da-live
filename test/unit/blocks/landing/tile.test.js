@@ -221,7 +221,7 @@ describe('landing tile group', () => {
   const groupSheet = new CSSStyleSheet();
 
   before(async () => {
-    await groupSheet.replace(await (await fetch('/blocks/landing/tiles.css')).text());
+    await groupSheet.replace(await (await fetch('/blocks/landing/tile-layout.css')).text());
   });
 
   beforeEach(async () => {
