@@ -3,6 +3,7 @@
 */
 import { expect } from '@esm-bundle/chai';
 import { render } from 'da-lit';
+import { spy, stub } from 'sinon';
 
 // This is needed to make a dynamic import work that is indirectly referenced
 // from da-browse.js
@@ -11,6 +12,18 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { default: DaBrowse } = await import('../../../../../../blocks/browse/legacy/da-list/da-list.js');
 const { default: DaBrowseComponent } = await import('../../../../../../blocks/browse/legacy/da-browse/da-browse.js');
+const { CHAT_EVENT } = await import('../../../../../fixtures/nx/utils/chat.js');
+
+async function completeUpdate(component) {
+  const update = spy(component, 'update');
+  try {
+    await component.updateComplete;
+    await update.lastCall?.returnValue;
+    await component.updateComplete;
+  } finally {
+    update.restore();
+  }
+}
 
 describe('Browse', () => {
   it('Pasted item uses the target URL', async () => {
@@ -344,6 +357,43 @@ describe('DaBrowse Component', () => {
   beforeEach(() => {
     daBrowseComp = new DaBrowseComponent();
     daBrowseComp.details = { fullpath: '/myorg/mysite/folder', org: 'myorg', site: 'mysite', owner: 'myorg', depth: 3 };
+  });
+
+  it('reloads browse files only for same-site chat turns and cleans up on disconnect', async () => {
+    const savedFetch = window.fetch;
+    window.fetch = async () => new Response('[]', { status: 200 });
+    const items = [{ name: 'new.html', path: '/myorg/mysite/folder/new.html', ext: 'html' }];
+    const getList = stub(DaBrowse.prototype, 'getList').resolves([]);
+    const completeTurn = (detail) => {
+      document.dispatchEvent(new CustomEvent(CHAT_EVENT.TURN_COMPLETED, { detail }));
+    };
+    try {
+      document.body.append(daBrowseComp);
+      await completeUpdate(daBrowseComp);
+      const list = daBrowseComp.shadowRoot.querySelector('.da-list-type-browse');
+      await completeUpdate(list);
+      getList.resetHistory();
+      getList.resolves(items);
+
+      completeTurn({ org: 'other', site: 'mysite' });
+      completeTurn({ org: 'myorg', site: 'other' });
+      completeTurn(undefined);
+      await completeUpdate(list);
+      expect(getList.callCount).to.equal(0);
+
+      completeTurn({ org: 'myorg', site: 'mysite', path: 'another/page', status: 'completed' });
+      await completeUpdate(list);
+      expect(getList.callCount).to.equal(1);
+      expect(daBrowseComp.browseListItems).to.equal(items);
+
+      daBrowseComp.remove();
+      completeTurn({ org: 'myorg', site: 'mysite' });
+      expect(getList.callCount).to.equal(1);
+    } finally {
+      daBrowseComp.remove();
+      getList.restore();
+      window.fetch = savedFetch;
+    }
   });
 
   describe('getEditor', () => {

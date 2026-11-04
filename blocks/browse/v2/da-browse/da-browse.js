@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getFirstSheet, fetchDaConfigs } from '../../../shared/utils.js';
 import { getNx, sanitizePathParts, getNxEWFlags } from '../../../../scripts/utils.js';
-import { getChatPanelContent, chatAvailability } from '../../../shared/chat-panel.js';
+import { getChatPanelContent, chatAvailability, chatTurnCompleted } from '../../../shared/chat-panel.js';
 import { getBrowseSettings, updateBrowseSettings } from '../shared/settings.js';
 import { getConfiguredEditor } from '../../../shared/da-file-item/edit-path.js';
 
@@ -112,6 +112,11 @@ export default class DaBrowse extends LitElement {
     this.mountSearch();
     this.observeHeader();
     this._unsubChat = chatAvailability.subscribe((enabled) => this.syncChatAvailability(enabled));
+    this._unsubChatTurn = chatTurnCompleted.subscribe((detail) => {
+      if (!detail?.org || detail.org !== this.details?.org
+        || detail.site !== this.details?.site) return;
+      this.browseCmp?.requestUpdate('fullpath');
+    });
   }
 
   disconnectedCallback() {
@@ -122,6 +127,7 @@ export default class DaBrowse extends LitElement {
     this._headerResizeObserver = undefined;
     this.cancelChatPreload();
     this._unsubChat?.();
+    this._unsubChatTurn?.();
   }
 
   syncChatAvailability(enabled) {
