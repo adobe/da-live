@@ -1,18 +1,21 @@
-import { LitElement, html, nothing } from 'da-lit';
+import { LitElement, html, nothing, render } from 'da-lit';
 import getPathDetails from '../shared/pathDetails.js';
 import { getNx, getNx2 } from '../../scripts/utils.js';
-import { openProfileMenu, NOT_PERMITTED_HINT } from '../shared/utils.js';
+import { renderEmptyList, EMPTY_LIST_CSS } from '../shared/empty-list.js';
 import '../edit/da-title/da-title.js';
 import { getData } from './utils/index.js';
 import { staleCheck, showDaDialog, restoreVersion } from './utils/utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
-const [buttonStyle, blockStyle] = await Promise.all([
+const [buttonStyle, emptyListStyle, blockStyle] = await Promise.all([
   loadStyle(`${getNx2()}/styles/buttons.css`),
+  loadStyle(EMPTY_LIST_CSS),
   loadStyle(import.meta.url),
 ]);
-document.adoptedStyleSheets = [...document.adoptedStyleSheets, buttonStyle, blockStyle];
+document.adoptedStyleSheets = [
+  ...document.adoptedStyleSheets, buttonStyle, emptyListStyle, blockStyle,
+];
 
 const style = await loadStyle('/blocks/sheet/da-sheet-panes.css');
 
@@ -220,21 +223,7 @@ export default async function init(el) {
       notPermitted.className = 'da-sheet-not-permitted';
       wrapper.append(notPermitted);
     }
-    const message = document.createElement('p');
-    message.className = 'da-sheet-not-permitted-message';
-    message.textContent = errMsg;
-    notPermitted.replaceChildren(message);
-    if (errMsg === 'Not permitted') {
-      const hint = document.createElement('p');
-      hint.className = 'da-sheet-not-permitted-hint';
-      hint.textContent = NOT_PERMITTED_HINT;
-      const action = document.createElement('button');
-      action.type = 'button';
-      action.className = 'da-sheet-not-permitted-action nx-btn-primary';
-      action.textContent = 'Open Profile';
-      action.addEventListener('click', () => openProfileMenu());
-      notPermitted.append(hint, action);
-    }
+    render(renderEmptyList(errMsg), notPermitted);
   });
 
   // Set data against the title & sheet

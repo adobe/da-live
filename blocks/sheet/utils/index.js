@@ -1,5 +1,6 @@
 import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import { handleSave, staleCheck } from './utils.js';
+import { NOT_PERMITTED } from '../../shared/empty-list.js';
 import '../da-sheet-tabs.js';
 
 const nx = getNx();
@@ -104,7 +105,7 @@ export function getPermissions() {
 
 function sheetErrorFromResponse(resp) {
   if (resp.status === 401) return 'Sign in required';
-  if (resp.status === 403) return 'Not permitted';
+  if (resp.status === 403) return NOT_PERMITTED;
   return undefined;
 }
 

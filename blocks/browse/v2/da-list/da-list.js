@@ -3,15 +3,17 @@ import { getTypeLabel, iconPathForExt } from '../../../shared/icons.js';
 import { getConfiguredEditor } from '../../../shared/da-file-item/edit-path.js';
 import { getNx, getNx2 } from '../../../../scripts/utils.js';
 import DaListBase from '../../da-list-base/da-list-base.js';
+import { EMPTY_LIST_CSS } from '../../../shared/empty-list.js';
 
 import '../../../shared/da-file-item/da-file-item.js';
 
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const [FORM, BUTTONS, STYLE] = await Promise.all([
+const [FORM, BUTTONS, EMPTY_LIST, STYLE] = await Promise.all([
   loadStyle(`${getNx2()}/styles/form.css`),
   loadStyle(`${getNx2()}/styles/buttons.css`),
+  loadStyle(EMPTY_LIST_CSS),
   loadStyle(import.meta.url),
 ]);
 
@@ -34,7 +36,7 @@ function sortTypeLabels(labels) {
 }
 
 export default class DaList extends DaListBase {
-  static sheets = [FORM, BUTTONS, STYLE];
+  static sheets = [FORM, BUTTONS, EMPTY_LIST, STYLE];
 
   static properties = {
     ...DaListBase.properties,

@@ -1,16 +1,18 @@
 import { html, nothing, repeat } from 'da-lit';
 import { getNx, getNx2 } from '../../../../scripts/utils.js';
 import DaListBase from '../../da-list-base/da-list-base.js';
+import { EMPTY_LIST_CSS } from '../../../shared/empty-list.js';
 
 import '../da-list-item/da-list-item.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const SHARED = await loadStyle(`${getNx2()}/styles/form.css`);
 const BUTTONS = await loadStyle(`${getNx2()}/styles/buttons.css`);
+const EMPTY_LIST = await loadStyle(EMPTY_LIST_CSS);
 const STYLE = await loadStyle(import.meta.url);
 
 export default class DaList extends DaListBase {
-  static sheets = [SHARED, BUTTONS, STYLE];
+  static sheets = [SHARED, BUTTONS, EMPTY_LIST, STYLE];
 
   static properties = {
     ...DaListBase.properties,

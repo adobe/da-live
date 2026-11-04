@@ -16,27 +16,6 @@ body {
   width: 200px;
 }
 
-.da-sheet-not-permitted {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 200px;
-  color: light-dark(#555, #aaa);
-  font: var(--nx-font-body, 14px/1.4 system-ui, sans-serif);
-  text-align: center;
-}
-
-.da-sheet-not-permitted-message,
-.da-sheet-not-permitted-hint {
-  margin: 0;
-}
-
-.da-sheet-not-permitted-action {
-  margin-top: 8px;
-}
-
 .da-version-wrapper {
   display: flex;
   justify-content: center;
