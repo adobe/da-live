@@ -1,7 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import { render } from 'da-lit';
 import {
-  reason, failure, plural, SHELL, INHERITANCE, VALIDATION, IMPORT, ROWS,
+  reason, failure, failureDetail, plural, SHELL, INHERITANCE, VALIDATION, IMPORT, ROWS,
 } from '../../../../blocks/config/messages.js';
 
 // Every string (or string-returning function) in a message group, flattened with its path.
@@ -26,10 +26,15 @@ describe('config messages', () => {
     expect(reason()).to.equal('network error');
   });
 
+  it('explains a failure under its title', () => {
+    expect(failureDetail({ httpStatus: 403 })).to.equal('The server responded with 403.');
+    expect(failureDetail({ status: 0, error: 'Failed to fetch' })).to.equal('The request failed (Failed to fetch).');
+    expect(failureDetail({ status: 'error' })).to.equal('The request failed (network error).');
+  });
+
   it('words every failure the same way', () => {
     expect(failure('save changes', { status: 500 })).to.equal('Could not save changes (500).');
     expect(SHELL.saveFailed({ status: 0 })).to.equal('Could not save changes (network error).');
-    expect(SHELL.loadFailed({ httpStatus: 403 })).to.equal('Could not load configuration (403).');
     expect(IMPORT.listFailed({ status: 0 })).to.equal('Could not update the blocks list (network error).');
     expect(IMPORT.readRepoFailed({ status: 404 })).to.equal('Could not read the repository (404).');
   });

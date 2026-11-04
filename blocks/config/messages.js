@@ -15,14 +15,21 @@ export const reason = ({ status, httpStatus, error } = {}) => httpStatus
 // "Could not <action> (<reason>)." as plain text, for toasts and thrown errors.
 export const failure = (action, result) => `Could not ${action} (${reason(result)}).`;
 
+// The reason as a sentence, under a failure title such as "Could not load configuration".
+export const failureDetail = (result) => {
+  const why = reason(result);
+  return typeof why === 'number' ? `The server responded with ${why}.` : `The request failed (${why}).`;
+};
+
 // "1 change", "2 changes".
 export const plural = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`;
 
 export const SHELL = {
   noOrg: 'No organization in the URL. Enter one to manage its configuration.',
   loading: (scope) => `Loading configuration for ${scope}…`,
+  noAccessTitle: 'No access',
   noAccess: 'You don\'t have access to this configuration.',
-  loadFailed: (result) => failure('load configuration', result),
+  loadFailed: 'Could not load configuration',
   readOnly: 'You have read-only access to this configuration.',
   saved: 'Changes saved.',
   saveFailed: (result) => failure('save changes', result),
@@ -62,7 +69,7 @@ export const ROWS = {
 // Content files (library lists, the translate sheet).
 export const FILES = {
   loading: (name) => (name ? `Loading ${name}…` : 'Loading…'),
-  loadFailed: (path, result) => html`Could not load ${code(path)} (${reason(result)}).`,
+  loadFailed: (path) => html`Could not load ${code(path)}`,
   missing: (path) => html`${code(path)} doesn't exist yet. Saving creates it.`,
   storedIn: (link) => html`Stored in ${link}.`,
   needsPublish: 'Authors see changes once the sheet is previewed and published.',

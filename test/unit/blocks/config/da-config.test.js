@@ -415,7 +415,7 @@ describe('da-config', () => {
     mockFetch({ configFor: status(403) });
     el.org = 'dc6';
     await waitUntil(() => el._status === 'no-access', el);
-    expect(q('.config-message').textContent).to.include("don't have access");
+    expect(q('.config-alert[role="alert"]').textContent).to.include("don't have access");
     expect(has('nx-segmented-btn')).to.equal(false);
   });
 
