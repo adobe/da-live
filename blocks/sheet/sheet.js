@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getPathDetails from '../shared/pathDetails.js';
 import { getNx } from '../../scripts/utils.js';
+import { openProfileMenu } from '../shared/utils.js';
 import '../edit/da-title/da-title.js';
 import { getData } from './utils/index.js';
 import { staleCheck, showDaDialog, restoreVersion } from './utils/utils.js';
@@ -216,7 +217,18 @@ export default async function init(el) {
       notPermitted.className = 'da-sheet-not-permitted';
       wrapper.append(notPermitted);
     }
-    notPermitted.textContent = errMsg;
+    const message = document.createElement('p');
+    message.className = 'da-sheet-not-permitted-message';
+    message.textContent = errMsg;
+    notPermitted.replaceChildren(message);
+    if (errMsg === 'Not permitted') {
+      const hint = document.createElement('button');
+      hint.type = 'button';
+      hint.className = 'da-sheet-not-permitted-hint';
+      hint.textContent = 'Please make sure you are logged in with the correct user and have selected the right Adobe org.';
+      hint.addEventListener('click', () => openProfileMenu());
+      notPermitted.append(hint);
+    }
   });
 
   // Set data against the title & sheet

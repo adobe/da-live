@@ -491,6 +491,18 @@ export function formatDate(timestamp) {
   return { date, time };
 }
 
+// Opens the profile menu (user + org switcher) rendered by da-nx's <nx-profile>.
+// In both nx and nx2 it lives two shadow roots deep: <nx-nav> -> <nx-profile> -> [popover].
+// Returns true if the menu is (now) open, false if it isn't on the page (e.g. signed out).
+export function openProfileMenu({ navSelector = 'nx-nav', profileSelector = 'nx-profile' } = {}) {
+  const nav = document.querySelector(navSelector);
+  const profile = nav?.shadowRoot?.querySelector(profileSelector);
+  const menu = profile?.shadowRoot?.querySelector('[popover]');
+  if (!menu?.showPopover) return false;
+  if (!menu.matches(':popover-open')) menu.showPopover();
+  return true;
+}
+
 export function delay(ms) {
   return new Promise((res) => { setTimeout(res, ms); });
 }

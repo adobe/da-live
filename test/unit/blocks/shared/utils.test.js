@@ -18,6 +18,7 @@ import {
   getAuthToken,
   isValidHref,
   livePreviewLogin,
+  openProfileMenu,
 } from '../../../../blocks/shared/utils.js';
 
 // daFetch's 401-no-token path lazy-loads the banner module, which resolves
@@ -1104,5 +1105,49 @@ describe('saveToDa — malformed path guard', () => {
 
     await saveToDa({ path: '/org/repo/page' });
     expect(fetchCalled).to.be.true;
+  });
+});
+
+describe('openProfileMenu', () => {
+  let header;
+
+  afterEach(() => header?.remove());
+
+  // Mirrors the nx / nx2 DOM: <nx-nav> shadow root -> <nx-profile> shadow root -> [popover]
+  function mountProfile() {
+    header = document.createElement('header');
+    const nav = document.createElement('div');
+    nav.className = 'test-nx-nav';
+    const navRoot = nav.attachShadow({ mode: 'open' });
+    const profile = document.createElement('nx-profile-test');
+    profile.setAttribute('data-profile', '');
+    const profileRoot = profile.attachShadow({ mode: 'open' });
+    const menu = document.createElement('div');
+    menu.id = 'nx-menu-profile';
+    menu.setAttribute('popover', '');
+    profileRoot.append(menu);
+    navRoot.append(profile);
+    header.append(nav);
+    document.body.append(header);
+    return menu;
+  }
+
+  it('opens the profile popover inside nested shadow roots', () => {
+    const menu = mountProfile();
+    expect(openProfileMenu({ navSelector: '.test-nx-nav', profileSelector: '[data-profile]' })).to.be.true;
+    expect(menu.matches(':popover-open')).to.be.true;
+    menu.hidePopover();
+  });
+
+  it('keeps an already-open menu open', () => {
+    const menu = mountProfile();
+    menu.showPopover();
+    expect(openProfileMenu({ navSelector: '.test-nx-nav', profileSelector: '[data-profile]' })).to.be.true;
+    expect(menu.matches(':popover-open')).to.be.true;
+    menu.hidePopover();
+  });
+
+  it('returns false when no profile menu exists', () => {
+    expect(openProfileMenu({ navSelector: '.does-not-exist' })).to.be.false;
   });
 });
