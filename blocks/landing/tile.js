@@ -24,7 +24,8 @@ export default class DaLandingTile extends LitElement {
 
   _renderSurface() {
     const content = html`
-      <span class="icon ${this.tone || ''}" aria-hidden="true"
+      <span class="icon ${['green', 'orange', 'purple'].includes(this.tone)
+        ? this.tone : 'turquoise'}" aria-hidden="true"
         style="--tile-icon: url('${this.iconHref}')"></span>
       <div class="content">
         <h3>${this.heading}</h3>
