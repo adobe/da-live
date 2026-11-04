@@ -122,6 +122,24 @@ customElements.define('da-sheet-panes', DaSheetPanes);
 
 let initSheet;
 
+// Swaps the grid for a message when the file can't be read. The side panel
+// (preview / history) is hidden too, since there is nothing to act on.
+export function showLoadStatus({ errMsg, wrapper, daSheet, daSheetPanes }) {
+  daSheet.hidden = !!errMsg;
+  daSheetPanes.hidden = !!errMsg;
+  if (!errMsg) {
+    wrapper.querySelector('.da-sheet-not-permitted')?.remove();
+    return;
+  }
+  let notPermitted = wrapper.querySelector('.da-sheet-not-permitted');
+  if (!notPermitted) {
+    notPermitted = document.createElement('div');
+    notPermitted.className = 'da-sheet-not-permitted';
+    wrapper.append(notPermitted);
+  }
+  render(renderEmptyList(errMsg), notPermitted);
+}
+
 async function reloadSheet(daTitle, daSheet) {
   if (!initSheet) initSheet = (await import('./utils/index.js')).default;
   daTitle.sheet = await initSheet(daSheet);
@@ -212,18 +230,7 @@ export default async function init(el) {
   // getData (called via reloadSheet) emits this on every non-version load so the
   // grid can be swapped for a message when the user can't read the file at all.
   document.addEventListener('sheet-load-status', ({ detail: { errMsg } }) => {
-    daSheet.hidden = !!errMsg;
-    if (!errMsg) {
-      wrapper.querySelector('.da-sheet-not-permitted')?.remove();
-      return;
-    }
-    let notPermitted = wrapper.querySelector('.da-sheet-not-permitted');
-    if (!notPermitted) {
-      notPermitted = document.createElement('div');
-      notPermitted.className = 'da-sheet-not-permitted';
-      wrapper.append(notPermitted);
-    }
-    render(renderEmptyList(errMsg), notPermitted);
+    showLoadStatus({ errMsg, wrapper, daSheet, daSheetPanes });
   });
 
   // Set data against the title & sheet
