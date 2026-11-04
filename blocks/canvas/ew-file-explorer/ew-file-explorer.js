@@ -98,6 +98,7 @@ class EwFileExplorer extends LitElement {
     this._category ??= 'all';
     this.shadowRoot.adoptedStyleSheets = [buttons, style];
     this._unsubHash = hashChange.subscribe((state) => this._onHashChange(state));
+    // Remove this listener and its cleanup once da-agent-based chat is removed.
     this._onAgentChange = ({ detail }) => {
       if (detail?.scope !== 'file') return;
       const toRefresh = (detail.paths ?? []).filter((p) => this._cache?.[p]);
