@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { NodeSelection } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
 import { getBlocksExtension, loadBlockLibrary } from '../ew-panel-extensions/helpers.js';
-import { replaceBlockRange, setTableBlockVariant, appendBlockRow, selectedBlockRange } from '../editor-utils/blocks.js';
+import { replaceBlockRange, setTableBlockVariant, appendBlockRow } from '../editor-utils/blocks.js';
 import { isMultiBlock, getMultiBlockTemplateRow } from '../editor-utils/multi-block.js';
 import { requestComment } from '../editor-utils/command-helpers.js';
 import { canvasBus } from '../utils/canvas-bus.js';
@@ -258,9 +258,8 @@ class EwBlockToolbar extends LitElement {
     openBlockLibraryModal({
       heading: 'Replace block',
       onInsert: (dom) => {
-        const range = selectedBlockRange(view.state);
-        if (!range) return;
-        replaceBlockRange(view, range.from, range.to, dom);
+        const { from, to, node } = view.state.selection;
+        replaceBlockRange(view, from, node?.type.name === 'table' ? to : from, dom);
         view.focus();
       },
     });

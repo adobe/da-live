@@ -206,19 +206,6 @@ export function replaceBlockRange(view, from, to, dom) {
   view.dispatch(tr.scrollIntoView());
 }
 
-/** Selected block's range now; remote edits can push selection edges onto neighbors. */
-export function selectedBlockRange(state) {
-  const { from, to } = state.selection;
-  const tables = [];
-  state.doc.nodesBetween(from, to, (node, pos) => {
-    const end = pos + node.nodeSize;
-    if (node.type.name === 'table' && pos >= from && end <= to) tables.push({ from: pos, to: end });
-    return false;
-  });
-  if (tables.length > 1) return null;
-  return tables[0] ?? { from, to };
-}
-
 /** Append a copy of `rowDom` (a library <tr>) as a new last row of the table at `tablePos`. */
 export function appendBlockRow(view, tablePos, rowDom) {
   if (!view || !rowDom) return;
