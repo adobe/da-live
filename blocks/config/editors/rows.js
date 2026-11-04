@@ -113,7 +113,11 @@ export function renderRows(panel, { items }, handlers) {
           <tbody>${items.map((item) => renderRow(columns, item, handlers))}</tbody>
         </table>
       </div>`
-    : handlers.empty ?? html`<p class="config-message">${ROWS.empty(panel.noun)}</p>`}`;
+    : html`
+      <div class="config-empty">
+        <p class="config-empty-title">${ROWS.empty(panel.noun)}</p>
+        ${handlers.disabled ? nothing : html`<p>${ROWS.emptyHint(panel.noun)}</p>`}
+      </div>`}`;
 }
 
 // Errors show once the user has tried to apply.

@@ -1,7 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import { render } from 'da-lit';
 import {
-  reason, failure, plural, SHELL, INHERITANCE, VALIDATION, IMPORT,
+  reason, failure, plural, SHELL, INHERITANCE, VALIDATION, IMPORT, ROWS,
 } from '../../../../blocks/config/messages.js';
 
 // Every string (or string-returning function) in a message group, flattened with its path.
@@ -37,6 +37,11 @@ describe('config messages', () => {
   it('writes validation messages as full sentences that say what to do', () => {
     const bad = strings(VALIDATION).filter(([, text]) => !/^[A-Z].*\.$/.test(text));
     expect(bad).to.deep.equal([]);
+  });
+
+  it('picks a or an in the empty hint', () => {
+    expect([ROWS.emptyHint('block'), ROWS.emptyHint('icon'), ROWS.emptyHint('app')])
+      .to.deep.equal(['Add a block to get started.', 'Add an icon to get started.', 'Add an app to get started.']);
   });
 
   it('pluralizes counts', () => {

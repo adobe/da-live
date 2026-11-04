@@ -157,6 +157,15 @@ describe('rows', () => {
       expect(el.querySelectorAll('tbody td:nth-of-type(1) wbr').length).to.equal(6);
     });
 
+    it('shows an empty state with how to start, and only the title without edit access', () => {
+      const empty = (handlers) => {
+        const { el } = table([], handlers);
+        return [...el.querySelectorAll('.config-empty p')].map((p) => p.textContent.trim());
+      };
+      expect(empty({})).to.deep.equal(['No plugins yet', 'Add a plugin to get started.']);
+      expect(empty({ disabled: true })).to.deep.equal(['No plugins yet']);
+    });
+
     it('puts the list actions above the table, with Add last', () => {
       const { el } = table([{ row: T, index: 0 }], { actions: html`<button type="button">Import</button>` });
       const order = [...el.children].map((child) => child.className);
