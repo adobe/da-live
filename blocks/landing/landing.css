@@ -25,9 +25,8 @@ body:has(.landing[data-theme="light"]) {
       to right,
       var(--s2-red-100) 0%,
       var(--s2-red-100) 20%,
-      var(--s2-pink-200) 36.25%,
-      color-mix(in srgb, var(--s2-gray-25) 85%, var(--s2-indigo-200)) 50%,
-      var(--s2-indigo-200) 56.25%,
+      var(--s2-pink-200) 40%,
+      var(--s2-indigo-200) 50%,
       var(--s2-blue-100) 100%
     );
 }
