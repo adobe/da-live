@@ -14,6 +14,8 @@ Content mounts inside the gradient landing surface already provided by main.
 `content.css` contains only the Content component's shadow styles.
 The panel uses an opaque `--s2-gray-25` surface: white in light mode and dark
 in dark mode, with the gradient visible only outside the panel.
+Its `--s2-drop-shadow-emphasized` shadow uses Spectrum's light/dark values.
+The same values are a fallback for Nexter versions without the shared token.
 
 ## Presentation and state
 
