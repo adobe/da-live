@@ -144,6 +144,11 @@ describe('landing tile', () => {
   });
 
   it('only strengthens the S2-colored shadow on hover for enabled tiles in either theme', async () => {
+    // Force hover styling without requiring a foreground browser tab.
+    const hoverSheet = new CSSStyleSheet();
+    hoverSheet.replaceSync([...sheet.cssRules]
+      .map((rule) => rule.cssText.replaceAll(':hover', '[data-hover]')).join('\n'));
+    tile.shadowRoot.adoptedStyleSheets = [hoverSheet];
     for (const mode of ['link', 'button', 'disabled', 'placeholder']) {
       tile.href = mode === 'link' ? '#browse' : undefined;
       tile.action = mode === 'button' || mode === 'disabled';
@@ -151,21 +156,12 @@ describe('landing tile', () => {
       await tile.updateComplete;
       const surface = tile.shadowRoot.querySelector('.tile');
       for (const theme of ['light', 'dark']) {
+        surface.removeAttribute('data-hover');
         const bounds = surface.getBoundingClientRect();
-        await sendMouse({
-          type: 'move',
-          position: [Math.ceil(bounds.right + 10), Math.ceil(bounds.bottom + 10)],
-        });
         tile.style.colorScheme = theme;
         const background = getComputedStyle(surface).backgroundColor;
         const shadow = getComputedStyle(surface).boxShadow;
-        await sendMouse({
-          type: 'move',
-          position: [
-            Math.round(bounds.x + bounds.width / 2),
-            Math.round(bounds.y + bounds.height / 2),
-          ],
-        });
+        surface.setAttribute('data-hover', '');
         const hoveredShadow = getComputedStyle(surface).boxShadow;
         expect(getComputedStyle(surface).backgroundColor).to.equal(background);
         expect(surface.getBoundingClientRect().toJSON()).to.deep.equal(bounds.toJSON());
