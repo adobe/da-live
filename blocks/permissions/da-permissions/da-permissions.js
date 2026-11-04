@@ -3,7 +3,7 @@ import { getNx, getNx2, getNx2Api } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
 import {
   buildSlots, siteNames, parseMembers, addMembers, removeMember, scopeLabel, filterSlots,
-  activeQuery, folderRulePath, parseFolderPath, pageRulePath, parsePagePath, scopePaths,
+  activeQuery, folderRulePath, parseFolderPath, parsePagePath, scopePaths,
   updateScope, hasPermissionsSheet, LEVEL_LABEL,
 } from '../utils.js';
 
@@ -273,8 +273,8 @@ class DaPermissions extends LitElement {
   _onPathSubmit(e) {
     e?.preventDefault();
     const kind = this._pathDialog;
-    const { value } = this.shadowRoot.querySelector(`.${kind}-path-input`) ?? {};
-    const result = kind === 'page' ? parsePagePath(value) : parseFolderPath(value);
+    const input = this.shadowRoot.querySelector(`.${kind}-path-input`);
+    const result = kind === 'page' ? parsePagePath(input?.value) : parseFolderPath(input?.value);
     if (result.error) {
       this._pathError = result.error;
       return;
@@ -282,10 +282,12 @@ class DaPermissions extends LitElement {
     this._pathError = null;
     this._pathDialog = null;
     let path = kind === 'page'
-      ? pageRulePath(this.site, result.page) : folderRulePath(this.site, result.folder);
-    // A hand-typed rule for the same page without .html: add to that one.
+      ? `/${this.site}/${result.page}` : folderRulePath(this.site, result.folder);
+    // Add to a hand-typed rule for the same page without .html, unless the .html one exists.
     const bare = path.replace(/\.html$/, '');
-    if (kind === 'page' && this._slots.some((s) => s.path === bare)) path = bare;
+    const slots = this._slots;
+    if (kind === 'page' && !bare.split('/').pop().includes('.')
+      && !slots.some((s) => s.path === path) && slots.some((s) => s.path === bare)) path = bare;
     this._pendingPath = path;
     this._query = '';
     this._adding = { path, level: 'read' };
@@ -434,9 +436,11 @@ class DaPermissions extends LitElement {
     if (!this._confirmRemove) return nothing;
     const { path, level, who } = this._confirmRemove;
     const [, media] = scopePaths(path, this.site);
+    const mediaSlot = media && this._slots.find((s) => s.path === media);
+    const onMedia = mediaSlot?.[level].some((m) => m.toLowerCase() === who.toLowerCase());
     return html`
       <nx-dialog title="Remove member" @close=${() => this._cancelRemove()}>
-        <p>Remove ${who} from ${scopeLabel(path, this.site)} · ${LEVEL_LABEL[level]}?${media ? ` This also removes them from ${scopeLabel(media, this.site)}.` : ''}</p>
+        <p>Remove ${who} from ${scopeLabel(path, this.site)} · ${LEVEL_LABEL[level]}?${onMedia ? ` This also removes them from ${scopeLabel(media, this.site)}.` : ''}</p>
         <button type="button" slot="actions" class="nx-form-btn-secondary" @click=${() => this._cancelRemove()}>Cancel</button>
         <button type="button" slot="actions" class="nx-form-btn-primary" @click=${() => this._confirmRemoveNow()}>Remove</button>
       </nx-dialog>`;

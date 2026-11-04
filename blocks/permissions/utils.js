@@ -52,18 +52,19 @@ export function parseFolderPath(value) {
   return { folder };
 }
 
-export function pageRulePath(site, page) {
-  return `/${site}/${page}`;
-}
+// A page's images live in its media folder `.{page}/`. An exact page rule doesn't cover that
+// folder itself in da-admin, so it gets its own rule. Sheets and DA's own dot folders
+// (`.da/`, `.trash/`, ...) aren't a page's media folder. da-admin drops spaces from rule paths.
+const RESERVED_DOT_FOLDERS = ['da', 'da-versions', 'helix', 'snapshots', 'trash', 'versions'];
 
-// A page's images live in its media folder `.{page}/`, which da-admin doesn't match from an
-// exact page rule yet. Other files with an extension (sheets) have no media folder.
 export function mediaRulePath(pagePath) {
-  const isHtml = pagePath.endsWith('.html');
-  const page = isHtml ? pagePath.slice(0, -'.html'.length) : pagePath;
+  const path = pagePath.replace(/ /g, '');
+  const isHtml = path.endsWith('.html');
+  const page = isHtml ? path.slice(0, -'.html'.length) : path;
   const slash = page.lastIndexOf('/');
   const name = page.slice(slash + 1);
-  if (!name || name.startsWith('.') || (!isHtml && name.includes('.'))) return null;
+  if (!name || name.startsWith('.') || RESERVED_DOT_FOLDERS.includes(name)) return null;
+  if (!isHtml && name.includes('.')) return null;
   return normPath(`${page.slice(0, slash + 1)}.${name}/+**`);
 }
 
@@ -97,8 +98,9 @@ function scopeKind(path, site) {
   if (norm === `${prefix}CONFIG`) return 'config';
   if (norm === normPath(`${prefix}+**`)) return 'content';
   if (norm.endsWith(FOLDER_SUFFIX)) return 'folder';
-  if (!norm.includes('*') && !norm.trimEnd().endsWith('/')) return 'page';
-  return 'other';
+  const effective = norm.replace(/ /g, '');
+  if (effective === `${prefix}CONFIG` || effective.includes('*') || effective.endsWith('/')) return 'other';
+  return 'page';
 }
 
 export function scopeLabel(path, site) {
