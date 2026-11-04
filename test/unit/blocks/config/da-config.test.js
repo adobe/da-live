@@ -222,6 +222,7 @@ describe('da-config', () => {
     savedFetch = window.fetch;
     savedUrl = window.location.href;
     window.history.replaceState(null, '', window.location.pathname);
+    localStorage.removeItem('da-config-sections');
     mockFetch({ sitesFor: () => [{ name: 'alpha' }, { name: 'beta' }] });
     el = document.createElement('da-config');
     document.body.append(el);
@@ -323,6 +324,42 @@ describe('da-config', () => {
     await el.updateComplete;
     expect(q('.config-panel').getAttribute('aria-label')).to.equal('Translation');
     expect(new URL(window.location.href).searchParams.get('tab')).to.equal('translation');
+  });
+
+  it('reopens the section last shown in a tab, and in the org/site after a reload', async () => {
+    el.org = 'dc9';
+    el.site = 'alpha';
+    await ready();
+    const pick = async (row, value) => {
+      q(row).dispatchEvent(new CustomEvent('change', { detail: { value } }));
+      await el.updateComplete;
+    };
+    await pick('.config-tabs-secondary', 'templates');
+    await pick('.config-tabs-primary', 'extensions');
+    expect(q('.config-tabs-secondary').value).to.equal('plugins');
+    await pick('.config-tabs-primary', 'library');
+    expect(q('.config-tabs-secondary').value).to.equal('templates');
+
+    // A fresh page without ?tab= opens the section last shown for that org/site, if any.
+    el.remove();
+    window.history.replaceState(null, '', window.location.pathname);
+    el = document.createElement('da-config');
+    document.body.append(el);
+    el.org = 'dc9';
+    el.site = 'alpha';
+    await ready();
+    expect(el._selection.section.id).to.equal('templates');
+    el.site = 'beta';
+    await ready();
+    expect(el._selection.section.id).to.equal('templates');
+    el.remove();
+    window.history.replaceState(null, '', window.location.pathname);
+    el = document.createElement('da-config');
+    document.body.append(el);
+    el.org = 'dc9';
+    el.site = 'gamma';
+    await ready();
+    expect(el._selection.section.id).to.equal('blocks');
   });
 
   it('keeps a shared section when moving to org scope, and falls back otherwise', async () => {
