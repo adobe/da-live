@@ -56,6 +56,22 @@ describe('landing Content section', () => {
     expect(fileList().shadowRoot.querySelector('da-actionbar').dataset.visible).to.equal('false');
   });
 
+  it('keeps the panel opaque in both views and color schemes', async () => {
+    const sheet = new CSSStyleSheet();
+    await sheet.replace(await (await fetch('/blocks/landing/content.css')).text());
+    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
+    el.style.setProperty('--s2-gray-25', 'light-dark(rgb(255 255 255), rgb(17 17 17))');
+    for (const [theme, background] of [['light', 'rgb(255, 255, 255)'], ['dark', 'rgb(17, 17, 17)']]) {
+      el.style.colorScheme = theme;
+      for (const view of ['card', 'list']) {
+        el.changeView({ detail: { value: view } });
+        await updateLanding();
+        expect(getComputedStyle(el.shadowRoot.querySelector('.files-panel')).backgroundColor)
+          .to.equal(background);
+      }
+    }
+  });
+
   it('keeps fixed cards, whole columns and 16px panel insets at narrower widths', async () => {
     const sheet = new CSSStyleSheet();
     await sheet.replace(await (await fetch('/blocks/landing/content.css')).text());

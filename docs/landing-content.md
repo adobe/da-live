@@ -12,6 +12,8 @@ the LP-only Add site dialog.
 Content mounts inside the gradient landing surface already provided by main.
 `landing.css` retains that page background and its light/dark theme preview.
 `content.css` contains only the Content component's shadow styles.
+The panel uses an opaque `--s2-gray-25` surface: white in light mode and dark
+in dark mode, with the gradient visible only outside the panel.
 
 ## Presentation and state
 
@@ -49,8 +51,8 @@ editor URLs do not receive them. `landing=home` exits the Content opt-in; this
 feature does not change the shell's Home destination.
 
 Existing Spectrum spacing, radius, typography and color tokens are reused.
-Fixed card geometry, component icon metrics and the custom translucent panel
-surface/shadow are preserved rather than wrapped in a new theming API.
+Fixed card geometry, component icon metrics and the existing panel shadow
+are preserved rather than wrapped in a new theming API.
 
 Deployed Nexter main currently has no UI-size controller. Browser fixtures
 exercise S/M role values to check that card geometry stays fixed; they do not
