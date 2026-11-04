@@ -51,6 +51,14 @@ export async function readFile(store, ctx) {
   return { ...location, status: 'error', httpStatus: result.status };
 }
 
+// Where the values can be opened in DA, or null: the org/site config, or the file's sheet once it
+// exists. Relative, so it opens on the same DA as this page.
+export function sheetUrl(store, { org, site, located }) {
+  if (!inFile(store)) return `/config#/${org}/${site ? `${site}/` : ''}`;
+  if (located?.status !== 'ok' || located.missing) return null;
+  return `/sheet#/${org}/${site}${located.path.replace(/\.json$/, '')}`;
+}
+
 // `path` is the located file, if any.
 export function save(store, { org, site, path }, mutate) {
   return inFile(store) ? saveSource(org, site, path, mutate) : saveConfig(org, site, mutate);

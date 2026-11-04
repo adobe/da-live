@@ -221,7 +221,7 @@ describe('file status', () => {
     expect(parts(renderFileStatus({ status: 'error', path, httpStatus: 500 }, opts)))
       .to.deep.equal(['', `Could not load ${path} The server responded with 500.`]);
     expect(parts(renderFileStatus({ status: 'ok', path, missing: true }, opts))[0]).to.include('doesn\'t exist yet');
-    expect(parts(renderFileStatus({ status: 'ok', path, missing: false }, opts))[0]).to.include(`Stored in ${path}`);
+    expect(parts(renderFileStatus({ status: 'ok', path, missing: false }, opts))).to.deep.equal(['', '']);
   });
 
   it('explains how Set up picks a library file, as its own block', () => {
@@ -231,9 +231,11 @@ describe('file status', () => {
     expect(two).to.include('When neither exists');
   });
 
-  it('notes where a library list lives, and reports one that cannot be read', () => {
+  it('notes when a library list needs publishing, and reports one that cannot be read', () => {
     const ok = { status: 'ok', path: '/docs/library/icons.json', registered: '/docs/library/icons.json' };
-    expect(parts(renderLibraryStatus(library('Icons'), ok, opts))[0]).to.include('Stored in /docs/library/icons.json');
+    expect(parts(renderLibraryStatus(library('Icons'), ok, opts))[0]).to.include('previewed and published');
+    const live = { ...ok, registered: 'https://content.da.live/o/s/docs/library/icons.json' };
+    expect(parts(renderLibraryStatus(library('Icons'), live, opts))).to.deep.equal(['', '']);
     const lib = { status: 'error', path: '/library/icons.json', httpStatus: 503 };
     expect(parts(renderLibraryStatus(library('Icons'), lib, opts))[1]).to.include('responded with 503');
   });

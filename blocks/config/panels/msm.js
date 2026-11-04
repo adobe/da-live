@@ -24,9 +24,9 @@ export default {
   idOf: (row) => `${row.base}>${row.satellite ?? ''}`,
   duplicate: VALIDATION.msm.duplicate,
   noun: 'site',
-  description: 'Define base sites and the satellite sites that inherit their content. MSM also needs '
-    + 'the MSM content source in each site\'s Config Service setup, and the Multi-site Manager entry '
-    + 'in Extensions → Prepare (or the MSM app in Apps).',
+  description: 'Base sites share their content with satellite sites; a satellite shows the base\'s pages '
+    + 'until it changes them. Each site also needs the MSM content source in its Config Service '
+    + 'setup, and the Multi-site Manager action in Extensions → Prepare (or the MSM app in Apps).',
   validate: validateRow,
   columns: [
     {

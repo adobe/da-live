@@ -9,7 +9,7 @@ import {
   ORG, SITE, tabsForScope, resolveSelection, tabFromUrl, urlWithTab, rememberSection,
   rememberedSection,
 } from '../sections.js';
-import { inFile, readFile, save } from '../stores.js';
+import { inFile, readFile, save, sheetUrl } from '../stores.js';
 import { loadConfigs, listSites, setupLibrary, isDenied } from '../api.js';
 import { siteNames } from '../../permissions/utils.js';
 import { renderSettings } from '../editors/settings.js';
@@ -449,9 +449,11 @@ class DaConfig extends LitElement {
 
   _renderIntro(ctx, notes) {
     if (this._needsSetup) return nothing;
+    const { org, site } = this;
     return renderIntro(ctx.panel, {
       notes,
       docs: ctx.section.docs,
+      sheet: sheetUrl(ctx.store, { org, site, located: this._file }),
       inheritance: inheritanceText(ctx, this._atSite),
       setupUrl: this._atSite ? this._setupUrl : null,
       readOnly: this._readOnly,
