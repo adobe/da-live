@@ -32,7 +32,13 @@ a, button {
 }
 
 a:hover, button:where(:enabled):hover {
-  background: light-dark(var(--s2-gray-50), var(--s2-gray-100));
+  box-shadow:
+    var(--s2-drop-shadow-elevated),
+    0 4px 12px color-mix(
+      in srgb,
+      light-dark(var(--s2-gray-1000), var(--s2-gray-25)) 16%,
+      transparent
+    );
 }
 
 a > *, button > * {
