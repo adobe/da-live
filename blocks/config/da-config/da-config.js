@@ -383,7 +383,9 @@ class DaConfig extends LitElement {
     toast(SHELL.saved, 'success');
   }
 
-  _renderFileStatus({ store }) {
+  // { note, block } for file-stored sections, else nothing to show.
+  _fileStatus({ store }) {
+    if (!inFile(store)) return { note: nothing, block: nothing };
     const opts = {
       org: this.org,
       site: this.site,
@@ -445,9 +447,10 @@ class DaConfig extends LitElement {
       ${this._renderDraft(panel, list)}`;
   }
 
-  _renderIntro(ctx) {
+  _renderIntro(ctx, notes) {
     if (this._needsSetup) return nothing;
     return renderIntro(ctx.panel, {
+      notes,
       docs: ctx.section.docs,
       inheritance: inheritanceText(ctx, this._atSite),
       setupUrl: this._atSite ? this._setupUrl : null,
@@ -474,12 +477,13 @@ class DaConfig extends LitElement {
       onDiscard: () => this._clearEdits(),
       onSave: () => this._save(),
     };
+    const status = this._fileStatus(ctx);
     return html`
       <section class="config-panel" aria-label=${ctx.section.label}>
         <h3 class="config-panel-title">${ctx.section.label}</h3>
-        ${this._renderIntro(ctx)}
+        ${this._renderIntro(ctx, status.note)}
         ${this._renderParts(ctx)}
-        ${inFile(ctx.store) ? this._renderFileStatus(ctx) : nothing}
+        ${status.block}
         ${this._renderEditor(ctx, edit)}
         ${renderSaveBar(edit, saveBar)}
       </section>`;
