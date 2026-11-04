@@ -10,7 +10,7 @@ const nx = await import(`${getNx2()}/scripts/nx.js`);
 const sizing = nx.getUISize ? await import(`${getNx2()}/utils/ui-size.js`) : undefined;
 const styles = await Promise.all([
   loadStyle(import.meta.url),
-  loadStyle(new URL('./tiles.css', import.meta.url).href),
+  loadStyle(new URL('./tile-layout.css', import.meta.url).href),
 ]);
 
 export class DaLanding extends LitElement {
