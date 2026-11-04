@@ -119,7 +119,7 @@ describe('rows', () => {
       return {
         headers: [...el.querySelectorAll('thead th')].map((th) => th.textContent.trim()),
         rows: [...el.querySelectorAll('tbody tr')].map(cells),
-        buttons: [...el.querySelectorAll('tbody button')].map((b) => b.textContent.trim()),
+        buttons: [...el.querySelectorAll('tbody button')].map((b) => b.getAttribute('aria-label') ?? b.textContent.trim()),
         el,
       };
     };
@@ -141,7 +141,7 @@ describe('rows', () => {
         .map((tr) => [...tr.querySelectorAll('nx-pills')].map((p) => p.items[0].label));
       expect(rows.map((r) => r[0])).to.deep.equal(['Org tool', 'Tool']);
       expect(pills).to.deep.equal([['Inherited from org'], ['Overrides org']]);
-      expect(buttons).to.deep.equal(['Override', 'Edit', 'Remove']);
+      expect(buttons).to.deep.equal(['Override', 'Edit Tool', 'Delete Tool']);
       expect(el.querySelector('tbody tr').classList.contains('is-inherited')).to.equal(true);
     });
 

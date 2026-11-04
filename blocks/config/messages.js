@@ -63,6 +63,11 @@ export const INHERITANCE = {
 
 export const ROWS = {
   empty: (noun) => `No ${noun}s yet`,
+  edit: (name) => `Edit ${name}`,
+  delete: (name) => `Delete ${name}`,
+  deleteTitle: (noun) => `Delete ${noun}`,
+  deleteText: (name, noun) => html`Are you sure you want to delete the <strong>${name}</strong> ${noun}?`,
+  deleteAction: 'Delete',
   emptyHint: (noun) => `Add ${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${noun} to get started.`,
   duplicate: (noun, column) => `Another ${noun} already uses this ${column.toLowerCase()}.`,
   alreadyListed: (noun) => `This ${noun} is already listed.`,

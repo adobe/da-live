@@ -68,11 +68,25 @@ const wrappable = (text) => String(text).split(/(?<=\/)/).map((part) => html`${p
 // Columns shown in the table; `list: false` keeps a column to the add/edit dialog.
 export const listColumns = (panel) => panel.columns.filter((column) => column.list !== false);
 
-function renderActions({ row, index, inherited }, handlers) {
-  const button = (label, onClick) => html`
-    <button type="button" class="nx-action-btn-quiet nx-btn-sm" @click=${onClick}>${label}</button>`;
-  if (inherited) return button('Override', () => handlers.onOverride(row));
-  return html`${button('Edit', () => handlers.onEdit(index))}${button('Remove', () => handlers.onRemove(index))}`;
+const ICONS = {
+  edit: '/img/icons/s2-icon-edit-20-n.svg#icon',
+  delete: '/img/icons/s2-icon-delete-20-n.svg#icon',
+};
+
+const iconButton = (icon, label, onClick) => html`
+  <button type="button" class="nx-action-btn-icon nx-btn-sm" aria-label=${label} title=${label} @click=${onClick}>
+    <svg viewBox="0 0 20 20" aria-hidden="true"><use href=${ICONS[icon]}></use></svg>
+  </button>`;
+
+// `name` is the row's first column, e.g. "Cards", for labels and the delete confirmation.
+function renderActions({ row, index, inherited }, name, handlers) {
+  if (inherited) {
+    return html`<button type="button" class="nx-action-btn-quiet nx-btn-sm"
+      @click=${() => handlers.onOverride(row)}>Override</button>`;
+  }
+  return html`
+    ${iconButton('edit', ROWS.edit(name), () => handlers.onEdit(index))}
+    ${iconButton('delete', ROWS.delete(name), () => handlers.onRemove(index, name))}`;
 }
 
 function renderRow(columns, item, handlers) {
@@ -89,7 +103,7 @@ function renderRow(columns, item, handlers) {
       </th>
       ${rest.map((column) => html`<td><span class="config-table-text">${wrappable(cellText(column, row))}</span></td>`)}
       ${handlers.disabled ? nothing : html`
-        <td class="config-table-actions"><div class="config-table-buttons">${renderActions(item, handlers)}</div></td>`}
+        <td class="config-table-actions"><div class="config-table-buttons">${renderActions(item, cellText(first, row), handlers)}</div></td>`}
     </tr>`;
 }
 
