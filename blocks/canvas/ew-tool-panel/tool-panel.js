@@ -119,7 +119,7 @@ class EwToolPanel extends LitElement {
         label: v.getLabel?.() ?? v.label,
         ...(opensExternally && {
           action: true,
-          trailingIcon: OPEN_IN_ICON_URL,
+          trailingIcon: v.experience === 'window' ? OPEN_IN_ICON_URL : FULLSCREEN_ICON_SRC,
           ariaLabel: v.experience === 'window'
             ? `${v.label} (opens in new tab)`
             : `${v.label} (opens in dialog)`,

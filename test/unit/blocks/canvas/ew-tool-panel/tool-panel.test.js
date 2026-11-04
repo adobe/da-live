@@ -28,14 +28,26 @@ const nextTask = () => new Promise((resolve) => { setTimeout(resolve); });
 
 describe('EwToolPanel — modal experience', () => {
   describe('_pickerItemsFromViews', () => {
-    it('marks a modal view as an external-opening action item', () => {
+    ['modal', 'fullsize-dialog'].forEach((experience) => {
+      it(`marks a ${experience} view as a dialog action with the fullscreen icon`, () => {
+        const el = createPanel([
+          { id: 'blocks', label: 'Blocks', section: 'Library', experience },
+        ]);
+        const item = el._pickerItemsFromViews().find((i) => i.value === 'blocks');
+        expect(item.action).to.be.true;
+        expect(item.trailingIcon).to.equal('/img/icons/s2-icon-fullscreen-20-n.svg');
+        expect(item.ariaLabel).to.equal('Blocks (opens in dialog)');
+      });
+    });
+
+    it('keeps the external-link icon for views that open in a new tab', () => {
       const el = createPanel([
-        { id: 'blocks', label: 'Blocks', section: 'Library', experience: 'modal' },
+        { id: 'external', label: 'External', section: 'Extensions', experience: 'window' },
       ]);
-      const item = el._pickerItemsFromViews().find((i) => i.value === 'blocks');
+      const item = el._pickerItemsFromViews().find((i) => i.value === 'external');
       expect(item.action).to.be.true;
-      expect(item.trailingIcon).to.exist;
-      expect(item.ariaLabel).to.equal('Blocks (opens in dialog)');
+      expect(item.trailingIcon).to.equal('/img/icons/s2-icon-openin-20-n.svg');
+      expect(item.ariaLabel).to.equal('External (opens in new tab)');
     });
 
     it('leaves a plain inline view as a non-action item', () => {
