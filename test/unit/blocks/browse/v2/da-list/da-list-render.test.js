@@ -173,7 +173,7 @@ describe('da-list render', () => {
     const action = el.shadowRoot.querySelector('.empty-list .empty-list-action');
     expect(action).to.exist;
     expect(action.tagName).to.equal('BUTTON');
-    expect(action.classList.contains('nx-btn-accent')).to.be.true;
+    expect(action.classList.contains('nx-action-btn')).to.be.true;
     expect(action.textContent.trim()).to.equal('Open Profile');
 
     // Mirror da-nx: <nx-nav> shadow root -> <nx-profile> shadow root -> [popover]
