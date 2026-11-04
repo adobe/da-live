@@ -1,14 +1,9 @@
 :host {
-  --da-landing-tile-radius: 12px;
-  --da-landing-tile-shadow: 0 0 1px #00000014, 0 1px 4px #0000000a, 0 2px 8px #00000014;
-  --da-landing-tile-hover-shadow: 0 0 1px #00000014, 0 1px 6px #0000000a, 0 3px 10px #0000001a;
-
   display: block;
-  height: 100%;
 }
 
-* {
-  box-sizing: border-box;
+:host, .tile-container {
+  height: 100%;
 }
 
 h3, p {
@@ -16,6 +11,7 @@ h3, p {
 }
 
 .tile {
+  box-sizing: border-box;
   display: flex;
   align-items: flex-start;
   gap: var(--s2-spacing-200);
@@ -23,9 +19,9 @@ h3, p {
   width: 100%;
   padding: var(--s2-spacing-200) var(--s2-spacing-300);
   border: 0;
-  border-radius: var(--da-landing-tile-radius);
+  border-radius: 12px;
   background: light-dark(var(--s2-gray-25), var(--s2-gray-75));
-  box-shadow: var(--da-landing-tile-shadow);
+  box-shadow: var(--s2-drop-shadow-elevated);
   text-decoration: none;
   font: inherit;
   text-align: start;
@@ -36,7 +32,11 @@ a, button {
 }
 
 a:hover, button:where(:enabled):hover {
-  box-shadow: var(--da-landing-tile-hover-shadow);
+  background: light-dark(var(--s2-gray-50), var(--s2-gray-100));
+}
+
+a > *, button > * {
+  pointer-events: none;
 }
 
 a:focus-visible, button:focus-visible {
@@ -57,14 +57,12 @@ button:disabled {
 h3 {
   color: var(--s2-gray-900);
   font-size: var(--nx-ui-text-title, var(--s2-component-l-regular-font-size));
-  line-height: var(--s2-body-line-height);
 }
 
 p {
   margin-top: var(--s2-spacing-75);
   color: var(--s2-gray-600);
   font-size: var(--s2-component-s-regular-font-size);
-  line-height: var(--s2-body-line-height);
 }
 
 .icon {

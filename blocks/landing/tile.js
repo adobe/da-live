@@ -1,4 +1,4 @@
-import { LitElement, html, nothing } from 'da-lit';
+import { LitElement, html } from 'da-lit';
 import { getNx } from '../../scripts/utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -22,22 +22,25 @@ export default class DaLandingTile extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [styles];
   }
 
-  render() {
-    const source = this.actionId ? `landing-action-${this.actionId}` : nothing;
+  _renderSurface() {
     const content = html`
-      <span class="icon ${this.tone || ''}" aria-hidden="true" data-rum-source=${source}
+      <span class="icon ${this.tone || ''}" aria-hidden="true"
         style="--tile-icon: url('${this.iconHref}')"></span>
-      <div class="content" data-rum-source=${source}>
-        <h3 data-rum-source=${source}>${this.heading}</h3>
-        <p data-rum-source=${source}>${this.description}</p>
+      <div class="content">
+        <h3>${this.heading}</h3>
+        <p>${this.description}</p>
       </div>`;
-    const classes = `${this.actionId ? `${source} ` : ''}tile`;
-    if (this.href) return html`<a class=${classes} href=${this.href} data-rum-source=${source}>${content}</a>`;
+    const classes = `${this.actionId ? `landing-action-${this.actionId} ` : ''}tile`;
+    if (this.href) return html`<a class=${classes} href=${this.href}>${content}</a>`;
     if (this.action) {
-      return html`<button class=${classes} type="button" ?disabled=${this.disabled}
-        data-rum-source=${source}>${content}</button>`;
+      return html`<button class=${classes} type="button"
+        ?disabled=${this.disabled}>${content}</button>`;
     }
     return html`<div class="tile">${content}</div>`;
+  }
+
+  render() {
+    return html`<div class="tile-container">${this._renderSurface()}</div>`;
   }
 }
 
