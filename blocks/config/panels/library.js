@@ -43,7 +43,7 @@ export const validatePlaceholder = validator({ Key: required(VALIDATION.key) });
 export const blocks = libraryPanel({
   noun: 'block',
   idKey: 'name',
-  description: 'Blocks authors can insert from the library.',
+  description: 'The blocks authors can add to a page from the library. Each one points to a document showing the block and its variants.',
   importable: true,
   validate: validateBlock,
   columns: [
@@ -61,7 +61,7 @@ export const blocks = libraryPanel({
 export const templates = libraryPanel({
   noun: 'template',
   idKey: 'key',
-  description: 'Documents authors can start from.',
+  description: 'Documents authors can use as a starting point for a new page.',
   validate: validateTemplate,
   columns: [
     { key: 'key', label: 'Name', hint: 'Shown to authors.', required: true, placeholder: 'Article' },
@@ -78,7 +78,7 @@ export const templates = libraryPanel({
 export const icons = libraryPanel({
   noun: 'icon',
   idKey: 'key',
-  description: 'Icons authors can insert; each is added to the document as :key:.',
+  description: 'Icons authors can add to content. Each one is written into the page as :key:.',
   validate: validateIcon,
   columns: [
     { key: 'key', label: 'Key', hint: 'Inserted as :key:.', required: true, placeholder: 'adobe' },
@@ -96,7 +96,7 @@ export const icons = libraryPanel({
 export const placeholders = libraryPanel({
   noun: 'placeholder',
   idKey: 'Key',
-  description: 'Shared text the site uses through {{key}} placeholders.',
+  description: 'Reusable text for the site, such as labels and button text. Content and code refer to each entry by its key.',
   validate: validatePlaceholder,
   columns: [
     { key: 'Key', label: 'Key', hint: 'Identifier used in content and code.', required: true, placeholder: 'read-more' },

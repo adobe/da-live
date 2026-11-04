@@ -4,7 +4,7 @@ const { setNx } = await import('../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const {
-  config, file, library, inFile, inherits, sheetFor, locate, readFile, save,
+  config, file, library, inFile, inherits, sheetFor, locate, readFile, save, sheetUrl,
 } = await import('../../../../blocks/config/stores.js');
 
 const multi = (name, rows) => ({ [name]: { data: rows }, ':names': [name], ':type': 'multi-sheet' });
@@ -54,6 +54,15 @@ describe('config stores', () => {
     expect(sheetFor(file('/f.json', { languages: 'languages' }), { part: { id: 'languages' } })).to.equal('languages');
     expect(sheetFor(library('Icons'), { json: multi('icons', []) })).to.equal('icons');
     expect(sheetFor(library('Icons'), { json: null })).to.equal('data');
+  });
+
+  it('opens the config, or a file sheet once it exists', () => {
+    expect(sheetUrl(config('data'), { org: 'o', site: null })).to.equal('/config#/o/');
+    expect(sheetUrl(config('apps'), { org: 'o', site: 's' })).to.equal('/config#/o/s/');
+    const located = { status: 'ok', path: '/docs/library/blocks.json', missing: false };
+    expect(sheetUrl(library('Blocks'), { org: 'o', site: 's', located })).to.equal('/sheet#/o/s/docs/library/blocks');
+    expect(sheetUrl(library('Blocks'), { org: 'o', site: 's', located: { ...located, missing: true } })).to.equal(null);
+    expect(sheetUrl(file('/f.json', {}), { org: 'o', site: 's', located: { status: 'loading' } })).to.equal(null);
   });
 
   describe('locate', () => {

@@ -32,7 +32,7 @@ export function validateMimeRenditions(value) {
 }
 
 export default {
-  description: 'Connect authors to AEM Assets or Dynamic Media so they can browse, select and insert assets.',
+  description: 'Let authors browse and insert images and videos from AEM Assets or Dynamic Media.',
   fields: [
     {
       key: 'aem.repositoryId',

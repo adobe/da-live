@@ -5,7 +5,7 @@ import { SETUP } from '../messages.js';
 const SETUP_APP = 'https://da.live/app/adobe-rnd/ew-extensions/tools/ew-setup/ew-setup';
 
 export default {
-  description: 'Choose how Experience Workspace behaves for authors.',
+  description: 'Turn on Experience Workspace and choose how the editor opens for authors.',
   // Site scope: until `ew.enabled` is set (on the site or org), show the ew-setup app instead,
   // which also points the site's Sidekick to the new editor. The app reads #/org/site.
   setup: {

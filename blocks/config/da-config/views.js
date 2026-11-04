@@ -79,8 +79,16 @@ export function renderTabs(tabs, { tab, section }, { onPrimaryChange, onSectionC
 
 const OPEN_ICON = '/img/icons/s2-icon-openin-20-n.svg#icon';
 
+const infoLink = (href, label) => html`
+  <a class="nx-action-btn nx-btn-sm" href=${href} target="_blank" rel="noopener">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><use href=${OPEN_ICON}></use></svg>
+    <span>${label}</span>
+  </a>`;
+
 // What the section is for, kept apart from the editor like the permissions note.
-export function renderIntro(panel, { docs, inheritance, setupUrl, readOnly, notes = nothing }) {
+export function renderIntro(panel, {
+  docs, sheet, inheritance, setupUrl, readOnly, notes = nothing,
+}) {
   const { setup } = panel;
   return html`
     <div class="config-info" role="note">
@@ -90,10 +98,10 @@ export function renderIntro(panel, { docs, inheritance, setupUrl, readOnly, note
     : nothing}
       ${notes}
       ${readOnly ? html`<p>${SHELL.readOnly}</p>` : nothing}
-      <a class="nx-action-btn nx-btn-sm" href=${docs} target="_blank" rel="noopener">
-        <svg viewBox="0 0 20 20" aria-hidden="true"><use href=${OPEN_ICON}></use></svg>
-        <span>${SHELL.learnMore}</span>
-      </a>
+      <div class="config-info-links">
+        ${sheet ? infoLink(sheet, SHELL.openSheet) : nothing}
+        ${infoLink(docs, SHELL.learnMore)}
+      </div>
     </div>`;
 }
 

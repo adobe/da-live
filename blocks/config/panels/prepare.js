@@ -24,7 +24,7 @@ export default {
   kind: 'rows',
   idKey: 'title',
   noun: 'menu item',
-  description: 'Choose the actions authors see in the Prepare menu next to Preview and Publish.',
+  description: 'Actions authors can run from the Prepare menu, next to Preview and Publish.',
   validate: validateRow,
   columns: [
     {

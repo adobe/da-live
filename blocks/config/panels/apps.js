@@ -18,7 +18,7 @@ export default {
   kind: 'rows',
   idKey: 'title',
   noun: 'app',
-  description: 'Choose the apps shown as cards on the Apps page for this site.',
+  description: 'Apps listed as cards on this site\'s Apps page.',
   validate: validateRow,
   columns: [
     {

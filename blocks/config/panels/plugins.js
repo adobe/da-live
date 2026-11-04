@@ -32,7 +32,7 @@ export default {
   idOf: nameOf,
   owns: (row) => !LIBRARY_ENTRIES.has(nameOf(row)),
   noun: 'plugin',
-  description: 'Choose the plugins authors can open from the editor side panel.',
+  description: 'Tools authors can open from the editor, such as a media library or a tagger.',
   validate: validateRow,
   columns: [
     {
