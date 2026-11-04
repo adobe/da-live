@@ -1,3 +1,31 @@
+## [1.19.1](https://github.com/adobe/da-live/compare/v1.19.0...v1.19.1) (2026-11-04)
+
+
+### Bug Fixes
+
+* refresh file lists after chat completion ([#1646](https://github.com/adobe/da-live/issues/1646)) ([9bd94fb](https://github.com/adobe/da-live/commit/9bd94fb0795da566be5c1d725d02027f06bc8158))
+
+# [1.19.0](https://github.com/adobe/da-live/compare/v1.18.1...v1.19.0) (2026-11-04)
+
+
+### Features
+
+* **landing:** add gated gradient home background ([#1645](https://github.com/adobe/da-live/issues/1645)) ([1926a7b](https://github.com/adobe/da-live/commit/1926a7b800c8439a83ef5698a83644a2a799647c))
+
+## [1.18.1](https://github.com/adobe/da-live/compare/v1.18.0...v1.18.1) (2026-11-04)
+
+
+### Bug Fixes
+
+* **ew:** avoid opening comparison with versions panel ([#1644](https://github.com/adobe/da-live/issues/1644)) ([2a2a361](https://github.com/adobe/da-live/commit/2a2a361e02010cb73adf1200d9b7a725736af497))
+
+# [1.18.0](https://github.com/adobe/da-live/compare/v1.17.2...v1.18.0) (2026-11-03)
+
+
+### Features
+
+* **chat:** expose turn completion to extensions ([#1512](https://github.com/adobe/da-live/issues/1512)) ([b632239](https://github.com/adobe/da-live/commit/b63223996f2f2c29e71f3fb256eae7cfe7d5de87))
+
 ## [1.17.2](https://github.com/adobe/da-live/compare/v1.17.1...v1.17.2) (2026-11-03)
 
 
