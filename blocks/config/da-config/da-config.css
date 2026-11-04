@@ -261,6 +261,12 @@
   margin: 0;
 }
 
+.config-info-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2-spacing-100);
+}
+
 /* A link styled as an action button: no link underline, and lifted off the grey note. */
 .config-info .nx-action-btn {
   background: var(--s2-gray-25);
