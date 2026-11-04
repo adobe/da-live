@@ -47,6 +47,7 @@ export default class DaTitle extends LitElement {
     previewPrefix: { attribute: false },
     livePrefix: { attribute: false },
     disabledText: { attribute: false },
+    hideActions: { type: Boolean },
     _lazyMods: { state: true },
     _configs: { state: true },
     _actions: { state: true },
@@ -492,6 +493,23 @@ export default class DaTitle extends LitElement {
       </div>`;
   }
 
+  renderCollabActions() {
+    return html`
+      <div class="da-title-collab-actions-wrapper">
+        ${this.collabStatus ? this.renderCollab() : nothing}
+        ${this._canPrepare ? html`<da-prepare .details=${this.details}></da-prepare>` : nothing}
+        ${this._status ? this.renderError() : nothing}
+        <div class="da-title-actions ${this._actions.available?.length === 1 && !this._isSending ? 'has-one-action' : ''} ${this._actions.open ? 'is-open' : ''} ${this._actions.fixed ? 'is-fixed' : ''}">
+          ${this.renderActions()}
+          <button @click=${this.toggleActions} class="con-button blue da-title-action-send ${this._status ? 'is-error' : ''}" aria-label="Send">
+            <svg class="da-title-action-send-icon ${this._isSending ? 'is-sending' : ''}" viewBox="0 0 20 20">
+              <use href="/blocks/edit/img/S2_Icon_Publish_20_N.svg#S2_Icon_Publish"/>
+            </svg>
+          </button>
+        </div>
+      </div>`;
+  }
+
   render() {
     return html`
       <div class="da-title-inner ${this._readOnly ? 'is-read-only' : ''}">
@@ -501,19 +519,7 @@ export default class DaTitle extends LitElement {
             class="da-title-name-label">${this.details.parentName}</a>
           <h1>${this.details.name}</h1>
         </div>
-        <div class="da-title-collab-actions-wrapper">
-          ${this.collabStatus ? this.renderCollab() : nothing}
-          ${this._canPrepare ? html`<da-prepare .details=${this.details}></da-prepare>` : nothing}
-          ${this._status ? this.renderError() : nothing}
-          <div class="da-title-actions ${this._actions.available?.length === 1 && !this._isSending ? 'has-one-action' : ''} ${this._actions.open ? 'is-open' : ''} ${this._actions.fixed ? 'is-fixed' : ''}">
-            ${this.renderActions()}
-            <button @click=${this.toggleActions} class="con-button blue da-title-action-send ${this._status ? 'is-error' : ''}" aria-label="Send">
-              <svg class="da-title-action-send-icon ${this._isSending ? 'is-sending' : ''}" viewBox="0 0 20 20">
-                <use href="/blocks/edit/img/S2_Icon_Publish_20_N.svg#S2_Icon_Publish"/>
-              </svg>
-            </button>
-          </div>
-        </div>
+        ${this.hideActions ? nothing : this.renderCollabActions()}
       </div>
       ${this._dialog ? this.renderDialog() : nothing}
     `;
