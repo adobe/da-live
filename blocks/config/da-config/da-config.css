@@ -243,6 +243,29 @@
   white-space: nowrap;
 }
 
+/* Centered like Coworker's empty lists: what's missing, then how to start. */
+.config-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s2-spacing-75);
+  padding: var(--s2-spacing-800) var(--s2-spacing-300);
+  color: var(--s2-gray-700);
+  font-size: var(--s2-component-s-regular-font-size);
+  line-height: var(--s2-component-s-regular-line-height);
+  text-align: center;
+}
+
+.config-empty p {
+  margin: 0;
+}
+
+.config-empty .config-empty-title {
+  color: var(--s2-gray-900);
+  font-size: var(--s2-component-l-regular-font-size);
+  font-weight: var(--s2-heading-font-weight);
+}
+
 /* List actions sit above the table, right-aligned, so they stay in reach on long lists. */
 .config-row-buttons {
   display: flex;

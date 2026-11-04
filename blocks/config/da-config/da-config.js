@@ -433,8 +433,6 @@ class DaConfig extends LitElement {
     const onImport = () => this._onImportOpen();
     const handlers = {
       disabled: this._locked,
-      // The file status already says the list is empty.
-      empty: this._file?.missing ? nothing : undefined,
       actions: panel.importable ? renderImportButton(list.dirty, onImport) : nothing,
       onAdd: () => this._onRowAdd(),
       onEdit: (index) => this._onRowEdit(index),
