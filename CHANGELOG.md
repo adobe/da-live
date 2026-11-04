@@ -1,3 +1,10 @@
+# [1.19.0](https://github.com/adobe/da-live/compare/v1.18.1...v1.19.0) (2026-11-04)
+
+
+### Features
+
+* **landing:** add gated gradient home background ([#1645](https://github.com/adobe/da-live/issues/1645)) ([1926a7b](https://github.com/adobe/da-live/commit/1926a7b800c8439a83ef5698a83644a2a799647c))
+
 ## [1.18.1](https://github.com/adobe/da-live/compare/v1.18.0...v1.18.1) (2026-11-04)
 
 
