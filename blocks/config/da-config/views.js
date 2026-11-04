@@ -1,8 +1,8 @@
 // Stateless templates of the config shell. The element passes in its state and handlers.
 
 import { html, nothing } from 'da-lit';
-import { renderCallout } from '../editors/fields.js';
-import { SHELL } from '../messages.js';
+import { renderAlert, renderCallout } from '../editors/fields.js';
+import { SHELL, failureDetail } from '../messages.js';
 
 // Section icons (img/<icon>.svg); nx-segmented-btn appends the #icon fragment.
 export const iconUrl = (icon) => new URL(`../img/${icon}.svg`, import.meta.url).pathname;
@@ -52,8 +52,8 @@ export function renderLoadStatus({ status, httpStatus, scope }) {
         <span>${SHELL.loading(scope)}</span>
       </div>`;
   }
-  if (status === 'no-access') return message(SHELL.noAccess);
-  if (status === 'error') return message(SHELL.loadFailed({ httpStatus }));
+  if (status === 'no-access') return renderAlert(SHELL.noAccessTitle, SHELL.noAccess);
+  if (status === 'error') return renderAlert(SHELL.loadFailed, failureDetail({ httpStatus }));
   return nothing;
 }
 

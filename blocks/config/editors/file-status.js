@@ -2,8 +2,8 @@
 
 import { html, nothing } from 'da-lit';
 import { needsPublish } from '../library-paths.js';
-import { renderCallout } from './fields.js';
-import { FILES } from '../messages.js';
+import { renderAlert, renderCallout } from './fields.js';
+import { FILES, failureDetail } from '../messages.js';
 
 // What Set up does with a library's candidate paths (see api.js setupLibrary).
 const setupText = ([first, ...fallbacks]) => (fallbacks.length
@@ -21,7 +21,7 @@ export function renderFileStatus(file, { org, site }) {
     case 'loading':
       return message(FILES.loading());
     case 'error':
-      return message(FILES.loadFailed(file.path, file));
+      return renderAlert(FILES.loadFailed(file.path), failureDetail(file));
     default:
       return file.missing
         ? message(FILES.missing(file.path))
@@ -47,7 +47,7 @@ export function renderLibraryStatus(store, lib, { org, site, locked, onSetup }) 
     case 'external':
       return message(FILES.external(title, lib.registered));
     case 'error':
-      return message(FILES.loadFailed(lib.path, lib));
+      return renderAlert(FILES.loadFailed(lib.path), failureDetail(lib));
     default:
       break;
   }
