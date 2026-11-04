@@ -43,6 +43,8 @@ Content owns filtering, pagination, destinations and favorite persistence; its
 external list does not fetch another directory or expose bulk actions. The
 opt-in Folder column leaves Browse's default Type column unchanged.
 
+HTML respects the same per-file `editor.path` settings as Browse. The most
+specific matching path wins; site settings win ties with org settings. Unconfigured
 HTML uses Canvas when EW is enabled and the classic editor otherwise. Sheets
 and media use the existing shared routing helper. Folders and `.link` files
 open Browse; links open their parent directory rather than requesting an editor.

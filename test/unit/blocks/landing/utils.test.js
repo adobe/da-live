@@ -57,6 +57,28 @@ describe('Content data and destinations on main', () => {
     expect(files[1]).not.to.have.property('isFavorited');
   });
 
+  it('uses the longest matching configured editor per file and the default otherwise', () => {
+    const items = getListItems({
+      files: [
+        { path: '/org/site/forms/a.html', ext: 'html' },
+        { path: '/org/site/forms/ue/b.html', ext: 'html' },
+        { path: '/org/site/page.html', ext: 'html' },
+        { path: '/org/site/forms/data.json', ext: 'json' },
+        { path: '/org/site/forms/image.png', ext: 'png' },
+      ],
+      editor: '/canvas#',
+      editorConfs: [
+        '/org/site/forms=https://da.live/form#',
+        '/org/site/forms/ue=https://experience.adobe.com/editor',
+      ],
+    });
+    expect(items[0].href).to.equal('https://da.live/form#/org/site/forms/a');
+    expect(items[1].href).to.equal('https://experience.adobe.com/editor/forms/ue/b');
+    expect(new URL(items[2].href).pathname).to.equal('/canvas');
+    expect(new URL(items[3].href).pathname).to.equal('/sheet');
+    expect(new URL(items[4].href).pathname).to.equal('/media');
+  });
+
   it('paginates the root listing, deduplicates entries and sorts newest first', async () => {
     const older = { path: '/org/site/a.html', name: 'a', lastModified: 10 };
     const newer = { path: '/org/site/b.html', name: 'b', lastModified: 20 };

@@ -1,4 +1,5 @@
 import { getFileItemHref } from '../shared/da-file-item/navigation.js';
+import { getConfiguredEditor } from '../shared/da-file-item/edit-path.js';
 
 export function getBrowseHref({ path = '', href = window.location.href }) {
   const url = new URL(href);
@@ -23,10 +24,13 @@ export function getFileHref({ item, href = window.location.href, editor = '/edit
   return url.href;
 }
 
-export function getListItems({ files, favorites, editor = '/edit#' }) {
+export function getListItems({ files, favorites, editor = '/edit#', editorConfs }) {
   return files.map((item) => ({
     ...item,
-    href: getFileHref({ item, editor }),
+    href: getFileHref({
+      item,
+      editor: getConfiguredEditor(item.path, editorConfs, editor),
+    }),
     folderHref: getBrowseHref({ path: item.path.slice(0, item.path.lastIndexOf('/')) }),
     imagePreview: true,
     isFavorited: favorites?.has(item.path) ?? false,

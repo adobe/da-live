@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
+import { fetchDaConfigs, getFirstSheet } from '../shared/utils.js';
 import { getFavorites, toggleFavorite } from '../browse/shared/favorites.js';
 import { getBrowseSettings, updateBrowseSettings } from '../browse/v2/shared/settings.js';
 import { getBrowseHref, getListItems, loadFiles } from './utils.js';
@@ -37,6 +38,7 @@ export class DaLanding extends LitElement {
     _view: { state: true },
     _limit: { state: true },
     _editor: { state: true },
+    _editorConfs: { state: true },
   };
 
   _sizing = sizing && new sizing.UISizeController(this);
@@ -88,6 +90,7 @@ export class DaLanding extends LitElement {
     this._files = undefined;
     this._error = undefined;
     this._editor = undefined;
+    this._editorConfs = undefined;
     if (!this._scope) return;
     const [org, site] = this._scope.split('/');
     const editor = getNxEWFlags()
@@ -96,10 +99,17 @@ export class DaLanding extends LitElement {
       .catch(() => '/edit#');
     try {
       const { source } = await getNx2Api();
-      const { files } = await loadFiles({ path: this.path, source, signal: request.signal });
-      const destination = await editor;
+      const [{ files }, configs, destination] = await Promise.all([
+        loadFiles({ path: this.path, source, signal: request.signal }),
+        Promise.all(fetchDaConfigs({ org, site })),
+        editor,
+      ]);
       if (!this.isConnected || request.signal.aborted) return;
       this._editor = destination;
+      this._editorConfs = configs.filter(Boolean).reverse()
+        .flatMap((config) => getFirstSheet(config) || [])
+        .filter(({ key }) => key === 'editor.path')
+        .map(({ value }) => value);
       this._files = files;
     } catch (error) {
       if (!request.signal.aborted && this.isConnected) this._error = error.message;
@@ -156,8 +166,10 @@ export class DaLanding extends LitElement {
     files: files.slice(0, this._tab === 'starred' ? PAGE_SIZE : this._limit),
     favorites: this._favorites,
     editor: this._editor || '/edit#',
+    editorConfs: this._editorConfs,
   })} .view=${this._view}
           .showFolder=${true} .sort=${false} .editor=${this._editor || '/edit#'}
+          .editorConfs=${this._editorConfs} .defaultEditor=${this._editor || '/edit#'}
           size=${this._view === 'card' ? 's' : 'm'}
           @favoritechange=${({ detail: { item } }) => this.starFile(item)}></da-list>
       </div>

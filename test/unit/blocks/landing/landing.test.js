@@ -6,7 +6,7 @@ import { DaLanding } from '../../../../blocks/landing/landing.js';
 import { getNx, getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
-const { source } = await getNx2Api();
+const { source, config } = await getNx2Api();
 const { setEWEnabled } = await getNxEWFlags();
 const ITEMS = Array.from({ length: 24 }, (_, index) => ({ name: `Page ${index}`, path: `/org/site/page-${index}.html`, ext: 'html', lastModified: 24 - index }));
 
@@ -30,6 +30,7 @@ describe('landing Content section', () => {
       this._request?.abort();
       this._request = new AbortController();
     });
+    sinon.stub(config, 'get').resolves({ ok: true, json: async () => ({ data: [] }) });
     el = document.createElement('da-landing');
     document.body.append(el);
     el._files = ITEMS;
@@ -366,6 +367,68 @@ describe('landing Content section', () => {
     await updateLanding();
     expect(el._editor).to.equal('/canvas#');
     expect(fileItems()[0].href).to.include('/canvas');
+  });
+
+  it('uses org and site editor settings for each file in both views, even with EW enabled', async () => {
+    loadSite.restore();
+    el._scope = 'configured/site';
+    config.get.callsFake(async ({ site }) => ({
+      ok: true,
+      json: async () => ({
+        data: site ? [
+          { key: 'editor.path', value: '/configured/site/forms=/form#' },
+        ] : [
+          { key: 'editor.path', value: '/configured/site=https://experience.adobe.com/editor' },
+          { key: 'editor.path', value: '/configured/site/forms=/edit#' },
+        ],
+      }),
+    }));
+    sinon.stub(source, 'list').resolves({
+      ok: true,
+      items: [
+        { name: 'Form', path: '/configured/site/forms/a.html', ext: 'html', lastModified: 3 },
+        { name: 'Page', path: '/configured/site/b.html', ext: 'html', lastModified: 2 },
+        { name: 'Sheet', path: '/configured/site/forms/data.json', ext: 'json', lastModified: 1 },
+      ],
+    });
+    setEWEnabled(true);
+    await el.loadSite();
+    for (const view of ['card', 'list']) {
+      el.changeView({ detail: { value: view } });
+      await updateLanding();
+      expect(new URL(fileItems()[0].href).pathname).to.equal('/form');
+      expect(fileItems()[0].editor).to.equal('/form#');
+      expect(fileItems()[1].href).to.equal('https://experience.adobe.com/editor/b');
+      expect(new URL(fileItems()[2].href).pathname).to.equal('/sheet');
+    }
+    expect(config.get.calledWith({ org: 'configured', site: undefined })).to.equal(true);
+    expect(config.get.calledWith({ org: 'configured', site: 'site' })).to.equal(true);
+  });
+
+  it('waits for editor settings and ignores settings from a previous site', async () => {
+    loadSite.restore();
+    el._scope = 'pending-config/site';
+    let finish;
+    config.get.callsFake(async ({ org, site }) => {
+      if (org === 'pending-config' && site) {
+        return new Promise((resolve) => { finish = resolve; });
+      }
+      return { ok: true, json: async () => ({ data: [] }) };
+    });
+    sinon.stub(source, 'list').resolves({ ok: true, items: ITEMS });
+    const pending = el.loadSite();
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+    expect(el._files).to.equal(undefined);
+    el._scope = 'other/site';
+    await el.loadSite();
+    finish({
+      ok: true,
+      json: async () => ({ data: [{ key: 'editor.path', value: '/pending-config/site=/form#' }] }),
+    });
+    await pending;
+    await updateLanding();
+    expect(el._editorConfs).to.deep.equal([]);
+    expect(new URL(fileItems()[0].href).pathname).to.equal('/edit');
   });
 
   it('does not expose files with an unresolved or stale editor flag', async () => {
