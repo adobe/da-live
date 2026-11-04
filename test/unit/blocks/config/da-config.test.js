@@ -238,6 +238,18 @@ describe('da-config', () => {
   // Assert on booleans, not elements: when an expect() on a live element fails, chai hangs
   // while formatting it for the error message.
   const has = (sel) => !!q(sel);
+  // Row buttons: text buttons by their text, icon buttons by their label (e.g. "Delete Cards").
+  const buttonIn = (row, text) => [...row.querySelectorAll('button')]
+    .find((b) => (b.getAttribute('aria-label') ?? b.textContent).trim().startsWith(text));
+  // Deletes a row through the confirmation dialog, like the canvas outline.
+  const confirmDialog = () => q('da-confirm-dialog');
+  const deleteRow = async (row) => {
+    buttonIn(row, 'Delete').click();
+    await waitUntil(() => !!confirmDialog(), el);
+    await confirmDialog().updateComplete;
+    confirmDialog().shadowRoot.querySelector('.negative').click();
+    await el.updateComplete;
+  };
   const values = (sel) => q(sel).items.map((i) => i.value);
   // Flush the pending update first so a just-started reload is visible to the predicate.
   const ready = async () => {
@@ -673,7 +685,6 @@ describe('da-config', () => {
       q(selector).click();
       await el.updateComplete;
     };
-    const buttonIn = (row, text) => [...row.querySelectorAll('button')].find((b) => b.textContent.trim() === text);
 
     it('adds a row through the dialog and saves the prepare sheet', async () => {
       const puts = mockFetch({ configFor: () => status(404)(), sitesFor: () => [{ name: 'alpha' }] });
@@ -719,6 +730,23 @@ describe('da-config', () => {
       expect(puts[0].body.prepare.data).to.deep.equal([{ ...ROLLOUT, ref: 'uat' }]);
     });
 
+    it('asks before deleting a row, and keeps it on Cancel', async () => {
+      mockFetch({ configFor: () => multi('prepare', [ROLLOUT]), sitesFor: () => [{ name: 'alpha' }] });
+      await open({ org: 'pr9' });
+      const row = q('.config-table tbody tr');
+      expect([buttonIn(row, 'Edit').getAttribute('aria-label'), buttonIn(row, 'Delete').getAttribute('aria-label')])
+        .to.deep.equal(['Edit Rollout', 'Delete Rollout']);
+      buttonIn(row, 'Delete').click();
+      await waitUntil(() => !!confirmDialog(), el);
+      expect(confirmDialog().title).to.equal('Delete menu item');
+      expect(confirmDialog().textContent.replace(/\s+/g, ' ').trim())
+        .to.equal('Are you sure you want to delete the Rollout menu item?');
+      confirmDialog().dispatchEvent(new Event('close'));
+      await el.updateComplete;
+      expect([has('da-confirm-dialog'), el.shadowRoot.querySelectorAll('.config-table tbody tr').length])
+        .to.deep.equal([false, 1]);
+    });
+
     it('edits and removes own rows, and discards pending changes', async () => {
       mockFetch({ configFor: () => multi('prepare', [ROLLOUT]), sitesFor: () => [{ name: 'alpha' }] });
       await open({ org: 'pr3' });
@@ -728,7 +756,7 @@ describe('da-config', () => {
       await click('nx-dialog .nx-form-btn-primary');
       expect(q('.config-table tbody th').textContent).to.include('Rollout 2');
 
-      buttonIn(q('.config-table tbody tr'), 'Remove').click();
+      await deleteRow(q('.config-table tbody tr'));
       await el.updateComplete;
       expect(has('.config-table tbody tr')).to.equal(false);
 
@@ -754,13 +782,13 @@ describe('da-config', () => {
       expect(rows[0].textContent).to.include('Search');
       expect(el.shadowRoot.textContent).to.not.include('inherited');
 
-      [...rows[0].querySelectorAll('button')].find((b) => b.textContent.trim() === 'Edit').click();
+      buttonIn(rows[0], 'Edit').click();
       await el.updateComplete;
       expect(q('nx-dialog [id="config-description"]').tagName).to.equal('TEXTAREA');
       q('nx-dialog .nx-form-btn-secondary').click();
       await el.updateComplete;
 
-      [...rows[0].querySelectorAll('button')].find((b) => b.textContent.trim() === 'Remove').click();
+      await deleteRow(rows[0]);
       await el.updateComplete;
       q('.config-savebar .nx-form-btn-primary').click();
       await waitUntil(() => !el._busy, el);
@@ -779,7 +807,7 @@ describe('da-config', () => {
       const rows = [...el.shadowRoot.querySelectorAll('.config-table tbody tr')];
       expect(rows.map((r) => r.querySelector('th').textContent.trim())).to.deep.equal(['Tool']);
 
-      [...rows[0].querySelectorAll('button')].find((b) => b.textContent.trim() === 'Remove').click();
+      await deleteRow(rows[0]);
       await el.updateComplete;
       q('.config-savebar .nx-form-btn-primary').click();
       await waitUntil(() => !el._busy, el);
@@ -796,7 +824,6 @@ describe('da-config', () => {
       await ready();
       await waitUntil(() => el._file && el._file.status !== 'loading', el);
     };
-    const buttonIn = (row, text) => [...row.querySelectorAll('button')].find((b) => b.textContent.trim() === text);
 
     it('keeps the newly shown list when an earlier save finishes after navigating away', async () => {
       const BLOCKS = kv([{ name: 'Cards', path: '/library/blocks/cards' }]);
@@ -812,7 +839,7 @@ describe('da-config', () => {
         putFor: () => new Promise((resolve) => { finishSave = () => resolve(new Response('', { status: 200 })); }),
       });
       await openSection('blocks', 'lb9');
-      buttonIn(q('.config-table tbody tr'), 'Remove').click();
+      await deleteRow(q('.config-table tbody tr'));
       await el.updateComplete;
       q('.config-savebar .nx-form-btn-primary').click();
       await waitUntil(() => !!finishSave, el);
@@ -861,7 +888,7 @@ describe('da-config', () => {
       expect(el.shadowRoot.textContent).to.not.include('previewed and published');
       const row = q('.config-table tbody tr');
       expect(row.textContent).to.include('Cards');
-      buttonIn(row, 'Remove').click();
+      await deleteRow(row);
       await el.updateComplete;
       q('.config-savebar .nx-form-btn-primary').click();
       await waitUntil(() => !el._busy, el);
@@ -920,7 +947,7 @@ describe('da-config', () => {
       });
       await openSection('blocks', 'lb6');
       expect(buttonIn(q('.config-row-buttons'), 'Import blocks').disabled).to.equal(false);
-      buttonIn(q('.config-table tbody tr'), 'Remove').click();
+      await deleteRow(q('.config-table tbody tr'));
       await el.updateComplete;
       expect(buttonIn(q('.config-row-buttons'), 'Import blocks').disabled).to.equal(true);
     });

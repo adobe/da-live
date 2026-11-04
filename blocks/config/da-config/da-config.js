@@ -21,6 +21,7 @@ import {
 import {
   renderOrgForm, renderHeader, renderLoadStatus, renderTabs, renderIntro, renderSetup,
   renderParts, renderSaveBar, renderConfirm, renderImportButton, renderImportDialog,
+  renderDeleteConfirm,
 } from './views.js';
 import { SHELL } from '../messages.js';
 
@@ -58,6 +59,7 @@ class DaConfig extends LitElement {
     _edits: { state: true },
     _rows: { state: true },
     _draft: { state: true },
+    _deleting: { state: true },
     _importing: { state: true },
     _busy: { state: true },
     _readOnly: { state: true },
@@ -231,6 +233,7 @@ class DaConfig extends LitElement {
     this._edits = {};
     this._rows = null;
     this._draft = null;
+    this._deleting = null;
   }
 
   // Runs `action` now, or after the user agrees to drop unsaved edits. `revert` puts the
@@ -306,7 +309,15 @@ class DaConfig extends LitElement {
     this._draft = { index, row: { ...this._edit.list.rows[index] } };
   }
 
-  _onRowRemove(index) {
+  // Asks first, like deleting in the canvas outline; the row goes on Delete (and is saved on Save).
+  async _onRowRemove(index, name) {
+    await import('../../shared/da-confirm-dialog/da-confirm-dialog.js');
+    this._deleting = { index, name };
+  }
+
+  _onDeleteConfirm() {
+    const { index } = this._deleting;
+    this._deleting = null;
     this._rows = this._edit.list.rows.filter((_, i) => i !== index);
   }
 
@@ -438,13 +449,17 @@ class DaConfig extends LitElement {
       actions: panel.importable ? renderImportButton(list.dirty, onImport) : nothing,
       onAdd: () => this._onRowAdd(),
       onEdit: (index) => this._onRowEdit(index),
-      onRemove: (index) => this._onRowRemove(index),
+      onRemove: (index, name) => this._onRowRemove(index, name),
       onOverride: (row) => this._onRowAdd(row),
     };
     return html`
       ${renderRows(panel, list, handlers)}
       ${this._renderImport(list)}
-      ${this._renderDraft(panel, list)}`;
+      ${this._renderDraft(panel, list)}
+      ${this._deleting ? renderDeleteConfirm(panel.noun, this._deleting.name, {
+    onDelete: () => this._onDeleteConfirm(),
+    onCancel: () => { this._deleting = null; },
+  }) : nothing}`;
   }
 
   _renderIntro(ctx, notes) {

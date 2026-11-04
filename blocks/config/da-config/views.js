@@ -2,7 +2,7 @@
 
 import { html, nothing } from 'da-lit';
 import { renderAlert, renderCallout } from '../editors/fields.js';
-import { SHELL, failureDetail } from '../messages.js';
+import { ROWS, SHELL, failureDetail } from '../messages.js';
 
 // Section icons (img/<icon>.svg); nx-segmented-btn appends the #icon fragment.
 export const iconUrl = (icon) => new URL(`../img/${icon}.svg`, import.meta.url).pathname;
@@ -132,6 +132,15 @@ export function renderSaveBar({ dirty, label, invalid }, { busy, onDiscard, onSa
       <button type="button" class="nx-form-btn-primary" ?disabled=${busy || invalid}
         @click=${onSave}>${busy ? SHELL.saving : 'Save'}</button>
     </div>`;
+}
+
+// The canvas outline's delete confirmation (shared da-confirm-dialog, loaded by the caller).
+export function renderDeleteConfirm(noun, name, { onDelete, onCancel }) {
+  const action = { style: 'negative', label: ROWS.deleteAction, click: onDelete };
+  return html`
+    <da-confirm-dialog title=${ROWS.deleteTitle(noun)} .action=${action} @close=${onCancel}>
+      <span>${ROWS.deleteText(name, noun)}</span>
+    </da-confirm-dialog>`;
 }
 
 export function renderConfirm(label, onResolve) {
