@@ -91,4 +91,22 @@ describe('landing background', () => {
     el.replaceChildren();
     expect(getComputedStyle(document.body).colorScheme).to.equal(before);
   });
+
+  it('moves dark pink and indigo toward the sides with a muted center', () => {
+    history.replaceState(null, '', '?theme=dark');
+    el.style.setProperty('--s2-red-100', 'light-dark(#fff6f5, #360a03)');
+    el.style.setProperty('--s2-pink-200', 'light-dark(#ffe8f7, #47002c)');
+    el.style.setProperty('--s2-indigo-200', 'light-dark(#ebeeff, #23006e)');
+    el.style.setProperty('--s2-blue-100', 'light-dark(#f5f9ff, #0e173f)');
+    el.style.setProperty('--s2-gray-25', 'light-dark(#fff, #111)');
+    init(el);
+    const background = getComputedStyle(el.firstElementChild).backgroundImage;
+    expect(background).to.include('rgb(71, 0, 44) 25%');
+    expect(background).to.include('rgb(35, 0, 110) 75%');
+    const center = background.match(/color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)\) 50%/);
+    expect(center).not.to.equal(null);
+    const channels = center.slice(1).map(Number);
+    expect(Math.max(...channels) - Math.min(...channels)).to.be.lessThan(0.1);
+    expect(background).to.include('rgb(17, 17, 17) 85%');
+  });
 });
