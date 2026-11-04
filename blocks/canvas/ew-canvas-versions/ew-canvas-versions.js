@@ -91,12 +91,6 @@ class EwCanvasVersions extends LitElement {
         this._load();
       }
     });
-    const [org, site, ...parts] = location.hash.slice(2).split('/');
-    canvasBus.comparisonRequest.emit({
-      action: 'openComparison',
-      details: { candidate: 'document', baseline: 'live' },
-      context: { org, site, path: parts.join('/') },
-    });
   }
 
   disconnectedCallback() {
