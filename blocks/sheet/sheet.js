@@ -230,7 +230,7 @@ export default async function init(el) {
       hint.textContent = NOT_PERMITTED_HINT;
       const action = document.createElement('button');
       action.type = 'button';
-      action.className = 'da-sheet-not-permitted-action nx-action-btn';
+      action.className = 'da-sheet-not-permitted-action nx-btn-primary';
       action.textContent = 'Open Profile';
       action.addEventListener('click', () => openProfileMenu());
       notPermitted.append(hint, action);
