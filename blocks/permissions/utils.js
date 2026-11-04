@@ -56,14 +56,14 @@ export function pageRulePath(site, page) {
   return `/${site}/${page}`;
 }
 
-// A page's images live in its media folder `.{page}/`, which da-admin doesn't match from a
-// page rule. Other files with an extension (sheets) have no media folder.
+// A page's images live in its media folder `.{page}/`, which da-admin doesn't match from an
+// exact page rule yet. Other files with an extension (sheets) have no media folder.
 export function mediaRulePath(pagePath) {
   const isHtml = pagePath.endsWith('.html');
   const page = isHtml ? pagePath.slice(0, -'.html'.length) : pagePath;
   const slash = page.lastIndexOf('/');
   const name = page.slice(slash + 1);
-  if (!name || (!isHtml && name.includes('.'))) return null;
+  if (!name || name.startsWith('.') || (!isHtml && name.includes('.'))) return null;
   return normPath(`${page.slice(0, slash + 1)}.${name}/+**`);
 }
 
@@ -75,12 +75,9 @@ export function parsePagePath(value) {
   const trimmed = (value || '').trim().toLowerCase();
   if (!trimmed) return { error: 'Enter a page path, e.g. /about.' };
   if (!trimmed.startsWith('/')) return { error: 'Page paths start with /, e.g. /about.' };
-  if (trimmed.endsWith('/')) {
-    return trimmed.replaceAll('/', '')
-      ? { error: 'Page paths cannot end with /. Use Add folder for folders.' }
-      : { error: 'Enter a page below the site root, e.g. /about.' };
-  }
   const segments = trimmed.split('/').filter(Boolean);
+  if (!segments.length) return { error: 'Enter a page below the site root, e.g. /about.' };
+  if (trimmed.endsWith('/')) return { error: 'Page paths cannot end with /. Use Add folder for folders.' };
   if (segments.some((segment) => !PAGE_SEGMENT_RE.test(segment))) {
     return { error: 'Page paths can only use letters, numbers, -, _ and dots, and no part can start with a dot.' };
   }
@@ -100,7 +97,7 @@ function scopeKind(path, site) {
   if (norm === `${prefix}CONFIG`) return 'config';
   if (norm === normPath(`${prefix}+**`)) return 'content';
   if (norm.endsWith(FOLDER_SUFFIX)) return 'folder';
-  if (!norm.includes('*') && !norm.endsWith('/')) return 'page';
+  if (!norm.includes('*') && !norm.trimEnd().endsWith('/')) return 'page';
   return 'other';
 }
 

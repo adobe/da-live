@@ -195,8 +195,9 @@ class DaPermissions extends LitElement {
 
     // A page also checks its media folder rule, so adding a member again can fill it in.
     const paths = scopePaths(path, this.site);
+    const slots = this._slots;
     const allDuplicate = paths.every((p) => {
-      const slot = this._slots.find((s) => s.path === p);
+      const slot = slots.find((s) => s.path === p);
       const currentLower = new Set((slot?.[level] || []).map((m) => m.toLowerCase()));
       return who.every((w) => currentLower.has(w.toLowerCase()));
     });
@@ -223,8 +224,9 @@ class DaPermissions extends LitElement {
   async _confirmRemoveNow() {
     const { path, level, who } = this._confirmRemove;
     this._confirmRemove = null;
+    const paths = scopePaths(path, this.site);
     const remove = (config, p) => removeMember(config, p, level, who);
-    await this._mutate((config) => updateScope(config, scopePaths(path, this.site), remove), path);
+    await this._mutate((config) => updateScope(config, paths, remove), path);
   }
 
   // Drop the result if the org changed mid-save; a site change still applies (rules are org-wide).
@@ -279,8 +281,11 @@ class DaPermissions extends LitElement {
     }
     this._pathError = null;
     this._pathDialog = null;
-    const path = kind === 'page'
+    let path = kind === 'page'
       ? pageRulePath(this.site, result.page) : folderRulePath(this.site, result.folder);
+    // A hand-typed rule for the same page without .html: add to that one.
+    const bare = path.replace(/\.html$/, '');
+    if (kind === 'page' && this._slots.some((s) => s.path === bare)) path = bare;
     this._pendingPath = path;
     this._query = '';
     this._adding = { path, level: 'read' };
