@@ -43,7 +43,7 @@ export const validatePlaceholder = validator({ Key: required(VALIDATION.key) });
 export const blocks = libraryPanel({
   noun: 'block',
   idKey: 'name',
-  description: 'The blocks authors can add to a page from the library. Each one points to a document showing the block and its variants.',
+  description: 'Authors can add Blocks to the pages from the Library. Each one points to a document showing the block and its variants.',
   importable: true,
   validate: validateBlock,
   columns: [
