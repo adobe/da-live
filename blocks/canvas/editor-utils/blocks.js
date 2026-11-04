@@ -206,6 +206,7 @@ export function replaceBlockRange(view, from, to, dom) {
   view.dispatch(tr.scrollIntoView());
 }
 
+/** Selected block's range now; remote edits can push either selection edge onto a neighbor. */
 export function selectedBlockRange(state) {
   const { from, to, empty } = state.selection;
   if (empty) return { from, to };
