@@ -216,7 +216,8 @@ describe('file status', () => {
   it('describes a fixed file while loading, failing, missing and found', () => {
     const path = '/.da/translate.json';
     expect(text(renderFileStatus(null, opts))).to.equal('Loading…');
-    expect(text(renderFileStatus({ status: 'error', path, httpStatus: 500 }, opts))).to.include('(500)');
+    expect(text(renderFileStatus({ status: 'error', path, httpStatus: 500 }, opts)))
+      .to.equal(`Could not load ${path} The server responded with 500.`);
     expect(text(renderFileStatus({ status: 'ok', path, missing: true }, opts))).to.include('doesn\'t exist yet');
     expect(text(renderFileStatus({ status: 'ok', path, missing: false }, opts))).to.include(`Stored in ${path}`);
   });
@@ -230,6 +231,6 @@ describe('file status', () => {
 
   it('reports a library file that cannot be read', () => {
     const lib = { status: 'error', path: '/library/icons.json', httpStatus: 503 };
-    expect(text(renderLibraryStatus(library('Icons'), lib, opts))).to.include('(503)');
+    expect(text(renderLibraryStatus(library('Icons'), lib, opts))).to.include('responded with 503');
   });
 });

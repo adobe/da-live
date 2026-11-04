@@ -243,6 +243,36 @@
   white-space: nowrap;
 }
 
+/* Like Coworker's load errors: red outline, title and reason, warning icon on the right. */
+.config-alert {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s2-spacing-300);
+  padding: var(--s2-spacing-300);
+  border: 2px solid var(--s2-red-900);
+  border-radius: var(--s2-corner-radius-400);
+  color: var(--s2-gray-800);
+  font-size: var(--s2-component-s-regular-font-size);
+  line-height: var(--s2-component-s-regular-line-height);
+}
+
+.config-alert p {
+  margin: 0;
+}
+
+.config-alert .config-alert-title {
+  margin-block-end: var(--s2-spacing-100);
+  color: var(--s2-gray-900);
+  font-weight: var(--s2-heading-font-weight);
+}
+
+.config-alert-icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--s2-red-900);
+}
+
 /* Centered like Coworker's empty lists: what's missing, then how to start. */
 .config-empty {
   display: flex;

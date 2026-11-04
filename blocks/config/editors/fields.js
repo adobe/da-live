@@ -9,6 +9,18 @@ export const optionLabel = (field, value) => field.options
 export const renderCallout = (text, actions) => html`
   <div class="config-note config-setup" role="note"><p>${text}</p>${actions}</div>`;
 
+const ALERT_ICON = '/img/icons/s2-icon-alerttriangle-20-n.svg#icon';
+
+// A problem that blocks the panel (Coworker-style): what failed, why, and a warning icon.
+export const renderAlert = (title, detail) => html`
+  <div class="config-alert" role="alert">
+    <div class="config-alert-text">
+      <p class="config-alert-title">${title}</p>
+      <p>${detail}</p>
+    </div>
+    <svg class="config-alert-icon" viewBox="0 0 20 20" aria-hidden="true"><use href=${ALERT_ICON}></use></svg>
+  </div>`;
+
 // Read-only status tag. `tone` is `override` (orange) or `neutral` (grey).
 export function renderPill(label, tone) {
   return html`<nx-pills class="config-pill-${tone}" label="Status"

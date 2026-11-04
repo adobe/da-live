@@ -38,8 +38,12 @@ describe('config views', () => {
 
   it('shows loading and load failures, and nothing once loaded', () => {
     expect(text(mount(renderLoadStatus({ status: 'loading', scope: 'o/s' })))).to.include('o/s');
-    expect(text(mount(renderLoadStatus({ status: 'no-access' })))).to.include('don\'t have access');
-    expect(text(mount(renderLoadStatus({ status: 'error', httpStatus: 500 })))).to.include('500');
+    const alert = (status) => {
+      const el = mount(renderLoadStatus(status));
+      return [...el.querySelectorAll('.config-alert p')].map((p) => p.textContent.trim());
+    };
+    expect(alert({ status: 'no-access' })).to.deep.equal(['No access', 'You don\'t have access to this configuration.']);
+    expect(alert({ status: 'error', httpStatus: 500 })).to.deep.equal(['Could not load configuration', 'The server responded with 500.']);
     expect(renderLoadStatus({ status: 'ok' })).to.equal(nothing);
   });
 
