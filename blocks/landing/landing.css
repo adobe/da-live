@@ -1,0 +1,30 @@
+body.dark-scheme:has(.landing) {
+  color-scheme: dark;
+}
+
+.browse:has(> .landing) {
+  height: 100%;
+}
+
+.landing {
+  min-height: 100%;
+  background:
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--s2-gray-25) 0%, transparent) 25%,
+      var(--s2-gray-25) 100%
+    ),
+    linear-gradient(
+      to right,
+      var(--s2-red-100) 0%,
+      var(--s2-pink-200) 33.333%,
+      var(--s2-indigo-200) 66.667%,
+      var(--s2-blue-100) 100%
+    );
+}
+
+@media (forced-colors: active) {
+  .landing {
+    background: Canvas;
+  }
+}
