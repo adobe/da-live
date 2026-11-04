@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import { sendKeys } from '@web/test-runner-commands';
 import { setNx } from '../../../../../scripts/utils.js';
 
 const nextFrame = () => new Promise((r) => { setTimeout(r, 0); });
@@ -153,6 +154,25 @@ describe('da-link-dialog', () => {
     el.shadowRoot.querySelector('.nx-form-btn-secondary').click();
     await nextFrame();
     expect(cancelled).to.be.true;
+  });
+
+  it('emits close when close() is called', async () => {
+    await mount({ open: true });
+    let closed = false;
+    el.addEventListener('close', () => { closed = true; });
+    el.close();
+    await nextFrame();
+    expect(closed).to.be.true;
+  });
+
+  it('submits on Enter', async () => {
+    await mount({ open: true, href: 'https://test.com' });
+    let detail = null;
+    el.addEventListener('da-link-submit', (event) => { detail = event.detail; });
+    el.shadowRoot.querySelector('input[name="link-text"]').focus();
+    await sendKeys({ press: 'Enter' });
+    await nextFrame();
+    expect(detail).to.deep.equal({ href: 'https://test.com', text: '' });
   });
 
   it('clears _urlError when the dialog closes', async () => {

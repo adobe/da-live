@@ -34,8 +34,18 @@ class DaLinkDialog extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [formStyle, styles];
   }
 
-  _onSave() {
-    const form = this.shadowRoot.querySelector('.link-form');
+  /** Closes the dialog, which then fires `close`. */
+  close() {
+    this.shadowRoot.querySelector('nx-dialog')?.close();
+  }
+
+  /**
+   * Saves the link. Enter in a field and the Save button both submit the form.
+   * @param {SubmitEvent} event The `submit` event of the form.
+   */
+  _onSubmit(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
     const href = form.elements['link-href'].value.trim();
     if (!href) {
       this._urlError = URL_ERRORS.required;
@@ -58,10 +68,6 @@ class DaLinkDialog extends LitElement {
     }));
   }
 
-  _onCancel() {
-    this.shadowRoot.querySelector('nx-dialog').close();
-  }
-
   _onClose() {
     this._urlError = '';
   }
@@ -70,7 +76,7 @@ class DaLinkDialog extends LitElement {
     if (!this.open) return nothing;
     return html`
       <nx-dialog title="${this.title ?? 'Edit link'}" @close=${this._onClose}>
-        <form class="link-form">
+        <form id="link-form" class="link-form" @submit=${this._onSubmit}>
           <label class="nx-form-field ${this._urlError ? 'nx-field-error' : ''}">
             <span>URL</span>
             <input class="nx-input" name="link-href" type="text" autofocus placeholder="https://…"
@@ -91,9 +97,9 @@ class DaLinkDialog extends LitElement {
             </label>` : nothing}
         </form>
         <button type="button" slot="actions" class="nx-form-btn-secondary"
-          @click=${this._onCancel}>Cancel</button>
-        <button type="button" slot="actions" class="nx-form-btn-primary"
-          @click=${this._onSave}>${this.saveLabel ?? 'Save'}</button>
+          @click=${this.close}>Cancel</button>
+        <button type="submit" form="link-form" slot="actions"
+          class="nx-form-btn-primary">${this.saveLabel ?? 'Save'}</button>
       </nx-dialog>
     `;
   }
