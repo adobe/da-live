@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
+import { safeHref } from '../safe-href.js';
 
 const nx = getNx();
 await import(`${nx}/blocks/shared/dialog/dialog.js`);
@@ -9,6 +10,12 @@ const [formStyle, styles] = await Promise.all([
   loadStyle(`${getNx2()}/styles/form.css`),
   loadStyle(import.meta.url),
 ]);
+
+/** The errors the URL shows. */
+const URL_ERRORS = {
+  required: 'URL is required',
+  unsafe: 'Use a relative, http(s), mailto or tel link.',
+};
 
 class DaLinkDialog extends LitElement {
   static properties = {
@@ -31,11 +38,11 @@ class DaLinkDialog extends LitElement {
     const form = this.shadowRoot.querySelector('.link-form');
     const href = form.elements['link-href'].value.trim();
     if (!href) {
-      this._urlError = 'URL is required';
+      this._urlError = URL_ERRORS.required;
       return;
     }
-    if (/^(javascript|data|vbscript):/i.test(href)) {
-      this._urlError = 'Invalid URL protocol';
+    if (!safeHref(href)) {
+      this._urlError = URL_ERRORS.unsafe;
       return;
     }
     this._urlError = '';
