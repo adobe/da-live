@@ -1,3 +1,10 @@
+## [1.18.1](https://github.com/adobe/da-live/compare/v1.18.0...v1.18.1) (2026-11-04)
+
+
+### Bug Fixes
+
+* **ew:** avoid opening comparison with versions panel ([#1644](https://github.com/adobe/da-live/issues/1644)) ([2a2a361](https://github.com/adobe/da-live/commit/2a2a361e02010cb73adf1200d9b7a725736af497))
+
 # [1.18.0](https://github.com/adobe/da-live/compare/v1.17.2...v1.18.0) (2026-11-03)
 
 
