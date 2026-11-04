@@ -113,6 +113,129 @@ describe('EwToolPanel pinned panels', () => {
     el.shadowRoot.querySelector('.tool-panel-pin').click();
     await el.updateComplete;
   };
+  const pinAll = async () => {
+    for (const { id } of views) {
+      await el.showPanel(id);
+      await el.updateComplete;
+      await pin();
+    }
+  };
+  const dragEvent = (type, dataTransfer, clientX = 0) => new DragEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    dataTransfer,
+    clientX,
+  });
+
+  it('reorders tabs by dropping before or after a tab and restores the saved order', async () => {
+    await pinAll();
+    const activeContent = el._loaded.assets;
+    const source = tabs()[0];
+    const transfer = new DataTransfer();
+    source.dispatchEvent(dragEvent('dragstart', transfer));
+    expect(transfer.getData('text/plain')).to.equal('');
+    expect(transfer.getData('application/x-da-panel-tab')).to.equal('files');
+    const last = tabs()[2].parentElement;
+    const end = last.getBoundingClientRect().right - 1;
+    const over = dragEvent('dragover', transfer, end);
+    last.dispatchEvent(over);
+    await el.updateComplete;
+    expect(over.defaultPrevented).to.equal(true);
+    expect(last.dataset.dropSide).to.equal('after');
+    last.dispatchEvent(dragEvent('drop', transfer, end));
+    await el.updateComplete;
+    expect(tabs().map((button) => button.textContent)).to.deep.equal(['blocks', 'assets', 'files']);
+    expect(tabs()[2]).to.equal(source);
+    expect(el.activeId).to.equal('assets');
+    expect(el._loaded.assets).to.equal(activeContent);
+
+    source.dispatchEvent(dragEvent('dragstart', transfer));
+    const target = tabs()[0].parentElement;
+    target.dispatchEvent(dragEvent('drop', transfer, target.getBoundingClientRect().left));
+    await el.updateComplete;
+    expect(tabs().map((button) => button.textContent)).to.deep.equal(['files', 'blocks', 'assets']);
+    expect(loads).to.deep.equal(['files', 'blocks', 'assets']);
+    expect(pickerValues()).to.deep.equal([]);
+    source.dispatchEvent(dragEvent('dragstart', transfer));
+    last.dispatchEvent(dragEvent('drop', transfer, end));
+    await el.updateComplete;
+    el.remove();
+    el = document.createElement('ew-tool-panel');
+    el.pendingView = 'assets';
+    el.views = views;
+    document.body.append(el);
+    await el.updateComplete;
+    await el.updateComplete;
+    expect(tabs().map((button) => button.textContent)).to.deep.equal(['blocks', 'assets', 'files']);
+  });
+
+  it('ignores external drops and leaves pin order unchanged when a drag is cancelled', async () => {
+    await pinAll();
+    const transfer = new DataTransfer();
+    transfer.setData('text/plain', 'files');
+    const target = tabs()[2].parentElement;
+    const x = target.getBoundingClientRect().right - 1;
+    const external = dragEvent('dragover', transfer, x);
+    target.dispatchEvent(external);
+    target.dispatchEvent(dragEvent('drop', transfer, x));
+    expect(external.defaultPrevented).to.equal(false);
+    tabs()[0].dispatchEvent(dragEvent('dragstart', transfer));
+    target.dispatchEvent(dragEvent('dragover', transfer, x));
+    await el.updateComplete;
+    tabs()[0].dispatchEvent(dragEvent('dragend', transfer));
+    await el.updateComplete;
+    expect(target.dataset.dropSide).to.equal('');
+    target.dispatchEvent(dragEvent('drop', transfer, x));
+    expect(el._pinnedIds).to.deep.equal(['files', 'blocks', 'assets']);
+    expect(JSON.parse(sessionStorage.getItem(TOOL_PANEL_PINNED_VIEWS_KEY)))
+      .to.deep.equal(['files', 'blocks', 'assets']);
+  });
+
+  it('uses a rounded drag image with transparent corners and removes it when dragging ends', async () => {
+    await pinAll();
+    const sheet = new CSSStyleSheet();
+    const response = await fetch('/blocks/canvas/ew-tool-panel/tool-panel.css');
+    await sheet.replace(await response.text());
+    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
+    el.style.setProperty('--s2-corner-radius-400', '12px');
+    el.style.setProperty('--s2-gray-900', '#131313');
+    el.style.setProperty('--s2-gray-50', '#f8f8f8');
+    const source = tabs()[2];
+    const transfer = new DataTransfer();
+    source.dispatchEvent(dragEvent('dragstart', transfer));
+    const image = el.shadowRoot.querySelector('.tool-panel-drag-image');
+    const ctx = image.getContext('2d');
+    expect(ctx.getImageData(0, 0, 1, 1).data[3]).to.equal(0);
+    expect(ctx.getImageData(Math.floor(image.width / 2), 1, 1, 1).data[3]).to.equal(255);
+    source.dispatchEvent(dragEvent('dragend', transfer));
+    expect(el.shadowRoot.querySelector('.tool-panel-drag-image')).to.equal(null);
+  });
+
+  it('rejects a drop after the panel changes page context', async () => {
+    await pinAll();
+    const transfer = new DataTransfer();
+    tabs()[0].dispatchEvent(dragEvent('dragstart', transfer));
+    el.contextKey = 'another/page';
+    await el.updateComplete;
+    const target = tabs()[2].parentElement;
+    target.dispatchEvent(dragEvent('drop', transfer, target.getBoundingClientRect().right - 1));
+    expect(el._pinnedIds).to.deep.equal(['files', 'blocks', 'assets']);
+    tabs()[0].dispatchEvent(dragEvent('dragend', transfer));
+  });
+
+  it('supports keyboard reordering without activating the moved tab or crossing the edges', async () => {
+    await pinAll();
+    const source = tabs()[0];
+    source.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', altKey: true, bubbles: true, cancelable: true }));
+    await el.updateComplete;
+    expect(tabs().map((button) => button.textContent)).to.deep.equal(['blocks', 'files', 'assets']);
+    expect(el.shadowRoot.activeElement).to.equal(source);
+    expect(el.activeId).to.equal('assets');
+    source.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', altKey: true, bubbles: true, cancelable: true }));
+    await el.updateComplete;
+    source.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', altKey: true, bubbles: true, cancelable: true }));
+    expect(el._pinnedIds).to.deep.equal(['files', 'blocks', 'assets']);
+  });
 
   it('moves the active option into a focused tab without reloading its content', async () => {
     const content = el._loaded.files;
@@ -164,6 +287,45 @@ describe('EwToolPanel pinned panels', () => {
     expect(opened).to.equal(1);
     expect(el.activeId).to.equal('files');
     expect(tabs()).to.have.lengthOf(1);
+  });
+
+  it('blocks a fifth pin with a tooltip but allows unpinning to free a slot', async () => {
+    el.views = [
+      ...views,
+      ...['outline', 'versions'].map((id) => ({ ...views[0], id, label: id })),
+    ];
+    await el.updateComplete;
+    for (const id of ['files', 'blocks', 'assets', 'outline']) {
+      await el.showPanel(id);
+      await el.updateComplete;
+      await pin();
+    }
+    expect(tabs()).to.have.lengthOf(4);
+    await el.showPanel('versions');
+    await el.updateComplete;
+    const button = el.shadowRoot.querySelector('.tool-panel-pin');
+    expect(button.getAttribute('aria-disabled')).to.equal('true');
+    expect(button.title).to.equal('Maximum of 4 pins reached. Unpin a tab to pin another.');
+    button.click();
+    await el._togglePin('versions');
+    expect(tabs()).to.have.lengthOf(4);
+    expect(pickerValues()).to.deep.equal(['versions']);
+    expect(JSON.parse(sessionStorage.getItem(TOOL_PANEL_PINNED_VIEWS_KEY)))
+      .to.deep.equal(['files', 'blocks', 'assets', 'outline']);
+
+    await el.showPanel('files');
+    await el.updateComplete;
+    const unpin = el.shadowRoot.querySelector('.tool-panel-unpin');
+    expect(unpin.getAttribute('aria-disabled')).to.equal('false');
+    unpin.click();
+    await el.updateComplete;
+    await el.showPanel('versions');
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('.tool-panel-pin').getAttribute('aria-disabled'))
+      .to.equal('false');
+    await pin();
+    expect(tabs().map((tab) => tab.textContent))
+      .to.deep.equal(['blocks', 'assets', 'outline', 'versions']);
   });
 
   it('unpins the active tab back into the selector without changing the open panel', async () => {

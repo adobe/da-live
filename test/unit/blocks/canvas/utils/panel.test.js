@@ -58,6 +58,13 @@ describe('pinned tool panel preferences', () => {
     }
   });
 
+  it('restores at most four unique valid pins from older sessions', () => {
+    sessionStorage.setItem(TOOL_PANEL_PINNED_VIEWS_KEY, JSON.stringify([
+      'blocks', null, 'blocks', 'files', '', 'assets', 'outline', 'versions',
+    ]));
+    expect(readPinnedToolPanelViews()).to.deep.equal(['blocks', 'files', 'assets', 'outline']);
+  });
+
   it('continues working when session storage is blocked', () => {
     const get = stub(Storage.prototype, 'getItem').throws(new Error('blocked'));
     const set = stub(Storage.prototype, 'setItem').throws(new Error('blocked'));

@@ -2,6 +2,7 @@ import { getNxEWFlags } from '../../../scripts/utils.js';
 
 export const TOOL_PANEL_ACTIVE_VIEW_KEY = 'nx-tool-panel-active-view';
 export const TOOL_PANEL_PINNED_VIEWS_KEY = 'nx-tool-panel-pinned-views';
+export const MAX_PINNED_TOOL_PANEL_VIEWS = 4;
 
 const CONFIG_FLAG_KEY = 'ew.canvasDefaultPanel';
 
@@ -24,7 +25,10 @@ export function persistToolPanelView(viewId) {
 export function readPinnedToolPanelViews() {
   try {
     const ids = JSON.parse(sessionStorage.getItem(TOOL_PANEL_PINNED_VIEWS_KEY));
-    return Array.isArray(ids) ? [...new Set(ids.filter((id) => typeof id === 'string' && id))] : [];
+    return Array.isArray(ids)
+      ? [...new Set(ids.filter((id) => typeof id === 'string' && id))]
+        .slice(0, MAX_PINNED_TOOL_PANEL_VIEWS)
+      : [];
   } catch {
     return [];
   }

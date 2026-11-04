@@ -40,7 +40,15 @@
   padding: 4px;
 }
 
+.tool-panel-drag-image {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  pointer-events: none;
+}
+
 .tool-panel-tab-item {
+  position: relative;
   display: flex;
   align-items: center;
   flex-shrink: 0;
@@ -54,6 +62,26 @@
   &[data-active="true"] {
     background-color: var(--s2-gray-900);
     color: var(--s2-gray-50);
+  }
+
+  &[data-drop-side="before"]::after,
+  &[data-drop-side="after"]::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    border-radius: 1px;
+    background: var(--s2-blue-800);
+    pointer-events: none;
+  }
+
+  &[data-drop-side="before"]::after {
+    left: calc(-1px - var(--s2-spacing-75) / 2);
+  }
+
+  &[data-drop-side="after"]::after {
+    right: calc(-1px - var(--s2-spacing-75) / 2);
   }
 }
 
@@ -100,6 +128,7 @@
   font-size: var(--s2-component-s-regular-font-size);
   line-height: var(--s2-component-s-regular-line-height);
   color: inherit;
+  user-select: none;
 
   &:hover {
     background: transparent;
@@ -117,6 +146,15 @@
 .tool-panel-pin,
 .tool-panel-unpin {
   color: var(--s2-gray-900);
+}
+
+.tool-panel-pin[aria-disabled="true"] {
+  color: var(--s2-gray-500);
+  cursor: not-allowed;
+
+  &:hover {
+    background: transparent;
+  }
 }
 
 .tool-panel-content {
