@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { sendKeys } from '@web/test-runner-commands';
+import { sendKeys, sendMouse } from '@web/test-runner-commands';
 import '../../setup-nx.js';
 import '../../../../blocks/landing/tile.js';
 
@@ -25,10 +25,13 @@ describe('landing tile', () => {
       --s2-component-xl-regular-font-size: 18px;
       --s2-body-line-height: 1.5;
       --s2-gray-25: light-dark(#fff, #111);
+      --s2-gray-50: light-dark(#f8f8f8, #1b1b1b);
       --s2-gray-75: light-dark(#f3f3f3, #222);
+      --s2-gray-100: light-dark(#e9e9e9, #2c2c2c);
       --s2-gray-900: light-dark(#292929, #eee);
       --s2-gray-600: light-dark(#717171, #aaa);
       --s2-blue-800: light-dark(#0265dc, #54a3ff);
+      --s2-drop-shadow-elevated: 0 4px 12px light-dark(rgb(0 0 0 / 8%), rgb(0 0 0 / 24%));
       width: 348px;
     `;
     document.body.append(tile);
@@ -96,15 +99,18 @@ describe('landing tile', () => {
     expect(parseFloat(getComputedStyle(description).fontSize)).to.equal(smallText + 2);
   });
 
-  it('uses shared palette and surface tokens instead of fixed component colors', async () => {
+  it('uses shared palette, surface and shadow tokens in light and dark mode', async () => {
     tile.style.setProperty('--s2-turquoise-200', 'light-dark(#d1f5f5, #002529)');
     tile.style.setProperty('--s2-purple-200', 'light-dark(#f4ebfc, #320060)');
     const surface = tile.shadowRoot.querySelector('.tile');
     const icon = tile.shadowRoot.querySelector('.icon');
     tile.style.colorScheme = 'light';
+    const lightShadow = getComputedStyle(surface).boxShadow;
+    expect(lightShadow).not.to.equal('none');
     expect(getComputedStyle(surface).backgroundColor).to.equal('rgb(255, 255, 255)');
     expect(getComputedStyle(icon).backgroundColor).to.equal('rgb(209, 245, 245)');
     tile.style.colorScheme = 'dark';
+    expect(getComputedStyle(surface).boxShadow).not.to.equal(lightShadow);
     expect(getComputedStyle(surface).backgroundColor).to.equal('rgb(34, 34, 34)');
     expect(getComputedStyle(icon).backgroundColor).to.equal('rgb(0, 37, 41)');
     tile.tone = 'purple';
@@ -114,6 +120,8 @@ describe('landing tile', () => {
     tile.style.setProperty('--s2-gray-75', 'rgb(40 40 40)');
     expect(getComputedStyle(icon).backgroundColor).to.equal('rgb(80, 40, 100)');
     expect(getComputedStyle(surface).backgroundColor).to.equal('rgb(40, 40, 40)');
+    tile.style.setProperty('--s2-drop-shadow-elevated', 'none');
+    expect(getComputedStyle(surface).boxShadow).to.equal('none');
   });
 
   it('activates a native action button with Enter or Space, but never when disabled', async () => {
@@ -134,26 +142,39 @@ describe('landing tile', () => {
     expect(tile.shadowRoot.querySelector('a')).to.equal(null);
   });
 
-  it('keeps nested clicks native and labels their telemetry source without adding a click collector', async () => {
-    tile.href = '/?browse=2#/org/site';
-    tile.actionId = 'browse';
-    await tile.updateComplete;
+  it('targets action classes for nested clicks without repeated RUM attributes', async () => {
     const clicks = [];
-    tile.addEventListener('click', (event) => {
+    tile.shadowRoot.addEventListener('click', (event) => {
       event.preventDefault();
-      clicks.push(event);
+      clicks.push(event.target);
     });
-    tile.shadowRoot.querySelector('h3').click();
-    expect(clicks).to.have.length(1);
-    const link = tile.shadowRoot.querySelector('a');
-    expect(link.classList.contains('landing-action-browse')).to.equal(true);
-    expect([link, ...link.querySelectorAll('*')].every(
-      (element) => element.dataset.rumSource === 'landing-action-browse',
-    )).to.equal(true);
+    for (const action of [false, true]) {
+      tile.href = action ? undefined : '/?browse=2#/org/site';
+      tile.action = action;
+      tile.actionId = action ? 'create-page' : 'browse';
+      await tile.updateComplete;
+      const surface = tile.shadowRoot.querySelector('a, button');
+      expect(surface.classList[0]).to.equal(`landing-action-${tile.actionId}`);
+      for (const selector of ['.icon', 'h3', 'p']) {
+        const bounds = tile.shadowRoot.querySelector(selector).getBoundingClientRect();
+        await sendMouse({
+          type: 'click',
+          position: [
+            Math.round(bounds.x + bounds.width / 2),
+            Math.round(bounds.y + bounds.height / 2),
+          ],
+        });
+        expect(clicks.at(-1)).to.equal(surface);
+      }
+      surface.focus();
+      await sendKeys({ press: 'Enter' });
+      expect(clicks.at(-1)).to.equal(surface);
+    }
+    expect(clicks).to.have.length(8);
+    expect(tile.shadowRoot.querySelector('[data-rum-source]')).to.equal(null);
     tile.actionId = undefined;
     await tile.updateComplete;
-    expect(link.classList.contains('landing-action-browse')).to.equal(false);
-    expect(tile.shadowRoot.querySelector('[data-rum-source]')).to.equal(null);
+    expect(tile.shadowRoot.querySelector('button').className).to.equal('tile');
   });
 });
 
