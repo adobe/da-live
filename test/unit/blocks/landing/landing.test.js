@@ -56,7 +56,7 @@ describe('landing background', () => {
     expect(computed.backgroundImage).to.match(
       /^linear-gradient\(.*25%, rgb\(255, 255, 255\) 85%\), linear-gradient\(to right,/,
     );
-    ['rgb(255, 246, 245) 0%', 'rgb(255, 246, 245) 30%', 'rgb(255, 232, 247) 40%',
+    ['rgb(255, 246, 245) 0%', 'rgb(255, 246, 245) 25%', 'rgb(255, 232, 247) 40%',
       'rgb(235, 238, 255) 50%', 'rgb(245, 249, 255) 100%']
       .forEach((color) => expect(computed.backgroundImage).to.include(color));
   });
