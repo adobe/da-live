@@ -176,7 +176,6 @@ describe('da-list render', () => {
     expect(action.classList.contains('nx-btn-primary')).to.be.true;
     expect(action.textContent.trim()).to.equal('Open Profile');
 
-    // Mirror da-nx: <nx-nav> shadow root -> <nx-profile> shadow root -> [popover]
     const nav = document.createElement('nx-nav');
     const profile = document.createElement('nx-profile');
     const menu = document.createElement('div');

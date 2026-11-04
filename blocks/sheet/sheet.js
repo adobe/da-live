@@ -122,8 +122,6 @@ customElements.define('da-sheet-panes', DaSheetPanes);
 
 let initSheet;
 
-// Swaps the grid for a message when the file can't be read. The side panel
-// (preview / history) is hidden too, since there is nothing to act on.
 export function showLoadStatus({ errMsg, wrapper, daSheet, daSheetPanes }) {
   daSheet.hidden = !!errMsg;
   daSheetPanes.hidden = !!errMsg;

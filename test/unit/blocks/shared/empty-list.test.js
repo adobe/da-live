@@ -35,7 +35,6 @@ describe('renderEmptyList', () => {
   });
 
   it('opens the profile menu when Open Profile is clicked', () => {
-    // Mirror da-nx: <nx-nav> shadow root -> <nx-profile> shadow root -> [popover]
     const nav = document.createElement('nx-nav');
     const profile = document.createElement('nx-profile');
     const menu = document.createElement('div');

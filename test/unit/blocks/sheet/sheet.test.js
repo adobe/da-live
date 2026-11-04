@@ -1,6 +1,5 @@
 import { expect } from '@esm-bundle/chai';
 
-// sheet.js resolves nx at import time.
 const { setNx } = await import('../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 

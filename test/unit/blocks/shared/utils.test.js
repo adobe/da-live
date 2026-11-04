@@ -1113,7 +1113,6 @@ describe('openProfileMenu', () => {
 
   afterEach(() => header?.remove());
 
-  // Mirrors the nx / nx2 DOM: <nx-nav> shadow root -> <nx-profile> shadow root -> [popover]
   function mountProfile() {
     header = document.createElement('header');
     const nav = document.createElement('div');
