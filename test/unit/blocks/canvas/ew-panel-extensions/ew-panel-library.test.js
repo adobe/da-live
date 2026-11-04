@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { stub } from 'sinon';
+import { spy, stub } from 'sinon';
 import { NodeSelection, TextSelection } from 'da-y-wrapper';
 import { setNx, getNx } from '../../../../../scripts/utils.js';
 import { getExtensionsBridge } from '../../../../../blocks/canvas/editor-utils/extensions-bridge.js';
@@ -520,15 +520,20 @@ describe('Ew panel library blocks sidebar', () => {
     await el._loadItems();
     const dom = document.createElement('table');
     dom.innerHTML = '<tr><td>Hero</td></tr>';
-    el._items = [{ name: 'Hero', path: '/hero' }, { name: 'Cards', path: '/cards' }];
-    el._blockVariants = new Map([
+    const variants = new Map([
       ['/hero', [{ name: 'Hero', variants: 'dark', description: 'Full bleed', dom }]],
       ['/cards', [{ name: 'Cards', variants: 'grid', dom }]],
     ]);
+    el._blockVariants = variants;
+    el._items = [{ name: 'Hero', path: '/hero' }, { name: 'Cards', path: '/cards' }]
+      .map((block) => ({ ...block, loadVariants: Promise.resolve(variants.get(block.path)) }));
     await el.updateComplete;
   });
 
-  afterEach(() => el.remove());
+  afterEach(() => {
+    el.remove();
+    document.querySelector('ew-block-library-modal')?.remove();
+  });
 
   it('expands groups and filters automatically expanded variants by metadata', async () => {
     el.shadowRoot.querySelector('.ext-group-title').click();
@@ -551,6 +556,42 @@ describe('Ew panel library blocks sidebar', () => {
     await el.updateComplete;
     expect(el.shadowRoot.textContent).to.include('No matching blocks.');
     expect(el.shadowRoot.querySelectorAll('.ext-group')).to.have.lengthOf(0);
+  });
+
+  it('keeps the selected block highlighted when collapsing its variants', async () => {
+    const button = el.shadowRoot.querySelector('.ext-group-title');
+    button.click();
+    await el.updateComplete;
+    expect(button.closest('.ext-group-header').classList.contains('is-selected')).to.be.true;
+    expect(el.shadowRoot.querySelector('.ext-expand-icon').classList.contains('is-expanded')).to.be.true;
+    button.click();
+    await el.updateComplete;
+    expect(button.closest('.ext-group-header').classList.contains('is-selected')).to.be.true;
+    expect(button.getAttribute('aria-expanded')).to.equal('false');
+    expect(el.shadowRoot.querySelector('.ext-variant-list')).to.equal(null);
+  });
+
+  it('opens the full library at the chosen block without filtering out other blocks', async () => {
+    el._search = 'cards';
+    await el.updateComplete;
+    const insert = stub(el, '_insertBlock');
+    const open = spy(el, '_openBlockLibrary');
+    const button = el.shadowRoot.querySelector('.ext-block-preview');
+    expect(button.querySelector('use').getAttribute('href'))
+      .to.equal('/img/icons/s2-icon-experiencepreview-20-n.svg#icon');
+    button.click();
+    await open.firstCall.returnValue;
+    const modal = document.querySelector('ew-block-library-modal');
+    expect(modal).to.exist;
+    await modal.updateComplete;
+    await modal.updateComplete;
+    expect(modal.shadowRoot.querySelectorAll('.modal-tree-block')).to.have.lengthOf(2);
+    expect(modal.shadowRoot.querySelector('.is-selected').textContent.trim()).to.equal('Cards');
+    expect(modal.shadowRoot.querySelectorAll('.modal-tree-block')[1].getAttribute('aria-expanded'))
+      .to.equal('true');
+    expect(el.shadowRoot.querySelector('.ext-preview-dialog')).to.equal(null);
+    modal.shadowRoot.querySelector('.modal-tree-add').click();
+    expect(insert.calledOnceWithExactly({ dom: el._blockVariants.get('/cards')[0].dom })).to.be.true;
   });
 
   it('starts a host drop session only after moving beyond the drag threshold', async () => {
