@@ -18,13 +18,14 @@ body:has(.landing[data-theme="light"]) {
     linear-gradient(
       to bottom,
       color-mix(in srgb, var(--s2-gray-25) 0%, transparent) 25%,
-      var(--s2-gray-25) 50%
+      var(--s2-gray-25) 85%
     ),
     linear-gradient(
       to right,
       var(--s2-red-100) 0%,
-      var(--s2-pink-200) 33.333%,
-      var(--s2-indigo-200) 66.667%,
+      var(--s2-red-100) 30%,
+      var(--s2-pink-200) 40%,
+      var(--s2-indigo-200) 50%,
       var(--s2-blue-100) 100%
     );
 }
