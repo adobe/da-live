@@ -9,6 +9,7 @@ styles.replaceSync(css);
 
 describe('landing background', () => {
   let el;
+  let container;
   let originalStyles;
 
   beforeEach(() => {
@@ -16,18 +17,21 @@ describe('landing background', () => {
     document.adoptedStyleSheets = [...originalStyles, styles];
     el = document.createElement('div');
     el.className = 'browse';
-    el.style.height = '400px';
+    container = document.createElement('div');
+    container.style.height = '400px';
+    container.innerHTML = '<div class="section"><div class="block-content"></div></div>';
+    container.querySelector('.block-content').append(el);
     el.style.setProperty('--s2-red-100', '#fff6f5');
     el.style.setProperty('--s2-pink-200', '#ffe8f7');
     el.style.setProperty('--s2-indigo-200', '#ebeeff');
     el.style.setProperty('--s2-blue-100', '#f5f9ff');
     el.style.setProperty('--s2-gray-25', '#fff');
     el.innerHTML = '<picture><img alt="Old background"></picture>';
-    document.body.append(el);
+    document.body.append(container);
   });
 
   afterEach(() => {
-    el.remove();
+    container.remove();
     document.adoptedStyleSheets = originalStyles;
     document.body.classList.remove('dark-scheme');
   });

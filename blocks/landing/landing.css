@@ -2,6 +2,8 @@ body.dark-scheme:has(.landing) {
   color-scheme: dark;
 }
 
+.section:has(.landing),
+.block-content:has(.landing),
 .browse:has(> .landing) {
   height: 100%;
 }
