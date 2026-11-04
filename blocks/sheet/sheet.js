@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getPathDetails from '../shared/pathDetails.js';
-import { getNx } from '../../scripts/utils.js';
+import { getNx, getNx2 } from '../../scripts/utils.js';
 import { openProfileMenu, NOT_PERMITTED_HINT } from '../shared/utils.js';
 import '../edit/da-title/da-title.js';
 import { getData } from './utils/index.js';
@@ -8,8 +8,11 @@ import { staleCheck, showDaDialog, restoreVersion } from './utils/utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
-const blockStyle = await loadStyle(import.meta.url);
-document.adoptedStyleSheets = [...document.adoptedStyleSheets, blockStyle];
+const [buttonStyle, blockStyle] = await Promise.all([
+  loadStyle(`${getNx2()}/styles/buttons.css`),
+  loadStyle(import.meta.url),
+]);
+document.adoptedStyleSheets = [...document.adoptedStyleSheets, buttonStyle, blockStyle];
 
 const style = await loadStyle('/blocks/sheet/da-sheet-panes.css');
 
@@ -222,12 +225,15 @@ export default async function init(el) {
     message.textContent = errMsg;
     notPermitted.replaceChildren(message);
     if (errMsg === 'Not permitted') {
-      const hint = document.createElement('button');
-      hint.type = 'button';
+      const hint = document.createElement('p');
       hint.className = 'da-sheet-not-permitted-hint';
       hint.textContent = NOT_PERMITTED_HINT;
-      hint.addEventListener('click', () => openProfileMenu());
-      notPermitted.append(hint);
+      const action = document.createElement('button');
+      action.type = 'button';
+      action.className = 'da-sheet-not-permitted-action nx-btn-accent';
+      action.textContent = 'Open Profile';
+      action.addEventListener('click', () => openProfileMenu());
+      notPermitted.append(hint, action);
     }
   });
 

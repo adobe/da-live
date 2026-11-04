@@ -63,18 +63,12 @@ da-list-item.is-expanded::after {
 }
 
 .empty-list-hint {
-  padding: 0;
-  border: none;
-  background: none;
+  margin: 0;
   color: var(--s2-gray-700);
-  font: inherit;
-  text-decoration: underline;
-  cursor: pointer;
+}
 
-  &:hover,
-  &:focus-visible {
-    color: var(--s2-gray-900);
-  }
+.empty-list-action {
+  margin-top: var(--s2-spacing-100);
 }
 
 .da-browse-panel-header {

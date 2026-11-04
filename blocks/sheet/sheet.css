@@ -28,23 +28,13 @@ body {
   text-align: center;
 }
 
-.da-sheet-not-permitted-message {
+.da-sheet-not-permitted-message,
+.da-sheet-not-permitted-hint {
   margin: 0;
 }
 
-.da-sheet-not-permitted-hint {
-  padding: 0;
-  border: none;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-.da-sheet-not-permitted-hint:hover,
-.da-sheet-not-permitted-hint:focus-visible {
-  color: light-dark(#222, #ddd);
+.da-sheet-not-permitted-action {
+  margin-top: 8px;
 }
 
 .da-version-wrapper {

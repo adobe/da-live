@@ -911,8 +911,9 @@ export default class DaListBase extends LitElement {
 
   renderEmpty() {
     const hint = this._emptyMessage === 'Not permitted'
-      ? html`<button type="button" class="empty-list-hint" @click=${() => openProfileMenu()}>
-          ${NOT_PERMITTED_HINT}
+      ? html`<p class="empty-list-hint">${NOT_PERMITTED_HINT}</p>
+        <button type="button" class="empty-list-action nx-btn-accent" @click=${() => openProfileMenu()}>
+          Open Profile
         </button>`
       : nothing;
     return html`<div class="empty-list"><h3>${this._emptyMessage}</h3>${hint}</div>`;

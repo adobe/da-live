@@ -9,8 +9,9 @@ import '../../../shared/da-file-item/da-file-item.js';
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const [FORM, STYLE] = await Promise.all([
+const [FORM, BUTTONS, STYLE] = await Promise.all([
   loadStyle(`${getNx2()}/styles/form.css`),
+  loadStyle(`${getNx2()}/styles/buttons.css`),
   loadStyle(import.meta.url),
 ]);
 
@@ -33,7 +34,7 @@ function sortTypeLabels(labels) {
 }
 
 export default class DaList extends DaListBase {
-  static sheets = [FORM, STYLE];
+  static sheets = [FORM, BUTTONS, STYLE];
 
   static properties = {
     ...DaListBase.properties,

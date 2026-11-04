@@ -6,10 +6,11 @@ import '../da-list-item/da-list-item.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const SHARED = await loadStyle(`${getNx2()}/styles/form.css`);
+const BUTTONS = await loadStyle(`${getNx2()}/styles/buttons.css`);
 const STYLE = await loadStyle(import.meta.url);
 
 export default class DaList extends DaListBase {
-  static sheets = [SHARED, STYLE];
+  static sheets = [SHARED, BUTTONS, STYLE];
 
   static properties = {
     ...DaListBase.properties,
