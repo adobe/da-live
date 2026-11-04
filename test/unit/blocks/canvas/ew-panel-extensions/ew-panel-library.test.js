@@ -594,6 +594,18 @@ describe('Ew panel library blocks sidebar', () => {
     expect(insert.calledOnceWithExactly({ dom: el._blockVariants.get('/cards')[0].dom })).to.be.true;
   });
 
+  it('inserts a variant only from the add button, not the variant title', async () => {
+    const insert = stub(el, '_insertBlock');
+    el._expandedBlock = '/hero';
+    await el.updateComplete;
+
+    el.shadowRoot.querySelector('.ext-variant-title').click();
+    expect(insert.called).to.be.false;
+
+    el.shadowRoot.querySelector('[aria-label="Add Hero to page"]').click();
+    expect(insert.calledOnceWithExactly(el._blockVariants.get('/hero')[0])).to.be.true;
+  });
+
   it('starts a host drop session only after moving beyond the drag threshold', async () => {
     const previous = getExtensionsBridge().view;
     const view = makeRealView({ type: 'doc', content: [{ type: 'paragraph' }] });

@@ -286,7 +286,7 @@ class EwPanelLibrary extends LitElement {
         ${variants.filter((v) => this._matchesBlock(block, v)).map((v) => html`
           <li class="ext-variant-item">
             <div class="ext-variant-header">
-              <button class="ext-variant-title" @click=${() => this._insertBlock(v)}
+              <button class="ext-variant-title"
                 @pointerdown=${(event) => this._onBlockPointerDown(event, v)}>
                 <span class="ext-variant-name">${v.name}${v.variants
     ? html` <span class="ext-variant-subtitle">${v.variants}</span>` : nothing}</span>
