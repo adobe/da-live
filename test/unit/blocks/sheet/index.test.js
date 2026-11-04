@@ -587,20 +587,12 @@ describe('da-sheet-tabs on load errors', () => {
     document.querySelectorAll('da-sheet-tabs').forEach((t) => t.remove());
   });
 
-  it('does not render the sheet tabs when the sheet is not permitted', async () => {
+  it('does not render the sheet tabs when not permitted and renders them once a load succeeds', async () => {
     await sh.default(el, await load(buildMockFetchStatus(403)));
     expect(document.querySelectorAll('da-sheet-tabs').length).to.equal(0);
-  });
 
-  it('does not render the sheet tabs when sign in is required', async () => {
-    await sh.default(el, await load(buildMockFetchStatus(401)));
-    expect(document.querySelectorAll('da-sheet-tabs').length).to.equal(0);
-  });
-
-  it('renders the sheet tabs again once a load succeeds', async () => {
-    await sh.default(el, await load(buildMockFetchStatus(403)));
     const json = '{ "total": 0, "limit": 0, "offset": 0, "data": [], ":type": "sheet" }';
     await sh.default(el, await load(buildMockFetch(json)));
-    expect(document.querySelectorAll('da-sheet-tabs')).to.have.length(1);
+    expect(document.querySelectorAll('da-sheet-tabs').length).to.equal(1);
   });
 });

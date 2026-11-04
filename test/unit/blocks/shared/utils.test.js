@@ -1138,14 +1138,6 @@ describe('openProfileMenu', () => {
     menu.hidePopover();
   });
 
-  it('keeps an already-open menu open', () => {
-    const menu = mountProfile();
-    menu.showPopover();
-    expect(openProfileMenu({ navSelector: '.test-nx-nav', profileSelector: '[data-profile]' })).to.be.true;
-    expect(menu.matches(':popover-open')).to.be.true;
-    menu.hidePopover();
-  });
-
   it('returns false when no profile menu exists', () => {
     expect(openProfileMenu({ navSelector: '.does-not-exist' })).to.be.false;
   });

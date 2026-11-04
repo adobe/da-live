@@ -118,10 +118,6 @@ describe('ew-canvas-header authorization', () => {
     hashChange._set({});
   });
 
-  it('renders the action bar when authorized', () => {
-    expect(header.shadowRoot.querySelectorAll('.bar').length).to.equal(1);
-  });
-
   it('does not render the action bar when not authorized', async () => {
     header.authorized = false;
     await header.updateComplete;

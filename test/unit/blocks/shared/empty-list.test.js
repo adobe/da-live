@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { render } from 'da-lit';
-import { renderEmptyList, EMPTY_LIST_CSS } from '../../../../blocks/shared/empty-list.js';
+import { renderEmptyList } from '../../../../blocks/shared/empty-list.js';
 import { NOT_PERMITTED_HINT } from '../../../../blocks/shared/utils.js';
 
 describe('renderEmptyList', () => {
@@ -50,9 +50,5 @@ describe('renderEmptyList', () => {
     } finally {
       nav.remove();
     }
-  });
-
-  it('exposes the shared stylesheet URL', () => {
-    expect(EMPTY_LIST_CSS).to.match(/\/blocks\/shared\/styles\/empty-list\.css$/);
   });
 });

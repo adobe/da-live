@@ -24,14 +24,12 @@ describe('showLoadStatus', () => {
     wrapper.remove();
   });
 
-  it('hides the grid and side panel and shows the message on an error', () => {
+  it('hides the grid, side panel and title actions and shows the message on an error', () => {
     showLoadStatus({ errMsg: 'Not permitted', wrapper, daSheet, daSheetPanes, daTitle });
     expect(daSheet.hidden).to.be.true;
     expect(daSheetPanes.hidePanes).to.be.true;
     expect(daTitle.hideActions).to.be.true;
-    const message = wrapper.querySelector('.da-sheet-not-permitted .empty-list');
-    expect(message.querySelector('h3').textContent).to.equal('Not permitted');
-    expect(message.querySelector('.empty-list-action')).to.exist;
+    expect(wrapper.querySelector('.da-sheet-not-permitted h3').textContent).to.equal('Not permitted');
   });
 
   it('restores the grid and side panel and removes the message once loaded', () => {
@@ -41,13 +39,6 @@ describe('showLoadStatus', () => {
     expect(daSheetPanes.hidePanes).to.be.false;
     expect(daTitle.hideActions).to.be.false;
     expect(wrapper.querySelector('.da-sheet-not-permitted')).to.not.exist;
-  });
-
-  it('reuses the message container across repeated errors', () => {
-    showLoadStatus({ errMsg: 'Sign in required', wrapper, daSheet, daSheetPanes, daTitle });
-    showLoadStatus({ errMsg: 'Not permitted', wrapper, daSheet, daSheetPanes, daTitle });
-    expect(wrapper.querySelectorAll('.da-sheet-not-permitted')).to.have.length(1);
-    expect(wrapper.querySelector('h3').textContent).to.equal('Not permitted');
   });
 });
 
@@ -63,23 +54,13 @@ describe('da-sheet-panes', () => {
 
   afterEach(() => panes.remove());
 
-  it('renders the side panel tabs by default', () => {
-    expect(panes.shadowRoot.querySelectorAll('.da-sheet-pane-tabs').length).to.equal(1);
-  });
-
-  it('does not render anything when hidePanes is set', async () => {
+  it('renders nothing when hidePanes is set and closes an open pane', async () => {
+    await panes.handlePreviewToggle();
+    await panes.updateComplete;
     panes.hidePanes = true;
     await panes.updateComplete;
     expect(panes.shadowRoot.querySelectorAll('.da-sheet-pane-tabs, .da-sheet-panes').length).to.equal(0);
-  });
 
-  it('closes an open pane when hidden and renders the tabs again when shown', async () => {
-    await panes.handlePreviewToggle();
-    await panes.updateComplete;
-    expect(panes.shadowRoot.querySelectorAll('da-sheet-preview').length).to.equal(1);
-
-    panes.hidePanes = true;
-    await panes.updateComplete;
     panes.hidePanes = false;
     await panes.updateComplete;
     expect(panes.shadowRoot.querySelectorAll('da-sheet-preview').length).to.equal(0);

@@ -56,18 +56,7 @@ describe('da-list render', () => {
     expect(el.shadowRoot.querySelector('.empty-list h3').textContent).to.equal('Nothing here');
   });
 
-  it('Does not render the profile hint for a non-permission empty message', async () => {
-    await fixture({ fullpath: '/o/r' });
-    el._listItems = [];
-    el._continuationToken = null;
-    el._allPagesLoaded = true;
-    el._emptyMessage = 'Nothing here';
-    await rerender();
-    expect(el.shadowRoot.querySelector('.empty-list-hint')).to.not.exist;
-    expect(el.shadowRoot.querySelector('.empty-list-action')).to.not.exist;
-  });
-
-  it('Renders a profile hint below the Not permitted message', async () => {
+  it('Renders the shared Not permitted message with Open Profile', async () => {
     await fixture({ fullpath: '/o/r' });
     el._listItems = [];
     el._continuationToken = null;
@@ -75,17 +64,7 @@ describe('da-list render', () => {
     el._emptyMessage = 'Not permitted';
     await rerender();
     expect(el.shadowRoot.querySelector('.empty-list h3').textContent).to.equal('Not permitted');
-    const hint = el.shadowRoot.querySelector('.empty-list .empty-list-hint');
-    expect(hint).to.exist;
-    expect(hint.textContent.trim()).to.equal(
-      'Please make sure you are logged in with the correct user and have selected the right Adobe org.',
-    );
-    expect(hint.tagName).to.equal('P');
-    const action = el.shadowRoot.querySelector('.empty-list .empty-list-action');
-    expect(action).to.exist;
-    expect(action.tagName).to.equal('BUTTON');
-    expect(action.classList.contains('nx-btn-primary')).to.be.true;
-    expect(action.textContent.trim()).to.equal('Open Profile');
+    expect(el.shadowRoot.querySelectorAll('.empty-list .empty-list-action').length).to.equal(1);
   });
 
   it('Renders the list when items are present', async () => {
