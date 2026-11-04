@@ -148,4 +148,6 @@ test('No access directory should not show anything', async ({ page }) => {
   // was the anchor and that doesn't normally trigger a change
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Not permitted' })).toBeVisible();
+  await expect(page.getByText('Please make sure you are logged in with the correct user')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open Profile' })).toBeVisible();
 });
