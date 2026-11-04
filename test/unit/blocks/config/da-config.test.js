@@ -1022,7 +1022,7 @@ describe('da-config', () => {
 
     it('reads the site translate sheet and saves settings into its config tab', async () => {
       const puts = await open('tr1', (o, s, path) => (path === '/.da/translate.json' ? TRANSLATE : status(404)()));
-      expect(el.shadowRoot.textContent).to.include('Stored in');
+      expect(q('.config-info').textContent).to.include('Stored in /.da/translate.json');
       expect(q('[id="config-translation.service.name"]').value).to.equal('Smartling');
       el._onEdit('source.language', 'English');
       await el.updateComplete;

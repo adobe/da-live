@@ -80,7 +80,7 @@ export function renderTabs(tabs, { tab, section }, { onPrimaryChange, onSectionC
 const OPEN_ICON = '/img/icons/s2-icon-openin-20-n.svg#icon';
 
 // What the section is for, kept apart from the editor like the permissions note.
-export function renderIntro(panel, { docs, inheritance, setupUrl, readOnly }) {
+export function renderIntro(panel, { docs, inheritance, setupUrl, readOnly, notes = nothing }) {
   const { setup } = panel;
   return html`
     <div class="config-info" role="note">
@@ -88,6 +88,7 @@ export function renderIntro(panel, { docs, inheritance, setupUrl, readOnly }) {
       ${setupUrl ? html`
         <p>${setup.rerun.text} <a href=${setupUrl} target="_blank" rel="noopener">${setup.rerun.action}</a></p>`
     : nothing}
+      ${notes}
       ${readOnly ? html`<p>${SHELL.readOnly}</p>` : nothing}
       <a class="nx-action-btn nx-btn-sm" href=${docs} target="_blank" rel="noopener">
         <svg viewBox="0 0 20 20" aria-hidden="true"><use href=${OPEN_ICON}></use></svg>

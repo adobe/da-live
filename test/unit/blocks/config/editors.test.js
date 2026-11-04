@@ -211,26 +211,30 @@ describe('file status', () => {
     render(template, el);
     return el.textContent.replace(/\s+/g, ' ').trim();
   };
+  // A status renders as [note, block]: info-box text, or a standalone error/setup box.
+  const parts = ({ note, block }) => [text(note), text(block)];
   const opts = { org: 'o', site: 's', locked: false, onSetup: () => {} };
 
-  it('describes a fixed file while loading, failing, missing and found', () => {
+  it('describes a fixed file in the info box, and a failure on its own', () => {
     const path = '/.da/translate.json';
-    expect(text(renderFileStatus(null, opts))).to.equal('Loading…');
-    expect(text(renderFileStatus({ status: 'error', path, httpStatus: 500 }, opts)))
-      .to.equal(`Could not load ${path} The server responded with 500.`);
-    expect(text(renderFileStatus({ status: 'ok', path, missing: true }, opts))).to.include('doesn\'t exist yet');
-    expect(text(renderFileStatus({ status: 'ok', path, missing: false }, opts))).to.include(`Stored in ${path}`);
+    expect(parts(renderFileStatus(null, opts))).to.deep.equal(['Loading…', '']);
+    expect(parts(renderFileStatus({ status: 'error', path, httpStatus: 500 }, opts)))
+      .to.deep.equal(['', `Could not load ${path} The server responded with 500.`]);
+    expect(parts(renderFileStatus({ status: 'ok', path, missing: true }, opts))[0]).to.include('doesn\'t exist yet');
+    expect(parts(renderFileStatus({ status: 'ok', path, missing: false }, opts))[0]).to.include(`Stored in ${path}`);
   });
 
-  it('explains how Set up picks a library file', () => {
-    const one = text(renderLibraryStatus(library('Placeholders', ['/placeholders.json']), { status: 'unregistered' }, opts));
-    expect(one).to.include('creates it if it doesn\'t exist');
-    const two = text(renderLibraryStatus(library('Icons'), { status: 'unregistered' }, opts));
+  it('explains how Set up picks a library file, as its own block', () => {
+    const [note, one] = parts(renderLibraryStatus(library('Placeholders', ['/placeholders.json']), { status: 'unregistered' }, opts));
+    expect([note, one.includes('creates it if it doesn\'t exist')]).to.deep.equal(['', true]);
+    const [, two] = parts(renderLibraryStatus(library('Icons'), { status: 'unregistered' }, opts));
     expect(two).to.include('When neither exists');
   });
 
-  it('reports a library file that cannot be read', () => {
+  it('notes where a library list lives, and reports one that cannot be read', () => {
+    const ok = { status: 'ok', path: '/docs/library/icons.json', registered: '/docs/library/icons.json' };
+    expect(parts(renderLibraryStatus(library('Icons'), ok, opts))[0]).to.include('Stored in /docs/library/icons.json');
     const lib = { status: 'error', path: '/library/icons.json', httpStatus: 503 };
-    expect(text(renderLibraryStatus(library('Icons'), lib, opts))).to.include('responded with 503');
+    expect(parts(renderLibraryStatus(library('Icons'), lib, opts))[1]).to.include('responded with 503');
   });
 });
