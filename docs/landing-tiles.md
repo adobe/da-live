@@ -8,6 +8,9 @@ Import `blocks/landing/tile.js` and supply `heading`, `description` and `iconHre
 `disabled`. Otherwise the tile is non-interactive. The owner handles clicks,
 routes and site permissions.
 
+Enabled tiles gain a stronger S2-colored shadow on hover without moving or
+changing their background.
+
 `actionId` adds a `landing-action-{actionId}` class for the existing RUM collector.
 
 Load `blocks/landing/tiles.css` and place tiles in `.landing-tiles` inside an

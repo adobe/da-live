@@ -29,6 +29,7 @@ describe('landing tile', () => {
       --s2-gray-75: light-dark(#f3f3f3, #222);
       --s2-gray-100: light-dark(#e9e9e9, #2c2c2c);
       --s2-gray-900: light-dark(#292929, #eee);
+      --s2-gray-1000: light-dark(#000, #fff);
       --s2-gray-600: light-dark(#717171, #aaa);
       --s2-blue-800: light-dark(#0265dc, #54a3ff);
       --s2-drop-shadow-elevated: 0 4px 12px light-dark(rgb(0 0 0 / 8%), rgb(0 0 0 / 24%));
@@ -140,6 +141,46 @@ describe('landing tile', () => {
     button.click();
     expect(clicks).to.have.length(2);
     expect(tile.shadowRoot.querySelector('a')).to.equal(null);
+  });
+
+  it('only strengthens the S2-colored shadow on hover for enabled tiles in either theme', async () => {
+    for (const mode of ['link', 'button', 'disabled', 'placeholder']) {
+      tile.href = mode === 'link' ? '#browse' : undefined;
+      tile.action = mode === 'button' || mode === 'disabled';
+      tile.disabled = mode === 'disabled';
+      await tile.updateComplete;
+      const surface = tile.shadowRoot.querySelector('.tile');
+      for (const theme of ['light', 'dark']) {
+        const bounds = surface.getBoundingClientRect();
+        await sendMouse({
+          type: 'move',
+          position: [Math.ceil(bounds.right + 10), Math.ceil(bounds.bottom + 10)],
+        });
+        tile.style.colorScheme = theme;
+        const background = getComputedStyle(surface).backgroundColor;
+        const shadow = getComputedStyle(surface).boxShadow;
+        await sendMouse({
+          type: 'move',
+          position: [
+            Math.round(bounds.x + bounds.width / 2),
+            Math.round(bounds.y + bounds.height / 2),
+          ],
+        });
+        const hoveredShadow = getComputedStyle(surface).boxShadow;
+        expect(getComputedStyle(surface).backgroundColor).to.equal(background);
+        expect(surface.getBoundingClientRect().toJSON()).to.deep.equal(bounds.toJSON());
+        if (mode === 'link' || mode === 'button') {
+          expect(hoveredShadow).not.to.equal(shadow);
+          const token = theme === 'light' ? '--s2-gray-1000' : '--s2-gray-25';
+          const color = tile.style.getPropertyValue(token);
+          tile.style.setProperty(token, 'rgb(20 30 40)');
+          expect(getComputedStyle(surface).boxShadow).not.to.equal(hoveredShadow);
+          tile.style.setProperty(token, color);
+        } else {
+          expect(hoveredShadow).to.equal(shadow);
+        }
+      }
+    }
   });
 
   it('targets action classes for nested clicks without repeated RUM attributes', async () => {
