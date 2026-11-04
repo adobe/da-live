@@ -80,4 +80,15 @@ describe('landing background', () => {
     el.replaceChildren();
     expect(getComputedStyle(document.body).colorScheme).not.to.equal('light');
   });
+
+  it('previews dark mode without changing the saved theme or other pages', () => {
+    const savedTheme = localStorage.getItem('color-scheme');
+    const before = getComputedStyle(document.body).colorScheme;
+    history.replaceState(null, '', '?theme=dark');
+    init(el);
+    expect(getComputedStyle(document.body).colorScheme).to.equal('dark');
+    expect(localStorage.getItem('color-scheme')).to.equal(savedTheme);
+    el.replaceChildren();
+    expect(getComputedStyle(document.body).colorScheme).to.equal(before);
+  });
 });

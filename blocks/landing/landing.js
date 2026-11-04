@@ -7,8 +7,7 @@ export default function init(el) {
   if (!document.adoptedStyleSheets.includes(styles)) document.adoptedStyleSheets.push(styles);
   const landing = document.createElement('div');
   landing.className = 'landing';
-  if (new URLSearchParams(window.location.search).get('theme') === 'light') {
-    landing.dataset.theme = 'light';
-  }
+  const theme = new URLSearchParams(window.location.search).get('theme');
+  if (['light', 'dark'].includes(theme)) landing.dataset.theme = theme;
   el.replaceChildren(landing);
 }

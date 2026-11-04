@@ -1,4 +1,5 @@
-body.dark-scheme:has(.landing) {
+body.dark-scheme:has(.landing),
+body:has(.landing[data-theme="dark"]) {
   color-scheme: dark;
 }
 
