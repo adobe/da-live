@@ -1,6 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import {
   ORG, SITE, TABS, SECTIONS, sectionById, tabsForScope, resolveSelection, tabFromUrl, urlWithTab,
+  rememberSection, rememberedSection,
 } from '../../../../blocks/config/sections.js';
 import { SHEETS } from '../../../../blocks/config/sheets.js';
 
@@ -106,6 +107,28 @@ describe('config sections', () => {
     it('sets the tab, keeping the hash and other params', () => {
       expect(urlWithTab('https://da.live/config/edit?nxver=2#/o/s', 'icons'))
         .to.equal('https://da.live/config/edit?nxver=2&tab=icons#/o/s');
+    });
+  });
+
+  describe('remembered sections', () => {
+    beforeEach(() => localStorage.removeItem('da-config-sections'));
+
+    it('remembers the last section per tab and overall, per org/site', () => {
+      expect(rememberedSection('o', 's')).to.equal(null);
+      rememberSection('o', 's', 'library', 'templates');
+      rememberSection('o', 's', 'extensions', 'apps');
+      expect(rememberedSection('o', 's', 'library')).to.equal('templates');
+      expect(rememberedSection('o', 's')).to.equal('apps');
+      expect([rememberedSection('o', null), rememberedSection('o', 'other', 'library')]).to.deep.equal([null, null]);
+      rememberSection('o', null, 'extensions', 'prepare');
+      expect([rememberedSection('o', null), rememberedSection('o', 's')]).to.deep.equal(['prepare', 'apps']);
+    });
+
+    it('starts over when the stored value is unreadable', () => {
+      localStorage.setItem('da-config-sections', '{oops');
+      expect(rememberedSection('o', 's')).to.equal(null);
+      rememberSection('o', 's', 'library', 'icons');
+      expect(rememberedSection('o', 's', 'library')).to.equal('icons');
     });
   });
 });
