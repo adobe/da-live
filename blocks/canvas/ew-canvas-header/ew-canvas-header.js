@@ -1,11 +1,12 @@
 import { LitElement, html, nothing } from 'da-lit';
 
-import { getNx, getNx2, getNxEWFlags } from '../../../scripts/utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import getSheet from '../../shared/sheet.js';
+import { chatAvailability } from '../../shared/chat-panel.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { getCommentsBridge, toggleComments, getCommentsVisible } from '../editor-utils/comments-bridge.js';
 
-const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { PANEL_EVENT, getSectionAtPosition } = await import(`${getNx()}/utils/panel.js`);
 
 const style = await loadStyle(import.meta.url);
@@ -52,8 +53,8 @@ class EWCanvasHeader extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style, buttons];
-    this._unsubHash = hashChange.subscribe((state) => {
-      this._syncChatDisabled(state?.org, state?.site);
+    this._unsubChat = chatAvailability.subscribe((enabled) => {
+      this._chatDisabled = enabled !== true;
     });
     this._unsubControllerChange = canvasBus.commentsControllerState
       .subscribe(() => this._bindComments());
@@ -62,7 +63,7 @@ class EWCanvasHeader extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    this._unsubHash?.();
+    this._unsubChat?.();
     this._unsubControllerChange?.();
     this._unbindComments?.();
   }
@@ -86,19 +87,6 @@ class EWCanvasHeader extends LitElement {
 
   _toggleComments() {
     toggleComments();
-  }
-
-  async _syncChatDisabled(org, site) {
-    const key = org && site ? `${org}/${site}` : '';
-    this._chatDisableKey = key;
-    if (!org || !site) {
-      this._chatDisabled = false;
-      return;
-    }
-    const { isEwChatDisabled } = await getNxEWFlags();
-    const disabled = await isEwChatDisabled({ org, site });
-    if (this._chatDisableKey !== key) return;
-    this._chatDisabled = disabled;
   }
 
   _openPanel(position) {
@@ -138,7 +126,7 @@ class EWCanvasHeader extends LitElement {
     return html`
       <header class="bar" part="bar">
         <div class="group group-start" part="group-start">
-          ${this._chatDisabled ? nothing : html`
+          ${this._chatDisabled !== false ? nothing : html`
           <button type="button" class="nx-action-btn-icon" part="btn toggle-before" data-action="open-panel-before" aria-label="Open before panel" @click=${() => this._openPanel('before')}>
             ${this._renderIcon('splitLeft')}
           </button>

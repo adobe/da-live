@@ -1,4 +1,59 @@
-import { getNx } from '../../scripts/utils.js';
+import { getNx, getNxEWFlags } from '../../scripts/utils.js';
+import { createChannel } from './channel.js';
+
+const { hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
+const availabilityChannel = createChannel({ replay: true });
+const turnCompletedChannel = createChannel();
+const turnCompletedEvent = CHAT_EVENT.TURN_COMPLETED || 'nx-chat-turn-completed';
+const onTurnCompleted = ({ detail }) => turnCompletedChannel.emit(detail);
+let chatContext;
+let unsubscribeHash;
+
+export const chatTurnCompleted = Object.freeze({
+  subscribe(callback) {
+    if (!turnCompletedChannel.subscriberCount) {
+      document.addEventListener(turnCompletedEvent, onTurnCompleted);
+    }
+    const unsubscribe = turnCompletedChannel.subscribe(callback);
+    return () => {
+      unsubscribe();
+      if (!turnCompletedChannel.subscriberCount) {
+        document.removeEventListener(turnCompletedEvent, onTurnCompleted);
+      }
+    };
+  },
+});
+
+async function syncChatAvailability(state) {
+  const { org, site } = state ?? {};
+  if (chatContext && chatContext.org === org && chatContext.site === site) return;
+  const context = { org, site };
+  chatContext = context;
+  availabilityChannel.emit(undefined);
+  const enabled = org
+    ? await getNxEWFlags().then((flags) => flags.isEwChatEnabled(context)).catch(() => false)
+    : false;
+  if (chatContext === context) availabilityChannel.emit(enabled);
+}
+
+// Undefined availability means the current org/site is still being checked.
+export const chatAvailability = Object.freeze({
+  subscribe(callback) {
+    if (!availabilityChannel.subscriberCount) {
+      unsubscribeHash = hashChange.subscribe(syncChatAvailability);
+    }
+    const unsubscribe = availabilityChannel.subscribe(callback);
+    return () => {
+      unsubscribe();
+      if (availabilityChannel.subscriberCount) return;
+      unsubscribeHash?.();
+      unsubscribeHash = undefined;
+      chatContext = undefined;
+      availabilityChannel.emit(undefined);
+    };
+  },
+});
 
 // Shared getContent for registering the default chat panel section — used by every
 // da-live host page (canvas, browse). Host pages keep full control of
@@ -25,6 +80,5 @@ export async function setChatPrompt(text, onReady) {
 }
 
 export async function addChatContext(item) {
-  const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
   document.dispatchEvent(new CustomEvent(CHAT_EVENT.ADD_TO_CHAT, { detail: item }));
 }
