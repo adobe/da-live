@@ -1,3 +1,10 @@
+## [1.19.2](https://github.com/adobe/da-live/compare/v1.19.1...v1.19.2) (2026-11-04)
+
+
+### Bug Fixes
+
+* **ew:** find Add item template row by block class, incl. container groups ([#1499](https://github.com/adobe/da-live/issues/1499)) ([a528da2](https://github.com/adobe/da-live/commit/a528da243e7d422022a94c2f7f5d47b300f7f4dd))
+
 ## [1.19.1](https://github.com/adobe/da-live/compare/v1.19.0...v1.19.1) (2026-11-04)
 
 
