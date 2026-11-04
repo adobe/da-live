@@ -89,7 +89,7 @@ function checkLibraryConfiguredOnSync(wsProvider, canWrite) {
 }
 
 export const undoRedoKeys = {
-  'Mod-z': (state) => yUndo(state) || false,
+  'Mod-z': (state) => { yUndo(state); return true; },
   'Mod-y': (state) => { yRedo(state); return true; },
   'Mod-Shift-z': (state) => { yRedo(state); return true; },
 };
