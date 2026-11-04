@@ -531,14 +531,22 @@ describe('ew-block-toolbar', () => {
       ]);
     });
 
-    it('leaves the doc alone when a collaborator deleted the block', async () => {
+    it('keeps a paragraph a collaborator inserts right after the block', async () => {
+      const modal = await openModal();
+      remoteEdit((fragment) => fragment.insert(2, [remoteParagraph('After')]));
+      modal.onInsert(libraryTable());
+      expect(contents()).to.deep.equal([
+        ['paragraph', 'Intro'], ['table', 'heroNew'], ['paragraph', 'After'],
+        ['paragraph', 'Outro'], ['table', 'otherKeep'],
+      ]);
+    });
+
+    it('inserts the new block where the old one was when a collaborator deleted it', async () => {
       const modal = await openModal();
       remoteEdit((fragment) => fragment.delete(1, 1));
-      const before = contents();
       modal.onInsert(libraryTable());
-      expect(contents()).to.deep.equal(before);
-      expect(before).to.deep.equal([
-        ['paragraph', 'Intro'], ['paragraph', 'Outro'], ['table', 'otherKeep'],
+      expect(contents()).to.deep.equal([
+        ['paragraph', 'Intro'], ['table', 'heroNew'], ['paragraph', 'Outro'], ['table', 'otherKeep'],
       ]);
     });
   });
