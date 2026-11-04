@@ -47,14 +47,14 @@ describe('landing background', () => {
     expect(el.querySelector('img, picture')).to.equal(null);
   });
 
-  it('fills its container with the opaque horizontal gradient below the lower-75% fade', () => {
+  it('fills its container with horizontal colors fading to solid white at 75% height', () => {
     init(el);
     const surface = el.firstElementChild;
     const computed = getComputedStyle(surface);
     expect(surface.getBoundingClientRect().height).to.equal(400);
     expect(computed.opacity).to.equal('1');
     expect(computed.backgroundImage).to.match(
-      /^linear-gradient\(.*25%, rgb\(255, 255, 255\) 100%\), linear-gradient\(to right,/,
+      /^linear-gradient\(.*25%, rgb\(255, 255, 255\) 75%\), linear-gradient\(to right,/,
     );
     ['rgb(255, 246, 245)', 'rgb(255, 232, 247)', 'rgb(235, 238, 255)', 'rgb(245, 249, 255)']
       .forEach((color) => expect(computed.backgroundImage).to.include(color));
