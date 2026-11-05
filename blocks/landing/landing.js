@@ -221,7 +221,7 @@ export class DaLanding extends LitElement {
       return html`<div class="empty-state"><p role="alert">${this._error}</p>
         <button class="nx-action-btn" @click=${this.loadSite}>Try again</button></div>`;
     }
-    if (!this._files) return html`<p class="loading" role="status">Loading files...</p>`;
+    if (!this._files) return html`<p class="loading" role="status"><span class="nx-loading-spinner" aria-hidden="true"></span>Loading files...</p>`;
     const files = this._tab === 'starred'
       ? this._files.filter((item) => this._favorites.has(item.path)) : this._files;
     if (!files.length) {

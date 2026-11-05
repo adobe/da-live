@@ -44,6 +44,13 @@ or all available files if fewer exist, then disappears. Switching cards/list
 preserves the visible files and expansion count. The shared list scrolls
 horizontally only when its readable columns cannot fit inside the panel.
 
+While the selected site's content is loading, the panel shows "Loading files..."
+with chat's `nx-loading-spinner` design, a blue leading arc and gray track.
+The indicator is 14px in S and 16px in M, uses the same animation and is hidden
+from assistive technology; its text status and the panel's busy state remain exposed.
+It disappears on completion or error. Its styles are scoped to this loading state
+so it also works with Nexter versions that do not yet export the shared class.
+
 Favorite uses browser-local `da-favorites` entries across the selected site's folders.
 It preserves Browse's folder-keyed storage: starring or unstarring a file updates
 the entry for that file's actual containing folder, not the site root.
