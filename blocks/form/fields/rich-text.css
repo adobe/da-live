@@ -1,0 +1,170 @@
+:host {
+  --form-rich-text-min-height: 88px;
+  --form-rich-text-text-size: var(--s2-body-size-s, 14px);
+  --form-rich-text-line-height: 1.4;
+}
+
+.form-rich-text {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 2px solid var(--s2-gray-300);
+  border-radius: var(--s2-corner-radius-500);
+  background: var(--s2-gray-25);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  transition: border-color 0.13s cubic-bezier(0.45, 0, 0.4, 1);
+
+  &:hover {
+    border-color: var(--s2-gray-400);
+  }
+
+  &:focus-within {
+    border-color: var(--s2-gray-900);
+  }
+
+  &:has(.form-rich-text-content:focus-visible) {
+    outline-color: var(--s2-blue-800);
+  }
+}
+
+.form-field.has-error .form-rich-text {
+  border-color: var(--s2-red-900);
+}
+
+:host([disabled]) .form-rich-text {
+  border-color: var(--s2-gray-300);
+  color: var(--s2-gray-400);
+}
+
+/* Placed next to the selection by the field. */
+.form-rich-text-bubble {
+  position: absolute;
+  z-index: 2;
+}
+
+.form-input-wrap {
+  position: relative;
+}
+
+.form-rich-text-editor {
+  min-height: var(--form-rich-text-min-height);
+}
+
+.form-rich-text-content {
+  box-sizing: border-box;
+  min-height: var(--form-rich-text-min-height);
+  max-height: 480px;
+  overflow-y: auto;
+  resize: vertical;
+  padding: var(--s2-spacing-100) calc(var(--s2-spacing-200) - 2px);
+  color: var(--s2-gray-800);
+  font-size: var(--form-rich-text-text-size);
+  line-height: var(--form-rich-text-line-height);
+  outline: none;
+
+  /* Required by ProseMirror for whitespace and caret handling. */
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  font-variant-ligatures: none;
+
+  p {
+    margin: 0 0 var(--s2-spacing-100);
+  }
+
+  > :last-child {
+    margin-bottom: 0;
+  }
+
+  ul,
+  ol {
+    margin: 0 0 var(--s2-spacing-100);
+    padding-inline-start: 24px;
+  }
+
+  li > p {
+    margin: 0;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin: var(--s2-spacing-200) 0 var(--s2-spacing-100);
+    color: var(--s2-gray-900);
+    font-weight: 700;
+    line-height: 1.25;
+
+    &:first-child {
+      margin-top: 0;
+    }
+  }
+
+  h1 { font-size: 1.6em; }
+  h2 { font-size: 1.4em; }
+  h3 { font-size: 1.25em; }
+  h4 { font-size: 1.1em; }
+  h5 { font-size: 1em; }
+  h6 { font-size: 0.9em; }
+
+  blockquote {
+    margin: 0 0 var(--s2-spacing-100);
+    padding-inline-start: var(--s2-spacing-200);
+    border-inline-start: 3px solid var(--s2-gray-300);
+    color: var(--s2-gray-700);
+
+    > :last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  code {
+    padding: 1px 4px;
+    border-radius: var(--s2-corner-radius-100);
+    background: var(--s2-gray-100);
+    font-family: var(--s2-code-font-family, ui-monospace, monospace);
+    font-size: 0.9em;
+  }
+
+  sup,
+  sub {
+    font-size: 0.75em;
+    line-height: 0;
+  }
+
+  a {
+    color: var(--s2-blue-900);
+    text-decoration: underline;
+  }
+}
+
+/* Grows up to 480px until the author drags it to a height of their own. */
+.form-rich-text-content[style*="height"] {
+  max-height: none;
+}
+
+:host([disabled]) .form-rich-text-content {
+  resize: none;
+}
+
+.form-field.has-error .form-rich-text-content {
+  /* Reserve room for the alert icon (18px) at its 12px inline-end inset. */
+  padding-right: 38px;
+}
+
+.form-field.has-error .form-field-icon {
+  top: 18px;
+  inset-inline-end: 12px;
+}
+
+.form-rich-text-placeholder {
+  position: absolute;
+  inset-block-start: var(--s2-spacing-100);
+  inset-inline-start: calc(var(--s2-spacing-200) - 2px);
+  color: var(--s2-gray-600);
+  font-size: var(--form-rich-text-text-size);
+  line-height: var(--form-rich-text-line-height);
+  pointer-events: none;
+}
