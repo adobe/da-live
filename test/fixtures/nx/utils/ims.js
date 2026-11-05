@@ -1,8 +1,10 @@
 // Mock ims.js for tests
+let profile;
 export async function loadIms() {
-  // Mock implementation
-  return Promise.resolve();
+  return profile;
 }
+
+export const setImsProfile = (value) => { profile = value; };
 
 export function handleSignIn() {
   // Mirrors the real nx handleSignIn so tests can observe the effect via

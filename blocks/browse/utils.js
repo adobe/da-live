@@ -1,8 +1,10 @@
 const FLAG = 'browseV2';
 
+// A site root keeps landing so its chat knows the site until the shared site picker exists.
 export function getBrowseComponent({ search, pathDetails }) {
-  if (pathDetails) return 'da-browse';
-  return new URLSearchParams(search).get('landing') === 'true' ? 'da-landing' : 'da-sites';
+  const landing = new URLSearchParams(search).get('landing') === 'true';
+  if (landing && (!pathDetails || (pathDetails.site && !pathDetails.path))) return 'da-landing';
+  return pathDetails ? 'da-browse' : 'da-sites';
 }
 
 /** Explicit `?browse=2` / `?browse=1` override; undefined when not set. */
