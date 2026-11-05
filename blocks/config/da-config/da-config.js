@@ -14,7 +14,7 @@ import { loadConfigs, listSites, setupLibrary, isDenied } from '../api.js';
 import { siteNames } from '../../permissions/utils.js';
 import { renderSettings } from '../editors/settings.js';
 import { renderFileStatus, renderLibraryStatus } from '../editors/file-status.js';
-import { cleanRow, rowErrors, renderRows, renderRowDialog } from '../editors/rows.js';
+import { cleanRow, matches, rowErrors, renderRows, renderRowDialog } from '../editors/rows.js';
 import {
   editorContext, editState, mutationFor, needsSetup, inheritanceText, panelKey,
 } from './model.js';
@@ -332,7 +332,8 @@ class DaConfig extends LitElement {
     this._draft = { ...this._draft, row: { ...this._draft.row, [key]: value } };
   }
 
-  // Applies the dialog to the pending rows, or keeps it open and shows errors.
+  // Applies the dialog to the pending rows, or keeps it open and shows errors. A search the
+  // row no longer matches is cleared so the change stays visible.
   _onDraftApply() {
     const { rows } = this._edit.list;
     const draft = { ...this._draft, row: cleanRow(this._draft.row) };
@@ -343,6 +344,7 @@ class DaConfig extends LitElement {
     this._rows = draft.index === null
       ? [...rows, draft.row]
       : rows.map((row, i) => (i === draft.index ? draft.row : row));
+    if (!matches(this._ctx.panel, draft.row, this._query)) this._query = '';
     this._draft = null;
   }
 

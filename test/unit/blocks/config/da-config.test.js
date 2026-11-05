@@ -745,6 +745,30 @@ describe('da-config', () => {
       expect(el._query).to.equal('');
     });
 
+    it('clears the search when an edited row no longer matches it', async () => {
+      const SEND = { title: 'Send to Adobe Target', path: 'https://da.live/nx/public/plugins/send.html' };
+      mockFetch({ configFor: () => multi('prepare', [ROLLOUT, SEND]), sitesFor: () => [{ name: 'alpha' }] });
+      await open({ org: 'pr10' });
+      const names = () => [...el.shadowRoot.querySelectorAll('.config-table tbody th')].map((t) => t.textContent.trim());
+      const search = q('nx-search.config-search');
+      const find = async (text) => {
+        search.value = text;
+        search.dispatchEvent(new InputEvent('input'));
+        await el.updateComplete;
+      };
+      const rename = async (title) => {
+        buttonIn(q('.config-table tbody tr'), 'Edit').click();
+        await el.updateComplete;
+        await type('title', title);
+        await click('nx-dialog .nx-form-btn-primary');
+      };
+      await find('target');
+      await rename('Send to Target');
+      expect([el._query, names()]).to.deep.equal(['target', ['Send to Target']]);
+      await rename('Publish');
+      expect([el._query, names()]).to.deep.equal(['', ['Rollout', 'Publish']]);
+    });
+
     it('asks before deleting a row, and keeps it on Cancel', async () => {
       mockFetch({ configFor: () => multi('prepare', [ROLLOUT]), sitesFor: () => [{ name: 'alpha' }] });
       await open({ org: 'pr9' });
