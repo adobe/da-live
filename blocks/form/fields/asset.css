@@ -6,6 +6,8 @@
   --asset-menu-icon-size: 16px;
   --asset-action-icon-size: 18px;
 
+  /* Anchors the hidden status inside the field, so it can't stretch an outer scroll area. */
+  position: relative;
   display: block;
   font-family: var(--s2-font-family, adobe-clean, "Source Sans Pro", system-ui, sans-serif);
 }
