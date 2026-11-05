@@ -621,15 +621,15 @@ describe('da-permissions', () => {
     async function openFolderDialog(el) {
       const cards = el.shadowRoot.querySelector('da-permissions-cards');
       expect(cards.canAdd).to.equal(true);
-      cards.shadowRoot.querySelector('button.add-folder').click();
+      cards.shadowRoot.querySelector('button.add-path').click();
       await el.updateComplete;
       return el.shadowRoot.querySelector('nx-dialog');
     }
 
     async function submitFolder(el, value) {
       const dialog = el.shadowRoot.querySelector('nx-dialog');
-      dialog.querySelector('input.folder-path-input').value = value;
-      dialog.querySelector('button.folder-add-submit').click();
+      dialog.querySelector('input.path-input').value = value;
+      dialog.querySelector('button.path-add-submit').click();
       await el.updateComplete;
     }
 
@@ -638,18 +638,23 @@ describe('da-permissions', () => {
       await submitFolder(el, value);
     }
 
-    it('opens a dialog with a single folder path field', async () => {
+    it('opens a dialog with a Folder/Page choice, Folder selected, and one path field', async () => {
       mockFetch({ configFor: () => SITE_CONFIG_BODY });
       const el = await mount('myorg', 'mysite');
 
       const dialog = await openFolderDialog(el);
-      expect(dialog?.getAttribute('title')).to.equal('Add folder permission');
-      const input = dialog?.querySelector('input.folder-path-input.nx-input');
+      expect(dialog?.getAttribute('title')).to.equal('Add folder or page permission');
+      const kinds = dialog?.querySelector('nx-segmented-btn');
+      expect(kinds?.items.map((item) => item.label)).to.deep.equal(['Folder', 'Page']);
+      expect(kinds?.value).to.equal('folder');
+      expect(dialog.querySelector('.path-kind-hint')?.textContent.trim())
+        .to.equal('Covers the folder and everything in it.');
+      const input = dialog?.querySelector('input.path-input.nx-input');
       expect(input?.getAttribute('placeholder')).to.equal('/blog/drafts');
       const actions = [...dialog.querySelectorAll('[slot="actions"]')].map((b) => [b.textContent.trim(), b.className]);
       expect(actions).to.deep.equal([
         ['Cancel', 'nx-form-btn-secondary'],
-        ['Add', 'folder-add-submit nx-form-btn-primary'],
+        ['Add', 'path-add-submit nx-form-btn-primary'],
       ]);
       expect(!!dialog.querySelector('da-folder-picker')).to.equal(false);
     });
@@ -659,8 +664,8 @@ describe('da-permissions', () => {
       const el = await mount('myorg', 'mysite');
 
       const dialog = await openFolderDialog(el);
-      dialog.querySelector('input.folder-path-input').value = '/blog/drafts/';
-      dialog.querySelector('form.folder-add-form').requestSubmit();
+      dialog.querySelector('input.path-input').value = '/blog/drafts/';
+      dialog.querySelector('form.path-add-form').requestSubmit();
       await el.updateComplete;
 
       expect(!!el.shadowRoot.querySelector('nx-dialog')).to.equal(false);
@@ -772,15 +777,18 @@ describe('da-permissions', () => {
     async function openPageDialog(el) {
       const cards = el.shadowRoot.querySelector('da-permissions-cards');
       expect(cards.canAdd).to.equal(true);
-      cards.shadowRoot.querySelector('button.add-page').click();
+      cards.shadowRoot.querySelector('button.add-path').click();
+      await el.updateComplete;
+      const kinds = el.shadowRoot.querySelector('nx-dialog nx-segmented-btn');
+      kinds.dispatchEvent(new CustomEvent('change', { detail: { value: 'page' } }));
       await el.updateComplete;
       return el.shadowRoot.querySelector('nx-dialog');
     }
 
     async function submitPage(el, value) {
       const dialog = el.shadowRoot.querySelector('nx-dialog');
-      dialog.querySelector('input.page-path-input').value = value;
-      dialog.querySelector('button.page-add-submit').click();
+      dialog.querySelector('input.path-input').value = value;
+      dialog.querySelector('button.path-add-submit').click();
       await el.updateComplete;
     }
 
@@ -794,19 +802,32 @@ describe('da-permissions', () => {
       return JSON.parse(putCalls[0].opts.body.get('config'));
     }
 
-    it('opens a dialog with a single page path field', async () => {
+    it('choosing Page switches the placeholder and hint, keeps the typed path and clears the error', async () => {
       mockFetch({ configFor: () => SITE_S_CONFIG_BODY });
       const el = await mount('myorg', 's');
 
-      const dialog = await openPageDialog(el);
-      expect(dialog?.getAttribute('title')).to.equal('Add page permission');
-      const input = dialog?.querySelector('input.page-path-input.nx-input');
-      expect(input?.getAttribute('placeholder')).to.equal('/about');
-      const actions = [...dialog.querySelectorAll('[slot="actions"]')].map((b) => [b.textContent.trim(), b.className]);
-      expect(actions).to.deep.equal([
-        ['Cancel', 'nx-form-btn-secondary'],
-        ['Add', 'page-add-submit nx-form-btn-primary'],
-      ]);
+      const cards = el.shadowRoot.querySelector('da-permissions-cards');
+      cards.shadowRoot.querySelector('button.add-path').click();
+      await el.updateComplete;
+      const dialog = el.shadowRoot.querySelector('nx-dialog');
+      dialog.querySelector('input.path-input').value = 'about';
+      dialog.querySelector('button.path-add-submit').click();
+      await el.updateComplete;
+      expect(dialog.querySelector('.nx-input-error-msg')?.textContent.trim())
+        .to.equal('Folder paths start with /, e.g. /blog.');
+
+      const kinds = dialog.querySelector('nx-segmented-btn');
+      kinds.dispatchEvent(new CustomEvent('change', { detail: { value: 'page' } }));
+      await el.updateComplete;
+
+      expect(kinds.value).to.equal('page');
+      expect(dialog.getAttribute('title')).to.equal('Add folder or page permission');
+      const input = dialog.querySelector('input.path-input');
+      expect(input.getAttribute('placeholder')).to.equal('/about');
+      expect(input.value).to.equal('about');
+      expect(dialog.querySelector('.path-kind-hint')?.textContent.trim())
+        .to.equal('Covers the page and its images.');
+      expect(dialog.querySelector('.nx-input-error-msg')).to.equal(null);
     });
 
     it('shows a validation error and keeps the dialog open for a trailing slash', async () => {
@@ -817,7 +838,7 @@ describe('da-permissions', () => {
       await submitPage(el, '/blog/');
       const dialog = el.shadowRoot.querySelector('nx-dialog');
       expect(dialog.querySelector('.nx-input-error-msg')?.textContent.trim())
-        .to.equal('Page paths cannot end with /. Use Add folder for folders.');
+        .to.equal('Page paths cannot end with /. Choose Folder to add a folder.');
       expect(el._pendingPath).to.equal(null);
     });
 

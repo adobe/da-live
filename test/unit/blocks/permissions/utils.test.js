@@ -474,7 +474,7 @@ describe('permissions utils', () => {
     });
 
     it('rejects a trailing slash', () => {
-      expect(parsePagePath('/blog/')).to.deep.equal({ error: 'Page paths cannot end with /. Use Add folder for folders.' });
+      expect(parsePagePath('/blog/')).to.deep.equal({ error: 'Page paths cannot end with /. Choose Folder to add a folder.' });
     });
 
     it('rejects names DA pages cannot have', () => {
