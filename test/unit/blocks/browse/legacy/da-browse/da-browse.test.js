@@ -2,6 +2,8 @@
     eslint-disable no-underscore-dangle
 */
 import { expect } from '@esm-bundle/chai';
+import { render } from 'da-lit';
+import { spy, stub } from 'sinon';
 
 // This is needed to make a dynamic import work that is indirectly referenced
 // from da-browse.js
@@ -10,6 +12,18 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { default: DaBrowse } = await import('../../../../../../blocks/browse/legacy/da-list/da-list.js');
 const { default: DaBrowseComponent } = await import('../../../../../../blocks/browse/legacy/da-browse/da-browse.js');
+const { CHAT_EVENT } = await import('../../../../../fixtures/nx/utils/chat.js');
+
+async function completeUpdate(component) {
+  const update = spy(component, 'update');
+  try {
+    await component.updateComplete;
+    await update.lastCall?.returnValue;
+    await component.updateComplete;
+  } finally {
+    update.restore();
+  }
+}
 
 describe('Browse', () => {
   it('Pasted item uses the target URL', async () => {
@@ -345,6 +359,43 @@ describe('DaBrowse Component', () => {
     daBrowseComp.details = { fullpath: '/myorg/mysite/folder', org: 'myorg', site: 'mysite', owner: 'myorg', depth: 3 };
   });
 
+  it('reloads browse files only for same-site chat turns and cleans up on disconnect', async () => {
+    const savedFetch = window.fetch;
+    window.fetch = async () => new Response('[]', { status: 200 });
+    const items = [{ name: 'new.html', path: '/myorg/mysite/folder/new.html', ext: 'html' }];
+    const getList = stub(DaBrowse.prototype, 'getList').resolves([]);
+    const completeTurn = (detail) => {
+      document.dispatchEvent(new CustomEvent(CHAT_EVENT.TURN_COMPLETED, { detail }));
+    };
+    try {
+      document.body.append(daBrowseComp);
+      await completeUpdate(daBrowseComp);
+      const list = daBrowseComp.shadowRoot.querySelector('.da-list-type-browse');
+      await completeUpdate(list);
+      getList.resetHistory();
+      getList.resolves(items);
+
+      completeTurn({ org: 'other', site: 'mysite' });
+      completeTurn({ org: 'myorg', site: 'other' });
+      completeTurn(undefined);
+      await completeUpdate(list);
+      expect(getList.callCount).to.equal(0);
+
+      completeTurn({ org: 'myorg', site: 'mysite', path: 'another/page', status: 'completed' });
+      await completeUpdate(list);
+      expect(getList.callCount).to.equal(1);
+      expect(daBrowseComp.browseListItems).to.equal(items);
+
+      daBrowseComp.remove();
+      completeTurn({ org: 'myorg', site: 'mysite' });
+      expect(getList.callCount).to.equal(1);
+    } finally {
+      daBrowseComp.remove();
+      getList.restore();
+      window.fetch = savedFetch;
+    }
+  });
+
   describe('getEditor', () => {
     function mockConfig(rows) {
       // getNx2Api's config.get pings isHlx6 first (HLX_ADMIN/ping/{org}/{site}); answer that
@@ -624,6 +675,38 @@ describe('DaBrowse Component', () => {
       daBrowseComp.details = { owner: 'canvas-org2', org: 'canvas-org2', site: 'canvas-site2', fullpath: '/canvas-org2/canvas-site2/page' };
       const editor = await daBrowseComp.getEditor(true);
       expect(editor).to.equal('https://custom-editor');
+    });
+  });
+
+  describe('settings menu', () => {
+    const renderMenu = () => {
+      const div = document.createElement('div');
+      render(daBrowseComp.renderSettingsMenu(), div);
+      return div.querySelector('nx-menu');
+    };
+    const labels = (menu) => menu.items.map(({ label }) => label);
+
+    it('offers site configuration and permissions when the user can edit the org config', () => {
+      daBrowseComp.details = { org: 'org', site: 'site', fullpath: '/org/site' };
+      daBrowseComp._canEditOrgConfig = true;
+      const menu = renderMenu();
+      expect(labels(menu)).to.deep.equal(['Configuration', 'Permissions']);
+      const trigger = menu.querySelector('button.da-breadcrumb-config[slot="trigger"]');
+      expect(trigger.getAttribute('aria-label')).to.equal('Settings');
+      expect(trigger.textContent.trim()).to.equal('');
+      expect(trigger.querySelector('use[href="/img/icons/s2-icon-settings-20-n.svg#icon"]')).not.to.be.null;
+    });
+
+    it('hides site permissions when the user cannot edit the org config', () => {
+      daBrowseComp.details = { org: 'org', site: 'site', fullpath: '/org/site' };
+      daBrowseComp._canEditOrgConfig = false;
+      expect(labels(renderMenu())).to.deep.equal(['Configuration']);
+    });
+
+    it('hides org permissions when the user cannot edit the org config', () => {
+      daBrowseComp.details = { org: 'org', fullpath: '/org' };
+      daBrowseComp._canEditOrgConfig = false;
+      expect(labels(renderMenu())).to.deep.equal(['Configuration']);
     });
   });
 });

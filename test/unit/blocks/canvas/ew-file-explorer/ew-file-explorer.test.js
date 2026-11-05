@@ -80,6 +80,78 @@ describe('EwFileExplorer', () => {
 
   afterEach(() => { el.remove(); });
 
+  describe('chat turn completion', () => {
+    it('refreshes cached folders, including collapsed folders, without changing expansion or selection', async () => {
+      el._org = 'org';
+      el._site = 'site';
+      el._treeRoot = '/org/site';
+      el._cache = { '/org/site': [], '/org/site/sub': [] };
+      el._expanded = new Set(['org/site']);
+      el._selectedPath = 'org/site/current';
+      const listings = {
+        '/org/site': [{ name: 'sub', path: '/org/site/sub' }],
+        '/org/site/sub': [{ name: 'new.html', path: '/org/site/sub/new.html', ext: 'html' }],
+      };
+      const net = holdFetch(listings, ['/org/site']);
+      try {
+        document.dispatchEvent(new CustomEvent(CHAT_EVENT.TURN_COMPLETED, { detail: { org: 'org', site: 'site', path: 'another/page', status: 'completed' } }));
+        await net.settle();
+        await net.release('/org/site');
+        expect(el._cache).to.deep.equal(listings);
+        expect([...el._expanded]).to.deep.equal(['org/site']);
+        expect(el._selectedPath).to.equal('org/site/current');
+      } finally {
+        net.restore();
+      }
+    });
+
+    it('ignores other sites and stops listening when disconnected', () => {
+      el._org = 'org';
+      el._site = 'site';
+      let refreshes = 0;
+      el._refreshFolders = () => { refreshes += 1; };
+      const completeTurn = (detail) => {
+        document.dispatchEvent(new CustomEvent(CHAT_EVENT.TURN_COMPLETED, { detail }));
+      };
+      completeTurn({ org: 'other', site: 'site' });
+      completeTurn({ org: 'org', site: 'other' });
+      completeTurn(undefined);
+      expect(refreshes).to.equal(0);
+      completeTurn({ org: 'org', site: 'site' });
+      expect(refreshes).to.equal(1);
+      el.remove();
+      completeTurn({ org: 'org', site: 'site' });
+      expect(refreshes).to.equal(1);
+    });
+
+    it('restarts active search and category filtering with a fresh crawl', async () => {
+      el._org = 'org';
+      el._site = 'site';
+      el._treeRoot = '/org/site';
+      el._cache = {};
+      el._category = 'page';
+      el._searchTerm = 'new';
+      const oldEntry = el._getCrawlEntry();
+      let cancelled = false;
+      oldEntry.cancelCrawl = () => { cancelled = true; };
+      globalThis.__crawlMock = ({ callback }) => {
+        callback({ name: 'new.html', path: '/org/site/new.html', ext: 'html' });
+        return { results: Promise.resolve([]) };
+      };
+      try {
+        document.dispatchEvent(new CustomEvent(CHAT_EVENT.TURN_COMPLETED, { detail: { org: 'org', site: 'site' } }));
+        await el.updateComplete;
+        expect(cancelled).to.be.true;
+        expect(el._searchResults.map((file) => file.name)).to.deep.equal(['new.html']);
+        expect(el._matchingFolders.has('org/site')).to.be.true;
+        expect(el._category).to.equal('page');
+        expect(el._searchTerm).to.equal('new');
+      } finally {
+        delete globalThis.__crawlMock;
+      }
+    });
+  });
+
   ['tree', 'search'].forEach((view) => {
     describe(`${view} file selection`, () => {
       beforeEach(async () => {
@@ -306,7 +378,7 @@ describe('EwFileExplorer', () => {
       expect(el._treeRoot).to.equal('/b/site');
     });
 
-    it('ignores folder loads, refreshes and agent updates from the previous site', async () => {
+    it('ignores folder loads, refreshes, agent updates and chat completions from the previous site', async () => {
       net = holdFetch({ ...A, ...B }, ['/a/site/sub']);
       el._onHashChange({ org: 'a', site: 'site' });
       await net.settle();
@@ -315,6 +387,7 @@ describe('EwFileExplorer', () => {
       el._refreshPath('/a/site/sub');
       el._cache = { ...el._cache, '/a/site/sub': [] };
       document.dispatchEvent(new CustomEvent(CHAT_EVENT.AGENT_CHANGE, { detail: { scope: 'file', paths: ['/a/site/sub'] } }));
+      document.dispatchEvent(new CustomEvent(CHAT_EVENT.TURN_COMPLETED, { detail: { org: 'a', site: 'site' } }));
       el._onHashChange({ org: 'b', site: 'site' });
       await net.settle();
       await net.release('/a/');
