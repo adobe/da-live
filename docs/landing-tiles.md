@@ -16,3 +16,11 @@ changing their background.
 Load `blocks/landing/tile-layout.css` and place tiles in `.landing-tiles` inside an
 inline-size container. The group matches Content's width and centers incomplete
 rows: five tiles use 3+2 from 600px and one column below.
+
+The gated landing (`?landing=true`, without a scoped hash) lazily loads
+`tile-group.js` inside the existing gradient surface. `tile-group.css` styles
+the owner; `tile-layout.css` styles the group; `tile.css` styles each tile.
+Tile copy and documentation destinations currently live in JavaScript, not
+an authored DA document. Browse and Create remain disabled without a selected
+site. The landing owner handles permissions and page creation; the reusable
+tile remains presentation-only.
