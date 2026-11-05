@@ -328,7 +328,7 @@ describe('landing Content section', () => {
     await updateLanding();
     expect(el.path).to.equal('');
     expect(el.shadowRoot.querySelector('.empty-state h3').textContent).to.equal('Choose a site to get started');
-    expect(el.shadowRoot.querySelector('.empty-state p').textContent).to.equal('Select a site above to see its content.');
+    expect(el.shadowRoot.querySelector('.empty-state p').textContent).to.equal('Select a site from Your recent sites to see its content.');
     expect(el.shadowRoot.querySelector('.empty-state button, .empty-state a, nx-siteselector')).to.equal(null);
   });
 

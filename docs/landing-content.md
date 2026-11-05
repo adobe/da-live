@@ -15,7 +15,7 @@ mount the selector, duplicate its controller, or modify LP.
 With no saved sites in the browser's existing `da-sites` history, Content shows
 "Add a site to get started" and "Add a site above to see its content."
 With saved sites but none selected, it shows "Choose a site to get started" and
-"Select a site above to see its content." Neither state has a button or link.
+"Select a site from Your recent sites to see its content." Neither state has a button or link.
 Saved history alone never selects a site. Cross-tab history changes refresh the
 copy. Until the nav picker is available, the preview shows these empty states
 without temporary selection or Add controls in Content.

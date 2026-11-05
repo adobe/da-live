@@ -167,7 +167,7 @@ export class DaLanding extends LitElement {
     if (!this._scope) {
       return html`<div class="empty-state">${icon('folder')}
         <h3>${this._hasSavedSites ? 'Choose a site to get started' : 'Add a site to get started'}</h3>
-        <p>${this._hasSavedSites ? 'Select a site above to see its content.' : 'Add a site above to see its content.'}</p>
+        <p>${this._hasSavedSites ? 'Select a site from Your recent sites to see its content.' : 'Add a site above to see its content.'}</p>
       </div>`;
     }
     if (this._error) {
