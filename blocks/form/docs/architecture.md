@@ -39,6 +39,7 @@ blocks/form/
     da-api.js             fetch/save against DA source via the nx2 source api
     schemas.js            loadSchemas — schema discovery + module cache
     persistence.js        attachPersistence — single-flight save with re-queue
+    rich-text/            rich-text editor schema, serializer, commands, toolset and floating toolbar placement
   views/
     editor.js / .css      ew-form-fields, field rendering + array rendering
     preview.js / .css     ew-form-preview, read-only JSON preview
@@ -65,10 +66,18 @@ editor.js          →  events.js           (publishes state and selection, hand
 tool-panel/outline/ →  events.js           (subscribes to state and selection, publishes jumps)
 utils/context.js   →  da-sc-sdk          (convertHtmlToJson)
 utils/persistence.js → da-sc-sdk        (convertJsonToHtml)
+fields/rich-text.js → da-y-wrapper      (ProseMirror, loaded on demand)
+fields/rich-text.js → blocks/shared/     (da-link-dialog)
 views/           →  (SDK engine only via prop binding from the element — no direct imports)
 ```
 
 The SDK is the only piece that holds canonical state. Everything in `utils/`, `views/` and `tool-panel/` is specific to the form block. That covers DA I/O, UI components, schema discovery and single-flight save.
+
+Rich-text fields (`"x-semantic-type": "rich-text"`) render a ProseMirror editor in `fields/rich-text.js`. The SDK owns their value contract and storage, as its [schema spec](https://github.com/adobe/da-sc-sdk/blob/main/docs/schema-spec.md) describes. ProseMirror comes from the `da-y-wrapper` bundle the Canvas editor already loads, so the form block does not bundle it.
+
+The editor schema in `utils/rich-text/schema.js` only allows the subset the SDK keeps, and `utils/rich-text/html.js` serializes to the SDK's canonical HTML. Parity tests run every case through the SDK converters, so a saved value stays unchanged on reload.
+
+The toolbar in `fields/rich-text-toolbar.js` renders a toolset that `utils/rich-text/tools.js` binds to the editor. Each tool carries its own command and selection checks, and the toolbar fires `form-rich-text-command` for the field to run. The toolbar holds no rich-text knowledge, so a new tool only changes the toolset.
 
 ---
 
