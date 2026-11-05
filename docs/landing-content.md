@@ -28,7 +28,7 @@ replacement picker.
 
 Content mounts inside the gradient landing surface already provided by main.
 `landing.css` retains that page background and its light/dark theme preview.
-`content.css` contains only the Content component's shadow styles.
+`landing-content.css` contains only the Content component's shadow styles.
 The panel uses an opaque `--s2-gray-25` surface: white in light mode and dark
 in dark mode, with the gradient visible only outside the panel.
 Its `--s2-drop-shadow-emphasized` shadow uses Spectrum's light/dark values.
@@ -60,6 +60,10 @@ Unstarring clears all legacy copies of the exact file path across storage bucket
 including misplaced site-root entries. Starring stores it only in its actual
 parent folder. Existing folder-only callers retain their toggle behavior; Content
 passes the intended star state because it reads site-wide favorites.
+Browse also refreshes on storage changes and tab/history return, without reloading
+the listing, changing its order or clearing selection. Folder-level reads include
+legacy site-root entries for the file's actual containing folder.
+Favorite identity is the full file path, including its extension, not its modification date.
 
 ## Data, previews and destinations
 

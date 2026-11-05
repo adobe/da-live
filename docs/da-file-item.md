@@ -18,6 +18,9 @@ their order and favorite flags without fetching a directory. With no `select`,
 it offers no selection controls or bulk actions. Favorite requests bubble as
 `favoritechange` with `detail.item`; the caller persists the change and supplies
 updated items. Directory-backed lists keep their existing favorite behavior.
+They refresh saved favorites on cross-tab storage changes and tab/history return
+without fetching the directory again or changing selection. Caller-owned lists
+continue to receive favorite state from their owner.
 An explicit `sort = false` renders plain headings instead of sorting controls,
 so a paginated owner can keep its own ordering.
 

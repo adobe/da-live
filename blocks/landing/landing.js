@@ -13,7 +13,7 @@ await import(`${getNx()}/blocks/shared/segmented-btn/segmented.js`);
 const background = await loadStyle(import.meta.url);
 const styles = await Promise.all([
   loadStyle(`${getNx2()}/styles/buttons.css`),
-  loadStyle(new URL('./content.css', import.meta.url).href),
+  loadStyle(new URL('./landing-content.css', import.meta.url).href),
 ]);
 
 const VIEW_ITEMS = [

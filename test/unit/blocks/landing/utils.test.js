@@ -56,6 +56,24 @@ describe('Content data and destinations on main', () => {
     expect(files[1]).not.to.have.property('isFavorited');
   });
 
+  it('identifies same-named favorites and destinations by full path, not modification date', () => {
+    const files = [
+      { path: '/org/site/coffee.html', name: 'coffee', ext: 'html', lastModified: 1 },
+      { path: '/org/site/de/coffee.html', name: 'coffee', ext: 'html', lastModified: 2 },
+    ];
+    const favorites = new Set([files[1].path]);
+    for (const dates of [[1, 2], [20, 10]]) {
+      const items = getListItems({
+        files: files.map((item, index) => ({ ...item, lastModified: dates[index] })),
+        favorites,
+        editor: '/canvas#',
+      });
+      expect(items.map((item) => item.isFavorited)).to.deep.equal([false, true]);
+      expect(items.map((item) => new URL(item.href).hash))
+        .to.deep.equal(['#/org/site/coffee', '#/org/site/de/coffee']);
+    }
+  });
+
   it('uses the longest matching configured editor per file and the default otherwise', () => {
     const items = getListItems({
       files: [
@@ -71,6 +89,7 @@ describe('Content data and destinations on main', () => {
         '/org/site/forms/ue=https://experience.adobe.com/editor',
       ],
     });
+
     expect(items[0].href).to.equal('https://da.live/form#/org/site/forms/a');
     expect(items[1].href).to.equal('https://experience.adobe.com/editor/forms/ue/b');
     expect(new URL(items[2].href).pathname).to.equal('/canvas');

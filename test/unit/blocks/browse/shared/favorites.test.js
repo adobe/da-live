@@ -69,9 +69,20 @@ describe('favorites util', () => {
   it('moves a misplaced legacy favorite into its canonical folder when starring', () => {
     const nested = '/org/site/de/coffee.html';
     localStorage.setItem(KEY, JSON.stringify({ '/org/site': [nested] }));
-    expect(toggleFavorite('/org/site/de', nested)).to.equal(true);
+    expect(toggleFavorite('/org/site/de', nested, { starred: true })).to.equal(true);
     expect(getFavorites('/org/site')).to.deep.equal([]);
     expect(getFavorites('/org/site/de')).to.deep.equal([nested]);
+  });
+
+  it('reads legacy site-root entries in their actual folder and unstarring works from Browse', () => {
+    const root = '/org/site/coffee.html';
+    const nested = '/org/site/de/coffee.html';
+    localStorage.setItem(KEY, JSON.stringify({ '/org/site': [root, nested] }));
+    expect(getFavorites('/org/site')).to.deep.equal([root]);
+    expect(getFavorites('/org/site/de')).to.deep.equal([nested]);
+    expect(isFavorite('/org/site/de', nested)).to.equal(true);
+    expect(toggleFavorite('/org/site/de', nested)).to.equal(false);
+    expect(getSiteFavorites('/org/site')).to.deep.equal([root]);
   });
 
   it('lets a site-wide favorite be explicitly removed when only a misplaced legacy copy exists', () => {

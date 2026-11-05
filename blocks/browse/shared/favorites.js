@@ -23,13 +23,6 @@ function writeAll(data) {
   }
 }
 
-export function getFavorites(folderPath) {
-  if (!folderPath) return [];
-  const all = readAll();
-  const list = all[folderPath];
-  return Array.isArray(list) ? list : [];
-}
-
 export function getSiteFavorites(sitePath) {
   if (!sitePath) return [];
   const paths = Object.entries(readAll())
@@ -37,6 +30,13 @@ export function getSiteFavorites(sitePath) {
     .flatMap(([, items]) => (Array.isArray(items) ? items : []))
     .filter((path) => typeof path === 'string' && path.startsWith(`${sitePath}/`));
   return [...new Set(paths)];
+}
+
+export function getFavorites(folderPath) {
+  if (!folderPath) return [];
+  const sitePath = folderPath.split('/').slice(0, 3).join('/');
+  return getSiteFavorites(sitePath)
+    .filter((path) => path.slice(0, path.lastIndexOf('/')) === folderPath);
 }
 
 export function isFavorite(folderPath, itemPath) {
@@ -48,7 +48,7 @@ export function toggleFavorite(folderPath, itemPath, { starred } = {}) {
   if (!folderPath || !itemPath) return false;
   const all = readAll();
   const list = Array.isArray(all[folderPath]) ? all[folderPath] : [];
-  const nowFavorite = starred ?? !list.includes(itemPath);
+  const nowFavorite = starred ?? !isFavorite(folderPath, itemPath);
   Object.entries(all).forEach(([folder, paths]) => {
     if (!Array.isArray(paths) || !paths.includes(itemPath)) return;
     const remaining = paths.filter((path) => path !== itemPath);

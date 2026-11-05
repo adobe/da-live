@@ -59,7 +59,7 @@ describe('landing Content section', () => {
 
   it('keeps the panel opaque in both views and color schemes', async () => {
     const sheet = new CSSStyleSheet();
-    await sheet.replace(await (await fetch('/blocks/landing/content.css')).text());
+    await sheet.replace(await (await fetch('/blocks/landing/landing-content.css')).text());
     el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
     el.style.setProperty('--s2-gray-25', 'light-dark(rgb(255 255 255), rgb(17 17 17))');
     for (const [theme, background] of [['light', 'rgb(255, 255, 255)'], ['dark', 'rgb(17, 17, 17)']]) {
@@ -75,7 +75,7 @@ describe('landing Content section', () => {
 
   it('keeps fixed cards, whole columns and 16px panel insets at narrower widths', async () => {
     const sheet = new CSSStyleSheet();
-    await sheet.replace(await (await fetch('/blocks/landing/content.css')).text());
+    await sheet.replace(await (await fetch('/blocks/landing/landing-content.css')).text());
     el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
     el.style.setProperty('--s2-spacing-200', '12px');
     el.style.setProperty('--s2-spacing-300', '16px');
@@ -111,7 +111,7 @@ describe('landing Content section', () => {
 
   it('matches panel widths across views and loading, empty and error states', async () => {
     const sheet = new CSSStyleSheet();
-    await sheet.replace(await (await fetch('/blocks/landing/content.css')).text());
+    await sheet.replace(await (await fetch('/blocks/landing/landing-content.css')).text());
     el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
     el.style.setProperty('--s2-spacing-200', '12px');
     el.style.setProperty('--s2-spacing-300', '16px');
@@ -145,7 +145,7 @@ describe('landing Content section', () => {
 
   it('aligns shared headers and rows and scrolls only when readable columns do not fit', async () => {
     const sheet = new CSSStyleSheet();
-    await sheet.replace(await (await fetch('/blocks/landing/content.css')).text());
+    await sheet.replace(await (await fetch('/blocks/landing/landing-content.css')).text());
     el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
     el.style.setProperty('--s2-spacing-200', '12px');
     el.style.setProperty('--s2-spacing-300', '16px');
@@ -381,7 +381,7 @@ describe('landing Content section', () => {
     expect(button.querySelector('use').getAttribute('href')).to.include('s2-icon-add-20-n.svg');
     expect(el.shadowRoot.querySelector('.empty-state a, nx-siteselector')).to.equal(null);
     const sheet = new CSSStyleSheet();
-    await sheet.replace(await (await fetch('/blocks/landing/content.css')).text());
+    await sheet.replace(await (await fetch('/blocks/landing/landing-content.css')).text());
     el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
     el.style.setProperty('--s2-spacing-100', '8px');
     el.style.setProperty('--s2-spacing-200', '12px');
