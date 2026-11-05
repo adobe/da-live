@@ -3,18 +3,19 @@ import { LANDING_CONTENT_PATH } from './constants.js';
 export function parseTileEntries(block) {
   return [...(block?.children || [])].flatMap((row) => {
     const [icon, content, metadata] = row.children;
+    const options = [...(metadata?.childNodes || [])].map((node) => node.textContent).join(' ');
     const link = content?.querySelector('h3 a');
     const iconName = icon?.textContent.trim().match(/^:(s2-icon-[a-z0-9-]+):$/)?.[1];
     if (!link?.textContent.trim() || !link.getAttribute('href') || !iconName) return [];
     return [{
-      id: metadata?.textContent.match(/\bid:\s*([a-z0-9-]+)/i)?.[1]
+      id: options.match(/\bid:\s*([a-z0-9-]+)/i)?.[1]
         || link.closest('h3').id || iconName,
       heading: link.textContent.trim(),
       description: [...content.querySelectorAll('li, p')]
         .map((item) => item.textContent.trim()).join(' '),
       iconHref: `/img/icons/${iconName}.svg`,
       href: link.getAttribute('href'),
-      tone: metadata?.textContent.match(/\btone:\s*([a-z0-9-]+)/i)?.[1].toLowerCase(),
+      tone: options.match(/\btone:\s*([a-z0-9-]+)/i)?.[1].toLowerCase(),
     }];
   });
 }

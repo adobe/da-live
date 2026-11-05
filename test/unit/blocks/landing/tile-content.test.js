@@ -27,7 +27,7 @@ describe('authored landing tiles', () => {
     const block = doc.querySelector('.landing');
     const row = block.lastElementChild;
     row.children[1].querySelector('a').textContent = 'Custom heading';
-    row.lastElementChild.textContent = 'tone: purple id: stable-action';
+    row.lastElementChild.innerHTML = '<h3>tone: purple</h3><h3>id: stable-action</h3>';
     block.prepend(row);
     block.append(document.createElement('div'));
     const entries = parseTileEntries(block);
