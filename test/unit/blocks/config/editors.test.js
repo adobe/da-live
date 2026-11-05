@@ -227,6 +227,18 @@ describe('rows', () => {
     expect(focused).to.deep.equal(inputs.map((_, i) => i === 0));
   });
 
+  it('shows and edits rows holding non-string values from hand-written sheets', () => {
+    const row = { title: 42, path: true };
+    expect([cellText(prepare.columns[0], row), cellText(prepare.columns[1], row)]).to.deep.equal(['42', 'true']);
+    expect(matches(prepare, row, '42')).to.equal(true);
+    const draft = { index: 0, row, submitted: true };
+    const errors = rowErrors(prepare, [row], draft);
+    const el = document.createElement('div');
+    const handlers = { onChange: () => {}, onApply: () => {}, onCancel: () => {} };
+    render(renderRowDialog(prepare, draft, errors, handlers), el);
+    expect(el.querySelector('#config-title').value).to.equal('42');
+  });
+
   it('reads rows from the given sheet only', () => {
     const own = multi('prepare', [A]);
     expect(rowStates(prepare, { own, inherited: null, pending: null, sheet: 'apps' }).rows).to.deep.equal([]);

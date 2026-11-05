@@ -26,6 +26,6 @@ export const all = (...checks) => (...args) => checks.reduce((error, check) => (
 // { column: check } → (row, others) => { column: message } for the columns that fail.
 export function validator(checks) {
   return (row, others = []) => Object.fromEntries(Object.entries(checks)
-    .map(([key, check]) => [key, check((row[key] ?? '').trim(), row, others)])
+    .map(([key, check]) => [key, check(String(row[key] ?? '').trim(), row, others)])
     .filter(([, error]) => error));
 }
