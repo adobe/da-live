@@ -1,7 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import { render, nothing } from 'da-lit';
 import {
-  iconUrl, renderOrgForm, renderHeader, renderLoadStatus, renderTabs, renderIntro, renderSetup,
+  renderOrgForm, renderHeader, renderLoadStatus, renderTabs, renderIntro, renderSetup,
   renderParts, renderSaveBar, renderConfirm, renderImportButton, renderImportDialog,
 } from '../../../../blocks/config/da-config/views.js';
 
@@ -14,10 +14,6 @@ const mount = (template) => {
 const text = (el) => el.textContent.replace(/\s+/g, ' ').trim();
 
 describe('config views', () => {
-  it('resolves icons inside the block img folder', () => {
-    expect(iconUrl('globe')).to.match(/\/blocks\/config\/img\/globe\.svg$/);
-  });
-
   it('asks for an org and submits the form', () => {
     let submitted = false;
     const onSubmit = (e) => {
@@ -48,20 +44,20 @@ describe('config views', () => {
   });
 
   describe('renderTabs', () => {
-    const one = { id: 'one', label: 'One', sections: [{ id: 'x', label: 'X', icon: 'box' }] };
+    const one = { id: 'one', label: 'One', sections: [{ id: 'x', label: 'X' }] };
     const two = {
       id: 'two',
       label: 'Two',
-      sections: [{ id: 'y', label: 'Y', icon: 'globe' }, { id: 'z', label: 'Z', icon: 'plug' }],
+      sections: [{ id: 'y', label: 'Y' }, { id: 'z', label: 'Z' }],
     };
     const handlers = { onPrimaryChange: () => {}, onSectionChange: () => {} };
 
-    it('shows sections with icons only for a tab with several', () => {
+    it('shows the section tabs, without icons, only for a tab with several', () => {
       const selection = { tab: two, section: two.sections[1] };
       const el = mount(renderTabs([one, two], selection, handlers));
       const secondary = el.querySelector('.config-tabs-secondary');
       expect(secondary.value).to.equal('z');
-      expect(secondary.items[0].icon).to.match(/img\/globe\.svg$/);
+      expect(secondary.items).to.deep.equal([{ value: 'y', label: 'Y' }, { value: 'z', label: 'Z' }]);
       const first = { tab: one, section: one.sections[0] };
       const single = mount(renderTabs([one, two], first, handlers));
       expect(!!single.querySelector('.config-tabs-secondary')).to.equal(false);

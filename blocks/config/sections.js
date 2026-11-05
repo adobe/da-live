@@ -1,7 +1,6 @@
-// The one map of the config UI: primary tab → section → icon, scope, storage and panel. Moving,
+// The one map of the config UI: primary tab → section → scope, storage and panel. Moving,
 // renaming, re-scoping or re-homing a section happens here; panels only describe their fields.
 //
-// `icon`: img/<icon>.svg, a currentColor sprite with id="icon" (named for what it shows).
 // `scopes`: org-only (#/org), site-only (#/org/site), or both (site values override org).
 // `store`: where the values live: config(sheet), file(path, sheets) or library(title, paths);
 // see stores.js. `docs`: the aem.live page the panel links to. A section id is also its `?tab=`
@@ -30,7 +29,6 @@ export const TABS = [
       {
         id: 'blocks',
         label: 'Blocks',
-        icon: 'box',
         scopes: [SITE],
         store: library('Blocks'),
         docs: 'https://www.aem.live/docs/ew/administering/set-up-library',
@@ -39,7 +37,6 @@ export const TABS = [
       {
         id: 'templates',
         label: 'Templates',
-        icon: 'file-template',
         scopes: [SITE],
         store: library('Templates'),
         docs: 'https://www.aem.live/docs/ew/administering/set-up-library',
@@ -48,7 +45,6 @@ export const TABS = [
       {
         id: 'icons',
         label: 'Icons',
-        icon: 'image',
         scopes: [SITE],
         store: library('Icons'),
         docs: 'https://www.aem.live/docs/ew/administering/set-up-library',
@@ -57,7 +53,6 @@ export const TABS = [
       {
         id: 'placeholders',
         label: 'Placeholders',
-        icon: 'variable',
         scopes: [SITE],
         store: library('Placeholders', ['/placeholders.json']),
         docs: 'https://www.aem.live/docs/placeholders',
@@ -72,7 +67,6 @@ export const TABS = [
       {
         id: 'plugins',
         label: 'Plugins',
-        icon: 'plug',
         scopes: BOTH,
         store: config(SHEETS.library),
         docs: 'https://www.aem.live/docs/ew/developing/micro-frontends/2-build-your-basic-plugin',
@@ -81,7 +75,6 @@ export const TABS = [
       {
         id: 'apps',
         label: 'Apps',
-        icon: 'app',
         scopes: [SITE],
         store: config(SHEETS.apps, { inherit: false }),
         docs: 'https://www.aem.live/docs/ew/developing/micro-frontends/4-build-your-audit-app',
@@ -90,7 +83,6 @@ export const TABS = [
       {
         id: 'prepare',
         label: 'Prepare',
-        icon: 'menu',
         scopes: BOTH,
         store: config(SHEETS.prepare),
         docs: 'https://www.aem.live/docs/ew/administering/prepare-menu',
@@ -105,7 +97,6 @@ export const TABS = [
       {
         id: 'experience-workspace',
         label: 'Experience Workspace',
-        icon: 'edit',
         scopes: BOTH,
         store: config(SHEETS.flags),
         docs: 'https://www.aem.live/docs/ew/da-is-ew',
@@ -120,7 +111,6 @@ export const TABS = [
       {
         id: 'aem-assets',
         label: 'AEM Assets',
-        icon: 'asset',
         scopes: BOTH,
         store: config(SHEETS.data),
         docs: 'https://www.aem.live/docs/ew/administering/set-up-aem-assets',
@@ -129,7 +119,6 @@ export const TABS = [
       {
         id: 'translation',
         label: 'Translation',
-        icon: 'globe',
         scopes: [SITE],
         store: file('/.da/translate.json', {
           settings: 'config',
@@ -152,7 +141,6 @@ export const TABS = [
       {
         id: 'msm',
         label: 'Multi-Site Manager',
-        icon: 'branch',
         scopes: [ORG],
         store: config(SHEETS.msm),
         docs: 'https://www.aem.live/docs/ew/administering/multi-site-manager',
