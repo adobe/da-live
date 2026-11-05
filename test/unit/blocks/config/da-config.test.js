@@ -515,7 +515,7 @@ describe('da-config', () => {
       expect(row(REPO).textContent).to.include('Inherited from org');
       expect(field(REPO).placeholder).to.equal('author-p1-e1.adobeaemcloud.com');
       expect(row(ORIGIN).querySelector('nx-pills.config-pill-override').items[0].label).to.equal('Overrides org');
-      expect(row(REPO).querySelector('nx-pills.config-pill-neutral').items[0].label).to.equal('Required');
+      expect([has(`[id="config-${REPO}"][required]`), row(REPO).querySelector('.config-required').textContent]).to.deep.equal([true, '*']);
 
       row(ORIGIN).querySelector('.nx-action-btn-quiet').click();
       await el.updateComplete;

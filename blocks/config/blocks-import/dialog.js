@@ -215,8 +215,8 @@ class DaConfigBlocksImport extends LitElement {
             <label class="nx-checkbox">
               <input type="checkbox" .checked=${this._selected.has(b.name)}
                 @change=${(e) => this._toggle(b.name, e.target.checked)}>
-              ${b.name}${b.variants.length ? html` <span class="config-setting-hint">(${b.variants.join(', ')})</span>` : nothing}
-              ${existing.has(displayName(b.name).toLowerCase()) ? html` <span class="config-setting-hint">· updates the list entry</span>` : nothing}
+              ${b.name}${b.variants.length ? html` <span class="config-field-help">(${b.variants.join(', ')})</span>` : nothing}
+              ${existing.has(displayName(b.name).toLowerCase()) ? html` <span class="config-field-help">· updates the list entry</span>` : nothing}
             </label>
           </li>`)}
       </ul>
