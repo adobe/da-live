@@ -57,7 +57,8 @@ export function rowsToSave(panel, json, rows, sheet) {
 // URLs (comma-separated in some sheets) shown without their scheme.
 export function cellText(column, row) {
   if (column.display) return column.display(row);
-  const value = row[column.key] ?? '';
+  // Sheets written outside this editor may hold numbers or booleans.
+  const value = String(row[column.key] ?? '');
   if (column.options) return optionLabel(column, value);
   return value.replace(/(^|,\s*)https?:\/\//gi, '$1');
 }
@@ -172,7 +173,7 @@ export function renderRowDialog(panel, draft, errors, handlers) {
     <nx-dialog class="config-row-dialog" title=${title} @close=${handlers.onCancel}>
       <form class="config-row-form" @submit=${(e) => { e.preventDefault(); handlers.onApply(); }}>
         ${panel.columns.map((column, i) => {
-    const raw = draft.row[column.key] ?? '';
+    const raw = String(draft.row[column.key] ?? '');
     const error = draft.submitted ? errors[column.key] : null;
     const state = { field: column, raw, value: raw.trim(), error };
     return renderField(state, field, { autofocus: i === 0 });
