@@ -321,7 +321,6 @@ describe('da-config', () => {
     await ready();
     expect(values('.config-tabs-primary')).to.deep.equal(['library', 'extensions', 'workspace', 'integrations']);
     expect(values('.config-tabs-secondary')).to.deep.equal(['blocks', 'templates', 'icons', 'placeholders']);
-    expect(q('.config-tabs-secondary').items[0].icon).to.match(/\/blocks\/config\/img\/box\.svg$/);
   });
 
   it('switches sections from both tab rows and records it in ?tab=', async () => {

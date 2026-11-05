@@ -4,9 +4,6 @@ import { html, nothing } from 'da-lit';
 import { renderAlert, renderCallout } from '../editors/fields.js';
 import { ROWS, SHELL, failureDetail } from '../messages.js';
 
-// Section icons (img/<icon>.svg); nx-segmented-btn appends the #icon fragment.
-export const iconUrl = (icon) => new URL(`../img/${icon}.svg`, import.meta.url).pathname;
-
 export function renderOrgForm(onSubmit) {
   return html`
     <div class="config-note" role="note">
@@ -69,8 +66,9 @@ export function renderTabs(tabs, { tab, section }, { onPrimaryChange, onSectionC
       ${tab.sections.length > 1 ? html`
         <nx-segmented-btn
           class="config-tabs-secondary"
+          size="m"
           label=${tab.label}
-          .items=${tab.sections.map((s) => ({ value: s.id, label: s.label, icon: iconUrl(s.icon) }))}
+          .items=${tab.sections.map((s) => ({ value: s.id, label: s.label }))}
           .value=${section.id}
           @change=${onSectionChange}
         ></nx-segmented-btn>` : nothing}

@@ -1,44 +1,29 @@
 /*
  * Adopted into each nx-segmented-btn's shadow root by da-config. nx-segmented-btn has no
- * variants or styling hooks yet, so this restyles the two rows after Coworker: quiet area tabs
- * (selected = grey pill) and separate section chips (selected = dark). Drop it if da-nx adds
- * variants.
+ * variants or styling hooks yet, so this styles the two rows after Coworker: the areas keep the
+ * segmented track with the selected one outlined, the sections are quiet tabs (selected = grey
+ * pill). Drop it if da-nx adds variants.
  */
-
-:host(.config-tabs-primary) .segmented,
-:host(.config-tabs-secondary) .segmented {
-  padding: 0;
-  background: none;
-}
-
-:host(.config-tabs-primary) .segmented {
-  gap: var(--s2-spacing-100);
-}
-
-:host(.config-tabs-primary) .segment {
-  border-radius: 999px;
-  color: var(--s2-gray-700);
-  font-size: var(--s2-component-m-regular-font-size);
-}
 
 :host(.config-tabs-primary) .segment.is-selected {
   color: var(--s2-gray-900);
-  background-color: var(--s2-gray-200);
+  box-shadow: inset 0 0 0 2px var(--s2-gray-900);
 }
 
 :host(.config-tabs-secondary) .segmented {
   flex-wrap: wrap;
   justify-content: center;
+  padding: 0;
   gap: var(--s2-spacing-100);
+  background: none;
 }
 
 :host(.config-tabs-secondary) .segment {
-  border-radius: var(--s2-corner-radius-300);
-  color: var(--s2-gray-800);
-  background-color: var(--s2-gray-100);
+  border-radius: 999px;
+  color: var(--s2-gray-700);
 }
 
 :host(.config-tabs-secondary) .segment.is-selected {
-  color: var(--s2-gray-25);
-  background-color: var(--s2-gray-800);
+  color: var(--s2-gray-900);
+  background-color: var(--s2-gray-200);
 }
