@@ -98,7 +98,10 @@
   gap: var(--s2-spacing-300);
 }
 
-.path-kind-hint {
+.path-add-form p {
   margin: 0;
+}
+
+.path-kind-hint {
   font-size: var(--s2-component-s-regular-font-size);
 }

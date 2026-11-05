@@ -41,7 +41,7 @@ export function folderRulePath(site, folder) {
 }
 
 export function parseFolderPath(value) {
-  const trimmed = (value || '').trim();
+  const trimmed = (value || '').trim().toLowerCase();
   if (!trimmed) return { error: 'Enter a folder path, e.g. /blog.' };
   if (!trimmed.startsWith('/')) return { error: 'Folder paths start with /, e.g. /blog.' };
   const folder = trimmed.split('/').filter(Boolean).join('/');
@@ -49,6 +49,7 @@ export function parseFolderPath(value) {
   if (folder.split('/').some((segment) => segment === '.' || segment === '..' || segment.includes('*'))) {
     return { error: 'Folder paths cannot contain traversal or wildcard segments.' };
   }
+  if (folder.endsWith('.html')) return { error: 'Folder paths cannot end with .html. Choose Page to add a page.' };
   return { folder };
 }
 
@@ -176,8 +177,12 @@ export function buildSlots(rules, site, pendingPath = null) {
     if (!existed) slot.pending = true;
   }
 
-  // Sort as if dot folders had no dot, so `.about/` comes right after the page `about`.
-  const sortKey = (path) => `${path.replaceAll('/.', '/')}\0${path}`;
+  // A page (`about.html` or `about`) and its media folder `.about/` share a sort key prefix,
+  // so the folder comes right after the page and nothing sorts between them.
+  const sortKey = (path) => {
+    const [, dir, name] = path.match(/^(.*\/)\.([^/]+)\/ \+ \*\*$/) ?? [];
+    return name ? `${dir}${name}\0\x01${path}` : `${path.replace(/\.html$/, '')}\0\0${path}`;
+  };
   const orderedPaths = defaults.map((path) => normPath(path));
   const rest = [...slotsMap.keys()]
     .filter((path) => !orderedPaths.includes(path))

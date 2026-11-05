@@ -271,9 +271,11 @@ class DaPermissions extends LitElement {
     window.location.hash = `/${value}`;
   }
 
-  _onOpenPathDialog(kind) {
+  async _onOpenPathDialog(kind) {
     this._pathError = null;
     this._pathDialog = kind;
+    await this.updateComplete;
+    this.shadowRoot.querySelector('.path-input')?.focus();
   }
 
   _onPathSubmit(e) {
@@ -435,9 +437,10 @@ class DaPermissions extends LitElement {
               autocomplete="off"
               autofocus
               aria-invalid=${error ? 'true' : 'false'}
+              aria-describedby=${error ? 'permissions-path-error permissions-path-hint' : 'permissions-path-hint'}
             >
-            ${error ? html`<p class="nx-input-error-msg" role="alert">${error}</p>` : nothing}
-            <p class="path-kind-hint">${hint}</p>
+            ${error ? html`<p id="permissions-path-error" class="nx-input-error-msg" role="alert">${error}</p>` : nothing}
+            <p id="permissions-path-hint" class="path-kind-hint">${hint}</p>
           </div>
         </form>
         <button type="button" slot="actions" class="nx-form-btn-secondary" @click=${() => this._onPathCancel()}>Cancel</button>
