@@ -34,7 +34,6 @@ export default class DaFileItem extends LitElement {
     view: { type: String, reflect: true },
     href: { type: String },
     folder: { attribute: false },
-    imagePreview: { type: Boolean },
     isChecked: { attribute: 'ischecked', type: Boolean },
     isFavorited: { attribute: 'isfavorited', type: Boolean },
     _isRenaming: { state: true },
@@ -57,11 +56,11 @@ export default class DaFileItem extends LitElement {
   }
 
   willUpdate(props) {
-    if (props.has('path') || props.has('ext') || props.has('view') || props.has('imagePreview')) this.resetImage();
+    if (props.has('path') || props.has('ext') || props.has('view')) this.resetImage();
   }
 
   updated() {
-    if (!this.isConnected || (this.view !== 'card' && !this.imagePreview) || !isImageExt(this.ext)
+    if (!this.isConnected || this.view !== 'card' || !isImageExt(this.ext)
       || this._imageRequested || this._imageObserver) return;
     this._imageObserver = new IntersectionObserver(([entry]) => {
       if (!entry?.isIntersecting) return;
@@ -317,15 +316,14 @@ export default class DaFileItem extends LitElement {
 
   renderItem() {
     const href = this.href ?? getFileItemHref(this);
-    const preview = this.imagePreview && isImageExt(this.ext);
 
     return html`
       <a href="${this.ext === 'link' ? until(href) : href}" class="da-item-list-item-title" data-column="name">
         <div class="da-item-list-item-info">
           ${this._isRenaming ? html`<span class="da-item-list-item-type"><div class="icon rename-icon"></div></span>
           ` : html`
-            <span class="da-item-list-item-type ${preview ? 'image-preview' : ''}">
-              ${preview ? this.renderFilePreview() : this.renderIcon()}
+            <span class="da-item-list-item-type">
+              ${this.renderIcon()}
             </span>
           `}
           <div class="da-item-list-item-name">

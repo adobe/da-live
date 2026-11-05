@@ -248,6 +248,32 @@ describe('landing Content section', () => {
     expect(fileItems()).to.have.length(2);
   });
 
+  ['focus', 'pageshow'].forEach((type) => {
+    it(`refreshes Browse favorites on ${type} without confusing same-named files or removing Recent entries`, async () => {
+      const root = { name: 'coffee', path: '/org/site/coffee.html', ext: 'html' };
+      const nested = { name: 'coffee', path: '/org/site/de/coffee.html', ext: 'html' };
+      el._files = [root, nested];
+      toggleFavorite('/org/site', root.path);
+      toggleFavorite('/org/site/de', nested.path);
+      el.refreshFavorites();
+      el.changeView({ detail: { value: 'list' } });
+      el.changeTab('starred');
+      await updateLanding();
+      expect(fileItems()).to.have.length(2);
+      toggleFavorite('/org/site/de', nested.path);
+      window.dispatchEvent(new Event(type));
+      await updateLanding();
+      expect([...fileItems()].map((item) => item.path)).to.deep.equal([root.path]);
+      expect(el._tab).to.equal('starred');
+      expect(el._view).to.equal('list');
+      el.changeTab('recent');
+      await updateLanding();
+      expect([...fileItems()].map((item) => item.path)).to.deep.equal([root.path, nested.path]);
+      expect(fileItems()[0].isFavorited).to.equal(true);
+      expect(fileItems()[1].shadowRoot.querySelector('button[aria-label="Mark as Favorite"]')).not.to.equal(null);
+    });
+  });
+
   it('reports failed favorite storage without pretending the item was saved', async () => {
     sinon.stub(Storage.prototype, 'setItem').throws(new DOMException('QuotaExceededError'));
     el.starFile(ITEMS[0]);
@@ -361,11 +387,15 @@ describe('landing Content section', () => {
   it('stops reacting to nav selection and site-history changes after removal', () => {
     el.remove();
     const refresh = sinon.spy(el, 'refreshSites');
+    const favorites = sinon.spy(el, 'refreshFavorites');
     document.dispatchEvent(new CustomEvent('site-select', { detail: { value: 'other/site' } }));
     document.dispatchEvent(new CustomEvent('site-added', { detail: { value: 'other/site' } }));
     window.dispatchEvent(new StorageEvent('storage', { key: 'da-sites' }));
+    window.dispatchEvent(new Event('focus'));
+    window.dispatchEvent(new Event('pageshow'));
     expect(el.path).to.equal('/org/site');
     expect(refresh.called).to.equal(false);
+    expect(favorites.called).to.equal(false);
   });
 
   it('shows loading, empty and retry states distinctly', async () => {
@@ -383,18 +413,22 @@ describe('landing Content section', () => {
     expect(loadSite.callCount).to.equal(2);
   });
 
-  it('keeps lazy list image previews and omits unsupported folder detail controls', async () => {
+  it('uses shared image icons without fetching list thumbnails and omits folder detail controls', async () => {
+    const get = sinon.spy(source, 'get');
     el._files = [
       { name: 'Image', path: '/org/site/image.png', ext: 'png' },
       { name: 'Folder', path: '/org/site/folder' },
     ];
     el.changeView({ detail: { value: 'list' } });
     await updateLanding();
-    expect(fileItems()[0].imagePreview).to.equal(true);
-    expect(fileItems()[0].shadowRoot.querySelector('.image-preview')).not.to.equal(null);
+    expect(fileItems()[0].shadowRoot.querySelector('.da-item-list-item-type svg use').getAttribute('href'))
+      .to.include('s2-icon-image-20-n.svg');
+    expect(fileItems()[0].shadowRoot.querySelector('img')).to.equal(null);
+    expect(get.called).to.equal(false);
     expect(fileItems()[0].shadowRoot.querySelector('[aria-label="More info"]')).not.to.equal(null);
     expect(fileItems()[1].shadowRoot.querySelector('[aria-label="More info"]')).to.equal(null);
     expect(fileItems()[1].folder.label).to.equal('/');
+    expect(fileItems()[1].shadowRoot.querySelector('.file-folder').title).to.equal('/org/site');
   });
 
   it('preserves Recent order and persists favorites once through the shared list in both views', async () => {

@@ -49,6 +49,11 @@ export class DaLanding extends LitElement {
     if (key === 'da-sites' || key === null) this.refreshSites();
   };
 
+  _onResume = () => {
+    this.refreshFavorites();
+    this.refreshSites();
+  };
+
   _onSiteSelect = ({ detail: { value } }) => {
     this.refreshSites();
     const [org, site] = value.split('/');
@@ -69,6 +74,8 @@ export class DaLanding extends LitElement {
     this.refreshSites();
     if (this._scope) this.loadSite();
     window.addEventListener('storage', this._onStorage);
+    window.addEventListener('focus', this._onResume);
+    window.addEventListener('pageshow', this._onResume);
     document.addEventListener('site-select', this._onSiteSelect);
     document.addEventListener('site-added', this._onSiteSelect);
   }
@@ -76,6 +83,8 @@ export class DaLanding extends LitElement {
   disconnectedCallback() {
     this._request?.abort();
     window.removeEventListener('storage', this._onStorage);
+    window.removeEventListener('focus', this._onResume);
+    window.removeEventListener('pageshow', this._onResume);
     document.removeEventListener('site-select', this._onSiteSelect);
     document.removeEventListener('site-added', this._onSiteSelect);
     super.disconnectedCallback();

@@ -52,7 +52,6 @@ describe('Content data and destinations on main', () => {
     expect(new URL(items[0].folderHref).hash).to.equal('#/org/site/nested');
     expect(new URL(items[0].folderHref).searchParams.get('landing')).to.equal('home');
     expect(items.map((item) => item.isFavorited)).to.deep.equal([false, true]);
-    expect(items.every((item) => item.imagePreview)).to.equal(true);
     expect(files[0]).not.to.have.property('href');
     expect(files[1]).not.to.have.property('isFavorited');
   });

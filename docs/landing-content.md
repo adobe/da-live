@@ -46,17 +46,26 @@ The list keeps Name, Folder, Modified and information/favorite controls.
 Changing the filter resets expansion to six. Changing the site also resets
 filters and aborts the previous listing. Favorite changes in another tab
 are reflected while the component is connected.
+Returning to the tab or restoring the page from browser history rereads favorites,
+so missed storage events do not leave stale stars. Unstarring removes a file from
+Favorite, not Recent, and never changes the favorite state of a different file
+with the same name.
 
 ## Data, previews and destinations
 
 All listing pages across the selected site's folders are loaded, deduplicated
 and sorted by modification date. Folder labels show the site-relative containing
 folder, such as `/de` for `/org/site/de/coffee.html` and `/` for root items.
+The folder link's tooltip shows its full path including org and site.
+Recent covers the whole selected site, not just the folder open in Browse, and
+is ordered by modifications rather than personal visits.
 Hidden folders are not traversed. At most four folder listings run concurrently.
 Site changes and disconnects abort the walk. Permission/network failures in any
 folder have a retry state, not an empty or partially successful result.
-Both views reuse Browse's file-item menus, details and favorites. Image thumbnails
-are lazy and release object URLs on file/site changes or removal. There are no
+Both views reuse Browse's file-item menus, details and favorites. List rows use
+the standard type icons, including the image icon, without fetching thumbnails.
+Cards retain shared lazy image previews and release object URLs on file/site
+changes or removal. There are no
 HTML document thumbnails or screenshot services. Details load only on demand.
 Content owns filtering, pagination, destinations and favorite persistence; its
 external list does not fetch another directory or expose bulk actions. The

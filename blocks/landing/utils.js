@@ -34,7 +34,6 @@ export function getListItems({ files, favorites, editor = '/edit#', editorConfs 
       editor: getConfiguredEditor(item.path, editorConfs, editor),
     }),
     folderHref: getBrowseHref({ path: item.path.slice(0, item.path.lastIndexOf('/')) }),
-    imagePreview: true,
     isFavorited: favorites?.has(item.path) ?? false,
   }));
 }
