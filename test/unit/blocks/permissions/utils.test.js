@@ -198,6 +198,18 @@ describe('permissions utils', () => {
         'hotels/', 'promotions.html', '.promotions/', 'promotions/', 'terms', '.terms/',
       ]);
     });
+
+    it('keeps a page and its media folder together next to similar names', () => {
+      const rules = [
+        { path: '/s/.terms/+**' }, { path: '/s/terms' }, { path: '/s/.terms-of-use/+**' },
+        { path: '/s/terms-of-use.html' }, { path: '/s/.about/+**' }, { path: '/s/about.pdf' },
+        { path: '/s/about.html' }, { path: '/s/.about.v2/+**' }, { path: '/s/about.v2.html' },
+      ];
+      expect(buildSlots(rules, 's').map((s) => s.label).slice(2)).to.deep.equal([
+        'about.html', '.about/', 'about.pdf', 'about.v2.html', '.about.v2/',
+        'terms', '.terms/', 'terms-of-use.html', '.terms-of-use/',
+      ]);
+    });
   });
 
   describe('siteNames', () => {
@@ -531,6 +543,14 @@ describe('permissions utils', () => {
     it('rejects wildcard syntax in folder names', () => {
       expect(parseFolderPath('/blog/+**/drafts')).to.deep.equal({ error: 'Folder paths cannot contain traversal or wildcard segments.' });
       expect(parseFolderPath('/blog/*')).to.deep.equal({ error: 'Folder paths cannot contain traversal or wildcard segments.' });
+    });
+
+    it('rejects a page path', () => {
+      expect(parseFolderPath('/about.html')).to.deep.equal({ error: 'Folder paths cannot end with .html. Choose Page to add a page.' });
+    });
+
+    it('lowercases the folder like da-admin lowercases request paths', () => {
+      expect(parseFolderPath('/Blog/Drafts')).to.deep.equal({ folder: 'blog/drafts' });
     });
   });
 });

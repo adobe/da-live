@@ -657,6 +657,8 @@ describe('da-permissions', () => {
         .to.equal('Covers the folder and everything in it.');
       const input = dialog?.querySelector('input.path-input.nx-input');
       expect(input?.getAttribute('placeholder')).to.equal('/blog/drafts');
+      expect(input?.getAttribute('aria-describedby')).to.equal('permissions-path-hint');
+      expect(dialog.querySelector('#permissions-path-hint')?.classList.contains('path-kind-hint')).to.equal(true);
       const actions = [...dialog.querySelectorAll('[slot="actions"]')].map((b) => [b.textContent.trim(), b.className]);
       expect(actions).to.deep.equal([
         ['Cancel', 'nx-form-btn-secondary'],
@@ -796,8 +798,10 @@ describe('da-permissions', () => {
 
       const dialog = await openPathDialog(el);
       await submitPath(el, 'about');
-      expect(dialog.querySelector('.nx-input-error-msg')?.textContent.trim())
+      expect(dialog.querySelector('#permissions-path-error.nx-input-error-msg')?.textContent.trim())
         .to.equal('Folder paths start with /, e.g. /blog.');
+      expect(dialog.querySelector('input.path-input').getAttribute('aria-describedby'))
+        .to.equal('permissions-path-error permissions-path-hint');
 
       const kinds = dialog.querySelector('nx-segmented-btn');
       kinds.dispatchEvent(new CustomEvent('change', { detail: { value: 'page' } }));
@@ -811,6 +815,8 @@ describe('da-permissions', () => {
       expect(dialog.querySelector('.path-kind-hint')?.textContent.trim())
         .to.equal('Covers the page and its images.');
       expect(dialog.querySelector('.nx-input-error-msg')).to.equal(null);
+      expect(input.getAttribute('aria-describedby')).to.equal('permissions-path-hint');
+      expect(el.shadowRoot.activeElement).to.equal(input);
     });
 
     it('shows a validation error and keeps the dialog open for a trailing slash', async () => {
