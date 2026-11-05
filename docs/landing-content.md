@@ -12,7 +12,9 @@ The page reuses Nexter's `nx-siteselector`, including its recent history, access
 checks and Add dialog. It lazily loads the selector after first render and passes
 its selected site to Content through `onSelect`. Selection and Add leave the
 root URL unchanged. It does not duplicate the selector controller or modify LP.
-An unavailable selector is reported with a link to existing Browse site selection.
+The no-site Content action opens the shared Add site dialog without navigating
+to Browse. It waits for the selector to initialize before requesting Add.
+An unavailable selector is reported as an error rather than sending users elsewhere.
 
 Content mounts inside the gradient landing surface already provided by main.
 `landing.css` retains that page background and its light/dark theme preview.

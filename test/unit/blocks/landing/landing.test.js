@@ -311,14 +311,32 @@ describe('landing Content section', () => {
     expect(loadSite.callCount).to.equal(2);
   });
 
-  it('starts unselected and offers the shared picker and existing Browse site selection', async () => {
+  it('opens the shared Add site workflow from the no-site state without navigating to Browse', async () => {
+    const { href } = window.location;
     el.setScope(undefined);
     await updateLanding();
-    const link = el.shadowRoot.querySelector('.empty-state a');
+    const button = el.shadowRoot.querySelector('.empty-state button');
     expect(el.shadowRoot.querySelector('nx-siteselector')).not.to.equal(null);
-    expect(link.textContent).to.equal('Browse sites');
-    expect(new URL(link.href).hash).to.equal('');
-    expect(new URL(link.href).searchParams.get('landing')).to.equal('home');
+    expect(button.textContent).to.equal('Add site');
+    expect(el.shadowRoot.querySelector('.empty-state a')).to.equal(null);
+    const added = new Promise((resolve) => {
+      document.addEventListener('site-add', resolve, { once: true });
+    });
+    button.click();
+    await added;
+    expect(window.location.href).to.equal(href);
+  });
+
+  it('does not open Add site after navigating away while the shared selector is loading', async () => {
+    let finish;
+    el._selectorReady = new Promise((resolve) => { finish = resolve; });
+    const add = sinon.spy();
+    el.addEventListener('site-add', add);
+    const pending = el._onAddSite();
+    el.remove();
+    finish();
+    await pending;
+    expect(add.called).to.equal(false);
   });
 
   it('shows loading, empty and retry states distinctly', async () => {

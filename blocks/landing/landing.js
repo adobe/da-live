@@ -68,11 +68,18 @@ export class DaLanding extends LitElement {
     window.addEventListener('storage', this._onStorage);
   }
 
-  async firstUpdated() {
-    try {
-      await import(`${getNx2()}/blocks/siteselector/siteselector.js`);
-    } catch {
-      if (this.isConnected) this._selectorError = 'Could not load site selection. Reload the page to try again.';
+  firstUpdated() {
+    this._selectorReady = import(`${getNx2()}/blocks/siteselector/siteselector.js`)
+      .then(() => this.shadowRoot.querySelector('nx-siteselector')?.ready)
+      .catch(() => {
+        if (this.isConnected) this._selectorError = 'Could not load site selection. Reload the page to try again.';
+      });
+  }
+
+  async _onAddSite() {
+    await this._selectorReady;
+    if (this.isConnected && !this._selectorError) {
+      this.dispatchEvent(new CustomEvent('site-add', { bubbles: true, composed: true }));
     }
   }
 
@@ -158,7 +165,8 @@ export class DaLanding extends LitElement {
       return html`<div class="empty-state">${icon('folder')}
         <h3>Choose a site to get started</h3>
         <p>Select a site above to see its content.</p>
-        <a class="nx-action-btn" href=${getBrowseHref({})}>Browse sites</a>
+        <button type="button" class="nx-action-btn" ?disabled=${!!this._selectorError}
+          @click=${this._onAddSite}>Add site</button>
       </div>`;
     }
     if (this._error) {
@@ -197,8 +205,7 @@ export class DaLanding extends LitElement {
   render() {
     return html`<div class="landing">
       <div class="site-picker">
-        ${this._selectorError ? html`<p role="alert">${this._selectorError}
-          <a href=${getBrowseHref({})}>Browse sites</a></p>`
+        ${this._selectorError ? html`<p role="alert">${this._selectorError}</p>`
     : html`<nx-siteselector size=${nx.getUISize?.() === 'm' ? 'm' : 's'}
           .onSelect=${this._onSiteSelect}></nx-siteselector>`}
       </div>
