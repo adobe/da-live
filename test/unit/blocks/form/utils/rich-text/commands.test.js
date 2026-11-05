@@ -1,8 +1,6 @@
 /* eslint-disable no-script-url */
 import { expect } from '@esm-bundle/chai';
 import * as proseMirror from 'da-y-wrapper';
-import { SCHEMA_SPEC } from '../../../../../../blocks/form/utils/rich-text/schema.js';
-import { parseRichText, serializeRichText } from '../../../../../../blocks/form/utils/rich-text/html.js';
 import {
   getActiveMarks,
   getListType,
@@ -18,40 +16,7 @@ import {
   BLOCK_TYPES,
   buildKeymap,
 } from '../../../../../../blocks/form/utils/rich-text/commands.js';
-
-const schema = new proseMirror.Schema(SCHEMA_SPEC);
-
-/**
- * Creates an editor state for HTML.
- * @param {string} value The HTML.
- * @param {{ from?: number, to?: number }} [selection] The selection, the document start
- *   when left out.
- * @returns {object} The editor state.
- */
-function stateFor(value, { from, to } = {}) {
-  const richTextDocument = parseRichText({ proseMirror, schema, value });
-  const state = proseMirror.EditorState.create({ doc: richTextDocument, schema });
-  if (from === undefined) {
-    return state;
-  }
-
-  const selection = proseMirror.TextSelection.create(richTextDocument, from, to ?? from);
-  return state.apply(state.tr.setSelection(selection));
-}
-
-/**
- * Runs a command and applies what it dispatched.
- * @param {Function} command The ProseMirror command.
- * @param {object} state The editor state.
- * @returns {{ handled: boolean, state: object, html: string }} Whether it applied, and the
- *   resulting state and value.
- */
-function run(command, state) {
-  const transactions = [];
-  const handled = command(state, (transaction) => transactions.push(transaction));
-  const next = transactions.length ? state.apply(transactions[0]) : state;
-  return { handled, state: next, html: serializeRichText({ richTextDocument: next.doc }) };
-}
+import { schema, stateFor, run } from '../../helpers/rich-text-states.js';
 
 describe('rich-text commands', () => {
   describe('selection helpers', () => {
@@ -243,10 +208,13 @@ describe('rich-text commands', () => {
         .forEach((key) => expect(keys[key], key).to.equal(undefined));
     });
 
-    it('calls onLink for Mod-k', () => {
+    it('opens the link dialog for Mod-k, which applies anywhere', () => {
       const calls = [];
       const keys = buildKeymap({ proseMirror, schema, onLink: () => calls.push('link') });
-      expect(keys['Mod-k']()).to.be.true;
+      const state = stateFor('<p>a</p>');
+      expect(keys['Mod-k'](state)).to.be.true;
+      expect(calls).to.be.empty;
+      expect(keys['Mod-k'](state, () => {})).to.be.true;
       expect(calls).to.deep.equal(['link']);
     });
   });
