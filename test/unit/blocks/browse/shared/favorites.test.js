@@ -1,6 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import {
   getFavorites,
+  getSiteFavorites,
   isFavorite,
   toggleFavorite,
 } from '../../../../../blocks/browse/shared/favorites.js';
@@ -49,6 +50,30 @@ describe('favorites util', () => {
     expect(getFavorites('/a')).to.deep.equal(['/a/x']);
     expect(getFavorites('/b')).to.deep.equal(['/b/y']);
     expect(isFavorite('/a', '/b/y')).to.equal(false);
+  });
+
+  it('collects root and nested favorites without including other sites or altering folder storage', () => {
+    toggleFavorite('/org/site', '/org/site/home.html');
+    toggleFavorite('/org/site/de', '/org/site/de/coffee.html');
+    toggleFavorite('/org/site-other/de', '/org/site-other/de/coffee.html');
+    toggleFavorite('/other/site/de', '/other/site/de/coffee.html');
+    expect(getSiteFavorites('/org/site')).to.deep.equal([
+      '/org/site/home.html', '/org/site/de/coffee.html',
+    ]);
+    expect(getFavorites('/org/site')).to.deep.equal(['/org/site/home.html']);
+    expect(getFavorites('/org/site/de')).to.deep.equal(['/org/site/de/coffee.html']);
+  });
+
+  it('ignores malformed and foreign site favorites and deduplicates saved paths', () => {
+    localStorage.setItem(KEY, JSON.stringify({
+      '/org/site': ['/org/site/a.html', '/org/site/de/a.html', '/org/site-other/a.html', null],
+      '/org/site/de': ['/org/site/de/a.html'],
+      '/org/site/bad': {},
+    }));
+    expect(getSiteFavorites('/org/site')).to.deep.equal(['/org/site/a.html', '/org/site/de/a.html']);
+    localStorage.setItem(KEY, '{not json');
+    expect(getSiteFavorites('/org/site')).to.deep.equal([]);
+    expect(getSiteFavorites('')).to.deep.equal([]);
   });
 
   it('returns false from is/get/toggle when args are missing', () => {

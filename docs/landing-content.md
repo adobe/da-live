@@ -1,13 +1,18 @@
 # Landing Content
 
 The opt-in Content page uses Browse's `da-list` and `da-file-item` in both views. Open
-`/?landing=true&nx=main&nxver=2#/org/site` with access to that site.
-Without `landing=true`, Browse keeps its existing renderer and navigation.
+`/?landing=true&nx=main&nxver=2` and select a site in the shared site picker.
+The picker requires adobe/da-nx#947. Until it is released, preview with
+`nx=siteselector-main`. Without `landing=true`, Browse keeps its existing renderer
+and navigation. A site or folder hash always opens Browse, even with `landing=true`.
 
 This feature contains only the Content section. It does not introduce a
-greeting, chat/composer, branding, site picker, page artwork or editor changes.
-The no-site state links to existing Browse site selection rather than requiring
-the LP-only Add site dialog.
+greeting, chat/composer, branding, page artwork or editor changes.
+The page reuses Nexter's `nx-siteselector`, including its recent history, access
+checks and Add dialog. It lazily loads the selector after first render and passes
+its selected site to Content through `onSelect`. Selection and Add leave the
+root URL unchanged. It does not duplicate the selector controller or modify LP.
+An unavailable selector is reported with a link to existing Browse site selection.
 
 Content mounts inside the gradient landing surface already provided by main.
 `landing.css` retains that page background and its light/dark theme preview.
@@ -27,7 +32,9 @@ or all available files if fewer exist, then disappears. Switching cards/list
 preserves the visible files and expansion count. The shared list scrolls
 horizontally only when its readable columns cannot fit inside the panel.
 
-Favorite uses browser-local `da-favorites` entries for the selected site root.
+Favorite uses browser-local `da-favorites` entries across the selected site's folders.
+It preserves Browse's folder-keyed storage: starring or unstarring a file updates
+the entry for that file's actual containing folder, not the site root.
 It displays at most six files in either view without deleting saved entries.
 The list keeps Name, Folder, Modified and information/favorite controls.
 Changing the filter resets expansion to six. Changing the site also resets
@@ -36,8 +43,12 @@ are reflected while the component is connected.
 
 ## Data, previews and destinations
 
-All root-listing pages are loaded, deduplicated and sorted by modification
-date. Permission/network failures have a retry state, not an empty success.
+All listing pages across the selected site's folders are loaded, deduplicated
+and sorted by modification date. Folder labels show the site-relative containing
+folder, such as `/de` for `/org/site/de/coffee.html` and `/` for root items.
+Hidden folders are not traversed. At most four folder listings run concurrently.
+Site changes and disconnects abort the walk. Permission/network failures in any
+folder have a retry state, not an empty or partially successful result.
 Both views reuse Browse's file-item menus, details and favorites. Image thumbnails
 are lazy and release object URLs on file/site changes or removal. There are no
 HTML document thumbnails or screenshot services. Details load only on demand.
@@ -52,7 +63,8 @@ and media use the existing shared routing helper. Folders and `.link` files
 open Browse; links open their parent directory rather than requesting an editor.
 Same-origin destinations preserve the active preview parameters. External
 editor URLs do not receive them. `landing=home` exits the Content opt-in; this
-feature does not change the shell's Home destination.
+feature does not change the shell's Home destination. The root opt-in is handled
+by the existing Browse router rather than overriding site and folder routes.
 
 Existing Spectrum spacing, radius, typography and color tokens are reused.
 Fixed card geometry, component icon metrics and the existing panel shadow

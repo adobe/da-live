@@ -62,12 +62,7 @@ function setRecentSite(details) {
   localStorage.setItem('da-sites', JSON.stringify([siteString, ...currentSites].slice(0, 8)));
 }
 
-export default async function init(el) {
-  if (new URLSearchParams(window.location.search).get('landing') === 'true') {
-    const { default: loadLanding } = await import('../landing/landing.js');
-    return loadLanding(el);
-  }
-
+export default function init(el) {
   hashChange.subscribe((pathDetails) => {
     const cmpName = getBrowseComponent({ search: window.location.search, pathDetails });
     loadComponent(el, cmpName, pathDetails);
@@ -76,5 +71,4 @@ export default async function init(el) {
 
   // Lazily preload the editor
   setTimeout(() => { import('da-y-wrapper'); }, 3000);
-  return undefined;
 }

@@ -1,12 +1,12 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
 import { fetchDaConfigs, getFirstSheet } from '../shared/utils.js';
-import { getFavorites, toggleFavorite } from '../browse/shared/favorites.js';
+import { getSiteFavorites, toggleFavorite } from '../browse/shared/favorites.js';
 import { getBrowseSettings, updateBrowseSettings } from '../browse/v2/shared/settings.js';
 import { getBrowseHref, getListItems, loadFiles } from './utils.js';
 import '../browse/v2/da-list/da-list.js';
 
-const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const nx = await import(`${getNx2()}/scripts/nx.js`);
 const sizing = nx.getUISize ? await import(`${getNx2()}/utils/ui-size.js`) : undefined;
 await import(`${getNx()}/blocks/shared/segmented-btn/segmented.js`);
@@ -39,12 +39,18 @@ export class DaLanding extends LitElement {
     _limit: { state: true },
     _editor: { state: true },
     _editorConfs: { state: true },
+    _selectorError: { state: true },
   };
 
   _sizing = sizing && new sizing.UISizeController(this);
 
   _onStorage = ({ key }) => {
     if (key === 'da-favorites' || key === null) this.refreshFavorites();
+  };
+
+  _onSiteSelect = ({ value }) => {
+    const [org, site] = value.split('/');
+    return this.setScope({ org, site });
   };
 
   constructor() {
@@ -57,12 +63,20 @@ export class DaLanding extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = styles;
-    this._unsubscribe = hashChange.subscribe((state) => this.setScope(state));
+    this.refreshFavorites();
+    if (this._scope) this.loadSite();
     window.addEventListener('storage', this._onStorage);
   }
 
+  async firstUpdated() {
+    try {
+      await import(`${getNx2()}/blocks/siteselector/siteselector.js`);
+    } catch {
+      if (this.isConnected) this._selectorError = 'Could not load site selection. Reload the page to try again.';
+    }
+  }
+
   disconnectedCallback() {
-    this._unsubscribe?.();
     this._request?.abort();
     window.removeEventListener('storage', this._onStorage);
     super.disconnectedCallback();
@@ -72,7 +86,7 @@ export class DaLanding extends LitElement {
     return this._scope ? `/${this._scope}` : '';
   }
 
-  setScope(state) {
+  async setScope(state) {
     const scope = state?.org && state?.site ? `${state.org}/${state.site}` : undefined;
     if (this._scope === scope && this._request && !this._request.signal.aborted) return;
     this._scope = scope;
@@ -80,7 +94,7 @@ export class DaLanding extends LitElement {
     this._limit = PAGE_SIZE;
     this._actionError = undefined;
     this.refreshFavorites();
-    this.loadSite();
+    await this.loadSite();
   }
 
   async loadSite() {
@@ -117,11 +131,12 @@ export class DaLanding extends LitElement {
   }
 
   refreshFavorites() {
-    this._favorites = new Set(getFavorites(this.path));
+    this._favorites = new Set(getSiteFavorites(this.path));
   }
 
   starFile(item) {
-    const starred = toggleFavorite(this.path, item.path);
+    const folder = item.path.slice(0, item.path.lastIndexOf('/'));
+    const starred = toggleFavorite(folder, item.path);
     this.refreshFavorites();
     this._actionError = this._favorites.has(item.path) !== starred
       ? 'Could not save your favorites. Check that browser storage is available.' : undefined;
@@ -142,7 +157,7 @@ export class DaLanding extends LitElement {
     if (!this._scope) {
       return html`<div class="empty-state">${icon('folder')}
         <h3>Choose a site to get started</h3>
-        <p>Select a site in Browse to see its content.</p>
+        <p>Select a site above to see its content.</p>
         <a class="nx-action-btn" href=${getBrowseHref({})}>Browse sites</a>
       </div>`;
     }
@@ -156,7 +171,7 @@ export class DaLanding extends LitElement {
     if (!files.length) {
       return html`<div class="empty-state">${icon(this._tab === 'starred' ? 'star' : 'folder')}
         <h3>${this._tab === 'starred' ? 'No favorites yet' : 'No files here yet'}</h3>
-        <p>${this._tab === 'starred' ? 'Add a file in this folder to favorites to keep it close.' : 'Open Files to add content to this site.'}</p>
+        <p>${this._tab === 'starred' ? 'Add a file in Browse to favorites to keep it close.' : 'Open Files to add content to this site.'}</p>
       </div>`;
     }
     return html`
@@ -181,6 +196,12 @@ export class DaLanding extends LitElement {
 
   render() {
     return html`<div class="landing">
+      <div class="site-picker">
+        ${this._selectorError ? html`<p role="alert">${this._selectorError}
+          <a href=${getBrowseHref({})}>Browse sites</a></p>`
+    : html`<nx-siteselector size=${nx.getUISize?.() === 'm' ? 'm' : 's'}
+          .onSelect=${this._onSiteSelect}></nx-siteselector>`}
+      </div>
       <section class="files-panel" data-view=${this._view} aria-labelledby="files-heading">
         <div class="panel-heading">
           <h2 id="files-heading">Content</h2>

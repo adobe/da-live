@@ -3,9 +3,8 @@ import sinon from 'sinon';
 import '../../setup-nx.js';
 import { getFavorites, toggleFavorite } from '../../../../blocks/browse/shared/favorites.js';
 import { DaLanding } from '../../../../blocks/landing/landing.js';
-import { getNx, getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
+import { getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
 
-const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { source, config } = await getNx2Api();
 const { setEWEnabled } = await getNxEWFlags();
 const ITEMS = Array.from({ length: 24 }, (_, index) => ({ name: `Page ${index}`, path: `/org/site/page-${index}.html`, ext: 'html', lastModified: 24 - index }));
@@ -25,7 +24,6 @@ describe('landing Content section', () => {
 
   beforeEach(async () => {
     ['da-favorites', 'da-browse-settings'].forEach((key) => localStorage.removeItem(key));
-    hashChange._set({ org: 'org', site: 'site', fullpath: '/org/site' });
     loadSite = sinon.stub(DaLanding.prototype, 'loadSite').callsFake(async function loadSiteForTest() {
       this._request?.abort();
       this._request = new AbortController();
@@ -33,6 +31,7 @@ describe('landing Content section', () => {
     sinon.stub(config, 'get').resolves({ ok: true, json: async () => ({ data: [] }) });
     el = document.createElement('da-landing');
     document.body.append(el);
+    el.setScope({ org: 'org', site: 'site' });
     el._files = ITEMS;
     el._editor = '/canvas#';
     await updateLanding();
@@ -48,7 +47,8 @@ describe('landing Content section', () => {
   it('renders only Content and reuses shared file cards', () => {
     expect(el.shadowRoot.querySelector('#files-heading').textContent).to.equal('Content');
     expect(fileItems()).to.have.length(6);
-    expect(el.shadowRoot.querySelector('h1, textarea, .composer, nx-nav, nx-siteselector')).to.equal(null);
+    expect(el.shadowRoot.querySelector('h1, textarea, .composer, nx-nav')).to.equal(null);
+    expect(el.shadowRoot.querySelector('.site-picker nx-siteselector')).not.to.equal(null);
     expect(fileItems()[0].href).to.include('/canvas');
     expect(el.shadowRoot.querySelector('da-landing-file-actions')).to.equal(null);
     expect(fileList().fullpath).to.equal(undefined);
@@ -256,13 +256,53 @@ describe('landing Content section', () => {
     expect(fileItems()[0].isFavorited).not.to.equal(true);
   });
 
+  it('shows nested Browse favorites with their folder and persists unstar in the same folder in both views', async () => {
+    loadSite.restore();
+    const coffee = { name: 'coffee', path: '/org/site/de/coffee.html', ext: 'html' };
+    sinon.stub(source, 'list').callsFake(async (path) => ({
+      ok: true,
+      items: path === '/org/site'
+        ? [{ name: 'de', path: '/org/site/de' }, ITEMS[0]] : [coffee],
+    }));
+    toggleFavorite('/org/site/de', coffee.path);
+    await el.loadSite();
+    el.refreshFavorites();
+    el.changeTab('starred');
+    for (const view of ['card', 'list']) {
+      el.changeView({ detail: { value: view } });
+      await updateLanding();
+      expect(fileItems()).to.have.length(1);
+      expect(fileItems()[0].path).to.equal(coffee.path);
+      expect(fileItems()[0].folder.label).to.equal('/de');
+      expect(new URL(fileItems()[0].folder.href).hash).to.equal('#/org/site/de');
+      fileItems()[0].requestFavorite();
+      await updateLanding();
+      expect(getFavorites('/org/site/de')).to.deep.equal([]);
+      expect(getFavorites('/org/site')).to.deep.equal([]);
+      expect(fileItems()).to.have.length(0);
+      el.starFile(coffee);
+      await updateLanding();
+      expect(getFavorites('/org/site/de')).to.deep.equal([coffee.path]);
+    }
+  });
+
+  it('updates Content through the shared picker callback without changing the route', async () => {
+    const { href } = window.location;
+    const picker = el.shadowRoot.querySelector('nx-siteselector');
+    await picker.onSelect({ value: 'another/site' });
+    await updateLanding();
+    expect(el.path).to.equal('/another/site');
+    expect(window.location.href).to.equal(href);
+    expect(loadSite.callCount).to.equal(2);
+  });
+
   it('resets filters, expansion and favorites on a site change', async () => {
     toggleFavorite('/org/site', ITEMS[0].path);
     el.refreshFavorites();
     el.changeTab('starred');
     el._limit = 18;
     const request = el._request;
-    hashChange._set({ org: 'other', site: 'site', fullpath: '/other/site' });
+    el.setScope({ org: 'other', site: 'site' });
     await updateLanding();
     expect(request.signal.aborted).to.equal(true);
     expect(el._tab).to.equal('recent');
@@ -271,10 +311,11 @@ describe('landing Content section', () => {
     expect(loadSite.callCount).to.equal(2);
   });
 
-  it('offers existing Browse site selection rather than depending on the LP site-picker dialog', async () => {
-    hashChange._set(undefined);
+  it('starts unselected and offers the shared picker and existing Browse site selection', async () => {
+    el.setScope(undefined);
     await updateLanding();
     const link = el.shadowRoot.querySelector('.empty-state a');
+    expect(el.shadowRoot.querySelector('nx-siteselector')).not.to.equal(null);
     expect(link.textContent).to.equal('Browse sites');
     expect(new URL(link.href).hash).to.equal('');
     expect(new URL(link.href).searchParams.get('landing')).to.equal('home');
@@ -328,7 +369,7 @@ describe('landing Content section', () => {
     expect(getFavorites('/org/site')).to.deep.equal([ITEMS[2].path]);
   });
 
-  it('loads the root listing with main APIs and selects the classic editor when EW is off', async () => {
+  it('loads the selected site with main APIs and selects the classic editor when EW is off', async () => {
     loadSite.restore();
     const list = sinon.stub(source, 'list').resolves({ ok: true, items: ITEMS, permissions: ['read'] });
     await el.loadSite();
@@ -344,24 +385,28 @@ describe('landing Content section', () => {
     let finish;
     const list = sinon.stub(source, 'list');
     list.onFirstCall().returns(new Promise((resolve) => { finish = resolve; }));
-    list.onSecondCall().resolves({ ok: true, items: [ITEMS[1]] });
+    const currentItem = { ...ITEMS[1], path: '/other/site/page-1.html' };
+    list.onSecondCall().resolves({ ok: true, items: [currentItem] });
     const pending = el.loadSite();
     await Promise.resolve();
     el._scope = 'other/site';
     await el.loadSite();
     finish({ ok: true, items: [ITEMS[0]] });
     await pending;
-    expect(el._files).to.deep.equal([ITEMS[1]]);
+    expect(el._files).to.deep.equal([currentItem]);
     const request = el._request;
     el.remove();
     expect(request.signal.aborted).to.equal(true);
     window.dispatchEvent(new StorageEvent('storage', { key: 'da-favorites' }));
-    expect(el._files).to.deep.equal([ITEMS[1]]);
+    expect(el._files).to.deep.equal([currentItem]);
   });
 
   it('selects Canvas when EW is enabled', async () => {
     loadSite.restore();
-    sinon.stub(source, 'list').resolves({ ok: true, items: ITEMS });
+    sinon.stub(source, 'list').callsFake(async (path) => ({
+      ok: true,
+      items: ITEMS.map((item) => ({ ...item, path: item.path.replace('/org/site', path) })),
+    }));
     setEWEnabled(true);
     await el.loadSite();
     await updateLanding();
@@ -415,7 +460,10 @@ describe('landing Content section', () => {
       }
       return { ok: true, json: async () => ({ data: [] }) };
     });
-    sinon.stub(source, 'list').resolves({ ok: true, items: ITEMS });
+    sinon.stub(source, 'list').callsFake(async (path) => ({
+      ok: true,
+      items: ITEMS.map((item) => ({ ...item, path: item.path.replace('/org/site', path) })),
+    }));
     const pending = el.loadSite();
     await new Promise((resolve) => { setTimeout(resolve, 0); });
     expect(el._files).to.equal(undefined);

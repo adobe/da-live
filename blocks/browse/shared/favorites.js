@@ -30,6 +30,15 @@ export function getFavorites(folderPath) {
   return Array.isArray(list) ? list : [];
 }
 
+export function getSiteFavorites(sitePath) {
+  if (!sitePath) return [];
+  const paths = Object.entries(readAll())
+    .filter(([folder]) => folder === sitePath || folder.startsWith(`${sitePath}/`))
+    .flatMap(([, items]) => (Array.isArray(items) ? items : []))
+    .filter((path) => typeof path === 'string' && path.startsWith(`${sitePath}/`));
+  return [...new Set(paths)];
+}
+
 export function isFavorite(folderPath, itemPath) {
   if (!folderPath || !itemPath) return false;
   return getFavorites(folderPath).includes(itemPath);

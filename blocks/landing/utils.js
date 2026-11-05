@@ -1,6 +1,8 @@
 import { getFileItemHref } from '../shared/da-file-item/navigation.js';
 import { getConfiguredEditor } from '../shared/da-file-item/edit-path.js';
 
+const LIST_CONCURRENCY = 4;
+
 export function getBrowseHref({ path = '', href = window.location.href }) {
   const url = new URL(href);
   url.searchParams.set('landing', 'home');
@@ -39,24 +41,36 @@ export function getListItems({ files, favorites, editor = '/edit#', editorConfs 
 
 export async function loadFiles({ path, source, signal }) {
   const items = new Map();
-  const tokens = new Set();
-  let continuationToken;
+  const folders = [path];
+  const visited = new Set(folders);
   let permissions;
-  do {
-    signal.throwIfAborted();
-    const result = await source.list(path, { continuationToken, opts: { signal } });
-    signal.throwIfAborted();
-    if (!result.ok) throw new Error('Could not load files. Check your sign-in and site permissions.');
-    permissions ??= result.permissions;
-    result.items.forEach((item) => {
-      if (item.path && item.name && !item.name.startsWith('.')) items.set(item.path, item);
-    });
-    continuationToken = result.continuationToken;
-    if (continuationToken && tokens.has(continuationToken)) {
-      throw new Error('File listing did not complete. Please try again.');
-    }
-    tokens.add(continuationToken);
-  } while (continuationToken);
+  const loadFolder = async (folder) => {
+    const tokens = new Set();
+    let continuationToken;
+    do {
+      signal.throwIfAborted();
+      const result = await source.list(folder, { continuationToken, opts: { signal } });
+      signal.throwIfAborted();
+      if (!result.ok) throw new Error('Could not load files. Check your sign-in and site permissions.');
+      if (folder === path) permissions ??= result.permissions;
+      result.items.forEach((item) => {
+        if (!item.path?.startsWith(`${folder}/`) || !item.name || item.name.startsWith('.')) return;
+        items.set(item.path, item);
+        if (!item.ext && !visited.has(item.path)) {
+          visited.add(item.path);
+          folders.push(item.path);
+        }
+      });
+      continuationToken = result.continuationToken;
+      if (continuationToken && tokens.has(continuationToken)) {
+        throw new Error('File listing did not complete. Please try again.');
+      }
+      tokens.add(continuationToken);
+    } while (continuationToken);
+  };
+  while (folders.length) {
+    await Promise.all(folders.splice(0, LIST_CONCURRENCY).map(loadFolder));
+  }
   const files = [...items.values()].sort(
     (a, b) => (Number(b.lastModified) || 0) - (Number(a.lastModified) || 0)
       || a.name.localeCompare(b.name),
