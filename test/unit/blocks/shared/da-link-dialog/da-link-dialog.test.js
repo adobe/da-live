@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import { sendKeys } from '@web/test-runner-commands';
 import { setNx } from '../../../../../scripts/utils.js';
 
 const nextFrame = () => new Promise((r) => { setTimeout(r, 0); });
@@ -104,7 +105,9 @@ describe('da-link-dialog', () => {
     let fired = false;
     el.addEventListener('da-link-submit', () => { fired = true; });
 
-    for (const url of [`${'javascript'}:alert(1)`, 'data:text/html,x', 'vbscript:foo']) {
+    const urls = [`${'javascript'}:alert(1)`, 'data:text/html,x', 'vbscript:foo', 'ms-msdt:x',
+      `java\t${'script'}:alert(1)`, `\u0001${'javascript'}:alert(1)`];
+    for (const url of urls) {
       el.shadowRoot.querySelector('input[name="link-href"]').value = url;
       el.shadowRoot.querySelector('.nx-form-btn-primary').click();
       await nextFrame();
@@ -129,7 +132,7 @@ describe('da-link-dialog', () => {
     el.shadowRoot.querySelector('.nx-form-btn-primary').click();
     await el.updateComplete;
 
-    expect(el._urlError).to.equal('Invalid URL protocol');
+    expect(el._urlError).to.equal('Use a relative, http(s), mailto or tel link.');
     expect(el.shadowRoot.querySelector('.nx-input-error-msg')).to.exist;
   });
 
@@ -151,6 +154,25 @@ describe('da-link-dialog', () => {
     el.shadowRoot.querySelector('.nx-form-btn-secondary').click();
     await nextFrame();
     expect(cancelled).to.be.true;
+  });
+
+  it('emits close when close() is called', async () => {
+    await mount({ open: true });
+    let closed = false;
+    el.addEventListener('close', () => { closed = true; });
+    el.close();
+    await nextFrame();
+    expect(closed).to.be.true;
+  });
+
+  it('submits on Enter', async () => {
+    await mount({ open: true, href: 'https://test.com' });
+    let detail = null;
+    el.addEventListener('da-link-submit', (event) => { detail = event.detail; });
+    el.shadowRoot.querySelector('input[name="link-text"]').focus();
+    await sendKeys({ press: 'Enter' });
+    await nextFrame();
+    expect(detail).to.deep.equal({ href: 'https://test.com', text: '' });
   });
 
   it('clears _urlError when the dialog closes', async () => {

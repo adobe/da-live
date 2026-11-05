@@ -2,6 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx2 } from '../../../scripts/utils.js';
 import '../fields/input.js';
 import '../fields/textarea.js';
+import '../fields/rich-text.js';
 import '../fields/picker.js';
 import '../fields/checkbox.js';
 import '../fields/button.js';
@@ -23,6 +24,13 @@ const ELEMENT_NAME = 'nx-editor';
 
 /** How long typing pauses before a text or number input is saved. */
 const DEBOUNCE_DELAY_MILLISECONDS = 350;
+
+/**
+ * Reads a text field's value, treating an empty string as no value.
+ * @param {string} value The field's value.
+ * @returns {string | undefined} The value, or undefined when it is empty.
+ */
+const textValue = (value) => (value === '' ? undefined : value);
 
 /** The asset type names as an English list, as named in the schema issues dialog. */
 const ASSET_TYPE_LIST = new Intl.ListFormat('en', { type: 'conjunction' })
@@ -279,11 +287,20 @@ class Editor extends LitElement {
    * @param {(editor: object) => void} mutation Changes the document through the engine.
    */
   _mutateDebounced(pointer, mutation) {
-    clearTimeout(this._inputTimers.get(pointer));
+    this._cancelDebounced(pointer);
     this._inputTimers.set(pointer, setTimeout(() => {
       this._inputTimers.delete(pointer);
       this._mutate(mutation);
     }, DEBOUNCE_DELAY_MILLISECONDS));
+  }
+
+  /**
+   * Drops the pending debounced mutation of a field.
+   * @param {string} pointer The JSON pointer of the field.
+   */
+  _cancelDebounced(pointer) {
+    clearTimeout(this._inputTimers.get(pointer));
+    this._inputTimers.delete(pointer);
   }
 
   /**
@@ -333,8 +350,19 @@ class Editor extends LitElement {
   _onTextInput(node, event) {
     const inputValue = event.target.value;
     this._mutateDebounced(node.pointer, (editor) => {
-      editor.setField(node.pointer, inputValue === '' ? undefined : inputValue);
+      editor.setField(node.pointer, textValue(inputValue));
     });
+  }
+
+  /**
+   * Saves a text field at once, replacing its pending debounced save. An empty value clears it.
+   * @param {object} node The field's node.
+   * @param {Event} event The field's `change` event.
+   */
+  _onTextCommit(node, event) {
+    this._cancelDebounced(node.pointer);
+    const inputValue = event.target.value;
+    this._mutate((editor) => editor.setField(node.pointer, textValue(inputValue)));
   }
 
   /**
@@ -419,8 +447,7 @@ class Editor extends LitElement {
   }
 
   /**
-   * Renders the field of a primitive node: a picker for enums, a checkbox, a number, date
-   * or long-text field, or a text input.
+   * Renders the field that matches the type of a primitive node.
    * @param {object} node The field's node.
    * @param {object} [options] The render settings.
    * @param {boolean} [options.hideLabel] Whether the label, description and required mark
@@ -508,6 +535,22 @@ class Editor extends LitElement {
           ?disabled=${readonly}
           @input=${(event) => this._onTextInput(node, event)}
         ></form-date>
+      `;
+    }
+
+    if (node.semanticType === 'rich-text') {
+      return html`
+        <form-rich-text
+          data-pointer=${pointer}
+          .label=${label}
+          .required=${showRequired}
+          .error=${error}
+          .description=${description}
+          .value=${value ?? ''}
+          ?disabled=${readonly}
+          @input=${(event) => this._onTextInput(node, event)}
+          @change=${(event) => this._onTextCommit(node, event)}
+        ></form-rich-text>
       `;
     }
 

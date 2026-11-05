@@ -1,0 +1,283 @@
+import { expect } from '@esm-bundle/chai';
+import '../../../setup-nx.js';
+import * as proseMirror from 'da-y-wrapper';
+import '../../../../../blocks/form/fields/rich-text-toolbar.js';
+import { TOOL_IDS, createToolset } from '../../../../../blocks/form/utils/rich-text/tools.js';
+import { schema, stateFor, run } from '../helpers/rich-text-states.js';
+
+const toolset = createToolset({ proseMirror, schema, onLink: () => {} });
+
+const tools = Object.fromEntries(
+  [...toolset.leading, ...toolset.groups.flat(), ...toolset.menuGroups.flat()]
+    .map((candidate) => [candidate.id, candidate]),
+);
+
+/** The ids of the tools only the more menu offers. */
+const MENU_IDS = ['ordered_list', 'bullet_list', 'blockquote', 'sup', 'sub'];
+
+/**
+ * Waits for a task. Concurrent test pages run in the background, where animation frames
+ * never fire.
+ * @returns {Promise<void>}
+ */
+const tick = () => new Promise((resolve) => { setTimeout(resolve); });
+
+/**
+ * Polls until a check passes or the tries run out.
+ * @param {() => unknown} check Passes when it returns a truthy value.
+ * @param {number} [tries] How often to poll, every 20ms.
+ * @returns {Promise<void>}
+ */
+const until = (check, tries = 100) => (check() || !tries
+  ? Promise.resolve()
+  : new Promise((resolve) => { setTimeout(resolve, 20); }).then(() => until(check, tries - 1)));
+
+/**
+ * Mounts a toolbar and waits for its first measurement.
+ * @param {object} [options] The toolbar properties, plus the test settings.
+ * @param {string} [options.width] The CSS width of the toolbar.
+ * @returns {Promise<HTMLElement>} The toolbar.
+ */
+async function mount({ width = '900px', ...properties } = {}) {
+  const toolbar = document.createElement('form-rich-text-toolbar');
+  Object.assign(toolbar, { editorState: stateFor('<p>a</p>'), toolset, ...properties });
+  toolbar.style.width = width;
+  document.body.append(toolbar);
+  await toolbar.updateComplete;
+  await tick();
+  await toolbar.updateComplete;
+  return toolbar;
+}
+
+/**
+ * @param {HTMLElement} toolbar The toolbar.
+ * @param {string} id The tool id.
+ * @returns {HTMLButtonElement} The button of the tool, or its more menu item.
+ */
+const tool = (toolbar, id) => toolbar.shadowRoot.querySelector(`[data-tool="${id}"]`);
+
+/**
+ * @param {HTMLElement} toolbar The toolbar.
+ * @returns {HTMLButtonElement} The button that opens the more menu.
+ */
+const moreButton = (toolbar) => toolbar.shadowRoot.querySelector('[data-more]');
+
+/**
+ * @param {HTMLElement} toolbar The toolbar.
+ * @returns {HTMLElement} The more menu.
+ */
+const menu = (toolbar) => toolbar.shadowRoot.querySelector('.form-rich-text-menu');
+
+/**
+ * @param {HTMLElement} toolbar The toolbar.
+ * @returns {HTMLElement|null} The picker.
+ */
+const picker = (toolbar) => toolbar.shadowRoot.querySelector('nx-picker');
+
+/**
+ * @param {Element} root The element to read.
+ * @param {string} [scope] The selector of the buttons' parent.
+ * @returns {string[]} The ids of the tools that show.
+ */
+const visibleIds = (root, scope = '') => [...root.querySelectorAll(`${scope} [data-tool]:not(.is-hidden)`)]
+  .map((button) => button.dataset.tool);
+
+/**
+ * Opens the more menu and waits for its tools.
+ * @param {HTMLElement} toolbar The toolbar.
+ */
+async function openMenu(toolbar) {
+  moreButton(toolbar).click();
+  await until(() => menu(toolbar).querySelector('[data-tool]'));
+  await toolbar.updateComplete;
+}
+
+/**
+ * Collects the details of an event the toolbar fires.
+ * @param {HTMLElement} toolbar The toolbar.
+ * @param {string} type The event type.
+ * @returns {object[]} The details, filled as the events fire.
+ */
+function listen(toolbar, type) {
+  const details = [];
+  toolbar.addEventListener(type, (event) => details.push(event.detail));
+  return details;
+}
+
+describe('form-rich-text-toolbar', () => {
+  afterEach(() => {
+    document.body.replaceChildren();
+  });
+
+  it('orders the bar and keeps lists, quote and scripts in the more menu', async () => {
+    const toolbar = await mount();
+    await until(() => toolbar._overflowAt === 9);
+    const { shadowRoot } = toolbar;
+    expect(visibleIds(shadowRoot, '.form-rich-text-toolbar >')).to.deep.equal(['undo', 'redo', 'strong', 'em', 'u', 's', 'link', 'code']);
+    const pickerBox = shadowRoot.querySelector('.form-rich-text-toolbar > .form-rich-text-picker');
+    expect(pickerBox.previousElementSibling.classList.contains('form-rich-text-separator')).to.be.true;
+    expect(pickerBox.previousElementSibling.previousElementSibling).to.equal(tool(toolbar, 'redo'));
+    await openMenu(toolbar);
+    expect(visibleIds(menu(toolbar))).to.deep.equal(MENU_IDS);
+  });
+
+  it('renders the S2 sprite of each tool', async () => {
+    const toolbar = await mount();
+    const href = (button) => button.querySelector('use').getAttribute('href');
+    expect(href(tool(toolbar, 'strong'))).to.match(/\/img\/icons\/s2-icon-tagbold-20-n\.svg#icon$/);
+    expect(href(moreButton(toolbar))).to.match(/\/img\/icons\/s2-icon-more-20-n\.svg#icon$/);
+  });
+
+  it('renders an empty bar until the toolset loads', async () => {
+    const toolbar = await mount({ toolset: undefined, editorState: undefined });
+    expect(tool(toolbar, 'strong')).to.equal(null);
+    expect(picker(toolbar)).to.equal(null);
+    expect(moreButton(toolbar).disabled).to.be.true;
+
+    toolbar.toolset = toolset;
+    await until(() => toolbar._overflowAt === 9);
+    expect(tool(toolbar, 'strong').disabled).to.be.true;
+    toolbar.editorState = stateFor('<p>a</p>');
+    await toolbar.updateComplete;
+    expect(tool(toolbar, 'strong').disabled).to.be.false;
+    expect(moreButton(toolbar).disabled).to.be.false;
+  });
+
+  it('moves bar tools that do not fit into the more menu', async () => {
+    const toolbar = await mount({ width: '260px' });
+    await until(() => toolbar._overflowAt < 9);
+    expect(toolbar._overflowAt).to.be.above(0);
+    expect(tool(toolbar, 'link').classList.contains('is-overflow')).to.be.true;
+    expect(tool(toolbar, 'strong').classList.contains('is-overflow')).to.be.false;
+    expect(moreButton(toolbar).getAttribute('aria-expanded')).to.equal('false');
+
+    await openMenu(toolbar);
+    expect(moreButton(toolbar).getAttribute('aria-expanded')).to.equal('true');
+    const menuIds = visibleIds(menu(toolbar));
+    expect(menuIds).to.include('link');
+    expect(menuIds).to.include('ordered_list');
+    expect(menuIds).to.not.include('strong');
+
+    menu(toolbar).close();
+    await toolbar.updateComplete;
+    expect(moreButton(toolbar).getAttribute('aria-expanded')).to.equal('false');
+
+    toolbar.style.width = '900px';
+    // The ResizeObserver does not run in a background test page, so measure as it would.
+    toolbar._measureBar();
+    await until(() => toolbar._overflowAt === 9);
+    await toolbar.updateComplete;
+    expect(tool(toolbar, 'link').classList.contains('is-overflow')).to.be.false;
+  });
+
+  it('asks the field to run the command of a tool and keeps the editor focused', async () => {
+    const toolbar = await mount();
+    const details = listen(toolbar, 'form-rich-text-command');
+    const mousedown = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+    tool(toolbar, 'strong').dispatchEvent(mousedown);
+    expect(mousedown.defaultPrevented).to.be.true;
+    tool(toolbar, 'strong').click();
+    expect(details).to.deep.equal([{ command: tools[TOOL_IDS.bold].command }]);
+  });
+
+  it('opens a dialog without a menu to close', async () => {
+    const toolbar = await mount();
+    menu(toolbar).close = () => { throw new Error('The menu is not open'); };
+    toolbar.openTool = TOOL_IDS.link;
+    await toolbar.updateComplete;
+    expect(tool(toolbar, 'link').getAttribute('aria-pressed')).to.equal('true');
+  });
+
+  it('keeps the more menu open for tools, but closes it when a dialog opens', async () => {
+    const toolbar = await mount({ width: '260px' });
+    await until(() => toolbar._overflowAt < 9);
+    const details = listen(toolbar, 'form-rich-text-command');
+    await openMenu(toolbar);
+    tool(toolbar, 'bullet_list').click();
+    await toolbar.updateComplete;
+    expect(toolbar._menuOpen).to.be.true;
+    expect(details).to.deep.equal([{ command: tools[TOOL_IDS.bulletList].command }]);
+
+    toolbar.openTool = TOOL_IDS.link;
+    await toolbar.updateComplete;
+    expect(toolbar._menuOpen).to.be.false;
+  });
+
+  it('asks the field to apply the value picked without leaking the picker change', async () => {
+    const toolbar = await mount();
+    const details = listen(toolbar, 'form-rich-text-command');
+    const leaked = listen(toolbar, 'change');
+    picker(toolbar).dispatchEvent(new CustomEvent('change', {
+      bubbles: true,
+      composed: true,
+      detail: { value: 'heading-2' },
+    }));
+    expect(leaked).to.be.empty;
+    expect(details).to.have.length(1);
+    const { html } = run(details[0].command, stateFor('<p>a</p>', { from: 1 }));
+    expect(html).to.equal('<h2>a</h2>');
+  });
+
+  it('reflects the selection only while the field or a dialog has the focus', async () => {
+    const editorState = stateFor('<h2><a href="/a"><strong>ab</strong></a></h2>', { from: 1, to: 3 });
+    const toolbar = await mount({ editorState });
+    expect(tool(toolbar, 'strong').getAttribute('aria-pressed')).to.equal('false');
+    expect(tool(toolbar, 'link').getAttribute('aria-pressed')).to.equal('false');
+    expect(tool(toolbar, 'undo').hasAttribute('aria-pressed')).to.be.false;
+    expect(picker(toolbar).value).to.equal('paragraph');
+    expect(tool(toolbar, 'unlink').classList.contains('is-hidden')).to.be.true;
+
+    toolbar.focused = true;
+    await toolbar.updateComplete;
+    expect(tool(toolbar, 'strong').getAttribute('aria-pressed')).to.equal('true');
+    expect(tool(toolbar, 'link').getAttribute('aria-pressed')).to.equal('true');
+    expect(picker(toolbar).value).to.equal('heading-2');
+    expect(tool(toolbar, 'unlink').classList.contains('is-hidden')).to.be.false;
+
+    Object.assign(toolbar, { focused: false, openTool: TOOL_IDS.link, editorState: stateFor('<p>a</p>') });
+    await toolbar.updateComplete;
+    expect(tool(toolbar, 'link').getAttribute('aria-pressed')).to.equal('true');
+  });
+
+  it('keeps the text style of list items', async () => {
+    const toolbar = await mount({ focused: true, editorState: stateFor('<ul><li>a</li></ul>', { from: 3 }) });
+    expect(picker(toolbar).inert).to.be.true;
+    expect(toolbar.shadowRoot.querySelector('.form-rich-text-picker.is-disabled')).to.not.equal(null);
+  });
+
+  it('disables the tools whose command does not apply, even while the selection does not show', async () => {
+    const state = stateFor('');
+    const toolbar = await mount({ editorState: state.apply(state.tr.insertText('a', 1)) });
+    expect(tool(toolbar, 'undo').disabled).to.be.false;
+    expect(tool(toolbar, 'redo').disabled).to.be.true;
+    expect(tool(toolbar, 'unlink').disabled).to.be.true;
+  });
+
+  it('disables every tool of a field that cannot be edited', async () => {
+    const toolbar = await mount({ disabled: true, focused: true });
+    const buttons = [...toolbar.shadowRoot.querySelectorAll('button')];
+    expect(buttons.every((button) => button.disabled)).to.be.true;
+    expect(picker(toolbar).inert).to.be.true;
+  });
+
+  it('floats with the bar groups only and adds no tab stops', async () => {
+    const toolbar = await mount({ floating: true, focused: true });
+    const { shadowRoot } = toolbar;
+    expect(toolbar.hasAttribute('floating')).to.be.true;
+    expect(shadowRoot.querySelector('[role="toolbar"]').getAttribute('aria-label')).to.equal('Selection formatting');
+    expect(picker(toolbar)).to.equal(null);
+    expect(visibleIds(shadowRoot, '.form-rich-text-toolbar >')).to.deep.equal(['strong', 'em', 'u', 's', 'link', 'code']);
+    const buttons = [...shadowRoot.querySelectorAll('button')];
+    expect(buttons.every((button) => button.tabIndex === -1)).to.be.true;
+  });
+
+  it('opens only the menu groups from the floating toolbar', async () => {
+    const toolbar = await mount({ floating: true, focused: true, width: '260px' });
+    await openMenu(toolbar);
+    expect(moreButton(toolbar).getAttribute('aria-expanded')).to.equal('true');
+    expect(visibleIds(menu(toolbar))).to.deep.equal(MENU_IDS);
+    moreButton(toolbar).click();
+    await toolbar.updateComplete;
+    expect(moreButton(toolbar).getAttribute('aria-expanded')).to.equal('false');
+  });
+});

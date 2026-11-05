@@ -114,7 +114,8 @@
   gap: var(--s2-spacing-100);
 }
 
-.editor-root .form-array-item-input-row:has(> form-textarea) {
+.editor-root .form-array-item-input-row:has(> form-textarea),
+.editor-root .form-array-item-input-row:has(> form-rich-text) {
   align-items: flex-start;
 }
 
@@ -129,6 +130,7 @@
 
 .editor-root form-input,
 .editor-root form-textarea,
+.editor-root form-rich-text,
 .editor-root form-number-field,
 .editor-root form-picker,
 .editor-root form-checkbox,
@@ -140,6 +142,7 @@
 
 .editor-root .form-array-item-primitive form-input,
 .editor-root .form-array-item-primitive form-textarea,
+.editor-root .form-array-item-primitive form-rich-text,
 .editor-root .form-array-item-primitive form-number-field,
 .editor-root .form-array-item-primitive form-picker,
 .editor-root .form-array-item-primitive form-checkbox,
@@ -150,6 +153,7 @@
 
 .editor-root .form-array-item-input-row > form-input,
 .editor-root .form-array-item-input-row > form-textarea,
+.editor-root .form-array-item-input-row > form-rich-text,
 .editor-root .form-array-item-input-row > form-number-field,
 .editor-root .form-array-item-input-row > form-picker,
 .editor-root .form-array-item-input-row > form-checkbox,
