@@ -16,7 +16,10 @@ const settle = async (el) => {
   await el.updateComplete;
 };
 
-const CONTROL_TAGS = ['FORM-INPUT', 'FORM-TEXTAREA', 'FORM-NUMBER-FIELD', 'FORM-CHECKBOX', 'FORM-PICKER', 'FORM-ASSET'];
+const CONTROL_TAGS = [
+  'FORM-INPUT', 'FORM-TEXTAREA', 'FORM-RICH-TEXT', 'FORM-NUMBER-FIELD', 'FORM-CHECKBOX',
+  'FORM-PICKER', 'FORM-ASSET',
+];
 
 const mounted = [];
 afterEach(() => { while (mounted.length) mounted.pop().remove(); });
@@ -58,6 +61,9 @@ function expectedTag(node) {
   }
   if (node.kind === 'number' || node.kind === 'integer') {
     return 'FORM-NUMBER-FIELD';
+  }
+  if (node.kind === 'string' && node.semanticType === 'rich-text') {
+    return 'FORM-RICH-TEXT';
   }
   if (node.kind === 'string' && node.semanticType === 'long-text') {
     return 'FORM-TEXTAREA';
