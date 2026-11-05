@@ -25,7 +25,7 @@ blocks/form/
   form.css              workspace layout
   editor.js / .css      nx-form Lit element: routes (ctx/hash), mounts SDK, state snapshot + nav
   icons.js              sprite-backed icon() helper
-  fields/               Spectrum 2 field components (input, picker, checkbox, button, number, asset)
+  fields/               Spectrum 2 field components (input, picker, checkbox, button, number, asset, rich-text)
   assets/
     asset-types.js      asset type descriptors (image, file) and their capabilities
     sources.js          asset sources for image and file fields (upload, AEM Assets)
@@ -38,6 +38,7 @@ blocks/form/
     persistence.js      attachPersistence — single-flight save with re-queue
     model.js            shared predicates over SDK model nodes
     preview.js          preview login and origin for uploaded images
+    rich-text/          rich-text editor schema, serializer, commands, toolset and floating toolbar placement
   views/
     editor.js / .css    field rendering + array rendering
     sidebar.js / .css   navigation tree
@@ -65,12 +66,20 @@ utils/persistence.js → da-sc-sdk        (convertJsonToHtml)
 assets/sources.js  →  blocks/shared/      (Canvas image types and size limit)
 assets/sources.js  →  nx2 aem-assets      (AEM Assets source, loaded on demand)
 utils/preview.js   →  blocks/shared/      (Canvas preview login)
+fields/rich-text.js → da-y-wrapper      (ProseMirror, loaded on demand)
+fields/rich-text.js → blocks/shared/     (da-link-dialog)
 views/           →  (SDK engine only via prop binding from the element — no direct imports)
 ```
 
 The SDK is the only piece that holds canonical state. Everything in `utils/` and `views/` is specific to the form block. That covers DA I/O, UI components, schema discovery and single-flight save.
 
 Asset types are descriptors in `assets/asset-types.js` that declare what each type can do, such as previews, uploads and the file extensions the SDK delivers as it. Fields, sources and the editor ask a descriptor for a capability instead of comparing type names, so supporting a new SDK asset type means adding one descriptor.
+
+Rich-text fields (`"x-semantic-type": "rich-text"`) render a ProseMirror editor in `fields/rich-text.js`. The SDK owns their value contract and storage, as its [schema spec](https://github.com/adobe/da-sc-sdk/blob/main/docs/schema-spec.md) describes. ProseMirror comes from the `da-y-wrapper` bundle the Canvas editor already loads, so the form block does not bundle it.
+
+The editor schema in `utils/rich-text/schema.js` only allows the subset the SDK keeps, and `utils/rich-text/html.js` serializes to the SDK's canonical HTML. Parity tests run every case through the SDK converters, so a saved value stays unchanged on reload.
+
+The toolbar in `fields/rich-text-toolbar.js` renders a toolset that `utils/rich-text/tools.js` binds to the editor. Each tool carries its own command and selection checks, and the toolbar fires `form-rich-text-command` for the field to run. The toolbar holds no rich-text knowledge, so a new tool only changes the toolset.
 
 ---
 
