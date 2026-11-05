@@ -187,6 +187,21 @@ describe('permissions utils', () => {
       const media = slots.find((s) => s.path === '/s/.promotions/ + **');
       expect(media).to.deep.include({ kind: 'folder', label: '.promotions/' });
     });
+
+    it('sorts a page\'s media folder right after the page', () => {
+      const rules = [
+        { path: '/s/.terms/+**', groups: 'legal@x.com', actions: 'write' },
+        { path: '/s/terms', groups: 'legal@x.com', actions: 'write' },
+        { path: '/s/promotions/+**', groups: 'mkt@x.com', actions: 'write' },
+        { path: '/s/.promotions/+**', groups: 'legal@x.com', actions: 'write' },
+        { path: '/s/promotions.html', groups: 'legal@x.com', actions: 'write' },
+        { path: '/s/hotels/+**', groups: 'hotels@x.com', actions: 'write' },
+      ];
+      expect(buildSlots(rules, 's').map((s) => s.label)).to.deep.equal([
+        'Site configurations', 'All site content',
+        'hotels/', 'promotions.html', '.promotions/', 'promotions/', 'terms', '.terms/',
+      ]);
+    });
   });
 
   describe('siteNames', () => {
