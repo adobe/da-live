@@ -176,10 +176,12 @@ export function buildSlots(rules, site, pendingPath = null) {
     if (!existed) slot.pending = true;
   }
 
+  // Sort as if dot folders had no dot, so `.about/` comes right after the page `about`.
+  const sortKey = (path) => `${path.replaceAll('/.', '/')}\0${path}`;
   const orderedPaths = defaults.map((path) => normPath(path));
   const rest = [...slotsMap.keys()]
     .filter((path) => !orderedPaths.includes(path))
-    .sort();
+    .sort((a, b) => (sortKey(a) < sortKey(b) ? -1 : 1));
   return [...orderedPaths, ...rest].map((path) => slotsMap.get(path));
 }
 
