@@ -1,3 +1,10 @@
+## [1.20.1](https://github.com/adobe/da-live/compare/v1.20.0...v1.20.1) (2026-11-05)
+
+
+### Bug Fixes
+
+* grouping off by default ([#1653](https://github.com/adobe/da-live/issues/1653)) ([dcf524f](https://github.com/adobe/da-live/commit/dcf524fa294fb8ca4ddde5529df492c9890f027a))
+
 # [1.20.0](https://github.com/adobe/da-live/compare/v1.19.2...v1.20.0) (2026-11-04)
 
 
