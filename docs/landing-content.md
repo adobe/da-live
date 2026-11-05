@@ -1,20 +1,24 @@
 # Landing Content
 
 The opt-in Content page uses Browse's `da-list` and `da-file-item` in both views. Open
-`/?landing=true&nx=main&nxver=2` and select a site in the shared site picker.
-The picker requires adobe/da-nx#947. Until it is released, preview with
-`nx=siteselector-main`. Without `landing=true`, Browse keeps its existing renderer
+`/?landing=true&nx=main&nxver=2`. Without `landing=true`, Browse keeps its existing renderer
 and navigation. A site or folder hash always opens Browse, even with `landing=true`.
 
 This feature contains only the Content section. It does not introduce a
 greeting, chat/composer, branding, page artwork or editor changes.
-The page reuses Nexter's `nx-siteselector`, including its recent history, access
-checks and Add dialog. It lazily loads the selector after first render and passes
-its selected site to Content through `onSelect`. Selection and Add leave the
-root URL unchanged. It does not duplicate the selector controller or modify LP.
-The no-site Content action opens the shared Add site dialog without navigating
-to Browse. It waits for the selector to initialize before requesting Add.
-An unavailable selector is reported as an error rather than sending users elsewhere.
+Content contains no site picker or Add site button. Those controls belong in
+navigation when the shared picker (adobe/da-nx#947) is merged and integrated there.
+Content listens for its existing bubbling `site-select` and `site-added` events
+to update the selected scope without changing the root URL. It does not load or
+mount the selector, duplicate its controller, or modify LP.
+
+With no saved sites in the browser's existing `da-sites` history, Content shows
+"Add a site to get started" and "Add a site above to see its content."
+With saved sites but none selected, it shows "Choose a site to get started" and
+"Select a site above to see its content." Neither state has a button or link.
+Saved history alone never selects a site. Cross-tab history changes refresh the
+copy. Until the nav picker is available, the preview shows these empty states
+without temporary selection or Add controls in Content.
 
 Content mounts inside the gradient landing surface already provided by main.
 `landing.css` retains that page background and its light/dark theme preview.

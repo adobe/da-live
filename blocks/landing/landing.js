@@ -39,16 +39,18 @@ export class DaLanding extends LitElement {
     _limit: { state: true },
     _editor: { state: true },
     _editorConfs: { state: true },
-    _selectorError: { state: true },
+    _hasSavedSites: { state: true },
   };
 
   _sizing = sizing && new sizing.UISizeController(this);
 
   _onStorage = ({ key }) => {
     if (key === 'da-favorites' || key === null) this.refreshFavorites();
+    if (key === 'da-sites' || key === null) this.refreshSites();
   };
 
-  _onSiteSelect = ({ value }) => {
+  _onSiteSelect = ({ detail: { value } }) => {
+    this.refreshSites();
     const [org, site] = value.split('/');
     return this.setScope({ org, site });
   };
@@ -64,28 +66,18 @@ export class DaLanding extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = styles;
     this.refreshFavorites();
+    this.refreshSites();
     if (this._scope) this.loadSite();
     window.addEventListener('storage', this._onStorage);
-  }
-
-  firstUpdated() {
-    this._selectorReady = import(`${getNx2()}/blocks/siteselector/siteselector.js`)
-      .then(() => this.shadowRoot.querySelector('nx-siteselector')?.ready)
-      .catch(() => {
-        if (this.isConnected) this._selectorError = 'Could not load site selection. Reload the page to try again.';
-      });
-  }
-
-  async _onAddSite() {
-    await this._selectorReady;
-    if (this.isConnected && !this._selectorError) {
-      this.dispatchEvent(new CustomEvent('site-add', { bubbles: true, composed: true }));
-    }
+    document.addEventListener('site-select', this._onSiteSelect);
+    document.addEventListener('site-added', this._onSiteSelect);
   }
 
   disconnectedCallback() {
     this._request?.abort();
     window.removeEventListener('storage', this._onStorage);
+    document.removeEventListener('site-select', this._onSiteSelect);
+    document.removeEventListener('site-added', this._onSiteSelect);
     super.disconnectedCallback();
   }
 
@@ -141,6 +133,17 @@ export class DaLanding extends LitElement {
     this._favorites = new Set(getSiteFavorites(this.path));
   }
 
+  refreshSites() {
+    try {
+      const sites = JSON.parse(localStorage.getItem('da-sites') || '[]');
+      this._hasSavedSites = Array.isArray(sites) && sites.some(
+        (site) => typeof site === 'string' && /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/.test(site),
+      );
+    } catch {
+      this._hasSavedSites = false;
+    }
+  }
+
   starFile(item) {
     const folder = item.path.slice(0, item.path.lastIndexOf('/'));
     const starred = toggleFavorite(folder, item.path);
@@ -163,10 +166,8 @@ export class DaLanding extends LitElement {
   renderFiles() {
     if (!this._scope) {
       return html`<div class="empty-state">${icon('folder')}
-        <h3>Choose a site to get started</h3>
-        <p>Select a site above to see its content.</p>
-        <button type="button" class="nx-action-btn" ?disabled=${!!this._selectorError}
-          @click=${this._onAddSite}>Add site</button>
+        <h3>${this._hasSavedSites ? 'Choose a site to get started' : 'Add a site to get started'}</h3>
+        <p>${this._hasSavedSites ? 'Select a site above to see its content.' : 'Add a site above to see its content.'}</p>
       </div>`;
     }
     if (this._error) {
@@ -204,11 +205,6 @@ export class DaLanding extends LitElement {
 
   render() {
     return html`<div class="landing">
-      <div class="site-picker">
-        ${this._selectorError ? html`<p role="alert">${this._selectorError}</p>`
-    : html`<nx-siteselector size=${nx.getUISize?.() === 'm' ? 'm' : 's'}
-          .onSelect=${this._onSiteSelect}></nx-siteselector>`}
-      </div>
       <section class="files-panel" data-view=${this._view} aria-labelledby="files-heading">
         <div class="panel-heading">
           <h2 id="files-heading">Content</h2>

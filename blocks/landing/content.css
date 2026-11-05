@@ -44,13 +44,7 @@ svg {
     0 1px 4px light-dark(rgb(0 0 0 / 4%), rgb(0 0 0 / 12%)),
     0 0 1px light-dark(rgb(0 0 0 / 8%), rgb(0 0 0 / 24%))
   );
-}
 
-.site-picker {
-  margin-block-end: var(--s2-spacing-400);
-}
-
-.files-panel, .site-picker {
   --da-card-width: 151px;
   --da-card-height: 200px;
   --file-column-width: calc(var(--da-card-width) + var(--s2-spacing-200));

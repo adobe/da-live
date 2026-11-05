@@ -23,7 +23,7 @@ describe('landing Content section', () => {
   }
 
   beforeEach(async () => {
-    ['da-favorites', 'da-browse-settings'].forEach((key) => localStorage.removeItem(key));
+    ['da-favorites', 'da-browse-settings', 'da-sites'].forEach((key) => localStorage.removeItem(key));
     loadSite = sinon.stub(DaLanding.prototype, 'loadSite').callsFake(async function loadSiteForTest() {
       this._request?.abort();
       this._request = new AbortController();
@@ -41,14 +41,14 @@ describe('landing Content section', () => {
     el.remove();
     sinon.restore();
     setEWEnabled(false);
-    ['da-favorites', 'da-browse-settings'].forEach((key) => localStorage.removeItem(key));
+    ['da-favorites', 'da-browse-settings', 'da-sites'].forEach((key) => localStorage.removeItem(key));
   });
 
   it('renders only Content and reuses shared file cards', () => {
     expect(el.shadowRoot.querySelector('#files-heading').textContent).to.equal('Content');
     expect(fileItems()).to.have.length(6);
     expect(el.shadowRoot.querySelector('h1, textarea, .composer, nx-nav')).to.equal(null);
-    expect(el.shadowRoot.querySelector('.site-picker nx-siteselector')).not.to.equal(null);
+    expect(el.shadowRoot.querySelector('nx-siteselector, .site-picker')).to.equal(null);
     expect(fileItems()[0].href).to.include('/canvas');
     expect(el.shadowRoot.querySelector('da-landing-file-actions')).to.equal(null);
     expect(fileList().fullpath).to.equal(undefined);
@@ -286,14 +286,15 @@ describe('landing Content section', () => {
     }
   });
 
-  it('updates Content through the shared picker callback without changing the route', async () => {
-    const { href } = window.location;
-    const picker = el.shadowRoot.querySelector('nx-siteselector');
-    await picker.onSelect({ value: 'another/site' });
-    await updateLanding();
-    expect(el.path).to.equal('/another/site');
-    expect(window.location.href).to.equal(href);
-    expect(loadSite.callCount).to.equal(2);
+  ['site-select', 'site-added'].forEach((type) => {
+    it(`updates Content from the external nav ${type} event without changing the route`, async () => {
+      const { href } = window.location;
+      document.dispatchEvent(new CustomEvent(type, { detail: { value: 'another/site' } }));
+      await updateLanding();
+      expect(el.path).to.equal('/another/site');
+      expect(window.location.href).to.equal(href);
+      expect(loadSite.callCount).to.equal(2);
+    });
   });
 
   it('resets filters, expansion and favorites on a site change', async () => {
@@ -311,32 +312,60 @@ describe('landing Content section', () => {
     expect(loadSite.callCount).to.equal(2);
   });
 
-  it('opens the shared Add site workflow from the no-site state without navigating to Browse', async () => {
-    const { href } = window.location;
+  it('asks users with no saved sites to Add without duplicating nav controls', async () => {
     el.setScope(undefined);
     await updateLanding();
-    const button = el.shadowRoot.querySelector('.empty-state button');
-    expect(el.shadowRoot.querySelector('nx-siteselector')).not.to.equal(null);
-    expect(button.textContent).to.equal('Add site');
-    expect(el.shadowRoot.querySelector('.empty-state a')).to.equal(null);
-    const added = new Promise((resolve) => {
-      document.addEventListener('site-add', resolve, { once: true });
-    });
-    button.click();
-    await added;
-    expect(window.location.href).to.equal(href);
+    expect(el.shadowRoot.querySelector('.empty-state h3').textContent).to.equal('Add a site to get started');
+    expect(el.shadowRoot.querySelector('.empty-state p').textContent).to.equal('Add a site above to see its content.');
+    expect(el.shadowRoot.querySelector('.empty-state button, .empty-state a, nx-siteselector')).to.equal(null);
   });
 
-  it('does not open Add site after navigating away while the shared selector is loading', async () => {
-    let finish;
-    el._selectorReady = new Promise((resolve) => { finish = resolve; });
-    const add = sinon.spy();
-    el.addEventListener('site-add', add);
-    const pending = el._onAddSite();
+  it('asks users with saved sites but no selection to Choose without a button', async () => {
+    localStorage.setItem('da-sites', JSON.stringify(['org/site']));
     el.remove();
-    finish();
-    await pending;
-    expect(add.called).to.equal(false);
+    el.setScope(undefined);
+    document.body.append(el);
+    await updateLanding();
+    expect(el.path).to.equal('');
+    expect(el.shadowRoot.querySelector('.empty-state h3').textContent).to.equal('Choose a site to get started');
+    expect(el.shadowRoot.querySelector('.empty-state p').textContent).to.equal('Select a site above to see its content.');
+    expect(el.shadowRoot.querySelector('.empty-state button, .empty-state a, nx-siteselector')).to.equal(null);
+  });
+
+  it('updates the unselected copy when saved sites change or are cleared in another tab', async () => {
+    el.setScope(undefined);
+    localStorage.setItem('da-sites', JSON.stringify(['org/site']));
+    window.dispatchEvent(new StorageEvent('storage', { key: 'da-sites' }));
+    await updateLanding();
+    expect(el.shadowRoot.querySelector('.empty-state h3').textContent).to.equal('Choose a site to get started');
+    localStorage.removeItem('da-sites');
+    window.dispatchEvent(new StorageEvent('storage', { key: null }));
+    await updateLanding();
+    expect(el.shadowRoot.querySelector('.empty-state h3').textContent).to.equal('Add a site to get started');
+  });
+
+  it('handles malformed or unavailable site history without breaking the empty state', async () => {
+    el.setScope(undefined);
+    for (const value of ['invalid JSON', '{}', '[null, "", "org", "org/"]']) {
+      localStorage.setItem('da-sites', value);
+      el.refreshSites();
+      await updateLanding();
+      expect(el.shadowRoot.querySelector('.empty-state h3').textContent).to.equal('Add a site to get started');
+    }
+    sinon.stub(Storage.prototype, 'getItem').throws(new DOMException('SecurityError'));
+    el.refreshSites();
+    await updateLanding();
+    expect(el.shadowRoot.querySelector('.empty-state h3').textContent).to.equal('Add a site to get started');
+  });
+
+  it('stops reacting to nav selection and site-history changes after removal', () => {
+    el.remove();
+    const refresh = sinon.spy(el, 'refreshSites');
+    document.dispatchEvent(new CustomEvent('site-select', { detail: { value: 'other/site' } }));
+    document.dispatchEvent(new CustomEvent('site-added', { detail: { value: 'other/site' } }));
+    window.dispatchEvent(new StorageEvent('storage', { key: 'da-sites' }));
+    expect(el.path).to.equal('/org/site');
+    expect(refresh.called).to.equal(false);
   });
 
   it('shows loading, empty and retry states distinctly', async () => {

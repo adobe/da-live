@@ -9,7 +9,7 @@ const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { source, config } = await getNx2Api();
 
 describe('Browse Content opt-in', () => {
-  it('preserves site Browse with landing=true and selects root Content through the picker without changing its URL', async () => {
+  it('preserves site Browse with landing=true and updates root Content from nav without changing its URL', async () => {
     const { href } = window.location;
     const ordinary = document.createElement('div');
     const browse = document.createElement('da-browse');
@@ -47,7 +47,10 @@ describe('Browse Content opt-in', () => {
       expect(landing.localName).to.equal('da-landing');
       expect(landing.path).to.equal('');
       const { href: rootHref } = window.location;
-      await landing.shadowRoot.querySelector('nx-siteselector').onSelect({ value: 'org/site' });
+      expect(landing.shadowRoot.querySelector('nx-siteselector')).to.equal(null);
+      const selection = sinon.spy(landing, 'setScope');
+      document.dispatchEvent(new CustomEvent('site-select', { detail: { value: 'org/site' } }));
+      await selection.returnValues[0];
       await landing.updateComplete;
       expect(landing.path).to.equal('/org/site');
       expect(window.location.href).to.equal(rootHref);
