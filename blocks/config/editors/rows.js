@@ -110,33 +110,58 @@ function renderRow(columns, item, handlers) {
     </tr>`;
 }
 
-export function renderRows(panel, { items }, handlers) {
-  const columns = listColumns(panel);
+// Whether a row has `query` in any listed column, as shown (case-insensitive).
+export function matches(panel, row, query) {
+  const needle = query.trim().toLowerCase();
+  return !needle || listColumns(panel)
+    .some((column) => String(cellText(column, row)).toLowerCase().includes(needle));
+}
+
+// The search filters rows (`handlers.query` / `onSearch`); add and import sit next to it.
+function renderToolbar(panel, items, handlers) {
+  const { disabled, query = '' } = handlers;
+  if (disabled && !items.length) return nothing;
   return html`
-    ${handlers.disabled ? nothing : html`
-      <div class="config-row-buttons">
+    <div class="config-row-buttons">
+      ${items.length ? html`<nx-search class="config-search" variant="field" size="m"
+        placeholder=${ROWS.search(panel.noun)} .value=${query}
+        @input=${(e) => handlers.onSearch(e.target.value)}></nx-search>` : nothing}
+      ${disabled ? nothing : html`
         ${handlers.actions ?? nothing}
         <button type="button" class="nx-form-btn-secondary config-add-btn" @click=${handlers.onAdd}>
           ${icon('add')}<span>Add ${panel.noun}</span>
-        </button>
-      </div>`}
-    ${items.length ? html`
-      <div class="config-table-wrap">
-        <table class="config-table">
-          <thead>
-            <tr>
-              ${columns.map((column) => html`<th scope="col">${column.label}</th>`)}
-              ${handlers.disabled ? nothing : html`<th scope="col"><span class="config-visually-hidden">Row actions</span></th>`}
-            </tr>
-          </thead>
-          <tbody>${items.map((item) => renderRow(columns, item, handlers))}</tbody>
-        </table>
-      </div>`
-    : html`
-      <div class="config-empty">
-        <p class="config-empty-title">${ROWS.empty(panel.noun)}</p>
-        ${handlers.disabled ? nothing : html`<p>${ROWS.emptyHint(panel.noun)}</p>`}
-      </div>`}`;
+        </button>`}
+    </div>`;
+}
+
+function renderTable(columns, items, handlers) {
+  return html`
+    <div class="config-table-wrap">
+      <table class="config-table">
+        <thead>
+          <tr>
+            ${columns.map((column) => html`<th scope="col">${column.label}</th>`)}
+            ${handlers.disabled ? nothing : html`<th scope="col"><span class="config-visually-hidden">Row actions</span></th>`}
+          </tr>
+        </thead>
+        <tbody>${items.map((item) => renderRow(columns, item, handlers))}</tbody>
+      </table>
+    </div>`;
+}
+
+const renderEmpty = (title, hint) => html`
+  <div class="config-empty">
+    <p class="config-empty-title">${title}</p>
+    ${hint ? html`<p>${hint}</p>` : nothing}
+  </div>`;
+
+export function renderRows(panel, { items }, handlers) {
+  const query = handlers.query ?? '';
+  const shown = items.filter(({ row }) => matches(panel, row, query));
+  let body = renderTable(listColumns(panel), shown, handlers);
+  if (!items.length) body = renderEmpty(ROWS.empty(panel.noun), handlers.disabled ? '' : ROWS.emptyHint(panel.noun));
+  else if (!shown.length) body = renderEmpty(ROWS.noMatches(query.trim()), '');
+  return html`${renderToolbar(panel, items, handlers)}${body}`;
 }
 
 // Errors show once the user has tried to apply.

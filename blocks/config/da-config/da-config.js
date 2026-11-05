@@ -26,6 +26,7 @@ import {
 import { SHELL } from '../messages.js';
 
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
+await import(`${getNx()}/blocks/shared/search/search.js`);
 await import(`${getNx()}/blocks/shared/segmented-btn/segmented.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 await import(`${getNx()}/blocks/shared/pills/pills.js`);
@@ -60,6 +61,7 @@ class DaConfig extends LitElement {
     _rows: { state: true },
     _draft: { state: true },
     _deleting: { state: true },
+    _query: { state: true },
     _importing: { state: true },
     _busy: { state: true },
     _readOnly: { state: true },
@@ -223,6 +225,7 @@ class DaConfig extends LitElement {
 
   _resetScope() {
     this._clearEdits();
+    this._query = '';
     this._confirm = null;
     this._importing = false;
     this._readOnly = false;
@@ -274,6 +277,7 @@ class DaConfig extends LitElement {
     this._guard(() => {
       this._sectionId = sectionId;
       this._partId = null;
+      this._query = '';
     }, () => { target.value = current; });
   }
 
@@ -292,7 +296,10 @@ class DaConfig extends LitElement {
   _onPartChange({ detail, target }) {
     const current = this._ctx.part.id;
     this._guard(
-      () => { this._partId = detail.value; },
+      () => {
+        this._partId = detail.value;
+        this._query = '';
+      },
       () => { target.value = current; },
     );
   }
@@ -450,6 +457,8 @@ class DaConfig extends LitElement {
       onAdd: () => this._onRowAdd(),
       onEdit: (index) => this._onRowEdit(index),
       onRemove: (index, name) => this._onRowRemove(index, name),
+      query: this._query,
+      onSearch: (query) => { this._query = query; },
       onOverride: (row) => this._onRowAdd(row),
     };
     return html`

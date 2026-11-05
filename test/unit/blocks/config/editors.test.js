@@ -2,7 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import { html, render } from 'da-lit';
 import { fieldStates, pendingChanges } from '../../../../blocks/config/editors/settings.js';
 import {
-  rowStates, cleanRow, rowErrors, renderRowDialog, renderRows, cellText, listColumns,
+  rowStates, cleanRow, rowErrors, renderRowDialog, renderRows, cellText, listColumns, matches,
 } from '../../../../blocks/config/editors/rows.js';
 import prepare from '../../../../blocks/config/panels/prepare.js';
 import { renderFileStatus, renderLibraryStatus } from '../../../../blocks/config/editors/file-status.js';
@@ -166,10 +166,24 @@ describe('rows', () => {
       expect(empty({ disabled: true })).to.deep.equal(['No plugins yet']);
     });
 
+    it('filters rows by any listed column as shown, ignoring case', () => {
+      expect([matches(panel, T, ''), matches(panel, T, ' TOOL '), matches(panel, T, 'new win')])
+        .to.deep.equal([true, true, true]);
+      expect([matches(panel, T, 'secret'), matches(panel, T, 'x')]).to.deep.equal([false, false]);
+      const items = [{ row: T, index: 0 }, { row: O, index: 1 }];
+      expect(table(items, { query: 'org' }).rows.map((r) => r[0])).to.deep.equal(['Org tool']);
+      const { el } = table(items, { query: 'zzz' });
+      expect([el.querySelector('.config-empty-title').textContent, !!el.querySelector('nx-search')])
+        .to.deep.equal(['No matches for "zzz"', true]);
+      expect(!!table([], {}).el.querySelector('nx-search')).to.equal(false);
+    });
+
     it('puts the list actions above the table, with Add last', () => {
       const { el } = table([{ row: T, index: 0 }], { actions: html`<button type="button">Import</button>` });
       const order = [...el.children].map((child) => child.className);
       expect(order).to.deep.equal(['config-row-buttons', 'config-table-wrap']);
+      const toolbar = [...el.querySelector('.config-row-buttons').children].map((c) => c.tagName.toLowerCase());
+      expect(toolbar).to.deep.equal(['nx-search', 'button', 'button']);
       const labels = [...el.querySelectorAll('.config-row-buttons button')].map((b) => b.textContent.trim());
       expect(labels).to.deep.equal(['Import', 'Add plugin']);
     });
@@ -177,7 +191,9 @@ describe('rows', () => {
     it('drops the actions column when editing is off', () => {
       const { headers, buttons, el } = table([{ row: T, index: 0 }], { disabled: true });
       expect(headers).to.deep.equal(['Title', 'Path', 'Opens in']);
-      expect([buttons, !!el.querySelector('.config-row-buttons')]).to.deep.equal([[], false]);
+      // Search stays for reading long lists; add and import need edit access.
+      const toolbar = [...el.querySelector('.config-row-buttons').children].map((c) => c.tagName.toLowerCase());
+      expect([buttons, toolbar]).to.deep.equal([[], ['nx-search']]);
     });
   });
 
