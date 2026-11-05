@@ -28,6 +28,7 @@
 
 :host(.config-tabs-secondary) .segmented {
   flex-wrap: wrap;
+  justify-content: center;
   gap: var(--s2-spacing-100);
 }
 

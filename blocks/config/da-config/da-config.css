@@ -34,16 +34,12 @@
   min-width: 12rem;
 }
 
+/* Area tabs and section chips centered under the title, like Coworker's tabs. */
 .config-tabs {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--s2-spacing-300);
-}
-
-/* Area tabs centered under the title, like Coworker; section chips stay left-aligned. */
-.config-tabs-primary {
-  align-self: center;
 }
 
 .config-panel {
