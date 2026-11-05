@@ -28,6 +28,7 @@ export function renderPill(label, tone) {
 }
 
 function renderControl({ field, raw, value, orgValue, atSite }, { disabled, onChange }, autofocus) {
+  const required = !!field.required;
   const id = `config-${field.key.replace(/\s+/g, '-')}`;
   if (field.options) {
     // At site scope an empty value inherits the org value, whatever the field's default is.
@@ -36,6 +37,7 @@ function renderControl({ field, raw, value, orgValue, atSite }, { disabled, onCh
       <nx-picker
         id=${id}
         ?autofocus=${autofocus}
+        aria-required=${required ? 'true' : 'false'}
         variant="field"
         size="m"
         .items=${[{ value: '', label: empty }, ...field.options]}
@@ -47,25 +49,27 @@ function renderControl({ field, raw, value, orgValue, atSite }, { disabled, onCh
   const placeholder = orgValue || field.placeholder || '';
   const onInput = (e) => onChange(field.key, e.target.value);
   if (field.multiline) {
-    return html`<textarea id=${id} ?autofocus=${autofocus} class="nx-input config-textarea" rows="3" .value=${raw}
+    return html`<textarea id=${id} ?autofocus=${autofocus} ?required=${required} class="nx-input config-textarea" rows="3" .value=${raw}
       placeholder=${placeholder} ?disabled=${disabled} @input=${onInput}></textarea>`;
   }
-  return html`<input id=${id} ?autofocus=${autofocus} class="nx-input" type=${field.type ?? 'text'} autocomplete="off" .value=${raw}
+  return html`<input id=${id} ?autofocus=${autofocus} ?required=${required} class="nx-input" type=${field.type ?? 'text'} autocomplete="off" .value=${raw}
     placeholder=${placeholder} ?disabled=${disabled} @input=${onInput}>`;
 }
 
-// `showKey` adds the config key to the hint; `autofocus` marks the control nx-dialog focuses
-// when it opens.
+const renderHelp = ({ hint, key }, showKey) => (hint || showKey ? html`
+  <span class="config-field-help">${hint} ${showKey ? html`<code>${key}</code>` : nothing}</span>` : nothing);
+
+// Spectrum TextField layout: label (`*` when required), control, then help text, which an error
+// replaces. `showKey` adds the config key to the help text; `autofocus` marks the control
+// nx-dialog focuses when it opens.
 export function renderField(state, handlers, { showKey = false, autofocus = false } = {}) {
   const { field, error } = state;
   return html`
     <label class="nx-form-field ${error ? 'nx-field-error' : ''}">
-      <span class="config-setting-label">
-        ${field.label}
-        ${field.required ? renderPill(INHERITANCE.requiredPill, 'neutral') : nothing}
+      <span class="config-field-label">
+        ${field.label}${field.required ? html`<span class="config-required" aria-hidden="true">*</span>` : nothing}
       </span>
-      <span class="config-setting-hint">${field.hint} ${showKey ? html`<code>${field.key}</code>` : nothing}</span>
       ${renderControl(state, handlers, autofocus)}
-      ${error ? html`<span class="nx-input-error-msg" role="alert">${error}</span>` : nothing}
+      ${error ? html`<span class="nx-input-error-msg" role="alert">${error}</span>` : renderHelp(field, showKey)}
     </label>`;
 }

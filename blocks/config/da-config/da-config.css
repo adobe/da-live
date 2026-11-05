@@ -66,8 +66,9 @@
   container-type: inline-size;
 }
 
-/* Two columns: label + hint on the left, control + error + note on the right. The
-   nx-form-field label is flattened with `display: contents` so its children join the grid. */
+/* Spectrum's side-label layout: label on the left; control, then help or error and the
+   inheritance note on the right. The nx-form-field label is flattened with `display: contents`
+   so its children join the grid. */
 .config-setting {
   display: grid;
   grid-template-columns: minmax(14rem, 2fr) minmax(16rem, 3fr);
@@ -84,17 +85,17 @@
   display: contents;
 }
 
-.config-setting-label,
-.config-setting-hint,
-.config-setting-note {
-  margin: 0;
-  color: var(--s2-gray-700);
-  font-size: var(--s2-component-s-regular-font-size);
-  line-height: var(--s2-component-s-regular-line-height);
+/* The label keeps nx-form-field's type; help text is the size of its error message. */
+.config-required {
+  margin-inline-start: 2px;
 }
 
-.config-setting-hint code {
+.config-field-help,
+.config-setting-note {
+  margin: 0;
   color: var(--s2-gray-600);
+  font-size: var(--s2-component-s-regular-font-size);
+  line-height: var(--s2-component-s-regular-line-height);
 }
 
 .config-setting-note {
@@ -104,12 +105,9 @@
   gap: var(--s2-spacing-100);
 }
 
-.config-setting .config-setting-label {
+.config-setting .config-field-label {
   grid-area: 1 / 1;
-}
-
-.config-setting .config-setting-hint {
-  grid-area: 2 / 1;
+  padding-block-start: var(--s2-spacing-75);
 }
 
 /* Controls fill their column, in settings rows and in dialogs. */
@@ -121,10 +119,11 @@
 
 .config-setting .nx-input,
 .config-setting nx-picker {
-  grid-area: 1 / 2 / span 2;
+  grid-area: 1 / 2;
 }
 
 .config-setting .nx-input-error-msg,
+.config-setting .config-field-help,
 .config-setting .config-setting-note {
   grid-column: 2;
 }
@@ -135,8 +134,8 @@
     grid-template-columns: 1fr;
   }
 
-  .config-setting .config-setting-label,
-  .config-setting .config-setting-hint,
+  .config-setting .config-field-label,
+  .config-setting .config-field-help,
   .config-setting .nx-input,
   .config-setting nx-picker,
   .config-setting .nx-input-error-msg,

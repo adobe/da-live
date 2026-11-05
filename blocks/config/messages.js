@@ -56,7 +56,6 @@ export const INHERITANCE = {
   notSet: 'Not set',
   inheritedPill: INHERITED,
   overridesPill: 'Overrides org',
-  requiredPill: 'Required',
   inheritedValue: (value) => html`${INHERITED}: ${code(value)}`,
   orgDefault: (value) => html`Org default: ${code(value)}`,
 };

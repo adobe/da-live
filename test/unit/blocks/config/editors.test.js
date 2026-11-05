@@ -181,6 +181,27 @@ describe('rows', () => {
     });
   });
 
+  it('lays fields out like Spectrum: label with *, control, then help text an error replaces', () => {
+    const handlers = { onChange: () => {}, onApply: () => {}, onCancel: () => {} };
+    const field = (draft, errors = {}) => {
+      const el = document.createElement('div');
+      render(renderRowDialog(prepare, draft, errors, handlers), el);
+      const label = el.querySelector('.nx-form-field');
+      return {
+        order: [...label.children].map((c) => c.className || c.tagName.toLowerCase()),
+        label: label.querySelector('.config-field-label').textContent.replace(/\s+/g, ''),
+        required: label.querySelector('input').required,
+        help: label.querySelector('.config-field-help')?.textContent.trim() ?? null,
+        error: label.querySelector('.nx-input-error-msg')?.textContent.trim() ?? null,
+      };
+    };
+    const clean = field({ index: null, row: {} });
+    expect([clean.order, clean.label, clean.required]).to.deep.equal([['config-field-label', 'nx-input', 'config-field-help'], 'Title*', true]);
+    expect([clean.help !== null, clean.error]).to.deep.equal([true, null]);
+    const invalid = field({ index: null, row: {}, submitted: true }, { title: 'Enter a title.' });
+    expect([invalid.help, invalid.error]).to.deep.equal([null, 'Enter a title.']);
+  });
+
   it('focuses the first field when the dialog opens', () => {
     const el = document.createElement('div');
     const handlers = { onChange: () => {}, onApply: () => {}, onCancel: () => {} };
