@@ -167,6 +167,10 @@ da-list::part(grid) {
   font-size: var(--nx-ui-text-title, var(--s2-component-l-regular-font-size));
 }
 
+.empty-state .add-site {
+  margin-block-start: var(--s2-spacing-100);
+}
+
 .empty-state p, .loading {
   color: var(--s2-gray-700);
 }

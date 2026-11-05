@@ -16,7 +16,8 @@ With no saved sites in the browser's existing `da-sites` history, Content shows
 "Add a site to get started" without a description, with a blue
 shared accent button labeled Add site and the shared plus icon. It lazily opens
 Nexter's existing `nx-add-site` dialog, without requiring a mounted picker or
-leaving landing. Closing restores focus; successful Add selects the site.
+leaving landing. The heading-to-button gap is 20px.
+Closing restores focus; successful Add selects the site.
 Repeated clicks open only one dialog, and disconnects or scope changes remove it.
 The dialog requires adobe/da-nx#947; use `nx=siteselector-main` until it is released.
 With saved sites but none selected, it shows "Choose a site to get started" and

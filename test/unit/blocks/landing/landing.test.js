@@ -274,6 +274,34 @@ describe('landing Content section', () => {
     });
   });
 
+  it('keeps same-named favorites consistent when an older file falls outside initial Recent', async () => {
+    const root = { name: 'coffee', path: '/org/site/coffee.html', ext: 'html' };
+    const nested = { name: 'coffee', path: '/org/site/de/coffee.html', ext: 'html' };
+    el._files = [root, ...ITEMS.slice(0, 5), nested];
+    toggleFavorite('/org/site', root.path);
+    toggleFavorite('/org/site/de', nested.path);
+    el.refreshFavorites();
+    for (const view of ['card', 'list']) {
+      el.changeView({ detail: { value: view } });
+      el.changeTab('recent');
+      await updateLanding();
+      expect([...fileItems()].filter((item) => item.name === 'coffee').map((item) => item.path))
+        .to.deep.equal([root.path]);
+      expect(fileItems()[0].shadowRoot.querySelector('button[aria-pressed="true"]')).not.to.equal(null);
+      el.changeTab('starred');
+      await updateLanding();
+      expect([...fileItems()].map((item) => item.path)).to.deep.equal([root.path, nested.path]);
+      expect([...fileItems()].every((item) => item.shadowRoot.querySelector('button[aria-pressed="true"]'))).to.equal(true);
+      el.changeTab('recent');
+      await updateLanding();
+      el.shadowRoot.querySelector('.show-more').click();
+      await updateLanding();
+      const coffees = [...fileItems()].filter((item) => item.name === 'coffee');
+      expect(coffees.map((item) => item.path)).to.deep.equal([root.path, nested.path]);
+      expect(coffees.every((item) => item.shadowRoot.querySelector('button[aria-pressed="true"]'))).to.equal(true);
+    }
+  });
+
   it('reports failed favorite storage without pretending the item was saved', async () => {
     sinon.stub(Storage.prototype, 'setItem').throws(new DOMException('QuotaExceededError'));
     el.starFile(ITEMS[0]);
@@ -352,6 +380,13 @@ describe('landing Content section', () => {
     expect(button.classList.contains('nx-btn-accent')).to.equal(true);
     expect(button.querySelector('use').getAttribute('href')).to.include('s2-icon-add-20-n.svg');
     expect(el.shadowRoot.querySelector('.empty-state a, nx-siteselector')).to.equal(null);
+    const sheet = new CSSStyleSheet();
+    await sheet.replace(await (await fetch('/blocks/landing/content.css')).text());
+    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
+    el.style.setProperty('--s2-spacing-100', '8px');
+    el.style.setProperty('--s2-spacing-200', '12px');
+    expect(button.getBoundingClientRect().top
+      - el.shadowRoot.querySelector('.empty-state h3').getBoundingClientRect().bottom).to.equal(20);
   });
 
   it('opens the shared Add dialog once and restores focus on cancel', async () => {
