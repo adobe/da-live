@@ -15,7 +15,7 @@ const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 before(async () => {
   ({ getImageDocumentVersion } = await import(`${getNx2()}/public/utils/quick-edit-images.js`));
   ({ handleImageReplace } = await import('../../../../../blocks/canvas/ew-editor-wysiwyg/utils/image.js'));
-  ({ HLX6_MAX_IMAGE_BYTES } = await import('../../../../../blocks/canvas/utils/image-upload.js'));
+  ({ HLX6_MAX_IMAGE_BYTES } = await import('../../../../../blocks/shared/image-upload.js'));
   ({ toasts } = await import('../../../../fixtures/nx2/blocks/shared/toast/toast.js'));
 });
 

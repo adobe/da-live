@@ -1,7 +1,7 @@
 import { Plugin, TextSelection } from 'da-y-wrapper';
 import { getNx2Api } from '../../../../scripts/utils.js';
 import { getSourceUploadContext } from './sourceUploadContext.js';
-import { refuseOversizedImage } from '../../utils/image-upload.js';
+import { refuseOversizedImage } from '../../../shared/image-upload.js';
 import { SUPPORTED_IMAGE_TYPES as SUPPORTED_IMAGE_FILES } from '../../../shared/constants.js';
 
 export { SUPPORTED_IMAGE_FILES };

@@ -132,7 +132,8 @@
 .editor-root form-number-field,
 .editor-root form-picker,
 .editor-root form-checkbox,
-.editor-root form-date {
+.editor-root form-date,
+.editor-root form-asset {
   display: block;
   margin: 16px 0 8px;
 }
@@ -142,7 +143,8 @@
 .editor-root .form-array-item-primitive form-number-field,
 .editor-root .form-array-item-primitive form-picker,
 .editor-root .form-array-item-primitive form-checkbox,
-.editor-root .form-array-item-primitive form-date {
+.editor-root .form-array-item-primitive form-date,
+.editor-root .form-array-item-primitive form-asset {
   margin: 0;
 }
 
@@ -151,7 +153,8 @@
 .editor-root .form-array-item-input-row > form-number-field,
 .editor-root .form-array-item-input-row > form-picker,
 .editor-root .form-array-item-input-row > form-checkbox,
-.editor-root .form-array-item-input-row > form-date {
+.editor-root .form-array-item-input-row > form-date,
+.editor-root .form-array-item-input-row > form-asset {
   flex: 1;
   min-width: 0;
 }

@@ -1,6 +1,6 @@
 import { getNx2, getNx2Api } from '../../../../scripts/utils.js';
 import { MESSAGE_TYPES } from '../../utils/quick-edit-messages.js';
-import { dataUrlByteLength, refuseOversizedImage } from '../../utils/image-upload.js';
+import { dataUrlByteLength, refuseOversizedImage } from '../../../shared/image-upload.js';
 
 const { resolveImagePosition, updateImageInDocument } = await import(
   `${getNx2()}/public/utils/quick-edit-images.js`

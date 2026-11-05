@@ -1,8 +1,10 @@
 import { expect } from '@esm-bundle/chai';
 import '../../../setup-nx.js';
 import { attachPersistence } from '../../../../../blocks/form/utils/persistence.js';
+import { createEngine } from '../../../../../deps/da-sc-sdk/dist/index.js';
+import { IMAGE_URL } from '../helpers/sdk-types.js';
 
-// Minimal editor stub. `setValues(next)` simulates a real mutation by
+// Minimal editor stub. `setValues(next, model)` simulates a real mutation by
 // replacing `state.document` with a NEW reference — persistence uses
 // reference equality on the document to detect mutations.
 function makeEditor(initial = {}) {
@@ -14,12 +16,13 @@ function makeEditor(initial = {}) {
   };
   return {
     getState: () => state,
-    setValues: (next) => {
+    setValues: (next, model) => {
       state = {
         document: {
           metadata: { schemaName: 'demo' },
           data: next,
         },
+        model,
       };
     },
   };
@@ -191,6 +194,62 @@ describe('attachPersistence', () => {
     p.notify();
     await tick();
     expect(calls).to.have.lengthOf(1);
+    p.detach();
+  });
+  const assetSchema = {
+    type: 'object',
+    properties: { hero: { $ref: IMAGE_URL }, logo: { $ref: IMAGE_URL } },
+  };
+  // The model the engine builds for `data`, as the editor state carries it.
+  const modelFor = (data) => createEngine({
+    schema: assetSchema,
+    document: { metadata: { schemaName: 'demo' }, data },
+  }).getState().model;
+
+  it('writes asset fields as images from the model in the editor state', async () => {
+    const hero = 'https://content.da.live/org/site/hero.png';
+    const data = { hero: { src: hero, altText: 'A hero' } };
+    const editor = makeEditor();
+    const { save, calls, release } = makeSave();
+    const p = attachPersistence(editor, { path: '/x', save });
+
+    editor.setValues(data);
+    p.notify();
+    await tick();
+    expect(calls[0].html).to.not.include('<img');
+    release();
+    await tick();
+
+    editor.setValues({ ...data }, modelFor(data));
+    p.notify();
+    await tick();
+    expect(calls[1].html).to.include(`<img src="${hero}" alt="A hero">`);
+    p.detach();
+  });
+
+  it('reads the config on every save to write images from other hosts as links', async () => {
+    const aem = 'https://delivery-p1-e1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:1/as/hero.avif';
+    const upload = 'https://content.da.live/org/site/hero.png';
+    const data = { hero: { src: aem }, logo: { src: upload } };
+    const editor = makeEditor();
+    const { save, calls, release } = makeSave();
+    let asLinks = false;
+    const getConfig = () => ({ externalImagesAsLinks: asLinks });
+    const p = attachPersistence(editor, { path: '/x', save, getConfig });
+
+    editor.setValues(data, modelFor(data));
+    p.notify();
+    await tick();
+    expect(calls[0].html).to.include(`<img src="${aem}" alt="">`);
+    release();
+    await tick();
+
+    asLinks = true;
+    editor.setValues({ ...data }, modelFor(data));
+    p.notify();
+    await tick();
+    expect(calls[1].html).to.include(`<a href="${aem}">${aem}</a>`);
+    expect(calls[1].html).to.include(`<img src="${upload}" alt="">`);
     p.detach();
   });
 });

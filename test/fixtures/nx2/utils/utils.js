@@ -16,3 +16,5 @@ export const loadStyle = (supplied) => {
   })();
   return styleCache[path];
 };
+
+export const loadPageStyle = async () => {};
