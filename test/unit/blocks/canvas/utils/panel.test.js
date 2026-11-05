@@ -51,25 +51,31 @@ describe('pinned tool panel preferences', () => {
     expect(readPinnedToolPanelViews()).to.deep.equal(['blocks', 'files']);
   });
 
-  it('falls back to no pins for malformed or non-array stored preferences', () => {
-    for (const value of ['invalid json', '{}', 'null']) {
+  it('defaults to Files and Outline for a new session', () => {
+    sessionStorage.removeItem(TOOL_PANEL_PINNED_VIEWS_KEY);
+    expect(readPinnedToolPanelViews()).to.deep.equal(['files', 'outline']);
+  });
+
+  it('defaults to Files and Outline for malformed or empty stored preferences', () => {
+    for (const value of ['invalid json', '{}', 'null', '[]', '[null, ""]']) {
       sessionStorage.setItem(TOOL_PANEL_PINNED_VIEWS_KEY, value);
-      expect(readPinnedToolPanelViews()).to.deep.equal([]);
+      expect(readPinnedToolPanelViews()).to.deep.equal(['files', 'outline']);
     }
   });
 
-  it('restores at most four unique valid pins from older sessions', () => {
+  it('restores all unique valid pins without a tab limit', () => {
     sessionStorage.setItem(TOOL_PANEL_PINNED_VIEWS_KEY, JSON.stringify([
       'blocks', null, 'blocks', 'files', '', 'assets', 'outline', 'versions',
     ]));
-    expect(readPinnedToolPanelViews()).to.deep.equal(['blocks', 'files', 'assets', 'outline']);
+    expect(readPinnedToolPanelViews())
+      .to.deep.equal(['blocks', 'files', 'assets', 'outline', 'versions']);
   });
 
   it('continues working when session storage is blocked', () => {
     const get = stub(Storage.prototype, 'getItem').throws(new Error('blocked'));
     const set = stub(Storage.prototype, 'setItem').throws(new Error('blocked'));
     try {
-      expect(readPinnedToolPanelViews()).to.deep.equal([]);
+      expect(readPinnedToolPanelViews()).to.deep.equal(['files', 'outline']);
       expect(() => persistPinnedToolPanelViews(['blocks'])).not.to.throw();
     } finally {
       get.restore();

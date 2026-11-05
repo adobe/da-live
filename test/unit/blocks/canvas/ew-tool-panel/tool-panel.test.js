@@ -84,7 +84,7 @@ describe('EwToolPanel — modal experience', () => {
   });
 });
 
-describe('EwToolPanel pinned panels', () => {
+describe('EwToolPanel selected panels', () => {
   let el;
   let savedPins;
   let loads;
@@ -92,7 +92,7 @@ describe('EwToolPanel pinned panels', () => {
 
   beforeEach(async () => {
     savedPins = sessionStorage.getItem(TOOL_PANEL_PINNED_VIEWS_KEY);
-    sessionStorage.removeItem(TOOL_PANEL_PINNED_VIEWS_KEY);
+    sessionStorage.setItem(TOOL_PANEL_PINNED_VIEWS_KEY, JSON.stringify(['files']));
     loads = [];
     views = ['files', 'blocks', 'assets'].map((id) => ({
       id,
@@ -121,15 +121,20 @@ describe('EwToolPanel pinned panels', () => {
 
   const tabs = () => [...el.shadowRoot.querySelectorAll('.tool-panel-tab')];
   const pickerValues = () => el._pickerItemsFromViews().filter((i) => i.value).map((i) => i.value);
-  const pin = async () => {
-    el.shadowRoot.querySelector('.tool-panel-pin').click();
+  const select = async (id, selected = true) => {
+    const picker = el.shadowRoot.querySelector('nx-picker');
+    const values = selected
+      ? [...new Set([...picker.values, id])]
+      : picker.values.filter((value) => value !== id);
+    picker.values = values;
+    picker.dispatchEvent(new CustomEvent('change', { detail: { value: id, values, selected } }));
+    await el.updateComplete;
+    await nextTask();
     await el.updateComplete;
   };
   const pinAll = async () => {
     for (const { id } of views) {
-      await el.showPanel(id);
-      await el.updateComplete;
-      await pin();
+      await select(id);
     }
   };
   const dragEvent = (type, dataTransfer, clientX = 0) => new DragEvent(type, {
@@ -167,7 +172,7 @@ describe('EwToolPanel pinned panels', () => {
     await el.updateComplete;
     expect(tabs().map((button) => button.textContent)).to.deep.equal(['files', 'blocks', 'assets']);
     expect(loads).to.deep.equal(['files', 'blocks', 'assets']);
-    expect(pickerValues()).to.deep.equal([]);
+    expect(pickerValues()).to.deep.equal(['files', 'blocks', 'assets']);
     source.dispatchEvent(dragEvent('dragstart', transfer));
     last.dispatchEvent(dragEvent('drop', transfer, end));
     await el.updateComplete;
@@ -249,28 +254,75 @@ describe('EwToolPanel pinned panels', () => {
     expect(el._pinnedIds).to.deep.equal(['files', 'blocks', 'assets']);
   });
 
-  it('moves the active option into a focused tab without reloading its content', async () => {
-    const content = el._loaded.files;
-    await pin();
-    expect(tabs().map((button) => button.textContent)).to.deep.equal(['files']);
-    expect(tabs()[0].getAttribute('aria-pressed')).to.equal('true');
-    expect(el.shadowRoot.activeElement).to.equal(tabs()[0]);
-    expect(pickerValues()).to.deep.equal(['blocks', 'assets']);
-    expect(el._pickerItemsFromViews()[0]).to.deep.equal({ section: 'Library' });
-    expect(el.shadowRoot.querySelector('nx-picker').value).to.equal(undefined);
-    expect(el.shadowRoot.querySelector('.tool-panel-pin')).to.equal(null);
-    expect(el.activeId).to.equal('files');
-    expect(el._loaded.files).to.equal(content);
-    expect(loads).to.deep.equal(['files']);
+  it('fades only overflowing edges and updates when scrolling, resizing, or removing tabs', async () => {
+    const sheet = new CSSStyleSheet();
+    await sheet.replace(await (await fetch('/blocks/canvas/ew-tool-panel/tool-panel.css')).text());
+    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
+    el.style.width = '160px';
+    el.style.height = '300px';
+    await pinAll();
+    const list = el.shadowRoot.querySelector('.tool-panel-tabs');
+    const scroll = async (left) => {
+      list.scrollLeft = left;
+      list.dispatchEvent(new Event('scroll'));
+      await el.updateComplete;
+    };
+    const edges = () => [
+      list.hasAttribute('data-overflow-left'), list.hasAttribute('data-overflow-right'),
+    ];
+    await scroll(0);
+    expect(edges()).to.deep.equal([false, true]);
+    expect(el.shadowRoot.querySelector('.tool-panel-tabs-divider')).not.to.equal(null);
+    await scroll((list.scrollWidth - list.clientWidth) / 2);
+    expect(edges()).to.deep.equal([true, true]);
+    await scroll(list.scrollWidth);
+    expect(edges()).to.deep.equal([true, false]);
+
+    el.style.width = '600px';
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(resolve));
+    });
+    await nextTask();
+    await el.updateComplete;
+    expect(edges()).to.deep.equal([false, false]);
+    expect(el.shadowRoot.querySelector('.tool-panel-tabs-divider')).to.equal(null);
+    el.style.width = '160px';
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(resolve));
+    });
+    await nextTask();
+    await el.updateComplete;
+    expect(edges()).to.deep.equal([false, true]);
+    await select('blocks', false);
+    await select('assets', false);
+    expect(edges()).to.deep.equal([false, false]);
+    expect(el.shadowRoot.querySelector('.tool-panel-tabs-divider')).to.equal(null);
   });
 
-  it('keeps multiple pins in pinning order and switches tabs without losing panel state', async () => {
-    await pin();
-    await el.showPanel('blocks');
+  it('opens Files and Outline as default tabs in a new session', async () => {
+    el.remove();
+    sessionStorage.removeItem(TOOL_PANEL_PINNED_VIEWS_KEY);
+    el = document.createElement('ew-tool-panel');
+    el.pendingView = 'outline';
+    el.views = [...views, { ...views[0], id: 'outline', label: 'Outline' }];
+    document.body.append(el);
     await el.updateComplete;
-    await pin();
+    await el.updateComplete;
+    expect(tabs().map((button) => button.dataset.viewId)).to.deep.equal(['files', 'outline']);
+    expect(el.activeId).to.equal('outline');
+    const picker = el.shadowRoot.querySelector('nx-picker');
+    expect(picker.hasAttribute('multiple')).to.be.true;
+    expect(picker.values).to.deep.equal(['files', 'outline']);
+    expect(picker.labelOverride).to.equal('Panels');
+    expect(el.shadowRoot.querySelector('.tool-panel-pin, .tool-panel-unpin')).to.equal(null);
+  });
+
+  it('opens selections as tabs and switches between them without losing panel state', async () => {
+    await select('blocks');
     expect(tabs().map((button) => button.textContent)).to.deep.equal(['files', 'blocks']);
-    expect(pickerValues()).to.deep.equal(['assets']);
+    expect(el.activeId).to.equal('blocks');
+    expect(pickerValues()).to.deep.equal(['files', 'blocks', 'assets']);
+    expect(el.shadowRoot.querySelector('nx-picker').values).to.deep.equal(['files', 'blocks']);
     tabs()[0].click();
     await el.updateComplete;
     expect(el.activeId).to.equal('files');
@@ -278,15 +330,12 @@ describe('EwToolPanel pinned panels', () => {
     expect(el._loaded.blocks.hidden).to.equal(true);
     expect(loads).to.deep.equal(['files', 'blocks']);
     expect(tabs().map((button) => button.getAttribute('aria-pressed'))).to.deep.equal(['true', 'false']);
-    el.shadowRoot.querySelector('nx-picker').dispatchEvent(new CustomEvent('change', { detail: { value: 'assets' } }));
-    await el.updateComplete;
-    await nextTask();
-    await el.updateComplete;
+    await select('assets');
     expect(el.activeId).to.equal('assets');
-    expect(tabs().every((button) => button.getAttribute('aria-pressed') === 'false')).to.equal(true);
-    await pin();
+    expect(tabs().map((button) => button.getAttribute('aria-pressed')))
+      .to.deep.equal(['false', 'false', 'true']);
     expect(tabs()).to.have.lengthOf(3);
-    expect(el._pickerItemsFromViews()).to.deep.equal([]);
+    expect(pickerValues()).to.deep.equal(['files', 'blocks', 'assets']);
     expect(el.shadowRoot.querySelector('nx-picker').getAttribute('placeholder')).to.equal('Panels');
   });
 
@@ -294,130 +343,174 @@ describe('EwToolPanel pinned panels', () => {
     let opened = 0;
     el.views = [{ ...views[0], openModal: () => { opened += 1; } }, ...views.slice(1)];
     await el.updateComplete;
-    await pin();
     el.shadowRoot.querySelector('.tool-panel-popout').click();
     expect(opened).to.equal(1);
     expect(el.activeId).to.equal('files');
     expect(tabs()).to.have.lengthOf(1);
   });
 
-  it('blocks a fifth pin with a tooltip but allows unpinning to free a slot', async () => {
+  ['blocks', 'aem-assets-panel'].forEach((id) => {
+    it(`shows fullscreen beside Close only while ${id} is selected`, async () => {
+      let opened = 0;
+      const open = () => { opened += 1; };
+      el.views = [
+        ...views.filter((view) => view.id !== id),
+        {
+          ...views[0],
+          id,
+          label: id === 'blocks' ? 'Blocks' : 'AEM Assets',
+          ...(id === 'blocks' ? { openModal: open } : { loadModal: open }),
+        },
+      ];
+      await el.updateComplete;
+      await select(id);
+      const content = el._loaded[id];
+      const button = el.shadowRoot.querySelector('.tool-panel-header .tool-panel-popout');
+      expect(button.nextElementSibling.classList.contains('tool-panel-close')).to.be.true;
+      expect(el.shadowRoot.querySelector('.tool-panel-tabs nx-menu')).to.equal(null);
+      button.click();
+      await el.updateComplete;
+      await nextTask();
+      expect(opened).to.equal(1);
+      expect(el.activeId).to.equal(id);
+      expect(el._loaded[id]).to.equal(content);
+      expect(el.shadowRoot.querySelector('nx-picker').values).to.deep.equal(['files', id]);
+      el.shadowRoot.querySelector('.tool-panel-fullsize-dialog-close')?.click();
+      await el.showPanel('files');
+      await el.updateComplete;
+      expect(el.shadowRoot.querySelector('.tool-panel-popout')).to.equal(null);
+    });
+  });
+
+  it('opens and restores more than four selected tabs', async () => {
+    const sheet = new CSSStyleSheet();
+    await sheet.replace(await (await fetch('/blocks/canvas/ew-tool-panel/tool-panel.css')).text());
+    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
+    el.style.width = '280px';
+    el.style.height = '300px';
     el.views = [
       ...views,
-      ...['outline', 'versions'].map((id) => ({ ...views[0], id, label: id })),
+      ...['outline', 'versions', 'comments'].map((id) => ({ ...views[0], id, label: id })),
     ];
     await el.updateComplete;
-    for (const id of ['files', 'blocks', 'assets', 'outline']) {
-      await el.showPanel(id);
-      await el.updateComplete;
-      await pin();
-    }
-    expect(tabs()).to.have.lengthOf(4);
-    await el.showPanel('versions');
-    await el.updateComplete;
-    const button = el.shadowRoot.querySelector('.tool-panel-pin');
-    expect(button.getAttribute('aria-disabled')).to.equal('true');
-    expect(button.title).to.equal('Maximum of 4 pins reached. Unpin a tab to pin another.');
-    button.click();
-    await el._togglePin('versions');
-    expect(tabs()).to.have.lengthOf(4);
-    expect(pickerValues()).to.deep.equal(['versions']);
+    const ids = ['files', 'blocks', 'assets', 'outline', 'versions', 'comments'];
+    for (const id of ids) await select(id);
+    expect(tabs()).to.have.lengthOf(6);
+    expect(el.activeId).to.equal('comments');
+    const tabList = el.shadowRoot.querySelector('.tool-panel-tabs');
+    const activeTab = tabs().at(-1).getBoundingClientRect();
+    expect(tabList.scrollLeft).to.be.greaterThan(0);
+    expect(activeTab.left).to.be.at.least(tabList.getBoundingClientRect().left);
+    expect(Math.floor(activeTab.right))
+      .to.be.at.most(Math.ceil(tabList.getBoundingClientRect().right));
     expect(JSON.parse(sessionStorage.getItem(TOOL_PANEL_PINNED_VIEWS_KEY)))
-      .to.deep.equal(['files', 'blocks', 'assets', 'outline']);
-
-    await el.showPanel('files');
+      .to.deep.equal(ids);
+    const savedViews = el.views;
+    el.remove();
+    el = document.createElement('ew-tool-panel');
+    el.pendingView = 'comments';
+    el.views = savedViews;
+    document.body.append(el);
     await el.updateComplete;
-    const unpin = el.shadowRoot.querySelector('.tool-panel-unpin');
-    expect(unpin.getAttribute('aria-disabled')).to.equal('false');
-    unpin.click();
     await el.updateComplete;
-    await el.showPanel('versions');
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('.tool-panel-pin').getAttribute('aria-disabled'))
-      .to.equal('false');
-    await pin();
-    expect(tabs().map((tab) => tab.textContent))
-      .to.deep.equal(['blocks', 'assets', 'outline', 'versions']);
+    expect(tabs().map((tab) => tab.dataset.viewId)).to.deep.equal(ids);
+    expect(el.shadowRoot.querySelector('nx-picker').values).to.deep.equal(ids);
   });
 
-  it('unpins the active tab back into the selector without changing the open panel', async () => {
-    await pin();
-    el.shadowRoot.querySelector('.tool-panel-unpin').click();
-    await el.updateComplete;
-    expect(tabs()).to.have.lengthOf(0);
+  it('removes a deselected active tab and activates another selected panel', async () => {
+    await select('blocks');
+    await select('blocks', false);
+    expect(tabs().map((tab) => tab.dataset.viewId)).to.deep.equal(['files']);
     expect(pickerValues()).to.deep.equal(['files', 'blocks', 'assets']);
     expect(el.activeId).to.equal('files');
-    expect(el.shadowRoot.querySelector('nx-picker').value).to.equal('files');
-    expect(el.shadowRoot.activeElement).to.equal(el.shadowRoot.querySelector('.tool-panel-pin'));
+    expect(el.shadowRoot.querySelector('nx-picker').values).to.deep.equal(['files']);
+    expect(el._loaded.blocks.hidden).to.be.true;
   });
 
-  it('offers one right-side unpin action for the selected tab only', async () => {
-    await pin();
-    await el.showPanel('blocks');
-    await el.updateComplete;
-    await pin();
-    expect(el.shadowRoot.querySelectorAll('.tool-panel-unpin')).to.have.lengthOf(1);
-    expect(el.shadowRoot.querySelector('.tool-panel-tabs .tool-panel-unpin')).to.equal(null);
-    expect(el.shadowRoot.querySelector('.tool-panel-unpin').getAttribute('aria-label'))
-      .to.equal('Unpin blocks');
-    el.shadowRoot.querySelector('.tool-panel-unpin').click();
-    await el.updateComplete;
+  it('removes an inactive tab without changing the active panel and reuses it when reopened', async () => {
+    await select('blocks');
+    const { files } = el._loaded;
+    await select('files', false);
     expect(el.activeId).to.equal('blocks');
-    expect(tabs().map((button) => button.textContent)).to.deep.equal(['files']);
-    expect(pickerValues()).to.deep.equal(['blocks', 'assets']);
-    expect(el.shadowRoot.activeElement).to.equal(el.shadowRoot.querySelector('.tool-panel-pin'));
+    expect(tabs().map((tab) => tab.dataset.viewId)).to.deep.equal(['blocks']);
+    await select('files');
+    expect(el._loaded.files).to.equal(files);
+    expect(loads).to.deep.equal(['files', 'blocks']);
+    expect(tabs().map((tab) => tab.dataset.viewId)).to.deep.equal(['blocks', 'files']);
+  });
+
+  it('keeps the last available tab selected even when saved tabs are unavailable', async () => {
+    el._pinnedIds = ['files', 'unavailable'];
+    await el.updateComplete;
+    await select('files', false);
+    expect(tabs().map((tab) => tab.dataset.viewId)).to.deep.equal(['files']);
+    expect(el.shadowRoot.querySelector('nx-picker').values).to.deep.equal(['files']);
+    expect(el.activeId).to.equal('files');
   });
 
   it('restores pins on remount and hides unavailable pins without forgetting them', async () => {
-    await pin();
+    await select('assets');
     el.remove();
     el = document.createElement('ew-tool-panel');
-    el.pendingView = 'files';
+    el.pendingView = 'assets';
     el.views = views;
     document.body.append(el);
     await el.updateComplete;
     await el.updateComplete;
-    expect(tabs().map((button) => button.textContent)).to.deep.equal(['files']);
-    el.views = views.filter((view) => view.id !== 'files');
+    expect(tabs().map((button) => button.textContent)).to.deep.equal(['files', 'assets']);
+    el.views = views.filter((view) => view.id !== 'assets');
     await el.updateComplete;
-    await el.updateComplete;
-    expect(tabs()).to.have.lengthOf(0);
-    expect(pickerValues()).to.deep.equal(['blocks', 'assets']);
-    el.views = views;
     await el.updateComplete;
     expect(tabs().map((button) => button.textContent)).to.deep.equal(['files']);
-  });
-
-  it('restores the right-side unpin action only when a pinned tab is selected', async () => {
-    await pin();
-    el.remove();
-    el = document.createElement('ew-tool-panel');
-    el.pendingView = 'files';
+    expect(pickerValues()).to.deep.equal(['files', 'blocks']);
     el.views = views;
-    document.body.append(el);
     await el.updateComplete;
-    await el.updateComplete;
-    const unpin = el.shadowRoot.querySelector('.tool-panel-unpin');
-    expect(el.shadowRoot.activeElement).to.equal(null);
-    expect(unpin).not.to.equal(null);
-    expect(unpin.querySelector('use').getAttribute('href'))
-      .to.equal('/img/icons/s2-icon-pinoff-20-n.svg#icon');
-    expect(unpin.nextElementSibling.classList.contains('tool-panel-close')).to.equal(true);
-    expect(el.shadowRoot.querySelector('.tool-panel-tabs button use')).to.equal(null);
-    await el.showPanel('blocks');
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('.tool-panel-unpin')).to.equal(null);
-    expect(el.shadowRoot.querySelector('.tool-panel-pin').getAttribute('aria-label'))
-      .to.equal('Pin blocks');
+    expect(tabs().map((button) => button.textContent)).to.deep.equal(['files', 'assets']);
   });
 
-  it('keeps dialog and new-tab actions in the dropdown instead of pinning them', async () => {
-    for (const experience of ['modal', 'fullsize-dialog', 'window']) {
-      const panel = createPanel([{ id: 'external', label: 'External', experience }]);
-      await panel._togglePin('external');
-      expect(panel._pinnedIds).to.deep.equal([]);
-      expect(panel._pickerItemsFromViews().map((i) => i.value)).to.deep.equal(['external']);
-    }
+  it('does not activate a tab that was deselected while its content was loading', async () => {
+    const loading = deferred();
+    el.views = [...views, { id: 'slow', label: 'Slow', load: () => loading.promise }];
+    await el.updateComplete;
+    const opened = el.showPanel('slow');
+    await el.updateComplete;
+    await select('slow', false);
+    loading.resolve(document.createElement('div'));
+    await opened;
+    await el.updateComplete;
+    expect(el.activeId).to.equal('files');
+    expect(tabs().map((tab) => tab.dataset.viewId)).to.deep.equal(['files']);
+    expect(el._loaded.slow).to.equal(undefined);
+  });
+
+  it('does not let a slower selected panel override a more recent selection', async () => {
+    const loading = deferred();
+    el.views = [...views, { id: 'slow', label: 'Slow', load: () => loading.promise }];
+    await el.updateComplete;
+    const opened = el.showPanel('slow');
+    await select('blocks');
+    loading.resolve(document.createElement('div'));
+    await opened;
+    await el.updateComplete;
+    expect(el.activeId).to.equal('blocks');
+    expect(el._loaded.slow).not.to.equal(undefined);
+    expect(tabs().map((tab) => tab.dataset.viewId)).to.deep.equal(['files', 'slow', 'blocks']);
+  });
+
+  it('keeps modal actions separate from the selected tabs', async () => {
+    let opened = 0;
+    el.views = [
+      ...views,
+      { id: 'modal', label: 'Modal', experience: 'modal', openModal: () => { opened += 1; } },
+    ];
+    await el.updateComplete;
+    el.shadowRoot.querySelector('nx-picker')
+      .dispatchEvent(new CustomEvent('change', { detail: { value: 'modal' } }));
+    await el.updateComplete;
+    expect(opened).to.equal(1);
+    expect(el.activeId).to.equal('files');
+    expect(tabs().map((tab) => tab.dataset.viewId)).to.deep.equal(['files']);
+    expect(el.shadowRoot.querySelector('nx-picker').values).to.deep.equal(['files']);
   });
 });
 
@@ -431,6 +524,65 @@ describe('EwToolPanel — loaded view cache', () => {
   });
 
   afterEach(() => el.remove());
+
+  it('keeps refresh below the tabs and fullscreen immediately left of Close', async () => {
+    const content = document.createElement('div');
+    const refresh = document.createElement('button');
+    refresh.textContent = 'Refresh';
+    let refreshed = 0;
+    let opened = 0;
+    refresh.addEventListener('click', () => { refreshed += 1; });
+    content.getHeaderActions = () => refresh;
+    el.pendingView = 'versions';
+    el.views = [{
+      id: 'versions',
+      label: 'Versions',
+      firstParty: true,
+      load: async () => content,
+      openModal: () => { opened += 1; },
+    }];
+    await el.updateComplete;
+    await el.updateComplete;
+    const sheet = new CSSStyleSheet();
+    await sheet.replace(await (await fetch('/blocks/canvas/ew-tool-panel/tool-panel.css')).text());
+    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
+    el.style.width = '320px';
+    el.style.height = '300px';
+    el.style.setProperty('--s2-spacing-200', '12px');
+    el.style.setProperty('--s2-spacing-75', '4px');
+    el.style.setProperty('--s2-spacing-100', '8px');
+    const header = el.shadowRoot.querySelector('.tool-panel-header');
+    const toolbar = el.shadowRoot.querySelector('.tool-panel-toolbar');
+    const selector = header.querySelector('.tool-panel-selector');
+    header.querySelector('nx-picker').style.width = '72px';
+    const divider = header.querySelector('.tool-panel-divider').getBoundingClientRect();
+    const close = header.querySelector('.tool-panel-close').getBoundingClientRect();
+    expect(header.querySelector('.tool-panel-tabs').nextElementSibling).to.equal(selector);
+    expect(selector.getBoundingClientRect().right).to.be.at.most(divider.left);
+    expect(divider.width).to.be.greaterThan(0);
+    expect(divider.right).to.be.at.most(close.left);
+    expect(close.right).to.equal(header.getBoundingClientRect().right - 12);
+    expect(header.querySelectorAll(':scope > button')).to.have.lengthOf(2);
+    expect(header.querySelector('.tool-panel-close')).not.to.equal(null);
+    expect(toolbar.contains(refresh)).to.be.true;
+    expect(toolbar.querySelector('.tool-panel-popout')).to.equal(null);
+    expect(toolbar.querySelector('.tool-panel-pin, .tool-panel-unpin')).to.equal(null);
+    expect(toolbar.getBoundingClientRect().top)
+      .to.be.at.least(header.getBoundingClientRect().bottom);
+    expect(el.shadowRoot.querySelector('.tool-panel-content').getBoundingClientRect().top)
+      .to.be.at.least(toolbar.getBoundingClientRect().bottom);
+    const popoutButton = header.querySelector('.tool-panel-popout');
+    const popout = popoutButton.getBoundingClientRect();
+    expect(refresh.getBoundingClientRect().left)
+      .to.equal(toolbar.getBoundingClientRect().left + 12);
+    expect(popoutButton.nextElementSibling.classList.contains('tool-panel-close')).to.be.true;
+    expect(popout.right).to.equal(close.left);
+    expect(popout.bottom).to.be.at.most(header.getBoundingClientRect().bottom);
+    refresh.click();
+    popoutButton.click();
+    expect(refreshed).to.equal(1);
+    expect(opened).to.equal(1);
+  });
 
   it('opens the block pop-out without switching or reloading the sidebar', async () => {
     let opened = 0;
@@ -447,9 +599,7 @@ describe('EwToolPanel — loaded view cache', () => {
     await el.updateComplete;
     const item = el._pickerItemsFromViews().find((i) => i.value === 'blocks');
     expect(item.action).to.equal(undefined);
-    const button = el.shadowRoot.querySelector('.tool-panel-popout');
-    expect(button.getAttribute('aria-haspopup')).to.equal('dialog');
-    button.click();
+    el.shadowRoot.querySelector('.tool-panel-header .tool-panel-popout').click();
     expect(opened).to.equal(1);
     expect(el.activeId).to.equal('blocks');
     expect(el._loaded.blocks).to.equal(content);
@@ -458,9 +608,9 @@ describe('EwToolPanel — loaded view cache', () => {
   it('opens and closes the assets modal while retaining the sidebar and its state', async () => {
     const content = document.createElement('div');
     let close;
-    el.pendingView = 'assets';
+    el.pendingView = 'aem-assets-panel';
     el.views = [{
-      id: 'assets',
+      id: 'aem-assets-panel',
       label: 'AEM Assets',
       experience: 'inline',
       load: async () => content,
@@ -471,7 +621,7 @@ describe('EwToolPanel — loaded view cache', () => {
     }];
     await el.updateComplete;
     await el.updateComplete;
-    el.shadowRoot.querySelector('.tool-panel-popout').click();
+    el.shadowRoot.querySelector('.tool-panel-header .tool-panel-popout').click();
     await el.updateComplete;
     await nextTask();
     const dialog = el.shadowRoot.querySelector('dialog');
@@ -481,8 +631,8 @@ describe('EwToolPanel — loaded view cache', () => {
     dialog.dispatchEvent(new Event('close'));
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('dialog')).to.equal(null);
-    expect(el.activeId).to.equal('assets');
-    expect(el._loaded.assets).to.equal(content);
+    expect(el.activeId).to.equal('aem-assets-panel');
+    expect(el._loaded['aem-assets-panel']).to.equal(content);
   });
 
   it('does not show a pop-out button for ordinary inline panels', async () => {

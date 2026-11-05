@@ -7,7 +7,6 @@ import {
   persistPinnedToolPanelViews,
   readPinnedToolPanelViews,
   resolveInitialToolPanelView,
-  MAX_PINNED_TOOL_PANEL_VIEWS,
 } from '../utils/panel.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -25,14 +24,6 @@ const [buttons, spinner, style] = await Promise.all([
 const CLOSE_ICON_SRC = '/img/icons/s2-icon-splitright-20-n.svg';
 const OPEN_IN_ICON_URL = '/img/icons/s2-icon-openin-20-n.svg';
 const FULLSCREEN_ICON_SRC = '/img/icons/s2-icon-fullscreen-20-n.svg';
-const PIN_ICON_SRC = '/img/icons/s2-icon-pinon-20-n.svg';
-const UNPIN_ICON_SRC = '/img/icons/s2-icon-pinoff-20-n.svg';
-
-const pinIcon = (pinned = false) => html`
-  <svg aria-hidden="true" class="icon" viewBox="0 0 20 20">
-    <use href="${pinned ? UNPIN_ICON_SRC : PIN_ICON_SRC}#icon"></use>
-  </svg>`;
-
 const canPin = (view) => view && !['window', 'fullsize-dialog', 'modal'].includes(view.experience);
 
 class EwToolPanel extends LitElement {
@@ -45,6 +36,7 @@ class EwToolPanel extends LitElement {
     _fullsizeDialogViewId: { state: true },
     _pinnedIds: { state: true },
     _tabDrop: { state: true },
+    _tabScroll: { state: true },
   };
 
   _loaded = {};
@@ -63,11 +55,19 @@ class EwToolPanel extends LitElement {
     this._onRailToggle = () => this._broadcastActiveView();
     document.addEventListener(PANEL_EVENT.OPEN, this._onRailToggle);
     document.addEventListener(PANEL_EVENT.CLOSE, this._onRailToggle);
+    this._tabResizeObserver = new ResizeObserver(() => {
+      cancelAnimationFrame(this._tabResizeFrame);
+      this._tabResizeFrame = requestAnimationFrame(() => this._syncTabOverflow());
+    });
+    this.requestUpdate();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._endTabDrag();
+    this._tabResizeObserver?.disconnect();
+    cancelAnimationFrame(this._tabResizeFrame);
+    this._observedTabs = undefined;
     this._unsubCommentCounts?.();
     this._unsubControllerChange?.();
     document.removeEventListener(PANEL_EVENT.OPEN, this._onRailToggle);
@@ -100,14 +100,17 @@ class EwToolPanel extends LitElement {
     return this.views.find((v) => v.id === id) ?? null;
   }
 
+  get _pinnedViews() {
+    return this._pinnedIds
+      .map((id) => this.views?.find((view) => view.id === id))
+      .filter(canPin);
+  }
+
   _pickerItemsFromViews() {
     if (!this.views?.length) return [];
     const items = [];
     let lastSection;
-    const unpinned = this.views.filter(
-      (view) => !this._pinnedIds.includes(view.id) || !canPin(view),
-    );
-    for (const v of unpinned) {
+    for (const v of this.views) {
       if (v.section && v.section !== lastSection) {
         items.push({ section: v.section });
         lastSection = v.section;
@@ -129,21 +132,21 @@ class EwToolPanel extends LitElement {
     return items;
   }
 
-  async _togglePin(id) {
-    const view = this.views?.find((v) => v.id === id);
-    if (!canPin(view)) return;
-    const pinned = this._pinnedIds.includes(id);
-    if (!pinned && this._pinnedIds.length >= MAX_PINNED_TOOL_PANEL_VIEWS) return;
-    this._pinnedIds = pinned
-      ? this._pinnedIds.filter((value) => value !== id)
-      : [...this._pinnedIds, id];
+  async _onPickerChange(event) {
+    const { value, selected } = event.detail;
+    const view = this.views?.find((v) => v.id === value);
+    if (!view) return;
+    if (!canPin(view) || selected !== false) {
+      await this.showPanel(value);
+      return;
+    }
+    if (this._pinnedViews.length <= 1) {
+      event.currentTarget.values = this._pinnedViews.map((v) => v.id);
+      return;
+    }
+    this._pinnedIds = this._pinnedIds.filter((id) => id !== value);
     persistPinnedToolPanelViews(this._pinnedIds);
-    await this.updateComplete;
-    const target = pinned
-      ? this.shadowRoot.querySelector('.tool-panel-pin, .tool-panel-tab[aria-pressed="true"]')
-      : [...this.shadowRoot.querySelectorAll('.tool-panel-tab')]
-        .find((button) => button.dataset.viewId === id);
-    target?.focus();
+    if (this.activeId === value) await this.showPanel(this._pinnedViews[0].id);
   }
 
   async _reorderTab({ id, targetId, before }) {
@@ -227,6 +230,21 @@ class EwToolPanel extends LitElement {
     this._tabDrop = undefined;
   }
 
+  _syncTabOverflow() {
+    if (!this.isConnected) return;
+    const tabs = this.shadowRoot.querySelector('.tool-panel-tabs');
+    if (tabs !== this._observedTabs) {
+      this._tabResizeObserver?.disconnect();
+      if (tabs) this._tabResizeObserver?.observe(tabs);
+      this._observedTabs = tabs;
+    }
+    const left = !!tabs && tabs.scrollLeft > 1;
+    const right = !!tabs && tabs.scrollWidth - tabs.clientWidth - tabs.scrollLeft > 1;
+    if (this._tabScroll?.left !== left || this._tabScroll?.right !== right) {
+      this._tabScroll = { left, right };
+    }
+  }
+
   _onTabKeyDown(event, id) {
     if (!event.altKey || !['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
     const visibleIds = this._pinnedIds.filter(
@@ -261,6 +279,7 @@ class EwToolPanel extends LitElement {
   }
 
   async updated(changed) {
+    this._syncTabOverflow();
     if (changed.has('contextKey')) this._clearPageBoundViews();
     if (changed.has('views')) await this._onViewsChange();
     if (changed.has('activeId')) {
@@ -268,6 +287,8 @@ class EwToolPanel extends LitElement {
       this._syncContent();
       this._syncHeaderActions();
       this._broadcastActiveView();
+      this.shadowRoot.querySelector('.tool-panel-tab[aria-pressed="true"]')
+        ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     }
     if (changed.has('_fullsizeDialogViewId') && this._fullsizeDialogViewId) {
       await this._mountDialog();
@@ -302,7 +323,7 @@ class EwToolPanel extends LitElement {
           site: this.site,
           availableIds: ids,
         });
-      await this.showPanel(initial ?? this.views[0].id);
+      await this.showPanel(initial ?? this._pinnedViews[0]?.id ?? this.views[0].id);
     } else if (!this._loaded[this.activeId]) {
       await this.showPanel(this.activeId);
       this._syncContent();
@@ -357,17 +378,24 @@ class EwToolPanel extends LitElement {
       await consumer.openModal?.();
       return;
     }
+    const request = {};
+    this._panelRequest = request;
+    if (!this._pinnedIds.includes(name)) {
+      this._pinnedIds = [...this._pinnedIds, name];
+      persistPinnedToolPanelViews(this._pinnedIds);
+    }
     if (!this._loaded[name]) {
       const loaded = await consumer.load();
       const currentConsumer = this.views.find((c) => c.id === name);
-      if (this.contextKey !== contextKey || currentConsumer !== consumer) {
+      if (this.contextKey !== contextKey || currentConsumer !== consumer
+        || !this._pinnedIds.includes(name)) {
         loaded?.remove();
         return;
       }
       this._loaded[name] = loaded;
       this._loadedKeys[name] = consumer.cacheKey;
     }
-    this.activeId = name;
+    if (this._panelRequest === request) this.activeId = name;
   }
 
   _syncContent() {
@@ -408,25 +436,15 @@ class EwToolPanel extends LitElement {
     const dialogTitle = this._fullsizeDialogView?.label ?? 'Extension';
     const dialogIcon = this._fullsizeDialogView?.icon;
     const activeView = this.views?.find((v) => v.id === this.activeId);
-    const activePinned = canPin(activeView) && this._pinnedIds.includes(this.activeId);
-    const pinLimitReached = !activePinned && this._pinnedIds.length >= MAX_PINNED_TOOL_PANEL_VIEWS;
-    const pinnedViews = this._pinnedIds
-      .map((id) => this.views?.find((v) => v.id === id))
-      .filter(canPin);
+    const pinnedViews = this._pinnedViews;
 
     return html`
       <div class="tool-panel-header">
-        <div class="tool-panel-selector">
-          <nx-picker
-            .items=${items}
-            .value=${activePinned ? undefined : this.activeId}
-            placeholder="Panels"
-            placement="below-start"
-            @change=${(e) => this.showPanel(e.detail.value)}
-          ></nx-picker>
-        </div>
         ${pinnedViews.length ? html`
-          <nav class="tool-panel-tabs" aria-label="Pinned panels">
+          <nav class="tool-panel-tabs" aria-label="Pinned panels"
+            ?data-overflow-left=${this._tabScroll?.left}
+            ?data-overflow-right=${this._tabScroll?.right}
+            @scroll=${this._syncTabOverflow}>
             ${repeat(pinnedViews, (view) => view.id, (view) => html`
               <div class="tool-panel-tab-item" data-active=${view.id === this.activeId}
                 data-drop-side=${this._tabDrop?.id === view.id ? this._tabDrop.side : ''}
@@ -446,7 +464,21 @@ class EwToolPanel extends LitElement {
             `)}
           </nav>
         ` : nothing}
-        <div class="tool-panel-header-actions"></div>
+        ${this._tabScroll?.left || this._tabScroll?.right
+    ? html`<span class="tool-panel-divider tool-panel-tabs-divider" aria-hidden="true"></span>`
+    : nothing}
+        <div class="tool-panel-selector">
+          <nx-picker
+            .items=${items}
+            multiple
+            .values=${pinnedViews.map((view) => view.id)}
+            .labelOverride=${'Panels'}
+            placeholder="Panels"
+            placement="below-end"
+            @change=${this._onPickerChange}
+          ></nx-picker>
+        </div>
+        <span class="tool-panel-divider" aria-hidden="true"></span>
         ${activeView?.openModal || activeView?.loadModal ? html`
           <button type="button" class="tool-panel-popout"
             aria-label=${`Open ${activeView.label} in dialog`}
@@ -455,18 +487,12 @@ class EwToolPanel extends LitElement {
             <svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${FULLSCREEN_ICON_SRC}#icon"></use></svg>
           </button>
         ` : nothing}
-        ${canPin(activeView) ? html`
-          <button type="button" class=${activePinned ? 'tool-panel-unpin' : 'tool-panel-pin'}
-            aria-label=${`${activePinned ? 'Unpin' : 'Pin'} ${activeView.label}`}
-            aria-disabled=${pinLimitReached}
-            title=${pinLimitReached
-              ? `Maximum of ${MAX_PINNED_TOOL_PANEL_VIEWS} pins reached. Unpin a tab to pin another.`
-              : `${activePinned ? 'Unpin' : 'Pin'} ${activeView.label}`}
-            @click=${() => this._togglePin(this.activeId)}>${pinIcon(activePinned)}</button>
-        ` : nothing}
         <button type="button" class="tool-panel-close" aria-label="Close panel" @click=${this._close}>
           <svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${CLOSE_ICON_SRC}#icon"></use></svg>
         </button>
+      </div>
+      <div class="tool-panel-toolbar" ?hidden=${!activeView}>
+        <div class="tool-panel-header-actions"></div>
       </div>
       <div class="tool-panel-content"></div>
       ${this._fullsizeDialogViewId ? html`
