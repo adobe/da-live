@@ -71,11 +71,14 @@ export const listColumns = (panel) => panel.columns.filter((column) => column.li
 const ICONS = {
   edit: '/img/icons/s2-icon-edit-20-n.svg#icon',
   delete: '/img/icons/s2-icon-delete-20-n.svg#icon',
+  add: '/img/icons/s2-icon-add-20-n.svg#icon',
 };
 
-const iconButton = (icon, label, onClick) => html`
+const icon = (name) => html`<svg viewBox="0 0 20 20" aria-hidden="true"><use href=${ICONS[name]}></use></svg>`;
+
+const iconButton = (name, label, onClick) => html`
   <button type="button" class="nx-action-btn-icon nx-btn-sm" aria-label=${label} title=${label} @click=${onClick}>
-    <svg viewBox="0 0 20 20" aria-hidden="true"><use href=${ICONS[icon]}></use></svg>
+    ${icon(name)}
   </button>`;
 
 // `name` is the row's first column, e.g. "Cards", for labels and the delete confirmation.
@@ -113,7 +116,9 @@ export function renderRows(panel, { items }, handlers) {
     ${handlers.disabled ? nothing : html`
       <div class="config-row-buttons">
         ${handlers.actions ?? nothing}
-        <button type="button" class="nx-form-btn-secondary" @click=${handlers.onAdd}>Add ${panel.noun}</button>
+        <button type="button" class="nx-form-btn-secondary config-add-btn" @click=${handlers.onAdd}>
+          ${icon('add')}<span>Add ${panel.noun}</span>
+        </button>
       </div>`}
     ${items.length ? html`
       <div class="config-table-wrap">

@@ -41,6 +41,11 @@
   gap: var(--s2-spacing-300);
 }
 
+/* Area tabs centered under the title, like Coworker; section chips stay left-aligned. */
+.config-tabs-primary {
+  align-self: center;
+}
+
 .config-panel {
   display: flex;
   flex-direction: column;
@@ -323,6 +328,17 @@
   color: var(--s2-gray-900);
   font-size: var(--s2-component-l-regular-font-size);
   font-weight: var(--s2-heading-font-weight);
+}
+
+.config-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2-spacing-75);
+}
+
+.config-add-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* List actions sit above the table, right-aligned, so they stay in reach on long lists. */
