@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getFirstSheet, fetchDaConfigs } from '../../../shared/utils.js';
 import { getNx, sanitizePathParts, getNxEWFlags } from '../../../../scripts/utils.js';
-import { getChatPanelContent, chatAvailability } from '../../../shared/chat-panel.js';
+import { getChatPanelContent, chatAvailability, chatTurnCompleted } from '../../../shared/chat-panel.js';
 import { getBrowseSettings, updateBrowseSettings } from '../shared/settings.js';
 import { getConfiguredEditor } from '../../../shared/da-file-item/edit-path.js';
 
@@ -36,7 +36,7 @@ export default class DaBrowse extends LitElement {
     _typesFilterState: { state: true },
     _sortState: { state: true },
     _sortPreference: { state: true },
-    _groupByType: { state: true },
+    _groupByType: { state: false },
     _view: { state: true },
     _rowSize: { state: true },
     _cardSize: { state: true },
@@ -100,7 +100,7 @@ export default class DaBrowse extends LitElement {
     this._cardSize = ['s', 'l'].includes(cardSize) ? cardSize : 'm';
     this._sortPreference = SORT_PROPS.includes(sort?.property)
       && SORT_DIRECTIONS.includes(sort?.direction) ? sort : undefined;
-    this._groupByType = groupByType !== false;
+    this._groupByType = groupByType === true;
     this._view = view === 'card' ? 'card' : 'list';
   }
 
@@ -112,6 +112,11 @@ export default class DaBrowse extends LitElement {
     this.mountSearch();
     this.observeHeader();
     this._unsubChat = chatAvailability.subscribe((enabled) => this.syncChatAvailability(enabled));
+    this._unsubChatTurn = chatTurnCompleted.subscribe((detail) => {
+      if (!detail?.org || detail.org !== this.details?.org
+        || detail.site !== this.details?.site) return;
+      this.browseCmp?.requestUpdate('fullpath');
+    });
   }
 
   disconnectedCallback() {
@@ -122,6 +127,7 @@ export default class DaBrowse extends LitElement {
     this._headerResizeObserver = undefined;
     this.cancelChatPreload();
     this._unsubChat?.();
+    this._unsubChatTurn?.();
   }
 
   syncChatAvailability(enabled) {
