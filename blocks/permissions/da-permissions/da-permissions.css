@@ -98,12 +98,7 @@
   gap: var(--s2-spacing-300);
 }
 
-.path-add-form nx-segmented-btn {
-  align-self: flex-start;
-}
-
 .path-kind-hint {
   margin: 0;
-  color: var(--s2-gray-700);
   font-size: var(--s2-component-s-regular-font-size);
 }

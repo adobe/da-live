@@ -607,6 +607,32 @@ describe('da-permissions', () => {
     expect(el._rules).to.deep.equal(OTHER_CONFIG_BODY.permissions.data);
     expect(window.daTestToasts.length).to.equal(toastCountBefore);
   });
+
+  async function openPathDialog(el, kind = 'folder') {
+    const cards = el.shadowRoot.querySelector('da-permissions-cards');
+    expect(cards.canAdd).to.equal(true);
+    cards.shadowRoot.querySelector('button.add-path').click();
+    await el.updateComplete;
+    const dialog = el.shadowRoot.querySelector('nx-dialog');
+    if (kind !== 'folder') {
+      dialog.querySelector('nx-segmented-btn').dispatchEvent(new CustomEvent('change', { detail: { value: kind } }));
+      await el.updateComplete;
+    }
+    return dialog;
+  }
+
+  async function submitPath(el, value) {
+    const dialog = el.shadowRoot.querySelector('nx-dialog');
+    dialog.querySelector('input.path-input').value = value;
+    dialog.querySelector('button.path-add-submit').click();
+    await el.updateComplete;
+  }
+
+  async function addPath(el, value, kind = 'folder') {
+    await openPathDialog(el, kind);
+    await submitPath(el, value);
+  }
+
   describe('folder permission', () => {
     const SITE_CONFIG_BODY = {
       ':names': ['permissions'],
@@ -618,31 +644,11 @@ describe('da-permissions', () => {
       },
     };
 
-    async function openFolderDialog(el) {
-      const cards = el.shadowRoot.querySelector('da-permissions-cards');
-      expect(cards.canAdd).to.equal(true);
-      cards.shadowRoot.querySelector('button.add-path').click();
-      await el.updateComplete;
-      return el.shadowRoot.querySelector('nx-dialog');
-    }
-
-    async function submitFolder(el, value) {
-      const dialog = el.shadowRoot.querySelector('nx-dialog');
-      dialog.querySelector('input.path-input').value = value;
-      dialog.querySelector('button.path-add-submit').click();
-      await el.updateComplete;
-    }
-
-    async function addFolder(el, value) {
-      await openFolderDialog(el);
-      await submitFolder(el, value);
-    }
-
     it('opens a dialog with a Folder/Page choice, Folder selected, and one path field', async () => {
       mockFetch({ configFor: () => SITE_CONFIG_BODY });
       const el = await mount('myorg', 'mysite');
 
-      const dialog = await openFolderDialog(el);
+      const dialog = await openPathDialog(el);
       expect(dialog?.getAttribute('title')).to.equal('Add folder or page permission');
       const kinds = dialog?.querySelector('nx-segmented-btn');
       expect(kinds?.items.map((item) => item.label)).to.deep.equal(['Folder', 'Page']);
@@ -663,7 +669,7 @@ describe('da-permissions', () => {
       mockFetch({ configFor: () => SITE_CONFIG_BODY });
       const el = await mount('myorg', 'mysite');
 
-      const dialog = await openFolderDialog(el);
+      const dialog = await openPathDialog(el);
       dialog.querySelector('input.path-input').value = '/blog/drafts/';
       dialog.querySelector('form.path-add-form').requestSubmit();
       await el.updateComplete;
@@ -676,14 +682,14 @@ describe('da-permissions', () => {
       mockFetch({ configFor: () => SITE_CONFIG_BODY });
       const el = await mount('myorg', 'mysite');
 
-      await addFolder(el, 'blog');
+      await addPath(el, 'blog');
       const dialog = el.shadowRoot.querySelector('nx-dialog');
       expect(!!dialog).to.equal(true);
       expect(dialog.querySelector('.nx-input-error-msg')?.textContent.trim())
         .to.equal('Folder paths start with /, e.g. /blog.');
       expect(el._pendingPath).to.equal(null);
 
-      await submitFolder(el, '/blog');
+      await submitPath(el, '/blog');
       expect(!!el.shadowRoot.querySelector('nx-dialog')).to.equal(false);
       expect(el._pendingPath).to.equal('/mysite/blog/ + **');
     });
@@ -692,7 +698,7 @@ describe('da-permissions', () => {
       mockFetch({ configFor: () => SITE_CONFIG_BODY });
       const el = await mount('myorg', 'mysite');
 
-      await addFolder(el, '/blog');
+      await addPath(el, '/blog');
 
       expect(el.shadowRoot.querySelector('nx-dialog')).to.equal(null);
       expect(el._pendingPath).to.equal('/mysite/blog/ + **');
@@ -707,7 +713,7 @@ describe('da-permissions', () => {
       const { putCalls } = mockFetch({ configFor: () => SITE_CONFIG_BODY });
       const el = await mount('myorg', 'mysite');
 
-      await addFolder(el, '/blog');
+      await addPath(el, '/blog');
 
       const cards = el.shadowRoot.querySelector('da-permissions-cards');
       await cards.updateComplete;
@@ -728,7 +734,7 @@ describe('da-permissions', () => {
       const { putCalls, resolvePut } = mockFetch({ configFor: () => SITE_S_CONFIG_BODY });
       const el = await mount('myorg', 's');
 
-      await addFolder(el, '/blog');
+      await addPath(el, '/blog');
 
       const blogPath = '/s/blog/ + **';
       expect(el._pendingPath).to.equal(blogPath);
@@ -762,7 +768,7 @@ describe('da-permissions', () => {
       });
       const el = await mount('myorg', 'mysite');
 
-      await addFolder(el, '/blog');
+      await addPath(el, '/blog');
 
       expect(el._pendingPath).to.equal('/mysite/blog/ + **');
 
@@ -774,24 +780,6 @@ describe('da-permissions', () => {
   });
 
   describe('page permission', () => {
-    async function openPageDialog(el) {
-      const cards = el.shadowRoot.querySelector('da-permissions-cards');
-      expect(cards.canAdd).to.equal(true);
-      cards.shadowRoot.querySelector('button.add-path').click();
-      await el.updateComplete;
-      const kinds = el.shadowRoot.querySelector('nx-dialog nx-segmented-btn');
-      kinds.dispatchEvent(new CustomEvent('change', { detail: { value: 'page' } }));
-      await el.updateComplete;
-      return el.shadowRoot.querySelector('nx-dialog');
-    }
-
-    async function submitPage(el, value) {
-      const dialog = el.shadowRoot.querySelector('nx-dialog');
-      dialog.querySelector('input.path-input').value = value;
-      dialog.querySelector('button.path-add-submit').click();
-      await el.updateComplete;
-    }
-
     async function addMember(el, putCalls, value) {
       const cards = el.shadowRoot.querySelector('da-permissions-cards');
       await cards.updateComplete;
@@ -806,13 +794,8 @@ describe('da-permissions', () => {
       mockFetch({ configFor: () => SITE_S_CONFIG_BODY });
       const el = await mount('myorg', 's');
 
-      const cards = el.shadowRoot.querySelector('da-permissions-cards');
-      cards.shadowRoot.querySelector('button.add-path').click();
-      await el.updateComplete;
-      const dialog = el.shadowRoot.querySelector('nx-dialog');
-      dialog.querySelector('input.path-input').value = 'about';
-      dialog.querySelector('button.path-add-submit').click();
-      await el.updateComplete;
+      const dialog = await openPathDialog(el);
+      await submitPath(el, 'about');
       expect(dialog.querySelector('.nx-input-error-msg')?.textContent.trim())
         .to.equal('Folder paths start with /, e.g. /blog.');
 
@@ -834,8 +817,7 @@ describe('da-permissions', () => {
       mockFetch({ configFor: () => SITE_S_CONFIG_BODY });
       const el = await mount('myorg', 's');
 
-      await openPageDialog(el);
-      await submitPage(el, '/blog/');
+      await addPath(el, '/blog/', 'page');
       const dialog = el.shadowRoot.querySelector('nx-dialog');
       expect(dialog.querySelector('.nx-input-error-msg')?.textContent.trim())
         .to.equal('Page paths cannot end with /. Choose Folder to add a folder.');
@@ -846,8 +828,7 @@ describe('da-permissions', () => {
       mockFetch({ configFor: () => SITE_S_CONFIG_BODY });
       const el = await mount('myorg', 's');
 
-      await openPageDialog(el);
-      await submitPage(el, '/Blog/Promotions');
+      await addPath(el, '/Blog/Promotions', 'page');
 
       expect(el.shadowRoot.querySelector('nx-dialog')).to.equal(null);
       expect(el._pendingPath).to.equal('/s/blog/promotions.html');
@@ -860,8 +841,7 @@ describe('da-permissions', () => {
       const { putCalls, resolvePut } = mockFetch({ configFor: () => SITE_S_CONFIG_BODY });
       const el = await mount('myorg', 's');
 
-      await openPageDialog(el);
-      await submitPage(el, '/promotions');
+      await addPath(el, '/promotions', 'page');
       const saved = await addMember(el, putCalls, 'legal@x.com');
 
       expect(putCalls.length).to.equal(1);
@@ -880,8 +860,7 @@ describe('da-permissions', () => {
       const { putCalls } = mockFetch({ configFor: () => SITE_S_CONFIG_BODY });
       const el = await mount('myorg', 's');
 
-      await openPageDialog(el);
-      await submitPage(el, '/redirects.json');
+      await addPath(el, '/redirects.json', 'page');
       const saved = await addMember(el, putCalls, 'seo@x.com');
 
       expect(saved.permissions.data.map((r) => r.path)).to.deep.equal(['/s/ + **', '/s/redirects.json']);
@@ -906,8 +885,7 @@ describe('da-permissions', () => {
       mockFetch({ configFor: () => body });
       const el = await mount('myorg', 's');
 
-      await openPageDialog(el);
-      await submitPage(el, '/promotions');
+      await addPath(el, '/promotions', 'page');
 
       const cards = el.shadowRoot.querySelector('da-permissions-cards');
       expect(cards.adding).to.deep.equal({ path: '/s/promotions', level: 'read' });
@@ -923,8 +901,7 @@ describe('da-permissions', () => {
       mockFetch({ configFor: () => body });
       const el = await mount('myorg', 's');
 
-      await openPageDialog(el);
-      await submitPage(el, '/foo');
+      await addPath(el, '/foo', 'page');
 
       const cards = el.shadowRoot.querySelector('da-permissions-cards');
       expect(cards.adding).to.deep.equal({ path: '/s/foo.html', level: 'read' });
@@ -936,8 +913,7 @@ describe('da-permissions', () => {
       mockFetch({ configFor: () => body });
       const el = await mount('myorg', 's');
 
-      await openPageDialog(el);
-      await submitPage(el, '/about.us.html');
+      await addPath(el, '/about.us.html', 'page');
 
       const cards = el.shadowRoot.querySelector('da-permissions-cards');
       expect(cards.adding).to.deep.equal({ path: '/s/about.us.html', level: 'read' });

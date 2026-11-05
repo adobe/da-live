@@ -271,14 +271,9 @@ class DaPermissions extends LitElement {
     window.location.hash = `/${value}`;
   }
 
-  _onOpenPathDialog() {
+  _onOpenPathDialog(kind) {
     this._pathError = null;
-    this._pathDialog = 'folder';
-  }
-
-  _onPathKindChange({ detail }) {
-    this._pathError = null;
-    this._pathDialog = detail.value;
+    this._pathDialog = kind;
   }
 
   _onPathSubmit(e) {
@@ -290,7 +285,6 @@ class DaPermissions extends LitElement {
       this._pathError = result.error;
       return;
     }
-    this._pathError = null;
     this._pathDialog = null;
     let path = kind === 'page'
       ? `/${this.site}/${result.page}` : folderRulePath(this.site, result.folder);
@@ -403,7 +397,7 @@ class DaPermissions extends LitElement {
         .busy=${this._busy}
         .adding=${this._adding}
         .canAdd=${!!this.site && this._editable && !activeQuery(this._query)}
-        @permissions-add-path=${() => this._onOpenPathDialog()}
+        @permissions-add-path=${() => this._onOpenPathDialog('folder')}
         @permissions-add-open=${(e) => this._onAddOpen(e)}
         @permissions-add-cancel=${() => this._onAddCancel()}
         @permissions-add=${(e) => this._onAdd(e)}
@@ -429,7 +423,7 @@ class DaPermissions extends LitElement {
             label="Folder or page"
             .items=${PATH_KINDS}
             .value=${kind}
-            @change=${(e) => this._onPathKindChange(e)}
+            @change=${(e) => this._onOpenPathDialog(e.detail.value)}
           ></nx-segmented-btn>
           <div class="nx-form-field ${error ? 'nx-field-error' : ''}">
             <label for="permissions-path">Path</label>

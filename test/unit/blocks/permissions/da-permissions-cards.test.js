@@ -126,13 +126,13 @@ describe('da-permissions-cards', () => {
   it('lists folder and page cards in one section, in slot order, with titled page cards', async () => {
     const folderSlot = baseSlot({ path: '/myorg/site1/.promotions/ + **', kind: 'folder', label: '.promotions/' });
     const pageSlot = baseSlot({ path: '/myorg/site1/promotions', kind: 'page', label: 'promotions', write: ['legal@x.com'] });
-    const el = await mount({ slots: [folderSlot, pageSlot], scopeName: 'site1' });
+    const el = await mount({ slots: [pageSlot, folderSlot], scopeName: 'site1' });
 
     const sections = [...el.shadowRoot.querySelectorAll('section.scope-section')];
     expect(sections.map((s) => s.dataset.section)).to.deep.equal(['paths']);
     const cards = [...sections[0].querySelectorAll('article.scope-card')];
-    expect(cards.map((c) => c.dataset.path)).to.deep.equal([folderSlot.path, pageSlot.path]);
-    expect(cards[1].querySelector('.card-title').textContent.trim()).to.equal('promotions');
+    expect(cards.map((c) => c.dataset.path)).to.deep.equal([pageSlot.path, folderSlot.path]);
+    expect(cards[0].querySelector('.card-title').textContent.trim()).to.equal('promotions');
   });
 
   it('hides empty sections: only folder slots renders no config or content section', async () => {

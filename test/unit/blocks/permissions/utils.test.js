@@ -190,12 +190,8 @@ describe('permissions utils', () => {
 
     it('sorts a page\'s media folder right after the page', () => {
       const rules = [
-        { path: '/s/.terms/+**', groups: 'legal@x.com', actions: 'write' },
-        { path: '/s/terms', groups: 'legal@x.com', actions: 'write' },
-        { path: '/s/promotions/+**', groups: 'mkt@x.com', actions: 'write' },
-        { path: '/s/.promotions/+**', groups: 'legal@x.com', actions: 'write' },
-        { path: '/s/promotions.html', groups: 'legal@x.com', actions: 'write' },
-        { path: '/s/hotels/+**', groups: 'hotels@x.com', actions: 'write' },
+        { path: '/s/.terms/+**' }, { path: '/s/terms' }, { path: '/s/promotions/+**' },
+        { path: '/s/.promotions/+**' }, { path: '/s/promotions.html' }, { path: '/s/hotels/+**' },
       ];
       expect(buildSlots(rules, 's').map((s) => s.label)).to.deep.equal([
         'Site configurations', 'All site content',
