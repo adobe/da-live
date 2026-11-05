@@ -185,6 +185,7 @@ describe('landing chat', () => {
     const input = landing.shadowRoot.querySelector('nx-ao-input');
     expect(input.hasAttribute('org')).to.equal(false);
     expect(input.onSubmit).to.equal(undefined);
+    expect(input.getAttribute('placeholder')).to.equal('Ask a question, share an idea, or add a task.');
     expect(registered).to.have.length(1);
     expect(registered[0][0]).to.equal('chat');
     expect(registered[0][1]).to.include({ position: 'before', width: '400px' });

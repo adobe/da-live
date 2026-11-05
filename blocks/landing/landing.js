@@ -17,6 +17,7 @@ const toggleChatPanel = (open) => {
 
 const openChatPanel = () => toggleChatPanel(true);
 const MESSAGE_SENT_EVENT = CHAT_EVENT.MESSAGE_SENT || 'nx-chat-message-sent';
+const CHAT_PLACEHOLDER = 'Ask a question, share an idea, or add a task.';
 
 export class DaLanding extends LitElement {
   static properties = {
@@ -80,7 +81,7 @@ export class DaLanding extends LitElement {
     return html`
       <section class="welcome" aria-labelledby="welcome-heading">
         <h1 id="welcome-heading">Hi${this._name ? ` ${this._name}` : ''}, how can I help?</h1>
-        ${this._chatInput ? html`<nx-ao-input></nx-ao-input>` : nothing}
+        ${this._chatInput ? html`<nx-ao-input placeholder=${CHAT_PLACEHOLDER}></nx-ao-input>` : nothing}
       </section>
     `;
   }
