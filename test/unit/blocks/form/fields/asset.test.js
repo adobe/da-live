@@ -634,6 +634,11 @@ describe('form-asset', () => {
       expect(query(field, '.asset-status').textContent).to.equal('');
     });
 
+    it('keeps the hidden status inside the field, so it cannot stretch an outer scroll area', async () => {
+      const field = await mount({ value: 'https://x.test/files/spec.pdf' });
+      expect(query(field, '.asset-status').offsetParent?.localName).to.equal('form-asset');
+    });
+
     it('drops the confirmation when focus leaves the button', async () => {
       sinon.stub(navigator.clipboard, 'writeText').resolves();
       const field = await mount({ value: 'https://x.test/files/spec.pdf' });
