@@ -13,7 +13,7 @@ to update the selected scope without changing the root URL. It does not load or
 mount the selector, duplicate its validation, or modify LP.
 
 With no saved sites in the browser's existing `da-sites` history, Content shows
-"Add a site to get started" and "Add a site to see its content.", with a blue
+"Add a site to get started" without a description, with a blue
 shared accent button labeled Add site and the shared plus icon. It lazily opens
 Nexter's existing `nx-add-site` dialog, without requiring a mounted picker or
 leaving landing. Closing restores focus; successful Add selects the site.

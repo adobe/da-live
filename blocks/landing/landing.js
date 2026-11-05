@@ -211,7 +211,7 @@ export class DaLanding extends LitElement {
     if (!this._scope) {
       return html`<div class="empty-state">${icon('folder')}
         <h3>${this._hasSavedSites ? 'Choose a site to get started' : 'Add a site to get started'}</h3>
-        <p>${this._hasSavedSites ? 'Select a site from "Your recent sites" to see its content.' : 'Add a site to see its content.'}</p>
+        ${this._hasSavedSites ? html`<p>Select a site from "Your recent sites" to see its content.</p>` : nothing}
         ${this._hasSavedSites ? nothing : html`
           <button type="button" class="add-site nx-btn-accent ${nx.getUISize?.() === 'm' ? 'nx-btn-lg' : ''}"
             ?disabled=${this._addingSite} @click=${this._onAddSite}>Add site ${icon('add')}</button>`}

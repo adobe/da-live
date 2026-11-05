@@ -347,7 +347,7 @@ describe('landing Content section', () => {
     el.setScope(undefined);
     await updateLanding();
     expect(el.shadowRoot.querySelector('.empty-state h3').textContent).to.equal('Add a site to get started');
-    expect(el.shadowRoot.querySelector('.empty-state p').textContent).to.equal('Add a site to see its content.');
+    expect(el.shadowRoot.querySelector('.empty-state p')).to.equal(null);
     const button = el.shadowRoot.querySelector('.add-site');
     expect(button.classList.contains('nx-btn-accent')).to.equal(true);
     expect(button.querySelector('use').getAttribute('href')).to.include('s2-icon-add-20-n.svg');
