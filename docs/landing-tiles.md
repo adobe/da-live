@@ -20,7 +20,17 @@ rows: five tiles use 3+2 from 600px and one column below.
 The gated landing (`?landing=true`, without a scoped hash) lazily loads
 `tile-group.js` inside the existing gradient surface. `tile-group.css` styles
 the owner; `tile-layout.css` styles the group; `tile.css` styles each tile.
-Tile copy and documentation destinations currently live in JavaScript, not
-an authored DA document. Browse and Create remain disabled without a selected
-site. The landing owner handles permissions and page creation; the reusable
-tile remains presentation-only.
+The owner fetches `/drafts/mhaack/landing-copy` as published HTML, like What's New.
+Only the `Landing` table is parsed; the source page's Browse block and scripts
+are not mounted or executed. Successful content requests are shared and cached.
+Failed or empty content shows an error, without hardcoded tile copy.
+
+Each row contains an icon marker, an H3 title link with description, and optional
+`tone: name` metadata. Tones use the existing S2 palette classes. Optional `id: name`
+metadata keeps telemetry identities stable when titles change; otherwise the
+source heading ID is used.
+
+HTTP(S) destinations remain links. `{org}` and `{site}` use the selected site;
+`/{action:create-page}` opens the existing permission-checked page dialog.
+Unknown actions and unresolved placeholders are disabled. The landing owner
+handles permissions and page creation; the reusable tile remains presentation-only.

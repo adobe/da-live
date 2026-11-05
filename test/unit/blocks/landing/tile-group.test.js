@@ -2,11 +2,13 @@ import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import '../../setup-nx.js';
 import { DaLandingTiles } from '../../../../blocks/landing/tile-group.js';
+import { parseTileEntries } from '../../../../blocks/landing/tile-content.js';
 import { getNx, getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { source } = await getNx2Api();
 const { setEWEnabled } = await getNxEWFlags();
+const content = await fetch('/test/fixtures/landing-tiles.html').then((response) => response.text());
 
 describe('landing tile group', () => {
   let el;
@@ -19,6 +21,7 @@ describe('landing tile group', () => {
       this._request = new AbortController();
     });
     el = document.createElement('da-landing-tiles');
+    el.entries = parseTileEntries(new DOMParser().parseFromString(content, 'text/html').querySelector('.landing'));
     document.body.append(el);
     el._editor = '/canvas#';
     await el.updateComplete;
@@ -42,11 +45,34 @@ describe('landing tile group', () => {
       'Browse Content', 'Create a page', 'Publishing & Workflow',
       'Localization & Multi-site', 'Develop & Extend',
     ]);
-    expect(tiles.slice(2).map((tile) => tile.href)).to.deep.equal([
+    expect(tiles.slice(2, 4).map((tile) => tile.href)).to.deep.equal([
       'https://www.aem.live/docs/ew/authoring/publishing',
       'https://www.aem.live/docs/ew/administering/multi-site-manager',
-      'https://www.aem.live/developer/tutorial',
     ]);
+    expect(new URL(tiles[4].href).hash).to.equal('#org/site');
+    expect(tiles[0].tone).to.equal('green');
+  });
+
+  it('uses authored order, text, tone and action instead of tile titles or positions', async () => {
+    const create = sinon.stub(el, '_onCreatePage');
+    el.entries = [
+      { ...el.entries[1], heading: 'Write something', tone: 'purple', id: 'new-document' },
+      { ...el.entries[0], heading: 'Open files', tone: 'orange' },
+      { ...el.entries[2], href: '/{action:unknown}' },
+    ];
+    el._permissions = ['write'];
+    await el.updateComplete;
+    const tiles = [...el.shadowRoot.querySelectorAll('da-landing-tile')];
+    await Promise.all(tiles.map((tile) => tile.updateComplete));
+    expect(tiles.map((tile) => tile.heading)).to.deep.equal([
+      'Write something', 'Open files', 'Publishing & Workflow',
+    ]);
+    expect(tiles[0].tone).to.equal('purple');
+    expect(tiles[0].actionId).to.equal('new-document');
+    expect(new URL(tiles[1].href).hash).to.equal('#/org/site');
+    expect(tiles[2].shadowRoot.querySelector('button').disabled).to.equal(true);
+    tiles[0].shadowRoot.querySelector('button').click();
+    expect(create.calledOnce).to.equal(true);
   });
 
   it('routes Browse through the selected site while retaining preview settings', async () => {
@@ -71,13 +97,14 @@ describe('landing tile group', () => {
   it('renders Browse and Create as disabled native buttons without a selected site', async () => {
     hashChange._set(undefined);
     await el.updateComplete;
-    const [browse, create] = el.shadowRoot.querySelectorAll('da-landing-tile');
-    await Promise.all([browse.updateComplete, create.updateComplete]);
+    const [browse, create, , , develop] = el.shadowRoot.querySelectorAll('da-landing-tile');
+    await Promise.all([browse.updateComplete, create.updateComplete, develop.updateComplete]);
     expect(browse.href).to.equal(undefined);
     expect(browse.disabled).to.equal(true);
     expect(create.disabled).to.equal(true);
     expect(browse.shadowRoot.querySelector('button').disabled).to.equal(true);
     expect(create.shadowRoot.querySelector('button').disabled).to.equal(true);
+    expect(develop.shadowRoot.querySelector('button').disabled).to.equal(true);
     await el._onCreatePage();
     expect(el._createDialog).to.equal(undefined);
   });

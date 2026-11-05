@@ -1,8 +1,8 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
-import { getBrowseHref, getFileHref } from './utils.js';
+import { getTileTarget, getFileHref } from './utils.js';
 import { EMPTY_DOC } from '../shared/utils.js';
-import { DOC_TILES } from './constants.js';
+import { loadTileEntries } from './tile-content.js';
 import './tile.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
@@ -15,6 +15,8 @@ const styles = await Promise.all([
 
 export class DaLandingTiles extends LitElement {
   static properties = {
+    entries: { attribute: false },
+    _contentError: { state: true },
     _scope: { state: true },
     _error: { state: true },
     _actionError: { state: true },
@@ -30,6 +32,7 @@ export class DaLandingTiles extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = styles;
     this._unsubscribe = hashChange.subscribe((state) => this.setScope(state));
+    if (this.entries === undefined) this._loadContent();
   }
 
   disconnectedCallback() {
@@ -42,6 +45,13 @@ export class DaLandingTiles extends LitElement {
 
   get path() {
     return this._scope ? `/${this._scope}` : '';
+  }
+
+  async _loadContent() {
+    const result = await loadTileEntries();
+    if (!this.isConnected || this.entries !== undefined) return;
+    this._contentError = result.error;
+    this.entries = result.entries;
   }
 
   setScope(state) {
@@ -130,27 +140,28 @@ export class DaLandingTiles extends LitElement {
     }
   }
 
+  renderTile(entry) {
+    const { href, action, disabled } = getTileTarget({ entry, scope: this._scope });
+    return html`<li><da-landing-tile .heading=${entry.heading} .description=${entry.description}
+      .iconHref=${entry.iconHref} .tone=${entry.tone} .size=${this.dataset.uiSize || 's'}
+      .actionId=${entry.id} .href=${href} .action=${!href}
+      .disabled=${disabled || (action === 'create-page'
+        && (!this._permissions?.includes('write') || !this._editor || !!this._openingPage))}
+      @click=${action === 'create-page' ? this._onCreatePage : nothing}></da-landing-tile></li>`;
+  }
+
   renderQuickLinks() {
     return html`<ul class="quick-links landing-tiles" aria-label="Quick links">
-      <li><da-landing-tile heading="Browse Content"
-        description="View your recent, favorite, or other content by their organization"
-        iconHref="/img/icons/s2-icon-folderopen-20-n.svg" .size=${this.dataset.uiSize || 's'}
-        action actionId="browse" .disabled=${!this._scope}
-        .href=${this._scope ? getBrowseHref({ path: this.path }) : undefined}></da-landing-tile></li>
-      <li><da-landing-tile heading="Create a page" description="Create a new page in the selected site"
-        iconHref="/img/icons/s2-icon-edit-20-n.svg" tone="green" .size=${this.dataset.uiSize || 's'}
-        action actionId="create-page" .disabled=${!this._permissions?.includes('write') || !this._editor || !!this._openingPage}
-        @click=${this._onCreatePage}></da-landing-tile></li>
-      ${DOC_TILES.map((tile) => html`
-        <li><da-landing-tile .heading=${tile.title} .description=${tile.description}
-          .iconHref=${tile.iconHref} .tone=${tile.tone} .size=${this.dataset.uiSize || 's'}
-          .actionId=${tile.id} .href=${tile.href}></da-landing-tile></li>`)}
+      ${this.entries.map((entry) => this.renderTile(entry))}
     </ul>`;
   }
 
   render() {
     return html`<div class="tile-group">
-      ${this.renderQuickLinks()}
+      ${this.entries ? this.renderQuickLinks() : nothing}
+      ${this.entries === undefined && !this._contentError ? html`
+        <p role="status">Loading quick links...</p>` : nothing}
+      ${this._contentError ? html`<p role="alert">${this._contentError}</p>` : nothing}
       ${this._error || this._actionError ? html`
         <p role="alert">${this._error || this._actionError}</p>` : nothing}
       ${this._createDialog ? html`<da-name-dialog open
