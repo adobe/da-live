@@ -27,7 +27,8 @@ hash. `da-list` forwards an item's optional `href` to the shared file item.
 The `header`, `items` and `grid` CSS parts let an embedded list fit its owner's
 layout without replacing its cards or rows.
 
-An item's optional `imagePreview` enables lazy image thumbnails in list view
-using the same loading, fallback and object-URL cleanup as cards. Browse rows
-keep their type icons by default. `da-list` supplies the file item's optional
+An item's optional `imagePreview: false` uses the image type icon instead of
+fetching a card thumbnail. Omitting it preserves Browse's existing lazy card
+previews, fallback and object-URL cleanup. List rows always use type icons.
+`da-list` supplies the file item's optional
 `folder` metadata (`path`, `label`, `href`) when `showFolder` is enabled.

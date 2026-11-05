@@ -6,19 +6,24 @@ and navigation. A site or folder hash always opens Browse, even with `landing=tr
 
 This feature contains only the Content section. It does not introduce a
 greeting, chat/composer, branding, page artwork or editor changes.
-Content contains no site picker or Add site button. Those controls belong in
-navigation when the shared picker (adobe/da-nx#947) is merged and integrated there.
+Content contains no site picker. Site selection belongs in navigation when the
+shared picker (adobe/da-nx#947) is merged and integrated there.
 Content listens for its existing bubbling `site-select` and `site-added` events
 to update the selected scope without changing the root URL. It does not load or
-mount the selector, duplicate its controller, or modify LP.
+mount the selector, duplicate its validation, or modify LP.
 
 With no saved sites in the browser's existing `da-sites` history, Content shows
-"Add a site to get started" and "Add a site above to see its content."
+"Add a site to get started" and "Add a site to see its content.", with a blue
+shared accent button labeled Add site and the shared plus icon. It lazily opens
+Nexter's existing `nx-add-site` dialog, without requiring a mounted picker or
+leaving landing. Closing restores focus; successful Add selects the site.
+Repeated clicks open only one dialog, and disconnects or scope changes remove it.
+The dialog requires adobe/da-nx#947; use `nx=siteselector-main` until it is released.
 With saved sites but none selected, it shows "Choose a site to get started" and
-"Select a site from Your recent sites to see its content." Neither state has a button or link.
+"Select a site from \"Your recent sites\" to see its content.", without a button.
 Saved history alone never selects a site. Cross-tab history changes refresh the
-copy. Until the nav picker is available, the preview shows these empty states
-without temporary selection or Add controls in Content.
+copy. Saved-site selection still needs nav integration; Content does not add a
+replacement picker.
 
 Content mounts inside the gradient landing surface already provided by main.
 `landing.css` retains that page background and its light/dark theme preview.
@@ -50,6 +55,10 @@ Returning to the tab or restoring the page from browser history rereads favorite
 so missed storage events do not leave stale stars. Unstarring removes a file from
 Favorite, not Recent, and never changes the favorite state of a different file
 with the same name.
+Unstarring clears all legacy copies of the exact file path across storage buckets,
+including misplaced site-root entries. Starring stores it only in its actual
+parent folder. Existing folder-only callers retain their toggle behavior; Content
+passes the intended star state because it reads site-wide favorites.
 
 ## Data, previews and destinations
 
@@ -62,11 +71,10 @@ is ordered by modifications rather than personal visits.
 Hidden folders are not traversed. At most four folder listings run concurrently.
 Site changes and disconnects abort the walk. Permission/network failures in any
 folder have a retry state, not an empty or partially successful result.
-Both views reuse Browse's file-item menus, details and favorites. List rows use
-the standard type icons, including the image icon, without fetching thumbnails.
-Cards retain shared lazy image previews and release object URLs on file/site
-changes or removal. There are no
-HTML document thumbnails or screenshot services. Details load only on demand.
+Both views reuse Browse's file-item menus, details and favorites. Content uses
+the standard type icons, including the image icon, in both cards and list rows,
+without fetching thumbnails. Browse's default lazy card previews are unchanged.
+There are no HTML document thumbnails or screenshot services. Details load only on demand.
 Content owns filtering, pagination, destinations and favorite persistence; its
 external list does not fetch another directory or expose bulk actions. The
 opt-in Folder column leaves Browse's default Type column unchanged.

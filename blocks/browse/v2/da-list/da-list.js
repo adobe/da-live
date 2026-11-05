@@ -395,6 +395,7 @@ export default class DaList extends DaListBase {
           ext="${item.ext}"
           editor="${this.getEditorForItem(item)}"
           .href=${item.href}
+          .imagePreview=${item.imagePreview}
           .folder=${this.showFolder ? {
     path: folder,
     label: `/${folder.split('/').slice(3).join('/')}`,

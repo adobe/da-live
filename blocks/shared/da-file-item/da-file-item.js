@@ -34,6 +34,7 @@ export default class DaFileItem extends LitElement {
     view: { type: String, reflect: true },
     href: { type: String },
     folder: { attribute: false },
+    imagePreview: { attribute: false },
     isChecked: { attribute: 'ischecked', type: Boolean },
     isFavorited: { attribute: 'isfavorited', type: Boolean },
     _isRenaming: { state: true },
@@ -56,11 +57,11 @@ export default class DaFileItem extends LitElement {
   }
 
   willUpdate(props) {
-    if (props.has('path') || props.has('ext') || props.has('view')) this.resetImage();
+    if (props.has('path') || props.has('ext') || props.has('view') || props.has('imagePreview')) this.resetImage();
   }
 
   updated() {
-    if (!this.isConnected || this.view !== 'card' || !isImageExt(this.ext)
+    if (!this.isConnected || this.view !== 'card' || this.imagePreview === false || !isImageExt(this.ext)
       || this._imageRequested || this._imageObserver) return;
     this._imageObserver = new IntersectionObserver(([entry]) => {
       if (!entry?.isIntersecting) return;

@@ -44,24 +44,18 @@ export function isFavorite(folderPath, itemPath) {
   return getFavorites(folderPath).includes(itemPath);
 }
 
-export function toggleFavorite(folderPath, itemPath) {
+export function toggleFavorite(folderPath, itemPath, { starred } = {}) {
   if (!folderPath || !itemPath) return false;
   const all = readAll();
   const list = Array.isArray(all[folderPath]) ? all[folderPath] : [];
-  const idx = list.indexOf(itemPath);
-  let nowFavorite;
-  if (idx === -1) {
-    list.push(itemPath);
-    nowFavorite = true;
-  } else {
-    list.splice(idx, 1);
-    nowFavorite = false;
-  }
-  if (list.length === 0) {
-    delete all[folderPath];
-  } else {
-    all[folderPath] = list;
-  }
+  const nowFavorite = starred ?? !list.includes(itemPath);
+  Object.entries(all).forEach(([folder, paths]) => {
+    if (!Array.isArray(paths) || !paths.includes(itemPath)) return;
+    const remaining = paths.filter((path) => path !== itemPath);
+    if (remaining.length) all[folder] = remaining;
+    else delete all[folder];
+  });
+  if (nowFavorite) all[folderPath] = [...list.filter((path) => path !== itemPath), itemPath];
   writeAll(all);
   return nowFavorite;
 }

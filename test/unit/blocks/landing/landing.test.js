@@ -295,6 +295,11 @@ describe('landing Content section', () => {
     el.refreshFavorites();
     el.changeTab('starred');
     for (const view of ['card', 'list']) {
+      localStorage.setItem('da-favorites', JSON.stringify({
+        '/org/site': [coffee.path],
+        '/org/site/de': [coffee.path],
+      }));
+      el.refreshFavorites();
       el.changeView({ detail: { value: view } });
       await updateLanding();
       expect(fileItems()).to.have.length(1);
@@ -338,12 +343,65 @@ describe('landing Content section', () => {
     expect(loadSite.callCount).to.equal(2);
   });
 
-  it('asks users with no saved sites to Add without duplicating nav controls', async () => {
+  it('offers a shared blue Add site button with a plus only when no sites are saved', async () => {
     el.setScope(undefined);
     await updateLanding();
     expect(el.shadowRoot.querySelector('.empty-state h3').textContent).to.equal('Add a site to get started');
-    expect(el.shadowRoot.querySelector('.empty-state p').textContent).to.equal('Add a site above to see its content.');
-    expect(el.shadowRoot.querySelector('.empty-state button, .empty-state a, nx-siteselector')).to.equal(null);
+    expect(el.shadowRoot.querySelector('.empty-state p').textContent).to.equal('Add a site to see its content.');
+    const button = el.shadowRoot.querySelector('.add-site');
+    expect(button.classList.contains('nx-btn-accent')).to.equal(true);
+    expect(button.querySelector('use').getAttribute('href')).to.include('s2-icon-add-20-n.svg');
+    expect(el.shadowRoot.querySelector('.empty-state a, nx-siteselector')).to.equal(null);
+  });
+
+  it('opens the shared Add dialog once and restores focus on cancel', async () => {
+    el.setScope(undefined);
+    await updateLanding();
+    await Promise.all([el._onAddSite(), el._onAddSite()]);
+    expect(document.querySelectorAll('nx-add-site')).to.have.length(1);
+    document.querySelector('nx-add-site').dispatchEvent(new Event('close'));
+    expect(document.querySelector('nx-add-site')).to.equal(null);
+    expect(el.shadowRoot.activeElement).to.equal(el.shadowRoot.querySelector('.add-site'));
+  });
+
+  it('selects a successfully added site without navigating or retaining its dialog', async () => {
+    const { href } = window.location;
+    el.setScope(undefined);
+    await updateLanding();
+    await el._onAddSite();
+    localStorage.setItem('da-sites', JSON.stringify(['org/site']));
+    document.querySelector('nx-add-site').dispatchEvent(new CustomEvent('site-added', { bubbles: true, composed: true, detail: { value: 'org/site' } }));
+    await updateLanding();
+    expect(el.path).to.equal('/org/site');
+    expect(window.location.href).to.equal(href);
+    expect(document.querySelector('nx-add-site')).to.equal(null);
+    expect(el.shadowRoot.activeElement).to.equal(el.shadowRoot.querySelector('.filter'));
+  });
+
+  it('does not open Add after removal and removes an open dialog on disconnect', async () => {
+    el.setScope(undefined);
+    await updateLanding();
+    const pending = el._onAddSite();
+    el.remove();
+    await pending;
+    expect(document.querySelector('nx-add-site')).to.equal(null);
+    document.body.append(el);
+    await updateLanding();
+    await el._onAddSite();
+    expect(document.querySelector('nx-add-site')).not.to.equal(null);
+    el.remove();
+    expect(document.querySelector('nx-add-site')).to.equal(null);
+  });
+
+  it('reports an Add dialog failure rather than navigating elsewhere', async () => {
+    el.setScope(undefined);
+    await updateLanding();
+    sinon.stub(document.body, 'append').throws(new Error('Could not create dialog'));
+    await el._onAddSite();
+    await updateLanding();
+    expect(el.shadowRoot.querySelector('[role="alert"]').textContent).to.include('Could not open Add site');
+    expect(document.querySelector('nx-add-site')).to.equal(null);
+    expect(el.shadowRoot.querySelector('.add-site').disabled).to.equal(false);
   });
 
   it('asks users with saved sites but no selection to Choose without a button', async () => {
@@ -354,7 +412,7 @@ describe('landing Content section', () => {
     await updateLanding();
     expect(el.path).to.equal('');
     expect(el.shadowRoot.querySelector('.empty-state h3').textContent).to.equal('Choose a site to get started');
-    expect(el.shadowRoot.querySelector('.empty-state p').textContent).to.equal('Select a site from Your recent sites to see its content.');
+    expect(el.shadowRoot.querySelector('.empty-state p').textContent).to.equal('Select a site from "Your recent sites" to see its content.');
     expect(el.shadowRoot.querySelector('.empty-state button, .empty-state a, nx-siteselector')).to.equal(null);
   });
 
@@ -429,6 +487,17 @@ describe('landing Content section', () => {
     expect(fileItems()[1].shadowRoot.querySelector('[aria-label="More info"]')).to.equal(null);
     expect(fileItems()[1].folder.label).to.equal('/');
     expect(fileItems()[1].shadowRoot.querySelector('.file-folder').title).to.equal('/org/site');
+  });
+
+  it('uses the shared image icon in Content cards without fetching a white image preview', async () => {
+    const get = sinon.spy(source, 'get');
+    el._files = [{ name: 'bigger-text', path: '/org/site/bigger-text.png', ext: 'png' }];
+    el.changeView({ detail: { value: 'card' } });
+    await updateLanding();
+    expect(fileItems()[0].shadowRoot.querySelector('.card-preview svg use').getAttribute('href'))
+      .to.include('s2-icon-image-20-n.svg');
+    expect(fileItems()[0].shadowRoot.querySelector('img')).to.equal(null);
+    expect(get.called).to.equal(false);
   });
 
   it('preserves Recent order and persists favorites once through the shared list in both views', async () => {

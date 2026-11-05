@@ -130,4 +130,18 @@ describe('da-file-item preview', () => {
       .to.include('s2-icon-filehtml-20-n.svg');
     expect(el.shadowRoot.querySelector('.card-preview img, .document-preview')).to.equal(null);
   });
+
+  it('lets Content use image icons in cards while preserving Browse previews by default', async () => {
+    await fixture({ ext: 'png', path: '/o/s/a.png', imagePreview: false });
+    expect(observer.observe.called).to.equal(false);
+    expect(el.shadowRoot.querySelector('.card-preview svg use').getAttribute('href'))
+      .to.include('s2-icon-image-20-n.svg');
+    expect(el.shadowRoot.querySelector('img')).to.equal(null);
+    el.imagePreview = undefined;
+    await el.updateComplete;
+    expect(observer.observe.calledOnceWithExactly(el)).to.equal(true);
+    el.imagePreview = false;
+    await el.updateComplete;
+    expect(observer.disconnect.calledOnce).to.equal(true);
+  });
 });
