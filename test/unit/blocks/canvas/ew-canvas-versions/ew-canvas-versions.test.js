@@ -89,6 +89,29 @@ describe('version image previews', () => {
     expect([...diffDom.querySelectorAll('img')].map((img) => img.getAttribute('src')))
       .to.deep.equal(['./media_old.png', './media_new.png']);
   });
+
+  it('scrolls both comparison panes together with matching content aligned', async () => {
+    const diffDom = document.createElement('div');
+    diffDom.innerHTML = `<p><del>${'Older, much longer text. '.repeat(60)}</del><ins>Short.</ins></p><table><tr><td>Same</td></tr></table>${'<p>Filler</p>'.repeat(30)}`;
+    inst = document.createElement('ew-canvas-compare');
+    Object.assign(inst, { diffDom, path: '/org/repo/doc.html', label: 'Published', split: true });
+    document.body.appendChild(inst);
+    await inst.updateComplete;
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync(await (await fetch('/blocks/canvas/ew-comparison/ew-canvas-compare.css')).text());
+    inst.shadowRoot.adoptedStyleSheets = [sheet];
+    Object.assign(inst.shadowRoot.querySelector('nx-popover').style, { width: '760px', height: '320px' });
+
+    const split = inst.shadowRoot.querySelector('.ew-cc-split');
+    const tables = [...split.querySelectorAll('table')];
+    const tableTops = () => tables.map((table) => table.getBoundingClientRect().top);
+    expect(tables).to.have.length(2);
+    expect(Math.abs(tableTops()[0] - tableTops()[1])).to.be.lessThan(2);
+    expect(split.scrollHeight).to.be.greaterThan(split.clientHeight);
+    const before = tableTops();
+    split.scrollTop = 100;
+    expect(tableTops().map((top, i) => before[i] - top)).to.deep.equal([100, 100]);
+  });
 });
 
 // ─── _filteredVersions ───────────────────────────────────────────────────────
