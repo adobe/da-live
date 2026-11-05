@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx2Api } from '../../../scripts/utils.js';
 import { saveSource } from '../api.js';
 import { firstSheetName, getRows, setRows } from '../sheets.js';
-import { renderField } from '../editors/fields.js';
+import { renderAlert, renderField } from '../editors/fields.js';
 import { parseRepo, createGitHub, analyzeBlock } from './github.js';
 import { findBlocks, blockExamples, blockDoc, displayName, mergeBlockRows } from './blocks.js';
 import { IMPORT } from '../messages.js';
@@ -66,6 +66,8 @@ export async function runImport({
   return { imported: rows.map((r) => r.name), failed, listStatus };
 }
 
+const fieldError = (field, message) => Object.assign(new Error(message), { field });
+
 const FIELDS = {
   repo: { key: 'repo', label: 'Repository', hint: 'Blocks are the folders inside blocks/.', placeholder: 'https://github.com/org/repo' },
   branch: { key: 'branch', label: 'Branch', hint: 'Branch to read.', placeholder: 'main' },
@@ -111,12 +113,15 @@ class DaConfigBlocksImport extends LitElement {
 
   _set(key, value) {
     this._form = { ...this._form, [key]: value };
+    if (this._error?.field === key) this._error = null;
   }
 
   _emit(name) {
     this.dispatchEvent(new CustomEvent(name, { bubbles: true, composed: true }));
   }
 
+  // `_error` is { message, field }: a field's own problem shows under it, like in the row dialog;
+  // anything else (access, nothing found) shows as an alert for the whole import.
   async _find() {
     this._error = null;
     this._progress = IMPORT.looking;
@@ -125,7 +130,7 @@ class DaConfigBlocksImport extends LitElement {
       if (this._mode === 'github') await this._findInGitHub();
       else await this._findInPages();
     } catch (e) {
-      this._error = e.message;
+      this._error = { message: e.message, field: e.field ?? null };
     }
     this._step = this._error || !this._blocks.length ? 'source' : 'select';
     this._selected = new Set(this._blocks.map((b) => b.name));
@@ -133,7 +138,7 @@ class DaConfigBlocksImport extends LitElement {
 
   async _findInGitHub() {
     const repo = parseRepo(this._form.repo);
-    if (!repo) throw new Error(IMPORT.repo);
+    if (!repo) throw fieldError('repo', IMPORT.repo);
     const { branch, token } = this._form;
     this._github = createGitHub({ ...repo, branch: branch.trim() || 'main', token: token.trim() });
     const access = await this._github.checkAccess();
@@ -146,7 +151,7 @@ class DaConfigBlocksImport extends LitElement {
   async _findInPages() {
     const pages = parsePages(this._form.pages);
     if (!pages.length || pages.some((p) => !p.startsWith('/'))) {
-      throw new Error(IMPORT.pages);
+      throw fieldError('pages', IMPORT.pages);
     }
     this._github = null;
     this._htmls = await readPages(this.org, this.site, pages, (p) => { this._progress = p; });
@@ -187,7 +192,8 @@ class DaConfigBlocksImport extends LitElement {
   _field(field, autofocus = false) {
     const raw = this._form[field.key];
     const onChange = (key, value) => this._set(key, value);
-    return renderField({ field, raw, value: raw.trim() }, { onChange }, { autofocus });
+    const error = this._error?.field === field.key ? this._error.message : null;
+    return renderField({ field, raw, value: raw.trim(), error }, { onChange }, { autofocus });
   }
 
   _renderSource() {
@@ -267,7 +273,7 @@ class DaConfigBlocksImport extends LitElement {
         @close=${() => (this._step === 'done' ? this._emit('import-done') : this._emit('import-close'))}>
         <div class="config-row-form">
           ${this._renderBody()}
-          ${this._error ? html`<p class="nx-input-error-msg" role="alert">${this._error}</p>` : nothing}
+          ${this._error && !this._error.field ? renderAlert(IMPORT.failed, this._error.message) : nothing}
         </div>
         ${this._renderActions()}
       </nx-dialog>`;

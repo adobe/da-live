@@ -236,10 +236,25 @@ describe('blocks import: dialog with GitHub', () => {
     };
   };
 
-  it('asks for a valid repository', async () => {
+  // Error text under each field, and the whole-import alert, as rendered.
+  const shownErrors = async () => {
+    await el.updateComplete;
+    const under = [...el.querySelectorAll('.nx-form-field')]
+      .filter((f) => f.querySelector('.nx-input-error-msg'))
+      .map((f) => [f.querySelector('.config-field-label').textContent.replace(/[\s*]+/g, ''), f.querySelector('.nx-input-error-msg').textContent.trim()]);
+    const alert = [...el.querySelectorAll('.config-alert p')].map((p) => p.textContent.trim());
+    return { under, alert };
+  };
+
+  it('shows a bad repository under its field, and clears it on edit', async () => {
     el._form = { ...el._form, repo: 'not a repo' };
     await el._find();
-    expect([el._step, el._error]).to.deep.equal(['source', 'Enter a GitHub repository, e.g. https://github.com/org/repo.']);
+    expect(el._step).to.equal('source');
+    expect(await shownErrors()).to.deep.equal({ under: [['Repository', 'Enter a GitHub repository, e.g. https://github.com/org/repo.']], alert: [] });
+    el._set('branch', 'dev');
+    expect((await shownErrors()).under).to.have.length(1);
+    el._set('repo', 'o/r');
+    expect(await shownErrors()).to.deep.equal({ under: [], alert: [] });
   });
 
   it('reports a list that could not be updated instead of claiming success', async () => {
@@ -262,14 +277,16 @@ describe('blocks import: dialog with GitHub', () => {
     el._mode = 'pages';
     el._form = { ...el._form, pages: 'index' };
     await el._find();
-    expect([el._step, el._error]).to.deep.equal(['source', 'Enter page paths of this site, one per line, e.g. /index.']);
+    expect(el._step).to.equal('source');
+    expect((await shownErrors()).under).to.deep.equal([['Pages', 'Enter page paths of this site, one per line, e.g. /index.']]);
   });
 
   it('explains when the repository cannot be read', async () => {
     mockGitHub(404);
     el._form = { ...el._form, repo: 'o/r' };
     await el._find();
-    expect([el._step, typeof el._error]).to.deep.equal(['source', 'string']);
+    const { under, alert } = await shownErrors();
+    expect([el._step, under, alert[0], alert.length]).to.deep.equal(['source', [], 'Could not find blocks', 2]);
   });
 
   it('finds the blocks, lets the user pick, and imports them from the code', async () => {
