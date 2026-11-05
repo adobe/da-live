@@ -337,12 +337,17 @@
   height: 16px;
 }
 
-/* List actions sit above the table, right-aligned, so they stay in reach on long lists. */
+/* Toolbar above the table, like Coworker's: search on the left, actions on the right. */
 .config-row-buttons {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
   gap: var(--s2-spacing-200);
+}
+
+.config-search {
+  flex: 1 1 16rem;
 }
 
 /* nx-input styles a single line; let multi-line fields grow and wrap. */

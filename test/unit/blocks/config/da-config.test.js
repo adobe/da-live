@@ -730,6 +730,21 @@ describe('da-config', () => {
       expect(puts[0].body.prepare.data).to.deep.equal([{ ...ROLLOUT, ref: 'uat' }]);
     });
 
+    it('filters rows as you type, and clears the search on another section', async () => {
+      const SEND = { title: 'Send to Adobe Target' };
+      mockFetch({ configFor: () => multi('prepare', [ROLLOUT, SEND]), sitesFor: () => [{ name: 'alpha' }] });
+      await open({ org: 'pr8' });
+      const names = () => [...el.shadowRoot.querySelectorAll('.config-table tbody th')].map((t) => t.textContent.trim());
+      const search = q('nx-search.config-search');
+      search.value = 'target';
+      search.dispatchEvent(new InputEvent('input'));
+      await el.updateComplete;
+      expect(names()).to.deep.equal(['Send to Adobe Target']);
+      q('.config-tabs-secondary').dispatchEvent(new CustomEvent('change', { detail: { value: 'plugins' } }));
+      await el.updateComplete;
+      expect(el._query).to.equal('');
+    });
+
     it('asks before deleting a row, and keeps it on Cancel', async () => {
       mockFetch({ configFor: () => multi('prepare', [ROLLOUT]), sitesFor: () => [{ name: 'alpha' }] });
       await open({ org: 'pr9' });
