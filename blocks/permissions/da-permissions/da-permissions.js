@@ -10,6 +10,7 @@ import {
 await import(`${getNx()}/blocks/shared/picker/picker.js`);
 await import(`${getNx()}/blocks/shared/search/search.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
+await import(`${getNx()}/blocks/shared/segmented-btn/segmented.js`);
 await import('../da-permissions-cards/da-permissions-cards.js');
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -79,6 +80,11 @@ export async function mutatePermissions(org, mutate) {
 }
 
 const DOCS_URL = 'https://www.aem.live/docs/ew/administering/permissions';
+
+const PATH_KINDS = [
+  { value: 'folder', label: 'Folder', placeholder: '/blog/drafts', hint: 'Covers the folder and everything in it.' },
+  { value: 'page', label: 'Page', placeholder: '/about', hint: 'Covers the page and its images.' },
+];
 
 class DaPermissions extends LitElement {
   static properties = {
@@ -265,15 +271,20 @@ class DaPermissions extends LitElement {
     window.location.hash = `/${value}`;
   }
 
-  _onOpenPathDialog(kind) {
+  _onOpenPathDialog() {
     this._pathError = null;
-    this._pathDialog = kind;
+    this._pathDialog = 'folder';
+  }
+
+  _onPathKindChange({ detail }) {
+    this._pathError = null;
+    this._pathDialog = detail.value;
   }
 
   _onPathSubmit(e) {
     e?.preventDefault();
     const kind = this._pathDialog;
-    const input = this.shadowRoot.querySelector(`.${kind}-path-input`);
+    const input = this.shadowRoot.querySelector('.path-input');
     const result = kind === 'page' ? parsePagePath(input?.value) : parseFolderPath(input?.value);
     if (result.error) {
       this._pathError = result.error;
@@ -392,8 +403,7 @@ class DaPermissions extends LitElement {
         .busy=${this._busy}
         .adding=${this._adding}
         .canAdd=${!!this.site && this._editable && !activeQuery(this._query)}
-        @permissions-add-folder=${() => this._onOpenPathDialog('folder')}
-        @permissions-add-page=${() => this._onOpenPathDialog('page')}
+        @permissions-add-path=${() => this._onOpenPathDialog()}
         @permissions-add-open=${(e) => this._onAddOpen(e)}
         @permissions-add-cancel=${() => this._onAddCancel()}
         @permissions-add=${(e) => this._onAdd(e)}
@@ -410,25 +420,34 @@ class DaPermissions extends LitElement {
     const kind = this._pathDialog;
     if (!kind) return nothing;
     const error = this._pathError;
+    const { placeholder, hint } = PATH_KINDS.find((item) => item.value === kind);
     return html`
-      <nx-dialog title="Add ${kind} permission" @close=${() => this._onPathCancel()}>
-        <form class="${kind}-add-form" @submit=${(e) => this._onPathSubmit(e)}>
+      <nx-dialog title="Add folder or page permission" @close=${() => this._onPathCancel()}>
+        <form class="path-add-form" @submit=${(e) => this._onPathSubmit(e)}>
+          <nx-segmented-btn
+            size="m"
+            label="Folder or page"
+            .items=${PATH_KINDS}
+            .value=${kind}
+            @change=${(e) => this._onPathKindChange(e)}
+          ></nx-segmented-btn>
           <div class="nx-form-field ${error ? 'nx-field-error' : ''}">
-            <label for="permissions-${kind}-path">${kind === 'page' ? 'Page' : 'Folder'} path</label>
+            <label for="permissions-path">Path</label>
             <input
-              id="permissions-${kind}-path"
-              class="${kind}-path-input nx-input"
+              id="permissions-path"
+              class="path-input nx-input"
               type="text"
-              placeholder=${kind === 'page' ? '/about' : '/blog/drafts'}
+              placeholder=${placeholder}
               autocomplete="off"
               autofocus
               aria-invalid=${error ? 'true' : 'false'}
             >
             ${error ? html`<p class="nx-input-error-msg" role="alert">${error}</p>` : nothing}
+            <p class="path-kind-hint">${hint}</p>
           </div>
         </form>
         <button type="button" slot="actions" class="nx-form-btn-secondary" @click=${() => this._onPathCancel()}>Cancel</button>
-        <button type="button" slot="actions" class="${kind}-add-submit nx-form-btn-primary" @click=${() => this._onPathSubmit()}>Add</button>
+        <button type="button" slot="actions" class="path-add-submit nx-form-btn-primary" @click=${() => this._onPathSubmit()}>Add</button>
       </nx-dialog>`;
   }
 

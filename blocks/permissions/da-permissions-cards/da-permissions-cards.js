@@ -18,8 +18,7 @@ const CLOSE_ICON_SRC = '/img/icons/s2-icon-close-20-n.svg';
 const SECTION_LABEL = {
   config: (name) => `Configuration Permissions for: ${name}`,
   content: (name) => `Content Permissions for: ${name}`,
-  folders: () => 'Folder Permissions',
-  pages: () => 'Page Permissions',
+  paths: () => 'Folder and Page Permissions',
 };
 
 // The section heading already names config/content scopes; only these need a card title.
@@ -173,23 +172,22 @@ class DaPermissionsCards extends LitElement {
   }
 
   _renderSection(kind, slots) {
-    const add = this.canAdd && (kind === 'folders' || kind === 'pages');
-    if (!slots.length && !add) return nothing;
-    const name = kind === 'pages' ? 'page' : 'folder';
+    const withAdd = kind === 'paths' && this.canAdd;
+    if (!slots.length && !withAdd) return nothing;
     const body = slots.length
       ? slots.map((slot) => this._renderCard(slot))
-      : html`<p class="row-empty section-empty">No ${name} permissions yet.</p>`;
+      : html`<p class="row-empty section-empty">No folder or page permissions yet.</p>`;
     return html`
       <section class="scope-section" data-section=${kind}>
         <div class="scope-section-header">
           <h3>${SECTION_LABEL[kind](this.scopeName)}</h3>
-          ${add ? html`
+          ${withAdd ? html`
             <button
               type="button"
-              class="add-${name} nx-form-btn-secondary"
+              class="add-path nx-form-btn-secondary"
               ?disabled=${this.busy}
-              @click=${() => this._emit(`permissions-add-${name}`)}
-            >Add ${name}</button>
+              @click=${() => this._emit('permissions-add-path')}
+            >Add folder or page</button>
           ` : nothing}
         </div>
         ${body}
@@ -198,15 +196,13 @@ class DaPermissionsCards extends LitElement {
 
   render() {
     const configSlots = this.slots.filter((slot) => slot.kind === 'config');
-    const folderSlots = this.slots.filter((slot) => slot.kind === 'folder');
-    const pageSlots = this.slots.filter((slot) => slot.kind === 'page');
+    const pathSlots = this.slots.filter((slot) => slot.kind === 'folder' || slot.kind === 'page');
     const contentSlots = this.slots.filter((slot) => !['config', 'folder', 'page'].includes(slot.kind));
 
     return html`
       ${this._renderSection('config', configSlots)}
       ${this._renderSection('content', contentSlots)}
-      ${this._renderSection('folders', folderSlots)}
-      ${this._renderSection('pages', pageSlots)}
+      ${this._renderSection('paths', pathSlots)}
     `;
   }
 }

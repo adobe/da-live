@@ -78,7 +78,7 @@ export function parsePagePath(value) {
   if (!trimmed.startsWith('/')) return { error: 'Page paths start with /, e.g. /about.' };
   const segments = trimmed.split('/').filter(Boolean);
   if (!segments.length) return { error: 'Enter a page below the site root, e.g. /about.' };
-  if (trimmed.endsWith('/')) return { error: 'Page paths cannot end with /. Use Add folder for folders.' };
+  if (trimmed.endsWith('/')) return { error: 'Page paths cannot end with /. Choose Folder to add a folder.' };
   if (segments.some((segment) => !PAGE_SEGMENT_RE.test(segment))) {
     return { error: 'Page paths can only use letters, numbers, -, _ and dots, and no part can start with a dot.' };
   }
