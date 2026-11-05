@@ -30,9 +30,9 @@ async function loadComponent(el, cmpName, pathDetails) {
   if (cmpName === 'da-landing') {
     const { default: loadLanding } = await import('../landing/landing.js');
     loadLanding(el);
-    const { default: loadTiles } = await import('../landing/tile-group.js');
     const landing = el.querySelector('.landing');
-    if (landing) loadTiles(landing);
+    const { default: loadTiles } = await import('../landing/tile-group.js');
+    if (landing?.isConnected) loadTiles(landing);
     return;
   }
 

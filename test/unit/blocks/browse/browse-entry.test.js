@@ -8,7 +8,7 @@ const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const content = await fetch('/test/fixtures/landing-tiles.html').then((response) => response.text());
 
 describe('landing tile composition', () => {
-  it('mounts tiles inside the real gated landing surface instead of replacing its wrapper', async () => {
+  it('mounts one tile group inside the gated landing when updates overlap', async () => {
     const { href } = window.location;
     const el = document.createElement('div');
     el.innerHTML = '<picture></picture>';
@@ -30,10 +30,13 @@ describe('landing tile composition', () => {
         observer.observe(el, { childList: true, subtree: true });
       });
       init(el);
+      hashChange._set(undefined);
       const tiles = await mounted;
       while (!tiles.entries) await new Promise((resolve) => { setTimeout(resolve, 0); });
       await tiles.updateComplete;
+      await new Promise((resolve) => { requestAnimationFrame(resolve); });
       expect(el.children).to.have.length(1);
+      expect(el.querySelectorAll('da-landing-tiles')).to.have.length(1);
       expect(tiles.parentElement.className).to.equal('landing');
       expect(el.querySelector('picture, da-sites, da-browse')).to.equal(null);
       expect(tiles.shadowRoot.querySelectorAll('da-landing-tile')).to.have.length(5);
