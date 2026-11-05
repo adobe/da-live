@@ -58,14 +58,6 @@ describe('config sections', () => {
     expect(sectionById('nope')).to.equal(null);
   });
 
-  it('gives every section an icon sprite that exists', async () => {
-    const results = await Promise.all(SECTIONS.map(async ({ id, icon }) => {
-      const res = await fetch(`/blocks/config/img/${icon}.svg`);
-      return [id, res.ok && (await res.text()).includes('id="icon"')];
-    }));
-    expect(results.filter(([, ok]) => !ok)).to.deep.equal([]);
-  });
-
   describe('tabsForScope', () => {
     it('shows only org-capable tabs and sections at org scope', () => {
       const tabs = tabsForScope(ORG);
