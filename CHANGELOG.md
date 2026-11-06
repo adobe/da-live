@@ -1,3 +1,19 @@
+# [1.21.0](https://github.com/adobe/da-live/compare/v1.20.1...v1.21.0) (2026-11-06)
+
+
+### Features
+
+* asset selector siderail ([#1638](https://github.com/adobe/da-live/issues/1638)) ([cf4bc1f](https://github.com/adobe/da-live/commit/cf4bc1fe254c7584911620ba8ad9c76dae7cc97c))
+* drag and drop ([#1526](https://github.com/adobe/da-live/issues/1526)) ([abdf0b8](https://github.com/adobe/da-live/commit/abdf0b839505202cfb2da2663a05c0c562fe3d34))
+* open blocks and assets in side panels with modal pop-outs ([#1630](https://github.com/adobe/da-live/issues/1630)) ([673f025](https://github.com/adobe/da-live/commit/673f025b048589ad8734ff3f60104b4ac03566cc))
+
+## [1.20.1](https://github.com/adobe/da-live/compare/v1.20.0...v1.20.1) (2026-11-05)
+
+
+### Bug Fixes
+
+* grouping off by default ([#1653](https://github.com/adobe/da-live/issues/1653)) ([dcf524f](https://github.com/adobe/da-live/commit/dcf524fa294fb8ca4ddde5529df492c9890f027a))
+
 # [1.20.0](https://github.com/adobe/da-live/compare/v1.19.2...v1.20.0) (2026-11-04)
 
 

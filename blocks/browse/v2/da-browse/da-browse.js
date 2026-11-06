@@ -36,7 +36,7 @@ export default class DaBrowse extends LitElement {
     _typesFilterState: { state: true },
     _sortState: { state: true },
     _sortPreference: { state: true },
-    _groupByType: { state: true },
+    _groupByType: { state: false },
     _view: { state: true },
     _rowSize: { state: true },
     _cardSize: { state: true },
@@ -100,7 +100,7 @@ export default class DaBrowse extends LitElement {
     this._cardSize = ['s', 'l'].includes(cardSize) ? cardSize : 'm';
     this._sortPreference = SORT_PROPS.includes(sort?.property)
       && SORT_DIRECTIONS.includes(sort?.direction) ? sort : undefined;
-    this._groupByType = groupByType !== false;
+    this._groupByType = groupByType === true;
     this._view = view === 'card' ? 'card' : 'list';
   }
 
