@@ -197,7 +197,7 @@ export function getEditor(data, ctx) {
     return;
   }
   const { view } = ctx;
-  const { cursorOffset, previousDoc } = data;
+  const { cursorOffset, previousDoc, origin } = data;
   if (typeof cursorOffset !== 'number') return;
 
   const { doc } = view.state;
@@ -214,6 +214,7 @@ export function getEditor(data, ctx) {
         cursorOffset: newCursorOffset,
         imageVersion: getImageDocumentVersion(doc),
         lengthDiff: previousDoc ? doc.content.size - previousDoc.content.size : 0,
+        origin,
       },
     });
     markPreviewSynced(ctx, data);
@@ -560,7 +561,10 @@ function postBody(ctx) {
   const { doc } = ctx.view.state;
   const body = getInstrumentedHTML(ctx.view);
   const rerenderScope = getRerenderScope({ previousDoc: getBaseline(ctx), doc, body });
-  ctx.port.postMessage({ type: MESSAGE_TYPES.SET_BODY, payload: { body, rerenderScope } });
+  ctx.port.postMessage({
+    type: MESSAGE_TYPES.SET_BODY,
+    payload: { body, rerenderScope, documentVersion: getImageDocumentVersion(doc) },
+  });
   ctx.syncedDoc = doc;
   ctx.confirmedDoc = doc;
   ctx.useConfirmedBaseline = false;

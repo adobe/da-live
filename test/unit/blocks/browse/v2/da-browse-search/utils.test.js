@@ -5,7 +5,7 @@ import { setNx, getNx2Api } from '../../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 const { loadFilenames, matchFilenames } = await import('../../../../../../blocks/browse/v2/da-browse-search/utils.js');
-const { getBrowseItemHref } = await import('../../../../../../blocks/browse/v2/shared/navigation.js');
+const { getFileItemHref: getBrowseItemHref } = await import('../../../../../../blocks/shared/da-file-item/navigation.js');
 
 describe('browse filename catalog', () => {
   const first = { path: '/o/r/plan.html', name: 'plan', ext: 'html', isChecked: true };

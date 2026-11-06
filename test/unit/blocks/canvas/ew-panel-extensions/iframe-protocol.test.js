@@ -22,6 +22,72 @@ function setUrl(url) {
   window.history.replaceState(null, '', url);
 }
 
+function completeChatTurn(detail) {
+  document.dispatchEvent(new CustomEvent(CHAT_EVENT.TURN_COMPLETED, { detail }));
+}
+
+describe('extension chat turn subscriptions', () => {
+  let connection;
+  let received;
+  const detail = { org: 'org', site: 'site', path: '/page', turnId: 'turn', status: 'completed' };
+  beforeEach(async () => {
+    connection = await setupIframeChannel({
+      iframe: makeIframe(),
+      hashState: { org: 'org', site: 'site', path: 'page' },
+      getView: () => null,
+      onClose() {},
+    });
+    received = [];
+    connection.channel.port2.onmessage = ({ data }) => received.push(data);
+  });
+  afterEach(() => {
+    connection.destroy();
+    sinon.restore();
+  });
+  function command(action) {
+    connection.channel.port1.onmessage({ data: { action } });
+  }
+
+  it('forwards only new events for the extension document and supports unsubscribe', async () => {
+    completeChatTurn(detail);
+    command('subscribeChatTurnCompleted');
+    command('subscribeChatTurnCompleted');
+    completeChatTurn({ ...detail, org: 'other' });
+    completeChatTurn({ ...detail, site: 'other' });
+    completeChatTurn({ ...detail, path: 'other' });
+    await wait();
+    expect(received).to.deep.equal([]);
+    completeChatTurn(detail);
+    await wait();
+    expect(received).to.deep.equal([{ action: 'chatTurnCompleted', detail }]);
+    command('unsubscribeChatTurnCompleted');
+    command('unsubscribeChatTurnCompleted');
+    completeChatTurn(detail);
+    command('subscribeChatTurnCompleted');
+    await wait();
+    expect(received).to.have.lengthOf(1);
+    completeChatTurn({ ...detail, status: 'aborted' });
+    await wait();
+    expect(received).to.have.lengthOf(2);
+    expect(received[1].detail.status).to.equal('aborted');
+  });
+
+  it('removes its shared chat subscription when the iframe channel is destroyed', () => {
+    command('subscribeChatTurnCompleted');
+    const postMessage = sinon.spy(connection.channel.port1, 'postMessage');
+    connection.destroy();
+    completeChatTurn(detail);
+    expect(postMessage.called).to.equal(false);
+  });
+
+  it('receives the chat document event without initializing canvas', async () => {
+    command('subscribeChatTurnCompleted');
+    document.dispatchEvent(new CustomEvent(CHAT_EVENT.TURN_COMPLETED, { detail }));
+    await wait();
+    expect(received).to.deep.equal([{ action: 'chatTurnCompleted', detail }]);
+  });
+});
+
 describe('acknowledged live HTML replacement', () => {
   let view;
   let connection;
@@ -274,6 +340,57 @@ describe('setupIframeChannel', () => {
     expect(result.channel).to.equal(null);
   });
 
+  it('routes acknowledged SDK drags over the channel and rejects an old page context', async () => {
+    const { hashChange } = await import(`${getNx()}/utils/utils.js`);
+    hashChange._set({ org: 'org', site: 'site', path: 'page' });
+    const iframe = document.createElement('iframe');
+    const loaded = new Promise((resolve) => { iframe.onload = resolve; });
+    document.body.append(iframe);
+    await loaded;
+    const editor = makeRealView({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Keep' }] }] });
+    sinon.stub(editor.dom, 'getBoundingClientRect').returns({ left: 100, right: 400, top: 100, bottom: 250 });
+    sinon.stub(editor.root, 'elementFromPoint').returns(editor.dom.firstChild);
+    sinon.stub(editor, 'posAtCoords').returns({ pos: editor.state.doc.content.size });
+    iframe.style.cssText = 'position:fixed;left:0;top:0;width:100px;height:100px;border:0';
+    const connection = await setupIframeChannel({
+      iframe,
+      hashState: { org: 'org', site: 'site', path: 'page' },
+      getView: () => editor,
+      onClose: () => {},
+    });
+    const results = [];
+    let requestId = 0;
+    const request = (action, details) => new Promise((resolve) => {
+      requestId += 1;
+      const id = `drag-${requestId}`;
+      connection.channel.port2.onmessage = ({ data }) => {
+        if (data.action === 'dragResult') results.push(data.details);
+        if (data.requestId === id) resolve(data.result);
+      };
+      connection.channel.port2.postMessage({ action, details, requestId: id });
+    });
+    try {
+      const details = { payload: { data: { 'text/html': '<h2>Heading</h2>' } }, point: { x: 150, y: 180 } };
+      const start = await request('dragStart', details);
+      expect(start.ok).to.equal(true);
+      expect(await request('dragFinish', { dragId: start.dragId, point: details.point }))
+        .to.deep.equal({ ok: true });
+      expect(editor.state.doc.textContent).to.equal('KeepHeading');
+      // dragFinish answers with the result itself, so no dragResult is pushed for it
+      expect(results).to.deep.equal([]);
+      hashChange._set({ org: 'org', site: 'site', path: 'other-page' });
+      expect(await request('dragStart', details)).to.deep.equal({ ok: false, error: 'unavailable' });
+    } finally {
+      connection.destroy();
+      hashChange._set({});
+      const mount = editor.dom.parentElement;
+      editor.destroy();
+      mount.remove();
+      iframe.remove();
+      sinon.restore();
+    }
+  });
+
   it('posts a ready message with project details derived from hashState and the URL', async () => {
     setUrl('/some/page?ref=feature123#/myorg/mysite/a/b');
 
@@ -302,7 +419,8 @@ describe('setupIframeChannel', () => {
       hash: '#/myorg/mysite/a/b',
     });
     expect(message.context).to.equal(message.project);
-    expect(message.capabilities).to.deep.equal({ liveDocument: 1, sendHTMLReplace: 1 });
+    const capabilities = { liveDocument: 1, sendHTMLReplace: 1, chatTurnCompleted: 1, dragDrop: 1 };
+    expect(message.capabilities).to.deep.equal(capabilities);
     expect(targetOrigin).to.equal('https://plugin.example.com');
     expect(transfer).to.have.lengthOf(1);
 

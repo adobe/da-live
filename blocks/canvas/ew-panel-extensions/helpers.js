@@ -67,6 +67,28 @@ function getBlockName(className) {
   return { name, variants: rest.length ? rest.join(', ') : undefined };
 }
 
+function getClassIdentity(className) {
+  const [name, ...variants] = (className || '').split(/\s+/).filter(Boolean);
+  return name ? { name, variants } : null;
+}
+
+function getLabelIdentity(label) {
+  const match = (label || '').match(/^(.*\S)\s*\(([^)]+)\)\s*$/);
+  if (!match) return null;
+  const variants = match[2].split(',').map((v) => v.trim()).filter(Boolean);
+  return { name: match[1].trim(), variants };
+}
+
+function getIdentities(block, label) {
+  const sources = block.dataset?.isgroup
+    ? [...block.children].filter((child) => child.tagName === 'DIV')
+    : [block];
+  const identities = sources.map((el) => getClassIdentity(el.className)).filter(Boolean);
+  const legacy = getLabelIdentity(label);
+  if (legacy) identities.push(legacy);
+  return identities;
+}
+
 function getBlockTableHtml(block) {
   const { name, variants } = getBlockName(block.className);
   const rows = [...block.children];
@@ -345,6 +367,7 @@ function transformBlock(block) {
     metaEl.remove();
   }
 
+  item.identities = getIdentities(block, item.name);
   item.dom = block.dataset?.isgroup ? processGroupBlock(block) : getBlockTableHtml(block);
   return item;
 }
@@ -381,9 +404,9 @@ export async function getBlockVariants(path, context) {
 const OOTB_PLUGINS = new Set(['blocks', 'templates', 'icons', 'placeholders']);
 
 /** First-party library tools + AEM Assets (not flagged `ootb` in plugin metadata). */
-const LIBRARY_PLUGIN_NAMES = new Set([...OOTB_PLUGINS, 'aem-assets']);
+const LIBRARY_PLUGIN_NAMES = new Set([...OOTB_PLUGINS, 'aem-assets', 'aem-assets-panel']);
 
-const LIBRARY_PANEL_ORDER = ['blocks', 'icons', 'templates', 'placeholders', 'aem-assets'];
+const LIBRARY_PANEL_ORDER = ['blocks', 'icons', 'templates', 'placeholders', 'aem-assets', 'aem-assets-panel'];
 
 function isLibraryExtension(ext) {
   return LIBRARY_PLUGIN_NAMES.has(ext.name);
@@ -453,9 +476,9 @@ export async function fetchExtensions(org, site) {
     const entries = validConfigs.flatMap((conf) => getFirstSheet(conf) || []);
     const hasRepo = entries.find((entry) => entry.key === 'aem.repositoryId')?.value;
     if (hasRepo) {
-      const { getAssetsPlugin } = await import('./aem-assets.js');
-      const plugin = getAssetsPlugin({ org, site });
-      if (plugin) mergePlugin(extensions, plugin);
+      const { getAssetsPanelPlugin } = await import('./aem-assets.js');
+      const panelPlugin = getAssetsPanelPlugin({ org, site });
+      if (panelPlugin) mergePlugin(extensions, panelPlugin);
     }
   } catch { /* proceed without assets */ }
 
@@ -906,16 +929,21 @@ export function createMetadataView() {
 
 export function extensionToPanelView(ext, section) {
   const proxyOpts = { getUrl: getPreviewOrigin, currentOrg: ext.org };
-  // Block library opens its own dedicated modal (used by the slash menu and
-  // outline "+" button) rather than the generic inline panel or iframe dialog.
   if (ext.name === 'blocks') {
     return {
       id: ext.name,
       label: ext.title,
       section,
       firstParty: ext.ootb,
-      experience: 'modal',
+      experience: 'inline',
       icon: ext.icon,
+      cacheKey: JSON.stringify([ext.org, ext.sources]),
+      load: async () => {
+        await import('./ew-panel-library.js');
+        const el = document.createElement('ew-panel-library');
+        el.extension = ext;
+        return el;
+      },
       openModal: async () => {
         const { openBlockLibraryModal } = await import('../ew-block-library-modal/ew-block-library-modal.js');
         openBlockLibraryModal({
@@ -943,6 +971,13 @@ export function extensionToPanelView(ext, section) {
       ),
     icon: ext.ootb ? ext.icon : toPreviewProxyUrl(ext.icon, proxyOpts),
     load: async () => {
+      if (ext.name === 'aem-assets-panel') {
+        await import('../ew-canvas-assets/ew-canvas-assets.js');
+        const el = document.createElement('ew-canvas-assets');
+        el.org = ext.org;
+        el.site = ext.site;
+        return el;
+      }
       await import('./ew-panel-extensions.js');
       const el = document.createElement('ew-panel-extension');
       el.extension = ext;
@@ -950,9 +985,9 @@ export function extensionToPanelView(ext, section) {
     },
   };
 
-  if (ext.experience === 'fullsize-dialog') {
+  if (ext.experience === 'fullsize-dialog' || ext.name === 'aem-assets-panel') {
     view.loadModal = async (container, onClose) => {
-      if (ext.name === 'aem-assets') {
+      if (ext.name === 'aem-assets' || ext.name === 'aem-assets-panel') {
         const { renderAssets } = await import('./aem-assets.js');
         await renderAssets({ container, org: ext.org, site: ext.site, onClose });
         return () => { };
@@ -995,7 +1030,9 @@ export function extensionToPanelView(ext, section) {
  */
 export async function getCanvasToolPanelViews({ org, site }) {
   const extensions = await fetchExtensions(org, site);
-  const library = sortLibraryExtensions(extensions.filter(isLibraryExtension));
+  const library = sortLibraryExtensions(extensions.filter(
+    (ext) => isLibraryExtension(ext) && ext.name !== 'aem-assets',
+  ));
   const thirdParty = extensions.filter((ext) => !isLibraryExtension(ext));
 
   return [

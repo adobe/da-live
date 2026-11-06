@@ -1,5 +1,5 @@
 import { getNx2Api } from '../../../scripts/utils.js';
-import { formatDate } from '../../shared/utils.js';
+import { formatDate } from '../utils.js';
 
 function toEnv(env) {
   return {

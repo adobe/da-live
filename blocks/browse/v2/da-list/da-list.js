@@ -1,10 +1,10 @@
 import { html, repeat, nothing } from 'da-lit';
 import { getTypeLabel, iconPathForExt } from '../../../shared/icons.js';
-import { getConfiguredEditor } from '../../shared.js';
+import { getConfiguredEditor } from '../../../shared/da-file-item/edit-path.js';
 import { getNx, getNx2 } from '../../../../scripts/utils.js';
 import DaListBase from '../../da-list-base/da-list-base.js';
 
-import '../da-list-item/da-list-item.js';
+import '../../../shared/da-file-item/da-file-item.js';
 
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
 
@@ -359,7 +359,7 @@ export default class DaList extends DaListBase {
     return repeat(items, (item) => item.path, (item) => {
       const idx = indexByPath.get(item.path);
       return html`
-        <da-list-item
+        <da-file-item
           role="row"
           @checked=${(e) => this.handleItemChecked(e, item, idx)}
           @favoritechange=${() => this.toggleItemFavorite(item)}
@@ -376,8 +376,14 @@ export default class DaList extends DaListBase {
           ext="${item.ext}"
           editor="${this.getEditorForItem(item)}"
           idx=${idx}>
-        </da-list-item>`;
+        </da-file-item>`;
     });
+  }
+
+  getDisplayTypeLabel(label, count = 1) {
+    const isOrgRoot = this.fullpath?.split('/').filter(Boolean).length === 1;
+    if (isOrgRoot && label === 'Folder') return count === 1 ? 'Site' : 'Sites';
+    return pluralizeTypeLabel(label, count);
   }
 
   renderGroupHeader(label, groupItems) {
@@ -386,7 +392,7 @@ export default class DaList extends DaListBase {
     const checkedCount = groupItems.filter((item) => item.isChecked).length;
     const isGroupSelectAll = count > 0 && checkedCount === count;
     const isGroupIndeterminate = checkedCount > 0 && checkedCount < count;
-    const typeLabel = pluralizeTypeLabel(label, count);
+    const typeLabel = this.getDisplayTypeLabel(label, count);
     return html`
       <div class="da-list-group-header ${collapsed ? 'is-collapsed' : ''}">
         ${this.select ? html`
@@ -523,7 +529,7 @@ export default class DaList extends DaListBase {
             <svg class="da-list-type-icon" viewBox="0 0 20 20" aria-hidden="true">
               <use href="${iconPathForExt(item.ext)}#icon"></use>
             </svg>
-            <span>${label}</span>
+            <span>${this.getDisplayTypeLabel(label)}</span>
           </label>
         `;
     })}

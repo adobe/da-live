@@ -286,6 +286,92 @@ describe('EW panel helpers transformBlock', () => {
     expect(variants[0].variants).to.equal('wide');
   });
 
+  describe('identities', () => {
+    it('derives identity from the class even when a heading names the block', async () => {
+      mockHtml(`
+        <body><div>
+          <h2>Fancy Cards</h2>
+          <div class="cards dark  wide"><div><div>content</div></div></div>
+        </div></body>
+      `);
+      const [item] = await getBlockVariants('/mock-path');
+      expect(item.name).to.equal('Fancy Cards');
+      expect(item.identities).to.deep.equal([{ name: 'cards', variants: ['dark', 'wide'] }]);
+    });
+
+    it('ignores the metadata name for identity', async () => {
+      mockHtml(`
+        <body><div>
+          <div class="cards dark"><div><div>content</div></div></div>
+          <div class="library-metadata"><div><div>name</div><div>Promo</div></div></div>
+        </div></body>
+      `);
+      const [item] = await getBlockVariants('/mock-path');
+      expect(item.name).to.equal('Promo');
+      expect(item.identities).to.deep.equal([{ name: 'cards', variants: ['dark'] }]);
+    });
+
+    it('adds a legacy identity from a "Name (x, y)" label', async () => {
+      mockHtml(`
+        <body><div>
+          <h2>Cards (Dark, Wide)</h2>
+          <div class="cards"><div><div>content</div></div></div>
+        </div></body>
+      `);
+      const [item] = await getBlockVariants('/mock-path');
+      expect(item.identities).to.deep.equal([
+        { name: 'cards', variants: [] },
+        { name: 'Cards', variants: ['Dark', 'Wide'] },
+      ]);
+    });
+
+    it('adds a legacy identity from a "Name (x)" metadata name', async () => {
+      mockHtml(`
+        <body><div>
+          <div class="cards"><div><div>content</div></div></div>
+          <div class="library-metadata"><div><div>name</div><div>Cards (Promo)</div></div></div>
+        </div></body>
+      `);
+      const [item] = await getBlockVariants('/mock-path');
+      expect(item.identities).to.deep.equal([
+        { name: 'cards', variants: [] },
+        { name: 'Cards', variants: ['Promo'] },
+      ]);
+    });
+
+    it('derives one identity per block inside a container group', async () => {
+      mockHtml(`
+        <body><div>
+          <div class="library-container-start"></div>
+          <h2>Heading content</h2>
+          <div class="cards dark wide"><div><div>content</div></div></div>
+          <div class="button primary"><div><div>go</div></div></div>
+          <div class="library-metadata"><div><div>name</div><div>My Cards</div></div></div>
+          <div class="library-container-end"></div>
+        </div></body>
+      `);
+      const [item] = await getBlockVariants('/mock-path');
+      expect(item.name).to.equal('My Cards');
+      expect(item.identities).to.deep.equal([
+        { name: 'cards', variants: ['dark', 'wide'] },
+        { name: 'button', variants: ['primary'] },
+      ]);
+    });
+
+    it('has no identity for a container group without a block', async () => {
+      mockHtml(`
+        <body><div>
+          <div class="library-container-start"></div>
+          <h1>Auto-blocked hero</h1>
+          <p>text</p>
+          <div class="library-container-end"></div>
+        </div></body>
+      `);
+      const [item] = await getBlockVariants('/mock-path');
+      expect(item.identities).to.deep.equal([]);
+    });
+  });
+
   it('Preserves distinct heading IDs for variants, including metadata name overrides', async () => {
     mockHtml(`
       <main><div>
@@ -1239,18 +1325,19 @@ describe('DA Preview Proxy routing', () => {
 });
 
 describe('extensionToPanelView', () => {
-  it('gives the "blocks" extension a dedicated modal experience', () => {
+  it('opens blocks inline with a dedicated modal available as a pop-out', async () => {
     const ext = { name: 'blocks', title: 'Blocks', ootb: true, icon: '#icon-blocks' };
     const view = extensionToPanelView(ext, 'Library');
     expect(view.id).to.equal('blocks');
     expect(view.label).to.equal('Blocks');
     expect(view.section).to.equal('Library');
     expect(view.firstParty).to.be.true;
-    expect(view.experience).to.equal('modal');
+    expect(view.experience).to.equal('inline');
     expect(view.icon).to.equal('#icon-blocks');
     expect(view.openModal).to.be.a('function');
-    // The modal view opts out of the generic inline-panel loader.
-    expect(view.load).to.be.undefined;
+    const el = await view.load();
+    expect(el.localName).to.equal('ew-panel-library');
+    expect(el.extension).to.equal(ext);
   });
 
   it('leaves non-blocks extensions on the standard inline/load experience', () => {
@@ -1263,6 +1350,19 @@ describe('extensionToPanelView', () => {
     expect(view.cacheKey).to.be.undefined;
     expect(view.load).to.be.a('function');
     expect(view.openModal).to.be.undefined;
+  });
+
+  it('loads the aem-assets-panel extension as an ew-canvas-assets element', async () => {
+    const ext = { name: 'aem-assets-panel', title: 'AEM Assets Panel', experience: 'inline', org: 'org', site: 'site' };
+    const view = extensionToPanelView(ext, 'Library');
+    expect(view.id).to.equal('aem-assets-panel');
+    expect(view.experience).to.equal('inline');
+    expect(view.cacheKey).to.equal('[]');
+    expect(view.loadModal).to.be.a('function');
+    const el = await view.load();
+    expect(el.tagName).to.equal('EW-CANVAS-ASSETS');
+    expect(el.org).to.equal('org');
+    expect(el.site).to.equal('site');
   });
 
   it('gives configured extensions a source cache key', () => {
@@ -1505,6 +1605,21 @@ describe('getCanvasToolPanelViews', () => {
     expect(preflight).to.include({ label: 'Preflight', firstParty: true });
     expect(preflight.cacheKey).to.equal(undefined);
   });
+
+  it('includes only the AEM assets rail panel with a modal pop-out', async () => {
+    const REPO = { key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' };
+    setDaConfigs([{ data: [REPO] }]);
+    const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
+    const panelView = views.find((v) => v.id === 'aem-assets-panel');
+    expect(panelView).to.exist;
+    expect(panelView.section).to.equal('Library');
+    expect(panelView.experience).to.equal('inline');
+    expect(panelView.label).to.equal('AEM Assets');
+    expect(panelView.loadModal).to.be.a('function');
+    expect(panelView.cacheKey).to.not.equal(undefined);
+    const ids = views.map((v) => v.id);
+    expect(ids).to.not.include('aem-assets');
+  });
 });
 
 describe('EW panel helpers fetchExtensions', () => {
@@ -1516,14 +1631,16 @@ describe('EW panel helpers fetchExtensions', () => {
   it('loads the AEM assets panel when configured without a library sheet', async () => {
     setDaConfigs([{ data: [REPO] }]);
     const names = (await fetchExtensions('org', 'site')).map((e) => e.name);
-    expect(names).to.include('aem-assets');
+    expect(names).to.not.include('aem-assets');
+    expect(names).to.include('aem-assets-panel');
   });
 
   it('loads the AEM assets panel alongside configured library tools', async () => {
     setDaConfigs([{ library: { data: [blocksRow] }, data: [REPO] }]);
     const names = (await fetchExtensions('org', 'site')).map((e) => e.name);
     expect(names).to.include('blocks');
-    expect(names).to.include('aem-assets');
+    expect(names).to.not.include('aem-assets');
+    expect(names).to.include('aem-assets-panel');
   });
 
   it('omits the AEM assets panel when no repository is configured', async () => {
@@ -1531,6 +1648,7 @@ describe('EW panel helpers fetchExtensions', () => {
     const names = (await fetchExtensions('org', 'site')).map((e) => e.name);
     expect(names).to.include('blocks');
     expect(names).to.not.include('aem-assets');
+    expect(names).to.not.include('aem-assets-panel');
   });
 
   it('returns an empty list when there are no valid configs', async () => {

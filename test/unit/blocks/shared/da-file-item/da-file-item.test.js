@@ -1,47 +1,47 @@
 /* eslint-disable no-underscore-dangle, max-statements-per-line, max-len */
 import { expect } from '@esm-bundle/chai';
-import { setNx } from '../../../../../../scripts/utils.js';
+import { setNx } from '../../../../../scripts/utils.js';
 
-describe('DaListItem', () => {
-  let DaListItem;
+describe('DaFileItem', () => {
+  let DaFileItem;
 
   before(async () => {
     setNx('/test/fixtures/nx', { hostname: 'example.com' });
-    const mod = await import('../../../../../../blocks/browse/v2/da-list-item/da-list-item.js');
-    DaListItem = mod.default;
+    const mod = await import('../../../../../blocks/shared/da-file-item/da-file-item.js');
+    DaFileItem = mod.default;
   });
 
   describe('handleRename', () => {
     it('lowercases and replaces invalid chars with hyphens', () => {
-      const el = new DaListItem();
+      const el = new DaFileItem();
       const target = { value: 'Foo Bar' };
       el.handleRename({ target });
       expect(target.value).to.equal('foo-bar');
     });
 
     it('collapses consecutive invalid chars into a single hyphen', () => {
-      const el = new DaListItem();
+      const el = new DaFileItem();
       const target = { value: 'foo!!bar' };
       el.handleRename({ target });
       expect(target.value).to.equal('foo-bar');
     });
 
     it('collapses an invalid char typed right after an existing hyphen', () => {
-      const el = new DaListItem();
+      const el = new DaFileItem();
       const target = { value: 'foo-!' };
       el.handleRename({ target });
       expect(target.value).to.equal('foo-');
     });
 
     it('preserves a single trailing hyphen during typing', () => {
-      const el = new DaListItem();
+      const el = new DaFileItem();
       const target = { value: 'foo!' };
       el.handleRename({ target });
       expect(target.value).to.equal('foo-');
     });
 
     it('preserves a valid hyphen between alphanumeric chars', () => {
-      const el = new DaListItem();
+      const el = new DaFileItem();
       const target = { value: 'foo-bar' };
       el.handleRename({ target });
       expect(target.value).to.equal('foo-bar');
@@ -58,7 +58,7 @@ describe('DaListItem', () => {
     }
 
     it('strips trailing hyphen from the submitted name before renaming', async () => {
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el.name = 'original';
       el.path = '/org/repo/folder/original';
       el.ext = '';
@@ -90,7 +90,7 @@ describe('DaListItem', () => {
     });
 
     it('treats a submission that sanitizes to the original name as a no-op', async () => {
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el.name = 'foo';
       el.path = '/org/repo/foo';
       el.ext = '';
@@ -118,7 +118,7 @@ describe('DaListItem', () => {
       // handleRenameSubmit waits 2s via delay() before clearing the status,
       // so we need more than mocha's 2s default test timeout.
       this.timeout(5000);
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el.name = 'original';
       el.path = '/org/repo/original';
       el.ext = '';
@@ -145,7 +145,7 @@ describe('DaListItem', () => {
     });
 
     it('cancels without renaming when submitter value is cancel', async () => {
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el.name = 'foo';
       el.path = '/org/repo/foo';
 
@@ -169,7 +169,7 @@ describe('DaListItem', () => {
 
     it('does not move when destination already exists', async function test() {
       this.timeout(5000);
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el.name = 'foo';
       el.path = '/org/repo/foo';
 
@@ -199,7 +199,7 @@ describe('DaListItem', () => {
     });
 
     it('Sets an error status when the move call fails', async () => {
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el.name = 'orig';
       el.path = '/org/repo/orig';
 
@@ -231,7 +231,7 @@ describe('DaListItem', () => {
 
   describe('handleChecked', () => {
     it('Toggles isChecked and dispatches a checked event with shiftKey', () => {
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el.isChecked = false;
       let detail;
       el.dispatchEvent = (e) => { detail = e.detail; };
@@ -241,7 +241,7 @@ describe('DaListItem', () => {
     });
 
     it('Defaults shiftKey to false when no event is provided', () => {
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el.isChecked = true;
       let detail;
       el.dispatchEvent = (e) => { detail = e.detail; };
@@ -253,7 +253,7 @@ describe('DaListItem', () => {
 
   describe('notifyRenamed', () => {
     it('Dispatches a renamecompleted event with the new and old paths', () => {
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el.name = 'newname';
       el.path = '/org/repo/newname';
       el.date = 12345;
@@ -272,7 +272,7 @@ describe('DaListItem', () => {
 
   describe('setStatus', () => {
     it('Dispatches an onstatus event', () => {
-      const el = new DaListItem();
+      const el = new DaFileItem();
       let detail;
       el.dispatchEvent = (e) => { detail = e.detail; };
       el.setStatus('Hi', 'desc', 'info');
@@ -287,13 +287,13 @@ describe('DaListItem', () => {
 
     it('Returns true when source HEAD returns 200', async () => {
       window.fetch = () => Promise.resolve(new Response(null, { status: 200 }));
-      const el = new DaListItem();
+      const el = new DaFileItem();
       expect(await el.doesFileExist('/org/repo/x')).to.be.true;
     });
 
     it('Returns false for non-200 responses', async () => {
       window.fetch = () => Promise.resolve(new Response(null, { status: 404 }));
-      const el = new DaListItem();
+      const el = new DaFileItem();
       expect(await el.doesFileExist('/org/repo/x')).to.be.false;
     });
   });
@@ -311,7 +311,7 @@ describe('DaListItem', () => {
         }),
         { status: 200 },
       ));
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el.path = '/org/repo/page.html';
       await el.updateAEMStatus();
       expect(el._preview.status).to.equal(200);
@@ -322,7 +322,7 @@ describe('DaListItem', () => {
 
     it('Falls back to 401 when AEM admin returns nothing', async () => {
       window.fetch = () => Promise.resolve(new Response('', { status: 500 }));
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el.path = '/org/repo/page.html';
       await el.updateAEMStatus();
       expect(el._preview).to.deep.equal({ status: 401 });
@@ -339,7 +339,7 @@ describe('DaListItem', () => {
           live: { status: 200, url: 'l', lastModified: null },
         }), { status: 200 }));
       };
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el.ext = 'html';
       el.path = '/org/repo/page.html';
       await el.updateAEMStatus();
@@ -358,7 +358,7 @@ describe('DaListItem', () => {
           live: { status: 200, url: 'l', lastModified: null },
         }), { status: 200 }));
       };
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el.ext = 'json';
       el.path = '/org/repo/data.json';
       await el.updateAEMStatus();
@@ -375,7 +375,7 @@ describe('DaListItem', () => {
 
     it('Sets version to 0 and anonymous when the version list is empty', async () => {
       window.fetch = () => Promise.resolve(new Response('[]', { status: 200 }));
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el.path = '/org/repo/page';
       await el.updateDAStatus();
       expect(el._version).to.equal(0);
@@ -389,7 +389,7 @@ describe('DaListItem', () => {
         { timestamp: 3, url: '/versionsource/y', users: [{ email: 'JANE@example.com' }, { email: 'JIM@example.com' }] },
       ];
       window.fetch = () => Promise.resolve(new Response(JSON.stringify(list), { status: 200 }));
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el.path = '/org/repo/page';
       await el.updateDAStatus();
       expect(el._version).to.equal(2);
@@ -398,7 +398,7 @@ describe('DaListItem', () => {
 
     it('Returns early when version list fetch fails', async () => {
       window.fetch = () => Promise.resolve(new Response('boom', { status: 500 }));
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el.path = '/org/repo/page';
       el._version = 99;
       await el.updateDAStatus();
@@ -428,7 +428,7 @@ describe('DaListItem', () => {
         // versions.list
         return Promise.resolve(new Response(JSON.stringify(list), { status: 200 }));
       };
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el.path = '/hlx6org/hlx6site/page';
       await el.updateDAStatus();
       expect(el._version).to.equal(2);
@@ -445,7 +445,7 @@ describe('DaListItem', () => {
         }
         return Promise.resolve(new Response('[]', { status: 200 }));
       };
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el.path = '/hlx6org2/hlx6site2/page';
       await el.updateDAStatus();
       expect(el._version).to.equal(0);
@@ -455,7 +455,7 @@ describe('DaListItem', () => {
 
   describe('toggleDetails', () => {
     it('Opens the details and triggers status updates', async () => {
-      const el = document.createElement('da-list-item');
+      const el = document.createElement('da-file-item');
       document.body.append(el);
       let aem = false;
       let da = false;
@@ -469,7 +469,7 @@ describe('DaListItem', () => {
     });
 
     it('Clears state when closing', () => {
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el._detailsOpen = true;
       el._preview = { status: 200 };
       el._live = { status: 200 };
@@ -486,18 +486,18 @@ describe('DaListItem', () => {
 
   describe('renderAemDate', () => {
     it('Returns "Checking" when env property is absent', () => {
-      const el = new DaListItem();
+      const el = new DaFileItem();
       expect(el.renderAemDate('_preview')).to.equal('Checking');
     });
 
     it('Returns "Not previewed" when lastModified is null', () => {
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el._preview = { status: 200 };
       expect(el.renderAemDate('_preview')).to.equal('Not previewed');
     });
 
     it('Returns formatted date+time when lastModified is set', () => {
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el._preview = { status: 200, lastModified: { date: '2024-01-01', time: '12:00' } };
       expect(el.renderAemDate('_preview')).to.equal('2024-01-01 12:00');
     });
@@ -505,12 +505,12 @@ describe('DaListItem', () => {
 
   describe('renderDate', () => {
     it('Returns nothing when no date is set', () => {
-      const el = new DaListItem();
+      const el = new DaFileItem();
       expect(el.renderDate()).to.not.equal(undefined);
     });
 
     it('Formats a numeric timestamp to date and time', () => {
-      const el = new DaListItem();
+      const el = new DaFileItem();
       // 2024-01-01T00:00:00Z
       el.date = 1704067200000;
       const result = el.renderDate();
@@ -540,7 +540,7 @@ describe('DaListItem', () => {
       };
       window.fetch = () => Promise.resolve(new Response(JSON.stringify(json), { status: 200 }));
 
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el.path = '/org/repo/folder/page';
       await el.updateAEMStatus();
 
@@ -559,7 +559,7 @@ describe('DaListItem', () => {
       };
       window.fetch = () => Promise.resolve(new Response(JSON.stringify(json), { status: 200 }));
 
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el.path = '/org/repo/folder/page';
       await el.updateAEMStatus();
 
@@ -570,7 +570,7 @@ describe('DaListItem', () => {
     it('falls back to status 401 on _preview and _live when aemAdmin returns undefined', async () => {
       window.fetch = () => Promise.resolve(new Response(null, { status: 500 }));
 
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el.path = '/org/repo/folder/page';
       await el.updateAEMStatus();
 
@@ -581,25 +581,25 @@ describe('DaListItem', () => {
 
   describe('renderAemDate', () => {
     it('returns "Checking" when the env state is not yet populated', () => {
-      const el = new DaListItem();
+      const el = new DaFileItem();
       expect(el.renderAemDate('_preview')).to.equal('Checking');
       expect(el.renderAemDate('_live')).to.equal('Checking');
     });
 
     it('returns "Not previewed" for _preview without lastModified', () => {
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el._preview = { status: 200, url: 'x', lastModified: null };
       expect(el.renderAemDate('_preview')).to.equal('Not previewed');
     });
 
     it('returns "Not published" for _live without lastModified', () => {
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el._live = { status: 200, url: 'x', lastModified: null };
       expect(el.renderAemDate('_live')).to.equal('Not published');
     });
 
     it('returns the formatted date+time when lastModified is set', () => {
-      const el = new DaListItem();
+      const el = new DaFileItem();
       el._preview = { status: 200, url: 'x', lastModified: { date: 'Jan 1, 2026', time: '12:00 PM' } };
       expect(el.renderAemDate('_preview')).to.equal('Jan 1, 2026 12:00 PM');
     });
@@ -613,7 +613,7 @@ describe('DaListItem', () => {
     });
 
     it('uses redirect titles and redirect hrefs when _live.redirect is set', async () => {
-      el = document.createElement('da-list-item');
+      el = document.createElement('da-file-item');
       el.ext = 'html';
       el.editor = '/edit#';
       el.path = '/org/repo/folder/page.html';
@@ -636,7 +636,7 @@ describe('DaListItem', () => {
     });
 
     it('uses default titles and url hrefs when redirect is absent', async () => {
-      el = document.createElement('da-list-item');
+      el = document.createElement('da-file-item');
       el.ext = 'html';
       el.editor = '/edit#';
       el.path = '/org/repo/folder/page.html';

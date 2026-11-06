@@ -4,6 +4,7 @@ import { getInstrumentedHTMLForSDK } from '../editor-utils/editor-utils.js';
 import { getNx } from '../../../scripts/utils.js';
 import { getPostMessageTargetOrigin, isRequestId, isValidHref, replyToGetSelection } from '../../shared/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
+import { chatTurnCompleted } from '../../shared/chat-panel.js';
 import { getCanvasBranch } from '../utils/branch.js';
 import { routeComparisonMessage } from '../ew-comparison/comparison.js';
 
@@ -32,7 +33,10 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   let unsubscribeDoc;
   let unsubscribeHtml;
   let unsubscribeSelect;
+  let unsubscribeTurn;
   let lastBlockIndex = null;
+  let dragSource;
+  let destroyed = false;
 
   const selectionFor = (editorView) => {
     const index = getActiveBlockIndex(editorView);
@@ -83,6 +87,40 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
 
   channel.port1.onmessage = (e) => {
     const { action, details } = e.data || {};
+    if (action === 'subscribeChatTurnCompleted') {
+      unsubscribeTurn ??= chatTurnCompleted.subscribe((detail) => {
+        if (detail?.org !== org || detail.site !== site
+          || (detail.path || '').replace(/^\/+/, '') !== (path || '').replace(/^\/+/, '')) return;
+        channel.port1.postMessage({ action: 'chatTurnCompleted', detail });
+      });
+      return;
+    }
+    if (action === 'unsubscribeChatTurnCompleted') {
+      unsubscribeTurn?.();
+      unsubscribeTurn = undefined;
+      return;
+    }
+    if (['dragStart', 'dragMove', 'dragFinish', 'dragCancel'].includes(action)) {
+      if (['dragStart', 'dragFinish'].includes(action) && !isRequestId(e.data.requestId)) return;
+      dragSource ??= import('../drop/sources/sdk.js').then(({ createSdkDragSource }) => (
+        destroyed ? null : createSdkDragSource({
+          iframe,
+          getView,
+          page: { org, site, path },
+          notify: (result) => {
+            if (!destroyed) channel.port1.postMessage({ action: 'dragResult', details: result });
+          },
+        })
+      ));
+      dragSource.then((source) => source?.handle(e.data))
+        .catch(() => ({ ok: false, error: 'invalid-drag-data' }))
+        .then((result) => {
+          if (!destroyed && isRequestId(e.data.requestId)) {
+            channel.port1.postMessage({ action: 'sdkResponse', requestId: e.data.requestId, result });
+          }
+        });
+      return;
+    }
     if (action === 'subscribeLiveDocument') {
       if (!subscribed) {
         subscribed = true;
@@ -221,7 +259,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
         project: context,
         context,
         token,
-        capabilities: { liveDocument: 1, sendHTMLReplace: 1 },
+        capabilities: { liveDocument: 1, sendHTMLReplace: 1, chatTurnCompleted: 1, dragDrop: 1 },
       },
       targetOrigin,
       [channel.port2],
@@ -235,7 +273,11 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   document.addEventListener(CHAT_EVENT.AGENT_CHANGE, onAgentChange);
 
   const destroy = () => {
+    destroyed = true;
+    dragSource?.then((source) => source?.destroy(), () => {});
     stopSubscription();
+    unsubscribeTurn?.();
+    unsubscribeTurn = undefined;
     clearTimeout(readyTimer);
     document.removeEventListener(CHAT_EVENT.AGENT_CHANGE, onAgentChange);
     channel.port1.close();

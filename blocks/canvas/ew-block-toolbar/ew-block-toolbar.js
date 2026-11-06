@@ -1,10 +1,12 @@
 import { LitElement, html, nothing } from 'da-lit';
+import { NodeSelection } from 'da-y-wrapper';
 import { getNx } from '../../../scripts/utils.js';
 import { getBlocksExtension, loadBlockLibrary } from '../ew-panel-extensions/helpers.js';
 import { replaceBlockRange, setTableBlockVariant, appendBlockRow } from '../editor-utils/blocks.js';
 import { isMultiBlock, getMultiBlockTemplateRow } from '../editor-utils/multi-block.js';
 import { requestComment } from '../editor-utils/command-helpers.js';
 import { canvasBus } from '../utils/canvas-bus.js';
+import { toolbarController } from '../editor-utils/toolbar-controller.js';
 import { blockLabel } from '../ew-page-outline/drop-targets.js';
 
 const nx = getNx();
@@ -18,13 +20,34 @@ function normalizeBlockName(name) {
   return (name || '').toLowerCase().replace(/[\s_-]+/g, ' ').trim();
 }
 
-/** Split a library variant entry into its base block name and variant descriptor. */
-export function splitLibraryVariant(variant) {
-  const name = variant?.name || '';
-  const match = name.match(/^(.*\S)\s*\(([^)]+)\)\s*$/);
-  if (match) return { base: match[1].trim(), variant: match[2].trim() };
-  if (variant?.variants) return { base: name, variant: variant.variants };
-  return { base: name, variant: '' };
+function parseVariants(variant) {
+  return (variant || '').split(',').map((v) => v.trim()).filter(Boolean);
+}
+
+/** Variants the library offers for `blockName`, deduped loosely (first spelling wins). */
+export function collectLibraryVariants(items, blockName) {
+  const target = normalizeBlockName(blockName);
+  const found = new Map();
+  (items || []).forEach((item) => {
+    (item?.identities || []).forEach(({ name, variants }) => {
+      if (normalizeBlockName(name) !== target) return;
+      variants.forEach((v) => {
+        const key = normalizeBlockName(v);
+        if (!found.has(key)) found.set(key, v);
+      });
+    });
+  });
+  return [...found.values()];
+}
+
+/** The header variant string after a picker `change` (no `values` = Clear all). */
+export function nextVariants(current, { value, values, selected }) {
+  if (!values) return '';
+  const list = parseVariants(current);
+  const next = selected
+    ? [...list, value]
+    : list.filter((v) => normalizeBlockName(v) !== normalizeBlockName(value));
+  return next.join(', ');
 }
 
 class EwBlockToolbar extends LitElement {
@@ -43,13 +66,39 @@ class EwBlockToolbar extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [styles];
+    this._unsubscribeSelection = canvasBus.toolbarSelectionState
+      .subscribe((detail) => this._onSelectionState(detail));
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this._unsubscribeSelection?.();
+  }
+
+  _selectedBlockPos() {
+    const selection = this.view?.state.selection;
+    return selection instanceof NodeSelection ? selection.from : null;
+  }
+
+  /** Clicks in the cross-origin iframe never reach the picker's outside-click
+   * handler, so close it when the user's selection leaves this block instead.
+   * Our own toggles keep the same block selected, so they don't close it. */
+  _onSelectionState({ surface, block }) {
+    if (surface !== 'wysiwyg') return;
+    const pos = this._selectedBlockPos();
+    const moved = !block || pos === null || pos !== this._blockPos;
+    if (pos !== null) this._blockPos = pos;
+    const picker = this.shadowRoot?.querySelector('nx-picker');
+    if (moved && picker?.open) {
+      picker.close();
+      toolbarController.refresh();
+    }
   }
 
   updated(changed) {
     if (changed.has('org') || changed.has('site')) {
       this._checkBlockLibrary();
     }
-    this._syncVariantPicker();
   }
 
   async _checkBlockLibrary() {
@@ -67,17 +116,10 @@ class EwBlockToolbar extends LitElement {
     this._variantOptions = [];
     if (!this.org || !this.site || !blockName) return;
     const { blocks } = await loadBlockLibrary(this.org, this.site);
-    const target = normalizeBlockName(blockName);
-    const found = new Set();
-    await Promise.all((blocks || []).map(async (block) => {
-      const variants = (await block.loadVariants) || [];
-      variants.forEach((v) => {
-        const { base, variant } = splitLibraryVariant(v);
-        if (variant && normalizeBlockName(base) === target) found.add(variant);
-      });
-    }));
+    const items = (await Promise.all((blocks || []).map((block) => block.loadVariants)))
+      .flatMap((variants) => variants || []);
     if (this._blockName !== blockName) return;
-    this._variantOptions = [...found];
+    this._variantOptions = collectLibraryVariants(items, blockName);
   }
 
   async _loadMultiBlock(blockName) {
@@ -98,35 +140,39 @@ class EwBlockToolbar extends LitElement {
     this.view.focus();
   }
 
-  get _picker() { return this.shadowRoot?.querySelector('nx-picker'); }
-
-  _variantPickerItems() {
-    return [
-      { section: 'Variant' },
-      { value: '', label: 'No variant' },
-      ...(this._variantOptions || []).map((v) => ({ value: v, label: v })),
-    ];
+  /** Library options plus any current variant the library doesn't list; `values` uses
+   * the option spelling so the picker's exact-match checkmarks line up. */
+  _variantState() {
+    const options = [...(this._variantOptions || [])];
+    const values = parseVariants(this._currentVariant).map((v) => {
+      const match = options.find((o) => normalizeBlockName(o) === normalizeBlockName(v));
+      if (match) return match;
+      options.push(v);
+      return v;
+    });
+    return { options, values };
   }
 
-  _syncVariantPicker() {
-    const picker = this._picker;
-    if (!picker) return;
-    const current = this._currentVariant ?? '';
-    const match = (this._variantOptions || [])
-      .find((v) => normalizeBlockName(v) === normalizeBlockName(current));
-    if (match) {
-      picker.value = match;
-      picker.labelOverride = '';
-    } else {
-      picker.value = '';
-      picker.labelOverride = current;
-    }
+  _variantPickerItems(options) {
+    return [
+      { section: 'Variants' },
+      ...options.map((v) => ({ value: v, label: v })),
+      { divider: true },
+      { value: '', label: 'Clear all', action: true },
+    ];
   }
 
   _onVariantChange(e) {
     if (!this.view) return;
-    setTableBlockVariant(this.view, e.detail.value);
-    this.view.focus();
+    if (!e.detail.values && !parseVariants(this._currentVariant).length) return;
+    const next = nextVariants(this._currentVariant, e.detail);
+    this._currentVariant = next;
+    setTableBlockVariant(this.view, next);
+    if (toolbarController.activeSurface === 'wysiwyg') {
+      const block = { name: this._blockName, variant: next };
+      canvasBus.toolbarSelectionState.emit({ surface: 'wysiwyg', showable: false, block });
+    }
+    if (!e.detail.values) this.view.focus();
   }
 
   show(blockName, variant = '') {
@@ -135,10 +181,14 @@ class EwBlockToolbar extends LitElement {
       const { left, width } = main.getBoundingClientRect();
       this.style.setProperty('--toolbar-anchor-x', `${left + width / 2}px`);
     }
+    const sameBlock = this.open && this._blockName === blockName;
+    this._blockPos = this._selectedBlockPos();
     this._blockName = blockName;
     this._currentVariant = variant;
-    this._loadVariants(blockName);
-    this._loadMultiBlock(blockName);
+    if (!sameBlock) {
+      this._loadVariants(blockName);
+      this._loadMultiBlock(blockName);
+    }
     this.classList.add('open');
     this.requestUpdate();
   }
@@ -226,7 +276,8 @@ class EwBlockToolbar extends LitElement {
 
   render() {
     const name = this._blockName || 'Block';
-    const hasVariants = (this._variantOptions?.length ?? 0) > 0;
+    const { options, values } = this._variantState();
+    const hasVariants = options.length > 0;
     return html`
       <div class="toolbar-wrap" @mousedown=${(e) => e.preventDefault()}>
         <button
@@ -247,8 +298,10 @@ class EwBlockToolbar extends LitElement {
               class="toolbar-variant"
               placement="above"
               ignoreFocus
-              .items=${this._variantPickerItems()}
-              value=""
+              .multiple=${true}
+              placeholder="No variant"
+              .items=${this._variantPickerItems(options)}
+              .values=${values}
               @change=${(e) => this._onVariantChange(e)}
             ></nx-picker>
           </span>` : nothing}
