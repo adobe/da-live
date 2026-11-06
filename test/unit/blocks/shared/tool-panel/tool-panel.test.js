@@ -14,22 +14,80 @@ before(async () => {
   await import('../../../../../blocks/shared/tool-panel/tool-panel.js');
 });
 
-// The element is used detached (never appended), so Lit never runs an update
-// cycle — we call the changed methods directly. The 'modal' branch of showPanel
-// returns before touching the shadow root, so this stays safe without rendering.
+/**
+ * Creates a tool panel that is never attached, so it never renders. Tests
+ * call its methods directly.
+ *
+ * @param {Array<object>} views - The panel's views.
+ * @returns {HTMLElement} The detached panel.
+ */
 function createPanel(views) {
   const panel = document.createElement('da-tool-panel');
   panel.views = views;
   return panel;
 }
 
+/**
+ * Creates a promise that the test resolves itself.
+ *
+ * @returns {{ promise: Promise<unknown>, resolve: Function }} The promise and
+ *   the function that resolves it.
+ */
 function deferred() {
   let resolve;
   const promise = new Promise((res) => { resolve = res; });
   return { promise, resolve };
 }
 
+/**
+ * Waits one task, so pending promise callbacks and earlier timers run first.
+ *
+ * @returns {Promise<void>} Resolves on the next task.
+ */
 const nextTask = () => new Promise((resolve) => { setTimeout(resolve); });
+
+/**
+ * Replaces the resize observer and animation frames with versions the test
+ * triggers itself, because a test page in a background tab renders no frames.
+ *
+ * @returns {{ resize: () => void, restore: () => void }} Triggers the
+ *   observed resizes and restores the browser's own versions.
+ */
+function stubResizeFrames() {
+  const { ResizeObserver, requestAnimationFrame, cancelAnimationFrame } = window;
+  const originals = { ResizeObserver, requestAnimationFrame, cancelAnimationFrame };
+  const callbacks = new Set();
+  window.ResizeObserver = class {
+    /**
+     * Keeps the callback until something is observed.
+     *
+     * @param {Function} callback - The resize callback.
+     */
+    constructor(callback) {
+      this.callback = callback;
+    }
+
+    /**
+     * Starts calling back on each triggered resize.
+     */
+    observe() {
+      callbacks.add(this.callback);
+    }
+
+    /**
+     * Stops calling back.
+     */
+    disconnect() {
+      callbacks.delete(this.callback);
+    }
+  };
+  window.requestAnimationFrame = (callback) => setTimeout(callback);
+  window.cancelAnimationFrame = (id) => clearTimeout(id);
+  return {
+    resize: () => callbacks.forEach((callback) => callback([])),
+    restore: () => Object.assign(window, originals),
+  };
+}
 
 describe('DaToolPanel — modal experience', () => {
   describe('_pickerItemsFromViews', () => {
@@ -287,6 +345,10 @@ describe('DaToolPanel selected panels', () => {
   });
 
   it('fades only overflowing edges and updates when scrolling, resizing, or removing tabs', async () => {
+    const frames = stubResizeFrames();
+    panel.remove();
+    document.body.append(panel);
+    await panel.updateComplete;
     const sheet = new CSSStyleSheet();
     await sheet.replace(await (await fetch('/blocks/shared/tool-panel/tool-panel.css')).text());
     panel.shadowRoot.adoptedStyleSheets = [...panel.shadowRoot.adoptedStyleSheets, sheet];
@@ -299,36 +361,36 @@ describe('DaToolPanel selected panels', () => {
       list.dispatchEvent(new Event('scroll'));
       await panel.updateComplete;
     };
+    const resize = async (width) => {
+      panel.style.width = width;
+      frames.resize();
+      await nextTask();
+      await panel.updateComplete;
+    };
     const edges = () => [
       list.hasAttribute('data-overflow-left'), list.hasAttribute('data-overflow-right'),
     ];
-    await scroll(0);
-    expect(edges()).to.deep.equal([false, true]);
-    expect(panel.shadowRoot.querySelector('.tool-panel-tabs-divider')).not.to.equal(null);
-    await scroll((list.scrollWidth - list.clientWidth) / 2);
-    expect(edges()).to.deep.equal([true, true]);
-    await scroll(list.scrollWidth);
-    expect(edges()).to.deep.equal([true, false]);
+    try {
+      await scroll(0);
+      expect(edges()).to.deep.equal([false, true]);
+      expect(!!panel.shadowRoot.querySelector('.tool-panel-tabs-divider')).to.be.true;
+      await scroll((list.scrollWidth - list.clientWidth) / 2);
+      expect(edges()).to.deep.equal([true, true]);
+      await scroll(list.scrollWidth);
+      expect(edges()).to.deep.equal([true, false]);
 
-    panel.style.width = '600px';
-    await new Promise((resolve) => {
-      requestAnimationFrame(() => requestAnimationFrame(resolve));
-    });
-    await nextTask();
-    await panel.updateComplete;
-    expect(edges()).to.deep.equal([false, false]);
-    expect(panel.shadowRoot.querySelector('.tool-panel-tabs-divider')).to.equal(null);
-    panel.style.width = '160px';
-    await new Promise((resolve) => {
-      requestAnimationFrame(() => requestAnimationFrame(resolve));
-    });
-    await nextTask();
-    await panel.updateComplete;
-    expect(edges()).to.deep.equal([false, true]);
-    await select('blocks', false);
-    await select('assets', false);
-    expect(edges()).to.deep.equal([false, false]);
-    expect(panel.shadowRoot.querySelector('.tool-panel-tabs-divider')).to.equal(null);
+      await resize('600px');
+      expect(edges()).to.deep.equal([false, false]);
+      expect(!!panel.shadowRoot.querySelector('.tool-panel-tabs-divider')).to.be.false;
+      await resize('160px');
+      expect(edges()).to.deep.equal([false, true]);
+      await select('blocks', false);
+      await select('assets', false);
+      expect(edges()).to.deep.equal([false, false]);
+      expect(!!panel.shadowRoot.querySelector('.tool-panel-tabs-divider')).to.be.false;
+    } finally {
+      frames.restore();
+    }
   });
 
   it('opens Files and Outline as default tabs in a new session', async () => {
