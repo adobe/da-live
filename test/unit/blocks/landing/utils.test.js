@@ -2,7 +2,9 @@ import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import '../../setup-nx.js';
 import { getBrowseHref, getFileHref, getListItems, loadFiles } from '../../../../blocks/landing/utils.js';
+import { getNx2Api } from '../../../../scripts/utils.js';
 
+const { source } = await getNx2Api();
 const HREF = 'https://fileitem--da-live--adobe.aem.live/?landing=true&nx=main&nxver=2&quick-edit=test&theme=light&rum=on#/org/site';
 
 describe('Content data and destinations on main', () => {
@@ -24,13 +26,23 @@ describe('Content data and destinations on main', () => {
     });
   });
 
-  it('opens folders and link-file parent directories in Browse without fetching link destinations', () => {
+  it('opens folders in Browse', () => {
     const folder = getFileHref({ item: { path: '/org/site/folder' }, href: HREF });
-    const link = getFileHref({ item: { path: '/org/site/folder/a.link', ext: 'link' }, href: HREF });
-    expect(link).to.equal(folder);
     expect(new URL(folder).hash).to.equal('#/org/site/folder');
     expect(new URL(folder).searchParams.get('browse')).to.equal('2');
     expect(new URL(getBrowseHref({ href: HREF })).hash).to.equal('');
+  });
+
+  it('resolves link files to their saved destination using shared navigation', async () => {
+    const path = '/org/site/folder/a.link';
+    const externalUrl = 'https://example.com/destination?view=full#section';
+    const get = sinon.stub(source, 'get').resolves({ ok: true, json: async () => ({ externalUrl }) });
+    try {
+      expect(await getFileHref({ item: { path, ext: 'link' }, href: HREF })).to.equal(externalUrl);
+      expect(get.calledOnceWithExactly(path)).to.equal(true);
+    } finally {
+      get.restore();
+    }
   });
 
   it('does not send preview parameters to external editors or invent a theme override', () => {

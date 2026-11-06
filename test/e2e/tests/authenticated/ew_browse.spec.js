@@ -13,11 +13,9 @@ import { getQuery } from '../../utils/page.js';
  * document at /da-testautomation/ewtest-nochat/demo.
  */
 
-const query = new URLSearchParams(getQuery());
-query.set('browse', '2');
-const EW_SITE = `${ENV}/?${query}#/da-testautomation/ewtest`;
-const EW_SITE_NO_CHAT = `${ENV}/?${query}#/da-testautomation/ewtest-nochat`;
-const NON_EW_SITE = `${ENV}/?${query}#/da-testautomation/acltest/testdocs/subdir`;
+const EW_SITE = `${ENV}/${getQuery()}#/da-testautomation/ewtest`;
+const EW_SITE_NO_CHAT = `${ENV}/${getQuery()}#/da-testautomation/ewtest-nochat`;
+const NON_EW_SITE = `${ENV}/${getQuery()}#/da-testautomation/acltest/testdocs/subdir`;
 
 test('Chat button is visible on EW-enabled site', async ({ page }) => {
   await page.goto(EW_SITE);
@@ -32,13 +30,13 @@ test('Document links use canvas editor on EW-enabled site', async ({ page }) => 
 test('Chat button is absent on non-EW site', async ({ page }) => {
   await page.goto(NON_EW_SITE);
   // Wait for the list to render before asserting absence
-  await expect(page.locator('da-file-item').first()).toBeVisible();
+  await expect(page.locator('da-list-item').first()).toBeVisible();
   await expect(page.locator('button.chat-btn')).toHaveCount(0);
 });
 
 test('Chat button is absent when ew.disableChat is set, even with EW enabled', async ({ page }) => {
   await page.goto(EW_SITE_NO_CHAT);
-  await expect(page.locator('da-file-item').first()).toBeVisible();
+  await expect(page.locator('da-list-item').first()).toBeVisible();
   await expect(page.locator('button.chat-btn')).toHaveCount(0);
 });
 

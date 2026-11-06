@@ -547,6 +547,26 @@ describe('landing Content section', () => {
     expect(get.called).to.equal(false);
   });
 
+  ['card', 'list'].forEach((view) => {
+    it(`opens link shortcuts at their saved destination in ${view} view`, async () => {
+      const path = '/org/site/reference.link';
+      const externalUrl = 'https://example.com/destination?view=full#section';
+      const get = sinon.stub(source, 'get').resolves({ ok: true, json: async () => ({ externalUrl }) });
+      el._files = [{ name: 'reference', path, ext: 'link' }];
+      el.changeView({ detail: { value: view } });
+      await updateLanding();
+      const item = fileItems()[0];
+      await item.href;
+      await item.updateComplete;
+      const links = [...item.shadowRoot.querySelectorAll(
+        view === 'card' ? '.card-preview, [slot="heading"]' : '.da-item-list-item-title',
+      )];
+      expect(links).to.have.length(view === 'card' ? 2 : 1);
+      expect(links.every((link) => link.getAttribute('href') === externalUrl)).to.equal(true);
+      expect(get.calledOnceWithExactly(path)).to.equal(true);
+    });
+  });
+
   it('preserves Recent order and persists favorites once through the shared list in both views', async () => {
     toggleFavorite('/org/site', ITEMS[2].path);
     el.refreshFavorites();

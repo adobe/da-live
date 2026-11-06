@@ -94,10 +94,10 @@ opt-in Folder column leaves Browse's default Type column unchanged.
 HTML respects the same per-file `editor.path` settings as Browse. The most
 specific matching path wins; site settings win ties with org settings. Unconfigured
 HTML uses Canvas when EW is enabled and the classic editor otherwise. Sheets
-and media use the existing shared routing helper. Folders and `.link` files
-open Browse; links open their parent directory rather than requesting an editor.
-Same-origin destinations preserve the active preview parameters. External
-editor URLs do not receive them. `landing=home` exits the Content opt-in; this
+and media use the existing shared routing helper. Folders open Browse.
+`.link` shortcuts resolve to their saved URL through the shared navigation helper.
+Same-origin editor and Browse destinations preserve the active preview parameters.
+External editor URLs do not receive them. `landing=home` exits the Content opt-in; this
 feature does not change the shell's Home destination. The root opt-in is handled
 by the existing Browse router rather than overriding site and folder routes.
 

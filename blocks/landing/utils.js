@@ -12,10 +12,8 @@ export function getBrowseHref({ path = '', href = window.location.href }) {
 }
 
 export function getFileHref({ item, href = window.location.href, editor = '/edit#' }) {
-  if (!item.ext || item.ext === 'link') {
-    const path = item.ext ? item.path.slice(0, item.path.lastIndexOf('/')) : item.path;
-    return getBrowseHref({ path, href });
-  }
+  if (item.ext === 'link') return getFileItemHref(item);
+  if (!item.ext) return getBrowseHref({ path: item.path, href });
   const url = new URL(getFileItemHref({ ...item, editor }), href);
   const current = new URL(href);
   if (url.origin !== current.origin) return url.href;
