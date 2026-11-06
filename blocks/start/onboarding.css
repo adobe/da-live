@@ -2,7 +2,7 @@
   display: block;
   box-sizing: border-box;
   min-height: calc(100vh - var(--s2-nav-height));
-  padding: 80px 24px;
+  padding: 120px var(--s2-spacing-400);
   color: var(--s2-gray-800);
   font-family: var(--s2-font-family);
   background:
@@ -30,20 +30,19 @@ p {
 
 .onboarding {
   display: grid;
-  gap: 16px;
+  gap: var(--s2-spacing-300);
   max-width: 664px;
   margin-inline: auto;
 }
 
 header {
   display: grid;
-  gap: 8px;
-  margin-bottom: 24px;
+  gap: var(--s2-spacing-100);
+  margin-bottom: var(--s2-spacing-400);
   text-align: center;
 }
 
 h1 {
-  color: var(--s2-gray-900);
   font-size: 32px;
   font-weight: 600;
   line-height: 42px;
@@ -51,37 +50,34 @@ h1 {
 }
 
 header p {
-  font-size: var(--s2-body-size-m);
+  font-size: var(--s2-body-size-l);
+  line-height: 1.5;
 }
 
 .panel {
   display: grid;
-  gap: 12px;
-  padding: 16px;
+  gap: var(--s2-spacing-200);
+  padding: var(--s2-spacing-300);
   border-radius: var(--s2-corner-radius-800);
   background: var(--s2-gray-25);
   box-shadow: 0 0 0.5px rgb(0 0 0 / 8%), 0 1px 2px rgb(0 0 0 / 4%), 0 2px 4px rgb(0 0 0 / 8%);
 }
 
-.panel-heading {
-  display: grid;
-  gap: 4px;
-}
-
 h2 {
-  color: var(--s2-gray-900);
-  font-size: var(--nx-ui-text-title, var(--s2-component-l-regular-font-size));
+  font-size: var(--nx-ui-text-title, var(--s2-component-xl-bold-font-size));
   font-weight: 700;
+  line-height: 1.25;
 }
 
-.panel-heading p,
-.tile p {
-  font-size: var(--nx-ui-text-content, var(--s2-component-m-regular-font-size));
+.panel-heading p {
+  color: var(--s2-gray-700);
+  font-size: var(--s2-body-size-m);
+  line-height: 1.5;
 }
 
 .add-site {
   display: flex;
-  gap: 8px;
+  gap: var(--s2-spacing-100);
 
   .nx-input {
     flex: 1;
@@ -92,8 +88,8 @@ h2 {
 .tiles {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  margin: 0;
+  gap: var(--s2-spacing-300);
+  margin: var(--s2-spacing-75) 0 0;
   padding: 0;
   list-style: none;
 }
@@ -102,8 +98,7 @@ h2 {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
-  padding: 16px;
+  padding: var(--s2-spacing-300);
   border-radius: var(--s2-corner-radius-500);
   background: var(--s2-gray-50);
 }
@@ -114,16 +109,18 @@ h2 {
   box-sizing: border-box;
   width: 56px;
   height: 56px;
-  margin-bottom: 4px;
+  margin-bottom: var(--s2-spacing-100);
   border: 1px solid var(--s2-gray-200);
   border-radius: var(--s2-corner-radius-500);
   background: var(--s2-gray-25);
 }
 
 h3 {
+  margin-bottom: var(--s2-spacing-75);
   color: var(--s2-gray-900);
-  font-size: var(--nx-ui-text-content, var(--s2-component-m-regular-font-size));
+  font-size: var(--s2-component-l-bold-font-size);
   font-weight: 700;
+  line-height: 1.25;
 }
 
 .tile-action {
@@ -131,19 +128,21 @@ h3 {
   align-items: center;
   box-sizing: border-box;
   margin-top: auto;
-  padding: 0 12px;
+  padding: 0 var(--s2-spacing-200);
   background: transparent;
   box-shadow: inset 0 0 0 2px var(--s2-gray-300);
   text-decoration: none;
 }
 
 .tile p {
-  margin-bottom: 8px;
+  margin-bottom: var(--s2-spacing-400);
+  font-size: var(--nx-ui-text-content, var(--s2-component-m-regular-font-size));
+  line-height: 1.5;
 }
 
 @media (width < 600px) {
   :host {
-    padding: 40px 16px;
+    padding: var(--s2-spacing-600) var(--s2-spacing-300);
   }
 
   .tiles {
