@@ -95,6 +95,19 @@ describe('sheet keyboard access', () => {
     expect(sheet.selectedCell).to.be.null;
   });
 
+  it('stays released after Escape until the grid is focused again', async () => {
+    gridEl.focus();
+    await sendKeys({ press: 'Escape' });
+    await sendKeys({ press: 'ArrowDown' });
+    expect(isReleased()).to.be.true;
+    expect(sheet.selectedCell).to.be.null;
+
+    before.focus();
+    gridEl.focus();
+    await tick();
+    expect(isCurrent()).to.be.true;
+  });
+
   it('keeps focus in the grid after a cell edit', async () => {
     gridEl.focus();
     await sendKeys({ type: 'x' });

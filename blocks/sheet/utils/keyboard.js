@@ -24,7 +24,15 @@ export default function makeKeyboardAccessible(sheet) {
 
   el.setAttribute('tabindex', '0');
 
-  el.addEventListener('focus', () => activate(sheet));
+  // After Escape, stay inactive until the grid is focused or clicked again
+  let escaped = false;
+
+  el.addEventListener('focus', () => {
+    escaped = false;
+    activate(sheet);
+  });
+
+  el.addEventListener('pointerdown', () => { escaped = false; });
 
   el.addEventListener('keydown', (e) => {
     if (sheet.edition) return;
@@ -35,10 +43,11 @@ export default function makeKeyboardAccessible(sheet) {
     }
     if (e.key === 'Escape') {
       e.stopPropagation();
+      escaped = true;
       release(sheet);
       return;
     }
-    activate(sheet);
+    if (!escaped) activate(sheet);
   });
 
   // Closing the cell editor removes the focused input, dropping focus to the body
