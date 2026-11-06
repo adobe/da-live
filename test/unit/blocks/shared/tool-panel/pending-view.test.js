@@ -9,9 +9,9 @@ await import('../../../../../blocks/shared/tool-panel/tool-panel.js');
 
 describe('da-tool-panel pendingView', () => {
   it('auto-selects pendingView and loads it once when views are assigned', async () => {
-    const el = document.createElement('da-tool-panel');
-    document.body.append(el);
-    await el.updateComplete;
+    const panel = document.createElement('da-tool-panel');
+    document.body.append(panel);
+    await panel.updateComplete;
 
     let loadCount = 0;
     const view = {
@@ -22,28 +22,28 @@ describe('da-tool-panel pendingView', () => {
 
     // Mimic openCanvasPanel: set pendingView, then assign views. No explicit
     // showPanel call — the auto-select must handle it, exactly once.
-    el.pendingView = 'comments';
-    el.views = [view];
-    await el.updateComplete;
-    await el.updateComplete;
+    panel.pendingView = 'comments';
+    panel.views = [view];
+    await panel.updateComplete;
+    await panel.updateComplete;
 
-    expect(el.activeId).to.equal('comments');
+    expect(panel.activeId).to.equal('comments');
     expect(loadCount).to.equal(1);
-    el.remove();
+    panel.remove();
   });
 });
 
 describe('da-tool-panel active view broadcast', () => {
   let aside;
-  let el;
+  let panel;
   let unsub;
 
   afterEach(() => {
     unsub?.();
-    el?.remove();
+    panel?.remove();
     aside?.remove();
     aside = null;
-    el = null;
+    panel = null;
   });
 
   it('broadcasts the active view when visible and null when the rail is hidden', async () => {
@@ -51,17 +51,17 @@ describe('da-tool-panel active view broadcast', () => {
     aside.className = 'panel';
     aside.dataset.position = 'after';
     document.body.append(aside);
-    el = document.createElement('da-tool-panel');
-    aside.append(el);
-    await el.updateComplete;
+    panel = document.createElement('da-tool-panel');
+    aside.append(panel);
+    await panel.updateComplete;
 
     const seen = [];
     unsub = canvasBus.toolPanelViewState.subscribe((view) => seen.push(view));
 
-    el.pendingView = 'comments';
-    el.views = [{ id: 'comments', label: 'Comments', load: async () => document.createElement('div') }];
-    await el.updateComplete;
-    await el.updateComplete;
+    panel.pendingView = 'comments';
+    panel.views = [{ id: 'comments', label: 'Comments', load: async () => document.createElement('div') }];
+    await panel.updateComplete;
+    await panel.updateComplete;
     expect(seen.at(-1)).to.equal('comments');
 
     aside.setAttribute('hidden', '');
