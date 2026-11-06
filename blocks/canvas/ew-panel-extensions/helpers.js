@@ -257,7 +257,12 @@ function plainHtmlUrl(path) {
 async function fetchAndParseHtml(path, isAemHosted, context) {
   try {
     const source = isAemHosted ? plainHtmlUrl(path) : path;
-    const resp = await libraryFetch(source, context, { noRedirect: true });
+    const url = new URL(source, window.location.href);
+    // DA preview composition consumes section metadata before the library can opt in.
+    const isDaSource = CONTENT_HOSTS.has(url.hostname) && !/\.html$/i.test(url.pathname);
+    const resp = isDaSource
+      ? await daFetch(source, { noRedirect: true })
+      : await libraryFetch(source, context, { noRedirect: true });
     if (!resp.ok) return { authError: isAuthFailure(resp) };
     return { doc: new window.DOMParser().parseFromString(await resp.text(), 'text/html') };
   } catch (error) {
@@ -359,8 +364,12 @@ function transformBlock(block) {
   // Extract and strip metadata before generating the block's dom, so it never
   // leaks into the content that gets copied/inserted or previewed.
   const metaEl = findMetaEl(block);
+  const md = metaEl ? getLibraryMetadata(metaEl) : {};
+  if (md['allow-section-metadata'] !== 'true') {
+    if (block.classList.contains('section-metadata')) return null;
+    block.querySelectorAll('.section-metadata').forEach((el) => el.remove());
+  }
   if (metaEl) {
-    const md = getLibraryMetadata(metaEl);
     if (md.name) item.name = md.name;
     if (md.searchtags) item.tags = md.searchtags;
     if (md.description) item.description = md.description;
@@ -394,7 +403,7 @@ export async function getBlockVariants(path, context) {
   const imageSource = isAemHosted ? plainHtmlUrl(source) : source;
   resolveLibraryImages(doc.body, imageSource, context, { variant: true });
   decorateImages(doc.body);
-  return groupBlocks(getSectionsAndBlocks(doc)).map(transformBlock);
+  return groupBlocks(getSectionsAndBlocks(doc)).map(transformBlock).filter(Boolean);
 }
 
 // ---------------------------------------------------------------------------
