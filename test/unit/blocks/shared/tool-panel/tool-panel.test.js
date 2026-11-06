@@ -7,14 +7,14 @@ import { TOOL_PANEL_PINNED_VIEWS_KEY } from '../../../../../blocks/canvas/utils/
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 before(async () => {
-  await import('../../../../../blocks/canvas/ew-tool-panel/tool-panel.js');
+  await import('../../../../../blocks/shared/tool-panel/tool-panel.js');
 });
 
 // The element is used detached (never appended), so Lit never runs an update
 // cycle — we call the changed methods directly. The 'modal' branch of showPanel
 // returns before touching the shadow root, so this stays safe without rendering.
 function createPanel(views) {
-  const el = document.createElement('ew-tool-panel');
+  const el = document.createElement('da-tool-panel');
   el.views = views;
   return el;
 }
@@ -27,7 +27,7 @@ function deferred() {
 
 const nextTask = () => new Promise((resolve) => { setTimeout(resolve); });
 
-describe('EwToolPanel — modal experience', () => {
+describe('DaToolPanel — modal experience', () => {
   describe('_pickerItemsFromViews', () => {
     ['modal', 'fullsize-dialog'].forEach((experience) => {
       it(`marks a ${experience} view as a dialog action with the fullscreen icon`, () => {
@@ -85,7 +85,7 @@ describe('EwToolPanel — modal experience', () => {
   });
 });
 
-describe('EwToolPanel selected panels', () => {
+describe('DaToolPanel selected panels', () => {
   let el;
   let savedPins;
   let loads;
@@ -106,7 +106,7 @@ describe('EwToolPanel selected panels', () => {
         return content;
       },
     }));
-    el = document.createElement('ew-tool-panel');
+    el = document.createElement('da-tool-panel');
     el.pendingView = 'files';
     el.views = views;
     document.body.append(el);
@@ -197,7 +197,7 @@ describe('EwToolPanel selected panels', () => {
     last.dispatchEvent(dragEvent('drop', transfer, end));
     await el.updateComplete;
     el.remove();
-    el = document.createElement('ew-tool-panel');
+    el = document.createElement('da-tool-panel');
     el.pendingView = 'assets';
     el.views = views;
     document.body.append(el);
@@ -231,7 +231,7 @@ describe('EwToolPanel selected panels', () => {
   it('uses a rounded drag image with transparent corners and removes it when dragging ends', async () => {
     await pinAll();
     const sheet = new CSSStyleSheet();
-    const response = await fetch('/blocks/canvas/ew-tool-panel/tool-panel.css');
+    const response = await fetch('/blocks/shared/tool-panel/tool-panel.css');
     await sheet.replace(await response.text());
     el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
     el.style.setProperty('--s2-corner-radius-400', '12px');
@@ -275,18 +275,16 @@ describe('EwToolPanel selected panels', () => {
   });
 
   it('fades only overflowing edges and updates when scrolling, resizing, or removing tabs', async () => {
-    const sandbox = sinon.createSandbox();
-    el.remove();
-    try {
-      let onResize;
-      const observe = sandbox.spy();
-      sandbox.stub(window, 'ResizeObserver').callsFake((callback) => {
-        onResize = callback;
-        return { observe, disconnect() {} };
-      });
-      // Advance only animation frames; layout and the test's task queue stay real.
-      const clock = sandbox.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] });
-      document.body.append(el);
+    const sheet = new CSSStyleSheet();
+    await sheet.replace(await (await fetch('/blocks/shared/tool-panel/tool-panel.css')).text());
+    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
+    el.style.width = '160px';
+    el.style.height = '300px';
+    await pinAll();
+    const list = el.shadowRoot.querySelector('.tool-panel-tabs');
+    const scroll = async (left) => {
+      list.scrollLeft = left;
+      list.dispatchEvent(new Event('scroll'));
       await el.updateComplete;
       const sheet = new CSSStyleSheet();
       await sheet.replace(await (await fetch('/blocks/canvas/ew-tool-panel/tool-panel.css')).text());
@@ -336,7 +334,7 @@ describe('EwToolPanel selected panels', () => {
   it('opens Files and Outline as default tabs in a new session', async () => {
     el.remove();
     sessionStorage.removeItem(TOOL_PANEL_PINNED_VIEWS_KEY);
-    el = document.createElement('ew-tool-panel');
+    el = document.createElement('da-tool-panel');
     el.pendingView = 'outline';
     el.views = [...views, { ...views[0], id: 'outline', label: 'Outline' }];
     document.body.append(el);
@@ -418,7 +416,7 @@ describe('EwToolPanel selected panels', () => {
 
   it('opens and restores more than four selected tabs', async () => {
     const sheet = new CSSStyleSheet();
-    await sheet.replace(await (await fetch('/blocks/canvas/ew-tool-panel/tool-panel.css')).text());
+    await sheet.replace(await (await fetch('/blocks/shared/tool-panel/tool-panel.css')).text());
     el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
     el.style.width = '280px';
     el.style.height = '300px';
@@ -441,7 +439,7 @@ describe('EwToolPanel selected panels', () => {
       .to.deep.equal(ids);
     const savedViews = el.views;
     el.remove();
-    el = document.createElement('ew-tool-panel');
+    el = document.createElement('da-tool-panel');
     el.pendingView = 'comments';
     el.views = savedViews;
     document.body.append(el);
@@ -485,7 +483,7 @@ describe('EwToolPanel selected panels', () => {
   it('restores pins on remount and hides unavailable pins without forgetting them', async () => {
     await select('assets');
     el.remove();
-    el = document.createElement('ew-tool-panel');
+    el = document.createElement('da-tool-panel');
     el.pendingView = 'assets';
     el.views = views;
     document.body.append(el);
@@ -548,11 +546,11 @@ describe('EwToolPanel selected panels', () => {
   });
 });
 
-describe('EwToolPanel — loaded view cache', () => {
+describe('DaToolPanel — loaded view cache', () => {
   let el;
 
   beforeEach(async () => {
-    el = document.createElement('ew-tool-panel');
+    el = document.createElement('da-tool-panel');
     document.body.append(el);
     await el.updateComplete;
   });
@@ -569,7 +567,7 @@ describe('EwToolPanel — loaded view cache', () => {
     await el.updateComplete;
     await el.updateComplete;
     const sheet = new CSSStyleSheet();
-    await sheet.replace(await (await fetch('/blocks/canvas/ew-tool-panel/tool-panel.css')).text());
+    await sheet.replace(await (await fetch('/blocks/shared/tool-panel/tool-panel.css')).text());
     el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
     el.style.setProperty('--s2-gray-400', '#aaa');
     const container = el.shadowRoot.querySelector('.tool-panel-tabs-container');
@@ -659,7 +657,7 @@ describe('EwToolPanel — loaded view cache', () => {
     await el.updateComplete;
     await el.updateComplete;
     const sheet = new CSSStyleSheet();
-    await sheet.replace(await (await fetch('/blocks/canvas/ew-tool-panel/tool-panel.css')).text());
+    await sheet.replace(await (await fetch('/blocks/shared/tool-panel/tool-panel.css')).text());
     el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
     el.style.width = '500px';
     el.style.height = '300px';
@@ -723,7 +721,7 @@ describe('EwToolPanel — loaded view cache', () => {
     await el.updateComplete;
     await el.updateComplete;
     const sheet = new CSSStyleSheet();
-    await sheet.replace(await (await fetch('/blocks/canvas/ew-tool-panel/tool-panel.css')).text());
+    await sheet.replace(await (await fetch('/blocks/shared/tool-panel/tool-panel.css')).text());
     el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
     const toolbar = el.shadowRoot.querySelector('.tool-panel-toolbar');
     el.style.width = '499px';
