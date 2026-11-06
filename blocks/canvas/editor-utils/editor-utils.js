@@ -24,6 +24,7 @@ const { getImageDocumentVersion } = await import(`${getNx2()}/public/utils/quick
  * that produced it. The reset is in a `finally` deliberately: stranding the flag
  * `true` (a throw inside `dispatch`) silently stops the iframe receiving any
  * further body updates for the rest of the session.
+ * Structural updates still return HTML to refresh the host Outline.
  *
  * `mirroringFromIframe` marks the dispatch as iframe-originated for the (synchronous)
  * selection-tracking hook, so it doesn't scroll the iframe back to where the user
@@ -557,7 +558,11 @@ function postBody(ctx) {
 
 export function updateDocument(ctx, { previousDoc, doc, useConfirmedBaseline = false } = {}) {
   if (ctx.suppressRerender) {
-    if (ctx.mirroringFromIframe) markPreviewSynced(ctx, { previousDoc, doc }, { confirmed: true });
+    if (ctx.mirroringFromIframe) {
+      markPreviewSynced(ctx, { previousDoc, doc }, { confirmed: true });
+      // The iframe already applied the edit, but the host Outline still needs fresh HTML.
+      return getInstrumentedHTML(ctx.view);
+    }
     return undefined;
   }
   if (useConfirmedBaseline) ctx.useConfirmedBaseline = true;
