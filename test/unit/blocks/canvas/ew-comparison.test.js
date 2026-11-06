@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { readFile } from '@web/test-runner-commands';
+import { readFile, sendKeys } from '@web/test-runner-commands';
 import { setNx } from '../../../../scripts/utils.js';
 import { canvasBus } from '../../../../blocks/canvas/utils/canvas-bus.js';
 
@@ -199,6 +199,159 @@ describe('embedded existing comparison view', () => {
     expect(split.scrollTop).to.equal(40);
     expect(Math.abs(tables[0].getBoundingClientRect().top - tables[1].getBoundingClientRect().top))
       .to.be.lessThan(2);
+  });
+});
+
+describe('aligned side-by-side scrolling', () => {
+  let element;
+  let sheet;
+
+  before(async () => {
+    sheet = new CSSStyleSheet();
+    sheet.replaceSync(await (await fetch('/blocks/canvas/ew-comparison/ew-canvas-compare.css')).text());
+  });
+
+  afterEach(() => element?.remove());
+
+  async function renderDiff(markup, embedded) {
+    element = document.createElement('ew-canvas-compare');
+    Object.assign(element, {
+      embedded,
+      split: true,
+      label: 'Saved version',
+      diffDom: new DOMParser().parseFromString(markup, 'text/html').body,
+    });
+    element.style.cssText = '--s2-spacing-100: 4px; --s2-spacing-200: 8px; --s2-spacing-300: 12px; width: 640px; height: 260px';
+    document.body.append(element);
+    await element.updateComplete;
+    element.shadowRoot.adoptedStyleSheets = [sheet];
+    const popover = element.shadowRoot.querySelector('nx-popover');
+    if (popover) popover.style.cssText = 'width: 640px; height: 260px';
+    return element.shadowRoot.querySelector('.ew-cc-split');
+  }
+
+  const top = (node) => node.getBoundingClientRect().top;
+  const expectAligned = (left, right) => {
+    expect(Math.abs(top(left) - top(right))).to.be.lessThan(1);
+  };
+
+  [false, true].forEach((embedded) => {
+    const mode = embedded ? 'embedded' : 'version-history';
+
+    it(`leaves whitespace opposite additions and deletions in the ${mode} view`, async () => {
+      const split = await renderDiff(`
+        <del class="diffdel"><p>Removed opening</p><p>Another removed paragraph</p></del>
+        <h2>Matching heading</h2>
+        <ins class="diffins"><p>Added paragraph</p></ins>
+        <p><del class="diffdel">${'Longer original paragraph. '.repeat(30)}</del><ins class="diffins">Short replacement.</ins></p>
+        <p>Matching ending</p>
+        <ins class="diffins"><p>Added ending</p></ins>
+      `, embedded);
+      const panes = [...split.querySelectorAll('.ew-cc-pane')];
+      expect(panes.map((pane) => pane.textContent)).to.deep.equal([
+        'Removed openingAnother removed paragraph', '',
+        'Matching heading', 'Matching heading',
+        '', 'Added paragraph',
+        'Longer original paragraph. '.repeat(30), 'Short replacement.',
+        'Matching ending', 'Matching ending',
+        '', 'Added ending',
+      ]);
+      for (let i = 0; i < panes.length; i += 2) {
+        expectAligned(panes[i], panes[i + 1]);
+        expect(panes[i].getBoundingClientRect().height)
+          .to.equal(panes[i + 1].getBoundingClientRect().height);
+        expect(panes[i].querySelector('ins')).to.equal(null);
+        expect(panes[i + 1].querySelector('del')).to.equal(null);
+      }
+      expect(panes[1].getBoundingClientRect().height).to.be.greaterThan(30);
+      expectAligned(panes[8].querySelector('p'), panes[9].querySelector('p'));
+      expect(element.diffDom.querySelectorAll('ins')).to.have.length(3);
+      expect(element.diffDom.querySelectorAll('del')).to.have.length(2);
+    });
+
+    it(`scrolls both sides together while keeping the ${mode} header fixed`, async () => {
+      const split = await renderDiff(
+        `<p><del>${'Old content. '.repeat(100)}</del><ins>New content.</ins></p><p>Matching ending</p>`,
+        embedded,
+      );
+      const header = element.shadowRoot.querySelector('.ew-cc-header');
+      const [left, right] = split.querySelectorAll('.ew-cc-pane');
+      const headerTop = top(header);
+      const leftTop = top(left);
+      const rightTop = top(right);
+      expect(split.scrollHeight).to.be.greaterThan(split.clientHeight);
+
+      split.scrollTop = 100;
+      expect(split.scrollTop).to.equal(100);
+      expect(top(left)).to.equal(leftTop - 100);
+      expect(top(right)).to.equal(rightTop - 100);
+      expect(top(header)).to.equal(headerTop);
+      expectAligned(left, right);
+      expect(left.scrollTop).to.equal(0);
+      expect(right.scrollTop).to.equal(0);
+
+      split.scrollTop = split.scrollHeight;
+      const endings = [...split.querySelectorAll('.ew-cc-pane:nth-last-child(-n+2) p')];
+      expectAligned(...endings);
+      expect(endings[0].getBoundingClientRect().bottom)
+        .to.be.at.most(split.getBoundingClientRect().bottom);
+    });
+
+    it(`keeps ${mode} rows aligned after resizing and image layout changes`, async () => {
+      const split = await renderDiff(
+        `<p><del>${'Long original text. '.repeat(20)}</del><ins>Short.</ins></p><p><img width="80" height="40" alt="Example"></p><p>Matching ending</p>`,
+        embedded,
+      );
+      const endings = [...split.querySelectorAll('.ew-cc-pane:nth-last-child(-n+2) p')];
+      expectAligned(...endings);
+      const container = element.shadowRoot.querySelector('nx-popover') ?? element;
+      container.style.width = '380px';
+      expectAligned(...endings);
+      const images = split.querySelectorAll('img');
+      images[0].height = 180;
+      expectAligned(...endings);
+      expectAligned(images[0], images[1]);
+    });
+  });
+
+  it('aligns the shared About Us section below a current-only hero and paragraph', async () => {
+    const { buildCompareDom } = await import('../../../../blocks/shared/version/compare.js');
+    const shared = '<h2>About Us</h2><p>We believe coffee is more than just a drink.</p>';
+    const hero = '<div class="tableWrapper"><table><tr><td>hero</td></tr><tr><td><img width="400" height="300" alt="Coffee machine"><h2>Every Morning, Perfected.</h2></td></tr></table></div>';
+    const { dom } = await buildCompareDom({
+      htmlA: `${hero}<p>Extra current-only paragraph.</p>${shared}`,
+      htmlB: shared,
+      closeOnOutsideClick: false,
+    });
+    const split = await renderDiff(dom.innerHTML, false);
+    const headings = [...split.querySelectorAll('h2')].filter((heading) => heading.textContent === 'About Us');
+    expect(headings).to.have.length(2);
+    expectAligned(...headings);
+    const heroPane = split.querySelector('.ew-cc-pane');
+    expect(heroPane.querySelector('table')).not.to.equal(null);
+    expect(heroPane.nextElementSibling.textContent).to.equal('');
+    expect(heroPane.getBoundingClientRect().height).to.be.greaterThan(300);
+    split.scrollTop = 200;
+    expect(split.scrollTop).to.equal(200);
+    expectAligned(...headings);
+  });
+
+  it('lets keyboard users enter the shared scroller and stays inside the modal', async () => {
+    const split = await renderDiff(`<p>${'Scrollable content. '.repeat(200)}</p>`, false);
+    const close = element.shadowRoot.querySelector('.ew-cc-close-btn');
+    close.focus();
+    await sendKeys({ press: 'Tab' });
+    expect(element.shadowRoot.activeElement).to.equal(split);
+    await sendKeys({ press: 'Tab' });
+    expect(element.shadowRoot.activeElement)
+      .to.equal(element.shadowRoot.querySelector('button[aria-pressed]'));
+    await sendKeys({ down: 'Shift' });
+    try {
+      await sendKeys({ press: 'Tab' });
+      expect(element.shadowRoot.activeElement).to.equal(split);
+    } finally {
+      await sendKeys({ up: 'Shift' });
+    }
   });
 });
 

@@ -64,7 +64,7 @@ class EwCanvasCompare extends LitElement {
   }
 
   _trapFocus(e) {
-    const focusable = Array.from(this.shadowRoot.querySelectorAll('button:not([disabled])'));
+    const focusable = Array.from(this.shadowRoot.querySelectorAll('button:not([disabled]), [tabindex="0"]'));
     if (focusable.length === 0) return;
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
@@ -145,17 +145,7 @@ class EwCanvasCompare extends LitElement {
   get _panes() {
     if (!this.diffDom) return null;
     if (this._panesCache?.source === this.diffDom
-      && this._panesCache.embedded === this.embedded
       && this._panesCache.path === this.path) return this._panesCache;
-    if (!this.embedded) {
-      const current = this._displayDom(this.diffDom);
-      current.querySelectorAll('ins').forEach((el) => el.remove());
-      const version = this._displayDom(this.diffDom);
-      version.querySelectorAll('del').forEach((el) => el.remove());
-      const { diffDom: source, path } = this;
-      this._panesCache = { source, embedded: false, path, current, version };
-      return this._panesCache;
-    }
     const rows = [...this._displayDom(this.diffDom).childNodes]
       .filter((node) => node.nodeType !== Node.TEXT_NODE || node.textContent.trim())
       .map((node) => {
@@ -167,7 +157,7 @@ class EwCanvasCompare extends LitElement {
         };
         return { current: cloneWithout('ins'), version: cloneWithout('del') };
       });
-    this._panesCache = { source: this.diffDom, embedded: true, path: this.path, rows };
+    this._panesCache = { source: this.diffDom, path: this.path, rows };
     return this._panesCache;
   }
 
@@ -198,14 +188,11 @@ class EwCanvasCompare extends LitElement {
           </div>
         </div>
         ${panes ? html`
-          <div class="ew-cc-split${this.embedded ? ' is-aligned' : ''}">
-            ${this.embedded ? panes.rows.map((row) => html`
+          <div class="ew-cc-split" tabindex="0" role="region" aria-label="Side-by-side comparison">
+            ${panes.rows.map((row) => html`
               <div class="ew-cc-pane ProseMirror">${row.current}</div>
               <div class="ew-cc-pane ProseMirror">${row.version}</div>
-            `) : html`
-              <div class="ew-cc-pane ProseMirror">${panes.current}</div>
-              <div class="ew-cc-pane ProseMirror">${panes.version}</div>
-            `}
+            `)}
           </div>
         ` : html`
           <div class="ew-cc-body ProseMirror">${this.embedded && this.diffDom ? this._diffPreview : this._preview}</div>
