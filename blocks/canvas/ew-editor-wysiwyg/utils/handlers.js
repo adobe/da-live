@@ -191,6 +191,16 @@ function findImagePosBySrc(doc, src, blockIndex) {
   return ambiguous ? null : found;
 }
 
+function docHasLinkImage(doc) {
+  let found = false;
+  doc.descendants((node) => {
+    if (found) return false;
+    if (node.type.name === 'image' && node.attrs.editAs) found = true;
+    return !found;
+  });
+  return found;
+}
+
 export function resolveNodeSelectPos(node, doc) {
   if (!node) return null;
   if (node.anchorType === 'table') {
@@ -205,6 +215,12 @@ export function resolveNodeSelectPos(node, doc) {
       return pos;
     }
     if (pos != null) return null;
+
+    if (docHasLinkImage(doc)) {
+      // when doc contains any editAs image can't resolve img positions reliably from src alone
+      return null;
+    }
+
     return node.src ? findImagePosBySrc(doc, node.src, node.blockIndex) : null;
   }
   return null;
