@@ -1,10 +1,10 @@
-export function computeCounts(store) {
+export function computeCounts(store, attachedIds = null) {
   let active = 0;
   let resolved = 0;
   store.forEach((c) => {
     if (c.threadId != null) return;
     if (c.resolved) resolved += 1;
-    else active += 1;
+    else if (attachedIds == null || attachedIds.has(c.id)) active += 1;
   });
   return { active, resolved };
 }
@@ -37,8 +37,6 @@ export function buildThreadGroups({ store, attachedIds }) {
       resolved.push({ ...root, replies, isDetached: false, isResolved: true });
     } else if (attachedIds == null || attachedIds.has(root.id)) {
       active.push({ ...root, replies, isDetached: false, isResolved: false });
-    } else {
-      detached.push({ ...root, replies, isDetached: true, isResolved: false });
     }
   });
 

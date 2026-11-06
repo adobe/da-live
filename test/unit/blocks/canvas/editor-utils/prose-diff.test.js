@@ -220,6 +220,69 @@ describe('createTrackingPlugin — block identity changes', () => {
     expect(counts()).to.deep.equal({ rerenderCalls: 0, getEditorCalls: 1 });
   });
 
+  it('uses the inline path when undo restores text inside a retained empty heading', () => {
+    const { plugin, prevState, counts } = setupHeading(2);
+    const pluginView = plugin.spec.view();
+    const cut = prevState.tr.delete(1, prevState.doc.firstChild.nodeSize - 1);
+    const cutState = prevState.apply(cut);
+    expect(cutState.doc.firstChild.type.name).to.equal('heading');
+    expect(cutState.doc.firstChild.content.size).to.equal(0);
+    pluginView.update({ state: cutState }, prevState);
+    expect(counts()).to.deep.equal({ rerenderCalls: 1, getEditorCalls: 0 });
+
+    const restoredState = cutState.apply(
+      cutState.tr.step(cut.steps[0].invert(prevState.doc))
+        .setMeta(ySyncPluginKey, { isChangeOrigin: true, isUndoRedoOperation: true }),
+    );
+    pluginView.update({ state: restoredState }, cutState);
+
+    expect(restoredState.doc.eq(prevState.doc)).to.equal(true);
+    expect(counts()).to.deep.equal({ rerenderCalls: 1, getEditorCalls: 1 });
+  });
+
+  it('rerenders when undo restores a removed top-level heading', () => {
+    const heading = docWithHeading('Title').firstChild;
+    const paragraph = docWithParagraph('Body').firstChild;
+    const { plugin, prevState, counts } = setup(
+      schema.nodes.doc.create(null, [heading, paragraph]),
+    );
+    const pluginView = plugin.spec.view();
+    const cut = prevState.tr.delete(0, heading.nodeSize);
+    const cutState = prevState.apply(cut);
+    expect(cutState.doc.childCount).to.equal(1);
+    expect(cutState.doc.firstChild.eq(paragraph)).to.equal(true);
+    pluginView.update({ state: cutState }, prevState);
+    expect(counts()).to.deep.equal({ rerenderCalls: 1, getEditorCalls: 0 });
+
+    const restoredState = cutState.apply(
+      cutState.tr.step(cut.steps[0].invert(prevState.doc))
+        .setMeta(ySyncPluginKey, { isChangeOrigin: true, isUndoRedoOperation: true }),
+    );
+    pluginView.update({ state: restoredState }, cutState);
+
+    expect(restoredState.doc.eq(prevState.doc)).to.equal(true);
+    expect(counts()).to.deep.equal({ rerenderCalls: 2, getEditorCalls: 0 });
+  });
+
+  it('rerenders when undo restores a heading replaced by an empty paragraph', () => {
+    const { plugin, prevState, counts } = setupHeading(2);
+    const pluginView = plugin.spec.view();
+    const emptyParagraph = schema.nodes.paragraph.create();
+    const cut = prevState.tr.replaceWith(0, prevState.doc.content.size, emptyParagraph);
+    const cutState = prevState.apply(cut);
+    pluginView.update({ state: cutState }, prevState);
+    expect(counts()).to.deep.equal({ rerenderCalls: 1, getEditorCalls: 0 });
+
+    const restoredState = cutState.apply(
+      cutState.tr.step(cut.steps[0].invert(prevState.doc))
+        .setMeta(ySyncPluginKey, { isChangeOrigin: true, isUndoRedoOperation: true }),
+    );
+    pluginView.update({ state: restoredState }, cutState);
+
+    expect(restoredState.doc.eq(prevState.doc)).to.equal(true);
+    expect(counts()).to.deep.equal({ rerenderCalls: 2, getEditorCalls: 0 });
+  });
+
   it('reports the accumulated diff when updates are coalesced', () => {
     const { plugin, prevState, rerenderDetails } = setupHeading(2);
     const intermediateState = prevState.apply(
@@ -268,6 +331,83 @@ describe('createTrackingPlugin — attrs changes outside EDITABLE_TYPES', () => 
     plugin.spec.view().update({ state: nextState }, prevState);
 
     expect(counts()).to.deep.equal({ rerenderCalls: 0, getEditorCalls: 1 });
+  });
+
+  it('rerenders after deleting an image so the outline removes it', () => {
+    const { plugin, prevState, counts } = setupImage('/a.png');
+    const nextState = prevState.apply(prevState.tr.delete(1, 2));
+
+    plugin.spec.view().update({ state: nextState }, prevState);
+
+    expect(counts()).to.deep.equal({ rerenderCalls: 1, getEditorCalls: 0 });
+  });
+
+  ['', 'caption'].forEach((text) => {
+    it(`rerenders image cut, undo and redo ${text ? 'alongside text' : 'in an image-only paragraph'}`, () => {
+      const image = schema.nodes.image.create({ src: '/a.png' });
+      const paragraph = schema.nodes.paragraph.create(null, [
+        image,
+        ...(text ? [schema.text(text)] : []),
+      ]);
+      const { plugin, prevState, counts } = setup(schema.nodes.doc.create(null, paragraph));
+      const pluginView = plugin.spec.view();
+      const cut = prevState.tr.delete(1, 2);
+      const cutState = prevState.apply(cut);
+      pluginView.update({ state: cutState }, prevState);
+      expect(counts()).to.deep.equal({ rerenderCalls: 1, getEditorCalls: 0 });
+
+      const undoState = cutState.apply(
+        cutState.tr.step(cut.steps[0].invert(prevState.doc))
+          .setMeta(ySyncPluginKey, { isChangeOrigin: true, isUndoRedoOperation: true }),
+      );
+      pluginView.update({ state: undoState }, cutState);
+      expect(undoState.doc.eq(prevState.doc)).to.equal(true);
+      expect(counts()).to.deep.equal({ rerenderCalls: 2, getEditorCalls: 0 });
+
+      const redoState = undoState.apply(
+        undoState.tr.step(cut.steps[0])
+          .setMeta(ySyncPluginKey, { isChangeOrigin: true, isUndoRedoOperation: true }),
+      );
+      pluginView.update({ state: redoState }, undoState);
+      expect(redoState.doc.eq(cutState.doc)).to.equal(true);
+      expect(counts()).to.deep.equal({ rerenderCalls: 3, getEditorCalls: 0 });
+    });
+  });
+
+  it('rerenders when inserting an image into existing text', () => {
+    const { plugin, prevState, counts } = setup('caption');
+    const nextState = prevState.apply(
+      prevState.tr.insert(1, schema.nodes.image.create({ src: '/a.png' })),
+    );
+
+    plugin.spec.view().update({ state: nextState }, prevState);
+
+    expect(counts()).to.deep.equal({ rerenderCalls: 1, getEditorCalls: 0 });
+  });
+
+  it('rerenders when an image is replaced with text and restored', () => {
+    const { plugin, prevState, counts } = setupImage('/a.png');
+    const pluginView = plugin.spec.view();
+    const replacement = prevState.tr.replaceWith(1, 2, schema.text('caption'));
+    const nextState = prevState.apply(replacement);
+    pluginView.update({ state: nextState }, prevState);
+    expect(counts()).to.deep.equal({ rerenderCalls: 1, getEditorCalls: 0 });
+
+    const restoredState = nextState.apply(
+      nextState.tr.step(replacement.steps[0].invert(prevState.doc)),
+    );
+    pluginView.update({ state: restoredState }, nextState);
+    expect(restoredState.doc.eq(prevState.doc)).to.equal(true);
+    expect(counts()).to.deep.equal({ rerenderCalls: 2, getEditorCalls: 0 });
+  });
+
+  it('rerenders after clearing an editable item so the outline removes it', () => {
+    const { plugin, prevState, counts } = setup('Text');
+    const nextState = prevState.apply(prevState.tr.delete(1, 5));
+
+    plugin.spec.view().update({ state: nextState }, prevState);
+
+    expect(counts()).to.deep.equal({ rerenderCalls: 1, getEditorCalls: 0 });
   });
 });
 

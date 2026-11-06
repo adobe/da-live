@@ -54,8 +54,28 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
     boundView.dispatch(boundView.state.tr.setMeta(commentPluginKey, meta));
   };
 
+  const getAttachedThreadIds = ({ heal = true } = {}) => {
+    if (!boundView || !store) return null;
+    const ids = new Set();
+    store.forEach((comment, id) => {
+      if (comment.threadId != null || comment.resolved) return;
+      const { range, source } = resolveAnchor({ anchor: comment, state: boundView.state });
+      if (!range) return;
+      ids.add(id);
+      if (heal && source === 'structural') reanchor(id, comment, range);
+    });
+    return ids;
+  };
+
+  const updateCounts = () => {
+    const next = computeCounts(store, getAttachedThreadIds({ heal: false }));
+    const changed = next.active !== counts.active || next.resolved !== counts.resolved;
+    counts = next;
+    return changed;
+  };
+
   const onStoreChange = () => {
-    counts = computeCounts(store);
+    updateCounts();
     authorColors = null;
     emit('counts');
   };
@@ -102,17 +122,20 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
       return entry.threadId ?? commentId;
     },
 
-    getAttachedThreadIds() {
-      if (!boundView || !store) return null;
-      const ids = new Set();
+    findThreadForNode({ anchorType, from }) {
+      if (!boundView || !store || !anchorType || from == null) return null;
+      let threadId = null;
       store.forEach((comment, id) => {
-        if (comment.threadId != null || comment.resolved) return;
-        const { range, source } = resolveAnchor({ anchor: comment, state: boundView.state });
-        if (!range) return;
-        ids.add(id);
-        if (source === 'structural') reanchor(id, comment, range);
+        if (threadId || comment.threadId != null || comment.resolved
+          || comment.anchorType !== anchorType) return;
+        const { range } = resolveAnchor({ anchor: comment, state: boundView.state });
+        if (range?.from === from) threadId = id;
       });
-      return ids;
+      return threadId;
+    },
+
+    getAttachedThreadIds() {
+      return getAttachedThreadIds();
     },
 
     async createRootComment({ user, anchor, body, now = Date.now() }) {
@@ -261,6 +284,7 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
     },
 
     notifyDocChange() {
+      if (updateCounts()) emit('counts');
       emit('docChange');
     },
 
