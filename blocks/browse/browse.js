@@ -33,14 +33,15 @@ async function loadComponent(el, cmpName, pathDetails) {
     return;
   }
 
+  const styles = await loadStyle(import.meta.url);
+  if (!document.adoptedStyleSheets.includes(styles)) document.adoptedStyleSheets.push(styles);
+
   if (cmpName === 'da-onboarding') {
     await import('../start/onboarding.js');
     el.replaceChildren(document.createElement(cmpName));
     return;
   }
 
-  const styles = await loadStyle(import.meta.url);
-  if (!document.adoptedStyleSheets.includes(styles)) document.adoptedStyleSheets.push(styles);
   const existing = el.querySelector(cmpName);
   if (existing && pathDetails) {
     existing.details = pathDetails;

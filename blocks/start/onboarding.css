@@ -1,8 +1,9 @@
 :host {
-  display: block;
+  display: grid;
+  align-content: center;
   box-sizing: border-box;
-  min-height: calc(100vh - var(--s2-nav-height));
-  padding: 68px var(--s2-spacing-400) 120px;
+  min-height: 100%;
+  padding: var(--s2-spacing-300) var(--s2-spacing-400);
   color: var(--s2-gray-800);
   font-family: var(--s2-font-family);
   background:
@@ -60,7 +61,12 @@ header p {
   padding: var(--s2-spacing-300);
   border-radius: var(--s2-corner-radius-800);
   background: var(--s2-gray-25);
-  box-shadow: 0 0 0.5px rgb(0 0 0 / 8%), 0 1px 2px rgb(0 0 0 / 4%), 0 2px 4px rgb(0 0 0 / 8%);
+  box-shadow: var(
+    --s2-drop-shadow-emphasized,
+    0 2px 8px light-dark(rgb(0 0 0 / 8%), rgb(0 0 0 / 24%)),
+    0 1px 4px light-dark(rgb(0 0 0 / 4%), rgb(0 0 0 / 12%)),
+    0 0 1px light-dark(rgb(0 0 0 / 8%), rgb(0 0 0 / 24%))
+  );
 }
 
 h2 {
@@ -142,7 +148,7 @@ h3 {
 
 @media (width < 600px) {
   :host {
-    padding: var(--s2-spacing-600) var(--s2-spacing-300);
+    padding: var(--s2-spacing-300);
   }
 
   .tiles {
