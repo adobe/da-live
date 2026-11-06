@@ -1,3 +1,10 @@
+## [1.21.1](https://github.com/adobe/da-live/compare/v1.21.0...v1.21.1) (2026-11-06)
+
+
+### Bug Fixes
+
+* **a11y:** make image alt text editable from the keyboard ([#1643](https://github.com/adobe/da-live/issues/1643)) ([c0bffeb](https://github.com/adobe/da-live/commit/c0bffebbe30e34fa9b1bb27fe15846fd6a13b1d4))
+
 # [1.21.0](https://github.com/adobe/da-live/compare/v1.20.1...v1.21.0) (2026-11-06)
 
 
