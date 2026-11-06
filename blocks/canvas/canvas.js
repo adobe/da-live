@@ -226,7 +226,7 @@ function openPanelSection(section, id, options) {
 }
 
 function openNewVersionRow() {
-  openPanelSection('tools', 'versions', { newVersion: true });
+  openPanelSection(TOOL_PANEL_SECTION, 'versions', { newVersion: true });
 }
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iP(hone|[oa]d)/.test(navigator.platform);
@@ -263,7 +263,7 @@ canvasBus.newVersionRequest.subscribe(openNewVersionRow);
 
 canvasBus.commentComposeRequest.subscribe(() => {
   getCommentsBridge().controller?.requestCompose();
-  openPanelSection('tools', 'comments');
+  openPanelSection(TOOL_PANEL_SECTION, 'comments');
 });
 
 export default async function decorate(block) {
@@ -356,11 +356,11 @@ export default async function decorate(block) {
     syncOpenToolPanel(state);
   });
 
-  if (wasPanelOpen('tools')) {
-    openPanelSection('tools');
+  if (wasPanelOpen(TOOL_PANEL_SECTION)) {
+    openPanelSection(TOOL_PANEL_SECTION);
   } else {
     shouldAutoOpenAfterPanel({ org, site }).then((open) => {
-      if (open) openPanelSection('tools');
+      if (open) openPanelSection(TOOL_PANEL_SECTION);
     });
   }
 
