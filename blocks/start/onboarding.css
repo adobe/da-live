@@ -2,7 +2,7 @@
   display: block;
   box-sizing: border-box;
   min-height: calc(100vh - var(--s2-nav-height));
-  padding: 88px var(--s2-spacing-400) 120px;
+  padding: 68px var(--s2-spacing-400) 120px;
   color: var(--s2-gray-800);
   font-family: var(--s2-font-family);
   background:
