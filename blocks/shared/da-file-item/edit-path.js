@@ -19,11 +19,12 @@ function withRef(route) {
   const hashIdx = route.indexOf('#');
   const base = hashIdx === -1 ? route : route.slice(0, hashIdx);
   const hash = hashIdx === -1 ? '' : route.slice(hashIdx);
-  const [pathname, query = ''] = base.split('?');
-  const params = new URLSearchParams(query);
-  if (params.has('ref')) return route;
-  params.set('ref', ref);
-  return `${pathname}?${params}${hash}`;
+  const queryIdx = base.indexOf('?');
+  const pathname = queryIdx === -1 ? base : base.slice(0, queryIdx);
+  const query = queryIdx === -1 ? '' : base.slice(queryIdx + 1);
+  if (new URLSearchParams(query).has('ref')) return route;
+  const sep = query ? '&' : '';
+  return `${pathname}?${query}${sep}ref=${encodeURIComponent(ref)}${hash}`;
 }
 
 export default function getEditPath({ path, ext, editor }) {

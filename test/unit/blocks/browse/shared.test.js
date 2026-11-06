@@ -83,6 +83,24 @@ describe('browse/shared getEditPath', () => {
       expect(result).to.equal('/canvas?foo=bar&ref=aem-20261105-3#/adobe/geometrixx/page');
     });
 
+    it('Keeps the full existing query when a value contains a ?', () => {
+      const result = getEditPath({
+        path: '/adobe/geometrixx/page.html',
+        ext: 'html',
+        editor: '/canvas?return=https://example.com/?folder=1#',
+      });
+      expect(result).to.equal('/canvas?return=https://example.com/?folder=1&ref=aem-20261105-3#/adobe/geometrixx/page');
+    });
+
+    it('Does not add a stray separator for an empty query', () => {
+      const result = getEditPath({
+        path: '/adobe/geometrixx/page.html',
+        ext: 'html',
+        editor: '/canvas?#',
+      });
+      expect(result).to.equal('/canvas?ref=aem-20261105-3#/adobe/geometrixx/page');
+    });
+
     it('Keeps a ref already set by the editor route', () => {
       const result = getEditPath({
         path: '/adobe/geometrixx/page.html',
