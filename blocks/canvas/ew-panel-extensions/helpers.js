@@ -359,8 +359,12 @@ function transformBlock(block) {
   // Extract and strip metadata before generating the block's dom, so it never
   // leaks into the content that gets copied/inserted or previewed.
   const metaEl = findMetaEl(block);
+  const md = metaEl ? getLibraryMetadata(metaEl) : {};
+  if (md['allow-section-metadata'] !== 'true') {
+    if (block.classList.contains('section-metadata')) return null;
+    block.querySelectorAll('.section-metadata').forEach((el) => el.remove());
+  }
   if (metaEl) {
-    const md = getLibraryMetadata(metaEl);
     if (md.name) item.name = md.name;
     if (md.searchtags) item.tags = md.searchtags;
     if (md.description) item.description = md.description;
@@ -394,7 +398,7 @@ export async function getBlockVariants(path, context) {
   const imageSource = isAemHosted ? plainHtmlUrl(source) : source;
   resolveLibraryImages(doc.body, imageSource, context, { variant: true });
   decorateImages(doc.body);
-  return groupBlocks(getSectionsAndBlocks(doc)).map(transformBlock);
+  return groupBlocks(getSectionsAndBlocks(doc)).map(transformBlock).filter(Boolean);
 }
 
 // ---------------------------------------------------------------------------

@@ -286,6 +286,86 @@ describe('EW panel helpers transformBlock', () => {
     expect(variants[0].variants).to.equal('wide');
   });
 
+  describe('section metadata opt-in', () => {
+    const sectionMetadata = (metadata = '') => `
+      <div class="section-metadata">
+        <div><div>style</div><div>dark</div></div>
+        ${metadata}
+      </div>
+    `;
+    const libraryMetadata = (value) => `
+      <div class="library-metadata">
+        <div><div>name</div><div>Dark section</div></div>
+        <div><div>allow-section-metadata</div><div>${value}</div></div>
+      </div>
+    `;
+
+    [undefined, 'false', 'yes'].forEach((value) => {
+      it(`excludes standalone section metadata without true opt-in (${value})`, async () => {
+        mockHtml(`
+          <main><div>
+            ${sectionMetadata()}
+            ${value === undefined ? '' : libraryMetadata(value)}
+          </div></main>
+        `);
+        expect(await getBlockVariants('/mock-path')).to.deep.equal([]);
+      });
+    });
+
+    ['before', 'after', 'inside'].forEach((position) => {
+      it(`allows standalone section metadata with library metadata ${position}`, async () => {
+        const metadata = libraryMetadata('true');
+        mockHtml(`
+          <main><div>
+            ${position === 'before' ? metadata : ''}
+            ${sectionMetadata(position === 'inside' ? metadata : '')}
+            ${position === 'after' ? metadata : ''}
+          </div></main>
+        `);
+        const variants = await getBlockVariants('/mock-path');
+        expect(variants).to.have.lengthOf(1);
+        const [item] = variants;
+        expect(item.name).to.equal('Dark section');
+        expect(item.identities).to.deep.equal([{ name: 'section-metadata', variants: [] }]);
+        expect([...item.dom.rows].map((row) => row.textContent))
+          .to.deep.equal(['section-metadata', 'styledark']);
+      });
+    });
+
+    [undefined, 'false', 'true'].forEach((value) => {
+      it(`gates section metadata inside a group (${value})`, async () => {
+        mockHtml(`
+          <main><div>
+            <h2>Group</h2>
+            <div class="library-container-start"></div>
+            <div class="hero"><div><div>content</div></div></div>
+            ${sectionMetadata()}
+            <div class="library-container-end"></div>
+            ${value === undefined ? '' : libraryMetadata(value)}
+          </div></main>
+        `);
+        const [item] = await getBlockVariants('/mock-path');
+        const expected = value === 'true' ? ['hero', 'section-metadata'] : ['hero'];
+        expect([...item.dom.querySelectorAll('table')].map((table) => table.rows[0].textContent))
+          .to.deep.equal(expected);
+        expect(item.identities.map(({ name }) => name)).to.deep.equal(expected);
+        expect(item.dom.textContent).not.to.include('allow-section-metadata');
+      });
+    });
+
+    it('does not apply the opt-in to other variants', async () => {
+      mockHtml(`
+        <main>
+          <div>${sectionMetadata()}${libraryMetadata('true')}</div>
+          <div><h2>Not opted in</h2>${sectionMetadata()}</div>
+          <div><h2>Hero</h2><div class="hero"><div><div>content</div></div></div></div>
+        </main>
+      `);
+      const variants = await getBlockVariants('/mock-path');
+      expect(variants.map(({ name }) => name)).to.deep.equal(['Dark section', 'Hero']);
+    });
+  });
+
   describe('identities', () => {
     it('derives identity from the class even when a heading names the block', async () => {
       mockHtml(`
