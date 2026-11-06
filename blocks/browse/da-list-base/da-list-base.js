@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { isFavorite, toggleFavorite } from '../shared/favorites.js';
+import { getFavorites, toggleFavorite } from '../shared/favorites.js';
 import { isMediaExt } from '../../shared/icons.js';
 import { getNx, getNx2Api, sanitizePathParts } from '../../../scripts/utils.js';
 import {
@@ -75,9 +75,27 @@ export default class DaListBase extends LitElement {
 
   static sheets = [];
 
+  _onFavoritesStorage = ({ key }) => {
+    if (key === 'da-favorites' || key === null) this._onFavoritesRefresh();
+  };
+
+  _onFavoritesRefresh = () => {
+    if (!this.fullpath || !this._listItems?.length) return;
+    this.applyFavoritesToItems(this._listItems);
+    this.requestUpdate();
+    if (this.actionBar) {
+      this.actionBar.isFavorite = this._selectedItems.length === 1
+        && !!this._selectedItems[0].isFavorited;
+    }
+  };
+
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = this.constructor.sheets;
+    this._onFavoritesRefresh();
+    window.addEventListener('storage', this._onFavoritesStorage);
+    window.addEventListener('focus', this._onFavoritesRefresh);
+    window.addEventListener('pageshow', this._onFavoritesRefresh);
   }
 
   async firstUpdated() {
@@ -98,6 +116,9 @@ export default class DaListBase extends LitElement {
   }
 
   disconnectedCallback() {
+    window.removeEventListener('storage', this._onFavoritesStorage);
+    window.removeEventListener('focus', this._onFavoritesRefresh);
+    window.removeEventListener('pageshow', this._onFavoritesRefresh);
     if (this._observer) this._observer.disconnect();
     if (this._autoCheckTimer) clearTimeout(this._autoCheckTimer);
     this._timers?.forEach(clearTimeout);
@@ -142,8 +163,9 @@ export default class DaListBase extends LitElement {
 
   applyFavoritesToItems(items) {
     if (!items) return items;
+    const favorites = new Set(getFavorites(this.fullpath));
     items.forEach((item) => {
-      item.isFavorited = isFavorite(this.fullpath, item.path);
+      item.isFavorited = favorites.has(item.path);
     });
     return items;
   }

@@ -26,8 +26,19 @@ function useV2Nav() {
   if (typeof nav?.loadNav === 'function') nav.loadNav();
 }
 
-async function loadComponent(el, cmpName, pathDetails) {
+async function loadLandingSurface(el) {
+  const background = await loadStyle(new URL('../landing/landing.css', import.meta.url).href);
+  if (!document.adoptedStyleSheets.includes(background)) {
+    document.adoptedStyleSheets.push(background);
+  }
+  const surface = document.createElement('div');
+  surface.className = 'landing';
+  el.replaceChildren(surface);
+}
+
+async function loadComponent(el, cmpName, pathDetails, landingSurface) {
   if (cmpName === 'da-landing') {
+    await landingSurface;
     const { default: loadLanding } = await import('../landing/landing.js');
     loadLanding(el);
     return;
@@ -63,12 +74,18 @@ function setRecentSite(details) {
 }
 
 export default function init(el) {
+  let firstLandingSurface;
   hashChange.subscribe((pathDetails) => {
     const cmpName = getBrowseComponent({ search: window.location.search, pathDetails });
-    loadComponent(el, cmpName, pathDetails);
+    const landingSurface = cmpName === 'da-landing' ? loadLandingSurface(el) : undefined;
+    firstLandingSurface ??= landingSurface;
+    loadComponent(el, cmpName, pathDetails, landingSurface);
     if (pathDetails) setRecentSite(pathDetails);
   });
 
   // Lazily preload the editor
   setTimeout(() => { import('da-y-wrapper'); }, 3000);
+
+  // Keeps the section hidden until the landing gradient can paint.
+  return firstLandingSurface;
 }

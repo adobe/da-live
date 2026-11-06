@@ -23,10 +23,13 @@ describe('da-list render', () => {
   let el;
   let savedFetch;
   let storageDescriptor;
+  let initialFavorites;
 
   beforeEach(() => {
     storageDescriptor = Object.getOwnPropertyDescriptor(window, 'localStorage');
     Object.defineProperty(window, 'localStorage', { configurable: true, value: sessionStorage });
+    initialFavorites = localStorage.getItem('da-favorites');
+    localStorage.removeItem('da-favorites');
     savedFetch = window.fetch;
     localStorage.removeItem('da-browse-settings');
     // Stub fetch to avoid real network calls during getList()
@@ -38,6 +41,8 @@ describe('da-list render', () => {
     if (el && el.parentElement) el.remove();
     el = null;
     localStorage.removeItem('da-browse-settings');
+    if (initialFavorites === null) localStorage.removeItem('da-favorites');
+    else localStorage.setItem('da-favorites', initialFavorites);
     Object.defineProperty(window, 'localStorage', storageDescriptor);
   });
 
@@ -104,6 +109,56 @@ describe('da-list render', () => {
     } finally {
       if (savedFavorites === null) localStorage.removeItem('da-favorites');
       else localStorage.setItem('da-favorites', savedFavorites);
+    }
+  });
+
+  ['storage', 'focus', 'pageshow'].forEach((type) => {
+    it(`refreshes directory favorites on ${type} without reloading files or losing selection`, async () => {
+      await fixture({ fullpath: '/org/site/de', select: true });
+      const coffee = { path: '/org/site/de/coffee.html', name: 'coffee', ext: 'html', isChecked: true };
+      el._listItems = [coffee];
+      el._selectedItems = [coffee];
+      await rerender();
+      const getList = spy(el, 'getList');
+      try {
+        const notify = () => window.dispatchEvent(type === 'storage'
+          ? new StorageEvent('storage', { key: 'da-favorites' }) : new Event(type));
+        localStorage.setItem('da-favorites', JSON.stringify({ '/org/site/de': [coffee.path] }));
+        notify();
+        await rerender();
+        const row = el.shadowRoot.querySelector('da-file-item');
+        await row.updateComplete;
+        expect(row.isFavorited).to.equal(true);
+        expect(el.actionBar.isFavorite).to.equal(true);
+        localStorage.removeItem('da-favorites');
+        notify();
+        await rerender();
+        await row.updateComplete;
+        expect(row.isFavorited).to.equal(false);
+        expect(el.actionBar.isFavorite).to.equal(false);
+        expect(el._selectedItems).to.deep.equal([coffee]);
+        expect(coffee.isChecked).to.equal(true);
+        expect(getList.called).to.equal(false);
+      } finally {
+        getList.restore();
+      }
+    });
+  });
+
+  it('leaves caller-owned favorites alone and stops refreshing after disconnect', async () => {
+    await fixture({ listItems: [{ path: '/org/site/a.html', name: 'a', ext: 'html', isFavorited: true }] });
+    window.dispatchEvent(new StorageEvent('storage', { key: 'da-favorites' }));
+    await rerender();
+    expect(el._listItems[0].isFavorited).to.equal(true);
+    const apply = spy(el, 'applyFavoritesToItems');
+    try {
+      el.remove();
+      window.dispatchEvent(new StorageEvent('storage', { key: 'da-favorites' }));
+      window.dispatchEvent(new Event('focus'));
+      window.dispatchEvent(new Event('pageshow'));
+      expect(apply.called).to.equal(false);
+    } finally {
+      apply.restore();
     }
   });
 
@@ -189,6 +244,7 @@ describe('da-list render', () => {
         { path: '/o/r/page.html', name: 'page', ext: 'html' },
       ],
     });
+
     const items = el.shadowRoot.querySelectorAll('da-file-item');
     expect(items[0].getAttribute('editor')).to.equal('https://da.live/form#');
     expect(items[1].getAttribute('editor')).to.equal('/canvas#');
@@ -199,6 +255,52 @@ describe('da-list render', () => {
       .to.equal('/canvas#/o/r/page');
   });
 
+  it('opts into Folder instead of Type and forwards caller-owned destinations', async () => {
+    const getList = spy();
+    await fixture({
+      getList,
+      showFolder: true,
+      listItems: [
+        { path: '/o/r/nested/a.html', name: 'a', ext: 'html', href: '/canvas?nx=test#/o/r/nested/a', folderHref: '/?landing=home#/o/r/nested' },
+        { path: '/o/r/b.html', name: 'b', ext: 'html' },
+      ],
+    });
+    const rows = [...el.shadowRoot.querySelectorAll('da-file-item')];
+    await Promise.all(rows.map((row) => row.updateComplete));
+    expect(el.shadowRoot.querySelector('[data-column="folder"]').textContent).to.equal('Folder');
+    expect(el.shadowRoot.querySelector('[data-column="type"]')).to.equal(null);
+    const folder = rows[0].shadowRoot.querySelector('[data-column="folder"] a');
+    expect(folder.textContent).to.equal('/nested');
+    expect(folder.getAttribute('href')).to.equal('/?landing=home#/o/r/nested');
+    expect(rows[0].shadowRoot.querySelector('[data-column="name"]').getAttribute('href'))
+      .to.equal('/canvas?nx=test#/o/r/nested/a');
+    expect(rows[1].folder).to.deep.equal({ path: '/o/r', label: '/', href: '#/o/r' });
+    expect(el.shadowRoot.querySelector('input[name="select-all"]')).to.equal(null);
+    expect(el.shadowRoot.querySelector('da-actionbar').dataset.visible).to.equal('false');
+    expect(getList.called).to.equal(false);
+    await updateList(el, () => { el.showFolder = false; });
+    await Promise.all(rows.map((row) => row.updateComplete));
+    expect(el.shadowRoot.querySelector('[data-column="type"]').textContent).to.equal('Type');
+    expect(rows[0].shadowRoot.querySelector('[data-column="folder"]')).to.equal(null);
+  });
+
+  it('preserves external order and favorite flags and delegates favorite persistence once', async () => {
+    const items = [
+      { path: '/o/r/a.html', name: 'a', ext: 'html', isFavorited: false },
+      { path: '/o/r/b.html', name: 'b', ext: 'html', isFavorited: true },
+    ];
+    await fixture({ listItems: items });
+    const events = [];
+    el.addEventListener('favoritechange', ({ detail }) => events.push(detail));
+    const rows = [...el.shadowRoot.querySelectorAll('da-file-item')];
+    await Promise.all(rows.map((row) => row.updateComplete));
+    expect(rows.map((row) => row.path)).to.deep.equal(items.map((item) => item.path));
+    expect(rows[1].isFavorited).to.equal(true);
+    rows[0].requestFavorite();
+    expect(events).to.deep.equal([{ item: items[0] }]);
+    expect(items[0].isFavorited).to.equal(false);
+    expect(el._selectedItems).to.deep.equal([]);
+  });
   it('Renders the load-more sentinel when continuationToken is set', async () => {
     // Mock fetch to return continuation header
     window.fetch = () => Promise.resolve(new Response('[]', {
