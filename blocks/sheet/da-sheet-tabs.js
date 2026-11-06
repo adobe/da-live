@@ -2,6 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../scripts/utils.js';
 import inlinesvg from '../shared/inlinesvg.js';
 import { handleSave } from './utils/utils.js';
+import makeKeyboardAccessible from './utils/keyboard.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -95,6 +96,7 @@ class DaSheetTabs extends LitElement {
     newSheet.options.onafterchanges = () => {
       handleSave(this.jexcel, this.tabContainer.details.view);
     };
+    makeKeyboardAccessible(newSheet);
 
     // Refresh the tab names
     this._names = this.getNames();
