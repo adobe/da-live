@@ -8,7 +8,6 @@ import '../browse/v2/da-list/da-list.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/segmented-btn/segmented.js`);
-const background = await loadStyle(import.meta.url);
 const styles = await Promise.all([
   loadStyle(`${getNx2()}/styles/buttons.css`),
   loadStyle(new URL('./landing-content.css', import.meta.url).href),
@@ -274,9 +273,6 @@ export class DaLanding extends LitElement {
 customElements.define('da-landing', DaLanding);
 
 export default function init(el) {
-  if (!document.adoptedStyleSheets.includes(background)) {
-    document.adoptedStyleSheets.push(background);
-  }
   const landing = document.createElement('div');
   landing.className = 'landing';
   const theme = new URLSearchParams(window.location.search).get('theme');

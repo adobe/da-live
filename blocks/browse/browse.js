@@ -28,6 +28,9 @@ function useV2Nav() {
 
 async function loadComponent(el, cmpName, pathDetails) {
   if (cmpName === 'da-landing') {
+    const shell = document.createElement('div');
+    shell.className = 'landing';
+    el.replaceChildren(shell);
     const { default: loadLanding } = await import('../landing/landing.js');
     loadLanding(el);
     return;

@@ -39,6 +39,8 @@ describe('Browse Content opt-in', () => {
         observer.observe(ordinary, { childList: true, subtree: true });
       });
       hashChange._set(undefined);
+      expect(ordinary.querySelector('da-browse')).to.equal(null);
+      expect(ordinary.firstElementChild.className).to.equal('landing');
       const landing = await mounted;
       await landing.updateComplete;
       expect(ordinary.querySelector('da-browse')).to.equal(null);
