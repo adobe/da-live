@@ -1504,6 +1504,53 @@ describe('createCommentsView', () => {
     expect(createCommentsView().getLabel()).to.equal('Comments');
   });
 
+  describe('in the tool panel', () => {
+    let panel;
+
+    function countingController(active) {
+      const listeners = new Set();
+      return {
+        counts: { active, resolved: 0 },
+        subscribe(listener) {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+        setActive(count) {
+          this.counts = { active: count, resolved: 0 };
+          listeners.forEach((listener) => listener({ reason: 'counts' }));
+        },
+      };
+    }
+
+    async function mountPanel(views) {
+      await import('../../../../../blocks/shared/tool-panel/tool-panel.js');
+      panel = document.createElement('da-tool-panel');
+      document.body.append(panel);
+      panel.views = views;
+      await panel.updateComplete;
+      await new Promise((resolve) => { setTimeout(resolve); });
+      await panel.updateComplete;
+    }
+
+    const pickerLabel = (id) => panel.shadowRoot.querySelector('nx-picker').items
+      .find((item) => item.value === id).label;
+
+    afterEach(() => panel?.remove());
+
+    it('updates the picker label when the comment count changes', async () => {
+      const controller = countingController(1);
+      setCommentsController(controller);
+      // The first view opens, so a plain view in front keeps ew-comments unloaded.
+      const firstView = { id: 'outline', label: 'Outline', load: async () => document.createElement('div') };
+      await mountPanel([firstView, createCommentsView()]);
+
+      controller.setActive(3);
+      await panel.updateComplete;
+
+      expect(pickerLabel('comments')).to.equal('Comments (3)');
+    });
+  });
+
   it('load() returns an ew-comments element that binds to the current controller', async () => {
     const controller = {
       subscribe() { return () => {}; },

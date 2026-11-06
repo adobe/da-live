@@ -1,7 +1,5 @@
 import { LitElement, html, nothing, repeat } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
-import { getCommentsBridge } from '../../canvas/editor-utils/comments-bridge.js';
-import { canvasBus } from '../../canvas/utils/canvas-bus.js';
 import { TOOL_PANEL_TAG } from './tool-panel-section.js';
 import DragHandler from '../drag-handler.js';
 import drawDragPreview from '../drag-preview.js';
@@ -39,7 +37,8 @@ const ICONS = {
  *
  * A view needs an `id` and a `label`. Inline views provide `load`, which
  * returns the element to show. Views with a `window`, `fullsize-dialog` or
- * `modal` experience open outside the rail instead.
+ * `modal` experience open outside the rail instead. A view whose label changes
+ * provides `subscribeLabel(onChange)`, which returns its unsubscribe.
  */
 class DaToolPanel extends LitElement {
   static properties = {
@@ -60,6 +59,9 @@ class DaToolPanel extends LitElement {
   /** The `cacheKey` each element was loaded with, by view id. A new key reloads it. */
   _loadedKeys = {};
 
+  /** Unsubscribes from the views' dynamic labels. */
+  _labelUnsubscribers = [];
+
   /** Reorders the pinned tabs by drag and drop. */
   _tabDrag = new DragHandler({
     type: 'application/x-da-panel-tab',
@@ -78,13 +80,15 @@ class DaToolPanel extends LitElement {
   }
 
   /**
-   * Adopts the styles, follows the comment counts and starts listening for
-   * the rail opening and closing and for the tabs resizing.
+   * Adopts the styles, rebinds dynamic labels after a reconnect and starts
+   * listening for the rail opening and closing and for the tabs resizing.
    */
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [buttons, spinner, style];
-    this._bindCommentCountUpdates();
+    if (this.hasUpdated) {
+      this._bindViewLabels();
+    }
     this._onRailToggle = () => this._broadcastActiveView();
     document.addEventListener(PANEL_EVENT.OPEN, this._onRailToggle);
     document.addEventListener(PANEL_EVENT.CLOSE, this._onRailToggle);
@@ -96,8 +100,8 @@ class DaToolPanel extends LitElement {
   }
 
   /**
-   * Ends any tab drag and drops the comment count subscriptions, the rail
-   * listeners and the tabs resize observer.
+   * Ends any tab drag and drops the label subscriptions, the rail listeners
+   * and the tabs resize observer.
    */
   disconnectedCallback() {
     super.disconnectedCallback();
@@ -105,8 +109,7 @@ class DaToolPanel extends LitElement {
     this._tabResizeObserver?.disconnect();
     cancelAnimationFrame(this._tabResizeFrame);
     this._observedTabs = undefined;
-    this._unsubCommentCounts?.();
-    this._unsubControllerChange?.();
+    this._unbindViewLabels();
     document.removeEventListener(PANEL_EVENT.OPEN, this._onRailToggle);
     document.removeEventListener(PANEL_EVENT.CLOSE, this._onRailToggle);
   }
@@ -121,26 +124,27 @@ class DaToolPanel extends LitElement {
   }
 
   /**
-   * Re-renders the picker whenever the comment counts change, so the comments
-   * view label stays current. Follows the comments controller when it changes.
+   * Re-renders the picker whenever a view's dynamic label changes. A view
+   * opts in with `subscribeLabel(onChange)`, which returns its unsubscribe.
    */
-  _bindCommentCountUpdates() {
-    const refresh = () => this.requestUpdate();
-    const bind = (controller) => {
-      this._unsubCommentCounts?.();
-      if (!controller?.subscribe) {
-        return;
-      }
+  _bindViewLabels() {
+    this._unbindViewLabels();
+    if (!this.isConnected) {
+      return;
+    }
 
-      this._unsubCommentCounts = controller.subscribe(({ reason }) => {
-        if (reason === 'counts' || reason === 'init') {
-          refresh();
-        }
-      });
-    };
-    bind(getCommentsBridge().controller);
-    this._unsubControllerChange = canvasBus.commentsControllerState
-      .subscribe((controller) => bind(controller));
+    const refresh = () => this.requestUpdate();
+    this._labelUnsubscribers = (this.views ?? [])
+      .map((view) => view.subscribeLabel?.(refresh))
+      .filter((unsubscribe) => typeof unsubscribe === 'function');
+  }
+
+  /**
+   * Drops every dynamic label subscription.
+   */
+  _unbindViewLabels() {
+    this._labelUnsubscribers.forEach((unsubscribe) => unsubscribe());
+    this._labelUnsubscribers = [];
   }
 
   /**
@@ -417,6 +421,7 @@ class DaToolPanel extends LitElement {
       this._clearPageBoundViews();
     }
     if (changed.has('views')) {
+      this._bindViewLabels();
       await this._onViewsChange();
     }
     if (changed.has('activeId')) {
