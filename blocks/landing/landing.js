@@ -7,8 +7,6 @@ import { getBrowseHref, getListItems, loadFiles } from './utils.js';
 import '../browse/v2/da-list/da-list.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const nx = await import(`${getNx2()}/scripts/nx.js`);
-const sizing = nx.getUISize ? await import(`${getNx2()}/utils/ui-size.js`) : undefined;
 await import(`${getNx()}/blocks/shared/segmented-btn/segmented.js`);
 const background = await loadStyle(import.meta.url);
 const styles = await Promise.all([
@@ -42,8 +40,6 @@ export class DaLanding extends LitElement {
     _hasSavedSites: { state: true },
     _addingSite: { state: true },
   };
-
-  _sizing = sizing && new sizing.UISizeController(this);
 
   _onStorage = ({ key }) => {
     if (key === 'da-favorites' || key === null) this.refreshFavorites();
@@ -213,7 +209,7 @@ export class DaLanding extends LitElement {
         <h3>${this._hasSavedSites ? 'Choose a site to get started' : 'Add a site to get started'}</h3>
         ${this._hasSavedSites ? html`<p>Select a site from "Your recent sites" to see its content.</p>` : nothing}
         ${this._hasSavedSites ? nothing : html`
-          <button type="button" class="add-site nx-btn-accent ${nx.getUISize?.() === 'm' ? 'nx-btn-lg' : ''}"
+          <button type="button" class="add-site nx-btn-accent"
             ?disabled=${this._addingSite} @click=${this._onAddSite}>Add site ${icon('add')}</button>`}
       </div>`;
     }

@@ -164,22 +164,38 @@ describe('landing Content section', () => {
       ...fileItems()[0].shadowRoot.adoptedStyleSheets,
       itemSheet,
     ];
-    for (const size of [14, 16]) {
-      el.style.setProperty('--nx-ui-text-content', `${size}px`);
-      for (const width of [1200, 900, 360]) {
-        el.style.width = `${width}px`;
-        const scroll = el.shadowRoot.querySelector('.file-list');
-        if (width > 360) expect(scroll.scrollWidth).to.equal(scroll.clientWidth);
-        else expect(scroll.scrollWidth).to.be.greaterThan(scroll.clientWidth);
-        expect(scroll.tabIndex).to.equal(0);
-        for (const column of ['name', 'folder', 'modified', 'actions']) {
-          expect(fileList().shadowRoot.querySelector(`[data-column="${column}"]`)
-            .getBoundingClientRect().left)
-            .to.equal(fileItems()[0].shadowRoot.querySelector(`[data-column="${column}"]`)
-              .getBoundingClientRect().left);
-        }
+    el.style.setProperty('--s2-component-m-regular-font-size', '14px');
+    for (const width of [1200, 900, 360]) {
+      el.style.width = `${width}px`;
+      const scroll = el.shadowRoot.querySelector('.file-list');
+      if (width > 360) expect(scroll.scrollWidth).to.equal(scroll.clientWidth);
+      else expect(scroll.scrollWidth).to.be.greaterThan(scroll.clientWidth);
+      expect(scroll.tabIndex).to.equal(0);
+      for (const column of ['name', 'folder', 'modified', 'actions']) {
+        expect(fileList().shadowRoot.querySelector(`[data-column="${column}"]`)
+          .getBoundingClientRect().left)
+          .to.equal(fileItems()[0].shadowRoot.querySelector(`[data-column="${column}"]`)
+            .getBoundingClientRect().left);
       }
     }
+  });
+
+  it('keeps S typography independent of application sizing tokens', async () => {
+    const sheet = new CSSStyleSheet();
+    await sheet.replace(await (await fetch('/blocks/landing/landing-content.css')).text());
+    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
+    el.style.setProperty('--s2-component-m-regular-font-size', '14px');
+    el.style.setProperty('--s2-heading-size-xs', '18px');
+    el.style.setProperty('--s2-component-l-regular-font-size', '16px');
+    el.style.setProperty('--nx-ui-text-content', '16px');
+    el.style.setProperty('--nx-ui-text-heading', '20px');
+    el.style.setProperty('--nx-ui-text-title', '18px');
+    await el.setScope();
+    await updateLanding();
+    expect(getComputedStyle(el).fontSize).to.equal('14px');
+    expect(getComputedStyle(el).lineHeight).to.equal('18px');
+    expect(getComputedStyle(el.shadowRoot.querySelector('h2')).fontSize).to.equal('18px');
+    expect(getComputedStyle(el.shadowRoot.querySelector('h3')).fontSize).to.equal('16px');
   });
 
   it('stops at the available files when fewer than eighteen exist', async () => {
@@ -505,8 +521,6 @@ describe('landing Content section', () => {
     expect(getComputedStyle(spinner).width).to.equal('14px');
     expect(getComputedStyle(spinner).animationName).to.equal('da-spin');
     expect(getComputedStyle(spinner).borderTopColor).to.equal('rgb(59, 99, 251)');
-    el.setAttribute('data-ui-size', 'm');
-    expect(getComputedStyle(spinner).width).to.equal('16px');
     el._files = [];
     await updateLanding();
     expect(el.shadowRoot.querySelector('.empty-state h3').textContent).to.equal('No files here yet');

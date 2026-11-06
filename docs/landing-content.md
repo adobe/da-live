@@ -105,10 +105,9 @@ Existing Spectrum spacing, radius, typography and color tokens are reused.
 Fixed card geometry, component icon metrics and the existing panel shadow
 are preserved rather than wrapped in a new theming API.
 
-Deployed Nexter main currently has no UI-size controller. Browser fixtures
-exercise S/M role values to check that card geometry stays fixed; they do not
-prove a production M toggle. The optional existing controller is used only
-when the configured Nexter version exposes it.
+Content uses fixed S typography and icon sizes. It does not import a UI-size
+controller or depend on the application size scale. Existing shared component
+size variants remain unchanged.
 
 ## Delivery
 

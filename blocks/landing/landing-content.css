@@ -3,8 +3,8 @@
   contain: inline-size;
   color: var(--s2-gray-800);
   font-family: var(--s2-font-family);
-  font-size: var(--nx-ui-text-content, var(--s2-component-m-regular-font-size));
-  line-height: calc(var(--nx-ui-text-content, 14px) + 4px);
+  font-size: var(--s2-component-m-regular-font-size);
+  line-height: 18px;
 }
 
 * {
@@ -67,8 +67,8 @@ svg {
 }
 
 h2 {
-  font-size: var(--nx-ui-text-heading, var(--s2-heading-size-xs));
-  line-height: calc(var(--nx-ui-text-heading, 18px) + 4px);
+  font-size: var(--s2-heading-size-xs);
+  line-height: 22px;
   color: var(--s2-gray-1000);
 }
 
@@ -164,7 +164,7 @@ da-list::part(grid) {
 }
 
 .empty-state h3 {
-  font-size: var(--nx-ui-text-title, var(--s2-component-l-regular-font-size));
+  font-size: var(--s2-component-l-regular-font-size);
 }
 
 .empty-state .add-site {
@@ -211,18 +211,6 @@ a:focus-visible, .filter:focus-visible,
 .file-list:focus-visible {
   outline: 2px solid var(--s2-blue-800);
   outline-offset: var(--s2-spacing-75);
-}
-
-:host([data-ui-size="m"]) {
-  svg {
-    width: 20px;
-    height: 20px;
-  }
-
-  .loading .nx-loading-spinner {
-    width: 16px;
-    height: 16px;
-  }
 }
 
 @media (width < 600px) {
