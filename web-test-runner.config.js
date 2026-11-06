@@ -61,6 +61,39 @@ export default {
   testRunnerHtml: (testFramework) => `
     <html>
       <head>
+        <script>
+          // WTR clones every message with structuredClone before sending it. A failed assertion
+          // whose actual/expected holds a function or DOM node makes that throw, so the result
+          // is never reported and the run hangs until testsFinishTimeout. For WTR's own messages
+          // only, fall back to a lossy copy so the failure is reported instead.
+          (() => {
+            const nativeClone = window.structuredClone;
+            const toCloneable = (value, seen) => {
+              if (typeof value === 'function') return '[Function ' + (value.name || 'anonymous') + ']';
+              if (typeof value !== 'object' || value === null) return value;
+              if (value === window) return '[Window]';
+              if (value instanceof Node) return '[' + value.nodeName + ']';
+              if (value instanceof Error) return { name: value.name, message: value.message, stack: value.stack };
+              if (seen.has(value)) return seen.get(value);
+              try { return nativeClone.call(window, value); } catch (e) { /* has uncloneable parts */ }
+              const copy = Array.isArray(value) ? [] : {};
+              seen.set(value, copy);
+              Object.keys(value).forEach((key) => {
+                copy[key] = toCloneable(value[key], seen);
+              });
+              return copy;
+            };
+            window.structuredClone = function structuredClone(value, options) {
+              try {
+                return nativeClone.call(window, value, options);
+              } catch (e) {
+                const fromRunner = String(new Error().stack).includes('__web-dev-server__web-socket');
+                if (e.name !== 'DataCloneError' || !fromRunner) throw e;
+                return toCloneable(value, new WeakMap());
+              }
+            };
+          })();
+        </script>
         <script type='module'>
           const oldFetch = window.fetch;
           window.fetch = async (resource, options) => {

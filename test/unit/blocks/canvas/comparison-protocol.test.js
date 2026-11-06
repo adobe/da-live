@@ -37,8 +37,8 @@ describe('comparison plugin protocol', () => {
     canvasBus.branchState.emit({ path: null, status: 'pending' });
   });
 
-  it('initializes the ready handshake with live document, HTML replacement, and chat turn capabilities', () => {
-    const capabilities = { liveDocument: 1, sendHTMLReplace: 1, chatTurnCompleted: 1 };
+  it('initializes the ready handshake with all supported SDK capabilities', () => {
+    const capabilities = { liveDocument: 1, sendHTMLReplace: 1, chatTurnCompleted: 1, dragDrop: 1 };
     expect(ready.ready).to.equal(true);
     expect(ready.capabilities).to.deep.equal(capabilities);
     expect(ready.context).to.equal(ready.project);
