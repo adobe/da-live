@@ -55,25 +55,61 @@
   background: var(--s2-gray-300);
 }
 
-.tool-panel-tabs {
-  --tab-fade-left: #000;
-  --tab-fade-right: #000;
+.tool-panel-tabs-container {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
 
+.tool-panel-tab-scroll {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--s2-corner-radius-400);
+  background: transparent;
+  color: var(--s2-gray-800);
+  cursor: pointer;
+
+  &[hidden] {
+    display: none;
+  }
+
+  &:disabled {
+    color: var(--s2-gray-400);
+    cursor: default;
+  }
+
+  &:hover:not(:disabled) {
+    background-color: var(--s2-gray-75);
+  }
+
+  svg {
+    display: block;
+    flex-shrink: 0;
+    width: 10px;
+    height: 10px;
+    fill: currentcolor;
+    transform: none;
+    pointer-events: none;
+  }
+
+  &.tool-panel-tab-scroll-left svg {
+    transform: rotate(180deg);
+  }
+}
+
+.tool-panel-tabs {
   display: flex;
   align-items: center;
   gap: var(--s2-spacing-75);
   min-width: 0;
   overflow-x: auto;
   padding: 4px;
-  mask-image: linear-gradient(to right, var(--tab-fade-left), #000 16px, #000 calc(100% - 16px), var(--tab-fade-right));
-
-  &[data-overflow-left] {
-    --tab-fade-left: transparent;
-  }
-
-  &[data-overflow-right] {
-    --tab-fade-right: transparent;
-  }
 }
 
 .tool-panel-drag-image {

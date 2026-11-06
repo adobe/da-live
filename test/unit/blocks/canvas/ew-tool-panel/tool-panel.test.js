@@ -525,6 +525,87 @@ describe('EwToolPanel — loaded view cache', () => {
 
   afterEach(() => el.remove());
 
+  it('scrolls the next hidden tab into view in either direction without changing panels', async () => {
+    el.views = ['files', 'outline', 'page', 'comments'].map((id) => ({
+      id,
+      label: id,
+      firstParty: true,
+      load: async () => document.createElement('div'),
+    }));
+    await el.updateComplete;
+    await el.updateComplete;
+    const sheet = new CSSStyleSheet();
+    await sheet.replace(await (await fetch('/blocks/canvas/ew-tool-panel/tool-panel.css')).text());
+    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
+    el.style.setProperty('--s2-gray-400', '#aaa');
+    const container = el.shadowRoot.querySelector('.tool-panel-tabs-container');
+    const tabs = container.querySelector('.tool-panel-tabs');
+    tabs.style.flex = '0 0 160px';
+    const items = [...tabs.querySelectorAll('.tool-panel-tab-item')];
+    items.forEach((item) => { item.style.width = '100px'; });
+    // Keep scrolling synchronous so assertions do not depend on animation timing.
+    tabs.scrollBy = ({ left }) => { tabs.scrollLeft += left; };
+    el._syncTabOverflow();
+    await el.updateComplete;
+    const previous = container.querySelector('[aria-label="Show previous tab"]');
+    const next = container.querySelector('[aria-label="Show next tab"]');
+    const { activeId } = el;
+    expect(previous.hidden).to.be.false;
+    expect(previous.disabled).to.be.true;
+    expect(next.hidden).to.be.false;
+    expect(next.disabled).to.be.false;
+    const previousBounds = previous.getBoundingClientRect();
+    const nextBounds = next.getBoundingClientRect();
+    expect(previousBounds.width).to.equal(previousBounds.height);
+    expect(nextBounds.width).to.equal(nextBounds.height);
+    [previous, next].forEach((button) => {
+      const bounds = button.getBoundingClientRect();
+      const icon = button.querySelector('svg').getBoundingClientRect();
+      expect(icon.left + icon.width / 2).to.equal(bounds.left + bounds.width / 2);
+      expect(icon.top + icon.height / 2).to.equal(bounds.top + bounds.height / 2);
+    });
+    expect(getComputedStyle(previous).color).to.equal('rgb(170, 170, 170)');
+    previous.click();
+    expect(tabs.scrollLeft).to.equal(0);
+    next.click();
+    el._syncTabOverflow();
+    await el.updateComplete;
+    expect(tabs.scrollLeft).to.be.greaterThan(0);
+    expect(items[1].getBoundingClientRect().right)
+      .to.be.at.most(tabs.getBoundingClientRect().right - 3);
+    expect(previous.hidden).to.be.false;
+    expect(previous.disabled).to.be.false;
+    previous.click();
+    el._syncTabOverflow();
+    await el.updateComplete;
+    expect(tabs.scrollLeft).to.equal(0);
+    expect(previous.hidden).to.be.false;
+    expect(previous.disabled).to.be.true;
+    for (let i = 0; i < items.length; i += 1) {
+      next.click();
+      el._syncTabOverflow();
+      // eslint-disable-next-line no-await-in-loop
+      await el.updateComplete;
+    }
+    expect(next.hidden).to.be.false;
+    expect(next.disabled).to.be.true;
+    expect(previous.disabled).to.be.false;
+    expect(previous.getBoundingClientRect().left).to.equal(previousBounds.left);
+    expect(next.getBoundingClientRect().left).to.equal(nextBounds.left);
+    expect(getComputedStyle(next).color).to.equal('rgb(170, 170, 170)');
+    const endScroll = tabs.scrollLeft;
+    next.click();
+    expect(tabs.scrollLeft).to.equal(endScroll);
+    expect(items.at(-1).getBoundingClientRect().right)
+      .to.be.at.most(tabs.getBoundingClientRect().right);
+    expect(el.activeId).to.equal(activeId);
+    tabs.style.flexBasis = '600px';
+    el._syncTabOverflow();
+    await el.updateComplete;
+    expect(previous.hidden).to.be.true;
+    expect(next.hidden).to.be.true;
+  });
+
   it('keeps refresh below the tabs and fullscreen immediately left of Close', async () => {
     const content = document.createElement('div');
     const refresh = document.createElement('button');
@@ -557,7 +638,7 @@ describe('EwToolPanel — loaded view cache', () => {
     header.querySelector('nx-picker').style.width = '72px';
     const divider = header.querySelector('.tool-panel-divider').getBoundingClientRect();
     const close = header.querySelector('.tool-panel-close').getBoundingClientRect();
-    expect(header.querySelector('.tool-panel-tabs').nextElementSibling).to.equal(selector);
+    expect(header.querySelector('.tool-panel-tabs-container').nextElementSibling).to.equal(selector);
     expect(selector.getBoundingClientRect().right).to.be.at.most(divider.left);
     expect(divider.width).to.be.greaterThan(0);
     expect(divider.right).to.be.at.most(close.left);

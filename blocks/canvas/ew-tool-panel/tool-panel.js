@@ -24,6 +24,7 @@ const [buttons, spinner, style] = await Promise.all([
 const CLOSE_ICON_SRC = '/img/icons/s2-icon-splitright-20-n.svg';
 const OPEN_IN_ICON_URL = '/img/icons/s2-icon-openin-20-n.svg';
 const FULLSCREEN_ICON_SRC = '/img/icons/s2-icon-fullscreen-20-n.svg';
+const CHEVRON_ICON_SRC = '/img/icons/s2-icon-chevronleft-10-n.svg';
 const canPin = (view) => view && !['window', 'fullsize-dialog', 'modal'].includes(view.experience);
 
 class EwToolPanel extends LitElement {
@@ -245,6 +246,22 @@ class EwToolPanel extends LitElement {
     }
   }
 
+  _scrollTabs(direction) {
+    const tabs = this.shadowRoot.querySelector('.tool-panel-tabs');
+    if (!tabs) return;
+    const bounds = tabs.getBoundingClientRect();
+    const items = [...tabs.querySelectorAll('.tool-panel-tab-item')];
+    const target = direction > 0
+      ? items.find((item) => item.getBoundingClientRect().right > bounds.right - 3)
+      : items.reverse().find((item) => item.getBoundingClientRect().left < bounds.left + 3);
+    if (!target) return;
+    const rect = target.getBoundingClientRect();
+    tabs.scrollBy({
+      left: direction > 0 ? rect.right - bounds.right + 4 : rect.left - bounds.left - 4,
+      behavior: 'smooth',
+    });
+  }
+
   _onTabKeyDown(event, id) {
     if (!event.altKey || !['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
     const visibleIds = this._pinnedIds.filter(
@@ -437,34 +454,51 @@ class EwToolPanel extends LitElement {
     const dialogIcon = this._fullsizeDialogView?.icon;
     const activeView = this.views?.find((v) => v.id === this.activeId);
     const pinnedViews = this._pinnedViews;
+    const tabsOverflow = this._tabScroll?.left || this._tabScroll?.right;
 
     return html`
       <div class="tool-panel-header">
         ${pinnedViews.length ? html`
-          <nav class="tool-panel-tabs" aria-label="Pinned panels"
-            ?data-overflow-left=${this._tabScroll?.left}
-            ?data-overflow-right=${this._tabScroll?.right}
-            @scroll=${this._syncTabOverflow}>
-            ${repeat(pinnedViews, (view) => view.id, (view) => html`
-              <div class="tool-panel-tab-item" data-active=${view.id === this.activeId}
-                data-drop-side=${this._tabDrop?.id === view.id ? this._tabDrop.side : ''}
-                @dragover=${(event) => this._dragOverTab(event, view.id)}
-                @dragleave=${() => { this._tabDrop = undefined; }}
-                @drop=${(event) => this._dropTab(event, view.id)}>
-                <button type="button" class="tool-panel-tab" data-view-id=${view.id}
-                  draggable="true"
-                  title=${view.getLabel?.() ?? view.label}
-                  aria-pressed=${view.id === this.activeId}
-                  aria-description="Drag to reorder, or use Alt+Left Arrow or Alt+Right Arrow."
-                  @dragstart=${(event) => this._startTabDrag(event, view.id)}
-                  @dragend=${this._endTabDrag}
-                  @keydown=${(event) => this._onTabKeyDown(event, view.id)}
-                  @click=${() => this.showPanel(view.id)}>${view.getLabel?.() ?? view.label}</button>
-              </div>
-            `)}
-          </nav>
+          <div class="tool-panel-tabs-container">
+            <button type="button" class="tool-panel-tab-scroll tool-panel-tab-scroll-left"
+              aria-label="Show previous tab" title="Show previous tab"
+              ?hidden=${!tabsOverflow}
+              ?disabled=${!this._tabScroll?.left}
+              @click=${() => this._scrollTabs(-1)}>
+              <svg aria-hidden="true" viewBox="0 0 10 10"><use href="${CHEVRON_ICON_SRC}#icon"></use></svg>
+            </button>
+            <nav class="tool-panel-tabs" aria-label="Pinned panels"
+              ?data-overflow-left=${this._tabScroll?.left}
+              ?data-overflow-right=${this._tabScroll?.right}
+              @scroll=${this._syncTabOverflow}>
+              ${repeat(pinnedViews, (view) => view.id, (view) => html`
+                <div class="tool-panel-tab-item" data-active=${view.id === this.activeId}
+                  data-drop-side=${this._tabDrop?.id === view.id ? this._tabDrop.side : ''}
+                  @dragover=${(event) => this._dragOverTab(event, view.id)}
+                  @dragleave=${() => { this._tabDrop = undefined; }}
+                  @drop=${(event) => this._dropTab(event, view.id)}>
+                  <button type="button" class="tool-panel-tab" data-view-id=${view.id}
+                    draggable="true"
+                    title=${view.getLabel?.() ?? view.label}
+                    aria-pressed=${view.id === this.activeId}
+                    aria-description="Drag to reorder, or use Alt+Left Arrow or Alt+Right Arrow."
+                    @dragstart=${(event) => this._startTabDrag(event, view.id)}
+                    @dragend=${this._endTabDrag}
+                    @keydown=${(event) => this._onTabKeyDown(event, view.id)}
+                    @click=${() => this.showPanel(view.id)}>${view.getLabel?.() ?? view.label}</button>
+                </div>
+              `)}
+            </nav>
+            <button type="button" class="tool-panel-tab-scroll"
+              aria-label="Show next tab" title="Show next tab"
+              ?hidden=${!tabsOverflow}
+              ?disabled=${!this._tabScroll?.right}
+              @click=${() => this._scrollTabs(1)}>
+              <svg aria-hidden="true" viewBox="0 0 10 10"><use href="${CHEVRON_ICON_SRC}#icon"></use></svg>
+            </button>
+          </div>
         ` : nothing}
-        ${this._tabScroll?.left || this._tabScroll?.right
+        ${tabsOverflow
     ? html`<span class="tool-panel-divider tool-panel-tabs-divider" aria-hidden="true"></span>`
     : nothing}
         <div class="tool-panel-selector">
