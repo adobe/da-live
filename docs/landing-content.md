@@ -27,9 +27,10 @@ copy. Saved-site selection still needs nav integration; Content does not add a
 replacement picker.
 
 Content mounts inside the gradient landing surface already provided by main.
-The page background and its light/dark theme preview live in the inline CSS in
-`head.html`, so the gradient paints before the Content module loads. `browse.js`
-adds the empty `.landing` surface before importing Content.
+`landing.css` retains that page background and its light/dark theme preview.
+The same gradient rules are also in the inline CSS in `head.html`, so the
+background paints before the Content module loads. `browse.js` adds the empty
+`.landing` surface before importing Content. Keep both copies in sync.
 `landing-content.css` contains only the Content component's shadow styles.
 The panel uses an opaque `--s2-gray-25` surface: white in light mode and dark
 in dark mode, with the gradient visible only outside the panel.
