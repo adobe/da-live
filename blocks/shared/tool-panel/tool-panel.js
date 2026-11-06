@@ -50,7 +50,7 @@ class DaToolPanel extends LitElement {
     host: { attribute: false },
     _fullsizeDialogViewId: { state: true },
     _pinnedIds: { state: true },
-    _tabScroll: { state: true },
+    _tabOverflow: { state: true },
   };
 
   /** Each inline view's loaded element, by view id. Reused when switching back. */
@@ -89,7 +89,7 @@ class DaToolPanel extends LitElement {
     if (this.hasUpdated) {
       this._bindViewLabels();
     }
-    this._onRailToggle = () => this._broadcastActiveView();
+    this._onRailToggle = () => this._notifyActiveView();
     document.addEventListener(PANEL_EVENT.OPEN, this._onRailToggle);
     document.addEventListener(PANEL_EVENT.CLOSE, this._onRailToggle);
     this._tabResizeObserver = new ResizeObserver(() => {
@@ -117,7 +117,7 @@ class DaToolPanel extends LitElement {
   /**
    * Tells the host which view is visible, or null while the rail is hidden.
    */
-  _broadcastActiveView() {
+  _notifyActiveView() {
     const rail = this.closest('aside.panel');
     const visible = !!rail && !rail.hasAttribute('hidden');
     this.host?.onActiveViewChange?.(visible ? this.activeId : null);
@@ -173,7 +173,7 @@ class DaToolPanel extends LitElement {
    */
   get _pinnedViews() {
     return this._pinnedIds
-      .map((id) => this.views?.find((view) => view.id === id))
+      .map((id) => this._viewById(id))
       .filter(canPin);
   }
 
@@ -302,8 +302,8 @@ class DaToolPanel extends LitElement {
     }
     const left = !!tabs && tabs.scrollLeft > 1;
     const right = !!tabs && tabs.scrollWidth - tabs.clientWidth - tabs.scrollLeft > 1;
-    if (this._tabScroll?.left !== left || this._tabScroll?.right !== right) {
-      this._tabScroll = { left, right };
+    if (this._tabOverflow?.left !== left || this._tabOverflow?.right !== right) {
+      this._tabOverflow = { left, right };
     }
   }
 
@@ -361,11 +361,20 @@ class DaToolPanel extends LitElement {
     const viewsById = new Map(this.views.map((view) => [view.id, view]));
     Object.keys(this._loaded).forEach((id) => {
       if (this._isOutdated(id, viewsById.get(id))) {
-        this._loaded[id].remove();
-        delete this._loaded[id];
-        delete this._loadedKeys[id];
+        this._dropLoadedView(id);
       }
     });
+  }
+
+  /**
+   * Removes a loaded element and forgets its cache key.
+   *
+   * @param {string} id - The id the element was loaded for.
+   */
+  _dropLoadedView(id) {
+    this._loaded[id].remove();
+    delete this._loaded[id];
+    delete this._loadedKeys[id];
   }
 
   /**
@@ -390,9 +399,7 @@ class DaToolPanel extends LitElement {
   _clearPageBoundViews() {
     Object.keys(this._loaded).forEach((id) => {
       if (this._loadedKeys[id] !== undefined) {
-        this._loaded[id].remove();
-        delete this._loaded[id];
-        delete this._loadedKeys[id];
+        this._dropLoadedView(id);
       }
     });
   }
@@ -442,7 +449,7 @@ class DaToolPanel extends LitElement {
     }
     this._syncContent();
     this._syncHeaderActions();
-    this._broadcastActiveView();
+    this._notifyActiveView();
     this.shadowRoot.querySelector('.tool-panel-tab[aria-pressed="true"]')
       ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
@@ -738,7 +745,7 @@ class DaToolPanel extends LitElement {
   render() {
     const activeView = this._viewById(this.activeId);
     const pinnedViews = this._pinnedViews;
-    const tabsOverflow = this._tabScroll?.left || this._tabScroll?.right;
+    const tabsOverflow = this._tabOverflow?.left || this._tabOverflow?.right;
     const popoutButton = this._renderPopoutButton(activeView);
 
     return html`
@@ -808,20 +815,20 @@ class DaToolPanel extends LitElement {
         <button type="button" class="tool-panel-tab-scroll tool-panel-tab-scroll-left"
           aria-label="Show previous tab" title="Show previous tab"
           ?hidden=${!tabsOverflow}
-          ?disabled=${!this._tabScroll?.left}
+          ?disabled=${!this._tabOverflow?.left}
           @click=${() => this._scrollTabs(-1)}>
           <svg aria-hidden="true" viewBox="0 0 10 10"><use href="${ICONS.chevron}#icon"></use></svg>
         </button>
         <nav class="tool-panel-tabs" aria-label="Pinned panels"
-          ?data-overflow-left=${this._tabScroll?.left}
-          ?data-overflow-right=${this._tabScroll?.right}
+          ?data-overflow-left=${this._tabOverflow?.left}
+          ?data-overflow-right=${this._tabOverflow?.right}
           @scroll=${this._syncTabOverflow}>
           ${repeat(pinnedViews, (view) => view.id, (view) => this._renderTab(view))}
         </nav>
         <button type="button" class="tool-panel-tab-scroll"
           aria-label="Show next tab" title="Show next tab"
           ?hidden=${!tabsOverflow}
-          ?disabled=${!this._tabScroll?.right}
+          ?disabled=${!this._tabOverflow?.right}
           @click=${() => this._scrollTabs(1)}>
           <svg aria-hidden="true" viewBox="0 0 10 10"><use href="${ICONS.chevron}#icon"></use></svg>
         </button>
