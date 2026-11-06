@@ -265,7 +265,7 @@ describe('version comparison labels', () => {
     for (const time of ['10:00', '11:00']) {
       await inst.handleCompare(new Event('click'), ver({ label: 'Published', time }));
       const compare = await comparison();
-      const label = `Published from Jan 1, ${time}`;
+      const label = `Published (Jan 1, ${time})`;
       expect([...compare.shadowRoot.querySelectorAll('.ew-cc-chip')].map((chip) => chip.textContent))
         .to.deep.equal(['Current', label]);
       expect(compare.shadowRoot.querySelector('nx-popover').getAttribute('aria-label'))
@@ -277,12 +277,12 @@ describe('version comparison labels', () => {
     await inst.handlePreview(new Event('click'), ver({ label: 'Sprint 42' }));
     let compare = await comparison();
     expect(compare.shadowRoot.querySelector('.ew-cc-chip').textContent)
-      .to.equal('Sprint 42 from Jan 1, 10:00');
+      .to.equal('Sprint 42 (Jan 1, 10:00)');
 
     await inst.handleToggleCompareSplit();
     compare = await comparison();
     expect([...compare.shadowRoot.querySelectorAll('.ew-cc-chip')].map((chip) => chip.textContent))
-      .to.deep.equal(['Current', 'Sprint 42 from Jan 1, 10:00']);
+      .to.deep.equal(['Current', 'Sprint 42 (Jan 1, 10:00)']);
   });
 
   it('uses the date and time without an empty title for unnamed versions', async () => {

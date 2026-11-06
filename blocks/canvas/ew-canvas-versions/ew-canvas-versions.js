@@ -247,7 +247,7 @@ class EwCanvasVersions extends LitElement {
     this._compareTrigger = trigger;
     if (forceSplit) this._compareSplit = true;
     const dateTime = `${entry.date}, ${entry.time}`;
-    const label = entry.label ? `${entry.label} from ${dateTime}` : dateTime;
+    const label = entry.label ? `${entry.label} (${dateTime})` : dateTime;
     this._compareCtx = { previewDom: versionBody, diffDom, cleanup, label, entry };
   }
 
