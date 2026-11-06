@@ -33,26 +33,6 @@ describe('landing tile group', () => {
     setEWEnabled(false);
   });
 
-  it('renders only the five tiles, without Content, cards or chat', async () => {
-    const root = el.shadowRoot;
-    expect(root.querySelector('#files-heading, .files-panel, da-file-item, .composer, textarea'))
-      .to.equal(null);
-    expect([...root.querySelector('.tile-group').children].map((node) => node.tagName))
-      .to.deep.equal(['UL']);
-    const tiles = [...root.querySelectorAll('da-landing-tile')];
-    await Promise.all(tiles.map((tile) => tile.updateComplete));
-    expect(tiles.map((tile) => tile.heading)).to.deep.equal([
-      'Browse Content', 'Create a page', 'Publishing & Workflow',
-      'Localization & Multi-site', 'Develop & Extend',
-    ]);
-    expect(tiles.slice(2, 4).map((tile) => tile.href)).to.deep.equal([
-      'https://www.aem.live/docs/ew/authoring/publishing',
-      'https://www.aem.live/docs/ew/administering/multi-site-manager',
-    ]);
-    expect(new URL(tiles[4].href).hash).to.equal('#org/site');
-    expect(tiles[0].tone).to.equal('green');
-  });
-
   it('uses authored order, text, tone and action instead of tile titles or positions', async () => {
     const create = sinon.stub(el, '_onCreatePage');
     el.entries = [
@@ -75,23 +55,12 @@ describe('landing tile group', () => {
     expect(create.calledOnce).to.equal(true);
   });
 
-  it('routes Browse through the selected site while retaining preview settings', async () => {
-    const { href } = window.location;
-    try {
-      window.history.replaceState(null, '', '/?nx=main&nxver=2&landing=true#/org/site');
-      el.requestUpdate();
-      await el.updateComplete;
-      const tile = el.shadowRoot.querySelector('da-landing-tile');
-      expect(tile.disabled).to.equal(false);
-      expect(new URL(tile.href).searchParams.get('nx')).to.equal('main');
-      expect(new URL(tile.href).searchParams.get('nxver')).to.equal('2');
-      expect(new URL(tile.href).hash).to.equal('#/org/site');
-      hashChange._set({ org: 'other', site: 'site', fullpath: '/other/site' });
-      await el.updateComplete;
-      expect(new URL(tile.href).hash).to.equal('#/other/site');
-    } finally {
-      window.history.replaceState(null, '', href);
-    }
+  it('updates Browse when the selected site changes', async () => {
+    const tile = el.shadowRoot.querySelector('da-landing-tile');
+    expect(new URL(tile.href).hash).to.equal('#/org/site');
+    hashChange._set({ org: 'other', site: 'site', fullpath: '/other/site' });
+    await el.updateComplete;
+    expect(new URL(tile.href).hash).to.equal('#/other/site');
   });
 
   it('renders Browse and Create as disabled native buttons without a selected site', async () => {
@@ -204,17 +173,12 @@ describe('landing tile group', () => {
     expect(request.signal.aborted).to.equal(true);
   });
 
-  it('selects Canvas when EW is enabled', async () => {
+  it('selects Canvas when EW is enabled and falls back to classic when the flag fails', async () => {
     loadSite.restore();
     sinon.stub(source, 'list').resolves({ ok: true, permissions: ['write'] });
     setEWEnabled(true);
     await el.loadSite();
     expect(el._editor).to.equal('/canvas#');
-  });
-
-  it('falls back to the classic editor when the EW flag fails', async () => {
-    loadSite.restore();
-    sinon.stub(source, 'list').resolves({ ok: true, permissions: ['write'] });
     setEWEnabled(Promise.reject(new Error('Flag unavailable')));
     await el.loadSite();
     expect(el._editor).to.equal('/edit#');

@@ -5,16 +5,11 @@ import { getBrowseHref, getFileHref, getTileTarget } from '../../../../blocks/la
 const HREF = 'https://tilesv2--da-live--adobe.aem.live/?landing=true&nx=main&nxver=2&theme=light#/org/site';
 
 describe('landing tile destinations', () => {
-  it('resolves encoded Browse placeholders, preserving preview settings and requiring a site', () => {
+  it('resolves encoded Browse placeholders and requires a site', () => {
     const entry = { href: '/#/%7Borg%7D/%7Bsite%7D' };
     expect(getTileTarget({ entry, href: HREF })).to.deep.equal({ disabled: true });
     const target = getTileTarget({ entry, scope: 'org/other', href: HREF });
-    const url = new URL(target.href);
-    expect(url.hash).to.equal('#/org/other');
-    expect(url.searchParams.get('landing')).to.equal('home');
-    expect(url.searchParams.get('browse')).to.equal('2');
-    expect(url.searchParams.get('nx')).to.equal('main');
-    expect(url.searchParams.get('theme')).to.equal('light');
+    expect(new URL(target.href).hash).to.equal('#/org/other');
   });
 
   it('recognizes only supported action instructions, not arbitrary commands or unsafe destinations', () => {

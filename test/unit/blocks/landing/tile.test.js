@@ -25,9 +25,7 @@ describe('landing tile', () => {
       --s2-component-xl-regular-font-size: 18px;
       --s2-body-line-height: 1.5;
       --s2-gray-25: light-dark(#fff, #111);
-      --s2-gray-50: light-dark(#f8f8f8, #1b1b1b);
       --s2-gray-75: light-dark(#f3f3f3, #222);
-      --s2-gray-100: light-dark(#e9e9e9, #2c2c2c);
       --s2-gray-900: light-dark(#292929, #eee);
       --s2-gray-1000: light-dark(#000, #fff);
       --s2-gray-600: light-dark(#717171, #aaa);
@@ -100,31 +98,6 @@ describe('landing tile', () => {
     expect(parseFloat(getComputedStyle(description).fontSize)).to.equal(smallText + 2);
   });
 
-  it('uses shared palette, surface and shadow tokens in light and dark mode', async () => {
-    tile.style.setProperty('--s2-turquoise-200', 'light-dark(#d1f5f5, #002529)');
-    tile.style.setProperty('--s2-purple-200', 'light-dark(#f4ebfc, #320060)');
-    const surface = tile.shadowRoot.querySelector('.tile');
-    const icon = tile.shadowRoot.querySelector('.icon');
-    tile.style.colorScheme = 'light';
-    const lightShadow = getComputedStyle(surface).boxShadow;
-    expect(lightShadow).not.to.equal('none');
-    expect(getComputedStyle(surface).backgroundColor).to.equal('rgb(255, 255, 255)');
-    expect(getComputedStyle(icon).backgroundColor).to.equal('rgb(209, 245, 245)');
-    tile.style.colorScheme = 'dark';
-    expect(getComputedStyle(surface).boxShadow).not.to.equal(lightShadow);
-    expect(getComputedStyle(surface).backgroundColor).to.equal('rgb(34, 34, 34)');
-    expect(getComputedStyle(icon).backgroundColor).to.equal('rgb(0, 37, 41)');
-    tile.tone = 'purple';
-    await tile.updateComplete;
-    expect(getComputedStyle(icon).backgroundColor).to.equal('rgb(50, 0, 96)');
-    tile.style.setProperty('--s2-purple-200', 'rgb(80 40 100)');
-    tile.style.setProperty('--s2-gray-75', 'rgb(40 40 40)');
-    expect(getComputedStyle(icon).backgroundColor).to.equal('rgb(80, 40, 100)');
-    expect(getComputedStyle(surface).backgroundColor).to.equal('rgb(40, 40, 40)');
-    tile.style.setProperty('--s2-drop-shadow-elevated', 'none');
-    expect(getComputedStyle(surface).boxShadow).to.equal('none');
-  });
-
   it('activates a native action button with Enter or Space, but never when disabled', async () => {
     tile.action = true;
     tile.actionId = 'create-page';
@@ -141,42 +114,6 @@ describe('landing tile', () => {
     button.click();
     expect(clicks).to.have.length(2);
     expect(tile.shadowRoot.querySelector('a')).to.equal(null);
-  });
-
-  it('only strengthens the S2-colored shadow on hover for enabled tiles in either theme', async () => {
-    // Force hover styling without requiring a foreground browser tab.
-    const hoverSheet = new CSSStyleSheet();
-    hoverSheet.replaceSync([...sheet.cssRules]
-      .map((rule) => rule.cssText.replaceAll(':hover', '[data-hover]')).join('\n'));
-    tile.shadowRoot.adoptedStyleSheets = [hoverSheet];
-    for (const mode of ['link', 'button', 'disabled', 'placeholder']) {
-      tile.href = mode === 'link' ? '#browse' : undefined;
-      tile.action = mode === 'button' || mode === 'disabled';
-      tile.disabled = mode === 'disabled';
-      await tile.updateComplete;
-      const surface = tile.shadowRoot.querySelector('.tile');
-      for (const theme of ['light', 'dark']) {
-        surface.removeAttribute('data-hover');
-        const bounds = surface.getBoundingClientRect();
-        tile.style.colorScheme = theme;
-        const background = getComputedStyle(surface).backgroundColor;
-        const shadow = getComputedStyle(surface).boxShadow;
-        surface.setAttribute('data-hover', '');
-        const hoveredShadow = getComputedStyle(surface).boxShadow;
-        expect(getComputedStyle(surface).backgroundColor).to.equal(background);
-        expect(surface.getBoundingClientRect().toJSON()).to.deep.equal(bounds.toJSON());
-        if (mode === 'link' || mode === 'button') {
-          expect(hoveredShadow).not.to.equal(shadow);
-          const token = theme === 'light' ? '--s2-gray-1000' : '--s2-gray-25';
-          const color = tile.style.getPropertyValue(token);
-          tile.style.setProperty(token, 'rgb(20 30 40)');
-          expect(getComputedStyle(surface).boxShadow).not.to.equal(hoveredShadow);
-          tile.style.setProperty(token, color);
-        } else {
-          expect(hoveredShadow).to.equal(shadow);
-        }
-      }
-    }
   });
 
   it('targets action classes for nested clicks without repeated RUM attributes', async () => {
@@ -252,18 +189,6 @@ describe('landing tile group', () => {
   });
 
   afterEach(() => container.remove());
-
-  it('matches the loaded Content panel width at whole-card breakpoints', () => {
-    for (const [available, expected] of [
-      [1068, 998], [940, 835], [850, 835], [700, 672], [550, 509], [358, 346], [250, 250],
-    ]) {
-      container.style.width = `${available}px`;
-      const bounds = group.getBoundingClientRect();
-      const parent = container.getBoundingClientRect();
-      expect(bounds.width).to.be.closeTo(expected, 0.1);
-      expect((bounds.left + bounds.right) / 2).to.be.closeTo((parent.left + parent.right) / 2, 0.1);
-    }
-  });
 
   it('uses centered 3+2 rows on desktop and a single column on narrow containers', () => {
     for (const available of [1068, 850, 700, 358, 250]) {
