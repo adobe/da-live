@@ -1,13 +1,13 @@
 import { LitElement, html, nothing, repeat } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
-import { getCommentsBridge } from '../editor-utils/comments-bridge.js';
-import { canvasBus } from '../utils/canvas-bus.js';
+import { getCommentsBridge } from '../../canvas/editor-utils/comments-bridge.js';
+import { canvasBus } from '../../canvas/utils/canvas-bus.js';
 import {
   persistToolPanelView,
   persistPinnedToolPanelViews,
   readPinnedToolPanelViews,
   resolveInitialToolPanelView,
-} from '../utils/panel.js';
+} from '../../canvas/utils/panel.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
@@ -27,7 +27,7 @@ const FULLSCREEN_ICON_SRC = '/img/icons/s2-icon-fullscreen-20-n.svg';
 const CHEVRON_ICON_SRC = '/img/icons/s2-icon-chevronleft-10-n.svg';
 const canPin = (view) => view && !['window', 'fullsize-dialog', 'modal'].includes(view.experience);
 
-class EwToolPanel extends LitElement {
+class DaToolPanel extends LitElement {
   static properties = {
     views: { attribute: false },
     activeId: { type: String },
@@ -551,4 +551,4 @@ class EwToolPanel extends LitElement {
   }
 }
 
-customElements.define('ew-tool-panel', EwToolPanel);
+customElements.define('da-tool-panel', DaToolPanel);
