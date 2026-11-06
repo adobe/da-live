@@ -35,5 +35,7 @@ metadata keeps telemetry identities stable when titles change; otherwise the
 source heading ID is used.
 
 HTTP(S) destinations remain links. `{org}` and `{site}` use the selected site from
-the hash; without one, those tiles are disabled. Action placeholders such as
-`/{action:create-page}` and unresolved placeholders render as disabled tiles.
+the hash; without one, those tiles are disabled. `/{action:create-page}` needs a
+selected site and opens the shared `da-name-dialog`. It refuses existing names,
+saves an empty page and opens it in the site's editor, like Browse's New → Document.
+Other actions and unresolved placeholders render as disabled tiles.

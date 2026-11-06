@@ -1,7 +1,10 @@
+const CREATE_PAGE = /^\/?\{action:create-page\}$/;
+
 export function getTileTarget({ entry, scope, href = window.location.href }) {
   try {
     const template = entry.href.replace(/%7B.*?%7D/gi, (token) => decodeURIComponent(token));
     const [org, site] = scope?.split('/') || [];
+    if (CREATE_PAGE.test(template)) return { action: 'create-page', disabled: !org || !site };
     const requiresSite = /\{org\}|\{site\}/.test(template);
     if (requiresSite && (!org || !site)) return { disabled: true };
     const target = template.replace(/\{org\}/g, encodeURIComponent(org))

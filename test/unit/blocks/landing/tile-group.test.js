@@ -1,9 +1,11 @@
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
 import '../../setup-nx.js';
 import '../../../../blocks/landing/tile-group.js';
 import { parseTileEntries } from '../../../../blocks/landing/tile-content.js';
-import { getNx } from '../../../../scripts/utils.js';
+import { getNx, getNx2Api } from '../../../../scripts/utils.js';
 
+const { source } = await getNx2Api();
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const content = await fetch('/test/fixtures/landing-tiles.html').then((response) => response.text());
 
@@ -24,7 +26,10 @@ describe('landing tile group', () => {
     await el.updateComplete;
   });
 
-  afterEach(() => el.remove());
+  afterEach(() => {
+    el.remove();
+    sinon.restore();
+  });
 
   it('uses authored order, text and tone instead of tile titles or positions', async () => {
     el.entries = [
@@ -46,18 +51,40 @@ describe('landing tile group', () => {
     expect(new URL(browse.href).hash).to.equal('#/other/site');
   });
 
-  it('keeps Create a page as a disabled placeholder', async () => {
+  it('opens the shared name dialog from Create a page', async () => {
     const [, create] = await getTiles();
     expect(create.href).to.equal(undefined);
-    expect(create.shadowRoot.querySelector('button').disabled).to.equal(true);
+    create.shadowRoot.querySelector('button').click();
+    await el._onCreatePage();
+    await el.updateComplete;
+    const dialog = el.shadowRoot.querySelector('da-name-dialog');
+    expect(dialog.getAttribute('dialog-title')).to.equal('New page in site');
+    hashChange._set({ org: 'other', site: 'site', fullpath: '/other/site' });
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('da-name-dialog')).to.equal(null);
+  });
+
+  it('does not overwrite an existing page and shows save errors', async () => {
+    const metadata = sinon.stub(source, 'getMetadata').resolves({ status: 200 });
+    const save = sinon.stub(source, 'save').resolves({ ok: false, status: 403 });
+    el._createDialog = { scope: 'org/site' };
+    await el._onCreatePageSubmit({ detail: { name: 'draft' } });
+    expect(metadata.calledOnceWithExactly('/org/site/draft.html')).to.equal(true);
+    expect(save.called).to.equal(false);
+    expect(el._createDialog.error).to.include('already exists');
+    metadata.resolves({ status: 404 });
+    await el._onCreatePageSubmit({ detail: { name: 'draft' } });
+    expect(save.firstCall.args[0]).to.equal('/org/site/draft.html');
+    expect(el._createDialog).to.deep.equal({ scope: 'org/site', saving: false, error: 'Could not create the page.' });
   });
 
   it('disables site tiles without a selected site', async () => {
     hashChange._set(undefined);
     await el.updateComplete;
-    const [browse, , , , develop] = await getTiles();
+    const [browse, create, , , develop] = await getTiles();
     expect(browse.href).to.equal(undefined);
     expect(browse.shadowRoot.querySelector('button').disabled).to.equal(true);
+    expect(create.shadowRoot.querySelector('button').disabled).to.equal(true);
     expect(develop.shadowRoot.querySelector('button').disabled).to.equal(true);
   });
 });

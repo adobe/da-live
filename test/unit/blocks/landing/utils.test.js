@@ -12,9 +12,15 @@ describe('landing tile destinations', () => {
     expect(new URL(target.href).hash).to.equal('#/org/other');
   });
 
-  it('disables actions, unknown placeholders and unsafe destinations', () => {
+  it('resolves Create a page as an action that requires a site', () => {
+    const entry = { href: '/%7Baction%3Acreate-page%7D' };
+    expect(getTileTarget({ entry, href: HREF })).to.deep.equal({ action: 'create-page', disabled: true });
+    expect(getTileTarget({ entry, scope: 'org/site', href: HREF })).to.deep.equal({ action: 'create-page', disabled: false });
+  });
+
+  it('disables unknown actions, unknown placeholders and unsafe destinations', () => {
     // eslint-disable-next-line no-script-url
-    for (const target of ['/%7Baction%3Acreate-page%7D', '/{unknown}', 'javascript:alert(1)', 'data:text/html,test', '/%7Bbad%XY%7D']) {
+    for (const target of ['/%7Baction%3Aunknown%7D', '/{unknown}', 'javascript:alert(1)', 'data:text/html,test', '/%7Bbad%XY%7D']) {
       expect(getTileTarget({ entry: { href: target }, scope: 'org/site', href: HREF })).to.deep.equal({ disabled: true });
     }
   });
