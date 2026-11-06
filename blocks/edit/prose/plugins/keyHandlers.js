@@ -4,7 +4,6 @@ import {
   goToNextCell,
   selectedRect,
   isInTable,
-  addRowAfter,
   deleteRow,
   deleteColumn,
   deleteTable,
@@ -15,6 +14,7 @@ import {
   yRedo,
 } from 'da-y-wrapper';
 import { isURL } from '../../utils/helpers.js';
+import { addRowLike } from './tableUtils.js';
 
 export function getURLInputRule() {
   return new InputRule(
@@ -117,9 +117,9 @@ export function handleTableBackspace(state, dispatch) {
 
 export function handleTableTab(direction) {
   const isCursorInLastTableCell = (rect) => {
-    const { left, bottom } = rect;
+    const { right, bottom } = rect;
     const { height, width } = rect.map;
-    return left + 1 === width && bottom === height;
+    return right === width && bottom === height;
   };
 
   const gtnc = goToNextCell(direction);
@@ -127,7 +127,7 @@ export function handleTableTab(direction) {
     if (!isInTable(state)) return false;
     const rect = selectedRect(state);
     if (direction === 1 && isCursorInLastTableCell(rect)) {
-      addRowAfter(state, dispatch);
+      addRowLike('after')(state, dispatch);
       const liveView = view || window.view;
       return gtnc(liveView.state, dispatch);
     }
