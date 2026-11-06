@@ -18,6 +18,31 @@ export function setCommentsController(controller) {
   canvasBus.commentsControllerState.emit(bridge.controller);
 }
 
+/**
+ * Calls `onChange` whenever the active comment count may have changed, also
+ * across comments controller swaps.
+ *
+ * @param {() => void} onChange - Reacts to the new count.
+ * @returns {() => void} Stops listening.
+ */
+export function subscribeCommentCounts(onChange) {
+  let unsubscribeCounts;
+  const bind = (controller) => {
+    unsubscribeCounts?.();
+    unsubscribeCounts = controller?.subscribe?.(({ reason }) => {
+      if (reason === 'counts' || reason === 'init') {
+        onChange();
+      }
+    });
+  };
+  bind(bridge.controller);
+  const unsubscribeController = canvasBus.commentsControllerState.subscribe(bind);
+  return () => {
+    unsubscribeCounts?.();
+    unsubscribeController();
+  };
+}
+
 export function formatCommentsViewLabel(activeCount) {
   const count = Number(activeCount) || 0;
   return count > 0 ? `Comments (${count})` : 'Comments';
