@@ -89,6 +89,29 @@ describe('version image previews', () => {
     expect([...diffDom.querySelectorAll('img')].map((img) => img.getAttribute('src')))
       .to.deep.equal(['./media_old.png', './media_new.png']);
   });
+
+  it('scrolls both comparison panes together with matching content aligned', async () => {
+    const diffDom = document.createElement('div');
+    diffDom.innerHTML = `<p><del>${'Older, much longer text. '.repeat(60)}</del><ins>Short.</ins></p><table><tr><td>Same</td></tr></table>${'<p>Filler</p>'.repeat(30)}`;
+    inst = document.createElement('ew-canvas-compare');
+    Object.assign(inst, { diffDom, path: '/org/repo/doc.html', label: 'Published', split: true });
+    document.body.appendChild(inst);
+    await inst.updateComplete;
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync(await (await fetch('/blocks/canvas/ew-comparison/ew-canvas-compare.css')).text());
+    inst.shadowRoot.adoptedStyleSheets = [sheet];
+    Object.assign(inst.shadowRoot.querySelector('nx-popover').style, { width: '760px', height: '320px' });
+
+    const split = inst.shadowRoot.querySelector('.ew-cc-split');
+    const tables = [...split.querySelectorAll('table')];
+    const tableTops = () => tables.map((table) => table.getBoundingClientRect().top);
+    expect(tables).to.have.length(2);
+    expect(Math.abs(tableTops()[0] - tableTops()[1])).to.be.lessThan(2);
+    expect(split.scrollHeight).to.be.greaterThan(split.clientHeight);
+    const before = tableTops();
+    split.scrollTop = 100;
+    expect(tableTops().map((top, i) => before[i] - top)).to.deep.equal([100, 100]);
+  });
 });
 
 // ─── _filteredVersions ───────────────────────────────────────────────────────
@@ -232,6 +255,64 @@ describe('ew-canvas-versions', () => {
     inst.handleCloseCompare();
     expect(inst._compareCtx).to.be.null;
     expect(cleaned).to.be.true;
+  });
+});
+
+describe('version comparison labels', () => {
+  let inst;
+  let versions;
+  let savedGet;
+
+  beforeEach(async () => {
+    ({ versions } = await getNx2Api());
+    savedGet = versions.get;
+    versions.get = async () => new Response('<body><main><div><p>Saved content</p></div></main></body>');
+    inst = await createInstance({ path: '/org/site/doc.html', _versions: [] });
+    inst._buildDiff = async () => ({ dom: document.createElement('div'), cleanup: () => {} });
+  });
+
+  afterEach(() => {
+    inst?.handleCloseCompare();
+    inst?.remove();
+    versions.get = savedGet;
+  });
+
+  async function comparison() {
+    await inst.updateComplete;
+    const compare = inst.shadowRoot.querySelector('ew-canvas-compare');
+    await compare.updateComplete;
+    return compare;
+  }
+
+  it('distinguishes identically named versions published on the same day', async () => {
+    for (const time of ['10:00', '11:00']) {
+      await inst.handleCompare(new Event('click'), ver({ label: 'Published', time }));
+      const compare = await comparison();
+      const label = `Published (Jan 1, ${time})`;
+      expect([...compare.shadowRoot.querySelectorAll('.ew-cc-chip')].map((chip) => chip.textContent))
+        .to.deep.equal(['Current', label]);
+      expect(compare.shadowRoot.querySelector('nx-popover').getAttribute('aria-label'))
+        .to.equal(`Compare with ${label}`);
+    }
+  });
+
+  it('keeps the dated label when switching from preview to comparison', async () => {
+    await inst.handlePreview(new Event('click'), ver({ label: 'Sprint 42' }));
+    let compare = await comparison();
+    expect(compare.shadowRoot.querySelector('.ew-cc-chip').textContent)
+      .to.equal('Sprint 42 (Jan 1, 10:00)');
+
+    await inst.handleToggleCompareSplit();
+    compare = await comparison();
+    expect([...compare.shadowRoot.querySelectorAll('.ew-cc-chip')].map((chip) => chip.textContent))
+      .to.deep.equal(['Current', 'Sprint 42 (Jan 1, 10:00)']);
+  });
+
+  it('uses the date and time without an empty title for unnamed versions', async () => {
+    await inst.handleCompare(new Event('click'), ver({ label: '' }));
+    const compare = await comparison();
+    expect([...compare.shadowRoot.querySelectorAll('.ew-cc-chip')].map((chip) => chip.textContent))
+      .to.deep.equal(['Current', 'Jan 1, 10:00']);
   });
 });
 
