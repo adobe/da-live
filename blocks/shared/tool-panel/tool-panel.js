@@ -8,6 +8,8 @@ import {
   readPinnedToolPanelViews,
   resolveInitialToolPanelView,
 } from '../../canvas/utils/panel.js';
+import DragHandler from '../drag-handler.js';
+import drawDragPreview from '../drag-preview.js';
 import { canPin, labelOf, opensOutsidePanel } from './tool-panel-view.js';
 
 const nx = getNx();
@@ -49,7 +51,6 @@ class DaToolPanel extends LitElement {
     contextKey: { type: String },
     _fullsizeDialogViewId: { state: true },
     _pinnedIds: { state: true },
-    _tabDrop: { state: true },
     _tabScroll: { state: true },
   };
 
@@ -58,6 +59,15 @@ class DaToolPanel extends LitElement {
 
   /** The `cacheKey` each element was loaded with, by view id. A new key reloads it. */
   _loadedKeys = {};
+
+  /** Reorders the pinned tabs by drag and drop. */
+  _tabDrag = new DragHandler({
+    type: 'application/x-da-panel-tab',
+    createPreview: (tab) => drawDragPreview(tab, tab.parentElement),
+    canDrop: (id, targetId) => this._pinnedIds.includes(id) && this._pinnedIds.includes(targetId),
+    onDrop: (move) => this._reorderTab(move),
+    onChange: () => this.requestUpdate(),
+  });
 
   /**
    * Restores the pinned views.
@@ -91,7 +101,7 @@ class DaToolPanel extends LitElement {
    */
   disconnectedCallback() {
     super.disconnectedCallback();
-    this._endTabDrag();
+    this._tabDrag.end();
     this._tabResizeObserver?.disconnect();
     cancelAnimationFrame(this._tabResizeFrame);
     this._observedTabs = undefined;
@@ -270,74 +280,6 @@ class DaToolPanel extends LitElement {
       .find((button) => button.dataset.viewId === id)?.focus();
   }
 
-  _startTabDrag(event, id) {
-    this._endTabDrag();
-    this._tabDrag = { id, contextKey: this.contextKey };
-    event.stopPropagation();
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('application/x-da-panel-tab', id);
-    const button = event.currentTarget;
-    const rect = button.getBoundingClientRect();
-    const buttonStyle = getComputedStyle(button);
-    const groupStyle = getComputedStyle(button.parentElement);
-    const image = document.createElement('canvas');
-    const scale = window.devicePixelRatio || 1;
-    image.width = Math.ceil(rect.width * scale);
-    image.height = Math.ceil(rect.height * scale);
-    image.className = 'tool-panel-drag-image';
-    image.style.width = `${rect.width}px`;
-    image.style.height = `${rect.height}px`;
-    const ctx = image.getContext('2d');
-    ctx.scale(scale, scale);
-    ctx.fillStyle = groupStyle.backgroundColor;
-    ctx.beginPath();
-    ctx.roundRect(0, 0, rect.width, rect.height, parseFloat(groupStyle.borderRadius) || 0);
-    ctx.fill();
-    ctx.font = buttonStyle.font;
-    ctx.fillStyle = buttonStyle.color;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(button.textContent.trim(), rect.width / 2, rect.height / 2, rect.width - 16);
-    this.shadowRoot.append(image);
-    this._tabDragImage = image;
-    event.dataTransfer.setDragImage(image, event.clientX - rect.left, event.clientY - rect.top);
-  }
-
-  _canDropTab(targetId) {
-    return this._tabDrag && this._tabDrag.contextKey === this.contextKey
-      && this._pinnedIds.includes(this._tabDrag.id) && this._pinnedIds.includes(targetId)
-      && this._tabDrag.id !== targetId;
-  }
-
-  _dragOverTab(event, id) {
-    if (!this._canDropTab(id)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    event.dataTransfer.dropEffect = 'move';
-    const rect = event.currentTarget.getBoundingClientRect();
-    this._tabDrop = { id, side: event.clientX < rect.left + rect.width / 2 ? 'before' : 'after' };
-  }
-
-  _dropTab(event, targetId) {
-    if (!this._canDropTab(targetId)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const rect = event.currentTarget.getBoundingClientRect();
-    this._reorderTab({
-      id: this._tabDrag.id,
-      targetId,
-      before: event.clientX < rect.left + rect.width / 2,
-    });
-    this._endTabDrag();
-  }
-
-  _endTabDrag() {
-    this._tabDragImage?.remove();
-    this._tabDragImage = undefined;
-    this._tabDrag = undefined;
-    this._tabDrop = undefined;
-  }
-
   /**
    * Observes the tabs list and records which of its edges overflow.
    */
@@ -460,6 +402,7 @@ class DaToolPanel extends LitElement {
   async updated(changed) {
     this._syncTabOverflow();
     if (changed.has('contextKey')) {
+      this._tabDrag.end();
       this._clearPageBoundViews();
     }
     if (changed.has('views')) {
@@ -832,17 +775,17 @@ class DaToolPanel extends LitElement {
     const label = labelOf(view);
     return html`
       <div class="tool-panel-tab-item" data-active=${view.id === this.activeId}
-        data-drop-side=${this._tabDrop?.id === view.id ? this._tabDrop.side : ''}
-        @dragover=${(event) => this._dragOverTab(event, view.id)}
-        @dragleave=${() => { this._tabDrop = undefined; }}
-        @drop=${(event) => this._dropTab(event, view.id)}>
+        data-drop-side=${this._tabDrag.dropSide(view.id)}
+        @dragover=${(event) => this._tabDrag.over(event, view.id)}
+        @dragleave=${() => this._tabDrag.leave()}
+        @drop=${(event) => this._tabDrag.drop(event, view.id)}>
         <button type="button" class="tool-panel-tab" data-view-id=${view.id}
           draggable="true"
           title=${label}
           aria-pressed=${view.id === this.activeId}
           aria-description="Drag to reorder, or use Alt+Left Arrow or Alt+Right Arrow."
-          @dragstart=${(event) => this._startTabDrag(event, view.id)}
-          @dragend=${this._endTabDrag}
+          @dragstart=${(event) => this._tabDrag.start(event, view.id)}
+          @dragend=${() => this._tabDrag.end()}
           @keydown=${(event) => this._onTabKeyDown(event, view.id)}
           @click=${() => this.showPanel(view.id)}>${label}</button>
       </div>
