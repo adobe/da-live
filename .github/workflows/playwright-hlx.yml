@@ -16,6 +16,7 @@ permissions:
 
 jobs:
   test:
+    name: test
     timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
@@ -40,6 +41,6 @@ jobs:
     - uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: screenshots
+        name: playwright-screenshots
         path: test/e2e/.playwright/shots/
         retention-days: 30

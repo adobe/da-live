@@ -63,7 +63,7 @@ setup('Set up authentication', async ({ page }) => {
     return;
   }
 
-  const url = ENV;
+  const url = `${ENV}/${getQuery()}`;
 
   await page.goto(url);
 
