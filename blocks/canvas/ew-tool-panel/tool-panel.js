@@ -455,6 +455,14 @@ class EwToolPanel extends LitElement {
     const activeView = this.views?.find((v) => v.id === this.activeId);
     const pinnedViews = this._pinnedViews;
     const tabsOverflow = this._tabScroll?.left || this._tabScroll?.right;
+    const popoutButton = activeView?.openModal || activeView?.loadModal ? html`
+      <button type="button" class="tool-panel-popout"
+        aria-label=${`Open ${activeView.label} in dialog`}
+        title=${`Open ${activeView.label} in dialog`}
+        aria-haspopup="dialog" @click=${this._openPopout}>
+        <svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${FULLSCREEN_ICON_SRC}#icon"></use></svg>
+      </button>
+    ` : nothing;
 
     return html`
       <div class="tool-panel-header">
@@ -513,20 +521,14 @@ class EwToolPanel extends LitElement {
           ></nx-picker>
         </div>
         <span class="tool-panel-divider" aria-hidden="true"></span>
-        ${activeView?.openModal || activeView?.loadModal ? html`
-          <button type="button" class="tool-panel-popout"
-            aria-label=${`Open ${activeView.label} in dialog`}
-            title=${`Open ${activeView.label} in dialog`}
-            aria-haspopup="dialog" @click=${this._openPopout}>
-            <svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${FULLSCREEN_ICON_SRC}#icon"></use></svg>
-          </button>
-        ` : nothing}
+        ${popoutButton}
         <button type="button" class="tool-panel-close" aria-label="Close panel" @click=${this._close}>
           <svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${CLOSE_ICON_SRC}#icon"></use></svg>
         </button>
       </div>
       <div class="tool-panel-toolbar" ?hidden=${!activeView}>
         <div class="tool-panel-header-actions"></div>
+        ${popoutButton}
       </div>
       <div class="tool-panel-content"></div>
       ${this._fullsizeDialogViewId ? html`

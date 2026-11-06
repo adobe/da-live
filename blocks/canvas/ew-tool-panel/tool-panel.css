@@ -4,6 +4,7 @@
   height: 100%;
   font-family: var(--s2-font-family);
   overflow: hidden;
+  container-type: inline-size;
 }
 
 .tool-panel-header,
@@ -209,6 +210,25 @@
 .tool-panel-popout {
   width: 32px;
   height: 32px;
+}
+
+.tool-panel-toolbar > .tool-panel-popout {
+  display: none;
+  margin-left: auto;
+}
+
+@container (width < 500px) {
+  .tool-panel-header > .tool-panel-popout {
+    display: none;
+  }
+
+  .tool-panel-toolbar > .tool-panel-popout {
+    display: flex;
+  }
+
+  .tool-panel-toolbar:has(> .tool-panel-popout):not([hidden]) {
+    display: flex;
+  }
 }
 
 .tool-panel-content {

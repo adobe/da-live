@@ -606,7 +606,7 @@ describe('EwToolPanel — loaded view cache', () => {
     expect(next.hidden).to.be.true;
   });
 
-  it('keeps refresh below the tabs and fullscreen immediately left of Close', async () => {
+  it('keeps refresh below the tabs and moves fullscreen there below 500px', async () => {
     const content = document.createElement('div');
     const refresh = document.createElement('button');
     refresh.textContent = 'Refresh';
@@ -627,7 +627,7 @@ describe('EwToolPanel — loaded view cache', () => {
     const sheet = new CSSStyleSheet();
     await sheet.replace(await (await fetch('/blocks/canvas/ew-tool-panel/tool-panel.css')).text());
     el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
-    el.style.width = '320px';
+    el.style.width = '500px';
     el.style.height = '300px';
     el.style.setProperty('--s2-spacing-200', '12px');
     el.style.setProperty('--s2-spacing-75', '4px');
@@ -646,7 +646,8 @@ describe('EwToolPanel — loaded view cache', () => {
     expect(header.querySelectorAll(':scope > button')).to.have.lengthOf(2);
     expect(header.querySelector('.tool-panel-close')).not.to.equal(null);
     expect(toolbar.contains(refresh)).to.be.true;
-    expect(toolbar.querySelector('.tool-panel-popout')).to.equal(null);
+    const toolbarPopout = toolbar.querySelector('.tool-panel-popout');
+    expect(getComputedStyle(toolbarPopout).display).to.equal('none');
     expect(toolbar.querySelector('.tool-panel-pin, .tool-panel-unpin')).to.equal(null);
     expect(toolbar.getBoundingClientRect().top)
       .to.be.at.least(header.getBoundingClientRect().bottom);
@@ -659,10 +660,42 @@ describe('EwToolPanel — loaded view cache', () => {
     expect(popoutButton.nextElementSibling.classList.contains('tool-panel-close')).to.be.true;
     expect(popout.right).to.equal(close.left);
     expect(popout.bottom).to.be.at.most(header.getBoundingClientRect().bottom);
+    el.style.width = '499px';
+    expect(getComputedStyle(popoutButton).display).to.equal('none');
+    expect(getComputedStyle(toolbarPopout).display).not.to.equal('none');
+    expect(toolbarPopout.getBoundingClientRect().top)
+      .to.be.at.least(header.getBoundingClientRect().bottom);
+    expect(toolbar.contains(refresh)).to.be.true;
     refresh.click();
-    popoutButton.click();
+    toolbarPopout.click();
     expect(refreshed).to.equal(1);
     expect(opened).to.equal(1);
+    el.style.width = '500px';
+    expect(getComputedStyle(popoutButton).display).not.to.equal('none');
+    expect(getComputedStyle(toolbarPopout).display).to.equal('none');
+    refresh.remove();
+    expect(getComputedStyle(toolbar).display).to.equal('none');
+    el.style.width = '499px';
+    expect(getComputedStyle(toolbar).display).not.to.equal('none');
+  });
+
+  it('hides an empty second row even when a panel is active', async () => {
+    el.views = [{
+      id: 'files',
+      label: 'Files',
+      firstParty: true,
+      load: async () => document.createElement('div'),
+    }];
+    await el.updateComplete;
+    await el.updateComplete;
+    const sheet = new CSSStyleSheet();
+    await sheet.replace(await (await fetch('/blocks/canvas/ew-tool-panel/tool-panel.css')).text());
+    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
+    const toolbar = el.shadowRoot.querySelector('.tool-panel-toolbar');
+    el.style.width = '499px';
+    expect(getComputedStyle(toolbar).display).to.equal('none');
+    el.style.width = '500px';
+    expect(getComputedStyle(toolbar).display).to.equal('none');
   });
 
   it('opens the block pop-out without switching or reloading the sidebar', async () => {
