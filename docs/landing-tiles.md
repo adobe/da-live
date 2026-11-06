@@ -5,8 +5,8 @@ Import `blocks/landing/tile.js` and supply `heading`, `description` and `iconHre
 `size="m"` enlarges text and icons; the default is S.
 
 `href` renders a link. `action` without `href` renders a button, optionally
-`disabled`. Otherwise the tile is non-interactive. The owner handles clicks,
-routes and site permissions.
+`disabled`. Otherwise the tile is non-interactive. The owner resolves
+destinations.
 
 Enabled tiles gain a stronger S2-colored shadow on hover without moving or
 changing their background.
@@ -34,7 +34,6 @@ Each row contains an icon marker, an H3 title link with description, and optiona
 metadata keeps telemetry identities stable when titles change; otherwise the
 source heading ID is used.
 
-HTTP(S) destinations remain links. `{org}` and `{site}` use the selected site;
-`/{action:create-page}` opens the existing permission-checked page dialog.
-Unknown actions and unresolved placeholders are disabled. The landing owner
-handles permissions and page creation; the reusable tile remains presentation-only.
+HTTP(S) destinations remain links. `{org}` and `{site}` use the selected site from
+the hash; without one, those tiles are disabled. Action placeholders such as
+`/{action:create-page}` and unresolved placeholders render as disabled tiles.
