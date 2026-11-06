@@ -119,23 +119,40 @@ export default async function initProse({
   const wsProvider = new WebsocketProvider(server, roomName, ydoc, wsOpts);
   wsProvider.maxBackoffTime = 30000;
 
+  /** @type {import('prosemirror-view').EditorView | null} */
+  let viewRef = null;
+  // Set when collab gives up on auth: local edits could never be saved, so they are blocked.
+  let authLost = false;
+  const setAuthLost = (lost) => {
+    authLost = lost;
+    viewRef?.setProps({});
+  };
+  // A re-sync proves the session works again (e.g. after signing in from another tab).
+  wsProvider.on('synced', (synced) => {
+    if (synced && authLost) setAuthLost(false);
+  });
+
+  const stopOnAuthFailure = async () => {
+    wsProvider.shouldConnect = false;
+    setAuthLost(true);
+    if (!lastSentToken) return;
+    try {
+      const { showAuthBanner } = await import('../../shared/da-auth-banner/da-auth-banner.js');
+      showAuthBanner();
+    } catch { /* ignore */ }
+  };
+
   wsProvider.on('connection-close', async (event) => {
     // Server close codes: 4401 = token expired (refresh + retry), 4403 = forbidden (stop).
     if (event?.code === 4403) {
-      wsProvider.shouldConnect = false;
+      await stopOnAuthFailure();
       return;
     }
     if (event?.code === 4401) {
       try { await window.adobeIMS?.refreshToken?.(); } catch { /* ignore */ }
       const fresh = await getAuthToken();
       if (!fresh || fresh === lastSentToken) {
-        wsProvider.shouldConnect = false;
-        if (lastSentToken) {
-          try {
-            const { showAuthBanner } = await import('../../shared/da-auth-banner/da-auth-banner.js');
-            showAuthBanner();
-          } catch { /* ignore */ }
-        }
+        await stopOnAuthFailure();
         return;
       }
       wsProvider.protocols = ['yjs', fresh];
@@ -169,8 +186,6 @@ export default async function initProse({
     });
   }
 
-  /** @type {import('prosemirror-view').EditorView | null} */
-  let viewRef = null;
   const dispatch = (tr) => { if (viewRef) viewRef.dispatch(tr); };
 
   const resolvedExtraPlugins = typeof extraPlugins === 'function'
@@ -257,7 +272,11 @@ export default async function initProse({
 
   viewRef = new EditorView(editor, {
     state,
-    editable() { return canWrite; },
+    editable() { return canWrite && !authLost; },
+    dispatchTransaction(tr) {
+      if (authLost && tr.docChanged) return;
+      this.updateState(this.state.apply(tr));
+    },
     nodeViews: diffNodeViews,
   });
 
