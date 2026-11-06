@@ -1,9 +1,9 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getDaAdmin } from '../shared/constants.js';
 import getSheet from '../shared/sheet.js';
-import { daFetch } from '../shared/utils.js';
 import { copyConfig, copyContent, previewContent } from './index.js';
-import { getNx2Api, sanitizePathParts } from '../../scripts/utils.js';
+import { addSite, getGitHubSite } from './utils.js';
+import { getNx2Api } from '../../scripts/utils.js';
 
 const sheet = await getSheet('/blocks/start/start.css');
 
@@ -32,71 +32,6 @@ const AEM_TEMPLATES = [
     content: '/da-sites/author-kit-starter',
   },
 ];
-
-const ORG_CONFIG = `{
-    "data": {
-        "total": 1,
-        "limit": 1,
-        "offset": 0,
-        "data": [{}]
-    },
-    "permissions": {
-        "total": 2,
-        "limit": 2,
-        "offset": 0,
-        "data": [
-          {
-              "path": "CONFIG",
-              "groups": "{{EMAIL}}",
-              "actions": "write",
-              "comments": "The ability to set configurations for an org."
-          },
-          {
-              "path": "/ + **",
-              "groups": "{{EMAIL}}",
-              "actions": "write",
-              "comments": "The ability to create content."
-          }
-        ]
-    },
-    ":names": [
-        "data",
-        "permissions"
-    ],
-    ":version": 3,
-    ":type": "multi-sheet"
-}`;
-
-export async function loadConfig(org) {
-  const { config } = await getNx2Api();
-  const resp = await config.get({ org });
-
-  const result = { status: resp.status };
-
-  if (!resp.ok) {
-    if (resp.status === 403 && resp.status === 401) {
-      result.message = 'You are not authorized to change this organization.';
-    }
-  } else {
-    const json = await resp.json();
-    if (json) result.json = json;
-  }
-
-  return result;
-}
-
-export async function saveConfig(org, email, existingConfig) {
-  const defConfigStr = ORG_CONFIG.replaceAll('{{EMAIL}}', email);
-  const defConfig = JSON.parse(defConfigStr);
-
-  // Preserve the existing config
-  if (existingConfig?.data) defConfig.data = existingConfig;
-
-  const { config } = await getNx2Api();
-  const resp = await config.save({ org, body: JSON.stringify(defConfig) });
-
-  return { status: resp.status };
-}
 
 class DaStart extends LitElement {
   static properties = {
@@ -199,68 +134,21 @@ class DaStart extends LitElement {
   }
 
   onInputChange(e) {
-    try {
-      const { origin, pathname } = new URL(e.target.value);
-      if (origin !== 'https://github.com') throw Error('Not github');
-      const [org, site] = sanitizePathParts(pathname);
-      if (!(org && site)) throw Error('No org or site');
-      this.org = org;
-      this.site = site;
-      this.goEnabled = true;
-    } catch (ex) {
-      this.org = null;
-      this.site = null;
-      this.goEnabled = false;
-      // eslint-disable-next-line no-console
-      console.log(ex);
-    }
+    const { org, site } = getGitHubSite(e.target.value) ?? {};
+    this.org = org ?? null;
+    this.site = site ?? null;
+    this.goEnabled = !!org;
   }
 
   async submitForm(e) {
     e.preventDefault();
-    const siteUrl = e.target.action;
-
-    // Check if user is signed in
-    if (!window.adobeIMS?.isSignedInUser()) {
-      this._errorText = 'You need to sign in first.';
-      return;
-    }
-
     this._loading = true;
-
-    const { status: orgLoadStatus } = await loadConfig(this.org);
-    if (orgLoadStatus === 404) {
-      // Check if user has an email address
-      const { email } = await window.adobeIMS.getProfile();
-      if (!email) {
-        this._errorText = 'Make sure your profile contains an email address.';
-        this._loading = false;
-        return;
-      }
-
-      const { status: orgSaveStatus } = await saveConfig(this.org, email);
-      if (orgSaveStatus !== 201) {
-        if (orgSaveStatus === 401 || orgSaveStatus === 403) {
-          this._errorText = 'You are not authorized to create this DA organization. Check your permissions.';
-        } else {
-          this._errorText = 'The org could not be created. Check the console logs or contact an administrator.';
-        }
-        this._loading = false;
-        return;
-      }
-    }
-
-    const resp = await daFetch(siteUrl, { method: 'PUT' });
+    const { error } = await addSite({ org: this.org, site: this.site });
     this._loading = false;
-    if (!resp.ok) {
-      if (resp.status === 401 || resp.status === 403) {
-        this._errorText = 'You are not authorized to create this site in the corresponding DA organization. Check with the organization administrator.';
-      } else {
-        this._errorText = 'The site could not be created. Check the console logs or contact an administrator.';
-      }
+    if (error) {
+      this._errorText = error;
       return;
     }
-
     this.goToNextStep(e);
   }
 
@@ -368,6 +256,11 @@ class DaStart extends LitElement {
 
 customElements.define('da-start', DaStart);
 
-export default function init(el) {
+export default async function init(el) {
+  if (new URLSearchParams(window.location.search).get('onboarding') === 'true') {
+    await import('./onboarding.js');
+    el.append(document.createElement('da-onboarding'));
+    return;
+  }
   el.append(document.createElement('da-start'));
 }

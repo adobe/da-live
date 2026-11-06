@@ -1,0 +1,101 @@
+import { expect } from '@esm-bundle/chai';
+
+const { setNx } = await import('../../../../scripts/utils.js');
+setNx('/test/fixtures/nx', { hostname: 'example.com' });
+
+const { addSite, getGitHubSite } = await import('../../../../blocks/start/utils.js');
+
+describe('start/utils getGitHubSite', () => {
+  it('returns org and site from a GitHub repository URL', () => {
+    expect(getGitHubSite('https://github.com/adobe/geometrixx')).to.deep.equal({ org: 'adobe', site: 'geometrixx' });
+  });
+
+  it('returns undefined for non-GitHub, incomplete or invalid URLs', () => {
+    expect(getGitHubSite('https://gitlab.com/adobe/geometrixx')).to.be.undefined;
+    expect(getGitHubSite('https://github.com/adobe')).to.be.undefined;
+    expect(getGitHubSite('adobe/geometrixx')).to.be.undefined;
+  });
+});
+
+describe('start/utils addSite', () => {
+  let savedFetch;
+  let savedIms;
+  let calls;
+
+  const mockFetch = (responses) => {
+    window.fetch = (url, opts = {}) => {
+      const method = opts.method || 'GET';
+      calls.push({ url: `${url}`, method });
+      const key = Object.keys(responses).find((k) => {
+        const [m, part] = k.split(' ');
+        return m === method && `${url}`.includes(part);
+      });
+      return Promise.resolve(new Response('{}', { status: key ? responses[key] : 200 }));
+    };
+  };
+
+  beforeEach(() => {
+    savedFetch = window.fetch;
+    savedIms = window.adobeIMS;
+    calls = [];
+    window.adobeIMS = {
+      isSignedInUser: () => true,
+      getProfile: async () => ({ email: 'user@example.com' }),
+    };
+  });
+
+  afterEach(() => {
+    window.fetch = savedFetch;
+    window.adobeIMS = savedIms;
+  });
+
+  it('asks the user to sign in without calling the API', async () => {
+    window.adobeIMS = { isSignedInUser: () => false };
+    mockFetch({});
+    const result = await addSite({ org: 'org', site: 'site' });
+    expect(result.error).to.equal('You need to sign in first.');
+    expect(calls).to.have.length(0);
+  });
+
+  it('creates the site folder in an existing org', async () => {
+    mockFetch({ 'GET /config/org': 200, 'PUT /source/org/site': 201 });
+    const result = await addSite({ org: 'org', site: 'site' });
+    expect(result).to.deep.equal({ status: 201 });
+    expect(calls.some(({ url, method }) => method === 'PUT' && url.endsWith('/source/org/site'))).to.be.true;
+    expect(calls.some(({ url, method }) => method !== 'GET' && url.includes('/config/'))).to.be.false;
+  });
+
+  it('creates the org config first when the org does not exist', async () => {
+    mockFetch({ 'GET /config/org': 404, 'PUT /config/org': 201, 'PUT /source/org/site': 201 });
+    const result = await addSite({ org: 'org', site: 'site' });
+    expect(result.error).to.be.undefined;
+    const configSave = calls.findIndex(({ url, method }) => method === 'PUT' && url.includes('/config/org'));
+    const sitePut = calls.findIndex(({ url, method }) => method === 'PUT' && url.includes('/source/'));
+    expect(configSave).to.be.greaterThan(-1);
+    expect(sitePut).to.be.greaterThan(configSave);
+  });
+
+  it('stops when a new org has no profile email', async () => {
+    window.adobeIMS.getProfile = async () => ({});
+    mockFetch({ 'GET /config/org': 404 });
+    const result = await addSite({ org: 'org', site: 'site' });
+    expect(result.error).to.equal('Make sure your profile contains an email address.');
+    expect(calls.some(({ method }) => method === 'PUT')).to.be.false;
+  });
+
+  it('explains a forbidden org creation', async () => {
+    mockFetch({ 'GET /config/org': 404, 'PUT /config/org': 403 });
+    const result = await addSite({ org: 'org', site: 'site' });
+    expect(result).to.deep.equal({
+      error: 'You are not authorized to create this DA organization. Check your permissions.',
+      status: 403,
+    });
+  });
+
+  it('explains a forbidden or failed site creation', async () => {
+    mockFetch({ 'GET /config/org': 200, 'PUT /source/org/site': 401 });
+    expect((await addSite({ org: 'org', site: 'site' })).error).to.include('not authorized to create this site');
+    mockFetch({ 'GET /config/org': 200, 'PUT /source/org/site': 500 });
+    expect((await addSite({ org: 'org', site: 'site' })).error).to.include('The site could not be created');
+  });
+});
