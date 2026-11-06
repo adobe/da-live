@@ -1,7 +1,8 @@
 const FLAG = 'browseV2';
 
-export function getBrowseComponent({ search, pathDetails }) {
+export function getBrowseComponent({ search, pathDetails, hasLanding }) {
   if (pathDetails) return 'da-browse';
+  if (hasLanding) return 'da-landing';
   return new URLSearchParams(search).get('landing') === 'true' ? 'da-landing' : 'da-sites';
 }
 

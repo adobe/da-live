@@ -34,7 +34,7 @@ describe('landing tile composition', () => {
       const tiles = await mounted;
       while (!tiles.entries) await new Promise((resolve) => { setTimeout(resolve, 0); });
       await tiles.updateComplete;
-      await new Promise((resolve) => { requestAnimationFrame(resolve); });
+      await new Promise((resolve) => { setTimeout(resolve, 50); });
       expect(el.children).to.have.length(1);
       expect(el.querySelectorAll('da-landing-tiles')).to.have.length(1);
       expect(tiles.parentElement.className).to.equal('landing');
@@ -47,6 +47,31 @@ describe('landing tile composition', () => {
       observer?.disconnect();
       el.remove();
       window.history.replaceState(null, '', href);
+    }
+  });
+
+  it('renders the page’s own Landing table without a parameter or fetch', async () => {
+    const main = document.createElement('main');
+    main.innerHTML = content.replace(/<\/?main>/g, '');
+    const el = main.querySelector('.browse');
+    const block = main.querySelector('.landing');
+    document.body.append(main);
+    const fetchContent = sinon.spy(window, 'fetch');
+    try {
+      init(el);
+      let tiles;
+      while (!tiles?.entries) {
+        await new Promise((resolve) => { setTimeout(resolve, 0); });
+        tiles = el.querySelector('.landing > da-landing-tiles');
+      }
+      await tiles.updateComplete;
+      expect(tiles.shadowRoot.querySelectorAll('da-landing-tile')).to.have.length(5);
+      expect(el.querySelector('da-sites')).to.equal(null);
+      expect(block.querySelectorAll(':scope > div')).to.have.length(5);
+      expect(fetchContent.calledWith('/drafts/mhaack/landing-copy')).to.equal(false);
+    } finally {
+      fetchContent.restore();
+      main.remove();
     }
   });
 });

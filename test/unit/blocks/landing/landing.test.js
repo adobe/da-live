@@ -47,6 +47,16 @@ describe('landing background', () => {
     expect(el.querySelector('img, picture')).to.equal(null);
   });
 
+  it('hides an authored Landing table without replacing its rows', () => {
+    const block = document.createElement('div');
+    block.className = 'landing';
+    block.innerHTML = '<div><div>row</div></div>';
+    container.append(block);
+    init(block);
+    expect(block.hidden).to.equal(true);
+    expect(block.innerHTML).to.equal('<div><div>row</div></div>');
+  });
+
   it('fills its container with a wider warm left and narrow pink, fading to white at 85% height', () => {
     init(el);
     const surface = el.firstElementChild;

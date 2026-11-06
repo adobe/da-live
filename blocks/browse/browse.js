@@ -26,13 +26,13 @@ function useV2Nav() {
   if (typeof nav?.loadNav === 'function') nav.loadNav();
 }
 
-async function loadComponent(el, cmpName, pathDetails) {
+async function loadComponent(el, cmpName, pathDetails, contentBlock) {
   if (cmpName === 'da-landing') {
     const { default: loadLanding } = await import('../landing/landing.js');
     loadLanding(el);
     const landing = el.querySelector('.landing');
     const { default: loadTiles } = await import('../landing/tile-group.js');
-    if (landing?.isConnected) loadTiles(landing);
+    if (landing?.isConnected) loadTiles(landing, { contentBlock });
     return;
   }
 
@@ -66,9 +66,14 @@ function setRecentSite(details) {
 }
 
 export default function init(el) {
+  const contentBlock = document.querySelector('main .landing:not(.browse .landing)') ?? undefined;
   hashChange.subscribe((pathDetails) => {
-    const cmpName = getBrowseComponent({ search: window.location.search, pathDetails });
-    loadComponent(el, cmpName, pathDetails);
+    const cmpName = getBrowseComponent({
+      search: window.location.search,
+      pathDetails,
+      hasLanding: !!contentBlock,
+    });
+    loadComponent(el, cmpName, pathDetails, contentBlock);
     if (pathDetails) setRecentSite(pathDetails);
   });
 

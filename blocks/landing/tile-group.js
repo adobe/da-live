@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
 import { getTileTarget, getFileHref } from './utils.js';
 import { EMPTY_DOC } from '../shared/utils.js';
-import { loadTileEntries } from './tile-content.js';
+import { loadTileEntries, readTileEntries } from './tile-content.js';
 import './tile.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
@@ -16,6 +16,7 @@ const styles = await Promise.all([
 export class DaLandingTiles extends LitElement {
   static properties = {
     entries: { attribute: false },
+    contentBlock: { attribute: false },
     _contentError: { state: true },
     _scope: { state: true },
     _error: { state: true },
@@ -48,7 +49,9 @@ export class DaLandingTiles extends LitElement {
   }
 
   async _loadContent() {
-    const result = await loadTileEntries();
+    const result = this.contentBlock
+      ? readTileEntries({ block: this.contentBlock })
+      : await loadTileEntries();
     if (!this.isConnected || this.entries !== undefined) return;
     this._contentError = result.error;
     this.entries = result.entries;
@@ -176,8 +179,9 @@ export class DaLandingTiles extends LitElement {
 
 customElements.define('da-landing-tiles', DaLandingTiles);
 
-export default function init(el) {
+export default function init(el, { contentBlock } = {}) {
   const tiles = document.createElement('da-landing-tiles');
+  tiles.contentBlock = contentBlock;
   el.append(tiles);
   return tiles;
 }

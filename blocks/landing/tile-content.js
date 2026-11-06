@@ -20,6 +20,11 @@ export function parseTileEntries(block) {
   });
 }
 
+export function readTileEntries({ block, baseHref = window.location.href }) {
+  const entries = parseTileEntries(block).map((entry) => ({ ...entry, baseHref }));
+  return entries.length ? { entries } : { error: 'No quick links are configured.' };
+}
+
 export const loadTileEntries = (() => {
   const requests = new Map();
   return async (path = LANDING_CONTENT_PATH) => {
@@ -30,9 +35,7 @@ export const loadTileEntries = (() => {
           if (!response.ok) return { error: 'Could not load quick links.', status: response.status };
           const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
           const baseHref = new URL(path, window.location.href).href;
-          const entries = parseTileEntries(doc.querySelector('main .landing'))
-            .map((entry) => ({ ...entry, baseHref }));
-          return entries.length ? { entries } : { error: 'No quick links are configured.' };
+          return readTileEntries({ block: doc.querySelector('main .landing'), baseHref });
         } catch {
           return { error: 'Could not load quick links.' };
         }

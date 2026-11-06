@@ -17,13 +17,17 @@ Load `blocks/landing/tile-layout.css` and place tiles in `.landing-tiles` inside
 inline-size container. The group matches Content's width and centers incomplete
 rows: five tiles use 3+2 from 600px and one column below.
 
-The gated landing (`?landing=true`, without a scoped hash) lazily loads
-`tile-group.js` inside the existing gradient surface. `tile-group.css` styles
-the owner; `tile-layout.css` styles the group; `tile.css` styles each tile.
-The owner fetches `/drafts/mhaack/landing-copy` as published HTML, like What's New.
-Only the `Landing` table is parsed; the source page's Browse block and scripts
-are not mounted or executed. Successful content requests are shared and cached.
-Failed or empty content shows an error, without hardcoded tile copy.
+The landing replaces Home (no scoped hash) when the page has an authored `Landing`
+table or `?landing=true` is set. It lazily loads `tile-group.js` inside the existing
+gradient surface. `tile-group.css` styles the owner; `tile-layout.css` styles the
+group; `tile.css` styles each tile.
+
+A page with a `Browse` block and a `Landing` table renders the table's rows as tiles
+in place; the table itself stays hidden. With only `?landing=true`, the owner fetches
+`/drafts/mhaack/landing-copy` as published HTML, like What's New, and parses only its
+`Landing` table; that page's Browse block and scripts are not mounted or executed.
+Successful content requests are shared and cached. Failed or empty content shows an
+error, without hardcoded tile copy.
 
 Each row contains an icon marker, an H3 title link with description, and optional
 `tone: name` metadata. Tones use the existing S2 palette classes. Optional `id: name`
