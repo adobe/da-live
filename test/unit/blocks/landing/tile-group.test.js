@@ -85,6 +85,31 @@ describe('landing tile group', () => {
     expect(browse.href).to.equal(undefined);
     expect(browse.shadowRoot.querySelector('button').disabled).to.equal(true);
     expect(create.shadowRoot.querySelector('button').disabled).to.equal(true);
-    expect(develop.shadowRoot.querySelector('button').disabled).to.equal(true);
+    expect(develop.href).to.equal('https://www.aem.live/developer/tutorial');
+  });
+
+  it('reports tile clicks to RUM, but not clicks on disabled tiles', async () => {
+    const { hlx } = window;
+    const sampleRUM = sinon.spy();
+    const stopNavigation = (event) => event.preventDefault();
+    window.hlx = { rum: { sampleRUM } };
+    document.addEventListener('click', stopNavigation);
+    try {
+      const [browse, create] = await getTiles();
+      browse.shadowRoot.querySelector('a').click();
+      create.shadowRoot.querySelector('button').click();
+      expect(sampleRUM.args).to.deep.equal([
+        ['click', { source: 'landing-action-browse-content', target: browse.href }],
+        ['click', { source: 'landing-action-create-a-page', target: 'create-page' }],
+      ]);
+      hashChange._set(undefined);
+      await el.updateComplete;
+      await getTiles();
+      create.shadowRoot.querySelector('button').click();
+      expect(sampleRUM.callCount).to.equal(2);
+    } finally {
+      document.removeEventListener('click', stopNavigation);
+      window.hlx = hlx;
+    }
   });
 });

@@ -8,8 +8,10 @@ describe('landing tile destinations', () => {
   it('resolves encoded Browse placeholders and requires a site', () => {
     const entry = { href: '/#/%7Borg%7D/%7Bsite%7D' };
     expect(getTileTarget({ entry, href: HREF })).to.deep.equal({ disabled: true });
-    const target = getTileTarget({ entry, scope: 'org/other', href: HREF });
-    expect(new URL(target.href).hash).to.equal('#/org/other');
+    const target = new URL(getTileTarget({ entry, scope: 'org/other', href: HREF }).href);
+    expect(target.hash).to.equal('#/org/other');
+    expect(target.searchParams.has('browse')).to.equal(false);
+    expect(target.searchParams.has('landing')).to.equal(false);
   });
 
   it('resolves Create a page as an action that requires a site', () => {
@@ -25,10 +27,11 @@ describe('landing tile destinations', () => {
     }
   });
 
-  it('respects authored destinations without overriding external links or encoded path characters', () => {
-    const external = 'https://example.com/a%2Fb?q=%7Borg%7D';
-    expect(getTileTarget({ entry: { href: external }, scope: 'org/site', href: HREF }).href)
-      .to.equal('https://example.com/a%2Fb?q=org');
+  it('respects authored destinations without sending the site to external links', () => {
+    expect(getTileTarget({ entry: { href: 'https://example.com/a%2Fb?q=%7Borg%7D' }, scope: 'org/site', href: HREF }))
+      .to.deep.equal({ disabled: true });
+    expect(getTileTarget({ entry: { href: 'https://example.com/a%2Fb?theme=x' }, href: HREF }).href)
+      .to.equal('https://example.com/a%2Fb?theme=x');
     expect(getTileTarget({ entry: { href: '/guide?theme=dark' }, href: HREF }).href)
       .to.equal('https://tilesv2--da-live--adobe.aem.live/guide?theme=dark&nx=main&nxver=2');
     const relative = getTileTarget({

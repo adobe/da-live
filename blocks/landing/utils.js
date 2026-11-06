@@ -13,16 +13,14 @@ export function getTileTarget({ entry, scope, href = window.location.href }) {
     const url = new URL(target, entry.baseHref || href);
     if (!['http:', 'https:'].includes(url.protocol)) return { disabled: true };
     const current = new URL(href);
-    if (url.origin === current.origin) {
+    const sameOrigin = url.origin === current.origin;
+    if (requiresSite && !sameOrigin) return { disabled: true };
+    if (sameOrigin) {
       ['nx', 'nxver', 'quick-edit', 'ew', 'nx-chat-ao', 'theme', 'rum'].forEach((key) => {
         if (current.searchParams.has(key) && !url.searchParams.has(key)) {
           url.searchParams.set(key, current.searchParams.get(key));
         }
       });
-      if (requiresSite && url.pathname === '/' && url.hash.startsWith('#/')) {
-        url.searchParams.set('landing', 'home');
-        url.searchParams.set('browse', '2');
-      }
     }
     return { href: url.href, disabled: false };
   } catch {

@@ -17,9 +17,21 @@ describe('authored landing tiles', () => {
       description: 'View your recent, favorite, or other content by their organization',
       iconHref: '/img/icons/s2-icon-folderopen-20-n.svg',
       href: '/#/%7Borg%7D/%7Bsite%7D',
-      tone: 'green',
+      tone: 'turquoise',
     });
-    expect(entries[4].tone).to.equal(undefined);
+  });
+
+  it('accepts published icon spans and reads nested paragraphs once', () => {
+    const block = document.createElement('div');
+    block.innerHTML = `<div>
+      <div><p><span class="icon icon-s2-icon-edit-20-n"></span></p></div>
+      <div><h3><a href="/guide">Guide</a></h3><ul><li><p>Read the guide</p></li></ul></div>
+      <div></div>
+    </div>`;
+    const [entry] = parseTileEntries(block);
+    expect(entry.iconHref).to.equal('/img/icons/s2-icon-edit-20-n.svg');
+    expect(entry.description).to.equal('Read the guide');
+    expect(entry.tone).to.equal(undefined);
   });
 
   it('honors editable metadata and row order, ignoring incomplete rows', () => {
@@ -43,7 +55,7 @@ describe('authored landing tiles', () => {
     const fetchContent = sinon.stub(window, 'fetch').returns(new Promise((resolve) => { finish = resolve; }));
     const first = loadTileEntries('/landing-shared');
     const second = loadTileEntries('/landing-shared');
-    expect(fetchContent.calledOnce).to.equal(true);
+    expect(fetchContent.calledOnceWithExactly('/landing-shared.plain.html')).to.equal(true);
     finish(new Response(content));
     const result = await first;
     expect(await second).to.equal(result);

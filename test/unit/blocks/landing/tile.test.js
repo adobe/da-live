@@ -13,7 +13,7 @@ describe('landing tile', () => {
     tile = document.createElement('da-landing-tile');
     tile.heading = 'Browse Content';
     tile.description = 'View your recent, favorite, or other content by their organization';
-    tile.iconHref = '/img/icons/s2-icon-datastreams-20-n.svg';
+    tile.iconHref = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22%3E%3Crect width=%2220%22 height=%2220%22/%3E%3C/svg%3E';
     tile.style.cssText = `
       --s2-spacing-75: 4px;
       --s2-spacing-200: 12px;
@@ -100,7 +100,6 @@ describe('landing tile', () => {
 
   it('activates a native action button with Enter or Space, but never when disabled', async () => {
     tile.action = true;
-    tile.actionId = 'create-page';
     await tile.updateComplete;
     const clicks = [];
     const button = tile.shadowRoot.querySelector('button');
@@ -116,7 +115,7 @@ describe('landing tile', () => {
     expect(tile.shadowRoot.querySelector('a')).to.equal(null);
   });
 
-  it('targets action classes for nested clicks without repeated RUM attributes', async () => {
+  it('sends clicks on the icon, title or description to the link or button', async () => {
     const clicks = [];
     tile.shadowRoot.addEventListener('click', (event) => {
       event.preventDefault();
@@ -125,10 +124,8 @@ describe('landing tile', () => {
     for (const action of [false, true]) {
       tile.href = action ? undefined : '/?browse=2#/org/site';
       tile.action = action;
-      tile.actionId = action ? 'create-page' : 'browse';
       await tile.updateComplete;
       const surface = tile.shadowRoot.querySelector('a, button');
-      expect(surface.classList[0]).to.equal(`landing-action-${tile.actionId}`);
       for (const selector of ['.icon', 'h3', 'p']) {
         const bounds = tile.shadowRoot.querySelector(selector).getBoundingClientRect();
         await sendMouse({
@@ -145,10 +142,6 @@ describe('landing tile', () => {
       expect(clicks.at(-1)).to.equal(surface);
     }
     expect(clicks).to.have.length(8);
-    expect(tile.shadowRoot.querySelector('[data-rum-source]')).to.equal(null);
-    tile.actionId = undefined;
-    await tile.updateComplete;
-    expect(tile.shadowRoot.querySelector('button').className).to.equal('tile');
   });
 });
 

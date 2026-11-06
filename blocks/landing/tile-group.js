@@ -85,12 +85,17 @@ export class DaLandingTiles extends LitElement {
     window.location.href = getEditPath({ path, ext: 'html', editor });
   }
 
+  _onTileClick({ id, href, action }) {
+    window.hlx?.rum?.sampleRUM?.('click', { source: `landing-action-${id}`, target: href || action });
+    if (action === 'create-page') this._onCreatePage();
+  }
+
   renderTile(entry) {
     const { href, action, disabled } = getTileTarget({ entry, scope: this._scope });
     return html`<li><da-landing-tile .heading=${entry.heading} .description=${entry.description}
       .iconHref=${entry.iconHref} .tone=${entry.tone} .size=${this.dataset.uiSize || 's'}
-      .actionId=${entry.id} .href=${href} .action=${!href} .disabled=${disabled}
-      @click=${action === 'create-page' && !disabled ? this._onCreatePage : nothing}></da-landing-tile></li>`;
+      .href=${href} .action=${!href} .disabled=${disabled}
+      @click=${disabled ? nothing : () => this._onTileClick({ id: entry.id, href, action })}></da-landing-tile></li>`;
   }
 
   renderCreateDialog() {

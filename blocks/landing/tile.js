@@ -13,7 +13,6 @@ export default class DaLandingTile extends LitElement {
     href: {},
     action: { type: Boolean },
     disabled: { type: Boolean },
-    actionId: {},
     size: { reflect: true },
   };
 
@@ -31,10 +30,9 @@ export default class DaLandingTile extends LitElement {
         <h3>${this.heading}</h3>
         <p>${this.description}</p>
       </div>`;
-    const classes = `${this.actionId ? `landing-action-${this.actionId} ` : ''}tile`;
-    if (this.href) return html`<a class=${classes} href=${this.href}>${content}</a>`;
+    if (this.href) return html`<a class="tile" href=${this.href}>${content}</a>`;
     if (this.action) {
-      return html`<button class=${classes} type="button"
+      return html`<button class="tile" type="button"
         ?disabled=${this.disabled}>${content}</button>`;
     }
     return html`<div class="tile">${content}</div>`;

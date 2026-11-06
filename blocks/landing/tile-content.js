@@ -5,13 +5,14 @@ export function parseTileEntries(block) {
     const [icon, content, metadata] = row.children;
     const options = [...(metadata?.childNodes || [])].map((node) => node.textContent).join(' ');
     const link = content?.querySelector('h3 a');
-    const iconName = icon?.textContent.trim().match(/^:(s2-icon-[a-z0-9-]+):$/)?.[1];
+    const iconName = icon?.textContent.trim().match(/^:(s2-icon-[a-z0-9-]+):$/)?.[1]
+      || icon?.querySelector('span.icon')?.className.match(/\bicon-(s2-icon-[a-z0-9-]+)\b/)?.[1];
     if (!link?.textContent.trim() || !link.getAttribute('href') || !iconName) return [];
     return [{
       id: options.match(/\bid:\s*([a-z0-9-]+)/i)?.[1]
         || link.closest('h3').id || iconName,
       heading: link.textContent.trim(),
-      description: [...content.querySelectorAll('li, p')]
+      description: [...content.querySelectorAll('li, p:not(li p)')]
         .map((item) => item.textContent.trim()).join(' '),
       iconHref: `/img/icons/${iconName}.svg`,
       href: link.getAttribute('href'),
@@ -31,11 +32,11 @@ export const loadTileEntries = (() => {
     if (!requests.has(path)) {
       requests.set(path, (async () => {
         try {
-          const response = await fetch(path);
+          const response = await fetch(`${path}.plain.html`);
           if (!response.ok) return { error: 'Could not load quick links.', status: response.status };
           const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
           const baseHref = new URL(path, window.location.href).href;
-          return readTileEntries({ block: doc.querySelector('main .landing'), baseHref });
+          return readTileEntries({ block: doc.querySelector('.landing'), baseHref });
         } catch {
           return { error: 'Could not load quick links.' };
         }
