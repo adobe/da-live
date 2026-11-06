@@ -1034,6 +1034,58 @@ describe('DaToolPanel — host delegate', () => {
 
   afterEach(() => panel.remove());
 
+  const pickerLabels = () => panel.shadowRoot.querySelector('nx-picker').items
+    .map((item) => item.label);
+
+  function viewWithDynamicLabel(label) {
+    const view = {
+      ...inlineView('comments'),
+      label,
+      unsubscribed: 0,
+      getLabel: () => view.label,
+      subscribeLabel: (onChange) => {
+        view.changeLabel = (next) => {
+          view.label = next;
+          onChange();
+        };
+        return () => { view.unsubscribed += 1; };
+      },
+    };
+    return view;
+  }
+
+  it('re-renders the picker when a view label changes', async () => {
+    const view = viewWithDynamicLabel('Comments');
+    panel.views = [view];
+    await settle();
+
+    view.changeLabel('Comments (2)');
+    await panel.updateComplete;
+
+    expect(pickerLabels()).to.deep.equal(['Comments (2)']);
+  });
+
+  it('drops label subscriptions once disconnected', async () => {
+    const view = viewWithDynamicLabel('Comments');
+    panel.views = [view];
+    await settle();
+
+    panel.remove();
+
+    expect(view.unsubscribed).to.equal(1);
+  });
+
+  it('drops label subscriptions of replaced views', async () => {
+    const view = viewWithDynamicLabel('Comments');
+    panel.views = [view];
+    await settle();
+
+    panel.views = [inlineView('outline')];
+    await settle();
+
+    expect(view.unsubscribed).to.equal(1);
+  });
+
   it('tells the host about every view that becomes active', async () => {
     const persisted = [];
     panel.host = { persistView: (id) => persisted.push(id) };
