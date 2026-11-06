@@ -82,41 +82,22 @@ nx-popover {
 .ew-cc-split {
   flex: 1 1 auto;
   min-height: 0;
-  display: flex;
-}
-
-.ew-cc-pane {
-  flex: 1 1 50%;
-  min-width: 0;
-  overflow: auto;
-  padding: var(--s2-spacing-300);
-
-  &:first-child {
-    border-right: 1px solid var(--s2-gray-100);
-  }
-}
-
-.ew-cc-split.is-aligned {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-content: start;
   overflow: auto;
 }
 
-.ew-cc-split.is-aligned .ew-cc-pane {
-  overflow: visible;
-  padding-block: var(--s2-spacing-100);
+.ew-cc-pane {
+  min-width: 0;
+  padding: var(--s2-spacing-100) var(--s2-spacing-300);
 }
 
-.ew-cc-split.is-aligned .ew-cc-pane:nth-child(odd) {
+.ew-cc-pane:nth-child(odd) {
   border-right: 1px solid var(--s2-gray-100);
 }
 
-.ew-cc-split.is-aligned .ew-cc-pane > :first-child {
-  margin-top: 0;
-}
-
-.ew-cc-split.is-aligned .ew-cc-pane > :last-child {
+.ew-cc-pane > :last-child {
   margin-bottom: 0;
 }
 
