@@ -1355,6 +1355,32 @@ describe('DA Preview Proxy routing', () => {
     });
 
     ['content.da.live', 'stage-content.da.live'].forEach((host) => {
+      it(`loads opted-in section metadata from ${host} before preview composition removes it`, async () => {
+        signIn();
+        const path = `https://${host}/proxyorg/proxysite/library/blocks/section`;
+        respond = (url) => new Response(url === path ? `
+          <main>
+            <div>
+              <h2>Dark section</h2>
+              <div class="section-metadata"><div><div>style</div><div>dark</div></div></div>
+              <div class="library-metadata">
+                <div><div>allow-section-metadata</div><div>true</div></div>
+              </div>
+            </div>
+            <div>
+              <h2>Not opted in</h2>
+              <div class="section-metadata"><div><div>style</div><div>light</div></div></div>
+            </div>
+          </main>
+        ` : '<main><div class="dark"><h2>Dark section</h2></div></main>');
+        const variants = await getBlockVariants(path, LIBRARY_CONTEXT);
+        expect(variants.map(({ name }) => name)).to.deep.equal(['Dark section']);
+        expect(variants[0].dom.textContent).to.equal('section-metadatastyledark');
+        expect(calls.map((call) => call.url)).to.deep.equal([path]);
+        expect(calls[0].opts.headers.Authorization).to.equal('Bearer tok');
+        expect(calls[0].opts.credentials).to.equal(undefined);
+      });
+
       it(`restores DA-content variant image URLs from ${host}`, async () => {
         respond = () => new Response('<body><div><div class="hero"><div><div><img src="/library/blocks/.hero/img.png?width=400#hero" width="800" height="400"></div></div></div></div></body>');
         const [variant] = await getBlockVariants(`https://${host}/proxyorg/proxysite/library/blocks/hero`, LIBRARY_CONTEXT);

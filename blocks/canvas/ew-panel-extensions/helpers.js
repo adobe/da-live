@@ -257,7 +257,12 @@ function plainHtmlUrl(path) {
 async function fetchAndParseHtml(path, isAemHosted, context) {
   try {
     const source = isAemHosted ? plainHtmlUrl(path) : path;
-    const resp = await libraryFetch(source, context, { noRedirect: true });
+    const url = new URL(source, window.location.href);
+    // DA preview composition consumes section metadata before the library can opt in.
+    const isDaSource = CONTENT_HOSTS.has(url.hostname) && !/\.html$/i.test(url.pathname);
+    const resp = isDaSource
+      ? await daFetch(source, { noRedirect: true })
+      : await libraryFetch(source, context, { noRedirect: true });
     if (!resp.ok) return { authError: isAuthFailure(resp) };
     return { doc: new window.DOMParser().parseFromString(await resp.text(), 'text/html') };
   } catch (error) {
