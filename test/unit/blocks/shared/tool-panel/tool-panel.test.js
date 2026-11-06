@@ -209,7 +209,7 @@ describe('DaToolPanel selected panels', () => {
       .to.deep.equal(['files', 'blocks', 'assets']);
   });
 
-  it('uses a rounded drag image with transparent corners and removes it when dragging ends', async () => {
+  it('uses a rounded drag preview with transparent corners and removes it when dragging ends', async () => {
     await pinAll();
     const sheet = new CSSStyleSheet();
     const response = await fetch('/blocks/shared/tool-panel/tool-panel.css');
@@ -221,13 +221,13 @@ describe('DaToolPanel selected panels', () => {
     const source = tabs()[2];
     const transfer = new DataTransfer();
     source.dispatchEvent(dragEvent('dragstart', transfer));
-    const image = panel.shadowRoot.querySelector('.tool-panel-drag-image');
-    const canvasContext = image.getContext('2d');
-    expect(canvasContext.getImageData(0, 0, 1, 1).data[3]).to.equal(0);
-    const middle = Math.floor(image.width / 2);
-    expect(canvasContext.getImageData(middle, 1, 1, 1).data[3]).to.equal(255);
+    const preview = panel.shadowRoot.querySelector('.drag-preview');
+    const context = preview.getContext('2d');
+    expect(context.getImageData(0, 0, 1, 1).data[3]).to.equal(0);
+    const middle = Math.floor(preview.width / 2);
+    expect(context.getImageData(middle, 1, 1, 1).data[3]).to.equal(255);
     source.dispatchEvent(dragEvent('dragend', transfer));
-    expect(panel.shadowRoot.querySelector('.tool-panel-drag-image')).to.equal(null);
+    expect(panel.shadowRoot.querySelector('.drag-preview')).to.equal(null);
   });
 
   it('rejects a drop after the panel changes page context', async () => {

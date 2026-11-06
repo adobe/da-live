@@ -113,13 +113,6 @@
   padding: 4px;
 }
 
-.tool-panel-drag-image {
-  position: fixed;
-  left: -10000px;
-  top: 0;
-  pointer-events: none;
-}
-
 .tool-panel-tab-item {
   position: relative;
   display: flex;
