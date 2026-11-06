@@ -4,6 +4,14 @@ import { getNx } from '../../scripts/utils.js';
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const styles = await loadStyle(import.meta.url);
 
+const isWebHref = (href) => {
+  try {
+    return !!href && ['http:', 'https:'].includes(new URL(href, window.location.href).protocol);
+  } catch {
+    return false;
+  }
+};
+
 export default class DaLandingTile extends LitElement {
   static properties = {
     heading: {},
@@ -30,7 +38,7 @@ export default class DaLandingTile extends LitElement {
         <h3>${this.heading}</h3>
         <p>${this.description}</p>
       </div>`;
-    if (this.href) return html`<a class="tile" href=${this.href}>${content}</a>`;
+    if (isWebHref(this.href)) return html`<a class="tile" href=${this.href}>${content}</a>`;
     if (this.action) {
       return html`<button class="tile" type="button"
         ?disabled=${this.disabled}>${content}</button>`;

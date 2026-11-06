@@ -21,14 +21,18 @@ describe('authored landing tiles', () => {
     });
   });
 
-  it('accepts published icon spans and reads nested paragraphs once', () => {
+  it('accepts published icon spans, reads nested paragraphs once and reports dropped rows', () => {
     const block = document.createElement('div');
     block.innerHTML = `<div>
       <div><p><span class="icon icon-s2-icon-edit-20-n"></span></p></div>
       <div><h3><a href="/guide">Guide</a></h3><ul><li><p>Read the guide</p></li></ul></div>
       <div></div>
     </div>`;
-    const [entry] = parseTileEntries(block);
+    block.insertAdjacentHTML('beforeend', '<div><div>no icon</div><div><h3><a href="/x">X</a></h3></div></div>');
+    const warn = sinon.stub(console, 'warn');
+    const [entry, ...rest] = parseTileEntries(block);
+    expect(rest).to.have.length(0);
+    expect(warn.calledOnceWith(sinon.match.string, block.lastElementChild)).to.equal(true);
     expect(entry.iconHref).to.equal('/img/icons/s2-icon-edit-20-n.svg');
     expect(entry.description).to.equal('Read the guide');
     expect(entry.tone).to.equal(undefined);

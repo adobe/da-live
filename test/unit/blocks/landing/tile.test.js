@@ -71,6 +71,10 @@ describe('landing tile', () => {
       tile.href = undefined;
       await tile.updateComplete;
       expect(tile.shadowRoot.querySelector('a')).to.equal(null);
+      // eslint-disable-next-line no-script-url
+      tile.href = 'javascript:alert(1)';
+      await tile.updateComplete;
+      expect(tile.shadowRoot.querySelector('a')).to.equal(null);
     } finally {
       placeholder.remove();
       after.remove();

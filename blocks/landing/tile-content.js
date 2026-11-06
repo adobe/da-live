@@ -7,7 +7,11 @@ export function parseTileEntries(block) {
     const link = content?.querySelector('h3 a');
     const iconName = icon?.textContent.trim().match(/^:(s2-icon-[a-z0-9-]+):$/)?.[1]
       || icon?.querySelector('span.icon')?.className.match(/\bicon-(s2-icon-[a-z0-9-]+)\b/)?.[1];
-    if (!link?.textContent.trim() || !link.getAttribute('href') || !iconName) return [];
+    if (!link?.textContent.trim() || !link.getAttribute('href') || !iconName) {
+      // eslint-disable-next-line no-console
+      console.warn('Skipped a Landing row without an icon or an H3 title link.', row);
+      return [];
+    }
     return [{
       id: options.match(/\bid:\s*([a-z0-9-]+)/i)?.[1]
         || link.closest('h3').id || iconName,

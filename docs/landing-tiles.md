@@ -4,7 +4,7 @@ Import `blocks/landing/tile.js` and supply `heading`, `description` and `iconHre
 `tone` is `green`, `orange`, `purple`, or turquoise by default.
 `size="m"` enlarges text and icons; the default is S.
 
-`href` renders a link. `action` without `href` renders a button, optionally
+An HTTP(S) or relative `href` renders a link. `action` without `href` renders a button, optionally
 `disabled`. Otherwise the tile is non-interactive. The owner resolves
 destinations.
 
@@ -35,7 +35,8 @@ Each row contains an icon marker (`:s2-icon-name:` text or a published
 `span.icon.icon-s2-icon-name`), an H3 title link with description, and optional
 `tone: name` metadata. Tones use the existing S2 palette classes. Optional `id: name`
 metadata keeps telemetry identities stable when titles change; otherwise the
-source heading ID is used.
+source heading ID is used. Rows without an icon or an H3 title link are skipped with
+a console warning.
 
 HTTP(S) destinations remain links. Same-origin links keep the current `nx`, `nxver`,
 `quick-edit`, `ew`, `nx-chat-ao`, `theme` and `rum` parameters. `{org}` and `{site}`
