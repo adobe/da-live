@@ -235,6 +235,64 @@ describe('ew-canvas-versions', () => {
   });
 });
 
+describe('version comparison labels', () => {
+  let inst;
+  let versions;
+  let savedGet;
+
+  beforeEach(async () => {
+    ({ versions } = await getNx2Api());
+    savedGet = versions.get;
+    versions.get = async () => new Response('<body><main><div><p>Saved content</p></div></main></body>');
+    inst = await createInstance({ path: '/org/site/doc.html', _versions: [] });
+    inst._buildDiff = async () => ({ dom: document.createElement('div'), cleanup: () => {} });
+  });
+
+  afterEach(() => {
+    inst?.handleCloseCompare();
+    inst?.remove();
+    versions.get = savedGet;
+  });
+
+  async function comparison() {
+    await inst.updateComplete;
+    const compare = inst.shadowRoot.querySelector('ew-canvas-compare');
+    await compare.updateComplete;
+    return compare;
+  }
+
+  it('distinguishes identically named versions published on the same day', async () => {
+    for (const time of ['10:00', '11:00']) {
+      await inst.handleCompare(new Event('click'), ver({ label: 'Published', time }));
+      const compare = await comparison();
+      const label = `Published from Jan 1, ${time}`;
+      expect([...compare.shadowRoot.querySelectorAll('.ew-cc-chip')].map((chip) => chip.textContent))
+        .to.deep.equal(['Current', label]);
+      expect(compare.shadowRoot.querySelector('nx-popover').getAttribute('aria-label'))
+        .to.equal(`Compare with ${label}`);
+    }
+  });
+
+  it('keeps the dated label when switching from preview to comparison', async () => {
+    await inst.handlePreview(new Event('click'), ver({ label: 'Sprint 42' }));
+    let compare = await comparison();
+    expect(compare.shadowRoot.querySelector('.ew-cc-chip').textContent)
+      .to.equal('Sprint 42 from Jan 1, 10:00');
+
+    await inst.handleToggleCompareSplit();
+    compare = await comparison();
+    expect([...compare.shadowRoot.querySelectorAll('.ew-cc-chip')].map((chip) => chip.textContent))
+      .to.deep.equal(['Current', 'Sprint 42 from Jan 1, 10:00']);
+  });
+
+  it('uses the date and time without an empty title for unnamed versions', async () => {
+    await inst.handleCompare(new Event('click'), ver({ label: '' }));
+    const compare = await comparison();
+    expect([...compare.shadowRoot.querySelectorAll('.ew-cc-chip')].map((chip) => chip.textContent))
+      .to.deep.equal(['Current', 'Jan 1, 10:00']);
+  });
+});
+
 describe('version history refresh', () => {
   const path = '/refreshorg/refreshsite/page.html';
   const old = {
