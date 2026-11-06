@@ -12,10 +12,16 @@ function encodeRelPos(relPos) {
   return Array.from(Y.encodeRelativePosition(relPos));
 }
 
+function leftRelPos(pos, binding) {
+  const rel = absolutePositionToRelativePosition(pos, binding.type, binding.mapping);
+  const abs = Y.createAbsolutePositionFromRelativePosition(rel, binding.doc);
+  return abs ? Y.createRelativePositionFromTypeIndex(abs.type, abs.index, -1) : rel;
+}
+
 function startRelPos({ from, anchorType }, binding) {
-  const atFrom = () => absolutePositionToRelativePosition(from, binding.type, binding.mapping);
+  const atFrom = () => leftRelPos(from, binding);
   if (anchorType !== 'text') return atFrom();
-  const inside = absolutePositionToRelativePosition(from + 1, binding.type, binding.mapping);
+  const inside = leftRelPos(from + 1, binding);
   return inside?.item
     ? new Y.RelativePosition(inside.type, inside.tname, inside.item, 0)
     : atFrom();
@@ -141,9 +147,7 @@ export function encodeAnchor({ selectionData, state }) {
   if (!binding) return null;
   return {
     anchorFrom: encodeRelPos(startRelPos(selectionData, binding)),
-    anchorTo: encodeRelPos(
-      absolutePositionToRelativePosition(selectionData.to, binding.type, binding.mapping),
-    ),
+    anchorTo: encodeRelPos(leftRelPos(selectionData.to, binding)),
     anchorType: selectionData.anchorType,
     anchorText: selectionData.anchorText,
     structural: encodeStructural(state, selectionData),

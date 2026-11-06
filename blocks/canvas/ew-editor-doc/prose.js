@@ -88,6 +88,12 @@ function checkLibraryConfiguredOnSync(wsProvider, canWrite) {
   wsProvider.on('synced', handleSynced);
 }
 
+export const undoRedoKeys = {
+  'Mod-z': (state) => { yUndo(state); return true; },
+  'Mod-y': (state) => { yRedo(state); return true; },
+  'Mod-Shift-z': (state) => { yRedo(state); return true; },
+};
+
 export default async function initProse({
   path, permissions, setEditable, getToken,
   extraPlugins = [], onMergeConflictsChange, hostEl,
@@ -206,9 +212,7 @@ export default async function initProse({
     keymap(baseKeymap),
     codemark(),
     keymap({
-      'Mod-z': (state) => yUndo(state) || false,
-      'Mod-y': (state) => yRedo(state) || false,
-      'Mod-Shift-z': (state) => yRedo(state) || false,
+      ...undoRedoKeys,
       'Mod-k': (_state, _dispatch, view) => {
         if (!view.editable) return false;
         openLinkDialog(view);
