@@ -33,6 +33,12 @@ async function loadComponent(el, cmpName, pathDetails) {
     return;
   }
 
+  if (cmpName === 'da-onboarding') {
+    await import('../start/onboarding.js');
+    el.replaceChildren(document.createElement(cmpName));
+    return;
+  }
+
   const styles = await loadStyle(import.meta.url);
   if (!document.adoptedStyleSheets.includes(styles)) document.adoptedStyleSheets.push(styles);
   const existing = el.querySelector(cmpName);
@@ -41,7 +47,7 @@ async function loadComponent(el, cmpName, pathDetails) {
     return;
   }
   // Swapping views — remove whichever component is currently mounted.
-  el.querySelector('da-sites, da-browse, .landing')?.remove();
+  el.querySelector('da-sites, da-browse, da-onboarding, .landing')?.remove();
   const componentPath = cmpName === 'da-sites' ? '.' : await getBrowsePath(pathDetails);
   if (componentPath === './v2') useV2Nav();
   await import(`${componentPath}/${cmpName}/${cmpName}.js`);

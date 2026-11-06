@@ -256,11 +256,6 @@ class DaStart extends LitElement {
 
 customElements.define('da-start', DaStart);
 
-export default async function init(el) {
-  if (new URLSearchParams(window.location.search).get('onboarding') === 'true') {
-    await import('./onboarding.js');
-    el.append(document.createElement('da-onboarding'));
-    return;
-  }
+export default function init(el) {
   el.append(document.createElement('da-start'));
 }
