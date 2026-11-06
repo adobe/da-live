@@ -12,6 +12,13 @@ describe('Home landing toggle', () => {
     expect(getBrowseComponent({ search: '?nx=lpbg&landing=true' })).to.equal('da-landing');
   });
 
+  it('opts Home into the landing surface when the page authors a Landing table, unless landing=false', () => {
+    expect(getBrowseComponent({ search: '', hasLanding: true })).to.equal('da-landing');
+    expect(getBrowseComponent({ search: '?landing=false', hasLanding: true })).to.equal('da-sites');
+    expect(getBrowseComponent({ search: '', hasLanding: true, pathDetails: { org: 'o', site: 's' } }))
+      .to.equal('da-browse');
+  });
+
   it('never replaces site Browse with the landing surface', () => {
     ['', '?landing=true', '?landing=false'].forEach((search) => {
       expect(getBrowseComponent({ search, pathDetails: { org: 'example', site: 'site' } }))

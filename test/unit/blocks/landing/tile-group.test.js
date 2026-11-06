@@ -1,0 +1,115 @@
+import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
+import '../../setup-nx.js';
+import '../../../../blocks/landing/tile-group.js';
+import { parseTileEntries } from '../../../../blocks/landing/tile-content.js';
+import { getNx, getNx2Api } from '../../../../scripts/utils.js';
+
+const { source } = await getNx2Api();
+const { hashChange } = await import(`${getNx()}/utils/utils.js`);
+const content = await fetch('/test/fixtures/landing-tiles.html').then((response) => response.text());
+
+describe('landing tile group', () => {
+  let el;
+
+  const getTiles = async () => {
+    const tiles = [...el.shadowRoot.querySelectorAll('da-landing-tile')];
+    await Promise.all(tiles.map((tile) => tile.updateComplete));
+    return tiles;
+  };
+
+  beforeEach(async () => {
+    hashChange._set({ org: 'org', site: 'site', fullpath: '/org/site' });
+    el = document.createElement('da-landing-tiles');
+    el.entries = parseTileEntries(new DOMParser().parseFromString(content, 'text/html').querySelector('.landing'));
+    document.body.append(el);
+    await el.updateComplete;
+  });
+
+  afterEach(() => {
+    el.remove();
+    sinon.restore();
+  });
+
+  it('uses authored order, text and tone instead of tile titles or positions', async () => {
+    el.entries = [
+      { ...el.entries[1], heading: 'Write something', tone: 'purple' },
+      { ...el.entries[0], heading: 'Open files', tone: 'orange' },
+    ];
+    await el.updateComplete;
+    const tiles = await getTiles();
+    expect(tiles.map((tile) => tile.heading)).to.deep.equal(['Write something', 'Open files']);
+    expect(tiles[0].tone).to.equal('purple');
+    expect(new URL(tiles[1].href).hash).to.equal('#/org/site');
+  });
+
+  it('updates Browse when the selected site changes', async () => {
+    const [browse] = await getTiles();
+    expect(new URL(browse.href).hash).to.equal('#/org/site');
+    hashChange._set({ org: 'other', site: 'site', fullpath: '/other/site' });
+    await el.updateComplete;
+    expect(new URL(browse.href).hash).to.equal('#/other/site');
+  });
+
+  it('opens the shared name dialog from Create a page', async () => {
+    const [, create] = await getTiles();
+    expect(create.href).to.equal(undefined);
+    create.shadowRoot.querySelector('button').click();
+    await el._onCreatePage();
+    await el.updateComplete;
+    const dialog = el.shadowRoot.querySelector('da-name-dialog');
+    expect(dialog.getAttribute('dialog-title')).to.equal('New page in site');
+    hashChange._set({ org: 'other', site: 'site', fullpath: '/other/site' });
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('da-name-dialog')).to.equal(null);
+  });
+
+  it('does not overwrite an existing page and shows save errors', async () => {
+    const metadata = sinon.stub(source, 'getMetadata').resolves({ status: 200 });
+    const save = sinon.stub(source, 'save').resolves({ ok: false, status: 403 });
+    el._createDialog = { scope: 'org/site' };
+    await el._onCreatePageSubmit({ detail: { name: 'draft' } });
+    expect(metadata.calledOnceWithExactly('/org/site/draft.html')).to.equal(true);
+    expect(save.called).to.equal(false);
+    expect(el._createDialog.error).to.include('already exists');
+    metadata.resolves({ status: 404 });
+    await el._onCreatePageSubmit({ detail: { name: 'draft' } });
+    expect(save.firstCall.args[0]).to.equal('/org/site/draft.html');
+    expect(el._createDialog).to.deep.equal({ scope: 'org/site', saving: false, error: 'Could not create the page.' });
+  });
+
+  it('disables site tiles without a selected site', async () => {
+    hashChange._set(undefined);
+    await el.updateComplete;
+    const [browse, create, , , develop] = await getTiles();
+    expect(browse.href).to.equal(undefined);
+    expect(browse.shadowRoot.querySelector('button').disabled).to.equal(true);
+    expect(create.shadowRoot.querySelector('button').disabled).to.equal(true);
+    expect(develop.href).to.equal('https://www.aem.live/developer/tutorial');
+  });
+
+  it('reports tile clicks to RUM, but not clicks on disabled tiles', async () => {
+    const { hlx } = window;
+    const sampleRUM = sinon.spy();
+    const stopNavigation = (event) => event.preventDefault();
+    window.hlx = { rum: { sampleRUM } };
+    document.addEventListener('click', stopNavigation);
+    try {
+      const [browse, create] = await getTiles();
+      browse.shadowRoot.querySelector('a').click();
+      create.shadowRoot.querySelector('button').click();
+      expect(sampleRUM.args).to.deep.equal([
+        ['click', { source: 'landing-action-browse-content', target: browse.href }],
+        ['click', { source: 'landing-action-create-a-page', target: 'create-page' }],
+      ]);
+      hashChange._set(undefined);
+      await el.updateComplete;
+      await getTiles();
+      create.shadowRoot.querySelector('button').click();
+      expect(sampleRUM.callCount).to.equal(2);
+    } finally {
+      document.removeEventListener('click', stopNavigation);
+      window.hlx = hlx;
+    }
+  });
+});
