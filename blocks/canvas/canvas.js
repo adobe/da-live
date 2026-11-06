@@ -312,11 +312,11 @@ export default async function decorate(block) {
     position: 'after',
     width: '400px',
     getContent: async () => {
-      await import('./ew-tool-panel/tool-panel.js');
-      return document.createElement('ew-tool-panel');
+      await import('../shared/tool-panel/tool-panel.js');
+      return document.createElement('da-tool-panel');
     },
     onShow: async (aside, id, options) => {
-      const toolPanel = aside?.querySelector('ew-tool-panel');
+      const toolPanel = aside?.querySelector('da-tool-panel');
       if (!toolPanel) return;
       const selected = await syncToolPanelViews(toolPanel, hashState(), id);
       await toolPanel.updateComplete;
@@ -366,7 +366,7 @@ export default async function decorate(block) {
     comparisonContext = state;
     comparison.contextChanged();
     syncCanvasEditorsToHash({ mountRoot, header, state });
-    const toolPanel = document.querySelector('aside.panel[data-position="after"] ew-tool-panel');
+    const toolPanel = document.querySelector('aside.panel[data-position="after"] da-tool-panel');
     if (toolPanel) syncToolPanelViews(toolPanel, state);
   });
 

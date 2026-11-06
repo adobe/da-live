@@ -5,11 +5,11 @@ import { PANEL_EVENT } from '../../../../fixtures/nx/utils/panel.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-await import('../../../../../blocks/canvas/ew-tool-panel/tool-panel.js');
+await import('../../../../../blocks/shared/tool-panel/tool-panel.js');
 
-describe('ew-tool-panel pendingView', () => {
+describe('da-tool-panel pendingView', () => {
   it('auto-selects pendingView and loads it once when views are assigned', async () => {
-    const el = document.createElement('ew-tool-panel');
+    const el = document.createElement('da-tool-panel');
     document.body.append(el);
     await el.updateComplete;
 
@@ -33,7 +33,7 @@ describe('ew-tool-panel pendingView', () => {
   });
 });
 
-describe('ew-tool-panel active view broadcast', () => {
+describe('da-tool-panel active view broadcast', () => {
   let aside;
   let el;
   let unsub;
@@ -51,7 +51,7 @@ describe('ew-tool-panel active view broadcast', () => {
     aside.className = 'panel';
     aside.dataset.position = 'after';
     document.body.append(aside);
-    el = document.createElement('ew-tool-panel');
+    el = document.createElement('da-tool-panel');
     aside.append(el);
     await el.updateComplete;
 
