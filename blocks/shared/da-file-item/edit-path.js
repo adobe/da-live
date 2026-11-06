@@ -10,9 +10,25 @@ export function getConfiguredEditor(path, editorConfs, defaultEditor) {
   return matchedConf.split('=')[1];
 }
 
+// Carry the code branch (`?ref=`) from the current page into same-origin editors,
+// e.g. canvas -> folder listing (breadcrumb keeps the query) -> canvas.
+function withRef(route) {
+  if (!route?.startsWith('/') || route.startsWith('//')) return route;
+  const ref = new URLSearchParams(window.location.search).get('ref');
+  if (!ref) return route;
+  const hashIdx = route.indexOf('#');
+  const base = hashIdx === -1 ? route : route.slice(0, hashIdx);
+  const hash = hashIdx === -1 ? '' : route.slice(hashIdx);
+  const [pathname, query = ''] = base.split('?');
+  const params = new URLSearchParams(query);
+  if (params.has('ref')) return route;
+  params.set('ref', ref);
+  return `${pathname}?${params}${hash}`;
+}
+
 export default function getEditPath({ path, ext, editor }) {
   if (ext === 'html' || ext === 'json') {
-    const route = ext === 'html' ? editor : '/sheet#';
+    const route = ext === 'html' ? withRef(editor) : '/sheet#';
     const lastIndex = path.lastIndexOf(`.${ext}`);
 
     if (route.includes('experience.adobe.com')) {

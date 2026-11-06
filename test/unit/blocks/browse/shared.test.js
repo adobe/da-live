@@ -37,4 +37,75 @@ describe('browse/shared getEditPath', () => {
     });
     expect(result).to.equal('/media#/adobe/geometrixx/image.png');
   });
+
+  describe('with a ref query param on the current page', () => {
+    let savedSearch;
+
+    function setSearch(search) {
+      const url = new URL(window.location.href);
+      url.search = search;
+      window.history.replaceState(null, '', url);
+    }
+
+    beforeEach(() => {
+      savedSearch = window.location.search;
+      setSearch('?ref=aem-20261105-3');
+    });
+
+    afterEach(() => {
+      setSearch(savedSearch);
+    });
+
+    it('Carries the ref into the canvas editor route', () => {
+      const result = getEditPath({
+        path: '/adobe/geometrixx/page.html',
+        ext: 'html',
+        editor: '/canvas#',
+      });
+      expect(result).to.equal('/canvas?ref=aem-20261105-3#/adobe/geometrixx/page');
+    });
+
+    it('Carries the ref into the classic editor route', () => {
+      const result = getEditPath({
+        path: '/adobe/geometrixx/page.html',
+        ext: 'html',
+        editor: '/edit#',
+      });
+      expect(result).to.equal('/edit?ref=aem-20261105-3#/adobe/geometrixx/page');
+    });
+
+    it('Merges with an existing query in the editor route', () => {
+      const result = getEditPath({
+        path: '/adobe/geometrixx/page.html',
+        ext: 'html',
+        editor: '/canvas?foo=bar#',
+      });
+      expect(result).to.equal('/canvas?foo=bar&ref=aem-20261105-3#/adobe/geometrixx/page');
+    });
+
+    it('Keeps a ref already set by the editor route', () => {
+      const result = getEditPath({
+        path: '/adobe/geometrixx/page.html',
+        ext: 'html',
+        editor: '/canvas?ref=other#',
+      });
+      expect(result).to.equal('/canvas?ref=other#/adobe/geometrixx/page');
+    });
+
+    it('Does not add the ref to external editors', () => {
+      const result = getEditPath({
+        path: '/adobe/geometrixx/folder/page.html',
+        ext: 'html',
+        editor: 'https://experience.adobe.com/edit',
+      });
+      expect(result).to.equal('https://experience.adobe.com/edit/folder/page');
+    });
+
+    it('Does not add the ref to sheet or media routes', () => {
+      expect(getEditPath({ path: '/adobe/geometrixx/data.json', ext: 'json', editor: '/canvas#' }))
+        .to.equal('/sheet#/adobe/geometrixx/data');
+      expect(getEditPath({ path: '/adobe/geometrixx/image.png', ext: 'png', editor: '/canvas#' }))
+        .to.equal('/media#/adobe/geometrixx/image.png');
+    });
+  });
 });
