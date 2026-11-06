@@ -1,3 +1,10 @@
+## [1.21.2](https://github.com/adobe/da-live/compare/v1.21.1...v1.21.2) (2026-11-06)
+
+
+### Bug Fixes
+
+* include version dates in comparison labels ([#1671](https://github.com/adobe/da-live/issues/1671)) ([0476a28](https://github.com/adobe/da-live/commit/0476a2838769ba5ebc94ad1748a0798131d4d009))
+
 ## [1.21.1](https://github.com/adobe/da-live/compare/v1.21.0...v1.21.1) (2026-11-06)
 
 
