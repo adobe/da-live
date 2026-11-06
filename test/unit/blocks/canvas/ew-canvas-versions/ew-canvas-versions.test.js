@@ -160,6 +160,24 @@ describe('ew-canvas-versions', () => {
     expect(inst.shadowRoot.querySelector('.toolbar')).to.not.exist;
   });
 
+  it('does not request a comparison when opening or reopening the panel', async () => {
+    const requests = [];
+    const unsubscribe = canvasBus.comparisonRequest.subscribe((request) => requests.push(request));
+    try {
+      inst = await createInstance({ path: '/org/site/doc.html', _versions: [] });
+      expect(inst.shadowRoot.querySelector('.versionlist')).to.exist;
+      expect(requests).to.be.empty;
+
+      inst.remove();
+      document.body.appendChild(inst);
+      await inst.updateComplete;
+      await nextFrame();
+      expect(requests).to.be.empty;
+    } finally {
+      unsubscribe();
+    }
+  });
+
   it('opens restore dialog showing the entry label', async () => {
     inst = await createInstance({ path: '/org/site/doc.html', _versions: [] });
     await inst.updateComplete;
