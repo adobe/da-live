@@ -2,12 +2,8 @@ import { expect } from '@esm-bundle/chai';
 import '../../setup-nx.js';
 import init from '../../../../blocks/landing/landing.js';
 
-const head = new DOMParser().parseFromString(await fetch('/head.html').then((r) => r.text()), 'text/html');
 const styles = new CSSStyleSheet();
-styles.replaceSync([...head.querySelectorAll('style')].map((style) => style.textContent).join('\n'));
-[...styles.cssRules].reverse().forEach((rule) => {
-  if (rule.selectorText === 'html') styles.deleteRule([...styles.cssRules].indexOf(rule));
-});
+styles.replaceSync(await fetch('/blocks/landing/landing.css').then((response) => response.text()));
 
 describe('landing background with Content', () => {
   let el;

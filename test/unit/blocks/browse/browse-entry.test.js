@@ -39,8 +39,6 @@ describe('Browse Content opt-in', () => {
         observer.observe(ordinary, { childList: true, subtree: true });
       });
       hashChange._set(undefined);
-      expect(ordinary.querySelector('da-browse')).to.equal(null);
-      expect(ordinary.firstElementChild.className).to.equal('landing');
       const landing = await mounted;
       await landing.updateComplete;
       expect(ordinary.querySelector('da-browse')).to.equal(null);
@@ -64,6 +62,28 @@ describe('Browse Content opt-in', () => {
       configs.restore();
       window.history.replaceState(null, '', href);
       localStorage.removeItem('da-sites');
+    }
+  });
+
+  it('waits for the landing gradient surface before the section is shown', async () => {
+    const { href } = window.location;
+    const el = document.createElement('div');
+    el.innerHTML = '<div><picture><img alt=""></picture></div>';
+    document.body.append(el);
+    try {
+      const url = new URL(href);
+      url.searchParams.set('landing', 'true');
+      url.hash = '';
+      window.history.replaceState(null, '', url);
+      hashChange._set(undefined);
+      const ready = init(el);
+      expect(ready).to.be.instanceOf(Promise);
+      await ready;
+      expect(el.querySelector('picture')).to.equal(null);
+      expect(el.firstElementChild.className).to.equal('landing');
+    } finally {
+      el.remove();
+      window.history.replaceState(null, '', href);
     }
   });
 });
