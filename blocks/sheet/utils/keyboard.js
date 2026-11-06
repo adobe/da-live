@@ -18,6 +18,13 @@ function release(sheet) {
   lib.current = null;
 }
 
+// Building a grid makes it current, so after loading or adding sheets the last
+// one built gets the document's keys even when hidden or not yet focused.
+export function releaseKeyboard(except) {
+  const current = window.jspreadsheet?.current;
+  if (current && current !== except) release(current);
+}
+
 export default function makeKeyboardAccessible(sheet) {
   const { el } = sheet;
   if (!el) return;

@@ -1,6 +1,6 @@
 import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import { handleSave, staleCheck } from './utils.js';
-import makeKeyboardAccessible from './keyboard.js';
+import makeKeyboardAccessible, { releaseKeyboard } from './keyboard.js';
 import '../da-sheet-tabs.js';
 
 const nx = getNx();
@@ -48,6 +48,7 @@ function finishSetup(el, data) {
     sheet.options.onmoverow = save;
     makeKeyboardAccessible(sheet);
   });
+  releaseKeyboard();
 
   // Setup tabs
   const daSheetTabs = document.createElement('da-sheet-tabs');
