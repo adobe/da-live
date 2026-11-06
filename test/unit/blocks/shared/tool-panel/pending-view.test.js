@@ -1,6 +1,5 @@
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
-import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 import { PANEL_EVENT } from '../../../../fixtures/nx/utils/panel.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -36,10 +35,8 @@ describe('da-tool-panel pendingView', () => {
 describe('da-tool-panel active view broadcast', () => {
   let aside;
   let panel;
-  let unsub;
 
   afterEach(() => {
-    unsub?.();
     panel?.remove();
     aside?.remove();
     aside = null;
@@ -51,12 +48,11 @@ describe('da-tool-panel active view broadcast', () => {
     aside.className = 'panel';
     aside.dataset.position = 'after';
     document.body.append(aside);
+    const seen = [];
     panel = document.createElement('da-tool-panel');
+    panel.host = { onActiveViewChange: (view) => seen.push(view) };
     aside.append(panel);
     await panel.updateComplete;
-
-    const seen = [];
-    unsub = canvasBus.toolPanelViewState.subscribe((view) => seen.push(view));
 
     panel.pendingView = 'comments';
     panel.views = [{ id: 'comments', label: 'Comments', load: async () => document.createElement('div') }];

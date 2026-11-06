@@ -7,7 +7,13 @@ import {
   readInitialCanvasEditorView,
   persistCanvasEditorView,
 } from './utils/view.js';
-import { shouldAutoOpenAfterPanel } from './utils/panel.js';
+import {
+  persistPinnedToolPanelViews,
+  persistToolPanelView,
+  readPinnedToolPanelViews,
+  resolveInitialToolPanelView,
+  shouldAutoOpenAfterPanel,
+} from './utils/panel.js';
 import './ew-canvas-header/ew-canvas-header.js';
 import './ew-editor-doc/ew-editor-doc.js';
 import './ew-editor-wysiwyg/ew-editor-wysiwyg.js';
@@ -25,6 +31,11 @@ import { initBranchBridge } from './editor-utils/branch-bridge.js';
 import { resolveCanvasBranch } from './editor-utils/branch-state.js';
 import { installComparison } from './ew-comparison/comparison.js';
 import { docToHtml } from '../shared/version/compare.js';
+import {
+  TOOL_PANEL_SECTION,
+  createToolPanelSection,
+  syncOpenToolPanel,
+} from '../shared/tool-panel/tool-panel-section.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
@@ -185,29 +196,6 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
   mountCanvasEditors({ mountRoot, header, session, ctx });
 }
 
-async function syncToolPanelViews(toolPanel, { org, site }, panelName) {
-  const key = org && site ? `${org}/${site}` : null;
-  if (key === toolPanel.dataset.extKey) return false;
-  toolPanel.dataset.extKey = key ?? '';
-  toolPanel.contextKey = key ?? '';
-
-  if (!key) {
-    toolPanel.org = undefined;
-    toolPanel.site = undefined;
-    toolPanel.views = [];
-    return true;
-  }
-
-  const { getCanvasToolPanelViews } = await import('./ew-panel-extensions/helpers.js');
-  const views = await getCanvasToolPanelViews({ org, site });
-  if (toolPanel.dataset.extKey !== key) return false;
-  toolPanel.org = org;
-  toolPanel.site = site;
-  if (panelName) toolPanel.pendingView = panelName;
-  toolPanel.views = views;
-  return true;
-}
-
 function hashState() {
   const [org, site] = window.location.hash.slice(2).split('/');
   return { org: org || undefined, site: site || undefined };
@@ -308,27 +296,26 @@ export default async function decorate(block) {
     if (wasPanelOpen('chat')) openPanelSection('chat');
   });
 
-  registerPanelSection('tools', {
-    position: 'after',
-    width: '400px',
-    getContent: async () => {
-      await import('../shared/tool-panel/tool-panel.js');
-      return document.createElement('da-tool-panel');
+  registerPanelSection(TOOL_PANEL_SECTION, createToolPanelSection({
+    host: {
+      getViews: async (context) => {
+        const { getCanvasToolPanelViews } = await import('./ew-panel-extensions/helpers.js');
+        return getCanvasToolPanelViews(context);
+      },
+      resolveInitialView: resolveInitialToolPanelView,
+      persistView: persistToolPanelView,
+      readPinnedViews: readPinnedToolPanelViews,
+      persistPinnedViews: persistPinnedToolPanelViews,
+      onActiveViewChange: (viewId) => canvasBus.toolPanelViewState.emit(viewId),
     },
-    onShow: async (aside, id, options) => {
-      const toolPanel = aside?.querySelector('da-tool-panel');
-      if (!toolPanel) return;
-      const selected = await syncToolPanelViews(toolPanel, hashState(), id);
-      await toolPanel.updateComplete;
-      if (id && !selected && toolPanel.views?.some((v) => v.id === id)) {
-        await toolPanel.showPanel(id);
-      }
+    getContext: hashState,
+    onShow: async (toolPanel, id, options) => {
       if (options?.newVersion) {
         await toolPanel.updateComplete;
         toolPanel.shadowRoot?.querySelector('ew-canvas-versions')?.handleNew();
       }
     },
-  });
+  }));
 
   const header = await installCanvasHeader(block, { org, site });
 
@@ -366,8 +353,7 @@ export default async function decorate(block) {
     comparisonContext = state;
     comparison.contextChanged();
     syncCanvasEditorsToHash({ mountRoot, header, state });
-    const toolPanel = document.querySelector('aside.panel[data-position="after"] da-tool-panel');
-    if (toolPanel) syncToolPanelViews(toolPanel, state);
+    syncOpenToolPanel(state);
   });
 
   if (wasPanelOpen('tools')) {
