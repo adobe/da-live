@@ -12,6 +12,7 @@
 import { test, expect } from '@playwright/test';
 import ENV from '../../utils/env.js';
 import { getQuery, TEST_SITE } from '../../utils/page.js';
+import { expectNotPermittedOpensProfile, forceForbidden } from '../../utils/utils.js';
 
 test('Read-only document directly configured', async ({ page }, workerInfo) => {
   test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
@@ -92,7 +93,25 @@ test('No access at all', async ({ page }) => {
 
   await expect(page.locator('h1')).toContainText('noaccess-doc');
   await expect(page.locator('div.ProseMirror'), 'Nothing should be visible').toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'Not permitted' })).toBeVisible();
-  await expect(page.getByText('Please make sure you are logged in with the correct user')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Open Profile' })).toBeVisible();
+  await expectNotPermittedOpensProfile(page, expect);
+});
+
+test('Not permitted document recovers after switching to an authorized org', async ({ page }) => {
+  test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
+
+  // The test user only belongs to one org, so simulate "signed into the wrong
+  // org" by forcing a 403 on a document the user can actually read.
+  const sourceUrl = /\/source\/da-testautomation\/acltest\/testdocs\/readonly-doc(\.html)?(\?|$)/;
+  const restore = await forceForbidden(page, sourceUrl);
+
+  await page.goto(`${ENV}/edit${getQuery()}#/da-testautomation/acltest/testdocs/readonly-doc`);
+  await expect(page.locator('div.ProseMirror')).toHaveCount(0);
+  await expectNotPermittedOpensProfile(page, expect);
+
+  // Switching org in the profile menu reloads the page with the new token.
+  await restore();
+  await page.reload();
+
+  await expect(page.locator('div.ProseMirror')).toHaveText('This is readonly-doc');
+  await expect(page.getByRole('heading', { name: 'Not permitted' })).toHaveCount(0);
 });

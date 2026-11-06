@@ -1113,7 +1113,7 @@ describe('openProfileMenu', () => {
 
   afterEach(() => header?.remove());
 
-  function mountProfile() {
+  function mountProfile({ withOrg = true } = {}) {
     header = document.createElement('header');
     const nav = document.createElement('div');
     nav.className = 'test-nx-nav';
@@ -1124,6 +1124,14 @@ describe('openProfileMenu', () => {
     const menu = document.createElement('div');
     menu.id = 'nx-menu-profile';
     menu.setAttribute('popover', '');
+    const details = document.createElement('button');
+    details.className = 'nx-menu-btn nx-menu-btn-details';
+    menu.append(details);
+    if (withOrg) {
+      const org = document.createElement('button');
+      org.className = 'nx-menu-btn nx-menu-btn-org';
+      menu.append(org);
+    }
     profileRoot.append(menu);
     navRoot.append(profile);
     header.append(nav);
@@ -1131,10 +1139,28 @@ describe('openProfileMenu', () => {
     return menu;
   }
 
+  const opts = { navSelector: '.test-nx-nav', profileSelector: '[data-profile]' };
+
   it('opens the profile popover inside nested shadow roots', () => {
     const menu = mountProfile();
-    expect(openProfileMenu({ navSelector: '.test-nx-nav', profileSelector: '[data-profile]' })).to.be.true;
+    expect(openProfileMenu(opts)).to.be.true;
     expect(menu.matches(':popover-open')).to.be.true;
+    menu.hidePopover();
+  });
+
+  it('moves focus to the organization button inside the menu', () => {
+    const menu = mountProfile();
+    openProfileMenu(opts);
+    expect(menu.getRootNode().activeElement)
+      .to.equal(menu.querySelector('.nx-menu-btn-org'));
+    menu.hidePopover();
+  });
+
+  it('falls back to the first focusable control when there is no org button', () => {
+    const menu = mountProfile({ withOrg: false });
+    openProfileMenu(opts);
+    expect(menu.getRootNode().activeElement)
+      .to.equal(menu.querySelector('.nx-menu-btn-details'));
     menu.hidePopover();
   });
 

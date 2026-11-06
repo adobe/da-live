@@ -7,7 +7,7 @@
   align-items: center;
   gap: var(--s2-spacing-100);
   min-height: 75px;
-  padding: var(--s2-spacing-200);
+  padding: var(--s2-spacing-500) var(--s2-spacing-200);
   box-sizing: border-box;
   text-align: center;
   font-family: var(--s2-font-family);

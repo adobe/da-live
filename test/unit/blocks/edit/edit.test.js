@@ -10,13 +10,13 @@ describe('edit not permitted message', () => {
   let daTitle;
 
   beforeEach(() => {
+    // Keep the fixture detached: <da-content> is a real Lit element that
+    // renders from `details` once connected. These tests only exercise the
+    // DOM swap, so it must never connect (and never render without details).
     el = document.createElement('div');
     el.append(document.createElement('da-content'));
     daTitle = {};
-    document.body.append(el);
   });
-
-  afterEach(() => el.remove());
 
   it('removes the editor, hides the title actions and shows the shared message', () => {
     showNotPermitted({ el, daTitle, message: 'Not permitted' });
