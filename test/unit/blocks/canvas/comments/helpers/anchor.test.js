@@ -337,3 +337,58 @@ describe('a deleted anchor never re-attaches to matching text', () => {
     expect(editor.view.state.doc.textBetween(range.from, range.to)).to.equal('tXYZhe');
   });
 });
+
+describe('block anchors', () => {
+  let editor;
+  afterEach(() => {
+    if (editor) destroyEditor(editor);
+    editor = null;
+  });
+
+  function block(schema, name) {
+    const cell = (t) => schema.nodes.table_cell.create(null, schema.node('paragraph', null, schema.text(t)));
+    return schema.nodes.table.create(null, [
+      schema.nodes.table_row.create(null, cell(name)),
+      schema.nodes.table_row.create(null, cell('copy')),
+    ]);
+  }
+
+  async function commentedBlock(name) {
+    editor = await createTestEditor();
+    const { schema } = editor.view.state;
+    const table = block(schema, name);
+    const { tr, doc } = editor.view.state;
+    editor.view.dispatch(tr.replaceWith(0, doc.content.size, table));
+    const selectionData = { from: 0, to: table.nodeSize, anchorType: 'table', anchorText: `block: ${name}` };
+    return encodeAnchor({ selectionData, state: editor.view.state });
+  }
+
+  function replaceBlock(name) {
+    const { state } = editor.view;
+    const { schema, doc } = state;
+    editor.view.dispatch(state.tr.delete(0, doc.child(0).nodeSize));
+    editor.view.dispatch(editor.view.state.tr.insert(0, block(schema, name)));
+  }
+
+  it('stays detached when a different block takes the deleted block\'s place', async () => {
+    const anchor = await commentedBlock('hero');
+    replaceBlock('cards');
+    expect(decodeAnchor({ anchor, state: editor.view.state })).to.be.null;
+  });
+
+  it('stays attached when only the block name case changes', async () => {
+    const anchor = await commentedBlock('hero');
+    const { state } = editor.view;
+    editor.view.dispatch(state.tr.insertText('H', 4, 5));
+    expect(editor.view.state.doc.child(0).firstChild.textContent).to.equal('Hero');
+    expect(decodeAnchor({ anchor, state: editor.view.state })).to.not.be.null;
+  });
+
+  it('stays attached when only the block variant changes', async () => {
+    const anchor = await commentedBlock('hero');
+    const { state } = editor.view;
+    editor.view.dispatch(state.tr.insertText(' (dark)', 8));
+    expect(editor.view.state.doc.child(0).firstChild.textContent).to.equal('hero (dark)');
+    expect(decodeAnchor({ anchor, state: editor.view.state })).to.not.be.null;
+  });
+});
