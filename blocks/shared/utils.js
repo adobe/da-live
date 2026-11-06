@@ -491,6 +491,23 @@ export function formatDate(timestamp) {
   return { date, time };
 }
 
+export const NOT_PERMITTED_HINT = 'Please make sure you are logged in with the correct user and have selected the right Adobe org.';
+
+export function openProfileMenu({ navSelector = 'nx-nav', profileSelector = 'nx-profile' } = {}) {
+  const nav = document.querySelector(navSelector);
+  const profile = nav?.shadowRoot?.querySelector(profileSelector);
+  const menu = profile?.shadowRoot?.querySelector('[popover]');
+  if (!menu?.showPopover) return false;
+  if (!menu.matches(':popover-open')) menu.showPopover();
+  // Programmatic showPopover() has no invoker, so focus stays on the page and
+  // Tab skips the menu. Move focus in — preferring the org switcher, since the
+  // not-permitted hint is usually resolved by picking another org.
+  const target = menu.querySelector('.nx-menu-btn-org')
+    ?? menu.querySelector('button, a[href], [tabindex]:not([tabindex="-1"])');
+  target?.focus();
+  return true;
+}
+
 export function delay(ms) {
   return new Promise((res) => { setTimeout(res, ms); });
 }

@@ -145,6 +145,17 @@ describe('da-list render', () => {
     expect(el.shadowRoot.querySelector('.empty-list h3').textContent).to.equal('Nothing here');
   });
 
+  it('Renders the shared Not permitted message with Open Profile', async () => {
+    await fixture({ fullpath: '/o/r' });
+    el._listItems = [];
+    el._continuationToken = null;
+    el._allPagesLoaded = true;
+    el._emptyMessage = 'Not permitted';
+    await rerender();
+    expect(el.shadowRoot.querySelector('.empty-list h3').textContent).to.equal('Not permitted');
+    expect(el.shadowRoot.querySelectorAll('.empty-list .empty-list-action').length).to.equal(1);
+  });
+
   it('labels folders as sites only at the org root', async () => {
     await fixture({ fullpath: '/org', select: true, groupByType: true });
     el._listItems = [
