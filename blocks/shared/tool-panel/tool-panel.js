@@ -2,12 +2,7 @@ import { LitElement, html, nothing, repeat } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { getCommentsBridge } from '../../canvas/editor-utils/comments-bridge.js';
 import { canvasBus } from '../../canvas/utils/canvas-bus.js';
-import {
-  persistToolPanelView,
-  persistPinnedToolPanelViews,
-  readPinnedToolPanelViews,
-  resolveInitialToolPanelView,
-} from '../../canvas/utils/panel.js';
+import { TOOL_PANEL_TAG } from './tool-panel-section.js';
 import DragHandler from '../drag-handler.js';
 import drawDragPreview from '../drag-preview.js';
 import { canPin, labelOf, opensOutsidePanel } from './tool-panel-view.js';
@@ -35,8 +30,12 @@ const ICONS = {
 };
 
 /**
- * The `da-tool-panel` element. It shows one of its views at a time, with
+ * The `da-tool-panel` element. It shows one of a host's views at a time, with
  * the pinned views as tabs and a picker to pin, unpin and open views.
+ *
+ * Hosts don't create it directly. `createToolPanelSection` creates it with the
+ * host's `host` delegate and calls `setContext` whenever the panel opens. See
+ * that function for the delegate contract.
  *
  * A view needs an `id` and a `label`. Inline views provide `load`, which
  * returns the element to show. Views with a `window`, `fullsize-dialog` or
@@ -49,6 +48,7 @@ class DaToolPanel extends LitElement {
     org: { type: String },
     site: { type: String },
     contextKey: { type: String },
+    host: { attribute: false },
     _fullsizeDialogViewId: { state: true },
     _pinnedIds: { state: true },
     _tabScroll: { state: true },
@@ -70,11 +70,11 @@ class DaToolPanel extends LitElement {
   });
 
   /**
-   * Restores the pinned views.
+   * Starts with no pinned views until the host provides them.
    */
   constructor() {
     super();
-    this._pinnedIds = readPinnedToolPanelViews();
+    this._pinnedIds = [];
   }
 
   /**
@@ -112,12 +112,12 @@ class DaToolPanel extends LitElement {
   }
 
   /**
-   * Broadcasts which view is visible, or null while the rail is hidden.
+   * Tells the host which view is visible, or null while the rail is hidden.
    */
   _broadcastActiveView() {
     const rail = this.closest('aside.panel');
     const visible = !!rail && !rail.hasAttribute('hidden');
-    canvasBus.toolPanelViewState.emit(visible ? this.activeId : null);
+    this.host?.onActiveViewChange?.(visible ? this.activeId : null);
   }
 
   /**
@@ -174,13 +174,13 @@ class DaToolPanel extends LitElement {
   }
 
   /**
-   * Replaces the pinned view ids and remembers them.
+   * Replaces the pinned view ids and lets the host remember them.
    *
    * @param {Array<string>} ids - The pinned view ids, in tab order.
    */
   _setPinnedIds(ids) {
     this._pinnedIds = ids;
-    persistPinnedToolPanelViews(ids);
+    this.host?.persistPinnedViews?.(ids);
   }
 
   /**
@@ -394,6 +394,17 @@ class DaToolPanel extends LitElement {
   }
 
   /**
+   * Reads the host's pinned views whenever the host changes.
+   *
+   * @param {Map<string, unknown>} changed - The changed properties.
+   */
+  willUpdate(changed) {
+    if (changed.has('host')) {
+      this._pinnedIds = this.host?.readPinnedViews?.() ?? [];
+    }
+  }
+
+  /**
    * Reacts to a changed context, views list, active view or dialog view.
    *
    * @param {Map<string, unknown>} changed - The changed properties.
@@ -418,11 +429,11 @@ class DaToolPanel extends LitElement {
 
   /**
    * Persists the new active view, shows its element, header actions and tab
-   * and broadcasts it.
+   * and tells the host.
    */
   _onActiveIdChange() {
     if (this.activeId) {
-      persistToolPanelView(this.activeId);
+      this.host?.persistView?.(this.activeId);
     }
     this._syncContent();
     this._syncHeaderActions();
@@ -433,7 +444,7 @@ class DaToolPanel extends LitElement {
 
   /**
    * Reconciles loaded elements and the active view with a new views list.
-   * A pending view wins, then the saved initial view, then the first pinned
+   * A pending view wins, then the host's initial view, then the first pinned
    * view, then the first view.
    */
   async _onViewsChange() {
@@ -454,7 +465,7 @@ class DaToolPanel extends LitElement {
     if (!this.activeId || !ids.has(this.activeId)) {
       const initial = (requestedView && ids.has(requestedView))
         ? requestedView
-        : await resolveInitialToolPanelView({
+        : await this.host?.resolveInitialView?.({
           org: this.org,
           site: this.site,
           availableIds: ids,
@@ -475,6 +486,54 @@ class DaToolPanel extends LitElement {
     this._loaded = {};
     this._loadedKeys = {};
     this.shadowRoot.querySelector('.tool-panel-content').replaceChildren();
+  }
+
+  /**
+   * Points the panel at an org and site, then shows a view. A newer context
+   * wins over one whose views are still loading.
+   *
+   * @param {object} [context] - The org and site.
+   * @param {string} [viewId] - The view to show.
+   * @returns {Promise<void>}
+   */
+  async setContext(context, viewId) {
+    const replaced = await this._loadContext(context ?? {}, viewId);
+    await this.updateComplete;
+    if (viewId && !replaced && this.views?.some((view) => view.id === viewId)) {
+      await this.showPanel(viewId);
+    }
+  }
+
+  /**
+   * Loads the host's views when the context changed.
+   *
+   * @param {object} context - The org and site.
+   * @param {string} [viewId] - The view to show once the views are set.
+   * @returns {Promise<boolean>} Whether the views were replaced.
+   */
+  async _loadContext({ org, site }, viewId) {
+    const key = org && site ? `${org}/${site}` : '';
+    if (key === this.contextKey) {
+      return false;
+    }
+
+    // Claim the key before awaiting, so a newer context wins the race.
+    this.contextKey = key;
+    if (!key) {
+      Object.assign(this, { org: undefined, site: undefined, views: [] });
+      return true;
+    }
+
+    const views = await this.host.getViews({ org, site });
+    if (this.contextKey !== key) {
+      return false;
+    }
+
+    if (viewId) {
+      this.pendingView = viewId;
+    }
+    Object.assign(this, { org, site, views });
+    return true;
   }
 
   /**
@@ -815,4 +874,4 @@ class DaToolPanel extends LitElement {
   }
 }
 
-customElements.define('da-tool-panel', DaToolPanel);
+customElements.define(TOOL_PANEL_TAG, DaToolPanel);

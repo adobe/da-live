@@ -1,7 +1,11 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../scripts/utils.js';
-import { TOOL_PANEL_PINNED_VIEWS_KEY } from '../../../../../blocks/canvas/utils/panel.js';
+import {
+  TOOL_PANEL_PINNED_VIEWS_KEY,
+  persistPinnedToolPanelViews,
+  readPinnedToolPanelViews,
+} from '../../../../../blocks/canvas/utils/panel.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -85,6 +89,10 @@ describe('DaToolPanel — modal experience', () => {
 });
 
 describe('DaToolPanel selected panels', () => {
+  const canvasPins = {
+    readPinnedViews: readPinnedToolPanelViews,
+    persistPinnedViews: persistPinnedToolPanelViews,
+  };
   let panel;
   let savedPins;
   let loads;
@@ -106,6 +114,7 @@ describe('DaToolPanel selected panels', () => {
       },
     }));
     panel = document.createElement('da-tool-panel');
+    panel.host = canvasPins;
     panel.pendingView = 'files';
     panel.views = views;
     document.body.append(panel);
@@ -179,6 +188,7 @@ describe('DaToolPanel selected panels', () => {
     await panel.updateComplete;
     panel.remove();
     panel = document.createElement('da-tool-panel');
+    panel.host = canvasPins;
     panel.pendingView = 'assets';
     panel.views = views;
     document.body.append(panel);
@@ -305,6 +315,7 @@ describe('DaToolPanel selected panels', () => {
     panel.remove();
     sessionStorage.removeItem(TOOL_PANEL_PINNED_VIEWS_KEY);
     panel = document.createElement('da-tool-panel');
+    panel.host = canvasPins;
     panel.pendingView = 'outline';
     panel.views = [...views, { ...views[0], id: 'outline', label: 'Outline' }];
     document.body.append(panel);
@@ -410,6 +421,7 @@ describe('DaToolPanel selected panels', () => {
     const savedViews = panel.views;
     panel.remove();
     panel = document.createElement('da-tool-panel');
+    panel.host = canvasPins;
     panel.pendingView = 'comments';
     panel.views = savedViews;
     document.body.append(panel);
@@ -454,6 +466,7 @@ describe('DaToolPanel selected panels', () => {
     await select('assets');
     panel.remove();
     panel = document.createElement('da-tool-panel');
+    panel.host = canvasPins;
     panel.pendingView = 'assets';
     panel.views = views;
     document.body.append(panel);
@@ -528,6 +541,7 @@ describe('DaToolPanel — loaded view cache', () => {
   afterEach(() => panel.remove());
 
   it('scrolls the next hidden tab into view in either direction without changing panels', async () => {
+    panel.host = { readPinnedViews: () => ['files', 'outline'] };
     panel.views = ['files', 'outline', 'page', 'comments'].map((id) => ({
       id,
       label: id,
@@ -912,5 +926,163 @@ describe('DaToolPanel — loaded view cache', () => {
     expect(panel._loaded['configured-tool']).to.be.undefined;
     expect(panel.activeId).to.be.undefined;
     expect(panel.shadowRoot.querySelector('.tool-panel-content').contains(staleEl)).to.be.false;
+  });
+});
+
+describe('DaToolPanel — host delegate', () => {
+  let panel;
+
+  const inlineView = (id) => ({
+    id,
+    label: id,
+    load: async () => document.createElement('div'),
+  });
+
+  async function settle() {
+    await panel.updateComplete;
+    await nextTask();
+    await panel.updateComplete;
+  }
+
+  beforeEach(async () => {
+    panel = document.createElement('da-tool-panel');
+    document.body.append(panel);
+    await panel.updateComplete;
+  });
+
+  afterEach(() => panel.remove());
+
+  it('tells the host about every view that becomes active', async () => {
+    const persisted = [];
+    panel.host = { persistView: (id) => persisted.push(id) };
+    panel.views = [inlineView('outline'), inlineView('files')];
+    await settle();
+
+    await panel.showPanel('files');
+    await panel.updateComplete;
+
+    expect(persisted).to.deep.equal(['outline', 'files']);
+  });
+
+  it('opens the host initial view with the panel context', async () => {
+    let received;
+    panel.host = {
+      resolveInitialView: async (args) => {
+        received = args;
+        return 'blocks';
+      },
+    };
+    panel.org = 'acme';
+    panel.site = 'web';
+
+    panel.views = [inlineView('outline'), inlineView('blocks')];
+    await settle();
+
+    expect(panel.activeId).to.equal('blocks');
+    expect(received.org).to.equal('acme');
+    expect(received.site).to.equal('web');
+    expect([...received.availableIds]).to.deep.equal(['outline', 'blocks']);
+  });
+
+  it('falls back to the first view without a host initial view', async () => {
+    panel.views = [inlineView('outline'), inlineView('files')];
+    await settle();
+
+    expect(panel.activeId).to.equal('outline');
+  });
+
+  it('pins only the opened view without host pinned views', async () => {
+    panel.views = [inlineView('outline'), inlineView('files')];
+    await settle();
+
+    expect(panel._pinnedIds).to.deep.equal(['outline']);
+  });
+
+  it('opens the first host pinned view', async () => {
+    panel.host = { readPinnedViews: () => ['files'] };
+
+    panel.views = [inlineView('outline'), inlineView('files')];
+    await settle();
+
+    expect(panel.activeId).to.equal('files');
+  });
+
+  it('tells the host about new pins', async () => {
+    const persisted = [];
+    panel.host = {
+      readPinnedViews: () => ['files'],
+      persistPinnedViews: (ids) => persisted.push(ids),
+    };
+    panel.views = [inlineView('outline'), inlineView('files')];
+    await settle();
+
+    await panel.showPanel('outline');
+
+    expect(persisted).to.deep.equal([['files', 'outline']]);
+  });
+
+  describe('setContext', () => {
+    const CONTEXT = { org: 'acme', site: 'web' };
+
+    function hostWith(ids) {
+      const calls = [];
+      return {
+        calls,
+        getViews: async (context) => {
+          calls.push(context);
+          return ids.map(inlineView);
+        },
+      };
+    }
+
+    it('loads the host views and shows the requested view', async () => {
+      panel.host = hostWith(['outline', 'files']);
+
+      await panel.setContext(CONTEXT, 'files');
+      await settle();
+
+      expect(panel.host.calls).to.deep.equal([CONTEXT]);
+      expect(panel.contextKey).to.equal('acme/web');
+      expect(panel.activeId).to.equal('files');
+    });
+
+    it('keeps the views of an unchanged context and still shows the requested view', async () => {
+      panel.host = hostWith(['outline', 'files']);
+      await panel.setContext(CONTEXT);
+      await settle();
+
+      await panel.setContext(CONTEXT, 'files');
+      await settle();
+
+      expect(panel.host.calls.length).to.equal(1);
+      expect(panel.activeId).to.equal('files');
+    });
+
+    it('clears the views without an org and site', async () => {
+      panel.host = hostWith(['outline']);
+      await panel.setContext(CONTEXT);
+      await settle();
+
+      await panel.setContext({});
+      await settle();
+
+      expect(panel.host.calls.length).to.equal(1);
+      expect(panel.org === undefined).to.be.true;
+      expect(panel.views).to.deep.equal([]);
+    });
+
+    it('lets the newest context win when views resolve out of order', async () => {
+      const oldViews = deferred();
+      const getViews = async ({ site }) => (site === 'old' ? oldViews.promise : [inlineView('new')]);
+      panel.host = { getViews };
+
+      const oldContextLoad = panel.setContext({ org: 'acme', site: 'old' });
+      await panel.setContext(CONTEXT);
+      oldViews.resolve([inlineView('old')]);
+      await oldContextLoad;
+      await settle();
+
+      expect(panel.views.map((view) => view.id)).to.deep.equal(['new']);
+    });
   });
 });
