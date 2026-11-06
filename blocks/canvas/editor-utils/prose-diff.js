@@ -236,12 +236,14 @@ export function createTrackingPlugin(rerenderPage, updateCursors, getEditor, onS
               const identityChanged = changes.some((c) => (
                 (c.type === 'attrs' || c.type === 'replaced') && EDITABLE_TYPES.includes(changedNodeType(c))
               ));
-              // An image removal changes the outline's default-content children. Unlike an
-              // image attribute edit, it cannot be represented by an in-place iframe update.
-              const imageRemoved = changes.some((c) => (
-                c.type === 'deleted' && c.node?.type.name === 'image'
+              // Adding, removing or replacing an image changes the outline's children,
+              // including on undo/redo. Attribute-only edits still use the in-place update.
+              const imageStructureChanged = changes.some((c) => (
+                ((c.type === 'added' || c.type === 'deleted') && c.node?.type.name === 'image')
+                || (c.type === 'replaced'
+                  && (c.oldNode?.type.name === 'image' || c.newNode?.type.name === 'image'))
               ));
-              const commonEditable = identityChanged || imageRemoved
+              const commonEditable = identityChanged || imageStructureChanged
                 ? null
                 : findCommonEditableAncestor(view, changes, prevState);
 
