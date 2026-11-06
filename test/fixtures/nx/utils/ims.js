@@ -1,12 +1,16 @@
 // Mock ims.js for tests
-let profile;
+let imsResult;
+export const handleSignInCalls = [];
+
+export const setImsResult = (result) => { imsResult = result; };
+
 export async function loadIms() {
-  return profile;
+  // Mock implementation
+  return imsResult;
 }
 
-export const setImsProfile = (value) => { profile = value; };
-
 export function handleSignIn() {
+  handleSignInCalls.push(true);
   // Mirrors the real nx handleSignIn so tests can observe the effect via
   // window.adobeIMS.signIn().
   localStorage.setItem('nx-ims', true);

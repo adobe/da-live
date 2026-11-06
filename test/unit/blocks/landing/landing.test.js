@@ -6,7 +6,7 @@ const { default: init } = await import('../../../../blocks/landing/landing.js');
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT, setAoChat } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT, setPanelMocks } = await import(`${getNx()}/utils/panel.js`);
-const { setImsProfile } = await import(`${getNx()}/utils/ims.js`);
+const { setImsResult } = await import(`${getNx()}/utils/ims.js`);
 const { setChatAvailability } = await getNxEWFlags();
 const css = await fetch('/blocks/landing/landing.css').then((response) => response.text());
 const styles = new CSSStyleSheet();
@@ -154,13 +154,13 @@ describe('landing chat', () => {
     document.removeEventListener(PANEL_EVENT.CLOSE, onPanel);
     setPanelMocks();
     setAoChat(async () => false);
-    setImsProfile(undefined);
+    setImsResult(undefined);
     setChatAvailability(async () => false);
     hashChange._set({});
   });
 
   it('greets the signed-in user by first name', async () => {
-    setImsProfile({ first_name: 'Ada', displayName: 'Ada Lovelace' });
+    setImsResult({ first_name: 'Ada', displayName: 'Ada Lovelace' });
     const landing = await mount();
     await waitFor(() => landing.shadowRoot.querySelector('h1').textContent.includes('Ada'));
     expect(landing.shadowRoot.querySelector('h1').textContent).to.equal('Hi Ada, how can I help?');

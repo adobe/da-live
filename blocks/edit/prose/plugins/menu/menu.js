@@ -1,7 +1,9 @@
 import {
   DOMParser,
+  NodeSelection,
   Plugin,
   PluginKey,
+  TextSelection,
   addColumnAfter,
   addColumnBefore,
   deleteColumn,
@@ -60,45 +62,59 @@ function cmdItem(cmd, options) {
 function imgAltTextItem() {
   let altTextPalette = { isOpen: () => false };
   const title = 'Alt text';
-  return new MenuItem({
-    title,
-    label: title,
-    class: 'img-alt-text',
-    active(state) {
-      return state.selection?.node?.type.name === 'image';
-    },
-    enable(state) { return this.active(state); },
-    update() { return true; },
-    run(state, dispatch) {
-      if (altTextPalette.isOpen()) {
-        altTextPalette.close();
-        return;
-      }
+  return {
+    render(view) {
+      const dom = document.createElement('button');
+      dom.type = 'button';
+      dom.className = 'img-alt-text';
+      dom.title = title;
+      dom.textContent = title;
 
-      const fields = {
-        altText: {
-          placeholder: title,
-          label: title,
+      // Keep the editor's node selection on pointer activation.
+      dom.addEventListener('mousedown', (event) => event.preventDefault());
+      dom.addEventListener('click', () => {
+        if (altTextPalette.isOpen()) {
+          altTextPalette.close();
+          return;
+        }
+
+        const { state } = view;
+        const { node, from: pos } = state.selection;
+        if (node?.type.name !== 'image') return;
+
+        const fields = {
+          altText: {
+            placeholder: title,
+            label: title,
+            value: node.attrs.alt ?? '',
+          },
+        };
+        // Use the live state: the document may have changed while the palette was open.
+        const callback = () => {
+          const current = view.state.doc.nodeAt(pos);
+          if (current?.type.name !== 'image' || current.attrs.src !== node.attrs.src) return;
+          view.dispatch(view.state.tr.setNodeAttribute(pos, 'alt', fields.altText.value?.trim()));
+        };
+
+        const promptOptions = { title, fields, callback, saveOnClose: true, useLabelsAbove: true };
+        altTextPalette = openPrompt(promptOptions);
+        altTextPalette.addEventListener('closed', () => {
+          if (!view.hasFocus()) view.focus();
+        });
+      });
+
+      return {
+        dom,
+        update(state) {
+          const active = state.selection?.node?.type.name === 'image';
+          dom.disabled = !active;
+          dom.classList.toggle('ProseMirror-menu-disabled', !active);
+          dom.classList.toggle('ProseMirror-menu-active', active);
+          return true;
         },
       };
-
-      const existingAltText = state.selection.node.attrs.alt;
-      if (this.active(state)) {
-        if (existingAltText) {
-          fields.altText.value = existingAltText;
-        }
-      }
-
-      const callback = () => {
-        const { pos } = state.selection.$anchor;
-        dispatch(state.tr.setNodeAttribute(pos, 'alt', fields.altText.value?.trim()));
-      };
-
-      altTextPalette = openPrompt(
-        { title, altText: existingAltText, fields, callback, saveOnClose: true },
-      );
     },
-  });
+  };
 }
 
 function codeMarkItem(markType) {
@@ -431,10 +447,73 @@ function getMenu(view) {
 
 const menuKey = new PluginKey('menu');
 
+const isImage = (node) => node?.type.name === 'image';
+const isImageOnlyBlock = (node) => node.childCount === 1 && isImage(node.firstChild);
+
+function cellStart($pos) {
+  for (let d = $pos.depth; d > 0; d -= 1) {
+    if ($pos.node(d).type.spec.tableRole?.includes('cell')) return $pos.before(d);
+  }
+  return -1;
+}
+
+// Native vertical caret movement never creates a node selection, so without this an image
+// alone in its paragraph could only be selected with ArrowLeft/ArrowRight.
+function selectImageVertically(view, dir) {
+  const { state } = view;
+  const { selection } = state;
+  const { $from } = selection;
+  if (!$from.parent.isTextblock) return false;
+  const onImage = isImage(selection.node) && isImageOnlyBlock($from.parent);
+  if (!onImage && !(selection.empty && view.endOfTextblock(dir < 0 ? 'up' : 'down'))) return false;
+  const $edge = state.doc.resolve(dir < 0 ? $from.before() : $from.after());
+  const target = TextSelection.findFrom($edge, dir, true);
+  if (target && cellStart(target.$from) !== cellStart($from)) {
+    // prosemirror-tables moves between cells but ignores non-empty selections, so hand it a caret.
+    if (onImage) {
+      const caret = TextSelection.create(state.doc, dir < 0 ? selection.from : selection.to);
+      view.dispatch(state.tr.setSelection(caret));
+    }
+    return false;
+  }
+  if (!target || !isImageOnlyBlock(target.$from.parent)) return false;
+  const imageSelection = NodeSelection.create(state.doc, target.$from.start());
+  view.dispatch(state.tr.setSelection(imageSelection).scrollIntoView());
+  return true;
+}
+
+// Set by a vertical arrow keydown that later plugins or the browser handle; consumed by the
+// resulting selection change.
+let verticalArrowPending = false;
+
 export default new Plugin({
   key: menuKey,
+  appendTransaction(trs, oldState, newState) {
+    if (!verticalArrowPending || !trs.some((tr) => tr.selectionSet)) return null;
+    verticalArrowPending = false;
+    const { selection } = newState;
+    if (!selection.empty || !isImageOnlyBlock(selection.$from.parent)) return null;
+    return newState.tr.setSelection(NodeSelection.create(newState.doc, selection.$from.start()));
+  },
   props: {
+    handleKeyDown(view, event) {
+      verticalArrowPending = false;
+      const hasModifier = event.shiftKey || event.altKey || event.ctrlKey || event.metaKey;
+      if (!hasModifier && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+        if (selectImageVertically(view, event.key === 'ArrowUp' ? -1 : 1)) return true;
+        verticalArrowPending = true;
+        return false;
+      }
+      // Table keymaps otherwise consume Shift+Tab before it can reach the toolbar.
+      if (event.key !== 'Tab' || !event.shiftKey || event.altKey || event.ctrlKey || event.metaKey
+        || view.state.selection?.node?.type.name !== 'image') return false;
+      const button = view.dom.parentElement.querySelector('.ProseMirror-menubar .img-alt-text');
+      if (!button || button.disabled) return false;
+      button.focus();
+      return true;
+    },
     handleDOMEvents: {
+      mousedown: () => { verticalArrowPending = false; },
       focus: (view) => {
         view.root.querySelectorAll('da-palette').forEach((palette) => {
           palette.updateSelection();
