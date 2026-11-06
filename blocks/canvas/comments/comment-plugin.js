@@ -5,7 +5,7 @@ import {
   DecorationSet,
   ySyncPluginKey,
 } from 'da-y-wrapper';
-import { decodeAnchor } from './helpers/anchor.js';
+import { decodeAnchor, decodeStructural } from './helpers/anchor.js';
 import { buildAuthorColorMap, authorColorSet } from './helpers/author-colors.js';
 
 export const commentPluginKey = new PluginKey('comments');
@@ -21,6 +21,8 @@ const emptyState = () => ({
   panelOpen: false,
   pendingAnchor: null,
   needsResync: false,
+  moved: null,
+  movedDoc: null,
 });
 
 const isVisible = (pluginState) => Boolean(pluginState?.panelOpen);
@@ -77,6 +79,63 @@ function mapRanges(prevRanges, tr) {
   return next;
 }
 
+function topLevelOffsets(doc) {
+  const offsets = new Map();
+  doc.forEach((node, offset) => offsets.set(node, offset));
+  return offsets;
+}
+
+function hasMovedNode(tr, offsets) {
+  let moved = false;
+  tr.before.forEach((node, offset) => {
+    const newOffset = offsets.get(node);
+    if (newOffset != null && newOffset !== tr.mapping.map(offset, 1)) moved = true;
+  });
+  return moved;
+}
+
+function nodeLocator(tr, offsets, isUndo) {
+  if (!isUndo) return (node) => offsets.get(node) ?? null;
+  const before = new Set();
+  tr.before.forEach((node) => before.add(node));
+  const recreated = [];
+  tr.doc.forEach((node, offset) => {
+    if (!before.has(node)) recreated.push({ node, offset });
+  });
+  return (node) => {
+    if (offsets.has(node)) return null;
+    const matches = recreated.filter((entry) => entry.node.eq(node));
+    return matches.length === 1 ? matches[0].offset : null;
+  };
+}
+
+function relocateEntry(entry, tr, locate) {
+  if (entry.to > tr.before.content.size) return null;
+  const $from = tr.before.resolve(entry.from);
+  const index = $from.index(0);
+  const node = tr.before.maybeChild(index);
+  if (!node) return null;
+  const start = $from.posAtIndex(index, 0);
+  if (entry.to > start + node.nodeSize) return null;
+  const offset = locate(node);
+  if (offset == null) return null;
+  const shift = offset - start;
+  return { ...entry, from: entry.from + shift, to: entry.to + shift };
+}
+
+function relocateRanges(prevRanges, ranges, tr, offsets, isUndo) {
+  const locate = nodeLocator(tr, offsets, isUndo);
+  const moved = new Map();
+  prevRanges.forEach((entry, id) => {
+    const current = ranges.get(id);
+    const relocated = relocateEntry(entry, tr, locate);
+    if (!relocated || (current?.from === relocated.from && current?.to === relocated.to)) return;
+    ranges.set(id, relocated);
+    moved.set(id, relocated);
+  });
+  return moved;
+}
+
 function pushAnchorDecoration(decorations, { from, to, anchorType, spec }) {
   if (anchorType === 'image' || anchorType === 'table') {
     decorations.push(Decoration.node(from, to, spec));
@@ -85,14 +144,15 @@ function pushAnchorDecoration(decorations, { from, to, anchorType, spec }) {
   decorations.push(Decoration.inline(from, to, spec));
 }
 
-function computeRanges(store, state) {
+function computeRanges(store, state, controller) {
   const out = new Map();
   if (!store) return out;
   const colorMap = buildAuthorColorMap(store);
   store.forEach((comment, id) => {
     if (comment.threadId != null) return;
     if (comment.resolved) return;
-    const range = decodeAnchor({ anchor: comment, state });
+    const anchor = controller?.getComment?.(id) ?? comment;
+    const range = decodeAnchor({ anchor, state });
     if (range) {
       out.set(id, {
         ...range,
@@ -104,25 +164,54 @@ function computeRanges(store, state) {
   return out;
 }
 
+function rangesBeforeMove(store, oldState, controller, isUndo) {
+  if (!isUndo) return computeRanges(store, oldState, controller);
+  const out = new Map();
+  store?.forEach((comment, id) => {
+    if (comment.threadId != null || comment.resolved) return;
+    const range = decodeStructural(oldState, controller?.getComment?.(id) ?? comment);
+    if (range) out.set(id, { ...range, anchorType: comment.anchorType });
+  });
+  return out;
+}
+
 export default function commentPlugin({ controller, store }) {
   return new Plugin({
     key: commentPluginKey,
 
     state: {
       init() { return emptyState(); },
-      apply(tr, prev, _oldState, newState) {
+      apply(tr, prev, oldState, newState) {
         const meta = tr.getMeta(commentPluginKey);
         let next = meta ? applyPluginMeta(prev, meta) : prev;
+        const visible = isVisible(next);
 
-        if (!isVisible(prev) && isVisible(next)) {
-          next = { ...next, ranges: computeRanges(store, newState), needsResync: false };
-        } else if (tr.docChanged && isVisible(next)) {
+        if (!isVisible(prev) && visible) {
+          const ranges = computeRanges(store, newState, controller);
+          next = { ...next, ranges, needsResync: false };
+        } else if (tr.docChanged) {
           const yMeta = ySyncPluginKey.getState(newState);
-          const mustRebuild = yMeta?.isUndoRedoOperation || yMeta?.isChangeOrigin;
-          if (mustRebuild) {
-            next = { ...next, ranges: computeRanges(store, newState), needsResync: false };
-          } else {
-            next = { ...next, ranges: mapRanges(next.ranges, tr), needsResync: true };
+          const isUndo = Boolean(yMeta?.isUndoRedoOperation);
+          if (yMeta?.isChangeOrigin && !isUndo) {
+            if (!visible) return next;
+            const ranges = computeRanges(store, newState, controller);
+            return { ...next, ranges, needsResync: false };
+          }
+          const offsets = topLevelOffsets(tr.doc);
+          const relocating = isUndo || hasMovedNode(tr, offsets);
+          if (visible) {
+            const ranges = isUndo
+              ? computeRanges(store, newState, controller)
+              : mapRanges(next.ranges, tr);
+            const moved = relocating
+              ? relocateRanges(prev.ranges, ranges, tr, offsets, isUndo)
+              : new Map();
+            const needsResync = !isUndo || moved.size > 0;
+            next = { ...next, ranges, moved, movedDoc: tr.doc, needsResync };
+          } else if (relocating) {
+            const before = rangesBeforeMove(store, oldState, controller, isUndo);
+            const moved = relocateRanges(before, new Map(), tr, offsets, isUndo);
+            next = { ...next, moved, movedDoc: tr.doc };
           }
         }
         return next;
@@ -135,7 +224,7 @@ export default function commentPlugin({ controller, store }) {
       const onStoreChange = () => {
         if (editorView.isDestroyed) return;
         if (!isVisible(commentPluginKey.getState(editorView.state))) return;
-        const ranges = computeRanges(store, editorView.state);
+        const ranges = computeRanges(store, editorView.state, controller);
         editorView.dispatch(
           editorView.state.tr.setMeta(commentPluginKey, { type: SET_RANGES, payload: ranges }),
         );
@@ -152,12 +241,16 @@ export default function commentPlugin({ controller, store }) {
             controller.notifyDocChange();
           }
 
+          if (next.moved?.size && next.moved !== prev?.moved && next.movedDoc === view.state.doc) {
+            controller.healMoved(next.moved);
+          }
+
           if (next.needsResync && isVisible(next)) {
             queueMicrotask(() => {
               if (view.isDestroyed) return;
               const state = commentPluginKey.getState(view.state);
               if (!state.needsResync || !isVisible(state)) return;
-              const ranges = computeRanges(store, view.state);
+              const ranges = computeRanges(store, view.state, controller);
               view.dispatch(
                 view.state.tr.setMeta(commentPluginKey, { type: SET_RANGES, payload: ranges }),
               );

@@ -2,7 +2,7 @@ import { DA_ORIGIN } from '../../../shared/constants.js';
 import { daFetch } from '../../../shared/utils.js';
 
 function commentFingerprint(c) {
-  return `${c.body}|${c.resolved}|${c.resolvedAt ?? ''}`;
+  return `${c.body}|${c.resolved}|${c.resolvedAt ?? ''}|${c.anchorFrom}|${c.anchorTo}`;
 }
 
 export function createCommentsStore({ docId, owner, repo }) {
