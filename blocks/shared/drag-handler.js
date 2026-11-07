@@ -9,8 +9,8 @@ function dropSideOf(event) {
 /**
  * Lets the user reorder side by side items by dragging them. The owner binds
  * the drag events of each item to `start`, `over`, `leave`, `drop` and `end`,
- * renders `dropSide` whenever `onChange` fires and decides through `canDrop`
- * and `onDrop` which moves are allowed and what they do.
+ * renders `draggedId` and `dropSide` whenever `onChange` fires and decides
+ * through `canDrop` and `onDrop` which moves are allowed and what they do.
  *
  * Only drags that started here can drop, so drops from elsewhere on the page
  * or from outside it are ignored.
@@ -30,6 +30,10 @@ export default class DragHandler {
     this._createPreview = createPreview;
   }
 
+  get draggedId() {
+    return this._draggedId;
+  }
+
   dropSide(id) {
     return this._drop?.id === id ? this._drop.side : '';
   }
@@ -43,6 +47,7 @@ export default class DragHandler {
     if (this._createPreview) {
       this._showPreview(event);
     }
+    this._onChange();
   }
 
   over(event, targetId) {
@@ -75,8 +80,12 @@ export default class DragHandler {
   end() {
     this._preview?.remove();
     this._preview = undefined;
+    const wasActive = this._draggedId !== undefined || this._drop !== undefined;
     this._draggedId = undefined;
-    this._setDrop(undefined);
+    this._drop = undefined;
+    if (wasActive) {
+      this._onChange();
+    }
   }
 
   _showPreview(event) {
