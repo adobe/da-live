@@ -95,11 +95,27 @@ describe('DragHandler', () => {
   it('tells the owner only when the drop marker moves', () => {
     const handler = createHandler();
     dispatchDrag(item, 'dragstart', (event) => handler.start(event, 'a'));
+    changes = 0;
 
     dispatchDrag(item, 'dragover', (event) => handler.over(event, 'b'), { clientX: 10 });
     dispatchDrag(item, 'dragover', (event) => handler.over(event, 'b'), { clientX: 20 });
 
     expect(changes).to.equal(1);
+  });
+
+  it('exposes the dragged id and tells the owner when the drag starts and ends', () => {
+    const handler = createHandler();
+
+    dispatchDrag(item, 'dragstart', (event) => handler.start(event, 'a'));
+    const draggedWhileDragging = handler.draggedId;
+    const changesAfterStart = changes;
+    handler.end();
+    handler.end();
+
+    expect(draggedWhileDragging).to.equal('a');
+    expect(changesAfterStart).to.equal(1);
+    expect(handler.draggedId === undefined).to.be.true;
+    expect(changes).to.equal(2);
   });
 
   it('drops the dragged item before the target', () => {

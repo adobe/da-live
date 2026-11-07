@@ -41,13 +41,6 @@
   }
 }
 
-.tool-panel-selector {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  margin-left: auto;
-}
-
 .tool-panel-divider {
   width: 1px;
   height: 20px;
@@ -56,61 +49,64 @@
   background: var(--s2-gray-300);
 }
 
-.tool-panel-tabs-container {
+/* The tabs, or the switcher, and the views menu button. It always takes the
+   free header space, so its width doesn't depend on which one shows. */
+.tool-panel-views {
+  --tool-panel-control-size: 32px;
+
+  position: relative;
   display: flex;
   align-items: center;
+  flex: 1;
+  gap: var(--s2-spacing-75);
   min-width: 0;
 }
 
-.tool-panel-tab-scroll {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--s2-corner-radius-400);
-  background: transparent;
-  color: var(--s2-gray-800);
-  cursor: pointer;
-
-  &[hidden] {
-    display: none;
-  }
-
-  &:disabled {
-    color: var(--s2-gray-400);
-    cursor: default;
-  }
-
-  &:hover:not(:disabled) {
-    background-color: var(--s2-gray-75);
-  }
-
-  svg {
-    display: block;
-    flex-shrink: 0;
-    width: 10px;
-    height: 10px;
-    fill: currentcolor;
-    transform: none;
-    pointer-events: none;
-  }
-
-  &.tool-panel-tab-scroll-left svg {
-    transform: rotate(180deg);
-  }
-}
-
-.tool-panel-tabs {
+.tool-panel-tabs,
+.tool-panel-tabs-measure {
   display: flex;
   align-items: center;
   gap: var(--s2-spacing-75);
+}
+
+.tool-panel-tabs {
   min-width: 0;
-  overflow-x: auto;
-  padding: 4px;
+}
+
+/* Lays out every pinned tab and the menu button to tell whether they fit. */
+.tool-panel-tabs-measure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: max-content;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.tool-panel-measure-trigger {
+  flex-shrink: 0;
+  width: var(--tool-panel-control-size);
+}
+
+.tool-panel-menu-button {
+  width: var(--tool-panel-control-size);
+}
+
+.tool-panel-switcher {
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0 var(--s2-spacing-100) 0 var(--s2-spacing-200);
+  font-size: var(--s2-component-m-regular-font-size);
+  font-weight: 700;
+  color: var(--s2-gray-900);
+}
+
+.tool-panel-switcher-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tool-panel-tab-item {
@@ -118,24 +114,14 @@
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  border-radius: var(--s2-corner-radius-400);
-  color: var(--s2-gray-800);
-
-  &:hover {
-    background-color: var(--s2-gray-75);
-  }
-
-  &[data-active="true"] {
-    background-color: var(--s2-gray-900);
-    color: var(--s2-gray-50);
-  }
+  transition: opacity 0.12s ease;
 
   &[data-drop-side="before"]::after,
   &[data-drop-side="after"]::after {
     content: "";
     position: absolute;
-    top: 0;
-    bottom: 0;
+    top: 4px;
+    bottom: 4px;
     width: 2px;
     border-radius: 1px;
     background: var(--s2-blue-800);
@@ -182,20 +168,115 @@
 }
 
 .tool-panel-tab {
+  display: inline-block;
+  box-sizing: border-box;
   max-width: 120px;
+  min-height: var(--tool-panel-control-size);
+  padding: 0 var(--s2-spacing-200);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  min-height: 32px;
-  padding: 0 8px;
   font: inherit;
   font-size: var(--s2-component-s-regular-font-size);
-  line-height: var(--s2-component-s-regular-line-height);
-  color: inherit;
+  line-height: var(--tool-panel-control-size);
+  color: var(--s2-gray-800);
   user-select: none;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
 
   &:hover {
+    background-color: var(--s2-gray-100);
+  }
+
+  &:active {
+    background-color: var(--s2-gray-200);
+  }
+
+  &[aria-pressed="true"] {
+    background-color: var(--s2-gray-900);
+    color: var(--s2-gray-50);
+  }
+}
+
+/* The row is one hover box for the view and its pin. The pin stays its own
+   button with a darker hover inside the row. */
+.tool-panel-menu-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-50);
+  padding-inline-end: var(--s2-spacing-50);
+  border-radius: var(--s2-corner-radius-300);
+
+  &:hover,
+  &:has(.tool-panel-menu-item:focus-visible) {
+    background-color: var(--s2-gray-100);
+  }
+
+  &:has(.tool-panel-menu-item:focus-visible) {
+    outline: 2px solid var(--s2-blue-800);
+    outline-offset: -2px;
+  }
+
+  &:has(.tool-panel-menu-item:active) {
+    background-color: var(--s2-gray-200);
+  }
+
+  .tool-panel-menu-item {
+    &:hover,
+    &:active {
+      background-color: transparent;
+    }
+
+    &:focus-visible {
+      outline: none;
+    }
+  }
+
+  .tool-panel-menu-pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: var(--s2-corner-radius-300);
     background: transparent;
+    color: var(--s2-gray-600);
+    cursor: pointer;
+
+    svg.icon {
+      display: block;
+      width: 16px;
+      height: 16px;
+    }
+
+    &:hover {
+      background-color: var(--s2-gray-200);
+      color: var(--s2-gray-800);
+    }
+
+    &:active {
+      background-color: var(--s2-gray-300);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--s2-blue-800);
+      outline-offset: -2px;
+    }
+
+    &[aria-checked="true"] {
+      color: var(--s2-blue-900);
+    }
+
+    &[aria-disabled="true"] {
+      cursor: default;
+
+      &:hover,
+      &:active {
+        background-color: transparent;
+      }
+    }
   }
 }
 
@@ -203,6 +284,56 @@
 .tool-panel-popout {
   width: 32px;
   height: 32px;
+}
+
+/* An unpinned view's pin shows only while its row is hovered or focused. It
+   keeps its space, so the row doesn't shift. */
+.tool-panel-menu-row:not(:hover, :focus-within) .tool-panel-menu-pin[aria-checked="false"] {
+  opacity: 0;
+}
+
+/* Six quiet dots that tell the tabs drag to reorder. They always show, so
+   hovering never widens a tab. */
+.tool-panel-views[data-reorderable] .tool-panel-tab::before,
+.tool-panel-menu-hint::before {
+  content: "";
+  display: inline-block;
+  flex-shrink: 0;
+  width: 6px;
+  height: 10px;
+  margin-inline-end: 6px;
+  vertical-align: middle;
+  background: radial-gradient(circle at 1px 1px, currentcolor 1px, transparent 1.25px) 0 0 / 4px 4px;
+  opacity: 0.45;
+}
+
+.tool-panel-views[data-reorderable] .tool-panel-tab {
+  padding-inline-start: 10px;
+}
+
+.tool-panel-menu-hint {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--s2-spacing-100) var(--s2-spacing-75);
+  font-size: var(--s2-body-size-xs);
+  color: var(--s2-gray-700);
+}
+
+/* While a tab drags, it lifts and the others step back. */
+.tool-panel-tab-item[data-dragged] .tool-panel-tab {
+  box-shadow: 0 2px 8px rgb(0 0 0 / 18%);
+  transform: translateY(-1px);
+}
+
+.tool-panel-tabs[data-dragging] .tool-panel-tab-item:not([data-dragged]) {
+  opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tool-panel-tab-item,
+  .tool-panel-tab {
+    transition: none;
+  }
 }
 
 .tool-panel-toolbar > .tool-panel-popout {
@@ -221,6 +352,23 @@
 
   .tool-panel-toolbar:has(> .tool-panel-popout):not([hidden]) {
     display: flex;
+  }
+}
+
+/* Too narrow for any label text, so the switcher becomes a centered chevron.
+   The label stays in the accessibility tree as the button name. */
+@container (width < 160px) {
+  .tool-panel-switcher {
+    width: var(--tool-panel-control-size);
+    padding: 0;
+  }
+
+  .tool-panel-switcher-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
   }
 }
 
