@@ -7,11 +7,11 @@ import getEditPath from '../../shared/da-file-item/edit-path.js';
 import getSheet from '../../shared/sheet.js';
 import { chatTurnCompleted } from '../../shared/chat-panel.js';
 import '../../shared/da-name-dialog/da-name-dialog.js';
+import { popupMenuStyles } from '../../shared/popup-menu/popup-menu.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
-await import(`${getNx()}/blocks/shared/picker/picker.js`);
 await import(`${getNx()}/blocks/shared/search/search.js`);
 const { treegridEnsureTabStop, treegridFocusIn, treegridKeydown } = await import(`${getNx2()}/blocks/shared/utils/treegrid-nav.js`);
 
@@ -24,11 +24,13 @@ const CREATE_PAGE_ERROR = 'Could not create the page. Try a different name.';
 
 const COPYABLE_EXTS = new Set(['html', 'json']);
 
+const ALL_CATEGORY = 'all';
+
 const CATEGORIES = [
-  { value: 'all', label: 'All' },
-  { value: 'page', label: 'Pages' },
-  { value: 'sheet', label: 'Sheets' },
-  { value: 'fragment', label: 'Fragments' },
+  { value: ALL_CATEGORY, label: 'All', scope: 'files' },
+  { value: 'page', label: 'Pages', scope: 'pages' },
+  { value: 'sheet', label: 'Sheets', scope: 'sheets' },
+  { value: 'fragment', label: 'Fragments', scope: 'fragments' },
 ];
 
 // Fragments are just pages that live under a /fragments/ folder anywhere in the path.
@@ -71,8 +73,7 @@ const REFRESH_ICON_SRC = '/img/icons/s2-icon-refresh-20-n.svg';
 const ADD_ICON_SRC = '/img/icons/s2-icon-fileadd-20-n.svg';
 const COPY_ICON_SRC = '/img/icons/s2-icon-paste-20-n.svg';
 const CHECKMARK_ICON_SRC = '/img/icons/s2-icon-checkmark-20-n.svg';
-const REFRESH_ICON_HTML = `<svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${REFRESH_ICON_SRC}#icon"></use></svg>`;
-const REFRESH_SPINNER_HTML = '<span class="nx-loading-spinner" aria-hidden="true"></span>';
+const FILTER_ICON_SRC = '/img/icons/s2-icon-filter-20-n.svg';
 
 class EwFileExplorer extends LitElement {
   static properties = {
@@ -88,6 +89,7 @@ class EwFileExplorer extends LitElement {
     _category: { state: true },
     _matchingFolders: { state: true },
     _categoryCrawling: { state: true },
+    _refreshing: { state: true },
     _createDialog: { state: true },
   };
 
@@ -95,8 +97,8 @@ class EwFileExplorer extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this._category ??= 'all';
-    this.shadowRoot.adoptedStyleSheets = [buttons, style];
+    this._category ??= ALL_CATEGORY;
+    this.shadowRoot.adoptedStyleSheets = [buttons, popupMenuStyles, style];
     this._unsubHash = hashChange.subscribe((state) => this._onHashChange(state));
     // Remove this listener and its cleanup once da-agent-based chat is removed.
     this._onAgentChange = ({ detail }) => {
@@ -109,7 +111,7 @@ class EwFileExplorer extends LitElement {
       if (!detail?.org || detail.org !== this._org || detail.site !== this._site) return;
       this._refreshFolders(Object.keys(this._cache ?? {}));
       this._clearCrawlCache();
-      this._onCategoryChange({ detail: { value: this._category } });
+      this._applyCategory(this._category);
     });
   }
 
@@ -152,7 +154,7 @@ class EwFileExplorer extends LitElement {
       this._error = null;
       this._treeRoot = null;
       this._clearSearch();
-      this._category = 'all';
+      this._category = ALL_CATEGORY;
       this._resetCategoryCrawl();
       return;
     }
@@ -164,7 +166,7 @@ class EwFileExplorer extends LitElement {
       this._expanded = new Set();
       this._treeRoot = null;
       this._clearSearch();
-      this._category = 'all';
+      this._category = ALL_CATEGORY;
       this._resetCategoryCrawl();
       this._clearCrawlCache();
       this._loadFromLeaves(org, site, path);
@@ -290,40 +292,25 @@ class EwFileExplorer extends LitElement {
     return true;
   }
 
+  /**
+   * Reloads the tree root and every expanded folder. Does nothing while a
+   * refresh is still running.
+   *
+   * @returns {Promise<void>}
+   */
   async _onRefreshClick() {
-    if (this._refreshing) return;
-    this._refreshing = true;
-    if (this._headerRefreshBtn) {
-      this._headerRefreshBtn.disabled = true;
-      this._headerRefreshBtn.innerHTML = REFRESH_SPINNER_HTML;
+    if (this._refreshing) {
+      return;
     }
+
+    this._refreshing = true;
     try {
       const expandedFullpaths = [...(this._expanded ?? [])].map((key) => `/${key}`);
       const targets = new Set([this._treeRoot, ...expandedFullpaths].filter(Boolean));
       await Promise.all([...targets].map((fp) => this._refreshPath(fp)));
     } finally {
       this._refreshing = false;
-      if (this._headerRefreshBtn) {
-        this._headerRefreshBtn.disabled = false;
-        this._headerRefreshBtn.innerHTML = REFRESH_ICON_HTML;
-      }
     }
-  }
-
-  _getHeaderRefreshButton() {
-    if (this._headerRefreshBtn) return this._headerRefreshBtn;
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'nx-action-btn-icon nx-btn-sm';
-    btn.setAttribute('aria-label', 'Refresh files');
-    btn.innerHTML = REFRESH_ICON_HTML;
-    btn.addEventListener('click', () => this._onRefreshClick());
-    this._headerRefreshBtn = btn;
-    return btn;
-  }
-
-  getHeaderActions() {
-    return this._getHeaderRefreshButton();
   }
 
   _toggle(pathKey, path) {
@@ -416,9 +403,9 @@ class EwFileExplorer extends LitElement {
     }
     const entry = this._getCrawlEntry();
     const lower = term.toLowerCase();
-    const category = this._category ?? 'all';
+    const category = this._category ?? ALL_CATEGORY;
     const matchesFilter = (f) => f.name?.toLowerCase().includes(lower)
-      && (category === 'all' || categoryForFile(f) === category);
+      && (category === ALL_CATEGORY || categoryForFile(f) === category);
     // On a large, still-crawling site entry.files can reach into the thousands —
     // re-filtering all of it on every ~150ms flush would make typing feel laggy.
     // Only scan what's arrived since the last flush and accumulate matches.
@@ -435,14 +422,18 @@ class EwFileExplorer extends LitElement {
     this._searchUnsub = () => entry.listeners.delete(applyFilter);
   }
 
-  // Selecting a category kicks off (or reuses) the same site crawl search uses, so
-  // folders that provably contain no matches can be hidden rather than just leaving
-  // their files filtered once expanded. Results narrow in as the crawl streams in,
-  // same as search.
-  _onCategoryChange(e) {
-    this._category = e.detail.value;
+  /**
+   * Applies a category. It kicks off (or reuses) the same site crawl search
+   * uses, so folders that provably contain no matches can be hidden rather
+   * than just leaving their files filtered once expanded. Results narrow in
+   * as the crawl streams in, same as search.
+   *
+   * @param {string} value - The category value.
+   */
+  _applyCategory(value) {
+    this._category = value;
     this._resetCategoryCrawl();
-    if (this._category !== 'all') {
+    if (this._category !== ALL_CATEGORY) {
       const entry = this._getCrawlEntry();
       // Same reasoning as _runSearch: only fold in files that arrived since the
       // last flush, rather than rebuilding the whole folder set from scratch.
@@ -485,7 +476,7 @@ class EwFileExplorer extends LitElement {
   // Files are narrowed directly by category. Folders are hidden only once the
   // active-category crawl proves they contain no matching descendant.
   _visibleChildren(children) {
-    if (this._category === 'all' || !children) return children;
+    if (this._category === ALL_CATEGORY || !children) return children;
     return children.filter((c) => {
       if (c.type === 'directory') return this._matchingFolders?.has(c.pathKey) ?? false;
       return categoryForFile(c) === this._category;
@@ -590,15 +581,107 @@ class EwFileExplorer extends LitElement {
       </ul>`;
   }
 
+  /**
+   * Finds the active category, or All when none is set.
+   *
+   * @returns {{ value: string, label: string, scope: string }} The category.
+   */
+  _currentCategory() {
+    return CATEGORIES.find((category) => category.value === this._category) ?? CATEGORIES[0];
+  }
+
+  /**
+   * Names the active category, for example "Pages".
+   *
+   * @returns {string} The category label.
+   */
   _categoryLabel() {
-    return CATEGORIES.find((c) => c.value === this._category)?.label;
+    return this._currentCategory().label;
+  }
+
+  /**
+   * Names what the search covers, for example "files" or "pages".
+   *
+   * @returns {string} The plural noun for the current category.
+   */
+  _searchScope() {
+    return this._currentCategory().scope;
+  }
+
+  /**
+   * Renders the search row with the search field, the category filter menu
+   * and the refresh button.
+   *
+   * @returns {unknown} The search row template.
+   */
+  _renderSearchBar() {
+    const searchLabel = `Search ${this._searchScope()}`;
+    return html`
+      <div class="search-bar" @focusin="${() => this._warmCrawl()}">
+        <nx-search variant="quiet" size="s" placeholder=${searchLabel} label=${searchLabel}
+          .value="${this._searchTerm ?? ''}"
+          @input="${(e) => this._onSearchInput(e)}"></nx-search>
+        ${this._renderFilterMenu()}
+        <button type="button" class="nx-action-btn-icon search-refresh"
+          aria-label="Refresh files" title="Refresh files"
+          aria-busy=${this._refreshing ? 'true' : 'false'}
+          aria-disabled=${this._refreshing ? 'true' : 'false'}
+          @click=${() => this._onRefreshClick()}>
+          <svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${REFRESH_ICON_SRC}#icon"></use></svg>
+        </button>
+      </div>
+    `;
+  }
+
+  /**
+   * Renders the filter button and its menu of categories. A dot on the
+   * button shows that a category other than All is active.
+   *
+   * @returns {unknown} The filter menu template.
+   */
+  _renderFilterMenu() {
+    const current = this._currentCategory().value;
+    const filtered = current !== ALL_CATEGORY;
+    const label = filtered ? `Filter files, showing ${this._categoryLabel()}` : 'Filter files';
+    return html`
+      <da-popup-menu class="search-filter-menu" label="Show" placement="below-end">
+        <button slot="trigger" type="button" class="popup-menu-trigger search-filter"
+          aria-label=${label} title=${label} ?data-filtered=${filtered}>
+          <svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${FILTER_ICON_SRC}#icon"></use></svg>
+          ${filtered ? html`<span class="search-filter-dot"></span>` : nothing}
+        </button>
+        <div class="popup-menu-heading" aria-hidden="true">Show</div>
+        ${CATEGORIES.map((category) => html`
+          <button type="button" role="menuitemradio" class="popup-menu-item" tabindex="-1"
+            data-value=${category.value}
+            aria-checked=${category.value === current ? 'true' : 'false'}
+            @click=${() => this._selectCategory(category.value)}>
+            <svg aria-hidden="true" class="icon popup-menu-check" viewBox="0 0 20 20"><use href="${CHECKMARK_ICON_SRC}#icon"></use></svg>
+            <span class="popup-menu-item-label">${category.label}</span>
+          </button>
+          ${category.value === ALL_CATEGORY ? html`<hr class="popup-menu-separator" role="separator">` : nothing}`)}
+      </da-popup-menu>
+    `;
+  }
+
+  /**
+   * Applies a category picked in the filter menu, unless it is already active.
+   *
+   * @param {string} value - The category value.
+   */
+  _selectCategory(value) {
+    if (value === this._currentCategory().value) {
+      return;
+    }
+
+    this._applyCategory(value);
   }
 
   _renderSearchList() {
     const count = this._searchResults?.length ?? 0;
     const hasResults = count > 0;
     const categoryLabel = this._categoryLabel();
-    const scope = this._category !== 'all' && categoryLabel ? ` in ${categoryLabel}` : '';
+    const scope = this._category !== ALL_CATEGORY ? ` in ${categoryLabel}` : '';
     let statusText;
     if (this._searching) statusText = 'Searching…';
     else if (hasResults) statusText = `${count} result${count === 1 ? '' : 's'} found`;
@@ -690,20 +773,10 @@ class EwFileExplorer extends LitElement {
     const tree = buildTree(this._cache ?? {}, this._treeRoot);
 
     return html`<div class="ew-file-explorer">
-      <div class="search-bar" @focusin="${() => this._warmCrawl()}">
-        <nx-search variant="quiet" size="s" placeholder="Filter files" label="Filter files"
-          .value="${this._searchTerm ?? ''}"
-          @input="${(e) => this._onSearchInput(e)}"></nx-search>
-        <nx-picker
-          .items="${CATEGORIES}"
-          .value="${this._category ?? 'all'}"
-          placement="below-end"
-          @change="${(e) => this._onCategoryChange(e)}">
-        </nx-picker>
-      </div>
+      ${this._renderSearchBar()}
       ${this._searchTerm ? this._renderSearchList() : html`
         ${this._categoryCrawling ? html`
-          <p class="notice search-status" aria-live="polite">Scanning for ${(this._categoryLabel() ?? '').toLowerCase()}…</p>` : nothing}
+          <p class="notice search-status" aria-live="polite">Scanning for ${this._categoryLabel().toLowerCase()}…</p>` : nothing}
         ${this._renderGrid('Files', tree.map((item, i) => this._renderNode(item, 0, i + 1, tree.length)))}`}
       <da-name-dialog
         dialog-title="New page in ${this._createDialog?.folder?.split('/').pop() ?? ''}"

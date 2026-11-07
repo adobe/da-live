@@ -430,49 +430,137 @@ describe('EwFileExplorer', () => {
       expect(el._refreshing).to.be.false;
     });
 
-    it('disables the header button and shows a spinner while refreshing, restores both after', async () => {
+    it('marks the search row refresh button busy and spins its icon while refreshing', async () => {
+      el._org = 'org';
+      el._site = 'site';
       el._treeRoot = '/org/site';
       el._expanded = new Set();
+      await el.updateComplete;
 
-      const btn = el.getHeaderActions();
+      const refreshButton = () => el.shadowRoot.querySelector('.search-bar .search-refresh');
+      let release;
+      el._refreshPath = () => new Promise((resolve) => { release = () => resolve(true); });
 
-      let sawDisabled = false;
-      let sawSpinner = false;
-      el._refreshPath = async () => {
-        sawDisabled = btn.disabled;
-        sawSpinner = !!btn.querySelector('.nx-loading-spinner');
-        return true;
+      const done = el._onRefreshClick();
+      await el.updateComplete;
+
+      expect(refreshButton().getAttribute('aria-busy')).to.equal('true');
+      expect(refreshButton().getAttribute('aria-disabled')).to.equal('true');
+      expect(refreshButton().disabled).to.be.false;
+      expect(!!refreshButton().querySelector('svg')).to.be.true;
+
+      release();
+      await done;
+      await el.updateComplete;
+
+      expect(refreshButton().getAttribute('aria-busy')).to.equal('false');
+      expect(refreshButton().getAttribute('aria-disabled')).to.equal('false');
+      expect(!!refreshButton().querySelector('svg')).to.be.true;
+    });
+
+    it('ignores a second click while a refresh is running', async () => {
+      el._treeRoot = '/org/site';
+      el._expanded = new Set();
+      let calls = 0;
+      let release;
+      el._refreshPath = () => {
+        calls += 1;
+        return new Promise((resolve) => { release = () => resolve(true); });
       };
 
+      const done = el._onRefreshClick();
       await el._onRefreshClick();
+      release();
+      await done;
 
-      expect(sawDisabled).to.be.true;
-      expect(sawSpinner).to.be.true;
-      expect(btn.disabled).to.be.false;
-      expect(btn.querySelector('.nx-loading-spinner')).to.be.null;
-      expect(btn.querySelector('svg')).to.exist;
+      expect(calls).to.equal(1);
     });
   });
 
-  describe('getHeaderActions', () => {
-    it('returns the same cached button node on repeated calls', () => {
-      const first = el.getHeaderActions();
-      const second = el.getHeaderActions();
+  describe('search row', () => {
+    const searchField = () => el.shadowRoot.querySelector('.search-bar nx-search');
+    const filterButton = () => el.shadowRoot.querySelector('.search-bar .search-filter');
+    const filterItem = (value) => el.shadowRoot.querySelector(`.search-filter-menu [role="menuitemradio"][data-value="${value}"]`);
 
-      expect(first).to.equal(second);
-      expect(first.tagName).to.equal('BUTTON');
-      expect(first.className).to.equal('nx-action-btn-icon nx-btn-sm');
+    beforeEach(async () => {
+      el._org = 'org';
+      el._site = 'site';
+      el._treeRoot = '/org/site';
+      el._cache = { '/org/site': [] };
+      await el.updateComplete;
     });
 
-    it('clicking the returned button invokes _onRefreshClick', () => {
-      const btn = el.getHeaderActions();
+    it('labels the search field "Search files" by default', () => {
+      expect(searchField().getAttribute('placeholder')).to.equal('Search files');
+      expect(searchField().getAttribute('label')).to.equal('Search files');
+    });
 
+    it('does not expose the refresh action in the panel header', () => {
+      expect(el.getHeaderActions).to.equal(undefined);
+    });
+
+    it('clicking the refresh button invokes _onRefreshClick', () => {
       let called = false;
       el._onRefreshClick = () => { called = true; };
 
-      btn.click();
+      el.shadowRoot.querySelector('.search-bar .search-refresh').click();
 
       expect(called).to.be.true;
+    });
+
+    it('orders the search field, the filter button and the refresh button', () => {
+      const nodes = [...el.shadowRoot.querySelector('.search-bar').querySelectorAll('nx-search, .search-filter, .search-refresh')];
+      expect(nodes).to.deep.equal([searchField(), filterButton(), el.shadowRoot.querySelector('.search-refresh')]);
+    });
+
+    it('lists the categories under a "Show" heading with All checked', () => {
+      const heading = el.shadowRoot.querySelector('.search-filter-menu .popup-menu-heading');
+      expect(heading.textContent.trim()).to.equal('Show');
+      const items = [...el.shadowRoot.querySelectorAll('.search-filter-menu [role="menuitemradio"]')];
+      expect(items.map((item) => item.textContent.trim())).to.deep.equal(['All', 'Pages', 'Sheets', 'Fragments']);
+      expect(items.map((item) => item.getAttribute('aria-checked'))).to.deep.equal(['true', 'false', 'false', 'false']);
+      expect(filterButton().getAttribute('aria-label')).to.equal('Filter files');
+      expect(!!filterButton().querySelector('.search-filter-dot')).to.be.false;
+    });
+
+    it('applies a picked category, marks the filter and scopes the placeholder', async () => {
+      const values = [];
+      el._applyCategory = (value) => {
+        values.push(value);
+        el._category = value;
+      };
+
+      filterItem('page').click();
+      await el.updateComplete;
+
+      expect(values).to.deep.equal(['page']);
+      expect(filterItem('page').getAttribute('aria-checked')).to.equal('true');
+      expect(filterItem('all').getAttribute('aria-checked')).to.equal('false');
+      expect(!!filterButton().querySelector('.search-filter-dot')).to.be.true;
+      expect(filterButton().getAttribute('aria-label')).to.equal('Filter files, showing Pages');
+      expect(searchField().getAttribute('placeholder')).to.equal('Search pages');
+    });
+
+    it('does not reapply the category that is already active', () => {
+      let calls = 0;
+      el._applyCategory = () => { calls += 1; };
+
+      filterItem('all').click();
+
+      expect(calls).to.equal(0);
+    });
+
+    it('opens the filter menu from its own trigger and reports it as expanded', async () => {
+      const menu = el.shadowRoot.querySelector('.search-filter-menu');
+      await menu.updateComplete;
+      expect(filterButton().getAttribute('aria-haspopup')).to.equal('menu');
+      expect(filterButton().getAttribute('aria-expanded')).to.equal('false');
+
+      filterButton().click();
+      await menu.updateComplete;
+
+      expect(filterButton().getAttribute('aria-expanded')).to.equal('true');
+      menu.close();
     });
   });
 
@@ -682,7 +770,7 @@ describe('EwFileExplorer', () => {
     });
   });
 
-  describe('_onCategoryChange', () => {
+  describe('_applyCategory', () => {
     beforeEach(() => {
       el._treeRoot = '/org/site';
       el._crawlCache = {
@@ -702,7 +790,7 @@ describe('EwFileExplorer', () => {
       el._searchTerm = 'foo';
       el._category = 'all';
 
-      el._onCategoryChange({ detail: { value: 'sheet' } });
+      el._applyCategory('sheet');
 
       expect(el._category).to.equal('sheet');
       expect(el._searchResults.map((f) => f.name)).to.deep.equal(['foo-data.json']);
@@ -712,7 +800,7 @@ describe('EwFileExplorer', () => {
       el._searchTerm = '';
       el._category = 'all';
 
-      el._onCategoryChange({ detail: { value: 'sheet' } });
+      el._applyCategory('sheet');
 
       expect(el._category).to.equal('sheet');
       expect(el._searchResults).to.not.exist;
@@ -721,10 +809,10 @@ describe('EwFileExplorer', () => {
     });
 
     it('resets crawl state when the category goes back to "all"', () => {
-      el._onCategoryChange({ detail: { value: 'sheet' } });
+      el._applyCategory('sheet');
       expect(el._matchingFolders).to.exist;
 
-      el._onCategoryChange({ detail: { value: 'all' } });
+      el._applyCategory('all');
 
       expect(el._matchingFolders).to.be.null;
       expect(el._categoryCrawling).to.be.false;
@@ -734,7 +822,7 @@ describe('EwFileExplorer', () => {
       const entry = el._crawlCache['/org/site'];
       entry.done = false;
 
-      el._onCategoryChange({ detail: { value: 'sheet' } });
+      el._applyCategory('sheet');
       expect([...el._matchingFolders].sort()).to.deep.equal(['org', 'org/site', 'org/site/sub']);
 
       entry.files.push({ name: 'baz.json', path: '/org/site/other/baz.json', ext: 'json' });

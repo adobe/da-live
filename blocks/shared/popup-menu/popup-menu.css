@@ -1,0 +1,11 @@
+:host {
+  display: contents;
+}
+
+nx-popover {
+  min-width: 160px;
+  max-width: 320px;
+  padding: var(--s2-spacing-75);
+  font-family: var(--s2-font-family);
+  font-size: var(--s2-component-s-regular-font-size);
+}

@@ -15,8 +15,8 @@ function dropSideOf(event) {
 /**
  * Lets the user reorder side by side items by dragging them. The owner binds
  * the drag events of each item to `start`, `over`, `leave`, `drop` and `end`,
- * renders `dropSide` whenever `onChange` fires and decides through `canDrop`
- * and `onDrop` which moves are allowed and what they do.
+ * renders `draggedId` and `dropSide` whenever `onChange` fires and decides
+ * through `canDrop` and `onDrop` which moves are allowed and what they do.
  *
  * Only drags that started here can drop, so drops from elsewhere on the page
  * or from outside it are ignored.
@@ -41,8 +41,8 @@ export default class DragHandler {
    *   whether an item may drop next to another one.
    * @param {(move: object) => void} options.onDrop - Moves the item, given its
    *   `id`, the `targetId` and whether it goes `before` the target.
-   * @param {() => void} options.onChange - Called when the drop marker moves,
-   *   so the owner can render it.
+   * @param {() => void} options.onChange - Called when a drag starts or ends
+   *   and when the drop marker moves, so the owner can render them.
    * @param {(element: HTMLElement) => HTMLElement} [options.createPreview] -
    *   Draws the drag preview for the dragged element. The browser's default
    *   snapshot shows without it.
@@ -53,6 +53,16 @@ export default class DragHandler {
     this._onDrop = onDrop;
     this._onChange = onChange;
     this._createPreview = createPreview;
+  }
+
+  /**
+   * The id of the item being dragged.
+   *
+   * @returns {string|undefined} The dragged item's id, or undefined when no
+   *   drag runs.
+   */
+  get draggedId() {
+    return this._draggedId;
   }
 
   /**
@@ -80,6 +90,7 @@ export default class DragHandler {
     if (this._createPreview) {
       this._showPreview(event);
     }
+    this._onChange();
   }
 
   /**
@@ -125,13 +136,18 @@ export default class DragHandler {
   }
 
   /**
-   * Forgets the drag and removes its drag preview.
+   * Forgets the drag and removes its drag preview. Tells the owner when a
+   * drag or a drop marker was showing.
    */
   end() {
     this._preview?.remove();
     this._preview = undefined;
+    const wasActive = this._draggedId !== undefined || this._drop !== undefined;
     this._draggedId = undefined;
-    this._setDrop(undefined);
+    this._drop = undefined;
+    if (wasActive) {
+      this._onChange();
+    }
   }
 
   /**
