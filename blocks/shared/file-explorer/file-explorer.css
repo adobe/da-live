@@ -21,9 +21,62 @@
   border-bottom: 1px solid var(--s2-gray-100);
 }
 
+/* The search field shrinks first so the filter and refresh buttons stay visible. */
 .search-bar nx-search {
   flex: 1;
   min-width: 0;
+}
+
+.search-bar .search-filter,
+.search-bar .search-refresh {
+  flex-shrink: 0;
+  justify-content: center;
+  min-width: 28px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: var(--s2-corner-radius-400);
+
+  svg.icon {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+/* The icon spins in place while refreshing so the button never blinks. */
+.search-refresh[aria-busy="true"] {
+  cursor: progress;
+
+  svg.icon {
+    animation: search-refresh-spin 0.8s linear infinite;
+  }
+}
+
+@keyframes search-refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-refresh[aria-busy="true"] svg.icon {
+    animation: none;
+  }
+}
+
+.search-filter[data-filtered] {
+  color: var(--s2-blue-900);
+}
+
+.search-filter-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--s2-blue-900);
+  box-shadow: 0 0 0 2px var(--s2-gray-25);
 }
 
 .tree {
