@@ -58,36 +58,49 @@ function stubResizeFrames() {
 }
 
 describe('DaToolPanel — modal experience', () => {
-  describe('_pickerItemsFromViews', () => {
+  describe('views menu rows', () => {
+    let panel;
+
+    const renderPanel = async (view) => {
+      panel = createPanel([
+        { id: 'files', label: 'Files', load: async () => document.createElement('div') },
+        view,
+      ]);
+      document.body.append(panel);
+      await panel.updateComplete;
+      await panel.updateComplete;
+      return {
+        item: panel.shadowRoot.querySelector(`.tool-panel-menu-item[data-view-id="${view.id}"]`),
+        pin: panel.shadowRoot.querySelector(`.tool-panel-menu-pin[data-view-id="${view.id}"]`),
+      };
+    };
+    const iconOf = (item) => item.querySelector('use')?.getAttribute('href');
+
+    afterEach(() => panel?.remove());
+
     ['modal', 'fullsize-dialog'].forEach((experience) => {
-      it(`marks a ${experience} view as a dialog action with the fullscreen icon`, () => {
-        const panel = createPanel([
-          { id: 'blocks', label: 'Blocks', section: 'Library', experience },
-        ]);
-        const item = panel._pickerItemsFromViews().find((candidate) => candidate.value === 'blocks');
-        expect(item.action).to.be.true;
-        expect(item.trailingIcon).to.equal('/img/icons/s2-icon-fullscreen-20-n.svg');
-        expect(item.ariaLabel).to.equal('Blocks (opens in dialog)');
+      it(`marks a ${experience} view as a dialog action with the fullscreen icon`, async () => {
+        const { item, pin } = await renderPanel({ id: 'blocks', label: 'Blocks', experience });
+        expect(iconOf(item)).to.equal('/img/icons/s2-icon-fullscreen-20-n.svg#icon');
+        expect(item.getAttribute('aria-label')).to.equal('Blocks (opens in dialog)');
+        expect(!!pin).to.be.false;
       });
     });
 
-    it('keeps the external-link icon for views that open in a new tab', () => {
-      const panel = createPanel([
-        { id: 'external', label: 'External', section: 'Extensions', experience: 'window' },
-      ]);
-      const item = panel._pickerItemsFromViews().find((candidate) => candidate.value === 'external');
-      expect(item.action).to.be.true;
-      expect(item.trailingIcon).to.equal('/img/icons/s2-icon-openin-20-n.svg');
-      expect(item.ariaLabel).to.equal('External (opens in new tab)');
+    it('keeps the external-link icon for views that open in a new tab', async () => {
+      const { item, pin } = await renderPanel({ id: 'external', label: 'External', experience: 'window' });
+      expect(iconOf(item)).to.equal('/img/icons/s2-icon-openin-20-n.svg#icon');
+      expect(item.getAttribute('aria-label')).to.equal('External (opens in new tab)');
+      expect(!!pin).to.be.false;
     });
 
-    it('leaves a plain inline view as a non-action item', () => {
-      const panel = createPanel([
-        { id: 'files', label: 'Files', section: 'Editor', experience: 'inline' },
-      ]);
-      const item = panel._pickerItemsFromViews().find((candidate) => candidate.value === 'files');
-      expect(item.action).to.be.undefined;
-      expect(item.trailingIcon).to.be.undefined;
+    it('gives a plain inline view a pin toggle and no icon', async () => {
+      const load = async () => document.createElement('div');
+      const { item, pin } = await renderPanel({ id: 'outline', label: 'Outline', experience: 'inline', load });
+      expect(!!iconOf(item)).to.be.false;
+      expect(item.hasAttribute('aria-label')).to.be.false;
+      expect(pin.getAttribute('aria-label')).to.equal('Pin Outline');
+      expect(pin.getAttribute('aria-checked')).to.equal('false');
     });
   });
 
@@ -155,19 +168,28 @@ describe('DaToolPanel selected panels', () => {
     else sessionStorage.setItem(TOOL_PANEL_PINNED_VIEWS_KEY, savedPins);
   });
 
-  const tabs = () => [...panel.shadowRoot.querySelectorAll('.tool-panel-tab')];
-  const pickerValues = () => panel._pickerItemsFromViews()
-    .filter((item) => item.value).map((item) => item.value);
-  const select = async (id, selected = true) => {
-    const picker = panel.shadowRoot.querySelector('nx-picker');
-    const values = selected
-      ? [...new Set([...picker.values, id])]
-      : picker.values.filter((value) => value !== id);
-    picker.values = values;
-    picker.dispatchEvent(new CustomEvent('change', { detail: { value: id, values, selected } }));
+  const tabs = () => [...panel.shadowRoot.querySelectorAll('.tool-panel-tabs .tool-panel-tab')];
+  const menu = () => panel.shadowRoot.querySelector('.tool-panel-views-menu');
+  const menuItem = (id) => panel.shadowRoot.querySelector(`.tool-panel-menu-item[data-view-id="${id}"]`);
+  const pinToggle = (id) => panel.shadowRoot.querySelector(`.tool-panel-menu-pin[data-view-id="${id}"]`);
+  const menuIds = () => [...panel.shadowRoot.querySelectorAll('.tool-panel-menu-item')]
+    .map((item) => item.dataset.viewId);
+  const pinnedMenuIds = () => [...panel.shadowRoot.querySelectorAll('.tool-panel-menu-pin[aria-checked="true"]')]
+    .map((pin) => pin.dataset.viewId);
+  const settle = async () => {
     await panel.updateComplete;
     await nextTask();
     await panel.updateComplete;
+  };
+  const select = async (id, selected = true) => {
+    const target = selected ? menuItem(id) : pinToggle(id);
+    target.click();
+    await settle();
+  };
+  const adoptPanelStyles = async () => {
+    const sheet = new CSSStyleSheet();
+    await sheet.replace(await (await fetch('/blocks/shared/tool-panel/tool-panel.css')).text());
+    panel.shadowRoot.adoptedStyleSheets = [...panel.shadowRoot.adoptedStyleSheets, sheet];
   };
   const pinAll = async () => {
     for (const { id } of views) {
@@ -228,7 +250,7 @@ describe('DaToolPanel selected panels', () => {
     await panel.updateComplete;
     expect(tabs().map((button) => button.textContent)).to.deep.equal(['files', 'blocks', 'assets']);
     expect(loads).to.deep.equal(['files', 'blocks', 'assets']);
-    expect(pickerValues()).to.deep.equal(['files', 'blocks', 'assets']);
+    expect(menuIds()).to.deep.equal(['files', 'blocks', 'assets']);
     source.dispatchEvent(dragEvent('dragstart', transfer));
     last.dispatchEvent(dragEvent('drop', transfer, end));
     await panel.updateComplete;
@@ -312,53 +334,154 @@ describe('DaToolPanel selected panels', () => {
     expect(panel._pinnedIds).to.deep.equal(['files', 'blocks', 'assets']);
   });
 
-  it('fades only overflowing edges and updates when scrolling, resizing, or removing tabs', async () => {
+  it('collapses the tabs into a switcher when they do not fit and restores them when they do', async () => {
     const frames = stubResizeFrames();
     panel.remove();
     document.body.append(panel);
     await panel.updateComplete;
-    const sheet = new CSSStyleSheet();
-    await sheet.replace(await (await fetch('/blocks/shared/tool-panel/tool-panel.css')).text());
-    panel.shadowRoot.adoptedStyleSheets = [...panel.shadowRoot.adoptedStyleSheets, sheet];
-    panel.style.width = '160px';
+    await adoptPanelStyles();
+    panel.style.width = '600px';
     panel.style.height = '300px';
     await pinAll();
-    const list = panel.shadowRoot.querySelector('.tool-panel-tabs');
-    const scroll = async (left) => {
-      list.scrollLeft = left;
-      list.dispatchEvent(new Event('scroll'));
-      await panel.updateComplete;
-    };
     const resize = async (width) => {
       panel.style.width = width;
       frames.resize();
       await nextTask();
       await panel.updateComplete;
     };
-    const edges = () => [
-      list.hasAttribute('data-overflow-left'), list.hasAttribute('data-overflow-right'),
-    ];
+    const switcher = () => panel.shadowRoot.querySelector('.tool-panel-switcher');
     try {
-      await scroll(0);
-      expect(edges()).to.deep.equal([false, true]);
-      expect(!!panel.shadowRoot.querySelector('.tool-panel-tabs-divider')).to.be.true;
-      await scroll((list.scrollWidth - list.clientWidth) / 2);
-      expect(edges()).to.deep.equal([true, true]);
-      await scroll(list.scrollWidth);
-      expect(edges()).to.deep.equal([true, false]);
+      expect(tabs()).to.have.lengthOf(3);
+      expect(!!switcher()).to.be.false;
+      expect(menu().trigger.getAttribute('aria-label')).to.equal('All panels');
 
-      await resize('600px');
-      expect(edges()).to.deep.equal([false, false]);
-      expect(!!panel.shadowRoot.querySelector('.tool-panel-tabs-divider')).to.be.false;
-      await resize('160px');
-      expect(edges()).to.deep.equal([false, true]);
+      await resize('120px');
+      expect(tabs()).to.have.lengthOf(0);
+      expect(switcher().textContent.trim()).to.equal('assets');
+      expect(menu().trigger).to.equal(switcher());
+      expect(menu().placement).to.equal('below');
+      expect(pinnedMenuIds()).to.deep.equal(['files', 'blocks', 'assets']);
+      expect(!!panel.shadowRoot.querySelector('.tool-panel-menu-hint')).to.be.false;
+
       await select('blocks', false);
       await select('assets', false);
-      expect(edges()).to.deep.equal([false, false]);
-      expect(!!panel.shadowRoot.querySelector('.tool-panel-tabs-divider')).to.be.false;
+      expect(tabs()).to.have.lengthOf(1);
+      expect(!!switcher()).to.be.false;
+
+      await select('blocks');
+      await select('assets');
+      await resize('120px');
+      expect(!!switcher()).to.be.true;
+      await resize('600px');
+      expect(tabs().map((button) => button.dataset.viewId)).to.deep.equal(['files', 'blocks', 'assets']);
+      expect(menu().placement).to.equal('below');
     } finally {
       frames.restore();
     }
+  });
+
+  it('keeps drag reordering working once the tabs fit again', async () => {
+    const frames = stubResizeFrames();
+    panel.remove();
+    document.body.append(panel);
+    await panel.updateComplete;
+    await adoptPanelStyles();
+    panel.style.width = '120px';
+    await pinAll();
+    try {
+      frames.resize();
+      await panel.updateComplete;
+      expect(tabs()).to.have.lengthOf(0);
+      panel.style.width = '600px';
+      frames.resize();
+      await panel.updateComplete;
+      const transfer = new DataTransfer();
+      tabs()[0].dispatchEvent(dragEvent('dragstart', transfer));
+      const last = tabs()[2].parentElement;
+      last.dispatchEvent(dragEvent('drop', transfer, last.getBoundingClientRect().right - 1));
+      await panel.updateComplete;
+      expect(tabs().map((button) => button.dataset.viewId)).to.deep.equal(['blocks', 'assets', 'files']);
+      expect(pinnedMenuIds()).to.deep.equal(['blocks', 'assets', 'files']);
+    } finally {
+      frames.restore();
+    }
+  });
+
+  it('marks the dragged tab and tells in the menu that pinned tabs drag to reorder', async () => {
+    const viewsArea = () => panel.shadowRoot.querySelector('.tool-panel-views');
+    const hint = () => panel.shadowRoot.querySelector('.tool-panel-menu-hint');
+    const nav = () => panel.shadowRoot.querySelector('.tool-panel-tabs');
+    expect(viewsArea().hasAttribute('data-reorderable')).to.be.false;
+    expect(!!hint()).to.be.false;
+
+    await pinAll();
+    expect(viewsArea().hasAttribute('data-reorderable')).to.be.true;
+    expect(hint().textContent).to.equal('Drag tabs to reorder');
+    expect(hint().parentElement.getAttribute('aria-label')).to.equal('Pinned');
+
+    const transfer = new DataTransfer();
+    tabs()[1].dispatchEvent(dragEvent('dragstart', transfer));
+    await panel.updateComplete;
+    expect(nav().hasAttribute('data-dragging')).to.be.true;
+    expect(tabs().map((tab) => tab.parentElement.hasAttribute('data-dragged')))
+      .to.deep.equal([false, true, false]);
+
+    tabs()[1].dispatchEvent(dragEvent('dragend', transfer));
+    await panel.updateComplete;
+    expect(nav().hasAttribute('data-dragging')).to.be.false;
+    expect(tabs().some((tab) => tab.parentElement.hasAttribute('data-dragged'))).to.be.false;
+  });
+
+  it('mirrors the open menu on its trigger and closes it once a view is picked', async () => {
+    const { trigger } = menu();
+    expect(trigger.getAttribute('aria-haspopup')).to.equal('menu');
+    expect(trigger.getAttribute('aria-expanded')).to.equal('false');
+    trigger.click();
+    await settle();
+    expect(menu().open).to.be.true;
+    expect(trigger.getAttribute('aria-expanded')).to.equal('true');
+    await select('blocks');
+    expect(menu().open).to.be.false;
+    expect(trigger.getAttribute('aria-expanded')).to.equal('false');
+  });
+
+  it('lists pinned views in tab order before the other views and marks the active one', async () => {
+    await select('assets');
+    await select('blocks');
+    const groups = [...panel.shadowRoot.querySelectorAll('.tool-panel-menu-group')];
+    expect(groups.map((group) => group.getAttribute('aria-label'))).to.deep.equal(['Pinned']);
+    expect(menuIds()).to.deep.equal(['files', 'assets', 'blocks']);
+    await select('files', false);
+    expect(menuIds()).to.deep.equal(['assets', 'blocks', 'files']);
+    expect([...panel.shadowRoot.querySelectorAll('.tool-panel-menu-group')]
+      .map((group) => group.getAttribute('aria-label'))).to.deep.equal(['Pinned', 'More panels']);
+    expect(menuItem('blocks').getAttribute('aria-current')).to.equal('true');
+    expect(menuItem('assets').hasAttribute('aria-current')).to.be.false;
+  });
+
+  it('pins from the menu without switching and keeps the menu open', async () => {
+    menu().trigger.click();
+    await settle();
+    pinToggle('blocks').click();
+    await settle();
+    expect(panel.activeId).to.equal('files');
+    expect(tabs().map((button) => button.dataset.viewId)).to.deep.equal(['files', 'blocks']);
+    expect(pinToggle('blocks').getAttribute('aria-checked')).to.equal('true');
+    expect(pinToggle('blocks').title).to.equal('Unpin');
+    expect(menu().open).to.be.true;
+    expect(panel.shadowRoot.activeElement).to.equal(pinToggle('blocks'));
+    expect(JSON.parse(sessionStorage.getItem(TOOL_PANEL_PINNED_VIEWS_KEY)))
+      .to.deep.equal(['files', 'blocks']);
+  });
+
+  it('keeps the last pinned view pinned', async () => {
+    const pin = pinToggle('files');
+    expect(pin.getAttribute('aria-disabled')).to.equal('true');
+    await select('files', false);
+    expect(panel._pinnedIds).to.deep.equal(['files']);
+    expect(pinToggle('files').getAttribute('aria-checked')).to.equal('true');
+    await select('blocks');
+    expect(pinToggle('files').hasAttribute('aria-disabled')).to.be.false;
   });
 
   it('opens Files and Outline as default tabs in a new session', async () => {
@@ -373,19 +496,17 @@ describe('DaToolPanel selected panels', () => {
     await panel.updateComplete;
     expect(tabs().map((button) => button.dataset.viewId)).to.deep.equal(['files', 'outline']);
     expect(panel.activeId).to.equal('outline');
-    const picker = panel.shadowRoot.querySelector('nx-picker');
-    expect(picker.hasAttribute('multiple')).to.be.true;
-    expect(picker.values).to.deep.equal(['files', 'outline']);
-    expect(picker.labelOverride).to.equal('Panels');
-    expect(panel.shadowRoot.querySelector('.tool-panel-pin, .tool-panel-unpin')).to.equal(null);
+    expect(pinnedMenuIds()).to.deep.equal(['files', 'outline']);
+    expect(menu().label).to.equal('Panels');
+    expect(menu().trigger.getAttribute('aria-label')).to.equal('All panels');
   });
 
   it('opens selections as tabs and switches between them without losing panel state', async () => {
     await select('blocks');
     expect(tabs().map((button) => button.textContent)).to.deep.equal(['files', 'blocks']);
     expect(panel.activeId).to.equal('blocks');
-    expect(pickerValues()).to.deep.equal(['files', 'blocks', 'assets']);
-    expect(panel.shadowRoot.querySelector('nx-picker').values).to.deep.equal(['files', 'blocks']);
+    expect(menuIds()).to.deep.equal(['files', 'blocks', 'assets']);
+    expect(pinnedMenuIds()).to.deep.equal(['files', 'blocks']);
     tabs()[0].click();
     await panel.updateComplete;
     expect(panel.activeId).to.equal('files');
@@ -398,8 +519,7 @@ describe('DaToolPanel selected panels', () => {
     expect(tabs().map((button) => button.getAttribute('aria-pressed')))
       .to.deep.equal(['false', 'false', 'true']);
     expect(tabs()).to.have.lengthOf(3);
-    expect(pickerValues()).to.deep.equal(['files', 'blocks', 'assets']);
-    expect(panel.shadowRoot.querySelector('nx-picker').getAttribute('placeholder')).to.equal('Panels');
+    expect(pinnedMenuIds()).to.deep.equal(['files', 'blocks', 'assets']);
   });
 
   it('keeps the pop-out action available for a pinned panel', async () => {
@@ -437,7 +557,7 @@ describe('DaToolPanel selected panels', () => {
       expect(opened).to.equal(1);
       expect(panel.activeId).to.equal(id);
       expect(panel._loaded[id]).to.equal(content);
-      expect(panel.shadowRoot.querySelector('nx-picker').values).to.deep.equal(['files', id]);
+      expect(pinnedMenuIds()).to.deep.equal(['files', id]);
       panel.shadowRoot.querySelector('.tool-panel-fullsize-dialog-close')?.click();
       await panel.showPanel('files');
       await panel.updateComplete;
@@ -446,9 +566,7 @@ describe('DaToolPanel selected panels', () => {
   });
 
   it('opens and restores more than four selected tabs', async () => {
-    const sheet = new CSSStyleSheet();
-    await sheet.replace(await (await fetch('/blocks/shared/tool-panel/tool-panel.css')).text());
-    panel.shadowRoot.adoptedStyleSheets = [...panel.shadowRoot.adoptedStyleSheets, sheet];
+    await adoptPanelStyles();
     panel.style.width = '280px';
     panel.style.height = '300px';
     panel.views = [
@@ -458,14 +576,10 @@ describe('DaToolPanel selected panels', () => {
     await panel.updateComplete;
     const ids = ['files', 'blocks', 'assets', 'outline', 'versions', 'comments'];
     for (const id of ids) await select(id);
-    expect(tabs()).to.have.lengthOf(6);
+    expect(tabs()).to.have.lengthOf(0);
+    expect(panel.shadowRoot.querySelector('.tool-panel-switcher').textContent.trim()).to.equal('comments');
+    expect(pinnedMenuIds()).to.deep.equal(ids);
     expect(panel.activeId).to.equal('comments');
-    const tabList = panel.shadowRoot.querySelector('.tool-panel-tabs');
-    const activeTab = tabs().at(-1).getBoundingClientRect();
-    expect(tabList.scrollLeft).to.be.greaterThan(0);
-    expect(activeTab.left).to.be.at.least(tabList.getBoundingClientRect().left);
-    expect(Math.floor(activeTab.right))
-      .to.be.at.most(Math.ceil(tabList.getBoundingClientRect().right));
     expect(JSON.parse(sessionStorage.getItem(TOOL_PANEL_PINNED_VIEWS_KEY)))
       .to.deep.equal(ids);
     const savedViews = panel.views;
@@ -478,16 +592,16 @@ describe('DaToolPanel selected panels', () => {
     await panel.updateComplete;
     await panel.updateComplete;
     expect(tabs().map((tab) => tab.dataset.viewId)).to.deep.equal(ids);
-    expect(panel.shadowRoot.querySelector('nx-picker').values).to.deep.equal(ids);
+    expect(pinnedMenuIds()).to.deep.equal(ids);
   });
 
   it('removes a deselected active tab and activates another selected panel', async () => {
     await select('blocks');
     await select('blocks', false);
     expect(tabs().map((tab) => tab.dataset.viewId)).to.deep.equal(['files']);
-    expect(pickerValues()).to.deep.equal(['files', 'blocks', 'assets']);
+    expect(menuIds()).to.deep.equal(['files', 'blocks', 'assets']);
     expect(panel.activeId).to.equal('files');
-    expect(panel.shadowRoot.querySelector('nx-picker').values).to.deep.equal(['files']);
+    expect(pinnedMenuIds()).to.deep.equal(['files']);
     expect(panel._loaded.blocks.hidden).to.be.true;
   });
 
@@ -508,7 +622,7 @@ describe('DaToolPanel selected panels', () => {
     await panel.updateComplete;
     await select('files', false);
     expect(tabs().map((tab) => tab.dataset.viewId)).to.deep.equal(['files']);
-    expect(panel.shadowRoot.querySelector('nx-picker').values).to.deep.equal(['files']);
+    expect(pinnedMenuIds()).to.deep.equal(['files']);
     expect(panel.activeId).to.equal('files');
   });
 
@@ -527,7 +641,7 @@ describe('DaToolPanel selected panels', () => {
     await panel.updateComplete;
     await panel.updateComplete;
     expect(tabs().map((button) => button.textContent)).to.deep.equal(['files']);
-    expect(pickerValues()).to.deep.equal(['files', 'blocks']);
+    expect(menuIds()).to.deep.equal(['files', 'blocks']);
     panel.views = views;
     await panel.updateComplete;
     expect(tabs().map((button) => button.textContent)).to.deep.equal(['files', 'assets']);
@@ -569,13 +683,11 @@ describe('DaToolPanel selected panels', () => {
       { id: 'modal', label: 'Modal', experience: 'modal', openModal: () => { opened += 1; } },
     ];
     await panel.updateComplete;
-    panel.shadowRoot.querySelector('nx-picker')
-      .dispatchEvent(new CustomEvent('change', { detail: { value: 'modal' } }));
-    await panel.updateComplete;
+    await select('modal');
     expect(opened).to.equal(1);
     expect(panel.activeId).to.equal('files');
     expect(tabs().map((tab) => tab.dataset.viewId)).to.deep.equal(['files']);
-    expect(panel.shadowRoot.querySelector('nx-picker').values).to.deep.equal(['files']);
+    expect(pinnedMenuIds()).to.deep.equal(['files']);
   });
 });
 
@@ -589,88 +701,6 @@ describe('DaToolPanel — loaded view cache', () => {
   });
 
   afterEach(() => panel.remove());
-
-  it('scrolls the next hidden tab into view in either direction without changing panels', async () => {
-    panel.host = { readPinnedViews: () => ['files', 'outline'] };
-    panel.views = ['files', 'outline', 'page', 'comments'].map((id) => ({
-      id,
-      label: id,
-      firstParty: true,
-      load: async () => document.createElement('div'),
-    }));
-    await panel.updateComplete;
-    await panel.updateComplete;
-    const sheet = new CSSStyleSheet();
-    await sheet.replace(await (await fetch('/blocks/shared/tool-panel/tool-panel.css')).text());
-    panel.shadowRoot.adoptedStyleSheets = [...panel.shadowRoot.adoptedStyleSheets, sheet];
-    panel.style.setProperty('--s2-gray-400', '#aaa');
-    const container = panel.shadowRoot.querySelector('.tool-panel-tabs-container');
-    const tabs = container.querySelector('.tool-panel-tabs');
-    tabs.style.flex = '0 0 160px';
-    const items = [...tabs.querySelectorAll('.tool-panel-tab-item')];
-    items.forEach((item) => { item.style.width = '100px'; });
-    // Keep scrolling synchronous so assertions do not depend on animation timing.
-    tabs.scrollBy = ({ left }) => { tabs.scrollLeft += left; };
-    panel._syncTabOverflow();
-    await panel.updateComplete;
-    const previous = container.querySelector('[aria-label="Show previous tab"]');
-    const next = container.querySelector('[aria-label="Show next tab"]');
-    const { activeId } = panel;
-    expect(previous.hidden).to.be.false;
-    expect(previous.disabled).to.be.true;
-    expect(next.hidden).to.be.false;
-    expect(next.disabled).to.be.false;
-    const previousBounds = previous.getBoundingClientRect();
-    const nextBounds = next.getBoundingClientRect();
-    expect(previousBounds.width).to.equal(previousBounds.height);
-    expect(nextBounds.width).to.equal(nextBounds.height);
-    [previous, next].forEach((button) => {
-      const bounds = button.getBoundingClientRect();
-      const icon = button.querySelector('svg').getBoundingClientRect();
-      expect(icon.left + icon.width / 2).to.equal(bounds.left + bounds.width / 2);
-      expect(icon.top + icon.height / 2).to.equal(bounds.top + bounds.height / 2);
-    });
-    expect(getComputedStyle(previous).color).to.equal('rgb(170, 170, 170)');
-    previous.click();
-    expect(tabs.scrollLeft).to.equal(0);
-    next.click();
-    panel._syncTabOverflow();
-    await panel.updateComplete;
-    expect(tabs.scrollLeft).to.be.greaterThan(0);
-    expect(items[1].getBoundingClientRect().right)
-      .to.be.at.most(tabs.getBoundingClientRect().right - 3);
-    expect(previous.hidden).to.be.false;
-    expect(previous.disabled).to.be.false;
-    previous.click();
-    panel._syncTabOverflow();
-    await panel.updateComplete;
-    expect(tabs.scrollLeft).to.equal(0);
-    expect(previous.hidden).to.be.false;
-    expect(previous.disabled).to.be.true;
-    for (let i = 0; i < items.length; i += 1) {
-      next.click();
-      panel._syncTabOverflow();
-      // eslint-disable-next-line no-await-in-loop
-      await panel.updateComplete;
-    }
-    expect(next.hidden).to.be.false;
-    expect(next.disabled).to.be.true;
-    expect(previous.disabled).to.be.false;
-    expect(previous.getBoundingClientRect().left).to.equal(previousBounds.left);
-    expect(next.getBoundingClientRect().left).to.equal(nextBounds.left);
-    expect(getComputedStyle(next).color).to.equal('rgb(170, 170, 170)');
-    const endScroll = tabs.scrollLeft;
-    next.click();
-    expect(tabs.scrollLeft).to.equal(endScroll);
-    expect(items.at(-1).getBoundingClientRect().right)
-      .to.be.at.most(tabs.getBoundingClientRect().right);
-    expect(panel.activeId).to.equal(activeId);
-    tabs.style.flexBasis = '600px';
-    panel._syncTabOverflow();
-    await panel.updateComplete;
-    expect(previous.hidden).to.be.true;
-    expect(next.hidden).to.be.true;
-  });
 
   it('keeps refresh below the tabs and moves fullscreen there below 500px', async () => {
     const content = document.createElement('div');
@@ -700,12 +730,13 @@ describe('DaToolPanel — loaded view cache', () => {
     panel.style.setProperty('--s2-spacing-100', '8px');
     const header = panel.shadowRoot.querySelector('.tool-panel-header');
     const toolbar = panel.shadowRoot.querySelector('.tool-panel-toolbar');
-    const selector = header.querySelector('.tool-panel-selector');
-    header.querySelector('nx-picker').style.width = '72px';
+    const views = header.querySelector('.tool-panel-views');
+    const menuButton = views.querySelector('.tool-panel-menu-button');
     const divider = header.querySelector('.tool-panel-divider').getBoundingClientRect();
     const close = header.querySelector('.tool-panel-close').getBoundingClientRect();
-    expect(header.querySelector('.tool-panel-tabs-container').nextElementSibling).to.equal(selector);
-    expect(selector.getBoundingClientRect().right).to.be.at.most(divider.left);
+    expect(views.nextElementSibling.classList.contains('tool-panel-divider')).to.be.true;
+    expect(menuButton.getAttribute('aria-label')).to.equal('All panels');
+    expect(menuButton.getBoundingClientRect().right).to.be.at.most(divider.left);
     expect(divider.width).to.be.greaterThan(0);
     expect(divider.right).to.be.at.most(close.left);
     expect(close.right).to.equal(header.getBoundingClientRect().right - 12);
@@ -777,8 +808,8 @@ describe('DaToolPanel — loaded view cache', () => {
     }];
     await panel.updateComplete;
     await panel.updateComplete;
-    const item = panel._pickerItemsFromViews().find((candidate) => candidate.value === 'blocks');
-    expect(item.action).to.equal(undefined);
+    const item = panel.shadowRoot.querySelector('.tool-panel-menu-item[data-view-id="blocks"]');
+    expect(item.hasAttribute('aria-label')).to.be.false;
     panel.shadowRoot.querySelector('.tool-panel-header .tool-panel-popout').click();
     expect(opened).to.equal(1);
     expect(panel.activeId).to.equal('blocks');
@@ -1002,8 +1033,8 @@ describe('DaToolPanel — host delegate', () => {
 
   afterEach(() => panel.remove());
 
-  const pickerLabels = () => panel.shadowRoot.querySelector('nx-picker').items
-    .map((item) => item.label);
+  const menuLabels = () => [...panel.shadowRoot.querySelectorAll('.tool-panel-menu-item')]
+    .map((item) => item.textContent.trim());
 
   function viewWithDynamicLabel(label) {
     const view = {
@@ -1022,7 +1053,7 @@ describe('DaToolPanel — host delegate', () => {
     return view;
   }
 
-  it('re-renders the picker when a view label changes', async () => {
+  it('re-renders the tabs and menu when a view label changes', async () => {
     const view = viewWithDynamicLabel('Comments');
     panel.views = [view];
     await settle();
@@ -1030,7 +1061,8 @@ describe('DaToolPanel — host delegate', () => {
     view.changeLabel('Comments (2)');
     await panel.updateComplete;
 
-    expect(pickerLabels()).to.deep.equal(['Comments (2)']);
+    expect(menuLabels()).to.deep.equal(['Comments (2)']);
+    expect(panel.shadowRoot.querySelector('.tool-panel-tabs .tool-panel-tab').textContent).to.equal('Comments (2)');
   });
 
   it('drops label subscriptions once disconnected', async () => {

@@ -3,12 +3,12 @@ import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { TOOL_PANEL_TAG } from './tool-panel-section.js';
 import DragHandler from '../drag-handler.js';
 import drawDragPreview from '../drag-preview.js';
+import { popupMenuStyles } from '../popup-menu/popup-menu.js';
 
 const nx = getNx();
 const [{ loadStyle }, { PANEL_EVENT }] = await Promise.all([
   import(`${nx}/utils/utils.js`),
   import(`${nx}/utils/panel.js`),
-  import(`${nx}/blocks/shared/picker/picker.js`),
 ]);
 
 const nx2 = getNx2();
@@ -20,11 +20,16 @@ const [buttons, spinner, style] = await Promise.all([
 ]);
 
 const ICONS = {
-  chevron: '/img/icons/s2-icon-chevronleft-10-n.svg',
+  chevronDown: '/img/icons/s2-icon-chevrondown-20-n.svg',
   close: '/img/icons/s2-icon-splitright-20-n.svg',
   fullscreen: '/img/icons/s2-icon-fullscreen-20-n.svg',
   openIn: '/img/icons/s2-icon-openin-20-n.svg',
+  pin: '/img/icons/s2-icon-pinon-20-n.svg',
 };
+
+const MENU_TITLE = 'Panels';
+const MENU_LABEL = 'All panels';
+const DRAG_HINT = 'Drag tabs to reorder';
 
 /**
  * View `experience` values that open outside the panel, so they can't be pinned
@@ -51,7 +56,7 @@ class DaToolPanel extends LitElement {
     host: { attribute: false },
     _fullsizeDialogViewId: { state: true },
     _pinnedIds: { state: true },
-    _tabOverflow: { state: true },
+    _collapsed: { state: true },
   };
 
   _loaded = {};
@@ -62,7 +67,7 @@ class DaToolPanel extends LitElement {
 
   _tabDrag = new DragHandler({
     type: 'application/x-da-panel-tab',
-    createPreview: (tab) => drawDragPreview(tab, tab.parentElement),
+    createPreview: (tab) => drawDragPreview(tab),
     canDrop: (id, targetId) => this._pinnedIds.includes(id) && this._pinnedIds.includes(targetId),
     onDrop: (move) => this._reorderTab(move),
     onChange: () => this.requestUpdate(),
@@ -71,11 +76,12 @@ class DaToolPanel extends LitElement {
   constructor() {
     super();
     this._pinnedIds = [];
+    this._collapsed = false;
   }
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [buttons, spinner, style];
+    this.shadowRoot.adoptedStyleSheets = [buttons, spinner, popupMenuStyles, style];
 
     if (this.hasUpdated) {
       this._bindViewLabels();
@@ -84,10 +90,7 @@ class DaToolPanel extends LitElement {
     this._onRailToggle = () => this._notifyActiveView();
     document.addEventListener(PANEL_EVENT.OPEN, this._onRailToggle);
     document.addEventListener(PANEL_EVENT.CLOSE, this._onRailToggle);
-    this._tabResizeObserver = new ResizeObserver(() => {
-      cancelAnimationFrame(this._tabResizeFrame);
-      this._tabResizeFrame = requestAnimationFrame(() => this._syncTabOverflow());
-    });
+    this._fitObserver = new ResizeObserver(() => this._syncFit());
 
     this.requestUpdate();
   }
@@ -95,9 +98,8 @@ class DaToolPanel extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     this._tabDrag.end();
-    this._tabResizeObserver?.disconnect();
-    cancelAnimationFrame(this._tabResizeFrame);
-    this._observedTabs = undefined;
+    this._fitObserver?.disconnect();
+    this._observedFit = undefined;
     this._unbindViewLabels();
     document.removeEventListener(PANEL_EVENT.OPEN, this._onRailToggle);
     document.removeEventListener(PANEL_EVENT.CLOSE, this._onRailToggle);
@@ -140,60 +142,44 @@ class DaToolPanel extends LitElement {
       .filter(canPin);
   }
 
+  /**
+   * Whether enough views are pinned for the tabs to reorder by drag.
+   *
+   * @returns {boolean} True when two or more views are pinned.
+   */
+  get _reorderable() {
+    return this._pinnedViews.length > 1;
+  }
+
   _setPinnedIds(ids) {
     this._pinnedIds = ids;
     this.host?.persistPinnedViews?.(ids);
   }
 
-  _pickerItemsFromViews() {
-    const items = [];
-    let lastSection;
-    for (const view of this.views ?? []) {
-      if (view.section && view.section !== lastSection) {
-        items.push({ section: view.section });
-        lastSection = view.section;
+  /**
+   * Pins or unpins a view from the menu without switching to it. Unpinning
+   * the active view shows the first pinned view instead. The last pinned view
+   * stays pinned.
+   *
+   * @param {string} id - The view id.
+   * @returns {Promise<void>}
+   */
+  async _togglePin(id) {
+    const pinned = this._pinnedViews.some((view) => view.id === id);
+    if (pinned && !this._reorderable) {
+      return;
+    }
+
+    if (!pinned) {
+      this._setPinnedIds([...this._pinnedIds, id]);
+    } else {
+      this._setPinnedIds(this._pinnedIds.filter((pinnedId) => pinnedId !== id));
+      if (this.activeId === id) {
+        await this.showPanel(this._pinnedViews[0].id);
       }
-      items.push(this._pickerItem(view));
     }
-    return items;
-  }
-
-  _pickerItem(view) {
-    const item = { value: view.id, label: labelOf(view) };
-    if (!opensOutsidePanel(view)) {
-      return item;
-    }
-
-    const opensInTab = view.experience === 'window';
-    return {
-      ...item,
-      action: true,
-      trailingIcon: opensInTab ? ICONS.openIn : ICONS.fullscreen,
-      ariaLabel: `${view.label} (opens in ${opensInTab ? 'new tab' : 'dialog'})`,
-    };
-  }
-
-  async _onPickerChange(event) {
-    const { value, selected } = event.detail;
-    const view = this._viewById(value);
-    if (!view) {
-      return;
-    }
-
-    if (!canPin(view) || selected !== false) {
-      await this.showPanel(value);
-      return;
-    }
-
-    if (this._pinnedViews.length <= 1) {
-      event.currentTarget.values = this._pinnedViews.map((pinned) => pinned.id);
-      return;
-    }
-
-    this._setPinnedIds(this._pinnedIds.filter((id) => id !== value));
-    if (this.activeId === value) {
-      await this.showPanel(this._pinnedViews[0].id);
-    }
+    await this.updateComplete;
+    this.shadowRoot.querySelector(`.tool-panel-menu-pin[data-view-id="${id}"]`)?.focus();
   }
 
   async _reorderTab({ id, targetId, before }) {
@@ -214,46 +200,39 @@ class DaToolPanel extends LitElement {
       .find((button) => button.dataset.viewId === id)?.focus();
   }
 
-  _syncTabOverflow() {
-    if (!this.isConnected) {
+  /**
+   * Starts observing the header area and the hidden tab measurer once they
+   * render, so a resize or a font load can switch between tabs and switcher.
+   */
+  _observeFit() {
+    const views = this.shadowRoot.querySelector('.tool-panel-views');
+    if (!this._fitObserver || !views || views === this._observedFit) {
       return;
     }
 
-    const tabs = this.shadowRoot.querySelector('.tool-panel-tabs');
-    if (tabs !== this._observedTabs) {
-      this._tabResizeObserver?.disconnect();
-      if (tabs) {
-        this._tabResizeObserver?.observe(tabs);
-      }
-      this._observedTabs = tabs;
-    }
-    const left = !!tabs && tabs.scrollLeft > 1;
-    const right = !!tabs && tabs.scrollWidth - tabs.clientWidth - tabs.scrollLeft > 1;
-    if (this._tabOverflow?.left !== left || this._tabOverflow?.right !== right) {
-      this._tabOverflow = { left, right };
-    }
+    this._fitObserver.disconnect();
+    this._fitObserver.observe(views);
+    this._fitObserver.observe(views.querySelector('.tool-panel-tabs-measure'));
+    this._observedFit = views;
   }
 
-  _scrollTabs(direction) {
-    const tabs = this.shadowRoot.querySelector('.tool-panel-tabs');
-    if (!tabs) {
+  /**
+   * Shows the tabs while every pinned tab and the menu button fit, and the
+   * switcher otherwise. The measurer always lays out every tab and the header
+   * area always takes the free space, so neither width depends on the mode
+   * and switching can't loop.
+   */
+  _syncFit() {
+    const views = this.shadowRoot.querySelector('.tool-panel-views');
+    const measure = views?.querySelector('.tool-panel-tabs-measure');
+    if (!views?.clientWidth || !measure) {
       return;
     }
 
-    const bounds = tabs.getBoundingClientRect();
-    const items = [...tabs.querySelectorAll('.tool-panel-tab-item')];
-    const target = direction > 0
-      ? items.find((item) => item.getBoundingClientRect().right > bounds.right - 3)
-      : items.reverse().find((item) => item.getBoundingClientRect().left < bounds.left + 3);
-    if (!target) {
-      return;
+    const collapsed = measure.getBoundingClientRect().width > views.clientWidth;
+    if (collapsed !== this._collapsed) {
+      this._collapsed = collapsed;
     }
-
-    const rect = target.getBoundingClientRect();
-    tabs.scrollBy({
-      left: direction > 0 ? rect.right - bounds.right + 4 : rect.left - bounds.left - 4,
-      behavior: 'smooth',
-    });
   }
 
   _onTabKeyDown(event, id) {
@@ -308,7 +287,11 @@ class DaToolPanel extends LitElement {
   }
 
   async updated(changed) {
-    this._syncTabOverflow();
+    this._observeFit();
+    this._syncFit();
+    if (changed.has('_collapsed')) {
+      this.shadowRoot.querySelector('.tool-panel-views-menu')?.close();
+    }
     if (changed.has('contextKey')) {
       this._tabDrag.end();
       this._clearPageBoundViews();
@@ -332,8 +315,6 @@ class DaToolPanel extends LitElement {
     this._syncContent();
     this._syncHeaderActions();
     this._notifyActiveView();
-    this.shadowRoot.querySelector('.tool-panel-tab[aria-pressed="true"]')
-      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
 
   async _onViewsChange() {
@@ -570,27 +551,11 @@ class DaToolPanel extends LitElement {
 
   render() {
     const activeView = this._viewById(this.activeId);
-    const pinnedViews = this._pinnedViews;
-    const tabsOverflow = this._tabOverflow?.left || this._tabOverflow?.right;
     const popoutButton = this._renderPopoutButton(activeView);
 
     return html`
       <div class="tool-panel-header">
-        ${pinnedViews.length ? this._renderTabs(pinnedViews, tabsOverflow) : nothing}
-        ${tabsOverflow
-    ? html`<span class="tool-panel-divider tool-panel-tabs-divider" aria-hidden="true"></span>`
-    : nothing}
-        <div class="tool-panel-selector">
-          <nx-picker
-            .items=${this._pickerItemsFromViews()}
-            multiple
-            .values=${pinnedViews.map((view) => view.id)}
-            .labelOverride=${'Panels'}
-            placeholder="Panels"
-            placement="below-end"
-            @change=${this._onPickerChange}
-          ></nx-picker>
-        </div>
+        ${this._renderViews(activeView)}
         <span class="tool-panel-divider" aria-hidden="true"></span>
         ${popoutButton}
         <button type="button" class="tool-panel-close" aria-label="Close panel" @click=${this._close}>
@@ -603,6 +568,168 @@ class DaToolPanel extends LitElement {
       </div>
       <div class="tool-panel-content"></div>
       ${this._fullsizeDialogViewId ? this._renderFullsizeDialog() : nothing}
+    `;
+  }
+
+  /**
+   * Renders the header area that switches views. It shows the pinned tabs
+   * and a menu button while they fit, and one switcher button otherwise. A
+   * hidden measurer lays out every tab to decide which one shows.
+   *
+   * @param {object} [activeView] - The active view.
+   * @returns {unknown} The views area template.
+   */
+  _renderViews(activeView) {
+    const pinnedViews = this._pinnedViews;
+    const collapsed = this._collapsed;
+
+    return html`
+      <div class="tool-panel-views" ?data-reorderable=${this._reorderable}>
+        ${!collapsed && pinnedViews.length ? this._renderTabs(pinnedViews) : nothing}
+        <da-popup-menu class="tool-panel-views-menu" label=${MENU_TITLE} placement="below">
+          ${collapsed ? this._renderSwitcher(activeView) : this._renderMenuButton()}
+          ${this._renderMenuContent(pinnedViews)}
+        </da-popup-menu>
+        <div class="tool-panel-tabs-measure" aria-hidden="true">
+          ${pinnedViews.map((view) => html`<span class="tool-panel-tab">${labelOf(view)}</span>`)}
+          <span class="tool-panel-measure-trigger"></span>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Renders the icon only button that opens the views menu next to the tabs.
+   *
+   * @returns {unknown} The button template.
+   */
+  _renderMenuButton() {
+    return html`
+      <button slot="trigger" type="button" class="popup-menu-trigger tool-panel-menu-button"
+        aria-label=${MENU_LABEL} title=${MENU_LABEL}>
+        ${this._renderChevron()}
+      </button>
+    `;
+  }
+
+  /**
+   * Renders the button that replaces the tabs when they don't fit. It names
+   * the active view and opens the views menu.
+   *
+   * @param {object} [activeView] - The active view.
+   * @returns {unknown} The button template.
+   */
+  _renderSwitcher(activeView) {
+    return html`
+      <button slot="trigger" type="button" class="popup-menu-trigger tool-panel-switcher"
+        title=${MENU_LABEL}>
+        <span class="tool-panel-switcher-label">${activeView ? labelOf(activeView) : MENU_TITLE}</span>
+        ${this._renderChevron()}
+      </button>
+    `;
+  }
+
+  /**
+   * Renders the chevron that a views menu trigger turns while open.
+   *
+   * @returns {unknown} The chevron template.
+   */
+  _renderChevron() {
+    return html`<svg aria-hidden="true" class="popup-menu-chevron" viewBox="0 0 20 20"><use href="${ICONS.chevronDown}#icon"></use></svg>`;
+  }
+
+  /**
+   * Renders the views menu with a section for the pinned views, in tab
+   * order, and a section for the rest. The pinned section tells that the
+   * tabs drag to reorder while they show.
+   *
+   * @param {Array<object>} pinnedViews - The views shown as tabs.
+   * @returns {unknown} The menu content template.
+   */
+  _renderMenuContent(pinnedViews) {
+    const pinnedIds = new Set(pinnedViews.map((view) => view.id));
+    const otherViews = (this.views ?? []).filter((view) => !pinnedIds.has(view.id));
+    const onlyOnePinned = !this._reorderable;
+    const hint = !this._collapsed && this._reorderable ? DRAG_HINT : '';
+
+    return html`
+      ${this._renderMenuGroup('Pinned', pinnedViews, { pinned: true, onlyOnePinned }, hint)}
+      ${pinnedViews.length && otherViews.length
+    ? html`<hr class="popup-menu-separator" role="separator">`
+    : nothing}
+      ${this._renderMenuGroup('More panels', otherViews, { pinned: false })}
+    `;
+  }
+
+  /**
+   * Renders one titled section of the views menu, or nothing when it has no
+   * views.
+   *
+   * @param {string} title - The section heading.
+   * @param {Array<object>} views - The views in the section.
+   * @param {object} state - The pin state shared by the section's rows.
+   * @param {string} [hint] - A quiet note under the heading.
+   * @returns {unknown} The section template.
+   */
+  _renderMenuGroup(title, views, state, hint = '') {
+    if (!views.length) {
+      return nothing;
+    }
+
+    return html`
+      <div class="tool-panel-menu-group" role="group" aria-label=${title}>
+        <div class="popup-menu-heading" aria-hidden="true">${title}</div>
+        ${hint ? html`<div class="tool-panel-menu-hint" aria-hidden="true">${hint}</div>` : nothing}
+        ${views.map((view) => this._renderMenuRow(view, state))}
+      </div>
+    `;
+  }
+
+  /**
+   * Renders one menu row. The row opens its view, and its pin toggle pins or
+   * unpins the view without switching. Views that open outside the panel get
+   * an "opens in" icon instead of a pin toggle.
+   *
+   * @param {object} view - The view.
+   * @param {object} state
+   * @param {boolean} state.pinned - Whether the view is pinned.
+   * @param {boolean} [state.onlyOnePinned] - Whether it is the only pinned view.
+   * @returns {unknown} The row template.
+   */
+  _renderMenuRow(view, { pinned, onlyOnePinned = false }) {
+    const label = labelOf(view);
+    const external = opensOutsidePanel(view);
+    const opensInTab = view.experience === 'window';
+    const ariaLabel = external
+      ? `${label} (opens in ${opensInTab ? 'new tab' : 'dialog'})`
+      : nothing;
+    const pinLocked = pinned && onlyOnePinned;
+    let pinTitle = pinned ? 'Unpin' : 'Pin';
+    if (pinLocked) {
+      pinTitle = 'The last pinned panel stays pinned';
+    }
+
+    return html`
+      <div class="tool-panel-menu-row" role="none">
+        <button type="button" role="menuitem" class="popup-menu-item tool-panel-menu-item"
+          tabindex="-1" data-view-id=${view.id}
+          aria-label=${ariaLabel}
+          aria-current=${view.id === this.activeId ? 'true' : nothing}
+          @click=${() => this.showPanel(view.id)}>
+          <span class="popup-menu-item-label">${label}</span>
+          ${external ? html`<svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${opensInTab ? ICONS.openIn : ICONS.fullscreen}#icon"></use></svg>` : nothing}
+        </button>
+        ${canPin(view) ? html`
+          <button type="button" role="menuitemcheckbox" class="tool-panel-menu-pin"
+            tabindex="-1" data-view-id=${view.id} data-menu-secondary data-menu-keep-open
+            aria-checked=${pinned ? 'true' : 'false'}
+            aria-label="Pin ${label}"
+            aria-disabled=${pinLocked ? 'true' : nothing}
+            title=${pinTitle}
+            @click=${() => this._togglePin(view.id)}>
+            <svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${ICONS.pin}#icon"></use></svg>
+          </button>` : nothing}
+      </div>
     `;
   }
 
@@ -622,30 +749,12 @@ class DaToolPanel extends LitElement {
     `;
   }
 
-  _renderTabs(pinnedViews, tabsOverflow) {
+  _renderTabs(pinnedViews) {
     return html`
-      <div class="tool-panel-tabs-container">
-        <button type="button" class="tool-panel-tab-scroll tool-panel-tab-scroll-left"
-          aria-label="Show previous tab" title="Show previous tab"
-          ?hidden=${!tabsOverflow}
-          ?disabled=${!this._tabOverflow?.left}
-          @click=${() => this._scrollTabs(-1)}>
-          <svg aria-hidden="true" viewBox="0 0 10 10"><use href="${ICONS.chevron}#icon"></use></svg>
-        </button>
-        <nav class="tool-panel-tabs" aria-label="Pinned panels"
-          ?data-overflow-left=${this._tabOverflow?.left}
-          ?data-overflow-right=${this._tabOverflow?.right}
-          @scroll=${this._syncTabOverflow}>
-          ${repeat(pinnedViews, (view) => view.id, (view) => this._renderTab(view))}
-        </nav>
-        <button type="button" class="tool-panel-tab-scroll"
-          aria-label="Show next tab" title="Show next tab"
-          ?hidden=${!tabsOverflow}
-          ?disabled=${!this._tabOverflow?.right}
-          @click=${() => this._scrollTabs(1)}>
-          <svg aria-hidden="true" viewBox="0 0 10 10"><use href="${ICONS.chevron}#icon"></use></svg>
-        </button>
-      </div>
+      <nav class="tool-panel-tabs" aria-label="Pinned panels"
+        ?data-dragging=${this._tabDrag.draggedId !== undefined}>
+        ${repeat(pinnedViews, (view) => view.id, (view) => this._renderTab(view))}
+      </nav>
     `;
   }
 
@@ -653,6 +762,7 @@ class DaToolPanel extends LitElement {
     const label = labelOf(view);
     return html`
       <div class="tool-panel-tab-item" data-active=${view.id === this.activeId}
+        ?data-dragged=${this._tabDrag.draggedId === view.id}
         data-drop-side=${this._tabDrag.dropSide(view.id)}
         @dragover=${(event) => this._tabDrag.over(event, view.id)}
         @dragleave=${() => this._tabDrag.leave()}
