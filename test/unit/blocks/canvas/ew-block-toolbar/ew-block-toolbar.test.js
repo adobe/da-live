@@ -1,8 +1,9 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
-import { EditorState, NodeSelection } from 'da-y-wrapper';
+import { EditorState, NodeSelection, Y, prosemirrorToYDoc, ySyncPlugin } from 'da-y-wrapper';
 import { getSchema } from 'da-parser';
-import { setNx } from '../../../../../scripts/utils.js';
+import { setNx, getNx } from '../../../../../scripts/utils.js';
+import { makeRealView } from '../test-helpers.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -410,6 +411,200 @@ describe('ew-block-toolbar', () => {
     } finally {
       setCommentsController(null);
     }
+  });
+
+  describe('replace block', () => {
+    const paragraph = (text) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
+    const table = (name, body) => ({
+      type: 'table',
+      content: [name, body].map((text) => ({
+        type: 'table_row',
+        content: [{ type: 'table_cell', content: [paragraph(text)] }],
+      })),
+    });
+    let view;
+    let ydoc;
+    let savedFetch;
+    let hashChange;
+
+    beforeEach(async () => {
+      ({ hashChange } = await import(`${getNx()}/utils/utils.js`));
+      savedFetch = window.fetch;
+      window.fetch = async (url, opts) => {
+        if (url.startsWith('/') || url.startsWith(window.location.origin)) return savedFetch(url, opts);
+        return new Response('[]');
+      };
+      hashChange._set({ org: 'org', site: 'site' });
+      setDaConfigs([{ library: { data: [{ title: 'Blocks', path: '/blocks.json' }] } }]);
+      resetBlockLibraryCache();
+
+      view = makeRealView({
+        type: 'doc',
+        content: [paragraph('Intro'), table('cards', 'Original'), paragraph('Outro'), table('other', 'Keep')],
+      });
+      const { schema, doc } = view.state;
+      ydoc = prosemirrorToYDoc(doc);
+      view.updateState(EditorState.create({
+        schema,
+        plugins: [ySyncPlugin(ydoc.getXmlFragment('prosemirror'))],
+      }));
+      const pos = view.state.doc.firstChild.nodeSize;
+      view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos)));
+      toolbar.view = view;
+      toolbar._hasBlockLibrary = true;
+    });
+
+    afterEach(() => {
+      document.querySelector('ew-block-library-modal')?.remove();
+      window.fetch = savedFetch;
+      setDaConfigs([]);
+      hashChange._set({});
+      resetBlockLibraryCache();
+      const mount = view.dom.parentElement;
+      view.destroy();
+      mount.remove();
+      ydoc.destroy();
+    });
+
+    const contents = () => {
+      const result = [];
+      view.state.doc.forEach((node) => result.push([node.type.name, node.textContent]));
+      return result;
+    };
+
+    function libraryTable() {
+      const dom = document.createElement('table');
+      dom.innerHTML = '<tbody><tr><td><p>hero</p></td></tr><tr><td><p>New</p></td></tr></tbody>';
+      return dom;
+    }
+
+    async function openModal() {
+      await toolbar._onReplaceBlock();
+      for (let i = 0; i < 50 && !document.querySelector('ew-block-library-modal'); i += 1) {
+        await new Promise((resolve) => { setTimeout(resolve, 10); });
+      }
+      const modal = document.querySelector('ew-block-library-modal');
+      expect(modal).to.exist;
+      return modal;
+    }
+
+    function remoteEdit(fn) {
+      const fragment = ydoc.getXmlFragment('prosemirror');
+      ydoc.transact(() => fn(fragment), 'remote');
+    }
+
+    function remoteParagraph(text) {
+      const p = new Y.XmlElement('paragraph');
+      p.insert(0, [new Y.XmlText(text)]);
+      return p;
+    }
+
+    function remoteTable(name) {
+      const cell = new Y.XmlElement('table_cell');
+      cell.insert(0, [remoteParagraph(name)]);
+      const row = new Y.XmlElement('table_row');
+      row.insert(0, [cell]);
+      const tbl = new Y.XmlElement('table');
+      tbl.insert(0, [row]);
+      return tbl;
+    }
+
+    it('replaces the selected block and keeps it selected', async () => {
+      const modal = await openModal();
+      modal.onInsert(libraryTable());
+      expect(contents()).to.deep.equal([
+        ['paragraph', 'Intro'], ['table', 'heroNew'], ['paragraph', 'Outro'], ['table', 'otherKeep'],
+      ]);
+      const { selection } = view.state;
+      expect(selection instanceof NodeSelection).to.equal(true);
+      expect(selection.node?.textContent).to.equal('heroNew');
+    });
+
+    it('replaces the right block after a collaborator edits above it', async () => {
+      const modal = await openModal();
+      remoteEdit((fragment) => fragment.insert(0, [remoteParagraph('Remote')]));
+      modal.onInsert(libraryTable());
+      expect(contents()).to.deep.equal([
+        ['paragraph', 'Remote'], ['paragraph', 'Intro'], ['table', 'heroNew'],
+        ['paragraph', 'Outro'], ['table', 'otherKeep'],
+      ]);
+    });
+
+    it('replaces the right block when it is first and a collaborator inserts above it', async () => {
+      view.dispatch(view.state.tr.delete(0, view.state.doc.firstChild.nodeSize));
+      view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, 0)));
+      const modal = await openModal();
+      remoteEdit((fragment) => fragment.insert(0, [remoteParagraph('Remote')]));
+      modal.onInsert(libraryTable());
+      expect(contents()).to.deep.equal([
+        ['paragraph', 'Remote'], ['table', 'heroNew'], ['paragraph', 'Outro'], ['table', 'otherKeep'],
+      ]);
+    });
+
+    it('replaces the right block when it is first and collaborators insert above and after it', async () => {
+      view.dispatch(view.state.tr.delete(0, view.state.doc.firstChild.nodeSize));
+      view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, 0)));
+      const modal = await openModal();
+      remoteEdit((fragment) => {
+        fragment.insert(1, [remoteParagraph('After')]);
+        fragment.insert(0, [remoteParagraph('Above')]);
+      });
+      modal.onInsert(libraryTable());
+      expect(contents()).to.deep.equal([
+        ['paragraph', 'Above'], ['table', 'heroNew'], ['paragraph', 'After'],
+        ['paragraph', 'Outro'], ['table', 'otherKeep'],
+      ]);
+    });
+
+    it('keeps a paragraph a collaborator inserts right after the block', async () => {
+      const modal = await openModal();
+      remoteEdit((fragment) => fragment.insert(2, [remoteParagraph('After')]));
+      modal.onInsert(libraryTable());
+      expect(contents()).to.deep.equal([
+        ['paragraph', 'Intro'], ['table', 'heroNew'], ['paragraph', 'After'],
+        ['paragraph', 'Outro'], ['table', 'otherKeep'],
+      ]);
+    });
+
+    it('keeps a paragraph a collaborator inserts directly above the block', async () => {
+      const modal = await openModal();
+      remoteEdit((fragment) => fragment.insert(1, [remoteParagraph('Above')]));
+      modal.onInsert(libraryTable());
+      expect(contents()).to.deep.equal([
+        ['paragraph', 'Intro'], ['paragraph', 'Above'], ['table', 'heroNew'],
+        ['paragraph', 'Outro'], ['table', 'otherKeep'],
+      ]);
+    });
+
+    it('keeps a block a collaborator inserts right after the block', async () => {
+      const modal = await openModal();
+      remoteEdit((fragment) => fragment.insert(2, [remoteTable('Added')]));
+      modal.onInsert(libraryTable());
+      expect(contents()).to.deep.equal([
+        ['paragraph', 'Intro'], ['table', 'heroNew'], ['table', 'Added'],
+        ['paragraph', 'Outro'], ['table', 'otherKeep'],
+      ]);
+    });
+
+    it('keeps a block a collaborator inserts above the first block', async () => {
+      view.dispatch(view.state.tr.delete(0, view.state.doc.firstChild.nodeSize));
+      view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, 0)));
+      const modal = await openModal();
+      remoteEdit((fragment) => fragment.insert(0, [remoteTable('Added')]));
+      modal.onInsert(libraryTable());
+      expect(contents()).to.deep.equal([
+        ['table', 'Added'], ['table', 'heroNew'], ['paragraph', 'Outro'], ['table', 'otherKeep'],
+      ]);
+    });
+
+    it('inserts the new block where the old one was when a collaborator deleted it', async () => {
+      const modal = await openModal();
+      remoteEdit((fragment) => fragment.delete(1, 1));
+      modal.onInsert(libraryTable());
+      expect(contents()).to.deep.equal([
+        ['paragraph', 'Intro'], ['table', 'heroNew'], ['paragraph', 'Outro'], ['table', 'otherKeep'],
+      ]);
+    });
   });
 });
 

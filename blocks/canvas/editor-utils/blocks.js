@@ -199,7 +199,11 @@ export function insertBlockAtSectionStart(view, dom, sectionIndex) {
 export function replaceBlockRange(view, from, to, dom) {
   if (!view) return;
   const parsed = PMDOMParser.fromSchema(view.state.schema).parse(dom);
-  view.dispatch(view.state.tr.replaceWith(from, to, parsed.content).scrollIntoView());
+  const tr = view.state.tr.replaceWith(from, to, parsed.content);
+  if (tr.doc.nodeAt(from)?.type.name === 'table') {
+    tr.setSelection(NodeSelection.create(tr.doc, from));
+  }
+  view.dispatch(tr.scrollIntoView());
 }
 
 /** Append a copy of `rowDom` (a library <tr>) as a new last row of the table at `tablePos`. */

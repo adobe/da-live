@@ -253,13 +253,13 @@ class EwBlockToolbar extends LitElement {
 
   async _onReplaceBlock() {
     if (!this.view || !this._hasBlockLibrary) return;
-    const { from, to } = this.view.state.selection;
     const { view } = this;
     const { openBlockLibraryModal } = await import('../ew-block-library-modal/ew-block-library-modal.js');
     openBlockLibraryModal({
       heading: 'Replace block',
       onInsert: (dom) => {
-        replaceBlockRange(view, from, to, dom);
+        const { from, to, node } = view.state.selection;
+        replaceBlockRange(view, from, node?.type.name === 'table' ? to : from, dom);
         view.focus();
       },
     });
