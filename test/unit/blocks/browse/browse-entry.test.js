@@ -5,10 +5,19 @@ import init from '../../../../blocks/browse/browse.js';
 import '../../../../blocks/landing/landing.js';
 import { getNx, getNx2Api } from '../../../../scripts/utils.js';
 
-const { hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { source, config } = await getNx2Api();
 
 describe('Browse Content opt-in', () => {
+  // Each init subscribes to hash changes; drop them so later hash updates don't reach old views.
+  let subscribe;
+  beforeEach(() => { subscribe = sinon.spy(hashChange, 'subscribe'); });
+  afterEach(() => {
+    subscribe.returnValues.forEach((unsubscribe) => unsubscribe());
+    subscribe.restore();
+    hashChange._set(undefined);
+  });
+
   it('preserves site Browse with landing=true and updates root Content from nav without changing its URL', async () => {
     const { href } = window.location;
     const ordinary = document.createElement('div');
@@ -87,30 +96,51 @@ describe('Browse Content opt-in', () => {
     }
   });
 
-  it('waits for Browse styles before the section is shown', async () => {
+  it('hands Browse its path only after the Browse stylesheet is adopted', async () => {
     const { href } = window.location;
     const el = document.createElement('div');
-    el.innerHTML = '<div><picture><img alt=""></picture></div>';
+    const browse = document.createElement('da-browse');
+    const browseHref = new URL('../../../../blocks/browse/browse.js', import.meta.url).href;
+    const browseSheet = new CSSStyleSheet();
+    let adoptBrowseSheet;
+    loadStyle._set(browseHref, new Promise((resolve) => { adoptBrowseSheet = resolve; }));
+    // Updating a mounted Browse view uses the same stylesheet wait as a swap, without
+    // the view module import, which can't resolve 'da-lit' under the test server.
+    let received;
+    let adoptedAtUpdate;
+    Object.defineProperty(browse, 'details', {
+      configurable: true,
+      set(details) {
+        received = details;
+        adoptedAtUpdate = document.adoptedStyleSheets.includes(browseSheet);
+      },
+    });
+    el.append(browse);
     document.body.append(el);
-    const list = sinon.stub(source, 'list').resolves({ ok: true, items: [] });
-    const configs = sinon.stub(config, 'get').resolves({ ok: true, json: async () => ({ data: [] }) });
+    let ready;
     try {
       const url = new URL(href);
-      url.searchParams.set('browse', '2');
-      url.hash = '/org/site';
+      url.searchParams.delete('landing');
+      url.hash = '/org';
       window.history.replaceState(null, '', url);
-      hashChange._set({ org: 'org', site: 'site' });
-      const sheets = document.adoptedStyleSheets.length;
-      const ready = init(el);
-      expect(ready).to.be.instanceOf(Promise);
+      hashChange._set({ org: 'org' });
+      ready = init(el);
+      await new Promise((resolve) => { setTimeout(resolve); });
+      expect(received).to.equal(undefined);
+      expect(document.adoptedStyleSheets.includes(browseSheet)).to.equal(false);
+      adoptBrowseSheet(browseSheet);
       await ready;
-      expect(document.adoptedStyleSheets.length).to.be.above(sheets);
+      expect(received).to.deep.equal({ org: 'org' });
+      expect(adoptedAtUpdate).to.equal(true);
     } finally {
+      // Settle the held stylesheet so init never stays parked if an assertion failed early.
+      adoptBrowseSheet(browseSheet);
+      await ready;
+      loadStyle._set(browseHref);
+      document.adoptedStyleSheets = document.adoptedStyleSheets
+        .filter((sheet) => sheet !== browseSheet);
       el.remove();
-      list.restore();
-      configs.restore();
       window.history.replaceState(null, '', href);
-      localStorage.removeItem('da-sites');
     }
   });
 });

@@ -76,6 +76,25 @@ describe('favorites util', () => {
     expect(getSiteFavorites('')).to.deep.equal([]);
   });
 
+  it('toggleFavorite removes legacy duplicates before adding back to the requested folder', () => {
+    localStorage.setItem(KEY, JSON.stringify({
+      '/org/site': ['/org/site/de/a.html', '/org/site/a.html'],
+      '/org/site/de': ['/org/site/de/a.html'],
+      '/other/site/de': ['/other/site/de/a.html'],
+    }));
+    expect(toggleFavorite('/org/site/de', '/org/site/de/a.html')).to.equal(false);
+    expect(JSON.parse(localStorage.getItem(KEY))).to.deep.equal({
+      '/org/site': ['/org/site/a.html'],
+      '/other/site/de': ['/other/site/de/a.html'],
+    });
+    expect(toggleFavorite('/org/site/de', '/org/site/de/a.html')).to.equal(true);
+    expect(JSON.parse(localStorage.getItem(KEY))).to.deep.equal({
+      '/org/site': ['/org/site/a.html'],
+      '/org/site/de': ['/org/site/de/a.html'],
+      '/other/site/de': ['/other/site/de/a.html'],
+    });
+  });
+
   it('returns false from is/get/toggle when args are missing', () => {
     expect(isFavorite('', '/x')).to.equal(false);
     expect(isFavorite('/a', '')).to.equal(false);
