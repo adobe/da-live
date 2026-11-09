@@ -63,8 +63,13 @@ describe('DaPreview legacy section metadata', () => {
     preview.sendPreview();
     expect(sent).to.have.lengthOf(0);
 
-    const data = [{ key: 'legacy-section-metadata', value: 'true' }];
-    releaseSiteConfig(new Response(JSON.stringify({ data }), { status: 200 }));
+    const config = {
+      ':type': 'multi-sheet',
+      ':names': ['data', 'flags'],
+      data: { data: [] },
+      flags: { data: [{ key: 'ew.legacy-section-metadata', value: 'true' }] },
+    };
+    releaseSiteConfig(new Response(JSON.stringify(config), { status: 200 }));
     await received;
     expect(sent[0].body).to.include('class="section-metadata"');
     window.view.dom.querySelector('p').textContent = 'Updated content';

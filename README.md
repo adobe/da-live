@@ -49,10 +49,11 @@ See [TESTING.md](TESTING.md) for unit, end-to-end and CI details.
 ## Additional details
 ### Legacy section metadata in previews
 For sites that decorate `.section-metadata` blocks client-side, set
-`legacy-section-metadata` to `true` in the DA site configuration's first sheet.
+`ew.legacy-section-metadata` to `true` in the DA site configuration's `flags` sheet.
 Canvas and live preview then preserve the original blocks instead of extracting
 their values into section classes and data attributes. Site values override org
 values; an absent or false flag keeps the existing extraction behavior.
+The first sheet and the unprefixed key are not read for this setting.
 Reload the editor after changing the flag.
 
 This affects client-side preview serialization only, not da-universal's initial
