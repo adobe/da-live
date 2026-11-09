@@ -529,6 +529,21 @@ describe('EwEditorDoc - teardown on removal (#1406)', () => {
     expect(seen.length > 0).to.equal(true);
     expect(seen[seen.length - 1]).to.equal('');
   });
+
+  it('clears merge conflict state when the document is torn down', () => {
+    const el = document.createElement('ew-editor-doc');
+    document.body.append(el);
+    el._emitMergeConflictsState(true);
+    let last;
+    el.remove();
+    canvasBus.mergeConflictsState.subscribe((d) => { last = d; })();
+    expect(last).to.deep.equal({ hasMergeConflicts: false });
+
+    el._emitMergeConflictsState(true);
+    el._teardown();
+    canvasBus.mergeConflictsState.subscribe((d) => { last = d; })();
+    expect(last).to.deep.equal({ hasMergeConflicts: false });
+  });
 });
 
 describe('EwEditorDoc - toolbar surface follows text focus', () => {

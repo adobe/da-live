@@ -83,7 +83,6 @@ export class EwEditorDoc extends LitElement {
     if (changed.has('ctx')) {
       this.quickEditPort = undefined;
       this._canWrite = false;
-      this._hasMergeConflicts = false;
       this._teardown();
       setSelectionToolbarCtx();
       toolbarController.reset();
@@ -382,6 +381,7 @@ export class EwEditorDoc extends LitElement {
     this._unbindSectionName = undefined;
     this._proseContext = undefined;
     canvasBus.editorHtmlState.emit('');
+    this._emitMergeConflictsState(false);
   }
 
   async _loadEditor() {
