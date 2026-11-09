@@ -1,4 +1,4 @@
-// Figma and Claude logos and the Modernization Agent / Claude Design links are pending.
+// Modernization Agent and Claude Design links are pending.
 const ADOBE_LOGO = '/img/adobe-logo.svg';
 
 export const ONBOARDING_TILES = [
@@ -12,11 +12,13 @@ export const ONBOARDING_TILES = [
     title: 'Figma Design',
     description: 'Create an AEM site from your Figma design with Experience Modernization Agent.',
     action: 'Use Modernization Agent',
+    icon: '/img/figma-logo.svg',
   },
   {
     title: 'Claude Design',
     description: 'Create your design in Claude Design, then send it to AEM.',
     action: 'Explore Claude Design',
+    icon: '/img/claude-logo.svg',
   },
   {
     title: 'AEM Boilerplate',
