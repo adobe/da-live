@@ -277,10 +277,12 @@ export function removeActiveView(view) {
   activeViews.delete(view);
 }
 
-export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstream, hostEl } = {}) {
+export function getDiffClass(elName, getSchema, dispatchTransaction, options = {}) {
+  const { isUpstream, hostEl, onViewChange } = options;
   return class {
     constructor(node, view, getPos) {
       this.node = node;
+      this.onViewChange = onViewChange;
       this.view = view;
       this.getPos = getPos;
       this.schema = getSchema();
@@ -354,6 +356,7 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
 
       let actions;
 
+      let tabInitialized = false;
       const setActiveTab = (targetTab) => {
         const panes = tabContent.querySelectorAll('.diff-tab-pane');
         panes.forEach((pane) => {
@@ -372,6 +375,7 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
             diffTab.loaded = true;
             generateDiff(diffTab.deletedContent, diffTab.addedContent).then((diffHTML) => {
               diffTab.innerHTML = diffHTML;
+              this.onViewChange?.();
             }).catch(() => {
               diffTab.innerHTML = '<p style="text-align: center; color: #d32f2f; margin: 20px 0;">Error loading diff</p>';
             });
@@ -389,6 +393,8 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
           const activeButton = actions.querySelector(`.da-diff-btn.${activeClass}`);
           if (activeButton) activeButton.classList.add('is-active');
         }
+        if (tabInitialized) this.onViewChange?.();
+        tabInitialized = true;
       };
 
       const actionsPlaceholder = createElement('div', 'diff-tabbed-actions loc-floating-overlay');

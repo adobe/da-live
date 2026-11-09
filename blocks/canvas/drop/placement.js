@@ -1,5 +1,13 @@
 import { getNx2 } from '../../../scripts/utils.js';
 import { PAYLOAD_KIND } from './payload.js';
+import { canvasBus } from '../utils/canvas-bus.js';
+
+let previewReadOnly = false;
+canvasBus.mergeConflictsState.subscribe(({ hasMergeConflicts } = {}) => {
+  previewReadOnly = hasMergeConflicts === true;
+});
+
+export const isPreviewReadOnly = () => previewReadOnly;
 
 const { getImageDocumentVersion, resolveImagePosition } = await import(
   `${getNx2()}/public/utils/quick-edit-images.js`
@@ -42,6 +50,7 @@ export function resolvePlacement({ view, target, payload }) {
     return { type: 'insert', pos: target.pos, doc: target.doc ?? doc, coords: target.coords };
   }
   if (target?.editor !== 'wysiwyg') return { error: 'invalid-target' };
+  if (previewReadOnly) return { error: 'read-only' };
 
   if (target.type === 'boundary') {
     if (payload.kind !== PAYLOAD_KIND.HTML) return { error: 'unsupported' };

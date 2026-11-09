@@ -2,6 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import { Y } from 'da-y-wrapper';
 import { getNx2, setNx } from '../../../../../scripts/utils.js';
 import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.js';
+import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
@@ -143,6 +144,20 @@ describe('handleImageReplace', () => {
       setSelection({ href: 'https://assets.example.com/file.pdf', isImage: false });
       expect((await dropAssets()).message).to.contain('single image');
       expect(editor.view.state.doc.nodeAt(imagePos).attrs.src).to.equal('/old.png');
+    });
+
+    it('does not replace a preview image when layout locks while resolving Assets', async () => {
+      setRepositoryConfig({ tierType: 'author' });
+      setSelection({ href: 'https://assets.example.com/image.png', isImage: true });
+      try {
+        const pending = dropAssets();
+        canvasBus.mergeConflictsState.emit({ hasMergeConflicts: true });
+        expect((await pending).ok).to.be.false;
+        expect(editor.view.state.doc.nodeAt(imagePos).attrs.src).to.equal('/old.png');
+        expect((await dropAssets()).error).to.equal('read-only');
+      } finally {
+        canvasBus.mergeConflictsState.emit({ hasMergeConflicts: false });
+      }
     });
 
     it('does not replace a removed image or mutate after permissions change while resolving Assets', async () => {

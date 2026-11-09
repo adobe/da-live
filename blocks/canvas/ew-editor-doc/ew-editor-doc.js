@@ -21,6 +21,7 @@ import {
 } from './utils/selection.js';
 import {
   prefetchWysiwygCookiesIfSignedIn,
+  setPreviewReadOnly,
   wireQuickEditControllerPort,
 } from './utils/quick-edit-host.js';
 import { initIms as loadIms } from '../../shared/utils.js';
@@ -128,7 +129,20 @@ export class EwEditorDoc extends LitElement {
     canvasBus.undoState.emit({ canUndo, canRedo });
   }
 
+  // The preview follows each conflict's open tab, so a tab change re-sends the body.
+  _onMergeConflictView() {
+    if (this._conflictViewTimer) return;
+    this._conflictViewTimer = setTimeout(() => {
+      this._conflictViewTimer = undefined;
+      if (!this._controllerCtx) return;
+      const body = updateDocument(this._controllerCtx);
+      if (body) canvasBus.editorHtmlState.emit(body);
+    }, 0);
+  }
+
   _emitMergeConflictsState(hasMergeConflicts) {
+    this._hasMergeConflicts = hasMergeConflicts;
+    setPreviewReadOnly(this._controllerCtx, hasMergeConflicts);
     canvasBus.mergeConflictsState.emit({ hasMergeConflicts });
   }
 
@@ -300,9 +314,11 @@ export class EwEditorDoc extends LitElement {
       repo,
       path: controllerPathnameFromEditorCtx(this.ctx),
       canWrite: this._canWrite === true,
+      previewReadOnly: false,
       getToken: async () => (await loadIms())?.accessToken?.token ?? null,
     };
     wireQuickEditControllerPort(this._controllerCtx);
+    setPreviewReadOnly(this._controllerCtx, this._hasMergeConflicts === true);
 
     this._comments.setupIframeBridge();
   }
@@ -376,6 +392,7 @@ export class EwEditorDoc extends LitElement {
     this._unbindSectionName = undefined;
     this._proseContext = undefined;
     canvasBus.editorHtmlState.emit('');
+    this._emitMergeConflictsState(false);
   }
 
   async _loadEditor() {
@@ -487,6 +504,8 @@ export class EwEditorDoc extends LitElement {
         }
       },
     );
+    this._unsubscribeConflictView = canvasBus.mergeConflictViewState
+      .subscribe(() => this._onMergeConflictView());
     this._unsubscribeSelect = canvasBus.editorSelectState
       .subscribe(({ blockIndex, source }) => {
         if (source === 'doc') return;
@@ -581,6 +600,9 @@ export class EwEditorDoc extends LitElement {
   disconnectedCallback() {
     this._unsubscribeEditorActive?.();
     this._unsubscribeWysiwygPortReady?.();
+    this._unsubscribeConflictView?.();
+    clearTimeout(this._conflictViewTimer);
+    this._conflictViewTimer = undefined;
     document.removeEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
     this._unsubscribeSelect?.();
     this._unsubscribeProseSelect?.();

@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
 import { TextSelection, NodeSelection } from 'da-y-wrapper';
 import { setNx } from '../../../../../scripts/utils.js';
 import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.js';
@@ -278,5 +279,108 @@ describe('ew-selection-toolbar buttons', () => {
     expect(button).to.exist;
     expect(button.querySelector('use').getAttribute('href'))
       .to.equal('/img/icons/s2-icon-image-20-n.svg#icon');
+  });
+
+  it('ignores a link submitted after the wysiwyg surface locked', async () => {
+    setText('hello');
+    selectText(1, 6);
+    toolbar.activeSurface = 'wysiwyg';
+    toolbar.openLinkDialog();
+    toolbar.readOnly = true;
+    try {
+      toolbar._onLinkDialogSubmit({ detail: { href: 'https://example.com', text: 'hello' } });
+      const { doc, schema } = editor.view.state;
+      expect(doc.rangeHasMark(0, doc.content.size, schema.marks.link)).to.be.false;
+      expect(toolbar.linkDialogOpen).to.be.false;
+    } finally {
+      toolbar.readOnly = false;
+      toolbar.activeSurface = null;
+    }
+  });
+
+  it('ignores non-comment commands clicked on a locked wysiwyg surface', async () => {
+    setText('hello');
+    selectText(1, 6);
+    toolbar.activeSurface = 'wysiwyg';
+    await toolbar.updateComplete;
+    const strong = toolbar.shadowRoot.querySelector('button[data-id="strong"]');
+    toolbar.readOnly = true;
+    try {
+      strong.click();
+      expect(selectionHasMark('strong')).to.be.false;
+    } finally {
+      toolbar.readOnly = false;
+      toolbar.activeSurface = null;
+    }
+  });
+
+  it('closes open dialogs when its interaction is cancelled', () => {
+    setText('hello');
+    selectText(1, 6);
+    toolbar.openLinkDialog();
+    toolbar.cancelInteraction();
+    expect(toolbar.linkDialogOpen).to.be.false;
+    expect(toolbar.isInteracting).to.be.false;
+  });
+
+  it('does not insert an upload started in layout once layout is locked', async () => {
+    const locked = sinon.stub(toolbarController, 'wysiwygReadOnly').get(() => true);
+    toolbar.sourceUrl = 'https://admin.da.live/source/lockorg/locksite/doc.html';
+    try {
+      const file = new File([new Uint8Array([1])], 'pic.png', { type: 'image/png' });
+      await toolbar._onFileSelected({ target: { files: [file] } }, { fromLayout: true });
+      let images = 0;
+      editor.view.state.doc.descendants((node) => {
+        if (node.type.name === 'image') images += 1;
+      });
+      expect(images).to.equal(0);
+    } finally {
+      locked.restore();
+      toolbar.sourceUrl = undefined;
+    }
+  });
+
+  it('offers only comments in a read-only wysiwyg surface', async () => {
+    setText('hello');
+    selectText(1, 6);
+    toolbar.activeSurface = 'wysiwyg';
+    toolbar.readOnly = true;
+    try {
+      await toolbar.updateComplete;
+      const ids = [...toolbar.shadowRoot.querySelectorAll('button[data-id]')].map((b) => b.dataset.id);
+      expect(ids).to.deep.equal(['add-comment']);
+      expect(toolbar.hasCommands).to.be.true;
+    } finally {
+      toolbar.readOnly = false;
+      toolbar.activeSurface = null;
+    }
+  });
+
+  it('has no commands in a read-only wysiwyg surface without a selection', async () => {
+    setText('hello');
+    selectText(3, 3);
+    toolbar.activeSurface = 'wysiwyg';
+    toolbar.readOnly = true;
+    try {
+      await toolbar.updateComplete;
+      expect(toolbar.hasCommands).to.be.false;
+    } finally {
+      toolbar.readOnly = false;
+      toolbar.activeSurface = null;
+    }
+  });
+
+  it('keeps all doc controls when read-only only applies to the wysiwyg surface', async () => {
+    setText('hello');
+    selectText(1, 6);
+    toolbar.activeSurface = 'doc';
+    toolbar.readOnly = true;
+    try {
+      await toolbar.updateComplete;
+      expect(toolbar.shadowRoot.querySelector('button[data-id="strong"]')).to.exist;
+    } finally {
+      toolbar.readOnly = false;
+      toolbar.activeSurface = null;
+    }
   });
 });

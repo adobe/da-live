@@ -34,6 +34,7 @@ const state = {
   // The single-block edit modal hosts the doc view in a dialog, on top of and
   // regardless of the current editor mode.
   blockEditOpen: false,
+  wysiwygReadOnly: false,
 };
 
 function ensureToolbar() {
@@ -84,11 +85,13 @@ function editorModeAllows(surface) {
 
 /** The one visibility predicate. Interaction state is pulled from the element so
  * a dialog / picker / menu is the single source of truth for "is interacting". */
-function shouldShow(tb) {
+function shouldShow(tb, { readOnlySurface = false, block = null } = {}) {
   if (tb.linkDialogOpen || tb.altDialogOpen || tb.isInteracting) return false;
-  return state.activeSurface !== null
-    && state.showableBySurface[state.activeSurface]
-    && editorModeAllows(state.activeSurface);
+  if (state.activeSurface === null || !editorModeAllows(state.activeSurface)) return false;
+  if (readOnlySurface) {
+    return (state.showableBySurface.wysiwyg || block !== null) && tb.hasCommands !== false;
+  }
+  return state.showableBySurface[state.activeSurface];
 }
 
 /** One block toolbar serves both surfaces: its commands run against the doc view's
@@ -120,15 +123,19 @@ function render() {
   // The element renders a surface-appropriate button set: the wysiwyg iframe owns
   // block-level structure, so it gets inline/link/image controls only.
   tb.activeSurface = state.activeSurface;
+  tb.readOnly = state.wysiwygReadOnly;
 
   const { activeSurface } = state;
   const block = activeSurface ? state.blockBySurface[activeSurface] : null;
+  const readOnlySurface = activeSurface === 'wysiwyg' && state.wysiwygReadOnly;
   // The block toolbar is body-hosted, so inside the modal it would render behind the
   // backdrop — and its commands target the block already being edited.
-  const showBlock = block !== null && !state.blockEditOpen && editorModeAllows(activeSurface);
+  const showBlock = block !== null && !state.blockEditOpen && !readOnlySurface
+    && editorModeAllows(activeSurface);
+  ensureBlockToolbar().readOnly = readOnlySurface;
   syncBlockToolbar(showBlock ? block : null);
 
-  if (!showBlock && shouldShow(tb)) {
+  if (!showBlock && shouldShow(tb, { readOnlySurface, block })) {
     tb.show();
   } else if (!tb.linkDialogOpen && !tb.altDialogOpen && !tb.isInteracting) {
     tb.hide();
@@ -223,6 +230,20 @@ canvasBus.editorViewState.subscribe(({ view }) => {
   scheduleRender();
 });
 
+canvasBus.mergeConflictsState.subscribe(({ hasMergeConflicts } = {}) => {
+  const locked = hasMergeConflicts === true;
+  const locking = locked && !state.wysiwygReadOnly;
+  state.wysiwygReadOnly = locked;
+  const lockedSurface = locked && state.activeSurface === 'wysiwyg';
+  if (toolbarEl) toolbarEl.readOnly = locked;
+  if (blockToolbarEl) blockToolbarEl.readOnly = lockedSurface;
+  if (locking && lockedSurface) {
+    toolbarEl?.cancelInteraction?.();
+    blockToolbarEl?.cancelInteraction?.();
+  }
+  scheduleRender();
+});
+
 canvasBus.blockEditState.subscribe(({ open }) => {
   if (state.blockEditOpen === open) return;
   state.blockEditOpen = open;
@@ -271,6 +292,8 @@ export const toolbarController = {
   /** Read-only: which surface currently owns editing. Read by the doc view's
    * cursor plugin to decide whether to publish this user's caret. */
   get activeSurface() { return state.activeSurface; },
+
+  get wysiwygReadOnly() { return state.wysiwygReadOnly; },
 
   /** Register the doc editor's view (the command target). */
   setDocView(view) {

@@ -1,7 +1,7 @@
 import { Fragment, TextSelection } from 'da-y-wrapper';
 import { getNx2 } from '../../../scripts/utils.js';
 import { PAYLOAD_KIND } from './payload.js';
-import { resolvePlacement, currentInsertPosition } from './placement.js';
+import { resolvePlacement, currentInsertPosition, isPreviewReadOnly } from './placement.js';
 import { uploadFile, parseHtml, resolveAssets } from './content.js';
 
 const { updateImageInDocument } = await import(`${getNx2()}/public/utils/quick-edit-images.js`);
@@ -12,6 +12,7 @@ const ERROR_MESSAGES = {
   unavailable: 'The editor is not available. Please try again.',
   unsupported: 'This content cannot be dropped here.',
   'invalid-target': 'This content cannot be dropped here.',
+  'read-only': 'Resolve the merge conflicts before editing the layout.',
   'stale-target': 'The document changed during the drop. Please try again.',
   'single-image-required': 'Drop a single image to replace this image.',
   'image-too-large': 'Image is too large',
@@ -129,7 +130,9 @@ function insertHtml({ view, placement, payload }) {
  * @returns {Promise<{ ok: boolean, error?: string, message?: string, src?: string }>}
  */
 export async function performDrop({ payload, target, view, context, isLive = () => true }) {
-  const live = () => !!view && !view.isDestroyed && view.editable && isLive();
+  const lockedPreview = () => target?.editor === 'wysiwyg' && isPreviewReadOnly();
+  const live = () => !!view && !view.isDestroyed && view.editable && isLive() && !lockedPreview();
+  if (payload && lockedPreview()) return fail('read-only');
   if (!payload || !live()) return fail('unavailable');
   const placement = resolvePlacement({ view, target, payload });
   if (placement.error) return fail(placement.error, placement.message);

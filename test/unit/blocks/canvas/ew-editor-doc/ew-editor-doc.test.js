@@ -167,6 +167,51 @@ describe('EwEditorDoc — _scrollDocToProseIndex', () => {
 // Splitting a table-cell paragraph (e.g. Enter mid-cell) fails findCommonEditableAncestor
 // and falls back to a full SET_BODY redecoration, which races the block-edit modal's
 // live-editing of that same iframe DOM.
+describe('EwEditorDoc — conflict tab changes re-send the preview body', () => {
+  let editor;
+  let el;
+  let posted;
+
+  beforeEach(async () => {
+    posted = [];
+    editor = await createTestEditor();
+    el = document.createElement('ew-editor-doc');
+    document.body.append(el);
+    el._controllerCtx = {
+      view: editor.view,
+      suppressRerender: false,
+      port: { postMessage: (msg) => posted.push(msg), close() {} },
+    };
+    posted.length = 0;
+  });
+
+  afterEach(() => {
+    el.remove();
+    destroyEditor(editor);
+  });
+
+  const nextTick = () => new Promise((resolve) => { setTimeout(resolve, 10); });
+  const bodies = () => posted.filter((m) => m.type === 'set-body');
+
+  it('posts one body for a burst of tab changes', async () => {
+    canvasBus.mergeConflictViewState.emit();
+    canvasBus.mergeConflictViewState.emit();
+    canvasBus.mergeConflictViewState.emit();
+    await nextTick();
+    expect(bodies()).to.have.lengthOf(1);
+    expect(bodies()[0].payload.rerenderScope).to.deep.equal({ type: 'page' });
+  });
+
+  it('posts nothing after the element is removed', async () => {
+    canvasBus.mergeConflictViewState.emit();
+    el.remove();
+    await nextTick();
+    canvasBus.mergeConflictViewState.emit();
+    await nextTick();
+    expect(bodies()).to.have.lengthOf(0);
+  });
+});
+
 describe('EwEditorDoc — block-edit suppresses controller rerenders', () => {
   let editor;
   let el;
@@ -528,6 +573,21 @@ describe('EwEditorDoc - teardown on removal (#1406)', () => {
     canvasBus.editorHtmlState.emit('');
     expect(seen.length > 0).to.equal(true);
     expect(seen[seen.length - 1]).to.equal('');
+  });
+
+  it('clears merge conflict state when the document is torn down', () => {
+    const el = document.createElement('ew-editor-doc');
+    document.body.append(el);
+    el._emitMergeConflictsState(true);
+    let last;
+    el.remove();
+    canvasBus.mergeConflictsState.subscribe((d) => { last = d; })();
+    expect(last).to.deep.equal({ hasMergeConflicts: false });
+
+    el._emitMergeConflictsState(true);
+    el._teardown();
+    canvasBus.mergeConflictsState.subscribe((d) => { last = d; })();
+    expect(last).to.deep.equal({ hasMergeConflicts: false });
   });
 });
 

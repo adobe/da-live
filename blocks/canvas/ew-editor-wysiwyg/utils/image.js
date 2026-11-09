@@ -28,7 +28,7 @@ export async function handleImageReplace(payload, ctx) {
     },
     view,
     context: uploadContext({ org: ctx.owner, site: ctx.repo, path: ctx.path }),
-    isLive: () => ctx.view === view && ctx.canWrite !== false,
+    isLive: () => ctx.view === view && ctx.canWrite !== false && !ctx.previewReadOnly,
   });
   if (result.ok) reply({ newSrc: result.src });
   else reply({ error: result.message || result.error });

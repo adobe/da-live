@@ -46,6 +46,7 @@ class EwSelectionToolbar extends LitElement {
   static properties = {
     view: { attribute: false },
     activeSurface: { attribute: false },
+    readOnly: { attribute: false },
     org: { type: String },
     site: { type: String },
     sourceUrl: { type: String },
@@ -106,6 +107,17 @@ class EwSelectionToolbar extends LitElement {
     return (this._picker?.open ?? false)
       || (this._altDialogOpen ?? false)
       || this._menus.some((m) => m.open);
+  }
+
+  get _locked() {
+    return this.readOnly === true && this.activeSurface === 'wysiwyg';
+  }
+
+  cancelInteraction() {
+    this._picker?.close?.();
+    this._linkDialogOpen = false;
+    this._altDialogOpen = false;
+    this.hide();
   }
 
   _icon(name) {
@@ -170,6 +182,7 @@ class EwSelectionToolbar extends LitElement {
     if (!btn || btn.disabled) return;
     const { id } = btn.dataset;
     if (!id) return;
+    if (this._locked && !COMMENT_ITEMS.some((item) => item.id === id)) return;
     COMMAND_BY_ID.get(id)?.apply(this.view);
     this.requestUpdate();
     if (!this._linkDialogOpen && !this._altDialogOpen) {
@@ -207,6 +220,7 @@ class EwSelectionToolbar extends LitElement {
   _onLinkDialogSubmit(e) {
     const { href, text, title } = e.detail;
     this._closeLinkDialog();
+    if (this._locked) return;
     applyLink(this.view, { href, text, title });
     toolbarController.restoreFocus();
     toolbarController.refresh();
@@ -234,6 +248,7 @@ class EwSelectionToolbar extends LitElement {
     if (!this.view) return;
     const { pos } = this.view.state.selection.$anchor;
     this._closeAltDialog();
+    if (this._locked) return;
     this.view.dispatch(this.view.state.tr.setNodeAttribute(pos, 'alt', alt));
     toolbarController.restoreFocus();
     toolbarController.refresh();
@@ -263,23 +278,25 @@ class EwSelectionToolbar extends LitElement {
   }
 
   _triggerUpload() {
+    const fromLayout = this.activeSurface === 'wysiwyg';
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = SUPPORTED_IMAGE_TYPES.join(',');
-    input.addEventListener('change', (e) => this._onFileSelected(e), { once: true });
+    input.addEventListener('change', (e) => this._onFileSelected(e, { fromLayout }), { once: true });
     input.click();
   }
 
-  async _onFileSelected(e) {
+  async _onFileSelected(e, { fromLayout = false } = {}) {
     const file = e.target.files?.[0];
     if (!file || !this.view || !this.sourceUrl) return;
+    const isLive = () => !fromLayout || !toolbarController.wysiwygReadOnly;
     const [{ getSourceUploadContext }, { uploadImageFile }] = await Promise.all([
       import('../ew-editor-doc/prose-plugins/sourceUploadContext.js'),
       import('../ew-editor-doc/prose-plugins/imageDrop.js'),
     ]);
     const details = getSourceUploadContext(this.sourceUrl);
-    if (!details) return;
-    await uploadImageFile(this.view, file, details);
+    if (!details || !isLive()) return;
+    await uploadImageFile(this.view, file, details, { isLive });
   }
 
   _openAemAssets() {
@@ -383,7 +400,7 @@ class EwSelectionToolbar extends LitElement {
     `;
   }
 
-  _renderSections() {
+  _visibleSections() {
     const renderButtons = (items) => items.map((i) => this._renderToolbarButton(i));
     const renderImageItems = (items) => items.map((i) => this._renderImageItem(i));
 
@@ -404,12 +421,26 @@ class EwSelectionToolbar extends LitElement {
       { items: TABLE_ITEMS, wysiwyg: false, render: () => this._renderTableMenu() },
       { items: LINK_ITEMS, wysiwyg: true, render: () => renderButtons(LINK_ITEMS) },
       { items: imageItems, wysiwyg: true, render: () => renderImageItems(imageItems) },
-      { items: COMMENT_ITEMS, wysiwyg: true, render: () => renderButtons(COMMENT_ITEMS) },
+      {
+        items: COMMENT_ITEMS,
+        wysiwyg: true,
+        readOnly: true,
+        render: () => renderButtons(COMMENT_ITEMS),
+      },
     ];
 
-    const allowed = inWysiwyg ? sections.filter((s) => s.wysiwyg) : sections;
-    const visible = allowed.filter(({ items }) => this._hasVisibleCommands(items));
-    return visible.flatMap(({ render }, i) => {
+    const allowed = inWysiwyg
+      ? sections.filter((s) => s.wysiwyg && (!this.readOnly || s.readOnly))
+      : sections;
+    return allowed.filter(({ items }) => this._hasVisibleCommands(items));
+  }
+
+  get hasCommands() {
+    return this._visibleSections().length > 0;
+  }
+
+  _renderSections() {
+    return this._visibleSections().flatMap(({ render }, i) => {
       const part = render();
       return i === 0 ? [part] : [html`<span class="toolbar-sep" aria-hidden="true"></span>`, part];
     });

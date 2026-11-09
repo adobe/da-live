@@ -53,6 +53,7 @@ export function nextVariants(current, { value, values, selected }) {
 class EwBlockToolbar extends LitElement {
   static properties = {
     view: { attribute: false },
+    readOnly: { attribute: false },
     org: { type: String },
     site: { type: String },
     _blockName: { state: true },
@@ -163,7 +164,7 @@ class EwBlockToolbar extends LitElement {
   }
 
   _onVariantChange(e) {
-    if (!this.view) return;
+    if (!this.view || this.readOnly) return;
     if (!e.detail.values && !parseVariants(this._currentVariant).length) return;
     const next = nextVariants(this._currentVariant, e.detail);
     this._currentVariant = next;
@@ -195,6 +196,12 @@ class EwBlockToolbar extends LitElement {
 
   hide() {
     this.classList.remove('open');
+  }
+
+  cancelInteraction() {
+    this._pendingDelete = false;
+    this.shadowRoot?.querySelector('nx-picker')?.close?.();
+    this.hide();
   }
 
   get open() {
@@ -242,7 +249,7 @@ class EwBlockToolbar extends LitElement {
   _confirmDelete() {
     this._pendingDelete = false;
     const { view } = this;
-    if (!view) return;
+    if (!view || this.readOnly) return;
     const { from } = view.state.selection;
     const node = view.state.doc.nodeAt(from);
     if (!node) return;
@@ -255,14 +262,18 @@ class EwBlockToolbar extends LitElement {
     if (!this.view || !this._hasBlockLibrary) return;
     const { from, to } = this.view.state.selection;
     const { view } = this;
+    const fromLayout = toolbarController.activeSurface === 'wysiwyg';
     const { openBlockLibraryModal } = await import('../ew-block-library-modal/ew-block-library-modal.js');
     openBlockLibraryModal({
       heading: 'Replace block',
-      onInsert: (dom) => {
-        replaceBlockRange(view, from, to, dom);
-        view.focus();
-      },
+      onInsert: (dom) => this._applyReplace({ view, from, to, fromLayout }, dom),
     });
+  }
+
+  _applyReplace({ view, from, to, fromLayout }, dom) {
+    if (fromLayout && toolbarController.wysiwygReadOnly) return;
+    replaceBlockRange(view, from, to, dom);
+    view.focus();
   }
 
   _renderDeleteDialog() {

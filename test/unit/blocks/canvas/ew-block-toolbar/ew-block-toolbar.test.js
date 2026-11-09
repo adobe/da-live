@@ -11,6 +11,7 @@ const { createTestEditor, destroyEditor } = await import('../../edit/prose/test-
 const { resetBlockLibraryCache } = await import('../../../../../blocks/canvas/ew-panel-extensions/helpers.js');
 const { default: EwBlockToolbar, collectLibraryVariants, nextVariants } = await import('../../../../../blocks/canvas/ew-block-toolbar/ew-block-toolbar.js');
 const { canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js');
+const { toolbarController: toolbarControllerForReplace } = await import('../../../../../blocks/canvas/editor-utils/toolbar-controller.js');
 const { setCommentsController } = await import('../../../../../blocks/canvas/editor-utils/comments-bridge.js');
 
 describe('collectLibraryVariants', () => {
@@ -269,6 +270,43 @@ describe('ew-block-toolbar', () => {
     function change(detail) {
       picker().dispatchEvent(new CustomEvent('change', { detail }));
     }
+
+    it('ignores variant changes and deletes while read-only', () => {
+      toolbar.readOnly = true;
+      try {
+        change({ value: 'wide', values: ['dark', 'wide'], selected: true });
+        expect(header()).to.equal('cards (dark)');
+        toolbar._confirmDelete();
+        expect(editor.view.state.doc.firstChild.type.name).to.equal('table');
+      } finally {
+        toolbar.readOnly = false;
+      }
+    });
+
+    it('skips a replace started in layout once layout locks, but not one started in the doc', () => {
+      const { from, to } = editor.view.state.selection;
+      const dom = () => {
+        const div = document.createElement('div');
+        div.innerHTML = '<p>replacement</p>';
+        return div;
+      };
+      const locked = sinon.stub(toolbarControllerForReplace, 'wysiwygReadOnly').get(() => true);
+      try {
+        toolbar._applyReplace({ view: editor.view, from, to, fromLayout: true }, dom());
+        expect(editor.view.state.doc.firstChild.type.name).to.equal('table');
+        toolbar._applyReplace({ view: editor.view, from, to, fromLayout: false }, dom());
+        expect(editor.view.state.doc.firstChild.textContent).to.equal('replacement');
+      } finally {
+        locked.restore();
+      }
+    });
+
+    it('drops a pending delete when its interaction is cancelled', () => {
+      toolbar._pendingDelete = true;
+      toolbar.cancelInteraction();
+      expect(toolbar.isInteracting).to.be.false;
+      expect(toolbar.open).to.be.false;
+    });
 
     it('appends a toggled-on variant to the header without moving focus', () => {
       change({ value: 'wide', values: ['dark', 'wide'], selected: true });

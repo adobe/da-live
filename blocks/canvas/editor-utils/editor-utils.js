@@ -263,30 +263,88 @@ export function extractCursors(view) {
   return [...cursorMap.values()];
 }
 
+function markDiff(root, kind) {
+  [...root.children].forEach((el) => el.setAttribute('data-diff', kind));
+}
+
+// The site's own CSS knows nothing about the word diff, so style it inline.
+const DIFF_STYLES = {
+  'del.diffdel, del.diffmod': 'background-color:#ffebee;color:#c62828;text-decoration:line-through;padding:2px 4px;border-radius:3px;border:1px solid #ef9a9a',
+  'ins.diffins, ins.diffmod': 'background-color:#e8f5e8;color:#2e7d32;text-decoration:none;padding:2px 4px;border-radius:3px;border:1px solid #a5d6a7',
+  'del.diffmod': 'background-color:#fff3e0;color:#ef6c00;text-decoration:line-through;padding:2px 4px;border-radius:3px;border:1px solid #ffcc02',
+  'ins.diffmod': 'background-color:#e3f2fd;color:#1565c0;text-decoration:none;padding:2px 4px;border-radius:3px;border:1px solid #90caf9',
+};
+
+function styleWordDiff(root) {
+  Object.entries(DIFF_STYLES).forEach(([selector, style]) => {
+    root.querySelectorAll(selector).forEach((el) => el.setAttribute('style', style));
+  });
+}
+
+// Which side of a conflict pair the preview shows follows the tab the author has
+// open in the doc pane. A block cannot show a word diff, and a diff that has not
+// loaded yet has nothing to show, so both stay on the local side.
+function pickConflictPane(container) {
+  const pane = (tab) => container.querySelector(`.diff-tab-pane[data-tab="${tab}"]`);
+  const local = pane('added');
+  const tab = container.querySelector('.diff-tab-pane.active')?.dataset.tab;
+  if (tab === 'deleted' && pane('deleted')) return { pane: pane('deleted'), kind: 'upstream' };
+  const diffHtml = pane('diff')?.querySelector('.html-diff');
+  if (tab === 'diff' && diffHtml && !diffHtml.querySelector('table')) {
+    const holder = document.createElement('div');
+    holder.append(...diffHtml.childNodes);
+    styleWordDiff(holder);
+    return { pane: holder, kind: 'changed' };
+  }
+  return { pane: local, kind: 'local' };
+}
+
 // Merge-conflict node views render their own UI (tabs, buttons, overlays).
 // Serialize what the author sees by default instead: the local version of a
 // pair, the content of a lone node. The hidden second half of a pair goes.
 // The node views render a block as a bare table, but prose2aem only turns a
 // table inside a .tableWrapper into a block, so each table gets its wrapper back.
-function unwrapDiffViews(root) {
+const DIFF_CONTAINERS = '.loc-tabbed-container, .loc-single-container';
+const EDIT_INDEX_ATTRS = ['data-prose-index', 'data-block-index', 'data-image-index', 'data-image-version'];
+
+// posAtDOM can't see inside a conflict node view, so every index under it is the
+// position of the conflict node itself. Clicking such an element would mount the
+// wrong node (the upstream side of a pair) in the preview's inline editor.
+function stripEditIndices(root) {
+  // A list or quote holding a conflict is serialized with it, so its own index
+  // would mount that whole node, conflict nodes included.
+  root.querySelectorAll('[data-prose-index]').forEach((el) => {
+    if (el.querySelector(DIFF_CONTAINERS)) el.removeAttribute('data-prose-index');
+  });
+  root.querySelectorAll(DIFF_CONTAINERS).forEach((container) => {
+    container.querySelectorAll('.block-marker').forEach((el) => el.remove());
+    container.querySelectorAll(EDIT_INDEX_ATTRS.map((attr) => `[${attr}]`).join(', '))
+      .forEach((el) => EDIT_INDEX_ATTRS.forEach((attr) => el.removeAttribute(attr)));
+  });
+}
+
+function unwrapDiffViews(root, { stripIndices = false } = {}) {
+  if (stripIndices) stripEditIndices(root);
   root.querySelectorAll('.loc-pair-hidden').forEach((el) => el.remove());
   root.querySelectorAll('.loc-tabbed-container').forEach((container) => {
-    const local = container.querySelector('.diff-tab-pane[data-tab="added"]');
-    if (!local) {
+    const { pane, kind } = pickConflictPane(container);
+    if (!pane) {
       container.remove();
       return;
     }
-    wrapTablesInWrappers(local);
-    container.replaceWith(...local.childNodes);
+    wrapTablesInWrappers(pane);
+    markDiff(pane, kind);
+    container.replaceWith(...pane.childNodes);
   });
   root.querySelectorAll('.loc-single-container').forEach((container) => {
     container.querySelectorAll(':scope > .loc-color-overlay').forEach((el) => el.remove());
     wrapTablesInWrappers(container);
+    markDiff(container, container.classList.contains('loc-deleted-view') ? 'upstream' : 'local');
     container.replaceWith(...container.childNodes);
   });
 }
 
-export function getInstrumentedHTML(view) {
+export function getInstrumentedHTML(view, { stripDiffIndices = false } = {}) {
   const editorClone = view.dom.cloneNode(true);
 
   const originalElements = view.dom.querySelectorAll(EDITABLE_SELECTORS);
@@ -345,7 +403,7 @@ export function getInstrumentedHTML(view) {
     }
   });
 
-  unwrapDiffViews(editorClone);
+  unwrapDiffViews(editorClone, { stripIndices: stripDiffIndices });
 
   const remoteCursors = editorClone.querySelectorAll('.ProseMirror-yjs-cursor');
 
@@ -547,10 +605,14 @@ function postBody(ctx) {
   clearMetadataRerenderTimer(ctx);
   const { doc } = ctx.view.state;
   const body = getInstrumentedHTML(ctx.view);
-  const rerenderScope = getRerenderScope({ previousDoc: getBaseline(ctx), doc, body });
+  const hasDiffViews = !!ctx.view.dom.querySelector(DIFF_CONTAINERS);
+  const previewBody = hasDiffViews
+    ? getInstrumentedHTML(ctx.view, { stripDiffIndices: true })
+    : body;
+  const rerenderScope = getRerenderScope({ previousDoc: getBaseline(ctx), doc, body: previewBody });
   ctx.port.postMessage({
     type: MESSAGE_TYPES.SET_BODY,
-    payload: { body, rerenderScope, documentVersion: getImageDocumentVersion(doc) },
+    payload: { body: previewBody, rerenderScope, documentVersion: getImageDocumentVersion(doc) },
   });
   ctx.syncedDoc = doc;
   ctx.confirmedDoc = doc;
