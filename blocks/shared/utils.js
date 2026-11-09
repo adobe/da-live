@@ -424,6 +424,18 @@ export const fetchDaConfigs = (() => {
   };
 })();
 
+export async function fetchPreviewOptions({ org, site }) {
+  if (!org || !site) return { legacySectionMetadata: false };
+  const configs = await Promise.all(
+    fetchDaConfigs({ org, site }).map((config) => config.catch(() => null)),
+  );
+  const rows = configs.reverse()
+    .filter((config) => config && !config.error)
+    .flatMap((config) => getFirstSheet(config) || []);
+  const value = rows.find((row) => row.key === 'legacy-section-metadata')?.value;
+  return { legacySectionMetadata: value === true || value === 'true' };
+}
+
 export async function canEditOrgConfig(org) {
   const config = await fetchDaConfigs({ org })[0].catch(() => null);
   if (config?.error && config.status !== 404) return false;

@@ -47,6 +47,17 @@ If you wish to do any testing that involves Edge Delivery, please note the follo
 See [TESTING.md](TESTING.md) for unit, end-to-end and CI details.
 
 ## Additional details
+### Legacy section metadata in previews
+For sites that decorate `.section-metadata` blocks client-side, set
+`legacy-section-metadata` to `true` in the DA site configuration's first sheet.
+Canvas and live preview then preserve the original blocks instead of extracting
+their values into section classes and data attributes. Site values override org
+values; an absent or false flag keeps the existing extraction behavior.
+Reload the editor after changing the flag.
+
+This affects client-side preview serialization only, not da-universal's initial
+server-rendered HTML or standalone preview rendering.
+
 ### Version history in Experience Workspace
 The Versions panel refreshes automatically after the current page is successfully
 previewed or published and its history version is saved. The Refresh icon reloads
