@@ -9,6 +9,7 @@ import {
   getFirstSheet,
   initIms,
 } from '../../shared/utils.js';
+import { renderEmptyList, NOT_PERMITTED } from '../../shared/empty-list.js';
 import { createVersion } from '../../shared/version/version-actions.js';
 
 export const MAX_DELETE_COUNT = 1000;
@@ -170,7 +171,7 @@ export default class DaListBase extends LitElement {
       const { ok, items, continuationToken, permissions } = await source.list(this.fullpath);
       if (!ok) {
         this._directoryError = 'Not permitted to list filenames';
-        this._emptyMessage = 'Not permitted';
+        this._emptyMessage = NOT_PERMITTED;
         this.resetListItemPaths([]);
         return [];
       }
@@ -186,7 +187,7 @@ export default class DaListBase extends LitElement {
       return ordered;
     } catch (error) {
       this._directoryError = `Directory listing failed: ${error.message}`;
-      this._emptyMessage = 'Not permitted';
+      this._emptyMessage = NOT_PERMITTED;
       this.resetListItemPaths([]);
       return [];
     }
@@ -241,7 +242,7 @@ export default class DaListBase extends LitElement {
         permissions,
       } = await source.list(this.fullpath, { continuationToken: requestToken });
       if (!ok) {
-        this._emptyMessage = 'Not permitted';
+        this._emptyMessage = NOT_PERMITTED;
         return { added: 0, token: null };
       }
       if (permissions) this.handlePermissions(permissions);
@@ -909,7 +910,7 @@ export default class DaListBase extends LitElement {
   }
 
   renderEmpty() {
-    return html`<div class="empty-list"><h3>${this._emptyMessage}</h3></div>`;
+    return renderEmptyList(this._emptyMessage);
   }
 
   renderStatus() {

@@ -1,5 +1,7 @@
-import { getNx, getNx2Api } from '../../scripts/utils.js';
+import { render } from 'da-lit';
+import { getNx, getNx2, getNx2Api } from '../../scripts/utils.js';
 import { EMPTY_DOC } from '../shared/utils.js';
+import { renderEmptyList, EMPTY_LIST_CSS } from '../shared/empty-list.js';
 import { getCommentsBridge } from './editor-utils/comments-bridge.js';
 import { initPreflightResponder } from './editor-utils/preflight-responder.js';
 import {
@@ -35,8 +37,14 @@ const {
   PANEL_EVENT,
 } = await import(`${getNx()}/utils/panel.js`);
 
-const style = await loadStyle(import.meta.url);
-document.adoptedStyleSheets = [...document.adoptedStyleSheets, style];
+const [buttonStyle, emptyListStyle, style] = await Promise.all([
+  loadStyle(`${getNx2()}/styles/buttons.css`),
+  loadStyle(EMPTY_LIST_CSS),
+  loadStyle(import.meta.url),
+]);
+document.adoptedStyleSheets = [
+  ...document.adoptedStyleSheets, buttonStyle, emptyListStyle, style,
+];
 
 function buildCanvasDocPath(state) {
   const { org, site, path } = state || {};
@@ -59,17 +67,17 @@ function removeCanvasEditors(mountRoot) {
   mountRoot.querySelector('ew-editor-wysiwyg')?.remove();
 }
 
-function showNotPermitted(mountRoot, message) {
+export function showNotPermitted(mountRoot, message) {
   let el = mountRoot.querySelector('.nx-not-permitted');
   if (!el) {
     el = document.createElement('div');
     el.className = 'nx-not-permitted';
     mountRoot.append(el);
   }
-  el.textContent = message;
+  render(renderEmptyList(message), el);
 }
 
-function removeNotPermitted(mountRoot) {
+export function removeNotPermitted(mountRoot) {
   mountRoot.querySelector('.nx-not-permitted')?.remove();
 }
 
