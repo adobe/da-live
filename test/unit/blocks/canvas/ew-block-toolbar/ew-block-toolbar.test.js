@@ -270,6 +270,25 @@ describe('ew-block-toolbar', () => {
       picker().dispatchEvent(new CustomEvent('change', { detail }));
     }
 
+    it('ignores variant changes and deletes while read-only', () => {
+      toolbar.readOnly = true;
+      try {
+        change({ value: 'wide', values: ['dark', 'wide'], selected: true });
+        expect(header()).to.equal('cards (dark)');
+        toolbar._confirmDelete();
+        expect(editor.view.state.doc.firstChild.type.name).to.equal('table');
+      } finally {
+        toolbar.readOnly = false;
+      }
+    });
+
+    it('drops a pending delete when its interaction is cancelled', () => {
+      toolbar._pendingDelete = true;
+      toolbar.cancelInteraction();
+      expect(toolbar.isInteracting).to.be.false;
+      expect(toolbar.open).to.be.false;
+    });
+
     it('appends a toggled-on variant to the header without moving focus', () => {
       change({ value: 'wide', values: ['dark', 'wide'], selected: true });
       expect(header()).to.equal('cards (dark, wide)');

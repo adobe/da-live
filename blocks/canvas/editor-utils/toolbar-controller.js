@@ -85,11 +85,13 @@ function editorModeAllows(surface) {
 
 /** The one visibility predicate. Interaction state is pulled from the element so
  * a dialog / picker / menu is the single source of truth for "is interacting". */
-function shouldShow(tb) {
+function shouldShow(tb, { readOnlySurface = false, block = null } = {}) {
   if (tb.linkDialogOpen || tb.altDialogOpen || tb.isInteracting) return false;
-  return state.activeSurface !== null
-    && state.showableBySurface[state.activeSurface]
-    && editorModeAllows(state.activeSurface);
+  if (state.activeSurface === null || !editorModeAllows(state.activeSurface)) return false;
+  if (readOnlySurface) {
+    return (state.showableBySurface.wysiwyg || block !== null) && tb.hasCommands !== false;
+  }
+  return state.showableBySurface[state.activeSurface];
 }
 
 /** One block toolbar serves both surfaces: its commands run against the doc view's
@@ -130,9 +132,10 @@ function render() {
   // backdrop — and its commands target the block already being edited.
   const showBlock = block !== null && !state.blockEditOpen && !readOnlySurface
     && editorModeAllows(activeSurface);
+  ensureBlockToolbar().readOnly = readOnlySurface;
   syncBlockToolbar(showBlock ? block : null);
 
-  if (!showBlock && shouldShow(tb) && !(readOnlySurface && tb.hasCommands === false)) {
+  if (!showBlock && shouldShow(tb, { readOnlySurface, block })) {
     tb.show();
   } else if (!tb.linkDialogOpen && !tb.altDialogOpen && !tb.isInteracting) {
     tb.hide();
@@ -228,7 +231,16 @@ canvasBus.editorViewState.subscribe(({ view }) => {
 });
 
 canvasBus.mergeConflictsState.subscribe(({ hasMergeConflicts } = {}) => {
-  state.wysiwygReadOnly = hasMergeConflicts === true;
+  const locked = hasMergeConflicts === true;
+  const locking = locked && !state.wysiwygReadOnly;
+  state.wysiwygReadOnly = locked;
+  const lockedSurface = locked && state.activeSurface === 'wysiwyg';
+  if (toolbarEl) toolbarEl.readOnly = locked;
+  if (blockToolbarEl) blockToolbarEl.readOnly = lockedSurface;
+  if (locking && lockedSurface) {
+    toolbarEl?.cancelInteraction?.();
+    blockToolbarEl?.cancelInteraction?.();
+  }
   scheduleRender();
 });
 

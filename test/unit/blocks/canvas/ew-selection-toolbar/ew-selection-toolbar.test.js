@@ -280,6 +280,48 @@ describe('ew-selection-toolbar buttons', () => {
       .to.equal('/img/icons/s2-icon-image-20-n.svg#icon');
   });
 
+  it('ignores a link submitted after the wysiwyg surface locked', async () => {
+    setText('hello');
+    selectText(1, 6);
+    toolbar.activeSurface = 'wysiwyg';
+    toolbar.openLinkDialog();
+    toolbar.readOnly = true;
+    try {
+      toolbar._onLinkDialogSubmit({ detail: { href: 'https://example.com', text: 'hello' } });
+      const { doc, schema } = editor.view.state;
+      expect(doc.rangeHasMark(0, doc.content.size, schema.marks.link)).to.be.false;
+      expect(toolbar.linkDialogOpen).to.be.false;
+    } finally {
+      toolbar.readOnly = false;
+      toolbar.activeSurface = null;
+    }
+  });
+
+  it('ignores non-comment commands clicked on a locked wysiwyg surface', async () => {
+    setText('hello');
+    selectText(1, 6);
+    toolbar.activeSurface = 'wysiwyg';
+    await toolbar.updateComplete;
+    const strong = toolbar.shadowRoot.querySelector('button[data-id="strong"]');
+    toolbar.readOnly = true;
+    try {
+      strong.click();
+      expect(selectionHasMark('strong')).to.be.false;
+    } finally {
+      toolbar.readOnly = false;
+      toolbar.activeSurface = null;
+    }
+  });
+
+  it('closes open dialogs when its interaction is cancelled', () => {
+    setText('hello');
+    selectText(1, 6);
+    toolbar.openLinkDialog();
+    toolbar.cancelInteraction();
+    expect(toolbar.linkDialogOpen).to.be.false;
+    expect(toolbar.isInteracting).to.be.false;
+  });
+
   it('offers only comments in a read-only wysiwyg surface', async () => {
     setText('hello');
     selectText(1, 6);

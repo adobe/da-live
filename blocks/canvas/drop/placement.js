@@ -7,6 +7,8 @@ canvasBus.mergeConflictsState.subscribe(({ hasMergeConflicts } = {}) => {
   previewReadOnly = hasMergeConflicts === true;
 });
 
+export const isPreviewReadOnly = () => previewReadOnly;
+
 const { getImageDocumentVersion, resolveImagePosition } = await import(
   `${getNx2()}/public/utils/quick-edit-images.js`
 );

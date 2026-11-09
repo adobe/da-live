@@ -109,6 +109,17 @@ class EwSelectionToolbar extends LitElement {
       || this._menus.some((m) => m.open);
   }
 
+  get _locked() {
+    return this.readOnly === true && this.activeSurface === 'wysiwyg';
+  }
+
+  cancelInteraction() {
+    this._picker?.close?.();
+    this._linkDialogOpen = false;
+    this._altDialogOpen = false;
+    this.hide();
+  }
+
   _icon(name) {
     return html`<svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-${name}-20-n.svg#icon"></use></svg>`;
   }
@@ -171,6 +182,7 @@ class EwSelectionToolbar extends LitElement {
     if (!btn || btn.disabled) return;
     const { id } = btn.dataset;
     if (!id) return;
+    if (this._locked && !COMMENT_ITEMS.some((item) => item.id === id)) return;
     COMMAND_BY_ID.get(id)?.apply(this.view);
     this.requestUpdate();
     if (!this._linkDialogOpen && !this._altDialogOpen) {
@@ -208,6 +220,7 @@ class EwSelectionToolbar extends LitElement {
   _onLinkDialogSubmit(e) {
     const { href, text, title } = e.detail;
     this._closeLinkDialog();
+    if (this._locked) return;
     applyLink(this.view, { href, text, title });
     toolbarController.restoreFocus();
     toolbarController.refresh();
@@ -235,6 +248,7 @@ class EwSelectionToolbar extends LitElement {
     if (!this.view) return;
     const { pos } = this.view.state.selection.$anchor;
     this._closeAltDialog();
+    if (this._locked) return;
     this.view.dispatch(this.view.state.tr.setNodeAttribute(pos, 'alt', alt));
     toolbarController.restoreFocus();
     toolbarController.refresh();
@@ -279,7 +293,7 @@ class EwSelectionToolbar extends LitElement {
       import('../ew-editor-doc/prose-plugins/imageDrop.js'),
     ]);
     const details = getSourceUploadContext(this.sourceUrl);
-    if (!details) return;
+    if (!details || this._locked) return;
     await uploadImageFile(this.view, file, details);
   }
 
