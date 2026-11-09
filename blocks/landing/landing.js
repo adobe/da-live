@@ -12,6 +12,7 @@ await import(`${getNx()}/blocks/shared/segmented-btn/segmented.js`);
 const background = await loadStyle(import.meta.url);
 const styles = await Promise.all([
   loadStyle(`${getNx2()}/styles/buttons.css`),
+  loadStyle(`${getNx2()}/styles/spinner.css`),
   loadStyle(new URL('./landing-content.css', import.meta.url).href),
 ]);
 
@@ -291,12 +292,13 @@ export default function init(el) {
   if (!document.adoptedStyleSheets.includes(background)) {
     document.adoptedStyleSheets.push(background);
   }
-  const landing = document.createElement('div');
-  landing.className = 'landing';
-  const theme = new URLSearchParams(window.location.search).get('theme');
-  if (['light', 'dark'].includes(theme)) landing.dataset.theme = theme;
+  let landing = el.querySelector(':scope > .landing');
+  if (!landing) {
+    landing = document.createElement('div');
+    landing.className = 'landing';
+    el.replaceChildren(landing);
+  }
   const content = document.createElement('da-landing');
-  landing.append(content);
-  el.replaceChildren(landing);
+  landing.replaceChildren(content);
   return content;
 }

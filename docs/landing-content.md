@@ -27,7 +27,8 @@ copy. Saved-site selection still needs nav integration; Content does not add a
 replacement picker.
 
 Content mounts inside the gradient landing surface already provided by main.
-`landing.css` retains that page background and its light/dark theme preview.
+`landing.css` retains that page background and inherits the application theme,
+without landing-specific theme overrides.
 `browse.js` loads `landing.css` and adds the empty `.landing` surface before the
 section is shown, so slow loads paint the gradient instead of the authored images.
 `landing-content.css` contains only the Content component's shadow styles.

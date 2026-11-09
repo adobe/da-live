@@ -37,7 +37,7 @@ describe('landing background with Content', () => {
     history.replaceState(null, '', originalHref);
   });
 
-  it('replaces old content with Content inside the existing background surface', async () => {
+  it('replaces authored content with Content inside a landing surface', async () => {
     const content = init(el);
     await content.updateComplete;
     expect(el.children.length).to.equal(1);
@@ -45,6 +45,17 @@ describe('landing background with Content', () => {
     expect(el.firstElementChild.firstElementChild).to.equal(content);
     expect(content.shadowRoot.querySelector('#files-heading').textContent).to.equal('Content');
     expect(el.querySelector('img, picture')).to.equal(null);
+  });
+
+  it('reuses the prepainted landing surface when mounting Content', async () => {
+    const surface = document.createElement('div');
+    surface.className = 'landing';
+    el.replaceChildren(surface);
+    const content = init(el);
+    await content.updateComplete;
+    expect(el.firstElementChild).to.equal(surface);
+    expect(surface.children.length).to.equal(1);
+    expect(surface.firstElementChild).to.equal(content);
   });
 
   it('fills its container and preserves the gradient positions from main', () => {
@@ -61,32 +72,33 @@ describe('landing background with Content', () => {
       .forEach((color) => expect(computed.backgroundImage).to.include(color));
   });
 
-  it('keeps the dark scheme scoped to the mounted landing surface', () => {
+  it('leaves the application scheme unchanged when mounting and removing landing', () => {
     document.body.classList.add('dark-scheme');
     const before = getComputedStyle(document.body).colorScheme;
     init(el);
-    expect(getComputedStyle(document.body).colorScheme).to.equal('dark');
+    expect(getComputedStyle(document.body).colorScheme).to.equal(before);
     el.replaceChildren();
     expect(getComputedStyle(document.body).colorScheme).to.equal(before);
   });
 
-  it('previews light mode without changing the saved theme or other pages', () => {
+  it('ignores a light theme query without changing the application or saved theme', () => {
     const savedTheme = localStorage.getItem('color-scheme');
     document.body.classList.add('dark-scheme');
+    const before = getComputedStyle(document.body).colorScheme;
     history.replaceState(null, '', '?theme=light');
     init(el);
-    expect(getComputedStyle(document.body).colorScheme).to.equal('light');
+    expect(getComputedStyle(document.body).colorScheme).to.equal(before);
     expect(localStorage.getItem('color-scheme')).to.equal(savedTheme);
     el.replaceChildren();
-    expect(getComputedStyle(document.body).colorScheme).not.to.equal('light');
+    expect(getComputedStyle(document.body).colorScheme).to.equal(before);
   });
 
-  it('previews dark mode without changing the saved theme or other pages', () => {
+  it('ignores a dark theme query without changing the application or saved theme', () => {
     const savedTheme = localStorage.getItem('color-scheme');
     const before = getComputedStyle(document.body).colorScheme;
     history.replaceState(null, '', '?theme=dark');
     init(el);
-    expect(getComputedStyle(document.body).colorScheme).to.equal('dark');
+    expect(getComputedStyle(document.body).colorScheme).to.equal(before);
     expect(localStorage.getItem('color-scheme')).to.equal(savedTheme);
     el.replaceChildren();
     expect(getComputedStyle(document.body).colorScheme).to.equal(before);
@@ -95,7 +107,7 @@ describe('landing background with Content', () => {
   it('mirrors light and dark positions with the original middle colors', () => {
     init(el);
     const lightPositions = getComputedStyle(el.firstElementChild).backgroundImage.match(/[\d.]+%/g);
-    history.replaceState(null, '', '?theme=dark');
+    container.style.colorScheme = 'dark';
     el.style.setProperty('--s2-red-100', 'light-dark(#fff6f5, #360a03)');
     el.style.setProperty('--s2-pink-200', 'light-dark(#ffe8f7, #47002c)');
     el.style.setProperty('--s2-indigo-200', 'light-dark(#ebeeff, #23006e)');

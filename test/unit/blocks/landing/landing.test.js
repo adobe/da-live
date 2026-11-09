@@ -516,13 +516,6 @@ describe('landing Content section', () => {
     expect(el.shadowRoot.querySelector('[role="status"]').textContent).to.equal('Loading files...');
     const spinner = el.shadowRoot.querySelector('[role="status"] .nx-loading-spinner');
     expect(spinner.getAttribute('aria-hidden')).to.equal('true');
-    const sheet = new CSSStyleSheet();
-    await sheet.replace(await (await fetch('/blocks/landing/landing-content.css')).text());
-    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
-    el.style.setProperty('--s2-blue-900', 'rgb(59 99 251)');
-    expect(getComputedStyle(spinner).width).to.equal('14px');
-    expect(getComputedStyle(spinner).animationName).to.equal('da-spin');
-    expect(getComputedStyle(spinner).borderTopColor).to.equal('rgb(59, 99, 251)');
     el._files = [];
     await updateLanding();
     expect(el.shadowRoot.querySelector('.empty-state h3').textContent).to.equal('No recent files yet');
