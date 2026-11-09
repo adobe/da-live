@@ -1,13 +1,19 @@
+import { render } from 'da-lit';
 import getPathDetails from '../shared/pathDetails.js';
 import { contentLogin, livePreviewLogin } from '../shared/utils.js';
-import { getNx, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
+import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
+import { renderEmptyList, EMPTY_LIST_CSS, NOT_PERMITTED } from '../shared/empty-list.js';
 
 import './da-title/da-title.js';
 import './da-content/da-content.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const styles = await loadStyle(import.meta.url);
-document.adoptedStyleSheets.push(styles);
+const [buttonStyles, emptyListStyles, styles] = await Promise.all([
+  loadStyle(`${getNx2()}/styles/buttons.css`),
+  loadStyle(EMPTY_LIST_CSS),
+  loadStyle(import.meta.url),
+]);
+document.adoptedStyleSheets.push(buttonStyles, emptyListStyles, styles);
 
 const EMPTY_DOC = '<body><header></header><main><div></div></main><footer></footer></body>';
 const DOMPARSER = new DOMParser();
@@ -23,6 +29,23 @@ async function getDoc(path) {
 async function createDoc(path) {
   const { source } = await getNx2Api();
   return source.save(path, { body: EMPTY_DOC });
+}
+
+export function showNotPermitted({ el, daTitle, message }) {
+  el.querySelector('da-content')?.remove();
+  daTitle.hideActions = true;
+  let container = el.querySelector('.da-edit-not-permitted');
+  if (!container) {
+    container = document.createElement('div');
+    container.className = 'da-edit-not-permitted';
+    el.append(container);
+  }
+  render(renderEmptyList(message), container);
+}
+
+export function removeNotPermitted({ el, daTitle }) {
+  el.querySelector('.da-edit-not-permitted')?.remove();
+  daTitle.hideActions = false;
 }
 
 function initArea(areaName, details, el) {
@@ -78,6 +101,15 @@ async function setUI(el) {
   }
 
   const resp = await docPromise;
+
+  if (resp.status === 401 || resp.status === 403) {
+    wsPromise.then(({ wsProvider }) => wsProvider.disconnect()).catch(() => {});
+    daTitle.permissions = resp.permissions;
+    const message = resp.status === 401 ? 'Sign in required' : NOT_PERMITTED;
+    showNotPermitted({ el, daTitle, message });
+    return;
+  }
+  removeNotPermitted({ el, daTitle });
 
   let permissions;
   let doc;
