@@ -194,6 +194,7 @@ blockquote::before {
   z-index: 2;
 
   &:hover,
+  &:focus-within,
   &:has(.ProseMirror-menu-dropdown-menu) {
     > .ProseMirror-menuitem {
       max-width: 1000px;
@@ -242,7 +243,23 @@ span.ProseMirror-menuseparator {
   border-radius: 1px;
 }
 
-.ProseMirror-menubar > .ProseMirror-menuitem > div {
+.ProseMirror-menubar .img-alt-text {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.ProseMirror-menubar .img-alt-text:focus-visible {
+  outline: 2px solid var(--s2-blue-900, #1373e6);
+  outline-offset: -2px;
+}
+
+.ProseMirror-menubar > .ProseMirror-menuitem > div,
+.ProseMirror-menubar > .ProseMirror-menuitem > .img-alt-text {
   height: 44px;
   line-height: 44px;
   display: flex;
@@ -349,7 +366,8 @@ span.ProseMirror-menuseparator {
   background: url('/blocks/edit/img/Smock_ImageText_18_N.svg') center / 20px no-repeat;
 }
 
-.ProseMirror-menuitem:hover:has(div:not(.ProseMirror-menu-disabled)) {
+.ProseMirror-menuitem:hover:has(div:not(.ProseMirror-menu-disabled)),
+.ProseMirror-menuitem:hover:has(.img-alt-text:not(.ProseMirror-menu-disabled)) {
   background-color: var(--editor-btn-bg-color-hover);
 
   .ProseMirror-menu-dropdown.edit-text,
@@ -603,8 +621,15 @@ span.ProseMirror-menuseparator {
   display: none;
 }
 
-.ProseMirror img.ProseMirror-selectednode {
+.ProseMirror img.ProseMirror-selectednode,
+.ProseMirror .focal-point-image-wrapper.ProseMirror-selectednode img {
   filter: brightness(0.5);
+  outline: 2px solid var(--s2-blue-900, #1373e6);
+  outline-offset: 2px;
+}
+
+.ProseMirror .focal-point-image-wrapper.ProseMirror-selectednode {
+  outline: none;
 }
 
 .ProseMirror table {
