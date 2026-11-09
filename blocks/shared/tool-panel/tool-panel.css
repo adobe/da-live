@@ -294,8 +294,7 @@
 
 /* Six quiet dots that tell the tabs drag to reorder. They always show, so
    hovering never widens a tab. */
-.tool-panel-views[data-reorderable] .tool-panel-tab::before,
-.tool-panel-menu-hint::before {
+.tool-panel-views[data-reorderable] .tool-panel-tab::before {
   content: "";
   display: inline-block;
   flex-shrink: 0;
@@ -309,14 +308,6 @@
 
 .tool-panel-views[data-reorderable] .tool-panel-tab {
   padding-inline-start: 10px;
-}
-
-.tool-panel-menu-hint {
-  display: flex;
-  align-items: center;
-  padding: 0 var(--s2-spacing-100) var(--s2-spacing-75);
-  font-size: var(--s2-body-size-xs);
-  color: var(--s2-gray-700);
 }
 
 /* While a tab drags, it lifts and the others step back. */

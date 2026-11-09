@@ -29,7 +29,6 @@ const ICONS = {
 
 const MENU_TITLE = 'Panels';
 const MENU_LABEL = 'All panels';
-const DRAG_HINT = 'Drag tabs to reorder';
 
 /**
  * View `experience` values that open outside the panel, so they can't be pinned
@@ -640,8 +639,7 @@ class DaToolPanel extends LitElement {
 
   /**
    * Renders the views menu with a section for the pinned views, in tab
-   * order, and a section for the rest. The pinned section tells that the
-   * tabs drag to reorder while they show.
+   * order, and a section for the rest.
    *
    * @param {Array<object>} pinnedViews - The views shown as tabs.
    * @returns {unknown} The menu content template.
@@ -650,10 +648,9 @@ class DaToolPanel extends LitElement {
     const pinnedIds = new Set(pinnedViews.map((view) => view.id));
     const otherViews = (this.views ?? []).filter((view) => !pinnedIds.has(view.id));
     const onlyOnePinned = !this._reorderable;
-    const hint = !this._collapsed && this._reorderable ? DRAG_HINT : '';
 
     return html`
-      ${this._renderMenuGroup('Pinned', pinnedViews, { pinned: true, onlyOnePinned }, hint)}
+      ${this._renderMenuGroup('Pinned', pinnedViews, { pinned: true, onlyOnePinned })}
       ${pinnedViews.length && otherViews.length
     ? html`<hr class="popup-menu-separator" role="separator">`
     : nothing}
@@ -668,10 +665,9 @@ class DaToolPanel extends LitElement {
    * @param {string} title - The section heading.
    * @param {Array<object>} views - The views in the section.
    * @param {object} state - The pin state shared by the section's rows.
-   * @param {string} [hint] - A quiet note under the heading.
    * @returns {unknown} The section template.
    */
-  _renderMenuGroup(title, views, state, hint = '') {
+  _renderMenuGroup(title, views, state) {
     if (!views.length) {
       return nothing;
     }
@@ -679,7 +675,6 @@ class DaToolPanel extends LitElement {
     return html`
       <div class="tool-panel-menu-group" role="group" aria-label=${title}>
         <div class="popup-menu-heading" aria-hidden="true">${title}</div>
-        ${hint ? html`<div class="tool-panel-menu-hint" aria-hidden="true">${hint}</div>` : nothing}
         ${views.map((view) => this._renderMenuRow(view, state))}
       </div>
     `;

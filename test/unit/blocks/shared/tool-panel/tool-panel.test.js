@@ -361,7 +361,6 @@ describe('DaToolPanel selected panels', () => {
       expect(menu().trigger).to.equal(switcher());
       expect(menu().placement).to.equal('below');
       expect(pinnedMenuIds()).to.deep.equal(['files', 'blocks', 'assets']);
-      expect(!!panel.shadowRoot.querySelector('.tool-panel-menu-hint')).to.be.false;
 
       await select('blocks', false);
       await select('assets', false);
@@ -407,17 +406,13 @@ describe('DaToolPanel selected panels', () => {
     }
   });
 
-  it('marks the dragged tab and tells in the menu that pinned tabs drag to reorder', async () => {
+  it('marks the tabs as reorderable and the dragged tab while it drags', async () => {
     const viewsArea = () => panel.shadowRoot.querySelector('.tool-panel-views');
-    const hint = () => panel.shadowRoot.querySelector('.tool-panel-menu-hint');
     const nav = () => panel.shadowRoot.querySelector('.tool-panel-tabs');
     expect(viewsArea().hasAttribute('data-reorderable')).to.be.false;
-    expect(!!hint()).to.be.false;
 
     await pinAll();
     expect(viewsArea().hasAttribute('data-reorderable')).to.be.true;
-    expect(hint().textContent).to.equal('Drag tabs to reorder');
-    expect(hint().parentElement.getAttribute('aria-label')).to.equal('Pinned');
 
     const transfer = new DataTransfer();
     tabs()[1].dispatchEvent(dragEvent('dragstart', transfer));
