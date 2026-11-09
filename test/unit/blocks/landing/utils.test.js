@@ -109,55 +109,95 @@ describe('Content data and destinations on main', () => {
     expect(new URL(items[4].href).pathname).to.equal('/media');
   });
 
-  it('lists only parent folders of saved paths and returns files in saved order', async () => {
-    const a = { path: '/org/site/a.html', name: 'a', ext: 'html', lastModified: 10 };
-    const coffee = { path: '/org/site/de/coffee.html', name: 'coffee', ext: 'html', lastModified: 30 };
-    const other = { path: '/org/site/de/other.html', name: 'other', ext: 'html', lastModified: 40 };
-    const list = sinon.stub().callsFake(async (path, { continuationToken }) => {
-      if (path === '/org/site') return { ok: true, items: [a, { path: '/org/site/de', name: 'de' }] };
-      return continuationToken ? { ok: true, items: [coffee] }
-        : { ok: true, items: [other], continuationToken: 'next' };
+  it('loads saved files directly and keeps folder bookmarks without metadata', async () => {
+    const date = 'Mon, 09 Nov 2026 12:00:00 GMT';
+    const paths = [
+      '/org/site/de/coffee.special.html',
+      '/org/site/missing.html',
+      '/org/site/products.json',
+      '/org/site/docs',
+    ];
+    const getMetadata = sinon.stub().callsFake(async (path) => {
+      if (path === paths[1]) return new Response(null, { status: 404 });
+      return new Response(null, { headers: path === paths[0] ? { 'last-modified': date } : {} });
     });
     const { signal } = new AbortController();
-    const paths = [coffee.path, '/org/site/deleted.html', a.path];
-    expect(await loadFilesByPath({ paths, source: { list }, signal })).to.deep.equal([coffee, a]);
-    expect(list.getCalls().map(({ args }) => args)).to.deep.equal([
-      ['/org/site/de', { continuationToken: undefined, opts: { signal } }],
-      ['/org/site', { continuationToken: undefined, opts: { signal } }],
-      ['/org/site/de', { continuationToken: 'next', opts: { signal } }],
+    expect(await loadFilesByPath({ paths, source: { getMetadata }, signal })).to.deep.equal([
+      { path: paths[0], name: 'coffee.special', ext: 'html', lastModified: Date.parse(date) },
+      { path: paths[2], name: 'products', ext: 'json', lastModified: undefined },
+      { path: paths[3], name: 'docs', ext: undefined },
     ]);
+    expect(getMetadata.getCalls().map(({ args }) => args))
+      .to.deep.equal(paths.slice(0, 3).map((path) => [path]));
   });
 
-  it('stops paginating a folder once all its saved files are found', async () => {
-    const a = { path: '/org/site/a.html', name: 'a' };
-    const list = sinon.stub().resolves({ ok: true, items: [a], continuationToken: 'next' });
-    const { signal } = new AbortController();
-    const files = await loadFilesByPath({ paths: [a.path], source: { list }, signal });
-    expect(files).to.deep.equal([a]);
-    expect(list.callCount).to.equal(1);
-  });
-
-  it('rejects failed listings and repeated pagination tokens instead of returning partial success', async () => {
-    for (const response of [{ ok: false }, { ok: true, items: [], continuationToken: 'same' }]) {
+  it('keeps permission and server errors retryable instead of showing an empty result', async () => {
+    for (const status of [403, 500]) {
       try {
-        await loadFilesByPath({ paths: ['/org/site/a.html'], source: { list: async () => response }, signal: new AbortController().signal });
-        expect.fail('Expected listing failure');
+        await loadFilesByPath({
+          paths: ['/org/site/a.html'],
+          source: { getMetadata: async () => new Response(null, { status }) },
+          signal: new AbortController().signal,
+        });
+        expect.fail('Expected metadata failure');
       } catch (error) {
-        expect(error.message).to.match(/site permissions|did not complete/);
+        expect(error.message).to.include('site permissions');
       }
     }
+  });
+
+  it('uses the shared HEAD endpoint for both DA and Helix 6', async () => {
+    const date = 'Mon, 09 Nov 2026 12:00:00 GMT';
+    const fetch = sinon.stub(window, 'fetch').callsFake(async (url) => new Response(null, {
+      headers: String(url).includes('/ping/metadata-hlx6/')
+        ? { 'x-api-upgrade-available': 'true' } : { 'last-modified': date },
+    }));
+    try {
+      for (const [org, url] of [
+        ['metadata-da', 'https://admin.da.live/source/metadata-da/site/doc.html'],
+        ['metadata-hlx6', 'https://api.aem.live/metadata-hlx6/sites/site/source/doc.html'],
+      ]) {
+        const path = `/${org}/site/doc.html`;
+        const { signal } = new AbortController();
+        expect(await loadFilesByPath({ paths: [path], source, signal }))
+          .to.deep.equal([{ path, name: 'doc', ext: 'html', lastModified: Date.parse(date) }]);
+        expect(fetch.calledWithMatch(url, { method: 'HEAD' })).to.equal(true);
+      }
+    } finally {
+      fetch.restore();
+    }
+  });
+
+  it('bounds active lookups and stops queued work when cancelled', async () => {
+    const request = new AbortController();
+    const finishes = [];
+    const getMetadata = sinon.stub().callsFake(() => new Promise((resolve) => {
+      finishes.push(resolve);
+    }));
+    const paths = Array.from({ length: 8 }, (_, index) => `/org/site/${index}.html`);
+    const pending = loadFilesByPath({ paths, source: { getMetadata }, signal: request.signal });
+    expect(getMetadata.callCount).to.equal(4);
+    request.abort();
+    finishes.reverse().forEach((finish) => finish(new Response(null)));
+    try {
+      await pending;
+      expect.fail('Expected cancellation');
+    } catch (error) {
+      expect(error.name).to.equal('AbortError');
+    }
+    expect(getMetadata.callCount).to.equal(4);
   });
 
   it('does not start an already cancelled request', async () => {
     const request = new AbortController();
     request.abort();
-    const list = sinon.spy();
+    const getMetadata = sinon.spy();
     try {
-      await loadFilesByPath({ paths: ['/org/site/a.html'], source: { list }, signal: request.signal });
+      await loadFilesByPath({ paths: ['/org/site/a.html'], source: { getMetadata }, signal: request.signal });
       expect.fail('Expected cancellation');
     } catch (error) {
       expect(error.name).to.equal('AbortError');
     }
-    expect(list.called).to.equal(false);
+    expect(getMetadata.called).to.equal(false);
   });
 });

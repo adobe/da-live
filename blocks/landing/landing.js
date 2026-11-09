@@ -44,16 +44,11 @@ export class DaLanding extends LitElement {
     _addingSite: { state: true },
   };
 
-  _onStorage = ({ key }) => {
-    if (key === 'da-favorites' || key === null) this.refreshFavorites();
-    if (key === 'da-sites' || key === null) this.refreshSites();
-    if (key === 'da-recent-files' || key === null) this.refreshRecent();
-  };
-
-  _onResume = () => {
+  _onPageShow = ({ persisted }) => {
+    if (!persisted) return;
     this.refreshFavorites();
     this.refreshSites();
-    this.refreshRecent();
+    if (this._scope) this.loadSite();
   };
 
   _onSiteSelect = ({ detail: { value } }) => {
@@ -74,20 +69,19 @@ export class DaLanding extends LitElement {
     this.shadowRoot.adoptedStyleSheets = styles;
     this.refreshFavorites();
     this.refreshSites();
-    if (this._scope) this.loadSite();
-    window.addEventListener('storage', this._onStorage);
-    window.addEventListener('focus', this._onResume);
-    window.addEventListener('pageshow', this._onResume);
+    window.addEventListener('pageshow', this._onPageShow);
     document.addEventListener('site-select', this._onSiteSelect);
     document.addEventListener('site-added', this._onSiteSelect);
+    const value = document.querySelector('nx-nav')?.shadowRoot
+      ?.querySelector('nx-siteselector')?.value;
+    if (value && value !== this._scope) this._onSiteSelect({ detail: { value } });
+    else if (this._scope) this.loadSite();
   }
 
   disconnectedCallback() {
     this._closeAddSite();
     this._request?.abort();
-    window.removeEventListener('storage', this._onStorage);
-    window.removeEventListener('focus', this._onResume);
-    window.removeEventListener('pageshow', this._onResume);
+    window.removeEventListener('pageshow', this._onPageShow);
     document.removeEventListener('site-select', this._onSiteSelect);
     document.removeEventListener('site-added', this._onSiteSelect);
     super.disconnectedCallback();
@@ -125,7 +119,6 @@ export class DaLanding extends LitElement {
       .then((enabled) => (enabled ? '/canvas#' : '/edit#'))
       .catch(() => '/edit#');
     const recent = getRecentFiles(this.path);
-    this._recentPaths = recent;
     try {
       const { source } = await getNx2Api();
       const favorites = getSiteFavorites(this.path).filter((path) => !recent.includes(path));
@@ -146,11 +139,6 @@ export class DaLanding extends LitElement {
 
   refreshFavorites() {
     this._favorites = new Set(getSiteFavorites(this.path));
-  }
-
-  refreshRecent() {
-    if (!this._recentPaths) return;
-    if (getRecentFiles(this.path).join() !== this._recentPaths.join()) this.loadSite();
   }
 
   refreshSites() {

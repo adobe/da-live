@@ -1,7 +1,7 @@
 import { getFileItemHref } from '../shared/da-file-item/navigation.js';
 import { getConfiguredEditor } from '../shared/da-file-item/edit-path.js';
 
-const LIST_CONCURRENCY = 4;
+const METADATA_CONCURRENCY = 4;
 
 export function getBrowseHref({ path = '', href = window.location.href }) {
   const url = new URL(href);
@@ -38,30 +38,27 @@ export function getListItems({ files, favorites, editor = '/edit#', editorConfs 
 }
 
 export async function loadFilesByPath({ paths, source, signal }) {
-  const found = new Map();
-  const parentOf = (path) => path.slice(0, path.lastIndexOf('/'));
-  const loadFolder = async (folder) => {
-    const wanted = paths.filter((path) => parentOf(path) === folder);
-    const tokens = new Set();
-    let continuationToken;
-    do {
-      signal.throwIfAborted();
-      const result = await source.list(folder, { continuationToken, opts: { signal } });
-      signal.throwIfAborted();
-      if (!result.ok) throw new Error('Could not load files. Check your sign-in and site permissions.');
-      result.items.forEach((item) => {
-        if (wanted.includes(item.path)) found.set(item.path, item);
-      });
-      continuationToken = result.continuationToken;
-      if (continuationToken && tokens.has(continuationToken)) {
-        throw new Error('File listing did not complete. Please try again.');
-      }
-      tokens.add(continuationToken);
-    } while (continuationToken && wanted.some((path) => !found.has(path)));
-  };
-  const folders = [...new Set(paths.map(parentOf))];
-  while (folders.length) {
-    await Promise.all(folders.splice(0, LIST_CONCURRENCY).map(loadFolder));
+  const files = [];
+  for (let offset = 0; offset < paths.length; offset += METADATA_CONCURRENCY) {
+    const batch = await Promise.all(paths.slice(offset, offset + METADATA_CONCURRENCY)
+      .map(async (path) => {
+        signal.throwIfAborted();
+        const filename = path.slice(path.lastIndexOf('/') + 1);
+        const dot = filename.lastIndexOf('.');
+        const ext = dot > 0 ? filename.slice(dot + 1) : undefined;
+        const item = { path, name: ext ? filename.slice(0, dot) : filename, ext };
+        if (!item.ext) return item;
+        const response = await source.getMetadata(path);
+        signal.throwIfAborted();
+        if (response.status === 404) return undefined;
+        if (!response.ok) throw new Error('Could not load files. Check your sign-in and site permissions.');
+        const lastModified = Date.parse(response.headers.get('last-modified'));
+        return {
+          ...item,
+          lastModified: Number.isNaN(lastModified) ? undefined : lastModified,
+        };
+      }));
+    files.push(...batch.filter(Boolean));
   }
-  return paths.map((path) => found.get(path)).filter(Boolean);
+  return files;
 }

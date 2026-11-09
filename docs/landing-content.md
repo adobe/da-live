@@ -8,9 +8,11 @@ This feature contains only the Content section. It does not introduce a
 greeting, chat/composer, branding, page artwork or editor changes.
 Content contains no site picker. Site selection belongs in navigation through the
 shared picker (adobe/da-nx#947).
-Content listens for its existing bubbling `site-select` and `site-added` events
-to update the selected scope without changing the root URL. It does not load or
-mount the selector, duplicate its validation, or modify LP.
+On mount, Content reads the existing selector's public `value` from navigation,
+so a selection made before Content loads is not lost. It listens for the existing
+bubbling `site-select` and `site-added` events for subsequent changes, without
+changing the root URL. It does not load or mount the selector, duplicate its
+validation, or modify LP.
 
 With no saved sites in the browser's existing `da-sites` history, Content shows
 "Add a site to get started" without a description, with a blue
@@ -21,9 +23,9 @@ Closing restores focus; successful Add selects the site.
 Repeated clicks open only one dialog, and disconnects or scope changes remove it.
 With saved sites but none selected, it shows "Choose a site to get started" and
 "Select a site from \"Your recent sites\" to see its content.", without a button.
-Saved history alone never selects a site. Cross-tab history changes refresh the
-copy. Saved-site selection still needs nav integration; Content does not add a
-replacement picker.
+Saved history alone never selects a site in Content; navigation owns the selection.
+History changes refresh the copy on page load or a cached Back/Forward restore.
+Content does not add a replacement picker.
 
 Content mounts inside the gradient landing surface already provided by main.
 `landing.css` retains that page background and inherits the application theme,
@@ -62,11 +64,9 @@ occurrence of that exact path, including legacy entries saved under ancestor fol
 It displays at most six files in either view without deleting saved entries.
 The list keeps Name, Folder, Modified and information/favorite controls.
 Changing the filter resets expansion to six. Changing the site also resets
-filters and aborts the previous listing. Favorite changes in another tab
-update stars while the component is connected; files newly starred elsewhere
-appear on the next load.
-Returning to the tab or restoring the page from browser history rereads favorites,
-so missed storage events do not leave stale stars. Unstarring removes a file from
+filters and cancels the previous load. Local star/unstar actions update immediately.
+Favorite changes made elsewhere appear on the next load or cached Back/Forward restore;
+focus and cross-tab storage events do not trigger synchronization. Unstarring removes a file from
 Favorite, not Recent, and never changes the favorite state of a different file
 with the same name.
 Favorite identity is the full file path, including its extension, not its modification date.
@@ -75,21 +75,31 @@ Favorite identity is the full file path, including its extension, not its modifi
 
 Recent shows the files the user opened, newest first. Opening a file in Edit,
 Sheet or Canvas stores its path in browser-local `da-recent-files`, up to eighteen
-per site (`blocks/shared/recent-files.js`). The site is never crawled: Content lists
-only the parent folders of the saved Recent and Favorite paths, at most four at a
-time, and stops paging a folder once its files are found. Deleted or renamed files
-are dropped. Recent is per browser and starts empty until a file is opened.
-Returning to the tab or page reloads Content only if the saved Recent list changed.
+per site (`blocks/shared/recent-files.js`). Content resolves saved file
+paths directly through the shared `source.getMetadata` HEAD API, at most four at a
+time. It derives names and extensions from each path and reads modification times
+from the `Last-Modified` header. It never lists or pages parent folders.
+Missing files (404) are omitted without removing their saved paths.
+Folder favorites are bookmarks built from saved folder paths.
+They do not need file metadata or a modification date, and do not
+make HEAD requests. Folder availability is checked when opened in Browse.
+Recent is per browser and starts empty until a file is opened.
+Content loads on mount, site changes and Retry. A `pageshow` event with
+`persisted: true` reloads the current site when restored from the browser's
+back/forward cache, preserving the selected filter, view and visible-item limit.
+Ordinary `pageshow`, focus and storage events do not reload Content.
 Favorite is sorted by modification date. Folder labels show the site-relative containing
 folder, such as `/de` for `/org/site/de/coffee.html` and `/` for root items.
 The folder link's tooltip shows its full path including org and site.
-Site changes and disconnects abort the listings. Permission/network failures in any
-folder have a retry state, not an empty or partially successful result.
+Site changes and disconnects cancel queued metadata lookups and discard late results.
+The shared metadata API does not accept an abort signal, so in-flight HEAD requests
+may finish. Permission/network failures have a retry state, not an empty or partially
+successful result.
 Both views reuse Browse's file-item menus, details and favorites. Content uses
 the standard type icons, including the image icon, in both cards and list rows,
 without fetching thumbnails. Browse's default lazy card previews are unchanged.
 There are no HTML document thumbnails or screenshot services. Details load only on demand.
-Content owns filtering, pagination, destinations and favorite persistence; its
+Content owns filtering, visible-item limits, destinations and favorite persistence; its
 external list does not fetch another directory or expose bulk actions. The
 opt-in Folder column leaves Browse's default Type column unchanged.
 

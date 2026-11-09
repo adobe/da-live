@@ -14,6 +14,7 @@ const setRecent = (recent) => localStorage.setItem('da-recent-files', JSON.strin
 describe('landing Content section', () => {
   let el;
   let loadSite;
+  let metadata;
 
   const fileList = () => el.shadowRoot.querySelector('da-list');
   const fileItems = () => fileList()?.shadowRoot.querySelectorAll('da-file-item') ?? [];
@@ -31,6 +32,10 @@ describe('landing Content section', () => {
       this._request = new AbortController();
     });
     sinon.stub(config, 'get').resolves({ ok: true, json: async () => ({ data: [] }) });
+    metadata = sinon.stub(source, 'getMetadata').callsFake(async () => new Response(
+      null,
+      { headers: { 'last-modified': 'Mon, 09 Nov 2026 12:00:00 GMT' } },
+    ));
     el = document.createElement('da-landing');
     document.body.append(el);
     el.setScope({ org: 'org', site: 'site' });
@@ -235,43 +240,16 @@ describe('landing Content section', () => {
     expect(fileItems()).to.have.length(6);
   });
 
-  it('updates favorites through the shared card event and another tab', async () => {
+  it('updates favorites through the shared card event without reloading', async () => {
     const item = fileItems()[0];
     item.dispatchEvent(new CustomEvent('favoritechange', { bubbles: true, composed: true }));
     await updateLanding();
     expect(item.isFavorited).to.equal(true);
     expect(getFavorites('/org/site')).to.deep.equal([ITEMS[0].path]);
-    toggleFavorite('/org/site', ITEMS[1].path);
-    window.dispatchEvent(new StorageEvent('storage', { key: 'da-favorites' }));
     el.changeTab('starred');
     await updateLanding();
-    expect(fileItems()).to.have.length(2);
-  });
-
-  ['focus', 'pageshow'].forEach((type) => {
-    it(`refreshes Browse favorites on ${type} without confusing same-named files or removing Recent entries`, async () => {
-      const root = { name: 'coffee', path: '/org/site/coffee.html', ext: 'html' };
-      const nested = { name: 'coffee', path: '/org/site/de/coffee.html', ext: 'html' };
-      el._files = [root, nested];
-      toggleFavorite('/org/site', root.path);
-      toggleFavorite('/org/site/de', nested.path);
-      el.refreshFavorites();
-      el.changeView({ detail: { value: 'list' } });
-      el.changeTab('starred');
-      await updateLanding();
-      expect(fileItems()).to.have.length(2);
-      toggleFavorite('/org/site/de', nested.path);
-      window.dispatchEvent(new Event(type));
-      await updateLanding();
-      expect([...fileItems()].map((item) => item.path)).to.deep.equal([root.path]);
-      expect(el._tab).to.equal('starred');
-      expect(el._view).to.equal('list');
-      el.changeTab('recent');
-      await updateLanding();
-      expect([...fileItems()].map((item) => item.path)).to.deep.equal([root.path, nested.path]);
-      expect(fileItems()[0].isFavorited).to.equal(true);
-      expect(fileItems()[1].shadowRoot.querySelector('button[aria-label="Mark as Favorite"]')).not.to.equal(null);
-    });
+    expect(fileItems()).to.have.length(1);
+    expect(loadSite.callCount).to.equal(1);
   });
 
   it('keeps same-named favorites consistent when an older file falls outside initial Recent', async () => {
@@ -313,11 +291,6 @@ describe('landing Content section', () => {
   it('shows nested Browse favorites with their folder and persists unstar in the same folder in both views', async () => {
     loadSite.restore();
     const coffee = { name: 'coffee', path: '/org/site/de/coffee.html', ext: 'html' };
-    sinon.stub(source, 'list').callsFake(async (path) => ({
-      ok: true,
-      items: path === '/org/site'
-        ? [{ name: 'de', path: '/org/site/de' }, ITEMS[0]] : [coffee],
-    }));
     toggleFavorite('/org/site/de', coffee.path);
     await el.loadSite();
     el.refreshFavorites();
@@ -340,6 +313,31 @@ describe('landing Content section', () => {
     }
   });
 
+  it('keeps folder favorites without file metadata in both views', async () => {
+    loadSite.restore();
+    const folder = '/org/site/docs';
+    const file = ITEMS[0].path;
+    toggleFavorite('/org/site', file);
+    toggleFavorite('/org/site', folder);
+    metadata.withArgs(folder).resolves(new Response(null, { status: 404 }));
+    await el.loadSite();
+    el.refreshFavorites();
+    el.changeTab('starred');
+    for (const view of ['card', 'list']) {
+      el.changeView({ detail: { value: view } });
+      await updateLanding();
+      expect([...fileItems()].map((item) => item.path)).to.have.members([file, folder]);
+      const item = [...fileItems()].find((entry) => entry.path === folder);
+      expect(item.name).to.equal('docs');
+      expect(new URL(item.href).hash).to.equal('#/org/site/docs');
+    }
+    [...fileItems()].find((item) => item.path === folder).requestFavorite();
+    await updateLanding();
+    expect([...fileItems()].map((item) => item.path)).to.deep.equal([file]);
+    expect(getFavorites('/org/site')).to.deep.equal([file]);
+    expect(metadata.calledOnceWithExactly(file)).to.equal(true);
+  });
+
   it('unstars a favorite saved in an ancestor folder without re-saving it elsewhere', async () => {
     const misplaced = { name: 'a', path: '/org/site/de/a.html', ext: 'html' };
     const sameName = { name: 'a', path: '/org/site/a.html', ext: 'html' };
@@ -360,6 +358,45 @@ describe('landing Content section', () => {
       '/other/site/de': [otherSite],
     });
     expect(el.shadowRoot.querySelector('[role="alert"]')).to.equal(null);
+  });
+
+  ['before', 'after'].forEach((timing) => {
+    it(`loads the nav selector's selection made ${timing} Content mounts`, async () => {
+      el.remove();
+      loadSite.restore();
+      loadSite = sinon.spy(DaLanding.prototype, 'loadSite');
+      const { href } = window.location;
+      const path = '/selected/site/page.html';
+      localStorage.setItem('da-sites', JSON.stringify(['history/site', 'selected/site']));
+      setRecent({ '/selected/site': [path] });
+      const nav = document.createElement('nx-nav');
+      const selector = document.createElement('nx-siteselector');
+      (nav.shadowRoot ?? nav.attachShadow({ mode: 'open' })).append(selector);
+      document.body.append(nav);
+      const select = () => {
+        selector.value = 'selected/site';
+        selector.dispatchEvent(new CustomEvent('site-select', {
+          bubbles: true,
+          composed: true,
+          detail: { value: selector.value },
+        }));
+      };
+      try {
+        if (timing === 'before') select();
+        el = document.createElement('da-landing');
+        document.body.append(el);
+        if (timing === 'after') select();
+        expect(el.path).to.equal('/selected/site');
+        expect(loadSite.calledOnce).to.equal(true);
+        await loadSite.firstCall.returnValue;
+        await updateLanding();
+        expect([...fileItems()].map((item) => item.path)).to.deep.equal([path]);
+        expect(metadata.calledOnceWithExactly(path)).to.equal(true);
+        expect(window.location.href).to.equal(href);
+      } finally {
+        nav.remove();
+      }
+    });
   });
 
   ['site-select', 'site-added'].forEach((type) => {
@@ -457,14 +494,14 @@ describe('landing Content section', () => {
     expect(el.shadowRoot.querySelector('.empty-state button, .empty-state a, nx-siteselector')).to.equal(null);
   });
 
-  it('updates the unselected copy when saved sites change or are cleared in another tab', async () => {
+  it('refreshes unselected site history on a cached Back/Forward restore', async () => {
     el.setScope(undefined);
     localStorage.setItem('da-sites', JSON.stringify(['org/site']));
-    window.dispatchEvent(new StorageEvent('storage', { key: 'da-sites' }));
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
     await updateLanding();
     expect(el.shadowRoot.querySelector('.empty-state h3').textContent).to.equal('Choose a site to get started');
     localStorage.removeItem('da-sites');
-    window.dispatchEvent(new StorageEvent('storage', { key: null }));
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
     await updateLanding();
     expect(el.shadowRoot.querySelector('.empty-state h3').textContent).to.equal('Add a site to get started');
   });
@@ -483,15 +520,13 @@ describe('landing Content section', () => {
     expect(el.shadowRoot.querySelector('.empty-state h3').textContent).to.equal('Add a site to get started');
   });
 
-  it('stops reacting to nav selection and site-history changes after removal', () => {
+  it('stops reacting to nav selection and cached restore after removal', () => {
     el.remove();
     const refresh = sinon.spy(el, 'refreshSites');
     const favorites = sinon.spy(el, 'refreshFavorites');
     document.dispatchEvent(new CustomEvent('site-select', { detail: { value: 'other/site' } }));
     document.dispatchEvent(new CustomEvent('site-added', { detail: { value: 'other/site' } }));
-    window.dispatchEvent(new StorageEvent('storage', { key: 'da-sites' }));
-    window.dispatchEvent(new Event('focus'));
-    window.dispatchEvent(new Event('pageshow'));
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
     expect(el.path).to.equal('/org/site');
     expect(refresh.called).to.equal(false);
     expect(favorites.called).to.equal(false);
@@ -586,58 +621,69 @@ describe('landing Content section', () => {
   it('loads the selected site with main APIs and selects the classic editor when EW is off', async () => {
     loadSite.restore();
     setRecent({ '/org/site': ITEMS.map(({ path }) => path) });
-    const list = sinon.stub(source, 'list').resolves({ ok: true, items: ITEMS, permissions: ['read'] });
     await el.loadSite();
     await updateLanding();
-    expect(list.firstCall.args[0]).to.equal('/org/site');
-    expect(list.firstCall.args[1].opts.signal).to.equal(el._request.signal);
+    expect(metadata.getCalls().map(({ args: [path] }) => path))
+      .to.deep.equal(ITEMS.map(({ path }) => path));
     expect(el._editor).to.equal('/edit#');
     expect(fileItems()[0].href).to.include('/edit');
   });
 
-  it('reloads Recent on return only when opened files changed', async () => {
+  it('reloads Recent and favorites only on cached Back/Forward restores, preserving view state', async () => {
     loadSite.restore();
-    const list = sinon.stub(source, 'list').resolves({ ok: true, items: ITEMS });
+    loadSite = sinon.spy(DaLanding.prototype, 'loadSite');
+    setRecent({ '/org/site': [ITEMS[0].path] });
+    toggleFavorite('/org/site', ITEMS[0].path);
+    el.refreshFavorites();
     await el.loadSite();
-    expect(el._files).to.deep.equal([]);
+    el.changeView({ detail: { value: 'list' } });
+    el.changeTab('starred');
+    el._limit = 18;
+    await updateLanding();
+    setRecent({ '/org/site': [ITEMS[2].path, ITEMS[0].path] });
+    toggleFavorite('/org/site', ITEMS[0].path);
+    toggleFavorite('/org/site', ITEMS[1].path);
     window.dispatchEvent(new Event('focus'));
-    await el.updateComplete;
-    expect(list.callCount).to.equal(0);
-    setRecent({ '/org/site': [ITEMS[2].path] });
-    window.dispatchEvent(new Event('pageshow'));
-    await new Promise((resolve) => { setTimeout(resolve, 0); });
-    expect(list.callCount).to.equal(1);
-    expect(el._files).to.deep.equal([ITEMS[2]]);
+    window.dispatchEvent(new StorageEvent('storage', { key: 'da-recent-files' }));
+    window.dispatchEvent(new StorageEvent('storage', { key: 'da-favorites' }));
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: false }));
+    expect(loadSite.callCount).to.equal(1);
+    expect(el._files.map(({ path }) => path)).to.deep.equal([ITEMS[0].path]);
+    expect([...fileItems()].map((item) => item.path)).to.deep.equal([ITEMS[0].path]);
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+    expect(loadSite.callCount).to.equal(2);
+    await loadSite.secondCall.returnValue;
+    await updateLanding();
+    expect(el._files.map(({ path }) => path)).to.deep.equal([ITEMS[2].path, ITEMS[0].path]);
+    expect([...fileItems()].map((item) => item.path)).to.deep.equal([ITEMS[1].path]);
+    expect(el._tab).to.equal('starred');
+    expect(el._view).to.equal('list');
+    expect(el._limit).to.equal(18);
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+    expect(loadSite.callCount).to.equal(3);
+    await loadSite.thirdCall.returnValue;
   });
 
   it('ignores a stale site response and aborts the active request on disconnect', async () => {
     loadSite.restore();
     let finish;
-    const list = sinon.stub(source, 'list');
-    list.onFirstCall().returns(new Promise((resolve) => { finish = resolve; }));
+    metadata.onFirstCall().returns(new Promise((resolve) => { finish = resolve; }));
     const currentItem = { ...ITEMS[1], path: '/other/site/page-1.html' };
     setRecent({ '/org/site': [ITEMS[0].path], '/other/site': [currentItem.path] });
-    list.onSecondCall().resolves({ ok: true, items: [currentItem] });
     const pending = el.loadSite();
     await Promise.resolve();
     el._scope = 'other/site';
     await el.loadSite();
-    finish({ ok: true, items: [ITEMS[0]] });
+    finish(new Response(null));
     await pending;
-    expect(el._files).to.deep.equal([currentItem]);
+    expect(el._files.map(({ path }) => path)).to.deep.equal([currentItem.path]);
     const request = el._request;
     el.remove();
     expect(request.signal.aborted).to.equal(true);
-    window.dispatchEvent(new StorageEvent('storage', { key: 'da-favorites' }));
-    expect(el._files).to.deep.equal([currentItem]);
   });
 
   it('selects Canvas when EW is enabled', async () => {
     loadSite.restore();
-    sinon.stub(source, 'list').callsFake(async (path) => ({
-      ok: true,
-      items: ITEMS.map((item) => ({ ...item, path: item.path.replace('/org/site', path) })),
-    }));
     setRecent({ '/org/site': [ITEMS[0].path] });
     setEWEnabled(true);
     await el.loadSite();
@@ -661,14 +707,6 @@ describe('landing Content section', () => {
       }),
     }));
     setRecent({ '/configured/site': ['/configured/site/forms/a.html', '/configured/site/b.html', '/configured/site/forms/data.json'] });
-    sinon.stub(source, 'list').resolves({
-      ok: true,
-      items: [
-        { name: 'Form', path: '/configured/site/forms/a.html', ext: 'html', lastModified: 3 },
-        { name: 'Page', path: '/configured/site/b.html', ext: 'html', lastModified: 2 },
-        { name: 'Sheet', path: '/configured/site/forms/data.json', ext: 'json', lastModified: 1 },
-      ],
-    });
     setEWEnabled(true);
     await el.loadSite();
     for (const view of ['card', 'list']) {
@@ -695,10 +733,6 @@ describe('landing Content section', () => {
       }
       return { ok: true, json: async () => ({ data: [] }) };
     });
-    sinon.stub(source, 'list').callsFake(async (path) => ({
-      ok: true,
-      items: ITEMS.map((item) => ({ ...item, path: item.path.replace('/org/site', path) })),
-    }));
     setRecent({ '/other/site': ['/other/site/page-0.html'] });
     const pending = el.loadSite();
     await new Promise((resolve) => { setTimeout(resolve, 0); });
@@ -719,7 +753,6 @@ describe('landing Content section', () => {
     loadSite.restore();
     let finish;
     setEWEnabled(new Promise((resolve) => { finish = resolve; }));
-    sinon.stub(source, 'list').resolves({ ok: true, items: ITEMS });
     const pending = el.loadSite();
     await new Promise((resolve) => { setTimeout(resolve, 0); });
     expect(el._files).to.equal(undefined);
@@ -734,7 +767,6 @@ describe('landing Content section', () => {
   it('falls back to the classic editor when the EW flag fails', async () => {
     loadSite.restore();
     setRecent({ '/org/site': ITEMS.slice(0, 18).map(({ path }) => path) });
-    sinon.stub(source, 'list').resolves({ ok: true, items: ITEMS });
     setEWEnabled(Promise.reject(new Error('Flag unavailable')));
     await el.loadSite();
     expect(el._editor).to.equal('/edit#');
@@ -746,13 +778,10 @@ describe('landing Content section', () => {
     const coffee = { name: 'coffee', path: '/org/site/de/coffee.html', ext: 'html', lastModified: 99 };
     setRecent({ '/org/site': [ITEMS[3].path, ITEMS[1].path] });
     toggleFavorite('/org/site/de', coffee.path);
-    const list = sinon.stub(source, 'list').callsFake(async (path) => ({
-      ok: true,
-      items: path === '/org/site' ? [{ name: 'de', path: '/org/site/de' }, ...ITEMS] : [coffee],
-    }));
     await el.loadSite();
     el.refreshFavorites();
-    expect(list.getCalls().map(({ args: [path] }) => path)).to.deep.equal(['/org/site', '/org/site/de']);
+    expect(metadata.getCalls().map(({ args: [path] }) => path))
+      .to.deep.equal([ITEMS[3].path, ITEMS[1].path, coffee.path]);
     expect(el._files.map(({ path }) => path)).to.deep.equal([ITEMS[3].path, ITEMS[1].path]);
     el.changeTab('starred');
     await updateLanding();
