@@ -1,4 +1,6 @@
-export const AEM_ORIGIN = 'https://admin.hlx.page';
+import config, { getServiceEnvs } from '../../scripts/config.js';
+
+export const AEM_ORIGIN = config.aem.adminOrigin;
 
 export const SUPPORTED_IMAGE_TYPES = [
   'image/svg+xml', 'image/png', 'image/jpeg', 'image/gif', 'image/avif', 'image/webp',
@@ -17,62 +19,33 @@ export const SUPPORTED_FILES = {
   ico: 'image/x-icon',
 };
 
-const DA_ADMIN_ENVS = {
-  local: 'http://localhost:8787',
-  stage: 'https://stage-admin.da.live',
-  prod: 'https://admin.da.live',
-};
-
-const DA_COLLAB_ENVS = {
-  local: 'ws://localhost:4711',
-  stage: 'wss://stage-collab.da.live',
-  prod: 'wss://collab.da.live',
-};
-
-const DA_CONTENT_ENVS = {
-  local: 'http://localhost:8788',
-  stage: 'https://stage-content.da.live',
-  prod: 'https://content.da.live',
-};
-
-const DA_LIVE_PREVIEW_ENVS = {
-  local: 'localhost:8000',
-  stage: 'stage-preview.da.live',
-  prod: 'preview.da.live',
-};
-
-const DA_ETC_ENVS = {
-  prod: 'https://da-etc.adobeaem.workers.dev',
-  local: 'http://localhost:8787',
-};
-
-function getDaEnv(location, key, envs) {
+function getDaEnv(location, key, service) {
   const { href } = location;
+  const envs = getServiceEnvs(service, location.origin || new URL(href).origin);
   const query = new URL(href).searchParams.get(key);
   if (query && query === 'reset') {
     localStorage.removeItem(key);
   } else if (query) {
     localStorage.setItem(key, query);
   }
-  const env = envs[localStorage.getItem(key) || 'prod'];
-  // TODO: INFRA
-  return location.origin === 'https://da.page' ? env.replace('.live', '.page') : env;
+  const selected = localStorage.getItem(key) || 'prod';
+  return Object.hasOwn(envs, selected) ? envs[selected] : envs.prod;
 }
 
 export const getDaAdmin = (() => {
   let daAdmin;
   return (location) => {
     if (!location && daAdmin) return daAdmin;
-    daAdmin = getDaEnv(location || window.location, 'da-admin', DA_ADMIN_ENVS);
+    daAdmin = getDaEnv(location || window.location, 'da-admin', 'admin');
     return daAdmin;
   };
 })();
 
-export const DA_ORIGIN = (() => getDaEnv(window.location, 'da-admin', DA_ADMIN_ENVS))();
-export const COLLAB_ORIGIN = (() => getDaEnv(window.location, 'da-collab', DA_COLLAB_ENVS))();
-export const CON_ORIGIN = (() => getDaEnv(window.location, 'da-content', DA_CONTENT_ENVS))();
-export const LIVE_PREVIEW_DOMAIN = (() => getDaEnv(window.location, 'da-live-preview', DA_LIVE_PREVIEW_ENVS))();
-export const DA_ETC_ORIGIN = (() => getDaEnv(window.location, 'da-etc', DA_ETC_ENVS))();
+export const DA_ORIGIN = getDaEnv(window.location, 'da-admin', 'admin');
+export const COLLAB_ORIGIN = getDaEnv(window.location, 'da-collab', 'collab');
+export const CON_ORIGIN = getDaEnv(window.location, 'da-content', 'content');
+export const LIVE_PREVIEW_DOMAIN = getDaEnv(window.location, 'da-live-preview', 'preview');
+export const DA_ETC_ORIGIN = getDaEnv(window.location, 'da-etc', 'etc');
 
 export function getLivePreviewUrl(owner, repo, branch = 'main') {
   const protocol = LIVE_PREVIEW_DOMAIN.startsWith('localhost') ? 'http' : 'https';

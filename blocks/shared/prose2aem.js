@@ -1,4 +1,5 @@
 import getPathDetails from './pathDetails.js';
+import { getServiceOrigins, isAemHost } from '../../scripts/config.js';
 import { parseIcons, removeEditorArtifacts } from './prose-cleanup.js';
 
 function setCursor(cursor, el) {
@@ -90,11 +91,8 @@ function makePictures(editor, live) {
     if (live && clone.src) {
       try {
         const source = new URL(clone.src);
-        if (source.hostname === 'content.da.live' || source.hostname === 'stage-content.da.live') {
-          source.pathname = `/${source.pathname
-            .split('/')
-            .slice(3) // remove org and site
-            .join('/')}`;
+        if (getServiceOrigins('content').includes(source.origin)) {
+          source.pathname = `/${source.pathname.split('/').slice(3).join('/')}`;
           clone.src = source.toString();
         }
       } catch {
@@ -243,9 +241,7 @@ function convertLocalUrlsToRelative(editor) {
 
     try {
       const { hostname, pathname, search, hash } = new URL(url);
-
-      const sameSitePattern = `--${site}--${org}.aem.`;
-      if (hostname.includes(sameSitePattern)) {
+      if (isAemHost(hostname) && hostname.includes(`--${site}--${org}.`)) {
         link.setAttribute('href', `${pathname}${search}${hash}`);
       }
     } catch {
@@ -312,8 +308,9 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
   `;
 
   if (livePreview) {
-    html = html.replaceAll('https://content.da.live/', '/');
-    html = html.replaceAll('https://stage-content.da.live/', '/');
+    getServiceOrigins('content').forEach((origin) => {
+      html = html.replaceAll(`${origin}/`, '/');
+    });
   }
 
   return html;

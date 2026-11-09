@@ -1,4 +1,5 @@
 import { getAuthToken } from '../../shared/utils.js';
+import { isStageHost } from '../../../scripts/config.js';
 
 // Experience Governance (experience-context) origins.
 const EC_ENVS = {
@@ -10,7 +11,7 @@ const EC_KEY = 'ec';
 const EPHEMERAL_HOST = /^adobe-aem-foundation-brand-governance-agent-deploy-[0-9a-f]{6}\.stage\.cloud\.adobe\.io$/;
 
 function getDefaultOrigin(hostname) {
-  const isStage = hostname.endsWith('aem.page') || hostname.endsWith('localhost');
+  const isStage = isStageHost(hostname);
   return isStage ? EC_ENVS.stage : EC_ENVS.prod;
 }
 

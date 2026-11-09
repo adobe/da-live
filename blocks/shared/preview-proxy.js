@@ -1,22 +1,12 @@
 import { getLivePreviewUrl } from './constants.js';
 import { livePreviewLogin } from './utils.js';
-
-const AEM_HOST = /\.aem\.(page|live)$/;
-const CONTENT_HOSTS = new Set(['content.da.live', 'stage-content.da.live']);
-const ADMIN_HOSTS = new Set(['admin.da.live', 'stage-admin.da.live']);
-
-function isPreviewHost(hostname) {
-  return hostname.endsWith('.preview.da.live')
-    || hostname.endsWith('.stage-preview.da.live')
-    || hostname.endsWith('.localhost');
-}
+import { getServiceHosts, getServiceOrigins, isAemHost, isPreviewHost } from '../../scripts/config.js';
 
 function parseBranchHost(hostname) {
   const [branch, site, orgWithDomain] = hostname.split('--');
   if (!branch || !site || !orgWithDomain) return null;
   const [org] = orgWithDomain.split('.');
-  if (!org) return null;
-  return { org, site, branch };
+  return org ? { org, site, branch } : null;
 }
 
 function buildPreviewUrl({
@@ -48,7 +38,7 @@ function resolvePreviewProxyDetails(input, fallback) {
     const url = new URL(input);
     const hosted = parseBranchHost(url.hostname);
     const { pathname, search, hash } = url;
-    if (hosted && (AEM_HOST.test(url.hostname) || isPreviewHost(url.hostname))) {
+    if (hosted && (isAemHost(url.hostname) || isPreviewHost(url.hostname))) {
       return {
         url: buildPreviewUrl({ ...hosted, pathname, search, hash, getUrl }),
         ...hosted,
@@ -56,28 +46,22 @@ function resolvePreviewProxyDetails(input, fallback) {
       };
     }
 
-    if (CONTENT_HOSTS.has(url.hostname)) {
-      const [, org, site, ...rest] = url.pathname.split('/');
+    const contentHosts = getServiceHosts('content');
+    const adminHosts = getServiceHosts('admin');
+    // Host-only compatibility rewrites URLs; credentials use exact origins elsewhere.
+    const isContent = getServiceOrigins('content').includes(url.origin)
+      || (contentHosts.has(url.hostname) && !adminHosts.has(url.hostname));
+    const isAdmin = getServiceOrigins('admin').includes(url.origin)
+      || (adminHosts.has(url.hostname) && !contentHosts.has(url.hostname));
+    if (isContent || isAdmin) {
+      const parts = pathname.slice(1).split('/');
+      if (!isContent) parts.shift();
+      const [org, site, ...rest] = parts;
       if (!org || !site) return { url: input };
       const targetPath = `/${rest.join('/')}`;
       return {
         url: buildPreviewUrl({
-          org, site, branch, pathname: targetPath, search: url.search, hash: url.hash, getUrl,
-        }),
-        org,
-        site,
-        branch,
-        pathname: targetPath,
-      };
-    }
-
-    if (ADMIN_HOSTS.has(url.hostname)) {
-      const [, , org, site, ...rest] = url.pathname.split('/');
-      if (!org || !site) return { url: input };
-      const targetPath = `/${rest.join('/')}`;
-      return {
-        url: buildPreviewUrl({
-          org, site, branch, pathname: targetPath, search: url.search, hash: url.hash, getUrl,
+          org, site, branch, pathname: targetPath, search, hash, getUrl,
         }),
         org,
         site,

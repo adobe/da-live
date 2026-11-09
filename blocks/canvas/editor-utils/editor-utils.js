@@ -2,6 +2,7 @@ import { TextSelection } from 'da-y-wrapper';
 import prose2aem from '../../shared/prose2aem.js';
 import { wrapTablesInWrappers } from '../../shared/version/compare.js';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
+import { getServiceEnvs, isStageHost } from '../../../scripts/config.js';
 import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
 import { toolbarController } from './toolbar-controller.js';
 import {
@@ -585,10 +586,8 @@ export function updateCursors(ctx) {
 // --- preview.js ---
 
 export function getPreviewOrigin(org, repo, branch = 'main') {
-  const hostname = window?.location?.hostname ?? '';
-  const domain = hostname.endsWith('aem.page') || hostname.endsWith('localhost')
-    ? 'stage-preview.da.live'
-    : 'preview.da.live';
+  const envs = getServiceEnvs('preview', window.location.origin);
+  const domain = isStageHost(window.location.hostname) ? envs.stage : envs.prod;
   return `https://${normalizeBranch(branch)}--${repo}--${org}.${domain}`;
 }
 

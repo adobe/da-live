@@ -388,7 +388,7 @@
   width: 20px;
   height: 20px;
   background-color: light-dark(#fff, var(--s2-gray-75, #2c2c2c));
-  background-image: url('https://da.live/img/icons/s2-icon-select-20-n.svg');
+  background-image: url('../../../img/icons/s2-icon-select-20-n.svg');
   background-repeat: no-repeat;
   background-position: center;
   background-size: 16px;

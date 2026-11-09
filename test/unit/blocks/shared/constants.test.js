@@ -33,6 +33,19 @@ describe('DA Admin', () => {
     const env = getDaAdmin({ href: 'http://localhost:3000/?da-admin=reset' });
     expect(env).to.equal('https://admin.da.live');
   });
+
+  it('Uses alternate app service endpoints', () => {
+    expect(getDaAdmin(new URL('https://da.page/?da-admin=reset'))).to.equal('https://admin.da.page');
+    getDaAdmin(new URL('https://da.live/?da-admin=reset'));
+  });
+
+  it('Does not accept arbitrary endpoints as environment selectors', () => {
+    expect(getDaAdmin(new URL('https://da.live/?da-admin=https://attacker.example')))
+      .to.equal('https://admin.da.live');
+    expect(getDaAdmin(new URL('https://da.live/?da-admin=toString')))
+      .to.equal('https://admin.da.live');
+    getDaAdmin(new URL('https://da.live/?da-admin=reset'));
+  });
 });
 
 describe('Other origins', () => {

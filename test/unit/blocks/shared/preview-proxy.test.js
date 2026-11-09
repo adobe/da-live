@@ -60,6 +60,11 @@ describe('getPreviewProxyDetails', () => {
     expect(getPreviewProxyDetails(input).url).to.equal(input);
   });
 
+  it('leaves immutable snapshot review URLs unchanged', () => {
+    const input = 'https://release--main--site--org.aem.reviews/page?x=1#part';
+    expect(getPreviewProxyDetails(input)).to.deep.equal({ url: input });
+  });
+
   it('rewrites a content.da.live URL', () => {
     const details = getPreviewProxyDetails('https://content.da.live/org/site/path/to/page?a=1', { branch: 'feat' });
     expect(details.url).to.equal('https://feat--site--org.preview.da.live/path/to/page?a=1');
@@ -70,6 +75,15 @@ describe('getPreviewProxyDetails', () => {
   it('does not rewrite a lookalike content host', () => {
     const input = 'https://content.da.live.attacker.example/org/site/path';
     expect(getPreviewProxyDetails(input).url).to.equal(input);
+  });
+
+  it('distinguishes content and admin services sharing a local hostname', () => {
+    const content = getPreviewProxyDetails('http://localhost:8788/org/site/page');
+    const admin = getPreviewProxyDetails('http://localhost:8787/source/org/site/page');
+    expect(content.url).to.equal('https://main--site--org.preview.da.live/page');
+    expect(admin.url).to.equal(content.url);
+    const unrelated = 'http://localhost:9999/org/site/page';
+    expect(getPreviewProxyDetails(unrelated).url).to.equal(unrelated);
   });
 
   it('rewrites a stage-content.da.live URL', () => {

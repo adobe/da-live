@@ -10,6 +10,8 @@
  * governing permissions and limitations under the License.
  */
 
+import config from './config.js';
+
 export function sanitizeName(name, preserveDots = true, allowUnderscores = true) {
   if (!name) return null;
 
@@ -52,40 +54,38 @@ if (!nxVer) nxVer = sanitizeName(new URLSearchParams(window.location.search).get
 export const nxJS = nxVer ? '/scripts/nx.js' : '/scripts/nexter.js';
 export const nxCSS = nxVer ? '/styles/styles.css' : '/styles/nexter.css';
 
-export const [setNx, getNx] = (() => {
+export const [setNx, getNx, getNx2, getNx1] = (() => {
   let nx;
+  let nx2;
+  let nx1;
 
   return [
     (nxBase, location) => {
-      // Version nxBase if supplied from query param
-      const nxVerBase = nxVer ? `${nxBase}2` : nxBase;
-
-      nx = (() => {
-        const { hostname, search } = location || window.location;
-        const nxBaseParam = sanitizeName(new URLSearchParams(search).get('nx'));
-        const isProd = !(hostname.includes('.aem.') || hostname.includes('local'));
-
-        // If no custom nexter branch & on prod, use the default CDN route
-        if (!nxBaseParam && isProd) return nxVerBase;
-
-        // Determine set a branch regardless of param
-        const branch = nxBaseParam || 'main';
-
-        // Local is a special key to use nexter from localhost
-        if (branch === 'local') return `http://localhost:6456${nxVerBase}`;
-
-        // Otherwise use a fully qualified branch
-        return `https://${branch}--da-nx--adobe.aem.live${nxVerBase}`;
-      })();
+      const { hostname, search } = location || window.location;
+      const nxParam = sanitizeName(new URLSearchParams(search).get('nx'));
+      const branch = nxParam || 'main';
+      const isAem = [config.aem.previewHost, config.aem.liveHost]
+        .some((host) => hostname.endsWith(`.${host}`));
+      const isProd = !(isAem || hostname.includes('.aem.') || hostname.includes('local'));
+      if (branch === 'local') {
+        nx1 = `http://localhost:6456${nxBase}`;
+        nx2 = `${nx1}2`;
+      } else {
+        const base = !nxParam && isProd ? nxBase
+          : `https://${branch}--${config.nx.repo}--${config.nx.owner}.${config.aem.liveHost}${nxBase}`;
+        nx1 = config.nx.url || base;
+        nx2 = nx1.endsWith('/nx') ? `${nx1}2` : nx1;
+        if (config.nx.url) nx2 = `${nx1}2`;
+        if (config.nx.urlV2) nx2 = config.nx.urlV2;
+      }
+      nx = nxVer ? nx2 : nx1;
+      if (!config.nx.url) nx1 = nx1.replace(/\/nx2$/, '/nx');
       return nx;
-    }, () => nx,
+    }, () => nx, () => nx2, () => nx1,
   ];
 })();
 
-export const getNx2 = () => {
-  const nx = getNx();
-  return nx.endsWith('/nx') ? `${nx}2` : nx;
-};
+export const isNx2 = () => !!nxVer || (!config.nx.url && getNx().endsWith('/nx2'));
 
 let nx2ApiPromise;
 export const getNx2Api = () => {

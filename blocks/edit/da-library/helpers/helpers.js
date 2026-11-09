@@ -7,6 +7,7 @@ import { getPreviewProxyDetails, toPreviewProxyUrl } from '../../../shared/previ
 import { openAssets } from '../../da-assets/da-assets.js';
 import { fetchKeyAutocompleteData } from '../../prose/plugins/slashMenu/keyAutocomplete.js';
 import { getNx2Api, sanitizeName } from '../../../../scripts/utils.js';
+import { getSiteUrl, getServiceOrigins, isAemHost } from '../../../../scripts/config.js';
 import { getBlocks } from './index.js';
 
 export const OOTB_PLUGINS = ['blocks', 'templates', 'icons', 'placeholders'];
@@ -46,12 +47,10 @@ function setupBlockOptions(library) {
   if (blockJsonUrl) fetchKeyAutocompleteData(blockJsonUrl);
 }
 
-const AEM_CONTENT_HOST = /\.(aem|hlx)\.(page|live)$/;
-
 export function aemToContentUrl(url) {
   try {
     const { hostname, pathname, search } = new URL(url);
-    if (!AEM_CONTENT_HOST.test(hostname)) return url;
+    if (!isAemHost(hostname)) return url;
     const parts = hostname.split('--');
     if (parts.length !== 3) return url;
     const [, site, orgWithTld] = parts;
@@ -132,7 +131,7 @@ function calculateSources(org, repo, sheetPath) {
     if (ref === 'local') return `http://localhost:3000${path}`;
 
     // Fallback to the ref in search param (defaults to main)
-    return `https://${ref}--${repo}--${org}.aem.live${path}`;
+    return getSiteUrl('live', { org, site: repo, branch: ref, path });
   });
 }
 
@@ -244,19 +243,17 @@ export function getPreviewUrl(previewUrl) {
 
 export function getAemUrlVars(url) {
   try {
-    const urlObj = new URL(url);
-    if (urlObj.origin.includes('--')) {
-      const [branch, site, orgPlus] = urlObj.hostname.split('--');
-      const [org] = orgPlus.split('.');
-      return [org, site, branch];
+    const parsed = new URL(url);
+    if (parsed.hostname.includes('--')) {
+      const [branch, site, orgWithDomain] = parsed.hostname.split('--');
+      return [orgWithDomain.split('.')[0], site, branch];
     }
-
-    if (urlObj.origin.includes('content.da.live')) {
-      const [, org, site] = urlObj.pathname.split('/');
+    if (getServiceOrigins('content').includes(parsed.origin)) {
+      const [, org, site] = parsed.pathname.split('/');
       return [org, site, 'main'];
     }
-    if (urlObj.origin.includes('admin.da.live')) {
-      const [, , org, site] = urlObj.pathname.split('/');
+    if (getServiceOrigins('admin').includes(parsed.origin)) {
+      const [, , org, site] = parsed.pathname.split('/');
       return [org, site, 'main'];
     }
   } catch {
@@ -277,19 +274,15 @@ export async function loadLibrary() {
 
 export function getItemDetails(item) {
   // Blocks will be path, templates will be value
-  const url = new URL(item.path || item.value);
-  const { hostname, pathname } = url;
-
+  const { hostname, pathname, origin } = new URL(item.path || item.value);
   if (hostname.includes('--')) {
     const [org, site] = hostname.split('.')[0].split('--').reverse();
     return { org, site, pathname };
   }
-  // DA Content Flavor
-  if (hostname.includes('content.da.live')) {
+  if (getServiceOrigins('content').includes(origin)) {
     const [org, site, ...rest] = pathname.slice(1).split('/');
     return { org, site, pathname: `/${rest.join('/')}` };
   }
-  // DA Admin Flavor
   const [, org, site, ...rest] = pathname.slice(1).split('/');
   return { org, site, pathname: `/${rest.join('/')}` };
 }
