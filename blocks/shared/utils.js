@@ -431,8 +431,8 @@ export async function fetchPreviewOptions({ org, site }) {
   );
   const rows = configs.reverse()
     .filter((config) => config && !config.error)
-    .flatMap((config) => getFirstSheet(config) || []);
-  const value = rows.find((row) => row.key === 'legacy-section-metadata')?.value;
+    .flatMap((config) => getSheetByName(config, 'flags') || []);
+  const value = rows.find((row) => row.key === 'ew.legacy-section-metadata')?.value;
   return { legacySectionMetadata: value === true || value === 'true' };
 }
 

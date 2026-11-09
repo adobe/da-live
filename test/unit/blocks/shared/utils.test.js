@@ -763,6 +763,16 @@ describe('fetchPreviewOptions', () => {
     window.fetch = savedFetch;
   });
 
+  function configWithFlag(value) {
+    const data = value === undefined ? [] : [{ key: 'ew.legacy-section-metadata', value }];
+    return {
+      ':type': 'multi-sheet',
+      ':names': ['data', 'flags'],
+      data: { data: [] },
+      flags: { data },
+    };
+  }
+
   const cases = [
     { title: 'defaults to extraction', expected: false },
     { title: 'accepts a site string true', siteValue: 'true', expected: true },
@@ -779,12 +789,27 @@ describe('fetchPreviewOptions', () => {
       const site = 'site';
       window.fetch = async (url) => {
         const value = String(url).replace(/\/$/, '').endsWith(`/${org}/${site}`) ? siteValue : orgValue;
-        const data = value === undefined ? [] : [{ key: 'legacy-section-metadata', value }];
-        return new Response(JSON.stringify({ data }), { status: 200 });
+        return new Response(JSON.stringify(configWithFlag(value)), { status: 200 });
       };
       expect(await fetchPreviewOptions({ org, site }))
         .to.deep.equal({ legacySectionMetadata: expected });
     });
+  });
+
+  it('ignores the setting in the first sheet', async () => {
+    const config = configWithFlag();
+    config.data.data = [{ key: 'ew.legacy-section-metadata', value: 'true' }];
+    window.fetch = async () => new Response(JSON.stringify(config), { status: 200 });
+    expect(await fetchPreviewOptions({ org: `preview-options-${index}`, site: 'site' }))
+      .to.deep.equal({ legacySectionMetadata: false });
+  });
+
+  it('ignores the unprefixed setting in the flags sheet', async () => {
+    const config = configWithFlag();
+    config.flags.data = [{ key: 'legacy-section-metadata', value: 'true' }];
+    window.fetch = async () => new Response(JSON.stringify(config), { status: 200 });
+    expect(await fetchPreviewOptions({ org: `preview-options-${index}`, site: 'site' }))
+      .to.deep.equal({ legacySectionMetadata: false });
   });
 
   it('keeps extraction when configs are unavailable', async () => {
@@ -797,7 +822,7 @@ describe('fetchPreviewOptions', () => {
     const org = `preview-options-${index}`;
     window.fetch = async (url) => {
       if (String(url).replace(/\/$/, '').endsWith(`/${org}`)) throw new Error('offline');
-      return new Response(JSON.stringify({ data: [{ key: 'legacy-section-metadata', value: 'true' }] }), { status: 200 });
+      return new Response(JSON.stringify(configWithFlag('true')), { status: 200 });
     };
     expect(await fetchPreviewOptions({ org, site: 'site' }))
       .to.deep.equal({ legacySectionMetadata: true });
