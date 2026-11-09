@@ -272,7 +272,22 @@ function markDiff(root, kind) {
 // pair, the content of a lone node. The hidden second half of a pair goes.
 // The node views render a block as a bare table, but prose2aem only turns a
 // table inside a .tableWrapper into a block, so each table gets its wrapper back.
-function unwrapDiffViews(root) {
+const DIFF_CONTAINERS = '.loc-tabbed-container, .loc-single-container';
+const EDIT_INDEX_ATTRS = ['data-prose-index', 'data-block-index', 'data-image-index', 'data-image-version'];
+
+// posAtDOM can't see inside a conflict node view, so every index under it is the
+// position of the conflict node itself. Clicking such an element would mount the
+// wrong node (the upstream side of a pair) in the preview's inline editor.
+function stripEditIndices(root) {
+  root.querySelectorAll(DIFF_CONTAINERS).forEach((container) => {
+    container.querySelectorAll('.block-marker').forEach((el) => el.remove());
+    container.querySelectorAll(EDIT_INDEX_ATTRS.map((attr) => `[${attr}]`).join(', '))
+      .forEach((el) => EDIT_INDEX_ATTRS.forEach((attr) => el.removeAttribute(attr)));
+  });
+}
+
+function unwrapDiffViews(root, { stripIndices = false } = {}) {
+  if (stripIndices) stripEditIndices(root);
   root.querySelectorAll('.loc-pair-hidden').forEach((el) => el.remove());
   root.querySelectorAll('.loc-tabbed-container').forEach((container) => {
     const local = container.querySelector('.diff-tab-pane[data-tab="added"]');
@@ -292,7 +307,7 @@ function unwrapDiffViews(root) {
   });
 }
 
-export function getInstrumentedHTML(view) {
+export function getInstrumentedHTML(view, { stripDiffIndices = false } = {}) {
   const editorClone = view.dom.cloneNode(true);
 
   const originalElements = view.dom.querySelectorAll(EDITABLE_SELECTORS);
@@ -351,7 +366,7 @@ export function getInstrumentedHTML(view) {
     }
   });
 
-  unwrapDiffViews(editorClone);
+  unwrapDiffViews(editorClone, { stripIndices: stripDiffIndices });
 
   const remoteCursors = editorClone.querySelectorAll('.ProseMirror-yjs-cursor');
 
@@ -553,10 +568,14 @@ function postBody(ctx) {
   clearMetadataRerenderTimer(ctx);
   const { doc } = ctx.view.state;
   const body = getInstrumentedHTML(ctx.view);
-  const rerenderScope = getRerenderScope({ previousDoc: getBaseline(ctx), doc, body });
+  const hasDiffViews = !!ctx.view.dom.querySelector(DIFF_CONTAINERS);
+  const previewBody = hasDiffViews
+    ? getInstrumentedHTML(ctx.view, { stripDiffIndices: true })
+    : body;
+  const rerenderScope = getRerenderScope({ previousDoc: getBaseline(ctx), doc, body: previewBody });
   ctx.port.postMessage({
     type: MESSAGE_TYPES.SET_BODY,
-    payload: { body, rerenderScope, documentVersion: getImageDocumentVersion(doc) },
+    payload: { body: previewBody, rerenderScope, documentVersion: getImageDocumentVersion(doc) },
   });
   ctx.syncedDoc = doc;
   ctx.confirmedDoc = doc;

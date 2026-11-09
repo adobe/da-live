@@ -6,7 +6,7 @@ import { getDiffClass } from '../../../../../blocks/edit/prose/diff/diff-utils.j
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { getInstrumentedHTML, parseSections } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
+const { getInstrumentedHTML, parseSections, updateDocument } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
 
 const schema = getSchema();
 const para = (text) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
@@ -217,6 +217,86 @@ describe('getInstrumentedHTML with merge conflicts', () => {
       expect(html.match(/<div class="hero small"[^>]*>/g) || []).to.have.length(1);
       expect(html).to.include('local headline');
       expect(html).to.not.include('upstream headline');
+    } finally {
+      cleanup();
+    }
+  });
+});
+
+describe('getInstrumentedHTML for the read-only preview', () => {
+  const image = { type: 'image', attrs: { src: 'https://example.com/a.png' } };
+  const content = () => [
+    para('intro'),
+    deleted('upstream text'), added('local text'),
+    deletedBlock('hero', 'upstream headline'), addedBlock('hero', 'local headline'),
+    { type: 'diff_added', content: [{ type: 'paragraph', content: [image] }] },
+    block('cards', 'shared'),
+  ];
+  const preview = (view) => getInstrumentedHTML(view, { stripDiffIndices: true });
+  const fragment = (html) => new DOMParser().parseFromString(html, 'text/html');
+
+  it('leaves no editing indices on conflict content', () => {
+    const { view, cleanup } = makeDiffView(content());
+    try {
+      const doc = fragment(preview(view));
+      const marked = [...doc.querySelectorAll('[data-diff]')];
+      expect(marked.length).to.be.greaterThan(2);
+      marked.forEach((el) => {
+        const own = ['data-prose-index', 'data-block-index', 'data-image-index'];
+        own.forEach((attr) => expect(el.hasAttribute(attr), `${el.outerHTML} ${attr}`).to.be.false);
+        expect(
+          el.querySelector('[data-prose-index], [data-block-index], [data-image-index]'),
+          el.outerHTML,
+        ).to.be.null;
+      });
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('keeps the indices and markers of content outside conflicts', () => {
+    const { view, cleanup } = makeDiffView(content());
+    try {
+      const doc = fragment(preview(view));
+      expect(doc.querySelector('p[data-prose-index]').textContent).to.equal('intro');
+      expect(doc.querySelector('div.cards').getAttribute('data-block-index')).to.match(/^\d+$/);
+      expect(doc.querySelector('div.hero[data-diff="local"]')).to.exist;
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('keeps conflict indices in the default output, which the outline reads', () => {
+    const { view, cleanup } = makeDiffView(content());
+    try {
+      const doc = fragment(getInstrumentedHTML(view));
+      expect(doc.querySelector('[data-diff="local"][data-prose-index]')).to.exist;
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('posts the stripped body to the preview but returns the indexed body for the outline', () => {
+    const { view, cleanup } = makeDiffView(content());
+    const posted = [];
+    const ctx = { view, suppressRerender: false, port: { postMessage: (m) => posted.push(m) } };
+    try {
+      const returned = updateDocument(ctx);
+      const sent = posted.find((m) => m.type === 'set-body').payload.body;
+      expect(fragment(sent).querySelector('[data-diff][data-prose-index]')).to.be.null;
+      expect(fragment(returned).querySelector('[data-diff="local"][data-prose-index]')).to.exist;
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('sends the same body for the preview and the outline when there are no conflicts', () => {
+    const { view, cleanup } = makeDiffView([para('a'), block('cards', 'b')]);
+    const posted = [];
+    const ctx = { view, suppressRerender: false, port: { postMessage: (m) => posted.push(m) } };
+    try {
+      const returned = updateDocument(ctx);
+      expect(posted.find((m) => m.type === 'set-body').payload.body).to.equal(returned);
     } finally {
       cleanup();
     }
