@@ -263,6 +263,19 @@ export function extractCursors(view) {
   return [...cursorMap.values()];
 }
 
+function markDiff(root, kind) {
+  [...root.children].forEach((el) => {
+    if (el.classList.contains('tableWrapper')) {
+      const marker = document.createElement('div');
+      marker.className = 'diff-marker';
+      marker.setAttribute('data-diff', kind);
+      el.insertAdjacentElement('beforebegin', marker);
+    } else {
+      el.setAttribute('data-diff', kind);
+    }
+  });
+}
+
 // Merge-conflict node views render their own UI (tabs, buttons, overlays).
 // Serialize what the author sees by default instead: the local version of a
 // pair, the content of a lone node. The hidden second half of a pair goes.
@@ -277,11 +290,13 @@ function unwrapDiffViews(root) {
       return;
     }
     wrapTablesInWrappers(local);
+    markDiff(local, 'local');
     container.replaceWith(...local.childNodes);
   });
   root.querySelectorAll('.loc-single-container').forEach((container) => {
     container.querySelectorAll(':scope > .loc-color-overlay').forEach((el) => el.remove());
     wrapTablesInWrappers(container);
+    markDiff(container, container.classList.contains('loc-deleted-view') ? 'upstream' : 'local');
     container.replaceWith(...container.childNodes);
   });
 }
@@ -369,6 +384,11 @@ export function getInstrumentedHTML(view) {
   // Serialize clone to HTML, then move block-marker index onto wrapper as data-block-index
   // (same pattern as da-nx qe-advanced: getInstrumentedHTML in prose2aem.js).
   let htmlString = prose2aem(editorClone, true, false);
+  htmlString = htmlString.replace(
+    /<div class="diff-marker" data-diff="(\w+)"><\/div>\s*<div([^>]*?)>/gi,
+    (_match, kind, divAttributes) => `<div${divAttributes} data-diff="${kind}">`,
+  );
+  htmlString = htmlString.replace(/<div class="diff-marker"[^>]*><\/div>/gi, '');
   htmlString = htmlString.replace(
     /<div class="block-marker" data-prose-index="(\d+)"><\/div>\s*<div([^>]*?)>/gi,
     (_match, proseIndex, divAttributes) => `<div${divAttributes} data-block-index="${proseIndex}">`,

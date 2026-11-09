@@ -93,6 +93,68 @@ describe('getInstrumentedHTML with merge conflicts', () => {
     }
   });
 
+  it('marks the local side of a conflict pair as local', () => {
+    const { view, cleanup } = makeDiffView([
+      para('intro'),
+      deleted('first upstream'), added('first local'),
+    ]);
+    try {
+      const html = getInstrumentedHTML(view);
+      expect(html).to.match(/<p[^>]*data-diff="local"[^>]*>first local<\/p>/);
+      expect(html).to.match(/<p(?![^>]*data-diff)[^>]*>intro<\/p>/);
+      expect(html).to.not.include('diff-marker');
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('marks a lone added node as local and a lone deleted node as upstream', () => {
+    const { view, cleanup } = makeDiffView([
+      added('only local'), para('between'), deleted('only upstream'),
+    ]);
+    try {
+      const html = getInstrumentedHTML(view);
+      expect(html).to.match(/<p[^>]*data-diff="local"[^>]*>only local<\/p>/);
+      expect(html).to.match(/<p[^>]*data-diff="upstream"[^>]*>only upstream<\/p>/);
+      expect(html).to.match(/<p(?![^>]*data-diff)[^>]*>between<\/p>/);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('marks a block in a conflict pair on the block element', () => {
+    const { view, cleanup } = makeDiffView([
+      para('intro'),
+      deletedBlock('hero (small)', 'upstream headline'),
+      addedBlock('hero (small)', 'local headline'),
+    ]);
+    try {
+      const html = getInstrumentedHTML(view);
+      expect(html).to.match(/<div class="hero small"[^>]*data-diff="local"/);
+      expect(html).to.not.include('diff-marker');
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('marks a block in a lone conflict node and keeps its block index', () => {
+    const { view, cleanup } = makeDiffView([
+      block('hero (small)', 'shared headline'),
+      deletedBlock('hero (small)', 'upstream headline'),
+    ]);
+    try {
+      const html = getInstrumentedHTML(view);
+      const blocks = html.match(/<div class="hero small"[^>]*>/g) || [];
+      expect(blocks).to.have.length(2);
+      expect(blocks[0]).to.not.include('data-diff');
+      expect(blocks[1]).to.include('data-diff="upstream"');
+      expect(blocks[1]).to.match(/data-block-index="\d+"/);
+      expect(html).to.not.include('diff-marker');
+    } finally {
+      cleanup();
+    }
+  });
+
   it('renders the local block of a conflict pair as that block', () => {
     const { view, cleanup } = makeDiffView([
       para('intro'),
