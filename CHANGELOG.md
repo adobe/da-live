@@ -1,3 +1,10 @@
+## [1.21.4](https://github.com/adobe/da-live/compare/v1.21.3...v1.21.4) (2026-11-09)
+
+
+### Bug Fixes
+
+* **ew:** paste text inside inline code blocks correctly ([#1491](https://github.com/adobe/da-live/issues/1491)) ([7e700d4](https://github.com/adobe/da-live/commit/7e700d4d3c3c6e39f9eb3cb533a92a7dd446d2aa))
+
 ## [1.21.3](https://github.com/adobe/da-live/compare/v1.21.2...v1.21.3) (2026-11-09)
 
 
