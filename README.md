@@ -42,6 +42,10 @@ If you wish to do any testing that involves Edge Delivery, please note the follo
 1. Your local/stage project will need to have a stage compatible fstab entry. Hostname: `stage-content.da.live`
 1. Edge Delivery cannot validate a Stage Adobe Identity. Your stage project should have auth turned off: `requireAuth: false`
 
+## Testing
+
+See [TESTING.md](TESTING.md) for unit, end-to-end and CI details.
+
 ## Additional details
 ### Version history in Experience Workspace
 The Versions panel refreshes automatically after the current page is successfully

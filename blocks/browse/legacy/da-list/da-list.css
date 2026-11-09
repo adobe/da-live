@@ -44,16 +44,6 @@ da-list-item.is-expanded::after {
   margin: 0;
 }
 
-/* Empty list */
-.empty-list {
-  border: 1px solid var(--s2-gray-100);
-  border-radius: 6px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 75px;
-}
-
 .da-browse-panel-header {
   margin: var(--s2-spacing-100) 0 var(--s2-spacing-300) 0;
   padding: 0 var(--s2-spacing-400);
