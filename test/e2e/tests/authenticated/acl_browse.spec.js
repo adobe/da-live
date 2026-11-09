@@ -13,7 +13,7 @@ import { test, expect } from '../../utils/fixtures.js';
 import ENV from '../../utils/env.js';
 import { getTestPageURL, getQuery, fill, TEST_SITE } from '../../utils/page.js';
 import { row, selectRow, deleteSelected } from '../../utils/browse.js';
-import { dismissAlertBanner } from '../../utils/utils.js';
+import { dismissAlertBanner, expectNotPermittedOpensProfile, forceForbidden } from '../../utils/utils.js';
 
 test('Read-only directory', async ({ page }) => {
   test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
@@ -129,5 +129,25 @@ test('No access directory should not show anything', async ({ page }) => {
   // We need to reload the page explicitly because the only thing we changed
   // was the anchor and that doesn't normally trigger a change
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Not permitted' })).toBeVisible();
+  await expectNotPermittedOpensProfile(page, expect);
+});
+
+test('Not permitted directory recovers after switching to an authorized org', async ({ page }) => {
+  test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
+
+  // The test user only belongs to one org, so simulate "signed into the wrong
+  // org" by forcing a 403 on a directory the user can actually read.
+  const listUrl = /\/list\/da-testautomation\/acltest\/testdocs\/subdir(\?|$)/;
+  const restore = await forceForbidden(page, listUrl);
+
+  await page.goto(`${ENV}/${getQuery()}#/da-testautomation/acltest/testdocs/subdir`);
+  await page.reload();
+  await expectNotPermittedOpensProfile(page, expect);
+
+  // Switching org in the profile menu reloads the page with the new token.
+  await restore();
+  await page.reload();
+
+  await expect(page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/onlyread-doc"]')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Not permitted' })).toHaveCount(0);
 });
