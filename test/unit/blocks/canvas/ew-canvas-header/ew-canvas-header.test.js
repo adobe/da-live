@@ -61,19 +61,33 @@ describe('ew-canvas-header segments', () => {
     expect(header.editorView).to.equal('content');
   });
 
-  it('lets the view switch to layout and split while a doc has merge conflicts', async () => {
+  it('disables layout but keeps content and split while a doc has merge conflicts', async () => {
     header.editorView = 'content';
     header.hasUnresolvedMergeConflicts = true;
     await header.updateComplete;
     const layout = segmentByLabel(header, 'Layout');
     const split = header.shadowRoot.querySelector('.segment-icon');
-    expect(layout.disabled).to.be.false;
+    expect(layout.disabled).to.be.true;
+    expect(layout.title).to.contain('Resolve conflicts');
     expect(split.disabled).to.be.false;
 
-    layout.click();
-    expect(header.editorView).to.equal('layout');
+    header.setEditorView('layout');
+    expect(header.editorView).to.equal('content');
     split.click();
     expect(header.editorView).to.equal('split');
+    segmentByLabel(header, 'Content').click();
+    expect(header.editorView).to.equal('content');
+  });
+
+  it('allows layout again once conflicts are resolved', async () => {
+    header.editorView = 'content';
+    header.hasUnresolvedMergeConflicts = true;
+    await header.updateComplete;
+    header.hasUnresolvedMergeConflicts = false;
+    await header.updateComplete;
+    expect(segmentByLabel(header, 'Layout').disabled).to.be.false;
+    header.setEditorView('layout');
+    expect(header.editorView).to.equal('layout');
   });
 
   it('uses shared chat availability at org level and site level', async () => {

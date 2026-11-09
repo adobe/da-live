@@ -104,6 +104,7 @@ class EWCanvasHeader extends LitElement {
   }
 
   setEditorView(view) {
+    if (this.hasUnresolvedMergeConflicts && view === 'layout') return;
     if (!EDITOR_VIEWS.includes(view) || view === this.editorView) return;
     this.editorView = view;
     canvasBus.editorViewRequest.emit({ view });
@@ -156,6 +157,8 @@ class EWCanvasHeader extends LitElement {
               type="button"
               class="segment ${this.editorView === 'layout' ? 'is-selected' : ''}"
               aria-pressed=${this.editorView === 'layout'}
+              title=${this.hasUnresolvedMergeConflicts ? 'Resolve conflicts to use layout view' : nothing}
+              ?disabled=${this.hasUnresolvedMergeConflicts}
               @click=${() => this.setEditorView('layout')}
             >Layout</button>
             <button

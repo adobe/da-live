@@ -5,6 +5,7 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { notifyCanvasEditorActive, default: decorate } = await import('../../../../blocks/canvas/canvas.js');
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { canvasBus } = await import('../../../../blocks/canvas/utils/canvas-bus.js');
 const { PANEL_EVENT, setPanelMocks } = await import(`${getNx()}/utils/panel.js`);
 const { setChatAvailability } = await getNxEWFlags();
 
@@ -61,6 +62,46 @@ describe('canvas editor view visibility', () => {
         setPanelMocks();
         setChatAvailability(async () => false);
         hashChange._set({});
+      }
+    });
+  });
+
+  describe('merge conflicts', () => {
+    async function decorated() {
+      const wrapper = document.createElement('div');
+      const block = document.createElement('div');
+      wrapper.append(block);
+      document.body.append(wrapper);
+      setChatAvailability(async () => false);
+      hashChange._set({});
+      await decorate(block);
+      return { wrapper, header: document.querySelector('ew-canvas-header') };
+    }
+
+    afterEach(() => {
+      canvasBus.mergeConflictsState.emit({ hasMergeConflicts: false });
+      document.querySelectorAll('ew-canvas-header').forEach((h) => h.remove());
+      hashChange._set({});
+    });
+
+    it('moves layout to split view when conflicts appear, and leaves other views alone', async () => {
+      const { wrapper, header } = await decorated();
+      const requested = [];
+      const unsub = canvasBus.editorViewRequest.subscribe(({ view }) => requested.push(view));
+      try {
+        header.editorView = 'layout';
+        canvasBus.mergeConflictsState.emit({ hasMergeConflicts: true });
+        expect(requested).to.deep.equal(['split']);
+
+        requested.length = 0;
+        header.editorView = 'content';
+        canvasBus.mergeConflictsState.emit({ hasMergeConflicts: true });
+        header.editorView = 'split';
+        canvasBus.mergeConflictsState.emit({ hasMergeConflicts: true });
+        expect(requested).to.deep.equal([]);
+      } finally {
+        unsub();
+        wrapper.remove();
       }
     });
   });
