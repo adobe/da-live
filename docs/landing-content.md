@@ -82,6 +82,7 @@ per site (`blocks/shared/recent-files.js`). The site is never crawled: Content l
 only the parent folders of the saved Recent and Favorite paths, at most four at a
 time, and stops paging a folder once its files are found. Deleted or renamed files
 are dropped. Recent is per browser and starts empty until a file is opened.
+Returning to the tab or page reloads Content only if the saved Recent list changed.
 Favorite is sorted by modification date. Folder labels show the site-relative containing
 folder, such as `/de` for `/org/site/de/coffee.html` and `/` for root items.
 The folder link's tooltip shows its full path including org and site.
