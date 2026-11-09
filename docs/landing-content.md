@@ -3,6 +3,9 @@
 The opt-in Content page uses Browse's `da-list` and `da-file-item` in both views. Open
 `/?landing=true&nx=main&nxver=2`. Without `landing=true`, Browse keeps its existing renderer
 and navigation. A site or folder hash always opens Browse, even with `landing=true`.
+The Content opt-in uses v2 Browse for those hashes so both views share one set of
+custom-element definitions. Explicit `browse=1` retains legacy Browse and its Home
+view instead of Content.
 
 This feature contains only the Content section. It does not introduce a
 greeting, chat/composer, branding, page artwork or editor changes.
@@ -10,22 +13,20 @@ Content contains no site picker. Site selection belongs in navigation through th
 shared picker (adobe/da-nx#947).
 On mount, Content reads the existing selector's public `value` from navigation,
 so a selection made before Content loads is not lost. It listens for the existing
-bubbling `site-select` and `site-added` events for subsequent changes, without
+bubbling `site-select` event for subsequent changes, without
 changing the root URL. It does not load or mount the selector, duplicate its
 validation, or modify LP.
 
-With no saved sites in the browser's existing `da-sites` history, Content shows
-"Add a site to get started" without a description, with a blue
-shared accent button labeled Add site and the shared plus icon. It lazily opens
-Nexter's existing `nx-add-site` dialog, without requiring a mounted picker or
-leaving landing. The heading-to-button gap is 20px.
-Closing restores focus; successful Add selects the site.
-Repeated clicks open only one dialog, and disconnects or scope changes remove it.
-With saved sites but none selected, it shows "Choose a site to get started" and
-"Select a site from \"Your recent sites\" to see its content.", without a button.
-Saved history alone never selects a site in Content; navigation owns the selection.
-History changes refresh the copy on page load or a cached Back/Forward restore.
-Content does not add a replacement picker.
+With no selected site, Content shows "Choose a site to get started" and
+"Select a site from \"Your recent sites\" or add a site.", with a shared
+accent button labeled Add site. The button emits the existing bubbling/composed
+`site-add` command for the mounted navigation selector, even when that selector is
+hidden because its site history is empty. Navigation owns loading and managing
+the shared Add site dialog, including repeat-click protection and focus handling.
+The dialog opens an added site in Browse; Content does not implement an in-place
+add flow or listen for a synthetic `site-added` event.
+Content does not read or validate saved-site history, infer a selection from it,
+or add a replacement picker.
 
 Content mounts inside the gradient landing surface already provided by main.
 `landing.css` retains that page background and inherits the application theme,

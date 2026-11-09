@@ -40,19 +40,15 @@ export class DaLanding extends LitElement {
     _limit: { state: true },
     _editor: { state: true },
     _editorConfs: { state: true },
-    _hasSavedSites: { state: true },
-    _addingSite: { state: true },
   };
 
   _onPageShow = ({ persisted }) => {
     if (!persisted) return;
     this.refreshFavorites();
-    this.refreshSites();
     if (this._scope) this.loadSite();
   };
 
   _onSiteSelect = ({ detail: { value } }) => {
-    this.refreshSites();
     const [org, site] = value.split('/');
     return this.setScope({ org, site });
   };
@@ -68,10 +64,8 @@ export class DaLanding extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = styles;
     this.refreshFavorites();
-    this.refreshSites();
     window.addEventListener('pageshow', this._onPageShow);
     document.addEventListener('site-select', this._onSiteSelect);
-    document.addEventListener('site-added', this._onSiteSelect);
     const value = document.querySelector('nx-nav')?.shadowRoot
       ?.querySelector('nx-siteselector')?.value;
     if (value && value !== this._scope) this._onSiteSelect({ detail: { value } });
@@ -79,11 +73,9 @@ export class DaLanding extends LitElement {
   }
 
   disconnectedCallback() {
-    this._closeAddSite();
     this._request?.abort();
     window.removeEventListener('pageshow', this._onPageShow);
     document.removeEventListener('site-select', this._onSiteSelect);
-    document.removeEventListener('site-added', this._onSiteSelect);
     super.disconnectedCallback();
   }
 
@@ -94,7 +86,6 @@ export class DaLanding extends LitElement {
   async setScope(state) {
     const scope = state?.org && state?.site ? `${state.org}/${state.site}` : undefined;
     if (this._scope === scope && this._request && !this._request.signal.aborted) return;
-    this._closeAddSite();
     this._scope = scope;
     this._tab = 'recent';
     this._limit = PAGE_SIZE;
@@ -141,47 +132,8 @@ export class DaLanding extends LitElement {
     this._favorites = new Set(getSiteFavorites(this.path));
   }
 
-  refreshSites() {
-    try {
-      const sites = JSON.parse(localStorage.getItem('da-sites') || '[]');
-      this._hasSavedSites = Array.isArray(sites) && sites.some(
-        (site) => typeof site === 'string' && /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/.test(site),
-      );
-    } catch {
-      this._hasSavedSites = false;
-    }
-  }
-
-  _closeAddSite() {
-    this._addDialog?.remove();
-    this._addDialog = undefined;
-  }
-
-  async _onAddSite() {
-    if (this._addingSite || this._addDialog) return;
-    this._addingSite = true;
-    this._actionError = undefined;
-    try {
-      await import(`${getNx2()}/blocks/siteselector/add-site.js`);
-      if (!this.isConnected || this._scope || this._hasSavedSites) return;
-      const dialog = document.createElement('nx-add-site');
-      this._addDialog = dialog;
-      dialog.addEventListener('close', () => {
-        this._closeAddSite();
-        this.shadowRoot.querySelector('.add-site')?.focus();
-      });
-      dialog.addEventListener('site-added', async (event) => {
-        event.stopPropagation();
-        await this._onSiteSelect(event);
-        if (this.isConnected) this.shadowRoot.querySelector('.filter')?.focus();
-      });
-      document.body.append(dialog);
-    } catch {
-      this._closeAddSite();
-      if (this.isConnected) this._actionError = 'Could not open Add site. Reload the page to try again.';
-    } finally {
-      this._addingSite = false;
-    }
+  _onAddSite() {
+    this.dispatchEvent(new CustomEvent('site-add', { bubbles: true, composed: true }));
   }
 
   starFile(item) {
@@ -215,11 +167,10 @@ export class DaLanding extends LitElement {
   renderFiles() {
     if (!this._scope) {
       return html`<div class="empty-state">${icon('folder')}
-        <h3>${this._hasSavedSites ? 'Choose a site to get started' : 'Add a site to get started'}</h3>
-        ${this._hasSavedSites ? html`<p>Select a site from "Your recent sites" to see its content.</p>` : nothing}
-        ${this._hasSavedSites ? nothing : html`
-          <button type="button" class="add-site nx-btn-accent"
-            ?disabled=${this._addingSite} @click=${this._onAddSite}>Add site ${icon('add')}</button>`}
+        <h3>Choose a site to get started</h3>
+        <p>Select a site from "Your recent sites" or add a site.</p>
+        <button type="button" class="add-site nx-btn-accent"
+          @click=${this._onAddSite}>Add site ${icon('add')}</button>
       </div>`;
     }
     if (this._error) {

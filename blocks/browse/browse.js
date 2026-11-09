@@ -58,7 +58,9 @@ async function loadComponent(el, cmpName, pathDetails, surface) {
   el.querySelector('da-sites, da-browse, .landing')?.remove();
   const componentPath = cmpName === 'da-sites' ? '.' : await getBrowsePath(pathDetails);
   if (componentPath === './v2') useV2Nav();
-  await import(`${componentPath}/${cmpName}/${cmpName}.js`);
+  if (cmpName === 'da-sites') await import('./da-sites/da-sites.js');
+  else if (componentPath === './v2') await import('./v2/da-browse/da-browse.js');
+  else await import('./legacy/da-browse/da-browse.js');
   const cmp = document.createElement(cmpName);
   cmp.details = pathDetails;
   el.append(cmp);

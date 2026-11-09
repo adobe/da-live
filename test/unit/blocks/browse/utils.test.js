@@ -36,6 +36,16 @@ describe('browse implementation selection', () => {
       expect(await resolveBrowsePath({ search, fetchConfigs: none })).to.equal('./v2');
     }));
   });
+
+  it('keeps Content and site Browse on the same v2 implementation', async () => {
+    expect(await resolveBrowsePath({ search: '?landing=true', org: 'org', site: 'site', fetchConfigs: none })).to.equal('./v2');
+  });
+
+  it('keeps an explicit legacy override out of the Content renderer', async () => {
+    const search = '?landing=true&browse=1';
+    expect(getBrowseComponent({ search })).to.equal('da-sites');
+    expect(await resolveBrowsePath({ search, fetchConfigs: none })).to.equal('./legacy');
+  });
 });
 
 describe('browseV2 flag', () => {

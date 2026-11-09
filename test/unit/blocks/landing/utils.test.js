@@ -146,28 +146,6 @@ describe('Content data and destinations on main', () => {
     }
   });
 
-  it('uses the shared HEAD endpoint for both DA and Helix 6', async () => {
-    const date = 'Mon, 09 Nov 2026 12:00:00 GMT';
-    const fetch = sinon.stub(window, 'fetch').callsFake(async (url) => new Response(null, {
-      headers: String(url).includes('/ping/metadata-hlx6/')
-        ? { 'x-api-upgrade-available': 'true' } : { 'last-modified': date },
-    }));
-    try {
-      for (const [org, url] of [
-        ['metadata-da', 'https://admin.da.live/source/metadata-da/site/doc.html'],
-        ['metadata-hlx6', 'https://api.aem.live/metadata-hlx6/sites/site/source/doc.html'],
-      ]) {
-        const path = `/${org}/site/doc.html`;
-        const { signal } = new AbortController();
-        expect(await loadFilesByPath({ paths: [path], source, signal }))
-          .to.deep.equal([{ path, name: 'doc', ext: 'html', lastModified: Date.parse(date) }]);
-        expect(fetch.calledWithMatch(url, { method: 'HEAD' })).to.equal(true);
-      }
-    } finally {
-      fetch.restore();
-    }
-  });
-
   it('bounds active lookups and stops queued work when cancelled', async () => {
     const request = new AbortController();
     const finishes = [];

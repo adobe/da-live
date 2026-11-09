@@ -18,35 +18,48 @@ describe('Browse Content opt-in', () => {
     hashChange._set(undefined);
   });
 
-  it('preserves site Browse with landing=true and updates root Content from nav without changing its URL', async () => {
+  it('switches between site Browse and Content without reloading and keeps nav selection off the URL', async () => {
+    await import('../../../../blocks/browse/v2/da-browse/da-browse.js');
     const { href } = window.location;
     const ordinary = document.createElement('div');
     const browse = document.createElement('da-browse');
+    const details = { org: 'org', site: 'site', fullpath: '/org/site' };
+    browse.details = details;
     ordinary.append(browse);
     document.body.append(ordinary);
-    const list = sinon.stub(source, 'list').resolves({ ok: true, items: [] });
+    const list = sinon.stub(source, 'list').callsFake(async (fullpath) => ({
+      ok: true,
+      items: [{ name: 'page', path: `${fullpath}/page.html`, ext: 'html' }],
+    }));
     const configs = sinon.stub(config, 'get').resolves({ ok: true, json: async () => ({ data: [] }) });
+    const fetch = sinon.stub(window, 'fetch').resolves(new Response('{}'));
+    const observers = [];
+    const whenMounted = (selector, root = ordinary) => new Promise((resolve) => {
+      let observer;
+      const finish = () => {
+        const component = root.querySelector(selector);
+        if (!component) return;
+        observer.disconnect();
+        resolve(component);
+      };
+      observer = new MutationObserver(finish);
+      observer.observe(root, { childList: true, subtree: true });
+      observers.push(observer);
+      finish();
+    });
     try {
       const url = new URL(href);
       url.searchParams.set('landing', 'true');
       url.hash = '/org/site';
       window.history.replaceState(null, '', url);
-      hashChange._set({ org: 'org', site: 'site' });
+      hashChange._set(details);
       await init(ordinary);
       expect(ordinary.firstElementChild).to.equal(browse);
       expect(browse.details.site).to.equal('site');
       expect(ordinary.querySelector('da-landing')).to.equal(null);
       url.hash = '';
       window.history.replaceState(null, '', url);
-      const mounted = new Promise((resolve) => {
-        const observer = new MutationObserver(() => {
-          const landing = ordinary.querySelector('da-landing');
-          if (!landing) return;
-          observer.disconnect();
-          resolve(landing);
-        });
-        observer.observe(ordinary, { childList: true, subtree: true });
-      });
+      const mounted = whenMounted('da-landing');
       hashChange._set(undefined);
       const landing = await mounted;
       await landing.updateComplete;
@@ -65,10 +78,25 @@ describe('Browse Content opt-in', () => {
       expect(window.location.href).to.equal(rootHref);
       expect(landing.shadowRoot.querySelector('.files-panel')).not.to.equal(null);
       expect(landing.shadowRoot.querySelector('h1, textarea, .composer')).to.equal(null);
+      url.hash = '/org/other';
+      window.history.replaceState(null, '', url);
+      const returning = whenMounted('da-browse');
+      const nextDetails = { org: 'org', site: 'other', fullpath: '/org/other' };
+      hashChange._set(nextDetails);
+      const returned = await returning;
+      await returned.updateComplete;
+      expect(returned.details).to.deep.equal(nextDetails);
+      await whenMounted('.da-browse-content', returned.shadowRoot);
+      const returnedList = returned.shadowRoot.querySelector('da-list');
+      const item = await whenMounted('da-file-item', returnedList.shadowRoot);
+      expect(item.path).to.equal('/org/other/page.html');
+      expect(ordinary.querySelector('da-landing')).to.equal(null);
     } finally {
+      observers.forEach((observer) => observer.disconnect());
       ordinary.remove();
       list.restore();
       configs.restore();
+      fetch.restore();
       window.history.replaceState(null, '', href);
       localStorage.removeItem('da-sites');
     }
@@ -104,8 +132,8 @@ describe('Browse Content opt-in', () => {
     const browseSheet = new CSSStyleSheet();
     let adoptBrowseSheet;
     loadStyle._set(browseHref, new Promise((resolve) => { adoptBrowseSheet = resolve; }));
-    // Updating a mounted Browse view uses the same stylesheet wait as a swap, without
-    // the view module import, which can't resolve 'da-lit' under the test server.
+    // Isolate stylesheet ordering from the component's own rendering and data loading.
+    browse.render = () => '';
     let received;
     let adoptedAtUpdate;
     Object.defineProperty(browse, 'details', {
