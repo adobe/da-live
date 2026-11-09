@@ -47,6 +47,12 @@ export function formatAnchorPreview(anchor) {
 
 export function getInitials(name) {
   if (!name) return '?';
+  if (name.includes('@')) {
+    const words = name.split('@')[0].split(/[._+-]/).filter(Boolean);
+    if (words.length === 0) return '?';
+    const last = words.length > 1 ? words[words.length - 1][0] : '';
+    return (words[0][0] + last).toUpperCase();
+  }
   const parts = name.split(' ').filter(Boolean);
   if (parts.length === 0) return '?';
   if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();

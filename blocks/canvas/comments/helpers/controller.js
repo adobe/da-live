@@ -8,12 +8,24 @@ import {
 import { decodeAnchor, resolveAnchor, encodeAnchor, getSelectionData } from './anchor.js';
 import { createAwarenessSync } from './awareness-sync.js';
 import { computeCounts, buildThreadGroups } from './thread-grouping.js';
-import { buildAuthorColorMap, authorColorSet } from './author-colors.js';
+import { buildAuthorColorMap, authorColorSet, personColorSet } from './author-colors.js';
 import { createChannel } from '../../../shared/channel.js';
 import { getTableInfo } from '../../../edit/prose/plugins/tableUtils.js';
+import { DA_ORIGIN } from '../../../shared/constants.js';
+import { daFetch } from '../../../shared/utils.js';
+import { buildRoster } from './mentions.js';
+import { commentRecipients, notifyComment, resolveCommentNotifications } from './notifications.js';
 
-export function createCommentsController({ commentsStore: store, wsProvider }) {
+async function fetchMembers(path) {
+  const resp = await daFetch(`${DA_ORIGIN}/members/${path}`, { noRedirect: true });
+  if (!resp.ok) return [];
+  const json = await resp.json();
+  return json.members ?? [];
+}
+
+export function createCommentsController({ commentsStore: store, wsProvider, path }) {
   let authorColors = null;
+  let members = null;
 
   const getAuthorColorMap = () => {
     if (!authorColors) authorColors = buildAuthorColorMap(store);
@@ -92,6 +104,10 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
       return authorColorSet(store, author, getAuthorColorMap());
     },
 
+    personColorSet(person) {
+      return personColorSet(store, person, getAuthorColorMap());
+    },
+
     getThreadGroups(attachedIds) {
       return buildThreadGroups({ store, attachedIds });
     },
@@ -115,7 +131,15 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
       return ids;
     },
 
-    async createRootComment({ user, anchor, body, now = Date.now() }) {
+    async loadRoster() {
+      if (!path) return [];
+      members ??= fetchMembers(path).catch(() => []);
+      const people = [awareness.getCurrentUser()];
+      store?.forEach((comment) => people.push(comment.author));
+      return buildRoster(await members, people);
+    },
+
+    async createRootComment({ user, anchor, body, mentions = [], now = Date.now() }) {
       const id = crypto.randomUUID();
       await store.set(id, {
         id,
@@ -123,33 +147,54 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
         ...anchor,
         author: user,
         body,
+        mentions,
         createdAt: now,
         resolved: false,
         resolvedBy: null,
         resolvedAt: null,
       });
       broadcastChange();
+      const recipients = commentRecipients({ threadId: id, actor: user, mentions });
+      notifyComment({ path, threadId: id, body, recipients });
       return id;
     },
 
-    async createReply({ threadId, user, body, now = Date.now() }) {
+    async createReply({ threadId, user, body, mentions = [], now = Date.now() }) {
       const id = crypto.randomUUID();
       await store.set(id, {
         id,
         threadId,
         author: user,
         body,
+        mentions,
         createdAt: now,
       });
       broadcastChange();
+      const recipients = commentRecipients({
+        store,
+        threadId,
+        actor: user,
+        mentions,
+        includeParticipants: true,
+      });
+      notifyComment({ path, threadId, body, recipients });
       return id;
     },
 
-    async editComment({ commentId, body, now = Date.now() }) {
+    async editComment({ commentId, body, mentions, now = Date.now() }) {
       const comment = store.get(commentId);
       if (!comment) return;
-      await store.set(commentId, { ...comment, body, editedAt: now });
+      const nextMentions = mentions ?? comment.mentions ?? [];
+      await store.set(commentId, { ...comment, body, mentions: nextMentions, editedAt: now });
       broadcastChange();
+      const threadId = comment.threadId ?? commentId;
+      const recipients = commentRecipients({
+        threadId,
+        actor: comment.author,
+        mentions: nextMentions,
+        previousMentions: comment.mentions,
+      });
+      notifyComment({ path, threadId, body, recipients });
     },
 
     async resolveThread({ threadId, user, now = Date.now() }) {
@@ -164,6 +209,7 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
         reopenedAt: null,
       });
       broadcastChange();
+      resolveCommentNotifications({ path, threadId });
     },
 
     async unresolveThread({ threadId, user, now = Date.now() }) {
@@ -189,6 +235,7 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
           if (entry.threadId === commentId) replyIds.push(id);
         });
         await store.deleteInOrder([...replyIds, commentId]);
+        resolveCommentNotifications({ path, threadId: commentId });
       } else {
         await store.delete(commentId);
       }

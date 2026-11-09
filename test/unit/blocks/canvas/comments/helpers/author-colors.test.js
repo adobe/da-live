@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
-import { buildAuthorColorMap, authorColorSet, authorKey } from '../../../../../../blocks/canvas/comments/helpers/author-colors.js';
-import { slotColorSet } from '../../../../../../blocks/canvas/editor-utils/author-color.js';
+import { buildAuthorColorMap, authorColorSet, authorKey, personColorSet } from '../../../../../../blocks/canvas/comments/helpers/author-colors.js';
+import { slotColorSet, generateColorSet } from '../../../../../../blocks/canvas/editor-utils/author-color.js';
 
 const makeStore = (comments) => ({ forEach: (cb) => comments.forEach((c) => cb(c)) });
 
@@ -70,5 +70,11 @@ describe('authorKey', () => {
   it('is empty for a missing or identity-less author', () => {
     expect(authorKey(null)).to.equal('');
     expect(authorKey({})).to.equal('');
+  });
+
+  it('keeps a commenter color and hashes everyone else by email', () => {
+    const store = makeStore([{ author: { email: 'a@x.com' }, createdAt: 1 }]);
+    expect(personColorSet(store, { email: 'a@x.com' })).to.deep.equal(slotColorSet(0));
+    expect(personColorSet(store, { email: 'b@x.com' })).to.deep.equal(generateColorSet('b@x.com'));
   });
 });

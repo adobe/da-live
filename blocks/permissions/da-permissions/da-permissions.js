@@ -10,6 +10,7 @@ await import(`${getNx()}/blocks/shared/picker/picker.js`);
 await import(`${getNx()}/blocks/shared/search/search.js`);
 await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
 await import('../da-permissions-cards/da-permissions-cards.js');
+await import('../da-permissions-directory/da-permissions-directory.js');
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -386,6 +387,7 @@ class DaPermissions extends LitElement {
     return html`
       ${this._readOnly ? html`<p class="permissions-message">You have read-only access to this configuration.</p>` : nothing}
       ${content}
+      ${this._editable ? html`<da-permissions-directory .rules=${this._rules}></da-permissions-directory>` : nothing}
       ${this._renderRemoveDialog()}
       ${this._renderFolderDialog()}`;
   }
