@@ -319,7 +319,7 @@ export const COMMANDS = [
     label: 'Edit link',
     icon: 'link',
     showIn: ['toolbar-link'],
-    visible: selectionHasLink,
+    visible: (state) => selectionHasLink(state) && !selectionHasLinkImage(state),
     apply: openLinkDialog,
   },
   {
@@ -327,7 +327,7 @@ export const COMMANDS = [
     label: 'Remove link',
     icon: 'unlink',
     showIn: ['toolbar-link'],
-    visible: selectionHasLink,
+    visible: (state) => selectionHasLink(state) && !selectionHasLinkImage(state),
     apply: removeLink,
   },
 

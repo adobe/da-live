@@ -31,6 +31,18 @@ describe('canvas link commands for link-images', () => {
     });
   });
 
+  ['link-edit', 'link-remove'].forEach((id) => {
+    it(`hides ${id} for a link-image with a retained href`, () => {
+      const state = stateWithImage({ editAs: 'image', href: 'https://example.com' });
+      expect(COMMAND_BY_ID.get(id).visible(state)).to.equal(false);
+    });
+
+    it(`shows ${id} for a regular linked image`, () => {
+      const state = stateWithImage({ href: 'https://example.com' });
+      expect(COMMAND_BY_ID.get(id).visible(state)).to.equal(true);
+    });
+  });
+
   it('still shows create link for a selected regular image', () => {
     const state = stateWithImage({ alt: 'Hero' });
     expect(COMMAND_BY_ID.get('link-create').visible(state)).to.equal(true);

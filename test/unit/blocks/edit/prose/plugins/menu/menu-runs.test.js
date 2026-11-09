@@ -506,6 +506,18 @@ describe('menu/linkItem with link-images', () => {
     expect(item.spec.enable(editor.view.state)).to.equal(true);
   });
 
+  it('disables remove link for a link-image with a retained href', () => {
+    selectImage({ editAs: 'image', href: 'https://example.com', title: 'T' });
+    const item = removeLinkItem(editor.view.state.schema.marks.link);
+    expect(item.spec.enable(editor.view.state)).to.equal(false);
+  });
+
+  it('enables remove link for a regular linked image', () => {
+    selectImage({ href: 'https://example.com' });
+    const item = removeLinkItem(editor.view.state.schema.marks.link);
+    expect(item.spec.enable(editor.view.state)).to.equal(true);
+  });
+
   it('does not open the link prompt for a selected link-image (Mod-k path)', async () => {
     const item = selectImage({ editAs: 'image', alt: 'Hero' });
     const before = editor.view.state.doc;

@@ -279,7 +279,7 @@ export function removeLinkItem(linkMarkType) {
       state.doc.nodesBetween($from.pos, $to.pos, (node) => {
         if (node.type === state.schema.nodes.image) {
           this.isImage = true;
-          if (node.attrs.href || node.attrs.title) {
+          if (!node.attrs.editAs && (node.attrs.href || node.attrs.title)) {
             imgHasAttrs = true;
           } else {
             imgHasAttrs = false;
