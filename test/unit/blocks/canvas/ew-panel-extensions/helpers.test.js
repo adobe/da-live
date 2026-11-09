@@ -800,7 +800,7 @@ describe('EW panel helpers transformBlock', () => {
   });
 });
 
-describe('DA Preview Proxy routing', () => {
+describe('DA Admin library sources and preview proxy routing', () => {
   let savedFetch;
   beforeEach(() => { savedFetch = window.fetch; });
   afterEach(() => {
@@ -818,7 +818,7 @@ describe('DA Preview Proxy routing', () => {
     expect(details.previewUrl.endsWith('/blocks/hero')).to.be.true;
   });
 
-  it('fetches AEM-hosted variant HTML via the proxy with credentials', async () => {
+  it('fetches variant source HTML from DA Admin without preview credentials', async () => {
     const calls = [];
     window.fetch = (url, opts) => {
       calls.push({ url: url.toString(), opts: opts || {} });
@@ -829,14 +829,11 @@ describe('DA Preview Proxy routing', () => {
     };
     await getBlockVariants('https://main--proxysite--proxyorg.aem.page/blocks/hero', LIBRARY_CONTEXT);
     expect(calls).to.have.lengthOf(1);
-    expect(calls[0].url).to.match(PROXY_HOST);
-    expect(calls[0].url).to.not.include('aem.page');
-    // AEM-hosted content is fetched as `.plain.html`.
-    expect(calls[0].url.endsWith('/blocks/hero.plain.html')).to.be.true;
-    expect(calls[0].opts.credentials).to.equal('include');
+    expect(calls[0].url).to.equal('https://admin.da.live/source/proxyorg/proxysite/blocks/hero.html');
+    expect(calls[0].opts.credentials).to.equal(undefined);
   });
 
-  it('fetches configured library sources via the proxy with credentials', async () => {
+  it('fetches configured library indexes from DA Admin', async () => {
     setDaConfigs([{ library: { data: [{ title: 'Blocks', path: '/blocks.json' }] }, data: [] }]);
     const calls = [];
     window.fetch = (url, opts) => {
@@ -846,9 +843,8 @@ describe('DA Preview Proxy routing', () => {
     await loadBlockLibrary('proxyorg', 'proxysite');
     const source = calls.find((c) => c.url.includes('/blocks.json'));
     expect(source, 'block source was fetched').to.exist;
-    expect(source.url).to.match(PROXY_HOST);
-    expect(source.url).to.not.include('aem.live');
-    expect(source.opts.credentials).to.equal('include');
+    expect(source.url).to.equal('https://admin.da.live/source/proxyorg/proxysite/blocks.json');
+    expect(source.opts.credentials).to.equal(undefined);
   });
 
   describe('credentials, cookie and access errors', () => {
@@ -883,11 +879,10 @@ describe('DA Preview Proxy routing', () => {
       expect(calls[0].opts.credentials).to.equal(undefined);
     });
 
-    it('rewrites absolute AEM sources to the proxy, keeping the query string', async () => {
+    it('rewrites absolute AEM sources to Admin, keeping the query string', async () => {
       await fetchItems(['https://main--proxysite--proxyorg.aem.live/icons.json?sheet=a'], '', LIBRARY_CONTEXT);
-      expect(calls[0].url).to.match(PROXY_HOST);
-      expect(calls[0].url.endsWith('/icons.json?sheet=a')).to.be.true;
-      expect(calls[0].opts.credentials).to.equal('include');
+      expect(calls[0].url).to.equal('https://admin.da.live/source/proxyorg/proxysite/icons.json?sheet=a');
+      expect(calls[0].opts.credentials).to.equal(undefined);
     });
 
     it('leaves look-alike hosts that are not exactly branch--site--org on AEM alone', async () => {
@@ -896,17 +891,18 @@ describe('DA Preview Proxy routing', () => {
       expect(calls[0].opts.credentials).to.equal(undefined);
     });
 
-    it('shares one successful session across requests on the same origin', async () => {
+    it('fetches library data with the DA bearer and no preview cookie', async () => {
       signIn();
       await fetchBlocks([
         'https://main--proxysite--proxyorg.aem.page/a.json',
         'https://main--proxysite--proxyorg.aem.page/b.json',
       ], LIBRARY_CONTEXT);
-      const urls = calls.map((c) => c.url);
-      const proxyGimme = urls.filter((u) => PROXY_HOST.test(u) && u.endsWith('/gimme_cookie'));
-      expect(proxyGimme).to.have.lengthOf(1);
-      expect(urls.indexOf(proxyGimme[0])).to.be.below(urls.findIndex((u) => u.endsWith('/a.json')));
-      expect(urls.filter((u) => u.endsWith('.json'))).to.have.lengthOf(2);
+      expect(calls.map((c) => c.url)).to.deep.equal([
+        'https://admin.da.live/source/proxyorg/proxysite/a.json',
+        'https://admin.da.live/source/proxyorg/proxysite/b.json',
+      ]);
+      expect(calls.every((c) => c.opts.headers.Authorization === 'Bearer tok')).to.be.true;
+      expect(calls.every((c) => c.opts.credentials === undefined)).to.be.true;
     });
 
     it('shares a session between sheets, eagerly loaded variants, and previews', async () => {
@@ -922,7 +918,7 @@ describe('DA Preview Proxy routing', () => {
       expect(calls.filter((c) => c.url.endsWith('/gimme_cookie'))).to.have.lengthOf(1);
     });
 
-    it('holds concurrent content requests behind one pending cookie exchange', async () => {
+    it('shares one pending preview cookie exchange across concurrent previews', async () => {
       signIn();
       let release;
       let notify;
@@ -935,52 +931,52 @@ describe('DA Preview Proxy routing', () => {
         }
         return new Response(JSON.stringify({ data: [] }));
       };
-      const first = fetchItems(['https://main--proxysite--proxyorg.aem.live/a.json'], '', LIBRARY_CONTEXT);
-      const second = fetchItems(['https://main--proxysite--proxyorg.aem.live/b.json'], '', LIBRARY_CONTEXT);
+      const first = ensureItemPreviewAccess({ path: 'https://main--proxysite--proxyorg.aem.live/a' }, LIBRARY_CONTEXT);
+      const second = ensureItemPreviewAccess({ path: 'https://main--proxysite--proxyorg.aem.live/b' }, LIBRARY_CONTEXT);
       await ready;
       const pendingUrls = calls.map((c) => c.url);
       release(new Response(''));
       await Promise.all([first, second]);
       expect(pendingUrls).to.deep.equal(['https://main--proxysite--proxyorg.stage-preview.da.live/gimme_cookie']);
       expect(calls.filter((c) => c.url.endsWith('/gimme_cookie'))).to.have.lengthOf(1);
-      expect(calls.filter((c) => c.url.endsWith('.json'))).to.have.lengthOf(2);
+      expect(calls.filter((c) => c.opts.method === 'HEAD')).to.have.lengthOf(2);
     });
 
     it('does not cache a refused cookie exchange even if content is public', async () => {
       signIn();
       respond = (url) => (url.endsWith('/gimme_cookie')
         ? new Response('', { status: 403 }) : new Response(JSON.stringify({ data: [] })));
-      const source = 'https://main--proxysite--proxyorg.aem.live/a.json';
-      await fetchItems([source], '', LIBRARY_CONTEXT);
-      await fetchItems([source], '', LIBRARY_CONTEXT);
+      const item = { path: 'https://main--proxysite--proxyorg.aem.live/a' };
+      await ensureItemPreviewAccess(item, LIBRARY_CONTEXT);
+      await ensureItemPreviewAccess(item, LIBRARY_CONTEXT);
       expect(calls.filter((c) => c.url.endsWith('/gimme_cookie'))).to.have.lengthOf(2);
     });
 
     it('does not reuse a signed-out session after signing in', async () => {
-      await fetchItems(['https://main--proxysite--proxyorg.aem.live/a.json'], '', LIBRARY_CONTEXT);
+      await ensureItemPreviewAccess({ path: 'https://main--proxysite--proxyorg.aem.live/a' }, LIBRARY_CONTEXT);
       signIn();
-      await fetchItems(['https://main--proxysite--proxyorg.aem.live/b.json'], '', LIBRARY_CONTEXT);
+      await ensureItemPreviewAccess({ path: 'https://main--proxysite--proxyorg.aem.live/b' }, LIBRARY_CONTEXT);
       expect(calls.filter((c) => c.url.endsWith('/gimme_cookie'))).to.have.lengthOf(1);
     });
 
     it('refreshes a session when the IMS token changes', async () => {
       signIn();
-      const source = 'https://main--proxysite--proxyorg.aem.live/a.json';
-      await fetchItems([source], '', LIBRARY_CONTEXT);
+      const item = { path: 'https://main--proxysite--proxyorg.aem.live/a' };
+      await ensureItemPreviewAccess(item, LIBRARY_CONTEXT);
       window.adobeIMS = { getAccessToken: () => ({ token: 'new-token' }) };
-      await fetchItems([source], '', LIBRARY_CONTEXT);
+      await ensureItemPreviewAccess(item, LIBRARY_CONTEXT);
       expect(calls.filter((c) => c.url.endsWith('/gimme_cookie')).map((c) => c.opts.headers.Authorization))
         .to.deep.equal(['Bearer tok', 'Bearer new-token']);
     });
 
     it('invalidates an earlier session after signing out', async () => {
       signIn();
-      const source = 'https://main--proxysite--proxyorg.aem.live/a.json';
-      await fetchItems([source], '', LIBRARY_CONTEXT);
+      const item = { path: 'https://main--proxysite--proxyorg.aem.live/a' };
+      await ensureItemPreviewAccess(item, LIBRARY_CONTEXT);
       window.localStorage.removeItem('nx-ims');
-      await fetchItems([source], '', LIBRARY_CONTEXT);
+      await ensureItemPreviewAccess(item, LIBRARY_CONTEXT);
       signIn();
-      await fetchItems([source], '', LIBRARY_CONTEXT);
+      await ensureItemPreviewAccess(item, LIBRARY_CONTEXT);
       expect(calls.filter((c) => c.url.endsWith('/gimme_cookie'))).to.have.lengthOf(2);
     });
 
@@ -993,9 +989,9 @@ describe('DA Preview Proxy routing', () => {
           requests += 1;
           return requests === 1 ? new Response('', { status }) : new Response(JSON.stringify({ data: [{ key: 'ok' }] }));
         };
-        const items = await fetchItems(['https://main--proxysite--proxyorg.aem.live/a.json'], '', LIBRARY_CONTEXT);
-        expect(items.map((entry) => entry.key)).to.deep.equal(['ok']);
-        expect(calls.map((c) => c.url.split('/').pop())).to.deep.equal(['gimme_cookie', 'a.json', 'gimme_cookie', 'a.json']);
+        const details = await ensureItemPreviewAccess({ path: 'https://main--proxysite--proxyorg.aem.live/a' }, LIBRARY_CONTEXT);
+        expect(details.error).to.equal(undefined);
+        expect(calls.map((c) => c.url.split('/').pop())).to.deep.equal(['gimme_cookie', 'a', 'gimme_cookie', 'a']);
       });
     });
 
@@ -1006,11 +1002,15 @@ describe('DA Preview Proxy routing', () => {
         if (url.endsWith('/gimme_cookie')) return new Response('');
         const count = (requests.get(url) || 0) + 1;
         requests.set(url, count);
-        return count === 1 ? new Response('', { status: 401 }) : new Response(JSON.stringify({ data: [{ key: 'ok' }] }));
+        return count === 1
+          ? new Response('', { status: 401 })
+          : new Response(JSON.stringify({ data: [{ key: 'ok' }] }));
       };
-      const sources = ['a', 'b'].map((name) => `https://main--proxysite--proxyorg.aem.live/${name}.json`);
-      const results = await Promise.all(sources.map((source) => fetchItems([source], '', LIBRARY_CONTEXT)));
-      expect(results.map((items) => items[0].key)).to.deep.equal(['ok', 'ok']);
+      const sources = ['a', 'b'].map((name) => `https://main--proxysite--proxyorg.aem.live/${name}`);
+      const results = await Promise.all(
+        sources.map((path) => ensureItemPreviewAccess({ path }, LIBRARY_CONTEXT)),
+      );
+      expect(results.every((details) => !details.error)).to.be.true;
       expect(calls.filter((c) => c.url.endsWith('/gimme_cookie'))).to.have.lengthOf(2);
       expect([...requests.values()]).to.deep.equal([2, 2]);
     });
@@ -1018,24 +1018,20 @@ describe('DA Preview Proxy routing', () => {
     it('bounds access-denied retries and allows a later session attempt', async () => {
       signIn();
       respond = (url) => new Response('', { status: url.endsWith('/gimme_cookie') ? 200 : 403 });
-      const source = 'https://main--proxysite--proxyorg.aem.live/a.json';
-      expect((await fetchItems([source], '', LIBRARY_CONTEXT)).authError).to.be.true;
-      expect(calls.filter((c) => c.url.endsWith('/a.json'))).to.have.lengthOf(2);
+      const item = { path: 'https://main--proxysite--proxyorg.aem.live/a' };
+      expect((await ensureItemPreviewAccess(item, LIBRARY_CONTEXT)).error).to.include('access was denied');
+      expect(calls.filter((c) => c.url.endsWith('/a'))).to.have.lengthOf(2);
       respond = () => new Response(JSON.stringify({ data: [] }));
-      await fetchItems([source], '', LIBRARY_CONTEXT);
+      await ensureItemPreviewAccess(item, LIBRARY_CONTEXT);
       expect(calls.filter((c) => c.url.endsWith('/gimme_cookie'))).to.have.lengthOf(3);
     });
 
-    it('does not share sessions across sites or branches', async () => {
+    it('does not share preview sessions across sites', async () => {
       signIn();
-      await fetchItems([
-        'https://main--proxysite--proxyorg.aem.live/a.json',
-        'https://feat--proxysite--proxyorg.aem.live/a.json',
-        'https://main--shared--proxyorg.aem.live/a.json',
-      ], '', LIBRARY_CONTEXT);
+      await ensureItemPreviewAccess({ path: 'https://main--proxysite--proxyorg.aem.live/a' }, LIBRARY_CONTEXT);
+      await ensureItemPreviewAccess({ path: 'https://main--shared--proxyorg.aem.live/a' }, LIBRARY_CONTEXT);
       expect(calls.filter((c) => c.url.endsWith('/gimme_cookie')).map((c) => new URL(c.url).hostname)).to.deep.equal([
         'main--proxysite--proxyorg.stage-preview.da.live',
-        'feat--proxysite--proxyorg.stage-preview.da.live',
         'main--shared--proxyorg.stage-preview.da.live',
       ]);
     });
@@ -1077,17 +1073,17 @@ describe('DA Preview Proxy routing', () => {
       expect(calls.filter((c) => c.url.endsWith('/b.json'))).to.have.lengthOf(2);
     });
 
-    it('resolves inserted variant images against the public AEM origin, not the proxy', async () => {
+    it('resolves inserted source images against the public content document', async () => {
       respond = () => new Response(
         '<body><div><div class="hero"><div><div><img src="./media_1.png"></div></div></div></div></body>',
         { status: 200 },
       );
       const [variant] = await getBlockVariants('https://main--proxysite--proxyorg.aem.page/blocks/hero', LIBRARY_CONTEXT);
       const img = variant.dom.querySelector('img');
-      expect(img.getAttribute('src')).to.equal('https://main--proxysite--proxyorg.aem.page/media_1.png');
+      expect(img.getAttribute('src')).to.equal('https://content.da.live/proxyorg/proxysite/blocks/media_1.png');
     });
 
-    it('inserts templates from AEM through the proxy', async () => {
+    it('tries Admin before falling back to an AEM-only template', async () => {
       respond = () => new Response('', { status: 404 });
       let error;
       try {
@@ -1096,8 +1092,11 @@ describe('DA Preview Proxy routing', () => {
         error = e;
       }
       expect(error.message).to.equal('Unable to load template (404).');
-      expect(calls[0].url).to.match(PROXY_HOST);
-      expect(calls[0].opts.credentials).to.equal('include');
+      expect(calls.map((c) => c.url)).to.deep.equal([
+        'https://admin.da.live/source/proxyorg/proxysite/templates/t.html',
+        'https://main--proxysite--proxyorg.aem.page/templates/t',
+      ]);
+      expect(calls.every((c) => c.opts.credentials === undefined)).to.be.true;
     });
 
     it('mints the preview cookie before handing back the preview iframe URL', async () => {
@@ -1116,7 +1115,7 @@ describe('DA Preview Proxy routing', () => {
       expect(ext.sources).to.deep.equal(['https://main--proxysite--proxyorg.aem.live/blocks.json']);
     });
 
-    it('leaves cross-org block sources and their variants direct and uncredentialed', async () => {
+    it('loads cross-org block sources and variants from Admin with the DA bearer', async () => {
       signIn();
       respond = (url) => (url.endsWith('.json')
         ? new Response(JSON.stringify({ data: [{ name: 'Hero', path: 'https://feat--shared--other.aem.page/hero' }] }))
@@ -1125,10 +1124,11 @@ describe('DA Preview Proxy routing', () => {
       const variants = await blocks[0].loadVariants;
       expect(variants[0].name).to.equal('hero');
       expect(calls.map((c) => c.url)).to.deep.equal([
-        'https://feat--shared--other.aem.live/blocks.json',
-        'https://feat--shared--other.aem.page/hero.plain.html',
+        'https://admin.da.live/source/other/shared/blocks.json',
+        'https://admin.da.live/source/other/shared/hero.html',
       ]);
       expect(calls.every((c) => c.opts.credentials === undefined)).to.be.true;
+      expect(calls.every((c) => c.opts.headers.Authorization === 'Bearer tok')).to.be.true;
     });
 
     it('passes editor org context from a same-org sheet to cross-org variants', async () => {
@@ -1138,53 +1138,51 @@ describe('DA Preview Proxy routing', () => {
         : new Response('<body><div><div class="hero"><div><div>content</div></div></div></div></body>'));
       const blocks = await fetchBlocks(['https://main--proxysite--proxyorg.aem.live/blocks.json'], LIBRARY_CONTEXT);
       await blocks[0].loadVariants;
-      expect(calls.filter((c) => c.url.endsWith('/gimme_cookie'))).to.have.lengthOf(1);
-      const variant = calls.find((c) => c.url.endsWith('/hero.plain.html'));
-      expect(variant.url).to.equal('https://main--shared--other.aem.page/hero.plain.html');
+      expect(calls.filter((c) => c.url.endsWith('/gimme_cookie'))).to.have.lengthOf(0);
+      const variant = calls.find((c) => c.url.endsWith('/hero.html'));
+      expect(variant.url).to.equal('https://admin.da.live/source/other/shared/hero.html');
       expect(variant.opts.credentials).to.equal(undefined);
     });
 
-    it('does not proxy AEM sources when the current org is unknown', async () => {
+    it('resolves Admin sources without current org context', async () => {
       signIn();
       await fetchBlocks(['https://main--shared--other.aem.live/blocks.json']);
-      expect(calls.map((c) => c.url)).to.deep.equal(['https://main--shared--other.aem.live/blocks.json']);
+      expect(calls.map((c) => c.url)).to.deep.equal(['https://admin.da.live/source/other/shared/blocks.json']);
       expect(calls[0].opts.credentials).to.equal(undefined);
     });
 
-    it('leaves cross-org item sheets direct and does not request a cookie', async () => {
+    it('loads cross-org item sheets from Admin without a preview cookie', async () => {
       signIn();
       await fetchItems(['https://main--shared--other.aem.live/icons.json'], '', LIBRARY_CONTEXT);
-      expect(calls.map((c) => c.url)).to.deep.equal(['https://main--shared--other.aem.live/icons.json']);
+      expect(calls.map((c) => c.url)).to.deep.equal(['https://admin.da.live/source/other/shared/icons.json']);
       expect(calls[0].opts.credentials).to.equal(undefined);
     });
 
-    it('proxies another site in the same org using its branch and matching cookie origin', async () => {
+    it('loads another site in the same org from Admin, independent of the code branch', async () => {
       signIn();
       await fetchBlocks(['https://feat--shared--proxyorg.aem.live/blocks.json?sheet=a#blocks'], LIBRARY_CONTEXT);
       expect(calls.map((c) => c.url)).to.deep.equal([
-        'https://feat--shared--proxyorg.stage-preview.da.live/gimme_cookie',
-        'https://feat--shared--proxyorg.stage-preview.da.live/blocks.json?sheet=a#blocks',
+        'https://admin.da.live/source/proxyorg/shared/blocks.json?sheet=a',
       ]);
-      expect(calls[1].opts.credentials).to.equal('include');
+      expect(calls[0].opts.headers.Authorization).to.equal('Bearer tok');
     });
 
-    it('appends plain.html before query and hash and preserves public image URLs', async () => {
+    it('normalizes plain.html to source HTML and resolves content image URLs', async () => {
       respond = () => new Response('<body><div><div class="hero"><div><div><img src="./media.png"></div></div></div></div></body>');
       const [variant] = await getBlockVariants('https://feat--shared--proxyorg.aem.page/hero?foo=bar#variants', LIBRARY_CONTEXT);
-      expect(calls[0].url).to.equal('https://feat--shared--proxyorg.stage-preview.da.live/hero.plain.html?foo=bar#variants');
-      expect(variant.dom.querySelector('img').getAttribute('src')).to.equal('https://feat--shared--proxyorg.aem.page/media.png');
+      expect(calls[0].url).to.equal('https://admin.da.live/source/proxyorg/shared/hero.html?foo=bar');
+      expect(variant.dom.querySelector('img').getAttribute('src')).to.equal('https://content.da.live/proxyorg/shared/media.png');
     });
 
     it('resolves same-org relative variant paths without saving proxy image URLs', async () => {
       respond = () => new Response('<body><div><h2>Hero Wide</h2><div class="hero"><div><div><img src="./media.png"></div></div></div></div></body>');
       const [variant] = await getBlockVariants('/hero', LIBRARY_CONTEXT);
-      expect(calls[0].url).to.match(PROXY_HOST);
-      expect(calls[0].url.endsWith('/hero.plain.html')).to.be.true;
-      expect(variant.dom.querySelector('img').getAttribute('src')).to.equal('https://main--proxysite--proxyorg.aem.live/media.png');
+      expect(calls[0].url).to.equal('https://admin.da.live/source/proxyorg/proxysite/hero.html');
+      expect(variant.dom.querySelector('img').getAttribute('src')).to.equal('https://content.da.live/proxyorg/proxysite/media.png');
       expect(variant.anchor).to.equal('hero-wide');
     });
 
-    it('retries proxy login and content after a rejected cookie exchange', async () => {
+    it('retries Admin content after access is restored without minting a cookie', async () => {
       signIn();
       setDaConfigs([{ library: { data: [{ title: 'Blocks', path: '/blocks.json' }] }, data: [] }]);
       respond = () => new Response('', { status: 403 });
@@ -1193,7 +1191,7 @@ describe('DA Preview Proxy routing', () => {
       respond = () => new Response(JSON.stringify({ data: [] }));
       const second = await loadBlockLibrary('proxyorg', 'proxysite');
       expect(second.blocks.authError).to.equal(undefined);
-      expect(calls.filter((c) => c.url.endsWith('/gimme_cookie'))).to.have.lengthOf(2);
+      expect(calls.filter((c) => c.url.endsWith('/gimme_cookie'))).to.have.lengthOf(0);
     });
 
     it('does not cache denied variant HTML as a successful empty variant list', async () => {
@@ -1211,7 +1209,7 @@ describe('DA Preview Proxy routing', () => {
       expect(calls.filter((c) => c.url.endsWith('/blocks.json'))).to.have.lengthOf(2);
     });
 
-    it('routes options and editor sheets through the same-org proxy', async () => {
+    it('loads options and editor sheets from Admin without a preview session', async () => {
       signIn();
       resetBlockOptionsCache();
       setDaConfigs([{ library: { data: [{ title: 'Blocks', path: '/blocks.json' }] }, data: [] }]);
@@ -1221,8 +1219,11 @@ describe('DA Preview Proxy routing', () => {
       }));
       expect(await loadBlockOptions('proxyorg', 'proxysite')).to.deep.equal([{ key: 'hero', value: 'wide' }]);
       expect(await loadBlockEditor('proxyorg', 'proxysite')).to.deep.equal([{ key: 'hero', value: 'example' }]);
-      expect(calls.filter((c) => c.url.endsWith('/gimme_cookie'))).to.have.lengthOf(1);
-      expect(calls.filter((c) => c.url.endsWith('/blocks.json')).every((c) => PROXY_HOST.test(c.url) && c.opts.credentials === 'include')).to.be.true;
+      expect(calls.filter((c) => c.url.endsWith('/gimme_cookie'))).to.have.lengthOf(0);
+      expect(calls.filter((c) => c.url.endsWith('/blocks.json')).map((c) => c.url)).to.deep.equal([
+        'https://admin.da.live/source/proxyorg/proxysite/blocks.json',
+        'https://admin.da.live/source/proxyorg/proxysite/blocks.json',
+      ]);
       resetBlockOptionsCache();
     });
 
@@ -1235,14 +1236,14 @@ describe('DA Preview Proxy routing', () => {
       respond = () => new Response(JSON.stringify({ options: { data: [{ key: 'hero', value: 'wide' }] } }));
       expect(await loadBlockOptions('proxyorg', 'proxysite')).to.deep.equal([{ key: 'hero', value: 'wide' }]);
       expect(calls.map((c) => c.url)).to.deep.equal([
-        'https://main--shared--other.aem.live/blocks.json',
-        'https://main--shared--other.aem.live/blocks.json',
+        'https://admin.da.live/source/other/shared/blocks.json',
+        'https://admin.da.live/source/other/shared/blocks.json',
       ]);
       expect(calls.every((c) => c.opts.credentials === undefined)).to.be.true;
       resetBlockOptionsCache();
     });
 
-    it('keeps cross-org template fetches direct and surfaces access denial', async () => {
+    it('surfaces Admin access denial for cross-org templates without an AEM fallback', async () => {
       signIn();
       respond = () => new Response('', { status: 403 });
       let error;
@@ -1252,7 +1253,7 @@ describe('DA Preview Proxy routing', () => {
         error = e;
       }
       expect(error.message).to.include('Library access was denied');
-      expect(calls.map((c) => c.url)).to.deep.equal(['https://main--shared--other.aem.live/templates/t']);
+      expect(calls.map((c) => c.url)).to.deep.equal(['https://admin.da.live/source/other/shared/templates/t.html']);
       expect(calls[0].opts.credentials).to.equal(undefined);
     });
 
@@ -1284,13 +1285,13 @@ describe('DA Preview Proxy routing', () => {
       });
 
       ['.html', '.plain.html'].forEach((suffix) => {
-        it(`uses AEM image URLs for proxied ${host} ${suffix} variants`, async () => {
+        it(`uses content image URLs for ${host} ${suffix} source variants`, async () => {
           respond = () => new Response('<body><div><div class="hero"><div><div><img src="./media_abc.png?width=400#hero"><img src="/assets/logo.png"></div></div></div></div></body>');
           const [variant] = await getBlockVariants(`https://${host}/proxyorg/proxysite/library/hero${suffix}?foo=bar`, LIBRARY_CONTEXT);
-          expect(calls[0].url).to.equal(`https://main--proxysite--proxyorg.stage-preview.da.live/library/hero${suffix}?foo=bar`);
+          expect(calls[0].url).to.equal('https://admin.da.live/source/proxyorg/proxysite/library/hero.html?foo=bar');
           expect([...variant.dom.querySelectorAll('img')].map((img) => img.getAttribute('src'))).to.deep.equal([
-            'https://main--proxysite--proxyorg.aem.page/media_abc.png?width=400#hero',
-            'https://main--proxysite--proxyorg.aem.page/assets/logo.png',
+            `https://${host}/proxyorg/proxysite/library/media_abc.png?width=400#hero`,
+            `https://${host}/proxyorg/proxysite/assets/logo.png`,
           ]);
         });
       });
