@@ -208,6 +208,14 @@ async function syncToolPanelViews(toolPanel, { org, site }, panelName) {
   return true;
 }
 
+export async function showRequestedToolPanelView(toolPanel, id) {
+  if (toolPanel.views?.some((v) => v.id === id)) {
+    await toolPanel.showPanel(id);
+  } else if (!toolPanel.views?.length) {
+    toolPanel.pendingView = id;
+  }
+}
+
 function hashState() {
   const [org, site] = window.location.hash.slice(2).split('/');
   return { org: org || undefined, site: site || undefined };
@@ -312,9 +320,7 @@ export default async function decorate(block) {
       if (!toolPanel) return;
       const selected = await syncToolPanelViews(toolPanel, hashState(), id);
       await toolPanel.updateComplete;
-      if (id && !selected && toolPanel.views?.some((v) => v.id === id)) {
-        await toolPanel.showPanel(id);
-      }
+      if (id && !selected) await showRequestedToolPanelView(toolPanel, id);
       if (options?.newVersion) {
         await toolPanel.updateComplete;
         toolPanel.shadowRoot?.querySelector('ew-canvas-versions')?.handleNew();

@@ -162,6 +162,7 @@ class EwToolPanel extends LitElement {
     }
 
     if (!this.activeId || !ids.has(this.activeId)) {
+      const requestedBefore = this._requestedView;
       const initial = (requestedView && ids.has(requestedView))
         ? requestedView
         : await resolveInitialToolPanelView({
@@ -169,6 +170,7 @@ class EwToolPanel extends LitElement {
           site: this.site,
           availableIds: ids,
         });
+      if (this._requestedView !== requestedBefore) return;
       await this.showPanel(initial ?? this.views[0].id);
     } else if (!this._loaded[this.activeId]) {
       await this.showPanel(this.activeId);
@@ -218,6 +220,7 @@ class EwToolPanel extends LitElement {
       await consumer.openModal?.();
       return;
     }
+    this._requestedView = name;
     if (!this._loaded[name]) {
       const loaded = await consumer.load();
       const currentConsumer = this.views.find((c) => c.id === name);
@@ -228,6 +231,7 @@ class EwToolPanel extends LitElement {
       this._loaded[name] = loaded;
       this._loadedKeys[name] = consumer.cacheKey;
     }
+    if (this._requestedView !== name) return;
     this.activeId = name;
   }
 

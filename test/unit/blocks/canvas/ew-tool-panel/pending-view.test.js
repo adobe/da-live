@@ -73,3 +73,45 @@ describe('ew-tool-panel active view broadcast', () => {
     expect(seen.at(-1)).to.equal('comments');
   });
 });
+
+describe('ew-tool-panel explicit view requests', () => {
+  const view = (id) => ({ id, label: id, load: async () => document.createElement('div') });
+
+  it('keeps a view requested while the initial view is still resolving', async () => {
+    sessionStorage.setItem('nx-tool-panel-active-view', 'outline');
+    const el = document.createElement('ew-tool-panel');
+    document.body.append(el);
+    await el.updateComplete;
+
+    el.views = [view('outline'), view('comments')];
+    await el.updateComplete;
+    await el.showPanel('comments');
+    await new Promise((resolve) => { setTimeout(resolve, 50); });
+    await el.updateComplete;
+
+    expect(el.activeId).to.equal('comments');
+    el.remove();
+    sessionStorage.removeItem('nx-tool-panel-active-view');
+  });
+
+  it('lets the latest request win when an earlier view loads more slowly', async () => {
+    const el = document.createElement('ew-tool-panel');
+    document.body.append(el);
+    let releaseSlow;
+    const slow = new Promise((resolve) => { releaseSlow = resolve; });
+    el.views = [
+      { id: 'outline', label: 'Outline', load: async () => { await slow; return document.createElement('div'); } },
+      view('comments'),
+    ];
+    await el.updateComplete;
+
+    const outline = el.showPanel('outline');
+    await el.showPanel('comments');
+    releaseSlow();
+    await outline;
+    await el.updateComplete;
+
+    expect(el.activeId).to.equal('comments');
+    el.remove();
+  });
+});

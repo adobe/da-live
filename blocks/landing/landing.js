@@ -11,6 +11,7 @@ import '../shared/file-actions/file-actions.js';
 import renderFileTable from '../shared/file-table.js';
 import { DOC_TILES } from './constants.js';
 import './tile.js';
+import './attention.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { registerPanelSection, PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
@@ -792,6 +793,7 @@ export class DaLanding extends LitElement {
           ${this._actionError ? html`<p role="alert">${this._actionError}</p>` : nothing}
           <div aria-busy=${!!this._scope && !this._files && !this._error}>${this.renderFiles()}</div>
         </section>
+        <da-landing-attention .scope=${this._scope}></da-landing-attention>
         ${this.renderQuickLinks()}
         ${this._createDialog ? html`<da-name-dialog open
           dialog-title="New page in ${this._scope?.split('/')[1]}"

@@ -116,7 +116,8 @@ describe('landing page', () => {
   it('renders the approved quick actions below Content, without Governance or Need Attention', async () => {
     const grid = el.shadowRoot.querySelector('.quick-links');
     const tiles = await quickTiles(el);
-    expect(grid.previousElementSibling.matches('.files-panel')).to.equal(true);
+    expect(grid.previousElementSibling.matches('da-landing-attention')).to.equal(true);
+    expect(grid.previousElementSibling.previousElementSibling.matches('.files-panel')).to.equal(true);
     expect(tiles.map((tile) => tile.shadowRoot.querySelector('h3').textContent)).to.deep.equal([
       'Browse Content', 'Create a page', 'Publishing & Workflow',
       'Localization & Multi-site', 'Develop & Extend',

@@ -3,7 +3,7 @@ import { setNx } from '../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { notifyCanvasEditorActive } = await import('../../../../blocks/canvas/canvas.js');
+const { notifyCanvasEditorActive, showRequestedToolPanelView } = await import('../../../../blocks/canvas/canvas.js');
 
 describe('canvas editor view visibility', () => {
   let doc;
@@ -33,5 +33,33 @@ describe('canvas editor view visibility', () => {
     notifyCanvasEditorActive('split');
     expect(doc.hidden).to.be.false;
     expect(wysiwyg.hidden).to.be.false;
+  });
+});
+
+describe('showRequestedToolPanelView', () => {
+  const panel = (views) => {
+    const shown = [];
+    return { views, shown, showPanel: async (id) => { shown.push(id); } };
+  };
+
+  it('shows a requested view that is already available', async () => {
+    const toolPanel = panel([{ id: 'blocks' }, { id: 'comments' }]);
+    await showRequestedToolPanelView(toolPanel, 'comments');
+    expect(toolPanel.shown).to.deep.equal(['comments']);
+    expect(toolPanel.pendingView).to.equal(undefined);
+  });
+
+  it('queues a requested view while the views are still loading', async () => {
+    const toolPanel = panel([]);
+    await showRequestedToolPanelView(toolPanel, 'comments');
+    expect(toolPanel.shown).to.deep.equal([]);
+    expect(toolPanel.pendingView).to.equal('comments');
+  });
+
+  it('ignores a view that is not available once views have loaded', async () => {
+    const toolPanel = panel([{ id: 'blocks' }]);
+    await showRequestedToolPanelView(toolPanel, 'comments');
+    expect(toolPanel.shown).to.deep.equal([]);
+    expect(toolPanel.pendingView).to.equal(undefined);
   });
 });
