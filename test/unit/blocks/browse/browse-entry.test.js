@@ -86,4 +86,31 @@ describe('Browse Content opt-in', () => {
       window.history.replaceState(null, '', href);
     }
   });
+
+  it('waits for Browse styles before the section is shown', async () => {
+    const { href } = window.location;
+    const el = document.createElement('div');
+    el.innerHTML = '<div><picture><img alt=""></picture></div>';
+    document.body.append(el);
+    const list = sinon.stub(source, 'list').resolves({ ok: true, items: [] });
+    const configs = sinon.stub(config, 'get').resolves({ ok: true, json: async () => ({ data: [] }) });
+    try {
+      const url = new URL(href);
+      url.searchParams.set('browse', '2');
+      url.hash = '/org/site';
+      window.history.replaceState(null, '', url);
+      hashChange._set({ org: 'org', site: 'site' });
+      const sheets = document.adoptedStyleSheets.length;
+      const ready = init(el);
+      expect(ready).to.be.instanceOf(Promise);
+      await ready;
+      expect(document.adoptedStyleSheets.length).to.be.above(sheets);
+    } finally {
+      el.remove();
+      list.restore();
+      configs.restore();
+      window.history.replaceState(null, '', href);
+      localStorage.removeItem('da-sites');
+    }
+  });
 });

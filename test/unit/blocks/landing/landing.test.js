@@ -341,11 +341,6 @@ describe('landing Content section', () => {
     el.refreshFavorites();
     el.changeTab('starred');
     for (const view of ['card', 'list']) {
-      localStorage.setItem('da-favorites', JSON.stringify({
-        '/org/site': [coffee.path],
-        '/org/site/de': [coffee.path],
-      }));
-      el.refreshFavorites();
       el.changeView({ detail: { value: view } });
       await updateLanding();
       expect(fileItems()).to.have.length(1);
@@ -605,6 +600,21 @@ describe('landing Content section', () => {
     expect(list.firstCall.args[1].opts.signal).to.equal(el._request.signal);
     expect(el._editor).to.equal('/edit#');
     expect(fileItems()[0].href).to.include('/edit');
+  });
+
+  it('reloads Recent on return only when opened files changed', async () => {
+    loadSite.restore();
+    const list = sinon.stub(source, 'list').resolves({ ok: true, items: ITEMS });
+    await el.loadSite();
+    expect(el._files).to.deep.equal([]);
+    window.dispatchEvent(new Event('focus'));
+    await el.updateComplete;
+    expect(list.callCount).to.equal(0);
+    setRecent({ '/org/site': [ITEMS[2].path] });
+    window.dispatchEvent(new Event('pageshow'));
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+    expect(list.callCount).to.equal(1);
+    expect(el._files).to.deep.equal([ITEMS[2]]);
   });
 
   it('ignores a stale site response and aborts the active request on disconnect', async () => {

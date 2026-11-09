@@ -52,7 +52,9 @@ export async function expectNotPermittedOpensProfile(page, expect) {
   await expect(page.getByRole('heading', { name: 'Not permitted' })).toBeVisible();
   await expect(page.getByText('Please make sure you are logged in with the correct user')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Open Profile' }).click();
+  // The error message can render before the profile component is ready.
+  await expect(page.getByRole('button', { name: 'Open profile menu', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Open Profile', exact: true }).click();
   await expect(page.locator('#nx-menu-profile')).toBeVisible();
   await expect.poll(() => page.evaluate(() => {
     let active = document.activeElement;

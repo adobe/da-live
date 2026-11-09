@@ -1,3 +1,19 @@
+## [1.21.4](https://github.com/adobe/da-live/compare/v1.21.3...v1.21.4) (2026-11-09)
+
+
+### Bug Fixes
+
+* **ew:** paste text inside inline code blocks correctly ([#1491](https://github.com/adobe/da-live/issues/1491)) ([7e700d4](https://github.com/adobe/da-live/commit/7e700d4d3c3c6e39f9eb3cb533a92a7dd446d2aa))
+
+## [1.21.3](https://github.com/adobe/da-live/compare/v1.21.2...v1.21.3) (2026-11-09)
+
+
+### Bug Fixes
+
+* profile hint on not permitted messages ([#1647](https://github.com/adobe/da-live/issues/1647)) ([a87d5a6](https://github.com/adobe/da-live/commit/a87d5a6ec2f72184ba6b702bdfe5fd8b99b7f48f))
+* scroll version compare in sync ([#1666](https://github.com/adobe/da-live/issues/1666)) ([041bbfa](https://github.com/adobe/da-live/commit/041bbfa5171668eab269b67a790a7b37ad8e2d6f))
+* **sheet:** let keyboard users move focus in and out of the grid ([#1619](https://github.com/adobe/da-live/issues/1619)) ([ca286a1](https://github.com/adobe/da-live/commit/ca286a19c8a9df3bcb45a0bea45d4ab60e33fa24)), closes [#1535](https://github.com/adobe/da-live/issues/1535)
+
 ## [1.21.2](https://github.com/adobe/da-live/compare/v1.21.1...v1.21.2) (2026-11-06)
 
 

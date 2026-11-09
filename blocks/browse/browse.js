@@ -36,16 +36,19 @@ async function loadLandingSurface(el) {
   el.replaceChildren(surface);
 }
 
-async function loadComponent(el, cmpName, pathDetails, landingSurface) {
+async function loadBrowseStyles() {
+  const styles = await loadStyle(import.meta.url);
+  if (!document.adoptedStyleSheets.includes(styles)) document.adoptedStyleSheets.push(styles);
+}
+
+async function loadComponent(el, cmpName, pathDetails, surface) {
+  await surface;
   if (cmpName === 'da-landing') {
-    await landingSurface;
     const { default: loadLanding } = await import('../landing/landing.js');
     loadLanding(el);
     return;
   }
 
-  const styles = await loadStyle(import.meta.url);
-  if (!document.adoptedStyleSheets.includes(styles)) document.adoptedStyleSheets.push(styles);
   const existing = el.querySelector(cmpName);
   if (existing && pathDetails) {
     existing.details = pathDetails;
@@ -74,18 +77,18 @@ function setRecentSite(details) {
 }
 
 export default function init(el) {
-  let firstLandingSurface;
+  let firstSurface;
   hashChange.subscribe((pathDetails) => {
     const cmpName = getBrowseComponent({ search: window.location.search, pathDetails });
-    const landingSurface = cmpName === 'da-landing' ? loadLandingSurface(el) : undefined;
-    firstLandingSurface ??= landingSurface;
-    loadComponent(el, cmpName, pathDetails, landingSurface);
+    const surface = cmpName === 'da-landing' ? loadLandingSurface(el) : loadBrowseStyles();
+    firstSurface ??= surface;
+    loadComponent(el, cmpName, pathDetails, surface);
     if (pathDetails) setRecentSite(pathDetails);
   });
 
   // Lazily preload the editor
   setTimeout(() => { import('da-y-wrapper'); }, 3000);
 
-  // Keeps the section hidden until the landing gradient can paint.
-  return firstLandingSurface;
+  // Keeps the section hidden until the background styles apply, so raw images never flash.
+  return firstSurface;
 }

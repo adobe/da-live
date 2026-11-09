@@ -47,11 +47,13 @@ export class DaLanding extends LitElement {
   _onStorage = ({ key }) => {
     if (key === 'da-favorites' || key === null) this.refreshFavorites();
     if (key === 'da-sites' || key === null) this.refreshSites();
+    if (key === 'da-recent-files' || key === null) this.refreshRecent();
   };
 
   _onResume = () => {
     this.refreshFavorites();
     this.refreshSites();
+    this.refreshRecent();
   };
 
   _onSiteSelect = ({ detail: { value } }) => {
@@ -122,9 +124,10 @@ export class DaLanding extends LitElement {
       .then(({ isEWEnabled }) => isEWEnabled({ org, site }))
       .then((enabled) => (enabled ? '/canvas#' : '/edit#'))
       .catch(() => '/edit#');
+    const recent = getRecentFiles(this.path);
+    this._recentPaths = recent;
     try {
       const { source } = await getNx2Api();
-      const recent = getRecentFiles(this.path);
       const favorites = getSiteFavorites(this.path).filter((path) => !recent.includes(path));
       const [files, configs, destination] = await Promise.all([
         loadFilesByPath({ paths: [...recent, ...favorites], source, signal: request.signal }),
@@ -146,6 +149,11 @@ export class DaLanding extends LitElement {
 
   refreshFavorites() {
     this._favorites = new Set(getSiteFavorites(this.path));
+  }
+
+  refreshRecent() {
+    if (!this._recentPaths) return;
+    if (getRecentFiles(this.path).join() !== this._recentPaths.join()) this.loadSite();
   }
 
   refreshSites() {
@@ -193,7 +201,7 @@ export class DaLanding extends LitElement {
 
   starFile(item) {
     const folder = item.path.slice(0, item.path.lastIndexOf('/'));
-    const starred = toggleFavorite(folder, item.path, { starred: !this._favorites.has(item.path) });
+    const starred = toggleFavorite(folder, item.path);
     this.refreshFavorites();
     this._actionError = this._favorites.has(item.path) !== starred
       ? 'Could not save your favorites. Check that browser storage is available.' : undefined;

@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getFavorites, toggleFavorite } from '../shared/favorites.js';
+import { isFavorite, toggleFavorite } from '../shared/favorites.js';
 import { isMediaExt } from '../../shared/icons.js';
 import { getNx, getNx2Api, sanitizePathParts } from '../../../scripts/utils.js';
 import {
@@ -143,9 +143,8 @@ export default class DaListBase extends LitElement {
 
   applyFavoritesToItems(items) {
     if (!items) return items;
-    const favorites = new Set(getFavorites(this.fullpath));
     items.forEach((item) => {
-      item.isFavorited = favorites.has(item.path);
+      item.isFavorited = isFavorite(this.fullpath, item.path);
     });
     return items;
   }
