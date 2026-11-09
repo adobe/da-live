@@ -1,3 +1,10 @@
+## [1.21.5](https://github.com/adobe/da-live/compare/v1.21.4...v1.21.5) (2026-11-09)
+
+
+### Bug Fixes
+
+* rename canvas Files panel to Content ([#1686](https://github.com/adobe/da-live/issues/1686)) ([9df79dc](https://github.com/adobe/da-live/commit/9df79dc9e4afa4c5faa01032451dc8c34cedce69))
+
 ## [1.21.4](https://github.com/adobe/da-live/compare/v1.21.3...v1.21.4) (2026-11-09)
 
 
