@@ -24,6 +24,20 @@
   border: 0;
 }
 
+.ew-editor-wysiwyg-conflicts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--s2-gray-200);
+  background: var(--s2-gray-75);
+  font: var(--nx-font-body, 14px/1.4 system-ui, sans-serif);
+}
+
+.ew-editor-wysiwyg-conflicts span {
+  margin-inline-end: auto;
+}
+
 .ew-editor-wysiwyg-placeholder {
   display: flex;
   align-items: center;

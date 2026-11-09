@@ -1,14 +1,16 @@
-import { LitElement, html } from 'da-lit';
-import { getNx } from '../../../scripts/utils.js';
+import { LitElement, html, nothing } from 'da-lit';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { getPreviewOrigin, fetchWysiwygCookie } from '../editor-utils/editor-utils.js';
 import { initIms as loadIms } from '../../shared/utils.js';
 import { toolbarController } from '../editor-utils/toolbar-controller.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { canvasBus } from '../utils/canvas-bus.js';
+import getSheet from '../../shared/sheet.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
 const style = await loadStyle(import.meta.url);
+const buttons = await getSheet(`${getNx2()}/styles/buttons.css`);
 
 const QUICK_EDIT_INIT_INTERVAL_MS = 400;
 const QUICK_EDIT_INIT_MAX_ATTEMPTS = 25;
@@ -53,20 +55,26 @@ export class EwEditorWysiwyg extends LitElement {
     canWrite: { type: Boolean },
     _cookieReady: { state: true },
     _previewError: { state: true },
+    _hasConflicts: { state: true },
+    _canvasActiveView: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [style];
+    this.shadowRoot.adoptedStyleSheets = [style, buttons];
     this._unsubscribeEditorActive = canvasBus.editorViewState.subscribe(({ view }) => {
       this._canvasActiveView = view;
       this._syncCanvasVisibility();
     });
+    this._unsubscribeConflicts = canvasBus.mergeConflictsState.subscribe(
+      ({ hasMergeConflicts } = {}) => { this._hasConflicts = hasMergeConflicts === true; },
+    );
     this._syncCanvasVisibility();
   }
 
   disconnectedCallback() {
     this._unsubscribeEditorActive?.();
+    this._unsubscribeConflicts?.();
     this._clearQuickEditRetry();
     super.disconnectedCallback();
   }
@@ -233,6 +241,19 @@ export class EwEditorWysiwyg extends LitElement {
     }, 0);
   }
 
+  _renderConflictsBanner() {
+    if (!this._hasConflicts) return nothing;
+    const showView = (view) => canvasBus.editorViewRequest.emit({ view });
+    return html`
+      <div class="ew-editor-wysiwyg-conflicts" role="status">
+        <span>Resolve conflicts to edit.</span>
+        ${this._canvasActiveView === 'split' ? nothing : html`
+          <button type="button" class="nx-action-btn" @click=${() => showView('split')}>Split view</button>`}
+        <button type="button" class="nx-action-btn" @click=${() => showView('content')}>Content view</button>
+      </div>
+    `;
+  }
+
   render() {
     const { org, repo, path } = this.ctx ?? {};
     const hasPath = org && repo && path;
@@ -261,6 +282,7 @@ export class EwEditorWysiwyg extends LitElement {
     }
     return html`
       <div class="ew-editor-wysiwyg-surface">
+        ${this._renderConflictsBanner()}
         ${body}
       </div>
     `;

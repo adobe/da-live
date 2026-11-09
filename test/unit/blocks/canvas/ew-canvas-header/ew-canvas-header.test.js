@@ -61,6 +61,21 @@ describe('ew-canvas-header segments', () => {
     expect(header.editorView).to.equal('content');
   });
 
+  it('lets the view switch to layout and split while a doc has merge conflicts', async () => {
+    header.editorView = 'content';
+    header.hasUnresolvedMergeConflicts = true;
+    await header.updateComplete;
+    const layout = segmentByLabel(header, 'Layout');
+    const split = header.shadowRoot.querySelector('.segment-icon');
+    expect(layout.disabled).to.be.false;
+    expect(split.disabled).to.be.false;
+
+    layout.click();
+    expect(header.editorView).to.equal('layout');
+    split.click();
+    expect(header.editorView).to.equal('split');
+  });
+
   it('uses shared chat availability at org level and site level', async () => {
     const contexts = [];
     setChatAvailability(async (context) => {

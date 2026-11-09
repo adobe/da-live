@@ -339,9 +339,6 @@ export default async function decorate(block) {
 
   canvasBus.mergeConflictsState.subscribe((detail) => {
     header.hasUnresolvedMergeConflicts = detail?.hasMergeConflicts ?? false;
-    if (header.hasUnresolvedMergeConflicts && header.editorView !== 'content') {
-      canvasBus.editorViewRequest.emit({ view: 'content' });
-    }
   });
 
   let comparisonContext;
