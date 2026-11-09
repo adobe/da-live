@@ -254,6 +254,29 @@ describe('getInstrumentedHTML for the read-only preview', () => {
     }
   });
 
+  it('leaves no index on a list that contains a conflict', () => {
+    const list = {
+      type: 'bullet_list',
+      content: [
+        { type: 'list_item', content: [para('plain item')] },
+        { type: 'list_item', content: [deleted('upstream item')] },
+        { type: 'list_item', content: [added('local item')] },
+      ],
+    };
+    const other = { type: 'bullet_list', content: [{ type: 'list_item', content: [para('clean')] }] };
+    const { view, cleanup } = makeDiffView([para('intro'), list, other]);
+    try {
+      const doc = fragment(preview(view));
+      const lists = [...doc.querySelectorAll('ul')];
+      expect(lists[0].hasAttribute('data-prose-index')).to.be.false;
+      expect(lists[1].hasAttribute('data-prose-index')).to.be.true;
+      expect(doc.querySelector('li[data-diff="local"]')).to.exist;
+      expect(fragment(getInstrumentedHTML(view)).querySelector('ul[data-prose-index]')).to.exist;
+    } finally {
+      cleanup();
+    }
+  });
+
   it('keeps the indices and markers of content outside conflicts', () => {
     const { view, cleanup } = makeDiffView(content());
     try {

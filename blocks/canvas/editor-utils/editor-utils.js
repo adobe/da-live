@@ -279,6 +279,11 @@ const EDIT_INDEX_ATTRS = ['data-prose-index', 'data-block-index', 'data-image-in
 // position of the conflict node itself. Clicking such an element would mount the
 // wrong node (the upstream side of a pair) in the preview's inline editor.
 function stripEditIndices(root) {
+  // A list or quote holding a conflict is serialized with it, so its own index
+  // would mount that whole node, conflict nodes included.
+  root.querySelectorAll('[data-prose-index]').forEach((el) => {
+    if (el.querySelector(DIFF_CONTAINERS)) el.removeAttribute('data-prose-index');
+  });
   root.querySelectorAll(DIFF_CONTAINERS).forEach((container) => {
     container.querySelectorAll('.block-marker').forEach((el) => el.remove());
     container.querySelectorAll(EDIT_INDEX_ATTRS.map((attr) => `[${attr}]`).join(', '))
