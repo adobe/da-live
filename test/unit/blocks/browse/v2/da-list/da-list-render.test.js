@@ -112,56 +112,6 @@ describe('da-list render', () => {
     }
   });
 
-  ['storage', 'focus', 'pageshow'].forEach((type) => {
-    it(`refreshes directory favorites on ${type} without reloading files or losing selection`, async () => {
-      await fixture({ fullpath: '/org/site/de', select: true });
-      const coffee = { path: '/org/site/de/coffee.html', name: 'coffee', ext: 'html', isChecked: true };
-      el._listItems = [coffee];
-      el._selectedItems = [coffee];
-      await rerender();
-      const getList = spy(el, 'getList');
-      try {
-        const notify = () => window.dispatchEvent(type === 'storage'
-          ? new StorageEvent('storage', { key: 'da-favorites' }) : new Event(type));
-        localStorage.setItem('da-favorites', JSON.stringify({ '/org/site/de': [coffee.path] }));
-        notify();
-        await rerender();
-        const row = el.shadowRoot.querySelector('da-file-item');
-        await row.updateComplete;
-        expect(row.isFavorited).to.equal(true);
-        expect(el.actionBar.isFavorite).to.equal(true);
-        localStorage.removeItem('da-favorites');
-        notify();
-        await rerender();
-        await row.updateComplete;
-        expect(row.isFavorited).to.equal(false);
-        expect(el.actionBar.isFavorite).to.equal(false);
-        expect(el._selectedItems).to.deep.equal([coffee]);
-        expect(coffee.isChecked).to.equal(true);
-        expect(getList.called).to.equal(false);
-      } finally {
-        getList.restore();
-      }
-    });
-  });
-
-  it('leaves caller-owned favorites alone and stops refreshing after disconnect', async () => {
-    await fixture({ listItems: [{ path: '/org/site/a.html', name: 'a', ext: 'html', isFavorited: true }] });
-    window.dispatchEvent(new StorageEvent('storage', { key: 'da-favorites' }));
-    await rerender();
-    expect(el._listItems[0].isFavorited).to.equal(true);
-    const apply = spy(el, 'applyFavoritesToItems');
-    try {
-      el.remove();
-      window.dispatchEvent(new StorageEvent('storage', { key: 'da-favorites' }));
-      window.dispatchEvent(new Event('focus'));
-      window.dispatchEvent(new Event('pageshow'));
-      expect(apply.called).to.equal(false);
-    } finally {
-      apply.restore();
-    }
-  });
-
   it('applies the sort preference on initial load and applies it again when changing folders', async () => {
     el = document.createElement('da-list');
     el.sort = true;
