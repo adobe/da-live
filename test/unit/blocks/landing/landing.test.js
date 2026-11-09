@@ -341,11 +341,6 @@ describe('landing Content section', () => {
     el.refreshFavorites();
     el.changeTab('starred');
     for (const view of ['card', 'list']) {
-      localStorage.setItem('da-favorites', JSON.stringify({
-        '/org/site': [coffee.path],
-        '/org/site/de': [coffee.path],
-      }));
-      el.refreshFavorites();
       el.changeView({ detail: { value: view } });
       await updateLanding();
       expect(fileItems()).to.have.length(1);

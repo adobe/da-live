@@ -200,7 +200,7 @@ export class DaLanding extends LitElement {
 
   starFile(item) {
     const folder = item.path.slice(0, item.path.lastIndexOf('/'));
-    const starred = toggleFavorite(folder, item.path, { starred: !this._favorites.has(item.path) });
+    const starred = toggleFavorite(folder, item.path);
     this.refreshFavorites();
     this._actionError = this._favorites.has(item.path) !== starred
       ? 'Could not save your favorites. Check that browser storage is available.' : undefined;

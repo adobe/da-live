@@ -66,12 +66,7 @@ Returning to the tab or restoring the page from browser history rereads favorite
 so missed storage events do not leave stale stars. Unstarring removes a file from
 Favorite, not Recent, and never changes the favorite state of a different file
 with the same name.
-Unstarring clears all legacy copies of the exact file path across storage buckets,
-including misplaced site-root entries. Starring stores it only in its actual
-parent folder. Existing folder-only callers retain their toggle behavior; Content
-passes the intended star state because it reads site-wide favorites.
-Folder-level reads in Browse include legacy site-root entries for the file's
-actual containing folder.
+Starring stores the file in its parent folder, the same bucket Browse uses.
 Favorite identity is the full file path, including its extension, not its modification date.
 
 ## Data, previews and destinations
