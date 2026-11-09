@@ -2,24 +2,9 @@
   display: grid;
   align-content: center;
   box-sizing: border-box;
-  min-height: 100%;
   padding: var(--s2-spacing-300) var(--s2-spacing-400);
   color: var(--s2-gray-800);
   font-family: var(--s2-font-family);
-  background:
-    linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--s2-gray-25) 0%, transparent) 25%,
-      var(--s2-gray-25) 85%
-    ),
-    linear-gradient(
-      to right,
-      var(--s2-red-100) 0%,
-      var(--s2-red-100) 20%,
-      var(--s2-pink-200) 40%,
-      var(--s2-indigo-200, light-dark(rgb(235 238 255), rgb(35 0 110))) 50%,
-      var(--s2-blue-100) 100%
-    );
 }
 
 h1,
@@ -60,16 +45,11 @@ header p {
   padding: var(--s2-spacing-300);
   border-radius: var(--s2-corner-radius-800);
   background: var(--s2-gray-25);
-  box-shadow: var(
-    --s2-drop-shadow-emphasized,
-    0 2px 8px light-dark(rgb(0 0 0 / 8%), rgb(0 0 0 / 24%)),
-    0 1px 4px light-dark(rgb(0 0 0 / 4%), rgb(0 0 0 / 12%)),
-    0 0 1px light-dark(rgb(0 0 0 / 8%), rgb(0 0 0 / 24%))
-  );
+  box-shadow: var(--s2-drop-shadow-emphasized);
 }
 
 h2 {
-  font-size: var(--nx-ui-text-title, var(--s2-component-xl-bold-font-size));
+  font-size: var(--s2-component-xl-bold-font-size);
   font-weight: 700;
   line-height: 1.25;
 }
@@ -141,7 +121,7 @@ h3 {
 
 .tile p {
   margin-bottom: var(--s2-spacing-400);
-  font-size: var(--nx-ui-text-content, var(--s2-component-m-regular-font-size));
+  font-size: var(--s2-component-m-regular-font-size);
   line-height: 1.5;
 }
 
@@ -156,10 +136,6 @@ h3 {
 }
 
 @media (forced-colors: active) {
-  :host {
-    background: Canvas;
-  }
-
   .panel,
   .tile {
     outline: 1px solid CanvasText;

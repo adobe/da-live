@@ -33,22 +33,21 @@ async function loadComponent(el, cmpName, pathDetails) {
     return;
   }
 
-  const styles = await loadStyle(import.meta.url);
-  if (!document.adoptedStyleSheets.includes(styles)) document.adoptedStyleSheets.push(styles);
-
   if (cmpName === 'da-onboarding') {
-    await import('../start/onboarding.js');
-    el.replaceChildren(document.createElement(cmpName));
+    const { default: loadOnboarding } = await import('../onboarding/onboarding.js');
+    loadOnboarding(el);
     return;
   }
 
+  const styles = await loadStyle(import.meta.url);
+  if (!document.adoptedStyleSheets.includes(styles)) document.adoptedStyleSheets.push(styles);
   const existing = el.querySelector(cmpName);
   if (existing && pathDetails) {
     existing.details = pathDetails;
     return;
   }
   // Swapping views — remove whichever component is currently mounted.
-  el.querySelector('da-sites, da-browse, da-onboarding, .landing')?.remove();
+  el.querySelector('da-sites, da-browse, .landing')?.remove();
   const componentPath = cmpName === 'da-sites' ? '.' : await getBrowsePath(pathDetails);
   if (componentPath === './v2') useV2Nav();
   await import(`${componentPath}/${cmpName}/${cmpName}.js`);

@@ -2,12 +2,13 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../scripts/utils.js';
 import { initIms } from '../shared/utils.js';
 import { ONBOARDING_TILES } from './constants.js';
-import { addSite, getGitHubSite } from './utils.js';
+import { addSite, getGitHubSite } from '../start/utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const [form, styles] = await Promise.all([
+const [form, styles, landingStyles] = await Promise.all([
   loadStyle(`${getNx2()}/styles/form.css`),
   loadStyle(import.meta.url),
+  loadStyle(new URL('../landing/landing.css', import.meta.url).href),
 ]);
 
 class DaOnboarding extends LitElement {
@@ -106,3 +107,11 @@ class DaOnboarding extends LitElement {
 }
 
 customElements.define('da-onboarding', DaOnboarding);
+
+export default function init(el) {
+  const { adoptedStyleSheets } = document;
+  if (!adoptedStyleSheets.includes(landingStyles)) adoptedStyleSheets.push(landingStyles);
+  const onboarding = document.createElement('da-onboarding');
+  onboarding.className = 'landing';
+  el.replaceChildren(onboarding);
+}

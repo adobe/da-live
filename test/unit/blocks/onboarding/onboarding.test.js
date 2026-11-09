@@ -4,7 +4,7 @@ const { setNx, getNx } = await import('../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { setImsResult } = await import(`${getNx()}/utils/ims.js`);
-await import('../../../../blocks/start/onboarding.js');
+const { default: init } = await import('../../../../blocks/onboarding/onboarding.js');
 
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 
@@ -32,6 +32,18 @@ describe('da-onboarding', () => {
   afterEach(() => {
     el.remove();
     window.adobeIMS = savedIms;
+  });
+
+  it('replaces the block content with the onboarding page on the landing surface', () => {
+    const sheetCount = document.adoptedStyleSheets.length;
+    el = document.createElement('div');
+    el.append(document.createElement('da-sites'));
+    init(el);
+    init(el);
+    expect(el.children.length).to.equal(1);
+    expect(el.firstElementChild.localName).to.equal('da-onboarding');
+    expect(el.firstElementChild.classList.contains('landing')).to.be.true;
+    expect(document.adoptedStyleSheets.length).to.equal(sheetCount + 1);
   });
 
   it('greets without a name when the profile is unavailable', async () => {

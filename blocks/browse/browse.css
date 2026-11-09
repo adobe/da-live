@@ -6,12 +6,6 @@ html:has(aside.panel[data-position="before"]:not([hidden])) da-browse::part(chat
   container-type: inline-size;
 }
 
-.section:has(da-onboarding),
-.block-content:has(da-onboarding),
-.browse:has(> da-onboarding) {
-  height: 100%;
-}
-
 @container (width < 1440px) {
   da-browse {
     --se-grid-container-width: 83.4cqi;
