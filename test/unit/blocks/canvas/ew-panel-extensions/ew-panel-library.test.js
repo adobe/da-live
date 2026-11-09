@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { stub } from 'sinon';
+import { spy, stub } from 'sinon';
 import { NodeSelection, TextSelection } from 'da-y-wrapper';
 import { setNx, getNx } from '../../../../../scripts/utils.js';
 import { getExtensionsBridge } from '../../../../../blocks/canvas/editor-utils/extensions-bridge.js';
@@ -506,6 +506,127 @@ describe('Ew panel library icons: preview + search', () => {
     await el.updateComplete;
 
     expect(img.style.display).to.equal('none');
+  });
+});
+
+describe('Ew panel library blocks sidebar', () => {
+  let el;
+
+  beforeEach(async () => {
+    el = document.createElement('ew-panel-library');
+    el.extension = { name: 'blocks', ootb: true, sources: [] };
+    document.body.append(el);
+    await el.updateComplete;
+    await el._loadItems();
+    const dom = document.createElement('table');
+    dom.innerHTML = '<tr><td>Hero</td></tr>';
+    const variants = new Map([
+      ['/hero', [{ name: 'Hero', variants: 'dark', description: 'Full bleed', dom }]],
+      ['/cards', [{ name: 'Cards', variants: 'grid', dom }]],
+    ]);
+    el._blockVariants = variants;
+    el._items = [{ name: 'Hero', path: '/hero' }, { name: 'Cards', path: '/cards' }]
+      .map((block) => ({ ...block, loadVariants: Promise.resolve(variants.get(block.path)) }));
+    await el.updateComplete;
+  });
+
+  afterEach(() => {
+    el.remove();
+    document.querySelector('ew-block-library-modal')?.remove();
+  });
+
+  it('expands groups and filters automatically expanded variants by metadata', async () => {
+    el.shadowRoot.querySelector('.ext-group-title').click();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelectorAll('.ext-variant-item')).to.have.lengthOf(1);
+    const input = el.shadowRoot.querySelector('input');
+    input.value = 'full dark';
+    input.dispatchEvent(new Event('input'));
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelectorAll('.ext-group')).to.have.lengthOf(1);
+    expect(el.shadowRoot.querySelector('.ext-variant-subtitle').textContent).to.equal('dark');
+    expect(el.shadowRoot.querySelector('.ext-group-title').getAttribute('aria-expanded')).to.equal('true');
+    el.shadowRoot.querySelector('.ext-search-clear').click();
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelectorAll('.ext-group')).to.have.lengthOf(2);
+  });
+
+  it('shows feedback when no blocks or variants match', async () => {
+    el._search = 'missing';
+    await el.updateComplete;
+    expect(el.shadowRoot.textContent).to.include('No matching blocks.');
+    expect(el.shadowRoot.querySelectorAll('.ext-group')).to.have.lengthOf(0);
+  });
+
+  it('keeps the selected block highlighted when collapsing its variants', async () => {
+    const button = el.shadowRoot.querySelector('.ext-group-title');
+    button.click();
+    await el.updateComplete;
+    expect(button.closest('.ext-group-header').classList.contains('is-selected')).to.be.true;
+    expect(el.shadowRoot.querySelector('.ext-expand-icon').classList.contains('is-expanded')).to.be.true;
+    button.click();
+    await el.updateComplete;
+    expect(button.closest('.ext-group-header').classList.contains('is-selected')).to.be.true;
+    expect(button.getAttribute('aria-expanded')).to.equal('false');
+    expect(el.shadowRoot.querySelector('.ext-variant-list')).to.equal(null);
+  });
+
+  it('opens the full library at the chosen block without filtering out other blocks', async () => {
+    el._search = 'cards';
+    await el.updateComplete;
+    const insert = stub(el, '_insertBlock');
+    const open = spy(el, '_openBlockLibrary');
+    const button = el.shadowRoot.querySelector('.ext-block-preview');
+    expect(button.querySelector('use').getAttribute('href'))
+      .to.equal('/img/icons/s2-icon-experiencepreview-20-n.svg#icon');
+    button.click();
+    await open.firstCall.returnValue;
+    const modal = document.querySelector('ew-block-library-modal');
+    expect(modal).to.exist;
+    await modal.updateComplete;
+    await modal.updateComplete;
+    expect(modal.shadowRoot.querySelectorAll('.modal-tree-block')).to.have.lengthOf(2);
+    expect(modal.shadowRoot.querySelector('.is-selected').textContent.trim()).to.equal('Cards');
+    expect(modal.shadowRoot.querySelectorAll('.modal-tree-block')[1].getAttribute('aria-expanded'))
+      .to.equal('true');
+    expect(el.shadowRoot.querySelector('.ext-preview-dialog')).to.equal(null);
+    modal.shadowRoot.querySelector('.modal-tree-add').click();
+    expect(insert.calledOnceWithExactly({ dom: el._blockVariants.get('/cards')[0].dom })).to.be.true;
+  });
+
+  it('inserts a variant only from the add button, not the variant title', async () => {
+    const insert = stub(el, '_insertBlock');
+    el._expandedBlock = '/hero';
+    await el.updateComplete;
+
+    el.shadowRoot.querySelector('.ext-variant-title').click();
+    expect(insert.called).to.be.false;
+
+    el.shadowRoot.querySelector('[aria-label="Add Hero to page"]').click();
+    expect(insert.calledOnceWithExactly(el._blockVariants.get('/hero')[0])).to.be.true;
+  });
+
+  it('starts a host drop session only after moving beyond the drag threshold', async () => {
+    const previous = getExtensionsBridge().view;
+    const view = makeRealView({ type: 'doc', content: [{ type: 'paragraph' }] });
+    getExtensionsBridge().view = view;
+    try {
+      el._expandedBlock = '/hero';
+      await el.updateComplete;
+      const button = el.shadowRoot.querySelector('.ext-variant-title');
+      button.dispatchEvent(new PointerEvent('pointerdown', { button: 0, clientX: 10, clientY: 10 }));
+      window.dispatchEvent(new PointerEvent('pointermove', { clientX: 12, clientY: 10 }));
+      expect(el._dragSession).to.equal(undefined);
+      window.dispatchEvent(new PointerEvent('pointermove', { clientX: 25, clientY: 10 }));
+      expect(el._dragSession).to.exist;
+      el.remove();
+      expect(document.querySelector('[style*="2147483646"]')).to.equal(null);
+    } finally {
+      getExtensionsBridge().view = previous;
+      const mount = view.dom.parentElement;
+      view.destroy();
+      mount.remove();
+    }
   });
 });
 
