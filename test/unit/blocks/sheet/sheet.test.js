@@ -1,9 +1,50 @@
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
+import { staleCheck } from '../../../../blocks/sheet/utils/utils.js';
 
-const { setNx } = await import('../../../../scripts/utils.js');
+const { setNx, getNx2Api } = await import('../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { showLoadStatus } = await import('../../../../blocks/sheet/sheet.js');
+const { default: init, showLoadStatus } = await import('../../../../blocks/sheet/sheet.js');
+const { source } = await getNx2Api();
+
+describe('sheet entry point', () => {
+  it('records the opened sheet in Recent with its .json path', async () => {
+    const { href } = window.location;
+    const el = document.createElement('div');
+    const savedJspreadsheet = window.jspreadsheet;
+    window.jspreadsheet = {
+      tabs: (container, data) => {
+        container.innerHTML = `<div></div><div>${data.map(() => '<div class="jexcel_container"></div>').join('')}</div>`;
+        container.jexcel = data.map((d) => ({ name: d.sheetName, options: {} }));
+      },
+    };
+    sinon.stub(source, 'get').resolves({ ok: false, status: 403, permissions: [] });
+    // The end of the first load; replaces the stale-check poll this test doesn't need.
+    const loaded = new Promise((resolve) => { sinon.stub(staleCheck, 'start').callsFake(resolve); });
+    // Capture the real Recent write without sharing it with concurrently running test pages.
+    const setItem = sinon.stub(Storage.prototype, 'setItem');
+    const writes = [];
+    setItem.callsFake(function record(key, value) {
+      if (key === 'da-recent-files') writes.push(JSON.parse(value));
+      else setItem.wrappedMethod.call(this, key, value);
+    });
+    const listeners = [sinon.spy(window, 'addEventListener'), sinon.spy(document, 'addEventListener')];
+    try {
+      window.history.replaceState(null, '', '/sheet#/org/site/data/products');
+      await init(el);
+      await loaded;
+      expect(writes[0]['/org/site'][0]).to.equal('/org/site/data/products.json');
+    } finally {
+      listeners.forEach((spy) => spy.getCalls()
+        .forEach(({ thisValue, args }) => thisValue.removeEventListener(...args)));
+      sinon.restore();
+      window.jspreadsheet = savedJspreadsheet;
+      document.querySelectorAll('da-sheet-tabs').forEach((tabs) => tabs.remove());
+      window.history.replaceState(null, '', href);
+    }
+  });
+});
 
 describe('showLoadStatus', () => {
   let wrapper;

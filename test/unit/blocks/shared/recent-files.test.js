@@ -27,4 +27,16 @@ describe('recent files', () => {
     localStorage.setItem('da-recent-files', '[1]');
     expect(getRecentFiles('/org/site')).to.deep.equal([]);
   });
+
+  it('filters malformed saved paths without changing other sites when recording an open', () => {
+    localStorage.setItem('da-recent-files', JSON.stringify({
+      '/org/site': ['/org/site/a.html', null, 42, '/org/site/b.html'],
+      '/org/other': ['/org/other/a.json'],
+    }));
+    addRecentFile('/org/site/a.html');
+    expect(JSON.parse(localStorage.getItem('da-recent-files'))).to.deep.equal({
+      '/org/site': ['/org/site/a.html', '/org/site/b.html'],
+      '/org/other': ['/org/other/a.json'],
+    });
+  });
 });

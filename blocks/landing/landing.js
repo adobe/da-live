@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
-import { fetchDaConfigs, getFirstSheet } from '../shared/utils.js';
+import { fetchDaConfigs, getEditorConfigs } from '../shared/utils.js';
 import { getSiteFavorites, toggleFavorite } from '../browse/shared/favorites.js';
 import { getBrowseSettings, updateBrowseSettings } from '../browse/v2/shared/settings.js';
 import { getRecentFiles } from '../shared/recent-files.js';
@@ -136,10 +136,7 @@ export class DaLanding extends LitElement {
       ]);
       if (!this.isConnected || request.signal.aborted) return;
       this._editor = destination;
-      this._editorConfs = configs.filter(Boolean).reverse()
-        .flatMap((config) => getFirstSheet(config) || [])
-        .filter(({ key }) => key === 'editor.path')
-        .map(({ value }) => value);
+      this._editorConfs = getEditorConfigs(configs).editorConfs;
       this._files = files.filter((item) => recent.includes(item.path));
       this._favoriteFiles = files.filter((item) => !recent.includes(item.path));
     } catch (error) {

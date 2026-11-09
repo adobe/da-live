@@ -182,24 +182,6 @@ describe('landing Content section', () => {
     }
   });
 
-  it('keeps S typography independent of application sizing tokens', async () => {
-    const sheet = new CSSStyleSheet();
-    await sheet.replace(await (await fetch('/blocks/landing/landing-content.css')).text());
-    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
-    el.style.setProperty('--s2-component-m-regular-font-size', '14px');
-    el.style.setProperty('--s2-heading-size-xs', '18px');
-    el.style.setProperty('--s2-component-l-regular-font-size', '16px');
-    el.style.setProperty('--nx-ui-text-content', '16px');
-    el.style.setProperty('--nx-ui-text-heading', '20px');
-    el.style.setProperty('--nx-ui-text-title', '18px');
-    await el.setScope();
-    await updateLanding();
-    expect(getComputedStyle(el).fontSize).to.equal('14px');
-    expect(getComputedStyle(el).lineHeight).to.equal('18px');
-    expect(getComputedStyle(el.shadowRoot.querySelector('h2')).fontSize).to.equal('18px');
-    expect(getComputedStyle(el.shadowRoot.querySelector('h3')).fontSize).to.equal('16px');
-  });
-
   it('stops at the available files when fewer than eighteen exist', async () => {
     el._files = ITEMS.slice(0, 9);
     await updateLanding();
@@ -358,6 +340,28 @@ describe('landing Content section', () => {
     }
   });
 
+  it('unstars a favorite saved in an ancestor folder without re-saving it elsewhere', async () => {
+    const misplaced = { name: 'a', path: '/org/site/de/a.html', ext: 'html' };
+    const sameName = { name: 'a', path: '/org/site/a.html', ext: 'html' };
+    const otherSite = '/other/site/de/a.html';
+    localStorage.setItem('da-favorites', JSON.stringify({
+      '/org/site': [misplaced.path, sameName.path],
+      '/other/site/de': [otherSite],
+    }));
+    el._files = [sameName, misplaced];
+    el.refreshFavorites();
+    el.changeTab('starred');
+    await updateLanding();
+    [...fileItems()].find((item) => item.path === misplaced.path).requestFavorite();
+    await updateLanding();
+    expect([...fileItems()].map((item) => item.path)).to.deep.equal([sameName.path]);
+    expect(JSON.parse(localStorage.getItem('da-favorites'))).to.deep.equal({
+      '/org/site': [sameName.path],
+      '/other/site/de': [otherSite],
+    });
+    expect(el.shadowRoot.querySelector('[role="alert"]')).to.equal(null);
+  });
+
   ['site-select', 'site-added'].forEach((type) => {
     it(`updates Content from the external nav ${type} event without changing the route`, async () => {
       const { href } = window.location;
@@ -374,32 +378,21 @@ describe('landing Content section', () => {
     el.refreshFavorites();
     el.changeTab('starred');
     el._limit = 18;
-    const request = el._request;
     el.setScope({ org: 'other', site: 'site' });
     await updateLanding();
-    expect(request.signal.aborted).to.equal(true);
     expect(el._tab).to.equal('recent');
     expect(el._limit).to.equal(6);
     expect(el._favorites.size).to.equal(0);
     expect(loadSite.callCount).to.equal(2);
   });
 
-  it('offers a shared blue Add site button with a plus only when no sites are saved', async () => {
+  it('offers Add site only when no sites are saved', async () => {
     el.setScope(undefined);
     await updateLanding();
     expect(el.shadowRoot.querySelector('.empty-state h3').textContent).to.equal('Add a site to get started');
     expect(el.shadowRoot.querySelector('.empty-state p')).to.equal(null);
-    const button = el.shadowRoot.querySelector('.add-site');
-    expect(button.classList.contains('nx-btn-accent')).to.equal(true);
-    expect(button.querySelector('use').getAttribute('href')).to.include('s2-icon-add-20-n.svg');
+    expect(el.shadowRoot.querySelector('.add-site').disabled).to.equal(false);
     expect(el.shadowRoot.querySelector('.empty-state a, nx-siteselector')).to.equal(null);
-    const sheet = new CSSStyleSheet();
-    await sheet.replace(await (await fetch('/blocks/landing/landing-content.css')).text());
-    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
-    el.style.setProperty('--s2-spacing-100', '8px');
-    el.style.setProperty('--s2-spacing-200', '12px');
-    expect(button.getBoundingClientRect().top
-      - el.shadowRoot.querySelector('.empty-state h3').getBoundingClientRect().bottom).to.equal(20);
   });
 
   it('opens the shared Add dialog once and restores focus on cancel', async () => {

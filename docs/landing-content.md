@@ -47,15 +47,18 @@ preserves the visible files and expansion count. The shared list scrolls
 horizontally only when its readable columns cannot fit inside the panel.
 
 While the selected site's content is loading, the panel shows "Loading files..."
-with chat's `nx-loading-spinner` design, a blue leading arc and gray track.
-The indicator is 14px in S and 16px in M, uses the same animation and is hidden
-from assistive technology; its text status and the panel's busy state remain exposed.
-It disappears on completion or error. Its styles are scoped to this loading state
-so it also works with Nexter versions that do not yet export the shared class.
+with the shared `nx-loading-spinner`, a blue leading arc and gray track.
+The component loads `${getNx2()}/styles/spinner.css` before its feature stylesheet;
+the shared sheet owns sizing and animation, with only the active color and
+flex-shrink overridden locally. The indicator is hidden from assistive technology;
+its text status and the panel's busy state remain exposed.
+It disappears on completion or error.
 
 Favorite uses browser-local `da-favorites` entries across the selected site's folders.
 It preserves Browse's folder-keyed storage: starring or unstarring a file updates
-the entry for that file's actual containing folder, not the site root.
+the saved state through the shared `toggleFavorite` helper. New favorites are stored
+in the file's actual containing folder, not the site root. Unstarring removes every
+occurrence of that exact path, including legacy entries saved under ancestor folders.
 It displays at most six files in either view without deleting saved entries.
 The list keeps Name, Folder, Modified and information/favorite controls.
 Changing the filter resets expansion to six. Changing the site also resets
@@ -66,7 +69,6 @@ Returning to the tab or restoring the page from browser history rereads favorite
 so missed storage events do not leave stale stars. Unstarring removes a file from
 Favorite, not Recent, and never changes the favorite state of a different file
 with the same name.
-Starring stores the file in its parent folder, the same bucket Browse uses.
 Favorite identity is the full file path, including its extension, not its modification date.
 
 ## Data, previews and destinations

@@ -20,7 +20,8 @@ export function addRecentFile(path) {
   if (parts.length < 4 || parts[0] !== '') return;
   const sitePath = parts.slice(0, 3).join('/');
   const all = readAll();
-  all[sitePath] = [path, ...getRecentFiles(sitePath).filter((recent) => recent !== path)]
+  const recent = Array.isArray(all[sitePath]) ? all[sitePath] : [];
+  all[sitePath] = [path, ...recent.filter((recentPath) => typeof recentPath === 'string' && recentPath !== path)]
     .slice(0, MAX_FILES);
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(all));

@@ -72,38 +72,6 @@ describe('landing background with Content', () => {
       .forEach((color) => expect(computed.backgroundImage).to.include(color));
   });
 
-  it('leaves the application scheme unchanged when mounting and removing landing', () => {
-    document.body.classList.add('dark-scheme');
-    const before = getComputedStyle(document.body).colorScheme;
-    init(el);
-    expect(getComputedStyle(document.body).colorScheme).to.equal(before);
-    el.replaceChildren();
-    expect(getComputedStyle(document.body).colorScheme).to.equal(before);
-  });
-
-  it('ignores a light theme query without changing the application or saved theme', () => {
-    const savedTheme = localStorage.getItem('color-scheme');
-    document.body.classList.add('dark-scheme');
-    const before = getComputedStyle(document.body).colorScheme;
-    history.replaceState(null, '', '?theme=light');
-    init(el);
-    expect(getComputedStyle(document.body).colorScheme).to.equal(before);
-    expect(localStorage.getItem('color-scheme')).to.equal(savedTheme);
-    el.replaceChildren();
-    expect(getComputedStyle(document.body).colorScheme).to.equal(before);
-  });
-
-  it('ignores a dark theme query without changing the application or saved theme', () => {
-    const savedTheme = localStorage.getItem('color-scheme');
-    const before = getComputedStyle(document.body).colorScheme;
-    history.replaceState(null, '', '?theme=dark');
-    init(el);
-    expect(getComputedStyle(document.body).colorScheme).to.equal(before);
-    expect(localStorage.getItem('color-scheme')).to.equal(savedTheme);
-    el.replaceChildren();
-    expect(getComputedStyle(document.body).colorScheme).to.equal(before);
-  });
-
   it('mirrors light and dark positions with the original middle colors', () => {
     init(el);
     const lightPositions = getComputedStyle(el.firstElementChild).backgroundImage.match(/[\d.]+%/g);

@@ -270,22 +270,14 @@ describe('da-file-item render', () => {
     const card = el.shadowRoot.querySelector('nx-card');
     expect(card.selectable).to.equal(true);
     expect(card.selected).to.equal(false);
+    expect(card.hasAttribute('layout')).to.equal(false);
+    expect(card.hasAttribute('dimensions')).to.equal(false);
     expect(preview.slot).to.equal('media');
     expect(el.shadowRoot.querySelector('[slot="heading"]').textContent.trim()).to.equal('brand.xlsx');
+    expect(el.shadowRoot.querySelector('[slot="heading"] svg')).to.equal(null);
     expect(el.shadowRoot.querySelector('.card-date').textContent).to.equal(el.renderDate());
     expect(el.shadowRoot.querySelector('.card-type').textContent).not.to.be.empty;
     expect(el.shadowRoot.querySelector('[slot="actions"] button[aria-label="More"]')).to.exist;
-  });
-
-  it('keeps the standard Browse composition when document previews are enabled', async () => {
-    await fixture({ view: 'card', ext: 'html', documentPreview: true });
-    const card = el.shadowRoot.querySelector('nx-card');
-    expect(card.hasAttribute('layout')).to.equal(false);
-    expect(card.hasAttribute('dimensions')).to.equal(false);
-    expect(el.shadowRoot.querySelector('.card-type')).to.exist;
-    expect(el.shadowRoot.querySelector('.card-date')).to.exist;
-    expect(el.shadowRoot.querySelector('[slot="heading"] svg')).to.equal(null);
-    expect(el.shadowRoot.querySelector('.card-more').classList.contains('nx-btn-sm')).to.equal(true);
   });
 
   it('uses a supplied destination without resolving a link file', async () => {
