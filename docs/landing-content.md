@@ -60,7 +60,8 @@ It displays at most six files in either view without deleting saved entries.
 The list keeps Name, Folder, Modified and information/favorite controls.
 Changing the filter resets expansion to six. Changing the site also resets
 filters and aborts the previous listing. Favorite changes in another tab
-are reflected while the component is connected.
+update stars while the component is connected; files newly starred elsewhere
+appear on the next load.
 Returning to the tab or restoring the page from browser history rereads favorites,
 so missed storage events do not leave stale stars. Unstarring removes a file from
 Favorite, not Recent, and never changes the favorite state of a different file
@@ -69,21 +70,22 @@ Unstarring clears all legacy copies of the exact file path across storage bucket
 including misplaced site-root entries. Starring stores it only in its actual
 parent folder. Existing folder-only callers retain their toggle behavior; Content
 passes the intended star state because it reads site-wide favorites.
-Browse also refreshes on storage changes and tab/history return, without reloading
-the listing, changing its order or clearing selection. Folder-level reads include
-legacy site-root entries for the file's actual containing folder.
+Folder-level reads in Browse include legacy site-root entries for the file's
+actual containing folder.
 Favorite identity is the full file path, including its extension, not its modification date.
 
 ## Data, previews and destinations
 
-All listing pages across the selected site's folders are loaded, deduplicated
-and sorted by modification date. Folder labels show the site-relative containing
+Recent shows the files the user opened, newest first. Opening a file in Edit,
+Sheet or Canvas stores its path in browser-local `da-recent-files`, up to eighteen
+per site (`blocks/shared/recent-files.js`). The site is never crawled: Content lists
+only the parent folders of the saved Recent and Favorite paths, at most four at a
+time, and stops paging a folder once its files are found. Deleted or renamed files
+are dropped. Recent is per browser and starts empty until a file is opened.
+Favorite is sorted by modification date. Folder labels show the site-relative containing
 folder, such as `/de` for `/org/site/de/coffee.html` and `/` for root items.
 The folder link's tooltip shows its full path including org and site.
-Recent covers the whole selected site, not just the folder open in Browse, and
-is ordered by modifications rather than personal visits.
-Hidden folders are not traversed. At most four folder listings run concurrently.
-Site changes and disconnects abort the walk. Permission/network failures in any
+Site changes and disconnects abort the listings. Permission/network failures in any
 folder have a retry state, not an empty or partially successful result.
 Both views reuse Browse's file-item menus, details and favorites. Content uses
 the standard type icons, including the image icon, in both cards and list rows,

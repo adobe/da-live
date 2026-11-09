@@ -37,12 +37,11 @@ export function getListItems({ files, favorites, editor = '/edit#', editorConfs 
   }));
 }
 
-export async function loadFiles({ path, source, signal }) {
-  const items = new Map();
-  const folders = [path];
-  const visited = new Set(folders);
-  let permissions;
+export async function loadFilesByPath({ paths, source, signal }) {
+  const found = new Map();
+  const parentOf = (path) => path.slice(0, path.lastIndexOf('/'));
   const loadFolder = async (folder) => {
+    const wanted = paths.filter((path) => parentOf(path) === folder);
     const tokens = new Set();
     let continuationToken;
     do {
@@ -50,28 +49,19 @@ export async function loadFiles({ path, source, signal }) {
       const result = await source.list(folder, { continuationToken, opts: { signal } });
       signal.throwIfAborted();
       if (!result.ok) throw new Error('Could not load files. Check your sign-in and site permissions.');
-      if (folder === path) permissions ??= result.permissions;
       result.items.forEach((item) => {
-        if (!item.path?.startsWith(`${folder}/`) || !item.name || item.name.startsWith('.')) return;
-        items.set(item.path, item);
-        if (!item.ext && !visited.has(item.path)) {
-          visited.add(item.path);
-          folders.push(item.path);
-        }
+        if (wanted.includes(item.path)) found.set(item.path, item);
       });
       continuationToken = result.continuationToken;
       if (continuationToken && tokens.has(continuationToken)) {
         throw new Error('File listing did not complete. Please try again.');
       }
       tokens.add(continuationToken);
-    } while (continuationToken);
+    } while (continuationToken && wanted.some((path) => !found.has(path)));
   };
+  const folders = [...new Set(paths.map(parentOf))];
   while (folders.length) {
     await Promise.all(folders.splice(0, LIST_CONCURRENCY).map(loadFolder));
   }
-  const files = [...items.values()].sort(
-    (a, b) => (Number(b.lastModified) || 0) - (Number(a.lastModified) || 0)
-      || a.name.localeCompare(b.name),
-  );
-  return { files, permissions };
+  return paths.map((path) => found.get(path)).filter(Boolean);
 }

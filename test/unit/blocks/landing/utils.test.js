@@ -1,7 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import '../../setup-nx.js';
-import { getBrowseHref, getFileHref, getListItems, loadFiles } from '../../../../blocks/landing/utils.js';
+import { getBrowseHref, getFileHref, getListItems, loadFilesByPath } from '../../../../blocks/landing/utils.js';
 import { getNx2Api } from '../../../../scripts/utils.js';
 
 const { source } = await getNx2Api();
@@ -109,84 +109,38 @@ describe('Content data and destinations on main', () => {
     expect(new URL(items[4].href).pathname).to.equal('/media');
   });
 
-  it('paginates the root listing, deduplicates entries and sorts newest first', async () => {
-    const older = { path: '/org/site/a.html', name: 'a', ext: 'html', lastModified: 10 };
-    const newer = { path: '/org/site/b.html', name: 'b', ext: 'html', lastModified: 20 };
-    const list = sinon.stub();
-    list.onFirstCall().resolves({ ok: true, items: [older, { path: '/org/site/.da', name: '.da' }], continuationToken: 'next', permissions: ['read'] });
-    list.onSecondCall().resolves({ ok: true, items: [older, newer] });
-    const { signal } = new AbortController();
-    expect(await loadFiles({ path: '/org/site', source: { list }, signal }))
-      .to.deep.equal({ files: [newer, older], permissions: ['read'] });
-    expect(list.secondCall.args).to.deep.equal(['/org/site', { continuationToken: 'next', opts: { signal } }]);
-  });
-
-  it('includes nested files, paginates each folder and excludes hidden or out-of-scope entries', async () => {
-    const folder = { path: '/org/site/de', name: 'de' };
-    const subfolder = { path: '/org/site/de/products', name: 'products' };
-    const root = { path: '/org/site/home.html', name: 'home', ext: 'html', lastModified: 10 };
+  it('lists only parent folders of saved paths and returns files in saved order', async () => {
+    const a = { path: '/org/site/a.html', name: 'a', ext: 'html', lastModified: 10 };
     const coffee = { path: '/org/site/de/coffee.html', name: 'coffee', ext: 'html', lastModified: 30 };
-    const machine = { path: '/org/site/de/machines.html', name: 'machines', ext: 'html', lastModified: 20 };
-    const product = { path: '/org/site/de/products/a.html', name: 'a', ext: 'html', lastModified: 40 };
+    const other = { path: '/org/site/de/other.html', name: 'other', ext: 'html', lastModified: 40 };
     const list = sinon.stub().callsFake(async (path, { continuationToken }) => {
-      if (path === '/org/site') {
-        return {
-          ok: true,
-          permissions: ['read'],
-          items: [folder, root, folder, { path: '/org/site/.hidden', name: '.hidden' },
-            { path: '/org/site-other/foreign', name: 'foreign' }],
-        };
-      }
-      if (path === subfolder.path) {
-        return continuationToken ? { ok: true, items: [] }
-          : { ok: true, items: [product], continuationToken: 'next' };
-      }
-      return continuationToken
-        ? { ok: true, items: [coffee, machine, folder, subfolder] }
-        : { ok: true, items: [coffee], continuationToken: 'next' };
+      if (path === '/org/site') return { ok: true, items: [a, { path: '/org/site/de', name: 'de' }] };
+      return continuationToken ? { ok: true, items: [coffee] }
+        : { ok: true, items: [other], continuationToken: 'next' };
     });
-    const { files, permissions } = await loadFiles({ path: '/org/site', source: { list }, signal: new AbortController().signal });
-    expect(files).to.deep.equal([product, coffee, machine, root, folder, subfolder]);
-    expect(permissions).to.deep.equal(['read']);
-    expect(list.getCalls().map(({ args: [path] }) => path))
-      .to.deep.equal(['/org/site', '/org/site/de', '/org/site/de', subfolder.path, subfolder.path]);
+    const { signal } = new AbortController();
+    const paths = [coffee.path, '/org/site/deleted.html', a.path];
+    expect(await loadFilesByPath({ paths, source: { list }, signal })).to.deep.equal([coffee, a]);
+    expect(list.getCalls().map(({ args }) => args)).to.deep.equal([
+      ['/org/site/de', { continuationToken: undefined, opts: { signal } }],
+      ['/org/site', { continuationToken: undefined, opts: { signal } }],
+      ['/org/site/de', { continuationToken: 'next', opts: { signal } }],
+    ]);
   });
 
-  it('rejects failures and repeated pagination tokens inside nested folders', async () => {
-    for (const response of [{ ok: false }, { ok: true, items: [], continuationToken: 'same' }]) {
-      const list = async (path) => (path === '/org/site'
-        ? { ok: true, items: [{ path: '/org/site/de', name: 'de' }] } : response);
-      try {
-        await loadFiles({ path: '/org/site', source: { list }, signal: new AbortController().signal });
-        expect.fail('Expected nested listing failure');
-      } catch (error) {
-        expect(error.message).to.match(/site permissions|did not complete/);
-      }
-    }
-  });
-
-  it('does not continue a site walk after cancellation', async () => {
-    const request = new AbortController();
-    const list = sinon.stub().callsFake(async (path) => {
-      if (path === '/org/site') {
-        return { ok: true, items: [{ path: '/org/site/de', name: 'de' }] };
-      }
-      request.abort();
-      return { ok: true, items: [{ path: '/org/site/de/nested', name: 'nested' }] };
-    });
-    try {
-      await loadFiles({ path: '/org/site', source: { list }, signal: request.signal });
-      expect.fail('Expected cancellation');
-    } catch (error) {
-      expect(error.name).to.equal('AbortError');
-    }
-    expect(list.callCount).to.equal(2);
+  it('stops paginating a folder once all its saved files are found', async () => {
+    const a = { path: '/org/site/a.html', name: 'a' };
+    const list = sinon.stub().resolves({ ok: true, items: [a], continuationToken: 'next' });
+    const { signal } = new AbortController();
+    const files = await loadFilesByPath({ paths: [a.path], source: { list }, signal });
+    expect(files).to.deep.equal([a]);
+    expect(list.callCount).to.equal(1);
   });
 
   it('rejects failed listings and repeated pagination tokens instead of returning partial success', async () => {
     for (const response of [{ ok: false }, { ok: true, items: [], continuationToken: 'same' }]) {
       try {
-        await loadFiles({ path: '/org/site', source: { list: async () => response }, signal: new AbortController().signal });
+        await loadFilesByPath({ paths: ['/org/site/a.html'], source: { list: async () => response }, signal: new AbortController().signal });
         expect.fail('Expected listing failure');
       } catch (error) {
         expect(error.message).to.match(/site permissions|did not complete/);
@@ -199,7 +153,7 @@ describe('Content data and destinations on main', () => {
     request.abort();
     const list = sinon.spy();
     try {
-      await loadFiles({ path: '/org/site', source: { list }, signal: request.signal });
+      await loadFilesByPath({ paths: ['/org/site/a.html'], source: { list }, signal: request.signal });
       expect.fail('Expected cancellation');
     } catch (error) {
       expect(error.name).to.equal('AbortError');

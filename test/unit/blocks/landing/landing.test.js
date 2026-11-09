@@ -9,6 +9,8 @@ const { source, config } = await getNx2Api();
 const { setEWEnabled } = await getNxEWFlags();
 const ITEMS = Array.from({ length: 24 }, (_, index) => ({ name: `Page ${index}`, path: `/org/site/page-${index}.html`, ext: 'html', lastModified: 24 - index }));
 
+const setRecent = (recent) => localStorage.setItem('da-recent-files', JSON.stringify(recent));
+
 describe('landing Content section', () => {
   let el;
   let loadSite;
@@ -23,7 +25,7 @@ describe('landing Content section', () => {
   }
 
   beforeEach(async () => {
-    ['da-favorites', 'da-browse-settings', 'da-sites'].forEach((key) => localStorage.removeItem(key));
+    ['da-favorites', 'da-browse-settings', 'da-sites', 'da-recent-files'].forEach((key) => localStorage.removeItem(key));
     loadSite = sinon.stub(DaLanding.prototype, 'loadSite').callsFake(async function loadSiteForTest() {
       this._request?.abort();
       this._request = new AbortController();
@@ -41,7 +43,7 @@ describe('landing Content section', () => {
     el.remove();
     sinon.restore();
     setEWEnabled(false);
-    ['da-favorites', 'da-browse-settings', 'da-sites'].forEach((key) => localStorage.removeItem(key));
+    ['da-favorites', 'da-browse-settings', 'da-sites', 'da-recent-files'].forEach((key) => localStorage.removeItem(key));
   });
 
   it('renders only Content and reuses shared file cards', () => {
@@ -523,7 +525,7 @@ describe('landing Content section', () => {
     expect(getComputedStyle(spinner).borderTopColor).to.equal('rgb(59, 99, 251)');
     el._files = [];
     await updateLanding();
-    expect(el.shadowRoot.querySelector('.empty-state h3').textContent).to.equal('No files here yet');
+    expect(el.shadowRoot.querySelector('.empty-state h3').textContent).to.equal('No recent files yet');
     expect(el.shadowRoot.querySelector('.nx-loading-spinner')).to.equal(null);
     el._error = 'Permission denied';
     await updateLanding();
@@ -602,6 +604,7 @@ describe('landing Content section', () => {
 
   it('loads the selected site with main APIs and selects the classic editor when EW is off', async () => {
     loadSite.restore();
+    setRecent({ '/org/site': ITEMS.map(({ path }) => path) });
     const list = sinon.stub(source, 'list').resolves({ ok: true, items: ITEMS, permissions: ['read'] });
     await el.loadSite();
     await updateLanding();
@@ -617,6 +620,7 @@ describe('landing Content section', () => {
     const list = sinon.stub(source, 'list');
     list.onFirstCall().returns(new Promise((resolve) => { finish = resolve; }));
     const currentItem = { ...ITEMS[1], path: '/other/site/page-1.html' };
+    setRecent({ '/org/site': [ITEMS[0].path], '/other/site': [currentItem.path] });
     list.onSecondCall().resolves({ ok: true, items: [currentItem] });
     const pending = el.loadSite();
     await Promise.resolve();
@@ -638,6 +642,7 @@ describe('landing Content section', () => {
       ok: true,
       items: ITEMS.map((item) => ({ ...item, path: item.path.replace('/org/site', path) })),
     }));
+    setRecent({ '/org/site': [ITEMS[0].path] });
     setEWEnabled(true);
     await el.loadSite();
     await updateLanding();
@@ -659,6 +664,7 @@ describe('landing Content section', () => {
         ],
       }),
     }));
+    setRecent({ '/configured/site': ['/configured/site/forms/a.html', '/configured/site/b.html', '/configured/site/forms/data.json'] });
     sinon.stub(source, 'list').resolves({
       ok: true,
       items: [
@@ -695,6 +701,7 @@ describe('landing Content section', () => {
       ok: true,
       items: ITEMS.map((item) => ({ ...item, path: item.path.replace('/org/site', path) })),
     }));
+    setRecent({ '/other/site': ['/other/site/page-0.html'] });
     const pending = el.loadSite();
     await new Promise((resolve) => { setTimeout(resolve, 0); });
     expect(el._files).to.equal(undefined);
@@ -728,10 +735,29 @@ describe('landing Content section', () => {
 
   it('falls back to the classic editor when the EW flag fails', async () => {
     loadSite.restore();
+    setRecent({ '/org/site': ITEMS.slice(0, 18).map(({ path }) => path) });
     sinon.stub(source, 'list').resolves({ ok: true, items: ITEMS });
     setEWEnabled(Promise.reject(new Error('Flag unavailable')));
     await el.loadSite();
     expect(el._editor).to.equal('/edit#');
-    expect(el._files).to.have.length(24);
+    expect(el._files).to.have.length(18);
+  });
+
+  it('loads Recent from opened files and Favorite from saved paths without crawling the site', async () => {
+    loadSite.restore();
+    const coffee = { name: 'coffee', path: '/org/site/de/coffee.html', ext: 'html', lastModified: 99 };
+    setRecent({ '/org/site': [ITEMS[3].path, ITEMS[1].path] });
+    toggleFavorite('/org/site/de', coffee.path);
+    const list = sinon.stub(source, 'list').callsFake(async (path) => ({
+      ok: true,
+      items: path === '/org/site' ? [{ name: 'de', path: '/org/site/de' }, ...ITEMS] : [coffee],
+    }));
+    await el.loadSite();
+    el.refreshFavorites();
+    expect(list.getCalls().map(({ args: [path] }) => path)).to.deep.equal(['/org/site', '/org/site/de']);
+    expect(el._files.map(({ path }) => path)).to.deep.equal([ITEMS[3].path, ITEMS[1].path]);
+    el.changeTab('starred');
+    await updateLanding();
+    expect([...fileItems()].map(({ path }) => path)).to.deep.equal([coffee.path]);
   });
 });

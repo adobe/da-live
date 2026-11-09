@@ -3,7 +3,8 @@ import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
 import { fetchDaConfigs, getFirstSheet } from '../shared/utils.js';
 import { getSiteFavorites, toggleFavorite } from '../browse/shared/favorites.js';
 import { getBrowseSettings, updateBrowseSettings } from '../browse/v2/shared/settings.js';
-import { getBrowseHref, getListItems, loadFiles } from './utils.js';
+import { getRecentFiles } from '../shared/recent-files.js';
+import { getBrowseHref, getListItems, loadFilesByPath } from './utils.js';
 import '../browse/v2/da-list/da-list.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -29,6 +30,7 @@ export class DaLanding extends LitElement {
   static properties = {
     _scope: { state: true },
     _files: { state: true },
+    _favoriteFiles: { state: true },
     _error: { state: true },
     _actionError: { state: true },
     _favorites: { state: true },
@@ -109,6 +111,7 @@ export class DaLanding extends LitElement {
     const request = new AbortController();
     this._request = request;
     this._files = undefined;
+    this._favoriteFiles = undefined;
     this._error = undefined;
     this._editor = undefined;
     this._editorConfs = undefined;
@@ -120,8 +123,10 @@ export class DaLanding extends LitElement {
       .catch(() => '/edit#');
     try {
       const { source } = await getNx2Api();
-      const [{ files }, configs, destination] = await Promise.all([
-        loadFiles({ path: this.path, source, signal: request.signal }),
+      const recent = getRecentFiles(this.path);
+      const favorites = getSiteFavorites(this.path).filter((path) => !recent.includes(path));
+      const [files, configs, destination] = await Promise.all([
+        loadFilesByPath({ paths: [...recent, ...favorites], source, signal: request.signal }),
         Promise.all(fetchDaConfigs({ org, site })),
         editor,
       ]);
@@ -131,7 +136,8 @@ export class DaLanding extends LitElement {
         .flatMap((config) => getFirstSheet(config) || [])
         .filter(({ key }) => key === 'editor.path')
         .map(({ value }) => value);
-      this._files = files;
+      this._files = files.filter((item) => recent.includes(item.path));
+      this._favoriteFiles = files.filter((item) => !recent.includes(item.path));
     } catch (error) {
       if (!request.signal.aborted && this.isConnected) this._error = error.message;
     }
@@ -192,6 +198,15 @@ export class DaLanding extends LitElement {
       ? 'Could not save your favorites. Check that browser storage is available.' : undefined;
   }
 
+  getFavoriteFiles() {
+    const files = new Map([...this._files, ...(this._favoriteFiles ?? [])]
+      .map((item) => [item.path, item]));
+    return [...files.values()]
+      .filter((item) => this._favorites.has(item.path))
+      .sort((a, b) => (Number(b.lastModified) || 0) - (Number(a.lastModified) || 0)
+        || a.name.localeCompare(b.name));
+  }
+
   changeTab(value) {
     this._tab = value;
     this._limit = PAGE_SIZE;
@@ -218,16 +233,15 @@ export class DaLanding extends LitElement {
         <button class="nx-action-btn" @click=${this.loadSite}>Try again</button></div>`;
     }
     if (!this._files) return html`<p class="loading" role="status"><span class="nx-loading-spinner" aria-hidden="true"></span>Loading files...</p>`;
-    const files = this._tab === 'starred'
-      ? this._files.filter((item) => this._favorites.has(item.path)) : this._files;
+    const files = this._tab === 'starred' ? this.getFavoriteFiles() : this._files;
     if (!files.length) {
       return html`<div class="empty-state">${icon(this._tab === 'starred' ? 'star' : 'folder')}
-        <h3>${this._tab === 'starred' ? 'No favorites yet' : 'No files here yet'}</h3>
-        <p>${this._tab === 'starred' ? 'Add a file in Browse to favorites to keep it close.' : 'Open Files to add content to this site.'}</p>
+        <h3>${this._tab === 'starred' ? 'No favorites yet' : 'No recent files yet'}</h3>
+        <p>${this._tab === 'starred' ? 'Add a file in Browse to favorites to keep it close.' : 'Open a file to see it here.'}</p>
       </div>`;
     }
     return html`
-      <div class="file-list" role="grid" aria-label=${this._tab === 'starred' ? 'Favorite files' : 'Recently modified files'}
+      <div class="file-list" role="grid" aria-label=${this._tab === 'starred' ? 'Favorite files' : 'Recent files'}
         tabindex=${this._view === 'list' ? 0 : nothing}>
         <da-list .listItems=${getListItems({
     files: files.slice(0, this._tab === 'starred' ? PAGE_SIZE : this._limit),
@@ -257,7 +271,7 @@ export class DaLanding extends LitElement {
         <div class="files-toolbar">
           <div class="file-filters" role="group" aria-label="Filter files">
             <button class="filter" type="button" aria-pressed=${this._tab === 'recent'}
-              title="Recently modified files in this site"
+              title="Files you opened recently"
               @click=${() => this.changeTab('recent')}>${icon('history')}Recent</button>
             <button class="filter" type="button" aria-pressed=${this._tab === 'starred'}
               @click=${() => this.changeTab('starred')}>${icon('star')}Favorite</button>

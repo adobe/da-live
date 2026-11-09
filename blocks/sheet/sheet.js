@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import getPathDetails from '../shared/pathDetails.js';
+import { addRecentFile } from '../shared/recent-files.js';
 import { getNx } from '../../scripts/utils.js';
 import '../edit/da-title/da-title.js';
 import { getData } from './utils/index.js';
@@ -161,6 +162,7 @@ export default async function init(el) {
     el.innerHTML = '<h1>Please edit a sheet.</h1>';
     return;
   }
+  addRecentFile(details.fullpath);
 
   document.title = `Edit sheet ${details.name} - DA`;
 

@@ -1,4 +1,5 @@
 import getPathDetails from '../shared/pathDetails.js';
+import { addRecentFile } from '../shared/recent-files.js';
 import { contentLogin, livePreviewLogin } from '../shared/utils.js';
 import { getNx, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
 
@@ -50,6 +51,7 @@ async function setUI(el) {
   } catch {
     // Flag check unavailable — fall through to the normal editor.
   }
+  addRecentFile(details.fullpath);
 
   // Warm the hlx6 probe cache up front so createConnection's `await isHlx6(...)`
   // resolves from cache instead of gating the WebSocket on a network round-trip.
