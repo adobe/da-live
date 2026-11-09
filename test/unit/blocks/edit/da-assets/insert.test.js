@@ -101,7 +101,7 @@ describe('getBlockName', () => {
 describe('createImageNode', () => {
   it('creates an image node with src and default style', () => {
     const view = makeView();
-    const node = createImageNode(view, 'https://example.com/img.jpg');
+    const node = createImageNode(view, { src: 'https://example.com/img.jpg' });
     expect(node.type).to.equal('image');
     expect(node.attrs.src).to.equal('https://example.com/img.jpg');
     expect(node.attrs.style).to.equal('width: 180px');
@@ -109,13 +109,13 @@ describe('createImageNode', () => {
 
   it('includes alt attribute when provided', () => {
     const view = makeView();
-    const node = createImageNode(view, 'https://example.com/img.jpg', 'A description');
+    const node = createImageNode(view, { src: 'https://example.com/img.jpg', alt: 'A description' });
     expect(node.attrs.alt).to.equal('A description');
   });
 
   it('omits alt attribute when not provided', () => {
     const view = makeView();
-    const node = createImageNode(view, 'https://example.com/img.jpg');
+    const node = createImageNode(view, { src: 'https://example.com/img.jpg' });
     expect(node.attrs.alt).to.be.undefined;
   });
 });

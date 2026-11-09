@@ -154,10 +154,10 @@ When `aem.asset.smartcrop.select = on`, the Smart Crop dialog can optionally sho
 
 ProseMirror helpers that operate on `window.view`:
 
-- `insertImage(view, src, alt)` — inserts an image node at the current selection.
+- `insertImage(view, attrs)` — inserts an image node (`attrs` from `assetNodeSpec`, e.g. `{ src, alt?, editAs? }`) at the current selection.
 - `insertLink(view, src)` — inserts the URL as a plain `<a>` link wrapped in a paragraph.
 - `insertFragment(view, nodes)` — inserts multiple nodes (used for multi-crop insertion).
-- `createImageNode(view, src, alt)` — creates an image node without dispatching.
+- `createImageNode(view, attrs)` — creates an image node without dispatching.
 - `findBlockContext(view)` — walks up the ProseMirror node tree to find the nearest enclosing table.
 - `getBlockName(view)` — resolves the enclosing table block name for responsive image config matching.
 

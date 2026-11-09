@@ -8,7 +8,7 @@ const [
   { getRepositoryConfig, getResponsiveImageConfig },
   { buildAssetSelectorProps, rememberAssetFolder },
   { applySiteImageModifiers },
-  { MISSING_FORMAT_ERROR_MSG, resolveAssetSelection },
+  { MISSING_FORMAT_ERROR_MSG, resolveAssetSelection, assetNodeSpec },
   { ASSET_SELECTOR_URL },
 ] = await Promise.all([
   import(`${nx2}/utils/aem-assets/repository-config.js`),
@@ -114,6 +114,14 @@ export function buildHandleSelection({
     }
 
     const { href, isImage, alt } = selection;
+    const { imageType } = repoConfig;
+    const cropImageType = imageType === 'link' ? null : imageType;
+    const imageAttrs = (src) => assetNodeSpec({
+      href: src,
+      isImage: true,
+      alt,
+      imageType: cropImageType,
+    }).attrs;
 
     // Smart crop flow (only for images with smart crop enabled)
     if (isImage && repoConfig.isSmartCrop) {
@@ -131,9 +139,7 @@ export function buildHandleSelection({
           closeAndReset();
           const nodes = srcs.map((src) => createImageNode(
             view,
-            applySiteImageModifiers(src, repoConfig.siteImageModifiers),
-            alt,
-            repoConfig.imageType,
+            imageAttrs(applySiteImageModifiers(src, repoConfig.siteImageModifiers)),
           ));
           insertFragment(view, nodes);
         },
@@ -143,7 +149,7 @@ export function buildHandleSelection({
 
       if (!hasCrops) {
         closeAndReset();
-        insertImage(view, href, alt, repoConfig.imageType);
+        insertImage(view, imageAttrs(href));
       }
       return;
     }
@@ -151,10 +157,11 @@ export function buildHandleSelection({
     // Standard insertion
     close();
 
-    if (!isImage || repoConfig.imageType === 'link') {
-      insertLink(view, href);
+    const spec = assetNodeSpec({ href, isImage, alt, imageType });
+    if (spec.kind === 'link') {
+      insertLink(view, spec.href);
     } else {
-      insertImage(view, href, alt, repoConfig.imageType);
+      insertImage(view, spec.attrs);
     }
   };
 }
