@@ -1,6 +1,6 @@
 import { test, expect } from '../utils/fixtures.js';
 import ENV from '../utils/env.js';
-import { getQuery, getTestFolderURL } from '../utils/page.js';
+import { getQuery, getTestFolderURL, TEST_SITE } from '../utils/page.js';
 import { row, deleteSelected } from '../utils/browse.js';
 import { dismissAlertBanner } from '../utils/utils.js';
 
@@ -12,7 +12,7 @@ test('Get Main Page', async ({ page }) => {
   await expect(page.locator('a.brand-area')).toBeVisible();
 });
 
-test('Switch between list and card views, select and rename a folder', async ({ page }, workerInfo) => {
+test('Switch between list and card views, select a folder and rename when supported', async ({ page }, workerInfo) => {
   test.setTimeout(60000);
   const folderURL = new URL(getTestFolderURL('browse', workerInfo));
   const folderPath = folderURL.hash.slice(1);
@@ -54,16 +54,23 @@ test('Switch between list and card views, select and rename a folder', async ({ 
 
   await checkbox.press('Space');
   await expect(checkbox).toBeChecked();
-  await page.getByRole('button', { name: 'Rename', exact: true }).click({ force: true });
-  const renamedName = `${folderName}-renamed`;
-  const renameInput = item.getByRole('textbox', { name: 'Rename item', exact: true });
-  await renameInput.fill(renamedName);
-  await renameInput.press('Enter');
+  const canRenameFolder = TEST_SITE === 'da-status';
+  const renameButton = page.getByRole('button', { name: 'Rename', exact: true });
+  if (canRenameFolder) {
+    await renameButton.click({ force: true });
+    const renameInput = item.getByRole('textbox', { name: 'Rename item', exact: true });
+    await renameInput.fill(`${folderName}-renamed`);
+    await renameInput.press('Enter');
+  } else {
+    await expect(renameButton).toBeHidden();
+    await page.getByRole('button', { name: 'Unselect items', exact: true }).click({ force: true });
+  }
 
-  const renamedHref = `#${folderPath}-renamed`;
-  const renamedItem = row(page, renamedHref);
-  await expect(renamedItem.getByRole('link', { name: renamedName, exact: true })).toBeVisible();
-  await expect(renamedItem.getByRole('checkbox', { name: 'Select item', exact: true })).not.toBeChecked();
+  const finalName = canRenameFolder ? `${folderName}-renamed` : folderName;
+  const finalHref = canRenameFolder ? `#${folderPath}-renamed` : `#${folderPath}`;
+  const finalItem = row(page, finalHref);
+  await expect(finalItem.getByRole('link', { name: finalName, exact: true })).toBeVisible();
+  await expect(finalItem.getByRole('checkbox', { name: 'Select item', exact: true })).not.toBeChecked();
 
   await page.getByRole('button', { name: 'Appearance', exact: true }).click();
   await expect(listView).toBeVisible();
@@ -71,8 +78,8 @@ test('Switch between list and card views, select and rename a folder', async ({ 
   await expect(listView).toHaveAttribute('aria-pressed', 'true');
   await page.reload();
   await dismissAlertBanner(page);
-  await expect(renamedItem.getByRole('link', { name: renamedName, exact: true })).toBeVisible();
-  await expect(row(page, `#${folderPath}`)).toHaveCount(0);
-  await renamedItem.getByRole('checkbox', { name: 'Select item', exact: true }).check();
-  await deleteSelected(page, renamedHref);
+  await expect(finalItem.getByRole('link', { name: finalName, exact: true })).toBeVisible();
+  if (canRenameFolder) await expect(row(page, `#${folderPath}`)).toHaveCount(0);
+  await finalItem.getByRole('checkbox', { name: 'Select item', exact: true }).check();
+  await deleteSelected(page, finalHref);
 });
