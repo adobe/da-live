@@ -293,6 +293,8 @@ export const toolbarController = {
    * cursor plugin to decide whether to publish this user's caret. */
   get activeSurface() { return state.activeSurface; },
 
+  get wysiwygReadOnly() { return state.wysiwygReadOnly; },
+
   /** Register the doc editor's view (the command target). */
   setDocView(view) {
     state.docView = view ?? null;

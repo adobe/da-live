@@ -278,23 +278,25 @@ class EwSelectionToolbar extends LitElement {
   }
 
   _triggerUpload() {
+    const fromLayout = this.activeSurface === 'wysiwyg';
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = SUPPORTED_IMAGE_TYPES.join(',');
-    input.addEventListener('change', (e) => this._onFileSelected(e), { once: true });
+    input.addEventListener('change', (e) => this._onFileSelected(e, { fromLayout }), { once: true });
     input.click();
   }
 
-  async _onFileSelected(e) {
+  async _onFileSelected(e, { fromLayout = false } = {}) {
     const file = e.target.files?.[0];
     if (!file || !this.view || !this.sourceUrl) return;
+    const isLive = () => !fromLayout || !toolbarController.wysiwygReadOnly;
     const [{ getSourceUploadContext }, { uploadImageFile }] = await Promise.all([
       import('../ew-editor-doc/prose-plugins/sourceUploadContext.js'),
       import('../ew-editor-doc/prose-plugins/imageDrop.js'),
     ]);
     const details = getSourceUploadContext(this.sourceUrl);
-    if (!details || this._locked) return;
-    await uploadImageFile(this.view, file, details);
+    if (!details || !isLive()) return;
+    await uploadImageFile(this.view, file, details, { isLive });
   }
 
   _openAemAssets() {

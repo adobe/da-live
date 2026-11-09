@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
 import { TextSelection, NodeSelection } from 'da-y-wrapper';
 import { setNx } from '../../../../../scripts/utils.js';
 import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.js';
@@ -320,6 +321,23 @@ describe('ew-selection-toolbar buttons', () => {
     toolbar.cancelInteraction();
     expect(toolbar.linkDialogOpen).to.be.false;
     expect(toolbar.isInteracting).to.be.false;
+  });
+
+  it('does not insert an upload started in layout once layout is locked', async () => {
+    const locked = sinon.stub(toolbarController, 'wysiwygReadOnly').get(() => true);
+    toolbar.sourceUrl = 'https://admin.da.live/source/lockorg/locksite/doc.html';
+    try {
+      const file = new File([new Uint8Array([1])], 'pic.png', { type: 'image/png' });
+      await toolbar._onFileSelected({ target: { files: [file] } }, { fromLayout: true });
+      let images = 0;
+      editor.view.state.doc.descendants((node) => {
+        if (node.type.name === 'image') images += 1;
+      });
+      expect(images).to.equal(0);
+    } finally {
+      locked.restore();
+      toolbar.sourceUrl = undefined;
+    }
   });
 
   it('offers only comments in a read-only wysiwyg surface', async () => {

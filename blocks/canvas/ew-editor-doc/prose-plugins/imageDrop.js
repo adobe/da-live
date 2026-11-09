@@ -10,9 +10,10 @@ export { SUPPORTED_IMAGE_FILES };
 
 const FPO_IMG_URL = '/blocks/edit/img/fpo.svg';
 
-export async function uploadImageFile(view, file, details) {
+export async function uploadImageFile(view, file, details, { isLive = () => true } = {}) {
   if (!SUPPORTED_IMAGE_FILES.some((type) => type === file.type)) return;
   if (await refuseOversizedImage(file.size, details.parent)) return;
+  if (!isLive()) return;
 
   const { schema } = view.state;
   const fpo = schema.nodes.image.create({ src: FPO_IMG_URL, style: 'width: 180px' });
@@ -27,7 +28,21 @@ export async function uploadImageFile(view, file, details) {
   if (!resp.ok) return;
   const { source: { contentUrl } } = await resp.json();
 
+  const removeFpo = () => {
+    const pos = $from.pos - 1;
+    if (view.state.doc.nodeAt(pos)?.attrs.src !== FPO_IMG_URL) return;
+    view.dispatch(view.state.tr.delete(pos, pos + 1));
+  };
+  if (!isLive()) {
+    removeFpo();
+    return;
+  }
+
   const replaceFpo = () => {
+    if (!isLive()) {
+      removeFpo();
+      return;
+    }
     const fpoSelection = TextSelection.create(view.state.doc, $from.pos - 1, $from.pos);
     const ts = view.state.tr.setSelection(fpoSelection);
     const img = schema.nodes.image.create({ src: contentUrl });

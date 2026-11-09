@@ -262,15 +262,18 @@ class EwBlockToolbar extends LitElement {
     if (!this.view || !this._hasBlockLibrary) return;
     const { from, to } = this.view.state.selection;
     const { view } = this;
+    const fromLayout = toolbarController.activeSurface === 'wysiwyg';
     const { openBlockLibraryModal } = await import('../ew-block-library-modal/ew-block-library-modal.js');
     openBlockLibraryModal({
       heading: 'Replace block',
-      onInsert: (dom) => {
-        if (this.readOnly) return;
-        replaceBlockRange(view, from, to, dom);
-        view.focus();
-      },
+      onInsert: (dom) => this._applyReplace({ view, from, to, fromLayout }, dom),
     });
+  }
+
+  _applyReplace({ view, from, to, fromLayout }, dom) {
+    if (fromLayout && toolbarController.wysiwygReadOnly) return;
+    replaceBlockRange(view, from, to, dom);
+    view.focus();
   }
 
   _renderDeleteDialog() {

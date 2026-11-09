@@ -172,6 +172,24 @@ describe('uploadImageFile', () => {
     });
   });
 
+  it('removes the placeholder and inserts nothing when it stops being live during upload', async () => {
+    const { restore } = stubStore({ upgraded: true, contentUrl: './media_late.png' });
+    let live = true;
+    try {
+      const pending = uploadImageFile(editor.view, png(), { parent: '/lateorg/latesite', name: 'doc' }, { isLive: () => live });
+      await nextFrame();
+      live = false;
+      await pending;
+      const sources = [];
+      editor.view.state.doc.descendants((node) => {
+        if (node.type.name === 'image') sources.push(node.attrs.src);
+      });
+      expect(sources).to.deep.equal([]);
+    } finally {
+      restore();
+    }
+  });
+
   it('uploads to the source bus for a migrated site', async () => {
     const { calls, restore } = stubStore({ upgraded: true, contentUrl: './media_abc.png' });
     try {
