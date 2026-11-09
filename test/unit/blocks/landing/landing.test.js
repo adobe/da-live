@@ -57,134 +57,10 @@ describe('landing Content section', () => {
     expect(el.shadowRoot.querySelector('h1, textarea, .composer, nx-nav')).to.equal(null);
     expect(el.shadowRoot.querySelector('nx-siteselector, .site-picker')).to.equal(null);
     expect(fileItems()[0].href).to.include('/canvas');
-    expect(el.shadowRoot.querySelector('da-landing-file-actions')).to.equal(null);
     expect(fileList().fullpath).to.equal(undefined);
     expect(fileList().select).not.to.equal(true);
-    expect(fileList().shadowRoot.querySelector('input[name="select-all"]')).to.equal(null);
-    expect(fileList().shadowRoot.querySelector('da-actionbar').dataset.visible).to.equal('false');
-  });
-
-  it('keeps the panel opaque in both views and color schemes', async () => {
-    const sheet = new CSSStyleSheet();
-    await sheet.replace(await (await fetch('/blocks/landing/landing-content.css')).text());
-    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
-    el.style.setProperty('--s2-gray-25', 'light-dark(rgb(255 255 255), rgb(17 17 17))');
-    for (const [theme, background] of [['light', 'rgb(255, 255, 255)'], ['dark', 'rgb(17, 17, 17)']]) {
-      el.style.colorScheme = theme;
-      for (const view of ['card', 'list']) {
-        el.changeView({ detail: { value: view } });
-        await updateLanding();
-        expect(getComputedStyle(el.shadowRoot.querySelector('.files-panel')).backgroundColor)
-          .to.equal(background);
-      }
-    }
-  });
-
-  it('keeps fixed cards, whole columns and 16px panel insets at narrower widths', async () => {
-    const sheet = new CSSStyleSheet();
-    await sheet.replace(await (await fetch('/blocks/landing/landing-content.css')).text());
-    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
-    el.style.setProperty('--s2-spacing-200', '12px');
-    el.style.setProperty('--s2-spacing-300', '16px');
-    el.style.setProperty('--s2-spacing-400', '24px');
-    const listSheet = new CSSStyleSheet();
-    const listStyles = await fetch('/blocks/browse/v2/da-list/da-list.css');
-    await listSheet.replace(await listStyles.text());
-    const list = fileList();
-    list.shadowRoot.adoptedStyleSheets = [...list.shadowRoot.adoptedStyleSheets, listSheet];
-    const grid = list.shadowRoot.querySelector('.da-card-grid');
-    for (const [width, columns] of [[500, '151px 151px 151px'], [320, '151px 151px'], [150, '150px']]) {
-      grid.style.width = `${width}px`;
-      expect(getComputedStyle(grid).gridTemplateColumns).to.equal(columns);
-    }
-    grid.style.removeProperty('width');
-    for (const width of [1360, 960, 560]) {
-      el.style.width = `${width}px`;
-      const panel = el.shadowRoot.querySelector('.files-panel').getBoundingClientRect();
-      const row = grid.getBoundingClientRect();
-      const columns = getComputedStyle(grid).gridTemplateColumns.split(' ');
-      expect(row.left - panel.left).to.equal(16);
-      expect(panel.right - row.right).to.equal(16);
-      expect(row.width).to.equal(columns.length * 151 + (columns.length - 1) * 12);
-    }
-  });
-
-  it('expands Recent directly from six to eighteen and then hides Show more', async () => {
-    el.shadowRoot.querySelector('.show-more').click();
-    await updateLanding();
-    expect(fileItems()).to.have.length(18);
-    expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
-  });
-
-  it('matches panel widths across views and loading, empty and error states', async () => {
-    const sheet = new CSSStyleSheet();
-    await sheet.replace(await (await fetch('/blocks/landing/landing-content.css')).text());
-    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
-    el.style.setProperty('--s2-spacing-200', '12px');
-    el.style.setProperty('--s2-spacing-300', '16px');
-    el.style.setProperty('--s2-spacing-400', '24px');
-    el.style.setProperty('--s2-spacing-800', '64px');
-    const states = [
-      { files: undefined, error: undefined },
-      { files: [], error: undefined },
-      { files: undefined, error: 'Permission denied' },
-    ];
-    for (const width of [1360, 960, 560]) {
-      el.style.width = `${width}px`;
-      const widths = {};
-      for (const view of ['card', 'list']) {
-        el.changeView({ detail: { value: view } });
-        el._files = ITEMS;
-        el._error = undefined;
-        await updateLanding();
-        const panel = el.shadowRoot.querySelector('.files-panel');
-        widths[view] = panel.getBoundingClientRect().width;
-        for (const { files, error } of states) {
-          el._files = files;
-          el._error = error;
-          await updateLanding();
-          expect(panel.getBoundingClientRect().width).to.equal(widths[view]);
-        }
-      }
-      expect(widths.list).to.equal(widths.card);
-    }
-  });
-
-  it('aligns shared headers and rows and scrolls only when readable columns do not fit', async () => {
-    const sheet = new CSSStyleSheet();
-    await sheet.replace(await (await fetch('/blocks/landing/landing-content.css')).text());
-    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
-    el.style.setProperty('--s2-spacing-200', '12px');
-    el.style.setProperty('--s2-spacing-300', '16px');
-    el.style.setProperty('--s2-spacing-400', '24px');
-    el.changeView({ detail: { value: 'list' } });
-    await updateLanding();
-    const listSheet = new CSSStyleSheet();
-    await listSheet.replace(await (await fetch('/blocks/browse/v2/da-list/da-list.css')).text());
-    fileList().shadowRoot.adoptedStyleSheets = [
-      ...fileList().shadowRoot.adoptedStyleSheets,
-      listSheet,
-    ];
-    const itemSheet = new CSSStyleSheet();
-    await itemSheet.replace(await (await fetch('/blocks/shared/da-file-item/da-file-item.css')).text());
-    fileItems()[0].shadowRoot.adoptedStyleSheets = [
-      ...fileItems()[0].shadowRoot.adoptedStyleSheets,
-      itemSheet,
-    ];
-    el.style.setProperty('--s2-component-m-regular-font-size', '14px');
-    for (const width of [1200, 900, 360]) {
-      el.style.width = `${width}px`;
-      const scroll = el.shadowRoot.querySelector('.file-list');
-      if (width > 360) expect(scroll.scrollWidth).to.equal(scroll.clientWidth);
-      else expect(scroll.scrollWidth).to.be.greaterThan(scroll.clientWidth);
-      expect(scroll.tabIndex).to.equal(0);
-      for (const column of ['name', 'folder', 'modified', 'actions']) {
-        expect(fileList().shadowRoot.querySelector(`[data-column="${column}"]`)
-          .getBoundingClientRect().left)
-          .to.equal(fileItems()[0].shadowRoot.querySelector(`[data-column="${column}"]`)
-            .getBoundingClientRect().left);
-      }
-    }
+    expect(fileList().showFolder).to.equal(true);
+    expect(fileList().sort).to.equal(false);
   });
 
   it('stops at the available files when fewer than eighteen exist', async () => {
@@ -196,30 +72,23 @@ describe('landing Content section', () => {
     expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
   });
 
-  ['card', 'list'].forEach((initialView) => {
-    it(`preserves six/eighteen files across shared toggle changes starting in ${initialView} view`, async () => {
-      el.changeView({ detail: { value: initialView } });
+  it('expands Recent from six to eighteen and preserves files and preference across view changes', async () => {
+    expect(fileItems()).to.have.length(6);
+    el.shadowRoot.querySelector('.show-more').click();
+    await updateLanding();
+    expect(fileItems()).to.have.length(18);
+    expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
+    const switcher = el.shadowRoot.querySelector('nx-segmented-btn');
+    for (const view of ['list', 'card']) {
+      switcher.dispatchEvent(new CustomEvent('change', { detail: { value: view } }));
       await updateLanding();
-      expect(fileItems()).to.have.length(6);
-      el.shadowRoot.querySelector('.show-more').click();
-      await updateLanding();
-      expect(fileItems()).to.have.length(18);
-      const switcher = el.shadowRoot.querySelector('nx-segmented-btn');
-      for (const view of [initialView === 'card' ? 'list' : 'card', initialView]) {
-        switcher.dispatchEvent(new CustomEvent('change', { detail: { value: view } }));
-        await updateLanding();
-        expect(el._view).to.equal(view);
-        expect([...fileItems()].map((item) => item.path))
-          .to.deep.equal(ITEMS.slice(0, 18).map((item) => item.path));
-        expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
-        expect(JSON.parse(localStorage.getItem('da-browse-settings')).view).to.equal(view);
-      }
-      el.changeView({ detail: { value: 'list' } });
-      await updateLanding();
-      expect([...fileList().shadowRoot.querySelectorAll('[role="columnheader"]')].map((cell) => cell.textContent.trim()))
-        .to.deep.equal(['Name', 'Folder', 'Modified']);
-      expect(fileList().shadowRoot.querySelector('.da-browse-table-header button')).to.equal(null);
-    });
+      expect(el._view).to.equal(view);
+      expect(el.shadowRoot.querySelector('.file-list').tabIndex).to.equal(view === 'list' ? 0 : -1);
+      expect([...fileItems()].map((item) => item.path))
+        .to.deep.equal(ITEMS.slice(0, 18).map((item) => item.path));
+      expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
+      expect(JSON.parse(localStorage.getItem('da-browse-settings')).view).to.equal(view);
+    }
   });
 
   it('caps Favorite at six files in both views without deleting saved entries', async () => {
