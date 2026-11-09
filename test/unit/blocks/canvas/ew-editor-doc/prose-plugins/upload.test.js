@@ -22,7 +22,7 @@ before(async () => {
 });
 
 // isHlx6 memoizes its answer per site, so each case needs its own org/site
-function stubStore({ upgraded, contentUrl = 'https://content.da.live/org/site/.doc/pic.png' }) {
+function stubStore({ upgraded, contentUrl = 'https://content.da.live/org/site/.doc/pic.png', status = 201, gate }) {
   const saved = window.fetch;
   const calls = [];
   window.fetch = async (url, opts) => {
@@ -34,8 +34,9 @@ function stubStore({ upgraded, contentUrl = 'https://content.da.live/org/site/.d
         headers: upgraded ? { 'x-api-upgrade-available': 'true' } : {},
       });
     }
+    await gate;
     return new Response(JSON.stringify({ source: { contentUrl } }), {
-      status: 201,
+      status,
       headers: { 'content-type': 'application/json' },
     });
   };
@@ -173,18 +174,93 @@ describe('uploadImageFile', () => {
   });
 
   it('removes the placeholder and inserts nothing when it stops being live during upload', async () => {
-    const { restore } = stubStore({ upgraded: true, contentUrl: './media_late.png' });
+    let open;
+    const gate = new Promise((resolve) => { open = resolve; });
+    const { restore } = stubStore({ upgraded: true, contentUrl: './media_late.png', gate });
     let live = true;
     try {
       const pending = uploadImageFile(editor.view, png(), { parent: '/lateorg/latesite', name: 'doc' }, { isLive: () => live });
       await nextFrame();
       live = false;
+      open();
       await pending;
       const sources = [];
       editor.view.state.doc.descendants((node) => {
         if (node.type.name === 'image') sources.push(node.attrs.src);
       });
       expect(sources).to.deep.equal([]);
+    } finally {
+      restore();
+    }
+  });
+
+  const imageSources = () => {
+    const sources = [];
+    editor.view.state.doc.descendants((node) => {
+      if (node.type.name === 'image') sources.push(node.attrs.src);
+    });
+    return sources;
+  };
+
+  it('cleans up a cancelled upload after text is inserted before the placeholder', async () => {
+    let open;
+    const gate = new Promise((resolve) => { open = resolve; });
+    const { restore } = stubStore({ upgraded: true, contentUrl: './media_shift.png', gate });
+    let live = true;
+    try {
+      const pending = uploadImageFile(editor.view, png(), { parent: '/shiftorg/shiftsite', name: 'doc' }, { isLive: () => live });
+      await nextFrame();
+      editor.view.dispatch(editor.view.state.tr.insertText('collab ', 1));
+      live = false;
+      open();
+      await pending;
+      expect(imageSources()).to.deep.equal([]);
+    } finally {
+      restore();
+    }
+  });
+
+  it('still swaps in the image at the placeholder after text is inserted before it', async () => {
+    const { restore } = stubStore({ upgraded: true, contentUrl: './media_move.png' });
+    try {
+      const pending = uploadImageFile(editor.view, png(), { parent: '/moveorg/movesite', name: 'doc' });
+      await nextFrame();
+      editor.view.dispatch(editor.view.state.tr.insertText('collab ', 1));
+      await pending;
+      expect(imageSources()).to.deep.equal(['./media_move.png']);
+    } finally {
+      restore();
+    }
+  });
+
+  it('removes the placeholder of a failed upload that was cancelled', async () => {
+    let open;
+    const gate = new Promise((resolve) => { open = resolve; });
+    const { restore } = stubStore({ upgraded: true, status: 500, gate });
+    let live = true;
+    try {
+      const pending = uploadImageFile(editor.view, png(), { parent: '/failorg/failsite', name: 'doc' }, { isLive: () => live });
+      await nextFrame();
+      live = false;
+      open();
+      await pending;
+      expect(imageSources()).to.deep.equal([]);
+    } finally {
+      restore();
+    }
+  });
+
+  it('removes the placeholder of a cancelled upload whose absolute image fails to load', async () => {
+    const { restore } = stubStore({ upgraded: false, contentUrl: 'https://invalid.example/none.png' });
+    let live = true;
+    try {
+      await uploadImageFile(editor.view, png(), { parent: '/loaderr/loaderrsite', name: 'doc' }, { isLive: () => live });
+      live = false;
+      for (let i = 0; i < 100 && imageSources().length; i += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((resolve) => { setTimeout(resolve, 20); });
+      }
+      expect(imageSources()).to.deep.equal([]);
     } finally {
       restore();
     }

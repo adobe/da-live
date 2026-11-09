@@ -10,29 +10,47 @@ export { SUPPORTED_IMAGE_FILES };
 
 const FPO_IMG_URL = '/blocks/edit/img/fpo.svg';
 
+function findPlaceholder(doc, src) {
+  let found = null;
+  doc.descendants((node, pos) => {
+    if (found === null && node.type.name === 'image' && node.attrs.src === src) found = pos;
+    return found === null;
+  });
+  return found;
+}
+
 export async function uploadImageFile(view, file, details, { isLive = () => true } = {}) {
   if (!SUPPORTED_IMAGE_FILES.some((type) => type === file.type)) return;
   if (await refuseOversizedImage(file.size, details.parent)) return;
   if (!isLive()) return;
 
   const { schema } = view.state;
-  const fpo = schema.nodes.image.create({ src: FPO_IMG_URL, style: 'width: 180px' });
+  const placeholderSrc = `${FPO_IMG_URL}?upload=${crypto.randomUUID()}`;
+  const fpo = schema.nodes.image.create({ src: placeholderSrc, style: 'width: 180px' });
   view.dispatch(view.state.tr.replaceSelectionWith(fpo).scrollIntoView());
 
-  const { $from } = view.state.selection;
-  const path = `${details.parent}/.${details.name}/${file.name}`;
-
-  // the media bus is content addressed, so the src is only known from the response
-  const { source } = await getNx2Api();
-  const resp = await source.uploadMedia(path, { body: file });
-  if (!resp.ok) return;
-  const { source: { contentUrl } } = await resp.json();
-
   const removeFpo = () => {
-    const pos = $from.pos - 1;
-    if (view.state.doc.nodeAt(pos)?.attrs.src !== FPO_IMG_URL) return;
+    if (view.isDestroyed) return;
+    const pos = findPlaceholder(view.state.doc, placeholderSrc);
+    if (pos === null) return;
     view.dispatch(view.state.tr.delete(pos, pos + 1));
   };
+  const path = `${details.parent}/.${details.name}/${file.name}`;
+
+  let contentUrl;
+  try {
+    // the media bus is content addressed, so the src is only known from the response
+    const { source } = await getNx2Api();
+    const resp = await source.uploadMedia(path, { body: file });
+    if (!resp.ok) {
+      if (!isLive()) removeFpo();
+      return;
+    }
+    ({ source: { contentUrl } } = await resp.json());
+  } catch (e) {
+    if (!isLive()) removeFpo();
+    throw e;
+  }
   if (!isLive()) {
     removeFpo();
     return;
@@ -43,7 +61,10 @@ export async function uploadImageFile(view, file, details, { isLive = () => true
       removeFpo();
       return;
     }
-    const fpoSelection = TextSelection.create(view.state.doc, $from.pos - 1, $from.pos);
+    if (view.isDestroyed) return;
+    const pos = findPlaceholder(view.state.doc, placeholderSrc);
+    if (pos === null) return;
+    const fpoSelection = TextSelection.create(view.state.doc, pos, pos + 1);
     const ts = view.state.tr.setSelection(fpoSelection);
     const img = schema.nodes.image.create({ src: contentUrl });
     view.dispatch(ts.replaceSelectionWith(img).scrollIntoView());
@@ -57,6 +78,9 @@ export async function uploadImageFile(view, file, details, { isLive = () => true
 
   const docImg = document.createElement('img');
   docImg.addEventListener('load', replaceFpo);
+  docImg.addEventListener('error', () => {
+    if (!isLive()) removeFpo();
+  });
   docImg.src = contentUrl;
 }
 
