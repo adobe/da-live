@@ -258,8 +258,7 @@ export class DaLanding extends LitElement {
     editor: this._editor || '/edit#',
     editorConfs: this._editorConfs,
   })} .view=${this._view}
-          .showFolder=${true} .sort=${false} .editor=${this._editor || '/edit#'}
-          .editorConfs=${this._editorConfs} .defaultEditor=${this._editor || '/edit#'}
+          .showFolder=${true} .sort=${false}
           size=${this._view === 'card' ? 's' : 'm'}
           @favoritechange=${({ detail: { item } }) => this.starFile(item)}></da-list>
       </div>

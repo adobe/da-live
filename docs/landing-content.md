@@ -6,8 +6,8 @@ and navigation. A site or folder hash always opens Browse, even with `landing=tr
 
 This feature contains only the Content section. It does not introduce a
 greeting, chat/composer, branding, page artwork or editor changes.
-Content contains no site picker. Site selection belongs in navigation when the
-shared picker (adobe/da-nx#947) is merged and integrated there.
+Content contains no site picker. Site selection belongs in navigation through the
+shared picker (adobe/da-nx#947).
 Content listens for its existing bubbling `site-select` and `site-added` events
 to update the selected scope without changing the root URL. It does not load or
 mount the selector, duplicate its validation, or modify LP.
@@ -19,7 +19,6 @@ Nexter's existing `nx-add-site` dialog, without requiring a mounted picker or
 leaving landing. The heading-to-button gap is 20px.
 Closing restores focus; successful Add selects the site.
 Repeated clicks open only one dialog, and disconnects or scope changes remove it.
-The dialog requires adobe/da-nx#947; use `nx=siteselector-main` until it is released.
 With saved sites but none selected, it shows "Choose a site to get started" and
 "Select a site from \"Your recent sites\" to see its content.", without a button.
 Saved history alone never selects a site. Cross-tab history changes refresh the

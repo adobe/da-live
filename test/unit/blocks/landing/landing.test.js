@@ -682,9 +682,11 @@ describe('landing Content section', () => {
       el.changeView({ detail: { value: view } });
       await updateLanding();
       expect(new URL(fileItems()[0].href).pathname).to.equal('/form');
-      expect(fileItems()[0].editor).to.equal('/form#');
       expect(fileItems()[1].href).to.equal('https://experience.adobe.com/editor/b');
       expect(new URL(fileItems()[2].href).pathname).to.equal('/sheet');
+      for (const item of fileItems()) {
+        expect(item.shadowRoot.querySelector('a[href]').href).to.equal(item.href);
+      }
     }
     expect(config.get.calledWith({ org: 'configured', site: undefined })).to.equal(true);
     expect(config.get.calledWith({ org: 'configured', site: 'site' })).to.equal(true);
