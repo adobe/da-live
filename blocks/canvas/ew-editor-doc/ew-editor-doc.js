@@ -21,6 +21,7 @@ import {
 } from './utils/selection.js';
 import {
   prefetchWysiwygCookiesIfSignedIn,
+  setPreviewReadOnly,
   wireQuickEditControllerPort,
 } from './utils/quick-edit-host.js';
 import { initIms as loadIms } from '../../shared/utils.js';
@@ -82,6 +83,7 @@ export class EwEditorDoc extends LitElement {
     if (changed.has('ctx')) {
       this.quickEditPort = undefined;
       this._canWrite = false;
+      this._hasMergeConflicts = false;
       this._teardown();
       setSelectionToolbarCtx();
       toolbarController.reset();
@@ -129,6 +131,8 @@ export class EwEditorDoc extends LitElement {
   }
 
   _emitMergeConflictsState(hasMergeConflicts) {
+    this._hasMergeConflicts = hasMergeConflicts;
+    setPreviewReadOnly(this._controllerCtx, hasMergeConflicts);
     canvasBus.mergeConflictsState.emit({ hasMergeConflicts });
   }
 
@@ -300,9 +304,11 @@ export class EwEditorDoc extends LitElement {
       repo,
       path: controllerPathnameFromEditorCtx(this.ctx),
       canWrite: this._canWrite === true,
+      previewReadOnly: false,
       getToken: async () => (await loadIms())?.accessToken?.token ?? null,
     };
     wireQuickEditControllerPort(this._controllerCtx);
+    setPreviewReadOnly(this._controllerCtx, this._hasMergeConflicts === true);
 
     this._comments.setupIframeBridge();
   }

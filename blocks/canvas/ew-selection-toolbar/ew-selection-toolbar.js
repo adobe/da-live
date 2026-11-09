@@ -46,6 +46,7 @@ class EwSelectionToolbar extends LitElement {
   static properties = {
     view: { attribute: false },
     activeSurface: { attribute: false },
+    readOnly: { attribute: false },
     org: { type: String },
     site: { type: String },
     sourceUrl: { type: String },
@@ -383,7 +384,7 @@ class EwSelectionToolbar extends LitElement {
     `;
   }
 
-  _renderSections() {
+  _visibleSections() {
     const renderButtons = (items) => items.map((i) => this._renderToolbarButton(i));
     const renderImageItems = (items) => items.map((i) => this._renderImageItem(i));
 
@@ -404,12 +405,26 @@ class EwSelectionToolbar extends LitElement {
       { items: TABLE_ITEMS, wysiwyg: false, render: () => this._renderTableMenu() },
       { items: LINK_ITEMS, wysiwyg: true, render: () => renderButtons(LINK_ITEMS) },
       { items: imageItems, wysiwyg: true, render: () => renderImageItems(imageItems) },
-      { items: COMMENT_ITEMS, wysiwyg: true, render: () => renderButtons(COMMENT_ITEMS) },
+      {
+        items: COMMENT_ITEMS,
+        wysiwyg: true,
+        readOnly: true,
+        render: () => renderButtons(COMMENT_ITEMS),
+      },
     ];
 
-    const allowed = inWysiwyg ? sections.filter((s) => s.wysiwyg) : sections;
-    const visible = allowed.filter(({ items }) => this._hasVisibleCommands(items));
-    return visible.flatMap(({ render }, i) => {
+    const allowed = inWysiwyg
+      ? sections.filter((s) => s.wysiwyg && (!this.readOnly || s.readOnly))
+      : sections;
+    return allowed.filter(({ items }) => this._hasVisibleCommands(items));
+  }
+
+  get hasCommands() {
+    return this._visibleSections().length > 0;
+  }
+
+  _renderSections() {
+    return this._visibleSections().flatMap(({ render }, i) => {
       const part = render();
       return i === 0 ? [part] : [html`<span class="toolbar-sep" aria-hidden="true"></span>`, part];
     });

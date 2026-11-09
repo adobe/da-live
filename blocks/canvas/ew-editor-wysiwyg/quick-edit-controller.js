@@ -12,6 +12,7 @@ import {
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 
 const MUTATING_MESSAGES = new Set(['node-update', 'image-replace', 'history']);
+const READ_ONLY_PREVIEW_BLOCKED = new Set(['node-update', 'image-replace']);
 
 // Coalesce RELOAD bursts (each rebuilds the full body) into one refresh per window;
 // a concurrent remote edit can otherwise fire many in a row and peg the main thread.
@@ -47,6 +48,7 @@ export function createControllerOnMessage(ctx) {
     const { type, payload = {} } = e.data ?? {};
 
     if (MUTATING_MESSAGES.has(type) && !ctx.canWrite) return;
+    if (READ_ONLY_PREVIEW_BLOCKED.has(type) && ctx.previewReadOnly) return;
 
     if (type === MESSAGE_TYPES.CURSOR_MOVE) {
       handleCursorMove(payload, ctx);

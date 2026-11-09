@@ -279,4 +279,48 @@ describe('ew-selection-toolbar buttons', () => {
     expect(button.querySelector('use').getAttribute('href'))
       .to.equal('/img/icons/s2-icon-image-20-n.svg#icon');
   });
+
+  it('offers only comments in a read-only wysiwyg surface', async () => {
+    setText('hello');
+    selectText(1, 6);
+    toolbar.activeSurface = 'wysiwyg';
+    toolbar.readOnly = true;
+    try {
+      await toolbar.updateComplete;
+      const ids = [...toolbar.shadowRoot.querySelectorAll('button[data-id]')].map((b) => b.dataset.id);
+      expect(ids).to.deep.equal(['add-comment']);
+      expect(toolbar.hasCommands).to.be.true;
+    } finally {
+      toolbar.readOnly = false;
+      toolbar.activeSurface = null;
+    }
+  });
+
+  it('has no commands in a read-only wysiwyg surface without a selection', async () => {
+    setText('hello');
+    selectText(3, 3);
+    toolbar.activeSurface = 'wysiwyg';
+    toolbar.readOnly = true;
+    try {
+      await toolbar.updateComplete;
+      expect(toolbar.hasCommands).to.be.false;
+    } finally {
+      toolbar.readOnly = false;
+      toolbar.activeSurface = null;
+    }
+  });
+
+  it('keeps all doc controls when read-only only applies to the wysiwyg surface', async () => {
+    setText('hello');
+    selectText(1, 6);
+    toolbar.activeSurface = 'doc';
+    toolbar.readOnly = true;
+    try {
+      await toolbar.updateComplete;
+      expect(toolbar.shadowRoot.querySelector('button[data-id="strong"]')).to.exist;
+    } finally {
+      toolbar.readOnly = false;
+      toolbar.activeSurface = null;
+    }
+  });
 });

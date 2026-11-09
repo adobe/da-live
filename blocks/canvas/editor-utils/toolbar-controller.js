@@ -34,6 +34,7 @@ const state = {
   // The single-block edit modal hosts the doc view in a dialog, on top of and
   // regardless of the current editor mode.
   blockEditOpen: false,
+  wysiwygReadOnly: false,
 };
 
 function ensureToolbar() {
@@ -120,15 +121,18 @@ function render() {
   // The element renders a surface-appropriate button set: the wysiwyg iframe owns
   // block-level structure, so it gets inline/link/image controls only.
   tb.activeSurface = state.activeSurface;
+  tb.readOnly = state.wysiwygReadOnly;
 
   const { activeSurface } = state;
   const block = activeSurface ? state.blockBySurface[activeSurface] : null;
+  const readOnlySurface = activeSurface === 'wysiwyg' && state.wysiwygReadOnly;
   // The block toolbar is body-hosted, so inside the modal it would render behind the
   // backdrop — and its commands target the block already being edited.
-  const showBlock = block !== null && !state.blockEditOpen && editorModeAllows(activeSurface);
+  const showBlock = block !== null && !state.blockEditOpen && !readOnlySurface
+    && editorModeAllows(activeSurface);
   syncBlockToolbar(showBlock ? block : null);
 
-  if (!showBlock && shouldShow(tb)) {
+  if (!showBlock && shouldShow(tb) && !(readOnlySurface && tb.hasCommands === false)) {
     tb.show();
   } else if (!tb.linkDialogOpen && !tb.altDialogOpen && !tb.isInteracting) {
     tb.hide();
@@ -220,6 +224,11 @@ function installOutsidePointerdown() {
 canvasBus.editorViewState.subscribe(({ view }) => {
   if (state.editorMode === view) return;
   state.editorMode = view;
+  scheduleRender();
+});
+
+canvasBus.mergeConflictsState.subscribe(({ hasMergeConflicts } = {}) => {
+  state.wysiwygReadOnly = hasMergeConflicts === true;
   scheduleRender();
 });
 

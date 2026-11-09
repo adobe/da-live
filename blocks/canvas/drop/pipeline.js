@@ -12,6 +12,7 @@ const ERROR_MESSAGES = {
   unavailable: 'The editor is not available. Please try again.',
   unsupported: 'This content cannot be dropped here.',
   'invalid-target': 'This content cannot be dropped here.',
+  'read-only': 'Resolve the merge conflicts before editing the layout.',
   'stale-target': 'The document changed during the drop. Please try again.',
   'single-image-required': 'Drop a single image to replace this image.',
   'image-too-large': 'Image is too large',

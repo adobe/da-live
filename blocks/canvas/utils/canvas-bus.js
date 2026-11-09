@@ -31,7 +31,7 @@ export const canvasBus = Object.freeze({
   toolbarSurfaceRequest: createChannel(),
 
   undoState: createChannel(),
-  mergeConflictsState: createChannel(),
+  mergeConflictsState: createChannel({ replay: true }),
   editorDocState: createChannel(),
   editorViewState: createChannel({ replay: Boolean }),
   branchState: createChannel({ replay: Boolean }),
