@@ -25,6 +25,11 @@ function toBlockCSSClassNames(text) {
     .filter((name) => !!name);
 }
 
+function copyDiff(from, to) {
+  const kind = from?.getAttribute('data-diff');
+  if (kind) to.setAttribute('data-diff', kind);
+}
+
 function convertBlocks(editor, isFragment = false) {
   const tables = editor.querySelectorAll('.tableWrapper > table, da-diff-added > table');
 
@@ -49,6 +54,7 @@ function convertBlocks(editor, isFragment = false) {
     const div = document.createElement('div');
     div.className = toBlockCSSClassNames(nameRow.textContent).join(' ');
     div.append(...divs);
+    copyDiff(table.parentElement, div);
 
     // cursor detection
     const daCursor = nameRow.querySelector('#da-cursor-position');
@@ -128,6 +134,7 @@ function makePictures(editor, live) {
     const imgParent = img.parentElement;
     const imgGrandparent = imgParent.parentElement;
     if (imgParent.nodeName === 'P' && imgGrandparent?.childElementCount === 1 && imgParent.childElementCount === 1) {
+      copyDiff(imgParent, pic);
       imgGrandparent.replaceChild(pic, imgParent);
     } else {
       imgParent.replaceChild(pic, img);
@@ -164,6 +171,7 @@ function convertListItems(editor) {
   lis.forEach((li) => {
     // Collapse single child p tags
     if (li.children.length === 1 && li.firstElementChild.nodeName === 'P') {
+      copyDiff(li.firstElementChild, li);
       li.innerHTML = li.firstElementChild.innerHTML;
     }
   });

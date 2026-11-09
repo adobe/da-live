@@ -155,6 +155,55 @@ describe('getInstrumentedHTML with merge conflicts', () => {
     }
   });
 
+  it('marks a list item whose content is a conflict', () => {
+    const { view, cleanup } = makeDiffView([
+      para('intro'),
+      {
+        type: 'bullet_list',
+        content: [
+          { type: 'list_item', content: [para('plain item')] },
+          { type: 'list_item', content: [added('local item')] },
+        ],
+      },
+    ]);
+    try {
+      const html = getInstrumentedHTML(view);
+      expect(html).to.match(/<li[^>]*data-diff="local"[^>]*>local item<\/li>/);
+      expect(html).to.match(/<li(?![^>]*data-diff)[^>]*>plain item<\/li>/);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('marks an image-only conflict paragraph', () => {
+    const image = { type: 'image', attrs: { src: 'https://example.com/a.png' } };
+    const { view, cleanup } = makeDiffView([
+      { type: 'diff_added', content: [{ type: 'paragraph', content: [image] }] },
+    ]);
+    try {
+      const html = getInstrumentedHTML(view);
+      expect(html).to.match(/<picture[^>]*data-diff="local"/);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('keeps the block index of a block after a metadata conflict', () => {
+    const { view, cleanup } = makeDiffView([
+      para('intro'),
+      addedBlock('metadata', 'local title'),
+      block('hero', 'shared headline'),
+    ]);
+    try {
+      const html = getInstrumentedHTML(view);
+      const hero = html.match(/<div class="hero"[^>]*>/)?.[0];
+      expect(hero).to.match(/data-block-index="\d+"/);
+      expect(hero).to.not.include('data-diff');
+    } finally {
+      cleanup();
+    }
+  });
+
   it('renders the local block of a conflict pair as that block', () => {
     const { view, cleanup } = makeDiffView([
       para('intro'),
