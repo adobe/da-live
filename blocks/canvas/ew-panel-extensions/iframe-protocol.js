@@ -2,7 +2,7 @@ import { insertText, insertHTML, replaceHTMLAtCursor, getEditorSelection } from 
 import { getActiveBlockIndex } from '../editor-utils/blocks.js';
 import { getInstrumentedHTMLForSDK } from '../editor-utils/editor-utils.js';
 import { getNx } from '../../../scripts/utils.js';
-import { getPostMessageTargetOrigin, isRequestId, isValidHref, replyToGetSelection } from '../../shared/utils.js';
+import { getPostMessageTargetOrigin, isRequestId, isValidHref, replyToGetSelection, fetchPreviewOptions } from '../../shared/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { chatTurnCompleted } from '../../shared/chat-panel.js';
 import { getCanvasBranch } from '../utils/branch.js';
@@ -25,6 +25,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   const { org, site, path, view } = hashState;
   if (!org || !site || !iframe.contentWindow) return { channel: null, destroy() { } };
 
+  const previewOptions = await fetchPreviewOptions({ org, site });
   const targetOrigin = getPostMessageTargetOrigin(iframe.src);
 
   const channel = new MessageChannel();
@@ -50,7 +51,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     if (!documentState) {
       const editorView = getView();
       documentState = {
-        html: editorView ? getInstrumentedHTMLForSDK(editorView) : '',
+        html: editorView ? getInstrumentedHTMLForSDK(editorView, previewOptions) : '',
         selection: selectionFor(editorView),
         editable: !!editorView?.editable,
       };
@@ -154,7 +155,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
           if (getActiveBlockIndex(editorView) !== expected.blockIndex) {
             throw Object.assign(new Error('The selected block changed'), { code: 'WRONG_SELECTION' });
           }
-          if (getInstrumentedHTMLForSDK(editorView) !== expected.html) {
+          if (getInstrumentedHTMLForSDK(editorView, previewOptions) !== expected.html) {
             throw Object.assign(new Error('The live document changed while editing'), { code: 'STALE_LIVE' });
           }
         }
@@ -171,7 +172,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
       try {
         result.selection = selectionFor(editorView);
         result.editable = !!editorView.editable;
-        result.html = getInstrumentedHTMLForSDK(editorView);
+        result.html = getInstrumentedHTMLForSDK(editorView, previewOptions);
         broadcastDocument({
           html: result.html,
           selection: result.selection,

@@ -286,7 +286,7 @@ function unwrapDiffViews(root) {
   });
 }
 
-export function getInstrumentedHTML(view) {
+export function getInstrumentedHTML(view, options) {
   const editorClone = view.dom.cloneNode(true);
 
   const originalElements = view.dom.querySelectorAll(EDITABLE_SELECTORS);
@@ -368,7 +368,7 @@ export function getInstrumentedHTML(view) {
 
   // Serialize clone to HTML, then move block-marker index onto wrapper as data-block-index
   // (same pattern as da-nx qe-advanced: getInstrumentedHTML in prose2aem.js).
-  let htmlString = prose2aem(editorClone, true, false);
+  let htmlString = prose2aem(editorClone, true, false, options);
   htmlString = htmlString.replace(
     /<div class="block-marker" data-prose-index="(\d+)"><\/div>\s*<div([^>]*?)>/gi,
     (_match, proseIndex, divAttributes) => `<div${divAttributes} data-block-index="${proseIndex}">`,
@@ -378,8 +378,8 @@ export function getInstrumentedHTML(view) {
   return htmlString;
 }
 
-export function getInstrumentedHTMLForSDK(view) {
-  const doc = new DOMParser().parseFromString(getInstrumentedHTML(view), 'text/html');
+export function getInstrumentedHTMLForSDK(view, options) {
+  const doc = new DOMParser().parseFromString(getInstrumentedHTML(view, options), 'text/html');
   doc.querySelectorAll('[data-cursor-remote], [data-cursor-remote-color]').forEach((element) => {
     element.removeAttribute('data-cursor-remote');
     element.removeAttribute('data-cursor-remote-color');
@@ -482,6 +482,7 @@ export function parseSections(htmlText) {
 
     Array.from(section.children).forEach((el) => {
       const name = el.tagName === 'DIV' ? el.classList[0] : undefined;
+      if (name === 'section-metadata') return;
       const isBlock = name && !SKIP_BLOCK_CLASSES.has(name);
 
       if (isBlock) {
@@ -546,7 +547,7 @@ const getBaseline = (ctx) => (ctx.useConfirmedBaseline ? ctx.confirmedDoc : ctx.
 function postBody(ctx) {
   clearMetadataRerenderTimer(ctx);
   const { doc } = ctx.view.state;
-  const body = getInstrumentedHTML(ctx.view);
+  const body = getInstrumentedHTML(ctx.view, ctx.previewOptions);
   const rerenderScope = getRerenderScope({ previousDoc: getBaseline(ctx), doc, body });
   ctx.port.postMessage({
     type: MESSAGE_TYPES.SET_BODY,
@@ -574,7 +575,7 @@ export function updateDocument(ctx, { previousDoc, doc, useConfirmedBaseline = f
     ctx.metadataRerenderTimer = undefined;
     if (!ctx.suppressRerender) postBody(ctx);
   }, METADATA_RERENDER_DEBOUNCE_MS);
-  return getInstrumentedHTML(ctx.view);
+  return getInstrumentedHTML(ctx.view, ctx.previewOptions);
 }
 
 export function updateCursors(ctx) {

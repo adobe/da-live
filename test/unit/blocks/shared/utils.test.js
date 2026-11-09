@@ -13,6 +13,7 @@ import {
   getSidekickConfig,
   sanitizeName,
   fetchDaConfigs,
+  fetchPreviewOptions,
   canEditOrgConfig,
   getConfigPermissions,
   getAuthToken,
@@ -746,6 +747,60 @@ describe('getSidekickConfig', () => {
     } finally {
       window.fetch = savedFetch;
     }
+  });
+});
+
+describe('fetchPreviewOptions', () => {
+  let savedFetch;
+  let index = 0;
+
+  beforeEach(() => {
+    savedFetch = window.fetch;
+    index += 1;
+  });
+
+  afterEach(() => {
+    window.fetch = savedFetch;
+  });
+
+  const cases = [
+    { title: 'defaults to extraction', expected: false },
+    { title: 'accepts a site string true', siteValue: 'true', expected: true },
+    { title: 'accepts a site boolean true', siteValue: true, expected: true },
+    { title: 'does not treat string false as enabled', siteValue: 'false', expected: false },
+    { title: 'inherits the org setting', orgValue: 'true', expected: true },
+    { title: 'lets site false override org true', orgValue: 'true', siteValue: 'false', expected: false },
+    { title: 'lets site true override org false', orgValue: 'false', siteValue: 'true', expected: true },
+  ];
+
+  cases.forEach(({ title, orgValue, siteValue, expected }) => {
+    it(title, async () => {
+      const org = `preview-options-${index}`;
+      const site = 'site';
+      window.fetch = async (url) => {
+        const value = String(url).replace(/\/$/, '').endsWith(`/${org}/${site}`) ? siteValue : orgValue;
+        const data = value === undefined ? [] : [{ key: 'legacy-section-metadata', value }];
+        return new Response(JSON.stringify({ data }), { status: 200 });
+      };
+      expect(await fetchPreviewOptions({ org, site }))
+        .to.deep.equal({ legacySectionMetadata: expected });
+    });
+  });
+
+  it('keeps extraction when configs are unavailable', async () => {
+    window.fetch = async () => new Response('', { status: 404 });
+    expect(await fetchPreviewOptions({ org: `preview-options-${index}`, site: 'site' }))
+      .to.deep.equal({ legacySectionMetadata: false });
+  });
+
+  it('handles a failed org request without losing the site setting', async () => {
+    const org = `preview-options-${index}`;
+    window.fetch = async (url) => {
+      if (String(url).replace(/\/$/, '').endsWith(`/${org}`)) throw new Error('offline');
+      return new Response(JSON.stringify({ data: [{ key: 'legacy-section-metadata', value: 'true' }] }), { status: 200 });
+    };
+    expect(await fetchPreviewOptions({ org, site: 'site' }))
+      .to.deep.equal({ legacySectionMetadata: true });
   });
 });
 
