@@ -78,6 +78,13 @@ export function getGitHubSite(value) {
   }
 }
 
+export function getRequestedSite(search) {
+  const params = new URLSearchParams(search);
+  const org = params.get('org');
+  const site = params.get('site');
+  return org && site ? getGitHubSite(`https://github.com/${org}/${site}`) : undefined;
+}
+
 export async function addSite({ org, site }) {
   if (!window.adobeIMS?.isSignedInUser()) return { error: 'You need to sign in first.' };
 

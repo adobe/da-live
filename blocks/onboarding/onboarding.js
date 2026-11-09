@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../scripts/utils.js';
 import { initIms } from '../shared/utils.js';
 import { ONBOARDING_TILES } from './constants.js';
-import { addSite, getGitHubSite } from '../start/utils.js';
+import { addSite, getGitHubSite, getRequestedSite } from '../start/utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const [form, styles, landingStyles] = await Promise.all([
@@ -22,7 +22,14 @@ class DaOnboarding extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [form, styles];
+    this._site = getRequestedSite(window.location.search);
     this._loadName();
+  }
+
+  async firstUpdated() {
+    if (!this._site) return;
+    await initIms();
+    this._addSite();
   }
 
   async _loadName() {
@@ -35,8 +42,12 @@ class DaOnboarding extends LitElement {
     this._error = undefined;
   }
 
-  async _onSubmit(e) {
+  _onSubmit(e) {
     e.preventDefault();
+    this._addSite();
+  }
+
+  async _addSite() {
     if (!this._site || this._loading) return;
     this._loading = true;
     const { org, site } = this._site;
@@ -84,6 +95,7 @@ class DaOnboarding extends LitElement {
                 aria-label="GitHub repository URL"
                 placeholder="https://github.com/your-org/your-site"
                 autocomplete="off"
+                value=${this._site ? `https://github.com/${this._site.org}/${this._site.site}` : ''}
                 @input=${this._onInput} />
               <button class="nx-form-btn-primary" ?disabled=${!this._site || this._loading}>
                 ${this._loading ? 'Adding site…' : 'Add site'}

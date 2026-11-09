@@ -3,7 +3,7 @@ import { expect } from '@esm-bundle/chai';
 const { setNx } = await import('../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { addSite, getGitHubSite } = await import('../../../../blocks/start/utils.js');
+const { addSite, getGitHubSite, getRequestedSite } = await import('../../../../blocks/start/utils.js');
 
 describe('start/utils getGitHubSite', () => {
   it('returns org and site from a GitHub repository URL', () => {
@@ -14,6 +14,14 @@ describe('start/utils getGitHubSite', () => {
     expect(getGitHubSite('https://gitlab.com/adobe/geometrixx')).to.be.undefined;
     expect(getGitHubSite('https://github.com/adobe')).to.be.undefined;
     expect(getGitHubSite('adobe/geometrixx')).to.be.undefined;
+  });
+});
+
+describe('start/utils getRequestedSite', () => {
+  it('reads the org and site query params', () => {
+    expect(getRequestedSite('?org=adobe&site=geometrixx')).to.deep.equal({ org: 'adobe', site: 'geometrixx' });
+    expect(getRequestedSite('?org=adobe')).to.be.undefined;
+    expect(getRequestedSite('')).to.be.undefined;
   });
 });
 

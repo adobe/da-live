@@ -96,4 +96,19 @@ describe('da-onboarding', () => {
     await typeUrl('https://github.com/adobe/other');
     expect(form.querySelector('[role="alert"]')).to.be.null;
   });
+
+  it('prefills and submits the site requested in the URL', async () => {
+    const { href } = window.location;
+    window.history.replaceState(null, '', '?org=adobe&site=geometrixx');
+    window.adobeIMS = { isSignedInUser: () => false };
+    try {
+      await mount();
+      for (let i = 0; i < 20 && !el._error; i += 1) await nextFrame();
+      await el.updateComplete;
+      expect(el.shadowRoot.querySelector('input').value).to.equal('https://github.com/adobe/geometrixx');
+      expect(el.shadowRoot.querySelector('[role="alert"]').textContent).to.equal('You need to sign in first.');
+    } finally {
+      window.history.replaceState(null, '', href);
+    }
+  });
 });
