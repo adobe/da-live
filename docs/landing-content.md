@@ -80,11 +80,16 @@ per site (`blocks/shared/recent-files.js`). Content resolves saved file
 paths directly through the shared `source.getMetadata` HEAD API, at most four at a
 time. It derives names and extensions from each path and reads modification times
 from the `Last-Modified` header. It never lists or pages parent folders.
-Missing files (404) are omitted without removing their saved paths.
+Failed file requests, including HTTP and network errors, are skipped for that
+load without removing their saved paths or hiding successful items.
 Folder favorites are bookmarks built from saved folder paths.
 They do not need file metadata or a modification date, and do not
 make HEAD requests. Folder availability is checked when opened in Browse.
 Recent is per browser and starts empty until a file is opened.
+The initial load fetches Recent, not every saved favorite. Opening Favorite loads
+only favorite paths missing from the already-loaded Recent items, with a loading
+state while those requests finish. Switching back to Recent does not wait for them.
+Favorite results are cached until the next site load or refresh.
 Content loads on mount, site changes and Retry. A `pageshow` event with
 `persisted: true` reloads the current site when restored from the browser's
 back/forward cache, preserving the selected filter, view and visible-item limit.
@@ -94,8 +99,8 @@ folder, such as `/de` for `/org/site/de/coffee.html` and `/` for root items.
 The folder link's tooltip shows its full path including org and site.
 Site changes and disconnects cancel queued metadata lookups and discard late results.
 The shared metadata API does not accept an abort signal, so in-flight HEAD requests
-may finish. Permission/network failures have a retry state, not an empty or partially
-successful result.
+may finish. Cancellation still propagates rather than being treated as an item
+failure. Site initialization/configuration failures retain the panel's Retry state.
 Both views reuse Browse's file-item menus, details and favorites. Content uses
 the standard type icons, including the image icon, in both cards and list rows,
 without fetching thumbnails. Browse's default lazy card previews are unchanged.

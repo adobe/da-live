@@ -40,6 +40,7 @@ describe('landing Content section', () => {
     document.body.append(el);
     el.setScope({ org: 'org', site: 'site' });
     el._files = ITEMS;
+    el._favoriteFiles = [];
     el._editor = '/canvas#';
     await updateLanding();
   });
@@ -151,7 +152,7 @@ describe('landing Content section', () => {
     toggleFavorite('/org/site/de', coffee.path);
     await el.loadSite();
     el.refreshFavorites();
-    el.changeTab('starred');
+    await el.changeTab('starred');
     for (const view of ['card', 'list']) {
       el.changeView({ detail: { value: view } });
       await updateLanding();
@@ -179,7 +180,7 @@ describe('landing Content section', () => {
     metadata.withArgs(folder).resolves(new Response(null, { status: 404 }));
     await el.loadSite();
     el.refreshFavorites();
-    el.changeTab('starred');
+    await el.changeTab('starred');
     for (const view of ['card', 'list']) {
       el.changeView({ detail: { value: view } });
       await updateLanding();
@@ -397,7 +398,7 @@ describe('landing Content section', () => {
     el.refreshFavorites();
     await el.loadSite();
     el.changeView({ detail: { value: 'list' } });
-    el.changeTab('starred');
+    await el.changeTab('starred');
     el._limit = 18;
     await updateLanding();
     setRecent({ '/org/site': [ITEMS[2].path, ITEMS[0].path] });
@@ -533,18 +534,73 @@ describe('landing Content section', () => {
     expect(el._files).to.have.length(18);
   });
 
-  it('loads Recent from opened files and Favorite from saved paths without crawling the site', async () => {
+  it('loads Recent first and caches missing Favorite metadata only after opening the tab', async () => {
     loadSite.restore();
-    const coffee = { name: 'coffee', path: '/org/site/de/coffee.html', ext: 'html', lastModified: 99 };
+    const coffee = '/org/site/de/coffee.html';
     setRecent({ '/org/site': [ITEMS[3].path, ITEMS[1].path] });
-    toggleFavorite('/org/site/de', coffee.path);
+    toggleFavorite('/org/site', ITEMS[1].path);
+    toggleFavorite('/org/site/de', coffee);
+    let finish;
+    const pending = new Promise((resolve) => { finish = resolve; });
+    metadata.withArgs(coffee).returns(pending);
     await el.loadSite();
-    el.refreshFavorites();
-    expect(metadata.getCalls().map(({ args: [path] }) => path))
-      .to.deep.equal([ITEMS[3].path, ITEMS[1].path, coffee.path]);
-    expect(el._files.map(({ path }) => path)).to.deep.equal([ITEMS[3].path, ITEMS[1].path]);
-    el.changeTab('starred');
     await updateLanding();
-    expect([...fileItems()].map(({ path }) => path)).to.deep.equal([coffee.path]);
+    expect(metadata.getCalls().map(({ args: [path] }) => path))
+      .to.deep.equal([ITEMS[3].path, ITEMS[1].path]);
+    expect([...fileItems()].map(({ path }) => path)).to.deep.equal([ITEMS[3].path, ITEMS[1].path]);
+    const favorites = el.changeTab('starred');
+    await updateLanding();
+    expect(el.shadowRoot.querySelector('[aria-busy="true"]')).not.to.equal(null);
+    expect(el.shadowRoot.querySelector('.nx-loading-spinner')).not.to.equal(null);
+    await el.changeTab('starred');
+    expect(metadata.withArgs(coffee).calledOnce).to.equal(true);
+    el.changeTab('recent');
+    await updateLanding();
+    expect([...fileItems()].map(({ path }) => path)).to.deep.equal([ITEMS[3].path, ITEMS[1].path]);
+    finish(new Response(null));
+    await favorites;
+    await el.changeTab('starred');
+    await updateLanding();
+    expect([...fileItems()].map(({ path }) => path)).to.have.members([ITEMS[1].path, coffee]);
+    expect(el.shadowRoot.querySelector('[aria-busy="true"]')).to.equal(null);
+    expect(metadata.callCount).to.equal(3);
+    el.changeTab('recent');
+    await el.loadSite();
+    expect(metadata.withArgs(coffee).calledOnce).to.equal(true);
+    await el.changeTab('starred');
+    expect(metadata.withArgs(coffee).calledTwice).to.equal(true);
+  });
+
+  it('loads Favorite when selected before Recent finishes', async () => {
+    loadSite.restore();
+    setRecent({ '/org/site': [ITEMS[0].path] });
+    toggleFavorite('/org/site', ITEMS[1].path);
+    let finish;
+    metadata.withArgs(ITEMS[0].path).returns(new Promise((resolve) => { finish = resolve; }));
+    const pending = el.loadSite();
+    await el.changeTab('starred');
+    expect(metadata.withArgs(ITEMS[1].path).called).to.equal(false);
+    finish(new Response(null));
+    await pending;
+    await updateLanding();
+    expect([...fileItems()].map(({ path }) => path)).to.deep.equal([ITEMS[1].path]);
+  });
+
+  it('discards pending Favorite metadata when switching sites', async () => {
+    loadSite.restore();
+    toggleFavorite('/org/site', ITEMS[0].path);
+    await el.loadSite();
+    let finish;
+    metadata.withArgs(ITEMS[0].path).returns(new Promise((resolve) => { finish = resolve; }));
+    const pending = el.changeTab('starred');
+    await updateLanding();
+    await el.setScope({ org: 'other', site: 'site' });
+    await el.changeTab('starred');
+    finish(new Response(null));
+    await pending;
+    await updateLanding();
+    expect(el._favoriteFiles).to.deep.equal([]);
+    expect(fileItems()).to.have.length(0);
+    expect(el.shadowRoot.querySelector('[role="alert"]')).to.equal(null);
   });
 });

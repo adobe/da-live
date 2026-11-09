@@ -83,6 +83,11 @@ export class DaLanding extends LitElement {
     return this._scope ? `/${this._scope}` : '';
   }
 
+  get loading() {
+    return !!this._scope && !this._error
+      && (!this._files || (this._tab === 'starred' && !this._favoriteFiles));
+  }
+
   async setScope(state) {
     const scope = state?.org && state?.site ? `${state.org}/${state.site}` : undefined;
     if (this._scope === scope && this._request && !this._request.signal.aborted) return;
@@ -99,7 +104,7 @@ export class DaLanding extends LitElement {
     const request = new AbortController();
     this._request = request;
     this._files = undefined;
-    this._favoriteFiles = undefined;
+    this._favoriteFiles = null; // Not requested yet; undefined while loading.
     this._error = undefined;
     this._editor = undefined;
     this._editorConfs = undefined;
@@ -112,17 +117,16 @@ export class DaLanding extends LitElement {
     const recent = getRecentFiles(this.path);
     try {
       const { source } = await getNx2Api();
-      const favorites = getSiteFavorites(this.path).filter((path) => !recent.includes(path));
       const [files, configs, destination] = await Promise.all([
-        loadFilesByPath({ paths: [...recent, ...favorites], source, signal: request.signal }),
+        loadFilesByPath({ paths: recent, source, signal: request.signal }),
         Promise.all(fetchDaConfigs({ org, site })),
         editor,
       ]);
       if (!this.isConnected || request.signal.aborted) return;
       this._editor = destination;
       this._editorConfs = getEditorConfigs(configs).editorConfs;
-      this._files = files.filter((item) => recent.includes(item.path));
-      this._favoriteFiles = files.filter((item) => !recent.includes(item.path));
+      this._files = files;
+      if (this._tab === 'starred') await this.loadFavorites();
     } catch (error) {
       if (!request.signal.aborted && this.isConnected) this._error = error.message;
     }
@@ -130,6 +134,22 @@ export class DaLanding extends LitElement {
 
   refreshFavorites() {
     this._favorites = new Set(getSiteFavorites(this.path));
+  }
+
+  async loadFavorites() {
+    if (!this._files || this._favoriteFiles !== null) return;
+    const request = this._request;
+    this._favoriteFiles = undefined;
+    this.refreshFavorites();
+    const recentPaths = new Set(this._files.map(({ path }) => path));
+    const paths = [...this._favorites].filter((path) => !recentPaths.has(path));
+    try {
+      const { source } = await getNx2Api();
+      const files = await loadFilesByPath({ paths, source, signal: request.signal });
+      if (this.isConnected && !request.signal.aborted) this._favoriteFiles = files;
+    } catch (error) {
+      if (!request.signal.aborted && this.isConnected) this._error = error.message;
+    }
   }
 
   _onAddSite() {
@@ -156,6 +176,7 @@ export class DaLanding extends LitElement {
   changeTab(value) {
     this._tab = value;
     this._limit = PAGE_SIZE;
+    return value === 'starred' ? this.loadFavorites() : undefined;
   }
 
   changeView({ detail: { value } }) {
@@ -177,7 +198,7 @@ export class DaLanding extends LitElement {
       return html`<div class="empty-state"><p role="alert">${this._error}</p>
         <button class="nx-action-btn" @click=${this.loadSite}>Try again</button></div>`;
     }
-    if (!this._files) return html`<p class="loading" role="status"><span class="nx-loading-spinner" aria-hidden="true"></span>Loading files...</p>`;
+    if (this.loading) return html`<p class="loading" role="status"><span class="nx-loading-spinner" aria-hidden="true"></span>Loading files...</p>`;
     const files = this._tab === 'starred' ? this.getFavoriteFiles() : this._files;
     if (!files.length) {
       return html`<div class="empty-state">${icon(this._tab === 'starred' ? 'star' : 'folder')}
@@ -223,7 +244,7 @@ export class DaLanding extends LitElement {
           ${this._scope ? html`<a class="all-files" href=${getBrowseHref({ path: this.path })}>Show all</a>` : nothing}
         </div>
         ${this._actionError ? html`<p role="alert">${this._actionError}</p>` : nothing}
-        <div aria-busy=${!!this._scope && !this._files && !this._error}>${this.renderFiles()}</div>
+        <div aria-busy=${this.loading}>${this.renderFiles()}</div>
       </section>
     </div>`;
   }

@@ -48,15 +48,20 @@ export async function loadFilesByPath({ paths, source, signal }) {
         const ext = dot > 0 ? filename.slice(dot + 1) : undefined;
         const item = { path, name: ext ? filename.slice(0, dot) : filename, ext };
         if (!item.ext) return item;
-        const response = await source.getMetadata(path);
-        signal.throwIfAborted();
-        if (response.status === 404) return undefined;
-        if (!response.ok) throw new Error('Could not load files. Check your sign-in and site permissions.');
-        const lastModified = Date.parse(response.headers.get('last-modified'));
-        return {
-          ...item,
-          lastModified: Number.isNaN(lastModified) ? undefined : lastModified,
-        };
+        try {
+          const response = await source.getMetadata(path);
+          signal.throwIfAborted();
+          if (!response.ok) return undefined;
+          const lastModified = Date.parse(response.headers.get('last-modified'));
+          return {
+            ...item,
+            lastModified: Number.isNaN(lastModified) ? undefined : lastModified,
+          };
+        } catch (error) {
+          signal.throwIfAborted();
+          if (error?.name === 'AbortError') throw error;
+          return undefined;
+        }
       }));
     files.push(...batch.filter(Boolean));
   }
