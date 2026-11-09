@@ -244,13 +244,14 @@ export default async function initProse({
   const fix = fixTables(state);
   if (fix) state = state.apply(fix.setMeta('addToHistory', false));
 
+  const onViewChange = () => canvasBus.mergeConflictViewState.emit();
   const diffNodeViews = canWrite ? {
     diff_added(node, view, getPos) {
-      const MergeConflictsAddedView = getDiffClass('da-diff-added', getSchema, () => {}, { isUpstream: false, hostEl });
+      const MergeConflictsAddedView = getDiffClass('da-diff-added', getSchema, () => {}, { isUpstream: false, hostEl, onViewChange });
       return new MergeConflictsAddedView(node, view, getPos);
     },
     diff_deleted(node, view, getPos) {
-      const MergeConflictsDeletedView = getDiffClass('da-diff-deleted', getSchema, () => {}, { isUpstream: true, hostEl });
+      const MergeConflictsDeletedView = getDiffClass('da-diff-deleted', getSchema, () => {}, { isUpstream: true, hostEl, onViewChange });
       return new MergeConflictsDeletedView(node, view, getPos);
     },
   } : undefined;

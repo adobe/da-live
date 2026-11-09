@@ -267,6 +267,38 @@ function markDiff(root, kind) {
   [...root.children].forEach((el) => el.setAttribute('data-diff', kind));
 }
 
+// The site's own CSS knows nothing about the word diff, so style it inline.
+const DIFF_STYLES = {
+  'del.diffdel, del.diffmod': 'background-color:#ffebee;color:#c62828;text-decoration:line-through;padding:2px 4px;border-radius:3px;border:1px solid #ef9a9a',
+  'ins.diffins, ins.diffmod': 'background-color:#e8f5e8;color:#2e7d32;text-decoration:none;padding:2px 4px;border-radius:3px;border:1px solid #a5d6a7',
+  'del.diffmod': 'background-color:#fff3e0;color:#ef6c00;text-decoration:line-through;padding:2px 4px;border-radius:3px;border:1px solid #ffcc02',
+  'ins.diffmod': 'background-color:#e3f2fd;color:#1565c0;text-decoration:none;padding:2px 4px;border-radius:3px;border:1px solid #90caf9',
+};
+
+function styleWordDiff(root) {
+  Object.entries(DIFF_STYLES).forEach(([selector, style]) => {
+    root.querySelectorAll(selector).forEach((el) => el.setAttribute('style', style));
+  });
+}
+
+// Which side of a conflict pair the preview shows follows the tab the author has
+// open in the doc pane. A block cannot show a word diff, and a diff that has not
+// loaded yet has nothing to show, so both stay on the local side.
+function pickConflictPane(container) {
+  const pane = (tab) => container.querySelector(`.diff-tab-pane[data-tab="${tab}"]`);
+  const local = pane('added');
+  const tab = container.querySelector('.diff-tab-pane.active')?.dataset.tab;
+  if (tab === 'deleted' && pane('deleted')) return { pane: pane('deleted'), kind: 'upstream' };
+  const diffHtml = pane('diff')?.querySelector('.html-diff');
+  if (tab === 'diff' && diffHtml && !diffHtml.querySelector('table')) {
+    const holder = document.createElement('div');
+    holder.append(...diffHtml.childNodes);
+    styleWordDiff(holder);
+    return { pane: holder, kind: 'changed' };
+  }
+  return { pane: local, kind: 'local' };
+}
+
 // Merge-conflict node views render their own UI (tabs, buttons, overlays).
 // Serialize what the author sees by default instead: the local version of a
 // pair, the content of a lone node. The hidden second half of a pair goes.
@@ -295,14 +327,14 @@ function unwrapDiffViews(root, { stripIndices = false } = {}) {
   if (stripIndices) stripEditIndices(root);
   root.querySelectorAll('.loc-pair-hidden').forEach((el) => el.remove());
   root.querySelectorAll('.loc-tabbed-container').forEach((container) => {
-    const local = container.querySelector('.diff-tab-pane[data-tab="added"]');
-    if (!local) {
+    const { pane, kind } = pickConflictPane(container);
+    if (!pane) {
       container.remove();
       return;
     }
-    wrapTablesInWrappers(local);
-    markDiff(local, 'local');
-    container.replaceWith(...local.childNodes);
+    wrapTablesInWrappers(pane);
+    markDiff(pane, kind);
+    container.replaceWith(...pane.childNodes);
   });
   root.querySelectorAll('.loc-single-container').forEach((container) => {
     container.querySelectorAll(':scope > .loc-color-overlay').forEach((el) => el.remove());

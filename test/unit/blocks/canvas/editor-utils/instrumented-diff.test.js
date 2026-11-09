@@ -18,7 +18,7 @@ const block = (name, text) => ({ type: 'table', content: [row(name), row(text)] 
 const addedBlock = (name, text) => ({ type: 'diff_added', content: [block(name, text)] });
 const deletedBlock = (name, text) => ({ type: 'diff_deleted', content: [block(name, text)] });
 
-function makeDiffView(content) {
+function makeDiffView(content, { onViewChange } = {}) {
   const doc = schema.nodeFromJSON({ type: 'doc', content });
   const dom = document.createElement('div');
   document.body.appendChild(dom);
@@ -26,11 +26,11 @@ function makeDiffView(content) {
     state: EditorState.create({ schema, doc, plugins: [columnResizing()] }),
     nodeViews: {
       diff_added(node, v, getPos) {
-        const View = getDiffClass('da-diff-added', () => schema, () => {}, { isUpstream: false });
+        const View = getDiffClass('da-diff-added', () => schema, () => {}, { isUpstream: false, onViewChange });
         return new View(node, v, getPos);
       },
       diff_deleted(node, v, getPos) {
-        const View = getDiffClass('da-diff-deleted', () => schema, () => {}, { isUpstream: true });
+        const View = getDiffClass('da-diff-deleted', () => schema, () => {}, { isUpstream: true, onViewChange });
         return new View(node, v, getPos);
       },
     },
@@ -320,6 +320,133 @@ describe('getInstrumentedHTML for the read-only preview', () => {
     try {
       const returned = updateDocument(ctx);
       expect(posted.find((m) => m.type === 'set-body').payload.body).to.equal(returned);
+    } finally {
+      cleanup();
+    }
+  });
+});
+
+describe('getInstrumentedHTML follows the active conflict tab', () => {
+  const content = () => [
+    para('intro'),
+    deleted('upstream text'), added('local text'),
+    deletedBlock('hero', 'upstream headline'), addedBlock('hero', 'local headline'),
+  ];
+  const showTab = (view, index, tab) => {
+    const container = view.dom.querySelectorAll('.loc-tabbed-container')[index];
+    container.querySelectorAll('.diff-tab-pane').forEach((pane) => {
+      pane.classList.toggle('active', pane.dataset.tab === tab);
+    });
+    return container;
+  };
+  const loadDiff = (container, html) => {
+    container.querySelector('.diff-tab-pane[data-tab="diff"]').innerHTML = html;
+  };
+  const body = (view) => new DOMParser().parseFromString(getInstrumentedHTML(view), 'text/html');
+
+  it('shows the local side on the default tab', () => {
+    const { view, cleanup } = makeDiffView(content());
+    try {
+      expect(body(view).body.textContent).to.include('local text');
+      expect(body(view).body.textContent).to.not.include('upstream text');
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('shows the upstream side, marked upstream, on the upstream tab', () => {
+    const { view, cleanup } = makeDiffView(content());
+    try {
+      showTab(view, 0, 'deleted');
+      const doc = body(view);
+      expect(doc.querySelector('p[data-diff="upstream"]').textContent).to.equal('upstream text');
+      expect(doc.body.textContent).to.not.include('local text');
+      expect(doc.body.textContent).to.include('local headline');
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('shows an upstream block on the upstream tab', () => {
+    const { view, cleanup } = makeDiffView(content());
+    try {
+      showTab(view, 1, 'deleted');
+      const hero = body(view).querySelector('div.hero');
+      expect(hero.getAttribute('data-diff')).to.equal('upstream');
+      expect(hero.textContent).to.include('upstream headline');
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('shows the word diff with inline styles on the difference tab', () => {
+    const { view, cleanup } = makeDiffView(content());
+    try {
+      const container = showTab(view, 0, 'diff');
+      loadDiff(container, '<div class="html-diff"><p>same <del class="diffdel">old</del> <ins class="diffins">new</ins> <ins class="diffmod">mod</ins></p></div>');
+      const doc = body(view);
+      const p = doc.querySelector('p[data-diff="changed"]');
+      expect(p.textContent).to.equal('same old new mod');
+      expect(doc.querySelector('.html-diff')).to.be.null;
+      expect(doc.querySelector('del.diffdel').getAttribute('style')).to.include('line-through');
+      expect(doc.querySelector('ins.diffins').getAttribute('style')).to.include('background');
+      expect(doc.querySelector('ins.diffmod').getAttribute('style')).to.include('background');
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('falls back to local while the diff is loading', () => {
+    const { view, cleanup } = makeDiffView(content());
+    try {
+      showTab(view, 0, 'diff');
+      const doc = body(view);
+      expect(doc.body.textContent).to.include('local text');
+      expect(doc.body.textContent).to.not.include('Loading diff');
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('falls back to local for a block pair on the difference tab', () => {
+    const { view, cleanup } = makeDiffView(content());
+    try {
+      const container = showTab(view, 1, 'diff');
+      loadDiff(container, '<div class="html-diff"><table><tr><td><ins class="diffins">x</ins></td></tr></table></div>');
+      const hero = body(view).querySelector('div.hero');
+      expect(hero.getAttribute('data-diff')).to.equal('local');
+      expect(hero.textContent).to.include('local headline');
+    } finally {
+      cleanup();
+    }
+  });
+});
+
+describe('conflict view change notifications', () => {
+  const waitFor = async (check) => {
+    for (let i = 0; i < 100 && !check(); i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => { setTimeout(resolve, 20); });
+    }
+  };
+
+  it('stays quiet on render, then reports a tab switch and the diff finishing', async () => {
+    let calls = 0;
+    const { view, cleanup } = makeDiffView(
+      [deleted('upstream text'), added('local text')],
+      { onViewChange: () => { calls += 1; } },
+    );
+    try {
+      await waitFor(() => view.dom.querySelector('.da-diff-btn.is-upstream .switch-btn'));
+      expect(calls).to.equal(0);
+
+      view.dom.querySelector('.da-diff-btn.is-upstream .switch-btn').click();
+      expect(calls).to.equal(1);
+
+      view.dom.querySelector('.da-diff-btn.is-diff .switch-btn').click();
+      await waitFor(() => view.dom.querySelector('.html-diff'));
+      await waitFor(() => calls >= 3);
+      expect(calls).to.equal(3);
     } finally {
       cleanup();
     }
