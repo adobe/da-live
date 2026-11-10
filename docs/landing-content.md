@@ -26,15 +26,15 @@ started." sit above the form's card. Signed-in users see their IMS first name in
 the greeting; unavailable profiles leave the generic greeting and a usable form.
 The card says "Already have an existing site?" and
 "Enter the URL to get started."
-The URL field receives focus on initial display. Add site stays disabled until
+The URL field receives focus on initial display. Open stays disabled until
 the field contains a non-whitespace value; the required URL validation still
 applies when submitting.
-Add site accepts a GitHub repository URL (using the same
+Open accepts a GitHub repository URL (using the same
 org/site mapping as Start) or an existing AEM preview/live URL (using da-nx's shared
 parser). Submitting opens that site's v2 Browse view, preserving the current query
 parameters. Invalid sites stay on the form with an error.
 A centered "Don't have a site yet?" prompt beneath the card offers a
-"Create a new site" link to
+"Create a new one" link to
 `/start` using da-nx's shared URL helper, preserving environment parameters.
 The form works without a navigation dialog; onboarding is not file-item behavior.
 Content does not add a replacement picker or duplicate shared site-option validation.

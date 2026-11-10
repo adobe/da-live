@@ -302,7 +302,7 @@ describe('landing Content section', () => {
     expect(el.shadowRoot.querySelector('.files-panel')).to.equal(null);
     expect(el.shadowRoot.querySelector('input[name="siteUrl"]')).not.to.equal(null);
     expect(new URL(el.shadowRoot.querySelector('.welcome a').href).pathname).to.equal('/start');
-    expect(el.shadowRoot.querySelector('.welcome a').textContent).to.equal('Create a new site');
+    expect(el.shadowRoot.querySelector('.welcome a').textContent).to.equal('Create a new one');
     expect(el.shadowRoot.querySelector('.welcome a').parentElement.textContent).to.contain("Don't have a site yet?");
     document.dispatchEvent(new CustomEvent('site-select', { detail: { value: 'another/site' } }));
     await updateLanding();
@@ -310,7 +310,7 @@ describe('landing Content section', () => {
     expect(el.shadowRoot.querySelector('.files-panel')).not.to.equal(null);
   });
 
-  it('focuses the welcome input on startup and requires a value before enabling Add site', async () => {
+  it('focuses the welcome input on startup and requires a value before enabling Open', async () => {
     el.remove();
     el = document.createElement('da-landing');
     document.body.append(el);
