@@ -19,8 +19,8 @@ import {
   editorContext, editState, mutationFor, needsSetup, inheritanceText, panelKey,
 } from './model.js';
 import {
-  renderOrgForm, renderHeader, renderLoadStatus, renderTabs, renderIntro, renderSetup,
-  renderParts, renderSaveBar, renderConfirm, renderImportButton, renderImportDialog,
+  renderOrgForm, renderHeader, renderLoadStatus, renderTabs, renderPanelHeading, renderIntro,
+  renderSetup, renderParts, renderSaveBar, renderConfirm, renderImportButton, renderImportDialog,
   renderDeleteConfirm,
 } from './views.js';
 import { SHELL } from '../messages.js';
@@ -503,9 +503,11 @@ class DaConfig extends LitElement {
       onSave: () => this._save(),
     };
     const status = this._fileStatus(ctx);
+    const { org, site } = this;
+    const sheet = sheetUrl(ctx.store, { org, site, located: this._file });
     return html`
       <section class="config-panel" aria-label=${ctx.section.label}>
-        <h3 class="config-panel-title">${ctx.section.label}</h3>
+        ${renderPanelHeading(ctx.section.label, sheet)}
         ${this._renderIntro(ctx, status.note)}
         ${this._renderParts(ctx)}
         ${status.block}
@@ -525,10 +527,8 @@ class DaConfig extends LitElement {
       onSectionChange: (e) => this._onSectionChange(e),
     };
     const onConfirm = (proceed) => this._resolveConfirm(proceed);
-    const { org, site } = this;
-    const sheet = sheetUrl(this._ctx.store, { org, site, located: this._file });
     return html`
-      ${renderTabs(this._tabs, selection, tabHandlers, sheet)}
+      ${renderTabs(this._tabs, selection, tabHandlers)}
       ${this._renderPanel()}
       ${this._confirm ? renderConfirm(selection.section.label, onConfirm) : nothing}`;
   }
