@@ -29,10 +29,7 @@ function useV2Nav() {
 async function loadComponent(el, cmpName, pathDetails, contentBlock) {
   if (cmpName === 'da-landing') {
     const { default: loadLanding } = await import('../landing/landing.js');
-    loadLanding(el);
-    const landing = el.querySelector('.landing');
-    const { default: loadTiles } = await import('../landing/tile-group.js');
-    if (landing?.isConnected) loadTiles(landing, { contentBlock });
+    await loadLanding(el, { contentBlock });
     return;
   }
 

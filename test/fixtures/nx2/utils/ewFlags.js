@@ -1,4 +1,6 @@
-export const isEWEnabled = async () => false;
+import { stub } from 'sinon';
+
+export const isEWEnabled = stub().resolves(false);
 export const isEwChatDisabled = async () => false;
 export const getEWFlags = async () => ({});
 

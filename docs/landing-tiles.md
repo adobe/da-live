@@ -20,8 +20,9 @@ inline-size container. The group matches Content's width and centers incomplete
 rows: five tiles use 3+2 from 600px and one column below.
 
 The landing replaces Home (no scoped hash) when the page has an authored `Landing`
-table or `?landing=true` is set. `?landing=false` keeps the existing Home. It lazily loads `tile-group.js` inside the existing
-gradient surface. `tile-group.css` styles the owner; `tile-layout.css` styles the
+table or `?landing=true` is set. `?landing=false` keeps the existing Home. Browse
+selects the route; `landing.js` composes the gradient surface and lazily loads
+`tile-group.js` inside it. `tile-group.css` styles the owner; `tile-layout.css` styles the
 group; `tile.css` styles each tile.
 
 A page with a `Browse` block and a `Landing` table renders the table's rows as tiles
@@ -44,4 +45,7 @@ use the selected site from the hash; without one, or in a link to another origin
 those tiles are disabled. `/{action:create-page}` needs a
 selected site and opens the shared `da-name-dialog`. It refuses existing names,
 saves an empty page and opens it in the site's editor, like Browse's New → Document.
+Editor configuration uses the same org/site precedence and path matching as Browse,
+with EW selecting the default only when no override applies. Closing the dialog,
+changing sites or disconnecting invalidates that create operation's pending work.
 Other actions and unresolved placeholders render as disabled tiles.

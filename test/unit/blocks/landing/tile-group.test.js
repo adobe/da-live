@@ -3,9 +3,10 @@ import sinon from 'sinon';
 import '../../setup-nx.js';
 import '../../../../blocks/landing/tile-group.js';
 import { parseTileEntries } from '../../../../blocks/landing/tile-content.js';
-import { getNx, getNx2Api } from '../../../../scripts/utils.js';
+import { getNx, getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
 
-const { source } = await getNx2Api();
+const { source, config } = await getNx2Api();
+const { isEWEnabled } = await getNxEWFlags();
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const content = await fetch('/test/fixtures/landing-tiles.html').then((response) => response.text());
 
@@ -19,6 +20,7 @@ describe('landing tile group', () => {
   };
 
   beforeEach(async () => {
+    sinon.stub(config, 'get').resolves({ ok: false, status: 404 });
     hashChange._set({ org: 'org', site: 'site', fullpath: '/org/site' });
     el = document.createElement('da-landing-tiles');
     el.entries = parseTileEntries(new DOMParser().parseFromString(content, 'text/html').querySelector('.landing'));
@@ -29,6 +31,8 @@ describe('landing tile group', () => {
   afterEach(() => {
     el.remove();
     sinon.restore();
+    isEWEnabled.reset();
+    isEWEnabled.resolves(false);
   });
 
   it('uses authored order, text and tone instead of tile titles or positions', async () => {
@@ -55,7 +59,7 @@ describe('landing tile group', () => {
     const [, create] = await getTiles();
     expect(create.href).to.equal(undefined);
     create.shadowRoot.querySelector('button').click();
-    await el._onCreatePage();
+    await customElements.whenDefined('da-name-dialog');
     await el.updateComplete;
     const dialog = el.shadowRoot.querySelector('da-name-dialog');
     expect(dialog.getAttribute('dialog-title')).to.equal('New page in site');
@@ -76,6 +80,111 @@ describe('landing tile group', () => {
     await el._onCreatePageSubmit({ detail: { name: 'draft' } });
     expect(save.firstCall.args[0]).to.equal('/org/site/draft.html');
     expect(el._createDialog).to.deep.equal({ scope: 'org/site', saving: false, error: 'Could not create the page.' });
+  });
+
+  [false, true].forEach((ok) => {
+    it(`ignores an old ${ok ? 'successful' : 'failed'} save after reopening Create for the same site`, async () => {
+      sinon.stub(source, 'getMetadata').resolves({ status: 404 });
+      let finish;
+      const saved = new Promise((resolve) => { finish = resolve; });
+      let started;
+      const saving = new Promise((resolve) => { started = resolve; });
+      sinon.stub(source, 'save').callsFake(() => {
+        started();
+        return saved;
+      });
+      const navigate = sinon.stub(el, 'navigate');
+      await el._onCreatePage();
+      const pending = el._onCreatePageSubmit({ detail: { name: 'draft' } });
+      await saving;
+      el._onCloseCreatePage();
+      await el._onCreatePage();
+      const reopened = el._createDialog;
+      finish({ ok });
+      await pending;
+      expect(el._createDialog).to.equal(reopened);
+      expect(navigate.called).to.equal(false);
+    });
+  });
+
+  it('does not save after closing Create while checking the name', async () => {
+    let finish;
+    sinon.stub(source, 'getMetadata').returns(new Promise((resolve) => { finish = resolve; }));
+    const save = sinon.stub(source, 'save').resolves({ ok: true });
+    await el._onCreatePage();
+    const pending = el._onCreatePageSubmit({ detail: { name: 'draft' } });
+    el._onCloseCreatePage();
+    finish({ status: 404 });
+    await pending;
+    expect(save.called).to.equal(false);
+    expect(el._createDialog).to.equal(undefined);
+  });
+
+  ['scope change', 'reconnection'].forEach((change) => {
+    it(`does not save or navigate after a ${change} during editor resolution`, async () => {
+      sinon.stub(source, 'getMetadata').resolves({ status: 404 });
+      const save = sinon.stub(source, 'save').resolves({ ok: true });
+      const navigate = sinon.stub(el, 'navigate');
+      let finish;
+      const enabled = new Promise((resolve) => { finish = resolve; });
+      let started;
+      const resolving = new Promise((resolve) => { started = resolve; });
+      isEWEnabled.callsFake(() => {
+        started();
+        return enabled;
+      });
+      await el._onCreatePage();
+      const pending = el._onCreatePageSubmit({ detail: { name: 'draft' } });
+      await resolving;
+      if (change === 'scope change') el.setScope({ org: 'other', site: 'site' });
+      else {
+        el.remove();
+        document.body.append(el);
+      }
+      finish(true);
+      await pending;
+      expect(navigate.called).to.equal(false);
+      expect(save.called).to.equal(false);
+    });
+  });
+
+  [
+    { enabled: false, expected: '/edit#/org/site/draft' },
+    { enabled: true, expected: '/canvas#/org/site/draft' },
+    { enabled: true, configured: 'draft', expected: '/site-editor#/configured/site/draft' },
+    { enabled: true, configured: 'form', expected: '/form-editor#/configured/site/form' },
+  ].forEach(({ enabled, configured, expected }) => {
+    it(`creates and opens a page using ${expected}`, async () => {
+      sinon.stub(source, 'getMetadata').resolves({ status: 404 });
+      const save = sinon.stub(source, 'save').resolves({ ok: true });
+      isEWEnabled.resolves(enabled);
+      if (configured) {
+        el.setScope({ org: 'configured', site: 'site' });
+        config.get.callsFake(async ({ site }) => ({
+          ok: true,
+          json: async () => ({
+            data: site ? [
+              { key: 'editor.path', value: '/configured/site=/site-editor#' },
+            ] : [
+              { key: 'editor.path', value: '/configured/site=/org-editor#' },
+              { key: 'editor.path', value: '/configured/site/form=/form-editor#' },
+            ],
+          }),
+        }));
+      }
+      const [, create] = await getTiles();
+      create.shadowRoot.querySelector('button').click();
+      await customElements.whenDefined('da-name-dialog');
+      await el.updateComplete;
+      const dialog = el.shadowRoot.querySelector('da-name-dialog');
+      await dialog.updateComplete;
+      const opened = new Promise((resolve) => { sinon.stub(el, 'navigate').callsFake(resolve); });
+      dialog.shadowRoot.querySelector('input').value = configured || 'draft';
+      dialog.shadowRoot.querySelector('.nx-form-btn-primary').click();
+      expect(await opened).to.equal(expected);
+      expect(save.calledOnce).to.equal(true);
+      expect(save.firstCall.args[0]).to.equal(`/${configured ? 'configured' : 'org'}/site/${configured || 'draft'}.html`);
+    });
   });
 
   it('disables site tiles without a selected site', async () => {

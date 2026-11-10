@@ -3,6 +3,8 @@ import { setNx } from '../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 const { default: init } = await import('../../../../blocks/landing/landing.js');
+const content = await fetch('/test/fixtures/landing-tiles.html').then((response) => response.text());
+const contentBlock = new DOMParser().parseFromString(content, 'text/html').querySelector('.landing');
 const css = await fetch('/blocks/landing/landing.css').then((response) => response.text());
 const styles = new CSSStyleSheet();
 styles.replaceSync(css);
@@ -12,6 +14,8 @@ describe('landing background', () => {
   let container;
   let originalStyles;
   let originalHref;
+
+  const mountLanding = () => init(el, { contentBlock });
 
   beforeEach(() => {
     originalHref = window.location.href;
@@ -39,12 +43,21 @@ describe('landing background', () => {
     history.replaceState(null, '', originalHref);
   });
 
-  it('replaces old content with only an empty background surface', () => {
-    init(el);
+  it('replaces old content and composes authored tiles inside the landing surface', async () => {
+    await mountLanding();
     expect(el.children.length).to.equal(1);
     expect(el.firstElementChild.className).to.equal('landing');
-    expect(el.firstElementChild.childNodes.length).to.equal(0);
+    const tiles = el.querySelector('.landing > da-landing-tiles');
+    await tiles.updateComplete;
+    expect(tiles.entries).to.have.length(5);
     expect(el.querySelector('img, picture')).to.equal(null);
+  });
+
+  it('does not mount tiles into a replaced surface', async () => {
+    const mounting = mountLanding();
+    el.replaceChildren();
+    await mounting;
+    expect(el.children).to.have.length(0);
   });
 
   it('hides an authored Landing table without replacing its rows', () => {
@@ -58,7 +71,7 @@ describe('landing background', () => {
   });
 
   it('fills its container with a wider warm left and narrow pink, fading to white at 85% height', () => {
-    init(el);
+    mountLanding();
     const surface = el.firstElementChild;
     const computed = getComputedStyle(surface);
     expect(surface.getBoundingClientRect().height).to.equal(400);
@@ -74,7 +87,7 @@ describe('landing background', () => {
   it('keeps the dark scheme scoped to the mounted landing surface', () => {
     document.body.classList.add('dark-scheme');
     const before = getComputedStyle(document.body).colorScheme;
-    init(el);
+    mountLanding();
     expect(getComputedStyle(document.body).colorScheme).to.equal('dark');
     el.replaceChildren();
     expect(getComputedStyle(document.body).colorScheme).to.equal(before);
@@ -84,7 +97,7 @@ describe('landing background', () => {
     const savedTheme = localStorage.getItem('color-scheme');
     document.body.classList.add('dark-scheme');
     history.replaceState(null, '', '?theme=light');
-    init(el);
+    mountLanding();
     expect(getComputedStyle(document.body).colorScheme).to.equal('light');
     expect(localStorage.getItem('color-scheme')).to.equal(savedTheme);
     el.replaceChildren();
@@ -95,7 +108,7 @@ describe('landing background', () => {
     const savedTheme = localStorage.getItem('color-scheme');
     const before = getComputedStyle(document.body).colorScheme;
     history.replaceState(null, '', '?theme=dark');
-    init(el);
+    mountLanding();
     expect(getComputedStyle(document.body).colorScheme).to.equal('dark');
     expect(localStorage.getItem('color-scheme')).to.equal(savedTheme);
     el.replaceChildren();
@@ -103,7 +116,7 @@ describe('landing background', () => {
   });
 
   it('mirrors light and dark positions with the original middle colors', () => {
-    init(el);
+    mountLanding();
     const lightPositions = getComputedStyle(el.firstElementChild).backgroundImage.match(/[\d.]+%/g);
     history.replaceState(null, '', '?theme=dark');
     el.style.setProperty('--s2-red-100', 'light-dark(#fff6f5, #360a03)');
@@ -111,7 +124,7 @@ describe('landing background', () => {
     el.style.setProperty('--s2-indigo-200', 'light-dark(#ebeeff, #23006e)');
     el.style.setProperty('--s2-blue-100', 'light-dark(#f5f9ff, #0e173f)');
     el.style.setProperty('--s2-gray-25', 'light-dark(#fff, #111)');
-    init(el);
+    mountLanding();
     const background = getComputedStyle(el.firstElementChild).backgroundImage;
     expect(background.match(/[\d.]+%/g)).to.deep.equal(lightPositions);
     expect(background).to.include('rgb(71, 0, 44) 40%');

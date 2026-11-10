@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
-import { EMPTY_DOC } from '../shared/utils.js';
-import getEditPath from '../shared/da-file-item/edit-path.js';
+import { EMPTY_DOC, fetchDaConfigs, getFirstSheet } from '../shared/utils.js';
+import getEditPath, { getConfiguredEditor } from '../shared/da-file-item/edit-path.js';
 import { doesFileExist } from '../shared/da-file-item/item.js';
 import { getTileTarget } from './utils.js';
 import { loadTileEntries, readTileEntries } from './tile-content.js';
@@ -35,6 +35,7 @@ export class DaLandingTiles extends LitElement {
 
   disconnectedCallback() {
     this._unsubscribe?.();
+    this._createDialog = undefined;
     super.disconnectedCallback();
   }
 
@@ -64,25 +65,39 @@ export class DaLandingTiles extends LitElement {
   }
 
   async _onCreatePageSubmit({ detail: { name } }) {
-    const dialog = this._createDialog;
-    if (!dialog || dialog.saving) return;
-    this._createDialog = { ...dialog, saving: true, error: undefined };
+    if (!this._createDialog || this._createDialog.saving) return;
+    const dialog = { ...this._createDialog, saving: true, error: undefined };
+    this._createDialog = dialog;
+    const isCurrent = () => this.isConnected && this._createDialog === dialog;
     const [org, site] = dialog.scope.split('/');
     const path = `/${dialog.scope}/${name}.html`;
     const error = await (async () => {
       if (await doesFileExist(path)) return 'A page with this name already exists.';
+      if (!isCurrent()) return undefined;
       const { source } = await getNx2Api();
+      const [configs, { isEWEnabled }] = await Promise.all([
+        Promise.all(fetchDaConfigs({ org, site })),
+        getNxEWFlags(),
+      ]);
+      const defaultEditor = await isEWEnabled({ org, site }).catch(() => false) ? '/canvas#' : '/edit#';
+      const editorConfs = configs.filter(Boolean).reverse()
+        .flatMap((config) => getFirstSheet(config) || [])
+        .filter(({ key }) => key === 'editor.path')
+        .map(({ value }) => value);
+      const editor = getConfiguredEditor(path, editorConfs, defaultEditor);
+      if (!isCurrent()) return undefined;
       const resp = await source.save(path, { body: EMPTY_DOC });
-      return resp?.ok ? undefined : 'Could not create the page.';
+      if (!resp?.ok) return 'Could not create the page.';
+      if (isCurrent()) this.navigate(getEditPath({ path, ext: 'html', editor }));
+      return undefined;
     })().catch(() => 'Could not create the page.');
-    if (this._createDialog?.scope !== dialog.scope) return;
-    if (error) {
+    if (error && isCurrent()) {
       this._createDialog = { ...dialog, saving: false, error };
-      return;
     }
-    const { isEWEnabled } = await getNxEWFlags();
-    const editor = await isEWEnabled({ org, site }).catch(() => false) ? '/canvas#' : '/edit#';
-    window.location.href = getEditPath({ path, ext: 'html', editor });
+  }
+
+  navigate(href) {
+    window.location.href = href;
   }
 
   _onTileClick({ id, href, action }) {
