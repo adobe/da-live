@@ -7,6 +7,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--s2-spacing-400);
+  container: config-shell / inline-size;
 }
 
 .config-header {
@@ -50,7 +51,23 @@
 .config-tabs .config-sheet-link {
   grid-area: 1 / 3;
   justify-self: end;
+  white-space: nowrap;
   text-decoration: none;
+}
+
+/* Too narrow to keep the tabs centered beside it: Open sheet gets its own row. */
+@container config-shell (width < 760px) {
+  .config-tabs {
+    grid-template-columns: 1fr;
+  }
+
+  .config-tabs > :not(.config-sheet-link) {
+    grid-column: 1;
+  }
+
+  .config-tabs .config-sheet-link {
+    grid-area: auto;
+  }
 }
 
 /* Same height as the section row (a size m segment). */
