@@ -25,6 +25,9 @@ selects the route; `landing.js` composes the gradient surface and lazily loads
 `tile-group.js` inside it. `tile-group.css` styles the owner and layout;
 `tile.css` styles each tile.
 
+Landing inherits the application's color scheme and shared Spectrum tokens,
+including its gradient. It does not choose a theme or support a `?theme=` override.
+
 The whole tile group is hidden and content loading is deferred until a site is
 selected. Clearing selection hides every tile, including documentation links.
 Selection currently comes from the hash, so unscoped Home shows no tiles pending
@@ -45,7 +48,7 @@ source heading ID is used. Rows without an icon or an H3 title link are skipped 
 a console warning.
 
 HTTP(S) destinations remain links. Same-origin links keep the current `nx`, `nxver`,
-`quick-edit`, `ew`, `nx-chat-ao`, `theme` and `rum` parameters. `{org}` and `{site}`
+`quick-edit`, `ew`, `nx-chat-ao` and `rum` parameters. `{org}` and `{site}`
 use the selected site; substitution into links to another origin is disabled.
 `/{action:create-page}` opens the shared `da-name-dialog`. It refuses existing names,
 saves an empty page and opens it in the site's editor, like Browse's New → Document.

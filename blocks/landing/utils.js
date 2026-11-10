@@ -15,7 +15,7 @@ export function getTileTarget({ entry, scope, href = window.location.href }) {
     const sameOrigin = url.origin === current.origin;
     if (requiresSite && !sameOrigin) return { disabled: true };
     if (sameOrigin) {
-      ['nx', 'nxver', 'quick-edit', 'ew', 'nx-chat-ao', 'theme', 'rum'].forEach((key) => {
+      ['nx', 'nxver', 'quick-edit', 'ew', 'nx-chat-ao', 'rum'].forEach((key) => {
         if (current.searchParams.has(key) && !url.searchParams.has(key)) {
           url.searchParams.set(key, current.searchParams.get(key));
         }

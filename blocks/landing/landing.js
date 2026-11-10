@@ -12,8 +12,6 @@ export default async function init(el, { contentBlock } = {}) {
   if (!document.adoptedStyleSheets.includes(styles)) document.adoptedStyleSheets.push(styles);
   const landing = document.createElement('div');
   landing.className = 'landing';
-  const theme = new URLSearchParams(window.location.search).get('theme');
-  if (['light', 'dark'].includes(theme)) landing.dataset.theme = theme;
   el.replaceChildren(landing);
   const { default: loadTiles } = await import('./tile-group.js');
   if (landing.isConnected) loadTiles(landing, { contentBlock });
