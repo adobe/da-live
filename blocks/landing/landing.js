@@ -54,9 +54,13 @@ export class DaLanding extends LitElement {
   async _onChatAvailability(enabled) {
     const request = {};
     this._chatRequest = request;
-    this._chatInput = false;
+    this._chatInput = undefined;
     if (enabled === undefined) return;
+    const setChatInput = (value) => {
+      if (this._chatRequest === request) this._chatInput = value;
+    };
     if (!enabled) {
+      setChatInput(false);
       toggleChatPanel(false);
       return;
     }
@@ -68,19 +72,31 @@ export class DaLanding extends LitElement {
     if (wasPanelOpen('chat')) openChatPanel();
     try {
       // The compact input shares its session only with the AO chat.
-      if (!await useAoChat()) return;
+      if (!await useAoChat()) {
+        setChatInput(false);
+        return;
+      }
       await import(`${getNx()}/blocks/chat-ao/input.js`);
-      if (this._chatRequest === request) this._chatInput = true;
+      setChatInput(true);
     } catch (error) {
+      setChatInput(false);
       // eslint-disable-next-line no-console
       console.warn('Could not load the landing chat input.', error);
     }
   }
 
+  _renderHeading() {
+    if (this._chatInput === undefined) return nothing;
+    const heading = this._chatInput
+      ? `Hi${this._name ? ` ${this._name}` : ''}, how can I help?`
+      : `Welcome${this._name ? `, ${this._name}` : ''}`;
+    return html`<h1 id="welcome-heading">${heading}</h1>`;
+  }
+
   render() {
     return html`
       <section class="welcome" aria-labelledby="welcome-heading">
-        <h1 id="welcome-heading">Hi${this._name ? ` ${this._name}` : ''}, how can I help?</h1>
+        ${this._renderHeading()}
         ${this._chatInput ? html`<nx-ao-input placeholder=${CHAT_PLACEHOLDER}></nx-ao-input>` : nothing}
       </section>
     `;

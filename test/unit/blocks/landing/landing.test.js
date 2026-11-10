@@ -159,18 +159,35 @@ describe('landing chat', () => {
     hashChange._set({});
   });
 
-  it('greets the signed-in user by first name', async () => {
+  it('asks how it can help when the landing chat is available, regardless of the panel', async () => {
     setImsResult({ first_name: 'Ada', displayName: 'Ada Lovelace' });
+    setChatAvailability(async () => true);
+    setAoChat(async () => true);
+    hashChange._set({ org: 'org', site: 'enabled' });
     const landing = await mount();
-    await waitFor(() => landing.shadowRoot.querySelector('h1').textContent.includes('Ada'));
-    expect(landing.shadowRoot.querySelector('h1').textContent).to.equal('Hi Ada, how can I help?');
+    const heading = () => landing.shadowRoot.querySelector('h1')?.textContent;
+    await waitFor(() => heading() === 'Hi Ada, how can I help?');
+
+    document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
+    await landing.updateComplete;
+    expect(heading()).to.equal('Hi Ada, how can I help?');
   });
 
-  it('keeps a generic greeting and no chat without a site', async () => {
+  it('welcomes the user by name when chat is unavailable', async () => {
+    setImsResult({ first_name: 'Ada', displayName: 'Ada Lovelace' });
+    hashChange._set({ org: 'org', site: 'disabled' });
+    const landing = await mount();
+    const heading = () => landing.shadowRoot.querySelector('h1')?.textContent;
+    await waitFor(() => heading() === 'Welcome, Ada');
+    expect(landing.shadowRoot.querySelector('nx-ao-input')).to.equal(null);
+  });
+
+  it('shows a generic welcome and no chat without a site', async () => {
     hashChange._set({ org: 'org' });
     const landing = await mount();
     await waitFor(() => panelEvents.length);
-    expect(landing.shadowRoot.querySelector('h1').textContent).to.equal('Hi, how can I help?');
+    await landing.updateComplete;
+    expect(landing.shadowRoot.querySelector('h1').textContent).to.equal('Welcome');
     expect(landing.shadowRoot.querySelector('nx-ao-input')).to.equal(null);
     expect(registered).to.deep.equal([]);
     expect(panelEvents).to.deep.equal([[PANEL_EVENT.CLOSE, 'chat']]);
