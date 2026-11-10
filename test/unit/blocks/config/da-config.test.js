@@ -620,7 +620,7 @@ describe('da-config', () => {
       expect(has('.config-setup')).to.equal(false);
       expect(q('[id="config-ew.enabled"]').value).to.equal('false');
       const links = [...el.shadowRoot.querySelectorAll('.config-info a')].map((a) => a.textContent.trim());
-      expect(links).to.deep.equal(['Open sheet', 'Learn more']);
+      expect(links).to.deep.equal(['Learn more']);
     });
 
     it('shows the Overrides org pill for site flags that differ from the org', async () => {
@@ -1006,7 +1006,7 @@ describe('da-config', () => {
       });
       await openSection('blocks', 'lb4');
       expect(el.shadowRoot.textContent).to.include("doesn't exist yet");
-      expect(has('.config-info a[href^="/sheet"]')).to.equal(false);
+      expect(has('.config-sheet-link')).to.equal(false);
     });
 
     it('explains sources that are not files of this site', async () => {
@@ -1087,8 +1087,8 @@ describe('da-config', () => {
 
     it('reads the site translate sheet and saves settings into its config tab', async () => {
       const puts = await open('tr1', (o, s, path) => (path === '/.da/translate.json' ? TRANSLATE : status(404)()));
-      const links = [...q('.config-info').querySelectorAll('a.nx-action-btn')].map((a) => [a.textContent.trim(), a.getAttribute('href')]);
-      expect(links[0]).to.deep.equal(['Open sheet', '/sheet#/tr1/alpha/.da/translate']);
+      const link = q('.config-tabs .config-sheet-link');
+      expect([link.textContent.trim(), link.getAttribute('href')]).to.deep.equal(['Open sheet', '/sheet#/tr1/alpha/.da/translate']);
       expect(q('[id="config-translation.service.name"]').value).to.equal('Smartling');
       el._onEdit('source.language', 'English');
       await el.updateComplete;

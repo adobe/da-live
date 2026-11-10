@@ -52,8 +52,17 @@ export function renderLoadStatus({ status, httpStatus, scope }) {
   return nothing;
 }
 
+const OPEN_ICON = '/img/icons/s2-icon-openin-20-n.svg#icon';
+
+const infoLink = (href, label, cls = '') => html`
+  <a class="nx-action-btn nx-btn-sm ${cls}" href=${href} target="_blank" rel="noopener">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><use href=${OPEN_ICON}></use></svg>
+    <span>${label}</span>
+  </a>`;
+
 // Tabs with one section keep the second row's space so the page doesn't jump between areas.
-export function renderTabs(tabs, { tab, section }, { onPrimaryChange, onSectionChange }) {
+// `sheet` is where the shown section is stored, opened from one place for every section.
+export function renderTabs(tabs, { tab, section }, { onPrimaryChange, onSectionChange }, sheet) {
   return html`
     <div class="config-tabs">
       <nx-segmented-btn
@@ -73,28 +82,18 @@ export function renderTabs(tabs, { tab, section }, { onPrimaryChange, onSectionC
           .value=${section.id}
           @change=${onSectionChange}
         ></nx-segmented-btn>` : html`<div class="config-tabs-space" aria-hidden="true"></div>`}
+      ${sheet ? infoLink(sheet, SHELL.openSheet, 'config-sheet-link') : nothing}
     </div>`;
 }
 
-const OPEN_ICON = '/img/icons/s2-icon-openin-20-n.svg#icon';
-
-const infoLink = (href, label) => html`
-  <a class="nx-action-btn nx-btn-sm" href=${href} target="_blank" rel="noopener">
-    <svg viewBox="0 0 20 20" aria-hidden="true"><use href=${OPEN_ICON}></use></svg>
-    <span>${label}</span>
-  </a>`;
-
 // What the section is for, kept apart from the editor like the permissions note.
-export function renderIntro(panel, { docs, sheet, inheritance, readOnly, notes = nothing }) {
+export function renderIntro(panel, { docs, inheritance, readOnly, notes = nothing }) {
   return html`
     <div class="config-info" role="note">
       <p>${panel.description} ${inheritance}</p>
       ${notes}
       ${readOnly ? html`<p>${SHELL.readOnly}</p>` : nothing}
-      <div class="config-info-links">
-        ${sheet ? infoLink(sheet, SHELL.openSheet) : nothing}
-        ${infoLink(docs, SHELL.learnMore)}
-      </div>
+      <div class="config-info-links">${infoLink(docs, SHELL.learnMore)}</div>
     </div>`;
 }
 

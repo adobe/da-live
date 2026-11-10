@@ -475,11 +475,9 @@ class DaConfig extends LitElement {
 
   _renderIntro(ctx, notes) {
     if (this._needsSetup) return nothing;
-    const { org, site } = this;
     return renderIntro(ctx.panel, {
       notes,
       docs: ctx.section.docs,
-      sheet: sheetUrl(ctx.store, { org, site, located: this._file }),
       inheritance: inheritanceText(ctx, this._atSite),
       readOnly: this._readOnly,
     });
@@ -527,8 +525,10 @@ class DaConfig extends LitElement {
       onSectionChange: (e) => this._onSectionChange(e),
     };
     const onConfirm = (proceed) => this._resolveConfirm(proceed);
+    const { org, site } = this;
+    const sheet = sheetUrl(this._ctx.store, { org, site, located: this._file });
     return html`
-      ${renderTabs(this._tabs, selection, tabHandlers)}
+      ${renderTabs(this._tabs, selection, tabHandlers, sheet)}
       ${this._renderPanel()}
       ${this._confirm ? renderConfirm(selection.section.label, onConfirm) : nothing}`;
   }
