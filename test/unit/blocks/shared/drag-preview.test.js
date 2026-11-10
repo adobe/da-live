@@ -1,13 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import drawDragPreview from '../../../../blocks/shared/drag-preview.js';
 
-/**
- * Creates an element with the given styles and text, attached to the page.
- *
- * @param {string} style - The element's inline styles.
- * @param {string} [text] - The element's text.
- * @returns {HTMLElement} The element.
- */
 function createElement(style, text = '') {
   const element = document.createElement('div');
   element.style.cssText = style;
@@ -16,14 +9,6 @@ function createElement(style, text = '') {
   return element;
 }
 
-/**
- * Reads the alpha of one pixel of the preview.
- *
- * @param {HTMLCanvasElement} preview - The drag preview.
- * @param {number} x - The pixel's x in canvas pixels.
- * @param {number} y - The pixel's y in canvas pixels.
- * @returns {number} The alpha, from 0 to 255.
- */
 const alphaAt = (preview, x, y) => preview.getContext('2d').getImageData(x, y, 1, 1).data[3];
 
 describe('drawDragPreview', () => {

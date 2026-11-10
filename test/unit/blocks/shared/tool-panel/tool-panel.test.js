@@ -14,69 +14,37 @@ before(async () => {
   await import('../../../../../blocks/shared/tool-panel/tool-panel.js');
 });
 
-/**
- * Creates a tool panel that is never attached, so it never renders. Tests
- * call its methods directly.
- *
- * @param {Array<object>} views - The panel's views.
- * @returns {HTMLElement} The detached panel.
- */
 function createPanel(views) {
   const panel = document.createElement('da-tool-panel');
   panel.views = views;
   return panel;
 }
 
-/**
- * Creates a promise that the test resolves itself.
- *
- * @returns {{ promise: Promise<unknown>, resolve: Function }} The promise and
- *   the function that resolves it.
- */
 function deferred() {
   let resolve;
   const promise = new Promise((res) => { resolve = res; });
   return { promise, resolve };
 }
 
-/**
- * Waits one task, so pending promise callbacks and earlier timers run first.
- *
- * @returns {Promise<void>} Resolves on the next task.
- */
 const nextTask = () => new Promise((resolve) => { setTimeout(resolve); });
 
 /**
  * Replaces the resize observer and animation frames with versions the test
- * triggers itself, because a test page in a background tab renders no frames.
- *
- * @returns {{ resize: () => void, restore: () => void }} Triggers the
- *   observed resizes and restores the browser's own versions.
+ * triggers because background tabs render no frames.
  */
 function stubResizeFrames() {
   const { ResizeObserver, requestAnimationFrame, cancelAnimationFrame } = window;
   const originals = { ResizeObserver, requestAnimationFrame, cancelAnimationFrame };
   const callbacks = new Set();
   window.ResizeObserver = class {
-    /**
-     * Keeps the callback until something is observed.
-     *
-     * @param {Function} callback - The resize callback.
-     */
     constructor(callback) {
       this.callback = callback;
     }
 
-    /**
-     * Starts calling back on each triggered resize.
-     */
     observe() {
       callbacks.add(this.callback);
     }
 
-    /**
-     * Stops calling back.
-     */
     disconnect() {
       callbacks.delete(this.callback);
     }

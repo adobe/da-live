@@ -1,12 +1,6 @@
 const DROP_BEFORE = 'before';
 const DROP_AFTER = 'after';
 
-/**
- * Tells which half of the hovered item the pointer is over.
- *
- * @param {DragEvent} event - A drag event on the item.
- * @returns {string} `before` or `after`.
- */
 function dropSideOf(event) {
   const { left, width } = event.currentTarget.getBoundingClientRect();
   return event.clientX < left + width / 2 ? DROP_BEFORE : DROP_AFTER;
@@ -22,31 +16,12 @@ function dropSideOf(event) {
  * or from outside it are ignored.
  */
 export default class DragHandler {
-  /** The id of the dragged item, while a drag runs. */
   _draggedId;
 
-  /** The drag preview in the item's DOM, while a drag runs. */
   _preview;
 
-  /** The item `id` and `side` the dragged item would drop on. */
   _drop;
 
-  /**
-   * Takes the drag data type, the rules for dropping and the listener for
-   * drop marker changes.
-   *
-   * @param {object} options
-   * @param {string} options.type - The data type the drag carries the id as.
-   * @param {(id: string, targetId: string) => boolean} options.canDrop - Tells
-   *   whether an item may drop next to another one.
-   * @param {(move: object) => void} options.onDrop - Moves the item, given its
-   *   `id`, the `targetId` and whether it goes `before` the target.
-   * @param {() => void} options.onChange - Called when the drop marker moves,
-   *   so the owner can render it.
-   * @param {(element: HTMLElement) => HTMLElement} [options.createPreview] -
-   *   Draws the drag preview for the dragged element. The browser's default
-   *   snapshot shows without it.
-   */
   constructor({ type, canDrop, onDrop, onChange, createPreview }) {
     this._type = type;
     this._canDrop = canDrop;
@@ -134,13 +109,6 @@ export default class DragHandler {
     this._setDrop(undefined);
   }
 
-  /**
-   * Shows the drag preview, held where the pointer grabbed the element. The
-   * preview must be in the DOM for the browser to draw it, and inside the
-   * element's shadow root for that root's styles to apply.
-   *
-   * @param {DragEvent} event - The dragstart event on the dragged element.
-   */
   _showPreview(event) {
     const element = event.currentTarget;
     const { left, top } = element.getBoundingClientRect();
@@ -150,22 +118,11 @@ export default class DragHandler {
     event.dataTransfer.setDragImage(this._preview, event.clientX - left, event.clientY - top);
   }
 
-  /**
-   * Tells whether the dragged item may drop next to an item.
-   *
-   * @param {string} targetId - The target item's id.
-   * @returns {boolean} Whether the drop is allowed.
-   */
   _accepts(targetId) {
     return !!this._draggedId && this._draggedId !== targetId
       && this._canDrop(this._draggedId, targetId);
   }
 
-  /**
-   * Moves the drop marker and tells the owner when it changed.
-   *
-   * @param {object} [drop] - The target item's `id` and the `side` to drop on.
-   */
   _setDrop(drop) {
     if (this._drop?.id === drop?.id && this._drop?.side === drop?.side) {
       return;

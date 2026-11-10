@@ -3,11 +3,6 @@ import DragHandler from '../../../../blocks/shared/drag-handler.js';
 
 const TYPE = 'application/x-test-item';
 
-/**
- * Creates a 100px wide item at the left edge of the page.
- *
- * @returns {HTMLElement} The item.
- */
 function createItem() {
   const item = document.createElement('div');
   item.style.cssText = 'position: fixed; left: 0; top: 0; width: 100px; height: 20px;';
@@ -16,14 +11,8 @@ function createItem() {
 }
 
 /**
- * Dispatches a drag event on an item and runs a handler method while the
- * item is the event's current target.
- *
- * @param {HTMLElement} item - The item to dispatch on.
- * @param {string} type - The drag event type.
- * @param {(event: DragEvent) => void} handle - Calls the handler method.
- * @param {object} [init] - The event's `dataTransfer` and `clientX`.
- * @returns {DragEvent} The dispatched event.
+ * Dispatches a drag event and invokes the handler while the item is its current
+ * target.
  */
 function dispatchDrag(item, type, handle, { dataTransfer = new DataTransfer(), clientX = 0 } = {}) {
   const event = new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer, clientX });
@@ -37,12 +26,6 @@ describe('DragHandler', () => {
   let changes;
   let drops;
 
-  /**
-   * Creates a handler that records its changes and drops.
-   *
-   * @param {object} [options] - Options that override the defaults.
-   * @returns {DragHandler} The handler.
-   */
   const createHandler = (options = {}) => new DragHandler({
     type: TYPE,
     canDrop: () => true,
