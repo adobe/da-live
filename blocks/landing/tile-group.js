@@ -1,8 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
-import { EMPTY_DOC, fetchDaConfigs, getFirstSheet } from '../shared/utils.js';
-import getEditPath, { getConfiguredEditor } from '../shared/da-file-item/edit-path.js';
-import { doesFileExist } from '../shared/da-file-item/item.js';
+import { getNx, getNx2 } from '../../scripts/utils.js';
+import { createPage, doesFileExist } from '../shared/da-file-item/item.js';
 import { getTileTarget } from './utils.js';
 import { loadTileEntries, readTileEntries } from './tile-content.js';
 import './tile.js';
@@ -52,7 +50,7 @@ export class DaLandingTiles extends LitElement {
   }
 
   async _onCreatePage() {
-    if (!this._scope || this._createDialog) return;
+    if (this._createDialog) return;
     this._createDialog = { scope: this._scope };
     await import('../shared/da-name-dialog/da-name-dialog.js');
   }
@@ -66,28 +64,17 @@ export class DaLandingTiles extends LitElement {
     const dialog = { ...this._createDialog, saving: true, error: undefined };
     this._createDialog = dialog;
     const isCurrent = () => this.isConnected && this._createDialog === dialog;
-    const [org, site] = dialog.scope.split('/');
     const path = `/${dialog.scope}/${name}.html`;
-    const error = await (async () => {
-      if (await doesFileExist(path)) return 'A page with this name already exists.';
-      if (!isCurrent()) return undefined;
-      const { source } = await getNx2Api();
-      const [configs, { isEWEnabled }] = await Promise.all([
-        Promise.all(fetchDaConfigs({ org, site })),
-        getNxEWFlags(),
-      ]);
-      const defaultEditor = await isEWEnabled({ org, site }).catch(() => false) ? '/canvas#' : '/edit#';
-      const editorConfs = configs.filter(Boolean).reverse()
-        .flatMap((config) => getFirstSheet(config) || [])
-        .filter(({ key }) => key === 'editor.path')
-        .map(({ value }) => value);
-      const editor = getConfiguredEditor(path, editorConfs, defaultEditor);
-      if (!isCurrent()) return undefined;
-      const resp = await source.save(path, { body: EMPTY_DOC });
-      if (!resp?.ok) return 'Could not create the page.';
-      if (isCurrent()) this.navigate(getEditPath({ path, ext: 'html', editor }));
-      return undefined;
-    })().catch(() => 'Could not create the page.');
+    let error;
+    try {
+      if (await doesFileExist(path)) error = 'A page with this name already exists.';
+      else if (isCurrent()) {
+        const href = await createPage({ path, isCurrent });
+        if (href && isCurrent()) this.navigate(href);
+      }
+    } catch {
+      error = 'Could not create the page.';
+    }
     if (error && isCurrent()) {
       this._createDialog = { ...dialog, saving: false, error };
     }

@@ -52,6 +52,10 @@ HTTP(S) destinations remain links. Same-origin links keep the current `nx`, `nxv
 use the selected site; substitution into links to another origin is disabled.
 `/{action:create-page}` opens the shared `da-name-dialog`. It refuses existing names,
 saves an empty page and opens it in the site's editor, like Browse's New → Document.
+Both flows use `createPage` from `blocks/shared/da-file-item/item.js` for the
+empty-page save and editor URL. Browse supplies its current editor; Landing lets
+the shared operation resolve it. Landing retains its dialog and duplicate-name
+validation.
 Editor configuration uses the same org/site precedence and path matching as Browse,
 with EW selecting the default only when no override applies. Closing the dialog,
 changing sites or disconnecting invalidates that create operation's pending work.

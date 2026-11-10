@@ -1,20 +1,41 @@
 /* eslint-disable no-underscore-dangle, max-len */
 import { expect } from '@esm-bundle/chai';
-import { setNx } from '../../../../../scripts/utils.js';
+import sinon from 'sinon';
+import { getNx2Api, setNx } from '../../../../../scripts/utils.js';
 
 describe('DaNew', () => {
   let DaNew;
+  let source;
+  let config;
 
   before(async () => {
     setNx('/test/fixtures/nx', { hostname: 'example.com' });
     const mod = await import('../../../../../blocks/browse/da-new/da-new.js');
     DaNew = mod.default;
+    ({ source, config } = await getNx2Api());
   });
+
+  afterEach(() => sinon.restore());
 
   // Name validation/sanitization is covered by da-name-dialog's own test suite —
   // _handleCreate only ever receives an already-valid, sanitized name via the
   // da-name-submit event's detail.
   describe('_handleCreate', () => {
+    it('uses shared page creation with the current folder and supplied editor', async () => {
+      const el = new DaNew();
+      el._createType = 'document';
+      el.fullpath = '/org/repo/folder';
+      el.editor = '/custom-editor#';
+      const save = sinon.stub(source, 'save').resolves({ ok: true });
+      const fetchConfigs = sinon.spy(config, 'get');
+      const navigate = sinon.stub(el, 'navigate');
+      await el._handleCreate({ detail: { name: 'my-doc' } });
+      expect(save.calledOnce).to.equal(true);
+      expect(save.firstCall.args[0]).to.equal('/org/repo/folder/my-doc.html');
+      expect(navigate.calledOnceWithExactly('/custom-editor#/org/repo/folder/my-doc')).to.equal(true);
+      expect(fetchConfigs.called).to.equal(false);
+    });
+
     it('closes the dialog immediately before async work (document type)', async () => {
       const el = new DaNew();
       el._createType = 'document';

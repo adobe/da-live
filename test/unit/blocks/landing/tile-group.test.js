@@ -82,6 +82,28 @@ describe('landing tile group', () => {
     expect(el._createDialog).to.deep.equal({ scope: 'org/site', saving: false, error: 'Could not create the page.' });
   });
 
+  it('ignores a second submit while the first page is saving', async () => {
+    sinon.stub(source, 'getMetadata').resolves({ status: 404 });
+    let finish;
+    const saved = new Promise((resolve) => { finish = resolve; });
+    let started;
+    const saving = new Promise((resolve) => { started = resolve; });
+    const save = sinon.stub(source, 'save').callsFake(() => {
+      started();
+      return saved;
+    });
+    const navigate = sinon.stub(el, 'navigate');
+    await el._onCreatePage();
+    const pending = el._onCreatePageSubmit({ detail: { name: 'draft' } });
+    await saving;
+    await el._onCreatePageSubmit({ detail: { name: 'another' } });
+    finish({ ok: true });
+    await pending;
+    expect(save.calledOnce).to.equal(true);
+    expect(save.firstCall.args[0]).to.equal('/org/site/draft.html');
+    expect(navigate.calledOnce).to.equal(true);
+  });
+
   [false, true].forEach((ok) => {
     it(`ignores an old ${ok ? 'successful' : 'failed'} save after reopening Create for the same site`, async () => {
       sinon.stub(source, 'getMetadata').resolves({ status: 404 });
