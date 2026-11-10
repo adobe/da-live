@@ -201,12 +201,12 @@ export class DaLanding extends LitElement {
       <h2 id="welcome-heading">Welcome to Experience Workspace${this._firstName ? `, ${this._firstName}` : ''}</h2>
       <p>Add a site to get started.</p>
       <form class="nx-form-field ${this._siteError ? 'nx-field-error' : ''}" @submit=${this._onAddSite}>
-        <label for="site-url">Already have an EDS project?</label>
-        <p id="site-hint">Enter its GitHub repository URL to add your site.</p>
+        <label for="site-url">Already have an existing site?</label>
+        <p id="site-hint">Enter the URL to get started.</p>
         <div class="site-entry">
           <input class="nx-input" id="site-url" name="siteUrl" type="url" required
             .value=${this._siteUrl || ''}
-            autocomplete="url" placeholder="https://github.com/your-org/your-site"
+            autocomplete="url" placeholder="https://main--site--org.aem.page"
             aria-describedby=${this._siteError ? 'site-hint site-error' : 'site-hint'}
             aria-invalid=${this._siteError ? 'true' : nothing}
             @input=${({ target }) => {
@@ -218,7 +218,7 @@ export class DaLanding extends LitElement {
         </div>
         ${this._siteError ? html`<p id="site-error" class="nx-input-error-msg" role="alert">${this._siteError}</p>` : nothing}
       </form>
-      <p class="newsite">Don't have a project yet? <a href=${getCreateSiteHref()}>Create a new site</a></p>
+      <p class="newsite">Don't have a site yet? <a href=${getCreateSiteHref()}>Create a new site</a></p>
     </section>`;
   }
 
