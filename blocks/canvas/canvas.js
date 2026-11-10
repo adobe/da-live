@@ -326,10 +326,11 @@ export default async function decorate(block) {
     onShow: async (aside, id, options) => {
       const toolPanel = aside?.querySelector('ew-tool-panel');
       if (!toolPanel) return;
-      const selected = await syncToolPanelViews(toolPanel, hashState(), id);
+      const panelName = options?.modal ? undefined : id;
+      const selected = await syncToolPanelViews(toolPanel, hashState(), panelName);
       await toolPanel.updateComplete;
-      if (id && !selected && toolPanel.views?.some((v) => v.id === id)) {
-        await toolPanel.showPanel(id);
+      if (id && (!selected || options?.modal) && toolPanel.views?.some((v) => v.id === id)) {
+        await toolPanel.showPanel(id, options);
       }
       if (options?.newVersion) {
         await toolPanel.updateComplete;
