@@ -3,7 +3,6 @@ import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { TOOL_PANEL_TAG } from './tool-panel-section.js';
 import DragHandler from '../drag-handler.js';
 import drawDragPreview from '../drag-preview.js';
-import { canPin, labelOf, opensOutsidePanel } from './tool-panel-view.js';
 
 const nx = getNx();
 const [{ loadStyle }, { PANEL_EVENT }] = await Promise.all([
@@ -26,6 +25,39 @@ const ICONS = {
   fullscreen: '/img/icons/s2-icon-fullscreen-20-n.svg',
   openIn: '/img/icons/s2-icon-openin-20-n.svg',
 };
+
+/**
+ * The view `experience` values that open outside the panel instead of as a
+ * tab. `window` opens the view's first source in a new browser tab,
+ * `fullsize-dialog` shows it in the panel's full size dialog and `modal` calls
+ * the view's own `openModal`.
+ */
+const EXTERNAL_EXPERIENCES = new Set(['window', 'fullsize-dialog', 'modal']);
+
+/**
+ * Tells whether a view opens outside the panel, in a window, dialog or modal.
+ *
+ * @param {object} view - The view.
+ * @returns {boolean} Whether the view opens outside the panel.
+ */
+const opensOutsidePanel = (view) => EXTERNAL_EXPERIENCES.has(view.experience);
+
+/**
+ * Tells whether a view can be pinned as a tab. Views that open outside the
+ * panel can't.
+ *
+ * @param {object} [view] - The view.
+ * @returns {boolean} Whether the view can be pinned.
+ */
+const canPin = (view) => !!view && !opensOutsidePanel(view);
+
+/**
+ * Reads a view's current label.
+ *
+ * @param {object} view - The view.
+ * @returns {string} The label.
+ */
+const labelOf = (view) => view.getLabel?.() ?? view.label;
 
 /**
  * The `da-tool-panel` element. It shows one of a host's views at a time, with
