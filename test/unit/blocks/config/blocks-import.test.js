@@ -289,6 +289,19 @@ describe('blocks import: dialog with GitHub', () => {
     expect([el._step, under, alert[0], alert.length]).to.deep.equal(['source', [], 'Could not find blocks', 2]);
   });
 
+  // nx-dialog ignores Esc and outside clicks while `busy` is set.
+  it('cannot be closed while it works', async () => {
+    await el.updateComplete;
+    const busy = () => el.querySelector('nx-dialog').hasAttribute('busy');
+    expect(busy()).to.equal(false);
+    el._step = 'busy';
+    await el.updateComplete;
+    expect(busy()).to.equal(true);
+    el._step = 'source';
+    await el.updateComplete;
+    expect(busy()).to.equal(false);
+  });
+
   it('finds the blocks, lets the user pick, and imports them from the code', async () => {
     mockGitHub();
     el._form = { ...el._form, repo: 'https://github.com/o/r', branch: ' ' };
