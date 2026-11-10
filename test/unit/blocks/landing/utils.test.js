@@ -5,17 +5,19 @@ import { getTileTarget } from '../../../../blocks/landing/utils.js';
 const HREF = 'https://tilesv2--da-live--adobe.aem.live/?landing=true&nx=main&nxver=2&theme=light#/org/site';
 
 describe('landing tile destinations', () => {
-  it('resolves encoded Browse placeholders for the selected site', () => {
+  it('resolves encoded Browse placeholders and requires a site', () => {
     const entry = { href: '/#/%7Borg%7D/%7Bsite%7D' };
+    expect(getTileTarget({ entry, href: HREF })).to.deep.equal({ disabled: true });
     const target = new URL(getTileTarget({ entry, scope: 'org/other', href: HREF }).href);
     expect(target.hash).to.equal('#/org/other');
     expect(target.searchParams.has('browse')).to.equal(false);
     expect(target.searchParams.has('landing')).to.equal(false);
   });
 
-  it('resolves Create a page as an action', () => {
+  it('resolves Create a page as an action that requires a site', () => {
     const entry = { href: '/%7Baction%3Acreate-page%7D' };
-    expect(getTileTarget({ entry, scope: 'org/site', href: HREF })).to.deep.equal({ action: 'create-page' });
+    expect(getTileTarget({ entry, href: HREF })).to.deep.equal({ action: 'create-page', disabled: true });
+    expect(getTileTarget({ entry, scope: 'org/site', href: HREF })).to.deep.equal({ action: 'create-page', disabled: false });
   });
 
   it('disables unknown actions, unknown placeholders and unsafe destinations', () => {

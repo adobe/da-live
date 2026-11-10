@@ -186,26 +186,21 @@ describe('landing tile group', () => {
     });
   });
 
-  it('hides all tiles and defers content until a site is selected', async () => {
+  it('loads content without a site and disables only the tiles that need one', async () => {
     el.remove();
     hashChange._set(undefined);
     el = document.createElement('da-landing-tiles');
     el.contentBlock = new DOMParser().parseFromString(content, 'text/html').querySelector('.landing');
-    const fetchContent = sinon.spy(window, 'fetch');
     document.body.append(el);
     await el.updateComplete;
-    expect(el.entries).to.equal(undefined);
-    expect(el.shadowRoot.querySelector('.tile-group')).to.equal(null);
-    hashChange._set({ org: 'org', site: 'site' });
-    await el.updateComplete;
-    expect(await getTiles()).to.have.length(5);
-    expect(fetchContent.called).to.equal(false);
-    hashChange._set(undefined);
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('.tile-group')).to.equal(null);
+    const [browse, create, , , develop] = await getTiles();
+    expect(browse.href).to.equal(undefined);
+    expect(browse.shadowRoot.querySelector('button').disabled).to.equal(true);
+    expect(create.shadowRoot.querySelector('button').disabled).to.equal(true);
+    expect(develop.href).to.equal('https://www.aem.live/developer/tutorial');
   });
 
-  it('reports enabled tile clicks to RUM', async () => {
+  it('reports tile clicks to RUM, but not clicks on disabled tiles', async () => {
     const { hlx } = window;
     const sampleRUM = sinon.spy();
     const stopNavigation = (event) => event.preventDefault();
@@ -219,6 +214,11 @@ describe('landing tile group', () => {
         ['click', { source: 'landing-action-browse-content', target: browse.href }],
         ['click', { source: 'landing-action-create-a-page', target: 'create-page' }],
       ]);
+      hashChange._set(undefined);
+      await el.updateComplete;
+      await getTiles();
+      create.shadowRoot.querySelector('button').click();
+      expect(sampleRUM.callCount).to.equal(2);
     } finally {
       document.removeEventListener('click', stopNavigation);
       window.hlx = hlx;

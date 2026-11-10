@@ -44,7 +44,6 @@ describe('landing background', () => {
     expect(el.children.length).to.equal(1);
     expect(el.firstElementChild.className).to.equal('landing');
     const tiles = el.querySelector('.landing > da-landing-tiles');
-    tiles.setScope({ org: 'org', site: 'site' });
     await tiles.updateComplete;
     expect(tiles.entries).to.have.length(5);
     expect(el.querySelector('img, picture')).to.equal(null);

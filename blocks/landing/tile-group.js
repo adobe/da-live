@@ -27,6 +27,7 @@ export class DaLandingTiles extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [styles];
     this._unsubscribe = hashChange.subscribe((state) => this.setScope(state));
+    if (this.entries === undefined) this._loadContent();
   }
 
   disconnectedCallback() {
@@ -48,7 +49,6 @@ export class DaLandingTiles extends LitElement {
     const scope = state?.org && state?.site ? `${state.org}/${state.site}` : undefined;
     if (scope !== this._scope) this._createDialog = undefined;
     this._scope = scope;
-    if (scope && this.entries === undefined) this._loadContent();
   }
 
   async _onCreatePage() {
@@ -125,7 +125,6 @@ export class DaLandingTiles extends LitElement {
   }
 
   render() {
-    if (!this._scope) return nothing;
     return html`<div class="tile-group">
       ${this.entries ? this.renderQuickLinks() : nothing}
       ${this.entries === undefined && !this._contentError ? html`
