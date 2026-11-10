@@ -38,7 +38,7 @@ describe('DaPreview legacy section metadata', () => {
     let releaseSiteConfig;
     const requestedSiteConfig = new Promise((resolve) => {
       window.fetch = async (url) => {
-        if (String(url).includes('/config/preview-legacy/site/')) {
+        if (url === 'https://api.aem.live/preview-legacy/sites/site/config/features.json') {
           resolve();
           return new Promise((release) => { releaseSiteConfig = release; });
         }
@@ -63,12 +63,7 @@ describe('DaPreview legacy section metadata', () => {
     preview.sendPreview();
     expect(sent).to.have.lengthOf(0);
 
-    const config = {
-      ':type': 'multi-sheet',
-      ':names': ['data', 'flags'],
-      data: { data: [] },
-      flags: { data: [{ key: 'ew.legacy-section-metadata', value: 'true' }] },
-    };
+    const config = { rendering: { version: 1 } };
     releaseSiteConfig(new Response(JSON.stringify(config), { status: 200 }));
     await received;
     expect(sent[0].body).to.include('class="section-metadata"');

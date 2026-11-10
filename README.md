@@ -48,13 +48,16 @@ See [TESTING.md](TESTING.md) for unit, end-to-end and CI details.
 
 ## Additional details
 ### Legacy section metadata in previews
-For sites that decorate `.section-metadata` blocks client-side, set
-`ew.legacy-section-metadata` to `true` in the DA site configuration's `flags` sheet.
-Canvas and live preview then preserve the original blocks instead of extracting
-their values into section classes and data attributes. Site values override org
-values; an absent or false flag keeps the existing extraction behavior.
-The first sheet and the unprefixed key are not read for this setting.
-Reload the editor after changing the flag.
+Canvas and live preview follow the HTML pipeline's rendering feature decision.
+They read `https://api.aem.live/<org>/sites/<site>/config/features.json`:
+`rendering.version >= 2` enables section metadata extraction. If no version is set,
+the site's `created` date from `config.json` enables extraction for sites created
+on or after May 1, 2026. Otherwise, the original `.section-metadata` blocks are
+preserved for client-side decoration.
+
+DA configuration flags are not used. Reload the editor after changing the AEM
+configuration. If the configuration cannot be loaded, previews keep the existing
+extraction behavior and later requests can retry.
 
 This affects client-side preview serialization only, not da-universal's initial
 server-rendered HTML or standalone preview rendering.

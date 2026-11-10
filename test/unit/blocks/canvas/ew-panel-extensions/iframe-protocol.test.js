@@ -16,6 +16,9 @@ let savedFetch;
 beforeEach(() => {
   savedFetch = window.fetch;
   window.fetch = (url, options) => {
+    if (String(url).endsWith('/config/features.json')) {
+      return Promise.resolve(new Response(JSON.stringify({ rendering: { version: 2 } })));
+    }
     if (/\/config\/|\/ping\//.test(String(url))) {
       return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
     }

@@ -16,7 +16,7 @@ describe('comparison plugin protocol', () => {
   let savedFetch;
   beforeEach(async () => {
     savedFetch = window.fetch;
-    window.fetch = async () => new Response(JSON.stringify({ data: [] }), { status: 200 });
+    window.fetch = async () => new Response(JSON.stringify({ rendering: { version: 2 } }));
     canvasBus.branchState.emit({
       org: 'example',
       site: 'site',

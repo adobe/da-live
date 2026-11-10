@@ -424,17 +424,35 @@ export const fetchDaConfigs = (() => {
   };
 })();
 
-export async function fetchPreviewOptions({ org, site }) {
-  if (!org || !site) return { legacySectionMetadata: false };
-  const configs = await Promise.all(
-    fetchDaConfigs({ org, site }).map((config) => config.catch(() => null)),
-  );
-  const rows = configs.reverse()
-    .filter((config) => config && !config.error)
-    .flatMap((config) => getSheetByName(config, 'flags') || []);
-  const value = rows.find((row) => row.key === 'ew.legacy-section-metadata')?.value;
-  return { legacySectionMetadata: value === true || value === 'true' };
-}
+export const fetchPreviewOptions = (() => {
+  const configCache = {};
+
+  const fetchOptions = async (org, site) => {
+    const base = `${AEM_API_ORIGIN}/${org}/sites/${site}/config`;
+    const opts = { method: 'GET', credentials: 'include' };
+    const resp = await daFetch(`${base}/features.json`, opts);
+    if (!resp.ok && resp.status !== 404) throw new Error('Error loading rendering features');
+    const features = resp.ok ? await resp.json() : {};
+    const { version } = features.rendering ?? {};
+    if (version !== undefined) return { legacySectionMetadata: !(version >= 2) };
+
+    // The features fragment omits the site creation date used by the HTML pipeline.
+    const siteResp = await daFetch(`${base}.json`, { method: 'GET', credentials: 'include' });
+    if (!siteResp.ok) throw new Error('Error loading site creation date');
+    const { created } = await siteResp.json();
+    return { legacySectionMetadata: !(new Date(created) >= new Date('2026-05-01')) };
+  };
+
+  return ({ org, site }) => {
+    if (!org || !site) return Promise.resolve({ legacySectionMetadata: false });
+    const path = `/${org}/${site}`;
+    configCache[path] ??= fetchOptions(org, site).catch(() => {
+      delete configCache[path];
+      return { legacySectionMetadata: false };
+    });
+    return configCache[path];
+  };
+})();
 
 export async function canEditOrgConfig(org) {
   const config = await fetchDaConfigs({ org })[0].catch(() => null);

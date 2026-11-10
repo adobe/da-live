@@ -763,69 +763,119 @@ describe('fetchPreviewOptions', () => {
     window.fetch = savedFetch;
   });
 
-  function configWithFlag(value) {
-    const data = value === undefined ? [] : [{ key: 'ew.legacy-section-metadata', value }];
-    return {
-      ':type': 'multi-sheet',
-      ':names': ['data', 'flags'],
-      data: { data: [] },
-      flags: { data },
-    };
-  }
-
   const cases = [
-    { title: 'defaults to extraction', expected: false },
-    { title: 'accepts a site string true', siteValue: 'true', expected: true },
-    { title: 'accepts a site boolean true', siteValue: true, expected: true },
-    { title: 'does not treat string false as enabled', siteValue: 'false', expected: false },
-    { title: 'inherits the org setting', orgValue: 'true', expected: true },
-    { title: 'lets site false override org true', orgValue: 'true', siteValue: 'false', expected: false },
-    { title: 'lets site true override org false', orgValue: 'false', siteValue: 'true', expected: true },
+    { title: 'preserves metadata for rendering version 1', version: 1, expected: true },
+    { title: 'extracts metadata for rendering version 2', version: 2, expected: false },
+    { title: 'extracts metadata for later rendering versions', version: 3, expected: false },
+    { title: 'compares string versions like the pipeline', version: '2', expected: false },
+    { title: 'does not treat null as an absent version', version: null, expected: true },
   ];
 
-  cases.forEach(({ title, orgValue, siteValue, expected }) => {
+  cases.forEach(({ title, version, expected }) => {
     it(title, async () => {
       const org = `preview-options-${index}`;
       const site = 'site';
+      const requested = [];
       window.fetch = async (url) => {
-        const value = String(url).replace(/\/$/, '').endsWith(`/${org}/${site}`) ? siteValue : orgValue;
-        return new Response(JSON.stringify(configWithFlag(value)), { status: 200 });
+        requested.push(url);
+        return new Response(JSON.stringify({ rendering: { version } }), { status: 200 });
       };
       expect(await fetchPreviewOptions({ org, site }))
         .to.deep.equal({ legacySectionMetadata: expected });
+      expect(requested).to.deep.equal([`https://api.aem.live/${org}/sites/${site}/config/features.json`]);
     });
   });
 
-  it('ignores the setting in the first sheet', async () => {
-    const config = configWithFlag();
-    config.data.data = [{ key: 'ew.legacy-section-metadata', value: 'true' }];
-    window.fetch = async () => new Response(JSON.stringify(config), { status: 200 });
-    expect(await fetchPreviewOptions({ org: `preview-options-${index}`, site: 'site' }))
-      .to.deep.equal({ legacySectionMetadata: false });
+  [
+    { created: '2026-04-30T23:59:59.999Z', expected: true },
+    { created: '2026-05-01T00:00:00.000Z', expected: false },
+    { created: '2026-11-10T00:00:00.000Z', expected: false },
+    { created: undefined, expected: true },
+    { created: 'invalid', expected: true },
+  ].forEach(({ created, expected }) => {
+    it(`uses the pipeline creation-date fallback for ${created}`, async () => {
+      const org = `preview-options-${index}`;
+      const base = `https://api.aem.live/${org}/sites/site/config`;
+      const requested = [];
+      window.fetch = async (url) => {
+        requested.push(url);
+        return new Response(JSON.stringify(url === `${base}/features.json` ? {} : { created }));
+      };
+      expect(await fetchPreviewOptions({ org, site: 'site' }))
+        .to.deep.equal({ legacySectionMetadata: expected });
+      expect(requested).to.deep.equal([`${base}/features.json`, `${base}.json`]);
+    });
   });
 
-  it('ignores the unprefixed setting in the flags sheet', async () => {
-    const config = configWithFlag();
-    config.flags.data = [{ key: 'legacy-section-metadata', value: 'true' }];
-    window.fetch = async () => new Response(JSON.stringify(config), { status: 200 });
+  it('uses the creation date when the features fragment does not exist', async () => {
+    window.fetch = async (url) => (url.endsWith('/features.json')
+      ? new Response('', { status: 404 })
+      : new Response(JSON.stringify({ created: '2026-04-30' })));
     expect(await fetchPreviewOptions({ org: `preview-options-${index}`, site: 'site' }))
-      .to.deep.equal({ legacySectionMetadata: false });
-  });
-
-  it('keeps extraction when configs are unavailable', async () => {
-    window.fetch = async () => new Response('', { status: 404 });
-    expect(await fetchPreviewOptions({ org: `preview-options-${index}`, site: 'site' }))
-      .to.deep.equal({ legacySectionMetadata: false });
-  });
-
-  it('handles a failed org request without losing the site setting', async () => {
-    const org = `preview-options-${index}`;
-    window.fetch = async (url) => {
-      if (String(url).replace(/\/$/, '').endsWith(`/${org}`)) throw new Error('offline');
-      return new Response(JSON.stringify(configWithFlag('true')), { status: 200 });
-    };
-    expect(await fetchPreviewOptions({ org, site: 'site' }))
       .to.deep.equal({ legacySectionMetadata: true });
+  });
+
+  it('shares in-flight and resolved requests for a site, but not across sites', async () => {
+    const org = `preview-options-${index}`;
+    const requested = [];
+    window.fetch = async (url) => {
+      requested.push(url);
+      return new Response(JSON.stringify({ rendering: { version: url.includes('/sites/legacy/') ? 1 : 2 } }));
+    };
+    const first = fetchPreviewOptions({ org, site: 'legacy' });
+    const second = fetchPreviewOptions({ org, site: 'legacy' });
+    expect(first).to.equal(second);
+    expect(await first).to.deep.equal({ legacySectionMetadata: true });
+    expect(await fetchPreviewOptions({ org, site: 'legacy' }))
+      .to.deep.equal({ legacySectionMetadata: true });
+    expect(await fetchPreviewOptions({ org, site: 'modern' }))
+      .to.deep.equal({ legacySectionMetadata: false });
+    expect(requested).to.have.lengthOf(2);
+  });
+
+  ['unauthorized', 'offline', 'invalid JSON', 'missing site'].forEach((failure) => {
+    it(`keeps extraction on ${failure} and allows a retry`, async () => {
+      const params = { org: `preview-options-${index}`, site: 'site' };
+      window.fetch = async () => {
+        if (failure === 'offline') throw new Error('offline');
+        if (failure === 'invalid JSON') return new Response('invalid');
+        if (failure === 'missing site') return new Response('', { status: 404 });
+        return new Response('', { status: 401 });
+      };
+      expect(await fetchPreviewOptions(params)).to.deep.equal({ legacySectionMetadata: false });
+      window.fetch = async () => new Response(JSON.stringify({ rendering: { version: 1 } }));
+      expect(await fetchPreviewOptions(params)).to.deep.equal({ legacySectionMetadata: true });
+    });
+  });
+
+  it('does not request config without an org and site', async () => {
+    window.fetch = () => { throw new Error('unexpected fetch'); };
+    expect(await fetchPreviewOptions({ org: 'org' }))
+      .to.deep.equal({ legacySectionMetadata: false });
+    expect(await fetchPreviewOptions({ site: 'site' }))
+      .to.deep.equal({ legacySectionMetadata: false });
+  });
+
+  it('authenticates feature requests with the existing AEM fetch helper', async () => {
+    const savedIms = window.adobeIMS;
+    const savedLocalStorage = localStorage.getItem('nx-ims');
+    localStorage.setItem('nx-ims', 'true');
+    window.adobeIMS = { getAccessToken: () => ({ token: 'test-token' }) };
+    let options;
+    window.fetch = async (url, opts) => {
+      options = opts;
+      return new Response(JSON.stringify({ rendering: { version: 2 } }));
+    };
+    try {
+      await fetchPreviewOptions({ org: `preview-options-${index}`, site: 'site' });
+      expect(options.credentials).to.equal('include');
+      expect(options.headers.Authorization).to.equal('Bearer test-token');
+      expect(options.headers['x-content-source-authorization']).to.equal('Bearer test-token');
+    } finally {
+      window.adobeIMS = savedIms;
+      if (savedLocalStorage === null) localStorage.removeItem('nx-ims');
+      else localStorage.setItem('nx-ims', savedLocalStorage);
+    }
   });
 });
 
