@@ -1,5 +1,7 @@
 import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import { handleSave, staleCheck } from './utils.js';
+import { NOT_PERMITTED } from '../../shared/empty-list.js';
+import makeKeyboardAccessible from './keyboard.js';
 import '../da-sheet-tabs.js';
 
 const nx = getNx();
@@ -23,6 +25,7 @@ const SHEET_TEMPLATE = { minDimensions: [20, 20], sheetName: 'data' };
 
 let permissions;
 let canWrite;
+let loadError;
 
 function resetSheets(el) {
   document.querySelector('da-sheet-tabs')?.remove();
@@ -45,9 +48,11 @@ function finishSetup(el, data) {
     sheet.options.ondeleterow = save;
     sheet.options.ondeletecolumn = save;
     sheet.options.onmoverow = save;
+    makeKeyboardAccessible(sheet);
   });
 
   // Setup tabs
+  if (loadError) return;
   const daSheetTabs = document.createElement('da-sheet-tabs');
   daSheetTabs.permissions = permissions;
   el.insertAdjacentElement('beforebegin', daSheetTabs);
@@ -104,11 +109,12 @@ export function getPermissions() {
 
 function sheetErrorFromResponse(resp) {
   if (resp.status === 401) return 'Sign in required';
-  if (resp.status === 403) return 'Not permitted';
+  if (resp.status === 403) return NOT_PERMITTED;
   return undefined;
 }
 
 function emitLoadStatus(errMsg) {
+  loadError = errMsg;
   document.dispatchEvent(new CustomEvent('sheet-load-status', { detail: { errMsg } }));
 }
 

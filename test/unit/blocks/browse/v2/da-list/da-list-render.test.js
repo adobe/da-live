@@ -145,6 +145,39 @@ describe('da-list render', () => {
     expect(el.shadowRoot.querySelector('.empty-list h3').textContent).to.equal('Nothing here');
   });
 
+  it('Renders the shared Not permitted message with Open Profile', async () => {
+    await fixture({ fullpath: '/o/r' });
+    el._listItems = [];
+    el._continuationToken = null;
+    el._allPagesLoaded = true;
+    el._emptyMessage = 'Not permitted';
+    await rerender();
+    expect(el.shadowRoot.querySelector('.empty-list h3').textContent).to.equal('Not permitted');
+    expect(el.shadowRoot.querySelectorAll('.empty-list .empty-list-action').length).to.equal(1);
+  });
+
+  it('labels folders as sites only at the org root', async () => {
+    await fixture({ fullpath: '/org', select: true, groupByType: true });
+    el._listItems = [
+      { path: '/org/first', name: 'first', ext: '' },
+      { path: '/org/second', name: 'second', ext: '' },
+    ];
+    await rerender();
+    expect(el.shadowRoot.querySelector('.da-list-group-label').textContent).to.equal('Sites');
+    expect(el.shadowRoot.querySelector('.da-list-types-options .da-list-types-row span').textContent).to.equal('Site');
+    expect(el.shadowRoot.querySelector('input[aria-label="Select all sites"]')).to.exist;
+
+    el._listItems = el._listItems.slice(0, 1);
+    await rerender();
+    expect(el.shadowRoot.querySelector('.da-list-group-label').textContent).to.equal('Site');
+
+    await updateList(el, () => { el.fullpath = '/org/site'; });
+    el._listItems = [{ path: '/org/site/folder', name: 'folder', ext: '' }];
+    await rerender();
+    expect(el.shadowRoot.querySelector('.da-list-group-label').textContent).to.equal('Folder');
+    expect(el.shadowRoot.querySelector('.da-list-types-options .da-list-types-row span').textContent).to.equal('Folder');
+  });
+
   it('Renders the list when items are present', async () => {
     await fixture({ fullpath: '/o/r' });
     el._listItems = [

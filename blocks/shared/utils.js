@@ -360,6 +360,12 @@ export async function checkLockdownImages(owner) {
   }
 }
 
+const configPermissions = new WeakMap();
+
+export function getConfigPermissions(config) {
+  return config && typeof config === 'object' ? configPermissions.get(config) : undefined;
+}
+
 /**
  * Fetches org and (optionally) site configs, caching the in-flight/resolved
  * promises by path so repeated calls for the same org/site reuse one request
@@ -377,8 +383,12 @@ export const fetchDaConfigs = (() => {
     const { config: configApi } = await getNx2Api();
     const resp = await configApi.get({ org, site });
     const pathname = site ? `/${org}/${site}` : `/${org}`;
-    if (!resp.ok) return { error: `Error loading ${pathname}`, status: resp.status };
-    return resp.json();
+    const result = resp.ok
+      ? await resp.json()
+      : { error: `Error loading ${pathname}`, status: resp.status };
+    // Not on the config itself: org configs have a `permissions` sheet.
+    if (result && typeof result === 'object') configPermissions.set(result, resp.permissions);
+    return result;
   };
 
   const cacheConfig = (key, org, site) => {
@@ -413,6 +423,12 @@ export const fetchDaConfigs = (() => {
     return configs;
   };
 })();
+
+export async function canEditOrgConfig(org) {
+  const config = await fetchDaConfigs({ org })[0].catch(() => null);
+  if (config?.error && config.status !== 404) return false;
+  return !!getConfigPermissions(config)?.includes('write');
+}
 
 export const getSidekickConfig = (() => {
   const configCache = {};
@@ -473,6 +489,23 @@ export function formatDate(timestamp) {
   const date = rawDate.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
   const time = rawDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   return { date, time };
+}
+
+export const NOT_PERMITTED_HINT = 'Please make sure you are logged in with the correct user and have selected the right Adobe org.';
+
+export function openProfileMenu({ navSelector = 'nx-nav', profileSelector = 'nx-profile' } = {}) {
+  const nav = document.querySelector(navSelector);
+  const profile = nav?.shadowRoot?.querySelector(profileSelector);
+  const menu = profile?.shadowRoot?.querySelector('[popover]');
+  if (!menu?.showPopover) return false;
+  if (!menu.matches(':popover-open')) menu.showPopover();
+  // Programmatic showPopover() has no invoker, so focus stays on the page and
+  // Tab skips the menu. Move focus in — preferring the org switcher, since the
+  // not-permitted hint is usually resolved by picking another org.
+  const target = menu.querySelector('.nx-menu-btn-org')
+    ?? menu.querySelector('button, a[href], [tabindex]:not([tabindex="-1"])');
+  target?.focus();
+  return true;
 }
 
 export function delay(ms) {

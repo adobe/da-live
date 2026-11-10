@@ -3,14 +3,17 @@ import { getTypeLabel, iconPathForExt } from '../../../shared/icons.js';
 import { getConfiguredEditor } from '../../../shared/da-file-item/edit-path.js';
 import { getNx, getNx2 } from '../../../../scripts/utils.js';
 import DaListBase from '../../da-list-base/da-list-base.js';
+import { EMPTY_LIST_CSS } from '../../../shared/empty-list.js';
 
 import '../../../shared/da-file-item/da-file-item.js';
 
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const [FORM, STYLE] = await Promise.all([
+const [FORM, BUTTONS, EMPTY_LIST, STYLE] = await Promise.all([
   loadStyle(`${getNx2()}/styles/form.css`),
+  loadStyle(`${getNx2()}/styles/buttons.css`),
+  loadStyle(EMPTY_LIST_CSS),
   loadStyle(import.meta.url),
 ]);
 
@@ -33,7 +36,7 @@ function sortTypeLabels(labels) {
 }
 
 export default class DaList extends DaListBase {
-  static sheets = [FORM, STYLE];
+  static sheets = [FORM, BUTTONS, EMPTY_LIST, STYLE];
 
   static properties = {
     ...DaListBase.properties,
@@ -380,13 +383,19 @@ export default class DaList extends DaListBase {
     });
   }
 
+  getDisplayTypeLabel(label, count = 1) {
+    const isOrgRoot = this.fullpath?.split('/').filter(Boolean).length === 1;
+    if (isOrgRoot && label === 'Folder') return count === 1 ? 'Site' : 'Sites';
+    return pluralizeTypeLabel(label, count);
+  }
+
   renderGroupHeader(label, groupItems) {
     const collapsed = this._collapsedTypes.has(label);
     const count = groupItems.length;
     const checkedCount = groupItems.filter((item) => item.isChecked).length;
     const isGroupSelectAll = count > 0 && checkedCount === count;
     const isGroupIndeterminate = checkedCount > 0 && checkedCount < count;
-    const typeLabel = pluralizeTypeLabel(label, count);
+    const typeLabel = this.getDisplayTypeLabel(label, count);
     return html`
       <div class="da-list-group-header ${collapsed ? 'is-collapsed' : ''}">
         ${this.select ? html`
@@ -523,7 +532,7 @@ export default class DaList extends DaListBase {
             <svg class="da-list-type-icon" viewBox="0 0 20 20" aria-hidden="true">
               <use href="${iconPathForExt(item.ext)}#icon"></use>
             </svg>
-            <span>${label}</span>
+            <span>${this.getDisplayTypeLabel(label)}</span>
           </label>
         `;
     })}

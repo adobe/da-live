@@ -180,16 +180,6 @@ da-file-item.is-expanded::after {
   display: none;
 }
 
-/* Empty list */
-.empty-list {
-  border: 1px solid var(--s2-gray-100);
-  border-radius: 6px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 75px;
-}
-
 .da-browse-panel-header {
   margin: 0;
   border-bottom: 1px solid var(--s2-gray-200);
@@ -201,7 +191,7 @@ da-file-item.is-expanded::after {
   z-index: 2;
   background: light-dark(#fff, #000);
   display: grid;
-  grid-template-columns: var(--da-list-select-width) minmax(0, 1fr) var(--da-list-type-width) var(--da-list-date-width) var(--da-list-action-width);
+  grid-template-columns: var(--da-list-select-width) minmax(0, 442px) var(--da-list-type-width) var(--da-list-date-width) var(--da-list-action-width);
   align-items: center;
   min-height: 46px;
 }
