@@ -131,18 +131,34 @@ describe('Content data and destinations on main', () => {
       .to.deep.equal(paths.slice(0, 3).map((path) => [path]));
   });
 
-  it('keeps permission and server errors retryable instead of showing an empty result', async () => {
-    for (const status of [403, 500]) {
-      try {
-        await loadFilesByPath({
-          paths: ['/org/site/a.html'],
-          source: { getMetadata: async () => new Response(null, { status }) },
-          signal: new AbortController().signal,
-        });
-        expect.fail('Expected metadata failure');
-      } catch (error) {
-        expect(error.message).to.include('site permissions');
-      }
+  it('skips HTTP and network failures without losing healthy items or later batches', async () => {
+    const paths = ['first.html', 'forbidden.html', 'unavailable.html', 'offline.html', 'last.html']
+      .map((name) => `/org/site/${name}`);
+    const getMetadata = sinon.stub();
+    getMetadata.onCall(0).resolves(new Response(null));
+    getMetadata.onCall(1).resolves(new Response(null, { status: 403 }));
+    getMetadata.onCall(2).resolves(new Response(null, { status: 500 }));
+    getMetadata.onCall(3).rejects(new TypeError('Failed to fetch'));
+    getMetadata.onCall(4).resolves(new Response(null));
+    const files = await loadFilesByPath({
+      paths,
+      source: { getMetadata },
+      signal: new AbortController().signal,
+    });
+    expect(files.map(({ path }) => path)).to.deep.equal([paths[0], paths[4]]);
+    expect(getMetadata.callCount).to.equal(5);
+  });
+
+  it('propagates cancellation from the metadata API', async () => {
+    try {
+      await loadFilesByPath({
+        paths: ['/org/site/a.html'],
+        source: { getMetadata: async () => { throw new DOMException('Cancelled', 'AbortError'); } },
+        signal: new AbortController().signal,
+      });
+      expect.fail('Expected cancellation');
+    } catch (error) {
+      expect(error.name).to.equal('AbortError');
     }
   });
 
