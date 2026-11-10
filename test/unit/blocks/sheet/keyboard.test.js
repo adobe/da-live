@@ -1,6 +1,7 @@
 import { expect } from '@esm-bundle/chai';
-import { sendKeys } from '@web/test-runner-commands';
+import { sendKeys, sendMouse } from '@web/test-runner-commands';
 import makeKeyboardAccessible, { releaseKeyboard } from '../../../../blocks/sheet/utils/keyboard.js';
+import { axAll, axFocused, axTree } from '../../helpers/ax-tree.js';
 
 function loadScript(src) {
   return new Promise((resolve, reject) => {
@@ -38,6 +39,13 @@ describe('sheet keyboard access', () => {
   const isCurrent = () => window.jspreadsheet.current === sheet;
   const isReleased = () => window.jspreadsheet.current === null;
   const isFocused = (el) => document.activeElement === el;
+  const cell = (x, y) => sheet.records[y][x];
+
+  async function clickOn(el) {
+    const { x, y, width, height } = el.getBoundingClientRect();
+    await sendMouse({ type: 'click', position: [Math.round(x + width / 2), Math.round(y + height / 2)] });
+    await tick();
+  }
 
   beforeEach(() => {
     before = document.createElement('button');
@@ -49,6 +57,7 @@ describe('sheet keyboard access', () => {
 
     window.jspreadsheet.tabs(container, [{ sheetName: 'data', minDimensions: [3, 3] }]);
     [sheet] = container.jexcel;
+    sheet.name = 'data';
     gridEl = sheet.el;
     makeKeyboardAccessible(sheet);
   });
@@ -60,16 +69,52 @@ describe('sheet keyboard access', () => {
     after.remove();
   });
 
-  it('puts the grid in the natural tab order', () => {
-    expect(gridEl.getAttribute('tabindex')).to.equal('0');
+  it('puts the first cell, not the container, in the tab order', () => {
+    expect(cell(0, 0).getAttribute('tabindex')).to.equal('0');
+    expect(gridEl.getAttribute('tabindex')).to.equal('-1');
+    expect(sheet.el.querySelectorAll('[tabindex="0"]')).to.have.length(1);
   });
 
-  it('selects the first cell when the grid receives focus', async () => {
+  it('Tab moves focus onto the first cell and selects it', async () => {
     window.jspreadsheet.current = null;
-    gridEl.focus();
+    before.focus();
+    await sendKeys({ press: 'Tab' });
     await tick();
+    expect(isFocused(cell(0, 0))).to.be.true;
     expect(isCurrent()).to.be.true;
     expect(sheet.selectedCell.map(Number)).to.deep.equal([0, 0, 0, 0]);
+  });
+
+  it('focusing the container hands focus to the active cell', async () => {
+    gridEl.focus();
+    await tick();
+    expect(isFocused(cell(0, 0))).to.be.true;
+    expect(isCurrent()).to.be.true;
+  });
+
+  it('arrow keys move focus with the selection', async () => {
+    gridEl.focus();
+    await sendKeys({ press: 'ArrowRight' });
+    expect(isFocused(cell(1, 0))).to.be.true;
+    await sendKeys({ press: 'ArrowDown' });
+    expect(isFocused(cell(1, 1))).to.be.true;
+    expect(cell(1, 1).getAttribute('tabindex')).to.equal('0');
+    expect(cell(0, 0).hasAttribute('tabindex')).to.be.false;
+  });
+
+  it('returns to the last active cell when tabbing back in', async () => {
+    gridEl.focus();
+    await sendKeys({ press: 'ArrowDown' });
+    await sendKeys({ press: 'Tab' });
+    await tick();
+    expect(isFocused(after)).to.be.true;
+
+    await sendKeys({ down: 'Shift' });
+    await sendKeys({ press: 'Tab' });
+    await sendKeys({ up: 'Shift' });
+    await tick();
+    expect(isFocused(cell(0, 1))).to.be.true;
+    expect(sheet.selectedCell.map(Number)).to.deep.equal([0, 1, 0, 1]);
   });
 
   it('Tab and Shift+Tab move focus out of the grid', async () => {
@@ -108,16 +153,109 @@ describe('sheet keyboard access', () => {
     expect(isCurrent()).to.be.true;
   });
 
-  it('keeps focus in the grid after a cell edit', async () => {
+  it('keeps focus on the cell after a cell edit', async () => {
     gridEl.focus();
     await sendKeys({ type: 'x' });
     expect(sheet.edition).to.exist;
-    await sendKeys({ press: 'Enter' });
+    await sendKeys({ press: 'Escape' });
     await tick();
     expect(sheet.edition === null, 'editor closed').to.be.true;
-    expect(sheet.getValueFromCoords(0, 0)).to.equal('x');
-    expect(isFocused(gridEl)).to.be.true;
+    expect(isFocused(cell(0, 0))).to.be.true;
     expect(isCurrent()).to.be.true;
+  });
+
+  it('moves focus to the next row after Enter saves an edit', async () => {
+    gridEl.focus();
+    await sendKeys({ type: 'x' });
+    await sendKeys({ press: 'Enter' });
+    await tick();
+    expect(sheet.getValueFromCoords(0, 0)).to.equal('x');
+    expect(isFocused(cell(0, 1))).to.be.true;
+  });
+
+  it('names the cell editor after its column and row', async () => {
+    gridEl.focus();
+    await sendKeys({ press: 'ArrowRight' });
+    await sendKeys({ press: 'ArrowDown' });
+    await sendKeys({ press: 'F2' });
+    const input = cell(1, 1).querySelector('input');
+    expect(isFocused(input)).to.be.true;
+    expect(input.getAttribute('aria-label')).to.equal('Column B, row 2');
+  });
+
+  it('keeps focus on the cell after copying', async () => {
+    gridEl.focus();
+    sheet.copy(true);
+    expect(isFocused(cell(0, 0))).to.be.true;
+  });
+
+  it('keeps focus on a cell when a row header is clicked', async () => {
+    gridEl.focus();
+    await clickOn(sheet.rows[2].children[0]);
+    expect(isFocused(cell(0, 2))).to.be.true;
+    expect(isCurrent()).to.be.true;
+  });
+
+  it('moves focus to a clicked cell', async () => {
+    before.focus();
+    await clickOn(cell(2, 1));
+    expect(isFocused(cell(2, 1))).to.be.true;
+    expect(cell(2, 1).getAttribute('tabindex')).to.equal('0');
+  });
+
+  it('exposes the sheet as a named grid with row and column headers', async () => {
+    const tree = await axTree('.jexcel');
+    expect(tree.role).to.equal('grid');
+    expect(tree.name).to.equal('data');
+    const rows = axAll(tree, 'row');
+    expect(rows).to.have.length(4);
+    expect(axAll(rows[0], 'columnheader').map((h) => h.name)).to.deep.equal(['', 'A', 'B', 'C']);
+    expect(axAll(rows[1], 'rowheader').map((h) => h.name.trim())).to.deep.equal(['1']);
+    expect(axAll(rows[1], 'gridcell')).to.have.length(3);
+  });
+
+  it('exposes the focused cell to assistive technology', async () => {
+    sheet.setValueFromCoords(1, 1, 'hello');
+    gridEl.focus();
+    await sendKeys({ press: 'ArrowRight' });
+    await sendKeys({ press: 'ArrowDown' });
+    const focused = axFocused(await axTree('.jexcel'));
+    expect(focused).to.include({ role: 'gridcell', name: 'hello' });
+  });
+
+  it('gives inserted rows and columns their header roles', async () => {
+    sheet.insertRow();
+    sheet.insertColumn();
+    await tick();
+    expect(sheet.rows[3].children[0].getAttribute('role')).to.equal('rowheader');
+    expect(sheet.headers[3].getAttribute('role')).to.equal('columnheader');
+  });
+
+  it('keeps a cell in the tab order when the active row is deleted', async () => {
+    gridEl.focus();
+    await sendKeys({ press: 'ArrowDown' });
+    await sendKeys({ press: 'ArrowDown' });
+    sheet.resetSelection();
+    sheet.deleteRow(2);
+    await tick();
+    const tabbable = sheet.el.querySelectorAll('[tabindex="0"]');
+    expect(tabbable).to.have.length(1);
+    expect(tabbable[0]).to.equal(cell(0, 0));
+  });
+
+  it('marks a sheet without writable columns as read-only', () => {
+    const readOnly = document.createElement('div');
+    document.body.append(readOnly);
+    window.jspreadsheet.tabs(readOnly, [{
+      sheetName: 'ro',
+      data: [['a']],
+      columns: [{ width: '300', readOnly: true }],
+    }]);
+    const [roSheet] = readOnly.jexcel;
+    makeKeyboardAccessible(roSheet);
+    expect(roSheet.table.getAttribute('aria-readonly')).to.equal('true');
+    expect(sheet.table.hasAttribute('aria-readonly')).to.be.false;
+    readOnly.remove();
   });
 });
 
