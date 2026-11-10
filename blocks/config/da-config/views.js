@@ -61,7 +61,8 @@ const sheetLink = (href) => html`
   </a>`;
 
 // Tabs with one section keep the second row's space so the page doesn't jump between areas.
-// `sheet` is where the shown section is stored, opened from one place for every section.
+// `sheet` is where the shown section is stored, opened from one place for every section; its
+// space is kept while there's none (still loading, or no file yet) for the same reason.
 export function renderTabs(tabs, { tab, section }, { onPrimaryChange, onSectionChange }, sheet) {
   return html`
     <div class="config-tabs">
@@ -82,7 +83,7 @@ export function renderTabs(tabs, { tab, section }, { onPrimaryChange, onSectionC
           .value=${section.id}
           @change=${onSectionChange}
         ></nx-segmented-btn>` : html`<div class="config-tabs-space" aria-hidden="true"></div>`}
-      ${sheet ? sheetLink(sheet) : nothing}
+      ${sheet ? sheetLink(sheet) : html`<span class="config-sheet-link" aria-hidden="true"></span>`}
     </div>`;
 }
 
