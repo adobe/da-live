@@ -6,7 +6,7 @@ import { parseTileEntries } from '../../../../blocks/landing/tile-content.js';
 import { getNx, getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
 
 const { source, config } = await getNx2Api();
-const { isEWEnabled } = await getNxEWFlags();
+const { setEWEnabled } = await getNxEWFlags();
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const content = await fetch('/test/fixtures/landing-tiles.html').then((response) => response.text());
 
@@ -31,8 +31,7 @@ describe('landing tile group', () => {
   afterEach(() => {
     el.remove();
     sinon.restore();
-    isEWEnabled.reset();
-    isEWEnabled.resolves(false);
+    setEWEnabled(async () => false);
   });
 
   it('uses authored order, text and tone instead of tile titles or positions', async () => {
@@ -129,7 +128,7 @@ describe('landing tile group', () => {
       const enabled = new Promise((resolve) => { finish = resolve; });
       let started;
       const resolving = new Promise((resolve) => { started = resolve; });
-      isEWEnabled.callsFake(() => {
+      setEWEnabled(() => {
         started();
         return enabled;
       });
@@ -157,7 +156,7 @@ describe('landing tile group', () => {
     it(`creates and opens a page using ${expected}`, async () => {
       sinon.stub(source, 'getMetadata').resolves({ status: 404 });
       const save = sinon.stub(source, 'save').resolves({ ok: true });
-      isEWEnabled.resolves(enabled);
+      setEWEnabled(async () => enabled);
       if (configured) {
         el.setScope({ org: 'configured', site: 'site' });
         config.get.callsFake(async ({ site }) => ({

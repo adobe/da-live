@@ -1,6 +1,6 @@
-import { stub } from 'sinon';
-
-export const isEWEnabled = stub().resolves(false);
+let ewEnabled = async () => false;
+export const isEWEnabled = (context) => ewEnabled(context);
+export const setEWEnabled = (check) => { ewEnabled = check; };
 export const isEwChatDisabled = async () => false;
 export const getEWFlags = async () => ({});
 
