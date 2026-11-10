@@ -1006,7 +1006,7 @@ describe('da-config', () => {
       });
       await openSection('blocks', 'lb4');
       expect(el.shadowRoot.textContent).to.include("doesn't exist yet");
-      expect(has('.config-sheet-link')).to.equal(false);
+      expect(has('a.config-sheet-link')).to.equal(false);
     });
 
     it('explains sources that are not files of this site', async () => {
@@ -1087,7 +1087,7 @@ describe('da-config', () => {
 
     it('reads the site translate sheet and saves settings into its config tab', async () => {
       const puts = await open('tr1', (o, s, path) => (path === '/.da/translate.json' ? TRANSLATE : status(404)()));
-      const link = q('.config-tabs .config-sheet-link');
+      const link = q('.config-tabs a.config-sheet-link');
       expect([link.textContent.trim(), link.getAttribute('href')]).to.deep.equal(['Open sheet', '/sheet#/tr1/alpha/.da/translate']);
       expect(q('[id="config-translation.service.name"]').value).to.equal('Smartling');
       el._onEdit('source.language', 'English');

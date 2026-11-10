@@ -65,11 +65,12 @@ describe('config views', () => {
       expect(single.querySelector('.config-tabs-space').getAttribute('aria-hidden')).to.equal('true');
     });
 
-    it('opens the shown section sheet from the tab area, when it has one', () => {
+    it('opens the shown section sheet from the tab area, keeping its place while there is none', () => {
       const selection = { tab: one, section: one.sections[0] };
       const link = mount(renderTabs([one, two], selection, handlers, '/sheet#/o/s/x')).querySelector('.config-sheet-link');
-      expect([link.textContent.trim(), link.getAttribute('href'), link.target]).to.deep.equal(['Open sheet', '/sheet#/o/s/x', '_blank']);
-      expect(!!mount(renderTabs([one, two], selection, handlers, null)).querySelector('.config-sheet-link')).to.equal(false);
+      expect([link.tagName, link.textContent.trim(), link.getAttribute('href'), link.target]).to.deep.equal(['A', 'Open sheet', '/sheet#/o/s/x', '_blank']);
+      const space = mount(renderTabs([one, two], selection, handlers, null)).querySelector('.config-sheet-link');
+      expect([space.tagName, space.getAttribute('aria-hidden'), space.textContent]).to.deep.equal(['SPAN', 'true', '']);
     });
 
     it('reports tab changes', () => {

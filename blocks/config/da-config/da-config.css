@@ -55,6 +55,11 @@
   text-decoration: none;
 }
 
+/* Holds Open sheet's place while there's no sheet to open. */
+.config-tabs span.config-sheet-link {
+  height: 32px;
+}
+
 /* Too narrow to keep the tabs centered beside it: Open sheet gets its own row. */
 @container config-shell (width < 760px) {
   .config-tabs {
