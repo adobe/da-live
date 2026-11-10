@@ -26,7 +26,7 @@
 }
 
 .config-panel-title {
-  font-size: var(--s2-heading-size-s);
+  font-size: var(--s2-heading-size-xs);
 }
 
 .config-scope-picker {
