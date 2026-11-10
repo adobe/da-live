@@ -1,5 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
 import { setNx } from '../../../../../scripts/utils.js';
 import { TOOL_PANEL_PINNED_VIEWS_KEY } from '../../../../../blocks/canvas/utils/panel.js';
 
@@ -255,48 +256,62 @@ describe('EwToolPanel selected panels', () => {
   });
 
   it('fades only overflowing edges and updates when scrolling, resizing, or removing tabs', async () => {
-    const sheet = new CSSStyleSheet();
-    await sheet.replace(await (await fetch('/blocks/canvas/ew-tool-panel/tool-panel.css')).text());
-    el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
-    el.style.width = '160px';
-    el.style.height = '300px';
-    await pinAll();
-    const list = el.shadowRoot.querySelector('.tool-panel-tabs');
-    const scroll = async (left) => {
-      list.scrollLeft = left;
-      list.dispatchEvent(new Event('scroll'));
+    const sandbox = sinon.createSandbox();
+    el.remove();
+    try {
+      let onResize;
+      const observe = sandbox.spy();
+      sandbox.stub(window, 'ResizeObserver').callsFake((callback) => {
+        onResize = callback;
+        return { observe, disconnect() {} };
+      });
+      // Advance only animation frames; layout and the test's task queue stay real.
+      const clock = sandbox.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] });
+      document.body.append(el);
       await el.updateComplete;
-    };
-    const edges = () => [
-      list.hasAttribute('data-overflow-left'), list.hasAttribute('data-overflow-right'),
-    ];
-    await scroll(0);
-    expect(edges()).to.deep.equal([false, true]);
-    expect(el.shadowRoot.querySelector('.tool-panel-tabs-divider')).not.to.equal(null);
-    await scroll((list.scrollWidth - list.clientWidth) / 2);
-    expect(edges()).to.deep.equal([true, true]);
-    await scroll(list.scrollWidth);
-    expect(edges()).to.deep.equal([true, false]);
+      const sheet = new CSSStyleSheet();
+      await sheet.replace(await (await fetch('/blocks/canvas/ew-tool-panel/tool-panel.css')).text());
+      el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, sheet];
+      el.style.width = '160px';
+      el.style.height = '300px';
+      await pinAll();
+      const list = el.shadowRoot.querySelector('.tool-panel-tabs');
+      expect(observe.calledWith(list)).to.be.true;
+      const scroll = async (left) => {
+        list.scrollLeft = left;
+        list.dispatchEvent(new Event('scroll'));
+        await el.updateComplete;
+      };
+      const resize = async (width) => {
+        el.style.width = width;
+        onResize();
+        clock.runToFrame();
+        await el.updateComplete;
+      };
+      const edges = () => [
+        list.hasAttribute('data-overflow-left'), list.hasAttribute('data-overflow-right'),
+      ];
+      await scroll(0);
+      expect(edges()).to.deep.equal([false, true]);
+      expect(el.shadowRoot.querySelector('.tool-panel-tabs-divider')).not.to.equal(null);
+      await scroll((list.scrollWidth - list.clientWidth) / 2);
+      expect(edges()).to.deep.equal([true, true]);
+      await scroll(list.scrollWidth);
+      expect(edges()).to.deep.equal([true, false]);
 
-    el.style.width = '600px';
-    await new Promise((resolve) => {
-      requestAnimationFrame(() => requestAnimationFrame(resolve));
-    });
-    await nextTask();
-    await el.updateComplete;
-    expect(edges()).to.deep.equal([false, false]);
-    expect(el.shadowRoot.querySelector('.tool-panel-tabs-divider')).to.equal(null);
-    el.style.width = '160px';
-    await new Promise((resolve) => {
-      requestAnimationFrame(() => requestAnimationFrame(resolve));
-    });
-    await nextTask();
-    await el.updateComplete;
-    expect(edges()).to.deep.equal([false, true]);
-    await select('blocks', false);
-    await select('assets', false);
-    expect(edges()).to.deep.equal([false, false]);
-    expect(el.shadowRoot.querySelector('.tool-panel-tabs-divider')).to.equal(null);
+      await resize('600px');
+      expect(edges()).to.deep.equal([false, false]);
+      expect(el.shadowRoot.querySelector('.tool-panel-tabs-divider')).to.equal(null);
+      await resize('160px');
+      expect(edges()).to.deep.equal([false, true]);
+      await select('blocks', false);
+      await select('assets', false);
+      expect(edges()).to.deep.equal([false, false]);
+      expect(el.shadowRoot.querySelector('.tool-panel-tabs-divider')).to.equal(null);
+    } finally {
+      el.remove();
+      sandbox.restore();
+    }
   });
 
   it('opens Files and Outline as default tabs in a new session', async () => {

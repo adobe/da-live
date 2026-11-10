@@ -123,6 +123,7 @@ class EWCanvasHeader extends LitElement {
   }
 
   render() {
+    if (!this.authorized) return nothing;
     return html`
       <header class="bar" part="bar">
         <div class="group group-start" part="group-start">
@@ -147,11 +148,10 @@ class EWCanvasHeader extends LitElement {
             ${this._renderIcon('redo')}
           </button>
           ` : nothing}
-          ${this.authorized && !this.canWrite ? this._renderLock() : nothing}
+          ${this.canWrite ? nothing : this._renderLock()}
         </div>
 
         <div class="group group-center" part="group-center">
-          ${this.authorized ? html`
           <div class="segmented" role="group" aria-label="Editor view" part="editor-view-toggle">
             <button
               type="button"
@@ -177,7 +177,6 @@ class EWCanvasHeader extends LitElement {
               @click=${() => this.setEditorView('split')}
             >${this._renderIcon('gridCompare')}</button>
           </div>
-          ` : nothing}
         </div>
 
         <div class="group group-end" part="group-end">
