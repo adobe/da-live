@@ -1,3 +1,10 @@
+# [1.22.0](https://github.com/adobe/da-live/compare/v1.21.5...v1.22.0) (2026-11-10)
+
+
+### Features
+
+* **branding:** update ew header to adobe experience manager ([#1664](https://github.com/adobe/da-live/issues/1664)) ([69df3e3](https://github.com/adobe/da-live/commit/69df3e3733c81f773add41580d15520f67aa7dd6))
+
 ## [1.21.5](https://github.com/adobe/da-live/compare/v1.21.4...v1.21.5) (2026-11-09)
 
 
