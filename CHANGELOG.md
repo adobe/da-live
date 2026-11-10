@@ -1,3 +1,10 @@
+## [1.22.2](https://github.com/adobe/da-live/compare/v1.22.1...v1.22.2) (2026-11-10)
+
+
+### Bug Fixes
+
+* correct canvas asset drops and toolbar selector ([#1701](https://github.com/adobe/da-live/issues/1701)) ([f0b1914](https://github.com/adobe/da-live/commit/f0b191422c4d2666253655c48a28817dc83de258))
+
 ## [1.22.1](https://github.com/adobe/da-live/compare/v1.22.0...v1.22.1) (2026-11-10)
 
 
