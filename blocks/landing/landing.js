@@ -8,7 +8,7 @@ import { getBrowseHref, getListItems, loadFilesByPath } from './utils.js';
 import '../browse/v2/da-list/da-list.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const { parseSubdomain, getCreateSiteHref } = await import(`${getNx2()}/blocks/siteselector/site-utils.js`);
+const { parseSubdomain, getCreateSiteHref, getSiteOptions } = await import(`${getNx2()}/blocks/siteselector/site-utils.js`);
 await import(`${getNx()}/blocks/shared/segmented-btn/segmented.js`);
 const background = await loadStyle(import.meta.url);
 const styles = await Promise.all([
@@ -63,6 +63,7 @@ export class DaLanding extends LitElement {
     this._tab = 'recent';
     this._view = getBrowseSettings().view === 'list' ? 'list' : 'card';
     this._limit = PAGE_SIZE;
+    this._siteUrl = '';
   }
 
   connectedCallback() {
@@ -71,8 +72,13 @@ export class DaLanding extends LitElement {
     this.refreshFavorites();
     window.addEventListener('pageshow', this._onPageShow);
     document.addEventListener('site-select', this._onSiteSelect);
-    const value = document.querySelector('nx-nav')?.shadowRoot
-      ?.querySelector('nx-siteselector')?.value;
+    let value;
+    try {
+      const recentSites = JSON.parse(localStorage.getItem('da-sites')) ?? [];
+      value = getSiteOptions({ recentSites })[0]?.value;
+    } catch {
+      // Unavailable site history leaves onboarding available.
+    }
     if (value && value !== this._scope) this._onSiteSelect({ detail: { value } });
     else if (this._scope) this.loadSite();
     this.loadProfile();
@@ -172,7 +178,7 @@ export class DaLanding extends LitElement {
 
   _onAddSite(event) {
     event.preventDefault();
-    const siteUrl = new FormData(event.currentTarget).get('siteUrl').trim();
+    const siteUrl = this._siteUrl.trim();
     let path;
     try {
       const { origin, pathname } = new URL(siteUrl);
@@ -205,7 +211,7 @@ export class DaLanding extends LitElement {
         <p id="site-hint">Enter the URL to get started.</p>
         <div class="site-entry">
           <input class="nx-input" id="site-url" name="siteUrl" type="url" required
-            .value=${this._siteUrl || ''}
+            .value=${this._siteUrl}
             autocomplete="url" placeholder="https://main--site--org.aem.page"
             aria-describedby=${this._siteError ? 'site-hint site-error' : 'site-hint'}
             aria-invalid=${this._siteError ? 'true' : nothing}
@@ -214,11 +220,11 @@ export class DaLanding extends LitElement {
         this._siteError = undefined;
       }}>
           <button type="submit" class="nx-btn-accent"
-            ?disabled=${!this._siteUrl?.trim()}>Add site</button>
+            ?disabled=${!this._siteUrl.trim()}>Open</button>
         </div>
         ${this._siteError ? html`<p id="site-error" class="nx-input-error-msg" role="alert">${this._siteError}</p>` : nothing}
       </form>
-      <p class="newsite">Don't have a site yet? <a href=${getCreateSiteHref()}>Create a new site</a></p>
+      <p class="newsite">Don't have a site yet? <a href=${getCreateSiteHref()}>Create a new one</a></p>
     </section>`;
   }
 
@@ -300,7 +306,7 @@ export class DaLanding extends LitElement {
             <button class="filter" type="button" aria-pressed=${this._tab === 'starred'}
               @click=${() => this.changeTab('starred')}>${icon('star')}Favorite</button>
           </div>
-          ${this._scope ? html`<a class="all-files" href=${getBrowseHref({ path: this.path })}>Show all</a>` : nothing}
+          <a class="all-files" href=${getBrowseHref({ path: this.path })}>Show all</a>
         </div>
         ${this._actionError ? html`<p role="alert">${this._actionError}</p>` : nothing}
         <div aria-busy=${this.loading}>${this.renderFiles()}</div>

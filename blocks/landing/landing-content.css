@@ -58,10 +58,6 @@ svg {
   color: var(--s2-gray-800);
 }
 
-h2 + p {
-  font-size: var(--s2-component-xl-regular-font-size);
-}
-
 .site-entry {
   display: flex;
   flex-wrap: wrap;
@@ -69,13 +65,13 @@ h2 + p {
   margin-top: var(--s2-spacing-100);
 
   .nx-input {
-  flex: 1 1 240px;
-  min-width: 0;
-}
+    flex: 1 1 240px;
+    min-width: 0;
+  }
 
-.nx-btn-accent {
-  border-radius: var(--s2-corner-radius-600);
-}
+  .nx-btn-accent {
+    border-radius: var(--s2-corner-radius-600);
+  }
 }
 
 .welcome #site-hint {
@@ -168,7 +164,7 @@ h2 {
   gap: var(--s2-spacing-100);
   text-decoration: none;
   color: var(--s2-gray-700);
-  font-size: var(--s2-component-s-regular-font-size);
+  font-size: var(--s2-component-m-regular-font-size);
   line-height: var(--s2-body-line-height);
 }
 
@@ -257,6 +253,10 @@ a:focus-visible, .filter:focus-visible,
 .file-list:focus-visible {
   outline: 2px solid var(--s2-blue-800);
   outline-offset: var(--s2-spacing-75);
+}
+
+.welcome > h2 + p {
+  font-size: var(--s2-component-xl-regular-font-size);
 }
 
 .welcome > p a {

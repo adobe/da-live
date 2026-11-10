@@ -7,7 +7,7 @@ import { getNx2, getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
 
 const { source, config } = await getNx2Api();
 const { setEWEnabled } = await getNxEWFlags();
-const { parseSubdomain } = await import(`${getNx2()}/blocks/siteselector/site-utils.js`);
+const { parseSubdomain, getSiteOptions } = await import(`${getNx2()}/blocks/siteselector/site-utils.js`);
 const ITEMS = Array.from({ length: 24 }, (_, index) => ({ name: `Page ${index}`, path: `/org/site/page-${index}.html`, ext: 'html', lastModified: 24 - index }));
 
 const setRecent = (recent) => localStorage.setItem('da-recent-files', JSON.stringify(recent));
@@ -34,6 +34,8 @@ describe('landing Content section', () => {
       getProfile: sinon.stub().resolves({ first_name: 'John' }),
     };
     parseSubdomain.reset();
+    getSiteOptions.reset();
+    getSiteOptions.returns([]);
     ['da-favorites', 'da-browse-settings', 'da-sites', 'da-recent-files'].forEach((key) => localStorage.removeItem(key));
     loadSite = sinon.stub(DaLanding.prototype, 'loadSite').callsFake(async function loadSiteForTest() {
       this._request?.abort();
@@ -227,43 +229,45 @@ describe('landing Content section', () => {
     expect(el.shadowRoot.querySelector('[role="alert"]')).to.equal(null);
   });
 
-  ['before', 'after'].forEach((timing) => {
-    it(`loads the nav selector's selection made ${timing} Content mounts`, async () => {
-      el.remove();
-      loadSite.restore();
-      loadSite = sinon.spy(DaLanding.prototype, 'loadSite');
-      const { href } = window.location;
-      const path = '/selected/site/page.html';
-      localStorage.setItem('da-sites', JSON.stringify(['history/site', 'selected/site']));
-      setRecent({ '/selected/site': [path] });
-      const nav = document.createElement('nx-nav');
-      const selector = document.createElement('nx-siteselector');
-      (nav.shadowRoot ?? nav.attachShadow({ mode: 'open' })).append(selector);
-      document.body.append(nav);
-      const select = () => {
-        selector.value = 'selected/site';
-        selector.dispatchEvent(new CustomEvent('site-select', {
-          bubbles: true,
-          composed: true,
-          detail: { value: selector.value },
-        }));
-      };
-      try {
-        if (timing === 'before') select();
-        el = document.createElement('da-landing');
-        document.body.append(el);
-        if (timing === 'after') select();
-        expect(el.path).to.equal('/selected/site');
-        expect(loadSite.calledOnce).to.equal(true);
-        await loadSite.firstCall.returnValue;
-        await updateLanding();
-        expect([...fileItems()].map((item) => item.path)).to.deep.equal([path]);
-        expect(metadata.calledOnceWithExactly(path)).to.equal(true);
-        expect(window.location.href).to.equal(href);
-      } finally {
-        nav.remove();
-      }
-    });
+  it('uses the first shared saved-site option before nav loads, without flashing onboarding', async () => {
+    el.remove();
+    loadSite.restore();
+    loadSite = sinon.spy(DaLanding.prototype, 'loadSite');
+    const { href } = window.location;
+    const path = '/selected/site/page.html';
+    const recentSites = ['invalid', 'selected/site', 'history/site'];
+    localStorage.setItem('da-sites', JSON.stringify(recentSites));
+    getSiteOptions.withArgs({ recentSites }).returns([
+      { value: 'selected/site', label: 'selected/site' },
+      { value: 'history/site', label: 'history/site' },
+    ]);
+    setRecent({ '/selected/site': [path] });
+    let resolveMetadata;
+    metadata.returns(new Promise((resolve) => { resolveMetadata = resolve; }));
+    el = document.createElement('da-landing');
+    document.body.append(el);
+    expect(el.path).to.equal('/selected/site');
+    expect(loadSite.calledOnce).to.equal(true);
+    await updateLanding();
+    expect(el.shadowRoot.querySelector('.welcome')).to.equal(null);
+    expect(el.shadowRoot.querySelector('[role="status"]').textContent).to.equal('Loading files...');
+    resolveMetadata(new Response());
+    await loadSite.firstCall.returnValue;
+    await updateLanding();
+    expect([...fileItems()].map((item) => item.path)).to.deep.equal([path]);
+    expect(metadata.calledOnceWithExactly(path)).to.equal(true);
+    expect(getSiteOptions.calledWithExactly({ recentSites })).to.equal(true);
+    expect(window.location.href).to.equal(href);
+  });
+
+  it('keeps onboarding available when saved-site history cannot be parsed', async () => {
+    el.remove();
+    localStorage.setItem('da-sites', '{');
+    el = document.createElement('da-landing');
+    document.body.append(el);
+    await updateLanding();
+    expect(el.path).to.equal('');
+    expect(el.shadowRoot.querySelector('.welcome')).not.to.equal(null);
   });
 
   it('updates Content from the external nav selection without changing the route', async () => {
@@ -298,8 +302,8 @@ describe('landing Content section', () => {
     expect(el.shadowRoot.querySelector('.files-panel')).to.equal(null);
     expect(el.shadowRoot.querySelector('input[name="siteUrl"]')).not.to.equal(null);
     expect(new URL(el.shadowRoot.querySelector('.welcome a').href).pathname).to.equal('/start');
-    expect(el.shadowRoot.querySelector('.welcome a').textContent).to.equal('Create a new site \u2192');
-    expect(el.shadowRoot.querySelector('.welcome a').parentElement.textContent).to.contain("Don't have a project yet?");
+    expect(el.shadowRoot.querySelector('.welcome a').textContent).to.equal('Create a new site');
+    expect(el.shadowRoot.querySelector('.welcome a').parentElement.textContent).to.contain("Don't have a site yet?");
     document.dispatchEvent(new CustomEvent('site-select', { detail: { value: 'another/site' } }));
     await updateLanding();
     expect(el.shadowRoot.querySelector('.welcome')).to.equal(null);
@@ -335,7 +339,7 @@ describe('landing Content section', () => {
     await updateLanding();
     expect(el.shadowRoot.querySelector('#welcome-heading').textContent).to.equal('Welcome to Experience Workspace, John');
     expect(el.shadowRoot.querySelector('form').contains(el.shadowRoot.querySelector('#welcome-heading'))).to.equal(false);
-    expect(el.shadowRoot.querySelector('#site-hint').textContent).to.equal('Enter its GitHub repository URL to add your site.');
+    expect(el.shadowRoot.querySelector('#site-hint').textContent).to.equal('Enter the URL to get started.');
   });
 
   it('keeps onboarding usable when the signed-in profile cannot be loaded', async () => {
@@ -382,6 +386,7 @@ describe('landing Content section', () => {
     const form = el.shadowRoot.querySelector('form');
     for (const value of ['https://github.com/owner', 'https://example.com/org/site']) {
       input.value = value;
+      input.dispatchEvent(new Event('input'));
       form.requestSubmit();
       await updateLanding();
       expect(el.shadowRoot.querySelector('[role="alert"]').textContent).to.contain('Enter a GitHub repository URL');
