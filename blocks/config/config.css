@@ -1,3 +1,8 @@
+/* Short and long sections would otherwise add and remove the scrollbar, shifting the centered tabs. */
+html:has(.config) {
+  scrollbar-gutter: stable;
+}
+
 .config {
   display: block;
   width: 100%;
