@@ -52,15 +52,17 @@ describe('config views', () => {
     };
     const handlers = { onPrimaryChange: () => {}, onSectionChange: () => {} };
 
-    it('shows the section tabs, without icons, only for a tab with several', () => {
+    it('shows the section tabs only for a tab with several, keeping their space otherwise', () => {
       const selection = { tab: two, section: two.sections[1] };
       const el = mount(renderTabs([one, two], selection, handlers));
       const secondary = el.querySelector('.config-tabs-secondary');
       expect(secondary.value).to.equal('z');
       expect(secondary.items).to.deep.equal([{ value: 'y', label: 'Y' }, { value: 'z', label: 'Z' }]);
+      expect(!!el.querySelector('.config-tabs-space')).to.equal(false);
       const first = { tab: one, section: one.sections[0] };
       const single = mount(renderTabs([one, two], first, handlers));
       expect(!!single.querySelector('.config-tabs-secondary')).to.equal(false);
+      expect(single.querySelector('.config-tabs-space').getAttribute('aria-hidden')).to.equal('true');
     });
 
     it('reports tab changes', () => {

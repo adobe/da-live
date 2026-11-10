@@ -52,6 +52,7 @@ export function renderLoadStatus({ status, httpStatus, scope }) {
   return nothing;
 }
 
+// Tabs with one section keep the second row's space so the page doesn't jump between areas.
 export function renderTabs(tabs, { tab, section }, { onPrimaryChange, onSectionChange }) {
   return html`
     <div class="config-tabs">
@@ -71,7 +72,7 @@ export function renderTabs(tabs, { tab, section }, { onPrimaryChange, onSectionC
           .items=${tab.sections.map((s) => ({ value: s.id, label: s.label }))}
           .value=${section.id}
           @change=${onSectionChange}
-        ></nx-segmented-btn>` : nothing}
+        ></nx-segmented-btn>` : html`<div class="config-tabs-space" aria-hidden="true"></div>`}
     </div>`;
 }
 

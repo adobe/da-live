@@ -42,6 +42,11 @@
   gap: var(--s2-spacing-300);
 }
 
+/* Same height as the section row (a size m segment). */
+.config-tabs-space {
+  height: 32px;
+}
+
 .config-panel {
   display: flex;
   flex-direction: column;
