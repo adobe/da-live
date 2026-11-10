@@ -31,7 +31,7 @@ export const SHELL = {
   noAccess: 'You don\'t have access to this configuration.',
   loadFailed: 'Could not load configuration',
   readOnly: 'You have read-only access to this configuration.',
-  learnMore: 'Learn more',
+  docs: 'Docs',
   openSheet: 'Open sheet',
   saved: 'Changes saved.',
   saveFailed: (result) => failure('save changes', result),
