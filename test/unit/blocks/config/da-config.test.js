@@ -614,13 +614,13 @@ describe('da-config', () => {
       expect(el.shadowRoot.textContent).to.not.include('Run the setup app');
     });
 
-    it('keeps the site fields editable after ew.enabled was turned off, with a setup link', async () => {
+    it('keeps the site fields editable after ew.enabled was turned off, with the org info box', async () => {
       mockFetch({ configFor: () => multi('flags', [{ key: 'ew.enabled', value: 'false' }]), sitesFor: () => [{ name: 'alpha' }] });
       await open({ org: 'ew5', site: 'alpha' });
       expect(has('.config-setup')).to.equal(false);
       expect(q('[id="config-ew.enabled"]').value).to.equal('false');
-      const link = [...el.shadowRoot.querySelectorAll('.config-info a')].find((a) => a.textContent.includes('setup app'));
-      expect(link.href).to.match(/#\/ew5\/alpha$/);
+      const links = [...el.shadowRoot.querySelectorAll('.config-info a')].map((a) => a.textContent.trim());
+      expect(links).to.deep.equal(['Open sheet', 'Learn more']);
     });
 
     it('shows the Overrides org pill for site flags that differ from the org', async () => {

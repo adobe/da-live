@@ -12,7 +12,6 @@ export default {
     key: 'ew.enabled',
     text: SETUP.experienceWorkspace,
     action: 'Set up Experience Workspace',
-    rerun: { text: SETUP.experienceWorkspaceRerun, action: 'Run the setup app' },
     url: (org, site) => `${SETUP_APP}#/${org}/${site}`,
   },
   fields: [

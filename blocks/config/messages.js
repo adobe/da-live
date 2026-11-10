@@ -93,7 +93,6 @@ export const FILES = {
 export const SETUP = {
   experienceWorkspace: 'Experience Workspace isn\'t enabled for this site yet. The setup app turns '
     + 'it on and points Sidekick to the new editor.',
-  experienceWorkspaceRerun: 'Sidekick still opening the old editor?',
 };
 
 export const VALIDATION = {
