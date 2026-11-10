@@ -27,6 +27,7 @@ import { initBranchBridge } from './editor-utils/branch-bridge.js';
 import { resolveCanvasBranch } from './editor-utils/branch-state.js';
 import { installComparison } from './ew-comparison/comparison.js';
 import { docToHtml } from '../shared/version/compare.js';
+import { addRecentFile } from '../shared/recent-files.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
@@ -176,6 +177,7 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
     header.canWrite = true;
     return;
   }
+  addRecentFile(`/${fullPath.replace(/\.html$/, '')}.html`);
   const editorCtx = editorCtxFromHashState(state, fullPath);
   const ctx = { ...editorCtx, branchPromise: resolveCanvasBranch(editorCtx) };
   const session = await resolveEditorDocSession(ctx);

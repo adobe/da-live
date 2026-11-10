@@ -1,3 +1,10 @@
+# [1.23.0](https://github.com/adobe/da-live/compare/v1.22.2...v1.23.0) (2026-11-10)
+
+
+### Features
+
+* store recently edited files ([#1703](https://github.com/adobe/da-live/issues/1703)) ([47fde50](https://github.com/adobe/da-live/commit/47fde5007dde3cbba5502f9660a40d3fc8c5052a))
+
 ## [1.22.2](https://github.com/adobe/da-live/compare/v1.22.1...v1.22.2) (2026-11-10)
 
 
