@@ -89,9 +89,9 @@ describe('config views', () => {
     const docs = 'https://www.aem.live/docs/x';
     const el = mount(renderIntro(panel, { docs, inheritance: 'Sites inherit.', readOnly: true }));
     const lines = [...el.querySelectorAll('.config-info[role="note"] p')].map((p) => p.textContent.replace(/\s+/g, ' ').trim());
-    expect(lines).to.deep.equal(['About. Sites inherit.', 'You have read-only access to this configuration.']);
-    const links = [...el.querySelectorAll('.config-info-links a')].map((a) => [a.textContent.trim(), a.getAttribute('href')]);
-    expect(links).to.deep.equal([['Learn more', docs]]);
+    expect(lines).to.deep.equal(['About. Sites inherit. Docs', 'You have read-only access to this configuration.']);
+    const links = [...el.querySelectorAll('.config-info a')].map((a) => [a.textContent.trim(), a.getAttribute('href'), a.target]);
+    expect(links).to.deep.equal([['Docs', docs, '_blank']]);
     const plain = mount(renderIntro(panel, { docs, inheritance: '', readOnly: false }));
     expect(text(plain).includes('read-only')).to.equal(false);
   });

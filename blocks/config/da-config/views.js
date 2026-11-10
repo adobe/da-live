@@ -54,10 +54,10 @@ export function renderLoadStatus({ status, httpStatus, scope }) {
 
 const OPEN_ICON = '/img/icons/s2-icon-openin-20-n.svg#icon';
 
-const infoLink = (href, label, cls = '') => html`
-  <a class="nx-action-btn nx-btn-sm ${cls}" href=${href} target="_blank" rel="noopener">
+const sheetLink = (href) => html`
+  <a class="nx-action-btn nx-btn-sm config-sheet-link" href=${href} target="_blank" rel="noopener">
     <svg viewBox="0 0 20 20" aria-hidden="true"><use href=${OPEN_ICON}></use></svg>
-    <span>${label}</span>
+    <span>${SHELL.openSheet}</span>
   </a>`;
 
 // Tabs with one section keep the second row's space so the page doesn't jump between areas.
@@ -82,18 +82,18 @@ export function renderTabs(tabs, { tab, section }, { onPrimaryChange, onSectionC
           .value=${section.id}
           @change=${onSectionChange}
         ></nx-segmented-btn>` : html`<div class="config-tabs-space" aria-hidden="true"></div>`}
-      ${sheet ? infoLink(sheet, SHELL.openSheet, 'config-sheet-link') : nothing}
+      ${sheet ? sheetLink(sheet) : nothing}
     </div>`;
 }
 
-// What the section is for, kept apart from the editor like the permissions note.
+// What the section is for, kept apart from the editor; links its docs like the permissions note.
 export function renderIntro(panel, { docs, inheritance, readOnly, notes = nothing }) {
   return html`
     <div class="config-info" role="note">
-      <p>${panel.description} ${inheritance}</p>
+      <p>${panel.description} ${inheritance}
+        <a href=${docs} target="_blank" rel="noopener">${SHELL.docs}</a></p>
       ${notes}
       ${readOnly ? html`<p>${SHELL.readOnly}</p>` : nothing}
-      <div class="config-info-links">${infoLink(docs, SHELL.learnMore)}</div>
     </div>`;
 }
 

@@ -620,7 +620,7 @@ describe('da-config', () => {
       expect(has('.config-setup')).to.equal(false);
       expect(q('[id="config-ew.enabled"]').value).to.equal('false');
       const links = [...el.shadowRoot.querySelectorAll('.config-info a')].map((a) => a.textContent.trim());
-      expect(links).to.deep.equal(['Learn more']);
+      expect(links).to.deep.equal(['Docs']);
     });
 
     it('shows the Overrides org pill for site flags that differ from the org', async () => {
