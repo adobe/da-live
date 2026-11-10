@@ -862,7 +862,7 @@ function createOutlineView() {
 function createFileExplorerView() {
   return {
     id: 'files',
-    label: 'Files',
+    label: 'Content',
     section: 'Editor',
     firstParty: true,
     load: async () => {
