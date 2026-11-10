@@ -60,13 +60,30 @@ h2 {
   line-height: 1.5;
 }
 
-.add-site {
+form label {
+  color: var(--s2-gray-800);
+  font-size: var(--s2-heading-size-xs);
+  font-weight: var(--s2-component-m-bold-font-weight);
+}
+
+#site-hint {
+  color: var(--s2-gray-700);
+  font-size: var(--s2-component-l-regular-font-size);
+}
+
+.site-entry {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--s2-spacing-100);
+  margin-top: var(--s2-spacing-100);
 
   .nx-input {
-    flex: 1;
+    flex: 1 1 240px;
     min-width: 0;
+  }
+
+  .nx-btn-accent {
+    border-radius: var(--s2-corner-radius-600);
   }
 }
 

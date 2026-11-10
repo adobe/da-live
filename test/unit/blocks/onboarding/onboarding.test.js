@@ -71,14 +71,26 @@ describe('da-onboarding', () => {
     expect(tiles.slice(0, 3).every((tile) => tile.querySelector('button.tile-action').disabled)).to.be.true;
   });
 
-  it('enables Add site only for a GitHub repository URL', async () => {
+  it('enables Open once a URL is entered', async () => {
     await mount();
     const button = el.shadowRoot.querySelector('form button');
     expect(button.disabled).to.be.true;
-    await typeUrl('https://github.com/adobe');
+    await typeUrl('  ');
     expect(button.disabled).to.be.true;
-    await typeUrl(' https://github.com/adobe/geometrixx ');
+    await typeUrl('https://main--geometrixx--adobe.aem.page');
     expect(button.disabled).to.be.false;
+  });
+
+  it('rejects URLs that are not a GitHub repository or an AEM site', async () => {
+    await mount();
+    await typeUrl('https://example.com/adobe/geometrixx');
+    el.shadowRoot.querySelector('form button').click();
+    await el.updateComplete;
+    const input = el.shadowRoot.querySelector('input');
+    expect(el.shadowRoot.querySelector('#site-error').textContent)
+      .to.equal('Enter a GitHub repository URL or an existing AEM site URL.');
+    expect(input.getAttribute('aria-invalid')).to.equal('true');
+    expect(input.getAttribute('aria-describedby')).to.equal('site-hint site-error');
   });
 
   it('shows the add site error and lets the user retry', async () => {

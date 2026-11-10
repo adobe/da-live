@@ -2,10 +2,14 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../scripts/utils.js';
 import { initIms } from '../shared/utils.js';
 import { ONBOARDING_TILES } from './constants.js';
-import { addSite, getGitHubSite, getRequestedSite } from '../start/utils.js';
+import { addSite, getRequestedSite } from '../start/utils.js';
+import { getSiteFromUrl } from './utils.js';
+
+const SITE_URL_ERROR = 'Enter a GitHub repository URL or an existing AEM site URL.';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const [form, styles, landingStyles] = await Promise.all([
+const [buttons, form, styles, landingStyles] = await Promise.all([
+  loadStyle(`${getNx2()}/styles/buttons.css`),
   loadStyle(`${getNx2()}/styles/form.css`),
   loadStyle(import.meta.url),
   loadStyle(new URL('../landing/landing.css', import.meta.url).href),
@@ -14,20 +18,22 @@ const [form, styles, landingStyles] = await Promise.all([
 class DaOnboarding extends LitElement {
   static properties = {
     _name: { state: true },
-    _site: { state: true },
+    _siteUrl: { state: true },
     _error: { state: true },
     _loading: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [form, styles];
-    this._site = getRequestedSite(window.location.search);
+    this.shadowRoot.adoptedStyleSheets = [buttons, form, styles];
+    const requested = getRequestedSite(window.location.search);
+    this._siteUrl = requested ? `https://github.com/${requested.org}/${requested.site}` : '';
     this._loadName();
   }
 
   async firstUpdated() {
-    if (!this._site) return;
+    this.shadowRoot.querySelector('#site-url')?.focus();
+    if (!this._siteUrl) return;
     await initIms();
     this._addSite();
   }
@@ -37,8 +43,8 @@ class DaOnboarding extends LitElement {
     if (this.isConnected) this._name = profile?.first_name || profile?.displayName?.split(' ')[0];
   }
 
-  _onInput(e) {
-    this._site = getGitHubSite(e.target.value.trim());
+  _onInput({ target }) {
+    this._siteUrl = target.value;
     this._error = undefined;
   }
 
@@ -48,9 +54,14 @@ class DaOnboarding extends LitElement {
   }
 
   async _addSite() {
-    if (!this._site || this._loading) return;
+    if (this._loading) return;
+    const requested = getSiteFromUrl(this._siteUrl.trim());
+    if (!requested) {
+      this._error = SITE_URL_ERROR;
+      return;
+    }
     this._loading = true;
-    const { org, site } = this._site;
+    const { org, site } = requested;
     const { error } = await addSite({ org, site });
     if (error) {
       this._error = error;
@@ -82,26 +93,21 @@ class DaOnboarding extends LitElement {
           <h1>Welcome to Experience Workspace${this._name ? `, ${this._name}` : ''}</h1>
           <p>Add a site to get started.</p>
         </header>
-        <section class="panel" aria-labelledby="add-site-title">
-          <div class="panel-heading">
-            <h2 id="add-site-title">Already have an EDS project?</h2>
-            <p>Enter its GitHub repository URL to add your site.</p>
-          </div>
+        <section class="panel">
           <form class="nx-form-field ${this._error ? 'nx-field-error' : ''}" @submit=${this._onSubmit}>
-            <div class="add-site">
-              <input
-                type="text"
-                class="nx-input"
-                aria-label="GitHub repository URL"
-                placeholder="https://github.com/your-org/your-site"
-                autocomplete="off"
-                value=${this._site ? `https://github.com/${this._site.org}/${this._site.site}` : ''}
-                @input=${this._onInput} />
-              <button class="nx-form-btn-primary" ?disabled=${!this._site || this._loading}>
-                ${this._loading ? 'Adding site…' : 'Add site'}
-              </button>
+            <label for="site-url">Already have an existing site?</label>
+            <p id="site-hint">Enter the URL to get started.</p>
+            <div class="site-entry">
+              <input class="nx-input" id="site-url" name="siteUrl" type="url" required
+                .value=${this._siteUrl}
+                autocomplete="url" placeholder="https://main--site--org.aem.page"
+                aria-describedby=${this._error ? 'site-hint site-error' : 'site-hint'}
+                aria-invalid=${this._error ? 'true' : nothing}
+                @input=${this._onInput}>
+              <button type="submit" class="nx-btn-accent"
+                ?disabled=${!this._siteUrl.trim() || this._loading}>Open</button>
             </div>
-            ${this._error ? html`<span class="nx-input-error-msg" role="alert">${this._error}</span>` : nothing}
+            ${this._error ? html`<p id="site-error" class="nx-input-error-msg" role="alert">${this._error}</p>` : nothing}
           </form>
         </section>
         <section class="panel" aria-labelledby="create-site-title">
