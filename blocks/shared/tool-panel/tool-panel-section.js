@@ -19,7 +19,7 @@ export function createToolPanelSection({ host, getContext, onShow }) {
         return;
       }
 
-      await toolPanel.setContext(getContext(), id);
+      await toolPanel.setContext(getContext(), id, options);
       await onShow?.(toolPanel, id, options);
     },
   };

@@ -374,37 +374,60 @@ class DaToolPanel extends LitElement {
     this.shadowRoot.querySelector('.tool-panel-content').replaceChildren();
   }
 
-  async setContext(context, viewId) {
-    const replaced = await this._loadContext(context ?? {}, viewId);
+  async setContext(context, viewId, options) {
+    const modal = !!options?.modal;
+    const loading = this._loadContext(context ?? {}, modal ? undefined : viewId);
+    const load = this._contextLoad;
+    const replaced = await loading;
     await this.updateComplete;
-    if (viewId && !replaced && this.views?.some((view) => view.id === viewId)) {
-      await this.showPanel(viewId);
+    if (this._contextLoad !== load) {
+      return;
+    }
+
+    if (viewId && (!replaced || modal) && this.views?.some((view) => view.id === viewId)) {
+      await this.showPanel(viewId, { modal });
     }
   }
 
   async _loadContext({ org, site }, viewId) {
     const key = org && site ? `${org}/${site}` : '';
     if (key === this.contextKey) {
+      await this._contextLoad?.promise;
       return false;
     }
 
     // Claim the key before awaiting, so a newer context wins the race.
     this.contextKey = key;
+    const load = {};
+    this._contextLoad = load;
+    load.promise = this._applyContext(load, key, { org, site }, viewId);
+    try {
+      await load.promise;
+    } catch (error) {
+      if (this._contextLoad === load) {
+        this._contextLoad = undefined;
+        this.contextKey = undefined;
+      }
+      throw error;
+    }
+    return this._contextLoad === load;
+  }
+
+  async _applyContext(load, key, { org, site }, viewId) {
     if (!key) {
       Object.assign(this, { org: undefined, site: undefined, views: [] });
-      return true;
+      return;
     }
 
     const views = await this.host.getViews({ org, site });
-    if (this.contextKey !== key) {
-      return false;
+    if (this._contextLoad !== load) {
+      return;
     }
 
     if (viewId) {
       this.pendingView = viewId;
     }
     Object.assign(this, { org, site, views });
-    return true;
   }
 
   async _mountDialog() {
@@ -444,9 +467,14 @@ class DaToolPanel extends LitElement {
     }
   }
 
-  async showPanel(name) {
+  async showPanel(name, { modal = false } = {}) {
     const view = this._viewById(name);
     if (!view) {
+      return;
+    }
+
+    if (modal && view.loadModal) {
+      this._fullsizeDialogViewId = name;
       return;
     }
 

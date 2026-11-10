@@ -184,19 +184,19 @@ describe('DaToolPanel selected panels', () => {
   it('opens the modal selector without loading or activating the assets rail', async () => {
     const loadModal = sinon.spy();
     views.find((view) => view.id === 'assets').loadModal = loadModal;
-    const pinned = [...el._pinnedIds];
+    const pinned = [...panel._pinnedIds];
 
-    await el.showPanel('assets', { modal: true });
-    await el.updateComplete;
+    await panel.showPanel('assets', { modal: true });
+    await panel.updateComplete;
     await nextTask();
 
-    const dialog = el.shadowRoot.querySelector('.tool-panel-fullsize-dialog');
+    const dialog = panel.shadowRoot.querySelector('.tool-panel-fullsize-dialog');
     expect(dialog.open).to.be.true;
     expect(loadModal.calledOnce).to.be.true;
     expect(loadModal.firstCall.args[0]).to.equal(dialog.querySelector('.tool-panel-fullsize-dialog-body'));
     expect(loads).to.deep.equal(['files']);
-    expect(el.activeId).to.equal('files');
-    expect(el._pinnedIds).to.deep.equal(pinned);
+    expect(panel.activeId).to.equal('files');
+    expect(panel._pinnedIds).to.deep.equal(pinned);
     dialog.close();
   });
 
@@ -1185,6 +1185,94 @@ describe('DaToolPanel — host delegate', () => {
       await settle();
 
       expect(panel.views.map((view) => view.id)).to.deep.equal(['new']);
+    });
+
+    describe('with a modal view', () => {
+      const modalView = (loadModal) => ({ ...inlineView('assets'), loadModal });
+
+      function heldViews() {
+        const pending = {};
+        panel.host = {
+          getViews: ({ site }) => {
+            pending[site] = deferred();
+            return pending[site].promise;
+          },
+        };
+        return pending;
+      }
+
+      it('waits for the in-flight load before opening the modal', async () => {
+        const loadModal = sinon.spy();
+        const pending = heldViews();
+        const loading = panel.setContext(CONTEXT);
+        const opening = panel.setContext(CONTEXT, 'assets', { modal: true });
+        await nextTask();
+        expect(panel._fullsizeDialogViewId === undefined).to.be.true;
+
+        pending.web.resolve([inlineView('files'), modalView(loadModal)]);
+        await Promise.all([loading, opening]);
+        await settle();
+
+        expect(panel._fullsizeDialogViewId).to.equal('assets');
+        expect(loadModal.calledOnce).to.be.true;
+        expect(panel.activeId).to.equal('files');
+        expect(panel._pinnedIds).to.deep.equal(['files']);
+      });
+
+      it('drops the modal request when a newer context supersedes its load', async () => {
+        const loadModal = sinon.spy();
+        const pending = heldViews();
+        const opening = panel.setContext({ org: 'acme', site: 'first' }, 'assets', { modal: true });
+        const second = panel.setContext({ org: 'acme', site: 'second' });
+        pending.second.resolve([modalView(loadModal)]);
+        await second;
+        pending.first.resolve([modalView(loadModal)]);
+        await opening;
+        await settle();
+
+        expect(panel.site).to.equal('second');
+        expect(panel._fullsizeDialogViewId === undefined).to.be.true;
+        expect(loadModal.called).to.be.false;
+      });
+
+      it('does not reuse a superseded load when the context switches back', async () => {
+        const loadModal = sinon.spy();
+        const pending = heldViews();
+        const opening = panel.setContext({ org: 'acme', site: 'first' }, 'assets', { modal: true });
+        const firstLoad = pending.first;
+        const second = panel.setContext({ org: 'acme', site: 'second' });
+        pending.second.resolve([modalView(loadModal)]);
+        await second;
+        const back = panel.setContext({ org: 'acme', site: 'first' });
+        pending.first.resolve([inlineView('current')]);
+        await back;
+        firstLoad.resolve([modalView(loadModal)]);
+        await opening;
+        await settle();
+
+        expect(panel.site).to.equal('first');
+        expect(panel.views.map((view) => view.id)).to.deep.equal(['current']);
+        expect(loadModal.called).to.be.false;
+      });
+    });
+
+    it('retries a context whose views failed to load', async () => {
+      let fail = true;
+      panel.host = {
+        getViews: async () => {
+          if (fail) {
+            throw new Error('offline');
+          }
+          return [inlineView('files')];
+        },
+      };
+
+      const error = await panel.setContext(CONTEXT).catch((e) => e);
+      fail = false;
+      await panel.setContext(CONTEXT);
+
+      expect(error.message).to.equal('offline');
+      expect(panel.views.map((view) => view.id)).to.deep.equal(['files']);
     });
   });
 });

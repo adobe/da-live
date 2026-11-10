@@ -59,7 +59,7 @@ describe('createToolPanelSection', () => {
     await section.onShow(asideWith(panel), 'files', { newVersion: true });
 
     expect(calls).to.deep.equal([
-      ['setContext', CONTEXT, 'files'],
+      ['setContext', CONTEXT, 'files', { newVersion: true }],
       ['onShow', true, 'files', { newVersion: true }],
     ]);
   });
