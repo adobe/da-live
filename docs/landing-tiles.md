@@ -15,15 +15,20 @@ The owner reports each enabled tile click with
 `sampleRUM('click', { source: 'landing-action-{id}', target })`, where `target` is the
 destination or the action name.
 
-Load `blocks/landing/tile-layout.css` and place tiles in `.landing-tiles` inside an
-inline-size container. The group matches Content's width and centers incomplete
-rows: five tiles use 3+2 from 600px and one column below.
+The group owns its layout in `tile-group.css`: three equal-width tiles per row
+from 600px and one column below, with incomplete rows centered. Five tiles use
+3+2 without depending on Browse's file-grid sizing.
 
 The landing replaces Home (no scoped hash) when the page has an authored `Landing`
 table or `?landing=true` is set. `?landing=false` keeps the existing Home. Browse
 selects the route; `landing.js` composes the gradient surface and lazily loads
-`tile-group.js` inside it. `tile-group.css` styles the owner; `tile-layout.css` styles the
-group; `tile.css` styles each tile.
+`tile-group.js` inside it. `tile-group.css` styles the owner and layout;
+`tile.css` styles each tile.
+
+The whole tile group is hidden and content loading is deferred until a site is
+selected. Clearing selection hides every tile, including documentation links.
+Selection currently comes from the hash, so unscoped Home shows no tiles pending
+site-picker integration; scoped hashes still route to Browse.
 
 A page with a `Browse` block and a `Landing` table renders the table's rows as tiles
 in place; the table itself stays hidden. With only `?landing=true`, the owner fetches
@@ -41,9 +46,8 @@ a console warning.
 
 HTTP(S) destinations remain links. Same-origin links keep the current `nx`, `nxver`,
 `quick-edit`, `ew`, `nx-chat-ao`, `theme` and `rum` parameters. `{org}` and `{site}`
-use the selected site from the hash; without one, or in a link to another origin,
-those tiles are disabled. `/{action:create-page}` needs a
-selected site and opens the shared `da-name-dialog`. It refuses existing names,
+use the selected site; substitution into links to another origin is disabled.
+`/{action:create-page}` opens the shared `da-name-dialog`. It refuses existing names,
 saves an empty page and opens it in the site's editor, like Browse's New → Document.
 Editor configuration uses the same org/site precedence and path matching as Browse,
 with EW selecting the default only when no override applies. Closing the dialog,

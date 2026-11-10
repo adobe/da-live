@@ -16,6 +16,18 @@ async function waitUntil(predicate) {
 }
 
 describe('landing tile composition', () => {
+  let subscribe;
+
+  beforeEach(() => {
+    hashChange._set(undefined);
+    subscribe = sinon.spy(hashChange, 'subscribe');
+  });
+
+  afterEach(() => {
+    subscribe.returnValues.forEach((unsubscribe) => unsubscribe());
+    subscribe.restore();
+  });
+
   it('mounts one tile group inside the gated landing when updates overlap', async () => {
     const { href } = window.location;
     const el = document.createElement('div');
@@ -40,16 +52,14 @@ describe('landing tile composition', () => {
       init(el);
       hashChange._set(undefined);
       const tiles = await mounted;
-      await waitUntil(() => tiles.entries);
       await tiles.updateComplete;
       await new Promise((resolve) => { setTimeout(resolve, 50); });
       expect(el.children).to.have.length(1);
       expect(el.querySelectorAll('da-landing-tiles')).to.have.length(1);
       expect(tiles.parentElement.className).to.equal('landing');
       expect(el.querySelector('picture, da-sites, da-browse')).to.equal(null);
-      expect(tiles.shadowRoot.querySelectorAll('da-landing-tile')).to.have.length(5);
-      expect(tiles.shadowRoot.querySelector('.files-panel, .composer')).to.equal(null);
-      expect(fetchContent.calledOnceWithExactly('/drafts/mhaack/landing-copy.plain.html')).to.equal(true);
+      expect(tiles.shadowRoot.querySelector('.tile-group')).to.equal(null);
+      expect(fetchContent.called).to.equal(false);
     } finally {
       fetchContent.restore();
       observer?.disconnect();
@@ -58,7 +68,7 @@ describe('landing tile composition', () => {
     }
   });
 
-  it('renders the page’s own Landing table without a parameter or fetch, with site tiles disabled on Home', async () => {
+  it('preserves the authored Landing table without loading or showing tiles on unscoped Home', async () => {
     const main = document.createElement('main');
     main.innerHTML = content.replace(/<\/?main>/g, '');
     const el = main.querySelector('.browse');
@@ -67,17 +77,14 @@ describe('landing tile composition', () => {
     const fetchContent = sinon.spy(window, 'fetch');
     try {
       init(el);
-      await waitUntil(() => el.querySelector('.landing > da-landing-tiles')?.entries);
+      await waitUntil(() => el.querySelector('.landing > da-landing-tiles'));
       const tiles = el.querySelector('.landing > da-landing-tiles');
       await tiles.updateComplete;
-      const [browse, create] = tiles.shadowRoot.querySelectorAll('da-landing-tile');
-      await Promise.all([browse.updateComplete, create.updateComplete]);
-      expect(tiles.shadowRoot.querySelectorAll('da-landing-tile')).to.have.length(5);
-      expect(browse.shadowRoot.querySelector('button').disabled).to.equal(true);
-      expect(create.shadowRoot.querySelector('button').disabled).to.equal(true);
+      expect(tiles.entries).to.equal(undefined);
+      expect(tiles.shadowRoot.querySelector('.tile-group')).to.equal(null);
       expect(el.querySelector('da-sites')).to.equal(null);
       expect(block.querySelectorAll(':scope > div')).to.have.length(5);
-      expect(fetchContent.calledWith('/drafts/mhaack/landing-copy.plain.html')).to.equal(false);
+      expect(fetchContent.called).to.equal(false);
     } finally {
       fetchContent.restore();
       main.remove();

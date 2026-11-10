@@ -10,10 +10,7 @@ import './tile.js';
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const nx = await import(`${getNx2()}/scripts/nx.js`);
 const sizing = nx.getUISize ? await import(`${getNx2()}/utils/ui-size.js`) : undefined;
-const styles = await Promise.all([
-  loadStyle(import.meta.url),
-  loadStyle(new URL('./tile-layout.css', import.meta.url).href),
-]);
+const styles = await loadStyle(import.meta.url);
 
 export class DaLandingTiles extends LitElement {
   static properties = {
@@ -28,9 +25,8 @@ export class DaLandingTiles extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = styles;
+    this.shadowRoot.adoptedStyleSheets = [styles];
     this._unsubscribe = hashChange.subscribe((state) => this.setScope(state));
-    if (this.entries === undefined) this._loadContent();
   }
 
   disconnectedCallback() {
@@ -52,6 +48,7 @@ export class DaLandingTiles extends LitElement {
     const scope = state?.org && state?.site ? `${state.org}/${state.site}` : undefined;
     if (scope !== this._scope) this._createDialog = undefined;
     this._scope = scope;
+    if (scope && this.entries === undefined) this._loadContent();
   }
 
   async _onCreatePage() {
@@ -128,6 +125,7 @@ export class DaLandingTiles extends LitElement {
   }
 
   render() {
+    if (!this._scope) return nothing;
     return html`<div class="tile-group">
       ${this.entries ? this.renderQuickLinks() : nothing}
       ${this.entries === undefined && !this._contentError ? html`

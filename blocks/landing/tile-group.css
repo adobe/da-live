@@ -1,6 +1,6 @@
 :host {
   display: block;
-  contain: inline-size;
+  container-type: inline-size;
   color: var(--s2-gray-800);
   font-family: var(--s2-font-family);
   font-size: var(--nx-ui-text-content, var(--s2-component-m-regular-font-size));
@@ -13,14 +13,32 @@
 
 .tile-group {
   display: flow-root;
-  container-type: inline-size;
   max-width: 1116px;
   margin-inline: auto;
   padding: var(--s2-spacing-400) var(--s2-spacing-400) var(--s2-spacing-800);
 }
 
+.landing-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--s2-spacing-200);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.landing-tiles > li {
+  flex: 0 0 calc((100% - 2 * var(--s2-spacing-200)) / 3);
+  min-width: 0;
+}
+
 @container (width < 600px) {
   .tile-group {
     padding: var(--s2-spacing-300) var(--s2-spacing-300) var(--s2-spacing-600);
+  }
+
+  .landing-tiles > li {
+    flex-basis: 100%;
   }
 }
