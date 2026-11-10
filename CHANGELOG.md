@@ -1,3 +1,10 @@
+## [1.22.1](https://github.com/adobe/da-live/compare/v1.22.0...v1.22.1) (2026-11-10)
+
+
+### Bug Fixes
+
+* **sheet:** expose sheet cells to screen readers ([#1684](https://github.com/adobe/da-live/issues/1684)) ([1211e53](https://github.com/adobe/da-live/commit/1211e537f86d3a312242a0fc0f4268e89019feac)), closes [#1537](https://github.com/adobe/da-live/issues/1537)
+
 # [1.22.0](https://github.com/adobe/da-live/compare/v1.21.5...v1.22.0) (2026-11-10)
 
 
