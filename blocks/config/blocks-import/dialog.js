@@ -269,7 +269,7 @@ class DaConfigBlocksImport extends LitElement {
 
   render() {
     return html`
-      <nx-dialog class="config-row-dialog" title="Import blocks"
+      <nx-dialog class="config-row-dialog" title="Import blocks" ?busy=${this._step === 'busy'}
         @close=${() => (this._step === 'done' ? this._emit('import-done') : this._emit('import-close'))}>
         <div class="config-row-form">
           ${this._renderBody()}
