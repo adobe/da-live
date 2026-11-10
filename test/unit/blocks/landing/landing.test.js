@@ -3,10 +3,11 @@ import sinon from 'sinon';
 import '../../setup-nx.js';
 import { getFavorites, toggleFavorite } from '../../../../blocks/browse/shared/favorites.js';
 import { DaLanding } from '../../../../blocks/landing/landing.js';
-import { getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
+import { getNx2, getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
 
 const { source, config } = await getNx2Api();
 const { setEWEnabled } = await getNxEWFlags();
+const { parseSubdomain } = await import(`${getNx2()}/blocks/siteselector/site-utils.js`);
 const ITEMS = Array.from({ length: 24 }, (_, index) => ({ name: `Page ${index}`, path: `/org/site/page-${index}.html`, ext: 'html', lastModified: 24 - index }));
 
 const setRecent = (recent) => localStorage.setItem('da-recent-files', JSON.stringify(recent));
@@ -15,6 +16,7 @@ describe('landing Content section', () => {
   let el;
   let loadSite;
   let metadata;
+  let originalIms;
 
   const fileList = () => el.shadowRoot.querySelector('da-list');
   const fileItems = () => fileList()?.shadowRoot.querySelectorAll('da-file-item') ?? [];
@@ -26,6 +28,12 @@ describe('landing Content section', () => {
   }
 
   beforeEach(async () => {
+    originalIms = window.adobeIMS;
+    window.adobeIMS = {
+      isSignedInUser: sinon.stub().returns(false),
+      getProfile: sinon.stub().resolves({ first_name: 'John' }),
+    };
+    parseSubdomain.reset();
     ['da-favorites', 'da-browse-settings', 'da-sites', 'da-recent-files'].forEach((key) => localStorage.removeItem(key));
     loadSite = sinon.stub(DaLanding.prototype, 'loadSite').callsFake(async function loadSiteForTest() {
       this._request?.abort();
@@ -47,6 +55,7 @@ describe('landing Content section', () => {
 
   afterEach(() => {
     el.remove();
+    window.adobeIMS = originalIms;
     sinon.restore();
     setEWEnabled(false);
     ['da-favorites', 'da-browse-settings', 'da-sites', 'da-recent-files'].forEach((key) => localStorage.removeItem(key));
@@ -279,29 +288,114 @@ describe('landing Content section', () => {
     expect(loadSite.callCount).to.equal(2);
   });
 
-  it('prompts unselected users to choose or add a site through navigation', async () => {
+  it('shows Landing onboarding instead of Content until a site is selected', async () => {
     el.setScope(undefined);
     await updateLanding();
     expect(el.path).to.equal('');
-    expect(el.shadowRoot.querySelector('.empty-state h3').textContent).to.equal('Choose a site to get started');
-    expect(el.shadowRoot.querySelector('.empty-state p').textContent).to.equal('Select a site from "Your recent sites" or add a site.');
-    expect(el.shadowRoot.querySelector('.add-site').textContent.trim()).to.equal('Add site');
+    expect(el.shadowRoot.querySelector('.welcome')).not.to.equal(null);
+    expect(el.shadowRoot.querySelector('#welcome-heading').textContent).to.equal('Welcome to Experience Workspace');
+    expect(window.adobeIMS.getProfile.called).to.equal(false);
+    expect(el.shadowRoot.querySelector('.files-panel')).to.equal(null);
+    expect(el.shadowRoot.querySelector('input[name="siteUrl"]')).not.to.equal(null);
+    expect(new URL(el.shadowRoot.querySelector('.welcome a').href).pathname).to.equal('/start');
+    expect(el.shadowRoot.querySelector('.welcome a').textContent).to.equal('Create a new site \u2192');
+    expect(el.shadowRoot.querySelector('.welcome a').parentElement.textContent).to.contain("Don't have a project yet?");
+    document.dispatchEvent(new CustomEvent('site-select', { detail: { value: 'another/site' } }));
+    await updateLanding();
+    expect(el.shadowRoot.querySelector('.welcome')).to.equal(null);
+    expect(el.shadowRoot.querySelector('.files-panel')).not.to.equal(null);
   });
 
-  it('delegates Add site to the existing navigation command without owning a dialog', async () => {
-    localStorage.setItem('da-sites', JSON.stringify(['org/site']));
+  it('focuses the welcome input on startup and requires a value before enabling Add site', async () => {
+    el.remove();
+    el = document.createElement('da-landing');
+    document.body.append(el);
+    await updateLanding();
+    const input = el.shadowRoot.querySelector('input');
+    const button = el.shadowRoot.querySelector('button[type="submit"]');
+    expect(el.shadowRoot.activeElement).to.equal(input);
+    expect(button.disabled).to.equal(true);
+    input.value = 'https://github.com/org/site';
+    input.dispatchEvent(new Event('input'));
+    await updateLanding();
+    expect(button.disabled).to.equal(false);
+    input.value = '';
+    input.dispatchEvent(new Event('input'));
+    await updateLanding();
+    expect(button.disabled).to.equal(true);
+  });
+
+  it('personalizes the welcome heading with the signed-in first name', async () => {
+    el.remove();
+    window.adobeIMS.isSignedInUser.returns(true);
+    const loadProfile = sinon.spy(DaLanding.prototype, 'loadProfile');
+    el = document.createElement('da-landing');
+    document.body.append(el);
+    await loadProfile.firstCall.returnValue;
+    await updateLanding();
+    expect(el.shadowRoot.querySelector('#welcome-heading').textContent).to.equal('Welcome to Experience Workspace, John');
+    expect(el.shadowRoot.querySelector('form').contains(el.shadowRoot.querySelector('#welcome-heading'))).to.equal(false);
+    expect(el.shadowRoot.querySelector('#site-hint').textContent).to.equal('Enter its GitHub repository URL to add your site.');
+  });
+
+  it('keeps onboarding usable when the signed-in profile cannot be loaded', async () => {
+    el.remove();
+    window.adobeIMS.isSignedInUser.returns(true);
+    window.adobeIMS.getProfile.rejects(new Error('Profile unavailable'));
+    const loadProfile = sinon.spy(DaLanding.prototype, 'loadProfile');
+    el = document.createElement('da-landing');
+    document.body.append(el);
+    await loadProfile.firstCall.returnValue;
+    await updateLanding();
+    expect(el.shadowRoot.querySelector('#welcome-heading').textContent).to.equal('Welcome to Experience Workspace');
+    expect(el.shadowRoot.querySelector('form')).not.to.equal(null);
+  });
+
+  ['github', 'aem'].forEach((kind) => {
+    it(`opens an added ${kind} site in Browse without needing the nav dialog`, async () => {
+      el.setScope(undefined);
+      await updateLanding();
+      const openSite = sinon.stub(el, 'openSite');
+      const siteUrl = kind === 'github'
+        ? 'https://github.com/Selected/Site'
+        : 'https://main--site--selected.aem.page/';
+      parseSubdomain.withArgs(siteUrl).returns('#/selected/site');
+      el.shadowRoot.querySelector('input').value = siteUrl;
+      el.shadowRoot.querySelector('input').dispatchEvent(new Event('input'));
+      await updateLanding();
+      el.shadowRoot.querySelector('button[type="submit"]').click();
+      expect(openSite.calledOnce).to.equal(true);
+      const url = new URL(openSite.firstCall.args[0]);
+      expect(url.hash).to.equal('#/selected/site');
+      expect(url.searchParams.get('browse')).to.equal('2');
+      expect(url.origin).to.equal(window.location.origin);
+      expect(parseSubdomain.called).to.equal(kind === 'aem');
+      expect(document.querySelector('nx-add-site')).to.equal(null);
+    });
+  });
+
+  it('keeps invalid sites on the welcome form and clears the error when corrected', async () => {
     el.setScope(undefined);
     await updateLanding();
-    const addSite = sinon.spy();
-    document.addEventListener('site-add', addSite);
-    try {
-      el.shadowRoot.querySelector('.add-site').click();
-      expect(addSite.calledOnce).to.equal(true);
-      expect(addSite.firstCall.args[0].target).to.equal(el);
-      expect(document.querySelector('nx-add-site')).to.equal(null);
-    } finally {
-      document.removeEventListener('site-add', addSite);
+    const openSite = sinon.stub(el, 'openSite');
+    const input = el.shadowRoot.querySelector('input');
+    const form = el.shadowRoot.querySelector('form');
+    for (const value of ['https://github.com/owner', 'https://example.com/org/site']) {
+      input.value = value;
+      form.requestSubmit();
+      await updateLanding();
+      expect(el.shadowRoot.querySelector('[role="alert"]').textContent).to.contain('Enter a GitHub repository URL');
+      expect(input.getAttribute('aria-invalid')).to.equal('true');
     }
+    expect(openSite.called).to.equal(false);
+    expect(el.shadowRoot.querySelector('.files-panel')).to.equal(null);
+    input.value = 'https://github.com/owner/site';
+    input.dispatchEvent(new Event('input'));
+    await updateLanding();
+    expect(el.shadowRoot.querySelector('[role="alert"]')).to.equal(null);
+    expect(input.hasAttribute('aria-invalid')).to.equal(false);
+    form.requestSubmit();
+    expect(openSite.calledOnce).to.equal(true);
   });
 
   it('stops reacting to nav selection and cached restore after removal', () => {

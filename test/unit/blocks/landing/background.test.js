@@ -20,13 +20,13 @@ describe('landing background with Content', () => {
     container.remove();
   });
 
-  it('replaces authored content with Content inside a landing surface', async () => {
+  it('replaces authored content with Landing inside a landing surface', async () => {
     const content = init(el);
     await content.updateComplete;
     expect(el.children.length).to.equal(1);
     expect(el.firstElementChild.className).to.equal('landing');
     expect(el.firstElementChild.firstElementChild).to.equal(content);
-    expect(content.shadowRoot.querySelector('#files-heading').textContent).to.equal('Content');
+    expect(content.shadowRoot.querySelector('#welcome-heading').textContent).to.equal('Welcome to Experience Workspace');
     expect(el.querySelector('img, picture')).to.equal(null);
   });
 

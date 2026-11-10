@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
+import { getNx, getNx2, getNx2Api, getNxEWFlags, sanitizePathParts } from '../../scripts/utils.js';
 import { fetchDaConfigs, getEditorConfigs } from '../shared/utils.js';
 import { getSiteFavorites, toggleFavorite } from '../browse/shared/favorites.js';
 import { getBrowseSettings, updateBrowseSettings } from '../browse/v2/shared/settings.js';
@@ -8,10 +8,12 @@ import { getBrowseHref, getListItems, loadFilesByPath } from './utils.js';
 import '../browse/v2/da-list/da-list.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { parseSubdomain, getCreateSiteHref } = await import(`${getNx2()}/blocks/siteselector/site-utils.js`);
 await import(`${getNx()}/blocks/shared/segmented-btn/segmented.js`);
 const background = await loadStyle(import.meta.url);
 const styles = await Promise.all([
   loadStyle(`${getNx2()}/styles/buttons.css`),
+  loadStyle(`${getNx2()}/styles/form.css`),
   loadStyle(`${getNx2()}/styles/spinner.css`),
   loadStyle(new URL('./landing-content.css', import.meta.url).href),
 ]);
@@ -34,6 +36,9 @@ export class DaLanding extends LitElement {
     _favoriteFiles: { state: true },
     _error: { state: true },
     _actionError: { state: true },
+    _siteError: { state: true },
+    _siteUrl: { state: true },
+    _firstName: { state: true },
     _favorites: { state: true },
     _tab: { state: true },
     _view: { state: true },
@@ -70,6 +75,7 @@ export class DaLanding extends LitElement {
       ?.querySelector('nx-siteselector')?.value;
     if (value && value !== this._scope) this._onSiteSelect({ detail: { value } });
     else if (this._scope) this.loadSite();
+    this.loadProfile();
   }
 
   disconnectedCallback() {
@@ -77,6 +83,10 @@ export class DaLanding extends LitElement {
     window.removeEventListener('pageshow', this._onPageShow);
     document.removeEventListener('site-select', this._onSiteSelect);
     super.disconnectedCallback();
+  }
+
+  firstUpdated() {
+    this.shadowRoot.querySelector('#site-url')?.focus();
   }
 
   get path() {
@@ -88,6 +98,12 @@ export class DaLanding extends LitElement {
       && (!this._files || (this._tab === 'starred' && !this._favoriteFiles));
   }
 
+  async loadProfile() {
+    const profile = window.adobeIMS?.isSignedInUser()
+      ? await window.adobeIMS.getProfile().catch(() => undefined) : undefined;
+    if (this.isConnected) this._firstName = profile?.first_name?.trim();
+  }
+
   async setScope(state) {
     const scope = state?.org && state?.site ? `${state.org}/${state.site}` : undefined;
     if (this._scope === scope && this._request && !this._request.signal.aborted) return;
@@ -95,6 +111,8 @@ export class DaLanding extends LitElement {
     this._tab = 'recent';
     this._limit = PAGE_SIZE;
     this._actionError = undefined;
+    this._siteError = undefined;
+    this._siteUrl = '';
     this.refreshFavorites();
     await this.loadSite();
   }
@@ -152,8 +170,56 @@ export class DaLanding extends LitElement {
     }
   }
 
-  _onAddSite() {
-    this.dispatchEvent(new CustomEvent('site-add', { bubbles: true, composed: true }));
+  _onAddSite(event) {
+    event.preventDefault();
+    const siteUrl = new FormData(event.currentTarget).get('siteUrl').trim();
+    let path;
+    try {
+      const { origin, pathname } = new URL(siteUrl);
+      if (origin === 'https://github.com') {
+        const [org, site] = sanitizePathParts(pathname);
+        if (org && site) path = `/${org}/${site}`;
+      } else {
+        path = parseSubdomain(siteUrl)?.slice(1);
+      }
+    } catch {
+      // Invalid URLs remain on the welcome form.
+    }
+    if (!path) {
+      this._siteError = 'Enter a GitHub repository URL or an existing AEM site URL.';
+      return;
+    }
+    this.openSite(getBrowseHref({ path }));
+  }
+
+  openSite(href) {
+    window.location.href = href;
+  }
+
+  renderWelcome() {
+    return html`<section class="welcome" aria-labelledby="welcome-heading">
+      <h2 id="welcome-heading">Welcome to Experience Workspace${this._firstName ? `, ${this._firstName}` : ''}</h2>
+      <p>Add a site to get started.</p>
+      <form class="nx-form-field ${this._siteError ? 'nx-field-error' : ''}" @submit=${this._onAddSite}>
+        <label for="site-url">Already have an EDS project?</label>
+        <p id="site-hint">Enter its GitHub repository URL to add your site.</p>
+        <div class="site-entry">
+          <input class="nx-input" id="site-url" name="siteUrl" type="url" required
+            .value=${this._siteUrl || ''}
+            autocomplete="url" placeholder="https://github.com/your-org/your-site"
+            aria-describedby=${this._siteError ? 'site-hint site-error' : 'site-hint'}
+            aria-invalid=${this._siteError ? 'true' : nothing}
+            @input=${({ target }) => {
+        this._siteUrl = target.value;
+        this._siteError = undefined;
+      }}>
+          <button type="submit" class="nx-btn-accent"
+            ?disabled=${!this._siteUrl?.trim()}>Add site</button>
+        </div>
+        ${this._siteError ? html`<p id="site-error" class="nx-input-error-msg" role="alert">${this._siteError}</p>` : nothing}
+      </form>
+      <p class="newsite">Don't have a project yet? <a href=${getCreateSiteHref()}>Create a new site</a></p>
+    </section>`;
   }
 
   starFile(item) {
@@ -186,14 +252,6 @@ export class DaLanding extends LitElement {
   }
 
   renderFiles() {
-    if (!this._scope) {
-      return html`<div class="empty-state">${icon('folder')}
-        <h3>Choose a site to get started</h3>
-        <p>Select a site from "Your recent sites" or add a site.</p>
-        <button type="button" class="add-site nx-btn-accent"
-          @click=${this._onAddSite}>Add site ${icon('add')}</button>
-      </div>`;
-    }
     if (this._error) {
       return html`<div class="empty-state"><p role="alert">${this._error}</p>
         <button class="nx-action-btn" @click=${this.loadSite}>Try again</button></div>`;
@@ -210,22 +268,23 @@ export class DaLanding extends LitElement {
       <div class="file-list" role="grid" aria-label=${this._tab === 'starred' ? 'Favorite files' : 'Recent files'}
         tabindex=${this._view === 'list' ? 0 : nothing}>
         <da-list .listItems=${getListItems({
-    files: files.slice(0, this._tab === 'starred' ? PAGE_SIZE : this._limit),
-    favorites: this._favorites,
-    editor: this._editor || '/edit#',
-    editorConfs: this._editorConfs,
-  })} .view=${this._view}
+      files: files.slice(0, this._tab === 'starred' ? PAGE_SIZE : this._limit),
+      favorites: this._favorites,
+      editor: this._editor || '/edit#',
+      editorConfs: this._editorConfs,
+    })} .view=${this._view}
           .showFolder=${true} .sort=${false}
           size=${this._view === 'card' ? 's' : 'm'}
           @favoritechange=${({ detail: { item } }) => this.starFile(item)}></da-list>
       </div>
       ${this._tab !== 'starred' && this._limit < MAX_FILES && files.length > this._limit
-    ? html`<button class="show-more nx-action-btn-quiet" @click=${() => {
-      this._limit = MAX_FILES;
-    }}>Show more files</button>` : nothing}`;
+        ? html`<button class="show-more nx-action-btn-quiet" @click=${() => {
+          this._limit = MAX_FILES;
+        }}>Show more files</button>` : nothing}`;
   }
 
   render() {
+    if (!this._scope) return html`<div class="landing">${this.renderWelcome()}</div>`;
     return html`<div class="landing">
       <section class="files-panel" data-view=${this._view} aria-labelledby="files-heading">
         <div class="panel-heading">
