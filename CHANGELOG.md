@@ -1,3 +1,10 @@
+# [1.24.0](https://github.com/adobe/da-live/compare/v1.23.0...v1.24.0) (2026-11-10)
+
+
+### Features
+
+* **canvas:** support editable link-images ([#1342](https://github.com/adobe/da-live/issues/1342)) ([7979691](https://github.com/adobe/da-live/commit/797969182faccc253f1adbcaaf9a751060bb6f56))
+
 # [1.23.0](https://github.com/adobe/da-live/compare/v1.22.2...v1.23.0) (2026-11-10)
 
 
