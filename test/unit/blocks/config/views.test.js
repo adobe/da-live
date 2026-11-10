@@ -1,8 +1,8 @@
 import { expect } from '@esm-bundle/chai';
 import { render, nothing } from 'da-lit';
 import {
-  renderOrgForm, renderHeader, renderLoadStatus, renderTabs, renderIntro, renderSetup,
-  renderParts, renderSaveBar, renderConfirm, renderImportButton, renderImportDialog,
+  renderOrgForm, renderHeader, renderLoadStatus, renderTabs, renderPanelHeading, renderIntro,
+  renderSetup, renderParts, renderSaveBar, renderConfirm, renderImportButton, renderImportDialog,
 } from '../../../../blocks/config/da-config/views.js';
 
 // Renders into a detached container; assertions use strings and booleans only.
@@ -65,14 +65,6 @@ describe('config views', () => {
       expect(single.querySelector('.config-tabs-space').getAttribute('aria-hidden')).to.equal('true');
     });
 
-    it('opens the shown section sheet from the tab area, keeping its place while there is none', () => {
-      const selection = { tab: one, section: one.sections[0] };
-      const link = mount(renderTabs([one, two], selection, handlers, '/sheet#/o/s/x')).querySelector('.config-sheet-link');
-      expect([link.tagName, link.textContent.trim(), link.getAttribute('href'), link.target]).to.deep.equal(['A', 'Open sheet', '/sheet#/o/s/x', '_blank']);
-      const space = mount(renderTabs([one, two], selection, handlers, null)).querySelector('.config-sheet-link');
-      expect([space.tagName, space.getAttribute('aria-hidden'), space.textContent]).to.deep.equal(['SPAN', 'true', '']);
-    });
-
     it('reports tab changes', () => {
       const seen = [];
       const el = mount(renderTabs([one, two], { tab: two, section: two.sections[0] }, {
@@ -83,6 +75,14 @@ describe('config views', () => {
       el.querySelector('.config-tabs-secondary').dispatchEvent(new CustomEvent('change'));
       expect(seen).to.deep.equal(['primary', 'section']);
     });
+  });
+
+  it('titles a section with its sheet on the right, when it has one', () => {
+    const heading = mount(renderPanelHeading('Templates', '/sheet#/o/s/x'));
+    const link = heading.querySelector('.config-panel-heading a.config-sheet-link');
+    expect([heading.querySelector('h3').textContent, link.textContent.trim(), link.getAttribute('href'), link.target])
+      .to.deep.equal(['Templates', 'Open sheet', '/sheet#/o/s/x', '_blank']);
+    expect(!!mount(renderPanelHeading('Templates', null)).querySelector('.config-sheet-link')).to.equal(false);
   });
 
   it('introduces a panel with inheritance, docs and read-only notes', () => {

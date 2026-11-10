@@ -1087,7 +1087,7 @@ describe('da-config', () => {
 
     it('reads the site translate sheet and saves settings into its config tab', async () => {
       const puts = await open('tr1', (o, s, path) => (path === '/.da/translate.json' ? TRANSLATE : status(404)()));
-      const link = q('.config-tabs a.config-sheet-link');
+      const link = q('.config-panel-heading a.config-sheet-link');
       expect([link.textContent.trim(), link.getAttribute('href')]).to.deep.equal(['Open sheet', '/sheet#/tr1/alpha/.da/translate']);
       expect(q('[id="config-translation.service.name"]').value).to.equal('Smartling');
       el._onEdit('source.language', 'English');
