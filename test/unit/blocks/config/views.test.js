@@ -65,6 +65,13 @@ describe('config views', () => {
       expect(single.querySelector('.config-tabs-space').getAttribute('aria-hidden')).to.equal('true');
     });
 
+    it('opens the shown section sheet from the tab area, when it has one', () => {
+      const selection = { tab: one, section: one.sections[0] };
+      const link = mount(renderTabs([one, two], selection, handlers, '/sheet#/o/s/x')).querySelector('.config-sheet-link');
+      expect([link.textContent.trim(), link.getAttribute('href'), link.target]).to.deep.equal(['Open sheet', '/sheet#/o/s/x', '_blank']);
+      expect(!!mount(renderTabs([one, two], selection, handlers, null)).querySelector('.config-sheet-link')).to.equal(false);
+    });
+
     it('reports tab changes', () => {
       const seen = [];
       const el = mount(renderTabs([one, two], { tab: two, section: two.sections[0] }, {
@@ -80,11 +87,11 @@ describe('config views', () => {
   it('introduces a panel with inheritance, docs and read-only notes', () => {
     const panel = { description: 'About.' };
     const docs = 'https://www.aem.live/docs/x';
-    const el = mount(renderIntro(panel, { docs, sheet: '/config#/o/', inheritance: 'Sites inherit.', readOnly: true }));
+    const el = mount(renderIntro(panel, { docs, inheritance: 'Sites inherit.', readOnly: true }));
     const lines = [...el.querySelectorAll('.config-info[role="note"] p')].map((p) => p.textContent.replace(/\s+/g, ' ').trim());
     expect(lines).to.deep.equal(['About. Sites inherit.', 'You have read-only access to this configuration.']);
     const links = [...el.querySelectorAll('.config-info-links a')].map((a) => [a.textContent.trim(), a.getAttribute('href')]);
-    expect(links).to.deep.equal([['Open sheet', '/config#/o/'], ['Learn more', docs]]);
+    expect(links).to.deep.equal([['Learn more', docs]]);
     const plain = mount(renderIntro(panel, { docs, inheritance: '', readOnly: false }));
     expect(text(plain).includes('read-only')).to.equal(false);
   });
