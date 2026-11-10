@@ -481,7 +481,6 @@ class DaConfig extends LitElement {
       docs: ctx.section.docs,
       sheet: sheetUrl(ctx.store, { org, site, located: this._file }),
       inheritance: inheritanceText(ctx, this._atSite),
-      setupUrl: this._atSite ? this._setupUrl : null,
       readOnly: this._readOnly,
     });
   }

@@ -85,16 +85,10 @@ const infoLink = (href, label) => html`
   </a>`;
 
 // What the section is for, kept apart from the editor like the permissions note.
-export function renderIntro(panel, {
-  docs, sheet, inheritance, setupUrl, readOnly, notes = nothing,
-}) {
-  const { setup } = panel;
+export function renderIntro(panel, { docs, sheet, inheritance, readOnly, notes = nothing }) {
   return html`
     <div class="config-info" role="note">
       <p>${panel.description} ${inheritance}</p>
-      ${setupUrl ? html`
-        <p>${setup.rerun.text} <a href=${setupUrl} target="_blank" rel="noopener">${setup.rerun.action}</a></p>`
-    : nothing}
       ${notes}
       ${readOnly ? html`<p>${SHELL.readOnly}</p>` : nothing}
       <div class="config-info-links">
