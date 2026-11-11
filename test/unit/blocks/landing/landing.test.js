@@ -304,10 +304,12 @@ describe('landing Content section', () => {
     expect(el.shadowRoot.querySelector('.files-panel, form')).to.equal(null);
   });
 
-  it('offers an explicit retry when IMS fails without starting a sign-in loop', async () => {
+  it('reloads after a cached IMS failure instead of retrying the rejected initialization', async () => {
     el.remove();
     loadSite.resetHistory();
-    loadIms.rejects(new Error('IMS unavailable'));
+    loadIms.resetHistory();
+    loadIms.returns(Promise.reject(new Error('IMS unavailable')));
+    const reload = sinon.stub(DaLanding.prototype, 'reloadPage');
     el = document.createElement('da-landing');
     document.body.append(el);
     await initialize.lastCall.returnValue;
@@ -315,13 +317,13 @@ describe('landing Content section', () => {
     expect(el.shadowRoot.querySelector('[role="alert"]').textContent).to.contain('Could not sign in');
     expect(loadSite.called).to.equal(false);
     expect(handleSignIn.called).to.equal(false);
-    loadIms.resolves({ accessToken: { token: 'test-token' } });
+    expect(loadIms.calledOnce).to.equal(true);
     el.shadowRoot.querySelector('button').click();
-    await initialize.lastCall.returnValue;
     await updateLanding();
-    expect(el.shadowRoot.querySelector('[role="alert"]')).to.equal(null);
-    expect(el.shadowRoot.querySelector('.files-panel')).not.to.equal(null);
-    expect(loadSite.calledOnce).to.equal(true);
+    expect(reload.calledOnce).to.equal(true);
+    expect(loadIms.calledOnce).to.equal(true);
+    expect(loadSite.called).to.equal(false);
+    expect(el.shadowRoot.querySelector('.files-panel')).to.equal(null);
     expect(handleSignIn.called).to.equal(false);
   });
 

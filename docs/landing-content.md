@@ -14,8 +14,9 @@ shared picker (adobe/da-nx#947).
 On entry, Content reads `da-sites` and uses the first valid option
 from da-nx's shared `getSiteOptions`, matching the navigation selector's default.
 The gradient remains visible while authentication settles, without flashing
-onboarding or Content. An authentication initialization failure offers an explicit
-retry rather than repeatedly starting sign-in. Unreadable history redirects to Start.
+onboarding or Content. An authentication initialization failure offers a page reload
+to reset the shared cached IMS promise rather than retrying it in place.
+Unreadable history redirects to Start.
 Content listens for the existing bubbling `site-select` event for subsequent
 changes, without changing the root URL. It does not inspect navigation's shadow
 DOM, load or mount the selector, or modify LP.
@@ -26,8 +27,8 @@ The no-recent-files and no-favorites states remain available for a selected site
 Content mounts inside the gradient landing surface already provided by main.
 `landing.css` retains that page background and inherits the application theme,
 without landing-specific theme overrides.
-`browse.js` loads `landing.css` and adds the empty `.landing` surface before the
-section is shown, so slow loads paint the gradient instead of the authored images.
+`browse.js` loads `landing.css` before creating the empty `.landing` surface
+and mounting Content. It does not hold the section hidden while those styles load.
 `landing-content.css` contains only the Content component's shadow styles.
 The panel uses an opaque `--s2-gray-25` surface: white in light mode and dark
 in dark mode, with the gradient visible only outside the panel.

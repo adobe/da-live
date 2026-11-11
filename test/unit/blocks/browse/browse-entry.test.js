@@ -117,28 +117,6 @@ describe('Browse Content opt-in', () => {
     }
   });
 
-  it('waits for the landing gradient surface before the section is shown', async () => {
-    const { href } = window.location;
-    const el = document.createElement('div');
-    el.innerHTML = '<div><picture><img alt=""></picture></div>';
-    document.body.append(el);
-    try {
-      const url = new URL(href);
-      url.searchParams.set('landing', 'true');
-      url.hash = '';
-      window.history.replaceState(null, '', url);
-      hashChange._set(undefined);
-      const ready = init(el);
-      expect(ready).to.be.instanceOf(Promise);
-      await ready;
-      expect(el.querySelector('picture')).to.equal(null);
-      expect(el.firstElementChild.className).to.equal('landing');
-    } finally {
-      el.remove();
-      window.history.replaceState(null, '', href);
-    }
-  });
-
   it('hands Browse its path only after the Browse stylesheet is adopted', async () => {
     const { href } = window.location;
     const el = document.createElement('div');
@@ -151,34 +129,36 @@ describe('Browse Content opt-in', () => {
     browse.render = () => '';
     let received;
     let adoptedAtUpdate;
+    let resolveDetails;
+    const detailsReady = new Promise((resolve) => { resolveDetails = resolve; });
     Object.defineProperty(browse, 'details', {
       configurable: true,
       set(details) {
         received = details;
         adoptedAtUpdate = document.adoptedStyleSheets.includes(browseSheet);
+        resolveDetails();
       },
     });
     el.append(browse);
     document.body.append(el);
-    let ready;
     try {
       const url = new URL(href);
       url.searchParams.delete('landing');
       url.hash = '/org';
       window.history.replaceState(null, '', url);
       hashChange._set({ org: 'org' });
-      ready = init(el);
+      init(el);
       await new Promise((resolve) => { setTimeout(resolve); });
       expect(received).to.equal(undefined);
       expect(document.adoptedStyleSheets.includes(browseSheet)).to.equal(false);
       adoptBrowseSheet(browseSheet);
-      await ready;
+      await detailsReady;
       expect(received).to.deep.equal({ org: 'org' });
       expect(adoptedAtUpdate).to.equal(true);
     } finally {
-      // Settle the held stylesheet so init never stays parked if an assertion failed early.
+      // Settle pending component setup before removing the stylesheet.
       adoptBrowseSheet(browseSheet);
-      await ready;
+      await detailsReady;
       loadStyle._set(browseHref);
       document.adoptedStyleSheets = document.adoptedStyleSheets
         .filter((sheet) => sheet !== browseSheet);

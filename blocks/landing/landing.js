@@ -94,7 +94,7 @@ export class DaLanding extends LitElement {
         return;
       }
     } catch {
-      if (this.isConnected) this._authError = 'Could not sign in. Please try again.';
+      if (this.isConnected) this._authError = 'Could not sign in. Please reload the page to try again.';
       return;
     }
 
@@ -108,6 +108,10 @@ export class DaLanding extends LitElement {
 
   redirectToStart() {
     window.location.replace(getCreateSiteHref());
+  }
+
+  reloadPage() {
+    window.location.reload();
   }
 
   disconnectedCallback() {
@@ -256,7 +260,7 @@ export class DaLanding extends LitElement {
     if (this._authError) {
       return html`<div class="landing"><div class="empty-state">
         <p role="alert">${this._authError}</p>
-        <button class="nx-action-btn" @click=${this.initialize}>Try again</button>
+        <button class="nx-action-btn" @click=${this.reloadPage}>Reload page</button>
       </div></div>`;
     }
     if (!this._ready || !this._scope) return nothing;

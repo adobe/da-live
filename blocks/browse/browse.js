@@ -69,18 +69,13 @@ function setRecentSite(details) {
 }
 
 export default function init(el) {
-  let firstSurface;
   hashChange.subscribe((pathDetails) => {
     const cmpName = getBrowseComponent({ search: window.location.search, pathDetails });
     const surface = cmpName === 'da-landing' ? loadLandingSurface(el) : loadBrowseStyles();
-    firstSurface ??= surface;
     loadComponent(el, cmpName, pathDetails, surface);
     if (pathDetails) setRecentSite(pathDetails);
   });
 
   // Lazily preload the editor
   setTimeout(() => { import('da-y-wrapper'); }, 3000);
-
-  // Keeps the section hidden until the background styles apply, so raw images never flash.
-  return firstSurface;
 }
