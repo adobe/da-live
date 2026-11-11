@@ -425,7 +425,8 @@ export const fetchDaConfigs = (() => {
 })();
 
 export const fetchPreviewOptions = (() => {
-  const configCache = {};
+  const inFlight = {};
+  const ttl = 15 * 60 * 1000;
 
   const fetchOptions = async (org, site) => {
     const url = `${AEM_API_ORIGIN}/${org}/sites/${site}/config.json`;
@@ -442,11 +443,28 @@ export const fetchPreviewOptions = (() => {
   return ({ org, site }) => {
     if (!org || !site) return Promise.resolve({ legacySectionMetadata: false });
     const path = `/${org}/${site}`;
-    configCache[path] ??= fetchOptions(org, site).catch(() => {
-      delete configCache[path];
-      return { legacySectionMetadata: false };
-    });
-    return configCache[path];
+    const key = `da-rendering-v2:${path}`;
+    try {
+      const cached = JSON.parse(localStorage.getItem(key));
+      if (typeof cached?.enabled === 'boolean'
+        && Number.isFinite(cached.expiresAt) && cached.expiresAt > Date.now()) {
+        return Promise.resolve({ legacySectionMetadata: !cached.enabled });
+      }
+    } catch { /* Invalid or unavailable storage must not block preview rendering. */ }
+
+    inFlight[path] ??= fetchOptions(org, site)
+      .then((options) => {
+        try {
+          localStorage.setItem(key, JSON.stringify({
+            enabled: !options.legacySectionMetadata,
+            expiresAt: Date.now() + ttl,
+          }));
+        } catch { /* Caching is optional when storage is unavailable or full. */ }
+        return options;
+      })
+      .catch(() => ({ legacySectionMetadata: false }))
+      .finally(() => { delete inFlight[path]; });
+    return inFlight[path];
   };
 })();
 

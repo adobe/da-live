@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
 import { setNx } from '../../../../scripts/utils.js';
 import { DA_ORIGIN } from '../../../../blocks/shared/constants.js';
 import {
@@ -752,15 +753,21 @@ describe('getSidekickConfig', () => {
 
 describe('fetchPreviewOptions', () => {
   let savedFetch;
+  let sandbox;
   let index = 0;
 
   beforeEach(() => {
     savedFetch = window.fetch;
+    sandbox = sinon.createSandbox();
     index += 1;
   });
 
   afterEach(() => {
+    sandbox.restore();
     window.fetch = savedFetch;
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith(`da-rendering-v2:/preview-options-${index}/`))
+      .forEach((key) => localStorage.removeItem(key));
   });
 
   const cases = [
@@ -835,6 +842,86 @@ describe('fetchPreviewOptions', () => {
     expect(await fetchPreviewOptions({ org, site: 'modern' }))
       .to.deep.equal({ legacySectionMetadata: false });
     expect(requested).to.have.lengthOf(2);
+    expect(JSON.parse(localStorage.getItem(`da-rendering-v2:/${org}/legacy`)).enabled)
+      .to.equal(false);
+    expect(JSON.parse(localStorage.getItem(`da-rendering-v2:/${org}/modern`)).enabled)
+      .to.equal(true);
+  });
+
+  [true, false].forEach((enabled) => {
+    it(`uses a persisted ${enabled} decision without an API request`, async () => {
+      const org = `preview-options-${index}`;
+      localStorage.setItem(`da-rendering-v2:/${org}/site`, JSON.stringify({
+        enabled,
+        expiresAt: Date.now() + 15 * 60 * 1000,
+      }));
+      const fetch = sandbox.stub(window, 'fetch').rejects(new Error('unexpected fetch'));
+      expect(await fetchPreviewOptions({ org, site: 'site' }))
+        .to.deep.equal({ legacySectionMetadata: !enabled });
+      expect(fetch.called).to.equal(false);
+    });
+
+    it(`refreshes a ${enabled} decision exactly when its 15-minute TTL expires`, async () => {
+      const org = `preview-options-${index}`;
+      const key = `da-rendering-v2:/${org}/site`;
+      const clock = sandbox.useFakeTimers({ now: Date.now(), toFake: ['Date'] });
+      const expiresAt = Date.now() + 15 * 60 * 1000;
+      let version = enabled ? 2 : 1;
+      const fetch = sandbox.stub(window, 'fetch').callsFake(async () => new Response(
+        JSON.stringify({ features: { rendering: { version } } }),
+      ));
+      expect(await fetchPreviewOptions({ org, site: 'site' }))
+        .to.deep.equal({ legacySectionMetadata: !enabled });
+      expect(JSON.parse(localStorage.getItem(key))).to.deep.equal({ enabled, expiresAt });
+      version = enabled ? 1 : 2;
+      clock.tick(15 * 60 * 1000 - 1);
+      expect(await fetchPreviewOptions({ org, site: 'site' }))
+        .to.deep.equal({ legacySectionMetadata: !enabled });
+      expect(fetch.callCount).to.equal(1);
+      clock.tick(1);
+      expect(await fetchPreviewOptions({ org, site: 'site' }))
+        .to.deep.equal({ legacySectionMetadata: enabled });
+      expect(fetch.callCount).to.equal(2);
+      expect(JSON.parse(localStorage.getItem(key))).to.deep.equal({
+        enabled: !enabled,
+        expiresAt: expiresAt + 15 * 60 * 1000,
+      });
+    });
+  });
+
+  ['invalid', 'null', '{"enabled":"false","expiresAt":9999999999999}', '{"enabled":true}']
+    .forEach((cached) => {
+      it(`refreshes an invalid cache entry: ${cached}`, async () => {
+        const org = `preview-options-${index}`;
+        const key = `da-rendering-v2:/${org}/site`;
+        localStorage.setItem(key, cached);
+        const fetch = sandbox.stub(window, 'fetch').resolves(new Response(
+          JSON.stringify({ features: { rendering: { version: 1 } } }),
+        ));
+        expect(await fetchPreviewOptions({ org, site: 'site' }))
+          .to.deep.equal({ legacySectionMetadata: true });
+        expect(fetch.callCount).to.equal(1);
+        expect(JSON.parse(localStorage.getItem(key)).enabled).to.equal(false);
+      });
+    });
+
+  it('still returns the API decision when cache reads and writes fail', async () => {
+    const org = `preview-options-${index}`;
+    const key = `da-rendering-v2:/${org}/site`;
+    const originalGet = Storage.prototype.getItem;
+    sandbox.stub(Storage.prototype, 'getItem').callsFake(function getItem(name) {
+      if (name === key) throw new Error('storage unavailable');
+      return originalGet.call(this, name);
+    });
+    sandbox.stub(Storage.prototype, 'setItem').throws(new Error('storage full'));
+    const fetch = sandbox.stub(window, 'fetch').callsFake(async () => new Response(
+      JSON.stringify({ features: { rendering: { version: 1 } } }),
+    ));
+    expect(await fetchPreviewOptions({ org, site: 'site' }))
+      .to.deep.equal({ legacySectionMetadata: true });
+    expect(await fetchPreviewOptions({ org, site: 'site' }))
+      .to.deep.equal({ legacySectionMetadata: true });
+    expect(fetch.callCount).to.equal(2);
   });
 
   ['unauthorized', 'offline', 'invalid JSON', 'missing site'].forEach((failure) => {
@@ -847,6 +934,7 @@ describe('fetchPreviewOptions', () => {
         return new Response('', { status: 401 });
       };
       expect(await fetchPreviewOptions(params)).to.deep.equal({ legacySectionMetadata: false });
+      expect(localStorage.getItem(`da-rendering-v2:/${params.org}/${params.site}`)).to.equal(null);
       window.fetch = async () => new Response(
         JSON.stringify({ features: { rendering: { version: 1 } } }),
       );

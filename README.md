@@ -49,15 +49,17 @@ See [TESTING.md](TESTING.md) for unit, end-to-end and CI details.
 ## Additional details
 ### Legacy section metadata in previews
 Canvas and live preview follow the HTML pipeline's rendering feature decision.
-They read `https://api.aem.live/<org>/sites/<site>/config.json` once:
+They use `https://api.aem.live/<org>/sites/<site>/config.json`:
 `features.rendering.version >= 2` enables section metadata extraction. If no version is set,
 the same configuration's `created` date enables extraction for sites created
 on or after May 1, 2026. Otherwise, the original `.section-metadata` blocks are
 preserved for client-side decoration.
 
-DA configuration flags are not used. Reload the editor after changing the AEM
-configuration. If the configuration cannot be loaded, previews keep the existing
-extraction behavior and later requests can retry.
+DA configuration flags are not used. Enabled and disabled rendering decisions are
+cached per org/site in local storage for 15 minutes, including across reloads.
+Once the cache expires, the next lookup refreshes it from the API. If the
+configuration cannot be loaded, previews keep the existing extraction behavior
+without caching the failure, so later requests can retry.
 
 This affects client-side preview serialization only, not da-universal's initial
 server-rendered HTML or standalone preview rendering.
