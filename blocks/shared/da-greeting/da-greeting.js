@@ -1,0 +1,57 @@
+import { LitElement, html, nothing, until } from 'da-lit';
+
+const FIRST_NAME = '[firstname]';
+
+export class DaGreeting extends LitElement {
+  static properties = {
+    rows: { attribute: false },
+    profile: { attribute: false },
+    variant: { type: String },
+  };
+
+  createRenderRoot() {
+    return this;
+  }
+
+  renderContent(content, firstName = 'User') {
+    if (!content.length) return nothing;
+    return html`${content.map(({ tag, text }) => {
+      const el = document.createElement(tag);
+      el.textContent = text.replaceAll(FIRST_NAME, () => firstName);
+      return el;
+    })}`;
+  }
+
+  render() {
+    const content = (this.rows ?? [])
+      .filter(({ type }) => type === undefined || type === this.variant)
+      .flatMap((row) => row.content);
+    const fallback = this.renderContent(content);
+    if (!content.some(({ text }) => text.includes(FIRST_NAME)) || !this.profile) {
+      return fallback;
+    }
+    const personalized = Promise.resolve(this.profile).then((profile) => {
+      const firstName = !profile?.anonymous && typeof profile?.first_name === 'string'
+        ? profile.first_name.trim() : '';
+      return firstName ? this.renderContent(content, firstName) : fallback;
+    }).catch(() => fallback);
+    return until(personalized, nothing);
+  }
+}
+
+customElements.define('da-greeting', DaGreeting);
+
+export default function init(el, { profile, variant } = {}) {
+  const greeting = document.createElement('da-greeting');
+  greeting.rows = [...el.children].map((row) => {
+    const [first, second] = row.children;
+    const content = [...(second ?? first).querySelectorAll('h1, h2, h3, h4, h5, h6, p')]
+      .map((node) => ({ tag: node.localName, text: node.textContent }));
+    return { type: second ? first.textContent.trim() : undefined, content };
+  });
+  greeting.profile = profile;
+  greeting.variant = variant;
+  greeting.className = el.className;
+  el.replaceWith(greeting);
+  return greeting;
+}
