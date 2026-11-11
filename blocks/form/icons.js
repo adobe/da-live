@@ -1,10 +1,12 @@
-import { nothing } from 'da-lit';
+import { html, nothing } from 'da-lit';
 import { getNx2 } from '../../scripts/utils.js';
 
 const { getConfig } = await import(`${getNx2()}/scripts/nx.js`);
 const { loadHrefSvg } = await import(`${getNx2()}/utils/svg.js`);
 
 const { codeBase } = getConfig();
+
+const iconUrl = (file) => `${codeBase}/img/icons/${file}.svg`;
 
 // Form icons, loaded once from the content-repository sprites via the nx2 svg
 // helper (same mechanism as schema-editor / media-library). Each file is a
@@ -28,7 +30,7 @@ const NODES = Object.fromEntries(
   (await Promise.all(
     Object.entries(FILES).map(async ([name, file]) => [
       name,
-      await loadHrefSvg(`${codeBase}/img/icons/${file}.svg`),
+      await loadHrefSvg(iconUrl(file)),
     ]),
   )).filter(([, svg]) => svg),
 );
@@ -41,3 +43,11 @@ export function icon(name, className) {
   if (className) node.setAttribute('class', className);
   return node;
 }
+
+/**
+ * Renders an S2 icon from its sprite, which the browser loads and caches.
+ * @param {string} name The name of the S2 icon, such as `tagbold`.
+ * @returns {import('da-lit').TemplateResult} The icon.
+ */
+export const spriteIcon = (name) => html`<svg aria-hidden="true" viewBox="0 0 20 20"><use
+  href="${iconUrl(`s2-icon-${name}-20-n`)}#icon"></use></svg>`;

@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx2 } from '../../../scripts/utils.js';
+import { spriteIcon } from '../icons.js';
 
 /**
  * A toolbar button. It is disabled while its command does not apply.
@@ -34,10 +35,7 @@ import { getNx2 } from '../../../scripts/utils.js';
  */
 
 const nx2 = getNx2();
-const [{ loadStyle }, { getConfig }] = await Promise.all([
-  import(`${nx2}/utils/utils.js`),
-  import(`${nx2}/scripts/nx.js`),
-]);
+const { loadStyle } = await import(`${nx2}/utils/utils.js`);
 
 const style = await loadStyle(import.meta.url);
 
@@ -63,14 +61,6 @@ const MODIFIER_LABEL = /Mac|iP(hone|[oa]d)/.test(navigator.platform) ? '⌘' : '
 const loadPicker = () => import(`${nx2}/blocks/shared/picker/picker.js`);
 
 const loadPopover = () => import(`${nx2}/blocks/shared/popover/popover.js`);
-
-/**
- * Renders an S2 icon from its sprite, which the browser loads and caches.
- * @param {string} name The name of the S2 icon.
- * @returns {import('da-lit').TemplateResult} The icon.
- */
-const renderIcon = (name) => html`<svg aria-hidden="true" viewBox="0 0 20 20"><use
-  href="${getConfig().codeBase}/img/icons/s2-icon-${name}-20-n.svg#icon"></use></svg>`;
 
 /**
  * Formats a part of a ProseMirror key name for this platform.
@@ -366,7 +356,7 @@ class FormRichTextToolbar extends LitElement {
         ?disabled=${this._isDisabled(tool)}
         @mousedown=${keepEditorFocus}
         @click=${() => this._requestCommand(tool.command)}
-      >${renderIcon(tool.icon)}</button>
+      >${spriteIcon(tool.icon)}</button>
     `;
   }
 
@@ -434,7 +424,7 @@ class FormRichTextToolbar extends LitElement {
         ?disabled=${this.disabled || !this.toolset}
         @mousedown=${keepEditorFocus}
         @click=${this._onMore}
-      >${renderIcon('more')}</button>
+      >${spriteIcon('more')}</button>
     `;
   }
 
