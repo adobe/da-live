@@ -20,7 +20,7 @@ class DaOnboarding extends LitElement {
     _siteUrl: { state: true },
     _error: { state: true },
     _loading: { state: true },
-    cards: { attribute: false },
+    _cards: { state: true },
   };
 
   connectedCallback() {
@@ -33,9 +33,18 @@ class DaOnboarding extends LitElement {
 
   async firstUpdated() {
     this.shadowRoot.querySelector('#site-url')?.focus();
+    this._loadCards();
     if (!this._siteUrl) return;
     await initIms();
     this._addSite();
+  }
+
+  async _loadCards() {
+    const [{ cards }] = await Promise.all([
+      loadCards(),
+      import(`${getNx2()}/blocks/shared/action-card/action-card.js`),
+    ]);
+    if (cards?.length) this._cards = cards;
   }
 
   _onInput({ target }) {
@@ -73,7 +82,7 @@ class DaOnboarding extends LitElement {
           <p>Choose a starting point to create your AEM site</p>
         </div>
         <div class="cards" role="list">
-          ${this.cards.map((card) => html`
+          ${this._cards.map((card) => html`
             <nx-action-card role="listitem"
               .heading=${card.heading}
               .description=${card.description}
@@ -104,7 +113,7 @@ class DaOnboarding extends LitElement {
             ${this._error ? html`<p id="site-error" class="nx-input-error-msg" role="alert">${this._error}</p>` : nothing}
           </form>
         </section>
-        ${this.cards?.length ? this._renderCards() : nothing}
+        ${this._cards ? this._renderCards() : nothing}
       </div>
     `;
   }
@@ -112,16 +121,10 @@ class DaOnboarding extends LitElement {
 
 customElements.define('da-onboarding', DaOnboarding);
 
-// Mounts once the cards are ready so the centered page does not shift when they arrive.
-export default async function init(el) {
+export default function init(el) {
   const { adoptedStyleSheets } = document;
   if (!adoptedStyleSheets.includes(landingStyles)) adoptedStyleSheets.push(landingStyles);
-  const [{ cards }] = await Promise.all([
-    loadCards(),
-    import(`${getNx2()}/blocks/shared/action-card/action-card.js`),
-  ]);
   const onboarding = document.createElement('da-onboarding');
   onboarding.className = 'landing';
-  onboarding.cards = cards;
   el.replaceChildren(onboarding);
 }

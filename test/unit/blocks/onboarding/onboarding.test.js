@@ -56,26 +56,23 @@ describe('da-onboarding', () => {
     parseSubdomain.reset();
   });
 
-  it('replaces the block content with the onboarding page on the landing surface', async () => {
+  it('replaces the block content with the onboarding page on the landing surface', () => {
     const sheetCount = document.adoptedStyleSheets.length;
     el = document.createElement('div');
     el.append(document.createElement('da-sites'));
-    await init(el);
-    await init(el);
+    init(el);
+    init(el);
     expect(el.children.length).to.equal(1);
     expect(el.firstElementChild.localName).to.equal('da-onboarding');
     expect(el.firstElementChild.classList.contains('landing')).to.be.true;
     expect(document.adoptedStyleSheets.length).to.equal(sheetCount + 1);
   });
 
-  it('mounts with the cards authored in the onboarding content', async () => {
-    const block = document.createElement('div');
-    document.body.append(block);
-    await init(block);
-    el = block;
-    const onboarding = block.querySelector('da-onboarding');
-    await onboarding.updateComplete;
-    const cards = [...onboarding.shadowRoot.querySelectorAll('.cards nx-action-card')]
+  it('renders the cards authored in the onboarding content', async () => {
+    await mount();
+    for (let i = 0; i < 20 && !el._cards; i += 1) await nextFrame();
+    await el.updateComplete;
+    const cards = [...el.shadowRoot.querySelectorAll('.cards nx-action-card')]
       .map((card) => ['heading', 'description', 'icon', 'tint', 'action']
         .reduce((data, key) => ({ ...data, [key]: card[key] }), {}));
     expect(cards).to.deep.equal([
