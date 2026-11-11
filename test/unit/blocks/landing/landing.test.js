@@ -150,15 +150,13 @@ describe('authored Landing composition', () => {
     const files = landing.querySelector('da-recent-files');
     const tiles = landing.querySelector('da-landing-tiles');
     await tiles.updateComplete;
-    let browse = tiles.shadowRoot.querySelector('da-landing-tile');
-    await browse.updateComplete;
+    let browse = tiles.shadowRoot.querySelector('.tile');
     expect(files.path).to.equal('/selected/site');
     expect(new URL(browse.href).hash).to.equal('#/selected/site');
     expect(getSiteOptions.calledWithExactly({ recentSites })).to.equal(true);
     document.dispatchEvent(new CustomEvent('site-select', { detail: { value: 'another/site' } }));
     await tiles.updateComplete;
-    browse = tiles.shadowRoot.querySelector('da-landing-tile');
-    await browse.updateComplete;
+    browse = tiles.shadowRoot.querySelector('.tile');
     expect(files.path).to.equal('/another/site');
     expect(new URL(browse.href).hash).to.equal('#/another/site');
     expect(window.location.href).to.equal(href);
@@ -246,8 +244,7 @@ describe('authored Landing composition', () => {
     const landing = await mount(authored);
     const tiles = landing.querySelector('da-landing-tiles');
     await tiles.updateComplete;
-    const browse = tiles.shadowRoot.querySelector('da-landing-tile');
-    await browse.updateComplete;
+    const browse = tiles.shadowRoot.querySelector('.tile');
     expect(new URL(browse.href).pathname).to.equal(new URL('./guide', window.location.href).pathname);
   });
 

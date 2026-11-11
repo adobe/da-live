@@ -11,6 +11,10 @@
   box-sizing: border-box;
 }
 
+.tile h3, .tile p {
+  margin: 0;
+}
+
 .tile-group {
   display: flow-root;
 }
@@ -28,6 +32,113 @@
 .landing-tiles > li {
   flex: 0 0 calc((100% - 2 * var(--s2-spacing-200)) / 3);
   min-width: 0;
+}
+
+.tile {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2-spacing-200);
+  height: 100%;
+  width: 100%;
+  padding: var(--s2-spacing-200) var(--s2-spacing-300);
+  border: 0;
+  border-radius: 12px;
+  background: light-dark(var(--s2-gray-25), var(--s2-gray-75));
+  box-shadow: var(--s2-drop-shadow-elevated);
+  text-decoration: none;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.tile:hover:where(:not(:disabled)) {
+  box-shadow:
+    var(--s2-drop-shadow-elevated),
+    0 4px 12px color-mix(
+      in srgb,
+      light-dark(var(--s2-gray-1000), var(--s2-gray-25)) 8%,
+      transparent
+    );
+}
+
+.tile > * {
+  pointer-events: none;
+}
+
+.tile:focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: var(--s2-spacing-75);
+}
+
+.tile:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tile h3 {
+  color: var(--s2-gray-900);
+  font-size: var(--nx-ui-text-title, var(--s2-component-l-regular-font-size));
+}
+
+.tile p {
+  margin-top: var(--s2-spacing-75);
+  color: var(--s2-gray-600);
+  font-size: var(--s2-component-s-regular-font-size);
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--s2-spacing-500);
+  height: var(--s2-spacing-500);
+  border-radius: var(--s2-corner-radius-500);
+  color: var(--s2-gray-900);
+}
+
+.icon.turquoise {
+  background: var(--s2-turquoise-200);
+}
+
+.icon.green {
+  background: var(--s2-green-200);
+}
+
+.icon.orange {
+  background: var(--s2-orange-200);
+}
+
+.icon.purple {
+  background: var(--s2-purple-200);
+}
+
+.icon::before {
+  content: "";
+  width: 20px;
+  height: 20px;
+  background: currentcolor;
+  mask: var(--tile-icon) center / contain no-repeat;
+}
+
+:host([data-ui-size="m"]) {
+  .tile h3 {
+    font-size: var(--s2-component-xl-regular-font-size);
+  }
+
+  .tile p {
+    font-size: var(--s2-component-m-regular-font-size);
+  }
+
+  .icon::before {
+    width: 22px;
+    height: 22px;
+  }
 }
 
 @container (width < 600px) {

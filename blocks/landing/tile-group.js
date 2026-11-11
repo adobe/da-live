@@ -2,19 +2,40 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../scripts/utils.js';
 import { createPage, doesFileExist } from '../shared/da-file-item/item.js';
 import { getTileTarget } from './utils.js';
-import { readTileEntries } from './tile-content.js';
-import './tile.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const nx = await import(`${getNx2()}/scripts/nx.js`);
 const sizing = nx.getUISize ? await import(`${getNx2()}/utils/ui-size.js`) : undefined;
 const styles = await loadStyle(import.meta.url);
 
+export function parseTileEntries(block) {
+  return [...(block?.children || [])].flatMap((row) => {
+    const [icon, content, metadata] = row.children;
+    const options = [...(metadata?.childNodes || [])].map((node) => node.textContent).join(' ');
+    const link = content?.querySelector('h3 a');
+    const iconName = icon?.textContent.trim().match(/^:(s2-icon-[a-z0-9-]+):$/)?.[1]
+      || icon?.querySelector('span.icon')?.className.match(/\bicon-(s2-icon-[a-z0-9-]+)\b/)?.[1];
+    if (!link?.textContent.trim() || !link.getAttribute('href') || !iconName) {
+      // eslint-disable-next-line no-console
+      console.warn('Skipped a Landing row without an icon or an H3 title link.', row);
+      return [];
+    }
+    return [{
+      id: options.match(/\bid:\s*([a-z0-9-]+)/i)?.[1]
+        || link.closest('h3').id || iconName,
+      heading: link.textContent.trim(),
+      description: [...content.querySelectorAll('li, p:not(li p)')]
+        .map((item) => item.textContent.trim()).join(' '),
+      iconHref: `/img/icons/${iconName}.svg`,
+      href: link.getAttribute('href'),
+      tone: options.match(/\btone:\s*([a-z0-9-]+)/i)?.[1].toLowerCase(),
+    }];
+  });
+}
+
 export class DaLandingTiles extends LitElement {
   static properties = {
     entries: { attribute: false },
-    contentBlock: { attribute: false },
-    _contentError: { state: true },
     _scope: { state: true },
     _createDialog: { state: true },
   };
@@ -24,11 +45,6 @@ export class DaLandingTiles extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [styles];
-    if (this.entries === undefined) {
-      const { entries, error } = readTileEntries(this.contentBlock);
-      this.entries = entries;
-      this._contentError = error;
-    }
   }
 
   disconnectedCallback() {
@@ -84,10 +100,19 @@ export class DaLandingTiles extends LitElement {
 
   renderTile(entry) {
     const { href, action, disabled } = getTileTarget({ entry, scope: this._scope });
-    return html`<li><da-landing-tile .heading=${entry.heading} .description=${entry.description}
-      .iconHref=${entry.iconHref} .tone=${entry.tone} .size=${this.dataset.uiSize || 's'}
-      .href=${href} .action=${!href} .disabled=${disabled}
-      @click=${disabled ? nothing : () => this._onTileClick({ id: entry.id, href, action })}></da-landing-tile></li>`;
+    const content = html`
+      <span class="icon ${['green', 'orange', 'purple'].includes(entry.tone)
+        ? entry.tone : 'turquoise'}" aria-hidden="true"
+        style="--tile-icon: url('${entry.iconHref}')"></span>
+      <div class="content">
+        <h3>${entry.heading}</h3>
+        <p>${entry.description}</p>
+      </div>`;
+    const onClick = disabled ? nothing : () => this._onTileClick({ id: entry.id, href, action });
+    return html`<li>${href
+      ? html`<a class="tile" href=${href} @click=${onClick}>${content}</a>`
+      : html`<button class="tile" type="button" ?disabled=${disabled}
+          @click=${onClick}>${content}</button>`}</li>`;
   }
 
   renderCreateDialog() {
@@ -98,16 +123,11 @@ export class DaLandingTiles extends LitElement {
       @close=${this._onCloseCreatePage}></da-name-dialog>`;
   }
 
-  renderQuickLinks() {
-    return html`<ul class="quick-links landing-tiles" aria-label="Quick links">
-      ${this.entries.map((entry) => this.renderTile(entry))}
-    </ul>`;
-  }
-
   render() {
     return html`<div class="tile-group">
-      ${this.entries ? this.renderQuickLinks() : nothing}
-      ${this._contentError ? html`<p role="alert">${this._contentError}</p>` : nothing}
+      ${this.entries?.length ? html`<ul class="quick-links landing-tiles" aria-label="Quick links">
+        ${this.entries.map((entry) => this.renderTile(entry))}
+      </ul>` : html`<p role="alert">No quick links are configured.</p>`}
       ${this._createDialog ? this.renderCreateDialog() : nothing}
     </div>`;
   }
@@ -117,7 +137,7 @@ customElements.define('da-landing-tiles', DaLandingTiles);
 
 export default function init(el, { contentBlock, scope } = {}) {
   const tiles = document.createElement('da-landing-tiles');
-  tiles.contentBlock = contentBlock;
+  tiles.entries = parseTileEntries(contentBlock);
   tiles.setScope(scope);
   el.append(tiles);
   return tiles;

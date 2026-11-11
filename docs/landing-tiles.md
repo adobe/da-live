@@ -1,12 +1,9 @@
-# Landing quick-action tile
+# Landing quick-action tiles
 
-Import `blocks/landing/tile.js` and supply `heading`, `description` and `iconHref`.
+`tile-group.js` reads the authored table and renders native links and buttons;
+`tile-group.css` owns their appearance and layout. There is no per-tile component.
 `tone` is `green`, `orange`, `purple`, or turquoise by default.
-`size="m"` enlarges text and icons; the default is S.
-
-An HTTP(S) or relative `href` renders a link. `action` without `href` renders a button, optionally
-`disabled`. Otherwise the tile is non-interactive. The owner resolves
-destinations.
+The group follows the shared UI size setting.
 
 Enabled tiles gain a stronger S2-colored shadow on hover without moving or
 changing their background.
@@ -24,8 +21,6 @@ The landing replaces Home (no scoped hash) when the page has authored Landing
 blocks or `?landing=true` is set. `?landing=false` keeps the existing Home. Browse
 selects the route; `da-landing` hosts `greeting`, `recent-files` and `landing`
 blocks in their authored order. The `landing` block loads `tile-group.js` in place.
-`tile-group.css` styles the owner and layout;
-`tile.css` styles each tile.
 
 Landing inherits the application's color scheme and shared Spectrum tokens,
 including its gradient. It does not choose a theme or support a `?theme=` override.

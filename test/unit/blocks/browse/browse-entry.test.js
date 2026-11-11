@@ -106,8 +106,7 @@ describe('Browse Content opt-in', () => {
       await landing.updateComplete;
       expect(landing.path).to.equal('/another/site');
       await tiles.updateComplete;
-      const tile = tiles.shadowRoot.querySelector('da-landing-tile');
-      await tile.updateComplete;
+      const tile = tiles.shadowRoot.querySelector('.tile');
       expect(new URL(tile.href).hash).to.equal('#/another/site');
       expect(window.location.href).to.equal(rootHref);
       expect(landing.querySelector('da-recent-files').shadowRoot.querySelector('.files-panel')).not.to.equal(null);
@@ -218,7 +217,7 @@ describe('Browse Content opt-in', () => {
       expect(el.querySelectorAll('da-landing-tiles')).to.have.length(1);
       expect(tiles.parentElement.className).to.equal('landing');
       expect(el.querySelector('picture, da-sites, da-browse')).to.equal(null);
-      expect(tiles.shadowRoot.querySelectorAll('da-landing-tile')).to.have.length(5);
+      expect(tiles.shadowRoot.querySelectorAll('.tile')).to.have.length(5);
       expect(fetchContent.called).to.equal(false);
     } finally {
       fetchContent.restore();
@@ -240,14 +239,13 @@ describe('Browse Content opt-in', () => {
       await waitUntil(() => el.querySelector('da-landing-tiles')?.entries);
       const tiles = el.querySelector('da-landing-tiles');
       await tiles.updateComplete;
-      const all = [...tiles.shadowRoot.querySelectorAll('da-landing-tile')];
-      await Promise.all(all.map((tile) => tile.updateComplete));
+      const all = [...tiles.shadowRoot.querySelectorAll('.tile')];
       const [browse, create, ...docs] = all;
       expect(all).to.have.length(5);
       expect(new URL(browse.href).hash).to.equal('#/org/site');
-      expect(browse.shadowRoot.querySelector('a[href]')).to.exist;
-      expect(create.shadowRoot.querySelector('button').disabled).to.equal(false);
-      docs.forEach((tile) => expect(tile.shadowRoot.querySelector('a[href]')).to.exist);
+      expect(browse.matches('a[href]')).to.equal(true);
+      expect(create.disabled).to.equal(false);
+      docs.forEach((tile) => expect(tile.matches('a[href]')).to.equal(true));
       expect(el.querySelector('da-sites')).to.equal(null);
       expect(block.querySelectorAll(':scope > div')).to.have.length(5);
       expect(fetchContent.called).to.equal(false);
