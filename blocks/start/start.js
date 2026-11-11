@@ -2,8 +2,8 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getDaAdmin } from '../shared/constants.js';
 import getSheet from '../shared/sheet.js';
 import { copyConfig, copyContent, previewContent } from './index.js';
-import { addSite, getGitHubSite } from './utils.js';
-import { getNx2Api } from '../../scripts/utils.js';
+import { addSite } from './utils.js';
+import { getNx2Api, sanitizePathParts } from '../../scripts/utils.js';
 
 const sheet = await getSheet('/blocks/start/start.css');
 
@@ -134,10 +134,21 @@ class DaStart extends LitElement {
   }
 
   onInputChange(e) {
-    const { org, site } = getGitHubSite(e.target.value) ?? {};
-    this.org = org ?? null;
-    this.site = site ?? null;
-    this.goEnabled = !!org;
+    try {
+      const { origin, pathname } = new URL(e.target.value);
+      if (origin !== 'https://github.com') throw Error('Not github');
+      const [org, site] = sanitizePathParts(pathname);
+      if (!(org && site)) throw Error('No org or site');
+      this.org = org;
+      this.site = site;
+      this.goEnabled = true;
+    } catch (ex) {
+      this.org = null;
+      this.site = null;
+      this.goEnabled = false;
+      // eslint-disable-next-line no-console
+      console.log(ex);
+    }
   }
 
   async submitForm(e) {

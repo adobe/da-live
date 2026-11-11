@@ -1,5 +1,4 @@
-import { ONBOARDING_CONTENT_PATH } from './constants.js';
-
+const CONTENT_PATH = '/drafts/mhaack/start-copy';
 const CONTENT_ERROR = 'Could not load onboarding content.';
 
 const iconName = (col) => [...(col?.querySelector('span.icon')?.classList ?? [])]
@@ -21,23 +20,13 @@ export function parseCards(block) {
   });
 }
 
-export const loadCards = (() => {
-  const requests = new Map();
-  return async (path = ONBOARDING_CONTENT_PATH) => {
-    if (!requests.has(path)) {
-      requests.set(path, (async () => {
-        try {
-          const resp = await fetch(`${path}.plain.html`);
-          if (!resp.ok) return { error: CONTENT_ERROR, status: resp.status };
-          const doc = new DOMParser().parseFromString(await resp.text(), 'text/html');
-          return { cards: parseCards(doc.querySelector('.nx-cards')) };
-        } catch {
-          return { error: CONTENT_ERROR };
-        }
-      })());
-    }
-    const result = await requests.get(path);
-    if (result.error) requests.delete(path);
-    return result;
-  };
-})();
+export async function loadCards(path = CONTENT_PATH) {
+  try {
+    const resp = await fetch(`${path}.plain.html`);
+    if (!resp.ok) return { error: CONTENT_ERROR, status: resp.status };
+    const doc = new DOMParser().parseFromString(await resp.text(), 'text/html');
+    return { cards: parseCards(doc.querySelector('.nx-cards')) };
+  } catch {
+    return { error: CONTENT_ERROR };
+  }
+}

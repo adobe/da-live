@@ -1,6 +1,6 @@
 import { getDaAdmin } from '../shared/constants.js';
 import { daFetch } from '../shared/utils.js';
-import { getNx2Api, sanitizePathParts } from '../../scripts/utils.js';
+import { getNx2Api } from '../../scripts/utils.js';
 
 const ORG_CONFIG = `{
     "data": {
@@ -65,24 +65,6 @@ export async function saveConfig(org, email, existingConfig) {
   const resp = await config.save({ org, body: JSON.stringify(defConfig) });
 
   return { status: resp.status };
-}
-
-export function getGitHubSite(value) {
-  try {
-    const { origin, pathname } = new URL(value);
-    if (origin !== 'https://github.com') return undefined;
-    const [org, site] = sanitizePathParts(pathname);
-    return org && site ? { org, site } : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-export function getRequestedSite(search) {
-  const params = new URLSearchParams(search);
-  const org = params.get('org');
-  const site = params.get('site');
-  return org && site ? getGitHubSite(`https://github.com/${org}/${site}`) : undefined;
 }
 
 export async function addSite({ org, site }) {

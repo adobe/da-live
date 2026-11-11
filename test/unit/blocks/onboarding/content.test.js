@@ -46,19 +46,18 @@ describe('onboarding/content', () => {
     ]);
   });
 
-  it('loads the cards once per path', async () => {
+  it('loads the cards from the plain html', async () => {
     const urls = [];
     window.fetch = async (url) => {
       urls.push(url);
       return new Response(CARDS_HTML);
     };
-    const [first, second] = await Promise.all([loadCards('/cards-ok'), loadCards('/cards-ok')]);
+    const { cards } = await loadCards('/cards-ok');
     expect(urls).to.deep.equal(['/cards-ok.plain.html']);
-    expect(first).to.equal(second);
-    expect(first.cards.map(({ heading }) => heading)).to.deep.equal(['Traverse', 'Coming soon']);
+    expect(cards.map(({ heading }) => heading)).to.deep.equal(['Traverse', 'Coming soon']);
   });
 
-  it('returns an error for a failed response and retries later', async () => {
+  it('returns an error for a failed or rejected request', async () => {
     window.fetch = async () => new Response('', { status: 404 });
     expect(await loadCards('/cards-missing')).to.deep.equal({ error: 'Could not load onboarding content.', status: 404 });
     window.fetch = async () => { throw new Error('offline'); };

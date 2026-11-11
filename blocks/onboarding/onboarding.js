@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../scripts/utils.js';
 import { initIms } from '../shared/utils.js';
-import { addSite, getRequestedSite } from '../start/utils.js';
+import { addSite } from '../start/utils.js';
 import { getSiteFromUrl } from './utils.js';
 import { loadCards } from './content.js';
 
@@ -27,8 +27,9 @@ class DaOnboarding extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [buttons, form, styles];
-    const requested = getRequestedSite(window.location.search);
-    this._siteUrl = requested ? `https://main--${requested.site}--${requested.org}.aem.page` : '';
+    const params = new URLSearchParams(window.location.search);
+    const [org, site] = [params.get('org'), params.get('site')];
+    this._siteUrl = org && site ? `https://main--${site}--${org}.aem.page` : '';
     this._loadName();
   }
 
