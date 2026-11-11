@@ -92,6 +92,17 @@ describe('landing background', () => {
     expect(getComputedStyle(document.body).colorScheme).to.equal(before);
   });
 
+  it('shows the nav brand label only while landing is mounted', () => {
+    const nav = document.createElement('nx-nav');
+    document.body.append(nav);
+    const labelDisplay = () => getComputedStyle(nav).getPropertyValue('--nx-nav-brand-label-display').trim();
+    init(el);
+    expect(labelDisplay()).to.equal('inline');
+    el.replaceChildren();
+    expect(labelDisplay()).to.equal('');
+    nav.remove();
+  });
+
   it('mirrors light and dark positions with the original middle colors', () => {
     init(el);
     const lightPositions = getComputedStyle(el.firstElementChild).backgroundImage.match(/[\d.]+%/g);

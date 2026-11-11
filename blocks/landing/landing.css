@@ -7,6 +7,10 @@ body:has(.landing[data-theme="light"]) {
   color-scheme: light;
 }
 
+body:has(.landing) nx-nav {
+  --nx-nav-brand-label-display: inline;
+}
+
 .section:has(.landing),
 .block-content:has(.landing),
 .browse:has(> .landing) {
