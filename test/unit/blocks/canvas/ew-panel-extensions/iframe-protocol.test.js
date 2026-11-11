@@ -12,6 +12,24 @@ const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 const { getInstrumentedHTML, getInstrumentedHTMLForSDK } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
 
+let savedFetch;
+beforeEach(() => {
+  savedFetch = window.fetch;
+  window.fetch = (url, options) => {
+    if (String(url).startsWith('https://api.aem.live/') && String(url).endsWith('/config.json')) {
+      const config = { features: { rendering: { version: 2 } } };
+      return Promise.resolve(new Response(JSON.stringify(config)));
+    }
+    if (/\/config\/|\/ping\//.test(String(url))) {
+      return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+    }
+    return savedFetch(url, options);
+  };
+});
+afterEach(() => {
+  window.fetch = savedFetch;
+});
+
 const wait = (ms = 50) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
 function makeIframe(src = 'https://plugin.example.com/app') {

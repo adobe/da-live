@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
 import { setNx } from '../../../../scripts/utils.js';
 import { DA_ORIGIN } from '../../../../blocks/shared/constants.js';
 import {
@@ -14,6 +15,7 @@ import {
   getSidekickConfig,
   sanitizeName,
   fetchDaConfigs,
+  fetchConfigBusOptions,
   canEditOrgConfig,
   getConfigPermissions,
   getAuthToken,
@@ -785,6 +787,228 @@ describe('getSidekickConfig', () => {
       expect(result).to.deep.equal({ previewHost: 'preview.example.com' });
     } finally {
       window.fetch = savedFetch;
+    }
+  });
+});
+
+describe('fetchConfigBusOptions', () => {
+  let savedFetch;
+  let sandbox;
+  let index = 0;
+
+  beforeEach(() => {
+    savedFetch = window.fetch;
+    sandbox = sinon.createSandbox();
+    index += 1;
+  });
+
+  afterEach(() => {
+    sandbox.restore();
+    window.fetch = savedFetch;
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith(`da-rendering-v2:/preview-options-${index}/`))
+      .forEach((key) => localStorage.removeItem(key));
+  });
+
+  const cases = [
+    { title: 'preserves metadata for rendering version 1', version: 1, expected: true },
+    { title: 'extracts metadata for rendering version 2', version: 2, expected: false },
+    { title: 'extracts metadata for later rendering versions', version: 3, expected: false },
+    { title: 'compares string versions like the pipeline', version: '2', expected: false },
+    { title: 'does not treat null as an absent version', version: null, expected: true },
+  ];
+
+  cases.forEach(({ title, version, expected }) => {
+    it(title, async () => {
+      const org = `preview-options-${index}`;
+      const site = 'site';
+      const requested = [];
+      window.fetch = async (url) => {
+        requested.push(url);
+        return new Response(JSON.stringify({
+          features: { rendering: { version } },
+          created: expected ? '2026-05-01' : '2026-04-30',
+        }), { status: 200 });
+      };
+      expect(await fetchConfigBusOptions({ org, site }))
+        .to.deep.equal({ legacySectionMetadata: expected });
+      expect(requested).to.deep.equal([`https://api.aem.live/${org}/sites/${site}/config.json`]);
+    });
+  });
+
+  [
+    { created: '2026-04-30T23:59:59.999Z', expected: true },
+    { created: '2026-05-01T00:00:00.000Z', expected: false },
+    { created: '2026-11-10T00:00:00.000Z', expected: false },
+    { created: undefined, expected: true },
+    { created: 'invalid', expected: true },
+  ].forEach(({ created, expected }) => {
+    it(`uses the pipeline creation-date fallback for ${created}`, async () => {
+      const org = `preview-options-${index}`;
+      const configUrl = `https://api.aem.live/${org}/sites/site/config.json`;
+      const requested = [];
+      window.fetch = async (url) => {
+        requested.push(url);
+        return new Response(JSON.stringify({ created }));
+      };
+      expect(await fetchConfigBusOptions({ org, site: 'site' }))
+        .to.deep.equal({ legacySectionMetadata: expected });
+      expect(requested).to.deep.equal([configUrl]);
+    });
+  });
+
+  it('uses the creation date when rendering exists without a version', async () => {
+    window.fetch = async () => new Response(JSON.stringify({
+      features: { rendering: {} },
+      created: '2026-04-30',
+    }));
+    expect(await fetchConfigBusOptions({ org: `preview-options-${index}`, site: 'site' }))
+      .to.deep.equal({ legacySectionMetadata: true });
+  });
+
+  it('shares in-flight and resolved requests for a site, but not across sites', async () => {
+    const org = `preview-options-${index}`;
+    const requested = [];
+    window.fetch = async (url) => {
+      requested.push(url);
+      return new Response(JSON.stringify({ features: { rendering: { version: url.includes('/sites/legacy/') ? 1 : 2 } } }));
+    };
+    const first = fetchConfigBusOptions({ org, site: 'legacy' });
+    const second = fetchConfigBusOptions({ org, site: 'legacy' });
+    expect(first).to.equal(second);
+    expect(await first).to.deep.equal({ legacySectionMetadata: true });
+    expect(await fetchConfigBusOptions({ org, site: 'legacy' }))
+      .to.deep.equal({ legacySectionMetadata: true });
+    expect(await fetchConfigBusOptions({ org, site: 'modern' }))
+      .to.deep.equal({ legacySectionMetadata: false });
+    expect(requested).to.have.lengthOf(2);
+    expect(JSON.parse(localStorage.getItem(`da-rendering-v2:/${org}/legacy`)).enabled)
+      .to.equal(false);
+    expect(JSON.parse(localStorage.getItem(`da-rendering-v2:/${org}/modern`)).enabled)
+      .to.equal(true);
+  });
+
+  [true, false].forEach((enabled) => {
+    it(`uses a persisted ${enabled} decision without an API request`, async () => {
+      const org = `preview-options-${index}`;
+      localStorage.setItem(`da-rendering-v2:/${org}/site`, JSON.stringify({
+        enabled,
+        expiresAt: Date.now() + 15 * 60 * 1000,
+      }));
+      const fetch = sandbox.stub(window, 'fetch').rejects(new Error('unexpected fetch'));
+      expect(await fetchConfigBusOptions({ org, site: 'site' }))
+        .to.deep.equal({ legacySectionMetadata: !enabled });
+      expect(fetch.called).to.equal(false);
+    });
+
+    it(`refreshes a ${enabled} decision exactly when its 15-minute TTL expires`, async () => {
+      const org = `preview-options-${index}`;
+      const key = `da-rendering-v2:/${org}/site`;
+      const clock = sandbox.useFakeTimers({ now: Date.now(), toFake: ['Date'] });
+      const expiresAt = Date.now() + 15 * 60 * 1000;
+      let version = enabled ? 2 : 1;
+      const fetch = sandbox.stub(window, 'fetch').callsFake(async () => new Response(
+        JSON.stringify({ features: { rendering: { version } } }),
+      ));
+      expect(await fetchConfigBusOptions({ org, site: 'site' }))
+        .to.deep.equal({ legacySectionMetadata: !enabled });
+      expect(JSON.parse(localStorage.getItem(key))).to.deep.equal({ enabled, expiresAt });
+      version = enabled ? 1 : 2;
+      clock.tick(15 * 60 * 1000 - 1);
+      expect(await fetchConfigBusOptions({ org, site: 'site' }))
+        .to.deep.equal({ legacySectionMetadata: !enabled });
+      expect(fetch.callCount).to.equal(1);
+      clock.tick(1);
+      expect(await fetchConfigBusOptions({ org, site: 'site' }))
+        .to.deep.equal({ legacySectionMetadata: enabled });
+      expect(fetch.callCount).to.equal(2);
+      expect(JSON.parse(localStorage.getItem(key))).to.deep.equal({
+        enabled: !enabled,
+        expiresAt: expiresAt + 15 * 60 * 1000,
+      });
+    });
+  });
+
+  ['invalid', 'null', '{"enabled":"false","expiresAt":9999999999999}', '{"enabled":true}']
+    .forEach((cached) => {
+      it(`refreshes an invalid cache entry: ${cached}`, async () => {
+        const org = `preview-options-${index}`;
+        const key = `da-rendering-v2:/${org}/site`;
+        localStorage.setItem(key, cached);
+        const fetch = sandbox.stub(window, 'fetch').resolves(new Response(
+          JSON.stringify({ features: { rendering: { version: 1 } } }),
+        ));
+        expect(await fetchConfigBusOptions({ org, site: 'site' }))
+          .to.deep.equal({ legacySectionMetadata: true });
+        expect(fetch.callCount).to.equal(1);
+        expect(JSON.parse(localStorage.getItem(key)).enabled).to.equal(false);
+      });
+    });
+
+  it('still returns the API decision when cache reads and writes fail', async () => {
+    const org = `preview-options-${index}`;
+    const key = `da-rendering-v2:/${org}/site`;
+    const originalGet = Storage.prototype.getItem;
+    sandbox.stub(Storage.prototype, 'getItem').callsFake(function getItem(name) {
+      if (name === key) throw new Error('storage unavailable');
+      return originalGet.call(this, name);
+    });
+    sandbox.stub(Storage.prototype, 'setItem').throws(new Error('storage full'));
+    const fetch = sandbox.stub(window, 'fetch').callsFake(async () => new Response(
+      JSON.stringify({ features: { rendering: { version: 1 } } }),
+    ));
+    expect(await fetchConfigBusOptions({ org, site: 'site' }))
+      .to.deep.equal({ legacySectionMetadata: true });
+    expect(await fetchConfigBusOptions({ org, site: 'site' }))
+      .to.deep.equal({ legacySectionMetadata: true });
+    expect(fetch.callCount).to.equal(2);
+  });
+
+  ['unauthorized', 'offline', 'invalid JSON', 'missing site'].forEach((failure) => {
+    it(`keeps extraction on ${failure} and allows a retry`, async () => {
+      const params = { org: `preview-options-${index}`, site: 'site' };
+      window.fetch = async () => {
+        if (failure === 'offline') throw new Error('offline');
+        if (failure === 'invalid JSON') return new Response('invalid');
+        if (failure === 'missing site') return new Response('', { status: 404 });
+        return new Response('', { status: 401 });
+      };
+      expect(await fetchConfigBusOptions(params)).to.deep.equal({ legacySectionMetadata: false });
+      expect(localStorage.getItem(`da-rendering-v2:/${params.org}/${params.site}`)).to.equal(null);
+      window.fetch = async () => new Response(
+        JSON.stringify({ features: { rendering: { version: 1 } } }),
+      );
+      expect(await fetchConfigBusOptions(params)).to.deep.equal({ legacySectionMetadata: true });
+    });
+  });
+
+  it('does not request config without an org and site', async () => {
+    window.fetch = () => { throw new Error('unexpected fetch'); };
+    expect(await fetchConfigBusOptions({ org: 'org' }))
+      .to.deep.equal({ legacySectionMetadata: false });
+    expect(await fetchConfigBusOptions({ site: 'site' }))
+      .to.deep.equal({ legacySectionMetadata: false });
+  });
+
+  it('authenticates config requests with the existing AEM fetch helper', async () => {
+    const savedIms = window.adobeIMS;
+    const savedLocalStorage = localStorage.getItem('nx-ims');
+    localStorage.setItem('nx-ims', 'true');
+    window.adobeIMS = { getAccessToken: () => ({ token: 'test-token' }) };
+    let options;
+    window.fetch = async (url, opts) => {
+      options = opts;
+      return new Response(JSON.stringify({ features: { rendering: { version: 2 } } }));
+    };
+    try {
+      await fetchConfigBusOptions({ org: `preview-options-${index}`, site: 'site' });
+      expect(options.credentials).to.equal('include');
+      expect(options.headers.Authorization).to.equal('Bearer test-token');
+      expect(options.headers['x-content-source-authorization']).to.equal('Bearer test-token');
+    } finally {
+      window.adobeIMS = savedIms;
+      if (savedLocalStorage === null) localStorage.removeItem('nx-ims');
+      else localStorage.setItem('nx-ims', savedLocalStorage);
     }
   });
 });
