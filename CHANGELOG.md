@@ -1,3 +1,24 @@
+## [1.28.1](https://github.com/adobe/da-live/compare/v1.28.0...v1.28.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* support default fallback ([#1714](https://github.com/adobe/da-live/issues/1714)) ([da2442d](https://github.com/adobe/da-live/commit/da2442d4039ffd26ab05be002cc46ee28dab12c6))
+
+# [1.28.0](https://github.com/adobe/da-live/compare/v1.27.0...v1.28.0) (2026-11-11)
+
+
+### Features
+
+* greeting block ([#1707](https://github.com/adobe/da-live/issues/1707)) ([90c68b9](https://github.com/adobe/da-live/commit/90c68b9aca15228ce567b779ff05198f37903549))
+
+# [1.27.0](https://github.com/adobe/da-live/compare/v1.26.0...v1.27.0) (2026-11-11)
+
+
+### Features
+
+* apply suggestions via chat ([#1632](https://github.com/adobe/da-live/issues/1632)) ([9f48de3](https://github.com/adobe/da-live/commit/9f48de342596ef2bc513435fe93adbd789272d1b))
+
 # [1.26.0](https://github.com/adobe/da-live/compare/v1.25.1...v1.26.0) (2026-11-11)
 
 
