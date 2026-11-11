@@ -72,7 +72,7 @@ const REPO_CONFIG = {
   assetBasePath: '/adobe/assets',
   isDmEnabled: true,
   isSmartCrop: false,
-  insertAsLink: false,
+  imageType: null,
 };
 
 const ASSET = { 'repo:id': 'urn:aaid:aem:img-001', name: 'photo.jpg' };
@@ -206,11 +206,98 @@ describe('buildHandleSelection', () => {
     expect(view.created).to.have.length(0);
   });
 
-  it('closes dialog and takes link path for image when insertAsLink is true', async () => {
-    const { view, dialog, handler } = setup({ ...REPO_CONFIG, insertAsLink: true });
+  it('closes dialog and takes link path for image when imageType is link', async () => {
+    const { view, dialog, handler } = setup({ ...REPO_CONFIG, imageType: 'link' });
     try { await handler([ASSET]); } catch { /* proseDOMParser mock limitation */ }
     expect(dialog.isOpen).to.be.false;
     expect(view.created).to.have.length(0);
+  });
+
+  describe('editable-link image type', () => {
+    const EDITABLE = { ...REPO_CONFIG, imageType: 'editable-link' };
+
+    it('inserts an image node marked editAs image', async () => {
+      const { view, dialog, handler } = setup(EDITABLE);
+      await handler([ASSET]);
+      expect(dialog.isOpen).to.be.false;
+      expect(view.dispatched).to.have.length(1);
+      expect(view.created).to.have.length(1);
+      expect(view.created[0].editAs).to.equal('image');
+      expect(view.created[0].src).to.equal(IMAGE_HREF);
+      expect(view.created[0].alt).to.equal('A photo');
+    });
+
+    it('inserts a link-image without alt when the selection has none', async () => {
+      setSelection({ href: IMAGE_HREF, isImage: true, alt: '' });
+      const { view, handler } = setup(EDITABLE);
+      await handler([ASSET]);
+      expect(view.created[0].editAs).to.equal('image');
+      expect('alt' in view.created[0]).to.equal(false);
+    });
+
+    it('still takes the link path for non-image assets', async () => {
+      setSelection(PDF_SELECTION);
+      const { view, handler } = setup(EDITABLE);
+      try { await handler([ASSET]); } catch { /* proseDOMParser mock limitation */ }
+      expect(view.created).to.have.length(0);
+    });
+
+    describe('smart crop', () => {
+      const SMART_EDITABLE = { ...EDITABLE, isSmartCrop: true };
+      const clickInsert = async (config) => {
+        mockSmartCrops([{ name: 'desktop' }, { name: 'mobile' }]);
+        const ctx = setup(config);
+        document.body.append(ctx.assetPanel, ctx.secondaryPanel);
+        await ctx.handler([ASSET]);
+        try { ctx.secondaryPanel.querySelector('.insert').click(); } catch { /* Fragment.fromArray needs real nodes */ }
+        ctx.assetPanel.remove();
+        ctx.secondaryPanel.remove();
+        return ctx;
+      };
+
+      it('marks every inserted crop editAs image', async () => {
+        const { view } = await clickInsert(SMART_EDITABLE);
+        expect(view.created.length).to.be.greaterThan(0);
+        view.created.forEach((attrs) => {
+          expect(attrs.editAs).to.equal('image');
+          expect(attrs.alt).to.equal('A photo');
+        });
+      });
+
+      it('marks the image editAs image when the asset has no crops', async () => {
+        mockSmartCrops([]);
+        const { view, handler } = setup(SMART_EDITABLE);
+        await handler([ASSET]);
+        expect(view.created).to.have.length(1);
+        expect(view.created[0].editAs).to.equal('image');
+        expect(view.created[0].src).to.equal(IMAGE_HREF);
+      });
+
+      it('does not mark crops editAs for the default config', async () => {
+        const { view } = await clickInsert({ ...REPO_CONFIG, isSmartCrop: true });
+        expect(view.created.length).to.be.greaterThan(0);
+        expect(view.created.filter((attrs) => 'editAs' in attrs)).to.have.length(0);
+      });
+
+      it('does not mark the no-crops image editAs for the default config', async () => {
+        mockSmartCrops([]);
+        const { view, handler } = setup({ ...REPO_CONFIG, isSmartCrop: true });
+        await handler([ASSET]);
+        expect('editAs' in view.created[0]).to.equal(false);
+      });
+    });
+
+    it('does not mark images editAs for the default config', async () => {
+      const { view, handler } = setup();
+      await handler([ASSET]);
+      expect('editAs' in view.created[0]).to.equal(false);
+    });
+
+    it('does not mark images editAs for the plain link config', async () => {
+      const { view, handler } = setup({ ...REPO_CONFIG, imageType: 'link' });
+      try { await handler([ASSET]); } catch { /* proseDOMParser mock limitation */ }
+      expect(view.created.filter((attrs) => attrs.editAs)).to.have.length(0);
+    });
   });
 
   [DM_ERROR_MSG, PUBLISH_ERROR_MSG].forEach((message) => {

@@ -567,3 +567,76 @@ describe('prose2aem same-site URL conversion', () => {
     expect(link.getAttribute('href')).to.equal('https://main--repo--org.aem.live/fragments/tabs');
   });
 });
+
+describe('prose2aem link-images', () => {
+  const src = 'https://delivery-p1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:1/as/hero.jpg';
+
+  const render = (html, live = true) => {
+    const editor = document.createElement('div');
+    editor.innerHTML = html;
+    prose2aem(editor, live, true);
+    return editor;
+  };
+
+  it('renders a link-image as an anchor inside its paragraph', () => {
+    const editor = render(`<p><img src="${src}" alt="Hero alt" data-edit-as="image"></p>`);
+    const a = editor.querySelector('p > a[data-edit-as="image"]');
+    expect(!!a, 'anchor inside the original p').to.equal(true);
+    expect(a.getAttribute('href')).to.equal(src);
+    expect(a.getAttribute('title')).to.equal('Hero alt');
+    expect(a.textContent).to.equal(src);
+    expect(a.getAttribute('alt')).to.be.null;
+  });
+
+  it('does not emit a picture or img for a link-image', () => {
+    const editor = render(`<p><img src="${src}" alt="Hero alt" data-edit-as="image"></p>`);
+    expect(!!editor.querySelector('picture')).to.equal(false);
+    expect(!!editor.querySelector('img')).to.equal(false);
+  });
+
+  it('keeps text next to a link-image in the same paragraph', () => {
+    const editor = render(`<p>Before <img src="${src}" alt="Hero alt" data-edit-as="image"> after</p>`);
+    const p = editor.querySelector('p');
+    expect(!!p.querySelector('a[data-edit-as="image"]')).to.equal(true);
+    expect(p.textContent).to.contain('Before');
+    expect(p.textContent).to.contain('after');
+  });
+
+  it('omits title when a link-image has no alt', () => {
+    const editor = render(`<p><img src="${src}" data-edit-as="image"></p>`);
+    expect(editor.querySelector('a[data-edit-as="image"]').hasAttribute('title')).to.be.false;
+  });
+
+  it('renders a link-image as an anchor in non-live output too', () => {
+    const editor = render(`<p><img src="${src}" alt="Hero alt" data-edit-as="image"></p>`, false);
+    expect(!!editor.querySelector('p > a[data-edit-as="image"]')).to.equal(true);
+  });
+
+  it('copies every data-image-* attribute from the img onto the anchor', () => {
+    const editor = render(`<p><img src="${src}" alt="Hero alt" data-edit-as="image" data-image-index="7" data-image-version="abc123" data-image-future="x"></p>`);
+    const a = editor.querySelector('p > a[data-edit-as="image"]');
+    expect(a.getAttribute('data-image-index')).to.equal('7');
+    expect(a.getAttribute('data-image-version')).to.equal('abc123');
+    expect(a.getAttribute('data-image-future')).to.equal('x');
+  });
+
+  it('does not copy other data-* attributes onto the anchor', () => {
+    const editor = render(`<p><img src="${src}" alt="Hero alt" data-edit-as="image" data-image-index="7" data-focal-x="10" data-focal-y="20" data-id="9"></p>`);
+    const a = editor.querySelector('p > a[data-edit-as="image"]');
+    const names = [...a.attributes].map((attr) => attr.name).filter((n) => n.startsWith('data-')).sort();
+    expect(names).to.deep.equal(['data-edit-as', 'data-image-index']);
+  });
+
+  it('adds no data-image-* attributes when the img had none', () => {
+    const editor = render(`<p><img src="${src}" alt="Hero alt" data-edit-as="image"></p>`);
+    const a = editor.querySelector('p > a[data-edit-as="image"]');
+    const names = [...a.attributes].map((attr) => attr.name).filter((n) => n.startsWith('data-image-'));
+    expect(names).to.deep.equal([]);
+  });
+
+  it('still renders regular images as pictures', () => {
+    const editor = render('<p><img src="/a.jpg" alt="A"></p>');
+    expect(!!editor.querySelector('picture img')).to.equal(true);
+    expect(!!editor.querySelector('a[data-edit-as]')).to.equal(false);
+  });
+});
