@@ -213,6 +213,25 @@ describe('da-browse-header', () => {
     expect(detail).to.deep.equal({ view: 'card' });
   });
 
+  it('reports boolean width preferences and reflects the selected option', async () => {
+    const control = header.shadowRoot.querySelector('nx-segmented-btn[label="Limit width"]');
+    expect(control.items.map(({ value }) => value)).to.deep.equal(['true', 'false']);
+    expect(control.value).to.equal('false');
+    const events = [];
+    header.addEventListener('limitwidthchange', (event) => { events.push(event); });
+    control.dispatchEvent(new CustomEvent('change', { detail: { value: 'true' } }));
+    expect(events[0].detail).to.deep.equal({ limitWidth: true });
+    expect(events[0].bubbles).to.be.true;
+    expect(events[0].composed).to.be.true;
+    header.limitWidth = true;
+    await header.updateComplete;
+    expect(control.value).to.equal('true');
+    control.dispatchEvent(new CustomEvent('change', { detail: { value: 'false' } }));
+    expect(events[1].detail).to.deep.equal({ limitWidth: false });
+    control.dispatchEvent(new CustomEvent('change', { detail: { value: 'invalid' } }));
+    expect(events.length).to.equal(2);
+  });
+
   it('reports size changes for the current layout', async () => {
     const popover = header.shadowRoot.querySelector('.browse-appearance-popover');
     let detail;

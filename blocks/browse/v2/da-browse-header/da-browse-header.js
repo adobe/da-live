@@ -28,6 +28,7 @@ export default class DaBrowseHeader extends LitElement {
     view: { type: String },
     rowSize: { type: String },
     cardSize: { type: String },
+    limitWidth: { type: Boolean },
     _appearanceOpen: { state: true },
     _sortOpen: { state: true },
     _canEditOrgConfig: { state: true },
@@ -136,6 +137,22 @@ export default class DaBrowseHeader extends LitElement {
         if (!['s', 'm', 'l'].includes(detail.value)) return;
         this.dispatchEvent(new CustomEvent('appearancesizechange', {
           detail: { view: card ? 'card' : 'list', size: detail.value },
+          bubbles: true,
+          composed: true,
+        }));
+      }}></nx-segmented-btn>
+        </div>
+        <div class="browse-appearance-row">
+          <span>Limit width</span>
+          <nx-segmented-btn size="sm" label="Limit width"
+            .items=${[
+        { value: 'true', label: 'True' }, { value: 'false', label: 'False' },
+      ]}
+            .value=${this.limitWidth ? 'true' : 'false'}
+            @change=${({ detail }) => {
+        if (!['true', 'false'].includes(detail.value)) return;
+        this.dispatchEvent(new CustomEvent('limitwidthchange', {
+          detail: { limitWidth: detail.value === 'true' },
           bubbles: true,
           composed: true,
         }));

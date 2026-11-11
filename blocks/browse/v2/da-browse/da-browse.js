@@ -40,6 +40,7 @@ export default class DaBrowse extends LitElement {
     _view: { state: true },
     _rowSize: { state: true },
     _cardSize: { state: true },
+    _limitWidth: { state: true },
     _permissions: { state: true },
     _search: { state: true },
     _toolsOpen: { state: true },
@@ -95,7 +96,10 @@ export default class DaBrowse extends LitElement {
     this._typesFilterState = { open: false, hiddenCount: 0 };
     this._sortState = { property: null, direction: 'none', loading: false };
     this._search = { matchCase: true };
-    const { groupByType, view, sort, rowSize, cardSize } = getBrowseSettings();
+    const {
+      groupByType, view, sort, rowSize, cardSize, limitWidth,
+    } = getBrowseSettings();
+    this._limitWidth = limitWidth === true;
     this._rowSize = ['s', 'l'].includes(rowSize) ? rowSize : 'm';
     this._cardSize = ['s', 'l'].includes(cardSize) ? cardSize : 'm';
     this._sortPreference = SORT_PROPS.includes(sort?.property)
@@ -614,6 +618,11 @@ export default class DaBrowse extends LitElement {
     updateBrowseSettings({ groupByType: group });
   }
 
+  setLimitWidth(limitWidth) {
+    this._limitWidth = limitWidth === true;
+    updateBrowseSettings({ limitWidth: this._limitWidth });
+  }
+
   render() {
     const search = this._search;
     return html`
@@ -624,6 +633,7 @@ export default class DaBrowse extends LitElement {
         .view=${this._view}
         .rowSize=${this._rowSize}
         .cardSize=${this._cardSize}
+        .limitWidth=${this._limitWidth}
         .typesFilterState=${this._typesFilterState}
         .sortState=${this._sortState}
         .searchState=${this._searchEngine || search.loading || search.error ? {
@@ -635,12 +645,13 @@ export default class DaBrowse extends LitElement {
         @sortrequest=${({ detail }) => this.activeListCmp.setSort(detail.property, detail.direction)}
         @viewchange=${({ detail }) => this.setView(detail.view)}
         @appearancesizechange=${({ detail }) => this.setAppearanceSize(detail.view, detail.size)}
+        @limitwidthchange=${({ detail }) => this.setLimitWidth(detail.limitWidth)}
         @groupbytypechange=${({ detail }) => this.setGroupByType(detail.group)}>
         <da-new slot="actions" variant="accent" .permissions=${this._permissions}
           @newitem=${this.handleNewItem}
           fullpath="${this.details.fullpath}" editor="${this.editor}"></da-new>
       </da-browse-header>
-      <div class="da-browse-content">
+      <div class="da-browse-content" ?data-limit-width=${this._limitWidth}>
         ${search.error ? html`<p role="alert">${search.error}</p>` : nothing}
         ${this._searchEngine ? this.renderSearchResults() : nothing}
         <div role="grid" aria-label="Browse files" ?hidden=${!!this._searchEngine}>
