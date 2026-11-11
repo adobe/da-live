@@ -388,10 +388,6 @@
   width: 20px;
   height: 20px;
   background-color: light-dark(#fff, var(--s2-gray-75, #2c2c2c));
-  background-image: url('https://da.live/img/icons/s2-icon-select-20-n.svg');
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 16px;
   border: 1px solid light-dark(#ccc, var(--s2-gray-400, #6e6e6e));
   border-radius: 4px;
   z-index: 100;
@@ -399,6 +395,15 @@
   display: none;
   align-items: center;
   justify-content: center;
+}
+
+.ew-editor-doc .table-select-handle::before {
+  content: '';
+  width: 16px;
+  height: 16px;
+  background-color: currentcolor;
+  mask: url('https://da.live/img/icons/s2-icon-select-20-n.svg') center / contain no-repeat;
+  pointer-events: none;
 }
 
 .ew-editor-doc .table-select-handle.is-visible {
