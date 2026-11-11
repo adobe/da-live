@@ -179,8 +179,8 @@ class Editor extends LitElement {
     });
   }
 
-  // Saves at once when a text field commits, replacing its pending debounced save.
-  _onTextCommit(node, e) {
+  // Saves at once when a rich-text field commits, replacing its pending debounced save.
+  _onRichTextCommit(node, e) {
     this._cancelDebounced(node.pointer);
     const raw = e.target.value;
     this._mutate((editor) => editor.setField(node.pointer, textValue(raw)));
@@ -298,7 +298,7 @@ class Editor extends LitElement {
           .value=${value ?? ''}
           ?disabled=${readonly}
           @input=${(e) => this._onTextInput(node, e)}
-          @change=${(e) => this._onTextCommit(node, e)}
+          @change=${(e) => this._onRichTextCommit(node, e)}
         ></form-rich-text>
       `;
     }
