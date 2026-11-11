@@ -9,32 +9,15 @@ const toolset = createToolset({ proseMirror, schema, onLink: () => {} });
 
 const tools = Object.fromEntries(listTools(toolset).map((candidate) => [candidate.id, candidate]));
 
-/** The ids of the tools only the more menu offers. */
 const MENU_IDS = ['blockquote', 'code', 'sup', 'sub'];
 
-/**
- * Waits for a task. Concurrent test pages run in the background, where animation frames
- * never fire.
- * @returns {Promise<void>}
- */
+// Concurrent test pages run in the background, where animation frames never fire.
 const tick = () => new Promise((resolve) => { setTimeout(resolve); });
 
-/**
- * Polls until a check passes or the tries run out.
- * @param {() => unknown} check Passes when it returns a truthy value.
- * @param {number} [tries] How often to poll, every 20ms.
- * @returns {Promise<void>}
- */
 const until = (check, tries = 100) => (check() || !tries
   ? Promise.resolve()
   : new Promise((resolve) => { setTimeout(resolve, 20); }).then(() => until(check, tries - 1)));
 
-/**
- * Mounts a toolbar and waits for its first measurement.
- * @param {object} [options] The toolbar properties, plus the test settings.
- * @param {string} [options.width] The CSS width of the toolbar.
- * @returns {Promise<HTMLElement>} The toolbar.
- */
 async function mount({ width = '900px', ...properties } = {}) {
   const toolbar = document.createElement('form-rich-text-toolbar');
   Object.assign(toolbar, { editorState: stateFor('<p>a</p>'), toolset, ...properties });
@@ -46,55 +29,23 @@ async function mount({ width = '900px', ...properties } = {}) {
   return toolbar;
 }
 
-/**
- * @param {HTMLElement} toolbar The toolbar.
- * @param {string} id The tool id.
- * @returns {HTMLButtonElement} The button of the tool, or its more menu item.
- */
 const tool = (toolbar, id) => toolbar.shadowRoot.querySelector(`[data-tool="${id}"]`);
 
-/**
- * @param {HTMLElement} toolbar The toolbar.
- * @returns {HTMLButtonElement} The button that opens the more menu.
- */
 const moreButton = (toolbar) => toolbar.shadowRoot.querySelector('[data-more]');
 
-/**
- * @param {HTMLElement} toolbar The toolbar.
- * @returns {HTMLElement} The more menu.
- */
 const menu = (toolbar) => toolbar.shadowRoot.querySelector('.form-rich-text-menu');
 
-/**
- * @param {HTMLElement} toolbar The toolbar.
- * @returns {HTMLElement|null} The picker.
- */
 const picker = (toolbar) => toolbar.shadowRoot.querySelector('nx-picker');
 
-/**
- * @param {Element} root The element to read.
- * @param {string} [scope] The selector of the buttons' parent.
- * @returns {string[]} The ids of the tools that show.
- */
 const visibleIds = (root, scope = '') => [...root.querySelectorAll(`${scope} [data-tool]:not(.is-hidden)`)]
   .map((button) => button.dataset.tool);
 
-/**
- * Opens the more menu and waits for its tools.
- * @param {HTMLElement} toolbar The toolbar.
- */
 async function openMenu(toolbar) {
   moreButton(toolbar).click();
   await until(() => menu(toolbar).querySelector('[data-tool]'));
   await toolbar.updateComplete;
 }
 
-/**
- * Collects the details of an event the toolbar fires.
- * @param {HTMLElement} toolbar The toolbar.
- * @param {string} type The event type.
- * @returns {object[]} The details, filled as the events fire.
- */
 function listen(toolbar, type) {
   const details = [];
   toolbar.addEventListener(type, (event) => details.push(event.detail));

@@ -6,35 +6,16 @@ import { SCHEMA_SPEC } from '../../../../../../blocks/form/utils/rich-text/schem
 import { parseRichText, serializeRichText, getCanonicalChange } from '../../../../../../blocks/form/utils/rich-text/html.js';
 
 const schema = new proseMirror.Schema(SCHEMA_SPEC);
-/**
- * @param {string} value The stored value.
- * @returns {object} Its document.
- */
 const parse = (value) => parseRichText({ proseMirror, schema, value });
-/**
- * @param {string} value The stored value.
- * @returns {string} The value after a parse and serialize.
- */
 const roundTrip = (value) => serializeRichText({ richTextDocument: parse(value) });
 
-/** A schema with one rich-text property. */
 const sdkSchema = { type: 'object', properties: { body: { type: 'string', 'x-semantic-type': 'rich-text' } } };
-/**
- * Saves a value through the SDK and reads it back.
- * @param {string} body The rich-text value.
- * @returns {string} What the SDK reads back.
- */
 const sdkStores = (body) => {
   const json = { metadata: { schemaName: 'x' }, data: { body } };
   const { model } = createEngine({ schema: sdkSchema, document: json }).getState();
   const { html } = convertJsonToHtml({ json, model });
   return convertHtmlToJson({ html }).json.data.body ?? '';
 };
-/**
- * Serializes a document with the schema's own DOM output.
- * @param {object} richTextDocument The ProseMirror document.
- * @returns {string} The HTML.
- */
 const rawHtml = (richTextDocument) => {
   const container = document.createElement('div');
   const serializer = proseMirror.DOMSerializer.fromSchema(schema);

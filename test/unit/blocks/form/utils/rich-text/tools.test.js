@@ -9,12 +9,6 @@ import {
 } from '../../../../../../blocks/form/utils/rich-text/tools.js';
 import { schema, stateFor, run } from '../../helpers/rich-text-states.js';
 
-/**
- * Creates the toolset and finds its tools by id.
- * @param {object} [options] The settings.
- * @param {() => void} [options.onLink] Opens the link dialog.
- * @returns {{ toolset: object, tool: (id: string) => object }} The toolset and a lookup.
- */
 function setup({ onLink = () => {} } = {}) {
   const toolset = createToolset({ proseMirror, schema, onLink });
   const tools = listTools(toolset);
@@ -126,11 +120,6 @@ describe('rich-text tools', () => {
   });
 
   describe('keymap', () => {
-    /**
-     * Builds the keymap of a toolset.
-     * @param {object} [options] The settings, see `setup`.
-     * @returns {Record<string, Function>} The commands by key.
-     */
     const keymapFor = (options) => {
       const { toolset } = setup(options);
       return buildKeymap({ proseMirror, schema, toolset });

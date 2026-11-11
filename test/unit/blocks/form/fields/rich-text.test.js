@@ -6,31 +6,13 @@ import FormRichText from '../../../../../blocks/form/fields/rich-text.js';
 
 const { loadProseMirror } = FormRichText;
 
-/**
- * Waits for a task. Concurrent test pages run in the background, where animation frames
- * never fire.
- * @returns {Promise<void>}
- */
+// Concurrent test pages run in the background, where animation frames never fire.
 const tick = () => new Promise((resolve) => { setTimeout(resolve); });
 
-/**
- * Polls until a check passes or the tries run out.
- * @param {() => unknown} check Passes when it returns a truthy value.
- * @param {number} [tries] How often to poll, every 20ms.
- * @returns {Promise<void>}
- */
 const until = (check, tries = 100) => (check() || !tries
   ? Promise.resolve()
   : new Promise((resolve) => { setTimeout(resolve, 20); }).then(() => until(check, tries - 1)));
 
-/**
- * Mounts a field and waits for its editor.
- * @param {object} [options] The field properties, plus the test settings.
- * @param {string} [options.value] The value.
- * @param {() => Promise<object>} [options.loader] Loads ProseMirror.
- * @param {string} [options.width] The CSS width of the field.
- * @returns {Promise<HTMLElement>} The field.
- */
 async function mount({ value = '', loader = async () => proseMirror, width, ...properties } = {}) {
   FormRichText.loadProseMirror = loader;
   const richText = document.createElement('form-rich-text');
@@ -43,104 +25,45 @@ async function mount({ value = '', loader = async () => proseMirror, width, ...p
   return richText;
 }
 
-/**
- * @param {HTMLElement} richText The field.
- * @returns {HTMLElement} The editable area.
- */
 const content = (richText) => richText.shadowRoot.querySelector('.form-rich-text-content');
-/**
- * @param {HTMLElement} richText The field.
- * @returns {HTMLElement} The toolbar above the editor.
- */
 const toolbar = (richText) => richText.shadowRoot.querySelector('form-rich-text-toolbar:not([floating])');
-/**
- * @param {HTMLElement} richText The field.
- * @param {string} id The tool id.
- * @returns {HTMLButtonElement} The toolbar button of the tool, or its more menu item.
- */
 const tool = (richText, id) => toolbar(richText).shadowRoot.querySelector(`[data-tool="${id}"]`);
-/**
- * @param {HTMLElement} richText The field.
- * @returns {HTMLElement} The text style picker.
- */
 const blockPicker = (richText) => toolbar(richText).shadowRoot.querySelector('nx-picker');
 
-/**
- * Opens the more menu of a toolbar and waits for its tools.
- * @param {HTMLElement} richText The field.
- * @param {HTMLElement} [host] The toolbar, the one above the editor by default.
- */
 async function openMenu(richText, host = toolbar(richText)) {
   host.shadowRoot.querySelector('[data-more]').click();
   await until(() => host.shadowRoot.querySelector('.form-rich-text-menu [data-tool]'));
   await richText.updateComplete;
 }
 
-/**
- * Focuses the field again. Concurrent test pages can blur the window, so tests do this
- * before they read focus state.
- * @param {HTMLElement} richText The field.
- */
+// Concurrent test pages can blur the window, so tests refocus before reading focus state.
 async function refocus(richText) {
   content(richText).dispatchEvent(new FocusEvent('focusin', { bubbles: true, composed: true }));
   await richText.updateComplete;
 }
 
-/**
- * Reads whether a tool shows as pressed while the field has the focus.
- * @param {HTMLElement} richText The field.
- * @param {string} id The tool id.
- * @returns {Promise<string|null>} The `aria-pressed` value.
- */
 async function pressed(richText, id) {
   await refocus(richText);
   return tool(richText, id).getAttribute('aria-pressed');
 }
 
-/**
- * Pins the focused state for tests that wait across several frames.
- * @param {HTMLElement} richText The field.
- */
 async function holdFocus(richText) {
   Object.defineProperty(richText, '_focused', { get: () => true, set: () => {} });
   richText.requestUpdate();
   await richText.updateComplete;
 }
 
-/**
- * @param {HTMLElement} richText The field.
- * @returns {HTMLElement|null} The floating toolbar next to the selection.
- */
 const floating = (richText) => richText.shadowRoot.querySelector('.form-rich-text-bubble');
-/**
- * @param {HTMLElement} richText The field.
- * @param {string} id The tool id.
- * @returns {HTMLButtonElement} The floating toolbar button of the tool.
- */
 const floatingTool = (richText, id) => floating(richText).shadowRoot.querySelector(`[data-tool="${id}"]`);
-/**
- * @param {HTMLElement} host The toolbar.
- * @returns {string[]} The ids of the tools that show in it.
- */
 const visibleIds = (host) => [...host.shadowRoot.querySelectorAll('[data-tool]:not(.is-hidden)')]
   .map((button) => button.dataset.tool);
 
-/**
- * Selects a range of a field, or places the caret when no end is given.
- * @param {HTMLElement} richText The field.
- * @param {number} from The start of the range.
- * @param {number} [to] The end of the range.
- */
 function selectRange(richText, from, to = from) {
   const { state } = richText._view;
   const selection = proseMirror.TextSelection.create(state.doc, from, to);
   richText._view.dispatch(state.tr.setSelection(selection));
 }
 
-/**
- * Selects the text of a single-block field.
- * @param {HTMLElement} richText The field.
- */
 function selectAll(richText) {
   selectRange(richText, 1, richText._view.state.doc.content.size - 1);
 }
