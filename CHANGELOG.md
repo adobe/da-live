@@ -1,3 +1,24 @@
+# [1.25.0](https://github.com/adobe/da-live/compare/v1.24.1...v1.25.0) (2026-11-11)
+
+
+### Features
+
+* use browse v2 by default ([#1656](https://github.com/adobe/da-live/issues/1656)) ([c619998](https://github.com/adobe/da-live/commit/c6199989fa05d15d448c1a63ce00bd720ee26fe1))
+
+## [1.24.1](https://github.com/adobe/da-live/compare/v1.24.0...v1.24.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* read single-sheet library configs in the canvas library panel ([#1706](https://github.com/adobe/da-live/issues/1706)) ([fab381a](https://github.com/adobe/da-live/commit/fab381aa894486aeeeacfca39aab273edc15137c)), closes [#1705](https://github.com/adobe/da-live/issues/1705)
+
+# [1.24.0](https://github.com/adobe/da-live/compare/v1.23.0...v1.24.0) (2026-11-10)
+
+
+### Features
+
+* **canvas:** support editable link-images ([#1342](https://github.com/adobe/da-live/issues/1342)) ([7979691](https://github.com/adobe/da-live/commit/797969182faccc253f1adbcaaf9a751060bb6f56))
+
 # [1.23.0](https://github.com/adobe/da-live/compare/v1.22.2...v1.23.0) (2026-11-10)
 
 
