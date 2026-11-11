@@ -3,11 +3,10 @@ import sinon from 'sinon';
 import '../../setup-nx.js';
 import '../../../../blocks/landing/tile-group.js';
 import { parseTileEntries } from '../../../../blocks/landing/tile-content.js';
-import { getNx, getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
+import { getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
 
 const { source, config } = await getNx2Api();
 const { setEWEnabled } = await getNxEWFlags();
-const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const content = await fetch('/test/fixtures/landing-tiles.html').then((response) => response.text());
 
 describe('landing tile group', () => {
@@ -21,8 +20,8 @@ describe('landing tile group', () => {
 
   beforeEach(async () => {
     sinon.stub(config, 'get').resolves({ ok: false, status: 404 });
-    hashChange._set({ org: 'org', site: 'site', fullpath: '/org/site' });
     el = document.createElement('da-landing-tiles');
+    el.setScope({ org: 'org', site: 'site' });
     el.entries = parseTileEntries(new DOMParser().parseFromString(content, 'text/html').querySelector('.landing'));
     document.body.append(el);
     await el.updateComplete;
@@ -49,7 +48,7 @@ describe('landing tile group', () => {
   it('updates Browse when the selected site changes', async () => {
     const [browse] = await getTiles();
     expect(new URL(browse.href).hash).to.equal('#/org/site');
-    hashChange._set({ org: 'other', site: 'site', fullpath: '/other/site' });
+    el.setScope({ org: 'other', site: 'site' });
     await el.updateComplete;
     expect(new URL(browse.href).hash).to.equal('#/other/site');
   });
@@ -62,7 +61,7 @@ describe('landing tile group', () => {
     await el.updateComplete;
     const dialog = el.shadowRoot.querySelector('da-name-dialog');
     expect(dialog.getAttribute('dialog-title')).to.equal('New page in site');
-    hashChange._set({ org: 'other', site: 'site', fullpath: '/other/site' });
+    el.setScope({ org: 'other', site: 'site' });
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('da-name-dialog')).to.equal(null);
   });
@@ -210,7 +209,6 @@ describe('landing tile group', () => {
 
   it('loads content without a site and disables only the tiles that need one', async () => {
     el.remove();
-    hashChange._set(undefined);
     el = document.createElement('da-landing-tiles');
     el.contentBlock = new DOMParser().parseFromString(content, 'text/html').querySelector('.landing');
     document.body.append(el);
@@ -236,7 +234,7 @@ describe('landing tile group', () => {
         ['click', { source: 'landing-action-browse-content', target: browse.href }],
         ['click', { source: 'landing-action-create-a-page', target: 'create-page' }],
       ]);
-      hashChange._set(undefined);
+      el.setScope(undefined);
       await el.updateComplete;
       await getTiles();
       create.shadowRoot.querySelector('button').click();

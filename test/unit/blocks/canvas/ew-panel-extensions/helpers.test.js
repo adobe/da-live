@@ -1651,6 +1651,29 @@ describe('EW panel helpers fetchExtensions', () => {
     expect(names).to.not.include('aem-assets-panel');
   });
 
+  it('prefers a single-sheet site library over the org library', async () => {
+    const orgConfig = {
+      ':type': 'multi-sheet',
+      library: { data: [{ title: 'Blocks', path: 'https://content.da.live/org/other/blocks.json' }] },
+    };
+    const siteConfig = {
+      ':type': 'sheet',
+      ':sheetname': 'library',
+      data: [{ title: 'Blocks', path: 'https://content.da.live/org/site/blocks.json' }],
+    };
+    setDaConfigs([orgConfig, siteConfig]);
+    const exts = await fetchExtensions('org', 'site');
+    const blocks = exts.filter((e) => e.name === 'blocks');
+    expect(blocks).to.have.length(1);
+    expect(blocks[0].sources).to.deep.equal(['https://content.da.live/org/site/blocks.json']);
+  });
+
+  it('ignores a single-sheet config that is not the library', async () => {
+    setDaConfigs([{ ':type': 'sheet', ':sheetname': 'data', data: [blocksRow] }]);
+    const names = (await fetchExtensions('org', 'site')).map((e) => e.name);
+    expect(names).to.not.include('blocks');
+  });
+
   it('returns an empty list when there are no valid configs', async () => {
     setDaConfigs([{ error: true }]);
     expect(await fetchExtensions('org', 'site')).to.eql([]);

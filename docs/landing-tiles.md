@@ -28,9 +28,10 @@ selects the route; `landing.js` composes the gradient surface and lazily loads
 Landing inherits the application's color scheme and shared Spectrum tokens,
 including its gradient. It does not choose a theme or support a `?theme=` override.
 
-Tiles always render. Selection currently comes from the hash, so on unscoped Home
-the tiles that need a site (Browse Content and Create a page) are disabled until
-site-selector integration; scoped hashes still route to Browse.
+Users without recent sites are redirected to `/start`. Returning users sign in
+before Landing shows the quick-action tiles above the Content panel.
+Tiles use the same preselected site as Content and update when the site selector
+changes, without requiring a scoped URL hash. Scoped hashes still route to Browse.
 
 A page with a `Browse` block and a `Landing` table renders the table's rows as tiles
 in place; the table itself stays hidden. With only `?landing=true`, the owner fetches

@@ -1,9 +1,51 @@
 import { expect } from '@esm-bundle/chai';
-import { setNx } from '../../../../scripts/utils.js';
+import sinon from 'sinon';
+import { setNx, getNx, getNx2Api } from '../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { showNotPermitted, removeNotPermitted } = await import('../../../../blocks/edit/edit.js');
+const { default: init, showNotPermitted, removeNotPermitted } = await import('../../../../blocks/edit/edit.js');
+const { source } = await getNx2Api();
+const { setImsResult } = await import(`${getNx()}/utils/ims.js`);
+
+describe('edit entry point', () => {
+  it('records the opened document in Recent with its .html path', async () => {
+    const { href } = window.location;
+    const savedSocket = window.WebSocket;
+    const el = document.createElement('div');
+    let socketClosed;
+    const closed = new Promise((resolve) => { socketClosed = resolve; });
+    window.WebSocket = function FakeWebSocket() {
+      this.readyState = 0;
+      this.send = () => {};
+      this.close = socketClosed;
+    };
+    const clock = sinon.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    sinon.stub(window, 'fetch').resolves(new Response('', { status: 200 }));
+    sinon.stub(source, 'get').resolves({ status: 403, permissions: [] });
+    setImsResult({ accessToken: { token: 'test-token' } });
+    const setItem = sinon.stub(Storage.prototype, 'setItem');
+    const writes = [];
+    setItem.callsFake(function record(key, value) {
+      if (key === 'da-recent-files') writes.push(JSON.parse(value));
+      else setItem.wrappedMethod.call(this, key, value);
+    });
+    const addListener = sinon.spy(window, 'addEventListener');
+    try {
+      window.history.replaceState(null, '', '/edit#/org/site/docs/page');
+      await init(el);
+      await closed;
+      expect(writes[0]['/org/site'][0]).to.equal('/org/site/docs/page.html');
+    } finally {
+      addListener.getCalls().forEach(({ args }) => window.removeEventListener(...args));
+      clock.uninstall();
+      sinon.restore();
+      setImsResult(undefined);
+      window.WebSocket = savedSocket;
+      window.history.replaceState(null, '', href);
+    }
+  });
+});
 
 describe('edit not permitted message', () => {
   let el;

@@ -5,7 +5,7 @@ import { getTileTarget } from './utils.js';
 import { loadTileEntries, readTileEntries } from './tile-content.js';
 import './tile.js';
 
-const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const nx = await import(`${getNx2()}/scripts/nx.js`);
 const sizing = nx.getUISize ? await import(`${getNx2()}/utils/ui-size.js`) : undefined;
 const styles = await loadStyle(import.meta.url);
@@ -24,12 +24,10 @@ export class DaLandingTiles extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [styles];
-    this._unsubscribe = hashChange.subscribe((state) => this.setScope(state));
     if (this.entries === undefined) this._loadContent();
   }
 
   disconnectedCallback() {
-    this._unsubscribe?.();
     this._createDialog = undefined;
     super.disconnectedCallback();
   }
@@ -124,9 +122,10 @@ export class DaLandingTiles extends LitElement {
 
 customElements.define('da-landing-tiles', DaLandingTiles);
 
-export default function init(el, { contentBlock } = {}) {
+export default function init(el, { contentBlock, scope } = {}) {
   const tiles = document.createElement('da-landing-tiles');
   tiles.contentBlock = contentBlock;
-  el.append(tiles);
+  tiles.setScope(scope);
+  el.prepend(tiles);
   return tiles;
 }
