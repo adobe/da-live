@@ -28,7 +28,7 @@ const sdkStores = (body) => {
   const json = { metadata: { schemaName: 'x' }, data: { body } };
   const { model } = createEngine({ schema: sdkSchema, document: json }).getState();
   const { html } = convertJsonToHtml({ json, model });
-  return convertHtmlToJson({ html, schema: sdkSchema }).json.data.body ?? '';
+  return convertHtmlToJson({ html }).json.data.body ?? '';
 };
 /**
  * Serializes a document with the schema's own DOM output.
@@ -130,6 +130,12 @@ describe('rich-text html', () => {
     it('trims edge whitespace and breaks', () => {
       expect(roundTrip('<p><br> a  b <br></p>')).to.equal('<p>a b</p>');
     });
+
+    it('trims non-breaking and em spaces at the edges like the SDK', () => {
+      const value = '<p>\u00a0\u2003a\u00a0b\u2003\u00a0</p>';
+      expect(roundTrip(value)).to.equal('<p>a\u00a0b</p>');
+      expect(sdkStores(value)).to.equal('<p>a\u00a0b</p>');
+    });
   });
 
   describe('schema', () => {
@@ -177,6 +183,7 @@ describe('rich-text html', () => {
       'repeated spaces': [paragraph('a  b')],
       tabs: [paragraph('a\tb')],
       'edge spaces': [paragraph(' a '), paragraph(text('x  y', ['code']))],
+      'edge non-breaking spaces': [paragraph('\u00a0a\u2003')],
       'empty blocks': [paragraph('a'), paragraph(), heading(2), bulletList(listItem(paragraph('b')), listItem(paragraph()))],
       'edge line breaks': [paragraph(hardBreak, 'a', hardBreak)],
       'marks on spaces': [paragraph('a', text(' ', ['strong']), text(' ', [link('/x')]), 'b')],
