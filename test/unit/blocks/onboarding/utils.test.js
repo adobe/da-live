@@ -3,9 +3,9 @@ import { expect } from '@esm-bundle/chai';
 const { setNx } = await import('../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { addSite } = await import('../../../../blocks/start/utils.js');
+const { addSite } = await import('../../../../blocks/onboarding/utils.js');
 
-describe('start/utils addSite', () => {
+describe('onboarding/utils addSite', () => {
   let savedFetch;
   let savedIms;
   let calls;

@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../scripts/utils.js';
 import { initIms } from '../shared/utils.js';
-import { addSite } from '../start/utils.js';
+import { addSite } from './utils.js';
 import { loadCards } from './content.js';
 
 const SITE_URL_ERROR = 'Enter an existing AEM site URL.';
