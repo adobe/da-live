@@ -30,22 +30,10 @@ export default class DragHandler {
     this._createPreview = createPreview;
   }
 
-  /**
-   * Tells which side of an item the dragged item would drop on.
-   *
-   * @param {string} id - The item's id.
-   * @returns {string} `before`, `after`, or empty when it's not the target.
-   */
   dropSide(id) {
     return this._drop?.id === id ? this._drop.side : '';
   }
 
-  /**
-   * Starts dragging an item.
-   *
-   * @param {DragEvent} event - The dragstart event on the dragged element.
-   * @param {string} id - The dragged item's id.
-   */
   start(event, id) {
     this.end();
     this._draggedId = id;
@@ -57,12 +45,6 @@ export default class DragHandler {
     }
   }
 
-  /**
-   * Marks the side of an item the dragged item would drop on.
-   *
-   * @param {DragEvent} event - The dragover event on the item.
-   * @param {string} targetId - The hovered item's id.
-   */
   over(event, targetId) {
     if (!this._accepts(targetId)) {
       return;
@@ -74,19 +56,10 @@ export default class DragHandler {
     this._setDrop({ id: targetId, side: dropSideOf(event) });
   }
 
-  /**
-   * Clears the drop marker once the pointer leaves an item.
-   */
   leave() {
     this._setDrop(undefined);
   }
 
-  /**
-   * Drops the dragged item before or after an item.
-   *
-   * @param {DragEvent} event - The drop event on the item.
-   * @param {string} targetId - The target item's id.
-   */
   drop(event, targetId) {
     if (!this._accepts(targetId)) {
       return;
@@ -99,9 +72,6 @@ export default class DragHandler {
     this.end();
   }
 
-  /**
-   * Forgets the drag and removes its drag preview.
-   */
   end() {
     this._preview?.remove();
     this._preview = undefined;
