@@ -24,6 +24,7 @@ function makeCtrl(overrides = {}) {
     hasSelection: false,
     getAttachedThreadIds() { return new Set(); },
     getThreadGroups() { return { active: [], detached: [], resolved: [] }; },
+    getComment() { return null; },
     findThreadForComment() { return null; },
     getCurrentUser() { return null; },
     onCurrentUserChange() { return () => {}; },
@@ -206,5 +207,27 @@ describe('ew-comments', () => {
     expect(sharedHintRule?.style.minHeight).to.equal('24px');
     expect(sharedHintRule?.style.height).to.equal('');
     expect(commentsHintRule?.style.paddingTop).to.not.equal('');
+  });
+
+  it('clears a selected thread when its deleted anchor hides the thread', async () => {
+    let selected = 'text-thread';
+    const textThread = {
+      id: 'text-thread',
+      threadId: null,
+      anchorType: 'text',
+      resolved: false,
+    };
+    const ctrl = makeCtrl({
+      selectedThreadId: selected,
+      getComment(id) { return id === 'text-thread' ? textThread : null; },
+      setSelectedThread(id) { selected = id; this.selectedThreadId = id; },
+    });
+
+    el = await makeEl();
+    el.controller = ctrl;
+    await el.updateComplete;
+    await new Promise((resolve) => { queueMicrotask(resolve); });
+
+    expect(selected).to.equal(null);
   });
 });

@@ -7,6 +7,7 @@ import {
 import { dispatchMirror } from '../../editor-utils/editor-utils.js';
 import { canvasBus } from '../../utils/canvas-bus.js';
 import { toolbarController } from '../../editor-utils/toolbar-controller.js';
+import { getCommentsBridge } from '../../editor-utils/comments-bridge.js';
 
 /**
  * CURSOR_MOVE from the quick-edit iframe: mirror the caret into the doc view and
@@ -232,6 +233,13 @@ export function handleNodeSelect({ node }, ctx) {
       .scrollIntoView()
       .setMeta('addToHistory', false);
     dispatchMirror(view, tr, ctx);
+    if (node.anchorType === 'image') {
+      const { controller } = getCommentsBridge();
+      controller?.setSelectedThread(controller.findThreadForNode?.({
+        anchorType: 'image',
+        from: pos,
+      }) ?? null);
+    }
     // A whole-block selection gets the block toolbar (variants, add item, edit in
     // modal, replace, delete) instead of the inline one — same as in the doc view.
     // Read after dispatch so the descriptor reflects the NodeSelection just set.

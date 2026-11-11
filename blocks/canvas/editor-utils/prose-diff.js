@@ -236,15 +236,27 @@ export function createTrackingPlugin(rerenderPage, updateCursors, getEditor, onS
               const identityChanged = changes.some((c) => (
                 (c.type === 'attrs' || c.type === 'replaced') && EDITABLE_TYPES.includes(changedNodeType(c))
               ));
-              const commonEditable = identityChanged
+              // Adding, removing or replacing an image changes the outline's children,
+              // including on undo/redo. Attribute-only edits still use the in-place update.
+              const imageStructureChanged = changes.some((c) => (
+                ((c.type === 'added' || c.type === 'deleted') && c.node?.type.name === 'image')
+                || (c.type === 'replaced'
+                  && (c.oldNode?.type.name === 'image' || c.newNode?.type.name === 'image'))
+              ));
+              const commonEditable = identityChanged || imageStructureChanged
                 ? null
                 : findCommonEditableAncestor(view, changes, prevState);
 
               const previousEditable = commonEditable && previousDoc.nodeAt(commonEditable.pos);
+              const currentEditable = commonEditable && view.state.doc.nodeAt(commonEditable.pos);
               const wasEmptyParagraph = previousEditable?.type.name === 'paragraph'
                 && previousEditable.content.size === 0;
+              // prose2aem omits empty editable nodes, so clearing an existing item removes
+              // its Outline entry and requires the full HTML refresh path.
+              const becameEmptyEditable = previousEditable?.content.size > 0
+                && currentEditable?.content.size === 0;
 
-              if (commonEditable && !wasEmptyParagraph) {
+              if (commonEditable && !wasEmptyParagraph && !becameEmptyEditable) {
                 getEditor?.({
                   cursorOffset: commonEditable.pos + 1,
                   previousDoc,
