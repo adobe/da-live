@@ -5,7 +5,7 @@ const { loadStyle } = await import(`${getNx2()}/utils/utils.js`);
 
 const style = await loadStyle(import.meta.url);
 
-const EL_NAME = 'nx-preview';
+const EL_NAME = 'ew-form-preview';
 const REFRESH_MS = 500;
 
 let prismLoading;
@@ -68,7 +68,7 @@ class Preview extends LitElement {
   render() {
     return html`
       <div class="vis-wrapper is-visible">
-        <p class="nx-title">Preview</p>
+        <p class="ew-form-preview-title">Preview</p>
         <pre><code class="language-json"></code></pre>
       </div>
     `;

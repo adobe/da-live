@@ -11,15 +11,15 @@
   line-height: 1;
 }
 
-:host form-picker {
+:host ew-form-picker {
   margin-bottom: 12px;
 }
 
-.nx-sidebar-section {
+.ew-form-sidebar-section {
   margin-bottom: 16px;
 }
 
-:host .nx-sidebar-title {
+:host .ew-form-sidebar-title {
   position: relative;
   font-weight: 700;
   font-size: var(--s2-body-size-m);
@@ -30,7 +30,7 @@
   padding: 0 12px var(--s2-spacing-100);
 }
 
-:host .nx-sidebar-title::after {
+:host .ew-form-sidebar-title::after {
   /* Spectrum 2 medium divider: 2px thick, gray-200, rounded ends — the same
      divider the editor uses under group titles. */
   content: "";

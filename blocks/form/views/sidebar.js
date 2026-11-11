@@ -5,7 +5,7 @@ const { loadStyle } = await import(`${getNx2()}/utils/utils.js`);
 
 const style = await loadStyle(import.meta.url);
 
-const EL_NAME = 'nx-sidebar';
+const EL_NAME = 'ew-form-sidebar';
 
 class Sidebar extends LitElement {
   static properties = {
@@ -83,8 +83,8 @@ class Sidebar extends LitElement {
     const root = this.state?.model?.root;
 
     return html`
-      <div class="nx-sidebar-section">
-        <p class="nx-sidebar-title">Navigation</p>
+      <div class="ew-form-sidebar-section">
+        <p class="ew-form-sidebar-title">Navigation</p>
         ${root ? html`
           <div class="nav-list">
             <ul>${this._renderNode(root)}</ul>

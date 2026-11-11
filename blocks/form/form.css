@@ -6,7 +6,7 @@
   /* Top offset for groups scrolled into view and for the sticky nav. Only
      the editor content applies it. Padding the .form scroll container as
      well would misalign the two. */
-  --nx-scroll-offset-top: var(--form-content-top);
+  --ew-form-scroll-offset-top: var(--form-content-top);
 }
 
 /* Nested scroll like /canvas. The form scrolls inside a fixed-height region

@@ -4,7 +4,7 @@ import '../../setup-nx.js';
 import { createEngine } from '../../../../deps/da-sc-sdk/dist/index.js';
 import '../../../../blocks/form/editor.js';
 
-// nx-preview lazy-imports the (heavy) Prism bundle on its first paint. Stub it
+// ew-form-preview lazy-imports the (heavy) Prism bundle on its first paint. Stub it
 // so the render smoke tests stay light and don't starve other test files that
 // share the browser session. Safe to set at module load — preview only calls
 // loadPrism() when it actually paints (on mount), not at import time.
@@ -23,12 +23,12 @@ const demoSchema = {
 const validDoc = (data = {}) => ({ metadata: { schemaName: 'demo' }, data });
 
 // Track mounted elements so we can remove them after each test — leftover
-// <nx-form>s carry live engines and re-rendering previews that would otherwise
+// <ew-form-editor>s carry live engines and re-rendering previews that would otherwise
 // slow down (and flake) later test files in the shared wtr page.
 const mounted = [];
 
 function makeForm() {
-  const el = document.createElement('nx-form');
+  const el = document.createElement('ew-form-editor');
   el._loadContext = async () => {};
   document.body.append(el);
   mounted.push(el);
@@ -40,7 +40,7 @@ afterEach(() => {
   sinon.restore();
 });
 
-// Build an <nx-form> in a "ready" render without touching the network.
+// Build an <ew-form-editor> in a "ready" render without touching the network.
 // Setting `ctx` would trigger `_loadContext` (a real `source.*` fetch), so we
 // stub it out and seed the reactive state the renderer reads directly.
 async function mountReady() {
@@ -60,7 +60,7 @@ async function mountReady() {
   return el;
 }
 
-describe('nx-form', () => {
+describe('ew-form-editor', () => {
   it('renders nothing without a ctx', async () => {
     const el = makeForm();
     await el.updateComplete;
@@ -75,7 +75,7 @@ describe('nx-form', () => {
       if (key === 'da-recent-files') writes.push(JSON.parse(value)['/org/site'][0]);
       else setItem.wrappedMethod.call(this, key, value);
     });
-    const el = document.createElement('nx-form');
+    const el = document.createElement('ew-form-editor');
     const loadContext = sinon.spy(el, '_loadContext');
     mounted.push(el);
     document.body.append(el);
@@ -93,28 +93,28 @@ describe('nx-form', () => {
 
   it('renders the editor, preview, and sidebar when ready', async () => {
     const el = await mountReady();
-    expect(el.shadowRoot.querySelector('nx-editor')).to.exist;
-    expect(el.shadowRoot.querySelector('nx-preview')).to.exist;
-    expect(el.shadowRoot.querySelector('nx-sidebar')).to.exist;
+    expect(el.shadowRoot.querySelector('ew-form-fields')).to.exist;
+    expect(el.shadowRoot.querySelector('ew-form-preview')).to.exist;
+    expect(el.shadowRoot.querySelector('ew-form-sidebar')).to.exist;
   });
 
   it('shows the preview by default', async () => {
     const el = await mountReady();
-    expect(el.shadowRoot.querySelector('nx-preview')).to.exist;
-    expect(el.shadowRoot.querySelector('.nx-editor-pane-with-preview')).to.exist;
+    expect(el.shadowRoot.querySelector('ew-form-preview')).to.exist;
+    expect(el.shadowRoot.querySelector('.ew-form-pane-with-preview')).to.exist;
   });
 
   it('removes the preview when the JSON preview is disabled', async () => {
     const el = await mountReady();
     el._previewEnabled = false;
     await el.updateComplete;
-    expect(el.shadowRoot.querySelector('nx-preview')).to.not.exist;
-    expect(el.shadowRoot.querySelector('.nx-editor-pane-with-preview')).to.not.exist;
+    expect(el.shadowRoot.querySelector('ew-form-preview')).to.not.exist;
+    expect(el.shadowRoot.querySelector('.ew-form-pane-with-preview')).to.not.exist;
   });
 
   it('passes the engine and state into the editor', async () => {
     const el = await mountReady();
-    const editor = el.shadowRoot.querySelector('nx-editor');
+    const editor = el.shadowRoot.querySelector('ew-form-fields');
     expect(editor.editor).to.equal(el._editor);
     expect(editor.state).to.equal(el._state);
   });
@@ -128,7 +128,7 @@ describe('nx-form', () => {
     };
     el.ctx = { org: 'adobe', repo: 'demo', path: 'adobe/demo/page' };
     await el.updateComplete;
-    const heading = el.shadowRoot.querySelector('.nx-form-message h2');
+    const heading = el.shadowRoot.querySelector('.ew-form-message h2');
     expect(heading.textContent).to.equal('Schema not found');
   });
 
@@ -140,11 +140,11 @@ describe('nx-form', () => {
     };
     el.ctx = { org: 'adobe', repo: 'demo', path: 'adobe/demo/page' };
     await el.updateComplete;
-    expect(el.shadowRoot.querySelector('.nx-form-schema-heading')).to.exist;
-    expect(el.shadowRoot.querySelector('form-picker')).to.exist;
+    expect(el.shadowRoot.querySelector('.ew-form-schema-heading')).to.exist;
+    expect(el.shadowRoot.querySelector('ew-form-picker')).to.exist;
     // The "open Schema Editor" guidance renders as a sibling of the picker (it
-    // used to rely on form-picker's description slot, which no longer exists).
-    const link = el.shadowRoot.querySelector('.nx-form-schema-hint .nx-form-schema-text-link');
+    // used to rely on ew-form-picker's description slot, which no longer exists).
+    const link = el.shadowRoot.querySelector('.ew-form-schema-hint .ew-form-schema-text-link');
     expect(link, 'schema editor link').to.exist;
     expect(link.textContent).to.equal('Schema Editor');
   });
