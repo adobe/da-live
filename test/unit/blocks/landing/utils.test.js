@@ -39,11 +39,11 @@ describe('landing tile destinations', () => {
     expect(getTileTarget({ entry: { href: '/guide?theme=dark' }, scope: 'org/site', href: HREF }).href)
       .to.equal('https://tilesv2--da-live--adobe.aem.live/guide?theme=dark&nx=main&nxver=2');
     const relative = getTileTarget({
-      entry: { href: './guide', baseHref: 'https://tilesv2--da-live--adobe.aem.live/drafts/landing-copy' },
+      entry: { href: './guide' },
       scope: 'org/site',
       href: HREF,
     });
-    expect(new URL(relative.href).pathname).to.equal('/drafts/guide');
+    expect(new URL(relative.href).pathname).to.equal('/guide');
   });
 });
 

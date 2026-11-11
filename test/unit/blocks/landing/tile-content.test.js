@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
-import { parseTileEntries, loadTileEntries } from '../../../../blocks/landing/tile-content.js';
+import { parseTileEntries } from '../../../../blocks/landing/tile-content.js';
 
 const content = await fetch('/test/fixtures/landing-tiles.html').then((response) => response.text());
 
@@ -52,31 +52,5 @@ describe('authored landing tiles', () => {
     expect(entries[0].tone).to.equal('purple');
     expect(entries[0].id).to.equal('stable-action');
     expect(parseTileEntries(null)).to.deep.equal([]);
-  });
-
-  it('shares an in-flight content request and caches successful parsed data', async () => {
-    let finish;
-    const fetchContent = sinon.stub(window, 'fetch').returns(new Promise((resolve) => { finish = resolve; }));
-    const first = loadTileEntries('/landing-shared');
-    const second = loadTileEntries('/landing-shared');
-    expect(fetchContent.calledOnceWithExactly('/landing-shared.plain.html')).to.equal(true);
-    finish(new Response(content));
-    const result = await first;
-    expect(await second).to.equal(result);
-    expect(result.entries).to.have.length(5);
-    expect(await loadTileEntries('/landing-shared')).to.equal(result);
-    expect(fetchContent.calledOnce).to.equal(true);
-  });
-
-  it('reports failures without falling back to hardcoded tiles and allows a later retry', async () => {
-    const fetchContent = sinon.stub(window, 'fetch');
-    fetchContent.onFirstCall().resolves(new Response('', { status: 503 }));
-    fetchContent.onSecondCall().rejects(new Error('Offline'));
-    fetchContent.onThirdCall().resolves(new Response('<main></main>'));
-    fetchContent.onCall(3).resolves(new Response(content));
-    expect(await loadTileEntries('/landing-retry')).to.deep.equal({ error: 'Could not load quick links.', status: 503 });
-    expect((await loadTileEntries('/landing-retry')).error).to.equal('Could not load quick links.');
-    expect((await loadTileEntries('/landing-retry')).error).to.equal('No quick links are configured.');
-    expect((await loadTileEntries('/landing-retry')).entries).to.have.length(5);
   });
 });

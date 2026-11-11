@@ -79,7 +79,7 @@ export function getTileTarget({ entry, scope, href = window.location.href }) {
     const target = template.replace(/\{org\}/g, encodeURIComponent(org))
       .replace(/\{site\}/g, encodeURIComponent(site));
     if (/[{}]|%7B|%7D/i.test(target)) return { disabled: true };
-    const url = new URL(target, entry.baseHref || href);
+    const url = new URL(target, href);
     if (!['http:', 'https:'].includes(url.protocol)) return { disabled: true };
     const current = new URL(href);
     const sameOrigin = url.origin === current.origin;

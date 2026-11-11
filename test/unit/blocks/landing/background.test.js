@@ -20,7 +20,6 @@ describe('landing background with Content', () => {
     loadIms.resolves({ accessToken: { token: 'test-token' } });
     initialize = sinon.spy(DaLanding.prototype, 'initialize');
     sinon.stub(DaRecentFiles.prototype, 'loadSite').resolves();
-    sinon.stub(window, 'fetch').resolves(new Response(tiles));
     getSiteOptions.returns([{ value: 'org/site', label: 'org/site' }]);
     localStorage.setItem('da-sites', JSON.stringify(['org/site']));
     el = document.createElement('div');
@@ -43,7 +42,8 @@ describe('landing background with Content', () => {
   });
 
   it('replaces authored content with Landing inside a landing surface', async () => {
-    const content = await init(el);
+    const blocks = readLandingBlocks(new DOMParser().parseFromString(tiles, 'text/html'));
+    const content = await init(el, { blocks });
     await initialize.lastCall.returnValue;
     await content.updateComplete;
     expect(el.children.length).to.equal(1);
@@ -57,7 +57,8 @@ describe('landing background with Content', () => {
     const surface = document.createElement('div');
     surface.className = 'landing';
     el.replaceChildren(surface);
-    const content = await init(el);
+    const blocks = readLandingBlocks(new DOMParser().parseFromString(tiles, 'text/html'));
+    const content = await init(el, { blocks });
     await initialize.lastCall.returnValue;
     await content.updateComplete;
     expect(el.firstElementChild).to.equal(surface);

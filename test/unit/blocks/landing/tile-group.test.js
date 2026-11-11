@@ -220,6 +220,17 @@ describe('landing tile group', () => {
     expect(develop.href).to.equal('https://www.aem.live/developer/tutorial');
   });
 
+  it('reports missing authored tiles without fetching fallback content', async () => {
+    el.remove();
+    const fetchContent = sinon.spy(window, 'fetch');
+    el = document.createElement('da-landing-tiles');
+    document.body.append(el);
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelector('[role="alert"]').textContent).to.equal('No quick links are configured.');
+    expect(el.shadowRoot.querySelector('[role="status"], da-landing-tile')).to.equal(null);
+    expect(fetchContent.called).to.equal(false);
+  });
+
   it('reports tile clicks to RUM, but not clicks on disabled tiles', async () => {
     const { hlx } = window;
     const sampleRUM = sinon.spy();

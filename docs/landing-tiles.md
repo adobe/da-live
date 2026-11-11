@@ -15,7 +15,8 @@ The owner reports each enabled tile click with
 `sampleRUM('click', { source: 'landing-action-{id}', target })`, where `target` is the
 destination or the action name.
 
-The group owns its layout in `tile-group.css`: three equal-width tiles per row
+Landing owns the shared width and outer spacing. The group owns its internal
+layout in `tile-group.css`: three equal-width tiles per row
 from 600px and one column below, with incomplete rows centered. Five tiles use
 3+2 without depending on Browse's file-grid sizing.
 
@@ -38,11 +39,8 @@ A page's `Browse` block owns routing. Copies of its authored `Greeting`, `Recent
 and `Landing` blocks render inside the no-hash host; the outer source blocks stay
 hidden so scoped Browse routes do not show Landing content. The `Landing` block
 replaces its table rows with tiles at that exact position.
-With only `?landing=true`, the owner fetches
-`/drafts/mhaack/landing-copy.plain.html` and reads the same ordered blocks;
-that page's Browse block and scripts are not mounted or executed.
-Successful content requests are shared and cached. Failed or empty content shows an
-error, without hardcoded tile copy.
+Missing authored content shows an error, without fetching another page or
+supplying hardcoded tiles.
 
 Each row contains an icon marker (`:s2-icon-name:` text or a published
 `span.icon.icon-s2-icon-name`), an H3 title link with description, and optional

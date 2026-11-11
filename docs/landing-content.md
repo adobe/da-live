@@ -3,8 +3,8 @@
 The authored `recent-files` block mounts `da-recent-files`, reusing Browse's `da-list`
 and `da-file-item` in both views. On pages declaring Landing content, the no-hash
 Browse route mounts `da-landing`; a site or folder hash always opens Browse.
-`?landing=true` also enables Landing with content fetched from
-`/drafts/mhaack/landing-copy.plain.html`. `?landing=false` retains the existing Home.
+Landing uses only the page's authored blocks; it does not fetch another content page.
+`?landing=false` retains the existing Home.
 The host decorates authored `greeting`, `recent-files` and `landing` blocks in their
 document order through NX's block loader. Moving those blocks changes their order;
 the host does not prepend tiles or add an implicit Content panel.
@@ -53,7 +53,8 @@ The same values are a fallback for Nexter versions without the shared token.
 ## Presentation and state
 
 Cards use Browse's fixed 151x200 small preset, independently of page text scale.
-The centered panel hugs whole columns, up to six, with 16px side padding.
+Landing owns a shared centered column, up to 1068px wide, and outer spacing.
+Recent Files and tiles fill that column; the panel retains its internal padding.
 Both views use the same panel width while loaded, loading, empty or showing
 an error. Recent starts with six files. Show more expands directly to eighteen,
 or all available files if fewer exist, then disappears. Switching cards/list

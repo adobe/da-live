@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../scripts/utils.js';
 import { createPage, doesFileExist } from '../shared/da-file-item/item.js';
 import { getTileTarget } from './utils.js';
-import { loadTileEntries, readTileEntries } from './tile-content.js';
+import { readTileEntries } from './tile-content.js';
 import './tile.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -24,21 +24,16 @@ export class DaLandingTiles extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [styles];
-    if (this.entries === undefined) this._loadContent();
+    if (this.entries === undefined) {
+      const { entries, error } = readTileEntries(this.contentBlock);
+      this.entries = entries;
+      this._contentError = error;
+    }
   }
 
   disconnectedCallback() {
     this._createDialog = undefined;
     super.disconnectedCallback();
-  }
-
-  async _loadContent() {
-    const result = this.contentBlock
-      ? readTileEntries({ block: this.contentBlock, baseHref: this.baseHref })
-      : await loadTileEntries();
-    if (!this.isConnected || this.entries !== undefined) return;
-    this._contentError = result.error;
-    this.entries = result.entries;
   }
 
   setScope(state) {
@@ -112,8 +107,6 @@ export class DaLandingTiles extends LitElement {
   render() {
     return html`<div class="tile-group">
       ${this.entries ? this.renderQuickLinks() : nothing}
-      ${this.entries === undefined && !this._contentError ? html`
-        <p role="status">Loading quick links...</p>` : nothing}
       ${this._contentError ? html`<p role="alert">${this._contentError}</p>` : nothing}
       ${this._createDialog ? this.renderCreateDialog() : nothing}
     </div>`;
@@ -122,10 +115,9 @@ export class DaLandingTiles extends LitElement {
 
 customElements.define('da-landing-tiles', DaLandingTiles);
 
-export default function init(el, { contentBlock, scope, baseHref } = {}) {
+export default function init(el, { contentBlock, scope } = {}) {
   const tiles = document.createElement('da-landing-tiles');
   tiles.contentBlock = contentBlock;
-  tiles.baseHref = baseHref;
   tiles.setScope(scope);
   el.append(tiles);
   return tiles;

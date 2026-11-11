@@ -1,5 +1,3 @@
-import { LANDING_CONTENT_PATH } from './constants.js';
-
 export function parseTileEntries(block) {
   return [...(block?.children || [])].flatMap((row) => {
     const [icon, content, metadata] = row.children;
@@ -25,29 +23,7 @@ export function parseTileEntries(block) {
   });
 }
 
-export function readTileEntries({ block, baseHref = window.location.href }) {
-  const entries = parseTileEntries(block).map((entry) => ({ ...entry, baseHref }));
+export function readTileEntries(block) {
+  const entries = parseTileEntries(block);
   return entries.length ? { entries } : { error: 'No quick links are configured.' };
 }
-
-export const loadTileEntries = (() => {
-  const requests = new Map();
-  return async (path = LANDING_CONTENT_PATH) => {
-    if (!requests.has(path)) {
-      requests.set(path, (async () => {
-        try {
-          const response = await fetch(`${path}.plain.html`);
-          if (!response.ok) return { error: 'Could not load quick links.', status: response.status };
-          const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
-          const baseHref = new URL(path, window.location.href).href;
-          return readTileEntries({ block: doc.querySelector('.landing'), baseHref });
-        } catch {
-          return { error: 'Could not load quick links.' };
-        }
-      })());
-    }
-    const result = await requests.get(path);
-    if (result.error) requests.delete(path);
-    return result;
-  };
-})();

@@ -9,9 +9,16 @@ import { getNx2 } from '../../../../scripts/utils.js';
 const { getSiteOptions } = await import(`${getNx2()}/blocks/siteselector/site-utils.js`);
 const { loadIms, handleSignIn } = await import(`${getNx2()}/utils/ims.js`);
 const content = await fetch('/test/fixtures/landing-tiles.html').then((response) => response.text());
-const css = await fetch('/blocks/landing/landing.css').then((response) => response.text());
-const styles = new CSSStyleSheet();
-styles.replaceSync(css);
+const [styles, recentStyles, tileStyles] = await Promise.all([
+  '/blocks/landing/landing.css',
+  '/blocks/recent-files/recent-files.css',
+  '/blocks/landing/tile-group.css',
+].map(async (path) => {
+  const css = await fetch(path).then((response) => response.text());
+  const sheet = new CSSStyleSheet();
+  sheet.replaceSync(css);
+  return sheet;
+}));
 
 describe('authored Landing composition', () => {
   let el;
@@ -71,6 +78,67 @@ describe('authored Landing composition', () => {
     const landing = await mount(blocks().reverse());
     expect([...landing.firstElementChild.children].map((block) => block.className))
       .to.deep.equal(['landing', 'recent-files', 'greeting']);
+  });
+
+  [1400, 360].forEach((width) => {
+    it(`centers and aligns Landing at ${width}px in both file views without clipping overflow`, async () => {
+      el.style.cssText = `width: ${width}px;
+        --s2-spacing-200: 12px;
+        --s2-spacing-300: 16px;
+        --s2-spacing-400: 24px;
+        --s2-spacing-600: 40px;`;
+      const landing = await mount();
+      await landing.updateComplete;
+      const files = landing.querySelector('da-recent-files');
+      const tiles = landing.querySelector('da-landing-tiles');
+      landing.shadowRoot.adoptedStyleSheets = [styles];
+      files.shadowRoot.adoptedStyleSheets = [recentStyles];
+      tiles.shadowRoot.adoptedStyleSheets = [tileStyles];
+      files._files = [{ name: 'Page', path: '/org/site/page.html', ext: 'html' }];
+      files._view = 'card';
+      await Promise.all([files.updateComplete, tiles.updateComplete]);
+
+      const layout = landing.querySelector('.landing-content');
+      const column = layout.getBoundingClientRect();
+      const host = landing.getBoundingClientRect();
+      const panel = files.shadowRoot.querySelector('.files-panel');
+      const tileGroup = tiles.shadowRoot.querySelector('.tile-group');
+      const greeting = landing.querySelector('da-greeting');
+      expect(column.width).to.be.at.most(1068);
+      expect(column.width).to.be.closeTo(width < 600 ? width - 32 : 1068, 0.5);
+      expect(column.left - host.left).to.be.closeTo(host.right - column.right, 0.5);
+      expect(getComputedStyle(greeting).textAlign).to.equal('center');
+      expect(panel.getBoundingClientRect().left).to.be.closeTo(column.left, 0.5);
+      expect(panel.getBoundingClientRect().width).to.be.closeTo(column.width, 0.5);
+      expect(tileGroup.getBoundingClientRect().left).to.be.closeTo(column.left, 0.5);
+      expect(tileGroup.getBoundingClientRect().width).to.be.closeTo(column.width, 0.5);
+      const sections = [...layout.children].map((block) => block.getBoundingClientRect());
+      const gap = width < 600 ? 24 : 40;
+      expect(sections[1].top - sections[0].bottom).to.be.closeTo(gap, 0.5);
+      expect(sections[2].top - sections[1].bottom).to.be.closeTo(gap, 0.5);
+
+      files._view = 'list';
+      await files.updateComplete;
+      expect(panel.dataset.view).to.equal('list');
+      expect(panel.getBoundingClientRect().width).to.be.closeTo(column.width, 0.5);
+      expect(panel.getBoundingClientRect().left).to.be.closeTo(column.left, 0.5);
+
+      const contentHeight = landing.getBoundingClientRect().height;
+      el.style.height = `${contentHeight + 400}px`;
+      const surface = el.firstElementChild;
+      let surfaceBounds = surface.getBoundingClientRect();
+      let landingBounds = landing.getBoundingClientRect();
+      expect(surfaceBounds.height).to.be.closeTo(contentHeight + 400, 0.5);
+      expect(landingBounds.top - surfaceBounds.top).to.be.closeTo(200, 0.5);
+      expect(surfaceBounds.bottom - landingBounds.bottom).to.be.closeTo(200, 0.5);
+
+      el.style.height = '100px';
+      surfaceBounds = surface.getBoundingClientRect();
+      landingBounds = landing.getBoundingClientRect();
+      expect(landingBounds.top).to.be.closeTo(surfaceBounds.top, 0.5);
+      expect(surfaceBounds.height).to.be.at.least(contentHeight);
+      expect(landingBounds.height).to.be.closeTo(contentHeight, 0.5);
+    });
   });
 
   it('keeps the first selected site shared and updates both blocks without changing the route', async () => {
@@ -162,22 +230,25 @@ describe('authored Landing composition', () => {
     expect(el.children).to.have.length(0);
   });
 
-  it('retries failed content loading and resolves tile links relative to the authored source', async () => {
-    const doc = new DOMParser().parseFromString(content, 'text/html');
-    doc.querySelector('.landing a').setAttribute('href', './guide');
-    const fetchContent = sinon.stub(window, 'fetch');
-    fetchContent.onFirstCall().resolves(new Response('', { status: 503 }));
-    fetchContent.onSecondCall().resolves(new Response(doc.body.innerHTML));
+  it('reports missing authored content without fetching another page', async () => {
+    const fetchContent = sinon.spy(window, 'fetch');
     const landing = await loadLanding(el);
     await landing.updateComplete;
-    expect(landing.shadowRoot.querySelector('[role="alert"]').textContent).to.include('Could not load');
-    await landing.loadContent();
+    expect(landing.shadowRoot.querySelector('[role="alert"]').textContent).to.equal('No Landing content is configured.');
+    expect(landing.children).to.have.length(0);
+    expect(fetchContent.called).to.equal(false);
+    expect(loadSite.called).to.equal(false);
+  });
+
+  it('resolves authored tile links relative to the current page', async () => {
+    const authored = blocks();
+    authored[2].querySelector('a').setAttribute('href', './guide');
+    const landing = await mount(authored);
     const tiles = landing.querySelector('da-landing-tiles');
     await tiles.updateComplete;
     const browse = tiles.shadowRoot.querySelector('da-landing-tile');
     await browse.updateComplete;
-    expect(new URL(browse.href).pathname).to.equal('/drafts/mhaack/guide');
-    expect(fetchContent.callCount).to.equal(2);
+    expect(new URL(browse.href).pathname).to.equal(new URL('./guide', window.location.href).pathname);
   });
 
   it('leaves outer authored tile data intact for the route host', () => {

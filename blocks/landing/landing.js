@@ -1,6 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../scripts/utils.js';
-import { loadLandingContent } from './landing-content.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { loadBlock } = await import(`${getNx2()}/scripts/nx.js`);
@@ -82,19 +81,16 @@ export class DaLanding extends LitElement {
   }
 
   async loadContent() {
-    if (!this._ready) return;
+    if (!this._ready || !this.isConnected) return;
     const request = {};
     this._contentRequest = request;
     this._loading = true;
     this._error = undefined;
     try {
-      const result = this.blocks?.length ? { blocks: this.blocks } : await loadLandingContent();
-      if (!this.isConnected || this._contentRequest !== request) return;
-      if (result.error) throw new Error(result.error);
-      this.contentBase = result.baseHref;
+      if (!this.blocks?.length) throw new Error('No Landing content is configured.');
       const layout = document.createElement('div');
       layout.className = 'landing-content';
-      const blocks = result.blocks.map((block) => block.cloneNode(true));
+      const blocks = this.blocks.map((block) => block.cloneNode(true));
       layout.append(...blocks);
       this.replaceChildren(layout);
       await Promise.all(blocks.map((block) => loadBlock(block)));
@@ -155,5 +151,5 @@ export default async function init(el) {
   if (!el.isConnected) return undefined;
   const contentBlock = el.cloneNode(true);
   el.replaceChildren();
-  return loadTiles(el, { contentBlock, scope: landing.scope, baseHref: landing.contentBase });
+  return loadTiles(el, { contentBlock, scope: landing.scope });
 }

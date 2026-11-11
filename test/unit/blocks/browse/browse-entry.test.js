@@ -45,12 +45,14 @@ describe('Browse Content opt-in', () => {
   it('switches between site Browse and Content without reloading and keeps nav selection off the URL', async () => {
     await import('../../../../blocks/browse/v2/da-browse/da-browse.js');
     const { href } = window.location;
-    const ordinary = document.createElement('div');
+    const main = document.createElement('main');
+    main.innerHTML = content.replace(/<\/?main>/g, '');
+    const ordinary = main.querySelector('.browse');
     const browse = document.createElement('da-browse');
     const details = { org: 'org', site: 'site', fullpath: '/org/site' };
     browse.details = details;
-    ordinary.append(browse);
-    document.body.append(ordinary);
+    ordinary.replaceChildren(browse);
+    document.body.append(main);
     const list = sinon.stub(source, 'list').callsFake(async (fullpath) => ({
       ok: true,
       items: [{ name: 'page', path: `${fullpath}/page.html`, ext: 'html' }],
@@ -125,7 +127,7 @@ describe('Browse Content opt-in', () => {
       expect(ordinary.querySelector('da-landing')).to.equal(null);
     } finally {
       observers.forEach((observer) => observer.disconnect());
-      ordinary.remove();
+      main.remove();
       list.restore();
       configs.restore();
       fetch.restore();
@@ -185,10 +187,12 @@ describe('Browse Content opt-in', () => {
   });
   it('mounts one tile group inside the gated landing when updates overlap', async () => {
     const { href } = window.location;
-    const el = document.createElement('div');
+    const main = document.createElement('main');
+    main.innerHTML = content.replace(/<\/?main>/g, '');
+    const el = main.querySelector('.browse');
     el.innerHTML = '<picture></picture>';
-    document.body.append(el);
-    const fetchContent = sinon.stub(window, 'fetch').resolves(new Response(content));
+    document.body.append(main);
+    const fetchContent = sinon.spy(window, 'fetch');
     let observer;
     try {
       const url = new URL(href);
@@ -215,11 +219,11 @@ describe('Browse Content opt-in', () => {
       expect(tiles.parentElement.className).to.equal('landing');
       expect(el.querySelector('picture, da-sites, da-browse')).to.equal(null);
       expect(tiles.shadowRoot.querySelectorAll('da-landing-tile')).to.have.length(5);
-      expect(fetchContent.callCount).to.be.at.most(1);
+      expect(fetchContent.called).to.equal(false);
     } finally {
       fetchContent.restore();
       observer?.disconnect();
-      el.remove();
+      main.remove();
       window.history.replaceState(null, '', href);
     }
   });

@@ -13,9 +13,6 @@
 
 .tile-group {
   display: flow-root;
-  max-width: 1116px;
-  margin-inline: auto;
-  padding: var(--s2-spacing-400) var(--s2-spacing-400) var(--s2-spacing-800);
 }
 
 .landing-tiles {
@@ -34,10 +31,6 @@
 }
 
 @container (width < 600px) {
-  .tile-group {
-    padding: var(--s2-spacing-300) var(--s2-spacing-300) var(--s2-spacing-600);
-  }
-
   .landing-tiles > li {
     flex-basis: 100%;
   }
