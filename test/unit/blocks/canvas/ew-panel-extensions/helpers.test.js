@@ -1325,18 +1325,19 @@ describe('DA Preview Proxy routing', () => {
 });
 
 describe('extensionToPanelView', () => {
-  it('gives the "blocks" extension a dedicated modal experience', () => {
+  it('opens blocks inline with a dedicated modal available as a pop-out', async () => {
     const ext = { name: 'blocks', title: 'Blocks', ootb: true, icon: '#icon-blocks' };
     const view = extensionToPanelView(ext, 'Library');
     expect(view.id).to.equal('blocks');
     expect(view.label).to.equal('Blocks');
     expect(view.section).to.equal('Library');
     expect(view.firstParty).to.be.true;
-    expect(view.experience).to.equal('modal');
+    expect(view.experience).to.equal('inline');
     expect(view.icon).to.equal('#icon-blocks');
     expect(view.openModal).to.be.a('function');
-    // The modal view opts out of the generic inline-panel loader.
-    expect(view.load).to.be.undefined;
+    const el = await view.load();
+    expect(el.localName).to.equal('ew-panel-library');
+    expect(el.extension).to.equal(ext);
   });
 
   it('leaves non-blocks extensions on the standard inline/load experience', () => {
@@ -1349,6 +1350,19 @@ describe('extensionToPanelView', () => {
     expect(view.cacheKey).to.be.undefined;
     expect(view.load).to.be.a('function');
     expect(view.openModal).to.be.undefined;
+  });
+
+  it('loads the aem-assets-panel extension as an ew-canvas-assets element', async () => {
+    const ext = { name: 'aem-assets-panel', title: 'AEM Assets Panel', experience: 'inline', org: 'org', site: 'site' };
+    const view = extensionToPanelView(ext, 'Library');
+    expect(view.id).to.equal('aem-assets-panel');
+    expect(view.experience).to.equal('inline');
+    expect(view.cacheKey).to.equal('[]');
+    expect(view.loadModal).to.be.a('function');
+    const el = await view.load();
+    expect(el.tagName).to.equal('EW-CANVAS-ASSETS');
+    expect(el.org).to.equal('org');
+    expect(el.site).to.equal('site');
   });
 
   it('gives configured extensions a source cache key', () => {
@@ -1591,6 +1605,21 @@ describe('getCanvasToolPanelViews', () => {
     expect(preflight).to.include({ label: 'Preflight', firstParty: true });
     expect(preflight.cacheKey).to.equal(undefined);
   });
+
+  it('includes only the AEM assets rail panel with a modal pop-out', async () => {
+    const REPO = { key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' };
+    setDaConfigs([{ data: [REPO] }]);
+    const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
+    const panelView = views.find((v) => v.id === 'aem-assets-panel');
+    expect(panelView).to.exist;
+    expect(panelView.section).to.equal('Library');
+    expect(panelView.experience).to.equal('inline');
+    expect(panelView.label).to.equal('AEM Assets');
+    expect(panelView.loadModal).to.be.a('function');
+    expect(panelView.cacheKey).to.not.equal(undefined);
+    const ids = views.map((v) => v.id);
+    expect(ids).to.not.include('aem-assets');
+  });
 });
 
 describe('EW panel helpers fetchExtensions', () => {
@@ -1602,14 +1631,16 @@ describe('EW panel helpers fetchExtensions', () => {
   it('loads the AEM assets panel when configured without a library sheet', async () => {
     setDaConfigs([{ data: [REPO] }]);
     const names = (await fetchExtensions('org', 'site')).map((e) => e.name);
-    expect(names).to.include('aem-assets');
+    expect(names).to.not.include('aem-assets');
+    expect(names).to.include('aem-assets-panel');
   });
 
   it('loads the AEM assets panel alongside configured library tools', async () => {
     setDaConfigs([{ library: { data: [blocksRow] }, data: [REPO] }]);
     const names = (await fetchExtensions('org', 'site')).map((e) => e.name);
     expect(names).to.include('blocks');
-    expect(names).to.include('aem-assets');
+    expect(names).to.not.include('aem-assets');
+    expect(names).to.include('aem-assets-panel');
   });
 
   it('omits the AEM assets panel when no repository is configured', async () => {
@@ -1617,6 +1648,30 @@ describe('EW panel helpers fetchExtensions', () => {
     const names = (await fetchExtensions('org', 'site')).map((e) => e.name);
     expect(names).to.include('blocks');
     expect(names).to.not.include('aem-assets');
+    expect(names).to.not.include('aem-assets-panel');
+  });
+
+  it('prefers a single-sheet site library over the org library', async () => {
+    const orgConfig = {
+      ':type': 'multi-sheet',
+      library: { data: [{ title: 'Blocks', path: 'https://content.da.live/org/other/blocks.json' }] },
+    };
+    const siteConfig = {
+      ':type': 'sheet',
+      ':sheetname': 'library',
+      data: [{ title: 'Blocks', path: 'https://content.da.live/org/site/blocks.json' }],
+    };
+    setDaConfigs([orgConfig, siteConfig]);
+    const exts = await fetchExtensions('org', 'site');
+    const blocks = exts.filter((e) => e.name === 'blocks');
+    expect(blocks).to.have.length(1);
+    expect(blocks[0].sources).to.deep.equal(['https://content.da.live/org/site/blocks.json']);
+  });
+
+  it('ignores a single-sheet config that is not the library', async () => {
+    setDaConfigs([{ ':type': 'sheet', ':sheetname': 'data', data: [blocksRow] }]);
+    const names = (await fetchExtensions('org', 'site')).map((e) => e.name);
+    expect(names).to.not.include('blocks');
   });
 
   it('returns an empty list when there are no valid configs', async () => {

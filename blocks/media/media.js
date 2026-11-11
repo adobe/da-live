@@ -1,4 +1,5 @@
 import getPathDetails from '../shared/pathDetails.js';
+import { addRecentFile } from '../shared/recent-files.js';
 import { getNx, getNx2Api } from '../../scripts/utils.js';
 
 import '../edit/da-title/da-title.js';
@@ -69,6 +70,7 @@ async function setUI(el, isCurrent) {
   const details = getPathDetails();
   const { name, fullpath, owner, repo } = details;
   const ext = name.split('.').pop();
+  addRecentFile(fullpath);
   let blob;
 
   const { isHlx6, source } = await getNx2Api();

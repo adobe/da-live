@@ -2,6 +2,7 @@
 export const MESSAGE_TYPES = Object.freeze({
   INIT: 'init',
   READY: 'ready',
+  DROP_TARGET: 'drop-target',
 
   SET_BODY: 'set-body',
   SET_EDITOR_STATE: 'set-editor-state',
