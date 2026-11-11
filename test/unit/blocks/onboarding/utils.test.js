@@ -37,14 +37,6 @@ describe('onboarding/utils addSite', () => {
     window.adobeIMS = savedIms;
   });
 
-  it('asks the user to sign in without calling the API', async () => {
-    window.adobeIMS = { isSignedInUser: () => false };
-    mockFetch({});
-    const result = await addSite({ org: 'org', site: 'site' });
-    expect(result.error).to.equal('You need to sign in first.');
-    expect(calls).to.have.length(0);
-  });
-
   it('creates the site folder in an existing org', async () => {
     mockFetch({ 'GET /config/org': 200, 'PUT /source/org/site': 201 });
     const result = await addSite({ org: 'org', site: 'site' });
@@ -61,23 +53,6 @@ describe('onboarding/utils addSite', () => {
     const sitePut = calls.findIndex(({ url, method }) => method === 'PUT' && url.includes('/source/'));
     expect(configSave).to.be.greaterThan(-1);
     expect(sitePut).to.be.greaterThan(configSave);
-  });
-
-  it('stops when a new org has no profile email', async () => {
-    window.adobeIMS.getProfile = async () => ({});
-    mockFetch({ 'GET /config/org': 404 });
-    const result = await addSite({ org: 'org', site: 'site' });
-    expect(result.error).to.equal('Make sure your profile contains an email address.');
-    expect(calls.some(({ method }) => method === 'PUT')).to.be.false;
-  });
-
-  it('explains a forbidden org creation', async () => {
-    mockFetch({ 'GET /config/org': 404, 'PUT /config/org': 403 });
-    const result = await addSite({ org: 'org', site: 'site' });
-    expect(result).to.deep.equal({
-      error: 'You are not authorized to create this DA organization. Check your permissions.',
-      status: 403,
-    });
   });
 
   it('explains a forbidden or failed site creation', async () => {

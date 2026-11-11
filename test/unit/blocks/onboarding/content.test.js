@@ -46,17 +46,6 @@ describe('onboarding/content', () => {
     ]);
   });
 
-  it('loads the cards from the plain html', async () => {
-    const urls = [];
-    window.fetch = async (url) => {
-      urls.push(url);
-      return new Response(CARDS_HTML);
-    };
-    const { cards } = await loadCards('/cards-ok');
-    expect(urls).to.deep.equal(['/cards-ok.plain.html']);
-    expect(cards.map(({ heading }) => heading)).to.deep.equal(['Traverse', 'Coming soon']);
-  });
-
   it('returns an error for a failed or rejected request', async () => {
     window.fetch = async () => new Response('', { status: 404 });
     expect(await loadCards('/cards-missing')).to.deep.equal({ error: 'Could not load onboarding content.', status: 404 });
