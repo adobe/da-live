@@ -32,6 +32,9 @@ export default class DaFileItem extends LitElement {
     rename: { type: Boolean },
     allowselect: { type: Boolean },
     view: { type: String, reflect: true },
+    href: { type: String },
+    folder: { attribute: false },
+    imagePreview: { attribute: false },
     isChecked: { attribute: 'ischecked', type: Boolean },
     isFavorited: { attribute: 'isfavorited', type: Boolean },
     _isRenaming: { state: true },
@@ -54,11 +57,11 @@ export default class DaFileItem extends LitElement {
   }
 
   willUpdate(props) {
-    if (props.has('path') || props.has('ext') || props.has('view')) this.resetImage();
+    if (props.has('path') || props.has('ext') || props.has('view') || props.has('imagePreview')) this.resetImage();
   }
 
   updated() {
-    if (!this.isConnected || this.view !== 'card' || !isImageExt(this.ext)
+    if (!this.isConnected || this.view !== 'card' || this.imagePreview === false || !isImageExt(this.ext)
       || this._imageRequested || this._imageObserver) return;
     this._imageObserver = new IntersectionObserver(([entry]) => {
       if (!entry?.isIntersecting) return;
@@ -313,7 +316,7 @@ export default class DaFileItem extends LitElement {
   }
 
   renderItem() {
-    const href = getFileItemHref(this);
+    const href = this.href ?? getFileItemHref(this);
 
     return html`
       <a href="${this.ext === 'link' ? until(href) : href}" class="da-item-list-item-title" data-column="name">
@@ -334,7 +337,9 @@ export default class DaFileItem extends LitElement {
 
   renderRowMeta() {
     return html`
-      <div class="da-item-list-item-meta da-item-list-item-type-label" data-column="type">${getTypeLabel(this.ext)}</div>
+      <div class="da-item-list-item-meta da-item-list-item-type-label" data-column=${this.folder ? 'folder' : 'type'}>
+        ${this.folder ? html`<a class="file-folder" href=${this.folder.href} title=${this.folder.path}>${this.folder.label}</a>` : getTypeLabel(this.ext)}
+      </div>
       <div class="da-item-list-item-meta da-item-list-item-date" data-column="modified">${this.ext === 'link' ? '—' : (this.renderDate() || '—')}</div>`;
   }
 
@@ -383,7 +388,7 @@ export default class DaFileItem extends LitElement {
   }
 
   renderCard() {
-    const href = getFileItemHref(this);
+    const href = this.href ?? getFileItemHref(this);
     return html`
       <nx-card class="card" .selectable=${Boolean(this.allowselect)} .selected=${Boolean(this.isChecked)}
         @nx-card-selection-change=${(e) => this.handleChecked(e.detail)}>
