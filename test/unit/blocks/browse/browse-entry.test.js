@@ -1,8 +1,9 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
-import '../../setup-nx.js';
+import '../../setup-landing.js';
 import init from '../../../../blocks/browse/browse.js';
 import { DaLanding } from '../../../../blocks/landing/landing.js';
+import { DaRecentFiles } from '../../../../blocks/recent-files/recent-files.js';
 import { getNx, getNx2, getNx2Api } from '../../../../scripts/utils.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -26,7 +27,7 @@ describe('Browse Content opt-in', () => {
   beforeEach(() => {
     subscribe = sinon.spy(hashChange, 'subscribe');
     initialize = sinon.spy(DaLanding.prototype, 'initialize');
-    loadSite = sinon.stub(DaLanding.prototype, 'loadSite').resolves();
+    loadSite = sinon.stub(DaRecentFiles.prototype, 'loadSite').resolves();
     getSiteOptions.returns([{ value: 'org/site', label: 'org/site' }]);
     localStorage.setItem('da-sites', JSON.stringify(['org/site']));
   });
@@ -92,8 +93,7 @@ describe('Browse Content opt-in', () => {
       const tiles = await whenMounted('da-landing-tiles');
       await waitUntil(() => tiles.entries);
       await tiles.updateComplete;
-      expect(ordinary.firstElementChild.firstElementChild).to.equal(tiles);
-      expect(ordinary.firstElementChild.lastElementChild).to.equal(landing);
+      expect(ordinary.firstElementChild.firstElementChild).to.equal(landing);
       expect(landing.localName).to.equal('da-landing');
       expect(landing.path).to.equal('/org/site');
       const { href: rootHref } = window.location;
@@ -108,7 +108,7 @@ describe('Browse Content opt-in', () => {
       await tile.updateComplete;
       expect(new URL(tile.href).hash).to.equal('#/another/site');
       expect(window.location.href).to.equal(rootHref);
-      expect(landing.shadowRoot.querySelector('.files-panel')).not.to.equal(null);
+      expect(landing.querySelector('da-recent-files').shadowRoot.querySelector('.files-panel')).not.to.equal(null);
       expect(landing.shadowRoot.querySelector('h1, textarea, .composer')).to.equal(null);
       url.hash = '/org/other';
       window.history.replaceState(null, '', url);
@@ -197,7 +197,7 @@ describe('Browse Content opt-in', () => {
       hashChange._set(undefined);
       const mounted = new Promise((resolve) => {
         observer = new MutationObserver(() => {
-          const tiles = el.querySelector('.landing > da-landing-tiles');
+          const tiles = el.querySelector('da-landing-tiles');
           if (!tiles) return;
           observer.disconnect();
           resolve(tiles);
@@ -233,8 +233,8 @@ describe('Browse Content opt-in', () => {
     const fetchContent = sinon.spy(window, 'fetch');
     try {
       init(el);
-      await waitUntil(() => el.querySelector('.landing > da-landing-tiles')?.entries);
-      const tiles = el.querySelector('.landing > da-landing-tiles');
+      await waitUntil(() => el.querySelector('da-landing-tiles')?.entries);
+      const tiles = el.querySelector('da-landing-tiles');
       await tiles.updateComplete;
       const all = [...tiles.shadowRoot.querySelectorAll('da-landing-tile')];
       await Promise.all(all.map((tile) => tile.updateComplete));

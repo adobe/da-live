@@ -1,5 +1,6 @@
 import { getNx } from '../../scripts/utils.js';
 import { getBrowseComponent, resolveBrowsePath } from './utils.js';
+import { readLandingBlocks } from '../landing/landing-content.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -31,11 +32,11 @@ async function loadBrowseStyles() {
   if (!document.adoptedStyleSheets.includes(styles)) document.adoptedStyleSheets.push(styles);
 }
 
-async function loadComponent(el, cmpName, pathDetails, surface, contentBlock) {
+async function loadComponent(el, cmpName, pathDetails, surface, blocks) {
   await surface;
   if (cmpName === 'da-landing') {
-    const { default: loadLanding } = await import('../landing/landing.js');
-    await loadLanding(el, { contentBlock });
+    const { loadLanding } = await import('../landing/landing.js');
+    await loadLanding(el, { blocks });
     return;
   }
 
@@ -69,15 +70,15 @@ function setRecentSite(details) {
 }
 
 export default function init(el) {
-  const contentBlock = document.querySelector('main .landing:not(.browse .landing)') ?? undefined;
+  const blocks = readLandingBlocks(document.querySelector('main'));
   hashChange.subscribe((pathDetails) => {
     const cmpName = getBrowseComponent({
       search: window.location.search,
       pathDetails,
-      hasLanding: !!contentBlock,
+      hasLanding: !!blocks.length,
     });
     const surface = cmpName === 'da-landing' ? loadLandingSurface(el) : loadBrowseStyles();
-    loadComponent(el, cmpName, pathDetails, surface, contentBlock);
+    loadComponent(el, cmpName, pathDetails, surface, blocks);
     if (pathDetails) setRecentSite(pathDetails);
   });
 

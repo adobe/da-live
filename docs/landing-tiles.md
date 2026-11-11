@@ -19,24 +19,28 @@ The group owns its layout in `tile-group.css`: three equal-width tiles per row
 from 600px and one column below, with incomplete rows centered. Five tiles use
 3+2 without depending on Browse's file-grid sizing.
 
-The landing replaces Home (no scoped hash) when the page has an authored `Landing`
-table or `?landing=true` is set. `?landing=false` keeps the existing Home. Browse
-selects the route; `landing.js` composes the gradient surface and lazily loads
-`tile-group.js` inside it. `tile-group.css` styles the owner and layout;
+The landing replaces Home (no scoped hash) when the page has authored Landing
+blocks or `?landing=true` is set. `?landing=false` keeps the existing Home. Browse
+selects the route; `da-landing` hosts `greeting`, `recent-files` and `landing`
+blocks in their authored order. The `landing` block loads `tile-group.js` in place.
+`tile-group.css` styles the owner and layout;
 `tile.css` styles each tile.
 
 Landing inherits the application's color scheme and shared Spectrum tokens,
 including its gradient. It does not choose a theme or support a `?theme=` override.
 
 Users without recent sites are redirected to `/start`. Returning users sign in
-before Landing shows the quick-action tiles above the Content panel.
+before Landing decorates its authored blocks.
 Tiles use the same preselected site as Content and update when the site selector
 changes, without requiring a scoped URL hash. Scoped hashes still route to Browse.
 
-A page with a `Browse` block and a `Landing` table renders the table's rows as tiles
-in place; the table itself stays hidden. With only `?landing=true`, the owner fetches
-`/drafts/mhaack/landing-copy.plain.html` and parses only its
-`Landing` table; that page's Browse block and scripts are not mounted or executed.
+A page's `Browse` block owns routing. Copies of its authored `Greeting`, `Recent Files`
+and `Landing` blocks render inside the no-hash host; the outer source blocks stay
+hidden so scoped Browse routes do not show Landing content. The `Landing` block
+replaces its table rows with tiles at that exact position.
+With only `?landing=true`, the owner fetches
+`/drafts/mhaack/landing-copy.plain.html` and reads the same ordered blocks;
+that page's Browse block and scripts are not mounted or executed.
 Successful content requests are shared and cached. Failed or empty content shows an
 error, without hardcoded tile copy.
 

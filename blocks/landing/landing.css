@@ -1,10 +1,15 @@
-.section:has(.landing),
-.block-content:has(.landing),
+.section:has(.browse > .landing),
+.block-content:has(.browse > .landing),
 .browse:has(> .landing) {
   height: 100%;
 }
 
-.landing {
+:host {
+  display: block;
+  font-family: var(--s2-font-family);
+}
+
+.browse > .landing {
   min-height: 100%;
   background:
     linear-gradient(
@@ -23,7 +28,18 @@
 }
 
 @media (forced-colors: active) {
-  .landing {
+  .browse > .landing {
     background: Canvas;
   }
+}
+
+.landing-content > .greeting,
+.landing-error {
+  max-width: 1116px;
+  margin-inline: auto;
+  padding: var(--s2-spacing-400);
+}
+
+.landing-content > .greeting h1 {
+  margin: 0;
 }

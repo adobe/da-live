@@ -1,7 +1,8 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
-import '../../setup-nx.js';
-import init, { DaLanding } from '../../../../blocks/landing/landing.js';
+import '../../setup-landing.js';
+import { loadLanding as init, DaLanding } from '../../../../blocks/landing/landing.js';
+import { DaRecentFiles } from '../../../../blocks/recent-files/recent-files.js';
 import { getNx2 } from '../../../../scripts/utils.js';
 
 const { getSiteOptions } = await import(`${getNx2()}/blocks/siteselector/site-utils.js`);
@@ -14,7 +15,7 @@ describe('landing background with Content', () => {
 
   beforeEach(() => {
     initialize = sinon.spy(DaLanding.prototype, 'initialize');
-    sinon.stub(DaLanding.prototype, 'loadSite').resolves();
+    sinon.stub(DaRecentFiles.prototype, 'loadSite').resolves();
     sinon.stub(window, 'fetch').resolves(new Response(tiles));
     getSiteOptions.returns([{ value: 'org/site', label: 'org/site' }]);
     localStorage.setItem('da-sites', JSON.stringify(['org/site']));
@@ -42,7 +43,7 @@ describe('landing background with Content', () => {
     expect(el.children.length).to.equal(1);
     expect(el.firstElementChild.className).to.equal('landing');
     expect(el.firstElementChild.querySelector(':scope > da-landing')).to.equal(content);
-    expect(content.shadowRoot.querySelector('#files-heading').textContent).to.equal('Content');
+    expect(content.querySelector('da-recent-files').shadowRoot.querySelector('#files-heading').textContent).to.equal('Content');
     expect(el.querySelector('img, picture')).to.equal(null);
   });
 
@@ -54,8 +55,7 @@ describe('landing background with Content', () => {
     await initialize.lastCall.returnValue;
     await content.updateComplete;
     expect(el.firstElementChild).to.equal(surface);
-    expect(surface.children.length).to.equal(2);
-    expect(surface.firstElementChild.localName).to.equal('da-landing-tiles');
-    expect(surface.lastElementChild).to.equal(content);
+    expect(surface.children.length).to.equal(1);
+    expect(surface.firstElementChild).to.equal(content);
   });
 });

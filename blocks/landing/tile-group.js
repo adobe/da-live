@@ -34,7 +34,7 @@ export class DaLandingTiles extends LitElement {
 
   async _loadContent() {
     const result = this.contentBlock
-      ? readTileEntries({ block: this.contentBlock })
+      ? readTileEntries({ block: this.contentBlock, baseHref: this.baseHref })
       : await loadTileEntries();
     if (!this.isConnected || this.entries !== undefined) return;
     this._contentError = result.error;
@@ -122,10 +122,11 @@ export class DaLandingTiles extends LitElement {
 
 customElements.define('da-landing-tiles', DaLandingTiles);
 
-export default function init(el, { contentBlock, scope } = {}) {
+export default function init(el, { contentBlock, scope, baseHref } = {}) {
   const tiles = document.createElement('da-landing-tiles');
   tiles.contentBlock = contentBlock;
+  tiles.baseHref = baseHref;
   tiles.setScope(scope);
-  el.prepend(tiles);
+  el.append(tiles);
   return tiles;
 }

@@ -1,25 +1,30 @@
 # Landing Content
 
-The opt-in Content page uses Browse's `da-list` and `da-file-item` in both views. Open
-`/?landing=true&nx=main&nxver=2`. Without `landing=true`, Browse keeps its existing renderer
-and navigation. A site or folder hash always opens Browse, even with `landing=true`.
+The authored `recent-files` block mounts `da-recent-files`, reusing Browse's `da-list`
+and `da-file-item` in both views. On pages declaring Landing content, the no-hash
+Browse route mounts `da-landing`; a site or folder hash always opens Browse.
+`?landing=true` also enables Landing with content fetched from
+`/drafts/mhaack/landing-copy.plain.html`. `?landing=false` retains the existing Home.
+The host decorates authored `greeting`, `recent-files` and `landing` blocks in their
+document order through NX's block loader. Moving those blocks changes their order;
+the host does not prepend tiles or add an implicit Content panel.
 Landing owns the entry gate: without a valid recent site it redirects to `/start`
 using history replacement, preserving environment parameters through da-nx's shared
 URL helper. Start owns onboarding. With recent sites, Landing waits for IMS and
 uses the same missing-token sign-in handler as Browse before loading any files.
-It does not introduce a chat/composer,
-branding, page artwork or editor changes.
+The `greeting` block substitutes `[firstname]` in authored text using the authenticated
+profile. Greeting copy is not hardcoded or connected to chat availability.
 Content contains no site picker. Site selection belongs in navigation through the
 shared picker (adobe/da-nx#947).
-On entry, Content reads `da-sites` and uses the first valid option
+On entry, Landing reads `da-sites` and uses the first valid option
 from da-nx's shared `getSiteOptions`, matching the navigation selector's default.
 The gradient remains visible while authentication settles, without flashing
 onboarding or Content. An authentication initialization failure offers a page reload
 to reset the shared cached IMS promise rather than retrying it in place.
 Unreadable history redirects to Start.
-Content listens for the existing bubbling `site-select` event for subsequent
-changes, without changing the root URL. It does not inspect navigation's shadow
-DOM, load or mount the selector, or modify LP.
+Landing listens for the existing bubbling `site-select` event and supplies the same
+selection to Recent Files and tiles, without changing the root URL. The blocks
+do not inspect navigation's shadow DOM or mount another selector.
 
 Content does not add a replacement picker or duplicate shared site-option validation.
 The no-recent-files and no-favorites states remain available for a selected site.
@@ -28,8 +33,8 @@ Content mounts inside the gradient landing surface already provided by main.
 `landing.css` retains that page background and inherits the application theme,
 without landing-specific theme overrides.
 `browse.js` loads `landing.css` before creating the empty `.landing` surface
-and mounting Content. It does not hold the section hidden while those styles load.
-`landing-content.css` contains only the Content component's shadow styles.
+and mounting the Landing host. It does not hold the section hidden while those styles load.
+`blocks/recent-files/recent-files.css` contains only the Content component's shadow styles.
 The panel uses an opaque `--s2-gray-25` surface: white in light mode and dark
 in dark mode, with the gradient visible only outside the panel.
 Its `--s2-drop-shadow-emphasized` shadow uses Spectrum's light/dark values.
