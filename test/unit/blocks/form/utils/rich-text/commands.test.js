@@ -14,9 +14,9 @@ import {
   isInBlockquote,
   toggleBlockquote,
   BLOCK_TYPES,
-  buildKeymap,
+  insertHardBreak,
 } from '../../../../../../blocks/form/utils/rich-text/commands.js';
-import { schema, stateFor, run } from '../../helpers/rich-text-states.js';
+import { stateFor, run } from '../../helpers/rich-text-states.js';
 
 describe('rich-text commands', () => {
   describe('selection helpers', () => {
@@ -154,19 +154,6 @@ describe('rich-text commands', () => {
         .to.equal('<ul><li>a</li></ul><p>b</p><ul><li>c</li></ul>');
     });
 
-    it('indents and outdents list items', () => {
-      const { Tab: indent, 'Shift-Tab': outdent } = buildKeymap({ proseMirror, schema });
-      const flat = '<ul><li>a</li><li>b</li></ul>';
-      expect(indent(stateFor(flat, { from: 3 }))).to.be.false;
-      expect(indent(stateFor('<p>a</p>', { from: 1 }))).to.be.false;
-      expect(outdent(stateFor('<p>a</p>', { from: 1 }))).to.be.false;
-      const nested = run(indent, stateFor(flat, { from: 8 }));
-      expect(nested.html).to.equal('<ul><li>a<ul><li>b</li></ul></li></ul>');
-      const lifted = run(outdent, nested.state);
-      expect(lifted.html).to.equal(flat);
-      expect(run(outdent, lifted.state).html).to.equal('<ul><li>a</li></ul><p>b</p>');
-    });
-
     it('changes the block type', () => {
       const heading = run(setBlock({ proseMirror, value: 'heading-2' }), stateFor('<p>a</p>', { from: 1 }));
       expect(heading.html).to.equal('<h2>a</h2>');
@@ -192,30 +179,7 @@ describe('rich-text commands', () => {
     });
 
     it('inserts a hard break', () => {
-      const { 'Shift-Enter': insertHardBreak } = buildKeymap({ proseMirror, schema });
       expect(run(insertHardBreak, stateFor('<p>ab</p>', { from: 2 })).html).to.equal('<p>a<br>b</p>');
-    });
-
-    it('builds a keymap with the Canvas shortcuts', () => {
-      const keys = buildKeymap({ proseMirror, schema });
-      expect(keys['Mod-z']).to.equal(proseMirror.undo);
-      expect(keys['Shift-Mod-z']).to.equal(proseMirror.redo);
-      expect(keys['Mod-y']).to.equal(proseMirror.redo);
-      expect(keys['Mod-b']).to.be.a('function');
-      ['Mod-`', 'Shift-Ctrl-0', 'Shift-Ctrl-6', 'Ctrl->', 'Shift-Ctrl-8', 'Shift-Ctrl-9']
-        .forEach((key) => expect(keys[key], key).to.be.a('function'));
-      ['Mod-u', 'Shift-Mod-x', 'Mod-.', 'Mod-,', 'Shift-Mod-k']
-        .forEach((key) => expect(keys[key], key).to.equal(undefined));
-    });
-
-    it('opens the link dialog for Mod-k, which applies anywhere', () => {
-      const calls = [];
-      const keys = buildKeymap({ proseMirror, schema, onLink: () => calls.push('link') });
-      const state = stateFor('<p>a</p>');
-      expect(keys['Mod-k'](state)).to.be.true;
-      expect(calls).to.be.empty;
-      expect(keys['Mod-k'](state, () => {})).to.be.true;
-      expect(calls).to.deep.equal(['link']);
     });
   });
 });

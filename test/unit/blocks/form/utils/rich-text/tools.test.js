@@ -1,7 +1,12 @@
 import { expect } from '@esm-bundle/chai';
 import * as proseMirror from 'da-y-wrapper';
 import { removeLink, BLOCK_TYPES } from '../../../../../../blocks/form/utils/rich-text/commands.js';
-import { TOOL_IDS, createToolset } from '../../../../../../blocks/form/utils/rich-text/tools.js';
+import {
+  TOOL_IDS,
+  buildKeymap,
+  createToolset,
+  listTools,
+} from '../../../../../../blocks/form/utils/rich-text/tools.js';
 import { schema, stateFor, run } from '../../helpers/rich-text-states.js';
 
 /**
@@ -12,7 +17,7 @@ import { schema, stateFor, run } from '../../helpers/rich-text-states.js';
  */
 function setup({ onLink = () => {} } = {}) {
   const toolset = createToolset({ proseMirror, schema, onLink });
-  const tools = [...toolset.leading, ...toolset.groups.flat(), ...toolset.menuGroups.flat()];
+  const tools = listTools(toolset);
   return { toolset, tool: (id) => tools.find((candidate) => candidate.id === id) };
 }
 
@@ -20,8 +25,7 @@ describe('rich-text tools', () => {
   describe('TOOL_IDS', () => {
     it('names every tool once', () => {
       const { toolset } = setup();
-      const tools = [...toolset.leading, ...toolset.groups.flat(), ...toolset.menuGroups.flat()];
-      const ids = tools.map(({ id }) => id);
+      const ids = listTools(toolset).map(({ id }) => id);
       expect(ids).to.have.members(Object.values(TOOL_IDS));
       expect(new Set(ids).size).to.equal(ids.length);
       expect(Object.isFrozen(TOOL_IDS)).to.be.true;
@@ -29,7 +33,7 @@ describe('rich-text tools', () => {
 
     it('names the toggles after their schema marks and nodes', () => {
       const { toolset } = setup();
-      const toggles = [...toolset.groups.flat(), ...toolset.menuGroups.flat()]
+      const toggles = listTools(toolset)
         .filter(({ isActive }) => isActive)
         .map(({ id }) => id);
       const names = [...Object.keys(schema.marks), ...Object.keys(schema.nodes)];
@@ -118,6 +122,76 @@ describe('rich-text tools', () => {
       const { picker } = setup().toolset;
       const state = stateFor('<p>a</p>', { from: 1 });
       expect(run(picker.commandFor('heading-3'), state).html).to.equal('<h3>a</h3>');
+    });
+  });
+
+  describe('keymap', () => {
+    /**
+     * Builds the keymap of a toolset.
+     * @param {object} [options] The settings, see `setup`.
+     * @returns {Record<string, Function>} The commands by key.
+     */
+    const keymapFor = (options) => {
+      const { toolset } = setup(options);
+      return buildKeymap({ proseMirror, schema, toolset });
+    };
+
+    it('binds the shortcuts of the tools', () => {
+      const { tool } = setup();
+      const keys = keymapFor();
+      expect(keys['Mod-z']).to.equal(proseMirror.undo);
+      expect(keys['Mod-Shift-z']).to.equal(proseMirror.redo);
+      expect(keys['Mod-y']).to.equal(proseMirror.redo);
+      expect(keys['Mod-b']).to.be.a('function');
+      expect(keys['Mod-k']).to.be.a('function');
+      expect(Object.keys(keys)).to.include.members(
+        [TOOL_IDS.code, TOOL_IDS.orderedList, TOOL_IDS.bulletList, TOOL_IDS.blockquote]
+          .map((id) => tool(id).keys),
+      );
+    });
+
+    it('matches the Canvas shortcuts', () => {
+      const keys = keymapFor();
+      ['Mod-`', 'Ctrl-Shift-0', 'Ctrl-Shift-6', 'Ctrl->', 'Ctrl-Shift-8', 'Ctrl-Shift-9']
+        .forEach((key) => expect(keys[key], key).to.be.a('function'));
+      ['Mod-u', 'Mod-Shift-x', 'Mod-.', 'Mod-,', 'Mod-Shift-k']
+        .forEach((key) => expect(keys[key], key).to.equal(undefined));
+    });
+
+    it('changes the text style', () => {
+      const { 'Ctrl-Shift-2': heading, 'Ctrl-Shift-0': paragraph } = keymapFor();
+      const changed = run(heading, stateFor('<p>a</p>', { from: 1 }));
+      expect(changed.html).to.equal('<h2>a</h2>');
+      expect(run(paragraph, changed.state).html).to.equal('<p>a</p>');
+    });
+
+    it('opens the link dialog for Mod-k, which applies anywhere', () => {
+      const calls = [];
+      const keys = keymapFor({ onLink: () => calls.push('link') });
+      const state = stateFor('<p>a</p>');
+      expect(keys['Mod-k'](state)).to.be.true;
+      expect(calls).to.be.empty;
+      expect(keys['Mod-k'](state, () => {})).to.be.true;
+      expect(calls).to.deep.equal(['link']);
+    });
+
+    it('indents and outdents list items', () => {
+      const { Tab: indent, 'Shift-Tab': outdent } = keymapFor();
+      const flat = '<ul><li>a</li><li>b</li></ul>';
+      expect(indent(stateFor(flat, { from: 3 }))).to.be.false;
+      expect(indent(stateFor('<p>a</p>', { from: 1 }))).to.be.false;
+      expect(outdent(stateFor('<p>a</p>', { from: 1 }))).to.be.false;
+      const nested = run(indent, stateFor(flat, { from: 8 }));
+      expect(nested.html).to.equal('<ul><li>a<ul><li>b</li></ul></li></ul>');
+      const lifted = run(outdent, nested.state);
+      expect(lifted.html).to.equal(flat);
+      expect(run(outdent, lifted.state).html).to.equal('<ul><li>a</li></ul><p>b</p>');
+    });
+
+    it('inserts a hard break', () => {
+      const { 'Shift-Enter': shiftEnter, 'Mod-Enter': modEnter } = keymapFor();
+      expect(run(shiftEnter, stateFor('<p>ab</p>', { from: 2 })).html).to.equal('<p>a<br>b</p>');
+      expect(modEnter).to.equal(shiftEnter);
     });
   });
 });

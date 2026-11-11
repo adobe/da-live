@@ -443,7 +443,7 @@ export function toggleList({ proseMirror, name }) {
  * Replaces the selection with a line break.
  * @type {RichTextCommand}
  */
-function insertHardBreak(state, dispatch) {
+export function insertHardBreak(state, dispatch) {
   const hardBreak = state.schema.nodes.hard_break.create();
   dispatch?.(state.tr.replaceSelectionWith(hardBreak).scrollIntoView());
   return true;
@@ -461,38 +461,5 @@ export function requestLink({ onLink }) {
       onLink();
     }
     return true;
-  };
-}
-
-/**
- * Builds the shortcuts of the field, which match the Canvas editor.
- * @param {object} options The editor.
- * @param {object} options.proseMirror The da-y-wrapper namespace.
- * @param {object} options.schema The schema built from `SCHEMA_SPEC`.
- * @param {() => void} options.onLink Opens the link dialog.
- * @returns {Record<string, RichTextCommand>} The commands by key.
- */
-export function buildKeymap({ proseMirror, schema, onLink }) {
-  const { marks, nodes } = schema;
-  const blockKeys = BLOCK_TYPES.map(({ value, attrs }) => [
-    `Shift-Ctrl-${attrs?.level ?? 0}`, setBlock({ proseMirror, value }),
-  ]);
-  return {
-    'Mod-z': proseMirror.undo,
-    'Shift-Mod-z': proseMirror.redo,
-    'Mod-y': proseMirror.redo,
-    'Mod-b': proseMirror.toggleMark(marks.strong),
-    'Mod-i': proseMirror.toggleMark(marks.em),
-    'Mod-`': proseMirror.toggleMark(marks.code),
-    ...Object.fromEntries(blockKeys),
-    'Ctrl->': toggleBlockquote({ proseMirror }),
-    'Mod-k': requestLink({ onLink }),
-    'Shift-Ctrl-8': toggleList({ proseMirror, name: 'bullet_list' }),
-    'Shift-Ctrl-9': toggleList({ proseMirror, name: 'ordered_list' }),
-    Enter: proseMirror.splitListItem(nodes.list_item),
-    'Shift-Enter': insertHardBreak,
-    'Mod-Enter': insertHardBreak,
-    Tab: proseMirror.sinkListItem(nodes.list_item),
-    'Shift-Tab': proseMirror.liftListItem(nodes.list_item),
   };
 }
