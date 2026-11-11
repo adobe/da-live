@@ -9,7 +9,6 @@
 
 h1,
 h2,
-h3,
 p {
   margin: 0;
 }
@@ -87,59 +86,11 @@ form label {
   }
 }
 
-.tiles {
+.cards {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--s2-spacing-300);
-  margin: var(--s2-spacing-75) 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.tile {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  padding: var(--s2-spacing-300);
-  border-radius: var(--s2-corner-radius-500);
-  background: var(--s2-gray-50);
-}
-
-.tile-icon {
-  display: grid;
-  place-items: center;
-  box-sizing: border-box;
-  width: 56px;
-  height: 56px;
-  margin-bottom: var(--s2-spacing-100);
-  border: 1px solid var(--s2-gray-200);
-  border-radius: var(--s2-corner-radius-500);
-  background: var(--s2-gray-25);
-}
-
-h3 {
-  margin-bottom: var(--s2-spacing-75);
-  color: var(--s2-gray-900);
-  font-size: var(--s2-component-l-bold-font-size);
-  font-weight: 700;
-  line-height: 1.25;
-}
-
-.tile-action {
-  display: inline-flex;
-  align-items: center;
-  box-sizing: border-box;
-  margin-top: auto;
-  padding: 0 var(--s2-spacing-200);
-  background: transparent;
-  box-shadow: inset 0 0 0 2px var(--s2-gray-300);
-  text-decoration: none;
-}
-
-.tile p {
-  margin-bottom: var(--s2-spacing-400);
-  font-size: var(--s2-component-m-regular-font-size);
-  line-height: 1.5;
+  margin-top: var(--s2-spacing-75);
 }
 
 @media (width < 600px) {
@@ -147,18 +98,13 @@ h3 {
     padding: var(--s2-spacing-300);
   }
 
-  .tiles {
+  .cards {
     grid-template-columns: 1fr;
   }
 }
 
 @media (forced-colors: active) {
-  .panel,
-  .tile {
+  .panel {
     outline: 1px solid CanvasText;
-  }
-
-  .tile-action {
-    border: 1px solid ButtonText;
   }
 }

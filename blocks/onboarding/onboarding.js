@@ -1,11 +1,11 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../scripts/utils.js';
 import { initIms } from '../shared/utils.js';
-import { ONBOARDING_TILES } from './constants.js';
 import { addSite, getRequestedSite } from '../start/utils.js';
 import { getSiteFromUrl } from './utils.js';
+import { loadCards } from './content.js';
 
-const SITE_URL_ERROR = 'Enter a GitHub repository URL or an existing AEM site URL.';
+const SITE_URL_ERROR = 'Enter an existing AEM site URL.';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const [buttons, form, styles, landingStyles] = await Promise.all([
@@ -21,18 +21,20 @@ class DaOnboarding extends LitElement {
     _siteUrl: { state: true },
     _error: { state: true },
     _loading: { state: true },
+    _cards: { state: true },
   };
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [buttons, form, styles];
     const requested = getRequestedSite(window.location.search);
-    this._siteUrl = requested ? `https://github.com/${requested.org}/${requested.site}` : '';
+    this._siteUrl = requested ? `https://main--${requested.site}--${requested.org}.aem.page` : '';
     this._loadName();
   }
 
   async firstUpdated() {
     this.shadowRoot.querySelector('#site-url')?.focus();
+    this._loadCards();
     if (!this._siteUrl) return;
     await initIms();
     this._addSite();
@@ -41,6 +43,14 @@ class DaOnboarding extends LitElement {
   async _loadName() {
     const profile = await initIms();
     if (this.isConnected) this._name = profile?.first_name || profile?.displayName?.split(' ')[0];
+  }
+
+  async _loadCards() {
+    const [{ cards }] = await Promise.all([
+      loadCards(),
+      import(`${getNx2()}/blocks/shared/action-card/action-card.js`),
+    ]);
+    if (cards?.length) this._cards = cards;
   }
 
   _onInput({ target }) {
@@ -71,19 +81,23 @@ class DaOnboarding extends LitElement {
     window.location = `${window.location.origin}/#/${org}/${site}`;
   }
 
-  _renderTile(tile) {
-    const action = tile.href
-      ? html`<a class="nx-form-btn-secondary tile-action" href=${tile.href} target="_blank" rel="noopener">${tile.action}</a>`
-      : html`<button type="button" class="nx-form-btn-secondary tile-action" disabled>${tile.action}</button>`;
+  _renderCards() {
     return html`
-      <li class="tile">
-        <span class="tile-icon">
-          ${tile.icon ? html`<img src=${tile.icon} alt="" width="32" height="32">` : nothing}
-        </span>
-        <h3>${tile.title}</h3>
-        <p>${tile.description}</p>
-        ${action}
-      </li>`;
+      <section class="panel" aria-labelledby="create-site-title">
+        <div class="panel-heading">
+          <h2 id="create-site-title">Need to create a site?</h2>
+          <p>Choose a starting point to create your AEM site</p>
+        </div>
+        <div class="cards" role="list">
+          ${this._cards.map((card) => html`
+            <nx-action-card role="listitem"
+              .heading=${card.heading}
+              .description=${card.description}
+              .icon=${card.icon}
+              .tint=${card.tint}
+              .action=${card.href}></nx-action-card>`)}
+        </div>
+      </section>`;
   }
 
   render() {
@@ -110,15 +124,7 @@ class DaOnboarding extends LitElement {
             ${this._error ? html`<p id="site-error" class="nx-input-error-msg" role="alert">${this._error}</p>` : nothing}
           </form>
         </section>
-        <section class="panel" aria-labelledby="create-site-title">
-          <div class="panel-heading">
-            <h2 id="create-site-title">Need to create a site?</h2>
-            <p>Choose a starting point to create your AEM site</p>
-          </div>
-          <ul class="tiles">
-            ${ONBOARDING_TILES.map((tile) => this._renderTile(tile))}
-          </ul>
-        </section>
+        ${this._cards ? this._renderCards() : nothing}
       </div>
     `;
   }
