@@ -15,7 +15,7 @@ import {
   getSidekickConfig,
   sanitizeName,
   fetchDaConfigs,
-  fetchPreviewOptions,
+  fetchConfigBusOptions,
   canEditOrgConfig,
   getConfigPermissions,
   getAuthToken,
@@ -791,7 +791,7 @@ describe('getSidekickConfig', () => {
   });
 });
 
-describe('fetchPreviewOptions', () => {
+describe('fetchConfigBusOptions', () => {
   let savedFetch;
   let sandbox;
   let index = 0;
@@ -830,7 +830,7 @@ describe('fetchPreviewOptions', () => {
           created: expected ? '2026-05-01' : '2026-04-30',
         }), { status: 200 });
       };
-      expect(await fetchPreviewOptions({ org, site }))
+      expect(await fetchConfigBusOptions({ org, site }))
         .to.deep.equal({ legacySectionMetadata: expected });
       expect(requested).to.deep.equal([`https://api.aem.live/${org}/sites/${site}/config.json`]);
     });
@@ -851,7 +851,7 @@ describe('fetchPreviewOptions', () => {
         requested.push(url);
         return new Response(JSON.stringify({ created }));
       };
-      expect(await fetchPreviewOptions({ org, site: 'site' }))
+      expect(await fetchConfigBusOptions({ org, site: 'site' }))
         .to.deep.equal({ legacySectionMetadata: expected });
       expect(requested).to.deep.equal([configUrl]);
     });
@@ -862,7 +862,7 @@ describe('fetchPreviewOptions', () => {
       features: { rendering: {} },
       created: '2026-04-30',
     }));
-    expect(await fetchPreviewOptions({ org: `preview-options-${index}`, site: 'site' }))
+    expect(await fetchConfigBusOptions({ org: `preview-options-${index}`, site: 'site' }))
       .to.deep.equal({ legacySectionMetadata: true });
   });
 
@@ -873,13 +873,13 @@ describe('fetchPreviewOptions', () => {
       requested.push(url);
       return new Response(JSON.stringify({ features: { rendering: { version: url.includes('/sites/legacy/') ? 1 : 2 } } }));
     };
-    const first = fetchPreviewOptions({ org, site: 'legacy' });
-    const second = fetchPreviewOptions({ org, site: 'legacy' });
+    const first = fetchConfigBusOptions({ org, site: 'legacy' });
+    const second = fetchConfigBusOptions({ org, site: 'legacy' });
     expect(first).to.equal(second);
     expect(await first).to.deep.equal({ legacySectionMetadata: true });
-    expect(await fetchPreviewOptions({ org, site: 'legacy' }))
+    expect(await fetchConfigBusOptions({ org, site: 'legacy' }))
       .to.deep.equal({ legacySectionMetadata: true });
-    expect(await fetchPreviewOptions({ org, site: 'modern' }))
+    expect(await fetchConfigBusOptions({ org, site: 'modern' }))
       .to.deep.equal({ legacySectionMetadata: false });
     expect(requested).to.have.lengthOf(2);
     expect(JSON.parse(localStorage.getItem(`da-rendering-v2:/${org}/legacy`)).enabled)
@@ -896,7 +896,7 @@ describe('fetchPreviewOptions', () => {
         expiresAt: Date.now() + 15 * 60 * 1000,
       }));
       const fetch = sandbox.stub(window, 'fetch').rejects(new Error('unexpected fetch'));
-      expect(await fetchPreviewOptions({ org, site: 'site' }))
+      expect(await fetchConfigBusOptions({ org, site: 'site' }))
         .to.deep.equal({ legacySectionMetadata: !enabled });
       expect(fetch.called).to.equal(false);
     });
@@ -910,16 +910,16 @@ describe('fetchPreviewOptions', () => {
       const fetch = sandbox.stub(window, 'fetch').callsFake(async () => new Response(
         JSON.stringify({ features: { rendering: { version } } }),
       ));
-      expect(await fetchPreviewOptions({ org, site: 'site' }))
+      expect(await fetchConfigBusOptions({ org, site: 'site' }))
         .to.deep.equal({ legacySectionMetadata: !enabled });
       expect(JSON.parse(localStorage.getItem(key))).to.deep.equal({ enabled, expiresAt });
       version = enabled ? 1 : 2;
       clock.tick(15 * 60 * 1000 - 1);
-      expect(await fetchPreviewOptions({ org, site: 'site' }))
+      expect(await fetchConfigBusOptions({ org, site: 'site' }))
         .to.deep.equal({ legacySectionMetadata: !enabled });
       expect(fetch.callCount).to.equal(1);
       clock.tick(1);
-      expect(await fetchPreviewOptions({ org, site: 'site' }))
+      expect(await fetchConfigBusOptions({ org, site: 'site' }))
         .to.deep.equal({ legacySectionMetadata: enabled });
       expect(fetch.callCount).to.equal(2);
       expect(JSON.parse(localStorage.getItem(key))).to.deep.equal({
@@ -938,7 +938,7 @@ describe('fetchPreviewOptions', () => {
         const fetch = sandbox.stub(window, 'fetch').resolves(new Response(
           JSON.stringify({ features: { rendering: { version: 1 } } }),
         ));
-        expect(await fetchPreviewOptions({ org, site: 'site' }))
+        expect(await fetchConfigBusOptions({ org, site: 'site' }))
           .to.deep.equal({ legacySectionMetadata: true });
         expect(fetch.callCount).to.equal(1);
         expect(JSON.parse(localStorage.getItem(key)).enabled).to.equal(false);
@@ -957,9 +957,9 @@ describe('fetchPreviewOptions', () => {
     const fetch = sandbox.stub(window, 'fetch').callsFake(async () => new Response(
       JSON.stringify({ features: { rendering: { version: 1 } } }),
     ));
-    expect(await fetchPreviewOptions({ org, site: 'site' }))
+    expect(await fetchConfigBusOptions({ org, site: 'site' }))
       .to.deep.equal({ legacySectionMetadata: true });
-    expect(await fetchPreviewOptions({ org, site: 'site' }))
+    expect(await fetchConfigBusOptions({ org, site: 'site' }))
       .to.deep.equal({ legacySectionMetadata: true });
     expect(fetch.callCount).to.equal(2);
   });
@@ -973,20 +973,20 @@ describe('fetchPreviewOptions', () => {
         if (failure === 'missing site') return new Response('', { status: 404 });
         return new Response('', { status: 401 });
       };
-      expect(await fetchPreviewOptions(params)).to.deep.equal({ legacySectionMetadata: false });
+      expect(await fetchConfigBusOptions(params)).to.deep.equal({ legacySectionMetadata: false });
       expect(localStorage.getItem(`da-rendering-v2:/${params.org}/${params.site}`)).to.equal(null);
       window.fetch = async () => new Response(
         JSON.stringify({ features: { rendering: { version: 1 } } }),
       );
-      expect(await fetchPreviewOptions(params)).to.deep.equal({ legacySectionMetadata: true });
+      expect(await fetchConfigBusOptions(params)).to.deep.equal({ legacySectionMetadata: true });
     });
   });
 
   it('does not request config without an org and site', async () => {
     window.fetch = () => { throw new Error('unexpected fetch'); };
-    expect(await fetchPreviewOptions({ org: 'org' }))
+    expect(await fetchConfigBusOptions({ org: 'org' }))
       .to.deep.equal({ legacySectionMetadata: false });
-    expect(await fetchPreviewOptions({ site: 'site' }))
+    expect(await fetchConfigBusOptions({ site: 'site' }))
       .to.deep.equal({ legacySectionMetadata: false });
   });
 
@@ -1001,7 +1001,7 @@ describe('fetchPreviewOptions', () => {
       return new Response(JSON.stringify({ features: { rendering: { version: 2 } } }));
     };
     try {
-      await fetchPreviewOptions({ org: `preview-options-${index}`, site: 'site' });
+      await fetchConfigBusOptions({ org: `preview-options-${index}`, site: 'site' });
       expect(options.credentials).to.equal('include');
       expect(options.headers.Authorization).to.equal('Bearer test-token');
       expect(options.headers['x-content-source-authorization']).to.equal('Bearer test-token');

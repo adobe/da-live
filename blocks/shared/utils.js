@@ -432,7 +432,7 @@ export const fetchDaConfigs = (() => {
   };
 })();
 
-export const fetchPreviewOptions = (() => {
+export const fetchConfigBusOptions = (() => {
   const inFlight = {};
   const ttl = 15 * 60 * 1000;
 

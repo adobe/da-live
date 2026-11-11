@@ -2,7 +2,7 @@ import { insertText, insertHTML, replaceHTMLAtCursor, getEditorSelection } from 
 import { getActiveBlockIndex } from '../editor-utils/blocks.js';
 import { getInstrumentedHTMLForSDK } from '../editor-utils/editor-utils.js';
 import { getNx } from '../../../scripts/utils.js';
-import { getPostMessageTargetOrigin, isRequestId, isValidHref, replyToGetSelection, fetchPreviewOptions } from '../../shared/utils.js';
+import { getPostMessageTargetOrigin, isRequestId, isValidHref, replyToGetSelection, fetchConfigBusOptions } from '../../shared/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { chatTurnCompleted } from '../../shared/chat-panel.js';
 import { getCanvasBranch } from '../utils/branch.js';
@@ -25,7 +25,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   const { org, site, path, view } = hashState;
   if (!org || !site || !iframe.contentWindow) return { channel: null, destroy() { } };
 
-  const previewOptions = await fetchPreviewOptions({ org, site });
+  const previewOptions = await fetchConfigBusOptions({ org, site });
   const targetOrigin = getPostMessageTargetOrigin(iframe.src);
 
   const channel = new MessageChannel();

@@ -23,7 +23,7 @@ import {
   prefetchWysiwygCookiesIfSignedIn,
   wireQuickEditControllerPort,
 } from './utils/quick-edit-host.js';
-import { initIms as loadIms, fetchPreviewOptions } from '../../shared/utils.js';
+import { initIms as loadIms, fetchConfigBusOptions } from '../../shared/utils.js';
 import { forceSave } from '../../shared/forcesave.js';
 import initProse from './prose.js';
 import { setBlockFocus, clearBlockFocus } from './prose-plugins/blockFocus.js';
@@ -393,7 +393,7 @@ export class EwEditorDoc extends LitElement {
     const { sourceUrl } = session;
 
     try {
-      const previewOptions = await fetchPreviewOptions({ org: context.org, site: context.repo });
+      const previewOptions = await fetchConfigBusOptions({ org: context.org, site: context.repo });
       if (this.ctx !== context || !this.isConnected) return;
       const { token, permissions } = session;
       this._canWrite = permissions.some((permission) => permission === 'write');

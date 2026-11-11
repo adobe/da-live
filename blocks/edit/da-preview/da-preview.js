@@ -3,7 +3,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../shared/sheet.js';
 import { getHtmlWithCursor } from '../../shared/prose2aem.js';
 import getPathDetails from '../../shared/pathDetails.js';
-import { fetchPreviewOptions } from '../../shared/utils.js';
+import { fetchConfigBusOptions } from '../../shared/utils.js';
 
 const sheet = await getSheet('/blocks/edit/da-preview/da-preview.css');
 
@@ -36,7 +36,7 @@ export default class DaPreview extends LitElement {
     this.previewOptions = undefined;
     this.body = undefined;
     const { path } = this;
-    fetchPreviewOptions(getPathDetails() ?? {}).then((options) => {
+    fetchConfigBusOptions(getPathDetails() ?? {}).then((options) => {
       if (this.path !== path || !this.isConnected) return;
       this.previewOptions = options;
       this.setBody();
