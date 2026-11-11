@@ -141,11 +141,6 @@ class DaToolPanel extends LitElement {
       .filter(canPin);
   }
 
-  /**
-   * Whether enough views are pinned for the tabs to reorder by drag.
-   *
-   * @returns {boolean} True when two or more views are pinned.
-   */
   get _reorderable() {
     return this._pinnedViews.length > 1;
   }
@@ -155,14 +150,6 @@ class DaToolPanel extends LitElement {
     this.host?.persistPinnedViews?.(ids);
   }
 
-  /**
-   * Pins or unpins a view from the menu without switching to it. Unpinning
-   * the active view shows the first pinned view instead. The last pinned view
-   * stays pinned.
-   *
-   * @param {string} id - The view id.
-   * @returns {Promise<void>}
-   */
   async _togglePin(id) {
     const pinned = this._pinnedViews.some((view) => view.id === id);
     if (pinned && !this._reorderable) {
@@ -199,10 +186,6 @@ class DaToolPanel extends LitElement {
       .find((button) => button.dataset.viewId === id)?.focus();
   }
 
-  /**
-   * Starts observing the header area and the hidden tab measurer once they
-   * render, so a resize or a font load can switch between tabs and switcher.
-   */
   _observeFit() {
     const views = this.shadowRoot.querySelector('.tool-panel-views');
     if (!this._fitObserver || !views || views === this._observedFit) {
@@ -215,12 +198,6 @@ class DaToolPanel extends LitElement {
     this._observedFit = views;
   }
 
-  /**
-   * Shows the tabs while every pinned tab and the menu button fit, and the
-   * switcher otherwise. The measurer always lays out every tab and the header
-   * area always takes the free space, so neither width depends on the mode
-   * and switching can't loop.
-   */
   _syncFit() {
     const views = this.shadowRoot.querySelector('.tool-panel-views');
     const measure = views?.querySelector('.tool-panel-tabs-measure');
@@ -570,14 +547,6 @@ class DaToolPanel extends LitElement {
     `;
   }
 
-  /**
-   * Renders the header area that switches views. It shows the pinned tabs
-   * and a menu button while they fit, and one switcher button otherwise. A
-   * hidden measurer lays out every tab to decide which one shows.
-   *
-   * @param {object} [activeView] - The active view.
-   * @returns {unknown} The views area template.
-   */
   _renderViews(activeView) {
     const pinnedViews = this._pinnedViews;
     const collapsed = this._collapsed;
@@ -597,11 +566,6 @@ class DaToolPanel extends LitElement {
     `;
   }
 
-  /**
-   * Renders the icon only button that opens the views menu next to the tabs.
-   *
-   * @returns {unknown} The button template.
-   */
   _renderMenuButton() {
     return html`
       <button slot="trigger" type="button" class="popup-menu-trigger tool-panel-menu-button"
@@ -611,13 +575,6 @@ class DaToolPanel extends LitElement {
     `;
   }
 
-  /**
-   * Renders the button that replaces the tabs when they don't fit. It names
-   * the active view and opens the views menu.
-   *
-   * @param {object} [activeView] - The active view.
-   * @returns {unknown} The button template.
-   */
   _renderSwitcher(activeView) {
     return html`
       <button slot="trigger" type="button" class="popup-menu-trigger tool-panel-switcher"
@@ -628,22 +585,10 @@ class DaToolPanel extends LitElement {
     `;
   }
 
-  /**
-   * Renders the chevron that a views menu trigger turns while open.
-   *
-   * @returns {unknown} The chevron template.
-   */
   _renderChevron() {
     return html`<svg aria-hidden="true" class="popup-menu-chevron" viewBox="0 0 20 20"><use href="${ICONS.chevronDown}#icon"></use></svg>`;
   }
 
-  /**
-   * Renders the views menu with a section for the pinned views, in tab
-   * order, and a section for the rest.
-   *
-   * @param {Array<object>} pinnedViews - The views shown as tabs.
-   * @returns {unknown} The menu content template.
-   */
   _renderMenuContent(pinnedViews) {
     const pinnedIds = new Set(pinnedViews.map((view) => view.id));
     const otherViews = (this.views ?? []).filter((view) => !pinnedIds.has(view.id));
@@ -658,15 +603,6 @@ class DaToolPanel extends LitElement {
     `;
   }
 
-  /**
-   * Renders one titled section of the views menu, or nothing when it has no
-   * views.
-   *
-   * @param {string} title - The section heading.
-   * @param {Array<object>} views - The views in the section.
-   * @param {object} state - The pin state shared by the section's rows.
-   * @returns {unknown} The section template.
-   */
   _renderMenuGroup(title, views, state) {
     if (!views.length) {
       return nothing;
@@ -680,17 +616,6 @@ class DaToolPanel extends LitElement {
     `;
   }
 
-  /**
-   * Renders one menu row. The row opens its view, and its pin toggle pins or
-   * unpins the view without switching. Views that open outside the panel get
-   * an "opens in" icon instead of a pin toggle.
-   *
-   * @param {object} view - The view.
-   * @param {object} state
-   * @param {boolean} state.pinned - Whether the view is pinned.
-   * @param {boolean} [state.onlyOnePinned] - Whether it is the only pinned view.
-   * @returns {unknown} The row template.
-   */
   _renderMenuRow(view, { pinned, onlyOnePinned = false }) {
     const label = labelOf(view);
     const external = opensOutsidePanel(view);

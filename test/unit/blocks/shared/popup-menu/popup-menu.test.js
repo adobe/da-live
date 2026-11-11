@@ -7,19 +7,9 @@ before(async () => {
   await import('../../../../../blocks/shared/popup-menu/popup-menu.js');
 });
 
-/**
- * Waits one task, so pending promise callbacks and slot changes run first.
- *
- * @returns {Promise<void>} Resolves on the next task.
- */
+// Lets pending promise callbacks and slot changes run first.
 const nextTask = () => new Promise((resolve) => { setTimeout(resolve); });
 
-/**
- * Creates and attaches a menu with a trigger, two rows with a pin toggle
- * each, and a plain item.
- *
- * @returns {Promise<HTMLElement>} The rendered menu.
- */
 async function createMenu() {
   const menu = document.createElement('da-popup-menu');
   menu.label = 'Panels';
@@ -34,13 +24,6 @@ async function createMenu() {
   return menu;
 }
 
-/**
- * Presses a key on an element.
- *
- * @param {Element} element - The element that has focus.
- * @param {string} key - The key to press.
- * @returns {KeyboardEvent} The dispatched event.
- */
 function press(element, key) {
   const event = new KeyboardEvent('keydown', { key, bubbles: true, composed: true, cancelable: true });
   element.dispatchEvent(event);
