@@ -241,10 +241,6 @@
   }
 }
 
-.nx-tool-panel-editor-placeholder {
-  min-height: 120px;
-}
-
 /* Full-size experience dialog (same shell as ew-panel-extension preview). */
 .tool-panel-fullsize-dialog {
   position: fixed;
