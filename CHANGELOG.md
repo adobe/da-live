@@ -1,3 +1,10 @@
+## [1.28.1](https://github.com/adobe/da-live/compare/v1.28.0...v1.28.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* support default fallback ([#1714](https://github.com/adobe/da-live/issues/1714)) ([da2442d](https://github.com/adobe/da-live/commit/da2442d4039ffd26ab05be002cc46ee28dab12c6))
+
 # [1.28.0](https://github.com/adobe/da-live/compare/v1.27.0...v1.28.0) (2026-11-11)
 
 
