@@ -23,7 +23,7 @@ import {
   prefetchWysiwygCookiesIfSignedIn,
   wireQuickEditControllerPort,
 } from './utils/quick-edit-host.js';
-import { initIms as loadIms } from '../../shared/utils.js';
+import { initIms as loadIms, fetchConfigBusOptions } from '../../shared/utils.js';
 import { forceSave } from '../../shared/forcesave.js';
 import initProse from './prose.js';
 import { setBlockFocus, clearBlockFocus } from './prose-plugins/blockFocus.js';
@@ -116,9 +116,9 @@ export class EwEditorDoc extends LitElement {
   }
 
   _emitHtmlChange() {
-    const { view } = this._proseContext ?? {};
+    const { view, previewOptions } = this._proseContext ?? {};
     if (!view) return;
-    canvasBus.editorHtmlState.emit(getInstrumentedHTML(view));
+    canvasBus.editorHtmlState.emit(getInstrumentedHTML(view, previewOptions));
   }
 
   _emitUndoState() {
@@ -282,7 +282,7 @@ export class EwEditorDoc extends LitElement {
   }
 
   _setupController() {
-    const { view, wsProvider } = this._proseContext ?? {};
+    const { view, wsProvider, previewOptions } = this._proseContext ?? {};
     if (!this.quickEditPort || !view || !wsProvider) return;
     if (this._controllerCtx?.port === this.quickEditPort) return;
 
@@ -292,6 +292,7 @@ export class EwEditorDoc extends LitElement {
     const { org, repo } = this.ctx ?? {};
     this._controllerCtx = {
       view,
+      previewOptions,
       wsProvider,
       port: this.quickEditPort,
       iframe: this._wysiwygIframe,
@@ -392,6 +393,8 @@ export class EwEditorDoc extends LitElement {
     const { sourceUrl } = session;
 
     try {
+      const previewOptions = await fetchConfigBusOptions({ org: context.org, site: context.repo });
+      if (this.ctx !== context || !this.isConnected) return;
       const { token, permissions } = session;
       this._canWrite = permissions.some((permission) => permission === 'write');
       const { proseEl, wsProvider, view, ydoc, undoManager } = await initProse({
@@ -410,7 +413,7 @@ export class EwEditorDoc extends LitElement {
               (details) => {
                 const body = this._controllerCtx
                   ? updateDocument(this._controllerCtx, details)
-                  : getInstrumentedHTML(this._proseContext?.view);
+                  : getInstrumentedHTML(this._proseContext?.view, previewOptions);
                 if (body) canvasBus.editorHtmlState.emit(body);
               },
               () => { if (this._controllerCtx) updateCursors(this._controllerCtx); },
@@ -441,7 +444,7 @@ export class EwEditorDoc extends LitElement {
       });
 
       this._proseContext = {
-        proseEl, wsProvider, view, ydoc, undoManager, context,
+        proseEl, wsProvider, view, ydoc, undoManager, context, previewOptions,
       };
       this._comments.publish();
       this._unbindSectionName = bindFirstSectionName(ydoc, view, () => this._emitHtmlChange());
