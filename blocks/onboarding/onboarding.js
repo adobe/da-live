@@ -17,7 +17,6 @@ const [buttons, form, styles, landingStyles] = await Promise.all([
 
 class DaOnboarding extends LitElement {
   static properties = {
-    _name: { state: true },
     _siteUrl: { state: true },
     _error: { state: true },
     _loading: { state: true },
@@ -30,7 +29,6 @@ class DaOnboarding extends LitElement {
     const params = new URLSearchParams(window.location.search);
     const [org, site] = [params.get('org'), params.get('site')];
     this._siteUrl = org && site ? `https://main--${site}--${org}.aem.page` : '';
-    this._loadName();
   }
 
   async firstUpdated() {
@@ -39,11 +37,6 @@ class DaOnboarding extends LitElement {
     if (!this._siteUrl) return;
     await initIms();
     this._addSite();
-  }
-
-  async _loadName() {
-    const profile = await initIms();
-    if (this.isConnected) this._name = profile?.first_name || profile?.displayName?.split(' ')[0];
   }
 
   async _loadCards() {
@@ -103,10 +96,6 @@ class DaOnboarding extends LitElement {
   render() {
     return html`
       <div class="onboarding">
-        <header>
-          <h1>Welcome to Experience Workspace${this._name ? `, ${this._name}` : ''}</h1>
-          <p>Add a site to get started.</p>
-        </header>
         <section class="panel">
           <form class="nx-form-field ${this._error ? 'nx-field-error' : ''}" @submit=${this._onSubmit}>
             <label for="site-url">Already have an existing site?</label>

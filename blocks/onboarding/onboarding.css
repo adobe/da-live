@@ -7,7 +7,6 @@
   font-family: var(--s2-font-family);
 }
 
-h1,
 h2,
 p {
   margin: 0;
@@ -18,24 +17,6 @@ p {
   gap: var(--s2-spacing-300);
   max-width: 664px;
   margin-inline: auto;
-}
-
-header {
-  display: grid;
-  gap: var(--s2-spacing-100);
-  margin-bottom: var(--s2-spacing-400);
-  text-align: center;
-}
-
-h1 {
-  font-size: var(--s2-heading-size-l);
-  font-weight: 700;
-  line-height: 1.5;
-}
-
-header p {
-  font-size: var(--s2-body-size-l);
-  line-height: 1.5;
 }
 
 .panel {

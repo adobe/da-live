@@ -3,7 +3,6 @@ import { expect } from '@esm-bundle/chai';
 const { setNx, getNx, getNx2 } = await import('../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { setImsResult } = await import(`${getNx()}/utils/ims.js`);
 const { parseSubdomain } = await import(`${getNx2()}/blocks/siteselector/site-utils.js`);
 const { default: init } = await import('../../../../blocks/onboarding/onboarding.js');
 
@@ -84,19 +83,6 @@ describe('da-onboarding', () => {
     } finally {
       window.history.replaceState(null, '', href);
     }
-  });
-
-  it('greets without a name when the profile is unavailable', async () => {
-    await mount();
-    expect(el.shadowRoot.querySelector('h1').textContent).to.equal('Welcome to Experience Workspace');
-  });
-
-  it('greets the user by first name', async () => {
-    setImsResult({ first_name: 'John' });
-    await mount();
-    for (let i = 0; i < 20 && !el._name; i += 1) await nextFrame();
-    await el.updateComplete;
-    expect(el.shadowRoot.querySelector('h1').textContent).to.equal('Welcome to Experience Workspace, John');
   });
 
   it('renders the cards authored in the onboarding content', async () => {
