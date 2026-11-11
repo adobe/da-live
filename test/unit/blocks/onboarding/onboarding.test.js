@@ -126,17 +126,4 @@ describe('da-onboarding', () => {
     el.shadowRoot.querySelector('form button').click();
     expect(openSite.calledOnceWith(`${window.location.origin}/#/adobe/geometrixx`)).to.be.true;
   });
-
-  it('opens the site requested in the URL', async () => {
-    const { href } = window.location;
-    window.history.replaceState(null, '', '?org=adobe&site=geometrixx');
-    parseSubdomain.withArgs('https://main--geometrixx--adobe.aem.page').returns('#/adobe/geometrixx');
-    try {
-      await mount();
-      expect(el.shadowRoot.querySelector('input').value).to.equal('https://main--geometrixx--adobe.aem.page');
-      expect(openSite.calledOnceWith(`${window.location.origin}/#/adobe/geometrixx`)).to.be.true;
-    } finally {
-      window.history.replaceState(null, '', href);
-    }
-  });
 });

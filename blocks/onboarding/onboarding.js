@@ -23,15 +23,11 @@ class DaOnboarding extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [buttons, form, styles];
-    const params = new URLSearchParams(window.location.search);
-    const [org, site] = [params.get('org'), params.get('site')];
-    this._siteUrl = org && site ? `https://main--${site}--${org}.aem.page` : '';
   }
 
   firstUpdated() {
     this.shadowRoot.querySelector('#site-url')?.focus();
     this._loadCards();
-    if (this._siteUrl) this._submit();
   }
 
   async _loadCards() {
@@ -94,13 +90,12 @@ class DaOnboarding extends LitElement {
             <p id="site-hint">Enter the URL to get started.</p>
             <div class="site-entry">
               <input class="nx-input" id="site-url" name="siteUrl" type="url" required
-                .value=${this._siteUrl}
                 autocomplete="url" placeholder="https://main--site--org.aem.page"
                 aria-describedby=${this._error ? 'site-hint site-error' : 'site-hint'}
                 aria-invalid=${this._error ? 'true' : nothing}
                 @input=${this._onInput}>
               <button type="submit" class="nx-btn-accent"
-                ?disabled=${!this._siteUrl.trim()}>Open</button>
+                ?disabled=${!this._siteUrl?.trim()}>Open</button>
             </div>
             ${this._error ? html`<p id="site-error" class="nx-input-error-msg" role="alert">${this._error}</p>` : nothing}
           </form>
