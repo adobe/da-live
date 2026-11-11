@@ -12,11 +12,19 @@ describe('Home landing toggle', () => {
     expect(getBrowseComponent({ search: '?nx=lpbg&landing=true' })).to.equal('da-landing');
   });
 
-  it('never replaces site Browse with the landing surface', () => {
-    ['', '?landing=true', '?landing=false'].forEach((search) => {
-      expect(getBrowseComponent({ search, pathDetails: { org: 'example', site: 'site' } }))
-        .to.equal('da-browse');
+  it('keeps landing at a site root so its chat can use the site', () => {
+    const pathDetails = { org: 'example', site: 'site', path: null };
+    expect(getBrowseComponent({ search: '?landing=true', pathDetails })).to.equal('da-landing');
+    ['', '?landing=false'].forEach((search) => {
+      expect(getBrowseComponent({ search, pathDetails })).to.equal('da-browse');
     });
+  });
+
+  it('never replaces org or folder Browse with the landing surface', () => {
+    [{ org: 'example', site: null, path: null }, { org: 'example', site: 'site', path: 'docs' }]
+      .forEach((pathDetails) => {
+        expect(getBrowseComponent({ search: '?landing=true', pathDetails })).to.equal('da-browse');
+      });
   });
 });
 

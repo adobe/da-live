@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
+import { getChatPanelContent, chatAvailability } from '../shared/chat-panel.js';
 import { fetchDaConfigs, getEditorConfigs } from '../shared/utils.js';
 import { getSiteFavorites, toggleFavorite } from '../browse/shared/favorites.js';
 import { getBrowseSettings, updateBrowseSettings } from '../browse/v2/shared/settings.js';
@@ -8,6 +9,8 @@ import { getBrowseHref, getListItems, loadFilesByPath } from './utils.js';
 import '../browse/v2/da-list/da-list.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { PANEL_EVENT, registerPanelSection, wasPanelOpen } = await import(`${getNx()}/utils/panel.js`);
+const { CHAT_EVENT, useAoChat } = await import(`${getNx()}/utils/chat.js`);
 const { loadIms, handleSignIn } = await import(`${getNx2()}/utils/ims.js`);
 const { getCreateSiteHref, getSiteOptions } = await import(`${getNx2()}/blocks/siteselector/site-utils.js`);
 await import(`${getNx()}/blocks/shared/segmented-btn/segmented.js`);
@@ -24,6 +27,15 @@ const VIEW_ITEMS = [
 ];
 const PAGE_SIZE = 6;
 const MAX_FILES = 18;
+const MESSAGE_SENT_EVENT = CHAT_EVENT.MESSAGE_SENT || 'nx-chat-message-sent';
+const CHAT_PLACEHOLDER = 'Ask a question, share an idea, or add a task.';
+
+const toggleChatPanel = (open) => {
+  const type = open ? PANEL_EVENT.OPEN : PANEL_EVENT.CLOSE;
+  document.dispatchEvent(new CustomEvent(type, { detail: { section: 'chat' } }));
+};
+
+const openChatPanel = () => toggleChatPanel(true);
 
 function icon(name) {
   return html`<svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-${name}-20-n.svg#icon"></use></svg>`;
@@ -44,6 +56,7 @@ export class DaLanding extends LitElement {
     _limit: { state: true },
     _editor: { state: true },
     _editorConfs: { state: true },
+    _chatInput: { state: true },
   };
 
   _onPageShow = ({ persisted }) => {
@@ -62,6 +75,7 @@ export class DaLanding extends LitElement {
     this._tab = 'recent';
     this._view = getBrowseSettings().view === 'list' ? 'list' : 'card';
     this._limit = PAGE_SIZE;
+    this._chatInput = false;
   }
 
   connectedCallback() {
@@ -102,6 +116,9 @@ export class DaLanding extends LitElement {
     this.refreshFavorites();
     window.addEventListener('pageshow', this._onPageShow);
     document.addEventListener('site-select', this._onSiteSelect);
+    this.addEventListener(MESSAGE_SENT_EVENT, openChatPanel);
+    this._unsubChat?.();
+    this._unsubChat = chatAvailability.subscribe((enabled) => this._onChatAvailability(enabled));
     if (value !== this._scope) this._onSiteSelect({ detail: { value } });
     else if (this._scope) this.loadSite();
   }
@@ -118,7 +135,35 @@ export class DaLanding extends LitElement {
     this._request?.abort();
     window.removeEventListener('pageshow', this._onPageShow);
     document.removeEventListener('site-select', this._onSiteSelect);
+    this.removeEventListener(MESSAGE_SENT_EVENT, openChatPanel);
+    this._unsubChat?.();
+    this._chatRequest = undefined;
     super.disconnectedCallback();
+  }
+
+  async _onChatAvailability(enabled) {
+    const request = {};
+    this._chatRequest = request;
+    this._chatInput = false;
+    if (enabled === undefined) return;
+    if (!enabled) {
+      toggleChatPanel(false);
+      return;
+    }
+    registerPanelSection('chat', {
+      position: 'before',
+      width: '400px',
+      getContent: getChatPanelContent(),
+    });
+    if (wasPanelOpen('chat')) openChatPanel();
+    try {
+      if (!await useAoChat()) return;
+      await import(`${getNx()}/blocks/chat-ao/input.js`);
+      if (this._chatRequest === request) this._chatInput = true;
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.warn('Could not load the landing chat input.', error);
+    }
   }
 
   get path() {
@@ -265,6 +310,9 @@ export class DaLanding extends LitElement {
     }
     if (!this._ready || !this._scope) return nothing;
     return html`<div class="landing">
+      ${this._chatInput ? html`<div class="chat-input">
+        <nx-ao-input placeholder=${CHAT_PLACEHOLDER}></nx-ao-input>
+      </div>` : nothing}
       <section class="files-panel" data-view=${this._view} aria-labelledby="files-heading">
         <div class="panel-heading">
           <h2 id="files-heading">Content</h2>
