@@ -301,12 +301,6 @@ class DaFileExplorer extends LitElement {
     return true;
   }
 
-  /**
-   * Reloads the tree root and every expanded folder. Does nothing while a
-   * refresh is still running.
-   *
-   * @returns {Promise<void>}
-   */
   async _onRefreshClick() {
     if (this._refreshing) {
       return;
@@ -431,14 +425,6 @@ class DaFileExplorer extends LitElement {
     this._searchUnsub = () => entry.listeners.delete(applyFilter);
   }
 
-  /**
-   * Applies a category. It kicks off (or reuses) the same site crawl search
-   * uses, so folders that provably contain no matches can be hidden rather
-   * than just leaving their files filtered once expanded. Results narrow in
-   * as the crawl streams in, same as search.
-   *
-   * @param {string} value - The category value.
-   */
   _applyCategory(value) {
     this._category = value;
     this._resetCategoryCrawl();
@@ -590,39 +576,18 @@ class DaFileExplorer extends LitElement {
       </ul>`;
   }
 
-  /**
-   * Finds the active category, or All when none is set.
-   *
-   * @returns {{ value: string, label: string, scope: string }} The category.
-   */
   _currentCategory() {
     return CATEGORIES.find((category) => category.value === this._category) ?? CATEGORIES[0];
   }
 
-  /**
-   * Names the active category, for example "Pages".
-   *
-   * @returns {string} The category label.
-   */
   _categoryLabel() {
     return this._currentCategory().label;
   }
 
-  /**
-   * Names what the search covers, for example "files" or "pages".
-   *
-   * @returns {string} The plural noun for the current category.
-   */
   _searchScope() {
     return this._currentCategory().scope;
   }
 
-  /**
-   * Renders the search row with the search field, the category filter menu
-   * and the refresh button.
-   *
-   * @returns {unknown} The search row template.
-   */
   _renderSearchBar() {
     const searchLabel = `Search ${this._searchScope()}`;
     return html`
@@ -642,12 +607,6 @@ class DaFileExplorer extends LitElement {
     `;
   }
 
-  /**
-   * Renders the filter button and its menu of categories. A dot on the
-   * button shows that a category other than All is active.
-   *
-   * @returns {unknown} The filter menu template.
-   */
   _renderFilterMenu() {
     const current = this._currentCategory().value;
     const filtered = current !== ALL_CATEGORY;
@@ -673,11 +632,6 @@ class DaFileExplorer extends LitElement {
     `;
   }
 
-  /**
-   * Applies a category picked in the filter menu, unless it is already active.
-   *
-   * @param {string} value - The category value.
-   */
   _selectCategory(value) {
     if (value === this._currentCategory().value) {
       return;
