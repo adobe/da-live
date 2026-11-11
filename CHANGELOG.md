@@ -1,3 +1,10 @@
+## [1.28.4](https://github.com/adobe/da-live/compare/v1.28.3...v1.28.4) (2026-11-11)
+
+
+### Bug Fixes
+
+* **sheet:** stop keyboard input going to a hidden sheet ([#1676](https://github.com/adobe/da-live/issues/1676)) ([d2fce81](https://github.com/adobe/da-live/commit/d2fce81cd29ce704bc141f505a4c18beb1ef6c67)), closes [#1536](https://github.com/adobe/da-live/issues/1536)
+
 ## [1.28.3](https://github.com/adobe/da-live/compare/v1.28.2...v1.28.3) (2026-11-11)
 
 
