@@ -74,20 +74,23 @@ describe('da-onboarding', () => {
     for (let i = 0; i < 20 && !el._cards; i += 1) await nextFrame();
     await el.updateComplete;
     const cards = [...el.shadowRoot.querySelectorAll('.cards nx-action-card')]
-      .map((card) => ['heading', 'description', 'icon', 'tint', 'action']
-        .reduce((data, key) => ({ ...data, [key]: card[key] }), {}));
+      .map((card) => ({
+        ...['heading', 'description', 'tint', 'action']
+          .reduce((data, key) => ({ ...data, [key]: card[key] }), {}),
+        icon: card.querySelector('svg[slot="icon"] use')?.getAttribute('href'),
+      }));
     expect(cards).to.deep.equal([
       {
         heading: 'AEM Scheduler',
         description: 'Preview page changes.',
-        icon: '/img/icons/s2-icon-calendar-20-n.svg',
+        icon: '/img/icons/s2-icon-calendar-20-n.svg#icon',
         tint: '#F4EBFC',
         action: 'https://da.live/apps/scheduler',
       },
       {
         heading: 'Traverse',
         description: 'Traverse a content tree.',
-        icon: '/img/icons/s2-icon-treeview-20-n.svg',
+        icon: '/img/icons/s2-icon-treeview-20-n.svg#icon',
         tint: undefined,
         action: '/apps/traverse',
       },

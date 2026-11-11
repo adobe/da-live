@@ -77,9 +77,10 @@ class DaOnboarding extends LitElement {
             <nx-action-card role="listitem"
               .heading=${card.heading}
               .description=${card.description}
-              .icon=${card.icon}
               .tint=${card.tint}
-              .action=${card.href}></nx-action-card>`)}
+              .action=${card.href}>
+              ${card.icon ? html`<svg slot="icon" viewBox="0 0 20 20" aria-hidden="true"><use href="${card.icon}#icon"></use></svg>` : nothing}
+            </nx-action-card>`)}
         </div>
       </section>`;
   }
