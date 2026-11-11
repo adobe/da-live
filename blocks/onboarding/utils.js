@@ -19,7 +19,7 @@ export async function addSite({ org, site }) {
     }
   }
 
-  const resp = await daFetch(`${getDaAdmin()}/source/${org}/${site}`, { method: 'PUT' });
+  const resp = await daFetch(`${getDaAdmin()}/source/${org}/${site}`, { method: 'PUT', noRedirect: true });
   if (!resp.ok) {
     const error = resp.status === 401 || resp.status === 403
       ? 'You are not authorized to create this site in the corresponding DA organization. Check with the organization administrator.'
