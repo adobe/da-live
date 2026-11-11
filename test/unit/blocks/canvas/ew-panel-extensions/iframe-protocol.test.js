@@ -16,8 +16,9 @@ let savedFetch;
 beforeEach(() => {
   savedFetch = window.fetch;
   window.fetch = (url, options) => {
-    if (String(url).endsWith('/config/features.json')) {
-      return Promise.resolve(new Response(JSON.stringify({ rendering: { version: 2 } })));
+    if (String(url).startsWith('https://api.aem.live/') && String(url).endsWith('/config.json')) {
+      const config = { features: { rendering: { version: 2 } } };
+      return Promise.resolve(new Response(JSON.stringify(config)));
     }
     if (/\/config\/|\/ping\//.test(String(url))) {
       return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));

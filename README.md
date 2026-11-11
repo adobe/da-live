@@ -49,9 +49,9 @@ See [TESTING.md](TESTING.md) for unit, end-to-end and CI details.
 ## Additional details
 ### Legacy section metadata in previews
 Canvas and live preview follow the HTML pipeline's rendering feature decision.
-They read `https://api.aem.live/<org>/sites/<site>/config/features.json`:
-`rendering.version >= 2` enables section metadata extraction. If no version is set,
-the site's `created` date from `config.json` enables extraction for sites created
+They read `https://api.aem.live/<org>/sites/<site>/config.json` once:
+`features.rendering.version >= 2` enables section metadata extraction. If no version is set,
+the same configuration's `created` date enables extraction for sites created
 on or after May 1, 2026. Otherwise, the original `.section-metadata` blocks are
 preserved for client-side decoration.
 

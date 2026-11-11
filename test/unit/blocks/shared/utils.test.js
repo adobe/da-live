@@ -778,11 +778,14 @@ describe('fetchPreviewOptions', () => {
       const requested = [];
       window.fetch = async (url) => {
         requested.push(url);
-        return new Response(JSON.stringify({ rendering: { version } }), { status: 200 });
+        return new Response(JSON.stringify({
+          features: { rendering: { version } },
+          created: expected ? '2026-05-01' : '2026-04-30',
+        }), { status: 200 });
       };
       expect(await fetchPreviewOptions({ org, site }))
         .to.deep.equal({ legacySectionMetadata: expected });
-      expect(requested).to.deep.equal([`https://api.aem.live/${org}/sites/${site}/config/features.json`]);
+      expect(requested).to.deep.equal([`https://api.aem.live/${org}/sites/${site}/config.json`]);
     });
   });
 
@@ -795,22 +798,23 @@ describe('fetchPreviewOptions', () => {
   ].forEach(({ created, expected }) => {
     it(`uses the pipeline creation-date fallback for ${created}`, async () => {
       const org = `preview-options-${index}`;
-      const base = `https://api.aem.live/${org}/sites/site/config`;
+      const configUrl = `https://api.aem.live/${org}/sites/site/config.json`;
       const requested = [];
       window.fetch = async (url) => {
         requested.push(url);
-        return new Response(JSON.stringify(url === `${base}/features.json` ? {} : { created }));
+        return new Response(JSON.stringify({ created }));
       };
       expect(await fetchPreviewOptions({ org, site: 'site' }))
         .to.deep.equal({ legacySectionMetadata: expected });
-      expect(requested).to.deep.equal([`${base}/features.json`, `${base}.json`]);
+      expect(requested).to.deep.equal([configUrl]);
     });
   });
 
-  it('uses the creation date when the features fragment does not exist', async () => {
-    window.fetch = async (url) => (url.endsWith('/features.json')
-      ? new Response('', { status: 404 })
-      : new Response(JSON.stringify({ created: '2026-04-30' })));
+  it('uses the creation date when rendering exists without a version', async () => {
+    window.fetch = async () => new Response(JSON.stringify({
+      features: { rendering: {} },
+      created: '2026-04-30',
+    }));
     expect(await fetchPreviewOptions({ org: `preview-options-${index}`, site: 'site' }))
       .to.deep.equal({ legacySectionMetadata: true });
   });
@@ -820,7 +824,7 @@ describe('fetchPreviewOptions', () => {
     const requested = [];
     window.fetch = async (url) => {
       requested.push(url);
-      return new Response(JSON.stringify({ rendering: { version: url.includes('/sites/legacy/') ? 1 : 2 } }));
+      return new Response(JSON.stringify({ features: { rendering: { version: url.includes('/sites/legacy/') ? 1 : 2 } } }));
     };
     const first = fetchPreviewOptions({ org, site: 'legacy' });
     const second = fetchPreviewOptions({ org, site: 'legacy' });
@@ -843,7 +847,9 @@ describe('fetchPreviewOptions', () => {
         return new Response('', { status: 401 });
       };
       expect(await fetchPreviewOptions(params)).to.deep.equal({ legacySectionMetadata: false });
-      window.fetch = async () => new Response(JSON.stringify({ rendering: { version: 1 } }));
+      window.fetch = async () => new Response(
+        JSON.stringify({ features: { rendering: { version: 1 } } }),
+      );
       expect(await fetchPreviewOptions(params)).to.deep.equal({ legacySectionMetadata: true });
     });
   });
@@ -856,7 +862,7 @@ describe('fetchPreviewOptions', () => {
       .to.deep.equal({ legacySectionMetadata: false });
   });
 
-  it('authenticates feature requests with the existing AEM fetch helper', async () => {
+  it('authenticates config requests with the existing AEM fetch helper', async () => {
     const savedIms = window.adobeIMS;
     const savedLocalStorage = localStorage.getItem('nx-ims');
     localStorage.setItem('nx-ims', 'true');
@@ -864,7 +870,7 @@ describe('fetchPreviewOptions', () => {
     let options;
     window.fetch = async (url, opts) => {
       options = opts;
-      return new Response(JSON.stringify({ rendering: { version: 2 } }));
+      return new Response(JSON.stringify({ features: { rendering: { version: 2 } } }));
     };
     try {
       await fetchPreviewOptions({ org: `preview-options-${index}`, site: 'site' });

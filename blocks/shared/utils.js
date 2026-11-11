@@ -428,19 +428,15 @@ export const fetchPreviewOptions = (() => {
   const configCache = {};
 
   const fetchOptions = async (org, site) => {
-    const base = `${AEM_API_ORIGIN}/${org}/sites/${site}/config`;
+    const url = `${AEM_API_ORIGIN}/${org}/sites/${site}/config.json`;
     const opts = { method: 'GET', credentials: 'include' };
-    const resp = await daFetch(`${base}/features.json`, opts);
-    if (!resp.ok && resp.status !== 404) throw new Error('Error loading rendering features');
-    const features = resp.ok ? await resp.json() : {};
-    const { version } = features.rendering ?? {};
+    const resp = await daFetch(url, opts);
+    if (!resp.ok) throw new Error('Error loading site configuration');
+    const config = await resp.json();
+    const { version } = config.features?.rendering ?? {};
     if (version !== undefined) return { legacySectionMetadata: !(version >= 2) };
 
-    // The features fragment omits the site creation date used by the HTML pipeline.
-    const siteResp = await daFetch(`${base}.json`, { method: 'GET', credentials: 'include' });
-    if (!siteResp.ok) throw new Error('Error loading site creation date');
-    const { created } = await siteResp.json();
-    return { legacySectionMetadata: !(new Date(created) >= new Date('2026-05-01')) };
+    return { legacySectionMetadata: !(new Date(config.created) >= new Date('2026-05-01')) };
   };
 
   return ({ org, site }) => {
