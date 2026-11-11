@@ -1,3 +1,10 @@
+## [1.25.1](https://github.com/adobe/da-live/compare/v1.25.0...v1.25.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* make marketplace icon theme-aware ([#1710](https://github.com/adobe/da-live/issues/1710)) ([bb76723](https://github.com/adobe/da-live/commit/bb7672379c01e0cf44f1c96b27df0aa96b53f3e7))
+
 # [1.25.0](https://github.com/adobe/da-live/compare/v1.24.1...v1.25.0) (2026-11-11)
 
 
