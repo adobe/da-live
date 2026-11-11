@@ -175,6 +175,15 @@ describe('form-rich-text', () => {
     expect(view.state).to.equal(stateAfterInput);
   });
 
+  it('emits only its own input events', async () => {
+    const richText = await mount({ value: '<p>Hi</p>' });
+    const values = [];
+    richText.addEventListener('input', (event) => values.push(event.target.value));
+    content(richText).dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
+    richText._view.dispatch(richText._view.state.tr.insertText('!', 3));
+    expect(values).to.deep.equal(['<p>Hi!</p>']);
+  });
+
   it('replaces the document when the value changes externally', async () => {
     const richText = await mount({ value: '<p>One</p>' });
     richText.value = '<ul><li>Two</li></ul>';

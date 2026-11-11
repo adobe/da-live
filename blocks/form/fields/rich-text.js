@@ -396,6 +396,15 @@ class FormRichText extends LitElement {
     this.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
   }
 
+  /**
+   * Keeps the native `input` events of the editor and the link dialog inside the field.
+   * They fire before the value changes, and the field emits its own once it has.
+   * @param {Event} event The native `input` event.
+   */
+  _onInnerInput(event) {
+    event.stopPropagation();
+  }
+
   /** Shows the toolbar state for the selection. */
   _onFocusIn() {
     this._focused = true;
@@ -508,7 +517,7 @@ class FormRichText extends LitElement {
   render() {
     return html`
       <div class="form-field${this.error ? ' has-error' : ''}"
-        @focusin=${this._onFocusIn} @focusout=${this._onFocusOut}>
+        @focusin=${this._onFocusIn} @focusout=${this._onFocusOut} @input=${this._onInnerInput}>
         ${this._renderLabel()}
         <div class="form-rich-text">
           ${this._renderToolbar()}
