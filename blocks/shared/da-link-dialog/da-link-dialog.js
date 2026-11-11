@@ -68,6 +68,16 @@ class DaLinkDialog extends LitElement {
     }));
   }
 
+  /**
+   * Keeps Enter from submitting while an input method composes text, since it confirms the text.
+   * @param {KeyboardEvent} event The `keydown` event of the form.
+   */
+  _onKeydown(event) {
+    if (event.key === 'Enter' && (event.isComposing || event.keyCode === 229)) {
+      event.preventDefault();
+    }
+  }
+
   _onClose() {
     this._urlError = '';
   }
@@ -76,7 +86,7 @@ class DaLinkDialog extends LitElement {
     if (!this.open) return nothing;
     return html`
       <nx-dialog title="${this.title ?? 'Edit link'}" @close=${this._onClose}>
-        <form id="link-form" class="link-form" @submit=${this._onSubmit}>
+        <form id="link-form" class="link-form" @submit=${this._onSubmit} @keydown=${this._onKeydown}>
           <label class="nx-form-field ${this._urlError ? 'nx-field-error' : ''}">
             <span>URL</span>
             <input class="nx-input" name="link-href" type="text" autofocus placeholder="https://…"

@@ -175,6 +175,20 @@ describe('da-link-dialog', () => {
     expect(detail).to.deep.equal({ href: 'https://test.com', text: '' });
   });
 
+  it('does not submit on Enter while an input method composes text', async () => {
+    await mount({ open: true, href: 'https://test.com' });
+    const input = el.shadowRoot.querySelector('input[name="link-text"]');
+    const enter = (init) => {
+      const options = { key: 'Enter', bubbles: true, composed: true, cancelable: true };
+      const event = new KeyboardEvent('keydown', { ...options, ...init });
+      input.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    expect(enter({ isComposing: true })).to.be.true;
+    expect(enter({ keyCode: 229 })).to.be.true;
+    expect(enter({})).to.be.false;
+  });
+
   it('clears _urlError when the dialog closes', async () => {
     await mount({ open: true });
     el.shadowRoot.querySelector('.nx-form-btn-primary').click();
