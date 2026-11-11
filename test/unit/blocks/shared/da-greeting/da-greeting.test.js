@@ -73,46 +73,59 @@ describe('da-greeting', () => {
     expect(greeting.querySelector('h1').textContent).to.equal('Welcome, User');
   });
 
-  it('renders unconditional rows and matching variants in authored order', async () => {
+  it('uses matching variant rows instead of defaults, preserving authored order', async () => {
     const greeting = await fixture(`
       <div><div><h1>Welcome</h1></div></div>
-      <div><div> first </div><div><p>First <a href="/start">choice</a>.</p></div></div>
-      <div><div><p>Always here.</p></div></div>
+      <div><div> chat </div><div><p>Chat <a href="/start">choice</a>.</p></div></div>
+      <div><div><p>Default content.</p></div></div>
       <div><div>second</div><div><p>Second choice.</p></div></div>
+      <div><div>chat</div><div><p>More chat content.</p></div></div>
     `);
     const content = () => [...greeting.children].map((el) => el.textContent);
-    expect(content()).to.deep.equal(['Welcome', 'Always here.']);
+    expect(content()).to.deep.equal(['Welcome', 'Default content.']);
 
-    greeting.variant = 'first';
+    greeting.variant = 'chat';
     await greeting.updateComplete;
-    expect(content()).to.deep.equal(['Welcome', 'First choice.', 'Always here.']);
+    expect(content()).to.deep.equal(['Chat choice.', 'More chat content.']);
 
     greeting.variant = 'second';
     await greeting.updateComplete;
-    expect(content()).to.deep.equal(['Welcome', 'Always here.', 'Second choice.']);
+    expect(content()).to.deep.equal(['Second choice.']);
 
     greeting.variant = 'unknown';
     await greeting.updateComplete;
-    expect(content()).to.deep.equal(['Welcome', 'Always here.']);
+    expect(content()).to.deep.equal(['Welcome', 'Default content.']);
+
+    greeting.variant = undefined;
+    await greeting.updateComplete;
+    expect(content()).to.deep.equal(['Welcome', 'Default content.']);
+  });
+
+  it('personalizes the default when no chat override is authored', async () => {
+    const greeting = await fixture(
+      '<div><div><h1>Welcome, [firstname]</h1></div></div>',
+      { first_name: 'Ada' },
+      'chat',
+    );
+    expect(greeting.querySelector('h1').textContent).to.equal('Welcome, Ada');
   });
 
   it('personalizes the current variant when a profile resolves after switching variants', async () => {
     let resolveProfile;
     const profile = new Promise((resolve) => { resolveProfile = resolve; });
     const greeting = await fixture(
-      `<div><div>first</div><div><h1>Hi [firstname]</h1></div></div>
-       <div><div>second</div><div><h1>Welcome, [firstname]</h1></div></div>`,
+      `<div><div><h1>Welcome, [firstname]</h1></div></div>
+       <div><div>chat</div><div><h1>Hi [firstname]</h1></div></div>`,
       profile,
-      'first',
     );
     expect(greeting.textContent).to.equal('');
 
-    greeting.variant = 'second';
+    greeting.variant = 'chat';
     await greeting.updateComplete;
     expect(greeting.textContent).to.equal('');
 
     resolveProfile({ first_name: 'Ada' });
     await nextFrame();
-    expect(greeting.textContent).to.equal('Welcome, Ada');
+    expect(greeting.textContent).to.equal('Hi Ada');
   });
 });

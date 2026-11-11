@@ -23,8 +23,10 @@ export class DaGreeting extends LitElement {
   }
 
   render() {
-    const content = (this.rows ?? [])
-      .filter(({ type }) => type === undefined || type === this.variant)
+    const rows = this.rows ?? [];
+    const variant = rows.some(({ type }) => type === this.variant) ? this.variant : undefined;
+    const content = rows
+      .filter(({ type }) => type === variant)
       .flatMap((row) => row.content);
     const fallback = this.renderContent(content);
     if (!content.some(({ text }) => text.includes(FIRST_NAME)) || !this.profile) {
