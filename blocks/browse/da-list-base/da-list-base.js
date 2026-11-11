@@ -447,13 +447,21 @@ export default class DaListBase extends LitElement {
         const args = type === 'delete'
           ? { continuationToken }
           : { destination: item.destination, continuationToken };
-        const { ok, status, continuationToken: nextToken } = await fn(item.path, args);
+        const resp = await fn(item.path, args);
+        const { ok, status } = resp;
         if (!ok) {
           const err = new Error(`Unexpected status: ${status}`);
           err.status = status;
           throw err;
         }
-        continuationToken = nextToken;
+        continuationToken = undefined;
+        if (status === 206) {
+          const page = await resp.json();
+          if (typeof page?.continuationToken !== 'string' || !page.continuationToken) {
+            throw new Error('Partial response is missing a continuation token');
+          }
+          continuationToken = page.continuationToken;
+        }
       } while (continuationToken);
 
       item.isChecked = false;
