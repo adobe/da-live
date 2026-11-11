@@ -4,6 +4,8 @@ import sinon from 'sinon';
 import * as proseMirror from 'da-y-wrapper';
 import FormRichText from '../../../../../blocks/form/fields/rich-text.js';
 
+const { loadProseMirror } = FormRichText;
+
 /**
  * Waits for a task. Concurrent test pages run in the background, where animation frames
  * never fire.
@@ -151,6 +153,7 @@ describe('form-rich-text', () => {
 
   afterEach(() => {
     sinon.restore();
+    FormRichText.loadProseMirror = loadProseMirror;
     document.body.querySelectorAll('form-rich-text').forEach((richText) => richText.remove());
   });
 

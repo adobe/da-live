@@ -30,7 +30,8 @@ const escapeAttribute = (value) => value.replace(/[&"<>]/g, (character) => ENTIT
 const hasText = (html) => html.replace(/<[^>]*>/g, '').trim() !== '';
 
 /**
- * Removes whitespace and line breaks at both ends.
+ * Removes line breaks and whitespace at both ends, non-breaking spaces included, the way
+ * the SDK trims a value.
  * @param {string} html The HTML.
  * @returns {string} The trimmed HTML.
  */
