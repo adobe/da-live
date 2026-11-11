@@ -29,6 +29,16 @@ do not inspect navigation's shadow DOM or mount another selector.
 Content does not add a replacement picker or duplicate shared site-option validation.
 The no-recent-files and no-favorites states remain available for a selected site.
 
+## Authored greeting
+
+Use full-width rows for the default greeting and two-cell rows for an optional
+`chat` override: variant name first, greeting second. Merge the header across both
+columns. `[firstname]` uses the signed-in user's first name.
+Selecting `chat` replaces the default; a missing override falls back to default.
+Landing currently uses the default.
+
+## Content surface
+
 Content mounts inside the gradient landing surface already provided by main.
 `landing.css` retains that page background and inherits the application theme,
 without landing-specific theme overrides.
