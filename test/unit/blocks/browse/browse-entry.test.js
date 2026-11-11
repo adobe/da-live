@@ -1,15 +1,29 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
-import '../../setup-landing.js';
+import '../../setup-nx.js';
 import init from '../../../../blocks/browse/browse.js';
 import { DaLanding } from '../../../../blocks/landing/landing.js';
-import { DaRecentFiles } from '../../../../blocks/recent-files/recent-files.js';
+import { DaRecentFiles } from '../../../../blocks/landing/recent-files/recent-files.js';
 import { getNx, getNx2, getNx2Api } from '../../../../scripts/utils.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { source, config } = await getNx2Api();
 const { getSiteOptions } = await import(`${getNx2()}/blocks/siteselector/site-utils.js`);
-const content = await fetch('/test/fixtures/landing-tiles.html').then((response) => response.text());
+const { loadBlock, setBlockMocks } = await import(`${getNx2()}/scripts/nx.js`);
+const content = `
+  <div><div class="browse"></div></div>
+  <div>
+    <div class="greeting"><div><div><h1>Hi [firstname]</h1></div></div></div>
+    <div class="recent-files"></div>
+    <div class="landing">
+      <div><div>:s2-icon-folderopen-20-n:</div>
+        <div><h3><a href="/#/%7Borg%7D/%7Bsite%7D">Browse</a></h3></div></div>
+      <div><div>:s2-icon-edit-20-n:</div>
+        <div><h3><a href="/%7Baction:create-page%7D">Create</a></h3></div></div>
+      <div><div>:s2-icon-publish-20-n:</div>
+        <div><h3><a href="https://example.com/guide">Guide</a></h3></div></div>
+    </div>
+  </div>`;
 
 async function waitUntil(predicate) {
   for (let i = 0; i < 50 && !predicate(); i += 1) {
@@ -17,6 +31,20 @@ async function waitUntil(predicate) {
     await new Promise((resolve) => { setTimeout(resolve, 10); });
   }
   expect(!!predicate()).to.equal(true);
+}
+
+function decorateSections(main) {
+  return [...main.children].map((section) => {
+    section.classList.add('section');
+    const group = document.createElement('div');
+    group.className = 'block-content';
+    group.append(...section.children);
+    section.append(group);
+    section.blocks = [...group.children].filter((block) => block.className);
+    section.linkBlocks = [];
+    section.autoBlocks = [];
+    return section;
+  });
 }
 
 describe('Browse Content opt-in', () => {
@@ -32,6 +60,7 @@ describe('Browse Content opt-in', () => {
     localStorage.setItem('da-sites', JSON.stringify(['org/site']));
   });
   afterEach(() => {
+    setBlockMocks({});
     subscribe.returnValues.forEach((unsubscribe) => unsubscribe());
     subscribe.restore();
     initialize.restore();
@@ -42,11 +71,45 @@ describe('Browse Content opt-in', () => {
     hashChange._set(undefined);
   });
 
+  it('claims Landing sections before NX reaches their queued blocks and links', async () => {
+    const main = document.createElement('main');
+    main.innerHTML = content;
+    main.insertAdjacentHTML('beforeend', '<div><div class="unrelated">Other page content</div></div>');
+    const sections = decorateSections(main);
+    const el = main.querySelector('.browse');
+    const greeting = main.querySelector('.greeting');
+    const tiles = main.querySelector('.landing');
+    sections[1].linkBlocks = [greeting];
+    sections[1].autoBlocks = [tiles];
+    const unrelated = sinon.spy();
+    setBlockMocks({ browse: init, unrelated });
+    hashChange._set(undefined);
+    document.body.append(main);
+    try {
+      for (const section of sections) {
+        // eslint-disable-next-line no-await-in-loop
+        await Promise.all([...section.autoBlocks, ...section.linkBlocks, ...section.blocks]
+          .map((block) => loadBlock(block)));
+      }
+      await waitUntil(() => el.querySelector('da-landing-tiles')?.entries);
+      expect(main.children).to.have.length(2);
+      expect(unrelated.calledOnce).to.equal(true);
+      expect(main.querySelector('.unrelated').textContent).to.equal('Other page content');
+      expect(el.querySelectorAll('da-recent-files')).to.have.length(1);
+      expect(el.querySelectorAll('da-landing-tiles')).to.have.length(1);
+      expect(greeting.querySelector('h1').textContent).to.include('[firstname]');
+      expect(tiles.querySelectorAll(':scope > div')).to.have.length(3);
+    } finally {
+      main.remove();
+    }
+  });
+
   it('switches between site Browse and Content without reloading and keeps nav selection off the URL', async () => {
     await import('../../../../blocks/browse/v2/da-browse/da-browse.js');
     const { href } = window.location;
     const main = document.createElement('main');
-    main.innerHTML = content.replace(/<\/?main>/g, '');
+    main.innerHTML = content;
+    decorateSections(main);
     const ordinary = main.querySelector('.browse');
     const browse = document.createElement('da-browse');
     const details = { org: 'org', site: 'site', fullpath: '/org/site' };
@@ -187,7 +250,8 @@ describe('Browse Content opt-in', () => {
   it('mounts one tile group inside the gated landing when updates overlap', async () => {
     const { href } = window.location;
     const main = document.createElement('main');
-    main.innerHTML = content.replace(/<\/?main>/g, '');
+    main.innerHTML = content;
+    decorateSections(main);
     const el = main.querySelector('.browse');
     el.innerHTML = '<picture></picture>';
     document.body.append(main);
@@ -217,7 +281,7 @@ describe('Browse Content opt-in', () => {
       expect(el.querySelectorAll('da-landing-tiles')).to.have.length(1);
       expect(tiles.parentElement.className).to.equal('landing');
       expect(el.querySelector('picture, da-sites, da-browse')).to.equal(null);
-      expect(tiles.shadowRoot.querySelectorAll('.tile')).to.have.length(5);
+      expect(tiles.shadowRoot.querySelectorAll('.tile')).to.have.length(3);
       expect(fetchContent.called).to.equal(false);
     } finally {
       fetchContent.restore();
@@ -227,9 +291,10 @@ describe('Browse Content opt-in', () => {
     }
   });
 
-  it('renders the page’s own Landing table with the preselected site on unscoped Home', async () => {
+  it('renders the following authored Landing section on unscoped Home', async () => {
     const main = document.createElement('main');
-    main.innerHTML = content.replace(/<\/?main>/g, '');
+    main.innerHTML = content;
+    decorateSections(main);
     const el = main.querySelector('.browse');
     const block = main.querySelector('.landing');
     document.body.append(main);
@@ -241,13 +306,13 @@ describe('Browse Content opt-in', () => {
       await tiles.updateComplete;
       const all = [...tiles.shadowRoot.querySelectorAll('.tile')];
       const [browse, create, ...docs] = all;
-      expect(all).to.have.length(5);
+      expect(all).to.have.length(3);
       expect(new URL(browse.href).hash).to.equal('#/org/site');
       expect(browse.matches('a[href]')).to.equal(true);
       expect(create.disabled).to.equal(false);
       docs.forEach((tile) => expect(tile.matches('a[href]')).to.equal(true));
       expect(el.querySelector('da-sites')).to.equal(null);
-      expect(block.querySelectorAll(':scope > div')).to.have.length(5);
+      expect(block.querySelectorAll(':scope > div')).to.have.length(3);
       expect(fetchContent.called).to.equal(false);
     } finally {
       fetchContent.restore();

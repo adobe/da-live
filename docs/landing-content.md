@@ -4,10 +4,14 @@ The authored `recent-files` block mounts `da-recent-files`, reusing Browse's `da
 and `da-file-item` in both views. On pages declaring Landing content, the no-hash
 Browse route mounts `da-landing`; a site or folder hash always opens Browse.
 Landing uses only the page's authored blocks; it does not fetch another content page.
+Place Browse alone in the first section, followed by a section break and the
+Greeting, Recent Files and Landing blocks. Those three can share a section.
 `?landing=false` retains the existing Home.
-The host decorates authored `greeting`, `recent-files` and `landing` blocks in their
-document order through NX's block loader. Moving those blocks changes their order;
+The host initializes authored `greeting`, `recent-files` and `landing` sections
+directly in document order. Moving those blocks changes their order;
 the host does not prepend tiles or add an implicit Content panel.
+Browse claims those later Landing sections before NX loads them. Global startup
+does not contain Landing-specific handling.
 Landing owns the entry gate: without a valid recent site it redirects to `/start`
 using history replacement, preserving environment parameters through da-nx's shared
 URL helper. Start owns onboarding. With recent sites, Landing waits for IMS and
@@ -44,7 +48,7 @@ Content mounts inside the gradient landing surface already provided by main.
 without landing-specific theme overrides.
 `browse.js` loads `landing.css` before creating the empty `.landing` surface
 and mounting the Landing host. It does not hold the section hidden while those styles load.
-`blocks/recent-files/recent-files.css` contains only the Content component's shadow styles.
+`blocks/landing/recent-files/` owns the Content component and its shadow styles.
 The panel uses an opaque `--s2-gray-25` surface: white in light mode and dark
 in dark mode, with the gradient visible only outside the panel.
 Its `--s2-drop-shadow-emphasized` shadow uses Spectrum's light/dark values.

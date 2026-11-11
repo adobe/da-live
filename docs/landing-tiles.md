@@ -20,7 +20,7 @@ from 600px and one column below, with incomplete rows centered. Five tiles use
 The landing replaces Home (no scoped hash) when the page has authored Landing
 blocks or `?landing=true` is set. `?landing=false` keeps the existing Home. Browse
 selects the route; `da-landing` hosts `greeting`, `recent-files` and `landing`
-blocks in their authored order. The `landing` block loads `tile-group.js` in place.
+blocks in their authored order, initializing `tile-group.js` in place.
 
 Landing inherits the application's color scheme and shared Spectrum tokens,
 including its gradient. It does not choose a theme or support a `?theme=` override.
@@ -31,8 +31,9 @@ Tiles use the same preselected site as Content and update when the site selector
 changes, without requiring a scoped URL hash. Scoped hashes still route to Browse.
 
 A page's `Browse` block owns routing. Copies of its authored `Greeting`, `Recent Files`
-and `Landing` blocks render inside the no-hash host; the outer source blocks stay
-hidden so scoped Browse routes do not show Landing content. The `Landing` block
+and `Landing` blocks render inside the no-hash host. Put Browse in its own first
+section; it consumes following Landing sections before NX reaches them, so scoped
+routes do not show Landing content or load adapter modules. The `Landing` block
 replaces its table rows with tiles at that exact position.
 Missing authored content shows an error, without fetching another page or
 supplying hardcoded tiles.

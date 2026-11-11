@@ -1,18 +1,24 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
-import '../../setup-landing.js';
-import initTiles, { DaLanding, loadLanding } from '../../../../blocks/landing/landing.js';
-import { readLandingBlocks } from '../../../../blocks/landing/landing-content.js';
-import { DaRecentFiles } from '../../../../blocks/recent-files/recent-files.js';
+import '../../setup-nx.js';
+import { DaLanding, loadLanding } from '../../../../blocks/landing/landing.js';
+import { readLandingBlocks } from '../../../../blocks/browse/utils.js';
+import { DaRecentFiles } from '../../../../blocks/landing/recent-files/recent-files.js';
 import { getNx2 } from '../../../../scripts/utils.js';
 
 const { getSiteOptions } = await import(`${getNx2()}/blocks/siteselector/site-utils.js`);
 const { loadIms, handleSignIn } = await import(`${getNx2()}/utils/ims.js`);
-const content = await fetch('/test/fixtures/landing-tiles.html').then((response) => response.text());
+const content = `
+  <div class="greeting"><div><div><h1>Hi [firstname], how can I help?</h1></div></div></div>
+  <div class="recent-files"></div>
+  <div class="landing"><div>
+    <div>:s2-icon-folderopen-20-n:</div>
+    <div><h3><a href="/#/%7Borg%7D/%7Bsite%7D">Browse Content</a></h3></div>
+  </div></div>`;
 const [styles, recentStyles, tileStyles] = await Promise.all([
   '/blocks/landing/landing.css',
-  '/blocks/recent-files/recent-files.css',
-  '/blocks/landing/tile-group.css',
+  '/blocks/landing/recent-files/recent-files.css',
+  '/blocks/landing/tiles/tile-group.css',
 ].map(async (path) => {
   const css = await fetch(path).then((response) => response.text());
   const sheet = new CSSStyleSheet();
@@ -56,7 +62,7 @@ describe('authored Landing composition', () => {
     localStorage.removeItem('da-sites');
   });
 
-  it('hydrates greeting, shared Recent Files and tiles in authored order', async () => {
+  it('initializes greeting, Recent Files and tiles directly in authored order', async () => {
     const fetchContent = sinon.spy(window, 'fetch');
     const authored = blocks();
     const landing = await mount(authored);
@@ -67,7 +73,7 @@ describe('authored Landing composition', () => {
     expect(landing.querySelector('da-recent-files').path).to.equal('/org/site');
     const tiles = landing.querySelector('da-landing-tiles');
     await tiles.updateComplete;
-    expect(tiles.entries).to.have.length(5);
+    expect(tiles.entries).to.have.length(1);
     expect(landing.querySelector('.browse, script')).to.equal(null);
     expect(el.querySelector('picture, img')).to.equal(null);
     expect(authored[0].querySelector('h1').textContent).to.include('[firstname]');
@@ -171,6 +177,7 @@ describe('authored Landing composition', () => {
     const authored = blocks();
     authored[0].querySelector('h1').textContent = 'Welcome back, [firstname]!';
     const landing = await mount(authored);
+    await landing.querySelector('da-greeting').updateComplete;
     expect(landing.querySelector('h1').textContent).to.equal('Welcome back, <img src=x>!');
     expect(landing.querySelector('img')).to.equal(null);
   });
@@ -248,12 +255,13 @@ describe('authored Landing composition', () => {
     expect(new URL(browse.href).pathname).to.equal(new URL('./guide', window.location.href).pathname);
   });
 
-  it('leaves outer authored tile data intact for the route host', () => {
-    const block = blocks()[2];
-    const original = block.innerHTML;
-    el.append(block);
-    initTiles(block);
-    expect(block.hidden).to.equal(true);
-    expect(block.innerHTML).to.equal(original);
+  it('shows cloned sections without modifying hidden authored data', async () => {
+    const authored = blocks();
+    authored.forEach((block) => { block.hidden = true; });
+    const landing = await mount(authored);
+    expect([...landing.firstElementChild.children].every((block) => !block.hidden)).to.equal(true);
+    expect(authored.every((block) => block.hidden)).to.equal(true);
+    expect(authored[0].querySelector('h1').textContent).to.include('[firstname]');
+    expect(authored[2].querySelector('h3 a').textContent).to.equal('Browse Content');
   });
 });

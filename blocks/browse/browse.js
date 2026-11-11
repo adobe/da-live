@@ -1,7 +1,6 @@
 import { getNx } from '../../scripts/utils.js';
 import { fetchDaConfigs } from '../shared/utils.js';
-import { getBrowseComponent, resolveBrowsePath } from './utils.js';
-import { readLandingBlocks } from '../landing/landing-content.js';
+import { getBrowseComponent, resolveBrowsePath, takeLandingSections } from './utils.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -76,7 +75,7 @@ function setRecentSite(details) {
 }
 
 export default function init(el) {
-  const blocks = readLandingBlocks(document.querySelector('main'));
+  const blocks = takeLandingSections(el);
   hashChange.subscribe((pathDetails) => {
     const cmpName = getBrowseComponent({
       search: window.location.search,

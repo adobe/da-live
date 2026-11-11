@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2 } from '../../scripts/utils.js';
-import { createPage, doesFileExist } from '../shared/da-file-item/item.js';
-import { getTileTarget } from './utils.js';
+import { getNx, getNx2 } from '../../../scripts/utils.js';
+import { createPage, doesFileExist } from '../../shared/da-file-item/item.js';
+import { getTileTarget } from '../utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const nx = await import(`${getNx2()}/scripts/nx.js`);
@@ -61,7 +61,7 @@ export class DaLandingTiles extends LitElement {
   async _onCreatePage() {
     if (this._createDialog) return;
     this._createDialog = { scope: this._scope };
-    await import('../shared/da-name-dialog/da-name-dialog.js');
+    await import('../../shared/da-name-dialog/da-name-dialog.js');
   }
 
   _onCloseCreatePage() {

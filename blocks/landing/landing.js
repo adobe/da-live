@@ -1,8 +1,10 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../scripts/utils.js';
+import initGreeting from '../shared/da-greeting/da-greeting.js';
+import initRecentFiles from './recent-files/recent-files.js';
+import initTiles from './tiles/tile-group.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const { loadBlock } = await import(`${getNx2()}/scripts/nx.js`);
 const { loadIms, handleSignIn } = await import(`${getNx2()}/utils/ims.js`);
 const { getCreateSiteHref, getSiteOptions } = await import(`${getNx2()}/blocks/siteselector/site-utils.js`);
 const background = await loadStyle(import.meta.url);
@@ -90,10 +92,23 @@ export class DaLanding extends LitElement {
       if (!this.blocks?.length) throw new Error('No Landing content is configured.');
       const layout = document.createElement('div');
       layout.className = 'landing-content';
-      const blocks = this.blocks.map((block) => block.cloneNode(true));
+      const blocks = this.blocks.map((block) => {
+        const clone = block.cloneNode(true);
+        clone.hidden = false;
+        return clone;
+      });
       layout.append(...blocks);
       this.replaceChildren(layout);
-      await Promise.all(blocks.map((block) => loadBlock(block)));
+      blocks.forEach((block) => {
+        if (block.classList.contains('greeting')) {
+          initGreeting(block, { profile: this.profile });
+        } else if (block.classList.contains('recent-files')) {
+          initRecentFiles(block, { scope: this.scope });
+        } else if (block.classList.contains('landing')) {
+          const tiles = initTiles(block, { contentBlock: block, scope: this.scope });
+          block.replaceChildren(tiles);
+        }
+      });
     } catch (error) {
       if (this.isConnected && this._contentRequest === request) this._error = error.message;
     }
@@ -139,17 +154,4 @@ export async function loadLanding(el, { blocks } = {}) {
   surface.replaceChildren(landing);
   await landing.initialized;
   return landing;
-}
-
-export default async function init(el) {
-  const landing = el.closest('da-landing');
-  if (!landing?.scope) {
-    el.hidden = true;
-    return undefined;
-  }
-  const { default: loadTiles } = await import('./tile-group.js');
-  if (!el.isConnected) return undefined;
-  const contentBlock = el.cloneNode(true);
-  el.replaceChildren();
-  return loadTiles(el, { contentBlock, scope: landing.scope });
 }

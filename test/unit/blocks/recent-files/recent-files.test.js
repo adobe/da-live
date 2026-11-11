@@ -2,7 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import '../../setup-nx.js';
 import { getFavorites, toggleFavorite } from '../../../../blocks/browse/shared/favorites.js';
-import { DaRecentFiles } from '../../../../blocks/recent-files/recent-files.js';
+import { DaRecentFiles } from '../../../../blocks/landing/recent-files/recent-files.js';
 import { getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
 
 const { source, config } = await getNx2Api();

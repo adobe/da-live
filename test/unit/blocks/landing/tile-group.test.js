@@ -2,14 +2,30 @@ import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import { sendKeys, sendMouse } from '@web/test-runner-commands';
 import '../../setup-nx.js';
-import init, { parseTileEntries } from '../../../../blocks/landing/tile-group.js';
+import init, { parseTileEntries } from '../../../../blocks/landing/tiles/tile-group.js';
 import { getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
 
 const { source, config } = await getNx2Api();
 const { setEWEnabled } = await getNxEWFlags();
-const content = await fetch('/test/fixtures/landing-tiles.html').then((response) => response.text());
+const content = `<div class="landing">
+  <div>
+    <div>:s2-icon-folderopen-20-n:</div>
+    <div><h3 id="browse-content"><a href="/#/%7Borg%7D/%7Bsite%7D">Browse</a></h3><p>Browse files</p></div>
+    <div>tone: turquoise</div>
+  </div>
+  <div>
+    <div>:s2-icon-edit-20-n:</div>
+    <div><h3 id="create-a-page"><a href="/%7Baction:create-page%7D">Create</a></h3><p>Create a page</p></div>
+    <div>tone: green</div>
+  </div>
+  <div>
+    <div>:s2-icon-publish-20-n:</div>
+    <div><h3><a href="https://example.com/guide">Guide</a></h3><p>Read the guide</p></div>
+    <div></div>
+  </div>
+</div>`;
 const sheet = new CSSStyleSheet();
-sheet.replaceSync(await fetch('/blocks/landing/tile-group.css').then((response) => response.text()));
+sheet.replaceSync(await fetch('/blocks/landing/tiles/tile-group.css').then((response) => response.text()));
 
 describe('landing tile group', () => {
   let el;
@@ -214,11 +230,11 @@ describe('landing tile group', () => {
     el.remove();
     el = init(document.body, { contentBlock: new DOMParser().parseFromString(content, 'text/html').querySelector('.landing') });
     await el.updateComplete;
-    const [browse, create, , , develop] = await getTiles();
+    const [browse, create, guide] = await getTiles();
     expect(browse.href).to.equal(undefined);
     expect(browse.disabled).to.equal(true);
     expect(create.disabled).to.equal(true);
-    expect(develop.href).to.equal('https://www.aem.live/developer/tutorial');
+    expect(guide.href).to.equal('https://example.com/guide');
   });
 
   it('reports missing authored tiles without fetching fallback content', async () => {
@@ -318,14 +334,14 @@ describe('landing tile group', () => {
 describe('authored landing tiles', () => {
   afterEach(() => sinon.restore());
 
-  it('reads the published three-column table without executing or rendering the Browse block', () => {
+  it('reads authored icons, titles, descriptions, links and tones', () => {
     const doc = new DOMParser().parseFromString(content, 'text/html');
     const entries = parseTileEntries(doc.querySelector('.landing'));
-    expect(entries).to.have.length(5);
+    expect(entries).to.have.length(3);
     expect(entries[0]).to.deep.equal({
       id: 'browse-content',
-      heading: 'Browse Content',
-      description: 'View your recent, favorite, or other content by their organization',
+      heading: 'Browse',
+      description: 'Browse files',
       iconHref: '/img/icons/s2-icon-folderopen-20-n.svg',
       href: '/#/%7Borg%7D/%7Bsite%7D',
       tone: 'turquoise',
@@ -358,7 +374,7 @@ describe('authored landing tiles', () => {
     block.prepend(row);
     block.append(document.createElement('div'));
     const entries = parseTileEntries(block);
-    expect(entries).to.have.length(5);
+    expect(entries).to.have.length(3);
     expect(entries[0].heading).to.equal('Custom heading');
     expect(entries[0].tone).to.equal('purple');
     expect(entries[0].id).to.equal('stable-action');

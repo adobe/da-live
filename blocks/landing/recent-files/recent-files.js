@@ -1,11 +1,11 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
-import { fetchDaConfigs, getEditorConfigs } from '../shared/utils.js';
-import { getSiteFavorites, toggleFavorite } from '../browse/shared/favorites.js';
-import { getBrowseSettings, updateBrowseSettings } from '../browse/v2/shared/settings.js';
-import { getRecentFiles } from '../shared/recent-files.js';
-import { getBrowseHref, getListItems, loadFilesByPath } from '../landing/utils.js';
-import '../browse/v2/da-list/da-list.js';
+import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../../scripts/utils.js';
+import { fetchDaConfigs, getEditorConfigs } from '../../shared/utils.js';
+import { getSiteFavorites, toggleFavorite } from '../../browse/shared/favorites.js';
+import { getBrowseSettings, updateBrowseSettings } from '../../browse/v2/shared/settings.js';
+import { getRecentFiles } from '../../shared/recent-files.js';
+import { getBrowseHref, getListItems, loadFilesByPath } from '../utils.js';
+import '../../browse/v2/da-list/da-list.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/segmented-btn/segmented.js`);
@@ -231,14 +231,9 @@ export class DaRecentFiles extends LitElement {
 
 customElements.define('da-recent-files', DaRecentFiles);
 
-export default function init(el) {
-  const landing = el.closest('da-landing');
-  if (!el.isConnected || !landing?.scope) {
-    el.hidden = true;
-    return undefined;
-  }
+export default function init(el, { scope } = {}) {
   const files = document.createElement('da-recent-files');
-  files.setScope(landing.scope);
+  files.setScope(scope);
   el.replaceChildren(files);
   return files;
 }

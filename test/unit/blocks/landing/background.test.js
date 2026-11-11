@@ -1,13 +1,15 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
-import '../../setup-landing.js';
+import '../../setup-nx.js';
 import { loadLanding as init, DaLanding } from '../../../../blocks/landing/landing.js';
-import { readLandingBlocks } from '../../../../blocks/landing/landing-content.js';
-import { DaRecentFiles } from '../../../../blocks/recent-files/recent-files.js';
+import { readLandingBlocks } from '../../../../blocks/browse/utils.js';
+import { DaRecentFiles } from '../../../../blocks/landing/recent-files/recent-files.js';
 import { getNx2 } from '../../../../scripts/utils.js';
 
 const { getSiteOptions } = await import(`${getNx2()}/blocks/siteselector/site-utils.js`);
-const tiles = await fetch('/test/fixtures/landing-tiles.html').then((response) => response.text());
+const markup = `
+  <div class="greeting"><div><div><h1>Hi [firstname]</h1></div></div></div>
+  <div class="recent-files"></div>`;
 const { loadIms } = await import(`${getNx2()}/utils/ims.js`);
 
 describe('landing background with Content', () => {
@@ -42,7 +44,7 @@ describe('landing background with Content', () => {
   });
 
   it('replaces authored content with Landing inside a landing surface', async () => {
-    const blocks = readLandingBlocks(new DOMParser().parseFromString(tiles, 'text/html'));
+    const blocks = readLandingBlocks(new DOMParser().parseFromString(markup, 'text/html'));
     const content = await init(el, { blocks });
     await initialize.lastCall.returnValue;
     await content.updateComplete;
@@ -57,7 +59,7 @@ describe('landing background with Content', () => {
     const surface = document.createElement('div');
     surface.className = 'landing';
     el.replaceChildren(surface);
-    const blocks = readLandingBlocks(new DOMParser().parseFromString(tiles, 'text/html'));
+    const blocks = readLandingBlocks(new DOMParser().parseFromString(markup, 'text/html'));
     const content = await init(el, { blocks });
     await initialize.lastCall.returnValue;
     await content.updateComplete;
@@ -72,7 +74,7 @@ describe('landing background with Content', () => {
       <div><div>chat</div><div><h1>Chat with [firstname]</h1></div></div>
     </div>`);
     const authored = container.querySelector('div.greeting');
-    const blocks = readLandingBlocks(new DOMParser().parseFromString(tiles, 'text/html'));
+    const blocks = readLandingBlocks(new DOMParser().parseFromString(markup, 'text/html'));
     blocks[0] = authored.cloneNode(true);
     let finish;
     loadIms.returns(new Promise((resolve) => { finish = resolve; }));
