@@ -194,6 +194,10 @@ export function selectionHasLink(state) {
   return findLinkInRange(state) !== null;
 }
 
+export function selectionHasLinkImage(state) {
+  return isImageNodeSelected(state) && Boolean(state.selection.node.attrs.editAs);
+}
+
 export function getLinkInfoInSelection(state) {
   if (isImageNodeSelected(state)) {
     const { node, from, to } = state.selection;

@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
 import '../../setup-nx.js';
 import { createEngine } from '../../../../deps/da-sc-sdk/dist/index.js';
 import '../../../../blocks/form/editor.js';
@@ -36,6 +37,7 @@ function makeForm() {
 
 afterEach(() => {
   while (mounted.length) mounted.pop().remove();
+  sinon.restore();
 });
 
 // Build an <nx-form> in a "ready" render without touching the network.
@@ -63,6 +65,30 @@ describe('nx-form', () => {
     const el = makeForm();
     await el.updateComplete;
     expect(el.shadowRoot.childElementCount).to.equal(0);
+  });
+
+  it('records each opened HTML document in Recent when the form context changes', async () => {
+    sinon.stub(window, 'fetch').resolves(new Response('', { status: 404 }));
+    const writes = [];
+    const setItem = sinon.stub(Storage.prototype, 'setItem');
+    setItem.callsFake(function record(key, value) {
+      if (key === 'da-recent-files') writes.push(JSON.parse(value)['/org/site'][0]);
+      else setItem.wrappedMethod.call(this, key, value);
+    });
+    const el = document.createElement('nx-form');
+    const loadContext = sinon.spy(el, '_loadContext');
+    mounted.push(el);
+    document.body.append(el);
+    for (const ctx of [
+      {},
+      { org: 'org', repo: 'site', path: 'org/site/docs/first' },
+      { org: 'org', repo: 'site', path: '/org/site/docs/second.html' },
+    ]) {
+      el.ctx = ctx;
+      await el.updateComplete;
+      await loadContext.lastCall.returnValue;
+    }
+    expect(writes).to.deep.equal(['/org/site/docs/first.html', '/org/site/docs/second.html']);
   });
 
   it('renders the editor, preview, and sidebar when ready', async () => {

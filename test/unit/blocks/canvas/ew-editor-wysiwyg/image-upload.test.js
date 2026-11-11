@@ -135,6 +135,98 @@ describe('handleImageReplace', () => {
       } finally { restore(); }
     });
 
+    describe('link-images', () => {
+      const SRC = 'https://assets.example.com/image.png';
+      const setLinkImage = () => {
+        const { state } = editor.view;
+        editor.view.dispatch(state.tr.setNodeMarkup(
+          imagePos,
+          null,
+          { ...state.doc.nodeAt(imagePos).attrs, editAs: 'image' },
+        ));
+      };
+
+      it('keeps editAs when an Assets image replaces a link-image on an editable-link site', async () => {
+        setLinkImage();
+        setRepositoryConfig({ tierType: 'author', imageType: 'editable-link' });
+        setSelection({ href: SRC, isImage: true });
+        const result = await dropAssets();
+        expect(result.ok).to.equal(true);
+        expect(editor.view.state.doc.nodeAt(imagePos).attrs)
+          .to.include({ src: SRC, editAs: 'image' });
+      });
+
+      it('sets editAs when an Assets image replaces a regular image on an editable-link site', async () => {
+        setRepositoryConfig({ tierType: 'author', imageType: 'editable-link' });
+        setSelection({ href: SRC, isImage: true });
+        await dropAssets();
+        expect(editor.view.state.doc.nodeAt(imagePos).attrs.editAs).to.equal('image');
+      });
+
+      it('clears editAs when an Assets image replaces a link-image on a default site', async () => {
+        setLinkImage();
+        setRepositoryConfig({ tierType: 'author', imageType: null });
+        setSelection({ href: SRC, isImage: true });
+        await dropAssets();
+        expect(editor.view.state.doc.nodeAt(imagePos).attrs)
+          .to.include({ src: SRC, editAs: null });
+      });
+
+      it('clears editAs when an upload replaces a link-image', async () => {
+        setLinkImage();
+        const { restore } = stubStore();
+        try {
+          await handleImageReplace(request(), ctxFor('wysorg', 'wyssite').ctx);
+          expect(editor.view.state.doc.nodeAt(imagePos).attrs.editAs).to.equal(null);
+        } finally { restore(); }
+      });
+
+      it('refuses an Assets image on a plain link site', async () => {
+        setRepositoryConfig({ tierType: 'author', imageType: 'link' });
+        setSelection({ href: SRC, isImage: true });
+        expect((await dropAssets()).message).to.contain('single image');
+      });
+    });
+
+    describe('insert into the document', () => {
+      const SRC = 'https://assets.example.com/image.png';
+      const dropInto = async (imageType) => {
+        setRepositoryConfig({ tierType: 'author', imageType });
+        setSelection({ href: SRC, isImage: true, alt: 'Alt' });
+        const result = await performDrop({
+          payload: fromAssets([{ id: 'asset' }]),
+          target: { editor: 'doc', pos: 1 },
+          view: editor.view,
+          context: { org: 'assetorg', site: 'assetsite' },
+        });
+        expect(result.ok).to.equal(true);
+        const found = [];
+        editor.view.state.doc.descendants((node) => {
+          if (node.type.name === 'image' && node.attrs.src === SRC) found.push(node);
+          if (node.isText && node.marks.some((m) => m.type.name === 'link')) found.push(node);
+        });
+        return found;
+      };
+
+      it('creates a plain image by default', async () => {
+        const [node] = await dropInto(null);
+        expect(node.type.name).to.equal('image');
+        expect(node.attrs.editAs).to.equal(null);
+      });
+
+      it('creates a link for a plain link site', async () => {
+        const [node] = await dropInto('link');
+        expect(node.isText).to.equal(true);
+        expect(node.text).to.equal(SRC);
+      });
+
+      it('creates a link-image for an editable-link site', async () => {
+        const [node] = await dropInto('editable-link');
+        expect(node.type.name).to.equal('image');
+        expect(node.attrs).to.include({ editAs: 'image', alt: 'Alt' });
+      });
+    });
+
     it('reports unconfigured, rejected and non-image Assets without replacing the target', async () => {
       expect((await dropAssets()).message).to.contain('not configured');
       setRepositoryConfig({ tierType: 'author' });

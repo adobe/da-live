@@ -468,3 +468,73 @@ describe('menu/imgAltTextItem', () => {
     expect(editor.view.state.doc.textContent).to.equal('zab');
   });
 });
+
+describe('menu/linkItem with link-images', () => {
+  let editor;
+
+  beforeEach(async () => {
+    editor = await createTestEditor({ additionalPlugins: [menuPlugin] });
+    window.view = editor.view;
+    await nextFrame();
+  });
+
+  afterEach(() => {
+    destroyEditor(editor);
+    delete window.view;
+  });
+
+  function selectImage(attrs) {
+    const { view } = editor;
+    const { schema } = view.state;
+    const image = schema.nodes.image.create({ src: 'https://cdn.example.com/a.jpg', ...attrs });
+    view.dispatch(view.state.tr.replaceWith(
+      0,
+      view.state.doc.content.size,
+      schema.nodes.paragraph.create(null, image),
+    ));
+    view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, 1)));
+    return linkItem(schema.marks.link);
+  }
+
+  it('is disabled when a link-image is selected', () => {
+    const item = selectImage({ editAs: 'image', alt: 'Hero' });
+    expect(item.spec.enable(editor.view.state)).to.equal(false);
+  });
+
+  it('stays enabled when a regular image is selected', () => {
+    const item = selectImage({ alt: 'Hero' });
+    expect(item.spec.enable(editor.view.state)).to.equal(true);
+  });
+
+  it('disables remove link for a link-image with a retained href', () => {
+    selectImage({ editAs: 'image', href: 'https://example.com', title: 'T' });
+    const item = removeLinkItem(editor.view.state.schema.marks.link);
+    expect(item.spec.enable(editor.view.state)).to.equal(false);
+  });
+
+  it('enables remove link for a regular linked image', () => {
+    selectImage({ href: 'https://example.com' });
+    const item = removeLinkItem(editor.view.state.schema.marks.link);
+    expect(item.spec.enable(editor.view.state)).to.equal(true);
+  });
+
+  it('does not open the link prompt for a selected link-image (Mod-k path)', async () => {
+    const item = selectImage({ editAs: 'image', alt: 'Hero' });
+    const before = editor.view.state.doc;
+    item.spec.run(editor.view.state, editor.view.dispatch.bind(editor.view), editor.view);
+    await nextFrame();
+
+    expect(!!editor.view.dom.parentElement.querySelector('da-palette')).to.equal(false);
+    expect(editor.view.state.doc.eq(before)).to.equal(true);
+  });
+
+  it('still opens the link prompt for a selected regular image', async () => {
+    const item = selectImage({ alt: 'Hero' });
+    item.spec.run(editor.view.state, editor.view.dispatch.bind(editor.view), editor.view);
+    await nextFrame();
+
+    const palette = editor.view.dom.parentElement.querySelector('da-palette');
+    expect(!!palette).to.equal(true);
+    palette.remove();
+  });
+});

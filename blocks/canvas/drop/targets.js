@@ -17,13 +17,6 @@ function deepElementFromPoint({ x, y }) {
   return element;
 }
 
-function hitTest(point, overlay) {
-  if (overlay) overlay.style.pointerEvents = 'none';
-  const element = deepElementFromPoint(point);
-  if (overlay) overlay.style.pointerEvents = '';
-  return element;
-}
-
 // Host viewport -> preview document coordinates (the preview may be scaled and bordered).
 function previewPoint(iframe, { x, y }) {
   const rect = iframe.getBoundingClientRect();
@@ -48,18 +41,25 @@ function postPreview(message) {
  *   { editor: 'doc', pos, coords } | { editor: 'wysiwyg', point } | null
  */
 function locate({ point, view, overlay }) {
-  const element = hitTest(point, overlay);
-  if (!element) return null;
-  if (view && !view.isDestroyed && view.dom.contains(element)) {
-    const coords = { left: point.x, top: point.y };
-    const pos = view.posAtCoords(coords)?.pos;
-    return Number.isSafeInteger(pos) ? { editor: 'doc', pos, coords } : null;
+  const pointerEvents = overlay?.style.pointerEvents;
+  if (overlay) overlay.style.pointerEvents = 'none';
+  try {
+    const element = deepElementFromPoint(point);
+    if (!element) return null;
+    if (view && !view.isDestroyed && view.dom.contains(element)) {
+      const coords = { left: point.x, top: point.y };
+      // ProseMirror also hit-tests the DOM; keep the overlay out of its way.
+      const pos = view.posAtCoords(coords)?.pos;
+      return Number.isSafeInteger(pos) ? { editor: 'doc', pos, coords } : null;
+    }
+    if (preview?.port && preview.iframe?.isConnected && element === preview.iframe) {
+      const inner = previewPoint(preview.iframe, point);
+      return inner ? { editor: 'wysiwyg', point: inner } : null;
+    }
+    return null;
+  } finally {
+    if (overlay) overlay.style.pointerEvents = pointerEvents;
   }
-  if (preview?.port && preview.iframe?.isConnected && element === preview.iframe) {
-    const inner = previewPoint(preview.iframe, point);
-    return inner ? { editor: 'wysiwyg', point: inner } : null;
-  }
-  return null;
 }
 
 function queryPreview({ point, kind }) {
