@@ -1,3 +1,45 @@
+# [1.26.0](https://github.com/adobe/da-live/compare/v1.25.1...v1.26.0) (2026-11-11)
+
+
+### Features
+
+* **landing:** reuse shared file cards and list ([#1531](https://github.com/adobe/da-live/issues/1531)) ([7f3a60c](https://github.com/adobe/da-live/commit/7f3a60c9d97e01829f7c877c5278906bed992146)), closes [#1482](https://github.com/adobe/da-live/issues/1482) [#1517](https://github.com/adobe/da-live/issues/1517)
+
+## [1.25.1](https://github.com/adobe/da-live/compare/v1.25.0...v1.25.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* make marketplace icon theme-aware ([#1710](https://github.com/adobe/da-live/issues/1710)) ([bb76723](https://github.com/adobe/da-live/commit/bb7672379c01e0cf44f1c96b27df0aa96b53f3e7))
+
+# [1.25.0](https://github.com/adobe/da-live/compare/v1.24.1...v1.25.0) (2026-11-11)
+
+
+### Features
+
+* use browse v2 by default ([#1656](https://github.com/adobe/da-live/issues/1656)) ([c619998](https://github.com/adobe/da-live/commit/c6199989fa05d15d448c1a63ce00bd720ee26fe1))
+
+## [1.24.1](https://github.com/adobe/da-live/compare/v1.24.0...v1.24.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* read single-sheet library configs in the canvas library panel ([#1706](https://github.com/adobe/da-live/issues/1706)) ([fab381a](https://github.com/adobe/da-live/commit/fab381aa894486aeeeacfca39aab273edc15137c)), closes [#1705](https://github.com/adobe/da-live/issues/1705)
+
+# [1.24.0](https://github.com/adobe/da-live/compare/v1.23.0...v1.24.0) (2026-11-10)
+
+
+### Features
+
+* **canvas:** support editable link-images ([#1342](https://github.com/adobe/da-live/issues/1342)) ([7979691](https://github.com/adobe/da-live/commit/797969182faccc253f1adbcaaf9a751060bb6f56))
+
+# [1.23.0](https://github.com/adobe/da-live/compare/v1.22.2...v1.23.0) (2026-11-10)
+
+
+### Features
+
+* store recently edited files ([#1703](https://github.com/adobe/da-live/issues/1703)) ([47fde50](https://github.com/adobe/da-live/commit/47fde5007dde3cbba5502f9660a40d3fc8c5052a))
+
 ## [1.22.2](https://github.com/adobe/da-live/compare/v1.22.1...v1.22.2) (2026-11-10)
 
 

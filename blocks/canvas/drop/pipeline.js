@@ -26,9 +26,9 @@ const fail = (error, message) => ({ ok: false, error, message: message ?? ERROR_
 
 const uploadFailure = ({ error, status }) => fail(error, status ? `Upload failed with status ${status}` : undefined);
 
-function replaceImage({ view, node, src }) {
+function replaceImage({ view, node, src, editAs }) {
   try {
-    updateImageInDocument({ view, target: node, newSrc: src });
+    updateImageInDocument({ view, target: node, newSrc: src, editAs });
     return null;
   } catch (e) {
     return fail('stale-target', e.message);
@@ -97,8 +97,9 @@ async function dropAssets({ view, placement, payload, context, isLive }) {
     if (resolved.nodes.length !== 1 || node.type.name !== 'image') {
       return fail('single-image-required', resolved.message);
     }
-    return replaceImage({ view, node: placement.node, src: node.attrs.src })
-      ?? { ok: true, src: node.attrs.src, message: resolved.message };
+    const { src, editAs } = node.attrs;
+    return replaceImage({ view, node: placement.node, src, editAs })
+      ?? { ok: true, src, message: resolved.message };
   }
   const pos = currentInsertPosition(view, placement);
   if (pos === null) return fail('stale-target');

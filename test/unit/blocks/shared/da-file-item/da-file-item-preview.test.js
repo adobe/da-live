@@ -68,9 +68,12 @@ describe('da-file-item preview', () => {
     expect(el._imageRequested).to.be.false;
   });
 
-  it('only observes images in card view', async () => {
+  it('uses the standard image icon in list view and only observes images in card view', async () => {
     await fixture({ ext: 'png', path: '/o/s/a.png', view: 'list' });
     expect(observer.observe.called).to.equal(false);
+    expect(el.shadowRoot.querySelector('.da-item-list-item-type svg use').getAttribute('href'))
+      .to.include('s2-icon-image-20-n.svg');
+    expect(el.shadowRoot.querySelector('img')).to.equal(null);
     el.view = 'card';
     await el.updateComplete;
     expect(observer.observe.calledOnceWithExactly(el)).to.equal(true);
@@ -115,5 +118,30 @@ describe('da-file-item preview', () => {
     await loading;
     expect(el._imageUrl).to.equal(null);
     expect(revoke.calledOnce).to.equal(true);
+  });
+
+  it('uses the standard document icon without fetching page content', async () => {
+    const { source } = await getNx2Api();
+    const get = spy(source, 'get');
+    await fixture({ ext: 'html', path: '/o/s/page.html' });
+    expect(observer.observe.called).to.equal(false);
+    expect(get.called).to.equal(false);
+    expect(el.shadowRoot.querySelector('.card-preview svg use').getAttribute('href'))
+      .to.include('s2-icon-filehtml-20-n.svg');
+    expect(el.shadowRoot.querySelector('.card-preview img, .document-preview')).to.equal(null);
+  });
+
+  it('lets Content use image icons in cards while preserving Browse previews by default', async () => {
+    await fixture({ ext: 'png', path: '/o/s/a.png', imagePreview: false });
+    expect(observer.observe.called).to.equal(false);
+    expect(el.shadowRoot.querySelector('.card-preview svg use').getAttribute('href'))
+      .to.include('s2-icon-image-20-n.svg');
+    expect(el.shadowRoot.querySelector('img')).to.equal(null);
+    el.imagePreview = undefined;
+    await el.updateComplete;
+    expect(observer.observe.calledOnceWithExactly(el)).to.equal(true);
+    el.imagePreview = false;
+    await el.updateComplete;
+    expect(observer.disconnect.calledOnce).to.equal(true);
   });
 });

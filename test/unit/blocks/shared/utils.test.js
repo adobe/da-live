@@ -10,6 +10,7 @@ import {
   getSheetByIndex,
   getSheetByName,
   getFirstSheet,
+  getEditorConfigs,
   delay,
   getSidekickConfig,
   sanitizeName,
@@ -111,6 +112,45 @@ describe('getFirstSheet', () => {
   it('Returns data directly for non-multi-sheet', () => {
     const json = { ':type': 'sheet', data: [{ c: 3 }] };
     expect(getFirstSheet(json)).to.deep.equal([{ c: 3 }]);
+  });
+});
+
+describe('getEditorConfigs', () => {
+  it('keeps site settings before org settings and uses only the first declared sheet', () => {
+    const orgConfig = {
+      data: [
+        { key: 'editor.path', value: '/org/site=/org-editor#' },
+        { key: 'editor.hidePublish', value: '/org/site/org-hidden' },
+      ],
+    };
+    const siteConfig = {
+      ':type': 'multi-sheet',
+      ':names': ['settings', 'other'],
+      other: { data: [{ key: 'editor.path', value: '/org/site=/wrong-editor#' }] },
+      settings: {
+        data: [
+          { key: 'editor.path', value: '/org/site=/site-editor#' },
+          { key: 'editor.path', value: '/org/site/docs=/docs-editor#' },
+          { key: 'editor.hidePublish', value: '/org/site/site-hidden' },
+          { key: 'unrelated', value: 'ignored' },
+        ],
+      },
+    };
+    const configs = [orgConfig, null, siteConfig];
+    expect(getEditorConfigs(configs)).to.deep.equal({
+      editorConfs: [
+        '/org/site=/site-editor#',
+        '/org/site/docs=/docs-editor#',
+        '/org/site=/org-editor#',
+      ],
+      hidePublishConfs: ['/org/site/site-hidden', '/org/site/org-hidden'],
+    });
+    expect(configs).to.deep.equal([orgConfig, null, siteConfig]);
+  });
+
+  it('returns no editor settings when configs or first sheets are missing', () => {
+    expect(getEditorConfigs([null, {}, { ':type': 'multi-sheet', ':names': [] }]))
+      .to.deep.equal({ editorConfs: [], hidePublishConfs: [] });
   });
 });
 
