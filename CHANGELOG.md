@@ -1,3 +1,10 @@
+## [1.28.2](https://github.com/adobe/da-live/compare/v1.28.1...v1.28.2) (2026-11-11)
+
+
+### Bug Fixes
+
+* **browse:** complete paginated mutations ([#1709](https://github.com/adobe/da-live/issues/1709)) ([ebf169a](https://github.com/adobe/da-live/commit/ebf169aac062882879b1fdbb04833e185f76e261)), closes [adobe/da-live#1708](https://github.com/adobe/da-live/issues/1708)
+
 ## [1.28.1](https://github.com/adobe/da-live/compare/v1.28.0...v1.28.1) (2026-11-11)
 
 
