@@ -69,6 +69,23 @@ describe('da-onboarding', () => {
     expect(document.adoptedStyleSheets.length).to.equal(sheetCount + 1);
   });
 
+  it('keeps the browse section hidden until onboarding mounts', async () => {
+    const { hashChange } = await import(`${getNx()}/utils/utils.js`);
+    const { default: initBrowse } = await import('../../../../blocks/browse/browse.js');
+    const { href } = window.location;
+    hashChange._set(null);
+    window.history.replaceState(null, '', '?onboarding=true');
+    el = document.createElement('div');
+    try {
+      const ready = initBrowse(el);
+      expect(ready).to.be.instanceOf(Promise);
+      await ready;
+      expect(el.querySelector(':scope > da-onboarding.landing')).to.exist;
+    } finally {
+      window.history.replaceState(null, '', href);
+    }
+  });
+
   it('greets without a name when the profile is unavailable', async () => {
     await mount();
     expect(el.shadowRoot.querySelector('h1').textContent).to.equal('Welcome to Experience Workspace');

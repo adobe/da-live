@@ -69,12 +69,17 @@ function setRecentSite(details) {
 }
 
 export default function init(el) {
+  let onboarding;
   hashChange.subscribe((pathDetails) => {
     const cmpName = getBrowseComponent({ search: window.location.search, pathDetails });
-    loadComponent(el, cmpName, pathDetails);
+    const loaded = loadComponent(el, cmpName, pathDetails);
+    if (cmpName === 'da-onboarding') onboarding ??= loaded;
     if (pathDetails) setRecentSite(pathDetails);
   });
 
   // Lazily preload the editor
   setTimeout(() => { import('da-y-wrapper'); }, 3000);
+
+  // Keeps the section hidden until the onboarding background can paint.
+  return onboarding;
 }
