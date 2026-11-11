@@ -1,4 +1,5 @@
 import { safeHref } from '../../../shared/safe-href.js';
+import { childrenOf } from './nodes.js';
 import { LIST_NAMES } from './schema.js';
 
 /** The whitespace HTML collapses. */
@@ -41,17 +42,6 @@ const trimEdges = (html) => html.replace(/^(?:\s|<br>)+|(?:\s|<br>)+$/g, '');
  * @returns {boolean} Whether the value holds a tag.
  */
 const isMarkup = (value) => /<[a-z/!]/i.test(value);
-
-/**
- * Lists the children of a node.
- * @param {object} node The ProseMirror node.
- * @returns {object[]} The child nodes.
- */
-function childrenOf(node) {
-  const children = [];
-  node.forEach((child) => children.push(child));
-  return children;
-}
 
 /**
  * Turns plain text into paragraphs. Blank lines separate paragraphs, single line breaks
