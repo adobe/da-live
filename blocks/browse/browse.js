@@ -1,17 +1,7 @@
-import { getNx, getNx2 } from '../../scripts/utils.js';
+import { getNx } from '../../scripts/utils.js';
 import { getBrowseComponent, resolveBrowsePath } from './utils.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
-
-async function getBrowsePath({ org, site }) {
-  const { search } = window.location;
-  try {
-    const { fetchDaConfigs } = await import(`${getNx2()}/utils/daConfig.js`);
-    return await resolveBrowsePath({ search, org, site, fetchConfigs: fetchDaConfigs });
-  } catch {
-    return resolveBrowsePath({ search, org, site, fetchConfigs: () => [] });
-  }
-}
 
 const V2_NAV_PATH = '/nx/fragments/browse2-nav';
 
@@ -56,7 +46,7 @@ async function loadComponent(el, cmpName, pathDetails, surface) {
   }
   // Swapping views — remove whichever component is currently mounted.
   el.querySelector('da-sites, da-browse, .landing')?.remove();
-  const componentPath = cmpName === 'da-sites' ? '.' : await getBrowsePath(pathDetails);
+  const componentPath = cmpName === 'da-sites' ? '.' : resolveBrowsePath({ search: window.location.search });
   if (componentPath === './v2') useV2Nav();
   if (cmpName === 'da-sites') await import('./da-sites/da-sites.js');
   else if (componentPath === './v2') await import('./v2/da-browse/da-browse.js');

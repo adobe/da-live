@@ -1,3 +1,45 @@
+## [1.24.1](https://github.com/adobe/da-live/compare/v1.24.0...v1.24.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* read single-sheet library configs in the canvas library panel ([#1706](https://github.com/adobe/da-live/issues/1706)) ([fab381a](https://github.com/adobe/da-live/commit/fab381aa894486aeeeacfca39aab273edc15137c)), closes [#1705](https://github.com/adobe/da-live/issues/1705)
+
+# [1.24.0](https://github.com/adobe/da-live/compare/v1.23.0...v1.24.0) (2026-11-10)
+
+
+### Features
+
+* **canvas:** support editable link-images ([#1342](https://github.com/adobe/da-live/issues/1342)) ([7979691](https://github.com/adobe/da-live/commit/797969182faccc253f1adbcaaf9a751060bb6f56))
+
+# [1.23.0](https://github.com/adobe/da-live/compare/v1.22.2...v1.23.0) (2026-11-10)
+
+
+### Features
+
+* store recently edited files ([#1703](https://github.com/adobe/da-live/issues/1703)) ([47fde50](https://github.com/adobe/da-live/commit/47fde5007dde3cbba5502f9660a40d3fc8c5052a))
+
+## [1.22.2](https://github.com/adobe/da-live/compare/v1.22.1...v1.22.2) (2026-11-10)
+
+
+### Bug Fixes
+
+* correct canvas asset drops and toolbar selector ([#1701](https://github.com/adobe/da-live/issues/1701)) ([f0b1914](https://github.com/adobe/da-live/commit/f0b191422c4d2666253655c48a28817dc83de258))
+
+## [1.22.1](https://github.com/adobe/da-live/compare/v1.22.0...v1.22.1) (2026-11-10)
+
+
+### Bug Fixes
+
+* **sheet:** expose sheet cells to screen readers ([#1684](https://github.com/adobe/da-live/issues/1684)) ([1211e53](https://github.com/adobe/da-live/commit/1211e537f86d3a312242a0fc0f4268e89019feac)), closes [#1537](https://github.com/adobe/da-live/issues/1537)
+
+# [1.22.0](https://github.com/adobe/da-live/compare/v1.21.5...v1.22.0) (2026-11-10)
+
+
+### Features
+
+* **branding:** update ew header to adobe experience manager ([#1664](https://github.com/adobe/da-live/issues/1664)) ([69df3e3](https://github.com/adobe/da-live/commit/69df3e3733c81f773add41580d15520f67aa7dd6))
+
 ## [1.21.5](https://github.com/adobe/da-live/compare/v1.21.4...v1.21.5) (2026-11-09)
 
 

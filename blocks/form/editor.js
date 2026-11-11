@@ -4,6 +4,7 @@ import { createEngine } from '../../deps/da-sc-sdk/dist/index.js';
 import { loadFormContext } from './utils/context.js';
 import { attachPersistence } from './utils/persistence.js';
 import { getNx2 } from '../../scripts/utils.js';
+import { addRecentFile } from '../shared/recent-files.js';
 import { isJsonPreviewEnabled } from './utils/config.js';
 
 import './views/editor.js';
@@ -156,6 +157,7 @@ class Form extends LitElement {
       this._context = undefined;
       return;
     }
+    addRecentFile(this._details.fullpath);
 
     this._context = { status: 'loading', schemas: {} };
 

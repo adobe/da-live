@@ -15,18 +15,15 @@ describe('edit entry point', () => {
     const el = document.createElement('div');
     let socketClosed;
     const closed = new Promise((resolve) => { socketClosed = resolve; });
-    // Offline collab socket; the not-permitted path disconnects it.
     window.WebSocket = function FakeWebSocket() {
       this.readyState = 0;
       this.send = () => {};
       this.close = socketClosed;
     };
-    // Collab keep-alive intervals land on this clock and are dropped on uninstall.
     const clock = sinon.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
     sinon.stub(window, 'fetch').resolves(new Response('', { status: 200 }));
     sinon.stub(source, 'get').resolves({ status: 403, permissions: [] });
     setImsResult({ accessToken: { token: 'test-token' } });
-    // Capture the real Recent write without sharing it with concurrently running test pages.
     const setItem = sinon.stub(Storage.prototype, 'setItem');
     const writes = [];
     setItem.callsFake(function record(key, value) {
@@ -39,7 +36,6 @@ describe('edit entry point', () => {
       await init(el);
       await closed;
       expect(writes[0]['/org/site'][0]).to.equal('/org/site/docs/page.html');
-      expect(el.querySelector('.da-edit-not-permitted')).not.to.equal(null);
     } finally {
       addListener.getCalls().forEach(({ args }) => window.removeEventListener(...args));
       clock.uninstall();

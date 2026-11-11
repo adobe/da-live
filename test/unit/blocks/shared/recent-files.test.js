@@ -1,9 +1,13 @@
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
 import { addRecentFile, getRecentFiles } from '../../../../blocks/shared/recent-files.js';
 
 describe('recent files', () => {
   beforeEach(() => localStorage.removeItem('da-recent-files'));
-  afterEach(() => localStorage.removeItem('da-recent-files'));
+  afterEach(() => {
+    sinon.restore();
+    localStorage.removeItem('da-recent-files');
+  });
 
   it('keeps the newest opened file first without duplicates', () => {
     addRecentFile('/org/site/a.html');
@@ -20,23 +24,25 @@ describe('recent files', () => {
     expect(getRecentFiles('/org/other')).to.deep.equal(['/org/other/a.json']);
   });
 
-  it('ignores paths outside a site and invalid stored data', () => {
-    addRecentFile('/org/site');
-    addRecentFile('org/site/a.html');
-    expect(getRecentFiles('/org/site')).to.deep.equal([]);
-    localStorage.setItem('da-recent-files', '[1]');
-    expect(getRecentFiles('/org/site')).to.deep.equal([]);
+  it('ignores non-string and incomplete file paths', () => {
+    [
+      42,
+      'org/site/a.html',
+      '/org/site',
+      '//site/a.html',
+      '/org//a.html',
+      '/org/site/',
+    ].forEach(addRecentFile);
+    expect(localStorage.getItem('da-recent-files')).to.equal(null);
   });
 
-  it('filters malformed saved paths without changing other sites when recording an open', () => {
-    localStorage.setItem('da-recent-files', JSON.stringify({
-      '/org/site': ['/org/site/a.html', null, 42, '/org/site/b.html'],
-      '/org/other': ['/org/other/a.json'],
-    }));
-    addRecentFile('/org/site/a.html');
-    expect(JSON.parse(localStorage.getItem('da-recent-files'))).to.deep.equal({
-      '/org/site': ['/org/site/a.html', '/org/site/b.html'],
-      '/org/other': ['/org/other/a.json'],
-    });
+  it('tolerates malformed or unavailable local storage', () => {
+    localStorage.setItem('da-recent-files', '{');
+    expect(getRecentFiles('/org/site')).to.deep.equal([]);
+
+    sinon.stub(Storage.prototype, 'getItem').throws();
+    sinon.stub(Storage.prototype, 'setItem').throws();
+    expect(getRecentFiles('/org/site')).to.deep.equal([]);
+    expect(() => addRecentFile('/org/site/a.html')).not.to.throw();
   });
 });

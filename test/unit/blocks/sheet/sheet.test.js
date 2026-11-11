@@ -20,9 +20,7 @@ describe('sheet entry point', () => {
       },
     };
     sinon.stub(source, 'get').resolves({ ok: false, status: 403, permissions: [] });
-    // The end of the first load; replaces the stale-check poll this test doesn't need.
     const loaded = new Promise((resolve) => { sinon.stub(staleCheck, 'start').callsFake(resolve); });
-    // Capture the real Recent write without sharing it with concurrently running test pages.
     const setItem = sinon.stub(Storage.prototype, 'setItem');
     const writes = [];
     setItem.callsFake(function record(key, value) {

@@ -12,8 +12,9 @@
 import { test, expect } from '../utils/fixtures.js';
 import ENV from '../utils/env.js';
 import {
-  getQuery, getTestPageURL, tabBackward, fill, TEST_ORG, TEST_SITE, RUN_FOLDER,
+  getQuery, getTestPageURL, fill, TEST_ORG, TEST_SITE, RUN_FOLDER,
 } from '../utils/page.js';
+import { selectRow, deleteSelected } from '../utils/browse.js';
 import { dismissAlertBanner } from '../utils/utils.js';
 
 test('Empty out open editors on deleted documents', async ({ browser, page }, workerInfo) => {
@@ -47,19 +48,11 @@ test('Empty out open editors on deleted documents', async ({ browser, page }, wo
   await list.reload();
 
   // Now delete the document
-  await expect(list.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}/${pageName}"]`)).toBeVisible();
-  await list.locator(`a[href="/edit#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}/${pageName}"]`).focus();
-  await tabBackward(list);
-  await list.keyboard.press(' ');
-  await list.waitForTimeout(500);
+  const href = `/edit#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}/${pageName}`;
+  await expect(list.locator(`a[href="${href}"]`)).toBeVisible();
   await dismissAlertBanner(list);
-  await list.locator('button.delete-button').filter({ visible: true }).click();
-
-  // Give the modal a chance to open
-  await list.waitForTimeout(1000);
-
-  // Hit the delete confirmation button
-  await list.locator('sl-button.negative').filter({ visible: true }).click();
+  await selectRow(list, href);
+  await deleteSelected(list, href);
 
   // The open window should be cleared out now
   await expect(page2.locator('div.ProseMirror')).not.toBeVisible();

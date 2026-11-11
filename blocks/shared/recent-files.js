@@ -16,8 +16,9 @@ export function getRecentFiles(sitePath) {
 }
 
 export function addRecentFile(path) {
-  const parts = path?.split('/') ?? [];
-  if (parts.length < 4 || parts[0] !== '') return;
+  if (typeof path !== 'string') return;
+  const parts = path.split('/');
+  if (parts.length < 4 || parts[0] !== '' || parts.slice(1).includes('')) return;
   const sitePath = parts.slice(0, 3).join('/');
   const all = readAll();
   const recent = Array.isArray(all[sitePath]) ? all[sitePath] : [];

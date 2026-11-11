@@ -145,6 +145,25 @@ describe('EwToolPanel selected panels', () => {
     clientX,
   });
 
+  it('opens the modal selector without loading or activating the assets rail', async () => {
+    const loadModal = sinon.spy();
+    views.find((view) => view.id === 'assets').loadModal = loadModal;
+    const pinned = [...el._pinnedIds];
+
+    await el.showPanel('assets', { modal: true });
+    await el.updateComplete;
+    await nextTask();
+
+    const dialog = el.shadowRoot.querySelector('.tool-panel-fullsize-dialog');
+    expect(dialog.open).to.be.true;
+    expect(loadModal.calledOnce).to.be.true;
+    expect(loadModal.firstCall.args[0]).to.equal(dialog.querySelector('.tool-panel-fullsize-dialog-body'));
+    expect(loads).to.deep.equal(['files']);
+    expect(el.activeId).to.equal('files');
+    expect(el._pinnedIds).to.deep.equal(pinned);
+    dialog.close();
+  });
+
   it('reorders tabs by dropping before or after a tab and restores the saved order', async () => {
     await pinAll();
     const activeContent = el._loaded.assets;

@@ -195,27 +195,46 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
   mountCanvasEditors({ mountRoot, header, session, ctx });
 }
 
+const toolPanelViewRefreshes = new WeakMap();
+
 async function syncToolPanelViews(toolPanel, { org, site }, panelName) {
-  const key = org && site ? `${org}/${site}` : null;
-  if (key === toolPanel.dataset.extKey) return false;
-  toolPanel.dataset.extKey = key ?? '';
-  toolPanel.contextKey = key ?? '';
-
-  if (!key) {
-    toolPanel.org = undefined;
-    toolPanel.site = undefined;
-    toolPanel.views = [];
-    return true;
+  const key = org && site ? `${org}/${site}` : '';
+  let refresh = toolPanelViewRefreshes.get(toolPanel);
+  if (key === toolPanel.dataset.extKey) {
+    await refresh?.promise;
+    return false;
   }
+  toolPanel.dataset.extKey = key;
+  toolPanel.contextKey = key;
 
-  const { getCanvasToolPanelViews } = await import('./ew-panel-extensions/helpers.js');
-  const views = await getCanvasToolPanelViews({ org, site });
-  if (toolPanel.dataset.extKey !== key) return false;
-  toolPanel.org = org;
-  toolPanel.site = site;
-  if (panelName) toolPanel.pendingView = panelName;
-  toolPanel.views = views;
-  return true;
+  refresh = {};
+  toolPanelViewRefreshes.set(toolPanel, refresh);
+  refresh.promise = (async () => {
+    if (!key) {
+      toolPanel.org = undefined;
+      toolPanel.site = undefined;
+      toolPanel.views = [];
+      return;
+    }
+
+    const { getCanvasToolPanelViews } = await import('./ew-panel-extensions/helpers.js');
+    const views = await getCanvasToolPanelViews({ org, site });
+    if (toolPanelViewRefreshes.get(toolPanel) !== refresh) return;
+    toolPanel.org = org;
+    toolPanel.site = site;
+    if (panelName) toolPanel.pendingView = panelName;
+    toolPanel.views = views;
+  })();
+  try {
+    await refresh.promise;
+  } catch (error) {
+    if (toolPanelViewRefreshes.get(toolPanel) === refresh) {
+      toolPanelViewRefreshes.delete(toolPanel);
+      delete toolPanel.dataset.extKey;
+    }
+    throw error;
+  }
+  return toolPanelViewRefreshes.get(toolPanel) === refresh;
 }
 
 function hashState() {
@@ -328,10 +347,14 @@ export default async function decorate(block) {
     onShow: async (aside, id, options) => {
       const toolPanel = aside?.querySelector('ew-tool-panel');
       if (!toolPanel) return;
-      const selected = await syncToolPanelViews(toolPanel, hashState(), id);
+      const panelName = options?.modal ? undefined : id;
+      const pending = syncToolPanelViews(toolPanel, hashState(), panelName);
+      const refresh = toolPanelViewRefreshes.get(toolPanel);
+      const selected = await pending;
       await toolPanel.updateComplete;
-      if (id && !selected && toolPanel.views?.some((v) => v.id === id)) {
-        await toolPanel.showPanel(id);
+      if (toolPanelViewRefreshes.get(toolPanel) !== refresh) return;
+      if (id && (!selected || options?.modal) && toolPanel.views?.some((v) => v.id === id)) {
+        await toolPanel.showPanel(id, options);
       }
       if (options?.newVersion) {
         await toolPanel.updateComplete;
