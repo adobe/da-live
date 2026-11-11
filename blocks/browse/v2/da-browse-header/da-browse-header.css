@@ -107,6 +107,10 @@
   font-size: var(--s2-component-m-regular-font-size, 14px);
 }
 
+.browse-appearance-popover {
+  width: 240px;
+}
+
 .browse-sort-option {
   width: 100%;
   justify-content: flex-start;
