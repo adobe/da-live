@@ -1,3 +1,10 @@
+## [1.28.3](https://github.com/adobe/da-live/compare/v1.28.2...v1.28.3) (2026-11-11)
+
+
+### Bug Fixes
+
+* allow fallback to browse v1 ([#1715](https://github.com/adobe/da-live/issues/1715)) ([d618e35](https://github.com/adobe/da-live/commit/d618e3587d0ac25fd78c87fdffb4208218d92a3f))
+
 ## [1.28.2](https://github.com/adobe/da-live/compare/v1.28.1...v1.28.2) (2026-11-11)
 
 
