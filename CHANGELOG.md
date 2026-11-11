@@ -1,3 +1,52 @@
+## [1.28.3](https://github.com/adobe/da-live/compare/v1.28.2...v1.28.3) (2026-11-11)
+
+
+### Bug Fixes
+
+* allow fallback to browse v1 ([#1715](https://github.com/adobe/da-live/issues/1715)) ([d618e35](https://github.com/adobe/da-live/commit/d618e3587d0ac25fd78c87fdffb4208218d92a3f))
+
+## [1.28.2](https://github.com/adobe/da-live/compare/v1.28.1...v1.28.2) (2026-11-11)
+
+
+### Bug Fixes
+
+* **browse:** complete paginated mutations ([#1709](https://github.com/adobe/da-live/issues/1709)) ([ebf169a](https://github.com/adobe/da-live/commit/ebf169aac062882879b1fdbb04833e185f76e261)), closes [adobe/da-live#1708](https://github.com/adobe/da-live/issues/1708)
+
+## [1.28.1](https://github.com/adobe/da-live/compare/v1.28.0...v1.28.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* support default fallback ([#1714](https://github.com/adobe/da-live/issues/1714)) ([da2442d](https://github.com/adobe/da-live/commit/da2442d4039ffd26ab05be002cc46ee28dab12c6))
+
+# [1.28.0](https://github.com/adobe/da-live/compare/v1.27.0...v1.28.0) (2026-11-11)
+
+
+### Features
+
+* greeting block ([#1707](https://github.com/adobe/da-live/issues/1707)) ([90c68b9](https://github.com/adobe/da-live/commit/90c68b9aca15228ce567b779ff05198f37903549))
+
+# [1.27.0](https://github.com/adobe/da-live/compare/v1.26.0...v1.27.0) (2026-11-11)
+
+
+### Features
+
+* apply suggestions via chat ([#1632](https://github.com/adobe/da-live/issues/1632)) ([9f48de3](https://github.com/adobe/da-live/commit/9f48de342596ef2bc513435fe93adbd789272d1b))
+
+# [1.26.0](https://github.com/adobe/da-live/compare/v1.25.1...v1.26.0) (2026-11-11)
+
+
+### Features
+
+* **landing:** reuse shared file cards and list ([#1531](https://github.com/adobe/da-live/issues/1531)) ([7f3a60c](https://github.com/adobe/da-live/commit/7f3a60c9d97e01829f7c877c5278906bed992146)), closes [#1482](https://github.com/adobe/da-live/issues/1482) [#1517](https://github.com/adobe/da-live/issues/1517)
+
+## [1.25.1](https://github.com/adobe/da-live/compare/v1.25.0...v1.25.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* make marketplace icon theme-aware ([#1710](https://github.com/adobe/da-live/issues/1710)) ([bb76723](https://github.com/adobe/da-live/commit/bb7672379c01e0cf44f1c96b27df0aa96b53f3e7))
+
 # [1.25.0](https://github.com/adobe/da-live/compare/v1.24.1...v1.25.0) (2026-11-11)
 
 

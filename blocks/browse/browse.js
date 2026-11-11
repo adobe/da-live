@@ -1,4 +1,5 @@
 import { getNx } from '../../scripts/utils.js';
+import { fetchDaConfigs } from '../shared/utils.js';
 import { getBrowseComponent, resolveBrowsePath } from './utils.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -16,15 +17,29 @@ function useV2Nav() {
   if (typeof nav?.loadNav === 'function') nav.loadNav();
 }
 
-async function loadComponent(el, cmpName, pathDetails) {
+async function loadLandingSurface(el) {
+  const background = await loadStyle(new URL('../landing/landing.css', import.meta.url).href);
+  if (!document.adoptedStyleSheets.includes(background)) {
+    document.adoptedStyleSheets.push(background);
+  }
+  const surface = document.createElement('div');
+  surface.className = 'landing';
+  el.replaceChildren(surface);
+}
+
+async function loadBrowseStyles() {
+  const styles = await loadStyle(import.meta.url);
+  if (!document.adoptedStyleSheets.includes(styles)) document.adoptedStyleSheets.push(styles);
+}
+
+async function loadComponent(el, cmpName, pathDetails, surface) {
+  await surface;
   if (cmpName === 'da-landing') {
     const { default: loadLanding } = await import('../landing/landing.js');
     loadLanding(el);
     return;
   }
 
-  const styles = await loadStyle(import.meta.url);
-  if (!document.adoptedStyleSheets.includes(styles)) document.adoptedStyleSheets.push(styles);
   const existing = el.querySelector(cmpName);
   if (existing && pathDetails) {
     existing.details = pathDetails;
@@ -32,9 +47,16 @@ async function loadComponent(el, cmpName, pathDetails) {
   }
   // Swapping views — remove whichever component is currently mounted.
   el.querySelector('da-sites, da-browse, .landing')?.remove();
-  const componentPath = cmpName === 'da-sites' ? '.' : resolveBrowsePath({ search: window.location.search });
+  const componentPath = cmpName === 'da-sites' ? '.' : await resolveBrowsePath({
+    search: window.location.search,
+    org: pathDetails.org,
+    site: pathDetails.site,
+    fetchConfigs: fetchDaConfigs,
+  });
   if (componentPath === './v2') useV2Nav();
-  await import(`${componentPath}/${cmpName}/${cmpName}.js`);
+  if (cmpName === 'da-sites') await import('./da-sites/da-sites.js');
+  else if (componentPath === './v2') await import('./v2/da-browse/da-browse.js');
+  else await import('./legacy/da-browse/da-browse.js');
   const cmp = document.createElement(cmpName);
   cmp.details = pathDetails;
   el.append(cmp);
@@ -55,7 +77,8 @@ function setRecentSite(details) {
 export default function init(el) {
   hashChange.subscribe((pathDetails) => {
     const cmpName = getBrowseComponent({ search: window.location.search, pathDetails });
-    loadComponent(el, cmpName, pathDetails);
+    const surface = cmpName === 'da-landing' ? loadLandingSurface(el) : loadBrowseStyles();
+    loadComponent(el, cmpName, pathDetails, surface);
     if (pathDetails) setRecentSite(pathDetails);
   });
 
