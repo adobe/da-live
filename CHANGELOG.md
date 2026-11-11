@@ -1,3 +1,10 @@
+# [1.27.0](https://github.com/adobe/da-live/compare/v1.26.0...v1.27.0) (2026-11-11)
+
+
+### Features
+
+* apply suggestions via chat ([#1632](https://github.com/adobe/da-live/issues/1632)) ([9f48de3](https://github.com/adobe/da-live/commit/9f48de342596ef2bc513435fe93adbd789272d1b))
+
 # [1.26.0](https://github.com/adobe/da-live/compare/v1.25.1...v1.26.0) (2026-11-11)
 
 
