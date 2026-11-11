@@ -11,8 +11,9 @@
  */
 import { test, expect } from '../../utils/fixtures.js';
 import ENV from '../../utils/env.js';
-import { getTestPageURL, getQuery, tabBackward, fill, TEST_SITE } from '../../utils/page.js';
-import { dismissAlertBanner } from '../../utils/utils.js';
+import { getTestPageURL, getQuery, fill, TEST_SITE } from '../../utils/page.js';
+import { row, selectRow, deleteSelected } from '../../utils/browse.js';
+import { dismissAlertBanner, expectNotPermittedOpensProfile, forceForbidden } from '../../utils/utils.js';
 
 test('Read-only directory', async ({ page }) => {
   test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
@@ -23,13 +24,10 @@ test('Read-only directory', async ({ page }) => {
   await expect(newButton).toBeDisabled();
 
   await expect(page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/onlyread-doc"]')).toBeVisible();
-  await page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/onlyread-doc"]').focus();
-
-  await tabBackward(page);
+  const tickbox = row(page, '/edit#/da-testautomation/acltest/testdocs/subdir/onlyread-doc')
+    .getByRole('checkbox', { name: 'Select item', exact: true });
+  await tickbox.focus();
   await page.keyboard.press(' ');
-  await page.waitForTimeout(500);
-
-  const tickbox = page.locator('da-list-item').filter({ hasText: 'onlyread-doc' }).locator('label');
   await expect(tickbox).toBeChecked();
 
   // There should not be a delete button
@@ -41,9 +39,11 @@ test('Read-write directory', async ({ browser, page }, workerInfo) => {
   test.setTimeout(60000);
   const pageURL = getTestPageURL('acl-browse-edt', workerInfo, '/da-testautomation/acltest/testdocs/subdir/subdir1');
   const pageName = pageURL.split('/').pop();
-  const browseURL = pageURL.replace(`/${pageName}`, '').replace('/edit#/', '/#/');
+  const browseURL = new URL(pageURL);
+  browseURL.pathname = '/';
+  browseURL.hash = browseURL.hash.slice(0, browseURL.hash.lastIndexOf('/'));
 
-  await page.goto(browseURL);
+  await page.goto(browseURL.href);
   const newButton = page.getByRole('button', { name: 'New', exact: true });
   await expect(newButton).toBeEnabled();
   await newButton.click({ force: true });
@@ -65,29 +65,15 @@ test('Read-write directory', async ({ browser, page }, workerInfo) => {
   await expect(newPage.locator('div.ProseMirror')).toContainText('test writable doc');
   newPage.close();
 
-  await page.goto(browseURL);
+  await page.goto(browseURL.href);
   await dismissAlertBanner(page);
   await expect(page.locator(`a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir1/${pageName}"]`)).toBeVisible();
-  await page.locator(`a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir1/${pageName}"]`).focus();
-
-  await tabBackward(page);
-  await page.keyboard.press(' ');
-  await page.waitForTimeout(500);
-
-  const tickbox = page.locator('da-list-item').filter({ hasText: pageName }).locator('label');
+  const href = `/edit#/da-testautomation/acltest/testdocs/subdir/subdir1/${pageName}`;
+  const tickbox = row(page, href).getByRole('checkbox', { name: 'Select item', exact: true });
+  await selectRow(page, href);
   await expect(tickbox).toBeChecked();
 
-  // There are 2 delete buttons, one on the Browse panel and another on the Search one
-  // select the visible one.
-  await page.locator('button.delete-button').filter({ visible: true }).click();
-
-  await page.waitForTimeout(1000);
-
-  await page.locator('sl-button.negative').filter({ visible: true }).click();
-
-  await page.waitForTimeout(1000);
-
-  await expect(page.locator(`a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir1/${pageName}"]`)).not.toBeVisible();
+  await deleteSelected(page, href);
 });
 
 test('Readonly directory with writeable document', async ({ page }) => {
@@ -96,11 +82,7 @@ test('Readonly directory with writeable document', async ({ page }) => {
   await page.goto(browseURL);
 
   await expect(page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/writeable-doc"]')).toBeVisible();
-  await page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/writeable-doc"]').focus();
-
-  await tabBackward(page);
-  await page.keyboard.press(' ');
-  await page.waitForTimeout(500);
+  await selectRow(page, '/edit#/da-testautomation/acltest/testdocs/subdir/subdir2/writeable-doc');
 
   // Check that the expected delete button is there (but don't click it)
   await expect(page.locator('button.delete-button').filter({ visible: true })).toBeVisible();
@@ -147,5 +129,25 @@ test('No access directory should not show anything', async ({ page }) => {
   // We need to reload the page explicitly because the only thing we changed
   // was the anchor and that doesn't normally trigger a change
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Not permitted' })).toBeVisible();
+  await expectNotPermittedOpensProfile(page, expect);
+});
+
+test('Not permitted directory recovers after switching to an authorized org', async ({ page }) => {
+  test.skip(TEST_SITE !== 'da-status', 'ACLs are not yet supported for Helix 6');
+
+  // The test user only belongs to one org, so simulate "signed into the wrong
+  // org" by forcing a 403 on a directory the user can actually read.
+  const listUrl = /\/list\/da-testautomation\/acltest\/testdocs\/subdir(\?|$)/;
+  const restore = await forceForbidden(page, listUrl);
+
+  await page.goto(`${ENV}/${getQuery()}#/da-testautomation/acltest/testdocs/subdir`);
+  await page.reload();
+  await expectNotPermittedOpensProfile(page, expect);
+
+  // Switching org in the profile menu reloads the page with the new token.
+  await restore();
+  await page.reload();
+
+  await expect(page.locator('a[href="/edit#/da-testautomation/acltest/testdocs/subdir/onlyread-doc"]')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Not permitted' })).toHaveCount(0);
 });

@@ -258,6 +258,14 @@ export const getSheetByName = (json, name) => {
 
 export const getFirstSheet = (json) => getSheetByIndex(json, 0);
 
+export function getEditorConfigs(configs) {
+  const rows = configs.filter(Boolean).reverse().flatMap((config) => getFirstSheet(config) || []);
+  return {
+    editorConfs: rows.filter(({ key }) => key === 'editor.path').map(({ value }) => value),
+    hidePublishConfs: rows.filter(({ key }) => key === 'editor.hidePublish').map(({ value }) => value),
+  };
+}
+
 export function isValidHref(href) {
   if (typeof href !== 'string' || !href) return false;
   if (href.startsWith('/') && !href.startsWith('//')) return true;
@@ -489,6 +497,23 @@ export function formatDate(timestamp) {
   const date = rawDate.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
   const time = rawDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   return { date, time };
+}
+
+export const NOT_PERMITTED_HINT = 'Please make sure you are logged in with the correct user and have selected the right Adobe org.';
+
+export function openProfileMenu({ navSelector = 'nx-nav', profileSelector = 'nx-profile' } = {}) {
+  const nav = document.querySelector(navSelector);
+  const profile = nav?.shadowRoot?.querySelector(profileSelector);
+  const menu = profile?.shadowRoot?.querySelector('[popover]');
+  if (!menu?.showPopover) return false;
+  if (!menu.matches(':popover-open')) menu.showPopover();
+  // Programmatic showPopover() has no invoker, so focus stays on the page and
+  // Tab skips the menu. Move focus in — preferring the org switcher, since the
+  // not-permitted hint is usually resolved by picking another org.
+  const target = menu.querySelector('.nx-menu-btn-org')
+    ?? menu.querySelector('button, a[href], [tabindex]:not([tabindex="-1"])');
+  target?.focus();
+  return true;
 }
 
 export function delay(ms) {

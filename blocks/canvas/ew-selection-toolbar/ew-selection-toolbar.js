@@ -285,7 +285,7 @@ class EwSelectionToolbar extends LitElement {
   _openAemAssets() {
     document.dispatchEvent(new CustomEvent(
       PANEL_EVENT.OPEN,
-      { detail: { section: 'tools', id: 'aem-assets' } },
+      { detail: { section: 'tools', id: 'aem-assets-panel', options: { modal: true } } },
     ));
   }
 

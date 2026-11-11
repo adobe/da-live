@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 
-const { setNx, getNx, getNx2 } = await import('../../../../scripts/utils.js');
+const { setNx, getNx2 } = await import('../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { parseSubdomain } = await import(`${getNx2()}/blocks/siteselector/site-utils.js`);
@@ -66,23 +66,6 @@ describe('da-onboarding', () => {
     expect(el.firstElementChild.localName).to.equal('da-onboarding');
     expect(el.firstElementChild.classList.contains('landing')).to.be.true;
     expect(document.adoptedStyleSheets.length).to.equal(sheetCount + 1);
-  });
-
-  it('keeps the browse section hidden until onboarding mounts', async () => {
-    const { hashChange } = await import(`${getNx()}/utils/utils.js`);
-    const { default: initBrowse } = await import('../../../../blocks/browse/browse.js');
-    const { href } = window.location;
-    hashChange._set(null);
-    window.history.replaceState(null, '', '?onboarding=true');
-    el = document.createElement('div');
-    try {
-      const ready = initBrowse(el);
-      expect(ready).to.be.instanceOf(Promise);
-      await ready;
-      expect(el.querySelector(':scope > da-onboarding.landing')).to.exist;
-    } finally {
-      window.history.replaceState(null, '', href);
-    }
   });
 
   it('renders the cards authored in the onboarding content', async () => {

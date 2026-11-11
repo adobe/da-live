@@ -9,6 +9,7 @@ import {
   getSheetByIndex,
   getSheetByName,
   getFirstSheet,
+  getEditorConfigs,
   delay,
   getSidekickConfig,
   sanitizeName,
@@ -18,6 +19,7 @@ import {
   getAuthToken,
   isValidHref,
   livePreviewLogin,
+  openProfileMenu,
 } from '../../../../blocks/shared/utils.js';
 
 // daFetch's 401-no-token path lazy-loads the banner module, which resolves
@@ -108,6 +110,45 @@ describe('getFirstSheet', () => {
   it('Returns data directly for non-multi-sheet', () => {
     const json = { ':type': 'sheet', data: [{ c: 3 }] };
     expect(getFirstSheet(json)).to.deep.equal([{ c: 3 }]);
+  });
+});
+
+describe('getEditorConfigs', () => {
+  it('keeps site settings before org settings and uses only the first declared sheet', () => {
+    const orgConfig = {
+      data: [
+        { key: 'editor.path', value: '/org/site=/org-editor#' },
+        { key: 'editor.hidePublish', value: '/org/site/org-hidden' },
+      ],
+    };
+    const siteConfig = {
+      ':type': 'multi-sheet',
+      ':names': ['settings', 'other'],
+      other: { data: [{ key: 'editor.path', value: '/org/site=/wrong-editor#' }] },
+      settings: {
+        data: [
+          { key: 'editor.path', value: '/org/site=/site-editor#' },
+          { key: 'editor.path', value: '/org/site/docs=/docs-editor#' },
+          { key: 'editor.hidePublish', value: '/org/site/site-hidden' },
+          { key: 'unrelated', value: 'ignored' },
+        ],
+      },
+    };
+    const configs = [orgConfig, null, siteConfig];
+    expect(getEditorConfigs(configs)).to.deep.equal({
+      editorConfs: [
+        '/org/site=/site-editor#',
+        '/org/site/docs=/docs-editor#',
+        '/org/site=/org-editor#',
+      ],
+      hidePublishConfs: ['/org/site/site-hidden', '/org/site/org-hidden'],
+    });
+    expect(configs).to.deep.equal([orgConfig, null, siteConfig]);
+  });
+
+  it('returns no editor settings when configs or first sheets are missing', () => {
+    expect(getEditorConfigs([null, {}, { ':type': 'multi-sheet', ':names': [] }]))
+      .to.deep.equal({ editorConfs: [], hidePublishConfs: [] });
   });
 });
 
@@ -1104,5 +1145,66 @@ describe('saveToDa — malformed path guard', () => {
 
     await saveToDa({ path: '/org/repo/page' });
     expect(fetchCalled).to.be.true;
+  });
+});
+
+describe('openProfileMenu', () => {
+  let header;
+
+  afterEach(() => header?.remove());
+
+  function mountProfile({ withOrg = true } = {}) {
+    header = document.createElement('header');
+    const nav = document.createElement('div');
+    nav.className = 'test-nx-nav';
+    const navRoot = nav.attachShadow({ mode: 'open' });
+    const profile = document.createElement('nx-profile-test');
+    profile.setAttribute('data-profile', '');
+    const profileRoot = profile.attachShadow({ mode: 'open' });
+    const menu = document.createElement('div');
+    menu.id = 'nx-menu-profile';
+    menu.setAttribute('popover', '');
+    const details = document.createElement('button');
+    details.className = 'nx-menu-btn nx-menu-btn-details';
+    menu.append(details);
+    if (withOrg) {
+      const org = document.createElement('button');
+      org.className = 'nx-menu-btn nx-menu-btn-org';
+      menu.append(org);
+    }
+    profileRoot.append(menu);
+    navRoot.append(profile);
+    header.append(nav);
+    document.body.append(header);
+    return menu;
+  }
+
+  const opts = { navSelector: '.test-nx-nav', profileSelector: '[data-profile]' };
+
+  it('opens the profile popover inside nested shadow roots', () => {
+    const menu = mountProfile();
+    expect(openProfileMenu(opts)).to.be.true;
+    expect(menu.matches(':popover-open')).to.be.true;
+    menu.hidePopover();
+  });
+
+  it('moves focus to the organization button inside the menu', () => {
+    const menu = mountProfile();
+    openProfileMenu(opts);
+    expect(menu.getRootNode().activeElement)
+      .to.equal(menu.querySelector('.nx-menu-btn-org'));
+    menu.hidePopover();
+  });
+
+  it('falls back to the first focusable control when there is no org button', () => {
+    const menu = mountProfile({ withOrg: false });
+    openProfileMenu(opts);
+    expect(menu.getRootNode().activeElement)
+      .to.equal(menu.querySelector('.nx-menu-btn-details'));
+    menu.hidePopover();
+  });
+
+  it('returns false when no profile menu exists', () => {
+    expect(openProfileMenu({ navSelector: '.does-not-exist' })).to.be.false;
   });
 });

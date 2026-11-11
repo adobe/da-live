@@ -100,6 +100,24 @@
   white-space: nowrap;
 }
 
+.file-folder {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-decoration: none;
+  color: inherit;
+}
+
+.file-folder:hover {
+  text-decoration: underline;
+}
+
+.file-folder:focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: -2px;
+}
+
 .da-item-list-item-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
