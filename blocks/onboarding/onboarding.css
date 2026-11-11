@@ -14,6 +14,7 @@ p {
 
 .onboarding {
   display: grid;
+  width: 100%;
   gap: var(--s2-spacing-300);
   max-width: 664px;
   margin-inline: auto;
