@@ -40,12 +40,6 @@ async function loadComponent(el, cmpName, pathDetails, surface) {
     return;
   }
 
-  if (cmpName === 'da-onboarding') {
-    const { default: loadOnboarding } = await import('../onboarding/onboarding.js');
-    loadOnboarding(el);
-    return;
-  }
-
   const existing = el.querySelector(cmpName);
   if (existing && pathDetails) {
     existing.details = pathDetails;
@@ -83,8 +77,7 @@ function setRecentSite(details) {
 export default function init(el) {
   hashChange.subscribe((pathDetails) => {
     const cmpName = getBrowseComponent({ search: window.location.search, pathDetails });
-    const landing = cmpName === 'da-landing' || cmpName === 'da-onboarding';
-    const surface = landing ? loadLandingSurface(el) : loadBrowseStyles();
+    const surface = cmpName === 'da-landing' ? loadLandingSurface(el) : loadBrowseStyles();
     loadComponent(el, cmpName, pathDetails, surface);
     if (pathDetails) setRecentSite(pathDetails);
   });

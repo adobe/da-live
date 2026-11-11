@@ -1,9 +1,6 @@
 export function getBrowseComponent({ search, pathDetails }) {
   if (pathDetails) return 'da-browse';
-  const params = new URLSearchParams(search);
-  if (params.get('landing') === 'true') return 'da-landing';
-  if (params.get('onboarding') === 'true') return 'da-onboarding';
-  return 'da-sites';
+  return new URLSearchParams(search).get('landing') === 'true' ? 'da-landing' : 'da-sites';
 }
 
 export async function resolveBrowsePath({ search, org, site, fetchConfigs }) {

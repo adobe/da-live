@@ -1,0 +1,49 @@
+:host {
+  display: block;
+  box-sizing: border-box;
+  max-width: 664px;
+  margin-inline: auto;
+  padding: var(--s2-spacing-300);
+  border-radius: var(--s2-corner-radius-800);
+  background: var(--s2-gray-25);
+  box-shadow: var(--s2-drop-shadow-emphasized);
+  color: var(--s2-gray-800);
+  font-family: var(--s2-font-family);
+}
+
+p {
+  margin: 0;
+}
+
+form label {
+  color: var(--s2-gray-800);
+  font-size: var(--s2-heading-size-xs);
+  font-weight: var(--s2-component-m-bold-font-weight);
+}
+
+#site-hint {
+  color: var(--s2-gray-700);
+  font-size: var(--s2-component-l-regular-font-size);
+}
+
+.site-entry {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2-spacing-100);
+  margin-top: var(--s2-spacing-100);
+
+  .nx-input {
+    flex: 1 1 240px;
+    min-width: 0;
+  }
+
+  .nx-btn-accent {
+    border-radius: var(--s2-corner-radius-600);
+  }
+}
+
+@media (forced-colors: active) {
+  :host {
+    outline: 1px solid CanvasText;
+  }
+}

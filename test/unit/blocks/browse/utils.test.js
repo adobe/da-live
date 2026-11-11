@@ -13,13 +13,6 @@ describe('Home landing toggle', () => {
     expect(getBrowseComponent({ search: '?nx=lpbg&landing=true' })).to.equal('da-landing');
   });
 
-  it('opts Home into the onboarding page only when onboarding is explicitly true', () => {
-    expect(getBrowseComponent({ search: '?onboarding=true' })).to.equal('da-onboarding');
-    ['?onboarding=false', '?onboarding=TRUE', '?onboarding='].forEach((search) => {
-      expect(getBrowseComponent({ search })).to.equal('da-sites');
-    });
-  });
-
   it('never replaces site Browse with the landing surface', () => {
     ['', '?landing=true', '?landing=false'].forEach((search) => {
       expect(getBrowseComponent({ search, pathDetails: { org: 'example', site: 'site' } }))
