@@ -3,41 +3,25 @@
 The opt-in Content page uses Browse's `da-list` and `da-file-item` in both views. Open
 `/?landing=true&nx=main&nxver=2`. Without `landing=true`, Browse keeps its existing renderer
 and navigation. A site or folder hash always opens Browse, even with `landing=true`.
-The Content opt-in uses v2 Browse for those hashes so both views share one set of
-custom-element definitions. Explicit `browse=1` retains legacy Browse and its Home
-view instead of Content.
-
-Landing owns the selection gate: without a selected site it shows onboarding;
-with a selected site it shows Content. It does not introduce a chat/composer,
+Landing owns the entry gate: without a valid recent site it redirects to `/start`
+using history replacement, preserving environment parameters through da-nx's shared
+URL helper. Start owns onboarding. With recent sites, Landing waits for IMS and
+uses the same missing-token sign-in handler as Browse before loading any files.
+It does not introduce a chat/composer,
 branding, page artwork or editor changes.
 Content contains no site picker. Site selection belongs in navigation through the
 shared picker (adobe/da-nx#947).
-Before its first render, Content reads `da-sites` and uses the first valid option
+On entry, Content reads `da-sites` and uses the first valid option
 from da-nx's shared `getSiteOptions`, matching the navigation selector's default.
-Saved sites show Content's loading state immediately, without flashing onboarding
-while navigation loads. Unreadable history leaves onboarding available.
+The gradient remains visible while authentication settles, without flashing
+onboarding or Content. An authentication initialization failure offers an explicit
+retry rather than repeatedly starting sign-in. Unreadable history redirects to Start.
 Content listens for the existing bubbling `site-select` event for subsequent
 changes, without changing the root URL. It does not inspect navigation's shadow
 DOM, load or mount the selector, or modify LP.
 
-With no selected site, Landing shows a welcome form instead of the Content panel,
-filters and view controls. "Welcome to Experience Workspace" and "Add a site to get
-started." sit above the form's card. Signed-in users see their IMS first name in
-the greeting; unavailable profiles leave the generic greeting and a usable form.
-The card says "Already have an existing site?" and
-"Enter the URL to get started."
-The URL field receives focus on initial display. Open stays disabled until
-the field contains a non-whitespace value; the required URL validation still
-applies when submitting.
-Open accepts a GitHub repository URL (using the same
-org/site mapping as Start) or an existing AEM preview/live URL (using da-nx's shared
-parser). Submitting opens that site's v2 Browse view, preserving the current query
-parameters. Invalid sites stay on the form with an error.
-A centered "Don't have a site yet?" prompt beneath the card offers a
-"Create a new one" link to
-`/start` using da-nx's shared URL helper, preserving environment parameters.
-The form works without a navigation dialog; onboarding is not file-item behavior.
 Content does not add a replacement picker or duplicate shared site-option validation.
+The no-recent-files and no-favorites states remain available for a selected site.
 
 Content mounts inside the gradient landing surface already provided by main.
 `landing.css` retains that page background and inherits the application theme,

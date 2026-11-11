@@ -7,7 +7,8 @@ import { getNx2, getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
 
 const { source, config } = await getNx2Api();
 const { setEWEnabled } = await getNxEWFlags();
-const { parseSubdomain, getSiteOptions } = await import(`${getNx2()}/blocks/siteselector/site-utils.js`);
+const { getSiteOptions } = await import(`${getNx2()}/blocks/siteselector/site-utils.js`);
+const { loadIms, handleSignIn } = await import(`${getNx2()}/utils/ims.js`);
 const ITEMS = Array.from({ length: 24 }, (_, index) => ({ name: `Page ${index}`, path: `/org/site/page-${index}.html`, ext: 'html', lastModified: 24 - index }));
 
 const setRecent = (recent) => localStorage.setItem('da-recent-files', JSON.stringify(recent));
@@ -16,7 +17,7 @@ describe('landing Content section', () => {
   let el;
   let loadSite;
   let metadata;
-  let originalIms;
+  let initialize;
 
   const fileList = () => el.shadowRoot.querySelector('da-list');
   const fileItems = () => fileList()?.shadowRoot.querySelectorAll('da-file-item') ?? [];
@@ -28,15 +29,14 @@ describe('landing Content section', () => {
   }
 
   beforeEach(async () => {
-    originalIms = window.adobeIMS;
-    window.adobeIMS = {
-      isSignedInUser: sinon.stub().returns(false),
-      getProfile: sinon.stub().resolves({ first_name: 'John' }),
-    };
-    parseSubdomain.reset();
+    loadIms.reset();
+    loadIms.resolves({ accessToken: { token: 'test-token' } });
+    handleSignIn.resetHistory();
+    initialize = sinon.spy(DaLanding.prototype, 'initialize');
     getSiteOptions.reset();
-    getSiteOptions.returns([]);
+    getSiteOptions.returns([{ value: 'org/site', label: 'org/site' }]);
     ['da-favorites', 'da-browse-settings', 'da-sites', 'da-recent-files'].forEach((key) => localStorage.removeItem(key));
+    localStorage.setItem('da-sites', JSON.stringify(['org/site']));
     loadSite = sinon.stub(DaLanding.prototype, 'loadSite').callsFake(async function loadSiteForTest() {
       this._request?.abort();
       this._request = new AbortController();
@@ -48,7 +48,7 @@ describe('landing Content section', () => {
     ));
     el = document.createElement('da-landing');
     document.body.append(el);
-    el.setScope({ org: 'org', site: 'site' });
+    await initialize.lastCall.returnValue;
     el._files = ITEMS;
     el._favoriteFiles = [];
     el._editor = '/canvas#';
@@ -57,8 +57,10 @@ describe('landing Content section', () => {
 
   afterEach(() => {
     el.remove();
-    window.adobeIMS = originalIms;
     sinon.restore();
+    loadIms.reset();
+    loadIms.resolves({ accessToken: { token: 'test-token' } });
+    handleSignIn.resetHistory();
     setEWEnabled(false);
     ['da-favorites', 'da-browse-settings', 'da-sites', 'da-recent-files'].forEach((key) => localStorage.removeItem(key));
   });
@@ -229,7 +231,7 @@ describe('landing Content section', () => {
     expect(el.shadowRoot.querySelector('[role="alert"]')).to.equal(null);
   });
 
-  it('uses the first shared saved-site option before nav loads, without flashing onboarding', async () => {
+  it('uses the first shared saved-site option after authentication without changing the route', async () => {
     el.remove();
     loadSite.restore();
     loadSite = sinon.spy(DaLanding.prototype, 'loadSite');
@@ -246,6 +248,7 @@ describe('landing Content section', () => {
     metadata.returns(new Promise((resolve) => { resolveMetadata = resolve; }));
     el = document.createElement('da-landing');
     document.body.append(el);
+    await initialize.lastCall.returnValue;
     expect(el.path).to.equal('/selected/site');
     expect(loadSite.calledOnce).to.equal(true);
     await updateLanding();
@@ -260,14 +263,80 @@ describe('landing Content section', () => {
     expect(window.location.href).to.equal(href);
   });
 
-  it('keeps onboarding available when saved-site history cannot be parsed', async () => {
+  it('redirects missing, invalid and unreadable site history before authentication or file loading', async () => {
+    const redirect = sinon.stub(DaLanding.prototype, 'redirectToStart');
+    getSiteOptions.returns([]);
+    loadIms.resetHistory();
+    loadSite.resetHistory();
+    for (const history of [null, '["invalid"]', '{']) {
+      el.remove();
+      if (history === null) localStorage.removeItem('da-sites');
+      else localStorage.setItem('da-sites', history);
+      el = document.createElement('da-landing');
+      document.body.append(el);
+      await initialize.lastCall.returnValue;
+      await updateLanding();
+      expect(el.shadowRoot.querySelector('.files-panel, form')).to.equal(null);
+    }
+    expect(redirect.callCount).to.equal(3);
+    expect(loadIms.called).to.equal(false);
+    expect(handleSignIn.called).to.equal(false);
+    expect(loadSite.called).to.equal(false);
+  });
+
+  it('waits for IMS and starts sign-in only once for a returning signed-out user', async () => {
     el.remove();
-    localStorage.setItem('da-sites', '{');
+    loadSite.resetHistory();
+    let resolveIms;
+    loadIms.returns(new Promise((resolve) => { resolveIms = resolve; }));
     el = document.createElement('da-landing');
     document.body.append(el);
     await updateLanding();
-    expect(el.path).to.equal('');
-    expect(el.shadowRoot.querySelector('.welcome')).not.to.equal(null);
+    expect(el.shadowRoot.querySelector('.files-panel, form')).to.equal(null);
+    expect(loadSite.called).to.equal(false);
+    expect(handleSignIn.called).to.equal(false);
+    resolveIms({ anonymous: true });
+    await initialize.lastCall.returnValue;
+    el.requestUpdate();
+    await updateLanding();
+    expect(handleSignIn.calledOnce).to.equal(true);
+    expect(loadSite.called).to.equal(false);
+    expect(el.shadowRoot.querySelector('.files-panel, form')).to.equal(null);
+  });
+
+  it('offers an explicit retry when IMS fails without starting a sign-in loop', async () => {
+    el.remove();
+    loadSite.resetHistory();
+    loadIms.rejects(new Error('IMS unavailable'));
+    el = document.createElement('da-landing');
+    document.body.append(el);
+    await initialize.lastCall.returnValue;
+    await updateLanding();
+    expect(el.shadowRoot.querySelector('[role="alert"]').textContent).to.contain('Could not sign in');
+    expect(loadSite.called).to.equal(false);
+    expect(handleSignIn.called).to.equal(false);
+    loadIms.resolves({ accessToken: { token: 'test-token' } });
+    el.shadowRoot.querySelector('button').click();
+    await initialize.lastCall.returnValue;
+    await updateLanding();
+    expect(el.shadowRoot.querySelector('[role="alert"]')).to.equal(null);
+    expect(el.shadowRoot.querySelector('.files-panel')).not.to.equal(null);
+    expect(loadSite.calledOnce).to.equal(true);
+    expect(handleSignIn.called).to.equal(false);
+  });
+
+  it('does not start sign-in or load files after leaving while IMS is pending', async () => {
+    el.remove();
+    loadSite.resetHistory();
+    let resolveIms;
+    loadIms.returns(new Promise((resolve) => { resolveIms = resolve; }));
+    el = document.createElement('da-landing');
+    document.body.append(el);
+    el.remove();
+    resolveIms({ anonymous: true });
+    await initialize.lastCall.returnValue;
+    expect(handleSignIn.called).to.equal(false);
+    expect(loadSite.called).to.equal(false);
   });
 
   it('updates Content from the external nav selection without changing the route', async () => {
@@ -290,117 +359,6 @@ describe('landing Content section', () => {
     expect(el._limit).to.equal(6);
     expect(el._favorites.size).to.equal(0);
     expect(loadSite.callCount).to.equal(2);
-  });
-
-  it('shows Landing onboarding instead of Content until a site is selected', async () => {
-    el.setScope(undefined);
-    await updateLanding();
-    expect(el.path).to.equal('');
-    expect(el.shadowRoot.querySelector('.welcome')).not.to.equal(null);
-    expect(el.shadowRoot.querySelector('#welcome-heading').textContent).to.equal('Welcome to Experience Workspace');
-    expect(window.adobeIMS.getProfile.called).to.equal(false);
-    expect(el.shadowRoot.querySelector('.files-panel')).to.equal(null);
-    expect(el.shadowRoot.querySelector('input[name="siteUrl"]')).not.to.equal(null);
-    expect(new URL(el.shadowRoot.querySelector('.welcome a').href).pathname).to.equal('/start');
-    expect(el.shadowRoot.querySelector('.welcome a').textContent).to.equal('Create a new one');
-    expect(el.shadowRoot.querySelector('.welcome a').parentElement.textContent).to.contain("Don't have a site yet?");
-    document.dispatchEvent(new CustomEvent('site-select', { detail: { value: 'another/site' } }));
-    await updateLanding();
-    expect(el.shadowRoot.querySelector('.welcome')).to.equal(null);
-    expect(el.shadowRoot.querySelector('.files-panel')).not.to.equal(null);
-  });
-
-  it('focuses the welcome input on startup and requires a value before enabling Open', async () => {
-    el.remove();
-    el = document.createElement('da-landing');
-    document.body.append(el);
-    await updateLanding();
-    const input = el.shadowRoot.querySelector('input');
-    const button = el.shadowRoot.querySelector('button[type="submit"]');
-    expect(el.shadowRoot.activeElement).to.equal(input);
-    expect(button.disabled).to.equal(true);
-    input.value = 'https://github.com/org/site';
-    input.dispatchEvent(new Event('input'));
-    await updateLanding();
-    expect(button.disabled).to.equal(false);
-    input.value = '';
-    input.dispatchEvent(new Event('input'));
-    await updateLanding();
-    expect(button.disabled).to.equal(true);
-  });
-
-  it('personalizes the welcome heading with the signed-in first name', async () => {
-    el.remove();
-    window.adobeIMS.isSignedInUser.returns(true);
-    const loadProfile = sinon.spy(DaLanding.prototype, 'loadProfile');
-    el = document.createElement('da-landing');
-    document.body.append(el);
-    await loadProfile.firstCall.returnValue;
-    await updateLanding();
-    expect(el.shadowRoot.querySelector('#welcome-heading').textContent).to.equal('Welcome to Experience Workspace, John');
-    expect(el.shadowRoot.querySelector('form').contains(el.shadowRoot.querySelector('#welcome-heading'))).to.equal(false);
-    expect(el.shadowRoot.querySelector('#site-hint').textContent).to.equal('Enter the URL to get started.');
-  });
-
-  it('keeps onboarding usable when the signed-in profile cannot be loaded', async () => {
-    el.remove();
-    window.adobeIMS.isSignedInUser.returns(true);
-    window.adobeIMS.getProfile.rejects(new Error('Profile unavailable'));
-    const loadProfile = sinon.spy(DaLanding.prototype, 'loadProfile');
-    el = document.createElement('da-landing');
-    document.body.append(el);
-    await loadProfile.firstCall.returnValue;
-    await updateLanding();
-    expect(el.shadowRoot.querySelector('#welcome-heading').textContent).to.equal('Welcome to Experience Workspace');
-    expect(el.shadowRoot.querySelector('form')).not.to.equal(null);
-  });
-
-  ['github', 'aem'].forEach((kind) => {
-    it(`opens an added ${kind} site in Browse without needing the nav dialog`, async () => {
-      el.setScope(undefined);
-      await updateLanding();
-      const openSite = sinon.stub(el, 'openSite');
-      const siteUrl = kind === 'github'
-        ? 'https://github.com/Selected/Site'
-        : 'https://main--site--selected.aem.page/';
-      parseSubdomain.withArgs(siteUrl).returns('#/selected/site');
-      el.shadowRoot.querySelector('input').value = siteUrl;
-      el.shadowRoot.querySelector('input').dispatchEvent(new Event('input'));
-      await updateLanding();
-      el.shadowRoot.querySelector('button[type="submit"]').click();
-      expect(openSite.calledOnce).to.equal(true);
-      const url = new URL(openSite.firstCall.args[0]);
-      expect(url.hash).to.equal('#/selected/site');
-      expect(url.searchParams.get('browse')).to.equal('2');
-      expect(url.origin).to.equal(window.location.origin);
-      expect(parseSubdomain.called).to.equal(kind === 'aem');
-      expect(document.querySelector('nx-add-site')).to.equal(null);
-    });
-  });
-
-  it('keeps invalid sites on the welcome form and clears the error when corrected', async () => {
-    el.setScope(undefined);
-    await updateLanding();
-    const openSite = sinon.stub(el, 'openSite');
-    const input = el.shadowRoot.querySelector('input');
-    const form = el.shadowRoot.querySelector('form');
-    for (const value of ['https://github.com/owner', 'https://example.com/org/site']) {
-      input.value = value;
-      input.dispatchEvent(new Event('input'));
-      form.requestSubmit();
-      await updateLanding();
-      expect(el.shadowRoot.querySelector('[role="alert"]').textContent).to.contain('Enter a GitHub repository URL');
-      expect(input.getAttribute('aria-invalid')).to.equal('true');
-    }
-    expect(openSite.called).to.equal(false);
-    expect(el.shadowRoot.querySelector('.files-panel')).to.equal(null);
-    input.value = 'https://github.com/owner/site';
-    input.dispatchEvent(new Event('input'));
-    await updateLanding();
-    expect(el.shadowRoot.querySelector('[role="alert"]')).to.equal(null);
-    expect(input.hasAttribute('aria-invalid')).to.equal(false);
-    form.requestSubmit();
-    expect(openSite.calledOnce).to.equal(true);
   });
 
   it('stops reacting to nav selection and cached restore after removal', () => {

@@ -2,19 +2,33 @@ import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import '../../setup-nx.js';
 import init from '../../../../blocks/browse/browse.js';
-import '../../../../blocks/landing/landing.js';
-import { getNx, getNx2Api } from '../../../../scripts/utils.js';
+import { DaLanding } from '../../../../blocks/landing/landing.js';
+import { getNx, getNx2, getNx2Api } from '../../../../scripts/utils.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { source, config } = await getNx2Api();
+const { getSiteOptions } = await import(`${getNx2()}/blocks/siteselector/site-utils.js`);
 
 describe('Browse Content opt-in', () => {
   // Each init subscribes to hash changes; drop them so later hash updates don't reach old views.
   let subscribe;
-  beforeEach(() => { subscribe = sinon.spy(hashChange, 'subscribe'); });
+  let initialize;
+  let loadSite;
+  beforeEach(() => {
+    subscribe = sinon.spy(hashChange, 'subscribe');
+    initialize = sinon.spy(DaLanding.prototype, 'initialize');
+    loadSite = sinon.stub(DaLanding.prototype, 'loadSite').resolves();
+    getSiteOptions.returns([{ value: 'org/site', label: 'org/site' }]);
+    localStorage.setItem('da-sites', JSON.stringify(['org/site']));
+  });
   afterEach(() => {
     subscribe.returnValues.forEach((unsubscribe) => unsubscribe());
     subscribe.restore();
+    initialize.restore();
+    loadSite.restore();
+    getSiteOptions.reset();
+    getSiteOptions.returns([]);
+    localStorage.removeItem('da-sites');
     hashChange._set(undefined);
   });
 
@@ -62,19 +76,20 @@ describe('Browse Content opt-in', () => {
       const mounted = whenMounted('da-landing');
       hashChange._set(undefined);
       const landing = await mounted;
+      await initialize.lastCall.returnValue;
       await landing.updateComplete;
       expect(ordinary.querySelector('da-browse')).to.equal(null);
       expect(ordinary.firstElementChild.className).to.equal('landing');
       expect(ordinary.firstElementChild.firstElementChild).to.equal(landing);
       expect(landing.localName).to.equal('da-landing');
-      expect(landing.path).to.equal('');
+      expect(landing.path).to.equal('/org/site');
       const { href: rootHref } = window.location;
       expect(landing.shadowRoot.querySelector('nx-siteselector')).to.equal(null);
       const selection = sinon.spy(landing, 'setScope');
-      document.dispatchEvent(new CustomEvent('site-select', { detail: { value: 'org/site' } }));
+      document.dispatchEvent(new CustomEvent('site-select', { detail: { value: 'another/site' } }));
       await selection.returnValues[0];
       await landing.updateComplete;
-      expect(landing.path).to.equal('/org/site');
+      expect(landing.path).to.equal('/another/site');
       expect(window.location.href).to.equal(rootHref);
       expect(landing.shadowRoot.querySelector('.files-panel')).not.to.equal(null);
       expect(landing.shadowRoot.querySelector('h1, textarea, .composer')).to.equal(null);
