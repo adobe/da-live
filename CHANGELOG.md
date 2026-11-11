@@ -1,3 +1,10 @@
+# [1.28.0](https://github.com/adobe/da-live/compare/v1.27.0...v1.28.0) (2026-11-11)
+
+
+### Features
+
+* greeting block ([#1707](https://github.com/adobe/da-live/issues/1707)) ([90c68b9](https://github.com/adobe/da-live/commit/90c68b9aca15228ce567b779ff05198f37903549))
+
 # [1.27.0](https://github.com/adobe/da-live/compare/v1.26.0...v1.27.0) (2026-11-11)
 
 
