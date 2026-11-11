@@ -1,3 +1,10 @@
+# [1.25.0](https://github.com/adobe/da-live/compare/v1.24.1...v1.25.0) (2026-11-11)
+
+
+### Features
+
+* use browse v2 by default ([#1656](https://github.com/adobe/da-live/issues/1656)) ([c619998](https://github.com/adobe/da-live/commit/c6199989fa05d15d448c1a63ce00bd720ee26fe1))
+
 ## [1.24.1](https://github.com/adobe/da-live/compare/v1.24.0...v1.24.1) (2026-11-11)
 
 
