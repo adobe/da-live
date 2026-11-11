@@ -2,12 +2,12 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../scripts/utils.js';
 import { initIms } from '../shared/utils.js';
 import { addSite } from '../start/utils.js';
-import { getSiteFromUrl } from './utils.js';
 import { loadCards } from './content.js';
 
 const SITE_URL_ERROR = 'Enter an existing AEM site URL.';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { parseSubdomain } = await import(`${getNx2()}/blocks/siteselector/site-utils.js`);
 const [buttons, form, styles, landingStyles] = await Promise.all([
   loadStyle(`${getNx2()}/styles/buttons.css`),
   loadStyle(`${getNx2()}/styles/form.css`),
@@ -66,13 +66,12 @@ class DaOnboarding extends LitElement {
 
   async _addSite() {
     if (this._loading) return;
-    const requested = getSiteFromUrl(this._siteUrl.trim());
-    if (!requested) {
+    const [org, site] = parseSubdomain(this._siteUrl.trim())?.slice(2).split('/') ?? [];
+    if (!org || !site) {
       this._error = SITE_URL_ERROR;
       return;
     }
     this._loading = true;
-    const { org, site } = requested;
     const { error } = await addSite({ org, site });
     if (error) {
       this._error = error;
