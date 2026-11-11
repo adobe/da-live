@@ -110,6 +110,16 @@ button.new-sheet {
   border-left: none;
 }
 
+/* The selection border marks the focused cell, so only outline it when nothing is selected */
+.da-sheet-wrapper .jexcel > tbody > tr > td:focus {
+  outline: none;
+}
+
+.da-sheet-wrapper .jexcel > tbody > tr > td:focus-visible:not(.highlight) {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: -2px;
+}
+
 .da-sheet-wrapper .jcontextmenu {
   border-radius: 6px;
   box-shadow: rgb(181 181 181) 0 0 20px 0;

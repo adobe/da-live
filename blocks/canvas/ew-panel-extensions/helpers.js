@@ -446,12 +446,18 @@ function mergePlugin(list, plugin) {
   }
 }
 
+// A config with only a "library" sheet keeps its rows at the top level.
+function getLibraryRows(conf) {
+  if (conf?.library?.data) return conf.library.data;
+  return conf?.[':sheetname'] === 'library' ? conf.data || [] : [];
+}
+
 export async function fetchExtensions(org, site) {
   const configs = await Promise.all(fetchDaConfigs({ org, site }));
   const validConfigs = configs.filter((conf) => !conf?.error).reverse();
   if (!validConfigs.length) return [];
 
-  const rows = validConfigs.flatMap((conf) => conf?.library?.data || []);
+  const rows = validConfigs.flatMap(getLibraryRows);
 
   const seen = new Set();
   const extensions = rows.reduce((acc, row) => {
@@ -862,7 +868,7 @@ function createOutlineView() {
 function createFileExplorerView() {
   return {
     id: 'files',
-    label: 'Files',
+    label: 'Content',
     section: 'Editor',
     firstParty: true,
     load: async () => {

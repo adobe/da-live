@@ -1,7 +1,7 @@
 import { readFile } from '@web/test-runner-commands';
 import { expect } from '@esm-bundle/chai';
 import { DOMSerializer, Y } from 'da-y-wrapper';
-import { aem2doc, getSchema, yDocToProsemirror } from 'da-parser';
+import { aem2doc, doc2aem, getSchema, yDocToProsemirror } from 'da-parser';
 
 const { setNx } = await import('../../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -790,5 +790,33 @@ describe('htmlToProse', () => {
     expect(result.dom).to.be.instanceOf(HTMLElement);
     expect(result.dom.textContent).to.contain('Hello');
     expect(result.ydoc).to.exist;
+  });
+});
+
+describe('link-image (data-edit-as) parsing', () => {
+  const src = 'https://delivery-p1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:1/as/hero.jpg';
+  const html = `<body><main><div><p><a href="${src}" title="Hero alt" data-edit-as="image">${src}</a></p></div></main></body>`;
+
+  const findImage = (ydoc) => {
+    const pmDoc = yDocToProsemirror(getSchema(), ydoc);
+    let image;
+    pmDoc.descendants((node) => {
+      if (node.type.name === 'image') image = node;
+    });
+    return image;
+  };
+
+  it('loads a saved link-image anchor as an image node with editAs', () => {
+    const { ydoc } = htmlToProse(html);
+    const image = findImage(ydoc);
+    expect(image, 'anchor should parse as an image node').to.exist;
+    expect(image.attrs.editAs).to.equal('image');
+  });
+
+  it('saves a link-image back as the same anchor', () => {
+    const { ydoc } = htmlToProse(html);
+    const saved = doc2aem(ydoc);
+    expect(saved).to.contain(`<a href="${src}" title="Hero alt" data-edit-as="image">${src}</a>`);
+    expect(saved).to.not.contain('<img');
   });
 });
