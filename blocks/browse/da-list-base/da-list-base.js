@@ -442,6 +442,7 @@ export default class DaListBase extends LitElement {
     const moveToTrash = type === 'move' && !item.path.includes('/.trash/') && item.destination.includes('/.trash/');
 
     let continuationToken;
+    let hasCompletedPage = false;
     try {
       do {
         const args = type === 'delete'
@@ -454,6 +455,7 @@ export default class DaListBase extends LitElement {
           err.status = status;
           throw err;
         }
+        hasCompletedPage = true;
         continuationToken = undefined;
         if (status === 206) {
           const page = await resp.json();
@@ -478,8 +480,8 @@ export default class DaListBase extends LitElement {
         }
       }
     } catch (e) {
-      // The assumption here is that the user does not have permission to write to the trash
-      if (moveToTrash && e.status === 403) {
+      // A denied continuation must not permanently delete the remaining source contents.
+      if (moveToTrash && e.status === 403 && !hasCompletedPage) {
         await this.handleItemAction({ item, type: 'delete' });
       } else {
         this._itemErrors.push({ ...item, message: `Couldn't ${type} item` });

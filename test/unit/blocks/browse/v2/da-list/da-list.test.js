@@ -103,6 +103,43 @@ describe('DaList helpers', () => {
       expect(el._itemErrors).to.have.length(1);
     });
 
+    it('falls back to deleting the source when the initial move returns 403', async () => {
+      responses.push(
+        new Response('Forbidden', { status: 403 }),
+        new Response(null, { status: 204 }),
+      );
+
+      await el.handleItemAction({ item, type: 'move' });
+
+      expect(requests.map(({ opts }) => opts.method)).to.deep.equal(['POST', 'DELETE']);
+      expect(requests[1].url).to.equal(`https://admin.da.live/source${item.path}/`);
+      expect(el._itemErrors).to.have.length(0);
+      expect(el._listItems).not.to.include(item);
+      expect(item.isChecked).to.be.false;
+    });
+
+    [1, 2].forEach((completedPages) => {
+      it(`does not delete the source when move returns 403 after ${completedPages} completed pages`, async () => {
+        responses.push(
+          ...Array.from({ length: completedPages }, (_, index) => new Response(
+            JSON.stringify({ continuationToken: `page-${index + 2}` }),
+            { status: 206 },
+          )),
+          new Response('Forbidden', { status: 403 }),
+          new Response(null, { status: 204 }),
+        );
+
+        await el.handleItemAction({ item, type: 'move' });
+
+        expect(requests).to.have.length(completedPages + 1);
+        expect(requests.every(({ opts }) => opts.method === 'POST')).to.be.true;
+        expect(el._listItems).to.include(item);
+        expect(item.isChecked).to.be.true;
+        expect(el._itemErrors).to.have.length(1);
+        expect(el._itemErrors[0].message).to.equal("Couldn't move item");
+      });
+    });
+
     it('does not parse an empty 204 response', async () => {
       const response = new Response(null, { status: 204 });
       const json = stub(response, 'json').throws(new Error('204 has no JSON body'));
