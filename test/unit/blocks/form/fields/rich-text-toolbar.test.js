@@ -2,15 +2,12 @@ import { expect } from '@esm-bundle/chai';
 import '../../../setup-nx.js';
 import * as proseMirror from 'da-y-wrapper';
 import '../../../../../blocks/form/fields/rich-text-toolbar.js';
-import { TOOL_IDS, createToolset } from '../../../../../blocks/form/utils/rich-text/tools.js';
+import { TOOL_IDS, createToolset, listTools } from '../../../../../blocks/form/utils/rich-text/tools.js';
 import { schema, stateFor, run } from '../helpers/rich-text-states.js';
 
 const toolset = createToolset({ proseMirror, schema, onLink: () => {} });
 
-const tools = Object.fromEntries(
-  [...toolset.leading, ...toolset.groups.flat(), ...toolset.menuGroups.flat()]
-    .map((candidate) => [candidate.id, candidate]),
-);
+const tools = Object.fromEntries(listTools(toolset).map((candidate) => [candidate.id, candidate]));
 
 /** The ids of the tools only the more menu offers. */
 const MENU_IDS = ['ordered_list', 'bullet_list', 'blockquote', 'sup', 'sub'];
@@ -126,6 +123,14 @@ describe('form-rich-text-toolbar', () => {
     const href = (button) => button.querySelector('use').getAttribute('href');
     expect(href(tool(toolbar, 'strong'))).to.match(/\/img\/icons\/s2-icon-tagbold-20-n\.svg#icon$/);
     expect(href(moreButton(toolbar))).to.match(/\/img\/icons\/s2-icon-more-20-n\.svg#icon$/);
+  });
+
+  it('names the shortcut of a tool in its title', async () => {
+    const toolbar = await mount();
+    const modifier = /Mac|iP(hone|[oa]d)/.test(navigator.platform) ? '⌘' : 'Ctrl';
+    expect(tool(toolbar, 'redo').title).to.equal(`Redo (${modifier}+Shift+Z)`);
+    expect(tool(toolbar, 'link').title).to.equal(`Link (${modifier}+K)`);
+    expect(tool(toolbar, 'u').title).to.equal('Underline');
   });
 
   it('renders an empty bar until the toolset loads', async () => {

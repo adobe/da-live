@@ -3,6 +3,7 @@ import {
   getActiveMarks,
   getBlockType,
   getListType,
+  insertHardBreak,
   isInBlockquote,
   removeLink,
   requestLink,
@@ -65,8 +66,8 @@ export function createToolset({ proseMirror, schema, onLink }) {
 
   return {
     leading: [
-      { id: TOOL_IDS.undo, label: 'Undo', keys: 'Mod+Z', icon: 'undo', command: proseMirror.undo },
-      { id: TOOL_IDS.redo, label: 'Redo', keys: 'Mod+Shift+Z', icon: 'redo', command: proseMirror.redo },
+      { id: TOOL_IDS.undo, label: 'Undo', keys: 'Mod-z', icon: 'undo', command: proseMirror.undo },
+      { id: TOOL_IDS.redo, label: 'Redo', keys: 'Mod-Shift-z', icon: 'redo', command: proseMirror.redo },
     ],
     picker: {
       label: 'Text style',
@@ -77,8 +78,8 @@ export function createToolset({ proseMirror, schema, onLink }) {
     },
     groups: [
       [
-        markTool({ id: TOOL_IDS.bold, label: 'Bold', keys: 'Mod+B', icon: 'tagbold' }),
-        markTool({ id: TOOL_IDS.italic, label: 'Italic', keys: 'Mod+I', icon: 'tagitalic' }),
+        markTool({ id: TOOL_IDS.bold, label: 'Bold', keys: 'Mod-b', icon: 'tagbold' }),
+        markTool({ id: TOOL_IDS.italic, label: 'Italic', keys: 'Mod-i', icon: 'tagitalic' }),
         markTool({ id: TOOL_IDS.underline, label: 'Underline', icon: 'tagunderline' }),
         markTool({ id: TOOL_IDS.strikethrough, label: 'Strikethrough', icon: 'tagstrikethrough' }),
       ],
@@ -86,7 +87,7 @@ export function createToolset({ proseMirror, schema, onLink }) {
         {
           id: TOOL_IDS.link,
           label: 'Link',
-          keys: 'Mod+K',
+          keys: 'Mod-k',
           icon: 'link',
           command: requestLink({ onLink }),
           isActive: hasMark(TOOL_IDS.link),
@@ -98,19 +99,19 @@ export function createToolset({ proseMirror, schema, onLink }) {
           command: removeLink,
           isVisible: hasMark(TOOL_IDS.link),
         },
-        markTool({ id: TOOL_IDS.code, label: 'Inline code', keys: 'Mod+`', icon: 'code' }),
+        markTool({ id: TOOL_IDS.code, label: 'Inline code', keys: 'Mod-`', icon: 'code' }),
       ],
     ],
     menuGroups: [
       [
-        listTool({ id: TOOL_IDS.orderedList, label: 'Numbered list', keys: 'Ctrl+Shift+9', icon: 'listnumbered' }),
-        listTool({ id: TOOL_IDS.bulletList, label: 'Bulleted list', keys: 'Ctrl+Shift+8', icon: 'listbulleted' }),
+        listTool({ id: TOOL_IDS.orderedList, label: 'Numbered list', keys: 'Ctrl-Shift-9', icon: 'listnumbered' }),
+        listTool({ id: TOOL_IDS.bulletList, label: 'Bulleted list', keys: 'Ctrl-Shift-8', icon: 'listbulleted' }),
       ],
       [
         {
           id: TOOL_IDS.blockquote,
           label: 'Blockquote',
-          keys: 'Ctrl+>',
+          keys: 'Ctrl->',
           icon: 'blockquote',
           command: toggleBlockquote({ proseMirror }),
           isActive: isInBlockquote,
@@ -121,5 +122,53 @@ export function createToolset({ proseMirror, schema, onLink }) {
         markTool({ id: TOOL_IDS.subscript, label: 'Subscript', icon: 'textsubscript' }),
       ],
     ],
+  };
+}
+
+/**
+ * Lists every tool of a toolset, on the bar and in the more menu.
+ * @param {import('../../fields/rich-text-toolbar.js').Toolset} toolset The tools.
+ * @returns {import('../../fields/rich-text-toolbar.js').ToolbarTool[]} The tools.
+ */
+export const listTools = ({ leading, groups, menuGroups }) => [
+  ...leading, ...groups.flat(), ...menuGroups.flat(),
+];
+
+/**
+ * Binds the shortcut of each tool that has one.
+ * @param {import('../../fields/rich-text-toolbar.js').Toolset} toolset The tools.
+ * @returns {Record<string, import('./commands.js').RichTextCommand>} The commands by key.
+ */
+const toolShortcuts = (toolset) => Object.fromEntries(listTools(toolset)
+  .filter((tool) => tool.keys)
+  .map((tool) => [tool.keys, tool.command]));
+
+/**
+ * Binds Ctrl+Shift+0 to the paragraph and Ctrl+Shift+1 to 6 to the headings.
+ * @param {import('../../fields/rich-text-toolbar.js').ToolbarPicker} picker The text style picker.
+ * @returns {Record<string, import('./commands.js').RichTextCommand>} The commands by key.
+ */
+const textStyleShortcuts = (picker) => Object.fromEntries(BLOCK_TYPES
+  .map(({ value, attrs }) => [`Ctrl-Shift-${attrs?.level ?? 0}`, picker.commandFor(value)]));
+
+/**
+ * Builds the shortcuts of the field, which match the Canvas editor.
+ * @param {object} options The editor.
+ * @param {object} options.proseMirror The da-y-wrapper namespace.
+ * @param {object} options.schema The schema built from `SCHEMA_SPEC`.
+ * @param {import('../../fields/rich-text-toolbar.js').Toolset} options.toolset The tools.
+ * @returns {Record<string, import('./commands.js').RichTextCommand>} The commands by key.
+ */
+export function buildKeymap({ proseMirror, schema, toolset }) {
+  const listItem = schema.nodes.list_item;
+  return {
+    ...toolShortcuts(toolset),
+    ...textStyleShortcuts(toolset.picker),
+    'Mod-y': proseMirror.redo,
+    Enter: proseMirror.splitListItem(listItem),
+    'Shift-Enter': insertHardBreak,
+    'Mod-Enter': insertHardBreak,
+    Tab: proseMirror.sinkListItem(listItem),
+    'Shift-Tab': proseMirror.liftListItem(listItem),
   };
 }

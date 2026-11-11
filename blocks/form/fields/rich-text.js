@@ -5,12 +5,8 @@ import { icon } from '../icons.js';
 import './rich-text-toolbar.js';
 import { SCHEMA_SPEC } from '../utils/rich-text/schema.js';
 import { parseRichText, serializeRichText, getCanonicalChange } from '../utils/rich-text/html.js';
-import {
-  getLinkDraft,
-  applyLink,
-  buildKeymap,
-} from '../utils/rich-text/commands.js';
-import { TOOL_IDS, createToolset } from '../utils/rich-text/tools.js';
+import { getLinkDraft, applyLink } from '../utils/rich-text/commands.js';
+import { TOOL_IDS, buildKeymap, createToolset } from '../utils/rich-text/tools.js';
 import { placeBubble } from '../utils/rich-text/bubble.js';
 
 const { loadStyle } = await import(`${getNx2()}/utils/utils.js`);
@@ -259,7 +255,7 @@ class FormRichText extends LitElement {
     const schema = this._schema;
     const plugins = [
       proseMirror.history(),
-      proseMirror.keymap(buildKeymap({ proseMirror, schema, onLink: () => this._openLink() })),
+      proseMirror.keymap(buildKeymap({ proseMirror, schema, toolset: this._toolset })),
       proseMirror.keymap(proseMirror.baseKeymap),
     ];
     const richTextDocument = parseRichText({ proseMirror, schema, value });

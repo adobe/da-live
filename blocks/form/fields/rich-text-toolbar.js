@@ -7,7 +7,7 @@ import { getNx2 } from '../../../scripts/utils.js';
  * @property {string} id The name the button is found by.
  * @property {string} label The accessible name.
  * @property {string} icon The name of the S2 icon.
- * @property {string} [keys] The shortcut, with `Mod` for the platform modifier.
+ * @property {string} [keys] The ProseMirror key name of the shortcut, such as `Mod-Shift-z`.
  * @property {import('../utils/rich-text/commands.js').RichTextCommand} command Applies the tool.
  * @property {(state: object) => boolean} [isActive] Whether a toggle is on. Actions have none.
  * @property {(state: object) => boolean} [isVisible] Whether the tool applies. Others always show.
@@ -58,7 +58,7 @@ const SELECTORS = {
 };
 
 /** The name of the `Mod` key on this platform. */
-const MODIFIER_LABEL = /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘' : 'Ctrl';
+const MODIFIER_LABEL = /Mac|iP(hone|[oa]d)/.test(navigator.platform) ? '⌘' : 'Ctrl';
 
 const loadPicker = () => import(`${nx2}/blocks/shared/picker/picker.js`);
 
@@ -73,11 +73,23 @@ const renderIcon = (name) => html`<svg aria-hidden="true" viewBox="0 0 20 20"><u
   href="${getConfig().codeBase}/img/icons/s2-icon-${name}-20-n.svg#icon"></use></svg>`;
 
 /**
+ * Formats a part of a ProseMirror key name for this platform.
+ * @param {string} key A modifier or a key, such as `Mod` or `z`.
+ * @returns {string} The label, such as `⌘` or `Z`.
+ */
+const formatKey = (key) => {
+  if (key === 'Mod') return MODIFIER_LABEL;
+  return key.length === 1 ? key.toUpperCase() : key;
+};
+
+/**
  * Formats the tooltip of a tool with its shortcut for this platform.
  * @param {ToolbarTool} tool The tool.
  * @returns {string} The tooltip.
  */
-const formatTitle = ({ label, keys }) => (keys ? `${label} (${keys.replace('Mod', MODIFIER_LABEL)})` : label);
+const formatTitle = ({ label, keys }) => (keys
+  ? `${label} (${keys.split(/-(?!$)/).map(formatKey).join('+')})`
+  : label);
 
 /**
  * Builds a check for bar tools that sit at or after an index.
