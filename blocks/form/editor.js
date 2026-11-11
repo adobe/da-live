@@ -6,9 +6,9 @@ import { attachPersistence } from './utils/persistence.js';
 import { getNx2 } from '../../scripts/utils.js';
 import { addRecentFile } from '../shared/recent-files.js';
 import { isJsonPreviewEnabled } from './utils/config.js';
+import { NAV_ORIGIN, formEvents } from './events.js';
 
 import './views/editor.js';
-import './views/sidebar.js';
 import './views/preview.js';
 // Fields the shell renders directly (schema selector + messages); the editor
 // imports the rest.
@@ -68,6 +68,8 @@ class Form extends LitElement {
 
   _unsubscribe = null;
 
+  _unsubscribeJump = null;
+
   _onChange = () => {
     if (!this._editor) return;
     this._state = this._editor.getState();
@@ -89,13 +91,19 @@ class Form extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
+    this._unsubscribeJump = formEvents.jumpRequest.subscribe(({ pointer }) => {
+      this._onSelect(pointer, NAV_ORIGIN.OUTLINE);
+    });
   }
 
   disconnectedCallback() {
     this._unsubscribe?.();
     this._unsubscribe = null;
+    this._unsubscribeJump?.();
+    this._unsubscribeJump = null;
     this._persistence?.detach();
     this._persistence = null;
+    formEvents.formState.emit(null);
     super.disconnectedCallback();
   }
 
@@ -112,6 +120,13 @@ class Form extends LitElement {
   updated(changed) {
     if (changed.has('ctx')) {
       this._loadContext();
+    }
+    // The outline in the tools panel lives outside this element's tree.
+    if (changed.has('_state')) {
+      formEvents.formState.emit(this._state);
+    }
+    if (changed.has('_nav')) {
+      formEvents.selectionState.emit(this._nav);
     }
   }
 
@@ -374,11 +389,6 @@ class Form extends LitElement {
           ></ew-form-fields>
           ${showPreview ? html`<ew-form-preview .state=${this._state}></ew-form-preview>` : nothing}
         </div>
-        <ew-form-sidebar
-          .state=${this._state}
-          .nav=${this._nav}
-          .onSelect=${this._onSelect}
-        ></ew-form-sidebar>
       </div>
     `;
   }

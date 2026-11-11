@@ -3,6 +3,7 @@ import sinon from 'sinon';
 import '../../setup-nx.js';
 import { createEngine } from '../../../../deps/da-sc-sdk/dist/index.js';
 import '../../../../blocks/form/editor.js';
+import { formEvents } from '../../../../blocks/form/events.js';
 
 // ew-form-preview lazy-imports the (heavy) Prism bundle on its first paint. Stub it
 // so the render smoke tests stay light and don't starve other test files that
@@ -91,11 +92,37 @@ describe('ew-form-editor', () => {
     expect(writes).to.deep.equal(['/org/site/docs/first.html', '/org/site/docs/second.html']);
   });
 
-  it('renders the editor, preview, and sidebar when ready', async () => {
+  it('renders the editor and preview when ready', async () => {
     const el = await mountReady();
     expect(el.shadowRoot.querySelector('ew-form-fields')).to.exist;
     expect(el.shadowRoot.querySelector('ew-form-preview')).to.exist;
-    expect(el.shadowRoot.querySelector('ew-form-sidebar')).to.exist;
+  });
+
+  it('broadcasts its state and selection for the outline', async () => {
+    const form = await mountReady();
+    const seen = {};
+    const unsubscribers = [
+      formEvents.formState.subscribe((state) => { seen.state = state; }),
+      formEvents.selectionState.subscribe((nav) => { seen.nav = nav; }),
+    ];
+    unsubscribers.forEach((unsubscribe) => unsubscribe());
+    expect(seen.state).to.equal(form._state);
+    expect(seen.nav).to.equal(form._nav);
+  });
+
+  it('selects the pointer an outline jump asks for', async () => {
+    const form = await mountReady();
+    formEvents.jumpRequest.emit({ pointer: '/data/name' });
+    expect(form._nav).to.include({ pointer: '/data/name', origin: 'outline' });
+  });
+
+  it('clears the broadcast state when removed', async () => {
+    const form = await mountReady();
+    let state;
+    const unsubscribe = formEvents.formState.subscribe((formState) => { state = formState; });
+    form.remove();
+    unsubscribe();
+    expect(state).to.equal(null);
   });
 
   it('shows the preview by default', async () => {

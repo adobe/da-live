@@ -8,6 +8,7 @@ import '../fields/button.js';
 import '../fields/number.js';
 import '../fields/date.js';
 import { icon } from '../icons.js';
+import { NAV_ORIGIN } from '../events.js';
 
 const { loadStyle } = await import(`${getNx2()}/utils/utils.js`);
 
@@ -107,7 +108,7 @@ class Editor extends LitElement {
     const nextSeq = this.nav?.seq ?? 0;
 
     if (!nextPointer || nextSeq === prevSeq) return;
-    if (nextOrigin !== 'sidebar') return;
+    if (nextOrigin !== NAV_ORIGIN.OUTLINE) return;
     this._scrollTo(nextPointer);
   }
 
@@ -120,7 +121,7 @@ class Editor extends LitElement {
   }
 
   _select(pointer) {
-    this.onSelect?.(pointer, 'editor');
+    this.onSelect?.(pointer, NAV_ORIGIN.EDITOR);
   }
 
   // Group containers (object fieldsets, array sections, structured array

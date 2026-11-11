@@ -1,0 +1,180 @@
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  font-family: var(--s2-font-family);
+}
+
+:host([hidden]) {
+  display: none;
+}
+
+nav {
+  padding: var(--s2-spacing-75) 0;
+}
+
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+li {
+  --row-height: 32px;
+  --indent-start: var(--s2-spacing-200);
+  --indent-step: 16px;
+  --dot-size: 6px;
+
+  /* The center of the parent's lead slot, where this row's tree line runs. */
+  --guide: calc(var(--indent-start) + (var(--depth) - 0.5) * var(--indent-step));
+
+  position: relative;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: var(--row-height);
+  padding-inline: calc(var(--indent-start) + var(--depth) * var(--indent-step)) var(--s2-spacing-100);
+  color: var(--s2-gray-800);
+
+  &:hover {
+    background: var(--s2-gray-75);
+  }
+
+  &:has(.label:focus-visible) {
+    outline: 2px solid var(--s2-blue-800);
+    outline-offset: -2px;
+  }
+
+  &.is-current {
+    background: var(--s2-blue-100);
+    color: var(--s2-blue-900);
+  }
+}
+
+/* Holds the collapse toggle of a section or the dot of a nested row. */
+.lead {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: var(--indent-step);
+  height: var(--indent-step);
+}
+
+.label {
+  flex: 1;
+  min-width: 0;
+  padding: var(--s2-spacing-75) 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--s2-body-size-s);
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: none;
+  }
+}
+
+.section .label {
+  font-weight: 600;
+}
+
+.index {
+  margin-inline-end: var(--s2-spacing-75);
+  color: var(--s2-gray-600);
+  font-variant-numeric: tabular-nums;
+
+  .is-current & {
+    color: inherit;
+  }
+}
+
+.toggle {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--s2-corner-radius-75);
+  background: none;
+  color: var(--s2-gray-700);
+  cursor: pointer;
+
+  &::before {
+    content: '›';
+    font-size: 16px;
+    line-height: 1;
+  }
+
+  &[aria-expanded="true"]::before {
+    transform: rotate(90deg);
+  }
+
+  &:hover {
+    background: var(--s2-gray-200);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--s2-blue-800);
+  }
+}
+
+.dot {
+  width: var(--dot-size);
+  height: var(--dot-size);
+  border-radius: 50%;
+  background: var(--s2-gray-300);
+
+  .is-current & {
+    background: var(--s2-blue-800);
+  }
+}
+
+/* Below the sections, rows hang from their parent by a tree line that ends
+   at their dot, like the editor's former Navigation. */
+li li li::before,
+li li li::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  left: var(--guide);
+  pointer-events: none;
+}
+
+li li li::before {
+  top: calc(var(--row-height) / 2);
+  width: calc(var(--indent-step) - var(--dot-size) / 2);
+  border-top: 1px solid var(--s2-gray-300);
+}
+
+li li li::after {
+  top: calc(var(--row-height) / -2 + var(--dot-size) / 2 + 1px);
+  bottom: 0;
+  border-left: 1px solid var(--s2-gray-300);
+}
+
+li li li:last-child::after {
+  bottom: auto;
+  height: calc(var(--row-height) - var(--dot-size) / 2 - 1px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .toggle::before {
+    transition: transform 0.15s;
+  }
+}
+
+.placeholder {
+  margin: 0;
+  padding: var(--s2-spacing-300) var(--s2-spacing-100);
+  font-size: var(--s2-body-size-s);
+  color: var(--s2-gray-600);
+  text-align: center;
+}
