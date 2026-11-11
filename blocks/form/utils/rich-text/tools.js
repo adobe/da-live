@@ -71,7 +71,7 @@ export function createToolset({ proseMirror, schema, onLink }) {
     ],
     picker: {
       label: 'Text style',
-      items: [{ section: 'Change into' }, ...BLOCK_TYPES],
+      items: BLOCK_TYPES,
       getValue: getBlockType,
       isEnabled: (state) => !getListType(state),
       commandFor: (value) => setBlock({ proseMirror, value }),
@@ -99,14 +99,13 @@ export function createToolset({ proseMirror, schema, onLink }) {
           command: removeLink,
           isVisible: hasMark(TOOL_IDS.link),
         },
-        markTool({ id: TOOL_IDS.code, label: 'Inline code', keys: 'Mod-`', icon: 'code' }),
       ],
-    ],
-    menuGroups: [
       [
         listTool({ id: TOOL_IDS.orderedList, label: 'Numbered list', keys: 'Ctrl-Shift-9', icon: 'listnumbered' }),
         listTool({ id: TOOL_IDS.bulletList, label: 'Bulleted list', keys: 'Ctrl-Shift-8', icon: 'listbulleted' }),
       ],
+    ],
+    menuGroups: [
       [
         {
           id: TOOL_IDS.blockquote,
@@ -118,6 +117,7 @@ export function createToolset({ proseMirror, schema, onLink }) {
         },
       ],
       [
+        markTool({ id: TOOL_IDS.code, label: 'Inline code', keys: 'Mod-`', icon: 'code' }),
         markTool({ id: TOOL_IDS.superscript, label: 'Superscript', icon: 'textsuperscript' }),
         markTool({ id: TOOL_IDS.subscript, label: 'Subscript', icon: 'textsubscript' }),
       ],
