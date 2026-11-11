@@ -190,7 +190,6 @@ describe('form-rich-text', () => {
     expect(richText.value).to.equal('<p><strong>text</strong></p>');
     await richText.updateComplete;
     expect(await pressed(richText, 'strong')).to.equal('true');
-    await openMenu(richText);
     tool(richText, 'ordered_list').click();
     expect(richText.value).to.equal('<ol><li><strong>text</strong></li></ol>');
   });
@@ -218,7 +217,6 @@ describe('form-rich-text', () => {
   it('toggles and switches both list types from the toolbar', async () => {
     const richText = await mount({ value: '<p>text</p>' });
     richText.focus();
-    await openMenu(richText);
     selectAll(richText);
     tool(richText, 'bullet_list').click();
     expect(richText.value).to.equal('<ul><li>text</li></ul>');
@@ -467,7 +465,6 @@ describe('form-rich-text', () => {
 
   it('creates a list from several selected rows', async () => {
     const richText = await mount({ value: '<p>a</p><p>b</p>' });
-    await openMenu(richText);
     selectAll(richText);
     tool(richText, 'ordered_list').click();
     await richText.updateComplete;
@@ -478,7 +475,6 @@ describe('form-rich-text', () => {
     const richText = await mount({ value: '<ul><li>a</li><li>b</li><li>c</li></ul>' });
     richText.focus();
     selectRange(richText, 3, 9);
-    await openMenu(richText);
     expect(await pressed(richText, 'bullet_list')).to.equal('true');
     tool(richText, 'bullet_list').click();
     await richText.updateComplete;
@@ -646,7 +642,7 @@ describe('form-rich-text', () => {
     await holdFocus(richText);
     selectAll(richText);
     await richText.updateComplete;
-    expect(visibleIds(floating(richText))).to.deep.equal(['strong', 'em', 'u', 's', 'link', 'code']);
+    expect(visibleIds(floating(richText))).to.deep.equal(['strong', 'em', 'u', 's', 'link', 'ordered_list', 'bullet_list']);
     floatingTool(richText, 'strong').click();
     expect(richText.value).to.equal('<p><strong>text</strong></p>');
     await richText.updateComplete;

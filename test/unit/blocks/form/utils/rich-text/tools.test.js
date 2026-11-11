@@ -107,7 +107,7 @@ describe('rich-text tools', () => {
   describe('picker', () => {
     it('offers the text styles', () => {
       const { toolset } = setup();
-      expect(toolset.picker.items.filter(({ value }) => value)).to.deep.equal(BLOCK_TYPES);
+      expect(toolset.picker.items).to.deep.equal(BLOCK_TYPES);
     });
 
     it('reads the text style and only applies outside lists', () => {

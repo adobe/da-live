@@ -10,7 +10,7 @@ const toolset = createToolset({ proseMirror, schema, onLink: () => {} });
 const tools = Object.fromEntries(listTools(toolset).map((candidate) => [candidate.id, candidate]));
 
 /** The ids of the tools only the more menu offers. */
-const MENU_IDS = ['ordered_list', 'bullet_list', 'blockquote', 'sup', 'sub'];
+const MENU_IDS = ['blockquote', 'code', 'sup', 'sub'];
 
 /**
  * Waits for a task. Concurrent test pages run in the background, where animation frames
@@ -106,11 +106,11 @@ describe('form-rich-text-toolbar', () => {
     document.body.replaceChildren();
   });
 
-  it('orders the bar and keeps lists, quote and scripts in the more menu', async () => {
+  it('orders the bar and keeps the quote, code and scripts in the more menu', async () => {
     const toolbar = await mount();
-    await until(() => toolbar._overflowAt === 9);
+    await until(() => toolbar._overflowAt === 10);
     const { shadowRoot } = toolbar;
-    expect(visibleIds(shadowRoot, '.form-rich-text-toolbar >')).to.deep.equal(['undo', 'redo', 'strong', 'em', 'u', 's', 'link', 'code']);
+    expect(visibleIds(shadowRoot, '.form-rich-text-toolbar >')).to.deep.equal(['undo', 'redo', 'strong', 'em', 'u', 's', 'link', 'ordered_list', 'bullet_list']);
     const pickerBox = shadowRoot.querySelector('.form-rich-text-toolbar > .form-rich-text-picker');
     expect(pickerBox.previousElementSibling.classList.contains('form-rich-text-separator')).to.be.true;
     expect(pickerBox.previousElementSibling.previousElementSibling).to.equal(tool(toolbar, 'redo'));
@@ -140,7 +140,7 @@ describe('form-rich-text-toolbar', () => {
     expect(moreButton(toolbar).disabled).to.be.true;
 
     toolbar.toolset = toolset;
-    await until(() => toolbar._overflowAt === 9);
+    await until(() => toolbar._overflowAt === 10);
     expect(tool(toolbar, 'strong').disabled).to.be.true;
     toolbar.editorState = stateFor('<p>a</p>');
     await toolbar.updateComplete;
@@ -150,7 +150,7 @@ describe('form-rich-text-toolbar', () => {
 
   it('moves bar tools that do not fit into the more menu', async () => {
     const toolbar = await mount({ width: '260px' });
-    await until(() => toolbar._overflowAt < 9);
+    await until(() => toolbar._overflowAt < 10);
     expect(toolbar._overflowAt).to.be.above(0);
     expect(tool(toolbar, 'link').classList.contains('is-overflow')).to.be.true;
     expect(tool(toolbar, 'strong').classList.contains('is-overflow')).to.be.false;
@@ -170,7 +170,7 @@ describe('form-rich-text-toolbar', () => {
     toolbar.style.width = '900px';
     // The ResizeObserver does not run in a background test page, so measure as it would.
     toolbar._measureBar();
-    await until(() => toolbar._overflowAt === 9);
+    await until(() => toolbar._overflowAt === 10);
     await toolbar.updateComplete;
     expect(tool(toolbar, 'link').classList.contains('is-overflow')).to.be.false;
   });
@@ -195,7 +195,7 @@ describe('form-rich-text-toolbar', () => {
 
   it('keeps the more menu open for tools, but closes it when a dialog opens', async () => {
     const toolbar = await mount({ width: '260px' });
-    await until(() => toolbar._overflowAt < 9);
+    await until(() => toolbar._overflowAt < 10);
     const details = listen(toolbar, 'form-rich-text-command');
     await openMenu(toolbar);
     tool(toolbar, 'bullet_list').click();
@@ -271,7 +271,7 @@ describe('form-rich-text-toolbar', () => {
     expect(toolbar.hasAttribute('floating')).to.be.true;
     expect(shadowRoot.querySelector('[role="toolbar"]').getAttribute('aria-label')).to.equal('Selection formatting');
     expect(picker(toolbar)).to.equal(null);
-    expect(visibleIds(shadowRoot, '.form-rich-text-toolbar >')).to.deep.equal(['strong', 'em', 'u', 's', 'link', 'code']);
+    expect(visibleIds(shadowRoot, '.form-rich-text-toolbar >')).to.deep.equal(['strong', 'em', 'u', 's', 'link', 'ordered_list', 'bullet_list']);
     const buttons = [...shadowRoot.querySelectorAll('button')];
     expect(buttons.every((button) => button.tabIndex === -1)).to.be.true;
   });
