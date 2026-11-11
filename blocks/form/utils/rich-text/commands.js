@@ -1,4 +1,5 @@
 import { safeHref } from '../../../shared/safe-href.js';
+import { childrenAt } from './nodes.js';
 import { HEADING_LEVELS, LIST_NAMES } from './schema.js';
 
 /**
@@ -16,18 +17,6 @@ function ancestors(resolvedPosition) {
     const depth = resolvedPosition.depth - index;
     return { node: resolvedPosition.node(depth), depth };
   });
-}
-
-/**
- * Lists the children of a node with their document positions.
- * @param {object} parent The ProseMirror node.
- * @param {number} start The position of the start of its content.
- * @returns {{ node: object, position: number }[]} The child nodes and their positions.
- */
-function childrenAt(parent, start) {
-  const children = [];
-  parent.forEach((node, offset) => children.push({ node, position: start + offset }));
-  return children;
 }
 
 /**
@@ -173,9 +162,8 @@ function markRuns({ parent, start, mark }) {
  *   its range, or null when there is none.
  */
 export function getLinkAt(state) {
-  const { $from, from, empty } = state.selection;
-  const marks = empty ? $from.marks() : (state.doc.nodeAt(from)?.marks ?? []);
-  const mark = state.schema.marks.link.isInSet(marks);
+  const { $from, from, to } = state.selection;
+  const mark = state.schema.marks.link.isInSet(marksAt({ state, from, to }));
   if (!mark) {
     return null;
   }
