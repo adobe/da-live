@@ -143,8 +143,8 @@ export default class DaBrowseHeader extends LitElement {
       }}></nx-segmented-btn>
         </div>
         <div class="browse-appearance-row">
-          <span>Limit width</span>
-          <nx-segmented-btn size="sm" label="Limit width"
+          <span>Limit Width</span>
+          <nx-segmented-btn size="sm" label="Limit Width"
             .items=${[
         { value: 'true', label: 'True' }, { value: 'false', label: 'False' },
       ]}

@@ -214,7 +214,7 @@ describe('da-browse-header', () => {
   });
 
   it('reports boolean width preferences and reflects the selected option', async () => {
-    const control = header.shadowRoot.querySelector('nx-segmented-btn[label="Limit width"]');
+    const control = header.shadowRoot.querySelector('nx-segmented-btn[label="Limit Width"]');
     expect(control.items.map(({ value }) => value)).to.deep.equal(['true', 'false']);
     expect(control.value).to.equal('false');
     const events = [];
