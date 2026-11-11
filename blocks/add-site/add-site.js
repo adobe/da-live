@@ -51,7 +51,7 @@ class DaAddSite extends LitElement {
         <label for="site-url">Already have an existing site?</label>
         <p id="site-hint">Enter the URL to get started.</p>
         <div class="site-entry">
-          <input class="nx-input" id="site-url" name="siteUrl" type="url" required
+          <input class="nx-input" id="site-url" name="siteUrl" type="url"
             autocomplete="url" placeholder="https://main--site--org.aem.page"
             aria-describedby=${this._error ? 'site-hint site-error' : 'site-hint'}
             aria-invalid=${this._error ? 'true' : nothing}
