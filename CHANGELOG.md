@@ -1,3 +1,10 @@
+## [1.24.1](https://github.com/adobe/da-live/compare/v1.24.0...v1.24.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* read single-sheet library configs in the canvas library panel ([#1706](https://github.com/adobe/da-live/issues/1706)) ([fab381a](https://github.com/adobe/da-live/commit/fab381aa894486aeeeacfca39aab273edc15137c)), closes [#1705](https://github.com/adobe/da-live/issues/1705)
+
 # [1.24.0](https://github.com/adobe/da-live/compare/v1.23.0...v1.24.0) (2026-11-10)
 
 
