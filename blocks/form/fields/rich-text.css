@@ -158,13 +158,3 @@
   top: 18px;
   inset-inline-end: 12px;
 }
-
-.form-rich-text-placeholder {
-  position: absolute;
-  inset-block-start: var(--s2-spacing-100);
-  inset-inline-start: calc(var(--s2-spacing-200) - 2px);
-  color: var(--s2-gray-600);
-  font-size: var(--form-rich-text-text-size);
-  line-height: var(--form-rich-text-line-height);
-  pointer-events: none;
-}

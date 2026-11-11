@@ -35,23 +35,12 @@ const loadProseMirror = () => import('da-y-wrapper');
 const loadLinkDialog = () => import('../../shared/da-link-dialog/da-link-dialog.js');
 
 /**
- * Answers whether a document holds only an empty paragraph.
- * @param {object} [richTextDocument] The ProseMirror document, once the editor loaded.
- * @returns {boolean} Whether the document is empty.
- */
-const isEmptyDocument = (richTextDocument) => richTextDocument?.childCount === 1
-  && richTextDocument.firstChild.type.name === 'paragraph'
-  && richTextDocument.firstChild.content.size === 0;
-
-/**
  * A form field that holds rich text as HTML. Authors format it with a toolbar, a bubble
  * next to the selection, and the Canvas editor's shortcuts.
  * @property {string} [value] The HTML value, in the form the SDK stores.
  * @property {string} [label] The field label.
  * @property {string} [description] The help text below the field.
  * @property {string} [error] The validation error of the value.
- * @property {string} [placeholder] The text shown while the field is empty.
- * @property {string} [name] The field name.
  * @property {boolean} required Whether the value is required.
  * @property {boolean} disabled Whether the field is read-only.
  * @fires input When the value changes while typing.
@@ -63,8 +52,6 @@ class FormRichText extends LitElement {
     label: { type: String },
     description: { type: String },
     error: { type: String },
-    placeholder: { type: String },
-    name: { type: String },
     required: { type: Boolean },
     disabled: { type: Boolean, reflect: true },
     _status: { state: true },
@@ -486,20 +473,6 @@ class FormRichText extends LitElement {
   }
 
   /**
-   * Renders the placeholder while the field is empty.
-   * @returns {import('da-lit').TemplateResult|typeof nothing} The placeholder, or nothing.
-   */
-  _renderPlaceholder() {
-    if (!this.placeholder || !isEmptyDocument(this._editorState?.doc)) {
-      return nothing;
-    }
-
-    return html`
-      <span class="form-rich-text-placeholder" aria-hidden="true">${this.placeholder}</span>
-    `;
-  }
-
-  /**
    * Renders the load error, the validation error and the help text.
    * @returns {import('da-lit').TemplateResult} The messages below the field.
    */
@@ -525,7 +498,6 @@ class FormRichText extends LitElement {
           <div class="form-input-wrap">
             <div class="form-rich-text-editor" aria-busy=${this._status ? 'false' : 'true'}></div>
             ${this._showBubble ? this._renderToolbar({ floating: true }) : nothing}
-            ${this._renderPlaceholder()}
             ${this.error ? icon('alert', 'form-field-icon') : nothing}
           </div>
         </div>
