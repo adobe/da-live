@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
+import initGreeting from '../shared/da-greeting/da-greeting.js';
 import { fetchDaConfigs, getEditorConfigs } from '../shared/utils.js';
 import { getSiteFavorites, toggleFavorite } from '../browse/shared/favorites.js';
 import { getBrowseSettings, updateBrowseSettings } from '../browse/v2/shared/settings.js';
@@ -86,8 +87,9 @@ export class DaLanding extends LitElement {
       return;
     }
 
+    let ims;
     try {
-      const ims = await loadIms();
+      ims = await loadIms();
       if (!this.isConnected) return;
       if (!ims?.accessToken) {
         handleSignIn();
@@ -99,6 +101,8 @@ export class DaLanding extends LitElement {
     }
 
     this._ready = true;
+    this.closest('main')?.querySelectorAll('div.greeting')
+      .forEach((greeting) => initGreeting(greeting, { profile: ims }));
     this.refreshFavorites();
     window.addEventListener('pageshow', this._onPageShow);
     document.addEventListener('site-select', this._onSiteSelect);
