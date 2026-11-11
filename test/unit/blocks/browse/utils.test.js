@@ -51,9 +51,7 @@ describe('browse implementation selection', () => {
 describe('browseV1 flag', () => {
   const configs = (...docs) => () => docs.map((doc) => Promise.resolve(doc));
   const flag = (value) => ({ flags: { data: [{ key: 'browseV1', value }] } });
-  const resolve = (fetchConfigs, extra = {}) => resolveBrowsePath({
-    search: '', org: 'org', site: 'site', fetchConfigs, ...extra,
-  });
+  const resolve = (fetchConfigs, extra = {}) => resolveBrowsePath({ search: '', org: 'org', site: 'site', fetchConfigs, ...extra });
 
   it('selects legacy from the org or site config', async () => {
     const fetchConfigs = sinon.spy(configs(flag('true')));
