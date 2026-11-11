@@ -375,10 +375,14 @@ class EwToolPanel extends LitElement {
     else if (view?.loadModal) this._fullsizeDialogViewId = view.id;
   }
 
-  async showPanel(name) {
+  async showPanel(name, { modal = false } = {}) {
     const consumer = this.views.find((c) => c.id === name);
     if (!consumer) return;
     const { contextKey } = this;
+    if (modal && consumer.loadModal) {
+      this._fullsizeDialogViewId = name;
+      return;
+    }
     if (consumer.experience === 'window') {
       window.open(
         new URL(consumer.sources[0], window.location.href).href,

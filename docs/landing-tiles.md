@@ -28,10 +28,9 @@ selects the route; `landing.js` composes the gradient surface and lazily loads
 Landing inherits the application's color scheme and shared Spectrum tokens,
 including its gradient. It does not choose a theme or support a `?theme=` override.
 
-The whole tile group is hidden and content loading is deferred until a site is
-selected. Clearing selection hides every tile, including documentation links.
-Selection currently comes from the hash, so unscoped Home shows no tiles pending
-site-picker integration; scoped hashes still route to Browse.
+Tiles always render. Selection currently comes from the hash, so on unscoped Home
+the tiles that need a site (Browse Content and Create a page) are disabled until
+site-selector integration; scoped hashes still route to Browse.
 
 A page with a `Browse` block and a `Landing` table renders the table's rows as tiles
 in place; the table itself stays hidden. With only `?landing=true`, the owner fetches
@@ -49,8 +48,9 @@ a console warning.
 
 HTTP(S) destinations remain links. Same-origin links keep the current `nx`, `nxver`,
 `quick-edit`, `ew`, `nx-chat-ao` and `rum` parameters. `{org}` and `{site}`
-use the selected site; substitution into links to another origin is disabled.
-`/{action:create-page}` opens the shared `da-name-dialog`. It refuses existing names,
+use the selected site; without one, or in a link to another origin, those tiles
+are disabled. `/{action:create-page}` needs a selected site and opens the shared
+`da-name-dialog`. It refuses existing names,
 saves an empty page and opens it in the site's editor, like Browse's New → Document.
 Both flows use `createPage` from `blocks/shared/da-file-item/item.js` for the
 empty-page save and editor URL. Browse supplies its current editor; Landing lets

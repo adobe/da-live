@@ -52,14 +52,15 @@ describe('landing tile composition', () => {
       init(el);
       hashChange._set(undefined);
       const tiles = await mounted;
+      await waitUntil(() => tiles.entries);
       await tiles.updateComplete;
       await new Promise((resolve) => { setTimeout(resolve, 50); });
       expect(el.children).to.have.length(1);
       expect(el.querySelectorAll('da-landing-tiles')).to.have.length(1);
       expect(tiles.parentElement.className).to.equal('landing');
       expect(el.querySelector('picture, da-sites, da-browse')).to.equal(null);
-      expect(tiles.shadowRoot.querySelector('.tile-group')).to.equal(null);
-      expect(fetchContent.called).to.equal(false);
+      expect(tiles.shadowRoot.querySelectorAll('da-landing-tile')).to.have.length(5);
+      expect(fetchContent.calledOnceWithExactly('/drafts/mhaack/landing-copy.plain.html')).to.equal(true);
     } finally {
       fetchContent.restore();
       observer?.disconnect();
@@ -68,7 +69,7 @@ describe('landing tile composition', () => {
     }
   });
 
-  it('preserves the authored Landing table without loading or showing tiles on unscoped Home', async () => {
+  it('renders the page’s own Landing table on unscoped Home with only site tiles disabled', async () => {
     const main = document.createElement('main');
     main.innerHTML = content.replace(/<\/?main>/g, '');
     const el = main.querySelector('.browse');
@@ -77,11 +78,16 @@ describe('landing tile composition', () => {
     const fetchContent = sinon.spy(window, 'fetch');
     try {
       init(el);
-      await waitUntil(() => el.querySelector('.landing > da-landing-tiles'));
+      await waitUntil(() => el.querySelector('.landing > da-landing-tiles')?.entries);
       const tiles = el.querySelector('.landing > da-landing-tiles');
       await tiles.updateComplete;
-      expect(tiles.entries).to.equal(undefined);
-      expect(tiles.shadowRoot.querySelector('.tile-group')).to.equal(null);
+      const all = [...tiles.shadowRoot.querySelectorAll('da-landing-tile')];
+      await Promise.all(all.map((tile) => tile.updateComplete));
+      const [browse, create, ...docs] = all;
+      expect(all).to.have.length(5);
+      expect(browse.shadowRoot.querySelector('button').disabled).to.equal(true);
+      expect(create.shadowRoot.querySelector('button').disabled).to.equal(true);
+      docs.forEach((tile) => expect(tile.shadowRoot.querySelector('a[href]')).to.exist);
       expect(el.querySelector('da-sites')).to.equal(null);
       expect(block.querySelectorAll(':scope > div')).to.have.length(5);
       expect(fetchContent.called).to.equal(false);
