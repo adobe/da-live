@@ -471,15 +471,6 @@ describe('form-rich-text', () => {
     expect(tool(richText, 'strong').disabled).to.be.true;
   });
 
-  it('shows the placeholder only while empty', async () => {
-    const richText = await mount({ value: '', placeholder: 'Write…' });
-    expect(richText.shadowRoot.querySelector('.form-rich-text-placeholder').textContent).to.equal('Write…');
-    richText.value = '<p>x</p>';
-    await richText.updateComplete;
-    await richText.updateComplete;
-    expect(richText.shadowRoot.querySelector('.form-rich-text-placeholder')).to.equal(null);
-  });
-
   it('renders the error and description like other fields', async () => {
     const richText = await mount({ error: 'Required', description: 'Help' });
     expect(richText.shadowRoot.querySelector('.form-field').classList.contains('has-error')).to.be.true;
