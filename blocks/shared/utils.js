@@ -258,6 +258,14 @@ export const getSheetByName = (json, name) => {
 
 export const getFirstSheet = (json) => getSheetByIndex(json, 0);
 
+export function getEditorConfigs(configs) {
+  const rows = configs.filter(Boolean).reverse().flatMap((config) => getFirstSheet(config) || []);
+  return {
+    editorConfs: rows.filter(({ key }) => key === 'editor.path').map(({ value }) => value),
+    hidePublishConfs: rows.filter(({ key }) => key === 'editor.hidePublish').map(({ value }) => value),
+  };
+}
+
 export function isValidHref(href) {
   if (typeof href !== 'string' || !href) return false;
   if (href.startsWith('/') && !href.startsWith('//')) return true;
