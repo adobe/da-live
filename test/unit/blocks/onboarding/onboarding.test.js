@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
 
 const { setNx, getNx2 } = await import('../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -22,7 +23,7 @@ const CARDS_HTML = `
 
 describe('da-onboarding', () => {
   let el;
-  let savedIms;
+  let openSite;
 
   const mount = async () => {
     el = document.createElement('da-onboarding');
@@ -42,7 +43,7 @@ describe('da-onboarding', () => {
   let savedFetch;
 
   beforeEach(() => {
-    savedIms = window.adobeIMS;
+    openSite = sinon.stub(customElements.get('da-onboarding').prototype, 'openSite');
     savedFetch = window.fetch;
     window.fetch = async (url, opts) => (url === '/drafts/mhaack/start-copy.plain.html'
       ? new Response(CARDS_HTML)
@@ -51,7 +52,7 @@ describe('da-onboarding', () => {
 
   afterEach(() => {
     el.remove();
-    window.adobeIMS = savedIms;
+    openSite.restore();
     window.fetch = savedFetch;
     parseSubdomain.reset();
   });
@@ -115,34 +116,22 @@ describe('da-onboarding', () => {
     expect(input.getAttribute('aria-describedby')).to.equal('site-hint site-error');
   });
 
-  it('shows the add site error and lets the user retry', async () => {
-    window.adobeIMS = { isSignedInUser: () => false };
+  it('opens the site in Browse', async () => {
     parseSubdomain.returns('#/adobe/geometrixx');
     await mount();
     await typeUrl('https://main--geometrixx--adobe.aem.page');
     el.shadowRoot.querySelector('form button').click();
-    await nextFrame();
-    await el.updateComplete;
-    const form = el.shadowRoot.querySelector('form');
-    expect(form.classList.contains('nx-field-error')).to.be.true;
-    expect(form.querySelector('[role="alert"]').textContent).to.equal('You need to sign in first.');
-    expect(form.querySelector('button').disabled).to.be.false;
-
-    await typeUrl('https://main--other--adobe.aem.page');
-    expect(form.querySelector('[role="alert"]')).to.be.null;
+    expect(openSite.calledOnceWith(`${window.location.origin}/#/adobe/geometrixx`)).to.be.true;
   });
 
-  it('prefills and submits the site requested in the URL', async () => {
+  it('opens the site requested in the URL', async () => {
     const { href } = window.location;
     window.history.replaceState(null, '', '?org=adobe&site=geometrixx');
-    window.adobeIMS = { isSignedInUser: () => false };
     parseSubdomain.withArgs('https://main--geometrixx--adobe.aem.page').returns('#/adobe/geometrixx');
     try {
       await mount();
-      for (let i = 0; i < 20 && !el._error; i += 1) await nextFrame();
-      await el.updateComplete;
       expect(el.shadowRoot.querySelector('input').value).to.equal('https://main--geometrixx--adobe.aem.page');
-      expect(el.shadowRoot.querySelector('[role="alert"]').textContent).to.equal('You need to sign in first.');
+      expect(openSite.calledOnceWith(`${window.location.origin}/#/adobe/geometrixx`)).to.be.true;
     } finally {
       window.history.replaceState(null, '', href);
     }

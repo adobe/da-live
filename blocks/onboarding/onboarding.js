@@ -1,7 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../scripts/utils.js';
-import { initIms } from '../shared/utils.js';
-import { addSite } from './utils.js';
 import { loadCards } from './content.js';
 
 const SITE_URL_ERROR = 'Enter an existing AEM site URL.';
@@ -19,7 +17,6 @@ class DaOnboarding extends LitElement {
   static properties = {
     _siteUrl: { state: true },
     _error: { state: true },
-    _loading: { state: true },
     _cards: { state: true },
   };
 
@@ -31,12 +28,10 @@ class DaOnboarding extends LitElement {
     this._siteUrl = org && site ? `https://main--${site}--${org}.aem.page` : '';
   }
 
-  async firstUpdated() {
+  firstUpdated() {
     this.shadowRoot.querySelector('#site-url')?.focus();
     this._loadCards();
-    if (!this._siteUrl) return;
-    await initIms();
-    this._addSite();
+    if (this._siteUrl) this._submit();
   }
 
   async _loadCards() {
@@ -54,24 +49,20 @@ class DaOnboarding extends LitElement {
 
   _onSubmit(e) {
     e.preventDefault();
-    this._addSite();
+    this._submit();
   }
 
-  async _addSite() {
-    if (this._loading) return;
-    const [org, site] = parseSubdomain(this._siteUrl.trim())?.slice(2).split('/') ?? [];
-    if (!org || !site) {
+  _submit() {
+    const hash = parseSubdomain(this._siteUrl.trim());
+    if (!hash) {
       this._error = SITE_URL_ERROR;
       return;
     }
-    this._loading = true;
-    const { error } = await addSite({ org, site });
-    if (error) {
-      this._error = error;
-      this._loading = false;
-      return;
-    }
-    window.location = `${window.location.origin}/#/${org}/${site}`;
+    this.openSite(`${window.location.origin}/${hash}`);
+  }
+
+  openSite(href) {
+    window.location.href = href;
   }
 
   _renderCards() {
@@ -108,7 +99,7 @@ class DaOnboarding extends LitElement {
                 aria-invalid=${this._error ? 'true' : nothing}
                 @input=${this._onInput}>
               <button type="submit" class="nx-btn-accent"
-                ?disabled=${!this._siteUrl.trim() || this._loading}>Open</button>
+                ?disabled=${!this._siteUrl.trim()}>Open</button>
             </div>
             ${this._error ? html`<p id="site-error" class="nx-input-error-msg" role="alert">${this._error}</p>` : nothing}
           </form>
