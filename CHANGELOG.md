@@ -1,3 +1,10 @@
+## [1.28.5](https://github.com/adobe/da-live/compare/v1.28.4...v1.28.5) (2026-11-11)
+
+
+### Bug Fixes
+
+* align preview section metadata with AEM rendering features ([#1704](https://github.com/adobe/da-live/issues/1704)) ([8c28570](https://github.com/adobe/da-live/commit/8c285702d2d0c44bf9b6bcf3d461ac69c48dc24d))
+
 ## [1.28.4](https://github.com/adobe/da-live/compare/v1.28.3...v1.28.4) (2026-11-11)
 
 
