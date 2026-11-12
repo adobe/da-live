@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
-import { getRenderableSrc } from '../ew-editor-doc/prose-plugins/mediaBusImage.js';
+import { getRenderableSrc } from '../../shared/constants.js';
 
 const ICON_CLOSE = '/img/icons/s2-icon-close-20-n.svg';
 
