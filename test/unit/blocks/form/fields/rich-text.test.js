@@ -3,7 +3,7 @@ import '../../../setup-nx.js';
 import * as proseMirror from 'da-y-wrapper';
 import FormRichText from '../../../../../blocks/form/fields/rich-text.js';
 
-const { loadProseMirror } = FormRichText;
+const { loadEditor } = FormRichText;
 
 // Concurrent test pages run in the background, where animation frames never fire.
 const tick = () => new Promise((resolve) => { setTimeout(resolve); });
@@ -12,8 +12,8 @@ const until = (check, tries = 100) => (check() || !tries
   ? Promise.resolve()
   : new Promise((resolve) => { setTimeout(resolve, 20); }).then(() => until(check, tries - 1)));
 
-async function mount({ value = '', loader = async () => proseMirror, width, ...properties } = {}) {
-  FormRichText.loadProseMirror = loader;
+async function mount({ value = '', loadEditor: loader, width, ...properties } = {}) {
+  if (loader) FormRichText.loadEditor = loader;
   const richText = document.createElement('form-rich-text');
   Object.assign(richText, { value, ...properties });
   if (width) richText.style.width = width;
@@ -69,7 +69,7 @@ function selectAll(richText) {
 
 describe('form-rich-text', () => {
   afterEach(() => {
-    FormRichText.loadProseMirror = loadProseMirror;
+    FormRichText.loadEditor = loadEditor;
     document.body.querySelectorAll('form-rich-text').forEach((richText) => richText.remove());
   });
 
@@ -563,7 +563,7 @@ describe('form-rich-text', () => {
   });
 
   it('reports a load failure', async () => {
-    const richText = await mount({ loader: async () => { throw new Error('offline'); } });
+    const richText = await mount({ loadEditor: async () => { throw new Error('offline'); } });
     await richText.updateComplete;
     expect(richText.shadowRoot.querySelector('.form-field-error').textContent).to.contain('could not be loaded');
     const { shadowRoot } = toolbar(richText);

@@ -3,10 +3,9 @@ import { getNx2 } from '../../../scripts/utils.js';
 import defaults from './defaults.js';
 import { icon } from '../icons.js';
 import './rich-text-toolbar.js';
-import { createSchema } from '../utils/rich-text/schema.js';
-import { createRichTextCodec } from '../utils/rich-text/codec.js';
-import { getLinkDraft, applyLink } from '../utils/rich-text/commands.js';
-import { TOOL_IDS, buildKeymap, createToolset } from '../utils/rich-text/tools.js';
+import { loadRichTextEditor } from '../utils/rich-text/editor.js';
+import { getLinkDraft } from '../utils/rich-text/commands.js';
+import { TOOL_IDS } from '../utils/rich-text/tools.js';
 import { placeBubble } from '../utils/rich-text/bubble.js';
 
 const { loadStyle } = await import(`${getNx2()}/utils/utils.js`);
@@ -29,8 +28,6 @@ const SELECTORS = {
 
 /** The properties the attributes of the editable area depend on. */
 const ATTRIBUTE_PROPERTIES = ['disabled', 'error', 'label'];
-
-const loadProseMirror = () => import('da-y-wrapper');
 
 const loadLinkDialog = () => import('../../shared/da-link-dialog/da-link-dialog.js');
 
@@ -60,22 +57,15 @@ class FormRichText extends LitElement {
     _link: { state: true },
   };
 
-  /** Loads ProseMirror. Tests replace it to load a stub or to fail. */
-  static loadProseMirror = loadProseMirror;
+  /** Loads the editor. Tests replace it to make loading fail. */
+  static loadEditor = loadRichTextEditor;
 
-  _proseMirror;
-
-  _schema;
-
-  /** @type {import('../utils/rich-text/codec.js').RichTextCodec} */
-  _codec;
+  _editor;
 
   _view;
 
   /** The value the editor shows, so the echo of a published value does not reset it. */
   _editorValue;
-
-  _toolset;
 
   /** Whether the value changed since the last `change` event. */
   _dirty = false;
@@ -126,17 +116,10 @@ class FormRichText extends LitElement {
     this._view?.focus();
   }
 
-  /** Loads ProseMirror and mounts the editor, or shows that it could not load. */
+  /** Loads and mounts the editor, or shows that it could not load. */
   async _loadEditor() {
     try {
-      this._proseMirror = await this.constructor.loadProseMirror();
-      this._schema = createSchema(this._proseMirror);
-      this._codec = createRichTextCodec({ proseMirror: this._proseMirror, schema: this._schema });
-      this._toolset = createToolset({
-        proseMirror: this._proseMirror,
-        schema: this._schema,
-        onLink: () => this._openLink(),
-      });
+      this._editor = await this.constructor.loadEditor({ onLink: () => this._openLink() });
       this._status = STATUS.ready;
       if (this.isConnected) {
         this._initEditor();
@@ -171,7 +154,7 @@ class FormRichText extends LitElement {
     }
 
     this._editorValue = value;
-    this._view.updateState(this._createState(value));
+    this._view.updateState(this._editor.createState(value));
     this._syncEditorState();
   }
 
@@ -236,29 +219,12 @@ class FormRichText extends LitElement {
     };
   }
 
-  /**
-   * Creates an editor state for a value, with fresh history.
-   * @param {string} value The HTML value.
-   * @returns {object} The ProseMirror editor state.
-   */
-  _createState(value) {
-    const proseMirror = this._proseMirror;
-    const schema = this._schema;
-    const plugins = [
-      proseMirror.history(),
-      proseMirror.keymap(buildKeymap({ proseMirror, schema, toolset: this._toolset })),
-      proseMirror.keymap(proseMirror.baseKeymap),
-    ];
-    const richTextDocument = this._codec.parse(value);
-    return proseMirror.EditorState.create({ doc: richTextDocument, plugins });
-  }
-
-  /** Mounts the editor with the current value. ProseMirror must be loaded. */
+  /** Mounts the editor with the current value. The editor must be loaded. */
   _initEditor() {
     const mount = this.shadowRoot.querySelector(SELECTORS.editor);
     this._editorValue = this.value ?? '';
-    this._view = new this._proseMirror.EditorView(mount, {
-      state: this._createState(this._editorValue),
+    this._view = this._editor.mount(mount, {
+      state: this._editor.createState(this._editorValue),
       editable: () => !this.disabled,
       attributes: this._attributes(),
       dispatchTransaction: (transaction) => this._dispatch(transaction),
@@ -281,7 +247,7 @@ class FormRichText extends LitElement {
 
   /** Publishes the value the editor shows and emits `input`, unless it did not change. */
   _publishValue() {
-    const value = this._codec.serialize(this._view.state.doc);
+    const value = this._editor.serialize(this._view.state);
     if (value === this._editorValue) {
       return;
     }
@@ -340,7 +306,7 @@ class FormRichText extends LitElement {
   _onLinkSubmit(event) {
     event.stopPropagation();
     const { href, text, title } = event.detail;
-    const link = applyLink({ proseMirror: this._proseMirror, href, text, title });
+    const link = this._editor.linkCommand({ href, text, title });
     link(this._view.state, this._view.dispatch);
     this.shadowRoot.querySelector(SELECTORS.linkDialog)?.close();
   }
@@ -404,7 +370,7 @@ class FormRichText extends LitElement {
         class=${floating ? 'form-rich-text-bubble' : nothing}
         ?floating=${floating}
         .editorState=${this._editorState}
-        .toolset=${this._toolset}
+        .toolset=${this._editor?.toolset}
         .focused=${!!this._focused}
         .openTool=${this._link ? TOOL_IDS.link : undefined}
         .disabled=${!this._canEdit}
