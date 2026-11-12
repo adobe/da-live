@@ -9,7 +9,7 @@ const schema = createSchema(proseMirror);
 const { parse, serialize } = createRichTextCodec({ proseMirror, schema });
 const roundTrip = (value) => serialize(parse(value));
 
-const sdkSchema = { type: 'object', properties: { body: { type: 'string', 'x-semantic-type': 'rich-text' } } };
+const sdkSchema = { type: 'object', properties: { body: { type: 'string', 'x-semantic-type': 'html' } } };
 const sdkStores = (body) => {
   const json = { metadata: { schemaName: 'x' }, data: { body } };
   const { model } = createEngine({ schema: sdkSchema, document: json }).getState();

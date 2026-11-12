@@ -248,7 +248,7 @@ describe('loadFormContext', () => {
   describe('rich text', () => {
     it('reads the markup from its own block without the schema', async () => {
       const html = scHtml({
-        name: '<p>self://rich-text#name-1</p>',
+        name: '<p>self://html#name-1</p>',
         blocks: '<div class="name name-1"><div><div><p>Hi <strong>Alice</strong></p></div></div></div>',
       });
       const result = await loadFormContext({

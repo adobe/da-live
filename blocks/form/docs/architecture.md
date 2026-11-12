@@ -65,7 +65,7 @@ views/           →  (SDK engine only via prop binding from the element — no 
 
 The SDK is the only piece that holds canonical state. Everything in `utils/` and `views/` is specific to the form block. That covers DA I/O, UI components, schema discovery and single-flight save.
 
-Rich-text fields (`"x-semantic-type": "rich-text"`) render a ProseMirror editor in `fields/rich-text.js`. The SDK owns their value contract and storage, as its [schema spec](https://github.com/adobe/da-sc-sdk/blob/main/docs/schema-spec.md) describes. ProseMirror comes from the `da-y-wrapper` bundle the Canvas editor already loads, so the form block does not bundle it.
+Rich-text fields (`"x-semantic-type": "html"`) render a ProseMirror editor in `fields/rich-text.js`. The SDK owns their value contract and storage, as its [schema spec](https://github.com/adobe/da-sc-sdk/blob/main/docs/schema-spec.md) describes. ProseMirror comes from the `da-y-wrapper` bundle the Canvas editor already loads, so the form block does not bundle it.
 
 The editor schema in `utils/rich-text/schema.js` only allows the subset the SDK keeps. The field gets its editor from `utils/rich-text/editor.js`, which loads ProseMirror on demand and puts the schema, the codec and the toolset together, so the field does not depend on ProseMirror. The codec in `utils/rich-text/codec.js` reads and writes values with ProseMirror today. The SDK brings each value into its canonical HTML when it saves. Parity tests run every case through the SDK converters, so a saved value reloads as the same document.
 

@@ -287,7 +287,7 @@ class Editor extends LitElement {
       `;
     }
 
-    if (node.semanticType === 'rich-text') {
+    if (node.semanticType === 'html') {
       return html`
         <form-rich-text
           data-pointer=${pointer}

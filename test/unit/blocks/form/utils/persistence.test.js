@@ -198,7 +198,7 @@ describe('attachPersistence', () => {
   it('writes a rich-text value into a block of its own', async () => {
     const schema = {
       type: 'object',
-      properties: { body: { type: 'string', 'x-semantic-type': 'rich-text' } },
+      properties: { body: { type: 'string', 'x-semantic-type': 'html' } },
     };
     const editor = createEngine({
       schema,
@@ -210,7 +210,7 @@ describe('attachPersistence', () => {
     editor.setField('/data/body', '<p>Hello <strong>bold</strong></p>');
     p.notify();
     await tick();
-    expect(calls[0].html).to.include('self://rich-text#body-1');
+    expect(calls[0].html).to.include('self://html#body-1');
     expect(calls[0].html).to.include('<p>Hello <strong>bold</strong></p>');
     release();
     p.detach();
