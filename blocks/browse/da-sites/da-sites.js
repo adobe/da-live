@@ -1,9 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2, sanitizeName } from '../../../scripts/utils.js';
-import initGreeting from '../../shared/da-greeting/da-greeting.js';
+import { getNx, sanitizeName } from '../../../scripts/utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const { loadIms } = await import(`${getNx2()}/utils/ims.js`);
 const styles = await loadStyle(import.meta.url);
 
 const RANDOM_MAX = 8;
@@ -25,17 +23,14 @@ export default class DaSites extends LitElement {
     this._urlError = false;
   }
 
-  connectedCallback() {
+  async connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [styles];
     this._recents = this.getRecents();
     if (this.greeting) {
-      const profile = loadIms().catch(() => undefined);
-      const greeting = initGreeting(this.greeting.cloneNode(true), { profile });
+      const greeting = await this.greeting;
+      if (!this.isConnected) return;
       greeting.slot = 'greeting';
-      profile.then((ims) => {
-        greeting.variant = ims?.accessToken && !ims.anonymous ? 'user' : undefined;
-      });
       this.replaceChildren(greeting);
     }
   }
@@ -212,7 +207,7 @@ export default class DaSites extends LitElement {
 
   render() {
     return html`
-      <div class="da-site-container">
+      <div class="da-site-container ${this.greeting ? 'has-greeting' : ''}">
         ${this.greeting ? html`
           <div class="da-site-greeting"><slot name="greeting"></slot></div>` : nothing}
         <div class="da-site-header">

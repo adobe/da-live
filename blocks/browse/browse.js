@@ -1,5 +1,6 @@
 import { getNx } from '../../scripts/utils.js';
 import { fetchDaConfigs } from '../shared/utils.js';
+import initGreeting from '../greeting/greeting.js';
 import { getBrowseComponent, resolveBrowsePath } from './utils.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -10,13 +11,8 @@ function takeGreeting(el) {
   const section = el.closest('.section')?.nextElementSibling;
   const greeting = section?.querySelector('div.greeting');
   if (!greeting) return undefined;
-  // NX snapshots these queues before Browse initializes.
-  section.blocks = [];
-  section.autoBlocks = [];
-  section.linkBlocks = [];
-  section.replaceChildren();
   section.remove();
-  return greeting;
+  return initGreeting(greeting);
 }
 
 // to be removed when the v2 nav is fully integrated
