@@ -18,7 +18,7 @@ describe('greeting page block', () => {
 
   afterEach(() => {
     container.remove();
-    document.body.classList.remove('start', 'ui-size-m');
+    document.body.classList.remove('ui-size-m');
     document.adoptedStyleSheets = sheets;
     loadIms.reset();
     loadIms.resolves({ accessToken: { token: 'test-token' } });
@@ -53,12 +53,14 @@ describe('greeting page block', () => {
     const originalSize = getComputedStyle(heading).fontSize;
     expect(getComputedStyle(greeting).textAlign).not.to.equal('center');
 
-    document.body.classList.add('start');
+    const addSite = document.createElement('div');
+    addSite.className = 'add-site';
+    container.append(addSite);
     expect(getComputedStyle(greeting).textAlign).to.equal('center');
     expect(getComputedStyle(heading).fontSize).to.equal('20px');
     document.body.classList.add('ui-size-m');
     expect(getComputedStyle(heading).fontSize).to.equal('22px');
-    document.body.classList.remove('start');
+    addSite.remove();
     expect(getComputedStyle(greeting).textAlign).not.to.equal('center');
     expect(getComputedStyle(heading).fontSize).to.equal(originalSize);
   });

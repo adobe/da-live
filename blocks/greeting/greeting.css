@@ -1,19 +1,19 @@
-body.start .greeting {
+body:has(main .add-site) .greeting {
   display: block;
   margin-block: var(--s2-spacing-600);
   padding-inline: var(--s2-spacing-400);
   text-align: center;
 }
 
-body.start .greeting h1 {
+body:has(main .add-site) .greeting h1 {
   margin: 0;
   font-size: var(--s2-heading-size-s);
 }
 
-body.start .greeting p {
+body:has(main .add-site) .greeting p {
   margin: var(--s2-spacing-100) 0 0;
 }
 
-body.start.ui-size-m .greeting h1 {
+body.ui-size-m:has(main .add-site) .greeting h1 {
   font-size: var(--s2-heading-size-m);
 }
