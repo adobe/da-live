@@ -33,10 +33,6 @@ class DaLinkDialog extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [formStyle, styles];
   }
 
-  close() {
-    this.shadowRoot.querySelector('nx-dialog')?.close();
-  }
-
   _onSubmit(event) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -60,6 +56,10 @@ class DaLinkDialog extends LitElement {
       bubbles: true,
       composed: true,
     }));
+  }
+
+  _onCancel() {
+    this.shadowRoot.querySelector('nx-dialog').close();
   }
 
   _onKeydown(event) {
@@ -97,7 +97,7 @@ class DaLinkDialog extends LitElement {
             </label>` : nothing}
         </form>
         <button type="button" slot="actions" class="nx-form-btn-secondary"
-          @click=${this.close}>Cancel</button>
+          @click=${this._onCancel}>Cancel</button>
         <button type="submit" form="link-form" slot="actions"
           class="nx-form-btn-primary">${this.saveLabel ?? 'Save'}</button>
       </nx-dialog>

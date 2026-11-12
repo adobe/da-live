@@ -23,7 +23,6 @@ const SELECTORS = {
   toolbars: 'form-rich-text-toolbar',
   bubble: '.form-rich-text-bubble',
   editor: '.form-rich-text-editor',
-  linkDialog: 'da-link-dialog',
 };
 
 /** The properties the attributes of the editable area depend on. */
@@ -299,6 +298,12 @@ class FormRichText extends LitElement {
     this._link = draft;
   }
 
+  /** Closes the link dialog and returns the focus to the editor. */
+  _closeLink() {
+    this._link = undefined;
+    this._view?.focus();
+  }
+
   /**
    * Applies the link the author entered and closes the dialog.
    * @param {CustomEvent} event The `da-link-submit` event.
@@ -306,19 +311,18 @@ class FormRichText extends LitElement {
   _onLinkSubmit(event) {
     event.stopPropagation();
     const { href, text, title } = event.detail;
+    this._closeLink();
     const link = this._editor.linkCommand({ href, text, title });
     link(this._view.state, this._view.dispatch);
-    this.shadowRoot.querySelector(SELECTORS.linkDialog)?.close();
   }
 
   /**
-   * Forgets the closed link dialog and returns the focus to the editor.
+   * Closes the link dialog when the author cancels it.
    * @param {Event} event The `close` event of the dialog.
    */
   _onLinkClose(event) {
     event.stopPropagation();
-    this._link = undefined;
-    this._view?.focus();
+    this._closeLink();
   }
 
   /** Emits `change` when the value changed since the last one. */
