@@ -5,6 +5,9 @@ import { LIST_NAMES } from './schema.js';
 /** The whitespace HTML collapses. */
 const WHITESPACE = /[ \t\n\r\f]+/g;
 
+/** Parses HTML into inert documents. It keeps no state, so one serves every value. */
+const HTML_PARSER = new DOMParser();
+
 /** The entities of the characters HTML escapes. */
 const ENTITIES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
 
@@ -38,13 +41,6 @@ const hasText = (html) => html.replace(/<[^>]*>/g, '').trim() !== '';
 const trimEdges = (html) => html.replace(/^(?:\s|<br>)+|(?:\s|<br>)+$/g, '');
 
 /**
- * Answers whether a value is HTML rather than plain text.
- * @param {string} value The value.
- * @returns {boolean} Whether the value holds a tag.
- */
-const isMarkup = (value) => /<[a-z/!]/i.test(value);
-
-/**
  * Turns plain text into paragraphs. Blank lines separate paragraphs, single line breaks
  * become `<br>`.
  * @param {string} text The plain text.
@@ -65,8 +61,15 @@ function plainTextToHtml(text) {
 }
 
 /**
- * Parses a stored value into a document. Plain text from before the field was rich text
- * becomes paragraphs.
+ * Parses HTML into the body of an inert document, so no scripts run and no resources load.
+ * @param {string} html The HTML.
+ * @returns {HTMLElement} The body.
+ */
+const parseHtml = (html) => HTML_PARSER.parseFromString(html, 'text/html').body;
+
+/**
+ * Parses a stored value into a document. A value without elements is plain text from before
+ * the field was rich text and becomes paragraphs.
  * @param {object} options The value and the parser.
  * @param {object} options.proseMirror The da-y-wrapper namespace.
  * @param {object} options.schema The schema built from `SCHEMA_SPEC`.
@@ -75,9 +78,8 @@ function plainTextToHtml(text) {
  */
 export function parseRichText({ proseMirror, schema, value }) {
   const text = typeof value === 'string' ? value : '';
-  const markup = isMarkup(text) ? text : plainTextToHtml(text);
-  // DOMParser builds an inert document, so no scripts run and no resources load.
-  const { body } = new globalThis.DOMParser().parseFromString(markup, 'text/html');
+  const parsed = parseHtml(text);
+  const body = parsed.firstElementChild ? parsed : parseHtml(plainTextToHtml(text));
   return proseMirror.DOMParser.fromSchema(schema).parse(body);
 }
 
