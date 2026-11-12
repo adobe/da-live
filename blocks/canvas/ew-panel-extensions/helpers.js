@@ -6,10 +6,13 @@ import { daFetch, getAuthToken } from '../../shared/utils.js';
 import { fetchLibrarySource } from '../../shared/library-source.js';
 import { CON_ORIGIN, getPreviewOrigin } from '../../shared/constants.js';
 import { getPreviewProxyDetails, ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
-import { getCanvasBranch } from '../utils/branch.js';
+import { getCanvasBranch, whenCanvasBranch } from '../utils/branch.js';
 import { htmlToProse } from '../../edit/utils/helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { getBlockPositions } from '../editor-utils/blocks.js';
+import { canvasBus } from '../utils/canvas-bus.js';
+import createPreflightView from '../../shared/preflight/preflight-view.js';
+import createExperienceContextEvaluator from '../../shared/preflight/experience-context.js';
 import {
   getCommentsBridge,
   formatCommentsViewLabel,
@@ -893,15 +896,15 @@ function createVersioningView() {
   };
 }
 
-export function createPreflightView() {
+export function createMetadataView() {
   return {
-    id: 'preflight',
-    label: 'Preflight',
+    id: 'metadata',
+    label: 'Page',
     section: 'Editor',
     firstParty: true,
     load: async () => {
-      await import('../ew-preflight/ew-preflight-host.js');
-      return document.createElement('ew-preflight-host');
+      await import('../ew-page-metadata/ew-page-metadata.js');
+      return document.createElement('ew-page-metadata');
     },
   };
 }
@@ -923,17 +926,8 @@ export function createCommentsView() {
   };
 }
 
-export function createMetadataView() {
-  return {
-    id: 'metadata',
-    label: 'Page',
-    section: 'Editor',
-    firstParty: true,
-    load: async () => {
-      await import('../ew-page-metadata/ew-page-metadata.js');
-      return document.createElement('ew-page-metadata');
-    },
-  };
+function createCanvasPreflightPage() {
+  return { subscribeActiveView: (listener) => canvasBus.toolPanelViewState.subscribe(listener) };
 }
 
 export function extensionToPanelView(ext, section) {
@@ -1033,11 +1027,7 @@ export function extensionToPanelView(ext, section) {
   return view;
 }
 
-/**
- * Tool panel: Editor placeholder, Library (blocks / AEM Assets / icons / templates / placeholders),
- * Extensions (other plugins).
- */
-export async function getCanvasToolPanelViews({ org, site }) {
+export async function getCanvasToolPanelViews({ org, site }, { publishHook } = {}) {
   const extensions = await fetchExtensions(org, site);
   const library = sortLibraryExtensions(extensions.filter(
     (ext) => isLibraryExtension(ext) && ext.name !== 'aem-assets',
@@ -1050,7 +1040,11 @@ export async function getCanvasToolPanelViews({ org, site }) {
     createFileExplorerView(),
     createVersioningView(),
     createCommentsView(),
-    createPreflightView(),
+    createPreflightView({
+      page: createCanvasPreflightPage(),
+      evaluator: createExperienceContextEvaluator({ resolveBranch: whenCanvasBranch }),
+      publishHook,
+    }),
     ...library.map((ext) => extensionToPanelView(ext, 'Library')),
     ...thirdParty.map((ext) => extensionToPanelView(ext, 'Extensions')),
   ];
