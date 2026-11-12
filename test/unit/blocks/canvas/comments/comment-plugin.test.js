@@ -527,6 +527,29 @@ describe('commentPlugin', () => {
       expect(decodeAnchor({ anchor: store.get('t1'), state: editor.view.state })).to.deep.equal(expected);
     });
 
+    it('keeps a comment spanning paragraphs attached when its section moves', async () => {
+      const { store } = await setup();
+      const { schema } = editor.view.state;
+      const para = (t) => schema.node('paragraph', null, schema.text(t));
+      editor.view.dispatch(editor.view.state.tr.replaceWith(0, editor.view.state.doc.content.size, [
+        para('alpha'), schema.nodes.horizontal_rule.create(), para('beta'), para('gamma'),
+      ]));
+      const span = () => ({ from: textRange('beta').from, to: textRange('gamma').to });
+      addComment(store, 't1', { ...span(), anchorType: 'text', anchorText: 'beta gamma' });
+      controller.setPanelOpen(panelOpen);
+      await tick();
+
+      moveSection(editor.view, 1, 0, 'before');
+      await tick();
+
+      const expected = span();
+      if (panelOpen) {
+        const { ranges } = commentPluginKey.getState(editor.view.state);
+        expect(ranges.get('t1')).to.deep.include(expected);
+      }
+      expect(decodeAnchor({ anchor: store.get('t1'), state: editor.view.state })).to.deep.equal(expected);
+    });
+
     it('keeps a block comment on its block when blocks are reordered', async () => {
       const { store } = await setup();
       const { schema } = editor.view.state;

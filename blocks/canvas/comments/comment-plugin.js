@@ -110,16 +110,18 @@ function nodeLocator(tr, offsets, isUndo) {
 }
 
 function relocateEntry(entry, tr, locate) {
-  if (entry.to > tr.before.content.size) return null;
-  const $from = tr.before.resolve(entry.from);
-  const index = $from.index(0);
-  const node = tr.before.maybeChild(index);
-  if (!node) return null;
-  const start = $from.posAtIndex(index, 0);
-  if (entry.to > start + node.nodeSize) return null;
-  const offset = locate(node);
-  if (offset == null) return null;
-  const shift = offset - start;
+  const { before } = tr;
+  if (entry.from >= entry.to || entry.to > before.content.size) return null;
+  const $from = before.resolve(entry.from);
+  const last = before.resolve(entry.to - 1).index(0);
+  let shift = null;
+  for (let index = $from.index(0); index <= last; index += 1) {
+    const offset = locate(before.child(index));
+    const nodeShift = offset == null ? null : offset - $from.posAtIndex(index, 0);
+    if (nodeShift == null || (shift != null && nodeShift !== shift)) return null;
+    shift = nodeShift;
+  }
+  if (shift == null) return null;
   return { ...entry, from: entry.from + shift, to: entry.to + shift };
 }
 
