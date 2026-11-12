@@ -1,22 +1,31 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2, getNx2Api } from '../../../scripts/utils.js';
-import { listFolder, itemHashPath, getAemUrl } from '../../shared/daFiles.js';
-import { iconPathForExt } from '../../shared/icons.js';
-import { EMPTY_DOC } from '../../shared/utils.js';
-import getEditPath from '../../shared/da-file-item/edit-path.js';
-import getSheet from '../../shared/sheet.js';
-import { chatTurnCompleted } from '../../shared/chat-panel.js';
-import '../../shared/da-name-dialog/da-name-dialog.js';
+import { FILE_EXPLORER_TAG } from './file-explorer-view.js';
+import { listFolder, itemHashPath, getAemUrl } from '../daFiles.js';
+import { iconPathForExt } from '../icons.js';
+import { EMPTY_DOC } from '../utils.js';
+import getEditPath from '../da-file-item/edit-path.js';
+import getSheet from '../sheet.js';
+import { chatTurnCompleted } from '../chat-panel.js';
+import '../da-name-dialog/da-name-dialog.js';
 
-const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
-const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
-const { crawl } = await import(`${getNx()}/public/utils/tree.js`);
-await import(`${getNx()}/blocks/shared/picker/picker.js`);
-await import(`${getNx()}/blocks/shared/search/search.js`);
-const { treegridEnsureTabStop, treegridFocusIn, treegridKeydown } = await import(`${getNx2()}/blocks/shared/utils/treegrid-nav.js`);
+const nx = getNx();
+const [{ loadStyle, hashChange }, { CHAT_EVENT }, { crawl }] = await Promise.all([
+  import(`${nx}/utils/utils.js`),
+  import(`${nx}/utils/chat.js`),
+  import(`${nx}/public/utils/tree.js`),
+  import(`${nx}/blocks/shared/picker/picker.js`),
+  import(`${nx}/blocks/shared/search/search.js`),
+]);
 
-const [buttons, style] = await Promise.all([
-  getSheet(`${getNx2()}/styles/buttons.css`),
+const nx2 = getNx2();
+const [
+  { treegridEnsureTabStop, treegridFocusIn, treegridKeydown },
+  buttons,
+  style,
+] = await Promise.all([
+  import(`${nx2}/blocks/shared/utils/treegrid-nav.js`),
+  getSheet(`${nx2}/styles/buttons.css`),
   loadStyle(import.meta.url),
 ]);
 
@@ -74,7 +83,7 @@ const CHECKMARK_ICON_SRC = '/img/icons/s2-icon-checkmark-20-n.svg';
 const REFRESH_ICON_HTML = `<svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${REFRESH_ICON_SRC}#icon"></use></svg>`;
 const REFRESH_SPINNER_HTML = '<span class="nx-loading-spinner" aria-hidden="true"></span>';
 
-class EwFileExplorer extends LitElement {
+class DaFileExplorer extends LitElement {
   static properties = {
     _cache: { state: true },
     _loading: { state: true },
@@ -719,4 +728,4 @@ class EwFileExplorer extends LitElement {
   }
 }
 
-customElements.define('ew-file-explorer', EwFileExplorer);
+customElements.define(FILE_EXPLORER_TAG, DaFileExplorer);

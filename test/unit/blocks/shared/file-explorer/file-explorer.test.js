@@ -62,18 +62,18 @@ function holdFetch(listingsByFullpath, held) {
 }
 
 async function withRealCss(el) {
-  const cssText = await (await fetch('/blocks/canvas/ew-file-explorer/ew-file-explorer.css')).text();
+  const cssText = await (await fetch('/blocks/shared/file-explorer/file-explorer.css')).text();
   const realSheet = new CSSStyleSheet();
   realSheet.replaceSync(cssText);
   el.shadowRoot.adoptedStyleSheets = [...el.shadowRoot.adoptedStyleSheets, realSheet];
 }
 
-describe('EwFileExplorer', () => {
+describe('DaFileExplorer', () => {
   let el;
 
   beforeEach(async () => {
-    await import('../../../../../blocks/canvas/ew-file-explorer/ew-file-explorer.js');
-    el = document.createElement('ew-file-explorer');
+    await import('../../../../../blocks/shared/file-explorer/file-explorer.js');
+    el = document.createElement('da-file-explorer');
     document.body.appendChild(el);
     await el.updateComplete;
   });
@@ -909,7 +909,7 @@ describe('EwFileExplorer', () => {
     it('keeps row controls out of the tab order', async () => {
       el._cache = { '/org/site': [{ name: 'a.html', path: '/org/site/a.html', ext: 'html' }] };
       await el.updateComplete;
-      const grid = () => axTree('ew-file-explorer >>> [role="treegrid"]');
+      const grid = () => axTree('da-file-explorer >>> [role="treegrid"]');
       expect(axAll(await grid(), 'button').map((b) => b.name))
         .to.deep.equal(['New page in site', 'Copy URL for a.html']);
 
@@ -953,7 +953,7 @@ describe('EwFileExplorer', () => {
   });
 
   describe('file treegrid', () => {
-    const GRID = 'ew-file-explorer >>> [role="treegrid"]';
+    const GRID = 'da-file-explorer >>> [role="treegrid"]';
     const rowEl = (text) => [...el.shadowRoot.querySelectorAll('[role="row"]')]
       .find((r) => r.querySelector('.label').textContent.trim() === text);
     const axRows = async () => axAll(await axTree(GRID), 'row')
@@ -1084,7 +1084,7 @@ describe('EwFileExplorer', () => {
   });
 
   describe('search results treegrid', () => {
-    const GRID = 'ew-file-explorer >>> [role="treegrid"]';
+    const GRID = 'da-file-explorer >>> [role="treegrid"]';
 
     beforeEach(async () => {
       el._org = 'org';
