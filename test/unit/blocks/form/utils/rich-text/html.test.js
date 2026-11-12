@@ -89,6 +89,11 @@ describe('rich-text html', () => {
       expect(roundTrip('a < b')).to.equal('<p>a &lt; b</p>');
     });
 
+    it('reads a less-than sign in plain text like the SDK', () => {
+      expect(roundTrip('if a<b then c')).to.equal('<p>if a&lt;b then c</p>');
+      expect(sdkStores('if a<b then c')).to.equal('<p>if a&lt;b then c</p>');
+    });
+
     it('produces values the SDK keeps unchanged', () => {
       const values = [
         '<h2>Title</h2><p><a href="/a"><strong>b<em>i</em></strong></a> <u>u</u><s>s</s></p>',
