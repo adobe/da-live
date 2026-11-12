@@ -520,6 +520,34 @@ describe('updateDocument rerender scopes', () => {
     expect(lastScope()).to.deep.equal({ type: 'page' });
   });
 
+  it('normalizes empty cells across live updates and retains surviving prose and block indices', () => {
+    mount([table('example', 'Content')]);
+    replaceChild(0, table('example', ''));
+    updateDocument(ctx);
+    const parseBlock = () => new DOMParser()
+      .parseFromString(bodies().at(-1).payload.body, 'text/html').querySelector('.example');
+    let block = parseBlock();
+    expect(block.dataset.blockIndex).to.equal('1');
+    expect(block.innerHTML).to.equal('<div><div></div></div>');
+    replaceChild(0, table('example', 'Restored'));
+    updateDocument(ctx);
+    block = parseBlock();
+    expect(block.querySelector('p[data-prose-index]').textContent).to.equal('Restored');
+    expect(block.dataset.blockIndex).to.equal('1');
+    expect(ctx.view.state.doc.textContent).to.equal('exampleRestored');
+  });
+
+  it('supplies a content cell for a header-only block on initial and subsequent updates', () => {
+    mount([table('example'), p('Content')]);
+    replaceChild(1, p('Updated'));
+    updateDocument(ctx);
+    bodies().forEach(({ payload }) => {
+      const block = new DOMParser().parseFromString(payload.body, 'text/html').querySelector('.example');
+      expect(block.innerHTML).to.equal('<div><div></div></div>');
+      expect(block.dataset.blockIndex).to.equal('1');
+    });
+  });
+
   it('scopes a change to the first node of a section to that section', () => {
     mount([p('Intro'), hr(), h('Title'), p('Tail')]);
     dispatch((tr) => tr.setNodeMarkup(posOf(2), null, { level: 3 }));
