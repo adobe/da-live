@@ -49,7 +49,7 @@ function expectedTag(node) {
   if (Array.isArray(node.enumValues)) return 'EW-FORM-PICKER';
   if (node.kind === 'boolean') return 'EW-FORM-CHECKBOX';
   if (node.kind === 'number' || node.kind === 'integer') return 'EW-FORM-NUMBER-FIELD';
-  if (node.kind === 'string' && node.semanticType === 'rich-text') return 'FORM-RICH-TEXT';
+  if (node.kind === 'string' && node.semanticType === 'html') return 'FORM-RICH-TEXT';
   if (node.kind === 'string' && node.semanticType === 'long-text') return 'EW-FORM-TEXTAREA';
   return 'EW-FORM-INPUT';
 }
