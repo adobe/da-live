@@ -12,7 +12,7 @@
 }
 
 nav {
-  padding: var(--s2-spacing-100) var(--s2-spacing-100) var(--s2-spacing-100) 0;
+  padding: var(--s2-spacing-100) var(--s2-spacing-100) var(--s2-spacing-100) var(--s2-spacing-200);
   line-height: 28px;
 }
 
