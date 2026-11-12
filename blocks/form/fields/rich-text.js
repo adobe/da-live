@@ -3,7 +3,7 @@ import { getNx2 } from '../../../scripts/utils.js';
 import defaults from './defaults.js';
 import { icon } from '../icons.js';
 import './rich-text-toolbar.js';
-import { SCHEMA_SPEC } from '../utils/rich-text/schema.js';
+import { createSchema } from '../utils/rich-text/schema.js';
 import { parseRichText, serializeRichText, getCanonicalChange } from '../utils/rich-text/html.js';
 import { getLinkDraft, applyLink } from '../utils/rich-text/commands.js';
 import { TOOL_IDS, buildKeymap, createToolset } from '../utils/rich-text/tools.js';
@@ -127,7 +127,7 @@ class FormRichText extends LitElement {
   async _loadEditor() {
     try {
       this._proseMirror = await this.constructor.loadProseMirror();
-      this._schema = new this._proseMirror.Schema(SCHEMA_SPEC);
+      this._schema = createSchema(this._proseMirror);
       this._toolset = createToolset({
         proseMirror: this._proseMirror,
         schema: this._schema,

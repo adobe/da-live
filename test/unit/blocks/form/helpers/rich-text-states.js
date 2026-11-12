@@ -1,8 +1,8 @@
 import * as proseMirror from 'da-y-wrapper';
-import { SCHEMA_SPEC } from '../../../../../blocks/form/utils/rich-text/schema.js';
+import { createSchema } from '../../../../../blocks/form/utils/rich-text/schema.js';
 import { parseRichText, serializeRichText } from '../../../../../blocks/form/utils/rich-text/html.js';
 
-export const schema = new proseMirror.Schema(SCHEMA_SPEC);
+export const schema = createSchema(proseMirror);
 
 export function stateFor(value, { from, to } = {}) {
   const richTextDocument = parseRichText({ proseMirror, schema, value });
