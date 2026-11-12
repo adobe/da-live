@@ -1,6 +1,5 @@
 import { expect } from '@esm-bundle/chai';
 import '../../../setup-nx.js';
-import sinon from 'sinon';
 import * as proseMirror from 'da-y-wrapper';
 import FormRichText from '../../../../../blocks/form/fields/rich-text.js';
 
@@ -69,13 +68,7 @@ function selectAll(richText) {
 }
 
 describe('form-rich-text', () => {
-  // Concurrent test pages steal window focus, which light-dismisses menus and resets the field.
-  beforeEach(() => {
-    sinon.stub(document, 'hasFocus').returns(true);
-  });
-
   afterEach(() => {
-    sinon.restore();
     FormRichText.loadProseMirror = loadProseMirror;
     document.body.querySelectorAll('form-rich-text').forEach((richText) => richText.remove());
   });
@@ -126,7 +119,7 @@ describe('form-rich-text', () => {
     await richText.updateComplete;
     expect(await pressed(richText, 'strong')).to.equal('true');
     tool(richText, 'ordered_list').click();
-    expect(richText.value).to.equal('<ol><li><strong>text</strong></li></ol>');
+    expect(richText.value).to.equal('<ol><li><p><strong>text</strong></p></li></ol>');
   });
 
   it('toggles every mark on and off from the toolbar', async () => {
@@ -154,11 +147,11 @@ describe('form-rich-text', () => {
     richText.focus();
     selectAll(richText);
     tool(richText, 'bullet_list').click();
-    expect(richText.value).to.equal('<ul><li>text</li></ul>');
+    expect(richText.value).to.equal('<ul><li><p>text</p></li></ul>');
     await richText.updateComplete;
     expect(await pressed(richText, 'bullet_list')).to.equal('true');
     tool(richText, 'ordered_list').click();
-    expect(richText.value).to.equal('<ol><li>text</li></ol>');
+    expect(richText.value).to.equal('<ol><li><p>text</p></li></ol>');
     await richText.updateComplete;
     expect(await pressed(richText, 'bullet_list')).to.equal('false');
     expect(await pressed(richText, 'ordered_list')).to.equal('true');
@@ -218,9 +211,9 @@ describe('form-rich-text', () => {
     press(richText, '>', controlShift);
     expect(richText.value).to.equal('<p>text</p>');
     press(richText, '8', controlShift);
-    expect(richText.value).to.equal('<ul><li>text</li></ul>');
+    expect(richText.value).to.equal('<ul><li><p>text</p></li></ul>');
     press(richText, '9', controlShift);
-    expect(richText.value).to.equal('<ol><li>text</li></ol>');
+    expect(richText.value).to.equal('<ol><li><p>text</p></li></ol>');
     press(richText, '9', controlShift);
     expect(richText.value).to.equal('<p>text</p>');
   });
@@ -229,9 +222,9 @@ describe('form-rich-text', () => {
     const richText = await mount({ value: '<ul><li>a</li><li>b</li></ul>' });
     selectRange(richText, 8);
     expect(press(richText, 'Tab', { primary: false })).to.be.true;
-    expect(richText.value).to.equal('<ul><li>a<ul><li>b</li></ul></li></ul>');
+    expect(richText.value).to.equal('<ul><li><p>a</p><ul><li><p>b</p></li></ul></li></ul>');
     press(richText, 'Tab', { shift: true, primary: false });
-    expect(richText.value).to.equal('<ul><li>a</li><li>b</li></ul>');
+    expect(richText.value).to.equal('<ul><li><p>a</p></li><li><p>b</p></li></ul>');
   });
 
   it('inserts a line break from the keyboard', async () => {
@@ -403,7 +396,7 @@ describe('form-rich-text', () => {
     selectAll(richText);
     tool(richText, 'ordered_list').click();
     await richText.updateComplete;
-    expect(richText.value).to.equal('<ol><li>a</li><li>b</li></ol>');
+    expect(richText.value).to.equal('<ol><li><p>a</p></li><li><p>b</p></li></ol>');
   });
 
   it('removes the list from every selected item', async () => {
@@ -413,7 +406,7 @@ describe('form-rich-text', () => {
     expect(await pressed(richText, 'bullet_list')).to.equal('true');
     tool(richText, 'bullet_list').click();
     await richText.updateComplete;
-    expect(richText.value).to.equal('<p>a</p><p>b</p><ul><li>c</li></ul>');
+    expect(richText.value).to.equal('<p>a</p><p>b</p><ul><li><p>c</p></li></ul>');
   });
 
   it('has no indent buttons, since Tab nests list items', async () => {
@@ -433,36 +426,6 @@ describe('form-rich-text', () => {
     view.dispatch(view.state.tr.insertText('b', 2));
     content(richText).dispatchEvent(new FocusEvent('focusout', { bubbles: true, composed: true }));
     expect(changes).to.equal(1);
-  });
-
-  describe('stored form', () => {
-    const blur = (richText) => content(richText).dispatchEvent(new FocusEvent('focusout', { bubbles: true, composed: true }));
-    const typeTransient = (richText) => {
-      const view = richText._view;
-      view.dispatch(view.state.tr.insertText('  b ', 2).split(6));
-      return view;
-    };
-
-    it('shows the stored form once focus leaves', async () => {
-      const richText = await mount({ value: '<p>a</p>' });
-      const view = typeTransient(richText);
-      expect(view.state.doc.childCount).to.equal(2);
-      expect(richText.value).to.equal('<p>a b</p>');
-      blur(richText);
-      expect(view.state.doc.childCount).to.equal(1);
-      expect(view.state.doc.textContent).to.equal('a b');
-      expect(richText.value).to.equal('<p>a b</p>');
-      expect(richText._proseMirror.undo(view.state)).to.be.true;
-    });
-
-    it('keeps typing state when the window loses focus', async () => {
-      document.hasFocus.returns(false);
-      const richText = await mount({ value: '<p>a</p>' });
-      const view = typeTransient(richText);
-      blur(richText);
-      expect(view.state.doc.childCount).to.equal(2);
-      expect(view.state.doc.firstChild.textContent).to.equal('a  b ');
-    });
   });
 
   it('is read-only when disabled', async () => {

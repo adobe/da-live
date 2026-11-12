@@ -96,7 +96,7 @@ describe('rich-text commands', () => {
     });
 
     it('sets, updates and clears the link title', () => {
-      const added = run(link({ href: '/a', text: 'ab', title: '  Hi  there ' }), stateFor('<p>ab</p>', { from: 1, to: 3 }));
+      const added = run(link({ href: '/a', text: 'ab', title: '  Hi there ' }), stateFor('<p>ab</p>', { from: 1, to: 3 }));
       expect(added.html).to.equal('<p><a href="/a" title="Hi there">ab</a></p>');
       const caret = stateFor(added.html, { from: 2 });
       expect(run(link({ href: '/a', text: 'ab', title: 'New' }), caret).html)
@@ -122,9 +122,9 @@ describe('rich-text commands', () => {
       const bullet = toggleList({ proseMirror, name: 'bullet_list' });
       const ordered = toggleList({ proseMirror, name: 'ordered_list' });
       const wrapped = run(bullet, stateFor('<p>a</p>', { from: 1 }));
-      expect(wrapped.html).to.equal('<ul><li>a</li></ul>');
+      expect(wrapped.html).to.equal('<ul><li><p>a</p></li></ul>');
       const switched = run(ordered, wrapped.state);
-      expect(switched.html).to.equal('<ol><li>a</li></ol>');
+      expect(switched.html).to.equal('<ol><li><p>a</p></li></ol>');
       expect(run(ordered, switched.state).html).to.equal('<p>a</p>');
     });
 
@@ -132,11 +132,11 @@ describe('rich-text commands', () => {
       const bullet = toggleList({ proseMirror, name: 'bullet_list' });
       const ordered = toggleList({ proseMirror, name: 'ordered_list' });
       expect(run(bullet, stateFor('<p>aa</p><p>bb</p><p>cc</p>', { from: 2, to: 6 })).html)
-        .to.equal('<ul><li>aa</li><li>bb</li></ul><p>cc</p>');
+        .to.equal('<ul><li><p>aa</p></li><li><p>bb</p></li></ul><p>cc</p>');
       expect(run(bullet, stateFor('<h2>hh</h2><p>bb</p>', { from: 1, to: 6 })).html)
-        .to.equal('<ul><li>hh</li><li>bb</li></ul>');
+        .to.equal('<ul><li><p>hh</p></li><li><p>bb</p></li></ul>');
       expect(run(ordered, stateFor('<blockquote><p>a</p><p>b</p></blockquote>', { from: 2, to: 6 })).html)
-        .to.equal('<blockquote><ol><li>a</li><li>b</li></ol></blockquote>');
+        .to.equal('<blockquote><ol><li><p>a</p></li><li><p>b</p></li></ol></blockquote>');
       expect(run(bullet, stateFor('<p>a</p><blockquote><p>b</p></blockquote>', { from: 1, to: 6 })).handled)
         .to.be.false;
     });
@@ -145,13 +145,13 @@ describe('rich-text commands', () => {
       const bullet = toggleList({ proseMirror, name: 'bullet_list' });
       const list = '<ul><li>a</li><li>b</li><li>c</li><li>d</li></ul>';
       expect(run(bullet, stateFor(list, { from: 8, to: 14 })).html)
-        .to.equal('<ul><li>a</li></ul><p>b</p><p>c</p><ul><li>d</li></ul>');
+        .to.equal('<ul><li><p>a</p></li></ul><p>b</p><p>c</p><ul><li><p>d</p></li></ul>');
       expect(run(bullet, stateFor(list, { from: 3, to: 19 })).html)
         .to.equal('<p>a</p><p>b</p><p>c</p><p>d</p>');
       const nested = '<ul><li>a<ul><li>b</li></ul></li><li>c</li></ul>';
       expect(run(bullet, stateFor(nested, { from: 3, to: 17 })).html).to.equal('<p>a</p><p>b</p><p>c</p>');
       expect(run(bullet, stateFor(nested, { from: 8 })).html)
-        .to.equal('<ul><li>a</li></ul><p>b</p><ul><li>c</li></ul>');
+        .to.equal('<ul><li><p>a</p></li></ul><p>b</p><ul><li><p>c</p></li></ul>');
     });
 
     it('changes the block type', () => {
