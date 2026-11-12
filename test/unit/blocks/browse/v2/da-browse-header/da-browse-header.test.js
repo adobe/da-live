@@ -94,6 +94,61 @@ describe('da-browse-header', () => {
     expect(settingsLabels()).to.include('Permissions');
   });
 
+  it('rechecks site-config access when switching between hlx6 sites in the same org', async () => {
+    const calls = [];
+    window.fetch = async (url) => {
+      calls.push(String(url));
+      if (String(url).includes('/ping/')) {
+        return new Response('', { headers: { 'x-api-upgrade-available': 'true' } });
+      }
+      return new Response(JSON.stringify({ config: [] }), { headers: { 'X-da-actions': String(url).includes('/sites/writable/') ? '/x=read,write' : '/x=read' } });
+    };
+    header.details = { org: 'hdr-hlx6-sites', site: 'writable', path: '' };
+    await header.updateComplete;
+    await header._orgConfigCheck;
+    await header.updateComplete;
+    expect(settingsLabels()).to.include('Permissions');
+
+    header.details = { org: 'hdr-hlx6-sites', site: 'readonly', path: '' };
+    await header.updateComplete;
+    await header._orgConfigCheck;
+    await header.updateComplete;
+    expect(settingsLabels()).not.to.include('Permissions');
+    expect(calls.filter((url) => url.startsWith('https://admin.da.live/config/'))).to.have.lengthOf(0);
+  });
+
+  it('ignores a previous site permission check that finishes after navigation', async () => {
+    let resolveWrite;
+    let notifyRequested;
+    const requested = new Promise((resolve) => { notifyRequested = resolve; });
+    window.fetch = async (url) => {
+      if (String(url).includes('/ping/')) {
+        return new Response('', { headers: { 'x-api-upgrade-available': 'true' } });
+      }
+      if (String(url).includes('/sites/writable/')) {
+        return new Promise((resolve) => {
+          resolveWrite = resolve;
+          notifyRequested();
+        });
+      }
+      return new Response(JSON.stringify({ config: [] }), { headers: { 'X-da-actions': '/x=read' } });
+    };
+
+    header.details = { org: 'hdr-hlx6-race', site: 'writable', path: '' };
+    await header.updateComplete;
+    await requested;
+    const firstCheck = header._orgConfigCheck;
+    header.details = { org: 'hdr-hlx6-race', site: 'readonly', path: '' };
+    await header.updateComplete;
+    await header._orgConfigCheck;
+    await header.updateComplete;
+
+    resolveWrite(new Response(JSON.stringify({ config: [] }), { headers: { 'X-da-actions': '/x=read,write' } }));
+    await firstCheck;
+    await header.updateComplete;
+    expect(settingsLabels()).not.to.include('Permissions');
+  });
+
   it('requests sorting without changing the supplied sort state', () => {
     let event;
     header.addEventListener('sortrequest', (e) => { event = e; });

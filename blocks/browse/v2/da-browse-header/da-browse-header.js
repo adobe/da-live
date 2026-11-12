@@ -43,11 +43,14 @@ export default class DaBrowseHeader extends LitElement {
 
   willUpdate(changed) {
     if (!changed.has('details')) return;
-    const org = this.details?.org;
-    if (org === changed.get('details')?.org) return;
+    const { org, site } = this.details ?? {};
+    const previous = changed.get('details');
+    if (org === previous?.org && site === previous?.site) return;
     this._canEditOrgConfig = false;
-    this._orgConfigCheck = canEditOrgConfig(org).then((canEdit) => {
-      if (this.details?.org === org) this._canEditOrgConfig = canEdit;
+    this._orgConfigCheck = canEditOrgConfig(org, site).then((canEdit) => {
+      if (this.details?.org === org && this.details?.site === site) {
+        this._canEditOrgConfig = canEdit;
+      }
     });
   }
 
