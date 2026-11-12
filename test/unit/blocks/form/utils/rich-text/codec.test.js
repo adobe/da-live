@@ -20,21 +20,21 @@ const sdkStores = (body) => {
 describe('rich-text codec', () => {
   describe('parse and serialize', () => {
     it('keeps the supported markup unchanged', () => {
-      const html = '<p>A <strong>bold</strong>, <em>em</em>, <u>u</u>, <s>s</s> and <a href="https://x.y">link</a>.</p>'
+      const html = '<p>A <strong>bold</strong>, <em>em</em>, <u>u</u>, <del>s</del> and <a href="https://x.y">link</a>.</p>'
         + '<ul><li><p>one</p><ol><li><p>nested</p></li></ol></li><li><p>two</p></li></ul><p>a<br>b</p>';
       expect(roundTrip(html)).to.equal(html);
     });
 
     it('normalizes equivalent tags', () => {
       expect(roundTrip('<p><b>b</b><i>i</i><strike>s</strike><del>d</del></p>'))
-        .to.equal('<p><strong>b</strong><em>i</em><s>sd</s></p>');
+        .to.equal('<p><strong>b</strong><em>i</em><del>sd</del></p>');
     });
 
-    it('nests marks with links outermost', () => {
+    it('nests marks like the SDK', () => {
       expect(roundTrip('<p><strong><a href="/a">x</a></strong></p>'))
-        .to.equal('<p><a href="/a"><strong>x</strong></a></p>');
+        .to.equal('<p><strong><a href="/a">x</a></strong></p>');
       expect(roundTrip('<p><strong>a<em>b</em></strong><em>c</em></p>'))
-        .to.equal('<p><strong>a<em>b</em></strong><em>c</em></p>');
+        .to.equal('<p><strong>a</strong><em><strong>b</strong>c</em></p>');
     });
 
     it('drops unsafe links and active content', () => {
@@ -131,7 +131,7 @@ describe('rich-text codec', () => {
       'inner line breaks': [paragraph('a', hardBreak, hardBreak, 'b'), bulletList(listItem(paragraph('c', hardBreak, 'd')))],
       'nested lists': [bulletList(listItem(paragraph('a'), orderedList(listItem(paragraph('b'), bulletList(listItem(paragraph(text('c', ['em']))))))))],
       'quotes with lists': [quote(paragraph('q'), bulletList(listItem(paragraph('i'))), quote(paragraph('n')))],
-      'heading marks': [heading(3, text('H', ['u', 's']))],
+      'heading marks': [heading(3, text('H', ['u', 'del']))],
       unicode: [paragraph('emoji 😀 ümlaut')],
     };
 

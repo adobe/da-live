@@ -65,7 +65,7 @@ describe('rich-text commands', () => {
     it('links the selection and keeps its text and marks', () => {
       const state = stateFor('<p><strong>hello</strong> you</p>', { from: 1, to: 6 });
       const { html, state: next } = run(link({ href: 'https://a.b', text: 'hello' }), state);
-      expect(html).to.equal('<p><a href="https://a.b"><strong>hello</strong></a> you</p>');
+      expect(html).to.equal('<p><strong><a href="https://a.b">hello</a></strong> you</p>');
       expect(next.selection.from).to.equal(6);
     });
 
@@ -78,13 +78,13 @@ describe('rich-text commands', () => {
     it('updates the whole link under the caret', () => {
       const state = stateFor('<p>x <a href="/old">li<strong>nk</strong></a> y</p>', { from: 4 });
       const { html } = run(link({ href: '/new', text: 'link' }), state);
-      expect(html).to.equal('<p>x <a href="/new">li<strong>nk</strong></a> y</p>');
+      expect(html).to.equal('<p>x <a href="/new">li</a><strong><a href="/new">nk</a></strong> y</p>');
     });
 
     it('replaces the text when the display text changes', () => {
       const state = stateFor('<p>x <a href="/a"><em>old</em></a> y</p>', { from: 4 });
       const { html } = run(link({ href: '/b', text: ' new text ' }), state);
-      expect(html).to.equal('<p>x <a href="/b"><em>new text</em></a> y</p>');
+      expect(html).to.equal('<p>x <em><a href="/b">new text</a></em> y</p>');
     });
 
     it('inserts the text or URL at the caret', () => {
