@@ -24,13 +24,56 @@ const LINK = {
 };
 
 /**
+ * Lists the text nodes inside an element.
+ * @param {HTMLElement} element The element.
+ * @returns {Text[]} The text nodes.
+ */
+function textNodesOf(element) {
+  const walker = element.ownerDocument.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+  const textNodes = [];
+  while (walker.nextNode()) {
+    textNodes.push(walker.currentNode);
+  }
+  return textNodes;
+}
+
+/**
+ * Replaces each line feed in a text node with a `<br>`.
+ * @param {Text} textNode The text node.
+ */
+function breakLines(textNode) {
+  const [firstLine, ...nextLines] = textNode.data.split('\n');
+  const lineBreak = () => textNode.ownerDocument.createElement('br');
+  textNode.replaceWith(firstLine, ...nextLines.flatMap((line) => [lineBreak(), line]));
+}
+
+/**
+ * Reads a code block the way the SDK stores it, as a paragraph that keeps its line breaks
+ * but not its code formatting.
+ * @param {HTMLElement} pre The `pre` element.
+ * @returns {HTMLElement} A copy to read the paragraph content from.
+ */
+function preformattedContent(pre) {
+  const content = pre.cloneNode(true);
+  content.querySelectorAll('code').forEach((code) => code.replaceWith(...code.childNodes));
+  textNodesOf(content).forEach(breakLines);
+  return content;
+}
+
+/** Reads a code block as a paragraph. */
+const PREFORMATTED_RULE = { tag: 'pre', contentElement: preformattedContent };
+
+/**
  * Creates the schema of rich-text fields. It holds what the SDK stores.
  * @param {object} proseMirror The da-y-wrapper namespace.
  * @returns {object} The ProseMirror schema.
  */
 export function createSchema({ Schema, baseSchema, addListNodes }) {
   const { nodes, marks } = baseSchema.spec;
-  const blocks = DROPPED_NODES.reduce((kept, name) => kept.remove(name), nodes);
+  const paragraph = nodes.get('paragraph');
+  const blocks = DROPPED_NODES
+    .reduce((kept, name) => kept.remove(name), nodes)
+    .update('paragraph', { ...paragraph, parseDOM: [...paragraph.parseDOM, PREFORMATTED_RULE] });
   const lists = addListNodes(blocks, 'paragraph (bullet_list | ordered_list)*', 'block');
   // The SDK stores numbered lists without a start number.
   const { content, group } = lists.get('ordered_list');
