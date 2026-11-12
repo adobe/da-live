@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
-import { getPreviewOrigin } from '../editor-utils/editor-utils.js';
+import { getPreviewOrigin } from '../../shared/constants.js';
 import { whenCanvasBranch } from '../utils/branch.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { reportPreflightStatus } from '../editor-utils/preflight-bridge.js';
