@@ -1,10 +1,9 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 
-const { setNx, getNx2 } = await import('../../../../scripts/utils.js');
+const { setNx } = await import('../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { parseSubdomain } = await import(`${getNx2()}/blocks/siteselector/site-utils.js`);
 const { default: init } = await import('../../../../blocks/add-site/add-site.js');
 
 describe('add-site', () => {
@@ -32,7 +31,6 @@ describe('add-site', () => {
   afterEach(() => {
     block.remove();
     openSite.restore();
-    parseSubdomain.reset();
   });
 
   it('replaces the block content with the site form', () => {
@@ -62,7 +60,6 @@ describe('add-site', () => {
   });
 
   it('opens the site in Browse', async () => {
-    parseSubdomain.returns('#/adobe/geometrixx');
     await typeUrl('https://main--geometrixx--adobe.aem.page');
     el.shadowRoot.querySelector('form button').click();
     expect(openSite.calledOnceWith(`${window.location.origin}/#/adobe/geometrixx`)).to.be.true;

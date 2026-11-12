@@ -1,10 +1,9 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2 } from '../../scripts/utils.js';
+import { getNx, getNx2, parseSubdomain } from '../../scripts/utils.js';
 
 const SITE_URL_ERROR = 'Enter an existing AEM site URL.';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const { parseSubdomain } = await import(`${getNx2()}/blocks/siteselector/site-utils.js`);
 const [buttons, form, styles] = await Promise.all([
   loadStyle(`${getNx2()}/styles/buttons.css`),
   loadStyle(`${getNx2()}/styles/form.css`),

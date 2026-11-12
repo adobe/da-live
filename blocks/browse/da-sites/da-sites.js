@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, sanitizeName } from '../../../scripts/utils.js';
+import { getNx, parseSubdomain } from '../../../scripts/utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const styles = await loadStyle(import.meta.url);
@@ -66,28 +66,12 @@ export default class DaSites extends LitElement {
     this.requestUpdate();
   }
 
-  parseSubdomain(siteUrl) {
-    try {
-      const url = new URL(siteUrl);
-      if (!url.hostname.match(/hlx\.live$|aem\.live$|hlx\.page$|aem\.page$/)) {
-        return null;
-      }
-      const helixString = url.hostname.split('.')[0];
-      if (!helixString) return null;
-      const [, site, org] = helixString.split('--');
-      if (!site || !org) return null;
-      return `#/${sanitizeName(org, false)}/${sanitizeName(site, false)}`;
-    } catch (_) {
-      return null;
-    }
-  }
-
   async handleGo(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
     const { siteUrl } = Object.fromEntries(formData);
     if (!siteUrl) return;
-    const result = this.parseSubdomain(siteUrl);
+    const result = parseSubdomain(siteUrl);
     if (result) {
       window.location = result;
     } else {
