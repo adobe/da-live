@@ -168,5 +168,21 @@ describe('rich-text codec', () => {
         expect(visibleText(stored)).to.equal(visibleText(richTextDocument));
       });
     });
+
+    it('nests every pair of marks like the SDK and reloads them unchanged', () => {
+      const names = Object.keys(schema.marks);
+      const mark = (name) => (name === 'link' ? link('/a') : name);
+      const pairs = names.flatMap((outer) => names.map((inner) => [outer, inner]))
+        .filter(([outer, inner]) => !schema.marks[outer].excludes(schema.marks[inner]));
+      expect(pairs).to.have.length(54);
+      pairs.forEach(([outer, inner]) => {
+        const both = [mark(outer), mark(inner)];
+        const sameText = serialize(documentOf([paragraph(text('z', both))]));
+        expect(sdkStores(sameText), `${outer} with ${inner}`).to.equal(sameText);
+        const richTextDocument = documentOf([paragraph(text('x', [mark(outer)]), text('y', both))]);
+        const reloaded = parse(sdkStores(serialize(richTextDocument)));
+        expect(reloaded.eq(richTextDocument), `${outer} over ${inner}`).to.be.true;
+      });
+    });
   });
 });
