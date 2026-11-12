@@ -10,7 +10,11 @@ import { getCanvasBranch } from '../utils/branch.js';
 import { htmlToProse } from '../../edit/utils/helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { getBlockPositions } from '../editor-utils/blocks.js';
-import { getCommentsBridge, formatCommentsViewLabel } from '../editor-utils/comments-bridge.js';
+import {
+  getCommentsBridge,
+  formatCommentsViewLabel,
+  subscribeCommentCounts,
+} from '../editor-utils/comments-bridge.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { fetchDaConfigs, getFirstSheet } = await import(`${getNx()}/utils/daConfig.js`);
@@ -913,6 +917,7 @@ export function createCommentsView() {
     getLabel() {
       return formatCommentsViewLabel(getCommentsBridge().controller?.counts?.active);
     },
+    subscribeLabel: subscribeCommentCounts,
     load: async () => {
       await import('../comments/comments-panel.js');
       return document.createElement('ew-comments');

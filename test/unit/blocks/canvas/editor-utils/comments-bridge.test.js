@@ -9,6 +9,7 @@ let setCommentsController;
 let formatCommentsViewLabel;
 let toggleComments;
 let getCommentsVisible;
+let subscribeCommentCounts;
 
 before(async () => {
   ({
@@ -17,6 +18,7 @@ before(async () => {
     formatCommentsViewLabel,
     toggleComments,
     getCommentsVisible,
+    subscribeCommentCounts,
   } = await import('../../../../../blocks/canvas/editor-utils/comments-bridge.js'));
 });
 
@@ -113,5 +115,73 @@ describe('formatCommentsViewLabel', () => {
   it('returns plain Comments when the count is zero', () => {
     expect(formatCommentsViewLabel(0)).to.equal('Comments');
     expect(formatCommentsViewLabel()).to.equal('Comments');
+  });
+});
+
+describe('subscribeCommentCounts', () => {
+  let changes;
+  let unsubscribe;
+
+  function fakeController() {
+    const listeners = new Set();
+    return {
+      listeners,
+      emit: (reason) => listeners.forEach((listener) => listener({ reason })),
+      subscribe(listener) {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+    };
+  }
+
+  beforeEach(() => {
+    changes = 0;
+  });
+
+  afterEach(() => {
+    unsubscribe?.();
+    unsubscribe = undefined;
+    setCommentsController(null);
+  });
+
+  const subscribe = () => {
+    unsubscribe = subscribeCommentCounts(() => { changes += 1; });
+  };
+
+  it('notifies when the counts change, not for other updates', () => {
+    const controller = fakeController();
+    setCommentsController(controller);
+    subscribe();
+
+    controller.emit('counts');
+    controller.emit('init');
+    controller.emit('threads');
+
+    expect(changes).to.equal(2);
+  });
+
+  it('follows a newly set controller', () => {
+    const first = fakeController();
+    const second = fakeController();
+    setCommentsController(first);
+    subscribe();
+
+    setCommentsController(second);
+    second.emit('counts');
+
+    expect(changes).to.equal(1);
+    expect(first.listeners.size).to.equal(0);
+  });
+
+  it('stops notifying once unsubscribed', () => {
+    const controller = fakeController();
+    setCommentsController(controller);
+    subscribe();
+
+    unsubscribe();
+    controller.emit('counts');
+
+    expect(changes).to.equal(0);
+    expect(controller.listeners.size).to.equal(0);
   });
 });
