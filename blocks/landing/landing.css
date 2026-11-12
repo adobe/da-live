@@ -2,19 +2,22 @@
 .browse:has(> da-sites) {
   min-height: 100%;
   background:
-    linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--s2-gray-25) 0%, transparent) 25%,
-      var(--s2-gray-25) 85%
+    radial-gradient(
+      ellipse 60% 520px at 15% 0,
+      color-mix(in srgb, var(--s2-red-100) 70%, var(--s2-pink-200)),
+      transparent
     ),
-    linear-gradient(
-      to right,
-      var(--s2-red-100) 0%,
-      var(--s2-red-100) 20%,
-      var(--s2-pink-200) 40%,
-      var(--s2-indigo-200) 50%,
-      var(--s2-blue-100) 100%
-    );
+    radial-gradient(
+      ellipse 45% 480px at 48% 0,
+      var(--s2-indigo-200),
+      transparent
+    ),
+    radial-gradient(
+      ellipse 70% 620px at 78% 0,
+      var(--s2-blue-100),
+      transparent
+    ),
+    var(--s2-gray-25);
 }
 
 .section:has(.landing, .browse > da-sites),
