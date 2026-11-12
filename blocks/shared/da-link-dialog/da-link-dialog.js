@@ -13,7 +13,7 @@ const [formStyle, styles] = await Promise.all([
 
 const URL_ERRORS = {
   required: 'URL is required',
-  unsafe: 'Use a relative, http(s), mailto or tel link.',
+  unsupported: 'Use a relative, http(s), mailto or tel link.',
 };
 
 class DaLinkDialog extends LitElement {
@@ -33,16 +33,15 @@ class DaLinkDialog extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [formStyle, styles];
   }
 
-  _onSubmit(event) {
-    event.preventDefault();
-    const form = event.currentTarget;
+  _onSave() {
+    const form = this.shadowRoot.querySelector('.link-form');
     const href = form.elements['link-href'].value.trim();
     if (!href) {
       this._urlError = URL_ERRORS.required;
       return;
     }
     if (!safeHref(href)) {
-      this._urlError = URL_ERRORS.unsafe;
+      this._urlError = URL_ERRORS.unsupported;
       return;
     }
     this._urlError = '';
@@ -62,12 +61,6 @@ class DaLinkDialog extends LitElement {
     this.shadowRoot.querySelector('nx-dialog').close();
   }
 
-  _onKeydown(event) {
-    if (event.key === 'Enter' && (event.isComposing || event.keyCode === 229)) {
-      event.preventDefault();
-    }
-  }
-
   _onClose() {
     this._urlError = '';
   }
@@ -76,7 +69,7 @@ class DaLinkDialog extends LitElement {
     if (!this.open) return nothing;
     return html`
       <nx-dialog title="${this.title ?? 'Edit link'}" @close=${this._onClose}>
-        <form id="link-form" class="link-form" @submit=${this._onSubmit} @keydown=${this._onKeydown}>
+        <form class="link-form">
           <label class="nx-form-field ${this._urlError ? 'nx-field-error' : ''}">
             <span>URL</span>
             <input class="nx-input" name="link-href" type="text" autofocus placeholder="https://…"
@@ -98,8 +91,8 @@ class DaLinkDialog extends LitElement {
         </form>
         <button type="button" slot="actions" class="nx-form-btn-secondary"
           @click=${this._onCancel}>Cancel</button>
-        <button type="submit" form="link-form" slot="actions"
-          class="nx-form-btn-primary">${this.saveLabel ?? 'Save'}</button>
+        <button type="button" slot="actions" class="nx-form-btn-primary"
+          @click=${this._onSave}>${this.saveLabel ?? 'Save'}</button>
       </nx-dialog>
     `;
   }
