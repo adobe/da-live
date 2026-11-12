@@ -1,11 +1,7 @@
-/** The link protocols that cannot run code. The SC SDK keeps the same ones when it saves. */
+/** The link protocols that cannot run code. */
 const SAFE_PROTOCOLS = new Set(['http:', 'https:', 'mailto:', 'tel:']);
 
-/**
- * Reads a link as an absolute URL the way a browser does.
- * @param {string} href The link.
- * @returns {URL|null} The URL, or null when the link is relative to the page.
- */
+// A relative link has no protocol of its own, so the URL parser rejects it.
 function absoluteUrl(href) {
   try {
     return new URL(href);
@@ -14,11 +10,7 @@ function absoluteUrl(href) {
   }
 }
 
-/**
- * Checks that a link is relative or uses a safe protocol.
- * @param {unknown} href The link.
- * @returns {string|null} The trimmed link when it is safe, otherwise null.
- */
+/** Returns the trimmed link when it is relative or uses a safe protocol, otherwise null. */
 export function safeHref(href) {
   const trimmed = typeof href === 'string' ? href.trim() : '';
   if (!trimmed) {
