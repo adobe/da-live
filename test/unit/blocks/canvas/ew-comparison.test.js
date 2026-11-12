@@ -9,28 +9,27 @@ const page = { org: 'example', site: 'site', path: 'page' };
 
 before(async () => {
   comparison = await import('../../../../blocks/canvas/ew-comparison/comparison.js');
-  await import('../../../../blocks/canvas/ew-comparison/ew-canvas-compare.js');
+  await import('../../../../blocks/shared/version-compare/version-compare.js');
 });
 
 describe('comparison renderer ownership', () => {
-  it('loads the renderer from the comparison module', async () => {
-    await import('../../../../blocks/canvas/ew-comparison/ew-canvas-compare.js');
-    expect(customElements.get('ew-canvas-compare')).to.be.a('function');
+  it('loads the shared renderer', async () => {
+    await import('../../../../blocks/shared/version-compare/version-compare.js');
+    expect(customElements.get('da-version-compare')).to.be.a('function');
   });
 
-  it('makes version history consume the comparison-owned renderer', async () => {
-    const source = await readFile({ path: '../../../../blocks/canvas/ew-canvas-versions/ew-canvas-versions.js' });
-    expect(source).to.include("import '../ew-comparison/ew-canvas-compare.js';");
-    expect(source).not.to.include("import './ew-canvas-compare.js';");
+  it('makes version history consume the shared renderer', async () => {
+    const source = await readFile({ path: '../../../../blocks/shared/version-history/version-history.js' });
+    expect(source).to.include("import '../version-compare/version-compare.js';");
   });
 
   it('keeps the comparison component and renderer independent of version history', async () => {
     const source = await readFile({ path: '../../../../blocks/canvas/ew-comparison/ew-comparison.js' });
-    expect(source).to.include("import './ew-canvas-compare.js';");
-    expect(source).not.to.include('ew-canvas-versions/');
-    const renderer = await readFile({ path: '../../../../blocks/canvas/ew-comparison/ew-canvas-compare.js' });
-    expect(renderer).not.to.include('ew-canvas-versions/');
-    const stylesheet = await fetch('/blocks/canvas/ew-comparison/ew-canvas-compare.css');
+    expect(source).to.include("import '../../shared/version-compare/version-compare.js';");
+    expect(source).not.to.include('version-history/');
+    const renderer = await readFile({ path: '../../../../blocks/shared/version-compare/version-compare.js' });
+    expect(renderer).not.to.include('version-history/');
+    const stylesheet = await fetch('/blocks/shared/version-compare/version-compare.css');
     expect(stylesheet.ok).to.equal(true);
   });
 });
@@ -40,8 +39,11 @@ describe('version-history comparison consumer', () => {
   let popoverPrototype;
   let originalShow;
 
+  let createCanvasVersionsEditor;
+
   before(async () => {
-    await import('../../../../blocks/canvas/ew-canvas-versions/ew-canvas-versions.js');
+    await import('../../../../blocks/shared/version-history/version-history.js');
+    ({ default: createCanvasVersionsEditor } = await import('../../../../blocks/canvas/editor-utils/versions-editor.js'));
   });
 
   beforeEach(() => {
@@ -56,8 +58,30 @@ describe('version-history comparison consumer', () => {
     else delete popoverPrototype.show;
   });
 
+  it('does not request a comparison when opening or reopening the panel', async () => {
+    const requests = [];
+    const unsubscribe = canvasBus.comparisonRequest.subscribe((request) => requests.push(request));
+    try {
+      versions = document.createElement('da-version-history');
+      versions.editor = createCanvasVersionsEditor();
+      document.body.append(versions);
+      Object.assign(versions, { path: '/org/site/doc.html', _versions: [] });
+      await versions.updateComplete;
+      expect(versions.shadowRoot.querySelector('.versionlist')).to.exist;
+      expect(requests).to.be.empty;
+
+      versions.remove();
+      document.body.append(versions);
+      await versions.updateComplete;
+      expect(requests).to.be.empty;
+    } finally {
+      unsubscribe();
+    }
+  });
+
   it('keeps the version preview modal, split toggle, focus trap, and close cleanup', async () => {
-    versions = document.createElement('ew-canvas-versions');
+    versions = document.createElement('da-version-history');
+    versions.editor = createCanvasVersionsEditor();
     document.body.append(versions);
     await versions.updateComplete;
     let cleaned = false;
@@ -72,7 +96,7 @@ describe('version-history comparison consumer', () => {
       cleanup: () => { cleaned = true; },
     };
     await versions.updateComplete;
-    const view = versions.shadowRoot.querySelector('ew-canvas-compare');
+    const view = versions.shadowRoot.querySelector('da-version-compare');
     await view.updateComplete;
     const popover = view.shadowRoot.querySelector('nx-popover');
     expect(popover.getAttribute('role')).to.equal('dialog');
@@ -95,7 +119,7 @@ describe('version-history comparison consumer', () => {
       .to.deep.equal(['Current content', 'Saved content']);
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     await versions.updateComplete;
-    expect(versions.shadowRoot.querySelector('ew-canvas-compare')).to.equal(null);
+    expect(versions.shadowRoot.querySelector('da-version-compare')).to.equal(null);
     expect(cleaned).to.equal(true);
   });
 });
@@ -105,7 +129,7 @@ describe('embedded existing comparison view', () => {
   afterEach(() => element?.remove());
 
   it('uses an inline region without a modal popover or focus trap', async () => {
-    element = document.createElement('ew-canvas-compare');
+    element = document.createElement('da-version-compare');
     element.embedded = true;
     element.currentLabel = 'Live';
     element.label = 'Current document';
@@ -122,7 +146,7 @@ describe('embedded existing comparison view', () => {
   });
 
   it('keeps both changes and labels in the embedded unified view', async () => {
-    element = document.createElement('ew-canvas-compare');
+    element = document.createElement('da-version-compare');
     element.embedded = true;
     element.currentLabel = 'Live';
     element.label = 'Current document';
@@ -138,7 +162,7 @@ describe('embedded existing comparison view', () => {
   });
 
   it('matches the candidate pill to the addition highlight', async () => {
-    element = document.createElement('ew-canvas-compare');
+    element = document.createElement('da-version-compare');
     element.embedded = true;
     element.split = true;
     element.currentLabel = 'Live';
@@ -150,7 +174,7 @@ describe('embedded existing comparison view', () => {
     document.body.append(element);
     await element.updateComplete;
     const sheet = new CSSStyleSheet();
-    sheet.replaceSync(await (await fetch('/blocks/canvas/ew-comparison/ew-canvas-compare.css')).text());
+    sheet.replaceSync(await (await fetch('/blocks/shared/version-compare/version-compare.css')).text());
     element.shadowRoot.adoptedStyleSheets = [sheet];
     const color = (selector) => getComputedStyle(
       element.shadowRoot.querySelector(selector),
@@ -169,7 +193,7 @@ describe('embedded existing comparison view', () => {
       htmlB: normalizeComparisonHtml(current, page),
       closeOnOutsideClick: false,
     });
-    element = document.createElement('ew-canvas-compare');
+    element = document.createElement('da-version-compare');
     element.embedded = true;
     element.split = true;
     element.currentLabel = 'Live';
@@ -179,7 +203,7 @@ describe('embedded existing comparison view', () => {
     document.body.append(element);
     await element.updateComplete;
     const sheet = new CSSStyleSheet();
-    sheet.replaceSync(await (await fetch('/blocks/canvas/ew-comparison/ew-canvas-compare.css')).text());
+    sheet.replaceSync(await (await fetch('/blocks/shared/version-compare/version-compare.css')).text());
     element.shadowRoot.adoptedStyleSheets = [sheet];
 
     const split = element.shadowRoot.querySelector('.ew-cc-split');
@@ -251,7 +275,7 @@ describe('standalone workspace comparison', () => {
     expect(calls).to.deep.equal(['live']);
     const surface = mountRoot.querySelector('ew-comparison');
     await surface.updateComplete;
-    const view = surface.shadowRoot.querySelector('ew-canvas-compare');
+    const view = surface.shadowRoot.querySelector('da-version-compare');
     await view.updateComplete;
     expect(view.shadowRoot.textContent).to.include('New author text');
     expect(editor.isConnected).to.equal(true);
@@ -375,7 +399,7 @@ describe('standalone workspace comparison', () => {
     await controller.open({ candidate: 'document', baseline: 'live' });
     const surface = mountRoot.querySelector('ew-comparison');
     await surface.updateComplete;
-    const view = surface.shadowRoot.querySelector('ew-canvas-compare');
+    const view = surface.shadowRoot.querySelector('da-version-compare');
     await view.updateComplete;
     const diff = surface.diffDom.innerHTML;
     for (const split of [false, true, false]) {

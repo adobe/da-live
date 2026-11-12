@@ -8,14 +8,28 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 const nextFrame = () => new Promise((r) => { setTimeout(r, 0); });
 
 let buildDocPath;
-let getExtensionsBridge;
-let canvasBus;
+let fetchVersionHtml;
 let popoverShow;
 
+// Stands in for the editor port. Tests set editorView and call notifyEditor once it changes.
+let editorView = null;
+const editorListeners = new Set();
+const notifyEditor = () => editorListeners.forEach((listener) => listener());
+const editor = {
+  canWrite: () => editorView?.editable ?? false,
+  subscribe: (listener) => {
+    editorListeners.add(listener);
+    return () => editorListeners.delete(listener);
+  },
+  fetchVersion: (path, entry) => fetchVersionHtml(path, entry),
+  getCurrentHtml: () => (editorView ? '<p>Current content</p>' : null),
+  restore: async () => true,
+  getCompareArea: () => [],
+};
+
 before(async () => {
-  ({ buildDocPath } = await import('../../../../../blocks/canvas/ew-canvas-versions/ew-canvas-versions.js'));
-  ({ getExtensionsBridge } = await import('../../../../../blocks/canvas/editor-utils/extensions-bridge.js'));
-  ({ canvasBus } = await import('../../../../../blocks/canvas/utils/canvas-bus.js'));
+  ({ buildDocPath } = await import('../../../../../blocks/shared/version-history/version-history.js'));
+  ({ fetchVersionHtml } = await import('../../../../../blocks/shared/version/version-actions.js'));
   const popover = customElements.get('nx-popover').prototype;
   popoverShow = popover.show;
   popover.show = () => {};
@@ -24,7 +38,7 @@ before(async () => {
 after(() => { customElements.get('nx-popover').prototype.show = popoverShow; });
 
 async function createInstance(props = {}) {
-  const inst = document.createElement('ew-canvas-versions');
+  const inst = Object.assign(document.createElement('da-version-history'), { editor });
   document.body.appendChild(inst);
   await inst.updateComplete;
   Object.assign(inst, props);
@@ -41,10 +55,38 @@ describe('version image previews', () => {
   let inst;
   afterEach(() => { inst?.remove(); });
 
+  it('covers the elements the editor names for a comparison', async () => {
+    const box = (style) => {
+      const el = document.createElement('div');
+      el.style.cssText = `position: fixed; ${style}`;
+      document.body.append(el);
+      return el;
+    };
+    const editorArea = box('top: 40px; left: 300px; width: 500px; height: 400px;');
+    const chat = box('top: 60px; left: 0; width: 280px; height: 380px;');
+    inst = document.createElement('da-version-compare');
+    Object.assign(inst, {
+      dom: document.createElement('div'),
+      path: '/org/repo/doc.html',
+      label: 'Published',
+      getArea: () => [editorArea, chat],
+    });
+    try {
+      document.body.appendChild(inst);
+      await inst.updateComplete;
+      const { style } = inst.shadowRoot.querySelector('nx-popover');
+      expect([style.top, style.left, style.width, style.height])
+        .to.deep.equal(['40px', '0px', '800px', '400px']);
+    } finally {
+      editorArea.remove();
+      chat.remove();
+    }
+  });
+
   it('resolves media images in a version preview without changing restore content', async () => {
     const dom = document.createElement('div');
     dom.innerHTML = '<p><img src="./media_123.png"></p>';
-    inst = document.createElement('ew-canvas-compare');
+    inst = document.createElement('da-version-compare');
     Object.assign(inst, { dom, path: '/org/repo/doc.html', label: 'Published' });
     document.body.appendChild(inst);
     await inst.updateComplete;
@@ -56,7 +98,7 @@ describe('version image previews', () => {
   it('updates image URLs when switching versions and leaves absolute URLs alone', async () => {
     const dom = document.createElement('div');
     dom.innerHTML = '<p><img src="./media_first.png"><img src="https://example.com/image.png"></p>';
-    inst = document.createElement('ew-canvas-compare');
+    inst = document.createElement('da-version-compare');
     Object.assign(inst, { dom, path: '/org/repo/doc.html', label: 'First' });
     document.body.appendChild(inst);
     await inst.updateComplete;
@@ -77,7 +119,7 @@ describe('version image previews', () => {
   it('resolves images in both comparison panes without changing diff content', async () => {
     const diffDom = document.createElement('div');
     diffDom.innerHTML = '<p><del><img src="./media_old.png"></del><ins><img src="./media_new.png"></ins></p>';
-    inst = document.createElement('ew-canvas-compare');
+    inst = document.createElement('da-version-compare');
     Object.assign(inst, { diffDom, path: '/org/repo/doc.html', label: 'Published', split: true });
     document.body.appendChild(inst);
     await inst.updateComplete;
@@ -93,12 +135,12 @@ describe('version image previews', () => {
   it('scrolls both comparison panes together with matching content aligned', async () => {
     const diffDom = document.createElement('div');
     diffDom.innerHTML = `<p><del>${'Older, much longer text. '.repeat(60)}</del><ins>Short.</ins></p><table><tr><td>Same</td></tr></table>${'<p>Filler</p>'.repeat(30)}`;
-    inst = document.createElement('ew-canvas-compare');
+    inst = document.createElement('da-version-compare');
     Object.assign(inst, { diffDom, path: '/org/repo/doc.html', label: 'Published', split: true });
     document.body.appendChild(inst);
     await inst.updateComplete;
     const sheet = new CSSStyleSheet();
-    sheet.replaceSync(await (await fetch('/blocks/canvas/ew-comparison/ew-canvas-compare.css')).text());
+    sheet.replaceSync(await (await fetch('/blocks/shared/version-compare/version-compare.css')).text());
     inst.shadowRoot.adoptedStyleSheets = [sheet];
     Object.assign(inst.shadowRoot.querySelector('nx-popover').style, { width: '760px', height: '320px' });
 
@@ -162,7 +204,7 @@ describe('_filteredVersions', () => {
 
 // ─── Component behaviour ─────────────────────────────────────────────────────
 
-describe('ew-canvas-versions', () => {
+describe('da-version-history', () => {
   let inst;
   afterEach(() => {
     inst?.remove(); inst = null;
@@ -181,24 +223,6 @@ describe('ew-canvas-versions', () => {
     inst = await createInstance();
     expect(inst.shadowRoot.querySelector('.placeholder')).to.exist;
     expect(inst.shadowRoot.querySelector('.toolbar')).to.not.exist;
-  });
-
-  it('does not request a comparison when opening or reopening the panel', async () => {
-    const requests = [];
-    const unsubscribe = canvasBus.comparisonRequest.subscribe((request) => requests.push(request));
-    try {
-      inst = await createInstance({ path: '/org/site/doc.html', _versions: [] });
-      expect(inst.shadowRoot.querySelector('.versionlist')).to.exist;
-      expect(requests).to.be.empty;
-
-      inst.remove();
-      document.body.appendChild(inst);
-      await inst.updateComplete;
-      await nextFrame();
-      expect(requests).to.be.empty;
-    } finally {
-      unsubscribe();
-    }
   });
 
   it('opens restore dialog showing the entry label', async () => {
@@ -279,7 +303,7 @@ describe('version comparison labels', () => {
 
   async function comparison() {
     await inst.updateComplete;
-    const compare = inst.shadowRoot.querySelector('ew-canvas-compare');
+    const compare = inst.shadowRoot.querySelector('da-version-compare');
     await compare.updateComplete;
     return compare;
   }
@@ -353,7 +377,7 @@ describe('version history refresh', () => {
     window.fetch = savedFetch;
     toasts.length = 0;
     hashChange._set({});
-    getExtensionsBridge().view = null;
+    editorView = null;
   });
 
   function mockList(respond) {
@@ -516,7 +540,7 @@ describe('version history refresh', () => {
       }
       return listFetch(url, opts);
     };
-    getExtensionsBridge().view = { editable: true };
+    editorView = { editable: true };
     inst = await createInstance({ path, _versions: [ver(old)] });
     inst.handleNew();
     await inst.updateComplete;
@@ -535,7 +559,7 @@ describe('version history refresh', () => {
       calls += 1;
       return Promise.resolve(response([latest, old]));
     });
-    getExtensionsBridge().view = { editable: false };
+    editorView = { editable: false };
     inst = await createInstance({ path, _versions: [ver(old)] });
     expect(inst.shadowRoot.querySelector('button[aria-label="Create version"]')).to.not.exist;
     inst.getHeaderActions().click();
@@ -553,12 +577,12 @@ describe('version history refresh', () => {
       calls += 1;
       return Promise.resolve(response([latest, old]));
     });
-    getExtensionsBridge().view = { editable: false };
+    editorView = { editable: false };
     inst = await createInstance({ path, _versions: [ver(old)] });
     document.dispatchEvent(new CustomEvent('nx-version-created', { detail: { path: '/refreshorg/refreshsite/other.html' } }));
     inst.remove();
-    getExtensionsBridge().view = { editable: true };
-    canvasBus.editorHtmlState.emit('<body></body>');
+    editorView = { editable: true };
+    notifyEditor();
     document.dispatchEvent(new CustomEvent('nx-version-created', { detail: { path } }));
     await nextFrame();
     expect(calls).to.equal(0);
@@ -589,7 +613,7 @@ describe('version history refresh', () => {
         throw new Error('History refresh must not dispatch an editor transaction.');
       },
     };
-    getExtensionsBridge().view = view;
+    editorView = view;
     inst = await createInstance({ path, _versions: [ver(old), auditGroup([audit])] });
     const row = inst.shadowRoot.querySelector('.is-version');
     const details = inst.shadowRoot.querySelector('details');
@@ -603,13 +627,13 @@ describe('version history refresh', () => {
     expect(details.open).to.be.true;
     expect(inst.shadowRoot.activeElement).to.equal(trigger);
     expect(inst._compareTrigger).to.equal(trigger);
-    expect(getExtensionsBridge().view).to.equal(view);
+    expect(editorView).to.equal(view);
     expect(view.state.doc).to.equal('shared content');
   });
 
   it('preserves an open comparison, restore dialog, and unsaved version name', async () => {
     mockList(() => Promise.resolve(response([latest, old])));
-    getExtensionsBridge().view = { editable: true };
+    editorView = { editable: true };
     inst = await createInstance({ path, _versions: [ver(old)] });
     inst.handleNew();
     const previewDom = document.createElement('div');
@@ -719,10 +743,10 @@ describe('version history refresh', () => {
 describe('create-version form', () => {
   let inst;
   beforeEach(() => {
-    getExtensionsBridge().view = { editable: true };
+    editorView = { editable: true };
   });
   afterEach(() => {
-    getExtensionsBridge().view = null;
+    editorView = null;
     inst?.remove(); inst = null;
   });
 
@@ -799,13 +823,13 @@ describe('create version permission gating', () => {
   let inst;
 
   afterEach(() => {
-    getExtensionsBridge().view = null;
-    canvasBus.editorHtmlState.emit('');
+    editorView = null;
+    notifyEditor();
     inst?.remove(); inst = null;
   });
 
   it('hides the create button and hint and ignores handleNew for read-only users', async () => {
-    getExtensionsBridge().view = { editable: false };
+    editorView = { editable: false };
     inst = await createInstance({ path: '/org/site/doc.html', _versions: [ver()] });
     expect(inst.shadowRoot.querySelector('.versionlist') !== null).to.be.true;
     expect(inst.shadowRoot.querySelector('button[aria-label="Create version"]') === null).to.be.true;
@@ -816,7 +840,7 @@ describe('create version permission gating', () => {
   });
 
   it('shows the create button and hint and opens the form for writers', async () => {
-    getExtensionsBridge().view = { editable: true };
+    editorView = { editable: true };
     inst = await createInstance({ path: '/org/site/doc.html', _versions: [ver()] });
     expect(inst.shadowRoot.querySelector('.da-hint') !== null).to.be.true;
     const btn = inst.shadowRoot.querySelector('button[aria-label="Create version"]');
@@ -827,22 +851,22 @@ describe('create version permission gating', () => {
   });
 
   it('shows the create button and hint once a writable view loads', async () => {
-    getExtensionsBridge().view = null;
+    editorView = null;
     inst = await createInstance({ path: '/org/site/doc.html', _versions: [ver()] });
     expect(inst.shadowRoot.querySelector('button[aria-label="Create version"]') === null).to.be.true;
-    getExtensionsBridge().view = { editable: true };
-    canvasBus.editorHtmlState.emit('<body></body>');
+    editorView = { editable: true };
+    notifyEditor();
     await inst.updateComplete;
     expect(inst.shadowRoot.querySelector('button[aria-label="Create version"]') !== null).to.be.true;
     expect(inst.shadowRoot.querySelector('.da-hint') !== null).to.be.true;
   });
 
   it('hides the create button when the view is torn down', async () => {
-    getExtensionsBridge().view = { editable: true };
+    editorView = { editable: true };
     inst = await createInstance({ path: '/org/site/doc.html', _versions: [ver()] });
     expect(inst.shadowRoot.querySelector('button[aria-label="Create version"]') !== null).to.be.true;
-    getExtensionsBridge().view = null;
-    canvasBus.editorHtmlState.emit('');
+    editorView = null;
+    notifyEditor();
     await inst.updateComplete;
     expect(inst.shadowRoot.querySelector('button[aria-label="Create version"]') === null).to.be.true;
   });
@@ -854,7 +878,7 @@ describe('version menu restore gating', () => {
   let inst;
 
   afterEach(() => {
-    getExtensionsBridge().view = null;
+    editorView = null;
     inst?.remove(); inst = null;
   });
 
@@ -870,12 +894,12 @@ describe('version menu restore gating', () => {
   });
 
   it('omits Restore when the editor view is read-only', async () => {
-    getExtensionsBridge().view = { editable: false };
+    editorView = { editable: false };
     expect(await hasRestoreButton()).to.be.false;
   });
 
   it('includes Restore when the editor view is writable', async () => {
-    getExtensionsBridge().view = { editable: true };
+    editorView = { editable: true };
     expect(await hasRestoreButton()).to.be.true;
   });
 });

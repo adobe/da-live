@@ -4,6 +4,7 @@ import { EMPTY_DOC } from '../shared/utils.js';
 import { renderEmptyList, EMPTY_LIST_CSS } from '../shared/empty-list.js';
 import { getCommentsBridge } from './editor-utils/comments-bridge.js';
 import createPublishHook from '../shared/preflight/publish-hook.js';
+import { VERSION_HISTORY_TAG, VERSION_HISTORY_VIEW_ID } from '../shared/version-history/version-history-view.js';
 import {
   normalizeCanvasEditorView,
   readInitialCanvasEditorView,
@@ -236,7 +237,7 @@ function openPanelSection(section, id, options) {
 }
 
 function openNewVersionRow() {
-  openPanelSection(TOOL_PANEL_SECTION, 'versions', { newVersion: true });
+  openPanelSection(TOOL_PANEL_SECTION, VERSION_HISTORY_VIEW_ID, { newVersion: true });
 }
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iP(hone|[oa]d)/.test(navigator.platform);
@@ -323,7 +324,7 @@ export default async function decorate(block) {
     onShow: async (toolPanel, id, options) => {
       if (options?.newVersion) {
         await toolPanel.updateComplete;
-        toolPanel.shadowRoot?.querySelector('ew-canvas-versions')?.handleNew();
+        toolPanel.shadowRoot?.querySelector(VERSION_HISTORY_TAG)?.handleNew();
       }
     },
   }));

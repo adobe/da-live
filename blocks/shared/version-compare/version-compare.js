@@ -1,24 +1,22 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
-import { getRenderableSrc } from '../../shared/constants.js';
+import { getRenderableSrc } from '../constants.js';
 
 const ICON_CLOSE = '/img/icons/s2-icon-close-20-n.svg';
 
-const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-await import(`${getNx()}/blocks/shared/popover/popover.js`);
-const style = await loadStyle(import.meta.url);
-const buttons = await loadStyle(`${getNx2()}/styles/buttons.css`);
+const nx = getNx();
+const [{ loadStyle }] = await Promise.all([
+  import(`${nx}/utils/utils.js`),
+  import(`${nx}/blocks/shared/popover/popover.js`),
+]);
 
-function getCanvasSection() {
-  return document.querySelector('ew-canvas-header')?.parentElement
-    ?? document.querySelector('.nx-canvas-editor-mount');
-}
+const nx2 = getNx2();
+const [style, buttons] = await Promise.all([
+  loadStyle(import.meta.url),
+  loadStyle(`${nx2}/styles/buttons.css`),
+]);
 
-function getChatPanel() {
-  return document.querySelector('aside.panel[data-position="before"]:not([hidden])');
-}
-
-class EwCanvasCompare extends LitElement {
+class DaVersionCompare extends LitElement {
   static properties = {
     dom: { attribute: false },
     diffDom: { attribute: false },
@@ -29,6 +27,9 @@ class EwCanvasCompare extends LitElement {
     embedded: { type: Boolean, reflect: true },
     currentLabel: { type: String },
   };
+
+  // Returns the elements the comparison covers. Only an overlay uses it.
+  getArea;
 
   connectedCallback() {
     super.connectedCallback();
@@ -53,10 +54,10 @@ class EwCanvasCompare extends LitElement {
     popover.show();
     this._reposition();
 
-    const section = getCanvasSection();
-    if (section) {
+    const [main] = this._area;
+    if (main) {
       this._resizeObserver = new ResizeObserver(() => this._reposition());
-      this._resizeObserver.observe(section);
+      this._resizeObserver.observe(main);
     }
 
     await popover.updateComplete;
@@ -84,16 +85,18 @@ class EwCanvasCompare extends LitElement {
     this._resizeObserver?.disconnect();
   }
 
+  get _area() {
+    return (this.getArea?.() ?? []).filter(Boolean);
+  }
+
   _reposition() {
-    const section = getCanvasSection();
+    const rects = this._area.map((element) => element.getBoundingClientRect());
     const popover = this._popover;
-    if (!section || !popover) return;
-    const sectionRect = section.getBoundingClientRect();
-    const chatRect = getChatPanel()?.getBoundingClientRect();
-    const left = Math.min(sectionRect.left, chatRect?.left ?? Infinity);
-    const top = Math.min(sectionRect.top, chatRect?.top ?? Infinity);
-    const right = Math.max(sectionRect.right, chatRect?.right ?? -Infinity);
-    const bottom = Math.max(sectionRect.bottom, chatRect?.bottom ?? -Infinity);
+    if (!rects.length || !popover) return;
+    const left = Math.min(...rects.map((rect) => rect.left));
+    const top = Math.min(...rects.map((rect) => rect.top));
+    const right = Math.max(...rects.map((rect) => rect.right));
+    const bottom = Math.max(...rects.map((rect) => rect.bottom));
     Object.assign(popover.style, {
       top: `${top}px`,
       left: `${left}px`,
@@ -207,4 +210,4 @@ class EwCanvasCompare extends LitElement {
   }
 }
 
-customElements.define('ew-canvas-compare', EwCanvasCompare);
+customElements.define('da-version-compare', DaVersionCompare);
