@@ -1,3 +1,10 @@
+## [1.28.6](https://github.com/adobe/da-live/compare/v1.28.5...v1.28.6) (2026-11-12)
+
+
+### Bug Fixes
+
+* load library content directly from DA Admin ([#1698](https://github.com/adobe/da-live/issues/1698)) ([9fd4414](https://github.com/adobe/da-live/commit/9fd4414e2966a425c4d19cfe4d72e28bca34a975))
+
 ## [1.28.5](https://github.com/adobe/da-live/compare/v1.28.4...v1.28.5) (2026-11-11)
 
 
