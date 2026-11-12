@@ -84,7 +84,8 @@ li {
 }
 
 /* The tree lines that hang every row from its parent. They draw above the
-   row highlight and stop short of the dot. */
+   row highlight, so they start below the parent's dot and stop short of the
+   row's own dot. */
 li::before,
 li::after {
   content: "";
@@ -102,7 +103,7 @@ li::before {
 }
 
 li::after {
-  top: -14px;
+  top: -10px;
   bottom: 0;
   width: 0;
   border-left: 1px solid var(--s2-gray-300);
@@ -114,7 +115,7 @@ nav > ul > li::after {
 }
 
 ul > li:last-child::after {
-  height: 28px;
+  height: 24px;
 }
 
 .placeholder {
