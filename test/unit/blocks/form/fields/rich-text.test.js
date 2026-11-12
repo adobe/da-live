@@ -361,10 +361,10 @@ describe('form-rich-text', () => {
     const richText = await mount({ value: '<p><a href="/a">site</a></p>' });
     selectAll(richText);
     const { dialog, field, button } = await openLinkDialog(richText);
-    field('link-href').value = 'ftp://x';
+    field('link-href').value = `${'javascript'}:x()`;
     button('Save').click();
     await dialog.updateComplete;
-    expect(dialog.shadowRoot.querySelector('.nx-input-error-msg').textContent).to.contain('relative');
+    expect(dialog.shadowRoot.querySelector('.nx-input-error-msg').textContent).to.contain('Invalid URL protocol');
     expect(richText.value).to.equal('<p><a href="/a">site</a></p>');
     button('Cancel').click();
     await richText.updateComplete;
