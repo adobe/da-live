@@ -80,8 +80,8 @@ export function createToolset({ proseMirror, schema, onLink }) {
       [
         markTool({ id: TOOL_IDS.bold, label: 'Bold', keys: 'Mod-b', icon: 'tagbold' }),
         markTool({ id: TOOL_IDS.italic, label: 'Italic', keys: 'Mod-i', icon: 'tagitalic' }),
-        markTool({ id: TOOL_IDS.underline, label: 'Underline', icon: 'tagunderline' }),
-        markTool({ id: TOOL_IDS.strikethrough, label: 'Strikethrough', icon: 'tagstrikethrough' }),
+        markTool({ id: TOOL_IDS.underline, label: 'Underline', keys: 'Mod-u', icon: 'tagunderline' }),
+        markTool({ id: TOOL_IDS.strikethrough, label: 'Strikethrough', keys: 'Mod-Shift-s', icon: 'tagstrikethrough' }),
       ],
       [
         {
@@ -101,8 +101,8 @@ export function createToolset({ proseMirror, schema, onLink }) {
         },
       ],
       [
-        listTool({ id: TOOL_IDS.orderedList, label: 'Numbered list', keys: 'Ctrl-Shift-9', icon: 'listnumbered' }),
         listTool({ id: TOOL_IDS.bulletList, label: 'Bulleted list', keys: 'Ctrl-Shift-8', icon: 'listbulleted' }),
+        listTool({ id: TOOL_IDS.orderedList, label: 'Numbered list', keys: 'Ctrl-Shift-9', icon: 'listnumbered' }),
       ],
     ],
     menuGroups: [
@@ -152,7 +152,7 @@ const textStyleShortcuts = (picker) => Object.fromEntries(BLOCK_TYPES
   .map(({ value, attrs }) => [`Ctrl-Shift-${attrs?.level ?? 0}`, picker.commandFor(value)]));
 
 /**
- * Builds the shortcuts of the field, which match the Canvas editor.
+ * Builds the shortcuts of the field.
  * @param {object} options The editor.
  * @param {object} options.proseMirror The da-y-wrapper namespace.
  * @param {object} options.schema The schema.
