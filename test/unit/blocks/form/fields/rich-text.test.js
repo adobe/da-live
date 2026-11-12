@@ -124,7 +124,7 @@ describe('form-rich-text', () => {
 
   it('toggles every mark on and off from the toolbar', async () => {
     const marks = {
-      strong: 'strong', em: 'em', code: 'code', u: 'u', s: 's', sup: 'sup', sub: 'sub',
+      strong: 'strong', em: 'em', code: 'code', u: 'u', del: 'del', sup: 'sup', sub: 'sub',
     };
     const richText = await mount({ value: '<p>text</p>' });
     richText.focus();
@@ -531,7 +531,7 @@ describe('form-rich-text', () => {
     await holdFocus(richText);
     selectAll(richText);
     await richText.updateComplete;
-    expect(visibleIds(floating(richText))).to.deep.equal(['strong', 'em', 'u', 's', 'link', 'ordered_list', 'bullet_list']);
+    expect(visibleIds(floating(richText))).to.deep.equal(['strong', 'em', 'u', 'del', 'link', 'ordered_list', 'bullet_list']);
     floatingTool(richText, 'strong').click();
     expect(richText.value).to.equal('<p><strong>text</strong></p>');
     await richText.updateComplete;

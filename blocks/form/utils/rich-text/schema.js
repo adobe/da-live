@@ -80,33 +80,33 @@ export function createSchema({ Schema, baseSchema, addListNodes }) {
   const orderedList = { content, group, parseDOM: [{ tag: 'ol' }], toDOM: () => ['ol', 0] };
   return new Schema({
     nodes: lists.update('ordered_list', orderedList),
-    // Order sets the serialized nesting, with link outermost and code innermost.
+    // Order sets the serialized nesting like the SDK, with del outermost and code innermost.
     marks: {
-      link: LINK,
-      strong: marks.get('strong'),
+      del: {
+        parseDOM: [
+          { tag: 'del' },
+          { tag: 's' },
+          { tag: 'strike' },
+          { style: 'text-decoration=line-through' },
+        ],
+        toDOM: () => ['del', 0],
+      },
       em: marks.get('em'),
+      strong: marks.get('strong'),
+      link: LINK,
       u: {
         parseDOM: [{ tag: 'u' }, { style: 'text-decoration=underline' }],
         toDOM: () => ['u', 0],
-      },
-      s: {
-        parseDOM: [
-          { tag: 's' },
-          { tag: 'strike' },
-          { tag: 'del' },
-          { style: 'text-decoration=line-through' },
-        ],
-        toDOM: () => ['s', 0],
-      },
-      sup: {
-        excludes: 'sup sub',
-        parseDOM: [{ tag: 'sup' }, { style: 'vertical-align=super' }],
-        toDOM: () => ['sup', 0],
       },
       sub: {
         excludes: 'sup sub',
         parseDOM: [{ tag: 'sub' }, { style: 'vertical-align=sub' }],
         toDOM: () => ['sub', 0],
+      },
+      sup: {
+        excludes: 'sup sub',
+        parseDOM: [{ tag: 'sup' }, { style: 'vertical-align=super' }],
+        toDOM: () => ['sup', 0],
       },
       code: marks.get('code'),
     },

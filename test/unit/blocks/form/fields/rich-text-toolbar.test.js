@@ -61,7 +61,7 @@ describe('form-rich-text-toolbar', () => {
     const toolbar = await mount();
     await until(() => toolbar._overflowAt === 10);
     const { shadowRoot } = toolbar;
-    expect(visibleIds(shadowRoot, '.form-rich-text-toolbar >')).to.deep.equal(['undo', 'redo', 'strong', 'em', 'u', 's', 'link', 'ordered_list', 'bullet_list']);
+    expect(visibleIds(shadowRoot, '.form-rich-text-toolbar >')).to.deep.equal(['undo', 'redo', 'strong', 'em', 'u', 'del', 'link', 'ordered_list', 'bullet_list']);
     const pickerBox = shadowRoot.querySelector('.form-rich-text-toolbar > .form-rich-text-picker');
     expect(pickerBox.previousElementSibling.classList.contains('form-rich-text-separator')).to.be.true;
     expect(pickerBox.previousElementSibling.previousElementSibling).to.equal(tool(toolbar, 'redo'));
@@ -222,7 +222,7 @@ describe('form-rich-text-toolbar', () => {
     expect(toolbar.hasAttribute('floating')).to.be.true;
     expect(shadowRoot.querySelector('[role="toolbar"]').getAttribute('aria-label')).to.equal('Selection formatting');
     expect(picker(toolbar)).to.equal(null);
-    expect(visibleIds(shadowRoot, '.form-rich-text-toolbar >')).to.deep.equal(['strong', 'em', 'u', 's', 'link', 'ordered_list', 'bullet_list']);
+    expect(visibleIds(shadowRoot, '.form-rich-text-toolbar >')).to.deep.equal(['strong', 'em', 'u', 'del', 'link', 'ordered_list', 'bullet_list']);
     const buttons = [...shadowRoot.querySelectorAll('button')];
     expect(buttons.every((button) => button.tabIndex === -1)).to.be.true;
   });
