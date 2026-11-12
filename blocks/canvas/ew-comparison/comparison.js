@@ -93,17 +93,18 @@ export async function readDeliveredContent(partition, context, { api, convert } 
   return { html: converter(await response.text()).body.innerHTML };
 }
 
-export async function readProposedContent(context, { api } = {}) {
+export async function readSourceContent(context, { api } = {}) {
   const { source } = api || await getNx2Api();
-  const { org, site, proposalPath } = context;
-  const response = await source.get({ org, site, path: proposalPath, cachebust: true });
-  if (!response.ok) throw new Error(`Could not load proposed content (${response.status}).`);
+  const { org, site } = context;
+  const path = `/${context.path.replace(/^\//, '').replace(/\.html$/, '')}.html`;
+  const response = await source.get({ org, site, path, cachebust: true });
+  if (!response.ok) throw new Error(`Could not load source content for ${path} (${response.status}).`);
   return { html: await response.text() };
 }
 
 export function installComparison({
   mountRoot, getContext, getDocument,
-  saveDocument, loadContent = readDeliveredContent, loadProposal = readProposedContent,
+  saveDocument, loadContent = readDeliveredContent, loadSource = readSourceContent,
 }) {
   let surface;
   let generation = 0;
@@ -134,13 +135,14 @@ export function installComparison({
   };
 
   const open = async (options) => {
-    if (!['document', 'preview', 'proposal'].includes(options?.candidate) || options?.baseline !== 'live') {
+    const isProposal = options?.candidate === 'proposal';
+    if (!['document', 'preview', 'proposal'].includes(options?.candidate)
+      || options?.baseline !== (isProposal ? 'source' : 'live')) {
       return { ok: false, error: 'invalid-comparison' };
     }
     const context = getContext();
     const key = comparisonContextKey(context);
     if (!key) return { ok: false, error: 'no-document' };
-    const isProposal = options.candidate === 'proposal';
     let targetContext = context;
     if (isProposal) {
       try {
@@ -157,6 +159,7 @@ export function installComparison({
       if (!current()) return { ok: false, error: 'stale-context' };
       surface = document.createElement('ew-comparison');
       surface.candidate = options.candidate;
+      surface.baseline = options.baseline;
       surface.path = `/${targetContext.path.replace(/^\//, '')}`;
       surface.onClose = close;
       surface.onRefresh = () => open(options);
@@ -183,20 +186,20 @@ export function installComparison({
         throw new Error('The current document is not ready. Try again once it has loaded.');
       }
       const readCandidate = () => {
-        if (isProposal) return loadProposal(targetContext);
+        if (isProposal) return loadSource({ ...targetContext, path: targetContext.proposalPath });
         return options.candidate === 'document' ? { html: documentHtml } : loadContent('preview', context);
       };
-      const [live, candidate] = await Promise.all([
-        loadContent('live', targetContext),
+      const [baseline, candidate] = await Promise.all([
+        isProposal ? loadSource(targetContext) : loadContent('live', targetContext),
         readCandidate(),
       ]);
       if (!current()) return { ok: false, error: 'stale-context' };
-      const htmlA = normalizeComparisonHtml(live.html, targetContext);
+      const htmlA = normalizeComparisonHtml(baseline.html, targetContext);
       const htmlB = normalizeComparisonHtml(candidate.html, targetContext);
       const { dom } = await buildCompareDom({ htmlA, htmlB, closeOnOutsideClick: false });
       if (!current()) return { ok: false, error: 'stale-context' };
       surface.diffDom = dom;
-      surface.missingLive = live.missing;
+      surface.missingLive = baseline.missing;
       surface.identical = !dom.querySelector('ins, del');
       surface.loadedAt = new Date().toLocaleTimeString();
       surface.loading = false;

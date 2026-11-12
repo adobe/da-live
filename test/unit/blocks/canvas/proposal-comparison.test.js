@@ -5,14 +5,20 @@ import { handleArtifactAction } from '../../../../blocks/canvas/editor-utils/art
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 let installComparison;
-let readProposedContent;
+let readSourceContent;
 before(async () => {
-  ({ installComparison, readProposedContent } = await import('../../../../blocks/canvas/ew-comparison/comparison.js'));
+  ({ installComparison, readSourceContent } = await import('../../../../blocks/canvas/ew-comparison/comparison.js'));
 });
+
+function textWithout(dom, selector) {
+  const copy = dom.cloneNode(true);
+  copy.querySelectorAll(selector).forEach((node) => node.remove());
+  return copy.textContent;
+}
 
 describe('staged proposal comparison', () => {
   const proposedPath = '/example/site/.da/campaigns/spring.html';
-  const options = { candidate: 'proposal', baseline: 'live', proposedPath };
+  const options = { candidate: 'proposal', baseline: 'source', proposedPath };
   let root;
   let editor;
   let controller;
@@ -20,7 +26,7 @@ describe('staged proposal comparison', () => {
   let reads;
   let proposalReads;
   let proposal;
-  let live;
+  let original;
   let saveCalls;
   let serializeCalls;
   let pendingRead;
@@ -34,7 +40,7 @@ describe('staged proposal comparison', () => {
     serializeCalls = 0;
     pendingRead = undefined;
     onProposalRead = undefined;
-    live = { html: '<p>Live content</p>' };
+    original = { html: '<p>Current saved content</p>' };
     proposal = '<p>Proposed content</p><script>bad()</script><a href="javascript:bad()">Unsafe</a><img src="./media.jpg" onerror="bad()">';
     root = document.createElement('div');
     editor = document.createElement('textarea');
@@ -46,11 +52,13 @@ describe('staged proposal comparison', () => {
       getContext: () => context,
       getDocument: () => { serializeCalls += 1; return '<p>Editor content</p>'; },
       saveDocument: async () => { saveCalls += 1; return { ok: true }; },
-      loadContent: async (partition, target) => {
-        reads.push({ partition, target });
-        return live;
-      },
-      loadProposal: async (target) => {
+      loadContent: async () => { throw new Error('Proposal comparison must not read delivered content.'); },
+      loadSource: async (target) => {
+        if (!target.path.startsWith('/.da/')) {
+          reads.push(target);
+          if (original instanceof Error) throw original;
+          return original;
+        }
         proposalReads.push(target);
         onProposalRead?.();
         if (pendingRead) return pendingRead;
@@ -65,7 +73,7 @@ describe('staged proposal comparison', () => {
     root.remove();
   });
 
-  it('compares another page against live without saving, serializing, previewing or navigating', async () => {
+  it('compares saved source without saving, serializing, reading delivery or navigating', async () => {
     const event = { name: 'editor.viewDiff', context: { proposedPath: { path: '/components/proposal-path/text' } } };
     const artifact = {
       id: 'proposal',
@@ -76,41 +84,39 @@ describe('staged proposal comparison', () => {
     };
     const action = { artifactId: artifact.id, componentId: 'root', ...event };
     expect(await handleArtifactAction({ action, artifact, context })).to.deep.equal({ ok: true });
-    expect(reads).to.deep.equal([{
-      partition: 'live',
-      target: { org: 'example', site: 'site', path: 'campaigns/spring', proposalPath: '/.da/campaigns/spring.html' },
-    }]);
-    expect(proposalReads).to.deep.equal([reads[0].target]);
+    expect(reads).to.deep.equal([{ org: 'example', site: 'site', path: 'campaigns/spring', proposalPath: '/.da/campaigns/spring.html' }]);
+    expect(proposalReads).to.deep.equal([{ ...reads[0], path: '/.da/campaigns/spring.html' }]);
     expect(saveCalls).to.equal(0);
     expect(serializeCalls).to.equal(0);
     expect(context.path).to.equal('current');
     expect(editor.value).to.equal('Unsaved edits');
     const surface = root.querySelector('ew-comparison');
     expect(surface.path).to.equal('/campaigns/spring');
-    expect(surface.diffDom.textContent).to.include('Proposed content');
+    expect(textWithout(surface.diffDom, 'del')).to.include('Proposed content');
+    expect(textWithout(surface.diffDom, 'ins')).to.include('Current saved content');
     expect(surface.diffDom.querySelector('script, [onerror], [href^="javascript:"]')).to.equal(null);
     expect(surface.diffDom.querySelector('img').src).to.equal('https://main--site--example.aem.live/campaigns/media.jpg');
     await surface.updateComplete;
     const view = surface.shadowRoot.querySelector('ew-canvas-compare');
     await view.updateComplete;
     expect(view.label).to.equal('Proposed changes');
-    expect(view.currentLabel).to.equal('Live');
+    expect(view.currentLabel).to.equal('Current content');
     controller.close();
     expect(editor.inert).to.equal(false);
     expect(editor.isConnected).to.equal(true);
   });
 
-  it('rereads both versions on refresh and treats missing live as an empty baseline', async () => {
-    live = { html: '', missing: true };
+  it('rereads both original and staged source on refresh', async () => {
     await controller.open(options);
     let surface = root.querySelector('ew-comparison');
-    expect(surface.missingLive).to.equal(true);
+    original = { html: '<p>Updated original content</p>' };
     proposal = '<p>Updated staged content</p>';
     await surface.onRefresh();
     surface = root.querySelector('ew-comparison');
     expect(reads).to.have.length(2);
     expect(proposalReads).to.have.length(2);
-    expect(surface.diffDom.textContent).to.include('Updated staged content');
+    expect(textWithout(surface.diffDom, 'del')).to.include('Updated staged content');
+    expect(textWithout(surface.diffDom, 'ins')).to.include('Updated original content');
     expect(saveCalls).to.equal(0);
   });
 
@@ -122,12 +128,12 @@ describe('staged proposal comparison', () => {
     const action = { artifactId: artifact.id, componentId: button.id, ...button.action.event };
     expect(await handleArtifactAction({ action, artifact, context })).to.deep.equal({ ok: true });
     expect(proposalReads[0].proposalPath).to.equal('/.da/campaigns/spring-2026.html');
-    expect(reads[0].target.path).to.equal('campaigns/spring-2026');
+    expect(reads[0].path).to.equal('campaigns/spring-2026');
     expect(saveCalls).to.equal(0);
   });
 
   it('shows staged read failures without falling back to saving the current document', async () => {
-    proposal = new Error('Could not load proposed content (404).');
+    proposal = new Error('Could not load source content for /.da/campaigns/spring.html (404).');
     expect(await controller.open(options)).to.deep.equal({ ok: false, error: proposal.message });
     const surface = root.querySelector('ew-comparison');
     await surface.updateComplete;
@@ -136,6 +142,14 @@ describe('staged proposal comparison', () => {
     expect(surface.diffDom).to.equal(undefined);
     expect(saveCalls).to.equal(0);
     expect(serializeCalls).to.equal(0);
+  });
+
+  it('reports a missing original source instead of using an empty or live baseline', async () => {
+    original = new Error('Could not load source content for /campaigns/spring.html (404).');
+    expect(await controller.open(options)).to.deep.equal({ ok: false, error: original.message });
+    expect(root.querySelector('ew-comparison').error).to.equal(original.message);
+    expect(root.querySelector('ew-comparison').diffDom).to.equal(undefined);
+    expect(saveCalls).to.equal(0);
   });
 
   it('validates staged paths again at the comparison boundary', async () => {
@@ -174,20 +188,23 @@ describe('staged proposal comparison', () => {
   });
 });
 
-describe('staged source loader', () => {
-  it('reads source HTML through the authenticated API with cache busting', async () => {
-    let args;
-    const target = { org: 'example', site: 'site', proposalPath: '/.da/page.html' };
-    const api = {
-      source: {
-        get: async (value) => {
-          args = value;
-          return new Response('<p>Staged content</p>');
+describe('comparison source loader', () => {
+  ['campaigns/spring', '/campaigns/spring.html', '/.da/page.html'].forEach((path) => {
+    it(`reads ${path} through the authenticated source API with cache busting`, async () => {
+      let args;
+      const target = { org: 'example', site: 'site', path };
+      const api = {
+        source: {
+          get: async (value) => {
+            args = value;
+            return new Response('<p>Staged content</p>');
+          },
         },
-      },
-    };
-    expect(await readProposedContent(target, { api })).to.deep.equal({ html: '<p>Staged content</p>' });
-    expect(args).to.deep.equal({ org: 'example', site: 'site', path: target.proposalPath, cachebust: true });
+      };
+      expect(await readSourceContent(target, { api })).to.deep.equal({ html: '<p>Staged content</p>' });
+      const expectedPath = path.startsWith('/.da/') ? '/.da/page.html' : '/campaigns/spring.html';
+      expect(args).to.deep.equal({ org: 'example', site: 'site', path: expectedPath, cachebust: true });
+    });
   });
 
   [401, 403, 404, 500].forEach((status) => {
@@ -195,9 +212,9 @@ describe('staged source loader', () => {
       const api = { source: { get: async () => new Response('Error response', { status }) } };
       let error;
       try {
-        await readProposedContent({ proposalPath: '/.da/page.html' }, { api });
+        await readSourceContent({ path: '/.da/page.html' }, { api });
       } catch (e) { error = e; }
-      expect(error.message).to.equal(`Could not load proposed content (${status}).`);
+      expect(error.message).to.equal(`Could not load source content for /.da/page.html (${status}).`);
     });
   });
 });

@@ -9,6 +9,7 @@ const buttons = await loadStyle(`${getNx2()}/styles/buttons.css`);
 class EwComparison extends LitElement {
   static properties = {
     candidate: { type: String },
+    baseline: { type: String },
     path: { type: String },
     diffDom: { attribute: false },
     loading: { state: true },
@@ -58,7 +59,8 @@ class EwComparison extends LitElement {
         </div>
         ${this.diffDom ? html`
           <ew-canvas-compare .embedded=${true} .split=${this.split}
-            .currentLabel=${'Live'} .label=${{ document: 'Current document', preview: 'Preview', proposal: 'Proposed changes' }[this.candidate]}
+            .currentLabel=${this.baseline === 'source' ? 'Current content' : 'Live'}
+            .label=${{ document: 'Current document', preview: 'Preview', proposal: 'Proposed changes' }[this.candidate]}
             .diffDom=${this.diffDom} .canWrite=${false}
             @close=${() => this.onClose()}
             @toggle-split=${() => { this.split = !this.split; }}></ew-canvas-compare>

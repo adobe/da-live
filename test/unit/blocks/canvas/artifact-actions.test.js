@@ -35,7 +35,7 @@ describe('canvas artifact actions', () => {
     expect(await handleArtifactAction({ action, artifact, context })).to.deep.equal({ ok: true });
     expect(requests).to.have.length(1);
     expect(requests[0].context).to.deep.equal(context);
-    expect(requests[0].details).to.deep.equal({ candidate: 'proposal', baseline: 'live', proposedPath: '/example/site/.da/campaigns/spring.html' });
+    expect(requests[0].details).to.deep.equal({ candidate: 'proposal', baseline: 'source', proposedPath: '/example/site/.da/campaigns/spring.html' });
   });
 
   const invalidCases = {

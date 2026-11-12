@@ -33,7 +33,7 @@ export async function handleArtifactAction({ action, artifact, context }) {
     return await new Promise((resolve) => {
       canvasBus.comparisonRequest.emit({
         action: 'openComparison',
-        details: { candidate: 'proposal', baseline: 'live', proposedPath },
+        details: { candidate: 'proposal', baseline: 'source', proposedPath },
         context: { ...context },
         resolve,
       });

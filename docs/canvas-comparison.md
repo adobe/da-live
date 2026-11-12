@@ -7,7 +7,7 @@ The canvas comparison is a read-only, non-modal surface over the editor mount. T
 - Opening a `document` or `preview` comparison first awaits the host's save of the matching loaded editor. If it reports `not-writable`, comparison opens without saving so read-only reviewers can compare. Other returned or rejected save failures remain visible errors and prevent document serialization and delivery reads.
 - `document` versus `live`: after the save attempt, serialize the matching loaded editor (including edits received while saving), read live Markdown through the shared NX API, normalize both into document HTML, then compare.
 - `preview` versus `live`: after the save attempt, read both existing delivered Markdown resources through the shared NX API. Opening a comparison does not refresh preview or publish; unsaved-to-preview source edits are not included in the staged comparison.
-- `proposal` versus `live` (internal chat host only): read `/<org>/<site>/.da/<path>.html` from authenticated DA source and the original `<path>` from live delivery. Never save or serialize the current editor. Both paths must belong to the current site; another page in that site can be compared without navigation. The diff labels are Live and Proposed changes.
+- `proposal` versus `source` (internal chat host only): read both `/<org>/<site>/.da/<path>.html` and the original `/<org>/<site>/<path>.html` from authenticated DA source. Never save or serialize the current editor or read live delivery. Both paths must belong to the current site; another page in that site can be compared without navigation. The diff labels are Current content and Proposed changes. Unsaved editor-only changes are not included. Missing source files are errors, not empty baselines.
 - Live 404 is the never-published empty baseline; other failures remain visible errors.
 - Executable markup, non-content/custom elements and unsafe URL schemes are removed before rendering. Relative URLs are resolved against the page's delivery origin. Content links open separately rather than navigating the EW host.
 
@@ -29,9 +29,9 @@ are rejected. This is a bounded host-defined reference contract, not an A2UI
 expression interpreter. Button labels never trigger commands.
 
 The resulting `canvasBus.comparisonRequest` has host-owned current context and
-`details: { candidate: "proposal", baseline: "live", proposedPath }`. This
+`details: { candidate: "proposal", baseline: "source", proposedPath }`. This
 internal mode is **not** accepted by the plugin iframe protocol; its
-document/preview allowlist is unchanged. Staged-source and delivery failures
+document/preview allowlist is unchanged. Original-source and staged-source failures
 appear in the comparison surface; invalid chat actions report an error toast.
 Only the canvas host opts in; browse and legacy chat retain their behavior.
 
@@ -44,10 +44,10 @@ schemas to the model.
 
 ## Display and lifecycle
 
-- **Side by side** separates Live and the candidate into two columns. Turning it off shows removals and additions together in one unified diff. Red indicates removed live content; green indicates added candidate content.
+- **Side by side** separates the baseline and candidate into two columns (Live for document/preview comparisons, Current content for proposals). Turning it off shows removals and additions together in one unified diff. Red indicates removed baseline content; green indicates added candidate content.
 - Close restores the editor's previous inert state and returns focus when focus was in the comparison.
 - Close, page changes and replacement comparisons invalidate outstanding work. After awaiting save, the comparison re-checks its generation and current page context before serializing or loading content.
 - Document changes mark a document comparison stale. Refresh rebuilds it.
 - Preview and live are read when comparison opens or refreshes. Comparisons do not lock either revision.
-- Proposal refresh rereads both live and staged source. Closing, navigation, or a replacement comparison invalidates pending reads without touching the editor.
+- Proposal refresh rereads both original and staged source. Closing, navigation, or a replacement comparison invalidates pending reads without touching the editor.
 - Only the explicit `saveDocument` action is acknowledged over the same MessagePort using the caller's request ID. Consumers that preview source content must await a successful save result before starting preview; comparison-open's internal save attempt does not refresh preview.

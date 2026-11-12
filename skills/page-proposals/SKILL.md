@@ -1,17 +1,33 @@
 ---
 name: page-proposals
-description: Only in the Experience Workspace context, stage proposed DA page edits without changing originals, then render a composed A2UI review list with native canvas View diff actions.
+description: Use for every request to change, update, edit, revise, rewrite, fix, add, remove, or replace DA page content in Experience Workspace, including small edits and follow-up changes. Applies even when the user does not mention proposals, staging, review, A2UI, or this skill. Stage changes under /.da/ without modifying originals, then render the review UI with View diff actions.
 ---
 
-# Propose page changes in Coworker
+# Handle page changes in Experience Workspace
 
 Use this flow only when the current session is explicitly in the
-**Experience Workspace** context and a user requests changes to one or more DA
-pages for review. Confirm that context from the host-provided session context
+**Experience Workspace** context and a user requests any change to one or more
+DA pages. This is the default workflow for all page updates, not just requests
+explicitly described as proposals or reviews. Confirm that context from the host-provided session context
 before copying or modifying files or emitting the review UI. Having DA content
 tools available does not by itself establish the Experience Workspace context.
 If the context is different or cannot be confirmed, do not apply this staging
 or A2UI flow; follow the workflow appropriate to that context instead.
+
+## When to activate
+
+Activate before any DA page-content write in Experience Workspace. Apply this
+skill to initial requests and follow-up edits, including small changes, even
+when the user does not name this skill or ask for staging or a review UI.
+Examples include "make a change", "update this page", "change the heading",
+"fix this typo", "rewrite the hero", "add a section", "remove that paragraph",
+"replace the image", and "make it shorter".
+
+Do not treat direct wording such as "edit this page" as permission to skip
+staging or write to the original. For follow-up changes to an existing proposal,
+continue editing that task's staged copy rather than copying the original over
+it, then emit the updated review UI. Read-only questions and requests to explain
+or inspect content do not trigger this modification workflow.
 
 Use the content tools available in the current Coworker session; do not invent
 tool names or write only to the agent's private filesystem.
@@ -38,10 +54,11 @@ tool names or write only to the agent's private filesystem.
    only successfully staged pages. If the artifact tool is unavailable, provide
    a text summary and staged paths; do not claim interactive controls exist.
 
-The copy starts with the current source, which can include unpublished edits.
-The comparison baseline is the original page's **currently published live**
-version, not a snapshot of the source before editing. Explain this distinction
-when it matters. An unpublished page has an empty live baseline.
+The copy starts with the current saved DA source. The comparison baseline is
+the original page's **latest saved DA source**, not its published live version
+or a snapshot from before editing. Unsaved editor-only changes are not included;
+opening a comparison never saves the editor. Both source files must exist, even
+if the original page has never been published.
 
 ## Compose the review UI
 
@@ -88,10 +105,27 @@ Do not pass a URL, raw HTML, a local filename, a literal string in event context
 or an invented `dataModel` field. Keep the hidden Text record in the components
 array; it does not need to be a child of root.
 
+Do not emit a separate object such as
+`{ "proposals": { "page1": "/org/site/.da/page.html" } }` and reference
+`"/proposals/page1"`. This host does not receive or resolve that data model,
+even if the artifact tool supports data models in other clients. The staged
+path must be literal `text` in the same artifact's components array, referenced
+as `"/components/page1-proposal/text"`.
+
+Before emitting the artifact, check every View diff button: its event context
+must contain only `proposedPath`; the reference must match
+`/components/<id>/text`; and exactly one Text record with that ID must exist in
+the submitted components array and contain the full staged `.html` path.
+Do not omit hidden records as unused or move them into a separate data model.
+If a previous artifact used an unsupported reference, regenerate only the UI
+with the corrected reference and Text record; do not copy files again or
+reapply edits to repair the UI.
+
 Canvas checks the event name, artifact/component identity, reference, and path.
 Only staged HTML pages in the current org/site are allowed. It strips `/.da/`
-to derive the original page, reads that page's live delivery and the staged DA
-source, sanitizes them, and displays a read-only comparison. It does not navigate
+to derive the original page, reads both that page's current saved DA source and
+the staged DA source, sanitizes them, and displays a read-only comparison labeled
+Current content and Proposed changes. It does not navigate
 to, save, accept, preview, or publish either page. Clicking View diff is handled
 by the browser host, not another Coworker turn. Refresh rereads both resources,
 so this is not a revision-pinned comparison.
