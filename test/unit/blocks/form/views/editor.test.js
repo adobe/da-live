@@ -1,6 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import '../../../setup-nx.js';
 import '../../../../../blocks/form/views/editor.js';
+import { NAV_ORIGIN } from '../../../../../blocks/form/events.js';
 
 const tick = () => new Promise((resolve) => { setTimeout(resolve); });
 
@@ -109,5 +110,36 @@ describe('ew-form-fields primitive controls', () => {
     expect(textarea).to.exist;
     // flex:1 is what makes it take the row width beside the action menu.
     expect(getComputedStyle(textarea).flexGrow).to.equal('1');
+  });
+});
+
+describe('ew-form-fields outline jumps', () => {
+  const groupRoot = () => objectRoot([
+    { kind: 'string', pointer: '/data/title', label: 'Title', value: '' },
+    {
+      kind: 'object',
+      pointer: '/data/hero',
+      label: 'Hero',
+      children: [{ kind: 'string', pointer: '/data/hero/heading', label: 'Heading', value: '' }],
+    },
+  ]);
+
+  async function scrolledBy(origin) {
+    const editor = await mountEditor(groupRoot());
+    const group = editor.shadowRoot.querySelector('.form-node[data-pointer="/data/hero"]');
+    let scrolled = false;
+    group.scrollIntoView = () => { scrolled = true; };
+    editor.nav = { pointer: '/data/hero', origin, seq: 1 };
+    await editor.updateComplete;
+    editor.remove();
+    return scrolled;
+  }
+
+  it('scrolls a group the outline jumps to into view', async () => {
+    expect(await scrolledBy(NAV_ORIGIN.OUTLINE)).to.equal(true);
+  });
+
+  it('leaves the scroll alone for selections made in the editor', async () => {
+    expect(await scrolledBy(NAV_ORIGIN.EDITOR)).to.equal(false);
   });
 });

@@ -37,13 +37,13 @@
   max-width: 880px;
   margin: 0 auto;
   display: flex;
+  justify-content: center;
   align-items: flex-start;
   gap: 20px;
   box-sizing: border-box;
 }
 
 .ew-form-wrapper.ew-form-wrapper-centered {
-  justify-content: center;
   padding-top: var(--form-content-top, 32px);
 }
 
@@ -56,15 +56,6 @@
 
 .ew-form-pane-with-preview ew-form-fields {
   --ew-form-padding-bottom: 16px;
-}
-
-ew-form-sidebar {
-  position: sticky;
-  top: var(--ew-form-scroll-offset-top, 0);
-  flex: 0 0 300px;
-  width: 300px;
-  max-width: 300px;
-  align-self: flex-start;
 }
 
 .ew-form-schema-shell {

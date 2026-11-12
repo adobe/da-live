@@ -1,9 +1,10 @@
-/* Form workspace: the nx2 form fills main; nx-chat is docked on the left. */
+/* Form workspace. The nx2 form fills main, with nx-chat docked on the left
+   and the tools panel on the right. */
 
 :root {
   --form-content-top: 32px;
 
-  /* Top offset for groups scrolled into view and for the sticky nav. Only
+  /* Top offset for groups scrolled into view. Only
      the editor content applies it. Padding the .form scroll container as
      well would misalign the two. */
   --ew-form-scroll-offset-top: var(--form-content-top);
@@ -12,7 +13,7 @@
 /* Nested scroll like /canvas. The form scrolls inside a fixed-height region
    below the global nav.
 
-   `.form` is the block div, not the `<nx-form>` element inside it. That
+   `.form` is the block div, not the `<ew-form-editor>` element inside it. That
    element styles itself through editor.css in its shadow root. da-nx names
    the block div `nx-form`. Pages that declare a `form` block load this
    copy instead. Hence `.form` here instead of da-nx's `.nx-form`. */
@@ -39,18 +40,17 @@ aside.panel[data-position='before'] nx-chat {
   height: 100%;
 }
 
-/* Floating chat toggle at the top-left of the canvas. The anchor is a
-   zero-height element in the main flow, so it establishes the canvas left edge
-   (right of the app rail) without reserving vertical space or scrolling. */
-.form-chat-toggle-anchor {
+/* Floating panel toggles at the top corners of the canvas. The anchor is a
+   zero-height element in the main flow, so it spans the canvas between the
+   docked panels without reserving vertical space or scrolling. */
+.form-toggle-anchor {
   position: relative;
   height: 0;
 }
 
-.form-chat-toggle {
+.form-panel-toggle {
   position: absolute;
   top: 8px;
-  left: 8px;
   z-index: 10;
   display: inline-flex;
   align-items: center;
@@ -67,22 +67,31 @@ aside.panel[data-position='before'] nx-chat {
   cursor: pointer;
 }
 
-.form-chat-toggle:hover {
+.form-panel-toggle:hover {
   background-color: var(--s2-gray-75);
 }
 
-.form-chat-toggle:focus-visible {
+.form-panel-toggle:focus-visible {
   outline: 2px solid var(--s2-blue-800);
   outline-offset: 2px;
 }
 
-.form-chat-toggle svg {
+.form-panel-toggle svg {
   display: block;
   width: 16px;
   height: 16px;
 }
 
-/* Hide the toggle while the chat is open (it has its own close). */
-html:has(aside.panel[data-position='before']:not([hidden])) .form-chat-toggle {
+.form-chat-toggle {
+  left: 8px;
+}
+
+.form-tools-toggle {
+  right: calc(8px + var(--form-scrollbar-width, 0px));
+}
+
+/* Each toggle hides while its panel is open, since the panel has its own close. */
+html:has(aside.panel[data-position='before']:not([hidden])) .form-chat-toggle,
+html:has(aside.panel[data-position='after']:not([hidden])) .form-tools-toggle {
   display: none;
 }
