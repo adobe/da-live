@@ -47,6 +47,13 @@ describe('rich-text codec', () => {
         .to.equal('<p>Title</p><p>Body</p><p>x</p>');
     });
 
+    it('reads a code block as a paragraph with its line breaks like the SDK', () => {
+      ['<pre><code>a\nb  c</code></pre>', '<pre>a <strong>b</strong>\nc</pre>'].forEach((value) => {
+        expect(roundTrip(value)).to.equal(sdkStores(value));
+      });
+      expect(roundTrip('<pre><code>a\nb  c</code></pre>')).to.equal('<p>a<br>b c</p>');
+    });
+
     it('keeps headings and blockquotes', () => {
       const html = '<h1>One</h1><h2>Two</h2><h3>Three</h3><h4>Four</h4><h5>Five</h5><h6>Six</h6>'
         + '<blockquote><p>Quote</p><h2>Head</h2><ul><li><p>item</p></li></ul><blockquote><p>Nested</p></blockquote></blockquote>';
