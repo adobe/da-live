@@ -11,7 +11,6 @@ const [formStyle, styles] = await Promise.all([
   loadStyle(import.meta.url),
 ]);
 
-/** The errors the URL shows. */
 const URL_ERRORS = {
   required: 'URL is required',
   unsafe: 'Use a relative, http(s), mailto or tel link.',
@@ -34,15 +33,10 @@ class DaLinkDialog extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [formStyle, styles];
   }
 
-  /** Closes the dialog, which then fires `close`. */
   close() {
     this.shadowRoot.querySelector('nx-dialog')?.close();
   }
 
-  /**
-   * Saves the link. Enter in a field and the Save button both submit the form.
-   * @param {SubmitEvent} event The `submit` event of the form.
-   */
   _onSubmit(event) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -68,10 +62,6 @@ class DaLinkDialog extends LitElement {
     }));
   }
 
-  /**
-   * Keeps Enter from submitting while an input method composes text, since it confirms the text.
-   * @param {KeyboardEvent} event The `keydown` event of the form.
-   */
   _onKeydown(event) {
     if (event.key === 'Enter' && (event.isComposing || event.keyCode === 229)) {
       event.preventDefault();
