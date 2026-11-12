@@ -47,7 +47,7 @@ describe('rich-text tools', () => {
       const { tool } = setup();
       const state = stateFor('<p>ab</p>', { from: 1, to: 3 });
       expect(run(tool(TOOL_IDS.italic).command, state).html).to.equal('<p><em>ab</em></p>');
-      expect(run(tool(TOOL_IDS.orderedList).command, state).html).to.equal('<ol><li>ab</li></ol>');
+      expect(run(tool(TOOL_IDS.orderedList).command, state).html).to.equal('<ol><li><p>ab</p></li></ol>');
       expect(run(tool(TOOL_IDS.blockquote).command, state).html)
         .to.equal('<blockquote><p>ab</p></blockquote>');
     });
@@ -166,15 +166,15 @@ describe('rich-text tools', () => {
 
     it('indents and outdents list items', () => {
       const { Tab: indent, 'Shift-Tab': outdent } = keymapFor();
-      const flat = '<ul><li>a</li><li>b</li></ul>';
+      const flat = '<ul><li><p>a</p></li><li><p>b</p></li></ul>';
       expect(indent(stateFor(flat, { from: 3 }))).to.be.false;
       expect(indent(stateFor('<p>a</p>', { from: 1 }))).to.be.false;
       expect(outdent(stateFor('<p>a</p>', { from: 1 }))).to.be.false;
       const nested = run(indent, stateFor(flat, { from: 8 }));
-      expect(nested.html).to.equal('<ul><li>a<ul><li>b</li></ul></li></ul>');
+      expect(nested.html).to.equal('<ul><li><p>a</p><ul><li><p>b</p></li></ul></li></ul>');
       const lifted = run(outdent, nested.state);
       expect(lifted.html).to.equal(flat);
-      expect(run(outdent, lifted.state).html).to.equal('<ul><li>a</li></ul><p>b</p>');
+      expect(run(outdent, lifted.state).html).to.equal('<ul><li><p>a</p></li></ul><p>b</p>');
     });
 
     it('inserts a hard break', () => {

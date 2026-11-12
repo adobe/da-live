@@ -4,7 +4,7 @@ import defaults from './defaults.js';
 import { icon } from '../icons.js';
 import './rich-text-toolbar.js';
 import { createSchema } from '../utils/rich-text/schema.js';
-import { parseRichText, serializeRichText, getCanonicalChange } from '../utils/rich-text/html.js';
+import { createRichTextCodec } from '../utils/rich-text/codec.js';
 import { getLinkDraft, applyLink } from '../utils/rich-text/commands.js';
 import { TOOL_IDS, buildKeymap, createToolset } from '../utils/rich-text/tools.js';
 import { placeBubble } from '../utils/rich-text/bubble.js';
@@ -67,6 +67,9 @@ class FormRichText extends LitElement {
 
   _schema;
 
+  /** @type {import('../utils/rich-text/codec.js').RichTextCodec} */
+  _codec;
+
   _view;
 
   /** The value the editor shows, so the echo of a published value does not reset it. */
@@ -128,6 +131,7 @@ class FormRichText extends LitElement {
     try {
       this._proseMirror = await this.constructor.loadProseMirror();
       this._schema = createSchema(this._proseMirror);
+      this._codec = createRichTextCodec({ proseMirror: this._proseMirror, schema: this._schema });
       this._toolset = createToolset({
         proseMirror: this._proseMirror,
         schema: this._schema,
@@ -245,7 +249,7 @@ class FormRichText extends LitElement {
       proseMirror.keymap(buildKeymap({ proseMirror, schema, toolset: this._toolset })),
       proseMirror.keymap(proseMirror.baseKeymap),
     ];
-    const richTextDocument = parseRichText({ proseMirror, schema, value });
+    const richTextDocument = this._codec.parse(value);
     return proseMirror.EditorState.create({ doc: richTextDocument, plugins });
   }
 
@@ -277,7 +281,7 @@ class FormRichText extends LitElement {
 
   /** Publishes the value the editor shows and emits `input`, unless it did not change. */
   _publishValue() {
-    const value = serializeRichText({ richTextDocument: this._view.state.doc });
+    const value = this._codec.serialize(this._view.state.doc);
     if (value === this._editorValue) {
       return;
     }
@@ -351,28 +355,6 @@ class FormRichText extends LitElement {
     this._view?.focus();
   }
 
-  /**
-   * Shows the value in the form the SDK stores. Typing needs transient states like
-   * trailing spaces, so this only runs on blur.
-   */
-  _showCanonical() {
-    if (!this._view) {
-      return;
-    }
-
-    const { state } = this._view;
-    const change = getCanonicalChange({
-      proseMirror: this._proseMirror,
-      richTextDocument: state.doc,
-    });
-    if (!change) {
-      return;
-    }
-
-    const { from, to, slice } = change;
-    this._view.dispatch(state.tr.replace(from, to, slice).setMeta('addToHistory', false));
-  }
-
   /** Emits `change` when the value changed since the last one. */
   _commit() {
     if (!this._dirty) {
@@ -407,10 +389,6 @@ class FormRichText extends LitElement {
     }
 
     this._focused = false;
-    // Switching windows blurs the editor too, but the author has not left the field.
-    if (document.hasFocus()) {
-      this._showCanonical();
-    }
     this._commit();
   }
 

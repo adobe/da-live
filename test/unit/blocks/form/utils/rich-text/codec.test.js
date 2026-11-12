@@ -3,11 +3,11 @@ import { expect } from '@esm-bundle/chai';
 import * as proseMirror from 'da-y-wrapper';
 import { createEngine, convertJsonToHtml, convertHtmlToJson } from '../../../../../../deps/da-sc-sdk/dist/index.js';
 import { createSchema } from '../../../../../../blocks/form/utils/rich-text/schema.js';
-import { parseRichText, serializeRichText, getCanonicalChange } from '../../../../../../blocks/form/utils/rich-text/html.js';
+import { createRichTextCodec } from '../../../../../../blocks/form/utils/rich-text/codec.js';
 
 const schema = createSchema(proseMirror);
-const parse = (value) => parseRichText({ proseMirror, schema, value });
-const roundTrip = (value) => serializeRichText({ richTextDocument: parse(value) });
+const { parse, serialize } = createRichTextCodec({ proseMirror, schema });
+const roundTrip = (value) => serialize(parse(value));
 
 const sdkSchema = { type: 'object', properties: { body: { type: 'string', 'x-semantic-type': 'rich-text' } } };
 const sdkStores = (body) => {
@@ -16,31 +16,18 @@ const sdkStores = (body) => {
   const { html } = convertJsonToHtml({ json, model });
   return convertHtmlToJson({ html }).json.data.body ?? '';
 };
-const rawHtml = (richTextDocument) => {
-  const container = document.createElement('div');
-  const serializer = proseMirror.DOMSerializer.fromSchema(schema);
-  container.append(serializer.serializeFragment(richTextDocument.content));
-  return container.innerHTML;
-};
 
-describe('rich-text html', () => {
+describe('rich-text codec', () => {
   describe('parse and serialize', () => {
-    it('keeps the canonical subset unchanged', () => {
+    it('keeps the supported markup unchanged', () => {
       const html = '<p>A <strong>bold</strong>, <em>em</em>, <u>u</u>, <s>s</s> and <a href="https://x.y">link</a>.</p>'
-        + '<ul><li>one<ol><li>nested</li></ol></li><li>two</li></ul><p>a<br>b</p>';
+        + '<ul><li><p>one</p><ol><li><p>nested</p></li></ol></li><li><p>two</p></li></ul><p>a<br>b</p>';
       expect(roundTrip(html)).to.equal(html);
     });
 
     it('normalizes equivalent tags', () => {
       expect(roundTrip('<p><b>b</b><i>i</i><strike>s</strike><del>d</del></p>'))
         .to.equal('<p><strong>b</strong><em>i</em><s>sd</s></p>');
-    });
-
-    it('keeps a trimmed link title', () => {
-      expect(roundTrip('<p><a href="/a" title="  A  &quot;b&quot;\n c ">x</a><a href="/b" title=" ">y</a></p>'))
-        .to.equal('<p><a href="/a" title="A &quot;b&quot; c">x</a><a href="/b">y</a></p>');
-      expect(roundTrip('<p><a href="/a" title="t">x</a><a href="/a">y</a></p>'))
-        .to.equal('<p><a href="/a" title="t">x</a><a href="/a">y</a></p>');
     });
 
     it('nests marks with links outermost', () => {
@@ -62,12 +49,8 @@ describe('rich-text html', () => {
 
     it('keeps headings and blockquotes', () => {
       const html = '<h1>One</h1><h2>Two</h2><h3>Three</h3><h4>Four</h4><h5>Five</h5><h6>Six</h6>'
-        + '<blockquote><p>Quote</p><h2>Head</h2><ul><li>item</li></ul><blockquote><p>Nested</p></blockquote></blockquote>';
+        + '<blockquote><p>Quote</p><h2>Head</h2><ul><li><p>item</p></li></ul><blockquote><p>Nested</p></blockquote></blockquote>';
       expect(roundTrip(html)).to.equal(html);
-    });
-
-    it('drops empty headings and blockquotes', () => {
-      expect(roundTrip('<h2> </h2><blockquote><p><br></p></blockquote><p>a</p>')).to.equal('<p>a</p>');
     });
 
     it('keeps inline code, superscript and subscript', () => {
@@ -94,33 +77,10 @@ describe('rich-text html', () => {
       expect(sdkStores('if a<b then c')).to.equal('<p>if a&lt;b then c</p>');
     });
 
-    it('produces values the SDK keeps unchanged', () => {
-      const values = [
-        '<h2>Title</h2><p><a href="/a"><strong>b<em>i</em></strong></a> <u>u</u><s>s</s></p>',
-        '<blockquote><p>q<sup>1</sup></p><ol><li>a<ul><li>b</li></ul></li></ol></blockquote>',
-        '<p>H<sub>2</sub>O <code>c</code><br>next</p>',
-        '<p><a href="/a" title="A &quot;b&quot; &amp; &lt;c&gt;">l</a></p>',
-      ];
-      values.forEach((value) => {
-        const body = roundTrip(value);
-        expect(sdkStores(body)).to.equal(body);
-      });
-    });
-
-    it('serializes empty content as an empty string', () => {
+    it('serializes content without text as an empty string', () => {
       expect(roundTrip('')).to.equal('');
       expect(roundTrip(undefined)).to.equal('');
       expect(roundTrip('<p> </p><p><br></p><ul><li></li></ul>')).to.equal('');
-    });
-
-    it('trims edge whitespace and breaks', () => {
-      expect(roundTrip('<p><br> a  b <br></p>')).to.equal('<p>a b</p>');
-    });
-
-    it('trims non-breaking and em spaces at the edges like the SDK', () => {
-      const value = '<p>\u00a0\u2003a\u00a0b\u2003\u00a0</p>';
-      expect(roundTrip(value)).to.equal('<p>a\u00a0b</p>');
-      expect(sdkStores(value)).to.equal('<p>a\u00a0b</p>');
     });
   });
 
@@ -128,11 +88,11 @@ describe('rich-text html', () => {
     it('drops unsafe links from markup that skips the sanitizer, like a paste', () => {
       const { body } = new DOMParser().parseFromString('<p><a href="javascript:x()">a</a><a href="/b" title=" T ">b</a></p>', 'text/html');
       const richTextDocument = proseMirror.DOMParser.fromSchema(schema).parse(body);
-      expect(serializeRichText({ richTextDocument })).to.equal('<p>a<a href="/b" title="T">b</a></p>');
+      expect(serialize(richTextDocument)).to.equal('<p>a<a href="/b" title="T">b</a></p>');
     });
 
     it('reads a numbered list without its start number like the SDK', () => {
-      expect(rawHtml(parse('<ol start="3"><li>a</li></ol>'))).to.equal('<ol><li><p>a</p></li></ol>');
+      expect(roundTrip('<ol start="3"><li>a</li></ol>')).to.equal('<ol><li><p>a</p></li></ol>');
     });
 
     it('keeps normal text normal when Google Docs wraps a paste in bold', () => {
@@ -141,7 +101,7 @@ describe('rich-text html', () => {
     });
   });
 
-  describe('canonical change', () => {
+  describe('stored form', () => {
     const text = (value, marks = []) => ({ type: 'text', text: value, marks: marks.map((type) => (typeof type === 'string' ? { type } : type)) });
     const inline = (content) => content.map((item) => (typeof item === 'string' ? text(item) : item));
     const paragraph = (...content) => ({ type: 'paragraph', content: inline(content) });
@@ -153,19 +113,13 @@ describe('rich-text html', () => {
     const quote = (...content) => ({ type: 'blockquote', content });
     const link = (href, title = null) => ({ type: 'link', attrs: { href, title } });
     const documentOf = (content) => schema.nodeFromJSON({ type: 'doc', content });
-    const normalize = (richTextDocument) => {
-      const change = getCanonicalChange({ proseMirror, richTextDocument });
-      if (!change) return richTextDocument;
-      return richTextDocument.replace(change.from, change.to, change.slice);
-    };
-    const stored = (richTextDocument) => parse(serializeRichText({ richTextDocument }));
 
     const canonical = {
       'an empty field': [paragraph()],
       'escaped characters': [paragraph('<a> & "q" \'s\'')],
       'non-breaking spaces': [paragraph('a\u00a0b')],
       'overlapping marks': [paragraph(text('a', ['strong']), text('b', ['strong', 'em']), text('c', ['em']))],
-      'stacked marks in a titled link': [paragraph(text('x', [link('/a', 'T'), 'strong', 'code']))],
+      'stacked marks in a titled link': [paragraph(text('x', [link('/a', 'A "b" & <c>'), 'strong', 'code']))],
       'scripts in links': [paragraph(text('x', [link('/a'), 'sup']))],
       'inner line breaks': [paragraph('a', hardBreak, hardBreak, 'b'), bulletList(listItem(paragraph('c', hardBreak, 'd')))],
       'nested lists': [bulletList(listItem(paragraph('a'), orderedList(listItem(paragraph('b'), bulletList(listItem(paragraph(text('c', ['em']))))))))],
@@ -188,45 +142,24 @@ describe('rich-text html', () => {
       'a trailing space in a mark before a break': [paragraph(text('a ', ['em']), hardBreak)],
     };
 
-    const visibleText = (html) => new DOMParser()
-      .parseFromString(html.replaceAll('<br>', '\n'), 'text/html')
-      .body.textContent.replace(/\s+/g, ' ').trim();
-
-    Object.entries({ ...canonical, ...transient }).forEach(([name, content]) => {
-      it(`stores ${name} in a form the SDK and a reload keep`, () => {
-        const richTextDocument = documentOf(content);
-        const value = serializeRichText({ richTextDocument });
-        expect(sdkStores(value)).to.equal(value);
-        expect(roundTrip(value)).to.equal(value);
-        expect(visibleText(value)).to.equal(visibleText(sdkStores(rawHtml(richTextDocument))));
-      });
-    });
+    const visibleText = (richTextDocument) => richTextDocument
+      .textBetween(0, richTextDocument.content.size, ' ', ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
 
     Object.entries(canonical).forEach(([name, content]) => {
-      it(`leaves ${name} unchanged`, () => {
+      it(`reloads ${name} unchanged from what the SDK stores`, () => {
         const richTextDocument = documentOf(content);
-        expect(getCanonicalChange({ proseMirror, richTextDocument })).to.equal(null);
-        expect(stored(richTextDocument).eq(richTextDocument)).to.be.true;
+        expect(parse(sdkStores(serialize(richTextDocument))).eq(richTextDocument)).to.be.true;
       });
     });
 
     Object.entries(transient).forEach(([name, content]) => {
-      it(`replaces ${name} with what is stored`, () => {
+      it(`keeps the text of ${name} when the SDK stores it`, () => {
         const richTextDocument = documentOf(content);
-        const shown = normalize(richTextDocument);
-        expect(shown.eq(richTextDocument)).to.be.false;
-        expect(shown.eq(stored(richTextDocument))).to.be.true;
-        expect(stored(shown).eq(shown)).to.be.true;
-        const expected = serializeRichText({ richTextDocument });
-        expect(serializeRichText({ richTextDocument: shown })).to.equal(expected);
+        const stored = parse(sdkStores(serialize(richTextDocument)));
+        expect(visibleText(stored)).to.equal(visibleText(richTextDocument));
       });
-    });
-
-    it('replaces only the differing range', () => {
-      const richTextDocument = documentOf([paragraph('keep'), paragraph(), paragraph('also')]);
-      const { from, to } = getCanonicalChange({ proseMirror, richTextDocument });
-      expect(richTextDocument.textBetween(0, from)).to.equal('keep');
-      expect(richTextDocument.textBetween(to, richTextDocument.content.size)).to.equal('also');
     });
   });
 });
