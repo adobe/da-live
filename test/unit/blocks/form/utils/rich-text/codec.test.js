@@ -51,6 +51,14 @@ describe('rich-text codec', () => {
         .to.equal('<p>t</p>');
     });
 
+    it('keeps custom app links and drops Follina-style links', () => {
+      const value = '<p><a href="myprotocol://open/1">a</a> <a href="ms-msdt:/id x">b</a> '
+        + '<a href="search-ms:query=x">c</a></p>';
+      const expected = '<p><a href="myprotocol://open/1">a</a> b c</p>';
+      expect(roundTrip(value)).to.equal(expected);
+      expect(sdkStores(value)).to.equal(expected);
+    });
+
     it('drops script links hidden with HTML entities', () => {
       const value = '<p><a href="&#106;avascript:x()">a</a><a href="jav&#x09;ascript:x()">b</a>'
         + '<a href="javascript&colon;x()">c</a></p>';
