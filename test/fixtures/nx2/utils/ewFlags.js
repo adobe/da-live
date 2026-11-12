@@ -1,6 +1,6 @@
 let ewEnabled = false;
 export const setEWEnabled = (value) => { ewEnabled = value; };
-export const isEWEnabled = async () => ewEnabled;
+export const isEWEnabled = async (context) => (typeof ewEnabled === 'function' ? ewEnabled(context) : ewEnabled);
 export const isEwChatDisabled = async () => false;
 export const getEWFlags = async () => ({});
 

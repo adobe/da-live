@@ -1,5 +1,6 @@
-import { getNx2Api } from '../../../scripts/utils.js';
-import { formatDate } from '../utils.js';
+import { getNx2Api, getNxEWFlags } from '../../../scripts/utils.js';
+import { EMPTY_DOC, fetchDaConfigs, formatDate, getFirstSheet } from '../utils.js';
+import getEditPath, { getConfiguredEditor } from './edit-path.js';
 
 function toEnv(env) {
   return {
@@ -59,6 +60,28 @@ export async function doesFileExist(path) {
   const { source } = await getNx2Api();
   const { status } = await source.getMetadata(path);
   return status === 200;
+}
+
+export async function createPage({ path, editor, isCurrent = () => true }) {
+  let resolvedEditor = editor;
+  if (resolvedEditor === undefined) {
+    const [, org, site] = path.split('/');
+    const [configs, { isEWEnabled }] = await Promise.all([
+      Promise.all(fetchDaConfigs({ org, site })),
+      getNxEWFlags(),
+    ]);
+    const defaultEditor = await isEWEnabled({ org, site }).catch(() => false) ? '/canvas#' : '/edit#';
+    const editorConfs = configs.filter(Boolean).reverse()
+      .flatMap((config) => getFirstSheet(config) || [])
+      .filter(({ key }) => key === 'editor.path')
+      .map(({ value }) => value);
+    resolvedEditor = getConfiguredEditor(path, editorConfs, defaultEditor);
+  }
+  const { source } = await getNx2Api();
+  if (!isCurrent()) return undefined;
+  const resp = await source.save(path, { body: EMPTY_DOC });
+  if (!resp?.ok) throw new Error('Could not create the page.');
+  return getEditPath({ path, ext: 'html', editor: resolvedEditor });
 }
 
 export function getRenamedPath({ path, name, newName }) {

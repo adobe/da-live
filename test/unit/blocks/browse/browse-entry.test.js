@@ -3,11 +3,49 @@ import sinon from 'sinon';
 import '../../setup-nx.js';
 import init from '../../../../blocks/browse/browse.js';
 import { DaLanding } from '../../../../blocks/landing/landing.js';
+import { DaRecentFiles } from '../../../../blocks/landing/recent-files/recent-files.js';
 import { getNx, getNx2, getNx2Api } from '../../../../scripts/utils.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { source, config } = await getNx2Api();
 const { getSiteOptions } = await import(`${getNx2()}/blocks/siteselector/site-utils.js`);
+const { loadBlock, setBlockMocks } = await import(`${getNx2()}/scripts/nx.js`);
+const content = `
+  <div><div class="browse"></div></div>
+  <div>
+    <div class="greeting"><div><div><h1>Hi [firstname]</h1></div></div></div>
+    <div class="recent-files"></div>
+    <div class="landing">
+      <div><div>:s2-icon-folderopen-20-n:</div>
+        <div><h3><a href="/#/%7Borg%7D/%7Bsite%7D">Browse</a></h3></div></div>
+      <div><div>:s2-icon-edit-20-n:</div>
+        <div><h3><a href="/%7Baction:create-page%7D">Create</a></h3></div></div>
+      <div><div>:s2-icon-publish-20-n:</div>
+        <div><h3><a href="https://example.com/guide">Guide</a></h3></div></div>
+    </div>
+  </div>`;
+
+async function waitUntil(predicate) {
+  for (let i = 0; i < 50 && !predicate(); i += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((resolve) => { setTimeout(resolve, 10); });
+  }
+  expect(!!predicate()).to.equal(true);
+}
+
+function decorateSections(main) {
+  return [...main.children].map((section) => {
+    section.classList.add('section');
+    const group = document.createElement('div');
+    group.className = 'block-content';
+    group.append(...section.children);
+    section.append(group);
+    section.blocks = [...group.children].filter((block) => block.className);
+    section.linkBlocks = [];
+    section.autoBlocks = [];
+    return section;
+  });
+}
 
 describe('Browse Content opt-in', () => {
   // Each init subscribes to hash changes; drop them so later hash updates don't reach old views.
@@ -17,11 +55,12 @@ describe('Browse Content opt-in', () => {
   beforeEach(() => {
     subscribe = sinon.spy(hashChange, 'subscribe');
     initialize = sinon.spy(DaLanding.prototype, 'initialize');
-    loadSite = sinon.stub(DaLanding.prototype, 'loadSite').resolves();
+    loadSite = sinon.stub(DaRecentFiles.prototype, 'loadSite').resolves();
     getSiteOptions.returns([{ value: 'org/site', label: 'org/site' }]);
     localStorage.setItem('da-sites', JSON.stringify(['org/site']));
   });
   afterEach(() => {
+    setBlockMocks({});
     subscribe.returnValues.forEach((unsubscribe) => unsubscribe());
     subscribe.restore();
     initialize.restore();
@@ -32,21 +71,57 @@ describe('Browse Content opt-in', () => {
     hashChange._set(undefined);
   });
 
+  it('claims Landing sections before NX reaches their queued blocks and links', async () => {
+    const main = document.createElement('main');
+    main.innerHTML = content;
+    main.insertAdjacentHTML('beforeend', '<div><div class="unrelated">Other page content</div></div>');
+    const sections = decorateSections(main);
+    const el = main.querySelector('.browse');
+    const greeting = main.querySelector('.greeting');
+    const tiles = main.querySelector('.landing');
+    sections[1].linkBlocks = [greeting];
+    sections[1].autoBlocks = [tiles];
+    const unrelated = sinon.spy();
+    setBlockMocks({ browse: init, unrelated });
+    hashChange._set(undefined);
+    document.body.append(main);
+    try {
+      for (const section of sections) {
+        // eslint-disable-next-line no-await-in-loop
+        await Promise.all([...section.autoBlocks, ...section.linkBlocks, ...section.blocks]
+          .map((block) => loadBlock(block)));
+      }
+      await waitUntil(() => el.querySelector('da-landing-tiles')?.entries);
+      expect(main.children).to.have.length(2);
+      expect(unrelated.calledOnce).to.equal(true);
+      expect(main.querySelector('.unrelated').textContent).to.equal('Other page content');
+      expect(el.querySelectorAll('da-recent-files')).to.have.length(1);
+      expect(el.querySelectorAll('da-landing-tiles')).to.have.length(1);
+      expect(greeting.querySelector('h1').textContent).to.include('[firstname]');
+      expect(tiles.querySelectorAll(':scope > div')).to.have.length(3);
+    } finally {
+      main.remove();
+    }
+  });
+
   it('switches between site Browse and Content without reloading and keeps nav selection off the URL', async () => {
     await import('../../../../blocks/browse/v2/da-browse/da-browse.js');
     const { href } = window.location;
-    const ordinary = document.createElement('div');
+    const main = document.createElement('main');
+    main.innerHTML = content;
+    decorateSections(main);
+    const ordinary = main.querySelector('.browse');
     const browse = document.createElement('da-browse');
     const details = { org: 'org', site: 'site', fullpath: '/org/site' };
     browse.details = details;
-    ordinary.append(browse);
-    document.body.append(ordinary);
+    ordinary.replaceChildren(browse);
+    document.body.append(main);
     const list = sinon.stub(source, 'list').callsFake(async (fullpath) => ({
       ok: true,
       items: [{ name: 'page', path: `${fullpath}/page.html`, ext: 'html' }],
     }));
     const configs = sinon.stub(config, 'get').resolves({ ok: true, json: async () => ({ data: [] }) });
-    const fetch = sinon.stub(window, 'fetch').resolves(new Response('{}'));
+    const fetch = sinon.stub(window, 'fetch').resolves(new Response(content));
     const observers = [];
     const whenMounted = (selector, root = ordinary) => new Promise((resolve) => {
       let observer;
@@ -80,6 +155,9 @@ describe('Browse Content opt-in', () => {
       await landing.updateComplete;
       expect(ordinary.querySelector('da-browse')).to.equal(null);
       expect(ordinary.firstElementChild.className).to.equal('landing');
+      const tiles = await whenMounted('da-landing-tiles');
+      await waitUntil(() => tiles.entries);
+      await tiles.updateComplete;
       expect(ordinary.firstElementChild.firstElementChild).to.equal(landing);
       expect(landing.localName).to.equal('da-landing');
       expect(landing.path).to.equal('/org/site');
@@ -90,8 +168,11 @@ describe('Browse Content opt-in', () => {
       await selection.returnValues[0];
       await landing.updateComplete;
       expect(landing.path).to.equal('/another/site');
+      await tiles.updateComplete;
+      const tile = tiles.shadowRoot.querySelector('.tile');
+      expect(new URL(tile.href).hash).to.equal('#/another/site');
       expect(window.location.href).to.equal(rootHref);
-      expect(landing.shadowRoot.querySelector('.files-panel')).not.to.equal(null);
+      expect(landing.querySelector('da-recent-files').shadowRoot.querySelector('.files-panel')).not.to.equal(null);
       expect(landing.shadowRoot.querySelector('h1, textarea, .composer')).to.equal(null);
       url.hash = '/org/other';
       window.history.replaceState(null, '', url);
@@ -108,7 +189,7 @@ describe('Browse Content opt-in', () => {
       expect(ordinary.querySelector('da-landing')).to.equal(null);
     } finally {
       observers.forEach((observer) => observer.disconnect());
-      ordinary.remove();
+      main.remove();
       list.restore();
       configs.restore();
       fetch.restore();
@@ -164,6 +245,78 @@ describe('Browse Content opt-in', () => {
         .filter((sheet) => sheet !== browseSheet);
       el.remove();
       window.history.replaceState(null, '', href);
+    }
+  });
+  it('mounts one tile group inside the gated landing when updates overlap', async () => {
+    const { href } = window.location;
+    const main = document.createElement('main');
+    main.innerHTML = content;
+    decorateSections(main);
+    const el = main.querySelector('.browse');
+    el.innerHTML = '<picture></picture>';
+    document.body.append(main);
+    const fetchContent = sinon.spy(window, 'fetch');
+    let observer;
+    try {
+      const url = new URL(href);
+      url.searchParams.set('landing', 'true');
+      window.history.replaceState(null, '', url);
+      hashChange._set(undefined);
+      const mounted = new Promise((resolve) => {
+        observer = new MutationObserver(() => {
+          const tiles = el.querySelector('da-landing-tiles');
+          if (!tiles) return;
+          observer.disconnect();
+          resolve(tiles);
+        });
+        observer.observe(el, { childList: true, subtree: true });
+      });
+      init(el);
+      hashChange._set(undefined);
+      const tiles = await mounted;
+      await waitUntil(() => tiles.entries);
+      await tiles.updateComplete;
+      await new Promise((resolve) => { setTimeout(resolve, 50); });
+      expect(el.children).to.have.length(1);
+      expect(el.querySelectorAll('da-landing-tiles')).to.have.length(1);
+      expect(tiles.parentElement.className).to.equal('landing');
+      expect(el.querySelector('picture, da-sites, da-browse')).to.equal(null);
+      expect(tiles.shadowRoot.querySelectorAll('.tile')).to.have.length(3);
+      expect(fetchContent.called).to.equal(false);
+    } finally {
+      fetchContent.restore();
+      observer?.disconnect();
+      main.remove();
+      window.history.replaceState(null, '', href);
+    }
+  });
+
+  it('renders the following authored Landing section on unscoped Home', async () => {
+    const main = document.createElement('main');
+    main.innerHTML = content;
+    decorateSections(main);
+    const el = main.querySelector('.browse');
+    const block = main.querySelector('.landing');
+    document.body.append(main);
+    const fetchContent = sinon.spy(window, 'fetch');
+    try {
+      init(el);
+      await waitUntil(() => el.querySelector('da-landing-tiles')?.entries);
+      const tiles = el.querySelector('da-landing-tiles');
+      await tiles.updateComplete;
+      const all = [...tiles.shadowRoot.querySelectorAll('.tile')];
+      const [browse, create, ...docs] = all;
+      expect(all).to.have.length(3);
+      expect(new URL(browse.href).hash).to.equal('#/org/site');
+      expect(browse.matches('a[href]')).to.equal(true);
+      expect(create.disabled).to.equal(false);
+      docs.forEach((tile) => expect(tile.matches('a[href]')).to.equal(true));
+      expect(el.querySelector('da-sites')).to.equal(null);
+      expect(block.querySelectorAll(':scope > div')).to.have.length(3);
+      expect(fetchContent.called).to.equal(false);
+    } finally {
+      fetchContent.restore();
+      main.remove();
     }
   });
 });
