@@ -30,6 +30,18 @@ describe('safeHref', () => {
     ]);
   });
 
+  it('keeps custom app links and other protocols', () => {
+    expectKept([
+      'myprotocol://open/1',
+      'myapp:open?id=1',
+      'msword:x',
+      'ftp://x',
+      'sms:+1',
+      'intent://x',
+      'file:///a.txt',
+    ]);
+  });
+
   it('keeps http(s), mailto and tel links', () => {
     expectKept([
       'https://x.y',
@@ -73,8 +85,17 @@ describe('safeHref', () => {
     ]);
   });
 
-  it('rejects other schemes', () => {
-    expectRejected(['ftp://x', 'file:///a.txt', 'blob:https://x.y/1', 'about:blank', 'ms-msdt:x', 'intent://x', 'sms:+1']);
+  it('rejects Windows protocols that open local programs, as in the Follina attack', () => {
+    expectRejected([
+      'ms-msdt:/id PCWDiagnostic',
+      'MS-MSDT:x',
+      'ms-officecmd:x',
+      'ms-word:ofe|u|https://x.y/a.docx',
+      'search-ms:query=x',
+      'search:query=x',
+      '\tms-msdt:x',
+      'ms\t-msdt:x',
+    ]);
   });
 
   it('keeps text the browser reads as a relative path, like the SDK', () => {
