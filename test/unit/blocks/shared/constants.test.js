@@ -10,6 +10,7 @@ import {
   SUPPORTED_FILES,
   getLivePreviewUrl,
   getPreviewOrigin,
+  getRenderableSrc,
   normalizeBranch,
 } from '../../../../blocks/shared/constants.js';
 
@@ -122,5 +123,27 @@ describe('getPreviewOrigin', () => {
   it('uses main when branch is explicitly main', () => {
     const origin = getPreviewOrigin('myorg', 'myrepo', 'main');
     expect(origin).to.include('main--myrepo--myorg');
+  });
+});
+
+const mediaCtx = { org: 'org', repo: 'repo', path: '/org/repo/page' };
+
+describe('getRenderableSrc', () => {
+  // the same origin the canvas fetches its preview cookie from, which is stage off da.live
+  it('rewrites a relative media src to the origin the canvas logged into', () => {
+    expect(getRenderableSrc('./media_123.png', mediaCtx)).to.equal(
+      'https://main--repo--org.stage-preview.da.live/media_123.png',
+    );
+  });
+
+  it('answers null for a src that is not on the media bus', () => {
+    expect(getRenderableSrc('https://example.com/foo.png', mediaCtx)).to.equal(null);
+    expect(getRenderableSrc('/media_123.png', mediaCtx)).to.equal(null);
+    expect(getRenderableSrc(null, mediaCtx)).to.equal(null);
+  });
+
+  it('answers null when the ctx names no site', () => {
+    expect(getRenderableSrc('./media_123.png', { org: 'org' })).to.equal(null);
+    expect(getRenderableSrc('./media_123.png', null)).to.equal(null);
   });
 });
