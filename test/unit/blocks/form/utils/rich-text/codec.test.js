@@ -4,6 +4,7 @@ import * as proseMirror from 'da-y-wrapper';
 import { createEngine, convertJsonToHtml, convertHtmlToJson } from '../../../../../../deps/da-sc-sdk/dist/index.js';
 import { createSchema } from '../../../../../../blocks/form/utils/rich-text/schema.js';
 import { createRichTextCodec } from '../../../../../../blocks/form/utils/rich-text/codec.js';
+import { safeHref } from '../../../../../../blocks/shared/safe-href.js';
 
 const schema = createSchema(proseMirror);
 const { parse, serialize } = createRichTextCodec({ proseMirror, schema });
@@ -30,11 +31,19 @@ describe('rich-text codec', () => {
         .to.equal('<p><strong>b</strong><em>i</em><del>sd</del></p>');
     });
 
-    it('nests marks like the SDK', () => {
+    it('nests marks', () => {
       expect(roundTrip('<p><strong><a href="/a">x</a></strong></p>'))
         .to.equal('<p><strong><a href="/a">x</a></strong></p>');
       expect(roundTrip('<p><strong>a<em>b</em></strong><em>c</em></p>'))
         .to.equal('<p><strong>a</strong><em><strong>b</strong>c</em></p>');
+    });
+
+    it('keeps links to the same page and relative links', () => {
+      const value = '<p><a href="#section">a</a> <a href="/page#section">b</a> <a href="?q=1">c</a> '
+        + '<a href="/fragments/footer">d</a> <a href="/page#_blank">e</a> '
+        + '<a href="https://www.youtube.com/watch?v=x">f</a></p>';
+      expect(roundTrip(value)).to.equal(value);
+      expect(sdkStores(value)).to.equal(value);
     });
 
     it('drops unsafe links and active content', () => {
@@ -42,12 +51,66 @@ describe('rich-text codec', () => {
         .to.equal('<p>t</p>');
     });
 
+    it('drops script links hidden with HTML entities', () => {
+      const value = '<p><a href="&#106;avascript:x()">a</a><a href="jav&#x09;ascript:x()">b</a>'
+        + '<a href="javascript&colon;x()">c</a></p>';
+      expect(roundTrip(value)).to.equal('<p>abc</p>');
+      expect(sdkStores(value)).to.equal('<p>abc</p>');
+    });
+
+    it('keeps nothing that runs script', () => {
+      const payloads = [
+        '<script>x()</script>',
+        '<img src=x onerror=x()>',
+        '<svg onload=x()><script>x()</script></svg>',
+        '<iframe src="javascript:x()"></iframe>',
+        '<object data="javascript:x()"></object>',
+        '<embed src="data:text/html,<script>x()</script>">',
+        '<p onclick="x()" style="background:url(javascript:x())">a</p>',
+        '<a href="javascript:x()" onmouseover="x()">a</a>',
+        '<a href="data:text/html;base64,PHNjcmlwdD54KCk8L3NjcmlwdD4=">a</a>',
+        '<a href="vbscript:x">a</a>',
+        '<a href="/a" target="_blank" rel="opener">a</a>',
+        '<form action="javascript:x()"><button formaction="javascript:x()">a</button></form>',
+        '<input autofocus onfocus=x()>',
+        '<details open ontoggle=x()><summary>a</summary></details>',
+        '<math><a xlink:href="javascript:x()">a</a></math>',
+        '<meta http-equiv="refresh" content="0;url=javascript:x()">',
+        '<base href="javascript:x()//">',
+        '<style>@import "javascript:x()";</style>',
+        '<template><script>x()</script></template>',
+        '<noscript><p title="</noscript><img src=x onerror=x()>"></noscript>',
+        '<p title="a&quot; onclick=&quot;x()">a</p>',
+        '<a href="/a" title=\'"><script>x()</script>\'>a</a>',
+        '<!--<img src=x onerror=x()>-->',
+        '<![CDATA[<script>x()</script>]]>',
+      ];
+      const allowed = new Set(['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE', 'UL', 'OL', 'LI',
+        'BR', 'A', 'STRONG', 'EM', 'U', 'DEL', 'SUB', 'SUP', 'CODE']);
+      const expectHarmless = (html, payload) => {
+        const { body } = new DOMParser().parseFromString(html, 'text/html');
+        body.querySelectorAll('*').forEach((element) => {
+          expect(allowed.has(element.tagName), `${payload} keeps ${element.tagName}`).to.be.true;
+          const names = element.getAttributeNames();
+          const allowedNames = element.tagName === 'A' ? ['href', 'title'] : [];
+          expect(names.every((name) => allowedNames.includes(name)), `${payload} keeps ${names}`).to.be.true;
+          if (element.tagName === 'A') {
+            expect(safeHref(element.getAttribute('href')), payload).to.not.equal(null);
+          }
+        });
+      };
+      payloads.forEach((payload) => {
+        expectHarmless(roundTrip(payload), payload);
+        expectHarmless(sdkStores(payload), payload);
+      });
+    });
+
     it('flattens unsupported blocks into paragraphs', () => {
       expect(roundTrip('<section>Title</section><div>Body</div><pre>x</pre>'))
         .to.equal('<p>Title</p><p>Body</p><p>x</p>');
     });
 
-    it('reads a code block as a paragraph with its line breaks like the SDK', () => {
+    it('reads a code block as a paragraph with its line breaks', () => {
       ['<pre><code>a\nb  c</code></pre>', '<pre>a <strong>b</strong>\nc</pre>'].forEach((value) => {
         expect(roundTrip(value)).to.equal(sdkStores(value));
       });
@@ -79,7 +142,7 @@ describe('rich-text codec', () => {
       expect(roundTrip('a < b')).to.equal('<p>a &lt; b</p>');
     });
 
-    it('reads a less-than sign in plain text like the SDK', () => {
+    it('reads a less-than sign in plain text', () => {
       expect(roundTrip('if a<b then c')).to.equal('<p>if a&lt;b then c</p>');
       expect(sdkStores('if a<b then c')).to.equal('<p>if a&lt;b then c</p>');
     });
@@ -98,7 +161,7 @@ describe('rich-text codec', () => {
       expect(serialize(richTextDocument)).to.equal('<p>a<a href="/b" title="T">b</a></p>');
     });
 
-    it('reads a numbered list without its start number like the SDK', () => {
+    it('reads a numbered list without its start number', () => {
       expect(roundTrip('<ol start="3"><li>a</li></ol>')).to.equal('<ol><li><p>a</p></li></ol>');
     });
 
@@ -169,7 +232,7 @@ describe('rich-text codec', () => {
       });
     });
 
-    it('nests every pair of marks like the SDK and reloads them unchanged', () => {
+    it('nests every pair of marks and reloads them unchanged', () => {
       const names = Object.keys(schema.marks);
       const mark = (name) => (name === 'link' ? link('/a') : name);
       const pairs = names.flatMap((outer) => names.map((inner) => [outer, inner]))
