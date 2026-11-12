@@ -325,13 +325,11 @@ export class EwEditorDoc extends LitElement {
         // which fires focusout without the user leaving. `view.hasFocus()` is
         // shadow-root aware, unlike `document.activeElement`.
         if (view.hasFocus?.()) return;
-        const tb = toolbarController.ensureToolbar();
-        const btb = toolbarController.ensureBlockToolbar();
-        const active = document.activeElement;
-        if (active && [tb, btb].some((el) => active === el || el.contains(active))) return;
+        if (toolbarController.isFocusInToolbar()) return;
         canvasBus.toolbarSurfaceRequest.emit({ surface: 'doc', active: false });
       }, 0);
     };
+    view.dom.setAttribute('aria-keyshortcuts', 'Alt+F10');
     proseEl.addEventListener('focusin', onFocusIn);
     proseEl.addEventListener('focusout', onFocusOut);
     this._unwireProseFocus = () => {
@@ -500,12 +498,21 @@ export class EwEditorDoc extends LitElement {
       .subscribe(({ proseIndex, kind }) => this._scrollDocToProseIndex(proseIndex, kind));
     this._unsubscribeBlockEditRequest = canvasBus.blockEditRequest
       .subscribe(({ pos } = {}) => this.enterBlockEdit(pos));
+    this._unsubscribeWysiwygFocus = canvasBus.wysiwygFocusRequest
+      .subscribe(() => this._focusWysiwygEditor());
     this._onCanvasHighlight = (e) => this._applyHighlight(e.detail);
     document.addEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
   }
 
   _applyHighlight(detail) {
     applyHighlight(this._proseContext?.view, detail);
+  }
+
+  /** Ask the WYSIWYG iframe to put the caret back where the user left it. Skipped
+   * against an iframe that predates the message. */
+  _focusWysiwygEditor() {
+    if (!MESSAGE_TYPES.FOCUS_EDITOR) return;
+    this._controllerCtx?.port?.postMessage({ type: MESSAGE_TYPES.FOCUS_EDITOR });
   }
 
   /** True while the single-block edit modal is open. */
@@ -534,9 +541,11 @@ export class EwEditorDoc extends LitElement {
     this.hidden = false;
     this.classList.add('block-edit');
     // The toolbar is a manual popover in the dialog's top layer and swallows Escape, so
-    // close the modal on Escape ourselves (unless a toolbar dropdown is handling it).
+    // close the modal on Escape ourselves (unless a toolbar dropdown is handling it, or
+    // keyboard focus is in the toolbar — there Escape returns to the block's text).
     this._onBlockEditKeydown = (e) => {
       if (e.key !== 'Escape' || toolbarController.ensureToolbar().isInteracting) return;
+      if (toolbarController.isFocusInToolbar()) return;
       e.preventDefault();
       this.exitBlockEdit();
     };
@@ -588,6 +597,7 @@ export class EwEditorDoc extends LitElement {
     this._unsubscribeSelect?.();
     this._unsubscribeProseSelect?.();
     this._unsubscribeBlockEditRequest?.();
+    this._unsubscribeWysiwygFocus?.();
     this._teardown();
     setSelectionToolbarCtx();
     toolbarController.reset();

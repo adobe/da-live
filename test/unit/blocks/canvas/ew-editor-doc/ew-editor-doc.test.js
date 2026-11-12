@@ -1,5 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
 import { NodeSelection, TextSelection } from 'da-y-wrapper';
 import { setNx } from '../../../../../scripts/utils.js';
 import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
@@ -575,5 +576,20 @@ describe('EwEditorDoc - toolbar surface follows text focus', () => {
     moveFocus(view.dom, () => view.focus());
     expect(requests.some((r) => r.surface === 'doc' && r.active)).to.equal(true);
     control.remove();
+  });
+});
+
+describe('EwEditorDoc - returning keyboard focus to the WYSIWYG caret', () => {
+  it('asks the iframe to restore its caret', () => {
+    const el = document.createElement('ew-editor-doc');
+    const postMessage = sinon.spy();
+    el._controllerCtx = { port: { postMessage } };
+    el._focusWysiwygEditor();
+    expect(postMessage.calledOnceWith({ type: 'focus-editor' })).to.equal(true);
+  });
+
+  it('does nothing before the iframe is connected', () => {
+    const el = document.createElement('ew-editor-doc');
+    expect(() => el._focusWysiwygEditor()).to.not.throw();
   });
 });

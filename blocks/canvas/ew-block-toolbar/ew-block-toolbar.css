@@ -52,6 +52,11 @@
   cursor: default;
 }
 
+.toolbar-btn:focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: 2px;
+}
+
 .toolbar-btn:hover:not(:disabled) {
   background: var(--s2-gray-200);
 }

@@ -8,6 +8,7 @@ import {
   handleIframeSelectionChange,
   handleNodeSelect,
   handleStoredMarks,
+  handleFocusToolbar,
 } from './utils/handlers.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 
@@ -74,6 +75,9 @@ export function createControllerOnMessage(ctx) {
       handleCommentMarkerClear();
     } else if (type === MESSAGE_TYPES.COMMENT_SHORTCUT) {
       handleCommentShortcut();
+    } else if (MESSAGE_TYPES.FOCUS_TOOLBAR && type === MESSAGE_TYPES.FOCUS_TOOLBAR) {
+      // Guarded: against an older da-nx the key is undefined and would match untyped messages.
+      handleFocusToolbar();
     } else if (type === MESSAGE_TYPES.QUICK_EDIT_IFRAME_CLICK) {
       // The iframe boundary identifies layout clicks, even with an older sender's doc source.
       window.hlx?.rum?.sampleRUM?.('click', { source: 'ew-wysiwyg-layout', target: payload?.target });

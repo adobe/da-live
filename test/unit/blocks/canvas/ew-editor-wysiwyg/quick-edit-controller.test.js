@@ -172,3 +172,24 @@ describe('quick-edit-controller QUICK_EDIT_IFRAME_CLICK forwarding', () => {
       .to.not.throw();
   });
 });
+
+describe('quick-edit-controller FOCUS_TOOLBAR', () => {
+  let focusToolbar;
+
+  beforeEach(async () => {
+    const { toolbarController } = await import('../../../../../blocks/canvas/editor-utils/toolbar-controller.js');
+    focusToolbar = sinon.stub(toolbarController, 'focusToolbar').returns(true);
+  });
+
+  afterEach(() => focusToolbar.restore());
+
+  it('moves focus to the host toolbar on Alt+F10 in the iframe, even when read-only', () => {
+    send(createControllerOnMessage(makeCtx(false)), { type: 'focus-toolbar' });
+    expect(focusToolbar.calledOnce).to.be.true;
+  });
+
+  it('ignores messages without a type', () => {
+    send(createControllerOnMessage(makeCtx(true)), {});
+    expect(focusToolbar.called).to.be.false;
+  });
+});
