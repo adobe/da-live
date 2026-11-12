@@ -34,13 +34,11 @@ describe('mounted canvas artifact actions', () => {
       hashChange._set(context);
       const options = await registered;
       const chat = await options.getContent();
-      const event = { name: 'editor.viewDiff', context: { proposedPath: { path: '/components/proposal/text' } } };
+      const event = { name: 'editor.viewDiff', context: { proposedPath: { path: '/proposals/page1' } } };
       const artifact = {
         id: 'proposal-artifact',
-        components: [
-          { id: 'root', component: 'ActionButton', action: { event } },
-          { id: 'proposal', component: 'Text', text: '/allowed/site/.da/docs/page.html', visible: false },
-        ],
+        dataModel: { proposals: { page1: '/allowed/site/.da/docs/page.html' } },
+        components: [{ id: 'root', component: 'ActionButton', action: { event } }],
       };
       await chat.onArtifactAction({ artifactId: artifact.id, componentId: 'root', ...event }, artifact);
       expect(requests).to.have.length(1);

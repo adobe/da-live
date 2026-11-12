@@ -22,10 +22,16 @@ The canvas comparison is a read-only, non-modal surface over the editor mount. T
 Canvas mounts chat with `onArtifactAction` and an `artifactActionNames` allowlist
 containing only `editor.viewDiff`. The callback receives the action and its
 owning artifact. The host resolves only
-`context.proposedPath: { path: "/components/<id>/text" }`, where `<id>` identifies
-a literal Text record in that artifact. Duplicate/missing IDs, mismatched source
+`context.proposedPath: { path: "/proposals/<id>" }`, where `<id>` identifies
+a literal string in that artifact's `dataModel.proposals`. Coworker's
+`add_artifact` populates `a2ui_surface.data_model` from its `data_file` argument;
+da-nx maps that wire field to the normalized artifact's `dataModel` for both history and streamed
+events. Component-record references such as `/components/<id>/text` are not
+valid substitutes: Coworker's validator resolves bindings against the data
+model, not the component list. Duplicate/missing component IDs, mismatched source
 buttons, other events, cross-site paths, path traversal, and non-HTML proposals
-are rejected. This is a bounded host-defined reference contract, not an A2UI
+are rejected, as are missing/non-string model values and inherited properties.
+This is a bounded data-model reference contract, not an A2UI
 expression interpreter. Button labels never trigger commands.
 
 The resulting `canvasBus.comparisonRequest` has host-owned current context and

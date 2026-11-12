@@ -74,13 +74,11 @@ describe('staged proposal comparison', () => {
   });
 
   it('compares saved source without saving, serializing, reading delivery or navigating', async () => {
-    const event = { name: 'editor.viewDiff', context: { proposedPath: { path: '/components/proposal-path/text' } } };
+    const event = { name: 'editor.viewDiff', context: { proposedPath: { path: '/proposals/page1' } } };
     const artifact = {
       id: 'proposal',
-      components: [
-        { id: 'root', component: 'ActionButton', label: 'View diff', action: { event } },
-        { id: 'proposal-path', component: 'Text', text: proposedPath, visible: false },
-      ],
+      dataModel: { proposals: { page1: proposedPath } },
+      components: [{ id: 'root', component: 'ActionButton', label: 'View diff', action: { event } }],
     };
     const action = { artifactId: artifact.id, componentId: 'root', ...event };
     expect(await handleArtifactAction({ action, artifact, context })).to.deep.equal({ ok: true });
@@ -122,8 +120,12 @@ describe('staged proposal comparison', () => {
 
   it('accepts the exact composed artifact documented in the Coworker skill', async () => {
     const skill = await readFile({ path: '../../../../skills/page-proposals/SKILL.md' });
-    const example = skill.match(/```json\n(\[[\s\S]*?\])\n```/)[1];
-    const artifact = { id: 'skill-example', components: JSON.parse(example) };
+    const examples = [...skill.matchAll(/```json\n([\s\S]*?)\n```/g)].map((match) => JSON.parse(match[1]));
+    const artifact = {
+      id: 'skill-example',
+      components: examples.find((example) => example.components).components,
+      dataModel: examples.find((example) => example.proposals),
+    };
     const button = artifact.components.find((record) => record.id === 'page1-diff');
     const action = { artifactId: artifact.id, componentId: button.id, ...button.action.event };
     expect(await handleArtifactAction({ action, artifact, context })).to.deep.equal({ ok: true });

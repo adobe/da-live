@@ -12,14 +12,14 @@ describe('canvas artifact actions', () => {
   beforeEach(() => {
     const event = {
       name: 'editor.viewDiff',
-      context: { proposedPath: { path: '/components/proposal-path/text' } },
+      context: { proposedPath: { path: '/proposals/page1' } },
     };
     artifact = {
       id: 'proposal',
+      dataModel: { proposals: { page1: '/example/site/.da/campaigns/spring.html' } },
       components: [
         { id: 'root', component: 'Column', children: ['diff'] },
         { id: 'diff', component: 'ActionButton', label: 'Any label', action: { event } },
-        { id: 'proposal-path', component: 'Text', text: '/example/site/.da/campaigns/spring.html', visible: false },
       ],
     };
     action = { artifactId: 'proposal', componentId: 'diff', ...structuredClone(event) };
@@ -31,7 +31,7 @@ describe('canvas artifact actions', () => {
   });
   afterEach(() => unsubscribe());
 
-  it('resolves a literal record reference and requests comparison on the existing bus', async () => {
+  it('resolves an artifact data model reference and requests comparison on the existing bus', async () => {
     expect(await handleArtifactAction({ action, artifact, context })).to.deep.equal({ ok: true });
     expect(requests).to.have.length(1);
     expect(requests[0].context).to.deep.equal(context);
@@ -44,15 +44,23 @@ describe('canvas artifact actions', () => {
     'mismatched artifact': () => { action.artifactId = 'other'; },
     'mismatched component': () => { action.componentId = 'root'; },
     'missing record': () => { artifact.components.pop(); },
-    'duplicate IDs': () => { artifact.components.push({ ...artifact.components[2] }); },
-    'missing ID': () => { delete artifact.components[2].id; },
+    'duplicate IDs': () => { artifact.components.push({ ...artifact.components[1] }); },
+    'missing ID': () => { delete artifact.components[1].id; },
     'literal context value': () => { action.context.proposedPath = '/example/site/.da/page.html'; },
-    'unsupported reference': () => { action.context.proposedPath.path = '/data/proposal'; },
-    'mismatched declared reference': () => { action.context.proposedPath.path = '/components/other/text'; },
+    'unsupported component reference': () => { action.context.proposedPath.path = '/components/proposal/text'; },
+    'mismatched declared reference': () => { action.context.proposedPath.path = '/proposals/other'; },
     'additional context': () => { action.context.html = '<p>Arbitrary HTML</p>'; },
     'additional reference fields': () => { action.context.proposedPath.extra = 'unsupported'; },
-    'non-text data': () => { artifact.components[2].component = 'CodeBlock'; },
-    'bound data': () => { artifact.components[2].text = { path: '/another' }; },
+    'missing data model': () => { delete artifact.dataModel; },
+    'missing proposal value': () => { delete artifact.dataModel.proposals.page1; },
+    'non-string data': () => { artifact.dataModel.proposals.page1 = { path: '/another' }; },
+    'array proposals': () => { artifact.dataModel.proposals = ['/example/site/.da/page.html']; },
+    'inherited proposals': () => {
+      artifact.dataModel = Object.create({ proposals: { page1: '/example/site/.da/page.html' } });
+    },
+    'inherited proposal value': () => {
+      artifact.dataModel.proposals = Object.create({ page1: '/example/site/.da/page.html' });
+    },
   };
   Object.entries(invalidCases).forEach(([name, invalidate]) => {
     it(`rejects ${name} without dispatching`, async () => {
@@ -72,9 +80,19 @@ describe('canvas artifact actions', () => {
     'https://example.com/example/site/.da/page.html', '/example/site/.da/a\\page.html',
   ].forEach((path) => {
     it(`rejects unsafe staged path ${path}`, async () => {
-      artifact.components[2].text = path;
+      artifact.dataModel.proposals.page1 = path;
       expect((await handleArtifactAction({ action, artifact, context })).ok).to.equal(false);
       expect(requests).to.deep.equal([]);
     });
+  });
+
+  it('does not traverse prototype properties or nested arbitrary object paths', async () => {
+    for (const path of ['/proposals/__proto__', '/proposals/constructor', '/proposals/page1/nested']) {
+      action.context.proposedPath.path = path;
+      artifact.components[1].action.event.context.proposedPath.path = path;
+      // eslint-disable-next-line no-await-in-loop
+      expect((await handleArtifactAction({ action, artifact, context })).ok).to.equal(false);
+    }
+    expect(requests).to.deep.equal([]);
   });
 });
