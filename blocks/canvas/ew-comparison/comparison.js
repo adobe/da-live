@@ -2,6 +2,7 @@ import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import { buildCompareDom } from '../../shared/version/compare.js';
 import { isRequestId } from '../../shared/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
+import { proposalComparisonContext } from '../utils/proposal.js';
 
 const CONTENT_TAGS = new Set('a p h1 h2 h3 h4 h5 h6 div span strong em b i u s del ins sub sup code pre blockquote ul ol li table thead tbody tfoot tr td th caption colgroup col br hr img figure figcaption'.split(' '));
 
@@ -92,9 +93,17 @@ export async function readDeliveredContent(partition, context, { api, convert } 
   return { html: converter(await response.text()).body.innerHTML };
 }
 
+export async function readProposedContent(context, { api } = {}) {
+  const { source } = api || await getNx2Api();
+  const { org, site, proposalPath } = context;
+  const response = await source.get({ org, site, path: proposalPath, cachebust: true });
+  if (!response.ok) throw new Error(`Could not load proposed content (${response.status}).`);
+  return { html: await response.text() };
+}
+
 export function installComparison({
   mountRoot, getContext, getDocument,
-  saveDocument, loadContent = readDeliveredContent,
+  saveDocument, loadContent = readDeliveredContent, loadProposal = readProposedContent,
 }) {
   let surface;
   let generation = 0;
@@ -125,12 +134,19 @@ export function installComparison({
   };
 
   const open = async (options) => {
-    if (!['document', 'preview'].includes(options?.candidate) || options?.baseline !== 'live') {
+    if (!['document', 'preview', 'proposal'].includes(options?.candidate) || options?.baseline !== 'live') {
       return { ok: false, error: 'invalid-comparison' };
     }
     const context = getContext();
     const key = comparisonContextKey(context);
     if (!key) return { ok: false, error: 'no-document' };
+    const isProposal = options.candidate === 'proposal';
+    let targetContext = context;
+    if (isProposal) {
+      try {
+        targetContext = proposalComparisonContext({ proposedPath: options.proposedPath, context });
+      } catch (error) { return { ok: false, error: error.message }; }
+    }
     reset();
     const run = generation;
     activeKey = key;
@@ -141,7 +157,7 @@ export function installComparison({
       if (!current()) return { ok: false, error: 'stale-context' };
       surface = document.createElement('ew-comparison');
       surface.candidate = options.candidate;
-      surface.path = `/${context.path.replace(/^\//, '')}`;
+      surface.path = `/${targetContext.path.replace(/^\//, '')}`;
       surface.onClose = close;
       surface.onRefresh = () => open(options);
       mountRoot.classList.add('ew-comparison-host');
@@ -155,7 +171,7 @@ export function installComparison({
       await surface.updateComplete;
       if (!current()) return { ok: false, error: 'stale-context' };
       surface.focusHeading();
-      if (saveDocument) {
+      if (saveDocument && !isProposal) {
         const result = await saveDocument();
         if (!current()) return { ok: false, error: 'stale-context' };
         if (!result?.ok && result?.error !== 'not-writable') {
@@ -166,13 +182,17 @@ export function installComparison({
       if (options.candidate === 'document' && typeof documentHtml !== 'string') {
         throw new Error('The current document is not ready. Try again once it has loaded.');
       }
+      const readCandidate = () => {
+        if (isProposal) return loadProposal(targetContext);
+        return options.candidate === 'document' ? { html: documentHtml } : loadContent('preview', context);
+      };
       const [live, candidate] = await Promise.all([
-        loadContent('live', context),
-        options.candidate === 'document' ? { html: documentHtml } : loadContent('preview', context),
+        loadContent('live', targetContext),
+        readCandidate(),
       ]);
       if (!current()) return { ok: false, error: 'stale-context' };
-      const htmlA = normalizeComparisonHtml(live.html, context);
-      const htmlB = normalizeComparisonHtml(candidate.html, context);
+      const htmlA = normalizeComparisonHtml(live.html, targetContext);
+      const htmlB = normalizeComparisonHtml(candidate.html, targetContext);
       const { dom } = await buildCompareDom({ htmlA, htmlB, closeOnOutsideClick: false });
       if (!current()) return { ok: false, error: 'stale-context' };
       surface.diffDom = dom;

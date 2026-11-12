@@ -3,11 +3,24 @@ import sinon from 'sinon';
 import { setNx, getNx, getNxEWFlags } from '../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
-const { chatAvailability, chatTurnCompleted } = await import('../../../../blocks/shared/chat-panel.js');
+const { chatAvailability, chatTurnCompleted, getChatPanelContent } = await import('../../../../blocks/shared/chat-panel.js');
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { setChatAvailability } = await getNxEWFlags();
 const flush = () => new Promise((resolve) => { setTimeout(resolve, 0); });
+
+describe('shared chat artifact actions', () => {
+  it('installs only explicitly supplied host callbacks and supported action names', async () => {
+    const handler = () => {};
+    const artifactActionNames = ['editor.viewDiff'];
+    const chat = await getChatPanelContent({ onArtifactAction: handler, artifactActionNames })();
+    expect(chat.onArtifactAction).to.equal(handler);
+    expect(chat.artifactActionNames).to.equal(artifactActionNames);
+    const browseChat = await getChatPanelContent()();
+    expect(browseChat.onArtifactAction).to.equal(undefined);
+    expect(browseChat.artifactActionNames).to.equal(undefined);
+  });
+});
 
 describe('shared chat turn completion', () => {
   let unsubscribers;

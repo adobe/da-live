@@ -58,7 +58,7 @@ class EwComparison extends LitElement {
         </div>
         ${this.diffDom ? html`
           <ew-canvas-compare .embedded=${true} .split=${this.split}
-            .currentLabel=${'Live'} .label=${this.candidate === 'document' ? 'Current document' : 'Preview'}
+            .currentLabel=${'Live'} .label=${{ document: 'Current document', preview: 'Preview', proposal: 'Proposed changes' }[this.candidate]}
             .diffDom=${this.diffDom} .canWrite=${false}
             @close=${() => this.onClose()}
             @toggle-split=${() => { this.split = !this.split; }}></ew-canvas-compare>

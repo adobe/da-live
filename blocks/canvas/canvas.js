@@ -291,7 +291,18 @@ export default async function decorate(block) {
     registerPanelSection('chat', {
       position: 'before',
       width: '400px',
-      getContent: getChatPanelContent(),
+      getContent: getChatPanelContent({
+        artifactActionNames: ['editor.viewDiff'],
+        onArtifactAction: async (action, artifact) => {
+          const context = hashState();
+          const { handleArtifactAction } = await import('./editor-utils/artifact-actions.js');
+          const result = await handleArtifactAction({ action, artifact, context });
+          if (!result.ok) {
+            const { showToast, VARIANT_ERROR } = await import(`${getNx2()}/blocks/shared/toast/toast.js`);
+            showToast({ text: result.error, variant: VARIANT_ERROR });
+          }
+        },
+      }),
       onShow: async (aside, id, options) => {
         if (!options?.text && !options?.onReady) return;
         if (options.onReady) {

@@ -6,3 +6,7 @@ export const CHAT_EVENT = {
   HIGHLIGHT_SELECTION: 'nx-highlight-selection',
   ADD_TO_CHAT: 'nx-add-to-chat',
 };
+
+export async function loadChat() {
+  return document.createElement('nx-chat-ao');
+}
