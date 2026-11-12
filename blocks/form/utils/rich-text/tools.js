@@ -48,7 +48,7 @@ const isInList = (name) => (state) => getListType(state)?.name === name;
  * Creates the tools of a rich-text editor, bound to its ProseMirror.
  * @param {object} options The editor.
  * @param {object} options.proseMirror The da-y-wrapper namespace.
- * @param {object} options.schema The schema built from `SCHEMA_SPEC`.
+ * @param {object} options.schema The schema.
  * @param {() => void} options.onLink Opens the link dialog.
  * @returns {import('../../fields/rich-text-toolbar.js').Toolset} The tools.
  */
@@ -155,7 +155,7 @@ const textStyleShortcuts = (picker) => Object.fromEntries(BLOCK_TYPES
  * Builds the shortcuts of the field, which match the Canvas editor.
  * @param {object} options The editor.
  * @param {object} options.proseMirror The da-y-wrapper namespace.
- * @param {object} options.schema The schema built from `SCHEMA_SPEC`.
+ * @param {object} options.schema The schema.
  * @param {import('../../fields/rich-text-toolbar.js').Toolset} options.toolset The tools.
  * @returns {Record<string, import('./commands.js').RichTextCommand>} The commands by key.
  */

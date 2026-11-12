@@ -72,7 +72,7 @@ const parseHtml = (html) => HTML_PARSER.parseFromString(html, 'text/html').body;
  * the field was rich text and becomes paragraphs.
  * @param {object} options The value and the parser.
  * @param {object} options.proseMirror The da-y-wrapper namespace.
- * @param {object} options.schema The schema built from `SCHEMA_SPEC`.
+ * @param {object} options.schema The schema.
  * @param {unknown} options.value The stored HTML or plain text.
  * @returns {object} The ProseMirror document.
  */

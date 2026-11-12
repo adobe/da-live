@@ -2,10 +2,10 @@
 import { expect } from '@esm-bundle/chai';
 import * as proseMirror from 'da-y-wrapper';
 import { createEngine, convertJsonToHtml, convertHtmlToJson } from '../../../../../../deps/da-sc-sdk/dist/index.js';
-import { SCHEMA_SPEC } from '../../../../../../blocks/form/utils/rich-text/schema.js';
+import { createSchema } from '../../../../../../blocks/form/utils/rich-text/schema.js';
 import { parseRichText, serializeRichText, getCanonicalChange } from '../../../../../../blocks/form/utils/rich-text/html.js';
 
-const schema = new proseMirror.Schema(SCHEMA_SPEC);
+const schema = createSchema(proseMirror);
 const parse = (value) => parseRichText({ proseMirror, schema, value });
 const roundTrip = (value) => serializeRichText({ richTextDocument: parse(value) });
 
@@ -129,6 +129,15 @@ describe('rich-text html', () => {
       const { body } = new DOMParser().parseFromString('<p><a href="javascript:x()">a</a><a href="/b" title=" T ">b</a></p>', 'text/html');
       const richTextDocument = proseMirror.DOMParser.fromSchema(schema).parse(body);
       expect(serializeRichText({ richTextDocument })).to.equal('<p>a<a href="/b" title="T">b</a></p>');
+    });
+
+    it('reads a numbered list without its start number like the SDK', () => {
+      expect(rawHtml(parse('<ol start="3"><li>a</li></ol>'))).to.equal('<ol><li><p>a</p></li></ol>');
+    });
+
+    it('keeps normal text normal when Google Docs wraps a paste in bold', () => {
+      const paste = '<b style="font-weight:normal;"><p><span style="font-weight:400">a</span> <span style="font-weight:700">b</span></p></b>';
+      expect(roundTrip(paste)).to.equal('<p>a <strong>b</strong></p>');
     });
   });
 
