@@ -18,7 +18,6 @@ describe('greeting page block', () => {
 
   afterEach(() => {
     container.remove();
-    document.body.classList.remove('ui-size-m');
     document.adoptedStyleSheets = sheets;
     loadIms.reset();
     loadIms.resolves({ accessToken: { token: 'test-token' } });
@@ -40,28 +39,24 @@ describe('greeting page block', () => {
     expect(greeting.querySelector('p').textContent).to.equal('Add your site.');
   });
 
-  it('applies layout and size changes only on Start', async () => {
+  it('applies the Landing greeting styles only on Start', async () => {
     const sheet = new CSSStyleSheet();
     sheet.replaceSync(await (await fetch('/blocks/greeting/greeting.css')).text());
     document.adoptedStyleSheets.push(sheet);
-    container.style.cssText = '--s2-heading-size-s: 20px; --s2-heading-size-m: 22px;';
     loadIms.resolves({ first_name: 'Ada' });
     const greeting = init(container.firstElementChild);
     await greeting.updateComplete;
     await new Promise((resolve) => { setTimeout(resolve, 0); });
     const heading = greeting.querySelector('h1');
-    const originalSize = getComputedStyle(heading).fontSize;
     expect(getComputedStyle(greeting).textAlign).not.to.equal('center');
+    expect(getComputedStyle(heading).marginTop).not.to.equal('0px');
 
     const addSite = document.createElement('div');
     addSite.className = 'add-site';
     container.append(addSite);
     expect(getComputedStyle(greeting).textAlign).to.equal('center');
-    expect(getComputedStyle(heading).fontSize).to.equal('20px');
-    document.body.classList.add('ui-size-m');
-    expect(getComputedStyle(heading).fontSize).to.equal('22px');
+    expect(getComputedStyle(heading).marginTop).to.equal('0px');
     addSite.remove();
     expect(getComputedStyle(greeting).textAlign).not.to.equal('center');
-    expect(getComputedStyle(heading).fontSize).to.equal(originalSize);
   });
 });
