@@ -21,4 +21,8 @@ describe('safeHref', () => {
       expect(safeHref(href)).to.equal(null);
     });
   });
+
+  it('keeps a link whose scheme has a space as a relative link, like the SDK', () => {
+    expect(safeHref('javascript :x()')).to.equal('javascript :x()');
+  });
 });
