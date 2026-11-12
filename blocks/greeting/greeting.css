@@ -1,3 +1,8 @@
+.block-content:has(> .add-site) {
+  box-sizing: border-box;
+  padding-block: var(--s2-spacing-600);
+}
+
 body:has(main .add-site) .greeting {
   margin-bottom: var(--s2-spacing-600);
   text-align: center;
@@ -5,4 +10,18 @@ body:has(main .add-site) .greeting {
 
 body:has(main .add-site) .greeting h1 {
   margin: 0;
+}
+
+.section:has(> .block-content > .add-site) {
+  container-type: inline-size;
+}
+
+@container (width < 600px) {
+  .block-content:has(> .add-site) {
+    padding-block: var(--s2-spacing-400);
+  }
+
+  body:has(main .add-site) .greeting {
+    margin-bottom: var(--s2-spacing-400);
+  }
 }
