@@ -107,7 +107,7 @@ The outline (`tool-panel/outline/outline.js`) lives in the tools panel aside, ou
 
 The `*State` channels replay their last value, so an outline that mounts later still renders right away. A jump becomes `onSelect(pointer, 'outline')`, and the editor scrolls the target to the top of its scroller at once.
 
-The outline lists the groups of the model, which are the root and every object and array below it. Array items show their position as `#n` before their label. The row of the current selection is marked, and only a selection changes it, not scrolling the editor. The groups directly below the root are sections, which collapse. A selection made in the editor opens its section and brings its row into view.
+The outline lists the groups of the model, which are the root and every object and array below it. The root is the document title, and the groups directly below it are sections. The title sits above the scrolling list, and the header of the section being scrolled through stays pinned. Array items show their position as `#n` before their label. Every group with nested groups collapses, and a click on its row both jumps the editor to it and opens or closes it, like a file explorer. The sections and their direct children start open, and deeper groups start closed. The row of the current selection is marked, and only a selection changes it, not scrolling the editor. A selection made in the editor opens only the path to its row, closes the path an earlier selection opened, and brings its row into view. A collapsed group that hides the current row carries a blue dot.
 
 `form.js` registers the `tools` panel section with the shared `da-tool-panel` and the Outline view. Like canvas and the chat, the panel reopens when it was open last time.
 
@@ -122,7 +122,7 @@ nav = { pointer, origin, seq }
 ```
 
 - `pointer` — RFC 6901 pointer of the focused field
-- `origin` is `'editor'`, `'outline'` or `null`. When origin is `'outline'`, the editor reveals the pointer. The outline marks the row of the pointer in both cases, and opens its section when origin is `'editor'`.
+- `origin` is `'editor'`, `'outline'` or `null`. When origin is `'outline'`, the editor reveals the pointer. The outline marks the row of the pointer in both cases, and opens the path to it when origin is `'editor'`.
 - `seq` — monotonic counter so re-selecting the same pointer still triggers scroll.
 
 Components receive `nav` as a prop and call `onSelect(pointer, origin)` to update it.

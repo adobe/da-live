@@ -1,8 +1,14 @@
 :host {
+  --row-height: 32px;
+  --row-inset: var(--s2-spacing-75);
+  --row-padding: var(--s2-spacing-75);
+  --lead-size: 24px;
+  --indent-step: 12px;
+
   display: block;
   height: 100%;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden;
   font-family: var(--s2-font-family);
 }
 
@@ -10,8 +16,11 @@
   display: none;
 }
 
+/* The title stays put above the list, so only the list scrolls. */
 nav {
-  padding: var(--s2-spacing-75) 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 ul {
@@ -20,24 +29,48 @@ ul {
   padding: 0;
 }
 
-li {
-  --row-height: 32px;
-  --indent-start: var(--s2-spacing-200);
-  --indent-step: 16px;
-  --dot-size: 6px;
+.sections {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden auto;
+  padding-block: var(--s2-spacing-75) var(--s2-spacing-200);
 
-  /* The center of the parent's lead slot, where this row's tree line runs. */
-  --guide: calc(var(--indent-start) + (var(--depth) - 0.5) * var(--indent-step));
+  /* Keeps a revealed row clear of the pinned section header. */
+  scroll-padding-block: var(--row-height) var(--s2-spacing-100);
 
-  position: relative;
+  /* Room the outline adds below the list, so a group closed near its end keeps its place. */
+  &::after {
+    content: "";
+    display: block;
+    height: var(--slack, 0);
+  }
+}
+
+/* The header of the section being scrolled through stays in view. */
+.section-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  container-type: scroll-state;
+}
+
+/* The opaque surface of a pinned header, which casts a shadow while pinned. */
+.bar {
+  background: var(--s2-gray-25);
+}
+
+@container scroll-state(stuck: top) {
+  .bar {
+    box-shadow: 0 4px 8px -6px rgb(0 0 0 / 18%);
+  }
 }
 
 .row {
   display: flex;
-  align-items: center;
   box-sizing: border-box;
   min-height: var(--row-height);
-  padding-inline: calc(var(--indent-start) + var(--depth) * var(--indent-step)) var(--s2-spacing-100);
+  margin-inline: var(--row-inset);
+  border-radius: var(--s2-corner-radius-500);
   color: var(--s2-gray-800);
 
   &:hover {
@@ -55,23 +88,19 @@ li {
   }
 }
 
-/* Holds the collapse toggle of a section or the dot of a nested row. */
-.lead {
-  display: grid;
-  flex-shrink: 0;
-  place-items: center;
-  width: var(--indent-step);
-  height: var(--indent-step);
-}
-
 .label {
+  display: flex;
   flex: 1;
+  align-items: center;
+  gap: var(--s2-spacing-75);
   min-width: 0;
-  padding: var(--s2-spacing-75) 0;
+  padding-block: 6px;
+  padding-inline: calc(var(--row-padding) + var(--level, 0) * var(--indent-step)) var(--s2-spacing-100);
   border: 0;
   background: none;
   font: inherit;
   font-size: var(--s2-body-size-s);
+  line-height: 20px;
   color: inherit;
   text-align: start;
   cursor: pointer;
@@ -81,12 +110,88 @@ li {
   }
 }
 
+.name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* One column for the chevron, empty on rows that cannot expand, and later
+   the drag handle of an array item. */
+.lead {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--lead-size);
+  height: var(--lead-size);
+  margin-block: -2px;
+  color: var(--s2-gray-700);
+
+  svg {
+    display: block;
+    width: 16px;
+    height: 16px;
+  }
+
+  [aria-expanded="true"] > & svg {
+    transform: rotate(90deg);
+  }
+
+  .is-current & {
+    color: var(--s2-blue-900);
+  }
+
+  .hides-current & {
+    color: var(--s2-blue-800);
+  }
+}
+
 .section .label {
   font-weight: 600;
+  color: var(--s2-gray-900);
+}
+
+.is-current .label {
+  color: inherit;
+}
+
+.title {
+  display: flex;
+  flex: none;
+  align-items: center;
+  box-sizing: border-box;
+  height: 49px;
+  padding-inline: var(--row-inset);
+  border-block-end: 1px solid var(--s2-gray-200);
+
+  .label {
+    padding: var(--s2-spacing-75) var(--s2-spacing-100);
+    border-radius: var(--s2-corner-radius-500);
+    font-size: var(--s2-body-size-m);
+    line-height: 24px;
+    font-weight: 700;
+    color: var(--s2-gray-900);
+
+    &:hover {
+      background: var(--s2-gray-75);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--s2-blue-800);
+      outline-offset: -2px;
+    }
+  }
+
+  &.is-current .label {
+    background: var(--s2-blue-100);
+    color: var(--s2-blue-900);
+  }
 }
 
 .index {
-  margin-inline-end: var(--s2-spacing-75);
+  margin-inline-end: 6px;
   color: var(--s2-gray-600);
   font-variant-numeric: tabular-nums;
 
@@ -95,79 +200,45 @@ li {
   }
 }
 
-.toggle {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  border: 0;
-  border-radius: var(--s2-corner-radius-75);
-  background: none;
-  color: var(--s2-gray-700);
-  cursor: pointer;
-
-  &::before {
-    content: '›';
-    font-size: 16px;
-    line-height: 1;
-  }
-
-  &[aria-expanded="true"]::before {
-    transform: rotate(90deg);
-  }
-
-  &:hover {
-    background: var(--s2-gray-200);
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--s2-blue-800);
-  }
-}
-
-.dot {
-  width: var(--dot-size);
-  height: var(--dot-size);
-  border-radius: 50%;
-  background: var(--s2-gray-300);
-
-  .is-current & {
-    background: var(--s2-blue-800);
-  }
-}
-
-/* Below the sections, rows hang from their parent by a tree line that ends
-   at their dot, like the editor's former Navigation. */
-li li li::before,
-li li li::after {
+/* A collapsed group that hides the current row carries a blue marker. */
+.hides-current .label::after {
   content: "";
-  position: absolute;
-  z-index: 1;
-  left: var(--guide);
-  pointer-events: none;
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--s2-blue-800);
 }
 
-li li li::before {
-  top: calc(var(--row-height) / 2);
-  width: calc(var(--indent-step) - var(--dot-size) / 2);
-  border-top: 1px solid var(--s2-gray-300);
-}
+/* Each list of children hangs from a line that runs down from its parent's
+   chevron, blue below the current row. */
+.children {
+  position: relative;
 
-li li li::after {
-  top: calc(var(--row-height) / -2 + var(--dot-size) / 2 + 1px);
-  bottom: 0;
-  border-left: 1px solid var(--s2-gray-300);
-}
+  /* Above the rows of nested lists, so a highlight never hides an outer line. */
+  &::before {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    bottom: var(--s2-spacing-75);
+    left: calc(var(--row-inset) + var(--row-padding) + var(--lead-size) / 2 + var(--level) * var(--indent-step) - 0.5px);
+    border-left: 1px solid var(--s2-gray-200);
+    pointer-events: none;
+  }
 
-li li li:last-child::after {
-  bottom: auto;
-  height: calc(var(--row-height) - var(--dot-size) / 2 - 1px);
+  &.of-current::before {
+    border-color: var(--s2-blue-400);
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .toggle::before {
-    transition: transform 0.15s;
+  .lead svg {
+    transition: transform 0.15s ease;
+  }
+
+  .row {
+    transition: background-color 0.1s;
   }
 }
 
