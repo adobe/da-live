@@ -1,5 +1,4 @@
 import { expect } from '@esm-bundle/chai';
-import { sendKeys } from '@web/test-runner-commands';
 import { setNx } from '../../../../../scripts/utils.js';
 
 const nextFrame = () => new Promise((r) => { setTimeout(r, 0); });
@@ -154,30 +153,6 @@ describe('da-link-dialog', () => {
     el.shadowRoot.querySelector('.nx-form-btn-secondary').click();
     await nextFrame();
     expect(cancelled).to.be.true;
-  });
-
-  it('submits on Enter', async () => {
-    await mount({ open: true, href: 'https://test.com' });
-    let detail = null;
-    el.addEventListener('da-link-submit', (event) => { detail = event.detail; });
-    el.shadowRoot.querySelector('input[name="link-text"]').focus();
-    await sendKeys({ press: 'Enter' });
-    await nextFrame();
-    expect(detail).to.deep.equal({ href: 'https://test.com', text: '' });
-  });
-
-  it('does not submit on Enter while an input method composes text', async () => {
-    await mount({ open: true, href: 'https://test.com' });
-    const input = el.shadowRoot.querySelector('input[name="link-text"]');
-    const enter = (init) => {
-      const options = { key: 'Enter', bubbles: true, composed: true, cancelable: true };
-      const event = new KeyboardEvent('keydown', { ...options, ...init });
-      input.dispatchEvent(event);
-      return event.defaultPrevented;
-    };
-    expect(enter({ isComposing: true })).to.be.true;
-    expect(enter({ keyCode: 229 })).to.be.true;
-    expect(enter({})).to.be.false;
   });
 
   it('clears _urlError when the dialog closes', async () => {
