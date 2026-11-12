@@ -1,8 +1,13 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 
-const { setNx } = await import('../../../../scripts/utils.js');
+const { setNx, getNx } = await import('../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
+
+const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const background = new CSSStyleSheet();
+const backgroundHref = new URL('../../../../blocks/landing/landing.css', import.meta.url).href;
+loadStyle._set(backgroundHref, background);
 
 const { default: init } = await import('../../../../blocks/add-site/add-site.js');
 
@@ -36,6 +41,11 @@ describe('add-site', () => {
   it('replaces the block content with the site form', () => {
     expect(block.children.length).to.equal(1);
     expect(el.shadowRoot.querySelector('label').textContent).to.equal('Already have an existing site?');
+  });
+
+  it('adds the landing background to the page once', () => {
+    init(document.createElement('div'));
+    expect(document.adoptedStyleSheets.filter((s) => s === background).length).to.equal(1);
   });
 
   it('enables Open once a URL is entered', async () => {

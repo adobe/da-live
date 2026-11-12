@@ -1,5 +1,6 @@
 .landing,
-.browse:has(> da-sites) {
+.browse:has(> da-sites),
+.block-content:has(> .add-site) {
   min-height: 100%;
   background:
     radial-gradient(
@@ -20,7 +21,7 @@
     var(--s2-gray-25);
 }
 
-.section:has(.landing, .browse > da-sites),
+.section:has(.landing, .browse > da-sites, .add-site),
 .block-content:has(.landing, .browse > da-sites),
 .browse:has(> .landing) {
   height: 100%;
@@ -28,7 +29,8 @@
 
 @media (forced-colors: active) {
   .landing,
-  .browse:has(> da-sites) {
+  .browse:has(> da-sites),
+  .block-content:has(> .add-site) {
     background: Canvas;
   }
 }
