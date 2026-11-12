@@ -11,10 +11,16 @@ const flush = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 
 describe('shared chat artifact actions', () => {
   it('installs only explicitly supplied host callbacks and supported action names', async () => {
-    const handler = () => {};
+    const handler = sinon.spy();
     const artifactActionNames = ['editor.viewDiff'];
     const chat = await getChatPanelContent({ onArtifactAction: handler, artifactActionNames })();
-    expect(chat.onArtifactAction).to.equal(handler);
+    chat.requestUpdate = sinon.spy();
+    const action = { name: 'editor.viewDiff' };
+    const artifact = { id: 'artifact' };
+    chat.onArtifactAction(action, artifact);
+    expect(handler.firstCall.args.slice(0, 2)).to.deep.equal([action, artifact]);
+    handler.firstCall.args[2]();
+    expect(chat.requestUpdate.calledOnce).to.equal(true);
     expect(chat.artifactActionNames).to.equal(artifactActionNames);
     const browseChat = await getChatPanelContent()();
     expect(browseChat.onArtifactAction).to.equal(undefined);

@@ -64,7 +64,10 @@ export function getChatPanelContent({ onArtifactAction, artifactActionNames } = 
     const { loadChat } = await import(`${getNx()}/utils/chat.js`);
     const chat = await loadChat();
     if (onArtifactAction) {
-      chat.onArtifactAction = onArtifactAction;
+      chat.onArtifactAction = (action, artifact) => {
+        const refresh = () => chat.requestUpdate?.();
+        return onArtifactAction(action, artifact, refresh);
+      };
       chat.artifactActionNames = artifactActionNames;
     }
     return chat;

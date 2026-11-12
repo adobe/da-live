@@ -293,11 +293,13 @@ export default async function decorate(block) {
       position: 'before',
       width: '400px',
       getContent: getChatPanelContent({
-        artifactActionNames: ['editor.viewDiff'],
-        onArtifactAction: async (action, artifact) => {
+        artifactActionNames: ['editor.viewDiff', 'editor.resetPage', 'editor.acceptChanges'],
+        onArtifactAction: async (action, artifact, onUpdate) => {
           const context = comparisonContext;
           const { handleArtifactAction } = await import('./editor-utils/artifact-actions.js');
-          const result = await handleArtifactAction({ action, artifact, context });
+          const getContext = () => comparisonContext;
+          const options = { action, artifact, context, getContext, onUpdate };
+          const result = await handleArtifactAction(options);
           if (!result.ok) {
             const { showToast, VARIANT_ERROR } = await import(`${getNx2()}/blocks/shared/toast/toast.js`);
             showToast({ text: result.error, variant: VARIANT_ERROR });

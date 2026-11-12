@@ -1,6 +1,6 @@
 ---
 name: page-proposals
-description: Use for every request to change, update, edit, revise, rewrite, fix, add, remove, or replace DA page content in Experience Workspace, including small edits and follow-up changes. Applies even when the user does not mention proposals, staging, review, A2UI, or this skill. Stage changes under /.da/ without modifying originals, then render the review UI with View diff actions.
+description: Use for every request to change, update, edit, revise, rewrite, fix, add, remove, or replace DA page content in Experience Workspace, including small edits and follow-up changes. Applies even when the user does not mention proposals, staging, review, A2UI, or this skill. Stage changes under /.da/ without modifying originals, then render the review UI with View diff, Reset page, and Accept changes actions.
 ---
 
 # Handle page changes in Experience Workspace
@@ -111,7 +111,7 @@ value in that data model. Its label is not a command:
 }
 ```
 
-Before emitting the artifact, check every View diff button: its event context
+Before emitting the artifact, check every View diff and Reset page button: its event context
 must contain only `proposedPath`; its reference must match `/proposals/<id>`;
 and the JSON supplied through `data_file` must contain that ID under `proposals`
 with a literal full staged `.html` path. Use letters, digits, hyphens, or
@@ -132,9 +132,29 @@ to, save, accept, preview, or publish either page. Clicking View diff is handled
 by the browser host, not another Coworker turn. Refresh rereads both resources,
 so this is not a revision-pinned comparison.
 
-Only View diff is implemented. Omit Collapse. If including Reset page or Accept
-changes for the mock's layout, mark them `isDisabled: true` and give them no
-action. Do not invent reset/accept handlers. Include a Preview link only if a real,
+Reset page uses `editor.resetPage` with the same
+`context: { "proposedPath": { "path": "/proposals/page1" } }` as View diff. It
+deletes only that staged DA file, leaves the original unchanged, and excludes
+the page from Accept changes. It does not restore or recopy the original.
+
+The footer's Accept changes uses `editor.acceptChanges` with
+`context: { "proposals": { "path": "/proposals" } }`. It accepts **all pages in
+this artifact except reset pages**. For each remaining draft, the host reads
+its saved source, saves that content over the original DA source, then deletes
+the draft only after the save succeeds. Missing drafts are skipped. This
+replaces saved originals; it is not a preview or publish operation. These
+actions run only when the user clicks the corresponding button, not when
+the agent stages changes or creates the artifact.
+
+Give these three buttons their explicit actions and do not mark them disabled.
+The host disables controls while working and after completion. A failed save
+retains its draft. Acceptance is sequential, not atomic across pages: an error
+stops the batch and leaves completed pages accepted. If draft cleanup fails
+after a successful save, retrying Accept changes in the same artifact retries
+the deletion without saving that original again. Report errors rather than
+claiming the entire batch was accepted. Do not redo edits to repair this UI.
+
+Omit Collapse. Include a Preview link only if a real,
 verified preview URL exists; do not create or imply a preview during staging.
 
 ## Example artifact call
@@ -162,10 +182,10 @@ the tool's supported `data_file`.
   { "id": "page1-path", "component": "Text", "text": "/campaigns/spring-2026", "style": "detail", "size": "xs", "wrap": "truncate" },
   { "id": "page1-actions", "component": "Row", "gap": 8, "children": ["page1-diff", "page1-reset"] },
   { "id": "page1-diff", "component": "ActionButton", "label": "View diff", "icon": "Layers", "action": { "event": { "name": "editor.viewDiff", "context": { "proposedPath": { "path": "/proposals/page1" } } } } },
-  { "id": "page1-reset", "component": "ActionButton", "label": "Reset page", "icon": "Delete", "isDisabled": true },
+  { "id": "page1-reset", "component": "ActionButton", "label": "Reset page", "icon": "Delete", "action": { "event": { "name": "editor.resetPage", "context": { "proposedPath": { "path": "/proposals/page1" } } } } },
   { "id": "footer-divider", "component": "Divider" },
-  { "id": "footer", "component": "Text", "text": "Original pages unchanged. Proposals are staged under /.da/. Accept and reset are not available yet.", "style": "detail", "size": "xs" },
-  { "id": "accept", "component": "Button", "label": "Accept changes", "variant": "accent", "isDisabled": true }
+  { "id": "footer", "component": "Text", "text": "Proposals are staged under /.da/. Reset discards a draft. Accept replaces saved originals and removes the remaining drafts.", "style": "detail", "size": "xs" },
+  { "id": "accept", "component": "Button", "label": "Accept changes", "variant": "accent", "action": { "event": { "name": "editor.acceptChanges", "context": { "proposals": { "path": "/proposals" } } } } }
   ]
 }
 ```
@@ -173,4 +193,4 @@ the tool's supported `data_file`.
 Interactive review requires the supporting da-live canvas host and da-nx chat
 renderer. It is not enabled by uploading this skill alone. Existing artifacts
 without action definitions remain disabled. Other chat hosts can render this
-artifact but cannot execute View diff without a host handler.
+artifact but cannot execute these actions without a host handler.

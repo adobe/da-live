@@ -20,8 +20,8 @@ The canvas comparison is a read-only, non-modal surface over the editor mount. T
 ## Chat proposal actions
 
 Canvas mounts chat with `onArtifactAction` and an `artifactActionNames` allowlist
-containing only `editor.viewDiff`. The callback receives the action and its
-owning artifact. The host resolves only
+containing `editor.viewDiff`, `editor.resetPage`, and `editor.acceptChanges`. The callback receives the action and its
+owning artifact. Single-page actions resolve only
 `context.proposedPath: { path: "/proposals/<id>" }`, where `<id>` identifies
 a literal string in that artifact's `dataModel.proposals`. Coworker's
 `add_artifact` populates `a2ui_surface.data_model` from its `data_file` argument;
@@ -40,6 +40,27 @@ internal mode is **not** accepted by the plugin iframe protocol; its
 document/preview allowlist is unchanged. Original-source and staged-source failures
 appear in the comparison surface; invalid chat actions report an error toast.
 Only the canvas host opts in; browse and legacy chat retain their behavior.
+
+`editor.resetPage` uses the same single-page `proposedPath` binding and deletes
+only that draft. `editor.acceptChanges` requires exactly
+`context: { proposals: { path: "/proposals" } }`, bound to the owning artifact's
+proposal map. All paths are validated before any mutation. It processes all
+remaining drafts sequentially: read the staged HTML verbatim, save it over the
+derived original source using NX2 `source.save`, and only then delete the draft
+using `source.delete`. It never previews or publishes. Reset/completed pages
+are excluded; a missing draft (404) is skipped, including after history reload.
+Other read errors and failed saves stop the batch without deleting that draft.
+Completed pages remain accepted; this is not a transactional multi-page save.
+
+Controls are disabled while a mutation is pending and after completion, with
+labels indicating accepted/discarded proposals. The host refreshes chat through
+the callback supplied by `getChatPanelContent`; da-nx remains host-independent.
+Overlapping mutations of the same draft are rejected, including across artifacts.
+Navigation before a save cancels it and subsequent pages, but a successful save
+finishes cleanup against its captured path. If deletion fails after a save,
+retrying Accept in that same loaded artifact retries cleanup without rewriting
+the original. That cleanup state is in-memory, not persisted in Coworker history.
+A comparison is closed when its proposal action completes.
 
 The importable Coworker skill and complete composed artifact example are in
 [`skills/page-proposals/SKILL.md`](../skills/page-proposals/SKILL.md). Deploy the
