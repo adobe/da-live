@@ -1,10 +1,5 @@
-.section:has(.landing),
-.block-content:has(.landing),
-.browse:has(> .landing) {
-  height: 100%;
-}
-
-.landing {
+.landing,
+.browse:has(> da-sites) {
   min-height: 100%;
   background:
     linear-gradient(
@@ -22,8 +17,15 @@
     );
 }
 
+.section:has(.landing, .browse > da-sites),
+.block-content:has(.landing, .browse > da-sites),
+.browse:has(> .landing) {
+  height: 100%;
+}
+
 @media (forced-colors: active) {
-  .landing {
+  .landing,
+  .browse:has(> da-sites) {
     background: Canvas;
   }
 }
