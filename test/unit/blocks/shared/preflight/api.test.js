@@ -1,7 +1,7 @@
 import { expect } from '@esm-bundle/chai';
-import { evaluatePage, getEcOrigin } from '../../../../../blocks/canvas/ew-preflight/api.js';
+import { evaluatePage, getEcOrigin } from '../../../../../blocks/shared/preflight/api.js';
 
-describe('ew-preflight evaluatePage errors', () => {
+describe('preflight evaluatePage errors', () => {
   let savedFetch;
   let savedIms;
   let savedNxIms;
@@ -62,7 +62,7 @@ describe('ew-preflight evaluatePage errors', () => {
   });
 });
 
-describe('ew-preflight getEcOrigin', () => {
+describe('preflight getEcOrigin', () => {
   const PROD = 'https://experience-context.adobe.io';
   const STAGE = 'https://experience-context-stage.adobe.io';
   const EPHEMERAL = 'https://adobe-aem-foundation-brand-governance-agent-deploy-1f1d86.stage.cloud.adobe.io';

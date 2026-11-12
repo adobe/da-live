@@ -27,7 +27,6 @@ export const canvasBus = Object.freeze({
   comparisonRequest: createChannel(),
   commentComposeRequest: createChannel(),
   blockEditRequest: createChannel(),
-  preflightRunRequest: createChannel(),
   toolbarSurfaceRequest: createChannel(),
 
   undoState: createChannel(),
@@ -54,6 +53,4 @@ export const canvasBus = Object.freeze({
 
   commentsControllerState: createChannel(),
   versionCreatedState: createChannel(),
-
-  preflightStatusState: createChannel(),
 });

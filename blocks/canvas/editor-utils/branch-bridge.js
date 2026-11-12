@@ -9,7 +9,7 @@ const BRANCH_EVENT = Object.freeze({
 
 let initialized = false;
 
-// Like preflight-bridge, this is the single canvasBus ↔ da-nx DOM-event seam.
+// This is the only place that connects canvasBus to the da-nx branch events.
 // Requests replay the last state so late-loaded consumers cannot miss resolution.
 export function initBranchBridge() {
   if (initialized) return;
