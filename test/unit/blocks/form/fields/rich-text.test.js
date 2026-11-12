@@ -531,7 +531,7 @@ describe('form-rich-text', () => {
     await holdFocus(richText);
     selectAll(richText);
     await richText.updateComplete;
-    expect(visibleIds(floating(richText))).to.deep.equal(['strong', 'em', 'u', 'del', 'link', 'ordered_list', 'bullet_list']);
+    expect(visibleIds(floating(richText))).to.deep.equal(['strong', 'em', 'u', 'del', 'link', 'bullet_list', 'ordered_list']);
     floatingTool(richText, 'strong').click();
     expect(richText.value).to.equal('<p><strong>text</strong></p>');
     await richText.updateComplete;

@@ -33,7 +33,7 @@ const loadLinkDialog = () => import('../../shared/da-link-dialog/da-link-dialog.
 
 /**
  * A form field that holds rich text as HTML. Authors format it with a toolbar, a bubble
- * next to the selection, and the Canvas editor's shortcuts.
+ * next to the selection, and keyboard shortcuts.
  * @property {string} [value] The HTML value, in the form the SDK stores.
  * @property {string} [label] The field label.
  * @property {string} [description] The help text below the field.

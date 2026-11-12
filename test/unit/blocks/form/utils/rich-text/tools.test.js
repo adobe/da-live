@@ -139,11 +139,11 @@ describe('rich-text tools', () => {
       );
     });
 
-    it('matches the Canvas shortcuts', () => {
+    it('binds the Canvas shortcuts, underline and strikethrough', () => {
       const keys = keymapFor();
-      ['Mod-`', 'Ctrl-Shift-0', 'Ctrl-Shift-6', 'Ctrl->', 'Ctrl-Shift-8', 'Ctrl-Shift-9']
+      ['Mod-`', 'Ctrl-Shift-0', 'Ctrl-Shift-6', 'Ctrl->', 'Ctrl-Shift-8', 'Ctrl-Shift-9', 'Mod-u', 'Mod-Shift-s']
         .forEach((key) => expect(keys[key], key).to.be.a('function'));
-      ['Mod-u', 'Mod-Shift-x', 'Mod-.', 'Mod-,', 'Mod-Shift-k']
+      ['Mod-Shift-x', 'Mod-.', 'Mod-,', 'Mod-Shift-k']
         .forEach((key) => expect(keys[key], key).to.equal(undefined));
     });
 
