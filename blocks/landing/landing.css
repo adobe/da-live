@@ -3,19 +3,19 @@
   min-height: 100%;
   background:
     radial-gradient(
-      ellipse 60% 520px at 15% 0,
-      color-mix(in srgb, var(--s2-red-100) 70%, var(--s2-pink-200)),
-      transparent
+      ellipse 60% 520px at 15% 40px,
+      color-mix(in srgb, var(--s2-red-100) 40%, var(--s2-pink-200)) 20%,
+      transparent 100%
     ),
     radial-gradient(
-      ellipse 45% 480px at 48% 0,
-      var(--s2-indigo-200),
-      transparent
+      ellipse 45% 520px at 48% 60px,
+      var(--s2-indigo-200) 20%,
+      transparent 100%
     ),
     radial-gradient(
-      ellipse 70% 620px at 78% 0,
-      var(--s2-blue-100),
-      transparent
+      ellipse 70% 620px at 78% 80px,
+      var(--s2-blue-200) 25%,
+      transparent 100%
     ),
     var(--s2-gray-25);
 }
