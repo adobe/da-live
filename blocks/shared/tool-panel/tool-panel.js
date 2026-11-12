@@ -352,6 +352,7 @@ class DaToolPanel extends LitElement {
     }
 
     if (!this.activeId || !ids.has(this.activeId)) {
+      const request = this._panelRequest;
       const initial = (requestedView && ids.has(requestedView))
         ? requestedView
         : await this.host?.resolveInitialView?.({
@@ -359,6 +360,7 @@ class DaToolPanel extends LitElement {
           site: this.site,
           availableIds: ids,
         });
+      if (this._panelRequest !== request) return;
       await this.showPanel(initial ?? this._pinnedViews[0]?.id ?? this.views[0].id);
     } else if (!this._loaded[this.activeId]) {
       await this.showPanel(this.activeId);
