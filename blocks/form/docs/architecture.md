@@ -66,8 +66,11 @@ editor.js          →  events.js           (publishes state and selection, hand
 tool-panel/outline/ →  events.js           (subscribes to state and selection, publishes jumps)
 utils/context.js   →  da-sc-sdk          (convertHtmlToJson)
 utils/persistence.js → da-sc-sdk        (convertJsonToHtml)
+fields/rich-text.js → utils/rich-text/  (schema, HTML, commands, tools, bubble)
 fields/rich-text.js → da-y-wrapper      (ProseMirror, loaded on demand)
-fields/rich-text.js → blocks/shared/     (da-link-dialog)
+fields/rich-text.js → blocks/shared/    (da-link-dialog)
+fields/rich-text-toolbar.js → nx2       (picker and popover, loaded on demand)
+utils/rich-text/    → blocks/shared/    (safe-href)
 views/           →  (SDK engine only via prop binding from the element — no direct imports)
 ```
 
