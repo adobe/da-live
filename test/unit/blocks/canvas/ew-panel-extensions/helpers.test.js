@@ -1661,7 +1661,7 @@ describe('getCanvasToolPanelViews', () => {
       .to.deep.equal(['outline', 'metadata', 'files', 'versions', 'comments', 'preflight']);
   });
 
-  it('loads the canvas outline and the shared Preflight', async () => {
+  it('loads the canvas outline and the shared Versions and Preflight', async () => {
     setDaConfigs([{ data: [] }]);
     const publishHook = {
       subscribeRunRequest: () => () => {},
@@ -1671,6 +1671,9 @@ describe('getCanvasToolPanelViews', () => {
     const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' }, { publishHook });
     const load = (id) => views.find((v) => v.id === id).load();
     expect((await load('outline')).localName).to.equal('ew-page-outline');
+    const versions = await load('versions');
+    expect(versions.localName).to.equal('da-version-history');
+    expect(versions.editor.restore).to.be.a('function');
     const preflight = await load('preflight');
     expect(preflight.localName).to.equal('da-preflight');
     expect(preflight.page.subscribeActiveView).to.be.a('function');
