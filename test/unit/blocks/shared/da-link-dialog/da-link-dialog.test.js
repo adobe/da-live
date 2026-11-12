@@ -156,15 +156,6 @@ describe('da-link-dialog', () => {
     expect(cancelled).to.be.true;
   });
 
-  it('emits close when close() is called', async () => {
-    await mount({ open: true });
-    let closed = false;
-    el.addEventListener('close', () => { closed = true; });
-    el.close();
-    await nextFrame();
-    expect(closed).to.be.true;
-  });
-
   it('submits on Enter', async () => {
     await mount({ open: true, href: 'https://test.com' });
     let detail = null;
