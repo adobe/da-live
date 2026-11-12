@@ -11,7 +11,7 @@ import {
 const emptyDocHtml = '<body><main><div></div></main></body>';
 const docWithContentHtml = '<body><main><div><p>stuff</p></div></main></body>';
 
-function scHtml({ schemaName = 'project', title = 'Hello' } = {}) {
+function scHtml({ schemaName = 'project', title = 'Hello', name = '<p>Alice</p>', blocks = '' } = {}) {
   return `
     <body>
       <main>
@@ -21,8 +21,9 @@ function scHtml({ schemaName = 'project', title = 'Hello' } = {}) {
             <div><div><p>title</p></div><div><p>${title}</p></div></div>
           </div>
           <div class="${schemaName}">
-            <div><div><p>name</p></div><div><p>Alice</p></div></div>
+            <div><div><p>name</p></div><div>${name}</div></div>
           </div>
+          ${blocks}
         </div>
       </main>
     </body>
@@ -241,6 +242,22 @@ describe('loadFormContext', () => {
       expect(result.schema).to.equal(schemaHtml);
       expect(result.json?.metadata?.schemaName).to.equal('project');
       expect(result.json?.data?.name).to.equal('Alice');
+    });
+  });
+
+  describe('rich text', () => {
+    it('reads the markup from its own block without the schema', async () => {
+      const html = scHtml({
+        name: '<p>self://html#name-1</p>',
+        blocks: '<div class="name name-1"><div><div><p>Hi <strong>Alice</strong></p></div></div></div>',
+      });
+      const result = await loadFormContext({
+        details: validDetails,
+        fetchHtml: htmlOk(html),
+        fetchSchemas: schemasOk({ project: { type: 'object' } }),
+      });
+      expect(result.status).to.equal('ready');
+      expect(result.json?.data?.name).to.equal('<p>Hi <strong>Alice</strong></p>');
     });
   });
 

@@ -25,12 +25,13 @@ blocks/form/
   form.css              workspace layout
   editor.js / .css      nx-form Lit element: routes (ctx/hash), mounts SDK, state snapshot + nav
   icons.js              sprite-backed icon() helper
-  fields/               Spectrum 2 field components (input, picker, checkbox, button, number)
+  fields/               Spectrum 2 field components (input, picker, checkbox, button, number, rich-text)
   utils/
     context.js          loadFormContext — routes documents to ready / blocked / select-schema
     da-api.js           fetch/save against DA source via the nx2 source api
     schemas.js          loadSchemas — schema discovery + module cache
     persistence.js      attachPersistence — single-flight save with re-queue
+    rich-text/          rich-text editor setup, schema, codec, commands, toolset and floating toolbar placement
   views/
     editor.js / .css    field rendering + array rendering
     sidebar.js / .css   navigation tree
@@ -54,10 +55,21 @@ editor.js          →  utils/              (loadFormContext, attachPersistence)
 editor.js          →  views/ + fields/    (editor, sidebar, preview; S2 field components)
 utils/context.js   →  da-sc-sdk          (convertHtmlToJson)
 utils/persistence.js → da-sc-sdk        (convertJsonToHtml)
+fields/rich-text.js → utils/rich-text/  (editor, commands, tools, bubble)
+fields/rich-text.js → da-y-wrapper      (ProseMirror, loaded on demand)
+fields/rich-text.js → blocks/shared/    (da-link-dialog)
+fields/rich-text-toolbar.js → nx2       (picker and popover, loaded on demand)
+utils/rich-text/    → blocks/shared/    (safe-href)
 views/           →  (SDK engine only via prop binding from the element — no direct imports)
 ```
 
 The SDK is the only piece that holds canonical state. Everything in `utils/` and `views/` is specific to the form block. That covers DA I/O, UI components, schema discovery and single-flight save.
+
+Rich-text fields (`"x-semantic-type": "html"`) render a ProseMirror editor in `fields/rich-text.js`. The SDK owns their value contract and storage, as its [schema spec](https://github.com/adobe/da-sc-sdk/blob/main/docs/schema-spec.md) describes. ProseMirror comes from the `da-y-wrapper` bundle the Canvas editor already loads, so the form block does not bundle it.
+
+The editor schema in `utils/rich-text/schema.js` only allows the subset the SDK keeps. The field gets its editor from `utils/rich-text/editor.js`, which loads ProseMirror on demand and puts the schema, the codec and the toolset together, so the field does not depend on ProseMirror. The codec in `utils/rich-text/codec.js` reads and writes values with ProseMirror today. The SDK brings each value into its canonical HTML when it saves. Parity tests run every case through the SDK converters, so a saved value reloads as the same document.
+
+The toolbar in `fields/rich-text-toolbar.js` renders a toolset that `utils/rich-text/tools.js` binds to the editor. Each tool carries its own command and selection checks, and the toolbar fires `form-rich-text-command` for the field to run. The toolbar holds no rich-text knowledge, so a new tool only changes the toolset.
 
 ---
 
