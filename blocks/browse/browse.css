@@ -6,6 +6,10 @@ html:has(aside.panel[data-position="before"]:not([hidden])) da-browse::part(chat
   container-type: inline-size;
 }
 
+da-sites > da-greeting h1 {
+  margin: 0;
+}
+
 @container (width < 1440px) {
   da-browse {
     --se-grid-container-width: 83.4cqi;

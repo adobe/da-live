@@ -6,6 +6,19 @@ const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
 const V2_NAV_PATH = '/nx/fragments/browse2-nav';
 
+function takeGreeting(el) {
+  const section = el.closest('.section')?.nextElementSibling;
+  const greeting = section?.querySelector('div.greeting');
+  if (!greeting) return undefined;
+  // NX snapshots these queues before Browse initializes.
+  section.blocks = [];
+  section.autoBlocks = [];
+  section.linkBlocks = [];
+  section.replaceChildren();
+  section.remove();
+  return greeting;
+}
+
 // to be removed when the v2 nav is fully integrated
 function useV2Nav() {
   if (document.head.querySelector('meta[name="nav-path"]')) return;
@@ -37,7 +50,7 @@ async function loadBrowseStyles(cmpName) {
   if (cmpName === 'da-sites') await loadLandingStyles();
 }
 
-async function loadComponent(el, cmpName, pathDetails, surface) {
+async function loadComponent(el, cmpName, pathDetails, surface, greeting) {
   await surface;
   if (cmpName === 'da-landing') {
     const { default: loadLanding } = await import('../landing/landing.js');
@@ -64,6 +77,7 @@ async function loadComponent(el, cmpName, pathDetails, surface) {
   else await import('./legacy/da-browse/da-browse.js');
   const cmp = document.createElement(cmpName);
   cmp.details = pathDetails;
+  if (cmpName === 'da-sites') cmp.greeting = greeting;
   el.append(cmp);
 }
 
@@ -81,10 +95,12 @@ function setRecentSite(details) {
 
 export default function init(el) {
   el.querySelectorAll('picture').forEach((picture) => picture.remove());
+  const greeting = getBrowseComponent({ search: window.location.search }) === 'da-sites'
+    ? takeGreeting(el) : undefined;
   hashChange.subscribe((pathDetails) => {
     const cmpName = getBrowseComponent({ search: window.location.search, pathDetails });
     const surface = cmpName === 'da-landing' ? loadLandingSurface(el) : loadBrowseStyles(cmpName);
-    loadComponent(el, cmpName, pathDetails, surface);
+    loadComponent(el, cmpName, pathDetails, surface, greeting);
     if (pathDetails) setRecentSite(pathDetails);
   });
 

@@ -1,7 +1,9 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, sanitizeName } from '../../../scripts/utils.js';
+import { getNx, getNx2, sanitizeName } from '../../../scripts/utils.js';
+import initGreeting from '../../shared/da-greeting/da-greeting.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { loadIms } = await import(`${getNx2()}/utils/ims.js`);
 const styles = await loadStyle(import.meta.url);
 
 const RANDOM_MAX = 8;
@@ -12,6 +14,7 @@ function getRandom() {
 
 export default class DaSites extends LitElement {
   static properties = {
+    greeting: { attribute: false },
     _recents: { state: true },
     _status: { state: true },
     _urlError: { state: true },
@@ -26,6 +29,15 @@ export default class DaSites extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [styles];
     this._recents = this.getRecents();
+    if (this.greeting) {
+      const profile = loadIms().catch(() => undefined);
+      const greeting = initGreeting(this.greeting.cloneNode(true), { profile });
+      greeting.slot = 'greeting';
+      profile.then((ims) => {
+        greeting.variant = ims?.accessToken && !ims.anonymous ? 'user' : undefined;
+      });
+      this.replaceChildren(greeting);
+    }
   }
 
   getRecents() {
@@ -201,6 +213,8 @@ export default class DaSites extends LitElement {
   render() {
     return html`
       <div class="da-site-container">
+        ${this.greeting ? html`
+          <div class="da-site-greeting"><slot name="greeting"></slot></div>` : nothing}
         <div class="da-site-header">
           <h2>Recents</h2>
         </div>
