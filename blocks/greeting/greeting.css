@@ -2,6 +2,7 @@ body:has(main .add-site) .greeting {
   display: block;
   margin-block: var(--s2-spacing-600);
   padding-inline: var(--s2-spacing-400);
+  color: var(--s2-gray-900);
   text-align: center;
 }
 
