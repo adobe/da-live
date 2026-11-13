@@ -10,14 +10,13 @@ import {
   wrapInList,
   addColumnBefore,
   addColumnAfter,
-  addRowBefore,
-  addRowAfter,
   deleteColumn,
   deleteRow,
   mergeCells,
   splitCell,
   isInTable,
 } from 'da-y-wrapper';
+import { addRowLike } from '../../edit/prose/plugins/tableUtils.js';
 import { getCommentsBridge, openCommentsPanel } from './comments-bridge.js';
 import { getSelectionData } from '../comments/helpers/anchor.js';
 
@@ -100,8 +99,8 @@ export const tableCommand = (cmd) => (view) => {
 
 export const addTableColumnLeft = tableCommand(addColumnBefore);
 export const addTableColumnRight = tableCommand(addColumnAfter);
-export const addTableRowAbove = tableCommand(addRowBefore);
-export const addTableRowBelow = tableCommand(addRowAfter);
+export const addTableRowAbove = tableCommand(addRowLike('before'));
+export const addTableRowBelow = tableCommand(addRowLike('after'));
 export const deleteTableColumn = tableCommand(deleteColumn);
 export const deleteTableRow = tableCommand(deleteRow);
 export const mergeTableCells = tableCommand(mergeCells);
