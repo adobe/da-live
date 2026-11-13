@@ -323,6 +323,26 @@ describe('ew-form-rich-text', () => {
     expect(closes).to.equal(0);
   });
 
+  it('drafts the link from the selection once the dialog loaded', async () => {
+    const richText = await mount({ value: '<p>one two</p>' });
+    selectRange(richText, 1, 4);
+    const { field } = await openLinkDialog(richText, () => {
+      tool(richText, 'link').click();
+      selectRange(richText, 5, 8);
+    });
+    expect(field('link-text').value).to.equal('two');
+  });
+
+  it('does not open the link dialog when the field is disabled while it loads', async () => {
+    const richText = await mount({ value: '<p>site</p>' });
+    selectAll(richText);
+    tool(richText, 'link').click();
+    richText.disabled = true;
+    await tick();
+    await richText.updateComplete;
+    expect(richText.shadowRoot.querySelector('da-link-dialog')).to.equal(null);
+  });
+
   it('edits the link under the caret with Mod-K', async () => {
     const richText = await mount({ value: '<p>a <a href="/a" title="Old">site</a></p>' });
     selectRange(richText, 5);
