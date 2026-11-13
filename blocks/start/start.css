@@ -38,6 +38,21 @@ a {
   position: relative;
 }
 
+.start-greeting {
+  margin-bottom: var(--s2-spacing-600);
+  text-align: center;
+}
+
+.start-greeting ::slotted(da-greeting) {
+  display: block;
+}
+
+@media (width < 600px) {
+  .start-greeting {
+    margin-bottom: var(--s2-spacing-400);
+  }
+}
+
 ul.step-count {
   list-style: none;
   margin: 0 0 96px;

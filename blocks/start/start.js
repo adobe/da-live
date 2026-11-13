@@ -4,6 +4,7 @@ import getSheet from '../shared/sheet.js';
 import { daFetch } from '../shared/utils.js';
 import { copyConfig, copyContent, previewContent } from './index.js';
 import { getNx2Api, sanitizePathParts } from '../../scripts/utils.js';
+import initGreeting from '../greeting/greeting.js';
 
 const sheet = await getSheet('/blocks/start/start.css');
 
@@ -113,6 +114,7 @@ class DaStart extends LitElement {
     _templates: { state: true },
     _loading: { state: true },
     _disableCreate: { state: true },
+    greeting: { attribute: false },
   };
 
   constructor() {
@@ -128,10 +130,15 @@ class DaStart extends LitElement {
     this._goText = 'Make something wonderful';
   }
 
-  connectedCallback() {
+  async connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
     this._templates = AEM_TEMPLATES;
+    if (!this.greeting) return;
+    const greeting = await this.greeting;
+    if (!this.isConnected) return;
+    greeting.slot = 'greeting';
+    this.append(greeting);
   }
 
   async firstUpdated() {
@@ -353,6 +360,7 @@ class DaStart extends LitElement {
       <img src="/blocks/start/dark-alley.jpg" class="background"/>
       <div class="gradient"></div>
       <div class="foreground step-${this.activeStep}-active">
+        ${this.greeting ? html`<div class="start-greeting"><slot name="greeting"></slot></div>` : nothing}
         <ul class="step-count">
           <li>1</li>
           <li class="step-2">2</li>
@@ -368,6 +376,16 @@ class DaStart extends LitElement {
 
 customElements.define('da-start', DaStart);
 
+function takeGreeting(el) {
+  const section = el.closest('.section')?.nextElementSibling;
+  const greeting = section?.querySelector('div.greeting');
+  if (!greeting) return undefined;
+  section.remove();
+  return initGreeting(greeting);
+}
+
 export default function init(el) {
-  el.append(document.createElement('da-start'));
+  const start = document.createElement('da-start');
+  start.greeting = takeGreeting(el);
+  el.append(start);
 }
