@@ -409,6 +409,16 @@ describe('form-rich-text', () => {
     expect(changes).to.equal(1);
   });
 
+  it('grows up to 480px and lets the author drag it to one screen at most', async () => {
+    const richText = await mount({ value: '<p>a</p>' });
+    const editor = content(richText);
+    expect(getComputedStyle(editor).maxHeight).to.equal('480px');
+    editor.style.height = '5000px';
+    const limit = Math.max(480, window.innerHeight * 0.7);
+    expect(parseFloat(getComputedStyle(editor).maxHeight)).to.be.closeTo(limit, 1);
+    expect(editor.getBoundingClientRect().height).to.be.closeTo(limit, 1);
+  });
+
   it('is read-only when disabled', async () => {
     const richText = await mount({ value: '<p>a</p>', disabled: true });
     expect(content(richText).getAttribute('contenteditable')).to.equal('false');
