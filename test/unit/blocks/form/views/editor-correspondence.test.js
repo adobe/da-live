@@ -14,7 +14,9 @@ const settle = async (el) => {
   await el.updateComplete;
 };
 
-const CONTROL_TAGS = ['EW-FORM-INPUT', 'EW-FORM-TEXTAREA', 'EW-FORM-NUMBER-FIELD', 'EW-FORM-CHECKBOX', 'EW-FORM-PICKER'];
+const CONTROL_TAGS = [
+  'EW-FORM-INPUT', 'EW-FORM-TEXTAREA', 'EW-FORM-RICH-TEXT', 'EW-FORM-NUMBER-FIELD', 'EW-FORM-CHECKBOX', 'EW-FORM-PICKER',
+];
 
 const mounted = [];
 afterEach(() => { while (mounted.length) mounted.pop().remove(); });
@@ -47,6 +49,7 @@ function expectedTag(node) {
   if (Array.isArray(node.enumValues)) return 'EW-FORM-PICKER';
   if (node.kind === 'boolean') return 'EW-FORM-CHECKBOX';
   if (node.kind === 'number' || node.kind === 'integer') return 'EW-FORM-NUMBER-FIELD';
+  if (node.kind === 'string' && node.semanticType === 'rich-text') return 'EW-FORM-RICH-TEXT';
   if (node.kind === 'string' && node.semanticType === 'long-text') return 'EW-FORM-TEXTAREA';
   return 'EW-FORM-INPUT';
 }

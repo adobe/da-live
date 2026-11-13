@@ -1,6 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import '../../../setup-nx.js';
 import { attachPersistence } from '../../../../../blocks/form/utils/persistence.js';
+import { createEngine } from '../../../../../deps/da-sc-sdk/dist/index.js';
 
 // Minimal editor stub. `setValues(next)` simulates a real mutation by
 // replacing `state.document` with a NEW reference — persistence uses
@@ -191,6 +192,27 @@ describe('attachPersistence', () => {
     p.notify();
     await tick();
     expect(calls).to.have.lengthOf(1);
+    p.detach();
+  });
+
+  it('writes a rich-text value into a block of its own', async () => {
+    const schema = {
+      type: 'object',
+      properties: { body: { type: 'string', 'x-semantic-type': 'rich-text' } },
+    };
+    const editor = createEngine({
+      schema,
+      document: { metadata: { schemaName: 'demo' }, data: {} },
+    });
+    const { save, calls, release } = makeSave();
+    const p = attachPersistence(editor, { path: '/x', save });
+
+    editor.setField('/data/body', '<p>Hello <strong>bold</strong></p>');
+    p.notify();
+    await tick();
+    expect(calls[0].html).to.include('self://rich-text#body-1');
+    expect(calls[0].html).to.include('<p>Hello <strong>bold</strong></p>');
+    release();
     p.detach();
   });
 });

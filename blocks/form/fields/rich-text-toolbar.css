@@ -1,0 +1,135 @@
+:host {
+  --form-rich-text-disabled-opacity: 0.45;
+
+  display: block;
+}
+
+.form-rich-text-toolbar {
+  /* Leaves room for the 24px more button plus the toolbar padding and gap. */
+  --form-rich-text-more-space: 36px;
+
+  position: relative;
+  box-sizing: content-box;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 6px var(--form-rich-text-more-space) 6px 8px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--s2-gray-200);
+}
+
+.form-rich-text-separator {
+  flex: none;
+  width: 1px;
+  height: 16px;
+  margin: 0 2px;
+  background: var(--s2-gray-300);
+
+  &.is-overflow {
+    visibility: hidden;
+  }
+}
+
+.form-rich-text-more {
+  position: absolute;
+  inset-block-start: 6px;
+  inset-inline-end: 8px;
+}
+
+[data-more] {
+  svg {
+    transform: rotate(90deg);
+  }
+
+  &[aria-expanded="true"] {
+    background: var(--s2-gray-200);
+  }
+}
+
+.form-rich-text-menu {
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: var(--s2-corner-radius-500);
+}
+
+.form-rich-text-menu-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  max-width: min(320px, 80vw);
+}
+
+.form-rich-text-button {
+  box-sizing: border-box;
+  min-width: 24px;
+  height: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--s2-corner-radius-100);
+  background: none;
+  color: var(--s2-gray-800);
+  font: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--s2-gray-200);
+  }
+
+  &[aria-pressed="true"] {
+    background: var(--s2-blue-200);
+    color: var(--s2-blue-900);
+
+    &:hover {
+      background: var(--s2-blue-300);
+    }
+  }
+
+  svg {
+    display: block;
+    width: 16px;
+    height: 16px;
+    overflow: hidden;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--s2-blue-800);
+    outline-offset: 1px;
+  }
+
+  &:disabled {
+    pointer-events: none;
+    opacity: var(--form-rich-text-disabled-opacity);
+  }
+
+  /* Wrapped past the single line, so the more menu offers it instead. */
+  &.is-overflow {
+    visibility: hidden;
+  }
+
+  &.is-hidden {
+    display: none;
+  }
+}
+
+.form-rich-text-picker {
+  display: flex;
+  align-items: center;
+  min-width: 78px;
+
+  &.is-disabled {
+    opacity: var(--form-rich-text-disabled-opacity);
+  }
+
+  /* Sized like the tool buttons. */
+  nx-picker {
+    --nx-picker-height: 24px;
+    --nx-picker-padding: 0 6px;
+    --nx-picker-radius: var(--s2-corner-radius-100);
+  }
+}

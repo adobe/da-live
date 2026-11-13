@@ -2,6 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx2 } from '../../../scripts/utils.js';
 import '../fields/input.js';
 import '../fields/textarea.js';
+import '../fields/rich-text.js';
 import '../fields/picker.js';
 import '../fields/checkbox.js';
 import '../fields/button.js';
@@ -16,6 +17,8 @@ const style = await loadStyle(import.meta.url);
 
 const EL_NAME = 'ew-form-fields';
 const DEBOUNCE_MS = 350;
+
+const textValue = (value) => (value === '' ? undefined : value);
 
 function describeIssue(issue) {
   const feature = issue.details?.keyword ?? issue.details?.type ?? 'unknown';
@@ -140,11 +143,16 @@ class Editor extends LitElement {
   }
 
   _mutateDebounced(pointer, fn) {
-    clearTimeout(this._inputTimers.get(pointer));
+    this._cancelDebounced(pointer);
     this._inputTimers.set(pointer, setTimeout(() => {
       this._inputTimers.delete(pointer);
       this._mutate(fn);
     }, DEBOUNCE_MS));
+  }
+
+  _cancelDebounced(pointer) {
+    clearTimeout(this._inputTimers.get(pointer));
+    this._inputTimers.delete(pointer);
   }
 
   _error(pointer) {
@@ -168,8 +176,15 @@ class Editor extends LitElement {
   _onTextInput(node, e) {
     const raw = e.target.value;
     this._mutateDebounced(node.pointer, (editor) => {
-      editor.setField(node.pointer, raw === '' ? undefined : raw);
+      editor.setField(node.pointer, textValue(raw));
     });
+  }
+
+  // Saves at once when a rich-text field commits, replacing its pending debounced save.
+  _onRichTextCommit(node, e) {
+    this._cancelDebounced(node.pointer);
+    const raw = e.target.value;
+    this._mutate((editor) => editor.setField(node.pointer, textValue(raw)));
   }
 
   _onNumberInput(node, e) {
@@ -270,6 +285,22 @@ class Editor extends LitElement {
           ?disabled=${readonly}
           @input=${(e) => this._onTextInput(node, e)}
         ></ew-form-date>
+      `;
+    }
+
+    if (node.semanticType === 'rich-text') {
+      return html`
+        <ew-form-rich-text
+          data-pointer=${pointer}
+          .label=${label}
+          .required=${showRequired}
+          .error=${error}
+          .description=${description}
+          .value=${value ?? ''}
+          ?disabled=${readonly}
+          @input=${(e) => this._onTextInput(node, e)}
+          @change=${(e) => this._onRichTextCommit(node, e)}
+        ></ew-form-rich-text>
       `;
     }
 
