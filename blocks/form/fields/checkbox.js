@@ -48,6 +48,6 @@ class FormCheckbox extends LitElement {
   }
 }
 
-if (!customElements.get('form-checkbox')) customElements.define('form-checkbox', FormCheckbox);
+if (!customElements.get('ew-form-checkbox')) customElements.define('ew-form-checkbox', FormCheckbox);
 
 export default FormCheckbox;

@@ -1,5 +1,11 @@
 import { getNx2 } from '../../scripts/utils.js';
 import decorateEditor from './editor.js';
+import {
+  TOOL_PANEL_SECTION,
+  createToolPanelSection,
+  syncOpenToolPanel,
+} from '../shared/tool-panel/tool-panel-section.js';
+import { toolPanelHost } from './tool-panel/host.js';
 
 const nx2 = getNx2();
 const [
@@ -22,7 +28,7 @@ const style = await loadStyle(import.meta.url);
 document.adoptedStyleSheets = [...document.adoptedStyleSheets, style];
 
 const { codeBase } = getConfig();
-const CHAT_TOGGLE_ICON = `${codeBase}/img/icons/s2-icon-splitleft-20-n.svg#icon`;
+const s2IconHref = (name) => `${codeBase}/img/icons/s2-icon-${name}-20-n.svg#icon`;
 
 // Engage the app-frame panel grid even when the page didn't declare it.
 function ensureAppFrame() {
@@ -47,38 +53,59 @@ function ensureNavPath() {
   document.head.append(meta);
 }
 
-function openChatPanel() {
-  document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat' } }));
-}
-
-// A floating toggle at the top-left of the canvas opens the chat panel. The
-// anchor is a zero-height element in the main flow (so its left edge is the
-// canvas edge, not the viewport — clearing the left rail); the button is
-// absolutely positioned within it. It sits before the block (outside its scroll
-// region) so it stays put, and hides itself while the chat is open — see form.css.
-function installChatToggle(block) {
-  const anchor = document.createElement('div');
-  anchor.className = 'form-chat-toggle-anchor';
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'form-chat-toggle';
-  btn.setAttribute('aria-label', 'Toggle chat');
-  btn.innerHTML = `<svg aria-hidden="true" viewBox="0 0 20 20"><use href="${CHAT_TOGGLE_ICON}"></use></svg>`;
-  btn.addEventListener('click', () => openChatPanel());
-  anchor.append(btn);
-  block.before(anchor);
-  return btn;
-}
-
-// The chat workspace (toggle + docked chat) is gated on the `ew.enabled`
-// flag for the current site. Read once from the hash on load — the form
-// workspace is scoped to a single org/site.
-async function setupChat(block) {
+function currentHashState() {
   let state;
-  const unsubscribe = hashChange.subscribe((s) => { state = s; });
+  const unsubscribe = hashChange.subscribe((hashState) => { state = hashState; });
   unsubscribe();
+  return state ?? {};
+}
 
-  const { org, site } = state ?? {};
+function openPanelSection(section, id) {
+  document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section, id } }));
+}
+
+function trackScrollbarWidth(block, anchor) {
+  const update = () => {
+    const width = block.offsetWidth - block.clientWidth;
+    anchor.style.setProperty('--form-scrollbar-width', `${width}px`);
+  };
+  update();
+  new ResizeObserver(update).observe(block);
+}
+
+function createToggleAnchor(block) {
+  const anchor = document.createElement('div');
+  anchor.className = 'form-toggle-anchor';
+  block.before(anchor);
+  trackScrollbarWidth(block, anchor);
+  return anchor;
+}
+
+function installPanelToggle(anchor, { section, label, icon }) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = `form-panel-toggle form-${section}-toggle`;
+  button.setAttribute('aria-label', label);
+  button.title = label;
+  button.innerHTML = `<svg aria-hidden="true" viewBox="0 0 20 20"><use href="${s2IconHref(icon)}"></use></svg>`;
+  button.addEventListener('click', () => openPanelSection(section));
+  anchor.append(button);
+}
+
+function setupTools(anchor, { org, site }) {
+  registerPanelSection(TOOL_PANEL_SECTION, createToolPanelSection({
+    host: toolPanelHost,
+    getContext: currentHashState,
+  }));
+  hashChange.subscribe(syncOpenToolPanel);
+
+  installPanelToggle(anchor, { section: TOOL_PANEL_SECTION, label: 'Open tools panel', icon: 'splitright' });
+  if (org && site && wasPanelOpen(TOOL_PANEL_SECTION)) {
+    openPanelSection(TOOL_PANEL_SECTION);
+  }
+}
+
+async function setupChat(anchor, { org, site }) {
   if (!org || !site) return;
 
   const flags = await getEWFlags({ org, site });
@@ -90,17 +117,20 @@ async function setupChat(block) {
     getContent: async () => loadChat(),
   });
 
-  installChatToggle(block);
-  if (wasPanelOpen('chat')) openChatPanel();
+  installPanelToggle(anchor, { section: 'chat', label: 'Toggle chat', icon: 'splitleft' });
+  if (wasPanelOpen('chat')) {
+    openPanelSection('chat');
+  }
 }
 
 /**
  * Decorates the `form` block as the structured content editor workspace.
  *
  * Sets up a canvas-style workspace with the app-frame grid around the form
- * editor (editor.js). When EW is enabled, it also adds a floating chat toggle
- * and a docked chat. The form and the chat both read the `#/org/site/path`
- * hash, so they stay in sync.
+ * editor (editor.js). A tools panel on the right shows the outline of the
+ * document. When EW is enabled, it also adds a floating chat toggle and a
+ * docked chat. The form, the tools panel, and the chat all read the
+ * `#/org/site/path` hash, so they stay in sync.
  *
  * This block was migrated from da-nx's `nx/blocks/form`. The `/form` page
  * content still declares it as `nx-form`, which the nx2 loader loads from
@@ -114,5 +144,8 @@ export default async function decorate(block) {
 
   decorateEditor(block);
 
-  await setupChat(block);
+  const context = currentHashState();
+  const anchor = createToggleAnchor(block);
+  setupTools(anchor, context);
+  await setupChat(anchor, context);
 }
