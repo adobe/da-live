@@ -234,20 +234,6 @@ describe('form-rich-text', () => {
     expect(richText.value).to.equal('<p>si<br>te</p>');
   });
 
-  it('undoes and redoes changes from the keyboard', async () => {
-    const richText = await mount({ value: '<p>text</p>' });
-    selectAll(richText);
-    tool(richText, 'strong').click();
-    expect(richText.value).to.equal('<p><strong>text</strong></p>');
-    expect(press(richText, 'z')).to.be.true;
-    expect(richText.value).to.equal('<p>text</p>');
-    press(richText, 'z', { shift: true });
-    expect(richText.value).to.equal('<p><strong>text</strong></p>');
-    press(richText, 'z');
-    press(richText, 'y');
-    expect(richText.value).to.equal('<p><strong>text</strong></p>');
-  });
-
   it('applies code, superscript, subscript and blockquote from the toolbar', async () => {
     const richText = await mount({ value: '<p>text</p>' });
     await openMenu(richText);
@@ -450,30 +436,10 @@ describe('form-rich-text', () => {
     expect(content(richText).textContent).to.equal('a');
   });
 
-  it('undoes and redoes from the toolbar', async () => {
-    const richText = await mount({ value: '<p>text</p>' });
-    expect(tool(richText, 'undo').disabled).to.be.true;
-    expect(tool(richText, 'redo').disabled).to.be.true;
-    expect(tool(richText, 'undo').hasAttribute('aria-pressed')).to.be.false;
-    selectAll(richText);
-    tool(richText, 'strong').click();
-    await richText.updateComplete;
-    expect(tool(richText, 'undo').disabled).to.be.false;
-    tool(richText, 'undo').click();
-    expect(richText.value).to.equal('<p>text</p>');
-    await richText.updateComplete;
-    expect(tool(richText, 'undo').disabled).to.be.true;
-    expect(tool(richText, 'redo').disabled).to.be.false;
-    tool(richText, 'redo').click();
-    expect(richText.value).to.equal('<p><strong>text</strong></p>');
-    await richText.updateComplete;
-    expect(tool(richText, 'redo').disabled).to.be.true;
-  });
-
   it('opens the link dialog from the more menu', async () => {
     const richText = await mount({ value: '<p>site</p>', width: '260px' });
     const bar = toolbar(richText);
-    await until(() => bar._overflowAt < 9);
+    await until(() => bar._overflowAt < 7);
     richText.focus();
     selectAll(richText);
     await openMenu(richText);

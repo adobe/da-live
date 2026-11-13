@@ -36,10 +36,8 @@ describe('rich-text tools', () => {
   });
 
   describe('commands', () => {
-    it('runs the history commands of da-y-wrapper and removes links', () => {
+    it('removes links', () => {
       const { tool } = setup();
-      expect(tool(TOOL_IDS.undo).command).to.equal(proseMirror.undo);
-      expect(tool(TOOL_IDS.redo).command).to.equal(proseMirror.redo);
       expect(tool(TOOL_IDS.unlink).command).to.equal(removeLink);
     });
 
@@ -60,15 +58,6 @@ describe('rich-text tools', () => {
       expect(calls).to.be.empty;
       run(tool(TOOL_IDS.link).command, state);
       expect(calls).to.deep.equal(['link']);
-    });
-
-    it('follows the history', () => {
-      const { tool } = setup();
-      const state = stateFor('');
-      expect(tool(TOOL_IDS.undo).command(state)).to.be.false;
-      const typed = state.apply(state.tr.insertText('a', 1));
-      expect(tool(TOOL_IDS.undo).command(typed)).to.be.true;
-      expect(tool(TOOL_IDS.redo).command(typed)).to.be.false;
     });
   });
 
@@ -128,9 +117,6 @@ describe('rich-text tools', () => {
     it('binds the shortcuts of the tools', () => {
       const { tool } = setup();
       const keys = keymapFor();
-      expect(keys['Mod-z']).to.equal(proseMirror.undo);
-      expect(keys['Mod-Shift-z']).to.equal(proseMirror.redo);
-      expect(keys['Mod-y']).to.equal(proseMirror.redo);
       expect(keys['Mod-b']).to.be.a('function');
       expect(keys['Mod-k']).to.be.a('function');
       expect(Object.keys(keys)).to.include.members(

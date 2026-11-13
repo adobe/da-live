@@ -28,8 +28,7 @@ import { spriteIcon } from '../icons.js';
 /**
  * The tools of a toolbar, in the order they show.
  * @typedef {object} Toolset
- * @property {ToolbarTool[]} leading The tools that lead the bar.
- * @property {ToolbarPicker} picker The picker after them.
+ * @property {ToolbarPicker} picker The picker that leads the bar.
  * @property {ToolbarTool[][]} groups The groups of the bar and the floating toolbar.
  * @property {ToolbarTool[][]} menuGroups The groups only the more menu offers.
  */
@@ -182,7 +181,7 @@ class FormRichTextToolbar extends LitElement {
    * @returns {ToolbarTool[]} The tools.
    */
   get _barTools() {
-    return [...this.toolset.leading, ...this.toolset.groups.flat()];
+    return this.toolset.groups.flat();
   }
 
   /**
@@ -470,13 +469,11 @@ class FormRichTextToolbar extends LitElement {
   }
 
   /**
-   * Renders the tools of the bar, starting with the leading tools and the picker.
+   * Renders the tools of the bar, starting with the picker.
    * @returns {import('da-lit').TemplateResult} The tools.
    */
   _renderBarTools() {
     return html`
-      ${this.toolset.leading.map((tool) => this._renderTool(tool))}
-      <span class="form-rich-text-separator"></span>
       ${this._renderPicker()}
       ${this._renderBarGroups()}
     `;
