@@ -25,7 +25,7 @@ async function mount({ value = '', loadEditor: loader, width, ...properties } = 
 }
 
 const content = (richText) => richText.shadowRoot.querySelector('.form-rich-text-content');
-const toolbar = (richText) => richText.shadowRoot.querySelector('form-rich-text-toolbar:not([floating])');
+const toolbar = (richText) => richText.shadowRoot.querySelector('form-rich-text-toolbar');
 const tool = (richText, id) => toolbar(richText).shadowRoot.querySelector(`[data-tool="${id}"]`);
 const blockPicker = (richText) => toolbar(richText).shadowRoot.querySelector('nx-picker');
 
@@ -51,11 +51,6 @@ async function holdFocus(richText) {
   richText.requestUpdate();
   await richText.updateComplete;
 }
-
-const floating = (richText) => richText.shadowRoot.querySelector('.form-rich-text-bubble');
-const floatingTool = (richText, id) => floating(richText).shadowRoot.querySelector(`[data-tool="${id}"]`);
-const visibleIds = (host) => [...host.shadowRoot.querySelectorAll('[data-tool]:not(.is-hidden)')]
-  .map((button) => button.dataset.tool);
 
 function selectRange(richText, from, to = from) {
   const { state } = richText._view;
@@ -454,78 +449,6 @@ describe('form-rich-text', () => {
     await richText.updateComplete;
     expect(richText.value).to.equal('<p><a href="/page">site</a></p>');
     expect(dialog.isConnected).to.be.false;
-  });
-
-  it('shows the floating toolbar only for a focused, non-empty selection', async () => {
-    const richText = await mount({ value: '<p>Some text</p>' });
-    await refocus(richText);
-    expect(floating(richText)).to.equal(null);
-    selectAll(richText);
-    await refocus(richText);
-    expect(floating(richText)).to.not.equal(null);
-    content(richText).dispatchEvent(new FocusEvent('focusout', { bubbles: true, composed: true }));
-    await richText.updateComplete;
-    expect(floating(richText)).to.equal(null);
-    selectRange(richText, 2);
-    await refocus(richText);
-    expect(floating(richText)).to.equal(null);
-  });
-
-  it('floats above the selection, or below it next to the toolbar', async () => {
-    const value = [1, 2, 3, 4, 5].map((lineNumber) => `<p>Line ${lineNumber}</p>`).join('');
-    const richText = await mount({ value, width: '400px' });
-    await holdFocus(richText);
-    const view = richText._view;
-    const select = async (from, to) => {
-      selectRange(richText, from, to);
-      await richText.updateComplete;
-      return floating(richText).getBoundingClientRect();
-    };
-    const frame = richText.shadowRoot.querySelector('.form-rich-text').getBoundingClientRect();
-    const last = await select(33, 37);
-    expect(last.bottom).to.be.at.most(view.coordsAtPos(33).top);
-    expect(last.left).to.be.at.least(frame.left);
-    expect(last.right).to.be.at.most(frame.right);
-    const first = await select(1, 5);
-    const bar = toolbar(richText).getBoundingClientRect();
-    expect(first.top).to.be.at.least(view.coordsAtPos(5).bottom);
-    expect(first.top).to.be.at.least(bar.bottom);
-  });
-
-  it('formats from the floating toolbar', async () => {
-    const richText = await mount({ value: '<p>text</p>' });
-    await holdFocus(richText);
-    selectAll(richText);
-    await richText.updateComplete;
-    expect(visibleIds(floating(richText))).to.deep.equal(['strong', 'em', 'u', 'del', 'link', 'bullet_list', 'ordered_list']);
-    floatingTool(richText, 'strong').click();
-    expect(richText.value).to.equal('<p><strong>text</strong></p>');
-    await richText.updateComplete;
-    expect(floatingTool(richText, 'strong').getAttribute('aria-pressed')).to.equal('true');
-  });
-
-  it('offers unlink in the floating toolbar only inside a link', async () => {
-    const richText = await mount({ value: '<p><a href="/a">site</a></p>' });
-    await holdFocus(richText);
-    selectAll(richText);
-    await richText.updateComplete;
-    expect(visibleIds(floating(richText))).to.include('unlink');
-    floatingTool(richText, 'unlink').click();
-    expect(richText.value).to.equal('<p>site</p>');
-    await richText.updateComplete;
-    expect(visibleIds(floating(richText))).to.not.include('unlink');
-  });
-
-  it('hides the floating toolbar while the link dialog is open', async () => {
-    const richText = await mount({ value: '<p>site</p>' });
-    await holdFocus(richText);
-    selectAll(richText);
-    await richText.updateComplete;
-    const { button } = await openLinkDialog(richText, () => floatingTool(richText, 'link').click());
-    expect(floating(richText)).to.equal(null);
-    button('Cancel').click();
-    await richText.updateComplete;
-    expect(floating(richText)).to.not.equal(null);
   });
 
   it('reports a load failure', async () => {

@@ -40,7 +40,7 @@ blocks/form/
     schemas.js            loadSchemas — schema discovery + module cache
     persistence.js        attachPersistence — single-flight save with re-queue
     safe-href.js          safeHref — drops links that run script or local programs
-    rich-text/            rich-text editor setup, schema, codec, commands, toolset and floating toolbar placement
+    rich-text/            rich-text editor setup, schema, codec, commands and toolset
   views/
     editor.js / .css      ew-form-fields, field rendering + array rendering
     preview.js / .css     ew-form-preview, read-only JSON preview
@@ -67,7 +67,7 @@ editor.js          →  events.js           (publishes state and selection, hand
 tool-panel/outline/ →  events.js           (subscribes to state and selection, publishes jumps)
 utils/context.js   →  da-sc-sdk          (convertHtmlToJson)
 utils/persistence.js → da-sc-sdk        (convertJsonToHtml)
-fields/rich-text.js → utils/rich-text/  (editor, commands, tools, bubble)
+fields/rich-text.js → utils/rich-text/  (editor, commands, tools)
 fields/rich-text.js → da-y-wrapper      (ProseMirror, loaded on demand)
 fields/rich-text.js → blocks/shared/    (da-link-dialog)
 fields/rich-text-toolbar.js → nx2       (picker and popover, loaded on demand)
