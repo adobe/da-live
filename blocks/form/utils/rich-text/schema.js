@@ -1,4 +1,4 @@
-import { safeHref } from '../../../shared/safe-href.js';
+import { safeHref } from '../safe-href.js';
 
 /** The levels of the heading text styles. */
 export const HEADING_LEVELS = [1, 2, 3, 4, 5, 6];

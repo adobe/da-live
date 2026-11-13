@@ -4,7 +4,7 @@ import * as proseMirror from 'da-y-wrapper';
 import { createEngine, convertJsonToHtml, convertHtmlToJson } from '../../../../../../deps/da-sc-sdk/dist/index.js';
 import { createSchema } from '../../../../../../blocks/form/utils/rich-text/schema.js';
 import { createRichTextCodec } from '../../../../../../blocks/form/utils/rich-text/codec.js';
-import { safeHref } from '../../../../../../blocks/shared/safe-href.js';
+import { safeHref } from '../../../../../../blocks/form/utils/safe-href.js';
 
 const schema = createSchema(proseMirror);
 const { parse, serialize } = createRichTextCodec({ proseMirror, schema });
