@@ -38,7 +38,7 @@ const { loadStyle } = await import(`${nx2}/utils/utils.js`);
 
 const style = await loadStyle(import.meta.url);
 
-const ELEMENT_NAME = 'form-rich-text-toolbar';
+const ELEMENT_NAME = 'ew-form-rich-text-toolbar';
 
 const LABELS = {
   toolbar: 'Formatting',

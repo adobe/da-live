@@ -290,7 +290,7 @@ class Editor extends LitElement {
 
     if (node.semanticType === 'rich-text') {
       return html`
-        <form-rich-text
+        <ew-form-rich-text
           data-pointer=${pointer}
           .label=${label}
           .required=${showRequired}
@@ -300,7 +300,7 @@ class Editor extends LitElement {
           ?disabled=${readonly}
           @input=${(e) => this._onTextInput(node, e)}
           @change=${(e) => this._onRichTextCommit(node, e)}
-        ></form-rich-text>
+        ></ew-form-rich-text>
       `;
     }
 

@@ -19,7 +19,7 @@ const until = (check, tries = 100) => (check() || !tries
   : new Promise((resolve) => { setTimeout(resolve, 20); }).then(() => until(check, tries - 1)));
 
 async function mount({ width = '900px', ...properties } = {}) {
-  const toolbar = document.createElement('form-rich-text-toolbar');
+  const toolbar = document.createElement('ew-form-rich-text-toolbar');
   Object.assign(toolbar, { editorState: stateFor('<p>a</p>'), toolset, ...properties });
   toolbar.style.width = width;
   document.body.append(toolbar);
@@ -52,7 +52,7 @@ function listen(toolbar, type) {
   return details;
 }
 
-describe('form-rich-text-toolbar', () => {
+describe('ew-form-rich-text-toolbar', () => {
   afterEach(() => {
     document.body.replaceChildren();
   });
