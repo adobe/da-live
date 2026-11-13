@@ -350,9 +350,7 @@ class DaStart extends LitElement {
 
   render() {
     return html`
-      <img src="/blocks/start/dark-alley.jpg" class="background"/>
-      <div class="gradient"></div>
-      <div class="foreground step-${this.activeStep}-active">
+      <div class="step-${this.activeStep}-active">
         <ul class="step-count">
           <li>1</li>
           <li class="step-2">2</li>
