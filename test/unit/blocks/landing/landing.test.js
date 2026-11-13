@@ -67,7 +67,7 @@ describe('landing Content section', () => {
 
   it('renders only Content and reuses shared file cards', () => {
     expect(el.shadowRoot.querySelector('#files-heading').textContent).to.equal('Content');
-    expect(fileItems()).to.have.length(6);
+    expect(fileItems()).to.have.length(4);
     expect(el.shadowRoot.querySelector('h1, textarea, .composer, nx-nav')).to.equal(null);
     expect(el.shadowRoot.querySelector('nx-siteselector, .site-picker')).to.equal(null);
     expect(fileItems()[0].href).to.include('/canvas');
@@ -77,50 +77,52 @@ describe('landing Content section', () => {
     expect(fileList().sort).to.equal(false);
   });
 
-  it('stops at the available files when fewer than eighteen exist', async () => {
+  it('stops at the available files when fewer than ten exist', async () => {
     el._files = ITEMS.slice(0, 9);
     await updateLanding();
     el.shadowRoot.querySelector('.show-more').click();
     await updateLanding();
     expect(fileItems()).to.have.length(9);
-    expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
+    expect(el.shadowRoot.querySelector('.show-more').getAttribute('aria-expanded')).to.equal('true');
   });
 
-  it('expands Recent from six to eighteen and preserves files and preference across view changes', async () => {
-    expect(fileItems()).to.have.length(6);
+  it('expands Recent from four to ten and preserves files and preference across view changes', async () => {
+    expect(fileItems()).to.have.length(4);
     el.shadowRoot.querySelector('.show-more').click();
     await updateLanding();
-    expect(fileItems()).to.have.length(18);
-    expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
+    expect(fileItems()).to.have.length(10);
+    expect(el.shadowRoot.querySelector('.show-more').getAttribute('aria-expanded')).to.equal('true');
     const switcher = el.shadowRoot.querySelector('nx-segmented-btn');
     for (const view of ['list', 'card']) {
       switcher.dispatchEvent(new CustomEvent('change', { detail: { value: view } }));
       await updateLanding();
       expect(el._view).to.equal(view);
-      expect(el.shadowRoot.querySelector('.file-list').tabIndex).to.equal(view === 'list' ? 0 : -1);
+      expect(el.shadowRoot.querySelector('.file-list').tabIndex).to.equal(0);
       expect([...fileItems()].map((item) => item.path))
-        .to.deep.equal(ITEMS.slice(0, 18).map((item) => item.path));
-      expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
+        .to.deep.equal(ITEMS.slice(0, 10).map((item) => item.path));
+      expect(el.shadowRoot.querySelector('.show-more').getAttribute('aria-expanded')).to.equal('true');
       expect(JSON.parse(localStorage.getItem('da-browse-settings')).view).to.equal(view);
     }
   });
 
-  it('caps Favorite at six files in both views without deleting saved entries', async () => {
+  it('expands Favorite from four to ten without deleting saved entries', async () => {
     el.shadowRoot.querySelector('.show-more').click();
     ITEMS.forEach((item) => toggleFavorite('/org/site', item.path));
     el.refreshFavorites();
     el.changeTab('starred');
     await updateLanding();
-    expect(fileItems()).to.have.length(6);
-    expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
+    expect(fileItems()).to.have.length(4);
+    el.shadowRoot.querySelector('.show-more').click();
+    await updateLanding();
+    expect(fileItems()).to.have.length(10);
     el.changeView({ detail: { value: 'list' } });
     await updateLanding();
-    expect(fileItems()).to.have.length(6);
-    expect(el.shadowRoot.querySelector('.show-more')).to.equal(null);
+    expect(fileItems()).to.have.length(10);
+    expect(el.shadowRoot.querySelector('.show-more').getAttribute('aria-expanded')).to.equal('true');
     expect(getFavorites('/org/site')).to.have.length(24);
     el.changeTab('recent');
     await updateLanding();
-    expect(fileItems()).to.have.length(6);
+    expect(fileItems()).to.have.length(4);
   });
 
   it('keeps same-named favorites consistent when an older file falls outside initial Recent', async () => {
@@ -166,12 +168,13 @@ describe('landing Content section', () => {
     await el.loadSite();
     el.refreshFavorites();
     await el.changeTab('starred');
+    const reloadFavorites = sinon.spy(el, 'loadFavorites');
     for (const view of ['card', 'list']) {
       el.changeView({ detail: { value: view } });
       await updateLanding();
       expect(fileItems()).to.have.length(1);
       expect(fileItems()[0].path).to.equal(coffee.path);
-      expect(fileItems()[0].folder.label).to.equal('/de');
+      expect(fileItems()[0].folder.label).to.equal('/org/site/de');
       expect(new URL(fileItems()[0].folder.href).hash).to.equal('#/org/site/de');
       fileItems()[0].requestFavorite();
       await updateLanding();
@@ -179,6 +182,7 @@ describe('landing Content section', () => {
       expect(getFavorites('/org/site')).to.deep.equal([]);
       expect(fileItems()).to.have.length(0);
       el.starFile(coffee);
+      await reloadFavorites.lastCall.returnValue;
       await updateLanding();
       expect(getFavorites('/org/site/de')).to.deep.equal([coffee.path]);
     }
@@ -354,11 +358,11 @@ describe('landing Content section', () => {
     toggleFavorite('/org/site', ITEMS[0].path);
     el.refreshFavorites();
     el.changeTab('starred');
-    el._limit = 18;
+    el._limit = 10;
     el.setScope({ org: 'other', site: 'site' });
     await updateLanding();
     expect(el._tab).to.equal('recent');
-    expect(el._limit).to.equal(6);
+    expect(el._limit).to.equal(4);
     expect(el._favorites.size).to.equal(0);
     expect(loadSite.callCount).to.equal(2);
   });
@@ -444,7 +448,7 @@ describe('landing Content section', () => {
     await el.loadSite();
     await updateLanding();
     expect(metadata.getCalls().map(({ args: [path] }) => path))
-      .to.deep.equal(ITEMS.map(({ path }) => path));
+      .to.deep.equal(ITEMS.slice(0, 10).map(({ path }) => path));
     expect(el._editor).to.equal('/edit#');
     expect(fileItems()[0].href).to.include('/edit');
   });
@@ -590,7 +594,7 @@ describe('landing Content section', () => {
     setEWEnabled(Promise.reject(new Error('Flag unavailable')));
     await el.loadSite();
     expect(el._editor).to.equal('/edit#');
-    expect(el._files).to.have.length(18);
+    expect(el._files).to.have.length(10);
   });
 
   it('loads Recent first and caches missing Favorite metadata only after opening the tab', async () => {

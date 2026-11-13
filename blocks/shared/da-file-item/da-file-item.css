@@ -20,11 +20,18 @@
 .da-item-list-item-inner {
   display: grid;
   grid-template-columns: var(--da-list-select-width, 40px) minmax(0, 442px) var(--da-list-type-width, 120px) minmax(var(--da-list-date-width), 1fr) var(--da-list-action-width, 112px);
+  column-gap: var(--da-list-column-gap, var(--s2-spacing-100, 8px));
   align-items: center;
   min-height: var(--da-list-min-height);
 
   .nx-checkbox {
     justify-content: center;
+  }
+}
+
+@container browse-list-item (width >= 600px) {
+  .da-item-list-item-inner:has([data-column="folder"]) {
+    grid-template-columns: var(--da-list-select-width, 40px) minmax(0, var(--da-list-name-width, 442px)) minmax(var(--da-list-type-width, 120px), 1fr) var(--da-list-date-width, 180px) var(--da-list-action-width, 112px);
   }
 }
 
