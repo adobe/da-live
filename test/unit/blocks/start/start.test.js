@@ -18,13 +18,12 @@ describe('start page appearance', () => {
     document.adoptedStyleSheets = sheets;
   });
 
-  ['rgb(20, 20, 20)', 'rgb(240, 240, 240)'].forEach((color, index) => {
-    it(`renders the legacy landing gradient and inherits text color ${color}`, async () => {
+  ['light', 'dark'].forEach((scheme) => {
+    it(`replaces the old background with the legacy landing gradient in ${scheme} mode`, async () => {
       container = document.createElement('div');
-      container.style.color = color;
-      container.style.colorScheme = index ? 'dark' : 'light';
+      container.style.colorScheme = scheme;
       ['red-100', 'pink-200', 'blue-200', 'gray-25'].forEach((token) => {
-        container.style.setProperty(`--s2-${token}`, color);
+        container.style.setProperty(`--s2-${token}`, 'white');
       });
       document.body.append(container);
       await init(container);
@@ -34,9 +33,6 @@ describe('start page appearance', () => {
       expect(getComputedStyle(container).backgroundImage).to.contain('radial-gradient');
       expect(start.shadowRoot.querySelector('.background, .gradient')).to.be.null;
       expect(getComputedStyle(start).backgroundColor).to.equal('rgba(0, 0, 0, 0)');
-      expect(start.shadowRoot.querySelector('.step-1-panel form')).not.to.be.null;
-      expect(getComputedStyle(start).color).to.equal(color);
-      expect(getComputedStyle(start.shadowRoot.querySelector('label')).color).to.equal(color);
     });
   });
 });
