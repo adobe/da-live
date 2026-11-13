@@ -1,5 +1,5 @@
 :host {
-  --form-rich-text-min-height: 88px;
+  --form-rich-text-min-height: 120px;
   --form-rich-text-text-size: var(--s2-body-size-s, 14px);
   --form-rich-text-line-height: 1.4;
 }
