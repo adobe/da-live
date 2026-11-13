@@ -97,8 +97,8 @@ const keepEditorFocus = (event) => event.preventDefault();
  * The formatting toolbar of a rich-text field. It renders a toolset against the editor
  * state and asks the field to run commands. It sits above the editor and moves the tools
  * that do not fit into its more menu. The checks that read the selection only apply while
- * it shows. Until then no
- * tool is active, tools with a visibility check hide, and the picker shows its first value.
+ * it shows. Until then no tool is active, tools with a visibility check hide, and the
+ * picker shows its first value.
  * @property {object} [editorState] The ProseMirror editor state.
  * @property {Toolset} [toolset] The tools, once the editor loaded.
  * @property {boolean} focused Whether the field has the focus, so the selection shows.
@@ -149,19 +149,11 @@ class FormRichTextToolbar extends LitElement {
    * @param {Map<string, unknown>} changed The properties that changed.
    */
   updated(changed) {
-    if (this._measures) {
+    if (this.toolset) {
       this._observeBar();
       this._syncBarLayout(changed);
     }
     this._syncMenu(changed);
-  }
-
-  /**
-   * Answers whether the bar measures which tools fit, which needs its tools.
-   * @returns {boolean} Whether the toolbar has tools.
-   */
-  get _measures() {
-    return !!this.toolset;
   }
 
   /**
@@ -261,7 +253,7 @@ class FormRichTextToolbar extends LitElement {
 
   /** Measures the bar whenever it or the picker resizes. */
   _observeBar() {
-    if (!this._measures || this._resizeObserver) {
+    if (!this.toolset || this._resizeObserver) {
       return;
     }
 
@@ -452,25 +444,17 @@ class FormRichTextToolbar extends LitElement {
   }
 
   /**
-   * Renders the tools of the bar, starting with the picker.
-   * @returns {import('da-lit').TemplateResult} The tools.
-   */
-  _renderBarTools() {
-    return html`
-      ${this._renderPicker()}
-      ${this._renderBarGroups()}
-    `;
-  }
-
-  /**
-   * Renders the tools once the toolset loaded.
+   * Renders the tools of the bar, starting with the picker, once the toolset loaded.
    * @returns {import('da-lit').TemplateResult|typeof nothing} The tools, or nothing.
    */
   _renderTools() {
     if (!this.toolset) {
       return nothing;
     }
-    return this._renderBarTools();
+    return html`
+      ${this._renderPicker()}
+      ${this._renderBarGroups()}
+    `;
   }
 
   render() {

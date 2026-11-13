@@ -1,11 +1,22 @@
 import { safeHref } from '../safe-href.js';
-import { childrenAt } from './nodes.js';
 import { HEADING_LEVELS, LIST_NAMES } from './schema.js';
 
 /**
  * A ProseMirror command. Without `dispatch` it only answers whether it applies.
  * @typedef {(state: object, dispatch?: (transaction: object) => void) => boolean} RichTextCommand
  */
+
+/**
+ * Lists the children of a node with their document positions.
+ * @param {object} parent The ProseMirror node.
+ * @param {number} [start] The position of the start of its content.
+ * @returns {{ node: object, position: number }[]} The child nodes and their positions.
+ */
+function childrenAt(parent, start = 0) {
+  const children = [];
+  parent.forEach((node, offset) => children.push({ node, position: start + offset }));
+  return children;
+}
 
 /**
  * Lists the ancestors of a position, innermost first.
@@ -308,7 +319,7 @@ function liftOutOfLists({ proseMirror, state, transaction, position }) {
  * @param {object} options.proseMirror The da-y-wrapper namespace.
  * @returns {RichTextCommand} The command.
  */
-export function unwrapListItems({ proseMirror }) {
+function unwrapListItems({ proseMirror }) {
   return (state, dispatch) => {
     const { from, to } = state.selection;
     const itemType = state.schema.nodes.list_item;
