@@ -114,7 +114,6 @@ class DaStart extends LitElement {
     _templates: { state: true },
     _loading: { state: true },
     _disableCreate: { state: true },
-    greeting: { attribute: false },
   };
 
   constructor() {
@@ -130,15 +129,10 @@ class DaStart extends LitElement {
     this._goText = 'Make something wonderful';
   }
 
-  async connectedCallback() {
+  connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [sheet];
     this._templates = AEM_TEMPLATES;
-    if (!this.greeting) return;
-    const greeting = await this.greeting;
-    if (!this.isConnected) return;
-    greeting.slot = 'greeting';
-    this.append(greeting);
   }
 
   async firstUpdated() {
@@ -360,7 +354,7 @@ class DaStart extends LitElement {
       <img src="/blocks/start/dark-alley.jpg" class="background"/>
       <div class="gradient"></div>
       <div class="foreground step-${this.activeStep}-active">
-        ${this.greeting ? html`<div class="start-greeting"><slot name="greeting"></slot></div>` : nothing}
+        <slot name="greeting"></slot>
         <ul class="step-count">
           <li>1</li>
           <li class="step-2">2</li>
@@ -376,16 +370,15 @@ class DaStart extends LitElement {
 
 customElements.define('da-start', DaStart);
 
-function takeGreeting(el) {
-  const section = el.closest('.section')?.nextElementSibling;
-  const greeting = section?.querySelector('div.greeting');
-  if (!greeting) return undefined;
-  section.remove();
-  return initGreeting(greeting);
-}
-
 export default function init(el) {
   const start = document.createElement('da-start');
-  start.greeting = takeGreeting(el);
   el.append(start);
+  const section = el.closest('.section')?.nextElementSibling;
+  const greetingEl = section?.querySelector('div.greeting');
+  if (!greetingEl) return;
+  section.remove();
+  initGreeting(greetingEl).then((greeting) => {
+    greeting.slot = 'greeting';
+    start.append(greeting);
+  });
 }
