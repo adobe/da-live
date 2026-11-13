@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, sanitizeName } from '../../../scripts/utils.js';
+import '../../landing/recent-files/recent-files.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const styles = await loadStyle(import.meta.url);
@@ -214,6 +215,8 @@ export default class DaSites extends LitElement {
           <h2>Recents</h2>
         </div>
         ${this._recents?.length > 0 ? this.renderSites(this._recents) : this.renderEmpty()}
+        ${this._recents?.length > 0 ? html`
+          <da-recent-files .scopes=${this._recents.map(({ name }) => name)}></da-recent-files>` : nothing}
         <div class="da-site-header">
           <h2>Sites</h2>
           ${this._recents?.length > 0 ? this.renderGo() : nothing}

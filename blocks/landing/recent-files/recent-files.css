@@ -1,0 +1,221 @@
+:host {
+  display: block;
+  contain: inline-size;
+  color: var(--s2-gray-800);
+  font-family: var(--s2-font-family);
+  font-size: var(--s2-component-m-regular-font-size);
+  line-height: 18px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+h2, h3, p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+}
+
+svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  fill: currentcolor;
+}
+
+.landing {
+  display: flow-root;
+}
+
+.files-panel {
+  padding: var(--s2-spacing-200) var(--s2-spacing-300) var(--s2-spacing-300);
+  border-radius: var(--s2-corner-radius-800);
+  background: var(--s2-gray-25);
+  box-shadow: var(
+    --s2-drop-shadow-emphasized,
+    0 2px 8px light-dark(rgb(0 0 0 / 8%), rgb(0 0 0 / 24%)),
+    0 1px 4px light-dark(rgb(0 0 0 / 4%), rgb(0 0 0 / 12%)),
+    0 0 1px light-dark(rgb(0 0 0 / 8%), rgb(0 0 0 / 24%))
+  );
+
+  --da-card-width: 151px;
+  --da-card-height: 200px;
+  --files-preview-height: calc(var(--da-card-height) + 16px);
+  --files-footer-height: 32px;
+
+  width: 100%;
+}
+
+.loading,
+.empty-state {
+  min-height: calc(var(--files-preview-height) + var(--s2-spacing-100) + var(--files-footer-height));
+}
+
+.panel-heading, .files-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s2-spacing-300);
+  flex-wrap: wrap;
+}
+
+h2 {
+  font-size: var(--s2-heading-size-xs);
+  line-height: 22px;
+  color: var(--s2-gray-1000);
+  overflow-wrap: anywhere;
+}
+
+.panel-heading {
+  min-height: var(--s2-spacing-500);
+}
+
+.files-toolbar {
+  margin-block: var(--s2-spacing-100);
+}
+
+.file-filters {
+  display: flex;
+  gap: var(--s2-spacing-400);
+}
+
+.filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font: inherit;
+  color: var(--s2-gray-700);
+  cursor: pointer;
+}
+
+.filter[aria-pressed="true"] {
+  color: var(--s2-gray-800);
+  border-bottom-color: currentcolor;
+}
+
+.all-files {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2-spacing-100);
+  text-decoration: none;
+  color: var(--s2-gray-700);
+  font-size: var(--s2-component-m-regular-font-size);
+  line-height: var(--s2-body-line-height);
+}
+
+.file-list {
+  height: var(--files-preview-height);
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.files-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--s2-spacing-200);
+  min-height: var(--files-footer-height);
+  margin-top: var(--s2-spacing-100);
+}
+
+.file-count {
+  color: var(--s2-gray-700);
+}
+
+da-list {
+  --da-list-pad-inline: 0px;
+  --da-list-select-width: 0px;
+}
+
+da-list::part(items) {
+  overflow: visible;
+  padding-bottom: 0;
+}
+
+da-list::part(grid) {
+  padding: 0;
+}
+
+.files-panel[data-view="card"] da-list::part(header) {
+  display: none;
+}
+
+.files-panel[data-view="card"] da-list::part(grid) {
+  grid-template-columns: none;
+  grid-auto-flow: column;
+  grid-auto-columns: var(--da-card-width);
+}
+
+.files-panel[data-view="list"] da-list {
+  min-width: calc(12em + var(--da-list-type-width) + var(--da-list-date-width) + var(--da-list-action-width));
+
+  --da-list-name-width: 342px;
+  --da-list-type-width: 200px;
+  --da-list-date-width: 200px;
+  --da-list-action-width: 96px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: var(--s2-spacing-200);
+  text-align: center;
+}
+
+.empty-state.is-empty {
+  min-height: 0;
+  padding-block: var(--s2-spacing-400);
+}
+
+.empty-state > svg {
+  width: 32px;
+  height: 32px;
+  color: var(--s2-gray-600);
+}
+
+.empty-state h3 {
+  font-size: var(--s2-component-l-regular-font-size);
+}
+
+.empty-state p, .loading {
+  color: var(--s2-gray-700);
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--s2-spacing-100);
+  text-align: center;
+}
+
+.loading .nx-loading-spinner {
+  --nx-spinner-active-color: var(--s2-blue-900);
+
+  flex-shrink: 0;
+}
+
+.all-files:hover {
+  text-decoration: underline;
+}
+
+a:focus-visible, .filter:focus-visible,
+.file-list:focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: var(--s2-spacing-75);
+}
+
+@media (width < 600px) {
+  .file-filters {
+    gap: var(--s2-spacing-300);
+  }
+}

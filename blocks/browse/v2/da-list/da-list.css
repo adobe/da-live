@@ -192,8 +192,15 @@ da-file-item.is-expanded::after {
   background: light-dark(#fff, #000);
   display: grid;
   grid-template-columns: var(--da-list-select-width) minmax(0, 442px) var(--da-list-type-width) var(--da-list-date-width) var(--da-list-action-width);
+  column-gap: var(--da-list-column-gap, var(--s2-spacing-100, 8px));
   align-items: center;
   min-height: 46px;
+}
+
+@container browse-list (width >= 600px) {
+  .da-browse-table-header:has([data-column="folder"]) {
+    grid-template-columns: var(--da-list-select-width) minmax(0, var(--da-list-name-width, 442px)) minmax(var(--da-list-type-width), 1fr) var(--da-list-date-width) var(--da-list-action-width);
+  }
 }
 
 .da-browse-table-header.is-card {
