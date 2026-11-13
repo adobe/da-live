@@ -134,9 +134,9 @@
   }
 }
 
-/* Grows up to 480px until the author drags it to a height of their own. */
+/* Grows up to 480px. A dragged height may go further but stays within one screen. */
 .form-rich-text-content[style*="height"] {
-  max-height: none;
+  max-height: max(480px, 70vh);
 }
 
 :host([disabled]) .form-rich-text-content {
