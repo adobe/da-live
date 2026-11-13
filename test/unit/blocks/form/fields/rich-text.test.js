@@ -14,7 +14,7 @@ const until = (check, tries = 100) => (check() || !tries
 
 async function mount({ value = '', loadEditor: loader, width, ...properties } = {}) {
   if (loader) FormRichText.loadEditor = loader;
-  const richText = document.createElement('form-rich-text');
+  const richText = document.createElement('ew-form-rich-text');
   Object.assign(richText, { value, ...properties });
   if (width) richText.style.width = width;
   document.body.append(richText);
@@ -25,7 +25,7 @@ async function mount({ value = '', loadEditor: loader, width, ...properties } = 
 }
 
 const content = (richText) => richText.shadowRoot.querySelector('.form-rich-text-content');
-const toolbar = (richText) => richText.shadowRoot.querySelector('form-rich-text-toolbar');
+const toolbar = (richText) => richText.shadowRoot.querySelector('ew-form-rich-text-toolbar');
 const tool = (richText, id) => toolbar(richText).shadowRoot.querySelector(`[data-tool="${id}"]`);
 const blockPicker = (richText) => toolbar(richText).shadowRoot.querySelector('nx-picker');
 
@@ -62,10 +62,10 @@ function selectAll(richText) {
   selectRange(richText, 1, richText._view.state.doc.content.size - 1);
 }
 
-describe('form-rich-text', () => {
+describe('ew-form-rich-text', () => {
   afterEach(() => {
     FormRichText.loadEditor = loadEditor;
-    document.body.querySelectorAll('form-rich-text').forEach((richText) => richText.remove());
+    document.body.querySelectorAll('ew-form-rich-text').forEach((richText) => richText.remove());
   });
 
   it('renders the value into an accessible editor', async () => {

@@ -11,7 +11,7 @@ const { loadStyle } = await import(`${getNx2()}/utils/utils.js`);
 
 const style = await loadStyle(import.meta.url);
 
-const ELEMENT_NAME = 'form-rich-text';
+const ELEMENT_NAME = 'ew-form-rich-text';
 
 /** The id of the label, which names the editable area. */
 const LABEL_ID = 'form-rich-text-label';
@@ -19,7 +19,7 @@ const LABEL_ID = 'form-rich-text-label';
 const STATUS = Object.freeze({ ready: 'ready', error: 'error' });
 
 const SELECTORS = {
-  toolbar: 'form-rich-text-toolbar',
+  toolbar: 'ew-form-rich-text-toolbar',
   editor: '.form-rich-text-editor',
 };
 
@@ -325,14 +325,14 @@ class FormRichText extends LitElement {
    */
   _renderToolbar() {
     return html`
-      <form-rich-text-toolbar
+      <ew-form-rich-text-toolbar
         .editorState=${this._editorState}
         .toolset=${this._editor?.toolset}
         .focused=${!!this._focused}
         .openTool=${this._link ? TOOL_IDS.link : undefined}
         .disabled=${!this._canEdit}
         @form-rich-text-command=${this._onCommand}
-      ></form-rich-text-toolbar>
+      ></ew-form-rich-text-toolbar>
     `;
   }
 

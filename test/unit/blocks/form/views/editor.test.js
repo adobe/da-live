@@ -44,7 +44,7 @@ describe('ew-form-fields primitive controls', () => {
   it('renders a rich-text editor for a rich-text string node', async () => {
     const formEditor = await mountEditor(objectRoot([richTextNode()]));
     const field = formEditor.shadowRoot.querySelector('[data-pointer="/data/body"]');
-    expect(field.tagName).to.equal('FORM-RICH-TEXT');
+    expect(field.tagName).to.equal('EW-FORM-RICH-TEXT');
     expect(field.value).to.equal('<p>hi</p>');
     expect(formEditor.shadowRoot.querySelector('form-textarea')).to.equal(null);
   });
@@ -53,7 +53,7 @@ describe('ew-form-fields primitive controls', () => {
     const formEditor = await mountEditor(objectRoot([richTextNode()]));
     const calls = [];
     formEditor.editor = { setField: (pointer, value) => calls.push([pointer, value]) };
-    const field = formEditor.shadowRoot.querySelector('form-rich-text');
+    const field = formEditor.shadowRoot.querySelector('ew-form-rich-text');
     field.value = '<p>bye</p>';
     field.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
     expect(formEditor._inputTimers.has('/data/body')).to.equal(true);
@@ -66,7 +66,7 @@ describe('ew-form-fields primitive controls', () => {
     const formEditor = await mountEditor(objectRoot([richTextNode()]));
     const calls = [];
     formEditor.editor = { setField: (pointer, value) => calls.push([pointer, value]) };
-    const field = formEditor.shadowRoot.querySelector('form-rich-text');
+    const field = formEditor.shadowRoot.querySelector('ew-form-rich-text');
     field.value = '';
     field.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
     expect(calls).to.deep.equal([['/data/body', undefined]]);
@@ -83,7 +83,7 @@ describe('ew-form-fields primitive controls', () => {
       },
     ]);
     const formEditor = await mountEditor(root);
-    const field = formEditor.shadowRoot.querySelector('.form-array-item-input-row > form-rich-text');
+    const field = formEditor.shadowRoot.querySelector('.form-array-item-input-row > ew-form-rich-text');
     expect(field).to.exist;
     expect(getComputedStyle(field).flexGrow).to.equal('1');
   });
