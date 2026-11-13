@@ -1,0 +1,29 @@
+/*
+ * Adopted into each nx-segmented-btn's shadow root by da-config. nx-segmented-btn has no
+ * variants or styling hooks yet, so this styles the two rows after Coworker: the areas keep the
+ * segmented track with the selected one outlined, the sections are quiet tabs (selected = grey
+ * pill). Drop it if da-nx adds variants.
+ */
+
+:host(.config-tabs-primary) .segment.is-selected {
+  color: var(--s2-gray-900);
+  box-shadow: inset 0 0 0 2px var(--s2-gray-900);
+}
+
+:host(.config-tabs-secondary) .segmented {
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 0;
+  gap: var(--s2-spacing-100);
+  background: none;
+}
+
+:host(.config-tabs-secondary) .segment {
+  border-radius: 999px;
+  color: var(--s2-gray-700);
+}
+
+:host(.config-tabs-secondary) .segment.is-selected {
+  color: var(--s2-gray-900);
+  background-color: var(--s2-gray-200);
+}

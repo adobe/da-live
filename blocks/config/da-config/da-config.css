@@ -1,0 +1,474 @@
+:host {
+  display: block;
+  font-family: var(--s2-font-family);
+}
+
+.config-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2-spacing-400);
+}
+
+.config-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2-spacing-200);
+  flex-wrap: wrap;
+}
+
+.config-title,
+.config-panel-title {
+  margin: 0;
+  font-size: var(--s2-heading-size-m);
+  font-weight: var(--s2-heading-font-weight);
+  line-height: var(--s2-heading-line-height);
+}
+
+.config-panel-title {
+  font-size: var(--s2-heading-size-xs);
+}
+
+.config-scope-picker {
+  flex: none;
+  min-width: 12rem;
+}
+
+/* Area tabs and section tabs centered under the title, like Coworker's tabs. */
+.config-tabs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s2-spacing-300);
+}
+
+/* Same height as the section row (a size m segment). */
+.config-tabs-space {
+  height: 32px;
+}
+
+.config-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2-spacing-200);
+}
+
+/* Section title with Open sheet on the right; as tall as the button so sections without a
+ * sheet don't move the content. */
+.config-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2-spacing-200);
+  min-height: 32px;
+}
+
+.config-sheet-link {
+  flex: none;
+  text-decoration: none;
+}
+
+.config-message {
+  margin: 0;
+  color: var(--s2-gray-700);
+}
+
+/* Bordered boxes: settings list, row list and save bar. */
+.config-settings,
+.config-table-wrap,
+.config-savebar {
+  border: 1px solid var(--s2-gray-200);
+  border-radius: var(--s2-corner-radius-400);
+}
+
+.config-settings {
+  display: flex;
+  flex-direction: column;
+  container-type: inline-size;
+}
+
+/* Spectrum's side-label layout: label on the left; control, then help or error and the
+   inheritance note on the right. The nx-form-field label is flattened with `display: contents`
+   so its children join the grid. */
+.config-setting {
+  display: grid;
+  grid-template-columns: minmax(14rem, 2fr) minmax(16rem, 3fr);
+  gap: var(--s2-spacing-100) var(--s2-spacing-600);
+  align-items: start;
+  padding: var(--s2-spacing-300);
+}
+
+.config-setting.is-dirty {
+  box-shadow: inset 3px 0 0 var(--s2-blue-800);
+}
+
+.config-setting .nx-form-field {
+  display: contents;
+}
+
+/* The label keeps nx-form-field's type; help text is the size of its error message. */
+.config-required {
+  margin-inline-start: 2px;
+}
+
+.config-field-help,
+.config-setting-note {
+  margin: 0;
+  color: var(--s2-gray-600);
+  font-size: var(--s2-component-s-regular-font-size);
+  line-height: var(--s2-component-s-regular-line-height);
+}
+
+.config-setting-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2-spacing-100);
+}
+
+.config-setting .config-field-label {
+  grid-area: 1 / 1;
+  padding-block-start: var(--s2-spacing-75);
+}
+
+/* Controls fill their column, in settings rows and in dialogs. */
+.nx-form-field .nx-input,
+.nx-form-field nx-picker {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.config-setting .nx-input,
+.config-setting nx-picker {
+  grid-area: 1 / 2;
+}
+
+.config-setting .nx-input-error-msg,
+.config-setting .config-field-help,
+.config-setting .config-setting-note {
+  grid-column: 2;
+}
+
+/* Last of the settings rules, so the single-column reset wins over the placements above. */
+@container (width < 48rem) {
+  .config-setting {
+    grid-template-columns: 1fr;
+  }
+
+  .config-setting .config-field-label,
+  .config-setting .config-field-help,
+  .config-setting .nx-input,
+  .config-setting nx-picker,
+  .config-setting .nx-input-error-msg,
+  .config-setting .config-setting-note {
+    grid-area: auto;
+  }
+}
+
+.config-setting + .config-setting {
+  border-top: 1px solid var(--s2-gray-200);
+}
+
+/* Scrolls sideways on narrow screens instead of squeezing the columns. Containing its inline
+   size keeps the table's width from stretching the page (body is a grid sized to its content);
+   `position: relative` keeps the visually hidden header inside the scroll box too. */
+.config-table-wrap {
+  position: relative;
+  overflow-x: auto;
+  contain: inline-size;
+}
+
+/* Type and colors follow the shared file list (blocks/shared/da-file-item, browse). */
+.config-table {
+  width: 100%;
+
+  /* Separate borders belong to their cells, so the pinned actions cell keeps its borders. */
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--s2-component-m-regular-font-size);
+  line-height: var(--s2-component-m-regular-line-height);
+}
+
+.config-table th,
+.config-table td {
+  padding: var(--s2-spacing-200);
+  text-align: start;
+  vertical-align: top;
+  color: var(--s2-gray-800);
+}
+
+.config-table thead th {
+  color: var(--s2-gray-600);
+  font-weight: var(--s2-component-m-medium-font-weight);
+  white-space: nowrap;
+  border-bottom: 1px solid var(--s2-gray-200);
+}
+
+/* Borders sit on the cells so the pinned actions cell's background doesn't hide them. */
+.config-table tbody tr + tr > * {
+  border-top: 1px solid var(--s2-gray-200);
+}
+
+.config-table tbody th {
+  color: var(--s2-gray-900);
+  font-weight: var(--s2-component-m-medium-font-weight);
+}
+
+.config-table tr.is-inherited {
+  background: var(--s2-gray-50);
+}
+
+.config-table-name {
+  display: flex;
+  align-items: center;
+  gap: var(--s2-spacing-100);
+}
+
+/* Names stay on one line; other values (full URLs included) wrap within a readable width. */
+.config-table-name-text {
+  white-space: nowrap;
+}
+
+.config-table-text {
+  display: block;
+  min-width: 12ch;
+  max-width: 32ch;
+  overflow-wrap: anywhere;
+}
+
+/* Pinned to the right edge so Edit and Remove stay in view while wide tables scroll. */
+.config-table-actions {
+  position: sticky;
+  right: 0;
+  width: 1%;
+  background: var(--s2-gray-25);
+}
+
+.config-table tr.is-inherited .config-table-actions {
+  background: var(--s2-gray-50);
+}
+
+.config-table-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s2-spacing-100);
+}
+
+.config-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Section notes, styled like the permissions info note. */
+.config-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s2-spacing-100);
+  padding: var(--s2-spacing-200) var(--s2-spacing-300);
+  border-radius: var(--s2-corner-radius-400);
+  background: var(--s2-gray-75);
+  color: var(--s2-gray-700);
+  font-size: var(--s2-component-m-regular-font-size);
+  line-height: var(--s2-component-m-regular-line-height);
+}
+
+.config-info p {
+  margin: 0;
+}
+
+/* Like Coworker's load errors: red outline, title and reason, warning icon on the right. */
+.config-alert {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s2-spacing-300);
+  padding: var(--s2-spacing-300);
+  border: 2px solid var(--s2-red-900);
+  border-radius: var(--s2-corner-radius-400);
+  color: var(--s2-gray-800);
+  font-size: var(--s2-component-s-regular-font-size);
+  line-height: var(--s2-component-s-regular-line-height);
+}
+
+.config-alert p {
+  margin: 0;
+}
+
+.config-alert .config-alert-title {
+  margin-block-end: var(--s2-spacing-100);
+  color: var(--s2-gray-900);
+  font-weight: var(--s2-heading-font-weight);
+}
+
+.config-alert-icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--s2-red-900);
+}
+
+/* Centered like Coworker's empty lists: what's missing, then how to start. */
+.config-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s2-spacing-75);
+  padding: var(--s2-spacing-800) var(--s2-spacing-300);
+  color: var(--s2-gray-700);
+  font-size: var(--s2-component-s-regular-font-size);
+  line-height: var(--s2-component-s-regular-line-height);
+  text-align: center;
+}
+
+.config-empty p {
+  margin: 0;
+}
+
+.config-empty .config-empty-title {
+  color: var(--s2-gray-900);
+  font-size: var(--s2-component-l-regular-font-size);
+  font-weight: var(--s2-heading-font-weight);
+}
+
+.config-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2-spacing-75);
+}
+
+.config-add-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Toolbar above the table, like Coworker's: search on the left, actions on the right. */
+.config-row-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s2-spacing-200);
+}
+
+.config-search {
+  flex: 1 1 16rem;
+}
+
+/* nx-input styles a single line; let multi-line fields grow and wrap. */
+.config-textarea {
+  height: auto;
+  padding: var(--s2-spacing-100) var(--s2-spacing-200);
+  font-family: var(--s2-font-family);
+  resize: vertical;
+}
+
+/* nx-dialog's documented way to widen it; the form then fills the panel width. */
+.config-row-dialog {
+  --nx-dialog-max-width: 600px;
+}
+
+.config-row-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2-spacing-300);
+}
+
+.config-import-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2-spacing-100);
+  max-height: 16rem;
+  overflow: auto;
+}
+
+.config-pill-override {
+  --nx-pill-background: var(--s2-orange-300);
+  --nx-pill-color: var(--s2-orange-1100);
+}
+
+.config-pill-neutral {
+  --nx-pill-background: var(--s2-gray-200);
+  --nx-pill-color: var(--s2-gray-800);
+}
+
+.config-savebar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s2-spacing-200);
+  padding: var(--s2-spacing-200) var(--s2-spacing-300);
+  background: var(--s2-gray-25);
+}
+
+.config-savebar-count {
+  margin-right: auto;
+  color: var(--s2-gray-800);
+}
+
+.config-note {
+  padding: var(--s2-spacing-200) var(--s2-spacing-300);
+  background: var(--s2-gray-75);
+  border-radius: var(--s2-corner-radius-400);
+  color: var(--s2-gray-700);
+  font-size: var(--s2-component-m-regular-font-size);
+  line-height: var(--s2-component-m-regular-line-height);
+}
+
+/* A note with inline actions: setup callouts and the org form. */
+.config-setup,
+.config-org-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2-spacing-200);
+}
+
+.config-setup p,
+.config-org-form p {
+  margin: 0;
+}
+
+.config-setup p {
+  flex-basis: 100%;
+}
+
+.config-setup a.nx-form-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.config-org-form .nx-input {
+  width: 16rem;
+}
+
+.config-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2-spacing-200);
+  padding: var(--s2-spacing-600) 0;
+  color: var(--s2-gray-700);
+  font-size: var(--s2-component-m-regular-font-size);
+  line-height: var(--s2-component-m-regular-line-height);
+}
+
+.config-loading .nx-loading-spinner {
+  width: 24px;
+  height: 24px;
+  border-width: 3px;
+}
+
+.config-parts {
+  max-width: 320px;
+  margin-block-end: var(--spacing-300, 16px);
+}
