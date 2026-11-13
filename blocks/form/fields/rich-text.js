@@ -246,13 +246,14 @@ class FormRichText extends LitElement {
       return;
     }
 
-    const draft = getLinkDraft(this._view.state);
     try {
       await loadLinkDialog();
     } catch {
       return;
     }
-    this._link = draft;
+    if (this._canEdit) {
+      this._link = getLinkDraft(this._view.state);
+    }
   }
 
   /** Closes the link dialog and returns the focus to the editor. */
