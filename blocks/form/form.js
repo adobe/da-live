@@ -68,48 +68,47 @@ function openPanelSection(section, id) {
   document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section, id } }));
 }
 
-function trackScrollbarWidth(block, anchor) {
-  const update = () => {
-    const width = block.offsetWidth - block.clientWidth;
-    anchor.style.setProperty('--form-scrollbar-width', `${width}px`);
-  };
-  update();
-  new ResizeObserver(update).observe(block);
+function createGroup(className) {
+  const group = document.createElement('div');
+  group.className = className;
+  return group;
 }
 
-function createToggleAnchor(block) {
-  const anchor = document.createElement('div');
-  anchor.className = 'form-toggle-anchor';
-  block.before(anchor);
-  trackScrollbarWidth(block, anchor);
-  return anchor;
+function createHeader(block) {
+  const header = document.createElement('header');
+  header.className = 'form-header';
+  const start = createGroup('form-header-start');
+  const end = createGroup('form-header-end');
+  header.append(start, end);
+  block.before(header);
+  return { start, end };
 }
 
-function installPanelToggle(anchor, { section, label, icon }) {
+function installPanelToggle(toggleGroup, { section, label, icon }) {
   const button = document.createElement('button');
   button.type = 'button';
-  button.className = `nx-action-btn-icon form-panel-toggle form-${section}-toggle`;
+  button.className = `nx-action-btn-icon form-${section}-toggle`;
   button.setAttribute('aria-label', label);
   button.title = label;
   button.innerHTML = `<svg aria-hidden="true" viewBox="0 0 20 20"><use href="${s2IconHref(icon)}"></use></svg>`;
   button.addEventListener('click', () => openPanelSection(section));
-  anchor.append(button);
+  toggleGroup.append(button);
 }
 
-function setupTools(anchor, { org, site }) {
+function setupTools(toggleGroup, { org, site }) {
   registerPanelSection(TOOL_PANEL_SECTION, createToolPanelSection({
     host: toolPanelHost,
     getContext: currentHashState,
   }));
   hashChange.subscribe(syncOpenToolPanel);
 
-  installPanelToggle(anchor, { section: TOOL_PANEL_SECTION, label: 'Open tools panel', icon: 'splitright' });
+  installPanelToggle(toggleGroup, { section: TOOL_PANEL_SECTION, label: 'Open tools panel', icon: 'splitright' });
   if (org && site && wasPanelOpen(TOOL_PANEL_SECTION)) {
     openPanelSection(TOOL_PANEL_SECTION);
   }
 }
 
-async function setupChat(anchor, { org, site }) {
+async function setupChat(toggleGroup, { org, site }) {
   if (!org || !site) return;
 
   const flags = await getEWFlags({ org, site });
@@ -121,7 +120,7 @@ async function setupChat(anchor, { org, site }) {
     getContent: async () => loadChat(),
   });
 
-  installPanelToggle(anchor, { section: 'chat', label: 'Toggle chat', icon: 'splitleft' });
+  installPanelToggle(toggleGroup, { section: 'chat', label: 'Toggle chat', icon: 'splitleft' });
   if (wasPanelOpen('chat')) {
     openPanelSection('chat');
   }
@@ -131,10 +130,10 @@ async function setupChat(anchor, { org, site }) {
  * Decorates the `form` block as the structured content editor workspace.
  *
  * Sets up a canvas-style workspace with the app-frame grid around the form
- * editor (editor.js). A tools panel on the right shows the outline of the
- * document. When EW is enabled, it also adds a floating chat toggle and a
- * docked chat. The form, the tools panel, and the chat all read the
- * `#/org/site/path` hash, so they stay in sync.
+ * editor (editor.js) and a header with the panel toggles. A tools panel on
+ * the right shows the outline of the document. When EW is enabled, it also
+ * adds a chat toggle and a docked chat. The form, the tools panel, and the
+ * chat all read the `#/org/site/path` hash, so they stay in sync.
  *
  * This block was migrated from da-nx's `nx/blocks/form`. The `/form` page
  * content still declares it as `nx-form`, which the nx2 loader loads from
@@ -149,7 +148,7 @@ export default async function decorate(block) {
   decorateEditor(block);
 
   const context = currentHashState();
-  const anchor = createToggleAnchor(block);
-  setupTools(anchor, context);
-  await setupChat(anchor, context);
+  const header = createHeader(block);
+  setupTools(header.end, context);
+  await setupChat(header.start, context);
 }
