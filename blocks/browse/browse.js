@@ -17,19 +17,24 @@ function useV2Nav() {
   if (typeof nav?.loadNav === 'function') nav.loadNav();
 }
 
-async function loadLandingSurface(el) {
+async function loadLandingStyles() {
   const background = await loadStyle(new URL('../landing/landing.css', import.meta.url).href);
   if (!document.adoptedStyleSheets.includes(background)) {
     document.adoptedStyleSheets.push(background);
   }
+}
+
+async function loadLandingSurface(el) {
+  await loadLandingStyles();
   const surface = document.createElement('div');
   surface.className = 'landing';
   el.replaceChildren(surface);
 }
 
-async function loadBrowseStyles() {
+async function loadBrowseStyles(cmpName) {
   const styles = await loadStyle(import.meta.url);
   if (!document.adoptedStyleSheets.includes(styles)) document.adoptedStyleSheets.push(styles);
+  if (cmpName === 'da-sites') await loadLandingStyles();
 }
 
 async function loadComponent(el, cmpName, pathDetails, surface) {
@@ -75,9 +80,10 @@ function setRecentSite(details) {
 }
 
 export default function init(el) {
+  el.querySelectorAll('picture').forEach((picture) => picture.remove());
   hashChange.subscribe((pathDetails) => {
     const cmpName = getBrowseComponent({ search: window.location.search, pathDetails });
-    const surface = cmpName === 'da-landing' ? loadLandingSurface(el) : loadBrowseStyles();
+    const surface = cmpName === 'da-landing' ? loadLandingSurface(el) : loadBrowseStyles(cmpName);
     loadComponent(el, cmpName, pathDetails, surface);
     if (pathDetails) setRecentSite(pathDetails);
   });
