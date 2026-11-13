@@ -13,20 +13,6 @@ h2 {
   margin: 0;
 }
 
-.da-site-bg {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-
-  img {
-    display: block;
-    width: 100%;
-    height: auto;
-    mask-image: linear-gradient(to top, transparent, rgb(0 0 0) 99%);
-  }
-}
-
 .da-site-container {
   position: relative;
   max-width: var(--se-grid-container-width);

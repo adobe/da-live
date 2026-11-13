@@ -32,6 +32,6 @@ class FormButton extends LitElement {
   }
 }
 
-if (!customElements.get('form-button')) customElements.define('form-button', FormButton);
+if (!customElements.get('ew-form-button')) customElements.define('ew-form-button', FormButton);
 
 export default FormButton;

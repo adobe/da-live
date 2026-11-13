@@ -9,12 +9,13 @@ import '../fields/button.js';
 import '../fields/number.js';
 import '../fields/date.js';
 import { icon } from '../icons.js';
+import { NAV_ORIGIN } from '../events.js';
 
 const { loadStyle } = await import(`${getNx2()}/utils/utils.js`);
 
 const style = await loadStyle(import.meta.url);
 
-const EL_NAME = 'nx-editor';
+const EL_NAME = 'ew-form-fields';
 const DEBOUNCE_MS = 350;
 
 const textValue = (value) => (value === '' ? undefined : value);
@@ -63,7 +64,7 @@ class Editor extends LitElement {
     this._inputTimers = new Map();
     this._lastIssues = null;
     this._onDocClick = (e) => {
-      const openEl = this.shadowRoot?.querySelector('.form-array-item.menu-open nx-array-menu');
+      const openEl = this.shadowRoot?.querySelector('.form-array-item.menu-open ew-form-array-menu');
       if (openEl && e.composedPath().includes(openEl)) return;
       this._closeMenu();
     };
@@ -79,7 +80,7 @@ class Editor extends LitElement {
 
   firstUpdated() {
     // Lazily register array UI sub-elements. Browsers upgrade existing tags
-    // (`nx-array-menu`, `nx-reorder`) once the modules call customElements.define.
+    // (`ew-form-array-menu`, `ew-form-reorder`) once the modules call customElements.define.
     import('./array-menu.js');
     import('./reorder.js');
     import(`${getNx2()}/blocks/shared/dialog/dialog.js`);
@@ -110,7 +111,7 @@ class Editor extends LitElement {
     const nextSeq = this.nav?.seq ?? 0;
 
     if (!nextPointer || nextSeq === prevSeq) return;
-    if (nextOrigin !== 'sidebar') return;
+    if (nextOrigin !== NAV_ORIGIN.OUTLINE) return;
     this._scrollTo(nextPointer);
   }
 
@@ -123,7 +124,7 @@ class Editor extends LitElement {
   }
 
   _select(pointer) {
-    this.onSelect?.(pointer, 'editor');
+    this.onSelect?.(pointer, NAV_ORIGIN.EDITOR);
   }
 
   // Group containers (object fieldsets, array sections, structured array
@@ -217,7 +218,7 @@ class Editor extends LitElement {
     if (Array.isArray(node.enumValues)) {
       const currentValue = value === '' || value === undefined || value === null ? '' : value;
       return html`
-        <form-picker
+        <ew-form-picker
           data-pointer=${pointer}
           .label=${label}
           .required=${showRequired}
@@ -233,28 +234,28 @@ class Editor extends LitElement {
           ${node.enumValues.map((item) => html`
             <option value=${item} ?selected=${item === currentValue}>${item}</option>
           `)}
-        </form-picker>
+        </ew-form-picker>
       `;
     }
 
     if (node.kind === 'boolean') {
-      // form-checkbox uses its default slot as the label.
+      // ew-form-checkbox uses its default slot as the label.
       return html`
-        <form-checkbox
+        <ew-form-checkbox
           data-pointer=${pointer}
           .error=${error}
           .description=${description}
           ?checked=${!!value}
           ?disabled=${readonly}
           @change=${(e) => this._onBooleanInput(node, e)}
-        >${label}${showRequired ? html`<span class="is-required">*</span>` : nothing}</form-checkbox>
+        >${label}${showRequired ? html`<span class="is-required">*</span>` : nothing}</ew-form-checkbox>
       `;
     }
 
     if (node.kind === 'number' || node.kind === 'integer') {
       const { minimum, maximum } = node.validation ?? {};
       return html`
-        <form-number-field
+        <ew-form-number-field
           data-pointer=${pointer}
           .label=${label}
           .required=${showRequired}
@@ -266,14 +267,14 @@ class Editor extends LitElement {
           .step=${node.kind === 'integer' ? 1 : undefined}
           ?disabled=${readonly}
           @input=${(e) => this._onNumberInput(node, e)}
-        ></form-number-field>
+        ></ew-form-number-field>
       `;
     }
 
     if (node.format === 'date' || node.format === 'time' || node.format === 'date-time') {
       const widgetType = node.format === 'date-time' ? 'datetime' : node.format;
       return html`
-        <form-date
+        <ew-form-date
           data-pointer=${pointer}
           .type=${widgetType}
           .label=${label}
@@ -283,7 +284,7 @@ class Editor extends LitElement {
           .value=${value ?? ''}
           ?disabled=${readonly}
           @input=${(e) => this._onTextInput(node, e)}
-        ></form-date>
+        ></ew-form-date>
       `;
     }
 
@@ -305,7 +306,7 @@ class Editor extends LitElement {
 
     if (node.semanticType === 'long-text') {
       return html`
-        <form-textarea
+        <ew-form-textarea
           data-pointer=${pointer}
           .label=${label}
           .required=${showRequired}
@@ -314,12 +315,12 @@ class Editor extends LitElement {
           .value=${value ?? ''}
           ?disabled=${readonly}
           @input=${(e) => this._onTextInput(node, e)}
-        ></form-textarea>
+        ></ew-form-textarea>
       `;
     }
 
     return html`
-      <form-input
+      <ew-form-input
         data-pointer=${pointer}
         type="text"
         .label=${label}
@@ -329,7 +330,7 @@ class Editor extends LitElement {
         .value=${value ?? ''}
         ?disabled=${readonly}
         @input=${(e) => this._onTextInput(node, e)}
-      ></form-input>
+      ></ew-form-input>
     `;
   }
 
@@ -502,7 +503,7 @@ class Editor extends LitElement {
         ? (item.children ?? []).map((c) => this._renderNode(c))
         : this._renderNode(item, { itemLabel: `#${index + 1}` });
       const menu = html`
-      <nx-array-menu
+      <ew-form-array-menu
         .pointer=${item.pointer}
         .index=${index}
         .pointers=${displayPointers}
@@ -514,7 +515,7 @@ class Editor extends LitElement {
         .active=${reorderActive}
         .open=${this._openMenuPointer === item.pointer}
         @focusin=${(e) => e.stopPropagation()}
-      ></nx-array-menu>
+      ></ew-form-array-menu>
     `;
 
       // For primitive items we deliberately do nothing so the click bubbles
@@ -544,7 +545,7 @@ class Editor extends LitElement {
                 </div>
               `}
               ${reorderActive ? html`
-                <nx-reorder
+                <ew-form-reorder
                   .targetIndex=${this._reorderTargetIndex}
                   .totalItems=${itemCount}
                   @reorder-move-up=${() => this._setReorderTarget(this._reorderTargetIndex - 1, itemCount)}
@@ -553,18 +554,18 @@ class Editor extends LitElement {
                   @reorder-move-to-last=${() => this._setReorderTarget(itemCount - 1, itemCount)}
                   @reorder-confirm=${() => this._confirmReorder(node.pointer, items)}
                   @reorder-cancel=${() => this._resetReorder()}
-                ></nx-reorder>
+                ></ew-form-reorder>
               ` : nothing}
             </article>
           `;
     })}
         <div class="form-array-footer">
-          <form-button
+          <ew-form-button
             variant="secondary"
             class="add-item-btn"
             ?disabled=${!canAdd}
             @click=${() => { if (canAdd) this._mutate((editor) => editor.addItem(node.pointer)); }}
-          >${icon('add')}<span>${addLabel}</span></form-button>
+          >${icon('add')}<span>${addLabel}</span></ew-form-button>
         </div>
       </section>
     `;
@@ -602,7 +603,7 @@ class Editor extends LitElement {
             </li>
           `)}
         </ul>
-        <form-button slot="actions" variant="secondary" @click=${() => { this._issuesOpen = false; }}>Dismiss</form-button>
+        <ew-form-button slot="actions" variant="secondary" @click=${() => { this._issuesOpen = false; }}>Dismiss</ew-form-button>
       </nx-dialog>
     `;
   }

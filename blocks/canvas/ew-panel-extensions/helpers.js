@@ -3,6 +3,7 @@ import { DOMParser as PMDOMParser, DOMSerializer, NodeSelection, Slice, TextSele
 import { slug } from '../../../deps/github-slugger/dist/index.js';
 import { getNx, getNx2Api, sanitizeName } from '../../../scripts/utils.js';
 import { daFetch, getAuthToken } from '../../shared/utils.js';
+import { fetchLibrarySource } from '../../shared/library-source.js';
 import { CON_ORIGIN } from '../../shared/constants.js';
 import { getPreviewProxyDetails, ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
 import { getPreviewOrigin } from '../editor-utils/editor-utils.js';
@@ -10,7 +11,11 @@ import { getCanvasBranch } from '../utils/branch.js';
 import { htmlToProse } from '../../edit/utils/helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { getBlockPositions } from '../editor-utils/blocks.js';
-import { getCommentsBridge, formatCommentsViewLabel } from '../editor-utils/comments-bridge.js';
+import {
+  getCommentsBridge,
+  formatCommentsViewLabel,
+  subscribeCommentCounts,
+} from '../editor-utils/comments-bridge.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { fetchDaConfigs, getFirstSheet } = await import(`${getNx()}/utils/daConfig.js`);
@@ -25,7 +30,7 @@ const librarySessions = new Map();
 const CONTENT_HOSTS = new Set(['content.da.live', 'stage-content.da.live']);
 
 export const LIBRARY_AUTH_MESSAGE = 'Library access was denied. Check that you are signed in '
-  + 'to DA and have access to this site. For a library hosted by another organization, open '
+  + 'to DA and have access to the library site. For an AEM-only library, open '
   + 'its preview and sign in with AEM Sidekick, then reopen the library.';
 
 // ---------------------------------------------------------------------------
@@ -134,7 +139,7 @@ function decorateImages(element) {
 }
 
 // ---------------------------------------------------------------------------
-// DA Preview Proxy — library content on protected sites
+// Library source loading and rendered preview access
 // ---------------------------------------------------------------------------
 
 function libraryProxyOptions({ org, site, branch: sourceBranch = branch } = {}) {
@@ -147,17 +152,17 @@ function libraryContentUrl(path, { org, site, branch: sourceBranch = branch } = 
   return new URL(path, origin).href;
 }
 
-function resolveLibraryImages(element, path, context, { variant = false } = {}) {
+function resolveLibraryImages(element, path, context, { variant = false, direct = false } = {}) {
   const source = new URL(libraryContentUrl(path, context), window.location.href);
   const isAemSource = AEM_ORIGINS.some((domain) => source.hostname.endsWith(`.${domain}`));
   const isProxySource = /\.(?:stage-)?preview\.da\.live$/.test(source.hostname);
   const isContentSource = CONTENT_HOSTS.has(source.hostname);
   const proxyOpts = libraryProxyOptions(context);
   const details = getPreviewProxyDetails(source.href, { ...proxyOpts, currentOrg: undefined });
-  const proxied = isProxySource || (proxyOpts.currentOrg
+  const proxied = isProxySource || (!direct && proxyOpts.currentOrg
     && Boolean(getPreviewProxyDetails(source.href, proxyOpts).org));
   // Extensionless proxy pages are composed from DA source; .html/.plain.html use AEM.
-  const aemHtml = proxied && /\.html$/i.test(source.pathname);
+  const aemHtml = !isContentSource && proxied && /\.html$/i.test(source.pathname);
   const isDaSource = (isContentSource || proxied) && !aemHtml;
   let contentRoot;
   if (isDaSource && details.org) {
@@ -224,24 +229,19 @@ function invalidateLibrarySession(session) {
 
 const isAuthFailure = (resp) => resp.status === 401 || resp.status === 403;
 
-/**
- * Fetch library content, routing AEM-hosted URLs through the DA Preview Proxy.
- * Only proxy requests carry credentials: aem.page/aem.live answer with
- * `Access-Control-Allow-Origin: *`, which a credentialed request would fail.
- */
-async function libraryFetch(href, context, opts = {}) {
-  const proxyOpts = libraryProxyOptions(context);
+async function libraryFetch(href, context) {
   const source = libraryContentUrl(href, context);
-  if (!proxyOpts.currentOrg) return daFetch(source, opts);
-  const details = getPreviewProxyDetails(source, proxyOpts);
-  if (!details.org) return daFetch(source, opts);
-  let session = await ensureLibraryPreviewSession(source, context);
-  let resp = await daFetch(details.url, { ...opts, credentials: 'include' });
+  return fetchLibrarySource(source);
+}
+
+async function previewFetch(url, context, opts) {
+  let session = await ensureLibraryPreviewSession(url, context);
+  let resp = await daFetch(url, { ...opts, credentials: 'include' });
   if (isAuthFailure(resp) && session) {
     invalidateLibrarySession(session);
-    session = await ensureLibraryPreviewSession(source, context);
+    session = await ensureLibraryPreviewSession(url, context);
     if (session) {
-      resp = await daFetch(details.url, { ...opts, credentials: 'include' });
+      resp = await daFetch(url, { ...opts, credentials: 'include' });
       if (isAuthFailure(resp)) invalidateLibrarySession(session);
     }
   }
@@ -250,16 +250,20 @@ async function libraryFetch(href, context, opts = {}) {
 
 function plainHtmlUrl(path) {
   const url = new URL(path);
-  url.pathname = `${url.pathname}.plain.html`;
+  url.pathname = `${url.pathname.replace(/(?:\.plain)?\.html$/i, '')}.plain.html`;
   return url.href;
 }
 
 async function fetchAndParseHtml(path, isAemHosted, context) {
   try {
     const source = isAemHosted ? plainHtmlUrl(path) : path;
-    const resp = await libraryFetch(source, context, { noRedirect: true });
+    const { resp, contentUrl, usedFallback } = await libraryFetch(source, context);
     if (!resp.ok) return { authError: isAuthFailure(resp) };
-    return { doc: new window.DOMParser().parseFromString(await resp.text(), 'text/html') };
+    return {
+      doc: new window.DOMParser().parseFromString(await resp.text(), 'text/html'),
+      contentUrl,
+      usedFallback,
+    };
   } catch (error) {
     // eslint-disable-next-line no-console
     console.warn('[ew-library] Unable to load variant HTML', error);
@@ -379,7 +383,8 @@ export async function getBlockVariants(path, context) {
     isAemHosted = AEM_ORIGINS.some((o) => new URL(source).hostname.endsWith(`.${o}`));
   } catch { /* relative path */ }
 
-  const { doc, authError } = await fetchAndParseHtml(source, isAemHosted, context);
+  const result = await fetchAndParseHtml(source, isAemHosted, context);
+  const { doc, authError, contentUrl, usedFallback } = result;
   if (!doc) {
     const variants = [];
     if (authError) {
@@ -390,9 +395,7 @@ export async function getBlockVariants(path, context) {
   }
 
   addHeadingIds(doc);
-  // Resolve against the actual HTML source, never the authenticated proxy origin.
-  const imageSource = isAemHosted ? plainHtmlUrl(source) : source;
-  resolveLibraryImages(doc.body, imageSource, context, { variant: true });
+  resolveLibraryImages(doc.body, contentUrl, context, { variant: true, direct: usedFallback });
   decorateImages(doc.body);
   return groupBlocks(getSectionsAndBlocks(doc)).map(transformBlock);
 }
@@ -511,7 +514,7 @@ export async function fetchBlocks(sources, context) {
   let authError = false;
   for (const url of sources) {
     try {
-      const resp = await libraryFetch(url, context, { noRedirect: true });
+      const { resp } = await libraryFetch(url, context);
       if (!resp.ok && isAuthFailure(resp)) authError = true;
       if (resp.ok) {
         const json = await resp.json();
@@ -582,7 +585,7 @@ function loadLibrarySheet(org, site, sheet) {
       let authError = false;
       for (const url of ext.sources || []) {
         try {
-          const resp = await libraryFetch(url, { org, site }, { noRedirect: true });
+          const { resp } = await libraryFetch(url, { org, site });
           if (!resp.ok && isAuthFailure(resp)) authError = true;
           if (resp.ok) {
             const json = await resp.json();
@@ -617,7 +620,7 @@ export async function fetchItems(sources, format, context) {
   let authError = false;
   for (const source of sources) {
     try {
-      const resp = await libraryFetch(source, context, { noRedirect: true });
+      const { resp } = await libraryFetch(source, context);
       if (!resp.ok && isAuthFailure(resp)) authError = true;
       if (resp.ok) {
         const json = await resp.json();
@@ -765,13 +768,13 @@ export function getEditorSelection(view) {
 }
 
 export async function insertTemplate(view, url, context) {
-  const resp = await libraryFetch(url, context, { noRedirect: true });
+  const { resp, contentUrl, usedFallback } = await libraryFetch(url, context);
   if (!resp.ok) {
     throw new Error(isAuthFailure(resp) ? LIBRARY_AUTH_MESSAGE : `Unable to load template (${resp.status}).`);
   }
   const html = (await resp.text()).replace('class="template-metadata"', 'class="metadata"');
   const doc = new window.DOMParser().parseFromString(html, 'text/html');
-  resolveLibraryImages(doc.body, url, context);
+  resolveLibraryImages(doc.body, contentUrl, context, { direct: usedFallback });
   const { dom } = htmlToProse(doc.body.innerHTML);
   const parsed = PMDOMParser.fromSchema(view.state.schema).parse(dom);
   view.dispatch(view.state.tr.replaceSelectionWith(parsed).scrollIntoView());
@@ -832,7 +835,7 @@ export async function ensureItemPreviewAccess(item, { org, site }) {
     try {
       // Iframe HTTP failures are opaque to callers. Validate the browser cookie
       // on every navigation, while reusing successful cookie exchanges.
-      const resp = await libraryFetch(details.previewUrl, { org, site }, {
+      const resp = await previewFetch(details.previewUrl, { org, site }, {
         method: 'HEAD',
         cache: 'no-store',
         noRedirect: true,
@@ -913,6 +916,7 @@ export function createCommentsView() {
     getLabel() {
       return formatCommentsViewLabel(getCommentsBridge().controller?.counts?.active);
     },
+    subscribeLabel: subscribeCommentCounts,
     load: async () => {
       await import('../comments/comments-panel.js');
       return document.createElement('ew-comments');

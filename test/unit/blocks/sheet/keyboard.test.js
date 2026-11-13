@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { sendKeys, sendMouse } from '@web/test-runner-commands';
-import makeKeyboardAccessible from '../../../../blocks/sheet/utils/keyboard.js';
+import makeKeyboardAccessible, { releaseKeyboard } from '../../../../blocks/sheet/utils/keyboard.js';
 import { axAll, axFocused, axTree } from '../../helpers/ax-tree.js';
 
 function loadScript(src) {
@@ -256,5 +256,63 @@ describe('sheet keyboard access', () => {
     expect(roSheet.table.getAttribute('aria-readonly')).to.equal('true');
     expect(sheet.table.hasAttribute('aria-readonly')).to.be.false;
     readOnly.remove();
+  });
+});
+
+describe('sheet keyboard access with multiple sheets', () => {
+  let container;
+  let first;
+  let last;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.append(container);
+    window.jspreadsheet.tabs(container, [
+      { sheetName: 'one', minDimensions: [3, 3] },
+      { sheetName: 'two', minDimensions: [3, 3] },
+    ]);
+    [first, last] = container.jexcel;
+    container.jexcel.forEach((s) => makeKeyboardAccessible(s));
+    // Show the first sheet the way da-sheet-tabs does
+    last.el.style.display = 'none';
+    first.el.style.display = 'block';
+  });
+
+  afterEach(() => {
+    container.jexcel.forEach((s) => { if (s.edition) s.closeEditor(s.edition[0], false); });
+    window.jspreadsheet.current = null;
+    container.remove();
+  });
+
+  it('building the sheets leaves the last (hidden) one taking keys', () => {
+    expect(window.jspreadsheet.current).to.equal(last);
+  });
+
+  it('releaseKeyboard stops keys reaching a hidden sheet', async () => {
+    releaseKeyboard();
+    expect(window.jspreadsheet.current).to.be.null;
+
+    document.body.focus();
+    await sendKeys({ down: 'Control' });
+    await sendKeys({ press: 'KeyA' });
+    await sendKeys({ up: 'Control' });
+    expect(last.selectedCell).to.not.be.ok;
+    expect(first.selectedCell).to.not.be.ok;
+  });
+
+  it('releaseKeyboard keeps the given sheet', () => {
+    window.jspreadsheet.current = first;
+    releaseKeyboard(first);
+    expect(window.jspreadsheet.current).to.equal(first);
+  });
+
+  it('focusing the visible grid sends keys to it', async () => {
+    releaseKeyboard();
+    first.el.focus();
+    await tick();
+    expect(window.jspreadsheet.current).to.equal(first);
+    await sendKeys({ type: 'x' });
+    expect(first.edition).to.exist;
+    expect(last.edition).to.not.be.ok;
   });
 });

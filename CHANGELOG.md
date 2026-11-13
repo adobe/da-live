@@ -1,3 +1,59 @@
+# [1.29.0](https://github.com/adobe/da-live/compare/v1.28.6...v1.29.0) (2026-11-13)
+
+
+### Features
+
+* **sc:** add structured content outline ([#1699](https://github.com/adobe/da-live/issues/1699)) ([8f8d18c](https://github.com/adobe/da-live/commit/8f8d18c8522f69354e5799e0aa80a833ff474a48))
+
+## [1.28.6](https://github.com/adobe/da-live/compare/v1.28.5...v1.28.6) (2026-11-12)
+
+
+### Bug Fixes
+
+* load library content directly from DA Admin ([#1698](https://github.com/adobe/da-live/issues/1698)) ([9fd4414](https://github.com/adobe/da-live/commit/9fd4414e2966a425c4d19cfe4d72e28bca34a975))
+
+## [1.28.5](https://github.com/adobe/da-live/compare/v1.28.4...v1.28.5) (2026-11-11)
+
+
+### Bug Fixes
+
+* align preview section metadata with AEM rendering features ([#1704](https://github.com/adobe/da-live/issues/1704)) ([8c28570](https://github.com/adobe/da-live/commit/8c285702d2d0c44bf9b6bcf3d461ac69c48dc24d))
+
+## [1.28.4](https://github.com/adobe/da-live/compare/v1.28.3...v1.28.4) (2026-11-11)
+
+
+### Bug Fixes
+
+* **sheet:** stop keyboard input going to a hidden sheet ([#1676](https://github.com/adobe/da-live/issues/1676)) ([d2fce81](https://github.com/adobe/da-live/commit/d2fce81cd29ce704bc141f505a4c18beb1ef6c67)), closes [#1536](https://github.com/adobe/da-live/issues/1536)
+
+## [1.28.3](https://github.com/adobe/da-live/compare/v1.28.2...v1.28.3) (2026-11-11)
+
+
+### Bug Fixes
+
+* allow fallback to browse v1 ([#1715](https://github.com/adobe/da-live/issues/1715)) ([d618e35](https://github.com/adobe/da-live/commit/d618e3587d0ac25fd78c87fdffb4208218d92a3f))
+
+## [1.28.2](https://github.com/adobe/da-live/compare/v1.28.1...v1.28.2) (2026-11-11)
+
+
+### Bug Fixes
+
+* **browse:** complete paginated mutations ([#1709](https://github.com/adobe/da-live/issues/1709)) ([ebf169a](https://github.com/adobe/da-live/commit/ebf169aac062882879b1fdbb04833e185f76e261)), closes [adobe/da-live#1708](https://github.com/adobe/da-live/issues/1708)
+
+## [1.28.1](https://github.com/adobe/da-live/compare/v1.28.0...v1.28.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* support default fallback ([#1714](https://github.com/adobe/da-live/issues/1714)) ([da2442d](https://github.com/adobe/da-live/commit/da2442d4039ffd26ab05be002cc46ee28dab12c6))
+
+# [1.28.0](https://github.com/adobe/da-live/compare/v1.27.0...v1.28.0) (2026-11-11)
+
+
+### Features
+
+* greeting block ([#1707](https://github.com/adobe/da-live/issues/1707)) ([90c68b9](https://github.com/adobe/da-live/commit/90c68b9aca15228ce567b779ff05198f37903549))
+
 # [1.27.0](https://github.com/adobe/da-live/compare/v1.26.0...v1.27.0) (2026-11-11)
 
 

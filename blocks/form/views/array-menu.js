@@ -6,7 +6,7 @@ const { loadStyle } = await import(`${getNx2()}/utils/utils.js`);
 
 const style = await loadStyle(import.meta.url);
 
-const EL_NAME = 'nx-array-menu';
+const EL_NAME = 'ew-form-array-menu';
 
 class ArrayMenu extends LitElement {
   static properties = {

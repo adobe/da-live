@@ -378,9 +378,9 @@ describe('version history refresh', () => {
   }
 
   it('mounts Refresh in the tool-panel header and reuses it when switching views', async () => {
-    await import('../../../../../blocks/canvas/ew-tool-panel/tool-panel.js');
+    await import('../../../../../blocks/shared/tool-panel/tool-panel.js');
     inst = await createInstance({ path, _versions: [ver(old)] });
-    const panel = document.createElement('ew-tool-panel');
+    const panel = document.createElement('da-tool-panel');
     panel.pendingView = 'versions';
     panel.views = [
       { id: 'versions', label: 'Versions', firstParty: true, load: async () => inst },

@@ -3,7 +3,7 @@ import '../../../setup-nx.js';
 import { createEngine } from '../../../../../deps/da-sc-sdk/dist/index.js';
 import '../../../../../blocks/form/views/editor.js';
 
-// Component-level UI tests for nx-editor. The engine is the real bundled SDK
+// Component-level UI tests for ew-form-fields. The engine is the real bundled SDK
 // (same one the form block ships); we feed its getState() into the component
 // and assert on the rendered shadow DOM — the repo's standard UI-test idiom.
 
@@ -15,14 +15,14 @@ const settle = async (el) => {
 };
 
 const CONTROL_TAGS = [
-  'FORM-INPUT', 'FORM-TEXTAREA', 'FORM-RICH-TEXT', 'FORM-NUMBER-FIELD', 'FORM-CHECKBOX', 'FORM-PICKER',
+  'EW-FORM-INPUT', 'EW-FORM-TEXTAREA', 'FORM-RICH-TEXT', 'EW-FORM-NUMBER-FIELD', 'EW-FORM-CHECKBOX', 'EW-FORM-PICKER',
 ];
 
 const mounted = [];
 afterEach(() => { while (mounted.length) mounted.pop().remove(); });
 
 async function mountEditor(schema, doc) {
-  const el = window.document.createElement('nx-editor');
+  const el = window.document.createElement('ew-form-fields');
   // Play the shell: push fresh state on every engine mutation.
   const engine = createEngine({
     schema,
@@ -46,12 +46,12 @@ const groupAt = (el, ptr) => allAt(el, ptr)
   .find((n) => n.matches('fieldset.form-node, section.form-node, article.form-array-item'));
 
 function expectedTag(node) {
-  if (Array.isArray(node.enumValues)) return 'FORM-PICKER';
-  if (node.kind === 'boolean') return 'FORM-CHECKBOX';
-  if (node.kind === 'number' || node.kind === 'integer') return 'FORM-NUMBER-FIELD';
+  if (Array.isArray(node.enumValues)) return 'EW-FORM-PICKER';
+  if (node.kind === 'boolean') return 'EW-FORM-CHECKBOX';
+  if (node.kind === 'number' || node.kind === 'integer') return 'EW-FORM-NUMBER-FIELD';
   if (node.kind === 'string' && node.semanticType === 'rich-text') return 'FORM-RICH-TEXT';
-  if (node.kind === 'string' && node.semanticType === 'long-text') return 'FORM-TEXTAREA';
-  return 'FORM-INPUT';
+  if (node.kind === 'string' && node.semanticType === 'long-text') return 'EW-FORM-TEXTAREA';
+  return 'EW-FORM-INPUT';
 }
 
 const FEATURE_SCHEMA = {
@@ -107,7 +107,7 @@ const featureDoc = (data = {}) => ({
   },
 });
 
-describe('nx-editor loads', () => {
+describe('ew-form-fields loads', () => {
   it('renders the root and one element per top-level model field', async () => {
     const { el } = await mountEditor(FEATURE_SCHEMA, featureDoc());
     expect(el.shadowRoot.querySelector('.editor-root')).to.exist;
@@ -119,7 +119,7 @@ describe('nx-editor loads', () => {
   });
 });
 
-describe('nx-editor renders the model state', () => {
+describe('ew-form-fields renders the model state', () => {
   function walk(el, node) {
     expect(allAt(el, node.pointer).length, `element for ${node.pointer}`).to.be.greaterThan(0);
     if (node.kind === 'object') {
@@ -144,8 +144,8 @@ describe('nx-editor renders the model state', () => {
   it('renders the enum picker with the schema options and default', async () => {
     const { el } = await mountEditor(FEATURE_SCHEMA, featureDoc({ status: undefined }));
     const picker = controlAt(el, '/data/status');
-    expect(picker.tagName).to.equal('FORM-PICKER');
-    // form-picker relocates slotted <option>s into its shadow <select> and
+    expect(picker.tagName).to.equal('EW-FORM-PICKER');
+    // ew-form-picker relocates slotted <option>s into its shadow <select> and
     // prepends a placeholder (empty value); filter that out.
     const options = [...picker.shadowRoot.querySelectorAll('select option')]
       .map((o) => o.value).filter(Boolean);
@@ -153,7 +153,7 @@ describe('nx-editor renders the model state', () => {
   });
 });
 
-describe('nx-editor add-array-item action', () => {
+describe('ew-form-fields add-array-item action', () => {
   const rows = (el, ptr) => groupAt(el, ptr).querySelectorAll(':scope > .form-array-item').length;
 
   it('adds an item to the DOM and the document when the add button is clicked', async () => {
@@ -183,7 +183,7 @@ describe('nx-editor add-array-item action', () => {
 // The Add action is covered above; these drive the per-row menu actions
 // (remove / insert / reorder) end-to-end through the real buttons, and assert
 // both the DOM and the engine document change.
-describe('nx-editor array item menu actions', () => {
+describe('ew-form-fields array item menu actions', () => {
   const ACTION_SCHEMA = {
     type: 'object',
     title: 'T',
@@ -201,7 +201,7 @@ describe('nx-editor array item menu actions', () => {
   };
   const actionDoc = (authors) => ({ metadata: { schemaName: 't' }, data: { authors } });
   const rowCount = (el) => groupAt(el, '/data/authors').querySelectorAll(':scope > .form-array-item').length;
-  const menuOf = (el, ptr) => el.shadowRoot.querySelector(`[data-pointer="${esc(ptr)}"] nx-array-menu`);
+  const menuOf = (el, ptr) => el.shadowRoot.querySelector(`[data-pointer="${esc(ptr)}"] ew-form-array-menu`);
   const menuItem = (menu, re) => [...menu.shadowRoot.querySelectorAll('.menu-item')].find((b) => re.test(b.textContent));
   async function openMenu(el, ptr) {
     menuOf(el, ptr).shadowRoot.querySelector('.menu-trigger').click();
@@ -238,10 +238,10 @@ describe('nx-editor array item menu actions', () => {
     const menu = await openMenu(el, '/data/authors/0');
     menuItem(menu, /reorder/i).click();
     await settle(el);
-    el.shadowRoot.querySelector(`[data-pointer="${esc('/data/authors/0')}"] nx-reorder`)
+    el.shadowRoot.querySelector(`[data-pointer="${esc('/data/authors/0')}"] ew-form-reorder`)
       .shadowRoot.querySelector('[aria-label^="Move down"]').click();
     await settle(el);
-    el.shadowRoot.querySelector(`[data-pointer="${esc('/data/authors/0')}"] nx-reorder`)
+    el.shadowRoot.querySelector(`[data-pointer="${esc('/data/authors/0')}"] ew-form-reorder`)
       .shadowRoot.querySelector('.reorder-confirm').click();
     await settle(el);
     expect(engine.getState().document.data.authors.map((a) => a.name)).to.deep.equal(['Grace', 'Ada']);
@@ -346,7 +346,7 @@ const VALIDATION_FIXTURES = [
   },
 ];
 
-describe('nx-editor applies validation errors', () => {
+describe('ew-form-fields applies validation errors', () => {
   VALIDATION_FIXTURES.forEach((fx) => {
     it(`renders ${fx.name} on the right elements`, async () => {
       const { el, engine } = await mountEditor(fx.schema, { metadata: { schemaName: 't' }, data: fx.data });
@@ -379,7 +379,7 @@ describe('nx-editor applies validation errors', () => {
   });
 });
 
-describe('nx-editor renders descriptions', () => {
+describe('ew-form-fields renders descriptions', () => {
   it('renders field help text from a schema description', async () => {
     const schema = {
       type: 'object',
@@ -410,7 +410,7 @@ describe('nx-editor renders descriptions', () => {
   });
 });
 
-describe('nx-editor marks required fields', () => {
+describe('ew-form-fields marks required fields', () => {
   it('adds the required asterisk to a required field label, not an optional one', async () => {
     const schema = {
       type: 'object',

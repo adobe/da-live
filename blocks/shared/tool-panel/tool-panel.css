@@ -113,13 +113,6 @@
   padding: 4px;
 }
 
-.tool-panel-drag-image {
-  position: fixed;
-  left: -10000px;
-  top: 0;
-  pointer-events: none;
-}
-
 .tool-panel-tab-item {
   position: relative;
   display: flex;
@@ -246,10 +239,6 @@
   > [hidden] {
     display: none;
   }
-}
-
-.nx-tool-panel-editor-placeholder {
-  min-height: 120px;
 }
 
 /* Full-size experience dialog (same shell as ew-panel-extension preview). */

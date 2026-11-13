@@ -1,29 +1,34 @@
-.section:has(.landing),
-.block-content:has(.landing),
+.landing,
+.browse:has(> da-sites) {
+  min-height: 100%;
+  background:
+    radial-gradient(
+      ellipse 60% 520px at 15% 40px,
+      color-mix(in srgb, var(--s2-red-100) 40%, var(--s2-pink-200)) 20%,
+      transparent 100%
+    ),
+    radial-gradient(
+      ellipse 45% 520px at 48% 60px,
+      var(--s2-indigo-200) 20%,
+      transparent 100%
+    ),
+    radial-gradient(
+      ellipse 70% 620px at 78% 80px,
+      var(--s2-blue-200) 25%,
+      transparent 100%
+    ),
+    var(--s2-gray-25);
+}
+
+.section:has(.landing, .browse > da-sites),
+.block-content:has(.landing, .browse > da-sites),
 .browse:has(> .landing) {
   height: 100%;
 }
 
-.landing {
-  min-height: 100%;
-  background:
-    linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--s2-gray-25) 0%, transparent) 25%,
-      var(--s2-gray-25) 85%
-    ),
-    linear-gradient(
-      to right,
-      var(--s2-red-100) 0%,
-      var(--s2-red-100) 20%,
-      var(--s2-pink-200) 40%,
-      var(--s2-indigo-200) 50%,
-      var(--s2-blue-100) 100%
-    );
-}
-
 @media (forced-colors: active) {
-  .landing {
+  .landing,
+  .browse:has(> da-sites) {
     background: Canvas;
   }
 }

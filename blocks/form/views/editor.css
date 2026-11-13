@@ -13,7 +13,7 @@
 }
 
 .editor-root {
-  padding: var(--nx-scroll-offset-top, 0) 48px var(--nx-editor-padding-bottom, 48px);
+  padding: var(--ew-form-scroll-offset-top, 0) 48px var(--ew-form-padding-bottom, 48px);
 }
 
 .editor-root .form-node,
@@ -114,7 +114,7 @@
   gap: var(--s2-spacing-100);
 }
 
-.editor-root .form-array-item-input-row:has(> form-textarea),
+.editor-root .form-array-item-input-row:has(> ew-form-textarea),
 .editor-root .form-array-item-input-row:has(> form-rich-text) {
   align-items: flex-start;
 }
@@ -128,34 +128,34 @@
   color: var(--s2-blue-800);
 }
 
-.editor-root form-input,
-.editor-root form-textarea,
+.editor-root ew-form-input,
+.editor-root ew-form-textarea,
 .editor-root form-rich-text,
-.editor-root form-number-field,
-.editor-root form-picker,
-.editor-root form-checkbox,
-.editor-root form-date {
+.editor-root ew-form-number-field,
+.editor-root ew-form-picker,
+.editor-root ew-form-checkbox,
+.editor-root ew-form-date {
   display: block;
   margin: 16px 0 8px;
 }
 
-.editor-root .form-array-item-primitive form-input,
-.editor-root .form-array-item-primitive form-textarea,
+.editor-root .form-array-item-primitive ew-form-input,
+.editor-root .form-array-item-primitive ew-form-textarea,
 .editor-root .form-array-item-primitive form-rich-text,
-.editor-root .form-array-item-primitive form-number-field,
-.editor-root .form-array-item-primitive form-picker,
-.editor-root .form-array-item-primitive form-checkbox,
-.editor-root .form-array-item-primitive form-date {
+.editor-root .form-array-item-primitive ew-form-number-field,
+.editor-root .form-array-item-primitive ew-form-picker,
+.editor-root .form-array-item-primitive ew-form-checkbox,
+.editor-root .form-array-item-primitive ew-form-date {
   margin: 0;
 }
 
-.editor-root .form-array-item-input-row > form-input,
-.editor-root .form-array-item-input-row > form-textarea,
+.editor-root .form-array-item-input-row > ew-form-input,
+.editor-root .form-array-item-input-row > ew-form-textarea,
 .editor-root .form-array-item-input-row > form-rich-text,
-.editor-root .form-array-item-input-row > form-number-field,
-.editor-root .form-array-item-input-row > form-picker,
-.editor-root .form-array-item-input-row > form-checkbox,
-.editor-root .form-array-item-input-row > form-date {
+.editor-root .form-array-item-input-row > ew-form-number-field,
+.editor-root .form-array-item-input-row > ew-form-picker,
+.editor-root .form-array-item-input-row > ew-form-checkbox,
+.editor-root .form-array-item-input-row > ew-form-date {
   flex: 1;
   min-width: 0;
 }
@@ -219,7 +219,7 @@
 
 .editor-root [data-pointer] {
   scroll-margin-top: var(
-    --nx-scroll-offset-top,
+    --ew-form-scroll-offset-top,
     calc(var(--s2-spacing-300) + var(--s2-spacing-100))
   );
 }
