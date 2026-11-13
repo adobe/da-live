@@ -76,6 +76,6 @@ class FormPicker extends LitElement {
   }
 }
 
-if (!customElements.get('form-picker')) customElements.define('form-picker', FormPicker);
+if (!customElements.get('ew-form-picker')) customElements.define('ew-form-picker', FormPicker);
 
 export default FormPicker;

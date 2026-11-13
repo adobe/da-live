@@ -6,7 +6,7 @@ const { loadStyle } = await import(`${getNx2()}/utils/utils.js`);
 
 const style = await loadStyle(import.meta.url);
 
-const EL_NAME = 'nx-reorder';
+const EL_NAME = 'ew-form-reorder';
 
 class Reorder extends LitElement {
   static properties = {

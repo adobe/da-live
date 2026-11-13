@@ -6,9 +6,9 @@ import { attachPersistence } from './utils/persistence.js';
 import { getNx2 } from '../../scripts/utils.js';
 import { addRecentFile } from '../shared/recent-files.js';
 import { isJsonPreviewEnabled } from './utils/config.js';
+import { NAV_ORIGIN, formEvents } from './events.js';
 
 import './views/editor.js';
-import './views/sidebar.js';
 import './views/preview.js';
 // Fields the shell renders directly (schema selector + messages); the editor
 // imports the rest.
@@ -19,7 +19,7 @@ const { loadStyle, hashChange } = await import(`${getNx2()}/utils/utils.js`);
 
 const style = await loadStyle(import.meta.url);
 
-const EL_NAME = 'nx-form';
+const EL_NAME = 'ew-form-editor';
 
 // Derive the legacy `details` shape the form utils expect from the EW-supplied
 // `ctx`. `ctx.path` is the full `org/site/path` locator; the DA source is the
@@ -68,6 +68,8 @@ class Form extends LitElement {
 
   _unsubscribe = null;
 
+  _unsubscribeJump = null;
+
   _onChange = () => {
     if (!this._editor) return;
     this._state = this._editor.getState();
@@ -89,13 +91,19 @@ class Form extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
+    this._unsubscribeJump = formEvents.jumpRequest.subscribe(({ pointer }) => {
+      this._onSelect(pointer, NAV_ORIGIN.OUTLINE);
+    });
   }
 
   disconnectedCallback() {
     this._unsubscribe?.();
     this._unsubscribe = null;
+    this._unsubscribeJump?.();
+    this._unsubscribeJump = null;
     this._persistence?.detach();
     this._persistence = null;
+    formEvents.formState.emit(null);
     super.disconnectedCallback();
   }
 
@@ -112,6 +120,13 @@ class Form extends LitElement {
   updated(changed) {
     if (changed.has('ctx')) {
       this._loadContext();
+    }
+    // The outline in the tools panel lives outside this element's tree.
+    if (changed.has('_state')) {
+      formEvents.formState.emit(this._state);
+    }
+    if (changed.has('_nav')) {
+      formEvents.selectionState.emit(this._nav);
     }
   }
 
@@ -222,7 +237,7 @@ class Form extends LitElement {
 
   _renderCentered(content) {
     return html`
-      <div class="nx-form-wrapper nx-form-wrapper-centered">
+      <div class="ew-form-wrapper ew-form-wrapper-centered">
         ${content}
       </div>
     `;
@@ -230,16 +245,16 @@ class Form extends LitElement {
 
   _renderMessage(title, body, { showHomeAction = false } = {}) {
     return this._renderCentered(html`
-      <div class="nx-form-schema-shell">
-        <section class="nx-form-message">
+      <div class="ew-form-schema-shell">
+        <section class="ew-form-message">
           ${title ? html`<h2>${title}</h2>` : nothing}
           <p>${body}</p>
           ${showHomeAction ? html`
-            <div class="nx-form-actions">
-              <form-button
+            <div class="ew-form-actions">
+              <ew-form-button
                 variant="secondary"
                 @click=${() => this._goHome()}
-              >Return to Home</form-button>
+              >Return to Home</ew-form-button>
             </div>
           ` : nothing}
         </section>
@@ -260,7 +275,7 @@ class Form extends LitElement {
       body = html`
         No schema named <strong>${schemaName}</strong>.
         <a
-          class="nx-form-schema-text-link"
+          class="ew-form-schema-text-link"
           href=${schemaEditorHref}
           target="_blank"
           rel="noopener noreferrer"
@@ -290,13 +305,13 @@ class Form extends LitElement {
     const schemaEditorHref = this._schemaEditorHref();
 
     return html`
-      <div class="nx-form-schema-shell">
-        <h2 class="nx-form-schema-heading">Choose a schema</h2>
-        <div class="nx-form-schema-form">
-          <div class="nx-form-schema-select-group">
-            <form-picker
+      <div class="ew-form-schema-shell">
+        <h2 class="ew-form-schema-heading">Choose a schema</h2>
+        <div class="ew-form-schema-form">
+          <div class="ew-form-schema-select-group">
+            <ew-form-picker
               hoist
-              class="nx-form-schema-select"
+              class="ew-form-schema-select"
               label="Schema"
               placeholder="Select a schema"
               .value=${this._pendingSchemaId ?? ''}
@@ -306,23 +321,23 @@ class Form extends LitElement {
               ${Object.entries(schemas).map(([id, schema]) => html`
                 <option value="${id}">${schema?.title ?? id}</option>
               `)}
-            </form-picker>
-            <p class="nx-form-schema-hint">
+            </ew-form-picker>
+            <p class="ew-form-schema-hint">
               To create a new schema, open
               <a
-                class="nx-form-schema-text-link"
+                class="ew-form-schema-text-link"
                 href=${schemaEditorHref}
                 target="_blank"
                 rel="noopener noreferrer"
               >Schema Editor</a>.
             </p>
           </div>
-          <form-button
+          <ew-form-button
             variant="accent"
-            class="nx-form-schema-start"
+            class="ew-form-schema-start"
             ?disabled=${!this._pendingSchemaId}
             @click=${this._applySelectedSchema}
-          >Create</form-button>
+          >Create</ew-form-button>
         </div>
       </div>
     `;
@@ -330,15 +345,15 @@ class Form extends LitElement {
 
   _renderNoSchemas() {
     return html`
-      <div class="nx-form-schema-shell">
-        <div class="nx-form-schema-card">
-          <p class="nx-form-title">Please create a schema</p>
-          <p class="nx-form-schema-hint">
+      <div class="ew-form-schema-shell">
+        <div class="ew-form-schema-card">
+          <p class="ew-form-title">Please create a schema</p>
+          <p class="ew-form-schema-hint">
             This project has no schemas yet. Open the schema editor to add one, then return here.
           </p>
-          <div class="nx-form-schema-field nx-form-schema-field-link">
+          <div class="ew-form-schema-field ew-form-schema-field-link">
             <a
-              class="nx-form-schema-cta"
+              class="ew-form-schema-cta"
               href=${this._schemaEditorHref()}
               target="_blank"
               rel="noopener noreferrer"
@@ -364,21 +379,16 @@ class Form extends LitElement {
     const showPreview = this._previewEnabled !== false;
 
     return html`
-      <div class="nx-form-wrapper">
-        <div class="nx-editor-pane ${showPreview ? 'nx-editor-pane-with-preview' : ''}">
-          <nx-editor
+      <div class="ew-form-wrapper">
+        <div class="ew-form-pane ${showPreview ? 'ew-form-pane-with-preview' : ''}">
+          <ew-form-fields
             .editor=${this._editor}
             .state=${this._state}
             .nav=${this._nav}
             .onSelect=${this._onSelect}
-          ></nx-editor>
-          ${showPreview ? html`<nx-preview .state=${this._state}></nx-preview>` : nothing}
+          ></ew-form-fields>
+          ${showPreview ? html`<ew-form-preview .state=${this._state}></ew-form-preview>` : nothing}
         </div>
-        <nx-sidebar
-          .state=${this._state}
-          .nav=${this._nav}
-          .onSelect=${this._onSelect}
-        ></nx-sidebar>
       </div>
     `;
   }
@@ -401,10 +411,10 @@ if (!customElements.get(EL_NAME)) {
   customElements.define(EL_NAME, Form);
 }
 
-// Mount the ctx-driven `nx-form` element and feed it the hash. The wrapper
+// Mount the ctx-driven `ew-form-editor` element and feed it the hash. The wrapper
 // (form.js) calls this after setting up the surrounding workspace.
 export default function decorate(block) {
-  const nxForm = document.createElement(EL_NAME);
-  block.append(nxForm);
-  nxForm.startRouting();
+  const formEditor = document.createElement(EL_NAME);
+  block.append(formEditor);
+  formEditor.startRouting();
 }

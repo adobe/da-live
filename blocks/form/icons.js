@@ -1,8 +1,11 @@
 import { nothing } from 'da-lit';
 import { getNx2 } from '../../scripts/utils.js';
 
-const { getConfig } = await import(`${getNx2()}/scripts/nx.js`);
-const { loadHrefSvg } = await import(`${getNx2()}/utils/svg.js`);
+const nx2 = getNx2();
+const [{ getConfig }, { loadHrefSvg }] = await Promise.all([
+  import(`${nx2}/scripts/nx.js`),
+  import(`${nx2}/utils/svg.js`),
+]);
 
 const { codeBase } = getConfig();
 
