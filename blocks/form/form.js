@@ -22,10 +22,14 @@ const [
   import(`${nx2}/scripts/nx.js`),
 ]);
 
-// Workspace layout is light-DOM (it sizes the block container and the docked
-// chat panel), so it adopts on the document rather than an element shadow.
-const style = await loadStyle(import.meta.url);
-document.adoptedStyleSheets = [...document.adoptedStyleSheets, style];
+// The workspace layout and the panel toggles live in the light DOM, so their
+// styles are adopted on the document. The toggles reuse da-nx's icon buttons,
+// like the canvas header.
+const [buttonStyle, style] = await Promise.all([
+  loadStyle(`${nx2}/styles/buttons.css`),
+  loadStyle(import.meta.url),
+]);
+document.adoptedStyleSheets = [...document.adoptedStyleSheets, buttonStyle, style];
 
 const { codeBase } = getConfig();
 const s2IconHref = (name) => `${codeBase}/img/icons/s2-icon-${name}-20-n.svg#icon`;
@@ -84,7 +88,7 @@ function createToggleAnchor(block) {
 function installPanelToggle(anchor, { section, label, icon }) {
   const button = document.createElement('button');
   button.type = 'button';
-  button.className = `form-panel-toggle form-${section}-toggle`;
+  button.className = `nx-action-btn-icon form-panel-toggle form-${section}-toggle`;
   button.setAttribute('aria-label', label);
   button.title = label;
   button.innerHTML = `<svg aria-hidden="true" viewBox="0 0 20 20"><use href="${s2IconHref(icon)}"></use></svg>`;

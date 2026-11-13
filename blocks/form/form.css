@@ -21,6 +21,10 @@
   box-sizing: border-box;
   height: calc(100vh - var(--s2-nav-height));
   overflow-y: auto;
+
+  /* Keep room for the scrollbar from the start, so the tools toggle next to
+     it doesn't move once the document starts to scroll. */
+  scrollbar-gutter: stable;
 }
 
 /* At this width main scrolls and has a border, so fill main instead of the viewport to avoid a second scrollbar. */
@@ -48,46 +52,21 @@ aside.panel[data-position='before'] nx-chat {
   height: 0;
 }
 
+/* da-nx's icon button styles the toggles. Only their position is set here. */
 .form-panel-toggle {
   position: absolute;
   top: 8px;
   z-index: 10;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   box-sizing: border-box;
-  width: 32px;
-  height: 32px;
-  padding: 0;
   margin: 0;
-  border: none;
-  border-radius: 8px;
-  color: var(--s2-gray-800);
-  background: transparent;
-  cursor: pointer;
-}
-
-.form-panel-toggle:hover {
-  background-color: var(--s2-gray-75);
-}
-
-.form-panel-toggle:focus-visible {
-  outline: 2px solid var(--s2-blue-800);
-  outline-offset: 2px;
-}
-
-.form-panel-toggle svg {
-  display: block;
-  width: 16px;
-  height: 16px;
 }
 
 .form-chat-toggle {
-  left: 8px;
+  left: 12px;
 }
 
 .form-tools-toggle {
-  right: calc(8px + var(--form-scrollbar-width, 0px));
+  right: calc(12px + var(--form-scrollbar-width, 0px));
 }
 
 /* Each toggle hides while its panel is open, since the panel has its own close. */
