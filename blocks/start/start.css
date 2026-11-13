@@ -2,10 +2,16 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
+  min-height: calc(100vh - var(--s2-nav-height, 0px));
   position: relative;
   color: #fff;
   background: #000;
+}
+
+@media (width >= 600px) {
+  :host {
+    min-height: calc(100vh - var(--s2-nav-height, 0px) - 2px);
+  }
 }
 
 h2 {
