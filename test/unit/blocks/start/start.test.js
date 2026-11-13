@@ -18,11 +18,12 @@ describe('start page appearance', () => {
     document.adoptedStyleSheets = sheets;
   });
 
-  ['rgb(20, 20, 20)', 'rgb(240, 240, 240)'].forEach((color) => {
-    it(`leaves the background transparent and inherits shell text color ${color}`, async () => {
+  ['rgb(20, 20, 20)', 'rgb(240, 240, 240)'].forEach((color, index) => {
+    it(`renders the legacy landing gradient and inherits text color ${color}`, async () => {
       container = document.createElement('div');
       container.style.color = color;
-      ['red-100', 'pink-200', 'indigo-200', 'blue-200', 'gray-25'].forEach((token) => {
+      container.style.colorScheme = index ? 'dark' : 'light';
+      ['red-100', 'pink-200', 'blue-200', 'gray-25'].forEach((token) => {
         container.style.setProperty(`--s2-${token}`, color);
       });
       document.body.append(container);
