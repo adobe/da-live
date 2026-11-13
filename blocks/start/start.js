@@ -366,6 +366,11 @@ class DaStart extends LitElement {
 
 customElements.define('da-start', DaStart);
 
-export default function init(el) {
+export default async function init(el) {
+  const background = await getSheet('/blocks/landing/landing.css');
+  if (!document.adoptedStyleSheets.includes(background)) {
+    document.adoptedStyleSheets.push(background);
+  }
+  el.classList.add('landing');
   el.append(document.createElement('da-start'));
 }
