@@ -9,7 +9,7 @@ const richTextNode = (extra = {}) => ({
   kind: 'string',
   pointer: '/data/body',
   label: 'Body',
-  semanticType: 'html',
+  semanticType: 'rich-text',
   value: '<p>hi</p>',
   ...extra,
 });
