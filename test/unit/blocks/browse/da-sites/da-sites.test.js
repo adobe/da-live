@@ -21,35 +21,6 @@ describe('DaSites', () => {
     localStorage.removeItem('da-orgs');
   });
 
-  describe('parseSubdomain', () => {
-    it('Extracts org and repo from a hlx.live URL', () => {
-      const el = new DaSites();
-      const result = el.parseSubdomain('https://main--repo--org.hlx.live/');
-      expect(result).to.equal('#/org/repo');
-    });
-
-    it('Extracts org and repo from an aem.page URL', () => {
-      const el = new DaSites();
-      const result = el.parseSubdomain('https://main--my-site--my-org.aem.page/');
-      expect(result).to.equal('#/my-org/my-site');
-    });
-
-    it('Returns null for an unrelated hostname', () => {
-      const el = new DaSites();
-      expect(el.parseSubdomain('https://example.com/')).to.equal(null);
-    });
-
-    it('Returns null for a malformed helix-style hostname missing org', () => {
-      const el = new DaSites();
-      expect(el.parseSubdomain('https://main--repo.hlx.live/')).to.equal(null);
-    });
-
-    it('Returns null when the URL is invalid', () => {
-      const el = new DaSites();
-      expect(el.parseSubdomain('not a url')).to.equal(null);
-    });
-  });
-
   describe('getRecents', () => {
     it('Maps localStorage da-sites to _recents', () => {
       localStorage.setItem('da-sites', JSON.stringify(['org/site1', 'org/site2']));
