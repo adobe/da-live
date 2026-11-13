@@ -11,7 +11,7 @@ import './views/link.js';
 const sheet = await getSheet(import.meta.url.replace('js', 'css'));
 const { PREFLIGHT_EVENT } = await import(`${getNx2()}/utils/preflight-events.js`);
 
-class DaPreflight extends LitElement {
+class DaPreparePreflight extends LitElement {
   static properties = {
     details: { attribute: false },
     requestId: { attribute: false },
@@ -59,7 +59,7 @@ class DaPreflight extends LitElement {
 
     const checks = this._categories.flatMap((category) => category.checks);
     const complete = checks.every((check) => check.done
-      && check.results.every((result) => DaPreflight.isResultSettled(result)));
+      && check.results.every((result) => DaPreparePreflight.isResultSettled(result)));
     if (!complete) return;
 
     const badges = checks.flatMap((check) => check.results.map((result) => result.badge));
@@ -147,10 +147,10 @@ class DaPreflight extends LitElement {
   }
 }
 
-customElements.define('da-preflight', DaPreflight);
+customElements.define('da-prepare-preflight', DaPreparePreflight);
 
 export default function render(details, requestId) {
-  const cmp = document.createElement('da-preflight');
+  const cmp = document.createElement('da-prepare-preflight');
   cmp.details = details;
   if (requestId) cmp.requestId = requestId;
   return cmp;

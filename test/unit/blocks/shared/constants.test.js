@@ -9,6 +9,8 @@ import {
   AEM_ORIGIN,
   SUPPORTED_FILES,
   getLivePreviewUrl,
+  getPreviewOrigin,
+  normalizeBranch,
 } from '../../../../blocks/shared/constants.js';
 
 import '../../milo.js';
@@ -84,5 +86,41 @@ describe('getLivePreviewUrl', () => {
     expect(getLivePreviewUrl('adobecom', 'da-bacom', 'feature-branch')).to.equal(
       'https://feature-branch--da-bacom--adobecom.preview.da.live',
     );
+  });
+});
+
+describe('normalizeBranch', () => {
+  it('uses main by default', () => {
+    expect(normalizeBranch()).to.equal('main');
+  });
+
+  it('lowercases the branch and replaces characters a hostname cannot hold', () => {
+    expect(normalizeBranch('Feat/My_Branch.2')).to.equal('feat-my-branch-2');
+  });
+
+  it('keeps a branch that is already a hostname label', () => {
+    expect(normalizeBranch('feature-1')).to.equal('feature-1');
+  });
+});
+
+describe('getPreviewOrigin', () => {
+  it('uses main branch by default', () => {
+    const origin = getPreviewOrigin('myorg', 'myrepo');
+    expect(origin).to.include('main--myrepo--myorg');
+  });
+
+  it('uses the provided branch', () => {
+    const origin = getPreviewOrigin('myorg', 'myrepo', 'feature');
+    expect(origin).to.include('feature--myrepo--myorg');
+  });
+
+  it('uses the same hostname normalization as Send for slash and mixed-case branches', () => {
+    expect(getPreviewOrigin('myorg', 'myrepo', 'Feat/My_Branch'))
+      .to.include('feat-my-branch--myrepo--myorg');
+  });
+
+  it('uses main when branch is explicitly main', () => {
+    const origin = getPreviewOrigin('myorg', 'myrepo', 'main');
+    expect(origin).to.include('main--myrepo--myorg');
   });
 });

@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { adaptEvaluation } from '../../../../../blocks/canvas/ew-preflight/adapter.js';
+import { adaptEvaluation } from '../../../../../blocks/shared/preflight/evaluation.js';
 
 // Synthetic slice of a POST /api/v0/evaluate/page response. All values are made
 // up for the test — never use real customer data here.
@@ -95,7 +95,7 @@ const SITE_CODE_EVALUATION = {
   ],
 };
 
-describe('ew-preflight adapter', () => {
+describe('preflight evaluation', () => {
   it('uses brand_name as the title', () => {
     expect(adaptEvaluation(RESPONSE).title).to.equal('Example Brand');
   });

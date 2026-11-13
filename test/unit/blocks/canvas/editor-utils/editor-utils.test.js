@@ -8,12 +8,12 @@ import {
 } from 'da-y-wrapper';
 import { getSchema } from 'da-parser';
 import { setNx } from '../../../../../scripts/utils.js';
+import { getPreviewOrigin } from '../../../../../blocks/shared/constants.js';
 import { createTrackingPlugin } from '../../../../../blocks/canvas/editor-utils/prose-diff.js';
 import { getEnterInputRulesPlugin } from '../../../../../blocks/edit/prose/plugins/keyHandlers.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-let getPreviewOrigin;
 let fetchWysiwygBranch;
 let parseSections;
 let updateDocument;
@@ -24,7 +24,6 @@ let mediaBusImage;
 
 before(async () => {
   const mod = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js');
-  getPreviewOrigin = mod.getPreviewOrigin;
   fetchWysiwygBranch = mod.fetchWysiwygBranch;
   parseSections = mod.parseSections;
   updateDocument = mod.updateDocument;
@@ -61,28 +60,6 @@ describe('getInstrumentedHTML media bus images', () => {
       expect(source.getAttribute('srcset')).to.equal(expected);
     });
     expect(view.state.doc.firstChild.firstChild.attrs.src).to.equal(src);
-  });
-});
-
-describe('getPreviewOrigin', () => {
-  it('uses main branch by default', () => {
-    const origin = getPreviewOrigin('myorg', 'myrepo');
-    expect(origin).to.include('main--myrepo--myorg');
-  });
-
-  it('uses the provided branch', () => {
-    const origin = getPreviewOrigin('myorg', 'myrepo', 'feature');
-    expect(origin).to.include('feature--myrepo--myorg');
-  });
-
-  it('uses the same hostname normalization as Send for slash and mixed-case branches', () => {
-    expect(getPreviewOrigin('myorg', 'myrepo', 'Feat/My_Branch'))
-      .to.include('feat-my-branch--myrepo--myorg');
-  });
-
-  it('uses main when branch is explicitly main', () => {
-    const origin = getPreviewOrigin('myorg', 'myrepo', 'main');
-    expect(origin).to.include('main--myrepo--myorg');
   });
 });
 

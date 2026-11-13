@@ -1,6 +1,6 @@
 // eslint-disable-next-line import/no-unresolved
 import { Plugin, PluginKey } from 'da-y-wrapper';
-import { getPreviewOrigin } from '../../editor-utils/editor-utils.js';
+import { getPreviewOrigin } from '../../../shared/constants.js';
 
 const mediaBusImageKey = new PluginKey('canvasMediaBusImage');
 

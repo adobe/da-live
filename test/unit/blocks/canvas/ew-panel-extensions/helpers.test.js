@@ -1654,6 +1654,74 @@ describe('getCanvasToolPanelViews', () => {
     expect(preflight.cacheKey).to.equal(undefined);
   });
 
+  it('keeps the order of the first-party views', async () => {
+    setDaConfigs([{ data: [] }]);
+    const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
+    expect(views.filter((v) => v.section === 'Editor').map((v) => v.id))
+      .to.deep.equal(['outline', 'metadata', 'files', 'versions', 'comments', 'preflight']);
+  });
+
+  it('loads the canvas outline and the shared Preflight', async () => {
+    setDaConfigs([{ data: [] }]);
+    const publishHook = {
+      subscribeRunRequest: () => () => {},
+      takePendingRunRequest: () => null,
+      reportStatus: () => {},
+    };
+    const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' }, { publishHook });
+    const load = (id) => views.find((v) => v.id === id).load();
+    expect((await load('outline')).localName).to.equal('ew-page-outline');
+    const preflight = await load('preflight');
+    expect(preflight.localName).to.equal('da-preflight');
+    expect(preflight.page.subscribeActiveView).to.be.a('function');
+    expect(preflight.evaluator.evaluate).to.be.a('function');
+    expect(preflight.publishHook).to.equal(publishHook);
+  });
+
+  it('tells Preflight the active tool panel view and when the panel closes', async () => {
+    setDaConfigs([{ data: [] }]);
+    const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
+    const preflight = await views.find((v) => v.id === 'preflight').load();
+    canvasBus.toolPanelViewState.emit('files');
+    const received = [];
+    const unsubscribe = preflight.page.subscribeActiveView((id) => received.push(id));
+    canvasBus.toolPanelViewState.emit('preflight');
+    canvasBus.toolPanelViewState.emit(null);
+    unsubscribe();
+    canvasBus.toolPanelViewState.emit('files');
+    canvasBus.toolPanelViewState.emit(null);
+    expect(received).to.deep.equal(['files', 'preflight', null]);
+  });
+
+  it('checks the preview of the canvas branch in Preflight', async () => {
+    setDaConfigs([{ data: [] }]);
+    const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
+    const preflight = await views.find((v) => v.id === 'preflight').load();
+    const saved = { fetch: window.fetch, ims: window.adobeIMS, nxIms: localStorage.getItem('nx-ims') };
+    let checkedUrl;
+    localStorage.setItem('nx-ims', 'true');
+    window.adobeIMS = { getAccessToken: () => ({ token: 'tok' }) };
+    window.fetch = async (url, init) => {
+      checkedUrl = JSON.parse(init.body).url;
+      return new Response('{}', { status: 200 });
+    };
+    try {
+      const ready = { org: 'org', site: 'site', path: '/org/site/a', status: 'ready', branch: 'Feat/One' };
+      canvasBus.branchState.emit(ready);
+      await preflight.evaluator.evaluate({ org: 'org', site: 'site', path: '/a', fullpath: '/org/site/a.html' });
+      expect(checkedUrl).to.match(/^https:\/\/feat-one--site--org\.[^/]+\/a$/);
+    } finally {
+      window.fetch = saved.fetch;
+      window.adobeIMS = saved.ims;
+      if (saved.nxIms === null) {
+        localStorage.removeItem('nx-ims');
+      } else {
+        localStorage.setItem('nx-ims', saved.nxIms);
+      }
+      canvasBus.branchState.emit({ path: null, status: 'pending' });
+    }
+  });
+
   it('includes only the AEM assets rail panel with a modal pop-out', async () => {
     const REPO = { key: 'aem.repositoryId', value: 'author-p1-e1.adobeaemcloud.com' };
     setDaConfigs([{ data: [REPO] }]);
