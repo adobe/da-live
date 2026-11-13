@@ -4,34 +4,13 @@ import { createTestEditor, destroyEditor } from '../../../edit/prose/test-helper
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-let getRenderableSrc;
 let mediaBusImage;
 
 const ctx = { org: 'org', repo: 'repo', path: '/org/repo/page' };
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 
 before(async () => {
-  ({ default: mediaBusImage, getRenderableSrc } = await import('../../../../../../blocks/canvas/ew-editor-doc/prose-plugins/mediaBusImage.js'));
-});
-
-describe('canvas getRenderableSrc', () => {
-  // the same origin the canvas fetches its preview cookie from, which is stage off da.live
-  it('rewrites a relative media src to the origin the canvas logged into', () => {
-    expect(getRenderableSrc('./media_123.png', ctx)).to.equal(
-      'https://main--repo--org.stage-preview.da.live/media_123.png',
-    );
-  });
-
-  it('answers null for a src that is not on the media bus', () => {
-    expect(getRenderableSrc('https://example.com/foo.png', ctx)).to.equal(null);
-    expect(getRenderableSrc('/media_123.png', ctx)).to.equal(null);
-    expect(getRenderableSrc(null, ctx)).to.equal(null);
-  });
-
-  it('answers null when the ctx names no site', () => {
-    expect(getRenderableSrc('./media_123.png', { org: 'org' })).to.equal(null);
-    expect(getRenderableSrc('./media_123.png', null)).to.equal(null);
-  });
+  ({ default: mediaBusImage } = await import('../../../../../../blocks/canvas/ew-editor-doc/prose-plugins/mediaBusImage.js'));
 });
 
 describe('canvas mediaBusImage plugin', () => {

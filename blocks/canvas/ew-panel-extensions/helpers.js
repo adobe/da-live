@@ -12,6 +12,8 @@ import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { getBlockPositions } from '../editor-utils/blocks.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import createPreflightView from '../../shared/preflight/preflight-view.js';
+import createVersionHistoryView from '../../shared/version-history/version-history-view.js';
+import createCanvasVersionsEditor from '../editor-utils/versions-editor.js';
 import createExperienceContextEvaluator from '../../shared/preflight/experience-context.js';
 import {
   getCommentsBridge,
@@ -883,19 +885,6 @@ function createFileExplorerView() {
   };
 }
 
-function createVersioningView() {
-  return {
-    id: 'versions',
-    label: 'Versions',
-    section: 'Editor',
-    firstParty: true,
-    load: async () => {
-      await import('../ew-canvas-versions/ew-canvas-versions.js');
-      return document.createElement('ew-canvas-versions');
-    },
-  };
-}
-
 export function createMetadataView() {
   return {
     id: 'metadata',
@@ -1038,7 +1027,7 @@ export async function getCanvasToolPanelViews({ org, site }, { publishHook } = {
     createOutlineView(),
     createMetadataView(),
     createFileExplorerView(),
-    createVersioningView(),
+    createVersionHistoryView({ editor: createCanvasVersionsEditor() }),
     createCommentsView(),
     createPreflightView({
       page: createCanvasPreflightPage(),

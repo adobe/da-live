@@ -52,5 +52,4 @@ export const canvasBus = Object.freeze({
   wysiwygPortReady: createChannel({ replay: Boolean }),
 
   commentsControllerState: createChannel(),
-  versionCreatedState: createChannel(),
 });

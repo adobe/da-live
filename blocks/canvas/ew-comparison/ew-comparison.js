@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
-import './ew-canvas-compare.js';
+import '../../shared/version-compare/version-compare.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const style = await loadStyle(import.meta.url);
@@ -57,11 +57,11 @@ class EwComparison extends LitElement {
           ${this.loadedAt ? html`<p>Compared at ${this.loadedAt}.</p>` : nothing}
         </div>
         ${this.diffDom ? html`
-          <ew-canvas-compare .embedded=${true} .split=${this.split}
+          <da-version-compare .embedded=${true} .split=${this.split}
             .currentLabel=${'Live'} .label=${this.candidate === 'document' ? 'Current document' : 'Preview'}
             .diffDom=${this.diffDom} .canWrite=${false}
             @close=${() => this.onClose()}
-            @toggle-split=${() => { this.split = !this.split; }}></ew-canvas-compare>
+            @toggle-split=${() => { this.split = !this.split; }}></da-version-compare>
         ` : nothing}
       </section>`;
   }

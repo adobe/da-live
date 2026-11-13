@@ -90,3 +90,13 @@ export function getPreviewOrigin(organization, site, branch = 'main') {
     : 'preview.da.live';
   return `https://${normalizeBranch(branch)}--${site}--${organization}.${domain}`;
 }
+
+// a media bus src ("./media_123.png") only resolves where the page is served, so it is rewritten
+// to the doc's preview origin for display; node attrs and the saved document keep the relative
+// path. getPreviewOrigin matches the origin fetchWysiwygCookie logs into, unlike getLivePreviewUrl.
+export function getRenderableSrc(src, ctx) {
+  if (!src || !src.startsWith('./media_')) return null;
+  const { org, repo } = ctx ?? {};
+  if (!org || !repo) return null;
+  return `${getPreviewOrigin(org, repo)}/${src.slice(2)}`;
+}
