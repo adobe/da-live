@@ -1,5 +1,6 @@
 .landing,
 .browse:has(> da-sites),
+.section:has(> .start),
 .block-content:has(> .start) {
   min-height: 100%;
   background:
@@ -27,9 +28,17 @@
   height: 100%;
 }
 
+/* nx1 has no indigo-200 token */
+main > .section:has(> .start) {
+  --s2-indigo-200: light-dark(rgb(235 238 255), rgb(35 0 110));
+
+  min-height: 100vh;
+}
+
 @media (forced-colors: active) {
   .landing,
   .browse:has(> da-sites),
+  .section:has(> .start),
   .block-content:has(> .start) {
     background: Canvas;
   }
