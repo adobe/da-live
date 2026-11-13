@@ -1,6 +1,9 @@
 :host {
   display: flex;
   justify-content: center;
+  align-items: center;
+  height: 100vh;
+  position: relative;
 }
 
 h2 {
@@ -14,6 +17,10 @@ input {
 
 a {
   color: #1379f3;
+}
+
+.foreground {
+  position: relative;
 }
 
 ul.step-count {
