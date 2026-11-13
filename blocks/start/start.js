@@ -4,6 +4,7 @@ import getSheet from '../shared/sheet.js';
 import { daFetch } from '../shared/utils.js';
 import { copyConfig, copyContent, previewContent } from './index.js';
 import { getNx2Api, sanitizePathParts } from '../../scripts/utils.js';
+import initGreeting from '../greeting/greeting.js';
 
 const sheet = await getSheet('/blocks/start/start.css');
 
@@ -353,6 +354,7 @@ class DaStart extends LitElement {
       <img src="/blocks/start/dark-alley.jpg" class="background"/>
       <div class="gradient"></div>
       <div class="foreground step-${this.activeStep}-active">
+        <slot name="greeting"></slot>
         <ul class="step-count">
           <li>1</li>
           <li class="step-2">2</li>
@@ -369,5 +371,14 @@ class DaStart extends LitElement {
 customElements.define('da-start', DaStart);
 
 export default function init(el) {
-  el.append(document.createElement('da-start'));
+  const start = document.createElement('da-start');
+  el.append(start);
+  const section = el.closest('.section')?.nextElementSibling;
+  const greetingEl = section?.querySelector('div.greeting');
+  if (!greetingEl) return;
+  section.remove();
+  initGreeting(greetingEl).then((greeting) => {
+    greeting.slot = 'greeting';
+    start.append(greeting);
+  });
 }
