@@ -6,7 +6,6 @@ import './rich-text-toolbar.js';
 import { loadRichTextEditor } from '../utils/rich-text/editor.js';
 import { getLinkDraft } from '../utils/rich-text/commands.js';
 import { TOOL_IDS } from '../utils/rich-text/tools.js';
-import { placeBubble } from '../utils/rich-text/bubble.js';
 
 const { loadStyle } = await import(`${getNx2()}/utils/utils.js`);
 
@@ -20,8 +19,7 @@ const LABEL_ID = 'form-rich-text-label';
 const STATUS = Object.freeze({ ready: 'ready', error: 'error' });
 
 const SELECTORS = {
-  toolbars: 'form-rich-text-toolbar',
-  bubble: '.form-rich-text-bubble',
+  toolbar: 'form-rich-text-toolbar',
   editor: '.form-rich-text-editor',
 };
 
@@ -31,8 +29,8 @@ const ATTRIBUTE_PROPERTIES = ['disabled', 'error', 'label'];
 const loadLinkDialog = () => import('../../shared/da-link-dialog/da-link-dialog.js');
 
 /**
- * A form field that holds rich text as HTML. Authors format it with a toolbar, a bubble
- * next to the selection, and keyboard shortcuts.
+ * A form field that holds rich text as HTML. Authors format it with a toolbar and keyboard
+ * shortcuts.
  * @property {string} [value] The HTML value, in the form the SDK stores.
  * @property {string} [label] The field label.
  * @property {string} [description] The help text below the field.
@@ -91,22 +89,20 @@ class FormRichText extends LitElement {
   }
 
   /**
-   * Keeps the bubble and the editor in step with the properties.
+   * Keeps the editor in step with the properties.
    * @param {Map<string, unknown>} changed The properties that changed.
    */
   updated(changed) {
-    this._positionBubble();
     this._syncEditor(changed);
   }
 
   /**
-   * Waits for the toolbars too, so the field is settled once `updateComplete` resolves.
+   * Waits for the toolbar too, so the field is settled once `updateComplete` resolves.
    * @returns {Promise<boolean>} Whether no update is pending.
    */
   async getUpdateComplete() {
     const complete = await super.getUpdateComplete();
-    const toolbars = [...this.shadowRoot.querySelectorAll(SELECTORS.toolbars)];
-    await Promise.all(toolbars.map((toolbar) => toolbar.updateComplete));
+    await this.shadowRoot.querySelector(SELECTORS.toolbar)?.updateComplete;
     return complete;
   }
 
@@ -166,44 +162,6 @@ class FormRichText extends LitElement {
   }
 
   /**
-   * Answers whether the bubble shows, which needs a focused selection and no open dialog.
-   * @returns {boolean} Whether the bubble shows.
-   */
-  get _showBubble() {
-    return this._canEdit && !!this._focused && !this._link && !this._editorState.selection.empty;
-  }
-
-  /**
-   * Places the bubble next to the selection while it shows, and hides it when the
-   * selection scrolls away.
-   */
-  async _positionBubble() {
-    if (!this._showBubble) {
-      return;
-    }
-
-    const bubble = this.shadowRoot.querySelector(SELECTORS.bubble);
-    await bubble.updateComplete;
-    if (!bubble.isConnected || !this._view) {
-      return;
-    }
-
-    const { from, to } = this._view.state.selection;
-    const { left, top, hidden } = placeBubble({
-      start: this._view.coordsAtPos(from),
-      end: this._view.coordsAtPos(to),
-      area: bubble.offsetParent.getBoundingClientRect(),
-      width: bubble.offsetWidth,
-      height: bubble.offsetHeight,
-    });
-    Object.assign(bubble.style, {
-      left: `${left}px`,
-      top: `${top}px`,
-      visibility: hidden ? 'hidden' : '',
-    });
-  }
-
-  /**
    * Lists the attributes of the editable area.
    * @returns {Record<string, string>} The attributes by name.
    */
@@ -228,7 +186,6 @@ class FormRichText extends LitElement {
       attributes: this._attributes(),
       dispatchTransaction: (transaction) => this._dispatch(transaction),
     });
-    this._view.dom.addEventListener('scroll', () => this._positionBubble());
     this._syncEditorState();
   }
 
@@ -363,16 +320,12 @@ class FormRichText extends LitElement {
   }
 
   /**
-   * Renders a toolbar, which shows the editor state and asks the field to run commands.
-   * @param {object} [options] The render settings.
-   * @param {boolean} [options.floating] Whether it is the bubble next to the selection.
+   * Renders the toolbar, which shows the editor state and asks the field to run commands.
    * @returns {import('da-lit').TemplateResult} The toolbar.
    */
-  _renderToolbar({ floating = false } = {}) {
+  _renderToolbar() {
     return html`
       <form-rich-text-toolbar
-        class=${floating ? 'form-rich-text-bubble' : nothing}
-        ?floating=${floating}
         .editorState=${this._editorState}
         .toolset=${this._editor?.toolset}
         .focused=${!!this._focused}
@@ -445,7 +398,6 @@ class FormRichText extends LitElement {
           ${this._renderLink()}
           <div class="form-input-wrap">
             <div class="form-rich-text-editor" aria-busy=${this._status ? 'false' : 'true'}></div>
-            ${this._showBubble ? this._renderToolbar({ floating: true }) : nothing}
             ${this.error ? icon('alert', 'form-field-icon') : nothing}
           </div>
         </div>

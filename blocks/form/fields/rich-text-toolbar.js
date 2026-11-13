@@ -29,7 +29,7 @@ import { spriteIcon } from '../icons.js';
  * The tools of a toolbar, in the order they show.
  * @typedef {object} Toolset
  * @property {ToolbarPicker} picker The picker that leads the bar.
- * @property {ToolbarTool[][]} groups The groups of the bar and the floating toolbar.
+ * @property {ToolbarTool[][]} groups The groups of the bar.
  * @property {ToolbarTool[][]} menuGroups The groups only the more menu offers.
  */
 
@@ -42,7 +42,6 @@ const ELEMENT_NAME = 'form-rich-text-toolbar';
 
 const LABELS = {
   toolbar: 'Formatting',
-  floating: 'Selection formatting',
   more: 'More formatting',
 };
 
@@ -96,16 +95,15 @@ const keepEditorFocus = (event) => event.preventDefault();
 
 /**
  * The formatting toolbar of a rich-text field. It renders a toolset against the editor
- * state and asks the field to run commands. The bar variant sits above the editor and moves
- * the tools that do not fit into its more menu. The floating variant sits next to the
- * selection. The checks that read the selection only apply while it shows. Until then no
+ * state and asks the field to run commands. It sits above the editor and moves the tools
+ * that do not fit into its more menu. The checks that read the selection only apply while
+ * it shows. Until then no
  * tool is active, tools with a visibility check hide, and the picker shows its first value.
  * @property {object} [editorState] The ProseMirror editor state.
  * @property {Toolset} [toolset] The tools, once the editor loaded.
  * @property {boolean} focused Whether the field has the focus, so the selection shows.
  * @property {string} [openTool] The id of the tool whose dialog is open.
  * @property {boolean} disabled Whether the field cannot be edited.
- * @property {boolean} floating Whether this is the toolbar next to the selection.
  * @fires form-rich-text-command With the `command` to run.
  */
 class FormRichTextToolbar extends LitElement {
@@ -115,7 +113,6 @@ class FormRichTextToolbar extends LitElement {
     focused: { type: Boolean },
     openTool: { type: String },
     disabled: { type: Boolean },
-    floating: { type: Boolean, reflect: true },
     _overflowAt: { state: true },
     _menuOpen: { state: true },
   };
@@ -160,11 +157,11 @@ class FormRichTextToolbar extends LitElement {
   }
 
   /**
-   * Answers whether the bar measures which tools fit. Floating toolbars always fit.
-   * @returns {boolean} Whether the toolbar is a bar with tools.
+   * Answers whether the bar measures which tools fit, which needs its tools.
+   * @returns {boolean} Whether the toolbar has tools.
    */
   get _measures() {
-    return !this.floating && !!this.toolset;
+    return !!this.toolset;
   }
 
   /**
@@ -320,8 +317,7 @@ class FormRichTextToolbar extends LitElement {
     this._menuOpen = true;
     await this.updateComplete;
     const anchor = this.shadowRoot.querySelector(SELECTORS.moreButton);
-    const placement = this.floating ? 'above' : 'below-end';
-    this._menu.show({ anchor, placement });
+    this._menu.show({ anchor, placement: 'below-end' });
   }
 
   /**
@@ -334,7 +330,7 @@ class FormRichTextToolbar extends LitElement {
   }
 
   /**
-   * Renders a tool button. The floating toolbar's buttons are skipped by the keyboard.
+   * Renders a tool button.
    * @param {ToolbarTool} tool The tool.
    * @param {object} [options] The render settings.
    * @param {boolean} [options.overflow] Whether the tool moved into the more menu.
@@ -350,7 +346,6 @@ class FormRichTextToolbar extends LitElement {
         data-tool=${tool.id}
         title=${formatTitle(tool)}
         aria-label=${tool.label}
-        tabindex=${this.floating ? '-1' : nothing}
         aria-pressed=${pressed}
         ?disabled=${this._isDisabled(tool)}
         @mousedown=${keepEditorFocus}
@@ -413,13 +408,12 @@ class FormRichTextToolbar extends LitElement {
     return html`
       <button
         type="button"
-        class="form-rich-text-button${this.floating ? '' : ' form-rich-text-more'}"
+        class="form-rich-text-button form-rich-text-more"
         data-more
         title=${LABELS.more}
         aria-label=${LABELS.more}
         aria-haspopup="true"
         aria-expanded=${String(!!this._menuOpen)}
-        tabindex=${this.floating ? '-1' : nothing}
         ?disabled=${this.disabled || !this.toolset}
         @mousedown=${keepEditorFocus}
         @click=${this._onMore}
@@ -429,12 +423,12 @@ class FormRichTextToolbar extends LitElement {
 
   /**
    * Renders the tools of the open more menu, the bar tools that did not fit and the menu
-   * groups. The floating toolbar shows every bar tool, so its menu only adds the latter.
+   * groups.
    * @returns {import('da-lit').TemplateResult} The tools.
    */
   _renderMenuTools() {
     const { groups, menuGroups } = this.toolset;
-    const overflows = overflowsFrom(this._barTools, this.floating ? Infinity : this._overflowIndex);
+    const overflows = overflowsFrom(this._barTools, this._overflowIndex);
     const overflowed = groups
       .map((group) => group.filter(overflows))
       .filter((group) => group.length);
@@ -458,17 +452,6 @@ class FormRichTextToolbar extends LitElement {
   }
 
   /**
-   * Renders the tools of the floating toolbar, which all fit next to the selection.
-   * @returns {import('da-lit').TemplateResult} The tools.
-   */
-  _renderFloatingTools() {
-    return html`
-      ${this._renderGroups(this.toolset.groups)}
-      <span class="form-rich-text-separator"></span>
-    `;
-  }
-
-  /**
    * Renders the tools of the bar, starting with the picker.
    * @returns {import('da-lit').TemplateResult} The tools.
    */
@@ -487,13 +470,12 @@ class FormRichTextToolbar extends LitElement {
     if (!this.toolset) {
       return nothing;
     }
-    return this.floating ? this._renderFloatingTools() : this._renderBarTools();
+    return this._renderBarTools();
   }
 
   render() {
-    const label = this.floating ? LABELS.floating : LABELS.toolbar;
     return html`
-      <div class="form-rich-text-toolbar" role="toolbar" aria-label=${label}>
+      <div class="form-rich-text-toolbar" role="toolbar" aria-label=${LABELS.toolbar}>
         ${this._renderTools()}
         ${this._renderMoreButton()}
       </div>

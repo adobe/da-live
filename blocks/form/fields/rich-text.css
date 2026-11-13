@@ -37,12 +37,6 @@
   color: var(--s2-gray-400);
 }
 
-/* Placed next to the selection by the field. */
-.form-rich-text-bubble {
-  position: absolute;
-  z-index: 2;
-}
-
 .form-input-wrap {
   position: relative;
 }

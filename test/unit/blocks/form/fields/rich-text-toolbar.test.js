@@ -213,25 +213,4 @@ describe('form-rich-text-toolbar', () => {
     expect(buttons.every((button) => button.disabled)).to.be.true;
     expect(picker(toolbar).inert).to.be.true;
   });
-
-  it('floats with the bar groups only and adds no tab stops', async () => {
-    const toolbar = await mount({ floating: true, focused: true });
-    const { shadowRoot } = toolbar;
-    expect(toolbar.hasAttribute('floating')).to.be.true;
-    expect(shadowRoot.querySelector('[role="toolbar"]').getAttribute('aria-label')).to.equal('Selection formatting');
-    expect(picker(toolbar)).to.equal(null);
-    expect(visibleIds(shadowRoot, '.form-rich-text-toolbar >')).to.deep.equal(['strong', 'em', 'u', 'del', 'link', 'bullet_list', 'ordered_list']);
-    const buttons = [...shadowRoot.querySelectorAll('button')];
-    expect(buttons.every((button) => button.tabIndex === -1)).to.be.true;
-  });
-
-  it('opens only the menu groups from the floating toolbar', async () => {
-    const toolbar = await mount({ floating: true, focused: true, width: '260px' });
-    await openMenu(toolbar);
-    expect(moreButton(toolbar).getAttribute('aria-expanded')).to.equal('true');
-    expect(visibleIds(menu(toolbar))).to.deep.equal(MENU_IDS);
-    moreButton(toolbar).click();
-    await toolbar.updateComplete;
-    expect(moreButton(toolbar).getAttribute('aria-expanded')).to.equal('false');
-  });
 });
