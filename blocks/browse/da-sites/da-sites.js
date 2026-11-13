@@ -207,7 +207,7 @@ export default class DaSites extends LitElement {
 
   render() {
     return html`
-      <div class="da-site-container ${this.greeting ? 'has-greeting' : ''}">
+      <div class="da-site-container">
         ${this.greeting ? html`
           <div class="da-site-greeting"><slot name="greeting"></slot></div>` : nothing}
         <div class="da-site-header">
