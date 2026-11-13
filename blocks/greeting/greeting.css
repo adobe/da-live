@@ -1,0 +1,27 @@
+.block-content:has(> .start) {
+  box-sizing: border-box;
+  padding-block: var(--s2-spacing-600);
+}
+
+body:has(main .start) .greeting {
+  margin-bottom: var(--s2-spacing-600);
+  text-align: center;
+}
+
+body:has(main .start) .greeting h1 {
+  margin: 0;
+}
+
+.section:has(> .block-content > .start) {
+  container-type: inline-size;
+}
+
+@container (width < 600px) {
+  .block-content:has(> .start) {
+    padding-block: var(--s2-spacing-400);
+  }
+
+  body:has(main .start) .greeting {
+    margin-bottom: var(--s2-spacing-400);
+  }
+}

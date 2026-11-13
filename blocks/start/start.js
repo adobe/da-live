@@ -6,6 +6,7 @@ import { copyConfig, copyContent, previewContent } from './index.js';
 import { getNx2Api, sanitizePathParts } from '../../scripts/utils.js';
 
 const sheet = await getSheet('/blocks/start/start.css');
+const pageSheet = await getSheet('/blocks/landing/landing.css');
 
 const DA_ORIGIN = getDaAdmin();
 
@@ -350,8 +351,6 @@ class DaStart extends LitElement {
 
   render() {
     return html`
-      <img src="/blocks/start/dark-alley.jpg" class="background"/>
-      <div class="gradient"></div>
       <div class="foreground step-${this.activeStep}-active">
         <ul class="step-count">
           <li>1</li>
@@ -369,5 +368,6 @@ class DaStart extends LitElement {
 customElements.define('da-start', DaStart);
 
 export default function init(el) {
+  if (!document.adoptedStyleSheets.includes(pageSheet)) document.adoptedStyleSheets.push(pageSheet);
   el.append(document.createElement('da-start'));
 }

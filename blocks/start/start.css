@@ -1,11 +1,6 @@
 :host {
   display: flex;
   justify-content: center;
-  align-items: center;
-  height: 100vh;
-  position: relative;
-  color: #fff;
-  background: #000;
 }
 
 h2 {
@@ -19,23 +14,6 @@ input {
 
 a {
   color: #1379f3;
-}
-
-.gradient {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle, rgb(0 0 0 / 64.8%) 0%, rgb(0 0 0 / 52.4%) 100%);
-}
-
-.background {
-  width: 100vw;
-  height: 100vh;
-  object-fit: cover;
-  position: absolute;
-}
-
-.foreground {
-  position: relative;
 }
 
 ul.step-count {
