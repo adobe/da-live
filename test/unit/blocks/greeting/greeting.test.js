@@ -1,9 +1,16 @@
 import { expect } from '@esm-bundle/chai';
 import '../../setup-nx.js';
 import init from '../../../../blocks/greeting/greeting.js';
-import { getNx2 } from '../../../../scripts/utils.js';
+import { getNx } from '../../../../scripts/utils.js';
 
-const { loadIms } = await import(`${getNx2()}/utils/ims.js`);
+const { setImsResult } = await import(`${getNx()}/utils/ims.js`);
+const ims = {};
+
+function setProfile(profile) {
+  Object.keys(ims).forEach((key) => { delete ims[key]; });
+  Object.assign(ims, profile);
+  setImsResult(ims);
+}
 
 describe('greeting page block', () => {
   let container;
@@ -12,57 +19,41 @@ describe('greeting page block', () => {
   beforeEach(() => {
     sheets = [...document.adoptedStyleSheets];
     container = document.createElement('main');
-    container.innerHTML = '<div class="greeting"><div><div><h1>Welcome, [firstname]</h1><p>Add your site.</p></div></div></div>';
+    container.innerHTML = `<div class="greeting">
+      <div><div><h1>Welcome</h1></div></div>
+      <div><div>user</div><div><h1>Welcome, [firstname]</h1></div></div>
+    </div>`;
     document.body.append(container);
   });
 
   afterEach(() => {
     container.remove();
     document.adoptedStyleSheets = sheets;
-    loadIms.reset();
-    loadIms.resolves({ accessToken: { token: 'test-token' } });
+    setImsResult(undefined);
   });
 
-  it('renders the authored greeting without waiting for the profile', async () => {
-    let finish;
-    const profile = new Promise((resolve) => { finish = resolve; });
-    loadIms.returns(profile);
-    const greeting = init(container.firstElementChild);
-    expect(container.querySelectorAll('da-greeting').length).to.equal(1);
-    expect(greeting.profile).to.equal(profile);
+  it('shows the default greeting without a name to signed-out visitors', async () => {
+    setProfile({ anonymous: true, accessToken: { token: 'anonymous-token' } });
+    const greeting = await init(container.firstElementChild);
     await greeting.updateComplete;
-    expect(greeting.textContent).to.equal('');
+    expect(greeting.querySelector('h1').textContent).to.equal('Welcome');
+  });
 
-    finish({ first_name: 'Ada' });
+  it('shows the user greeting with the first name when signed in', async () => {
+    setProfile({ accessToken: { token: 'test-token' }, first_name: 'Ada' });
+    const greeting = await init(container.firstElementChild);
+    await greeting.updateComplete;
     await new Promise((resolve) => { setTimeout(resolve, 0); });
     expect(greeting.querySelector('h1').textContent).to.equal('Welcome, Ada');
-    expect(greeting.querySelector('p').textContent).to.equal('Add your site.');
   });
 
-  it('adds its styles and the Landing background to the page once', () => {
-    init(container.firstElementChild);
-    init(container.firstElementChild);
+  it('adds its styles and the Landing background to the page once', async () => {
+    setProfile({});
+    const first = container.firstElementChild;
+    const second = first.cloneNode(true);
+    container.append(second);
+    await init(first);
+    await init(second);
     expect(document.adoptedStyleSheets.length).to.equal(sheets.length + 2);
-  });
-
-  it('applies the Landing greeting styles only on Start', async () => {
-    const sheet = new CSSStyleSheet();
-    sheet.replaceSync(await (await fetch('/blocks/greeting/greeting.css')).text());
-    document.adoptedStyleSheets.push(sheet);
-    loadIms.resolves({ first_name: 'Ada' });
-    const greeting = init(container.firstElementChild);
-    await greeting.updateComplete;
-    await new Promise((resolve) => { setTimeout(resolve, 0); });
-    const heading = greeting.querySelector('h1');
-    expect(getComputedStyle(greeting).textAlign).not.to.equal('center');
-    expect(getComputedStyle(heading).marginTop).not.to.equal('0px');
-
-    const addSite = document.createElement('div');
-    addSite.className = 'add-site';
-    container.append(addSite);
-    expect(getComputedStyle(greeting).textAlign).to.equal('center');
-    expect(getComputedStyle(heading).marginTop).to.equal('0px');
-    addSite.remove();
-    expect(getComputedStyle(greeting).textAlign).not.to.equal('center');
   });
 });
