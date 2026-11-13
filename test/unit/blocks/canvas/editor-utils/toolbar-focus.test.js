@@ -111,6 +111,16 @@ describe('toolbar keyboard access (#1542)', () => {
       expect(toolbarController.isFocusInToolbar()).to.be.true;
     });
 
+    it('shows the focus ring even when the browser would not (focus moved by script)', async () => {
+      activateWysiwyg();
+      toolbarController.focusToolbar();
+      await tb.updateComplete;
+      const wrap = tb.shadowRoot.querySelector('.toolbar-wrap');
+      expect(wrap.hasAttribute('data-keyboard')).to.be.true;
+      wrap.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, composed: true }));
+      expect(wrap.hasAttribute('data-keyboard')).to.be.false;
+    });
+
     it('prefers the block toolbar when a block is selected', async () => {
       activateDoc();
       await insertBlock();

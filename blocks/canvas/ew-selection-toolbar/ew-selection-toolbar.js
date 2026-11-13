@@ -10,6 +10,7 @@ import {
 } from '../editor-utils/command-helpers.js';
 import { toolbarController } from '../editor-utils/toolbar-controller.js';
 import {
+  clearKeyboardFocus,
   focusFirstItem,
   handleToolbarNavKey,
   returnFocusFromPopup,
@@ -454,6 +455,7 @@ class EwSelectionToolbar extends LitElement {
     return html`
       <div class="toolbar-wrap" popover="manual" role="toolbar"
         aria-label="Text formatting" aria-orientation="horizontal"
+        @pointerdown=${() => clearKeyboardFocus(this._wrap)}
         @mousedown=${(e) => e.preventDefault()}
         @focusin=${(e) => this._onToolbarFocusIn(e)}
         @keydown=${(e) => this._onToolbarKeydown(e)}

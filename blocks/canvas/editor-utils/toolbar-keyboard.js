@@ -35,11 +35,28 @@ export function syncRovingTabindex(root, current) {
   return active;
 }
 
+/* Chrome draws :focus-visible on script-moved focus only after a plain key press in the
+ * same document. Alt+F10 carries a modifier, and in the WYSIWYG iframe it never reaches
+ * this document at all, so after any click on the page the focused control would have
+ * no ring. While this attribute is on the toolbar, its CSS draws the ring on :focus. */
+const KEYBOARD_ATTR = 'data-keyboard';
+
+function markKeyboardFocus(root) {
+  root.setAttribute(KEYBOARD_ATTR, '');
+}
+
+/** Back to the browser's own focus-ring heuristics — call on pointer interaction. */
+export function clearKeyboardFocus(root) {
+  root?.removeAttribute(KEYBOARD_ATTR);
+}
+
 /** Focus the first control. Returns false when the toolbar has none. */
 export function focusFirstItem(root) {
   const first = syncRovingTabindex(root, null);
-  first?.focus();
-  return Boolean(first);
+  if (!first) return false;
+  markKeyboardFocus(root);
+  first.focus({ focusVisible: true });
+  return true;
 }
 
 /** A picker or menu that closes with focus on one of its options (Escape, or an option
@@ -69,7 +86,8 @@ export function handleToolbarNavKey(e, root) {
     End: last,
   }[e.key];
   e.preventDefault();
+  markKeyboardFocus(root);
   syncRovingTabindex(root, items[next]);
-  items[next].focus();
+  items[next].focus({ focusVisible: true });
   return true;
 }

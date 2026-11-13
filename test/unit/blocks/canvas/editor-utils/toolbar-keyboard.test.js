@@ -1,8 +1,10 @@
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
 import {
   toolbarItems,
   syncRovingTabindex,
   focusFirstItem,
+  clearKeyboardFocus,
   handleToolbarNavKey,
   returnFocusFromPopup,
 } from '../../../../../blocks/canvas/editor-utils/toolbar-keyboard.js';
@@ -68,9 +70,26 @@ describe('toolbar keyboard helpers', () => {
     expect(activeId()).to.equal('a');
   });
 
+  it('marks keyboard focus so the ring shows without :focus-visible, until a pointer clears it', () => {
+    focusFirstItem(wrap);
+    expect(wrap.hasAttribute('data-keyboard')).to.be.true;
+    clearKeyboardFocus(wrap);
+    expect(wrap.hasAttribute('data-keyboard')).to.be.false;
+    byId('a').focus();
+    handleToolbarNavKey(key('ArrowRight'), wrap);
+    expect(wrap.hasAttribute('data-keyboard')).to.be.true;
+  });
+
+  it('asks the browser for a visible focus ring', () => {
+    const spy = sinon.spy(byId('a'), 'focus');
+    focusFirstItem(wrap);
+    expect(spy.calledWith({ focusVisible: true })).to.be.true;
+  });
+
   it('reports a toolbar with no controls', () => {
     wrap.innerHTML = '<button disabled>x</button>';
     expect(focusFirstItem(wrap)).to.be.false;
+    expect(wrap.hasAttribute('data-keyboard')).to.be.false;
   });
 
   it('moves with Left/Right (wrapping) and Home/End', () => {

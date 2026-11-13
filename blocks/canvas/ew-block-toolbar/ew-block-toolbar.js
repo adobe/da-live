@@ -8,6 +8,7 @@ import { requestComment } from '../editor-utils/command-helpers.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { toolbarController } from '../editor-utils/toolbar-controller.js';
 import {
+  clearKeyboardFocus,
   focusFirstItem,
   handleToolbarNavKey,
   returnFocusFromPopup,
@@ -312,6 +313,7 @@ class EwBlockToolbar extends LitElement {
     return html`
       <div class="toolbar-wrap" role="toolbar" aria-label="Block actions"
         aria-orientation="horizontal"
+        @pointerdown=${() => clearKeyboardFocus(this._wrap)}
         @mousedown=${(e) => e.preventDefault()}
         @focusin=${(e) => this._onToolbarFocusIn(e)}
         @keydown=${(e) => this._onToolbarKeydown(e)}
