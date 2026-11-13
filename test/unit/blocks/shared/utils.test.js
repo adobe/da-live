@@ -30,6 +30,12 @@ import {
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 describe('getSheetByIndex', () => {
+  it('Handles an absent hlx6 org config', () => {
+    expect(getSheetByIndex(null)).to.equal(undefined);
+    expect(getFirstSheet(null)).to.equal(undefined);
+    expect(getSheetByName(null, 'library')).to.equal(undefined);
+  });
+
   it('Returns data directly for non-multi-sheet', () => {
     const json = { ':type': 'sheet', data: [{ a: 1 }] };
     expect(getSheetByIndex(json)).to.deep.equal([{ a: 1 }]);
@@ -1089,6 +1095,58 @@ describe('fetchDaConfigs', () => {
     expect(orgConfig).to.deep.equal({ error: 'Error loading /cfgfail', status: 500 });
   });
 
+  it('uses only the hlx6 site config and shares concurrent and repeated requests', async () => {
+    const org = 'cfg-hlx6-only';
+    const site = 'site';
+    const calls = [];
+    window.fetch = async (url) => {
+      calls.push(String(url));
+      if (String(url).includes('/ping/')) {
+        return new Response('', { headers: { 'x-api-upgrade-available': 'true' } });
+      }
+      if (String(url).startsWith(DA_ORIGIN)) return new Response('', { status: 404 });
+      return new Response(JSON.stringify({ config: [{ key: 'editor.path', value: '/canvas#' }] }));
+    };
+
+    const [first, second] = await Promise.all([
+      Promise.all(fetchDaConfigs({ org, site })),
+      Promise.all(fetchDaConfigs({ org, site })),
+    ]);
+    const repeated = await Promise.all(fetchDaConfigs({ org, site }));
+    expect(first).to.have.lengthOf(2);
+    expect(first[0]).to.equal(null);
+    expect(getFirstSheet(first[1])).to.deep.equal([{ key: 'editor.path', value: '/canvas#' }]);
+    expect(second).to.deep.equal(first);
+    expect(repeated).to.deep.equal(first);
+    expect(calls).to.deep.equal([
+      `https://admin.hlx.page/ping/${org}/${site}`,
+      `https://api.aem.live/${org}/sites/${site}/config/editor/da.json`,
+    ]);
+  });
+
+  it('does not inherit cached org config on hlx6 or affect a legacy site in the same org', async () => {
+    const org = 'cfg-mixed-backends';
+    const orgJson = { data: [{ key: 'legacy', value: 'org' }] };
+    const calls = [];
+    window.fetch = async (url) => {
+      calls.push(String(url));
+      if (String(url).includes('/ping/')) {
+        return new Response('', { headers: String(url).endsWith('/upgraded') ? { 'x-api-upgrade-available': 'true' } : {} });
+      }
+      if (String(url).startsWith('https://api.aem.live')) {
+        return new Response(JSON.stringify({ config: [] }));
+      }
+      return new Response(JSON.stringify(orgJson));
+    };
+
+    const [cachedOrg] = await Promise.all(fetchDaConfigs({ org }));
+    const [hlx6Org] = await Promise.all(fetchDaConfigs({ org, site: 'upgraded' }));
+    const [legacyOrg] = await Promise.all(fetchDaConfigs({ org, site: 'legacy' }));
+    expect(hlx6Org).to.equal(null);
+    expect(legacyOrg).to.equal(cachedOrg);
+    expect(calls.filter((url) => url === `${DA_ORIGIN}/config/${org}/`)).to.have.lengthOf(1);
+  });
+
   it('exposes the x-da-actions permissions without changing the config', async () => {
     window.fetch = async (url) => {
       if (String(url).includes('/ping/')) return new Response('', { status: 200 });
@@ -1195,9 +1253,47 @@ describe('canEditOrgConfig', () => {
     expect(await canEditOrgConfig('settings-404')).to.be.true;
   });
 
+  it('checks hlx6 site-config write access without requesting legacy org config', async () => {
+    const org = 'settings-hlx6-write';
+    const site = 'site';
+    const calls = [];
+    window.fetch = async (url) => {
+      calls.push(String(url));
+      if (String(url).includes('/ping/')) {
+        return new Response('', { headers: { 'x-api-upgrade-available': 'true' } });
+      }
+      return new Response(JSON.stringify({ config: [] }), { headers: { 'X-da-actions': '/x=read,write' } });
+    };
+
+    expect(await canEditOrgConfig(org, site)).to.be.true;
+    expect(calls).to.deep.equal([
+      `https://admin.hlx.page/ping/${org}/${site}`,
+      `https://api.aem.live/${org}/sites/${site}/config/editor/da.json`,
+    ]);
+  });
+
+  it('does not offer permissions when the hlx6 site config denies access', async () => {
+    const calls = [];
+    window.fetch = async (url) => {
+      calls.push(String(url));
+      if (String(url).includes('/ping/')) {
+        return new Response('', { headers: { 'x-api-upgrade-available': 'true' } });
+      }
+      return new Response('', { status: 403 });
+    };
+
+    expect(await canEditOrgConfig('settings-hlx6-denied', 'site')).to.be.false;
+    expect(calls.filter((url) => url.startsWith(DA_ORIGIN))).to.have.lengthOf(0);
+  });
+
   it('is false when the config fetch throws', async () => {
     window.fetch = async () => { throw new Error('offline'); };
     expect(await canEditOrgConfig('settings-throw')).to.be.false;
+  });
+
+  it('is false when the site upgrade probe fails', async () => {
+    window.fetch = async () => { throw new Error('offline'); };
+    expect(await canEditOrgConfig('settings-probe-throw', 'site')).to.be.false;
   });
 
   it('is false without an org, without fetching', async () => {

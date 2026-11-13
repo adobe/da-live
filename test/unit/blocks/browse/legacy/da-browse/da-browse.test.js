@@ -396,6 +396,45 @@ describe('DaBrowse Component', () => {
     }
   });
 
+  it('drops inherited legacy editor settings when navigating to hlx6 in the same org', async () => {
+    const savedFetch = window.fetch;
+    const org = 'browse-mixed-backends';
+    const legacyRequests = [];
+    window.fetch = async (url) => {
+      const href = String(url);
+      if (href.includes('/ping/')) {
+        return new Response('', { headers: href.endsWith('/upgraded') ? { 'x-api-upgrade-available': 'true' } : {} });
+      }
+      if (href.startsWith('https://admin.da.live/config/')) {
+        legacyRequests.push(href);
+        return new Response(JSON.stringify({ data: [{ key: 'editor.path', value: `/${org}=/form#` }] }), { headers: { 'X-da-actions': '/x=read,write' } });
+      }
+      if (href.includes('/config/editor/da.json')) {
+        return new Response(JSON.stringify({ config: [] }), { headers: { 'X-da-actions': '/x=read' } });
+      }
+      return new Response('[]');
+    };
+    const getList = stub(DaBrowse.prototype, 'getList').resolves([]);
+    try {
+      daBrowseComp.details = { org, site: 'legacy', fullpath: `/${org}/legacy`, depth: 2 };
+      document.body.append(daBrowseComp);
+      await completeUpdate(daBrowseComp);
+      expect(daBrowseComp.editor).to.equal('/form#');
+      const requestsBeforeNavigation = legacyRequests.length;
+
+      daBrowseComp.details = { org, site: 'upgraded', fullpath: `/${org}/upgraded`, depth: 2 };
+      await completeUpdate(daBrowseComp);
+      expect(daBrowseComp.editor).to.equal('/edit#');
+      expect(daBrowseComp.editorConfs).to.deep.equal([]);
+      expect(daBrowseComp._canEditOrgConfig).to.be.false;
+      expect(legacyRequests).to.have.lengthOf(requestsBeforeNavigation);
+    } finally {
+      daBrowseComp.remove();
+      getList.restore();
+      window.fetch = savedFetch;
+    }
+  });
+
   describe('getEditor', () => {
     function mockConfig(rows) {
       // getNx2Api's config.get pings isHlx6 first (HLX_ADMIN/ping/{org}/{site}); answer that
