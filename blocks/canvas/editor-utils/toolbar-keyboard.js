@@ -42,6 +42,15 @@ export function focusFirstItem(root) {
   return Boolean(first);
 }
 
+/** A picker or menu that closes with focus on one of its options (Escape, or an option
+ * chosen from the keyboard) would drop focus on <body>; hand it back to the control
+ * that opened it. `e` is the popup's bubbling `close` event. */
+export function returnFocusFromPopup(e, root) {
+  const popup = e.target;
+  if (!popup?.shadowRoot?.activeElement) return;
+  itemFor(toolbarItems(root), popup)?.focus();
+}
+
 const NAV_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'Home', 'End']);
 
 /** Arrow/Home/End navigation between controls. Returns true when handled. */

@@ -9,7 +9,12 @@ import {
   isImageNodeSelected,
 } from '../editor-utils/command-helpers.js';
 import { toolbarController } from '../editor-utils/toolbar-controller.js';
-import { focusFirstItem, handleToolbarNavKey, syncRovingTabindex } from '../editor-utils/toolbar-keyboard.js';
+import {
+  focusFirstItem,
+  handleToolbarNavKey,
+  returnFocusFromPopup,
+  syncRovingTabindex,
+} from '../editor-utils/toolbar-keyboard.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
@@ -221,8 +226,9 @@ class EwSelectionToolbar extends LitElement {
     this._linkDialogOpen = true;
   }
 
-  _closeLinkDialog() {
+  async _closeLinkDialog() {
     this._linkDialogOpen = false;
+    await this._dialogClosed('da-link-dialog');
     toolbarController.restoreFocus();
     toolbarController.refresh();
   }
@@ -231,8 +237,6 @@ class EwSelectionToolbar extends LitElement {
     const { href, text, title } = e.detail;
     this._closeLinkDialog();
     applyLink(this.view, { href, text, title });
-    toolbarController.restoreFocus();
-    toolbarController.refresh();
   }
 
   get linkDialogOpen() { return this._linkDialogOpen ?? false; }
@@ -246,8 +250,9 @@ class EwSelectionToolbar extends LitElement {
     this._altDialogOpen = true;
   }
 
-  _closeAltDialog() {
+  async _closeAltDialog() {
     this._altDialogOpen = false;
+    await this._dialogClosed('da-alt-dialog');
     toolbarController.restoreFocus();
     toolbarController.refresh();
   }
@@ -258,11 +263,16 @@ class EwSelectionToolbar extends LitElement {
     const { pos } = this.view.state.selection.$anchor;
     this._closeAltDialog();
     this.view.dispatch(this.view.state.tr.setNodeAttribute(pos, 'alt', alt));
-    toolbarController.restoreFocus();
-    toolbarController.refresh();
   }
 
   get altDialogOpen() { return this._altDialogOpen ?? false; }
+
+  /** Submitting doesn't close the modal itself: it stays open, and everything outside it
+   * inert, until it re-renders closed — so focus can only return to the editor after. */
+  async _dialogClosed(selector) {
+    await this.updateComplete;
+    await this.shadowRoot.querySelector(selector)?.updateComplete;
+  }
 
   /* ---- AEM assets check ---- */
 
@@ -446,7 +456,8 @@ class EwSelectionToolbar extends LitElement {
         aria-label="Text formatting" aria-orientation="horizontal"
         @mousedown=${(e) => e.preventDefault()}
         @focusin=${(e) => this._onToolbarFocusIn(e)}
-        @keydown=${(e) => this._onToolbarKeydown(e)}>
+        @keydown=${(e) => this._onToolbarKeydown(e)}
+        @close=${(e) => returnFocusFromPopup(e, this._wrap)}>
         <div class="toolbar-actions" ?data-disabled=${disabled}
           @click=${(e) => this._onToolbarClick(e)}>
           ${this._renderSections()}

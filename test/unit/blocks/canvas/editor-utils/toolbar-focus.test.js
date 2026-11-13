@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
-import { NodeSelection } from 'da-y-wrapper';
+import { NodeSelection, TextSelection } from 'da-y-wrapper';
 import { setNx } from '../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -239,6 +239,59 @@ describe('toolbar keyboard access (#1542)', () => {
       toolbarController.restoreFocus();
       expect(deepActive()).to.equal(iframe);
       expect(focusRequests).to.equal(1);
+    });
+  });
+
+  describe('focus never strands on <body>', () => {
+    let restore;
+    let dialogOpenAtRestore;
+
+    // A modal dialog makes the editor inert, so focus can only go back once it is gone.
+    const trackRestore = (isDialogOpen) => {
+      dialogOpenAtRestore = [];
+      restore = sinon.stub(toolbarController, 'restoreFocus')
+        .callsFake(() => dialogOpenAtRestore.push(isDialogOpen()));
+    };
+
+    afterEach(() => restore?.restore());
+
+    it('returns focus to a menu trigger when Escape closes the menu', async () => {
+      activateDoc();
+      await insertBlock();
+      editor.view.dispatch(editor.view.state.tr.setSelection(
+        TextSelection.create(editor.view.state.doc, 4),
+      ));
+      await tb.updateComplete;
+      const menu = tb.shadowRoot.querySelector('nx-menu');
+      menu.pressEscape();
+      expect(tb.shadowRoot.activeElement).to.equal(menu.querySelector('[slot="trigger"]'));
+    });
+
+    it('refocuses the editor only once the link dialog has closed', async () => {
+      activateDoc();
+      await tb.updateComplete;
+      tb.openLinkDialog(editor.view);
+      await tb.updateComplete;
+      const dialog = tb.shadowRoot.querySelector('da-link-dialog');
+      await dialog.updateComplete;
+      const isOpen = () => !!dialog.shadowRoot.querySelector('nx-dialog');
+      expect(isOpen()).to.be.true;
+      trackRestore(isOpen);
+      dialog.dispatchEvent(new CustomEvent('da-link-submit', { detail: { href: 'https://example.com', text: 'hello' } }));
+      await tick();
+      expect(dialogOpenAtRestore).to.deep.equal([false]);
+    });
+
+    it('refocuses the editor only once the delete confirmation has closed', async () => {
+      activateDoc();
+      await insertBlock();
+      await btb._onDeleteBlock();
+      await btb.updateComplete;
+      const isOpen = () => !!btb.shadowRoot.querySelector('da-confirm-dialog');
+      expect(isOpen()).to.be.true;
+      trackRestore(isOpen);
+      await btb._confirmDelete();
+      expect(dialogOpenAtRestore).to.deep.equal([false]);
     });
   });
 });

@@ -7,7 +7,12 @@ import { isMultiBlock, getMultiBlockTemplateRow } from '../editor-utils/multi-bl
 import { requestComment } from '../editor-utils/command-helpers.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { toolbarController } from '../editor-utils/toolbar-controller.js';
-import { focusFirstItem, handleToolbarNavKey, syncRovingTabindex } from '../editor-utils/toolbar-keyboard.js';
+import {
+  focusFirstItem,
+  handleToolbarNavKey,
+  returnFocusFromPopup,
+  syncRovingTabindex,
+} from '../editor-utils/toolbar-keyboard.js';
 import { blockLabel } from '../ew-page-outline/drop-targets.js';
 
 const nx = getNx();
@@ -263,7 +268,7 @@ class EwBlockToolbar extends LitElement {
     toolbarController.restoreFocus();
   }
 
-  _confirmDelete() {
+  async _confirmDelete() {
     this._pendingDelete = false;
     const { view } = this;
     if (!view) return;
@@ -272,6 +277,8 @@ class EwBlockToolbar extends LitElement {
     if (!node) return;
     view.dispatch(view.state.tr.delete(from, from + node.nodeSize));
     this.hide();
+    // The confirm dialog stays modal (everything outside it inert) until it re-renders away.
+    await this.updateComplete;
     toolbarController.restoreFocus();
   }
 
@@ -307,7 +314,8 @@ class EwBlockToolbar extends LitElement {
         aria-orientation="horizontal"
         @mousedown=${(e) => e.preventDefault()}
         @focusin=${(e) => this._onToolbarFocusIn(e)}
-        @keydown=${(e) => this._onToolbarKeydown(e)}>
+        @keydown=${(e) => this._onToolbarKeydown(e)}
+        @close=${(e) => returnFocusFromPopup(e, this._wrap)}>
         <button
           type="button"
           class="toolbar-btn block-replace"

@@ -4,6 +4,7 @@ import {
   syncRovingTabindex,
   focusFirstItem,
   handleToolbarNavKey,
+  returnFocusFromPopup,
 } from '../../../../../blocks/canvas/editor-utils/toolbar-keyboard.js';
 
 describe('toolbar keyboard helpers', () => {
@@ -103,5 +104,45 @@ describe('toolbar keyboard helpers', () => {
 
   it('ignores keys while focus is outside the toolbar', () => {
     expect(handleToolbarNavKey(key('ArrowRight'), wrap)).to.be.false;
+  });
+
+  describe('returnFocusFromPopup', () => {
+    const closeEvent = (target) => ({ target });
+
+    it('hands focus back to the menu trigger when the menu closes with an option focused', () => {
+      const menu = byId('menu');
+      const menuRoot = menu.attachShadow({ mode: 'open' });
+      menuRoot.innerHTML = '<slot name="trigger"></slot><button role="menuitem">Item</button>';
+      menuRoot.querySelector('[role="menuitem"]').focus();
+      returnFocusFromPopup(closeEvent(menu), wrap);
+      expect(activeId()).to.equal('trigger');
+    });
+
+    it('hands focus back to a picker closing with an option focused', () => {
+      const picker = byId('picker');
+      const option = document.createElement('button');
+      picker.shadowRoot.append(option);
+      option.focus();
+      returnFocusFromPopup(closeEvent(picker), wrap);
+      expect(picker.shadowRoot.activeElement).to.equal(picker.shadowRoot.querySelector('button'));
+    });
+
+    it('leaves focus alone when it already moved elsewhere (e.g. an outside click)', () => {
+      const menu = byId('menu');
+      menu.attachShadow({ mode: 'open' }).innerHTML = '<slot name="trigger"></slot>';
+      byId('b').focus();
+      returnFocusFromPopup(closeEvent(menu), wrap);
+      expect(activeId()).to.equal('b');
+    });
+
+    it('ignores close events from anything that is not a toolbar control', () => {
+      const stray = document.createElement('div');
+      const strayRoot = stray.attachShadow({ mode: 'open' });
+      strayRoot.innerHTML = '<button>x</button>';
+      wrap.append(stray);
+      strayRoot.querySelector('button').focus();
+      expect(() => returnFocusFromPopup(closeEvent(stray), wrap)).to.not.throw();
+      expect(strayRoot.activeElement).to.exist;
+    });
   });
 });
