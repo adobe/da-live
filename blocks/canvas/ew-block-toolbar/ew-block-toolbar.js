@@ -7,6 +7,13 @@ import { isMultiBlock, getMultiBlockTemplateRow } from '../editor-utils/multi-bl
 import { requestComment } from '../editor-utils/command-helpers.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { toolbarController } from '../editor-utils/toolbar-controller.js';
+import {
+  clearKeyboardFocus,
+  focusFirstItem,
+  handleToolbarNavKey,
+  returnFocusFromPopup,
+  syncRovingTabindex,
+} from '../editor-utils/toolbar-keyboard.js';
 import { blockLabel } from '../ew-page-outline/drop-targets.js';
 
 const nx = getNx();
@@ -98,6 +105,29 @@ class EwBlockToolbar extends LitElement {
   updated(changed) {
     if (changed.has('org') || changed.has('site')) {
       this._checkBlockLibrary();
+    }
+    syncRovingTabindex(this._wrap, this._rovingItem);
+  }
+
+  get _wrap() { return this.shadowRoot?.querySelector('.toolbar-wrap'); }
+
+  /** Alt+F10 lands here (via toolbarController.focusToolbar). */
+  async focusFirst() {
+    await this.updateComplete;
+    return focusFirstItem(this._wrap);
+  }
+
+  _onToolbarFocusIn(e) {
+    this._rovingItem = e.target;
+  }
+
+  _onToolbarKeydown(e) {
+    // An open picker owns its keys (it also prevents the Escape that closes it).
+    if (e.defaultPrevented || this.isInteracting) return;
+    if (handleToolbarNavKey(e, this._wrap)) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      toolbarController.restoreFocus();
     }
   }
 
@@ -236,10 +266,10 @@ class EwBlockToolbar extends LitElement {
 
   _cancelDelete() {
     this._pendingDelete = false;
-    this.view?.focus();
+    toolbarController.restoreFocus();
   }
 
-  _confirmDelete() {
+  async _confirmDelete() {
     this._pendingDelete = false;
     const { view } = this;
     if (!view) return;
@@ -248,7 +278,9 @@ class EwBlockToolbar extends LitElement {
     if (!node) return;
     view.dispatch(view.state.tr.delete(from, from + node.nodeSize));
     this.hide();
-    view.focus();
+    // The confirm dialog stays modal (everything outside it inert) until it re-renders away.
+    await this.updateComplete;
+    toolbarController.restoreFocus();
   }
 
   async _onReplaceBlock() {
@@ -279,7 +311,13 @@ class EwBlockToolbar extends LitElement {
     const { options, values } = this._variantState();
     const hasVariants = options.length > 0;
     return html`
-      <div class="toolbar-wrap" @mousedown=${(e) => e.preventDefault()}>
+      <div class="toolbar-wrap" role="toolbar" aria-label="Block actions"
+        aria-orientation="horizontal"
+        @pointerdown=${() => clearKeyboardFocus(this._wrap)}
+        @mousedown=${(e) => e.preventDefault()}
+        @focusin=${(e) => this._onToolbarFocusIn(e)}
+        @keydown=${(e) => this._onToolbarKeydown(e)}
+        @close=${(e) => returnFocusFromPopup(e, this._wrap)}>
         <button
           type="button"
           class="toolbar-btn block-replace"

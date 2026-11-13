@@ -27,5 +27,8 @@ export const MESSAGE_TYPES = Object.freeze({
   COMMENT_SHORTCUT: 'comment-shortcut',
   QUICK_EDIT_IFRAME_CLICK: 'quick-edit-iframe-click',
 
+  FOCUS_TOOLBAR: 'focus-toolbar',
+  FOCUS_EDITOR: 'focus-editor',
+
   IMAGE_REPLACE: 'image-replace',
 });

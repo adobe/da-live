@@ -36,9 +36,49 @@ const state = {
   blockEditOpen: false,
 };
 
+/** Pierce shadow roots to find the truly focused element. `document.activeElement`
+ * stops at a shadow host, so a focused iframe nested in a shadow root reports the
+ * host, not the iframe. */
+function deepActiveElement() {
+  let el = document.activeElement;
+  while (el?.shadowRoot?.activeElement) el = el.shadowRoot.activeElement;
+  return el;
+}
+
+/** `node` is `container` or inside it, across shadow boundaries — the selection
+ * toolbar is re-hosted in ew-editor-doc's shadow root while the block-edit modal is open. */
+function composedContains(container, node) {
+  for (let el = node; el; el = el.parentNode ?? el.host) {
+    if (el === container) return true;
+  }
+  return false;
+}
+
+/** The toolbar holding keyboard focus (including its menus and dialogs), or null. */
+function focusedToolbar() {
+  const active = deepActiveElement();
+  if (!active) return null;
+  return [toolbarEl, blockToolbarEl].find((el) => el && composedContains(el, active)) ?? null;
+}
+
+/** Focus left a toolbar. Only a move to somewhere other than the editing surfaces (or
+ * the other toolbar) leaves the editor — focus landing on <body> is a control that
+ * vanished under it (e.g. the toolbar hid after a command), not the user leaving. */
+function onToolbarFocusOut() {
+  setTimeout(() => {
+    if (state.activeSurface === null || focusedToolbar()) return;
+    const active = deepActiveElement();
+    if (!active || active === document.body) return;
+    if (state.iframeEl && active === state.iframeEl) return;
+    if (state.docView?.hasFocus?.()) return;
+    canvasBus.toolbarSurfaceRequest.emit({ surface: state.activeSurface, active: false });
+  }, 0);
+}
+
 function ensureToolbar() {
   if (toolbarEl) return toolbarEl;
   toolbarEl = document.createElement('ew-selection-toolbar');
+  toolbarEl.addEventListener('focusout', onToolbarFocusOut);
   document.body.append(toolbarEl);
   // The element definition loads lazily; re-render once it upgrades so a render
   // scheduled before the module resolved takes effect.
@@ -51,6 +91,7 @@ function ensureToolbar() {
 function ensureBlockToolbar() {
   if (blockToolbarEl) return blockToolbarEl;
   blockToolbarEl = document.createElement('ew-block-toolbar');
+  blockToolbarEl.addEventListener('focusout', onToolbarFocusOut);
   document.body.append(blockToolbarEl);
   blockToolbarLoading ??= import('../ew-block-toolbar/ew-block-toolbar.js')
     // eslint-disable-next-line no-use-before-define -- mutually recursive with render
@@ -142,15 +183,6 @@ function scheduleRender() {
     renderQueued = false;
     render();
   });
-}
-
-/** Pierce shadow roots to find the truly focused element. `document.activeElement`
- * stops at a shadow host, so a focused iframe nested in a shadow root reports the
- * host, not the iframe. */
-function deepActiveElement() {
-  let el = document.activeElement;
-  while (el?.shadowRoot?.activeElement) el = el.shadowRoot.activeElement;
-  return el;
 }
 
 /** Detect focus entering the wysiwyg iframe. The iframe element's own focus event
@@ -291,10 +323,39 @@ export const toolbarController = {
     scheduleRender();
   },
 
+  /** Whether keyboard focus is in a toolbar (its controls, menus or dialogs). */
+  isFocusInToolbar() {
+    return focusedToolbar() !== null;
+  },
+
+  /** Alt+F10: move keyboard focus to the visible toolbar. Returns false when none is
+   * showing, so the key can fall through. */
+  focusToolbar() {
+    // Apply a pending visibility change now, so the toolbar the user sees is the target.
+    if (renderQueued) render();
+    const target = [blockToolbarEl, toolbarEl]
+      .find((el) => el?.open && typeof el.focusFirst === 'function');
+    if (!target) return false;
+    target.focusFirst();
+    return true;
+  },
+
   /** After a toolbar command / dialog close — return focus to the active surface. */
   restoreFocus() {
-    if (state.activeSurface === 'doc') state.docView?.focus();
-    // wysiwyg: focus never left the iframe (toolbar suppresses it via mousedown).
+    if (state.activeSurface === 'doc') {
+      state.docView?.focus();
+      return;
+    }
+    // wysiwyg: a pointer user never left the iframe (the toolbar suppresses focus on
+    // mousedown). A keyboard user did, as does a dialog — whose close can drop focus on
+    // <body> when the control that opened it is gone — so send focus back. Only a text
+    // selection has a caret to restore; a block selection just refocuses the iframe.
+    if (state.activeSurface !== 'wysiwyg') return;
+    const active = deepActiveElement();
+    const lost = !active || active === document.body;
+    if (!lost && !focusedToolbar()) return;
+    state.iframeEl?.focus();
+    if (!state.blockBySurface.wysiwyg) canvasBus.wysiwygFocusRequest.emit();
   },
 
   reset() {

@@ -9,6 +9,13 @@ import {
   isImageNodeSelected,
 } from '../editor-utils/command-helpers.js';
 import { toolbarController } from '../editor-utils/toolbar-controller.js';
+import {
+  clearKeyboardFocus,
+  focusFirstItem,
+  handleToolbarNavKey,
+  returnFocusFromPopup,
+  syncRovingTabindex,
+} from '../editor-utils/toolbar-keyboard.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
@@ -108,6 +115,28 @@ class EwSelectionToolbar extends LitElement {
       || this._menus.some((m) => m.open);
   }
 
+  /* ---- Keyboard ---- */
+
+  /** Alt+F10 lands here (via toolbarController.focusToolbar). */
+  async focusFirst() {
+    await this.updateComplete;
+    return focusFirstItem(this._wrap);
+  }
+
+  _onToolbarFocusIn(e) {
+    this._rovingItem = e.target;
+  }
+
+  _onToolbarKeydown(e) {
+    // An open picker/menu owns its keys (it also prevents the Escape that closes it).
+    if (e.defaultPrevented || this.isInteracting) return;
+    if (handleToolbarNavKey(e, this._wrap)) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      toolbarController.restoreFocus();
+    }
+  }
+
   _icon(name) {
     return html`<svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-${name}-20-n.svg#icon"></use></svg>`;
   }
@@ -198,8 +227,9 @@ class EwSelectionToolbar extends LitElement {
     this._linkDialogOpen = true;
   }
 
-  _closeLinkDialog() {
+  async _closeLinkDialog() {
     this._linkDialogOpen = false;
+    await this._dialogClosed('da-link-dialog');
     toolbarController.restoreFocus();
     toolbarController.refresh();
   }
@@ -208,8 +238,6 @@ class EwSelectionToolbar extends LitElement {
     const { href, text, title } = e.detail;
     this._closeLinkDialog();
     applyLink(this.view, { href, text, title });
-    toolbarController.restoreFocus();
-    toolbarController.refresh();
   }
 
   get linkDialogOpen() { return this._linkDialogOpen ?? false; }
@@ -223,8 +251,9 @@ class EwSelectionToolbar extends LitElement {
     this._altDialogOpen = true;
   }
 
-  _closeAltDialog() {
+  async _closeAltDialog() {
     this._altDialogOpen = false;
+    await this._dialogClosed('da-alt-dialog');
     toolbarController.restoreFocus();
     toolbarController.refresh();
   }
@@ -235,11 +264,16 @@ class EwSelectionToolbar extends LitElement {
     const { pos } = this.view.state.selection.$anchor;
     this._closeAltDialog();
     this.view.dispatch(this.view.state.tr.setNodeAttribute(pos, 'alt', alt));
-    toolbarController.restoreFocus();
-    toolbarController.refresh();
   }
 
   get altDialogOpen() { return this._altDialogOpen ?? false; }
+
+  /** Submitting doesn't close the modal itself: it stays open, and everything outside it
+   * inert, until it re-renders closed — so focus can only return to the editor after. */
+  async _dialogClosed(selector) {
+    await this.updateComplete;
+    await this.shadowRoot.querySelector(selector)?.updateComplete;
+  }
 
   /* ---- AEM assets check ---- */
 
@@ -297,6 +331,7 @@ class EwSelectionToolbar extends LitElement {
       this._checkAemAssets();
     }
     this._syncPopover();
+    syncRovingTabindex(this._wrap, this._rovingItem);
   }
 
   _renderToolbarButton({ id, label, icon }) {
@@ -418,7 +453,13 @@ class EwSelectionToolbar extends LitElement {
   render() {
     const disabled = !this.view;
     return html`
-      <div class="toolbar-wrap" popover="manual" @mousedown=${(e) => e.preventDefault()}>
+      <div class="toolbar-wrap" popover="manual" role="toolbar"
+        aria-label="Text formatting" aria-orientation="horizontal"
+        @pointerdown=${() => clearKeyboardFocus(this._wrap)}
+        @mousedown=${(e) => e.preventDefault()}
+        @focusin=${(e) => this._onToolbarFocusIn(e)}
+        @keydown=${(e) => this._onToolbarKeydown(e)}
+        @close=${(e) => returnFocusFromPopup(e, this._wrap)}>
         <div class="toolbar-actions" ?data-disabled=${disabled}
           @click=${(e) => this._onToolbarClick(e)}>
           ${this._renderSections()}

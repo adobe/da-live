@@ -7,6 +7,9 @@
    (inset/margin) to keep the bottom-centre anchoring. Hidden by the UA
    `[popover]:not(:popover-open)` rule until shown. */
 .toolbar-wrap {
+  /* Pickers draw their own focus ring; match the toolbar buttons'. */
+  --s2-focus-ring-color: var(--s2-blue-800);
+
   position: fixed;
   inset: auto;
   bottom: 40px;
@@ -60,6 +63,11 @@
   background: var(--s2-gray-200);
 }
 
+.toolbar-btn:focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: 2px;
+}
+
 .toolbar-btn[aria-pressed="true"] {
   background: var(--s2-blue-200);
   color: var(--s2-blue-900);
@@ -105,4 +113,15 @@
 .toolbar-block-type-wrap {
   display: inline-flex;
   align-items: center;
+}
+
+/* Focus moved by Alt+F10 doesn't match :focus-visible after a click on the page (see
+   toolbar-keyboard.js), so draw the ring on :focus while the toolbar is in keyboard
+   mode. The picker draws its own ring inside its shadow root only on :focus-visible;
+   outline its wrap instead, which is the trigger's box. */
+.toolbar-wrap[data-keyboard] .toolbar-btn:focus,
+.toolbar-wrap[data-keyboard] .toolbar-block-type-wrap:focus-within {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: 2px;
+  border-radius: var(--s2-corner-radius-100);
 }

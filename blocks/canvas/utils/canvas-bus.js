@@ -29,6 +29,8 @@ export const canvasBus = Object.freeze({
   blockEditRequest: createChannel(),
   preflightRunRequest: createChannel(),
   toolbarSurfaceRequest: createChannel(),
+  // Return keyboard focus to the caret in the WYSIWYG iframe (posts FOCUS_EDITOR).
+  wysiwygFocusRequest: createChannel(),
 
   undoState: createChannel(),
   mergeConflictsState: createChannel(),

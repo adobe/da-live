@@ -3,6 +3,9 @@
 }
 
 .toolbar-wrap {
+  /* Pickers draw their own focus ring; match the toolbar buttons'. */
+  --s2-focus-ring-color: var(--s2-blue-800);
+
   display: none;
   position: fixed;
   bottom: 40px;
@@ -52,6 +55,11 @@
   cursor: default;
 }
 
+.toolbar-btn:focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: 2px;
+}
+
 .toolbar-btn:hover:not(:disabled) {
   background: var(--s2-gray-200);
 }
@@ -93,4 +101,15 @@
   --nx-picker-radius: var(--s2-corner-radius-100);
 
   font-weight: inherit;
+}
+
+/* Focus moved by Alt+F10 doesn't match :focus-visible after a click on the page (see
+   toolbar-keyboard.js), so draw the ring on :focus while the toolbar is in keyboard
+   mode. The picker draws its own ring inside its shadow root only on :focus-visible;
+   outline its wrap instead, which is the trigger's box. */
+.toolbar-wrap[data-keyboard] .toolbar-btn:focus,
+.toolbar-wrap[data-keyboard] .toolbar-variant-wrap:focus-within {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: 2px;
+  border-radius: var(--s2-corner-radius-100);
 }

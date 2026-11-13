@@ -219,6 +219,8 @@ export default async function initProse({
         canvasBus.newVersionRequest.emit();
         return true;
       },
+      // WAI-ARIA convention for reaching an editor's toolbar from the keyboard.
+      'Alt-F10': () => toolbarController.focusToolbar(),
       ...getHeadingKeymap(schema),
     }),
     keymap({
