@@ -1,4 +1,4 @@
-import { safeHref } from '../../../shared/safe-href.js';
+import { safeHref } from '../safe-href.js';
 import { childrenAt } from './nodes.js';
 import { HEADING_LEVELS, LIST_NAMES } from './schema.js';
 

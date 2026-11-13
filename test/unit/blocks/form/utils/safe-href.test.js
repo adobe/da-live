@@ -1,6 +1,6 @@
 /* eslint-disable no-script-url */
 import { expect } from '@esm-bundle/chai';
-import { safeHref } from '../../../../blocks/shared/safe-href.js';
+import { safeHref } from '../../../../../blocks/form/utils/safe-href.js';
 
 const expectKept = (hrefs) => hrefs.forEach((href) => expect(safeHref(href), href).to.equal(href));
 const expectRejected = (hrefs) => hrefs.forEach((href) => {
