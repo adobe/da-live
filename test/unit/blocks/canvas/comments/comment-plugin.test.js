@@ -1,8 +1,10 @@
 import { expect } from '@esm-bundle/chai';
+import { yUndo, yUndoPluginKey } from 'da-y-wrapper';
 import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.js';
 import { createCommentsController } from '../../../../../blocks/canvas/comments/helpers/controller.js';
 import commentPlugin, { commentPluginKey } from '../../../../../blocks/canvas/comments/comment-plugin.js';
-import { encodeAnchor } from '../../../../../blocks/canvas/comments/helpers/anchor.js';
+import { encodeAnchor, decodeAnchor } from '../../../../../blocks/canvas/comments/helpers/anchor.js';
+import { moveBlock, moveSection } from '../../../../../blocks/canvas/editor-utils/blocks.js';
 
 function makeStore() {
   const map = new Map();
@@ -475,4 +477,180 @@ describe('commentPlugin', () => {
     expect(commentPluginKey.getState(editor.view.state).ranges.has('t1')).to.be.false;
     expect(editor.view.dom.querySelector('[data-comment-thread="t1"]')).to.be.null;
   });
+  [true, false].forEach((panelOpen) => describe(`moves (comments panel ${panelOpen ? 'open' : 'closed'})`, () => {
+    const tick = () => new Promise((resolve) => { setTimeout(resolve, 0); });
+
+    function addComment(store, id, selectionData) {
+      const encoded = encodeAnchor({ selectionData, state: editor.view.state });
+      store.set(id, {
+        id, threadId: null, ...encoded, author: { id: 'u' }, body: '', createdAt: 0, resolved: false,
+      });
+    }
+
+    function textRange(text) {
+      let range = null;
+      editor.view.state.doc.descendants((node, pos) => {
+        if (range || !node.isText) return;
+        const i = node.text.indexOf(text);
+        if (i >= 0) range = { from: pos + i, to: pos + i + text.length };
+      });
+      return range;
+    }
+
+    function block(schema, name, copy) {
+      const cell = (t) => schema.nodes.table_cell.create(null, schema.node('paragraph', null, schema.text(t)));
+      return schema.nodes.table.create(null, [
+        schema.nodes.table_row.create(null, cell(name)),
+        schema.nodes.table_row.create(null, cell(copy)),
+      ]);
+    }
+
+    it('keeps a text comment attached when its section moves', async () => {
+      const { store } = await setup();
+      const { schema } = editor.view.state;
+      const para = (t) => schema.node('paragraph', null, schema.text(t));
+      editor.view.dispatch(editor.view.state.tr.replaceWith(0, editor.view.state.doc.content.size, [
+        para('alpha'), schema.nodes.horizontal_rule.create(), para('beta gamma'),
+      ]));
+      addComment(store, 't1', { ...textRange('gamma'), anchorType: 'text', anchorText: 'gamma' });
+      controller.setPanelOpen(panelOpen);
+      await tick();
+
+      moveSection(editor.view, 1, 0, 'before');
+      await tick();
+
+      const expected = textRange('gamma');
+      if (panelOpen) {
+        const { ranges } = commentPluginKey.getState(editor.view.state);
+        expect(ranges.get('t1')).to.deep.include(expected);
+      }
+      expect(decodeAnchor({ anchor: store.get('t1'), state: editor.view.state })).to.deep.equal(expected);
+    });
+
+    it('keeps a comment spanning paragraphs attached when its section moves', async () => {
+      const { store } = await setup();
+      const { schema } = editor.view.state;
+      const para = (t) => schema.node('paragraph', null, schema.text(t));
+      editor.view.dispatch(editor.view.state.tr.replaceWith(0, editor.view.state.doc.content.size, [
+        para('alpha'), schema.nodes.horizontal_rule.create(), para('beta'), para('gamma'),
+      ]));
+      const span = () => ({ from: textRange('beta').from, to: textRange('gamma').to });
+      addComment(store, 't1', { ...span(), anchorType: 'text', anchorText: 'beta gamma' });
+      controller.setPanelOpen(panelOpen);
+      await tick();
+
+      moveSection(editor.view, 1, 0, 'before');
+      await tick();
+
+      const expected = span();
+      if (panelOpen) {
+        const { ranges } = commentPluginKey.getState(editor.view.state);
+        expect(ranges.get('t1')).to.deep.include(expected);
+      }
+      expect(decodeAnchor({ anchor: store.get('t1'), state: editor.view.state })).to.deep.equal(expected);
+    });
+
+    it('keeps a block comment on its block when blocks are reordered', async () => {
+      const { store } = await setup();
+      const { schema } = editor.view.state;
+      editor.view.dispatch(editor.view.state.tr.replaceWith(0, editor.view.state.doc.content.size, [
+        block(schema, 'hero', 'hero copy'), block(schema, 'cards', 'cards copy'),
+      ]));
+      const heroSize = editor.view.state.doc.child(0).nodeSize;
+      addComment(store, 'b1', { from: 0, to: heroSize, anchorType: 'table', anchorText: 'block: hero' });
+      controller.setPanelOpen(panelOpen);
+      await tick();
+
+      moveBlock(editor.view, 0, 1, 'after');
+      await tick();
+
+      const heroFrom = editor.view.state.doc.child(0).nodeSize;
+      expect(editor.view.state.doc.child(1).textContent).to.contain('hero copy');
+      const expected = { from: heroFrom, to: heroFrom + heroSize };
+      if (panelOpen) {
+        const { ranges } = commentPluginKey.getState(editor.view.state);
+        expect(ranges.get('b1')).to.deep.include(expected);
+      }
+      expect(decodeAnchor({ anchor: store.get('b1'), state: editor.view.state })).to.deep.equal(expected);
+    });
+
+    it('keeps a moved comment attached after undoing the move', async () => {
+      const { store } = await setup();
+      const { schema } = editor.view.state;
+      const para = (t) => schema.node('paragraph', null, schema.text(t));
+      editor.view.dispatch(editor.view.state.tr.replaceWith(0, editor.view.state.doc.content.size, [
+        para('alpha'), schema.nodes.horizontal_rule.create(), para('beta gamma'),
+      ]));
+      addComment(store, 't1', { ...textRange('gamma'), anchorType: 'text', anchorText: 'gamma' });
+      controller.setPanelOpen(panelOpen);
+      await tick();
+      yUndoPluginKey.getState(editor.view.state).undoManager.stopCapturing();
+
+      moveSection(editor.view, 1, 0, 'before');
+      await tick();
+      yUndo(editor.view.state);
+      await tick();
+
+      expect(editor.view.state.doc.child(0).textContent).to.equal('alpha');
+      const expected = textRange('gamma');
+      if (panelOpen) {
+        const { ranges } = commentPluginKey.getState(editor.view.state);
+        expect(ranges.get('t1')).to.deep.include(expected);
+      }
+      expect(decodeAnchor({ anchor: store.get('t1'), state: editor.view.state })).to.deep.equal(expected);
+    });
+
+    it('does not touch stored anchors on ordinary edits or their undo', async () => {
+      const { store } = await setup();
+      const { schema } = editor.view.state;
+      const para = (t) => schema.node('paragraph', null, schema.text(t));
+      editor.view.dispatch(editor.view.state.tr.replaceWith(0, editor.view.state.doc.content.size, [
+        para('alpha'), para('beta'), block(schema, 'hero', 'hero copy'),
+      ]));
+      addComment(store, 't1', { ...textRange('beta'), anchorType: 'text', anchorText: 'beta' });
+      const { doc } = editor.view.state;
+      const heroFrom = doc.child(0).nodeSize + doc.child(1).nodeSize;
+      const heroSize = doc.child(2).nodeSize;
+      addComment(store, 'b1', { from: heroFrom, to: heroFrom + heroSize, anchorType: 'table', anchorText: 'block: hero' });
+      controller.setPanelOpen(panelOpen);
+      await tick();
+      yUndoPluginKey.getState(editor.view.state).undoManager.stopCapturing();
+      const before = JSON.stringify([store.get('t1'), store.get('b1')]);
+
+      editor.view.dispatch(editor.view.state.tr.insertText('X', 2));
+      editor.view.dispatch(editor.view.state.tr.insert(0, para('new first')));
+      editor.view.dispatch(editor.view.state.tr.insert(editor.view.state.doc.child(0).nodeSize, para('between')));
+      editor.view.dispatch(editor.view.state.tr.split(textRange('beta').to));
+      await tick();
+      yUndo(editor.view.state);
+      await tick();
+
+      expect(JSON.stringify([store.get('t1'), store.get('b1')])).to.equal(before);
+      expect(decodeAnchor({ anchor: store.get('t1'), state: editor.view.state })).to.deep.equal(textRange('beta'));
+      expect(decodeAnchor({ anchor: store.get('b1'), state: editor.view.state })).to.not.be.null;
+    });
+
+    it('does not rewrite anchors that survive a move', async () => {
+      const { store } = await setup();
+      const { schema } = editor.view.state;
+      const para = (t) => schema.node('paragraph', null, schema.text(t));
+      editor.view.dispatch(editor.view.state.tr.replaceWith(0, editor.view.state.doc.content.size, [
+        para('alpha'), para('beta'), para('gamma'),
+      ]));
+      addComment(store, 't1', { ...textRange('alpha'), anchorType: 'text', anchorText: 'alpha' });
+      controller.setPanelOpen(panelOpen);
+      await tick();
+      const before = JSON.stringify(store.get('t1'));
+
+      const { doc } = editor.view.state;
+      const gamma = doc.child(2);
+      const gammaPos = doc.content.size - gamma.nodeSize;
+      const betaPos = doc.child(0).nodeSize;
+      const { tr } = editor.view.state;
+      editor.view.dispatch(tr.delete(gammaPos, doc.content.size).insert(betaPos, gamma));
+      await tick();
+
+      expect(JSON.stringify(store.get('t1'))).to.equal(before);
+    });
+  }));
 });
