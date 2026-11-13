@@ -1,7 +1,7 @@
 :host {
   position: relative;
   display: block;
-  padding: 80px 0;
+  container-type: inline-size;
 }
 
 button {
@@ -17,6 +17,33 @@ h2 {
   position: relative;
   max-width: var(--se-grid-container-width);
   margin: 0 auto;
+  padding-block: 80px;
+}
+
+.da-site-container.has-greeting {
+  width: calc(100% - 2 * var(--s2-spacing-400));
+  max-width: 1068px;
+  padding-block: var(--s2-spacing-600);
+}
+
+.da-site-greeting {
+  margin-bottom: var(--s2-spacing-600);
+  text-align: center;
+}
+
+.da-site-greeting ::slotted(da-greeting) {
+  display: block;
+}
+
+@container (width < 600px) {
+  .da-site-container.has-greeting {
+    width: calc(100% - 2 * var(--s2-spacing-300));
+    padding-block: var(--s2-spacing-400);
+  }
+
+  .da-site-greeting {
+    margin-bottom: var(--s2-spacing-400);
+  }
 }
 
 .da-site-header {
@@ -24,6 +51,11 @@ h2 {
   justify-content: space-between;
   align-items: start;
   margin: 0 0 24px;
+}
+
+.has-greeting .da-site-header {
+  flex-wrap: wrap;
+  gap: var(--s2-spacing-200);
 }
 
 /* No recents well */
@@ -63,6 +95,10 @@ form {
   align-items: center;
   gap: 6px;
   min-width: 300px;
+}
+
+.has-greeting form {
+  min-width: min(300px, 100%);
 }
 
 form input {
