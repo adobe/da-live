@@ -265,8 +265,8 @@ export default class DaList extends DaListBase {
         @click=${() => this.toggleSort(property)}
         ?disabled=${this._bulkLoading}
         aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
-        ${this.renderSortIcon()}
         ${label}
+        ${this.renderSortIcon()}
       </button>`;
   }
 
