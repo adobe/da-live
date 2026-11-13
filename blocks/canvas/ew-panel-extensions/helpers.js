@@ -11,6 +11,7 @@ import { htmlToProse } from '../../edit/utils/helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { getBlockPositions } from '../editor-utils/blocks.js';
 import { canvasBus } from '../utils/canvas-bus.js';
+import createFileExplorerView from '../../shared/file-explorer/file-explorer-view.js';
 import createPreflightView from '../../shared/preflight/preflight-view.js';
 import createVersionHistoryView from '../../shared/version-history/version-history-view.js';
 import createCanvasVersionsEditor from '../editor-utils/versions-editor.js';
@@ -868,19 +869,6 @@ function createOutlineView() {
     load: async () => {
       await import('../ew-page-outline/ew-page-outline.js');
       return document.createElement('ew-page-outline');
-    },
-  };
-}
-
-function createFileExplorerView() {
-  return {
-    id: 'files',
-    label: 'Content',
-    section: 'Editor',
-    firstParty: true,
-    load: async () => {
-      await import('../ew-file-explorer/ew-file-explorer.js');
-      return document.createElement('ew-file-explorer');
     },
   };
 }
