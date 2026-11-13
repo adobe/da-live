@@ -11,12 +11,12 @@ const { parse, serialize } = createRichTextCodec({ proseMirror, schema });
 const roundTrip = (value) => serialize(parse(value));
 
 const sdkSchema = { type: 'object', properties: { body: { type: 'string', 'x-semantic-type': 'rich-text' } } };
-const sdkStores = (body) => {
+const sdkWrites = (body) => {
   const json = { metadata: { schemaName: 'x' }, data: { body } };
   const { model } = createEngine({ schema: sdkSchema, document: json }).getState();
-  const { html } = convertJsonToHtml({ json, model });
-  return convertHtmlToJson({ html }).json.data.body ?? '';
+  return convertJsonToHtml({ json, model }).html;
 };
+const sdkStores = (body) => convertHtmlToJson({ html: sdkWrites(body) }).json.data.body ?? '';
 
 describe('rich-text codec', () => {
   describe('parse and serialize', () => {
@@ -78,6 +78,8 @@ describe('rich-text codec', () => {
         '<a href="javascript:x()" onmouseover="x()">a</a>',
         '<a href="data:text/html;base64,PHNjcmlwdD54KCk8L3NjcmlwdD4=">a</a>',
         '<a href="vbscript:x">a</a>',
+        ...['\u00a0', '\ufeff', '\u2003', '\u3000', '\u2028']
+          .map((space) => `<a href="${space}javascript:x()">a</a>`),
         '<a href="/a" target="_blank" rel="opener">a</a>',
         '<form action="javascript:x()"><button formaction="javascript:x()">a</button></form>',
         '<input autofocus onfocus=x()>',
@@ -110,6 +112,10 @@ describe('rich-text codec', () => {
       payloads.forEach((payload) => {
         expectHarmless(roundTrip(payload), payload);
         expectHarmless(sdkStores(payload), payload);
+        const { body } = new DOMParser().parseFromString(sdkWrites(payload), 'text/html');
+        body.querySelectorAll('a[href]').forEach((link) => {
+          expect(safeHref(link.getAttribute('href')), `${payload} writes ${link.getAttribute('href')}`).to.not.equal(null);
+        });
       });
     });
 
