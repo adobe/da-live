@@ -3,6 +3,9 @@
 }
 
 .toolbar-wrap {
+  /* Pickers draw their own focus ring; match the toolbar buttons'. */
+  --s2-focus-ring-color: var(--s2-blue-800);
+
   display: none;
   position: fixed;
   bottom: 40px;

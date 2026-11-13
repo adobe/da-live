@@ -7,6 +7,9 @@
    (inset/margin) to keep the bottom-centre anchoring. Hidden by the UA
    `[popover]:not(:popover-open)` rule until shown. */
 .toolbar-wrap {
+  /* Pickers draw their own focus ring; match the toolbar buttons'. */
+  --s2-focus-ring-color: var(--s2-blue-800);
+
   position: fixed;
   inset: auto;
   bottom: 40px;
