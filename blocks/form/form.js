@@ -1,5 +1,11 @@
 import { getNx2 } from '../../scripts/utils.js';
 import decorateEditor from './editor.js';
+import {
+  TOOL_PANEL_SECTION,
+  createToolPanelSection,
+  syncOpenToolPanel,
+} from '../shared/tool-panel/tool-panel-section.js';
+import { toolPanelHost } from './tool-panel/host.js';
 
 const nx2 = getNx2();
 const [
@@ -16,13 +22,17 @@ const [
   import(`${nx2}/scripts/nx.js`),
 ]);
 
-// Workspace layout is light-DOM (it sizes the block container and the docked
-// chat panel), so it adopts on the document rather than an element shadow.
-const style = await loadStyle(import.meta.url);
-document.adoptedStyleSheets = [...document.adoptedStyleSheets, style];
+// The workspace layout and the panel toggles live in the light DOM, so their
+// styles are adopted on the document. The toggles reuse da-nx's icon buttons,
+// like the canvas header.
+const [buttonStyle, style] = await Promise.all([
+  loadStyle(`${nx2}/styles/buttons.css`),
+  loadStyle(import.meta.url),
+]);
+document.adoptedStyleSheets = [...document.adoptedStyleSheets, buttonStyle, style];
 
 const { codeBase } = getConfig();
-const CHAT_TOGGLE_ICON = `${codeBase}/img/icons/s2-icon-splitleft-20-n.svg#icon`;
+const s2IconHref = (name) => `${codeBase}/img/icons/s2-icon-${name}-20-n.svg#icon`;
 
 // Engage the app-frame panel grid even when the page didn't declare it.
 function ensureAppFrame() {
@@ -47,38 +57,58 @@ function ensureNavPath() {
   document.head.append(meta);
 }
 
-function openChatPanel() {
-  document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section: 'chat' } }));
-}
-
-// A floating toggle at the top-left of the canvas opens the chat panel. The
-// anchor is a zero-height element in the main flow (so its left edge is the
-// canvas edge, not the viewport — clearing the left rail); the button is
-// absolutely positioned within it. It sits before the block (outside its scroll
-// region) so it stays put, and hides itself while the chat is open — see form.css.
-function installChatToggle(block) {
-  const anchor = document.createElement('div');
-  anchor.className = 'form-chat-toggle-anchor';
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'form-chat-toggle';
-  btn.setAttribute('aria-label', 'Toggle chat');
-  btn.innerHTML = `<svg aria-hidden="true" viewBox="0 0 20 20"><use href="${CHAT_TOGGLE_ICON}"></use></svg>`;
-  btn.addEventListener('click', () => openChatPanel());
-  anchor.append(btn);
-  block.before(anchor);
-  return btn;
-}
-
-// The chat workspace (toggle + docked chat) is gated on the `ew.enabled`
-// flag for the current site. Read once from the hash on load — the form
-// workspace is scoped to a single org/site.
-async function setupChat(block) {
+function currentHashState() {
   let state;
-  const unsubscribe = hashChange.subscribe((s) => { state = s; });
+  const unsubscribe = hashChange.subscribe((hashState) => { state = hashState; });
   unsubscribe();
+  return state ?? {};
+}
 
-  const { org, site } = state ?? {};
+function openPanelSection(section, id) {
+  document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail: { section, id } }));
+}
+
+function createGroup(className) {
+  const group = document.createElement('div');
+  group.className = className;
+  return group;
+}
+
+function createHeader(block) {
+  const header = document.createElement('header');
+  header.className = 'form-header';
+  const start = createGroup('form-header-start');
+  const end = createGroup('form-header-end');
+  header.append(start, end);
+  block.before(header);
+  return { start, end };
+}
+
+function installPanelToggle(toggleGroup, { section, label, icon }) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = `nx-action-btn-icon form-${section}-toggle`;
+  button.setAttribute('aria-label', label);
+  button.title = label;
+  button.innerHTML = `<svg aria-hidden="true" viewBox="0 0 20 20"><use href="${s2IconHref(icon)}"></use></svg>`;
+  button.addEventListener('click', () => openPanelSection(section));
+  toggleGroup.append(button);
+}
+
+function setupTools(toggleGroup, { org, site }) {
+  registerPanelSection(TOOL_PANEL_SECTION, createToolPanelSection({
+    host: toolPanelHost,
+    getContext: currentHashState,
+  }));
+  hashChange.subscribe(syncOpenToolPanel);
+
+  installPanelToggle(toggleGroup, { section: TOOL_PANEL_SECTION, label: 'Open tools panel', icon: 'splitright' });
+  if (org && site && wasPanelOpen(TOOL_PANEL_SECTION)) {
+    openPanelSection(TOOL_PANEL_SECTION);
+  }
+}
+
+async function setupChat(toggleGroup, { org, site }) {
   if (!org || !site) return;
 
   const flags = await getEWFlags({ org, site });
@@ -90,17 +120,20 @@ async function setupChat(block) {
     getContent: async () => loadChat(),
   });
 
-  installChatToggle(block);
-  if (wasPanelOpen('chat')) openChatPanel();
+  installPanelToggle(toggleGroup, { section: 'chat', label: 'Toggle chat', icon: 'splitleft' });
+  if (wasPanelOpen('chat')) {
+    openPanelSection('chat');
+  }
 }
 
 /**
  * Decorates the `form` block as the structured content editor workspace.
  *
  * Sets up a canvas-style workspace with the app-frame grid around the form
- * editor (editor.js). When EW is enabled, it also adds a floating chat toggle
- * and a docked chat. The form and the chat both read the `#/org/site/path`
- * hash, so they stay in sync.
+ * editor (editor.js) and a header with the panel toggles. A tools panel on
+ * the right shows the outline of the document. When EW is enabled, it also
+ * adds a chat toggle and a docked chat. The form, the tools panel, and the
+ * chat all read the `#/org/site/path` hash, so they stay in sync.
  *
  * This block was migrated from da-nx's `nx/blocks/form`. The `/form` page
  * content still declares it as `nx-form`, which the nx2 loader loads from
@@ -114,5 +147,8 @@ export default async function decorate(block) {
 
   decorateEditor(block);
 
-  await setupChat(block);
+  const context = currentHashState();
+  const header = createHeader(block);
+  setupTools(header.end, context);
+  await setupChat(header.start, context);
 }

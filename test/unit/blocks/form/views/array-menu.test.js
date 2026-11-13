@@ -16,7 +16,7 @@ const mounted = [];
 afterEach(() => { while (mounted.length) mounted.pop().remove(); });
 
 async function mountMenu(props) {
-  const el = window.document.createElement('nx-array-menu');
+  const el = window.document.createElement('ew-form-array-menu');
   Object.assign(el, { pointer: '/data/items/0', index: 0, open: true, ...props });
   window.document.body.append(el);
   mounted.push(el);
@@ -27,7 +27,7 @@ async function mountMenu(props) {
 const removeButton = (el) => [...el.shadowRoot.querySelectorAll('.menu-item')]
   .find((b) => /remov/i.test(b.textContent));
 
-describe('nx-array-menu remove gating', () => {
+describe('ew-form-array-menu remove gating', () => {
   it('keeps remove enabled on an optional array below minItems', async () => {
     const el = await mountMenu({ required: false, minItems: 3, itemCount: 1 });
     expect(removeButton(el).disabled).to.equal(false);

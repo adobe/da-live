@@ -1,3 +1,17 @@
+## [1.29.1](https://github.com/adobe/da-live/compare/v1.29.0...v1.29.1) (2026-11-13)
+
+
+### Bug Fixes
+
+* **sc:** align panel toggles ([#1736](https://github.com/adobe/da-live/issues/1736)) ([8b15255](https://github.com/adobe/da-live/commit/8b1525546a28ab5c1acb57bead121a5f9e2b1d48))
+
+# [1.29.0](https://github.com/adobe/da-live/compare/v1.28.6...v1.29.0) (2026-11-13)
+
+
+### Features
+
+* **sc:** add structured content outline ([#1699](https://github.com/adobe/da-live/issues/1699)) ([8f8d18c](https://github.com/adobe/da-live/commit/8f8d18c8522f69354e5799e0aa80a833ff474a48))
+
 ## [1.28.6](https://github.com/adobe/da-live/compare/v1.28.5...v1.28.6) (2026-11-12)
 
 
