@@ -8,8 +8,7 @@ const codec = createRichTextCodec({ proseMirror, schema });
 
 export function stateFor(value, { from, to } = {}) {
   const richTextDocument = codec.parse(value);
-  const plugins = [proseMirror.history()];
-  const state = proseMirror.EditorState.create({ doc: richTextDocument, schema, plugins });
+  const state = proseMirror.EditorState.create({ doc: richTextDocument, schema });
   if (from === undefined) {
     return state;
   }

@@ -8,7 +8,7 @@ import { buildKeymap, createToolset } from './tools.js';
  * @typedef {object} RichTextEditor
  * @property {import('../../fields/rich-text-toolbar.js').Toolset} toolset The toolbar tools.
  * @property {(value: unknown) => object} createState Creates an editor state for a stored
- *   value, with fresh history.
+ *   value.
  * @property {(element: HTMLElement, props: object) => object} mount Mounts an editor view.
  * @property {(state: object) => string} serialize Writes the document of a state as HTML.
  * @property {(link: { href: string, text?: string, title?: string }) =>
@@ -27,7 +27,6 @@ export function createRichTextEditor({ proseMirror, onLink }) {
   const codec = createRichTextCodec({ proseMirror, schema });
   const toolset = createToolset({ proseMirror, schema, onLink });
   const plugins = [
-    proseMirror.history(),
     proseMirror.keymap(buildKeymap({ proseMirror, schema, toolset })),
     proseMirror.keymap(proseMirror.baseKeymap),
   ];

@@ -59,12 +59,11 @@ describe('form-rich-text-toolbar', () => {
 
   it('orders the bar and keeps the quote, code and scripts in the more menu', async () => {
     const toolbar = await mount();
-    await until(() => toolbar._overflowAt === 10);
+    await until(() => toolbar._overflowAt === 8);
     const { shadowRoot } = toolbar;
-    expect(visibleIds(shadowRoot, '.form-rich-text-toolbar >')).to.deep.equal(['undo', 'redo', 'strong', 'em', 'u', 'del', 'link', 'bullet_list', 'ordered_list']);
+    expect(visibleIds(shadowRoot, '.form-rich-text-toolbar >')).to.deep.equal(['strong', 'em', 'u', 'del', 'link', 'bullet_list', 'ordered_list']);
     const pickerBox = shadowRoot.querySelector('.form-rich-text-toolbar > .form-rich-text-picker');
-    expect(pickerBox.previousElementSibling.classList.contains('form-rich-text-separator')).to.be.true;
-    expect(pickerBox.previousElementSibling.previousElementSibling).to.equal(tool(toolbar, 'redo'));
+    expect(pickerBox.previousElementSibling).to.equal(null);
     await openMenu(toolbar);
     expect(visibleIds(menu(toolbar))).to.deep.equal(MENU_IDS);
   });
@@ -79,7 +78,7 @@ describe('form-rich-text-toolbar', () => {
   it('names the shortcut of a tool in its title', async () => {
     const toolbar = await mount();
     const modifier = /Mac|iP(hone|[oa]d)/.test(navigator.platform) ? '⌘' : 'Ctrl';
-    expect(tool(toolbar, 'redo').title).to.equal(`Redo (${modifier}+Shift+Z)`);
+    expect(tool(toolbar, 'strong').title).to.equal(`Bold (${modifier}+B)`);
     expect(tool(toolbar, 'link').title).to.equal(`Link (${modifier}+K)`);
     expect(tool(toolbar, 'del').title).to.equal(`Strikethrough (${modifier}+Shift+S)`);
     expect(tool(toolbar, 'unlink').title).to.equal('Remove link');
@@ -92,7 +91,7 @@ describe('form-rich-text-toolbar', () => {
     expect(moreButton(toolbar).disabled).to.be.true;
 
     toolbar.toolset = toolset;
-    await until(() => toolbar._overflowAt === 10);
+    await until(() => toolbar._overflowAt === 8);
     expect(tool(toolbar, 'strong').disabled).to.be.true;
     toolbar.editorState = stateFor('<p>a</p>');
     await toolbar.updateComplete;
@@ -102,7 +101,7 @@ describe('form-rich-text-toolbar', () => {
 
   it('moves bar tools that do not fit into the more menu', async () => {
     const toolbar = await mount({ width: '260px' });
-    await until(() => toolbar._overflowAt < 10);
+    await until(() => toolbar._overflowAt < 8);
     expect(toolbar._overflowAt).to.be.above(0);
     expect(tool(toolbar, 'link').classList.contains('is-overflow')).to.be.true;
     expect(tool(toolbar, 'strong').classList.contains('is-overflow')).to.be.false;
@@ -122,7 +121,7 @@ describe('form-rich-text-toolbar', () => {
     toolbar.style.width = '900px';
     // The ResizeObserver does not run in a background test page, so measure as it would.
     toolbar._measureBar();
-    await until(() => toolbar._overflowAt === 10);
+    await until(() => toolbar._overflowAt === 8);
     await toolbar.updateComplete;
     expect(tool(toolbar, 'link').classList.contains('is-overflow')).to.be.false;
   });
@@ -147,7 +146,7 @@ describe('form-rich-text-toolbar', () => {
 
   it('keeps the more menu open for tools, but closes it when a dialog opens', async () => {
     const toolbar = await mount({ width: '260px' });
-    await until(() => toolbar._overflowAt < 10);
+    await until(() => toolbar._overflowAt < 8);
     const details = listen(toolbar, 'form-rich-text-command');
     await openMenu(toolbar);
     tool(toolbar, 'bullet_list').click();
@@ -180,7 +179,7 @@ describe('form-rich-text-toolbar', () => {
     const toolbar = await mount({ editorState });
     expect(tool(toolbar, 'strong').getAttribute('aria-pressed')).to.equal('false');
     expect(tool(toolbar, 'link').getAttribute('aria-pressed')).to.equal('false');
-    expect(tool(toolbar, 'undo').hasAttribute('aria-pressed')).to.be.false;
+    expect(tool(toolbar, 'unlink').hasAttribute('aria-pressed')).to.be.false;
     expect(picker(toolbar).value).to.equal('paragraph');
     expect(tool(toolbar, 'unlink').classList.contains('is-hidden')).to.be.true;
 
@@ -203,10 +202,8 @@ describe('form-rich-text-toolbar', () => {
   });
 
   it('disables the tools whose command does not apply, even while the selection does not show', async () => {
-    const state = stateFor('');
-    const toolbar = await mount({ editorState: state.apply(state.tr.insertText('a', 1)) });
-    expect(tool(toolbar, 'undo').disabled).to.be.false;
-    expect(tool(toolbar, 'redo').disabled).to.be.true;
+    const toolbar = await mount({ editorState: stateFor('<p>a</p>') });
+    expect(tool(toolbar, 'strong').disabled).to.be.false;
     expect(tool(toolbar, 'unlink').disabled).to.be.true;
   });
 

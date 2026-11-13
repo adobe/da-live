@@ -14,8 +14,6 @@ import {
 
 /** The tool ids. Toggle tools are named after the mark or node they apply. */
 export const TOOL_IDS = Object.freeze({
-  undo: 'undo',
-  redo: 'redo',
   bold: 'strong',
   italic: 'em',
   underline: 'u',
@@ -65,10 +63,6 @@ export function createToolset({ proseMirror, schema, onLink }) {
   });
 
   return {
-    leading: [
-      { id: TOOL_IDS.undo, label: 'Undo', keys: 'Mod-z', icon: 'undo', command: proseMirror.undo },
-      { id: TOOL_IDS.redo, label: 'Redo', keys: 'Mod-Shift-z', icon: 'redo', command: proseMirror.redo },
-    ],
     picker: {
       label: 'Text style',
       items: BLOCK_TYPES,
@@ -130,9 +124,7 @@ export function createToolset({ proseMirror, schema, onLink }) {
  * @param {import('../../fields/rich-text-toolbar.js').Toolset} toolset The tools.
  * @returns {import('../../fields/rich-text-toolbar.js').ToolbarTool[]} The tools.
  */
-export const listTools = ({ leading, groups, menuGroups }) => [
-  ...leading, ...groups.flat(), ...menuGroups.flat(),
-];
+export const listTools = ({ groups, menuGroups }) => [...groups.flat(), ...menuGroups.flat()];
 
 /**
  * Binds the shortcut of each tool that has one.
@@ -164,7 +156,6 @@ export function buildKeymap({ proseMirror, schema, toolset }) {
   return {
     ...toolShortcuts(toolset),
     ...textStyleShortcuts(toolset.picker),
-    'Mod-y': proseMirror.redo,
     Enter: proseMirror.splitListItem(listItem),
     'Shift-Enter': insertHardBreak,
     'Mod-Enter': insertHardBreak,
