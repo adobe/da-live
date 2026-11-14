@@ -67,6 +67,68 @@ describe('aem2prose', () => {
   });
 });
 
+describe('prose2aem block normalization', () => {
+  function serialize(cells, livePreview = true, isFragment = false) {
+    const editor = document.createElement('div');
+    editor.innerHTML = `<div class="tableWrapper"><table>
+      <tr><td>Example Block</td></tr>${cells}
+    </table></div>`;
+    return new DOMParser().parseFromString(prose2aem(editor, livePreview, isFragment), 'text/html')
+      .querySelector('.example-block');
+  }
+
+  [false, true].forEach((livePreview) => {
+    [false, true].forEach((isFragment) => {
+      it(`normalizes empty cells with livePreview=${livePreview}, isFragment=${isFragment}`, () => {
+        const block = serialize(`<tr>
+          <td><p><br class="ProseMirror-trailingBreak"></p></td>
+          <td><p> &nbsp;\n </p><p></p></td>
+          <td></td>
+        </tr>`, livePreview, isFragment);
+        expect(block.children).to.have.lengthOf(1);
+        [...block.firstElementChild.children].forEach((cell) => {
+          expect(cell.children).to.have.lengthOf(0);
+          expect(cell.textContent.trim()).to.equal('');
+        });
+      });
+
+      it(`scaffolds a header-only block with livePreview=${livePreview}, isFragment=${isFragment}`, () => {
+        const block = serialize('', livePreview, isFragment);
+        expect(block.innerHTML).to.equal('<div><div></div></div>');
+      });
+    });
+  });
+
+  it('preserves meaningful cell content and indices without duplicating rows', () => {
+    const block = serialize(`<tr>
+      <td><p></p><p data-prose-index="12">Text <strong>bold</strong></p></td>
+      <td><p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-image-index="20"></p></td>
+      <td><p><a href="/page"></a></p></td>
+      <td><p><span class="icon icon-test"></span></p></td>
+      <td><ul><li><p>Nested</p></li></ul></td>
+      <td><p><br></p></td>
+    </tr>`);
+    expect(block.children).to.have.lengthOf(1);
+    expect(block.firstElementChild.children).to.have.lengthOf(6);
+    expect(block.querySelectorAll('p[data-prose-index="12"]')).to.have.lengthOf(1);
+    expect(block.querySelector('strong').textContent).to.equal('bold');
+    expect(block.querySelector('img').dataset.imageIndex).to.equal('20');
+    expect(block.querySelector('a').getAttribute('href')).to.equal('/page');
+    expect(block.querySelector('.icon-test')).to.exist;
+    expect(block.querySelector('ul li').textContent).to.equal('Nested');
+    expect(block.querySelector('p > br')).to.exist;
+  });
+
+  it('moves an empty paragraph cursor to its cell without retaining a child wrapper', () => {
+    const block = serialize(`<tr><td><p data-prose-index="8">
+      <span id="da-cursor-position"></span><br class="ProseMirror-trailingBreak">
+    </p></td></tr>`);
+    const cell = block.firstElementChild.firstElementChild;
+    expect(cell.id).to.equal('da-cursor-position');
+    expect(cell.children).to.have.lengthOf(0);
+  });
+});
+
 describe('prose2aem image URL handling', () => {
   const suffix = '/nested/media_123.png?width=750#width=2048&height=1368';
   const cases = [
@@ -118,6 +180,25 @@ describe('prose2aem section-metadata handling', () => {
     const parsed = new DOMParser().parseFromString(html, 'text/html');
     return parsed.querySelector('main');
   }
+
+  it('extracts all structured v2 values without merging paragraph boundaries or link labels', () => {
+    const editor = makeEditor(`
+      <div class="tableWrapper"><table>
+        <tr><td>Section Metadata</td></tr>
+        <tr><td>Style</td><td><p>Wide (Light, Center)</p><p>Dark</p></td></tr>
+        <tr><td>Masonry</td><td><p>span 6, span 6</p><p>span 4, span 8&nbsp;</p></td></tr>
+        <tr><td>Background</td><td><p><img src="https://example.com/first.jpg"></p>
+          <p><a href="https://example.com/second.jpg">Ignore label</a></p></td></tr>
+        <tr><td>Mixed</td><td><p>before, <a href="https://example.com/">Ignore label</a>, after</p></td></tr>
+      </table></div>
+    `);
+    const section = parseMain(prose2aem(editor, true)).firstElementChild;
+    expect(section.className).to.equal('wide light center dark');
+    expect(section.dataset.masonry).to.equal('span 6,span 6,span 4,span 8');
+    expect(section.dataset.background).to.equal('https://example.com/first.jpg,https://example.com/second.jpg');
+    expect(section.dataset.mixed).to.equal('before,https://example.com/,after');
+    expect(section.querySelector('.section-metadata')).to.not.exist;
+  });
 
   it('preserves legacy metadata, including pictures and separate layout paragraphs', () => {
     const editor = makeEditor(`
