@@ -201,6 +201,28 @@ describe('da-browse render', () => {
     expect(document.createElement('da-browse')._view).to.equal('card');
   });
 
+  it('persists width requests and limits content only when enabled', async () => {
+    await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
+    const style = new CSSStyleSheet();
+    style.replaceSync(await (await savedFetch('/blocks/browse/v2/da-browse/da-browse.css')).text());
+    el.shadowRoot.adoptedStyleSheets = [style];
+    const header = el.shadowRoot.querySelector('da-browse-header');
+    const content = el.shadowRoot.querySelector('.da-browse-content');
+    expect(header.limitWidth).to.be.false;
+    expect(getComputedStyle(content).maxWidth).to.equal('none');
+    header.dispatchEvent(new CustomEvent('limitwidthchange', { detail: { limitWidth: true } }));
+    await settle();
+    expect(header.limitWidth).to.be.true;
+    expect(getComputedStyle(content).maxWidth).to.equal('1100px');
+    expect(JSON.parse(localStorage.getItem('da-browse-settings')).limitWidth).to.be.true;
+    expect(document.createElement('da-browse')._limitWidth).to.be.true;
+    header.dispatchEvent(new CustomEvent('limitwidthchange', { detail: { limitWidth: false } }));
+    await settle();
+    expect(header.limitWidth).to.be.false;
+    expect(getComputedStyle(content).maxWidth).to.equal('none');
+    expect(document.createElement('da-browse')._limitWidth).to.be.false;
+  });
+
   it('persists header grouping requests and passes them to the list', async () => {
     await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
     const header = el.shadowRoot.querySelector('da-browse-header');
