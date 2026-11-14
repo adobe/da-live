@@ -72,6 +72,8 @@ describe('comparison plugin protocol', () => {
       });
     });
     clientPort.postMessage({ action: 'openComparison', details: { candidate: 'url', baseline: 'live' } });
+    clientPort.postMessage({ action: 'openComparison', details: { candidate: 'proposal', baseline: 'live', proposedPath: '/example/site/.da/page.html' } });
+    clientPort.postMessage({ action: 'openComparison', details: { candidate: 'proposal', baseline: 'source', proposedPath: '/example/site/.da/page.html' } });
     clientPort.postMessage({ action: 'closeComparison' });
     const request = await closed;
     expect(requests).to.have.length(1);

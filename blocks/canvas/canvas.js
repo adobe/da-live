@@ -278,6 +278,7 @@ canvasBus.commentComposeRequest.subscribe(() => {
 
 export default async function decorate(block) {
   const { org, site } = hashState();
+  let comparisonContext;
 
   // Make the "Preflight" side panel the responder for the publish gate's run request.
   initPreflightResponder();
@@ -291,7 +292,20 @@ export default async function decorate(block) {
     registerPanelSection('chat', {
       position: 'before',
       width: '400px',
-      getContent: getChatPanelContent(),
+      getContent: getChatPanelContent({
+        artifactActionNames: ['editor.viewDiff', 'editor.resetPage', 'editor.acceptChanges'],
+        onArtifactAction: async (action, artifact, onUpdate) => {
+          const context = comparisonContext;
+          const { handleArtifactAction } = await import('./editor-utils/artifact-actions.js');
+          const getContext = () => comparisonContext;
+          const options = { action, artifact, context, getContext, onUpdate };
+          const result = await handleArtifactAction(options);
+          if (!result.ok) {
+            const { showToast, VARIANT_ERROR } = await import(`${getNx2()}/blocks/shared/toast/toast.js`);
+            showToast({ text: result.error, variant: VARIANT_ERROR });
+          }
+        },
+      }),
       onShow: async (aside, id, options) => {
         if (!options?.text && !options?.onReady) return;
         if (options.onReady) {
@@ -341,7 +355,6 @@ export default async function decorate(block) {
     }
   });
 
-  let comparisonContext;
   const comparison = installComparison({
     mountRoot,
     getContext: () => comparisonContext,
