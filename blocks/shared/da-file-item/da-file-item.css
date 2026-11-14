@@ -18,8 +18,9 @@
 }
 
 .da-item-list-item-inner {
+  position: relative;
   display: grid;
-  grid-template-columns: var(--da-list-select-width, 40px) minmax(0, 442px) var(--da-list-type-width, 120px) minmax(var(--da-list-date-width), 1fr) var(--da-list-action-width, 112px);
+  grid-template-columns: var(--da-list-columns, var(--da-list-select-width, 40px) minmax(0, 442px) var(--da-list-type-width, 120px) minmax(var(--da-list-date-width), 1fr) var(--da-list-action-width, 112px));
   align-items: center;
   min-height: var(--da-list-min-height);
 
@@ -45,6 +46,19 @@
 .da-item-list-item-title {
   outline-offset: -1px;
   min-width: 0;
+}
+
+.da-item-list-item-title::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.da-item-list-item-inner > [data-column="select"],
+.da-item-list-item-actions {
+  position: relative;
+  z-index: 1;
+  align-self: stretch;
 }
 
 .da-item-list-item-rename {
@@ -101,6 +115,8 @@
 }
 
 .file-folder {
+  position: relative;
+  z-index: 1;
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -122,7 +138,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   place-items: center start;
-  width: var(--da-list-action-width, 112px);
+  width: 100%;
 }
 
 .da-item-list-item-actions > button {
@@ -285,6 +301,7 @@
 @container browse-list-item (width < 600px) {
   .da-item-list-item-inner {
     grid-template-columns: var(--da-list-select-width, 40px) minmax(0, 1fr) var(--da-list-date-width, 180px) var(--da-list-action-width, 112px);
+    column-gap: var(--s2-spacing-100);
   }
 
   .da-item-list-item-type-label {
