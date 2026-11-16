@@ -125,9 +125,9 @@ describe('rich-text tools', () => {
       );
     });
 
-    it('binds the Canvas shortcuts, underline and strikethrough', () => {
+    it('binds the formatting shortcuts', () => {
       const keys = keymapFor();
-      ['Mod-`', 'Ctrl-Shift-0', 'Ctrl-Shift-6', 'Ctrl-Shift->', 'Ctrl-Shift-8', 'Ctrl-Shift-9', 'Mod-u', 'Mod-Shift-s']
+      ['Mod-`', 'Ctrl-Shift-0', 'Ctrl-Shift-6', 'Ctrl-Shift-.', 'Ctrl-Shift-8', 'Ctrl-Shift-9', 'Mod-u', 'Mod-Shift-s']
         .forEach((key) => expect(keys[key], key).to.be.a('function'));
       ['Mod-Shift-x', 'Mod-.', 'Mod-,', 'Mod-Shift-k']
         .forEach((key) => expect(keys[key], key).to.equal(undefined));

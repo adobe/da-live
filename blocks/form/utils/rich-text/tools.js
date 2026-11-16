@@ -108,7 +108,7 @@ export function createToolset({ proseMirror, schema, onLink }) {
         {
           id: TOOL_IDS.blockquote,
           label: 'Blockquote',
-          keys: 'Ctrl-Shift->',
+          keys: 'Ctrl-Shift-.',
           icon: 'blockquote',
           command: toggleBlockquote({ proseMirror }),
           isActive: isInBlockquote,

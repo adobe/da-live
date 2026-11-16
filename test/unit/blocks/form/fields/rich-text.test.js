@@ -168,9 +168,11 @@ describe('ew-form-rich-text', () => {
 
   const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
-  function press(richText, key, { shift = false, control = false, primary = !control } = {}) {
+  function press(richText, key, options = {}) {
+    const { shift = false, control = false, primary = !control, keyCode = 0 } = options;
     const event = new KeyboardEvent('keydown', {
       key,
+      keyCode,
       shiftKey: shift,
       ctrlKey: control || (primary && !isMac),
       metaKey: primary && isMac,
@@ -201,9 +203,9 @@ describe('ew-form-rich-text', () => {
     expect(richText.value).to.equal('<h3>text</h3>');
     press(richText, '0', controlShift);
     expect(richText.value).to.equal('<p>text</p>');
-    press(richText, '>', controlShift);
+    press(richText, '.', controlShift);
     expect(richText.value).to.equal('<blockquote><p>text</p></blockquote>');
-    press(richText, '>', controlShift);
+    press(richText, '>', { ...controlShift, keyCode: 190 });
     expect(richText.value).to.equal('<p>text</p>');
     press(richText, '8', controlShift);
     expect(richText.value).to.equal('<ul><li><p>text</p></li></ul>');
