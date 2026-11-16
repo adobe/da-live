@@ -78,3 +78,15 @@ export function getLivePreviewUrl(owner, repo, branch = 'main') {
   const protocol = LIVE_PREVIEW_DOMAIN.startsWith('localhost') ? 'http' : 'https';
   return `${protocol}://${branch}--${repo}--${owner}.${LIVE_PREVIEW_DOMAIN}`;
 }
+
+export function normalizeBranch(branch = 'main') {
+  return branch.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+}
+
+export function getPreviewOrigin(organization, site, branch = 'main') {
+  const hostname = window?.location?.hostname ?? '';
+  const domain = hostname.endsWith('aem.page') || hostname.endsWith('localhost')
+    ? 'stage-preview.da.live'
+    : 'preview.da.live';
+  return `https://${normalizeBranch(branch)}--${site}--${organization}.${domain}`;
+}

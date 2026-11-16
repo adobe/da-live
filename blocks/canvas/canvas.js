@@ -3,7 +3,7 @@ import { getNx, getNx2, getNx2Api } from '../../scripts/utils.js';
 import { EMPTY_DOC } from '../shared/utils.js';
 import { renderEmptyList, EMPTY_LIST_CSS } from '../shared/empty-list.js';
 import { getCommentsBridge } from './editor-utils/comments-bridge.js';
-import { initPreflightResponder } from './editor-utils/preflight-responder.js';
+import createPublishHook from '../shared/preflight/publish-hook.js';
 import {
   normalizeCanvasEditorView,
   readInitialCanvasEditorView,
@@ -279,8 +279,9 @@ canvasBus.commentComposeRequest.subscribe(() => {
 export default async function decorate(block) {
   const { org, site } = hashState();
 
-  // Make the "Preflight" side panel the responder for the publish gate's run request.
-  initPreflightResponder();
+  // The first publish fires while Preflight is closed, so the hook listens from page load.
+  const publishHook = createPublishHook();
+  publishHook.start();
 
   chatAvailability.subscribe((enabled) => {
     if (enabled === undefined) return;
@@ -310,7 +311,7 @@ export default async function decorate(block) {
     host: {
       getViews: async (context) => {
         const { getCanvasToolPanelViews } = await import('./ew-panel-extensions/helpers.js');
-        return getCanvasToolPanelViews(context);
+        return getCanvasToolPanelViews(context, { publishHook });
       },
       resolveInitialView: resolveInitialToolPanelView,
       persistView: persistToolPanelView,

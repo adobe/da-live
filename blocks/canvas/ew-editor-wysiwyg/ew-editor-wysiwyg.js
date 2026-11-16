@@ -1,6 +1,7 @@
 import { LitElement, html } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
-import { getPreviewOrigin, fetchWysiwygCookie } from '../editor-utils/editor-utils.js';
+import { fetchWysiwygCookie } from '../editor-utils/editor-utils.js';
+import { getPreviewOrigin } from '../../shared/constants.js';
 import { initIms as loadIms } from '../../shared/utils.js';
 import { toolbarController } from '../editor-utils/toolbar-controller.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
