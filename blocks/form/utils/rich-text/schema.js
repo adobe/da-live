@@ -81,16 +81,16 @@ function createSchema() {
   const orderedList = { content, group, parseDOM: [{ tag: 'ol' }], toDOM: () => ['ol', 0] };
   return new Schema({
     nodes: lists.update('ordered_list', orderedList),
-    // Order sets the serialized nesting like the SDK, with del outermost and code innermost.
+    // Order sets the serialized nesting like the SDK.
     marks: {
-      del: {
+      s: {
         parseDOM: [
-          { tag: 'del' },
           { tag: 's' },
+          { tag: 'del' },
           { tag: 'strike' },
           { style: 'text-decoration=line-through' },
         ],
-        toDOM: () => ['del', 0],
+        toDOM: () => ['s', 0],
       },
       em: marks.get('em'),
       strong: marks.get('strong'),

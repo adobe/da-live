@@ -1,6 +1,7 @@
 /* eslint-disable no-script-url */
 import { expect } from '@esm-bundle/chai';
-import { DOMParser as ProseMirrorParser } from 'da-y-wrapper';
+import { DOMParser as ProseMirrorParser, Y } from 'da-y-wrapper';
+import { aem2doc, doc2aem, getSchema } from '../../../../../../deps/da-parser/dist/index.js';
 import { createEngine, convertJsonToHtml, convertHtmlToJson } from '../../../../../../deps/da-sc-sdk/dist/index.js';
 import {
   parseRichText as parse,
@@ -19,17 +20,24 @@ const sdkWrites = (body) => {
 };
 const sdkStores = (body) => convertHtmlToJson({ html: sdkWrites(body) }).json.data.body ?? '';
 
+const daParserRewrites = (value) => {
+  const ydoc = new Y.Doc();
+  aem2doc(`<body><main><div><div class="rich-text rich-text-1"><div><div>${value}</div></div></div></div></main></body>`, ydoc);
+  const saved = new DOMParser().parseFromString(doc2aem(ydoc), 'text/html');
+  return saved.querySelector('.rich-text > div > div').innerHTML;
+};
+
 describe('rich-text schema', () => {
   describe('parse and serialize', () => {
     it('keeps the supported markup unchanged', () => {
-      const html = '<p>A <strong>bold</strong>, <em>em</em>, <u>u</u>, <del>s</del> and <a href="https://x.y">link</a>.</p>'
+      const html = '<p>A <strong>bold</strong>, <em>em</em>, <u>u</u>, <s>s</s> and <a href="https://x.y">link</a>.</p>'
         + '<ul><li><p>one</p><ol><li><p>nested</p></li></ol></li><li><p>two</p></li></ul><p>a<br>b</p>';
       expect(roundTrip(html)).to.equal(html);
     });
 
     it('normalizes equivalent tags', () => {
       expect(roundTrip('<p><b>b</b><i>i</i><strike>s</strike><del>d</del></p>'))
-        .to.equal('<p><strong>b</strong><em>i</em><del>sd</del></p>');
+        .to.equal('<p><strong>b</strong><em>i</em><s>sd</s></p>');
     });
 
     it('writes line breaks outside marks', () => {
@@ -216,7 +224,7 @@ describe('rich-text schema', () => {
       'inner line breaks': [paragraph('a', hardBreak, hardBreak, 'b'), bulletList(listItem(paragraph('c', hardBreak, 'd')))],
       'nested lists': [bulletList(listItem(paragraph('a'), orderedList(listItem(paragraph('b'), bulletList(listItem(paragraph(text('c', ['em']))))))))],
       'quotes with lists': [quote(paragraph('q'), bulletList(listItem(paragraph('i'))), quote(paragraph('n')))],
-      'heading marks': [heading(3, text('H', ['u', 'del']))],
+      'heading marks': [heading(3, text('H', ['u', 's']))],
       unicode: [paragraph('emoji 😀 ümlaut')],
     };
 
@@ -268,6 +276,26 @@ describe('rich-text schema', () => {
         const reloaded = parse(sdkStores(serialize(richTextDocument)));
         expect(reloaded.eq(richTextDocument), `${outer} over ${inner}`).to.be.true;
       });
+    });
+
+    it('only uses nodes and marks da-parser knows', () => {
+      const daSchema = getSchema();
+      expect(Object.keys(schema.marks).filter((name) => !daSchema.marks[name])).to.deep.equal([]);
+      expect(Object.keys(schema.nodes).filter((name) => !daSchema.nodes[name])).to.deep.equal([]);
+    });
+
+    it('reloads every node and mark unchanged after da-parser rewrites it', () => {
+      const marks = Object.keys(schema.marks).map((name) => (name === 'link' ? link('/a', 'T') : name));
+      const richTextDocument = documentOf([
+        ...[1, 2, 3, 4, 5, 6].map((level) => heading(level, `h${level}`)),
+        paragraph(...marks.flatMap((mark) => [text('x', [mark]), ' ']), 'a', hardBreak, 'b'),
+        paragraph(text('a', ['strong']), { ...hardBreak, marks: [{ type: 'strong' }] }, text('b', ['strong'])),
+        paragraph(text('a', ['em']), { ...hardBreak, marks: [{ type: 'em' }] }, 'b'),
+        bulletList(listItem(paragraph('one'), orderedList(listItem(paragraph('two'))))),
+        quote(paragraph('q'), bulletList(listItem(paragraph('i')))),
+      ]);
+      const reloaded = parse(daParserRewrites(serialize(richTextDocument)));
+      expect(serialize(reloaded)).to.equal(serialize(richTextDocument));
     });
   });
 });
