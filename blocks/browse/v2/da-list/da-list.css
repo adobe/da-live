@@ -15,7 +15,7 @@
   --da-card-width: 226px;
   --da-card-height: 300px;
 
-  --da-list-columns: var(--da-list-select-width) minmax(0, 103fr) minmax(var(--da-list-type-width), 30fr) minmax(var(--da-list-date-width), 45fr) minmax(var(--da-list-action-width), 28fr);
+  --da-list-columns: var(--da-list-select-width) minmax(0, 5fr) minmax(var(--da-list-type-width), 2fr) minmax(var(--da-list-date-width), 3fr) var(--da-list-action-width);
 }
 
 :host([size="s"]) {

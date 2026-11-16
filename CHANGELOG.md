@@ -1,3 +1,24 @@
+# [1.30.0](https://github.com/adobe/da-live/compare/v1.29.4...v1.30.0) (2026-11-16)
+
+
+### Features
+
+* **sc:** add rich-text editor for structured content ([#1661](https://github.com/adobe/da-live/issues/1661)) ([c838a35](https://github.com/adobe/da-live/commit/c838a35fb4259ab830f5254e7a6b2435dde5187b)), closes [adobe/da-sc-sdk#22](https://github.com/adobe/da-sc-sdk/issues/22)
+
+## [1.29.4](https://github.com/adobe/da-live/compare/v1.29.3...v1.29.4) (2026-11-16)
+
+
+### Bug Fixes
+
+* **canvas:** make the floating toolbars keyboard reachable ([#1734](https://github.com/adobe/da-live/issues/1734)) ([16738cb](https://github.com/adobe/da-live/commit/16738cbd0130ea62aa5b50e02f39b49c214fe51c)), closes [#1542](https://github.com/adobe/da-live/issues/1542)
+
+## [1.29.3](https://github.com/adobe/da-live/compare/v1.29.2...v1.29.3) (2026-11-16)
+
+
+### Bug Fixes
+
+* use site config for hlx6 projects ([#1722](https://github.com/adobe/da-live/issues/1722)) ([867fad8](https://github.com/adobe/da-live/commit/867fad862c57218795be6e502666995d2bcbaf51)), closes [#1446](https://github.com/adobe/da-live/issues/1446)
+
 ## [1.29.2](https://github.com/adobe/da-live/compare/v1.29.1...v1.29.2) (2026-11-16)
 
 
