@@ -871,7 +871,7 @@ function createOutlineView() {
 function createFileExplorerView() {
   return {
     id: 'files',
-    label: 'Content',
+    label: 'Browse',
     section: 'Editor',
     firstParty: true,
     load: async () => {
