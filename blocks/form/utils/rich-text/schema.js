@@ -3,6 +3,7 @@ import {
   baseSchema,
   DOMParser as ProseMirrorParser,
   DOMSerializer,
+  Fragment,
   Schema,
 } from 'da-y-wrapper';
 import { safeHref } from '../safe-href.js';
@@ -173,6 +174,24 @@ export function parseRichText(value) {
 }
 
 /**
+ * Drops the marks of the line breaks in a node, so they are written outside marks.
+ * @param {object} node The ProseMirror node.
+ * @returns {object} The node with unmarked line breaks.
+ */
+function unmarkLineBreaks(node) {
+  if (node.type.name === 'hard_break') {
+    return node.mark([]);
+  }
+  if (node.isLeaf) {
+    return node;
+  }
+
+  const children = [];
+  node.forEach((child) => children.push(unmarkLineBreaks(child)));
+  return node.copy(Fragment.fromArray(children));
+}
+
+/**
  * Writes a document as HTML, or an empty string when it shows no text. The SDK brings the
  * value into its stored form on save.
  * @param {object} richTextDocument The ProseMirror document.
@@ -184,6 +203,6 @@ export function serializeRichText(richTextDocument) {
   }
 
   const container = document.createElement('div');
-  container.append(serializer.serializeFragment(richTextDocument.content));
+  container.append(serializer.serializeFragment(unmarkLineBreaks(richTextDocument).content));
   return container.innerHTML;
 }

@@ -32,6 +32,13 @@ describe('rich-text schema', () => {
         .to.equal('<p><strong>b</strong><em>i</em><del>sd</del></p>');
     });
 
+    it('writes line breaks outside marks', () => {
+      expect(roundTrip('<p><strong>a<br>b</strong></p>'))
+        .to.equal('<p><strong>a</strong><br><strong>b</strong></p>');
+      expect(roundTrip('<p><strong>a<br></strong>b</p>'))
+        .to.equal('<p><strong>a</strong><br>b</p>');
+    });
+
     it('nests marks', () => {
       expect(roundTrip('<p><strong><a href="/a">x</a></strong></p>'))
         .to.equal('<p><strong><a href="/a">x</a></strong></p>');
