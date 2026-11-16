@@ -1,6 +1,6 @@
 /* eslint-disable object-curly-newline */
 /* eslint-disable no-use-before-define */
-import { HLX_ADMIN, AEM_API, DA_ADMIN, ALLOWED_TOKEN } from './utils.js';
+import { HLX_ADMIN, AEM_API, DA_ADMIN, ALLOWED_TOKEN, object2sheet } from './utils.js';
 import { loadIms, handleSignIn } from './ims.js';
 
 export { AEM_API };
@@ -66,6 +66,13 @@ export const aem = {
 // config: top-level org/site config.
 export const config = {
   get: withArgs(async ({ org, site }) => {
+    if (await isHlx6(org, site)) {
+      const resp = await daFetch({ url: `${AEM_API}/${org}/sites/${site}/config/editor/da.json` });
+      if (!resp.ok) return resp;
+      const adapted = new Response(JSON.stringify(object2sheet(await resp.json())), resp);
+      adapted.permissions = resp.permissions;
+      return adapted;
+    }
     const url = await getDaApiPath(CONFIG, org, site);
     return daFetch({ url });
   }),
