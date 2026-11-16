@@ -61,7 +61,7 @@ describe('config sections', () => {
   describe('tabsForScope', () => {
     it('shows only org-capable tabs and sections at org scope', () => {
       const tabs = tabsForScope(ORG);
-      expect(ids(tabs)).to.deep.equal(['extensions', 'workspace', 'integrations', 'multi-site']);
+      expect(ids(tabs)).to.deep.equal(['extensions', 'workspace', 'integrations']);
       expect(ids(tabs[0].sections)).to.deep.equal(['plugins', 'prepare']);
       expect(ids(tabs[2].sections)).to.deep.equal(['aem-assets']);
     });

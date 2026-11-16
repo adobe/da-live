@@ -7,7 +7,6 @@ export const SHEETS = {
   library: 'library',
   apps: 'apps',
   prepare: 'prepare',
-  msm: 'msm',
 };
 
 // Content sheet files (library lists, placeholders) are read by the editor from their first

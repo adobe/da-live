@@ -3,7 +3,6 @@ import aemAssets, { validateRepositoryId, validateHost, validateBasePath, valida
 import { validateRow } from '../../../../blocks/config/panels/prepare.js';
 import { rowStates, rowErrors, rowsToSave, cellText, listColumns } from '../../../../blocks/config/editors/rows.js';
 import plugins, { validateRow as validatePlugin } from '../../../../blocks/config/panels/plugins.js';
-import msm, { validateRow as validateMsm } from '../../../../blocks/config/panels/msm.js';
 import { validateBlock, validateTemplate, validateIcon, validatePlaceholder } from '../../../../blocks/config/panels/library.js';
 import { validateRow as validateApp } from '../../../../blocks/config/panels/apps.js';
 import translation, { validateOption, validateLanguage } from '../../../../blocks/config/panels/translation.js';
@@ -141,35 +140,6 @@ describe('library panels', () => {
   it('requires a placeholder key', () => {
     expect(validatePlaceholder({ Text: 'x' })).to.have.keys('Key');
     expect(validatePlaceholder({ Key: 'read more' })).to.deep.equal({});
-  });
-});
-
-describe('msm panel', () => {
-  const BASE = { base: 'my-base', title: 'Base Site' };
-  const SAT = { base: 'my-base', satellite: 'satellite-1', title: 'Satellite Site 1' };
-
-  it('validates base and satellite site names', () => {
-    expect(validateMsm({})).to.have.keys('base');
-    expect(validateMsm({ base: 'my base' })).to.have.keys('base');
-    expect(validateMsm({ base: 'a', satellite: 'a' })).to.have.keys('satellite');
-    expect(validateMsm(SAT, [BASE])).to.deep.equal({});
-  });
-
-  it('lets a satellite resolve from one base only, while allowing multi-level chains', () => {
-    const other = { base: 'other-base', satellite: 'satellite-1' };
-    expect(validateMsm(other, [SAT])).to.have.keys('satellite');
-    const chain = { base: 'satellite-1', satellite: 'satellite-2' };
-    expect(validateMsm(chain, [BASE, SAT])).to.deep.equal({});
-  });
-
-  it('flags a repeated base/satellite pair, but not a base row next to its satellites', () => {
-    expect(rowErrors(msm, [BASE, SAT], { index: null, row: { ...SAT, title: 'x' } })).to.have.keys('base');
-    expect(rowErrors(msm, [SAT], { index: null, row: BASE })).to.deep.equal({});
-  });
-
-  it('lists base, satellite and title as table columns', () => {
-    expect(listColumns(msm).map((c) => c.label)).to.deep.equal(['Base site', 'Satellite site', 'Title']);
-    expect(listColumns(msm).map((c) => cellText(c, SAT))).to.deep.equal(['my-base', 'satellite-1', 'Satellite Site 1']);
   });
 });
 

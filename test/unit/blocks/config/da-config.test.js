@@ -311,7 +311,7 @@ describe('da-config', () => {
   it('shows only org tabs at org scope, and no secondary row for single-section tabs', async () => {
     el.org = 'dc1';
     await ready();
-    expect(values('.config-tabs-primary')).to.deep.equal(['extensions', 'workspace', 'integrations', 'multi-site']);
+    expect(values('.config-tabs-primary')).to.deep.equal(['extensions', 'workspace', 'integrations']);
     expect(q('.config-tabs-primary').value).to.equal('extensions');
     expect(values('.config-tabs-secondary')).to.deep.equal(['plugins', 'prepare']);
     expect(new URL(window.location.href).searchParams.get('tab')).to.equal('plugins');
@@ -1143,49 +1143,6 @@ describe('da-config', () => {
       await openSection('icons', 'lb3');
       expect(el.shadowRoot.textContent).to.include("isn't a file of this site");
       expect(has('.config-table')).to.equal(false);
-    });
-  });
-
-  describe('Multi-Site Manager panel', () => {
-    it('adds base and satellite rows at org scope and saves the msm sheet', async () => {
-      const puts = mockFetch({ configFor: () => ORG_CONFIG, sitesFor: () => [{ name: 'alpha' }] });
-      el.org = 'ms1';
-      el._sectionId = 'msm';
-      await ready();
-      const dialogInput = (key) => q(`nx-dialog [id="config-${key}"]`);
-      const type = async (key, value) => {
-        dialogInput(key).value = value;
-        dialogInput(key).dispatchEvent(new Event('input'));
-        await el.updateComplete;
-      };
-      const add = async (fields) => {
-        q('.config-row-buttons .nx-form-btn-secondary').click();
-        await el.updateComplete;
-        await Object.entries(fields)
-          .reduce((done, [key, value]) => done.then(() => type(key, value)), Promise.resolve());
-        q('nx-dialog .nx-form-btn-primary').click();
-        await el.updateComplete;
-      };
-
-      await add({ base: 'my-base', title: 'Base Site' });
-      await add({ base: 'my-base', satellite: 'satellite-1' });
-      await add({ base: 'other', satellite: 'satellite-1' });
-      expect(q('nx-dialog .nx-input-error-msg').textContent).to.include('already a satellite');
-      q('nx-dialog .nx-form-btn-secondary').click();
-      await el.updateComplete;
-
-      const cells = [...el.shadowRoot.querySelectorAll('.config-table tbody tr')]
-        .map((tr) => [...tr.querySelectorAll('th, td:not(.config-table-actions)')].map((c) => c.textContent.trim()));
-      expect(cells).to.deep.equal([['my-base', '', 'Base Site'], ['my-base', 'satellite-1', '']]);
-      const headers = [...el.shadowRoot.querySelectorAll('.config-table thead th')].map((t) => t.textContent.trim());
-      expect(headers).to.deep.equal(['Base site', 'Satellite site', 'Title', 'Row actions']);
-      q('.config-savebar .nx-form-btn-primary').click();
-      await waitUntil(() => !el._busy, el);
-      expect(puts[0].site).to.equal(null);
-      expect(puts[0].body.msm.data).to.deep.equal([
-        { base: 'my-base', title: 'Base Site' },
-        { base: 'my-base', satellite: 'satellite-1' },
-      ]);
     });
   });
 

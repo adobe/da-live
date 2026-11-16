@@ -6,7 +6,7 @@ import {
   mergeRows,
 } from '../../../../blocks/config/editors/rows.js';
 import prepare from '../../../../blocks/config/panels/prepare.js';
-import msm from '../../../../blocks/config/panels/msm.js';
+import translation from '../../../../blocks/config/panels/translation.js';
 import plugins from '../../../../blocks/config/panels/plugins.js';
 import { renderFileStatus, renderLibraryStatus } from '../../../../blocks/config/editors/file-status.js';
 import { library } from '../../../../blocks/config/stores.js';
@@ -318,12 +318,15 @@ describe('mergeRows', () => {
     expect(merge([A, A], [A, A, B], [A, A])).to.deep.equal({ rows: [A, A, B] });
   });
 
-  it('matches rows by the panel id, like MSM base>satellite and case-insensitive plugin titles', () => {
-    const base = { base: 'b1' };
-    const sat = { base: 'b1', satellite: 's1' };
-    expect(merge([base], [base, sat], [base, { base: 'b2' }], msm))
-      .to.deep.equal({ rows: [base, { base: 'b2' }, sat] });
-    expect(merge([base, sat], [base], [base, { ...sat, title: 'x' }], msm)).to.deep.equal({ conflict: true });
+  it('matches rows by the panel id, like all columns of a rule and case-insensitive plugin titles', () => {
+    const rules = translation.parts.find((p) => p.id === 'custom-doc-rules');
+    const meta = { block: 'metadata', rule: 'dnt' };
+    const cols = { block: 'columns', rule: 'dnt col 1' };
+    const hero = { block: 'hero', rule: 'dnt' };
+    expect(merge([meta], [meta, cols], [meta, hero], rules))
+      .to.deep.equal({ rows: [meta, hero, cols] });
+    expect(merge([meta, cols], [meta], [meta, { ...cols, note: 'x' }], rules))
+      .to.deep.equal({ conflict: true });
     const tags = { title: 'Tags', path: '/t' };
     expect(merge([], [tags], [{ title: 'tags', path: '/other' }], plugins)).to.deep.equal({ conflict: true });
   });

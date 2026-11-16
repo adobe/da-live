@@ -12,7 +12,6 @@ import aemAssets from './panels/aem-assets.js';
 import apps from './panels/apps.js';
 import experienceWorkspace from './panels/experience-workspace.js';
 import { blocks, templates, icons, placeholders } from './panels/library.js';
-import msm from './panels/msm.js';
 import plugins from './panels/plugins.js';
 import prepare from './panels/prepare.js';
 import translation from './panels/translation.js';
@@ -131,20 +130,6 @@ export const TABS = [
         }),
         docs: 'https://www.aem.live/docs/ew/administering/translation-config',
         panel: translation,
-      },
-    ],
-  },
-  {
-    id: 'multi-site',
-    label: 'Multi-site',
-    sections: [
-      {
-        id: 'msm',
-        label: 'Multi-Site Manager',
-        scopes: [ORG],
-        store: config(SHEETS.msm),
-        docs: 'https://www.aem.live/docs/ew/administering/multi-site-manager',
-        panel: msm,
       },
     ],
   },

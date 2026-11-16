@@ -38,6 +38,7 @@ Many options are read in da-nx (`ew.*` flags, `aem.*` asset settings, `.da/trans
 Options intentionally left out of the editor, with the reason. The editor still keeps them: saving a section rewrites only the keys it shows, never removes others from the sheet.
 - `ew.coworker`, `ew.coworkerManifest` — chat harness rollout selectors, set per site by the team rolling it out.
 - `ew.wysiwygBranch` — developer setting that points quick edit at a code branch.
+- the `msm` sheet (Multi-Site Manager) — being reworked; add it back once the new MSM config is settled.
 
 Add new exceptions here; anything else must be in the editor.
 

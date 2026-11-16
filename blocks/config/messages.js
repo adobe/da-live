@@ -132,13 +132,6 @@ export const VALIDATION = {
     iconKey: 'Enter the icon key.',
     iconKeyChars: 'Use letters, numbers, - and _ only.',
   },
-  msm: {
-    baseSite: 'Enter the base site.',
-    siteName: 'Use the site name, e.g. my-site.',
-    ownSatellite: 'A site cannot be its own satellite.',
-    satelliteTaken: 'This site is already a satellite of another base.',
-    duplicate: 'This base and satellite are already listed.',
-  },
   translation: {
     credentialsUrl: 'Enter the https:// Admin API source URL.',
     settingsKey: 'This key is edited under Settings.',
