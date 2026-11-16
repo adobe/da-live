@@ -35,6 +35,8 @@ describe('config messages', () => {
   it('words every failure the same way', () => {
     expect(failure('save changes', { status: 500 })).to.equal('Could not save changes (500).');
     expect(SHELL.saveFailed({ status: 0 })).to.equal('Could not save changes (network error).');
+    expect(SHELL.saveFailed({ ok: false, status: 409, conflict: true }))
+      .to.equal('Someone else changed this list. Reload to see their changes.');
     expect(IMPORT.listFailed({ status: 0 })).to.equal('Could not update the blocks list (network error).');
     expect(IMPORT.readRepoFailed({ status: 404 })).to.equal('Could not read the repository (404).');
   });

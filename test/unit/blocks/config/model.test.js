@@ -122,6 +122,41 @@ describe('config editor model', () => {
       const mutate = mutationFor(ctx, editState(ctx, { edits: {}, rows: [{ title: 'X' }] }));
       expect(mutate(null).config.list.data).to.deep.equal([{ title: 'X' }]);
     });
+
+    describe('when someone else saved the list after it was opened', () => {
+      const A = { title: 'A' };
+      const B = { title: 'B' };
+      const C = { title: 'C' };
+      const opened = (rows) => ctxFor(config('apps'), rowsPanel, { configs: { org: multi({ apps: rows }), site: null } });
+      const write = (loaded, mine, current) => {
+        const ctx = opened(loaded);
+        return mutationFor(ctx, editState(ctx, { edits: {}, rows: mine }))(current);
+      };
+
+      it('keeps their rows and adds this edit', () => {
+        const { config: json, changed } = write([A], [A, C], multi({ apps: [A, B], flags: [{ key: 'k', value: 'v' }] }));
+        expect([changed, json.apps.data, json.flags.data]).to.deep.equal([true, [A, B, C], [{ key: 'k', value: 'v' }]]);
+      });
+
+      it('writes nothing and reports a conflict when both sides changed the same row', () => {
+        const current = multi({ apps: [{ title: 'A', path: '/theirs' }] });
+        expect(write([A], [{ title: 'A', path: '/mine' }], current))
+          .to.deep.equal({ config: current, changed: false, conflict: true });
+      });
+
+      it('reports no change when they already saved the same edit', () => {
+        const current = multi({ apps: [A, B] });
+        expect(write([A], [A, B], current)).to.deep.equal({ config: current, changed: false });
+      });
+
+      it('keeps rows owned by another panel of the same sheet', () => {
+        const owned = { ...rowsPanel, owns: (row) => row.title !== 'Lib' };
+        const lib = { title: 'Lib' };
+        const ctx = ctxFor(config('apps'), owned, { configs: { org: multi({ apps: [lib, A] }), site: null } });
+        const mutate = mutationFor(ctx, editState(ctx, { edits: {}, rows: [A, C] }));
+        expect(mutate(multi({ apps: [lib, A, B] })).config.apps.data).to.deep.equal([lib, A, B, C]);
+      });
+    });
   });
 
   describe('needsSetup', () => {

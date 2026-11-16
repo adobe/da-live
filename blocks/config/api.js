@@ -52,13 +52,15 @@ export async function listSites(org) {
 }
 
 // Re-reads right before writing so the conflict window is one round trip (DA ignores If-Match,
-// same as mutatePermissions). `mutate(json|null)` returns { config, changed }.
-// Resolves to { ok, status, config }, plus `error` when the request itself failed (status 0).
+// same as mutatePermissions). `mutate(json|null)` returns { config, changed, conflict? }; a
+// conflict writes nothing. Resolves to { ok, status, config }, plus `error` when the request
+// itself failed (status 0) or `conflict` (status 409).
 async function mutateJson(read, write, mutate) {
   const current = await read();
   if (isFailed(current)) return { ok: false, status: current.status };
 
-  const { config: next, changed } = mutate(isMissing(current) ? null : current.data);
+  const { config: next, changed, conflict } = mutate(isMissing(current) ? null : current.data);
+  if (conflict) return { ok: false, status: 409, conflict: true };
   if (!changed) return { ok: true, status: 200, config: next };
 
   try {

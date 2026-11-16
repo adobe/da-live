@@ -34,7 +34,9 @@ export const SHELL = {
   docs: 'Docs',
   openSheet: 'Open sheet',
   saved: 'Changes saved.',
-  saveFailed: (result) => failure('save changes', result),
+  saveFailed: (result) => (result?.conflict
+    ? 'Someone else changed this list. Reload to see their changes.'
+    : failure('save changes', result)),
   setupLibraryFailed: (result) => failure('set up the library', result),
   saving: 'Saving…',
   unsaved: 'Unsaved changes',

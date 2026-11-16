@@ -210,6 +210,13 @@ describe('config api', () => {
       mockFetch({ configFor: () => { throw new Error('offline'); } });
       expect(await loadConfigs('sc7')).to.deep.include({ status: 'error', httpStatus: 0 });
     });
+
+    it('writes nothing and reports a 409 conflict when the change conflicts', async () => {
+      const puts = mockFetch({ configFor: () => kv([{ key: 'k', value: 'theirs' }]) });
+      const conflicting = (json) => ({ config: json, changed: false, conflict: true });
+      expect(await saveConfig('sc8', null, conflicting)).to.deep.equal({ ok: false, status: 409, conflict: true });
+      expect(puts).to.have.length(0);
+    });
   });
 });
 
@@ -820,6 +827,77 @@ describe('da-config', () => {
       expect(q('.config-table tbody th').textContent).to.include('Rollout');
       expect(has('.config-savebar')).to.equal(false);
     });
+
+    // `server` is what the next read returns; tests change it after opening, as if someone else
+    // saved the list in between.
+    describe('when someone else saved the list while it was open', () => {
+      const TARGET = { title: 'Send to Adobe Target', path: 'https://da.live/nx/public/plugins/target.html' };
+      const PUBLISH = { title: 'Publish', path: 'https://da.live/nx/public/plugins/publish.html' };
+      const CONFLICT = 'Someone else changed this list. Reload to see their changes.';
+      let server;
+      const serve = () => mockFetch({ configFor: () => server, sitesFor: () => [{ name: 'alpha' }] });
+      const save = async () => {
+        await click('.config-savebar .nx-form-btn-primary');
+        await waitUntil(() => !el._busy, el);
+      };
+      const titles = () => [...el.shadowRoot.querySelectorAll('.config-table tbody th')].map((t) => t.textContent.trim());
+
+      it('keeps their new row and adds this one', async () => {
+        server = multi('prepare', [ROLLOUT]);
+        const puts = serve();
+        await open({ org: 'pr11' });
+        await click('.config-row-buttons .config-add-btn');
+        await type('title', PUBLISH.title);
+        await type('path', PUBLISH.path);
+        await click('nx-dialog .nx-form-btn-primary');
+        server = multi('prepare', [ROLLOUT, TARGET]);
+        await save();
+        expect(puts.map((p) => p.body.prepare.data)).to.deep.equal([[ROLLOUT, TARGET, PUBLISH]]);
+        expect([titles(), has('.config-savebar')]).to.deep.equal([['Rollout', 'Send to Adobe Target', 'Publish'], false]);
+      });
+
+      it('keeps their edit to another row when deleting one here', async () => {
+        server = multi('prepare', [ROLLOUT, TARGET]);
+        const puts = serve();
+        await open({ org: 'pr12' });
+        await deleteRow(q('.config-table tbody tr'));
+        await el.updateComplete;
+        const renamedTarget = { ...TARGET, path: 'https://da.live/nx/public/plugins/target2.html' };
+        server = multi('prepare', [ROLLOUT, renamedTarget]);
+        await save();
+        expect(puts.map((p) => p.body.prepare.data)).to.deep.equal([[renamedTarget]]);
+      });
+
+      it('saves nothing, keeps the edits and explains, when they changed the same row', async () => {
+        server = multi('prepare', [ROLLOUT]);
+        const puts = serve();
+        window.daTestToasts.length = 0;
+        await open({ org: 'pr13' });
+        buttonIn(q('.config-table tbody tr'), 'Edit').click();
+        await el.updateComplete;
+        await type('path', 'https://da.live/nx/public/plugins/mine.html');
+        await click('nx-dialog .nx-form-btn-primary');
+        server = multi('prepare', [{ ...ROLLOUT, path: 'https://da.live/nx/public/plugins/theirs.html' }]);
+        await save();
+        expect(puts).to.have.length(0);
+        expect(window.daTestToasts.map((t) => [t.text, t.variant])).to.deep.equal([[CONFLICT, 'error']]);
+        expect([has('.config-savebar'), el._rows[0].path, el._readOnly])
+          .to.deep.equal([true, 'https://da.live/nx/public/plugins/mine.html', false]);
+      });
+
+      it('saves nothing when this side deleted a row they changed', async () => {
+        server = multi('prepare', [ROLLOUT, TARGET]);
+        const puts = serve();
+        window.daTestToasts.length = 0;
+        await open({ org: 'pr14' });
+        await deleteRow(q('.config-table tbody tr'));
+        await el.updateComplete;
+        server = multi('prepare', [{ ...ROLLOUT, title: 'Rollout', experience: 'window' }, TARGET]);
+        await save();
+        expect([puts.length, window.daTestToasts.map((t) => t.text), has('.config-savebar')])
+          .to.deep.equal([0, [CONFLICT], true]);
+      });
+    });
   });
 
   describe('Apps panel', () => {
@@ -951,6 +1029,36 @@ describe('da-config', () => {
       expect(puts[0].path).to.equal('/library/blocks.json');
       expect(puts[0].body.blocks.data).to.deep.equal([]);
       expect(puts[0].body.options.data).to.deep.equal([{ key: 'x' }]);
+    });
+
+    it('merges a library list file with rows someone else saved, or refuses on a conflict', async () => {
+      const CARDS = { name: 'Cards', path: '/library/blocks/cards' };
+      const HERO = { name: 'Hero', path: '/library/blocks/hero' };
+      let current = kv([CARDS]);
+      const puts = mockFetch({
+        configFor: (o, s) => (s ? libraryConfig([{ title: 'Blocks', path: '/library/blocks.json' }]) : ORG_CONFIG),
+        sitesFor: () => [{ name: 'alpha' }],
+        sourceFor: () => current,
+      });
+      window.daTestToasts.length = 0;
+      await openSection('blocks', 'lb10');
+      await deleteRow(q('.config-table tbody tr'));
+      await el.updateComplete;
+      current = kv([CARDS, HERO]);
+      q('.config-savebar .nx-form-btn-primary').click();
+      await waitUntil(() => !el._busy, el);
+      expect(puts.map((p) => [p.path, p.body.data])).to.deep.equal([['/library/blocks.json', [HERO]]]);
+      expect(el._file.json.data).to.deep.equal([HERO]);
+
+      // Now delete Hero here while someone else changes it.
+      current = kv([HERO]);
+      await deleteRow(q('.config-table tbody tr'));
+      await el.updateComplete;
+      current = kv([{ ...HERO, path: '/library/blocks/hero-v2' }]);
+      q('.config-savebar .nx-form-btn-primary').click();
+      await waitUntil(() => !el._busy, el);
+      expect([puts.length, window.daTestToasts.map((t) => t.text).pop(), has('.config-savebar')])
+        .to.deep.equal([1, 'Someone else changed this list. Reload to see their changes.', true]);
     });
 
     it('imports blocks from pages through the dialog and reloads the list', async () => {

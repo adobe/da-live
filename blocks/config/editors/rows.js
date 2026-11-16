@@ -7,10 +7,10 @@ import { INHERITANCE, ROWS } from '../messages.js';
 // `idKey` column; `duplicate` overrides the message), and `owns(row)` limits the panel to some
 // rows of a shared sheet.
 const idOf = (panel) => panel.idOf ?? ((row) => row[panel.idKey]);
-const ownedRows = (panel, json, sheet) => getRows(json, sheet).filter(panel.owns ?? Boolean);
+export const ownedRows = (panel, json, sheet) => getRows(json, sheet).filter(panel.owns ?? Boolean);
 
 // The list as the editor will see it: org rows (or the site rows that replace them), then
-// site-only rows. `index` points into the own rows.
+// site-only rows. `index` points into the own rows; `saved` is the own rows as loaded.
 export function rowStates(panel, { own, inherited, pending, sheet }) {
   const id = idOf(panel);
   const saved = ownedRows(panel, own, sheet);
@@ -25,7 +25,8 @@ export function rowStates(panel, { own, inherited, pending, sheet }) {
     }),
     ...rows.map((row, index) => ({ row, index })).filter(({ row }) => !orgIds.has(id(row))),
   ];
-  return { rows, items, dirty: JSON.stringify(rows) !== JSON.stringify(saved) };
+  const dirty = JSON.stringify(rows) !== JSON.stringify(saved);
+  return { rows, saved, items, dirty };
 }
 
 // Trims values and drops empty columns so saved rows stay as small as hand-written ones.
@@ -51,6 +52,52 @@ export function rowErrors(panel, rows, { index, row }) {
 export function rowsToSave(panel, json, rows, sheet) {
   const others = panel.owns ? getRows(json, sheet).filter((row) => !panel.owns(row)) : [];
   return [...others, ...rows];
+}
+
+const sameRow = (a, b) => {
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
+};
+
+const sameRows = (a, b) => a.length === b.length && a.every((row, i) => sameRow(row, b[i]));
+
+// null when two rows share an id, since they can't be told apart.
+function byId(rows, id) {
+  const map = new Map(rows.map((row) => [id(row), row]));
+  return map.size === rows.length ? map : null;
+}
+
+// Three-way merge of the editor's changes (`base` as loaded → `mine`) onto `theirs`, the rows
+// re-read right before the write, so rows someone else saved meanwhile are kept. Returns
+// { rows }, or { conflict: true } when both sides changed or removed the same row differently,
+// or rows can't be told apart.
+export function mergeRows(panel, { base, mine, theirs }) {
+  if (sameRows(base, theirs)) return { rows: mine };
+  const id = idOf(panel);
+  const [was, mineById, theirsById] = [base, mine, theirs].map((rows) => byId(rows, id));
+  if (!was || !mineById || !theirsById) return { conflict: true };
+
+  let rows = [...theirs];
+  let conflict = false;
+  [...new Set([...was.keys(), ...mineById.keys()])].forEach((key) => {
+    const mineRow = mineById.get(key);
+    const theirRow = theirsById.get(key);
+    if (!was.has(key)) {
+      if (!theirRow) rows.push(mineRow);
+      else if (!sameRow(mineRow, theirRow)) conflict = true;
+      return;
+    }
+    const theyChanged = !theirRow || !sameRow(was.get(key), theirRow);
+    if (!mineRow) {
+      if (theirRow && theyChanged) conflict = true;
+      else rows = rows.filter((row) => id(row) !== key);
+      return;
+    }
+    if (sameRow(was.get(key), mineRow)) return;
+    if (!theirRow || (theyChanged && !sameRow(mineRow, theirRow))) conflict = true;
+    else rows = rows.map((row) => (id(row) === key ? mineRow : row));
+  });
+  return conflict ? { conflict: true } : { rows };
 }
 
 // What a cell shows: the column's `display(row)`, else an option's label, else the value, with

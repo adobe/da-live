@@ -4,7 +4,7 @@
 import { getValue, applyValues, setRows } from '../sheets.js';
 import { inFile, inherits, sheetFor } from '../stores.js';
 import { fieldStates, pendingChanges } from '../editors/settings.js';
-import { rowStates, rowsToSave } from '../editors/rows.js';
+import { mergeRows, ownedRows, rowStates, rowsToSave } from '../editors/rows.js';
 import { INHERITANCE, SHELL } from '../messages.js';
 
 // Identifies the panel being edited (section and part), e.g. to tell whether the user moved on.
@@ -53,12 +53,19 @@ export function editState({ panel, own, inherited, sheet }, { edits, rows }) {
   };
 }
 
-// The write for the unsaved work: (json|null) => { config, changed }. The sheet comes from the
-// copy re-read right before the write, since a library list lives in whatever its first sheet is.
+// The write for the unsaved work: (json|null) => { config, changed, conflict? }. The sheet comes
+// from the copy re-read right before the write, since a library list lives in whatever its first
+// sheet is. Rows are merged onto that copy so someone else's concurrent changes survive; a row
+// both sides changed is a `conflict` and nothing is written.
 export function mutationFor({ store, part, panel }, edit) {
   return (json) => {
     const sheet = sheetFor(store, { part, json });
-    if (panel.kind === 'rows') return setRows(json, rowsToSave(panel, json, edit.list.rows, sheet), sheet);
+    if (panel.kind === 'rows') {
+      const { saved: base, rows: mine } = edit.list;
+      const merged = mergeRows(panel, { base, mine, theirs: ownedRows(panel, json, sheet) });
+      if (merged.conflict) return { config: json, changed: false, conflict: true };
+      return setRows(json, rowsToSave(panel, json, merged.rows, sheet), sheet);
+    }
     return applyValues(json, pendingChanges(edit.states), sheet);
   };
 }

@@ -3,8 +3,11 @@ import { html, render } from 'da-lit';
 import { fieldStates, pendingChanges } from '../../../../blocks/config/editors/settings.js';
 import {
   rowStates, cleanRow, rowErrors, renderRowDialog, renderRows, cellText, listColumns, matches,
+  mergeRows,
 } from '../../../../blocks/config/editors/rows.js';
 import prepare from '../../../../blocks/config/panels/prepare.js';
+import msm from '../../../../blocks/config/panels/msm.js';
+import plugins from '../../../../blocks/config/panels/plugins.js';
 import { renderFileStatus, renderLibraryStatus } from '../../../../blocks/config/editors/file-status.js';
 import { library } from '../../../../blocks/config/stores.js';
 
@@ -251,6 +254,78 @@ describe('rows', () => {
   it('flags a title already used by another editable row', () => {
     expect(rowErrors(prepare, [A, B], { index: 1, row: { ...B, title: 'A' } })).to.have.keys('title');
     expect(rowErrors(prepare, [A, B], { index: 0, row: A })).to.deep.equal({});
+  });
+});
+
+// Three-way merge on save: `base` is the list as loaded, `mine` the editor's list, `theirs` the
+// list re-read right before the write (someone else may have saved in between).
+describe('mergeRows', () => {
+  const A = { title: 'A', path: '/a' };
+  const B = { title: 'B', path: '/b' };
+  const C = { title: 'C', path: '/c' };
+  const D = { title: 'D', path: '/d' };
+  const edited = (row, path) => ({ ...row, path });
+  const merge = (base, mine, theirs, panel = prepare) => mergeRows(panel, { base, mine, theirs });
+
+  it('writes the editor list as is when nobody else saved', () => {
+    expect(merge([A, B], [B, C], [A, B])).to.deep.equal({ rows: [B, C] });
+    expect(merge([], [A], [])).to.deep.equal({ rows: [A] });
+    // Same rows with keys in another order still count as unchanged.
+    expect(merge([A], [], [{ path: '/a', title: 'A' }])).to.deep.equal({ rows: [] });
+  });
+
+  it('keeps rows someone else added, and appends the ones added here', () => {
+    expect(merge([A], [A, C], [A, B])).to.deep.equal({ rows: [A, B, C] });
+    expect(merge([], [C, D], [B])).to.deep.equal({ rows: [B, C, D] });
+  });
+
+  it('accepts the same row added on both sides, but not two different rows with one id', () => {
+    expect(merge([A], [A, B], [A, B])).to.deep.equal({ rows: [A, B] });
+    expect(merge([A], [A, B], [A, edited(B, '/other')])).to.deep.equal({ conflict: true });
+  });
+
+  it('applies deletes, unless the other side changed the deleted row', () => {
+    expect(merge([A, B], [A], [A, B, C])).to.deep.equal({ rows: [A, C] });
+    expect(merge([A, B], [A], [A])).to.deep.equal({ rows: [A] });
+    expect(merge([A, B], [A], [A, edited(B, '/b2')])).to.deep.equal({ conflict: true });
+  });
+
+  it('applies edits in place, unless the other side changed or removed that row', () => {
+    const A2 = edited(A, '/a2');
+    expect(merge([A, B], [A2, B], [A, B, C])).to.deep.equal({ rows: [A2, B, C] });
+    expect(merge([A, B], [A2, B], [A, edited(B, '/b2')])).to.deep.equal({ rows: [A2, edited(B, '/b2')] });
+    expect(merge([A, B], [A2, B], [A2, B, C])).to.deep.equal({ rows: [A2, B, C] });
+    expect(merge([A, B], [A2, B], [edited(A, '/a3'), B])).to.deep.equal({ conflict: true });
+    expect(merge([A, B], [A2, B], [B])).to.deep.equal({ conflict: true });
+  });
+
+  it('keeps rows only the other side changed, and leaves rows nobody touched in their order', () => {
+    expect(merge([A, B, C], [A, B, C, D], [C, edited(B, '/b2'), A]))
+      .to.deep.equal({ rows: [C, edited(B, '/b2'), A, D] });
+    expect(merge([A, B], [A, B, C], [A])).to.deep.equal({ rows: [A, C] });
+  });
+
+  it('treats a rename as removing the old row and adding the new one', () => {
+    const renamed = { title: 'A2', path: '/a' };
+    expect(merge([A, B], [renamed, B], [A, B, C])).to.deep.equal({ rows: [B, C, renamed] });
+    expect(merge([A, B], [renamed, B], [edited(A, '/x'), B])).to.deep.equal({ conflict: true });
+  });
+
+  it('reports a conflict, without guessing, when rows share an id and the list changed', () => {
+    expect(merge([A, A], [A, A, B], [A, A, C])).to.deep.equal({ conflict: true });
+    expect(merge([A], [A, B], [A, C, C])).to.deep.equal({ conflict: true });
+    // Nothing changed meanwhile: the duplicate is left to the user, as before.
+    expect(merge([A, A], [A, A, B], [A, A])).to.deep.equal({ rows: [A, A, B] });
+  });
+
+  it('matches rows by the panel id, like MSM base>satellite and case-insensitive plugin titles', () => {
+    const base = { base: 'b1' };
+    const sat = { base: 'b1', satellite: 's1' };
+    expect(merge([base], [base, sat], [base, { base: 'b2' }], msm))
+      .to.deep.equal({ rows: [base, { base: 'b2' }, sat] });
+    expect(merge([base, sat], [base], [base, { ...sat, title: 'x' }], msm)).to.deep.equal({ conflict: true });
+    const tags = { title: 'Tags', path: '/t' };
+    expect(merge([], [tags], [{ title: 'tags', path: '/other' }], plugins)).to.deep.equal({ conflict: true });
   });
 });
 
