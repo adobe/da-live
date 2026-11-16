@@ -1,3 +1,10 @@
+## [1.29.4](https://github.com/adobe/da-live/compare/v1.29.3...v1.29.4) (2026-11-16)
+
+
+### Bug Fixes
+
+* **canvas:** make the floating toolbars keyboard reachable ([#1734](https://github.com/adobe/da-live/issues/1734)) ([16738cb](https://github.com/adobe/da-live/commit/16738cbd0130ea62aa5b50e02f39b49c214fe51c)), closes [#1542](https://github.com/adobe/da-live/issues/1542)
+
 ## [1.29.3](https://github.com/adobe/da-live/compare/v1.29.2...v1.29.3) (2026-11-16)
 
 
