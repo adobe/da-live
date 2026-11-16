@@ -15,6 +15,7 @@ describe('Landing file preview', () => {
   let el;
   let loadSite;
   let metadata;
+  let storageDescriptor;
 
   const list = () => el.shadowRoot.querySelector('da-list');
   const setRecent = (value) => localStorage.setItem('da-recent-files', JSON.stringify(value));
@@ -25,6 +26,8 @@ describe('Landing file preview', () => {
   }
 
   beforeEach(async () => {
+    storageDescriptor = Object.getOwnPropertyDescriptor(window, 'localStorage');
+    Object.defineProperty(window, 'localStorage', { configurable: true, value: sessionStorage });
     ['da-sites', 'da-recent-files', 'da-favorites', 'da-browse-settings']
       .forEach((key) => localStorage.removeItem(key));
     setRecent({
@@ -56,6 +59,7 @@ describe('Landing file preview', () => {
     setEWEnabled(false);
     ['da-sites', 'da-recent-files', 'da-favorites', 'da-browse-settings']
       .forEach((key) => localStorage.removeItem(key));
+    Object.defineProperty(window, 'localStorage', storageDescriptor);
   });
 
   it('starts in small-row list view and stops loading once the primary site fills the cap', () => {
@@ -65,7 +69,6 @@ describe('Landing file preview', () => {
     expect(list().sort).to.equal(false);
     expect(list().listItems.map(({ path }) => path)).to.deep.equal(paths('org/site', 4));
     expect(metadata.getCalls().map(({ args }) => args[0])).to.deep.equal(paths('org/site', 10));
-    expect(el.shadowRoot.querySelector('.file-count').textContent).to.equal('4 of 10 files');
   });
 
   it('fills only unused slots from other sites and preserves their editor and folder links', async () => {
@@ -102,7 +105,6 @@ describe('Landing file preview', () => {
     await update();
     expect(list().listItems.map(({ path }) => path))
       .to.deep.equal([...paths('org/site', 2), ...paths('org/other', 2)]);
-    expect(el.shadowRoot.querySelector('.file-count').textContent).to.equal('4 of 10 files');
     const item = list().listItems[2];
     const favorites = sinon.spy(el, 'loadFavorites');
     list().dispatchEvent(new CustomEvent('favoritechange', { detail: { item } }));

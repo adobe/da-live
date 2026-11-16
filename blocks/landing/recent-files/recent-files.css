@@ -172,7 +172,6 @@ da-list::part(grid) {
 }
 
 .empty-state.is-empty {
-  min-height: 0;
   padding-block: var(--s2-spacing-400);
 }
 
