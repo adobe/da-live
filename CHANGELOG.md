@@ -1,3 +1,10 @@
+## [1.31.1](https://github.com/adobe/da-live/compare/v1.31.0...v1.31.1) (2026-11-16)
+
+
+### Bug Fixes
+
+* **ew:** keep comments attached when moving sections or blocks ([#1641](https://github.com/adobe/da-live/issues/1641)) ([02e8759](https://github.com/adobe/da-live/commit/02e87590fd5992d479bde3b059d07dd89ffc86e5))
+
 # [1.31.0](https://github.com/adobe/da-live/compare/v1.30.2...v1.31.0) (2026-11-16)
 
 
