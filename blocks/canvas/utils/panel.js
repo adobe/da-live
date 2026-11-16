@@ -1,4 +1,5 @@
 import { getNxEWFlags } from '../../../scripts/utils.js';
+import { FILE_EXPLORER_VIEW_ID } from '../../shared/file-explorer/file-explorer-view.js';
 
 export const TOOL_PANEL_ACTIVE_VIEW_KEY = 'nx-tool-panel-active-view';
 export const TOOL_PANEL_PINNED_VIEWS_KEY = 'nx-tool-panel-pinned-views';
@@ -22,7 +23,7 @@ export function persistToolPanelView(viewId) {
 }
 
 export function readPinnedToolPanelViews() {
-  const defaults = ['files', 'outline'];
+  const defaults = [FILE_EXPLORER_VIEW_ID, 'outline'];
   try {
     const ids = JSON.parse(sessionStorage.getItem(TOOL_PANEL_PINNED_VIEWS_KEY));
     const validIds = Array.isArray(ids)
