@@ -39,6 +39,8 @@ blocks/form/
     da-api.js             fetch/save against DA source via the nx2 source api
     schemas.js            loadSchemas — schema discovery + module cache
     persistence.js        attachPersistence — single-flight save with re-queue
+    safe-href.js          safeHref — drops links that run script or local programs
+    rich-text/            rich-text schema with its HTML conversion, commands and toolset
   views/
     editor.js / .css      ew-form-fields, field rendering + array rendering
     preview.js / .css     ew-form-preview, read-only JSON preview
@@ -65,10 +67,21 @@ editor.js          →  events.js           (publishes state and selection, hand
 tool-panel/outline/ →  events.js           (subscribes to state and selection, publishes jumps)
 utils/context.js   →  da-sc-sdk          (convertHtmlToJson)
 utils/persistence.js → da-sc-sdk        (convertJsonToHtml)
+views/editor.js  →  fields/rich-text.js (loaded once a form renders a rich-text field)
+fields/rich-text.js → utils/rich-text/  (schema, commands, tools)
+fields/rich-text.js → da-y-wrapper      (ProseMirror)
+fields/rich-text.js → blocks/shared/    (da-link-dialog)
+fields/rich-text-toolbar.js → nx2       (picker and popover, loaded on demand)
 views/           →  (SDK engine only via prop binding from the element — no direct imports)
 ```
 
 The SDK is the only piece that holds canonical state. Everything in `utils/`, `views/` and `tool-panel/` is specific to the form block. That covers DA I/O, UI components, schema discovery and single-flight save.
+
+Rich-text fields (`"x-semantic-type": "rich-text"`) render a ProseMirror editor in `fields/rich-text.js`. The SDK owns their value contract and storage, as its [schema spec](https://github.com/adobe/da-sc-sdk/blob/main/docs/schema-spec.md) describes. ProseMirror comes from the `da-y-wrapper` bundle the Canvas editor already loads, so the form block does not bundle it. The field and its utils import ProseMirror directly like Canvas does. `views/editor.js` only imports the field once a form renders a rich-text field, so other forms do not load ProseMirror.
+
+The editor schema in `utils/rich-text/schema.js` only allows the subset the SDK keeps. The SDK stores a list item as one line, so a list item holds a single paragraph and nested lists. ProseMirror's list commands cannot wrap or lift several blocks at once in such a schema, so `utils/rich-text/commands.js` has its own list commands. Canvas allows several blocks per list item and uses the ProseMirror ones. It also reads and writes values with the ProseMirror DOM parser and serializer, like da-parser does for Canvas. The SDK brings each value into its canonical HTML when it saves. Parity tests run every case through the SDK converters, so a saved value reloads as the same document.
+
+The toolbar in `fields/rich-text-toolbar.js` renders a toolset that `utils/rich-text/tools.js` binds to the editor. Each tool carries its own command and selection checks, and the toolbar fires `form-rich-text-command` for the field to run. The toolbar holds no rich-text knowledge, so a new tool only changes the toolset.
 
 ---
 
