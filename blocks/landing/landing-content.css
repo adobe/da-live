@@ -141,10 +141,7 @@ da-list::part(grid) {
   --da-list-type-width: 200px;
   --da-list-date-width: 200px;
   --da-list-action-width: 96px;
-}
-
-.files-panel[data-view="list"] da-list::part(header) {
-  grid-template-columns: var(--da-list-select-width) minmax(0, 442px) var(--da-list-type-width) minmax(var(--da-list-date-width), 1fr) var(--da-list-action-width);
+  --da-list-columns: var(--da-list-select-width) minmax(0, 442px) var(--da-list-type-width) minmax(var(--da-list-date-width), 1fr) var(--da-list-action-width);
 }
 
 .empty-state {
