@@ -38,7 +38,12 @@ function ancestors(resolvedPosition) {
 }
 
 /**
- * Runs a command without applying it.
+ * Runs a command without applying it and returns the transaction it would dispatch.
+ *
+ * Needed to chain built-in commands into one change. Each command must see the result of
+ * the previous one, but the editor should only apply the combined result once, as a single
+ * transaction and value change. A command only hands its transaction to `dispatch`, so
+ * catching it there gives its steps to collect and the next state to run the next one on.
  * @param {Function} command The ProseMirror command.
  * @param {object} state The editor state.
  * @returns {object|undefined} The transaction it dispatched, or undefined when it did not.
@@ -416,6 +421,12 @@ export function toggleList(name) {
   return (state, dispatch) => {
     const listType = state.schema.nodes[name];
     const current = getListType(state);
+
+    // The SDK stores a list item as one line, so the schema allows a single paragraph per
+    // item. ProseMirror's wrapInList and liftListItem briefly put several blocks into one item
+    // when they handle a multi-block selection, which this schema rejects. unwrapListItems and
+    // wrapBlocksInList wrap and lift each block on its own instead.
+
     if (current?.name === name) {
       return unwrapListItems(state, dispatch);
     }
