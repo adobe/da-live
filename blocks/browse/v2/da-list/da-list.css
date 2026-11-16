@@ -14,6 +14,8 @@
   --da-list-min-height: 56px;
   --da-card-width: 226px;
   --da-card-height: 300px;
+
+  --da-list-columns: var(--da-list-select-width) minmax(0, 103fr) minmax(var(--da-list-type-width), 30fr) minmax(var(--da-list-date-width), 45fr) minmax(var(--da-list-action-width), 28fr);
 }
 
 :host([size="s"]) {
@@ -42,12 +44,11 @@
 .da-list-group-header {
   display: flex;
   align-items: center;
-  padding: var(--s2-spacing-100) 0;
   font-family: var(--s2-font-family);
   color: var(--s2-gray-600);
   font-size: var(--s2-component-m-regular-font-size);
   box-sizing: border-box;
-  min-height: var(--da-list-min-height);
+  min-height: 46px;
   background: var(--s2-gray-50);
 
   .nx-checkbox {
@@ -191,7 +192,7 @@ da-file-item.is-expanded::after {
   z-index: 2;
   background: light-dark(#fff, #000);
   display: grid;
-  grid-template-columns: var(--da-list-select-width) minmax(0, 442px) var(--da-list-type-width) var(--da-list-date-width) var(--da-list-action-width);
+  grid-template-columns: var(--da-list-columns);
   align-items: center;
   min-height: 46px;
 }
