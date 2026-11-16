@@ -22,7 +22,7 @@ import { buildKeymap, createToolset } from './tools.js';
  * @param {() => void} options.onLink Opens the link dialog.
  * @returns {RichTextEditor} The editor.
  */
-export function createRichTextEditor({ proseMirror, onLink }) {
+function createRichTextEditor({ proseMirror, onLink }) {
   const schema = createSchema(proseMirror);
   const codec = createRichTextCodec({ proseMirror, schema });
   const toolset = createToolset({ proseMirror, schema, onLink });

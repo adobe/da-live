@@ -8,7 +8,7 @@ import { spriteIcon } from '../icons.js';
  * @property {string} id The name the button is found by.
  * @property {string} label The accessible name.
  * @property {string} icon The name of the S2 icon.
- * @property {string} [keys] The ProseMirror key name of the shortcut, such as `Mod-Shift-z`.
+ * @property {string} [keys] The ProseMirror key name of the shortcut.
  * @property {import('../utils/rich-text/commands.js').RichTextCommand} command Applies the tool.
  * @property {(state: object) => boolean} [isActive] Whether a toggle is on. Actions have none.
  * @property {(state: object) => boolean} [isVisible] Whether the tool applies. Others always show.
