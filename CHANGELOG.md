@@ -1,3 +1,10 @@
+## [1.30.2](https://github.com/adobe/da-live/compare/v1.30.1...v1.30.2) (2026-11-16)
+
+
+### Bug Fixes
+
+* bump @adobe/da-parser to 2.2.1 to keep data-* image attributes ([#1746](https://github.com/adobe/da-live/issues/1746)) ([f2d7821](https://github.com/adobe/da-live/commit/f2d78212cf560a0326a48531599e7de51a074146))
+
 ## [1.30.1](https://github.com/adobe/da-live/compare/v1.30.0...v1.30.1) (2026-11-16)
 
 
