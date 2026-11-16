@@ -706,7 +706,7 @@ describe('Ew panel library access errors', () => {
     el._items = items;
     await el.updateComplete;
     const state = el.shadowRoot.querySelector('.ext-state').textContent;
-    expect(state).to.include('signed in to DA');
+    expect(state).to.include('signed in to EW');
     expect(state).to.include('sign in with AEM Sidekick');
   });
 

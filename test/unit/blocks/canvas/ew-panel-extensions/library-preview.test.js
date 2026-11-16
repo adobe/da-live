@@ -358,13 +358,13 @@ describe('ew-block-library-modal access states', () => {
 
   afterEach(() => el.remove());
 
-  it('shows DA and cross-org Sidekick guidance when library access is denied', async () => {
+  it('shows EW and cross-org Sidekick guidance when library access is denied', async () => {
     const blocks = [];
     blocks.authError = true;
     el.blocks = blocks;
     await el.updateComplete;
     const text = el.shadowRoot.querySelector('.modal-state').textContent;
-    expect(text).to.include('signed in to DA');
+    expect(text).to.include('signed in to EW');
     expect(text).to.include('AEM Sidekick');
   });
 

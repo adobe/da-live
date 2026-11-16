@@ -4,13 +4,13 @@ const { setNx } = await import('../../../../scripts/utils.js');
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 await import('../../../../blocks/permissions/da-permissions-cards/da-permissions-cards.js');
-const { filterSlots } = await import('../../../../blocks/permissions/utils.js');
+const { buildSlots, filterSlots } = await import('../../../../blocks/permissions/utils.js');
 
 function baseSlot(overrides = {}) {
   return {
     path: 'CONFIG',
     kind: 'config',
-    label: 'DA configurations',
+    label: 'EW configurations',
     read: [],
     write: [],
     none: [],
@@ -47,7 +47,7 @@ describe('da-permissions-cards', () => {
   });
 
   it('groups slots into config and content sections in order (org view)', async () => {
-    const configSlot = baseSlot({ path: 'CONFIG', kind: 'config', label: 'DA configurations' });
+    const configSlot = baseSlot({ path: 'CONFIG', kind: 'config', label: 'EW configurations' });
     const contentSlot = baseSlot({ path: '/ + **', kind: 'content', label: 'All sites' });
     const el = await mount({ slots: [configSlot, contentSlot], scopeName: 'myorg' });
 
@@ -70,6 +70,19 @@ describe('da-permissions-cards', () => {
     expect(sections[0].querySelector('h3').textContent.trim()).to.equal('Configuration Permissions for: site1');
     expect(sections[1].querySelector('h3').textContent.trim()).to.equal('Content Permissions for: site1');
     expect(sections[2].querySelector('h3').textContent.trim()).to.equal('Folder Permissions');
+  });
+
+  it('uses EW in organization configuration accessibility labels', async () => {
+    const slots = buildSlots([{ path: 'CONFIG', groups: 'reader@example.com', actions: 'read' }], null);
+    const el = await mount({ slots, adding: { path: 'CONFIG', level: 'read' } });
+    const card = el.shadowRoot.querySelector('article[data-path="CONFIG"]');
+    const row = card.querySelector('.level-row[data-level="read"]');
+
+    expect(card.getAttribute('aria-label')).to.equal('EW configurations');
+    expect(row.querySelector('nx-pills').label).to.equal('EW configurations Read');
+    expect(row.querySelector('.row-add').getAttribute('aria-label')).to.equal('Add to EW configurations Read');
+    expect(row.querySelector('input').getAttribute('aria-label')).to.equal('Add to EW configurations Read');
+    expect(row.querySelector('.row-add-cancel').getAttribute('aria-label')).to.equal('Cancel adding to EW configurations Read');
   });
 
   it('shows card titles only for folder and other rules, and names every card', async () => {

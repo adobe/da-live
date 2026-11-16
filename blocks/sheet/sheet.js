@@ -197,7 +197,7 @@ export default async function init(el) {
   }
   addRecentFile(details.fullpath);
 
-  document.title = `Edit sheet ${details.name} - DA`;
+  document.title = `Edit sheet ${details.name} - EW`;
 
   // Base Elements
   const daTitle = document.createElement('da-title');

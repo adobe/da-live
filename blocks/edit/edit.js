@@ -88,7 +88,7 @@ async function setUI(el) {
     (mod) => mod.createConnection(details.sourceUrl),
   );
 
-  document.title = `Edit ${details.name} - DA`;
+  document.title = `Edit ${details.name} - EW`;
 
   const { owner, repo } = details;
   const contentCookiePromise = contentLogin(owner, repo);
