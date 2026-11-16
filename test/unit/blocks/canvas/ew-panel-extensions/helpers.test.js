@@ -1674,7 +1674,7 @@ describe('getCanvasToolPanelViews', () => {
     const preflight = await load('preflight');
     expect(preflight.localName).to.equal('da-preflight');
     expect(preflight.page.subscribeActiveView).to.be.a('function');
-    expect(preflight.evaluator.evaluate).to.be.a('function');
+    expect(preflight.page.resolveBranch).to.be.a('function');
     expect(preflight.publishHook).to.equal(publishHook);
   });
 
@@ -1693,31 +1693,14 @@ describe('getCanvasToolPanelViews', () => {
     expect(received).to.deep.equal(['files', 'preflight', null]);
   });
 
-  it('checks the preview of the canvas branch in Preflight', async () => {
+  it('resolves the canvas branch of the page for Preflight', async () => {
     setDaConfigs([{ data: [] }]);
     const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
     const preflight = await views.find((v) => v.id === 'preflight').load();
-    const saved = { fetch: window.fetch, ims: window.adobeIMS, nxIms: localStorage.getItem('nx-ims') };
-    let checkedUrl;
-    localStorage.setItem('nx-ims', 'true');
-    window.adobeIMS = { getAccessToken: () => ({ token: 'tok' }) };
-    window.fetch = async (url, init) => {
-      checkedUrl = JSON.parse(init.body).url;
-      return new Response('{}', { status: 200 });
-    };
     try {
-      const ready = { org: 'org', site: 'site', path: '/org/site/a', status: 'ready', branch: 'Feat/One' };
-      canvasBus.branchState.emit(ready);
-      await preflight.evaluator.evaluate({ org: 'org', site: 'site', path: '/a', fullpath: '/org/site/a.html' });
-      expect(checkedUrl).to.match(/^https:\/\/feat-one--site--org\.[^/]+\/a$/);
+      canvasBus.branchState.emit({ org: 'org', site: 'site', path: '/org/site/a', status: 'ready', branch: 'Feat/One' });
+      expect(await preflight.page.resolveBranch({ org: 'org', site: 'site', path: 'a' })).to.equal('feat-one');
     } finally {
-      window.fetch = saved.fetch;
-      window.adobeIMS = saved.ims;
-      if (saved.nxIms === null) {
-        localStorage.removeItem('nx-ims');
-      } else {
-        localStorage.setItem('nx-ims', saved.nxIms);
-      }
       canvasBus.branchState.emit({ path: null, status: 'pending' });
     }
   });

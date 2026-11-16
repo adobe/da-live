@@ -2,12 +2,9 @@ export const PREFLIGHT_VIEW_ID = 'preflight';
 export const PREFLIGHT_TAG = 'da-preflight';
 
 // Required. Tells Preflight which tool panel view is active, so it evaluates only
-// while shown and frees a waiting publish once the panel closes.
-const PAGE_MEMBERS = ['subscribeActiveView'];
-
-// Required. Runs the checks on a page and returns the results to show, or the
-// reason the author sees when the checks can't run.
-const EVALUATOR_MEMBERS = ['evaluate'];
+// while shown and frees a waiting publish once the panel closes. It also resolves
+// the preview branch of a page, because the checks run on its preview.
+const PAGE_MEMBERS = ['subscribeActiveView', 'resolveBranch'];
 
 // Optional. Connects Preflight to publishing. It hands Preflight each publish
 // request, including one made before the view opened, and tells the publish
@@ -23,9 +20,8 @@ function assertPort(name, port, members) {
   }
 }
 
-export default function createPreflightView({ page, evaluator, publishHook } = {}) {
+export default function createPreflightView({ page, publishHook } = {}) {
   assertPort('page', page, PAGE_MEMBERS);
-  assertPort('evaluator', evaluator, EVALUATOR_MEMBERS);
   if (publishHook) {
     assertPort('publishHook', publishHook, PUBLISH_HOOK_MEMBERS);
   }
@@ -37,7 +33,7 @@ export default function createPreflightView({ page, evaluator, publishHook } = {
     firstParty: true,
     load: async () => {
       await import('./preflight.js');
-      return Object.assign(document.createElement(PREFLIGHT_TAG), { page, evaluator, publishHook });
+      return Object.assign(document.createElement(PREFLIGHT_TAG), { page, publishHook });
     },
   };
 }

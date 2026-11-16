@@ -137,13 +137,15 @@ describe('createPublishHook with Preflight', () => {
     hashChange._set({});
   });
 
-  // Preflight wired to the hook the way a tool panel loads it.
-  function createPreflight(evaluate) {
-    return Object.assign(document.createElement('da-preflight'), {
-      page: { subscribeActiveView: () => () => {} },
-      evaluator: { evaluate },
+  // Preflight wired to the hook the way a tool panel loads it, with its checks stubbed.
+  function createPreflight(checkPage) {
+    const el = Object.assign(document.createElement('da-preflight'), {
+      page: { subscribeActiveView: () => () => {}, resolveBranch: async () => 'main' },
       publishHook: hook,
     });
+    // eslint-disable-next-line no-underscore-dangle
+    el._checkPage = checkPage;
+    return el;
   }
 
   it('lets Preflight claim a request parked before it mounts', async () => {
