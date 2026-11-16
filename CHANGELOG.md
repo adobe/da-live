@@ -1,3 +1,10 @@
+# [1.30.0](https://github.com/adobe/da-live/compare/v1.29.4...v1.30.0) (2026-11-16)
+
+
+### Features
+
+* **sc:** add rich-text editor for structured content ([#1661](https://github.com/adobe/da-live/issues/1661)) ([c838a35](https://github.com/adobe/da-live/commit/c838a35fb4259ab830f5254e7a6b2435dde5187b)), closes [adobe/da-sc-sdk#22](https://github.com/adobe/da-sc-sdk/issues/22)
+
 ## [1.29.4](https://github.com/adobe/da-live/compare/v1.29.3...v1.29.4) (2026-11-16)
 
 
