@@ -2,6 +2,7 @@
    and the tools panel on the right. */
 
 :root {
+  --ew-form-header-height: 48px;
   --form-content-top: 32px;
 
   /* Top offset for groups scrolled into view. Only
@@ -19,7 +20,7 @@
    copy instead. Hence `.form` here instead of da-nx's `.nx-form`. */
 .form {
   box-sizing: border-box;
-  height: calc(100vh - var(--s2-nav-height));
+  height: calc(100vh - var(--s2-nav-height) - var(--ew-form-header-height));
   overflow-y: auto;
 }
 
@@ -29,9 +30,12 @@
     min-height: 0;
   }
 
-  .block-content:has(> .form),
-  .form {
+  .block-content:has(> .form) {
     height: 100%;
+  }
+
+  .form {
+    height: calc(100% - var(--ew-form-header-height));
   }
 }
 
@@ -40,54 +44,23 @@ aside.panel[data-position='before'] nx-chat {
   height: 100%;
 }
 
-/* Floating panel toggles at the top corners of the canvas. The anchor is a
-   zero-height element in the main flow, so it spans the canvas between the
-   docked panels without reserving vertical space or scrolling. */
-.form-toggle-anchor {
-  position: relative;
-  height: 0;
-}
-
-.form-panel-toggle {
-  position: absolute;
-  top: 8px;
-  z-index: 10;
-  display: inline-flex;
+/* The header above the form, styled like canvas's header bar. */
+.form-header {
+  display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   box-sizing: border-box;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  margin: 0;
-  border: none;
-  border-radius: 8px;
-  color: var(--s2-gray-800);
-  background: transparent;
-  cursor: pointer;
+  height: var(--ew-form-header-height);
+  padding: 0 12px;
+  background-color: light-dark(#fff, var(--s2-gray-25));
+  border-bottom: 1px solid var(--s2-gray-200);
 }
 
-.form-panel-toggle:hover {
-  background-color: var(--s2-gray-75);
-}
-
-.form-panel-toggle:focus-visible {
-  outline: 2px solid var(--s2-blue-800);
-  outline-offset: 2px;
-}
-
-.form-panel-toggle svg {
-  display: block;
-  width: 16px;
-  height: 16px;
-}
-
-.form-chat-toggle {
-  left: 8px;
-}
-
-.form-tools-toggle {
-  right: calc(8px + var(--form-scrollbar-width, 0px));
+.form-header-start,
+.form-header-end {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* Each toggle hides while its panel is open, since the panel has its own close. */
