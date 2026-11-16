@@ -9,16 +9,14 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const noop = () => {};
 
-const createPage = () => ({ subscribeActiveView: () => noop });
-
-const createEvaluator = () => ({ evaluate: async () => ({ failed: 0 }) });
+const createPage = () => ({ subscribeActiveView: () => noop, resolveBranch: async () => 'main' });
 
 function createPublishHook() {
   return { subscribeRunRequest: () => noop, takePendingRunRequest: () => null, reportStatus: noop };
 }
 
 // The ports every Preflight view needs.
-const requiredPorts = () => ({ page: createPage(), evaluator: createEvaluator() });
+const requiredPorts = () => ({ page: createPage() });
 
 describe('createPreflightView', () => {
   it('describes the Preflight view of the editor section', () => {
@@ -39,7 +37,6 @@ describe('createPreflightView', () => {
     expect(element.localName).to.equal('da-preflight');
     expect(element).to.be.instanceOf(customElements.get(PREFLIGHT_TAG));
     expect(element.page).to.equal(ports.page);
-    expect(element.evaluator).to.equal(ports.evaluator);
     expect(element.publishHook).to.equal(ports.publishHook);
   });
 
@@ -57,14 +54,13 @@ describe('createPreflightView', () => {
 
   describe('validation', () => {
     it('requires the page port', () => {
-      expect(() => createPreflightView()).to.throw(TypeError, 'createPreflightView needs page.subscribeActiveView');
-      expect(() => createPreflightView({ evaluator: createEvaluator() })).to.throw(TypeError, 'page.subscribeActiveView');
+      expect(() => createPreflightView())
+        .to.throw(TypeError, 'createPreflightView needs page.subscribeActiveView, page.resolveBranch');
     });
 
-    it('requires the evaluator port', () => {
-      expect(() => createPreflightView({ page: createPage() })).to.throw(TypeError, 'createPreflightView needs evaluator.evaluate');
-      const evaluator = { evaluate: 'remote' };
-      expect(() => createPreflightView({ page: createPage(), evaluator })).to.throw(TypeError, 'evaluator.evaluate');
+    it('names the page functions that are missing', () => {
+      const page = { subscribeActiveView: () => noop, resolveBranch: 'main' };
+      expect(() => createPreflightView({ page })).to.throw(TypeError, 'createPreflightView needs page.resolveBranch');
     });
 
     it('names the publish hook functions that are missing', () => {

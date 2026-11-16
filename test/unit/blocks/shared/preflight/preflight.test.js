@@ -14,6 +14,7 @@ function createFakePage() {
   return {
     activeView,
     subscribeActiveView: (listener) => activeView.subscribe(listener),
+    resolveBranch: async () => 'main',
   };
 }
 
@@ -54,21 +55,21 @@ function createFakeHook() {
 }
 
 let page;
-let evaluator;
+let checkPage;
 let hook;
 
 function useFakePorts() {
   page = createFakePage();
-  // Tests that run the real evaluation set what the checks return.
-  evaluator = { evaluate: async () => ({ failed: 0 }) };
+  // Stands in for the checks of the open page. Tests that evaluate set what they return.
+  checkPage = async () => ({ failed: 0 });
   hook = createFakeHook();
 }
 
-const createPreflight = () => Object.assign(document.createElement('da-preflight'), {
-  page,
-  evaluator,
-  publishHook: hook,
-});
+function createPreflight() {
+  const el = Object.assign(document.createElement('da-preflight'), { page, publishHook: hook });
+  el._checkPage = (target) => checkPage(target);
+  return el;
+}
 
 function createGateElement() {
   const el = createPreflight();
@@ -76,7 +77,7 @@ function createGateElement() {
   return el;
 }
 
-// These tests cover the hook wiring. The evaluator and the da-nx renderer
+// These tests cover the hook wiring. The checks and the da-nx renderer
 // (ensureRenderer) are external, so every element gets a stubbed `_evaluate` that sets
 // `_data` or `_error` and resolves to the verdict of the run.
 function stubEvaluate(el, { failed = 0, error = null } = {}) {
@@ -378,7 +379,7 @@ describe('da-preflight publish hook', () => {
 
   it('shows the error instead of earlier results when a later run fails', async () => {
     const el = createGateElement();
-    evaluator.evaluate = async () => { throw new Error('down'); };
+    checkPage = async () => { throw new Error('down'); };
     el._data = { failed: 0 };
     const verdict = await el._evaluate();
     expect(verdict.status).to.equal('error');
@@ -678,28 +679,26 @@ describe('da-preflight evaluation', () => {
 
   beforeEach(useFakePorts);
 
-  it('checks the open page with the evaluator', async () => {
+  it('checks the open page', async () => {
     const targets = [];
     const data = { failed: 0, sections: [] };
-    evaluator.evaluate = async (target) => {
+    checkPage = async (target) => {
       targets.push(target);
       return data;
     };
     const el = createGateElement();
     expect(await el._evaluate()).to.deep.equal({ status: 'success' });
-    expect(targets).to.deep.equal([
-      { org: 'org', site: 'site', path: '/a', fullpath: '/org/site/a.html' },
-    ]);
+    expect(targets).to.deep.equal([{ org: 'org', site: 'site', path: '/a' }]);
     expect(el._data).to.equal(data);
   });
 
   it('reports fail when a check failed', async () => {
-    evaluator.evaluate = async () => ({ failed: 2 });
+    checkPage = async () => ({ failed: 2 });
     expect(await createGateElement()._evaluate()).to.deep.equal({ status: 'fail' });
   });
 
   it('reports the reason when the checks cannot run', async () => {
-    evaluator.evaluate = async () => {
+    checkPage = async () => {
       throw Object.assign(new Error('Branch not resolved'), { detail: 'No preview branch.' });
     };
     const el = createGateElement();
@@ -708,7 +707,7 @@ describe('da-preflight evaluation', () => {
   });
 
   it('reports a generic reason when the error has no detail', async () => {
-    evaluator.evaluate = async () => {
+    checkPage = async () => {
       throw new Error('boom');
     };
     expect(await createGateElement()._evaluate()).to.deep.equal({
@@ -719,7 +718,7 @@ describe('da-preflight evaluation', () => {
 
   it('drops the result of a run that a newer run superseded', async () => {
     const releases = [];
-    evaluator.evaluate = () => new Promise((resolve) => { releases.push(resolve); });
+    checkPage = () => new Promise((resolve) => { releases.push(resolve); });
     const el = createGateElement();
     const older = el._evaluate();
     const newer = el._evaluate();
@@ -730,9 +729,9 @@ describe('da-preflight evaluation', () => {
     expect(el._data).to.deep.equal({ failed: 0 });
   });
 
-  it('skips the evaluator when no page is open', async () => {
+  it('skips the checks when no page is open', async () => {
     let calls = 0;
-    evaluator.evaluate = async () => {
+    checkPage = async () => {
       calls += 1;
       return { failed: 0 };
     };
@@ -740,6 +739,100 @@ describe('da-preflight evaluation', () => {
     el._hashState = {};
     expect(await el._evaluate()).to.deep.equal({ status: 'error', message: 'No page is open.' });
     expect(calls).to.equal(0);
+  });
+});
+
+describe('da-preflight page checks', () => {
+  const PAGE = { org: 'org', site: 'site', path: '/a' };
+  let saved;
+  let checkedUrls;
+  let respond;
+
+  before(async () => {
+    setNx('/test/fixtures/nx', { hostname: 'example.com' });
+    await import('../../../../../blocks/shared/preflight/preflight.js');
+  });
+
+  beforeEach(() => {
+    saved = { fetch: window.fetch, ims: window.adobeIMS, nxIms: localStorage.getItem('nx-ims') };
+    localStorage.setItem('nx-ims', 'true');
+    window.adobeIMS = { getAccessToken: () => ({ token: 'tok' }) };
+    checkedUrls = [];
+    respond = () => new Response('{}', { status: 200 });
+    window.fetch = async (url, init) => {
+      checkedUrls.push(JSON.parse(init.body).url);
+      return respond();
+    };
+  });
+
+  afterEach(() => {
+    window.fetch = saved.fetch;
+    window.adobeIMS = saved.ims;
+    if (saved.nxIms === null) {
+      localStorage.removeItem('nx-ims');
+    } else {
+      localStorage.setItem('nx-ims', saved.nxIms);
+    }
+  });
+
+  // Preflight with its real checks, on a page that resolves the given branch.
+  function createChecked(resolveBranch) {
+    const checkedPage = { subscribeActiveView: () => () => {}, resolveBranch };
+    return Object.assign(document.createElement('da-preflight'), { page: checkedPage });
+  }
+
+  it('checks the preview of the page on its branch', async () => {
+    const branchRequests = [];
+    const el = createChecked(async (request) => {
+      branchRequests.push(request);
+      return 'Feat/One';
+    });
+    await el._checkPage(PAGE);
+    expect(branchRequests).to.deep.equal([{ org: 'org', site: 'site', path: 'a' }]);
+    expect(checkedUrls).to.have.lengthOf(1);
+    expect(checkedUrls[0]).to.match(/^https:\/\/feat-one--site--org\.[^/]+\/a$/);
+  });
+
+  it('checks the site root when no page path is open', async () => {
+    const branchRequests = [];
+    const el = createChecked(async (request) => {
+      branchRequests.push(request);
+      return 'main';
+    });
+    await el._checkPage({ org: 'org', site: 'site' });
+    expect(branchRequests).to.deep.equal([{ org: 'org', site: 'site', path: undefined }]);
+    expect(checkedUrls[0]).to.match(/^https:\/\/main--site--org\.[^/]+$/);
+  });
+
+  it('resolves to the renderer data of the response', async () => {
+    const response = {
+      site_code_evaluation: {
+        evaluations: [{
+          check_title: 'Page has exactly one H1',
+          alignment: 'NO',
+          reasoning: 'No H1 heading found.',
+          suggestions: null,
+          category: null,
+        }],
+      },
+    };
+    respond = () => new Response(JSON.stringify(response), { status: 200 });
+    const data = await createChecked(async () => 'main')._checkPage(PAGE);
+    expect(data).to.deep.equal(adaptEvaluation(response));
+    expect(data.failed).to.equal(1);
+  });
+
+  it('rejects with the reason instead of guessing a branch', async () => {
+    const error = await createChecked(async () => undefined)._checkPage(PAGE).catch((e) => e);
+    expect(error).to.be.instanceOf(Error);
+    expect(error.detail).to.contain('preview branch');
+    expect(checkedUrls).to.deep.equal([]);
+  });
+
+  it('rejects with the reason of the API when the checks cannot run', async () => {
+    respond = () => new Response(JSON.stringify({ detail: 'Page not found' }), { status: 404 });
+    const error = await createChecked(async () => 'main')._checkPage(PAGE).catch((e) => e);
+    expect(error.detail).to.equal('Page not found (404)');
   });
 });
 
@@ -763,7 +856,7 @@ describe('da-preflight without a publish hook', () => {
 
   // Mounts Preflight without a publish hook. Each evaluation records its page.
   async function mountWithoutGate() {
-    const el = Object.assign(document.createElement('da-preflight'), { page, evaluator });
+    const el = Object.assign(document.createElement('da-preflight'), { page });
     const runs = [];
     el._evaluate = async () => {
       runs.push(el._hashState.path);

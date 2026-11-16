@@ -1,5 +1,8 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
+import { getPreviewOrigin } from '../constants.js';
+import { evaluatePage } from './api.js';
+import { adaptEvaluation } from './evaluation.js';
 import { PREFLIGHT_TAG, PREFLIGHT_VIEW_ID } from './preflight-view.js';
 
 const nx = getNx();
@@ -35,11 +38,8 @@ class DaPreflight extends LitElement {
     _data: { state: true },
   };
 
-  // Reports the active tool panel view.
+  // Reports the active tool panel view and resolves the preview branch of a page.
   page;
-
-  // Runs the checks on the open page.
-  evaluator;
 
   // Connects Preflight to publishing. Optional.
   publishHook;
@@ -178,6 +178,22 @@ class DaPreflight extends LitElement {
     this._finishGate('cancelled');
   }
 
+  // The checks read the rendered page, so they run on its preview on the page's branch.
+  async _checkPage({ org, site, path }) {
+    const relativePath = path ? path.replace(/^\//, '') : '';
+    // The panel can evaluate before the editor finishes resolving this page's branch.
+    const branch = await this.page.resolveBranch({ org, site, path: relativePath || undefined });
+    if (!branch) {
+      const error = new Error('Branch not resolved');
+      error.detail = 'Could not determine the preview branch for this page. Try again.';
+      throw error;
+    }
+
+    const origin = getPreviewOrigin(org, site, branch);
+    const response = await evaluatePage(relativePath ? `${origin}/${relativePath}` : origin);
+    return adaptEvaluation(response);
+  }
+
   // Resolves to this run's verdict, or `null` when a newer run superseded it, so
   // callers never read results that belong to another run.
   async _evaluate() {
@@ -197,8 +213,7 @@ class DaPreflight extends LitElement {
     this._loading = true;
     this._setRefreshBusy(true);
     try {
-      const target = { org, site, path, fullpath: this._docFullpath };
-      const [data] = await Promise.all([this.evaluator.evaluate(target), ensureRenderer()]);
+      const [data] = await Promise.all([this._checkPage({ org, site, path }), ensureRenderer()]);
       if (this._runId !== runId) return null;
       this._data = data;
       return this._verdictFor({ data });

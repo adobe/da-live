@@ -12,7 +12,6 @@ import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { getBlockPositions } from '../editor-utils/blocks.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import createPreflightView from '../../shared/preflight/preflight-view.js';
-import createExperienceContextEvaluator from '../../shared/preflight/experience-context.js';
 import {
   getCommentsBridge,
   formatCommentsViewLabel,
@@ -927,7 +926,10 @@ export function createCommentsView() {
 }
 
 function createCanvasPreflightPage() {
-  return { subscribeActiveView: (listener) => canvasBus.toolPanelViewState.subscribe(listener) };
+  return {
+    subscribeActiveView: (listener) => canvasBus.toolPanelViewState.subscribe(listener),
+    resolveBranch: whenCanvasBranch,
+  };
 }
 
 export function extensionToPanelView(ext, section) {
@@ -1042,7 +1044,6 @@ export async function getCanvasToolPanelViews({ org, site }, { publishHook } = {
     createCommentsView(),
     createPreflightView({
       page: createCanvasPreflightPage(),
-      evaluator: createExperienceContextEvaluator({ resolveBranch: whenCanvasBranch }),
       publishHook,
     }),
     ...library.map((ext) => extensionToPanelView(ext, 'Library')),
