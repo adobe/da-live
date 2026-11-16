@@ -1,3 +1,17 @@
+## [1.29.3](https://github.com/adobe/da-live/compare/v1.29.2...v1.29.3) (2026-11-16)
+
+
+### Bug Fixes
+
+* use site config for hlx6 projects ([#1722](https://github.com/adobe/da-live/issues/1722)) ([867fad8](https://github.com/adobe/da-live/commit/867fad862c57218795be6e502666995d2bcbaf51)), closes [#1446](https://github.com/adobe/da-live/issues/1446)
+
+## [1.29.2](https://github.com/adobe/da-live/compare/v1.29.1...v1.29.2) (2026-11-16)
+
+
+### Bug Fixes
+
+* browse nav on row click ([#1737](https://github.com/adobe/da-live/issues/1737)) ([0978cd2](https://github.com/adobe/da-live/commit/0978cd2fd91d0770d40dd9e788b6f9e9f1fa5e35))
+
 ## [1.29.1](https://github.com/adobe/da-live/compare/v1.29.0...v1.29.1) (2026-11-13)
 
 
