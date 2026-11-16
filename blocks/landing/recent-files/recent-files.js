@@ -39,7 +39,7 @@ export class DaRecentFiles extends LitElement {
     _favorites: { state: true },
     _tab: { state: true },
     _view: { state: true },
-    _limit: { state: true },
+    _limits: { state: true },
     _editor: { state: true },
     _editorConfs: { state: true },
   };
@@ -55,7 +55,7 @@ export class DaRecentFiles extends LitElement {
     this.heading = 'Files';
     this._tab = 'recent';
     this._view = 'list';
-    this._limit = PAGE_SIZE;
+    this._limits = {};
     this._siteContexts = new Map();
   }
 
@@ -75,7 +75,7 @@ export class DaRecentFiles extends LitElement {
   updated(changed) {
     if (!changed.has('scopes')) return;
     this._tab = 'recent';
-    this._limit = PAGE_SIZE;
+    this._limits = {};
     this._actionError = undefined;
     this.refreshFavorites();
     this.loadSite();
@@ -221,7 +221,6 @@ export class DaRecentFiles extends LitElement {
 
   changeTab(value) {
     this._tab = value;
-    this._limit = PAGE_SIZE;
     return value === 'starred' ? this.loadFavorites() : undefined;
   }
 
@@ -245,7 +244,7 @@ export class DaRecentFiles extends LitElement {
       </div>`;
     }
     const total = Math.min(files.length, MAX_FILES);
-    const visible = files.slice(0, Math.min(this._limit, total));
+    const visible = files.slice(0, Math.min(this._limits[this._tab] ?? PAGE_SIZE, total));
     const items = getListItems({
       files: visible,
       favorites: this._favorites,
@@ -269,14 +268,18 @@ export class DaRecentFiles extends LitElement {
   }
 
   renderFooter(total) {
+    const limit = this._limits[this._tab] ?? PAGE_SIZE;
     return html`<div class="files-footer">
         ${total > PAGE_SIZE ? html`
           <button class="show-more nx-action-btn-quiet nx-btn-sm"
-            aria-controls="files-list" aria-expanded=${this._limit > PAGE_SIZE}
+            aria-controls="files-list" aria-expanded=${limit > PAGE_SIZE}
             @click=${() => {
-          this._limit = this._limit === PAGE_SIZE ? MAX_FILES : PAGE_SIZE;
+          this._limits = {
+            ...this._limits,
+            [this._tab]: this._limits[this._tab] === MAX_FILES ? PAGE_SIZE : MAX_FILES,
+          };
         }}>
-            ${this._limit > PAGE_SIZE ? 'Show fewer' : 'Show more'}
+            ${limit > PAGE_SIZE ? 'Show fewer' : 'Show more'}
           </button>` : nothing}
       </div>`;
   }

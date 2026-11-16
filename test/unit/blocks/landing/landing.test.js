@@ -105,7 +105,7 @@ describe('landing Content section', () => {
     }
   });
 
-  it('expands Favorite from four to ten without deleting saved entries', async () => {
+  it('remembers expansion independently for Recent and Favorite without deleting saved entries', async () => {
     el.shadowRoot.querySelector('.show-more').click();
     ITEMS.forEach((item) => toggleFavorite('/org/site', item.path));
     el.refreshFavorites();
@@ -121,6 +121,18 @@ describe('landing Content section', () => {
     expect(el.shadowRoot.querySelector('.show-more').getAttribute('aria-expanded')).to.equal('true');
     expect(getFavorites('/org/site')).to.have.length(24);
     el.changeTab('recent');
+    await updateLanding();
+    expect(fileItems()).to.have.length(10);
+    el.changeTab('starred');
+    await updateLanding();
+    expect(fileItems()).to.have.length(10);
+    el.shadowRoot.querySelector('.show-more').click();
+    await updateLanding();
+    expect(fileItems()).to.have.length(4);
+    el.changeTab('recent');
+    await updateLanding();
+    expect(fileItems()).to.have.length(10);
+    el.changeTab('starred');
     await updateLanding();
     expect(fileItems()).to.have.length(4);
   });
@@ -150,6 +162,8 @@ describe('landing Content section', () => {
       const coffees = [...fileItems()].filter((item) => item.name === 'coffee');
       expect(coffees.map((item) => item.path)).to.deep.equal([root.path, nested.path]);
       expect(coffees.every((item) => item.shadowRoot.querySelector('button[aria-pressed="true"]'))).to.equal(true);
+      el.shadowRoot.querySelector('.show-more').click();
+      await updateLanding();
     }
   });
 
@@ -358,11 +372,15 @@ describe('landing Content section', () => {
     toggleFavorite('/org/site', ITEMS[0].path);
     el.refreshFavorites();
     el.changeTab('starred');
-    el._limit = 10;
+    el._limits = { recent: 10, starred: 10 };
     el.setScope({ org: 'other', site: 'site' });
     await updateLanding();
     expect(el._tab).to.equal('recent');
-    expect(el._limit).to.equal(4);
+    expect(fileItems()).to.have.length(4);
+    el.changeTab('starred');
+    await updateLanding();
+    expect(fileItems()).to.have.length(0);
+    expect(el._limits).to.deep.equal({});
     expect(el._favorites.size).to.equal(0);
     expect(loadSite.callCount).to.equal(2);
   });
@@ -462,7 +480,7 @@ describe('landing Content section', () => {
     await el.loadSite();
     el.changeView({ detail: { value: 'list' } });
     await el.changeTab('starred');
-    el._limit = 18;
+    el._limits = { starred: 10 };
     await updateLanding();
     setRecent({ '/org/site': [ITEMS[2].path, ITEMS[0].path] });
     toggleFavorite('/org/site', ITEMS[0].path);
@@ -482,7 +500,7 @@ describe('landing Content section', () => {
     expect([...fileItems()].map((item) => item.path)).to.deep.equal([ITEMS[1].path]);
     expect(el._tab).to.equal('starred');
     expect(el._view).to.equal('list');
-    expect(el._limit).to.equal(18);
+    expect(el._limits.starred).to.equal(10);
     window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
     expect(loadSite.callCount).to.equal(3);
     await loadSite.thirdCall.returnValue;

@@ -95,6 +95,7 @@ export class DaLanding extends DaRecentFiles {
     const scope = state?.org && state?.site ? `${state.org}/${state.site}` : undefined;
     if (this._scope === scope && this._request && !this._request.signal.aborted) return;
     this._scope = scope;
+    this._limits = {};
     this.changeTab('recent');
     this._actionError = undefined;
     this.refreshFavorites();

@@ -71,6 +71,53 @@ describe('Landing file preview', () => {
     expect(metadata.getCalls().map(({ args }) => args[0])).to.deep.equal(paths('org/site', 10));
   });
 
+  it('resets both tab expansions when the ordered sites change', async () => {
+    for (const scope of ['org/site', 'org/other']) {
+      paths(scope, 10).forEach((path) => toggleFavorite(`/${scope}`, path));
+    }
+    for (const tab of ['recent', 'starred']) {
+      await el.changeTab(tab);
+      await update();
+      el.shadowRoot.querySelector('.show-more').click();
+      await update();
+      expect(list().listItems).to.have.length(10);
+    }
+    await el.changeTab('recent');
+    await update();
+    expect(list().listItems).to.have.length(10);
+    el.scopes = ['org/other'];
+    await update();
+    await loadSite.lastCall.returnValue;
+    await update();
+    expect(list().listItems).to.have.length(4);
+    await el.changeTab('starred');
+    await update();
+    expect(list().listItems).to.have.length(4);
+  });
+
+  it('does not restore either tab expansion in a new preview instance', async () => {
+    paths('org/site', 10).forEach((path) => toggleFavorite('/org/site', path));
+    for (const tab of ['recent', 'starred']) {
+      await el.changeTab(tab);
+      await update();
+      el.shadowRoot.querySelector('.show-more').click();
+      await update();
+      expect(list().listItems).to.have.length(10);
+    }
+    const { scopes } = el;
+    el.remove();
+    el = document.createElement('da-recent-files');
+    el.scopes = scopes;
+    document.body.append(el);
+    await update();
+    await loadSite.lastCall.returnValue;
+    await update();
+    expect(list().listItems).to.have.length(4);
+    await el.changeTab('starred');
+    await update();
+    expect(list().listItems).to.have.length(4);
+  });
+
   it('fills only unused slots from other sites and preserves their editor and folder links', async () => {
     setRecent({ '/org/site': paths('org/site', 2), '/org/other': paths('org/other', 12) });
     metadata.resetHistory();
