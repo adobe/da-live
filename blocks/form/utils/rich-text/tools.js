@@ -78,6 +78,10 @@ export function createToolset({ proseMirror, schema, onLink }) {
         markTool({ id: TOOL_IDS.strikethrough, label: 'Strikethrough', keys: 'Mod-Shift-s', icon: 'tagstrikethrough' }),
       ],
       [
+        listTool({ id: TOOL_IDS.bulletList, label: 'Bulleted list', keys: 'Ctrl-Shift-8', icon: 'listbulleted' }),
+        listTool({ id: TOOL_IDS.orderedList, label: 'Numbered list', keys: 'Ctrl-Shift-9', icon: 'listnumbered' }),
+      ],
+      [
         {
           id: TOOL_IDS.link,
           label: 'Link',
@@ -94,12 +98,12 @@ export function createToolset({ proseMirror, schema, onLink }) {
           isVisible: hasMark(TOOL_IDS.link),
         },
       ],
-      [
-        listTool({ id: TOOL_IDS.bulletList, label: 'Bulleted list', keys: 'Ctrl-Shift-8', icon: 'listbulleted' }),
-        listTool({ id: TOOL_IDS.orderedList, label: 'Numbered list', keys: 'Ctrl-Shift-9', icon: 'listnumbered' }),
-      ],
     ],
     menuGroups: [
+      [
+        markTool({ id: TOOL_IDS.superscript, label: 'Superscript', icon: 'textsuperscript' }),
+        markTool({ id: TOOL_IDS.subscript, label: 'Subscript', icon: 'textsubscript' }),
+      ],
       [
         {
           id: TOOL_IDS.blockquote,
@@ -112,8 +116,6 @@ export function createToolset({ proseMirror, schema, onLink }) {
       ],
       [
         markTool({ id: TOOL_IDS.code, label: 'Inline code', keys: 'Mod-`', icon: 'code' }),
-        markTool({ id: TOOL_IDS.superscript, label: 'Superscript', icon: 'textsuperscript' }),
-        markTool({ id: TOOL_IDS.subscript, label: 'Subscript', icon: 'textsubscript' }),
       ],
     ],
   };

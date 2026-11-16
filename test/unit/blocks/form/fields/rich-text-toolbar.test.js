@@ -9,7 +9,7 @@ const toolset = createToolset({ proseMirror, schema, onLink: () => {} });
 
 const tools = Object.fromEntries(listTools(toolset).map((candidate) => [candidate.id, candidate]));
 
-const MENU_IDS = ['blockquote', 'code', 'sup', 'sub'];
+const MENU_IDS = ['sup', 'sub', 'blockquote', 'code'];
 
 // Concurrent test pages run in the background, where animation frames never fire.
 const tick = () => new Promise((resolve) => { setTimeout(resolve); });
@@ -57,11 +57,11 @@ describe('ew-form-rich-text-toolbar', () => {
     document.body.replaceChildren();
   });
 
-  it('orders the bar and keeps the quote, code and scripts in the more menu', async () => {
+  it('orders the bar and keeps the scripts, quote and code in the more menu', async () => {
     const toolbar = await mount();
     await until(() => toolbar._overflowAt === 8);
     const { shadowRoot } = toolbar;
-    expect(visibleIds(shadowRoot, '.form-rich-text-toolbar >')).to.deep.equal(['strong', 'em', 'u', 'del', 'link', 'bullet_list', 'ordered_list']);
+    expect(visibleIds(shadowRoot, '.form-rich-text-toolbar >')).to.deep.equal(['strong', 'em', 'u', 'del', 'bullet_list', 'ordered_list', 'link']);
     const pickerBox = shadowRoot.querySelector('.form-rich-text-toolbar > .form-rich-text-picker');
     expect(pickerBox.previousElementSibling).to.equal(null);
     await openMenu(toolbar);
