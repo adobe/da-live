@@ -73,3 +73,49 @@ describe('canvas Mod-k with link-images', () => {
     expect(openLinkDialog.called).to.equal(true);
   });
 });
+
+describe('canvas Alt+F10', () => {
+  let result;
+  let view;
+
+  beforeEach(async () => {
+    result = await initProse({
+      path: 'https://admin.da.live/source/linkorg/linksite/page.html',
+      permissions: ['read', 'write'],
+      setEditable: () => {},
+      getToken: () => 'test-token',
+    });
+    ({ view } = result);
+    document.body.append(view.dom);
+  });
+
+  afterEach(() => {
+    sinon.restore();
+    const { wsProvider, ydoc } = result;
+    wsProvider.disconnect({ data: 'Client navigation' });
+    wsProvider.destroy?.();
+    view.dom.remove();
+    view.destroy();
+    ydoc.destroy();
+  });
+
+  function pressAltF10() {
+    const event = new KeyboardEvent('keydown', {
+      key: 'F10', code: 'F10', keyCode: 121, altKey: true, bubbles: true, cancelable: true,
+    });
+    view.dom.dispatchEvent(event);
+    return event;
+  }
+
+  it('moves focus to the toolbar', () => {
+    const focusToolbar = sinon.stub(toolbarController, 'focusToolbar').returns(true);
+    const event = pressAltF10();
+    expect(focusToolbar.calledOnce).to.equal(true);
+    expect(event.defaultPrevented).to.equal(true);
+  });
+
+  it('lets the key through when no toolbar is showing', () => {
+    sinon.stub(toolbarController, 'focusToolbar').returns(false);
+    expect(pressAltF10().defaultPrevented).to.equal(false);
+  });
+});
