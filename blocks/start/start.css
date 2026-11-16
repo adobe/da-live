@@ -3,9 +3,7 @@
   justify-content: center;
   align-items: center;
   height: 100vh;
-  position: relative;
   color: #fff;
-  background: #000;
 }
 
 h2 {
@@ -21,43 +19,16 @@ a {
   color: #1379f3;
 }
 
-.gradient {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle, rgb(0 0 0 / 64.8%) 0%, rgb(0 0 0 / 52.4%) 100%);
+::slotted(da-greeting) {
+  display: block;
+  margin-bottom: var(--s2-spacing-600);
+  text-align: center;
 }
 
-.background {
-  width: 100vw;
-  height: 100vh;
-  object-fit: cover;
-  position: absolute;
-}
-
-.foreground {
-  position: relative;
-}
-
-ul.step-count {
-  list-style: none;
-  margin: 0 0 96px;
-  padding: 0;
-  display: flex;
-  justify-content: center;
-  gap: 200px;
-}
-
-ul.step-count li {
-  width: 96px;
-  height: 96px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: #ff00a0;
-  border-radius: 48px;
-  font-size: 32px;
-  font-weight: 700;
-  transition: all 0.5s ease;
+@media (width < 600px) {
+  ::slotted(da-greeting) {
+    margin-bottom: var(--s2-spacing-400);
+  }
 }
 
 .panels {
@@ -283,13 +254,6 @@ div.template-container {
 }
 
 /* Step overrides */
-
-.step-1-active .step-2,
-.step-1-active .step-3,
-.step-2-active .step-3 {
-  opacity: 0.75;
-  background-color: rgb(62 0 39);
-}
 
 .step-1-panel,
 .step-2-panel,

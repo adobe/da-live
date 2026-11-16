@@ -9,7 +9,7 @@
     ),
     radial-gradient(
       ellipse 45% 520px at 48% 60px,
-      var(--s2-indigo-200) 20%,
+      var(--s2-indigo-200, light-dark(rgb(235 238 255), rgb(35 0 110))) 20%,
       transparent 100%
     ),
     radial-gradient(
