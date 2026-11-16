@@ -4,10 +4,11 @@ import { getNx, getNx2, parseSubdomain } from '../../scripts/utils.js';
 const SITE_URL_ERROR = 'Enter an existing AEM site URL.';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const [buttons, form, styles] = await Promise.all([
+const [buttons, form, styles, background] = await Promise.all([
   loadStyle(`${getNx2()}/styles/buttons.css`),
   loadStyle(`${getNx2()}/styles/form.css`),
   loadStyle(import.meta.url),
+  loadStyle(new URL('../landing/landing.css', import.meta.url).href),
 ]);
 
 class DaAddSite extends LitElement {
@@ -67,5 +68,8 @@ class DaAddSite extends LitElement {
 customElements.define('da-add-site', DaAddSite);
 
 export default function init(el) {
+  if (!document.adoptedStyleSheets.includes(background)) {
+    document.adoptedStyleSheets.push(background);
+  }
   el.replaceChildren(document.createElement('da-add-site'));
 }
