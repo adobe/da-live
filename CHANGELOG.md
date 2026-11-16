@@ -1,3 +1,10 @@
+## [1.29.3](https://github.com/adobe/da-live/compare/v1.29.2...v1.29.3) (2026-11-16)
+
+
+### Bug Fixes
+
+* use site config for hlx6 projects ([#1722](https://github.com/adobe/da-live/issues/1722)) ([867fad8](https://github.com/adobe/da-live/commit/867fad862c57218795be6e502666995d2bcbaf51)), closes [#1446](https://github.com/adobe/da-live/issues/1446)
+
 ## [1.29.2](https://github.com/adobe/da-live/compare/v1.29.1...v1.29.2) (2026-11-16)
 
 
