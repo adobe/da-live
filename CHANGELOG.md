@@ -1,3 +1,10 @@
+## [1.30.1](https://github.com/adobe/da-live/compare/v1.30.0...v1.30.1) (2026-11-16)
+
+
+### Bug Fixes
+
+* rename canvas sidebar Content tab to Browse ([#1744](https://github.com/adobe/da-live/issues/1744)) ([ae66b1c](https://github.com/adobe/da-live/commit/ae66b1c9e604d3db0ad90153e89c055ff69121fc))
+
 # [1.30.0](https://github.com/adobe/da-live/compare/v1.29.4...v1.30.0) (2026-11-16)
 
 
