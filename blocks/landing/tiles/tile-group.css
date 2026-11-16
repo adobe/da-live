@@ -95,9 +95,6 @@
   height: var(--s2-spacing-500);
   border-radius: var(--s2-corner-radius-500);
   color: var(--s2-gray-900);
-}
-
-.icon.turquoise {
   background: var(--s2-turquoise-200);
 }
 

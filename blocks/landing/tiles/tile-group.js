@@ -49,8 +49,7 @@ export class DaLandingTiles extends LitElement {
   renderTile(entry) {
     return html`<li><a class="tile" href=${entry.href}
       @click=${(event) => this._onTileClick(event, entry)}>
-      <span class="icon ${['green', 'orange', 'purple', 'pink'].includes(entry.tone)
-        ? entry.tone : 'turquoise'}" aria-hidden="true"
+      <span class="icon ${entry.tone || ''}" aria-hidden="true"
         style="--tile-icon: url('${entry.iconHref}')"></span>
       <div class="content">
         <h3>${entry.heading}</h3>
