@@ -1,7 +1,8 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getFirstSheet, fetchDaConfigs } from '../../../shared/utils.js';
+import { getEditorConfigs, fetchDaConfigs, canEditOrgConfig } from '../../../shared/utils.js';
 import { getNx, sanitizePathParts, getNxEWFlags } from '../../../../scripts/utils.js';
-import { getChatPanelContent } from '../../../shared/chat-panel.js';
+import { getChatPanelContent, chatAvailability, chatTurnCompleted } from '../../../shared/chat-panel.js';
+import { getSettingsMenuItems } from '../../shared/settings-menu.js';
 
 // Components
 import '../../da-new/da-new.js';
@@ -10,6 +11,7 @@ import '../da-list/da-list.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/breadcrumb/breadcrumb.js`);
+await import(`${getNx()}/blocks/shared/menu/menu.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT, wasPanelOpen, registerPanelSection } = await import(`${getNx()}/utils/panel.js`);
 
@@ -30,6 +32,7 @@ export default class DaBrowse extends LitElement {
     _searchItems: { state: true },
     _ewEnabled: { state: true },
     _chatEnabled: { state: true },
+    _canEditOrgConfig: { state: true },
   };
 
   _browseSelKeys = new Set();
@@ -90,11 +93,34 @@ export default class DaBrowse extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [style];
     this._handleShortcuts = this.handleShortcuts.bind(this);
     document.addEventListener('keydown', this._handleShortcuts);
+    this._unsubChat = chatAvailability.subscribe((enabled) => this.syncChatAvailability(enabled));
+    this._unsubChatTurn = chatTurnCompleted.subscribe((detail) => {
+      if (!detail?.org || detail.org !== this.details?.org
+        || detail.site !== this.details?.site) return;
+      this.shadowRoot.querySelector('.da-list-type-browse')?.requestUpdate('fullpath');
+    });
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('keydown', this._handleShortcuts);
+    this._unsubChat?.();
+    this._unsubChatTurn?.();
+  }
+
+  syncChatAvailability(enabled) {
+    this._chatEnabled = enabled;
+    if (enabled === undefined) return;
+    if (enabled) {
+      registerPanelSection('chat', {
+        position: 'before',
+        width: '400px',
+        getContent: getChatPanelContent(),
+      });
+      if (wasPanelOpen('chat')) openChatPanel();
+    } else {
+      closeChatPanel();
+    }
   }
 
   handleShortcuts(e) {
@@ -119,37 +145,44 @@ export default class DaBrowse extends LitElement {
     if (this.newCmp) this.newCmp.permissions = e.detail;
   }
 
+  renderSettingsMenu() {
+    const { org, site } = this.details;
+    const items = getSettingsMenuItems({ org, site, canEditOrgConfig: this._canEditOrgConfig });
+    return html`
+      <nx-menu size="m" placement="auto" .items=${items}
+        @select=${({ detail }) => { window.location.href = detail.id; }}>
+        <button slot="trigger" type="button" class="da-breadcrumb-config" aria-label="Settings" title="Settings">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-settings-20-n.svg#icon"></use></svg>
+        </button>
+      </nx-menu>`;
+  }
+
   async update(props) {
     if (props.has('details') && this.details) {
       const prevDetails = props.get('details');
       const orgChanged = prevDetails?.org !== this.details.org;
+      const siteChanged = prevDetails?.site !== this.details.site;
       if (prevDetails?.fullpath !== this.details.fullpath) this._clearBrowseSelection();
+
+      if (orgChanged || siteChanged) {
+        this._canEditOrgConfig = false;
+        const { org, site } = this.details;
+        canEditOrgConfig(org, site).then((canEdit) => {
+          if (this.details?.org === org && this.details?.site === site) {
+            this._canEditOrgConfig = canEdit;
+          }
+        });
+      }
 
       // EW flag lives at site level — re-check whenever org or site changes,
       // and do this before getEditor so the default editor reflects EW state
-      if (orgChanged || prevDetails?.site !== this.details.site) {
+      if (orgChanged || siteChanged) {
         const { org, site } = this.details;
-        const { isEWEnabled, isEwChatDisabled } = await getNxEWFlags();
-        const [ewEnabled, chatDisabled] = await Promise.all([
-          isEWEnabled({ org, site }),
-          isEwChatDisabled({ org, site }),
-        ]);
-        this._ewEnabled = ewEnabled;
-        this._chatEnabled = ewEnabled && !chatDisabled;
-        if (this._chatEnabled) {
-          registerPanelSection('chat', {
-            position: 'before',
-            width: '400px',
-            getContent: getChatPanelContent(),
-          });
-          if (wasPanelOpen('chat')) openChatPanel();
-        } else {
-          closeChatPanel();
-        }
+        const { isEWEnabled } = await getNxEWFlags();
+        this._ewEnabled = await isEWEnabled({ org, site });
       }
 
-      // Only re-fetch editor configs if the org changes
-      this.editor = await this.getEditor(orgChanged);
+      this.editor = await this.getEditor(orgChanged || siteChanged);
     }
 
     super.update(props);
@@ -161,18 +194,10 @@ export default class DaBrowse extends LitElement {
     if (reFetch) {
       const { org, site } = this.details;
       const configs = await Promise.all(fetchDaConfigs({ org, site }));
-      const rows = configs.filter(Boolean).reverse().flatMap((c) => getFirstSheet(c) || []);
-      this.editorConfs = rows.reduce((acc, row) => {
-        if (row.key === 'editor.path') acc.push(row.value);
-        return acc;
-      }, []);
-      this.hidePublishConfs = rows.reduce((acc, row) => {
-        if (row.key === 'editor.hidePublish') acc.push(row.value);
-        return acc;
-      }, []);
-      this.enforcePreflight = rows.some(
-        (row) => row.key === 'editor.enforcePreflight' && `${row.value}`.toLowerCase() === 'true',
-      );
+      const { editorConfs, hidePublishConfs, enforcePreflight } = getEditorConfigs(configs);
+      this.editorConfs = editorConfs;
+      this.hidePublishConfs = hidePublishConfs;
+      this.enforcePreflight = enforcePreflight;
     }
 
     if (!this.editorConfs || this.editorConfs.length === 0) return DEF_EDIT;
@@ -282,10 +307,7 @@ export default class DaBrowse extends LitElement {
           <div class="da-breadcrumb-action-area">
             <div class="da-breadcrumb-area">
               <nx-breadcrumb .pathSegments="${this.details.fullpath.split('/').filter(Boolean)}"></nx-breadcrumb>
-              ${!this.details.path ? html`
-                <a class="da-breadcrumb-config" href="/config#${this.details.fullpath}/" aria-label="Config">
-                  <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-settings-20-n.svg#icon"></use></svg>
-                </a>` : nothing}
+              ${!this.details.path ? this.renderSettingsMenu() : nothing}
             </div>
             ${this._tabItems.map((tab) => html`
               <div class="da-list-header-action" data-visible="${tab.selected}">

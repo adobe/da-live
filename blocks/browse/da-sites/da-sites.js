@@ -12,6 +12,7 @@ function getRandom() {
 
 export default class DaSites extends LitElement {
   static properties = {
+    greeting: { attribute: false },
     _recents: { state: true },
     _status: { state: true },
     _urlError: { state: true },
@@ -22,10 +23,16 @@ export default class DaSites extends LitElement {
     this._urlError = false;
   }
 
-  connectedCallback() {
+  async connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [styles];
     this._recents = this.getRecents();
+    if (this.greeting) {
+      const greeting = await this.greeting;
+      if (!this.isConnected) return;
+      greeting.slot = 'greeting';
+      this.replaceChildren(greeting);
+    }
   }
 
   getRecents() {
@@ -200,7 +207,9 @@ export default class DaSites extends LitElement {
 
   render() {
     return html`
-      <div class="da-site-container">
+      <div class="da-site-container ${this.greeting ? 'has-greeting' : ''}">
+        ${this.greeting ? html`
+          <div class="da-site-greeting"><slot name="greeting"></slot></div>` : nothing}
         <div class="da-site-header">
           <h2>Recents</h2>
         </div>

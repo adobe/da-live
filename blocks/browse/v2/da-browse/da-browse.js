@@ -1,8 +1,9 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getFirstSheet, fetchDaConfigs } from '../../../shared/utils.js';
+import { getEditorConfigs, fetchDaConfigs } from '../../../shared/utils.js';
 import { getNx, sanitizePathParts, getNxEWFlags } from '../../../../scripts/utils.js';
-import { getChatPanelContent } from '../../../shared/chat-panel.js';
+import { getChatPanelContent, chatAvailability, chatTurnCompleted } from '../../../shared/chat-panel.js';
 import { getBrowseSettings, updateBrowseSettings } from '../shared/settings.js';
+import { getConfiguredEditor } from '../../../shared/da-file-item/edit-path.js';
 
 // Components
 import '../../da-new/da-new.js';
@@ -35,8 +36,10 @@ export default class DaBrowse extends LitElement {
     _typesFilterState: { state: true },
     _sortState: { state: true },
     _sortPreference: { state: true },
-    _groupByType: { state: true },
+    _groupByType: { state: false },
     _view: { state: true },
+    _rowSize: { state: true },
+    _cardSize: { state: true },
     _permissions: { state: true },
     _search: { state: true },
     _toolsOpen: { state: true },
@@ -44,14 +47,31 @@ export default class DaBrowse extends LitElement {
 
   _browseSelKeys = new Set();
 
+  _browseSelection = [];
+
   _clearBrowseSelection() {
     for (const key of this._browseSelKeys) {
       document.dispatchEvent(new CustomEvent(CHAT_EVENT.ADD_TO_CHAT, { detail: { key } }));
     }
     this._browseSelKeys = new Set();
+    this._browseSelection = [];
+  }
+
+  _sendBrowseContext(item) {
+    document.dispatchEvent(new CustomEvent(CHAT_EVENT.ADD_TO_CHAT, {
+      detail: {
+        key: item.path,
+        id: item.path,
+        type: item.ext ? 'file' : 'folder',
+        label: item.name,
+        blockName: item.name,
+        innerText: `Selected repository path: ${item.path.replace(/^\//, '')}`,
+      },
+    }));
   }
 
   _handleBrowseSelection = ({ detail: { items } }) => {
+    this._browseSelection = [...items];
     const prevKeys = this._browseSelKeys;
     const nextKeys = new Set(items.map((i) => i.path));
 
@@ -63,16 +83,7 @@ export default class DaBrowse extends LitElement {
 
     for (const item of items) {
       if (!prevKeys.has(item.path)) {
-        document.dispatchEvent(new CustomEvent(CHAT_EVENT.ADD_TO_CHAT, {
-          detail: {
-            key: item.path,
-            id: item.path,
-            type: item.ext ? 'file' : 'folder',
-            label: item.name,
-            blockName: item.name,
-            innerText: `Selected repository path: ${item.path.replace(/^\//, '')}`,
-          },
-        }));
+        this._sendBrowseContext(item);
       }
     }
 
@@ -84,7 +95,9 @@ export default class DaBrowse extends LitElement {
     this._typesFilterState = { open: false, hiddenCount: 0 };
     this._sortState = { property: null, direction: 'none', loading: false };
     this._search = { matchCase: true };
-    const { groupByType, view, sort } = getBrowseSettings();
+    const { groupByType, view, sort, rowSize, cardSize } = getBrowseSettings();
+    this._rowSize = ['s', 'l'].includes(rowSize) ? rowSize : 'm';
+    this._cardSize = ['s', 'l'].includes(cardSize) ? cardSize : 'm';
     this._sortPreference = SORT_PROPS.includes(sort?.property)
       && SORT_DIRECTIONS.includes(sort?.direction) ? sort : undefined;
     this._groupByType = groupByType === true;
@@ -98,6 +111,12 @@ export default class DaBrowse extends LitElement {
     document.addEventListener('keydown', this._handleShortcuts);
     this.mountSearch();
     this.observeHeader();
+    this._unsubChat = chatAvailability.subscribe((enabled) => this.syncChatAvailability(enabled));
+    this._unsubChatTurn = chatTurnCompleted.subscribe((detail) => {
+      if (!detail?.org || detail.org !== this.details?.org
+        || detail.site !== this.details?.site) return;
+      this.browseCmp?.requestUpdate('fullpath');
+    });
   }
 
   disconnectedCallback() {
@@ -106,6 +125,66 @@ export default class DaBrowse extends LitElement {
     this.destroySearch();
     this._headerResizeObserver?.disconnect();
     this._headerResizeObserver = undefined;
+    this.cancelChatPreload();
+    this._unsubChat?.();
+    this._unsubChatTurn?.();
+  }
+
+  syncChatAvailability(enabled) {
+    this.cancelChatPreload();
+    this._chatEnabled = enabled;
+    if (enabled === undefined) return;
+    if (!enabled) {
+      closeChatPanel();
+      return;
+    }
+    const loadContent = getChatPanelContent();
+    let content;
+    const getContent = () => {
+      content ??= loadContent().catch((error) => {
+        content = undefined;
+        throw error;
+      });
+      return content;
+    };
+    registerPanelSection('chat', {
+      position: 'before',
+      width: '400px',
+      getContent,
+      onShow: (aside, id, options) => this.syncChatContext(aside, options),
+    });
+    if (wasPanelOpen('chat')) openChatPanel();
+    this._preloadChatContent = getContent;
+  }
+
+  cancelChatPreload() {
+    this._preloadChatContent = undefined;
+    if (this._chatPreloadIdle !== undefined) {
+      window.cancelIdleCallback(this._chatPreloadIdle);
+      this._chatPreloadIdle = undefined;
+    }
+  }
+
+  preloadChat(getContent) {
+    if (!window.requestIdleCallback) return;
+    this._chatPreloadIdle = window.requestIdleCallback(() => {
+      this._chatPreloadIdle = undefined;
+      if (!this.isConnected) return;
+      getContent().catch((error) => {
+        // eslint-disable-next-line no-console
+        console.warn('Could not preload browse chat.', error);
+      });
+    });
+  }
+
+  async syncChatContext(aside, options) {
+    const chat = aside.querySelector('nx-chat, nx-chat-ao');
+    await chat?.updateComplete;
+    const pills = chat?.shadowRoot.querySelector('nx-pills');
+    await pills?.updateComplete;
+    if (!chat?.isConnected || !pills || !this.isConnected) return;
+    for (const item of this._browseSelection) this._sendBrowseContext(item);
+    if (options?.focus) chat.shadowRoot.querySelector('.chat-input')?.focus();
   }
 
   get canWrite() {
@@ -115,6 +194,11 @@ export default class DaBrowse extends LitElement {
   updated() {
     this.observeHeader();
     this.syncSearch();
+    if (this._preloadChatContent) {
+      const getContent = this._preloadChatContent;
+      this._preloadChatContent = undefined;
+      this.preloadChat(getContent);
+    }
   }
 
   observeHeader() {
@@ -168,7 +252,6 @@ export default class DaBrowse extends LitElement {
 
   handlePermissions(e) {
     this._permissions = e.detail;
-    if (this.newCmp) this.newCmp.permissions = e.detail;
   }
 
   async update(props) {
@@ -186,23 +269,8 @@ export default class DaBrowse extends LitElement {
       // and do this before getEditor so the default editor reflects EW state
       if (orgChanged || prevDetails?.site !== this.details.site) {
         const { org, site } = this.details;
-        const { isEWEnabled, isEwChatDisabled } = await getNxEWFlags();
-        const [ewEnabled, chatDisabled] = await Promise.all([
-          isEWEnabled({ org, site }),
-          isEwChatDisabled({ org, site }),
-        ]);
-        this._ewEnabled = ewEnabled;
-        this._chatEnabled = ewEnabled && !chatDisabled;
-        if (this._chatEnabled) {
-          registerPanelSection('chat', {
-            position: 'before',
-            width: '400px',
-            getContent: getChatPanelContent(),
-          });
-          if (wasPanelOpen('chat')) openChatPanel();
-        } else {
-          closeChatPanel();
-        }
+        const { isEWEnabled } = await getNxEWFlags();
+        this._ewEnabled = await isEWEnabled({ org, site });
       }
 
       // Only re-fetch editor configs if the org changes
@@ -218,33 +286,13 @@ export default class DaBrowse extends LitElement {
     if (reFetch) {
       const { org, site } = this.details;
       const configs = await Promise.all(fetchDaConfigs({ org, site }));
-      const rows = configs.filter(Boolean).reverse().flatMap((c) => getFirstSheet(c) || []);
-      this.editorConfs = rows.reduce((acc, row) => {
-        if (row.key === 'editor.path') acc.push(row.value);
-        return acc;
-      }, []);
-      this.hidePublishConfs = rows.reduce((acc, row) => {
-        if (row.key === 'editor.hidePublish') acc.push(row.value);
-        return acc;
-      }, []);
-      this.enforcePreflight = rows.some(
-        (row) => row.key === 'editor.enforcePreflight' && `${row.value}`.toLowerCase() === 'true',
-      );
+      const { editorConfs, hidePublishConfs, enforcePreflight } = getEditorConfigs(configs);
+      this.editorConfs = editorConfs;
+      this.hidePublishConfs = hidePublishConfs;
+      this.enforcePreflight = enforcePreflight;
     }
 
-    if (!this.editorConfs || this.editorConfs.length === 0) return DEF_EDIT;
-
-    // Filter down all matched confs
-    const matchedConfs = this.editorConfs.filter(
-      (conf) => this.details.fullpath.startsWith(conf.split('=')[0]),
-    );
-
-    if (matchedConfs.length === 0) return DEF_EDIT;
-
-    // Sort by length in descending order (longest first)
-    const matchedConf = matchedConfs.sort((a, b) => b.split('=')[0].length - a.split('=')[0].length)[0];
-
-    return matchedConf.split('=')[1];
+    return getConfiguredEditor(this.details.fullpath, this.editorConfs, DEF_EDIT);
   }
 
   handleNewItem(e) {
@@ -336,6 +384,8 @@ export default class DaBrowse extends LitElement {
     this._navField.label = label;
     this._navField.placeholder = label;
     this._navField.fullpath = fullpath;
+    this._navField.editorConfs = this.editorConfs;
+    this._navField.defaultEditor = this._ewEnabled ? '/canvas#' : '/edit#';
     this._navField.setAttribute('aria-label', label);
   }
 
@@ -436,6 +486,8 @@ export default class DaBrowse extends LitElement {
       field.disabled = !!search.replacement?.loading;
       field.matchCase = search.matchCase;
       field.editor = this.editor;
+      field.editorConfs = this.editorConfs;
+      field.defaultEditor = this._ewEnabled ? '/canvas#' : '/edit#';
       field.toolsOpen = this._toolsOpen;
       const value = search.draft ?? search.term ?? '';
       if (field.value !== value) field.value = value;
@@ -495,16 +547,27 @@ export default class DaBrowse extends LitElement {
     }
   }
 
+  askCoworker() {
+    const detail = { section: 'chat', options: { focus: true } };
+    document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail }));
+  }
+
   renderSearchResults() {
     return html`
       <div role="grid" aria-label="Search results">
         <da-list class="da-list-type-search"
+          .canAskCoworker=${this._chatEnabled}
+          @askcoworker=${this.askCoworker}
+          @selectionchanged=${this._chatEnabled ? this._handleBrowseSelection : nothing}
           editor=${this.editor}
+          .editorConfs=${this.editorConfs}
+          .defaultEditor=${this._ewEnabled ? '/canvas#' : '/edit#'}
           .listItems=${this._search.items}
           .hidePublishConfs=${this.hidePublishConfs}
           .enforcePreflight=${this.enforcePreflight ?? false}
           .groupByType=${this._groupByType}
           .view=${this._view}
+          size=${this._view === 'card' ? this._cardSize : this._rowSize}
           @typesfilterchange=${this.handleTypesFilterChange}
           @sortchange=${this.handleSortChange}
           .sortPreference=${this._sortPreference}
@@ -516,8 +579,12 @@ export default class DaBrowse extends LitElement {
     return html`
       <da-list
         class="da-list-type-browse"
+        .canAskCoworker=${this._chatEnabled}
+        @askcoworker=${this.askCoworker}
         fullpath="${this.details.fullpath}"
         editor="${this.editor}"
+        .editorConfs=${this.editorConfs}
+        .defaultEditor=${this._ewEnabled ? '/canvas#' : '/edit#'}
         .hidePublishConfs=${this.hidePublishConfs}
         .enforcePreflight=${this.enforcePreflight ?? false}
         @onpermissions=${this.handlePermissions}
@@ -529,12 +596,20 @@ export default class DaBrowse extends LitElement {
         drag
         .groupByType=${this._groupByType}
         .sortPreference=${this._sortPreference}
-        .view=${this._view}></da-list>`;
+        .view=${this._view}
+        size=${this._view === 'card' ? this._cardSize : this._rowSize}></da-list>`;
   }
 
   setView(view) {
     this._view = view === 'card' ? 'card' : 'list';
     updateBrowseSettings({ view: this._view });
+  }
+
+  setAppearanceSize(view, size) {
+    if (!['list', 'card'].includes(view) || !['s', 'm', 'l'].includes(size)) return;
+    if (view === 'card') this._cardSize = size;
+    else this._rowSize = size;
+    updateBrowseSettings({ rowSize: this._rowSize, cardSize: this._cardSize });
   }
 
   setGroupByType(group) {
@@ -550,18 +625,23 @@ export default class DaBrowse extends LitElement {
         .chatEnabled=${this._chatEnabled}
         .groupByType=${this._groupByType}
         .view=${this._view}
+        .rowSize=${this._rowSize}
+        .cardSize=${this._cardSize}
         .typesFilterState=${this._typesFilterState}
         .sortState=${this._sortState}
         .searchState=${this._searchEngine || search.loading || search.error ? {
-          loading: search.loading,
-          count: search.items?.length ?? 0,
-          error: search.error,
-        } : undefined}
+        loading: search.loading,
+        count: search.items?.length ?? 0,
+        error: search.error,
+      } : undefined}
         @typesfilterrequest=${({ detail }) => this.activeListCmp.toggleTypesPopover(detail.anchor)}
         @sortrequest=${({ detail }) => this.activeListCmp.setSort(detail.property, detail.direction)}
         @viewchange=${({ detail }) => this.setView(detail.view)}
+        @appearancesizechange=${({ detail }) => this.setAppearanceSize(detail.view, detail.size)}
         @groupbytypechange=${({ detail }) => this.setGroupByType(detail.group)}>
-        <da-new variant="accent" @newitem=${this.handleNewItem} fullpath="${this.details.fullpath}" editor="${this.editor}"></da-new>
+        <da-new slot="actions" variant="accent" .permissions=${this._permissions}
+          @newitem=${this.handleNewItem}
+          fullpath="${this.details.fullpath}" editor="${this.editor}"></da-new>
       </da-browse-header>
       <div class="da-browse-content">
         ${search.error ? html`<p role="alert">${search.error}</p>` : nothing}

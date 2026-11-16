@@ -1,0 +1,66 @@
+.form-input-wrap {
+  position: relative;
+  display: flex;
+}
+
+.form-field textarea {
+  /* Mirrors the bordered text input; a multi-line box that grows vertically. */
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 88px;
+  padding: var(--s2-spacing-100) calc(var(--s2-spacing-200) - 2px);
+  border: 2px solid var(--s2-gray-300);
+  border-radius: var(--s2-corner-radius-500);
+  background: var(--s2-gray-25);
+  color: var(--s2-gray-800);
+  font-family: inherit;
+  font-size: var(--s2-body-size-s, 14px);
+  line-height: 1.4;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  resize: vertical;
+  transition: border-color 0.13s cubic-bezier(0.45, 0, 0.4, 1);
+
+  &::placeholder {
+    color: var(--s2-gray-600);
+    opacity: 1;
+  }
+
+  &:hover {
+    border-color: var(--s2-gray-400);
+  }
+
+  &:focus {
+    border-color: var(--s2-gray-900);
+  }
+
+  &:focus-visible {
+    border-color: var(--s2-gray-900);
+    outline-color: var(--s2-blue-800);
+  }
+
+  &:disabled {
+    background: var(--s2-gray-25);
+    border-color: var(--s2-gray-300);
+    color: var(--s2-gray-400);
+    cursor: not-allowed;
+    resize: none;
+  }
+}
+
+.form-field.has-error textarea {
+  /* Reserve room for the alert icon (18px) at its 12px inline-end inset. */
+  padding-right: 38px;
+  border-color: var(--s2-red-900);
+
+  &:focus {
+    border-color: var(--s2-red-900);
+  }
+}
+
+.form-field.has-error .form-field-icon {
+  /* Align the alert with the first text line (base rule keeps translateY(-50%)),
+     rather than the vertical center of the multi-line box. */
+  top: 18px;
+  inset-inline-end: 12px;
+}

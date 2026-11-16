@@ -10,8 +10,9 @@ import { evaluatePage } from './api.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
-const [buttons, style] = await Promise.all([
+const [buttons, spinner, style] = await Promise.all([
   loadStyle(`${getNx2()}/styles/buttons.css`),
+  loadStyle(`${getNx2()}/styles/spinner.css`),
   loadStyle(import.meta.url),
 ]);
 
@@ -42,7 +43,7 @@ class EwPreflight extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [buttons, style];
+    this.shadowRoot.adoptedStyleSheets = [buttons, spinner, style];
     this._unsubHash = hashChange.subscribe((state) => {
       this._hashState = state;
       if (this._started && pageKey(state) !== this._evaluatedKey) this._onPageChange();

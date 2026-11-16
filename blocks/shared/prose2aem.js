@@ -1,4 +1,5 @@
 import getPathDetails from './pathDetails.js';
+import { parseIcons, removeEditorArtifacts } from './prose-cleanup.js';
 
 function setCursor(cursor, el) {
   el.id = cursor.id;
@@ -198,6 +199,25 @@ function removeMetadata(editor) {
   editor.querySelector('.metadata')?.remove();
 }
 
+function convertLinkImages(editor) {
+  const images = editor.querySelectorAll('img[data-edit-as="image"]');
+  images.forEach((img) => {
+    const a = document.createElement('a');
+    a.setAttribute('href', img.src);
+    if (img.alt) a.setAttribute('title', img.alt);
+    a.setAttribute('data-edit-as', 'image');
+    a.textContent = img.src;
+
+    [...img.attributes].forEach((attr) => {
+      if (attr.name.startsWith('data-image-')) {
+        a.setAttribute(attr.name, attr.value);
+      }
+    });
+
+    img.replaceWith(a);
+  });
+}
+
 function applySectionMetadata(editor) {
   editor.querySelectorAll('.section-metadata').forEach((block) => {
     const section = block.parentElement;
@@ -225,15 +245,6 @@ function applySectionMetadata(editor) {
     });
     block.remove();
   });
-}
-
-const iconRegex = /(?<!(?:https?|urn)[^\s<>]*):(#?[a-z_-]+[a-z\d]*):/gi; // matches icon pattern but not in URLs
-function parseIcons(editor) {
-  if (!iconRegex.test(editor.innerHTML)) return;
-  editor.innerHTML = editor.innerHTML.replace(
-    iconRegex,
-    (_, iconName) => `<span class="icon icon-${iconName}"></span>`,
-  );
 }
 
 const removeEls = (els) => els.forEach((el) => el.remove());
@@ -267,9 +278,16 @@ function convertLocalUrlsToRelative(editor) {
  * @param {HTMLElement} editor the editor dom
  * @param {Boolean} livePreview whether or not the target destination is Live Preview
  * @param {Boolean} isFragment whether or not the DOM is a fragment
+ * @param {object} options preview rendering options
+ * @param {Boolean} options.legacySectionMetadata preserve section metadata for client decoration
  * @returns AEM-friendly HTML as a text string
  */
-export default function prose2aem(editor, livePreview, isFragment = false) {
+export default function prose2aem(
+  editor,
+  livePreview,
+  isFragment = false,
+  { legacySectionMetadata = false } = {},
+) {
   if (!isFragment) editor.removeAttribute('class');
 
   editor.removeAttribute('contenteditable');
@@ -282,17 +300,7 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
   const daDiffDeletedEls = editor.querySelectorAll('da-diff-deleted');
   removeEls(daDiffDeletedEls);
 
-  const emptyImgs = editor.querySelectorAll('img.ProseMirror-separator');
-  removeEls(emptyImgs);
-
-  const trailingBreaks = editor.querySelectorAll('.ProseMirror-trailingBreak');
-  removeEls(trailingBreaks);
-
-  const userPointers = editor.querySelectorAll('.ProseMirror-yjs-cursor');
-  removeEls(userPointers);
-
-  const gapCursors = editor.querySelectorAll('.ProseMirror-gapcursor');
-  removeEls(gapCursors);
+  removeEditorArtifacts(editor);
 
   const highlights = editor.querySelectorAll('span.ProseMirror-yjs-selection');
   highlights.forEach((el) => {
@@ -302,6 +310,8 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
   convertListItems(editor);
 
   convertParagraphs(editor);
+
+  convertLinkImages(editor);
 
   convertBlocks(editor, isFragment);
 
@@ -314,7 +324,7 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
 
   if (!isFragment) {
     makeSections(editor);
-    if (livePreview) applySectionMetadata(editor);
+    if (livePreview && !legacySectionMetadata) applySectionMetadata(editor);
   }
 
   if (isFragment) {
@@ -337,7 +347,7 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
   return html;
 }
 
-export function getHtmlWithCursor(view) {
+export function getHtmlWithCursor(view, options) {
   const { selection } = view.state;
   const cursorPos = selection.from;
 
@@ -390,5 +400,5 @@ export function getHtmlWithCursor(view) {
     clonedNode.insertBefore(marker, clonedNode.childNodes[offset] || null);
   }
 
-  return prose2aem(editorClone, true);
+  return prose2aem(editorClone, true, false, options);
 }

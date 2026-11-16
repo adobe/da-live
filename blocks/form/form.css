@@ -1,0 +1,70 @@
+/* Form workspace. The nx2 form fills main, with nx-chat docked on the left
+   and the tools panel on the right. */
+
+:root {
+  --ew-form-header-height: 48px;
+  --form-content-top: 32px;
+
+  /* Top offset for groups scrolled into view. Only
+     the editor content applies it. Padding the .form scroll container as
+     well would misalign the two. */
+  --ew-form-scroll-offset-top: var(--form-content-top);
+}
+
+/* Nested scroll like /canvas. The form scrolls inside a fixed-height region
+   below the global nav.
+
+   `.form` is the block div, not the `<ew-form-editor>` element inside it. That
+   element styles itself through editor.css in its shadow root. da-nx names
+   the block div `nx-form`. Pages that declare a `form` block load this
+   copy instead. Hence `.form` here instead of da-nx's `.nx-form`. */
+.form {
+  box-sizing: border-box;
+  height: calc(100vh - var(--s2-nav-height) - var(--ew-form-header-height));
+  overflow-y: auto;
+}
+
+/* At this width main scrolls and has a border, so fill main instead of the viewport to avoid a second scrollbar. */
+@media (width >= 600px) {
+  main:has(.form) > .section {
+    min-height: 0;
+  }
+
+  .block-content:has(> .form) {
+    height: 100%;
+  }
+
+  .form {
+    height: calc(100% - var(--ew-form-header-height));
+  }
+}
+
+/* Never override the chat's `display` here, or its flex layout collapses. */
+aside.panel[data-position='before'] nx-chat {
+  height: 100%;
+}
+
+/* The header above the form, styled like canvas's header bar. */
+.form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  height: var(--ew-form-header-height);
+  padding: 0 12px;
+  background-color: light-dark(#fff, var(--s2-gray-25));
+  border-bottom: 1px solid var(--s2-gray-200);
+}
+
+.form-header-start,
+.form-header-end {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Each toggle hides while its panel is open, since the panel has its own close. */
+html:has(aside.panel[data-position='before']:not([hidden])) .form-chat-toggle,
+html:has(aside.panel[data-position='after']:not([hidden])) .form-tools-toggle {
+  display: none;
+}

@@ -13,13 +13,26 @@ import { test, expect } from '../utils/fixtures.js';
 import ENV, { TEST_ORG, TEST_SITE } from '../utils/env.js';
 import { getQuery } from '../utils/page.js';
 import { dismissAlertBanner } from '../utils/utils.js';
-import { listStaleRunFolders, deleteResource, mapWithConcurrency, DELETE_CONCURRENCY } from '../utils/cleanup.js';
+import {
+  listStaleRunFolders,
+  listStaleTestFiles,
+  deleteResource,
+  mapWithConcurrency,
+  DELETE_CONCURRENCY,
+  FORM_SCHEMAS_FOLDER,
+} from '../utils/cleanup.js';
 
 // Files are deleted after 2 hours by default
 const MIN_HOURS = process.env.PW_DELETE_HOURS ? Number(process.env.PW_DELETE_HOURS) : 2;
 
+async function* listStaleResources(page, authHeader) {
+  yield* listStaleRunFolders(page, authHeader, TEST_ORG, TEST_SITE, MIN_HOURS);
+  yield* listStaleTestFiles(page, authHeader, TEST_ORG, TEST_SITE, FORM_SCHEMAS_FOLDER, MIN_HOURS);
+}
+
 // Runs only in the 'sweeper' project (scheduled cleanup.yml via test:cleanup),
-// never in the normal suite - reclaims stale pw-* run folders from past runs.
+// never in the normal suite. Reclaims stale pw-* run folders and form schemas
+// from past runs.
 test('Delete multiple old pages', async ({ page }) => {
   test.skip(!!process.env.SKIP_AUTH, 'No backend under SKIP_AUTH');
   test.setTimeout(5 * 60 * 1000);
@@ -38,7 +51,7 @@ test('Delete multiple old pages', async ({ page }) => {
   await expect.poll(() => authHeader, { timeout: 15000 }).toBeTruthy();
   await dismissAlertBanner(page);
 
-  const stale = listStaleRunFolders(page, authHeader, TEST_ORG, TEST_SITE, MIN_HOURS);
+  const stale = listStaleResources(page, authHeader);
   let deletedCount = 0;
   try {
     await mapWithConcurrency(stale, DELETE_CONCURRENCY, async ({ path, isFolder }) => {
@@ -46,6 +59,6 @@ test('Delete multiple old pages', async ({ page }) => {
       deletedCount += 1;
     });
   } finally {
-    console.log(deletedCount ? `Deleted ${deletedCount} stale run folders` : 'No stale run folders to delete');
+    console.log(deletedCount ? `Deleted ${deletedCount} stale test resources` : 'No stale test resources to delete');
   }
 });

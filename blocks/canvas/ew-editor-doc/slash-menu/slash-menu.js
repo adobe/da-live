@@ -118,7 +118,8 @@ function positionAnchor(view, anchor, pos) {
   const coords = view.coordsAtPos(pos);
   const rect = anchor.offsetParent.getBoundingClientRect();
   anchor.style.left = `${coords.left - rect.left}px`;
-  anchor.style.top = `${coords.bottom - rect.top}px`;
+  anchor.style.top = `${coords.top - rect.top}px`;
+  anchor.style.height = `${coords.bottom - coords.top}px`;
 }
 
 function syncSlashHint(view, ctxRef) {
@@ -193,7 +194,9 @@ function syncSlashUi(view, ctxRef) {
   const { menu, anchor } = ctxRef.ctx;
   positionAnchor(view, anchor, slash.anchorPos);
   menu.items = items;
-  if (!menu.open) {
+  if (menu.open) {
+    menu.reposition();
+  } else {
     menu.show({ anchor, placement: 'auto' });
   }
 }

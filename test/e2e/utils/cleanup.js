@@ -14,6 +14,9 @@ import { getTestResourceAge } from './page.js';
 
 const DA_ADMIN = 'https://admin.da.live';
 const AEM_API = 'https://api.aem.live';
+const MS_PER_HOUR = 60 * 60 * 1000;
+
+export const FORM_SCHEMAS_FOLDER = '/.da/forms/schemas';
 
 // Same discriminator the rest of the suite already uses
 // (test.skip(TEST_SITE !== 'da-status', ...)).
@@ -55,23 +58,59 @@ function buildListUrl(org, site, path) {
   return buildSourceUrl(org, site, slashed);
 }
 
-// One page of a folder's immediate children as { name, isFolder }.
+/**
+ * Returns the time before which a test resource counts as stale.
+ *
+ * @param {number} minHours - Minimum age in hours for a resource to count as stale
+ * @returns {number} The cutoff in milliseconds since the epoch
+ */
+function getStaleCutoff(minHours) {
+  return Date.now() - MS_PER_HOUR * minHours;
+}
+
+/**
+ * Lists the immediate children of a folder. Makes a single list request and
+ * does not follow pagination.
+ *
+ * @param {import('@playwright/test').Page} page - Page whose request context calls the API
+ * @param {string} authHeader - Bearer token sent as the Authorization header
+ * @param {string} org - DA organization that owns the site
+ * @param {string} site - DA site the tests write to
+ * @param {string} path - Folder path relative to the site
+ * @returns {Promise<Array<{ name: string, isFolder: boolean }>>} The children
+ *   with file names stripped of their extension, or an empty array when the
+ *   request fails
+ */
 async function listChildren(page, authHeader, org, site, path) {
   const headers = { Authorization: authHeader };
-  if (IS_HLX6_SITE) headers['x-content-source-authorization'] = authHeader;
-  const resp = await page.request.get(buildListUrl(org, site, path), { headers, failOnStatusCode: false });
-  if (!resp.ok()) {
-    console.warn(`listChildren: list failed (${resp.status()}) for ${path}`);
+  if (IS_HLX6_SITE) {
+    headers['x-content-source-authorization'] = authHeader;
+  }
+
+  const url = buildListUrl(org, site, path);
+  const response = await page.request.get(url, { headers, failOnStatusCode: false });
+  if (!response.ok()) {
+    console.warn(`listChildren: list failed (${response.status()}) for ${path}`);
     return [];
   }
-  const items = await resp.json().catch(() => []);
-  if (!Array.isArray(items)) return [];
+
+  const items = await response.json().catch(() => []);
+  if (!Array.isArray(items)) {
+    return [];
+  }
+
   return items
     .map((item) => {
       const rawName = item.name ?? item.path?.split('/').pop();
-      if (!rawName) return null;
+      if (!rawName) {
+        return null;
+      }
+
       const isFolder = IS_HLX6_SITE ? rawName.endsWith('/') : !item.ext;
-      return { name: isFolder ? rawName.replace(/\/$/, '') : rawName, isFolder };
+      // hlx6 lists file names with their extension and da-admin without.
+      // deleteResource adds the extension back.
+      const name = isFolder ? rawName.replace(/\/$/, '') : rawName.replace(/\.\w+$/, '');
+      return { name, isFolder };
     })
     .filter(Boolean);
 }
@@ -115,26 +154,56 @@ export async function createResource(page, authHeader, org, site, path, body, op
 }
 
 /**
- * Yields run folders (`/tests/pw-*`) whose newest run-marker is older than
- * minHours. Marker-only: a folder with no ageable `pw-run-*-marker` is skipped.
+ * Lists the run folders in `/tests` whose newest run marker is older than
+ * minHours. Folders without a parseable `pw-run-*-marker` file are skipped.
+ *
+ * @param {import('@playwright/test').Page} page - Page whose request context calls the API
+ * @param {string} authHeader - Bearer token sent as the Authorization header
+ * @param {string} org - DA organization that owns the site
+ * @param {string} site - DA site the tests write to
+ * @param {number} minHours - Minimum age in hours for a run folder to count as stale
+ * @yields {{ path: string, isFolder: true }} Each stale run folder, with its
+ *   path relative to the site
  */
 export async function* listStaleRunFolders(page, authHeader, org, site, minHours) {
-  const cutoff = Date.now() - (1000 * 60 * 60 * minHours);
+  const cutoff = getStaleCutoff(minHours);
   const folders = (await listChildren(page, authHeader, org, site, '/tests'))
-    .filter((it) => it.isFolder && it.name.startsWith('pw-'));
+    .filter((child) => child.isFolder && child.name.startsWith('pw-'));
   // eslint-disable-next-line no-restricted-syntax
   for (const folder of folders) {
     const folderPath = `/tests/${folder.name}`;
     // eslint-disable-next-line no-await-in-loop
     const children = await listChildren(page, authHeader, org, site, folderPath);
-    // hlx6 lists file names with their extension (pw-run-{ts}-marker.html);
-    // da-admin lists them without. Tolerate an optional trailing extension.
-    const markerAges = children
-      .filter((c) => /^pw-run-\w+-marker(\.\w+)?$/.test(c.name))
-      .map((c) => getTestResourceAge(c.name))
-      .filter((age) => age !== null);
-    if (markerAges.length === 0) continue;
-    const newest = Math.max(...markerAges);
-    if (newest < cutoff) yield { path: folderPath, isFolder: true };
+    const markerCreationTimes = children
+      .filter((child) => /^pw-run-\w+-marker$/.test(child.name))
+      .map((child) => getTestResourceAge(child.name))
+      .filter((createdAt) => createdAt !== null);
+    const isStale = markerCreationTimes.length > 0 && Math.max(...markerCreationTimes) < cutoff;
+    if (isStale) {
+      yield { path: folderPath, isFolder: true };
+    }
   }
+}
+
+/**
+ * Lists the test files directly inside a folder whose name timestamp is older
+ * than minHours.
+ *
+ * @param {import('@playwright/test').Page} page - Page whose request context calls the API
+ * @param {string} authHeader - Bearer token sent as the Authorization header
+ * @param {string} org - DA organization that owns the site
+ * @param {string} site - DA site the tests write to
+ * @param {string} folderPath - Folder to list, such as `/.da/forms/schemas`
+ * @param {number} minHours - Minimum age in hours for a file to count as stale
+ * @yields {{ path: string, isFolder: false }} Each stale file, with its path
+ *   relative to the site and without an extension
+ */
+export async function* listStaleTestFiles(page, authHeader, org, site, folderPath, minHours) {
+  const cutoff = getStaleCutoff(minHours);
+  const children = await listChildren(page, authHeader, org, site, folderPath);
+  const staleFiles = children.filter(({ name, isFolder }) => {
+    const createdAt = getTestResourceAge(name);
+    return !isFolder && name.startsWith('pw-') && createdAt !== null && createdAt < cutoff;
+  });
+  yield* staleFiles.map(({ name }) => ({ path: `${folderPath}/${name}`, isFolder: false }));
 }

@@ -1,0 +1,56 @@
+import { html, nothing } from 'da-lit';
+import { getNx2 } from '../../scripts/utils.js';
+
+const nx2 = getNx2();
+const [{ getConfig }, { loadHrefSvg }] = await Promise.all([
+  import(`${nx2}/scripts/nx.js`),
+  import(`${nx2}/utils/svg.js`),
+]);
+
+const { codeBase } = getConfig();
+
+const iconUrl = (file) => `${codeBase}/img/icons/${file}.svg`;
+
+// Form icons, loaded once from the content-repository sprites via the nx2 svg
+// helper (same mechanism as schema-editor / media-library). Each file is a
+// standalone S2 icon; `icon()` hands out a clone so the same glyph can render
+// in multiple places.
+const FILES = {
+  add: 's2-icon-add-20-n',
+  alert: 's2-icon-alerttriangle-20-n',
+  chevronUp: 's2-icon-chevronup-20-n',
+  chevronDown: 's2-icon-chevrondown-20-n',
+  doubleLeft: 's2-icon-chevrondoubleleft-20-n',
+  doubleRight: 's2-icon-chevrondoubleright-20-n',
+  reorder: 's2-icon-switchvertical-20-n',
+  remove: 's2-icon-delete-20-n',
+  settingsEdit: 's2-icon-settingsedit-20-n',
+  confirm: 's2-icon-checkmarkcircle-20-n',
+  cancel: 's2-icon-closecircle-20-n',
+};
+
+const NODES = Object.fromEntries(
+  (await Promise.all(
+    Object.entries(FILES).map(async ([name, file]) => [
+      name,
+      await loadHrefSvg(iconUrl(file)),
+    ]),
+  )).filter(([, svg]) => svg),
+);
+
+export function icon(name, className) {
+  const svg = NODES[name];
+  if (!svg) return nothing;
+  const node = svg.cloneNode(true);
+  node.setAttribute('aria-hidden', 'true');
+  if (className) node.setAttribute('class', className);
+  return node;
+}
+
+/**
+ * Renders an S2 icon from its sprite, which the browser loads and caches.
+ * @param {string} name The name of the S2 icon, such as `tagbold`.
+ * @returns {import('da-lit').TemplateResult} The icon.
+ */
+export const spriteIcon = (name) => html`<svg aria-hidden="true" viewBox="0 0 20 20"><use
+  href="${iconUrl(`s2-icon-${name}-20-n`)}#icon"></use></svg>`;

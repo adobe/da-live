@@ -1,0 +1,173 @@
+/* Spectrum 2 number-field styling, ported from spectrum-web-components
+   (number-field + textfield + infield-button stepper), with spectrum tokens
+   mapped onto our --s2-* set:
+     border-width-100        -> 1px
+     corner-radius-100       -> --s2-corner-radius-500 (8px)
+     component-height-100    -> 32px
+     in-field-button-width-stacked-medium -> 28px
+     stepper-border-color    default gray-500 / hover gray-600 / focus gray-800
+                             / disabled gray-300
+     stepper-buttons-background  gray-100 (disabled gray-50)
+   The container is a row flex of the input and a stacked stepper column; the
+   input drops its inline-end border and squares those corners, and the column
+   carries the seam + outer border and rounds the end corners. */
+
+.form-number-wrap {
+  position: relative;
+  display: flex;
+  flex-flow: row;
+  box-sizing: border-box;
+  width: 100%;
+  height: 32px;
+  border-radius: var(--s2-corner-radius-500);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.form-number-wrap input {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 100%;
+  padding: 0 calc(var(--s2-spacing-200) - 1px);
+  border: 1px solid var(--s2-gray-500);
+  border-inline-end-width: 0;
+  border-start-start-radius: var(--s2-corner-radius-500);
+  border-end-start-radius: var(--s2-corner-radius-500);
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+  background: var(--s2-gray-25);
+  color: var(--s2-gray-800);
+  font-family: inherit;
+  font-size: var(--s2-body-size-s, 14px);
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  appearance: textfield;
+  transition: border-color 0.13s cubic-bezier(0.45, 0, 0.4, 1);
+
+  &::placeholder {
+    color: var(--s2-gray-600);
+    opacity: 1;
+  }
+
+  /* Hide the native spinners; the stacked stepper replaces them. */
+  &::-webkit-outer-spin-button,
+  &::-webkit-inner-spin-button {
+    appearance: none;
+    margin: 0;
+  }
+}
+
+/* Stacked stepper column at the inline-end (increase on top, decrease below).
+   Carries the seam (inline-start) and the outer border; end corners rounded. */
+.form-number-buttons {
+  box-sizing: border-box;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  justify-content: center;
+  width: 28px;
+  height: 100%;
+  border: 1px solid var(--s2-gray-500);
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+  border-start-end-radius: var(--s2-corner-radius-500);
+  border-end-end-radius: var(--s2-corner-radius-500);
+
+  /* Clip the button hover/active fills to the rounded end corners. */
+  overflow: hidden;
+  background: var(--s2-gray-100);
+  transition: border-color 0.13s cubic-bezier(0.45, 0, 0.4, 1);
+}
+
+.form-number-step {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--s2-gray-800);
+  cursor: pointer;
+  transition: background-color 0.13s cubic-bezier(0.45, 0, 0.4, 1);
+
+  &:hover {
+    background: var(--s2-gray-200);
+  }
+
+  &:active {
+    background: var(--s2-gray-300);
+  }
+
+  &:disabled {
+    background: transparent;
+    color: var(--s2-gray-400);
+    cursor: not-allowed;
+  }
+}
+
+/* 1px divider between the two stacked buttons (stepper button-border-width). */
+.form-number-step-up {
+  border-block-end: 1px solid var(--s2-gray-500);
+}
+
+.form-number-chevron {
+  width: 9px;
+  height: 9px;
+  pointer-events: none;
+}
+
+/* State border-color rules below are kept at equal specificity (0,3,0) and
+   ordered hover -> focus -> invalid -> disabled so source order governs the
+   cascade (invalid stays red on focus; disabled wins last). */
+
+/* Hover: border, seam, and divider move to gray-600. */
+.form-number-wrap:hover input,
+.form-number-wrap:hover .form-number-buttons,
+.form-number-wrap:hover .form-number-step-up {
+  border-color: var(--s2-gray-600);
+}
+
+/* Focus follows the inner input: border to gray-800. */
+.form-number-wrap:focus-within input,
+.form-number-wrap:focus-within .form-number-buttons,
+.form-number-wrap:focus-within .form-number-step-up {
+  border-color: var(--s2-gray-800);
+}
+
+/* Invalid: negative border on the box, seam, and divider (holds through focus). */
+.form-field.has-error .form-number-buttons,
+.form-field.has-error .form-number-step-up,
+.form-field.has-error .form-number-wrap input {
+  border-color: var(--s2-red-900);
+}
+
+/* Disabled. */
+:host([disabled]) .form-number-buttons,
+:host([disabled]) .form-number-step-up,
+:host([disabled]) .form-number-wrap input {
+  border-color: var(--s2-gray-300);
+}
+
+:host([disabled]) .form-number-wrap input {
+  color: var(--s2-gray-400);
+  cursor: not-allowed;
+}
+
+:host([disabled]) .form-number-buttons {
+  background: var(--s2-gray-50);
+}
+
+/* Keyboard focus adds the 2px focus indicator (2px gap). */
+.form-number-wrap:has(input:focus-visible) {
+  outline-color: var(--s2-blue-800);
+}
+
+.form-field.has-error .form-number-wrap input {
+  padding-right: 30px;
+}
+
+.form-field.has-error .form-field-icon {
+  inset-inline-end: 34px;
+}

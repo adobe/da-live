@@ -1,0 +1,144 @@
+:host {
+  display: block;
+  font-family: var(
+    --s2-font-family,
+    "Adobe Clean",
+    adobe-clean,
+    "Trebuchet MS",
+    sans-serif
+  );
+}
+
+.ew-form-message {
+  background: var(--s2-gray-25);
+  border: none;
+  border-radius: var(--s2-corner-radius-500);
+  padding: 16px;
+  text-align: center;
+}
+
+.ew-form-message h2 {
+  margin: 0 0 8px;
+}
+
+.ew-form-message p {
+  margin: 0 0 12px;
+}
+
+.ew-form-actions {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.ew-form-wrapper {
+  width: min(880px, 100%);
+  max-width: 880px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 20px;
+  box-sizing: border-box;
+}
+
+.ew-form-wrapper.ew-form-wrapper-centered {
+  padding-top: var(--form-content-top, 32px);
+}
+
+.ew-form-pane {
+  flex: 1 1 560px;
+  width: 560px;
+  min-width: 0;
+  max-width: 560px;
+}
+
+.ew-form-pane-with-preview ew-form-fields {
+  --ew-form-padding-bottom: 16px;
+}
+
+.ew-form-schema-shell {
+  flex: 1 1 700px;
+  width: 700px;
+  min-width: 0;
+  max-width: 700px;
+}
+
+.ew-form-schema-card {
+  box-sizing: border-box;
+  border-radius: var(--s2-corner-radius-800);
+  background: var(--s2-gray-25);
+  box-shadow:
+    light-dark(rgb(0 0 0 / 8%), rgb(0 0 0 / 50%)) 0 4px 24px,
+    light-dark(rgb(0 0 0 / 6%), rgb(0 0 0 / 40%)) 0 1px 3px;
+  padding: 28px;
+}
+
+.ew-form-title {
+  margin: 0 0 8px;
+}
+
+.ew-form-schema-heading {
+  margin: 0 0 16px;
+}
+
+.ew-form-schema-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ew-form-schema-start {
+  align-self: flex-end;
+}
+
+.ew-form-schema-hint {
+  margin: 0;
+}
+
+.ew-form-schema-select-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2-spacing-75);
+}
+
+.ew-form-schema-form .ew-form-schema-hint {
+  font-size: var(--s2-component-s-regular-font-size, 12px);
+  color: var(--s2-gray-700);
+}
+
+.ew-form-schema-text-link {
+  color: var(--s2-blue-900);
+  text-underline-offset: 2px;
+}
+
+.ew-form-schema-text-link:hover {
+  color: var(--s2-blue-1000);
+}
+
+.ew-form-schema-field-link {
+  text-align: center;
+}
+
+.ew-form-schema-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 var(--s2-spacing-200);
+  border: 2px solid var(--s2-blue-900);
+  border-radius: var(--s2-corner-radius-800);
+  background: var(--s2-blue-900);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    background 0.13s ease,
+    border-color 0.13s ease;
+}
+
+.ew-form-schema-cta:hover {
+  background: var(--s2-blue-1000);
+  border-color: var(--s2-blue-1000);
+}

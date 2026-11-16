@@ -1,5 +1,7 @@
-import { getNx, getNx2Api } from '../../scripts/utils.js';
+import { render } from 'da-lit';
+import { getNx, getNx2, getNx2Api } from '../../scripts/utils.js';
 import { EMPTY_DOC } from '../shared/utils.js';
+import { renderEmptyList, EMPTY_LIST_CSS } from '../shared/empty-list.js';
 import { getCommentsBridge } from './editor-utils/comments-bridge.js';
 import { initPreflightResponder } from './editor-utils/preflight-responder.js';
 import {
@@ -7,7 +9,13 @@ import {
   readInitialCanvasEditorView,
   persistCanvasEditorView,
 } from './utils/view.js';
-import { shouldAutoOpenAfterPanel } from './utils/panel.js';
+import {
+  persistPinnedToolPanelViews,
+  persistToolPanelView,
+  readPinnedToolPanelViews,
+  resolveInitialToolPanelView,
+  shouldAutoOpenAfterPanel,
+} from './utils/panel.js';
 import './ew-canvas-header/ew-canvas-header.js';
 import './ew-editor-doc/ew-editor-doc.js';
 import './ew-editor-wysiwyg/ew-editor-wysiwyg.js';
@@ -19,12 +27,18 @@ import {
 } from './ew-editor-split/ew-editor-split.js';
 import { resolveEditorDocSession, createdDocSession } from './ew-editor-doc/utils/load-editor-doc.js';
 import { SEL_BLOCK, SEL_ITEM, SEL_TEXT } from './ew-editor-doc/utils/selection.js';
-import { getChatPanelContent } from '../shared/chat-panel.js';
+import { getChatPanelContent, chatAvailability } from '../shared/chat-panel.js';
 import { canvasBus } from './utils/canvas-bus.js';
 import { initBranchBridge } from './editor-utils/branch-bridge.js';
 import { resolveCanvasBranch } from './editor-utils/branch-state.js';
 import { installComparison } from './ew-comparison/comparison.js';
 import { docToHtml } from '../shared/version/compare.js';
+import { addRecentFile } from '../shared/recent-files.js';
+import {
+  TOOL_PANEL_SECTION,
+  createToolPanelSection,
+  syncOpenToolPanel,
+} from '../shared/tool-panel/tool-panel-section.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
@@ -34,8 +48,14 @@ const {
   PANEL_EVENT,
 } = await import(`${getNx()}/utils/panel.js`);
 
-const style = await loadStyle(import.meta.url);
-document.adoptedStyleSheets = [...document.adoptedStyleSheets, style];
+const [buttonStyle, emptyListStyle, style] = await Promise.all([
+  loadStyle(`${getNx2()}/styles/buttons.css`),
+  loadStyle(EMPTY_LIST_CSS),
+  loadStyle(import.meta.url),
+]);
+document.adoptedStyleSheets = [
+  ...document.adoptedStyleSheets, buttonStyle, emptyListStyle, style,
+];
 
 function buildCanvasDocPath(state) {
   const { org, site, path } = state || {};
@@ -58,17 +78,17 @@ function removeCanvasEditors(mountRoot) {
   mountRoot.querySelector('ew-editor-wysiwyg')?.remove();
 }
 
-function showNotPermitted(mountRoot, message) {
+export function showNotPermitted(mountRoot, message) {
   let el = mountRoot.querySelector('.nx-not-permitted');
   if (!el) {
     el = document.createElement('div');
     el.className = 'nx-not-permitted';
     mountRoot.append(el);
   }
-  el.textContent = message;
+  render(renderEmptyList(message), el);
 }
 
-function removeNotPermitted(mountRoot) {
+export function removeNotPermitted(mountRoot) {
   mountRoot.querySelector('.nx-not-permitted')?.remove();
 }
 
@@ -168,6 +188,7 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
     header.canWrite = true;
     return;
   }
+  addRecentFile(`/${fullPath.replace(/\.html$/, '')}.html`);
   const editorCtx = editorCtxFromHashState(state, fullPath);
   const ctx = { ...editorCtx, branchPromise: resolveCanvasBranch(editorCtx) };
   const session = await resolveEditorDocSession(ctx);
@@ -183,29 +204,6 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
     return;
   }
   mountCanvasEditors({ mountRoot, header, session, ctx });
-}
-
-async function syncToolPanelViews(toolPanel, { org, site }, panelName) {
-  const key = org && site ? `${org}/${site}` : null;
-  if (key === toolPanel.dataset.extKey) return false;
-  toolPanel.dataset.extKey = key ?? '';
-  toolPanel.contextKey = key ?? '';
-
-  if (!key) {
-    toolPanel.org = undefined;
-    toolPanel.site = undefined;
-    toolPanel.views = [];
-    return true;
-  }
-
-  const { getCanvasToolPanelViews } = await import('./ew-panel-extensions/helpers.js');
-  const views = await getCanvasToolPanelViews({ org, site });
-  if (toolPanel.dataset.extKey !== key) return false;
-  toolPanel.org = org;
-  toolPanel.site = site;
-  if (panelName) toolPanel.pendingView = panelName;
-  toolPanel.views = views;
-  return true;
 }
 
 function hashState() {
@@ -238,7 +236,7 @@ function openPanelSection(section, id, options) {
 }
 
 function openNewVersionRow() {
-  openPanelSection('tools', 'versions', { newVersion: true });
+  openPanelSection(TOOL_PANEL_SECTION, 'versions', { newVersion: true });
 }
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iP(hone|[oa]d)/.test(navigator.platform);
@@ -275,7 +273,7 @@ canvasBus.newVersionRequest.subscribe(openNewVersionRow);
 
 canvasBus.commentComposeRequest.subscribe(() => {
   getCommentsBridge().controller?.requestCompose();
-  openPanelSection('tools', 'comments');
+  openPanelSection(TOOL_PANEL_SECTION, 'comments');
 });
 
 export default async function decorate(block) {
@@ -284,43 +282,50 @@ export default async function decorate(block) {
   // Make the "Preflight" side panel the responder for the publish gate's run request.
   initPreflightResponder();
 
-  registerPanelSection('chat', {
-    position: 'before',
-    width: '400px',
-    getContent: getChatPanelContent(),
-    onShow: async (aside, id, options) => {
-      if (!options?.text && !options?.onReady) return;
-      if (options.onReady) {
-        await aside?.querySelector('nx-chat, nx-chat-ao')?.updateComplete;
-        await options.onReady();
-      }
-      if (!options.text) return;
-      const detail = { text: options.text, autoSend: options.autoSend };
-      document.dispatchEvent(new CustomEvent(CHAT_EVENT.SET_PROMPT, { detail }));
-    },
+  chatAvailability.subscribe((enabled) => {
+    if (enabled === undefined) return;
+    if (!enabled) {
+      document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
+      return;
+    }
+    registerPanelSection('chat', {
+      position: 'before',
+      width: '400px',
+      getContent: getChatPanelContent(),
+      onShow: async (aside, id, options) => {
+        if (!options?.text && !options?.onReady) return;
+        if (options.onReady) {
+          await aside?.querySelector('nx-chat, nx-chat-ao')?.updateComplete;
+          await options.onReady();
+        }
+        if (!options.text) return;
+        const detail = { text: options.text, autoSend: options.autoSend };
+        document.dispatchEvent(new CustomEvent(CHAT_EVENT.SET_PROMPT, { detail }));
+      },
+    });
+    if (wasPanelOpen('chat')) openPanelSection('chat');
   });
 
-  registerPanelSection('tools', {
-    position: 'after',
-    width: '400px',
-    getContent: async () => {
-      await import('./ew-tool-panel/tool-panel.js');
-      return document.createElement('ew-tool-panel');
+  registerPanelSection(TOOL_PANEL_SECTION, createToolPanelSection({
+    host: {
+      getViews: async (context) => {
+        const { getCanvasToolPanelViews } = await import('./ew-panel-extensions/helpers.js');
+        return getCanvasToolPanelViews(context);
+      },
+      resolveInitialView: resolveInitialToolPanelView,
+      persistView: persistToolPanelView,
+      readPinnedViews: readPinnedToolPanelViews,
+      persistPinnedViews: persistPinnedToolPanelViews,
+      onActiveViewChange: (viewId) => canvasBus.toolPanelViewState.emit(viewId),
     },
-    onShow: async (aside, id, options) => {
-      const toolPanel = aside?.querySelector('ew-tool-panel');
-      if (!toolPanel) return;
-      const selected = await syncToolPanelViews(toolPanel, hashState(), id);
-      await toolPanel.updateComplete;
-      if (id && !selected && toolPanel.views?.some((v) => v.id === id)) {
-        await toolPanel.showPanel(id);
-      }
+    getContext: hashState,
+    onShow: async (toolPanel, id, options) => {
       if (options?.newVersion) {
         await toolPanel.updateComplete;
         toolPanel.shadowRoot?.querySelector('ew-canvas-versions')?.handleNew();
       }
     },
-  });
+  }));
 
   const header = await installCanvasHeader(block, { org, site });
 
@@ -358,16 +363,14 @@ export default async function decorate(block) {
     comparisonContext = state;
     comparison.contextChanged();
     syncCanvasEditorsToHash({ mountRoot, header, state });
-    const toolPanel = document.querySelector('aside.panel[data-position="after"] ew-tool-panel');
-    if (toolPanel) syncToolPanelViews(toolPanel, state);
+    syncOpenToolPanel(state);
   });
 
-  if (wasPanelOpen('chat')) openPanelSection('chat');
-  if (wasPanelOpen('tools')) {
-    openPanelSection('tools');
+  if (wasPanelOpen(TOOL_PANEL_SECTION)) {
+    openPanelSection(TOOL_PANEL_SECTION);
   } else {
     shouldAutoOpenAfterPanel({ org, site }).then((open) => {
-      if (open) openPanelSection('tools');
+      if (open) openPanelSection(TOOL_PANEL_SECTION);
     });
   }
 

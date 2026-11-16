@@ -1,15 +1,19 @@
 import { html, repeat, nothing } from 'da-lit';
-import { getTypeLabel } from '../../../shared/icons.js';
+import { getTypeLabel, iconPathForExt } from '../../../shared/icons.js';
+import { getConfiguredEditor } from '../../../shared/da-file-item/edit-path.js';
 import { getNx, getNx2 } from '../../../../scripts/utils.js';
 import DaListBase from '../../da-list-base/da-list-base.js';
+import { EMPTY_LIST_CSS } from '../../../shared/empty-list.js';
 
-import '../da-list-item/da-list-item.js';
+import '../../../shared/da-file-item/da-file-item.js';
 
 await import(`${getNx()}/blocks/shared/popover/popover.js`);
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const [FORM, STYLE] = await Promise.all([
+const [FORM, BUTTONS, EMPTY_LIST, STYLE] = await Promise.all([
   loadStyle(`${getNx2()}/styles/form.css`),
+  loadStyle(`${getNx2()}/styles/buttons.css`),
+  loadStyle(EMPTY_LIST_CSS),
   loadStyle(import.meta.url),
 ]);
 
@@ -31,27 +35,18 @@ function sortTypeLabels(labels) {
   });
 }
 
-const TYPE_TAG_CLASSES = {
-  Folder: 'folder',
-  Page: 'page',
-  Image: 'image',
-  Video: 'video',
-  Link: 'link',
-  Sheet: 'sheet',
-};
-
-function tagClassForTypeLabel(label) {
-  return TYPE_TAG_CLASSES[label] || '';
-}
-
 export default class DaList extends DaListBase {
-  static sheets = [FORM, STYLE];
+  static sheets = [FORM, BUTTONS, EMPTY_LIST, STYLE];
 
   static properties = {
     ...DaListBase.properties,
     sortPreference: { attribute: false },
     groupByType: { type: Boolean },
     view: { type: String },
+    showFolder: { type: Boolean },
+    canAskCoworker: { type: Boolean },
+    editorConfs: { attribute: false },
+    defaultEditor: { type: String },
     _collapsedTypes: { state: true },
     _hiddenTypes: { state: true },
     _sort: { state: true },
@@ -120,8 +115,10 @@ export default class DaList extends DaListBase {
     if (props.has('listItems') && this.listItems) {
       this._listItems = this.listItems;
       this.resetListItemPaths(this._listItems);
-      this.applyFavoritesToItems(this._listItems);
-      this.applyFavoriteOrder();
+      if (this.fullpath) {
+        this.applyFavoritesToItems(this._listItems);
+        this.applyFavoriteOrder();
+      }
     }
 
     if (props.has('fullpath') && this.fullpath) {
@@ -259,18 +256,28 @@ export default class DaList extends DaListBase {
     `;
   }
 
-  get sortPillLabel() {
-    const { property, direction } = this._sort ?? {};
-    if (!property || direction === 'none') return 'Sort: Default';
-    const name = property === 'name';
-    const asc = direction === 'ascending';
-    const labels = name ? ['A-Z', 'Z-A'] : ['oldest first', 'newest first'];
-    const detail = labels[asc ? 0 : 1];
-    return `Sorted by ${name ? 'Name' : 'Modified'} (${detail})`;
+  renderSortButton(property) {
+    const label = property === 'lastModified' ? 'Modified' : 'Name';
+    if (this.sort === false) return label;
+    return html`
+      <button
+        class="da-browse-header-name ${this.sortDirectionFor(property)} ${this._bulkLoading ? 'loading' : ''}"
+        @click=${() => this.toggleSort(property)}
+        ?disabled=${this._bulkLoading}
+        aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
+        ${label}
+        ${this.renderSortIcon()}
+      </button>`;
   }
 
   get selectableItems() {
     return this.filteredItems;
+  }
+
+  getEditorForItem(item) {
+    return this.editorConfs
+      ? getConfiguredEditor(item.path, this.editorConfs, this.defaultEditor)
+      : this.editor;
   }
 
   get filteredItems() {
@@ -353,16 +360,31 @@ export default class DaList extends DaListBase {
 
   renderGroupItems(items, indexByPath) {
     const rows = this.renderGroupRows(items, indexByPath);
-    return this.view === 'card' ? html`<div class="da-card-grid" role="presentation">${rows}</div>` : rows;
+    return this.view === 'card' ? html`<div class="da-card-grid" part="grid" role="presentation">${rows}</div>` : rows;
+  }
+
+  _onFavoriteChange(event, item) {
+    if (this.fullpath) {
+      this.toggleItemFavorite(item);
+      return;
+    }
+    event.stopPropagation();
+    this.dispatchEvent(new CustomEvent('favoritechange', {
+      detail: { item },
+      bubbles: true,
+      composed: true,
+    }));
   }
 
   renderGroupRows(items, indexByPath) {
     return repeat(items, (item) => item.path, (item) => {
       const idx = indexByPath.get(item.path);
+      const folder = this.showFolder ? item.path.slice(0, item.path.lastIndexOf('/')) : undefined;
       return html`
-        <da-list-item
+        <da-file-item
           role="row"
           @checked=${(e) => this.handleItemChecked(e, item, idx)}
+          @favoritechange=${(event) => this._onFavoriteChange(event, item)}
           @onstatus=${({ detail }) => this.setStatus(detail.text, detail.description, detail.type)}
           @renamecompleted=${(e) => this.handleRenameCompleted(e)}
           allowselect="${this.select ? true : nothing}"
@@ -374,10 +396,23 @@ export default class DaList extends DaListBase {
           path="${item.path}"
           date="${item.lastModified}"
           ext="${item.ext}"
-          editor="${this.editor}"
+          editor="${this.getEditorForItem(item)}"
+          .href=${item.href}
+          .imagePreview=${item.imagePreview}
+          .folder=${this.showFolder ? {
+    path: folder,
+    label: `/${folder.split('/').slice(3).join('/')}`,
+    href: item.folderHref ?? `#${folder}`,
+  } : undefined}
           idx=${idx}>
-        </da-list-item>`;
+        </da-file-item>`;
     });
+  }
+
+  getDisplayTypeLabel(label, count = 1) {
+    const isOrgRoot = this.fullpath?.split('/').filter(Boolean).length === 1;
+    if (isOrgRoot && label === 'Folder') return count === 1 ? 'Site' : 'Sites';
+    return pluralizeTypeLabel(label, count);
   }
 
   renderGroupHeader(label, groupItems) {
@@ -386,7 +421,7 @@ export default class DaList extends DaListBase {
     const checkedCount = groupItems.filter((item) => item.isChecked).length;
     const isGroupSelectAll = count > 0 && checkedCount === count;
     const isGroupIndeterminate = checkedCount > 0 && checkedCount < count;
-    const typeLabel = pluralizeTypeLabel(label, count);
+    const typeLabel = this.getDisplayTypeLabel(label, count);
     return html`
       <div class="da-list-group-header ${collapsed ? 'is-collapsed' : ''}">
         ${this.select ? html`
@@ -408,7 +443,8 @@ export default class DaList extends DaListBase {
           <svg class="da-list-group-chevron" viewBox="0 0 20 20" aria-hidden="true">
             <path d="M6 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
           </svg>
-          <span class="tag ${tagClassForTypeLabel(label)}">${count} ${typeLabel}</span>
+          <span class="da-list-group-label">${typeLabel}</span>
+          <span class="da-list-group-count">${count}</span>
         </button>
       </div>`;
   }
@@ -419,7 +455,7 @@ export default class DaList extends DaListBase {
     const groups = this.groupedItems;
 
     return html`
-      <div class="da-item-list" role="presentation">
+      <div class="da-item-list" part="items" role="presentation">
       ${!this.groupByType
         ? this.renderGroupItems(items, indexByPath)
         : groups.map(({ label, items: groupItems }) => html`
@@ -435,7 +471,7 @@ export default class DaList extends DaListBase {
     return html`
       <label class="nx-checkbox ${this._bulkLoading ? 'loading' : ''} ${this._selectedItems.length > 0 && !this.isSelectAll ? 'indeterminate' : ''}" role="columnheader">
         <input type="checkbox" id="select-all" name="select-all" .checked="${this.isSelectAll}" @click="${this.handleCheckAll}" aria-label="Select all items" ?disabled=${this._bulkLoading} aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
-        ${this.view === 'card' ? html`<span class="da-card-select-all-label">Select all</span>` : nothing}
+        ${this.view === 'card' ? html`<span class="da-browse-header-name">Select all</span>` : nothing}
       </label>
     `;
   }
@@ -446,34 +482,25 @@ export default class DaList extends DaListBase {
     const showList = filteredItems?.length > 0 || hasMorePages;
 
     return html`
-      <div class="da-browse-panel-header da-browse-table-header ${this.view === 'card' ? 'is-card' : ''}" role="row">
+      <div class="da-browse-panel-header da-browse-table-header ${this.view === 'card' ? 'is-card' : ''}" part="header" role="row">
         <div class="da-browse-header-cell da-browse-header-cell-select" data-column="select">
-          ${this.renderCheckBox()}
+          ${this.select ? this.renderCheckBox() : nothing}
         </div>
-        ${this.view === 'card' ? html`<span class="tag da-card-sort-pill">${this.sortPillLabel}</span>` : nothing}
+        ${this.view === 'card' && this._sort?.property
+          && ['ascending', 'descending'].includes(this._sort.direction) ? html`
+          <div class="da-browse-header-cell da-card-sort" role="columnheader"
+            aria-sort=${this._sort.direction}>
+            ${this.renderSortButton(this._sort.property)}
+          </div>` : nothing}
         <div class="da-browse-header-cell da-browse-header-cell-name" data-column="name" role="columnheader" aria-sort="${this.sortDirectionFor('name')}">
           <div class="da-browse-header-container">
-            <button
-              class="da-browse-header-name ${this.sortDirectionFor('name')} ${this._bulkLoading ? 'loading' : ''}"
-              @click=${() => this.toggleSort('name')}
-              ?disabled=${this._bulkLoading}
-              aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
-              Name
-              ${this.renderSortIcon()}
-            </button>
+            ${this.renderSortButton('name')}
           </div>
         </div>
-        <div class="da-browse-header-cell da-browse-header-cell-type" data-column="type" role="columnheader">Type</div>
+        <div class="da-browse-header-cell da-browse-header-cell-type" data-column=${this.showFolder ? 'folder' : 'type'} role="columnheader">${this.showFolder ? 'Folder' : 'Type'}</div>
         <div class="da-browse-header-cell da-browse-header-cell-modified" data-column="modified" role="columnheader" aria-sort="${this.sortDirectionFor('lastModified')}">
           <div class="da-browse-header-container">
-            <button
-              class="da-browse-header-name ${this.sortDirectionFor('lastModified')} ${this._bulkLoading ? 'loading' : ''}"
-              @click=${() => this.toggleSort('lastModified')}
-              ?disabled=${this._bulkLoading}
-              aria-disabled=${this._bulkLoading ? 'true' : 'false'}>
-              Modified
-              ${this.renderSortIcon()}
-            </button>
+            ${this.renderSortButton('lastModified')}
           </div>
         </div>
         <div class="da-browse-header-cell da-browse-header-cell-actions" data-column="actions" aria-hidden="true"></div>
@@ -484,6 +511,7 @@ export default class DaList extends DaListBase {
       </div>
       <da-actionbar
         class="full-width"
+        .canAskCoworker=${this.canAskCoworker}
         .permissions=${this._permissions}
         .canDelete=${this._canDelete}
         @clearselection=${this.handleClearSelection}
@@ -520,16 +548,24 @@ export default class DaList extends DaListBase {
       <nx-popover class="da-list-types-popover" role="dialog" aria-label="Show all types"
         aria-busy=${!!this._bulkLoading} @close=${this.notifyTypesFilter}>
         <h4 class="da-list-types-title">Types</h4>
-        ${labels.map((label) => html`
+        <div class="da-list-types-options">
+        ${labels.map((label) => {
+      const item = this._listItems.find((entry) => getTypeLabel(entry.ext) === label);
+      return html`
           <label class="nx-checkbox da-list-types-row">
             <input
               type="checkbox"
               .checked=${!this._hiddenTypes.has(label)}
               ?disabled=${this._bulkLoading}
               @click=${() => this.toggleTypeVisibility(label)}>
-            <span class="tag ${tagClassForTypeLabel(label)}">${label}</span>
+            <svg class="da-list-type-icon" viewBox="0 0 20 20" aria-hidden="true">
+              <use href="${iconPathForExt(item.ext)}#icon"></use>
+            </svg>
+            <span>${this.getDisplayTypeLabel(label)}</span>
           </label>
-        `)}
+        `;
+    })}
+        </div>
         <div class="da-list-types-row da-list-types-select-all">
           <label class="nx-checkbox">
             <input

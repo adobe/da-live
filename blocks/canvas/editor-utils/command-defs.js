@@ -27,12 +27,18 @@ import {
   canSplitCell,
   isImageNodeSelected,
   selectionHasLink,
+  selectionHasLinkImage,
   removeLink,
   requestComment,
   canComment,
 } from './command-helpers.js';
 import { openLinkDialog, openAltDialog, triggerAddImage } from './selection-toolbar.js';
 import { blockItemsForQuery, hasLibrary, insertBlockItem, getState } from './block-slash.js';
+import {
+  canSetFocalPoint,
+  hasFocalPointData,
+  openSelectedFocalPoint,
+} from '../../edit/prose/plugins/imageFocalPoint.js';
 
 const notImageSelected = (state) => !isImageNodeSelected(state);
 
@@ -305,7 +311,7 @@ export const COMMANDS = [
     label: 'Create link',
     icon: 'link',
     showIn: ['toolbar-link'],
-    visible: (state) => !selectionHasLink(state),
+    visible: (state) => !selectionHasLink(state) && !selectionHasLinkImage(state),
     apply: openLinkDialog,
   },
   {
@@ -313,7 +319,7 @@ export const COMMANDS = [
     label: 'Edit link',
     icon: 'link',
     showIn: ['toolbar-link'],
-    visible: selectionHasLink,
+    visible: (state) => selectionHasLink(state) && !selectionHasLinkImage(state),
     apply: openLinkDialog,
   },
   {
@@ -321,7 +327,7 @@ export const COMMANDS = [
     label: 'Remove link',
     icon: 'unlink',
     showIn: ['toolbar-link'],
-    visible: selectionHasLink,
+    visible: (state) => selectionHasLink(state) && !selectionHasLinkImage(state),
     apply: removeLink,
   },
 
@@ -333,6 +339,15 @@ export const COMMANDS = [
     showIn: ['toolbar-image'],
     visible: isImageNodeSelected,
     apply: openAltDialog,
+  },
+  {
+    id: 'image-focal-point',
+    label: 'Set focal point',
+    icon: 'target',
+    showIn: ['toolbar-image'],
+    visible: canSetFocalPoint,
+    active: (state) => hasFocalPointData(state.selection.node?.attrs ?? {}),
+    apply: openSelectedFocalPoint,
   },
   {
     id: 'image-add',

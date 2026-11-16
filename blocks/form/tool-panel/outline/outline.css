@@ -1,0 +1,127 @@
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  font-family: var(--s2-font-family, 'Adobe Clean', adobe-clean, 'Trebuchet MS', sans-serif);
+}
+
+:host([hidden]) {
+  display: none;
+}
+
+nav {
+  padding: var(--s2-spacing-100) var(--s2-spacing-100) var(--s2-spacing-100) var(--s2-spacing-200);
+  line-height: 28px;
+}
+
+ul {
+  list-style: none;
+  margin: 0;
+  padding-left: 22px;
+}
+
+ul,
+li {
+  position: relative;
+}
+
+.item {
+  display: block;
+  box-sizing: border-box;
+  width: calc(100% - 4px);
+  margin: 0 0 0 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: var(--s2-body-size-s, 14px);
+  line-height: inherit;
+  color: var(--s2-gray-800);
+  text-align: start;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+/* The highlight bleeds to both edges of the panel, so it spans the whole
+   row however deep the row is nested. */
+.item:hover,
+.item[aria-current] {
+  --highlight: var(--s2-gray-75);
+
+  background: var(--highlight);
+  box-shadow: 0 0 0 100vmax var(--highlight);
+  clip-path: inset(0 -100vmax);
+}
+
+.item:focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: -2px;
+}
+
+.item[aria-current] {
+  --highlight: var(--s2-blue-100);
+
+  color: var(--s2-blue-900);
+}
+
+.item::before {
+  content: "";
+  position: absolute;
+  top: 11px;
+  left: -13px;
+  width: 7px;
+  height: 7px;
+  border-radius: 4px;
+  background-color: var(--s2-gray-300);
+}
+
+.item[aria-current]::before {
+  background-color: var(--s2-blue-800);
+}
+
+/* The tree lines that hang every row from its parent. They draw above the
+   row highlight, so they start below the parent's dot and stop short of the
+   row's own dot. */
+li::before,
+li::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  left: -32px;
+  pointer-events: none;
+}
+
+li::before {
+  top: 14px;
+  width: 19px;
+  height: 0;
+  border-top: 1px solid var(--s2-gray-300);
+}
+
+li::after {
+  top: -10px;
+  bottom: 0;
+  width: 0;
+  border-left: 1px solid var(--s2-gray-300);
+}
+
+nav > ul > li::before,
+nav > ul > li::after {
+  display: none;
+}
+
+ul > li:last-child::after {
+  height: 24px;
+}
+
+.placeholder {
+  margin: 0;
+  padding: var(--s2-spacing-300) var(--s2-spacing-100);
+  font-size: var(--s2-body-size-s);
+  color: var(--s2-gray-600);
+  text-align: center;
+}

@@ -3,6 +3,8 @@ import { setNx } from '../../../../../../scripts/utils.js';
 
 describe('imageFocalPoint Plugin', () => {
   let imageFocalPoint;
+  let canSetFocalPoint;
+  let openSelectedFocalPoint;
   let savedFetch;
 
   before(async () => {
@@ -61,6 +63,7 @@ describe('imageFocalPoint Plugin', () => {
 
     const mod = await import('../../../../../../blocks/edit/prose/plugins/imageFocalPoint.js');
     imageFocalPoint = mod.default;
+    ({ canSetFocalPoint, openSelectedFocalPoint } = mod);
   });
 
   after(() => {
@@ -192,5 +195,136 @@ describe('imageFocalPoint Plugin', () => {
     const icon = nodeView.dom.querySelector('.focal-point-icon');
     expect(icon).to.exist;
     expect(icon.classList.contains('focal-point-icon-active')).to.be.true;
+  });
+
+  describe('link-images', () => {
+    const heroCellState = () => ({
+      doc: {
+        resolve: () => ({
+          depth: 3,
+          node: (d) => {
+            if (d === 3) return { type: { name: 'table_cell' } };
+            if (d === 2) return { childCount: 2 };
+            if (d === 1) {
+              return { child: () => ({ child: () => ({ textContent: 'hero' }) }) };
+            }
+            return { type: { name: 'doc' } };
+          },
+          index: () => 0,
+        }),
+      },
+    });
+    const view = () => ({ state: heroCellState(), dom: document.createElement('div') });
+    const regular = (attrs = {}) => ({ type: { name: 'image' }, attrs: { src: 'a.jpg', editAs: null, ...attrs } });
+    const linkImage = (attrs = {}) => ({
+      type: { name: 'image' },
+      attrs: { src: 'https://cdn.example.com/a.jpg', editAs: 'image', ...attrs },
+    });
+
+    it('does not create a focal point node view for a link-image in a table cell', () => {
+      const { nodeViews } = imageFocalPoint().props;
+      expect(nodeViews.image(linkImage(), view(), () => 10) === null).to.equal(true);
+    });
+
+    it('does not create a focal point node view for a link-image that already has focal data', () => {
+      const { nodeViews } = imageFocalPoint().props;
+      const node = linkImage({ dataFocalX: '10', dataFocalY: '20' });
+      expect(nodeViews.image(node, view(), () => 10) === null).to.equal(true);
+    });
+
+    it('still creates a focal point node view for a regular image in a table cell', () => {
+      const { nodeViews } = imageFocalPoint().props;
+      const nodeView = nodeViews.image(regular(), view(), () => 10);
+      expect(nodeView && nodeView.dom.classList.contains('focal-point-image-wrapper')).to.equal(true);
+    });
+
+    it('refuses to update a regular image view into a link-image', async () => {
+      const { nodeViews } = imageFocalPoint().props;
+      const nodeView = nodeViews.image(regular(), view(), () => 10);
+      await new Promise((resolve) => { setTimeout(resolve, 500); });
+      expect(nodeView.update(linkImage())).to.equal(false);
+    });
+
+    it('still updates a regular image view with another regular image', async () => {
+      const { nodeViews } = imageFocalPoint().props;
+      const nodeView = nodeViews.image(regular(), view(), () => 10);
+      await new Promise((resolve) => { setTimeout(resolve, 500); });
+      expect(nodeView.update(regular({ src: 'b.jpg' }))).to.equal(true);
+    });
+  });
+
+  describe('canSetFocalPoint / openSelectedFocalPoint', () => {
+    const tableDoc = (blockName) => ({
+      resolve: () => ({
+        depth: 3,
+        node: (d) => {
+          if (d === 3) return { type: { name: 'table_cell' } };
+          if (d === 2) return { childCount: 2 };
+          if (d === 1) return { child: () => ({ child: () => ({ textContent: blockName }) }) };
+          return { type: { name: 'doc' } };
+        },
+        index: () => 0,
+      }),
+    });
+    const imageNode = { type: { name: 'image' }, attrs: { src: 'test.jpg' } };
+    const stateFor = (blockName, node = imageNode) => ({
+      doc: tableDoc(blockName),
+      selection: { from: 10, node },
+    });
+
+    it('is true for a selected image in a focal-point enabled block', async () => {
+      canSetFocalPoint(stateFor('hero'));
+      await new Promise((resolve) => { setTimeout(resolve, 100); });
+      expect(canSetFocalPoint(stateFor('hero'))).to.be.true;
+    });
+
+    it('is false for blocks without focal-point support', () => {
+      expect(canSetFocalPoint(stateFor('card'))).to.be.false;
+    });
+
+    it('is false when the selection is not an image', () => {
+      expect(canSetFocalPoint(stateFor('hero', null))).to.be.false;
+      expect(canSetFocalPoint(stateFor('hero', { type: { name: 'table' } }))).to.be.false;
+    });
+
+    it('is false for images outside a table cell', () => {
+      const state = {
+        doc: { resolve: () => ({ depth: 1, node: () => ({ type: { name: 'paragraph' } }) }) },
+        selection: { from: 10, node: imageNode },
+      };
+      expect(canSetFocalPoint(state)).to.be.false;
+    });
+
+    it('opens the focal point dialog for the selected image', async () => {
+      openSelectedFocalPoint({ state: stateFor('hero'), dispatch: () => {} });
+      await new Promise((resolve) => { setTimeout(resolve, 100); });
+      const dialog = document.querySelector('da-dialog.focal-point-dialog');
+      expect(dialog).to.exist;
+      expect(dialog.querySelector('img.focal-point-image').getAttribute('src')).to.equal('test.jpg');
+      dialog.remove();
+    });
+
+    it('does not open a dialog when no image is selected', async () => {
+      openSelectedFocalPoint({ state: stateFor('hero', null) });
+      await new Promise((resolve) => { setTimeout(resolve, 50); });
+      expect(document.querySelector('da-dialog.focal-point-dialog')).to.not.exist;
+    });
+
+    it('is false for a link-image in a focal-point enabled block', async () => {
+      const linkImage = { type: { name: 'image' }, attrs: { src: 'test.jpg', editAs: 'image' } };
+      canSetFocalPoint(stateFor('hero'));
+      await new Promise((resolve) => { setTimeout(resolve, 100); });
+      expect(canSetFocalPoint(stateFor('hero'))).to.be.true;
+      expect(canSetFocalPoint(stateFor('hero', linkImage))).to.be.false;
+    });
+
+    it('does not open a dialog for a link-image', async () => {
+      const linkImage = { type: { name: 'image' }, attrs: { src: 'test.jpg', editAs: 'image' } };
+      openSelectedFocalPoint({ state: stateFor('hero', linkImage), dispatch: () => {} });
+      await new Promise((resolve) => { setTimeout(resolve, 100); });
+      const dialog = document.querySelector('da-dialog.focal-point-dialog');
+      dialog?.remove();
+      expect(dialog).to.not.exist;
+    });
   });
 });

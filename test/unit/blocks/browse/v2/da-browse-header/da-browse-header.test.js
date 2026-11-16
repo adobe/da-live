@@ -1,3 +1,4 @@
+/* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
 import { setNx } from '../../../../../../scripts/utils.js';
 
@@ -7,8 +8,12 @@ await import('../../../../../../blocks/browse/v2/da-browse-header/da-browse-head
 describe('da-browse-header', () => {
   let header;
   let container;
+  let savedFetch;
 
   beforeEach(async () => {
+    // Keep the org config access check offline.
+    savedFetch = window.fetch;
+    window.fetch = async () => new Response('{}', { status: 200, headers: { 'X-da-actions': '/x=read' } });
     container = document.createElement('div');
     header = document.createElement('da-browse-header');
     // da-browse always supplies these.
@@ -23,50 +28,155 @@ describe('da-browse-header', () => {
     await header.updateComplete;
   });
 
-  afterEach(() => container.remove());
+  afterEach(() => {
+    container.remove();
+    window.fetch = savedFetch;
+  });
 
   it('renders independently with default sort and no config or chat action', () => {
-    const picker = header.shadowRoot.querySelector('nx-picker');
-    expect(picker.labelOverride).to.equal('Sort');
-    expect(picker.querySelector('svg')).to.be.null;
-    expect(picker.value).to.equal('');
-    expect(header.shadowRoot.querySelector('.browse-settings-link')).to.be.null;
+    const sort = header.shadowRoot.querySelector('.browse-sort-control');
+    expect(sort.textContent.trim()).to.equal('Sort');
+    expect(sort.title).to.equal('Sort: Default');
+    expect(header.shadowRoot.querySelector('[aria-pressed="true"]')).to.be.null;
+    expect(header.shadowRoot.querySelector('.browse-settings-menu')).to.be.null;
     expect(header.shadowRoot.querySelector('.chat-btn')).to.be.null;
   });
 
-  it('shows config only at org and site roots, not inside folders', async () => {
+  const settingsMenu = () => header.shadowRoot.querySelector('nx-menu.browse-settings-menu');
+  const settingsLabels = () => settingsMenu().items.map(({ label }) => label);
+
+  it('shows the settings menu only at org and site roots, not inside folders', async () => {
     header.details = { org: 'org', path: '' };
     await header.updateComplete;
-    expect(header.shadowRoot.querySelector('.browse-settings-link').getAttribute('href'))
-      .to.equal('/config#/org/');
-
-    header.details = { org: 'org', site: 'site', path: '' };
-    await header.updateComplete;
-    expect(header.shadowRoot.querySelector('.browse-settings-link').getAttribute('href'))
-      .to.equal('/config#/org/site/');
+    expect(settingsLabels()).to.deep.equal(['Configuration']);
+    const trigger = settingsMenu().querySelector('button[slot="trigger"]');
+    expect(trigger.textContent.trim()).to.equal('Org Settings');
+    expect(trigger.title).to.equal('Org Settings');
+    expect(trigger.querySelector('use[href="/img/icons/s2-icon-settings-20-n.svg#icon"]')).not.to.be.null;
 
     header.details = { org: 'org', site: 'site', path: 'folder' };
     await header.updateComplete;
-    expect(header.shadowRoot.querySelector('.browse-settings-link')).to.be.null;
+    expect(settingsMenu()).to.be.null;
 
     header.details = { org: 'org', site: 'site', path: '' };
     await header.updateComplete;
-    expect(header.shadowRoot.querySelector('.browse-settings-link')).not.to.be.null;
+    const siteTrigger = settingsMenu().querySelector('button[slot="trigger"]');
+    expect(siteTrigger.textContent.trim()).to.equal('Site Settings');
+    expect(siteTrigger.title).to.equal('Site Settings');
+  });
+
+  it('offers permissions only when the user can edit the org config', async () => {
+    header.details = { org: 'org', site: 'site', path: '' };
+    await header.updateComplete;
+    await header._orgConfigCheck;
+    header._canEditOrgConfig = true;
+    await header.updateComplete;
+    expect(settingsLabels()).to.deep.equal(['Configuration', 'Permissions']);
+
+    header._canEditOrgConfig = false;
+    await header.updateComplete;
+    expect(settingsLabels()).to.deep.equal(['Configuration']);
+  });
+
+  it('checks org config write access when the org changes', async () => {
+    window.fetch = async (url) => {
+      if (String(url).includes('/ping/')) return new Response('', { status: 200 });
+      return new Response(JSON.stringify({ data: [] }), {
+        status: 200,
+        headers: { 'X-da-actions': '/hdr-write=read,write' },
+      });
+    };
+    header.details = { org: 'hdr-write', site: 'site', path: '' };
+    await header.updateComplete;
+    expect(settingsLabels()).to.deep.equal(['Configuration']);
+    await header._orgConfigCheck;
+    await header.updateComplete;
+    expect(settingsLabels()).to.include('Permissions');
+  });
+
+  it('rechecks site-config access when switching between hlx6 sites in the same org', async () => {
+    const calls = [];
+    window.fetch = async (url) => {
+      calls.push(String(url));
+      if (String(url).includes('/ping/')) {
+        return new Response('', { headers: { 'x-api-upgrade-available': 'true' } });
+      }
+      return new Response(JSON.stringify({ config: [] }), { headers: { 'X-da-actions': String(url).includes('/sites/writable/') ? '/x=read,write' : '/x=read' } });
+    };
+    header.details = { org: 'hdr-hlx6-sites', site: 'writable', path: '' };
+    await header.updateComplete;
+    await header._orgConfigCheck;
+    await header.updateComplete;
+    expect(settingsLabels()).to.include('Permissions');
+
+    header.details = { org: 'hdr-hlx6-sites', site: 'readonly', path: '' };
+    await header.updateComplete;
+    await header._orgConfigCheck;
+    await header.updateComplete;
+    expect(settingsLabels()).not.to.include('Permissions');
+    expect(calls.filter((url) => url.startsWith('https://admin.da.live/config/'))).to.have.lengthOf(0);
+  });
+
+  it('ignores a previous site permission check that finishes after navigation', async () => {
+    let resolveWrite;
+    let notifyRequested;
+    const requested = new Promise((resolve) => { notifyRequested = resolve; });
+    window.fetch = async (url) => {
+      if (String(url).includes('/ping/')) {
+        return new Response('', { headers: { 'x-api-upgrade-available': 'true' } });
+      }
+      if (String(url).includes('/sites/writable/')) {
+        return new Promise((resolve) => {
+          resolveWrite = resolve;
+          notifyRequested();
+        });
+      }
+      return new Response(JSON.stringify({ config: [] }), { headers: { 'X-da-actions': '/x=read' } });
+    };
+
+    header.details = { org: 'hdr-hlx6-race', site: 'writable', path: '' };
+    await header.updateComplete;
+    await requested;
+    const firstCheck = header._orgConfigCheck;
+    header.details = { org: 'hdr-hlx6-race', site: 'readonly', path: '' };
+    await header.updateComplete;
+    await header._orgConfigCheck;
+    await header.updateComplete;
+
+    resolveWrite(new Response(JSON.stringify({ config: [] }), { headers: { 'X-da-actions': '/x=read,write' } }));
+    await firstCheck;
+    await header.updateComplete;
+    expect(settingsLabels()).not.to.include('Permissions');
   });
 
   it('requests sorting without changing the supplied sort state', () => {
     let event;
     header.addEventListener('sortrequest', (e) => { event = e; });
-    const picker = header.shadowRoot.querySelector('nx-picker');
-    picker.dispatchEvent(new CustomEvent('change', { detail: { value: 'name:ascending' } }));
+    header.shadowRoot.querySelector('.browse-sort-option').click();
     expect(event.detail).to.deep.equal({ property: 'name', direction: 'ascending' });
     expect(event.bubbles).to.be.true;
     expect(event.composed).to.be.true;
     expect(header.sortState.property).to.be.null;
   });
 
-  it('replaces the creation slot with a stable search status and restores it afterwards', async () => {
+  it('opens Sort and dismisses it with Escape while restoring trigger focus', async () => {
+    const button = header.shadowRoot.querySelector('.browse-sort-control');
+    button.click();
+    await header.updateComplete;
+    const popover = header.shadowRoot.querySelector('.browse-sort-popover');
+    expect(popover.open).to.be.true;
+    expect(button.getAttribute('aria-expanded')).to.equal('true');
+    popover.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    popover.dispatchEvent(new CustomEvent('close'));
+    await header.updateComplete;
+    expect(popover.open).to.be.false;
+    expect(button.getAttribute('aria-expanded')).to.equal('false');
+    expect(header.shadowRoot.activeElement).to.equal(button);
+  });
+
+  it('keeps creation actions mounted alongside a stable search status', async () => {
     const creation = document.createElement('button');
+    creation.slot = 'actions';
     creation.textContent = 'New';
     header.append(creation);
     const summary = header.shadowRoot.querySelector('[role="status"]');
@@ -77,7 +187,7 @@ describe('da-browse-header', () => {
     await header.updateComplete;
     expect(header.shadowRoot.querySelector('[role="status"]')).to.equal(summary);
     expect(summary.textContent).to.equal('Searching...');
-    expect(header.shadowRoot.querySelector('slot')).to.be.null;
+    expect(header.shadowRoot.querySelector('slot:not([name])')).to.be.null;
     expect(creation.isConnected).to.be.true;
     header.searchState = { loading: true, count: 1 };
     await header.updateComplete;
@@ -110,25 +220,21 @@ describe('da-browse-header', () => {
     header.searchState = { loading: false, count: 0, error: 'Search failed' };
     await header.updateComplete;
     expect(header.shadowRoot.querySelector('[role="status"]').textContent).to.equal('');
-    expect(header.shadowRoot.querySelector('slot')).to.be.null;
+    expect(header.shadowRoot.querySelector('slot:not([name])')).to.be.null;
   });
 
   it('reflects supplied sort state and disables sorting while loading', async () => {
     header.sortState = { property: 'lastModified', direction: 'descending', loading: true };
     await header.updateComplete;
-    const picker = header.shadowRoot.querySelector('nx-picker');
-    expect(picker.labelOverride).to.equal('Sort');
+    const picker = header.shadowRoot.querySelector('.browse-sort-control');
     expect(picker.title).to.equal('Sorted by Modified (newest first)');
-    expect(picker.querySelector('svg')).to.be.null;
     expect(picker.getAttribute('aria-busy')).to.equal('true');
-    expect(picker.inert).to.be.true;
-    expect(picker.value).to.equal('lastModified:descending');
-    expect(picker.items.map(({ value }) => value)).to.deep.equal([
-      'name:ascending', 'name:descending', 'lastModified:descending', 'lastModified:ascending',
-    ]);
+    expect(picker.disabled).to.be.true;
+    const options = [...header.shadowRoot.querySelectorAll('.browse-sort-option')];
+    expect(options[2].getAttribute('aria-pressed')).to.equal('true');
     let requests = 0;
     header.addEventListener('sortrequest', () => { requests += 1; });
-    picker.dispatchEvent(new CustomEvent('change', { detail: { value: 'name:ascending' } }));
+    options[0].click();
     expect(requests).to.equal(0);
   });
 
@@ -141,40 +247,41 @@ describe('da-browse-header', () => {
     expect(event.composed).to.be.true;
   });
 
-  it('retains compact control descriptions and filter and sort actions', async () => {
-    header.groupByType = true;
+  it('describes hidden types and restores the default filter label', async () => {
     header.typesFilterState = { open: false, hiddenCount: 2 };
-    header.sortState = { property: 'name', direction: 'descending', loading: false };
     await header.updateComplete;
-    container.style.width = '600px';
-    expect(header.getBoundingClientRect().width).to.equal(600);
     const controls = header.shadowRoot.querySelectorAll('.browse-toolbar-control');
     expect(controls[0].title).to.equal('2 types hidden');
     expect(controls[0].querySelector('.browse-control-label').textContent)
       .to.equal('2 types hidden');
-    const picker = header.shadowRoot.querySelector('nx-picker');
-    expect(picker.title).to.equal('Sorted by Name (Z-A)');
-    let filterRequest;
-    let sortRequest;
-    header.addEventListener('typesfilterrequest', (event) => { filterRequest = event.detail; });
-    header.addEventListener('sortrequest', (event) => { sortRequest = event.detail; });
-    controls[0].click();
-    expect(filterRequest.anchor).to.equal(controls[0]);
-    picker.dispatchEvent(new CustomEvent('change', { detail: { value: 'name:ascending' } }));
-    expect(sortRequest).to.deep.equal({ property: 'name', direction: 'ascending' });
-    header.groupByType = false;
     header.typesFilterState = { open: false, hiddenCount: 0 };
     await header.updateComplete;
     expect(controls[0].title).to.equal('Show All');
   });
 
   it('emits viewchange from the view segmented control', async () => {
-    const control = header.shadowRoot.querySelector('nx-segmented-btn');
+    const control = header.shadowRoot.querySelector('.browse-view-control');
     expect(control.value).to.equal('list');
-    expect(control.items.map(({ value }) => value)).to.deep.equal(['list', 'card']);
     let detail;
     header.addEventListener('viewchange', (e) => { detail = e.detail; });
     control.dispatchEvent(new CustomEvent('change', { detail: { value: 'card' } }));
     expect(detail).to.deep.equal({ view: 'card' });
+  });
+
+  it('reports size changes for the current layout', async () => {
+    const popover = header.shadowRoot.querySelector('.browse-appearance-popover');
+    let detail;
+    header.addEventListener('appearancesizechange', (e) => { detail = e.detail; });
+    const sizeControl = () => popover.querySelector('nx-segmented-btn:not(.browse-view-control)');
+    expect(sizeControl().value).to.equal('m');
+    sizeControl().dispatchEvent(new CustomEvent('change', { detail: { value: 's' } }));
+    expect(detail).to.deep.equal({ view: 'list', size: 's' });
+    header.view = 'card';
+    header.cardSize = 'l';
+    await header.updateComplete;
+    expect(sizeControl().getAttribute('label')).to.equal('Card size');
+    expect(sizeControl().value).to.equal('l');
+    sizeControl().dispatchEvent(new CustomEvent('change', { detail: { value: 'm' } }));
+    expect(detail).to.deep.equal({ view: 'card', size: 'm' });
   });
 });

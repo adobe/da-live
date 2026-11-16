@@ -9,6 +9,7 @@ import {
   getFirstSheet,
   initIms,
 } from '../../shared/utils.js';
+import { renderEmptyList, NOT_PERMITTED } from '../../shared/empty-list.js';
 import { createVersion } from '../../shared/version/version-actions.js';
 
 export const MAX_DELETE_COUNT = 1000;
@@ -183,7 +184,7 @@ export default class DaListBase extends LitElement {
       const { ok, items, continuationToken, permissions } = await source.list(this.fullpath);
       if (!ok) {
         this._directoryError = 'Not permitted to list filenames';
-        this._emptyMessage = 'Not permitted';
+        this._emptyMessage = NOT_PERMITTED;
         this.resetListItemPaths([]);
         return [];
       }
@@ -199,7 +200,7 @@ export default class DaListBase extends LitElement {
       return ordered;
     } catch (error) {
       this._directoryError = `Directory listing failed: ${error.message}`;
-      this._emptyMessage = 'Not permitted';
+      this._emptyMessage = NOT_PERMITTED;
       this.resetListItemPaths([]);
       return [];
     }
@@ -254,7 +255,7 @@ export default class DaListBase extends LitElement {
         permissions,
       } = await source.list(this.fullpath, { continuationToken: requestToken });
       if (!ok) {
-        this._emptyMessage = 'Not permitted';
+        this._emptyMessage = NOT_PERMITTED;
         return { added: 0, token: null };
       }
       if (permissions) this.handlePermissions(permissions);
@@ -325,9 +326,10 @@ export default class DaListBase extends LitElement {
     const index = this._lastCheckedIndex;
     this.handleClear();
     await this.updateComplete;
-    const rows = [...this.shadowRoot.querySelectorAll('da-list-item')];
+    const rows = [...this.shadowRoot.querySelectorAll('da-list-item, da-file-item')];
     const row = rows.find((item) => item.idx === index) ?? rows[0];
     await row?.updateComplete;
+    if (await row?.focusSelection?.()) return;
     const target = row?.shadowRoot?.querySelector('input[name="item-selected"]')
       ?? this.shadowRoot.querySelector('#select-all');
     target?.focus();
@@ -398,10 +400,18 @@ export default class DaListBase extends LitElement {
   handleFavorite() {
     const item = this._selectedItems?.[0];
     if (!item) return;
+    this.toggleItemFavorite(item);
+    this.handleClear();
+  }
+
+  toggleItemFavorite(item) {
     const nowFavorite = toggleFavorite(this.fullpath, item.path);
     item.isFavorited = nowFavorite;
-    this.applyFavoriteOrder();
-    this.handleClear();
+    this.requestUpdate();
+    if (this.actionBar) {
+      this.actionBar.isFavorite = this._selectedItems.length === 1
+        && !!this._selectedItems[0].isFavorited;
+    }
   }
 
   handleRename() {
@@ -446,18 +456,28 @@ export default class DaListBase extends LitElement {
     const moveToTrash = type === 'move' && !item.path.includes('/.trash/') && item.destination.includes('/.trash/');
 
     let continuationToken;
+    let hasCompletedPage = false;
     try {
       do {
         const args = type === 'delete'
           ? { continuationToken }
           : { destination: item.destination, continuationToken };
-        const { ok, status, continuationToken: nextToken } = await fn(item.path, args);
+        const resp = await fn(item.path, args);
+        const { ok, status } = resp;
         if (!ok) {
           const err = new Error(`Unexpected status: ${status}`);
           err.status = status;
           throw err;
         }
-        continuationToken = nextToken;
+        hasCompletedPage = true;
+        continuationToken = undefined;
+        if (status === 206) {
+          const page = await resp.json();
+          if (typeof page?.continuationToken !== 'string' || !page.continuationToken) {
+            throw new Error('Partial response is missing a continuation token');
+          }
+          continuationToken = page.continuationToken;
+        }
       } while (continuationToken);
 
       item.isChecked = false;
@@ -474,8 +494,8 @@ export default class DaListBase extends LitElement {
         }
       }
     } catch (e) {
-      // The assumption here is that the user does not have permission to write to the trash
-      if (moveToTrash && e.status === 403) {
+      // A denied continuation must not permanently delete the remaining source contents.
+      if (moveToTrash && e.status === 403 && !hasCompletedPage) {
         await this.handleItemAction({ item, type: 'delete' });
       } else {
         this._itemErrors.push({ ...item, message: `Couldn't ${type} item` });
@@ -969,7 +989,7 @@ export default class DaListBase extends LitElement {
   }
 
   renderEmpty() {
-    return html`<div class="empty-list"><h3>${this._emptyMessage}</h3></div>`;
+    return renderEmptyList(this._emptyMessage);
   }
 
   renderStatus() {

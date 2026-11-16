@@ -8,6 +8,8 @@ const imageFocalPointKey = new PluginKey('imageFocalPoint');
 
 // Cache blocks data at module level
 let blocksDataPromise = null;
+// Resolved blocks list, for synchronous checks (e.g. toolbar visibility)
+let blocksData = null;
 async function getBlocksData() {
   if (!blocksDataPromise) {
     blocksDataPromise = (async () => {
@@ -22,11 +24,12 @@ async function getBlocksData() {
         return [];
       }
     })();
+    blocksDataPromise.then((blocks) => { blocksData = blocks; });
   }
   return blocksDataPromise;
 }
 
-function hasFocalPointData(attrs) {
+export function hasFocalPointData(attrs) {
   return (attrs.dataFocalX && attrs.dataFocalX !== '')
     || (attrs.dataFocalY && attrs.dataFocalY !== '');
 }
@@ -121,6 +124,7 @@ class ImageWithFocalPointView {
 
   update(node) {
     if (node.type.name !== 'image') return false;
+    if (node.attrs.editAs) return false;
 
     this.node = node;
     updateImageAttributes(this.img, node.attrs);
@@ -141,6 +145,24 @@ class ImageWithFocalPointView {
   }
 }
 
+/** True when the selected node is an image in a block that enables focal points. */
+export function canSetFocalPoint(state) {
+  const { selection } = state;
+  if (selection.node?.type.name !== 'image' || selection.node.attrs.editAs) return false;
+  if (!blocksData) {
+    getBlocksData();
+    return false;
+  }
+  const tableInfo = getTableInfo(state, selection.from);
+  return !!tableInfo && shouldShowFocalPoint(tableInfo.tableName, blocksData);
+}
+
+export function openSelectedFocalPoint(view) {
+  const { from, node } = view.state.selection;
+  if (node?.type.name !== 'image' || node.attrs.editAs) return;
+  openFocalPointDialog(view, from, node);
+}
+
 export default function imageFocalPoint() {
   return new Plugin({
     key: imageFocalPointKey,
@@ -148,6 +170,7 @@ export default function imageFocalPoint() {
       nodeViews: {
         image(node, view, getPos) {
           if (isInTableCell(view.state, getPos())) {
+            if (node.attrs.editAs) return null;
             return new ImageWithFocalPointView(node, view, getPos);
           }
           return null;

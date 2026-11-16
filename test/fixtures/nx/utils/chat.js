@@ -2,6 +2,7 @@
 // consumes the event-name constants, not chat's other utilities).
 export const CHAT_EVENT = {
   AGENT_CHANGE: 'nx-agent-change',
+  TURN_COMPLETED: 'nx-chat-turn-completed',
   HIGHLIGHT_SELECTION: 'nx-highlight-selection',
   ADD_TO_CHAT: 'nx-add-to-chat',
 };
