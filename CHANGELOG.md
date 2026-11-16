@@ -1,3 +1,15 @@
+# [1.31.0](https://github.com/adobe/da-live/compare/v1.30.2...v1.31.0) (2026-11-16)
+
+
+### Bug Fixes
+
+* **sc:** align rich-text markup with da-parser ([#1745](https://github.com/adobe/da-live/issues/1745)) ([eb3b2c3](https://github.com/adobe/da-live/commit/eb3b2c37f12cffc21e7f65bf09b663a799970ba0))
+
+
+### Features
+
+* add greeting to landing ([#1723](https://github.com/adobe/da-live/issues/1723)) ([e5fff35](https://github.com/adobe/da-live/commit/e5fff35bb19b6bbcdf7cc4b5d47ead7d81e60ee8))
+
 ## [1.30.2](https://github.com/adobe/da-live/compare/v1.30.1...v1.30.2) (2026-11-16)
 
 
