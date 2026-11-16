@@ -16,6 +16,9 @@ describe('start page', () => {
       <div class="section"><div class="start"></div></div>
       <div class="section"><div class="greeting"><div><div><h1>Welcome to Experience Workspace</h1></div></div></div></div>`;
     document.body.append(main);
+    ['red-100', 'pink-200', 'blue-200', 'gray-25'].forEach((token) => {
+      main.style.setProperty(`--s2-${token}`, 'white');
+    });
   });
 
   afterEach(() => {
