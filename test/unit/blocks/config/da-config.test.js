@@ -606,6 +606,24 @@ describe('da-config', () => {
       expect(puts[0].body.flags.data).to.deep.equal([{ key: 'ew.canvasDefaultView', value: 'split' }]);
     });
 
+    it('keeps flags the editor does not show when it saves the flags sheet', async () => {
+      const hidden = [
+        { key: 'ew.coworker', value: 'cma' },
+        { key: 'ew.coworkerManifest', value: 'm1' },
+        { key: 'ew.wysiwygBranch', value: '/o/s=dev' },
+      ];
+      const site = multi('flags', [{ key: 'ew.enabled', value: 'true' }, ...hidden]);
+      const puts = mockFetch({ configFor: (o, s) => (s ? site : multi('flags', [])), sitesFor: () => [{ name: 'alpha' }] });
+      await open({ org: 'ew8', site: 'alpha' });
+      q('[id="config-ew.canvasDefaultView"]').dispatchEvent(new CustomEvent('change', { detail: { value: 'split' } }));
+      await el.updateComplete;
+      q('.config-savebar .nx-form-btn-primary').click();
+      await waitUntil(() => !el._busy, el);
+      expect(puts[0].body.flags.data).to.deep.equal([
+        { key: 'ew.enabled', value: 'true' }, ...hidden, { key: 'ew.canvasDefaultView', value: 'split' },
+      ]);
+    });
+
     it('always shows the org-wide fields at org scope', async () => {
       mockFetch({ configFor: () => multi('flags', []), sitesFor: () => [{ name: 'alpha' }] });
       await open({ org: 'ew3' });
