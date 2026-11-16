@@ -2,7 +2,6 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx2 } from '../../../scripts/utils.js';
 import '../fields/input.js';
 import '../fields/textarea.js';
-import '../fields/rich-text.js';
 import '../fields/picker.js';
 import '../fields/checkbox.js';
 import '../fields/button.js';
@@ -289,6 +288,8 @@ class Editor extends LitElement {
     }
 
     if (node.semanticType === 'rich-text') {
+      // Loads ProseMirror only for forms that have a rich-text field.
+      import('../fields/rich-text.js');
       return html`
         <ew-form-rich-text
           data-pointer=${pointer}

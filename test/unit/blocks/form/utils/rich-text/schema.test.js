@@ -1,13 +1,14 @@
 /* eslint-disable no-script-url */
 import { expect } from '@esm-bundle/chai';
-import * as proseMirror from 'da-y-wrapper';
+import { DOMParser as ProseMirrorParser } from 'da-y-wrapper';
 import { createEngine, convertJsonToHtml, convertHtmlToJson } from '../../../../../../deps/da-sc-sdk/dist/index.js';
-import { createSchema } from '../../../../../../blocks/form/utils/rich-text/schema.js';
-import { createRichTextCodec } from '../../../../../../blocks/form/utils/rich-text/codec.js';
+import {
+  parseRichText as parse,
+  schema,
+  serializeRichText as serialize,
+} from '../../../../../../blocks/form/utils/rich-text/schema.js';
 import { safeHref } from '../../../../../../blocks/form/utils/safe-href.js';
 
-const schema = createSchema(proseMirror);
-const { parse, serialize } = createRichTextCodec({ proseMirror, schema });
 const roundTrip = (value) => serialize(parse(value));
 
 const sdkSchema = { type: 'object', properties: { body: { type: 'string', 'x-semantic-type': 'rich-text' } } };
@@ -18,7 +19,7 @@ const sdkWrites = (body) => {
 };
 const sdkStores = (body) => convertHtmlToJson({ html: sdkWrites(body) }).json.data.body ?? '';
 
-describe('rich-text codec', () => {
+describe('rich-text schema', () => {
   describe('parse and serialize', () => {
     it('keeps the supported markup unchanged', () => {
       const html = '<p>A <strong>bold</strong>, <em>em</em>, <u>u</u>, <del>s</del> and <a href="https://x.y">link</a>.</p>'
@@ -168,10 +169,10 @@ describe('rich-text codec', () => {
     });
   });
 
-  describe('schema', () => {
+  describe('nodes and marks', () => {
     it('drops unsafe links from markup that skips the sanitizer, like a paste', () => {
       const { body } = new DOMParser().parseFromString('<p><a href="javascript:x()">a</a><a href="/b" title=" T ">b</a></p>', 'text/html');
-      const richTextDocument = proseMirror.DOMParser.fromSchema(schema).parse(body);
+      const richTextDocument = ProseMirrorParser.fromSchema(schema).parse(body);
       expect(serialize(richTextDocument)).to.equal('<p>a<a href="/b" title="T">b</a></p>');
     });
 

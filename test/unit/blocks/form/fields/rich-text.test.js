@@ -1,9 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import '../../../setup-nx.js';
-import * as proseMirror from 'da-y-wrapper';
-import FormRichText from '../../../../../blocks/form/fields/rich-text.js';
-
-const { loadEditor } = FormRichText;
+import { TextSelection } from 'da-y-wrapper';
+import '../../../../../blocks/form/fields/rich-text.js';
 
 // Concurrent test pages run in the background, where animation frames never fire.
 const tick = () => new Promise((resolve) => { setTimeout(resolve); });
@@ -12,8 +10,7 @@ const until = (check, tries = 100) => (check() || !tries
   ? Promise.resolve()
   : new Promise((resolve) => { setTimeout(resolve, 20); }).then(() => until(check, tries - 1)));
 
-async function mount({ value = '', loadEditor: loader, width, ...properties } = {}) {
-  if (loader) FormRichText.loadEditor = loader;
+async function mount({ value = '', width, ...properties } = {}) {
   const richText = document.createElement('ew-form-rich-text');
   Object.assign(richText, { value, ...properties });
   if (width) richText.style.width = width;
@@ -54,7 +51,7 @@ async function holdFocus(richText) {
 
 function selectRange(richText, from, to = from) {
   const { state } = richText._view;
-  const selection = proseMirror.TextSelection.create(state.doc, from, to);
+  const selection = TextSelection.create(state.doc, from, to);
   richText._view.dispatch(state.tr.setSelection(selection));
 }
 
@@ -64,7 +61,6 @@ function selectAll(richText) {
 
 describe('ew-form-rich-text', () => {
   afterEach(() => {
-    FormRichText.loadEditor = loadEditor;
     document.body.querySelectorAll('ew-form-rich-text').forEach((richText) => richText.remove());
   });
 
@@ -481,14 +477,5 @@ describe('ew-form-rich-text', () => {
     await richText.updateComplete;
     expect(richText.value).to.equal('<p><a href="/page">site</a></p>');
     expect(dialog.isConnected).to.be.false;
-  });
-
-  it('reports a load failure', async () => {
-    const richText = await mount({ loadEditor: async () => { throw new Error('offline'); } });
-    await richText.updateComplete;
-    expect(richText.shadowRoot.querySelector('.form-field-error').textContent).to.contain('could not be loaded');
-    const { shadowRoot } = toolbar(richText);
-    expect(shadowRoot.querySelector('[data-tool]')).to.equal(null);
-    expect(shadowRoot.querySelector('[data-more]').disabled).to.be.true;
   });
 });

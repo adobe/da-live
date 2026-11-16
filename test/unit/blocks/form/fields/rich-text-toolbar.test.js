@@ -1,11 +1,10 @@
 import { expect } from '@esm-bundle/chai';
 import '../../../setup-nx.js';
-import * as proseMirror from 'da-y-wrapper';
 import '../../../../../blocks/form/fields/rich-text-toolbar.js';
 import { TOOL_IDS, createToolset, listTools } from '../../../../../blocks/form/utils/rich-text/tools.js';
-import { schema, stateFor, run } from '../helpers/rich-text-states.js';
+import { stateFor, run } from '../helpers/rich-text-states.js';
 
-const toolset = createToolset({ proseMirror, schema, onLink: () => {} });
+const toolset = createToolset({ onLink: () => {} });
 
 const tools = Object.fromEntries(listTools(toolset).map((candidate) => [candidate.id, candidate]));
 

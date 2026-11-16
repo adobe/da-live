@@ -32,6 +32,16 @@ async function mountEditor(root) {
 }
 
 describe('ew-form-fields primitive controls', () => {
+  it('loads the rich-text field only once a form renders one', async () => {
+    await mountEditor(objectRoot([{ kind: 'string', pointer: '/data/title', label: 'Title', value: 'x' }]));
+    expect(customElements.get('ew-form-rich-text')).to.equal(undefined);
+    const formEditor = await mountEditor(objectRoot([richTextNode()]));
+    await customElements.whenDefined('ew-form-rich-text');
+    const field = formEditor.shadowRoot.querySelector('ew-form-rich-text');
+    await field.updateComplete;
+    expect(field.shadowRoot.querySelector('.form-rich-text-content')).to.exist;
+  });
+
   it('renders a textarea for a long-text string node', async () => {
     const root = objectRoot([
       { kind: 'string', pointer: '/data/body', label: 'Body', semanticType: 'long-text', value: 'hi' },

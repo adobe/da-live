@@ -1,4 +1,10 @@
 import {
+  liftListItem,
+  sinkListItem,
+  splitListItem,
+  toggleMark,
+} from 'da-y-wrapper';
+import {
   BLOCK_TYPES,
   getActiveMarks,
   getBlockType,
@@ -11,6 +17,7 @@ import {
   toggleBlockquote,
   toggleList,
 } from './commands.js';
+import { schema } from './schema.js';
 
 /** The tool ids. Toggle tools are named after the mark or node they apply. */
 export const TOOL_IDS = Object.freeze({
@@ -43,22 +50,20 @@ const hasMark = (name) => (state) => getActiveMarks(state).has(name);
 const isInList = (name) => (state) => getListType(state)?.name === name;
 
 /**
- * Creates the tools of a rich-text editor, bound to its ProseMirror.
- * @param {object} options The editor.
- * @param {object} options.proseMirror The da-y-wrapper namespace.
- * @param {object} options.schema The schema.
+ * Creates the tools of a rich-text field.
+ * @param {object} options The field.
  * @param {() => void} options.onLink Opens the link dialog.
  * @returns {import('../../fields/rich-text-toolbar.js').Toolset} The tools.
  */
-export function createToolset({ proseMirror, schema, onLink }) {
+export function createToolset({ onLink }) {
   const markTool = (tool) => ({
     ...tool,
-    command: proseMirror.toggleMark(schema.marks[tool.id]),
+    command: toggleMark(schema.marks[tool.id]),
     isActive: hasMark(tool.id),
   });
   const listTool = (tool) => ({
     ...tool,
-    command: toggleList({ proseMirror, name: tool.id }),
+    command: toggleList(tool.id),
     isActive: isInList(tool.id),
   });
 
@@ -68,7 +73,7 @@ export function createToolset({ proseMirror, schema, onLink }) {
       items: BLOCK_TYPES,
       getValue: getBlockType,
       isEnabled: (state) => !getListType(state),
-      commandFor: (value) => setBlock({ proseMirror, value }),
+      commandFor: setBlock,
     },
     groups: [
       [
@@ -110,7 +115,7 @@ export function createToolset({ proseMirror, schema, onLink }) {
           label: 'Blockquote',
           keys: 'Ctrl-Shift-.',
           icon: 'blockquote',
-          command: toggleBlockquote({ proseMirror }),
+          command: toggleBlockquote,
           isActive: isInBlockquote,
         },
       ],
@@ -131,7 +136,7 @@ export const listTools = ({ groups, menuGroups }) => [...groups.flat(), ...menuG
 /**
  * Binds the shortcut of each tool that has one.
  * @param {import('../../fields/rich-text-toolbar.js').Toolset} toolset The tools.
- * @returns {Record<string, import('./commands.js').RichTextCommand>} The commands by key.
+ * @returns {Record<string, Function>} The commands by key.
  */
 const toolShortcuts = (toolset) => Object.fromEntries(listTools(toolset)
   .filter((tool) => tool.keys)
@@ -140,28 +145,25 @@ const toolShortcuts = (toolset) => Object.fromEntries(listTools(toolset)
 /**
  * Binds Ctrl+Shift+0 to the paragraph and Ctrl+Shift+1 to 6 to the headings.
  * @param {import('../../fields/rich-text-toolbar.js').ToolbarPicker} picker The text style picker.
- * @returns {Record<string, import('./commands.js').RichTextCommand>} The commands by key.
+ * @returns {Record<string, Function>} The commands by key.
  */
 const textStyleShortcuts = (picker) => Object.fromEntries(BLOCK_TYPES
   .map(({ value, attrs }) => [`Ctrl-Shift-${attrs?.level ?? 0}`, picker.commandFor(value)]));
 
 /**
  * Builds the shortcuts of the field.
- * @param {object} options The editor.
- * @param {object} options.proseMirror The da-y-wrapper namespace.
- * @param {object} options.schema The schema.
- * @param {import('../../fields/rich-text-toolbar.js').Toolset} options.toolset The tools.
- * @returns {Record<string, import('./commands.js').RichTextCommand>} The commands by key.
+ * @param {import('../../fields/rich-text-toolbar.js').Toolset} toolset The tools.
+ * @returns {Record<string, Function>} The commands by key.
  */
-export function buildKeymap({ proseMirror, schema, toolset }) {
+export function buildKeymap(toolset) {
   const listItem = schema.nodes.list_item;
   return {
     ...toolShortcuts(toolset),
     ...textStyleShortcuts(toolset.picker),
-    Enter: proseMirror.splitListItem(listItem),
+    Enter: splitListItem(listItem),
     'Shift-Enter': insertHardBreak,
     'Mod-Enter': insertHardBreak,
-    Tab: proseMirror.sinkListItem(listItem),
-    'Shift-Tab': proseMirror.liftListItem(listItem),
+    Tab: sinkListItem(listItem),
+    'Shift-Tab': liftListItem(listItem),
   };
 }

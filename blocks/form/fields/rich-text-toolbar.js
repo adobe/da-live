@@ -9,7 +9,7 @@ import { spriteIcon } from '../icons.js';
  * @property {string} label The accessible name.
  * @property {string} icon The name of the S2 icon.
  * @property {string} [keys] The ProseMirror key name of the shortcut.
- * @property {import('../utils/rich-text/commands.js').RichTextCommand} command Applies the tool.
+ * @property {Function} command The ProseMirror command that applies the tool.
  * @property {(state: object) => boolean} [isActive] Whether a toggle is on. Actions have none.
  * @property {(state: object) => boolean} [isVisible] Whether the tool applies. Others always show.
  */
@@ -21,7 +21,7 @@ import { spriteIcon } from '../icons.js';
  * @property {object[]} items The `nx-picker` items.
  * @property {(state: object) => string|null} getValue The value at the selection, if any.
  * @property {(state: object) => boolean} isEnabled Whether a value can apply at the selection.
- * @property {(value: string) => import('../utils/rich-text/commands.js').RichTextCommand}
+ * @property {(value: string) => Function}
  *   commandFor Builds the command that applies a value.
  */
 
@@ -274,7 +274,7 @@ class FormRichTextToolbar extends LitElement {
 
   /**
    * Asks the field to run a command.
-   * @param {import('../utils/rich-text/commands.js').RichTextCommand} command The command.
+   * @param {Function} command The ProseMirror command.
    */
   _requestCommand(command) {
     this.dispatchEvent(new CustomEvent('form-rich-text-command', { detail: { command } }));

@@ -1,11 +1,17 @@
 import { LitElement, html, nothing } from 'da-lit';
+import {
+  baseKeymap,
+  EditorState,
+  EditorView,
+  keymap,
+} from 'da-y-wrapper';
 import { getNx2 } from '../../../scripts/utils.js';
 import defaults from './defaults.js';
 import { icon } from '../icons.js';
 import './rich-text-toolbar.js';
-import { loadRichTextEditor } from '../utils/rich-text/editor.js';
-import { getLinkDraft } from '../utils/rich-text/commands.js';
-import { TOOL_IDS } from '../utils/rich-text/tools.js';
+import { parseRichText, serializeRichText } from '../utils/rich-text/schema.js';
+import { applyLink, getLinkDraft } from '../utils/rich-text/commands.js';
+import { TOOL_IDS, buildKeymap, createToolset } from '../utils/rich-text/tools.js';
 
 const { loadStyle } = await import(`${getNx2()}/utils/utils.js`);
 
@@ -15,8 +21,6 @@ const ELEMENT_NAME = 'ew-form-rich-text';
 
 /** The id of the label, which names the editable area. */
 const LABEL_ID = 'form-rich-text-label';
-
-const STATUS = Object.freeze({ ready: 'ready', error: 'error' });
 
 const SELECTORS = {
   toolbar: 'ew-form-rich-text-toolbar',
@@ -48,16 +52,14 @@ class FormRichText extends LitElement {
     error: { type: String },
     required: { type: Boolean },
     disabled: { type: Boolean, reflect: true },
-    _status: { state: true },
     _editorState: { state: true },
     _focused: { state: true },
     _link: { state: true },
   };
 
-  /** Loads the editor. Tests replace it to make loading fail. */
-  static loadEditor = loadRichTextEditor;
+  _toolset = createToolset({ onLink: () => this._openLink() });
 
-  _editor;
+  _plugins = [keymap(buildKeymap(this._toolset)), keymap(baseKeymap)];
 
   _view;
 
@@ -71,8 +73,8 @@ class FormRichText extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [defaults, style];
-    if (this._status === STATUS.ready) {
-      this._initEditor();
+    if (this.hasUpdated) {
+      this._initializeEditor();
     }
   }
 
@@ -83,9 +85,9 @@ class FormRichText extends LitElement {
     super.disconnectedCallback();
   }
 
-  /** Starts loading the editor. */
-  async firstUpdated() {
-    await this._loadEditor();
+  /** Mounts the editor. */
+  firstUpdated() {
+    this._initializeEditor();
   }
 
   /**
@@ -111,17 +113,13 @@ class FormRichText extends LitElement {
     this._view?.focus();
   }
 
-  /** Loads and mounts the editor, or shows that it could not load. */
-  async _loadEditor() {
-    try {
-      this._editor = await this.constructor.loadEditor({ onLink: () => this._openLink() });
-      this._status = STATUS.ready;
-      if (this.isConnected) {
-        this._initEditor();
-      }
-    } catch {
-      this._status = STATUS.error;
-    }
+  /**
+   * Creates an editor state for a stored value.
+   * @param {unknown} value The stored value.
+   * @returns {object} The ProseMirror editor state.
+   */
+  _createState(value) {
+    return EditorState.create({ doc: parseRichText(value), plugins: this._plugins });
   }
 
   /**
@@ -149,7 +147,7 @@ class FormRichText extends LitElement {
     }
 
     this._editorValue = value;
-    this._view.updateState(this._editor.createState(value));
+    this._view.updateState(this._createState(value));
     this._syncEditorState();
   }
 
@@ -176,12 +174,12 @@ class FormRichText extends LitElement {
     };
   }
 
-  /** Mounts the editor with the current value. The editor must be loaded. */
-  _initEditor() {
+  /** Mounts the editor with the current value. */
+  _initializeEditor() {
     const mount = this.shadowRoot.querySelector(SELECTORS.editor);
     this._editorValue = this.value ?? '';
-    this._view = this._editor.mount(mount, {
-      state: this._editor.createState(this._editorValue),
+    this._view = new EditorView(mount, {
+      state: this._createState(this._editorValue),
       editable: () => !this.disabled,
       attributes: this._attributes(),
       dispatchTransaction: (transaction) => this._dispatch(transaction),
@@ -203,7 +201,7 @@ class FormRichText extends LitElement {
 
   /** Publishes the value the editor shows and emits `input`, unless it did not change. */
   _publishValue() {
-    const value = this._editor.serialize(this._view.state);
+    const value = serializeRichText(this._view.state.doc);
     if (value === this._editorValue) {
       return;
     }
@@ -221,7 +219,7 @@ class FormRichText extends LitElement {
 
   /**
    * Runs a command on the editor and keeps the focus there.
-   * @param {import('../utils/rich-text/commands.js').RichTextCommand} command The command.
+   * @param {Function} command The ProseMirror command.
    */
   _run(command) {
     if (!this._canEdit) {
@@ -270,7 +268,7 @@ class FormRichText extends LitElement {
     event.stopPropagation();
     const { href, text, title } = event.detail;
     this._closeLink();
-    const link = this._editor.linkCommand({ href, text, title });
+    const link = applyLink({ href, text, title });
     link(this._view.state, this._view.dispatch);
   }
 
@@ -328,7 +326,7 @@ class FormRichText extends LitElement {
     return html`
       <ew-form-rich-text-toolbar
         .editorState=${this._editorState}
-        .toolset=${this._editor?.toolset}
+        .toolset=${this._toolset}
         .focused=${!!this._focused}
         .openTool=${this._link ? TOOL_IDS.link : undefined}
         .disabled=${!this._canEdit}
@@ -375,15 +373,12 @@ class FormRichText extends LitElement {
   }
 
   /**
-   * Renders the load error, the validation error and the help text.
+   * Renders the validation error and the help text.
    * @returns {import('da-lit').TemplateResult} The messages below the field.
    */
   _renderMessages() {
     const showHint = !this.error && this.description;
     return html`
-      ${this._status === STATUS.error
-        ? html`<p class="form-field-error">The rich text editor could not be loaded.</p>`
-        : nothing}
       ${this.error ? html`<p class="form-field-error">${this.error}</p>` : nothing}
       ${showHint ? html`<p class="form-field-description">${this.description}</p>` : nothing}
     `;
@@ -398,7 +393,7 @@ class FormRichText extends LitElement {
           ${this._renderToolbar()}
           ${this._renderLink()}
           <div class="form-input-wrap">
-            <div class="form-rich-text-editor" aria-busy=${this._status ? 'false' : 'true'}></div>
+            <div class="form-rich-text-editor"></div>
             ${this.error ? icon('alert', 'form-field-icon') : nothing}
           </div>
         </div>

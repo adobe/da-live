@@ -1,10 +1,11 @@
+import {
+  addListNodes,
+  baseSchema,
+  DOMParser as ProseMirrorParser,
+  DOMSerializer,
+  Schema,
+} from 'da-y-wrapper';
 import { safeHref } from '../safe-href.js';
-
-/** The levels of the heading text styles. */
-export const HEADING_LEVELS = [1, 2, 3, 4, 5, 6];
-
-/** The names of the list nodes. */
-export const LIST_NAMES = new Set(['bullet_list', 'ordered_list']);
 
 /** The base schema nodes the SDK does not store. */
 const DROPPED_NODES = ['horizontal_rule', 'code_block', 'image'];
@@ -65,10 +66,9 @@ const PREFORMATTED_RULE = { tag: 'pre', contentElement: preformattedContent };
 
 /**
  * Creates the schema of rich-text fields. It holds what the SDK stores.
- * @param {object} proseMirror The da-y-wrapper namespace.
  * @returns {object} The ProseMirror schema.
  */
-export function createSchema({ Schema, baseSchema, addListNodes }) {
+function createSchema() {
   const { nodes, marks } = baseSchema.spec;
   const paragraph = nodes.get('paragraph');
   const blocks = DROPPED_NODES
@@ -111,4 +111,79 @@ export function createSchema({ Schema, baseSchema, addListNodes }) {
       code: marks.get('code'),
     },
   });
+}
+
+/** The schema of rich-text fields. */
+export const schema = createSchema();
+
+/** Parses HTML into inert documents. It keeps no state, so one serves every value. */
+const HTML_PARSER = new DOMParser();
+
+/** The entities of the characters text content escapes. */
+const ENTITIES = { '&': '&amp;', '<': '&lt;', '>': '&gt;' };
+
+/**
+ * Escapes text content.
+ * @param {string} value The text.
+ * @returns {string} The escaped text.
+ */
+const escapeText = (value) => value.replace(/[&<>]/g, (character) => ENTITIES[character]);
+
+/**
+ * Turns plain text into paragraphs. Blank lines separate paragraphs, single line breaks
+ * become `<br>`.
+ * @param {string} text The plain text.
+ * @returns {string} The HTML.
+ */
+function plainTextToHtml(text) {
+  const toParagraph = (block) => {
+    const lines = block.split('\n').map((line) => escapeText(line.trim()));
+    return `<p>${lines.join('<br>')}</p>`;
+  };
+  return text
+    .replace(/\r\n?/g, '\n')
+    .split(/\n[ \t]*\n+/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map(toParagraph)
+    .join('');
+}
+
+/**
+ * Parses HTML into the body of an inert document, so no scripts run and no resources load.
+ * @param {string} html The HTML.
+ * @returns {HTMLElement} The body.
+ */
+const parseHtml = (html) => HTML_PARSER.parseFromString(html, 'text/html').body;
+
+const parser = ProseMirrorParser.fromSchema(schema);
+
+const serializer = DOMSerializer.fromSchema(schema);
+
+/**
+ * Reads a stored HTML or plain-text value into a ProseMirror document. Plain text from before
+ * the field was rich text becomes paragraphs.
+ * @param {unknown} value The stored value.
+ * @returns {object} The ProseMirror document.
+ */
+export function parseRichText(value) {
+  const text = typeof value === 'string' ? value : '';
+  const parsed = parseHtml(text);
+  return parser.parse(parsed.firstElementChild ? parsed : parseHtml(plainTextToHtml(text)));
+}
+
+/**
+ * Writes a document as HTML, or an empty string when it shows no text. The SDK brings the
+ * value into its stored form on save.
+ * @param {object} richTextDocument The ProseMirror document.
+ * @returns {string} The HTML.
+ */
+export function serializeRichText(richTextDocument) {
+  if (!richTextDocument.textContent.trim()) {
+    return '';
+  }
+
+  const container = document.createElement('div');
+  container.append(serializer.serializeFragment(richTextDocument.content));
+  return container.innerHTML;
 }

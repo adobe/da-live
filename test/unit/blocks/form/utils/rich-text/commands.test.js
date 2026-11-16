@@ -1,6 +1,5 @@
 /* eslint-disable no-script-url */
 import { expect } from '@esm-bundle/chai';
-import * as proseMirror from 'da-y-wrapper';
 import {
   getActiveMarks,
   getListType,
@@ -52,7 +51,7 @@ describe('rich-text commands', () => {
   });
 
   describe('commands', () => {
-    const link = ({ href, text, title }) => applyLink({ proseMirror, href, text, title });
+    const link = ({ href, text, title }) => applyLink({ href, text, title });
 
     it('drafts the link and text around the selection', () => {
       expect(getLinkDraft(stateFor('<p>x <a href="/a" title="T">li<strong>nk</strong></a> y</p>', { from: 5 })))
@@ -119,8 +118,8 @@ describe('rich-text commands', () => {
     });
 
     it('toggles and switches lists', () => {
-      const bullet = toggleList({ proseMirror, name: 'bullet_list' });
-      const ordered = toggleList({ proseMirror, name: 'ordered_list' });
+      const bullet = toggleList('bullet_list');
+      const ordered = toggleList('ordered_list');
       const wrapped = run(bullet, stateFor('<p>a</p>', { from: 1 }));
       expect(wrapped.html).to.equal('<ul><li><p>a</p></li></ul>');
       const switched = run(ordered, wrapped.state);
@@ -129,8 +128,8 @@ describe('rich-text commands', () => {
     });
 
     it('wraps every selected block in its own list item', () => {
-      const bullet = toggleList({ proseMirror, name: 'bullet_list' });
-      const ordered = toggleList({ proseMirror, name: 'ordered_list' });
+      const bullet = toggleList('bullet_list');
+      const ordered = toggleList('ordered_list');
       expect(run(bullet, stateFor('<p>aa</p><p>bb</p><p>cc</p>', { from: 2, to: 6 })).html)
         .to.equal('<ul><li><p>aa</p></li><li><p>bb</p></li></ul><p>cc</p>');
       expect(run(bullet, stateFor('<h2>hh</h2><p>bb</p>', { from: 1, to: 6 })).html)
@@ -142,7 +141,7 @@ describe('rich-text commands', () => {
     });
 
     it('removes the list from every selected item', () => {
-      const bullet = toggleList({ proseMirror, name: 'bullet_list' });
+      const bullet = toggleList('bullet_list');
       const list = '<ul><li>a</li><li>b</li><li>c</li><li>d</li></ul>';
       expect(run(bullet, stateFor(list, { from: 8, to: 14 })).html)
         .to.equal('<ul><li><p>a</p></li></ul><p>b</p><p>c</p><ul><li><p>d</p></li></ul>');
@@ -155,19 +154,19 @@ describe('rich-text commands', () => {
     });
 
     it('changes the block type', () => {
-      const heading = run(setBlock({ proseMirror, value: 'heading-2' }), stateFor('<p>a</p>', { from: 1 }));
+      const heading = run(setBlock('heading-2'), stateFor('<p>a</p>', { from: 1 }));
       expect(heading.html).to.equal('<h2>a</h2>');
-      expect(run(setBlock({ proseMirror, value: 'paragraph' }), heading.state).html).to.equal('<p>a</p>');
-      expect(run(setBlock({ proseMirror, value: 'heading-7' }), heading.state).handled).to.be.false;
+      expect(run(setBlock('paragraph'), heading.state).html).to.equal('<p>a</p>');
+      expect(run(setBlock('heading-7'), heading.state).handled).to.be.false;
     });
 
     it('does not change list items into headings', () => {
       const state = stateFor('<ul><li>a</li></ul>', { from: 3 });
-      expect(run(setBlock({ proseMirror, value: 'heading-1' }), state).handled).to.be.false;
+      expect(run(setBlock('heading-1'), state).handled).to.be.false;
     });
 
     it('toggles a blockquote', () => {
-      const quote = toggleBlockquote({ proseMirror });
+      const quote = toggleBlockquote;
       const wrapped = run(quote, stateFor('<p>a</p><p>b</p>', { from: 1, to: 5 }));
       expect(wrapped.html).to.equal('<blockquote><p>a</p><p>b</p></blockquote>');
       expect(run(quote, wrapped.state).html).to.equal('<p>a</p><p>b</p>');
@@ -175,7 +174,7 @@ describe('rich-text commands', () => {
 
     it('lifts only the selected block out of a blockquote', () => {
       const state = stateFor('<blockquote><p>a</p><p>b</p></blockquote>', { from: 2 });
-      expect(run(toggleBlockquote({ proseMirror }), state).html).to.equal('<p>a</p><blockquote><p>b</p></blockquote>');
+      expect(run(toggleBlockquote, state).html).to.equal('<p>a</p><blockquote><p>b</p></blockquote>');
     });
 
     it('inserts a hard break', () => {

@@ -1,5 +1,4 @@
 import { expect } from '@esm-bundle/chai';
-import * as proseMirror from 'da-y-wrapper';
 import { removeLink, BLOCK_TYPES } from '../../../../../../blocks/form/utils/rich-text/commands.js';
 import {
   TOOL_IDS,
@@ -10,7 +9,7 @@ import {
 import { schema, stateFor, run } from '../../helpers/rich-text-states.js';
 
 function setup({ onLink = () => {} } = {}) {
-  const toolset = createToolset({ proseMirror, schema, onLink });
+  const toolset = createToolset({ onLink });
   const tools = listTools(toolset);
   return { toolset, tool: (id) => tools.find((candidate) => candidate.id === id) };
 }
@@ -111,7 +110,7 @@ describe('rich-text tools', () => {
   describe('keymap', () => {
     const keymapFor = (options) => {
       const { toolset } = setup(options);
-      return buildKeymap({ proseMirror, schema, toolset });
+      return buildKeymap(toolset);
     };
 
     it('binds the shortcuts of the tools', () => {

@@ -1,10 +1,17 @@
+import {
+  liftListItem,
+  setBlockType,
+  TextSelection,
+  wrapIn,
+  wrapInList,
+} from 'da-y-wrapper';
 import { safeHref } from '../safe-href.js';
-import { HEADING_LEVELS, LIST_NAMES } from './schema.js';
 
-/**
- * A ProseMirror command. Without `dispatch` it only answers whether it applies.
- * @typedef {(state: object, dispatch?: (transaction: object) => void) => boolean} RichTextCommand
- */
+/** The levels of the heading text styles. */
+const HEADING_LEVELS = [1, 2, 3, 4, 5, 6];
+
+/** The names of the list nodes. */
+const LIST_NAMES = new Set(['bullet_list', 'ordered_list']);
 
 /**
  * Lists the children of a node with their document positions.
@@ -32,7 +39,7 @@ function ancestors(resolvedPosition) {
 
 /**
  * Runs a command without applying it.
- * @param {RichTextCommand} command The command.
+ * @param {Function} command The ProseMirror command.
  * @param {object} state The editor state.
  * @returns {object|undefined} The transaction it dispatched, or undefined when it did not.
  */
@@ -97,18 +104,16 @@ export function getBlockType(state) {
 
 /**
  * Creates a command that changes the text style of the selected blocks.
- * @param {object} options The style.
- * @param {object} options.proseMirror The da-y-wrapper namespace.
- * @param {string} options.value The value of the text style, see `BLOCK_TYPES`.
- * @returns {RichTextCommand} The command.
+ * @param {string} value The value of the text style, see `BLOCK_TYPES`.
+ * @returns {Function} The ProseMirror command.
  */
-export function setBlock({ proseMirror, value }) {
+export function setBlock(value) {
   return (state, dispatch) => {
     const block = BLOCK_TYPES.find((type) => type.value === value);
     if (!block) {
       return false;
     }
-    return proseMirror.setBlockType(state.schema.nodes[block.node], block.attrs)(state, dispatch);
+    return setBlockType(state.schema.nodes[block.node], block.attrs)(state, dispatch);
   };
 }
 
@@ -122,27 +127,22 @@ export function isInBlockquote(state) {
 }
 
 /**
- * Creates a command that wraps the selection in a blockquote, or lifts it out of one.
- * @param {object} options The dependencies.
- * @param {object} options.proseMirror The da-y-wrapper namespace.
- * @returns {RichTextCommand} The command.
+ * Wraps the selection in a blockquote, or lifts it out of one.
  */
-export function toggleBlockquote({ proseMirror }) {
-  return (state, dispatch) => {
-    const type = state.schema.nodes.blockquote;
-    if (!isInBlockquote(state)) {
-      return proseMirror.wrapIn(type)(state, dispatch);
-    }
+export function toggleBlockquote(state, dispatch) {
+  const type = state.schema.nodes.blockquote;
+  if (!isInBlockquote(state)) {
+    return wrapIn(type)(state, dispatch);
+  }
 
-    const { $from, $to } = state.selection;
-    const range = $from.blockRange($to, (node) => node.type === type);
-    if (!range) {
-      return false;
-    }
+  const { $from, $to } = state.selection;
+  const range = $from.blockRange($to, (node) => node.type === type);
+  if (!range) {
+    return false;
+  }
 
-    dispatch?.(state.tr.lift(range, range.depth - 1).scrollIntoView());
-    return true;
-  };
+  dispatch?.(state.tr.lift(range, range.depth - 1).scrollIntoView());
+  return true;
 }
 
 /**
@@ -223,13 +223,12 @@ export function getLinkDraft(state) {
  * Creates a command that links the selection, or the link at its start. Changed text
  * replaces the linked text, an empty selection inserts it.
  * @param {object} options The link.
- * @param {object} options.proseMirror The da-y-wrapper namespace.
  * @param {string} options.href The link, which must pass `safeHref`.
  * @param {string} [options.text] The text to show, the href when empty.
  * @param {string} [options.title] The title of the link.
- * @returns {RichTextCommand} The command.
+ * @returns {Function} The ProseMirror command.
  */
-export function applyLink({ proseMirror, href, text, title }) {
+export function applyLink({ href, text, title }) {
   return (state, dispatch) => {
     const safe = safeHref(href);
     if (!safe) {
@@ -251,7 +250,7 @@ export function applyLink({ proseMirror, href, text, title }) {
     }
 
     transaction.addMark(from, end, type.create({ href: safe, title: title?.trim() || null }));
-    transaction.setSelection(proseMirror.TextSelection.create(transaction.doc, end));
+    transaction.setSelection(TextSelection.create(transaction.doc, end));
     dispatch(transaction.scrollIntoView());
     return true;
   };
@@ -259,7 +258,6 @@ export function applyLink({ proseMirror, href, text, title }) {
 
 /**
  * Removes the links in the selection, or the link at the cursor.
- * @type {RichTextCommand}
  */
 export function removeLink(state, dispatch) {
   const type = state.schema.marks.link;
@@ -287,72 +285,66 @@ export function getListType(state) {
 /**
  * Lifts the list item at a position out of every list around it, adding the steps to `transaction`.
  * @param {object} options The item.
- * @param {object} options.proseMirror The da-y-wrapper namespace.
  * @param {object} options.state The editor state the position refers to.
  * @param {object} options.transaction The transaction that collects the steps.
  * @param {number} options.position The position inside the item's paragraph.
  * @returns {object} The editor state after the lift.
  */
-function liftOutOfLists({ proseMirror, state, transaction, position }) {
+function liftOutOfLists({ state, transaction, position }) {
   const itemType = state.schema.nodes.list_item;
   const resolvedPosition = state.doc.resolve(position);
   if (resolvedPosition.depth < 2 || resolvedPosition.node(-1).type !== itemType) {
     return state;
   }
 
-  const caret = proseMirror.TextSelection.create(state.doc, position);
+  const caret = TextSelection.create(state.doc, position);
   const selected = state.apply(state.tr.setSelection(caret));
-  const lifted = dryRun(proseMirror.liftListItem(itemType), selected);
+  const lifted = dryRun(liftListItem(itemType), selected);
   if (!lifted) {
     return state;
   }
 
   lifted.steps.forEach((step) => transaction.step(step));
   const next = selected.apply(lifted);
-  return liftOutOfLists({ proseMirror, state: next, transaction, position: next.selection.from });
+  return liftOutOfLists({ state: next, transaction, position: next.selection.from });
 }
 
 /**
- * Creates a command that lifts the selected list items out of their lists. List items only
- * hold a paragraph and nested lists, so items are lifted one at a time.
- * @param {object} options The dependencies.
- * @param {object} options.proseMirror The da-y-wrapper namespace.
- * @returns {RichTextCommand} The command.
+ * Lifts the selected list items out of their lists. List items only hold a paragraph and
+ * nested lists, so items are lifted one at a time.
  */
-function unwrapListItems({ proseMirror }) {
-  return (state, dispatch) => {
-    const { from, to } = state.selection;
-    const itemType = state.schema.nodes.list_item;
-    const starts = [];
-    state.doc.nodesBetween(from, to, (node, position, parent) => {
-      if (node.type.name === 'paragraph' && parent?.type === itemType) {
-        starts.push(position + 1);
-      }
-    });
-    if (!starts.length) {
-      return false;
+function unwrapListItems(state, dispatch) {
+  const { from, to } = state.selection;
+  const itemType = state.schema.nodes.list_item;
+  const starts = [];
+  state.doc.nodesBetween(from, to, (node, position, parent) => {
+    if (node.type.name === 'paragraph' && parent?.type === itemType) {
+      starts.push(position + 1);
     }
-    if (!dispatch) {
-      return true;
-    }
-
-    const transaction = state.tr.scrollIntoView();
-    const lift = (current, start) => {
-      const position = transaction.mapping.map(start);
-      return liftOutOfLists({ proseMirror, state: current, transaction, position });
-    };
-    const lifted = [...starts].reverse().reduce(lift, state);
-    if (!transaction.docChanged) {
-      return false;
-    }
-
-    if (state.selection.empty) {
-      const caret = proseMirror.TextSelection.create(transaction.doc, lifted.selection.from);
-      transaction.setSelection(caret);
-    }
-    dispatch(transaction);
+  });
+  if (!starts.length) {
+    return false;
+  }
+  if (!dispatch) {
     return true;
+  }
+
+  const transaction = state.tr.scrollIntoView();
+  const lift = (current, start) => {
+    const position = transaction.mapping.map(start);
+    return liftOutOfLists({ state: current, transaction, position });
   };
+  const lifted = [...starts].reverse().reduce(lift, state);
+  if (!transaction.docChanged) {
+    return false;
+  }
+
+  if (state.selection.empty) {
+    const caret = TextSelection.create(transaction.doc, lifted.selection.from);
+    transaction.setSelection(caret);
+  }
+  dispatch(transaction);
+  return true;
 }
 
 /**
@@ -383,7 +375,7 @@ function wrapBlock({ transaction, listType, block: { node, position } }) {
  * Creates a command that turns the selected blocks into one list. List items hold a single
  * paragraph, so each block is wrapped on its own and the lists are joined.
  * @param {object} listType The ProseMirror node type of the list.
- * @returns {RichTextCommand} The command.
+ * @returns {Function} The ProseMirror command.
  */
 function wrapBlocksInList(listType) {
   return (state, dispatch) => {
@@ -417,30 +409,27 @@ function wrapBlocksInList(listType) {
 /**
  * Creates a command that turns the selection into a list, switches the list type, or lifts
  * the items out of a list of the same type.
- * @param {object} options The list.
- * @param {object} options.proseMirror The da-y-wrapper namespace.
- * @param {string} options.name The list node name, see `LIST_NAMES`.
- * @returns {RichTextCommand} The command.
+ * @param {string} name The list node name, see `LIST_NAMES`.
+ * @returns {Function} The ProseMirror command.
  */
-export function toggleList({ proseMirror, name }) {
+export function toggleList(name) {
   return (state, dispatch) => {
     const listType = state.schema.nodes[name];
     const current = getListType(state);
     if (current?.name === name) {
-      return unwrapListItems({ proseMirror })(state, dispatch);
+      return unwrapListItems(state, dispatch);
     }
     if (current) {
       dispatch?.(state.tr.setNodeMarkup(state.selection.$from.before(current.depth), listType));
       return true;
     }
-    return proseMirror.wrapInList(listType)(state, dispatch)
+    return wrapInList(listType)(state, dispatch)
       || wrapBlocksInList(listType)(state, dispatch);
   };
 }
 
 /**
  * Replaces the selection with a line break.
- * @type {RichTextCommand}
  */
 export function insertHardBreak(state, dispatch) {
   const hardBreak = state.schema.nodes.hard_break.create();
@@ -452,7 +441,7 @@ export function insertHardBreak(state, dispatch) {
  * Creates a command that asks for the link dialog, which applies anywhere.
  * @param {object} options The dialog.
  * @param {() => void} options.onLink Opens the link dialog.
- * @returns {RichTextCommand} The command.
+ * @returns {Function} The ProseMirror command.
  */
 export function requestLink({ onLink }) {
   return (state, dispatch) => {
