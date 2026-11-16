@@ -3,6 +3,7 @@ import { getNx, getNx2 } from '../../scripts/utils.js';
 import { createGreeting } from '../greeting/greeting.js';
 import { getBrowseSettings } from '../browse/v2/shared/settings.js';
 import { DaRecentFiles } from './recent-files/recent-files.js';
+import initTiles from './tiles/tile-group.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { loadIms, handleSignIn } = await import(`${getNx2()}/utils/ims.js`);
@@ -121,7 +122,7 @@ export class DaLanding extends DaRecentFiles {
 
 customElements.define('da-landing', DaLanding);
 
-export default function init(el) {
+export function loadLanding(el) {
   if (!document.adoptedStyleSheets.includes(background)) {
     document.adoptedStyleSheets.push(background);
   }
@@ -135,3 +136,5 @@ export default function init(el) {
   landing.replaceChildren(content);
   return content;
 }
+
+export default initTiles;

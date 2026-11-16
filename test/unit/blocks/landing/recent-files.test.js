@@ -214,7 +214,6 @@ describe('Landing file preview', () => {
       await loadSite.lastCall.returnValue;
       await update(preview);
       expect(preview.previousElementSibling.className).to.equal('da-sites-list');
-      expect(preview.nextElementSibling.querySelector('h2').textContent).to.equal('Sites');
       expect(preview.scopes).to.deep.equal(['org/site', 'org/other']);
       const count = loadSite.callCount;
       sites.handleFlip(new Event('click'), sites._recents[0]);

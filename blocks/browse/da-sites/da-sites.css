@@ -34,6 +34,10 @@ da-recent-files {
   margin-bottom: var(--s2-spacing-600);
 }
 
+.da-site-tiles {
+  margin-top: var(--s2-spacing-600);
+}
+
 @container (width < 600px) {
   .da-site-container {
     width: calc(100% - 2 * var(--s2-spacing-300));
@@ -43,6 +47,10 @@ da-recent-files {
   .da-site-greeting {
     margin-bottom: var(--s2-spacing-400);
   }
+
+  .da-site-header form {
+    width: 100%;
+  }
 }
 
 .da-site-header {
@@ -50,7 +58,7 @@ da-recent-files {
   flex-wrap: wrap;
   gap: var(--s2-spacing-200);
   justify-content: space-between;
-  align-items: start;
+  align-items: center;
   margin: 0 0 var(--s2-spacing-300);
 }
 
@@ -72,7 +80,7 @@ da-recent-files {
 }
 
 .da-no-site-text {
-  margin: 18px 0 32px;
+  margin: 18px 0 0;
   text-align: center;
 }
 
@@ -149,10 +157,6 @@ form input.error {
   }
 }
 
-.da-no-site-well form {
-  width: min(300px, 100%);
-}
-
 form button {
   display: flex;
   justify-content: center;
@@ -214,11 +218,6 @@ form button:hover {
   height: 32px;
   margin-right: -6px;
   transition: transform .5s ease-in-out;
-}
-
-.da-double-card-fg img {
-  width: 64px;
-  height: 48px;
 }
 
 .da-site .da-back-action img {
@@ -401,49 +400,6 @@ form button:hover {
   position: absolute;
   bottom: var(--s2-spacing-300);
   left: 24px;
-}
-
-/* Double Card - Sandbox / Add new */
-.da-site-sandbox-new {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--s2-spacing-300);
-}
-
-.da-double-card {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  min-height: 200px;
-  border-radius: var(--s2-corner-radius-800);
-  color: #e6e6e6;
-  font-size: 18px;
-  text-decoration: none;
-  position: relative;
-  overflow: hidden;
-  box-shadow: rgb(0 0 0 / 8%) 0 6px 16px, rgb(0 0 0 / 12%) 0 3px 6px;
-}
-
-.da-double-card h3 {
-  font-size: 16px;
-  margin: 10px 0 0;
-}
-
-.da-double-card picture {
-  position: absolute;
-  inset: 0;
-}
-
-.da-double-card-bg {
-  object-fit: cover;
-  width: 100%;
-  height: 100%;
-}
-
-.da-double-card-fg {
-  position: relative;
-  text-align: center;
 }
 
 /* Handle Share */

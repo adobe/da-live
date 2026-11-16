@@ -14,6 +14,7 @@ function getRandom() {
 export default class DaSites extends LitElement {
   static properties = {
     greeting: { attribute: false },
+    tiles: { attribute: false },
     _recents: { state: true },
     _status: { state: true },
     _urlError: { state: true },
@@ -28,11 +29,15 @@ export default class DaSites extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [styles];
     this._recents = this.getRecents();
+    if (this.tiles) {
+      this.tiles.slot = 'tiles';
+      this.append(this.tiles);
+    }
     if (this.greeting) {
       const greeting = await this.greeting;
       if (!this.isConnected) return;
       greeting.slot = 'greeting';
-      this.replaceChildren(greeting);
+      this.append(greeting);
     }
   }
 
@@ -124,14 +129,15 @@ export default class DaSites extends LitElement {
 
   renderGo() {
     return html`
-      <form @submit=${this.handleGo}>
-        <input 
+      <form aria-label="Open a site" @submit=${this.handleGo}>
+        <input
             @keydown="${() => { this._urlError = false; }}"
-            @change="${() => { this._urlError = false; }}" 
-            type="text" name="siteUrl" 
+            @change="${() => { this._urlError = false; }}"
+            type="text" name="siteUrl"
             aria-label="Site URL"
-            placeholder="https://main--site--org.aem.page" 
-            class="${this._urlError ? 'error' : nothing}" 
+            aria-invalid="${this._urlError}"
+            placeholder="https://main--site--org.aem.page"
+            class="${this._urlError ? 'error' : nothing}"
         />
         <div class="da-form-btn-offset">
           <button aria-label="Go to site">
@@ -201,7 +207,6 @@ export default class DaSites extends LitElement {
           <h3>You don’t have any recent sites.</h3>
           <p>Enter the URL for your site to get started.</p>
         </div>
-        ${this.renderGo()}
       </div>
     `;
   }
@@ -212,35 +217,13 @@ export default class DaSites extends LitElement {
         ${this.greeting ? html`
           <div class="da-site-greeting"><slot name="greeting"></slot></div>` : nothing}
         <div class="da-site-header">
-          <h2>Recents</h2>
+          <h2>Recent sites</h2>
+          ${this.renderGo()}
         </div>
         ${this._recents?.length > 0 ? this.renderSites(this._recents) : this.renderEmpty()}
         ${this._recents?.length > 0 ? html`
           <da-recent-files .scopes=${this._recents.map(({ name }) => name)}></da-recent-files>` : nothing}
-        <div class="da-site-header">
-          <h2>Sites</h2>
-          ${this._recents?.length > 0 ? this.renderGo() : nothing}
-        </div>
-        <div class="da-site-sandbox-new">
-          <a class="da-double-card da-double-card-sandbox" href="#/aem-sandbox/block-collection">
-            <picture>
-              <img class="da-double-card-bg" src="/blocks/browse/da-sites/img/bg-sandbox-card.avif" width="800" height="534" alt="" />
-            </picture>
-            <div class="da-double-card-fg">
-              <img src="/blocks/browse/da-sites/img/sandbox-icon-gray.svg" width="80" height="60" alt=""/>
-              <h3>Sandbox</h3>
-            </div>
-          </a>
-          <a class="da-double-card da-double-card-add-new" href="/start">
-            <picture>
-              <img class="da-double-card-bg" src="/blocks/browse/da-sites/img/bg-new-card.avif" width="800" height="546" alt="" />
-            </picture>
-            <div class="da-double-card-fg">
-              <img src="/blocks/browse/da-sites/img/add-new-icon-gray.svg" width="80" height="60" alt=""/>
-              <h3>Add new</h3>
-            </div>
-          </a>
-        </div>
+        ${this.tiles ? html`<div class="da-site-tiles"><slot name="tiles"></slot></div>` : nothing}
       </div>
       ${this._status ? this.renderStatus() : nothing}
     `;
