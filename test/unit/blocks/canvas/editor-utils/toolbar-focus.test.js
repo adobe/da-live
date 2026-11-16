@@ -304,4 +304,24 @@ describe('toolbar keyboard access (#1542)', () => {
       expect(dialogOpenAtRestore).to.deep.equal([false]);
     });
   });
+
+  // With `ignoreFocus`, nx-picker keeps focus on its trigger when it opens, but its option
+  // navigation listens on the list — so a keyboard user could open a picker yet not choose.
+  describe('pickers move focus into their options', () => {
+    const suppressesFocus = (picker) => !!picker.ignoreFocus || picker.hasAttribute('ignorefocus');
+
+    it('block-type picker', async () => {
+      activateDoc();
+      await tb.updateComplete;
+      expect(suppressesFocus(tb.shadowRoot.querySelector('nx-picker'))).to.be.false;
+    });
+
+    it('variant picker', async () => {
+      activateDoc();
+      await insertBlock();
+      btb._variantOptions = ['dark'];
+      await btb.updateComplete;
+      expect(suppressesFocus(btb.shadowRoot.querySelector('nx-picker'))).to.be.false;
+    });
+  });
 });

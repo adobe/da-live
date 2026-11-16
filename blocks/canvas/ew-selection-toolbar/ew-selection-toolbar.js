@@ -409,7 +409,6 @@ class EwSelectionToolbar extends LitElement {
         <nx-picker
           class="toolbar-block-type"
           placement="above"
-          ignoreFocus
           .items=${BLOCK_TYPE_PICKER_ITEMS}
           value="paragraph"
           @change=${(e) => this._onBlockTypeChange(e)}
