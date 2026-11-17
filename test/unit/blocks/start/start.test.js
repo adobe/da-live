@@ -32,9 +32,10 @@ describe('start page', () => {
     const start = el.querySelector('da-start');
     await start.updateComplete;
 
-    expect(el.classList.contains('landing')).to.be.true;
-    expect(el.style.colorScheme).to.equal('dark');
-    expect(getComputedStyle(el).backgroundImage).to.contain('radial-gradient');
+    const landing = el.querySelector(':scope > .landing');
+    expect(landing.contains(start)).to.be.true;
+    expect(landing.style.colorScheme).to.equal('dark');
+    expect(getComputedStyle(landing).backgroundImage).to.contain('radial-gradient');
     expect(start.shadowRoot.querySelector('.background, .gradient, .step-count')).to.be.null;
   });
 

@@ -369,11 +369,13 @@ export default async function init(el) {
   if (!document.adoptedStyleSheets.includes(background)) {
     document.adoptedStyleSheets.push(background);
   }
-  el.classList.add('landing');
+  const landing = document.createElement('div');
+  landing.className = 'landing';
   // Current start components are designed for dark, so keep the gradient dark for now.
-  el.style.colorScheme = 'dark';
+  landing.style.colorScheme = 'dark';
   const start = document.createElement('da-start');
-  el.append(start);
+  landing.append(start);
+  el.replaceChildren(landing);
   const section = el.closest('.section')?.nextElementSibling;
   const greetingEl = section?.querySelector('div.greeting');
   if (!greetingEl) return;
