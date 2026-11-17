@@ -10,6 +10,7 @@ describe('start page', () => {
   let sheets;
 
   beforeEach(() => {
+    document.body.classList.add('light-scheme');
     sheets = [...document.adoptedStyleSheets];
     main = document.createElement('main');
     main.innerHTML = `
@@ -24,6 +25,7 @@ describe('start page', () => {
   afterEach(() => {
     main.remove();
     document.adoptedStyleSheets = sheets;
+    document.body.classList.remove('dark-scheme');
   });
 
   it('uses the dark landing gradient without the old background or step count', async () => {
@@ -34,7 +36,10 @@ describe('start page', () => {
 
     const landing = el.querySelector(':scope > .landing');
     expect(landing.contains(start)).to.be.true;
-    expect(landing.style.colorScheme).to.equal('dark');
+    expect(document.body.classList.contains('dark-scheme')).to.be.true;
+    expect(document.body.classList.contains('light-scheme')).to.be.false;
+    expect(landing.style.colorScheme).to.equal('');
+    expect(getComputedStyle(landing).colorScheme).to.equal('dark');
     expect(getComputedStyle(landing).backgroundImage).to.contain('radial-gradient');
     expect(start.shadowRoot.querySelector('.background, .gradient, .step-count')).to.be.null;
   });

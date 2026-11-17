@@ -365,14 +365,20 @@ class DaStart extends LitElement {
 customElements.define('da-start', DaStart);
 
 export default async function init(el) {
-  const background = await getSheet('/blocks/landing/landing.css');
-  if (!document.adoptedStyleSheets.includes(background)) {
-    document.adoptedStyleSheets.push(background);
-  }
+  const pageSheets = await Promise.all([
+    getSheet('/blocks/landing/landing.css'),
+    getSheet('/blocks/start/start-page.css'),
+  ]);
+  pageSheets.forEach((pageSheet) => {
+    if (!document.adoptedStyleSheets.includes(pageSheet)) {
+      document.adoptedStyleSheets.push(pageSheet);
+    }
+  });
+  // Current start components are designed for dark, so keep the page dark for now.
+  document.body.classList.remove('light-scheme');
+  document.body.classList.add('dark-scheme');
   const landing = document.createElement('div');
   landing.className = 'landing';
-  // Current start components are designed for dark, so keep the gradient dark for now.
-  landing.style.colorScheme = 'dark';
   const start = document.createElement('da-start');
   landing.append(start);
   el.replaceChildren(landing);
