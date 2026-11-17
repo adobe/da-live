@@ -59,29 +59,8 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
     boundView.dispatch(boundView.state.tr.setMeta(commentPluginKey, meta));
   };
 
-  const collectAttachedThreadIds = ({ heal = true } = {}) => {
-    if (!boundView || !store) return null;
-    const ids = new Set();
-    store.forEach((comment, id) => {
-      if (comment.threadId != null || comment.resolved) return;
-      const anchor = healing.get(id) ?? comment;
-      const { range, source } = resolveAnchor({ anchor, state: boundView.state });
-      if (!range) return;
-      ids.add(id);
-      if (heal && source === 'structural') reanchor(id, comment, range);
-    });
-    return ids;
-  };
-
-  const updateCounts = () => {
-    const next = computeCounts(store, collectAttachedThreadIds({ heal: false }));
-    const changed = next.active !== counts.active || next.resolved !== counts.resolved;
-    counts = next;
-    return changed;
-  };
-
   const onStoreChange = () => {
-    updateCounts();
+    counts = computeCounts(store);
     authorColors = null;
     emit('counts');
   };
@@ -126,7 +105,17 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
     },
 
     getAttachedThreadIds() {
-      return collectAttachedThreadIds();
+      if (!boundView || !store) return null;
+      const ids = new Set();
+      store.forEach((comment, id) => {
+        if (comment.threadId != null || comment.resolved) return;
+        const anchor = healing.get(id) ?? comment;
+        const { range, source } = resolveAnchor({ anchor, state: boundView.state });
+        if (!range) return;
+        ids.add(id);
+        if (source === 'structural') reanchor(id, comment, range);
+      });
+      return ids;
     },
 
     healMoved(moved) {
@@ -289,7 +278,6 @@ export function createCommentsController({ commentsStore: store, wsProvider }) {
     },
 
     notifyDocChange() {
-      if (updateCounts()) emit('counts');
       emit('docChange');
     },
 
