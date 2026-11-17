@@ -291,6 +291,31 @@ describe('Browse Content opt-in', () => {
     }
   });
 
+  it('keeps the authored greeting in Sites when Landing is disabled', async () => {
+    const { href } = window.location;
+    const main = document.createElement('main');
+    main.innerHTML = content;
+    decorateSections(main);
+    const el = main.querySelector('.browse');
+    document.body.append(main);
+    try {
+      const url = new URL(href);
+      url.searchParams.set('landing', 'false');
+      window.history.replaceState(null, '', url);
+      hashChange._set(undefined);
+      init(el);
+      await waitUntil(() => el.querySelector('da-sites da-greeting'));
+      const greeting = el.querySelector('da-greeting');
+      await greeting.updateComplete;
+      expect(greeting.slot).to.equal('greeting');
+      expect(greeting.querySelector('h1').textContent).to.equal('Hi User');
+      expect(el.querySelector('da-landing, da-landing-tiles, picture')).to.equal(null);
+    } finally {
+      main.remove();
+      window.history.replaceState(null, '', href);
+    }
+  });
+
   it('renders the following authored Landing section on unscoped Home', async () => {
     const main = document.createElement('main');
     main.innerHTML = content;

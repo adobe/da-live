@@ -1,5 +1,6 @@
 import { getNx } from '../../scripts/utils.js';
 import { fetchDaConfigs } from '../shared/utils.js';
+import initGreeting from '../greeting/greeting.js';
 import { getBrowseComponent, resolveBrowsePath, takeLandingSections } from './utils.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -17,22 +18,27 @@ function useV2Nav() {
   if (typeof nav?.loadNav === 'function') nav.loadNav();
 }
 
-async function loadLandingSurface(el) {
+async function loadLandingStyles() {
   const background = await loadStyle(new URL('../landing/landing.css', import.meta.url).href);
   if (!document.adoptedStyleSheets.includes(background)) {
     document.adoptedStyleSheets.push(background);
   }
+}
+
+async function loadLandingSurface(el) {
+  await loadLandingStyles();
   const surface = document.createElement('div');
   surface.className = 'landing';
   el.replaceChildren(surface);
 }
 
-async function loadBrowseStyles() {
+async function loadBrowseStyles(cmpName) {
   const styles = await loadStyle(import.meta.url);
   if (!document.adoptedStyleSheets.includes(styles)) document.adoptedStyleSheets.push(styles);
+  if (cmpName === 'da-sites') await loadLandingStyles();
 }
 
-async function loadComponent(el, cmpName, pathDetails, surface, blocks) {
+async function loadComponent(el, cmpName, pathDetails, surface, blocks, greeting) {
   await surface;
   if (cmpName === 'da-landing') {
     const { loadLanding } = await import('../landing/landing.js');
@@ -59,6 +65,7 @@ async function loadComponent(el, cmpName, pathDetails, surface, blocks) {
   else await import('./legacy/da-browse/da-browse.js');
   const cmp = document.createElement(cmpName);
   cmp.details = pathDetails;
+  if (cmpName === 'da-sites') cmp.greeting = greeting;
   el.append(cmp);
 }
 
@@ -75,15 +82,21 @@ function setRecentSite(details) {
 }
 
 export default function init(el) {
+  el.querySelectorAll('picture').forEach((picture) => picture.remove());
   const blocks = takeLandingSections(el);
+  const greetingBlock = blocks.find((block) => block.classList.contains('greeting'));
+  const greeting = greetingBlock && getBrowseComponent({
+    search: window.location.search,
+    hasLanding: !!blocks.length,
+  }) === 'da-sites' ? initGreeting(greetingBlock) : undefined;
   hashChange.subscribe((pathDetails) => {
     const cmpName = getBrowseComponent({
       search: window.location.search,
       pathDetails,
       hasLanding: !!blocks.length,
     });
-    const surface = cmpName === 'da-landing' ? loadLandingSurface(el) : loadBrowseStyles();
-    loadComponent(el, cmpName, pathDetails, surface, blocks);
+    const surface = cmpName === 'da-landing' ? loadLandingSurface(el) : loadBrowseStyles(cmpName);
+    loadComponent(el, cmpName, pathDetails, surface, blocks, greeting);
     if (pathDetails) setRecentSite(pathDetails);
   });
 

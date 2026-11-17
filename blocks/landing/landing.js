@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../scripts/utils.js';
-import initGreeting from '../shared/da-greeting/da-greeting.js';
+import { createGreeting } from '../greeting/greeting.js';
 import initRecentFiles from './recent-files/recent-files.js';
 import initTiles from './tiles/tile-group.js';
 
@@ -101,7 +101,7 @@ export class DaLanding extends LitElement {
       this.replaceChildren(layout);
       blocks.forEach((block) => {
         if (block.classList.contains('greeting')) {
-          initGreeting(block, { profile: this.profile });
+          createGreeting(block, { profile: this.profile });
         } else if (block.classList.contains('recent-files')) {
           initRecentFiles(block, { scope: this.scope });
         } else if (block.classList.contains('landing')) {

@@ -6,7 +6,28 @@ import {
   processKeyData,
   createKeyMenuItems,
   normalizeForSlashMenu,
+  fetchKeyAutocompleteData,
+  getKeyAutocomplete,
 } from '../../../../../../../blocks/edit/prose/plugins/slashMenu/keyAutocomplete.js';
+
+describe('fetchKeyAutocompleteData', () => {
+  it('loads the library options sheet from DA Admin', async () => {
+    const savedFetch = window.fetch;
+    const calls = [];
+    window.fetch = async (url) => {
+      calls.push(url);
+      return new Response(JSON.stringify({ options: { data: [{ blocks: 'hero', key: 'style', values: 'Wide=wide' }] } }));
+    };
+    try {
+      await fetchKeyAutocompleteData('https://main--site--org.aem.live/library.json');
+      expect(calls).to.deep.equal(['https://admin.da.live/source/org/site/library.json']);
+      const options = await getKeyAutocomplete();
+      expect(options.get('hero').get('style')[0].value).to.equal('wide');
+    } finally {
+      window.fetch = savedFetch;
+    }
+  });
+});
 
 describe('processKeyData', () => {
   it('should process key data correctly', () => {

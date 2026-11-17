@@ -1,7 +1,8 @@
 // eslint-disable-next-line import/no-unresolved
 import { DOMParser } from 'da-y-wrapper';
 import getPathDetails from '../../../shared/pathDetails.js';
-import { daFetch, fetchDaConfigs, getFirstSheet, getSheetByName } from '../../../shared/utils.js';
+import { fetchDaConfigs, getFirstSheet, getSheetByName } from '../../../shared/utils.js';
+import { fetchLibrarySource } from '../../../shared/library-source.js';
 import { CON_ORIGIN } from '../../../shared/constants.js';
 import { getPreviewProxyDetails, toPreviewProxyUrl } from '../../../shared/preview-proxy.js';
 import { openAssets } from '../../da-assets/da-assets.js';
@@ -62,18 +63,7 @@ export function aemToContentUrl(url) {
   }
 }
 
-// Try the content.da.live rewrite first; fall back to the original URL on 404
-export async function daFetchLibrary(url, { skipRewrite = false } = {}) {
-  if (skipRewrite) {
-    return { resp: await daFetch(url, { noRedirect: true }), usedFallback: true };
-  }
-  const contentUrl = aemToContentUrl(url);
-  const resp = await daFetch(contentUrl, { noRedirect: true });
-  if (resp.status === 404 && contentUrl !== url) {
-    return { resp: await daFetch(url, { noRedirect: true }), usedFallback: true };
-  }
-  return { resp, usedFallback: false };
-}
+export const daFetchLibrary = fetchLibrarySource;
 
 export async function getItems(sources, format) {
   const items = [];
