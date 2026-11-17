@@ -24,7 +24,7 @@ export const TOOL_IDS = Object.freeze({
   bold: 'strong',
   italic: 'em',
   underline: 'u',
-  strikethrough: 'del',
+  strikethrough: 's',
   link: 'link',
   unlink: 'unlink',
   code: 'code',

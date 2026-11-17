@@ -60,7 +60,7 @@ describe('ew-form-rich-text-toolbar', () => {
     const toolbar = await mount();
     await until(() => toolbar._overflowAt === 8);
     const { shadowRoot } = toolbar;
-    expect(visibleIds(shadowRoot, '.form-rich-text-toolbar >')).to.deep.equal(['strong', 'em', 'u', 'del', 'bullet_list', 'ordered_list', 'link']);
+    expect(visibleIds(shadowRoot, '.form-rich-text-toolbar >')).to.deep.equal(['strong', 'em', 'u', 's', 'bullet_list', 'ordered_list', 'link']);
     const pickerBox = shadowRoot.querySelector('.form-rich-text-toolbar > .form-rich-text-picker');
     expect(pickerBox.previousElementSibling).to.equal(null);
     await openMenu(toolbar);
@@ -79,7 +79,7 @@ describe('ew-form-rich-text-toolbar', () => {
     const modifier = /Mac|iP(hone|[oa]d)/.test(navigator.platform) ? '⌘' : 'Ctrl';
     expect(tool(toolbar, 'strong').title).to.equal(`Bold (${modifier}+B)`);
     expect(tool(toolbar, 'link').title).to.equal(`Link (${modifier}+K)`);
-    expect(tool(toolbar, 'del').title).to.equal(`Strikethrough (${modifier}+Shift+S)`);
+    expect(tool(toolbar, 's').title).to.equal(`Strikethrough (${modifier}+Shift+S)`);
     expect(tool(toolbar, 'unlink').title).to.equal('Remove link');
   });
 

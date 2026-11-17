@@ -1,4 +1,5 @@
 import { LitElement, html, nothing, until } from 'da-lit';
+import { initIms } from '../shared/utils.js';
 
 const FIRST_NAME = '[firstname]';
 
@@ -43,7 +44,7 @@ export class DaGreeting extends LitElement {
 
 customElements.define('da-greeting', DaGreeting);
 
-export default function init(el, { profile, variant } = {}) {
+export function createGreeting(el, { profile, variant } = {}) {
   const greeting = document.createElement('da-greeting');
   greeting.rows = [...el.children].map((row) => {
     const [first, second] = row.children;
@@ -56,4 +57,16 @@ export default function init(el, { profile, variant } = {}) {
   greeting.className = el.className;
   el.replaceWith(greeting);
   return greeting;
+}
+
+async function initialize(el) {
+  el.hidden = true;
+  const profile = await initIms();
+  const variant = profile?.accessToken && !profile.anonymous ? 'user' : undefined;
+  return createGreeting(el, { profile, variant });
+}
+
+export default function init(el) {
+  el.initialized ??= initialize(el);
+  return el.initialized;
 }

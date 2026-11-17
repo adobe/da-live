@@ -1,6 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
-import init from '../../../../../blocks/shared/da-greeting/da-greeting.js';
+import '../../setup-nx.js';
+import { createGreeting as init } from '../../../../blocks/greeting/greeting.js';
 
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 
