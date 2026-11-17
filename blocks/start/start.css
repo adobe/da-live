@@ -47,6 +47,7 @@ form.actions {
 
 div.git-input label {
   display: block;
+  color: var(--s2-gray-1000);
   font-size: 18px;
   margin-bottom: 4px;
 }
@@ -126,6 +127,7 @@ div.git-input input::placeholder {
 
 div.text-container {
   margin-block: 24px;
+  color: var(--s2-gray-1000);
 
   p {
     margin: 0;
