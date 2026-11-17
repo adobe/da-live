@@ -3,6 +3,7 @@ import {
   baseSchema,
   DOMParser as ProseMirrorParser,
   DOMSerializer,
+  Fragment,
   Schema,
 } from 'da-y-wrapper';
 import { safeHref } from '../safe-href.js';
@@ -80,16 +81,16 @@ function createSchema() {
   const orderedList = { content, group, parseDOM: [{ tag: 'ol' }], toDOM: () => ['ol', 0] };
   return new Schema({
     nodes: lists.update('ordered_list', orderedList),
-    // Order sets the serialized nesting like the SDK, with del outermost and code innermost.
+    // Order sets the serialized nesting like the SDK.
     marks: {
-      del: {
+      s: {
         parseDOM: [
-          { tag: 'del' },
           { tag: 's' },
+          { tag: 'del' },
           { tag: 'strike' },
           { style: 'text-decoration=line-through' },
         ],
-        toDOM: () => ['del', 0],
+        toDOM: () => ['s', 0],
       },
       em: marks.get('em'),
       strong: marks.get('strong'),
@@ -173,6 +174,24 @@ export function parseRichText(value) {
 }
 
 /**
+ * Drops the marks of the line breaks in a node, so they are written outside marks.
+ * @param {object} node The ProseMirror node.
+ * @returns {object} The node with unmarked line breaks.
+ */
+function unmarkLineBreaks(node) {
+  if (node.type.name === 'hard_break') {
+    return node.mark([]);
+  }
+  if (node.isLeaf) {
+    return node;
+  }
+
+  const children = [];
+  node.forEach((child) => children.push(unmarkLineBreaks(child)));
+  return node.copy(Fragment.fromArray(children));
+}
+
+/**
  * Writes a document as HTML, or an empty string when it shows no text. The SDK brings the
  * value into its stored form on save.
  * @param {object} richTextDocument The ProseMirror document.
@@ -184,6 +203,6 @@ export function serializeRichText(richTextDocument) {
   }
 
   const container = document.createElement('div');
-  container.append(serializer.serializeFragment(richTextDocument.content));
+  container.append(serializer.serializeFragment(unmarkLineBreaks(richTextDocument).content));
   return container.innerHTML;
 }

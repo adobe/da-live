@@ -1,3 +1,29 @@
+## [1.31.1](https://github.com/adobe/da-live/compare/v1.31.0...v1.31.1) (2026-11-16)
+
+
+### Bug Fixes
+
+* **ew:** keep comments attached when moving sections or blocks ([#1641](https://github.com/adobe/da-live/issues/1641)) ([02e8759](https://github.com/adobe/da-live/commit/02e87590fd5992d479bde3b059d07dd89ffc86e5))
+
+# [1.31.0](https://github.com/adobe/da-live/compare/v1.30.2...v1.31.0) (2026-11-16)
+
+
+### Bug Fixes
+
+* **sc:** align rich-text markup with da-parser ([#1745](https://github.com/adobe/da-live/issues/1745)) ([eb3b2c3](https://github.com/adobe/da-live/commit/eb3b2c37f12cffc21e7f65bf09b663a799970ba0))
+
+
+### Features
+
+* add greeting to landing ([#1723](https://github.com/adobe/da-live/issues/1723)) ([e5fff35](https://github.com/adobe/da-live/commit/e5fff35bb19b6bbcdf7cc4b5d47ead7d81e60ee8))
+
+## [1.30.2](https://github.com/adobe/da-live/compare/v1.30.1...v1.30.2) (2026-11-16)
+
+
+### Bug Fixes
+
+* bump @adobe/da-parser to 2.2.1 to keep data-* image attributes ([#1746](https://github.com/adobe/da-live/issues/1746)) ([f2d7821](https://github.com/adobe/da-live/commit/f2d78212cf560a0326a48531599e7de51a074146))
+
 ## [1.30.1](https://github.com/adobe/da-live/compare/v1.30.0...v1.30.1) (2026-11-16)
 
 
