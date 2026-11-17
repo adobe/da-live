@@ -87,5 +87,31 @@ describe('DaBrowsePreflight', () => {
       expect(calls).to.equal(0);
       expect(el.shadowRoot.querySelectorAll('da-dialog > .da-preflight-error')).to.have.length(1);
     });
+
+    it('labels rows like browse: name without extension, site-relative path in tooltip', async () => {
+      localStorage.removeItem('nx-ims');
+      mount([
+        { path: '/o/s/blog/post.html', ext: 'html', name: 'post' },
+        { path: '/o/s/data.json', ext: 'json' },
+      ]);
+      await el.updateComplete;
+      const labels = [...el.shadowRoot.querySelectorAll('.da-preflight-path')];
+      expect(labels.map((l) => l.textContent)).to.deep.equal(['post', 'data']);
+      expect(labels.map((l) => l.title)).to.deep.equal(['/blog/post', '/data.json']);
+      const icons = [...el.shadowRoot.querySelectorAll('.da-preflight-type use')];
+      expect(icons[0].getAttribute('href')).to.contain('filehtml');
+    });
+
+    it('shows a spinner in the status slot while a page is evaluating', async () => {
+      el = new DaBrowsePreflight();
+      el.items = [{ path: '/o/s/a.html', ext: 'html', name: 'a' }];
+      el._evaluateAll = () => {};
+      document.body.append(el);
+      await el.updateComplete;
+      const spinner = el.shadowRoot.querySelector('.da-preflight-row-actions .nx-loading-spinner');
+      expect(spinner).to.exist;
+      expect(spinner.getAttribute('role')).to.equal('status');
+      expect(el.shadowRoot.querySelector('.ui-artifact-pe-icon')).to.not.exist;
+    });
   });
 });

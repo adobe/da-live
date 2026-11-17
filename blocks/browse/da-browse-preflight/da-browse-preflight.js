@@ -4,13 +4,28 @@ import { fetchWysiwygBranch, getPreviewOrigin } from '../../canvas/editor-utils/
 import { adaptEvaluation } from '../../canvas/ew-preflight/adapter.js';
 import { evaluatePage } from '../../canvas/ew-preflight/api.js';
 import { getAuthToken } from '../../shared/utils.js';
+import { iconPathForExt } from '../../shared/icons.js';
 import '../../shared/da-dialog/da-dialog.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const [BUTTONS, STYLE] = await Promise.all([
+const [BUTTONS, SPINNER, STYLE] = await Promise.all([
   loadStyle(`${getNx2()}/styles/buttons.css`),
+  loadStyle(`${getNx2()}/styles/spinner.css`),
   loadStyle(import.meta.url),
 ]);
+
+// Label rows like the browse list: the item's name, never its extension.
+function itemName(item) {
+  if (item.name) return item.name;
+  const last = item.path.split('/').pop();
+  return item.ext ? last.replace(new RegExp(`\\.${item.ext}$`), '') : last;
+}
+
+// Site-relative path for the tooltip; pages drop .html as they do in preview URLs.
+function itemPath(item) {
+  const [, , , ...rest] = item.path.split('/');
+  return `/${rest.join('/').replace(/\.html$/, '')}`;
+}
 
 const REFRESH_ICON = '/img/icons/s2-icon-refresh-20-n.svg';
 const CHEVRON_ICON = '/img/icons/s2-icon-chevronright-20-n.svg';
@@ -49,7 +64,7 @@ export default class DaBrowsePreflight extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [BUTTONS, STYLE];
+    this.shadowRoot.adoptedStyleSheets = [BUTTONS, SPINNER, STYLE];
     // Only pages are evaluated; other publishable files have no checks and pass as-is.
     this._rows = this.items.map((item) => {
       const isPage = item.ext === 'html';
@@ -144,7 +159,7 @@ export default class DaBrowsePreflight extends LitElement {
   }
 
   _renderStatusIcon(row) {
-    if (row.status === 'loading') return html`<span class="nx-loading-spinner" aria-hidden="true"></span>`;
+    if (row.status === 'loading') return html`<span class="nx-loading-spinner" role="status" aria-label="Evaluating"></span>`;
     const tone = row.status === 'pass' ? 'positive' : 'negative';
     const label = row.status === 'pass' ? 'Passed' : 'Failed';
     return html`<span class="ui-artifact-pe-icon ui-artifact-pe-tone-${tone}" role="img" aria-label=${label} title=${label}></span>`;
@@ -167,7 +182,10 @@ export default class DaBrowsePreflight extends LitElement {
           <span class="da-preflight-chevron">
             <svg viewBox="0 0 20 20" aria-hidden="true"><use href="${CHEVRON_ICON}#icon"></use></svg>
           </span>
-          <span class="da-preflight-path" title=${row.item.path}>${row.item.path}</span>
+          <span class="da-preflight-type">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><use href="${iconPathForExt(row.item.ext)}#icon"></use></svg>
+          </span>
+          <span class="da-preflight-path" title=${itemPath(row.item)}>${itemName(row.item)}</span>
           <span class="da-preflight-row-actions">
             ${row.isPage ? html`<button
               class="nx-action-btn-icon nx-btn-sm"

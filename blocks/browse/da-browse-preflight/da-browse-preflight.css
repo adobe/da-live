@@ -41,6 +41,16 @@
   transform: rotate(90deg);
 }
 
+.da-preflight-type {
+  display: inline-flex;
+  color: var(--s2-gray-800);
+}
+
+.da-preflight-type svg {
+  width: 20px;
+  height: 20px;
+}
+
 .da-preflight-path {
   flex: 1;
   min-width: 0;
@@ -55,6 +65,13 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+/* Occupies the same slot as the pass/fail icon so the row doesn't shift when it resolves. */
+.da-preflight-row-actions .nx-loading-spinner {
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
 }
 
 .da-preflight-body {
