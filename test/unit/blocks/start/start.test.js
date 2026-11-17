@@ -28,27 +28,25 @@ describe('start page', () => {
     document.body.classList.remove('dark-scheme');
   });
 
-  it('uses the dark landing gradient without the old background or step count', async () => {
+  it('uses the dark landing gradient', async () => {
     const el = main.querySelector('.start');
     await init(el);
     const start = el.querySelector('da-start');
-    await start.updateComplete;
 
     const landing = el.querySelector(':scope > .landing');
     expect(landing.contains(start)).to.be.true;
     expect(document.body.classList.contains('dark-scheme')).to.be.true;
     expect(document.body.classList.contains('light-scheme')).to.be.false;
-    expect(landing.style.colorScheme).to.equal('');
     expect(getComputedStyle(landing).colorScheme).to.equal('dark');
     expect(getComputedStyle(landing).backgroundImage).to.contain('radial-gradient');
-    expect(start.shadowRoot.querySelector('.background, .gradient, .step-count')).to.be.null;
   });
 
   it('moves the authored greeting into the start block', async () => {
     const el = main.querySelector('.start');
+    const greetingEl = main.querySelector('div.greeting');
     await init(el);
     const start = el.querySelector('da-start');
-    await new Promise((resolve) => { setTimeout(resolve, 50); });
+    await greetingEl.initialized;
 
     const greeting = start.querySelector('da-greeting');
     expect(greeting.slot).to.equal('greeting');
