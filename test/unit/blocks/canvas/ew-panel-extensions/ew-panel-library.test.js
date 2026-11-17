@@ -91,11 +91,10 @@ describe('Ew panel library block insertion', () => {
       hashChange._set({ org: 'org', site: 'site' });
       setDaConfigs([{ library: { data: [{ title: 'Blocks', path: '/blocks.json' }] } }]);
       resetBlockLibraryCache();
-      const proxy = 'https://main--site--org.stage-preview.da.live';
+      const admin = 'https://admin.da.live/source/org/site';
       const responses = new Map([
-        [`${proxy}/gimme_cookie`, ''],
-        [`${proxy}/blocks.json`, JSON.stringify([{ name: 'New', path: 'https://main--site--org.aem.live/blocks/new' }])],
-        [`${proxy}/blocks/new.plain.html`, '<body><div><div class="New"><div><div><p>Replacement</p></div></div></div></div></body>'],
+        [`${admin}/blocks.json`, JSON.stringify([{ name: 'New', path: 'https://main--site--org.aem.live/blocks/new' }])],
+        [`${admin}/blocks/new.html`, '<body><div><div class="New"><div><div><p>Replacement</p></div></div></div></div></body>'],
       ]);
       const calls = [];
       window.fetch = async (url, options) => {
@@ -128,7 +127,7 @@ describe('Ew panel library block insertion', () => {
           ['paragraph', 'Outro'], ['table', 'OtherKeep'],
         ]);
         expect(calls.map(({ url }) => url)).to.deep.equal([...responses.keys()]);
-        expect(calls.every(({ options }) => options.credentials === 'include')).to.equal(true);
+        expect(calls.every(({ options }) => options.credentials === undefined)).to.equal(true);
         expect(calls[0].options.headers.Authorization).to.equal('Bearer test-token');
       } finally {
         document.querySelector('ew-block-library-modal')?.remove();
@@ -234,7 +233,7 @@ describe('Ew panel library _insertTemplate', () => {
     expect(el._actionError).to.equal('Unable to load template (404).');
   });
 
-  it('inserts a same-org template through the proxy without persisting proxy image URLs', async () => {
+  it('inserts a same-org template from Admin without persisting Admin image URLs', async () => {
     const view = makeView({ type: 'doc', content: [{ type: 'paragraph' }] });
     getExtensionsBridge().view = view;
     const calls = [];
@@ -245,8 +244,8 @@ describe('Ew panel library _insertTemplate', () => {
     const el = document.createElement('ew-panel-library');
     el._hashState = { org: 'org', site: 'site' };
     await el._insertTemplate({ path: 'https://main--site--org.aem.live/templates/home' });
-    expect(calls[0].url).to.equal('https://main--site--org.stage-preview.da.live/templates/home');
-    expect(calls[0].opts.credentials).to.equal('include');
+    expect(calls[0].url).to.equal('https://admin.da.live/source/org/site/templates/home.html');
+    expect(calls[0].opts.credentials).to.equal(undefined);
     expect(view.state.doc.textContent).to.include('Template text');
     const images = [];
     view.state.doc.descendants((node) => {
@@ -256,7 +255,7 @@ describe('Ew panel library _insertTemplate', () => {
     expect(el._actionError).to.equal(undefined);
   });
 
-  it('keeps a cross-org template direct and inserts its content', async () => {
+  it('loads a cross-org template from Admin and inserts its content', async () => {
     const view = makeView({ type: 'doc', content: [{ type: 'paragraph' }] });
     getExtensionsBridge().view = view;
     const calls = [];
@@ -268,43 +267,102 @@ describe('Ew panel library _insertTemplate', () => {
     el._hashState = { org: 'org', site: 'site' };
     await el._insertTemplate({ path: 'https://main--shared--other.aem.live/templates/home' });
     expect(calls).to.have.lengthOf(1);
-    expect(calls[0].url).to.equal('https://main--shared--other.aem.live/templates/home');
+    expect(calls[0].url).to.equal('https://admin.da.live/source/other/shared/templates/home.html');
     expect(calls[0].opts.credentials).to.equal(undefined);
     expect(view.state.doc.textContent).to.include('Shared template');
+  });
+
+  it('preserves section metadata and section boundaries from raw template source', async () => {
+    const view = makeView({ type: 'doc', content: [{ type: 'paragraph' }] });
+    getExtensionsBridge().view = view;
+    const calls = [];
+    window.fetch = async (url) => {
+      calls.push(url);
+      return new Response(`<body><main>
+        <div><p>First section</p>
+          <div class="section-metadata"><div><div>Style</div><div>dark</div></div></div>
+        </div>
+        <div><p>Second section</p>
+          <div class="section-metadata"><div><div>Style</div><div>light</div></div></div>
+          <div class="template-metadata"><div><div>Title</div><div>Template title</div></div></div>
+        </div>
+      </main></body>`);
+    };
+    const el = document.createElement('ew-panel-library');
+    el._hashState = { org: 'org', site: 'site' };
+    await el._insertTemplate({ path: 'https://main--site--org.aem.live/templates/home' });
+    expect(el._actionError).to.equal(undefined);
+    expect(calls).to.deep.equal(['https://admin.da.live/source/org/site/templates/home.html']);
+    const tables = [];
+    let sections = 0;
+    view.state.doc.descendants((node) => {
+      if (node.type.name === 'table') tables.push(node.textContent);
+      if (node.type.name === 'horizontal_rule') sections += 1;
+    });
+    expect(tables).to.deep.equal([
+      'section-metadataStyledark', 'section-metadataStylelight', 'metadataTitleTemplate title',
+    ]);
+    expect(sections).to.equal(1);
+  });
+
+  it('inserts an AEM-only fallback template using public AEM image URLs', async () => {
+    const view = makeView({ type: 'doc', content: [{ type: 'paragraph' }] });
+    getExtensionsBridge().view = view;
+    const calls = [];
+    window.fetch = async (url, opts) => {
+      calls.push({ url, opts });
+      if (url.startsWith('https://admin.da.live/')) return new Response('', { status: 404 });
+      return new Response('<body><main><div><p>External template</p><p><img src="./media_hero.png"></p></div></main></body>');
+    };
+    const el = document.createElement('ew-panel-library');
+    el._hashState = { org: 'org', site: 'site' };
+    await el._insertTemplate({ path: 'https://feat--site--org.aem.live/templates/home' });
+    expect(el._actionError).to.equal(undefined);
+    expect(calls.map(({ url }) => url)).to.deep.equal([
+      'https://admin.da.live/source/org/site/templates/home.html',
+      'https://feat--site--org.aem.live/templates/home',
+    ]);
+    expect(calls.every(({ opts }) => opts.credentials === undefined)).to.be.true;
+    const images = [];
+    view.state.doc.descendants((node) => {
+      if (node.type.name === 'image') images.push(node.attrs.src);
+    });
+    expect(images).to.deep.equal(['https://feat--site--org.aem.live/media_hero.png']);
   });
 
   [
     {
       name: 'same-org AEM templates',
       source: 'https://feat--site--org.aem.live/templates/home',
-      fetched: 'https://feat--site--org.stage-preview.da.live/templates/home',
+      fetched: 'https://admin.da.live/source/org/site/templates/home.html',
       publicDocument: 'https://content.da.live/org/site/templates/home',
       contentRoot: 'https://content.da.live/org/site',
-      credentials: 'include',
     },
     {
       name: 'cross-org AEM templates',
       source: 'https://feat--shared--other.aem.page/templates/home',
-      publicDocument: 'https://feat--shared--other.aem.page/templates/home',
-      rootMedia: true,
+      fetched: 'https://admin.da.live/source/other/shared/templates/home.html',
+      publicDocument: 'https://content.da.live/other/shared/templates/home',
+      contentRoot: 'https://content.da.live/other/shared',
     },
     {
       name: 'proxied DA-content templates',
       source: 'https://content.da.live/org/site/templates/home',
-      fetched: 'https://main--site--org.stage-preview.da.live/templates/home',
+      fetched: 'https://admin.da.live/source/org/site/templates/home.html',
       publicDocument: 'https://content.da.live/org/site/templates/home',
       contentRoot: 'https://content.da.live/org/site',
-      credentials: 'include',
     },
     {
       name: 'cross-org DA-content templates',
       source: 'https://content.da.live/other/shared/templates/home',
+      fetched: 'https://admin.da.live/source/other/shared/templates/home.html',
       publicDocument: 'https://content.da.live/other/shared/templates/home',
       contentRoot: 'https://content.da.live/other/shared',
     },
     {
       name: 'DA-content templates without editor org context',
       source: 'https://content.da.live/org/site/templates/home',
+      fetched: 'https://admin.da.live/source/org/site/templates/home.html',
       publicDocument: 'https://content.da.live/org/site/templates/home',
       contentRoot: 'https://content.da.live/org/site',
       context: {},
@@ -312,17 +370,16 @@ describe('Ew panel library _insertTemplate', () => {
     {
       name: 'relative same-org template sources',
       source: '/templates/home',
-      fetched: 'https://main--site--org.stage-preview.da.live/templates/home',
+      fetched: 'https://admin.da.live/source/org/site/templates/home.html',
       publicDocument: 'https://content.da.live/org/site/templates/home',
       contentRoot: 'https://content.da.live/org/site',
-      credentials: 'include',
     },
     {
       name: 'already-proxied templates',
       source: 'https://main--site--org.stage-preview.da.live/templates/home',
+      fetched: 'https://admin.da.live/source/org/site/templates/home.html',
       publicDocument: 'https://content.da.live/org/site/templates/home',
       contentRoot: 'https://content.da.live/org/site',
-      credentials: 'include',
     },
     {
       name: 'unrecognized public template hosts',
@@ -332,43 +389,43 @@ describe('Ew panel library _insertTemplate', () => {
     {
       name: 'cross-org already-proxied templates',
       source: 'https://feat--shared--other.preview.da.live/templates/home',
+      fetched: 'https://admin.da.live/source/other/shared/templates/home.html',
       publicDocument: 'https://content.da.live/other/shared/templates/home',
       contentRoot: 'https://content.da.live/other/shared',
     },
     {
       name: 'already-proxied templates without editor org context',
       source: 'https://main--site--org.stage-preview.da.live/templates/home',
+      fetched: 'https://admin.da.live/source/org/site/templates/home.html',
       publicDocument: 'https://content.da.live/org/site/templates/home',
       contentRoot: 'https://content.da.live/org/site',
       context: {},
     },
     {
-      name: 'AEM HTML resources forwarded by the proxy',
+      name: 'explicit AEM HTML resources',
       source: 'https://feat--site--org.aem.page/templates/home.html',
-      fetched: 'https://feat--site--org.stage-preview.da.live/templates/home.html',
-      publicDocument: 'https://feat--site--org.aem.page/templates/home.html',
-      rootMedia: true,
-      credentials: 'include',
+      fetched: 'https://admin.da.live/source/org/site/templates/home.html',
+      publicDocument: 'https://content.da.live/org/site/templates/home.html',
+      contentRoot: 'https://content.da.live/org/site',
     },
     {
       name: 'stage DA-content templates',
       source: 'https://stage-content.da.live/org/site/templates/home',
-      fetched: 'https://main--site--org.stage-preview.da.live/templates/home',
+      fetched: 'https://admin.da.live/source/org/site/templates/home.html',
       publicDocument: 'https://stage-content.da.live/org/site/templates/home',
       contentRoot: 'https://stage-content.da.live/org/site',
-      credentials: 'include',
     },
     ...['content.da.live', 'stage-content.da.live'].flatMap((host) => ['.html', '.plain.html'].map((suffix) => ({
-      name: `proxied ${host} ${suffix} resources`,
+      name: `${host} ${suffix} resources`,
       source: `https://${host}/org/site/templates/home${suffix}`,
-      fetched: `https://main--site--org.stage-preview.da.live/templates/home${suffix}`,
-      publicDocument: `https://main--site--org.aem.page/templates/home${suffix}`,
-      rootMedia: true,
-      credentials: 'include',
+      fetched: 'https://admin.da.live/source/org/site/templates/home.html',
+      publicDocument: `https://${host}/org/site/templates/home.html`,
+      contentRoot: `https://${host}/org/site`,
     }))),
     {
       name: 'unproxied cross-org DA-content HTML',
       source: 'https://content.da.live/other/shared/templates/home.html',
+      fetched: 'https://admin.da.live/source/other/shared/templates/home.html',
       publicDocument: 'https://content.da.live/other/shared/templates/home.html',
       contentRoot: 'https://content.da.live/other/shared',
     },

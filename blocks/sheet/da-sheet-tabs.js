@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx } from '../../scripts/utils.js';
 import inlinesvg from '../shared/inlinesvg.js';
 import { handleSave } from './utils/utils.js';
-import makeKeyboardAccessible from './utils/keyboard.js';
+import makeKeyboardAccessible, { releaseKeyboard } from './utils/keyboard.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -44,6 +44,7 @@ class DaSheetTabs extends LitElement {
 
   showSheet(idx) {
     this._active = idx;
+    releaseKeyboard(this.jexcel[idx]);
     this.sheetContents.forEach((sheet) => { sheet.style.display = 'none'; });
     this.sheetContents[idx].style.display = 'block';
   }
@@ -97,6 +98,8 @@ class DaSheetTabs extends LitElement {
       handleSave(this.jexcel, this.tabContainer.details.view);
     };
     makeKeyboardAccessible(newSheet);
+    // Keep keys in the name input until the user moves into the new grid
+    releaseKeyboard();
 
     // Refresh the tab names
     this._names = this.getNames();

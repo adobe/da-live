@@ -41,6 +41,7 @@ test('Regional Edit Document', async ({ page, context }, workerInfo) => {
   await page.getByRole('menuitem', { name: 'Folder' }).click();
   await page.getByPlaceholder('folder name').fill(folderName);
   await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('link', { name: folderName, exact: true })).toBeVisible();
   /* */ // End addition
 
   await page.goto(folderURL);
