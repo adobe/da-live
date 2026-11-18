@@ -71,6 +71,40 @@ describe('Landing file preview', () => {
     expect(metadata.getCalls().map(({ args }) => args[0])).to.deep.equal(paths('org/site', 10));
   });
 
+  [null, JSON.stringify({ view: 'list', groupByType: false })].forEach((settings) => {
+    it(`keeps view changes local ${settings ? 'with' : 'without'} saved Browse settings`, async () => {
+      if (settings) localStorage.setItem('da-browse-settings', settings);
+      const switcher = el.shadowRoot.querySelector('nx-segmented-btn');
+      for (const view of ['card', 'list', 'card']) {
+        switcher.dispatchEvent(new CustomEvent('change', { detail: { value: view } }));
+        await update();
+        expect(list().view).to.equal(view);
+        expect(localStorage.getItem('da-browse-settings')).to.equal(settings);
+      }
+      const { scopes } = el;
+      el.remove();
+      el = document.createElement('da-recent-files');
+      el.scopes = scopes;
+      document.body.append(el);
+      await update();
+      await loadSite.lastCall.returnValue;
+      await update();
+      expect(list().view).to.equal('list');
+      expect(localStorage.getItem('da-browse-settings')).to.equal(settings);
+    });
+  });
+
+  it('does not request editor settings when there are no recent files', async () => {
+    setRecent({});
+    config.get.resetHistory();
+    metadata.resetHistory();
+    await el.loadSite();
+    await update();
+    expect(el.shadowRoot.querySelector('.empty-state h3').textContent).to.equal('No recent files yet');
+    expect(config.get.called).to.equal(false);
+    expect(metadata.called).to.equal(false);
+  });
+
   it('resets both tab expansions when the ordered sites change', async () => {
     for (const scope of ['org/site', 'org/other']) {
       paths(scope, 10).forEach((path) => toggleFavorite(`/${scope}`, path));

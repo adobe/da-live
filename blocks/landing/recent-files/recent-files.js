@@ -2,7 +2,6 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2Api, getNxEWFlags } from '../../../scripts/utils.js';
 import { fetchDaConfigs, getEditorConfigs } from '../../shared/utils.js';
 import { getSiteFavorites, toggleFavorite } from '../../browse/shared/favorites.js';
-import { updateBrowseSettings } from '../../browse/v2/shared/settings.js';
 import { getRecentFiles } from '../../shared/recent-files.js';
 import { getBrowseHref, getListItems, loadFilesByPath } from '../utils.js';
 import '../../browse/v2/da-list/da-list.js';
@@ -40,8 +39,6 @@ export class DaRecentFiles extends LitElement {
     _tab: { state: true },
     _view: { state: true },
     _limits: { state: true },
-    _editor: { state: true },
-    _editorConfs: { state: true },
   };
 
   _onPageShow = ({ persisted }) => {
@@ -106,18 +103,11 @@ export class DaRecentFiles extends LitElement {
     this._files = undefined;
     this._favoriteFiles = null;
     this._error = undefined;
-    this._editor = undefined;
-    this._editorConfs = undefined;
     this._siteContexts = new Map();
     if (!this.scope) return;
     try {
-      const [files, context] = await Promise.all([
-        this.loadPreview('recent', request),
-        this.getSiteContext(this.scope, request),
-      ]);
+      const files = await this.loadPreview('recent', request);
       if (!this.isConnected || request.signal.aborted) return;
-      this._editor = context.editor;
-      this._editorConfs = context.editorConfs;
       this._files = files;
       if (this._tab === 'starred') await this.loadFavorites();
     } catch (error) {
@@ -227,7 +217,6 @@ export class DaRecentFiles extends LitElement {
   changeView({ detail: { value } }) {
     if (!['card', 'list'].includes(value)) return;
     this._view = value;
-    updateBrowseSettings({ view: value });
   }
 
   renderFiles() {
@@ -245,14 +234,8 @@ export class DaRecentFiles extends LitElement {
     }
     const total = Math.min(files.length, MAX_FILES);
     const visible = files.slice(0, Math.min(this._limits[this._tab] ?? PAGE_SIZE, total));
-    const items = getListItems({
-      files: visible,
-      favorites: this._favorites,
-      editor: this._editor || '/edit#',
-      editorConfs: this._editorConfs,
-    }).map((item, index) => ({
+    const items = visible.map((item) => ({
       ...item,
-      ...visible[index],
       isFavorited: this._favorites.has(item.path),
       folderLabel: item.path.slice(0, item.path.lastIndexOf('/')),
     }));
