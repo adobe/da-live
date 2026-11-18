@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2Api, getNxEWFlags } from '../../../scripts/utils.js';
+import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../../scripts/utils.js';
 import { fetchDaConfigs, getEditorConfigs } from '../../shared/utils.js';
 import { getSiteFavorites, toggleFavorite } from '../../browse/shared/favorites.js';
 import { getRecentFiles } from '../../shared/recent-files.js';
@@ -10,6 +10,7 @@ const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 await import(`${getNx()}/blocks/shared/segmented-btn/segmented.js`);
 const styles = await Promise.all([
   loadStyle(`${getNx()}/styles/buttons.css`),
+  loadStyle(`${getNx2()}/styles/spinner.css`),
   loadStyle(import.meta.url),
 ]);
 
