@@ -9,10 +9,9 @@ describe('start page', () => {
   let main;
 
   beforeEach(() => {
-    document.body.classList.add('light-scheme');
     main = document.createElement('main');
     main.innerHTML = `
-      <div class="section"><div class="start cmp"></div></div>
+      <div class="section"><div class="start"></div></div>
       <div class="section"><div class="greeting"><div><div><h1>Welcome to Experience Workspace</h1></div></div></div></div>`;
     document.body.append(main);
     ['red-100', 'pink-200', 'blue-200', 'gray-25'].forEach((token) => {
@@ -22,7 +21,6 @@ describe('start page', () => {
 
   afterEach(() => {
     main.remove();
-    document.body.classList.remove('light-scheme');
   });
 
   it('uses the dark gradient', () => {
