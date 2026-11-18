@@ -5,6 +5,15 @@ import { NAV_ORIGIN } from '../../../../../blocks/form/events.js';
 
 const tick = () => new Promise((resolve) => { setTimeout(resolve); });
 
+const richTextNode = (extra = {}) => ({
+  kind: 'string',
+  pointer: '/data/body',
+  label: 'Body',
+  semanticType: 'rich-text',
+  value: '<p>hi</p>',
+  ...extra,
+});
+
 function objectRoot(children) {
   return { kind: 'object', pointer: '/data', label: 'Data', children };
 }
@@ -23,6 +32,16 @@ async function mountEditor(root) {
 }
 
 describe('ew-form-fields primitive controls', () => {
+  it('loads the rich-text field only once a form renders one', async () => {
+    await mountEditor(objectRoot([{ kind: 'string', pointer: '/data/title', label: 'Title', value: 'x' }]));
+    expect(customElements.get('ew-form-rich-text')).to.equal(undefined);
+    const formEditor = await mountEditor(objectRoot([richTextNode()]));
+    await customElements.whenDefined('ew-form-rich-text');
+    const field = formEditor.shadowRoot.querySelector('ew-form-rich-text');
+    await field.updateComplete;
+    expect(field.shadowRoot.querySelector('.form-rich-text-content')).to.exist;
+  });
+
   it('renders a textarea for a long-text string node', async () => {
     const root = objectRoot([
       { kind: 'string', pointer: '/data/body', label: 'Body', semanticType: 'long-text', value: 'hi' },
@@ -30,6 +49,53 @@ describe('ew-form-fields primitive controls', () => {
     const el = await mountEditor(root);
     expect(el.shadowRoot.querySelector('ew-form-textarea')).to.exist;
     expect(el.shadowRoot.querySelector('ew-form-input')).to.equal(null);
+  });
+
+  it('renders a rich-text editor for a rich-text string node', async () => {
+    const formEditor = await mountEditor(objectRoot([richTextNode()]));
+    const field = formEditor.shadowRoot.querySelector('[data-pointer="/data/body"]');
+    expect(field.tagName).to.equal('EW-FORM-RICH-TEXT');
+    expect(field.value).to.equal('<p>hi</p>');
+    expect(formEditor.shadowRoot.querySelector('form-textarea')).to.equal(null);
+  });
+
+  it('commits a rich-text value immediately on change', async () => {
+    const formEditor = await mountEditor(objectRoot([richTextNode()]));
+    const calls = [];
+    formEditor.editor = { setField: (pointer, value) => calls.push([pointer, value]) };
+    const field = formEditor.shadowRoot.querySelector('ew-form-rich-text');
+    field.value = '<p>bye</p>';
+    field.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    expect(formEditor._inputTimers.has('/data/body')).to.equal(true);
+    field.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+    expect(formEditor._inputTimers.has('/data/body')).to.equal(false);
+    expect(calls).to.deep.equal([['/data/body', '<p>bye</p>']]);
+  });
+
+  it('clears an emptied rich-text value on change', async () => {
+    const formEditor = await mountEditor(objectRoot([richTextNode()]));
+    const calls = [];
+    formEditor.editor = { setField: (pointer, value) => calls.push([pointer, value]) };
+    const field = formEditor.shadowRoot.querySelector('ew-form-rich-text');
+    field.value = '';
+    field.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+    expect(calls).to.deep.equal([['/data/body', undefined]]);
+  });
+
+  it('stretches a rich-text item to fill an array row', async () => {
+    const root = objectRoot([
+      {
+        kind: 'array',
+        pointer: '/data/notes',
+        label: 'Notes',
+        itemLabel: 'Note',
+        items: [richTextNode({ pointer: '/data/notes/0', label: 'Note', value: '<p>a</p>' })],
+      },
+    ]);
+    const formEditor = await mountEditor(root);
+    const field = formEditor.shadowRoot.querySelector('.form-array-item-input-row > ew-form-rich-text');
+    expect(field).to.exist;
+    expect(getComputedStyle(field).flexGrow).to.equal('1');
   });
 
   it('renders a single-line input for a plain string node', async () => {

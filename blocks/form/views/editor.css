@@ -114,7 +114,8 @@
   gap: var(--s2-spacing-100);
 }
 
-.editor-root .form-array-item-input-row:has(> ew-form-textarea) {
+.editor-root .form-array-item-input-row:has(> ew-form-textarea),
+.editor-root .form-array-item-input-row:has(> ew-form-rich-text) {
   align-items: flex-start;
 }
 
@@ -129,6 +130,7 @@
 
 .editor-root ew-form-input,
 .editor-root ew-form-textarea,
+.editor-root ew-form-rich-text,
 .editor-root ew-form-number-field,
 .editor-root ew-form-picker,
 .editor-root ew-form-checkbox,
@@ -139,6 +141,7 @@
 
 .editor-root .form-array-item-primitive ew-form-input,
 .editor-root .form-array-item-primitive ew-form-textarea,
+.editor-root .form-array-item-primitive ew-form-rich-text,
 .editor-root .form-array-item-primitive ew-form-number-field,
 .editor-root .form-array-item-primitive ew-form-picker,
 .editor-root .form-array-item-primitive ew-form-checkbox,
@@ -148,6 +151,7 @@
 
 .editor-root .form-array-item-input-row > ew-form-input,
 .editor-root .form-array-item-input-row > ew-form-textarea,
+.editor-root .form-array-item-input-row > ew-form-rich-text,
 .editor-root .form-array-item-input-row > ew-form-number-field,
 .editor-root .form-array-item-input-row > ew-form-picker,
 .editor-root .form-array-item-input-row > ew-form-checkbox,
