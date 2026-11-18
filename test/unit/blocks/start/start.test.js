@@ -7,11 +7,6 @@ const { default: init } = await import('../../../../blocks/start/start.js');
 
 describe('start page', () => {
   let main;
-  let sheets;
-
-  before(() => { sheets = document.adoptedStyleSheets; });
-
-  after(() => { document.adoptedStyleSheets = sheets; });
 
   beforeEach(() => {
     document.body.classList.add('light-scheme');
@@ -34,9 +29,10 @@ describe('start page', () => {
     const el = main.querySelector('.start');
     init(el);
 
-    expect(el.querySelector(':scope > da-start')).to.exist;
-    expect(getComputedStyle(el).colorScheme).to.equal('dark');
-    expect(getComputedStyle(el).backgroundImage).to.contain('radial-gradient');
+    const start = el.querySelector(':scope > da-start');
+    expect(start).to.exist;
+    expect(getComputedStyle(start).colorScheme).to.equal('dark');
+    expect(getComputedStyle(start).backgroundImage).to.contain('radial-gradient');
   });
 
   it('moves the authored greeting into the start block', async () => {

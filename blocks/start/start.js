@@ -365,10 +365,6 @@ class DaStart extends LitElement {
 customElements.define('da-start', DaStart);
 
 export default function init(el) {
-  // Authored as `start cmp`, so Nexter does not load start.css on the document.
-  if (!document.adoptedStyleSheets.includes(sheet)) {
-    document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
-  }
   const start = document.createElement('da-start');
   el.append(start);
   const section = el.closest('.section')?.nextElementSibling;

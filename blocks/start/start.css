@@ -1,10 +1,11 @@
-/* TODO: remove once the new start components support light mode. */
-.light-scheme, .dark-scheme {
+:host {
+  /* TODO: remove once the new start components support light mode. */
   color-scheme: dark;
-}
-
-.start {
-  min-height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  color: var(--s2-gray-1000);
   background:
     radial-gradient(
       ellipse 60% 520px at 15% 40px,
@@ -22,24 +23,6 @@
       transparent 100%
     ),
     var(--s2-gray-25);
-}
-
-.section:has(.start) {
-  height: 100%;
-}
-
-@media (forced-colors: active) {
-  .start {
-    background: Canvas;
-  }
-}
-
-:host {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  color: #fff;
 }
 
 h2 {
