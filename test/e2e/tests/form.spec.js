@@ -68,7 +68,7 @@ const test = base.extend({
     page.on('request', (request) => requestedUrls.push(new URL(request.url())));
 
     await page.goto(getFormURL(getTestResourceName('formroute', testInfo)));
-    await expect(page.locator('div.form nx-form')).toBeAttached();
+    await expect(page.locator('div.form ew-form-editor')).toBeAttached();
     // The block keeps importing modules (chat) after the editor mounts. Wait
     // until loading settles so absence checks see every request.
     await page.waitForLoadState('networkidle');
@@ -134,7 +134,7 @@ test('Form loads the nx2 runtime once', async ({ formPageRequests }) => {
 });
 
 test('Form keeps a saved value after reload', async ({ page, schemaName, documentName }, testInfo) => {
-  const form = page.locator('nx-form');
+  const form = page.locator('ew-form-editor');
   const titleField = form.getByRole('textbox', { name: 'Title', exact: true });
   const enteredTitle = `[${testInfo.project.name}] Saved by test ${Date.now()}`;
 
