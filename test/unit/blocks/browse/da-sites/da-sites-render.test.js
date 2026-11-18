@@ -1,10 +1,10 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
-import { getNx2, setNx } from '../../../../../scripts/utils.js';
+import { getNx2Api, setNx } from '../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { loadIms, handleSignIn } = await import(`${getNx2()}/utils/ims.js`);
+const { loadIms, handleSignIn } = await getNx2Api();
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 
 const savedFetch = window.fetch;

@@ -1,9 +1,8 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, getNx2, sanitizeName } from '../../../scripts/utils.js';
+import { getNx, getNx2Api, sanitizeName } from '../../../scripts/utils.js';
 import '../../landing/recent-files/recent-files.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const { loadIms, handleSignIn } = await import(`${getNx2()}/utils/ims.js`);
 const styles = await loadStyle(import.meta.url);
 
 const RANDOM_MAX = 8;
@@ -35,6 +34,7 @@ export default class DaSites extends LitElement {
     this._recents = this.getRecents();
     if (this._recents?.length) {
       try {
+        const { loadIms, handleSignIn } = await getNx2Api();
         const ims = await loadIms();
         if (!this.isConnected) return;
         if (!ims?.accessToken || ims.anonymous) {
