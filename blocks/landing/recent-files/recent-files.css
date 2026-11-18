@@ -160,6 +160,7 @@ da-list::part(grid) {
   --da-list-type-width: 200px;
   --da-list-date-width: 200px;
   --da-list-action-width: 96px;
+  --da-list-columns: var(--da-list-select-width) minmax(0, var(--da-list-name-width)) var(--da-list-type-width) minmax(var(--da-list-date-width), 1fr) var(--da-list-action-width);
 }
 
 .empty-state {

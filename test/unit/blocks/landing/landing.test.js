@@ -3,6 +3,7 @@ import sinon from 'sinon';
 import '../../setup-nx.js';
 import { getFavorites, toggleFavorite } from '../../../../blocks/browse/shared/favorites.js';
 import { DaLanding } from '../../../../blocks/landing/landing.js';
+import { getListItems } from '../../../../blocks/landing/utils.js';
 import { getNx2, getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
 
 const { source, config } = await getNx2Api();
@@ -49,9 +50,8 @@ describe('landing Content section', () => {
     el = document.createElement('da-landing');
     document.body.append(el);
     await initialize.lastCall.returnValue;
-    el._files = ITEMS;
+    el._files = getListItems({ files: ITEMS, editor: '/canvas#' });
     el._favoriteFiles = [];
-    el._editor = '/canvas#';
     await updateLanding();
   });
 
@@ -86,7 +86,7 @@ describe('landing Content section', () => {
     expect(el.shadowRoot.querySelector('.show-more').getAttribute('aria-expanded')).to.equal('true');
   });
 
-  it('expands Recent from four to ten and preserves files and preference across view changes', async () => {
+  it('expands Recent from four to ten and preserves files across local view changes', async () => {
     expect(fileItems()).to.have.length(4);
     el.shadowRoot.querySelector('.show-more').click();
     await updateLanding();
@@ -101,7 +101,7 @@ describe('landing Content section', () => {
       expect([...fileItems()].map((item) => item.path))
         .to.deep.equal(ITEMS.slice(0, 10).map((item) => item.path));
       expect(el.shadowRoot.querySelector('.show-more').getAttribute('aria-expanded')).to.equal('true');
-      expect(JSON.parse(localStorage.getItem('da-browse-settings')).view).to.equal(view);
+      expect(localStorage.getItem('da-browse-settings')).to.equal(null);
     }
   });
 
@@ -413,8 +413,10 @@ describe('landing Content section', () => {
   });
 
   it('disables image previews for Content cards', async () => {
+    loadSite.restore();
     const get = sinon.spy(source, 'get');
-    el._files = [{ name: 'image', path: '/org/site/image.png', ext: 'png' }];
+    setRecent({ '/org/site': ['/org/site/image.png'] });
+    await el.loadSite();
     await updateLanding();
     expect(fileItems()[0].imagePreview).to.equal(false);
     expect(get.called).to.equal(false);
@@ -467,7 +469,6 @@ describe('landing Content section', () => {
     await updateLanding();
     expect(metadata.getCalls().map(({ args: [path] }) => path))
       .to.deep.equal(ITEMS.slice(0, 10).map(({ path }) => path));
-    expect(el._editor).to.equal('/edit#');
     expect(fileItems()[0].href).to.include('/edit');
   });
 
@@ -530,7 +531,6 @@ describe('landing Content section', () => {
     setEWEnabled(true);
     await el.loadSite();
     await updateLanding();
-    expect(el._editor).to.equal('/canvas#');
     expect(fileItems()[0].href).to.include('/canvas');
   });
 
@@ -575,7 +575,10 @@ describe('landing Content section', () => {
       }
       return { ok: true, json: async () => ({ data: [] }) };
     });
-    setRecent({ '/other/site': ['/other/site/page-0.html'] });
+    setRecent({
+      '/pending-config/site': ['/pending-config/site/page-0.html'],
+      '/other/site': ['/other/site/page-0.html'],
+    });
     const pending = el.loadSite();
     await new Promise((resolve) => { setTimeout(resolve, 0); });
     expect(el._files).to.equal(undefined);
@@ -587,12 +590,15 @@ describe('landing Content section', () => {
     });
     await pending;
     await updateLanding();
-    expect(el._editorConfs).to.deep.equal([]);
     expect(new URL(fileItems()[0].href).pathname).to.equal('/edit');
   });
 
   it('does not expose files with an unresolved or stale editor flag', async () => {
     loadSite.restore();
+    setRecent({
+      '/org/site': [ITEMS[0].path],
+      '/other/site': ['/other/site/page-0.html'],
+    });
     let finish;
     setEWEnabled(new Promise((resolve) => { finish = resolve; }));
     const pending = el.loadSite();
@@ -603,7 +609,9 @@ describe('landing Content section', () => {
     await el.loadSite();
     finish(true);
     await pending;
-    expect(el._editor).to.equal('/edit#');
+    await updateLanding();
+    expect(fileItems()[0].path).to.equal('/other/site/page-0.html');
+    expect(new URL(fileItems()[0].href).pathname).to.equal('/edit');
   });
 
   it('falls back to the classic editor when the EW flag fails', async () => {
@@ -611,8 +619,8 @@ describe('landing Content section', () => {
     setRecent({ '/org/site': ITEMS.slice(0, 18).map(({ path }) => path) });
     setEWEnabled(Promise.reject(new Error('Flag unavailable')));
     await el.loadSite();
-    expect(el._editor).to.equal('/edit#');
     expect(el._files).to.have.length(10);
+    expect(el._files.every(({ href }) => new URL(href).pathname === '/edit')).to.equal(true);
   });
 
   it('loads Recent first and caches missing Favorite metadata only after opening the tab', async () => {

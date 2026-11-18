@@ -223,12 +223,10 @@ export class EwEditorWysiwyg extends LitElement {
   }
 
   _onIframeBlur() {
-    // Defer so focus can settle. If it landed on the toolbar (button/dialog), keep
+    // Defer so focus can settle. If it landed on a toolbar (button/menu/dialog), keep
     // the wysiwyg surface active; otherwise the user has left the pane.
     setTimeout(() => {
-      const tb = toolbarController.ensureToolbar();
-      const active = document.activeElement;
-      if (active && (active === tb || tb.contains(active))) return;
+      if (toolbarController.isFocusInToolbar()) return;
       canvasBus.toolbarSurfaceRequest.emit({ surface: 'wysiwyg', active: false });
     }, 0);
   }
@@ -250,6 +248,7 @@ export class EwEditorWysiwyg extends LitElement {
       body = html`
         <iframe
           title="WYSIWYG preview"
+          aria-keyshortcuts="Alt+F10"
           src="${src}"
           allow="local-network-access"
           class="ew-editor-wysiwyg-iframe"

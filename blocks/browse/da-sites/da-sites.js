@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getNx, sanitizeName } from '../../../scripts/utils.js';
+import { getNx, getNx2Api, sanitizeName } from '../../../scripts/utils.js';
 import '../../landing/recent-files/recent-files.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -18,6 +18,8 @@ export default class DaSites extends LitElement {
     _recents: { state: true },
     _status: { state: true },
     _urlError: { state: true },
+    _ready: { state: true },
+    _authError: { state: true },
   };
 
   constructor() {
@@ -27,8 +29,25 @@ export default class DaSites extends LitElement {
 
   async connectedCallback() {
     super.connectedCallback();
+    this._ready = false;
+    this._authError = undefined;
     this.shadowRoot.adoptedStyleSheets = [styles];
     this._recents = this.getRecents();
+    if (this._recents?.length) {
+      try {
+        const { loadIms, handleSignIn } = await getNx2Api();
+        const ims = await loadIms();
+        if (!this.isConnected) return;
+        if (!ims?.accessToken || ims.anonymous) {
+          handleSignIn();
+          return;
+        }
+      } catch {
+        if (this.isConnected) this._authError = true;
+        return;
+      }
+    }
+    this._ready = true;
     if (this.tiles) {
       this.tiles.slot = 'tiles';
       this.append(this.tiles);
@@ -212,6 +231,12 @@ export default class DaSites extends LitElement {
   }
 
   render() {
+    if (this._authError) {
+      return html`<div class="da-site-container">
+        <p role="alert">Could not sign in. Please <a href=${window.location.href}>reload the page</a> to try again.</p>
+      </div>`;
+    }
+    if (!this._ready) return nothing;
     return html`
       <div class="da-site-container">
         ${this.greeting ? html`

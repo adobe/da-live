@@ -57,8 +57,8 @@ class FormNumberField extends LitElement {
 
   handleEvent(event) {
     this.value = event.target.value;
-    // Re-dispatch from the host so listeners on <form-number-field> fire across
-    // the shadow boundary (matches form-input).
+    // Re-dispatch from the host so listeners on <ew-form-number-field> fire across
+    // the shadow boundary (matches ew-form-input).
     this.dispatchEvent(new event.constructor(event.type, event));
   }
 
@@ -194,6 +194,6 @@ class FormNumberField extends LitElement {
   }
 }
 
-if (!customElements.get('form-number-field')) customElements.define('form-number-field', FormNumberField);
+if (!customElements.get('ew-form-number-field')) customElements.define('ew-form-number-field', FormNumberField);
 
 export default FormNumberField;
