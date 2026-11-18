@@ -25,20 +25,18 @@ describe('start page', () => {
   afterEach(() => {
     main.remove();
     document.adoptedStyleSheets = sheets;
-    document.body.classList.remove('dark-scheme');
+    document.body.classList.remove('light-scheme');
   });
 
-  it('uses the dark landing gradient', async () => {
+  it('uses the dark gradient', async () => {
     const el = main.querySelector('.start');
     await init(el);
     const start = el.querySelector('da-start');
 
-    const landing = el.querySelector(':scope > .landing');
-    expect(landing.contains(start)).to.be.true;
-    expect(document.body.classList.contains('dark-scheme')).to.be.true;
-    expect(document.body.classList.contains('light-scheme')).to.be.false;
-    expect(getComputedStyle(landing).colorScheme).to.equal('dark');
-    expect(getComputedStyle(landing).backgroundImage).to.contain('radial-gradient');
+    const surface = el.querySelector(':scope > .start-surface');
+    expect(surface.contains(start)).to.be.true;
+    expect(getComputedStyle(surface).colorScheme).to.equal('dark');
+    expect(getComputedStyle(surface).backgroundImage).to.contain('radial-gradient');
   });
 
   it('moves the authored greeting into the start block', async () => {
