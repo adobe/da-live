@@ -1,6 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import '../../../setup-nx.js';
 import '../../../../../blocks/form/views/editor.js';
+import { NAV_ORIGIN } from '../../../../../blocks/form/events.js';
 
 const tick = () => new Promise((resolve) => { setTimeout(resolve); });
 
@@ -9,7 +10,7 @@ function objectRoot(children) {
 }
 
 async function mountEditor(root) {
-  const el = document.createElement('nx-editor');
+  const el = document.createElement('ew-form-fields');
   el.editor = {};
   el.onSelect = () => {};
   el.state = { model: { root } };
@@ -21,14 +22,14 @@ async function mountEditor(root) {
   return el;
 }
 
-describe('nx-editor primitive controls', () => {
+describe('ew-form-fields primitive controls', () => {
   it('renders a textarea for a long-text string node', async () => {
     const root = objectRoot([
       { kind: 'string', pointer: '/data/body', label: 'Body', semanticType: 'long-text', value: 'hi' },
     ]);
     const el = await mountEditor(root);
-    expect(el.shadowRoot.querySelector('form-textarea')).to.exist;
-    expect(el.shadowRoot.querySelector('form-input')).to.equal(null);
+    expect(el.shadowRoot.querySelector('ew-form-textarea')).to.exist;
+    expect(el.shadowRoot.querySelector('ew-form-input')).to.equal(null);
   });
 
   it('renders a single-line input for a plain string node', async () => {
@@ -36,8 +37,8 @@ describe('nx-editor primitive controls', () => {
       { kind: 'string', pointer: '/data/title', label: 'Title', value: 'x' },
     ]);
     const el = await mountEditor(root);
-    expect(el.shadowRoot.querySelector('form-input')).to.exist;
-    expect(el.shadowRoot.querySelector('form-textarea')).to.equal(null);
+    expect(el.shadowRoot.querySelector('ew-form-input')).to.exist;
+    expect(el.shadowRoot.querySelector('ew-form-textarea')).to.equal(null);
   });
 
   it('renders a date widget for a string node with format date', async () => {
@@ -46,8 +47,8 @@ describe('nx-editor primitive controls', () => {
     ]);
     const el = await mountEditor(root);
     const field = el.shadowRoot.querySelector('[data-pointer="/data/when"]');
-    expect(field.tagName).to.equal('FORM-DATE');
-    expect(el.shadowRoot.querySelector('form-input')).to.equal(null);
+    expect(field.tagName).to.equal('EW-FORM-DATE');
+    expect(el.shadowRoot.querySelector('ew-form-input')).to.equal(null);
     expect(field.value).to.equal('2026-08-14');
   });
 
@@ -57,7 +58,7 @@ describe('nx-editor primitive controls', () => {
     ]);
     const el = await mountEditor(root);
     const field = el.shadowRoot.querySelector('[data-pointer="/data/opens"]');
-    expect(field.tagName).to.equal('FORM-DATE');
+    expect(field.tagName).to.equal('EW-FORM-DATE');
     expect(field.type).to.equal('time');
     expect(field.value).to.equal('09:00');
   });
@@ -69,7 +70,7 @@ describe('nx-editor primitive controls', () => {
     ]);
     const el = await mountEditor(root);
     const field = el.shadowRoot.querySelector('[data-pointer="/data/start"]');
-    expect(field.tagName).to.equal('FORM-DATE');
+    expect(field.tagName).to.equal('EW-FORM-DATE');
     expect(field.type).to.equal('datetime');
     expect(field.value).to.equal(iso);
   });
@@ -78,7 +79,7 @@ describe('nx-editor primitive controls', () => {
     const root = objectRoot([
       { kind: 'string', pointer: '/data/when', label: 'When', format: 'date' },
     ]);
-    const el = document.createElement('nx-editor');
+    const el = document.createElement('ew-form-fields');
     el.editor = {};
     el.onSelect = () => {};
     el.nav = {};
@@ -105,9 +106,40 @@ describe('nx-editor primitive controls', () => {
       },
     ]);
     const el = await mountEditor(root);
-    const textarea = el.shadowRoot.querySelector('.form-array-item-input-row > form-textarea');
+    const textarea = el.shadowRoot.querySelector('.form-array-item-input-row > ew-form-textarea');
     expect(textarea).to.exist;
     // flex:1 is what makes it take the row width beside the action menu.
     expect(getComputedStyle(textarea).flexGrow).to.equal('1');
+  });
+});
+
+describe('ew-form-fields outline jumps', () => {
+  const groupRoot = () => objectRoot([
+    { kind: 'string', pointer: '/data/title', label: 'Title', value: '' },
+    {
+      kind: 'object',
+      pointer: '/data/hero',
+      label: 'Hero',
+      children: [{ kind: 'string', pointer: '/data/hero/heading', label: 'Heading', value: '' }],
+    },
+  ]);
+
+  async function scrolledBy(origin) {
+    const editor = await mountEditor(groupRoot());
+    const group = editor.shadowRoot.querySelector('.form-node[data-pointer="/data/hero"]');
+    let scrolled = false;
+    group.scrollIntoView = () => { scrolled = true; };
+    editor.nav = { pointer: '/data/hero', origin, seq: 1 };
+    await editor.updateComplete;
+    editor.remove();
+    return scrolled;
+  }
+
+  it('scrolls a group the outline jumps to into view', async () => {
+    expect(await scrolledBy(NAV_ORIGIN.OUTLINE)).to.equal(true);
+  });
+
+  it('leaves the scroll alone for selections made in the editor', async () => {
+    expect(await scrolledBy(NAV_ORIGIN.EDITOR)).to.equal(false);
   });
 });

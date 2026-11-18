@@ -31,7 +31,7 @@ class FormInput extends LitElement {
 
   handleEvent(event) {
     this.value = event.target.value;
-    // Re-dispatch from the host so listeners on <form-input> fire across the shadow boundary.
+    // Re-dispatch from the host so listeners on <ew-form-input> fire across the shadow boundary.
     this.dispatchEvent(new event.constructor(event.type, event));
   }
 
@@ -60,6 +60,6 @@ class FormInput extends LitElement {
   }
 }
 
-if (!customElements.get('form-input')) customElements.define('form-input', FormInput);
+if (!customElements.get('ew-form-input')) customElements.define('ew-form-input', FormInput);
 
 export default FormInput;
