@@ -13,6 +13,46 @@ function makeUnpublish(details) {
 }
 
 describe('da-unpublish', () => {
+  it('accepts yes in any case with surrounding whitespace and rejects other input', async () => {
+    const el = makeUnpublish({ fullpath: '/org/site/page.html' });
+    document.body.append(el);
+    try {
+      await el.updateComplete;
+      const input = el.shadowRoot.querySelector('sl-input');
+      const button = el.shadowRoot.querySelector('sl-button');
+      expect(button.hasAttribute('disabled')).to.equal(true);
+      for (const value of ['YES', 'yes', 'YeS', ' yes ', '', 'y', 'no', 'yes please']) {
+        input.value = value;
+        input.dispatchEvent(new Event('input'));
+        await el.updateComplete;
+        expect(button.hasAttribute('disabled'), value)
+          .to.equal(!['YES', 'yes', 'YeS', ' yes '].includes(value));
+      }
+    } finally {
+      el.remove();
+    }
+  });
+
+  it('keeps unpublish disabled while working or showing errors even with valid confirmation', async () => {
+    const el = makeUnpublish({ fullpath: '/org/site/page.html' });
+    el._confirmText = 'yes';
+    document.body.append(el);
+    try {
+      await el.updateComplete;
+      const button = el.shadowRoot.querySelector('sl-button');
+      expect(button.hasAttribute('disabled')).to.equal(false);
+      el._statusText = 'Unpublishing';
+      await el.updateComplete;
+      expect(button.hasAttribute('disabled')).to.equal(true);
+      el._statusText = undefined;
+      el._results = ['Couldn\'t unpublish from production.'];
+      await el.updateComplete;
+      expect(button.hasAttribute('disabled')).to.equal(true);
+    } finally {
+      el.remove();
+    }
+  });
+
   it('Unpublishes HTML pages by their extensionless path', async () => {
     const { aem } = await getNx2Api();
     const origUnPreview = aem.unPreview;

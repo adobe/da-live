@@ -51,7 +51,7 @@ class DaUnpublish extends LitElement {
   }
 
   get _disabled() {
-    return this._confirmText !== 'YES' || this._statusText || this._results?.length;
+    return this._confirmText?.trim().toUpperCase() !== 'YES' || this._statusText || this._results?.length;
   }
 
   renderResults() {
