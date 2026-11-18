@@ -365,9 +365,8 @@ class DaStart extends LitElement {
 customElements.define('da-start', DaStart);
 
 export default async function init(el) {
-  const pageSheet = await getSheet('/blocks/start/start-page.css');
-  if (!document.adoptedStyleSheets.includes(pageSheet)) {
-    document.adoptedStyleSheets.push(pageSheet);
+  if (!document.adoptedStyleSheets.includes(sheet)) {
+    document.adoptedStyleSheets.push(sheet);
   }
   const surface = document.createElement('div');
   surface.className = 'start-surface';
