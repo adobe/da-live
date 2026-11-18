@@ -402,7 +402,7 @@
   width: 16px;
   height: 16px;
   background-color: currentcolor;
-  mask: url('https://da.live/img/icons/s2-icon-select-20-n.svg') center / contain no-repeat;
+  mask: url('/img/icons/s2-icon-select-20-n.svg') center / contain no-repeat;
   pointer-events: none;
 }
 
