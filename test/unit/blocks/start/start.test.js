@@ -7,24 +7,17 @@ const { default: init } = await import('../../../../blocks/start/start.js');
 
 describe('start page', () => {
   let main;
-  let link;
+  let sheets;
 
-  before(async () => {
-    link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = '/blocks/start/start.css';
-    const loaded = new Promise((resolve) => { link.onload = resolve; });
-    document.head.append(link);
-    await loaded;
-  });
+  before(() => { sheets = document.adoptedStyleSheets; });
 
-  after(() => link.remove());
+  after(() => { document.adoptedStyleSheets = sheets; });
 
   beforeEach(() => {
     document.body.classList.add('light-scheme');
     main = document.createElement('main');
     main.innerHTML = `
-      <div class="section"><div class="start"></div></div>
+      <div class="section"><div class="start cmp"></div></div>
       <div class="section"><div class="greeting"><div><div><h1>Welcome to Experience Workspace</h1></div></div></div></div>`;
     document.body.append(main);
     ['red-100', 'pink-200', 'blue-200', 'gray-25'].forEach((token) => {
