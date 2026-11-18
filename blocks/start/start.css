@@ -3,7 +3,7 @@
   color-scheme: dark;
 }
 
-.start-surface {
+.start {
   min-height: 100%;
   background:
     radial-gradient(
@@ -24,14 +24,12 @@
     var(--s2-gray-25);
 }
 
-.section:has(.start-surface),
-.block-content:has(.start-surface),
-.start:has(> .start-surface) {
+.section:has(.start) {
   height: 100%;
 }
 
 @media (forced-colors: active) {
-  .start-surface {
+  .start {
     background: Canvas;
   }
 }

@@ -364,15 +364,9 @@ class DaStart extends LitElement {
 
 customElements.define('da-start', DaStart);
 
-export default async function init(el) {
-  if (!document.adoptedStyleSheets.includes(sheet)) {
-    document.adoptedStyleSheets.push(sheet);
-  }
-  const surface = document.createElement('div');
-  surface.className = 'start-surface';
+export default function init(el) {
   const start = document.createElement('da-start');
-  surface.append(start);
-  el.replaceChildren(surface);
+  el.append(start);
   const section = el.closest('.section')?.nextElementSibling;
   const greetingEl = section?.querySelector('div.greeting');
   if (!greetingEl) return;

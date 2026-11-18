@@ -7,11 +7,21 @@ const { default: init } = await import('../../../../blocks/start/start.js');
 
 describe('start page', () => {
   let main;
-  let sheets;
+  let link;
+
+  before(async () => {
+    link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = '/blocks/start/start.css';
+    const loaded = new Promise((resolve) => { link.onload = resolve; });
+    document.head.append(link);
+    await loaded;
+  });
+
+  after(() => link.remove());
 
   beforeEach(() => {
     document.body.classList.add('light-scheme');
-    sheets = [...document.adoptedStyleSheets];
     main = document.createElement('main');
     main.innerHTML = `
       <div class="section"><div class="start"></div></div>
@@ -24,25 +34,22 @@ describe('start page', () => {
 
   afterEach(() => {
     main.remove();
-    document.adoptedStyleSheets = sheets;
     document.body.classList.remove('light-scheme');
   });
 
-  it('uses the dark gradient', async () => {
+  it('uses the dark gradient', () => {
     const el = main.querySelector('.start');
-    await init(el);
-    const start = el.querySelector('da-start');
+    init(el);
 
-    const surface = el.querySelector(':scope > .start-surface');
-    expect(surface.contains(start)).to.be.true;
-    expect(getComputedStyle(surface).colorScheme).to.equal('dark');
-    expect(getComputedStyle(surface).backgroundImage).to.contain('radial-gradient');
+    expect(el.querySelector(':scope > da-start')).to.exist;
+    expect(getComputedStyle(el).colorScheme).to.equal('dark');
+    expect(getComputedStyle(el).backgroundImage).to.contain('radial-gradient');
   });
 
   it('moves the authored greeting into the start block', async () => {
     const el = main.querySelector('.start');
     const greetingEl = main.querySelector('div.greeting');
-    await init(el);
+    init(el);
     const start = el.querySelector('da-start');
     await greetingEl.initialized;
 
