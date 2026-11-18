@@ -161,26 +161,28 @@ export default class DaBrowse extends LitElement {
     if (props.has('details') && this.details) {
       const prevDetails = props.get('details');
       const orgChanged = prevDetails?.org !== this.details.org;
+      const siteChanged = prevDetails?.site !== this.details.site;
       if (prevDetails?.fullpath !== this.details.fullpath) this._clearBrowseSelection();
 
-      if (orgChanged) {
+      if (orgChanged || siteChanged) {
         this._canEditOrgConfig = false;
-        const { org } = this.details;
-        canEditOrgConfig(org).then((canEdit) => {
-          if (this.details?.org === org) this._canEditOrgConfig = canEdit;
+        const { org, site } = this.details;
+        canEditOrgConfig(org, site).then((canEdit) => {
+          if (this.details?.org === org && this.details?.site === site) {
+            this._canEditOrgConfig = canEdit;
+          }
         });
       }
 
       // EW flag lives at site level — re-check whenever org or site changes,
       // and do this before getEditor so the default editor reflects EW state
-      if (orgChanged || prevDetails?.site !== this.details.site) {
+      if (orgChanged || siteChanged) {
         const { org, site } = this.details;
         const { isEWEnabled } = await getNxEWFlags();
         this._ewEnabled = await isEWEnabled({ org, site });
       }
 
-      // Only re-fetch editor configs if the org changes
-      this.editor = await this.getEditor(orgChanged);
+      this.editor = await this.getEditor(orgChanged || siteChanged);
     }
 
     super.update(props);
