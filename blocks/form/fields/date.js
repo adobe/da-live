@@ -80,6 +80,6 @@ class FormDate extends LitElement {
   }
 }
 
-if (!customElements.get('form-date')) customElements.define('form-date', FormDate);
+if (!customElements.get('ew-form-date')) customElements.define('ew-form-date', FormDate);
 
 export default FormDate;

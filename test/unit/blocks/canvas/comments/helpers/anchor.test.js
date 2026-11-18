@@ -117,6 +117,16 @@ describe('anchor round-trip across a move', () => {
     expect(decodeAnchor({ anchor, state: moved.view.state })).to.deep.equal({ from: 14, to: 19 });
   });
 
+  it('recovers an anchor that ends at the end of its block', async () => {
+    source = await editorWithParas(['beta gamma', 'alpha']);
+    const { doc, tr } = source.view.state;
+    source.view.dispatch(tr.setSelection(TextSelection.create(doc, 6, 11)));
+    const anchor = encode(source);
+
+    moved = await editorWithParas(['beta gamma', 'alpha']);
+    expect(decodeAnchor({ anchor, state: moved.view.state })).to.deep.equal({ from: 6, to: 11 });
+  });
+
   it('reports source: relpos in the same doc, structural after a move', async () => {
     source = await editorWithText('The Experience is great', 5, 15);
     const anchor = encode(source);

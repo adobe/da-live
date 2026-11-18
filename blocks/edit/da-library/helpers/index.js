@@ -1,6 +1,6 @@
-import { daFetch, getFirstSheet, getSheetByName } from '../../../shared/utils.js';
+import { getFirstSheet, getSheetByName } from '../../../shared/utils.js';
 import { getMetadata } from '../../utils/helpers.js';
-import { parseDom, aemToContentUrl, daFetchLibrary } from './helpers.js';
+import { parseDom, daFetchLibrary } from './helpers.js';
 
 const AEM_ORIGIN = ['hlx.page', 'hlx.live', 'aem.page', 'aem.live'];
 
@@ -83,13 +83,18 @@ function isAemHosted(path) {
   }
 }
 
-async function fetchAndParseHtml(path) {
-  const url = isAemHosted(path) ? `${path}.plain.html` : path;
+async function fetchAndParseHtml(path, skipRewrite) {
   try {
-    const resp = await daFetch(url);
-    if (!resp.ok) return { doc: null, notFound: resp.status === 404 };
+    let url = path;
+    if (isAemHosted(path)) {
+      const source = new URL(path);
+      source.pathname = `${source.pathname.replace(/(?:\.plain)?\.html$/i, '')}.plain.html`;
+      url = source.href;
+    }
+    const { resp, contentUrl } = await daFetchLibrary(url, { skipRewrite });
+    if (!resp.ok) return { doc: null };
     const html = await resp.text();
-    return { doc: new DOMParser().parseFromString(html, 'text/html') };
+    return { doc: new DOMParser().parseFromString(html, 'text/html'), contentUrl };
   } catch {
     return { doc: null };
   }
@@ -180,13 +185,8 @@ function buildVariants(doc, path) {
 }
 
 export async function getBlockVariants(originalPath, { skipRewrite = false } = {}) {
-  const contentUrl = skipRewrite ? originalPath : aemToContentUrl(originalPath);
-  const { doc, notFound } = await fetchAndParseHtml(contentUrl);
+  const { doc, contentUrl } = await fetchAndParseHtml(originalPath, skipRewrite);
   if (doc) return buildVariants(doc, contentUrl);
-  if (notFound && contentUrl !== originalPath) {
-    const { doc: fallbackDoc } = await fetchAndParseHtml(originalPath);
-    if (fallbackDoc) return buildVariants(fallbackDoc, originalPath);
-  }
   return [];
 }
 

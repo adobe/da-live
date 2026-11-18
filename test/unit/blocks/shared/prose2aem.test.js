@@ -1,7 +1,7 @@
 import { readFile } from '@web/test-runner-commands';
 import { expect } from '@esm-bundle/chai';
 
-import prose2aem from '../../../../blocks/shared/prose2aem.js';
+import prose2aem, { getHtmlWithCursor } from '../../../../blocks/shared/prose2aem.js';
 
 const htmlString = await readFile({ path: './mocks/prose2aem.html' });
 const doc = new DOMParser().parseFromString(htmlString, 'text/html');
@@ -118,6 +118,61 @@ describe('prose2aem section-metadata handling', () => {
     const parsed = new DOMParser().parseFromString(html, 'text/html');
     return parsed.querySelector('main');
   }
+
+  it('preserves legacy metadata, including pictures and separate layout paragraphs', () => {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper"><table>
+        <tr><td>Section Metadata</td></tr>
+        <tr><td>Style</td><td>center, container</td></tr>
+        <tr><td>Grid</td><td>4</td></tr>
+        <tr><td>Background</td><td><p><img src="/background.jpg"></p></td></tr>
+        <tr><td>Masonry</td><td><p>span 6, span 6</p><p>span 6, span 6</p></td></tr>
+      </table></div>
+    `);
+    const main = parseMain(prose2aem(editor, true, false, { legacySectionMetadata: true }));
+    const section = main.firstElementChild;
+    const metadata = section.querySelector('.section-metadata');
+    expect(metadata).to.exist;
+    expect(metadata.querySelector('picture img').getAttribute('src')).to.equal('/background.jpg');
+    expect([...metadata.lastElementChild.lastElementChild.querySelectorAll('p')]
+      .map((p) => p.textContent)).to.deep.equal(['span 6, span 6', 'span 6, span 6']);
+    expect(section.className).to.equal('');
+    expect(section.hasAttribute('data-grid')).to.be.false;
+    expect(section.hasAttribute('data-background')).to.be.false;
+  });
+
+  it('continues extracting metadata when the legacy option is explicitly false', () => {
+    const editor = makeEditor(`
+      <div class="tableWrapper"><table>
+        <tr><td>Section Metadata</td></tr>
+        <tr><td>Grid</td><td>4</td></tr>
+      </table></div>
+    `);
+    const main = parseMain(prose2aem(editor, true, false, { legacySectionMetadata: false }));
+    expect(main.querySelector('.section-metadata')).to.not.exist;
+    expect(main.firstElementChild.dataset.grid).to.equal('4');
+  });
+
+  it('passes legacy options through cursor serialization without changing the editor DOM', () => {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper"><table>
+        <tr><td>Section Metadata</td></tr>
+        <tr><td>Grid</td><td>4</td></tr>
+      </table></div>
+    `);
+    const view = {
+      dom: editor,
+      state: { selection: { from: 1 } },
+      domAtPos: () => ({ node: editor.querySelector('p').firstChild, offset: 0 }),
+    };
+    const main = parseMain(getHtmlWithCursor(view, { legacySectionMetadata: true }));
+    expect(main.querySelector('.section-metadata')).to.exist;
+    expect(main.querySelector('#da-cursor-position')).to.exist;
+    expect(editor.querySelector('table')).to.exist;
+    expect(editor.querySelector('#da-cursor-position')).to.not.exist;
+  });
 
   it('applies style value as CSS class on the parent section', () => {
     const editor = makeEditor(`

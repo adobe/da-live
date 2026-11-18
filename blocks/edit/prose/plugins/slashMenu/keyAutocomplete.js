@@ -1,5 +1,5 @@
 import { goToNextCell } from 'da-y-wrapper';
-import { daFetch } from '../../../../shared/utils.js';
+import { fetchLibrarySource } from '../../../../shared/library-source.js';
 import { urlCache } from '../../../da-library/helpers/index.js';
 
 function insertAutocompleteText(state, dispatch, text) {
@@ -118,7 +118,7 @@ export const [setKeyAutocomplete, getKeyAutocomplete] = (() => {
 export async function fetchKeyAutocompleteData(libraryBlockUrl) {
   try {
     const json = urlCache.get(libraryBlockUrl) ?? await (async () => {
-      const resp = await daFetch(libraryBlockUrl, { noRedirect: true });
+      const { resp } = await fetchLibrarySource(libraryBlockUrl);
       return resp.json();
     })();
     const keyMap = processKeyData(json?.options?.data);
