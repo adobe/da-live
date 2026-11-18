@@ -278,9 +278,16 @@ function convertLocalUrlsToRelative(editor) {
  * @param {HTMLElement} editor the editor dom
  * @param {Boolean} livePreview whether or not the target destination is Live Preview
  * @param {Boolean} isFragment whether or not the DOM is a fragment
+ * @param {object} options preview rendering options
+ * @param {Boolean} options.legacySectionMetadata preserve section metadata for client decoration
  * @returns AEM-friendly HTML as a text string
  */
-export default function prose2aem(editor, livePreview, isFragment = false) {
+export default function prose2aem(
+  editor,
+  livePreview,
+  isFragment = false,
+  { legacySectionMetadata = false } = {},
+) {
   if (!isFragment) editor.removeAttribute('class');
 
   editor.removeAttribute('contenteditable');
@@ -317,7 +324,7 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
 
   if (!isFragment) {
     makeSections(editor);
-    if (livePreview) applySectionMetadata(editor);
+    if (livePreview && !legacySectionMetadata) applySectionMetadata(editor);
   }
 
   if (isFragment) {
@@ -340,7 +347,7 @@ export default function prose2aem(editor, livePreview, isFragment = false) {
   return html;
 }
 
-export function getHtmlWithCursor(view) {
+export function getHtmlWithCursor(view, options) {
   const { selection } = view.state;
   const cursorPos = selection.from;
 
@@ -393,5 +400,5 @@ export function getHtmlWithCursor(view) {
     clonedNode.insertBefore(marker, clonedNode.childNodes[offset] || null);
   }
 
-  return prose2aem(editorClone, true);
+  return prose2aem(editorClone, true, false, options);
 }

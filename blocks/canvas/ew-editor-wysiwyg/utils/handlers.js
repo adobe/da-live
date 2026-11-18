@@ -95,6 +95,11 @@ export function handleNewVersion() {
   canvasBus.newVersionRequest.emit();
 }
 
+/** FOCUS_TOOLBAR: Alt+F10 inside the iframe — its keys never reach this page. */
+export function handleFocusToolbar() {
+  toolbarController.focusToolbar();
+}
+
 export function handleStoredMarks({ marks }, ctx) {
   const { view } = ctx;
   if (!view) return;

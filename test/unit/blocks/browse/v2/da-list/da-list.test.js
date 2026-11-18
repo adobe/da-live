@@ -1,5 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
+import { stub } from 'sinon';
 import { setNx, getNx2Api } from '../../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
@@ -13,6 +14,146 @@ function makeList() {
 }
 
 describe('DaList helpers', () => {
+  describe('handleItemAction pagination', () => {
+    let el;
+    let item;
+    let responses;
+    let requests;
+    let fetchStub;
+
+    beforeEach(() => {
+      el = makeList();
+      item = {
+        path: '/pagination-org/pagination-site/folder',
+        destination: '/pagination-org/pagination-site/.trash/folder',
+        name: 'folder',
+        isChecked: true,
+      };
+      el._listItems = [item];
+      el._listItemPaths = new Set([item.path]);
+      el._itemErrors = [];
+      responses = [];
+      requests = [];
+      fetchStub = stub(window, 'fetch').callsFake(async (url, opts = {}) => {
+        if (!/^https:\/\/admin\.da\.live\/(source|copy|move)\//.test(url)) {
+          return new Response('{}');
+        }
+        requests.push({ url, opts });
+        expect(el._listItems).to.include(item);
+        expect(item.isChecked).to.be.true;
+        if (!responses.length) throw new Error('Unexpected additional mutation request');
+        return responses.shift();
+      });
+    });
+
+    afterEach(() => fetchStub.restore());
+
+    ['delete', 'copy', 'move'].forEach((type) => {
+      it(`continues ${type} through every 206 page before updating the list`, async () => {
+        responses.push(
+          new Response(JSON.stringify({ continuationToken: 'page-2' }), { status: 206 }),
+          new Response(JSON.stringify({ continuationToken: 'page-3' }), { status: 206 }),
+          new Response(null, { status: 204 }),
+        );
+
+        await el.handleItemAction({ item, type });
+
+        expect(requests).to.have.length(3);
+        expect(requests.map(({ opts }) => opts.body?.get('continuation-token') ?? null))
+          .to.deep.equal([null, 'page-2', 'page-3']);
+        const route = type === 'delete' ? 'source' : type;
+        const suffix = type === 'delete' ? '/' : '';
+        requests.forEach(({ url, opts }) => {
+          expect(url).to.equal(`https://admin.da.live/${route}${item.path}${suffix}`);
+          expect(opts.method).to.equal(type === 'delete' ? 'DELETE' : 'POST');
+          if (type !== 'delete') expect(opts.body.get('destination')).to.equal(item.destination);
+        });
+        expect(el._itemErrors).to.have.length(0);
+        expect(item.isChecked).to.be.false;
+        expect(el._listItems.includes(item)).to.equal(type === 'copy');
+      });
+    });
+
+    ['{}', '{"continuationToken":""}', '{"continuationToken":42}', 'null', 'invalid JSON'].forEach((body) => {
+      it(`keeps a partial deletion visible when its token is invalid: ${body}`, async () => {
+        responses.push(new Response(body, { status: 206 }));
+
+        await el.handleItemAction({ item, type: 'delete' });
+
+        expect(requests).to.have.length(1);
+        expect(el._listItems).to.include(item);
+        expect(item.isChecked).to.be.true;
+        expect(el._itemErrors).to.have.length(1);
+        expect(el._itemErrors[0].message).to.equal("Couldn't delete item");
+      });
+    });
+
+    it('keeps the item visible when a continuation request fails', async () => {
+      responses.push(
+        new Response(JSON.stringify({ continuationToken: 'page-2' }), { status: 206 }),
+        new Response('Delete failed', { status: 500 }),
+      );
+
+      await el.handleItemAction({ item, type: 'delete' });
+
+      expect(requests).to.have.length(2);
+      expect(requests[1].opts.body.get('continuation-token')).to.equal('page-2');
+      expect(el._listItems).to.include(item);
+      expect(item.isChecked).to.be.true;
+      expect(el._itemErrors).to.have.length(1);
+    });
+
+    it('falls back to deleting the source when the initial move returns 403', async () => {
+      responses.push(
+        new Response('Forbidden', { status: 403 }),
+        new Response(null, { status: 204 }),
+      );
+
+      await el.handleItemAction({ item, type: 'move' });
+
+      expect(requests.map(({ opts }) => opts.method)).to.deep.equal(['POST', 'DELETE']);
+      expect(requests[1].url).to.equal(`https://admin.da.live/source${item.path}/`);
+      expect(el._itemErrors).to.have.length(0);
+      expect(el._listItems).not.to.include(item);
+      expect(item.isChecked).to.be.false;
+    });
+
+    [1, 2].forEach((completedPages) => {
+      it(`does not delete the source when move returns 403 after ${completedPages} completed pages`, async () => {
+        responses.push(
+          ...Array.from({ length: completedPages }, (_, index) => new Response(
+            JSON.stringify({ continuationToken: `page-${index + 2}` }),
+            { status: 206 },
+          )),
+          new Response('Forbidden', { status: 403 }),
+          new Response(null, { status: 204 }),
+        );
+
+        await el.handleItemAction({ item, type: 'move' });
+
+        expect(requests).to.have.length(completedPages + 1);
+        expect(requests.every(({ opts }) => opts.method === 'POST')).to.be.true;
+        expect(el._listItems).to.include(item);
+        expect(item.isChecked).to.be.true;
+        expect(el._itemErrors).to.have.length(1);
+        expect(el._itemErrors[0].message).to.equal("Couldn't move item");
+      });
+    });
+
+    it('does not parse an empty 204 response', async () => {
+      const response = new Response(null, { status: 204 });
+      const json = stub(response, 'json').throws(new Error('204 has no JSON body'));
+      responses.push(response);
+
+      await el.handleItemAction({ item, type: 'delete' });
+
+      expect(json.called).to.be.false;
+      expect(requests).to.have.length(1);
+      expect(el._itemErrors).to.have.length(0);
+      expect(el._listItems).not.to.include(item);
+    });
+  });
+
   describe('getDirectorySnapshot', () => {
     it('waits for initial metadata without changing rows or pagination', async () => {
       const el = makeList();
