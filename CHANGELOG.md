@@ -1,3 +1,10 @@
+## [1.31.2](https://github.com/adobe/da-live/compare/v1.31.1...v1.31.2) (2026-11-18)
+
+
+### Bug Fixes
+
+* make block selection icon theme-aware ([#1713](https://github.com/adobe/da-live/issues/1713)) ([649045f](https://github.com/adobe/da-live/commit/649045f692d26da879b4437ab748f1355f895e99))
+
 ## [1.31.1](https://github.com/adobe/da-live/compare/v1.31.0...v1.31.1) (2026-11-16)
 
 
