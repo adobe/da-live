@@ -242,6 +242,7 @@ describe('Landing file preview', () => {
     const sites = document.createElement('da-sites');
     document.body.append(sites);
     try {
+      await new Promise((resolve) => { setTimeout(resolve, 0); });
       await sites.updateComplete;
       const preview = sites.shadowRoot.querySelector('da-recent-files');
       await update(preview);
