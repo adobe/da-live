@@ -5,6 +5,7 @@ import {
 } from 'da-y-wrapper';
 import getSheet from '../../../shared/sheet.js';
 import { createElement, getDiffLabels } from '../../utils/helpers.js';
+import { getDiffKind, getKindLabel } from './diff-kinds.js';
 
 let overlayUIModule = null;
 async function loadOverlayUI() {
@@ -210,7 +211,7 @@ async function generateDiff(deletedContent, addedContent) {
   }
 }
 
-function createTabContent(deletedContent, addedContent) {
+function createTabContent(deletedContent, addedContent, kind) {
   const container = createElement('div', 'diff-tab-content');
 
   const addedTab = createElement('div', 'diff-tab-pane active', { 'data-tab': 'added' });
@@ -233,6 +234,13 @@ function createTabContent(deletedContent, addedContent) {
 
   container.appendChild(addedTab);
   container.appendChild(deletedTab);
+  if (kind) {
+    const banner = createElement('div', `diff-kind-banner is-${kind}`);
+    banner.textContent = getKindLabel(kind);
+    diffTab.dataset.kind = kind;
+    diffTab.prepend(banner);
+    diffTab.banner = banner;
+  }
   container.appendChild(diffTab);
 
   return container;
@@ -256,10 +264,10 @@ async function createTabbedActions(onKeepDeleted, onKeepAdded, onKeepBoth, onSwi
   }
 }
 
-async function getLangOverlay(upstream) {
+async function getLangOverlay(upstream, kind) {
   try {
     const overlayUI = await loadOverlayUI();
-    return overlayUI.getLangOverlay(upstream);
+    return overlayUI.getLangOverlay(upstream, kind);
   } catch (error) {
     // eslint-disable-next-line no-console
     console.warn('Failed to load lang overlay:', error);
@@ -347,7 +355,9 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
       const deletedContent = serializer.serializeFragment(deletedNode.content);
       const addedContent = serializer.serializeFragment(addedNode.content);
 
-      const tabContent = createTabContent(deletedContent, addedContent);
+      const kind = getDiffKind(deletedNode) || getDiffKind(addedNode);
+      if (kind) this.dom.dataset.diffKind = kind;
+      const tabContent = createTabContent(deletedContent, addedContent, kind);
 
       const colorOverlay = createElement('div', 'loc-tabbed-color-overlay');
       colorOverlay.classList.add('diff-bg-local'); // initial view
@@ -372,6 +382,7 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
             diffTab.loaded = true;
             generateDiff(diffTab.deletedContent, diffTab.addedContent).then((diffHTML) => {
               diffTab.innerHTML = diffHTML;
+              if (diffTab.banner) diffTab.prepend(diffTab.banner);
             }).catch(() => {
               diffTab.innerHTML = '<p style="text-align: center; color: #d32f2f; margin: 20px 0;">Error loading diff</p>';
             });
@@ -436,6 +447,8 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
       // Use div instead of da-loc-* to avoid parseDOM feedback loop
       this.dom = createElement('div', `loc-single-container ${viewClass}`, { contentEditable: 'false' });
       this.dom.classList.add(styleClass);
+      const kind = getDiffKind(node);
+      if (kind) this.dom.dataset.diffKind = kind;
       this.contentDOM = null; // Don't let ProseMirror manage content
 
       const serializer = DOMSerializer.fromSchema(this.schema);
@@ -444,7 +457,7 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
       this.dom.appendChild(nodeDOM);
 
       // Create placeholder cover div immediately
-      const coverDiv = createElement('div', `loc-color-overlay ${upstream ? 'loc-langstore' : 'loc-regional'}`, { 'loc-temp-dom': '' });
+      const coverDiv = createElement('div', `loc-color-overlay ${upstream ? 'loc-langstore' : 'loc-regional'}${kind ? ` is-${kind}` : ''}`, { 'loc-temp-dom': '' });
       this.dom.appendChild(coverDiv);
 
       // Create placeholder overlay
@@ -454,16 +467,16 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
       coverDiv.appendChild(this.langOverlay);
 
       // Load real overlays asynchronously
-      this.loadRealOverlays(upstream, coverDiv).catch(() => {
+      this.loadRealOverlays(upstream, coverDiv, kind).catch(() => {
         // Keep placeholder on error
       });
 
       this.observeShortContainers();
     }
 
-    async loadRealOverlays(upstream, coverDiv) {
+    async loadRealOverlays(upstream, coverDiv, kind) {
       try {
-        const { overlay, deleteBtn, keepBtn } = await getLangOverlay(upstream);
+        const { overlay, deleteBtn, keepBtn } = await getLangOverlay(upstream, kind);
 
         // Bail out if destroy() detached the placeholder before this resolved.
         if (this.langOverlay?.parentNode !== coverDiv) return;

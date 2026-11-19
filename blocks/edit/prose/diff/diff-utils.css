@@ -441,3 +441,39 @@ da-loc-added,
   align-items: center;
   justify-content: flex-end;
 }
+
+.loc-color-overlay.loc-langstore.is-incoming {
+  background-color: rgb(46 160 67 / 20%);
+}
+
+.da-diff-btn-3part.is-incoming .diff-label {
+  background: #2e7d32;
+}
+
+.da-diff-btn-3part.is-incoming .diff-accept {
+  background: #1b5e20;
+}
+
+.da-diff-btn-3part.is-incoming .diff-delete {
+  background: #144a18;
+}
+
+.diff-kind-banner {
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: #204fcb;
+}
+
+.diff-kind-banner.is-conflict {
+  background: #c62828;
+}
+
+.diff-kind-banner.is-upstream-changed {
+  background: #3a84bf;
+}
+
+.diff-kind-banner.is-local-changed {
+  background: #7c1dcb;
+}

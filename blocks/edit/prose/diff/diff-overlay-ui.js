@@ -1,4 +1,5 @@
 import { createElement, createButton, createTooltip, getDiffLabels } from '../../utils/helpers.js';
+import { getKindLabel } from './diff-kinds.js';
 
 export function getCoverDiv(upstream, LOC_COLORS) {
   const className = `loc-color-overlay ${upstream ? 'loc-langstore' : 'loc-regional'}`;
@@ -8,17 +9,18 @@ export function getCoverDiv(upstream, LOC_COLORS) {
   return coverDiv;
 }
 
-export function getLangOverlay(upstream) {
+export function getLangOverlay(upstream, kind) {
   const overlay = createElement('div', 'loc-lang-overlay loc-floating-overlay', { 'loc-temp-dom': '' });
 
   const labels = getDiffLabels();
   const type = upstream ? 'upstream' : 'local';
   const text = upstream ? labels.upstream : labels.local;
+  const labelText = kind ? getKindLabel(kind) : text;
 
-  const compositeBtn = createElement('div', `da-diff-btn-3part da-diff-btn-base loc-sticky-buttons is-${type}`);
+  const compositeBtn = createElement('div', `da-diff-btn-3part da-diff-btn-base loc-sticky-buttons is-${type}${kind ? ` is-${kind}` : ''}`);
 
   const labelBtn = createElement('span', 'diff-label da-diff-btn-base-element');
-  labelBtn.textContent = text;
+  labelBtn.textContent = labelText;
 
   const acceptBtn = createButton('nx-action-btn-icon diff-accept da-diff-btn-base-element', 'button', { 'aria-label': `Accept ${text}` });
   acceptBtn.appendChild(createTooltip(`Accept ${text}`, 'diff-tooltip'));
