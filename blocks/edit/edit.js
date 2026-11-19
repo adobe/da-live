@@ -68,7 +68,7 @@ async function setUI(el) {
   try {
     const { isEWEnabled } = await getNxEWFlags();
     if (await isEWEnabled({ org: details.org, site: details.site })) {
-      window.location.href = `/canvas#${details.fullpath.replace(/\.html$/, '')}`;
+      window.location.href = `/canvas${window.location.search}#${details.fullpath.replace(/\.html$/, '')}`;
       return;
     }
   } catch {
