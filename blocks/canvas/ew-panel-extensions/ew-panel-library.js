@@ -13,15 +13,19 @@ import {
 } from './helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { canvasBus } from '../utils/canvas-bus.js';
+import { startSession } from '../drop/session.js';
+import { uploadContext } from '../drop/content.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
-const [buttonsStyle, style] = await Promise.all([
+const [buttonsStyle, formStyle, style] = await Promise.all([
   getSheet(`${getNx2()}/styles/buttons.css`),
+  getSheet(`${getNx2()}/styles/form.css`),
   loadStyle(import.meta.url),
 ]);
 
 const SEARCH_ICON_SRC = '/img/icons/s2-icon-search-20-n.svg';
 const CLEAR_ICON_SRC = '/img/icons/s2-icon-close-20-n.svg';
+const CHEVRON_ICON_SRC = '/img/icons/s2-icon-chevronright-20-n.svg';
 
 const iconAdd = () => html`<svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-experienceadd-20-n.svg#icon"></use></svg>`;
 const iconPreview = () => html`<svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-experiencepreview-20-n.svg#icon"></use></svg>`;
@@ -40,6 +44,7 @@ class EwPanelLibrary extends LitElement {
     _items: { state: true },
     _blockVariants: { state: true },
     _expandedBlock: { state: true },
+    _selectedBlock: { state: true },
     _preview: { state: true },
     _tooltipOpen: { state: true },
     _hashState: { state: true },
@@ -49,7 +54,7 @@ class EwPanelLibrary extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [buttonsStyle, style];
+    this.shadowRoot.adoptedStyleSheets = [buttonsStyle, formStyle, style];
     this._unsubHash = hashChange.subscribe((state) => { this._hashState = state; });
     this._unsubBranch = canvasBus.branchState.subscribe((state) => {
       if (!state?.path) {
@@ -63,6 +68,8 @@ class EwPanelLibrary extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
+    this._dragListeners?.abort();
+    this._dragSession?.cancel();
     this._previewRequest = null;
     this._unsubBranch?.();
   }
@@ -72,6 +79,7 @@ class EwPanelLibrary extends LitElement {
       this._items = undefined;
       this._blockVariants = new Map();
       this._expandedBlock = null;
+      this._selectedBlock = null;
       this._preview = undefined;
       this._previewRequest = null;
       this._actionError = undefined;
@@ -92,11 +100,21 @@ class EwPanelLibrary extends LitElement {
     if (!ext) return;
 
     if (!ext.ootb) return;
-    const context = { org: this._hashState?.org || ext.org, site: this._hashState?.site };
+    const context = {
+      org: this._hashState?.org || ext.org,
+      site: this._hashState?.site || ext.site,
+    };
 
     if (ext.name === 'blocks') {
       const items = await fetchBlocks(ext.sources, context);
-      if (this.extension === ext) this._items = items;
+      if (this.extension === ext) {
+        this._items = items;
+        items.forEach(async (block) => {
+          const variants = await block.loadVariants;
+          if (this.extension !== ext) return;
+          this._blockVariants = new Map(this._blockVariants).set(block.path, variants ?? []);
+        });
+      }
       return;
     }
 
@@ -108,6 +126,7 @@ class EwPanelLibrary extends LitElement {
   }
 
   async _toggleBlock(block) {
+    this._selectedBlock = block.path;
     if (this._expandedBlock === block.path) {
       this._expandedBlock = null;
       return;
@@ -125,6 +144,50 @@ class EwPanelLibrary extends LitElement {
     const { view } = getExtensionsBridge();
     if (!view) return;
     insertLibraryBlock(view, variant.dom);
+  }
+
+  async _openBlockLibrary(block) {
+    this._selectedBlock = block.path;
+    const blocks = this._items;
+    const { openBlockLibraryModal } = await import('../ew-block-library-modal/ew-block-library-modal.js');
+    if (!this.isConnected || this._items !== blocks) return;
+    await openBlockLibraryModal({
+      blocks,
+      initialBlockPath: block.path,
+      onInsert: (dom) => this._insertBlock({ dom }),
+    });
+  }
+
+  _onBlockPointerDown(event, variant) {
+    if (event.button !== 0 || !variant.dom) return;
+    this._dragListeners?.abort();
+    const listeners = new AbortController();
+    this._dragListeners = listeners;
+    const { clientX, clientY } = event;
+    const page = JSON.stringify(this._hashState);
+    const { extension } = this;
+    window.addEventListener('pointermove', (move) => {
+      if (Math.hypot(move.clientX - clientX, move.clientY - clientY) < 5) return;
+      listeners.abort();
+      move.preventDefault();
+      const getView = () => (this.isConnected && this.extension === extension
+        && JSON.stringify(this._hashState) === page ? getExtensionsBridge().view : null);
+      this._actionError = undefined;
+      this._dragSession = startSession({
+        payload: { kind: 'html', html: variant.dom.outerHTML },
+        getView,
+        getContext: () => uploadContext(this._hashState || {}),
+        onEnd: (result) => {
+          if (!['cancelled', 'invalid-target'].includes(result.error) && !result.ok) {
+            this._actionError = 'Unable to drop block. Please try again.';
+          }
+        },
+      });
+      this._dragSession?.move({ x: move.clientX, y: move.clientY });
+    }, { signal: listeners.signal, passive: false });
+    const stop = () => listeners.abort();
+    window.addEventListener('pointerup', stop, { signal: listeners.signal, once: true });
+    window.addEventListener('pointercancel', stop, { signal: listeners.signal, once: true });
   }
 
   _insertText(item) {
@@ -202,8 +265,15 @@ class EwPanelLibrary extends LitElement {
     });
   }
 
+  _matchesBlock(block, variant) {
+    const query = (this._search || '').trim().toLowerCase();
+    const text = [block.name, variant?.name, variant?.variants, variant?.description, variant?.tags]
+      .filter(Boolean).join(' ').toLowerCase();
+    return andMatch(query, text);
+  }
+
   _renderVariants(block) {
-    if (this._expandedBlock !== block.path) return nothing;
+    if (this._expandedBlock !== block.path && !this._search?.trim()) return nothing;
     const variants = this._blockVariants.get(block.path);
     if (variants === undefined) {
       return html`<div class="ext-variants-loading">Loading variants…</div>`;
@@ -213,22 +283,29 @@ class EwPanelLibrary extends LitElement {
     }
     return html`
       <ul class="ext-variant-list">
-        ${variants.map((v) => html`
+        ${variants.filter((v) => this._matchesBlock(block, v)).map((v) => html`
           <li class="ext-variant-item">
             <div class="ext-variant-header">
-              <button class="ext-variant-title" @click=${() => this._insertBlock(v)}>
-                <span class="ext-variant-name">${v.name}</span>
-                ${v.variants ? html`<span class="ext-variant-subtitle">${v.variants}</span>` : nothing}
+              <button class="ext-variant-title"
+                @pointerdown=${(event) => this._onBlockPointerDown(event, v)}>
+                <span class="ext-variant-name">${v.name}${v.variants
+    ? html` <span class="ext-variant-subtitle">${v.variants}</span>` : nothing}</span>
               </button>
               <div class="ext-variant-actions">
                 ${v.description ? html`
-                  <button class="nx-action-btn-icon nx-btn-sm" aria-label="Info"
-                    @click=${() => this._toggleTooltip(v.name)}>ℹ</button>` : nothing}
-                <button class="nx-action-btn-icon nx-btn-sm" aria-label="Add"
-                  @click=${() => this._insertBlock(v)}>${iconAdd()}</button>
+                  <button class="nx-action-btn-icon nx-btn-sm ext-variant-info"
+                    aria-label="Show description" aria-expanded=${this._tooltipOpen === v}
+                    @click=${() => this._toggleTooltip(v)}>
+                    <svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-infocircle-20-n.svg#icon"></use></svg>
+                  </button>` : nothing}
+                <button class="nx-action-btn-icon nx-btn-sm" aria-label="Add ${v.name} to page"
+                  @pointerdown=${(event) => this._onBlockPointerDown(event, v)}
+                  @click=${() => this._insertBlock(v)}>
+                  <svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-addcircle-20-n.svg#icon"></use></svg>
+                </button>
               </div>
             </div>
-            ${v.description && this._tooltipOpen === v.name
+            ${v.description && this._tooltipOpen === v
               ? html`<div class="ext-description">${v.description}</div>` : nothing}
           </li>
         `)}
@@ -243,22 +320,36 @@ class EwPanelLibrary extends LitElement {
   _renderBlocks() {
     if (this._items === undefined) return html`<div class="ext-state">Loading…</div>`;
     if (!this._items.length) return this._renderEmpty('No blocks found.');
+    const blocks = this._items.filter((block) => this._matchesBlock(block)
+      || (this._blockVariants.get(block.path) || []).some((v) => this._matchesBlock(block, v)));
     return html`
-      <ul class="ext-list">
-        ${this._items.map((block) => html`
-          <li class="ext-group">
-            <div class="ext-group-header">
-              <button class="ext-group-title" @click=${() => this._toggleBlock(block)}>
-                <span class="ext-item-name">${block.name}</span>
-                <span class="ext-expand-icon">${this._expandedBlock === block.path ? '▾' : '▸'}</span>
-              </button>
-              <button class="nx-action-btn-icon nx-btn-sm" aria-label="Preview"
-                @click=${() => this._openPreview(block)}>${iconPreview()}</button>
-            </div>
-            ${this._renderVariants(block)}
-          </li>
-        `)}
-      </ul>
+      <div class="ext-block-library">
+        ${this._renderSearchInput('blocks')}
+        <div class="ext-scroll">
+          ${!blocks.length ? html`<div class="ext-state">${this._blockVariants.size < this._items.length ? 'Searching variants…' : 'No matching blocks.'}</div>` : nothing}
+          <ul class="ext-list">
+            ${blocks.map((block) => html`
+              <li class="ext-group">
+                <div class="ext-group-header ${this._selectedBlock === block.path ? 'is-selected' : ''}">
+                  <button class="ext-group-title"
+                    aria-expanded=${this._expandedBlock === block.path || !!this._search?.trim()}
+                    @click=${() => this._toggleBlock(block)}>
+                    <svg aria-hidden="true"
+                      class="ext-expand-icon ${this._expandedBlock === block.path || this._search?.trim() ? 'is-expanded' : ''}"
+                      viewBox="0 0 20 20"><use href="${CHEVRON_ICON_SRC}#icon"></use></svg>
+                    <span class="ext-item-name">${block.name}</span>
+                  </button>
+                  <button type="button" class="nx-action-btn-icon nx-btn-sm ext-block-preview"
+                    aria-label="Open ${block.name} in block library"
+                    title="Open ${block.name} in block library" aria-haspopup="dialog"
+                    @click=${() => this._openBlockLibrary(block)}>${iconPreview()}</button>
+                </div>
+                ${this._renderVariants(block)}
+              </li>
+            `)}
+          </ul>
+        </div>
+      </div>
     `;
   }
 
@@ -286,10 +377,10 @@ class EwPanelLibrary extends LitElement {
 
   _renderSearchInput(label) {
     return html`
-      <div class="ext-search">
+      <div class="ext-search ${label === 'blocks' ? 'ext-search-blocks' : ''}">
         <svg class="ext-search-icon" viewBox="0 0 20 20" aria-hidden="true"><use href="${SEARCH_ICON_SRC}#icon"></use></svg>
-        <input type="search" class="ext-search-input"
-          placeholder="Search"
+        <input type="search" class="ext-search-input ${label === 'blocks' ? 'nx-input' : ''}"
+          placeholder=${label === 'blocks' ? 'Search blocks' : 'Search'}
           aria-label="Search ${label}"
           .value=${this._search || ''}
           @input=${this._onSearchInput}>

@@ -23,6 +23,15 @@ function writeAll(data) {
   }
 }
 
+export function getSiteFavorites(sitePath) {
+  if (!sitePath) return [];
+  const paths = Object.entries(readAll())
+    .filter(([folder]) => folder === sitePath || folder.startsWith(`${sitePath}/`))
+    .flatMap(([, items]) => (Array.isArray(items) ? items : []))
+    .filter((path) => typeof path === 'string' && path.startsWith(`${sitePath}/`));
+  return [...new Set(paths)];
+}
+
 export function getFavorites(folderPath) {
   if (!folderPath) return [];
   const all = readAll();
@@ -38,20 +47,18 @@ export function isFavorite(folderPath, itemPath) {
 export function toggleFavorite(folderPath, itemPath) {
   if (!folderPath || !itemPath) return false;
   const all = readAll();
-  const list = Array.isArray(all[folderPath]) ? all[folderPath] : [];
-  const idx = list.indexOf(itemPath);
-  let nowFavorite;
-  if (idx === -1) {
-    list.push(itemPath);
-    nowFavorite = true;
+  const nowFavorite = !Object.values(all)
+    .some((items) => Array.isArray(items) && items.includes(itemPath));
+  if (nowFavorite) {
+    const list = Array.isArray(all[folderPath]) ? all[folderPath] : [];
+    all[folderPath] = [...list, itemPath];
   } else {
-    list.splice(idx, 1);
-    nowFavorite = false;
-  }
-  if (list.length === 0) {
-    delete all[folderPath];
-  } else {
-    all[folderPath] = list;
+    Object.entries(all).forEach(([folder, items]) => {
+      if (!Array.isArray(items) || !items.includes(itemPath)) return;
+      const kept = items.filter((path) => path !== itemPath);
+      if (kept.length) all[folder] = kept;
+      else delete all[folder];
+    });
   }
   writeAll(all);
   return nowFavorite;

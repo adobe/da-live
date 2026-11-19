@@ -13,11 +13,13 @@ const { default: DaBrowseComponent } = await import('../../../../../../blocks/br
 const { default: DaActionBar } = await import('../../../../../../blocks/browse/da-actionbar/da-actionbar.js');
 
 describe('Browse', () => {
-  it('groups by type by default and preserves an explicit opt-out', () => {
+  it('does not group by type by default and preserves saved preferences', () => {
     const previous = localStorage.getItem('da-browse-settings');
     try {
       localStorage.removeItem('da-browse-settings');
-      expect(new DaBrowseComponent()._groupByType).to.be.true;
+      expect(new DaBrowseComponent()._groupByType).to.be.false;
+      localStorage.setItem('da-browse-settings', JSON.stringify({ view: 'card' }));
+      expect(new DaBrowseComponent()._groupByType).to.be.false;
       localStorage.setItem('da-browse-settings', JSON.stringify({ groupByType: false }));
       expect(new DaBrowseComponent()._groupByType).to.be.false;
       localStorage.setItem('da-browse-settings', JSON.stringify({ groupByType: true }));

@@ -51,6 +51,12 @@ document.head.appendChild(link);
 const CONFIG = {
   hostnames: ['da.live', 'da.page'],
   codeBase: import.meta.url.replace('/scripts/scripts.js', ''),
+  ...(nx2 ? {
+    navBrand: {
+      logoHref: new URL('../img/logos/aem.svg', import.meta.url).href,
+      label: 'Adobe Experience Manager',
+    },
+  } : {}),
   providers: { da: window.location.origin },
   decorateArea,
   imsClientId: 'darkalley',

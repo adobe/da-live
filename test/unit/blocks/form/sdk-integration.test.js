@@ -51,7 +51,7 @@ const richSchema = {
   },
 };
 
-// editor.js + sidebar.js walk the model via `node.children` (objects) and
+// editor.js + tool-panel/outline/outline.js walk the model via `node.children` (objects) and
 // `node.items` (arrays). Same walker so the smoke tests fail loudly if
 // either field name changes.
 function findByPointer(node, pointer) {
@@ -93,7 +93,7 @@ describe('SDK state shape', () => {
     expect(state.document).to.have.property('data');
     expect(state.document.data.name).to.equal('Alice');
 
-    // form.js + sidebar.js + editor.js
+    // form.js + tool-panel/outline/outline.js + editor.js
     expect(state.model).to.be.an('object');
     expect(state.model).to.have.property('root');
 
@@ -288,7 +288,7 @@ describe('SDK × attachPersistence (end-to-end)', () => {
   });
 });
 
-// editor.js + sidebar.js render entirely off the shape of nodes inside
+// editor.js + tool-panel/outline/outline.js render entirely off the shape of nodes inside
 // `state.model.root`. The earlier tests only assert `root` exists; these
 // walk into it so a rename of `kind` / `children` / `items` / `value` /
 // `enumValues` / `itemLabel` / `minItems` / `maxItems` would fail loudly
@@ -342,7 +342,7 @@ describe('SDK model.root node shape', () => {
   });
 
   it('object node exposes a children array — _renderObject reads node.children', () => {
-    // editor.js:310,323; sidebar.js:57.
+    // views/editor.js and tool-panel/outline/outline.js.
     const engine = createEngine({ schema: richSchema, document: validDoc({ name: 'A' }) });
     const node = findByPointer(engine.getState().model.root, '/data/profile');
     expect(node.kind).to.equal('object');

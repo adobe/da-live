@@ -106,7 +106,25 @@ setup  ──►  chromium / firefox / webkit  ──►  teardown
 | `SKIP_AUTH` | unset | Skips login (empty `storageState`); backend-touching tests skip. |
 | `PW_DELETE_HOURS` | `2` | Sweeper age threshold — folders with an older marker are deleted. |
 
-### Test backends sites
+### Test backends
 
-- **da-admin** — `TEST_SITE=da-status`
-- **Helix 6** — `TEST_SITE`=`da-testautomation`
+DA Live can store content in two backends, and the suite runs against either one.
+
+| Backend | API | `TEST_ORG` / `TEST_SITE` |
+|---------|-----|--------------------------|
+| da-admin | `https://admin.da.live` | `da-sites` / `da-status` (default) |
+| Helix | `https://api.aem.live` | `da-testautomation` / `da-e2e-tests` |
+
+The suite does not have a separate backend setting. `TEST_SITE=da-status` means da-admin and any other site means Helix. The helpers that clean up folders and check saved content use this to pick the matching API.
+
+Helix does not support every feature yet, so some specs behave differently on it.
+
+- The ACL specs and the copy and rename spec are skipped.
+- The version spec skips its check of the audit entry.
+
+CI runs the suite against both backends. The `playwright.yml` workflow uses the defaults for da-admin. The `playwright-hlx.yml` workflow sets the Helix values.
+
+```bash
+# Helix, as in CI
+TEST_ORG=da-testautomation TEST_SITE=da-e2e-tests TEST_PASSWORD=<password> npm test
+```

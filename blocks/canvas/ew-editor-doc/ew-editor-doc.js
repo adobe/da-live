@@ -23,7 +23,7 @@ import {
   prefetchWysiwygCookiesIfSignedIn,
   wireQuickEditControllerPort,
 } from './utils/quick-edit-host.js';
-import { initIms as loadIms } from '../../shared/utils.js';
+import { initIms as loadIms, fetchConfigBusOptions } from '../../shared/utils.js';
 import { forceSave } from '../../shared/forcesave.js';
 import initProse from './prose.js';
 import { createTrackingPlugin } from '../editor-utils/prose-diff.js';
@@ -112,9 +112,9 @@ export class EwEditorDoc extends LitElement {
   }
 
   _emitHtmlChange() {
-    const { view } = this._proseContext ?? {};
+    const { view, previewOptions } = this._proseContext ?? {};
     if (!view) return;
-    canvasBus.editorHtmlState.emit(getInstrumentedHTML(view));
+    canvasBus.editorHtmlState.emit(getInstrumentedHTML(view, previewOptions));
   }
 
   _emitUndoState() {
@@ -278,7 +278,7 @@ export class EwEditorDoc extends LitElement {
   }
 
   _setupController() {
-    const { view, wsProvider } = this._proseContext ?? {};
+    const { view, wsProvider, previewOptions } = this._proseContext ?? {};
     if (!this.quickEditPort || !view || !wsProvider) return;
     if (this._controllerCtx?.port === this.quickEditPort) return;
 
@@ -288,6 +288,7 @@ export class EwEditorDoc extends LitElement {
     const { org, repo } = this.ctx ?? {};
     this._controllerCtx = {
       view,
+      previewOptions,
       wsProvider,
       port: this.quickEditPort,
       iframe: this._wysiwygIframe,
@@ -320,13 +321,11 @@ export class EwEditorDoc extends LitElement {
         // which fires focusout without the user leaving. `view.hasFocus()` is
         // shadow-root aware, unlike `document.activeElement`.
         if (view.hasFocus?.()) return;
-        const tb = toolbarController.ensureToolbar();
-        const btb = toolbarController.ensureBlockToolbar();
-        const active = document.activeElement;
-        if (active && [tb, btb].some((el) => active === el || el.contains(active))) return;
+        if (toolbarController.isFocusInToolbar()) return;
         canvasBus.toolbarSurfaceRequest.emit({ surface: 'doc', active: false });
       }, 0);
     };
+    view.dom.setAttribute('aria-keyshortcuts', 'Alt+F10');
     proseEl.addEventListener('focusin', onFocusIn);
     proseEl.addEventListener('focusout', onFocusOut);
     this._unwireProseFocus = () => {
@@ -388,6 +387,8 @@ export class EwEditorDoc extends LitElement {
     const { sourceUrl } = session;
 
     try {
+      const previewOptions = await fetchConfigBusOptions({ org: context.org, site: context.repo });
+      if (this.ctx !== context || !this.isConnected) return;
       const { token, permissions } = session;
       this._canWrite = permissions.some((permission) => permission === 'write');
       const { proseEl, wsProvider, view, ydoc, undoManager } = await initProse({
@@ -406,7 +407,7 @@ export class EwEditorDoc extends LitElement {
               (details) => {
                 const body = this._controllerCtx
                   ? updateDocument(this._controllerCtx, details)
-                  : getInstrumentedHTML(this._proseContext?.view);
+                  : getInstrumentedHTML(this._proseContext?.view, previewOptions);
                 if (body) canvasBus.editorHtmlState.emit(body);
               },
               () => { if (this._controllerCtx) updateCursors(this._controllerCtx); },
@@ -437,7 +438,7 @@ export class EwEditorDoc extends LitElement {
       });
 
       this._proseContext = {
-        proseEl, wsProvider, view, ydoc, undoManager, context,
+        proseEl, wsProvider, view, ydoc, undoManager, context, previewOptions,
       };
       this._comments.publish();
       this._unbindSectionName = bindFirstSectionName(ydoc, view, () => this._emitHtmlChange());
@@ -490,6 +491,8 @@ export class EwEditorDoc extends LitElement {
       });
     this._unsubscribeProseSelect = canvasBus.editorProseSelectState
       .subscribe(({ proseIndex, kind }) => this._scrollDocToProseIndex(proseIndex, kind));
+    this._unsubscribeWysiwygFocus = canvasBus.wysiwygFocusRequest
+      .subscribe(() => this._focusWysiwygEditor());
     this._onCanvasHighlight = (e) => this._applyHighlight(e.detail);
     document.addEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
   }
@@ -498,12 +501,20 @@ export class EwEditorDoc extends LitElement {
     applyHighlight(this._proseContext?.view, detail);
   }
 
+  /** Ask the WYSIWYG iframe to put the caret back where the user left it. Skipped
+   * against an iframe that predates the message. */
+  _focusWysiwygEditor() {
+    if (!MESSAGE_TYPES.FOCUS_EDITOR) return;
+    this._controllerCtx?.port?.postMessage({ type: MESSAGE_TYPES.FOCUS_EDITOR });
+  }
+
   disconnectedCallback() {
     this._unsubscribeEditorActive?.();
     this._unsubscribeWysiwygPortReady?.();
     document.removeEventListener(CHAT_EVENT.HIGHLIGHT_SELECTION, this._onCanvasHighlight);
     this._unsubscribeSelect?.();
     this._unsubscribeProseSelect?.();
+    this._unsubscribeWysiwygFocus?.();
     this._teardown();
     setSelectionToolbarCtx();
     toolbarController.reset();

@@ -5,15 +5,18 @@ import { createTestEditor, destroyEditor } from '../../../edit/prose/test-helper
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let getSourceUploadContext;
+let getSourceOrgSite;
 let uploadImageFile;
+let imageDrop;
 let HLX6_MAX_IMAGE_BYTES;
 let toasts;
 
 const nextFrame = () => new Promise((resolve) => { setTimeout(resolve, 0); });
 
 before(async () => {
-  ({ getSourceUploadContext } = await import('../../../../../../blocks/canvas/ew-editor-doc/prose-plugins/sourceUploadContext.js'));
+  ({ getSourceUploadContext, getSourceOrgSite } = await import('../../../../../../blocks/canvas/ew-editor-doc/prose-plugins/sourceUploadContext.js'));
   ({ uploadImageFile } = await import('../../../../../../blocks/canvas/ew-editor-doc/prose-plugins/imageDrop.js'));
+  ({ default: imageDrop } = await import('../../../../../../blocks/canvas/ew-editor-doc/prose-plugins/imageDrop.js'));
   ({ HLX6_MAX_IMAGE_BYTES } = await import('../../../../../../blocks/canvas/utils/image-upload.js'));
   ({ toasts } = await import('../../../../../fixtures/nx2/blocks/shared/toast/toast.js'));
 });
@@ -68,6 +71,24 @@ describe('getSourceUploadContext', () => {
   });
 });
 
+describe('getSourceOrgSite', () => {
+  it('reads a da-admin source url', () => {
+    expect(getSourceOrgSite('https://admin.da.live/source/org/site/dir/doc.html'))
+      .to.deep.equal({ org: 'org', site: 'site' });
+  });
+
+  it('reads a source-bus source url', () => {
+    expect(getSourceOrgSite('https://api.aem.live/org/sites/site/source/dir/doc.html'))
+      .to.deep.equal({ org: 'org', site: 'site' });
+  });
+
+  it('answers null for a url it cannot read', () => {
+    expect(getSourceOrgSite('')).to.equal(null);
+    expect(getSourceOrgSite('https://admin.da.live/list/org/site')).to.equal(null);
+    expect(getSourceOrgSite(null)).to.equal(null);
+  });
+});
+
 describe('uploadImageFile', () => {
   let editor;
 
@@ -81,6 +102,46 @@ describe('uploadImageFile', () => {
   });
 
   const png = () => new File([new Uint8Array([1, 2, 3])], 'pic.png', { type: 'image/png' });
+
+  it('uploads an extension image file at the pointer using the native-file drop flow', async () => {
+    const { view } = editor;
+    const file = png();
+    const originalCoords = view.posAtCoords;
+    view.posAtCoords = () => ({ pos: 1 });
+    const { calls, restore } = stubStore({ upgraded: false, contentUrl: './media_extension.png' });
+    try {
+      const plugin = imageDrop(view.state.schema, () => 'https://admin.da.live/source/extorg/extsite/doc.html');
+      const event = {
+        clientX: 10,
+        clientY: 20,
+        dataTransfer: new DataTransfer(),
+        preventDefault() {},
+      };
+      event.dataTransfer.setData('text/html', '<img src="https://extension.example.com/preview.png">');
+      event.dataTransfer.items.add(file);
+      expect(plugin.props.handleDOMEvents.drop(view, event)).to.equal(true);
+      const uploaded = () => {
+        let found = false;
+        view.state.doc.descendants((node) => {
+          if (node.type.name === 'image' && node.attrs.src === './media_extension.png') found = true;
+        });
+        return found;
+      };
+      for (let attempt = 0; attempt < 100 && !uploaded(); attempt += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((resolve) => { setTimeout(resolve, 10); });
+      }
+      expect(calls.some((call) => call.opts?.body === file)).to.equal(true);
+      const sources = [];
+      view.state.doc.descendants((node) => {
+        if (node.type.name === 'image') sources.push(node.attrs.src);
+      });
+      expect(sources).to.deep.equal(['./media_extension.png']);
+    } finally {
+      view.posAtCoords = originalCoords;
+      restore();
+    }
+  });
 
   ['png', 'avif', 'webp'].forEach((ext) => {
     [false, true].forEach((upgraded) => {

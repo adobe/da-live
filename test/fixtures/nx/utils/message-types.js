@@ -2,6 +2,7 @@
 export const MESSAGE_TYPES = Object.freeze({
   INIT: 'init',
   READY: 'ready',
+  DROP_TARGET: 'drop-target',
 
   SET_BODY: 'set-body',
   SET_EDITOR_STATE: 'set-editor-state',
@@ -25,6 +26,9 @@ export const MESSAGE_TYPES = Object.freeze({
   COMMENT_MARKER_CLEAR: 'comment-marker-clear',
   COMMENT_SHORTCUT: 'comment-shortcut',
   QUICK_EDIT_IFRAME_CLICK: 'quick-edit-iframe-click',
+
+  FOCUS_TOOLBAR: 'focus-toolbar',
+  FOCUS_EDITOR: 'focus-editor',
 
   IMAGE_REPLACE: 'image-replace',
 });
