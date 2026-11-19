@@ -172,7 +172,7 @@ export default class DaBrowsePreflight extends LitElement {
 
   // eslint-disable-next-line class-methods-use-this
   _renderRowBody(row) {
-    if (!row.isPage) return html`<p class="da-preflight-note">No checks needed for this file type.</p>`;
+    if (!row.isPage) return html`<p class="da-preflight-note">No Preflight needed for this file type</p>`;
     if (row.status === 'error') {
       return html`<p class="da-preflight-error" role="alert">${row.error}</p>`;
     }
