@@ -65,9 +65,6 @@ export const daFetch = async (url, opts = {}) => {
     const canToken = ALLOWED_TOKEN.some((origin) => new URL(url).origin === origin);
     if (!canToken) return;
     opts.headers.Authorization = `Bearer ${tok}`;
-    if (AEM_ORIGINS.some((origin) => new URL(url).origin === origin)) {
-      opts.headers['x-content-source-authorization'] = `Bearer ${tok}`;
-    }
   };
 
   const accessToken = await getAuthToken();
