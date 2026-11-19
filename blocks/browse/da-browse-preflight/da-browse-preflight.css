@@ -142,3 +142,9 @@ da-dialog::part(content) {
   color: var(--s2-gray-700);
   font-size: 14px;
 }
+
+/* Line up with <nx-page-eval>'s content, which is inset by its tile padding. */
+.da-preflight-body .da-preflight-note,
+.da-preflight-body .da-preflight-error {
+  padding-inline: var(--s2-spacing-300);
+}
