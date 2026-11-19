@@ -838,6 +838,65 @@ describe('prose/index initProse default export', () => {
     expect(window.view.someProp('editable')(window.view)).to.be.false;
   });
 
+  it('Blocks local edits once collab gives up on auth, and allows them again after a re-sync', async () => {
+    const restoreWebSocket = stubWebSocket();
+    window.localStorage.setItem('nx-ims', 'true');
+    const savedIMS = window.adobeIMS;
+    window.adobeIMS = {
+      getAccessToken: () => ({ token: 'T-initial' }),
+      refreshToken: async () => {},
+      signIn: () => {},
+      isSignedInUser: () => false,
+    };
+    let connection;
+    try {
+      // Earlier tests' delayed plugins reconfigure the global window.view when they resolve; let
+      // them drain first so they cannot land on this test's view.
+      await wait(100);
+      connection = await createConnection('https://admin.da.live/source/o/r/p.html');
+      const { wsProvider, ydoc } = connection;
+      Object.defineProperty(fakeContent, 'proseEl', {
+        configurable: true,
+        set(v) {
+          v.getRootNode = () => ({ host: document.createElement('div') });
+          this._proseEl = v;
+        },
+        get() { return this._proseEl; },
+      });
+      await initProse({ path: 'https://admin.da.live/source/o/r/p.html', permissions: ['read', 'write'], doc: null, daContent: fakeContent, wsPromise: Promise.resolve({ wsProvider, ydoc }) });
+      await wait(80); // this view's own delayed plugins
+      const { view } = window;
+      const type = () => view.dispatch(view.state.tr.insertText('x', 1));
+
+      type();
+      const beforeLoss = view.state.doc.textContent;
+      expect(beforeLoss).to.equal('x');
+
+      // Signed out elsewhere: imslib has no token, so collab gives up.
+      window.adobeIMS.getAccessToken = () => null;
+      wsProvider.emit('connection-close', [{ code: 4401, reason: 'auth' }, wsProvider]);
+      await wait(80);
+
+      expect(view.editable).to.be.false;
+      expect(view.dom.getAttribute('contenteditable')).to.equal('false');
+      type();
+      expect(view.state.doc.textContent).to.equal(beforeLoss);
+
+      wsProvider.emit('synced', [true]);
+      expect(view.editable).to.be.true;
+      type();
+      expect(view.state.doc.textContent).to.equal('xx');
+    } finally {
+      document.querySelectorAll('da-dialog.da-auth-banner').forEach((el) => el.remove());
+      connection?.wsProvider.disconnect({ data: 'Client navigation' });
+      connection?.wsProvider.destroy?.();
+      connection?.ydoc.destroy();
+      if (savedIMS === undefined) delete window.adobeIMS; else window.adobeIMS = savedIMS;
+      window.localStorage.removeItem('nx-ims');
+      restoreWebSocket();
+    }
+  });
+
   it('Sets an Anonymous user when adobeIMS is not signed in', async () => {
     const ydoc = new Y.Doc();
     const provider = buildFakeWsProvider({ withSynced: false });
