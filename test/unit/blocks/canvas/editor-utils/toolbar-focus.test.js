@@ -32,7 +32,6 @@ describe('toolbar keyboard access (#1542)', () => {
       return 0;
     });
     toolbarController.reset();
-    canvasBus.blockEditState.emit({ open: false });
     canvasBus.editorViewState.emit({ view: 'split' });
     const plugin = selectionToolbar.createSelectionToolbarPlugin();
     editor = await createTestEditor({ additionalPlugins: [plugin] });

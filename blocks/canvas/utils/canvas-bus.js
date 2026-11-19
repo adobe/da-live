@@ -26,7 +26,6 @@ export const canvasBus = Object.freeze({
   newVersionRequest: createChannel(),
   comparisonRequest: createChannel(),
   commentComposeRequest: createChannel(),
-  blockEditRequest: createChannel(),
   preflightRunRequest: createChannel(),
   toolbarSurfaceRequest: createChannel(),
   // Return keyboard focus to the caret in the WYSIWYG iframe (posts FOCUS_EDITOR).
@@ -37,7 +36,6 @@ export const canvasBus = Object.freeze({
   editorDocState: createChannel(),
   editorViewState: createChannel({ replay: Boolean }),
   branchState: createChannel({ replay: Boolean }),
-  blockEditState: createChannel({ replay: Boolean }),
   toolbarSurfaceState: createChannel({ replay: Boolean }),
   // Doc selection does not claim focus; an iframe selection does.
   toolbarSelectionState: createChannel(),

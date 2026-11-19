@@ -31,9 +31,6 @@ const state = {
   // for the block toolbar.
   blockBySurface: { doc: null, wysiwyg: null },
   editorMode: 'layout', // 'layout' | 'content' | 'split'
-  // The single-block edit modal hosts the doc view in a dialog, on top of and
-  // regardless of the current editor mode.
-  blockEditOpen: false,
 };
 
 /** Pierce shadow roots to find the truly focused element. `document.activeElement`
@@ -45,8 +42,7 @@ function deepActiveElement() {
   return el;
 }
 
-/** `node` is `container` or inside it, across shadow boundaries — the selection
- * toolbar is re-hosted in ew-editor-doc's shadow root while the block-edit modal is open. */
+/** `node` is `container` or inside it, across shadow boundaries. */
 function composedContains(container, node) {
   for (let el = node; el; el = el.parentNode ?? el.host) {
     if (el === container) return true;
@@ -107,17 +103,11 @@ function ensureBlockToolbar() {
  * re-runs that predicate on its own, so poke it whenever the answer changes.
  */
 function setSurface(next) {
-  // The iframe behind the modal's backdrop can't take the surface back — its
-  // blur/selection messages keep arriving while the modal is open.
-  if (state.blockEditOpen && next === 'wysiwyg') return;
   if (state.activeSurface === next) return;
   canvasBus.toolbarSurfaceState.emit({ activeSurface: next });
 }
 
 function editorModeAllows(surface) {
-  // The modal covers everything: only the doc view it hosts is servable, whichever
-  // editor mode opened it.
-  if (state.blockEditOpen) return surface === 'doc';
   if (surface === 'doc') return state.editorMode === 'content' || state.editorMode === 'split';
   if (surface === 'wysiwyg') return state.editorMode === 'layout' || state.editorMode === 'split';
   return false;
@@ -164,9 +154,7 @@ function render() {
 
   const { activeSurface } = state;
   const block = activeSurface ? state.blockBySurface[activeSurface] : null;
-  // The block toolbar is body-hosted, so inside the modal it would render behind the
-  // backdrop — and its commands target the block already being edited.
-  const showBlock = block !== null && !state.blockEditOpen && editorModeAllows(activeSurface);
+  const showBlock = block !== null && editorModeAllows(activeSurface);
   syncBlockToolbar(showBlock ? block : null);
 
   if (!showBlock && shouldShow(tb)) {
@@ -252,13 +240,6 @@ function installOutsidePointerdown() {
 canvasBus.editorViewState.subscribe(({ view }) => {
   if (state.editorMode === view) return;
   state.editorMode = view;
-  scheduleRender();
-});
-
-canvasBus.blockEditState.subscribe(({ open }) => {
-  if (state.blockEditOpen === open) return;
-  state.blockEditOpen = open;
-  if (open) setSurface('doc');
   scheduleRender();
 });
 
@@ -360,7 +341,6 @@ export const toolbarController = {
 
   reset() {
     setSurface(null);
-    if (state.blockEditOpen) canvasBus.blockEditState.emit({ open: false });
     state.showableBySurface.doc = false;
     state.showableBySurface.wysiwyg = false;
     state.blockBySurface.doc = null;

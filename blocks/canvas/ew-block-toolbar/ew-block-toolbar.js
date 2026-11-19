@@ -246,13 +246,6 @@ class EwBlockToolbar extends LitElement {
     return html`<svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-${name}-20-n.svg#icon"></use></svg>`;
   }
 
-  _onEditBlock() {
-    const pos = this.view?.state.selection.from;
-    if (pos == null) return;
-    // Ask the doc editor to open the single-block editor modal (see ew-editor-doc.enterBlockEdit).
-    canvasBus.blockEditRequest.emit({ pos });
-  }
-
   _onComment() {
     if (!this.view) return;
     requestComment(this.view);
@@ -351,14 +344,6 @@ class EwBlockToolbar extends LitElement {
             title="Add item"
             @click=${() => this._onAddItem()}
           >${this._icon('addcircle')}<span>Add item</span></button>` : nothing}
-        <span class="toolbar-sep" aria-hidden="true"></span>
-        <button
-          type="button"
-          class="toolbar-btn block-edit icon-only"
-          aria-label="Edit block"
-          title="Edit block"
-          @click=${() => this._onEditBlock()}
-        >${this._icon('edit')}</button>
         <span class="toolbar-sep" aria-hidden="true"></span>
         <button
           type="button"

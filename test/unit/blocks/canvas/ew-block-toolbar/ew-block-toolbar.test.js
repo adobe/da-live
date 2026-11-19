@@ -351,10 +351,6 @@ describe('ew-block-toolbar', () => {
     });
   });
 
-  function editBtn() {
-    return toolbar.shadowRoot.querySelector('.block-edit');
-  }
-
   function addItemBtn() {
     return toolbar.shadowRoot.querySelector('.block-add-item');
   }
@@ -372,26 +368,12 @@ describe('ew-block-toolbar', () => {
     expect(addItemBtn()).to.be.null;
   });
 
-  it('shows the edit-block button with the edit icon', async () => {
+  it('renders the block actions without an edit-block button or extra separator', async () => {
     toolbar.show('cards');
     await toolbar.updateComplete;
-    expect(editBtn()).to.exist;
-    const use = editBtn().querySelector('svg.icon use');
-    expect(use.getAttribute('href')).to.equal('/img/icons/s2-icon-edit-20-n.svg#icon');
-  });
-
-  it('requests the single-block edit modal via the canvas bus when the edit button is clicked', async () => {
-    const calls = [];
-    const unsubscribe = canvasBus.blockEditRequest.subscribe((detail) => calls.push(detail));
-    try {
-      toolbar.view = { state: { selection: { from: 7 } } };
-      toolbar.show('cards');
-      await toolbar.updateComplete;
-      editBtn().click();
-      expect(calls).to.deep.equal([{ pos: 7 }]);
-    } finally {
-      unsubscribe();
-    }
+    const actions = [...toolbar.shadowRoot.querySelector('.toolbar-wrap').children];
+    expect(actions.map((el) => el.getAttribute('aria-label') || el.className))
+      .to.deep.equal(['Replace block', 'toolbar-sep', 'Delete block', 'toolbar-sep', 'Comment']);
   });
 
   it('opens the comments composer for the block when the comment button is clicked', async () => {
@@ -432,7 +414,6 @@ describe('ew-block-toolbar with the toolbar controller', () => {
       return 0;
     });
     toolbarController.reset();
-    canvasBus.blockEditState.emit({ open: false });
     const plugin = selectionToolbar.createSelectionToolbarPlugin();
     editor = await createTestEditor({ additionalPlugins: [plugin] });
     const { state } = editor.view;
