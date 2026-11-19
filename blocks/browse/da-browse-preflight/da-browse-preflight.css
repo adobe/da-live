@@ -19,20 +19,22 @@ da-dialog::part(content) {
 .da-preflight-rows {
   display: flex;
   flex-direction: column;
-  gap: 8px;
   width: 720px;
   max-width: 90vw;
 
-  /* 11px + 1px row border + 12px summary padding centers each row's right-most icon
-     under the dialog's close button (34px in) and starts the chevron at the title (24px). */
-  padding-inline: 11px;
+  /* 12px + 12px summary padding centers each row's right-most icon under the
+     dialog's close button (34px in) and starts the chevron at the title (24px). */
+  padding-inline: 12px;
   font-family: var(--s2-font-family);
 }
 
+/* Spectrum Accordion: stacked items share single dividers; only the last closes the group. */
 .da-preflight-row {
-  border: 1px solid var(--s2-gray-200);
-  border-radius: var(--s2-corner-radius-400);
-  overflow: hidden;
+  border-top: 1px solid var(--s2-gray-200);
+}
+
+.da-preflight-row:last-child {
+  border-bottom: 1px solid var(--s2-gray-200);
 }
 
 .da-preflight-summary {
@@ -42,6 +44,17 @@ da-dialog::part(content) {
   padding: 8px 12px;
   cursor: pointer;
   list-style: none;
+  transition: background-color 0.13s ease-in-out;
+}
+
+.da-preflight-summary:hover {
+  background-color: var(--s2-gray-100);
+}
+
+.da-preflight-summary:focus-visible {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: -2px;
+  border-radius: var(--s2-corner-radius-200);
 }
 
 .da-preflight-summary::-webkit-details-marker {
