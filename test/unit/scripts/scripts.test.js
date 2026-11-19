@@ -121,8 +121,13 @@ describe('decorateArea', () => {
     });
 
     it('loads the consumer styling once and fits desktop and narrow grid containers', async () => {
-      container.style.cssText = 'display: grid; width: 900px';
-      container.innerHTML = `<div class="nx-cards start" style="display: grid; gap: 16px">
+      container.style.cssText = `
+        display: grid;
+        width: 900px;
+        --s2-spacing-300: 16px;
+        --s2-spacing-400: 24px;
+      `;
+      container.innerHTML = `<div class="nx-cards start" style="display: grid; gap: var(--s2-spacing-300)">
         <nx-action-card>One</nx-action-card><nx-action-card>Two</nx-action-card>
         <nx-action-card>Three</nx-action-card><nx-action-card>Four</nx-action-card>
       </div>`;
@@ -135,8 +140,11 @@ describe('decorateArea', () => {
       decorateArea({ area: container });
       expect(document.head.querySelectorAll(`link[href="${href}"]`).length).to.equal(1);
       const grid = container.firstElementChild;
+      const style = getComputedStyle(grid);
       expect(grid.getBoundingClientRect().width).to.equal(664);
-      expect(getComputedStyle(grid).gridTemplateColumns.split(' ').length).to.equal(2);
+      expect(grid.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight))
+        .to.equal(632);
+      expect(style.gridTemplateColumns.split(' ').length).to.equal(2);
       container.style.width = '260px';
       expect(container.scrollWidth).to.equal(260);
       expect(grid.getBoundingClientRect().width).to.equal(260);
