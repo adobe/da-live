@@ -1,3 +1,10 @@
+# [1.32.0](https://github.com/adobe/da-live/compare/v1.31.2...v1.32.0) (2026-11-19)
+
+
+### Features
+
+* **start:** dark gradient, greeting, no step count ([#1743](https://github.com/adobe/da-live/issues/1743)) ([9304163](https://github.com/adobe/da-live/commit/9304163e9422528d2b0375e2dcca6f7148911dd4))
+
 ## [1.31.2](https://github.com/adobe/da-live/compare/v1.31.1...v1.31.2) (2026-11-18)
 
 
