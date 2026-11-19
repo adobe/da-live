@@ -22,7 +22,7 @@
     pointer-events: none;
 
     a {
-      color: light-dark(#676767, var(--s2-gray-700, #afafaf));
+      color: var(--s2-gray-700);
       font-weight: 700;
       pointer-events: all;
     }
@@ -46,8 +46,8 @@
 }
 
 .da-preview-menubar {
-  --editor-btn-bg-color: light-dark(#efefef, var(--s2-gray-100, #2c2c2c));
-  --editor-btn-bg-color-hover: light-dark(#e9e9e9, var(--s2-gray-200, #323232));
+  --editor-btn-bg-color: var(--s2-gray-100);
+  --editor-btn-bg-color-hover: var(--s2-gray-200);
 
   position: fixed;
   top: 50%;
@@ -75,7 +75,7 @@
   border-radius: 2px;
   margin-bottom: 6px;
   background-color: var(--editor-btn-bg-color);
-  color: light-dark(#464646, var(--s2-gray-800, #dbdbdb));
+  color: var(--s2-gray-800);
 }
 
 .da-preview-menuitem::before {

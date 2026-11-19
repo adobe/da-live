@@ -7,7 +7,7 @@
 }
 
 .editor-wrapper {
-  --editor-btn-bg-color: light-dark(#efefef, var(--s2-gray-100, #2c2c2c));
+  --editor-btn-bg-color: var(--s2-gray-100);
 
   position: relative;
   flex: 0 1 auto;
@@ -75,7 +75,7 @@ da-versions {
   border-radius: 2px;
   border: none;
   background: transparent;
-  color: light-dark(#646464, var(--s2-gray-800, #dbdbdb));
+  color: var(--s2-gray-800);
   cursor: pointer;
 }
 

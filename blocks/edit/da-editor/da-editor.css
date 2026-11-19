@@ -28,7 +28,7 @@
   z-index: 5;
   width: 100%;
   padding: 20px;
-  background: light-dark(#efefef, var(--s2-gray-100, #2c2c2c));
+  background: var(--s2-gray-100);
   box-sizing: border-box;
   border-radius: 10px 10px 0 0;
 }
@@ -38,7 +38,7 @@
   font-family: var(--s2-font-family, var(--body-font-family));
   font-size: 18px;
   font-weight: 700;
-  color: light-dark(#000, var(--s2-gray-900, #f5f5f5));
+  color: var(--s2-gray-900);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -66,8 +66,8 @@
   font-weight: 700;
   text-align: center;
   background: none;
-  border: 2px solid light-dark(#000, var(--s2-gray-900, #f5f5f5));
-  color: light-dark(#000, var(--s2-gray-900, #f5f5f5));
+  border: 2px solid var(--s2-gray-900);
+  color: var(--s2-gray-900);
 }
 
 .da-version-action-area button.accent {
@@ -96,7 +96,7 @@
 
   min-height: 600px;
   background: var(--editor-document-background);
-  color: light-dark(#000, var(--s2-gray-900, #f5f5f5));
+  color: var(--s2-gray-900);
   position: relative;
   grid-area: editor;
   padding: 48px;
@@ -139,7 +139,7 @@ table td p {
 
 p code {
   background: light-dark(#e4ecfa, rgb(20 115 230 / 15%));
-  border: 1px solid light-dark(#becee9, var(--s2-gray-500, #6d6d6d));
+  border: 1px solid var(--s2-gray-500);
   padding: 0 4px;
   border-radius: 4px;
   font-size: 14px;
@@ -147,7 +147,7 @@ p code {
 
 pre {
   background: light-dark(#e4ecfa, rgb(20 115 230 / 15%));
-  border: 1px solid light-dark(#becee9, var(--s2-gray-500, #6d6d6d));
+  border: 1px solid var(--s2-gray-500);
   padding: 0 4px;
   border-radius: 4px;
   font-size: 14px;
@@ -167,7 +167,7 @@ blockquote::before {
   bottom: 0;
   left: 0;
   width: 4px;
-  background: light-dark(#848484, var(--s2-gray-500, #6d6d6d));
+  background: var(--s2-gray-500);
   border-radius: 2px;
 }
 
@@ -184,7 +184,7 @@ blockquote::before {
 }
 
 .ProseMirror-menubar {
-  --editor-btn-bg-color: light-dark(#efefef, var(--s2-gray-100, #2c2c2c));
+  --editor-btn-bg-color: var(--s2-gray-100);
 
   position: fixed;
   top: 50%;
@@ -447,7 +447,7 @@ span.ProseMirror-menuseparator {
 
 .ProseMirror-menu-active,
 .ProseMirror-menu-dropdown-item > div.ProseMirror-menu-active {
-  background-color: light-dark(#e4f0ff, var(--s2-blue-200, #0f1c52));
+  background-color: var(--s2-blue-200);
   border-radius: 8px;
 }
 
@@ -628,7 +628,7 @@ span.ProseMirror-menuseparator {
 /* Generic ProseMirror Styles */
 .ProseMirror hr {
   border-radius: 1px;
-  border: 1px solid light-dark(#b3b3b3, var(--s2-gray-600, #8a8a8a));
+  border: 1px solid var(--s2-gray-600);
   position: relative;
   overflow: visible;
 }
@@ -641,7 +641,7 @@ span.ProseMirror-menuseparator {
   background: var(--editor-document-background);
   top: -10px;
   font-weight: 700;
-  color: light-dark(#717171, var(--s2-gray-700, #afafaf));
+  color: var(--s2-gray-700);
   padding: 0 6px;
   font-size: 12px;
   transform: translateX(-50%);
@@ -674,7 +674,7 @@ span.ProseMirror-menuseparator {
 
 .ProseMirror tr:first-child td,
 .ProseMirror tr:first-child th {
-  background: light-dark(#f1f1f1, var(--s2-gray-200, #323232));
+  background: var(--s2-gray-200);
   text-align: center;
   font-weight: 700;
 }
@@ -686,11 +686,11 @@ span.ProseMirror-menuseparator {
 
 .ProseMirror th,
 .ProseMirror td {
-  border: 2px solid light-dark(#b1b1b1, var(--s2-gray-400, #444));
+  border: 2px solid var(--s2-gray-400);
   vertical-align: top;
   min-width: 100px;
   padding: 8px;
-  color: light-dark(#464646, var(--s2-gray-900, #f5f5f5));
+  color: var(--s2-gray-900);
 }
 
 td.selectedCell {
@@ -717,7 +717,7 @@ td.selectedCell {
 }
 
 .ProseMirror .highlighted-context {
-  background-color: light-dark(#eee, var(--s2-gray-200, #323232));
+  background-color: var(--s2-gray-200);
 }
 
 /* Make sure li selections wrap around markers */
@@ -773,7 +773,7 @@ img.ProseMirror-separator {
 /* COPY FROM TABLES */
 .ProseMirror .tableWrapper {
   overflow-x: auto;
-  border: 2px solid light-dark(#b1b1b1, var(--s2-gray-400, #444));
+  border: 2px solid var(--s2-gray-400);
   border-radius: 6px;
   margin: 2px 0;
 }
@@ -1067,8 +1067,8 @@ da-diff-deleted, da-diff-added {
   width: 20px;
   height: 20px;
   background-color: light-dark(#fff, var(--s2-gray-75, #222));
-  color: light-dark(#666, var(--s2-gray-800, #dbdbdb));
-  border: 1px solid light-dark(#ccc, var(--s2-gray-400, #444));
+  color: var(--s2-gray-800);
+  border: 1px solid var(--s2-gray-400);
   border-radius: 4px;
   z-index: 1;
   cursor: pointer;

@@ -2,8 +2,8 @@
   display: none;
   position: absolute;
   background: light-dark(#fff, var(--s2-gray-75, #222));
-  color: light-dark(#000, var(--s2-gray-900, #f2f2f2));
-  border: 1px solid light-dark(#ccc, var(--s2-gray-300, #393939));
+  color: var(--s2-gray-900);
+  border: 1px solid var(--s2-gray-300);
   border-radius: 4px;
   box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
   max-height: 300px;
@@ -27,13 +27,13 @@
 
 .link-menu-item:hover,
 .link-menu-item.selected {
-  background: light-dark(#f0f0f0, var(--s2-gray-100, #2c2c2c));
+  background: var(--s2-gray-100);
 }
 
 .link-menu-icon {
   width: 18px;
   height: 18px;
-  color: light-dark(#464646, var(--s2-gray-800, #dbdbdb));
+  color: var(--s2-gray-800);
   background-color: currentcolor;
   mask-position: center;
   mask-repeat: no-repeat;
@@ -42,12 +42,10 @@
 }
 
 .link-menu-icon.menu-item-open-link {
-  color: light-dark(#646464, var(--s2-gray-800, #dbdbdb));
   mask-image: url('/blocks/edit/img/S2_icon_OpenIn_20_N.svg');
 }
 
 .link-menu-icon.menu-item-edit-link {
-  color: light-dark(#000, var(--s2-gray-800, #dbdbdb));
   mask-image: url('/blocks/edit/img/Smock_Edit_18_N.svg');
 }
 

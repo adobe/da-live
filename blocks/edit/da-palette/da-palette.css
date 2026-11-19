@@ -6,13 +6,13 @@
   padding: 12px;
   width: 280px;
   background: light-dark(#fff, var(--s2-gray-75, #222));
-  color: light-dark(#000, var(--s2-gray-900, #f2f2f2));
+  color: var(--s2-gray-900);
   box-sizing: border-box;
 }
 
 h5 {
   margin: 0 0 6px;
-  color: light-dark(#676767, var(--s2-gray-700, #afafaf));
+  color: var(--s2-gray-700);
   text-transform: uppercase;
   font-size: 14px;
   line-height: 1;
@@ -22,15 +22,15 @@ input {
   width: 100%;
   box-sizing: border-box;
   border: none;
-  background: light-dark(#efefef, var(--s2-gray-100, #2c2c2c));
-  color: light-dark(#000, var(--s2-gray-900, #f2f2f2));
+  background: var(--s2-gray-100);
+  color: var(--s2-gray-900);
   padding: 6px;
   margin-bottom: 6px;
   border-radius: 2px;
 }
 
 input::placeholder {
-  color: light-dark(#676767, var(--s2-gray-700, #afafaf));
+  color: var(--s2-gray-700);
   opacity: 1;
 }
 
@@ -48,8 +48,8 @@ input:focus-visible {
 button {
   font-family: var(--s2-font-family, var(--body-font-family));
   display: block;
-  border: 2px solid light-dark(#1373e6, var(--s2-blue-800, #4069fd));
-  background: light-dark(#1373e6, var(--s2-blue-800, #4069fd));
+  border: 2px solid var(--s2-blue-800);
+  background: var(--s2-blue-800);
   color: #FFF;
   line-height: 20px;
   border-radius: 12px;
