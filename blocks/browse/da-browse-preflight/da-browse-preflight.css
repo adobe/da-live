@@ -93,7 +93,7 @@ da-dialog::part(content) {
 }
 
 .da-preflight-body {
-  padding: 0 12px 12px;
+  padding: 0 var(--s2-spacing-300) var(--s2-spacing-300);
 }
 
 .da-preflight-error {
