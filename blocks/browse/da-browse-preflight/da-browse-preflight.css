@@ -131,6 +131,11 @@ da-dialog::part(content) {
   mask-image: url("/img/icons/s2-icon-closecircle-20-n.svg");
 }
 
+.ui-artifact-pe-icon.ui-artifact-pe-tone-neutral {
+  color: var(--s2-gray-800);
+  mask-image: url("/img/icons/s2-icon-removecircle-20-n.svg");
+}
+
 .da-preflight-note {
   margin: 0;
   padding: 12px 0;

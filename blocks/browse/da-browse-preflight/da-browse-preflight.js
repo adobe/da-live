@@ -160,8 +160,13 @@ export default class DaBrowsePreflight extends LitElement {
 
   _renderStatusIcon(row) {
     if (row.status === 'loading') return html`<span class="nx-loading-spinner" role="status" aria-label="Evaluating"></span>`;
-    const tone = row.status === 'pass' ? 'positive' : 'negative';
-    const label = row.status === 'pass' ? 'Passed' : 'Failed';
+    // Non-page files aren't evaluated: shown as not applicable, but still count as passing.
+    let tone = row.status === 'pass' ? 'positive' : 'negative';
+    let label = row.status === 'pass' ? 'Passed' : 'Failed';
+    if (!row.isPage) {
+      tone = 'neutral';
+      label = 'Not applicable';
+    }
     return html`<span class="ui-artifact-pe-icon ui-artifact-pe-tone-${tone}" role="img" aria-label=${label} title=${label}></span>`;
   }
 

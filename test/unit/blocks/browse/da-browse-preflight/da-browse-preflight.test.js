@@ -54,7 +54,7 @@ describe('DaBrowsePreflight', () => {
   });
 
   describe('rows', () => {
-    it('passes non-page files without evaluating and offers them in Publish Passing', async () => {
+    it('marks non-page files not applicable without evaluating and offers them in Publish Passing', async () => {
       let calls = 0;
       window.fetch = () => {
         calls += 1;
@@ -67,6 +67,9 @@ describe('DaBrowsePreflight', () => {
       expect(el._rows.map((r) => r.status)).to.deep.equal(['pass', 'pass']);
       expect(el._passing).to.deep.equal([json, img]);
       expect(calls).to.equal(0);
+      const icons = [...el.shadowRoot.querySelectorAll('.da-preflight-row-actions .ui-artifact-pe-icon')];
+      expect(icons.map((i) => i.getAttribute('aria-label'))).to.deep.equal(['Not applicable', 'Not applicable']);
+      expect(icons.every((i) => i.classList.contains('ui-artifact-pe-tone-neutral'))).to.be.true;
     });
 
     it('checks auth once and marks every page as an error when signed out', async () => {
