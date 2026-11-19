@@ -101,7 +101,7 @@ function pmPosAtTextOffset(doc, rangeFrom, rangeTo, targetOffset) {
   return matched ? result : null;
 }
 
-function decodeStructural(state, anchor) {
+export function decodeStructural(state, anchor) {
   const structural = anchor?.structural;
   if (!structural?.path || !state.doc) return null;
   const located = nodeAtPath(state.doc, structural.path);
@@ -114,9 +114,11 @@ function decodeStructural(state, anchor) {
   }
   const docEnd = state.doc.content.size;
   const from = pmPosAtTextOffset(state.doc, located.start, docEnd, structural.offset);
-  const to = from == null
+  const lastOffset = structural.offset + structural.length - 1;
+  const lastChar = from == null || structural.length < 1
     ? null
-    : pmPosAtTextOffset(state.doc, located.start, docEnd, structural.offset + structural.length);
+    : pmPosAtTextOffset(state.doc, located.start, docEnd, lastOffset);
+  const to = lastChar == null ? null : lastChar + 1;
   if (from == null || to == null || from >= to) return null;
   return { from, to };
 }

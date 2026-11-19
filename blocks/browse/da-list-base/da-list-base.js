@@ -442,18 +442,28 @@ export default class DaListBase extends LitElement {
     const moveToTrash = type === 'move' && !item.path.includes('/.trash/') && item.destination.includes('/.trash/');
 
     let continuationToken;
+    let hasCompletedPage = false;
     try {
       do {
         const args = type === 'delete'
           ? { continuationToken }
           : { destination: item.destination, continuationToken };
-        const { ok, status, continuationToken: nextToken } = await fn(item.path, args);
+        const resp = await fn(item.path, args);
+        const { ok, status } = resp;
         if (!ok) {
           const err = new Error(`Unexpected status: ${status}`);
           err.status = status;
           throw err;
         }
-        continuationToken = nextToken;
+        hasCompletedPage = true;
+        continuationToken = undefined;
+        if (status === 206) {
+          const page = await resp.json();
+          if (typeof page?.continuationToken !== 'string' || !page.continuationToken) {
+            throw new Error('Partial response is missing a continuation token');
+          }
+          continuationToken = page.continuationToken;
+        }
       } while (continuationToken);
 
       item.isChecked = false;
@@ -470,8 +480,8 @@ export default class DaListBase extends LitElement {
         }
       }
     } catch (e) {
-      // The assumption here is that the user does not have permission to write to the trash
-      if (moveToTrash && e.status === 403) {
+      // A denied continuation must not permanently delete the remaining source contents.
+      if (moveToTrash && e.status === 403 && !hasCompletedPage) {
         await this.handleItemAction({ item, type: 'delete' });
       } else {
         this._itemErrors.push({ ...item, message: `Couldn't ${type} item` });

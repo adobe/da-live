@@ -37,6 +37,12 @@ function release(sheet) {
   lib.current = null;
 }
 
+// Newly built grids capture document keys even before focus.
+export function releaseKeyboard(except) {
+  const current = window.jspreadsheet?.current;
+  if (current && current !== except) release(current);
+}
+
 function getLabel(sheet) {
   return sheet.name || sheet.options.sheetName || 'Sheet';
 }

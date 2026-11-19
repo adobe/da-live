@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getFirstSheet, fetchDaConfigs } from '../../../shared/utils.js';
+import { getEditorConfigs, fetchDaConfigs } from '../../../shared/utils.js';
 import { getNx, sanitizePathParts, getNxEWFlags } from '../../../../scripts/utils.js';
 import { getChatPanelContent, chatAvailability, chatTurnCompleted } from '../../../shared/chat-panel.js';
 import { getBrowseSettings, updateBrowseSettings } from '../shared/settings.js';
@@ -286,15 +286,9 @@ export default class DaBrowse extends LitElement {
     if (reFetch) {
       const { org, site } = this.details;
       const configs = await Promise.all(fetchDaConfigs({ org, site }));
-      const rows = configs.filter(Boolean).reverse().flatMap((c) => getFirstSheet(c) || []);
-      this.editorConfs = rows.reduce((acc, row) => {
-        if (row.key === 'editor.path') acc.push(row.value);
-        return acc;
-      }, []);
-      this.hidePublishConfs = rows.reduce((acc, row) => {
-        if (row.key === 'editor.hidePublish') acc.push(row.value);
-        return acc;
-      }, []);
+      const { editorConfs, hidePublishConfs } = getEditorConfigs(configs);
+      this.editorConfs = editorConfs;
+      this.hidePublishConfs = hidePublishConfs;
     }
 
     return getConfiguredEditor(this.details.fullpath, this.editorConfs, DEF_EDIT);
