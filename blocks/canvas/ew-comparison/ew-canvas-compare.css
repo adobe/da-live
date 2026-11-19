@@ -190,6 +190,13 @@ nx-popover {
   box-shadow: 4px 0 0 inset var(--s2-red-400);
 }
 
+:is(.ew-cc-body, .ew-cc-pane) ins.diffins:has(> hr),
+:is(.ew-cc-body, .ew-cc-pane) del.diffdel:has(> hr) {
+  display: block;
+  background: none;
+  padding: 0;
+}
+
 :is(.ew-cc-body, .ew-cc-pane) ins.diffins:empty,
 :is(.ew-cc-body, .ew-cc-pane) ins.diffmod:empty,
 :is(.ew-cc-body, .ew-cc-pane) del.diffdel:empty,
@@ -235,4 +242,38 @@ nx-popover {
   width: auto;
   flex: 1;
   gap: var(--s2-spacing-300);
+}
+
+/* Section breaks (<hr>) get the editor's "Section Break" line and label, tinted when added or removed. */
+:is(.ew-cc-body, .ew-cc-pane) hr {
+  position: relative;
+  overflow: visible;
+  margin: 24px 0;
+  border: 1px solid var(--s2-gray-400);
+  border-radius: 1px;
+  color: var(--s2-gray-600);
+}
+
+:is(.ew-cc-body, .ew-cc-pane) hr::after {
+  content: 'Section Break';
+  position: absolute;
+  left: 50%;
+  top: -10px;
+  transform: translateX(-50%);
+  padding: 0 6px;
+  background: var(--s2-gray-25, #fff);
+  color: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+:is(.ew-cc-body, .ew-cc-pane) ins.diffins > hr {
+  border-color: var(--s2-green-300);
+  color: var(--s2-green-800);
+}
+
+:is(.ew-cc-body, .ew-cc-pane) del.diffdel > hr {
+  border-color: var(--s2-red-400);
+  color: var(--s2-red-800);
 }
