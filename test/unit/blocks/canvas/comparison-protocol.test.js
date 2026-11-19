@@ -13,7 +13,12 @@ describe('comparison plugin protocol', () => {
   let ready;
   let clientPort;
   let unsubscribe;
+  let savedFetch;
   beforeEach(async () => {
+    savedFetch = window.fetch;
+    window.fetch = async () => new Response(
+      JSON.stringify({ features: { rendering: { version: 2 } } }),
+    );
     canvasBus.branchState.emit({
       org: 'example',
       site: 'site',
@@ -31,6 +36,7 @@ describe('comparison plugin protocol', () => {
     ({ data: ready, port: clientPort } = await initialized);
   });
   afterEach(() => {
+    window.fetch = savedFetch;
     unsubscribe?.();
     connection?.destroy();
     clientPort?.close();

@@ -78,6 +78,22 @@ describe('aem2doc', () => {
     const tables = document.querySelectorAll('table');
     expect(tables.length).to.be.greaterThan(0);
   });
+
+  it('Keeps image focal point data attributes', () => {
+    const html = '<body><header></header><main><div><p><img src="/a.png" data-focal-x="25.00" data-focal-y="15.00"></p></div></main><footer></footer></body>';
+    const ydoc = new Y.Doc();
+    aem2doc(html, ydoc);
+    const schema = getSchema();
+    const images = [];
+    yDocToProsemirror(schema, ydoc).descendants((node) => {
+      if (node.type === schema.nodes.image) images.push(node.attrs);
+    });
+    expect(images).to.have.lengthOf(1);
+    expect(images[0]).to.include({ dataFocalX: '25.00', dataFocalY: '15.00' });
+    const result = doc2aem(ydoc);
+    expect(result).to.contain('data-focal-x="25.00"');
+    expect(result).to.contain('data-focal-y="15.00"');
+  });
 });
 
 function createSheet(name, data, columnWidths) {

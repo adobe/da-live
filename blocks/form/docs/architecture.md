@@ -4,8 +4,10 @@ JSON Schema-driven structured content editor. A thin Lit element wires [da-sc-sd
 
 The block runs inside the Experience Workspace (EW) and has two entry files.
 
-- `form.js` decorates the block. It sets up the EW workspace (app-frame grid, canvas header, docked chat) and mounts the editor.
-- `editor.js` defines the `nx-form` Lit element, which owns the SDK and the editing UI.
+- `form.js` decorates the block. It sets up the EW workspace (app-frame grid, canvas header, tools panel, docked chat) and mounts the editor.
+- `editor.js` defines the `ew-form-editor` Lit element, which owns the SDK and the editing UI.
+
+The block's elements use the `ew-form-` prefix, the way canvas uses `ew-canvas-`.
 
 The code was moved from da-nx's `nx/blocks/form` to da-live's `blocks/form`.
 
@@ -21,24 +23,31 @@ For engine internals such as schema compilation, model build, validation, defaul
 
 ```txt
 blocks/form/
-  form.js               EW workspace wrapper: app-frame grid, floating chat toggle, docked chat (flag-gated)
-  form.css              workspace layout
-  editor.js / .css      nx-form Lit element: routes (ctx/hash), mounts SDK, state snapshot + nav
-  icons.js              sprite-backed icon() helper
-  fields/               Spectrum 2 field components (input, picker, checkbox, button, number)
+  form.js                 EW workspace wrapper with the app-frame grid, tools panel (outline) and docked chat (flag-gated)
+  form.css                workspace layout
+  editor.js / .css        ew-form-editor Lit element: routes (ctx/hash), mounts SDK, state snapshot + nav
+  events.js               formEvents, the observable channels between ew-form-editor and its tool panel views
+  icons.js                sprite-backed icon() helper
+  fields/                 Spectrum 2 field components (ew-form-input, ew-form-picker, ew-form-checkbox, ...)
+  tool-panel/
+    host.js               toolPanelHost, the form's delegate for the shared tool panel
+    outline/
+      outline-view.js     createOutlineView, the form's Outline view of the tools panel
+      outline.js / .css   ew-form-outline, the groups of the document in the tools panel
   utils/
-    context.js          loadFormContext — routes documents to ready / blocked / select-schema
-    da-api.js           fetch/save against DA source via the nx2 source api
-    schemas.js          loadSchemas — schema discovery + module cache
-    persistence.js      attachPersistence — single-flight save with re-queue
+    context.js            loadFormContext — routes documents to ready / blocked / select-schema
+    da-api.js             fetch/save against DA source via the nx2 source api
+    schemas.js            loadSchemas — schema discovery + module cache
+    persistence.js        attachPersistence — single-flight save with re-queue
+    safe-href.js          safeHref — drops links that run script or local programs
+    rich-text/            rich-text schema with its HTML conversion, commands and toolset
   views/
-    editor.js / .css    field rendering + array rendering
-    sidebar.js / .css   navigation tree
-    preview.js / .css   read-only JSON preview
-    array-menu.js       per-item actions
-    reorder.js          reorder dialog
-  deps/                 prism syntax highlighting
-  docs/                 (this directory)
+    editor.js / .css      ew-form-fields, field rendering + array rendering
+    preview.js / .css     ew-form-preview, read-only JSON preview
+    array-menu.js         ew-form-array-menu, per-item actions
+    reorder.js            ew-form-reorder, reorder dialog
+  deps/                   prism syntax highlighting
+  docs/                   (this directory)
 ```
 
 The block uses the bundled SDK at [`deps/da-sc-sdk/dist/index.js`](../../../deps/da-sc-sdk/dist/index.js). It is built from the published [`@adobe/da-sc-sdk`](https://www.npmjs.com/package/@adobe/da-sc-sdk) npm package, which [`deps/da-sc-sdk/src/index.js`](../../../deps/da-sc-sdk/src/index.js) re-exports. To update the SDK, bump its version in `package.json`, run `npm install`, then run `npm run build:da-sc-sdk` from the repo root.
@@ -48,41 +57,72 @@ The block uses the bundled SDK at [`deps/da-sc-sdk/dist/index.js`](../../../deps
 ## 2. Dependency direction
 
 ```txt
-form.js (workspace) →  editor.js          (mounts the nx-form element; sets up header + chat)
+form.js (workspace) →  editor.js          (mounts the ew-form-editor element; sets up header + chat)
+form.js (workspace) →  tool-panel/host.js (the tools panel views)
+tool-panel/host.js →  tool-panel/outline/ (the Outline view, loaded lazily)
 editor.js (element) →  da-sc-sdk          (createEngine, convertJsonToHtml)
 editor.js          →  utils/              (loadFormContext, attachPersistence)
-editor.js          →  views/ + fields/    (editor, sidebar, preview; S2 field components)
+editor.js          →  views/ + fields/    (editor, preview, S2 field components)
+editor.js          →  events.js           (publishes state and selection, handles jumps)
+tool-panel/outline/ →  events.js           (subscribes to state and selection, publishes jumps)
 utils/context.js   →  da-sc-sdk          (convertHtmlToJson)
 utils/persistence.js → da-sc-sdk        (convertJsonToHtml)
+views/editor.js  →  fields/rich-text.js (loaded once a form renders a rich-text field)
+fields/rich-text.js → utils/rich-text/  (schema, commands, tools)
+fields/rich-text.js → da-y-wrapper      (ProseMirror)
+fields/rich-text.js → blocks/shared/    (da-link-dialog)
+fields/rich-text-toolbar.js → nx2       (picker and popover, loaded on demand)
 views/           →  (SDK engine only via prop binding from the element — no direct imports)
 ```
 
-The SDK is the only piece that holds canonical state. Everything in `utils/` and `views/` is specific to the form block. That covers DA I/O, UI components, schema discovery and single-flight save.
+The SDK is the only piece that holds canonical state. Everything in `utils/`, `views/` and `tool-panel/` is specific to the form block. That covers DA I/O, UI components, schema discovery and single-flight save.
+
+Rich-text fields (`"x-semantic-type": "rich-text"`) render a ProseMirror editor in `fields/rich-text.js`. The SDK owns their value contract and storage, as its [schema spec](https://github.com/adobe/da-sc-sdk/blob/main/docs/schema-spec.md) describes. ProseMirror comes from the `da-y-wrapper` bundle the Canvas editor already loads, so the form block does not bundle it. The field and its utils import ProseMirror directly like Canvas does. `views/editor.js` only imports the field once a form renders a rich-text field, so other forms do not load ProseMirror.
+
+The editor schema in `utils/rich-text/schema.js` only allows the subset the SDK keeps. The SDK stores a list item as one line, so a list item holds a single paragraph and nested lists. ProseMirror's list commands cannot wrap or lift several blocks at once in such a schema, so `utils/rich-text/commands.js` has its own list commands. Canvas allows several blocks per list item and uses the ProseMirror ones. It also reads and writes values with the ProseMirror DOM parser and serializer, like da-parser does for Canvas. The SDK brings each value into its canonical HTML when it saves. Parity tests run every case through the SDK converters, so a saved value reloads as the same document.
+
+The toolbar in `fields/rich-text-toolbar.js` renders a toolset that `utils/rich-text/tools.js` binds to the editor. Each tool carries its own command and selection checks, and the toolbar fires `form-rich-text-command` for the field to run. The toolbar holds no rich-text knowledge, so a new tool only changes the toolset.
 
 ---
 
 ## 3. Shell wiring
 
-`editor.js` (the `nx-form` element) instantiates the SDK engine with the (schema, document, onChange) triple, holds the current state snapshot, and the navigation state. (`form.js` is only the EW workspace wrapper — it mounts the element via `decorateEditor(block)` and, when `ew.enabled` is set, the header + docked chat.) The element passes the engine plus the selection callback to the children:
+`editor.js` (the `ew-form-editor` element) instantiates the SDK engine with the (schema, document, onChange) triple. It holds the current state snapshot and the navigation state. `form.js` only wraps the EW workspace. It mounts the element via `decorateEditor(block)`, registers the tools panel, and adds the header and docked chat when `ew.enabled` is set. The element passes the engine and the callbacks to its children:
 
 ```js
-<nx-editor
+<ew-form-fields
   .editor=${this._editor}
   .state=${this._state}
   .nav=${this._nav}
   .onSelect=${this._onSelect}
-></nx-editor>
-
-<nx-sidebar
-  .state=${this._state}
-  .nav=${this._nav}
-  .onSelect=${this._onSelect}
-></nx-sidebar>
+></ew-form-fields>
 ```
 
 Components call the engine directly (`engine.setField(...)`, `engine.addItem(...)`). They do not signal the shell — the engine calls its `onChange` callback after every mutation, and the shell pulls a fresh snapshot in response. The engine has only one notification path (mutations); save-status updates live entirely in the form block's `persistence.js` and are not signalled through the SDK. Selection changes go through `onSelect(pointer, origin)`.
 
 Shell ↔ direct-child communication uses property bindings and callbacks. CustomEvents are used only for bubbled signals from nested components that cross a shadow root (e.g. `array-menu` → editor).
+
+### Outline in the tools panel
+
+The tools panel is the shared `da-tool-panel` from [`blocks/shared/tool-panel`](../../shared/tool-panel/). Canvas and the form register it through the same helper, [`tool-panel-section.js`](../../shared/tool-panel/tool-panel-section.js), which owns the section config and keeps the panel in sync with the hash. Each editor passes a host delegate that supplies its views and, optionally, which views are pinned and how the active view is remembered.
+
+The form's host is `toolPanelHost` in `tool-panel/host.js`. It offers one view, the **Outline**, [`createOutlineView()`](../tool-panel/outline/outline-view.js), which loads `ew-form-outline`. Canvas has its own Outline under the same name. Canvas's edits the page structure, while the form's navigates the groups of the document, so the two share no code.
+
+Offering another view is one more entry in `getViews`. Views shared with canvas, such as Content and Preflight, come in a later change.
+
+The outline (`tool-panel/outline/outline.js`) lives in the tools panel aside, outside the element's tree, so property bindings can't reach it. The two talk through `formEvents` ([`events.js`](../events.js)), built on `createChannel` from [`blocks/shared/channel.js`](../../shared/channel.js).
+
+| Channel | Publisher | Payload |
+|---|---|---|
+| `formState` | `ew-form-editor` | Engine state snapshot, or null while no document is loaded |
+| `selectionState` | `ew-form-editor` | `nav` |
+| `jumpRequest` | outline | `{ pointer }` of the group or field to reveal |
+
+The `*State` channels replay their last value, so an outline that mounts later still renders right away. A jump becomes `onSelect(pointer, 'outline')`, and the editor scrolls the target to the top of its scroller at once.
+
+The outline lists the groups of the model, which are the root and every object and array below it. Array items show their position as `#n` before their label. The row of the current selection is marked, and only a selection changes it, not scrolling the editor. Rows hang from their parent by tree lines, like the former navigation sidebar. A selection made in the editor brings its row into view.
+
+`form.js` registers the `tools` panel section with the shared `da-tool-panel` and the Outline view. Like canvas and the chat, the panel reopens when it was open last time.
 
 ---
 
@@ -95,7 +135,7 @@ nav = { pointer, origin, seq }
 ```
 
 - `pointer` — RFC 6901 pointer of the focused field
-- `origin` — `'editor' | 'sidebar' | null`. Drives scroll-sync: when origin is `'sidebar'`, the editor scrolls; when `'editor'`, the sidebar scrolls.
+- `origin` is `'editor'`, `'outline'` or `null`. When origin is `'outline'`, the editor reveals the pointer. The outline marks the row of the pointer in both cases, and brings it into view when origin is `'editor'`.
 - `seq` — monotonic counter so re-selecting the same pointer still triggers scroll.
 
 Components receive `nav` as a prop and call `onSelect(pointer, origin)` to update it.

@@ -243,6 +243,7 @@ export async function saveToDa({ path, formData, blob, props, preview = false })
 }
 
 export const getSheetByIndex = (json, index = 0) => {
+  if (!json) return undefined;
   if (json[':type'] !== 'multi-sheet') {
     return json.data;
   }
@@ -250,6 +251,7 @@ export const getSheetByIndex = (json, index = 0) => {
 };
 
 export const getSheetByName = (json, name) => {
+  if (!json) return undefined;
   if (json[':type'] !== 'multi-sheet') {
     return json[':sheetname'] === name ? json.data : undefined;
   }
@@ -257,6 +259,14 @@ export const getSheetByName = (json, name) => {
 };
 
 export const getFirstSheet = (json) => getSheetByIndex(json, 0);
+
+export function getEditorConfigs(configs) {
+  const rows = configs.filter(Boolean).reverse().flatMap((config) => getFirstSheet(config) || []);
+  return {
+    editorConfs: rows.filter(({ key }) => key === 'editor.path').map(({ value }) => value),
+    hidePublishConfs: rows.filter(({ key }) => key === 'editor.hidePublish').map(({ value }) => value),
+  };
+}
 
 export function isValidHref(href) {
   if (typeof href !== 'string' || !href) return false;
@@ -374,7 +384,8 @@ export function getConfigPermissions(config) {
  * @param {string} params.org - The org to fetch config for.
  * @param {string} [params.site] - The site to also fetch config for.
  * @returns {Promise[]} `[orgConfigPromise]`, or `[orgConfigPromise, siteConfigPromise]`
- *   when `site` is given; `[Promise.resolve(null)]` when `org` is missing.
+ *   when `site` is given (the org promise resolves to null for hlx6);
+ *   `[Promise.resolve(null)]` when `org` is missing.
  */
 export const fetchDaConfigs = (() => {
   const configCache = {};
@@ -405,11 +416,19 @@ export const fetchDaConfigs = (() => {
     return configCache[key];
   };
 
+  const fetchOrgConfig = async (org, site) => {
+    if (site) {
+      const { isHlx6 } = await getNx2Api();
+      if (await isHlx6(org, site)) return null;
+    }
+    configCache[`/${org}`] ??= cacheConfig(`/${org}`, org);
+    return configCache[`/${org}`];
+  };
+
   return ({ org, site }) => {
     if (!org) return [Promise.resolve(null)];
 
-    // Set the org config promise if it does not exist
-    configCache[`/${org}`] ??= cacheConfig(`/${org}`, org);
+    const orgConfig = fetchOrgConfig(org, site);
 
     if (site) {
       // Set the site config promise if it does not exist
@@ -417,17 +436,70 @@ export const fetchDaConfigs = (() => {
     }
 
     // return array of cached configs (org = 0, site = 1)
-    const configs = [configCache[`/${org}`]];
+    const configs = [orgConfig];
     if (site) configs.push(configCache[`/${org}/${site}`]);
 
     return configs;
   };
 })();
 
-export async function canEditOrgConfig(org) {
-  const config = await fetchDaConfigs({ org })[0].catch(() => null);
-  if (config?.error && config.status !== 404) return false;
-  return !!getConfigPermissions(config)?.includes('write');
+export const fetchConfigBusOptions = (() => {
+  const inFlight = {};
+  const ttl = 15 * 60 * 1000;
+
+  const fetchOptions = async (org, site) => {
+    const url = `${AEM_API_ORIGIN}/${org}/sites/${site}/config.json`;
+    const opts = { method: 'GET', credentials: 'include' };
+    const resp = await daFetch(url, opts);
+    if (!resp.ok) throw new Error('Error loading site configuration');
+    const config = await resp.json();
+    const { version } = config.features?.rendering ?? {};
+    if (version !== undefined) return { legacySectionMetadata: !(version >= 2) };
+
+    return { legacySectionMetadata: !(new Date(config.created) >= new Date('2026-05-01')) };
+  };
+
+  return ({ org, site }) => {
+    if (!org || !site) return Promise.resolve({ legacySectionMetadata: false });
+    const path = `/${org}/${site}`;
+    const key = `da-rendering-v2:${path}`;
+    try {
+      const cached = JSON.parse(localStorage.getItem(key));
+      if (typeof cached?.enabled === 'boolean'
+        && Number.isFinite(cached.expiresAt) && cached.expiresAt > Date.now()) {
+        return Promise.resolve({ legacySectionMetadata: !cached.enabled });
+      }
+    } catch { /* Invalid or unavailable storage must not block preview rendering. */ }
+
+    inFlight[path] ??= fetchOptions(org, site)
+      .then((options) => {
+        try {
+          localStorage.setItem(key, JSON.stringify({
+            enabled: !options.legacySectionMetadata,
+            expiresAt: Date.now() + ttl,
+          }));
+        } catch { /* Caching is optional when storage is unavailable or full. */ }
+        return options;
+      })
+      .catch(() => ({ legacySectionMetadata: false }))
+      .finally(() => { delete inFlight[path]; });
+    return inFlight[path];
+  };
+})();
+
+/** Checks legacy org-config or hlx6 site-config write access for the Permissions action. */
+export async function canEditOrgConfig(org, site) {
+  try {
+    const hlx6 = site && await getNx2Api().then(({ isHlx6 }) => isHlx6(org, site));
+    const configs = fetchDaConfigs({ org, site: hlx6 ? site : undefined });
+    const config = await configs[hlx6 ? 1 : 0];
+    if (config?.error && config.status !== 404) return false;
+    return !!getConfigPermissions(config)?.includes('write');
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn('Could not check config permissions', error);
+    return false;
+  }
 }
 
 export const getSidekickConfig = (() => {

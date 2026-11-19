@@ -14,7 +14,7 @@ function basename(source = '') {
   return last || source;
 }
 
-function toItem(check, assetLabel) {
+function toItem(check, assetLabel, previewUrl) {
   const { check_title: title, alignment, reasoning, suggestions, category } = check;
   const context = { category, description: reasoning };
   const label = assetLabel ?? title;
@@ -23,7 +23,13 @@ function toItem(check, assetLabel) {
     return {
       title,
       description: reasoning,
-      suggestion: { label, issue: reasoning, suggested: suggestions, context },
+      suggestion: {
+        label,
+        ...(previewUrl && { previewUrl }),
+        issue: reasoning,
+        suggested: suggestions,
+        context,
+      },
     };
   }
   return { title, description: reasoning, check: { label, context } };
@@ -39,16 +45,16 @@ function collectChecks(response) {
     .map((check) => ({ check }));
   const imageChecks = (response.image_evaluations ?? [])
     .flatMap((image) => (image.evaluations ?? [])
-      .map((check) => ({ check, assetLabel: basename(image.source) })));
+      .map((check) => ({ check, assetLabel: basename(image.source), previewUrl: image.source })));
   const siteCodeChecks = (response.site_code_evaluation?.evaluations ?? [])
     .map((check) => ({ check }));
   return [...builtInChecks, ...siteCodeChecks, ...textChecks, ...imageChecks];
 }
 
 export function adaptEvaluation(response = {}) {
-  const entries = collectChecks(response).map(({ check, assetLabel }) => ({
+  const entries = collectChecks(response).map(({ check, assetLabel, previewUrl }) => ({
     tone: toneOf(check.alignment),
-    item: toItem(check, assetLabel),
+    item: toItem(check, assetLabel, previewUrl),
   }));
 
   const itemsByTone = (tone) => entries
