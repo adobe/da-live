@@ -200,10 +200,10 @@ export function checkForLocNodes(view, hostEl) {
 }
 
 // Lazy load diff generation
-async function generateDiff(deletedContent, addedContent) {
+async function generateDiff(deletedContent, addedContent, kind) {
   try {
     const gdUtils = await import('./generate-diff.js');
-    return gdUtils.generateDiff(deletedContent, addedContent);
+    return gdUtils.generateDiff(deletedContent, addedContent, kind);
   } catch (error) {
     // eslint-disable-next-line no-console
     console.warn('Failed to load diff utilities:', error);
@@ -380,7 +380,11 @@ export function getDiffClass(elName, getSchema, dispatchTransaction, { isUpstrea
           const diffTab = tabContent.querySelector('[data-tab="diff"]');
           if (diffTab && !diffTab.loaded) {
             diffTab.loaded = true;
-            generateDiff(diffTab.deletedContent, diffTab.addedContent).then((diffHTML) => {
+            generateDiff(
+              diffTab.deletedContent,
+              diffTab.addedContent,
+              diffTab.dataset.kind,
+            ).then((diffHTML) => {
               diffTab.innerHTML = diffHTML;
               if (diffTab.banner) diffTab.prepend(diffTab.banner);
             }).catch(() => {

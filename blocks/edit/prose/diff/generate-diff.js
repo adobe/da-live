@@ -27,7 +27,7 @@ function trimEmptyParagraphs(html) {
 }
 
 // eslint-disable-next-line import/prefer-default-export
-export function generateDiff(deletedContent, addedContent) {
+export function generateDiff(deletedContent, addedContent, kind) {
   try {
     const deletedHTMLString = fragmentToHTML(deletedContent);
     const addedHTMLString = fragmentToHTML(addedContent)
@@ -46,7 +46,10 @@ export function generateDiff(deletedContent, addedContent) {
       return '<p style="text-align: center; color: #666; margin: 20px 0;">No content to compare</p>';
     }
 
-    const rawDiffResult = htmlDiff(deletedHTMLString, addedHTMLString);
+    // The page still equals the base, so upstream's change reads as an insertion
+    const rawDiffResult = kind === 'upstream-changed'
+      ? htmlDiff(addedHTMLString, deletedHTMLString)
+      : htmlDiff(deletedHTMLString, addedHTMLString);
 
     const diffResult = trimEmptyParagraphs(rawDiffResult);
 

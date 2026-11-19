@@ -20,6 +20,13 @@ describe('generateDiff', () => {
     expect(result).to.equal('<div class="html-diff"><p>Hello<ins class="diffins"> world</ins></p></div>');
   });
 
+  it('shows upstream edits as insertions when upstream changed the block', () => {
+    const upstream = '<p>Hello world</p>';
+    const page = '<p>Hello</p>';
+    const result = generateDiff(upstream, page, 'upstream-changed');
+    expect(result).to.equal('<div class="html-diff"><p>Hello<ins class="diffins"> world</ins></p></div>');
+  });
+
   it('accepts DocumentFragment inputs and trims empty leading/trailing paragraphs', () => {
     const template = '<p></p><p>Hello</p><p></p>';
 
