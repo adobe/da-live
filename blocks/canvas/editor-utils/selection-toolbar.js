@@ -28,6 +28,7 @@ export function setSelectionToolbarCtx({ org = null, site = null, sourceUrl = nu
   const blockTb = toolbarController.ensureBlockToolbar();
   blockTb.org = org;
   blockTb.site = site;
+  blockTb.sourceUrl = sourceUrl;
 }
 
 export function openLinkDialog(view) {
