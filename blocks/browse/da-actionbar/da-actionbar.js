@@ -33,6 +33,7 @@ export default class DaActionBar extends LitElement {
     isHlx6: { attribute: false },
     hidePublishConfs: { attribute: false },
     enforcePreflight: { attribute: false },
+    preflightEnabled: { attribute: false },
     _isCopying: { state: true },
     _isDeleting: { state: true },
     _isMoving: { state: true },
@@ -180,8 +181,14 @@ export default class DaActionBar extends LitElement {
   }
 
   get _canPreflight() {
-    // Read-only check, so no write permission needed. Pages only, for now.
+    // Browse preflight is canvas-only. Read-only check, so no write permission needed.
+    // Pages only, for now.
+    if (!this.preflightEnabled) return false;
     return this.items.some((item) => item.ext === 'html') && !this._isCopying;
+  }
+
+  get _requirePreflight() {
+    return !!(this.preflightEnabled && this.enforcePreflight);
   }
 
   get _canRename() {
@@ -316,7 +323,7 @@ export default class DaActionBar extends LitElement {
             class="publish-button ${this._canPublish ? '' : 'hide'} ${this.loading === 'publish' ? 'loading' : ''}">
             ${icon('publish')}
             <span>Publish</span>
-            ${this.enforcePreflight ? html`<span class="da-preflight-dot is-required" title="Preflight required before publish"></span>` : nothing}
+            ${this._requirePreflight ? html`<span class="da-preflight-dot is-required" title="Preflight required before publish"></span>` : nothing}
           </button>
           <button
             @click=${this.handleShare}

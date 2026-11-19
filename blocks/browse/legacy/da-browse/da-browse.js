@@ -270,6 +270,7 @@ export default class DaBrowse extends LitElement {
         editor="${this.editor}"
         .hidePublishConfs=${this.hidePublishConfs}
         .enforcePreflight=${this.enforcePreflight ?? false}
+        .preflightEnabled=${!!this._ewEnabled}
         @onpermissions=${this.handlePermissions}
         @selectionchanged=${type === 'browse' && this._chatEnabled ? this._handleBrowseSelection : nothing}
         select="${select ? true : nothing}"

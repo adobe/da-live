@@ -565,6 +565,7 @@ export default class DaBrowse extends LitElement {
           .listItems=${this._search.items}
           .hidePublishConfs=${this.hidePublishConfs}
           .enforcePreflight=${this.enforcePreflight ?? false}
+          .preflightEnabled=${!!this._ewEnabled}
           .groupByType=${this._groupByType}
           .view=${this._view}
           size=${this._view === 'card' ? this._cardSize : this._rowSize}
@@ -587,6 +588,7 @@ export default class DaBrowse extends LitElement {
         .defaultEditor=${this._ewEnabled ? '/canvas#' : '/edit#'}
         .hidePublishConfs=${this.hidePublishConfs}
         .enforcePreflight=${this.enforcePreflight ?? false}
+        .preflightEnabled=${!!this._ewEnabled}
         @onpermissions=${this.handlePermissions}
         @typesfilterchange=${this.handleTypesFilterChange}
         @sortchange=${this.handleSortChange}

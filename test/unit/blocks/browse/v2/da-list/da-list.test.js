@@ -833,6 +833,7 @@ describe('DaList helpers', () => {
 
     it('Gates publish behind preflight with all publishable items when enforced', () => {
       const el = makeList();
+      el.preflightEnabled = true;
       el.enforcePreflight = true;
       el._selectedItems = [page, json, folder];
       el.handlePublish();
@@ -842,6 +843,7 @@ describe('DaList helpers', () => {
 
     it('Uses the normal confirm when enforced but no page is selected', () => {
       const el = makeList();
+      el.preflightEnabled = true;
       el.enforcePreflight = true;
       el._selectedItems = [json];
       el.handlePublish();
@@ -849,8 +851,20 @@ describe('DaList helpers', () => {
       expect(el._confirm).to.deep.equal({ type: 'publish' });
     });
 
+    it('Ignores enforcement and the Preflight button when the site has not opted in to canvas', () => {
+      const el = makeList();
+      el.enforcePreflight = true;
+      el._selectedItems = [page];
+      el.handleOpenPreflight();
+      expect(el._preflight).to.not.be.ok;
+      el.handlePublish();
+      expect(el._preflight).to.not.be.ok;
+      expect(el._confirm).to.deep.equal({ type: 'publish' });
+    });
+
     it('Refuses to open over the page cap', () => {
       const el = makeList();
+      el.preflightEnabled = true;
       el._selectedItems = Array.from({ length: MAX_PREFLIGHT_COUNT + 1 }, (_, i) => ({ ext: 'html', path: `/o/s/${i}.html` }));
       el.handleOpenPreflight();
       expect(el._preflight).to.not.be.ok;

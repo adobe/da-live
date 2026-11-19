@@ -28,6 +28,8 @@ export default class DaListBase extends LitElement {
     editor: { type: String },
     hidePublishConfs: { attribute: false },
     enforcePreflight: { type: Boolean },
+    // Browse preflight is only offered to sites that opted in to the canvas editor.
+    preflightEnabled: { attribute: false },
     select: { type: Boolean },
     sort: { type: Boolean },
     drag: { type: Boolean },
@@ -655,7 +657,7 @@ export default class DaListBase extends LitElement {
 
   handlePublish() {
     // With enforcement on, gate publish behind the preflight modal (pages only).
-    if (this.enforcePreflight && this._selectedPages.length > 0) {
+    if (this.preflightEnabled && this.enforcePreflight && this._selectedPages.length > 0) {
       this._openPreflight(true);
       return;
     }
@@ -670,6 +672,7 @@ export default class DaListBase extends LitElement {
   // `publish` controls whether the modal offers "Publish Passing" (Publish entry)
   // or is review-only (Preflight-button entry).
   _openPreflight(publish) {
+    if (!this.preflightEnabled) return;
     const pageCount = this._selectedPages.length;
     if (!pageCount) return;
     if (pageCount > MAX_PREFLIGHT_COUNT) {

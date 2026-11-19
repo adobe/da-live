@@ -113,6 +113,7 @@ describe('DaActionBar', () => {
   describe('_canPreflight', () => {
     it('Allows read-only users when a page is selected', () => {
       const el = new DaActionBar();
+      el.preflightEnabled = true;
       el.permissions = ['read'];
       el.items = [{ path: '/o/s/a.html', ext: 'html' }];
       expect(el._canPreflight).to.be.true;
@@ -120,9 +121,29 @@ describe('DaActionBar', () => {
 
     it('Returns false when no page is selected', () => {
       const el = new DaActionBar();
+      el.preflightEnabled = true;
       el.permissions = ['read', 'write'];
       el.items = [{ path: '/o/s/a.json', ext: 'json' }];
       expect(el._canPreflight).to.be.false;
+    });
+
+    it('Returns false when the site has not opted in to canvas', () => {
+      const el = new DaActionBar();
+      el.permissions = ['read'];
+      el.items = [{ path: '/o/s/a.html', ext: 'html' }];
+      expect(el._canPreflight).to.be.false;
+    });
+  });
+
+  describe('_requirePreflight', () => {
+    it('Is true only when preflight is enabled and enforced', () => {
+      const el = new DaActionBar();
+      el.enforcePreflight = true;
+      expect(el._requirePreflight).to.be.false;
+      el.preflightEnabled = true;
+      expect(el._requirePreflight).to.be.true;
+      el.enforcePreflight = false;
+      expect(el._requirePreflight).to.be.false;
     });
   });
 

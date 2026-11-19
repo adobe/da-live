@@ -285,6 +285,7 @@ export default class DaList extends DaListBase {
         .loading=${typeof this._aemActionState === 'string' ? this._aemActionState : null}
         .hidePublishConfs=${this.hidePublishConfs}
         .enforcePreflight=${this.enforcePreflight ?? false}
+        .preflightEnabled=${this.preflightEnabled ?? false}
         currentPath="${this.fullpath}"
         .isHlx6=${this._isHlx6 ?? false}
         role="row"

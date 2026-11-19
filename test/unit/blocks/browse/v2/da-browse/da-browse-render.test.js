@@ -211,6 +211,18 @@ describe('da-browse render', () => {
     expect(document.createElement('da-browse')._groupByType).to.be.false;
   });
 
+  it('enables preflight on the list only when the site has opted in to canvas', async () => {
+    await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
+    el._ewEnabled = false;
+    el.requestUpdate();
+    await settle();
+    expect(el.browseCmp.preflightEnabled).to.be.false;
+    el._ewEnabled = true;
+    el.requestUpdate();
+    await settle();
+    expect(el.browseCmp.preflightEnabled).to.be.true;
+  });
+
   it('keeps the browse list available when navigating to the organization root', async () => {
     await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
     el.details = { fullpath: '/org', org: 'org', path: '' };
