@@ -1,3 +1,10 @@
+# [1.33.0](https://github.com/adobe/da-live/compare/v1.32.0...v1.33.0) (2026-11-19)
+
+
+### Features
+
+* **start:** style cards in the consuming page ([#1751](https://github.com/adobe/da-live/issues/1751)) ([4341cf0](https://github.com/adobe/da-live/commit/4341cf0dfd97fb6e07037b66d62335ce9a2347c2))
+
 # [1.32.0](https://github.com/adobe/da-live/compare/v1.31.2...v1.32.0) (2026-11-19)
 
 
