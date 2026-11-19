@@ -8,8 +8,9 @@ import { iconPathForExt } from '../../shared/icons.js';
 import '../../shared/da-dialog/da-dialog.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
-const [BUTTONS, SPINNER, STYLE] = await Promise.all([
+const [BUTTONS, FORM, SPINNER, STYLE] = await Promise.all([
   loadStyle(`${getNx2()}/styles/buttons.css`),
+  loadStyle(`${getNx2()}/styles/form.css`),
   loadStyle(`${getNx2()}/styles/spinner.css`),
   loadStyle(import.meta.url),
 ]);
@@ -64,7 +65,7 @@ export default class DaBrowsePreflight extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.shadowRoot.adoptedStyleSheets = [BUTTONS, SPINNER, STYLE];
+    this.shadowRoot.adoptedStyleSheets = [BUTTONS, FORM, SPINNER, STYLE];
     // Only pages are evaluated; other publishable files have no checks and pass as-is.
     this._rows = this.items.map((item) => {
       const isPage = item.ext === 'html';
@@ -223,14 +224,15 @@ export default class DaBrowsePreflight extends LitElement {
           ${this._rows.map((row) => this._renderRow(row))}
         </div>
         <div slot="footer-right" class="da-preflight-footer">
-          <sl-button @click=${this._closeDialog}>Close</sl-button>
+          <button type="button" class="nx-form-btn-secondary" @click=${this._closeDialog}>Cancel</button>
           ${this.canPublish ? html`
-            <sl-button
-              class="accent"
+            <button
+              type="button"
+              class="nx-form-btn-primary"
               ?disabled=${this._busy || passing.length === 0}
               @click=${this._handlePublishPassing}>
               Publish Passing${passing.length ? ` (${passing.length})` : ''}
-            </sl-button>` : nothing}
+            </button>` : nothing}
         </div>
       </da-dialog>`;
   }

@@ -70,6 +70,11 @@ describe('DaBrowsePreflight', () => {
       const icons = [...el.shadowRoot.querySelectorAll('.da-preflight-row-actions .ui-artifact-pe-icon')];
       expect(icons.map((i) => i.getAttribute('aria-label'))).to.deep.equal(['Not applicable', 'Not applicable']);
       expect(icons.every((i) => i.classList.contains('ui-artifact-pe-tone-neutral'))).to.be.true;
+      const [cancel, publish] = el.shadowRoot.querySelectorAll('.da-preflight-footer button');
+      expect(cancel.className).to.equal('nx-form-btn-secondary');
+      expect(cancel.textContent.trim()).to.equal('Cancel');
+      expect(publish.className).to.equal('nx-form-btn-primary');
+      expect(publish.textContent.trim()).to.equal('Publish Passing (2)');
     });
 
     it('checks auth once and marks every page as an error when signed out', async () => {
