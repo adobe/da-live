@@ -1,3 +1,21 @@
+/* Keep the header (title + close) and footer (actions) in view: only the content scrolls. */
+da-dialog::part(inner) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+da-dialog::part(header),
+da-dialog::part(footer) {
+  flex-shrink: 0;
+}
+
+da-dialog::part(content) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
 .da-preflight-rows {
   display: flex;
   flex-direction: column;
