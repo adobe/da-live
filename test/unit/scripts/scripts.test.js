@@ -5,6 +5,60 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { decorateArea } = await import('../../../scripts/scripts.js');
 
+describe('startup branding', () => {
+  async function loadConfig(nx2) {
+    const frame = document.createElement('iframe');
+    const fixtureHref = new URL('/test/fixtures/startup-config.js', window.location.href).href;
+    const imports = {
+      '/nx/scripts/nexter.js': fixtureHref,
+      '/nx2/scripts/nx.js': fixtureHref,
+      '/blocks/shared/utils.js': fixtureHref,
+    };
+    const ready = new Promise((resolve, reject) => {
+      frame.addEventListener('config-ready', ({ detail }) => resolve(detail), { once: true });
+      frame.addEventListener('config-error', ({ detail }) => reject(new Error(detail)), { once: true });
+    });
+    frame.srcdoc = `
+      <!doctype html>
+      <html>
+        <head>
+          ${nx2 ? '<meta name="nxver" content="2">' : ''}
+          <script type="importmap">${JSON.stringify({ imports })}</script>
+        </head>
+        <body>
+          <script type="module">
+            try {
+              await import('/scripts/scripts.js');
+              const { getConfig } = await import('${fixtureHref}');
+              frameElement.dispatchEvent(new CustomEvent('config-ready', { detail: getConfig() }));
+            } catch (error) {
+              frameElement.dispatchEvent(new CustomEvent('config-error', { detail: error.message }));
+            }
+          </script>
+        </body>
+      </html>`;
+    document.body.append(frame);
+    try {
+      return await ready;
+    } finally {
+      frame.remove();
+    }
+  }
+
+  it('configures the product logo and label for NX2', async () => {
+    const config = await loadConfig(true);
+    expect(config.navBrand).to.deep.equal({
+      logoHref: new URL('/img/logos/aem.svg', window.location.href).href,
+      label: 'Adobe Experience Manager',
+    });
+  });
+
+  it('preserves legacy NX branding', async () => {
+    const config = await loadConfig(false);
+    expect(config).not.to.have.property('navBrand');
+  });
+});
+
 describe('decorateArea', () => {
   let container;
 

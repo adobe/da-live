@@ -26,3 +26,11 @@ export const resolveAssetSelection = (args) => {
   if (perAssetSelections.has(key)) return perAssetSelections.get(key);
   return nextSelection;
 };
+
+export function assetNodeSpec({ href, isImage, alt, imageType }) {
+  if (!isImage || imageType === 'link') return { kind: 'link', href };
+  const attrs = { src: href };
+  if (alt) attrs.alt = alt;
+  if (imageType === 'editable-link') attrs.editAs = 'image';
+  return { kind: 'image', attrs };
+}

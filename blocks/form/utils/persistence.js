@@ -34,7 +34,9 @@ export function attachPersistence(editor, { path, save = saveSourceHtml } = {}) 
     try {
       do {
         pending = false;
-        const { html, error } = convertJsonToHtml({ json: editor.getState().document });
+        // The model lets the SDK write each rich-text value into a block of its own.
+        const { document, model } = editor.getState();
+        const { html, error } = convertJsonToHtml({ json: document, model });
         if (error) return;
         try {
           await save({ path, html });

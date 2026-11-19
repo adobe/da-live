@@ -58,9 +58,10 @@ function loadAssetModules() {
  * @returns {Promise<{ nodes, message? } | { error }>}
  */
 export async function resolveAssets({ schema, assets, context }) {
-  const [{ getRepositoryConfig }, { resolveAssetSelection, MISSING_FORMAT_ERROR_MSG }] = (
-    await loadAssetModules()
-  );
+  const [
+    { getRepositoryConfig },
+    { resolveAssetSelection, assetNodeSpec, MISSING_FORMAT_ERROR_MSG },
+  ] = await loadAssetModules();
   const repoConfig = context?.org && context?.site
     ? await getRepositoryConfig(context.org, context.site) : null;
   if (!repoConfig) return { error: 'not-configured' };
@@ -77,8 +78,9 @@ export async function resolveAssets({ schema, assets, context }) {
       return;
     }
     const { href, isImage, alt } = selection;
-    if (isImage && !repoConfig.insertAsLink) {
-      nodes.push(schema.nodes.image.create({ src: href, style: 'width: 180px', ...(alt && { alt }) }));
+    const spec = assetNodeSpec({ href, isImage, alt, imageType: repoConfig.imageType });
+    if (spec.kind === 'image') {
+      nodes.push(schema.nodes.image.create({ style: 'width: 180px', ...spec.attrs }));
       return;
     }
     const prev = nodes[nodes.length - 1];

@@ -2,10 +2,17 @@
 
 ## Content and previews
 
-Canvas routes built-in library sheets, variants, and templates through the shared DA
-preview proxy when they belong to the editor's organization, including other sites
-in that organization. Cross-org content fetches retain their original URLs. Only
-proxy fetches include credentials.
+Canvas and edit mode load built-in library sheets, variants, and templates from
+authenticated DA Admin `/source` endpoints. Recognized AEM, HLX, DA Content, and DA
+preview URLs resolve to the underlying organization/site source, including
+cross-org libraries. HTML sources use `.html`, not composed preview HTML, so
+section metadata survives template insertion. JSON sheet paths retain `.json`.
+Source content is independent of the code branch.
+
+An Admin 404 falls back to the original URL for AEM-only libraries. Other errors,
+including 401/403, do not fall back. Unrecognized external hosts are fetched
+directly. DA bearer tokens are only attached to allowlisted origins; library data
+does not require a preview cookie or credentialed cross-origin AEM requests.
 
 Item preview iframes use the resolved canvas branch. Same-org previews use the DA
 proxy; cross-org item previews retain the pre-proxy behavior of opening a rendered
@@ -16,10 +23,10 @@ extensions, whose cross-org URLs remain unchanged.
 
 ## Sessions and access failures
 
-Library fetches and item previews share one successful session promise per proxy
+Item previews share one successful session promise per proxy
 origin and IMS token. The origin includes organization, site, branch, and
 stage/production environment. Concurrent requests wait for the same cookie exchange.
-Missing tokens and unsuccessful exchanges are not cached. A content 401/403
+Missing tokens and unsuccessful exchanges are not cached. A preview 401/403
 invalidates the session and triggers at most one authenticated retry; a second
 refusal invalidates the replacement session so reopening can try again.
 
@@ -30,21 +37,14 @@ stays unchanged. Healthy previews reuse their session rather than exchanging a
 cookie again. Persistent denial is shown in the panel/modal without loading an
 unauthorized iframe. Cross-org previews do not make this request.
 
-Access-denied library results are not cached as successful empty libraries. For
-same-org failures, check DA sign-in and site access. For cross-org AEM failures,
+Access-denied library results are not cached as successful empty libraries. Check
+DA sign-in and access to the source organization/site. For an AEM-only fallback,
 open the source preview and sign in with AEM Sidekick, then reopen the library.
 
 ## Saved image URLs
 
-The preview proxy does not serve all HTML the same way. Extensionless pages are
-composed from DA source, while `.html` and `.plain.html` resources are forwarded
-to AEM (see `adobe/da-universal`'s `src/handlers/get.js`).
-This distinction is based on the routed request, including when a `content.da.live`
-URL ending in `.html` or `.plain.html` is rewritten to the proxy. Unproxied
-cross-org DA-content HTML retains DA-source image handling.
-
 Images from DA source are saved as absolute content URLs with the source org/site
-prefix, not as branch-specific AEM or authenticated proxy URLs. Root-relative
+prefix, not as branch-specific AEM, Admin, or authenticated proxy URLs. Root-relative
 images have that prefix restored; `data-da-img-host` preserves a stored production
 or stage content host. Relative directories, queries, fragments, and external
 absolute image URLs are retained. AEM HTML keeps its public AEM source origin,
@@ -55,13 +55,7 @@ development port; only the document/image path and URL components are retained.
 
 ## Edit-mode compatibility
 
-This change is intentionally limited to canvas built-in library loading. Edit mode
-already uses a different content-first path: `daFetchLibrary` and `getBlockVariants`
-in `blocks/edit/da-library/helpers/` rewrite AEM sources to `CON_ORIGIN` and fall back
-to AEM on 404. Its built-in source URLs therefore stay canonical rather than being
-rewritten as extension iframe URLs by `useProxy`. That condition does not mean
-edit mode simply loads every built-in library directly from AEM.
-
-Changing edit mode's content-first/fallback contract is not needed for the canvas
-protected-library fix. Both editors continue to use the shared preview-proxy
-module for configured extensions; their built-in content loaders remain separate.
+Both editors share `blocks/shared/library-source.js` for Admin-first data fetching.
+Edit mode retains its index-level fallback hint, so items from an AEM-only index
+skip the Admin attempt. Configured extension iframes continue to use the shared
+preview-proxy module; this data-loading change does not reroute those extensions.

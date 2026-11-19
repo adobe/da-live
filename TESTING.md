@@ -60,6 +60,7 @@ npx wtr "./test/unit/scripts/utils.test.js" --node-resolve --port=2000    # one 
 
 - **Mock the network.** Specs that request an external URL or add an external script log an error. Several specs replace `window.fetch` and restore it afterwards.
 - **Set NX before importing.** Some modules read the NX location when they are imported. Call `setNx('/test/fixtures/nx', { hostname: 'example.com' })` first, as in the example below.
+- **Fixtures mirror da-nx by hand.** `test/fixtures/nx2/` is hand-written and nothing checks it against da-nx. Most files are small stubs that fake data or I/O. A few copy real logic, such as `public/utils/quick-edit-images.js` and `assetNodeSpec` in `utils/aem-assets/selection.js`. When you change that logic in da-nx, update the matching fixture in the same change. Prefer a stub that returns scripted results over a copy of real logic.
 - **One behavior per test.** Arrange the setup, act once and assert the result. Specs stay fast, independent of each other, repeatable and self-validating, so they pass or fail without anyone reading the output.
 
 Editor code built on ProseMirror and Yjs can be tested without a server. See the [editor testing notes](test/unit/blocks/edit/prose/README.md).

@@ -2,6 +2,8 @@ import { LitElement, html, nothing } from 'da-lit';
 
 import getSheet from '../../shared/sheet.js';
 import { getHtmlWithCursor } from '../../shared/prose2aem.js';
+import getPathDetails from '../../shared/pathDetails.js';
+import { fetchConfigBusOptions } from '../../shared/utils.js';
 
 const sheet = await getSheet('/blocks/edit/da-preview/da-preview.css');
 
@@ -27,7 +29,18 @@ export default class DaPreview extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [sheet];
     this._updating = true;
     this._size = SIZES.mobile;
-    this.setBody();
+  }
+
+  updated(changed) {
+    if (!changed.has('path')) return;
+    this.previewOptions = undefined;
+    this.body = undefined;
+    const { path } = this;
+    fetchConfigBusOptions(getPathDetails() ?? {}).then((options) => {
+      if (this.path !== path || !this.isConnected) return;
+      this.previewOptions = options;
+      this.setBody();
+    });
   }
 
   handleView({ key }) {
@@ -44,16 +57,17 @@ export default class DaPreview extends LitElement {
   }
 
   setBody() {
-    if (!window.view) return;
+    if (!window.view || !this.previewOptions) return;
 
     // Always cache the body for future use
-    this.body = getHtmlWithCursor(window.view);
+    this.body = getHtmlWithCursor(window.view, this.previewOptions);
 
     // If initialized, send the preview to the iframe
     if (this.initialized && this.body) this.sendPreview();
   }
 
   sendPreview() {
+    if (!this.body) return;
     this._updating = true;
     this.port1.postMessage({ set: 'body', body: this.body });
   }

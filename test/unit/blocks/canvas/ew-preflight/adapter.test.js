@@ -157,6 +157,26 @@ describe('ew-preflight adapter', () => {
     expect(item.check.label).to.equal('sample-image.jpg');
   });
 
+  it('sets previewUrl to the full image source on failed image suggestions only', () => {
+    const { sections } = adaptEvaluation({
+      ...RESPONSE,
+      image_evaluations: [{
+        source: 'https://example.com/assets/sample-image.jpg',
+        evaluations: [{
+          check_title: 'Failing image check',
+          alignment: 'NO',
+          reasoning: 'The image failed.',
+          suggestions: 'Use a different image.',
+          category: 'Category D',
+        }],
+      }],
+    });
+    const imageItem = sections[0].items.find((it) => it.title === 'Failing image check');
+    expect(imageItem.suggestion.previewUrl).to.equal('https://example.com/assets/sample-image.jpg');
+    const textItem = sections[0].items.find((it) => it.title === 'Failing with a suggested fix');
+    expect(textItem.suggestion).to.not.have.property('previewUrl');
+  });
+
   it('produces summary tiles matching the section counts', () => {
     const { summary } = adaptEvaluation(RESPONSE);
     expect(summary.map((t) => [t.label, t.value])).to.deep.equal([

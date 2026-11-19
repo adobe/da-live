@@ -228,3 +228,86 @@ describe('handleCursorMove stored marks', () => {
     expect(hasStrong()).to.equal(true);
   });
 });
+
+describe('node selection in a document with link-images', () => {
+  let editor;
+  beforeEach(async () => { editor = await createTestEditor(); });
+  afterEach(() => destroyEditor(editor));
+
+  function setImages(images) {
+    const { state } = editor.view;
+    const { schema } = state;
+    const nodes = images.map((attrs) => schema.nodes.image.create(attrs));
+    const para = schema.nodes.paragraph.create(null, nodes);
+    editor.view.dispatch(state.tr.replaceWith(0, state.doc.content.size, para));
+    const positions = [];
+    editor.view.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'image') positions.push(pos);
+    });
+    return positions;
+  }
+
+  const REGULAR = { src: '/media_abc.png' };
+  const LINK = { src: 'https://cdn.example.com/assets/hero.jpg', editAs: 'image' };
+
+  it('selects a uniquely matching regular image by src in a mixed document', () => {
+    const [regularPos] = setImages([REGULAR, LINK]);
+    const { doc } = editor.view.state;
+    expect(resolveNodeSelectPos(
+      { anchorType: 'image', proseIndex: null, src: './media_abc.png?width=750' },
+      doc,
+    )).to.equal(regularPos);
+  });
+
+  it('refuses a src-only payload when a regular image and a link-image share a file name', () => {
+    setImages([REGULAR, { src: 'https://cdn.example.com/assets/media_abc.png', editAs: 'image' }]);
+    const { doc } = editor.view.state;
+    expect(resolveNodeSelectPos(
+      { anchorType: 'image', proseIndex: null, src: './media_abc.png?width=750' },
+      doc,
+    )).to.equal(null);
+  });
+
+  it('refuses a src-only payload that matches the link-image', () => {
+    setImages([REGULAR, LINK]);
+    const { doc } = editor.view.state;
+    expect(resolveNodeSelectPos(
+      { anchorType: 'image', proseIndex: null, src: 'https://cdn.example.com/assets/hero.jpg?w=750' },
+      doc,
+    )).to.equal(null);
+  });
+
+  it('still selects a regular image by its own index', () => {
+    const [regularPos] = setImages([REGULAR, LINK]);
+    const { doc } = editor.view.state;
+    expect(resolveNodeSelectPos(
+      { anchorType: 'image', proseIndex: regularPos, src: '/ignored.png' },
+      doc,
+    )).to.equal(regularPos);
+  });
+
+  it('still selects a link-image by its own index', () => {
+    const [, linkPos] = setImages([REGULAR, LINK]);
+    const { doc } = editor.view.state;
+    expect(resolveNodeSelectPos({ anchorType: 'image', proseIndex: linkPos }, doc)).to.equal(linkPos);
+  });
+
+  it('still matches a unique file name by src when the document has no link-image', () => {
+    const [regularPos] = setImages([REGULAR, { src: '/media_other.png' }]);
+    const { doc } = editor.view.state;
+    expect(resolveNodeSelectPos(
+      { anchorType: 'image', proseIndex: null, src: './media_abc.png?width=750' },
+      doc,
+    )).to.equal(regularPos);
+  });
+
+  it('handleNodeSelect selects nothing for a src-only payload matching a link-image', () => {
+    setImages([REGULAR, LINK]);
+    const before = editor.view.state.selection;
+    handleNodeSelect(
+      { node: { anchorType: 'image', proseIndex: null, src: 'https://cdn.example.com/assets/hero.jpg' } },
+      { view: editor.view },
+    );
+    expect(editor.view.state.selection.eq(before)).to.equal(true);
+  });
+});

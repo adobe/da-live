@@ -77,7 +77,7 @@ describe('preview body never points the iframe at a conflict', () => {
     it(`${name}: no index resolves to a node that holds a conflict`, () => {
       const { view, cleanup } = build(name);
       try {
-        const html = getInstrumentedHTML(view, { stripDiffIndices: true });
+        const html = getInstrumentedHTML(view, undefined, { stripDiffIndices: true });
         const body = new DOMParser().parseFromString(html, 'text/html');
         const indexed = [...body.querySelectorAll('[data-prose-index]')];
         indexed.forEach((el) => {

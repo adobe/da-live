@@ -15,6 +15,7 @@ import {
   getQuery, getTestFolderURL, getTestPageURL, fill, TEST_ORG, TEST_SITE, RUN_FOLDER,
 } from '../utils/page.js';
 import { dismissAlertBanner } from '../utils/utils.js';
+import { selectRow } from '../utils/browse.js';
 
 test('Copy and Rename with Versioned document', async ({ page }, workerInfo) => {
   test.skip(
@@ -72,10 +73,8 @@ const link = await page.getByRole('link', { name: orgPageName });
   await page.getByPlaceholder('folder name').fill(copyFolderName);
   await page.getByRole('button', { name: 'Create' }).click();
 
-  const cpCheckbox = page.locator('div.da-item-list-item-inner').filter({ hasText: orgPageName })
-    .locator('input[type="checkbox"][name="item-selected"]');
-  await cpCheckbox.focus();
-  await page.keyboard.press(' ');
+  const originalHref = `/edit#/${TEST_ORG}/${TEST_SITE}/tests/${RUN_FOLDER}/${orgPageName}`;
+  await selectRow(page, originalHref);
   await page.getByRole('button', { name: 'Copy' }).click();
 
   await page.getByRole('link', { name: copyFolderName }).click();
@@ -95,16 +94,14 @@ const link = await page.getByRole('link', { name: orgPageName });
 
   await dismissAlertBanner(page);
 
-  const checkbox = page.locator('div.da-item-list-item-inner').filter({ hasText: orgPageName })
-    .locator('input[type="checkbox"][name="item-selected"]');
-  await checkbox.focus();
-  await page.keyboard.press(' ');
+  await selectRow(page, originalHref);
 
   // Hit the rename button
   const renPageName = `${orgPageName}ren`;
   await page.getByRole('button', { name: 'Rename' }).click();
-  await page.locator(`input[value=${orgPageName}]`).fill(renPageName);
-  await page.keyboard.press('Enter');
+  const renameInput = page.getByRole('textbox', { name: 'Rename item' });
+  await renameInput.fill(renPageName);
+  await renameInput.press('Enter');
 
   // Open the renamed page
   await page.waitForTimeout(3000);

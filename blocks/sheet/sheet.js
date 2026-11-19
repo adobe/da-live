@@ -1,14 +1,22 @@
-import { LitElement, html, nothing } from 'da-lit';
+import { LitElement, html, nothing, render } from 'da-lit';
 import getPathDetails from '../shared/pathDetails.js';
-import { getNx } from '../../scripts/utils.js';
+import { addRecentFile } from '../shared/recent-files.js';
+import { getNx, getNx2 } from '../../scripts/utils.js';
+import { renderEmptyList, EMPTY_LIST_CSS } from '../shared/empty-list.js';
 import '../edit/da-title/da-title.js';
 import { getData } from './utils/index.js';
 import { staleCheck, showDaDialog, restoreVersion } from './utils/utils.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
-const blockStyle = await loadStyle(import.meta.url);
-document.adoptedStyleSheets = [...document.adoptedStyleSheets, blockStyle];
+const [buttonStyle, emptyListStyle, blockStyle] = await Promise.all([
+  loadStyle(`${getNx2()}/styles/buttons.css`),
+  loadStyle(EMPTY_LIST_CSS),
+  loadStyle(import.meta.url),
+]);
+document.adoptedStyleSheets = [
+  ...document.adoptedStyleSheets, buttonStyle, emptyListStyle, blockStyle,
+];
 
 const style = await loadStyle('/blocks/sheet/da-sheet-panes.css');
 
@@ -16,6 +24,7 @@ class DaSheetPanes extends LitElement {
   static properties = {
     data: { type: Object },
     pathDetails: { type: Object },
+    hidePanes: { type: Boolean },
     _showVersions: { state: true },
     _showPreview: { state: true },
   };
@@ -23,6 +32,13 @@ class DaSheetPanes extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [style];
+  }
+
+  willUpdate(props) {
+    if (props.has('hidePanes') && this.hidePanes) {
+      this._showPreview = false;
+      this._showVersions = false;
+    }
   }
 
   update(props) {
@@ -91,6 +107,7 @@ class DaSheetPanes extends LitElement {
   }
 
   render() {
+    if (this.hidePanes) return nothing;
     const showHistory = this.pathDetails?.view !== 'config'; // API doesn't support history for config
     return html`
       <div class="da-sheet-pane-tabs is-visible">
@@ -114,6 +131,23 @@ class DaSheetPanes extends LitElement {
 customElements.define('da-sheet-panes', DaSheetPanes);
 
 let initSheet;
+
+export function showLoadStatus({ errMsg, wrapper, daSheet, daSheetPanes, daTitle }) {
+  daSheet.hidden = !!errMsg;
+  daSheetPanes.hidePanes = !!errMsg;
+  daTitle.hideActions = !!errMsg;
+  if (!errMsg) {
+    wrapper.querySelector('.da-sheet-not-permitted')?.remove();
+    return;
+  }
+  let notPermitted = wrapper.querySelector('.da-sheet-not-permitted');
+  if (!notPermitted) {
+    notPermitted = document.createElement('div');
+    notPermitted.className = 'da-sheet-not-permitted';
+    wrapper.append(notPermitted);
+  }
+  render(renderEmptyList(errMsg), notPermitted);
+}
 
 async function reloadSheet(daTitle, daSheet) {
   if (!initSheet) initSheet = (await import('./utils/index.js')).default;
@@ -161,6 +195,7 @@ export default async function init(el) {
     el.innerHTML = '<h1>Please edit a sheet.</h1>';
     return;
   }
+  addRecentFile(details.fullpath);
 
   document.title = `Edit sheet ${details.name} - DA`;
 
@@ -205,18 +240,7 @@ export default async function init(el) {
   // getData (called via reloadSheet) emits this on every non-version load so the
   // grid can be swapped for a message when the user can't read the file at all.
   document.addEventListener('sheet-load-status', ({ detail: { errMsg } }) => {
-    daSheet.hidden = !!errMsg;
-    if (!errMsg) {
-      wrapper.querySelector('.da-sheet-not-permitted')?.remove();
-      return;
-    }
-    let notPermitted = wrapper.querySelector('.da-sheet-not-permitted');
-    if (!notPermitted) {
-      notPermitted = document.createElement('div');
-      notPermitted.className = 'da-sheet-not-permitted';
-      wrapper.append(notPermitted);
-    }
-    notPermitted.textContent = errMsg;
+    showLoadStatus({ errMsg, wrapper, daSheet, daSheetPanes, daTitle });
   });
 
   // Set data against the title & sheet

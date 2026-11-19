@@ -232,7 +232,7 @@ describe('getInstrumentedHTML for the read-only preview', () => {
     { type: 'diff_added', content: [{ type: 'paragraph', content: [image] }] },
     block('cards', 'shared'),
   ];
-  const preview = (view) => getInstrumentedHTML(view, { stripDiffIndices: true });
+  const preview = (view) => getInstrumentedHTML(view, undefined, { stripDiffIndices: true });
   const fragment = (html) => new DOMParser().parseFromString(html, 'text/html');
 
   it('leaves no editing indices on conflict content', () => {

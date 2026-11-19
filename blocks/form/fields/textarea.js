@@ -30,7 +30,7 @@ class FormTextarea extends LitElement {
 
   handleEvent(event) {
     this.value = event.target.value;
-    // Re-dispatch from the host so listeners on <form-textarea> fire across the shadow boundary.
+    // Re-dispatch from the host so listeners on <ew-form-textarea> fire across the shadow boundary.
     this.dispatchEvent(new event.constructor(event.type, event));
   }
 
@@ -57,6 +57,6 @@ class FormTextarea extends LitElement {
   }
 }
 
-if (!customElements.get('form-textarea')) customElements.define('form-textarea', FormTextarea);
+if (!customElements.get('ew-form-textarea')) customElements.define('ew-form-textarea', FormTextarea);
 
 export default FormTextarea;
