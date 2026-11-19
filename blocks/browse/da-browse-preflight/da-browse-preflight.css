@@ -22,6 +22,10 @@ da-dialog::part(content) {
   gap: 8px;
   width: 720px;
   max-width: 90vw;
+
+  /* 11px + 1px row border + 12px summary padding centers each row's right-most icon
+     under the dialog's close button (34px in) and starts the chevron at the title (24px). */
+  padding-inline: 11px;
   font-family: var(--s2-font-family);
 }
 
