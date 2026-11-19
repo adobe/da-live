@@ -24,6 +24,7 @@
 }
 
 .da-versions-close-btn {
+  position: relative;
   font-family: var(--s2-font-family, var(--body-font-family));
   line-height: 32px;
   font-weight: 700;
@@ -34,11 +35,23 @@
   display: block;
   height: 32px;
   border: none;
-  background: url('/blocks/edit/img/Smock_Calendar_18_N.svg') left center / 32px no-repeat;
+  background: none;
+  color: var(--s2-gray-800, #464646);
 }
 
-.da-versions-close-btn:hover {
-  background: url('/blocks/edit/img/Smock_CloseCircle_18_N.svg') left center / 32px no-repeat;
+.da-versions-close-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 32px;
+  height: 32px;
+  background-color: currentcolor;
+  mask: url('/blocks/edit/img/Smock_Calendar_18_N.svg') center / 32px no-repeat;
+}
+
+.da-versions-close-btn:hover::before {
+  mask-image: url('/blocks/edit/img/Smock_CloseCircle_18_N.svg');
 }
 
 .da-version-list {

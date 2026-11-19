@@ -1,16 +1,18 @@
 :host {
   display: block;
-  box-shadow: 0 0 5px 0 #b5b5b5;
+  box-shadow: var(--s2-drop-shadow-elevated, 0 0 5px 0 #b5b5b5);
+  border: 1px solid var(--s2-gray-200, #e1e1e1);
   border-radius: 12px;
   padding: 12px;
   width: 280px;
-  background: #FFF;
+  background: light-dark(#fff, var(--s2-gray-75, #222));
+  color: light-dark(#000, var(--s2-gray-900, #f2f2f2));
   box-sizing: border-box;
 }
 
 h5 {
   margin: 0 0 6px;
-  color: #676767;
+  color: light-dark(#676767, var(--s2-gray-700, #afafaf));
   text-transform: uppercase;
   font-size: 14px;
   line-height: 1;
@@ -20,10 +22,21 @@ input {
   width: 100%;
   box-sizing: border-box;
   border: none;
-  background: #EFEFEF;
+  background: light-dark(#efefef, var(--s2-gray-100, #2c2c2c));
+  color: light-dark(#000, var(--s2-gray-900, #f2f2f2));
   padding: 6px;
   margin-bottom: 6px;
   border-radius: 2px;
+}
+
+input::placeholder {
+  color: light-dark(#676767, var(--s2-gray-700, #afafaf));
+  opacity: 1;
+}
+
+input:focus-visible {
+  outline: 2px solid var(--s2-blue-800, #1373e6);
+  outline-offset: 1px;
 }
 
 .da-palette-buttons {
@@ -35,8 +48,8 @@ input {
 button {
   font-family: var(--s2-font-family, var(--body-font-family));
   display: block;
-  border: 2px solid #1373e6;
-  background: #1373e6;
+  border: 2px solid light-dark(#1373e6, var(--s2-blue-800, #4069fd));
+  background: light-dark(#1373e6, var(--s2-blue-800, #4069fd));
   color: #FFF;
   line-height: 20px;
   border-radius: 12px;
