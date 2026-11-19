@@ -20,6 +20,12 @@
     var(--s2-gray-25);
 }
 
+.browse:has(> da-sites) {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
 .section:has(.landing, .browse > da-sites),
 .block-content:has(.landing, .browse > da-sites),
 .browse:has(> .landing) {

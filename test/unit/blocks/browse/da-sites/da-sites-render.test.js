@@ -15,7 +15,7 @@ window.fetch = savedFetch;
 describe('da-sites render', () => {
   let el;
 
-  async function fixture(siteList = []) {
+  async function fixture(siteList = [], tiles = null) {
     if (siteList.length) {
       localStorage.setItem('da-sites', JSON.stringify(siteList));
     } else {
@@ -23,6 +23,7 @@ describe('da-sites render', () => {
     }
     localStorage.removeItem('da-orgs');
     el = document.createElement('da-sites');
+    el.tiles = tiles;
     document.body.appendChild(el);
     await nextFrame();
     await nextFrame();
@@ -60,8 +61,10 @@ describe('da-sites render', () => {
 
   it('keeps the first-time landing public without waiting for IMS', async () => {
     loadIms.rejects(new Error('IMS unavailable'));
-    await fixture([]);
+    const tiles = document.createElement('div');
+    await fixture([], tiles);
     expect(el.shadowRoot.querySelector('form')).to.exist;
+    expect(tiles.isConnected).to.equal(true);
     expect(loadIms.called).to.equal(false);
     expect(handleSignIn.called).to.equal(false);
   });
@@ -69,14 +72,18 @@ describe('da-sites render', () => {
   it('waits for sign-in before rendering recent sites or loading the file preview', async () => {
     let finish;
     loadIms.returns(new Promise((resolve) => { finish = resolve; }));
-    await fixture(['org/site']);
+    const tiles = document.createElement('div');
+    await fixture(['org/site'], tiles);
     expect(el.shadowRoot.querySelector('.da-site-container, da-recent-files')).to.equal(null);
+    expect(tiles.isConnected).to.equal(false);
     expect(handleSignIn.called).to.equal(false);
     finish({ accessToken: { token: 'test-token' } });
     await nextFrame();
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('.da-site-outer')).to.exist;
     expect(el.shadowRoot.querySelector('da-recent-files')).to.exist;
+    expect(tiles.isConnected).to.equal(true);
+    expect(tiles.slot).to.equal('tiles');
     expect(handleSignIn.called).to.equal(false);
   });
 
@@ -110,26 +117,38 @@ describe('da-sites render', () => {
     expect(el.shadowRoot.querySelector('da-recent-files')).to.equal(null);
   });
 
-  it('Renders the sandbox + add-new double cards', async () => {
+  it('Keeps the site opener in the header without recent sites or the old cards', async () => {
     await fixture([]);
-    const sandbox = el.shadowRoot.querySelector('.da-double-card-sandbox');
-    const addNew = el.shadowRoot.querySelector('.da-double-card-add-new');
-    expect(sandbox).to.exist;
-    expect(addNew).to.exist;
+    const header = el.shadowRoot.querySelector('.da-site-header');
+    expect(header.querySelector('h2').textContent).to.equal('Recent sites');
+    expect(header.querySelector('input').placeholder).to.equal('https://main--site--org.aem.page');
+    expect(header.querySelector('button[aria-label="Go to site"] svg')).to.exist;
+    expect(el.shadowRoot.querySelectorAll('form')).to.have.length(1);
+    expect(el.shadowRoot.querySelector('.da-double-card')).to.equal(null);
+    expect(el.shadowRoot.querySelector('.da-no-site-well form')).to.equal(null);
   });
 
   it('Renders the form alongside the recents list', async () => {
     await fixture(['org/site1']);
     const forms = el.shadowRoot.querySelectorAll('form');
     expect(forms.length).to.equal(1);
+    expect(forms[0].closest('.da-site-header')).not.to.equal(null);
+    expect([...el.shadowRoot.querySelectorAll('h2')].map((heading) => heading.textContent))
+      .to.deep.equal(['Recent sites']);
   });
 
-  it('Marks the site URL input with the error class when _urlError is true', async () => {
+  it('Shows invalid URL feedback on submit and clears it when the input changes', async () => {
     await fixture([]);
-    el._urlError = true;
-    el.requestUpdate();
-    await nextFrame();
-    expect(el.shadowRoot.querySelector('input.error')).to.exist;
+    const input = el.shadowRoot.querySelector('input');
+    input.value = 'not-a-site-url';
+    el.shadowRoot.querySelector('form button').click();
+    await el.updateComplete;
+    expect(input.getAttribute('aria-invalid')).to.equal('true');
+    expect(input.classList.contains('error')).to.equal(true);
+    input.dispatchEvent(new Event('change'));
+    await el.updateComplete;
+    expect(input.getAttribute('aria-invalid')).to.equal('false');
+    expect(input.classList.contains('error')).to.equal(false);
   });
 
   it('Renders status toast when _status is set', async () => {
