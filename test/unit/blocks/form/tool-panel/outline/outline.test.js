@@ -2,6 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import '../../../../setup-nx.js';
 import { NAV_ORIGIN, formEvents } from '../../../../../../blocks/form/events.js';
 import '../../../../../../blocks/form/tool-panel/outline/outline.js';
+import { IMAGE_URL } from '../../helpers/sdk-types.js';
 
 const text = (pointer, label) => ({ kind: 'string', pointer, label, value: '' });
 
@@ -36,6 +37,18 @@ function sampleRoot() {
     ],
   };
 }
+
+const asset = (pointer) => ({
+  kind: 'object',
+  typeRef: IMAGE_URL,
+  typeName: 'image',
+  pointer,
+  label: 'Image',
+  children: [
+    { kind: 'string', key: 'src', pointer: `${pointer}/src` },
+    { kind: 'string', key: 'altText', pointer: `${pointer}/altText` },
+  ],
+});
 
 const mounted = [];
 
@@ -73,6 +86,27 @@ describe('ew-form-outline', () => {
     ]);
     expect(item(outline, '/data/cards/1').textContent).to.equal('#2 Card');
     expect(item(outline, '/data/cards/1').title).to.equal('#2 Card');
+  });
+
+  it('lists groups but not asset fields, which are single fields', async () => {
+    const root = {
+      kind: 'object',
+      pointer: '/data',
+      label: 'Data',
+      children: [
+        asset('/data/heroImage'),
+        {
+          kind: 'array',
+          pointer: '/data/gallery',
+          label: 'Gallery',
+          items: [asset('/data/gallery/0')],
+        },
+      ],
+    };
+    formEvents.formState.emit({ model: { root } });
+    const outline = await mountOutline();
+
+    expect(pointers(outline)).to.deep.equal(['/data', '/data/gallery']);
   });
 
   it('asks the editor to reveal a group on click', async () => {

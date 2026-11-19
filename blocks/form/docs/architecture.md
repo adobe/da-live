@@ -13,7 +13,7 @@ The code was moved from da-nx's `nx/blocks/form` to da-live's `blocks/form`.
 
 The `/form` page content declares the block as `nx-form`. The nx2 loader loads `nx-` blocks listed in `NX_BLOCKS` ([`nx2/scripts/nx.js`](https://github.com/adobe/da-nx/blob/main/nx2/scripts/nx.js)) from da-nx. Pages that declare a `form` block load `blocks/form/form.js` from da-live's codeBase instead.
 
-The block imports nx2 exports such as `loadStyle`, `hashChange`, `openPanel`, `getEWFlags` and the `source` api at runtime through `` await import(`${getNx2()}/...`) ``, with `getNx2()` from `scripts/utils.js`. Pages with `<meta name="nxver" content="2">` load nx2 from the same base URL, so these imports return the module instances the page already loaded. This includes the stateful `nx2/scripts/nx.js`.
+The block imports nx2 at runtime through `getNx2()` instead of bundling it, so it shares the module instances the page already loaded, including the stateful `nx2/scripts/nx.js`.
 
 For engine internals such as schema compilation, model build, validation, defaults policy and persistence semantics, see the SDK's [architecture.md](https://github.com/adobe-rnd/da-sc-sdk/blob/main/docs/architecture.md). This document only covers the da-live form block and what it adds on top.
 
@@ -28,7 +28,12 @@ blocks/form/
   editor.js / .css        ew-form-editor Lit element: routes (ctx/hash), mounts SDK, state snapshot + nav
   events.js               formEvents, the observable channels between ew-form-editor and its tool panel views
   icons.js                sprite-backed icon() helper
-  fields/                 Spectrum 2 field components (ew-form-input, ew-form-picker, ew-form-checkbox, ...)
+  fields/                 Spectrum 2 field components (ew-form-input, ew-form-picker, ew-form-checkbox, ew-form-asset, ...)
+  assets/
+    asset-types.js        asset type descriptors (image, file) and their capabilities
+    sources.js            asset sources for image and file fields (upload, AEM Assets)
+    aem-selector.js       AEM Assets selector dialog
+    media.js              asset URL and file type helpers
   tool-panel/
     host.js               toolPanelHost, the form's delegate for the shared tool panel
     outline/
@@ -39,6 +44,8 @@ blocks/form/
     da-api.js             fetch/save against DA source via the nx2 source api
     schemas.js            loadSchemas — schema discovery + module cache
     persistence.js        attachPersistence — single-flight save with re-queue
+    model.js              shared predicates over SDK model nodes
+    preview.js            preview login and origin for uploaded images
     safe-href.js          safeHref — drops links that run script or local programs
     rich-text/            rich-text schema with its HTML conversion, commands and toolset
   views/
@@ -67,6 +74,9 @@ editor.js          →  events.js           (publishes state and selection, hand
 tool-panel/outline/ →  events.js           (subscribes to state and selection, publishes jumps)
 utils/context.js   →  da-sc-sdk          (convertHtmlToJson)
 utils/persistence.js → da-sc-sdk        (convertJsonToHtml)
+assets/sources.js  →  blocks/shared/      (Canvas image types and size limit)
+assets/sources.js  →  nx2 aem-assets      (AEM Assets source, loaded on demand)
+utils/preview.js   →  blocks/shared/      (Canvas preview login)
 views/editor.js  →  fields/rich-text.js (loaded once a form renders a rich-text field)
 fields/rich-text.js → utils/rich-text/  (schema, commands, tools)
 fields/rich-text.js → da-y-wrapper      (ProseMirror)
@@ -83,6 +93,8 @@ The editor schema in `utils/rich-text/schema.js` only allows the subset the SDK 
 
 The toolbar in `fields/rich-text-toolbar.js` renders a toolset that `utils/rich-text/tools.js` binds to the editor. Each tool carries its own command and selection checks, and the toolbar fires `form-rich-text-command` for the field to run. The toolbar holds no rich-text knowledge, so a new tool only changes the toolset.
 
+Asset types are descriptors in `assets/asset-types.js` that declare what each type can do, such as previews, uploads and the file extensions the SDK delivers as it. Fields, sources and the editor ask a descriptor for a capability instead of comparing type names, so supporting a new SDK asset type means adding one descriptor.
+
 ---
 
 ## 3. Shell wiring
@@ -93,7 +105,7 @@ The toolbar in `fields/rich-text-toolbar.js` renders a toolset that `utils/rich-
 <ew-form-fields
   .editor=${this._editor}
   .state=${this._state}
-  .nav=${this._nav}
+  .nav=${this._navigation}
   .onSelect=${this._onSelect}
 ></ew-form-fields>
 ```
@@ -147,12 +159,12 @@ Components receive `nav` as a prop and call `onSelect(pointer, origin)` to updat
 Lives in [views/editor.js](../views/editor.js), keyed per pointer, default 350ms. Boolean, select, and array mutations are immediate.
 
 ```js
-_mutateDebounced(pointer, fn) {
+_mutateDebounced(pointer, mutation) {
   clearTimeout(this._inputTimers.get(pointer));
   this._inputTimers.set(pointer, setTimeout(() => {
     this._inputTimers.delete(pointer);
-    this._mutate(fn);   // → fn(this.editor); state notification flows through editor.onChange
-  }, DEBOUNCE_MS));
+    this._mutate(mutation);   // → mutation(this.editor); state notification flows through editor.onChange
+  }, DEBOUNCE_DELAY_MILLISECONDS));
 }
 ```
 
@@ -223,6 +235,6 @@ The form reads these keys from the Experience Workspace config sheet. Site confi
 
 ### ALWAYS
 
-- Keep UI/navigation state local to the shell (`_nav`, focus, scroll, debounce).
+- Keep UI/navigation state local to the shell (`_navigation`, focus, scroll, debounce).
 - Use JSON Pointer for canonical addressing in props and event payloads.
 - Refresh the bundled SDK via `npm install` + `npm run build:da-sc-sdk` after bumping `@adobe/da-sc-sdk` in `package.json`.
