@@ -5,6 +5,7 @@ import {
   EditorView,
   TextSelection,
   columnResizing,
+  ySyncPluginKey,
 } from 'da-y-wrapper';
 import { getSchema } from 'da-parser';
 import { setNx } from '../../../../../scripts/utils.js';
@@ -448,12 +449,15 @@ describe('updateDocument rerender scopes', () => {
     container?.remove();
   });
 
-  function mount(nodes, previewOptions) {
+  function mount(nodes, previewOptions, onHtml = () => {}) {
     container = document.createElement('div');
     document.body.append(container);
     ctx = { suppressRerender: false, port: { postMessage: sinon.spy() }, previewOptions };
     const tracking = createTrackingPlugin(
-      (details) => updateDocument(ctx, details),
+      (details) => {
+        const body = updateDocument(ctx, details);
+        if (body) onHtml(body);
+      },
       undefined,
       (data) => getEditor(data, ctx),
     );
@@ -518,6 +522,131 @@ describe('updateDocument rerender scopes', () => {
     mount([p('a')]);
     expect(bodies()).to.have.lengthOf(1);
     expect(lastScope()).to.deep.equal({ type: 'page' });
+  });
+
+  it('refreshes outline data when the iframe replaces an image with text without echoing a body', () => {
+    let outline;
+    const image = schema.nodes.image.create({ src: '/a.png' });
+    mount([schema.nodes.paragraph.create(null, image)], undefined, (body) => {
+      outline = parseSections(body);
+    });
+    outline = parseSections(getInstrumentedHTML(ctx.view));
+    expect(outline[0].items[0].children[0].kind).to.equal('image');
+    ctx.port.postMessage.resetHistory();
+
+    mirror(ctx.view, ctx.view.state.tr.replaceWith(1, 2, schema.text('Replacement')), ctx);
+
+    expect(outline[0].items[0].children[0]).to.include({ kind: 'paragraph', innerText: 'Replacement', snippet: 'Replacement' });
+    expect(ctx.port.postMessage.called).to.equal(false);
+    expect(ctx.syncedDoc).to.equal(ctx.view.state.doc);
+    expect(ctx.confirmedDoc).to.equal(ctx.view.state.doc);
+  });
+
+  it('refreshes outline data when the iframe deletes an image then types text', () => {
+    let outline;
+    const image = schema.nodes.image.create({ src: '/a.png' });
+    mount([schema.nodes.paragraph.create(null, image)], undefined, (body) => {
+      outline = parseSections(body);
+    });
+    outline = parseSections(getInstrumentedHTML(ctx.view));
+    ctx.port.postMessage.resetHistory();
+
+    mirror(ctx.view, ctx.view.state.tr.delete(1, 2), ctx);
+    expect(outline[0].items).to.have.lengthOf(0);
+
+    mirror(ctx.view, ctx.view.state.tr.insertText('Replacement', 1), ctx);
+    expect(outline[0].items[0].children[0]).to.include({ kind: 'paragraph', innerText: 'Replacement', snippet: 'Replacement' });
+    expect(ctx.port.postMessage.called).to.equal(false);
+  });
+
+  [1, 2, 3, 4, 5, 6].forEach((level) => {
+    it(`restores the H${level} outline entry on mirrored undo and removes it on redo`, () => {
+      let outline;
+      const original = h('Title', level);
+      mount([original], undefined, (body) => { outline = parseSections(body); });
+      outline = parseSections(getInstrumentedHTML(ctx.view));
+      expect(outline[0].items[0].children[0]).to.include({ kind: 'heading', level, innerText: 'Title' });
+      ctx.port.postMessage.resetHistory();
+
+      const previousDoc = ctx.view.state.doc;
+      const cut = ctx.view.state.tr.delete(1, original.nodeSize - 1);
+      mirror(ctx.view, cut, ctx);
+      expect(ctx.view.state.doc.firstChild.type.name).to.equal('heading');
+      expect(outline[0].items).to.have.lengthOf(0);
+
+      mirror(ctx.view, ctx.view.state.tr.step(cut.steps[0].invert(previousDoc))
+        .setMeta(ySyncPluginKey, { isChangeOrigin: true, isUndoRedoOperation: true }), ctx);
+      expect(ctx.view.state.doc.eq(previousDoc)).to.equal(true);
+      expect(outline[0].items[0].children[0]).to.include({ kind: 'heading', level, innerText: 'Title', snippet: 'Title' });
+
+      mirror(ctx.view, ctx.view.state.tr.step(cut.steps[0])
+        .setMeta(ySyncPluginKey, { isChangeOrigin: true, isUndoRedoOperation: true }), ctx);
+      expect(outline[0].items).to.have.lengthOf(0);
+      expect(ctx.port.postMessage.called).to.equal(false);
+      expect(ctx.syncedDoc).to.equal(ctx.view.state.doc);
+      expect(ctx.confirmedDoc).to.equal(ctx.view.state.doc);
+    });
+  });
+
+  it('restores the outline entry when typing into a retained empty heading', () => {
+    let outline;
+    const original = h('Title');
+    mount([original], undefined, (body) => { outline = parseSections(body); });
+    ctx.port.postMessage.resetHistory();
+
+    mirror(ctx.view, ctx.view.state.tr.delete(1, original.nodeSize - 1), ctx);
+    expect(outline[0].items).to.have.lengthOf(0);
+
+    mirror(ctx.view, ctx.view.state.tr.insertText('New title', 1), ctx);
+    expect(outline[0].items[0].children[0]).to.include({ kind: 'heading', innerText: 'New title', snippet: 'New title' });
+    expect(ctx.port.postMessage.called).to.equal(false);
+  });
+
+  ['paragraph', 'heading'].forEach((kind) => {
+    it(`refreshes outline data when cut ${kind} text is replaced with an image paragraph`, () => {
+      let outline;
+      const original = kind === 'heading' ? h('Original') : p('Original');
+      mount([original], undefined, (body) => { outline = parseSections(body); });
+      outline = parseSections(getInstrumentedHTML(ctx.view));
+      expect(outline[0].items[0].children[0].kind).to.equal(kind);
+      ctx.port.postMessage.resetHistory();
+
+      mirror(ctx.view, ctx.view.state.tr.delete(1, original.nodeSize - 1), ctx);
+      expect(outline[0].items).to.have.lengthOf(0);
+
+      const image = schema.nodes.image.create({ src: '/a.png' });
+      const imageParagraph = schema.nodes.paragraph.create(null, image);
+      const { nodeSize } = ctx.view.state.doc.firstChild;
+      const replacement = ctx.view.state.tr.replaceWith(0, nodeSize, imageParagraph);
+      mirror(ctx.view, replacement, ctx);
+
+      expect(outline[0].items[0].children[0]).to.include({
+        kind: 'image',
+        innerText: '',
+        proseIndex: 1,
+        snippet: '',
+      });
+      expect(ctx.port.postMessage.called).to.equal(false);
+    });
+
+    it(`refreshes outline data when an image is inserted inside a cut ${kind}`, () => {
+      let outline;
+      const original = kind === 'heading' ? h('Original') : p('Original');
+      mount([original], undefined, (body) => { outline = parseSections(body); });
+      ctx.port.postMessage.resetHistory();
+
+      mirror(ctx.view, ctx.view.state.tr.delete(1, original.nodeSize - 1), ctx);
+      expect(outline[0].items).to.have.lengthOf(0);
+
+      const image = schema.nodes.image.create({ src: '/a.png' });
+      mirror(ctx.view, ctx.view.state.tr.insert(1, image), ctx);
+
+      expect(ctx.view.state.doc.firstChild.type.name).to.equal(kind);
+      expect(outline[0].items[0].children[0].kind)
+        .to.equal(kind === 'heading' ? 'heading' : 'image');
+      expect(outline[0].items[0].children[0].innerText).to.equal('');
+      expect(ctx.port.postMessage.called).to.equal(false);
+    });
   });
 
   it('scopes a change to the first node of a section to that section', () => {
