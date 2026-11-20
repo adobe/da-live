@@ -8,6 +8,7 @@ import { iconPathForExt } from '../../shared/icons.js';
 import '../../shared/da-dialog/da-dialog.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
+const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 const [BUTTONS, FORM, SPINNER, STYLE] = await Promise.all([
   loadStyle(`${getNx2()}/styles/buttons.css`),
   loadStyle(`${getNx2()}/styles/form.css`),
@@ -79,10 +80,12 @@ export default class DaBrowsePreflight extends LitElement {
       };
     });
     this._evaluateAll();
+    document.addEventListener(PANEL_EVENT.OPEN, this._handlePanelOpen);
   }
 
   disconnectedCallback() {
     this._abort?.abort();
+    document.removeEventListener(PANEL_EVENT.OPEN, this._handlePanelOpen);
     super.disconnectedCallback();
   }
 
@@ -163,6 +166,11 @@ export default class DaBrowsePreflight extends LitElement {
     this.shadowRoot.querySelector('da-dialog')?.close();
   }
 
+  // The modal would cover the chat panel, e.g. after a result's "Add to chat" or "Apply change".
+  _handlePanelOpen = ({ detail }) => {
+    if (detail?.section === 'chat') this._closeDialog();
+  };
+
   _handleDialogClose(e) {
     // da-dialog's own `close` is composed; stop it so the host only sees ours.
     e?.stopPropagation();
@@ -194,7 +202,10 @@ export default class DaBrowsePreflight extends LitElement {
     if (row.status === 'error') {
       return html`<p class="da-preflight-error" role="alert">${row.error}</p>`;
     }
-    if (row.data) return html`<nx-page-eval .data=${row.data}></nx-page-eval>`;
+    // Its suggestion modal emits a composed `close`; keep it from closing this dialog too.
+    if (row.data) {
+      return html`<nx-page-eval .data=${row.data} @close=${(e) => e.stopPropagation()}></nx-page-eval>`;
+    }
     return nothing;
   }
 

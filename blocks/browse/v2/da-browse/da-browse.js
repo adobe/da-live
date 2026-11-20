@@ -185,6 +185,10 @@ export default class DaBrowse extends LitElement {
     if (!chat?.isConnected || !pills || !this.isConnected) return;
     for (const item of this._browseSelection) this._sendBrowseContext(item);
     if (options?.focus) chat.shadowRoot.querySelector('.chat-input')?.focus();
+    if (options?.onReady) await options.onReady();
+    if (!options?.text) return;
+    const detail = { text: options.text, autoSend: options.autoSend };
+    document.dispatchEvent(new CustomEvent(CHAT_EVENT.SET_PROMPT, { detail }));
   }
 
   get canWrite() {

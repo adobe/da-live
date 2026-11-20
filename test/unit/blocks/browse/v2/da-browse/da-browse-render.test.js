@@ -161,6 +161,35 @@ describe('da-browse render', () => {
     }
   });
 
+  it('forwards a prompt from panel options to the chat after replaying context', async () => {
+    await fixture({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
+    el._handleBrowseSelection({ detail: { items: [{ path: '/org/site/a.html', name: 'a', ext: 'html' }] } });
+    const aside = document.createElement('aside');
+    const chat = document.createElement('nx-chat');
+    chat.attachShadow({ mode: 'open' });
+    chat.shadowRoot.innerHTML = '<nx-pills></nx-pills>';
+    aside.append(chat);
+    document.body.append(aside);
+    const events = [];
+    const record = ({ type, detail }) => events.push({ type, detail });
+    document.addEventListener(CHAT_EVENT.ADD_TO_CHAT, record);
+    document.addEventListener(CHAT_EVENT.SET_PROMPT, record);
+    try {
+      await el.syncChatContext(aside, { text: 'Fix it', autoSend: true });
+      expect(events.map(({ type }) => type))
+        .to.deep.equal([CHAT_EVENT.ADD_TO_CHAT, CHAT_EVENT.SET_PROMPT]);
+      expect(events[1].detail).to.deep.equal({ text: 'Fix it', autoSend: true });
+      events.length = 0;
+      await el.syncChatContext(aside, { focus: true });
+      expect(events.some(({ type }) => type === CHAT_EVENT.SET_PROMPT)).to.be.false;
+    } finally {
+      document.removeEventListener(CHAT_EVENT.ADD_TO_CHAT, record);
+      document.removeEventListener(CHAT_EVENT.SET_PROMPT, record);
+      el._clearBrowseSelection();
+      aside.remove();
+    }
+  });
+
   it('preloads chat during idle time and cancels pending preload on disconnect', async () => {
     await fixture({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
     const idle = stub(window, 'requestIdleCallback').returns(42);

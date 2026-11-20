@@ -112,6 +112,32 @@ describe('DaBrowsePreflight', () => {
       expect(hostCloses).to.equal(1);
       expect(outerCloses).to.equal(1);
     });
+
+    it('stays open when a nested dialog inside a result closes', async () => {
+      mountPages(1);
+      el._rows[0].status = 'fail';
+      el._rows[0].data = { sections: [] };
+      el._rows = [...el._rows];
+      await el.updateComplete;
+      let hostCloses = 0;
+      el.addEventListener('close', () => { hostCloses += 1; });
+      const pageEval = el.shadowRoot.querySelector('nx-page-eval');
+      pageEval.dispatchEvent(new CustomEvent('close', { bubbles: true, composed: true }));
+      expect(hostCloses).to.equal(0);
+    });
+
+    it('closes when the chat panel is opened, but not for other panels', async () => {
+      mountPages(1);
+      await el.updateComplete;
+      await el.shadowRoot.querySelector('da-dialog').updateComplete;
+      let hostCloses = 0;
+      el.addEventListener('close', () => { hostCloses += 1; });
+      const open = (section) => document.dispatchEvent(new CustomEvent('nx-panel-open', { detail: { section } }));
+      open('tools');
+      expect(hostCloses).to.equal(0);
+      open('chat');
+      expect(hostCloses).to.equal(1);
+    });
   });
 
   describe('_evaluateRow outcomes', () => {
