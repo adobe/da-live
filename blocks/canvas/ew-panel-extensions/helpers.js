@@ -30,7 +30,7 @@ const librarySessions = new Map();
 const CONTENT_HOSTS = new Set(['content.da.live', 'stage-content.da.live']);
 
 export const LIBRARY_AUTH_MESSAGE = 'Library access was denied. Check that you are signed in '
-  + 'to DA and have access to the library site. For an AEM-only library, open '
+  + 'to Experience Workspace and have access to the library site. For an AEM-only library, open '
   + 'its preview and sign in with AEM Sidekick, then reopen the library.';
 
 // ---------------------------------------------------------------------------
