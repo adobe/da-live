@@ -110,6 +110,77 @@ describe('DaActionBar', () => {
     });
   });
 
+  describe('_canPreflight', () => {
+    it('Allows read-only users when a page is selected', () => {
+      const el = new DaActionBar();
+      el.preflightEnabled = true;
+      el.permissions = ['read'];
+      el.items = [{ path: '/o/s/a.html', ext: 'html' }];
+      expect(el._canPreflight).to.be.true;
+    });
+
+    it('Returns false when no page is selected', () => {
+      const el = new DaActionBar();
+      el.preflightEnabled = true;
+      el.permissions = ['read', 'write'];
+      el.items = [{ path: '/o/s/a.json', ext: 'json' }];
+      expect(el._canPreflight).to.be.false;
+    });
+
+    it('Returns false when the site has not opted in to canvas', () => {
+      const el = new DaActionBar();
+      el.permissions = ['read'];
+      el.items = [{ path: '/o/s/a.html', ext: 'html' }];
+      expect(el._canPreflight).to.be.false;
+    });
+  });
+
+  describe('_requirePreflight', () => {
+    it('Is true only when preflight is enabled and enforced', () => {
+      const el = new DaActionBar();
+      el.enforcePreflight = true;
+      expect(el._requirePreflight).to.be.false;
+      el.preflightEnabled = true;
+      expect(el._requirePreflight).to.be.true;
+      el.enforcePreflight = false;
+      expect(el._requirePreflight).to.be.false;
+    });
+  });
+
+  describe('Preflight required indicator', () => {
+    async function renderPublish(items) {
+      const el = new DaActionBar();
+      el.preflightEnabled = true;
+      el.enforcePreflight = true;
+      el.permissions = ['read', 'write'];
+      el.items = items;
+      document.body.append(el);
+      await el.updateComplete;
+      const button = el.shadowRoot.querySelector('.publish-button');
+      const result = {
+        label: button.getAttribute('aria-label'),
+        title: button.title,
+        dot: !!button.querySelector('.da-preflight-dot'),
+      };
+      el.remove();
+      return result;
+    }
+
+    it('Is hidden when no page is selected', async () => {
+      const result = await renderPublish([{ path: '/o/s/a.json', ext: 'json' }]);
+      expect(result).to.deep.equal({ label: 'Publish', title: 'Publish', dot: false });
+    });
+
+    it('Shows and is named in the Publish label when a page is selected', async () => {
+      const result = await renderPublish([{ path: '/o/s/a.html', ext: 'html' }]);
+      expect(result).to.deep.equal({
+        label: 'Publish (preflight required)',
+        title: 'Publish (preflight required)',
+        dot: true,
+      });
+    });
+  });
+
   describe('_canDelete', () => {
     it('Defaults to true when user can write', () => {
       const el = new DaActionBar();

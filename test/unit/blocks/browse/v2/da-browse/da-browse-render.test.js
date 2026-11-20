@@ -161,6 +161,39 @@ describe('da-browse render', () => {
     }
   });
 
+  it('forwards a prompt from panel options to nx-chat-ao after replaying context', async () => {
+    await fixture({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
+    el._handleBrowseSelection({ detail: { items: [{ path: '/org/site/a.html', name: 'a', ext: 'html' }] } });
+    const aside = document.createElement('aside');
+    const chat = document.createElement('nx-chat-ao');
+    chat.attachShadow({ mode: 'open' });
+    chat.shadowRoot.innerHTML = '<nx-ao-input></nx-ao-input>';
+    const input = chat.shadowRoot.querySelector('nx-ao-input');
+    input.attachShadow({ mode: 'open' });
+    input.shadowRoot.innerHTML = '<nx-pills></nx-pills><textarea class="chat-input"></textarea>';
+    aside.append(chat);
+    document.body.append(aside);
+    const events = [];
+    const record = ({ type, detail }) => events.push({ type, detail });
+    document.addEventListener(CHAT_EVENT.ADD_TO_CHAT, record);
+    document.addEventListener(CHAT_EVENT.SET_PROMPT, record);
+    try {
+      await el.syncChatContext(aside, { text: 'Fix it', autoSend: true });
+      expect(events.map(({ type }) => type))
+        .to.deep.equal([CHAT_EVENT.ADD_TO_CHAT, CHAT_EVENT.SET_PROMPT]);
+      expect(events[1].detail).to.deep.equal({ text: 'Fix it', autoSend: true });
+      events.length = 0;
+      await el.syncChatContext(aside, { focus: true });
+      expect(events.some(({ type }) => type === CHAT_EVENT.SET_PROMPT)).to.be.false;
+      expect(input.shadowRoot.activeElement).to.equal(input.shadowRoot.querySelector('.chat-input'));
+    } finally {
+      document.removeEventListener(CHAT_EVENT.ADD_TO_CHAT, record);
+      document.removeEventListener(CHAT_EVENT.SET_PROMPT, record);
+      el._clearBrowseSelection();
+      aside.remove();
+    }
+  });
+
   it('preloads chat during idle time and cancels pending preload on disconnect', async () => {
     await fixture({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
     const idle = stub(window, 'requestIdleCallback').returns(42);
@@ -209,6 +242,18 @@ describe('da-browse render', () => {
     expect(el.browseCmp.groupByType).to.be.false;
     expect(JSON.parse(localStorage.getItem('da-browse-settings'))).to.deep.equal({ groupByType: false });
     expect(document.createElement('da-browse')._groupByType).to.be.false;
+  });
+
+  it('enables preflight on the list only when the site has opted in to canvas', async () => {
+    await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
+    el._ewEnabled = false;
+    el.requestUpdate();
+    await settle();
+    expect(el.browseCmp.preflightEnabled).to.be.false;
+    el._ewEnabled = true;
+    el.requestUpdate();
+    await settle();
+    expect(el.browseCmp.preflightEnabled).to.be.true;
   });
 
   it('keeps the browse list available when navigating to the organization root', async () => {

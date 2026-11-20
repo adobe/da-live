@@ -265,6 +265,7 @@ export function getEditorConfigs(configs) {
   return {
     editorConfs: rows.filter(({ key }) => key === 'editor.path').map(({ value }) => value),
     hidePublishConfs: rows.filter(({ key }) => key === 'editor.hidePublish').map(({ value }) => value),
+    enforcePreflight: rows.some(({ key, value }) => key === 'editor.enforcePreflight' && `${value}`.toLowerCase() === 'true'),
   };
 }
 

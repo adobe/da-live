@@ -6,6 +6,7 @@ import { setNx, getNx2Api } from '../../../../../../scripts/utils.js';
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { default: DaList } = await import('../../../../../../blocks/browse/v2/da-list/da-list.js');
+const { MAX_PREFLIGHT_COUNT } = await import('../../../../../../blocks/browse/da-list-base/da-list-base.js');
 
 function makeList() {
   const el = new DaList();
@@ -822,6 +823,222 @@ describe('DaList helpers', () => {
       const el = makeList();
       el.handlePublish();
       expect(el._confirm).to.deep.equal({ type: 'publish' });
+    });
+  });
+
+  describe('preflight', () => {
+    const page = { name: 'a', ext: 'html', path: '/o/s/a.html' };
+    const json = { name: 'd', ext: 'json', path: '/o/s/d.json' };
+    const folder = { name: 'f', path: '/o/s/f' };
+
+    it('Gates publish behind preflight with all publishable items when enforced', async () => {
+      const el = makeList();
+      el.preflightEnabled = true;
+      el.enforcePreflight = true;
+      el._selectedItems = [page, json, folder];
+      await el.handlePublish();
+      expect(el._confirm).to.not.be.ok;
+      expect(el._preflight).to.deep.equal({ items: [page, json], publish: true });
+    });
+
+    it('Uses the normal confirm when enforced but no page is selected', () => {
+      const el = makeList();
+      el.preflightEnabled = true;
+      el.enforcePreflight = true;
+      el._selectedItems = [json];
+      el.handlePublish();
+      expect(el._preflight).to.not.be.ok;
+      expect(el._confirm).to.deep.equal({ type: 'publish' });
+    });
+
+    it('Ignores enforcement and the Preflight button when the site has not opted in to canvas', () => {
+      const el = makeList();
+      el.enforcePreflight = true;
+      el._selectedItems = [page];
+      el.handleOpenPreflight();
+      expect(el._preflight).to.not.be.ok;
+      el.handlePublish();
+      expect(el._preflight).to.not.be.ok;
+      expect(el._confirm).to.deep.equal({ type: 'publish' });
+    });
+
+    const overCap = () => Array.from({ length: MAX_PREFLIGHT_COUNT + 1 }, (_, i) => ({ ext: 'html', path: `/o/s/${i}.html` }));
+
+    it('Refuses to open over the page cap', async () => {
+      const el = makeList();
+      el.preflightEnabled = true;
+      el._selectedItems = overCap();
+      await el.handleOpenPreflight();
+      expect(el._preflight).to.not.be.ok;
+      expect(el._status).to.deep.equal({
+        type: 'info',
+        text: 'Too many pages',
+        description: `Select at most ${MAX_PREFLIGHT_COUNT} pages to run preflight.`,
+      });
+    });
+
+    it('Says publishing was refused when enforced Publish is over the page cap', async () => {
+      const el = makeList();
+      el.preflightEnabled = true;
+      el.enforcePreflight = true;
+      el._selectedItems = overCap();
+      await el.handlePublish();
+      expect(el._preflight).to.not.be.ok;
+      expect(el._confirm).to.not.be.ok;
+      expect(el._status.type).to.equal('error');
+      expect(el._status.description).to.contain('Publishing requires preflight');
+    });
+
+    it('Keeps unpublished items selected after Publish Passing', () => {
+      const el = makeList();
+      const failed = { ...page, path: '/o/s/b.html', isChecked: true };
+      el._listItems = [{ ...page, isChecked: true }, failed, { ...json, isChecked: true }];
+      Object.defineProperty(el, 'actionBar', { value: {} });
+      el.deselectItems([page, json]);
+      expect(el._selectedItems.map((i) => i.path)).to.deep.equal([failed.path]);
+    });
+  });
+
+  describe('handlePublishPassing', () => {
+    let savedFetch;
+    let releaseSchedule;
+    beforeEach(() => {
+      savedFetch = window.fetch;
+      const gate = new Promise((resolve) => { releaseSchedule = resolve; });
+      window.fetch = async (url) => {
+        if (url.includes('snapshot-scheduler')) {
+          return new Response(JSON.stringify(await gate), { status: 200 });
+        }
+        return new Response('{}', { status: 200 });
+      };
+    });
+    afterEach(() => { window.fetch = savedFetch; });
+
+    const doc = { name: 'doc', ext: 'html', path: '/org/site/doc.html' };
+
+    it('Keeps the preflight dialog open as "checking" until the schedule check resolves', async () => {
+      const el = makeList();
+      const runAemQueue = stub(el, 'runAemQueue').resolves();
+      el._preflight = { items: [doc], publish: true };
+      const pending = el.handlePublishPassing([doc]);
+      expect(el._preflight).to.deep.include({ checking: true, publish: true });
+
+      await el.handlePublishPassing([doc]);
+      releaseSchedule({ scheduled: false });
+      await pending;
+      expect(el._preflight).to.equal(null);
+      expect(runAemQueue.calledOnce).to.be.true;
+    });
+
+    it('Closes the preflight dialog when the scheduled-override confirm opens', async () => {
+      const el = makeList();
+      el._preflight = { items: [doc], publish: true };
+      const pending = el.handlePublishPassing([doc]);
+      releaseSchedule({ scheduled: true, scheduledPublish: '2026-12-31T00:00:00Z' });
+      await pending;
+      expect(el._preflight).to.equal(null);
+      expect(el._confirm.scheduled).to.have.length(1);
+    });
+
+    it('Clears "checking" when publishing fails before the dialog closes', async () => {
+      const el = makeList();
+      stub(el, 'publishItems').rejects(new Error('schedule lookup failed'));
+      el._preflight = { items: [doc], publish: true };
+      let error;
+      try {
+        await el.handlePublishPassing([doc]);
+      } catch (e) {
+        error = e;
+      }
+      expect(error?.message).to.equal('schedule lookup failed');
+      expect(el._preflight).to.deep.include({ checking: false, publish: true });
+    });
+  });
+
+  describe('Publish Passing end to end', () => {
+    let savedFetch;
+    let api;
+    let origCreate;
+    let published;
+    let scheduledPaths;
+
+    const pass = { name: 'pass', ext: 'html', path: '/org/site/pass.html' };
+    const fail = { name: 'fail', ext: 'html', path: '/org/site/fail.html' };
+    const data = { name: 'data', ext: 'json', path: '/org/site/data.json' };
+
+    before(async () => {
+      api = await getNx2Api();
+      origCreate = api.versions.create;
+    });
+
+    beforeEach(() => {
+      savedFetch = window.fetch;
+      api.versions.create = async () => {};
+      published = [];
+      scheduledPaths = [];
+      window.fetch = (url, opts = {}) => {
+        if (url.includes('snapshot-scheduler')) {
+          const path = new URL(url).searchParams.get('path');
+          const body = scheduledPaths.includes(path)
+            ? { scheduled: true, scheduledPublish: '2026-12-31T00:00:00Z' } : { scheduled: false };
+          return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
+        }
+        if (url.includes('admin.hlx.page/live') && opts.method === 'POST') {
+          published.push(new URL(url).pathname);
+          return Promise.resolve(new Response(JSON.stringify({ live: { url: 'https://x' } }), { status: 200 }));
+        }
+        return Promise.resolve(new Response(JSON.stringify({ preview: { url: 'https://x' } }), { status: 200 }));
+      };
+    });
+
+    afterEach(() => {
+      window.fetch = savedFetch;
+      api.versions.create = origCreate;
+    });
+
+    function listWithSelection() {
+      const el = makeList();
+      el._itemErrors = [];
+      el._listItems = [pass, fail, data].map((item) => ({ ...item, isChecked: true }));
+      Object.defineProperty(el, 'actionBar', { value: {} });
+      el._preflight = { items: [pass, fail, data], publish: true };
+      return el;
+    }
+
+    it('Publishes only the passing items and keeps the failed page selected', async () => {
+      const el = listWithSelection();
+      await el.handlePublishPassing([pass, data]);
+      expect(published).to.have.length(2);
+      expect(published.some((p) => p.endsWith('/pass'))).to.be.true;
+      expect(published.some((p) => p.endsWith('/data.json'))).to.be.true;
+      expect(published.some((p) => p.includes('fail'))).to.be.false;
+      expect(el._selectedItems.map((i) => i.path)).to.deep.equal([fail.path]);
+    });
+
+    it('Carries the passing items through the scheduled-override confirm', async () => {
+      scheduledPaths.push('/pass');
+      const el = listWithSelection();
+      await el.handlePublishPassing([pass, data]);
+      expect(published).to.have.length(0);
+      expect(el._confirm).to.deep.include({ items: [pass, data], keepUnpublished: true });
+
+      let action;
+      el.renderDialog = (opts) => { action = opts.action; };
+      el.renderAemConfirm();
+      expect(action.label).to.equal('Confirm Publish');
+      await action.click();
+      expect(published).to.have.length(2);
+      expect(published.some((p) => p.includes('fail'))).to.be.false;
+      expect(el._selectedItems.map((i) => i.path)).to.deep.equal([fail.path]);
+    });
+
+    it('Clears the whole selection after a normal publish', async () => {
+      const el = listWithSelection();
+      const handleClear = stub(el, 'handleClear');
+      const deselectItems = stub(el, 'deselectItems');
+      await el.runAemQueue('publish', { skipSchedule: true, items: [pass] });
+      expect(handleClear.calledOnce).to.be.true;
+      expect(deselectItems.called).to.be.false;
     });
   });
 

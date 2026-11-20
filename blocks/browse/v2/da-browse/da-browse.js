@@ -180,11 +180,18 @@ export default class DaBrowse extends LitElement {
   async syncChatContext(aside, options) {
     const chat = aside.querySelector('nx-chat, nx-chat-ao');
     await chat?.updateComplete;
-    const pills = chat?.shadowRoot.querySelector('nx-pills');
+    // nx-chat-ao keeps its pills inside its nx-ao-input.
+    const input = chat?.shadowRoot.querySelector('nx-ao-input');
+    await input?.updateComplete;
+    const pills = (input ?? chat)?.shadowRoot.querySelector('nx-pills');
     await pills?.updateComplete;
     if (!chat?.isConnected || !pills || !this.isConnected) return;
     for (const item of this._browseSelection) this._sendBrowseContext(item);
-    if (options?.focus) chat.shadowRoot.querySelector('.chat-input')?.focus();
+    if (options?.focus) (input ?? chat).shadowRoot.querySelector('.chat-input')?.focus();
+    if (options?.onReady) await options.onReady();
+    if (!options?.text) return;
+    const detail = { text: options.text, autoSend: options.autoSend };
+    document.dispatchEvent(new CustomEvent(CHAT_EVENT.SET_PROMPT, { detail }));
   }
 
   get canWrite() {
@@ -286,9 +293,10 @@ export default class DaBrowse extends LitElement {
     if (reFetch) {
       const { org, site } = this.details;
       const configs = await Promise.all(fetchDaConfigs({ org, site }));
-      const { editorConfs, hidePublishConfs } = getEditorConfigs(configs);
+      const { editorConfs, hidePublishConfs, enforcePreflight } = getEditorConfigs(configs);
       this.editorConfs = editorConfs;
       this.hidePublishConfs = hidePublishConfs;
+      this.enforcePreflight = enforcePreflight;
     }
 
     return getConfiguredEditor(this.details.fullpath, this.editorConfs, DEF_EDIT);
@@ -563,6 +571,8 @@ export default class DaBrowse extends LitElement {
           .defaultEditor=${this._ewEnabled ? '/canvas#' : '/edit#'}
           .listItems=${this._search.items}
           .hidePublishConfs=${this.hidePublishConfs}
+          .enforcePreflight=${this.enforcePreflight ?? false}
+          .preflightEnabled=${!!this._ewEnabled}
           .groupByType=${this._groupByType}
           .view=${this._view}
           size=${this._view === 'card' ? this._cardSize : this._rowSize}
@@ -584,6 +594,8 @@ export default class DaBrowse extends LitElement {
         .editorConfs=${this.editorConfs}
         .defaultEditor=${this._ewEnabled ? '/canvas#' : '/edit#'}
         .hidePublishConfs=${this.hidePublishConfs}
+        .enforcePreflight=${this.enforcePreflight ?? false}
+        .preflightEnabled=${!!this._ewEnabled}
         @onpermissions=${this.handlePermissions}
         @typesfilterchange=${this.handleTypesFilterChange}
         @sortchange=${this.handleSortChange}

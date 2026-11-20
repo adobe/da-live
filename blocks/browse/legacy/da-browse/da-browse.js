@@ -194,9 +194,10 @@ export default class DaBrowse extends LitElement {
     if (reFetch) {
       const { org, site } = this.details;
       const configs = await Promise.all(fetchDaConfigs({ org, site }));
-      const { editorConfs, hidePublishConfs } = getEditorConfigs(configs);
+      const { editorConfs, hidePublishConfs, enforcePreflight } = getEditorConfigs(configs);
       this.editorConfs = editorConfs;
       this.hidePublishConfs = hidePublishConfs;
+      this.enforcePreflight = enforcePreflight;
     }
 
     if (!this.editorConfs || this.editorConfs.length === 0) return DEF_EDIT;
@@ -268,6 +269,8 @@ export default class DaBrowse extends LitElement {
         fullpath="${fullpath}"
         editor="${this.editor}"
         .hidePublishConfs=${this.hidePublishConfs}
+        .enforcePreflight=${this.enforcePreflight ?? false}
+        .preflightEnabled=${!!this._ewEnabled}
         @onpermissions=${this.handlePermissions}
         @selectionchanged=${type === 'browse' && this._chatEnabled ? this._handleBrowseSelection : nothing}
         select="${select ? true : nothing}"
