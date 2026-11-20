@@ -37,7 +37,7 @@ describe('Browse Content opt-in', () => {
     const { href } = window.location;
     const ordinary = document.createElement('div');
     const browse = document.createElement('da-browse');
-    const details = { org: 'org', site: 'site', fullpath: '/org/site' };
+    const details = { org: 'org', site: 'site', path: 'docs', fullpath: '/org/site/docs' };
     browse.details = details;
     ordinary.append(browse);
     document.body.append(ordinary);
@@ -64,7 +64,7 @@ describe('Browse Content opt-in', () => {
     try {
       const url = new URL(href);
       url.searchParams.set('landing', 'true');
-      url.hash = '/org/site';
+      url.hash = '/org/site/docs';
       window.history.replaceState(null, '', url);
       hashChange._set(details);
       await init(ordinary);
@@ -93,10 +93,10 @@ describe('Browse Content opt-in', () => {
       expect(window.location.href).to.equal(rootHref);
       expect(landing.shadowRoot.querySelector('.files-panel')).not.to.equal(null);
       expect(landing.shadowRoot.querySelector('h1, textarea, .composer')).to.equal(null);
-      url.hash = '/org/other';
+      url.hash = '/org/other/docs';
       window.history.replaceState(null, '', url);
       const returning = whenMounted('da-browse');
-      const nextDetails = { org: 'org', site: 'other', fullpath: '/org/other' };
+      const nextDetails = { org: 'org', site: 'other', path: 'docs', fullpath: '/org/other/docs' };
       hashChange._set(nextDetails);
       const returned = await returning;
       await returned.updateComplete;
@@ -104,7 +104,7 @@ describe('Browse Content opt-in', () => {
       await whenMounted('.da-browse-content', returned.shadowRoot);
       const returnedList = returned.shadowRoot.querySelector('da-list');
       const item = await whenMounted('da-file-item', returnedList.shadowRoot);
-      expect(item.path).to.equal('/org/other/page.html');
+      expect(item.path).to.equal('/org/other/docs/page.html');
       expect(ordinary.querySelector('da-landing')).to.equal(null);
     } finally {
       observers.forEach((observer) => observer.disconnect());

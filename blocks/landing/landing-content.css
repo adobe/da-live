@@ -34,6 +34,11 @@ svg {
   padding: var(--s2-spacing-400) var(--s2-spacing-400) var(--s2-spacing-800);
 }
 
+.chat-input {
+  max-width: 720px;
+  margin: 0 auto var(--s2-spacing-600);
+}
+
 .files-panel {
   padding: var(--s2-spacing-200) var(--s2-spacing-300) var(--s2-spacing-300);
   border-radius: var(--s2-corner-radius-800);
