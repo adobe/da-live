@@ -4,6 +4,7 @@ import { getNx, sanitizePathParts, getNxEWFlags } from '../../../../scripts/util
 import { getChatPanelContent, chatAvailability, chatTurnCompleted } from '../../../shared/chat-panel.js';
 import { getSettingsMenuItems, SITE_HISTORY } from '../../shared/settings-menu.js';
 import { historyAvailable, openSiteHistory } from '../../../shared/site-history/entry.js';
+import '../../../shared/branch-selector/branch-selector.js';
 
 // Components
 import '../../da-new/da-new.js';
@@ -323,6 +324,8 @@ export default class DaBrowse extends LitElement {
           <div class="da-breadcrumb-action-area">
             <div class="da-breadcrumb-area">
               <nx-breadcrumb .pathSegments="${this.details.fullpath.split('/').filter(Boolean)}"></nx-breadcrumb>
+              ${this.details.site ? html`<da-branch-selector
+                .org=${this.details.org} .site=${this.details.site}></da-branch-selector>` : nothing}
               ${!this.details.path ? this.renderSettingsMenu() : nothing}
             </div>
             ${this._tabItems.map((tab) => html`

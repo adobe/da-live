@@ -3,7 +3,6 @@ import { fetchDaConfigs } from '../shared/utils.js';
 import { getBrowseComponent, resolveBrowsePath } from './utils.js';
 import getPathDetails from '../shared/pathDetails.js';
 import { branchContext, validateBranch } from '../shared/branch-selector/context.js';
-import '../shared/branch-selector/branch-selector.js';
 import { installBranchHashGuard } from '../shared/branch-selector/navigation.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -81,8 +80,6 @@ function setRecentSite(details) {
 export default function init(el) {
   installBranchHashGuard();
   let generation = 0;
-  const selector = document.createElement('da-branch-selector');
-  el.before(selector);
   hashChange.subscribe(async (nxDetails) => {
     generation += 1;
     const current = generation;
@@ -104,8 +101,6 @@ export default function init(el) {
       return;
     }
     if (current !== generation) return;
-    selector.org = pathDetails?.org;
-    selector.site = pathDetails?.site;
     const cmpName = getBrowseComponent({ search: window.location.search, pathDetails });
     const surface = cmpName === 'da-landing' ? loadLandingSurface(el) : loadBrowseStyles();
     loadComponent(el, cmpName, pathDetails, surface);

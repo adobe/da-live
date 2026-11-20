@@ -179,12 +179,12 @@ test('real browse and legacy editor: create, edit, flush, switch and delete', as
     await expect.poll(() => page.evaluate(() => window.routeStarted)).toBe('browse');
     await expect(page.locator('da-browse da-list-item').filter({ hasText: 'edit' })).toBeVisible();
     const selector = page.locator('da-branch-selector');
-    await expect(selector.locator('summary')).toHaveText('Default · main');
-    await selector.locator('summary').click();
+    await expect(selector.locator('.branch-trigger')).toHaveText('Default · main');
+    await selector.locator('.branch-trigger').click();
     await selector.locator('input[name=name]').fill('work');
     await selector.getByRole('button', { name: 'Create', exact: true }).click();
     await expect(page).toHaveURL(/campaign~work/);
-    await expect(selector.locator('summary')).toHaveText('Branch · work');
+    await expect(selector.locator('.branch-trigger')).toHaveText('Branch · work');
     const branchRequestsStart = observed.requests.length;
     const newMenu = page.locator('da-browse da-new nx-menu');
     await newMenu.getByRole('button', { name: 'New', exact: true }).click();
@@ -205,7 +205,7 @@ test('real browse and legacy editor: create, edit, flush, switch and delete', as
     expect(deliveryRequests(observed.requests.slice(branchRequestsStart))).toEqual([]);
     const beforeFlush = observed.flushes.length;
     const beforeNavigation = Number(await page.evaluate(() => sessionStorage.getItem('productRouteLoads')));
-    await page.locator('da-branch-selector summary').click();
+    await page.locator('da-branch-selector .branch-trigger').click();
     await page.locator('da-branch-selector').getByRole('button', { name: 'Default · main', exact: true }).click();
     await expect.poll(async () => {
       try { return Number(await page.evaluate(() => sessionStorage.getItem('productRouteLoads'))); } catch (error) {
@@ -214,7 +214,7 @@ test('real browse and legacy editor: create, edit, flush, switch and delete', as
       }
     }, { timeout: 20000 }).toBeGreaterThan(beforeNavigation);
     await expect(page).toHaveURL(/campaign\/new/);
-    await expect(page.locator('da-branch-selector summary')).toHaveText('Default · main');
+    await expect(page.locator('da-branch-selector .branch-trigger')).toHaveText('Default · main');
     expect(observed.flushes.length).toBeGreaterThan(beforeFlush);
     await api(request, 'GET', `/source${root}/new.html`, undefined, 404);
     expect(await (await api(request, 'GET', `/source${root}~work/new.html`)).text()).toContain('Actual browser branch edit flushed');
@@ -274,19 +274,28 @@ test('branch browse selector navigates and settles on Default', async ({ request
     const hashShim = process.env.POC_NO_HASH_SHIM === '1' ? '&nohashshim=1' : '';
     await page.goto(`${uiOrigin}/?browse=1&da-admin=local&da-collab=local&da-content=local${hashShim}#${site}~work`);
     const selector = page.locator('da-branch-selector');
-    await expect(selector.locator('summary')).toHaveText('Branch · work');
-    await selector.locator('summary').click();
+    const trigger = selector.locator('.branch-trigger');
+    const file = page.locator('da-browse da-list-item').filter({ hasText: 'page' });
+    await expect(trigger).toHaveText('Branch · work');
+    await expect(file).toBeVisible();
+    const filePosition = await file.boundingBox();
+    await trigger.click();
+    await expect(selector.getByRole('dialog', { name: 'Content branches' })).toBeVisible();
+    expect(await file.boundingBox()).toEqual(filePosition);
+    await page.keyboard.press('Escape');
+    await expect(selector.getByRole('dialog', { name: 'Content branches' })).toBeHidden();
+    await trigger.click();
     await selector.getByRole('button', { name: 'Default · main', exact: true }).click();
     try { await expect(page).toHaveURL(new RegExp(`#${site}$`), { timeout: 5000 }); } catch (error) {
       console.error(`Browse switch diagnostic: ${JSON.stringify({ url: page.url(), navigations: observed.navigations.slice(-20) })}`);
       throw error;
     }
-    await expect(selector.locator('summary')).toHaveText('Default · main');
+    await expect(selector.locator('.branch-trigger')).toHaveText('Default · main');
     await expect(page.locator('da-browse da-list-item').filter({ hasText: 'page' })).toBeVisible();
     // A transient Default hash is not success if the guard schedules another switch.
     await page.waitForTimeout(750);
     await expect(page).toHaveURL(new RegExp(`#${site}$`));
-    await expect(selector.locator('summary')).toHaveText('Default · main');
+    await expect(selector.locator('.branch-trigger')).toHaveText('Default · main');
   } finally {
     observed.closing = true;
     if (context) await context.close();
@@ -363,7 +372,7 @@ test('real sheet, config and media UI publish and revert mixed branch changes', 
     expect(await (await api(request, 'GET', `/source${branch}/upload.png`)).body()).toEqual(image);
     await api(request, 'GET', `/source${site}/upload.png`, undefined, 404);
     const selector = page.locator('da-branch-selector');
-    await expect(selector.locator('summary')).toHaveText('Branch · work');
+    await expect(selector.locator('.branch-trigger')).toHaveText('Branch · work');
     const conflicts = selector.locator('da-branch-conflicts');
     await conflicts.getByRole('button', { name: 'Publish to default', exact: true }).click();
     await conflicts.getByRole('button', { name: 'Confirm publish to default' }).click();
@@ -428,7 +437,7 @@ test('non-enabled product routes retain bare Source and legacy collaboration req
     expect((await (await capability).json()).supported).toBe(false);
     const row = page.locator('da-browse da-list-item').filter({ hasText: 'control' });
     await expect(row).toBeVisible();
-    await expect(page.locator('da-branch-selector summary')).toHaveCount(0);
+    await expect(page.locator('da-branch-selector .branch-trigger')).toHaveCount(0);
     await row.getByRole('link', { name: /control/ }).click();
     const editor = page.locator('da-content div.ProseMirror');
     await expect(editor).toContainText('legacy control');
@@ -478,7 +487,7 @@ test('real browse Site History entry reverts a default commit', async ({ request
     const page = await context.newPage();
     await install(page, uiOrigin, observed);
     await page.goto(`${uiOrigin}/?browse=1&da-admin=local&da-collab=local&da-content=local#${site}`);
-    await expect(page.locator('da-branch-selector summary')).toHaveText('Default · main');
+    await expect(page.locator('da-branch-selector .branch-trigger')).toHaveText('Default · main');
     await expect.poll(() => page.locator('da-browse').evaluate((element) => element._siteHistory), { timeout: 15000 }).toBe(true);
     const settings = page.locator('da-browse nx-menu').filter({ has: page.getByRole('button', { name: 'Settings' }) });
     await settings.getByRole('button', { name: 'Settings' }).click();

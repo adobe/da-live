@@ -2,11 +2,19 @@ import { LitElement, html, nothing } from 'da-lit';
 import { BranchingError } from '../branching-client.js';
 import { withBranchBarrier } from '../branch-selector/navigation.js';
 import { lockBranchEditing, unlockBranchEditing, rememberEditorBeforeBarrier, forgetUnneededEditorSnapshot } from './editing-lock.js';
+import styles from './branch-conflicts-styles.js';
 
 const SIDES = ['base', 'branch', 'default'];
 const TEXT = new Set(['html', 'json', 'config']);
 const IMAGES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/avif']);
 const CHOICES = new Set(['branch', 'default', 'edited', 'delete']);
+const CHOICE_LABELS = {
+  branch: 'Keep branch',
+  default: 'Take default',
+  delete: 'Delete',
+  edited: 'Use edited result',
+};
+const STATUS_DURATION_MS = 5000;
 const revision = (value) => Number.isSafeInteger(value) && value >= 0;
 const segment = (value) => typeof value === 'string' && !!value && value !== '.' && value !== '..' && !/[/\\]/.test(value);
 const uncertain = (error) => !(error instanceof BranchingError) || error.status >= 500;
@@ -57,6 +65,7 @@ export class DaBranchConflicts extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    this.shadowRoot.adoptedStyleSheets = [styles];
     this._hash = window.location.hash;
     window.addEventListener('beforeunload', this._beforeUnload);
     window.addEventListener('hashchange', this._hashChange, true);
@@ -68,6 +77,16 @@ export class DaBranchConflicts extends LitElement {
       this.reset();
       if (this.branchId && this.client) this.loadMetadata();
     }
+  }
+
+  updated() {
+    if (!this.isConnected) return;
+    const anchor = this.shadowRoot.querySelector('.actions').getBoundingClientRect();
+    this.shadowRoot.querySelectorAll('[popover]').forEach((panel) => {
+      if (panel.matches(':popover-open')) return;
+      panel.style.setProperty('--branch-panel-top', `${Math.min(anchor.bottom + 8, window.innerHeight / 3)}px`);
+      panel.showPopover();
+    });
   }
 
   disconnectedCallback() {
@@ -93,7 +112,7 @@ export class DaBranchConflicts extends LitElement {
     this._syncId = undefined;
     this._busy = false;
     this._error = undefined;
-    this._status = undefined;
+    this.showStatus();
     this._moved = false;
     this._confirm = false;
     this._retry = undefined;
@@ -101,6 +120,15 @@ export class DaBranchConflicts extends LitElement {
     this._ready = false;
     this._uncertain = false;
     this._shouldUnlock = false;
+  }
+
+  showStatus(message, transient = false) {
+    clearTimeout(this._statusTimer);
+    this._statusTimer = undefined;
+    this._status = message;
+    if (transient) {
+      this._statusTimer = setTimeout(() => this.showStatus(), STATUS_DURATION_MS);
+    }
   }
 
   capture() {
@@ -160,11 +188,12 @@ export class DaBranchConflicts extends LitElement {
       throw new Error('Invalid sync session response');
     }
     this._session = session;
-    this._status = 'Sync needs resolution. Branch editing is locked.';
+    this.showStatus('Sync needs resolution. Branch editing is locked.');
   }
 
   async run(operation) {
     if (this._busy) return;
+    if (this._statusTimer !== undefined) this.showStatus();
     // Supersede metadata and detail requests issued before the operation.
     this._generation += 1;
     const ctx = this.capture();
@@ -219,7 +248,7 @@ export class DaBranchConflicts extends LitElement {
         completed: 'Sync completed. You can now publish to default.',
         'nothing-to-publish': 'Nothing to publish.',
       };
-      this._status = messages[result.status];
+      this.showStatus(messages[result.status], true);
       this.dispatchEvent(new CustomEvent('branch-changed', { bubbles: true, composed: true }));
       this._shouldUnlock = true;
     } else throw new Error('Invalid branch operation response');
@@ -238,7 +267,7 @@ export class DaBranchConflicts extends LitElement {
         } catch (error) {
           if (ctx.valid() && uncertain(error)) {
             this._uncertain = true;
-            this._status = 'Sync result unknown. Reload this branch before editing.';
+            this.showStatus('Sync result unknown. Reload this branch before editing.');
             lockBranchEditing();
           }
           throw error;
@@ -281,7 +310,7 @@ export class DaBranchConflicts extends LitElement {
         this._confirm = false;
         this._ready = false;
         this._terminalRefresh = true;
-        this._status = 'Branch revision changed. Review the branch and confirm a new publish.';
+        this.showStatus('Branch revision changed. Review the branch and confirm a new publish.');
         lockBranchEditing();
         await this.refreshMetadata(ctx, true);
         return undefined;
@@ -291,7 +320,7 @@ export class DaBranchConflicts extends LitElement {
         && error.status === 409 && !error.code;
       if (ctx.valid() && (uncertain(error) || ambiguousConflict)) {
         this._retry = { expected, key };
-        this._status = 'Publish result unknown. Editing is locked; retry the same request.';
+        this.showStatus('Publish result unknown. Editing is locked; retry the same request.');
         lockBranchEditing();
       }
       throw error;
@@ -374,7 +403,7 @@ export class DaBranchConflicts extends LitElement {
       } catch (error) {
         if (ctx.valid() && error.code === 'SYNC_TARGET_MOVED') {
           this._moved = true;
-          this._status = 'Default moved. Restart sync; all choices must be made again.';
+          this.showStatus('Default moved. Restart sync; all choices must be made again.');
         }
         throw error;
       }
@@ -395,12 +424,12 @@ export class DaBranchConflicts extends LitElement {
         this.clearDetail();
         if (restart) {
           this._uncertain = true;
-          this._status = 'Restart pending. Reload this branch if restart fails.';
+          this.showStatus('Restart pending. Reload this branch if restart fails.');
           const expected = await this.branchRevision(ctx);
           await this.result(ctx, await ctx.client.sync(ctx.branchId, expected));
         } else {
           this._shouldUnlock = true;
-          this._status = 'Sync cancelled. Branch content is unchanged.';
+          this.showStatus('Sync cancelled. Branch content is unchanged.', true);
         }
       };
       if (restart) {
@@ -417,51 +446,110 @@ export class DaBranchConflicts extends LitElement {
       ${side.preview ? html`<img src=${side.preview} alt=${`${label} preview`}>` : nothing}`}</section>`;
   }
 
-  render() {
+  renderFeedback() {
+    return html`
+      ${this._status ? html`<p role="status">${this._status}</p>` : nothing}
+      ${this._error ? html`<p class="error" role="alert">${this._error}</p>` : nothing}
+      ${this._retry ? html`<button class="primary" type="button"
+        @click=${this.publish} ?disabled=${this._busy}>Retry publish</button>` : nothing}
+      ${this._uncertain ? html`<button type="button" @click=${() => window.location.reload()}>Reload branch</button>` : nothing}
+      ${!this._ready && this._error ? html`<button type="button" @click=${this.loadMetadata}
+        ?disabled=${this._busy}>Retry branch metadata</button>` : nothing}
+    `;
+  }
+
+  renderNotice() {
+    if (!this._status && !this._error && !this._retry && !this._uncertain) return nothing;
+    const dismissible = !this._retry && !this._uncertain && this._ready;
+    return html`<div class="notice" popover="manual">
+      ${this.renderFeedback()}
+      ${dismissible ? html`<button class="dismiss" type="button" aria-label="Dismiss branch notification"
+        @click=${() => { this.showStatus(); this._error = undefined; }}>×</button>` : nothing}
+    </div>`;
+  }
+
+  renderConfirmation() {
+    return html`<div class="panel confirmation" popover="manual" role="dialog" aria-labelledby="publish-title"
+      @keydown=${(event) => {
+    if (event.key === 'Escape' && !this._busy) {
+      this._confirm = false;
+      this.shadowRoot.querySelector('[part~="publish-action"]').focus();
+    }
+  }}>
+      <h3 id="publish-title">Publish to default</h3>
+      <p class="description">Publish all branch changes to default? This does not publish to AEM preview or live.</p>
+      ${this.renderFeedback()}
+      <footer>
+        <button type="button" @click=${() => { this._confirm = false; }} ?disabled=${this._busy}>Cancel</button>
+        <button class="primary" type="button" @click=${this.publish} ?disabled=${this._busy}>Confirm publish to default</button>
+      </footer>
+    </div>`;
+  }
+
+  renderChoice(choice, savedChoice, disabled = false) {
+    return html`<button class="resolution-choice" type="button" aria-pressed=${choice === savedChoice}
+      @click=${() => this.resolve(choice)} ?disabled=${this._busy || this._moved || disabled}>
+      <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8 3 3 7-7"/></svg>
+      ${CHOICE_LABELS[choice]}
+    </button>`;
+  }
+
+  renderSession() {
     const session = this._session;
     const detail = this._detail;
+    const activeEntry = session?.entries.find(({ entryId }) => entryId === detail?.entry.entryId);
+    const savedChoice = activeEntry?.choice;
     const resolved = session?.entries.filter((entry) => entry.choice).length || 0;
-    return html`
-      <style>
-        .panel { padding: 1rem; border: 1px solid #ccc; background: white; color: #222; }
-        .sides { display: flex; flex-wrap: wrap; gap: 1rem; }
-        section { flex: 1 1 15rem; min-width: 0; }
-        pre { white-space: pre-wrap; overflow-wrap: anywhere; }
-        img { max-width: 100%; max-height: 20rem; }
-        textarea { width: 100%; min-height: 10rem; }
-      </style>
-      <button type="button" @click=${this.sync} ?disabled=${!this._ready || this._busy || !!this._syncId || !!this._retry || this._uncertain}>Sync from default</button>
-      <button type="button" @click=${() => { this._confirm = true; }} ?disabled=${!this._ready || this._busy || !!this._syncId || !!this._retry || this._uncertain}>Publish to default</button>
-      ${this._confirm && !this._retry ? html`<div class="panel" role="dialog" aria-label="Publish to default">
-        <p>Publish all branch changes to default? This does not publish to AEM preview or live.</p>
-        <button type="button" @click=${this.publish} ?disabled=${this._busy}>Confirm publish to default</button>
-        <button type="button" @click=${() => { this._confirm = false; }} ?disabled=${this._busy}>Cancel</button>
-      </div>` : nothing}
-      ${this._retry ? html`<button type="button" @click=${this.publish} ?disabled=${this._busy}>Retry publish</button>` : nothing}
-      ${this._status ? html`<p role="status">${this._status}</p>` : nothing}
-      ${this._uncertain ? html`<button type="button" @click=${() => window.location.reload()}>Reload branch</button>` : nothing}
-      ${this._error ? html`<p role="alert">${this._error}</p>` : nothing}
-      ${!this._ready ? html`<button type="button" @click=${this.loadMetadata} ?disabled=${this._busy}>Retry branch metadata</button>` : nothing}
-      ${this._syncId ? html`<div class="panel">
-        <h3>Sync needs resolution</h3>
-        ${session ? html`
-          <p>${resolved} / ${session.entries.length} resolved</p>
-          <ul>${session.entries.map((entry) => html`<li><button type="button" @click=${() => this.select(entry)}>${entry.path}</button>
-            — ${entry.itemKind} · ${entry.conflictKind || 'conflict'}${entry.choice ? ` · ${entry.choice}` : ''}</li>`)}</ul>
-          ${detail ? html`<h4>${detail.entry.path}</h4><div class="sides">
-            ${SIDES.map((side, index) => this.renderSide(side[0].toUpperCase() + side.slice(1), detail.sides[index], detail.entry.itemKind))}
-          </div>
-          <button type="button" @click=${() => this.resolve('branch')} ?disabled=${this._busy || this._moved}>Keep branch</button>
-          <button type="button" @click=${() => this.resolve('default')} ?disabled=${this._busy || this._moved}>Take default</button>
-          <button type="button" @click=${() => this.resolve('delete')} ?disabled=${this._busy || this._moved}>Delete</button>
-          ${TEXT.has(detail.entry.itemKind) ? html`<label>Edited source<textarea .value=${this._draft ?? ''}
-            @input=${(event) => { this._draft = event.target.value; }} ?disabled=${this._moved}></textarea></label>
-            <button type="button" @click=${() => this.resolve('edited')} ?disabled=${this._busy || this._moved || this._draft === undefined}>Use edited result</button>` : nothing}` : nothing}
-          <button type="button" @click=${this.complete} ?disabled=${this._busy || this._moved || this._draft !== undefined || resolved !== session.entries.length}>Complete sync</button>
-        ` : html`<button type="button" @click=${() => this.run((ctx) => this.openSession(ctx, this._syncId))} ?disabled=${this._busy}>Retry loading conflicts</button>`}
+    return html`<div class="panel session" popover="manual" role="dialog" aria-labelledby="sync-title">
+      <h3 id="sync-title">Sync needs resolution</h3>
+      ${this.renderFeedback()}
+      ${session ? html`
+        <p class="progress">${resolved} / ${session.entries.length} resolved</p>
+        <ul class="conflict-list">${session.entries.map((entry) => html`<li>
+          <button type="button" aria-pressed=${detail?.entry.entryId === entry.entryId}
+            @click=${() => this.select(entry)}>${entry.path}</button>
+          <span>${entry.itemKind} · ${entry.conflictKind || 'conflict'}${entry.choice ? ` · ${CHOICE_LABELS[entry.choice]}` : ''}</span>
+        </li>`)}</ul>
+        ${detail ? html`<h4>${detail.entry.path}</h4><div class="sides">
+          ${SIDES.map((side, index) => this.renderSide(side[0].toUpperCase() + side.slice(1), detail.sides[index], detail.entry.itemKind))}
+        </div>
+        <div class="choices" role="group" aria-label="Resolution options">
+          ${['branch', 'default', 'delete'].map((choice) => this.renderChoice(choice, savedChoice))}
+        </div>
+        ${TEXT.has(detail.entry.itemKind) ? html`<label>Edited source<textarea .value=${this._draft ?? ''}
+          @input=${(event) => { this._draft = event.target.value; }} ?disabled=${this._moved}></textarea></label>
+          ${this.renderChoice('edited', savedChoice, this._draft === undefined)}` : nothing}` : nothing}
+      ` : html`<button type="button" @click=${() => this.run((ctx) => this.openSession(ctx, this._syncId))}
+        ?disabled=${this._busy}>Retry loading conflicts</button>`}
+      <footer>
         <button type="button" @click=${() => this.cancel()} ?disabled=${this._busy}>Cancel sync</button>
-        ${this._moved ? html`<button type="button" @click=${() => this.cancel(true)} ?disabled=${this._busy}>Restart sync</button>` : nothing}
-      </div>` : nothing}
+        ${this._moved ? html`<button class="primary" type="button" @click=${() => this.cancel(true)} ?disabled=${this._busy}>Restart sync</button>` : nothing}
+        ${session ? html`<button class="primary" type="button" @click=${this.complete}
+          ?disabled=${this._busy || this._moved || this._draft !== undefined || resolved !== session.entries.length}>Complete sync</button>` : nothing}
+      </footer>
+    </div>`;
+  }
+
+  render() {
+    const disabled = !this._ready || this._busy || !!this._syncId
+      || !!this._retry || this._uncertain;
+    let overlay;
+    if (this._syncId) overlay = this.renderSession();
+    else if (this._confirm && !this._retry) overlay = this.renderConfirmation();
+    else overlay = this.renderNotice();
+    return html`
+      <div class="actions">
+        <button type="button" part="action" @click=${this.sync} ?disabled=${disabled}>
+          <svg part="action-icon" width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 8a6 6 0 0 0-10-3L4 7m0-4v4h4m-4 5a6 6 0 0 0 10 3l2-2m0 4v-4h-4"/></svg>
+          Sync from default
+        </button>
+        <button type="button" part="action publish-action" @click=${() => { this._confirm = true; }}
+          aria-haspopup="dialog" ?disabled=${disabled}>
+          <svg part="action-icon" width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 13V4m-4 4 4-4 4 4M4 12v4h12v-4"/></svg>
+          Publish to default
+        </button>
+      </div>
+      ${overlay}
     `;
   }
 }

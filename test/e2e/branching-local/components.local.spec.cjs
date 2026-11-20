@@ -112,11 +112,11 @@ test('real selector, Changes, conflict and Site History components against local
   await page.goto('http://localhost:1/?da-admin=local&da-collab=local#/pocui/campaign');
   const selector = page.locator('da-branch-selector');
   await expect(selector.getByText('Default · main').first()).toBeVisible();
-  await selector.locator('summary').click();
+  await selector.locator('.branch-trigger').click();
   await selector.locator('input[name=name]').fill('work');
   await selector.getByRole('button', { name: 'Create', exact: true }).click();
   await expect(page).toHaveURL(/campaign~work/);
-  await expect(selector.locator('summary')).toHaveText('Branch · work');
+  await expect(selector.locator('.branch-trigger')).toHaveText('Branch · work');
   await call(request, 'PUT', `/source${branch}/edit.html`, html('branch'), 201);
   await call(request, 'PUT', `/source${branch}/new.html`, html('new'), 201);
   await call(request, 'DELETE', `/source${branch}/other.html`, undefined, 204);
@@ -179,7 +179,7 @@ test('real selector hides on a non-enabled site', async ({ request, page }) => {
   await page.goto('http://localhost:1/?da-admin=local#/pocuicontrol/site');
   expect((await (await capability).json()).supported).toBe(false);
   await expect.poll(async () => page.locator('da-branch-selector').evaluate((el) => !!el.shadowRoot)).toBe(true);
-  await expect(page.locator('da-branch-selector summary')).toHaveCount(0);
+  await expect(page.locator('da-branch-selector .branch-trigger')).toHaveCount(0);
   const response = await call(request, 'GET', `/source${control}/page.html`);
   expect(response.headers()['content-branch']).toBeUndefined();
 });

@@ -3,6 +3,7 @@ import { getNx, getNx2 } from '../../../../scripts/utils.js';
 import { canEditOrgConfig } from '../../../shared/utils.js';
 import { getSettingsMenuItems, SITE_HISTORY } from '../../shared/settings-menu.js';
 import { historyAvailable, openSiteHistory } from '../../../shared/site-history/entry.js';
+import '../../../shared/branch-selector/branch-selector.js';
 
 await import(`${getNx()}/blocks/shared/switch/switch.js`);
 await import(`${getNx()}/blocks/shared/segmented-btn/segmented.js`);
@@ -258,6 +259,8 @@ export default class DaBrowseHeader extends LitElement {
         </button>
         ${this.renderSortOptions()}
         ${this.renderAppearance()}
+        ${this.details?.site ? html`<da-branch-selector
+          .org=${this.details.org} .site=${this.details.site}></da-branch-selector>` : nothing}
         ${this.renderSettingsActions()}
         <slot name="actions"></slot>
       </div>`;

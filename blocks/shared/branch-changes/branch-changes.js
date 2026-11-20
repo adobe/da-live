@@ -1,4 +1,5 @@
 import { LitElement, html, nothing } from 'da-lit';
+import styles from './branch-changes-styles.js';
 
 const SAFE_IMAGES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/avif']);
 const TEXT_KINDS = new Set(['html', 'json', 'config']);
@@ -11,6 +12,7 @@ export class DaBranchChanges extends LitElement {
     _open: { state: true },
     _summary: { state: true },
     _detail: { state: true },
+    _selectedPath: { state: true },
     _loading: { state: true },
     _detailLoading: { state: true },
     _error: { state: true },
@@ -25,8 +27,15 @@ export class DaBranchChanges extends LitElement {
     this._urls = [];
   }
 
+  connectedCallback() {
+    super.connectedCallback();
+    this.shadowRoot.adoptedStyleSheets = [styles];
+  }
+
   willUpdate(changed) {
     if (changed.has('branchId') || changed.has('client')) {
+      const panel = this.shadowRoot.getElementById('branch-changes-panel');
+      if (panel?.matches(':popover-open')) panel.hidePopover();
       this.reset();
       this._open = false;
     }
@@ -43,6 +52,7 @@ export class DaBranchChanges extends LitElement {
     this._urls.forEach((url) => URL.revokeObjectURL(url));
     this._urls = [];
     this._detail = undefined;
+    this._selectedPath = undefined;
     this._detailError = undefined;
     this._detailLoading = false;
   }
@@ -61,14 +71,23 @@ export class DaBranchChanges extends LitElement {
       && this.branchId === branchId && this.client === client;
   }
 
-  toggle() {
-    if (this._open) {
-      this._open = false;
-      this.reset();
-    } else {
-      this._open = true;
-      this.refresh();
-    }
+  positionPanel({ currentTarget }) {
+    const panel = this.shadowRoot.getElementById('branch-changes-panel');
+    const { top, bottom, left } = currentTarget.getBoundingClientRect();
+    const gap = 12;
+    const width = Math.min(720, window.innerWidth - 2 * gap);
+    const below = window.innerHeight - bottom;
+    const above = below < 300 && top > below;
+    panel.style.setProperty('--panel-left', `${Math.max(gap, Math.min(left, window.innerWidth - width - gap))}px`);
+    panel.style.setProperty('--panel-top', above ? 'auto' : `${bottom + 6}px`);
+    panel.style.setProperty('--panel-bottom', above ? `${window.innerHeight - top + 6}px` : 'auto');
+    panel.style.setProperty('--panel-height', `${Math.max(0, (above ? top : below) - 2 * gap)}px`);
+  }
+
+  toggle({ newState }) {
+    this._open = newState === 'open';
+    if (this._open) this.refresh();
+    else this.reset();
   }
 
   refreshIfOpen() {
@@ -124,6 +143,7 @@ export class DaBranchChanges extends LitElement {
 
   async select(change) {
     this.clearDetail();
+    this._selectedPath = change.path;
     const detailGeneration = this._detailGeneration;
     const generation = this._generation;
     const { branchId, client, _summary: summary } = this;
@@ -170,7 +190,7 @@ export class DaBranchChanges extends LitElement {
   }
 
   renderSide(label, side, kind) {
-    if (side.state === 'absent') return html`<section class="side"><h4>${label}</h4><p>Absent</p></section>`;
+    if (side.state === 'absent') return html`<section class="side"><h4>${label}</h4><p class="muted">Absent</p></section>`;
     let content = html`<p>Preview unavailable</p>`;
     if (kind === 'media') {
       content = html`
@@ -184,41 +204,68 @@ export class DaBranchChanges extends LitElement {
     </section>`;
   }
 
+  renderFiles(summary) {
+    return html`
+      <p class="revision"><span>Default <strong>r${summary.defaultRevision}</strong></span>
+        <span aria-hidden="true">→</span> <span>Branch <strong>r${summary.branchRevision}</strong></span></p>
+      ${summary.stale ? html`<p class="message warning" role="status">Default has new changes — sync required.
+        This comparison includes default-only changes.</p>` : nothing}
+      ${summary.changes.length ? html`<ul class="changes-list" aria-label="Changed files">
+        ${summary.changes.map((change, index) => html`<li>
+          <button type="button" class="file" aria-label=${change.path}
+            aria-describedby=${`change-meta-${index}`}
+            aria-pressed=${this._selectedPath === change.path} @click=${() => this.select(change)}>
+            <span class="file-path" title=${change.path}>${change.path}</span>
+            <span class="file-meta" id=${`change-meta-${index}`}>
+              <span class="kind">${change.itemKind}</span>
+              <span class="badge" data-change=${change.change}>${change.change}</span>
+              ${change.defaultOnly ? html`<span class="badge">Default only</span>` : nothing}
+            </span>
+          </button>
+        </li>`)}
+      </ul>` : html`<p class="message muted">No changes.</p>`}
+      ${summary.next ? html`<button class="panel-button" type="button"
+        @click=${this.loadMore} ?disabled=${this._loading}>Load more</button>` : nothing}
+    `;
+  }
+
   render() {
     const summary = this._summary;
     return html`
-      <style>
-        .comparison { padding: 1rem; border: 1px solid #ccc; background: white; color: #222; }
-        .sides { display: flex; flex-wrap: wrap; gap: 1rem; }
-        .side { flex: 1 1 15rem; min-width: 0; }
-        pre { white-space: pre-wrap; overflow-wrap: anywhere; }
-        img { max-width: 100%; max-height: 20rem; }
-      </style>
-      <button type="button" @click=${this.toggle} aria-expanded=${String(!!this._open)}>
+      <button type="button" part=${this._open ? 'action active-action' : 'action'}
+        popovertarget="branch-changes-panel" aria-haspopup="dialog"
+        @click=${this.positionPanel} aria-expanded=${Boolean(this._open)}>
+        <svg part="action-icon" width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12M4 10h8m-8 5h6m4-1 2 2 2-4"/></svg>
         Changes${summary ? ` (${summary.changes.length}${summary.next ? '+' : ''})` : ''}
       </button>
-      ${this._open ? html`<div class="comparison">
-        <h3>Changes: Default → Branch · ${this.branchId}</h3>
-        <button type="button" @click=${() => this.refresh()} ?disabled=${this._loading}>Refresh</button>
-        ${this._notice ? html`<p role="status">${this._notice}</p>` : nothing}
-        ${this._error ? html`<p role="alert">${this._error}</p>` : nothing}
-        ${summary ? html`
-          <p>Default revision ${summary.defaultRevision} → Branch revision ${summary.branchRevision}</p>
-          ${summary.stale ? html`<p role="status">Default has new changes — sync required. This comparison includes default-only changes.</p>` : nothing}
-          ${summary.changes.length ? html`<ul>${summary.changes.map((change) => html`
-            <li><button type="button" @click=${() => this.select(change)}>${change.path}</button>
-              — ${change.itemKind} · ${change.change}${change.defaultOnly ? ' · Default only' : ''}</li>
-          `)}</ul>` : html`<p>No changes.</p>`}
-          ${summary.next ? html`<button type="button" @click=${this.loadMore} ?disabled=${this._loading}>Load more</button>` : nothing}
-        ` : nothing}
-        ${this._loading ? html`<p role="status">Loading changes…</p>` : nothing}
-        ${this._detailLoading ? html`<p role="status">Loading detail…</p>` : nothing}
-        ${this._detailError ? html`<p role="alert">${this._detailError}</p>` : nothing}
-        ${this._detail ? html`<h3>${this._detail.path}</h3><div class="sides">
-          ${this.renderSide('Default', this._detail.default, this._detail.itemKind)}
-          ${this.renderSide('Branch', this._detail.branch, this._detail.itemKind)}
-        </div>` : nothing}
-      </div>` : nothing}
+      <section id="branch-changes-panel" popover role="dialog" aria-labelledby="changes-title"
+        @beforetoggle=${this.toggle}>
+        <header>
+          <div>
+            <h2 id="changes-title">Branch changes</h2>
+            <p class="muted">Default → Branch · ${this.branchId}</p>
+          </div>
+          <button class="panel-button" type="button" @click=${() => this.refresh()}
+            ?disabled=${this._loading}>Refresh</button>
+          <button class="panel-button close" type="button" popovertarget="branch-changes-panel"
+            popovertargetaction="hide" aria-label="Close Changes">×</button>
+        </header>
+        <div class="content">
+          ${this._notice ? html`<p class="message" role="status">${this._notice}</p>` : nothing}
+          ${this._error ? html`<p class="message error" role="alert">${this._error}</p>` : nothing}
+          ${summary ? this.renderFiles(summary) : nothing}
+          ${this._loading ? html`<p class="message muted" role="status">Loading changes…</p>` : nothing}
+          ${this._detailLoading ? html`<p class="message muted" role="status">Loading detail…</p>` : nothing}
+          ${this._detailError ? html`<p class="message error" role="alert">${this._detailError}</p>` : nothing}
+          ${this._detail ? html`<div class="detail">
+            <h3>${this._detail.path}</h3>
+            <div class="sides">
+              ${this.renderSide('Default', this._detail.default, this._detail.itemKind)}
+              ${this.renderSide('Branch', this._detail.branch, this._detail.itemKind)}
+            </div>
+          </div>` : nothing}
+        </div>
+      </section>
     `;
   }
 }

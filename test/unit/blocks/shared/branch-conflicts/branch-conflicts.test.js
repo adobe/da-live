@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
 import { Y } from 'da-y-wrapper';
 import { aem2doc, doc2aem, getSchema, yDocToProsemirror } from 'da-parser';
 import { BranchingError } from '../../../../../blocks/shared/branching-client.js';
@@ -78,6 +79,64 @@ describe('branch sync and publish', () => {
     expect(calls).to.deep.equal([['flush', true], ['get', 'work'], ['sync', 'work', 7]]);
     expect(element._status).to.include('Sync completed');
     expect(editor.inert).to.equal(false);
+  });
+
+  it('marks the saved resolution and updates it when a different option is saved', async () => {
+    await element.openSession(element.capture(), 'sync1');
+    await element.select(entry);
+    await element.updateComplete;
+    const buttons = [...element.shadowRoot.querySelectorAll('.choices button')];
+    expect(buttons.every((button) => button.getAttribute('aria-pressed') === 'false')).to.equal(true);
+
+    for (const choice of buttons) {
+      choice.click();
+      // Wait for the save and the refreshed session before checking the saved state.
+      await tick(); // eslint-disable-line no-await-in-loop
+      expect(buttons.filter((button) => button.getAttribute('aria-pressed') === 'true'))
+        .to.deep.equal([choice]);
+      expect(getComputedStyle(choice.querySelector('svg')).visibility).to.equal('visible');
+      expect(element.shadowRoot.querySelector('.conflict-list').textContent)
+        .to.include(choice.textContent.trim());
+    }
+
+    client.resolve = async () => { throw new Error('Could not save'); };
+    buttons[0].click();
+    await tick();
+    expect(buttons[2].getAttribute('aria-pressed')).to.equal('true');
+    expect(element.shadowRoot.querySelector('[role="alert"]').textContent).to.equal('Could not save');
+  });
+
+  it('displays sync completion without moving the toolbar and dismisses it after five seconds', async () => {
+    const clock = sinon.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const { height } = element.getBoundingClientRect();
+      await element.sync();
+      await element.updateComplete;
+      const notice = element.shadowRoot.querySelector('.notice');
+      expect(notice.matches(':popover-open')).to.equal(true);
+      expect(notice.textContent).to.include('Sync completed');
+      expect(element.getBoundingClientRect().height).to.equal(height);
+      clock.tick(5000);
+      await element.updateComplete;
+      expect(element.shadowRoot.querySelector('.notice')).to.equal(null);
+    } finally {
+      clock.restore();
+    }
+  });
+
+  it('keeps actionable sync feedback visible instead of auto-dismissing it', async () => {
+    const clock = sinon.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      client.sync = async () => { throw new Error('Connection lost'); };
+      await element.sync();
+      clock.tick(5000);
+      await element.updateComplete;
+      const notice = element.shadowRoot.querySelector('.notice');
+      expect(notice.textContent).to.include('Reload branch');
+      expect(notice.querySelector('.dismiss')).to.equal(null);
+    } finally {
+      clock.restore();
+    }
   });
 
   it('does not fetch a revision or mutate after a negative acknowledgement', async () => {

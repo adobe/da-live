@@ -32,6 +32,37 @@ describe('Browse Content opt-in', () => {
     hashChange._set(undefined);
   });
 
+  it('only displays the authored greeting on the landing surface', async () => {
+    const stylesheet = new CSSStyleSheet();
+    const response = await fetch(new URL('../../../../blocks/browse/browse.css', import.meta.url).href);
+    stylesheet.replaceSync(await response.text());
+    document.adoptedStyleSheets.push(stylesheet);
+    const main = document.createElement('main');
+    const browse = document.createElement('div');
+    browse.className = 'browse';
+    const section = document.createElement('div');
+    section.className = 'section';
+    const greeting = document.createElement('div');
+    greeting.className = 'greeting';
+    section.append(greeting);
+    main.append(browse, section);
+    document.body.append(main);
+    try {
+      expect(getComputedStyle(greeting).display).to.equal('none');
+      const landing = document.createElement('div');
+      landing.className = 'landing';
+      browse.append(landing);
+      expect(getComputedStyle(greeting).display).not.to.equal('none');
+      const personalizedGreeting = document.createElement('da-greeting');
+      greeting.replaceWith(personalizedGreeting);
+      landing.remove();
+      expect(getComputedStyle(personalizedGreeting).display).to.equal('none');
+    } finally {
+      main.remove();
+      document.adoptedStyleSheets.splice(document.adoptedStyleSheets.indexOf(stylesheet), 1);
+    }
+  });
+
   it('switches between site Browse and Content without reloading and keeps nav selection off the URL', async () => {
     await import('../../../../blocks/browse/v2/da-browse/da-browse.js');
     const { href } = window.location;

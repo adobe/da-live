@@ -38,10 +38,22 @@ describe('content branch selector', () => {
     await selector.updateComplete;
     expect(selector.shadowRoot.textContent).to.include('Branch · work');
     expect(selector.shadowRoot.textContent).to.include('Create from Default');
+    const trigger = selector.shadowRoot.querySelector('.branch-trigger');
+    const menu = selector.shadowRoot.querySelector('[popover]');
+    expect(trigger.getAttribute('popovertarget')).to.equal(menu.id);
+    expect(menu.matches(':popover-open')).to.equal(false);
+    expect(menu.querySelector('[aria-current]').textContent.trim()).to.equal('Branch · work');
     const changes = selector.shadowRoot.querySelector('da-branch-changes');
     expect(changes.branchId).to.equal('work');
     expect(changes.client).to.equal(selector._data.client);
     expect(selector.shadowRoot.querySelector('slot[name="toolbar"]')).to.exist;
+    const conflicts = selector.shadowRoot.querySelector('da-branch-conflicts');
+    await Promise.all([changes.updateComplete, conflicts.updateComplete]);
+    const actions = [changes, conflicts].flatMap((element) => [
+      ...element.shadowRoot.querySelectorAll('button[part~="action"]'),
+    ]);
+    expect(actions).to.have.length(3);
+    actions.forEach((action) => expect(getComputedStyle(action).minHeight).to.equal('32px'));
   });
 
   it('hides itself when capability discovery is unsupported', async () => {
@@ -50,7 +62,7 @@ describe('content branch selector', () => {
     document.body.append(selector);
     await selector.load();
     await selector.updateComplete;
-    expect(selector.shadowRoot.querySelector('details')).to.equal(null);
+    expect(selector.shadowRoot.querySelector('.branch-trigger')).to.equal(null);
   });
 
   it('does not show branch actions on default', async () => {

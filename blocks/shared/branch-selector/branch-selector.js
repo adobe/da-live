@@ -3,6 +3,7 @@ import { parseSiteSegment } from '../content-branch-context.js';
 import { createBranchingClient } from '../branching-client.js';
 import { discoverBranching, defaultSourceMatchesBinding } from './context.js';
 import { switchContentBranch, withBranchBarrier } from './navigation.js';
+import styles from './branch-selector-styles.js';
 import '../branch-changes/branch-changes.js';
 import '../branch-conflicts/branch-conflicts.js';
 
@@ -13,7 +14,13 @@ export class DaBranchSelector extends LitElement {
     _data: { state: true },
     _error: { state: true },
     _busy: { state: true },
+    _open: { state: true },
   };
+
+  connectedCallback() {
+    super.connectedCallback();
+    this.shadowRoot.adoptedStyleSheets = [styles];
+  }
 
   updated(changed) {
     if (changed.has('org') || changed.has('site')) this.load();
@@ -23,6 +30,8 @@ export class DaBranchSelector extends LitElement {
     const { org } = this;
     const rawSite = this.site;
     this._data = undefined;
+    this._open = false;
+    this._error = undefined;
     if (!org || !rawSite) return;
     let parsed;
     try { parsed = parseSiteSegment(rawSite); } catch {
@@ -79,29 +88,64 @@ export class DaBranchSelector extends LitElement {
     changes?.refreshIfOpen();
   }
 
+  positionMenu({ currentTarget }) {
+    const menu = this.shadowRoot.getElementById('branch-options');
+    const { top, bottom, right } = currentTarget.getBoundingClientRect();
+    const gap = 8;
+    const width = Math.min(288, window.innerWidth - 2 * gap);
+    const left = Math.max(gap, Math.min(right - width, window.innerWidth - width - gap));
+    const below = window.innerHeight - bottom;
+    const showAbove = below < 280 && top > below;
+    menu.style.setProperty('--branch-left', `${left}px`);
+    menu.style.setProperty('--branch-top', showAbove ? 'auto' : `${bottom + gap / 2}px`);
+    menu.style.setProperty('--branch-bottom', showAbove ? `${window.innerHeight - top + gap / 2}px` : 'auto');
+    menu.style.setProperty('--branch-max-height', `${Math.max(0, (showAbove ? top : below) - 2 * gap)}px`);
+  }
+
   render() {
     if (!this._data) return nothing;
     const { selected, branches, defaultBranchId } = this._data;
+    const options = [
+      { id: null, name: `Default · ${defaultBranchId}` },
+      ...branches.map(({ id, name }) => ({ id, name: `Branch · ${name}` })),
+    ];
     return html`
-      <details>
-        <summary>${selected ? `Branch · ${selected}` : `Default · ${defaultBranchId}`}</summary>
-        <button type="button" ?disabled=${this._busy || !selected} @click=${() => this.select(null)}>
-          Default · ${defaultBranchId}
-        </button>
-        ${branches.map((branch) => html`<button type="button" ?disabled=${this._busy || selected === branch.id}
-          @click=${() => this.select(branch.id)}>Branch · ${branch.name}</button>`)}
+      <button class="branch-trigger" type="button" popovertarget="branch-options"
+        aria-haspopup="dialog" aria-expanded=${Boolean(this._open)}
+        ?data-branch=${Boolean(selected)} @click=${this.positionMenu}>
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="6" cy="5" r="2"/><circle cx="6" cy="15" r="2"/><circle cx="14" cy="5" r="2"/>
+          <path d="M6 7v6m8-6v1a3 3 0 0 1-3 3H6"/>
+        </svg>
+        <span>${selected ? `Branch · ${selected}` : `Default · ${defaultBranchId}`}</span>
+        <svg class="chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+      </button>
+      <section id="branch-options" popover role="dialog" aria-label="Content branches"
+        @toggle=${({ newState }) => { this._open = newState === 'open'; }}>
+        <h2>Content branches</h2>
+        <div class="branch-list">
+          ${options.map(({ id, name }) => html`
+            <button type="button" class="branch-option" aria-current=${selected === id ? 'true' : nothing}
+              ?disabled=${this._busy || selected === id} @click=${() => this.select(id)}>
+              <span>${name}</span>
+              ${selected === id ? html`<svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8 3 3 7-7"/></svg>` : nothing}
+            </button>`)}
+        </div>
         <form @submit=${this.create}>
-          <label>Create from Default <input name="name" maxlength="8" required></label>
-          <button type="submit" ?disabled=${this._busy}>Create</button>
+          <label for="branch-name">Create from Default</label>
+          <div class="branch-create">
+            <input id="branch-name" name="name" placeholder="Branch name" maxlength="8" required>
+            <button type="submit" ?disabled=${this._busy}>Create</button>
+          </div>
         </form>
-      </details>
-      ${selected ? html`
+        ${this._error ? html`<p role="alert">${this._error}</p>` : nothing}
+      </section>
+      ${selected ? html`<div class="branch-actions">
         <da-branch-changes .branchId=${selected} .client=${this._data.client}></da-branch-changes>
         <da-branch-conflicts .branchId=${selected} .client=${this._data.client}
           @branch-changed=${this.refreshChanges}></da-branch-conflicts>
         <slot name="toolbar"></slot>
-      ` : nothing}
-      ${this._error ? html`<p role="alert">${this._error}</p>` : nothing}
+      </div>` : nothing}
     `;
   }
 }

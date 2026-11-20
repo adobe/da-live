@@ -45,6 +45,15 @@ describe('da-browse-header', () => {
   const settingsMenu = () => header.shadowRoot.querySelector('nx-menu.browse-settings-menu');
   const settingsLabels = () => settingsMenu().items.map(({ label }) => label);
 
+  it('places the branch selector immediately before site settings in the toolbar', async () => {
+    header.details = { org: 'org', site: 'site~work', path: '' };
+    await header.updateComplete;
+    const selector = header.shadowRoot.querySelector('.browse-toolbar-controls da-branch-selector');
+    expect(selector.org).to.equal('org');
+    expect(selector.site).to.equal('site~work');
+    expect(selector.nextElementSibling).to.equal(settingsMenu());
+  });
+
   it('shows the settings menu only at org and site roots, not inside folders', async () => {
     header.details = { org: 'org', path: '' };
     await header.updateComplete;

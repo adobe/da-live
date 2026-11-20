@@ -46,11 +46,29 @@ describe('branch changes', () => {
     await element.updateComplete;
   }
 
+  it('opens the comparison out of flow and clears it when dismissed', async () => {
+    const trigger = element.shadowRoot.querySelector('button[popovertarget]');
+    const panel = element.shadowRoot.getElementById(trigger.getAttribute('popovertarget'));
+    const { height } = element.getBoundingClientRect();
+    trigger.click();
+    await element.updateComplete;
+    expect(panel.matches(':popover-open')).to.equal(true);
+    expect(getComputedStyle(panel).position).to.equal('fixed');
+    expect(element.getBoundingClientRect().height).to.equal(height);
+    expect(calls[0]).to.deep.equal(['changes', 'work']);
+    panel.querySelector('[aria-label="Close Changes"]').click();
+    await element.updateComplete;
+    expect(panel.matches(':popover-open')).to.equal(false);
+    expect(trigger.getAttribute('aria-expanded')).to.equal('false');
+    expect(panel.querySelector('.changes-list')).to.equal(null);
+  });
+
   it('loads the directed comparison, classifications, stale banner and pinned escaped detail', async () => {
     await open();
     expect(element.shadowRoot.textContent).to.include('Default → Branch');
     expect(element.shadowRoot.textContent).to.include('sync required');
-    expect(element.shadowRoot.textContent).to.include('html · modified · Default only');
+    const metadata = element.shadowRoot.querySelector('.file-meta');
+    expect([...metadata.children].map((item) => item.textContent)).to.deep.equal(['html', 'modified', 'Default only']);
     await element.select(change);
     await element.updateComplete;
     expect(calls[1]).to.deep.equal(['detail', 'work', { path: '/page.html', branchRevision: 3, defaultRevision: 7 }]);
