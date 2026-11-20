@@ -32,7 +32,7 @@ const settingsFields = [
     emptyLabel: 'Google (default)',
     // The connectors in da-nx loc. Names must match exactly: `GLaaS` is compared as is, and the
     // others resolve to their connector folder lowercased (GlobalLink → globallink).
-    options: ['Google', 'GLaaS', 'GlobalLink', 'Lionbridge', 'Smartling', 'Trados']
+    options: ['Google', 'DeepL', 'GLaaS', 'GlobalLink', 'Lionbridge', 'Smartling', 'Trados']
       .map((value) => ({ value, label: value })),
   },
   {
