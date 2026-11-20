@@ -1,19 +1,11 @@
 import { getNx } from '../../scripts/utils.js';
 import { fetchDaConfigs } from '../shared/utils.js';
 import initGreeting from '../greeting/greeting.js';
-import { getBrowseComponent, resolveBrowsePath } from './utils.js';
+import { getBrowseComponent, resolveBrowsePath, takeLandingSections } from './utils.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
 const V2_NAV_PATH = '/nx/fragments/browse2-nav';
-
-function takeGreeting(el) {
-  const section = el.closest('.section')?.nextElementSibling;
-  const greeting = section?.querySelector('div.greeting');
-  if (!greeting) return undefined;
-  section.remove();
-  return initGreeting(greeting);
-}
 
 // to be removed when the v2 nav is fully integrated
 function useV2Nav() {
@@ -46,11 +38,11 @@ async function loadBrowseStyles(cmpName) {
   if (cmpName === 'da-sites') await loadLandingStyles();
 }
 
-async function loadComponent(el, cmpName, pathDetails, surface, greeting) {
+async function loadComponent(el, cmpName, pathDetails, surface, blocks, greeting) {
   await surface;
   if (cmpName === 'da-landing') {
-    const { default: loadLanding } = await import('../landing/landing.js');
-    loadLanding(el);
+    const { loadLanding } = await import('../landing/landing.js');
+    await loadLanding(el, { blocks });
     return;
   }
 
@@ -91,12 +83,20 @@ function setRecentSite(details) {
 
 export default function init(el) {
   el.querySelectorAll('picture').forEach((picture) => picture.remove());
-  const greeting = getBrowseComponent({ search: window.location.search }) === 'da-sites'
-    ? takeGreeting(el) : undefined;
+  const blocks = takeLandingSections(el);
+  const greetingBlock = blocks.find((block) => block.classList.contains('greeting'));
+  const greeting = greetingBlock && getBrowseComponent({
+    search: window.location.search,
+    hasLanding: !!blocks.length,
+  }) === 'da-sites' ? initGreeting(greetingBlock) : undefined;
   hashChange.subscribe((pathDetails) => {
-    const cmpName = getBrowseComponent({ search: window.location.search, pathDetails });
+    const cmpName = getBrowseComponent({
+      search: window.location.search,
+      pathDetails,
+      hasLanding: !!blocks.length,
+    });
     const surface = cmpName === 'da-landing' ? loadLandingSurface(el) : loadBrowseStyles(cmpName);
-    loadComponent(el, cmpName, pathDetails, surface, greeting);
+    loadComponent(el, cmpName, pathDetails, surface, blocks, greeting);
     if (pathDetails) setRecentSite(pathDetails);
   });
 

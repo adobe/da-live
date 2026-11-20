@@ -1,7 +1,8 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { sanitizeName, EMPTY_DOC } from '../../shared/utils.js';
+import { sanitizeName } from '../../shared/utils.js';
 import { getNx, getNx2, getNx2Api } from '../../../scripts/utils.js';
 import getEditPath from '../../shared/da-file-item/edit-path.js';
+import { createPage } from '../../shared/da-file-item/item.js';
 import '../../shared/da-link-dialog/da-link-dialog.js';
 import '../../shared/da-name-dialog/da-name-dialog.js';
 
@@ -69,17 +70,23 @@ export default class DaNew extends LitElement {
         const { source } = await getNx2Api();
         await source.createFolder(path);
         this.sendNewItem({ name: finalName, path });
+      } else if (this._createType === 'document') {
+        const path = `${this.fullpath}/${finalName}.html`;
+        this.navigate(await createPage({ path, editor: this.editor }));
       } else {
-        const ext = this._createType === 'document' ? 'html' : 'json';
+        const ext = 'json';
         const path = `${this.fullpath}/${finalName}.${ext}`;
         const { source } = await getNx2Api();
-        const body = ext === 'html' ? EMPTY_DOC : EMPTY_SHEET;
-        await source.save(path, { body });
-        window.location = getEditPath({ path, ext, editor: this.editor });
+        await source.save(path, { body: EMPTY_SHEET });
+        this.navigate(getEditPath({ path, ext, editor: this.editor }));
       }
     } finally {
       this._loading = false;
     }
+  }
+
+  navigate(href) {
+    window.location.href = href;
   }
 
   _handleCreateDialogClose() {
