@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { setNx, sanitizePath, sanitizePathParts, sanitizeName } from '../../../scripts/utils.js';
+import { setNx, sanitizePath, sanitizePathParts, sanitizeName, parseSubdomain } from '../../../scripts/utils.js';
 
 describe('Libs', () => {
   it('Default Libs', () => {
@@ -51,6 +51,19 @@ describe('Libs', () => {
 
     it('Sanitizes name without preserving dots', async () => {
       expect(sanitizeName('branch.name', false)).to.equal('branch-name');
+    });
+  });
+
+  describe('parseSubdomain', () => {
+    it('Extracts org and site from AEM URLs', () => {
+      expect(parseSubdomain('https://main--repo--org.hlx.live/')).to.equal('#/org/repo');
+      expect(parseSubdomain('https://main--my-site--my-org.aem.page/')).to.equal('#/my-org/my-site');
+    });
+
+    it('Returns null for non-AEM, incomplete or invalid URLs', () => {
+      expect(parseSubdomain('https://example.com/')).to.equal(null);
+      expect(parseSubdomain('https://main--repo.hlx.live/')).to.equal(null);
+      expect(parseSubdomain('not a url')).to.equal(null);
     });
   });
 
