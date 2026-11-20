@@ -146,12 +146,6 @@
   min-height: 32px;
 }
 
-.da-list-types-select-all .nx-checkbox {
-  flex-direction: row-reverse;
-  justify-content: space-between;
-  width: 100%;
-}
-
 /* List Item */
 da-file-item {
   font-size: var(--s2-component-m-regular-font-size, 14px);

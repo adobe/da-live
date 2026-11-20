@@ -545,6 +545,14 @@ export default class DaList extends DaListBase {
       <nx-popover class="da-list-types-popover" role="dialog" aria-label="Show all types"
         aria-busy=${!!this._bulkLoading} @close=${this.notifyTypesFilter}>
         <h4 class="da-list-types-title">Types</h4>
+        <label class="nx-checkbox da-list-types-row da-list-types-select-all">
+          <input
+            type="checkbox"
+            .checked=${allVisible}
+            ?disabled=${this._bulkLoading}
+            @click=${() => this.toggleAllTypesVisibility()}>
+          <span>Select all</span>
+        </label>
         <div class="da-list-types-options">
         ${labels.map((label) => {
       const item = this._listItems.find((entry) => getTypeLabel(entry.ext) === label);
@@ -562,16 +570,6 @@ export default class DaList extends DaListBase {
           </label>
         `;
     })}
-        </div>
-        <div class="da-list-types-row da-list-types-select-all">
-          <label class="nx-checkbox">
-            <input
-              type="checkbox"
-              .checked=${allVisible}
-              ?disabled=${this._bulkLoading}
-              @click=${() => this.toggleAllTypesVisibility()}>
-            <span>Select all</span>
-          </label>
         </div>
       </nx-popover>`;
   }
