@@ -3,7 +3,7 @@ import { getNx, getNx2, getNx2Api } from '../../scripts/utils.js';
 import { EMPTY_DOC } from '../shared/utils.js';
 import { renderEmptyList, EMPTY_LIST_CSS } from '../shared/empty-list.js';
 import { getCommentsBridge } from './editor-utils/comments-bridge.js';
-import createPublishHook from '../shared/preflight/publish-hook.js';
+import { publishHook } from '../shared/preflight/publish-hook.js';
 import {
   normalizeCanvasEditorView,
   readInitialCanvasEditorView,
@@ -280,7 +280,6 @@ export default async function decorate(block) {
   const { org, site } = hashState();
 
   // The first publish fires while Preflight is closed, so the hook listens from page load.
-  const publishHook = createPublishHook();
   publishHook.start();
 
   chatAvailability.subscribe((enabled) => {
@@ -311,7 +310,7 @@ export default async function decorate(block) {
     host: {
       getViews: async (context) => {
         const { getCanvasToolPanelViews } = await import('./ew-panel-extensions/helpers.js');
-        return getCanvasToolPanelViews(context, { publishHook });
+        return getCanvasToolPanelViews(context);
       },
       resolveInitialView: resolveInitialToolPanelView,
       persistView: persistToolPanelView,
