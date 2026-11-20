@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { render } from 'da-lit';
-import { renderCommentMenu } from '../../../../../../blocks/canvas/comments/helpers/templates.js';
+import { renderCommentMenu, renderForm } from '../../../../../../blocks/canvas/comments/helpers/templates.js';
 
 function menuItemIds(panel, { isRoot = true, canEdit = true, isResolved = false } = {}) {
   const host = document.createElement('div');
@@ -32,5 +32,22 @@ describe('comments helpers/templates renderCommentMenu', () => {
 
   it('never offers "Add to chat" on a reply', () => {
     expect(menuItemIds({ currentUser: { id: 'u' } }, { isRoot: false })).to.not.include('chat');
+  });
+});
+
+describe('comments helpers/templates renderForm', () => {
+  const panel = { _mentionMenu: { items: [{ name: 'Ada', email: 'ada@example.com' }], index: 0 } };
+  const menuIn = (opts) => {
+    const host = document.createElement('div');
+    render(renderForm(panel, { placeholder: '', ...opts }), host);
+    return host.querySelector('.ew-mention-menu');
+  };
+
+  it('shows the mention menu in the active form', () => {
+    expect(menuIn({})).to.exist;
+  });
+
+  it('hides the mention menu in an inactive form', () => {
+    expect(menuIn({ active: false })).to.not.exist;
   });
 });
