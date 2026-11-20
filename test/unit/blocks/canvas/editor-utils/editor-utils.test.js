@@ -5,6 +5,7 @@ import {
   EditorView,
   TextSelection,
   columnResizing,
+  ySyncPluginKey,
 } from 'da-y-wrapper';
 import { getSchema } from 'da-parser';
 import { setNx } from '../../../../../scripts/utils.js';
@@ -555,6 +556,49 @@ describe('updateDocument rerender scopes', () => {
 
     mirror(ctx.view, ctx.view.state.tr.insertText('Replacement', 1), ctx);
     expect(outline[0].items[0].children[0]).to.include({ kind: 'paragraph', innerText: 'Replacement', snippet: 'Replacement' });
+    expect(ctx.port.postMessage.called).to.equal(false);
+  });
+
+  [1, 2, 3, 4, 5, 6].forEach((level) => {
+    it(`restores the H${level} outline entry on mirrored undo and removes it on redo`, () => {
+      let outline;
+      const original = h('Title', level);
+      mount([original], undefined, (body) => { outline = parseSections(body); });
+      outline = parseSections(getInstrumentedHTML(ctx.view));
+      expect(outline[0].items[0].children[0]).to.include({ kind: 'heading', level, innerText: 'Title' });
+      ctx.port.postMessage.resetHistory();
+
+      const previousDoc = ctx.view.state.doc;
+      const cut = ctx.view.state.tr.delete(1, original.nodeSize - 1);
+      mirror(ctx.view, cut, ctx);
+      expect(ctx.view.state.doc.firstChild.type.name).to.equal('heading');
+      expect(outline[0].items).to.have.lengthOf(0);
+
+      mirror(ctx.view, ctx.view.state.tr.step(cut.steps[0].invert(previousDoc))
+        .setMeta(ySyncPluginKey, { isChangeOrigin: true, isUndoRedoOperation: true }), ctx);
+      expect(ctx.view.state.doc.eq(previousDoc)).to.equal(true);
+      expect(outline[0].items[0].children[0]).to.include({ kind: 'heading', level, innerText: 'Title', snippet: 'Title' });
+
+      mirror(ctx.view, ctx.view.state.tr.step(cut.steps[0])
+        .setMeta(ySyncPluginKey, { isChangeOrigin: true, isUndoRedoOperation: true }), ctx);
+      expect(outline[0].items).to.have.lengthOf(0);
+      expect(ctx.port.postMessage.called).to.equal(false);
+      expect(ctx.syncedDoc).to.equal(ctx.view.state.doc);
+      expect(ctx.confirmedDoc).to.equal(ctx.view.state.doc);
+    });
+  });
+
+  it('restores the outline entry when typing into a retained empty heading', () => {
+    let outline;
+    const original = h('Title');
+    mount([original], undefined, (body) => { outline = parseSections(body); });
+    ctx.port.postMessage.resetHistory();
+
+    mirror(ctx.view, ctx.view.state.tr.delete(1, original.nodeSize - 1), ctx);
+    expect(outline[0].items).to.have.lengthOf(0);
+
+    mirror(ctx.view, ctx.view.state.tr.insertText('New title', 1), ctx);
+    expect(outline[0].items[0].children[0]).to.include({ kind: 'heading', innerText: 'New title', snippet: 'New title' });
     expect(ctx.port.postMessage.called).to.equal(false);
   });
 

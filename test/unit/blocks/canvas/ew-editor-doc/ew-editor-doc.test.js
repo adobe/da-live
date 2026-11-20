@@ -1,7 +1,7 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
-import { NodeSelection, TextSelection } from 'da-y-wrapper';
+import { NodeSelection, TextSelection, yUndoPluginKey } from 'da-y-wrapper';
 import { setNx } from '../../../../../scripts/utils.js';
 import { canvasBus } from '../../../../../blocks/canvas/utils/canvas-bus.js';
 import { createTestEditor, destroyEditor } from '../../edit/prose/test-helpers.js';
@@ -10,11 +10,12 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let createTrackingPlugin;
 let updateDocument;
+let parseSections;
 
 before(async () => {
   await import('../../../../../blocks/canvas/ew-editor-doc/ew-editor-doc.js');
   ({ createTrackingPlugin } = await import('../../../../../blocks/canvas/editor-utils/prose-diff.js'));
-  ({ updateDocument } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js'));
+  ({ updateDocument, parseSections } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js'));
 });
 
 // Wraps view.dispatch so tests can assert the guarded early-returns in
@@ -76,6 +77,113 @@ function buildTableDoc(view) {
   });
   return { tablePos, cellTextPos };
 }
+
+describe('EwEditorDoc — inline Outline updates without an iframe', () => {
+  let editor;
+  let unsub;
+
+  afterEach(() => {
+    unsub?.();
+    destroyEditor(editor);
+    canvasBus.editorHtmlState.emit('');
+  });
+
+  async function mountWithList() {
+    const el = document.createElement('ew-editor-doc');
+    const tracking = createTrackingPlugin(
+      () => el._emitHtmlChange(),
+      undefined,
+      (data) => el._syncInlineEdit(data),
+    );
+    editor = await createTestEditor({ additionalPlugins: [tracking] });
+    el._proseContext = { view: editor.view };
+    const { schema } = editor.view.state;
+    const item = (text) => schema.nodes.list_item.create(null, [
+      schema.nodes.paragraph.create(null, schema.text(text)),
+    ]);
+    const { content } = schema.nodes.doc.create(null, [
+      schema.nodes.paragraph.create(null, schema.text('hello world')),
+      schema.nodes.ordered_list.create(null, [item('One'), item('Two')]),
+    ]);
+    const { view } = editor;
+    view.dispatch(view.state.tr.replaceWith(0, view.state.doc.content.size, content));
+    const { undoManager } = yUndoPluginKey.getState(editor.view.state);
+    undoManager.stopCapturing();
+    const published = [];
+    unsub = canvasBus.editorHtmlState.subscribe((body) => { published.push(body); });
+    published.length = 0;
+    const listOf = (html) => parseSections(html)[0].items[0].children
+      .find((child) => child.kind === 'list');
+    return { el, undoManager, published, listOf };
+  }
+
+  it('skips Outline updates for typing and for undo/redo of typed characters', async () => {
+    const { el, undoManager, published } = await mountWithList();
+
+    editor.view.dispatch(editor.view.state.tr.insertText('New ', 1));
+    undoManager.stopCapturing();
+    el.undo();
+    el.redo();
+
+    expect(editor.view.state.doc.firstChild.textContent).to.equal('New hello world');
+    expect(published).to.have.lengthOf(0);
+  });
+
+  it('updates Outline when undo/redo removes or restores an entire numbered list', async () => {
+    const { el, undoManager, published, listOf } = await mountWithList();
+    const listPos = editor.view.state.doc.firstChild.nodeSize;
+    const listSize = editor.view.state.doc.child(1).nodeSize;
+
+    editor.view.dispatch(editor.view.state.tr.delete(listPos, listPos + listSize));
+    undoManager.stopCapturing();
+    expect(published).to.have.lengthOf(1);
+    expect(listOf(published[0])).to.equal(undefined);
+
+    el.undo();
+    expect(published).to.have.lengthOf(2);
+    expect(listOf(published[1])).to.include({ kind: 'list', ordered: true, snippet: 'One' });
+
+    el.redo();
+    expect(published).to.have.lengthOf(3);
+    expect(listOf(published[2])).to.equal(undefined);
+  });
+
+  it('skips Outline updates when undo/redo removes or restores a later list item', async () => {
+    const { el, undoManager, published } = await mountWithList();
+    const list = editor.view.state.doc.child(1);
+    const lastItemPos = editor.view.state.doc.firstChild.nodeSize + 1 + list.firstChild.nodeSize;
+    const lastItemSize = list.lastChild.nodeSize;
+
+    editor.view.dispatch(editor.view.state.tr.delete(lastItemPos, lastItemPos + lastItemSize));
+    undoManager.stopCapturing();
+    expect(editor.view.state.doc.child(1).childCount).to.equal(1);
+    el.undo();
+    expect(editor.view.state.doc.child(1).childCount).to.equal(2);
+    el.redo();
+
+    expect(editor.view.state.doc.child(1).childCount).to.equal(1);
+    expect(published).to.have.lengthOf(0);
+  });
+
+  it('updates Outline when undo/redo removes or restores the first list item', async () => {
+    const { el, undoManager, published, listOf } = await mountWithList();
+    const firstItemPos = editor.view.state.doc.firstChild.nodeSize + 1;
+    const firstItemSize = editor.view.state.doc.child(1).firstChild.nodeSize;
+
+    editor.view.dispatch(editor.view.state.tr.delete(firstItemPos, firstItemPos + firstItemSize));
+    undoManager.stopCapturing();
+    expect(published).to.have.lengthOf(1);
+    expect(listOf(published[0])).to.include({ snippet: 'Two' });
+
+    el.undo();
+    expect(published).to.have.lengthOf(2);
+    expect(listOf(published[1])).to.include({ snippet: 'One' });
+
+    el.redo();
+    expect(published).to.have.lengthOf(3);
+    expect(listOf(published[2])).to.include({ snippet: 'Two' });
+  });
+});
 
 describe('EwEditorDoc — _scrollDocToProseIndex', () => {
   let editor;

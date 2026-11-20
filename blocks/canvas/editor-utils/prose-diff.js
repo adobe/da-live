@@ -189,6 +189,16 @@ function isRemoteChange(tr) {
   return !!yMeta?.isChangeOrigin && !yMeta.isUndoRedoOperation;
 }
 
+function hasEditableContent(node) {
+  if (node?.textContent.trim()) return true;
+  let hasImage = false;
+  node?.descendants((child) => {
+    if (child.type.name === 'image') hasImage = true;
+    return !hasImage;
+  });
+  return hasImage;
+}
+
 export function createTrackingPlugin(rerenderPage, updateCursors, getEditor, onSelectionChange) {
   // there can be multiple apply() calls before one update() call,
   // therefore we need to preserve the first state before any transactions
@@ -249,19 +259,26 @@ export function createTrackingPlugin(rerenderPage, updateCursors, getEditor, onS
 
               const previousEditable = commonEditable && previousDoc.nodeAt(commonEditable.pos);
               const currentEditable = commonEditable && view.state.doc.nodeAt(commonEditable.pos);
-              const wasEmptyParagraph = previousEditable?.type.name === 'paragraph'
-                && previousEditable.content.size === 0;
-              // prose2aem omits empty editable nodes, so clearing an existing item removes
-              // its Outline entry and requires the full HTML refresh path.
-              const becameEmptyEditable = previousEditable?.content.size > 0
-                && currentEditable?.content.size === 0;
+              // prose2aem omits empty editable nodes, so clearing or restoring their
+              // content requires fresh HTML to remove or restore the Outline entry.
+              const hadContent = hasEditableContent(previousEditable);
+              const hasContent = hasEditableContent(currentEditable);
+              const visibilityChanged = hadContent !== hasContent;
 
-              if (commonEditable && !wasEmptyParagraph && !becameEmptyEditable) {
+              if (commonEditable && !visibilityChanged) {
                 getEditor?.({
                   cursorOffset: commonEditable.pos + 1,
                   previousDoc,
                   doc: view.state.doc,
                   origin,
+                  // The Outline shows a list as one row labelled by its first item, so
+                  // only removing or restoring that first item changes what it displays.
+                  updateOutline: ['bullet_list', 'ordered_list'].includes(commonEditable.node.type.name)
+                    && changes.some((change) => (
+                      (change.type === 'added' || change.type === 'deleted')
+                      && change.node.type.name === 'list_item'
+                      && change.pos === commonEditable.pos + 1
+                    )),
                 });
               } else {
                 rerenderPage?.({
