@@ -6,7 +6,10 @@ import { copyConfig, copyContent, previewContent } from './index.js';
 import { getNx2Api, sanitizePathParts } from '../../scripts/utils.js';
 import initGreeting from '../greeting/greeting.js';
 
-const sheet = await getSheet('/blocks/start/start.css');
+const [sheet, cardsSheet] = await Promise.all([
+  getSheet('/blocks/start/start.css'),
+  getSheet('/blocks/start/cards.css'),
+]);
 
 const DA_ORIGIN = getDaAdmin();
 
@@ -365,6 +368,9 @@ class DaStart extends LitElement {
 customElements.define('da-start', DaStart);
 
 export default function init(el) {
+  if (!document.adoptedStyleSheets.includes(cardsSheet)) {
+    document.adoptedStyleSheets.push(cardsSheet);
+  }
   const start = document.createElement('da-start');
   el.append(start);
   const section = el.closest('.section')?.nextElementSibling;
