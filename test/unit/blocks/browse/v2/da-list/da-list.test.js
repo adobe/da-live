@@ -881,6 +881,48 @@ describe('DaList helpers', () => {
     });
   });
 
+  describe('handlePublishPassing', () => {
+    let savedFetch;
+    let releaseSchedule;
+    beforeEach(() => {
+      savedFetch = window.fetch;
+      const gate = new Promise((resolve) => { releaseSchedule = resolve; });
+      window.fetch = async (url) => {
+        if (url.includes('snapshot-scheduler')) {
+          return new Response(JSON.stringify(await gate), { status: 200 });
+        }
+        return new Response('{}', { status: 200 });
+      };
+    });
+    afterEach(() => { window.fetch = savedFetch; });
+
+    const doc = { name: 'doc', ext: 'html', path: '/org/site/doc.html' };
+
+    it('Keeps the preflight dialog open as "checking" until the schedule check resolves', async () => {
+      const el = makeList();
+      const runAemQueue = stub(el, 'runAemQueue').resolves();
+      el._preflight = { items: [doc], publish: true };
+      const pending = el.handlePublishPassing([doc]);
+      expect(el._preflight).to.deep.include({ checking: true, publish: true });
+
+      await el.handlePublishPassing([doc]);
+      releaseSchedule({ scheduled: false });
+      await pending;
+      expect(el._preflight).to.equal(null);
+      expect(runAemQueue.calledOnce).to.be.true;
+    });
+
+    it('Closes the preflight dialog when the scheduled-override confirm opens', async () => {
+      const el = makeList();
+      el._preflight = { items: [doc], publish: true };
+      const pending = el.handlePublishPassing([doc]);
+      releaseSchedule({ scheduled: true, scheduledPublish: '2026-12-31T00:00:00Z' });
+      await pending;
+      expect(el._preflight).to.equal(null);
+      expect(el._confirm.scheduled).to.have.length(1);
+    });
+  });
+
   describe('handleConfirmPublish', () => {
     let savedFetch;
     beforeEach(() => { savedFetch = window.fetch; });

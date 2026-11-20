@@ -690,8 +690,9 @@ export default class DaListBase extends LitElement {
   }
 
   async handlePublishPassing(items) {
-    this._preflight = null;
-    if (!items?.length) return;
+    if (!items?.length || this._preflight?.checking) return;
+    // Like the publish confirm: stay open showing "Checking..." until publishItems moves on.
+    this._preflight = { ...this._preflight, checking: true };
     // Keep failed pages selected so they can be fixed and retried.
     await this.publishItems(items, { keepUnpublished: true });
   }
@@ -709,6 +710,7 @@ export default class DaListBase extends LitElement {
     }));
 
     const scheduled = scheduleChecks.filter(Boolean);
+    this._preflight = null;
     if (scheduled.length > 0) {
       this._confirm = { type: 'publish', scheduled, items, keepUnpublished };
       return;
@@ -1028,6 +1030,7 @@ export default class DaListBase extends LitElement {
       <da-browse-preflight
         .items=${this._preflight.items}
         .canPublish=${this._preflight.publish}
+        .checking=${!!this._preflight.checking}
         @publish-passing=${(e) => this.handlePublishPassing(e.detail.items)}
         @close=${this.handleClosePreflight}>
       </da-browse-preflight>

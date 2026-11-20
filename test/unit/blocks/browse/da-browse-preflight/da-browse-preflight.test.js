@@ -139,6 +139,27 @@ describe('DaBrowsePreflight', () => {
       expect(publish.textContent.trim()).to.equal('Publish Passing (2)');
     });
 
+    it('stays open on Publish Passing and shows "Checking..." while the host checks', async () => {
+      window.fetch = () => Promise.resolve(new Response('{}'));
+      const json = { path: '/o/s/data.json', ext: 'json' };
+      mount([json]);
+      await el.updateComplete;
+      const events = [];
+      el.addEventListener('publish-passing', (e) => events.push(e.detail.items));
+      el.addEventListener('close', () => events.push('close'));
+      el.shadowRoot.querySelector('.nx-form-btn-primary').click();
+      expect(events).to.deep.equal([[json]]);
+
+      el.checking = true;
+      await el.updateComplete;
+      const [cancel, publish] = el.shadowRoot.querySelectorAll('.da-preflight-footer button');
+      expect(publish.textContent.trim()).to.equal('Checking...');
+      expect(publish.disabled).to.be.true;
+      expect(cancel.disabled).to.be.true;
+      el._handlePublishPassing();
+      expect(events).to.have.length(1);
+    });
+
     it('checks auth once and marks every page as an error when signed out', async () => {
       localStorage.removeItem('nx-ims');
       let calls = 0;

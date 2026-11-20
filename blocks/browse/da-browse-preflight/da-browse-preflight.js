@@ -51,6 +51,8 @@ export default class DaBrowsePreflight extends LitElement {
   static properties = {
     items: { attribute: false },
     canPublish: { attribute: false },
+    // Set by the host while it checks schedules after "Publish Passing".
+    checking: { attribute: false },
     _rows: { state: true },
     _authError: { state: true },
   };
@@ -59,6 +61,7 @@ export default class DaBrowsePreflight extends LitElement {
     super();
     this.items = [];
     this.canPublish = false;
+    this.checking = false;
     this._rows = [];
     this._authError = null;
   }
@@ -164,11 +167,11 @@ export default class DaBrowsePreflight extends LitElement {
     this.dispatchEvent(new CustomEvent('close', { bubbles: true, composed: true }));
   }
 
+  // The host closes the dialog once publishing starts, like the publish confirm.
   _handlePublishPassing() {
     const items = this._passing;
-    if (!items.length) return;
+    if (!items.length || this.checking) return;
     this.dispatchEvent(new CustomEvent('publish-passing', { detail: { items }, bubbles: true, composed: true }));
-    this._closeDialog();
   }
 
   _renderStatusIcon(row) {
@@ -236,14 +239,14 @@ export default class DaBrowsePreflight extends LitElement {
           ${this._rows.map((row) => this._renderRow(row))}
         </div>
         <div slot="footer-right" class="da-preflight-footer">
-          <button type="button" class="nx-form-btn-secondary" @click=${this._closeDialog}>Cancel</button>
+          <button type="button" class="nx-form-btn-secondary" ?disabled=${this.checking} @click=${this._closeDialog}>Cancel</button>
           ${this.canPublish ? html`
             <button
               type="button"
               class="nx-form-btn-primary"
-              ?disabled=${this._busy || passing.length === 0}
+              ?disabled=${this.checking || this._busy || passing.length === 0}
               @click=${this._handlePublishPassing}>
-              Publish Passing${passing.length ? ` (${passing.length})` : ''}
+              ${this.checking ? 'Checking...' : `Publish Passing${passing.length ? ` (${passing.length})` : ''}`}
             </button>` : nothing}
         </div>
       </da-dialog>`;
