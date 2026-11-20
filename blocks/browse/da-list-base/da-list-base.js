@@ -89,7 +89,6 @@ export default class DaListBase extends LitElement {
   async firstUpdated() {
     await this.loadDialog?.();
     await import('../da-actionbar/da-actionbar.js');
-    await import('../da-browse-preflight/da-browse-preflight.js');
     this.setupObserver();
   }
 
@@ -658,20 +657,20 @@ export default class DaListBase extends LitElement {
   handlePublish() {
     // With enforcement on, gate publish behind the preflight modal (pages only).
     if (this.preflightEnabled && this.enforcePreflight && this._selectedPages.length > 0) {
-      this._openPreflight(true);
-      return;
+      return this._openPreflight(true);
     }
     this._confirm = { type: 'publish' };
+    return undefined;
   }
 
   // The action bar's Preflight button is review-only — no publish intent.
   handleOpenPreflight() {
-    this._openPreflight(false);
+    return this._openPreflight(false);
   }
 
   // `publish` controls whether the modal offers "Publish Passing" (Publish entry)
   // or is review-only (Preflight-button entry).
-  _openPreflight(publish) {
+  async _openPreflight(publish) {
     if (!this.preflightEnabled) return;
     const pageCount = this._selectedPages.length;
     if (!pageCount) return;
@@ -680,6 +679,8 @@ export default class DaListBase extends LitElement {
       this.later(() => this.setStatus(), 5000);
       return;
     }
+    // Loaded on demand: most browse visits never open preflight.
+    await import('../da-browse-preflight/da-browse-preflight.js');
     // Non-page files ride along so "Publish Passing" publishes the whole selection minus failures.
     this._preflight = { items: this._selectedPublishable, publish };
   }

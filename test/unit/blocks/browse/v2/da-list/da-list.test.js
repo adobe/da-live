@@ -831,12 +831,12 @@ describe('DaList helpers', () => {
     const json = { name: 'd', ext: 'json', path: '/o/s/d.json' };
     const folder = { name: 'f', path: '/o/s/f' };
 
-    it('Gates publish behind preflight with all publishable items when enforced', () => {
+    it('Gates publish behind preflight with all publishable items when enforced', async () => {
       const el = makeList();
       el.preflightEnabled = true;
       el.enforcePreflight = true;
       el._selectedItems = [page, json, folder];
-      el.handlePublish();
+      await el.handlePublish();
       expect(el._confirm).to.not.be.ok;
       expect(el._preflight).to.deep.equal({ items: [page, json], publish: true });
     });

@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
-import { fetchWysiwygBranch, getPreviewOrigin } from '../../canvas/editor-utils/editor-utils.js';
+import { fetchWysiwygBranch, getPreviewOrigin } from '../../shared/preview-url.js';
 import { adaptEvaluation } from '../../canvas/ew-preflight/adapter.js';
 import { evaluatePage } from '../../canvas/ew-preflight/api.js';
 import { getAuthToken } from '../../shared/utils.js';
