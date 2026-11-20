@@ -96,6 +96,24 @@ describe('DaBrowsePreflight', () => {
     });
   });
 
+  describe('close', () => {
+    it('emits a single close event from the host when the dialog closes', async () => {
+      mountPages(1);
+      await el.updateComplete;
+      const dialog = el.shadowRoot.querySelector('da-dialog');
+      await dialog.updateComplete;
+      let hostCloses = 0;
+      let outerCloses = 0;
+      const countOuter = () => { outerCloses += 1; };
+      el.addEventListener('close', () => { hostCloses += 1; });
+      document.body.addEventListener('close', countOuter);
+      el._closeDialog();
+      document.body.removeEventListener('close', countOuter);
+      expect(hostCloses).to.equal(1);
+      expect(outerCloses).to.equal(1);
+    });
+  });
+
   describe('_evaluateRow outcomes', () => {
     const FAILING = { text_evaluation: { evaluations: [{ check_title: 'Alt text', alignment: 'NO' }] } };
 
@@ -143,14 +161,18 @@ describe('DaBrowsePreflight', () => {
     it('ignores a stale response that settles after a re-run', async () => {
       signIn();
       let releaseFirst;
+      let firstRequested;
+      const firstSent = new Promise((r) => { firstRequested = r; });
       const first = () => new Promise((resolve) => {
         releaseFirst = () => resolve(new Response(JSON.stringify(FAILING), { status: 200 }));
+        firstRequested();
       });
       stubResponses(first, json({}));
       mountPages(1);
+      el._pageUrl = async () => 'https://main--s--o.preview.da.live/p0';
       const [row] = el._rows;
       const stale = el._evaluateRow(row);
-      await new Promise((r) => { setTimeout(r, 50); });
+      await firstSent;
       await el._evaluateRow(row);
       expect(row.status).to.equal('pass');
       releaseFirst();

@@ -163,7 +163,9 @@ export default class DaBrowsePreflight extends LitElement {
     this.shadowRoot.querySelector('da-dialog')?.close();
   }
 
-  _handleDialogClose() {
+  _handleDialogClose(e) {
+    // da-dialog's own `close` is composed; stop it so the host only sees ours.
+    e?.stopPropagation();
     this.dispatchEvent(new CustomEvent('close', { bubbles: true, composed: true }));
   }
 

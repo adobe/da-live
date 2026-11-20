@@ -27,7 +27,7 @@ export default class DaListBase extends LitElement {
     fullpath: { type: String },
     editor: { type: String },
     hidePublishConfs: { attribute: false },
-    enforcePreflight: { type: Boolean },
+    enforcePreflight: { attribute: false },
     // Browse preflight is only offered to sites that opted in to the canvas editor.
     preflightEnabled: { attribute: false },
     select: { type: Boolean },
