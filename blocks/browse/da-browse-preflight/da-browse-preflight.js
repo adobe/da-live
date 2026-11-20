@@ -136,7 +136,7 @@ export default class DaBrowsePreflight extends LitElement {
       if (signal.aborted) return;
       const response = await evaluatePage(pageUrl, { signal });
       if (row.runId !== runId) return;
-      row.data = adaptEvaluation(response);
+      row.data = adaptEvaluation(response, { evaluatedUrl: pageUrl });
       row.status = row.data.failed === 0 ? 'pass' : 'fail';
     } catch (e) {
       if (signal.aborted || row.runId !== runId) return;

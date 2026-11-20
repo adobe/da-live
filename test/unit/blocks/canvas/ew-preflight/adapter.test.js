@@ -104,6 +104,12 @@ describe('ew-preflight adapter', () => {
     expect(adaptEvaluation({}).title).to.equal('Governance');
   });
 
+  it('includes the evaluated url only when one is given', () => {
+    const url = 'https://main--site--org.preview.da.live/a';
+    expect(adaptEvaluation({}, { evaluatedUrl: url }).evaluatedUrl).to.equal(url);
+    expect(adaptEvaluation({})).to.not.have.property('evaluatedUrl');
+  });
+
   it('groups checks into failed / passed / not-applicable sections', () => {
     const { sections } = adaptEvaluation(RESPONSE);
     const [failed, passed, notApplicable] = sections;

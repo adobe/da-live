@@ -174,6 +174,18 @@ describe('DaBrowsePreflight', () => {
       expect(el._passing).to.have.length(0);
     });
 
+    it('passes the evaluated url to the row\'s results', async () => {
+      signIn();
+      stubResponses(json(FAILING));
+      mountPages(1);
+      const url = 'https://main--s--o.preview.da.live/p0';
+      el._pageUrl = async () => url;
+      await el._evaluateRow(el._rows[0]);
+      el.shadowRoot.querySelector('details').open = true;
+      await el.updateComplete;
+      expect(el.shadowRoot.querySelector('nx-page-eval').data.evaluatedUrl).to.equal(url);
+    });
+
     it('marks a page as an error when the evaluation request fails', async () => {
       signIn();
       stubResponses(json({ detail: 'boom' }, 500));

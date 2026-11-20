@@ -51,7 +51,7 @@ function collectChecks(response) {
   return [...builtInChecks, ...siteCodeChecks, ...textChecks, ...imageChecks];
 }
 
-export function adaptEvaluation(response = {}) {
+export function adaptEvaluation(response = {}, { evaluatedUrl } = {}) {
   const entries = collectChecks(response).map(({ check, assetLabel, previewUrl }) => ({
     tone: toneOf(check.alignment),
     item: toItem(check, assetLabel, previewUrl),
@@ -101,5 +101,7 @@ export function adaptEvaluation(response = {}) {
     failed: failed.length,
     summary,
     sections,
+    // What was evaluated; lets the renderer's suggestion prompts name the page.
+    ...(evaluatedUrl && { evaluatedUrl }),
   };
 }
