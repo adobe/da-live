@@ -63,6 +63,21 @@ describe('blocks import: github', () => {
     expect(calls[0].auth).to.equal('Bearer t');
   });
 
+  it('encodes the branch and file path in GitHub requests', async () => {
+    const urls = [];
+    window.fetch = async (url) => {
+      urls.push(String(url));
+      return json({ tree: [], content: btoa('') });
+    };
+    const github = createGitHub({ owner: 'o', repo: 'r', branch: 'feature/new-hero#2?x&y' });
+    await github.discoverBlocks();
+    await github.readFile('blocks/my hero/my hero.css');
+    expect(urls).to.deep.equal([
+      'https://api.github.com/repos/o/r/git/trees/feature%2Fnew-hero%232%3Fx%26y?recursive=1',
+      'https://api.github.com/repos/o/r/contents/blocks/my%20hero/my%20hero.css?ref=feature%2Fnew-hero%232%3Fx%26y',
+    ]);
+  });
+
   it('reports why a repository cannot be read', async () => {
     const access = async (resp, token = '') => {
       window.fetch = async () => resp;

@@ -30,6 +30,9 @@ export function createGitHub({ owner, repo, branch = 'main', token = '' }) {
     return fetch(url, { headers, signal: controller.signal }).finally(() => clearTimeout(timer));
   };
   const base = `https://api.github.com/repos/${owner}/${repo}`;
+  // Branches like `feature/new-hero` or `fix#2` must stay one URL segment / query value.
+  const ref = encodeURIComponent(branch);
+  const filePath = (path) => path.split('/').map(encodeURIComponent).join('/');
 
   return {
     // Resolves to null when the repo is readable, else 'not-found' | 'needs-token' | 'rate-limit'.
@@ -44,7 +47,7 @@ export function createGitHub({ owner, repo, branch = 'main', token = '' }) {
 
     // Every folder directly inside a blocks/ folder: { name: 'cards', path: 'blocks/cards' }.
     async discoverBlocks() {
-      const resp = await get(`${base}/git/trees/${branch}?recursive=1`);
+      const resp = await get(`${base}/git/trees/${ref}?recursive=1`);
       if (!resp.ok) throw new Error(IMPORT.readRepoFailed(resp));
       const { tree = [] } = await resp.json();
       const blocks = new Map();
@@ -59,7 +62,7 @@ export function createGitHub({ owner, repo, branch = 'main', token = '' }) {
     },
 
     async readFile(path) {
-      const resp = await get(`${base}/contents/${path}?ref=${branch}`);
+      const resp = await get(`${base}/contents/${filePath(path)}?ref=${ref}`);
       if (!resp.ok) return null;
       const { content } = await resp.json();
       return content ? atob(content) : null;
