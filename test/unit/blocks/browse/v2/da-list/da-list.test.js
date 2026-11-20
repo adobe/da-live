@@ -923,6 +923,93 @@ describe('DaList helpers', () => {
     });
   });
 
+  describe('Publish Passing end to end', () => {
+    let savedFetch;
+    let api;
+    let origCreate;
+    let published;
+    let scheduledPaths;
+
+    const pass = { name: 'pass', ext: 'html', path: '/org/site/pass.html' };
+    const fail = { name: 'fail', ext: 'html', path: '/org/site/fail.html' };
+    const data = { name: 'data', ext: 'json', path: '/org/site/data.json' };
+
+    before(async () => {
+      api = await getNx2Api();
+      origCreate = api.versions.create;
+    });
+
+    beforeEach(() => {
+      savedFetch = window.fetch;
+      api.versions.create = async () => {};
+      published = [];
+      scheduledPaths = [];
+      window.fetch = (url, opts = {}) => {
+        if (url.includes('snapshot-scheduler')) {
+          const path = new URL(url).searchParams.get('path');
+          const body = scheduledPaths.includes(path)
+            ? { scheduled: true, scheduledPublish: '2026-12-31T00:00:00Z' } : { scheduled: false };
+          return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
+        }
+        if (url.includes('admin.hlx.page/live') && opts.method === 'POST') {
+          published.push(new URL(url).pathname);
+          return Promise.resolve(new Response(JSON.stringify({ live: { url: 'https://x' } }), { status: 200 }));
+        }
+        return Promise.resolve(new Response(JSON.stringify({ preview: { url: 'https://x' } }), { status: 200 }));
+      };
+    });
+
+    afterEach(() => {
+      window.fetch = savedFetch;
+      api.versions.create = origCreate;
+    });
+
+    function listWithSelection() {
+      const el = makeList();
+      el._itemErrors = [];
+      el._listItems = [pass, fail, data].map((item) => ({ ...item, isChecked: true }));
+      Object.defineProperty(el, 'actionBar', { value: {} });
+      el._preflight = { items: [pass, fail, data], publish: true };
+      return el;
+    }
+
+    it('Publishes only the passing items and keeps the failed page selected', async () => {
+      const el = listWithSelection();
+      await el.handlePublishPassing([pass, data]);
+      expect(published).to.have.length(2);
+      expect(published.some((p) => p.endsWith('/pass'))).to.be.true;
+      expect(published.some((p) => p.endsWith('/data.json'))).to.be.true;
+      expect(published.some((p) => p.includes('fail'))).to.be.false;
+      expect(el._selectedItems.map((i) => i.path)).to.deep.equal([fail.path]);
+    });
+
+    it('Carries the passing items through the scheduled-override confirm', async () => {
+      scheduledPaths.push('/pass');
+      const el = listWithSelection();
+      await el.handlePublishPassing([pass, data]);
+      expect(published).to.have.length(0);
+      expect(el._confirm).to.deep.include({ items: [pass, data], keepUnpublished: true });
+
+      let action;
+      el.renderDialog = (opts) => { action = opts.action; };
+      el.renderAemConfirm();
+      expect(action.label).to.equal('Confirm Publish');
+      await action.click();
+      expect(published).to.have.length(2);
+      expect(published.some((p) => p.includes('fail'))).to.be.false;
+      expect(el._selectedItems.map((i) => i.path)).to.deep.equal([fail.path]);
+    });
+
+    it('Clears the whole selection after a normal publish', async () => {
+      const el = listWithSelection();
+      const handleClear = stub(el, 'handleClear');
+      const deselectItems = stub(el, 'deselectItems');
+      await el.runAemQueue('publish', { skipSchedule: true, items: [pass] });
+      expect(handleClear.calledOnce).to.be.true;
+      expect(deselectItems.called).to.be.false;
+    });
+  });
+
   describe('handleConfirmPublish', () => {
     let savedFetch;
     beforeEach(() => { savedFetch = window.fetch; });

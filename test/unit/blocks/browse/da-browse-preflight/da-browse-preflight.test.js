@@ -96,6 +96,69 @@ describe('DaBrowsePreflight', () => {
     });
   });
 
+  describe('_evaluateRow outcomes', () => {
+    const FAILING = { text_evaluation: { evaluations: [{ check_title: 'Alt text', alignment: 'NO' }] } };
+
+    function stubResponses(...bodies) {
+      const queue = [...bodies];
+      window.fetch = (url) => {
+        if (!String(url).includes('/evaluate/page')) {
+          return Promise.resolve(new Response('{}', { status: 404 }));
+        }
+        return queue.shift()();
+      };
+    }
+    const json = (body, status = 200) => () => Promise.resolve(
+      new Response(JSON.stringify(body), { status }),
+    );
+
+    it('marks a page with no failed checks as passing', async () => {
+      signIn();
+      stubResponses(json({}));
+      mountPages(1);
+      await el._evaluateRow(el._rows[0]);
+      expect(el._rows[0].status).to.equal('pass');
+      expect(el._passing).to.have.length(1);
+    });
+
+    it('marks a page with a failed check as failing and leaves it out of Publish Passing', async () => {
+      signIn();
+      stubResponses(json(FAILING));
+      mountPages(1);
+      await el._evaluateRow(el._rows[0]);
+      expect(el._rows[0].status).to.equal('fail');
+      expect(el._passing).to.have.length(0);
+    });
+
+    it('marks a page as an error when the evaluation request fails', async () => {
+      signIn();
+      stubResponses(json({ detail: 'boom' }, 500));
+      mountPages(1);
+      await el._evaluateRow(el._rows[0]);
+      expect(el._rows[0].status).to.equal('error');
+      expect(el._rows[0].error).to.equal('boom (500)');
+      expect(el._passing).to.have.length(0);
+    });
+
+    it('ignores a stale response that settles after a re-run', async () => {
+      signIn();
+      let releaseFirst;
+      const first = () => new Promise((resolve) => {
+        releaseFirst = () => resolve(new Response(JSON.stringify(FAILING), { status: 200 }));
+      });
+      stubResponses(first, json({}));
+      mountPages(1);
+      const [row] = el._rows;
+      const stale = el._evaluateRow(row);
+      await new Promise((r) => { setTimeout(r, 50); });
+      await el._evaluateRow(row);
+      expect(row.status).to.equal('pass');
+      releaseFirst();
+      await stale;
+      expect(row.status).to.equal('pass');
+    });
+  });
+
   describe('_pageUrl', () => {
     it('uses the branch from the ew.wysiwygBranch config', async () => {
       const org = `org-bp-${testIndex}`;
