@@ -269,7 +269,8 @@ describe('blocks import: run', () => {
       '/docs/library/blocks/hero.html', '/docs/library/blocks/cards.html', '/docs/library/blocks/broken.html', '/docs/library/blocks.json',
     ]);
     expect(saves[0].body).to.include('<h1>Hi</h1>');
-    expect(saves[0].body.startsWith('<body><header></header><main>')).to.equal(true);
+    const saved = new DOMParser().parseFromString(saves[0].body, 'text/html');
+    expect([...saved.body.children].map((el) => el.tagName)).to.deep.equal(['HEADER', 'MAIN', 'FOOTER']);
     const list = JSON.parse(saves[3].body);
     expect(list.blocks.data).to.deep.equal([
       { name: 'Hero', path: 'https://content.da.live/o/s/docs/library/blocks/hero' },
