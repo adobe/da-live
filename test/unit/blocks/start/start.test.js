@@ -20,14 +20,16 @@ describe('start page', () => {
     main.remove();
   });
 
-  it('renders the Start form', async () => {
+  it('does not restore legacy controls when replacement content is absent', async () => {
+    main.lastElementChild.remove();
     const el = main.querySelector('.start');
     init(el);
 
     const start = el.querySelector(':scope > da-start');
     expect(start).to.exist;
     await start.updateComplete;
-    expect(start.shadowRoot.querySelector('form')).to.exist;
+    expect(start.shadowRoot.querySelector('form, .template-container')).to.be.null;
+    expect(start.shadowRoot.querySelector('.cards-panel')).to.be.null;
   });
 
   it('moves the authored greeting into the start block', async () => {
@@ -39,7 +41,6 @@ describe('start page', () => {
 
     const greeting = start.querySelector('da-greeting');
     expect(greeting.slot).to.equal('greeting');
-    expect(main.querySelectorAll('.section').length).to.equal(1);
     expect(start.shadowRoot.querySelector('slot[name="greeting"]')).to.exist;
   });
 
@@ -103,6 +104,18 @@ describe('start page', () => {
     expect(start.shadowRoot.querySelector('.cards-panel')).to.be.null;
   });
 
+  it('composes authored cards even when Add Site is not authored yet', async () => {
+    addContent();
+    main.querySelector('.add-site').remove();
+    init(main.querySelector('.start'));
+    const start = main.querySelector('da-start');
+    await start.updateComplete;
+
+    expect(start.shadowRoot.querySelector('slot[name="cards"]').assignedElements()[0])
+      .to.equal(start.querySelector('.nx-cards'));
+    expect(start.shadowRoot.querySelector('form, .template-container')).to.be.null;
+  });
+
   it('reuses a greeting that the page loader already initialized', async () => {
     addContent();
     const { default: initGreeting } = await import('../../../../blocks/greeting/greeting.js');
@@ -115,7 +128,7 @@ describe('start page', () => {
     expect(greeting.slot).to.equal('greeting');
   });
 
-  it('keeps the existing creation flow for org/site links', async () => {
+  it('does not restore the retired creation flow for org/site links', async () => {
     addContent();
     const { href } = window.location;
     try {
@@ -127,8 +140,8 @@ describe('start page', () => {
       const start = main.querySelector('da-start');
       await start.updateComplete;
 
-      expect(start.shadowRoot.querySelector('form')).to.exist;
-      expect(start.shadowRoot.querySelector('slot[name="add-site"]')).to.be.null;
+      expect(start.shadowRoot.querySelector('form, .template-container')).to.be.null;
+      expect(start.shadowRoot.querySelector('slot[name="add-site"]')).to.exist;
     } finally {
       window.history.replaceState({}, '', href);
     }
