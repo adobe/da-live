@@ -4,9 +4,9 @@ import { setNx } from '../../../../../scripts/utils.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
-const { default: DaBrowsePreflight } = await import('../../../../../blocks/browse/da-browse-preflight/da-browse-preflight.js');
+const { default: EWBrowsePreflight } = await import('../../../../../blocks/browse/ew-browse-preflight/ew-browse-preflight.js');
 
-describe('DaBrowsePreflight', () => {
+describe('EWBrowsePreflight', () => {
   let savedFetch;
   let savedNxIms;
   let savedAdobeIMS;
@@ -30,7 +30,7 @@ describe('DaBrowsePreflight', () => {
   });
 
   function mount(items) {
-    el = new DaBrowsePreflight();
+    el = new EWBrowsePreflight();
     el.items = items;
     el.canPublish = true;
     document.body.append(el);
@@ -56,7 +56,7 @@ describe('DaBrowsePreflight', () => {
   }
 
   function mountPages(count) {
-    el = new DaBrowsePreflight();
+    el = new EWBrowsePreflight();
     el.items = Array.from({ length: count }, (_, i) => ({ path: `/o/s/p${i}.html`, ext: 'html' }));
     el._evaluateAll = () => {};
     document.body.append(el);
@@ -225,7 +225,7 @@ describe('DaBrowsePreflight', () => {
       const site = `site-bp-${testIndex}`;
       const body = JSON.stringify({ data: [{ key: 'ew.wysiwygBranch', value: `/${org}/${site}/news=feature` }] });
       window.fetch = () => Promise.resolve(new Response(body, { status: 200 }));
-      const url = await new DaBrowsePreflight()._pageUrl({ path: `/${org}/${site}/news/a.html` });
+      const url = await new EWBrowsePreflight()._pageUrl({ path: `/${org}/${site}/news/a.html` });
       expect(url).to.match(new RegExp(`^https://feature--${site}--${org}\\.[a-z-]*preview\\.da\\.live/news/a$`));
     });
 
@@ -233,7 +233,7 @@ describe('DaBrowsePreflight', () => {
       const org = `org-bp-${testIndex}`;
       const site = `site-bp-${testIndex}`;
       window.fetch = () => Promise.reject(new Error('offline'));
-      const url = await new DaBrowsePreflight()._pageUrl({ path: `/${org}/${site}/a.html` });
+      const url = await new EWBrowsePreflight()._pageUrl({ path: `/${org}/${site}/a.html` });
       expect(url).to.match(new RegExp(`^https://main--${site}--${org}\\.`));
     });
   });
@@ -317,7 +317,7 @@ describe('DaBrowsePreflight', () => {
     });
 
     it('shows a spinner in the status slot while a page is evaluating', async () => {
-      el = new DaBrowsePreflight();
+      el = new EWBrowsePreflight();
       el.items = [{ path: '/o/s/a.html', ext: 'html', name: 'a' }];
       el._evaluateAll = () => {};
       document.body.append(el);

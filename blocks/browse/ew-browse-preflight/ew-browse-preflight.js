@@ -48,7 +48,7 @@ function ensureRenderer() {
 // Iterates the selected pages, runs the shared preflight evaluation for each,
 // and shows the per-page results (reusing <nx-page-eval>). Offers "Publish
 // Passing" — publish only the pages that passed — and "Close".
-export default class DaBrowsePreflight extends LitElement {
+export default class EWBrowsePreflight extends LitElement {
   static properties = {
     items: { attribute: false },
     canPublish: { attribute: false },
@@ -266,4 +266,4 @@ export default class DaBrowsePreflight extends LitElement {
   }
 }
 
-customElements.define('da-browse-preflight', DaBrowsePreflight);
+customElements.define('ew-browse-preflight', EWBrowsePreflight);

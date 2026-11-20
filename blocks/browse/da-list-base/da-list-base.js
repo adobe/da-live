@@ -685,7 +685,7 @@ export default class DaListBase extends LitElement {
       return;
     }
     // Loaded on demand: most browse visits never open preflight.
-    await import('../da-browse-preflight/da-browse-preflight.js');
+    await import('../ew-browse-preflight/ew-browse-preflight.js');
     // Non-page files ride along so "Publish Passing" publishes the whole selection minus failures.
     this._preflight = { items: this._selectedPublishable, publish };
   }
@@ -1037,13 +1037,13 @@ export default class DaListBase extends LitElement {
 
   renderPreflight() {
     return html`
-      <da-browse-preflight
+      <ew-browse-preflight
         .items=${this._preflight.items}
         .canPublish=${this._preflight.publish}
         .checking=${!!this._preflight.checking}
         @publish-passing=${(e) => this.handlePublishPassing(e.detail.items)}
         @close=${this.handleClosePreflight}>
-      </da-browse-preflight>
+      </ew-browse-preflight>
     `;
   }
 
