@@ -95,7 +95,7 @@ setup('Set up authentication', async ({ page }) => {
     el.dispatchEvent(new Event('change', { bubbles: true }));
   }, pwd);
   console.log('Entered password');
-  await page.locator('button[aria-label="Continue"]').click();
+  await page.locator('button[data-id="PasswordPage-ContinueButton"]').click();
 
   const foundationInternal = page.getByLabel('Foundation Internal');
   await foundationInternal.waitFor();
