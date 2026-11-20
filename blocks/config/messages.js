@@ -146,6 +146,7 @@ export const VALIDATION = {
 
 export const IMPORT = {
   failed: 'Could not find blocks',
+  importFailed: 'Could not import blocks',
   repo: 'Enter a GitHub repository, e.g. https://github.com/org/repo.',
   access: {
     'needs-token': 'GitHub could not open this repository. If it is private, add a token.',

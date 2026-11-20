@@ -7,7 +7,7 @@ import { parseRepo, createGitHub, analyzeBlock } from './github.js';
 import {
   findBlocks, blockExamples, blockDoc, cleanBlockDoc, displayName, mergeBlockRows,
 } from './blocks.js';
-import { IMPORT } from '../messages.js';
+import { IMPORT, failureDetail } from '../messages.js';
 
 // Block docs live next to the list: /library/blocks.json → /library/blocks/<name>.html
 export const docFolder = (listPath) => listPath.replace(/\.json$/, '/');
@@ -32,7 +32,8 @@ export async function readPages(org, site, pages, onProgress = () => {}) {
 }
 
 // Creates a doc per block (from page examples, else from the GitHub code), then adds the blocks
-// to the list. Resolves to { imported: [names], failed: [names], listStatus }.
+// to the list. Resolves to { imported: [names], failed: [names], listStatus }; a block that
+// cannot be built or saved is listed as failed, so the ones already saved still reach the list.
 export async function runImport({
   org, site, listPath, blocks, htmls = new Map(), github = null, onProgress = () => {},
 }) {
@@ -43,13 +44,17 @@ export async function runImport({
   for (let i = 0; i < blocks.length; i += 1) {
     const block = blocks[i];
     onProgress(IMPORT.creating(block.name, i + 1, blocks.length));
-    const examples = [...htmls.values()].flatMap((page) => blockExamples(page, block.name));
+    let resp = null;
     /* eslint-disable no-await-in-loop */
-    const analysis = !examples.length && github && block.path
-      ? await analyzeBlock(github, block).catch(() => null) : null;
-    const body = await cleanBlockDoc(blockDoc(block.name, { examples, analysis }));
-    const resp = await source.save({ org, site, path: `${folder}${block.name}.html`, body })
-      .catch(() => null);
+    try {
+      const examples = [...htmls.values()].flatMap((page) => blockExamples(page, block.name));
+      const analysis = !examples.length && github && block.path
+        ? await analyzeBlock(github, block).catch(() => null) : null;
+      const body = await cleanBlockDoc(blockDoc(block.name, { examples, analysis }));
+      resp = await source.save({ org, site, path: `${folder}${block.name}.html`, body });
+    } catch {
+      resp = null;
+    }
     /* eslint-enable no-await-in-loop */
     if (resp?.ok) {
       rows.push({ name: displayName(block.name), path: `https://content.da.live/${org}/${site}${folder}${block.name}` });
@@ -171,24 +176,31 @@ class DaConfigBlocksImport extends LitElement {
     this._selected = next;
   }
 
+  // runImport reports per-block failures itself; a failure before any block is written (e.g. the
+  // API not loading) returns to the selection with an alert, so the dialog can retry or close.
   async _import() {
     this._error = null;
     this._step = 'busy';
     const onProgress = (p) => { this._progress = p; };
-    if (this._mode === 'github') {
-      const samples = parsePages(this._form.samples).filter((p) => p.startsWith('/'));
-      this._htmls = await readPages(this.org, this.site, samples, onProgress);
+    try {
+      if (this._mode === 'github') {
+        const samples = parsePages(this._form.samples).filter((p) => p.startsWith('/'));
+        this._htmls = await readPages(this.org, this.site, samples, onProgress);
+      }
+      this._result = await runImport({
+        org: this.org,
+        site: this.site,
+        listPath: this.listPath,
+        blocks: this._blocks.filter((b) => this._selected.has(b.name)),
+        htmls: this._htmls,
+        github: this._github,
+        onProgress,
+      });
+      this._step = 'done';
+    } catch (e) {
+      this._error = { title: IMPORT.importFailed, message: failureDetail({ error: e.message }) };
+      this._step = 'select';
     }
-    this._result = await runImport({
-      org: this.org,
-      site: this.site,
-      listPath: this.listPath,
-      blocks: this._blocks.filter((b) => this._selected.has(b.name)),
-      htmls: this._htmls,
-      github: this._github,
-      onProgress,
-    });
-    this._step = 'done';
   }
 
   _field(field, autofocus = false) {
@@ -275,7 +287,7 @@ class DaConfigBlocksImport extends LitElement {
         @close=${() => (this._step === 'done' ? this._emit('import-done') : this._emit('import-close'))}>
         <div class="config-row-form">
           ${this._renderBody()}
-          ${this._error && !this._error.field ? renderAlert(IMPORT.failed, this._error.message) : nothing}
+          ${this._error && !this._error.field ? renderAlert(this._error.title ?? IMPORT.failed, this._error.message) : nothing}
         </div>
         ${this._renderActions()}
       </nx-dialog>`;

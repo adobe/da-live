@@ -1,10 +1,10 @@
 import { getNx2Api } from '../../scripts/utils.js';
 import { emptySheet, getRows, setRows, SHEETS } from './sheets.js';
 
-// nx2 call → { ok, data, status, error }, also when the call itself throws.
+// nx2 call → { ok, data, status, error }, also when the call itself (or loading the API) throws.
 async function getJson(call) {
-  const api = await getNx2Api();
   try {
+    const api = await getNx2Api();
     return await api.asJson(call(api));
   } catch (e) {
     return { ok: false, data: null, status: 0, error: e.message };
@@ -46,24 +46,28 @@ export async function loadConfigs(org, site = null) {
 
 // Same listing da-permissions uses; the picker also merges in sites from the permissions rules.
 export async function listSites(org) {
-  const { source } = await getNx2Api();
-  const list = await source.list({ org }).catch(() => ({}));
-  return list.ok ? list.items.filter((item) => !item.ext).map((item) => item.name) : [];
+  try {
+    const { source } = await getNx2Api();
+    const list = await source.list({ org });
+    return list.ok ? list.items.filter((item) => !item.ext).map((item) => item.name) : [];
+  } catch {
+    return [];
+  }
 }
 
 // Re-reads right before writing so the conflict window is one round trip (DA ignores If-Match,
 // same as mutatePermissions). `mutate(json|null)` returns { config, changed, conflict? }; a
 // conflict writes nothing. Resolves to { ok, status, config }, plus `error` when the request
-// itself failed (status 0) or `conflict` (status 409).
+// or the change itself failed (status 0) or `conflict` (status 409); never rejects.
 async function mutateJson(read, write, mutate) {
-  const current = await read();
-  if (isFailed(current)) return { ok: false, status: current.status };
-
-  const { config: next, changed, conflict } = mutate(isMissing(current) ? null : current.data);
-  if (conflict) return { ok: false, status: 409, conflict: true };
-  if (!changed) return { ok: true, status: 200, config: next };
-
   try {
+    const current = await read();
+    if (isFailed(current)) return { ok: false, status: current.status };
+
+    const { config: next, changed, conflict } = mutate(isMissing(current) ? null : current.data);
+    if (conflict) return { ok: false, status: 409, conflict: true };
+    if (!changed) return { ok: true, status: 200, config: next };
+
     const resp = await write(JSON.stringify(next));
     return { ok: resp.ok, status: resp.status, config: resp.ok ? next : null };
   } catch (e) {

@@ -365,7 +365,12 @@ class DaConfig extends LitElement {
   async _write(write, failed) {
     const { org, site } = this;
     this._busy = true;
-    const result = await write(org, site);
+    let result;
+    try {
+      result = await write(org, site);
+    } catch (e) {
+      result = { ok: false, status: 0, error: e.message };
+    }
     // The route changed meanwhile; that scope's state is already gone.
     if (this.org !== org || this.site !== site) return null;
     this._busy = false;

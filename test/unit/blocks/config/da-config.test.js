@@ -5,6 +5,7 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { loadConfigs, listSites, saveConfig, setupLibrary } = await import('../../../../blocks/config/api.js');
 const { applyValues } = await import('../../../../blocks/config/sheets.js');
+const { SHELL } = await import('../../../../blocks/config/messages.js');
 await import('../../../../blocks/config/da-config/da-config.js');
 
 const ORG_CONFIG = { ':names': ['data'], ':version': 3, ':type': 'multi-sheet', data: { total: 0, limit: 0, data: [] } };
@@ -202,6 +203,13 @@ describe('config api', () => {
       expect(await saveConfig('sc4', null, setK)).to.deep.equal({ ok: false, status: 403 });
       mockFetch({ putFor: status(500) });
       expect(await saveConfig('sc5', null, setK)).to.include({ ok: false, status: 500 });
+    });
+
+    it('reports a change that throws as a failed save instead of rejecting', async () => {
+      const puts = mockFetch({ configFor: () => kv([]) });
+      const broken = () => { throw new Error('bad sheet'); };
+      expect(await saveConfig('sc9', null, broken)).to.deep.equal({ ok: false, status: 0, error: 'bad sheet' });
+      expect(puts).to.have.length(0);
     });
 
     it('reports network errors as status 0', async () => {
@@ -499,6 +507,16 @@ describe('da-config', () => {
       await waitUntil(() => !el._busy && window.daTestToasts.length > 0, el);
       expect(window.daTestToasts.map((t) => [t.text, t.variant])).to.deep.equal([['Could not save changes (500).', 'error']]);
       expect([has('.config-savebar'), el._readOnly]).to.deep.equal([true, false]);
+    });
+
+    it('unlocks editing and reports it when a write throws', async () => {
+      mockFetch({ sitesFor: () => [{ name: 'alpha' }] });
+      window.daTestToasts.length = 0;
+      await open({ org: 'aa10' });
+      const result = await el._write(() => { throw new Error('boom'); }, SHELL.saveFailed);
+      expect([result, el._busy, el._readOnly]).to.deep.equal([null, false, false]);
+      await waitUntil(() => window.daTestToasts.length > 0, el);
+      expect(window.daTestToasts.map((t) => t.text)).to.deep.equal(['Could not save changes (boom).']);
     });
 
     it('blocks saving invalid values and discards edits', async () => {

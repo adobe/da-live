@@ -284,6 +284,28 @@ describe('blocks import: run', () => {
     expect(result).to.deep.equal({ imported: [], failed: ['broken'], listStatus: null });
     expect(saves).to.have.length(1);
   });
+
+  it('reports a block whose save throws as failed, and still lists the others', async () => {
+    const answer = window.fetch;
+    window.fetch = async (url, opts = {}) => {
+      if (opts.method === 'POST' && String(url).includes('explode.html')) throw new Error('offline');
+      return answer(url, opts);
+    };
+    // Cards isn't in the list yet, so the list is rewritten with it.
+    const blocks = [{ name: 'explode' }, { name: 'cards' }];
+    const result = await runImport({ org: 'o', site: 's', listPath: '/docs/library/blocks.json', blocks });
+    expect(result).to.deep.equal({ imported: ['Cards'], failed: ['explode'], listStatus: null });
+    expect(saves.map((s) => s.path)).to.deep.equal(['/docs/library/blocks/cards.html', '/docs/library/blocks.json']);
+    expect(JSON.parse(saves[1].body).blocks.data.map((r) => r.name)).to.deep.equal(['Hero', 'Cards']);
+  });
+
+  it('reports blocks whose doc cannot be built as failed instead of rejecting', async () => {
+    const unreadable = { toString() { throw new Error('unreadable page'); } };
+    const htmls = new Map([['/index', unreadable]]);
+    const result = await runImport({ org: 'o', site: 's', listPath: '/docs/library/blocks.json', blocks: [{ name: 'hero' }], htmls });
+    expect(result).to.deep.equal({ imported: [], failed: ['hero'], listStatus: null });
+    expect(saves).to.deep.equal([]);
+  });
 });
 
 describe('blocks import: dialog with GitHub', () => {
@@ -375,6 +397,20 @@ describe('blocks import: dialog with GitHub', () => {
     await el._find();
     const { under, alert } = await shownErrors();
     expect([el._step, under, alert[0], alert.length]).to.deep.equal(['source', [], 'Could not find blocks', 2]);
+  });
+
+  it('returns to the selection with an alert when the import fails before writing', async () => {
+    // A failure before any block is written: picking the selected blocks throws.
+    const blocks = [{ name: 'hero', variants: [] }];
+    blocks.filter = () => { throw new Error('boom'); };
+    Object.assign(el, { _mode: 'pages', _blocks: blocks, _selected: new Set(['hero']), _step: 'select' });
+    await el.updateComplete;
+    await el._import();
+    await el.updateComplete;
+    const alert = [...el.querySelectorAll('.config-alert p')].map((p) => p.textContent.trim());
+    expect([el._step, el.querySelector('nx-dialog').hasAttribute('busy'), alert[0]])
+      .to.deep.equal(['select', false, 'Could not import blocks']);
+    expect(alert[1]).to.equal('The request failed (boom).');
   });
 
   // nx-dialog ignores Esc and outside clicks while `busy` is set.
