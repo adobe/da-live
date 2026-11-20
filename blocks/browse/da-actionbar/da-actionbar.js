@@ -158,7 +158,8 @@ export default class DaActionBar extends LitElement {
   }
 
   get _canAemAction() {
-    return this._canWrite && this.items.some((item) => item.ext && item.ext !== 'link') && !this._isCopying;
+    return !this.currentPath.split('/')[2]?.includes('~')
+      && this._canWrite && this.items.some((item) => item.ext && item.ext !== 'link') && !this._isCopying;
   }
 
   get _hidePublish() {
@@ -188,7 +189,8 @@ export default class DaActionBar extends LitElement {
   }
 
   get _canShare() {
-    return this.items.some((item) => item.ext && item.ext !== 'link') && !this._isCopying;
+    return !this.currentPath.split('/')[2]?.includes('~')
+      && this.items.some((item) => item.ext && item.ext !== 'link') && !this._isCopying;
   }
 
   get currentAction() {

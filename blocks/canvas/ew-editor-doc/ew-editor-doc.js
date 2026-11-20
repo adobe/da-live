@@ -264,6 +264,10 @@ export class EwEditorDoc extends LitElement {
     return forceSave(wsProvider);
   }
 
+  hasCollaborationProvider() {
+    return !!this._proseContext?.wsProvider;
+  }
+
   getComparisonSession({ org, site, path } = {}) {
     const session = this._proseContext;
     const fullPath = `${org}/${site}/${path?.replace(/^\//, '').replace(/\.html$/, '')}`;
@@ -393,7 +397,9 @@ export class EwEditorDoc extends LitElement {
     const { sourceUrl } = session;
 
     try {
-      const previewOptions = await fetchConfigBusOptions({ org: context.org, site: context.repo });
+      const contentBranch = context.repo?.includes('~');
+      const configContext = { org: context.org, site: context.repo };
+      const previewOptions = contentBranch ? {} : await fetchConfigBusOptions(configContext);
       if (this.ctx !== context || !this.isConnected) return;
       const { token, permissions } = session;
       this._canWrite = permissions.some((permission) => permission === 'write');
@@ -405,10 +411,11 @@ export class EwEditorDoc extends LitElement {
         onMergeConflictsChange: (hasConflicts) => this._emitMergeConflictsState(hasConflicts),
         hostEl: this,
         extraPlugins: ({ wsProvider: ws }) => {
-          const commentsPlugin = this._comments.createPlugin(session, this.ctx, ws);
+          const commentsPlugin = contentBranch ? null
+            : this._comments.createPlugin(session, this.ctx, ws);
           return [
             mediaBusImage(this.ctx),
-            createExtensionsBridgePlugin(),
+            contentBranch ? null : createExtensionsBridgePlugin(),
             createTrackingPlugin(
               (details) => {
                 const body = this._controllerCtx
@@ -439,14 +446,14 @@ export class EwEditorDoc extends LitElement {
               },
             ),
             commentsPlugin,
-          ];
+          ].filter(Boolean);
         },
       });
 
       this._proseContext = {
         proseEl, wsProvider, view, ydoc, undoManager, context, previewOptions,
       };
-      this._comments.publish();
+      if (!contentBranch) this._comments.publish();
       this._unbindSectionName = bindFirstSectionName(ydoc, view, () => this._emitHtmlChange());
 
       setSelectionToolbarCtx({
@@ -458,12 +465,12 @@ export class EwEditorDoc extends LitElement {
       toolbarController.setDocView(view);
       this._wireProseFocus(view, proseEl);
 
-      this._comments.loadStore(wsProvider);
+      if (!contentBranch) this._comments.loadStore(wsProvider);
 
       this._setupAwareness(wsProvider);
       this._observeUndoManager(undoManager);
       this._emitHtmlChange();
-      this._comments.setupGutter();
+      if (!contentBranch) this._comments.setupGutter();
 
       this._setupController();
     } catch (e) {

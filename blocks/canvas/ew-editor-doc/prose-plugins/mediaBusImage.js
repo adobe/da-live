@@ -1,6 +1,7 @@
 // eslint-disable-next-line import/no-unresolved
 import { Plugin, PluginKey } from 'da-y-wrapper';
 import { getPreviewOrigin } from '../../editor-utils/editor-utils.js';
+import { createBranchMediaRenderer, MEDIA_PLACEHOLDER } from '../../../shared/branch-selector/branch-media.js';
 
 const mediaBusImageKey = new PluginKey('canvasMediaBusImage');
 
@@ -11,6 +12,7 @@ export function getRenderableSrc(src, ctx) {
   if (!src || !src.startsWith('./media_')) return null;
   const { org, repo } = ctx ?? {};
   if (!org || !repo) return null;
+  if (repo.includes('~')) return MEDIA_PLACEHOLDER;
   return `${getPreviewOrigin(org, repo)}/${src.slice(2)}`;
 }
 
@@ -25,6 +27,16 @@ export default function mediaBusImage(ctx) {
   return new Plugin({
     key: mediaBusImageKey,
     view(view) {
+      if (ctx?.repo?.includes('~')) {
+        const renderer = createBranchMediaRenderer(ctx);
+        renderer.update(view);
+        return {
+          update(updatedView, prevState) {
+            if (updatedView.state.doc !== prevState.doc) renderer.update(updatedView);
+          },
+          destroy: renderer.destroy,
+        };
+      }
       updateImageSrcs(view, ctx);
       return {
         update(updatedView, prevState) {

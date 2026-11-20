@@ -87,6 +87,17 @@ describe('Libs', () => {
   });
 
   describe('sanitizePathParts', () => {
+    it('preserves canonical branch aliases and rejects malformed or encoded aliases', () => {
+      expect(sanitizePath('/org/site~branch/folder/My Page.html'))
+        .to.equal('/org/site~branch/folder/my-page.html');
+      ['/org/site~main/page', '/org/site~/page', '/org/site~A/page',
+        '/org/site~one~two/page', '/org/site%7ebranch/page',
+        '/org/site%257ebranch/page', '/org/site~b%2fother/page',
+        '/ORG/site~branch/page'].forEach((path) => {
+        expect(() => sanitizePath(path), path).to.throw(TypeError);
+      });
+    });
+
     it('Returns array of sanitized path parts', () => {
       const path = '/New folder/Geo metrixx.jpg';
       const parts = sanitizePathParts(path);

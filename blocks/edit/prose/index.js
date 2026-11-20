@@ -25,11 +25,14 @@ import {
 import { getSchema } from 'da-parser';
 import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
 import { getAuthToken } from '../../shared/utils.js';
-import { getNx2Api } from '../../../scripts/utils.js';
-import { getDiffClass, checkForLocNodes, addActiveView } from './diff/diff-utils.js';
+import { getNx2Api, sanitizePathParts } from '../../../scripts/utils.js';
+import { getDiffClass, checkForLocNodes, addActiveView, removeActiveView } from './diff/diff-utils.js';
 import { debounce, initDaMetadata } from '../utils/helpers.js';
 import { forceSave } from '../../shared/forcesave.js';
 import { bindFirstSectionName } from '../../shared/section-name.js';
+import { handleFencedRoomClose, isFencedProvider, registerFencedView } from '../../shared/branch-selector/fenced-room.js';
+import { parseSiteSegment } from '../../shared/content-branch-context.js';
+import { validateBranch } from '../../shared/branch-selector/context.js';
 
 // Rapid-reconnect guard (COR-44): y-websocket resets its backoff counter on
 // every successful onopen, so a close that follows a brief successful
@@ -48,20 +51,22 @@ async function checkDoc(path) {
   return source.getMetadata({ org, site, path: `/${parts.join('/')}` });
 }
 
-export async function createConnection(path) {
-  const ydoc = new Y.Doc();
-
+export async function createConnection(path, { reload } = {}) {
   const server = COLLAB_ORIGIN;
 
   const { pathname } = new URL(path);
   const [, , org, site, ...parts] = pathname.split('/');
-  const { AEM_API, isHlx6 } = await getNx2Api();
-  const hlx6 = await isHlx6(org, site);
+  if (site && /[~%]/.test(site)) sanitizePathParts(`/${org}/${site}/${parts.join('/')}`);
+  let roomName = `${DA_ORIGIN}${pathname}`;
+  if (site?.includes('~')) {
+    const parsed = parseSiteSegment(site);
+    await validateBranch({ org, ...parsed, siteSegment: site });
+  } else {
+    const { AEM_API, isHlx6 } = await getNx2Api();
+    if (await isHlx6(org, site)) roomName = `${AEM_API}/${org}/sites/${site}/source/${parts.join('/')}`;
+  }
 
-  const roomName = hlx6
-    ? `${AEM_API}/${org}/sites/${site}/source/${parts.join('/')}`
-    : `${DA_ORIGIN}${pathname}`;
-
+  const ydoc = new Y.Doc();
   const opts = {
     protocols: ['yjs'],
     connect: true,
@@ -87,11 +92,13 @@ export async function createConnection(path) {
   });
 
   provider.on('connection-close', async (event) => {
+    if (handleFencedRoomClose(event, provider, ydoc, reload) || isFencedProvider(provider)) return;
     if (event?.code === 4401 || event?.code === 4403) {
       provider.shouldConnect = false;
       // Force imslib to attempt a refresh before deciding to give up.
       try { await window.adobeIMS?.refreshToken?.(); } catch { /* ignore */ }
       const fresh = await getAuthToken();
+      if (isFencedProvider(provider)) return;
       if (!fresh || fresh === lastSentToken) {
         // No new token to try — retrying would loop on the same 4401. Stop
         // the reconnect loop, and surface the modal if the user was signed in.
@@ -126,12 +133,14 @@ export async function createConnection(path) {
       provider.shouldConnect = false;
       provider.disconnect();
       setTimeout(() => {
+        if (isFencedProvider(provider)) return;
         provider.shouldConnect = true;
         provider.connect();
       }, delay);
     }
 
     const fresh = await getAuthToken();
+    if (isFencedProvider(provider)) return;
     provider.protocols = fresh ? ['yjs', fresh] : ['yjs'];
     lastSentToken = fresh;
   });
@@ -340,8 +349,9 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
   else daTitle.collabStatus = 'connecting';
 
   wsProvider.on('connection-close', async (event) => {
-    if (event?.code === 4401 || event?.code === 4403) return;
+    if (event?.code === 4401 || event?.code === 4403 || isFencedProvider(wsProvider)) return;
     const resp = await checkDoc(path);
+    if (isFencedProvider(wsProvider)) return;
     if (resp.status === 404) {
       const { hash } = window.location;
       // Guard: hash must start with '#/' — during an IMS redirect the hash is '#access_token=...'
@@ -360,7 +370,7 @@ function handleAwarenessUpdates(wsProvider, daTitle, win, path) {
   win.addEventListener('focus', () => {
     // cancel any pending disconnect
     if (disconnectTimeout) clearTimeout(disconnectTimeout);
-    if (!wsProvider.wsconnected) wsProvider.connect();
+    if (!wsProvider.wsconnected && !isFencedProvider(wsProvider)) wsProvider.connect();
   });
   win.addEventListener('blur', () => {
     if (disconnectTimeout) clearTimeout(disconnectTimeout);
@@ -445,7 +455,10 @@ function addSyncedListener(wsProvider, canWrite) {
 }
 
 function applyDelayedPlugins(pluginsPromise, schema, canWrite, basePlugins) {
+  const editorView = window.view;
   pluginsPromise.then((plugins) => {
+    // The room may have been fenced, or a later editor may have replaced it.
+    if (!editorView || window.view !== editorView) return;
     const {
       syncPlugin,
       cursorPlugin,
@@ -537,6 +550,7 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
   const canWrite = permissions.some((permission) => permission === 'write');
 
   const { wsProvider, ydoc } = await connectionPromise;
+  if (isFencedProvider(wsProvider)) return;
 
   addSyncedListener(wsProvider, canWrite);
   createAwarenessStatusWidget(wsProvider, window, path);
@@ -592,6 +606,12 @@ export default async function initProse({ path, permissions, doc, daContent, wsP
       },
     },
     editable() { return canWrite; },
+  });
+  const editorView = window.view;
+  registerFencedView(wsProvider, () => {
+    removeActiveView(editorView);
+    editorView.destroy();
+    if (window.view === editorView) delete window.view;
   });
 
   addActiveView(window.view);

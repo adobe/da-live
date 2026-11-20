@@ -1,6 +1,10 @@
 import { getNx } from '../../scripts/utils.js';
 import { fetchDaConfigs } from '../shared/utils.js';
 import { getBrowseComponent, resolveBrowsePath } from './utils.js';
+import getPathDetails from '../shared/pathDetails.js';
+import { branchContext, validateBranch } from '../shared/branch-selector/context.js';
+import '../shared/branch-selector/branch-selector.js';
+import { installBranchHashGuard } from '../shared/branch-selector/navigation.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -75,7 +79,33 @@ function setRecentSite(details) {
 }
 
 export default function init(el) {
-  hashChange.subscribe((pathDetails) => {
+  installBranchHashGuard();
+  let generation = 0;
+  const selector = document.createElement('da-branch-selector');
+  el.before(selector);
+  hashChange.subscribe(async (nxDetails) => {
+    generation += 1;
+    const current = generation;
+    let pathDetails = nxDetails;
+    try {
+      const context = branchContext();
+      if (context) {
+        const { hash } = window.location;
+        pathDetails = getPathDetails();
+        await validateBranch(context);
+        if (current !== generation || window.location.hash !== hash) return;
+      }
+    } catch (error) {
+      el.replaceChildren();
+      const message = document.createElement('p');
+      message.setAttribute('role', 'alert');
+      message.textContent = `Unable to open branch: ${error.message}`;
+      el.append(message);
+      return;
+    }
+    if (current !== generation) return;
+    selector.org = pathDetails?.org;
+    selector.site = pathDetails?.site;
     const cmpName = getBrowseComponent({ search: window.location.search, pathDetails });
     const surface = cmpName === 'da-landing' ? loadLandingSurface(el) : loadBrowseStyles();
     loadComponent(el, cmpName, pathDetails, surface);

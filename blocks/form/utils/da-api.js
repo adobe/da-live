@@ -1,6 +1,4 @@
-import { getNx2 } from '../../../scripts/utils.js';
-
-const { source, asText } = await import(`${getNx2()}/utils/api.js`);
+import { getNx2Api } from '../../../scripts/utils.js';
 
 // DA source operations for the form block, rewritten onto the nx2 api. The
 // `sourceUrl`/`path` args are DA locator strings (`/org/site/rest`); the nx2
@@ -13,6 +11,7 @@ export async function fetchSourceHtml({ sourceUrl }) {
   if (!sourceUrl) return { error: 'Missing source URL.' };
 
   try {
+    const { source, asText } = await getNx2Api();
     const { ok, data, status } = await asText(source.get(sourceUrl));
     if (!ok) return { error: 'Could not load source document.', status };
     return { html: data };
@@ -25,6 +24,7 @@ export async function fetchSourceByPath({ path }) {
   if (!path) return { error: 'Missing source path.' };
 
   try {
+    const { source, asText } = await getNx2Api();
     const { ok, data, status } = await asText(source.get(path));
     if (!ok) return { error: 'Could not load source path.', status };
     return { html: data };
@@ -37,6 +37,7 @@ export async function listPath({ path }) {
   if (!path) return { error: 'Missing list path.' };
 
   try {
+    const { source } = await getNx2Api();
     const { ok, items } = await source.list(path);
     if (!ok) return { error: 'Could not list path.' };
     return { json: items };
@@ -49,6 +50,7 @@ export async function saveSourceHtml({ path, html }) {
   if (!path || typeof html !== 'string') return { error: 'Invalid save input.' };
 
   try {
+    const { source } = await getNx2Api();
     const resp = await source.save(path, { body: html });
     if (!resp?.ok) return { error: 'Could not save source document.', status: resp?.status };
     return { ok: true };

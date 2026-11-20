@@ -1,7 +1,8 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../../scripts/utils.js';
 import { canEditOrgConfig } from '../../../shared/utils.js';
-import { getSettingsMenuItems } from '../../shared/settings-menu.js';
+import { getSettingsMenuItems, SITE_HISTORY } from '../../shared/settings-menu.js';
+import { historyAvailable, openSiteHistory } from '../../../shared/site-history/entry.js';
 
 await import(`${getNx()}/blocks/shared/switch/switch.js`);
 await import(`${getNx()}/blocks/shared/segmented-btn/segmented.js`);
@@ -31,6 +32,7 @@ export default class DaBrowseHeader extends LitElement {
     _appearanceOpen: { state: true },
     _sortOpen: { state: true },
     _canEditOrgConfig: { state: true },
+    _siteHistory: { state: true },
     typesFilterState: { attribute: false },
     sortState: { attribute: false },
     searchState: { attribute: false },
@@ -44,6 +46,17 @@ export default class DaBrowseHeader extends LitElement {
   willUpdate(changed) {
     if (!changed.has('details')) return;
     const org = this.details?.org;
+    const site = this.details?.site;
+    const previous = changed.get('details');
+    if (org !== previous?.org || site !== previous?.site) {
+      const generation = (this._historyGeneration || 0) + 1;
+      this._historyGeneration = generation;
+      this._siteHistory = false;
+      this._historyCheck = historyAvailable(org, site).then((available) => {
+        if (this._historyGeneration === generation && this.details?.org === org
+          && this.details?.site === site) this._siteHistory = available;
+      });
+    }
     if (org === changed.get('details')?.org) return;
     this._canEditOrgConfig = false;
     this._orgConfigCheck = canEditOrgConfig(org).then((canEdit) => {
@@ -147,11 +160,17 @@ export default class DaBrowseHeader extends LitElement {
   renderSettingsActions() {
     if (!this.details?.org || this.details.path) return nothing;
     const { org, site } = this.details;
-    const items = getSettingsMenuItems({ org, site, canEditOrgConfig: this._canEditOrgConfig });
+    const canEdit = this._canEditOrgConfig;
+    const siteHistory = this._siteHistory;
+    const items = getSettingsMenuItems({ org, site, canEditOrgConfig: canEdit, siteHistory });
     const label = `${site ? 'Site' : 'Org'} Settings`;
     return html`
       <nx-menu class="browse-settings-menu" size="m" placement="auto" .items=${items}
-        @select=${({ detail }) => { window.location.href = detail.id; }}>
+        @select=${({ detail }) => {
+        if (detail.id === SITE_HISTORY) {
+          if (this._siteHistory) openSiteHistory(org, site);
+        } else window.location.href = detail.id;
+      }}>
         <button slot="trigger" type="button" class="browse-settings-trigger browse-toolbar-control nx-action-btn-quiet" title=${label}>
           <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-settings-20-n.svg#icon"></use></svg>
           <span class="browse-control-label">${label}</span>

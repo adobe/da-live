@@ -170,6 +170,26 @@ describe('DaNew', () => {
   });
 
   describe('handleAddFile', () => {
+    it('resets the captured picker when the event target is cleared during upload', async () => {
+      const el = new DaNew();
+      el.fullpath = '/org/repo';
+      const savedFetch = window.fetch;
+      let sent = 0;
+      el.sendNewItem = () => { sent += 1; };
+      window.fetch = async () => new Response('ok', { status: 200 });
+      const picker = { files: [{ name: 'test.png' }], value: 'test.png' };
+      const event = { target: picker };
+      try {
+        const pending = el.handleAddFile(event);
+        event.target = null;
+        await pending;
+        expect(picker.value).to.equal('');
+        expect(sent).to.equal(1);
+        expect(el._loading).to.equal(false);
+      } finally {
+        window.fetch = savedFetch;
+      }
+    });
     it('returns early when no file is selected', async () => {
       const el = new DaNew();
       const target = { files: [], value: '' };

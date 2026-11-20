@@ -32,6 +32,7 @@ export default class DaNew extends LitElement {
     _createDialogOpen: { state: true },
     _linkDialogOpen: { state: true },
     _loading: { state: true },
+    _mediaError: { state: true },
   };
 
   connectedCallback() {
@@ -47,6 +48,7 @@ export default class DaNew extends LitElement {
 
   handleNewType(e) {
     const type = e.detail?.id ?? e.target?.dataset?.type;
+    if (type === 'link' && this.fullpath?.split('/')[2]?.includes('~')) return;
     if (type === 'link') {
       this._linkDialogOpen = true;
       return;
@@ -87,6 +89,7 @@ export default class DaNew extends LitElement {
   }
 
   async _handleLinkSubmit(e) {
+    if (this.fullpath?.split('/')[2]?.includes('~')) return;
     const { href, text } = e.detail;
     const name = sanitizeName(text || '', { trimTrailing: true });
     if (!name) return;
@@ -107,8 +110,11 @@ export default class DaNew extends LitElement {
   }
 
   async handleAddFile(e) {
-    const file = e.target.files[0];
+    const picker = e.target;
+    const file = picker?.files?.[0];
     if (!file) return;
+    const branch = this.fullpath?.split('/')[2]?.includes('~');
+    if (branch) this._mediaError = undefined;
     this._loading = true;
     try {
       const split = file.name.split('.');
@@ -116,11 +122,17 @@ export default class DaNew extends LitElement {
       const name = sanitizeName(split.join('.'), { allowDot: true, trimTrailing: true });
       const path = `${this.fullpath}/${name}.${ext}`;
       const { source } = await getNx2Api();
-      await source.save(path, { body: file });
+      const response = await source.save(path, { body: file });
+      if (branch && !response?.ok) {
+        throw new Error('Could not upload branch media');
+      }
       this.sendNewItem({ name, path, ext });
+    } catch (error) {
+      if (!branch) throw error;
+      this._mediaError = 'Could not upload branch media. Please try again.';
     } finally {
       this._loading = false;
-      e.target.value = '';
+      picker.value = '';
     }
   }
 
@@ -144,7 +156,7 @@ export default class DaNew extends LitElement {
         { id: 'sheet', label: 'Sheet', icon: 'data' },
         { id: 'media', label: 'Media', icon: 'image' },
         { id: 'link', label: 'Link', icon: 'link' },
-      ]} @select=${this.handleNewType}>
+      ].filter((item) => !(item.id === 'link' && this.fullpath?.split('/')[2]?.includes('~')))} @select=${this.handleNewType}>
           <button slot="trigger" class="da-actions-new-button ${accent ? 'nx-btn-accent' : 'nx-action-btn-icon'}" ?disabled=${this._disabled || this._loading} aria-label="New">
             ${accent ? html`<span class="da-actions-new-label">New</span>` : nothing}
             ${this._loading
@@ -153,6 +165,7 @@ export default class DaNew extends LitElement {
           </button>
         </nx-menu>
         <input type="file" id="da-actions-file" class="da-actions-file" @change=${this.handleAddFile} />
+        ${this._mediaError ? html`<p role="alert">${this._mediaError}</p>` : nothing}
       </div>
     <da-link-dialog
       dialog-title="Add link"

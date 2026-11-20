@@ -109,6 +109,10 @@ export default class PrepareMenu extends LitElement {
   async loadMenu() {
     const { details } = this;
     if (!details) return;
+    if (details.site?.includes('~')) {
+      this._menuItems = [];
+      return;
+    }
     const [org, site] = await Promise.all(
       fetchDaConfigs({ org: details.org, site: details.site }),
     );
@@ -150,6 +154,7 @@ export default class PrepareMenu extends LitElement {
   }
 
   async handleItemClick(item) {
+    if (this.details?.site?.includes('~')) return;
     if (item.disabled) return;
     this.shadowRoot.querySelector('nx-popover').close();
     if (this._comparison === 'open') {

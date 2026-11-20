@@ -78,6 +78,56 @@ describe('da-browse-header', () => {
     expect(settingsLabels()).to.deep.equal(['Configuration']);
   });
 
+  it('only offers the new history action for the enabled default site', async () => {
+    header.details = { org: 'org', site: 'site', path: '' };
+    await header.updateComplete;
+    header._siteHistory = true;
+    await header.updateComplete;
+    expect(settingsLabels()).to.include('Site history');
+    expect(settingsMenu().items.find(({ label }) => label === 'Site history').id).to.equal('site-history');
+    header.details = { org: 'org', site: 'site~work', path: '' };
+    await header.updateComplete;
+    expect(settingsLabels()).not.to.include('Site history');
+    expect(settingsLabels()).not.to.include('Permissions');
+  });
+
+  it('discovers and opens history without blocking the existing settings menu', async () => {
+    const oldUrl = window.location.href;
+    history.replaceState(null, '', '#/historyorg/historysite/');
+    const capabilities = {
+      supported: true,
+      apiVersion: 1,
+      defaultBranchId: 'main',
+      addressing: 'site-suffix',
+      separator: '~',
+      operations: ['create', 'changes', 'sync', 'publish', 'revert', 'restore'],
+      itemKinds: ['html', 'json', 'media', 'config'],
+      branchScopedSource: true,
+      branchScopedCollaboration: true,
+    };
+    window.fetch = async (url) => {
+      if (String(url).includes('/capabilities')) return new Response(JSON.stringify(capabilities));
+      if (String(url).includes('/log/')) {
+        return new Response(JSON.stringify({ commits: [], next: null }), { headers: { 'Branch-Revision': '8' } });
+      }
+      return new Response('{}', { headers: { 'X-da-actions': '/x=read' } });
+    };
+    try {
+      header.details = { org: 'historyorg', site: 'historysite', path: '' };
+      await header.updateComplete;
+      expect(settingsLabels()).not.to.include('Site history');
+      await header._historyCheck;
+      await header.updateComplete;
+      expect(settingsLabels()).to.include('Site history');
+      settingsMenu().choose('site-history');
+      await new Promise((resolve) => { setTimeout(resolve, 50); });
+      expect(document.querySelector('da-site-history')).not.to.be.null;
+    } finally {
+      document.querySelector('da-site-history')?.remove();
+      history.replaceState(null, '', oldUrl);
+    }
+  });
+
   it('checks org config write access when the org changes', async () => {
     window.fetch = async (url) => {
       if (String(url).includes('/ping/')) return new Response('', { status: 200 });

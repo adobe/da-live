@@ -1,5 +1,6 @@
 import { getFileItemHref } from '../shared/da-file-item/navigation.js';
 import { getConfiguredEditor } from '../shared/da-file-item/edit-path.js';
+import { pathMatchesActiveBranch } from '../shared/branch-selector/context.js';
 
 const METADATA_CONCURRENCY = 4;
 
@@ -43,6 +44,7 @@ export async function loadFilesByPath({ paths, source, signal }) {
     const batch = await Promise.all(paths.slice(offset, offset + METADATA_CONCURRENCY)
       .map(async (path) => {
         signal.throwIfAborted();
+        if (!pathMatchesActiveBranch(path)) return undefined;
         const filename = path.slice(path.lastIndexOf('/') + 1);
         const dot = filename.lastIndexOf('.');
         const ext = dot > 0 ? filename.slice(dot + 1) : undefined;

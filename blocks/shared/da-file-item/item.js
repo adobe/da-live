@@ -1,5 +1,6 @@
 import { getNx2Api } from '../../../scripts/utils.js';
 import { formatDate } from '../utils.js';
+import { branchContext, pathMatchesActiveBranch } from '../branch-selector/context.js';
 
 function toEnv(env) {
   return {
@@ -11,6 +12,9 @@ function toEnv(env) {
 
 // Preview and live status of an item from AEM, or a 401 pair when it is not readable.
 export async function fetchAemStatus({ path, ext }) {
+  if (!pathMatchesActiveBranch(path) || branchContext(`#${path}`)) {
+    return { preview: { status: 401 }, live: { status: 401 } };
+  }
   const { status, asJson } = await getNx2Api();
   // AEM resolves HTML pages by their extensionless path.
   const aemPath = ext === 'html' ? path.slice(0, -5) : path;
@@ -26,6 +30,7 @@ export async function fetchAemStatus({ path, ext }) {
 
 // Version count and last modifier of an item from DA, or undefined when unavailable.
 export async function fetchDaStatus({ path }) {
+  if (!pathMatchesActiveBranch(path)) return undefined;
   const { versions, source, isHlx6 } = await getNx2Api();
   const [, org, site] = path.split('/');
 
@@ -56,6 +61,7 @@ export async function fetchDaStatus({ path }) {
 }
 
 export async function doesFileExist(path) {
+  if (!pathMatchesActiveBranch(path)) return true;
   const { source } = await getNx2Api();
   const { status } = await source.getMetadata(path);
   return status === 200;

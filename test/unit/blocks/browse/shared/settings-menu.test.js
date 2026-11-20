@@ -34,5 +34,14 @@ describe('settings menu', () => {
       expect(getSettingsMenuItems({ org: 'org', site: 'site' }).map(({ label }) => label))
         .to.deep.equal(['Configuration']);
     });
+
+    it('adds site history only for an explicitly enabled bare site', () => {
+      expect(getSettingsMenuItems({ org: 'org', site: 'site', siteHistory: true }).map(({ label }) => label))
+        .to.deep.equal(['Configuration', 'Site history']);
+      expect(getSettingsMenuItems({ org: 'org', site: 'site~work', siteHistory: true }).map(({ label }) => label))
+        .to.deep.equal(['Configuration']);
+      expect(getSettingsMenuItems({ org: 'org', siteHistory: true }).map(({ label }) => label))
+        .to.deep.equal(['Configuration']);
+    });
   });
 });

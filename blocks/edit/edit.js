@@ -4,6 +4,9 @@ import { addRecentFile } from '../shared/recent-files.js';
 import { contentLogin, livePreviewLogin } from '../shared/utils.js';
 import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../scripts/utils.js';
 import { renderEmptyList, EMPTY_LIST_CSS, NOT_PERMITTED } from '../shared/empty-list.js';
+import { branchContext, validateBranch } from '../shared/branch-selector/context.js';
+import '../shared/branch-selector/branch-selector.js';
+import { installBranchHashGuard } from '../shared/branch-selector/navigation.js';
 
 import './da-title/da-title.js';
 import './da-content/da-content.js';
@@ -21,6 +24,7 @@ const DOMPARSER = new DOMParser();
 
 let prose;
 let prosePromise;
+let uiGeneration = 0;
 
 async function getDoc(path) {
   const { source } = await getNx2Api();
@@ -62,8 +66,30 @@ function initArea(areaName, details, el) {
 }
 
 async function setUI(el) {
-  const details = getPathDetails();
+  uiGeneration += 1;
+  const generation = uiGeneration;
+  let details;
+  try {
+    details = getPathDetails();
+    const context = branchContext();
+    if (context) await validateBranch(context);
+  } catch (error) {
+    const title = el.querySelector('da-title') || document.createElement('da-title');
+    title.details ??= { parent: '/', parentName: 'Home', name: 'Branch unavailable' };
+    if (!title.isConnected) el.append(title);
+    showNotPermitted({ el, daTitle: title, message: `Unable to open branch: ${error.message}` });
+    return;
+  }
+  if (generation !== uiGeneration) return;
   if (!details) return;
+
+  let selector = el.querySelector('da-branch-selector');
+  if (!selector) {
+    selector = document.createElement('da-branch-selector');
+    el.prepend(selector);
+  }
+  selector.org = details.org;
+  selector.site = details.site;
 
   try {
     const { isEWEnabled } = await getNxEWFlags();
@@ -91,7 +117,7 @@ async function setUI(el) {
   document.title = `Edit ${details.name} - DA`;
 
   const { owner, repo } = details;
-  const contentCookiePromise = contentLogin(owner, repo);
+  const contentCookiePromise = repo?.includes('~') ? Promise.resolve() : contentLogin(owner, repo);
 
   const daTitle = initArea('da-title', details, el);
 
@@ -168,13 +194,14 @@ async function setUI(el) {
     setTimeout(() => daContent.handleEditorLoaded(), 1000);
 
     // set the live preview cookie async
-    livePreviewLogin(owner, repo);
+    if (!repo?.includes('~')) livePreviewLogin(owner, repo);
   }
 
   // FUTURE: else load BYO Editor
 }
 
 export default async function init(el) {
+  installBranchHashGuard();
   setUI(el);
 
   window.addEventListener('hashchange', () => {

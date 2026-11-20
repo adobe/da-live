@@ -161,6 +161,9 @@ export function parseAemError(xError) {
  * @returns {Promise<object>} The AEM response body, or an { error } object on failure.
  */
 export async function saveToAem(path, action) {
+  if (path.split('/')[2]?.includes('~')) {
+    return { error: { action, message: 'AEM delivery is unavailable on a content branch' } };
+  }
   const { aem } = await getNx2Api();
   const aemPath = path.toLowerCase();
   const call = action === 'live' ? aem.publish : aem.preview;
@@ -226,6 +229,14 @@ export async function aemAction(path, action, opts = {}) {
 
 export async function saveToDa({ path, formData, blob, props, preview = false }) {
   if (!path || !path.startsWith('/') || path.includes('://')) return undefined;
+  const hashSite = window.location.hash.startsWith('#/') ? window.location.hash.slice(2).split('/')[1] : '';
+  if (/[~%]/.test(path.split('/')[2] || '') || /[~%]/.test(hashSite || '')) {
+    const { branchContext, pathMatchesActiveBranch, validateBranch } = await import('./branch-selector/context.js');
+    if (!pathMatchesActiveBranch(path)) return undefined;
+    const branch = branchContext(`#${path}`);
+    if (branchContext() && !branch) return undefined;
+    if (branch) await validateBranch(branch);
+  }
 
   const opts = { method: 'PUT' };
 

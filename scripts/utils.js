@@ -10,6 +10,8 @@
  * governing permissions and limitations under the License.
  */
 
+import { parseSiteSegment } from '../blocks/shared/content-branch-context.js';
+
 export function sanitizeName(name, preserveDots = true, allowUnderscores = true) {
   if (!name) return null;
 
@@ -31,11 +33,30 @@ export function sanitizeName(name, preserveDots = true, allowUnderscores = true)
 }
 
 export function sanitizePathParts(path) {
-  const parts = path.slice(1)
-    .toLowerCase()
-    .split('/');
+  const rawParts = path.slice(1).split('/');
+  const rawSite = rawParts[1] || '';
+  let decodedSite = rawSite;
+  // Reject encoded aliases instead of sanitizing them into a different site.
+  // Decode repeatedly so a double-encoded separator cannot evade the check.
+  for (let i = 0; i < 16 && decodedSite.includes('%'); i += 1) {
+    let decoded;
+    try { decoded = decodeURIComponent(decodedSite); } catch {
+      break;
+    }
+    if (decoded === decodedSite) break;
+    decodedSite = decoded;
+    if (decodedSite.includes('~')) throw new TypeError('Encoded branch site segment');
+  }
+  if (/%25/i.test(decodedSite)) throw new TypeError('Ambiguous encoded site segment');
+  const branchSite = rawSite.includes('~') ? parseSiteSegment(rawSite) : null;
+  if (branchSite && (!rawParts[0] || sanitizeName(rawParts[0]) !== rawParts[0]
+    || /^[.]{1,2}$/.test(rawParts[0]))) throw new TypeError('Invalid branch organization');
+  const parts = rawParts.map((part) => part.toLowerCase());
   return parts
-    .map((name, i) => (name ? sanitizeName(name, true, i < parts.length - 1) : ''))
+    .map((name, i) => {
+      if (i === 1 && branchSite) return rawSite;
+      return name ? sanitizeName(name, true, i < parts.length - 1) : '';
+    })
     // remove path traversal parts, and empty strings unless at the end
     .filter((name, i, filtered) => !/^[.]{1,2}$/.test(name) && (name !== '' || i === filtered.length - 1));
 }
@@ -90,6 +111,12 @@ export const getNx2 = () => {
 let nx2ApiPromise;
 export const getNx2Api = () => {
   nx2ApiPromise ??= import(`${getNx2()}/utils/api.js`);
+  const rawSite = window.location.hash.startsWith('#/')
+    ? window.location.hash.slice(2).split('/')[1] : '';
+  if (rawSite && /[~%]/.test(rawSite)) {
+    return import('../blocks/shared/branch-selector/branch-api.js')
+      .then(({ getBranchApi }) => getBranchApi(nx2ApiPromise));
+  }
   return nx2ApiPromise;
 };
 

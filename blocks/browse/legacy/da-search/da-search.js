@@ -138,6 +138,7 @@ export default class DaSearch extends LitElement {
 
   async handleReplace(e) {
     e.preventDefault();
+    if (this.fullpath?.split('/')[2]?.includes('~')) return;
     const [replace] = e.target.elements;
     if (!replace.value) return;
 
@@ -216,7 +217,7 @@ export default class DaSearch extends LitElement {
         <input type="submit" value="Search" />
       </form>
       <p class="search-results">${this.showText ? html`${this.matchText}${this.timeText}` : nothing}</p>
-      <div class="replace-pane">
+      ${this.fullpath?.split('/')[2]?.includes('~') ? nothing : html`<div class="replace-pane">
         <form class="da-replace-form${this.showReplace ? nothing : ' hide'}" @submit=${this.handleReplace}>
           <input type="text" placeholder="Enter replace text" name="replace" aria-label="Replacement text"/>
           <input type="submit" value="Replace" />
@@ -225,7 +226,7 @@ export default class DaSearch extends LitElement {
           <input type="checkbox" @click="${this.toggleReplace}" aria-label="Enable replace mode">
           <span class="${this.showReplace ? 'hide' : nothing}">Replace</span>
         </label>
-      </div>
+      </div>`}
     `;
   }
 }

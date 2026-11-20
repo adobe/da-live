@@ -1,5 +1,5 @@
 import { render } from 'da-lit';
-import { getNx, getNx2, getNx2Api } from '../../scripts/utils.js';
+import { getNx, getNx2, getNx2Api, sanitizePathParts } from '../../scripts/utils.js';
 import { EMPTY_DOC } from '../shared/utils.js';
 import { renderEmptyList, EMPTY_LIST_CSS } from '../shared/empty-list.js';
 import { getCommentsBridge } from './editor-utils/comments-bridge.js';
@@ -29,6 +29,10 @@ import { resolveEditorDocSession, createdDocSession } from './ew-editor-doc/util
 import { SEL_BLOCK, SEL_ITEM, SEL_TEXT } from './ew-editor-doc/utils/selection.js';
 import { getChatPanelContent, chatAvailability } from '../shared/chat-panel.js';
 import { canvasBus } from './utils/canvas-bus.js';
+import { branchContext, validateBranch } from '../shared/branch-selector/context.js';
+import '../shared/branch-selector/branch-selector.js';
+import { branchEditingLocked } from '../shared/branch-conflicts/editing-lock.js';
+import { installBranchHashGuard } from '../shared/branch-selector/navigation.js';
 import { initBranchBridge } from './editor-utils/branch-bridge.js';
 import { resolveCanvasBranch } from './editor-utils/branch-state.js';
 import { installComparison } from './ew-comparison/comparison.js';
@@ -126,6 +130,15 @@ function mountCanvasEditors({ mountRoot, header, session, ctx }) {
   const docEl = ensureNxEditorDoc(mountRoot);
   docEl.session = session;
   docEl.ctx = ctx;
+  if (ctx.repo?.includes('~')) {
+    mountRoot.querySelector('ew-editor-wysiwyg')?.remove();
+    header.editorView = 'content';
+    header.contentBranch = true;
+    notifyCanvasEditorActive('content');
+    syncEditorSplitLayout({ mountRoot, view: 'content' });
+    return;
+  }
+  header.contentBranch = false;
   const wysiwygEl = ensureNxEditorWysiwyg(mountRoot);
   // Must be set before `ctx`: the ctx change reloads the iframe, and the quick-edit
   // INIT payload sent on load reads `canWrite` to decide contenteditable.
@@ -149,6 +162,10 @@ async function handleCanvasNotFound({ mountRoot, header, ctx, session, loadCount
   removeNotPermitted(mountRoot);
   header.authorized = false;
   header.canWrite = false;
+  if (branchEditingLocked()) {
+    showNotPermitted(mountRoot, 'This branch is locked while sync needs resolution.');
+    return;
+  }
   const { default: showEwNotFoundDialog, libraryHashFromPath } = await import('./ew-not-found/ew-not-found.js');
   const name = ctx.path.split('/').pop();
   const choice = await showEwNotFoundDialog({ name });
@@ -188,6 +205,16 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
     header.canWrite = true;
     return;
   }
+  try {
+    const context = branchContext();
+    if (context) await validateBranch(context);
+    if (loadCount !== editorLoadCount) return;
+  } catch (error) {
+    removeCanvasEditors(mountRoot);
+    showNotPermitted(mountRoot, `Unable to open branch: ${error.message}`);
+    header.authorized = false;
+    return;
+  }
   addRecentFile(`/${fullPath.replace(/\.html$/, '')}.html`);
   const editorCtx = editorCtxFromHashState(state, fullPath);
   const ctx = { ...editorCtx, branchPromise: resolveCanvasBranch(editorCtx) };
@@ -222,9 +249,11 @@ async function installCanvasHeader(block, { org, site }) {
     syncEditorSplitLayout({ mountRoot: canvasEditorMountRoot(block), view });
   });
   canvasBus.undoRequest.subscribe(() => {
+    if (branchEditingLocked()) return;
     canvasEditorMountRoot(block).querySelector('ew-editor-doc')?.undo();
   });
   canvasBus.redoRequest.subscribe(() => {
+    if (branchEditingLocked()) return;
     canvasEditorMountRoot(block).querySelector('ew-editor-doc')?.redo();
   });
   block.before(header);
@@ -272,11 +301,15 @@ document.addEventListener('keydown', (e) => {
 canvasBus.newVersionRequest.subscribe(openNewVersionRow);
 
 canvasBus.commentComposeRequest.subscribe(() => {
+  try { if (branchContext()) return; } catch {
+    return;
+  }
   getCommentsBridge().controller?.requestCompose();
   openPanelSection(TOOL_PANEL_SECTION, 'comments');
 });
 
 export default async function decorate(block) {
+  installBranchHashGuard();
   const { org, site } = hashState();
 
   // Make the "Preflight" side panel the responder for the publish gate's run request.
@@ -284,7 +317,11 @@ export default async function decorate(block) {
 
   chatAvailability.subscribe((enabled) => {
     if (enabled === undefined) return;
-    if (!enabled) {
+    let chatEnabled = enabled;
+    try { if (branchContext()) chatEnabled = false; } catch {
+      chatEnabled = false;
+    }
+    if (!chatEnabled) {
       document.dispatchEvent(new CustomEvent(PANEL_EVENT.CLOSE, { detail: { section: 'chat' } }));
       return;
     }
@@ -310,7 +347,9 @@ export default async function decorate(block) {
     host: {
       getViews: async (context) => {
         const { getCanvasToolPanelViews } = await import('./ew-panel-extensions/helpers.js');
-        return getCanvasToolPanelViews(context);
+        const views = await getCanvasToolPanelViews(context);
+        if (!context?.site?.includes('~')) return views;
+        return views.filter((view) => view.firstParty && !['comments', 'preflight'].includes(view.id));
       },
       resolveInitialView: resolveInitialToolPanelView,
       persistView: persistToolPanelView,
@@ -328,6 +367,8 @@ export default async function decorate(block) {
   }));
 
   const header = await installCanvasHeader(block, { org, site });
+  const selector = document.createElement('da-branch-selector');
+  header.after(selector);
 
   const mountRoot = canvasEditorMountRoot(block);
   mountRoot.classList.add('nx-canvas-editor-mount');
@@ -359,12 +400,31 @@ export default async function decorate(block) {
   });
 
   initBranchBridge();
-  hashChange.subscribe((state) => {
+  hashChange.subscribe((hashStateValue) => {
+    let state = hashStateValue;
+    try {
+      const context = branchContext();
+      if (context) {
+        const parts = sanitizePathParts(window.location.hash.slice(1));
+        state = { ...state, org: context.org, site: context.siteSegment, path: parts.slice(2).join('/') };
+      }
+      selector.org = state?.org;
+      selector.site = state?.site;
+      const branch = context?.branch || null;
+      canvasBus.contentBranchState.emit({ org: state?.org, site: state?.site, branch });
+    } catch (error) {
+      editorLoadCount += 1;
+      removeCanvasEditors(mountRoot);
+      showNotPermitted(mountRoot, `Unable to open branch: ${error.message}`);
+      header.authorized = false;
+      return;
+    }
     comparisonContext = state;
     comparison.contextChanged();
     syncCanvasEditorsToHash({ mountRoot, header, state });
     syncOpenToolPanel(state);
   });
+  canvasBus.contentBranchRequest.subscribe(({ branch }) => selector.select(branch));
 
   if (wasPanelOpen(TOOL_PANEL_SECTION)) {
     openPanelSection(TOOL_PANEL_SECTION);

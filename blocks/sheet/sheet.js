@@ -6,6 +6,8 @@ import { renderEmptyList, EMPTY_LIST_CSS } from '../shared/empty-list.js';
 import '../edit/da-title/da-title.js';
 import { getData } from './utils/index.js';
 import { staleCheck, showDaDialog, restoreVersion } from './utils/utils.js';
+import { branchContext, validateBranch } from '../shared/branch-selector/context.js';
+import { installBranchHashGuard } from '../shared/branch-selector/navigation.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -190,7 +192,16 @@ async function setSheet(details, daTitle, daSheet) {
 }
 
 export default async function init(el) {
-  let details = getPathDetails();
+  installBranchHashGuard();
+  let details;
+  try {
+    details = getPathDetails();
+    const branch = branchContext();
+    if (branch) await validateBranch(branch);
+  } catch (error) {
+    el.textContent = `Unable to open branch: ${error.message}`;
+    return;
+  }
   if (!details) {
     el.innerHTML = '<h1>Please edit a sheet.</h1>';
     return;
@@ -249,7 +260,14 @@ export default async function init(el) {
   el.append(daTitle, versionWrapper);
 
   window.addEventListener('hashchange', async () => {
-    details = getPathDetails();
+    try {
+      details = getPathDetails();
+      const branch = branchContext();
+      if (branch) await validateBranch(branch);
+    } catch (error) {
+      showLoadStatus({ errMsg: `Unable to open branch: ${error.message}`, wrapper, daSheet, daSheetPanes, daTitle });
+      return;
+    }
     setSheet(details, daTitle, daSheet);
     daSheetPanes.pathDetails = details;
   });

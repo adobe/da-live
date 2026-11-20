@@ -4,6 +4,7 @@ import { getNx, getNx2Api } from '../../scripts/utils.js';
 
 import '../edit/da-title/da-title.js';
 import { contentLogin } from '../shared/utils.js';
+import { installBranchHashGuard } from '../shared/branch-selector/navigation.js';
 
 const PDF_VIEWER_SRC = 'https://acrobatservices.adobe.com/view-sdk/viewer.js';
 const PDF_CLIENT_ID = 'cd73455ea6c04d0aac86270f9f5f830c';
@@ -74,7 +75,7 @@ async function setUI(el, isCurrent) {
   let blob;
 
   const { isHlx6, source } = await getNx2Api();
-  if (await isHlx6(owner, repo)) {
+  if (repo?.includes('~') || await isHlx6(owner, repo)) {
     if (ext !== 'pdf') {
       const resp = await source.get(fullpath);
       if (!resp.ok) throw new Error(`Could not load media: ${resp.status}`);
@@ -98,6 +99,7 @@ async function setUI(el, isCurrent) {
 }
 
 export default async function init(el) {
+  installBranchHashGuard();
   let currentRequest = 0;
   const load = () => {
     currentRequest += 1;

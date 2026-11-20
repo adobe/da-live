@@ -3,8 +3,10 @@ import { LitElement, html, nothing } from 'da-lit';
 import { createEngine } from '../../deps/da-sc-sdk/dist/index.js';
 import { loadFormContext } from './utils/context.js';
 import { attachPersistence } from './utils/persistence.js';
-import { getNx2 } from '../../scripts/utils.js';
+import { getNx2, sanitizePathParts } from '../../scripts/utils.js';
 import { addRecentFile } from '../shared/recent-files.js';
+import { branchContext, validateBranch } from '../shared/branch-selector/context.js';
+import { installBranchHashGuard } from '../shared/branch-selector/navigation.js';
 import { isJsonPreviewEnabled } from './utils/config.js';
 
 import './views/editor.js';
@@ -102,10 +104,18 @@ class Form extends LitElement {
   // Standalone (nx2-served) routing: subscribe the element's own ctx to the
   // hash. The EW host pushes `ctx` directly instead and never calls this.
   startRouting() {
+    installBranchHashGuard();
     this._unsubscribe?.();
     this._unsubscribe = hashChange.subscribe((state) => {
-      const ctx = ctxFromHashState(state);
-      if (ctx) this.ctx = ctx;
+      try {
+        const branch = branchContext();
+        const parts = branch ? sanitizePathParts(window.location.hash.slice(1)) : null;
+        const ctx = branch ? { org: branch.org, repo: branch.siteSegment, path: parts.join('/') }
+          : ctxFromHashState(state);
+        if (ctx) this.ctx = ctx;
+      } catch (error) {
+        this._context = { status: 'error', message: error.message };
+      }
     });
   }
 
@@ -157,13 +167,30 @@ class Form extends LitElement {
       this._context = undefined;
       return;
     }
+    try {
+      const branch = branchContext();
+      if (this.ctx.repo.includes('~') && !branch) throw new Error('Branch context does not match the URL');
+      if (branch) {
+        const prefix = `${branch.org}/${branch.siteSegment}/`;
+        if (this.ctx.org !== branch.org || this.ctx.repo !== branch.siteSegment
+          || !this.ctx.path.replace(/^\//, '').startsWith(prefix)) {
+          throw new Error('Branch context does not match the URL');
+        }
+        await validateBranch(branch);
+        if (version !== this._loadVersion) return;
+      }
+    } catch (error) {
+      this._context = { status: 'error', message: error.message };
+      return;
+    }
     addRecentFile(this._details.fullpath);
 
     this._context = { status: 'loading', schemas: {} };
 
     const [context, previewEnabled] = await Promise.all([
       loadFormContext({ details: this._details }),
-      isJsonPreviewEnabled({ org: this.ctx.org, site: this.ctx.repo }),
+      this.ctx.repo.includes('~') ? Promise.resolve(false)
+        : isJsonPreviewEnabled({ org: this.ctx.org, site: this.ctx.repo }),
     ]);
     if (version !== this._loadVersion) return;
 

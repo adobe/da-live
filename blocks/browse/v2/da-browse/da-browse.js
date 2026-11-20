@@ -417,6 +417,7 @@ export default class DaBrowse extends LitElement {
 
   async submitSearch(event, { preserveDraft = false } = {}) {
     event.preventDefault();
+    if (this.details?.site?.includes('~')) return;
     if (this._search.replacement?.loading) return;
     this._navField?.closeSuggestions();
     const term = event.detail.value.trim();
@@ -513,6 +514,7 @@ export default class DaBrowse extends LitElement {
   }
 
   async replaceMatches({ detail: { replacement } }) {
+    if (this.details?.site?.includes('~')) return;
     const engine = this._searchEngine;
     const {
       loading,
@@ -547,6 +549,7 @@ export default class DaBrowse extends LitElement {
   }
 
   askCoworker() {
+    if (this.details?.site?.includes('~')) return;
     const detail = { section: 'chat', options: { focus: true } };
     document.dispatchEvent(new CustomEvent(PANEL_EVENT.OPEN, { detail }));
   }
@@ -555,7 +558,7 @@ export default class DaBrowse extends LitElement {
     return html`
       <div role="grid" aria-label="Search results">
         <da-list class="da-list-type-search"
-          .canAskCoworker=${this._chatEnabled}
+          .canAskCoworker=${this._chatEnabled && !this.details?.site?.includes('~')}
           @askcoworker=${this.askCoworker}
           @selectionchanged=${this._chatEnabled ? this._handleBrowseSelection : nothing}
           editor=${this.editor}
@@ -577,7 +580,7 @@ export default class DaBrowse extends LitElement {
     return html`
       <da-list
         class="da-list-type-browse"
-        .canAskCoworker=${this._chatEnabled}
+        .canAskCoworker=${this._chatEnabled && !this.details?.site?.includes('~')}
         @askcoworker=${this.askCoworker}
         fullpath="${this.details.fullpath}"
         editor="${this.editor}"
@@ -619,7 +622,7 @@ export default class DaBrowse extends LitElement {
     return html`
       <da-browse-header exportparts="chat-btn"
         .details=${this.details}
-        .chatEnabled=${this._chatEnabled}
+        .chatEnabled=${this._chatEnabled && !this.details?.site?.includes('~')}
         .groupByType=${this._groupByType}
         .view=${this._view}
         .rowSize=${this._rowSize}

@@ -703,6 +703,15 @@ describe('DaBrowse Component', () => {
       expect(labels(renderMenu())).to.deep.equal(['Configuration']);
     });
 
+    it('only offers site history on an enabled bare site', () => {
+      daBrowseComp.details = { org: 'org', site: 'site', fullpath: '/org/site' };
+      daBrowseComp._siteHistory = true;
+      expect(labels(renderMenu())).to.include('Site history');
+      daBrowseComp.details = { org: 'org', site: 'site~work', fullpath: '/org/site~work' };
+      expect(labels(renderMenu())).not.to.include('Site history');
+      daBrowseComp._siteHistory = false;
+    });
+
     it('hides org permissions when the user cannot edit the org config', () => {
       daBrowseComp.details = { org: 'org', fullpath: '/org' };
       daBrowseComp._canEditOrgConfig = false;

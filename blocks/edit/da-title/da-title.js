@@ -117,6 +117,7 @@ export default class DaTitle extends LitElement {
 
   getAvailableActions() {
     const { view, path, fullpath } = this.details;
+    if (this.details.site?.includes('~')) return view === 'sheet' || view === 'config' ? ['save'] : [];
 
     // Config only gets save
     if (view === 'config') return ['save'];
@@ -245,6 +246,7 @@ export default class DaTitle extends LitElement {
   }
 
   async handleAction(action) {
+    if (this.details?.site?.includes('~') && (action === 'preview' || action === 'publish')) return;
     // Guard against a stale/bypassed disabled state (e.g. permissions changed mid-session).
     if (action === 'save' && this._readOnly) return;
 

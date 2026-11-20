@@ -1,7 +1,9 @@
 import { getNx2Api, sanitizePathParts } from '../../scripts/utils.js';
+import { pathMatchesActiveBranch } from './branch-selector/context.js';
 
 export async function listFolder(fullpath) {
   try {
+    if (!pathMatchesActiveBranch(fullpath)) throw new Error('Branch context does not match the URL');
     const { source } = await getNx2Api();
     const { ok, items } = await source.list(fullpath);
     if (!ok) return { error: 'List failed', status: 0 };
@@ -22,6 +24,7 @@ export function itemHashPath(item) {
 export function getAemUrl(item) {
   if (!item?.path || !item.ext) return '';
   const [org, site, ...pathParts] = sanitizePathParts(item.path.replace(/\.html$/, ''));
+  if (site?.includes('~')) return '';
   const pageName = pathParts.pop();
   pathParts.push(pageName === 'index' ? '' : pageName);
   return `https://main--${site}--${org}.aem.page/${pathParts.join('/')}`;

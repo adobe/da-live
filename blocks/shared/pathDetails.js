@@ -1,5 +1,6 @@
 import { CON_ORIGIN, DA_ORIGIN } from './constants.js';
 import { sanitizePathParts } from '../../scripts/utils.js';
+import { parseSiteSegment } from './content-branch-context.js';
 
 let currpath;
 let currhash;
@@ -33,6 +34,7 @@ function getOrgDetails({ editor, pathParts, ext }) {
 
 function getRepoDetails({ editor, pathParts, ext }) {
   const [org, repo] = pathParts;
+  const branch = repo.includes('~') ? parseSiteSegment(repo).branch : null;
   const fullPath = pathParts.join('/');
 
   const parent = ext === null ? `/${org}/${repo}` : `/${org}`;
@@ -51,13 +53,14 @@ function getRepoDetails({ editor, pathParts, ext }) {
     parent,
     parentName,
     sourceUrl: `${DA_ORIGIN}/${daApi}/${path}`,
-    previewUrl: `https://main--${repo}--${org}.aem.live`,
-    contentUrl: `${CON_ORIGIN}/${fullPath}`,
+    previewUrl: branch ? undefined : `https://main--${repo}--${org}.aem.live`,
+    contentUrl: branch ? undefined : `${CON_ORIGIN}/${fullPath}`,
   };
 }
 
 function getFullDetails({ editor, pathParts, ext }) {
   const [org, repo, ...parts] = pathParts;
+  const branch = repo.includes('~') ? parseSiteSegment(repo).branch : null;
   // Fullpath contains repo and org
   let fullPath = pathParts.join('/');
   fullPath = getSheetExt(editor, fullPath);
@@ -83,8 +86,8 @@ function getFullDetails({ editor, pathParts, ext }) {
     parent: ext === null ? `${parent}/${name}` : parent,
     parentName: ext === null ? name : parentName,
     sourceUrl: `${DA_ORIGIN}/${daApi}/${path}`,
-    previewUrl: `https://main--${repo}--${org}.aem.live${pathname}`,
-    contentUrl: `${CON_ORIGIN}/${fullPath}`,
+    previewUrl: branch ? undefined : `https://main--${repo}--${org}.aem.live${pathname}`,
+    contentUrl: branch ? undefined : `${CON_ORIGIN}/${fullPath}`,
   };
 }
 
@@ -115,7 +118,6 @@ export default function getPathDetails(loc) {
 
   // Use cached details if the hash has not changed
   if (currhash === hash && currpath === pathname && details) return details;
-  currhash = hash;
 
   let fullpath = hash.replace('#', '');
   window.name = fullpath;
@@ -173,6 +175,7 @@ export default function getPathDetails(loc) {
   if (isFolder && !path.endsWith('/')) path = `${path}/`;
 
   details = { ...details, origin: DA_ORIGIN, fullpath: path, depth, view: editor };
+  currhash = hash;
 
   return details;
 }

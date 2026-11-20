@@ -2,7 +2,8 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getEditorConfigs, fetchDaConfigs, canEditOrgConfig } from '../../../shared/utils.js';
 import { getNx, sanitizePathParts, getNxEWFlags } from '../../../../scripts/utils.js';
 import { getChatPanelContent, chatAvailability, chatTurnCompleted } from '../../../shared/chat-panel.js';
-import { getSettingsMenuItems } from '../../shared/settings-menu.js';
+import { getSettingsMenuItems, SITE_HISTORY } from '../../shared/settings-menu.js';
+import { historyAvailable, openSiteHistory } from '../../../shared/site-history/entry.js';
 
 // Components
 import '../../da-new/da-new.js';
@@ -33,6 +34,7 @@ export default class DaBrowse extends LitElement {
     _ewEnabled: { state: true },
     _chatEnabled: { state: true },
     _canEditOrgConfig: { state: true },
+    _siteHistory: { state: true },
   };
 
   _browseSelKeys = new Set();
@@ -147,10 +149,16 @@ export default class DaBrowse extends LitElement {
 
   renderSettingsMenu() {
     const { org, site } = this.details;
-    const items = getSettingsMenuItems({ org, site, canEditOrgConfig: this._canEditOrgConfig });
+    const canEdit = this._canEditOrgConfig;
+    const siteHistory = this._siteHistory;
+    const items = getSettingsMenuItems({ org, site, canEditOrgConfig: canEdit, siteHistory });
     return html`
       <nx-menu size="m" placement="auto" .items=${items}
-        @select=${({ detail }) => { window.location.href = detail.id; }}>
+        @select=${({ detail }) => {
+        if (detail.id === SITE_HISTORY) {
+          if (this._siteHistory) openSiteHistory(org, site);
+        } else window.location.href = detail.id;
+      }}>
         <button slot="trigger" type="button" class="da-breadcrumb-config" aria-label="Settings" title="Settings">
           <svg viewBox="0 0 20 20" aria-hidden="true"><use href="/img/icons/s2-icon-settings-20-n.svg#icon"></use></svg>
         </button>
@@ -161,6 +169,16 @@ export default class DaBrowse extends LitElement {
     if (props.has('details') && this.details) {
       const prevDetails = props.get('details');
       const orgChanged = prevDetails?.org !== this.details.org;
+      if (orgChanged || prevDetails?.site !== this.details.site) {
+        const { org, site } = this.details;
+        const generation = (this._historyGeneration || 0) + 1;
+        this._historyGeneration = generation;
+        this._siteHistory = false;
+        this._historyCheck = historyAvailable(org, site).then((available) => {
+          if (this._historyGeneration === generation && this.details?.org === org
+            && this.details?.site === site) this._siteHistory = available;
+        });
+      }
       if (prevDetails?.fullpath !== this.details.fullpath) this._clearBrowseSelection();
 
       if (orgChanged) {
@@ -251,6 +269,7 @@ export default class DaBrowse extends LitElement {
   }
 
   renderSearch() {
+    if (this.details?.site?.includes('~')) return nothing;
     return html`
       <da-search
         @updated=${this.handleSearch}
@@ -276,7 +295,7 @@ export default class DaBrowse extends LitElement {
   render() {
     return html`
       <div class="da-browse-header">
-        ${this._chatEnabled ? html`
+        ${this._chatEnabled && !this.details?.site?.includes('~') ? html`
           <button type="button" part="chat-btn" class="chat-btn" aria-label="Open chat panel" @click=${openChatPanel}>
             <svg aria-hidden="true" viewBox="0 0 20 20"><use href="/img/icons/s2-icon-splitleft-20-n.svg#icon"></use></svg>
           </button>` : nothing}
@@ -284,7 +303,8 @@ export default class DaBrowse extends LitElement {
       <div class="da-browse-content">
         <div class="da-tablist" role="tablist" aria-label="Dark Alley content">
           ${this._tabItems.map((tab, idx) => {
-      if (tab.id === 'search' && this.isRootFolder(this.details.fullpath)) {
+      if (tab.id === 'search' && (this.details?.site?.includes('~')
+        || this.isRootFolder(this.details.fullpath))) {
         return nothing;
       }
       return html`

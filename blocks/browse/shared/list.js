@@ -139,6 +139,7 @@ export function items2Clipboard(items) {
   const aemUrls = items.reduce((acc, item) => {
     if (item.ext) {
       const [org, site, ...pathParts] = sanitizePathParts(item.path.replace('.html', ''));
+      if (site?.includes('~')) return acc;
       const pageName = pathParts.pop();
       pathParts.push(pageName === 'index' ? '' : pageName);
 

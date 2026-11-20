@@ -41,14 +41,16 @@ import base64Uploader from './prose-plugins/base64Uploader.js';
 import blockFocus, { guardFocusedBlockDeletion } from './prose-plugins/blockFocus.js';
 import { getNx } from '../../../scripts/utils.js';
 import { getAuthToken } from '../../shared/utils.js';
+import { COLLAB_ORIGIN } from '../../shared/constants.js';
 import { generateColor, collabCursorBuilder } from '../editor-utils/author-color.js';
 import { getCollabIdentity } from './utils/collab.js';
 import { checkBlockLibraryConfigured } from '../editor-utils/block-slash.js';
-import { getDiffClass, addActiveView } from '../../edit/prose/diff/diff-utils.js';
+import { getDiffClass, addActiveView, removeActiveView } from '../../edit/prose/diff/diff-utils.js';
 import { initDaMetadata } from '../../edit/utils/helpers.js';
 import { createMergeConflictsPlugin } from '../editor-utils/prose-merge-conflicts.js';
 import { toolbarController } from '../editor-utils/toolbar-controller.js';
 import { canvasBus } from '../utils/canvas-bus.js';
+import { handleFencedRoomClose, isFencedProvider, registerFencedView } from '../../shared/branch-selector/fenced-room.js';
 
 const { DA_COLLAB, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
@@ -90,7 +92,7 @@ function checkLibraryConfiguredOnSync(wsProvider, canWrite) {
 
 export default async function initProse({
   path, permissions, setEditable, getToken,
-  extraPlugins = [], onMergeConflictsChange, hostEl,
+  extraPlugins = [], onMergeConflictsChange, hostEl, reload,
 }) {
   const editor = document.createElement('div');
   editor.className = 'da-prose-mirror';
@@ -100,7 +102,9 @@ export default async function initProse({
   const schema = getSchema();
   const ydoc = new Y.Doc();
 
-  const server = DA_COLLAB;
+  const sourceParts = new URL(path).pathname.split('/');
+  const server = sourceParts[1] === 'source' && sourceParts[3]?.includes('~')
+    ? COLLAB_ORIGIN : DA_COLLAB;
   // da-collab reads the store off the room name, and `path` is already the store's source url.
   const roomName = path;
 
@@ -120,6 +124,8 @@ export default async function initProse({
   wsProvider.maxBackoffTime = 30000;
 
   wsProvider.on('connection-close', async (event) => {
+    if (handleFencedRoomClose(event, wsProvider, ydoc, reload)
+      || isFencedProvider(wsProvider)) return;
     // Server close codes: 4401 = token expired (refresh + retry), 4403 = forbidden (stop).
     if (event?.code === 4403) {
       wsProvider.shouldConnect = false;
@@ -128,6 +134,7 @@ export default async function initProse({
     if (event?.code === 4401) {
       try { await window.adobeIMS?.refreshToken?.(); } catch { /* ignore */ }
       const fresh = await getAuthToken();
+      if (isFencedProvider(wsProvider)) return;
       if (!fresh || fresh === lastSentToken) {
         wsProvider.shouldConnect = false;
         if (lastSentToken) {
@@ -143,6 +150,7 @@ export default async function initProse({
       return;
     }
     const fresh = await getAuthToken();
+    if (isFencedProvider(wsProvider)) return;
     wsProvider.protocols = fresh ? ['yjs', fresh] : ['yjs'];
     lastSentToken = fresh;
   });
@@ -154,6 +162,7 @@ export default async function initProse({
   const yXmlFragment = ydoc.getXmlFragment('prosemirror');
 
   const identity = await getCollabIdentity();
+  if (isFencedProvider(wsProvider)) throw new Error('Collaboration room was replaced');
   if (typeof getToken === 'function' && getToken() && identity) {
     wsProvider.awareness.setLocalStateField('user', {
       color: generateColor(identity.colorSeed),
@@ -260,6 +269,11 @@ export default async function initProse({
     state,
     editable() { return canWrite; },
     nodeViews: diffNodeViews,
+  });
+  registerFencedView(wsProvider, () => {
+    removeActiveView(viewRef);
+    viewRef?.destroy();
+    viewRef = null;
   });
 
   if (canWrite) addActiveView(viewRef);

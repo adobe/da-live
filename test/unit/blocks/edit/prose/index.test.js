@@ -62,6 +62,7 @@ function buildFakeWsProvider({ withSynced = false } = {}) {
         states.set(clientID, { ...cur, [field]: value });
       },
       getStates() { return states; },
+      getLocalState() { return states.get(clientID) || null; },
       on(event, cb) {
         if (!awarenessListeners.has(event)) awarenessListeners.set(event, []);
         awarenessListeners.get(event).push(cb);
@@ -109,6 +110,43 @@ describe('prose/index createConnection', () => {
     // this block, restoring it would propagate the leak to later test files.
     window.localStorage.removeItem('nx-ims');
     document.querySelectorAll('da-dialog.da-auth-banner').forEach((el) => el.remove());
+  });
+
+  ['repo', 'repo~branch'].forEach((site) => {
+    it(`disposes the fenced ${site} room before reloading`, async () => {
+      if (site.includes('~')) {
+        window.fetch = async (url) => new Response(JSON.stringify(url.endsWith('/capabilities') ? {
+          supported: true,
+          apiVersion: 1,
+          defaultBranchId: 'main',
+          addressing: 'site-suffix',
+          separator: '~',
+          operations: ['create', 'changes', 'sync', 'publish', 'revert', 'restore'],
+          itemKinds: ['html', 'json', 'media', 'config'],
+          branchScopedSource: true,
+          branchScopedCollaboration: true,
+        } : { id: 'branch' }), { status: 200 });
+      }
+      const reload = sinon.spy();
+      const path = `https://admin.da.live/source/org/${site}/page.html`;
+      const { wsProvider, ydoc } = await createConnection(path, { reload });
+      const destroyDoc = sinon.spy(ydoc, 'destroy');
+      const destroyProvider = sinon.spy(wsProvider, 'destroy');
+      wsProvider.emit('connection-close', [{ code: 4412 }, wsProvider]);
+      expect(wsProvider.shouldConnect).to.equal(false);
+      expect(destroyProvider.calledOnce).to.equal(true);
+      expect(destroyDoc.calledOnce).to.equal(true);
+      expect(reload.calledOnce).to.equal(true);
+      expect(destroyDoc.calledBefore(reload)).to.equal(true);
+    });
+  });
+
+  it('rejects an encoded branch room before probing Helix', async () => {
+    let failed = false;
+    try { await createConnection('https://admin.da.live/source/org/repo%7Ebranch/page.html'); } catch {
+      failed = true;
+    }
+    expect(failed).to.equal(true);
   });
 
   it('Returns a wsProvider and a Y.Doc with maxBackoffTime configured', async () => {
@@ -469,6 +507,21 @@ describe('prose/index createConnection rapid-reconnect guard (COR-44)', () => {
     disconnectSpy.restore();
     connectSpy.restore();
     ydoc.destroy();
+  });
+
+  it('does not reconnect from an already scheduled retry after a 4412 close', async () => {
+    const reload = sinon.spy();
+    const { wsProvider } = await createConnection('https://admin.da.live/source/o/r/p.html', { reload });
+    clearTimers();
+    wsProvider.emit('connection-close', [{ code: 1011 }, wsProvider]);
+    const retry = lastManualBackoff();
+    expect(retry).to.exist;
+    wsProvider.emit('connection-close', [{ code: 4412 }, wsProvider]);
+    const connectSpy = sinon.spy(wsProvider, 'connect');
+    retry.fn();
+    expect(wsProvider.shouldConnect).to.equal(false);
+    expect(connectSpy.called).to.equal(false);
+    expect(reload.calledOnce).to.equal(true);
   });
 
   it('Repeated short sessions back off exponentially: 1s, 2s, 4s', async () => {

@@ -27,6 +27,20 @@ afterEach(() => {
 });
 
 describe('canvas buildSourceUrl', () => {
+  it('rejects encoded branch separators before calling nx2', async () => {
+    const { calls, restore } = stubPing({ upgraded: true });
+    try {
+      let failed = false;
+      try { await buildSourceUrl('/org/site%257ebranch/page'); } catch {
+        failed = true;
+      }
+      expect(failed).to.equal(true);
+      expect(calls).to.have.length(0);
+    } finally {
+      restore();
+    }
+  });
+
   it('keeps a legacy site on da-admin', async () => {
     const { restore } = stubPing({ upgraded: false });
     try {

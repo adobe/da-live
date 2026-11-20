@@ -431,6 +431,15 @@ export default class DaListBase extends LitElement {
   }
 
   async handleItemAction({ item, type = 'copy' }) {
+    if (type === 'copy' || type === 'move') {
+      const source = item.path?.split('/').slice(1, 3) || [];
+      const destination = item.destination?.split('/').slice(1, 3) || [];
+      if ((source[1]?.includes('~') || destination[1]?.includes('~'))
+        && (source[0] !== destination[0] || source[1] !== destination[1])) {
+        this._itemErrors.push({ ...item, message: 'Cannot copy or move across branches' });
+        return;
+      }
+    }
     const { source } = await getNx2Api();
 
     const useDeleteFolder = type === 'delete' && !item.ext;
@@ -530,6 +539,10 @@ export default class DaListBase extends LitElement {
   }
 
   async handleDelete() {
+    if (this.fullpath?.split('/')[2]?.includes('~') && this._selectedItems.some((item) => !item.ext)) {
+      this._itemErrors.push({ message: 'Folder bulk deletion is unavailable on a content branch' });
+      return;
+    }
     this._confirm = { type: 'delete' };
     this._deleteCount = null;
     this._deleteCountLoading = false;
@@ -566,6 +579,10 @@ export default class DaListBase extends LitElement {
   }
 
   async checkCanUnpublish() {
+    if (this.fullpath?.split('/')[2]?.includes('~')) {
+      this._canUnpublish = false;
+      return;
+    }
     const [item] = this._selectedItems;
     const isSingleUnpublishable = this._selectedItems.length === 1
       && item.ext && item.ext !== 'link'
@@ -589,13 +606,16 @@ export default class DaListBase extends LitElement {
 
     const callback = async (item) => {
       const [org, site, ...rest] = sanitizePathParts(item.path);
-
-      const { isHlx6 } = await getNx2Api();
-      const hlx6 = await isHlx6(org, site);
+      const branch = site?.includes('~');
+      let hlx6 = false;
+      if (!branch) {
+        const { isHlx6 } = await getNx2Api();
+        hlx6 = await isHlx6(org, site);
+      }
 
       // HLX6 has no trash — always direct delete.
       // HLX5: move to trash unless already in trash or no site.
-      const directDelete = hlx6 || item.path.includes('/.trash/') || rest.length === 0;
+      const directDelete = branch || hlx6 || item.path.includes('/.trash/') || rest.length === 0;
       const type = directDelete ? 'delete' : 'move';
       if (!directDelete) {
         rest.pop();
@@ -607,7 +627,7 @@ export default class DaListBase extends LitElement {
 
       await this.handleItemAction({ item, type });
 
-      if (this._unpublish && this._confirmText === 'YES') {
+      if (!branch && this._unpublish && this._confirmText === 'YES') {
         const { aem } = await getNx2Api();
         // AEM resolves HTML pages by their extensionless path
         const aemPath = item.ext === 'html' ? item.path.slice(0, -5) : item.path;
@@ -636,14 +656,17 @@ export default class DaListBase extends LitElement {
   }
 
   handlePreview() {
+    if (this.fullpath?.split('/')[2]?.includes('~')) return;
     this._confirm = { type: 'preview' };
   }
 
   handlePublish() {
+    if (this.fullpath?.split('/')[2]?.includes('~')) return;
     this._confirm = { type: 'publish' };
   }
 
   async handleConfirmPublish() {
+    if (this.fullpath?.split('/')[2]?.includes('~')) return;
     this._confirm = { type: 'publish', checking: true };
     const items = this._selectedItems.filter((item) => item.ext && item.ext !== 'link');
 
@@ -666,11 +689,13 @@ export default class DaListBase extends LitElement {
   }
 
   async handleConfirmPreview() {
+    if (this.fullpath?.split('/')[2]?.includes('~')) return;
     this.handleConfirmClose();
     await this.runAemQueue('preview');
   }
 
   async runAemQueue(action, { skipSchedule = false } = {}) {
+    if (this.fullpath?.split('/')[2]?.includes('~')) return;
     const { Queue } = await import(`${getNx()}/public/utils/tree.js`);
     const items = this._selectedItems.filter((item) => item.ext && item.ext !== 'link');
     const verb = action === 'publish' ? 'Publish' : 'Preview';

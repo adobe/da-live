@@ -33,6 +33,7 @@ class EWCanvasHeader extends LitElement {
     authorized: { type: Boolean },
     hasUnresolvedMergeConflicts: { type: Boolean, reflect: true, attribute: 'has-conflicts' },
     canWrite: { type: Boolean },
+    contentBranch: { type: Boolean },
     _chatDisabled: { state: true },
     _commentsVisible: { state: true },
     _commentCount: { state: true },
@@ -104,6 +105,7 @@ class EWCanvasHeader extends LitElement {
   }
 
   setEditorView(view) {
+    if (this.contentBranch && view !== 'content') return;
     if (this.hasUnresolvedMergeConflicts && view !== 'content') return;
     if (!EDITOR_VIEWS.includes(view) || view === this.editorView) return;
     this.editorView = view;
@@ -127,7 +129,7 @@ class EWCanvasHeader extends LitElement {
     return html`
       <header class="bar" part="bar">
         <div class="group group-start" part="group-start">
-          ${this._chatDisabled !== false ? nothing : html`
+          ${this._chatDisabled !== false || this.contentBranch ? nothing : html`
           <button type="button" class="nx-action-btn-icon" part="btn toggle-before" data-action="open-panel-before" aria-label="Open before panel" @click=${() => this._openPanel('before')}>
             ${this._renderIcon('splitLeft')}
           </button>
@@ -158,7 +160,7 @@ class EWCanvasHeader extends LitElement {
               class="segment ${this.editorView === 'layout' ? 'is-selected' : ''}"
               aria-pressed=${this.editorView === 'layout'}
               title=${this.hasUnresolvedMergeConflicts ? 'Resolve conflicts to switch views' : nothing}
-              ?disabled=${this.hasUnresolvedMergeConflicts}
+              ?disabled=${this.hasUnresolvedMergeConflicts || this.contentBranch}
               @click=${() => this.setEditorView('layout')}
             >Layout</button>
             <button
@@ -173,14 +175,14 @@ class EWCanvasHeader extends LitElement {
               aria-pressed=${this.editorView === 'split'}
               aria-label="Split view"
               title=${this.hasUnresolvedMergeConflicts ? 'Resolve conflicts to switch views' : 'Split view'}
-              ?disabled=${this.hasUnresolvedMergeConflicts}
+              ?disabled=${this.hasUnresolvedMergeConflicts || this.contentBranch}
               @click=${() => this.setEditorView('split')}
             >${this._renderIcon('gridCompare')}</button>
           </div>
         </div>
 
         <div class="group group-end" part="group-end">
-          <button
+          ${this.contentBranch ? nothing : html`<button
             type="button"
             class="nx-action-btn-icon comments-toggle ${this._commentsVisible ? 'is-active' : ''}"
             part="btn comments-toggle"
@@ -191,7 +193,7 @@ class EWCanvasHeader extends LitElement {
           >
             ${this._renderIcon('comment')}
             ${this._commentCount > 0 && !this._commentsVisible ? html`<span class="comment-count-chip" aria-hidden="true">${this._commentCount}</span>` : nothing}
-          </button>
+          </button>`}
           <button type="button" class="nx-action-btn-icon" part="btn toggle-after" data-action="open-panel-after" aria-label="Open after panel" @click=${() => this._openPanel('after')}>
             ${this._renderIcon('splitRight')}
           </button>

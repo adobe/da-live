@@ -155,6 +155,72 @@ describe('media loading', () => {
     });
   });
 
+  it('loads branch media from qualified Source without delivery fallback', async () => {
+    setHash('/branchmedia/viewsite~work/images/logo.svg');
+    const requests = [];
+    window.fetch = async (input) => {
+      const url = String(input);
+      requests.push(url);
+      if (url.endsWith('/capabilities')) {
+        return new Response(JSON.stringify({
+          supported: true,
+          apiVersion: 1,
+          defaultBranchId: 'main',
+          addressing: 'site-suffix',
+          separator: '~',
+          operations: ['create', 'changes', 'sync', 'publish', 'revert', 'restore'],
+          itemKinds: ['html', 'json', 'media', 'config'],
+          branchScopedSource: true,
+          branchScopedCollaboration: true,
+        }), { status: 200 });
+      }
+      if (url.endsWith('/branches/branchmedia/viewsite/work')) {
+        return new Response('{"id":"work"}', { status: 200 });
+      }
+      const headers = { 'Content-Type': 'image/svg+xml', 'Content-Branch': 'work' };
+      return new Response('<svg/>', { status: 200, headers });
+    };
+    await init(container);
+    expect(requests).to.include('https://admin.da.live/source/branchmedia/viewsite~work/images/logo.svg');
+    expect(requests.some((url) => /api\.aem\.live|content\.da\.live/.test(url))).to.equal(false);
+    expect(container.querySelector('da-media').details.contentUrl).to.equal('blob:media-test');
+    expect(await createObjectURL.firstCall.args[0].text()).to.equal('<svg/>');
+  });
+
+  it('does not show media returned from the Default branch', async () => {
+    setHash('/branchmedia/othersite~work/images/logo.svg');
+    const requests = [];
+    window.fetch = async (input) => {
+      const url = String(input);
+      requests.push(url);
+      if (url.endsWith('/capabilities')) {
+        return new Response(JSON.stringify({
+          supported: true,
+          apiVersion: 1,
+          defaultBranchId: 'main',
+          addressing: 'site-suffix',
+          separator: '~',
+          operations: ['create', 'changes', 'sync', 'publish', 'revert', 'restore'],
+          itemKinds: ['html', 'json', 'media', 'config'],
+          branchScopedSource: true,
+          branchScopedCollaboration: true,
+        }), { status: 200 });
+      }
+      if (url.endsWith('/branches/branchmedia/othersite/work')) {
+        return new Response('{"id":"work"}', { status: 200 });
+      }
+      return new Response('<svg/>', { status: 200, headers: { 'Content-Branch': 'main' } });
+    };
+    let failed = false;
+    try { await init(container); } catch {
+      failed = true;
+    }
+    expect(failed).to.equal(true);
+    expect(createObjectURL.called).to.equal(false);
+    expect(container.querySelector('da-media')).to.equal(null);
+    expect(requests.some((url) => /api\.aem\.live|content\.da\.live/.test(url))).to.equal(false);
+  });
+
   it('Keeps the content URL for legacy media', async () => {
     setHash('/mediaorg/legacysite/images/logo.svg');
     window.fetch = async () => new Response('');

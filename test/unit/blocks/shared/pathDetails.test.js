@@ -5,6 +5,22 @@ import '../../milo.js';
 const { default: getPathDetails } = await import('../../../../blocks/shared/pathDetails.js');
 
 describe('Path details', () => {
+  it('preserves branch identity in Source paths without creating delivery URLs', () => {
+    const details = getPathDetails({ pathname: '/edit', hash: '#/org/site~branch/page' });
+    expect(details.site).to.equal('site~branch');
+    expect(details.fullpath).to.equal('/org/site~branch/page.html');
+    expect(details.sourceUrl).to.equal('https://admin.da.live/source/org/site~branch/page.html');
+    expect(details.previewUrl).to.equal(undefined);
+    expect(details.contentUrl).to.equal(undefined);
+  });
+
+  it('never returns cached default details for an invalid alias', () => {
+    getPathDetails({ pathname: '/edit', hash: '#/org/site/page' });
+    const loc = { pathname: '/edit', hash: '#/org/site%7Ebranch/page' };
+    expect(() => getPathDetails(loc)).to.throw(TypeError);
+    expect(() => getPathDetails(loc)).to.throw(TypeError);
+  });
+
   describe('Edit with trailing slash', () => {
     it('Strips trailing slash from org-only path and treats as HTML', () => {
       const loc = { pathname: '/edit', hash: '#/adobe/' };

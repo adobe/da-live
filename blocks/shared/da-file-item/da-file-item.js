@@ -3,6 +3,7 @@ import { delay, sanitizeName, formatDate } from '../utils.js';
 import { getNx, getNx2, getNx2Api } from '../../../scripts/utils.js';
 import { ICONS, iconPathForExt, getTypeLabel, isImageExt } from '../icons.js';
 import { getFileItemHref } from './navigation.js';
+import { pathMatchesActiveBranch } from '../branch-selector/context.js';
 
 import {
   fetchAemStatus,
@@ -90,6 +91,7 @@ export default class DaFileItem extends LitElement {
 
   async loadImage() {
     const { path } = this;
+    if (!pathMatchesActiveBranch(path)) return;
     const request = {};
     this._imageRequest = request;
     this._imageRequested = true;
