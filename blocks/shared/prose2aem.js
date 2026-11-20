@@ -39,6 +39,14 @@ function convertBlocks(editor, isFragment = false) {
         const { innerHTML } = col;
         const div = document.createElement('div');
         div.innerHTML = innerHTML;
+        div.querySelectorAll(':scope > p').forEach((p) => {
+          const cursor = p.querySelector('#da-cursor-position');
+          if (!p.textContent.trim()
+            && [...p.children].every((child) => child === cursor)) {
+            if (cursor) setCursor(cursor, div);
+            p.remove();
+          }
+        });
         return div;
       });
       const div = document.createElement('div');
@@ -48,6 +56,11 @@ function convertBlocks(editor, isFragment = false) {
 
     const div = document.createElement('div');
     div.className = toBlockCSSClassNames(nameRow.textContent).join(' ');
+    if (!divs.length) {
+      const row = document.createElement('div');
+      row.append(document.createElement('div'));
+      divs.push(row);
+    }
     div.append(...divs);
 
     // cursor detection
@@ -218,6 +231,22 @@ function convertLinkImages(editor) {
   });
 }
 
+function getSectionMetadataValues(node) {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return node.textContent.split(',').map((value) => value.trim()).filter(Boolean);
+  }
+  if (node.nodeName === 'A' && node.hasAttribute('href')) return [node.href];
+  if (node.nodeName === 'IMG' && node.hasAttribute('src')) return [node.src];
+  return [...node.childNodes].flatMap(getSectionMetadataValues);
+}
+
+function getSectionStyleClasses(node) {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return node.textContent.split(',').flatMap(toBlockCSSClassNames);
+  }
+  return [...node.childNodes].flatMap(getSectionStyleClasses);
+}
+
 function applySectionMetadata(editor) {
   editor.querySelectorAll('.section-metadata').forEach((block) => {
     const section = block.parentElement;
@@ -229,18 +258,9 @@ function applySectionMetadata(editor) {
         .replace(/^-+|-+$/g, '');
       if (!key) return;
       if (key === 'style') {
-        cols[1].textContent.trim().split(',')
-          .map((s) => s.trim().toLowerCase().replace(/[^0-9a-z]+/g, '-').replace(/^-+|-+$/g, ''))
-          .filter(Boolean)
-          .forEach((cls) => section.classList.add(cls));
+        getSectionStyleClasses(cols[1]).forEach((cls) => section.classList.add(cls));
       } else {
-        const camelKey = key.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-        const linkEl = cols[1].querySelector('a');
-        const imgEl = cols[1].querySelector('img');
-        let value = cols[1].textContent.trim();
-        if (linkEl) value = linkEl.href;
-        else if (imgEl) value = imgEl.src;
-        section.dataset[camelKey] = value;
+        section.setAttribute(`data-${key}`, getSectionMetadataValues(cols[1]).join(','));
       }
     });
     block.remove();
