@@ -1,4 +1,4 @@
-import { fetchWysiwygBranch } from './editor-utils.js';
+import { fetchWysiwygBranch } from '../../shared/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 
 let activeRequest;
