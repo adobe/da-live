@@ -74,7 +74,7 @@ export function createBranchingClient({ org, site, origin = DA_ORIGIN, fetcher =
     list: () => request(`${branches}/`),
     create: (name) => request(`${branches}/`, { method: 'POST', body: { name } }),
     get: (id) => request(branch(id)),
-    delete: (id) => request(branch(id), { method: 'DELETE' }),
+    delete: (id, expectedBranchRevision) => request(`${branch(id)}${query({ expectedBranchRevision })}`, { method: 'DELETE' }),
     changes: (id, cursor) => request(`${branch(id)}/changes${query({ cursor })}`),
     changesDetail: (id, params) => request(`${branch(id)}/changes/detail${query(params)}`),
     getChangeValue: (id, { path, branchRevision, defaultRevision, side }) => {

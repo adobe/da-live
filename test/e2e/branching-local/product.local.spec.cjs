@@ -281,6 +281,7 @@ test('branch browse selector navigates and settles on Default', async ({ request
     const filePosition = await file.boundingBox();
     await trigger.click();
     await expect(selector.getByRole('dialog', { name: 'Content branches' })).toBeVisible();
+    await expect(selector.getByRole('button', { name: 'Delete branch work', exact: true })).toHaveCount(0);
     expect(await file.boundingBox()).toEqual(filePosition);
     await page.keyboard.press('Escape');
     await expect(selector.getByRole('dialog', { name: 'Content branches' })).toBeHidden();
@@ -296,6 +297,14 @@ test('branch browse selector navigates and settles on Default', async ({ request
     await page.waitForTimeout(750);
     await expect(page).toHaveURL(new RegExp(`#${site}$`));
     await expect(selector.locator('.branch-trigger')).toHaveText('Default · main');
+    await trigger.click();
+    await selector.getByRole('button', { name: 'Delete branch work', exact: true }).click();
+    await expect(selector.getByText('Delete work?')).toBeVisible();
+    await selector.getByRole('button', { name: 'Delete branch', exact: true }).click();
+    await expect(selector.getByRole('button', { name: 'Branch · work', exact: true })).toHaveCount(0);
+    await expect(page).toHaveURL(new RegExp(`#${site}$`));
+    await expect(trigger).toHaveText('Default · main');
+    await api(request, 'GET', `/branches${site}/work`, undefined, 404);
   } finally {
     observed.closing = true;
     if (context) await context.close();

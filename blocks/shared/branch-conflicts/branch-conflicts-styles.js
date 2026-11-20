@@ -94,6 +94,8 @@ stylesheet.replaceSync(`
   pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
   img { max-width: 100%; max-height: 20rem; }
   label { display: block; margin-top: 12px; }
+  .publish-delete { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .publish-delete input { margin: 0; accent-color: var(--s2-blue-900, #385bff); }
   textarea {
     display: block;
     box-sizing: border-box;

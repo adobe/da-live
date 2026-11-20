@@ -75,6 +75,40 @@ export async function switchContentBranch(branch, options = {}) {
   }, { root, flush, keepInertOnSuccess: true });
 }
 
+/** Switch the URL to Default before retiring a published branch. The caller must flush first. */
+export async function retirePublishedBranch(branchId, remove, options = {}) {
+  const { location = window.location, history: navigationHistory = window.history } = options;
+  const { defaultMatches = defaultSourceMatchesBinding, valid = () => true } = options;
+  const { root = document } = options;
+  const { hash, pathname, search } = location;
+  const branch = branchContext(hash);
+  const isCurrent = () => valid() && location.hash === hash
+    && location.pathname === pathname && location.search === search;
+  if (branch?.branch !== branchId || !isCurrent()) throw new Error('The current branch changed');
+  if (!await defaultMatches(branch.org, branch.site)) {
+    throw new Error('Default Source is not bound to da-rs');
+  }
+  if (!isCurrent()) throw new Error('The current location changed');
+  // The current editor path may not exist on Default, so return to site Browse.
+  const defaultHash = `#/${branch.org}/${branch.site}`;
+  const isDefault = () => location.pathname === '/' && location.search === search
+    && location.hash === defaultHash;
+  const { body } = root;
+  const wasInert = body?.inert;
+  if (body) body.inert = true;
+  try {
+    navigationHistory.replaceState(navigationHistory.state, '', `/${search}${defaultHash}`);
+    if (!isDefault()) throw new Error('Could not switch to Default');
+    try { await remove(); } catch (error) {
+      if (isDefault()) navigationHistory.replaceState(navigationHistory.state, '', `${pathname}${search}${hash}`);
+      throw error;
+    }
+    if (isDefault()) location.reload();
+  } finally {
+    if (body) body.inert = wasInert;
+  }
+}
+
 let hashGuardInstalled = false;
 
 // Hash-only Back/Forward must use the same barrier as the selector rather than

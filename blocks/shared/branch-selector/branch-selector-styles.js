@@ -88,6 +88,41 @@ stylesheet.replaceSync(`
     font-weight: 600;
   }
 
+  .branch-row, .delete-actions { display: flex; align-items: center; gap: 4px; }
+  .branch-row .branch-option { flex: 1; min-width: 0; }
+  .delete-option {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    color: var(--s2-gray-700, #5c5c5c);
+    background: transparent;
+  }
+
+  .delete-option:hover:enabled { color: #a22336; background: #fcecef; }
+  .delete-confirmation {
+    margin-top: 8px;
+    padding: 8px;
+    border: 1px solid var(--s2-gray-300, #d5d5d5);
+    border-radius: 8px;
+  }
+
+  .delete-confirmation p { margin: 4px 0; font-size: 13px; }
+  .delete-actions { justify-content: flex-end; margin-top: 8px; }
+  .delete-actions button {
+    min-height: 28px;
+    padding: 0 8px;
+    border: 1px solid var(--s2-gray-300, #d5d5d5);
+    border-radius: 6px;
+    background: transparent;
+  }
+
+  .delete-actions .danger { color: white; border-color: transparent; background: #b1001f; }
+  .delete-actions button:disabled, .delete-option:disabled { opacity: .6; }
+
   form {
     display: grid;
     gap: 6px;

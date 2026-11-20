@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { BranchingError } from '../branching-client.js';
-import { withBranchBarrier } from '../branch-selector/navigation.js';
+import { retirePublishedBranch, withBranchBarrier } from '../branch-selector/navigation.js';
 import { lockBranchEditing, unlockBranchEditing, rememberEditorBeforeBarrier, forgetUnneededEditorSnapshot } from './editing-lock.js';
 import styles from './branch-conflicts-styles.js';
 
@@ -34,6 +34,7 @@ export class DaBranchConflicts extends LitElement {
     _status: { state: true },
     _moved: { state: true },
     _confirm: { state: true },
+    _deleteAfterPublish: { state: true },
     _retry: { state: true },
     _draft: { state: true },
     _ready: { state: true },
@@ -115,6 +116,7 @@ export class DaBranchConflicts extends LitElement {
     this.showStatus();
     this._moved = false;
     this._confirm = false;
+    this._deleteAfterPublish = false;
     this._retry = undefined;
     this._terminalRefresh = false;
     this._ready = false;
@@ -232,7 +234,7 @@ export class DaBranchConflicts extends LitElement {
     return branch.revision;
   }
 
-  async result(ctx, result) {
+  async result(ctx, result, deleteAfterPublish = false) {
     if (!ctx.valid()) return;
     if (result?.status === 'needs-resolution') {
       this._retry = undefined;
@@ -249,8 +251,24 @@ export class DaBranchConflicts extends LitElement {
         'nothing-to-publish': 'Nothing to publish.',
       };
       this.showStatus(messages[result.status], true);
-      this.dispatchEvent(new CustomEvent('branch-changed', { bubbles: true, composed: true }));
       this._shouldUnlock = true;
+      if (deleteAfterPublish && result.status === 'published') {
+        try {
+          const { branch } = result;
+          if (branch?.id !== ctx.branchId || !revision(branch.revision) || branch.revision < 1) {
+            throw new Error('Missing published branch revision');
+          }
+          const remove = () => ctx.client.delete(ctx.branchId, branch.revision);
+          await retirePublishedBranch(ctx.branchId, remove, { valid: ctx.valid });
+          return;
+        } catch (error) {
+          if (ctx.valid()) {
+            this.showStatus(messages.published);
+            this._error = `The branch couldn’t be deleted: ${error.message}`;
+          }
+        }
+      }
+      this.dispatchEvent(new CustomEvent('branch-changed', { bubbles: true, composed: true }));
     } else throw new Error('Invalid branch operation response');
   }
 
@@ -280,23 +298,24 @@ export class DaBranchConflicts extends LitElement {
   publish() {
     return this.run(async (ctx) => {
       if (this._retry) {
-        const { expected, key } = this._retry;
-        const result = await this.submitPublish(ctx, expected, key);
-        if (result) await this.result(ctx, result);
+        const { expected, key, deleteAfterPublish } = this._retry;
+        const result = await this.submitPublish(ctx, expected, key, deleteAfterPublish);
+        if (result) await this.result(ctx, result, deleteAfterPublish);
         return;
       }
+      const deleteAfterPublish = this._deleteAfterPublish;
       rememberEditorBeforeBarrier();
       await withBranchBarrier(async () => {
         if (!ctx.valid()) throw new Error('The current location changed');
         const expected = await this.branchRevision(ctx);
         const key = crypto.randomUUID();
-        const result = await this.submitPublish(ctx, expected, key);
-        if (result) await this.result(ctx, result);
+        const result = await this.submitPublish(ctx, expected, key, deleteAfterPublish);
+        if (result) await this.result(ctx, result, deleteAfterPublish);
       });
     });
   }
 
-  async submitPublish(ctx, expected, key) {
+  async submitPublish(ctx, expected, key, deleteAfterPublish) {
     try {
       const result = await ctx.client.publish(ctx.branchId, expected, key);
       if (!validResult(result, ['published', 'nothing-to-publish', 'needs-resolution'])) {
@@ -319,7 +338,7 @@ export class DaBranchConflicts extends LitElement {
       const ambiguousConflict = error instanceof BranchingError
         && error.status === 409 && !error.code;
       if (ctx.valid() && (uncertain(error) || ambiguousConflict)) {
-        this._retry = { expected, key };
+        this._retry = { expected, key, ...(deleteAfterPublish ? { deleteAfterPublish } : {}) };
         this.showStatus('Publish result unknown. Editing is locked; retry the same request.');
         lockBranchEditing();
       }
@@ -478,6 +497,12 @@ export class DaBranchConflicts extends LitElement {
   }}>
       <h3 id="publish-title">Publish to default</h3>
       <p class="description">Publish all branch changes to default? This does not publish to AEM preview or live.</p>
+      <label class="publish-delete"><input type="checkbox" .checked=${Boolean(this._deleteAfterPublish)}
+        ?disabled=${this._busy} @change=${({ target }) => { this._deleteAfterPublish = target.checked; }}>
+        Delete this branch after publishing
+      </label>
+      ${this._deleteAfterPublish ? html`<p class="description">Close other editors on this branch first.
+        After publishing, you’ll return to Default and this branch will be deleted.</p>` : nothing}
       ${this.renderFeedback()}
       <footer>
         <button type="button" @click=${() => { this._confirm = false; }} ?disabled=${this._busy}>Cancel</button>
@@ -543,7 +568,10 @@ export class DaBranchConflicts extends LitElement {
           <svg part="action-icon" width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 8a6 6 0 0 0-10-3L4 7m0-4v4h4m-4 5a6 6 0 0 0 10 3l2-2m0 4v-4h-4"/></svg>
           Sync from default
         </button>
-        <button type="button" part="action publish-action" @click=${() => { this._confirm = true; }}
+        <button type="button" part="action publish-action" @click=${() => {
+    this._deleteAfterPublish = false;
+    this._confirm = true;
+  }}
           aria-haspopup="dialog" ?disabled=${disabled}>
           <svg part="action-icon" width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 13V4m-4 4 4-4 4 4M4 12v4h12v-4"/></svg>
           Publish to default

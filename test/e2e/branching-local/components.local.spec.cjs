@@ -140,8 +140,12 @@ test('real selector, Changes, conflict and Site History components against local
   await call(request, 'PUT', `/source${site}/edit.html`, html('default'), 201);
   await conflicts.getByRole('button', { name: 'Publish to default', exact: true }).click();
   await expect(conflicts.getByText('This does not publish to AEM preview or live.')).toBeVisible();
+  const cleanup = conflicts.getByRole('checkbox', { name: 'Delete this branch after publishing' });
+  await expect(cleanup).not.toBeChecked();
+  await cleanup.check();
   await conflicts.getByRole('button', { name: 'Confirm publish to default' }).click();
   await expect(conflicts.getByText('Sync needs resolution', { exact: true })).toBeVisible();
+  await call(request, 'GET', `/branches${site}/work`);
   await conflicts.getByRole('button', { name: '/edit.html' }).click();
   await expect(conflicts).toContainText('base');
   await expect(conflicts).toContainText('branch');
@@ -150,6 +154,7 @@ test('real selector, Changes, conflict and Site History components against local
   await conflicts.getByRole('button', { name: 'Complete sync' }).click();
   await expect(conflicts).toContainText('Sync completed.');
   await conflicts.getByRole('button', { name: 'Publish to default', exact: true }).click();
+  await expect(cleanup).not.toBeChecked();
   await conflicts.getByRole('button', { name: 'Confirm publish to default' }).click();
   await expect(conflicts).toContainText('Changes merged into default — not published to live.');
   expect(deliveryAttempts).toEqual([]);
@@ -168,6 +173,19 @@ test('real selector, Changes, conflict and Site History components against local
   expect(await (await call(request, 'GET', `/source${site}/sheet.json`)).text()).toBe('{"row":1}');
   expect(await (await call(request, 'GET', `/source${site}/image.png`)).body()).toEqual(image1);
   expect(await (await call(request, 'GET', `/config${site}`)).json()).toEqual({ setting: 1 });
+  await page.reload();
+  await selector.locator('.branch-trigger').click();
+  await selector.locator('input[name=name]').fill('cleanup');
+  await selector.getByRole('button', { name: 'Create', exact: true }).click();
+  await expect(selector.locator('.branch-trigger')).toHaveText('Branch · cleanup');
+  await call(request, 'PUT', `/source${site}~cleanup/edit.html`, html('publish and delete'), 201);
+  await conflicts.getByRole('button', { name: 'Publish to default', exact: true }).click();
+  await cleanup.check();
+  await conflicts.getByRole('button', { name: 'Confirm publish to default' }).click();
+  await expect(selector.locator('.branch-trigger')).toHaveText('Default · main');
+  await expect(page).toHaveURL(new RegExp(`#${site}$`));
+  await call(request, 'GET', `/branches${site}/cleanup`, undefined, 404);
+  expect(await (await call(request, 'GET', `/source${site}/edit.html`)).text()).toBe(html('publish and delete'));
 });
 
 test('real selector hides on a non-enabled site', async ({ request, page }) => {

@@ -15,6 +15,7 @@ export class DaBranchSelector extends LitElement {
     _error: { state: true },
     _busy: { state: true },
     _open: { state: true },
+    _deleteTarget: { state: true },
   };
 
   connectedCallback() {
@@ -32,6 +33,7 @@ export class DaBranchSelector extends LitElement {
     this._data = undefined;
     this._open = false;
     this._error = undefined;
+    this._deleteTarget = undefined;
     if (!org || !rawSite) return;
     let parsed;
     try { parsed = parseSiteSegment(rawSite); } catch {
@@ -88,6 +90,36 @@ export class DaBranchSelector extends LitElement {
     changes?.refreshIfOpen();
   }
 
+  async deleteBranch() {
+    if (this._busy || !this._deleteTarget) return;
+    const data = this._data;
+    const { id } = this._deleteTarget;
+    const { client, selected } = data;
+    if (id === selected) return;
+    const { href } = window.location;
+    const valid = () => this.isConnected && this._data === data && window.location.href === href;
+    this._busy = true;
+    this._error = undefined;
+    try {
+      const branch = await client.get(id);
+      if (!valid()) return;
+      if (branch?.id !== id || !Number.isSafeInteger(branch.revision) || branch.revision < 1) {
+        throw new Error('Invalid branch revision');
+      }
+      if (branch.activeSyncId) throw new Error('Resolve or cancel the active sync before deleting.');
+      await client.delete(id, branch.revision);
+      if (valid()) {
+        const branches = data.branches.filter((candidate) => candidate.id !== id);
+        this._data = { ...data, branches };
+        this._deleteTarget = undefined;
+      }
+    } catch (error) {
+      if (valid()) this._error = error.message || 'Could not delete the branch.';
+    } finally {
+      this._busy = false;
+    }
+  }
+
   positionMenu({ currentTarget }) {
     const menu = this.shadowRoot.getElementById('branch-options');
     const { top, bottom, right } = currentTarget.getBoundingClientRect();
@@ -107,7 +139,7 @@ export class DaBranchSelector extends LitElement {
     const { selected, branches, defaultBranchId } = this._data;
     const options = [
       { id: null, name: `Default · ${defaultBranchId}` },
-      ...branches.map(({ id, name }) => ({ id, name: `Branch · ${name}` })),
+      ...branches.map((branch) => ({ id: branch.id, name: `Branch · ${branch.name}`, branch })),
     ];
     return html`
       <button class="branch-trigger" type="button" popovertarget="branch-options"
@@ -121,16 +153,35 @@ export class DaBranchSelector extends LitElement {
         <svg class="chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
       </button>
       <section id="branch-options" popover role="dialog" aria-label="Content branches"
-        @toggle=${({ newState }) => { this._open = newState === 'open'; }}>
+        @toggle=${({ newState }) => {
+    this._open = newState === 'open';
+    if (!this._open && !this._busy) this._deleteTarget = undefined;
+  }}>
         <h2>Content branches</h2>
         <div class="branch-list">
-          ${options.map(({ id, name }) => html`
+          ${options.map(({ id, name, branch }) => html`<div class="branch-row">
             <button type="button" class="branch-option" aria-current=${selected === id ? 'true' : nothing}
               ?disabled=${this._busy || selected === id} @click=${() => this.select(id)}>
               <span>${name}</span>
               ${selected === id ? html`<svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8 3 3 7-7"/></svg>` : nothing}
-            </button>`)}
+            </button>
+            ${branch && selected !== id ? html`<button type="button" class="delete-option" aria-label=${`Delete branch ${branch.name}`}
+              title=${`Delete branch ${branch.name}`} ?disabled=${this._busy} @click=${() => {
+    this._deleteTarget = branch;
+    this._error = undefined;
+  }}>
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12M8 5V3h4v2M6 5l1 12h6l1-12m-5 3v6m2-6v6"/></svg>
+            </button>` : nothing}
+          </div>`)}
         </div>
+        ${this._deleteTarget ? html`<div class="delete-confirmation" role="group" aria-label="Confirm branch deletion">
+          <strong>Delete ${this._deleteTarget.name}?</strong>
+          <p>Unpublished changes will be lost. Close other editors on this branch before deleting.</p>
+          <div class="delete-actions">
+            <button type="button" ?disabled=${this._busy} @click=${() => { this._deleteTarget = undefined; }}>Cancel</button>
+            <button type="button" class="danger" ?disabled=${this._busy} @click=${this.deleteBranch}>Delete branch</button>
+          </div>
+        </div>` : nothing}
         <form @submit=${this.create}>
           <label for="branch-name">Create from Default</label>
           <div class="branch-create">
