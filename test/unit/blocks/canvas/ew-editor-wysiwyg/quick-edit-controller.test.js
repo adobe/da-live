@@ -59,6 +59,31 @@ describe('quick-edit-controller message gate', () => {
     send(createControllerOnMessage(ctx), { type: 'cursor-move' });
     expect(ctx._spies.setLocalStateField.calledWith('cursor', null)).to.be.true;
   });
+
+  it('drops node-update messages while the preview is read-only', () => {
+    const ctx = { ...makeCtx(true), previewReadOnly: true };
+    send(createControllerOnMessage(ctx), { type: 'node-update', payload: { node: {}, cursorOffset: 0 } });
+    expect(ctx._spies.nodeFromJSON.called).to.be.false;
+  });
+
+  it('drops image-replace messages while the preview is read-only', () => {
+    const ctx = { ...makeCtx(true), previewReadOnly: true, port: { postMessage: sinon.spy() } };
+    send(createControllerOnMessage(ctx), { type: 'image-replace', payload: { proseIndex: 1 } });
+    expect(ctx.port.postMessage.called).to.be.false;
+  });
+
+  it('keeps undo and redo while the preview is read-only', () => {
+    const ctx = { ...makeCtx(true), previewReadOnly: true };
+    let read = false;
+    ctx.view = {
+      get state() {
+        read = true;
+        return {};
+      },
+    };
+    send(createControllerOnMessage(ctx), { type: 'history', payload: { action: 'undo' } });
+    expect(read).to.be.true;
+  });
 });
 
 describe('quick-edit-controller RELOAD coalescing', () => {

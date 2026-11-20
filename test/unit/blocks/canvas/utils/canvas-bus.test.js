@@ -66,6 +66,19 @@ describe('canvasBus.editorHtmlState replay', () => {
   });
 });
 
+describe('canvasBus.mergeConflictsState replay', () => {
+  it('replays the latest conflict state, including when conflicts are resolved', () => {
+    canvasBus.mergeConflictsState.emit({ hasMergeConflicts: true });
+    let received;
+    canvasBus.mergeConflictsState.subscribe((d) => { received = d; })();
+    expect(received).to.deep.equal({ hasMergeConflicts: true });
+
+    canvasBus.mergeConflictsState.emit({ hasMergeConflicts: false });
+    canvasBus.mergeConflictsState.subscribe((d) => { received = d; })();
+    expect(received).to.deep.equal({ hasMergeConflicts: false });
+  });
+});
+
 describe('canvasBus toolbar state', () => {
   it('replays the latest active surface, including when editing has stopped', () => {
     canvasBus.toolbarSurfaceState.emit({ activeSurface: 'wysiwyg' });

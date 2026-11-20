@@ -8,6 +8,7 @@ export const MESSAGE_TYPES = Object.freeze({
   SET_EDITOR_STATE: 'set-editor-state',
   SET_CURSORS: 'set-cursors',
   SET_SELECTED_NODE: 'set-selected-node',
+  SET_READ_ONLY: 'set-read-only',
 
   CURSOR_MOVE: 'cursor-move',
   RELOAD: 'reload',
