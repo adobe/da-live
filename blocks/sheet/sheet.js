@@ -112,11 +112,19 @@ class DaSheetPanes extends LitElement {
     return html`
       <div class="da-sheet-pane-tabs is-visible">
         <div class="da-editor-tabs-full">
-          <button class="da-editor-tab show-preview" @click=${this.handlePreviewToggle}>Preview</button>
+          <button class="da-editor-tab show-preview" aria-label="Preview" @click=${this.handlePreviewToggle}>
+            <svg width="20" height="20" viewBox="0 0 18 18" fill="currentColor" aria-hidden="true">
+              <use href="/blocks/edit/img/Smock_Preview_18_N.svg#spectrum-Preview"></use>
+            </svg>
+          </button>
         </div>
         ${showHistory ? html`
         <div class="da-editor-tabs-quiet">
-          <button class="da-editor-tab quiet show-versions" @click=${this.handleHistoryToggle}>View history</button>
+          <button class="da-editor-tab quiet show-versions" aria-label="View history" @click=${this.handleHistoryToggle}>
+            <svg width="20" height="20" viewBox="0 0 18 18" aria-hidden="true">
+              <use href="/blocks/edit/img/Smock_Calendar_18_N.svg#icon"></use>
+            </svg>
+          </button>
         </div>
         ` : nothing}
       </div>
