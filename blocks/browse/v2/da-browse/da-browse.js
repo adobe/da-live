@@ -180,11 +180,14 @@ export default class DaBrowse extends LitElement {
   async syncChatContext(aside, options) {
     const chat = aside.querySelector('nx-chat, nx-chat-ao');
     await chat?.updateComplete;
-    const pills = chat?.shadowRoot.querySelector('nx-pills');
+    // nx-chat-ao keeps its pills inside its nx-ao-input.
+    const input = chat?.shadowRoot.querySelector('nx-ao-input');
+    await input?.updateComplete;
+    const pills = (input ?? chat)?.shadowRoot.querySelector('nx-pills');
     await pills?.updateComplete;
     if (!chat?.isConnected || !pills || !this.isConnected) return;
     for (const item of this._browseSelection) this._sendBrowseContext(item);
-    if (options?.focus) chat.shadowRoot.querySelector('.chat-input')?.focus();
+    if (options?.focus) (input ?? chat).shadowRoot.querySelector('.chat-input')?.focus();
     if (options?.onReady) await options.onReady();
     if (!options?.text) return;
     const detail = { text: options.text, autoSend: options.autoSend };

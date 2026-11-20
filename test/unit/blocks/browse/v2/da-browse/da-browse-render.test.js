@@ -161,13 +161,16 @@ describe('da-browse render', () => {
     }
   });
 
-  it('forwards a prompt from panel options to the chat after replaying context', async () => {
+  it('forwards a prompt from panel options to nx-chat-ao after replaying context', async () => {
     await fixture({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
     el._handleBrowseSelection({ detail: { items: [{ path: '/org/site/a.html', name: 'a', ext: 'html' }] } });
     const aside = document.createElement('aside');
-    const chat = document.createElement('nx-chat');
+    const chat = document.createElement('nx-chat-ao');
     chat.attachShadow({ mode: 'open' });
-    chat.shadowRoot.innerHTML = '<nx-pills></nx-pills>';
+    chat.shadowRoot.innerHTML = '<nx-ao-input></nx-ao-input>';
+    const input = chat.shadowRoot.querySelector('nx-ao-input');
+    input.attachShadow({ mode: 'open' });
+    input.shadowRoot.innerHTML = '<nx-pills></nx-pills><textarea class="chat-input"></textarea>';
     aside.append(chat);
     document.body.append(aside);
     const events = [];
@@ -182,6 +185,7 @@ describe('da-browse render', () => {
       events.length = 0;
       await el.syncChatContext(aside, { focus: true });
       expect(events.some(({ type }) => type === CHAT_EVENT.SET_PROMPT)).to.be.false;
+      expect(input.shadowRoot.activeElement).to.equal(input.shadowRoot.querySelector('.chat-input'));
     } finally {
       document.removeEventListener(CHAT_EVENT.ADD_TO_CHAT, record);
       document.removeEventListener(CHAT_EVENT.SET_PROMPT, record);
