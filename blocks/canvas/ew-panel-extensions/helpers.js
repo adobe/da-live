@@ -6,11 +6,10 @@ import { daFetch, getAuthToken } from '../../shared/utils.js';
 import { fetchLibrarySource } from '../../shared/library-source.js';
 import { CON_ORIGIN, getPreviewOrigin } from '../../shared/constants.js';
 import { getPreviewProxyDetails, ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
-import { getCanvasBranch, whenCanvasBranch } from '../utils/branch.js';
+import { getCanvasBranch } from '../utils/branch.js';
 import { htmlToProse } from '../../edit/utils/helpers.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
 import { getBlockPositions } from '../editor-utils/blocks.js';
-import { canvasBus } from '../utils/canvas-bus.js';
 import createPreflightView from '../../shared/preflight/preflight-view.js';
 import {
   getCommentsBridge,
@@ -925,13 +924,6 @@ export function createCommentsView() {
   };
 }
 
-function createCanvasPreflightPage() {
-  return {
-    subscribeActiveView: (listener) => canvasBus.toolPanelViewState.subscribe(listener),
-    resolveBranch: whenCanvasBranch,
-  };
-}
-
 export function extensionToPanelView(ext, section) {
   const proxyOpts = { getUrl: getPreviewOrigin, currentOrg: ext.org };
   if (ext.name === 'blocks') {
@@ -1029,7 +1021,7 @@ export function extensionToPanelView(ext, section) {
   return view;
 }
 
-export async function getCanvasToolPanelViews({ org, site }, { publishHook } = {}) {
+export async function getCanvasToolPanelViews({ org, site }) {
   const extensions = await fetchExtensions(org, site);
   const library = sortLibraryExtensions(extensions.filter(
     (ext) => isLibraryExtension(ext) && ext.name !== 'aem-assets',
@@ -1042,10 +1034,7 @@ export async function getCanvasToolPanelViews({ org, site }, { publishHook } = {
     createFileExplorerView(),
     createVersioningView(),
     createCommentsView(),
-    createPreflightView({
-      page: createCanvasPreflightPage(),
-      publishHook,
-    }),
+    createPreflightView(),
     ...library.map((ext) => extensionToPanelView(ext, 'Library')),
     ...thirdParty.map((ext) => extensionToPanelView(ext, 'Extensions')),
   ];

@@ -1,12 +1,18 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { getPreviewOrigin } from '../constants.js';
+import { fetchWysiwygBranch } from '../utils.js';
+import { TOOL_PANEL_SECTION } from '../tool-panel/tool-panel-section.js';
 import { evaluatePage } from './api.js';
 import { adaptEvaluation } from './evaluation.js';
-import { PREFLIGHT_TAG, PREFLIGHT_VIEW_ID } from './preflight-view.js';
+import { PREFLIGHT_TAG } from './preflight-view.js';
+import { publishHook } from './publish-hook.js';
 
 const nx = getNx();
-const { loadStyle, hashChange } = await import(`${nx}/utils/utils.js`);
+const [{ loadStyle, hashChange }, { subscribePanelVisibility }] = await Promise.all([
+  import(`${nx}/utils/utils.js`),
+  import(`${nx}/utils/panel.js`),
+]);
 
 const nx2 = getNx2();
 const [buttons, spinner, style] = await Promise.all([
@@ -33,16 +39,12 @@ function ensureRenderer() {
 
 class DaPreflight extends LitElement {
   static properties = {
+    // The tool panel hides every view but the active one.
+    hidden: { type: Boolean, reflect: true },
     _loading: { state: true },
     _error: { state: true },
     _data: { state: true },
   };
-
-  // Reports the active tool panel view and resolves the preview branch of a page.
-  page;
-
-  // Connects Preflight to publishing. Optional.
-  publishHook;
 
   connectedCallback() {
     super.connectedCallback();
@@ -52,25 +54,31 @@ class DaPreflight extends LitElement {
       if (this._started && pageKey(state) !== this._evaluatedKey) this._onPageChange();
     });
     // Answer a publish gate that runs while the panel is already mounted.
-    this._unsubRun = this.publishHook?.subscribeRunRequest(this._handlePreflightRun);
+    this._unsubRun = publishHook.subscribeRunRequest(this._handlePreflightRun);
     if (!this._started) {
       this._started = true;
       // If a publish opened this panel, run for that gate; otherwise a plain first-open
       // evaluation. Page navigation re-runs via _onPageChange.
-      const pending = this.publishHook?.takePendingRunRequest();
+      const pending = publishHook.takePendingRunRequest();
       if (pending) this._handlePreflightRun(pending);
       else this._evaluateAndReport();
     }
-    // Subscribe after the first-open run. The page replays the active view right away,
+    // Subscribe after the first-open run. The panel reports its visibility right away,
     // which must find that run already loading rather than start a second one.
-    this._unsubView = this.page.subscribeActiveView(this._onViewState);
+    this._unsubPanel = subscribePanelVisibility(this._onPanelVisibility);
+  }
+
+  updated(changed) {
+    if (changed.has('hidden')) {
+      this._evaluateIfShown();
+    }
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
     this._unsubRun?.();
-    this._unsubView?.();
+    this._unsubPanel?.();
     // Unmounting before a gate settles frees the waiting publish immediately.
     this._cancelGate();
   }
@@ -112,15 +120,28 @@ class DaPreflight extends LitElement {
     this._evaluateIfShown();
   }
 
-  _onViewState = (viewId) => {
-    this._activeView = viewId;
+  // Closing the tools panel frees a waiting publish. Switching to another view or
+  // closing another panel, such as chat, leaves the run going.
+  _onPanelVisibility = (sections) => {
+    const open = sections.includes(TOOL_PANEL_SECTION);
+    if (this._panelOpen && !open) {
+      this._cancelGate();
+    }
+
+    this._panelOpen = open;
     this._evaluateIfShown();
   };
 
   // No results, no error and nothing in flight means the current page was never evaluated.
   _evaluateIfShown() {
-    if (this._activeView !== PREFLIGHT_VIEW_ID) return;
-    if (this._data || this._error || this._loading) return;
+    if (this.hidden || !this._panelOpen) {
+      return;
+    }
+
+    if (this._data || this._error || this._loading) {
+      return;
+    }
+
     this._evaluateAndReport();
   }
 
@@ -128,20 +149,20 @@ class DaPreflight extends LitElement {
   async _evaluateAndReport() {
     const verdict = await this._evaluateCurrentPage();
     if (!verdict || this._gateRequestId) return;
-    this.publishHook?.reportStatus({ path: this._docFullpath, ...verdict });
+    publishHook.reportStatus({ path: this._docFullpath, ...verdict });
   }
 
   _handlePreflightRun = async (detail) => {
     const requestId = detail?.requestId;
     const path = detail?.path ?? detail?.paths?.[0];
     if (!requestId || !path) return;
-    this.publishHook?.takePendingRunRequest(requestId);
+    publishHook.takePendingRunRequest(requestId);
     // The pending store (first open) and the live subscription (re-publish) can both
     // deliver the same run; only act once.
     if (requestId === this._lastGateRequestId) return;
     this._lastGateRequestId = requestId;
     if (path !== this._docFullpath) {
-      this.publishHook?.reportStatus({ path, status: 'cancelled', requestId });
+      publishHook.reportStatus({ path, status: 'cancelled', requestId });
       return;
     }
     // A newer run for this page supersedes the open gate; free that publish first.
@@ -150,12 +171,6 @@ class DaPreflight extends LitElement {
     this._gateRequestId = requestId;
     this._gatePath = path;
     this._gateSettled = false;
-    // Cancel only when the tools panel itself closes (`null`). Other panels closing
-    // (e.g. chat) or switching to another tool view leave the run going.
-    this._unsubPanelVisibility?.();
-    this._unsubPanelVisibility = this.page.subscribeActiveView((viewId) => {
-      if (viewId === null) this._cancelGate();
-    });
     const verdict = await this._evaluateCurrentPage();
     // Settle only the gate this run started; it may already be settled or replaced.
     if (this._gateRequestId !== requestId) return;
@@ -166,23 +181,22 @@ class DaPreflight extends LitElement {
   _finishGate(status, message) {
     if (this._gateSettled || !this._gateRequestId) return;
     this._gateSettled = true;
-    this._unsubPanelVisibility?.();
-    this._unsubPanelVisibility = null;
     const { _gateRequestId: requestId, _gatePath: path } = this;
     this._gateRequestId = null;
     this._gatePath = null;
-    this.publishHook?.reportStatus({ path, status, requestId, ...(message && { message }) });
+    publishHook.reportStatus({ path, status, requestId, ...(message && { message }) });
   }
 
   _cancelGate() {
     this._finishGate('cancelled');
   }
 
-  // The checks read the rendered page, so they run on its preview on the page's branch.
+  // The checks read the rendered page, so they run on its preview, on the preview
+  // branch of the page.
   async _checkPage({ org, site, path }) {
     const relativePath = path ? path.replace(/^\//, '') : '';
-    // The panel can evaluate before the editor finishes resolving this page's branch.
-    const branch = await this.page.resolveBranch({ org, site, path: relativePath || undefined });
+    const pagePath = relativePath ? `${org}/${site}/${relativePath}` : undefined;
+    const branch = await fetchWysiwygBranch({ org, site, path: pagePath }).catch(() => undefined);
     if (!branch) {
       const error = new Error('Branch not resolved');
       error.detail = 'Could not determine the preview branch for this page. Try again.';

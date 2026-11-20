@@ -21,17 +21,15 @@ function captureEvents(type) {
   return { events, stop: () => document.removeEventListener(type, listener) };
 }
 
-describe('createPublishHook', () => {
-  let createPublishHook;
+describe('publish hook', () => {
   let hook;
   let stop;
 
   before(async () => {
-    ({ default: createPublishHook } = await import('../../../../../blocks/shared/preflight/publish-hook.js'));
+    ({ publishHook: hook } = await import('../../../../../blocks/shared/preflight/publish-hook.js'));
   });
 
   beforeEach(() => {
-    hook = createPublishHook();
     stop = hook.start();
   });
 
@@ -81,10 +79,11 @@ describe('createPublishHook', () => {
 
   it('parks a request before subscribers hear it', () => {
     const claimed = [];
-    hook.subscribeRunRequest(({ requestId }) => {
+    const unsubscribe = hook.subscribeRunRequest(({ requestId }) => {
       claimed.push(hook.takePendingRunRequest(requestId));
     });
     requestRun({ paths: [PAGE_PATH], requestId: 'run-6' });
+    unsubscribe();
     expect(claimed).to.deep.equal([{ path: PAGE_PATH, requestId: 'run-6' }]);
   });
 
@@ -114,20 +113,18 @@ describe('createPublishHook', () => {
   });
 });
 
-describe('createPublishHook with Preflight', () => {
-  let createPublishHook;
+describe('publish hook with Preflight', () => {
   let hashChange;
   let hook;
   let stop;
 
   before(async () => {
-    ({ default: createPublishHook } = await import('../../../../../blocks/shared/preflight/publish-hook.js'));
+    ({ publishHook: hook } = await import('../../../../../blocks/shared/preflight/publish-hook.js'));
     await import('../../../../../blocks/shared/preflight/preflight.js');
     ({ hashChange } = await import(`${getNx()}/utils/utils.js`));
   });
 
   beforeEach(() => {
-    hook = createPublishHook();
     stop = hook.start();
     hashChange._set({ org: 'org', site: 'site', path: '/a' });
   });
@@ -137,13 +134,9 @@ describe('createPublishHook with Preflight', () => {
     hashChange._set({});
   });
 
-  // Preflight wired to the hook the way a tool panel loads it, with its checks stubbed.
+  // Preflight the way a tool panel loads it, with its checks stubbed.
   function createPreflight(checkPage) {
-    const el = Object.assign(document.createElement('da-preflight'), {
-      page: { subscribeActiveView: () => () => {}, resolveBranch: async () => 'main' },
-      publishHook: hook,
-    });
-    // eslint-disable-next-line no-underscore-dangle
+    const el = document.createElement('da-preflight');
     el._checkPage = checkPage;
     return el;
   }

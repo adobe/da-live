@@ -1,72 +1,47 @@
 /* eslint-disable no-underscore-dangle */
 import { expect } from '@esm-bundle/chai';
 import { getNx, setNx } from '../../../../../scripts/utils.js';
-import { createChannel } from '../../../../../blocks/shared/channel.js';
 import { adaptEvaluation } from '../../../../../blocks/shared/preflight/evaluation.js';
 
 const tick = () => new Promise((resolve) => { setTimeout(resolve, 20); });
 const GATE_PAGE = { org: 'org', site: 'site', path: '/a' };
 
-// Stands in for the page port of an editor. Like the tool panel of canvas, it replays
-// the active view to new subscribers until the panel closes.
-function createFakePage() {
-  const activeView = createChannel({ replay: Boolean });
-  return {
-    activeView,
-    subscribeActiveView: (listener) => activeView.subscribe(listener),
-    resolveBranch: async () => 'main',
-  };
-}
+const RUN = 'nx-preflight-run';
+const STATUS = 'nx-preflight-status';
 
-// Stands in for the publishHook port of an editor. It parks each run request for a
-// single page until a view claims it.
-function createFakeHook() {
-  const runRequests = createChannel();
-  const statusListeners = new Set();
-  let pending = null;
-  return {
-    get pending() {
-      return pending;
-    },
-    requestRun(detail) {
-      if (detail.requestId && detail.paths?.length === 1) {
-        pending = { path: detail.paths[0], requestId: detail.requestId };
-      }
-      runRequests.emit(detail);
-    },
-    subscribeRunRequest: (handler) => runRequests.subscribe(handler),
-    takePendingRunRequest(requestId) {
-      if (requestId && pending?.requestId !== requestId) {
-        return null;
-      }
-
-      const request = pending;
-      pending = null;
-      return request;
-    },
-    reportStatus: (detail) => statusListeners.forEach((listener) => listener(detail)),
-    captureStatus() {
-      const events = [];
-      const listener = (detail) => { events.push(detail); };
-      statusListeners.add(listener);
-      return { events, stop: () => statusListeners.delete(listener) };
-    },
-  };
-}
-
-let page;
+// The da-nx panel registry fixture and the shared publish hook, as Preflight loads them.
+let panel;
+let publishHook;
+let stopPublishHook;
 let checkPage;
-let hook;
 
-function useFakePorts() {
-  page = createFakePage();
+before(async () => {
+  setNx('/test/fixtures/nx', { hostname: 'example.com' });
+  panel = await import(`${getNx()}/utils/panel.js`);
+  ({ publishHook } = await import('../../../../../blocks/shared/preflight/publish-hook.js'));
+});
+
+// Each test starts with the tools panel closed. An editor that publishes starts the hook.
+function setUpPage({ publishing = true } = {}) {
+  panel.setVisiblePanelSections([]);
+  stopPublishHook = publishing ? publishHook.start() : null;
   // Stands in for the checks of the open page. Tests that evaluate set what they return.
   checkPage = async () => ({ failed: 0 });
-  hook = createFakeHook();
 }
 
+afterEach(() => {
+  stopPublishHook?.();
+  stopPublishHook = null;
+  panel.setVisiblePanelSections([]);
+});
+
+const openToolsPanel = () => panel.setVisiblePanelSections(['tools']);
+const closeToolsPanel = () => panel.setVisiblePanelSections([]);
+const requestRun = (detail) => document.dispatchEvent(new CustomEvent(RUN, { detail }));
+const takeParkedRequest = () => publishHook.takePendingRunRequest();
+
 function createPreflight() {
-  const el = Object.assign(document.createElement('da-preflight'), { page, publishHook: hook });
+  const el = document.createElement('da-preflight');
   el._checkPage = (target) => checkPage(target);
   return el;
 }
@@ -89,7 +64,13 @@ function stubEvaluate(el, { failed = 0, error = null } = {}) {
   return el;
 }
 
-const captureStatus = () => hook.captureStatus();
+// Records each verdict Preflight reports to the publish dialog.
+function captureStatus() {
+  const events = [];
+  const listener = (event) => { events.push(event.detail); };
+  document.addEventListener(STATUS, listener);
+  return { events, stop: () => document.removeEventListener(STATUS, listener) };
+}
 
 describe('da-preflight publish hook', () => {
   let hashChange;
@@ -101,7 +82,7 @@ describe('da-preflight publish hook', () => {
   });
 
   beforeEach(() => {
-    useFakePorts();
+    setUpPage();
     hashChange._set(GATE_PAGE);
   });
 
@@ -269,49 +250,61 @@ describe('da-preflight publish hook', () => {
   });
 
   it('reports cancelled when the tools panel closes before the run settles', async () => {
-    const el = createGateElement();
-    let release;
-    el._evaluate = () => new Promise((resolve) => { release = resolve; });
-    const running = el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g4' });
+    openToolsPanel();
+    const el = stubEvaluate(createGateElement());
+    document.body.appendChild(el);
+    try {
+      await tick();
+      let release;
+      el._evaluate = () => new Promise((resolve) => { release = resolve; });
+      const running = el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g4' });
 
-    const cap = captureStatus();
-    page.activeView.emit(null);
-    cap.stop();
-    expect(cap.events).to.deep.equal([{ path: '/org/site/a.html', status: 'cancelled', requestId: 'g4' }]);
+      const cap = captureStatus();
+      closeToolsPanel();
+      cap.stop();
+      expect(cap.events).to.deep.equal([{ path: '/org/site/a.html', status: 'cancelled', requestId: 'g4' }]);
 
-    // The late-settling evaluate must not emit a second (success) status.
-    const cap2 = captureStatus();
-    release();
-    await running;
-    cap2.stop();
-    expect(cap2.events).to.deep.equal([]);
+      // The late-settling evaluate must not emit a second (success) status.
+      const cap2 = captureStatus();
+      release();
+      await running;
+      cap2.stop();
+      expect(cap2.events).to.deep.equal([]);
+    } finally {
+      el.remove();
+    }
   });
 
   it('keeps the run going when another panel closes or the tool view switches', async () => {
-    const el = createGateElement();
-    let release;
-    el._evaluate = () => new Promise((resolve) => {
-      release = () => {
-        el._error = null;
-        el._data = { failed: 0 };
-        resolve(el._verdictFor({ data: el._data }));
-      };
-    });
-    const running = el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g4b' });
+    panel.setVisiblePanelSections(['chat', 'tools']);
+    const el = stubEvaluate(createGateElement());
+    document.body.appendChild(el);
+    try {
+      await tick();
+      let release;
+      el._evaluate = () => new Promise((resolve) => {
+        release = () => {
+          el._error = null;
+          el._data = { failed: 0 };
+          resolve(el._verdictFor({ data: el._data }));
+        };
+      });
+      const running = el._handlePreflightRun({ paths: ['/org/site/a.html'], requestId: 'g4b' });
 
-    const cap = captureStatus();
-    // Chat's close button: bubbles to document with no section.
-    document.dispatchEvent(new CustomEvent('nx-panel-close', { bubbles: true, composed: true }));
-    document.dispatchEvent(new CustomEvent('nx-panel-close', { detail: { section: 'chat' } }));
-    // The tool panel re-broadcasts / switches view while still open.
-    page.activeView.emit('preflight');
-    page.activeView.emit('files');
-    expect(cap.events).to.deep.equal([]);
+      const cap = captureStatus();
+      // Chat closes while the tools panel stays open, then the author switches views.
+      panel.setVisiblePanelSections(['tools']);
+      el.hidden = true;
+      await el.updateComplete;
+      expect(cap.events).to.deep.equal([]);
 
-    release();
-    await running;
-    cap.stop();
-    expect(cap.events).to.deep.equal([{ path: '/org/site/a.html', status: 'success', requestId: 'g4b' }]);
+      release();
+      await running;
+      cap.stop();
+      expect(cap.events).to.deep.equal([{ path: '/org/site/a.html', status: 'success', requestId: 'g4b' }]);
+    } finally {
+      el.remove();
+    }
   });
 
   it('_cancelGate emits cancelled for an in-flight hook (disconnect backstop)', () => {
@@ -398,7 +391,7 @@ describe('da-preflight publish hook', () => {
 
   it('runs the hook once on first open via the parked pending request', async () => {
     // A run that fires before the panel mounts is parked, not delivered live.
-    hook.requestRun({ paths: ['/org/site/a.html'], requestId: 'g7' });
+    requestRun({ paths: ['/org/site/a.html'], requestId: 'g7' });
     await tick();
 
     const el = stubEvaluate(createGateElement(), { failed: 0 });
@@ -422,12 +415,12 @@ describe('da-preflight publish hook', () => {
       await tick();
       cap = captureStatus();
 
-      hook.requestRun(detail);
-      expect(hook.pending).to.equal(null);
+      requestRun(detail);
+      expect(takeParkedRequest()).to.equal(null);
       await tick();
 
-      hook.requestRun(detail);
-      expect(hook.pending).to.equal(null);
+      requestRun(detail);
+      expect(takeParkedRequest()).to.equal(null);
       await tick();
 
       el.remove();
@@ -460,9 +453,9 @@ describe('da-preflight publish hook', () => {
       cap = captureStatus();
 
       const detail = { paths: ['/org/site/a.html'], requestId: 'mismatch' };
-      hook.requestRun(detail);
+      requestRun(detail);
       await tick();
-      hook.requestRun(detail);
+      requestRun(detail);
       await tick();
 
       expect(cap.events).to.deep.equal([
@@ -472,7 +465,7 @@ describe('da-preflight publish hook', () => {
       expect(el._gateRequestId).to.equal('active');
       expect(el._gatePath).to.equal('/org/site/b.html');
       expect(el._gateSettled).to.equal(false);
-      expect(hook.pending).to.equal(null);
+      expect(takeParkedRequest()).to.equal(null);
     } finally {
       cap?.stop();
       el.remove();
@@ -499,9 +492,9 @@ describe('da-preflight publish hook', () => {
   });
 
   it('cancels a request parked before navigation instead of evaluating the new page for that hook', async () => {
-    hook.requestRun({ paths: ['/org/site/a.html'], requestId: 'parked-a' });
+    requestRun({ paths: ['/org/site/a.html'], requestId: 'parked-a' });
     hashChange._set({ ...GATE_PAGE, path: '/b' });
-    page.activeView.emit('preflight');
+    openToolsPanel();
     const el = createGateElement();
     const runs = [];
     el._evaluate = async () => {
@@ -517,7 +510,7 @@ describe('da-preflight publish hook', () => {
         { path: '/org/site/a.html', status: 'cancelled', requestId: 'parked-a' },
       ]);
       expect(runs).to.deep.equal([{ path: '/b', requestId: undefined }]);
-      expect(hook.pending).to.equal(null);
+      expect(takeParkedRequest()).to.equal(null);
     } finally {
       cap.stop();
       el.remove();
@@ -536,7 +529,7 @@ describe('da-preflight document navigation', () => {
     ({ hashChange } = await import(`${getNx()}/utils/utils.js`));
   });
 
-  beforeEach(useFakePorts);
+  beforeEach(() => setUpPage());
 
   // Records which page each evaluation ran for; `hold` keeps the next run pending.
   // Mirrors the real _evaluate's runId guard against stale responses.
@@ -566,9 +559,9 @@ describe('da-preflight document navigation', () => {
     return runs;
   }
 
-  async function mount(view) {
+  async function mount() {
     hashChange._set(PAGE_A);
-    page.activeView.emit(view);
+    openToolsPanel();
     const el = createPreflight();
     const runs = trackEvaluate(el);
     document.body.appendChild(el);
@@ -577,7 +570,7 @@ describe('da-preflight document navigation', () => {
   }
 
   it('evaluates exactly once on first mount with the view active', async () => {
-    const { el, runs } = await mount('preflight');
+    const { el, runs } = await mount();
     try {
       expect(runs).to.deep.equal(['/a']);
     } finally {
@@ -586,18 +579,18 @@ describe('da-preflight document navigation', () => {
   });
 
   it('does not evaluate again when a hook already ran while the view was hidden', async () => {
-    const { el, runs } = await mount('preflight');
+    const { el, runs } = await mount();
     try {
-      page.activeView.emit('files');
+      el.hidden = true;
       hashChange._set(PAGE_B);
       el.hold = true;
       const running = el._handlePreflightRun({ paths: ['/o/s/b.html'], requestId: 'nav2' });
-      page.activeView.emit('preflight');
+      el.hidden = false;
       await tick();
       expect(runs).to.deep.equal(['/a', '/b']);
       el.release();
       await running;
-      page.activeView.emit('preflight');
+      el.hidden = false;
       await tick();
       expect(runs).to.deep.equal(['/a', '/b']);
     } finally {
@@ -606,7 +599,7 @@ describe('da-preflight document navigation', () => {
   });
 
   it('re-evaluates the new page when navigating while the view is active', async () => {
-    const { el, runs } = await mount('preflight');
+    const { el, runs } = await mount();
     try {
       hashChange._set(PAGE_B);
       await tick();
@@ -618,15 +611,31 @@ describe('da-preflight document navigation', () => {
   });
 
   it('defers re-evaluation until the view is shown again', async () => {
-    const { el, runs } = await mount('preflight');
+    const { el, runs } = await mount();
     try {
-      page.activeView.emit('files');
+      el.hidden = true;
       hashChange._set(PAGE_B);
       await tick();
       expect(runs).to.deep.equal(['/a']);
       expect(el._data).to.equal(null);
 
-      page.activeView.emit('preflight');
+      el.hidden = false;
+      await tick();
+      expect(runs).to.deep.equal(['/a', '/b']);
+    } finally {
+      el.remove();
+    }
+  });
+
+  it('defers re-evaluation until the tools panel opens again', async () => {
+    const { el, runs } = await mount();
+    try {
+      closeToolsPanel();
+      hashChange._set(PAGE_B);
+      await tick();
+      expect(runs).to.deep.equal(['/a']);
+
+      openToolsPanel();
       await tick();
       expect(runs).to.deep.equal(['/a', '/b']);
     } finally {
@@ -635,7 +644,7 @@ describe('da-preflight document navigation', () => {
   });
 
   it('ignores hash changes that keep the same page', async () => {
-    const { el, runs } = await mount('preflight');
+    const { el, runs } = await mount();
     try {
       hashChange._set({ ...PAGE_A });
       await tick();
@@ -646,7 +655,7 @@ describe('da-preflight document navigation', () => {
   });
 
   it('cancels a hook for the old page and drops its late result', async () => {
-    const { el, runs } = await mount('preflight');
+    const { el, runs } = await mount();
     try {
       el.hold = true;
       const running = el._handlePreflightRun({ paths: ['/o/s/a.html'], requestId: 'nav1' });
@@ -677,7 +686,7 @@ describe('da-preflight evaluation', () => {
     await import('../../../../../blocks/shared/preflight/preflight.js');
   });
 
-  beforeEach(useFakePorts);
+  beforeEach(() => setUpPage());
 
   it('checks the open page', async () => {
     const targets = [];
@@ -747,19 +756,38 @@ describe('da-preflight page checks', () => {
   let saved;
   let checkedUrls;
   let respond;
+  let respondToConfig;
 
   before(async () => {
     setNx('/test/fixtures/nx', { hostname: 'example.com' });
     await import('../../../../../blocks/shared/preflight/preflight.js');
   });
 
+  // An author opens a branch with `?ref`.
+  function setSearch(search) {
+    const url = new URL(window.location.href);
+    url.search = search;
+    window.history.replaceState(null, '', url);
+  }
+
   beforeEach(() => {
-    saved = { fetch: window.fetch, ims: window.adobeIMS, nxIms: localStorage.getItem('nx-ims') };
+    saved = {
+      fetch: window.fetch,
+      ims: window.adobeIMS,
+      nxIms: localStorage.getItem('nx-ims'),
+      search: window.location.search,
+    };
     localStorage.setItem('nx-ims', 'true');
     window.adobeIMS = { getAccessToken: () => ({ token: 'tok' }) };
     checkedUrls = [];
     respond = () => new Response('{}', { status: 200 });
+    // The site configures no preview branch unless a test says otherwise.
+    respondToConfig = () => new Response(JSON.stringify({ data: [] }), { status: 200 });
     window.fetch = async (url, init) => {
+      if (!String(url).endsWith('/api/v0/evaluate/page')) {
+        return respondToConfig();
+      }
+
       checkedUrls.push(JSON.parse(init.body).url);
       return respond();
     };
@@ -773,34 +801,28 @@ describe('da-preflight page checks', () => {
     } else {
       localStorage.setItem('nx-ims', saved.nxIms);
     }
+    setSearch(saved.search);
   });
 
-  // Preflight with its real checks, on a page that resolves the given branch.
-  function createChecked(resolveBranch) {
-    const checkedPage = { subscribeActiveView: () => () => {}, resolveBranch };
-    return Object.assign(document.createElement('da-preflight'), { page: checkedPage });
-  }
+  const createChecked = () => document.createElement('da-preflight');
 
-  it('checks the preview of the page on its branch', async () => {
-    const branchRequests = [];
-    const el = createChecked(async (request) => {
-      branchRequests.push(request);
-      return 'Feat/One';
-    });
-    await el._checkPage(PAGE);
-    expect(branchRequests).to.deep.equal([{ org: 'org', site: 'site', path: 'a' }]);
+  it('checks the preview of the page on the branch the author opened', async () => {
+    setSearch('?ref=Feat/One');
+    await createChecked()._checkPage(PAGE);
     expect(checkedUrls).to.have.lengthOf(1);
     expect(checkedUrls[0]).to.match(/^https:\/\/feat-one--site--org\.[^/]+\/a$/);
   });
 
+  it('checks the preview on the branch the site configures for the page', async () => {
+    // A site of its own, because a loaded config stays cached.
+    const data = [{ key: 'ew.wysiwygBranch', value: '/cfg-org/cfg-site/a=feature' }];
+    respondToConfig = () => new Response(JSON.stringify({ data }), { status: 200 });
+    await createChecked()._checkPage({ org: 'cfg-org', site: 'cfg-site', path: '/a' });
+    expect(checkedUrls[0]).to.match(/^https:\/\/feature--cfg-site--cfg-org\.[^/]+\/a$/);
+  });
+
   it('checks the site root when no page path is open', async () => {
-    const branchRequests = [];
-    const el = createChecked(async (request) => {
-      branchRequests.push(request);
-      return 'main';
-    });
-    await el._checkPage({ org: 'org', site: 'site' });
-    expect(branchRequests).to.deep.equal([{ org: 'org', site: 'site', path: undefined }]);
+    await createChecked()._checkPage({ org: 'org', site: 'site' });
     expect(checkedUrls[0]).to.match(/^https:\/\/main--site--org\.[^/]+$/);
   });
 
@@ -817,13 +839,16 @@ describe('da-preflight page checks', () => {
       },
     };
     respond = () => new Response(JSON.stringify(response), { status: 200 });
-    const data = await createChecked(async () => 'main')._checkPage(PAGE);
+    const data = await createChecked()._checkPage(PAGE);
     expect(data).to.deep.equal(adaptEvaluation(response));
     expect(data.failed).to.equal(1);
   });
 
   it('rejects with the reason instead of guessing a branch', async () => {
-    const error = await createChecked(async () => undefined)._checkPage(PAGE).catch((e) => e);
+    // A site of its own, because a failed lookup stays cached.
+    respondToConfig = () => Promise.reject(new TypeError('Failed to fetch'));
+    const offline = { org: 'offline-org', site: 'site', path: '/a' };
+    const error = await createChecked()._checkPage(offline).catch((e) => e);
     expect(error).to.be.instanceOf(Error);
     expect(error.detail).to.contain('preview branch');
     expect(checkedUrls).to.deep.equal([]);
@@ -831,12 +856,12 @@ describe('da-preflight page checks', () => {
 
   it('rejects with the reason of the API when the checks cannot run', async () => {
     respond = () => new Response(JSON.stringify({ detail: 'Page not found' }), { status: 404 });
-    const error = await createChecked(async () => 'main')._checkPage(PAGE).catch((e) => e);
+    const error = await createChecked()._checkPage(PAGE).catch((e) => e);
     expect(error.detail).to.equal('Page not found (404)');
   });
 });
 
-describe('da-preflight without a publish hook', () => {
+describe('da-preflight without publishing', () => {
   let hashChange;
 
   before(async () => {
@@ -846,17 +871,19 @@ describe('da-preflight without a publish hook', () => {
   });
 
   beforeEach(() => {
-    useFakePorts();
+    setUpPage({ publishing: false });
     hashChange._set(GATE_PAGE);
+    openToolsPanel();
   });
 
   afterEach(() => {
     hashChange._set({});
   });
 
-  // Mounts Preflight without a publish hook. Each evaluation records its page.
+  // Mounts Preflight in an editor that never starts the publish hook. Each evaluation
+  // records its page.
   async function mountWithoutGate() {
-    const el = Object.assign(document.createElement('da-preflight'), { page });
+    const el = document.createElement('da-preflight');
     const runs = [];
     el._evaluate = async () => {
       runs.push(el._hashState.path);
@@ -871,7 +898,6 @@ describe('da-preflight without a publish hook', () => {
   it('evaluates on first open and shows the results', async () => {
     const { el, runs } = await mountWithoutGate();
     try {
-      expect(el.publishHook).to.equal(undefined);
       expect(runs).to.deep.equal(['/a']);
       expect(el.shadowRoot.querySelector('nx-page-eval')).to.exist;
     } finally {
@@ -882,12 +908,12 @@ describe('da-preflight without a publish hook', () => {
   it('evaluates a new page once the view is shown again', async () => {
     const { el, runs } = await mountWithoutGate();
     try {
-      page.activeView.emit('files');
+      el.hidden = true;
       hashChange._set({ ...GATE_PAGE, path: '/b' });
       await tick();
       expect(runs).to.deep.equal(['/a']);
 
-      page.activeView.emit('preflight');
+      el.hidden = false;
       await tick();
       expect(runs).to.deep.equal(['/a', '/b']);
     } finally {
@@ -895,7 +921,7 @@ describe('da-preflight without a publish hook', () => {
     }
   });
 
-  it('refreshes from the header with no hook to report to', async () => {
+  it('refreshes from the header when nothing publishes', async () => {
     const { el, runs } = await mountWithoutGate();
     try {
       el.getHeaderActions().click();
