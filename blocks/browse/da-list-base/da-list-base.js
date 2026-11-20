@@ -675,7 +675,12 @@ export default class DaListBase extends LitElement {
     const pageCount = this._selectedPages.length;
     if (!pageCount) return;
     if (pageCount > MAX_PREFLIGHT_COUNT) {
-      this.setStatus('Too many pages', `Select at most ${MAX_PREFLIGHT_COUNT} pages to run preflight.`);
+      // From Publish (enforced) the user asked to publish, so say that publishing was refused.
+      if (publish) {
+        this.setStatus('Too many pages', `Publishing requires preflight, which supports at most ${MAX_PREFLIGHT_COUNT} pages. Select fewer pages and publish in batches.`, 'error');
+      } else {
+        this.setStatus('Too many pages', `Select at most ${MAX_PREFLIGHT_COUNT} pages to run preflight.`);
+      }
       this.later(() => this.setStatus(), 5000);
       return;
     }

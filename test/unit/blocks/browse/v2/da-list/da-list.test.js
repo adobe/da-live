@@ -862,13 +862,31 @@ describe('DaList helpers', () => {
       expect(el._confirm).to.deep.equal({ type: 'publish' });
     });
 
-    it('Refuses to open over the page cap', () => {
+    const overCap = () => Array.from({ length: MAX_PREFLIGHT_COUNT + 1 }, (_, i) => ({ ext: 'html', path: `/o/s/${i}.html` }));
+
+    it('Refuses to open over the page cap', async () => {
       const el = makeList();
       el.preflightEnabled = true;
-      el._selectedItems = Array.from({ length: MAX_PREFLIGHT_COUNT + 1 }, (_, i) => ({ ext: 'html', path: `/o/s/${i}.html` }));
-      el.handleOpenPreflight();
+      el._selectedItems = overCap();
+      await el.handleOpenPreflight();
       expect(el._preflight).to.not.be.ok;
-      expect(el._status.text).to.equal('Too many pages');
+      expect(el._status).to.deep.equal({
+        type: 'info',
+        text: 'Too many pages',
+        description: `Select at most ${MAX_PREFLIGHT_COUNT} pages to run preflight.`,
+      });
+    });
+
+    it('Says publishing was refused when enforced Publish is over the page cap', async () => {
+      const el = makeList();
+      el.preflightEnabled = true;
+      el.enforcePreflight = true;
+      el._selectedItems = overCap();
+      await el.handlePublish();
+      expect(el._preflight).to.not.be.ok;
+      expect(el._confirm).to.not.be.ok;
+      expect(el._status.type).to.equal('error');
+      expect(el._status.description).to.contain('Publishing requires preflight');
     });
 
     it('Keeps unpublished items selected after Publish Passing', () => {
