@@ -29,8 +29,8 @@ describe('proposal accept and reset', () => {
       id: 'proposal',
       dataModel: {
         proposals: {
-          page1: '/example/site/.da/campaigns/one.html',
-          page2: '/example/site/.da/campaigns/two.html',
+          page1: '/example/site/.da/proposals/campaigns/one.html',
+          page2: '/example/site/.da/proposals/campaigns/two.html',
         },
       },
       components: [
@@ -67,16 +67,16 @@ describe('proposal accept and reset', () => {
 
   it('saves every draft verbatim to its original before deleting it, then disables completed controls', async () => {
     expect(await run('acceptChanges')).to.deep.equal({ ok: true });
-    expect(source.get.firstCall.args[0]).to.deep.equal({ org: 'example', site: 'site', path: '/.da/campaigns/one.html', cachebust: true });
+    expect(source.get.firstCall.args[0]).to.deep.equal({ org: 'example', site: 'site', path: '/.da/proposals/campaigns/one.html', cachebust: true });
     expect(source.save.firstCall.args[0]).to.deep.equal({
       org: 'example',
       site: 'site',
       path: '/campaigns/one.html',
-      body: '<html><body>/.da/campaigns/one.html</body></html>',
+      body: '<html><body>/.da/proposals/campaigns/one.html</body></html>',
     });
     expect(source.save.secondCall.args[0].path).to.equal('/campaigns/two.html');
     expect(source.delete.args.map(([args]) => args.path)).to.deep.equal([
-      '/.da/campaigns/one.html', '/.da/campaigns/two.html',
+      '/.da/proposals/campaigns/one.html', '/.da/proposals/campaigns/two.html',
     ]);
     sinon.assert.callOrder(source.get, source.save, source.delete);
     expect(source.save.secondCall.calledBefore(source.delete.secondCall)).to.equal(true);
@@ -91,7 +91,7 @@ describe('proposal accept and reset', () => {
     expect(await run('resetPage')).to.deep.equal({ ok: true });
     expect(source.get.called).to.equal(false);
     expect(source.save.called).to.equal(false);
-    expect(source.delete.firstCall.args[0].path).to.equal('/.da/campaigns/one.html');
+    expect(source.delete.firstCall.args[0].path).to.equal('/.da/proposals/campaigns/one.html');
     expect(artifact.components.find((record) => record.id === 'page1-resetPage').label).to.equal('Draft discarded');
     expect(artifact.components.find((record) => record.id === 'page1-viewDiff').isDisabled).to.equal(true);
     expect(artifact.components.at(-1).isDisabled).to.equal(false);
@@ -143,7 +143,7 @@ describe('proposal accept and reset', () => {
     expect(await run('acceptChanges')).to.deep.equal({ ok: true });
     expect(source.get.callCount).to.equal(2);
     expect(source.save.callCount).to.equal(2);
-    expect(source.delete.thirdCall.args[0].path).to.equal('/.da/campaigns/two.html');
+    expect(source.delete.thirdCall.args[0].path).to.equal('/.da/proposals/campaigns/two.html');
   });
 
   it('retains cleanup state after a network failure deleting a saved draft', async () => {
@@ -154,7 +154,7 @@ describe('proposal accept and reset', () => {
     expect(result.error).to.include('Network unavailable');
     expect(await run('acceptChanges')).to.deep.equal({ ok: true });
     expect(source.save.callCount).to.equal(2);
-    expect(source.delete.secondCall.args[0].path).to.equal('/.da/campaigns/one.html');
+    expect(source.delete.secondCall.args[0].path).to.equal('/.da/proposals/campaigns/one.html');
   });
 
   it('leaves a failed reset available for retry without excluding the page from accept', async () => {
@@ -173,13 +173,23 @@ describe('proposal accept and reset', () => {
   });
 
   it('validates every target before the first write, rejecting unsafe paths and duplicates', async () => {
-    artifact.dataModel.proposals.page2 = '/example/other/.da/two.html';
+    artifact.dataModel.proposals.page2 = '/example/other/.da/proposals/two.html';
     expect((await run('acceptChanges')).ok).to.equal(false);
     artifact.dataModel.proposals.page2 = artifact.dataModel.proposals.page1;
     expect((await run('acceptChanges')).ok).to.equal(false);
     expect(source.get.called).to.equal(false);
     expect(source.save.called).to.equal(false);
     expect(source.delete.called).to.equal(false);
+  });
+
+  ['resetPage', 'acceptChanges'].forEach((name) => {
+    it(`rejects ${name} for non-proposal DA content without reading or mutating it`, async () => {
+      artifact.dataModel.proposals.page1 = '/example/site/.da/forms/schema.html';
+      expect((await run(name)).ok).to.equal(false);
+      expect(source.get.called).to.equal(false);
+      expect(source.save.called).to.equal(false);
+      expect(source.delete.called).to.equal(false);
+    });
   });
 
   it('rejects forged accept bindings without writes', async () => {
@@ -240,7 +250,7 @@ describe('proposal accept and reset', () => {
     expect((await run('acceptChanges', undefined, { getContext: () => active })).ok).to.equal(false);
     expect(source.save.callCount).to.equal(1);
     expect(source.delete.callCount).to.equal(1);
-    expect(source.delete.firstCall.args[0]).to.deep.equal({ org: 'example', site: 'site', path: '/.da/campaigns/one.html' });
+    expect(source.delete.firstCall.args[0]).to.deep.equal({ org: 'example', site: 'site', path: '/.da/proposals/campaigns/one.html' });
   });
 
   it('executes the accept binding in the actual skill example', async () => {
@@ -260,7 +270,7 @@ describe('proposal accept and reset', () => {
       api: { source },
     })).to.deep.equal({ ok: true });
     expect(source.save.firstCall.args[0].path).to.equal('/campaigns/spring-2026.html');
-    expect(source.delete.firstCall.args[0].path).to.equal('/.da/campaigns/spring-2026.html');
+    expect(source.delete.firstCall.args[0].path).to.equal('/.da/proposals/campaigns/spring-2026.html');
   });
 });
 
@@ -278,7 +288,7 @@ describe('canvas artifact actions', () => {
     };
     artifact = {
       id: 'proposal',
-      dataModel: { proposals: { page1: '/example/site/.da/campaigns/spring.html' } },
+      dataModel: { proposals: { page1: '/example/site/.da/proposals/campaigns/spring.html' } },
       components: [
         { id: 'root', component: 'Column', children: ['diff'] },
         { id: 'diff', component: 'ActionButton', label: 'Any label', action: { event } },
@@ -297,7 +307,7 @@ describe('canvas artifact actions', () => {
     expect(await handleArtifactAction({ action, artifact, context })).to.deep.equal({ ok: true });
     expect(requests).to.have.length(1);
     expect(requests[0].context).to.deep.equal(context);
-    expect(requests[0].details).to.deep.equal({ candidate: 'proposal', baseline: 'source', proposedPath: '/example/site/.da/campaigns/spring.html' });
+    expect(requests[0].details).to.deep.equal({ candidate: 'proposal', baseline: 'source', proposedPath: '/example/site/.da/proposals/campaigns/spring.html' });
   });
 
   const invalidCases = {
@@ -309,7 +319,7 @@ describe('canvas artifact actions', () => {
     'missing record': () => { artifact.components.pop(); },
     'duplicate IDs': () => { artifact.components.push({ ...artifact.components[1] }); },
     'missing ID': () => { delete artifact.components[1].id; },
-    'literal context value': () => { action.context.proposedPath = '/example/site/.da/page.html'; },
+    'literal context value': () => { action.context.proposedPath = '/example/site/.da/proposals/page.html'; },
     'unsupported component reference': () => { action.context.proposedPath.path = '/components/proposal/text'; },
     'mismatched declared reference': () => { action.context.proposedPath.path = '/proposals/other'; },
     'additional context': () => { action.context.html = '<p>Arbitrary HTML</p>'; },
@@ -317,12 +327,12 @@ describe('canvas artifact actions', () => {
     'missing data model': () => { delete artifact.dataModel; },
     'missing proposal value': () => { delete artifact.dataModel.proposals.page1; },
     'non-string data': () => { artifact.dataModel.proposals.page1 = { path: '/another' }; },
-    'array proposals': () => { artifact.dataModel.proposals = ['/example/site/.da/page.html']; },
+    'array proposals': () => { artifact.dataModel.proposals = ['/example/site/.da/proposals/page.html']; },
     'inherited proposals': () => {
-      artifact.dataModel = Object.create({ proposals: { page1: '/example/site/.da/page.html' } });
+      artifact.dataModel = Object.create({ proposals: { page1: '/example/site/.da/proposals/page.html' } });
     },
     'inherited proposal value': () => {
-      artifact.dataModel.proposals = Object.create({ page1: '/example/site/.da/page.html' });
+      artifact.dataModel.proposals = Object.create({ page1: '/example/site/.da/proposals/page.html' });
     },
   };
   Object.entries(invalidCases).forEach(([name, invalidate]) => {
@@ -334,13 +344,14 @@ describe('canvas artifact actions', () => {
   });
 
   [
-    '/other/site/.da/page.html', '/example/other/.da/page.html',
-    '/example/site/page.html', '/example/site/.da/../page.html',
-    '/example/site/.da/%2e%2e/page.html', '/example/site/.da//page.html',
-    '/example/site/.da/nested/.da/page.html', '/example/site/.da/page.html?x=1',
-    '/example/site/.da/page.html#hash', '/example/site/.da/page.md',
-    '/example/site/.da/.html', '/example/site/.da/folder/./page.html',
-    'https://example.com/example/site/.da/page.html', '/example/site/.da/a\\page.html',
+    '/other/site/.da/proposals/page.html', '/example/other/.da/proposals/page.html',
+    '/example/site/page.html', '/example/site/.da/page.html', '/example/site/.da/forms/schema.html',
+    '/example/site/.da/proposals/../page.html', '/example/site/.da/proposals/%2e%2e/page.html',
+    '/example/site/.da/proposals//page.html', '/example/site/.da/proposals/nested/.da/page.html',
+    '/example/site/.da/proposals/page.html?x=1', '/example/site/.da/proposals/page.html#hash',
+    '/example/site/.da/proposals/page.md', '/example/site/.da/proposals/.html',
+    '/example/site/.da/proposals/folder/./page.html',
+    'https://example.com/example/site/.da/proposals/page.html', '/example/site/.da/proposals/a\\page.html',
   ].forEach((path) => {
     it(`rejects unsafe staged path ${path}`, async () => {
       artifact.dataModel.proposals.page1 = path;

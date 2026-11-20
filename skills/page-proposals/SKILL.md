@@ -1,6 +1,6 @@
 ---
 name: page-proposals
-description: Use for every request to change, update, edit, revise, rewrite, fix, add, remove, or replace DA page content in Experience Workspace, including small edits and follow-up changes. Applies even when the user does not mention proposals, staging, review, A2UI, or this skill. Stage changes under /.da/ without modifying originals, then render the review UI with View diff, Reset page, and Accept changes actions.
+description: Use for every request to change, update, edit, revise, rewrite, fix, add, remove, or replace DA page content in Experience Workspace, including small edits and follow-up changes. Applies even when the user does not mention proposals, staging, review, A2UI, or this skill. Stage changes under /.da/proposals/ without modifying originals, then render the review UI with View diff, Reset page, and Accept changes actions.
 ---
 
 # Handle page changes in Experience Workspace
@@ -39,11 +39,11 @@ tool names or write only to the agent's private filesystem.
    Read the original source and preserve its document structure, blocks, metadata,
    links, and unrelated content.
 2. Copy each source file from `/<org>/<site>/<path>.html` to
-   `/<org>/<site>/.da/<path>.html`. Here `/.da/<path>` is site-relative **DA content
+   `/<org>/<site>/.da/proposals/<path>.html`. Here `/.da/proposals/<path>` is site-relative **DA content
    storage**, not a local filesystem directory. Preserve the path below the site,
    including folders and the `.html` suffix. For example:
    `/example/site/campaigns/spring-2026.html` becomes
-   `/example/site/.da/campaigns/spring-2026.html`.
+   `/example/site/.da/proposals/campaigns/spring-2026.html`.
 3. Check for an existing staged copy before copying. Do not overwrite another
    proposal. Reuse an existing copy only when it belongs to this task; otherwise
    ask the user how to handle the conflict.
@@ -80,13 +80,13 @@ one staged DA path per page:
 ```json
 {
   "proposals": {
-    "page1": "/example/site/.da/campaigns/spring-2026.html"
+    "page1": "/example/site/.da/proposals/campaigns/spring-2026.html"
   }
 }
 ```
 
 This local file is only artifact metadata; the modified page content must
-remain in DA storage under `/.da/`. Pass the local file's name as `data_file`
+remain in DA storage under `/.da/proposals/`. Pass the local file's name as `data_file`
 to `add_artifact`. The tool loads it into the surface's data model (the wire
 field is `a2ui_surface.data_model`); the
 filename itself is not a browser-readable staged page path.
@@ -124,7 +124,8 @@ must be reachable from `root`. If artifact creation fails, fix the metadata
 or UI and retry; do not recopy pages or reapply edits to repair the UI.
 
 Canvas checks the event name, artifact/component identity, reference, and path.
-Only staged HTML pages in the current org/site are allowed. It strips `/.da/`
+Only staged HTML pages under `/.da/proposals/` in the current org/site are allowed.
+It strips the entire `/.da/proposals/` prefix
 to derive the original page, reads both that page's current saved DA source and
 the staged DA source, sanitizes them, and displays a read-only comparison labeled
 Current content and Proposed changes. It does not navigate
@@ -170,7 +171,7 @@ the tool's supported `data_file`.
   "title": "Proposed changes",
   "display_mode": "chat",
   "data_file": "/tmp/page-proposals.json",
-  "text_fallback": "Original: /example/site/campaigns/spring-2026.html. Staged: /example/site/.da/campaigns/spring-2026.html. Original unchanged.",
+  "text_fallback": "Original: /example/site/campaigns/spring-2026.html. Staged: /example/site/.da/proposals/campaigns/spring-2026.html. Original unchanged.",
   "components": [
   { "id": "root", "component": "Column", "width": "full", "padding": 16, "gap": 8, "children": ["header", "divider", "page1", "footer-divider", "footer", "accept"] },
   { "id": "header", "component": "Row", "gap": 8, "align": "center", "children": ["heading", "count"] },
@@ -184,7 +185,7 @@ the tool's supported `data_file`.
   { "id": "page1-diff", "component": "ActionButton", "label": "View diff", "icon": "Layers", "action": { "event": { "name": "editor.viewDiff", "context": { "proposedPath": { "path": "/proposals/page1" } } } } },
   { "id": "page1-reset", "component": "ActionButton", "label": "Reset page", "icon": "Delete", "action": { "event": { "name": "editor.resetPage", "context": { "proposedPath": { "path": "/proposals/page1" } } } } },
   { "id": "footer-divider", "component": "Divider" },
-  { "id": "footer", "component": "Text", "text": "Proposals are staged under /.da/. Reset discards a draft. Accept replaces saved originals and removes the remaining drafts.", "style": "detail", "size": "xs" },
+  { "id": "footer", "component": "Text", "text": "Proposals are staged under /.da/proposals/. Reset discards a draft. Accept replaces saved originals and removes the remaining drafts.", "style": "detail", "size": "xs" },
   { "id": "accept", "component": "Button", "label": "Accept changes", "variant": "accent", "action": { "event": { "name": "editor.acceptChanges", "context": { "proposals": { "path": "/proposals" } } } } }
   ]
 }

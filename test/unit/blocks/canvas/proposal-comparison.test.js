@@ -17,7 +17,7 @@ function textWithout(dom, selector) {
 }
 
 describe('staged proposal comparison', () => {
-  const proposedPath = '/example/site/.da/campaigns/spring.html';
+  const proposedPath = '/example/site/.da/proposals/campaigns/spring.html';
   const options = { candidate: 'proposal', baseline: 'source', proposedPath };
   let root;
   let editor;
@@ -82,8 +82,8 @@ describe('staged proposal comparison', () => {
     };
     const action = { artifactId: artifact.id, componentId: 'root', ...event };
     expect(await handleArtifactAction({ action, artifact, context })).to.deep.equal({ ok: true });
-    expect(reads).to.deep.equal([{ org: 'example', site: 'site', path: 'campaigns/spring', proposalPath: '/.da/campaigns/spring.html' }]);
-    expect(proposalReads).to.deep.equal([{ ...reads[0], path: '/.da/campaigns/spring.html' }]);
+    expect(reads).to.deep.equal([{ org: 'example', site: 'site', path: 'campaigns/spring', proposalPath: '/.da/proposals/campaigns/spring.html' }]);
+    expect(proposalReads).to.deep.equal([{ ...reads[0], path: '/.da/proposals/campaigns/spring.html' }]);
     expect(saveCalls).to.equal(0);
     expect(serializeCalls).to.equal(0);
     expect(context.path).to.equal('current');
@@ -102,6 +102,15 @@ describe('staged proposal comparison', () => {
     controller.close();
     expect(editor.inert).to.equal(false);
     expect(editor.isConnected).to.equal(true);
+  });
+
+  it('compares a root-level proposal against /demo rather than /proposals/demo', async () => {
+    expect(await controller.open({ ...options, proposedPath: '/example/site/.da/proposals/demo.html' }))
+      .to.deep.equal({ ok: true });
+    expect(reads[0].path).to.equal('demo');
+    expect(proposalReads[0].path).to.equal('/.da/proposals/demo.html');
+    expect(root.querySelector('ew-comparison').path).to.equal('/demo');
+    expect(saveCalls).to.equal(0);
   });
 
   it('rereads both original and staged source on refresh', async () => {
@@ -194,13 +203,13 @@ describe('staged proposal comparison', () => {
     const button = artifact.components.find((record) => record.id === 'page1-diff');
     const action = { artifactId: artifact.id, componentId: button.id, ...button.action.event };
     expect(await handleArtifactAction({ action, artifact, context })).to.deep.equal({ ok: true });
-    expect(proposalReads[0].proposalPath).to.equal('/.da/campaigns/spring-2026.html');
+    expect(proposalReads[0].proposalPath).to.equal('/.da/proposals/campaigns/spring-2026.html');
     expect(reads[0].path).to.equal('campaigns/spring-2026');
     expect(saveCalls).to.equal(0);
   });
 
   it('shows staged read failures without falling back to saving the current document', async () => {
-    proposal = new Error('Could not load source content for /.da/campaigns/spring.html (404).');
+    proposal = new Error('Could not load source content for /.da/proposals/campaigns/spring.html (404).');
     expect(await controller.open(options)).to.deep.equal({ ok: false, error: proposal.message });
     const surface = root.querySelector('ew-comparison');
     await surface.updateComplete;
@@ -219,12 +228,18 @@ describe('staged proposal comparison', () => {
     expect(saveCalls).to.equal(0);
   });
 
-  it('validates staged paths again at the comparison boundary', async () => {
-    const result = await controller.open({ ...options, proposedPath: '/example/site/current.html' });
-    expect(result.ok).to.equal(false);
-    expect(reads).to.deep.equal([]);
-    expect(proposalReads).to.deep.equal([]);
-    expect(root.querySelector('ew-comparison')).to.equal(null);
+  [
+    '/example/site/current.html',
+    '/example/site/.da/current.html',
+    '/example/site/.da/forms/schema.html',
+  ].forEach((path) => {
+    it(`rejects non-proposal path ${path} again at the comparison boundary`, async () => {
+      const result = await controller.open({ ...options, proposedPath: path });
+      expect(result.ok).to.equal(false);
+      expect(reads).to.deep.equal([]);
+      expect(proposalReads).to.deep.equal([]);
+      expect(root.querySelector('ew-comparison')).to.equal(null);
+    });
   });
 
   ['close', 'navigation', 'replacement'].forEach((change) => {

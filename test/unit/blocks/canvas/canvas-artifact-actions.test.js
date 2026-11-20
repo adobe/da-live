@@ -38,7 +38,7 @@ describe('mounted canvas artifact actions', () => {
       const event = { name: 'editor.viewDiff', context: { proposedPath: { path: '/proposals/page1' } } };
       const artifact = {
         id: 'proposal-artifact',
-        dataModel: { proposals: { page1: '/allowed/site/.da/docs/page.html' } },
+        dataModel: { proposals: { page1: '/allowed/site/.da/proposals/docs/page.html' } },
         components: [{ id: 'root', component: 'ActionButton', action: { event } }],
       };
       await chat.onArtifactAction({ artifactId: artifact.id, componentId: 'root', ...event }, artifact);
@@ -62,7 +62,7 @@ describe('mounted canvas artifact actions', () => {
       const accept = { name: 'editor.acceptChanges', context: { proposals: { path: '/proposals' } } };
       const changes = {
         id: 'mounted-proposal',
-        dataModel: { proposals: { page1: '/allowed/site/.da/docs/page.html', page2: '/allowed/site/.da/docs/next.html' } },
+        dataModel: { proposals: { page1: '/allowed/site/.da/proposals/docs/page.html', page2: '/allowed/site/.da/proposals/docs/next.html' } },
         components: [
           { id: 'root', component: 'Column', children: ['reset', 'accept'] },
           { id: 'reset', component: 'ActionButton', label: 'Reset page', action: { event: reset } },
@@ -70,14 +70,14 @@ describe('mounted canvas artifact actions', () => {
         ],
       };
       await chat.onArtifactAction({ artifactId: changes.id, componentId: 'reset', ...reset }, changes);
-      expect(deleteDraft.firstCall.args[0].path).to.equal('/.da/docs/page.html');
+      expect(deleteDraft.firstCall.args[0].path).to.equal('/.da/proposals/docs/page.html');
       expect(saveOriginal.called).to.equal(false);
       expect(changes.components[1].label).to.equal('Draft discarded');
       expect(changes.components[2].isDisabled).to.equal(false);
       await chat.onArtifactAction({ artifactId: changes.id, componentId: 'accept', ...accept }, changes);
       expect(readDraft.callCount).to.equal(1);
       expect(saveOriginal.firstCall.args[0]).to.deep.equal({ org: 'allowed', site: 'site', path: '/docs/next.html', body: '<p>Draft</p>' });
-      expect(deleteDraft.secondCall.args[0].path).to.equal('/.da/docs/next.html');
+      expect(deleteDraft.secondCall.args[0].path).to.equal('/.da/proposals/docs/next.html');
       expect(changes.components[2].label).to.equal('Changes accepted');
       expect(chat.requestUpdate.callCount).to.equal(4);
     } finally {

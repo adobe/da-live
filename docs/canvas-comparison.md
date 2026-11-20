@@ -7,7 +7,7 @@ The canvas comparison is a read-only, non-modal surface over the editor mount. T
 - Opening a `document` or `preview` comparison first awaits the host's save of the matching loaded editor. If it reports `not-writable`, comparison opens without saving so read-only reviewers can compare. Other returned or rejected save failures remain visible errors and prevent document serialization and delivery reads.
 - `document` versus `live`: after the save attempt, serialize the matching loaded editor (including edits received while saving), read live Markdown through the shared NX API, normalize both into document HTML, then compare.
 - `preview` versus `live`: after the save attempt, read both existing delivered Markdown resources through the shared NX API. Opening a comparison does not refresh preview or publish; unsaved-to-preview source edits are not included in the staged comparison.
-- `proposal` versus `source` (internal chat host only): read both `/<org>/<site>/.da/<path>.html` and the original `/<org>/<site>/<path>.html` from authenticated DA source. Never save or serialize the current editor or read live delivery. Both paths must belong to the current site; another page in that site can be compared without navigation. The diff labels are Current content and Proposed changes. Unsaved editor-only changes are not included. Missing source files are errors, not empty baselines.
+- `proposal` versus `source` (internal chat host only): read both `/<org>/<site>/.da/proposals/<path>.html` and the original `/<org>/<site>/<path>.html` from authenticated DA source. Never save or serialize the current editor or read live delivery. Both paths must belong to the current site; another page in that site can be compared without navigation. The diff labels are Current content and Proposed changes. Unsaved editor-only changes are not included. Missing source files are errors, not empty baselines.
 - Full DA paths in `candidate` and/or `baseline`: read `/org/site/document` through authenticated DA source, appending `.html` when omitted. Each path supplies its own org, site and document; cross-site comparisons use the current user's DA permissions. `candidate` may also be `document` or `preview`, and `baseline` may also be `live`. A source-path candidate never saves or serializes the editor. Source-to-source comparisons neither read delivery nor navigate the editor. Missing or inaccessible source documents are errors, not empty baselines. Source operands are labeled with their full paths, and each side's relative URLs resolve against its own document context.
 - Live 404 is the never-published empty baseline; other failures remain visible errors.
 - Executable markup, non-content/custom elements and unsafe URL schemes are removed before rendering. Relative URLs are resolved against the page's delivery origin. Content links open separately rather than navigating the EW host.
@@ -18,7 +18,7 @@ The canvas comparison is a read-only, non-modal surface over the editor mount. T
 
 ```js
 actions.openComparison({
-  candidate: '/org/site/.da/campaigns/spring.html',
+  candidate: '/org/site/.da/proposals/campaigns/spring.html',
   baseline: '/org/site/campaigns/spring',
 });
 ```
@@ -41,6 +41,13 @@ buttons, other events, cross-site paths, path traversal, and non-HTML proposals
 are rejected, as are missing/non-string model values and inherited properties.
 This is a bounded data-model reference contract, not an A2UI
 expression interpreter. Button labels never trigger commands.
+
+Page proposals must be stored under `/<org>/<site>/.da/proposals/`. The host
+strips the entire `/.da/proposals/` prefix to derive the original page:
+`/org/site/.da/proposals/demo.html` maps to `/org/site/demo.html`, not
+`/org/site/proposals/demo.html`. Legacy drafts directly under `/.da/` and other
+DA content such as `/.da/forms/` are not accepted as page proposals. This storage
+prefix does not change the `/proposals/<id>` data-model references above.
 
 The resulting `canvasBus.comparisonRequest` has host-owned current context and
 `details: { candidate: "proposal", baseline: "source", proposedPath }`. This
