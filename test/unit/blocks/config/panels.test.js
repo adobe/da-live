@@ -1,5 +1,11 @@
 import { expect } from '@esm-bundle/chai';
-import aemAssets, { validateRepositoryId, validateHost, validateBasePath, validateMimeRenditions } from '../../../../blocks/config/panels/aem-assets.js';
+import aemAssets, {
+  validateRepositoryId,
+  validateHost,
+  validateBasePath,
+  validateMimeRenditions,
+  validateImageModifiers,
+} from '../../../../blocks/config/panels/aem-assets.js';
 import { validateRow } from '../../../../blocks/config/panels/prepare.js';
 import { rowStates, rowErrors, rowsToSave, cellText, listColumns } from '../../../../blocks/config/editors/rows.js';
 import plugins, { validateRow as validatePlugin } from '../../../../blocks/config/panels/plugins.js';
@@ -13,11 +19,30 @@ const ok = (fn, values) => values.forEach((v) => expect(fn(v), v).to.equal(null)
 const bad = (fn, values) => values.forEach((v) => expect(fn(v), v).to.be.a('string'));
 
 describe('aem-assets panel', () => {
-  it('exposes the documented keys', () => {
+  it('exposes every key da-nx reads, with linkAsImage in the flags sheet', () => {
     expect(aemAssets.fields.map((f) => f.key)).to.deep.equal([
       'aem.repositoryId', 'aem.assets.prod.origin', 'aem.assets.prod.basepath', 'aem.assets.image.type',
-      'aem.asset.dm.delivery', 'aem.asset.smartcrop.select', 'aem.asset.mime.renditions',
+      'aem.assets.image.linkAsImage', 'aem.asset.dm.delivery', 'aem.asset.smartcrop.select',
+      'aem.asset.dm.approvedonly', 'aem.asset.mime.renditions', 'aem.asset.image.modifiers',
     ]);
+    const sheets = Object.fromEntries(aemAssets.fields.filter((f) => f.sheet)
+      .map((f) => [f.key, f.sheet]));
+    expect(sheets).to.deep.equal({ 'aem.assets.image.linkAsImage': 'flags' });
+  });
+
+  it('offers runtime values and defaults for the new settings', () => {
+    const byKey = (key) => aemAssets.fields.find((f) => f.key === key);
+    const values = (key) => byKey(key).options.map((o) => o.value);
+    // da-nx: linkAsImage is on only for `true`; approvedonly filters unless `off`.
+    expect([values('aem.assets.image.linkAsImage'), byKey('aem.assets.image.linkAsImage').emptyLabel])
+      .to.deep.equal([['true', 'false'], 'Default (off)']);
+    expect([values('aem.asset.dm.approvedonly'), byKey('aem.asset.dm.approvedonly').emptyLabel])
+      .to.deep.equal([['on', 'off'], 'Default (on)']);
+  });
+
+  it('validates image modifiers as a query string', () => {
+    ok(validateImageModifiers, ['quality=85', 'quality=85&width=1200', '?quality=85&width=1200', 'flag=']);
+    bad(validateImageModifiers, ['quality', 'quality 85', 'a=1&&b=2', 'a=1&', 'https://x.com/i.jpg?a=1', '=1']);
   });
 
   it('validates the repository id', () => {

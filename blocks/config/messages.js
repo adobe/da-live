@@ -116,6 +116,7 @@ export const VALIDATION = {
     pathOnly: 'Enter a path only, e.g. /adobe/assets.',
     mimeRenditions: 'Use mimetype:rendition pairs with avif, play or original, e.g. image/*:avif, '
       + 'video/*:original.',
+    imageModifiers: 'Use URL query parameters, e.g. quality=85&width=1200.',
   },
   apps: { url: 'Enter the app URL.' },
   plugins: {

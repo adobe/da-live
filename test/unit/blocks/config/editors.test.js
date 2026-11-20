@@ -1,6 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import { html, render } from 'da-lit';
-import { fieldStates, pendingChanges } from '../../../../blocks/config/editors/settings.js';
+import { fieldStates, pendingChanges, pendingBySheet } from '../../../../blocks/config/editors/settings.js';
 import { renderField } from '../../../../blocks/config/editors/fields.js';
 import {
   rowStates, cleanRow, rowErrors, renderRowDialog, renderRows, cellText, listColumns, matches,
@@ -260,6 +260,19 @@ describe('rows', () => {
 
 // Three-way merge on save: `base` is the list as loaded, `mine` the editor's list, `theirs` the
 // list re-read right before the write (someone else may have saved in between).
+describe('settings stored in another sheet', () => {
+  const fields = [{ key: 'a', label: 'A' }, { key: 'f', label: 'F', sheet: 'flags' }];
+  const multiSheet = { data: { data: [{ key: 'a', value: '1' }] }, flags: { data: [{ key: 'f', value: 'x' }] }, ':names': ['data', 'flags'], ':type': 'multi-sheet' };
+
+  it('reads each field from its own sheet and groups changes by sheet', () => {
+    const states = fieldStates(fields, { own: multiSheet, inherited: null, edits: { a: '2', f: 'y' }, sheet: 'data' });
+    expect(states.map((s) => [s.field.key, s.value, s.dirty])).to.deep.equal([['a', '2', true], ['f', 'y', true]]);
+    expect(pendingBySheet(states, 'data')).to.deep.equal({ data: { a: '2' }, flags: { f: 'y' } });
+    const untouched = fieldStates(fields, { own: multiSheet, inherited: null, edits: {}, sheet: 'data' });
+    expect([untouched[1].value, pendingBySheet(untouched, 'data')]).to.deep.equal(['x', {}]);
+  });
+});
+
 describe('option fields', () => {
   const field = { key: 'svc', label: 'Service', options: [{ value: 'A', label: 'Alpha' }] };
   const items = (value) => {

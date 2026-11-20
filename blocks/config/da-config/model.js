@@ -3,7 +3,7 @@
 
 import { getValue, applyValues, setRows } from '../sheets.js';
 import { inFile, inherits, sheetFor } from '../stores.js';
-import { fieldStates, pendingChanges } from '../editors/settings.js';
+import { fieldStates, pendingBySheet } from '../editors/settings.js';
 import { mergeRows, ownedRows, rowStates, rowsToSave } from '../editors/rows.js';
 import { INHERITANCE, SHELL } from '../messages.js';
 
@@ -66,7 +66,10 @@ export function mutationFor({ store, part, panel }, edit) {
       if (merged.conflict) return { config: json, changed: false, conflict: true };
       return setRows(json, rowsToSave(panel, json, merged.rows, sheet), sheet);
     }
-    return applyValues(json, pendingChanges(edit.states), sheet);
+    return Object.entries(pendingBySheet(edit.states, sheet)).reduce((done, [name, changes]) => {
+      const next = applyValues(done.config, changes, name);
+      return { config: next.config, changed: done.changed || next.changed };
+    }, { config: json, changed: false });
   };
 }
 

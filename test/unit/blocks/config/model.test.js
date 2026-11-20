@@ -101,6 +101,22 @@ describe('config editor model', () => {
   });
 
   describe('mutationFor', () => {
+    it('writes a field stored in another sheet there, keeping that sheet\'s other rows', () => {
+      const fields = [{ key: 'a', label: 'A' }, { key: 'f', label: 'F', sheet: 'flags' }];
+      const panel = { kind: 'settings', fields };
+      const ctx = ctxFor(config('data'), panel);
+      const mutate = mutationFor(ctx, editState(ctx, { edits: { a: '1', f: 'true' }, rows: null }));
+      const current = multi({ data: [], flags: [{ key: 'ew.enabled', value: 'true' }] });
+      const { config: json, changed } = mutate(current);
+      expect([changed, json.data.data, json.flags.data]).to.deep.equal([
+        true,
+        [{ key: 'a', value: '1' }],
+        [{ key: 'ew.enabled', value: 'true' }, { key: 'f', value: 'true' }],
+      ]);
+      const unchanged = mutationFor(ctx, editState(ctx, { edits: {}, rows: null }));
+      expect(unchanged(current).changed).to.equal(false);
+    });
+
     it('applies settings to the config sheet', () => {
       const ctx = ctxFor(config('flags'), settingsPanel);
       const mutate = mutationFor(ctx, editState(ctx, { edits: { a: '1' }, rows: null }));

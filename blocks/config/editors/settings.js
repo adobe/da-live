@@ -8,9 +8,10 @@ import { INHERITANCE, VALIDATION } from '../messages.js';
 const normalized = (json, key, sheet) => String(getValue(json, key, sheet) ?? '').trim();
 
 // `inherited` is the org config under a site (null at org scope). Values compare trimmed, so
-// whitespace alone never makes a field dirty.
-export function fieldStates(fields, { own, inherited, edits, sheet }) {
+// whitespace alone never makes a field dirty. A field's own `sheet` wins over the section's.
+export function fieldStates(fields, { own, inherited, edits, sheet: sectionSheet }) {
   return fields.map((field) => {
+    const sheet = field.sheet ?? sectionSheet;
     const saved = normalized(own, field.key, sheet);
     const raw = field.key in edits ? String(edits[field.key]) : saved;
     const value = raw.trim();
@@ -37,6 +38,14 @@ export function fieldStates(fields, { own, inherited, edits, sheet }) {
 // { key: value } for every edited field, ready for applyValues.
 export function pendingChanges(states) {
   return Object.fromEntries(states.filter((s) => s.dirty).map((s) => [s.field.key, s.value]));
+}
+
+// The same changes grouped by the sheet each field is stored in: { sheet: { key: value } }.
+export function pendingBySheet(states, sectionSheet) {
+  return states.filter((s) => s.dirty).reduce((bySheet, { field, value }) => {
+    const sheet = field.sheet ?? sectionSheet;
+    return { ...bySheet, [sheet]: { ...bySheet[sheet], [field.key]: value } };
+  }, {});
 }
 
 // Kept outside the <label>: a label forwards clicks to the first button inside it.

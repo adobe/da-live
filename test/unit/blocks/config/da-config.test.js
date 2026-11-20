@@ -469,7 +469,7 @@ describe('da-config', () => {
 
     it('renders every AEM Assets field with no save bar until something changes', async () => {
       await open({ org: 'aa1' });
-      expect(el.shadowRoot.querySelectorAll('.config-setting')).to.have.length(7);
+      expect(el.shadowRoot.querySelectorAll('.config-setting')).to.have.length(10);
       expect(field(REPO).value).to.equal('');
       expect(has('.config-savebar')).to.equal(false);
     });
@@ -486,6 +486,31 @@ describe('da-config', () => {
       expect(puts[0].body.data.data).to.deep.equal([{ key: REPO, value: 'author-p1-e2.adobeaemcloud.com' }]);
       expect(has('.config-savebar')).to.equal(false);
       expect(field(REPO).value).to.equal('author-p1-e2.adobeaemcloud.com');
+    });
+
+    it('reads and saves Edit linked images as images in the flags sheet, next to the data keys', async () => {
+      const LINK = 'aem.assets.image.linkAsImage';
+      const MODS = 'aem.asset.image.modifiers';
+      const org = {
+        data: { data: [{ key: REPO, value: 'author-p1-e2.adobeaemcloud.com' }] },
+        flags: { data: [{ key: 'ew.enabled', value: 'true' }, { key: LINK, value: 'false' }] },
+        ':names': ['data', 'flags'],
+        ':version': 3,
+        ':type': 'multi-sheet',
+      };
+      const puts = mockFetch({ configFor: () => org, sitesFor: () => [{ name: 'alpha' }] });
+      await open({ org: 'aa11' });
+      expect(field(LINK).value).to.equal('false');
+      field(LINK).dispatchEvent(new CustomEvent('change', { detail: { value: 'true' } }));
+      await el.updateComplete;
+      await type(MODS, 'quality=85&width=1200');
+      await click('.config-savebar .nx-form-btn-primary');
+      await waitUntil(() => !el._busy, el);
+      expect(puts).to.have.length(1);
+      expect(puts[0].body.data.data).to.deep.equal([
+        { key: REPO, value: 'author-p1-e2.adobeaemcloud.com' }, { key: MODS, value: 'quality=85&width=1200' },
+      ]);
+      expect(puts[0].body.flags.data).to.deep.equal([{ key: 'ew.enabled', value: 'true' }, { key: LINK, value: 'true' }]);
     });
 
     it('names the network error when a save cannot reach the server', async () => {
