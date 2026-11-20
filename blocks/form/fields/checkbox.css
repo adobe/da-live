@@ -1,4 +1,5 @@
 .form-switch {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--s2-spacing-100);
