@@ -6,7 +6,8 @@ import { all, validator, required } from '../editors/validators.js';
 import { ROWS, VALIDATION } from '../messages.js';
 
 const SECRET = /secret|password|token/i;
-const ACTIONS = ['translate', 'copy', 'rollout'];
+// As read by da-nx loc (formatLangs): Skip is offered anyway, and the first action is the default.
+const ACTIONS = ['translate', 'copy', 'rollout', 'skip'];
 
 const conflict = (key, label, hint) => ({
   key,
@@ -115,8 +116,10 @@ export const validateLanguage = validator({
   name: required(VALIDATION.name),
   code: required(VALIDATION.translation.languageCode),
   location: all(required(VALIDATION.translation.folder), folder('/de')),
-  actions: (value) => value && value.split(',').map((a) => a.trim().toLowerCase())
-    .some((action) => !ACTIONS.includes(action)) && VALIDATION.translation.actions,
+  // Required: the project options read every row's actions.
+  actions: all(required(VALIDATION.translation.actionsRequired), (value) => value.split(',')
+    .map((a) => a.trim().toLowerCase())
+    .some((action) => !ACTIONS.includes(action)) && VALIDATION.translation.actions),
   source: folder('/en'),
   'source language': (value, row, others) => value
     && (value === row.name ? VALIDATION.translation.selfDependency
@@ -135,7 +138,7 @@ const languages = {
     { key: 'name', label: 'Name', required: true, placeholder: 'German' },
     { key: 'code', label: 'Code', required: true, placeholder: 'de' },
     { key: 'location', label: 'Location', hint: 'Folder containing the language\'s content.', required: true, placeholder: '/de' },
-    { key: 'actions', label: 'Actions', hint: 'Comma-separated: Translate, Copy, Rollout.', placeholder: 'Translate, Rollout' },
+    { key: 'actions', label: 'Actions', required: true, hint: 'Comma-separated: Translate, Copy, Rollout, Skip. The first is the default.', placeholder: 'Translate, Rollout' },
     { key: 'locales', label: 'Locales', hint: 'Comma-separated locale paths available for rollout.', placeholder: '/de-at, /de-ch' },
     { key: 'default locales', label: 'Default locales', list: false, hint: 'Locales selected by default.', placeholder: '/de-at' },
     { key: 'source', label: 'Source', list: false, hint: 'Content path override; URLs under it count as already in the source.', placeholder: '/en' },

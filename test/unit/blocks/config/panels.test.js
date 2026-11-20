@@ -176,17 +176,28 @@ describe('translation panel', () => {
     expect(cellText(value, { key: 'translation.service.prod.origin', value: 'https://x' })).to.equal('https://x');
   });
 
+  it('accepts the language actions da-nx reads, including Skip, and requires at least one', () => {
+    const lang = (actions) => validateLanguage({ name: 'German', code: 'de', location: '/de', actions }, []);
+    ['Translate', 'Skip, Translate', 'skip', 'Copy, Rollout, Skip', ' translate , ROLLOUT ']
+      .forEach((actions) => expect(lang(actions), actions).to.deep.equal({}));
+    expect(lang('').actions).to.equal('Enter at least one action, e.g. Translate.');
+    expect(lang(undefined).actions).to.equal('Enter at least one action, e.g. Translate.');
+    ['publish', 'Translate, publish', 'Translate,', 'Translate,,Copy'].forEach((actions) => {
+      expect(lang(actions).actions, actions).to.equal('Use Translate, Copy, Rollout or Skip, comma-separated.');
+    });
+    expect(part('languages').columns.find((c) => c.key === 'actions').required).to.equal(true);
+  });
+
   it('lists the main language columns and keeps the rest to the dialog', () => {
     expect(listColumns(part('languages')).map((c) => c.key)).to.deep.equal(['name', 'code', 'location', 'actions', 'locales']);
   });
 
   it('validates languages', () => {
-    const en = { name: 'English', code: 'en', location: '/en' };
+    const en = { name: 'English', code: 'en', location: '/en', actions: 'Translate' };
     expect(validateLanguage({ ...en, actions: 'Translate, rollout' }, [])).to.deep.equal({});
-    expect(validateLanguage({ name: 'German', code: 'de', location: 'de' }, []).location).to.include('/de');
-    expect(validateLanguage({ ...en, actions: 'publish' }, []).actions).to.include('Translate');
+    expect(validateLanguage({ name: 'German', code: 'de', location: 'de', actions: 'Copy' }, []).location).to.include('/de');
     expect(validateLanguage({ ...en, 'source language': 'English' }, [])['source language']).to.include('itself');
-    const de = { name: 'German', code: 'de', location: '/de' };
+    const de = { name: 'German', code: 'de', location: '/de', actions: 'Translate' };
     expect(validateLanguage({ ...de, 'source language': 'French' }, [en])['source language']).to.include('another');
     expect(validateLanguage({ ...de, 'source language': 'English' }, [en])).to.deep.equal({});
   });
