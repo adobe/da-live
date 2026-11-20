@@ -1202,6 +1202,21 @@ describe('da-config', () => {
       expect(puts[0].body.languages.data).to.deep.equal(TRANSLATE.languages.data);
     });
 
+    it('shows and keeps a service the picker does not offer', async () => {
+      const custom = {
+        ...TRANSLATE,
+        config: { data: [{ key: 'translation.service.name', value: 'Acme MT' }] },
+      };
+      const puts = await open('tr5', (o, s, path) => (path === '/.da/translate.json' ? custom : status(404)()));
+      const picker = q('[id="config-translation.service.name"]');
+      expect([picker.value, picker.items.at(-1)]).to.deep.equal(['Acme MT', { value: 'Acme MT', label: 'Acme MT' }]);
+      el._onEdit('source.language', 'English');
+      await el.updateComplete;
+      q('.config-savebar .nx-form-btn-primary').click();
+      await waitUntil(() => !el._busy, el);
+      expect(puts[0].body.config.data[0]).to.deep.equal({ key: 'translation.service.name', value: 'Acme MT' });
+    });
+
     it('switches parts and lists each tab', async () => {
       await open('tr2', () => TRANSLATE);
       await showPart('options');

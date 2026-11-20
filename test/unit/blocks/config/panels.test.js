@@ -157,6 +157,15 @@ describe('translation panel', () => {
     ]);
   });
 
+  it('offers each da-nx translation connector under the name the runtime resolves', () => {
+    const service = part('settings').fields.find((f) => f.key === 'translation.service.name');
+    const names = service.options.map((o) => o.value);
+    expect(names).to.deep.equal(['Google', 'GLaaS', 'GlobalLink', 'Lionbridge', 'Smartling', 'Trados']);
+    // da-nx loads connectors/<name lowercased, spaces as hyphens>/index.js.
+    expect(names.map((n) => n.toLowerCase().replaceAll(' ', '-')))
+      .to.deep.equal(['google', 'glaas', 'globallink', 'lionbridge', 'smartling', 'trados']);
+  });
+
   it('splits the config tab between settings and service options', () => {
     const options = part('options');
     expect(options.owns({ key: 'translation.service.prod.origin' })).to.equal(true);

@@ -30,7 +30,10 @@ const settingsFields = [
     label: 'Translation service',
     hint: 'Connector used to send and retrieve content.',
     emptyLabel: 'Google (default)',
-    options: ['Google', 'Lionbridge', 'Smartling', 'Trados'].map((value) => ({ value, label: value })),
+    // The connectors in da-nx loc. Names must match exactly: `GLaaS` is compared as is, and the
+    // others resolve to their connector folder lowercased (GlobalLink → globallink).
+    options: ['Google', 'GLaaS', 'GlobalLink', 'Lionbridge', 'Smartling', 'Trados']
+      .map((value) => ({ value, label: value })),
   },
   {
     key: 'translation.service.all.env',

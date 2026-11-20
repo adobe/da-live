@@ -33,6 +33,10 @@ function renderControl({ field, raw, value, orgValue, atSite }, { disabled, onCh
   if (field.options) {
     // At site scope an empty value inherits the org value, whatever the field's default is.
     const empty = atSite ? INHERITANCE.inheritFromOrg : field.emptyLabel ?? INHERITANCE.notSet;
+    // A value set in the sheet but not offered here stays visible (and kept) rather than
+    // showing as the empty choice.
+    const known = !value || field.options.some((o) => o.value === value);
+    const options = known ? field.options : [...field.options, { value, label: value }];
     return html`
       <nx-picker
         id=${id}
@@ -40,7 +44,7 @@ function renderControl({ field, raw, value, orgValue, atSite }, { disabled, onCh
         aria-required=${required ? 'true' : 'false'}
         variant="field"
         size="m"
-        .items=${[{ value: '', label: empty }, ...field.options]}
+        .items=${[{ value: '', label: empty }, ...options]}
         .value=${value}
         ?inert=${disabled}
         @change=${(e) => onChange(field.key, e.detail.value)}

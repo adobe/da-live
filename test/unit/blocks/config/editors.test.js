@@ -1,6 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import { html, render } from 'da-lit';
 import { fieldStates, pendingChanges } from '../../../../blocks/config/editors/settings.js';
+import { renderField } from '../../../../blocks/config/editors/fields.js';
 import {
   rowStates, cleanRow, rowErrors, renderRowDialog, renderRows, cellText, listColumns, matches,
   mergeRows,
@@ -259,6 +260,21 @@ describe('rows', () => {
 
 // Three-way merge on save: `base` is the list as loaded, `mine` the editor's list, `theirs` the
 // list re-read right before the write (someone else may have saved in between).
+describe('option fields', () => {
+  const field = { key: 'svc', label: 'Service', options: [{ value: 'A', label: 'Alpha' }] };
+  const items = (value) => {
+    const el = document.createElement('div');
+    render(renderField({ field, raw: value, value }, { onChange: () => {} }), el);
+    return el.querySelector('nx-picker').items.map((i) => i.value);
+  };
+
+  it('lists a saved value it does not offer, once, after the offered ones', () => {
+    expect(items('B')).to.deep.equal(['', 'A', 'B']);
+    expect(items('A')).to.deep.equal(['', 'A']);
+    expect(items('')).to.deep.equal(['', 'A']);
+  });
+});
+
 describe('mergeRows', () => {
   const A = { title: 'A', path: '/a' };
   const B = { title: 'B', path: '/b' };
