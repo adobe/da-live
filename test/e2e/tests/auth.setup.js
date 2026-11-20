@@ -95,7 +95,6 @@ setup('Set up authentication', async ({ page }) => {
     el.dispatchEvent(new Event('change', { bubbles: true }));
   }, pwd);
   console.log('Entered password');
-  // IMS can retain the email screen's Continue button in the DOM.
   await page.locator('button[data-id="PasswordPage-ContinueButton"]').click();
 
   const foundationInternal = page.getByLabel('Foundation Internal');
