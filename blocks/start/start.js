@@ -2,7 +2,6 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getDaAdmin } from '../shared/constants.js';
 import getSheet from '../shared/sheet.js';
 import { daFetch } from '../shared/utils.js';
-import { copyConfig, copyContent, previewContent } from './index.js';
 import { getNx2Api, sanitizePathParts } from '../../scripts/utils.js';
 import initGreeting from '../greeting/greeting.js';
 
@@ -114,6 +113,7 @@ class DaStart extends LitElement {
     _templates: { state: true },
     _loading: { state: true },
     _disableCreate: { state: true },
+    content: { state: true },
   };
 
   constructor() {
@@ -162,6 +162,7 @@ class DaStart extends LitElement {
     const hasDemo = !code.includes('aem-boilerplate');
     if (hasDemo) {
       this._disableCreate = true;
+      const { copyConfig, copyContent, previewContent } = await import('./index.js');
 
       const { source } = await getNx2Api();
       const { items } = await source.list(`/${this.org}/${this.site}`);
@@ -350,6 +351,27 @@ class DaStart extends LitElement {
   }
 
   render() {
+    if (this.content && !this.autoSubmit) {
+      const { cards, heading, description } = this.content;
+      return html`
+        <div class="authored-layout">
+          <slot name="greeting"></slot>
+          <slot name="add-site"></slot>
+          ${cards ? html`
+            <div class="cards-panel">
+              ${heading || description ? html`
+                <div class="cards-intro">
+                  ${heading || nothing}
+                  ${description || nothing}
+                </div>
+              ` : nothing}
+              <slot name="cards"></slot>
+            </div>
+          ` : nothing}
+        </div>
+      `;
+    }
+
     return html`
       <div class="step-${this.activeStep}-active">
         <slot name="greeting"></slot>
@@ -366,12 +388,40 @@ customElements.define('da-start', DaStart);
 
 export default function init(el) {
   const start = document.createElement('da-start');
+  const section = el.closest('.section');
+  const contentSection = [section, section?.nextElementSibling]
+    .find((candidate) => candidate?.querySelector('div.add-site'));
+  const greetingEl = (contentSection || section?.nextElementSibling)
+    ?.querySelector('div.greeting, da-greeting');
+
+  if (contentSection) {
+    const addSite = contentSection.querySelector('div.add-site');
+    const cards = contentSection.querySelector('div.nx-cards.start');
+    const intro = cards?.closest('.block-content')?.previousElementSibling;
+    const heading = intro?.matches('.default-content')
+      ? intro.querySelector('h1, h2, h3, h4, h5, h6') : undefined;
+    const description = intro?.matches('.default-content') ? intro.querySelector('p') : undefined;
+    start.content = { cards, heading, description };
+    if (!start.autoSubmit) start.dataset.authored = '';
+    [
+      [addSite, 'add-site'],
+      [cards, 'cards'],
+    ].forEach(([node, slot]) => {
+      if (!node) return;
+      node.slot = slot;
+      start.append(node);
+    });
+    [heading, description].forEach((node) => {
+      if (node) start.append(node);
+    });
+  }
+
   el.append(start);
-  const section = el.closest('.section')?.nextElementSibling;
-  const greetingEl = section?.querySelector('div.greeting');
   if (!greetingEl) return;
-  section.remove();
-  initGreeting(greetingEl).then((greeting) => {
+  if (!contentSection) section.nextElementSibling.remove();
+  const greetingPromise = greetingEl.matches('da-greeting')
+    ? Promise.resolve(greetingEl) : initGreeting(greetingEl);
+  greetingPromise.then((greeting) => {
     greeting.slot = 'greeting';
     start.append(greeting);
   });

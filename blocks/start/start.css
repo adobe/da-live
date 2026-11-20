@@ -294,14 +294,59 @@ div.template-container {
   z-index: -1;
 }
 
-.nx-cards.start {
+:host([data-authored]) {
   box-sizing: border-box;
+  height: auto;
+  min-height: 100vh;
+  padding: var(--s2-spacing-300);
+  color-scheme: inherit;
+  font-family: var(--s2-font-family);
+  line-height: var(--s2-body-line-height);
+}
+
+.authored-layout {
   width: 100%;
   max-width: 664px;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
-  margin-inline: auto;
+}
+
+slot[name="add-site"] {
+  display: block;
+}
+
+slot[name="add-site"]:has(+ .cards-panel) {
+  margin-bottom: var(--s2-spacing-300);
+}
+
+.cards-panel {
+  box-sizing: border-box;
+  width: 100%;
   padding: var(--s2-spacing-300);
   border-radius: var(--s2-corner-radius-800);
   background: var(--s2-gray-25);
   box-shadow: var(--s2-drop-shadow-emphasized);
+}
+
+.cards-intro {
+  margin-bottom: var(--s2-spacing-300);
+}
+
+.cards-intro > :is(h1, h2, h3, h4, h5, h6) {
+  margin: 0;
+  text-align: left;
+  color: var(--s2-gray-800);
+  font-size: var(--s2-component-xl-bold-font-size);
+  font-weight: var(--s2-component-xl-bold-font-weight);
+  line-height: var(--s2-component-xl-bold-line-height);
+}
+
+div.cards-intro > p {
+  margin: 0;
+  color: var(--s2-gray-700);
+  font-size: var(--s2-body-size-m);
+  font-weight: var(--s2-body-font-weight);
+}
+
+::slotted([slot="cards"]) {
+  /* Shadow overrides for slotted content must outrank the shared document styles. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)) !important;
 }
