@@ -13,7 +13,7 @@ let seq = 0;
 
 before(async () => {
   ({ resolveCanvasBranch } = await import('../../../../../blocks/canvas/editor-utils/branch-state.js'));
-  ({ fetchWysiwygBranch } = await import('../../../../../blocks/canvas/editor-utils/editor-utils.js'));
+  ({ fetchWysiwygBranch } = await import('../../../../../blocks/shared/utils.js'));
   ({ initBranchBridge } = await import('../../../../../blocks/canvas/editor-utils/branch-bridge.js'));
   ({ config } = await getNx2Api());
 });

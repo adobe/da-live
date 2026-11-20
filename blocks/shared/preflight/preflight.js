@@ -1,22 +1,25 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
-import { getPreviewOrigin } from '../editor-utils/editor-utils.js';
-import { whenCanvasBranch } from '../utils/branch.js';
-import { canvasBus } from '../utils/canvas-bus.js';
-import { reportPreflightStatus } from '../editor-utils/preflight-bridge.js';
-import { takePendingPreflightRequest } from '../editor-utils/preflight-responder.js';
-import { adaptEvaluation } from './adapter.js';
+import { getPreviewOrigin } from '../constants.js';
+import { fetchWysiwygBranch } from '../utils.js';
+import { TOOL_PANEL_SECTION } from '../tool-panel/tool-panel-section.js';
 import { evaluatePage } from './api.js';
+import { adaptEvaluation } from './evaluation.js';
+import { PREFLIGHT_TAG } from './preflight-view.js';
+import { publishHook } from './publish-hook.js';
 
-const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
-
-const [buttons, spinner, style] = await Promise.all([
-  loadStyle(`${getNx2()}/styles/buttons.css`),
-  loadStyle(`${getNx2()}/styles/spinner.css`),
-  loadStyle(import.meta.url),
+const nx = getNx();
+const [{ loadStyle, hashChange }, { subscribePanelVisibility }] = await Promise.all([
+  import(`${nx}/utils/utils.js`),
+  import(`${nx}/utils/panel.js`),
 ]);
 
-const VIEW_ID = 'preflight';
+const nx2 = getNx2();
+const [buttons, spinner, style] = await Promise.all([
+  loadStyle(`${nx2}/styles/buttons.css`),
+  loadStyle(`${nx2}/styles/spinner.css`),
+  loadStyle(import.meta.url),
+]);
 
 function pageKey({ org, site, path } = {}) {
   return org && site ? `${org}/${site}/${(path ?? '').replace(/^\//, '')}` : '';
@@ -30,12 +33,14 @@ const REFRESH_SPINNER_HTML = '<span class="nx-loading-spinner" aria-hidden="true
 // CSS as a side effect. Memoized so repeated evaluations don't re-import.
 let rendererPromise;
 function ensureRenderer() {
-  rendererPromise ??= import(`${getNx2()}/blocks/chat-ao/artifacts/page-evaluation.js`);
+  rendererPromise ??= import(`${nx2}/blocks/chat-ao/artifacts/page-evaluation.js`);
   return rendererPromise;
 }
 
-class EwPreflight extends LitElement {
+class DaPreflight extends LitElement {
   static properties = {
+    // The tool panel hides every view but the active one.
+    hidden: { type: Boolean, reflect: true },
     _loading: { state: true },
     _error: { state: true },
     _data: { state: true },
@@ -49,42 +54,33 @@ class EwPreflight extends LitElement {
       if (this._started && pageKey(state) !== this._evaluatedKey) this._onPageChange();
     });
     // Answer a publish gate that runs while the panel is already mounted.
-    this._unsubRun = canvasBus.preflightRunRequest.subscribe(this._handlePreflightRun);
+    this._unsubRun = publishHook.subscribeRunRequest(this._handlePreflightRun);
     if (!this._started) {
       this._started = true;
       // If a publish opened this panel, run for that gate; otherwise a plain first-open
       // evaluation. Page navigation re-runs via _onPageChange.
-      const pending = takePendingPreflightRequest();
+      const pending = publishHook.takePendingRunRequest();
       if (pending) this._handlePreflightRun(pending);
       else this._evaluateAndReport();
     }
-    // After the first-open run: the channel replays the current view immediately, which
-    // must find that run already loading rather than start a second one.
-    this._unsubView = canvasBus.toolPanelViewState.subscribe(this._onViewState);
+    // Subscribe after the first-open run. The panel reports its visibility right away,
+    // which must find that run already loading rather than start a second one.
+    this._unsubPanel = subscribePanelVisibility(this._onPanelVisibility);
+  }
+
+  updated(changed) {
+    if (changed.has('hidden')) {
+      this._evaluateIfShown();
+    }
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
     this._unsubRun?.();
-    this._unsubView?.();
+    this._unsubPanel?.();
     // Unmounting before a gate settles frees the waiting publish immediately.
     this._cancelGate();
-  }
-
-  async _resolvePageUrl() {
-    const { org, site, path } = this._hashState ?? {};
-    if (!org || !site) return '';
-    const relPath = path ? path.replace(/^\//, '') : '';
-    // The panel can evaluate before canvas finishes resolving this page's branch.
-    const branch = await whenCanvasBranch({ org, site, path: relPath || undefined });
-    if (!branch) {
-      const error = new Error('Branch not resolved');
-      error.detail = 'Could not determine the preview branch for this page. Try again.';
-      throw error;
-    }
-    const origin = getPreviewOrigin(org, site, branch);
-    return relPath ? `${origin}/${relPath}` : origin;
   }
 
   // The document path the publish gate matches STATUS against. Mirrors da-nx's
@@ -124,15 +120,28 @@ class EwPreflight extends LitElement {
     this._evaluateIfShown();
   }
 
-  _onViewState = (viewId) => {
-    this._activeView = viewId;
+  // Closing the tools panel frees a waiting publish. Switching to another view or
+  // closing another panel, such as chat, leaves the run going.
+  _onPanelVisibility = (sections) => {
+    const open = sections.includes(TOOL_PANEL_SECTION);
+    if (this._panelOpen && !open) {
+      this._cancelGate();
+    }
+
+    this._panelOpen = open;
     this._evaluateIfShown();
   };
 
   // No results, no error and nothing in flight means the current page was never evaluated.
   _evaluateIfShown() {
-    if (this._activeView !== VIEW_ID) return;
-    if (this._data || this._error || this._loading) return;
+    if (this.hidden || !this._panelOpen) {
+      return;
+    }
+
+    if (this._data || this._error || this._loading) {
+      return;
+    }
+
     this._evaluateAndReport();
   }
 
@@ -140,20 +149,20 @@ class EwPreflight extends LitElement {
   async _evaluateAndReport() {
     const verdict = await this._evaluateCurrentPage();
     if (!verdict || this._gateRequestId) return;
-    reportPreflightStatus({ path: this._docFullpath, ...verdict });
+    publishHook.reportStatus({ path: this._docFullpath, ...verdict });
   }
 
   _handlePreflightRun = async (detail) => {
     const requestId = detail?.requestId;
     const path = detail?.path ?? detail?.paths?.[0];
     if (!requestId || !path) return;
-    takePendingPreflightRequest(requestId);
+    publishHook.takePendingRunRequest(requestId);
     // The pending store (first open) and the live subscription (re-publish) can both
     // deliver the same run; only act once.
     if (requestId === this._lastGateRequestId) return;
     this._lastGateRequestId = requestId;
     if (path !== this._docFullpath) {
-      reportPreflightStatus({ path, status: 'cancelled', requestId });
+      publishHook.reportStatus({ path, status: 'cancelled', requestId });
       return;
     }
     // A newer run for this page supersedes the open gate; free that publish first.
@@ -162,12 +171,6 @@ class EwPreflight extends LitElement {
     this._gateRequestId = requestId;
     this._gatePath = path;
     this._gateSettled = false;
-    // Cancel only when the tools panel itself closes (`null`). Other panels closing
-    // (e.g. chat) or switching to another tool view leave the run going.
-    this._unsubPanelVisibility?.();
-    this._unsubPanelVisibility = canvasBus.toolPanelViewState.subscribe((viewId) => {
-      if (viewId === null) this._cancelGate();
-    });
     const verdict = await this._evaluateCurrentPage();
     // Settle only the gate this run started; it may already be settled or replaced.
     if (this._gateRequestId !== requestId) return;
@@ -178,16 +181,31 @@ class EwPreflight extends LitElement {
   _finishGate(status, message) {
     if (this._gateSettled || !this._gateRequestId) return;
     this._gateSettled = true;
-    this._unsubPanelVisibility?.();
-    this._unsubPanelVisibility = null;
     const { _gateRequestId: requestId, _gatePath: path } = this;
     this._gateRequestId = null;
     this._gatePath = null;
-    reportPreflightStatus({ path, status, requestId, ...(message && { message }) });
+    publishHook.reportStatus({ path, status, requestId, ...(message && { message }) });
   }
 
   _cancelGate() {
     this._finishGate('cancelled');
+  }
+
+  // The checks read the rendered page, so they run on its preview, on the preview
+  // branch of the page.
+  async _checkPage({ org, site, path }) {
+    const relativePath = path ? path.replace(/^\//, '') : '';
+    const pagePath = relativePath ? `${org}/${site}/${relativePath}` : undefined;
+    const branch = await fetchWysiwygBranch({ org, site, path: pagePath }).catch(() => undefined);
+    if (!branch) {
+      const error = new Error('Branch not resolved');
+      error.detail = 'Could not determine the preview branch for this page. Try again.';
+      throw error;
+    }
+
+    const origin = getPreviewOrigin(org, site, branch);
+    const response = await evaluatePage(relativePath ? `${origin}/${relativePath}` : origin);
+    return adaptEvaluation(response);
   }
 
   // Resolves to this run's verdict, or `null` when a newer run superseded it, so
@@ -199,7 +217,7 @@ class EwPreflight extends LitElement {
     // A new run makes earlier results stale; clearing them also lets errors render.
     this._data = null;
     this._error = null;
-    const { org, site } = this._hashState ?? {};
+    const { org, site, path } = this._hashState ?? {};
     if (!org || !site) {
       this._loading = false;
       this._setRefreshBusy(false);
@@ -209,12 +227,10 @@ class EwPreflight extends LitElement {
     this._loading = true;
     this._setRefreshBusy(true);
     try {
-      const [pageUrl] = await Promise.all([this._resolvePageUrl(), ensureRenderer()]);
+      const [data] = await Promise.all([this._checkPage({ org, site, path }), ensureRenderer()]);
       if (this._runId !== runId) return null;
-      const response = await evaluatePage(pageUrl);
-      if (this._runId !== runId) return null;
-      this._data = adaptEvaluation(response);
-      return this._verdictFor({ data: this._data });
+      this._data = data;
+      return this._verdictFor({ data });
     } catch (e) {
       if (this._runId !== runId) return null;
       this._error = e?.detail || 'Could not evaluate the page. Try again.';
@@ -272,6 +288,6 @@ class EwPreflight extends LitElement {
   }
 }
 
-if (!customElements.get('ew-preflight')) {
-  customElements.define('ew-preflight', EwPreflight);
+if (!customElements.get(PREFLIGHT_TAG)) {
+  customElements.define(PREFLIGHT_TAG, DaPreflight);
 }
