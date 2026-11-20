@@ -65,6 +65,8 @@ export default class DaBrowsePreflight extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    // Aborted on close so nobody's waiting on results keeps the evaluation service busy.
+    this._abort = new AbortController();
     this.shadowRoot.adoptedStyleSheets = [BUTTONS, FORM, SPINNER, STYLE];
     // Only pages are evaluated; other publishable files have no checks and pass as-is.
     this._rows = this.items.map((item) => {
@@ -74,6 +76,11 @@ export default class DaBrowsePreflight extends LitElement {
       };
     });
     this._evaluateAll();
+  }
+
+  disconnectedCallback() {
+    this._abort?.abort();
+    super.disconnectedCallback();
   }
 
   async _evaluateAll() {
@@ -109,6 +116,9 @@ export default class DaBrowsePreflight extends LitElement {
   }
 
   async _evaluateRow(row) {
+    const { signal } = this._abort;
+    // Rows still queued when the dialog closes become no-ops.
+    if (signal.aborted) return;
     // Guard against a stale response overwriting a newer re-run of the same row.
     const runId = row.runId + 1;
     row.runId = runId;
@@ -116,12 +126,14 @@ export default class DaBrowsePreflight extends LitElement {
     row.error = null;
     this._rows = [...this._rows];
     try {
-      const response = await evaluatePage(await this._pageUrl(row.item));
+      const pageUrl = await this._pageUrl(row.item);
+      if (signal.aborted) return;
+      const response = await evaluatePage(pageUrl, { signal });
       if (row.runId !== runId) return;
       row.data = adaptEvaluation(response);
       row.status = row.data.failed === 0 ? 'pass' : 'fail';
     } catch (e) {
-      if (row.runId !== runId) return;
+      if (signal.aborted || row.runId !== runId) return;
       row.status = 'error';
       row.error = e?.detail || e?.message || 'Could not evaluate the page.';
     } finally {

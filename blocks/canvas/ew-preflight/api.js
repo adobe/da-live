@@ -44,9 +44,10 @@ export function getEcOrigin(location = window.location) {
  * Calls the evaluate-page REST API for the given preview page URL and returns
  * the raw JSON response.
  * @param {string} pageUrl absolute preview URL of the page to evaluate
+ * @param {{ signal?: AbortSignal }} [options] `signal` cancels the request
  * @returns {Promise<object>} raw REST response
  */
-export async function evaluatePage(pageUrl) {
+export async function evaluatePage(pageUrl, { signal } = {}) {
   const token = await getAuthToken();
   if (!token) {
     const error = new Error('Not authenticated');
@@ -62,6 +63,7 @@ export async function evaluatePage(pageUrl) {
       'x-api-key': API_KEY,
     },
     body: JSON.stringify({ url: pageUrl }),
+    signal,
   });
 
   if (!resp.ok) {

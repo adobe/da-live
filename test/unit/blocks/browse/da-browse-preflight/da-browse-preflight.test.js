@@ -9,12 +9,14 @@ const { default: DaBrowsePreflight } = await import('../../../../../blocks/brows
 describe('DaBrowsePreflight', () => {
   let savedFetch;
   let savedNxIms;
+  let savedAdobeIMS;
   let el;
   let testIndex = 0;
 
   beforeEach(() => {
     savedFetch = window.fetch;
     savedNxIms = localStorage.getItem('nx-ims');
+    savedAdobeIMS = window.adobeIMS;
     testIndex += 1;
   });
 
@@ -22,6 +24,7 @@ describe('DaBrowsePreflight', () => {
     el?.remove();
     el = null;
     window.fetch = savedFetch;
+    window.adobeIMS = savedAdobeIMS;
     if (savedNxIms === null) localStorage.removeItem('nx-ims');
     else localStorage.setItem('nx-ims', savedNxIms);
   });
@@ -33,6 +36,65 @@ describe('DaBrowsePreflight', () => {
     document.body.append(el);
     return el;
   }
+
+  function signIn() {
+    localStorage.setItem('nx-ims', 'true');
+    window.adobeIMS = { getAccessToken: () => ({ token: 'tok' }) };
+  }
+
+  // Evaluate POSTs never settle on their own; each records its abort signal.
+  function stubEvaluate() {
+    const posts = [];
+    window.fetch = (url, opts = {}) => {
+      if (String(url).includes('/evaluate/page')) {
+        posts.push(opts.signal);
+        return new Promise(() => {});
+      }
+      return Promise.resolve(new Response('{}', { status: 404 }));
+    };
+    return posts;
+  }
+
+  function mountPages(count) {
+    el = new DaBrowsePreflight();
+    el.items = Array.from({ length: count }, (_, i) => ({ path: `/o/s/p${i}.html`, ext: 'html' }));
+    el._evaluateAll = () => {};
+    document.body.append(el);
+    return el;
+  }
+
+  describe('cancel on close', () => {
+    it('aborts in-flight evaluations and skips queued ones once removed', async () => {
+      signIn();
+      const posts = stubEvaluate();
+      mountPages(3);
+      const [first, second, third] = el._rows;
+      el._evaluateRow(first);
+      el._evaluateRow(second);
+      await new Promise((r) => { setTimeout(r, 50); });
+      expect(posts).to.have.length(2);
+
+      el.remove();
+      expect(posts.every((signal) => signal.aborted)).to.be.true;
+      await el._evaluateRow(third);
+      expect(posts).to.have.length(2);
+      expect(first.status).to.equal('loading');
+      expect(first.error).to.equal(null);
+    });
+
+    it('does not POST if closed while the page URL is being resolved', async () => {
+      signIn();
+      const posts = stubEvaluate();
+      mountPages(1);
+      let release;
+      el._pageUrl = () => new Promise((r) => { release = () => r('https://main--s--o.preview.da.live/p0'); });
+      const pending = el._evaluateRow(el._rows[0]);
+      el.remove();
+      release();
+      await pending;
+      expect(posts).to.have.length(0);
+    });
+  });
 
   describe('_pageUrl', () => {
     it('uses the branch from the ew.wysiwygBranch config', async () => {
