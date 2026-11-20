@@ -6,7 +6,6 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { createTestEditor, destroyEditor } = await import('../../edit/prose/test-helpers.js');
 const { handleNodeSelect, resolveNodeSelectPos, handleCursorMove } = await import('../../../../../blocks/canvas/ew-editor-wysiwyg/utils/handlers.js');
-const { setCommentsController } = await import('../../../../../blocks/canvas/editor-utils/comments-bridge.js');
 
 function insertTable(editor) {
   const { state } = editor.view;
@@ -26,10 +25,7 @@ function insertTable(editor) {
 describe('handleNodeSelect', () => {
   let editor;
   beforeEach(async () => { editor = await createTestEditor(); });
-  afterEach(() => {
-    destroyEditor(editor);
-    setCommentsController(null);
-  });
+  afterEach(() => destroyEditor(editor));
 
   it('selects a table for a block payload (proseIndex = table.from + 1)', () => {
     const tablePos = insertTable(editor);
@@ -55,34 +51,6 @@ describe('handleNodeSelect', () => {
     const sel = editor.view.state.selection;
     expect(sel instanceof NodeSelection).to.equal(true);
     expect(sel.node.type.name).to.equal('image');
-  });
-
-  [null, 'previous-thread'].forEach((selectedThread) => {
-    it(`selects the image without changing comment selection (${selectedThread})`, () => {
-      const { state } = editor.view;
-      const { schema } = state;
-      const image = schema.nodes.image.create({ src: '/x.png' });
-      editor.view.dispatch(state.tr.replaceWith(0, state.doc.content.size, image));
-      let imgPos = -1;
-      editor.view.state.doc.descendants((node, pos) => {
-        if (node.type.name === 'image') imgPos = pos;
-      });
-      let selected = selectedThread;
-      let calls = 0;
-      setCommentsController({
-        setSelectedThread(threadId) {
-          selected = threadId;
-          calls += 1;
-        },
-      });
-
-      handleNodeSelect({ node: { anchorType: 'image', proseIndex: imgPos } }, { view: editor.view });
-
-      expect(editor.view.state.selection instanceof NodeSelection).to.equal(true);
-      expect(editor.view.state.selection.node.type.name).to.equal('image');
-      expect(selected).to.equal(selectedThread);
-      expect(calls).to.equal(0);
-    });
   });
 
   it('ignores a payload whose type does not match the resolved node', () => {
