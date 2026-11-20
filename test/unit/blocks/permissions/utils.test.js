@@ -22,7 +22,7 @@ describe('permissions utils', () => {
 
   describe('scopeLabel', () => {
     it('labels org scopes', () => {
-      expect(scopeLabel('CONFIG', null)).to.equal('EW configurations');
+      expect(scopeLabel('CONFIG', null)).to.equal('Experience Workspace configurations');
       expect(scopeLabel('/ + **', null)).to.equal('All sites');
     });
 

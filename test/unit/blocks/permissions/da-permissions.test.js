@@ -523,7 +523,7 @@ describe('da-permissions', () => {
     await el.updateComplete;
     expect(el.shadowRoot.querySelector('nx-dialog')).to.not.equal(null);
     expect(el.shadowRoot.querySelector('nx-dialog p').textContent)
-      .to.equal('Remove admin@example.com from EW configurations · Write?');
+      .to.equal('Remove admin@example.com from Experience Workspace configurations · Write?');
 
     el.site = 'mysite';
     await el.updateComplete;

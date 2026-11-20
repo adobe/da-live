@@ -197,7 +197,7 @@ export default async function init(el) {
   }
   addRecentFile(details.fullpath);
 
-  document.title = `Edit sheet ${details.name} - EW`;
+  document.title = `Edit sheet ${details.name} - Experience Workspace`;
 
   // Base Elements
   const daTitle = document.createElement('da-title');

@@ -69,7 +69,7 @@ function scopeKind(path, site) {
 
 export function scopeLabel(path, site) {
   const kind = scopeKind(path, site);
-  if (kind === 'config') return site ? 'Site configurations' : 'EW configurations';
+  if (kind === 'config') return site ? 'Site configurations' : 'Experience Workspace configurations';
   if (kind === 'content') return site ? 'All site content' : 'All sites';
   if (kind === 'folder') {
     const norm = normPath(path);
