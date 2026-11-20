@@ -1,4 +1,4 @@
-import { getAuthToken } from '../../shared/utils.js';
+import { getAuthToken } from '../utils.js';
 
 // Experience Governance (experience-context) origins.
 const EC_ENVS = {

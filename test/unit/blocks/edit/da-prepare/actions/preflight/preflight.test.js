@@ -319,22 +319,22 @@ describe('Preflight utils', () => {
 
 describe('Preflight component', () => {
   describe('render export', () => {
-    it('returns a da-preflight element with details set', () => {
+    it('returns a da-prepare-preflight element with details set', () => {
       const details = { fullpath: '/org/site/page', org: 'org', site: 'site' };
       const cmp = render(details);
 
-      expect(cmp.tagName.toLowerCase()).to.equal('da-preflight');
+      expect(cmp.tagName.toLowerCase()).to.equal('da-prepare-preflight');
       expect(cmp.details).to.equal(details);
     });
   });
 
-  describe('DaPreflight', () => {
+  describe('DaPreparePreflight', () => {
     it('is defined as a custom element', () => {
-      expect(customElements.get('da-preflight')).to.exist;
+      expect(customElements.get('da-prepare-preflight')).to.exist;
     });
 
     it('expandCategory toggles open state', () => {
-      const el = document.createElement('da-preflight');
+      const el = document.createElement('da-prepare-preflight');
       const cat = { title: 'Test', checks: [], open: false };
       el.expandCategory(cat);
       expect(cat.open).to.be.true;
@@ -350,7 +350,7 @@ describe('Preflight component', () => {
     ];
 
     it('emits success with path + requestId when no error badges', async () => {
-      const el = document.createElement('da-preflight');
+      const el = document.createElement('da-prepare-preflight');
       el.details = { fullpath: '/org/site/page' };
       el.requestId = 'req-1';
       el._categories = settledCats([{ badge: 'info' }, { badge: 'success' }]);
@@ -365,7 +365,7 @@ describe('Preflight component', () => {
     });
 
     it('emits fail when any result carries an error badge', async () => {
-      const el = document.createElement('da-preflight');
+      const el = document.createElement('da-prepare-preflight');
       el.details = { fullpath: '/org/site/page' };
       el._categories = settledCats([{ badge: 'info' }, { badge: 'error' }]);
 
@@ -377,7 +377,7 @@ describe('Preflight component', () => {
     });
 
     it('does not emit until every check is done', () => {
-      const el = document.createElement('da-preflight');
+      const el = document.createElement('da-prepare-preflight');
       el.details = { fullpath: '/org/site/page' };
       el._categories = [
         { title: 'Content', checks: [{ title: 'H1', results: [], done: false }] },
@@ -391,7 +391,7 @@ describe('Preflight component', () => {
     });
 
     it('emits only once per run', () => {
-      const el = document.createElement('da-preflight');
+      const el = document.createElement('da-prepare-preflight');
       el.details = { fullpath: '/org/site/page' };
       el._categories = settledCats([{ badge: 'info' }]);
       let count = 0;
@@ -404,7 +404,7 @@ describe('Preflight component', () => {
     });
 
     it('treats a pf-link still on the working reason as unsettled', () => {
-      const el = document.createElement('da-preflight');
+      const el = document.createElement('da-prepare-preflight');
       const link = document.createElement('div');
       Object.defineProperty(link, 'reason', { value: REASONS['link.working'].reason });
       expect(el.constructor.isResultSettled(link)).to.be.false;
