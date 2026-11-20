@@ -1,3 +1,10 @@
+## [1.33.1](https://github.com/adobe/da-live/compare/v1.33.0...v1.33.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* **sc:** anchor hidden switch input to its label ([#1766](https://github.com/adobe/da-live/issues/1766)) ([73b2e13](https://github.com/adobe/da-live/commit/73b2e13893b0b4a6bcff4aba5ba4ccc36732f5c5))
+
 # [1.33.0](https://github.com/adobe/da-live/compare/v1.32.0...v1.33.0) (2026-11-19)
 
 
