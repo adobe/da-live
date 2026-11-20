@@ -213,6 +213,7 @@ describe('standalone workspace comparison', () => {
   let saveDocument;
   let saveCalls;
   let serializeCalls;
+  let sourceCalls;
 
   beforeEach(() => {
     expect(comparison.installComparison).to.be.a('function');
@@ -222,6 +223,7 @@ describe('standalone workspace comparison', () => {
     saveDocument = async () => ({ ok: true });
     saveCalls = 0;
     serializeCalls = 0;
+    sourceCalls = [];
     mountRoot = document.createElement('div');
     editor = document.createElement('textarea');
     editor.value = 'Editor state';
@@ -238,12 +240,30 @@ describe('standalone workspace comparison', () => {
         calls.push(partition);
         return { html: `<h1>${partition}</h1><p>${partition} content</p>` };
       },
+      loadSource: async (target) => {
+        sourceCalls.push(target);
+        return { html: '<p>Saved source content</p>' };
+      },
     });
   });
   afterEach(() => {
     controller?.destroy();
     mountRoot?.remove();
     rail?.remove();
+  });
+
+  [
+    { candidate: 'document', baseline: '/other/site/saved', delivery: [], saves: 1, serializes: 1 },
+    { candidate: 'preview', baseline: '/other/site/saved', delivery: ['preview'], saves: 1, serializes: 0 },
+    { candidate: '/other/site/saved', baseline: 'live', delivery: ['live'], saves: 0, serializes: 0 },
+  ].forEach(({ candidate, baseline, delivery, saves, serializes }) => {
+    it(`compares ${candidate} to ${baseline} using the appropriate source and delivery APIs`, async () => {
+      expect(await controller.open({ candidate, baseline })).to.deep.equal({ ok: true });
+      expect(sourceCalls).to.deep.equal([{ org: 'other', site: 'site', path: '/saved' }]);
+      expect(calls).to.deep.equal(delivery);
+      expect(saveCalls).to.equal(saves);
+      expect(serializeCalls).to.equal(serializes);
+    });
   });
 
   it('compares current document to live without fetching or updating preview', async () => {

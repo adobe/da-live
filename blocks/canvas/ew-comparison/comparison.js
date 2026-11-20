@@ -6,17 +6,33 @@ import { proposalComparisonContext } from '../utils/proposal.js';
 
 const CONTENT_TAGS = new Set('a p h1 h2 h3 h4 h5 h6 div span strong em b i u s del ins sub sup code pre blockquote ul ol li table thead tbody tfoot tr td th caption colgroup col br hr img figure figcaption'.split(' '));
 
+function sourceComparisonContext(path) {
+  if (typeof path !== 'string' || !path.startsWith('/') || /[%\\?#\s]/.test(path)
+    || [...path].some((char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127)) {
+    return null;
+  }
+  const parts = path.slice(1).split('/');
+  if (parts.length < 3 || parts.some((part) => !part || ['.', '..'].includes(part))) return null;
+  const [org, site, ...segments] = parts;
+  return { org, site, path: `/${segments.join('/')}` };
+}
+
+function isComparisonOptions(options) {
+  return (['document', 'preview'].includes(options?.candidate)
+    || sourceComparisonContext(options?.candidate))
+    && (options?.baseline === 'live' || sourceComparisonContext(options?.baseline));
+}
+
 export function comparisonContextKey(context) {
   const { org, site, path } = context || {};
   return org && site && typeof path === 'string'
     ? JSON.stringify([org, site, path.replace(/^\//, '').replace(/\.html$/, '')]) : null;
 }
 
-// Routes a plugin's comparison and save messages. The page comes from the host context, never
-// from the message. Returns false for any other action.
+// Host context owns the request lifecycle; source operands identify their own documents.
 export function routeComparisonMessage({ action, details, requestId }, { context, port }) {
   if (action === 'openComparison') {
-    if (['document', 'preview'].includes(details?.candidate) && details?.baseline === 'live') {
+    if (isComparisonOptions(details)) {
       const { candidate, baseline } = details;
       canvasBus.comparisonRequest.emit({ action, details: { candidate, baseline }, context });
     }
@@ -136,8 +152,7 @@ export function installComparison({
 
   const open = async (options) => {
     const isProposal = options?.candidate === 'proposal';
-    if (!['document', 'preview', 'proposal'].includes(options?.candidate)
-      || options?.baseline !== (isProposal ? 'source' : 'live')) {
+    if (isProposal ? options.baseline !== 'source' : !isComparisonOptions(options)) {
       return { ok: false, error: 'invalid-comparison' };
     }
     const context = getContext();
@@ -149,6 +164,8 @@ export function installComparison({
         targetContext = proposalComparisonContext({ proposedPath: options.proposedPath, context });
       } catch (error) { return { ok: false, error: error.message }; }
     }
+    const candidateContext = sourceComparisonContext(options.candidate);
+    const baselineContext = sourceComparisonContext(options.baseline);
     reset();
     const run = generation;
     activeKey = key;
@@ -160,7 +177,7 @@ export function installComparison({
       surface = document.createElement('ew-comparison');
       surface.candidate = options.candidate;
       surface.baseline = options.baseline;
-      surface.path = `/${targetContext.path.replace(/^\//, '')}`;
+      surface.path = candidateContext ? options.candidate : `/${targetContext.path.replace(/^\//, '')}`;
       surface.onClose = close;
       surface.onRefresh = () => open(options);
       mountRoot.classList.add('ew-comparison-host');
@@ -174,7 +191,7 @@ export function installComparison({
       await surface.updateComplete;
       if (!current()) return { ok: false, error: 'stale-context' };
       surface.focusHeading();
-      if (saveDocument && !isProposal) {
+      if (saveDocument && ['document', 'preview'].includes(options.candidate)) {
         const result = await saveDocument();
         if (!current()) return { ok: false, error: 'stale-context' };
         if (!result?.ok && result?.error !== 'not-writable') {
@@ -187,15 +204,17 @@ export function installComparison({
       }
       const readCandidate = () => {
         if (isProposal) return loadSource({ ...targetContext, path: targetContext.proposalPath });
+        if (candidateContext) return loadSource(candidateContext);
         return options.candidate === 'document' ? { html: documentHtml } : loadContent('preview', context);
       };
       const [baseline, candidate] = await Promise.all([
-        isProposal ? loadSource(targetContext) : loadContent('live', targetContext),
+        isProposal || baselineContext
+          ? loadSource(baselineContext || targetContext) : loadContent('live', targetContext),
         readCandidate(),
       ]);
       if (!current()) return { ok: false, error: 'stale-context' };
-      const htmlA = normalizeComparisonHtml(baseline.html, targetContext);
-      const htmlB = normalizeComparisonHtml(candidate.html, targetContext);
+      const htmlA = normalizeComparisonHtml(baseline.html, baselineContext || targetContext);
+      const htmlB = normalizeComparisonHtml(candidate.html, candidateContext || targetContext);
       const { dom } = await buildCompareDom({ htmlA, htmlB, closeOnOutsideClick: false });
       if (!current()) return { ok: false, error: 'stale-context' };
       surface.diffDom = dom;

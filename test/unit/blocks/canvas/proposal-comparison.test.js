@@ -118,6 +118,71 @@ describe('staged proposal comparison', () => {
     expect(saveCalls).to.equal(0);
   });
 
+  it('compares and refreshes arbitrary source documents using each document context without saving', async () => {
+    const paths = {
+      candidate: '/candidate/proposals/.da/folder/update.html',
+      baseline: '/baseline/originals/campaigns/page',
+    };
+    original = { html: '<p>Current saved content</p><a href="./original">Original link</a>' };
+    expect(await controller.open(paths)).to.deep.equal({ ok: true });
+    expect(reads).to.deep.equal([{ org: 'baseline', site: 'originals', path: '/campaigns/page' }]);
+    expect(proposalReads).to.deep.equal([{ org: 'candidate', site: 'proposals', path: '/.da/folder/update.html' }]);
+    const surface = root.querySelector('ew-comparison');
+    expect(surface.path).to.equal(paths.candidate);
+    expect(textWithout(surface.diffDom, 'del')).to.include('Proposed content');
+    expect(textWithout(surface.diffDom, 'ins')).to.include('Current saved content');
+    expect(surface.diffDom.querySelector('script, [onerror], [href^="javascript:"]')).to.equal(null);
+    expect(surface.diffDom.querySelector('a').href).to.equal('https://main--originals--baseline.aem.live/campaigns/original');
+    expect(surface.diffDom.querySelector('img').src).to.equal('https://main--proposals--candidate.aem.live/.da/folder/media.jpg');
+    await surface.updateComplete;
+    const view = surface.shadowRoot.querySelector('ew-canvas-compare');
+    await view.updateComplete;
+    expect(view.currentLabel).to.equal(paths.baseline);
+    expect(view.label).to.equal(paths.candidate);
+    await surface.onRefresh();
+    expect(reads).to.have.length(2);
+    expect(proposalReads).to.have.length(2);
+    expect(saveCalls).to.equal(0);
+    expect(serializeCalls).to.equal(0);
+    expect(editor.value).to.equal('Unsaved edits');
+    expect(context.path).to.equal('current');
+  });
+
+  ['baseline', 'candidate'].forEach((operand) => {
+    it(`reports ${operand} source failures without saving or falling back to delivery`, async () => {
+      const failure = new Error(`Could not load ${operand} (403).`);
+      if (operand === 'baseline') original = failure;
+      else proposal = failure;
+      expect(await controller.open({
+        candidate: '/candidate/site/.da/page.html',
+        baseline: '/baseline/site/page.html',
+      })).to.deep.equal({ ok: false, error: failure.message });
+      expect(root.querySelector('ew-comparison').error).to.equal(failure.message);
+      expect(root.querySelector('ew-comparison').diffDom).to.equal(undefined);
+      expect(saveCalls).to.equal(0);
+    });
+  });
+
+  it('rejects invalid source operands at the host boundary before fetching or saving', async () => {
+    for (const path of [
+      '/org/site', '//org/site/page', '/org/site/', '/org/site/../page',
+      '/org/site/./page', '/org/site//page', '/org/site/%2e%2e/page',
+      '/org/site/page?version=1', '/org/site/page#fragment', '/org/site\\other/page',
+      '/org/site/a b', '/org/site/page\u0000', 'https://example.com/org/site/page', 42,
+    ]) {
+      // eslint-disable-next-line no-await-in-loop
+      expect(await controller.open({ candidate: path, baseline: '/org/site/page' }))
+        .to.deep.equal({ ok: false, error: 'invalid-comparison' });
+      // eslint-disable-next-line no-await-in-loop
+      expect(await controller.open({ candidate: '/org/site/page', baseline: path }))
+        .to.deep.equal({ ok: false, error: 'invalid-comparison' });
+    }
+    expect(reads).to.deep.equal([]);
+    expect(proposalReads).to.deep.equal([]);
+    expect(saveCalls).to.equal(0);
+    expect(root.querySelector('ew-comparison')).to.equal(null);
+  });
+
   it('accepts the exact composed artifact documented in the Coworker skill', async () => {
     const skill = await readFile({ path: '../../../../skills/page-proposals/SKILL.md' });
     const examples = [...skill.matchAll(/```json\n([\s\S]*?)\n```/g)].map((match) => JSON.parse(match[1]));
