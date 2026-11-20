@@ -1,22 +1,16 @@
 import { LitElement, html, nothing, repeat } from 'da-lit';
-import { DOMParser as PMDOMParser } from 'da-y-wrapper';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
-import { initIms } from '../../shared/utils.js';
+import { initIms } from '../utils.js';
 import {
   fetchVersions,
   newVersionEntry,
   createVersion,
-  fetchVersionHtml,
   getVersionId,
-} from '../../shared/version/version-actions.js';
-import { buildDisplayItems, entryKey, formatUser } from '../../shared/version/helpers.js';
-import { docToHtml, domToHtml, buildCompareDom } from '../../shared/version/compare.js';
-import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
-import { canvasBus } from '../utils/canvas-bus.js';
-import { trackingPluginKey } from '../editor-utils/prose-diff.js';
-import { initVersionBridge } from '../editor-utils/version-bridge.js';
-import { REFRESH_ICON_HTML, REFRESH_SPINNER_HTML } from './constants.js';
-import '../ew-comparison/ew-canvas-compare.js';
+} from '../version/version-actions.js';
+import { buildDisplayItems, entryKey, formatUser } from '../version/helpers.js';
+import { domToHtml, buildCompareDom } from '../version/compare.js';
+import { VERSION_HISTORY_TAG } from './version-history-view.js';
+import '../version-compare/version-compare.js';
 
 const IS_MAC = typeof navigator !== 'undefined' && /Mac|iP(hone|[oa]d)/.test(navigator.platform);
 const SHORTCUT_HINT = IS_MAC ? '⌘ + ⌥ + S' : 'Ctrl + Alt + S';
@@ -25,14 +19,25 @@ const ICON_ADD = '/img/icons/s2-icon-addcircle-20-n.svg';
 const ICON_MORE = '/img/icons/s2-icon-more-20-n.svg';
 const ICON_CHEVRON = '/img/icons/s2-icon-chevrondown-20-n.svg';
 const ICON_CLOSE = '/img/icons/s2-icon-close-20-n.svg';
+const ICON_REFRESH = '/img/icons/s2-icon-refresh-20-n.svg';
+const REFRESH_ICON_HTML = `<svg aria-hidden="true" class="icon" viewBox="0 0 20 20"><use href="${ICON_REFRESH}#icon"></use></svg>`;
+const REFRESH_SPINNER_HTML = '<span class="nx-loading-spinner" aria-hidden="true"></span>';
 
-const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
-await import(`${getNx()}/blocks/shared/menu/menu.js`);
-await import(`${getNx()}/blocks/shared/dialog/dialog.js`);
-const style = await loadStyle(import.meta.url);
-const form = await loadStyle(`${getNx2()}/styles/form.css`);
-const buttons = await loadStyle(`${getNx2()}/styles/buttons.css`);
-const hints = await loadStyle(new URL('../../shared/styles/hints.css', import.meta.url).href);
+const nx = getNx();
+const [{ loadStyle, hashChange }] = await Promise.all([
+  import(`${nx}/utils/utils.js`),
+  import(`${nx}/blocks/shared/menu/menu.js`),
+  import(`${nx}/blocks/shared/dialog/dialog.js`),
+]);
+
+const nx2 = getNx2();
+const [{ VERSION_EVENT }, style, form, buttons, hints] = await Promise.all([
+  import(`${nx2}/utils/version-events.js`),
+  loadStyle(import.meta.url),
+  loadStyle(`${nx2}/styles/form.css`),
+  loadStyle(`${nx2}/styles/buttons.css`),
+  loadStyle(new URL('../styles/hints.css', import.meta.url).href),
+]);
 
 export function buildDocPath(state) {
   const { org, site, path } = state ?? {};
@@ -41,7 +46,7 @@ export function buildDocPath(state) {
 
 let toastPromise;
 function loadToast() {
-  toastPromise ??= import(`${getNx()}/blocks/shared/toast/toast.js`);
+  toastPromise ??= import(`${nx}/blocks/shared/toast/toast.js`);
   return toastPromise;
 }
 
@@ -50,7 +55,7 @@ async function showError(text) {
   showToast({ text, variant: 'error' });
 }
 
-class EwCanvasVersions extends LitElement {
+class DaVersionHistory extends LitElement {
   static properties = {
     path: { type: String },
     _filter: { state: true },
@@ -66,19 +71,22 @@ class EwCanvasVersions extends LitElement {
     _canWrite: { state: true },
   };
 
+  // Gives access to the open document, set before the element connects.
+  editor;
+
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [form, buttons, hints, style];
     this._filter = 'all';
-    this._canWrite = getExtensionsBridge().view?.editable ?? false;
-    this._unsubHtml = canvasBus.editorHtmlState.subscribe(() => {
-      this._canWrite = getExtensionsBridge().view?.editable ?? false;
+    this._canWrite = this.editor.canWrite();
+    this._unsubEditor = this.editor.subscribe(() => {
+      this._canWrite = this.editor.canWrite();
     });
     initIms().then((ims) => { this._imsEmail = ims?.email ?? null; });
-    initVersionBridge();
-    this._unsubVersion = canvasBus.versionCreatedState.subscribe(({ path }) => {
-      if (path === this.path) this._refreshVersions();
-    });
+    this._onVersionCreated = ({ detail }) => {
+      if (detail?.path === this.path) this._refreshVersions();
+    };
+    document.addEventListener(VERSION_EVENT.CREATED, this._onVersionCreated);
     this._unsubHash = hashChange?.subscribe((state) => {
       const next = buildDocPath(state);
       if (next !== this.path) {
@@ -96,8 +104,8 @@ class EwCanvasVersions extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
-    this._unsubHtml?.();
-    this._unsubVersion?.();
+    this._unsubEditor?.();
+    document.removeEventListener(VERSION_EVENT.CREATED, this._onVersionCreated);
     this._loadRequest = (this._loadRequest ?? 0) + 1;
     this._refreshing = false;
     this._syncHeaderRefreshButton();
@@ -205,19 +213,11 @@ class EwCanvasVersions extends LitElement {
   async handleRestoreConfirm() {
     const entry = this._restoreEntry;
     this._restoreEntry = null;
-    const { view } = getExtensionsBridge();
-    if (!view) return;
-    const versionBody = await fetchVersionHtml(this.path, entry);
-    if (!versionBody) {
+    const restored = await this.editor.restore(this.path, entry);
+    if (!restored) {
       showError('Could not load the selected version.');
       return;
     }
-    const newDoc = PMDOMParser.fromSchema(view.state.schema).parse(versionBody);
-    const { doc } = view.state;
-    const tr = view.state.tr
-      .replaceWith(0, doc.content.size, newDoc.content)
-      .setMeta(trackingPluginKey, true);
-    view.dispatch(tr);
     this.handleCloseCompare();
   }
 
@@ -228,7 +228,7 @@ class EwCanvasVersions extends LitElement {
 
   async _openCompare(entry, { forceSplit = false } = {}) {
     const trigger = this._focusTrigger;
-    const versionBody = await fetchVersionHtml(this.path, entry);
+    const versionBody = await this.editor.fetchVersion(this.path, entry);
     if (!versionBody) {
       showError('Could not load the selected version.');
       return;
@@ -279,13 +279,13 @@ class EwCanvasVersions extends LitElement {
   }
 
   async _buildDiff(versionBody) {
-    const { view } = getExtensionsBridge();
-    if (!view) {
+    const currentHtml = this.editor.getCurrentHtml();
+    if (currentHtml == null) {
       showError('Could not build the comparison. Please try again.');
       return null;
     }
     return buildCompareDom({
-      htmlA: docToHtml(view),
+      htmlA: currentHtml,
       htmlB: domToHtml(versionBody),
       closeOnOutsideClick: false,
     });
@@ -497,20 +497,21 @@ class EwCanvasVersions extends LitElement {
       </div>
       ${this._restoreEntry ? this.renderRestoreDialog() : nothing}
       ${this._compareCtx ? html`
-        <ew-canvas-compare
+        <da-version-compare
           .dom=${this._compareCtx.previewDom}
           .diffDom=${this._compareCtx.diffDom}
           .path=${this.path}
+          .getArea=${this.editor.getCompareArea}
           label=${this._compareCtx.label}
           ?canWrite=${this._canWrite}
           ?split=${this._compareSplit}
           @close=${this.handleCloseCompare}
           @restore=${this.handleRestoreFromCompare}
           @toggle-split=${this.handleToggleCompareSplit}>
-        </ew-canvas-compare>
+        </da-version-compare>
       ` : nothing}
     `;
   }
 }
 
-customElements.define('ew-canvas-versions', EwCanvasVersions);
+customElements.define(VERSION_HISTORY_TAG, DaVersionHistory);
