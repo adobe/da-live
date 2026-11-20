@@ -698,8 +698,13 @@ export default class DaListBase extends LitElement {
     if (!items?.length || this._preflight?.checking) return;
     // Like the publish confirm: stay open showing "Checking..." until publishItems moves on.
     this._preflight = { ...this._preflight, checking: true };
-    // Keep failed pages selected so they can be fixed and retried.
-    await this.publishItems(items, { keepUnpublished: true });
+    try {
+      // Keep failed pages selected so they can be fixed and retried.
+      await this.publishItems(items, { keepUnpublished: true });
+    } finally {
+      // publishItems closes the dialog on success; if it threw first, re-enable it.
+      if (this._preflight?.checking) this._preflight = { ...this._preflight, checking: false };
+    }
   }
 
   // Run the schedule check for `items` and either surface the scheduled-override

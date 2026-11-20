@@ -939,6 +939,20 @@ describe('DaList helpers', () => {
       expect(el._preflight).to.equal(null);
       expect(el._confirm.scheduled).to.have.length(1);
     });
+
+    it('Clears "checking" when publishing fails before the dialog closes', async () => {
+      const el = makeList();
+      stub(el, 'publishItems').rejects(new Error('schedule lookup failed'));
+      el._preflight = { items: [doc], publish: true };
+      let error;
+      try {
+        await el.handlePublishPassing([doc]);
+      } catch (e) {
+        error = e;
+      }
+      expect(error?.message).to.equal('schedule lookup failed');
+      expect(el._preflight).to.deep.include({ checking: false, publish: true });
+    });
   });
 
   describe('Publish Passing end to end', () => {
