@@ -5,7 +5,8 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { parseRepo, createGitHub, cssVariants, jsShape, analyzeBlock } = await import('../../../../blocks/config/blocks-import/github.js');
 const {
-  findBlocks, blockExamples, blockDoc, displayName, mergeBlockRows, isBlockName,
+  findBlocks, blockExamples, blockDoc, cleanBlockDoc, isSafeUrl, displayName, mergeBlockRows,
+  isBlockName,
 } = await import('../../../../blocks/config/blocks-import/blocks.js');
 const { docFolder, parsePages, readPages, runImport } = await import('../../../../blocks/config/blocks-import/dialog.js');
 
@@ -153,6 +154,76 @@ describe('blocks import: content', () => {
   });
 });
 
+// Example content as DA stores it (scdemos/demo), and a page with everything an import must not
+// copy into a generated doc.
+const REAL = '<div><div><picture><source srcset="https://content.da.live/o/s/media/a.jpg">'
+  + '<source srcset="https://content.da.live/o/s/media/a.jpg" media="(min-width: 600px)">'
+  + '<img src="https://content.da.live/o/s/media/a.jpg" alt="Hero" loading="lazy"></picture></div></div>'
+  + '<div><div><p>The new season</p><h1>Everyday,<br><em>elevated.</em></h1>'
+  + '<p><strong><a href="/en/offers">Explore</a></strong> <a href="#top">Top</a> <a href="mailto:a@b.c">Mail</a></p>'
+  + '<ul><li><strong>4.8/5</strong> reviews</li></ul><p>H<sub>2</sub>O x<sup>2</sup> <u>u</u> <s>s</s> <code>c</code></p></div></div>';
+const UNSAFE = `<body><main><div><div class="hero"><div><div>
+  <script>alert(1)</script><style>p{}</style><iframe src="https://evil.example"></iframe>
+  <p onclick="x()" style="color:red" id="i" class="c" data-x="1">Kept text</p>
+  <p><a href="javascript:alert(2)" onmouseover="y()">bad link</a> <a href="java\tscript:alert(3)">tab link</a></p>
+  <img src="data:image/png;base64,x" onerror="alert(4)"><picture><img src="data:image/svg+xml,x"></picture>
+  <svg><script>alert(5)</script></svg><form><input value="v"></form><object data="x"></object>
+  <hr><table><tr><td>nested</td></tr></table>
+  <da-loc-added><p>pending add</p></da-loc-added><da-loc-deleted><p>pending delete</p></da-loc-deleted>
+</div></div></div></div></main></body>`;
+
+describe('blocks import: sanitizing', () => {
+  const page = (inner, cls = 'hero dark') => `<body><main><div><div class="${cls}">${inner}</div></div></main></body>`;
+  const cleaned = async (html, name = 'hero') => cleanBlockDoc(blockDoc(name, { examples: blockExamples(html, name) }));
+
+  it('keeps block content as DA stores it', async () => {
+    const out = await cleaned(page(REAL));
+    const doc = new DOMParser().parseFromString(out, 'text/html');
+    const block = doc.querySelector('main > div > .hero.dark');
+    expect(block.innerHTML).to.equal(REAL);
+    expect([!!doc.querySelector('body > header'), !!doc.querySelector('body > footer')]).to.deep.equal([true, true]);
+  });
+
+  it('drops active content, handlers, unsafe URLs and what cannot sit in a cell, keeping the text', async () => {
+    const out = await cleaned(UNSAFE, 'hero');
+    const doc = new DOMParser().parseFromString(out, 'text/html');
+    const cell = doc.querySelector('.hero > div > div');
+    expect(cell.querySelectorAll('script, style, iframe, svg, form, input, object, hr, table, img, picture').length).to.equal(0);
+    expect([...cell.querySelectorAll('*')].flatMap((el) => [...el.attributes].map((a) => a.name))).to.deep.equal([]);
+    expect(cell.querySelectorAll('a').length).to.equal(0);
+    const text = cell.textContent.replace(/\s+/g, ' ');
+    ['Kept text', 'bad link', 'tab link', 'pending add'].forEach((kept) => expect(text).to.include(kept));
+    ['alert', 'pending delete', 'nested', '<', 'p{}'].forEach((gone) => expect(text).to.not.include(gone));
+    expect(out).to.not.match(/da-(loc|diff)-/);
+  });
+
+  it('allows relative, anchor, http(s), mailto and tel URLs only', () => {
+    expect(['/a', 'a/b.html', '../x', '#top', '?q=1', 'https://x.com', 'http://x', 'mailto:a@b.c', 'tel:+1'].every(isSafeUrl)).to.equal(true);
+    // eslint-disable-next-line no-script-url
+    expect(['javascript:alert(1)', ' JavaScript:x', 'java\tscript:x', 'data:text/html,x', 'vbscript:x', 'file:///etc']
+      .some(isSafeUrl)).to.equal(false);
+  });
+
+  it('rebuilds picture sources from the image, as DA saves them, so a page srcset is not copied', async () => {
+    const pic = '<div><div><picture><source srcset="/ok.jpg 1x, javascript:x 2x"><source srcset="/b.jpg 2x">'
+      + '<img src="/a.jpg" alt=""></picture></div></div>';
+    const out = await cleaned(page(pic, 'cards'), 'cards');
+    const sources = [...new DOMParser().parseFromString(out, 'text/html').querySelectorAll('source')];
+    expect(sources.map((s) => s.getAttribute('srcset'))).to.deep.equal(['/a.jpg', '/a.jpg']);
+  });
+
+  it('cleans a large block doc quickly', async () => {
+    await cleanBlockDoc(blockDoc('hero'));
+    const examples = Array.from({ length: 20 }, (_, v) => ({ variant: `v${v}`, html: REAL.repeat(10) }));
+    const html = blockDoc('hero', { examples });
+    const start = performance.now();
+    await cleanBlockDoc(html);
+    const ms = performance.now() - start;
+    // About 35 ms for this 200 KB doc in Node; a wide margin keeps slow CI machines green.
+    expect(ms).to.be.below(1000);
+  });
+});
+
 describe('blocks import: run', () => {
   let savedFetch;
   let saves;
@@ -198,6 +269,7 @@ describe('blocks import: run', () => {
       '/docs/library/blocks/hero.html', '/docs/library/blocks/cards.html', '/docs/library/blocks/broken.html', '/docs/library/blocks.json',
     ]);
     expect(saves[0].body).to.include('<h1>Hi</h1>');
+    expect(saves[0].body.startsWith('<body><header></header><main>')).to.equal(true);
     const list = JSON.parse(saves[3].body);
     expect(list.blocks.data).to.deep.equal([
       { name: 'Hero', path: 'https://content.da.live/o/s/docs/library/blocks/hero' },

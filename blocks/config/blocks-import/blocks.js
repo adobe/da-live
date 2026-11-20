@@ -30,11 +30,61 @@ export function findBlocks(html, found = new Map()) {
   return found;
 }
 
+// Dropped with their content before the DA round trip, which would otherwise keep them as
+// escaped text: active content, form controls, and what can't sit in a block cell (a section
+// break, a nested table, or content a pending localization or diff removes).
+const DROP = [
+  'script', 'style', 'link', 'meta', 'base', 'iframe', 'frame', 'object', 'embed', 'svg', 'math',
+  'template', 'noscript', 'form', 'input', 'select', 'textarea', 'button',
+  'hr', 'table', 'da-loc-deleted', 'da-diff-deleted',
+].join(', ');
+// Pending additions are kept as plain content.
+const UNWRAP = 'da-loc-added, da-diff-added';
+
+function preClean(el) {
+  const copy = el.cloneNode(true);
+  copy.querySelectorAll(DROP).forEach((node) => node.remove());
+  copy.querySelectorAll(UNWRAP).forEach((node) => node.replaceWith(...node.childNodes));
+  return copy;
+}
+
 // Every instance of a block in a page: [{ variant, html }].
 export function blockExamples(html, name) {
   return blockElements(parse(html))
     .filter((el) => el.classList[0] === name)
-    .map((el) => ({ variant: variantOf(el), html: el.innerHTML.trim() }));
+    .map((el) => ({ variant: variantOf(el), html: preClean(el).innerHTML.trim() }));
+}
+
+// No scheme (relative, `/path`, `#anchor`) or http(s), mailto and tel. Browsers ignore
+// whitespace and control characters in a scheme, so `java script:` is checked without them.
+export function isSafeUrl(url) {
+  const value = [...String(url ?? '')].filter((c) => c.charCodeAt(0) > 32 && !/\s/.test(c)).join('');
+  return !/^[a-z][a-z0-9+.-]*:/i.test(value) || /^(https?|mailto|tel):/i.test(value);
+}
+
+const safeSrcset = (srcset) => srcset.split(',').every((entry) => isSafeUrl(entry.trim().split(/\s+/)[0]));
+
+function dropUnsafeUrls(doc) {
+  doc.querySelectorAll('a').forEach((a) => {
+    if (!isSafeUrl(a.getAttribute('href'))) a.replaceWith(...a.childNodes);
+  });
+  doc.querySelectorAll('img').forEach((img) => {
+    if (!isSafeUrl(img.getAttribute('src'))) (img.closest('picture') ?? img).remove();
+  });
+  doc.querySelectorAll('source').forEach((source) => {
+    if (!safeSrcset(source.getAttribute('srcset') ?? '')) source.remove();
+  });
+}
+
+// A generated block doc as DA saves it: through DA's own parser (aem2doc → doc2aem), which keeps
+// only what DA documents can hold, then without unsafe link and image URLs.
+export async function cleanBlockDoc(html) {
+  const [{ Y }, { aem2doc, doc2aem }] = await Promise.all([import('da-y-wrapper'), import('da-parser')]);
+  const ydoc = new Y.Doc();
+  aem2doc(html, ydoc);
+  const doc = parse(doc2aem(ydoc));
+  dropUnsafeUrls(doc);
+  return doc.body.outerHTML;
 }
 
 function placeholderRows({ rows = 1, columns = 1 } = {}) {

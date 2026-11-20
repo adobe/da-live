@@ -4,7 +4,9 @@ import { saveSource } from '../api.js';
 import { firstSheetName, getRows, setRows } from '../sheets.js';
 import { renderAlert, renderField } from '../editors/fields.js';
 import { parseRepo, createGitHub, analyzeBlock } from './github.js';
-import { findBlocks, blockExamples, blockDoc, displayName, mergeBlockRows } from './blocks.js';
+import {
+  findBlocks, blockExamples, blockDoc, cleanBlockDoc, displayName, mergeBlockRows,
+} from './blocks.js';
 import { IMPORT } from '../messages.js';
 
 // Block docs live next to the list: /library/blocks.json → /library/blocks/<name>.html
@@ -45,7 +47,7 @@ export async function runImport({
     /* eslint-disable no-await-in-loop */
     const analysis = !examples.length && github && block.path
       ? await analyzeBlock(github, block).catch(() => null) : null;
-    const body = blockDoc(block.name, { examples, analysis });
+    const body = await cleanBlockDoc(blockDoc(block.name, { examples, analysis }));
     const resp = await source.save({ org, site, path: `${folder}${block.name}.html`, body })
       .catch(() => null);
     /* eslint-enable no-await-in-loop */
