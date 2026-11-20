@@ -147,6 +147,40 @@ describe('DaActionBar', () => {
     });
   });
 
+  describe('Preflight required indicator', () => {
+    async function renderPublish(items) {
+      const el = new DaActionBar();
+      el.preflightEnabled = true;
+      el.enforcePreflight = true;
+      el.permissions = ['read', 'write'];
+      el.items = items;
+      document.body.append(el);
+      await el.updateComplete;
+      const button = el.shadowRoot.querySelector('.publish-button');
+      const result = {
+        label: button.getAttribute('aria-label'),
+        title: button.title,
+        dot: !!button.querySelector('.da-preflight-dot'),
+      };
+      el.remove();
+      return result;
+    }
+
+    it('Is hidden when no page is selected', async () => {
+      const result = await renderPublish([{ path: '/o/s/a.json', ext: 'json' }]);
+      expect(result).to.deep.equal({ label: 'Publish', title: 'Publish', dot: false });
+    });
+
+    it('Shows and is named in the Publish label when a page is selected', async () => {
+      const result = await renderPublish([{ path: '/o/s/a.html', ext: 'html' }]);
+      expect(result).to.deep.equal({
+        label: 'Publish (preflight required)',
+        title: 'Publish (preflight required)',
+        dot: true,
+      });
+    });
+  });
+
   describe('_canDelete', () => {
     it('Defaults to true when user can write', () => {
       const el = new DaActionBar();

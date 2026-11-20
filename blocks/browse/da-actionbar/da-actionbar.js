@@ -191,6 +191,11 @@ export default class DaActionBar extends LitElement {
     return !!(this.preflightEnabled && this.enforcePreflight);
   }
 
+  // Publish is only gated when the selection includes a page.
+  get _publishNeedsPreflight() {
+    return this._requirePreflight && this.items.some((item) => item.ext === 'html');
+  }
+
   get _canRename() {
     if (!this._canWrite) return false;
     const isFolder = !this.items[0]?.ext;
@@ -221,6 +226,7 @@ export default class DaActionBar extends LitElement {
   }
 
   render() {
+    const publishLabel = this._publishNeedsPreflight ? 'Publish (preflight required)' : 'Publish';
     return html`
       <div class="da-action-bar" role="gridcell" aria-label="Action Bar">
         <div class="da-action-bar-left-rail" role="presentation">
@@ -317,13 +323,13 @@ export default class DaActionBar extends LitElement {
           </button>
           <button
             @click=${this.handlePublish}
-            aria-label="Publish"
-            title="Publish"
+            aria-label=${publishLabel}
+            title=${publishLabel}
             ?disabled=${!!this.loading}
             class="publish-button ${this._canPublish ? '' : 'hide'} ${this.loading === 'publish' ? 'loading' : ''}">
             ${icon('publish')}
             <span>Publish</span>
-            ${this._requirePreflight ? html`<span class="da-preflight-dot is-required" title="Preflight required before publish"></span>` : nothing}
+            ${this._publishNeedsPreflight ? html`<span class="da-preflight-dot is-required" aria-hidden="true"></span>` : nothing}
           </button>
           <button
             @click=${this.handleShare}
