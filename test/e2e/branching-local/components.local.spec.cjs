@@ -128,6 +128,9 @@ test('real selector, Changes, conflict and Site History components against local
   await expect(changes).toContainText('/edit.html');
   await expect(changes).toContainText('/new.html');
   await expect(changes).toContainText('/other.html');
+  await changes.getByRole('button', { name: '/edit.html', exact: true }).click();
+  await expect(changes.locator('.diff-body del')).toContainText('base');
+  await expect(changes.locator('.diff-body ins')).toContainText('branch');
   expect(await (await call(request, 'GET', `/source${site}/sheet.json`)).text()).toBe('{"row":1}');
   expect(await (await call(request, 'GET', `/source${site}/image.png`)).body()).toEqual(image1);
   expect(await (await call(request, 'GET', `/config${site}`)).json()).toEqual({ setting: 1 });
@@ -147,9 +150,10 @@ test('real selector, Changes, conflict and Site History components against local
   await expect(conflicts.getByText('Sync needs resolution', { exact: true })).toBeVisible();
   await call(request, 'GET', `/branches${site}/work`);
   await conflicts.getByRole('button', { name: '/edit.html' }).click();
-  await expect(conflicts).toContainText('base');
-  await expect(conflicts).toContainText('branch');
-  await expect(conflicts).toContainText('default');
+  await expect(conflicts.locator('.diff-body del')).toContainText('base');
+  await expect(conflicts.locator('.diff-body ins')).toContainText('branch');
+  await conflicts.getByRole('button', { name: 'Base → Default' }).click();
+  await expect(conflicts.locator('.diff-body ins')).toContainText('default');
   await conflicts.getByRole('button', { name: 'Keep branch' }).click();
   await conflicts.getByRole('button', { name: 'Complete sync' }).click();
   await expect(conflicts).toContainText('Sync completed.');
