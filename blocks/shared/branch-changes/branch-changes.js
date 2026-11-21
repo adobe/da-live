@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import styles from './branch-changes-styles.js';
+import '../branch-diff/branch-diff.js';
 
 const SAFE_IMAGES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/avif']);
 const TEXT_KINDS = new Set(['html', 'json', 'config']);
@@ -197,7 +198,7 @@ export class DaBranchChanges extends LitElement {
         <p>Type: ${side.type} · Size: ${side.blob.size} bytes · Hash: ${side.hash || 'Unavailable'}</p>
         ${side.preview ? html`<img src=${side.preview} alt=${`${label} image preview`}>` : nothing}
       `;
-    } else if (TEXT_KINDS.has(kind)) content = html`<pre>${side.text}</pre>`;
+    }
     return html`<section class="side">
       <h4>${label}</h4>
       ${content}
@@ -259,10 +260,12 @@ export class DaBranchChanges extends LitElement {
           ${this._detailError ? html`<p class="message error" role="alert">${this._detailError}</p>` : nothing}
           ${this._detail ? html`<div class="detail">
             <h3>${this._detail.path}</h3>
-            <div class="sides">
+            ${TEXT_KINDS.has(this._detail.itemKind) ? html`<da-branch-diff
+              .itemKind=${this._detail.itemKind} .defaultSide=${this._detail.default}
+              .branch=${this._detail.branch}></da-branch-diff>` : html`<div class="sides">
               ${this.renderSide('Default', this._detail.default, this._detail.itemKind)}
               ${this.renderSide('Branch', this._detail.branch, this._detail.itemKind)}
-            </div>
+            </div>`}
           </div>` : nothing}
         </div>
       </section>

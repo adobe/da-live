@@ -3,6 +3,7 @@ import { BranchingError } from '../branching-client.js';
 import { retirePublishedBranch, withBranchBarrier } from '../branch-selector/navigation.js';
 import { lockBranchEditing, unlockBranchEditing, rememberEditorBeforeBarrier, forgetUnneededEditorSnapshot } from './editing-lock.js';
 import styles from './branch-conflicts-styles.js';
+import '../branch-diff/branch-diff.js';
 
 const SIDES = ['base', 'branch', 'default'];
 const TEXT = new Set(['html', 'json', 'config']);
@@ -458,11 +459,22 @@ export class DaBranchConflicts extends LitElement {
     });
   }
 
-  renderSide(label, side, kind) {
+  renderSide(label, side) {
     if (side.state === 'absent') return html`<section><h4>${label}</h4><p>Absent</p></section>`;
-    return html`<section><h4>${label}</h4>${TEXT.has(kind) ? html`<pre>${side.text}</pre>` : html`
+    return html`<section><h4>${label}</h4>
       <p>Type: ${side.type} · Size: ${side.blob.size} bytes · Hash: ${side.hash || 'Unavailable'}</p>
-      ${side.preview ? html`<img src=${side.preview} alt=${`${label} preview`}>` : nothing}`}</section>`;
+      ${side.preview ? html`<img src=${side.preview} alt=${`${label} preview`}>` : nothing}</section>`;
+  }
+
+  renderComparison({ entry, sides }) {
+    if (TEXT.has(entry.itemKind)) {
+      const [base, branch, defaultSide] = sides;
+      return html`<da-branch-diff .itemKind=${entry.itemKind}
+        .base=${base} .branch=${branch} .defaultSide=${defaultSide}></da-branch-diff>`;
+    }
+    return html`<div class="sides">
+      ${SIDES.map((side, index) => this.renderSide(side[0].toUpperCase() + side.slice(1), sides[index]))}
+    </div>`;
   }
 
   renderFeedback() {
@@ -535,9 +547,7 @@ export class DaBranchConflicts extends LitElement {
             @click=${() => this.select(entry)}>${entry.path}</button>
           <span>${entry.itemKind} · ${entry.conflictKind || 'conflict'}${entry.choice ? ` · ${CHOICE_LABELS[entry.choice]}` : ''}</span>
         </li>`)}</ul>
-        ${detail ? html`<h4>${detail.entry.path}</h4><div class="sides">
-          ${SIDES.map((side, index) => this.renderSide(side[0].toUpperCase() + side.slice(1), detail.sides[index], detail.entry.itemKind))}
-        </div>
+        ${detail ? html`<h4>${detail.entry.path}</h4>${this.renderComparison(detail)}
         <div class="choices" role="group" aria-label="Resolution options">
           ${['branch', 'default', 'delete'].map((choice) => this.renderChoice(choice, savedChoice))}
         </div>

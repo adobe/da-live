@@ -301,8 +301,12 @@ describe('branch sync and publish', () => {
       ['value', 'work', 'sync1', 'entry1', 'branch'],
       ['value', 'work', 'sync1', 'entry1', 'default'],
     ]);
-    expect(element.shadowRoot.querySelector('pre').textContent).to.equal('<script>unsafe</script>');
-    expect(element.shadowRoot.querySelector('script')).to.equal(null);
+    const diff = element.shadowRoot.querySelector('da-branch-diff');
+    await diff.updateComplete;
+    [...diff.shadowRoot.querySelectorAll('button')].find((button) => button.textContent === 'Source').click();
+    await diff.updateComplete;
+    expect(diff.shadowRoot.querySelector('pre').textContent).to.equal('<script>unsafe</script>');
+    expect(diff.shadowRoot.querySelector('script')).to.equal(null);
     element._draft = validHtml;
     await element.resolve('edited');
     expect(calls.find((call) => call[0] === 'resolve')[4]).to.deep.equal({ expectedSessionRevision: 1, choice: 'edited', body: validHtml, contentType: 'text/html' });

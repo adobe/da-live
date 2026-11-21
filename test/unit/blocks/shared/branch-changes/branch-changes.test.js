@@ -76,9 +76,14 @@ describe('branch changes', () => {
       ['value', 'work', { path: '/page.html', branchRevision: 3, defaultRevision: 7, side: 'default' }],
       ['value', 'work', { path: '/page.html', branchRevision: 3, defaultRevision: 7, side: 'branch' }],
     ]);
-    expect(element.shadowRoot.querySelectorAll('pre')).to.have.length(2);
-    expect(element.shadowRoot.querySelector('pre').textContent).to.equal('<img src=x onerror=alert(1)>');
-    expect(element.shadowRoot.querySelector('img')).to.equal(null);
+    const diff = element.shadowRoot.querySelector('da-branch-diff');
+    await diff.updateComplete;
+    expect(diff.shadowRoot.querySelector('img')).to.equal(null);
+    [...diff.shadowRoot.querySelectorAll('button')].find((button) => button.textContent === 'Source').click();
+    await diff.updateComplete;
+    expect(diff.shadowRoot.querySelectorAll('pre')).to.have.length(2);
+    expect(diff.shadowRoot.querySelector('pre').textContent).to.equal('<img src=x onerror=alert(1)>');
+    expect(diff.shadowRoot.querySelector('img')).to.equal(null);
   });
 
   it('shows empty and failure states', async () => {
@@ -115,7 +120,7 @@ describe('branch changes', () => {
     await element.select(change);
     await element.updateComplete;
     expect(element.shadowRoot.textContent).to.include('comparison was refreshed');
-    expect(element.shadowRoot.querySelector('pre')).to.equal(null);
+    expect(element.shadowRoot.querySelector('da-branch-diff')).to.equal(null);
   });
 
   it('renders media metadata and only safe image previews, cleaning them up', async () => {
@@ -157,7 +162,7 @@ describe('branch changes', () => {
     resolve(detail);
     await pending;
     await element.updateComplete;
-    expect(element.shadowRoot.querySelector('pre')).to.equal(null);
+    expect(element.shadowRoot.querySelector('da-branch-diff')).to.equal(null);
     expect(calls.filter(([kind]) => kind === 'value')).to.have.length(0);
   });
 
