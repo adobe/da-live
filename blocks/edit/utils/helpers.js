@@ -3,6 +3,7 @@ import { aem2doc, getSchema, yDocToProsemirror } from 'da-parser';
 import prose2aem from '../../shared/prose2aem.js';
 import { getSidekickConfig, parseAemError } from '../../shared/utils.js';
 import { getNx2Api } from '../../../scripts/utils.js';
+import { isDaRsBinding } from '../../shared/da-rs-provider.js';
 
 export function isURL(text) {
   try {
@@ -66,6 +67,9 @@ async function saveHtml(fullPath) {
   const html = prose2aem(editor, false);
 
   const { source } = await getNx2Api();
+  if (isDaRsBinding() && !fullPath.split('/')[2]?.includes('~') && source.replace) {
+    return source.replace(fullPath, { body: html });
+  }
   return source.save(fullPath, { body: html });
 }
 
@@ -160,6 +164,9 @@ async function saveJson(path, sheets, jsonToSave, type = 'sheet') {
   }
 
   // type === 'sheet'
+  if (isDaRsBinding() && !path.split('/')[2]?.includes('~') && source.replace) {
+    return source.replace(path, { body });
+  }
   return source.save(path, { body });
 }
 

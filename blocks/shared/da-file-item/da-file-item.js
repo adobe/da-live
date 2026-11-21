@@ -4,6 +4,8 @@ import { getNx, getNx2, getNx2Api } from '../../../scripts/utils.js';
 import { ICONS, iconPathForExt, getTypeLabel, isImageExt } from '../icons.js';
 import { getFileItemHref } from './navigation.js';
 import { pathMatchesActiveBranch } from '../branch-selector/context.js';
+import { isDaRsBinding } from '../da-rs-provider.js';
+import { SUPPORTED_IMAGE_TYPES } from '../constants.js';
 
 import {
   fetchAemStatus,
@@ -99,6 +101,10 @@ export default class DaFileItem extends LitElement {
       const { source } = await getNx2Api();
       const resp = await source.get(path);
       if (!resp.ok) return;
+      if (isDaRsBinding()) {
+        const type = resp.headers?.get('content-type')?.split(';')[0].trim().toLowerCase();
+        if (!SUPPORTED_IMAGE_TYPES.includes(type)) return;
+      }
       const url = URL.createObjectURL(await resp.blob());
       if (this._imageRequest === request && this.isConnected) this._imageUrl = url;
       else URL.revokeObjectURL(url);

@@ -7,6 +7,7 @@ import { renderEmptyList, EMPTY_LIST_CSS, NOT_PERMITTED } from '../shared/empty-
 import { branchContext, validateBranch } from '../shared/branch-selector/context.js';
 import '../shared/branch-selector/branch-selector.js';
 import { installBranchHashGuard } from '../shared/branch-selector/navigation.js';
+import { withDaRsBinding } from '../shared/da-rs-navigation.js';
 
 import './da-title/da-title.js';
 import './da-content/da-content.js';
@@ -94,7 +95,7 @@ async function setUI(el) {
   try {
     const { isEWEnabled } = await getNxEWFlags();
     if (await isEWEnabled({ org: details.org, site: details.site })) {
-      window.location.href = `/canvas#${details.fullpath.replace(/\.html$/, '')}`;
+      window.location.href = withDaRsBinding(`/canvas#${details.fullpath.replace(/\.html$/, '')}`);
       return;
     }
   } catch {

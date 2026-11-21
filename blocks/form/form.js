@@ -1,4 +1,4 @@
-import { getNx2 } from '../../scripts/utils.js';
+import { getNx2, getNxEWFlags } from '../../scripts/utils.js';
 import decorateEditor from './editor.js';
 
 const nx2 = getNx2();
@@ -11,7 +11,7 @@ const [
 ] = await Promise.all([
   import(`${nx2}/utils/utils.js`),
   import(`${nx2}/utils/panel.js`),
-  import(`${nx2}/utils/ewFlags.js`),
+  getNxEWFlags(),
   import(`${nx2}/utils/chat.js`),
   import(`${nx2}/scripts/nx.js`),
 ]);

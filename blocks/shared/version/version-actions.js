@@ -4,6 +4,8 @@ import { formatDate } from '../utils.js';
 import { getNx2Api } from '../../../scripts/utils.js';
 import { formatVersions } from './helpers.js';
 import { wrapTablesInWrappers } from './compare.js';
+import { parseDaRsVersion } from './da-rs-restore.js';
+import { isDaRsBinding } from '../da-rs-provider.js';
 
 // Fetch and format the version list for a document path.
 // Returns the formatted array on success, null on network/auth failure.
@@ -12,7 +14,19 @@ export async function fetchVersions(path) {
     const { versions } = await getNx2Api();
     const resp = await versions.list(path);
     if (!resp.ok) return null;
-    return formatVersions(await resp.json());
+    const records = await resp.json();
+    if (versions.history) {
+      const history = await versions.history(path);
+      if (history) {
+        if (!history.ok) return null;
+        const { entries } = await history.json();
+        const ids = new Set(records.map((record) => record.version).filter(Boolean));
+        entries.filter((entry) => !entry.snapshot || !ids.has(entry.snapshot)).forEach((entry) => {
+          records.push({ ...entry, users: (entry.users || []).map((email) => ({ email })) });
+        });
+      }
+    }
+    return formatVersions(records);
   } catch {
     return null;
   }
@@ -42,6 +56,17 @@ export function getVersionId(path, entry) {
     : entry.versionId;
 }
 
+export async function fetchDaRsVersionDocument(path, entry) {
+  try {
+    const { versions } = await getNx2Api();
+    const response = await versions.get(path, { versionId: getVersionId(path, entry) });
+    if (!response.ok) return null;
+    return parseDaRsVersion(await response.text());
+  } catch {
+    return null;
+  }
+}
+
 // Fetch a version's HTML and parse it through the same schema-driven pipeline
 // the live doc went through (aem2doc -> ProseMirror -> DOMSerializer), so the
 // result is in the editor's authoring shape rather than raw stored/rendered
@@ -49,6 +74,7 @@ export function getVersionId(path, entry) {
 // (Mirrors da-editor.js's fetchVersion/htmlToProse for the classic editor.)
 // todo: extract to shared logic
 export async function fetchVersionHtml(path, entry) {
+  if (isDaRsBinding()) return null;
   try {
     const { versions } = await getNx2Api();
     const versionId = getVersionId(path, entry);

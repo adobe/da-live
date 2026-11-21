@@ -440,19 +440,27 @@ export default class DaListBase extends LitElement {
         return;
       }
     }
-    const { source } = await getNx2Api();
+    const api = await getNx2Api();
+    const { source } = api;
 
     const useDeleteFolder = type === 'delete' && !item.ext;
     const deleteFn = useDeleteFolder ? source.deleteFolder : source.delete;
     const type2fn = { copy: source.copy, delete: deleteFn, move: source.move };
-    const fn = type2fn[type];
+    let fn = type2fn[type];
 
     // If source and dest are in the trash it's a proper move within the trash.
     const moveToTrash = type === 'move' && !item.path.includes('/.trash/') && item.destination.includes('/.trash/');
+    const bound = new URL(window.location.href).searchParams.get('da-source') === 'da-rs';
 
     let continuationToken;
     let hasCompletedPage = false;
     try {
+      const [, org, site] = item.path.split('/');
+      const boundH6 = bound && await api.isHlx6(org, site);
+      if (boundH6 && !item.ext && (type === 'copy' || type === 'delete' || moveToTrash)) {
+        throw new Error('Folder copy and delete are unavailable');
+      }
+      if (boundH6 && moveToTrash) fn = source.delete;
       do {
         const args = type === 'delete'
           ? { continuationToken }
@@ -463,6 +471,17 @@ export default class DaListBase extends LitElement {
           const err = new Error(`Unexpected status: ${status}`);
           err.status = status;
           throw err;
+        }
+        if (boundH6 && type === 'copy') {
+          const result = await resp.json();
+          const copied = result?.copied?.[0];
+          const prefix = `/${org}/${site}`;
+          if (copied?.src !== item.path.slice(prefix.length)
+            || typeof copied.dst !== 'string' || !copied.dst.startsWith('/')
+            || /(?:^|\/)\.{1,2}(?:\/|$)|[?#\\]|%2f|%5c|%2e|%25/i.test(copied.dst)) {
+            throw new Error('Invalid copy response');
+          }
+          item.destination = `${prefix}${copied.dst}`;
         }
         hasCompletedPage = true;
         continuationToken = undefined;
@@ -490,7 +509,7 @@ export default class DaListBase extends LitElement {
       }
     } catch (e) {
       // A denied continuation must not permanently delete the remaining source contents.
-      if (moveToTrash && e.status === 403 && !hasCompletedPage) {
+      if (!bound && moveToTrash && e.status === 403 && !hasCompletedPage) {
         await this.handleItemAction({ item, type: 'delete' });
       } else {
         this._itemErrors.push({ ...item, message: `Couldn't ${type} item` });
@@ -579,7 +598,8 @@ export default class DaListBase extends LitElement {
   }
 
   async checkCanUnpublish() {
-    if (this.fullpath?.split('/')[2]?.includes('~')) {
+    if (this.fullpath?.split('/')[2]?.includes('~')
+      || new URL(window.location.href).searchParams.get('da-source') === 'da-rs') {
       this._canUnpublish = false;
       return;
     }
@@ -627,7 +647,8 @@ export default class DaListBase extends LitElement {
 
       await this.handleItemAction({ item, type });
 
-      if (!branch && this._unpublish && this._confirmText === 'YES') {
+      if (!branch && this._unpublish && this._confirmText === 'YES'
+        && new URL(window.location.href).searchParams.get('da-source') !== 'da-rs') {
         const { aem } = await getNx2Api();
         // AEM resolves HTML pages by their extensionless path
         const aemPath = item.ext === 'html' ? item.path.slice(0, -5) : item.path;

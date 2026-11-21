@@ -5,6 +5,8 @@ import { getNx, getNx2Api } from '../../scripts/utils.js';
 import '../edit/da-title/da-title.js';
 import { contentLogin } from '../shared/utils.js';
 import { installBranchHashGuard } from '../shared/branch-selector/navigation.js';
+import { isDaRsBinding } from '../shared/da-rs-provider.js';
+import { SUPPORTED_IMAGE_TYPES } from '../shared/constants.js';
 
 const PDF_VIEWER_SRC = 'https://acrobatservices.adobe.com/view-sdk/viewer.js';
 const PDF_CLIENT_ID = 'cd73455ea6c04d0aac86270f9f5f830c';
@@ -73,12 +75,18 @@ async function setUI(el, isCurrent) {
   const ext = name.split('.').pop();
   addRecentFile(fullpath);
   let blob;
+  const bound = isDaRsBinding();
+  if (bound && ext === 'pdf') throw new Error('PDF viewer is unavailable on the da-rs provider');
 
   const { isHlx6, source } = await getNx2Api();
-  if (repo?.includes('~') || await isHlx6(owner, repo)) {
+  if (bound || repo?.includes('~') || await isHlx6(owner, repo)) {
     if (ext !== 'pdf') {
       const resp = await source.get(fullpath);
       if (!resp.ok) throw new Error(`Could not load media: ${resp.status}`);
+      const type = resp.headers.get('content-type')?.split(';')[0].trim().toLowerCase();
+      if (bound && !SUPPORTED_IMAGE_TYPES.includes(type) && type !== 'video/mp4') {
+        throw new Error('Unsupported media type');
+      }
       blob = await resp.blob();
     }
   } else {

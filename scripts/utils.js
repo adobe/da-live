@@ -117,7 +117,16 @@ export const getNx2Api = () => {
     return import('../blocks/shared/branch-selector/branch-api.js')
       .then(({ getBranchApi }) => getBranchApi(nx2ApiPromise));
   }
+  if (new URL(window.location.href).searchParams.get('da-source') === 'da-rs') {
+    return import('../blocks/shared/da-rs-api.js')
+      .then(({ getDaRsApi }) => getDaRsApi(nx2ApiPromise));
+  }
   return nx2ApiPromise;
 };
 
-export const getNxEWFlags = () => import(`${getNx2()}/utils/ewFlags.js`);
+export const getNxEWFlags = () => {
+  if (new URL(window.location.href).searchParams.get('da-source') === 'da-rs') {
+    return import('../blocks/shared/da-rs-ew-flags.js');
+  }
+  return import(`${getNx2()}/utils/ewFlags.js`);
+};

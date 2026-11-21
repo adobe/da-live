@@ -1,6 +1,7 @@
 import { LitElement, html } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
 import { SUPPORTED_IMAGE_TYPES } from '../../shared/constants.js';
+import { isDaRsBinding } from '../../shared/da-rs-provider.js';
 import { commandsFor, COMMAND_BY_ID } from '../editor-utils/command-defs.js';
 import {
   getBlockTypePickerValue,
@@ -245,7 +246,7 @@ class EwSelectionToolbar extends LitElement {
 
   async _checkAemAssets() {
     const { org, site } = this;
-    if (!org || !site) {
+    if (!org || !site || isDaRsBinding()) {
       this._hasAemAssets = false;
       return;
     }

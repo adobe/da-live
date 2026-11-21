@@ -1,6 +1,8 @@
 import { CON_ORIGIN, DA_ORIGIN } from './constants.js';
 import { sanitizePathParts } from '../../scripts/utils.js';
 import { parseSiteSegment } from './content-branch-context.js';
+import { withDaRsBinding } from './da-rs-navigation.js';
+import { isDaRsBinding } from './da-rs-provider.js';
 
 let currpath;
 let currhash;
@@ -53,8 +55,8 @@ function getRepoDetails({ editor, pathParts, ext }) {
     parent,
     parentName,
     sourceUrl: `${DA_ORIGIN}/${daApi}/${path}`,
-    previewUrl: branch ? undefined : `https://main--${repo}--${org}.aem.live`,
-    contentUrl: branch ? undefined : `${CON_ORIGIN}/${fullPath}`,
+    previewUrl: branch || isDaRsBinding() ? undefined : `https://main--${repo}--${org}.aem.live`,
+    contentUrl: branch || isDaRsBinding() ? undefined : `${CON_ORIGIN}/${fullPath}`,
   };
 }
 
@@ -86,8 +88,8 @@ function getFullDetails({ editor, pathParts, ext }) {
     parent: ext === null ? `${parent}/${name}` : parent,
     parentName: ext === null ? name : parentName,
     sourceUrl: `${DA_ORIGIN}/${daApi}/${path}`,
-    previewUrl: branch ? undefined : `https://main--${repo}--${org}.aem.live${pathname}`,
-    contentUrl: branch ? undefined : `${CON_ORIGIN}/${fullPath}`,
+    previewUrl: branch || isDaRsBinding() ? undefined : `https://main--${repo}--${org}.aem.live${pathname}`,
+    contentUrl: branch || isDaRsBinding() ? undefined : `${CON_ORIGIN}/${fullPath}`,
   };
 }
 
@@ -136,7 +138,7 @@ export default function getPathDetails(loc) {
   if (editor === 'edit') {
     // Redirect JSON files from edit view to sheet view
     if (fullpath.endsWith('.json')) {
-      window.location.href = `/sheet#${fullpath.slice(0, -5)}`;
+      window.location.href = withDaRsBinding(`/sheet#${fullpath.slice(0, -5)}`);
       return null;
     }
 

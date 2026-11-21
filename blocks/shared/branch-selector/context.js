@@ -4,6 +4,7 @@ import { parseSiteSegment } from '../content-branch-context.js';
 import { createBranchingDiscovery, DA_RS_PROVIDER } from '../branching.js';
 import { createBranchingClient } from '../branching-client.js';
 import { lockBranchEditing } from '../branch-conflicts/editing-lock.js';
+import { discoverDaRs, isDaRsBinding } from '../da-rs-provider.js';
 
 const discovery = createBranchingDiscovery();
 
@@ -56,6 +57,7 @@ export async function discoverBranching(org, site) {
 // Only offer Default -> branch when the current default Source is the same
 // origin as the selected da-rs binding, and nx2 has not selected Helix.
 export async function defaultSourceMatchesBinding(org, site) {
+  if (isDaRsBinding()) return (await discoverDaRs(org, site)).mode === 'legacy';
   const { isHlx6 } = await import(`${getNx2()}/utils/api.js`);
   if (await isHlx6(org, site)) return false;
   const { DA_ADMIN } = await import(`${getNx2()}/utils/utils.js`);

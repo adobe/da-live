@@ -1,4 +1,5 @@
 import { getAuthToken } from '../../shared/utils.js';
+import { isDaRsBinding } from '../../shared/da-rs-provider.js';
 
 // Experience Governance (experience-context) origins.
 const EC_ENVS = {
@@ -47,6 +48,7 @@ export function getEcOrigin(location = window.location) {
  * @returns {Promise<object>} raw REST response
  */
 export async function evaluatePage(pageUrl) {
+  if (isDaRsBinding()) throw new Error('Preflight is unavailable on the da-rs provider');
   const token = await getAuthToken();
   if (!token) {
     const error = new Error('Not authenticated');

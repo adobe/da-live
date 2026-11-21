@@ -2,6 +2,8 @@
 import { Plugin, PluginKey } from 'da-y-wrapper';
 import { getPreviewOrigin } from '../../editor-utils/editor-utils.js';
 import { createBranchMediaRenderer, MEDIA_PLACEHOLDER } from '../../../shared/branch-selector/branch-media.js';
+import { isDaRsBinding } from '../../../shared/da-rs-provider.js';
+import { createDaRsMediaRenderer } from './daRsMedia.js';
 
 const mediaBusImageKey = new PluginKey('canvasMediaBusImage');
 
@@ -12,7 +14,7 @@ export function getRenderableSrc(src, ctx) {
   if (!src || !src.startsWith('./media_')) return null;
   const { org, repo } = ctx ?? {};
   if (!org || !repo) return null;
-  if (repo.includes('~')) return MEDIA_PLACEHOLDER;
+  if (repo.includes('~') || isDaRsBinding()) return MEDIA_PLACEHOLDER;
   return `${getPreviewOrigin(org, repo)}/${src.slice(2)}`;
 }
 
@@ -27,8 +29,8 @@ export default function mediaBusImage(ctx) {
   return new Plugin({
     key: mediaBusImageKey,
     view(view) {
-      if (ctx?.repo?.includes('~')) {
-        const renderer = createBranchMediaRenderer(ctx);
+      if (ctx?.repo?.includes('~') || isDaRsBinding()) {
+        const renderer = ctx?.repo?.includes('~') ? createBranchMediaRenderer(ctx) : createDaRsMediaRenderer(ctx);
         renderer.update(view);
         return {
           update(updatedView, prevState) {

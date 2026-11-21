@@ -2,6 +2,7 @@ import { getNx, getNx2Api } from '../../../scripts/utils.js';
 import { buildCompareDom } from '../../shared/version/compare.js';
 import { isRequestId } from '../../shared/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
+import { isDaRsBinding } from '../../shared/da-rs-provider.js';
 
 const CONTENT_TAGS = new Set('a p h1 h2 h3 h4 h5 h6 div span strong em b i u s del ins sub sup code pre blockquote ul ol li table thead tbody tfoot tr td th caption colgroup col br hr img figure figcaption'.split(' '));
 
@@ -125,6 +126,7 @@ export function installComparison({
   };
 
   const open = async (options) => {
+    if (isDaRsBinding()) return { ok: false, error: 'comparison-unavailable' };
     if (!['document', 'preview'].includes(options?.candidate) || options?.baseline !== 'live') {
       return { ok: false, error: 'invalid-comparison' };
     }

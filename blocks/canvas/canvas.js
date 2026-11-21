@@ -38,6 +38,8 @@ import { resolveCanvasBranch } from './editor-utils/branch-state.js';
 import { installComparison } from './ew-comparison/comparison.js';
 import { docToHtml } from '../shared/version/compare.js';
 import { addRecentFile } from '../shared/recent-files.js';
+import { isDaRsBinding } from '../shared/da-rs-provider.js';
+import { installDaRsNavigation } from '../shared/da-rs-navigation.js';
 import {
   TOOL_PANEL_SECTION,
   createToolPanelSection,
@@ -130,7 +132,7 @@ function mountCanvasEditors({ mountRoot, header, session, ctx }) {
   const docEl = ensureNxEditorDoc(mountRoot);
   docEl.session = session;
   docEl.ctx = ctx;
-  if (ctx.repo?.includes('~')) {
+  if (ctx.repo?.includes('~') || isDaRsBinding()) {
     mountRoot.querySelector('ew-editor-wysiwyg')?.remove();
     header.editorView = 'content';
     header.contentBranch = true;
@@ -240,9 +242,10 @@ function hashState() {
 
 async function installCanvasHeader(block, { org, site }) {
   const header = document.createElement('ew-canvas-header');
-  header.editorView = await readInitialCanvasEditorView({ org, site });
+  header.editorView = isDaRsBinding() ? 'content' : await readInitialCanvasEditorView({ org, site });
+  if (isDaRsBinding()) header.contentBranch = true;
   canvasBus.editorViewRequest.subscribe(({ view: rawView }) => {
-    const view = normalizeCanvasEditorView(rawView);
+    const view = isDaRsBinding() ? 'content' : normalizeCanvasEditorView(rawView);
     header.editorView = view;
     persistCanvasEditorView(view);
     notifyCanvasEditorActive(view);
@@ -309,6 +312,7 @@ canvasBus.commentComposeRequest.subscribe(() => {
 });
 
 export default async function decorate(block) {
+  installDaRsNavigation();
   installBranchHashGuard();
   const { org, site } = hashState();
 
@@ -317,7 +321,7 @@ export default async function decorate(block) {
 
   chatAvailability.subscribe((enabled) => {
     if (enabled === undefined) return;
-    let chatEnabled = enabled;
+    let chatEnabled = enabled && !isDaRsBinding();
     try { if (branchContext()) chatEnabled = false; } catch {
       chatEnabled = false;
     }

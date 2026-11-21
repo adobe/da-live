@@ -103,7 +103,7 @@ export async function insertBlockItem(view, id) {
  * (blocks + variant HTML) is still fetched lazily via ensureBlockLibrary on "/".
  */
 export function checkBlockLibraryConfigured({ org, site } = {}) {
-  if (!org || !site) {
+  if (!org || !site || new URL(window.location.href).searchParams.get('da-source') === 'da-rs') {
     store.hasLibrary = false;
     return null;
   }

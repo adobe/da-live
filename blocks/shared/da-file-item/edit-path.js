@@ -1,3 +1,5 @@
+import { withDaRsBinding } from '../da-rs-navigation.js';
+
 export function getConfiguredEditor(path, editorConfs, defaultEditor) {
   const matchedConfs = (editorConfs || []).filter(
     (conf) => path.startsWith(conf.split('=')[0]),
@@ -16,10 +18,10 @@ export default function getEditPath({ path, ext, editor }) {
     const lastIndex = path.lastIndexOf(`.${ext}`);
 
     if (route.includes('experience.adobe.com')) {
-      return `${route}/${path.substring(0, lastIndex).split('/').slice(3).join('/')}`;
+      return withDaRsBinding(`${route}/${path.substring(0, lastIndex).split('/').slice(3).join('/')}`);
     }
 
-    return `${route}${path.substring(0, lastIndex)}`;
+    return withDaRsBinding(`${route}${path.substring(0, lastIndex)}`);
   }
-  return `/media#${path}`;
+  return withDaRsBinding(`/media#${path}`);
 }

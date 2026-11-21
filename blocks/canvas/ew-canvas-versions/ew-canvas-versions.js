@@ -8,7 +8,10 @@ import {
   createVersion,
   fetchVersionHtml,
   getVersionId,
+  fetchDaRsVersionDocument,
 } from '../../shared/version/version-actions.js';
+import { isDaRsBinding } from '../../shared/da-rs-provider.js';
+import { createDaRsSnapshot } from './da-rs-snapshot.js';
 import { buildDisplayItems, entryKey, formatUser } from '../../shared/version/helpers.js';
 import { docToHtml, domToHtml, buildCompareDom } from '../../shared/version/compare.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
@@ -115,6 +118,8 @@ class EwCanvasVersions extends LitElement {
   async _load({ showLoading = true } = {}) {
     const { path } = this;
     if (!path) return;
+    const bound = isDaRsBinding();
+    const { hash, search } = window.location;
     const request = (this._loadRequest ?? 0) + 1;
     this._loadRequest = request;
     if (showLoading) this._versions = undefined;
@@ -122,6 +127,11 @@ class EwCanvasVersions extends LitElement {
     this._loadError = false;
     const versions = await fetchVersions(path);
     if (request !== this._loadRequest || path !== this.path || !this.isConnected) return;
+    if (bound && (!isDaRsBinding() || window.location.hash !== hash
+      || window.location.search !== search)) {
+      this._refreshing = false;
+      return;
+    }
     this._refreshing = false;
     if (versions === null) {
       this._loadError = true;
@@ -174,9 +184,26 @@ class EwCanvasVersions extends LitElement {
     if (this._savingVersion) return;
     const label = e.target.elements.label?.value || '';
     const { path } = this;
+    if (!path) return;
     this._savingVersion = true;
-    const ok = await createVersion(path, label);
-    this._savingVersion = false;
+    let ok;
+    try {
+      if (isDaRsBinding() && !path.split('/')[2]?.includes('~')) {
+        const { view } = getExtensionsBridge();
+        const editor = view?.dom?.getRootNode()?.host || document.querySelector('ew-editor-doc');
+        const { hash, search } = window.location;
+        const isCurrent = () => this.isConnected && this.path === path && isDaRsBinding()
+          && window.location.hash === hash && window.location.search === search
+          && getExtensionsBridge().view === view;
+        ok = await createDaRsSnapshot({ path, label, view, editor, isCurrent });
+      } else {
+        ok = await createVersion(path, label);
+      }
+    } catch {
+      ok = false;
+    } finally {
+      this._savingVersion = false;
+    }
     if (path !== this.path || !this.isConnected) return;
     if (!ok) {
       showError('Could not save version. Please try again.');
@@ -207,12 +234,20 @@ class EwCanvasVersions extends LitElement {
     this._restoreEntry = null;
     const { view } = getExtensionsBridge();
     if (!view) return;
-    const versionBody = await fetchVersionHtml(this.path, entry);
+    const { path } = this;
+    const bound = isDaRsBinding();
+    const { hash, search } = window.location;
+    const versionBody = bound ? await fetchDaRsVersionDocument(path, entry)
+      : await fetchVersionHtml(path, entry);
+    if (path !== this.path || getExtensionsBridge().view !== view || !this.isConnected) return;
+    if (bound && (!isDaRsBinding() || window.location.hash !== hash
+      || window.location.search !== search)) return;
     if (!versionBody) {
       showError('Could not load the selected version.');
       return;
     }
-    const newDoc = PMDOMParser.fromSchema(view.state.schema).parse(versionBody);
+    const newDoc = bound ? versionBody
+      : PMDOMParser.fromSchema(view.state.schema).parse(versionBody);
     const { doc } = view.state;
     const tr = view.state.tr
       .replaceWith(0, doc.content.size, newDoc.content)
@@ -227,6 +262,7 @@ class EwCanvasVersions extends LitElement {
   }
 
   async _openCompare(entry, { forceSplit = false } = {}) {
+    if (isDaRsBinding()) return;
     const trigger = this._focusTrigger;
     const versionBody = await fetchVersionHtml(this.path, entry);
     if (!versionBody) {
@@ -279,6 +315,7 @@ class EwCanvasVersions extends LitElement {
   }
 
   async _buildDiff(versionBody) {
+    if (isDaRsBinding()) return null;
     const { view } = getExtensionsBridge();
     if (!view) {
       showError('Could not build the comparison. Please try again.');
@@ -366,11 +403,12 @@ class EwCanvasVersions extends LitElement {
   }
 
   renderVersion(entry) {
+    const bound = isDaRsBinding();
     const users = entry.users?.map(formatUser).join(', ');
     const menuItems = [
       { section: 'Actions' },
       ...(this._canWrite ? [{ id: 'restore', label: 'Restore' }] : []),
-      { id: 'compare', label: 'Compare' },
+      ...(bound ? [] : [{ id: 'compare', label: 'Compare' }]),
     ];
     const isComparing = !!this._comparingId && getVersionId(this.path, entry) === this._comparingId;
     return html`
@@ -380,7 +418,9 @@ class EwCanvasVersions extends LitElement {
             <use href="/img/icons/s2-icon-targetsmall-20-n.svg#icon"></use>
           </svg>
         </span>
-        <div class="version-row" tabindex="0" role="button"
+        <div class="version-row" tabindex=${bound ? '-1' : '0'} role=${bound ? 'group' : 'button'}
+          aria-label=${bound ? 'Version preview unavailable' : nothing}
+          title=${bound ? 'Version preview and comparison are unavailable on this provider' : nothing}
           @click=${(e) => this.handlePreview(e, entry)}
           @keydown=${(e) => {
         if (e.key !== 'Enter' && e.key !== ' ') return;

@@ -117,6 +117,9 @@ export default class DaTitle extends LitElement {
 
   getAvailableActions() {
     const { view, path, fullpath } = this.details;
+    if (new URL(window.location.href).searchParams.get('da-source') === 'da-rs') {
+      return view === 'sheet' || view === 'config' ? ['save'] : [];
+    }
     if (this.details.site?.includes('~')) return view === 'sheet' || view === 'config' ? ['save'] : [];
 
     // Config only gets save
@@ -170,7 +173,7 @@ export default class DaTitle extends LitElement {
     const { path, fullpath } = this.details;
 
     // Only a valid path gets AEM-bound features
-    if (path) {
+    if (path && new URL(window.location.href).searchParams.get('da-source') !== 'da-rs') {
       this._aemHrefs = await getAemHrefs({ path: fullpath });
     }
   }

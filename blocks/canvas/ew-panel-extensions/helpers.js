@@ -1040,6 +1040,11 @@ export function extensionToPanelView(ext, section) {
  * Extensions (other plugins).
  */
 export async function getCanvasToolPanelViews({ org, site }) {
+  if (new URL(window.location.href).searchParams.get('da-source') === 'da-rs') {
+    return [
+      createOutlineView(), createMetadataView(), createFileExplorerView(), createVersioningView(),
+    ];
+  }
   const extensions = await fetchExtensions(org, site);
   const library = sortLibraryExtensions(extensions.filter(
     (ext) => isLibraryExtension(ext) && ext.name !== 'aem-assets',

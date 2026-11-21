@@ -37,7 +37,10 @@ export async function resolveEditorDocSession(ctx) {
   }
   if (!sourceUrl) return { ok: false, error: 'Could not reach the content store' };
 
-  const resp = await checkDoc(sourceUrl);
+  let resp;
+  try { resp = await checkDoc(sourceUrl); } catch {
+    return { ok: false, error: 'Could not reach the content store' };
+  }
   const failure = sessionErrorFromResponse(resp);
   if (failure) {
     // Thread the token and sourceUrl through so a create-on-not-found flow

@@ -2,6 +2,7 @@ import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { createAssetRailSource } from '../drop/sources/asset-rail.js';
+import { isDaRsBinding } from '../../shared/da-rs-provider.js';
 
 const nx2 = getNx2();
 const [
@@ -31,6 +32,7 @@ const VIEW_ID = 'aem-assets-panel';
  * and `{ skipped: true }` is returned instead.
  */
 export async function renderAssetsRail({ container, org, site, isLive = () => true, onCleanup }) {
+  if (isDaRsBinding()) return { error: NOT_CONFIGURED_ERROR };
   const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
   const ims = await loadIms();
   if (ims?.anonymous) handleSignIn();

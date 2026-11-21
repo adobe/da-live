@@ -65,20 +65,27 @@ export default class DaNew extends LitElement {
     const { name: finalName } = e.detail;
     this._createDialogOpen = false;
     this._loading = true;
+    const bound = new URL(window.location.href).searchParams.get('da-source') === 'da-rs';
+    if (bound) this._mediaError = undefined;
     try {
       if (this._createType === 'folder') {
         const path = `${this.fullpath}/${finalName}`;
         const { source } = await getNx2Api();
-        await source.createFolder(path);
+        const response = await source.createFolder(path);
+        if (bound && !response?.ok) throw new Error('Could not create folder');
         this.sendNewItem({ name: finalName, path });
       } else {
         const ext = this._createType === 'document' ? 'html' : 'json';
         const path = `${this.fullpath}/${finalName}.${ext}`;
         const { source } = await getNx2Api();
         const body = ext === 'html' ? EMPTY_DOC : EMPTY_SHEET;
-        await source.save(path, { body });
+        const response = await source.save(path, { body });
+        if (bound && !response?.ok) throw new Error('Could not create document');
         window.location = getEditPath({ path, ext, editor: this.editor });
       }
+    } catch (error) {
+      if (!bound) throw error;
+      this._mediaError = 'Could not create the item. Please try again.';
     } finally {
       this._loading = false;
     }
@@ -113,7 +120,8 @@ export default class DaNew extends LitElement {
     const picker = e.target;
     const file = picker?.files?.[0];
     if (!file) return;
-    const branch = this.fullpath?.split('/')[2]?.includes('~');
+    const branch = this.fullpath?.split('/')[2]?.includes('~')
+      || new URL(window.location.href).searchParams.get('da-source') === 'da-rs';
     if (branch) this._mediaError = undefined;
     this._loading = true;
     try {

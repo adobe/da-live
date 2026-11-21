@@ -1,10 +1,11 @@
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { buildHandleSelection, createDialogPanels } from '../../edit/da-assets/da-assets.js';
 import { getExtensionsBridge } from '../editor-utils/extensions-bridge.js';
+import { isDaRsBinding } from '../../shared/da-rs-provider.js';
 
 const nx2 = getNx2();
 const [
-  { getRepositoryConfig, getResponsiveImageConfig },
+  { getRepositoryConfig: nxGetRepositoryConfig, getResponsiveImageConfig },
   { buildAssetSelectorProps },
   { loadAssetSelector },
 ] = await Promise.all([
@@ -15,7 +16,9 @@ const [
 
 // Re-exported for ew-selection-toolbar's "does this site have AEM assets?" check.
 // The picker shares Nexter's config resolver with the classic editor.
-export { getRepositoryConfig };
+export const getRepositoryConfig = (...args) => (
+  isDaRsBinding() ? Promise.resolve(null) : nxGetRepositoryConfig(...args)
+);
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -23,6 +26,7 @@ export { getRepositoryConfig };
 
 /** Renders the AEM asset selector into `container`; selections insert into the editor. */
 export async function renderAssets({ container, org, site, onClose }) {
+  if (isDaRsBinding()) return;
   const { loadIms, handleSignIn } = await import(`${getNx()}/utils/ims.js`);
   const ims = await loadIms();
   if (ims?.anonymous) handleSignIn();

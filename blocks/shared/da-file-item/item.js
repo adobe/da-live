@@ -1,6 +1,7 @@
 import { getNx2Api } from '../../../scripts/utils.js';
 import { formatDate } from '../utils.js';
 import { branchContext, pathMatchesActiveBranch } from '../branch-selector/context.js';
+import { isDaRsBinding } from '../da-rs-provider.js';
 
 function toEnv(env) {
   return {
@@ -12,7 +13,7 @@ function toEnv(env) {
 
 // Preview and live status of an item from AEM, or a 401 pair when it is not readable.
 export async function fetchAemStatus({ path, ext }) {
-  if (!pathMatchesActiveBranch(path) || branchContext(`#${path}`)) {
+  if (isDaRsBinding() || !pathMatchesActiveBranch(path) || branchContext(`#${path}`)) {
     return { preview: { status: 401 }, live: { status: 401 } };
   }
   const { status, asJson } = await getNx2Api();

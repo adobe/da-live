@@ -38,6 +38,7 @@ import mediaBusImage from './prose-plugins/mediaBusImage.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { createEditorComments } from './utils/editor-comments.js';
+import { isDaRsBinding } from '../../shared/da-rs-provider.js';
 
 // Maps ew-page-outline's default-content `kind` to the PM node type(s) it can back,
 // so a matching node at proseIndex can be selected as a whole (see _scrollDocToProseIndex).
@@ -398,6 +399,7 @@ export class EwEditorDoc extends LitElement {
 
     try {
       const contentBranch = context.repo?.includes('~');
+      const commentsDisabled = contentBranch || isDaRsBinding();
       const configContext = { org: context.org, site: context.repo };
       const previewOptions = contentBranch ? {} : await fetchConfigBusOptions(configContext);
       if (this.ctx !== context || !this.isConnected) return;
@@ -411,7 +413,7 @@ export class EwEditorDoc extends LitElement {
         onMergeConflictsChange: (hasConflicts) => this._emitMergeConflictsState(hasConflicts),
         hostEl: this,
         extraPlugins: ({ wsProvider: ws }) => {
-          const commentsPlugin = contentBranch ? null
+          const commentsPlugin = commentsDisabled ? null
             : this._comments.createPlugin(session, this.ctx, ws);
           return [
             mediaBusImage(this.ctx),
@@ -453,7 +455,7 @@ export class EwEditorDoc extends LitElement {
       this._proseContext = {
         proseEl, wsProvider, view, ydoc, undoManager, context, previewOptions,
       };
-      if (!contentBranch) this._comments.publish();
+      if (!commentsDisabled) this._comments.publish();
       this._unbindSectionName = bindFirstSectionName(ydoc, view, () => this._emitHtmlChange());
 
       setSelectionToolbarCtx({
@@ -465,12 +467,12 @@ export class EwEditorDoc extends LitElement {
       toolbarController.setDocView(view);
       this._wireProseFocus(view, proseEl);
 
-      if (!contentBranch) this._comments.loadStore(wsProvider);
+      if (!commentsDisabled) this._comments.loadStore(wsProvider);
 
       this._setupAwareness(wsProvider);
       this._observeUndoManager(undoManager);
       this._emitHtmlChange();
-      if (!contentBranch) this._comments.setupGutter();
+      if (!commentsDisabled) this._comments.setupGutter();
 
       this._setupController();
     } catch (e) {

@@ -158,7 +158,8 @@ export default class DaActionBar extends LitElement {
   }
 
   get _canAemAction() {
-    return !this.currentPath.split('/')[2]?.includes('~')
+    return new URL(window.location.href).searchParams.get('da-source') !== 'da-rs'
+      && !this.currentPath.split('/')[2]?.includes('~')
       && this._canWrite && this.items.some((item) => item.ext && item.ext !== 'link') && !this._isCopying;
   }
 
@@ -174,6 +175,7 @@ export default class DaActionBar extends LitElement {
 
   get _canRename() {
     if (!this._canWrite) return false;
+    if (this.isHlx6 && new URL(window.location.href).searchParams.get('da-source') === 'da-rs') return false;
     const isFolder = !this.items[0]?.ext;
     if (this.isHlx6 && isFolder) return false;
     return true;
@@ -185,11 +187,14 @@ export default class DaActionBar extends LitElement {
 
   get _canDelete() {
     // `canDelete` is gated by the site config's browser.allowDelete allowlist.
+    if (this.isHlx6 && new URL(window.location.href).searchParams.get('da-source') === 'da-rs'
+      && this.items.some((item) => !item.ext)) return false;
     return this._canWrite && this.canDelete;
   }
 
   get _canShare() {
-    return !this.currentPath.split('/')[2]?.includes('~')
+    return new URL(window.location.href).searchParams.get('da-source') !== 'da-rs'
+      && !this.currentPath.split('/')[2]?.includes('~')
       && this.items.some((item) => item.ext && item.ext !== 'link') && !this._isCopying;
   }
 
@@ -245,7 +250,9 @@ export default class DaActionBar extends LitElement {
             title="Copy"
             data-shortcut="c"
             aria-keyshortcuts="Meta+C Control+C"
-            ?disabled=${this._isCopying}
+            ?disabled=${this._isCopying || (this.isHlx6
+              && new URL(window.location.href).searchParams.get('da-source') === 'da-rs'
+              && this.items.some((item) => !item.ext))}
             class="copy-button ${this._isCopying ? 'hide' : ''}">
             ${icon('copy')}
             <span>Copy</span>

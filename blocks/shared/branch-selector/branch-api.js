@@ -1,6 +1,7 @@
 import { DA_ORIGIN } from '../constants.js';
 import { daFetch } from '../utils.js';
 import { branchContext, validateBranch } from './context.js';
+import { isDaRsBinding } from '../da-rs-provider.js';
 import {
   branchUploadTarget,
   branchUploadMatchesDocument,
@@ -159,7 +160,12 @@ export async function getBranchApi(baseApiPromise) {
   const config = {
     get: (arg, extra) => {
       const args = argsFor(arg, extra);
-      if (args.org === context.org && !args.site) return api.config.get(args);
+      if (args.org === context.org && !args.site) {
+        if (isDaRsBinding()) {
+          return guardedFetch(`${DA_ORIGIN}/config/${context.org}/`, { noRedirect: true, redirect: 'error' });
+        }
+        return api.config.get(args);
+      }
       scoped(context, { ...args, path: '' });
       const url = `${DA_ORIGIN}/config/${context.org}/${context.siteSegment}/`;
       return guardedFetch(url, { noRedirect: true });

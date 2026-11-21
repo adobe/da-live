@@ -12,6 +12,7 @@
 
 import { initIms } from '../blocks/shared/utils.js';
 import { setNx, nxJS, nxCSS } from './utils.js';
+import { installDaRsNavigation } from '../blocks/shared/da-rs-navigation.js';
 
 export function decorateArea({ area = document } = {}) {
   // Find all dark & light images
@@ -64,6 +65,7 @@ const CONFIG = {
 };
 
 export default async function loadPage() {
+  installDaRsNavigation();
   if (!nx2) {
     // pin to light scheme
     document.body.classList.remove('light-scheme', 'dark-scheme');

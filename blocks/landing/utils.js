@@ -18,7 +18,7 @@ export function getFileHref({ item, href = window.location.href, editor = '/edit
   const url = new URL(getFileItemHref({ ...item, editor }), href);
   const current = new URL(href);
   if (url.origin !== current.origin) return url.href;
-  ['nx', 'nxver', 'quick-edit', 'ew', 'nx-chat-ao', 'theme', 'rum'].forEach((key) => {
+  ['nx', 'nxver', 'quick-edit', 'ew', 'nx-chat-ao', 'theme', 'rum', 'da-source', 'da-admin', 'da-collab'].forEach((key) => {
     if (current.searchParams.has(key)) url.searchParams.set(key, current.searchParams.get(key));
   });
   url.searchParams.set('landing', 'home');

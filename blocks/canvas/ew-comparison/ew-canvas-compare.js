@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
 import { getRenderableSrc } from '../ew-editor-doc/prose-plugins/mediaBusImage.js';
+import { isDaRsBinding } from '../../shared/da-rs-provider.js';
 
 const ICON_CLOSE = '/img/icons/s2-icon-close-20-n.svg';
 
@@ -115,6 +116,7 @@ class EwCanvasCompare extends LitElement {
   }
 
   _displayDom(source) {
+    if (isDaRsBinding()) return document.createElement('div');
     const dom = source.cloneNode(true);
     const [, org, repo] = (this.path ?? '').split('/');
     dom.querySelectorAll('img').forEach((img) => {

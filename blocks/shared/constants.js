@@ -23,11 +23,29 @@ const DA_ADMIN_ENVS = {
   prod: 'https://admin.da.live',
 };
 
+export function isAllowedDaAdminOrigin(origin) {
+  return Object.values(DA_ADMIN_ENVS).some((value) => (
+    origin === value || origin === value.replace('.live', '.page')
+  ));
+}
+
+export function getDaAdminEnvironment(origin) {
+  return Object.entries(DA_ADMIN_ENVS).find(([, value]) => (
+    origin === value || origin === value.replace('.live', '.page')
+  ))?.[0];
+}
+
 const DA_COLLAB_ENVS = {
   local: 'ws://localhost:4711',
   stage: 'wss://stage-collab.da.live',
   prod: 'wss://collab.da.live',
 };
+
+export function getDaCollabEnvironment(origin) {
+  return Object.entries(DA_COLLAB_ENVS).find(([, value]) => (
+    origin === value || origin === value.replace('.live', '.page')
+  ))?.[0];
+}
 
 const DA_CONTENT_ENVS = {
   local: 'http://localhost:8788',
@@ -55,6 +73,7 @@ function getDaEnv(location, key, envs) {
     localStorage.setItem(key, query);
   }
   const env = envs[localStorage.getItem(key) || 'prod'];
+  if (!env) return undefined;
   // TODO: INFRA
   return location.origin === 'https://da.page' ? env.replace('.live', '.page') : env;
 }

@@ -1,6 +1,7 @@
 import { DOMParser as PMDOMParser, Slice } from 'da-y-wrapper';
 import { getNx2, getNx2Api } from '../../../scripts/utils.js';
 import { refuseOversizedImage } from '../utils/image-upload.js';
+import { isDaRsBinding } from '../../shared/da-rs-provider.js';
 
 /**
  * Upload context for files: `parent` is `/org/site/dir`, `name` is the page name
@@ -58,6 +59,7 @@ function loadAssetModules() {
  * @returns {Promise<{ nodes, message? } | { error }>}
  */
 export async function resolveAssets({ schema, assets, context }) {
+  if (isDaRsBinding()) return { error: 'not-configured' };
   const [
     { getRepositoryConfig },
     { resolveAssetSelection, assetNodeSpec, MISSING_FORMAT_ERROR_MSG },

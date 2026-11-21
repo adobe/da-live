@@ -34,6 +34,7 @@ import {
 } from './command-helpers.js';
 import { openLinkDialog, openAltDialog, triggerAddImage } from './selection-toolbar.js';
 import { blockItemsForQuery, hasLibrary, insertBlockItem, getState } from './block-slash.js';
+import { isDaRsBinding } from '../../shared/da-rs-provider.js';
 import {
   canSetFocalPoint,
   hasFocalPointData,
@@ -345,7 +346,7 @@ export const COMMANDS = [
     label: 'Set focal point',
     icon: 'target',
     showIn: ['toolbar-image'],
-    visible: canSetFocalPoint,
+    visible: (state) => !isDaRsBinding() && canSetFocalPoint(state),
     active: (state) => hasFocalPointData(state.selection.node?.attrs ?? {}),
     apply: openSelectedFocalPoint,
   },

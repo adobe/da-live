@@ -1,4 +1,5 @@
 import { getNx2Api } from '../../../scripts/utils.js';
+import { isDaRsBinding } from '../../shared/da-rs-provider.js';
 
 // DA source operations for the form block, rewritten onto the nx2 api. The
 // `sourceUrl`/`path` args are DA locator strings (`/org/site/rest`); the nx2
@@ -51,7 +52,9 @@ export async function saveSourceHtml({ path, html }) {
 
   try {
     const { source } = await getNx2Api();
-    const resp = await source.save(path, { body: html });
+    const replace = isDaRsBinding() && !path.split('/')[2]?.includes('~') && source.replace;
+    const resp = await (replace
+      ? source.replace(path, { body: html }) : source.save(path, { body: html }));
     if (!resp?.ok) return { error: 'Could not save source document.', status: resp?.status };
     return { ok: true };
   } catch (e) {

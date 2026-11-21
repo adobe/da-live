@@ -105,7 +105,10 @@ export async function handleUpload(list, fullpath, file) {
   try {
     const { source } = await getNx2Api();
     // TODO: Error handling
-    await source.save(postpath, { body: data });
+    const response = await source.save(postpath, { body: data });
+    if (new URL(window.location.href).searchParams.get('da-source') === 'da-rs' && !response?.ok) {
+      throw new Error('Could not upload file');
+    }
 
     file.imported = true;
 
@@ -136,6 +139,7 @@ export async function handleUpload(list, fullpath, file) {
 }
 
 export function items2Clipboard(items) {
+  if (new URL(window.location.href).searchParams.get('da-source') === 'da-rs') return;
   const aemUrls = items.reduce((acc, item) => {
     if (item.ext) {
       const [org, site, ...pathParts] = sanitizePathParts(item.path.replace('.html', ''));

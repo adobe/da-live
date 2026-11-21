@@ -4,6 +4,7 @@ import { getBrowseComponent, resolveBrowsePath } from './utils.js';
 import getPathDetails from '../shared/pathDetails.js';
 import { branchContext, validateBranch } from '../shared/branch-selector/context.js';
 import { installBranchHashGuard } from '../shared/branch-selector/navigation.js';
+import { installDaRsNavigation } from '../shared/da-rs-navigation.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -78,6 +79,7 @@ function setRecentSite(details) {
 }
 
 export default function init(el) {
+  installDaRsNavigation();
   installBranchHashGuard();
   let generation = 0;
   hashChange.subscribe(async (nxDetails) => {

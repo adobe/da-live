@@ -5,9 +5,19 @@ import { setNx } from '../../../../../scripts/utils.js';
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 let initProse;
+let collabOrigin;
+let previousCollab;
 
 before(async () => {
+  previousCollab = localStorage.getItem('da-collab');
+  localStorage.setItem('da-collab', 'local');
   ({ default: initProse } = await import('../../../../../blocks/canvas/ew-editor-doc/prose.js'));
+  ({ COLLAB_ORIGIN: collabOrigin } = await import('../../../../../blocks/shared/constants.js'));
+});
+
+after(() => {
+  if (previousCollab === null) localStorage.removeItem('da-collab');
+  else localStorage.setItem('da-collab', previousCollab);
 });
 
 async function connect(sourceUrl, reload) {
@@ -61,5 +71,21 @@ describe('canvas collab room', () => {
     } finally {
       teardown(result);
     }
+  });
+
+  ['source/roomorg/roomsite/page.html', 'roomorg/sites/roomsite/source/page.html'].forEach((path) => {
+    it(`uses configured collab for the bound ${path} alias`, async () => {
+      const current = window.location.href;
+      const url = new URL(current);
+      url.searchParams.set('da-source', 'da-rs');
+      window.history.replaceState(null, '', url);
+      const result = await connect(`https://admin.da.live/${path}`);
+      try {
+        expect(result.wsProvider.serverUrl).to.equal(collabOrigin);
+      } finally {
+        teardown(result);
+        window.history.replaceState(null, '', current);
+      }
+    });
   });
 });

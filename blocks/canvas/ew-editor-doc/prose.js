@@ -41,7 +41,8 @@ import base64Uploader from './prose-plugins/base64Uploader.js';
 import blockFocus, { guardFocusedBlockDeletion } from './prose-plugins/blockFocus.js';
 import { getNx } from '../../../scripts/utils.js';
 import { getAuthToken } from '../../shared/utils.js';
-import { COLLAB_ORIGIN } from '../../shared/constants.js';
+import { COLLAB_ORIGIN, DA_ORIGIN } from '../../shared/constants.js';
+import { isDaRsBinding } from '../../shared/da-rs-provider.js';
 import { generateColor, collabCursorBuilder } from '../editor-utils/author-color.js';
 import { getCollabIdentity } from './utils/collab.js';
 import { checkBlockLibraryConfigured } from '../editor-utils/block-slash.js';
@@ -51,6 +52,7 @@ import { createMergeConflictsPlugin } from '../editor-utils/prose-merge-conflict
 import { toolbarController } from '../editor-utils/toolbar-controller.js';
 import { canvasBus } from '../utils/canvas-bus.js';
 import { handleFencedRoomClose, isFencedProvider, registerFencedView } from '../../shared/branch-selector/fenced-room.js';
+import { createDaRsImageView } from './prose-plugins/daRsMedia.js';
 
 const { DA_COLLAB, hashChange } = await import(`${getNx()}/utils/utils.js`);
 
@@ -103,7 +105,8 @@ export default async function initProse({
   const ydoc = new Y.Doc();
 
   const sourceParts = new URL(path).pathname.split('/');
-  const server = sourceParts[1] === 'source' && sourceParts[3]?.includes('~')
+  const server = (isDaRsBinding() && new URL(path).origin === DA_ORIGIN)
+    || (sourceParts[1] === 'source' && sourceParts[3]?.includes('~'))
     ? COLLAB_ORIGIN : DA_COLLAB;
   // da-collab reads the store off the room name, and `path` is already the store's source url.
   const roomName = path;
@@ -263,7 +266,10 @@ export default async function initProse({
       const MergeConflictsDeletedView = getDiffClass('da-diff-deleted', getSchema, () => {}, { isUpstream: true, hostEl });
       return new MergeConflictsDeletedView(node, view, getPos);
     },
-  } : undefined;
+  } : {};
+  if (isDaRsBinding() && !sourceParts[3]?.includes('~')) {
+    diffNodeViews.image = createDaRsImageView;
+  }
 
   viewRef = new EditorView(editor, {
     state,
