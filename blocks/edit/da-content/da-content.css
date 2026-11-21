@@ -7,8 +7,7 @@
 }
 
 .editor-wrapper {
-  --editor-btn-bg-color: #EFEFEF;
-  --editor-btn-bg-color-hover: #e9e9e9;
+  --editor-btn-bg-color: var(--s2-gray-100);
 
   position: relative;
   flex: 0 1 auto;
@@ -55,9 +54,10 @@ da-versions {
 
 .da-editor-tabs-full {
   padding: 6px;
+  border: 1px solid var(--s2-gray-200, #e1e1e1);
   border-radius: 4px;
-  box-shadow: rgb(181 181 181) 0 0 5px 0;
-  background: rgb(255 255 255);
+  box-shadow: var(--s2-drop-shadow-elevated, 0 0 5px 0 #b5b5b5);
+  background: light-dark(#fff, var(--s2-gray-75, #222));
   box-sizing: border-box;
 }
 
@@ -66,30 +66,31 @@ da-versions {
 }
 
 .da-editor-tab {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 50px;
   height: 44px;
-  text-indent: -1000px;
   overflow: hidden;
   border-radius: 2px;
   border: none;
+  background: transparent;
+  color: var(--s2-gray-800);
   cursor: pointer;
 }
 
+.da-editor-tab svg {
+  width: 20px;
+  height: 20px;
+}
+
 .da-editor-tab.show-preview {
-  background: url("/blocks/edit/img/S2_icon_DeviceDesktopMobile_20_N.svg") center center / 20px no-repeat rgb(239 239 239);
+  background: var(--editor-btn-bg-color);
 }
 
-.da-editor-tab.show-versions {
-  background: url("/blocks/edit/img/S2_icon_Calendar_20_N.svg") center center / 20px no-repeat;
-}
-
-.da-editor-tab.open-ue {
-  background: url("/blocks/edit/img/S2_icon_OpenIn_20_N.svg") center center / 20px no-repeat;
-}
-
-.da-preview-menuitem.show-preview:hover {
-  background-color: var(--editor-btn-bg-color-hover) !important;
+.da-editor-tab:focus-visible {
+  outline: 2px solid var(--s2-blue-900, #1373e6);
+  outline-offset: 2px;
 }
 
 @media (min-width: 600px) {

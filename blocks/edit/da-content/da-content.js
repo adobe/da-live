@@ -93,11 +93,30 @@ export default class DaContent extends LitElement {
             <div class="da-editor-tabs-full">
               <button
                 class="da-editor-tab show-preview"
-                title="Preview" @click=${() => this.togglePane({ detail: 'preview' })}>Preview</button>
+                title="Preview" aria-label="Preview"
+                @click=${() => this.togglePane({ detail: 'preview' })}>
+                <svg aria-hidden="true" viewBox="0 0 20 20">
+                  <use href="/blocks/edit/img/S2_icon_DeviceDesktopMobile_20_N.svg#icon"></use>
+                </svg>
+              </button>
             </div>
             <div class="da-editor-tabs-quiet">
-              <button class="da-editor-tab quiet show-versions" title="Versions" @click=${() => this.togglePane({ detail: 'versions' })}>Versions</button>
-              ${this._externalUrl ? html`<button class="da-editor-tab quiet open-ue" title="Open in-context editing" @click=${this.openUe}>Open in-context editing</button>` : nothing}
+              <button class="da-editor-tab quiet show-versions"
+                title="Versions" aria-label="Versions"
+                @click=${() => this.togglePane({ detail: 'versions' })}>
+                <svg aria-hidden="true" viewBox="0 0 20 20">
+                  <use href="/blocks/edit/img/S2_icon_Calendar_20_N.svg#icon"></use>
+                </svg>
+              </button>
+              ${this._externalUrl ? html`
+                <button class="da-editor-tab quiet open-ue"
+                  title="Open in-context editing" aria-label="Open in-context editing"
+                  @click=${this.openUe}>
+                  <svg aria-hidden="true" viewBox="0 0 20 20">
+                    <use href="/blocks/edit/img/S2_icon_OpenIn_20_N.svg#icon"></use>
+                  </svg>
+                </button>
+              ` : nothing}
             </div>
           </div>
         ` : nothing}
