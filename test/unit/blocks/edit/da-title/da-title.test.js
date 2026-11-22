@@ -101,6 +101,18 @@ describe('DaTitle', () => {
     expect(sendBtn).to.exist;
   });
 
+  it('does not render the collab and actions wrapper when hideActions is set', async () => {
+    el = await fixture();
+    el.hideActions = true;
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelectorAll('.da-title-collab-actions-wrapper').length).to.equal(0);
+    expect(el.shadowRoot.querySelector('h1').textContent).to.equal('page');
+
+    el.hideActions = false;
+    await el.updateComplete;
+    expect(el.shadowRoot.querySelectorAll('.da-title-collab-actions-wrapper').length).to.equal(1);
+  });
+
   describe('_readOnly', () => {
     it('returns false when permissions is not set', async () => {
       el = await fixture();

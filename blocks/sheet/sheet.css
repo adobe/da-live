@@ -16,15 +16,6 @@ body {
   width: 200px;
 }
 
-.da-sheet-not-permitted {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 200px;
-  color: light-dark(#555, #aaa);
-  font: var(--nx-font-body, 14px/1.4 system-ui, sans-serif);
-}
-
 .da-version-wrapper {
   display: flex;
   justify-content: center;
@@ -117,6 +108,16 @@ button.new-sheet {
 
 .da-sheet-wrapper .jexcel > tbody > tr > td:first-child {
   border-left: none;
+}
+
+/* The selection border marks the focused cell, so only outline it when nothing is selected */
+.da-sheet-wrapper .jexcel > tbody > tr > td:focus {
+  outline: none;
+}
+
+.da-sheet-wrapper .jexcel > tbody > tr > td:focus-visible:not(.highlight) {
+  outline: 2px solid var(--s2-blue-800);
+  outline-offset: -2px;
 }
 
 .da-sheet-wrapper .jcontextmenu {
