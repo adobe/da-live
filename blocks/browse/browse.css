@@ -6,11 +6,6 @@ html:has(aside.panel[data-position="before"]:not([hidden])) da-browse::part(chat
   container-type: inline-size;
 }
 
-/* Authored landing content is a sibling of the browse block. Keep it off lists. */
-main:has(.browse):not(:has(.browse > .landing)) :is(.greeting, da-greeting) {
-  display: none;
-}
-
 @container (width < 1440px) {
   da-browse {
     --se-grid-container-width: 83.4cqi;

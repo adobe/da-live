@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <meta name="cms" content="edge-delivery" />
 <style>html { display: none; }</style>
+<style id="browse-greeting-visibility">
+  /* Hide authored greeting content before Browse finishes loading its route. */
+  main:has(.browse):not(:has(.browse > .landing)) :is(.greeting, da-greeting) {
+    display: none;
+  }
+</style>
 <script nonce="aem" type="importmap">
 {
   "imports": {

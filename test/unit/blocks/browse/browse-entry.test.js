@@ -32,10 +32,11 @@ describe('Browse Content opt-in', () => {
     hashChange._set(undefined);
   });
 
-  it('only displays the authored greeting on the landing surface', async () => {
+  it('only displays the authored greeting on the landing surface before Browse styles load', async () => {
     const stylesheet = new CSSStyleSheet();
-    const response = await fetch(new URL('../../../../blocks/browse/browse.css', import.meta.url).href);
-    stylesheet.replaceSync(await response.text());
+    const response = await fetch(new URL('../../../../head.html', import.meta.url).href);
+    const head = new DOMParser().parseFromString(await response.text(), 'text/html');
+    stylesheet.replaceSync(head.querySelector('#browse-greeting-visibility')?.textContent ?? '');
     document.adoptedStyleSheets.push(stylesheet);
     const main = document.createElement('main');
     const browse = document.createElement('div');
@@ -44,6 +45,7 @@ describe('Browse Content opt-in', () => {
     section.className = 'section';
     const greeting = document.createElement('div');
     greeting.className = 'greeting';
+    greeting.innerHTML = '<h1>Hi Ada! Welcome back</h1>';
     section.append(greeting);
     main.append(browse, section);
     document.body.append(main);
