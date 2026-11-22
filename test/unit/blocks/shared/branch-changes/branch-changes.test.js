@@ -96,6 +96,54 @@ describe('branch changes', () => {
     expect(element.shadowRoot.querySelector('[role="alert"]').textContent).to.include('offline');
   });
 
+  it('hides trash paths and counts only editorial changes', async () => {
+    const entries = [
+      { ...change, path: '/.trash' },
+      { ...change, path: '/.trash/deleted.html', change: 'added' },
+      { ...change, path: '/materials/.trash/nested/deleted.html', defaultOnly: true },
+      { ...change, path: '/materials/old-flyer.html', change: 'deleted', defaultOnly: false },
+      { ...change, path: '/.trash-notes.html' },
+      { ...change, path: '/materials/.trashcan/file.html' },
+    ];
+    client.changes = async () => ({ ...summary, changes: entries });
+    await open();
+    const files = [...element.shadowRoot.querySelectorAll('.file')];
+    expect(files.map((file) => file.getAttribute('aria-label'))).to.deep.equal([
+      '/materials/old-flyer.html', '/.trash-notes.html', '/materials/.trashcan/file.html',
+    ]);
+    expect(element.shadowRoot.querySelector('button[popovertarget]').textContent).to.include('Changes (3)');
+    expect(element.shadowRoot.textContent).not.to.include('/.trash/deleted.html');
+    expect(files[0].textContent).to.include('deleted');
+    expect(entries).to.have.length(6);
+  });
+
+  it('keeps pagination available when a page contains only trash', async () => {
+    const trash = { ...change, path: '/.trash/deleted.html' };
+    client.changes = async (id, cursor) => (cursor
+      ? { ...summary, changes: [trash, { ...change, path: '/later.html' }], next: null }
+      : { ...summary, changes: [trash], next: 'more' });
+    await open();
+    expect(element.shadowRoot.querySelector('button[popovertarget]').textContent).to.include('Changes (0+)');
+    expect(element.shadowRoot.textContent).to.include('No visible changes in loaded pages.');
+    expect(element.shadowRoot.textContent).not.to.include('No changes.');
+    expect([...element.shadowRoot.querySelectorAll('button')].some((button) => button.textContent === 'Load more')).to.equal(true);
+    await element.loadMore();
+    await element.updateComplete;
+    expect([...element.shadowRoot.querySelectorAll('.file')].map((file) => file.getAttribute('aria-label'))).to.deep.equal(['/later.html']);
+    expect(element.shadowRoot.querySelector('button[popovertarget]').textContent).to.include('Changes (1)');
+  });
+
+  it('reports no changes when all loaded pages contain only trash', async () => {
+    const trash = { ...change, path: '/.trash/deleted.html' };
+    client.changes = async (id, cursor) => ({ ...summary, changes: [trash], next: cursor ? null : 'more' });
+    await open();
+    await element.loadMore();
+    await element.updateComplete;
+    expect(element.shadowRoot.textContent).to.include('No changes.');
+    expect(element.shadowRoot.querySelectorAll('.file')).to.have.length(0);
+    expect(element.shadowRoot.querySelector('button[popovertarget]').textContent).to.include('Changes (0)');
+  });
+
   it('loads pages only when revision pins match', async () => {
     client.changes = async (id, cursor) => (cursor ? { ...summary, changes: [{ ...change, path: '/other' }], next: null } : { ...summary, next: 'more' });
     await open();

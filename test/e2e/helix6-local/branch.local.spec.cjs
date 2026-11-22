@@ -496,6 +496,13 @@ test('B5 full: real Browse branch copy/trash and legacy selector switching', asy
     await page.locator('button.delete-button').filter({ visible: true }).click();
     await page.locator('da-dialog').getByRole('button', { name: 'Delete', exact: true }).click();
     await expect.poll(async () => { verifyOwner(); return (await request.get(`${source}${h6}/folder/browsecopy.html`, { headers: { authorization: `Bearer ${token}` }, maxRedirects: 0 })).status(); }, { timeout: 30000 }).toBe(404);
+    const comparison = await (await api(request, 'GET', `${branches}/draft/changes`, undefined, 200)).json();
+    expect(comparison.changes.some(({ path }) => path.startsWith('/.trash/'))).toBe(true);
+    const changes = selector.locator('da-branch-changes');
+    await changes.getByRole('button', { name: /^Changes/ }).click();
+    await expect(changes.locator('.changes-list')).toBeVisible();
+    await expect(changes.locator('.changes-list')).not.toContainText('.trash');
+    await changes.getByRole('button', { name: 'Close Changes' }).click();
     await page.goto(`${ui}/?browse=1&da-admin=local&da-source=da-rs&da-collab=local#/h6test/work~draft`);
     await selector.locator('.branch-trigger').click();
     await selector.getByRole('button', { name: 'Default · main', exact: true }).click();

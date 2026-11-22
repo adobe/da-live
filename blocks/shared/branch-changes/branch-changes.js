@@ -5,6 +5,12 @@ import '../branch-diff/branch-diff.js';
 const SAFE_IMAGES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/avif']);
 const TEXT_KINDS = new Set(['html', 'json', 'config']);
 
+// Trash is a system folder, not an editorial change. Keep API pagination and
+// reconciliation untouched, but exclude trash paths from the displayed count and list.
+function visibleChanges(changes) {
+  return changes.filter(({ path }) => !path.split('/').includes('.trash'));
+}
+
 /** A comparison is always read at the two revisions returned by its first page. */
 export class DaBranchChanges extends LitElement {
   static properties = {
@@ -107,7 +113,7 @@ export class DaBranchChanges extends LitElement {
       if (!Array.isArray(summary?.changes) || !Number.isSafeInteger(summary.branchRevision)
         || summary.branchRevision < 0 || !Number.isSafeInteger(summary.defaultRevision)
         || summary.defaultRevision < 0) throw new Error('Invalid comparison response');
-      this._summary = summary;
+      this._summary = { ...summary, changes: visibleChanges(summary.changes) };
     } catch (error) {
       if (this.current(generation, branchId, client)) this._error = error.message || 'Could not load changes.';
     } finally {
@@ -130,7 +136,7 @@ export class DaBranchChanges extends LitElement {
         return;
       }
       if (!Array.isArray(page.changes)) throw new Error('Invalid comparison response');
-      const changes = [...summary.changes, ...page.changes];
+      const changes = [...summary.changes, ...visibleChanges(page.changes)];
       this._summary = { ...summary, changes, next: page.next };
     } catch (error) {
       if (!this.current(generation, branchId, client)) return;
@@ -224,7 +230,7 @@ export class DaBranchChanges extends LitElement {
             </span>
           </button>
         </li>`)}
-      </ul>` : html`<p class="message muted">No changes.</p>`}
+      </ul>` : html`<p class="message muted">${summary.next ? 'No visible changes in loaded pages.' : 'No changes.'}</p>`}
       ${summary.next ? html`<button class="panel-button" type="button"
         @click=${this.loadMore} ?disabled=${this._loading}>Load more</button>` : nothing}
     `;
