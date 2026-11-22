@@ -6,7 +6,7 @@ const nx2 = getNx2();
 const [
   { getRepositoryConfig, getResponsiveImageConfig },
   { buildAssetSelectorProps },
-  { ASSET_SELECTOR_URL },
+  { loadAssetSelector },
 ] = await Promise.all([
   import(`${nx2}/utils/aem-assets/repository-config.js`),
   import(`${nx2}/utils/aem-assets/selector-props.js`),
@@ -16,23 +16,6 @@ const [
 // Re-exported for ew-selection-toolbar's "does this site have AEM assets?" check.
 // The picker shares Nexter's config resolver with the classic editor.
 export { getRepositoryConfig };
-
-// ---------------------------------------------------------------------------
-// Script loader
-// ---------------------------------------------------------------------------
-
-let selectorScriptLoaded;
-
-function loadSelectorScript() {
-  selectorScriptLoaded ??= new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = ASSET_SELECTOR_URL;
-    script.onload = resolve;
-    script.onerror = reject;
-    document.head.append(script);
-  });
-  return selectorScriptLoaded;
-}
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -49,7 +32,7 @@ export async function renderAssets({ container, org, site, onClose }) {
   const repoConfig = await getRepositoryConfig(org, site);
   if (!repoConfig) return;
 
-  await loadSelectorScript();
+  const { selectors, error } = await loadAssetSelector();
 
   // The panel is rendered inside a shadow root, so link the shared asset-picker
   // styles (blocks/edit/da-assets/da-assets.css) that style the smart-crop / error UI.
@@ -57,6 +40,14 @@ export async function renderAssets({ container, org, site, onClose }) {
   styleLink.rel = 'stylesheet';
   styleLink.href = new URL('../../edit/da-assets/da-assets.css', import.meta.url).href;
   container.append(styleLink);
+
+  if (error) {
+    const errorEl = document.createElement('p');
+    errorEl.className = 'da-dialog-asset-error';
+    errorEl.textContent = error;
+    container.append(errorEl);
+    return;
+  }
 
   // Two-panel layout (shared with the classic editor): the selector lives in `assetPanel`;
   // the smart-crop picker / error messages take over `secondaryPanel` when needed.
@@ -81,7 +72,7 @@ export async function renderAssets({ container, org, site, onClose }) {
     }),
   });
 
-  window.PureJSSelectors.renderAssetSelector(assetPanel, selectorProps);
+  selectors.renderAssetSelector(assetPanel, selectorProps);
 }
 
 export function getAssetsPlugin({ org, site }) {
@@ -89,6 +80,19 @@ export function getAssetsPlugin({ org, site }) {
     name: 'aem-assets',
     title: 'AEM Assets',
     experience: 'fullsize-dialog',
+    ootb: false,
+    sources: [],
+    format: '',
+    org,
+    site,
+  };
+}
+
+export function getAssetsPanelPlugin({ org, site }) {
+  return {
+    name: 'aem-assets-panel',
+    title: 'AEM Assets',
+    experience: 'inline',
     ootb: false,
     sources: [],
     format: '',

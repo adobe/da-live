@@ -215,6 +215,7 @@ export default async function initProse({
       ...undoRedoKeys,
       'Mod-k': (_state, _dispatch, view) => {
         if (!view.editable) return false;
+        if (view.state.selection.node && view.state.selection.node.type.name === 'image' && view.state.selection.node.attrs.editAs) return false;
         openLinkDialog(view);
         return true;
       },
@@ -222,6 +223,8 @@ export default async function initProse({
         canvasBus.newVersionRequest.emit();
         return true;
       },
+      // WAI-ARIA convention for reaching an editor's toolbar from the keyboard.
+      'Alt-F10': () => toolbarController.focusToolbar(),
       ...getHeadingKeymap(schema),
     }),
     keymap({

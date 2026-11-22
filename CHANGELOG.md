@@ -1,3 +1,278 @@
+## [1.33.1](https://github.com/adobe/da-live/compare/v1.33.0...v1.33.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* **sc:** anchor hidden switch input to its label ([#1766](https://github.com/adobe/da-live/issues/1766)) ([73b2e13](https://github.com/adobe/da-live/commit/73b2e13893b0b4a6bcff4aba5ba4ccc36732f5c5))
+
+# [1.33.0](https://github.com/adobe/da-live/compare/v1.32.0...v1.33.0) (2026-11-19)
+
+
+### Features
+
+* **start:** style cards in the consuming page ([#1751](https://github.com/adobe/da-live/issues/1751)) ([4341cf0](https://github.com/adobe/da-live/commit/4341cf0dfd97fb6e07037b66d62335ce9a2347c2))
+
+# [1.32.0](https://github.com/adobe/da-live/compare/v1.31.2...v1.32.0) (2026-11-19)
+
+
+### Features
+
+* **start:** dark gradient, greeting, no step count ([#1743](https://github.com/adobe/da-live/issues/1743)) ([9304163](https://github.com/adobe/da-live/commit/9304163e9422528d2b0375e2dcca6f7148911dd4))
+
+## [1.31.2](https://github.com/adobe/da-live/compare/v1.31.1...v1.31.2) (2026-11-18)
+
+
+### Bug Fixes
+
+* make block selection icon theme-aware ([#1713](https://github.com/adobe/da-live/issues/1713)) ([649045f](https://github.com/adobe/da-live/commit/649045f692d26da879b4437ab748f1355f895e99))
+
+## [1.31.1](https://github.com/adobe/da-live/compare/v1.31.0...v1.31.1) (2026-11-16)
+
+
+### Bug Fixes
+
+* **ew:** keep comments attached when moving sections or blocks ([#1641](https://github.com/adobe/da-live/issues/1641)) ([02e8759](https://github.com/adobe/da-live/commit/02e87590fd5992d479bde3b059d07dd89ffc86e5))
+
+# [1.31.0](https://github.com/adobe/da-live/compare/v1.30.2...v1.31.0) (2026-11-16)
+
+
+### Bug Fixes
+
+* **sc:** align rich-text markup with da-parser ([#1745](https://github.com/adobe/da-live/issues/1745)) ([eb3b2c3](https://github.com/adobe/da-live/commit/eb3b2c37f12cffc21e7f65bf09b663a799970ba0))
+
+
+### Features
+
+* add greeting to landing ([#1723](https://github.com/adobe/da-live/issues/1723)) ([e5fff35](https://github.com/adobe/da-live/commit/e5fff35bb19b6bbcdf7cc4b5d47ead7d81e60ee8))
+
+## [1.30.2](https://github.com/adobe/da-live/compare/v1.30.1...v1.30.2) (2026-11-16)
+
+
+### Bug Fixes
+
+* bump @adobe/da-parser to 2.2.1 to keep data-* image attributes ([#1746](https://github.com/adobe/da-live/issues/1746)) ([f2d7821](https://github.com/adobe/da-live/commit/f2d78212cf560a0326a48531599e7de51a074146))
+
+## [1.30.1](https://github.com/adobe/da-live/compare/v1.30.0...v1.30.1) (2026-11-16)
+
+
+### Bug Fixes
+
+* rename canvas sidebar Content tab to Browse ([#1744](https://github.com/adobe/da-live/issues/1744)) ([ae66b1c](https://github.com/adobe/da-live/commit/ae66b1c9e604d3db0ad90153e89c055ff69121fc))
+
+# [1.30.0](https://github.com/adobe/da-live/compare/v1.29.4...v1.30.0) (2026-11-16)
+
+
+### Features
+
+* **sc:** add rich-text editor for structured content ([#1661](https://github.com/adobe/da-live/issues/1661)) ([c838a35](https://github.com/adobe/da-live/commit/c838a35fb4259ab830f5254e7a6b2435dde5187b)), closes [adobe/da-sc-sdk#22](https://github.com/adobe/da-sc-sdk/issues/22)
+
+## [1.29.4](https://github.com/adobe/da-live/compare/v1.29.3...v1.29.4) (2026-11-16)
+
+
+### Bug Fixes
+
+* **canvas:** make the floating toolbars keyboard reachable ([#1734](https://github.com/adobe/da-live/issues/1734)) ([16738cb](https://github.com/adobe/da-live/commit/16738cbd0130ea62aa5b50e02f39b49c214fe51c)), closes [#1542](https://github.com/adobe/da-live/issues/1542)
+
+## [1.29.3](https://github.com/adobe/da-live/compare/v1.29.2...v1.29.3) (2026-11-16)
+
+
+### Bug Fixes
+
+* use site config for hlx6 projects ([#1722](https://github.com/adobe/da-live/issues/1722)) ([867fad8](https://github.com/adobe/da-live/commit/867fad862c57218795be6e502666995d2bcbaf51)), closes [#1446](https://github.com/adobe/da-live/issues/1446)
+
+## [1.29.2](https://github.com/adobe/da-live/compare/v1.29.1...v1.29.2) (2026-11-16)
+
+
+### Bug Fixes
+
+* browse nav on row click ([#1737](https://github.com/adobe/da-live/issues/1737)) ([0978cd2](https://github.com/adobe/da-live/commit/0978cd2fd91d0770d40dd9e788b6f9e9f1fa5e35))
+
+## [1.29.1](https://github.com/adobe/da-live/compare/v1.29.0...v1.29.1) (2026-11-13)
+
+
+### Bug Fixes
+
+* **sc:** align panel toggles ([#1736](https://github.com/adobe/da-live/issues/1736)) ([8b15255](https://github.com/adobe/da-live/commit/8b1525546a28ab5c1acb57bead121a5f9e2b1d48))
+
+# [1.29.0](https://github.com/adobe/da-live/compare/v1.28.6...v1.29.0) (2026-11-13)
+
+
+### Features
+
+* **sc:** add structured content outline ([#1699](https://github.com/adobe/da-live/issues/1699)) ([8f8d18c](https://github.com/adobe/da-live/commit/8f8d18c8522f69354e5799e0aa80a833ff474a48))
+
+## [1.28.6](https://github.com/adobe/da-live/compare/v1.28.5...v1.28.6) (2026-11-12)
+
+
+### Bug Fixes
+
+* load library content directly from DA Admin ([#1698](https://github.com/adobe/da-live/issues/1698)) ([9fd4414](https://github.com/adobe/da-live/commit/9fd4414e2966a425c4d19cfe4d72e28bca34a975))
+
+## [1.28.5](https://github.com/adobe/da-live/compare/v1.28.4...v1.28.5) (2026-11-11)
+
+
+### Bug Fixes
+
+* align preview section metadata with AEM rendering features ([#1704](https://github.com/adobe/da-live/issues/1704)) ([8c28570](https://github.com/adobe/da-live/commit/8c285702d2d0c44bf9b6bcf3d461ac69c48dc24d))
+
+## [1.28.4](https://github.com/adobe/da-live/compare/v1.28.3...v1.28.4) (2026-11-11)
+
+
+### Bug Fixes
+
+* **sheet:** stop keyboard input going to a hidden sheet ([#1676](https://github.com/adobe/da-live/issues/1676)) ([d2fce81](https://github.com/adobe/da-live/commit/d2fce81cd29ce704bc141f505a4c18beb1ef6c67)), closes [#1536](https://github.com/adobe/da-live/issues/1536)
+
+## [1.28.3](https://github.com/adobe/da-live/compare/v1.28.2...v1.28.3) (2026-11-11)
+
+
+### Bug Fixes
+
+* allow fallback to browse v1 ([#1715](https://github.com/adobe/da-live/issues/1715)) ([d618e35](https://github.com/adobe/da-live/commit/d618e3587d0ac25fd78c87fdffb4208218d92a3f))
+
+## [1.28.2](https://github.com/adobe/da-live/compare/v1.28.1...v1.28.2) (2026-11-11)
+
+
+### Bug Fixes
+
+* **browse:** complete paginated mutations ([#1709](https://github.com/adobe/da-live/issues/1709)) ([ebf169a](https://github.com/adobe/da-live/commit/ebf169aac062882879b1fdbb04833e185f76e261)), closes [adobe/da-live#1708](https://github.com/adobe/da-live/issues/1708)
+
+## [1.28.1](https://github.com/adobe/da-live/compare/v1.28.0...v1.28.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* support default fallback ([#1714](https://github.com/adobe/da-live/issues/1714)) ([da2442d](https://github.com/adobe/da-live/commit/da2442d4039ffd26ab05be002cc46ee28dab12c6))
+
+# [1.28.0](https://github.com/adobe/da-live/compare/v1.27.0...v1.28.0) (2026-11-11)
+
+
+### Features
+
+* greeting block ([#1707](https://github.com/adobe/da-live/issues/1707)) ([90c68b9](https://github.com/adobe/da-live/commit/90c68b9aca15228ce567b779ff05198f37903549))
+
+# [1.27.0](https://github.com/adobe/da-live/compare/v1.26.0...v1.27.0) (2026-11-11)
+
+
+### Features
+
+* apply suggestions via chat ([#1632](https://github.com/adobe/da-live/issues/1632)) ([9f48de3](https://github.com/adobe/da-live/commit/9f48de342596ef2bc513435fe93adbd789272d1b))
+
+# [1.26.0](https://github.com/adobe/da-live/compare/v1.25.1...v1.26.0) (2026-11-11)
+
+
+### Features
+
+* **landing:** reuse shared file cards and list ([#1531](https://github.com/adobe/da-live/issues/1531)) ([7f3a60c](https://github.com/adobe/da-live/commit/7f3a60c9d97e01829f7c877c5278906bed992146)), closes [#1482](https://github.com/adobe/da-live/issues/1482) [#1517](https://github.com/adobe/da-live/issues/1517)
+
+## [1.25.1](https://github.com/adobe/da-live/compare/v1.25.0...v1.25.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* make marketplace icon theme-aware ([#1710](https://github.com/adobe/da-live/issues/1710)) ([bb76723](https://github.com/adobe/da-live/commit/bb7672379c01e0cf44f1c96b27df0aa96b53f3e7))
+
+# [1.25.0](https://github.com/adobe/da-live/compare/v1.24.1...v1.25.0) (2026-11-11)
+
+
+### Features
+
+* use browse v2 by default ([#1656](https://github.com/adobe/da-live/issues/1656)) ([c619998](https://github.com/adobe/da-live/commit/c6199989fa05d15d448c1a63ce00bd720ee26fe1))
+
+## [1.24.1](https://github.com/adobe/da-live/compare/v1.24.0...v1.24.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* read single-sheet library configs in the canvas library panel ([#1706](https://github.com/adobe/da-live/issues/1706)) ([fab381a](https://github.com/adobe/da-live/commit/fab381aa894486aeeeacfca39aab273edc15137c)), closes [#1705](https://github.com/adobe/da-live/issues/1705)
+
+# [1.24.0](https://github.com/adobe/da-live/compare/v1.23.0...v1.24.0) (2026-11-10)
+
+
+### Features
+
+* **canvas:** support editable link-images ([#1342](https://github.com/adobe/da-live/issues/1342)) ([7979691](https://github.com/adobe/da-live/commit/797969182faccc253f1adbcaaf9a751060bb6f56))
+
+# [1.23.0](https://github.com/adobe/da-live/compare/v1.22.2...v1.23.0) (2026-11-10)
+
+
+### Features
+
+* store recently edited files ([#1703](https://github.com/adobe/da-live/issues/1703)) ([47fde50](https://github.com/adobe/da-live/commit/47fde5007dde3cbba5502f9660a40d3fc8c5052a))
+
+## [1.22.2](https://github.com/adobe/da-live/compare/v1.22.1...v1.22.2) (2026-11-10)
+
+
+### Bug Fixes
+
+* correct canvas asset drops and toolbar selector ([#1701](https://github.com/adobe/da-live/issues/1701)) ([f0b1914](https://github.com/adobe/da-live/commit/f0b191422c4d2666253655c48a28817dc83de258))
+
+## [1.22.1](https://github.com/adobe/da-live/compare/v1.22.0...v1.22.1) (2026-11-10)
+
+
+### Bug Fixes
+
+* **sheet:** expose sheet cells to screen readers ([#1684](https://github.com/adobe/da-live/issues/1684)) ([1211e53](https://github.com/adobe/da-live/commit/1211e537f86d3a312242a0fc0f4268e89019feac)), closes [#1537](https://github.com/adobe/da-live/issues/1537)
+
+# [1.22.0](https://github.com/adobe/da-live/compare/v1.21.5...v1.22.0) (2026-11-10)
+
+
+### Features
+
+* **branding:** update ew header to adobe experience manager ([#1664](https://github.com/adobe/da-live/issues/1664)) ([69df3e3](https://github.com/adobe/da-live/commit/69df3e3733c81f773add41580d15520f67aa7dd6))
+
+## [1.21.5](https://github.com/adobe/da-live/compare/v1.21.4...v1.21.5) (2026-11-09)
+
+
+### Bug Fixes
+
+* rename canvas Files panel to Content ([#1686](https://github.com/adobe/da-live/issues/1686)) ([9df79dc](https://github.com/adobe/da-live/commit/9df79dc9e4afa4c5faa01032451dc8c34cedce69))
+
+## [1.21.4](https://github.com/adobe/da-live/compare/v1.21.3...v1.21.4) (2026-11-09)
+
+
+### Bug Fixes
+
+* **ew:** paste text inside inline code blocks correctly ([#1491](https://github.com/adobe/da-live/issues/1491)) ([7e700d4](https://github.com/adobe/da-live/commit/7e700d4d3c3c6e39f9eb3cb533a92a7dd446d2aa))
+
+## [1.21.3](https://github.com/adobe/da-live/compare/v1.21.2...v1.21.3) (2026-11-09)
+
+
+### Bug Fixes
+
+* profile hint on not permitted messages ([#1647](https://github.com/adobe/da-live/issues/1647)) ([a87d5a6](https://github.com/adobe/da-live/commit/a87d5a6ec2f72184ba6b702bdfe5fd8b99b7f48f))
+* scroll version compare in sync ([#1666](https://github.com/adobe/da-live/issues/1666)) ([041bbfa](https://github.com/adobe/da-live/commit/041bbfa5171668eab269b67a790a7b37ad8e2d6f))
+* **sheet:** let keyboard users move focus in and out of the grid ([#1619](https://github.com/adobe/da-live/issues/1619)) ([ca286a1](https://github.com/adobe/da-live/commit/ca286a19c8a9df3bcb45a0bea45d4ab60e33fa24)), closes [#1535](https://github.com/adobe/da-live/issues/1535)
+
+## [1.21.2](https://github.com/adobe/da-live/compare/v1.21.1...v1.21.2) (2026-11-06)
+
+
+### Bug Fixes
+
+* include version dates in comparison labels ([#1671](https://github.com/adobe/da-live/issues/1671)) ([0476a28](https://github.com/adobe/da-live/commit/0476a2838769ba5ebc94ad1748a0798131d4d009))
+
+## [1.21.1](https://github.com/adobe/da-live/compare/v1.21.0...v1.21.1) (2026-11-06)
+
+
+### Bug Fixes
+
+* **a11y:** make image alt text editable from the keyboard ([#1643](https://github.com/adobe/da-live/issues/1643)) ([c0bffeb](https://github.com/adobe/da-live/commit/c0bffebbe30e34fa9b1bb27fe15846fd6a13b1d4))
+
+# [1.21.0](https://github.com/adobe/da-live/compare/v1.20.1...v1.21.0) (2026-11-06)
+
+
+### Features
+
+* asset selector siderail ([#1638](https://github.com/adobe/da-live/issues/1638)) ([cf4bc1f](https://github.com/adobe/da-live/commit/cf4bc1fe254c7584911620ba8ad9c76dae7cc97c))
+* drag and drop ([#1526](https://github.com/adobe/da-live/issues/1526)) ([abdf0b8](https://github.com/adobe/da-live/commit/abdf0b839505202cfb2da2663a05c0c562fe3d34))
+* open blocks and assets in side panels with modal pop-outs ([#1630](https://github.com/adobe/da-live/issues/1630)) ([673f025](https://github.com/adobe/da-live/commit/673f025b048589ad8734ff3f60104b4ac03566cc))
+
+## [1.20.1](https://github.com/adobe/da-live/compare/v1.20.0...v1.20.1) (2026-11-05)
+
+
+### Bug Fixes
+
+* grouping off by default ([#1653](https://github.com/adobe/da-live/issues/1653)) ([dcf524f](https://github.com/adobe/da-live/commit/dcf524fa294fb8ca4ddde5529df492c9890f027a))
+
 # [1.20.0](https://github.com/adobe/da-live/compare/v1.19.2...v1.20.0) (2026-11-04)
 
 

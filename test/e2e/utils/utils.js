@@ -39,3 +39,47 @@ export async function dismissAlertBanner(page) {
     alert.waitFor({ state: 'visible' }).then(dismiss).catch(() => {});
   }
 }
+
+/**
+ * Asserts the shared "Not permitted" message, clicks its "Open Profile"
+ * button and checks that the nx profile menu opens with keyboard focus
+ * inside it (so Tab moves through the menu controls).
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {typeof import('@playwright/test').expect} expect
+ */
+export async function expectNotPermittedOpensProfile(page, expect) {
+  await expect(page.getByRole('heading', { name: 'Not permitted' })).toBeVisible();
+  await expect(page.getByText('Please make sure you are logged in with the correct user')).toBeVisible();
+
+  // The error message can render before the profile component is ready.
+  await expect(page.getByRole('button', { name: 'Open profile menu', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Open Profile', exact: true }).click();
+  await expect(page.locator('#nx-menu-profile')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => {
+    let active = document.activeElement;
+    while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
+    return !!active?.closest('#nx-menu-profile');
+  }), 'Focus should move into the profile menu').toBe(true);
+}
+
+/**
+ * Makes GET requests matching `urlPattern` answer 403 while keeping the real
+ * response headers (CORS), simulating a user signed into an org without access.
+ * Returns a function that removes the override again.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {RegExp} urlPattern
+ */
+export async function forceForbidden(page, urlPattern) {
+  const handler = async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue();
+      return;
+    }
+    const response = await route.fetch();
+    await route.fulfill({ response, status: 403, body: '' });
+  };
+  await page.route(urlPattern, handler);
+  return () => page.unroute(urlPattern, handler);
+}
