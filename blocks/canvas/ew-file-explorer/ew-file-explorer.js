@@ -5,6 +5,7 @@ import { iconPathForExt } from '../../shared/icons.js';
 import { EMPTY_DOC } from '../../shared/utils.js';
 import getEditPath from '../../shared/da-file-item/edit-path.js';
 import getSheet from '../../shared/sheet.js';
+import { chatTurnCompleted } from '../../shared/chat-panel.js';
 import '../../shared/da-name-dialog/da-name-dialog.js';
 
 const { loadStyle, hashChange } = await import(`${getNx()}/utils/utils.js`);
@@ -97,25 +98,25 @@ class EwFileExplorer extends LitElement {
     this._category ??= 'all';
     this.shadowRoot.adoptedStyleSheets = [buttons, style];
     this._unsubHash = hashChange.subscribe((state) => this._onHashChange(state));
-    this._onAgentChange = async ({ detail }) => {
+    // Remove this listener and its cleanup once da-agent-based chat is removed.
+    this._onAgentChange = ({ detail }) => {
       if (detail?.scope !== 'file') return;
       const toRefresh = (detail.paths ?? []).filter((p) => this._cache?.[p]);
-      if (!toRefresh.length) return;
-      const gen = this._loadGen;
-      const updates = await Promise.all(toRefresh.map(async (p) => {
-        const result = await listFolder(p);
-        return Array.isArray(result) ? [p, result] : null;
-      }));
-      if (gen !== this._loadGen) return;
-      const patched = Object.fromEntries(updates.filter(Boolean));
-      if (Object.keys(patched).length) this._cache = { ...this._cache, ...patched };
+      this._refreshFolders(toRefresh);
     };
     document.addEventListener(CHAT_EVENT.AGENT_CHANGE, this._onAgentChange);
+    this._unsubChatTurn = chatTurnCompleted.subscribe((detail) => {
+      if (!detail?.org || detail.org !== this._org || detail.site !== this._site) return;
+      this._refreshFolders(Object.keys(this._cache ?? {}));
+      this._clearCrawlCache();
+      this._onCategoryChange({ detail: { value: this._category } });
+    });
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._unsubHash?.();
+    this._unsubChatTurn?.();
     document.removeEventListener(CHAT_EVENT.AGENT_CHANGE, this._onAgentChange);
     this._clearSearch();
     this._resetCategoryCrawl();
@@ -124,6 +125,18 @@ class EwFileExplorer extends LitElement {
 
   updated() {
     treegridEnsureTabStop(this.shadowRoot);
+  }
+
+  async _refreshFolders(paths) {
+    if (!paths.length) return;
+    const gen = this._loadGen;
+    const updates = await Promise.all(paths.map(async (path) => {
+      const result = await listFolder(path);
+      return Array.isArray(result) ? [path, result] : null;
+    }));
+    if (gen !== this._loadGen) return;
+    const patched = Object.fromEntries(updates.filter(Boolean));
+    if (Object.keys(patched).length) this._cache = { ...this._cache, ...patched };
   }
 
   _onHashChange({ org, site, path }) {

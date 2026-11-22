@@ -159,6 +159,27 @@ describe('ew-selection-toolbar buttons', () => {
       .to.equal('/img/icons/s2-icon-image-20-n.svg#icon');
   });
 
+  it('requests the modal asset selector from the AEM Assets menu item', async () => {
+    toolbar.activeSurface = 'doc';
+    toolbar._hasAemAssets = true;
+    await toolbar.updateComplete;
+    let detail;
+    const onOpen = (event) => { detail = event.detail; };
+    document.addEventListener('nx-panel-open', onOpen);
+    try {
+      toolbar.shadowRoot.querySelector('nx-menu').dispatchEvent(
+        new CustomEvent('select', { detail: { id: 'aem-assets' } }),
+      );
+      expect(detail).to.deep.equal({
+        section: 'tools',
+        id: 'aem-assets-panel',
+        options: { modal: true },
+      });
+    } finally {
+      document.removeEventListener('nx-panel-open', onOpen);
+    }
+  });
+
   it('closes a menu when the toolbar is hidden', async () => {
     toolbar.activeSurface = 'doc';
     toolbar._hasAemAssets = true;

@@ -3,6 +3,7 @@
 */
 import { expect } from '@esm-bundle/chai';
 import { render } from 'da-lit';
+import { spy, stub } from 'sinon';
 
 // This is needed to make a dynamic import work that is indirectly referenced
 // from da-browse.js
@@ -11,6 +12,18 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 const { default: DaBrowse } = await import('../../../../../../blocks/browse/legacy/da-list/da-list.js');
 const { default: DaBrowseComponent } = await import('../../../../../../blocks/browse/legacy/da-browse/da-browse.js');
+const { CHAT_EVENT } = await import('../../../../../fixtures/nx/utils/chat.js');
+
+async function completeUpdate(component) {
+  const update = spy(component, 'update');
+  try {
+    await component.updateComplete;
+    await update.lastCall?.returnValue;
+    await component.updateComplete;
+  } finally {
+    update.restore();
+  }
+}
 
 describe('Browse', () => {
   it('Pasted item uses the target URL', async () => {
@@ -344,6 +357,82 @@ describe('DaBrowse Component', () => {
   beforeEach(() => {
     daBrowseComp = new DaBrowseComponent();
     daBrowseComp.details = { fullpath: '/myorg/mysite/folder', org: 'myorg', site: 'mysite', owner: 'myorg', depth: 3 };
+  });
+
+  it('reloads browse files only for same-site chat turns and cleans up on disconnect', async () => {
+    const savedFetch = window.fetch;
+    window.fetch = async () => new Response('[]', { status: 200 });
+    const items = [{ name: 'new.html', path: '/myorg/mysite/folder/new.html', ext: 'html' }];
+    const getList = stub(DaBrowse.prototype, 'getList').resolves([]);
+    const completeTurn = (detail) => {
+      document.dispatchEvent(new CustomEvent(CHAT_EVENT.TURN_COMPLETED, { detail }));
+    };
+    try {
+      document.body.append(daBrowseComp);
+      await completeUpdate(daBrowseComp);
+      const list = daBrowseComp.shadowRoot.querySelector('.da-list-type-browse');
+      await completeUpdate(list);
+      getList.resetHistory();
+      getList.resolves(items);
+
+      completeTurn({ org: 'other', site: 'mysite' });
+      completeTurn({ org: 'myorg', site: 'other' });
+      completeTurn(undefined);
+      await completeUpdate(list);
+      expect(getList.callCount).to.equal(0);
+
+      completeTurn({ org: 'myorg', site: 'mysite', path: 'another/page', status: 'completed' });
+      await completeUpdate(list);
+      expect(getList.callCount).to.equal(1);
+      expect(daBrowseComp.browseListItems).to.equal(items);
+
+      daBrowseComp.remove();
+      completeTurn({ org: 'myorg', site: 'mysite' });
+      expect(getList.callCount).to.equal(1);
+    } finally {
+      daBrowseComp.remove();
+      getList.restore();
+      window.fetch = savedFetch;
+    }
+  });
+
+  it('drops inherited legacy editor settings when navigating to hlx6 in the same org', async () => {
+    const savedFetch = window.fetch;
+    const org = 'browse-mixed-backends';
+    const legacyRequests = [];
+    window.fetch = async (url) => {
+      const href = String(url);
+      if (href.includes('/ping/')) {
+        return new Response('', { headers: href.endsWith('/upgraded') ? { 'x-api-upgrade-available': 'true' } : {} });
+      }
+      if (href.startsWith('https://admin.da.live/config/')) {
+        legacyRequests.push(href);
+        return new Response(JSON.stringify({ data: [{ key: 'editor.path', value: `/${org}=/form#` }] }), { headers: { 'X-da-actions': '/x=read,write' } });
+      }
+      if (href.includes('/config/editor/da.json')) {
+        return new Response(JSON.stringify({ config: [] }), { headers: { 'X-da-actions': '/x=read' } });
+      }
+      return new Response('[]');
+    };
+    const getList = stub(DaBrowse.prototype, 'getList').resolves([]);
+    try {
+      daBrowseComp.details = { org, site: 'legacy', fullpath: `/${org}/legacy`, depth: 2 };
+      document.body.append(daBrowseComp);
+      await completeUpdate(daBrowseComp);
+      expect(daBrowseComp.editor).to.equal('/form#');
+      const requestsBeforeNavigation = legacyRequests.length;
+
+      daBrowseComp.details = { org, site: 'upgraded', fullpath: `/${org}/upgraded`, depth: 2 };
+      await completeUpdate(daBrowseComp);
+      expect(daBrowseComp.editor).to.equal('/edit#');
+      expect(daBrowseComp.editorConfs).to.deep.equal([]);
+      expect(daBrowseComp._canEditOrgConfig).to.be.false;
+      expect(legacyRequests).to.have.lengthOf(requestsBeforeNavigation);
+    } finally {
+      daBrowseComp.remove();
+      getList.restore();
+      window.fetch = savedFetch;
+    }
   });
 
   describe('getEditor', () => {

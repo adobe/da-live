@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
-import { getFirstSheet, fetchDaConfigs, canEditOrgConfig } from '../../../shared/utils.js';
+import { getEditorConfigs, fetchDaConfigs, canEditOrgConfig } from '../../../shared/utils.js';
 import { getNx, sanitizePathParts, getNxEWFlags } from '../../../../scripts/utils.js';
-import { getChatPanelContent, chatAvailability } from '../../../shared/chat-panel.js';
+import { getChatPanelContent, chatAvailability, chatTurnCompleted } from '../../../shared/chat-panel.js';
 import { getSettingsMenuItems } from '../../shared/settings-menu.js';
 
 // Components
@@ -94,12 +94,18 @@ export default class DaBrowse extends LitElement {
     this._handleShortcuts = this.handleShortcuts.bind(this);
     document.addEventListener('keydown', this._handleShortcuts);
     this._unsubChat = chatAvailability.subscribe((enabled) => this.syncChatAvailability(enabled));
+    this._unsubChatTurn = chatTurnCompleted.subscribe((detail) => {
+      if (!detail?.org || detail.org !== this.details?.org
+        || detail.site !== this.details?.site) return;
+      this.shadowRoot.querySelector('.da-list-type-browse')?.requestUpdate('fullpath');
+    });
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('keydown', this._handleShortcuts);
     this._unsubChat?.();
+    this._unsubChatTurn?.();
   }
 
   syncChatAvailability(enabled) {
@@ -155,26 +161,28 @@ export default class DaBrowse extends LitElement {
     if (props.has('details') && this.details) {
       const prevDetails = props.get('details');
       const orgChanged = prevDetails?.org !== this.details.org;
+      const siteChanged = prevDetails?.site !== this.details.site;
       if (prevDetails?.fullpath !== this.details.fullpath) this._clearBrowseSelection();
 
-      if (orgChanged) {
+      if (orgChanged || siteChanged) {
         this._canEditOrgConfig = false;
-        const { org } = this.details;
-        canEditOrgConfig(org).then((canEdit) => {
-          if (this.details?.org === org) this._canEditOrgConfig = canEdit;
+        const { org, site } = this.details;
+        canEditOrgConfig(org, site).then((canEdit) => {
+          if (this.details?.org === org && this.details?.site === site) {
+            this._canEditOrgConfig = canEdit;
+          }
         });
       }
 
       // EW flag lives at site level — re-check whenever org or site changes,
       // and do this before getEditor so the default editor reflects EW state
-      if (orgChanged || prevDetails?.site !== this.details.site) {
+      if (orgChanged || siteChanged) {
         const { org, site } = this.details;
         const { isEWEnabled } = await getNxEWFlags();
         this._ewEnabled = await isEWEnabled({ org, site });
       }
 
-      // Only re-fetch editor configs if the org changes
-      this.editor = await this.getEditor(orgChanged);
+      this.editor = await this.getEditor(orgChanged || siteChanged);
     }
 
     super.update(props);
@@ -186,15 +194,9 @@ export default class DaBrowse extends LitElement {
     if (reFetch) {
       const { org, site } = this.details;
       const configs = await Promise.all(fetchDaConfigs({ org, site }));
-      const rows = configs.filter(Boolean).reverse().flatMap((c) => getFirstSheet(c) || []);
-      this.editorConfs = rows.reduce((acc, row) => {
-        if (row.key === 'editor.path') acc.push(row.value);
-        return acc;
-      }, []);
-      this.hidePublishConfs = rows.reduce((acc, row) => {
-        if (row.key === 'editor.hidePublish') acc.push(row.value);
-        return acc;
-      }, []);
+      const { editorConfs, hidePublishConfs } = getEditorConfigs(configs);
+      this.editorConfs = editorConfs;
+      this.hidePublishConfs = hidePublishConfs;
     }
 
     if (!this.editorConfs || this.editorConfs.length === 0) return DEF_EDIT;

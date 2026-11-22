@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import sinon from 'sinon';
 import { setNx } from '../../../../scripts/utils.js';
 import { DA_ORIGIN } from '../../../../blocks/shared/constants.js';
 import {
@@ -9,17 +10,18 @@ import {
   getSheetByIndex,
   getSheetByName,
   getFirstSheet,
+  getEditorConfigs,
   delay,
   getSidekickConfig,
   sanitizeName,
   fetchDaConfigs,
-  getRenderingVersion,
-  loadRenderingVersion,
+  fetchConfigBusOptions,
   canEditOrgConfig,
   getConfigPermissions,
   getAuthToken,
   isValidHref,
   livePreviewLogin,
+  openProfileMenu,
 } from '../../../../blocks/shared/utils.js';
 
 // daFetch's 401-no-token path lazy-loads the banner module, which resolves
@@ -28,6 +30,12 @@ import {
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 describe('getSheetByIndex', () => {
+  it('Handles an absent hlx6 org config', () => {
+    expect(getSheetByIndex(null)).to.equal(undefined);
+    expect(getFirstSheet(null)).to.equal(undefined);
+    expect(getSheetByName(null, 'library')).to.equal(undefined);
+  });
+
   it('Returns data directly for non-multi-sheet', () => {
     const json = { ':type': 'sheet', data: [{ a: 1 }] };
     expect(getSheetByIndex(json)).to.deep.equal([{ a: 1 }]);
@@ -110,6 +118,45 @@ describe('getFirstSheet', () => {
   it('Returns data directly for non-multi-sheet', () => {
     const json = { ':type': 'sheet', data: [{ c: 3 }] };
     expect(getFirstSheet(json)).to.deep.equal([{ c: 3 }]);
+  });
+});
+
+describe('getEditorConfigs', () => {
+  it('keeps site settings before org settings and uses only the first declared sheet', () => {
+    const orgConfig = {
+      data: [
+        { key: 'editor.path', value: '/org/site=/org-editor#' },
+        { key: 'editor.hidePublish', value: '/org/site/org-hidden' },
+      ],
+    };
+    const siteConfig = {
+      ':type': 'multi-sheet',
+      ':names': ['settings', 'other'],
+      other: { data: [{ key: 'editor.path', value: '/org/site=/wrong-editor#' }] },
+      settings: {
+        data: [
+          { key: 'editor.path', value: '/org/site=/site-editor#' },
+          { key: 'editor.path', value: '/org/site/docs=/docs-editor#' },
+          { key: 'editor.hidePublish', value: '/org/site/site-hidden' },
+          { key: 'unrelated', value: 'ignored' },
+        ],
+      },
+    };
+    const configs = [orgConfig, null, siteConfig];
+    expect(getEditorConfigs(configs)).to.deep.equal({
+      editorConfs: [
+        '/org/site=/site-editor#',
+        '/org/site/docs=/docs-editor#',
+        '/org/site=/org-editor#',
+      ],
+      hidePublishConfs: ['/org/site/site-hidden', '/org/site/org-hidden'],
+    });
+    expect(configs).to.deep.equal([orgConfig, null, siteConfig]);
+  });
+
+  it('returns no editor settings when configs or first sheets are missing', () => {
+    expect(getEditorConfigs([null, {}, { ':type': 'multi-sheet', ':names': [] }]))
+      .to.deep.equal({ editorConfs: [], hidePublishConfs: [] });
   });
 });
 
@@ -750,6 +797,228 @@ describe('getSidekickConfig', () => {
   });
 });
 
+describe('fetchConfigBusOptions', () => {
+  let savedFetch;
+  let sandbox;
+  let index = 0;
+
+  beforeEach(() => {
+    savedFetch = window.fetch;
+    sandbox = sinon.createSandbox();
+    index += 1;
+  });
+
+  afterEach(() => {
+    sandbox.restore();
+    window.fetch = savedFetch;
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith(`da-rendering-v2:/preview-options-${index}/`))
+      .forEach((key) => localStorage.removeItem(key));
+  });
+
+  const cases = [
+    { title: 'preserves metadata for rendering version 1', version: 1, expected: true },
+    { title: 'extracts metadata for rendering version 2', version: 2, expected: false },
+    { title: 'extracts metadata for later rendering versions', version: 3, expected: false },
+    { title: 'compares string versions like the pipeline', version: '2', expected: false },
+    { title: 'does not treat null as an absent version', version: null, expected: true },
+  ];
+
+  cases.forEach(({ title, version, expected }) => {
+    it(title, async () => {
+      const org = `preview-options-${index}`;
+      const site = 'site';
+      const requested = [];
+      window.fetch = async (url) => {
+        requested.push(url);
+        return new Response(JSON.stringify({
+          features: { rendering: { version } },
+          created: expected ? '2026-05-01' : '2026-04-30',
+        }), { status: 200 });
+      };
+      expect(await fetchConfigBusOptions({ org, site }))
+        .to.deep.equal({ legacySectionMetadata: expected });
+      expect(requested).to.deep.equal([`https://api.aem.live/${org}/sites/${site}/config.json`]);
+    });
+  });
+
+  [
+    { created: '2026-04-30T23:59:59.999Z', expected: true },
+    { created: '2026-05-01T00:00:00.000Z', expected: false },
+    { created: '2026-11-10T00:00:00.000Z', expected: false },
+    { created: undefined, expected: true },
+    { created: 'invalid', expected: true },
+  ].forEach(({ created, expected }) => {
+    it(`uses the pipeline creation-date fallback for ${created}`, async () => {
+      const org = `preview-options-${index}`;
+      const configUrl = `https://api.aem.live/${org}/sites/site/config.json`;
+      const requested = [];
+      window.fetch = async (url) => {
+        requested.push(url);
+        return new Response(JSON.stringify({ created }));
+      };
+      expect(await fetchConfigBusOptions({ org, site: 'site' }))
+        .to.deep.equal({ legacySectionMetadata: expected });
+      expect(requested).to.deep.equal([configUrl]);
+    });
+  });
+
+  it('uses the creation date when rendering exists without a version', async () => {
+    window.fetch = async () => new Response(JSON.stringify({
+      features: { rendering: {} },
+      created: '2026-04-30',
+    }));
+    expect(await fetchConfigBusOptions({ org: `preview-options-${index}`, site: 'site' }))
+      .to.deep.equal({ legacySectionMetadata: true });
+  });
+
+  it('shares in-flight and resolved requests for a site, but not across sites', async () => {
+    const org = `preview-options-${index}`;
+    const requested = [];
+    window.fetch = async (url) => {
+      requested.push(url);
+      return new Response(JSON.stringify({ features: { rendering: { version: url.includes('/sites/legacy/') ? 1 : 2 } } }));
+    };
+    const first = fetchConfigBusOptions({ org, site: 'legacy' });
+    const second = fetchConfigBusOptions({ org, site: 'legacy' });
+    expect(first).to.equal(second);
+    expect(await first).to.deep.equal({ legacySectionMetadata: true });
+    expect(await fetchConfigBusOptions({ org, site: 'legacy' }))
+      .to.deep.equal({ legacySectionMetadata: true });
+    expect(await fetchConfigBusOptions({ org, site: 'modern' }))
+      .to.deep.equal({ legacySectionMetadata: false });
+    expect(requested).to.have.lengthOf(2);
+    expect(JSON.parse(localStorage.getItem(`da-rendering-v2:/${org}/legacy`)).enabled)
+      .to.equal(false);
+    expect(JSON.parse(localStorage.getItem(`da-rendering-v2:/${org}/modern`)).enabled)
+      .to.equal(true);
+  });
+
+  [true, false].forEach((enabled) => {
+    it(`uses a persisted ${enabled} decision without an API request`, async () => {
+      const org = `preview-options-${index}`;
+      localStorage.setItem(`da-rendering-v2:/${org}/site`, JSON.stringify({
+        enabled,
+        expiresAt: Date.now() + 15 * 60 * 1000,
+      }));
+      const fetch = sandbox.stub(window, 'fetch').rejects(new Error('unexpected fetch'));
+      expect(await fetchConfigBusOptions({ org, site: 'site' }))
+        .to.deep.equal({ legacySectionMetadata: !enabled });
+      expect(fetch.called).to.equal(false);
+    });
+
+    it(`refreshes a ${enabled} decision exactly when its 15-minute TTL expires`, async () => {
+      const org = `preview-options-${index}`;
+      const key = `da-rendering-v2:/${org}/site`;
+      const clock = sandbox.useFakeTimers({ now: Date.now(), toFake: ['Date'] });
+      const expiresAt = Date.now() + 15 * 60 * 1000;
+      let version = enabled ? 2 : 1;
+      const fetch = sandbox.stub(window, 'fetch').callsFake(async () => new Response(
+        JSON.stringify({ features: { rendering: { version } } }),
+      ));
+      expect(await fetchConfigBusOptions({ org, site: 'site' }))
+        .to.deep.equal({ legacySectionMetadata: !enabled });
+      expect(JSON.parse(localStorage.getItem(key))).to.deep.equal({ enabled, expiresAt });
+      version = enabled ? 1 : 2;
+      clock.tick(15 * 60 * 1000 - 1);
+      expect(await fetchConfigBusOptions({ org, site: 'site' }))
+        .to.deep.equal({ legacySectionMetadata: !enabled });
+      expect(fetch.callCount).to.equal(1);
+      clock.tick(1);
+      expect(await fetchConfigBusOptions({ org, site: 'site' }))
+        .to.deep.equal({ legacySectionMetadata: enabled });
+      expect(fetch.callCount).to.equal(2);
+      expect(JSON.parse(localStorage.getItem(key))).to.deep.equal({
+        enabled: !enabled,
+        expiresAt: expiresAt + 15 * 60 * 1000,
+      });
+    });
+  });
+
+  ['invalid', 'null', '{"enabled":"false","expiresAt":9999999999999}', '{"enabled":true}']
+    .forEach((cached) => {
+      it(`refreshes an invalid cache entry: ${cached}`, async () => {
+        const org = `preview-options-${index}`;
+        const key = `da-rendering-v2:/${org}/site`;
+        localStorage.setItem(key, cached);
+        const fetch = sandbox.stub(window, 'fetch').resolves(new Response(
+          JSON.stringify({ features: { rendering: { version: 1 } } }),
+        ));
+        expect(await fetchConfigBusOptions({ org, site: 'site' }))
+          .to.deep.equal({ legacySectionMetadata: true });
+        expect(fetch.callCount).to.equal(1);
+        expect(JSON.parse(localStorage.getItem(key)).enabled).to.equal(false);
+      });
+    });
+
+  it('still returns the API decision when cache reads and writes fail', async () => {
+    const org = `preview-options-${index}`;
+    const key = `da-rendering-v2:/${org}/site`;
+    const originalGet = Storage.prototype.getItem;
+    sandbox.stub(Storage.prototype, 'getItem').callsFake(function getItem(name) {
+      if (name === key) throw new Error('storage unavailable');
+      return originalGet.call(this, name);
+    });
+    sandbox.stub(Storage.prototype, 'setItem').throws(new Error('storage full'));
+    const fetch = sandbox.stub(window, 'fetch').callsFake(async () => new Response(
+      JSON.stringify({ features: { rendering: { version: 1 } } }),
+    ));
+    expect(await fetchConfigBusOptions({ org, site: 'site' }))
+      .to.deep.equal({ legacySectionMetadata: true });
+    expect(await fetchConfigBusOptions({ org, site: 'site' }))
+      .to.deep.equal({ legacySectionMetadata: true });
+    expect(fetch.callCount).to.equal(2);
+  });
+
+  ['unauthorized', 'offline', 'invalid JSON', 'missing site'].forEach((failure) => {
+    it(`keeps extraction on ${failure} and allows a retry`, async () => {
+      const params = { org: `preview-options-${index}`, site: 'site' };
+      window.fetch = async () => {
+        if (failure === 'offline') throw new Error('offline');
+        if (failure === 'invalid JSON') return new Response('invalid');
+        if (failure === 'missing site') return new Response('', { status: 404 });
+        return new Response('', { status: 401 });
+      };
+      expect(await fetchConfigBusOptions(params)).to.deep.equal({ legacySectionMetadata: false });
+      expect(localStorage.getItem(`da-rendering-v2:/${params.org}/${params.site}`)).to.equal(null);
+      window.fetch = async () => new Response(
+        JSON.stringify({ features: { rendering: { version: 1 } } }),
+      );
+      expect(await fetchConfigBusOptions(params)).to.deep.equal({ legacySectionMetadata: true });
+    });
+  });
+
+  it('does not request config without an org and site', async () => {
+    window.fetch = () => { throw new Error('unexpected fetch'); };
+    expect(await fetchConfigBusOptions({ org: 'org' }))
+      .to.deep.equal({ legacySectionMetadata: false });
+    expect(await fetchConfigBusOptions({ site: 'site' }))
+      .to.deep.equal({ legacySectionMetadata: false });
+  });
+
+  it('authenticates config requests with the existing AEM fetch helper', async () => {
+    const savedIms = window.adobeIMS;
+    const savedLocalStorage = localStorage.getItem('nx-ims');
+    localStorage.setItem('nx-ims', 'true');
+    window.adobeIMS = { getAccessToken: () => ({ token: 'test-token' }) };
+    let options;
+    window.fetch = async (url, opts) => {
+      options = opts;
+      return new Response(JSON.stringify({ features: { rendering: { version: 2 } } }));
+    };
+    try {
+      await fetchConfigBusOptions({ org: `preview-options-${index}`, site: 'site' });
+      expect(options.credentials).to.equal('include');
+      expect(options.headers.Authorization).to.equal('Bearer test-token');
+      expect(options.headers['x-content-source-authorization']).to.equal('Bearer test-token');
+    } finally {
+      window.adobeIMS = savedIms;
+      if (savedLocalStorage === null) localStorage.removeItem('nx-ims');
+      else localStorage.setItem('nx-ims', savedLocalStorage);
+    }
+  });
+});
+
 describe('fetchDaConfigs', () => {
   let savedFetch;
   let savedLocalStorage;
@@ -824,6 +1093,58 @@ describe('fetchDaConfigs', () => {
 
     const [orgConfig] = await Promise.all(fetchDaConfigs({ org: 'cfgfail' }));
     expect(orgConfig).to.deep.equal({ error: 'Error loading /cfgfail', status: 500 });
+  });
+
+  it('uses only the hlx6 site config and shares concurrent and repeated requests', async () => {
+    const org = 'cfg-hlx6-only';
+    const site = 'site';
+    const calls = [];
+    window.fetch = async (url) => {
+      calls.push(String(url));
+      if (String(url).includes('/ping/')) {
+        return new Response('', { headers: { 'x-api-upgrade-available': 'true' } });
+      }
+      if (String(url).startsWith(DA_ORIGIN)) return new Response('', { status: 404 });
+      return new Response(JSON.stringify({ config: [{ key: 'editor.path', value: '/canvas#' }] }));
+    };
+
+    const [first, second] = await Promise.all([
+      Promise.all(fetchDaConfigs({ org, site })),
+      Promise.all(fetchDaConfigs({ org, site })),
+    ]);
+    const repeated = await Promise.all(fetchDaConfigs({ org, site }));
+    expect(first).to.have.lengthOf(2);
+    expect(first[0]).to.equal(null);
+    expect(getFirstSheet(first[1])).to.deep.equal([{ key: 'editor.path', value: '/canvas#' }]);
+    expect(second).to.deep.equal(first);
+    expect(repeated).to.deep.equal(first);
+    expect(calls).to.deep.equal([
+      `https://admin.hlx.page/ping/${org}/${site}`,
+      `https://api.aem.live/${org}/sites/${site}/config/editor/da.json`,
+    ]);
+  });
+
+  it('does not inherit cached org config on hlx6 or affect a legacy site in the same org', async () => {
+    const org = 'cfg-mixed-backends';
+    const orgJson = { data: [{ key: 'legacy', value: 'org' }] };
+    const calls = [];
+    window.fetch = async (url) => {
+      calls.push(String(url));
+      if (String(url).includes('/ping/')) {
+        return new Response('', { headers: String(url).endsWith('/upgraded') ? { 'x-api-upgrade-available': 'true' } : {} });
+      }
+      if (String(url).startsWith('https://api.aem.live')) {
+        return new Response(JSON.stringify({ config: [] }));
+      }
+      return new Response(JSON.stringify(orgJson));
+    };
+
+    const [cachedOrg] = await Promise.all(fetchDaConfigs({ org }));
+    const [hlx6Org] = await Promise.all(fetchDaConfigs({ org, site: 'upgraded' }));
+    const [legacyOrg] = await Promise.all(fetchDaConfigs({ org, site: 'legacy' }));
+    expect(hlx6Org).to.equal(null);
+    expect(legacyOrg).to.equal(cachedOrg);
+    expect(calls.filter((url) => url === `${DA_ORIGIN}/config/${org}/`)).to.have.lengthOf(1);
   });
 
   it('exposes the x-da-actions permissions without changing the config', async () => {
@@ -932,9 +1253,47 @@ describe('canEditOrgConfig', () => {
     expect(await canEditOrgConfig('settings-404')).to.be.true;
   });
 
+  it('checks hlx6 site-config write access without requesting legacy org config', async () => {
+    const org = 'settings-hlx6-write';
+    const site = 'site';
+    const calls = [];
+    window.fetch = async (url) => {
+      calls.push(String(url));
+      if (String(url).includes('/ping/')) {
+        return new Response('', { headers: { 'x-api-upgrade-available': 'true' } });
+      }
+      return new Response(JSON.stringify({ config: [] }), { headers: { 'X-da-actions': '/x=read,write' } });
+    };
+
+    expect(await canEditOrgConfig(org, site)).to.be.true;
+    expect(calls).to.deep.equal([
+      `https://admin.hlx.page/ping/${org}/${site}`,
+      `https://api.aem.live/${org}/sites/${site}/config/editor/da.json`,
+    ]);
+  });
+
+  it('does not offer permissions when the hlx6 site config denies access', async () => {
+    const calls = [];
+    window.fetch = async (url) => {
+      calls.push(String(url));
+      if (String(url).includes('/ping/')) {
+        return new Response('', { headers: { 'x-api-upgrade-available': 'true' } });
+      }
+      return new Response('', { status: 403 });
+    };
+
+    expect(await canEditOrgConfig('settings-hlx6-denied', 'site')).to.be.false;
+    expect(calls.filter((url) => url.startsWith(DA_ORIGIN))).to.have.lengthOf(0);
+  });
+
   it('is false when the config fetch throws', async () => {
     window.fetch = async () => { throw new Error('offline'); };
     expect(await canEditOrgConfig('settings-throw')).to.be.false;
+  });
+
+  it('is false when the site upgrade probe fails', async () => {
+    window.fetch = async () => { throw new Error('offline'); };
+    expect(await canEditOrgConfig('settings-probe-throw', 'site')).to.be.false;
   });
 
   it('is false without an org, without fetching', async () => {
@@ -945,50 +1304,6 @@ describe('canEditOrgConfig', () => {
     };
     expect(await canEditOrgConfig('')).to.be.false;
     expect(called).to.be.false;
-  });
-});
-
-describe('loadRenderingVersion', () => {
-  let savedFetch;
-
-  beforeEach(() => {
-    savedFetch = window.fetch;
-    window.localStorage.removeItem('nx-ims');
-  });
-
-  afterEach(() => {
-    window.fetch = savedFetch;
-  });
-
-  const mockConfigs = (byPath) => {
-    window.fetch = async (url) => {
-      const u = String(url);
-      if (u.includes('/ping/')) return new Response('', { status: 200 });
-      const key = Object.keys(byPath).find((p) => u.endsWith(p));
-      const data = key ? byPath[key] : [];
-      return new Response(JSON.stringify({ data }), { status: 200 });
-    };
-  };
-
-  it('defaults to 2 without config', async () => {
-    mockConfigs({});
-    expect(await loadRenderingVersion({ org: 'rvnone', site: 'site' })).to.equal(2);
-    expect(getRenderingVersion()).to.equal(2);
-  });
-
-  it('uses 1 when editor.renderingVersion is 1', async () => {
-    mockConfigs({ '/rvorg/': [{ key: 'editor.renderingVersion', value: '1' }] });
-    expect(await loadRenderingVersion({ org: 'rvorg', site: 'site' })).to.equal(1);
-    expect(getRenderingVersion()).to.equal(1);
-  });
-
-  it('lets site config override org config', async () => {
-    mockConfigs({
-      '/rvover/': [{ key: 'editor.renderingVersion', value: '1' }],
-      '/rvover/site/': [{ key: 'editor.renderingVersion', value: '2' }],
-    });
-    expect(await loadRenderingVersion({ org: 'rvover', site: 'site' })).to.equal(2);
-    expect(getRenderingVersion()).to.equal(2);
   });
 });
 
@@ -1150,5 +1465,66 @@ describe('saveToDa — malformed path guard', () => {
 
     await saveToDa({ path: '/org/repo/page' });
     expect(fetchCalled).to.be.true;
+  });
+});
+
+describe('openProfileMenu', () => {
+  let header;
+
+  afterEach(() => header?.remove());
+
+  function mountProfile({ withOrg = true } = {}) {
+    header = document.createElement('header');
+    const nav = document.createElement('div');
+    nav.className = 'test-nx-nav';
+    const navRoot = nav.attachShadow({ mode: 'open' });
+    const profile = document.createElement('nx-profile-test');
+    profile.setAttribute('data-profile', '');
+    const profileRoot = profile.attachShadow({ mode: 'open' });
+    const menu = document.createElement('div');
+    menu.id = 'nx-menu-profile';
+    menu.setAttribute('popover', '');
+    const details = document.createElement('button');
+    details.className = 'nx-menu-btn nx-menu-btn-details';
+    menu.append(details);
+    if (withOrg) {
+      const org = document.createElement('button');
+      org.className = 'nx-menu-btn nx-menu-btn-org';
+      menu.append(org);
+    }
+    profileRoot.append(menu);
+    navRoot.append(profile);
+    header.append(nav);
+    document.body.append(header);
+    return menu;
+  }
+
+  const opts = { navSelector: '.test-nx-nav', profileSelector: '[data-profile]' };
+
+  it('opens the profile popover inside nested shadow roots', () => {
+    const menu = mountProfile();
+    expect(openProfileMenu(opts)).to.be.true;
+    expect(menu.matches(':popover-open')).to.be.true;
+    menu.hidePopover();
+  });
+
+  it('moves focus to the organization button inside the menu', () => {
+    const menu = mountProfile();
+    openProfileMenu(opts);
+    expect(menu.getRootNode().activeElement)
+      .to.equal(menu.querySelector('.nx-menu-btn-org'));
+    menu.hidePopover();
+  });
+
+  it('falls back to the first focusable control when there is no org button', () => {
+    const menu = mountProfile({ withOrg: false });
+    openProfileMenu(opts);
+    expect(menu.getRootNode().activeElement)
+      .to.equal(menu.querySelector('.nx-menu-btn-details'));
+    menu.hidePopover();
+  });
+
+  it('returns false when no profile menu exists', () => {
+    expect(openProfileMenu({ navSelector: '.does-not-exist' })).to.be.false;
   });
 });

@@ -1,5 +1,7 @@
 export const buildAssetSelectorProps = (props) => props;
 
+export const ASSET_DRAG_DATA_TYPE = 'collectionviewdata';
+
 export const rememberedFolders = [];
 
 export const rememberAssetFolder = (repoConfig, assetPath) => {

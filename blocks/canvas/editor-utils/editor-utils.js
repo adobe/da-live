@@ -2,7 +2,7 @@ import { TextSelection } from 'da-y-wrapper';
 import prose2aem from '../../shared/prose2aem.js';
 import { wrapTablesInWrappers } from '../../shared/version/compare.js';
 import { getNx, getNx2 } from '../../../scripts/utils.js';
-import { daFetch, fetchDaConfigs, getFirstSheet, getRenderingVersion } from '../../shared/utils.js';
+import { daFetch, fetchDaConfigs, getFirstSheet } from '../../shared/utils.js';
 import { toolbarController } from './toolbar-controller.js';
 import {
   diffTopLevel,
@@ -286,7 +286,7 @@ function unwrapDiffViews(root) {
   });
 }
 
-export function getInstrumentedHTML(view) {
+export function getInstrumentedHTML(view, options) {
   const editorClone = view.dom.cloneNode(true);
 
   const originalElements = view.dom.querySelectorAll(EDITABLE_SELECTORS);
@@ -368,7 +368,7 @@ export function getInstrumentedHTML(view) {
 
   // Serialize clone to HTML, then move block-marker index onto wrapper as data-block-index
   // (same pattern as da-nx qe-advanced: getInstrumentedHTML in prose2aem.js).
-  let htmlString = prose2aem(editorClone, true, false, getRenderingVersion());
+  let htmlString = prose2aem(editorClone, true, false, options);
   htmlString = htmlString.replace(
     /<div class="block-marker" data-prose-index="(\d+)"><\/div>\s*<div([^>]*?)>/gi,
     (_match, proseIndex, divAttributes) => `<div${divAttributes} data-block-index="${proseIndex}">`,
@@ -378,8 +378,8 @@ export function getInstrumentedHTML(view) {
   return htmlString;
 }
 
-export function getInstrumentedHTMLForSDK(view) {
-  const doc = new DOMParser().parseFromString(getInstrumentedHTML(view), 'text/html');
+export function getInstrumentedHTMLForSDK(view, options) {
+  const doc = new DOMParser().parseFromString(getInstrumentedHTML(view, options), 'text/html');
   doc.querySelectorAll('[data-cursor-remote], [data-cursor-remote-color]').forEach((element) => {
     element.removeAttribute('data-cursor-remote');
     element.removeAttribute('data-cursor-remote-color');
@@ -403,9 +403,19 @@ export function getInstrumentedHTMLForSDK(view) {
 
 const SKIP_BLOCK_CLASSES = new Set(['default-content-wrapper', 'metadata', 'section-metadata', 'library-metadata', 'block-marker']);
 
+function getRealTextContent(el) {
+  const clone = el.cloneNode(true);
+  clone.querySelectorAll('a[data-edit-as="image"]').forEach((a) => a.remove());
+  return clone.textContent?.trim() || '';
+}
+
+function hasLinkImage(el) {
+  return el.querySelector('a[data-edit-as="image"]');
+}
+
 function hasDefaultContent(el) {
-  if (el.textContent?.trim()) return true;
-  return el.matches?.('img') || !!el.querySelector?.('img');
+  if (getRealTextContent(el)) return true;
+  return el.matches?.('img') || !!el.querySelector?.('img') || hasLinkImage(el);
 }
 
 function getDefaultContentProseIndex(el, kind) {
@@ -426,6 +436,7 @@ function getDefaultContentProseIndex(el, kind) {
 
 function firstLineText(el) {
   const clone = el.cloneNode(true);
+  clone.querySelectorAll('a[data-edit-as="image"]').forEach((a) => a.remove());
   clone.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
   return clone.textContent.trim().split('\n')[0].trim();
 }
@@ -433,6 +444,7 @@ function firstLineText(el) {
 function getContentSnippet(el, kind) {
   if (kind === 'list') return firstLineText(el.querySelector(':scope > li') ?? el);
   if (kind === 'quote') return firstLineText(el.querySelector(':scope > p') ?? el);
+
   return firstLineText(el);
 }
 
@@ -443,7 +455,8 @@ function getDefaultContentKind(el) {
   if (tag === 'UL') return { kind: 'list', ordered: false };
   if (tag === 'PRE') return { kind: 'code' };
   if (tag === 'BLOCKQUOTE') return { kind: 'quote' };
-  if (el.textContent?.trim()) return { kind: 'paragraph' };
+  if (getRealTextContent(el)) return { kind: 'paragraph' };
+  if (hasLinkImage(el)) return { kind: 'image' };
   // A text-less <p> wraps only an image, as does a bare <picture>/<img> — but a text-less
   // <p> with no image at all is just an empty paragraph, not an image wrapper.
   if (el.matches?.('img') || el.querySelector?.('img')) return { kind: 'image' };
@@ -464,14 +477,14 @@ export function parseSections(htmlText) {
         items.push({
           type: 'content',
           proseIndex: getDefaultContentProseIndex(currentRun[0]),
-          innerText: currentRun.map((el) => el.textContent.trim()).filter(Boolean).join(' '),
+          innerText: currentRun.map((el) => getRealTextContent(el)).filter(Boolean).join(' '),
           children: currentRun.map((el) => {
             const kindInfo = getDefaultContentKind(el);
             return {
               type: 'content',
               ...kindInfo,
               proseIndex: getDefaultContentProseIndex(el, kindInfo.kind),
-              innerText: el.textContent.trim(),
+              innerText: getRealTextContent(el),
               snippet: getContentSnippet(el, kindInfo.kind),
             };
           }),
@@ -482,13 +495,14 @@ export function parseSections(htmlText) {
 
     Array.from(section.children).forEach((el) => {
       const name = el.tagName === 'DIV' ? el.classList[0] : undefined;
+      if (name === 'section-metadata') return;
       const isBlock = name && !SKIP_BLOCK_CLASSES.has(name);
 
       if (isBlock) {
         flushRun();
         const rawProseIndex = el.getAttribute('data-block-index');
         const proseIndex = rawProseIndex != null ? Number(rawProseIndex) : undefined;
-        const innerText = el.textContent?.trim() ?? '';
+        const innerText = getRealTextContent(el);
         // Classes after the block name are its variant(s) — the same descriptor the
         // doc editor's header row shows in parentheses (e.g. `cards (highlight)`).
         const variant = [...el.classList].slice(1).join(', ');
@@ -546,9 +560,12 @@ const getBaseline = (ctx) => (ctx.useConfirmedBaseline ? ctx.confirmedDoc : ctx.
 function postBody(ctx) {
   clearMetadataRerenderTimer(ctx);
   const { doc } = ctx.view.state;
-  const body = getInstrumentedHTML(ctx.view);
+  const body = getInstrumentedHTML(ctx.view, ctx.previewOptions);
   const rerenderScope = getRerenderScope({ previousDoc: getBaseline(ctx), doc, body });
-  ctx.port.postMessage({ type: MESSAGE_TYPES.SET_BODY, payload: { body, rerenderScope } });
+  ctx.port.postMessage({
+    type: MESSAGE_TYPES.SET_BODY,
+    payload: { body, rerenderScope, documentVersion: getImageDocumentVersion(doc) },
+  });
   ctx.syncedDoc = doc;
   ctx.confirmedDoc = doc;
   ctx.useConfirmedBaseline = false;
@@ -571,7 +588,7 @@ export function updateDocument(ctx, { previousDoc, doc, useConfirmedBaseline = f
     ctx.metadataRerenderTimer = undefined;
     if (!ctx.suppressRerender) postBody(ctx);
   }, METADATA_RERENDER_DEBOUNCE_MS);
-  return getInstrumentedHTML(ctx.view);
+  return getInstrumentedHTML(ctx.view, ctx.previewOptions);
 }
 
 export function updateCursors(ctx) {

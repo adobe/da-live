@@ -43,7 +43,7 @@ export function resolveImagePosition({ doc, proseIndex, originalSrc, requestId, 
   return found;
 }
 
-export function updateImageInDocument({ view, target, newSrc }) {
+export function updateImageInDocument({ view, target, newSrc, editAs }) {
   let proseIndex = null;
   let ambiguous = false;
   view.state.doc.descendants((node, pos) => {
@@ -55,5 +55,9 @@ export function updateImageInDocument({ view, target, newSrc }) {
   if (proseIndex == null || ambiguous) {
     throw new Error('The selected image is no longer available. Please try again.');
   }
-  view.dispatch(view.state.tr.setNodeMarkup(proseIndex, null, { ...target.attrs, src: newSrc }));
+  const attrs = { ...target.attrs, src: newSrc };
+  if (editAs) attrs.editAs = editAs;
+  else delete attrs.editAs;
+
+  view.dispatch(view.state.tr.setNodeMarkup(proseIndex, null, attrs));
 }

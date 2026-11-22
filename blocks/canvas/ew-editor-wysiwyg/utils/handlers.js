@@ -95,6 +95,11 @@ export function handleNewVersion() {
   canvasBus.newVersionRequest.emit();
 }
 
+/** FOCUS_TOOLBAR: Alt+F10 inside the iframe — its keys never reach this page. */
+export function handleFocusToolbar() {
+  toolbarController.focusToolbar();
+}
+
 export function handleStoredMarks({ marks }, ctx) {
   const { view } = ctx;
   if (!view) return;
@@ -205,7 +210,10 @@ export function resolveNodeSelectPos(node, doc) {
       return pos;
     }
     if (pos != null) return null;
-    return node.src ? findImagePosBySrc(doc, node.src, node.blockIndex) : null;
+
+    const found = node.src ? findImagePosBySrc(doc, node.src, node.blockIndex) : null;
+    if (found != null && doc.nodeAt(found)?.attrs.editAs) return null;
+    return found;
   }
   return null;
 }

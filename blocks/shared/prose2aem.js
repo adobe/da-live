@@ -202,6 +202,25 @@ function removeMetadata(editor) {
   editor.querySelector('.metadata')?.remove();
 }
 
+function convertLinkImages(editor) {
+  const images = editor.querySelectorAll('img[data-edit-as="image"]');
+  images.forEach((img) => {
+    const a = document.createElement('a');
+    a.setAttribute('href', img.src);
+    if (img.alt) a.setAttribute('title', img.alt);
+    a.setAttribute('data-edit-as', 'image');
+    a.textContent = img.src;
+
+    [...img.attributes].forEach((attr) => {
+      if (attr.name.startsWith('data-image-')) {
+        a.setAttribute(attr.name, attr.value);
+      }
+    });
+
+    img.replaceWith(a);
+  });
+}
+
 function applySectionMetadata(editor) {
   editor.querySelectorAll('.section-metadata').forEach((block) => {
     const section = block.parentElement;
@@ -268,12 +287,16 @@ function convertLocalUrlsToRelative(editor) {
  * @param {HTMLElement} editor the editor dom
  * @param {Boolean} livePreview whether or not the target destination is Live Preview
  * @param {Boolean} isFragment whether or not the DOM is a fragment
- * @param {Number} renderingVersion pipeline rendering version; below 2 leaves section metadata
- *   to project code
+ * @param {object} options preview rendering options
+ * @param {Boolean} options.legacySectionMetadata preserve section metadata for client decoration
  * @returns AEM-friendly HTML as a text string
  */
-export default function prose2aem(editor, livePreview, isFragment = false, renderingVersion = 2) {
-  const version = typeof renderingVersion === 'number' ? renderingVersion : 2;
+export default function prose2aem(
+  editor,
+  livePreview,
+  isFragment = false,
+  { legacySectionMetadata = false } = {},
+) {
   if (!isFragment) editor.removeAttribute('class');
 
   editor.removeAttribute('contenteditable');
@@ -297,6 +320,8 @@ export default function prose2aem(editor, livePreview, isFragment = false, rende
 
   convertParagraphs(editor);
 
+  convertLinkImages(editor);
+
   convertBlocks(editor, isFragment);
 
   if (livePreview) {
@@ -308,7 +333,7 @@ export default function prose2aem(editor, livePreview, isFragment = false, rende
 
   if (!isFragment) {
     makeSections(editor);
-    if (livePreview && version >= 2) applySectionMetadata(editor);
+    if (livePreview && !legacySectionMetadata) applySectionMetadata(editor);
   }
 
   if (isFragment) {
@@ -331,7 +356,7 @@ export default function prose2aem(editor, livePreview, isFragment = false, rende
   return html;
 }
 
-export function getHtmlWithCursor(view, renderingVersion = 2) {
+export function getHtmlWithCursor(view, options) {
   const { selection } = view.state;
   const cursorPos = selection.from;
 
@@ -384,5 +409,5 @@ export function getHtmlWithCursor(view, renderingVersion = 2) {
     clonedNode.insertBefore(marker, clonedNode.childNodes[offset] || null);
   }
 
-  return prose2aem(editorClone, true, false, renderingVersion);
+  return prose2aem(editorClone, true, false, options);
 }

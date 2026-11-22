@@ -1,7 +1,7 @@
 import { readFile } from '@web/test-runner-commands';
 import { expect } from '@esm-bundle/chai';
 
-import prose2aem from '../../../../blocks/shared/prose2aem.js';
+import prose2aem, { getHtmlWithCursor } from '../../../../blocks/shared/prose2aem.js';
 
 const htmlString = await readFile({ path: './mocks/prose2aem.html' });
 const doc = new DOMParser().parseFromString(htmlString, 'text/html');
@@ -118,6 +118,61 @@ describe('prose2aem section-metadata handling', () => {
     const parsed = new DOMParser().parseFromString(html, 'text/html');
     return parsed.querySelector('main');
   }
+
+  it('preserves legacy metadata, including pictures and separate layout paragraphs', () => {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper"><table>
+        <tr><td>Section Metadata</td></tr>
+        <tr><td>Style</td><td>center, container</td></tr>
+        <tr><td>Grid</td><td>4</td></tr>
+        <tr><td>Background</td><td><p><img src="/background.jpg"></p></td></tr>
+        <tr><td>Masonry</td><td><p>span 6, span 6</p><p>span 6, span 6</p></td></tr>
+      </table></div>
+    `);
+    const main = parseMain(prose2aem(editor, true, false, { legacySectionMetadata: true }));
+    const section = main.firstElementChild;
+    const metadata = section.querySelector('.section-metadata');
+    expect(metadata).to.exist;
+    expect(metadata.querySelector('picture img').getAttribute('src')).to.equal('/background.jpg');
+    expect([...metadata.lastElementChild.lastElementChild.querySelectorAll('p')]
+      .map((p) => p.textContent)).to.deep.equal(['span 6, span 6', 'span 6, span 6']);
+    expect(section.className).to.equal('');
+    expect(section.hasAttribute('data-grid')).to.be.false;
+    expect(section.hasAttribute('data-background')).to.be.false;
+  });
+
+  it('continues extracting metadata when the legacy option is explicitly false', () => {
+    const editor = makeEditor(`
+      <div class="tableWrapper"><table>
+        <tr><td>Section Metadata</td></tr>
+        <tr><td>Grid</td><td>4</td></tr>
+      </table></div>
+    `);
+    const main = parseMain(prose2aem(editor, true, false, { legacySectionMetadata: false }));
+    expect(main.querySelector('.section-metadata')).to.not.exist;
+    expect(main.firstElementChild.dataset.grid).to.equal('4');
+  });
+
+  it('passes legacy options through cursor serialization without changing the editor DOM', () => {
+    const editor = makeEditor(`
+      <p>Content</p>
+      <div class="tableWrapper"><table>
+        <tr><td>Section Metadata</td></tr>
+        <tr><td>Grid</td><td>4</td></tr>
+      </table></div>
+    `);
+    const view = {
+      dom: editor,
+      state: { selection: { from: 1 } },
+      domAtPos: () => ({ node: editor.querySelector('p').firstChild, offset: 0 }),
+    };
+    const main = parseMain(getHtmlWithCursor(view, { legacySectionMetadata: true }));
+    expect(main.querySelector('.section-metadata')).to.exist;
+    expect(main.querySelector('[data-da-cursor-position]')).to.exist;
+    expect(editor.querySelector('table')).to.exist;
+    expect(editor.querySelector('[data-da-cursor-position]')).to.not.exist;
+  });
 
   it('applies style value as CSS class on the parent section', () => {
     const editor = makeEditor(`
@@ -258,38 +313,6 @@ describe('prose2aem section-metadata handling', () => {
     const section = sectionFor('<tr><td>id</td><td>my-<span data-da-cursor-position></span>section</td></tr>');
     expect(section.id).to.equal('my-section');
     expect(section.hasAttribute('data-da-cursor-position')).to.be.true;
-  });
-
-  it('leaves section metadata to project code on rendering version 1', () => {
-    const editor = makeEditor(`
-      <p>Content</p>
-      <div class="tableWrapper">
-        <table>
-          <tr><td>Section Metadata</td></tr>
-          <tr><td>Style</td><td>highlight</td></tr>
-        </table>
-      </div>
-    `);
-    const main = parseMain(prose2aem(editor, true, false, 1));
-    const section = main.querySelector(':scope > div');
-    expect(main.querySelector('.section-metadata')).to.exist;
-    expect(section.classList.contains('highlight')).to.be.false;
-  });
-
-  it('applies section metadata when the rendering version is not a number', () => {
-    const editor = makeEditor(`
-      <p>Content</p>
-      <div class="tableWrapper">
-        <table>
-          <tr><td>Section Metadata</td></tr>
-          <tr><td>Style</td><td>highlight</td></tr>
-        </table>
-      </div>
-    `);
-    const main = parseMain(prose2aem(editor, true, false, true));
-    const section = main.querySelector(':scope > div');
-    expect(main.querySelector('.section-metadata') === null).to.be.true;
-    expect(section.classList.contains('highlight')).to.be.true;
   });
 
   it('keeps relative link hrefs relative', () => {
@@ -652,5 +675,78 @@ describe('prose2aem same-site URL conversion', () => {
     const link = editor.querySelector('a');
 
     expect(link.getAttribute('href')).to.equal('https://main--repo--org.aem.live/fragments/tabs');
+  });
+});
+
+describe('prose2aem link-images', () => {
+  const src = 'https://delivery-p1.adobeaemcloud.com/adobe/assets/urn:aaid:aem:1/as/hero.jpg';
+
+  const render = (html, live = true) => {
+    const editor = document.createElement('div');
+    editor.innerHTML = html;
+    prose2aem(editor, live, true);
+    return editor;
+  };
+
+  it('renders a link-image as an anchor inside its paragraph', () => {
+    const editor = render(`<p><img src="${src}" alt="Hero alt" data-edit-as="image"></p>`);
+    const a = editor.querySelector('p > a[data-edit-as="image"]');
+    expect(!!a, 'anchor inside the original p').to.equal(true);
+    expect(a.getAttribute('href')).to.equal(src);
+    expect(a.getAttribute('title')).to.equal('Hero alt');
+    expect(a.textContent).to.equal(src);
+    expect(a.getAttribute('alt')).to.be.null;
+  });
+
+  it('does not emit a picture or img for a link-image', () => {
+    const editor = render(`<p><img src="${src}" alt="Hero alt" data-edit-as="image"></p>`);
+    expect(!!editor.querySelector('picture')).to.equal(false);
+    expect(!!editor.querySelector('img')).to.equal(false);
+  });
+
+  it('keeps text next to a link-image in the same paragraph', () => {
+    const editor = render(`<p>Before <img src="${src}" alt="Hero alt" data-edit-as="image"> after</p>`);
+    const p = editor.querySelector('p');
+    expect(!!p.querySelector('a[data-edit-as="image"]')).to.equal(true);
+    expect(p.textContent).to.contain('Before');
+    expect(p.textContent).to.contain('after');
+  });
+
+  it('omits title when a link-image has no alt', () => {
+    const editor = render(`<p><img src="${src}" data-edit-as="image"></p>`);
+    expect(editor.querySelector('a[data-edit-as="image"]').hasAttribute('title')).to.be.false;
+  });
+
+  it('renders a link-image as an anchor in non-live output too', () => {
+    const editor = render(`<p><img src="${src}" alt="Hero alt" data-edit-as="image"></p>`, false);
+    expect(!!editor.querySelector('p > a[data-edit-as="image"]')).to.equal(true);
+  });
+
+  it('copies every data-image-* attribute from the img onto the anchor', () => {
+    const editor = render(`<p><img src="${src}" alt="Hero alt" data-edit-as="image" data-image-index="7" data-image-version="abc123" data-image-future="x"></p>`);
+    const a = editor.querySelector('p > a[data-edit-as="image"]');
+    expect(a.getAttribute('data-image-index')).to.equal('7');
+    expect(a.getAttribute('data-image-version')).to.equal('abc123');
+    expect(a.getAttribute('data-image-future')).to.equal('x');
+  });
+
+  it('does not copy other data-* attributes onto the anchor', () => {
+    const editor = render(`<p><img src="${src}" alt="Hero alt" data-edit-as="image" data-image-index="7" data-focal-x="10" data-focal-y="20" data-id="9"></p>`);
+    const a = editor.querySelector('p > a[data-edit-as="image"]');
+    const names = [...a.attributes].map((attr) => attr.name).filter((n) => n.startsWith('data-')).sort();
+    expect(names).to.deep.equal(['data-edit-as', 'data-image-index']);
+  });
+
+  it('adds no data-image-* attributes when the img had none', () => {
+    const editor = render(`<p><img src="${src}" alt="Hero alt" data-edit-as="image"></p>`);
+    const a = editor.querySelector('p > a[data-edit-as="image"]');
+    const names = [...a.attributes].map((attr) => attr.name).filter((n) => n.startsWith('data-image-'));
+    expect(names).to.deep.equal([]);
+  });
+
+  it('still renders regular images as pictures', () => {
+    const editor = render('<p><img src="/a.jpg" alt="A"></p>');
+    expect(!!editor.querySelector('picture img')).to.equal(true);
+    expect(!!editor.querySelector('a[data-edit-as]')).to.equal(false);
   });
 });

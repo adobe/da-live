@@ -7,6 +7,7 @@ setNx('/test/fixtures/nx', { hostname: 'example.com' });
 
 await import('../../../../../../blocks/browse/v2/da-browse/da-browse.js');
 const { PANEL_EVENT } = await import('../../../../../fixtures/nx/utils/panel.js');
+const { CHAT_EVENT } = await import('../../../../../fixtures/nx/utils/chat.js');
 
 async function completeUpdate(component) {
   const update = spy(component, 'update');
@@ -73,6 +74,39 @@ describe('da-browse render', () => {
     await settle();
     await el.newCmp.updateComplete;
   }
+
+  it('reloads files for same-site chat turns and unsubscribes while disconnected', async () => {
+    await fixture({ fullpath: '/org/site', org: 'org', site: 'site', path: '' });
+    const list = el.browseCmp;
+    const items = [{ name: 'new.html', path: '/org/site/new.html', ext: 'html' }];
+    const getList = stub(list, 'getList').resolves(items);
+    const completeTurn = (detail) => {
+      document.dispatchEvent(new CustomEvent(CHAT_EVENT.TURN_COMPLETED, { detail }));
+    };
+    try {
+      completeTurn({ org: 'other', site: 'site' });
+      completeTurn({ org: 'org', site: 'other' });
+      completeTurn(undefined);
+      await completeUpdate(list);
+      expect(getList.callCount).to.equal(0);
+
+      completeTurn({ org: 'org', site: 'site', path: 'another/page', status: 'completed' });
+      await completeUpdate(list);
+      expect(getList.callCount).to.equal(1);
+      expect(list.items).to.equal(items);
+
+      el.remove();
+      completeTurn({ org: 'org', site: 'site' });
+      expect(getList.callCount).to.equal(1);
+      document.body.append(el);
+      await settle();
+      completeTurn({ org: 'org', site: 'site' });
+      await completeUpdate(list);
+      expect(getList.callCount).to.equal(2);
+    } finally {
+      getList.restore();
+    }
+  });
 
   it('forwards chat requests to the existing panel event', async () => {
     await renderToolbar({ fullpath: '/org/site', org: 'org', site: 'site', path: '' }, { chat: true });
