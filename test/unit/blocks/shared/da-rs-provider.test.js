@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import { getSchema } from 'da-parser';
 import { setNx, getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
 import { DA_ORIGIN, COLLAB_ORIGIN, isAllowedDaAdminOrigin, getDaAdminEnvironment, getDaCollabEnvironment } from '../../../../blocks/shared/constants.js';
 import { discoverDaRs, invalidateDaRsDiscovery, provisionDaRsSite } from '../../../../blocks/shared/da-rs-provider.js';
@@ -341,6 +342,32 @@ describe('explicit da-rs binding', () => {
     expect(calls[1].options.body).to.be.instanceOf(FormData);
   });
 
+  it('hides the H6 trash folder from the site root but can list its contents directly', async () => {
+    window.fetch = async (target, options) => {
+      calls.push({ target, options });
+      if (target.includes('/ping/')) return new Response('', { headers: { 'x-api-upgrade-available': 'true' } });
+      const items = target.endsWith('/.trash/')
+        ? [{ name: 'deleted.html', 'content-type': 'text/html' }]
+        : [
+          { name: '.trash/', 'content-type': 'application/folder' },
+          { name: 'assets.v2/', 'content-type': 'application/folder' },
+          { name: 'page.html', 'content-type': 'text/html' },
+        ];
+      return new Response(JSON.stringify(items));
+    };
+    const { source } = await getNx2Api();
+    const root = await source.list('/demo/work/');
+    expect(root.items).to.deep.equal([
+      { name: 'assets.v2', path: '/demo/work/assets.v2', contentType: 'application/folder' },
+      { name: 'page', path: '/demo/work/page.html', contentType: 'text/html', ext: 'html' },
+    ]);
+    const trash = await source.list('/demo/work/.trash');
+    expect(calls.at(-1).target).to.equal(`${DA_ORIGIN}/demo/sites/work/source/.trash/`);
+    expect(trash.items).to.deep.equal([
+      { name: 'deleted', path: '/demo/work/.trash/deleted.html', contentType: 'text/html', ext: 'html' },
+    ]);
+  });
+
   it('normalizes H6 folder listings and does not allow cross-site copies', async () => {
     window.fetch = async (target, options) => {
       calls.push({ target, options });
@@ -463,8 +490,10 @@ describe('explicit da-rs binding', () => {
     const { fetchVersions, fetchDaRsVersionDocument } = await import('../../../../blocks/shared/version/version-actions.js');
     const [entry] = await fetchVersions('/demo/work/page.html');
     expect(entry.versionId).to.equal(OPAQUE_VERSION_ID);
-    const restored = await fetchDaRsVersionDocument('/demo/work/page.html', entry);
+    const schema = getSchema();
+    const restored = await fetchDaRsVersionDocument('/demo/work/page.html', entry, schema);
     expect(restored.textContent).to.contain('Restored content');
+    expect(restored.type).to.equal(schema.topNodeType);
     expect(calls.at(-1).target)
       .to.equal(`${DA_ORIGIN}/demo/sites/work/source/page.html/.versions/${OPAQUE_VERSION_ID}`);
   });

@@ -22,15 +22,20 @@ function validate(args) {
 }
 
 function normalizeListing(org, site, path, items) {
-  const parent = `/${org}/${site}${(path || '').replace(/\/$/, '')}`;
-  return items.map((item) => {
-    if (!item['content-type']) return item;
+  const directory = path.replace(/\/$/, '');
+  const parent = `/${org}/${site}${directory}`;
+  return items.flatMap((item) => {
+    const contentType = item['content-type'];
+    if (!contentType) return [item];
     const filename = item.name.replace(/\/$/, '');
-    const parts = filename.split('.');
-    const result = { name: parts[0], path: `${parent}/${filename}`, contentType: item['content-type'] };
+    const folder = contentType === 'application/folder';
+    // Trash has its own Browse route; don't show its system folder in the site root.
+    if (folder && !directory && filename === '.trash') return [];
+    const parts = folder ? [filename] : filename.split('.');
+    const result = { name: parts[0], path: `${parent}/${filename}`, contentType };
     if (parts.length > 1) result.ext = parts.pop();
     if (item['last-modified']) result.lastModified = new Date(item['last-modified']).getTime();
-    return result;
+    return [result];
   });
 }
 

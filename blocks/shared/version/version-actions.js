@@ -56,12 +56,12 @@ export function getVersionId(path, entry) {
     : entry.versionId;
 }
 
-export async function fetchDaRsVersionDocument(path, entry) {
+export async function fetchDaRsVersionDocument(path, entry, schema) {
   try {
     const { versions } = await getNx2Api();
     const response = await versions.get(path, { versionId: getVersionId(path, entry) });
     if (!response.ok) return null;
-    return parseDaRsVersion(await response.text());
+    return parseDaRsVersion(await response.text(), schema);
   } catch {
     return null;
   }

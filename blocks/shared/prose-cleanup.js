@@ -1,5 +1,5 @@
 // Dependency-free so da-nx's quick-edit iframe can import it without pulling in prose2aem's deps.
-const iconRegex = /(?<!(?:https?|urn)[^\s<>]*):(#?[a-z_-]+[a-z\d]*):/gi; // matches icon pattern but not in URLs
+const iconRegex = /(?<!(?:https?|urn|blob)[^\s<>]*):(#?[a-z_-]+[a-z\d]*):/gi; // matches icon pattern but not in URLs
 const EDITOR_ARTIFACTS = [
   'img.ProseMirror-separator',
   '.ProseMirror-trailingBreak',

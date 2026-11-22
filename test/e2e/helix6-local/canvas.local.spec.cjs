@@ -634,9 +634,14 @@ test('full H6: two Canvas tabs, image, history restore and browse trash', async 
     expect(restoreState.connected).toBe(true);
     expect(bridgeState).toEqual({ present: true, connected: true, matchesEditor: true });
     await versions.locator('nx-dialog.ew-cv-restore').getByRole('button', { name: 'Restore', exact: true }).click();
+    await expect(reloadedEditor).toContainText('shared across tabs');
     await expect(reloadedEditor).not.toContainText('change to restore');
+    await expect(reloadedEditor.locator('img[data-da-rs-source^="./media_"]')).toBeVisible();
     expect((await first.locator('ew-editor-doc').evaluate((element) => element.forceSave())).ok).toBe(true);
-    expect(await (await api(request, 'GET', h6, undefined, 200)).text()).not.toContain('change to restore');
+    const restoredBytes = await (await api(request, 'GET', h6, undefined, 200)).text();
+    expect(restoredBytes).toContain('shared across tabs');
+    expect(restoredBytes).toContain('./media_');
+    expect(restoredBytes).not.toContain('change to restore');
 
     const identity = (await api(request, 'HEAD', '/source/h6test/work/page.html', undefined, 200)).headers()['x-da-id'];
     await second.close();
@@ -717,6 +722,9 @@ test('full H6: independent real Browse create, copy and trash', async ({ request
     await expect(row).toHaveCount(0);
     await api(request, 'GET', h6, undefined, 404);
     const { route: trashRoute } = await findTrashedById(request, identity);
+    await page.reload();
+    await expect(page.locator('da-browse da-list-item').filter({ hasText: 'h5folder' })).toBeVisible();
+    await expect(page.locator('da-browse da-list-item[path="/h6test/work/.trash"]')).toHaveCount(0);
     expect((await api(request, 'HEAD', trashRoute, undefined, 200)).headers()['x-da-id']).toBe(identity);
     expect(await (await api(request, 'GET', location, undefined, 200)).text()).toBe(originalBody);
     expect(observed.requests.some((entry) => entry === `DELETE ${source}${h6}`)).toBe(true);

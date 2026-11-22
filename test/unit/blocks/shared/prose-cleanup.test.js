@@ -30,4 +30,12 @@ describe('prose-cleanup', () => {
     parseIcons(editor);
     expect(editor.firstChild).to.equal(p);
   });
+
+  it('does not rewrite the protocol inside editor image blob URLs', () => {
+    const src = 'blob:http://localhost:3001/1234';
+    const editor = el(`<p>:home:<img src="${src}"></p>`);
+    parseIcons(editor);
+    expect(editor.querySelector('img').getAttribute('src')).to.equal(src);
+    expect(editor.querySelector('.icon-home')).to.exist;
+  });
 });

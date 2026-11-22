@@ -1,9 +1,9 @@
 import { Y } from 'da-y-wrapper';
-import { aem2doc, getSchema, yDocToProsemirror } from 'da-parser';
+import { aem2doc, yDocToProsemirror } from 'da-parser';
 
 // Template contents are inert: replace resource URLs before aem2doc's DOMParser
 // ever sees them. The original attributes are restored only in the PM document.
-export function parseDaRsVersion(html) {
+export function parseDaRsVersion(html, schema) {
   const template = document.createElement('template');
   template.innerHTML = html;
   if (template.content.querySelector('script, style, iframe, object, embed, link, base, meta, video, audio')) {
@@ -45,8 +45,9 @@ export function parseDaRsVersion(html) {
   const ydoc = new Y.Doc();
   try {
     aem2doc(template.innerHTML, ydoc);
-    const schema = getSchema();
     const doc = yDocToProsemirror(schema, ydoc);
+    // ProseMirror fits replacements by node type identity, not by type name.
+    // Rebuild restored nodes with the same schema instance as the target editor.
     return schema.nodeFromJSON(restore(doc.toJSON()));
   } finally {
     ydoc.destroy();
