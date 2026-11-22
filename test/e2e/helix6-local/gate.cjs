@@ -16,12 +16,13 @@ async function startGate(sourcePort) {
     if (url.pathname.startsWith('/__gate__/')) {
       if (req.headers['x-h6-gate'] !== nonce) { res.writeHead(403).end(); return; }
       if (req.method === 'POST' && url.pathname === '/__gate__/arm' && ['idle', 'complete'].includes(state)) { state = 'armed'; match = undefined; status = undefined; contentType = undefined; initiator = undefined; containsEdit = undefined; }
+      else if (req.method === 'POST' && url.pathname === '/__gate__/cancel' && state === 'armed') { state = 'idle'; }
       else if (req.method === 'POST' && url.pathname === '/__gate__/release' && state === 'pending') { state = 'released'; release(); }
       else if (req.method !== 'GET' || url.pathname !== '/__gate__/status') { res.writeHead(409).end(); return; }
       res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ state, match, status, contentType, initiator, containsEdit }));
       return;
     }
-    const allowed = /^\/(?:source\/h6test\/(?:work|control)\/|h6test\/sites\/work\/source\/)/.test(url.pathname);
+    const allowed = /^\/(?:source\/h6test\/(?:work(?:~(?:draft|other))?|control(?:~draft)?)\/|h6test\/sites\/work(?:~(?:draft|other))?\/source\/)/.test(url.pathname);
     if (req.headers['x-h6-bridge'] !== nonce || !allowed || !['HEAD', 'GET', 'PUT'].includes(req.method)) { res.writeHead(403).end(); return; }
     try {
       const chunks = [];
@@ -33,7 +34,7 @@ async function startGate(sourcePort) {
       }
       const body = Buffer.concat(chunks);
       const delayed = state === 'armed' && req.method === 'PUT'
-        && /^\/h6test\/sites\/work\/source\/race(?:-reverse)?\.html$/.test(url.pathname)
+        && /^\/h6test\/sites\/work(?:~draft)?\/source\/(?:race(?:-reverse)?|page|reuse)\.html$/.test(url.pathname)
         && req.headers['x-da-initiator'] === 'collab';
       if (delayed) { match = req.headers['if-match']; contentType = req.headers['content-type']; initiator = req.headers['x-da-initiator']; containsEdit = body.includes(Buffer.from('old delayed edit')); state = 'pending'; await new Promise((resolve) => { release = resolve; }); }
       const headers = { ...req.headers, host: `127.0.0.1:${sourcePort}` };

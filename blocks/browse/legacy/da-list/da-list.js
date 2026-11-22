@@ -77,13 +77,19 @@ export default class DaList extends DaListBase {
     }
 
     if (props.has('fullpath') && this.fullpath) {
+      const path = this.fullpath;
       this._filter = '';
       this._showFilter = undefined;
       this._allPagesLoaded = false;
       // Resolve the delete allowlist alongside the listing so the action bar's
       // Delete button is decided before any selection can surface it. The site
       // config is already warm (da-browse fetches it first) so this is cheap.
-      const [items] = await Promise.all([this.getList(), this.updateDeletePermission()]);
+      this._directoryReady = Promise.all([this.getList(), this.updateDeletePermission()]);
+      const [items] = await this._directoryReady;
+      if (path !== this.fullpath) {
+        super.update(props);
+        return;
+      }
       this._listItems = items;
     }
 

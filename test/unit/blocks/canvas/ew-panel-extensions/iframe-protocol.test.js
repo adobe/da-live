@@ -44,6 +44,51 @@ function completeChatTurn(detail) {
   document.dispatchEvent(new CustomEvent(CHAT_EVENT.TURN_COMPLETED, { detail }));
 }
 
+describe('bound provider extension isolation', () => {
+  let originalUrl;
+  let connection;
+  beforeEach(() => { originalUrl = window.location.href; });
+  afterEach(() => {
+    connection?.destroy();
+    window.history.replaceState(null, '', originalUrl);
+    sinon.restore();
+  });
+
+  it('does not open a hosted extension channel for bound H6', async () => {
+    const url = new URL(originalUrl);
+    url.searchParams.set('da-source', 'da-rs');
+    url.hash = '#/org/site~draft/page';
+    window.history.replaceState(null, '', url);
+    const getView = sinon.spy();
+    const fetch = sinon.spy(window, 'fetch');
+    const iframe = makeIframe();
+    connection = await setupIframeChannel({ iframe, hashState: { org: 'org', site: 'site~draft', path: 'page' }, getView, onClose() {} });
+    expect(connection.channel).to.equal(null);
+    expect(getView.called).to.equal(false);
+    expect(fetch.called).to.equal(false);
+    expect(iframe.contentWindow.postMessage.called).to.equal(false);
+  });
+
+  it('prevents an existing channel from reading or writing a later bound view', async () => {
+    const url = new URL(originalUrl);
+    url.searchParams.delete('da-source');
+    url.hash = '#/org/site/page';
+    window.history.replaceState(null, '', url);
+    const getView = sinon.spy(() => { throw new Error('must not expose the bound view'); });
+    const iframe = makeIframe();
+    connection = await setupIframeChannel({ iframe, hashState: { org: 'org', site: 'site', path: 'page' }, getView, onClose() {} });
+    url.searchParams.set('da-source', 'da-rs');
+    url.hash = '#/org/site~draft/page';
+    window.history.replaceState(null, '', url);
+    connection.channel.port1.onmessage({ data: { action: 'subscribeLiveDocument' } });
+    connection.channel.port1.onmessage({ data: { action: 'sendText', details: 'bad' } });
+    canvasBus.editorDocState.emit();
+    await wait(800);
+    expect(getView.called).to.equal(false);
+    expect(iframe.contentWindow.postMessage.called).to.equal(false);
+  });
+});
+
 describe('extension chat turn subscriptions', () => {
   let connection;
   let received;

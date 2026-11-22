@@ -24,8 +24,16 @@ const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
 export async function setupIframeChannel({ iframe, hashState, getView, onClose }) {
   const { org, site, path, view } = hashState;
   if (!org || !site || !iframe.contentWindow) return { channel: null, destroy() { } };
+  // A stale extension channel must never read a bound provider's local view.
+  const allowed = () => {
+    const url = new URL(window.location.href);
+    return url.searchParams.get('da-source') !== 'da-rs';
+  };
+  if (!allowed()) return { channel: null, destroy() { } };
+  const allowedView = () => (allowed() ? getView() : null);
 
   const previewOptions = await fetchConfigBusOptions({ org, site });
+  if (!allowed()) return { channel: null, destroy() { } };
   const targetOrigin = getPostMessageTargetOrigin(iframe.src);
 
   const channel = new MessageChannel();
@@ -46,10 +54,10 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   const broadcastDocument = (snapshot) => {
     clearTimeout(htmlTimer);
     htmlTimer = undefined;
-    if (!subscribed) return;
+    if (!subscribed || !allowed()) return;
     let documentState = snapshot;
     if (!documentState) {
-      const editorView = getView();
+      const editorView = allowedView();
       documentState = {
         html: editorView ? getInstrumentedHTMLForSDK(editorView, previewOptions) : '',
         selection: selectionFor(editorView),
@@ -63,12 +71,12 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     });
   };
   const scheduleDocument = () => {
-    if (!subscribed) return;
+    if (!subscribed || !allowed()) return;
     clearTimeout(htmlTimer);
     htmlTimer = setTimeout(broadcastDocument, 150);
   };
   const broadcastSelection = ({ blockIndex }) => {
-    if (!subscribed || htmlTimer !== undefined) return;
+    if (!subscribed || !allowed() || htmlTimer !== undefined) return;
     const index = Number.isInteger(blockIndex) && blockIndex >= 0 ? blockIndex : null;
     if (lastBlockIndex === index) return;
     lastBlockIndex = index;
@@ -87,9 +95,11 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   };
 
   channel.port1.onmessage = (e) => {
+    if (!allowed()) return;
     const { action, details } = e.data || {};
     if (action === 'subscribeChatTurnCompleted') {
       unsubscribeTurn ??= chatTurnCompleted.subscribe((detail) => {
+        if (!allowed()) return;
         if (detail?.org !== org || detail.site !== site
           || (detail.path || '').replace(/^\/+/, '') !== (path || '').replace(/^\/+/, '')) return;
         channel.port1.postMessage({ action: 'chatTurnCompleted', detail });
@@ -106,7 +116,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
       dragSource ??= import('../drop/sources/sdk.js').then(({ createSdkDragSource }) => (
         destroyed ? null : createSdkDragSource({
           iframe,
-          getView,
+          getView: allowedView,
           page: { org, site, path },
           notify: (result) => {
             if (!destroyed) channel.port1.postMessage({ action: 'dragResult', details: result });
@@ -139,7 +149,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
 
     const port = channel.port1;
     if (routeComparisonMessage(e.data || {}, { context: { org, site, path }, port })) return;
-    const editorView = getView();
+    const editorView = allowedView();
 
     if (action === 'sendHTML' && typeof details === 'object') {
       const { requestId } = e.data;
@@ -249,9 +259,14 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
     const ims = await loadIms();
     token = ims?.accessToken?.token;
   } catch { /* proceed without token */ }
+  if (!allowed()) {
+    channel.port1.close();
+    channel.port2.close();
+    return { channel: null, destroy() { } };
+  }
 
   const readyTimer = setTimeout(() => {
-    if (!iframe.contentWindow) return;
+    if (!iframe.contentWindow || !allowed()) return;
     // Keep ref's plugin-development meaning; branch is the selected site code.
     const context = { ...project, branch: getCanvasBranch({ org, site }) };
     iframe.contentWindow.postMessage(
@@ -268,7 +283,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   }, 750);
 
   const onAgentChange = ({ detail }) => {
-    if (!iframe.contentWindow) return;
+    if (!iframe.contentWindow || !allowed()) return;
     iframe.contentWindow.postMessage({ action: 'agentChange', detail }, targetOrigin);
   };
   document.addEventListener(CHAT_EVENT.AGENT_CHANGE, onAgentChange);

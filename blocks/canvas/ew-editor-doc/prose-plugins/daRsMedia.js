@@ -1,7 +1,8 @@
 import { SUPPORTED_IMAGE_TYPES } from '../../../shared/constants.js';
 import { daFetch } from '../../../shared/utils.js';
 import { daRsSourceUrl, discoverDaRs, isDaRsBinding } from '../../../shared/da-rs-provider.js';
-import { MEDIA_PLACEHOLDER } from '../../../shared/branch-selector/branch-media.js';
+import { branchMediaUrl, MEDIA_PLACEHOLDER } from '../../../shared/branch-selector/branch-media.js';
+import { branchContext, validateBranch } from '../../../shared/branch-selector/context.js';
 
 // Never expose an authored URL to the browser before validation.
 export function createDaRsImageView(node) {
@@ -48,17 +49,29 @@ export function createDaRsMediaRenderer(context) {
     images.delete(image);
   }
 
-  async function load(view, image, item, name) {
+  async function load(view, image, item, source) {
     try {
-      const binding = await discoverDaRs(context.org, context.repo);
+      const selected = branchContext(hash);
+      const result = selected ? await validateBranch(selected) : null;
+      const binding = selected
+        ? { ...result.binding, branch: selected.branch }
+        : await discoverDaRs(context.org, context.repo);
+      result?.assertCurrent();
       if (!current()) return;
       const parent = parts.slice(2, -1).join('/');
-      const url = daRsSourceUrl(binding, `/${parent ? `${parent}/` : ''}${name}`);
+      let url;
+      if (selected && binding.mode === 'legacy') url = branchMediaUrl(context, hash, source);
+      else if (/^\.\/media_[a-z0-9_-]+\.[a-z0-9]+$/i.test(source)) {
+        url = daRsSourceUrl(binding, `/${parent ? `${parent}/` : ''}${source.slice(2)}`);
+      }
+      if (!url) return;
       const response = await daFetch(url, { signal: item.controller.signal, noRedirect: true, redirect: 'error' });
       const type = response.headers.get('content-type')?.split(';')[0].trim().toLowerCase();
       if (!response.ok || response.redirected || (response.url && response.url !== url)
+        || (selected && response.headers.get('content-branch') !== selected.branch)
         || !SUPPORTED_IMAGE_TYPES.includes(type)) return;
       const blob = await response.blob();
+      result?.assertCurrent();
       if (!current() || item.controller.signal.aborted
         || images.get(image) !== item || !view.dom.contains(image)) return;
       item.objectUrl = URL.createObjectURL(new Blob([blob], { type }));
@@ -78,12 +91,12 @@ export function createDaRsMediaRenderer(context) {
     present.forEach((image) => {
       if (images.has(image)) return;
       const original = image.dataset.daRsSource || image.getAttribute('src');
-      if (!/^\.\/media_[a-z0-9_-]+\.[a-z0-9]+$/i.test(original || '')) return;
+      if (!original?.startsWith('./media_')) return;
       image.src = MEDIA_PLACEHOLDER;
       if (!current()) return;
       const item = { original, controller: new AbortController(), objectUrl: null };
       images.set(image, item);
-      load(view, image, item, original.slice(2));
+      load(view, image, item, original);
     });
   }
 

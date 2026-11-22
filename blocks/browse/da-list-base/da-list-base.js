@@ -15,6 +15,34 @@ import { createVersion } from '../../shared/version/version-actions.js';
 export const MAX_DELETE_COUNT = 1000;
 export const DELETE_CONFIRM_THRESHOLD = 10;
 
+const directoryPath = (path) => path?.replace(/\/$/, '');
+
+// Branch routing validates asynchronously; a click can arrive while the old
+// directory is still rendered even though the browser hash has already changed.
+function waitForDirectory(list, path, href) {
+  return new Promise((resolve, reject) => {
+    let timer;
+    let check;
+    let observer;
+    const finish = (error) => {
+      clearTimeout(timer);
+      observer.disconnect();
+      window.removeEventListener('hashchange', check);
+      if (error) reject(error);
+      else resolve();
+    };
+    check = () => {
+      if (window.location.href !== href) finish(new Error('Browse location changed'));
+      else if (directoryPath(list.fullpath) === path) finish();
+    };
+    observer = new MutationObserver(check);
+    observer.observe(list, { attributes: true, attributeFilter: ['fullpath'] });
+    window.addEventListener('hashchange', check);
+    timer = setTimeout(() => finish(new Error('Destination folder is not ready')), 5000);
+    check();
+  });
+}
+
 /**
  * Behaviour shared by the legacy and v2 browse lists: listing and pagination,
  * selection, copy/paste/delete, publish/preview, drag and drop, and the confirm dialogs.
@@ -518,8 +546,38 @@ export default class DaListBase extends LitElement {
   }
 
   async handlePaste(e) {
+    const selected = [...this._selectedItems];
+    if (!selected.length) return;
+    const { href, hash } = window.location;
+    const bound = new URL(href).searchParams.get('da-source') === 'da-rs';
+    if (bound && hash.startsWith('#/')) {
+      try {
+        const parts = sanitizePathParts(hash.slice(1));
+        const target = directoryPath(`/${parts.join('/')}`);
+        const branch = parts[1]?.includes('~');
+        if (selected.some(({ path }) => {
+          const source = path.split('/');
+          return (branch || source[2]?.includes('~'))
+            && (source[1] !== parts[0] || source[2] !== parts[1]);
+        })) throw new Error('Cannot copy or move across branches');
+        if (branch) {
+          if (target !== directoryPath(this.fullpath)) await waitForDirectory(this, target, href);
+          if (this.isConnected) await this.updateComplete;
+          if (this._directoryReady) await this._directoryReady;
+          if (this._directoryError) throw new Error('Destination folder is unavailable');
+          if (window.location.href !== href || directoryPath(this.fullpath) !== target
+            || selected.length !== this._selectedItems.length
+            || selected.some((item, index) => item !== this._selectedItems[index])) {
+            throw new Error('Browse location or selection changed');
+          }
+        }
+      } catch (error) {
+        this._itemErrors = [...this._itemErrors, { message: error.message }];
+        return;
+      }
+    }
     // Format the destination items
-    const itemsToPaste = this._selectedItems.map((item) => {
+    const itemsToPaste = selected.map((item) => {
       const prefix = item.path.split('/').slice(0, -1).join('/');
 
       let pasteItem = {

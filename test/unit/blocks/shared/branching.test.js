@@ -146,4 +146,67 @@ describe('optional branching discovery', () => {
     await Promise.resolve();
     pending[5](response(capabilities()));
   });
+
+  it('coalesces refreshes, expires successful results and does not reuse disabled H6 results', async () => {
+    let now = 1000;
+    let calls = 0;
+    let enabled = false;
+    const originalNow = Date.now;
+    Date.now = () => now;
+    const discovery = createBranchingDiscovery({
+      loadBranching: () => ({
+        capabilities: async () => {
+          calls += 1;
+          return response({ ...capabilities(), helix6BranchSource: enabled });
+        },
+      }),
+    });
+    const options = { refresh: true, maxAgeMs: 250, requireHelix6: true };
+    try {
+      const disabled = discovery.discover(context, options);
+      expect(discovery.discover(context, options)).to.equal(disabled);
+      await disabled;
+      enabled = true;
+      const available = discovery.discover(context, options);
+      expect(available).not.to.equal(disabled);
+      await available;
+      expect(calls).to.equal(2);
+      now += 249;
+      expect(discovery.discover(context, options)).to.equal(available);
+      now += 1;
+      const expired = discovery.discover(context, options);
+      expect(expired).not.to.equal(available);
+      await expired;
+      expect(calls).to.equal(3);
+      const forced = discovery.discover(context, { ...options, maxAgeMs: 0 });
+      expect(forced).not.to.equal(expired);
+      await forced;
+      expect(calls).to.equal(4);
+    } finally { Date.now = originalNow; }
+  });
+
+  it('retries a timed-out discovery on refresh without returning an older positive', async () => {
+    let hang = false;
+    let calls = 0;
+    const discovery = createBranchingDiscovery({
+      timeoutMs: 20,
+      loadBranching: () => ({
+        capabilities: () => {
+          calls += 1;
+          return hang ? new Promise(() => {}) : response(capabilities());
+        },
+      }),
+    });
+    const options = { refresh: true };
+    expect((await discovery.discover(context, options)).status).to.equal('available');
+    hang = true;
+    const pending = discovery.discover(context, options);
+    expect(discovery.discover(context, options)).to.equal(pending);
+    expect(await pending).to.deep.equal({ status: 'unavailable', reason: 'timeout' });
+    hang = false;
+    expect(await discovery.discover(context)).to.deep.equal({ status: 'unavailable', reason: 'timeout' });
+    expect(calls).to.equal(2);
+    expect((await discovery.discover(context, options)).status).to.equal('available');
+    expect(calls).to.equal(3);
+  });
 });

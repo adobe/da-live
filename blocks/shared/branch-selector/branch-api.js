@@ -137,25 +137,42 @@ export function createBranchSource(context, fetcher = daFetch, settings = {}) {
   };
 }
 
-export async function getBranchApi(baseApiPromise) {
-  const { hash } = window.location;
-  const context = branchContext();
+export async function getBranchApi(baseApiPromise, expectedHref = window.location.href) {
+  const { hash, href } = window.location;
+  if (href !== expectedHref) throw new Error('Branch context changed');
+  const context = branchContext(hash);
   if (!context) return baseApiPromise;
-  await validateBranch(context);
+  const validated = await validateBranch(context);
   // Capture and check the URL after every asynchronous validation.
   const currentContext = branchContext();
-  if (currentContext?.siteSegment !== context.siteSegment || currentContext?.org !== context.org) {
+  if (window.location.href !== href
+    || currentContext?.siteSegment !== context.siteSegment || currentContext?.org !== context.org) {
     throw new Error('Branch context changed');
   }
+  if (validated.binding?.mode === 'helix6') {
+    const { getDaRsApi } = await import('../da-rs-api.js');
+    validated.assertCurrent();
+    if (window.location.href !== href) throw new Error('Branch context changed');
+    const { binding, assertCurrent } = validated;
+    const options = { context, binding, href, assertCurrent };
+    return getDaRsApi(baseApiPromise, options);
+  }
   const api = await baseApiPromise;
-  const guardedFetch = (...args) => {
+  validated.assertCurrent();
+  if (window.location.href !== href) throw new Error('Branch context changed');
+  const guardedFetch = async (...args) => {
+    validated.assertCurrent();
     const current = branchContext();
-    if (current?.org !== context.org || current?.siteSegment !== context.siteSegment) {
+    if (window.location.href !== href
+      || current?.org !== context.org || current?.siteSegment !== context.siteSegment) {
       throw new Error('Branch context changed');
     }
-    return daFetch(...args);
+    const result = await daFetch(...args);
+    validated.assertCurrent();
+    if (window.location.href !== href) throw new Error('Branch context changed');
+    return result;
   };
-  const sourceOptions = { isCurrent: () => window.location.hash === hash, documentHash: hash };
+  const sourceOptions = { isCurrent: () => window.location.href === href, documentHash: hash };
   const source = createBranchSource(context, guardedFetch, sourceOptions);
   const config = {
     get: (arg, extra) => {

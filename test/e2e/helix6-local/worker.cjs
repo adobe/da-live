@@ -59,7 +59,7 @@ async function startWorker({ workspace, scratch, sourcePort, secret, diagnostic 
   fs.writeFileSync(bridge, `export default { async fetch(request) {
     const url = new URL(request.url);
     console.log('SOURCE-IN', request.method, url.pathname);
-    if (url.origin !== ${JSON.stringify(origin)} || !(/^\\/(?:source\\/h6test\\/(?:work|control)\\/|h6test\\/sites\\/work\\/source\\/)/.test(url.pathname)) || !['HEAD','GET','PUT'].includes(request.method)) return new Response('blocked', {status: 403});
+    if (url.origin !== ${JSON.stringify(origin)} || !(/^\\/(?:source\\/h6test\\/(?:work(?:~(?:draft|other))?|control(?:~draft)?)\\/|h6test\\/sites\\/work(?:~(?:draft|other))?\\/source\\/)/.test(url.pathname)) || !['HEAD','GET','PUT'].includes(request.method)) return new Response('blocked', {status: 403});
     const headers = new Headers(request.headers); headers.set('x-h6-bridge', ${JSON.stringify(gate.nonce)});
     const options = {method: request.method, headers, redirect: 'manual'};
     if (request.method === 'PUT') options.body = request.body;

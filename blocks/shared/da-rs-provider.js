@@ -3,6 +3,7 @@ import { daFetch } from './utils.js';
 
 const discoveries = new Map();
 let lastSelection;
+let discoveryGeneration = 0;
 
 // This is an explicit provider selection, not a URL supplied by the caller.
 export function isDaRsBinding() {
@@ -10,6 +11,7 @@ export function isDaRsBinding() {
   const selection = `${params.get('da-source')}:${params.get('da-admin')}:${DA_ORIGIN}`;
   if (lastSelection !== selection) {
     discoveries.clear();
+    discoveryGeneration += 1;
     lastSelection = selection;
   }
   return params.get('da-source') === 'da-rs';
@@ -17,7 +19,10 @@ export function isDaRsBinding() {
 
 export function invalidateDaRsDiscovery() {
   discoveries.clear();
+  discoveryGeneration += 1;
 }
+
+export const daRsDiscoveryGeneration = () => discoveryGeneration;
 
 export const isValidDaRsSegment = (part) => typeof part === 'string' && /^[a-z0-9_-]+$/.test(part);
 export const isStrongSourceETag = (value) => typeof value === 'string'
@@ -51,7 +56,13 @@ export function discoverDaRs(org, site) {
   }
   const key = `${DA_ORIGIN}/${org}/${site}`;
   if (!discoveries.has(key)) {
+    const { href } = window.location;
+    const generation = discoveryGeneration;
     const pending = daFetch(`${DA_ORIGIN}/ping/${org}/${site}`, { noRedirect: true, redirect: 'error', cache: 'no-store' }).then((response) => {
+      if (!isDaRsBinding() || discoveryGeneration !== generation
+        || window.location.href !== href) {
+        throw new Error('da-rs context changed');
+      }
       if (!response.ok || response.redirected) throw new Error('da-rs discovery unavailable');
       const upgrade = response.headers.get('x-api-upgrade-available');
       if (upgrade !== null && upgrade !== 'true') throw new Error('Invalid da-rs discovery response');
@@ -71,8 +82,9 @@ export function discoverDaRs(org, site) {
 }
 
 export function daRsSourceUrl(binding, path = '') {
-  const { origin, org, site, mode } = binding;
+  const { origin, org, site, mode, branch } = binding;
+  const siteSegment = branch ? `${site}~${branch}` : site;
   return mode === 'helix6'
-    ? `${origin}/${org}/sites/${site}/source${path}`
-    : `${origin}/source/${org}/${site}${path}`;
+    ? `${origin}/${org}/sites/${siteSegment}/source${path}`
+    : `${origin}/source/${org}/${siteSegment}${path}`;
 }

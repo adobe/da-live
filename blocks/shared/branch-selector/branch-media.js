@@ -100,7 +100,7 @@ export function validBranchUploadResponse(payload, expectedPath, filename) {
     && payload?.source?.contentUrl === `./${filename}`;
 }
 
-function branchMediaUrl(context, hash, src) {
+export function branchMediaUrl(context, hash, src) {
   const current = branchContext(hash);
   if (!current || current.org !== context.org || current.siteSegment !== context.repo) return null;
   if (!src?.startsWith('./media_')) return null;

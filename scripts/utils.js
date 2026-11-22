@@ -110,16 +110,16 @@ export const getNx2 = () => {
 
 let nx2ApiPromise;
 export const getNx2Api = () => {
+  const { href, hash } = window.location;
   nx2ApiPromise ??= import(`${getNx2()}/utils/api.js`);
-  const rawSite = window.location.hash.startsWith('#/')
-    ? window.location.hash.slice(2).split('/')[1] : '';
+  const rawSite = hash.startsWith('#/') ? hash.slice(2).split('/')[1] : '';
   if (rawSite && /[~%]/.test(rawSite)) {
     return import('../blocks/shared/branch-selector/branch-api.js')
-      .then(({ getBranchApi }) => getBranchApi(nx2ApiPromise));
+      .then(({ getBranchApi }) => getBranchApi(nx2ApiPromise, href));
   }
-  if (new URL(window.location.href).searchParams.get('da-source') === 'da-rs') {
+  if (new URL(href).searchParams.get('da-source') === 'da-rs') {
     return import('../blocks/shared/da-rs-api.js')
-      .then(({ getDaRsApi }) => getDaRsApi(nx2ApiPromise));
+      .then(({ getDaRsApi }) => getDaRsApi(nx2ApiPromise, null, href));
   }
   return nx2ApiPromise;
 };

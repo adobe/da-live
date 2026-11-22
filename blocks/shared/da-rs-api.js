@@ -12,9 +12,10 @@ function argsFor(arg, extra = {}) {
   return { org, site, path: parts.length ? `/${parts.join('/')}` : '', ...extra };
 }
 
-function validate(args) {
+function validate(args, context) {
   const { org, site, path = '' } = args;
-  if (!isValidDaRsSegment(org) || (site && !isValidDaRsSegment(site))
+  if (!isValidDaRsSegment(org)
+    || (site && !isValidDaRsSegment(site) && site !== context?.siteSegment)
     || (path && (!path.startsWith('/') || /(?:^|\/)\.{1,2}(?:\/|$)|[?#\\]|%2f|%5c|%2e|%25/i.test(path)))) {
     throw new Error('Invalid da-rs path');
   }
@@ -39,12 +40,16 @@ function normalizeListing(org, site, path, items) {
   });
 }
 
-export async function getDaRsApi(basePromise) {
-  const { hash, search } = window.location;
+export async function getDaRsApi(basePromise, branch = null, expectedHref = window.location.href) {
+  const { hash, href } = window.location;
+  if (href !== expectedHref || (branch && branch.href !== href)) throw new Error('da-rs context changed');
   const base = await basePromise;
   const current = () => isDaRsBinding()
-    && window.location.hash === hash && window.location.search === search;
-  const checkCurrent = () => { if (!current()) throw new Error('da-rs context changed'); };
+    && window.location.href === href;
+  const checkCurrent = () => {
+    if (!current()) throw new Error('da-rs context changed');
+    branch?.assertCurrent();
+  };
   checkCurrent();
   const checkScope = (args) => {
     const parts = hash.startsWith('#/') ? hash.slice(2).split('/') : [];
@@ -64,23 +69,35 @@ export async function getDaRsApi(basePromise) {
   };
   const bindingFor = async (args) => {
     checkCurrent();
-    validate(args);
+    validate(args, branch?.context);
     checkScope(args);
-    const binding = await discoverDaRs(args.org, args.site);
+    if (branch && (args.org !== branch.context.org || args.site !== branch.context.siteSegment)) {
+      throw new Error('Operation must remain within the selected branch');
+    }
+    const binding = branch
+      ? { ...branch.binding, branch: branch.context.branch }
+      : await discoverDaRs(args.org, args.site);
     checkCurrent();
     return binding;
   };
   const sourceRequest = async (arg, extra, opts = {}) => {
-    const args = validate(argsFor(arg, extra));
+    const args = validate(argsFor(arg, extra), branch?.context);
     const binding = await bindingFor(args);
-    return request(daRsSourceUrl(binding, args.path), opts);
+    const response = await request(daRsSourceUrl(binding, args.path), opts);
+    if (branch && opts.method === 'HEAD' && response.ok
+      && (response.headers.get('content-branch') !== branch.context.branch
+        || response.headers.get('x-da-source-mode') !== 'helix6')) {
+      return new Response('Invalid branch Source response', { status: 422 });
+    }
+    return response;
   };
   const source = {
     get: (arg, extra) => sourceRequest(arg, extra),
     getMetadata: (arg, extra) => sourceRequest(arg, extra, { method: 'HEAD' }),
     list: async (arg, extra) => {
-      const args = validate(argsFor(arg, extra));
+      const args = validate(argsFor(arg, extra), branch?.context);
       if (!args.site) {
+        if (branch) throw new Error('Operation must remain within the selected branch');
         checkScope(args);
         const resp = await request(`${DA_ORIGIN}/list/${args.org}`);
         const items = resp.ok ? await resp.json() : [];
@@ -103,7 +120,7 @@ export async function getDaRsApi(basePromise) {
       };
     },
     save: async (arg, extra) => {
-      const args = validate(argsFor(arg, extra));
+      const args = validate(argsFor(arg, extra), branch?.context);
       const binding = await bindingFor(args);
       const type = SUPPORTED_FILES[args.path?.split('.').pop()?.toLowerCase()]
         || 'application/octet-stream';
@@ -119,7 +136,7 @@ export async function getDaRsApi(basePromise) {
       return request(daRsSourceUrl(binding, args.path), opts);
     },
     replace: async (arg, extra) => {
-      const args = validate(argsFor(arg, extra));
+      const args = validate(argsFor(arg, extra), branch?.context);
       if (args.body === undefined || args.body === null) throw new Error('A Source update requires a body');
       const binding = await bindingFor(args);
       if (binding.mode !== 'helix6') return source.save(arg, extra);
@@ -133,7 +150,7 @@ export async function getDaRsApi(basePromise) {
       return request(daRsSourceUrl(binding, args.path), { method: 'PUT', headers, body: args.body });
     },
     uploadMedia: async (arg, extra) => {
-      const args = validate(argsFor(arg, extra));
+      const args = validate(argsFor(arg, extra), branch?.context);
       if (!SUPPORTED_IMAGE_TYPES.includes(args.body?.type)) throw new Error('Unsupported media type');
       const binding = await bindingFor(args);
       const target = branchUploadTarget(args.path, args.body);
@@ -149,6 +166,7 @@ export async function getDaRsApi(basePromise) {
       const opts = { method: 'POST', headers: {} };
       if (binding.mode === 'helix6') {
         opts.headers['Content-Type'] = args.body.type;
+        if (branch) opts.headers['If-None-Match'] = '*';
         opts.body = args.body;
       } else {
         opts.headers['If-None-Match'] = '*';
@@ -158,24 +176,25 @@ export async function getDaRsApi(basePromise) {
       const result = await request(url, opts);
       if (!result.ok) return result;
       if (result.redirected || (result.url && result.url !== url)) throw new Error('Invalid media response');
+      if (branch && result.headers.get('content-branch') !== branch.context.branch) throw new Error('Invalid media branch');
       const response = new Response(JSON.stringify({ source: { contentUrl: `./${target.filename}` } }), { status: result.status, headers: { 'Content-Type': 'application/json' } });
       response.permissions = result.permissions;
       return response;
     },
     createFolder: async (arg, extra) => {
-      const args = validate(argsFor(arg, extra));
+      const args = validate(argsFor(arg, extra), branch?.context);
       const binding = await bindingFor(args);
       return request(daRsSourceUrl(binding, `${(args.path || '').replace(/\/$/, '')}/`), { method: 'POST' });
     },
     delete: (arg, extra) => sourceRequest(arg, extra, { method: 'DELETE' }),
     deleteFolder: async (arg, extra) => {
-      const args = validate(argsFor(arg, extra));
+      const args = validate(argsFor(arg, extra), branch?.context);
       const binding = await bindingFor(args);
       if (binding.mode === 'helix6') return denied();
       return request(daRsSourceUrl(binding, `${args.path.replace(/\/$/, '')}/`), { method: 'DELETE' });
     },
     move: async (arg, extra) => {
-      const args = validate(argsFor(arg, extra));
+      const args = validate(argsFor(arg, extra), branch?.context);
       const binding = await bindingFor(args);
       if (binding.mode === 'helix6') return denied();
       if (!args.destination?.startsWith(`/${args.org}/${args.site}/`)) return denied();
@@ -185,7 +204,7 @@ export async function getDaRsApi(basePromise) {
       return request(`${DA_ORIGIN}/move/${args.org}/${args.site}${args.path}`, { method: 'POST', body: form });
     },
     copy: async (arg, extra) => {
-      const args = validate(argsFor(arg, extra));
+      const args = validate(argsFor(arg, extra), branch?.context);
       const binding = await bindingFor(args);
       const prefix = `/${args.org}/${args.site}`;
       if (typeof args.destination !== 'string' || !args.destination.startsWith(`${prefix}/`)) {
@@ -197,7 +216,7 @@ export async function getDaRsApi(basePromise) {
         return request(`${DA_ORIGIN}/copy/${args.org}/${args.site}${args.path}`, { method: 'POST', body: form });
       }
       const destination = args.destination.slice(prefix.length);
-      validate({ ...args, path: destination });
+      validate({ ...args, path: destination }, branch?.context);
       const url = new URL(daRsSourceUrl(binding, destination));
       url.searchParams.set('source', args.path);
       if (args.collision) url.searchParams.set('collision', args.collision);
@@ -206,13 +225,16 @@ export async function getDaRsApi(basePromise) {
   };
   const config = {
     get: (arg, extra) => {
-      const args = validate(argsFor(arg, extra));
+      const args = validate(argsFor(arg, extra), branch?.context);
       checkScope(args);
       return request(`${DA_ORIGIN}/config/${args.org}/${args.site ? `${args.site}/` : ''}`);
     },
     save: (arg, extra) => {
-      const args = validate(argsFor(arg, extra));
+      const args = validate(argsFor(arg, extra), branch?.context);
       checkScope(args);
+      if (branch && (args.org !== branch.context.org || args.site !== branch.context.siteSegment)) {
+        throw new Error('Operation must remain within the selected branch');
+      }
       return request(`${DA_ORIGIN}/config/${args.org}/${args.site ? `${args.site}/` : ''}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: args.body });
     },
     delete: denied,
@@ -220,19 +242,19 @@ export async function getDaRsApi(basePromise) {
   };
   const versions = {
     history: async (arg, extra) => {
-      const args = validate(argsFor(arg, extra));
+      const args = validate(argsFor(arg, extra), branch?.context);
       const binding = await bindingFor(args);
       if (binding.mode !== 'helix6') return null;
       return request(`${daRsSourceUrl(binding, args.path)}/.history`);
     },
     list: async (arg, extra) => {
-      const args = validate(argsFor(arg, extra));
+      const args = validate(argsFor(arg, extra), branch?.context);
       const binding = await bindingFor(args);
       return request(binding.mode === 'helix6' ? `${daRsSourceUrl(binding, args.path)}/.versions`
         : `${DA_ORIGIN}/versionlist/${args.org}/${args.site}${args.path}`);
     },
     get: async (arg, extra) => {
-      const args = validate(argsFor(arg, extra));
+      const args = validate(argsFor(arg, extra), branch?.context);
       const binding = await bindingFor(args);
       if (!args.versionId || /[?#\\]|(?:^|\/)\.{1,2}(?:\/|$)|%2f|%5c|%25/i.test(args.versionId)) throw new Error('Invalid version');
       if (binding.mode === 'helix6'
@@ -243,7 +265,7 @@ export async function getDaRsApi(basePromise) {
         : `${DA_ORIGIN}/versionsource/${args.org}/${args.site}/${args.versionId}`);
     },
     create: async (arg, extra) => {
-      const args = validate(argsFor(arg, extra));
+      const args = validate(argsFor(arg, extra), branch?.context);
       const binding = await bindingFor(args);
       if (binding.mode === 'helix6') {
         const url = new URL(`${daRsSourceUrl(binding, args.path)}/.versions`);

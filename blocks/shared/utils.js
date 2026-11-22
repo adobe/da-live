@@ -266,7 +266,10 @@ export async function saveToDa({ path, formData, blob, props, preview = false })
   }
 
   const bound = new URL(window.location.href).searchParams.get('da-source') === 'da-rs';
-  if (bound && !path.split('/')[2]?.includes('~')) {
+  const [, org, site] = path.split('/');
+  const api = bound ? await getNx2Api() : null;
+  const boundLegacyBranch = bound && site?.includes('~') && !await api.isHlx6(org, site);
+  if (bound && !boundLegacyBranch) {
     const keys = formData ? [...formData.keys()] : [];
     if (props || (blob && formData) || keys.some((key) => key !== 'data')
       || (formData && formData.getAll('data').length !== 1)) {
@@ -274,8 +277,7 @@ export async function saveToDa({ path, formData, blob, props, preview = false })
     }
     const body = blob ?? formData?.get('data');
     if (body === undefined || body === null) throw new Error('A Source update requires a body');
-    const { source } = await getNx2Api();
-    const response = await source.replace(path, { body });
+    const response = await api.source.replace(path, { body });
     if (!response.ok) throw new Error(`Could not update Source (${response.status})`);
     if (!preview) return undefined;
     return aemAction(path, 'preview');

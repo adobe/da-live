@@ -1,7 +1,8 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { parseSiteSegment } from '../content-branch-context.js';
 import { createBranchingClient } from '../branching-client.js';
-import { discoverBranching, defaultSourceMatchesBinding } from './context.js';
+import { discoverBranching, defaultSourceMatchesBinding, invalidateBranchingDiscovery } from './context.js';
+import { isDaRsBinding } from '../da-rs-provider.js';
 import { switchContentBranch, withBranchBarrier } from './navigation.js';
 import styles from './branch-selector-styles.js';
 import '../branch-changes/branch-changes.js';
@@ -27,9 +28,23 @@ export class DaBranchSelector extends LitElement {
     if (changed.has('org') || changed.has('site')) this.load();
   }
 
-  async load() {
+  load() {
+    const key = JSON.stringify([this.org, this.site, window.location.href]);
+    if (this._pendingLoad?.key === key) return this._pendingLoad.promise;
+    const pending = { key };
+    pending.promise = this.loadBranchData().finally(() => {
+      if (this._pendingLoad === pending) this._pendingLoad = null;
+    });
+    this._pendingLoad = pending;
+    return pending.promise;
+  }
+
+  async loadBranchData() {
     const { org } = this;
     const rawSite = this.site;
+    const { href } = window.location;
+    const generation = (this._loadGeneration || 0) + 1;
+    this._loadGeneration = generation;
     this._data = undefined;
     this._open = false;
     this._error = undefined;
@@ -40,12 +55,14 @@ export class DaBranchSelector extends LitElement {
       return;
     }
     try {
-      if (!parsed.branch && !await defaultSourceMatchesBinding(org, parsed.site)) return;
+      if ((!parsed.branch || isDaRsBinding())
+        && !await defaultSourceMatchesBinding(org, parsed.site)) return;
       const support = await discoverBranching(org, parsed.site);
       if (support.status !== 'available') return;
       const client = createBranchingClient({ org, site: parsed.site });
       const list = await client.list();
-      if (this.org !== org || this.site !== rawSite) return;
+      if (this.org !== org || this.site !== rawSite || window.location.href !== href
+        || this._loadGeneration !== generation) return;
       if (list.defaultBranchId !== support.capabilities.defaultBranchId
         || !Array.isArray(list.branches)) return;
       this._data = { ...list, selected: parsed.branch, client };
@@ -70,13 +87,18 @@ export class DaBranchSelector extends LitElement {
     }
     this._busy = true;
     this._error = undefined;
-    const originalHash = window.location.hash;
+    const originalHref = window.location.href;
+    const data = this._data;
     try {
       await withBranchBarrier(async () => {
-        if (window.location.hash !== originalHash) throw new Error('The current location changed');
-        const result = await this._data.client.create(name);
+        if (window.location.href !== originalHref || this._data !== data) throw new Error('The current location changed');
+        const result = await data.client.create(name);
+        if (window.location.href !== originalHref || this._data !== data) throw new Error('The current location changed');
         const branch = result?.branch;
         if (branch?.id !== name) throw new Error('Invalid branch creation response');
+        this._loadGeneration = (this._loadGeneration || 0) + 1;
+        this._pendingLoad = null;
+        invalidateBranchingDiscovery();
         await switchContentBranch(branch.id);
       }, { keepInertOnSuccess: true });
     } catch (error) {
@@ -108,6 +130,9 @@ export class DaBranchSelector extends LitElement {
       }
       if (branch.activeSyncId) throw new Error('Resolve or cancel the active sync before deleting.');
       await client.delete(id, branch.revision);
+      this._loadGeneration = (this._loadGeneration || 0) + 1;
+      this._pendingLoad = null;
+      invalidateBranchingDiscovery();
       if (valid()) {
         const branches = data.branches.filter((candidate) => candidate.id !== id);
         this._data = { ...data, branches };

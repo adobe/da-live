@@ -1,5 +1,93 @@
 # Isolated Helix 6 Canvas harness
 
+## B5 qualified branch acceptance (coordinator only)
+
+Run from the integrated `da-live` `rs-poc` checkout, with the reviewed B1–B4 working
+trees in their sibling `da-rs` and `da-collab` directories. The runner snapshots
+those trees into a new private scratch directory, builds da-rs, and starts only
+fresh loopback listeners and stores. Coordinate every run: do not overlap any
+other service, build tree, port or store owner. Dependencies and isolation are
+the same as H5 below. Do not execute from the detached B5 patch worktree.
+
+First, run **only** the qualified Canvas checkpoint. It creates draft with the
+real selector on a real marked, branching-enabled site, checks browser CORS and branch headers,
+and requires Canvas's flush plus a real Worker's raw qualified H6 PUT carrying
+the previous strong ETag. The runner enables H6 Source but leaves the branch
+transport at its default. Default content must remain unchanged:
+
+```sh
+env -u H6_BASELINE -u H6_BASELINE_NO_UPGRADE -u H6_BRANCH_BASELINE -u H6_FULL -u H6_EARLY_FULL -u H6_CASE -u H6_DIAGNOSTIC_BUILD -u H6_BRANCH_FULL -u H6_BRANCH_GATE_OFF H6_LIVE=1 H6_BRANCH=1 H6_SCRATCH_ROOT=/private/var/folders/8f/crktqh_97mx5x7zqws2nxfqr0000gq/T/opencode node test/e2e/helix6-local/run.cjs
+```
+
+Only after that passes, the unfiltered full run repeats the checkpoint in its
+own fresh store before any dependent tests. No prior marker or receipt is reused:
+
+```sh
+env -u H6_BASELINE -u H6_BASELINE_NO_UPGRADE -u H6_BRANCH_BASELINE -u H6_FULL -u H6_EARLY_FULL -u H6_CASE -u H6_DIAGNOSTIC_BUILD -u H6_BRANCH_GATE_OFF H6_LIVE=1 H6_BRANCH=1 H6_BRANCH_FULL=1 H6_SCRATCH_ROOT=/private/var/folders/8f/crktqh_97mx5x7zqws2nxfqr0000gq/T/opencode node test/e2e/helix6-local/run.cjs
+```
+
+The full scenarios exercise two Canvas tabs, branch media and version restore,
+Browse copy/trash and selector switching on both marked and legacy controls.
+They dirty Canvas in each direction and hold the real Default or draft Worker
+`page.html` PUT while the selector's flush is outstanding: the URL and source
+bytes must remain unchanged, the editor and page must be inert, and a positive
+Worker flush acknowledgement must precede navigation. They then restore the
+original Default page with an exact conditional write before reconciliation;
+this restore itself is a real Default history mutation. The scenarios also cover
+qualified aliases, private snapshots, mixed kinds, pinned Changes, visual and
+source diffs, real marked-branch sync/conflict/publish controls, and Site History
+revert. They hold a real qualified Worker PUT and its corresponding genuine branch notice separately,
+then require exact `If-Match`, Source `412`, socket `4412`, real Canvas reload,
+and independent Default/sibling connections. After the branch notice, each
+independent room must propagate a real Yjs edit to a second client and flush it
+through the real Worker with its own strong validator, without modifying the
+other rooms. The raw alias observer uses the production 4412 fence to retire its
+old provider and Y.Doc; after the held notice is forwarded, a newly admitted Y.Doc
+must match the newer Source without stale or duplicated edits. Raw observers use
+`disableBc` so their propagation is through the real Worker, not cross-tab
+broadcast. A second held PUT spans checked
+delete/recreate and must not overwrite the new branch instance. Logs and receipts
+are retained under the fresh `helix6-h5-*` scratch path.
+
+Run the gate-off control separately, also with a fresh store:
+
+```sh
+env -u H6_BASELINE -u H6_BASELINE_NO_UPGRADE -u H6_BRANCH_BASELINE -u H6_FULL -u H6_EARLY_FULL -u H6_CASE -u H6_DIAGNOSTIC_BUILD -u H6_BRANCH_FULL H6_LIVE=1 H6_BRANCH=1 H6_BRANCH_GATE_OFF=1 H6_SCRATCH_ROOT=/private/var/folders/8f/crktqh_97mx5x7zqws2nxfqr0000gq/T/opencode node test/e2e/helix6-local/run.cjs
+```
+
+This verifies the marked DA alias still works directly but carries the unavailable
+hint and is rejected by the bound real Worker; qualified H6 must fail closed.
+The site marked but not branching-enabled is tested in the checkpoint. The
+bridge/gates allow only the explicitly named `work~draft`, `work~other`, and
+`control~draft` branch scopes in addition to the pre-existing bare scopes. The
+bridge checks its fixed origin and methods; the loopback gates check their nonces
+and forward genuine bytes, responses and notifications. No CORS is injected.
+The saved PUT gate can hold only the explicitly named `race`, `race-reverse`,
+`page`, or `reuse` collab PUTs on the permitted bare/draft H6 scopes. The reuse
+case seeds its own Default and draft documents, independently of the race case.
+The saved PUT gate
+and notice gate deliberately control **timing**, not the Source
+or Worker result. The shell, NX, IMS, token, and network substitutions are exactly
+those described under Isolation and substitutions below; none is real hosted NX
+or IMS. The live harness does not force Workerd eviction. The separate
+`da-collab` suite simulates wake through the production `DocRoom.webSocketMessage`
+handler with retained storage and serialized attachments. A browser reconnect
+does not count as a Workerd hibernation test.
+
+### Local acceptance receipt
+
+The unfiltered normal-build qualified run `helix6-h5-if550H` passed all seven
+active scenarios, with only the separate gate-off scenario skipped. A real
+Canvas flush sent raw `text/html` to `/h6test/sites/work~draft/source/page.html`
+with the previous strong ETag and received `201` and an advanced ETag. Default
+was unchanged. The run also verified scoped media and version restore, both
+dirty switch barriers, mixed-kind publish and revert, alias and room isolation,
+and `412`/`4412` on both a stale write and same-name branch recreation. All
+captured qualified browser traces had zero external requests and page errors.
+The separate gate-off `helix6-h5-pNRs7S` run passed its only active case.
+See `da-rs/HELIX6_BRANCHING_WIRE.md` for the wire contract and compatibility
+receipts. Retained scratch logs are local evidence, not part of the checkout.
+
 This directory is independent of the shared E2E setup and the existing
 `branching-local` runner. The dedicated H5 suite exercises real local Source,
 Worker and Canvas routes; the coordinator owns the overall acceptance verdict.
@@ -307,8 +395,17 @@ out and is not an authenticated H6/CORS receipt.
 The runner allocates new loopback ports for the UI, da-rs, Wrangler, Wrangler's
 inspector, and the Source gate. It checks each Source listener and Wrangler
 process ancestry, only terminates children it started, retains scratch logs and
-state, and refuses arbitrary endpoints or stores. The Worker is real Wrangler;
-both `daadmin` and `dars` are explicit local service bindings to a fixed-origin,
+state, and refuses arbitrary endpoints or stores. The browser route guard performs
+the same PID, parent, command, port and loopback
+checks asynchronously, coalescing only checks concurrently in progress and never
+caching a completed result. The guard records check counts, joined requests,
+maximum concurrent waiters and capability wait times. B5 case traces also record
+sanitized per-tab requests, responses, request failures and readiness; the paste
+trace records the actual target and status. No capability response is simulated
+and the product discovery deadline is unchanged. API calls still verify the
+dedicated runner and use its synthetic bearer; gate controls verify the runner
+and use their per-run nonce.
+The Worker is real Wrangler; both `daadmin` and `dars` are explicit local service bindings to a fixed-origin,
 allowlisted transport bridge. They have separate Worker service bindings.
 `DA_RS_ORIGIN` is exactly the per-run Source
 origin. The bridge and gate forward real Source responses and never synthesize

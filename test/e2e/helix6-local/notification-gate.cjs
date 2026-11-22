@@ -8,6 +8,7 @@ async function startNotificationGate(workerOrigin, sourceOrigin, secret) {
   const nonce = randomBytes(24).toString('hex');
   let state = 'idle';
   let name;
+  let branch = '';
   let received = 0;
   let forwarded = 0;
   let status;
@@ -18,8 +19,10 @@ async function startNotificationGate(workerOrigin, sourceOrigin, secret) {
     if (url.pathname.startsWith('/__notice__/')) {
       if (req.headers['x-h6-notice'] !== nonce) { res.writeHead(403).end(); return; }
       if (url.pathname === '/__notice__/arm' && req.method === 'POST' && ['idle', 'complete'].includes(state)
-        && ['race', 'race-reverse'].includes(url.searchParams.get('name'))) {
+        && ['race', 'race-reverse'].includes(url.searchParams.get('name'))
+        && ['', 'draft'].includes(url.searchParams.get('branch') || '')) {
         name = url.searchParams.get('name');
+        branch = url.searchParams.get('branch') || '';
         received = 0;
         forwarded = 0;
         status = undefined;
@@ -37,7 +40,7 @@ async function startNotificationGate(workerOrigin, sourceOrigin, secret) {
     let doc;
     try { doc = new URL(url.searchParams.get('doc')); } catch { res.writeHead(403).end(); return; }
     if (doc.origin !== sourceOrigin || doc.username || doc.password || doc.search || doc.hash
-      || !/^\/source\/h6test\/(?:work|control)\/.+/.test(doc.pathname)) { res.writeHead(403).end(); return; }
+      || !/^\/source\/h6test\/(?:work(?:~(?:draft|other))?|control(?:~draft)?)\/.+/.test(doc.pathname)) { res.writeHead(403).end(); return; }
     try {
       const chunks = [];
       let size = 0;
@@ -48,7 +51,7 @@ async function startNotificationGate(workerOrigin, sourceOrigin, secret) {
       }
       const body = Buffer.concat(chunks);
       const gated = ['armed', 'pending'].includes(state) && req.method === 'POST'
-        && url.pathname === '/api/v1/syncadmin' && doc.pathname === `/source/h6test/work/${name}.html`;
+        && url.pathname === '/api/v1/syncadmin' && doc.pathname === `/source/h6test/work${branch ? `~${branch}` : ''}/${name}.html`;
       if (gated) { received += 1; state = 'pending'; await released; }
       const headers = { ...req.headers, host: worker.host };
       delete headers.connection;

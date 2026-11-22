@@ -12,7 +12,7 @@ if (process.env.H6_CASE && (!Object.hasOwn(cases, process.env.H6_CASE) || proces
 
 module.exports = defineConfig({
   testDir: '.',
-  testMatch: '**/*.local.spec.cjs',
+  testMatch: '**/canvas.local.spec.cjs',
   workers: 1,
   retries: 0,
   grep: cases[process.env.H6_CASE],

@@ -188,7 +188,7 @@ class EwCanvasVersions extends LitElement {
     this._savingVersion = true;
     let ok;
     try {
-      if (isDaRsBinding() && !path.split('/')[2]?.includes('~')) {
+      if (isDaRsBinding()) {
         const { view } = getExtensionsBridge();
         const editor = view?.dom?.getRootNode()?.host || document.querySelector('ew-editor-doc');
         const { hash, search } = window.location;
@@ -236,12 +236,13 @@ class EwCanvasVersions extends LitElement {
     if (!view) return;
     const { path } = this;
     const bound = isDaRsBinding();
+    if (bound && !view.editable) return;
     const { schema } = view.state;
     const { hash, search } = window.location;
     const versionBody = bound ? await fetchDaRsVersionDocument(path, entry, schema)
       : await fetchVersionHtml(path, entry);
     if (path !== this.path || getExtensionsBridge().view !== view || !this.isConnected) return;
-    if (bound && (!isDaRsBinding() || window.location.hash !== hash
+    if (bound && (!view.editable || !isDaRsBinding() || window.location.hash !== hash
       || window.location.search !== search || view.state.schema !== schema)) return;
     if (!versionBody) {
       showError('Could not load the selected version.');

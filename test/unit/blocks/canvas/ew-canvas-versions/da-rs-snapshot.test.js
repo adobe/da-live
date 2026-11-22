@@ -114,6 +114,18 @@ describe('bound History snapshot', () => {
     expect(await run()).to.equal(true);
     expect(calls).to.deep.equal(['flush', { target: path, options: { comment: 'first' } }]);
   });
+
+  it('uses the existing DA snapshot path for a legacy branch without a Canvas session', async () => {
+    api.isHlx6 = async () => false;
+    const branchPath = '/demo/work~draft/page.html';
+    expect(await run({ path: branchPath, view: null, editor: null })).to.equal(true);
+    expect(calls).to.deep.equal([{ target: branchPath, options: { comment: 'first' } }]);
+  });
+
+  it('still requires a Canvas session for an H6 branch snapshot', async () => {
+    expect(await run({ path: '/demo/work~draft/page.html', view: null, editor: null })).to.equal(false);
+    expect(calls).to.deep.equal(['mode']);
+  });
 });
 
 describe('bound History snapshot UI', () => {

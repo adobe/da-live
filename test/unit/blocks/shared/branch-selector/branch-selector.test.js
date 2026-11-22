@@ -56,6 +56,40 @@ describe('content branch selector', () => {
     actions.forEach((action) => expect(getComputedStyle(action).minHeight).to.equal('32px'));
   });
 
+  it('coalesces an explicit load with the initial Lit update', async () => {
+    selector.org = 'coalescedorg';
+    let release;
+    let started;
+    const waiting = new Promise((resolve) => { started = resolve; });
+    window.fetch = async (url) => {
+      if (url.endsWith('/capabilities')) {
+        return new Response(JSON.stringify({
+          supported: true,
+          apiVersion: 1,
+          defaultBranchId: 'main',
+          addressing: 'site-suffix',
+          separator: '~',
+          operations: ['create', 'changes', 'sync', 'publish', 'revert', 'restore'],
+          itemKinds: ['html', 'json', 'media', 'config'],
+          branchScopedSource: true,
+          branchScopedCollaboration: true,
+        }));
+      }
+      return new Promise((resolve) => {
+        release = resolve;
+        started();
+      });
+    };
+    const first = selector.load();
+    document.body.append(selector);
+    await selector.updateComplete;
+    await waiting;
+    expect(selector.load()).to.equal(first);
+    release(new Response(JSON.stringify({ defaultBranchId: 'main', branches: [{ id: 'work', name: 'work' }] })));
+    await first;
+    expect(selector._data.selected).to.equal('work');
+  });
+
   it('hides itself when capability discovery is unsupported', async () => {
     selector.org = 'unsupportedorg';
     window.fetch = async () => new Response('{"supported":false}', { status: 200 });

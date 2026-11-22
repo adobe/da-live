@@ -38,6 +38,7 @@ function parseCapabilities(data) {
       itemKinds: ITEM_KINDS,
       branchScopedSource: true,
       branchScopedCollaboration: true,
+      helix6BranchSource: data.helix6BranchSource === true,
     }),
   });
 }
@@ -92,12 +93,25 @@ export function createBranchingDiscovery({
   }
   const cache = new Map();
   return Object.freeze({
-    discover(context) {
+    discover(context, { refresh = false, maxAgeMs = 0, requireHelix6 = false } = {}) {
       const { providerId, org, site } = context;
       const captured = { providerId, org, site };
       const key = contextKey(captured);
-      if (!cache.has(key)) cache.set(key, discoverSupport(loadBranching, captured, timeoutMs));
-      return cache.get(key);
+      let entry = cache.get(key);
+      const reusable = entry?.settled && entry.result?.status === 'available'
+        && (!requireHelix6 || entry.result.capabilities.helix6BranchSource)
+        && Date.now() - entry.settledAt < maxAgeMs;
+      if (!entry || (refresh && entry.settled && !reusable)) {
+        entry = { settled: false, promise: discoverSupport(loadBranching, captured, timeoutMs) };
+        cache.set(key, entry);
+        const pending = entry;
+        pending.promise.then((value) => {
+          pending.result = value;
+          pending.settledAt = Date.now();
+          pending.settled = true;
+        });
+      }
+      return entry.promise;
     },
     invalidate(context) {
       if (context) cache.delete(contextKey(context));

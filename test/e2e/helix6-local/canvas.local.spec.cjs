@@ -1,8 +1,9 @@
 /* Actual route modules and local Source/Worker. This initial case is a baseline trace, not H6 acceptance. */
 const { test, expect } = require('@playwright/test');
-const { execFileSync } = require('node:child_process');
+const { execFile, execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
+const { promisify } = require('node:util');
 
 // Every full-flow case consumes the site and document from the preceding vertical case.
 const fullFlow = process.env.H6_LIVE === '1' && (process.env.H6_FULL === '1' || process.env.H6_EARLY_FULL === '1');
@@ -16,38 +17,109 @@ const collab = process.env.H6_COLLAB_ORIGIN;
 const notice = process.env.H6_NOTICE_ORIGIN;
 const token = process.env.H6_TOKEN;
 
+function listenerOwner(rows, portNumber, direct) {
+  if (rows.length !== 2 || !rows[1].includes(`127.0.0.1:${portNumber} (LISTEN)`)) throw new Error('Unexpected non-loopback listener');
+  const owner = Number(rows[1].trim().split(/\s+/)[1]);
+  if (direct && owner !== runner) throw new Error('Unexpected runner listener');
+  return owner;
+}
+
 function verifyListener(portNumber, direct) {
   const rows = execFileSync('lsof', ['-nP', `-iTCP:${portNumber}`, '-sTCP:LISTEN'], { encoding: 'utf8' }).trim().split('\n');
-  if (rows.length !== 2 || !rows[1].includes(`127.0.0.1:${portNumber} (LISTEN)`)) throw new Error('Unexpected non-loopback listener');
-  let owner = Number(rows[1].trim().split(/\s+/)[1]);
-  if (direct && owner !== runner) throw new Error('Unexpected runner listener');
+  let owner = listenerOwner(rows, portNumber, direct);
   for (let i = 0; !direct && i < 10 && owner > 1 && owner !== runner; i += 1) {
     owner = Number(execFileSync('ps', ['-p', String(owner), '-o', 'ppid='], { encoding: 'utf8' }).trim());
   }
   if (owner !== runner) throw new Error('Worker listener is not owned by runner');
 }
 
-function verifyOwner() {
-  const pid = Number(JSON.parse(fs.readFileSync(`${scratch}/owner.json`, 'utf8')).pid);
+function verifyEnvironment(pid) {
   if (!Number.isInteger(port) || !Number.isInteger(pid) || !Number.isInteger(runner)
     || !scratch?.startsWith('/private/var/folders/8f/crktqh_97mx5x7zqws2nxfqr0000gq/T/opencode/helix6-h5-')
     || process.env.H6_STORE !== `${scratch}/oak` || !token
     || new URL(ui).hostname !== '127.0.0.1' || new URL(collab).hostname !== '127.0.0.1' || new URL(notice).hostname !== '127.0.0.1') throw new Error('Use the dedicated H6 runner');
-  const rows = execFileSync('lsof', ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN'], { encoding: 'utf8' }).trim().split('\n');
-  const parent = Number(execFileSync('ps', ['-p', String(pid), '-o', 'ppid='], { encoding: 'utf8' }).trim());
-  const command = execFileSync('ps', ['-p', String(pid), '-o', 'command='], { encoding: 'utf8' });
+}
+
+function verifySourceOwner(pid, rows, parent, command) {
   if (parent !== runner || rows.length !== 2 || !new RegExp(`\\s${pid}\\s`).test(rows[1]) || !rows[1].includes(`127.0.0.1:${port} (LISTEN)`)
     || !command.includes(`-Dda-rs.oak.directory=${scratch}/oak`) || !command.includes('-Dda-rs.security.enabled=true')
     || !command.includes('-Dda-rs.security.identity-provider=local') || !command.includes(`-Dda-rs.collab.origin=${notice}`)
     || !command.includes(`-Dda-rs.admin.public-origin=${source}`) || !command.includes(`-Dda-rs.cors.allowed-origins=${ui}`)) throw new Error('Unexpected local server');
+  const branchGate = '-Dda-rs.helix6.branching.enabled=';
+  const gateOff = process.env.H6_BRANCH_GATE_OFF === '1';
+  if (gateOff ? !command.includes(`${branchGate}false`) : command.includes(branchGate)) throw new Error('Unexpected B5 branch gate');
+}
+
+function verifyOwner() {
+  const pid = Number(JSON.parse(fs.readFileSync(`${scratch}/owner.json`, 'utf8')).pid);
+  verifyEnvironment(pid);
+  const rows = execFileSync('lsof', ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN'], { encoding: 'utf8' }).trim().split('\n');
+  const parent = Number(execFileSync('ps', ['-p', String(pid), '-o', 'ppid='], { encoding: 'utf8' }).trim());
+  const command = execFileSync('ps', ['-p', String(pid), '-o', 'command='], { encoding: 'utf8' });
+  verifySourceOwner(pid, rows, parent, command);
   verifyListener(Number(new URL(ui).port), true);
   verifyListener(Number(process.env.H6_GATE_PORT), true);
   verifyListener(Number(new URL(notice).port), true);
   verifyListener(Number(new URL(collab).port), false);
 }
 
+// Route guards use the same checks as verifyOwner, but never block Playwright's
+// event loop while concurrent real discovery requests are waiting to continue.
+const execFileAsync = promisify(execFile);
+const output = async (command, args) => (await execFileAsync(command, args, { encoding: 'utf8' })).stdout;
+async function verifyListenerAsync(portNumber, direct) {
+  const rows = (await output('lsof', ['-nP', `-iTCP:${portNumber}`, '-sTCP:LISTEN'])).trim().split('\n');
+  let owner = listenerOwner(rows, portNumber, direct);
+  for (let i = 0; !direct && i < 10 && owner > 1 && owner !== runner; i += 1) {
+    owner = Number((await output('ps', ['-p', String(owner), '-o', 'ppid='])).trim());
+  }
+  if (owner !== runner) throw new Error('Worker listener is not owned by runner');
+}
+
+async function verifyOwnerAsync() {
+  const pid = Number(JSON.parse(await fs.promises.readFile(`${scratch}/owner.json`, 'utf8')).pid);
+  verifyEnvironment(pid);
+  const sourceCheck = async () => {
+    const [listener, parent, command] = await Promise.all([
+      output('lsof', ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN']),
+      output('ps', ['-p', String(pid), '-o', 'ppid=']),
+      output('ps', ['-p', String(pid), '-o', 'command=']),
+    ]);
+    verifySourceOwner(pid, listener.trim().split('\n'), Number(parent.trim()), command);
+  };
+  await Promise.all([
+    sourceCheck(),
+    verifyListenerAsync(Number(new URL(ui).port), true),
+    verifyListenerAsync(Number(process.env.H6_GATE_PORT), true),
+    verifyListenerAsync(Number(new URL(notice).port), true),
+    verifyListenerAsync(Number(new URL(collab).port), false),
+  ]);
+}
+
+let routeOwnerCheck;
+let routeOwnerWaiters = 0;
+async function verifyRouteOwner(observed, pathname) {
+  const stats = observed.guard ??= { checks: 0, joined: 0, maxConcurrent: 0, maxWaitMs: 0, failures: 0, capabilities: [] };
+  const shared = Boolean(routeOwnerCheck);
+  if (shared) stats.joined += 1;
+  else {
+    stats.checks += 1;
+    routeOwnerCheck = verifyOwnerAsync().finally(() => { routeOwnerCheck = undefined; });
+  }
+  const started = Date.now();
+  routeOwnerWaiters += 1;
+  stats.maxConcurrent = Math.max(stats.maxConcurrent, routeOwnerWaiters);
+  let ok = false;
+  try { await routeOwnerCheck; ok = true; } catch (error) { stats.failures += 1; throw error; } finally {
+    routeOwnerWaiters -= 1;
+    const waitMs = Date.now() - started;
+    stats.maxWaitMs = Math.max(stats.maxWaitMs, waitMs);
+    if (pathname.endsWith('/capabilities')) stats.capabilities.push({ waitMs, shared, ok });
+  }
+}
+
 async function api(request, method, route, data, status, contentType, extraHeaders = {}) {
-  verifyOwner();
+  await verifyOwnerAsync();
   const response = await request.fetch(`${source}${route}`, { method, data, headers: { authorization: `Bearer ${token}`, ...(contentType ? { 'content-type': contentType } : {}), ...extraHeaders }, maxRedirects: 0 });
   expect(response.status(), `${method} ${route}: ${(await response.text()).replaceAll(token, '[redacted]')}`).toBe(status);
   return response;
@@ -146,13 +218,33 @@ async function install(page, observed) {
       }
     };
   }, { identity: token, trustedUi: ui, workerOrigin: collab.replace('http:', 'ws:') });
+  const requestStarted = new WeakMap();
+  const elapsed = (request) => Date.now() - (requestStarted.get(request) || Date.now());
   page.on('pageerror', (error) => { observed.errors.push(error.message); });
-  page.on('request', (request) => { const url = new URL(request.url()); if (url.origin !== ui || ['/canvas', '/browse', '/'].includes(url.pathname)) observed.requests.push(`${request.method()} ${url.origin}${url.pathname}`); });
-  page.on('response', (response) => { const url = new URL(response.url()); if (url.origin === source) observed.responses.push(`${response.status()} ${response.request().method()} ${url.pathname}`); });
+  page.on('request', (request) => { const url = new URL(request.url()); requestStarted.set(request, Date.now()); if (url.origin !== ui || ['/canvas', '/browse', '/'].includes(url.pathname)) observed.requests.push(`${request.method()} ${url.origin}${url.pathname}`); });
+  page.on('requestfailed', (request) => {
+    const url = new URL(request.url());
+    const error = String(request.failure()?.errorText || 'unknown').replaceAll(token, '[redacted]');
+    observed.failed ??= [];
+    observed.failed.push({ method: request.method(), url: `${url.origin}${url.pathname}`, error, ms: elapsed(request) });
+    if (url.origin === source && url.pathname.endsWith('/capabilities')) {
+      observed.discovery ??= [];
+      observed.discovery.push({ path: url.pathname, status: 'failed', error, ms: elapsed(request) });
+    }
+  });
+  page.on('response', (response) => {
+    const url = new URL(response.url());
+    if (url.origin !== source) return;
+    observed.responses.push(`${response.status()} ${response.request().method()} ${url.pathname}`);
+    if (url.pathname.endsWith('/capabilities')) {
+      observed.discovery ??= [];
+      observed.discovery.push({ path: url.pathname, status: response.status(), ms: elapsed(response.request()) });
+    }
+  });
   page.on('websocket', (socket) => { const url = new URL(socket.url()); observed.sockets.push(`${url.origin}${url.pathname}`); });
   await page.route('**/*', async (route) => {
     const url = new URL(route.request().url());
-    if (url.origin === source) { verifyOwner(); return route.continue(); }
+    if (url.origin === source) { await verifyRouteOwner(observed, url.pathname); return route.continue(); }
     if (url.origin !== ui) { observed.blocked.push(`${route.request().method()} ${url.origin}${url.pathname}`); return route.abort('blockedbyclient'); }
     if (['/', '/browse', '/canvas', '/__empty'].includes(url.pathname)) return route.continue();
     if (url.pathname === '/h6-shell.js') return route.fulfill({ contentType: 'text/javascript', body: shell });
@@ -196,6 +288,10 @@ async function install(page, observed) {
   });
 }
 
+// Reuse the identical guarded H5 environment in the separate B5 spec. Do not
+// register the H5 cases when this module is loaded by the B5 configuration.
+module.exports = { api, install, verifyOwner, source, ui, collab, notice, token, scratch };
+if (process.env.H6_BRANCH !== '1') {
 test('baseline real Canvas route trace on an authorized legacy site', async ({ request, browser }) => {
   test.skip(process.env.H6_BASELINE !== '1', 'Frozen baseline only');
   const permissions = { permissions: { data: [
@@ -407,6 +503,35 @@ test('first live checkpoint: reopened H6 discovery and real Canvas Worker PUT', 
     expect(controlPut).toContain('initiator=collab');
     expect(controlPut).toContain('auth=present');
     console.log(`H6 LEGACY CONTROL RECEIPT ${JSON.stringify({ route: '/source/h6test/control/page.html', ifMatch: '*', contentType: controlType, auth: 'present', initiator: 'collab', status: 201, flush: controlFlush.ok, flushFrames: flushFrames - controlFlushesBefore })}`);
+    if (process.env.H6_BRANCH_BASELINE === '1') {
+      // Capture the pre-extension transport, without replacing Canvas or its Worker.
+      await api(request, 'POST', '/branches/h6test/control/enable', undefined, 200);
+      await api(request, 'POST', '/branches/h6test/control/', JSON.stringify({ name: 'draft' }), 201, 'application/json');
+      const draft = '/source/h6test/control~draft/page.html';
+      const previous = (await api(request, 'GET', draft, undefined, 200)).headers().etag;
+      const offset = fs.readFileSync(logPath, 'utf8').length;
+      const branchPage = await context.newPage();
+      let branchFlushFrames = 0;
+      branchPage.on('websocket', (socket) => socket.on('framesent', ({ payload }) => {
+        if (Buffer.isBuffer(payload) && payload[0] === 2) branchFlushFrames += 1;
+      }));
+      await install(branchPage, observed);
+      await branchPage.goto(`${ui}/canvas?da-admin=local&da-source=da-rs&da-collab=local#/h6test/control~draft/page`);
+      await expect.poll(() => observed.requests.includes(`HEAD ${source}${draft}`), { timeout: 30000 }).toBe(true);
+      const editorDraft = branchPage.locator('ew-editor-doc .ProseMirror');
+      await expect(editorDraft).toContainText('legacy connected edit');
+      await expect(editorDraft).toHaveAttribute('contenteditable', 'true');
+      await editorDraft.click();
+      await editorDraft.press('End');
+      await branchPage.keyboard.insertText(' DA branch baseline');
+      expect((await branchPage.locator('ew-editor-doc').evaluate((element) => element.forceSave())).ok).toBe(true);
+      await expect.poll(() => branchFlushFrames).toBeGreaterThan(0);
+      await expect.poll(async () => (await (await api(request, 'GET', draft, undefined, 200)).text()).includes('DA branch baseline')).toBe(true);
+      const workerTrace = fs.readFileSync(logPath, 'utf8').slice(offset).split('\n').filter((line) => line.includes(` ${draft} `));
+      expect(workerTrace.some((line) => line.includes(`SOURCE PUT ${draft} match=${previous} status=201 `) && line.includes('multipart/form-data'))).toBe(true);
+      expect(await (await api(request, 'GET', '/source/h6test/control/page.html', undefined, 200)).text()).not.toContain('DA branch baseline');
+      console.log(`H6 DA BRANCH BASELINE RECEIPT ${JSON.stringify({ browserHead: draft, initialEtag: previous, workerTrace, flushFrames: branchFlushFrames })}`);
+    }
     expect(observed.blocked).toEqual([]);
     expect(observed.errors).toEqual([]);
     fs.writeFileSync(`${scratch}/vertical-ready`, 'passed\n', { mode: 0o600 });
@@ -715,16 +840,74 @@ test('full H6: independent real Browse create, copy and trash', async ({ request
     const copiedPath = await copyBrowseDocument(page, request, 'browsecopydoc', 'h5folder', originalBody);
     expect(observed.requests.some((entry) => entry === `PUT ${source}${copiedPath}`)).toBe(true);
     await page.goto(browseRoot());
-    const row = page.locator('da-browse da-list-item').filter({ hasText: 'browsecopydoc' });
+    // The folder copy has the same name and can remain visible during hash navigation.
+    const row = page.locator('da-browse da-list-item[path="/h6test/work/browsecopydoc.html"]');
     await expect(row).toBeVisible({ timeout: 30000 });
     await row.getByRole('checkbox', { name: 'Select item' }).check();
     await confirmBrowseDelete(page);
     await expect(row).toHaveCount(0);
     await api(request, 'GET', h6, undefined, 404);
     const { route: trashRoute } = await findTrashedById(request, identity);
-    await page.reload();
-    await expect(page.locator('da-browse da-list-item').filter({ hasText: 'h5folder' })).toBeVisible();
-    await expect(page.locator('da-browse da-list-item[path="/h6test/work/.trash"]')).toHaveCount(0);
+    const rootPath = '/h6test/sites/work/source/';
+    const listingSummary = (items) => Array.isArray(items)
+      ? items.map((item) => ({ name: item?.name, type: item?.['content-type'] })) : items;
+    const assertFolder = (items, label) => {
+      expect(Array.isArray(items), `${label}: expected a Source listing array`).toBe(true);
+      const folders = items.filter((item) => item?.name === 'h5folder/' || item?.name === 'h5folder');
+      expect(folders, `${label}: expected the real h5folder listing`).toHaveLength(1);
+      expect(folders[0]['content-type']).toBe('application/folder');
+    };
+    const browseState = () => page.evaluate(() => {
+      const browse = document.querySelector('da-browse');
+      const list = browse?.shadowRoot?.querySelector('da-list.da-list-type-browse');
+      const create = browse?.shadowRoot?.querySelector('da-new');
+      const items = (value) => (Array.isArray(value) ? value.map((item) => ({ name: item?.name, path: item?.path })) : null);
+      return {
+        href: window.location.href,
+        routeStarted: window.routeStarted ?? null,
+        browsePath: browse?.details?.fullpath ?? null,
+        browsePermissions: browse?._permissions ?? null,
+        listPath: list?.fullpath ?? null,
+        listPermissions: list?._permissions ?? null,
+        directoryError: list?._directoryError ?? null,
+        emptyMessage: list?._emptyMessage ?? null,
+        hasDirectoryReady: Boolean(list?._directoryReady),
+        items: items(list?._listItems),
+        filteredItems: items(list?.filteredItems),
+        filter: list?._filter ?? null,
+        hiddenTypes: Array.isArray(list?._hiddenTypes) || list?._hiddenTypes instanceof Set ? [...list._hiddenTypes] : null,
+        newDisabled: create?._disabled ?? null,
+      };
+    });
+    let reloadCommitted = false;
+    const onReloadNavigation = (frame) => { if (frame === page.mainFrame()) reloadCommitted = true; };
+    try {
+      const before = await (await api(request, 'GET', rootPath, undefined, 200)).json();
+      console.log(`H6 BROWSE ROOT BEFORE RELOAD ${JSON.stringify(listingSummary(before)).replaceAll(token, '[redacted]')}`);
+      assertFolder(before, 'Source before reload');
+      page.on('framenavigated', onReloadNavigation);
+      const [response] = await Promise.all([
+        page.waitForResponse((result) => reloadCommitted && result.request().method() === 'GET'
+          && result.url() === `${source}${rootPath}`, { timeout: 30000 }),
+        page.reload(),
+      ]);
+      expect(response.status(), 'Browser root listing after reload').toBe(200);
+      const after = await response.json();
+      console.log(`H6 BROWSE ROOT AFTER RELOAD ${JSON.stringify({ status: response.status(), items: listingSummary(after) }).replaceAll(token, '[redacted]')}`);
+      assertFolder(after, 'Browser Source after reload');
+      await expect.poll(browseState, { timeout: 30000, message: 'Browse must apply the real root listing after reload' }).toMatchObject({
+        browsePath: '/h6test/work',
+        listPath: '/h6test/work',
+        directoryError: null,
+        items: expect.arrayContaining([expect.objectContaining({ path: '/h6test/work/h5folder' })]),
+      });
+      await expect(page.locator('da-browse da-list-item').filter({ hasText: 'h5folder' })).toBeVisible({ timeout: 30000 });
+      await expect(page.locator('da-browse da-list-item[path="/h6test/work/.trash"]')).toHaveCount(0);
+    } catch (error) {
+      const state = await browseState().catch((diagnosticError) => ({ diagnosticError: diagnosticError.message }));
+      console.log(`H6 BROWSE RELOAD DIAGNOSTIC ${JSON.stringify(state).replaceAll(token, '[redacted]')}`);
+      throw error;
+    } finally { page.off('framenavigated', onReloadNavigation); }
     expect((await api(request, 'HEAD', trashRoute, undefined, 200)).headers()['x-da-id']).toBe(identity);
     expect(await (await api(request, 'GET', location, undefined, 200)).text()).toBe(originalBody);
     expect(observed.requests.some((entry) => entry === `DELETE ${source}${h6}`)).toBe(true);
@@ -838,3 +1021,4 @@ test('full H6: alias room and delayed real PUT fence in both API directions', as
     await context.close();
   }
 });
+}

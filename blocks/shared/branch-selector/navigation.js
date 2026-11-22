@@ -58,8 +58,9 @@ export async function switchContentBranch(branch, options = {}) {
   const { site } = parseSiteSegment(parts[1]);
   const nextSite = withBranch(site, branch);
   if (nextSite === parts[1]) return;
-  if (branch) await validate({ org: parts[0], site, branch, siteSegment: nextSite });
-  else if (!await defaultMatches(parts[0], site)) throw new Error('Default Source is not bound to da-rs');
+  if (branch) {
+    await validate({ org: parts[0], site, branch, siteSegment: nextSite }, { forceFresh: true });
+  } else if (!await defaultMatches(parts[0], site)) throw new Error('Default Source is not bound to da-rs');
   const isCurrent = () => location.hash === originalHash
     && location.pathname === pathname && location.search === search;
   if (!isCurrent()) throw new Error('The current location changed');
@@ -152,7 +153,7 @@ export function installBranchHashGuard(options = {}) {
       && window.location.hash === originalHash && window.location.pathname === pathname
       && window.location.search === search;
     const navigate = async () => {
-      if (target) await validate(target);
+      if (target) await validate(target, { forceFresh: true });
       if (!target && old && newScope === `${old.org}/${old.site}`
         && !await defaultMatches(old.org, old.site)) {
         throw new Error('Default Source is not bound to da-rs');

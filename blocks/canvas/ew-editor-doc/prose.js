@@ -267,7 +267,8 @@ export default async function initProse({
       return new MergeConflictsDeletedView(node, view, getPos);
     },
   } : {};
-  if (isDaRsBinding() && !sourceParts[3]?.includes('~')) {
+  const legacyBranch = sourceParts[1] === 'source' && sourceParts[3]?.includes('~');
+  if (isDaRsBinding() && !legacyBranch) {
     diffNodeViews.image = createDaRsImageView;
   }
 

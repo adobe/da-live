@@ -30,7 +30,8 @@ export default function mediaBusImage(ctx) {
     key: mediaBusImageKey,
     view(view) {
       if (ctx?.repo?.includes('~') || isDaRsBinding()) {
-        const renderer = ctx?.repo?.includes('~') ? createBranchMediaRenderer(ctx) : createDaRsMediaRenderer(ctx);
+        const renderer = isDaRsBinding()
+          ? createDaRsMediaRenderer(ctx) : createBranchMediaRenderer(ctx);
         renderer.update(view);
         return {
           update(updatedView, prevState) {

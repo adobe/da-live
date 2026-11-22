@@ -23,6 +23,11 @@ if (!baseline && process.env.H6_BASELINE_NO_UPGRADE) throw new Error('Baseline d
 if (process.env.H6_EARLY_FULL && process.env.H6_FULL) throw new Error('Choose early diagnostic or final full mode, not both');
 if (process.env.H6_DIAGNOSTIC_BUILD && (baseline || process.env.H6_FULL)) throw new Error('Diagnostic build cannot run baseline or final full suite');
 if (process.env.H6_CASE && process.env.H6_EARLY_FULL !== '1') throw new Error('Filtered cases are early diagnostics only');
+const branch = process.env.H6_BRANCH === '1';
+const branchOff = process.env.H6_BRANCH_GATE_OFF === '1';
+if (branch && (baseline || process.env.H6_FULL || process.env.H6_EARLY_FULL || process.env.H6_CASE || process.env.H6_DIAGNOSTIC_BUILD)) throw new Error('B5 cannot be combined with baseline, H5 full, filters or diagnostic builds');
+if ((process.env.H6_BRANCH_FULL || branchOff) && !branch) throw new Error('B5 modes require H6_BRANCH=1');
+if (branchOff && process.env.H6_BRANCH_FULL) throw new Error('Gate-off is a separate B5 run');
 const runtimeWorkspace = path.join(scratch, baseline ? 'baseline' : 'live');
 const rs = path.join(runtimeWorkspace, 'da-rs');
 const oak = path.join(scratch, 'oak');
@@ -78,6 +83,7 @@ async function main() {
   const [port] = await ports(1);
   const restartKey = randomBytes(24).toString('hex');
   let restart;
+  const importMap = '<script type="importmap">{"imports":{"da-lit":"/deps/lit/dist/index.js","da-y-wrapper":"/deps/da-y-wrapper/dist/index.js","da-parser":"/deps/da-parser/dist/index.js","hast-util-from-html":"/test/fixtures/hast-stub.js"}}</script>';
   const ui = http.createServer((request, response) => {
     const route = new URL(request.url, 'http://localhost').pathname;
     if (route === '/__restart' && request.method === 'POST') {
@@ -86,8 +92,8 @@ async function main() {
       return;
     }
     if (!['/', '/browse', '/canvas', '/__empty'].includes(route)) { response.writeHead(404).end(); return; }
-    if (route === '/__empty') { response.writeHead(200, { 'content-type': 'text/html' }).end('<!doctype html><title>Local H6 CORS</title>'); return; }
-    response.writeHead(200, { 'content-type': 'text/html' }).end('<!doctype html><meta charset="utf-8"><main><div id="route"></div></main><script type="importmap">{"imports":{"da-lit":"/deps/lit/dist/index.js","da-y-wrapper":"/deps/da-y-wrapper/dist/index.js","da-parser":"/deps/da-parser/dist/index.js","hast-util-from-html":"/test/fixtures/hast-stub.js"}}</script><script type="module" src="/h6-shell.js"></script>');
+    if (route === '/__empty') { response.writeHead(200, { 'content-type': 'text/html' }).end(`<!doctype html><title>Local H6 CORS</title>${importMap}`); return; }
+    response.writeHead(200, { 'content-type': 'text/html' }).end(`<!doctype html><meta charset="utf-8"><main><div id="route"></div></main>${importMap}<script type="module" src="/h6-shell.js"></script>`);
   });
   await new Promise((resolve, reject) => ui.once('error', reject).listen(0, '127.0.0.1', resolve));
   const uiOrigin = `http://127.0.0.1:${ui.address().port}`;
@@ -108,7 +114,7 @@ async function main() {
     notifications = await startNotificationGate(worker.origin, source, secret);
     log = fs.openSync(path.join(scratch, 'da-rs.log'), 'w', 0o600);
     const identities = JSON.stringify({ [token]: { email: 'author@example.test', orgs: [] } });
-    const javaArgs = ['-Dquarkus.http.host=127.0.0.1', `-Dquarkus.http.port=${port}`, '-Dda-rs.oak.type=segment', `-Dda-rs.oak.directory=${oak}`, `-Dda-rs.oak.blob-directory=${oak}/blobs`, '-Dda-rs.security.enabled=true', '-Dda-rs.security.identity-provider=local', `-Dda-rs.security.local-identities=${identities}`, `-Dda-rs.cors.allowed-origins=${uiOrigin}`, '-Dda-rs.helix6.enabled=true', `-Dda-rs.collab.origin=${notifications.origin}`, `-Dda-rs.collab.shared-secret=${secret}`, `-Dda-rs.admin.public-origin=${source}`, '-jar', path.join(rs, 'target/quarkus-app/quarkus-run.jar')];
+    const javaArgs = ['-Dquarkus.http.host=127.0.0.1', `-Dquarkus.http.port=${port}`, '-Dda-rs.oak.type=segment', `-Dda-rs.oak.directory=${oak}`, `-Dda-rs.oak.blob-directory=${oak}/blobs`, '-Dda-rs.security.enabled=true', '-Dda-rs.security.identity-provider=local', `-Dda-rs.security.local-identities=${identities}`, `-Dda-rs.cors.allowed-origins=${uiOrigin}`, '-Dda-rs.helix6.enabled=true', ...(branchOff ? ['-Dda-rs.helix6.branching.enabled=false'] : []), `-Dda-rs.collab.origin=${notifications.origin}`, `-Dda-rs.collab.shared-secret=${secret}`, `-Dda-rs.admin.public-origin=${source}`, '-jar', path.join(rs, 'target/quarkus-app/quarkus-run.jar')];
     async function startSource() {
       child = spawn('java', javaArgs, { cwd: rs, stdio: ['ignore', log, log] });
       child.on('error', (error) => { child.spawnError = error; });
@@ -141,7 +147,7 @@ async function main() {
     delete env.TEST_PASSWORD;
     for (const key of ['HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'http_proxy', 'https_proxy', 'all_proxy', 'NODE_USE_ENV_PROXY']) delete env[key];
     env.NO_PROXY = '*';
-    playwright = spawn(process.execPath, [path.join(__dirname, '../node_modules/@playwright/test/cli.js'), 'test', '-c', path.join(__dirname, 'playwright.config.cjs')], { cwd: __dirname, stdio: 'inherit', env });
+    playwright = spawn(process.execPath, [path.join(__dirname, '../node_modules/@playwright/test/cli.js'), 'test', '-c', path.join(__dirname, branch ? 'playwright.branch.config.cjs' : 'playwright.config.cjs')], { cwd: __dirname, stdio: 'inherit', env });
     const result = await new Promise((resolve, reject) => { playwright.once('error', reject); playwright.once('exit', (code) => resolve(code ?? 1)); });
     if (process.exitCode !== 130) process.exitCode = result;
   } finally {

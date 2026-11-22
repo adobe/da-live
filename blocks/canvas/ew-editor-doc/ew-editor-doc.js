@@ -29,11 +29,12 @@ import initProse from './prose.js';
 import { setBlockFocus, clearBlockFocus } from './prose-plugins/blockFocus.js';
 import { createTrackingPlugin } from '../editor-utils/prose-diff.js';
 import { resolveEditorDocSession } from './utils/load-editor-doc.js';
+import { isBoundHelixBranchDocument } from './utils/source.js';
+import { createEditorViewBridge } from './utils/editor-view-bridge.js';
 import { afterNextPaint, ensureProseMountedInShadow } from './utils/shadow-mount.js';
 import { teardownEditorDocResources } from './utils/teardown.js';
 import { setSelectionToolbarCtx } from '../editor-utils/selection-toolbar.js';
 import { toolbarController } from '../editor-utils/toolbar-controller.js';
-import { createExtensionsBridgePlugin } from '../editor-utils/extensions-bridge.js';
 import mediaBusImage from './prose-plugins/mediaBusImage.js';
 import { MESSAGE_TYPES } from '../utils/quick-edit-messages.js';
 import { canvasBus } from '../utils/canvas-bus.js';
@@ -390,19 +391,26 @@ export class EwEditorDoc extends LitElement {
     }
 
     const context = this.ctx;
+    const { href } = window.location;
+    const boundBranch = isDaRsBinding() && context.repo?.includes('~');
     const session = this.session ?? await resolveEditorDocSession(context);
+    if (boundBranch && (!isDaRsBinding() || window.location.href !== href
+      || this.ctx !== context || !this.isConnected)) return;
     if (!session.ok) {
       this._error = session.error;
       return;
     }
     const { sourceUrl } = session;
+    const scopedHistory = isBoundHelixBranchDocument(context, sourceUrl);
+    const currentHistory = () => isDaRsBinding() && window.location.href === href
+      && this.ctx === context && this.isConnected;
 
     try {
       const contentBranch = context.repo?.includes('~');
       const commentsDisabled = contentBranch || isDaRsBinding();
       const configContext = { org: context.org, site: context.repo };
       const previewOptions = contentBranch ? {} : await fetchConfigBusOptions(configContext);
-      if (this.ctx !== context || !this.isConnected) return;
+      if (this.ctx !== context || !this.isConnected || (boundBranch && !currentHistory())) return;
       const { token, permissions } = session;
       this._canWrite = permissions.some((permission) => permission === 'write');
       const { proseEl, wsProvider, view, ydoc, undoManager } = await initProse({
@@ -417,7 +425,7 @@ export class EwEditorDoc extends LitElement {
             : this._comments.createPlugin(session, this.ctx, ws);
           return [
             mediaBusImage(this.ctx),
-            contentBranch ? null : createExtensionsBridgePlugin(),
+            createEditorViewBridge(context, sourceUrl, currentHistory),
             createTrackingPlugin(
               (details) => {
                 const body = this._controllerCtx
@@ -452,6 +460,15 @@ export class EwEditorDoc extends LitElement {
         },
       });
 
+      if (scopedHistory && !currentHistory()) {
+        const noop = () => {};
+        const cleanup = { clearPortHandler: noop, wsProvider, view, proseEl };
+        cleanup.onCollabUsersCleared = noop;
+        teardownEditorDocResources(cleanup);
+        ydoc?.destroy();
+        return;
+      }
+
       this._proseContext = {
         proseEl, wsProvider, view, ydoc, undoManager, context, previewOptions,
       };
@@ -476,6 +493,7 @@ export class EwEditorDoc extends LitElement {
 
       this._setupController();
     } catch (e) {
+      if (scopedHistory && !currentHistory()) return;
       this._error = e?.message || 'Failed to load editor';
       this._proseContext = undefined;
       return;
