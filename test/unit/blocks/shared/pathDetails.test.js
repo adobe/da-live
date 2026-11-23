@@ -4,6 +4,67 @@ import '../../milo.js';
 // Dynamic import because Milo dependency
 const { default: getPathDetails } = await import('../../../../blocks/shared/pathDetails.js');
 
+describe('da-rs route aliases', () => {
+  let originalUrl;
+  beforeEach(() => {
+    originalUrl = window.location.href;
+    window.history.replaceState(null, '', '?da-source=da-rs');
+  });
+  afterEach(() => { window.history.replaceState(null, '', originalUrl); });
+
+  const route = (hash, pathname = '/media') => getPathDetails({ pathname, hash: `#${hash}` });
+
+  it('decodes aliases without changing case, Unicode, spaces, underscores, or dots', () => {
+    const alias = '/caf%C3%A9_offers.v2/Machine%20_96017153.v2.jpeg';
+    const details = route(`/demo/frescopa${alias}`);
+    expect(details).to.include({
+      path: '/café_offers.v2/Machine _96017153.v2.jpeg',
+      fullpath: '/demo/frescopa/café_offers.v2/Machine _96017153.v2.jpeg',
+      name: 'Machine _96017153.v2.jpeg',
+    });
+    expect(new URL(details.sourceUrl).pathname).to.equal(`/source/demo/frescopa${alias}`);
+    expect(details.contentUrl).to.equal(undefined);
+    expect(details.previewUrl).to.equal(undefined);
+    expect(route('/demo/frescopa/Package%20MyBarista%20top%20view.jpg').name).to.equal('Package MyBarista top view.jpg');
+    expect(route('/demo/frescopa/HouseBlend-Slight%20Right.png').name).to.equal('HouseBlend-Slight Right.png');
+    expect(route('/demo/frescopa/opaque').fullpath).to.equal('/demo/frescopa/opaque');
+  });
+
+  it('preserves literal branch and folder identity and keeps the sheet suffix convention', () => {
+    const browse = route('/demo/work~draft/Media%20_Assets.v2/', '/browse');
+    expect(browse).to.include({ site: 'work~draft', fullpath: '/demo/work~draft/Media _Assets.v2/' });
+    expect(browse.previewUrl).to.equal(undefined);
+    expect(route('/demo/frescopa/adventures', '/sheet').fullpath).to.equal('/demo/frescopa/adventures.json');
+    expect(route('/demo/frescopa/offers%20_v2.current', '/sheet').fullpath).to.equal('/demo/frescopa/offers _v2.current.json');
+  });
+
+  it('reapplies the selected provider when the path and hash are identical', () => {
+    const { origin } = window.location;
+    const alias = '/demo/frescopa/Machine%20_96017153.jpeg';
+    const setProvider = (provider) => window.history.replaceState(null, '', `${origin}/media?da-source=${provider}#${alias}`);
+    setProvider('hosted');
+    const nativePath = '/demo/frescopa/machine-20-96017153.jpeg';
+    expect(getPathDetails().fullpath).to.equal(nativePath);
+    setProvider('da-rs');
+    expect(getPathDetails().fullpath).to.equal('/demo/frescopa/Machine _96017153.jpeg');
+    setProvider('hosted');
+    expect(getPathDetails().fullpath).to.equal(nativePath);
+  });
+
+  it('rejects ambiguous, traversal and noncanonical route inputs without falling back', () => {
+    [
+      '/Demo/frescopa/file.png', '/demo/fresco%70a/file.png', '/demo/work%7Edraft/file.png',
+      '/demo/work~main/file.png', '/demo/work~draft~x/file.png', '/demo//file.png',
+      '/demo/frescopa/a//file.png', '/demo/frescopa/../file.png', '/demo/frescopa/./file.png',
+      '/demo/frescopa/%2e%2E/file.png', '/demo/frescopa/%2Ffile.png', '/demo/frescopa/%252Ffile.png',
+      '/demo/frescopa/%2520.png', '/demo/frescopa/file%00.png', '/demo/frescopa/file%09.png',
+      '/demo/frescopa/a\\file.png', '/demo/frescopa/a%5Cfile.png', '/demo/frescopa/a%3Ffile.png',
+      '/demo/frescopa/file.png?other', '/demo/frescopa/file.png#other', '/demo/frescopa/file%23.png',
+      '/demo/frescopa/%C3.png', '/demo/frescopa/file.png/',
+    ].forEach((alias) => expect(() => route(alias), alias).to.throw(TypeError));
+  });
+});
+
 describe('Path details', () => {
   it('preserves branch identity in Source paths without creating delivery URLs', () => {
     const details = getPathDetails({ pathname: '/edit', hash: '#/org/site~branch/page' });

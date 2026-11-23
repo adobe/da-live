@@ -101,6 +101,7 @@ export default class DaList extends DaListBase {
   }
 
   handleItemChecked(e, item, index) {
+    if (this._readOnlyContent) return;
     if (e.detail.shiftKey && this._lastCheckedIndex !== null) {
       const start = Math.min(this._lastCheckedIndex, index);
       const end = Math.max(this._lastCheckedIndex, index);
@@ -189,11 +190,13 @@ export default class DaList extends DaListBase {
           @checked=${(e) => this.handleItemChecked(e, item, idx)}
           @onstatus=${({ detail }) => this.setStatus(detail.text, detail.description, detail.type)}
           @renamecompleted=${(e) => this.handleRenameCompleted(e)}
-          allowselect="${this.select ? true : nothing}"
+          allowselect="${this.canSelect ? true : nothing}"
+          ?readonlycontent=${this._readOnlyContent}
+          .capabilities=${item.capabilities}
           ischecked="${item.isChecked ? true : nothing}"
           isfavorited="${item.isFavorited ? true : nothing}"
           rename="${item.rename ? true : nothing}"
-          name="${item.name}"
+          name="${item.contentProfile === 'aem-import' ? (item.displayName ?? item.name) : item.name}"
           path="${item.path}"
           date="${item.lastModified}"
           ext="${item.ext}"
@@ -225,7 +228,7 @@ export default class DaList extends DaListBase {
 
     return html`
       <div class="da-browse-panel-header" role="row">
-        ${this.renderCheckBox()}
+        ${this._readOnlyContent ? nothing : this.renderCheckBox()}
         <div class="da-browse-sort" role="presentation">
           <!-- Toggle button is split into 2 buttons (enable/disable) to prevent bug re-toggling on blur event -->
           <div role="columnheader" class="da-browse-sort-filter-container">
@@ -272,13 +275,14 @@ export default class DaList extends DaListBase {
           </div>
         </div>
       </div>
-      <div class="da-browse-panel" role="rowgroup" aria-label="File list" @dragenter=${this.drag ? this.dragenter : nothing} @dragleave=${this.drag ? this.dragleave : nothing}>
+      <div class="da-browse-panel" role="rowgroup" aria-label="File list" @dragenter=${this.canDrop ? this.dragenter : nothing} @dragleave=${this.canDrop ? this.dragleave : nothing}>
         ${showList ? this.renderList(filteredItems) : this.renderEmpty()}
-        ${this.drag ? this.renderDropArea() : nothing}
+        ${this.canDrop ? this.renderDropArea() : nothing}
       </div>
       <da-actionbar
         .permissions=${this._permissions}
         .canDelete=${this._canDelete}
+        .readOnly=${this._readOnlyContent}
         @clearselection=${this.handleClearSelection}
         @rename=${this.handleRename}
         @onfavorite=${this.handleFavorite}

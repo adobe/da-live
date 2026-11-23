@@ -1,6 +1,7 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { sanitizeName, EMPTY_DOC } from '../../shared/utils.js';
 import { getNx, getNx2, getNx2Api } from '../../../scripts/utils.js';
+import { isDaRsSelected } from '../../shared/da-rs-bootstrap.js';
 import getEditPath from '../../shared/da-file-item/edit-path.js';
 import '../../shared/da-link-dialog/da-link-dialog.js';
 import '../../shared/da-name-dialog/da-name-dialog.js';
@@ -28,6 +29,7 @@ export default class DaNew extends LitElement {
     editor: { type: String },
     variant: { type: String, reflect: true },
     permissions: { attribute: false },
+    readOnly: { type: Boolean },
     _createType: { state: true },
     _createDialogOpen: { state: true },
     _linkDialogOpen: { state: true },
@@ -47,6 +49,7 @@ export default class DaNew extends LitElement {
   }
 
   handleNewType(e) {
+    if (this.readOnly) return;
     const type = e.detail?.id ?? e.target?.dataset?.type;
     if (type === 'link' && this.fullpath?.split('/')[2]?.includes('~')) return;
     if (type === 'link') {
@@ -62,10 +65,11 @@ export default class DaNew extends LitElement {
   }
 
   async _handleCreate(e) {
+    if (this.readOnly) return;
     const { name: finalName } = e.detail;
     this._createDialogOpen = false;
     this._loading = true;
-    const bound = new URL(window.location.href).searchParams.get('da-source') === 'da-rs';
+    const bound = isDaRsSelected();
     if (bound) this._mediaError = undefined;
     try {
       if (this._createType === 'folder') {
@@ -96,6 +100,7 @@ export default class DaNew extends LitElement {
   }
 
   async _handleLinkSubmit(e) {
+    if (this.readOnly) return;
     if (this.fullpath?.split('/')[2]?.includes('~')) return;
     const { href, text } = e.detail;
     const name = sanitizeName(text || '', { trimTrailing: true });
@@ -117,11 +122,12 @@ export default class DaNew extends LitElement {
   }
 
   async handleAddFile(e) {
+    if (this.readOnly) return;
     const picker = e.target;
     const file = picker?.files?.[0];
     if (!file) return;
     const branch = this.fullpath?.split('/')[2]?.includes('~')
-      || new URL(window.location.href).searchParams.get('da-source') === 'da-rs';
+      || isDaRsSelected();
     if (branch) this._mediaError = undefined;
     this._loading = true;
     try {
@@ -145,6 +151,7 @@ export default class DaNew extends LitElement {
   }
 
   get _disabled() {
+    if (this.readOnly) return true;
     if (!this.permissions) return true;
     return !this.permissions.some((permission) => permission === 'write');
   }

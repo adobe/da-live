@@ -167,6 +167,7 @@ export default class DaList extends DaListBase {
   }
 
   handleItemChecked(e, item, index) {
+    if (this._readOnlyContent) return;
     const visibleItems = this.groupedItems
       .filter(({ label }) => !this._collapsedTypes.has(label))
       .flatMap((group) => group.items);
@@ -387,12 +388,14 @@ export default class DaList extends DaListBase {
           @favoritechange=${(event) => this._onFavoriteChange(event, item)}
           @onstatus=${({ detail }) => this.setStatus(detail.text, detail.description, detail.type)}
           @renamecompleted=${(e) => this.handleRenameCompleted(e)}
-          allowselect="${this.select ? true : nothing}"
+          allowselect="${this.canSelect ? true : nothing}"
+          ?readonlycontent=${this._readOnlyContent}
+          .capabilities=${item.capabilities}
           view="${this.view === 'card' ? 'card' : nothing}"
           ischecked="${item.isChecked ? true : nothing}"
           isfavorited="${item.isFavorited ? true : nothing}"
           rename="${item.rename ? true : nothing}"
-          name="${item.name}"
+           name="${item.contentProfile === 'aem-import' ? (item.displayName ?? item.name) : item.name}"
           path="${item.path}"
           date="${item.lastModified}"
           ext="${item.ext}"
@@ -424,7 +427,7 @@ export default class DaList extends DaListBase {
     const typeLabel = this.getDisplayTypeLabel(label, count);
     return html`
       <div class="da-list-group-header ${collapsed ? 'is-collapsed' : ''}">
-        ${this.select ? html`
+        ${this.canSelect ? html`
           <label class="nx-checkbox ${isGroupIndeterminate ? 'indeterminate' : ''} ${this._bulkLoading ? 'loading' : ''}">
             <input
               type="checkbox"
@@ -484,7 +487,7 @@ export default class DaList extends DaListBase {
     return html`
       <div class="da-browse-panel-header da-browse-table-header ${this.view === 'card' ? 'is-card' : ''}" part="header" role="row">
         <div class="da-browse-header-cell da-browse-header-cell-select" data-column="select">
-          ${this.select ? this.renderCheckBox() : nothing}
+          ${this.canSelect ? this.renderCheckBox() : nothing}
         </div>
         ${this.view === 'card' && this._sort?.property
           && ['ascending', 'descending'].includes(this._sort.direction) ? html`
@@ -505,15 +508,16 @@ export default class DaList extends DaListBase {
         </div>
         <div class="da-browse-header-cell da-browse-header-cell-actions" data-column="actions" aria-hidden="true"></div>
       </div>
-      <div class="da-browse-panel ${this.view === 'card' ? 'card-view' : ''}" role="rowgroup" aria-label="File list" @dragenter=${this.drag ? this.dragenter : nothing} @dragleave=${this.drag ? this.dragleave : nothing}>
+      <div class="da-browse-panel ${this.view === 'card' ? 'card-view' : ''}" role="rowgroup" aria-label="File list" @dragenter=${this.canDrop ? this.dragenter : nothing} @dragleave=${this.canDrop ? this.dragleave : nothing}>
         ${showList ? this.renderList(filteredItems) : this.renderEmpty()}
-        ${this.drag ? this.renderDropArea() : nothing}
+        ${this.canDrop ? this.renderDropArea() : nothing}
       </div>
       <da-actionbar
         class="full-width"
         .canAskCoworker=${this.canAskCoworker}
         .permissions=${this._permissions}
         .canDelete=${this._canDelete}
+        .readOnly=${this._readOnlyContent}
         @clearselection=${this.handleClearSelection}
         @rename=${this.handleRename}
         @onfavorite=${this.handleFavorite}

@@ -3,17 +3,18 @@ import { sanitizePathParts } from '../../scripts/utils.js';
 import { parseSiteSegment } from './content-branch-context.js';
 import { withDaRsBinding } from './da-rs-navigation.js';
 import { isDaRsBinding } from './da-rs-provider.js';
+import { encodeDaRsAliasPath, parseDaRsAliasPath } from './da-rs-alias-path.js';
 
-let currpath;
-let currhash;
-let details;
+function getSourceUrl(api, path, bound) {
+  return `${DA_ORIGIN}/${api}${bound ? encodeDaRsAliasPath(`/${path}`) : `/${path}`}`;
+}
 
 function getSheetExt(editor, path) {
   if (editor === 'sheet' && !path.endsWith('.json')) return `${path}.json`;
   return path;
 }
 
-function getOrgDetails({ editor, pathParts, ext }) {
+function getOrgDetails({ editor, pathParts, ext, bound }) {
   const fullPath = pathParts.join('/');
 
   const parent = ext === null ? `/${fullPath}` : '/';
@@ -30,11 +31,11 @@ function getOrgDetails({ editor, pathParts, ext }) {
     name,
     parent,
     parentName,
-    sourceUrl: `${DA_ORIGIN}/${daApi}/${path}`,
+    sourceUrl: getSourceUrl(daApi, path, bound),
   };
 }
 
-function getRepoDetails({ editor, pathParts, ext }) {
+function getRepoDetails({ editor, pathParts, ext, bound }) {
   const [org, repo] = pathParts;
   const branch = repo.includes('~') ? parseSiteSegment(repo).branch : null;
   const fullPath = pathParts.join('/');
@@ -54,13 +55,13 @@ function getRepoDetails({ editor, pathParts, ext }) {
     name,
     parent,
     parentName,
-    sourceUrl: `${DA_ORIGIN}/${daApi}/${path}`,
-    previewUrl: branch || isDaRsBinding() ? undefined : `https://main--${repo}--${org}.aem.live`,
-    contentUrl: branch || isDaRsBinding() ? undefined : `${CON_ORIGIN}/${fullPath}`,
+    sourceUrl: getSourceUrl(daApi, path, bound),
+    previewUrl: branch || bound ? undefined : `https://main--${repo}--${org}.aem.live`,
+    contentUrl: branch || bound ? undefined : `${CON_ORIGIN}/${fullPath}`,
   };
 }
 
-function getFullDetails({ editor, pathParts, ext }) {
+function getFullDetails({ editor, pathParts, ext, bound }) {
   const [org, repo, ...parts] = pathParts;
   const branch = repo.includes('~') ? parseSiteSegment(repo).branch : null;
   // Fullpath contains repo and org
@@ -87,9 +88,9 @@ function getFullDetails({ editor, pathParts, ext }) {
     name: ext === null ? 'config' : name,
     parent: ext === null ? `${parent}/${name}` : parent,
     parentName: ext === null ? name : parentName,
-    sourceUrl: `${DA_ORIGIN}/${daApi}/${path}`,
-    previewUrl: branch || isDaRsBinding() ? undefined : `https://main--${repo}--${org}.aem.live${pathname}`,
-    contentUrl: branch || isDaRsBinding() ? undefined : `${CON_ORIGIN}/${fullPath}`,
+    sourceUrl: getSourceUrl(daApi, path, bound),
+    previewUrl: branch || bound ? undefined : `https://main--${repo}--${org}.aem.live${pathname}`,
+    contentUrl: branch || bound ? undefined : `${CON_ORIGIN}/${fullPath}`,
   };
 }
 
@@ -107,38 +108,40 @@ function getView(pathname) {
 }
 
 export default function getPathDetails(loc) {
-  const { pathname, hash: tmpHash } = loc || window.location;
-  if (!pathname || !tmpHash) return undefined;
+  const { pathname, hash } = loc || window.location;
+  if (!pathname || !hash) return undefined;
 
-  // There can be non-ideal pieces in the hash (old_hash, access_token)
-  const parts = tmpHash.split('#');
-  const hashPath = parts.find((part) => part.startsWith('/'));
-
-  // If there's not a hash path, return undefined
-  if (!hashPath) return undefined;
-  const hash = `#${hashPath}`;
-
-  // Use cached details if the hash has not changed
-  if (currhash === hash && currpath === pathname && details) return details;
-
-  let fullpath = hash.replace('#', '');
-  window.name = fullpath;
+  const bound = isDaRsBinding();
+  // Only hosted routes accept the legacy IMS fragment salvage logic. A second '#'
+  // in a bound path is invalid, not a reason to silently open its prefix.
+  if (bound && !hash.startsWith('#/')) return undefined;
+  let fullpath = bound ? hash.slice(1) : hash.split('#').find((part) => part.startsWith('/'));
+  if (!fullpath) return undefined;
 
   // config, edit, sheet
   const editor = getView(pathname);
 
   // IMS redirect fragments appear as '/ld_hash=', '/old_hash=', '/access_token=' in the path.
   // fullpath always starts with '/' here, so strip it before the prefix check.
+  if (!bound) window.name = fullpath;
   const pathContent = fullpath.slice(1);
-  if (!pathContent || pathContent.startsWith('old_hash') || pathContent.startsWith('access_token') || pathContent.startsWith('ld_hash')) return null;
+  if (!pathContent || (!bound && /^(?:old_hash|access_token|ld_hash)/.test(pathContent))) return null;
 
   // Split everything up so it can be later used for both DA & AEM
-  const pathParts = sanitizePathParts(fullpath);
+  const pathParts = bound ? parseDaRsAliasPath(fullpath) : sanitizePathParts(fullpath);
+  if (bound) {
+    if (editor === 'media' && (pathParts.length < 3 || !pathParts.at(-1))) {
+      throw new TypeError('Invalid da-rs media path');
+    }
+    window.name = fullpath;
+  }
 
   if (editor === 'edit') {
     // Redirect JSON files from edit view to sheet view
-    if (fullpath.endsWith('.json')) {
-      window.location.href = withDaRsBinding(`/sheet#${fullpath.slice(0, -5)}`);
+    if ((bound ? pathParts.at(-1) : fullpath).endsWith('.json')) {
+      const sheetPath = bound ? encodeDaRsAliasPath(`/${pathParts.join('/')}`).slice(0, -5)
+        : fullpath.slice(0, -5);
+      window.location.href = withDaRsBinding(`/sheet#${sheetPath}`);
       return null;
     }
 
@@ -160,24 +163,23 @@ export default function getPathDetails(loc) {
   }
 
   // Determine extension
-  const ext = getExtension(editor, pathParts.slice(-1)[0], isFolder);
+  const name = pathParts.at(-1);
+  // Media routes carry the complete Source filename, not a document slug.
+  const ext = bound && editor === 'media' ? '' : getExtension(editor, name, isFolder);
 
   const depth = pathParts.length;
   const cleanParts = [...pathParts];
 
-  if (depth === 1) details = getOrgDetails({ editor, pathParts, ext });
-
-  if (depth === 2) details = getRepoDetails({ editor, pathParts, ext });
-
-  if (depth >= 3) details = getFullDetails({ editor, pathParts, ext });
+  const args = { editor, pathParts, ext, bound };
+  let details;
+  if (depth === 1) details = getOrgDetails(args);
+  if (depth === 2) details = getRepoDetails(args);
+  if (depth >= 3) details = getFullDetails(args);
 
   const cleanPath = `/${cleanParts.join('/')}`;
   let path = ext === 'html' && !cleanPath.endsWith('.html') && editor !== 'sheet' ? `${cleanPath}.html` : cleanPath;
-  if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${ext}`;
+  if (editor === 'sheet' && !path.endsWith('.json')) path = `${path}.${bound ? 'json' : ext}`;
   if (isFolder && !path.endsWith('/')) path = `${path}/`;
 
-  details = { ...details, origin: DA_ORIGIN, fullpath: path, depth, view: editor };
-  currhash = hash;
-
-  return details;
+  return { ...details, origin: DA_ORIGIN, fullpath: path, depth, view: editor };
 }

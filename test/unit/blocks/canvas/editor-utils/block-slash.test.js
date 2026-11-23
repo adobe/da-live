@@ -277,4 +277,22 @@ describe('block-slash store', () => {
     expect(checkBlockLibraryConfigured({})).to.be.null;
     expect(hasLibrary()).to.be.false;
   });
+
+  it('skips the hosted library check for da-rs but honors an explicit hosted override', async () => {
+    const originalUrl = window.location.href;
+    const url = new URL(originalUrl);
+    try {
+      url.searchParams.set('da-source', 'da-rs');
+      window.history.replaceState(null, '', url);
+      expect(checkBlockLibraryConfigured({ org: 'testorg', site: 'testsite' })).to.be.null;
+      expect(hasLibrary()).to.be.false;
+      url.searchParams.set('da-source', 'hosted');
+      window.history.replaceState(null, '', url);
+      const pending = checkBlockLibraryConfigured({ org: 'testorg', site: 'testsite' });
+      expect(pending).to.be.instanceOf(Promise);
+      await pending;
+    } finally {
+      window.history.replaceState(null, '', originalUrl);
+    }
+  });
 });

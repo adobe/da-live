@@ -202,3 +202,19 @@ export default async function init(el, data) {
 
   return el.jexcel;
 }
+
+export async function initImported(el, options, isCurrent = () => true) {
+  await adoptStyle('/deps/jspreadsheet-ce/dist/jspreadsheet.css');
+  await loadScript('/deps/jspreadsheet-ce/dist/index.js');
+  await loadScript('/deps/jsuites/dist/jsuites.js');
+  if (!isCurrent()) return null;
+
+  resetSheets(el);
+  window.jspreadsheet.tabs(el, [options]);
+  el.jexcel.forEach((sheet) => {
+    sheet.name = options.sheetName;
+    makeKeyboardAccessible(sheet);
+  });
+  releaseKeyboard();
+  return el.jexcel;
+}

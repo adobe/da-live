@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'da-lit';
 import { getNx, sanitizeName } from '../../../scripts/utils.js';
+import { isDaRsDemoActive } from '../../shared/da-rs-bootstrap.js';
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const styles = await loadStyle(import.meta.url);
@@ -15,6 +16,8 @@ export default class DaSites extends LitElement {
     _recents: { state: true },
     _status: { state: true },
     _urlError: { state: true },
+    _catalog: { state: true },
+    _catalogError: { state: true },
   };
 
   constructor() {
@@ -25,7 +28,30 @@ export default class DaSites extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [styles];
+    if (isDaRsDemoActive()) {
+      this.loadCatalog();
+      return;
+    }
     this._recents = this.getRecents();
+  }
+
+  async loadCatalog() {
+    try {
+      const [{ getDaRsDemoConfig }, { listDaRsCatalog }] = await Promise.all([
+        import('../../shared/da-rs-provider.js'),
+        import('../../shared/da-rs-api.js'),
+      ]);
+      const config = await getDaRsDemoConfig();
+      const catalog = await listDaRsCatalog(config.org);
+      this._catalog = catalog.map((site) => ({
+        ...site,
+        href: `#/${config.org}/${site.name}`,
+        img: `/blocks/browse/da-sites/img/cards/da-${getRandom()}.jpg`,
+        style: `da-card-style-${getRandom()}`,
+      }));
+    } catch (error) {
+      this._catalogError = error.message;
+    }
   }
 
   getRecents() {
@@ -198,7 +224,40 @@ export default class DaSites extends LitElement {
     `;
   }
 
+  renderCatalog() {
+    if (this._catalogError) {
+      return html`<p role="alert">Unable to load the demo sites: ${this._catalogError}</p>`;
+    }
+    if (!this._catalog) return nothing;
+    return html`
+      <ul class="da-sites-list">
+        ${this._catalog.map((site) => html`
+          <li class="da-site-outer">
+            <div class="da-site">
+              <div class="da-site-front">
+                <picture>
+                  <img src="${site.img}" width="480" height="672" alt="" />
+                </picture>
+                <div class="bg-overlay ${site.style}">
+                  <a href="${site.href}">
+                    <span>${site.title}</span>
+                    <span>${site.name}</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </li>`)}
+      </ul>`;
+  }
+
   render() {
+    if (isDaRsDemoActive()) {
+      return html`
+        <div class="da-site-container">
+          <div class="da-site-header"><h2>Sites</h2></div>
+          ${this.renderCatalog()}
+        </div>`;
+    }
     return html`
       <div class="da-site-container">
         <div class="da-site-header">

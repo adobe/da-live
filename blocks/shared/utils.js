@@ -1,3 +1,4 @@
+import { isDaRsSelected } from './da-rs-bootstrap.js';
 import {
   DA_ORIGIN, CON_ORIGIN, DA_ETC_ORIGIN, getLivePreviewUrl, AEM_ORIGIN, isAllowedDaAdminOrigin,
 } from './constants.js';
@@ -62,7 +63,7 @@ export async function getAuthToken() {
 }
 
 export const daFetch = async (url, opts = {}) => {
-  const selected = new URL(window.location.href).searchParams.get('da-source') === 'da-rs';
+  const selected = isDaRsSelected();
   const target = new URL(url, window.location.href);
   const { origin } = target;
   if (selected && !isAllowedDaAdminOrigin(DA_ORIGIN)) throw new Error('Invalid da-rs origin');
@@ -185,7 +186,7 @@ export function parseAemError(xError) {
  * @returns {Promise<object>} The AEM response body, or an { error } object on failure.
  */
 export async function saveToAem(path, action) {
-  if (new URL(window.location.href).searchParams.get('da-source') === 'da-rs') {
+  if (isDaRsSelected()) {
     return { error: { action, message: 'AEM delivery is unavailable on the da-rs provider' } };
   }
   if (path.split('/')[2]?.includes('~')) {
@@ -265,7 +266,7 @@ export async function saveToDa({ path, formData, blob, props, preview = false })
     if (branch) await validateBranch(branch);
   }
 
-  const bound = new URL(window.location.href).searchParams.get('da-source') === 'da-rs';
+  const bound = isDaRsSelected();
   const [, org, site] = path.split('/');
   const api = bound ? await getNx2Api() : null;
   const boundLegacyBranch = bound && site?.includes('~') && !await api.isHlx6(org, site);
@@ -472,7 +473,7 @@ export const fetchDaConfigs = (() => {
   return ({ org, site }) => {
     if (!org) return [Promise.resolve(null)];
 
-    const binding = new URL(window.location.href).searchParams.get('da-source') === 'da-rs'
+    const binding = isDaRsSelected()
       ? `da-rs:${DA_ORIGIN}:` : '';
     const orgKey = `${binding}/${org}`;
     const siteKey = `${binding}/${org}/${site}`;
@@ -511,7 +512,7 @@ export const fetchConfigBusOptions = (() => {
 
   return ({ org, site }) => {
     if (!org || !site) return Promise.resolve({ legacySectionMetadata: false });
-    if (new URL(window.location.href).searchParams.get('da-source') === 'da-rs') {
+    if (isDaRsSelected()) {
       return Promise.resolve({ legacySectionMetadata: false });
     }
     const path = `/${org}/${site}`;
@@ -568,7 +569,7 @@ export const getSidekickConfig = (() => {
 
   return ({ org, site }) => {
     if (!site) return {};
-    if (new URL(window.location.href).searchParams.get('da-source') === 'da-rs') return {};
+    if (isDaRsSelected()) return {};
 
     const path = `/${org}/${site}`;
     // Fetch new SK config if it doesn't exit
@@ -582,7 +583,7 @@ export const getAemSiteToken = (() => {
   const tokenCache = {};
 
   const fetchToken = async (org, site) => {
-    if (new URL(window.location.href).searchParams.get('da-source') === 'da-rs') {
+    if (isDaRsSelected()) {
       throw new Error('AEM token exchange is unavailable on the da-rs provider');
     }
     const { accessToken } = await initIms();
@@ -596,7 +597,7 @@ export const getAemSiteToken = (() => {
   };
 
   return ({ org, site }) => {
-    if (new URL(window.location.href).searchParams.get('da-source') === 'da-rs') {
+    if (isDaRsSelected()) {
       throw new Error('AEM token exchange is unavailable on the da-rs provider');
     }
     const path = `/${org}/${site}`;

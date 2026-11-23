@@ -69,6 +69,19 @@ describe('bound provider extension isolation', () => {
     expect(iframe.contentWindow.postMessage.called).to.equal(false);
   });
 
+  it('allows an explicit hosted selection without changing the iframe origin', async () => {
+    const url = new URL(originalUrl);
+    url.searchParams.set('da-source', 'hosted');
+    url.hash = '#/org/site/page';
+    window.history.replaceState(null, '', url);
+    const iframe = makeIframe();
+    connection = await setupIframeChannel({ iframe, hashState: { org: 'org', site: 'site', path: 'page' }, getView: () => null, onClose() {} });
+    expect(connection.channel).to.not.equal(null);
+    await wait(800);
+    expect(iframe.contentWindow.postMessage.calledOnce).to.equal(true);
+    expect(iframe.contentWindow.postMessage.firstCall.args[1]).to.equal('https://plugin.example.com');
+  });
+
   it('prevents an existing channel from reading or writing a later bound view', async () => {
     const url = new URL(originalUrl);
     url.searchParams.delete('da-source');

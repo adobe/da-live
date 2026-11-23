@@ -1,5 +1,6 @@
 import { LitElement, html } from 'da-lit';
 import { getNx } from '../../../scripts/utils.js';
+import { isDaRsSelected } from '../../shared/da-rs-bootstrap.js';
 
 // Styles
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
@@ -30,6 +31,7 @@ export default class DaActionBar extends LitElement {
     loading: { attribute: false },
     isFavorite: { attribute: false },
     isHlx6: { attribute: false },
+    readOnly: { type: Boolean },
     hidePublishConfs: { attribute: false },
     _isCopying: { state: true },
     _isDeleting: { state: true },
@@ -74,6 +76,7 @@ export default class DaActionBar extends LitElement {
   }
 
   handleRename() {
+    if (this.readOnly) return;
     const opts = { detail: true, bubbles: true, composed: true };
     const event = new CustomEvent('rename', opts);
     this.dispatchEvent(event);
@@ -94,7 +97,7 @@ export default class DaActionBar extends LitElement {
   }
 
   handleShortcut(key) {
-    if (!this.items.length || !['c', 'x', 'v'].includes(key.toLowerCase())) return false;
+    if (this.readOnly || !this.items.length || !['c', 'x', 'v'].includes(key.toLowerCase())) return false;
     const button = this.shadowRoot.querySelector(
       `button[data-shortcut="${key.toLowerCase()}"]:not(:disabled)`,
     );
@@ -109,6 +112,7 @@ export default class DaActionBar extends LitElement {
   }
 
   handlePaste() {
+    if (this.readOnly) return;
     if (this._isMoving && !this.inNewDir()) {
       this.handleClear();
       return;
@@ -120,6 +124,7 @@ export default class DaActionBar extends LitElement {
   }
 
   handleDelete() {
+    if (this.readOnly) return;
     const opts = { bubbles: true, composed: true };
     const event = new CustomEvent('ondelete', opts);
     this.dispatchEvent(event);
@@ -153,12 +158,12 @@ export default class DaActionBar extends LitElement {
   }
 
   get _canWrite() {
-    if (!this.permissions) return false;
+    if (this.readOnly || !this.permissions) return false;
     return this.permissions.some((permission) => permission === 'write');
   }
 
   get _canAemAction() {
-    return new URL(window.location.href).searchParams.get('da-source') !== 'da-rs'
+    return !this.readOnly && !isDaRsSelected()
       && !this.currentPath.split('/')[2]?.includes('~')
       && this._canWrite && this.items.some((item) => item.ext && item.ext !== 'link') && !this._isCopying;
   }
@@ -175,7 +180,7 @@ export default class DaActionBar extends LitElement {
 
   get _canRename() {
     if (!this._canWrite) return false;
-    if (this.isHlx6 && new URL(window.location.href).searchParams.get('da-source') === 'da-rs') return false;
+    if (this.isHlx6 && isDaRsSelected()) return false;
     const isFolder = !this.items[0]?.ext;
     if (this.isHlx6 && isFolder) return false;
     return true;
@@ -187,13 +192,13 @@ export default class DaActionBar extends LitElement {
 
   get _canDelete() {
     // `canDelete` is gated by the site config's browser.allowDelete allowlist.
-    if (this.isHlx6 && new URL(window.location.href).searchParams.get('da-source') === 'da-rs'
+    if (this.isHlx6 && isDaRsSelected()
       && this.items.some((item) => !item.ext)) return false;
     return this._canWrite && this.canDelete;
   }
 
   get _canShare() {
-    return new URL(window.location.href).searchParams.get('da-source') !== 'da-rs'
+    return !this.readOnly && !isDaRsSelected()
       && !this.currentPath.split('/')[2]?.includes('~')
       && this.items.some((item) => item.ext && item.ext !== 'link') && !this._isCopying;
   }
@@ -250,10 +255,10 @@ export default class DaActionBar extends LitElement {
             title="Copy"
             data-shortcut="c"
             aria-keyshortcuts="Meta+C Control+C"
-            ?disabled=${this._isCopying || (this.isHlx6
-              && new URL(window.location.href).searchParams.get('da-source') === 'da-rs'
+            ?disabled=${this.readOnly || this._isCopying || (this.isHlx6
+              && isDaRsSelected()
               && this.items.some((item) => !item.ext))}
-            class="copy-button ${this._isCopying ? 'hide' : ''}">
+            class="copy-button ${this.readOnly || this._isCopying ? 'hide' : ''}">
             ${icon('copy')}
             <span>Copy</span>
           </button>

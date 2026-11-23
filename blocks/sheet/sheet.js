@@ -1,7 +1,12 @@
 import { LitElement, html, nothing, render } from 'da-lit';
 import getPathDetails from '../shared/pathDetails.js';
 import { addRecentFile } from '../shared/recent-files.js';
-import { getNx, getNx2 } from '../../scripts/utils.js';
+import { getNx, getNx2, getNx2Api } from '../../scripts/utils.js';
+import { discoverDaRsCapabilities, siteItemCapabilities } from '../shared/da-rs-provider.js';
+import {
+  ImportedSheetError, validateImportedResponse, parseImportedEnvelope,
+  buildImportedSheet, installImportedGuards,
+} from './utils/imported.js';
 import { renderEmptyList, EMPTY_LIST_CSS } from '../shared/empty-list.js';
 import '../edit/da-title/da-title.js';
 import { getData } from './utils/index.js';
@@ -133,6 +138,33 @@ class DaSheetPanes extends LitElement {
 customElements.define('da-sheet-panes', DaSheetPanes);
 
 let initSheet;
+let navGen = 0;
+let removeImportedGuards;
+
+// Small seam so route tests can supply capabilities without a live da-rs backend.
+export const routeDeps = { discover: (org, site) => discoverDaRsCapabilities(org, site) };
+
+// Runs before any provider, Yjs, default-sheet, listener or save-hook setup. Branch and
+// config URLs are checked against their base site, so they can't bypass an imported profile.
+async function resolveMode(details, branch) {
+  const site = branch?.site ?? details.site;
+  if (!site) return 'native';
+  const caps = await routeDeps.discover(details.org, site);
+  if (!caps || caps.contentProfile !== 'aem-import') return 'native';
+  if (details.view === 'config') throw new Error('Imported content has no editable configuration.');
+  if (branch) throw new Error('Imported content does not support branches.');
+  if (siteItemCapabilities(caps, 'sheet', []).view !== 'sheet-readonly') {
+    throw new Error('This sheet cannot be opened.');
+  }
+  return 'imported';
+}
+
+function clearGrid(daSheet) {
+  daSheet.hidden = true;
+  daSheet.replaceChildren();
+  delete daSheet.jexcel;
+  daSheet.classList.remove('jexcel_tabs');
+}
 
 export function showLoadStatus({ errMsg, wrapper, daSheet, daSheetPanes, daTitle }) {
   daSheet.hidden = !!errMsg;
@@ -191,13 +223,49 @@ async function setSheet(details, daTitle, daSheet) {
   staleCheck.start({ details, onStale });
 }
 
+async function setImported(details, daTitle, daSheet, ui, gen) {
+  staleCheck.stop();
+  clearGrid(daSheet);
+  daTitle.readOnly = true;
+  daTitle.permissions = [];
+  daTitle.details = details;
+  daSheet.details = details;
+  try {
+    const { source } = await getNx2Api();
+    const resp = await source.get({
+      org: details.org,
+      site: details.site,
+      path: details.path,
+      cachebust: true,
+    });
+    if (gen !== navGen) return;
+    validateImportedResponse(resp);
+    const json = await resp.json();
+    if (gen !== navGen) return;
+    const options = buildImportedSheet(parseImportedEnvelope(json));
+    if (!options) {
+      showLoadStatus({ ...ui, errMsg: 'This sheet has no columns.' });
+      return;
+    }
+    const { initImported } = await import('./utils/index.js');
+    const grid = await initImported(daSheet, options, () => gen === navGen);
+    if (!grid || gen !== navGen) return;
+    ui.wrapper.querySelector('.da-sheet-not-permitted')?.remove();
+    daSheet.hidden = false;
+  } catch (error) {
+    if (gen !== navGen) return;
+    const msg = error instanceof ImportedSheetError ? error.message : 'Unable to open imported sheet.';
+    showLoadStatus({ ...ui, errMsg: msg });
+  }
+}
+
 export default async function init(el) {
   installBranchHashGuard();
   let details;
+  let branch;
   try {
     details = getPathDetails();
-    const branch = branchContext();
-    if (branch) await validateBranch(branch);
+    branch = branchContext();
   } catch (error) {
     el.textContent = `Unable to open branch: ${error.message}`;
     return;
@@ -206,9 +274,27 @@ export default async function init(el) {
     el.innerHTML = '<h1>Please edit a sheet.</h1>';
     return;
   }
-  addRecentFile(details.fullpath);
+  let mode;
+  navGen += 1;
+  let gen = navGen;
+  try {
+    mode = await resolveMode(details, branch);
+  } catch (error) {
+    el.textContent = `Unable to open sheet: ${error.message}`;
+    return;
+  }
+  if (gen !== navGen) return;
+  try {
+    if (branch) await validateBranch(branch);
+  } catch (error) {
+    el.textContent = `Unable to open branch: ${error.message}`;
+    return;
+  }
+  if (gen !== navGen) return;
+  const imported = mode === 'imported';
+  if (!imported) addRecentFile(details.fullpath);
 
-  document.title = `Edit sheet ${details.name} - DA`;
+  document.title = `${imported ? 'View' : 'Edit'} sheet ${details.name} - DA`;
 
   // Base Elements
   const daTitle = document.createElement('da-title');
@@ -232,6 +318,39 @@ export default async function init(el) {
   // Sheet view drives daTitle.collabStatus itself (like prose/index.js does for
   // the edit view). staleCheck emits sheet-dirty / sheet-clean on the transition,
   // and we combine that with navigator.onLine into a single status value.
+  const ui = { wrapper, daSheet, daSheetPanes, daTitle };
+  if (imported) {
+    daSheetPanes.hidePanes = true;
+    daTitle.hideActions = true;
+    daTitle.readOnly = true;
+    removeImportedGuards?.();
+    removeImportedGuards = installImportedGuards(wrapper);
+    setImported(details, daTitle, daSheet, ui, gen);
+    el.append(daTitle, versionWrapper);
+    window.addEventListener('hashchange', async () => {
+      navGen += 1;
+      gen = navGen;
+      try {
+        details = getPathDetails();
+        if (!details) return;
+        if (await resolveMode(details, branchContext()) !== 'imported') {
+          window.location.reload();
+          return;
+        }
+      } catch (error) {
+        if (gen === navGen) {
+          clearGrid(daSheet);
+          showLoadStatus({ ...ui, errMsg: `Unable to open sheet: ${error.message}` });
+        }
+        return;
+      }
+      if (gen !== navGen) return;
+      daSheetPanes.pathDetails = details;
+      setImported(details, daTitle, daSheet, ui, gen);
+    });
+    return;
+  }
+
   let isOnline = window.navigator.onLine;
   let isDirty = false;
   const applyStatus = () => {
@@ -262,8 +381,12 @@ export default async function init(el) {
   window.addEventListener('hashchange', async () => {
     try {
       details = getPathDetails();
-      const branch = branchContext();
-      if (branch) await validateBranch(branch);
+      const currentBranch = branchContext();
+      if (details && await resolveMode(details, currentBranch) === 'imported') {
+        window.location.reload();
+        return;
+      }
+      if (currentBranch) await validateBranch(currentBranch);
     } catch (error) {
       showLoadStatus({ errMsg: `Unable to open branch: ${error.message}`, wrapper, daSheet, daSheetPanes, daTitle });
       return;

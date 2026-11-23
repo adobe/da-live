@@ -1639,6 +1639,26 @@ describe('createMetadataView', () => {
 describe('getCanvasToolPanelViews', () => {
   afterEach(() => setDaConfigs([]));
 
+  it('uses the restricted panel for da-rs and the hosted panel for an explicit override', async () => {
+    const originalUrl = window.location.href;
+    const url = new URL(originalUrl);
+    try {
+      setDaConfigs([{ data: [] }]);
+      url.searchParams.set('da-source', 'da-rs');
+      window.history.replaceState(null, '', url);
+      const bound = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
+      expect(bound.map((view) => view.id)).to.not.include('preflight');
+      expect(bound.map((view) => view.id)).to.not.include('comments');
+      url.searchParams.set('da-source', 'hosted');
+      window.history.replaceState(null, '', url);
+      const hosted = await getCanvasToolPanelViews({ org: 'org', site: 'site' });
+      expect(hosted.map((view) => view.id)).to.include('preflight');
+      expect(hosted.map((view) => view.id)).to.include('comments');
+    } finally {
+      window.history.replaceState(null, '', originalUrl);
+    }
+  });
+
   it('includes the metadata view alongside the other first-party Editor views', async () => {
     setDaConfigs([{ data: [] }]);
     const views = await getCanvasToolPanelViews({ org: 'org', site: 'site' });

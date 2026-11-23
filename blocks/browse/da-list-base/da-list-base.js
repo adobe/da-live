@@ -11,6 +11,9 @@ import {
 } from '../../shared/utils.js';
 import { renderEmptyList, NOT_PERMITTED } from '../../shared/empty-list.js';
 import { createVersion } from '../../shared/version/version-actions.js';
+import { discoverDaRsCapabilities } from '../../shared/da-rs-provider.js';
+import { isDaRsSelected } from '../../shared/da-rs-bootstrap.js';
+import { parseSiteSegment } from '../../shared/content-branch-context.js';
 
 export const MAX_DELETE_COUNT = 1000;
 export const DELETE_CONFIRM_THRESHOLD = 10;
@@ -81,6 +84,7 @@ export default class DaListBase extends LitElement {
     _aemActionState: { state: true },
     _isHlx6: { state: true },
     _canDelete: { state: true },
+    _readOnlyContent: { state: true },
   };
 
   constructor() {
@@ -100,6 +104,7 @@ export default class DaListBase extends LitElement {
     this._canUnpublish = true;
     this._listItems = [];
     this._canDelete = true;
+    this._readOnlyContent = false;
   }
 
   static sheets = [];
@@ -160,11 +165,33 @@ export default class DaListBase extends LitElement {
     this._status = { type, text, description };
   }
 
+  get canSelect() { return Boolean(this.select) && !this._readOnlyContent; }
+
+  get canDrop() { return Boolean(this.drag) && !this._readOnlyContent; }
+
+  // Imported (read-only) sites never grant a mutation, whatever the writer ACL says.
+  async isReadOnlySite(path) {
+    const [org, site] = sanitizePathParts(path);
+    if (!org || !site || !isDaRsSelected()) return false;
+    const baseSite = site.includes('~') ? parseSiteSegment(site).site : site;
+    const siteCaps = await discoverDaRsCapabilities(org, baseSite);
+    return siteCaps?.contentProfile === 'aem-import' || siteCaps?.readOnly === true;
+  }
+
+  async resolveReadOnlyContent(path, items = []) {
+    const readOnly = await this.isReadOnlySite(path)
+      || items.some((item) => item?.capabilities?.view === 'sheet-readonly');
+    if (this.fullpath === path) this._readOnlyContent = readOnly;
+  }
+
   handlePermissions(permissions) {
-    this._permissions = permissions;
+    const effectivePermissions = this._readOnlyContent
+      ? permissions.filter((permission) => permission === 'read')
+      : permissions;
+    this._permissions = effectivePermissions;
 
     // Notify parent
-    const opts = { detail: permissions, bubbles: true, composed: true };
+    const opts = { detail: effectivePermissions, bubbles: true, composed: true };
     const event = new CustomEvent('onpermissions', opts);
     this.dispatchEvent(event);
   }
@@ -189,14 +216,25 @@ export default class DaListBase extends LitElement {
   }
 
   async getList() {
+    const path = this.fullpath;
     try {
       this._directoryError = undefined;
       this._continuationToken = null;
+      const [org, site] = sanitizePathParts(path);
+      this._readOnlyContent = Boolean(site && isDaRsSelected());
+      if (site?.includes('~') && await this.isReadOnlySite(path)) {
+        throw new Error('Imported content does not support branches');
+      }
+      if (path !== this.fullpath) return [];
       const { source, isHlx6 } = await getNx2Api();
-      const [org, site] = sanitizePathParts(this.fullpath);
-      this._isHlx6 = site ? await isHlx6(org, site) : false;
-      const { ok, items, continuationToken, permissions } = await source.list(this.fullpath);
+      const upgraded = site ? await isHlx6(org, site) : false;
+      if (path !== this.fullpath) return [];
+      this._isHlx6 = upgraded;
+      const { ok, items, continuationToken, permissions } = await source.list(path);
+      if (ok) await this.resolveReadOnlyContent(path, items);
+      if (path !== this.fullpath) return [];
       if (!ok) {
+        if (this._readOnlyContent) this.handlePermissions([]);
         this._directoryError = 'Not permitted to list filenames';
         this._emptyMessage = NOT_PERMITTED;
         this.resetListItemPaths([]);
@@ -213,6 +251,8 @@ export default class DaListBase extends LitElement {
       this.scheduleAutoCheck();
       return ordered;
     } catch (error) {
+      if (path !== this.fullpath) return [];
+      if (this._readOnlyContent) this.handlePermissions([]);
       this._directoryError = `Directory listing failed: ${error.message}`;
       this._emptyMessage = NOT_PERMITTED;
       this.resetListItemPaths([]);
@@ -222,6 +262,17 @@ export default class DaListBase extends LitElement {
 
   async updateDeletePermission() {
     const [org, site] = sanitizePathParts(this.fullpath);
+
+    // Imported sites expose no config: neither fetch it nor offer delete.
+    try {
+      if (await this.isReadOnlySite(this.fullpath)) {
+        this._canDelete = false;
+        return;
+      }
+    } catch {
+      this._canDelete = false;
+      return;
+    }
 
     // The allowlist lives in the site-level config, so without a site we
     // keep the default behavior of showing delete.
@@ -429,6 +480,7 @@ export default class DaListBase extends LitElement {
   }
 
   handleRename() {
+    if (this._readOnlyContent) return;
     const [item] = this._selectedItems;
     if (!item) return;
     item.rename = true;
@@ -459,6 +511,10 @@ export default class DaListBase extends LitElement {
   }
 
   async handleItemAction({ item, type = 'copy' }) {
+    if (this._readOnlyContent) {
+      this._itemErrors.push({ ...item, message: 'This content is read-only' });
+      return;
+    }
     if (type === 'copy' || type === 'move') {
       const source = item.path?.split('/').slice(1, 3) || [];
       const destination = item.destination?.split('/').slice(1, 3) || [];
@@ -478,7 +534,7 @@ export default class DaListBase extends LitElement {
 
     // If source and dest are in the trash it's a proper move within the trash.
     const moveToTrash = type === 'move' && !item.path.includes('/.trash/') && item.destination.includes('/.trash/');
-    const bound = new URL(window.location.href).searchParams.get('da-source') === 'da-rs';
+    const bound = isDaRsSelected();
 
     let continuationToken;
     let hasCompletedPage = false;
@@ -546,10 +602,11 @@ export default class DaListBase extends LitElement {
   }
 
   async handlePaste(e) {
+    if (this._readOnlyContent) return;
     const selected = [...this._selectedItems];
     if (!selected.length) return;
     const { href, hash } = window.location;
-    const bound = new URL(href).searchParams.get('da-source') === 'da-rs';
+    const bound = isDaRsSelected(href);
     if (bound && hash.startsWith('#/')) {
       try {
         const parts = sanitizePathParts(hash.slice(1));
@@ -616,6 +673,7 @@ export default class DaListBase extends LitElement {
   }
 
   async handleDelete() {
+    if (this._readOnlyContent) return;
     if (this.fullpath?.split('/')[2]?.includes('~') && this._selectedItems.some((item) => !item.ext)) {
       this._itemErrors.push({ message: 'Folder bulk deletion is unavailable on a content branch' });
       return;
@@ -657,7 +715,7 @@ export default class DaListBase extends LitElement {
 
   async checkCanUnpublish() {
     if (this.fullpath?.split('/')[2]?.includes('~')
-      || new URL(window.location.href).searchParams.get('da-source') === 'da-rs') {
+      || isDaRsSelected()) {
       this._canUnpublish = false;
       return;
     }
@@ -676,6 +734,7 @@ export default class DaListBase extends LitElement {
   }
 
   async handleConfirmDelete() {
+    if (this._readOnlyContent) return;
     const { Queue } = await import(`${getNx()}/public/utils/tree.js`);
 
     const throttle = this._unpublish ? 250 : 0;
@@ -706,7 +765,7 @@ export default class DaListBase extends LitElement {
       await this.handleItemAction({ item, type });
 
       if (!branch && this._unpublish && this._confirmText === 'YES'
-        && new URL(window.location.href).searchParams.get('da-source') !== 'da-rs') {
+        && !isDaRsSelected()) {
         const { aem } = await getNx2Api();
         // AEM resolves HTML pages by their extensionless path
         const aemPath = item.ext === 'html' ? item.path.slice(0, -5) : item.path;
@@ -735,16 +794,19 @@ export default class DaListBase extends LitElement {
   }
 
   handlePreview() {
+    if (this._readOnlyContent) return;
     if (this.fullpath?.split('/')[2]?.includes('~')) return;
     this._confirm = { type: 'preview' };
   }
 
   handlePublish() {
+    if (this._readOnlyContent) return;
     if (this.fullpath?.split('/')[2]?.includes('~')) return;
     this._confirm = { type: 'publish' };
   }
 
   async handleConfirmPublish() {
+    if (this._readOnlyContent) return;
     if (this.fullpath?.split('/')[2]?.includes('~')) return;
     this._confirm = { type: 'publish', checking: true };
     const items = this._selectedItems.filter((item) => item.ext && item.ext !== 'link');
@@ -768,12 +830,14 @@ export default class DaListBase extends LitElement {
   }
 
   async handleConfirmPreview() {
+    if (this._readOnlyContent) return;
     if (this.fullpath?.split('/')[2]?.includes('~')) return;
     this.handleConfirmClose();
     await this.runAemQueue('preview');
   }
 
   async runAemQueue(action, { skipSchedule = false } = {}) {
+    if (this._readOnlyContent) return;
     if (this.fullpath?.split('/')[2]?.includes('~')) return;
     const { Queue } = await import(`${getNx()}/public/utils/tree.js`);
     const items = this._selectedItems.filter((item) => item.ext && item.ext !== 'link');
@@ -849,6 +913,10 @@ export default class DaListBase extends LitElement {
 
   async drop(e) {
     e.preventDefault();
+    if (this._readOnlyContent) {
+      this.shadowRoot?.querySelector('.da-browse-panel')?.classList.remove('is-dragged-over');
+      return;
+    }
     const items = e.dataTransfer?.items;
     if (!items) {
       this.shadowRoot.querySelector('.da-browse-panel').classList.remove('is-dragged-over');
@@ -874,6 +942,7 @@ export default class DaListBase extends LitElement {
   }
 
   async processDropFiles() {
+    if (this._readOnlyContent) return;
     const makeBatches = (await import(`${getNx()}/utils/batch.js`)).default;
     const { handleUpload } = await import('../shared/list.js');
 
@@ -909,6 +978,7 @@ export default class DaListBase extends LitElement {
   }
 
   async handleCheckAll() {
+    if (this._readOnlyContent) return;
     const check = !this.isSelectAll;
 
     if (check) await this.loadAllPagesBulk();

@@ -1,6 +1,10 @@
 import { DA_ORIGIN, SUPPORTED_FILES, SUPPORTED_IMAGE_TYPES } from './constants.js';
 import { daFetch } from './utils.js';
-import { daRsSourceUrl, discoverDaRs, isDaRsBinding, isValidDaRsSegment, isStrongSourceETag } from './da-rs-provider.js';
+import { encodeDaRsAliasPath } from './da-rs-alias-path.js';
+import {
+  daRsSourceUrl, discoverDaRs, discoverDaRsCapabilities, isDaRsBinding, isValidDaRsSegment,
+  isStrongSourceETag, siteItemCapabilities, daRsDiscoveryGeneration,
+} from './da-rs-provider.js';
 import { branchUploadTarget } from './branch-selector/branch-media.js';
 
 const denied = () => { throw new Error('This action is unavailable on the da-rs provider'); };
@@ -22,7 +26,17 @@ function validate(args, context) {
   return args;
 }
 
-function normalizeListing(org, site, path, items) {
+const IMPORTED_KINDS = ['folder', 'page', 'image', 'asset', 'sheet'];
+
+function nativeKind(folder, ext, contentType) {
+  if (folder) return 'folder';
+  if (contentType?.startsWith('image/')) return 'image';
+  if (ext === 'html') return 'page';
+  if (ext === 'json') return 'sheet';
+  return 'asset';
+}
+
+function normalizeListing(org, site, path, items, siteCaps, permissions) {
   const directory = path.replace(/\/$/, '');
   const parent = `/${org}/${site}${directory}`;
   return items.flatMap((item) => {
@@ -32,12 +46,74 @@ function normalizeListing(org, site, path, items) {
     const folder = contentType === 'application/folder';
     // Trash has its own Browse route; don't show its system folder in the site root.
     if (folder && !directory && filename === '.trash') return [];
-    const parts = folder ? [filename] : filename.split('.');
-    const result = { name: parts[0], path: `${parent}/${filename}`, contentType };
-    if (parts.length > 1) result.ext = parts.pop();
+    // Split at the last dot only, so multi-dot basenames survive.
+    const dot = folder ? -1 : filename.lastIndexOf('.');
+    const result = {
+      name: dot > 0 ? filename.slice(0, dot) : filename,
+      path: `${parent}/${filename}`,
+      contentType,
+    };
+    if (dot > 0) result.ext = filename.slice(dot + 1);
     if (item['last-modified']) result.lastModified = new Date(item['last-modified']).getTime();
+    if (item.size !== undefined) result.size = item.size;
+    const declared = item['x-da-kind'];
+    if (siteCaps?.contentProfile === 'aem-import' && !IMPORTED_KINDS.includes(declared)) {
+      throw new Error('Invalid imported listing kind');
+    }
+    result.kind = IMPORTED_KINDS.includes(declared)
+      ? declared
+      : nativeKind(folder, result.ext, contentType);
+    result.displayName = item['x-da-display-name'] ?? filename;
+    if (siteCaps?.contentProfile === 'aem-import') result.contentProfile = siteCaps.contentProfile;
+    result.capabilities = siteItemCapabilities(siteCaps, result.kind, permissions);
     return [result];
   });
+}
+
+const CATALOG_PAGES = 100;
+
+export async function listDaRsCatalog(org) {
+  const { href } = window.location;
+  const generation = daRsDiscoveryGeneration();
+  if (!isDaRsBinding() || !isValidDaRsSegment(org)) throw new Error('Invalid da-rs catalog request');
+  const names = new Map();
+  let token = null;
+  for (let page = 0; page < CATALOG_PAGES; page += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    const resp = await daFetch(`${DA_ORIGIN}/list/${org}?view=source-catalog`, {
+      headers: token ? { 'da-continuation-token': token } : {},
+      noRedirect: true,
+      redirect: 'error',
+      cache: 'no-store',
+    });
+    if (
+      !isDaRsBinding()
+      || window.location.href !== href
+      || daRsDiscoveryGeneration() !== generation
+    ) {
+      throw new Error('da-rs context changed');
+    }
+    if (!resp.ok || resp.redirected) throw new Error(`da-rs catalog unavailable (${resp.status})`);
+    // eslint-disable-next-line no-await-in-loop
+    const records = await resp.json();
+    if (!Array.isArray(records)) throw new Error('Invalid da-rs catalog response');
+    records.forEach((record) => {
+      if (!isValidDaRsSegment(record?.name) || typeof record.title !== 'string'
+        || !['helix6', 'legacy'].includes(record.transport)
+        || !['aem-import', 'native-da'].includes(record.contentProfile)) {
+        throw new Error('Invalid da-rs catalog record');
+      }
+      names.set(record.name, Object.freeze({
+        name: record.name,
+        title: record.title,
+        transport: record.transport,
+        contentProfile: record.contentProfile,
+      }));
+    });
+    token = resp.headers.get('da-continuation-token');
+    if (!token) return [...names.values()].sort((a, b) => (a.name < b.name ? -1 : 1));
+  }
+  throw new Error('da-rs catalog exceeded its page limit');
 }
 
 export async function getDaRsApi(basePromise, branch = null, expectedHref = window.location.href) {
@@ -82,8 +158,9 @@ export async function getDaRsApi(basePromise, branch = null, expectedHref = wind
   };
   const sourceRequest = async (arg, extra, opts = {}) => {
     const args = validate(argsFor(arg, extra), branch?.context);
+    const path = encodeDaRsAliasPath(args.path);
     const binding = await bindingFor(args);
-    const response = await request(daRsSourceUrl(binding, args.path), opts);
+    const response = await request(daRsSourceUrl(binding, path), opts);
     if (branch && opts.method === 'HEAD' && response.ok
       && (response.headers.get('content-branch') !== branch.context.branch
         || response.headers.get('x-da-source-mode') !== 'helix6')) {
@@ -103,18 +180,24 @@ export async function getDaRsApi(basePromise, branch = null, expectedHref = wind
         const items = resp.ok ? await resp.json() : [];
         return { ok: resp.ok, items, permissions: resp.permissions };
       }
-      const binding = await bindingFor(args);
       const path = args.path || '';
+      const encodedPath = encodeDaRsAliasPath(path);
+      const binding = await bindingFor(args);
       const url = binding.mode === 'helix6'
-        ? daRsSourceUrl(binding, `${path.replace(/\/$/, '')}/`)
-        : `${DA_ORIGIN}/list/${args.org}/${args.site}${path}`;
+        ? daRsSourceUrl(binding, `${encodedPath.replace(/\/$/, '')}/`)
+        : `${DA_ORIGIN}/list/${args.org}/${args.site}${encodedPath}`;
       const headers = args.continuationToken ? { 'da-continuation-token': args.continuationToken } : {};
       const resp = await request(url, { headers });
       const items = resp.ok ? await resp.json() : [];
       checkCurrent();
+      // Branch sites use native routing; capability discovery is per base site only.
+      const siteCaps = branch || !resp.ok
+        ? null
+        : await discoverDaRsCapabilities(args.org, args.site);
+      checkCurrent();
       return {
         ok: resp.ok,
-        items: normalizeListing(args.org, args.site, path, items),
+        items: normalizeListing(args.org, args.site, path, items, siteCaps, resp.permissions),
         permissions: resp.permissions,
         continuationToken: resp.headers.get('da-continuation-token'),
       };

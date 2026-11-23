@@ -39,6 +39,7 @@ import { installComparison } from './ew-comparison/comparison.js';
 import { docToHtml } from '../shared/version/compare.js';
 import { addRecentFile } from '../shared/recent-files.js';
 import { isDaRsBinding } from '../shared/da-rs-provider.js';
+import { checkEditorAccess, editorAccessRequired } from '../shared/da-file-item/guard.js';
 import { installDaRsNavigation } from '../shared/da-rs-navigation.js';
 import {
   TOOL_PANEL_SECTION,
@@ -191,7 +192,7 @@ async function handleCanvasNotFound({ mountRoot, header, ctx, session, loadCount
   });
 }
 
-async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
+async function syncCanvasEditorsToHash({ mountRoot, header, state, onAccess }) {
   editorLoadCount += 1;
   const loadCount = editorLoadCount;
   header.undoAvailable = false;
@@ -199,6 +200,18 @@ async function syncCanvasEditorsToHash({ mountRoot, header, state }) {
   const fullPath = buildCanvasDocPath(state);
   const name = state?.path?.split('/').pop();
   document.title = `${name ? `Edit ${name} | ` : ''}Experience Workspace`;
+  const access = editorAccessRequired(state?.org, state?.site)
+    ? await checkEditorAccess(state.org, state.site)
+    : { allowed: true };
+  if (loadCount !== editorLoadCount) return;
+  onAccess(access.allowed);
+  if (!access.allowed) {
+    removeCanvasEditors(mountRoot);
+    showNotPermitted(mountRoot, access.message);
+    header.authorized = false;
+    header.canWrite = false;
+    return;
+  }
   if (!fullPath) {
     resolveCanvasBranch();
     removeCanvasEditors(mountRoot);
@@ -315,6 +328,19 @@ export default async function decorate(block) {
   installDaRsNavigation();
   installBranchHashGuard();
   const { org, site } = hashState();
+  const initialAccessRequired = editorAccessRequired(org, site);
+  let initialToolPanelShown = false;
+  const showInitialToolPanel = () => {
+    if (initialToolPanelShown) return;
+    initialToolPanelShown = true;
+    if (wasPanelOpen(TOOL_PANEL_SECTION)) {
+      openPanelSection(TOOL_PANEL_SECTION);
+    } else {
+      shouldAutoOpenAfterPanel({ org, site }).then((open) => {
+        if (open) openPanelSection(TOOL_PANEL_SECTION);
+      });
+    }
+  };
 
   // Make the "Preflight" side panel the responder for the publish gate's run request.
   initPreflightResponder();
@@ -406,16 +432,13 @@ export default async function decorate(block) {
   initBranchBridge();
   hashChange.subscribe((hashStateValue) => {
     let state = hashStateValue;
+    let context;
     try {
-      const context = branchContext();
+      context = branchContext();
       if (context) {
         const parts = sanitizePathParts(window.location.hash.slice(1));
         state = { ...state, org: context.org, site: context.siteSegment, path: parts.slice(2).join('/') };
       }
-      selector.org = state?.org;
-      selector.site = state?.site;
-      const branch = context?.branch || null;
-      canvasBus.contentBranchState.emit({ org: state?.org, site: state?.site, branch });
     } catch (error) {
       editorLoadCount += 1;
       removeCanvasEditors(mountRoot);
@@ -423,20 +446,30 @@ export default async function decorate(block) {
       header.authorized = false;
       return;
     }
-    comparisonContext = state;
-    comparison.contextChanged();
-    syncCanvasEditorsToHash({ mountRoot, header, state });
-    syncOpenToolPanel(state);
+    syncCanvasEditorsToHash({
+      mountRoot,
+      header,
+      state,
+      onAccess(allowed) {
+        const active = allowed ? state : undefined;
+        selector.org = active?.org;
+        selector.site = active?.site;
+        const branch = allowed ? context?.branch || null : null;
+        canvasBus.contentBranchState.emit({ org: active?.org, site: active?.site, branch });
+        comparisonContext = active;
+        comparison.contextChanged();
+        if (allowed) {
+          syncOpenToolPanel(state);
+          if (initialAccessRequired && state?.org === org && state?.site === site) {
+            showInitialToolPanel();
+          }
+        }
+      },
+    });
   });
   canvasBus.contentBranchRequest.subscribe(({ branch }) => selector.select(branch));
 
-  if (wasPanelOpen(TOOL_PANEL_SECTION)) {
-    openPanelSection(TOOL_PANEL_SECTION);
-  } else {
-    shouldAutoOpenAfterPanel({ org, site }).then((open) => {
-      if (open) openPanelSection(TOOL_PANEL_SECTION);
-    });
-  }
+  if (!initialAccessRequired) showInitialToolPanel();
 
   // Any non-empty selection in doc mode is sent as chat context.
   // wysiwyg has no block-select equivalent yet.

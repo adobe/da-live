@@ -1,4 +1,5 @@
 import { SUPPORTED_FILES } from '../../shared/constants.js';
+import { isDaRsSelected } from '../../shared/da-rs-bootstrap.js';
 import { getNx2Api, sanitizePath, sanitizePathParts } from '../../../scripts/utils.js';
 
 const MAX_DEPTH = 1000;
@@ -106,7 +107,7 @@ export async function handleUpload(list, fullpath, file) {
     const { source } = await getNx2Api();
     // TODO: Error handling
     const response = await source.save(postpath, { body: data });
-    if (new URL(window.location.href).searchParams.get('da-source') === 'da-rs' && !response?.ok) {
+    if (isDaRsSelected() && !response?.ok) {
       throw new Error('Could not upload file');
     }
 
@@ -139,7 +140,7 @@ export async function handleUpload(list, fullpath, file) {
 }
 
 export function items2Clipboard(items) {
-  if (new URL(window.location.href).searchParams.get('da-source') === 'da-rs') return;
+  if (isDaRsSelected()) return;
   const aemUrls = items.reduce((acc, item) => {
     if (item.ext) {
       const [org, site, ...pathParts] = sanitizePathParts(item.path.replace('.html', ''));

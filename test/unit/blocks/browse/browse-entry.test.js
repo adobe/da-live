@@ -199,4 +199,27 @@ describe('Browse Content opt-in', () => {
       window.history.replaceState(null, '', href);
     }
   });
+
+  it('uses the bound browser alias rather than NX’s slugged Browse state', async () => {
+    const { href } = window.location;
+    const el = document.createElement('div');
+    const browse = document.createElement('da-browse');
+    const detailsReady = new Promise((resolve) => {
+      Object.defineProperty(browse, 'details', { set: resolve });
+    });
+    el.append(browse);
+    try {
+      window.history.replaceState(null, '', '/browse?da-source=da-rs#/demo/wknd/Media%20_Assets.v2');
+      hashChange._set({ org: 'demo', site: 'wknd', fullpath: '/demo/wknd/media-20-assets.v2' });
+      init(el);
+      expect(await detailsReady).to.include({ fullpath: '/demo/wknd/Media _Assets.v2' });
+
+      window.history.replaceState(null, '', '/browse?da-source=da-rs#/demo/wknd/%2e%2e/other');
+      hashChange._set({ org: 'demo', site: 'wknd', fullpath: '/demo/wknd/other' });
+      expect(el.querySelector('[role="alert"]')?.textContent).to.contain('Invalid da-rs path');
+      expect(el.querySelector('da-browse')).to.equal(null);
+    } finally {
+      window.history.replaceState(null, '', href);
+    }
+  });
 });

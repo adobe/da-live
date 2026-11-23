@@ -1,3 +1,5 @@
+import { daRsDemoEnvDefault, getDaRsDemoState, isDaRsSelected } from './da-rs-bootstrap.js';
+
 export const AEM_ORIGIN = 'https://admin.hlx.page';
 
 export const SUPPORTED_IMAGE_TYPES = [
@@ -72,7 +74,15 @@ function getDaEnv(location, key, envs) {
   } else if (query) {
     localStorage.setItem(key, query);
   }
-  const env = envs[localStorage.getItem(key) || 'prod'];
+  // Precedence: explicit URL > deployment demo default > existing hosted selection.
+  const explicit = query && query !== 'reset' ? query : null;
+  let selected = explicit;
+  if (!selected) {
+    const demo = isDaRsSelected(href) && (key === 'da-admin' || key === 'da-collab');
+    if (demo && getDaRsDemoState().status === 'failed') return undefined;
+    selected = (demo && daRsDemoEnvDefault(key)) || localStorage.getItem(key) || 'prod';
+  }
+  const env = envs[selected];
   if (!env) return undefined;
   // TODO: INFRA
   return location.origin === 'https://da.page' ? env.replace('.live', '.page') : env;

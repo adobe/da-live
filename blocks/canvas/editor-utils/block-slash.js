@@ -1,3 +1,5 @@
+import { isDaRsSelected } from '../../shared/da-rs-bootstrap.js';
+
 const BLOCK_ICON = 'tableadd';
 
 export function buildBlockEntries(resolvedBlocks) {
@@ -103,7 +105,7 @@ export async function insertBlockItem(view, id) {
  * (blocks + variant HTML) is still fetched lazily via ensureBlockLibrary on "/".
  */
 export function checkBlockLibraryConfigured({ org, site } = {}) {
-  if (!org || !site || new URL(window.location.href).searchParams.get('da-source') === 'da-rs') {
+  if (!org || !site || isDaRsSelected()) {
     store.hasLibrary = false;
     return null;
   }

@@ -5,6 +5,8 @@ import getPathDetails from '../shared/pathDetails.js';
 import { branchContext, validateBranch } from '../shared/branch-selector/context.js';
 import { installBranchHashGuard } from '../shared/branch-selector/navigation.js';
 import { installDaRsNavigation } from '../shared/da-rs-navigation.js';
+import { isDaRsDemoActive } from '../shared/da-rs-bootstrap.js';
+import { isDaRsBinding } from '../shared/da-rs-provider.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
@@ -36,11 +38,12 @@ async function loadBrowseStyles() {
   if (!document.adoptedStyleSheets.includes(styles)) document.adoptedStyleSheets.push(styles);
 }
 
-async function loadComponent(el, cmpName, pathDetails, surface) {
+async function loadComponent(el, cmpName, pathDetails, surface, isCurrent) {
   await surface;
+  if (!isCurrent()) return;
   if (cmpName === 'da-landing') {
     const { default: loadLanding } = await import('../landing/landing.js');
-    loadLanding(el);
+    if (isCurrent()) loadLanding(el);
     return;
   }
 
@@ -57,10 +60,12 @@ async function loadComponent(el, cmpName, pathDetails, surface) {
     site: pathDetails.site,
     fetchConfigs: fetchDaConfigs,
   });
+  if (!isCurrent()) return;
   if (componentPath === './v2') useV2Nav();
   if (cmpName === 'da-sites') await import('./da-sites/da-sites.js');
   else if (componentPath === './v2') await import('./v2/da-browse/da-browse.js');
   else await import('./legacy/da-browse/da-browse.js');
+  if (!isCurrent()) return;
   const cmp = document.createElement(cmpName);
   cmp.details = pathDetails;
   el.append(cmp);
@@ -68,6 +73,8 @@ async function loadComponent(el, cmpName, pathDetails, surface) {
 
 function setRecentSite(details) {
   if (!details.site) return;
+  // Demo sites are backend-discovered, never hosted recents.
+  if (isDaRsDemoActive()) return;
   // .trash, .da, .helix, .versions
   if (details.site.startsWith('.')) return;
   const currentSites = JSON.parse(localStorage.getItem('da-sites')) || [];
@@ -85,27 +92,31 @@ export default function init(el) {
   hashChange.subscribe(async (nxDetails) => {
     generation += 1;
     const current = generation;
+    const { href } = window.location;
+    const isCurrent = () => current === generation && window.location.href === href;
     let pathDetails = nxDetails;
+    let context;
     try {
-      const context = branchContext();
+      const bound = isDaRsBinding();
+      if (bound) pathDetails = getPathDetails();
+      context = branchContext();
       if (context) {
-        const { hash } = window.location;
-        pathDetails = getPathDetails();
+        if (!bound) pathDetails = getPathDetails();
         await validateBranch(context);
-        if (current !== generation || window.location.hash !== hash) return;
       }
     } catch (error) {
+      if (!isCurrent()) return;
       el.replaceChildren();
       const message = document.createElement('p');
       message.setAttribute('role', 'alert');
-      message.textContent = `Unable to open branch: ${error.message}`;
+      message.textContent = `Unable to open ${context ? 'branch' : 'location'}: ${error.message}`;
       el.append(message);
       return;
     }
-    if (current !== generation) return;
+    if (!isCurrent()) return;
     const cmpName = getBrowseComponent({ search: window.location.search, pathDetails });
     const surface = cmpName === 'da-landing' ? loadLandingSurface(el) : loadBrowseStyles();
-    loadComponent(el, cmpName, pathDetails, surface);
+    loadComponent(el, cmpName, pathDetails, surface, isCurrent);
     if (pathDetails) setRecentSite(pathDetails);
   });
 

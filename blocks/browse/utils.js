@@ -1,5 +1,9 @@
+import { isDaRsDemoActive } from '../shared/da-rs-bootstrap.js';
+
 export function getBrowseComponent({ search, pathDetails }) {
   if (pathDetails) return 'da-browse';
+  // The configured demo always lands on its backend-discovered catalog.
+  if (isDaRsDemoActive()) return 'da-sites';
   return new URLSearchParams(search).get('landing') === 'true' ? 'da-landing' : 'da-sites';
 }
 

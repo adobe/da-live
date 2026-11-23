@@ -383,3 +383,32 @@ describe('DaNew', () => {
     });
   });
 });
+
+describe('DaNew read-only', () => {
+  it('refuses every create path and disables the control', async () => {
+    setNx('/test/fixtures/nx', { hostname: 'example.com' });
+    const { default: Cls } = await import('../../../../../blocks/browse/da-new/da-new.js');
+    const el = new Cls();
+    el.readOnly = true;
+    el.permissions = ['read', 'write'];
+    el.fullpath = '/demo/wknd';
+    const savedFetch = window.fetch;
+    let called = false;
+    window.fetch = async () => {
+      called = true;
+      return new Response('{}');
+    };
+    try {
+      expect(el._disabled).to.equal(true);
+      el._createType = 'folder';
+      await el._handleCreate({ detail: { name: 'x' } });
+      await el._handleLinkSubmit({ detail: { href: 'https://a.test', text: 'a' } });
+      await el.handleAddFile({ target: { files: [new File(['a'], 'a.png')], value: '' } });
+      el.handleNewType({ detail: { id: 'folder' } });
+    } finally {
+      window.fetch = savedFetch;
+    }
+    expect(called).to.equal(false);
+    expect(el._createDialogOpen).not.to.equal(true);
+  });
+});

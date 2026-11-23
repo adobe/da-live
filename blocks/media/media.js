@@ -5,8 +5,9 @@ import { getNx, getNx2Api } from '../../scripts/utils.js';
 import '../edit/da-title/da-title.js';
 import { contentLogin } from '../shared/utils.js';
 import { installBranchHashGuard } from '../shared/branch-selector/navigation.js';
-import { isDaRsBinding } from '../shared/da-rs-provider.js';
+import { isDaRsBinding, discoverDaRsCapabilities, siteItemCapabilities } from '../shared/da-rs-provider.js';
 import { SUPPORTED_IMAGE_TYPES } from '../shared/constants.js';
+import { parseSiteSegment } from '../shared/content-branch-context.js';
 
 const PDF_VIEWER_SRC = 'https://acrobatservices.adobe.com/view-sdk/viewer.js';
 const PDF_CLIENT_ID = 'cd73455ea6c04d0aac86270f9f5f830c';
@@ -69,10 +70,40 @@ async function loadPdfMedia(path, fileName, isCurrent) {
   }
 }
 
+const IMAGE_EXTS = ['svg', 'png', 'jpg', 'jpeg', 'gif', 'avif', 'webp'];
+
+function showImportedMediaError(el, details, message) {
+  const daTitle = document.createElement('da-title');
+  daTitle.details = details;
+  daTitle.readOnly = true;
+  const alert = document.createElement('p');
+  alert.setAttribute('role', 'alert');
+  alert.textContent = message;
+  el.replaceChildren(daTitle, alert);
+}
+
+// Imported sites open only declared image originals, read-only; anything else is refused unfetched.
+async function getImportedMediaAccess(owner, repo, ext) {
+  if (!owner || !repo || !isDaRsBinding()) return { imported: false };
+  const branched = repo.includes('~');
+  const site = branched ? parseSiteSegment(repo).site : repo;
+  const caps = await discoverDaRsCapabilities(owner, site);
+  if (caps?.contentProfile !== 'aem-import') return { imported: false };
+  const open = !branched && IMAGE_EXTS.includes(ext)
+    && siteItemCapabilities(caps, 'image', []).view === 'media';
+  return { imported: true, open };
+}
+
 async function setUI(el, isCurrent) {
   const details = getPathDetails();
   const { name, fullpath, owner, repo } = details;
   const ext = name.split('.').pop();
+  const { imported, open } = await getImportedMediaAccess(owner, repo, ext.toLowerCase());
+  if (!isCurrent()) return;
+  if (imported && !open) {
+    showImportedMediaError(el, details, 'This imported item cannot be opened.');
+    return;
+  }
   addRecentFile(fullpath);
   let blob;
   const bound = isDaRsBinding();
@@ -83,7 +114,11 @@ async function setUI(el, isCurrent) {
     if (ext !== 'pdf') {
       const resp = await source.get(fullpath);
       if (!resp.ok) throw new Error(`Could not load media: ${resp.status}`);
+      if (imported && resp.headers.get('x-da-source-kind') !== 'image') {
+        throw new Error('Unsupported media type');
+      }
       const type = resp.headers.get('content-type')?.split(';')[0].trim().toLowerCase();
+      if (imported && !SUPPORTED_IMAGE_TYPES.includes(type)) throw new Error('Unsupported media type');
       if (bound && !SUPPORTED_IMAGE_TYPES.includes(type) && type !== 'video/mp4') {
         throw new Error('Unsupported media type');
       }
@@ -94,6 +129,7 @@ async function setUI(el, isCurrent) {
   }
 
   const daTitle = document.createElement('da-title');
+  if (imported) daTitle.readOnly = true;
 
   const daMedia = ext === 'pdf' ? await getPdfMedia() : await getDefaultMedia();
 

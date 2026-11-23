@@ -10,6 +10,7 @@
  * governing permissions and limitations under the License.
  */
 
+import { isDaRsSelected } from '../blocks/shared/da-rs-bootstrap.js';
 import { parseSiteSegment } from '../blocks/shared/content-branch-context.js';
 
 export function sanitizeName(name, preserveDots = true, allowUnderscores = true) {
@@ -117,7 +118,7 @@ export const getNx2Api = () => {
     return import('../blocks/shared/branch-selector/branch-api.js')
       .then(({ getBranchApi }) => getBranchApi(nx2ApiPromise, href));
   }
-  if (new URL(href).searchParams.get('da-source') === 'da-rs') {
+  if (isDaRsSelected(href)) {
     return import('../blocks/shared/da-rs-api.js')
       .then(({ getDaRsApi }) => getDaRsApi(nx2ApiPromise, null, href));
   }
@@ -125,7 +126,7 @@ export const getNx2Api = () => {
 };
 
 export const getNxEWFlags = () => {
-  if (new URL(window.location.href).searchParams.get('da-source') === 'da-rs') {
+  if (isDaRsSelected()) {
     return import('../blocks/shared/da-rs-ew-flags.js');
   }
   return import(`${getNx2()}/utils/ewFlags.js`);

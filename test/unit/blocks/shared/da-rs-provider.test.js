@@ -9,6 +9,9 @@ import getEditPath from '../../../../blocks/shared/da-file-item/edit-path.js';
 import { evaluatePage } from '../../../../blocks/canvas/ew-preflight/api.js';
 
 setNx('/test/fixtures/nx', { hostname: 'example.com' });
+const NATIVE_CAPABILITIES = {
+  apiVersion: 1, transport: 'helix6', contentProfile: 'native-da', readOnly: false, openKinds: ['page', 'sheet', 'image', 'asset'], collaboration: true, branching: true, generation: null,
+};
 const OPAQUE_VERSION_ID = '8e0b176b-9230-4bdb-93e1-dbd92406a83d.html';
 let buildSourceUrl;
 let checkDoc;
@@ -346,6 +349,7 @@ describe('explicit da-rs binding', () => {
     window.fetch = async (target, options) => {
       calls.push({ target, options });
       if (target.includes('/ping/')) return new Response('', { headers: { 'x-api-upgrade-available': 'true' } });
+      if (target.endsWith('/source-capabilities')) return new Response(JSON.stringify(NATIVE_CAPABILITIES));
       const items = target.endsWith('/.trash/')
         ? [{ name: 'deleted.html', 'content-type': 'text/html' }]
         : [
@@ -357,21 +361,32 @@ describe('explicit da-rs binding', () => {
     };
     const { source } = await getNx2Api();
     const root = await source.list('/demo/work/');
-    expect(root.items).to.deep.equal([
-      { name: 'assets.v2', path: '/demo/work/assets.v2', contentType: 'application/folder' },
-      { name: 'page', path: '/demo/work/page.html', contentType: 'text/html', ext: 'html' },
+    expect(root.items.map(({
+      name, path, contentType, ext, kind, displayName,
+    }) => (
+      {
+        name, path, contentType, ext, kind, displayName,
+      }
+    ))).to.deep.equal([
+      {
+        name: 'assets.v2', path: '/demo/work/assets.v2', contentType: 'application/folder', ext: undefined, kind: 'folder', displayName: 'assets.v2',
+      },
+      {
+        name: 'page', path: '/demo/work/page.html', contentType: 'text/html', ext: 'html', kind: 'page', displayName: 'page.html',
+      },
     ]);
     const trash = await source.list('/demo/work/.trash');
     expect(calls.at(-1).target).to.equal(`${DA_ORIGIN}/demo/sites/work/source/.trash/`);
-    expect(trash.items).to.deep.equal([
-      { name: 'deleted', path: '/demo/work/.trash/deleted.html', contentType: 'text/html', ext: 'html' },
-    ]);
+    expect(calls.filter(({ target }) => target.endsWith('/source-capabilities'))).to.have.length(1);
+    expect(trash.items).to.have.length(1);
+    expect(trash.items[0]).to.include({ name: 'deleted', path: '/demo/work/.trash/deleted.html', contentType: 'text/html', ext: 'html' });
   });
 
   it('normalizes H6 folder listings and does not allow cross-site copies', async () => {
     window.fetch = async (target, options) => {
       calls.push({ target, options });
       if (target.includes('/ping/')) return new Response('', { headers: { 'x-api-upgrade-available': 'true' } });
+      if (target.endsWith('/source-capabilities')) return new Response(JSON.stringify(NATIVE_CAPABILITIES));
       return new Response(JSON.stringify([
         { name: 'assets/', 'content-type': 'application/folder' },
         { name: 'page.html', 'content-type': 'text/html', 'last-modified': '2026-01-02T03:04:05Z' },
@@ -380,14 +395,14 @@ describe('explicit da-rs binding', () => {
     const { source } = await getNx2Api();
     const listing = await source.list('/demo/work');
     expect(calls[1].target).to.equal(`${DA_ORIGIN}/demo/sites/work/source/`);
-    expect(listing.items[0]).to.deep.equal({ name: 'assets', path: '/demo/work/assets', contentType: 'application/folder' });
+    expect(listing.items[0]).to.include({ name: 'assets', path: '/demo/work/assets', contentType: 'application/folder', kind: 'folder' });
     expect(listing.items[1].ext).to.equal('html');
     let failed = false;
     try { await source.copy('/demo/work/page.html', { destination: '/demo/other/copy.html' }); } catch {
       failed = true;
     }
     expect(failed).to.equal(true);
-    expect(calls).to.have.length(2);
+    expect(calls).to.have.length(3);
   });
 
   it('uploads raw local image bytes and returns a portable relative reference', async () => {

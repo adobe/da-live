@@ -3,6 +3,7 @@ import { delay, sanitizeName, formatDate } from '../../../shared/utils.js';
 import { getNx, getNx2, getNx2Api } from '../../../../scripts/utils.js';
 import { ICONS, iconPathForExt } from '../../../shared/icons.js';
 import getEditPath from '../../../shared/da-file-item/edit-path.js';
+import { isFileItemOpenable } from '../../../shared/da-file-item/navigation.js';
 
 import {
   fetchAemStatus,
@@ -26,6 +27,8 @@ export default class DaListItem extends LitElement {
     editor: { type: String },
     rename: { type: Boolean },
     allowselect: { type: Boolean },
+    capabilities: { attribute: false },
+    readOnlyContent: { type: Boolean, attribute: 'readonlycontent' },
     isChecked: { attribute: 'ischecked', type: Boolean },
     isFavorited: { attribute: 'isfavorited', type: Boolean },
     _isRenaming: { type: Boolean },
@@ -104,6 +107,7 @@ export default class DaListItem extends LitElement {
 
   async handleRenameSubmit(e) {
     e.preventDefault();
+    if (this.readOnlyContent) return;
 
     const newName = sanitizeName(e.target.elements['new-name'].value, { trimTrailing: true });
 
@@ -157,6 +161,7 @@ export default class DaListItem extends LitElement {
   }
 
   toggleExpand() {
+    if (this.readOnlyContent) return;
     this.classList.toggle('is-expanded');
     if (this.classList.contains('is-expanded')) {
       this.updateAEMStatus();
@@ -199,17 +204,17 @@ export default class DaListItem extends LitElement {
   }
 
   renderItem() {
+    const openable = isFileItemOpenable(this);
     let path = this.ext ? getEditPath({ path: this.path, ext: this.ext, editor: this.editor }) : `#${this.path}`;
     let externalUrlPromise;
-    if (this.ext === 'link') {
+    if (this.ext === 'link' && openable) {
       path = nothing;
       externalUrlPromise = getNx2Api()
         .then(({ source }) => source.get(this.path))
         .then((response) => response.json())
         .then((data) => data.externalUrl);
     }
-    return html`
-      <a href="${this.ext === 'link' ? until(externalUrlPromise) : path}" class="da-item-list-item-title">
+    const content = html`
         <div class="da-item-list-item-info">
           ${this._isRenaming ? html`<span class="da-item-list-item-type"><div class="icon rename-icon"></div></span>
           ` : html`
@@ -222,8 +227,11 @@ export default class DaListItem extends LitElement {
             <span class="da-item-list-item-name-text">${this.name}</span>
           </div>
         </div>
-        <div class="da-item-list-item-date">${this.ext === 'link' ? nothing : this.renderDate()}</div>
-      </a>`;
+        <div class="da-item-list-item-date">${this.ext === 'link' ? nothing : this.renderDate()}</div>`;
+    if (!openable) {
+      return html`<span class="da-item-list-item-title" aria-disabled="true" title="This item cannot be opened">${content}</span>`;
+    }
+    return html`<a href="${this.ext === 'link' ? until(externalUrlPromise) : path}" class="da-item-list-item-title">${content}</a>`;
   }
 
   renderCheckBox() {
@@ -268,7 +276,7 @@ export default class DaListItem extends LitElement {
         <button
           aria-label="Open"
           @click=${this.toggleExpand}
-          class="da-item-list-item-expand-btn ${(this.ext && this.ext !== 'link') ? 'is-visible' : ''}">
+          class="da-item-list-item-expand-btn ${(this.ext && this.ext !== 'link' && !this.readOnlyContent) ? 'is-visible' : ''}">
         </button>
       </div>
       <div class="da-item-list-item-details ${this.allowselect ? 'can-select' : ''}" role="gridcell">

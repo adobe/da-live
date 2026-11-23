@@ -7,6 +7,7 @@ import { renderEmptyList, EMPTY_LIST_CSS, NOT_PERMITTED } from '../shared/empty-
 import { branchContext, validateBranch } from '../shared/branch-selector/context.js';
 import '../shared/branch-selector/branch-selector.js';
 import { installBranchHashGuard } from '../shared/branch-selector/navigation.js';
+import { checkEditorAccess, editorAccessRequired } from '../shared/da-file-item/guard.js';
 import { withDaRsBinding } from '../shared/da-rs-navigation.js';
 
 import './da-title/da-title.js';
@@ -70,11 +71,18 @@ async function setUI(el) {
   uiGeneration += 1;
   const generation = uiGeneration;
   let details;
+  let access;
   try {
     details = getPathDetails();
     const context = branchContext();
-    if (context) await validateBranch(context);
+    if (!details) return;
+    access = editorAccessRequired(details.org, details.site)
+      ? await checkEditorAccess(details.org, details.site)
+      : { allowed: true };
+    if (generation !== uiGeneration) return;
+    if (access.allowed && context) await validateBranch(context);
   } catch (error) {
+    if (generation !== uiGeneration) return;
     const title = el.querySelector('da-title') || document.createElement('da-title');
     title.details ??= { parent: '/', parentName: 'Home', name: 'Branch unavailable' };
     if (!title.isConnected) el.append(title);
@@ -82,7 +90,21 @@ async function setUI(el) {
     return;
   }
   if (generation !== uiGeneration) return;
-  if (!details) return;
+  if (!access.allowed) {
+    const title = el.querySelector('da-title') || document.createElement('da-title');
+    title.details ??= {
+      parent: details.parent,
+      parentName: details.parentName,
+      name: details.name,
+    };
+    title.readOnly = true;
+    if (!title.isConnected) el.append(title);
+    showNotPermitted({ el, daTitle: title, message: access.message });
+    return;
+  }
+  // A previous imported entry must not leave the shared title read-only.
+  const existingTitle = el.querySelector('da-title');
+  if (existingTitle) existingTitle.readOnly = false;
 
   let selector = el.querySelector('da-branch-selector');
   if (!selector) {

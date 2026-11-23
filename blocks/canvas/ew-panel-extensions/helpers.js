@@ -4,6 +4,7 @@ import { slug } from '../../../deps/github-slugger/dist/index.js';
 import { getNx, getNx2Api, sanitizeName } from '../../../scripts/utils.js';
 import { daFetch, getAuthToken } from '../../shared/utils.js';
 import { CON_ORIGIN } from '../../shared/constants.js';
+import { isDaRsSelected } from '../../shared/da-rs-bootstrap.js';
 import { getPreviewProxyDetails, ensurePreviewProxySession, toPreviewProxyUrl } from '../../shared/preview-proxy.js';
 import { getPreviewOrigin } from '../editor-utils/editor-utils.js';
 import { getCanvasBranch } from '../utils/branch.js';
@@ -1040,7 +1041,7 @@ export function extensionToPanelView(ext, section) {
  * Extensions (other plugins).
  */
 export async function getCanvasToolPanelViews({ org, site }) {
-  if (new URL(window.location.href).searchParams.get('da-source') === 'da-rs') {
+  if (isDaRsSelected()) {
     return [
       createOutlineView(), createMetadataView(), createFileExplorerView(), createVersioningView(),
     ];

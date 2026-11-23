@@ -7,6 +7,7 @@ import {
 } from '../utils/helpers.js';
 import { delay, fetchDaConfigs, getFirstSheet, aemAction } from '../../shared/utils.js';
 import { getNx2 } from '../../../scripts/utils.js';
+import { isDaRsSelected } from '../../shared/da-rs-bootstrap.js';
 import { createVersion } from '../../shared/version/version-actions.js';
 import inlinesvg from '../../shared/inlinesvg.js';
 import getSheet from '../../shared/sheet.js';
@@ -48,6 +49,7 @@ export default class DaTitle extends LitElement {
     livePrefix: { attribute: false },
     disabledText: { attribute: false },
     hideActions: { type: Boolean },
+    readOnly: { type: Boolean, reflect: true },
     _lazyMods: { state: true },
     _configs: { state: true },
     _actions: { state: true },
@@ -84,9 +86,9 @@ export default class DaTitle extends LitElement {
 
   update(changed) {
     super.update(changed);
-    if (changed.has('details') && this.details) {
+    if ((changed.has('details') || changed.has('readOnly')) && this.details) {
       this.setup();
-      this.delayedSetup();
+      if (!this.readOnly) this.delayedSetup();
     }
     if (changed.has('collabStatus') && this.collabStatus === 'unsaved') {
       this._preflightPassed = false;
@@ -117,7 +119,9 @@ export default class DaTitle extends LitElement {
 
   getAvailableActions() {
     const { view, path, fullpath } = this.details;
-    if (new URL(window.location.href).searchParams.get('da-source') === 'da-rs') {
+    // Imported/read-only content: no save, preview, publish or other mutation, whatever the ACL.
+    if (this.readOnly) return [];
+    if (isDaRsSelected()) {
       return view === 'sheet' || view === 'config' ? ['save'] : [];
     }
     if (this.details.site?.includes('~')) return view === 'sheet' || view === 'config' ? ['save'] : [];
@@ -142,6 +146,7 @@ export default class DaTitle extends LitElement {
   }
 
   async filterActions() {
+    if (this.readOnly) return;
     const { org, site, fullpath } = this.details;
     const configs = await Promise.all(fetchDaConfigs({ org, site }));
     const configTab = configs.flatMap((config) => getFirstSheet(config) || []);
@@ -173,7 +178,7 @@ export default class DaTitle extends LitElement {
     const { path, fullpath } = this.details;
 
     // Only a valid path gets AEM-bound features
-    if (path && new URL(window.location.href).searchParams.get('da-source') !== 'da-rs') {
+    if (path && !isDaRsSelected()) {
       this._aemHrefs = await getAemHrefs({ path: fullpath });
     }
   }
@@ -249,6 +254,7 @@ export default class DaTitle extends LitElement {
   }
 
   async handleAction(action) {
+    if (this.readOnly) return;
     if (this.details?.site?.includes('~') && (action === 'preview' || action === 'publish')) return;
     // Guard against a stale/bypassed disabled state (e.g. permissions changed mid-session).
     if (action === 'save' && this._readOnly) return;
@@ -409,10 +415,11 @@ export default class DaTitle extends LitElement {
   }
 
   get _canPrepare() {
-    return !!this.details.path;
+    return !this.readOnly && !!this.details.path;
   }
 
   get _readOnly() {
+    if (this.readOnly) return true;
     if (!this.permissions) return false;
     return !this.permissions.some((permission) => permission === 'write');
   }
@@ -524,7 +531,7 @@ export default class DaTitle extends LitElement {
             class="da-title-name-label">${this.details.parentName}</a>
           <h1>${this.details.name}</h1>
         </div>
-        ${this.hideActions ? nothing : this.renderCollabActions()}
+        ${this.hideActions || this.readOnly ? nothing : this.renderCollabActions()}
       </div>
       ${this._dialog ? this.renderDialog() : nothing}
     `;

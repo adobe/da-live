@@ -2,7 +2,7 @@ import { LitElement, html, nothing, until } from 'da-lit';
 import { delay, sanitizeName, formatDate } from '../utils.js';
 import { getNx, getNx2, getNx2Api } from '../../../scripts/utils.js';
 import { ICONS, iconPathForExt, getTypeLabel, isImageExt } from '../icons.js';
-import { getFileItemHref } from './navigation.js';
+import { getFileItemHref, isFileItemOpenable } from './navigation.js';
 import { pathMatchesActiveBranch } from '../branch-selector/context.js';
 import { isDaRsBinding } from '../da-rs-provider.js';
 import { SUPPORTED_IMAGE_TYPES } from '../constants.js';
@@ -36,6 +36,8 @@ export default class DaFileItem extends LitElement {
     allowselect: { type: Boolean },
     view: { type: String, reflect: true },
     href: { type: String },
+    capabilities: { attribute: false },
+    readOnlyContent: { type: Boolean, attribute: 'readonlycontent' },
     folder: { attribute: false },
     imagePreview: { attribute: false },
     isChecked: { attribute: 'ischecked', type: Boolean },
@@ -205,6 +207,7 @@ export default class DaFileItem extends LitElement {
 
   async handleRenameSubmit(e) {
     e.preventDefault();
+    if (this.readOnlyContent) return;
 
     const newName = sanitizeName(e.target.elements['new-name'].value, { trimTrailing: true });
 
@@ -271,6 +274,8 @@ export default class DaFileItem extends LitElement {
       </div>`;
   }
 
+  get openable() { return isFileItemOpenable(this); }
+
   async toggleDetails({ currentTarget }) {
     if (this._detailsOpen) {
       this.popover?.close();
@@ -278,7 +283,7 @@ export default class DaFileItem extends LitElement {
       return;
     }
     this._detailsOpen = true;
-    if (this.view !== 'card' || this.ext) {
+    if (!this.readOnlyContent && (this.view !== 'card' || this.ext)) {
       this.updateAEMStatus();
       this.updateDAStatus();
     }
@@ -324,10 +329,21 @@ export default class DaFileItem extends LitElement {
   }
 
   renderItem() {
+    const info = this.renderItemInfo();
+    if (!this.openable) {
+      return html`
+      <span class="da-item-list-item-title" data-column="name" aria-disabled="true" title="This item cannot be opened">${info}</span>
+      ${this.renderRowMeta()}`;
+    }
     const href = this.href ?? getFileItemHref(this);
 
     return html`
-      <a href="${this.ext === 'link' ? until(href) : href}" class="da-item-list-item-title" data-column="name">
+      <a href="${this.ext === 'link' ? until(href) : href}" class="da-item-list-item-title" data-column="name">${info}</a>
+      ${this.renderRowMeta()}`;
+  }
+
+  renderItemInfo() {
+    return html`
         <div class="da-item-list-item-info">
           ${this._isRenaming ? html`<span class="da-item-list-item-type"><div class="icon rename-icon"></div></span>
           ` : html`
@@ -338,9 +354,7 @@ export default class DaFileItem extends LitElement {
           <div class="da-item-list-item-name">
             <span class="da-item-list-item-name-text" title=${this.name}>${this.name}</span>
           </div>
-        </div>
-      </a>
-      ${this.renderRowMeta()}`;
+        </div>`;
   }
 
   renderRowMeta() {
@@ -395,19 +409,33 @@ export default class DaFileItem extends LitElement {
     return env === '_preview' ? 'Not previewed' : 'Not published';
   }
 
+  renderCardMedia(href) {
+    if (!this.openable) {
+      return html`<span slot="media" class="card-preview" aria-hidden="true">${this.renderFilePreview()}</span>`;
+    }
+    return html`
+        <a slot="media" class="card-preview" href="${this.ext === 'link' ? until(href) : href}" tabindex="-1" aria-hidden="true">
+          ${this.renderFilePreview()}
+        </a>`;
+  }
+
+  renderCardHeading(href) {
+    if (!this.openable) return html`<span slot="heading" title=${this.name} aria-disabled="true">${this.name}</span>`;
+    return html`
+          <a slot="heading" href="${this.ext === 'link' ? until(href) : href}" title=${this.name}>
+            ${this.name}
+          </a>`;
+  }
+
   renderCard() {
-    const href = this.href ?? getFileItemHref(this);
+    const href = this.openable ? (this.href ?? getFileItemHref(this)) : undefined;
     return html`
       <nx-card class="card" .selectable=${Boolean(this.allowselect)} .selected=${Boolean(this.isChecked)}
         @nx-card-selection-change=${(e) => this.handleChecked(e.detail)}>
-        <a slot="media" class="card-preview" href="${this.ext === 'link' ? until(href) : href}" tabindex="-1" aria-hidden="true">
-          ${this.renderFilePreview()}
-        </a>
+        ${this.renderCardMedia(href)}
         ${this.isFavorited ? this.renderFavorite('card-favorite', 'overlay-actions') : nothing}
         ${this.rename ? this.renderRename('content') : html`
-          <a slot="heading" href="${this.ext === 'link' ? until(href) : href}" title=${this.name}>
-            ${this.name}
-          </a>
+          ${this.renderCardHeading(href)}
           ${this.renderCardMenu()}`}
         <span slot="metadata" class="card-type">${getTypeLabel(this.ext)}</span>
         <span slot="metadata" class="card-date">${this.ext === 'link' ? '—' : (this.renderDate() || '—')}</span>
@@ -415,7 +443,7 @@ export default class DaFileItem extends LitElement {
   }
 
   renderDetailsControl() {
-    if (!this.ext || this.ext === 'link') return nothing;
+    if (!this.ext || this.ext === 'link' || this.readOnlyContent) return nothing;
     return html`
       <button
         type="button"
@@ -434,7 +462,7 @@ export default class DaFileItem extends LitElement {
     const card = this.view === 'card';
     return this._detailsOpen ? html`<nx-popover placement='auto' class="da-item-details" role="dialog" aria-label="Details for ${this.name}" @close=${this.closeDetails}>
         ${card ? html`
-          ${this.ext ? html`<section class="card-details" aria-label="Details">
+          ${this.ext && !this.readOnlyContent ? html`<section class="card-details" aria-label="Details">
             <h3>Details</h3>
             ${this.renderDetailsContent()}
           </section><hr>` : nothing}

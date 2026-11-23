@@ -76,3 +76,83 @@ describe('edit not permitted message', () => {
     expect(daTitle.hideActions).to.be.false;
   });
 });
+
+describe('edit entry on imported content', () => {
+  const IMPORTED_CAPS = {
+    apiVersion: 1,
+    transport: 'helix6',
+    contentProfile: 'aem-import',
+    readOnly: true,
+    openKinds: ['image', 'sheet'],
+    collaboration: false,
+    branching: false,
+    generation: 'g-test',
+  };
+  let href;
+  let savedSocket;
+  let sockets;
+  let el;
+  let addListener;
+  let invalidate;
+
+  const respond = (capsResponse) => async (target) => {
+    const url = String(target);
+    if (url.includes('/ping/')) return new Response('', { headers: { 'x-api-upgrade-available': 'true' } });
+    if (url.endsWith('/source-capabilities')) return capsResponse();
+    return new Response('', { status: 200 });
+  };
+
+  const settle = async () => {
+    const deadline = Date.now() + 3000;
+    while (Date.now() < deadline && !el.querySelector('.da-edit-not-permitted')) {
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => { setTimeout(resolve, 10); });
+    }
+  };
+
+  beforeEach(async () => {
+    ({ invalidateDaRsDiscovery: invalidate } = await import('../../../../blocks/shared/da-rs-provider.js'));
+    href = window.location.href;
+    savedSocket = window.WebSocket;
+    sockets = 0;
+    window.WebSocket = function FakeWebSocket() {
+      sockets += 1;
+      this.readyState = 0;
+      this.send = () => {};
+      this.close = () => {};
+    };
+    el = document.createElement('div');
+    addListener = sinon.spy(window, 'addEventListener');
+    invalidate();
+  });
+
+  afterEach(() => {
+    addListener.getCalls().forEach(({ args }) => window.removeEventListener(...args));
+    sinon.restore();
+    window.WebSocket = savedSocket;
+    window.history.replaceState(null, '', href);
+    invalidate();
+  });
+
+  [
+    ['an imported site', () => Response.json(IMPORTED_CAPS), 'cannot be opened in the editor', 'wknd'],
+    ['an imported branch URL', () => Response.json(IMPORTED_CAPS), 'cannot be opened in the editor', 'wknd~draft'],
+    ['failed capability discovery', () => new Response('', { status: 500 }), 'Unable to verify', 'wknd'],
+  ].forEach(([label, capsResponse, message, site]) => {
+    it(`denies a direct /edit URL for ${label} before any document, socket or editor`, async () => {
+      sinon.stub(window, 'fetch').callsFake(respond(capsResponse));
+      const get = sinon.stub(source, 'get').resolves({ status: 200, permissions: ['write'], text: async () => '' });
+      const save = sinon.stub(source, 'save').resolves({ ok: true });
+      window.history.replaceState(null, '', `/edit?da-source=da-rs#/demo/${site}/page`);
+      await init(el);
+      await settle();
+      expect(el.querySelector('.da-edit-not-permitted h3').textContent).to.contain(message);
+      expect(el.querySelector('da-title').readOnly).to.equal(true);
+      expect(el.querySelector('da-content')).to.equal(null);
+      expect(el.querySelector('da-branch-selector')).to.equal(null);
+      expect(get.called).to.equal(false);
+      expect(save.called).to.equal(false);
+      expect(sockets).to.equal(0);
+    });
+  });
+});

@@ -7,6 +7,7 @@ import { canvasBus } from '../utils/canvas-bus.js';
 import { chatTurnCompleted } from '../../shared/chat-panel.js';
 import { getCanvasBranch } from '../utils/branch.js';
 import { routeComparisonMessage } from '../ew-comparison/comparison.js';
+import { isDaRsSelected } from '../../shared/da-rs-bootstrap.js';
 
 const { CHAT_EVENT } = await import(`${getNx()}/utils/chat.js`);
 const { PANEL_EVENT } = await import(`${getNx()}/utils/panel.js`);
@@ -25,10 +26,7 @@ export async function setupIframeChannel({ iframe, hashState, getView, onClose }
   const { org, site, path, view } = hashState;
   if (!org || !site || !iframe.contentWindow) return { channel: null, destroy() { } };
   // A stale extension channel must never read a bound provider's local view.
-  const allowed = () => {
-    const url = new URL(window.location.href);
-    return url.searchParams.get('da-source') !== 'da-rs';
-  };
+  const allowed = () => !isDaRsSelected();
   if (!allowed()) return { channel: null, destroy() { } };
   const allowedView = () => (allowed() ? getView() : null);
 
