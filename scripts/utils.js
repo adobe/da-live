@@ -30,6 +30,20 @@ export function sanitizeName(name, preserveDots = true, allowUnderscores = true)
     .replace(/-$/g, '');
 }
 
+export function parseSubdomain(siteUrl) {
+  try {
+    const url = new URL(siteUrl);
+    if (!url.hostname.match(/hlx\.live$|aem\.live$|hlx\.page$|aem\.page$/)) return null;
+    const helixString = url.hostname.split('.')[0];
+    if (!helixString) return null;
+    const [, site, org] = helixString.split('--');
+    if (!site || !org) return null;
+    return `#/${sanitizeName(org, false)}/${sanitizeName(site, false)}`;
+  } catch {
+    return null;
+  }
+}
+
 export function sanitizePathParts(path) {
   const parts = path.slice(1)
     .toLowerCase()
