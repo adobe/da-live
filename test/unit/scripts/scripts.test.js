@@ -107,7 +107,7 @@ describe('decorateArea', () => {
     expect(container.querySelector('img')).to.be.null;
   });
 
-  describe('Start cards styles', () => {
+  describe('Start cards layout', () => {
     const { href } = new URL('../../../styles/start.css', import.meta.url);
 
     afterEach(() => {
@@ -117,20 +117,45 @@ describe('decorateArea', () => {
     it('does not load Start styling for Tools cards', () => {
       container.innerHTML = '<div class="nx-cards tools"></div>';
       decorateArea({ area: container });
-      expect(document.head.querySelector(`link[href="${href}"]`)).to.be.null;
+      expect(!!document.head.querySelector(`link[href="${href}"]`)).to.be.false;
     });
 
-    it('loads styling once for authored cards without a Start block', async () => {
-      container.innerHTML = '<div class="nx-cards start"></div>';
+    it('loads the consumer styling once and fits desktop and narrow grid containers', async () => {
+      container.style.cssText = `
+        display: grid;
+        width: 900px;
+        --s2-spacing-300: 16px;
+        --s2-spacing-400: 24px;
+      `;
+      container.innerHTML = `<div class="nx-cards start" style="display: grid; gap: var(--s2-spacing-300)">
+        <nx-action-card>One</nx-action-card><nx-action-card>Two</nx-action-card>
+        <nx-action-card>Three</nx-action-card><nx-action-card>Four</nx-action-card>
+      </div>`;
       decorateArea({ area: container });
       const link = document.head.querySelector(`link[href="${href}"]`);
-      expect(link).to.exist;
       await new Promise((resolve, reject) => {
         link.addEventListener('load', resolve, { once: true });
         link.addEventListener('error', reject, { once: true });
       });
       decorateArea({ area: container });
       expect(document.head.querySelectorAll(`link[href="${href}"]`).length).to.equal(1);
+      const grid = container.firstElementChild;
+      const style = getComputedStyle(grid);
+      expect(grid.getBoundingClientRect().width).to.equal(664);
+      expect(grid.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight))
+        .to.equal(632);
+      expect(style.gridTemplateColumns.split(' ').length).to.equal(2);
+      expect(container.getBoundingClientRect().bottom - grid.getBoundingClientRect().bottom)
+        .to.equal(16);
+      container.style.width = '260px';
+      expect(container.scrollWidth).to.equal(260);
+      const gridRect = grid.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      expect(gridRect.width).to.equal(228);
+      expect(gridRect.left - containerRect.left).to.equal(16);
+      expect(containerRect.right - gridRect.right).to.equal(16);
+      expect(getComputedStyle(grid).gridTemplateColumns.split(' ').length).to.equal(1);
+      expect(grid.children[1].offsetTop).to.be.greaterThan(grid.children[0].offsetTop);
     });
   });
 
