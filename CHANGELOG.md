@@ -1,3 +1,10 @@
+## [1.33.3](https://github.com/adobe/da-live/compare/v1.33.2...v1.33.3) (2026-11-23)
+
+
+### Bug Fixes
+
+* enlarge fullsize extension dialogs ([#1774](https://github.com/adobe/da-live/issues/1774)) ([c07f3b0](https://github.com/adobe/da-live/commit/c07f3b031c8d11ef66df114159128efd4ff598b9))
+
 ## [1.33.2](https://github.com/adobe/da-live/compare/v1.33.1...v1.33.2) (2026-11-23)
 
 
