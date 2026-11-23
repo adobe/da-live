@@ -11,26 +11,23 @@ describe('start page', () => {
   beforeEach(() => {
     main = document.createElement('main');
     main.innerHTML = `
-      <div class="section"><div class="start"></div></div>
+      <div class="section"><div class="start cmp"></div></div>
       <div class="section"><div class="greeting"><div><div><h1>Welcome to Experience Workspace</h1></div></div></div></div>`;
     document.body.append(main);
-    ['red-100', 'pink-200', 'blue-200', 'gray-25'].forEach((token) => {
-      main.style.setProperty(`--s2-${token}`, 'white');
-    });
   });
 
   afterEach(() => {
     main.remove();
   });
 
-  it('uses the dark gradient', () => {
+  it('mounts the legacy wizard instead of initializing the authored page', () => {
     const el = main.querySelector('.start');
     init(el);
 
     const start = el.querySelector(':scope > da-start');
     expect(start).to.exist;
-    expect(getComputedStyle(start).colorScheme).to.equal('dark');
-    expect(getComputedStyle(start).backgroundImage).to.contain('radial-gradient');
+    expect(el.hidden).to.be.false;
+    expect(main.querySelector('.start-page')).to.be.null;
   });
 
   it('moves the authored greeting into the start block', async () => {
