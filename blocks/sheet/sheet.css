@@ -33,7 +33,7 @@ da-versions.is-visible,
   border-radius: 2px;
   border: none;
   cursor: pointer;
-  background: url('/blocks/edit/img/Smock_Calendar_18_N.svg') center center / 20px no-repeat;
+  background: url('/img/icons/s2-icon-calendar-20-n.svg') center center / 20px no-repeat;
 }
 
 button.new-sheet {

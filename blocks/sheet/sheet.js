@@ -113,16 +113,16 @@ class DaSheetPanes extends LitElement {
       <div class="da-sheet-pane-tabs is-visible">
         <div class="da-editor-tabs-full">
           <button class="da-editor-tab show-preview" aria-label="Preview" @click=${this.handlePreviewToggle}>
-            <svg width="20" height="20" viewBox="0 0 18 18" fill="currentColor" aria-hidden="true">
-              <use href="/blocks/edit/img/Smock_Preview_18_N.svg#spectrum-Preview"></use>
+            <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+              <use href="/img/icons/s2-icon-preview-20-n.svg#icon"></use>
             </svg>
           </button>
         </div>
         ${showHistory ? html`
         <div class="da-editor-tabs-quiet">
           <button class="da-editor-tab quiet show-versions" aria-label="View history" @click=${this.handleHistoryToggle}>
-            <svg width="20" height="20" viewBox="0 0 18 18" aria-hidden="true">
-              <use href="/blocks/edit/img/Smock_Calendar_18_N.svg#icon"></use>
+            <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+              <use href="/img/icons/s2-icon-calendar-20-n.svg#icon"></use>
             </svg>
           </button>
         </div>

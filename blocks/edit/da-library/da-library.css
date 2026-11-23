@@ -77,7 +77,7 @@
   border: none;
   border-radius: 16px;
   display: block;
-  background: rgb(255 255 255 / 80%) url("/blocks/edit/img/Smock_Close_18_N.svg") center / 18px no-repeat;
+  background: rgb(255 255 255 / 80%) url("/img/icons/s2-icon-close-20-n.svg") center / 18px no-repeat;
 }
 
 /* Shared between main menu & inline plugin panes */

@@ -34,7 +34,7 @@
   display: block;
   height: 32px;
   border: none;
-  background: url('/blocks/edit/img/Smock_Calendar_18_N.svg') left center / 32px no-repeat;
+  background: url('/img/icons/s2-icon-calendar-20-n.svg') left center / 32px no-repeat;
 }
 
 .da-versions-close-btn:hover {
