@@ -1,3 +1,17 @@
+## [1.33.2](https://github.com/adobe/da-live/compare/v1.33.1...v1.33.2) (2026-11-23)
+
+
+### Bug Fixes
+
+* **nav:** show the product name only on landing ([#1702](https://github.com/adobe/da-live/issues/1702)) ([2e1f1a6](https://github.com/adobe/da-live/commit/2e1f1a6ca908bc386eac57538a39f3a61385adb1))
+
+## [1.33.1](https://github.com/adobe/da-live/compare/v1.33.0...v1.33.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* **sc:** anchor hidden switch input to its label ([#1766](https://github.com/adobe/da-live/issues/1766)) ([73b2e13](https://github.com/adobe/da-live/commit/73b2e13893b0b4a6bcff4aba5ba4ccc36732f5c5))
+
 # [1.33.0](https://github.com/adobe/da-live/compare/v1.32.0...v1.33.0) (2026-11-19)
 
 
