@@ -96,7 +96,7 @@ export default class DaContent extends LitElement {
                 title="Preview" aria-label="Preview"
                 @click=${() => this.togglePane({ detail: 'preview' })}>
                 <svg aria-hidden="true" viewBox="0 0 20 20">
-                  <use href="/blocks/edit/img/S2_icon_DeviceDesktopMobile_20_N.svg#icon"></use>
+                  <use href="/img/icons/s2-icon-devicedesktopmobile-20-n.svg#icon"></use>
                 </svg>
               </button>
             </div>
@@ -105,7 +105,7 @@ export default class DaContent extends LitElement {
                 title="Versions" aria-label="Versions"
                 @click=${() => this.togglePane({ detail: 'versions' })}>
                 <svg aria-hidden="true" viewBox="0 0 20 20">
-                  <use href="/blocks/edit/img/S2_icon_Calendar_20_N.svg#icon"></use>
+                  <use href="/img/icons/s2-icon-calendar-20-n.svg#icon"></use>
                 </svg>
               </button>
               ${this._externalUrl ? html`
@@ -113,7 +113,7 @@ export default class DaContent extends LitElement {
                   title="Open in-context editing" aria-label="Open in-context editing"
                   @click=${this.openUe}>
                   <svg aria-hidden="true" viewBox="0 0 20 20">
-                    <use href="/blocks/edit/img/S2_icon_OpenIn_20_N.svg#icon"></use>
+                    <use href="/img/icons/s2-icon-openin-20-n.svg#icon"></use>
                   </svg>
                 </button>
               ` : nothing}
