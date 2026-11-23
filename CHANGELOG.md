@@ -1,3 +1,10 @@
+## [1.33.2](https://github.com/adobe/da-live/compare/v1.33.1...v1.33.2) (2026-11-23)
+
+
+### Bug Fixes
+
+* **nav:** show the product name only on landing ([#1702](https://github.com/adobe/da-live/issues/1702)) ([2e1f1a6](https://github.com/adobe/da-live/commit/2e1f1a6ca908bc386eac57538a39f3a61385adb1))
+
 ## [1.33.1](https://github.com/adobe/da-live/compare/v1.33.0...v1.33.1) (2026-11-20)
 
 
