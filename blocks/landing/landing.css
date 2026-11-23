@@ -20,6 +20,10 @@
     var(--s2-gray-25);
 }
 
+body:has(.landing, .browse > da-sites) nx-nav {
+  --nx-nav-brand-label-display: inline;
+}
+
 .section:has(.landing, .browse > da-sites),
 .block-content:has(.landing, .browse > da-sites),
 .browse:has(> .landing) {
