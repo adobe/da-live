@@ -317,7 +317,7 @@
 .start-page > .nx-cards.start {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
   margin-inline: auto;
-  margin-block-start: var(--s2-spacing-400);
+  margin-block-start: var(--s2-spacing-300);
   padding: var(--s2-spacing-300);
   border-radius: var(--s2-corner-radius-800);
   background: var(--s2-gray-25);
@@ -327,9 +327,14 @@
 .start-page > .greeting {
   display: block;
   max-width: none;
+  margin-block-end: var(--s2-spacing-600);
   text-align: center;
 
   h1 {
     margin-block-start: 0;
+  }
+
+  p:last-child {
+    margin-block-end: 0;
   }
 }
