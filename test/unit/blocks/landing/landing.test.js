@@ -2,11 +2,14 @@ import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import '../../setup-nx.js';
 import { getFavorites, toggleFavorite } from '../../../../blocks/browse/shared/favorites.js';
-import { DaLanding } from '../../../../blocks/landing/landing.js';
-import { getNx2, getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
+import init, { DaLanding } from '../../../../blocks/landing/landing.js';
+import { getNx, getNx2, getNx2Api, getNxEWFlags } from '../../../../scripts/utils.js';
 
 const { source, config } = await getNx2Api();
-const { setEWEnabled } = await getNxEWFlags();
+const { setEWEnabled, setChatAvailability } = await getNxEWFlags();
+const { hashChange } = await import(`${getNx()}/utils/utils.js`);
+const { CHAT_EVENT, setAoChat } = await import(`${getNx()}/utils/chat.js`);
+const { PANEL_EVENT, setPanelMocks } = await import(`${getNx()}/utils/panel.js`);
 const { getSiteOptions } = await import(`${getNx2()}/blocks/siteselector/site-utils.js`);
 const { loadIms, handleSignIn } = await import(`${getNx2()}/utils/ims.js`);
 const ITEMS = Array.from({ length: 24 }, (_, index) => ({ name: `Page ${index}`, path: `/org/site/page-${index}.html`, ext: 'html', lastModified: 24 - index }));
@@ -661,5 +664,115 @@ describe('landing Content section', () => {
     expect(el._favoriteFiles).to.deep.equal([]);
     expect(fileItems()).to.have.length(0);
     expect(el.shadowRoot.querySelector('[role="alert"]')).to.equal(null);
+  });
+});
+
+describe('landing chat', () => {
+  let el;
+  let initialize;
+  let loadSite;
+  let registered;
+  let panelEvents;
+  const onPanel = ({ type, detail }) => panelEvents.push([type, detail.section]);
+
+  const waitFor = async (check) => {
+    for (let i = 0; i < 50; i += 1) {
+      if (check()) return;
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => { setTimeout(resolve, 10); });
+    }
+    throw new Error('Timed out waiting for the landing');
+  };
+
+  const mount = async () => {
+    const landing = init(el);
+    await initialize.lastCall.returnValue;
+    await landing.updateComplete;
+    return landing;
+  };
+
+  beforeEach(() => {
+    loadIms.reset();
+    loadIms.resolves({ accessToken: { token: 'test-token' } });
+    getSiteOptions.returns([{ value: 'org/site' }]);
+    localStorage.setItem('da-sites', JSON.stringify(['org/site']));
+    initialize = sinon.spy(DaLanding.prototype, 'initialize');
+    loadSite = sinon.stub(DaLanding.prototype, 'loadSite').resolves();
+    registered = [];
+    panelEvents = [];
+    setPanelMocks({ register: (...args) => registered.push(args) });
+    document.addEventListener(PANEL_EVENT.OPEN, onPanel);
+    document.addEventListener(PANEL_EVENT.CLOSE, onPanel);
+    el = document.createElement('div');
+    document.body.append(el);
+  });
+
+  afterEach(() => {
+    el.remove();
+    document.removeEventListener(PANEL_EVENT.OPEN, onPanel);
+    document.removeEventListener(PANEL_EVENT.CLOSE, onPanel);
+    setPanelMocks();
+    setAoChat(async () => false);
+    setChatAvailability(async () => false);
+    hashChange._set({});
+    initialize.restore();
+    loadSite.restore();
+    getSiteOptions.returns([]);
+    localStorage.removeItem('da-sites');
+  });
+
+  it('shows no greeting or chat without a site context', async () => {
+    hashChange._set({ org: 'org' });
+    const landing = await mount();
+    await waitFor(() => panelEvents.length);
+    await landing.updateComplete;
+    expect(landing.shadowRoot.querySelector('h1')).to.equal(null);
+    expect(landing.shadowRoot.querySelector('nx-ao-input')).to.equal(null);
+    expect(registered).to.deep.equal([]);
+    expect(panelEvents).to.deep.equal([[PANEL_EVENT.CLOSE, 'chat']]);
+  });
+
+  it('registers the chat panel and renders the shared compact input when AO chat is enabled', async () => {
+    setChatAvailability(async () => true);
+    setAoChat(async () => true);
+    hashChange._set({ org: 'org', site: 'enabled' });
+    const landing = await mount();
+    await waitFor(() => landing.shadowRoot.querySelector('nx-ao-input'));
+    const input = landing.shadowRoot.querySelector('nx-ao-input');
+    expect(landing.shadowRoot.querySelector('.files-panel')).not.to.equal(null);
+    expect(landing.shadowRoot.querySelector('h1')).to.equal(null);
+    expect(input.hasAttribute('org')).to.equal(false);
+    expect(input.onSubmit).to.equal(undefined);
+    expect(input.getAttribute('placeholder')).to.equal('Ask a question, share an idea, or add a task.');
+    expect(registered).to.have.length(1);
+    expect(registered[0][0]).to.equal('chat');
+    expect(registered[0][1]).to.include({ position: 'before', width: '400px' });
+
+    input.dispatchEvent(new CustomEvent(CHAT_EVENT.MESSAGE_SENT, { bubbles: true, composed: true, detail: { org: 'org', site: 'enabled' } }));
+    expect(panelEvents).to.deep.equal([[PANEL_EVENT.OPEN, 'chat']]);
+  });
+
+  it('keeps the sidebar chat but no compact input for the legacy chat', async () => {
+    setChatAvailability(async () => true);
+    hashChange._set({ org: 'org', site: 'legacy' });
+    const landing = await mount();
+    await waitFor(() => registered.length);
+    await landing.updateComplete;
+    expect(landing.shadowRoot.querySelector('nx-ao-input')).to.equal(null);
+  });
+
+  it('removes the input when chat becomes unavailable and stops listening on disconnect', async () => {
+    setChatAvailability(async ({ site }) => site === 'enabled');
+    setAoChat(async () => true);
+    hashChange._set({ org: 'org', site: 'enabled' });
+    const landing = await mount();
+    await waitFor(() => landing.shadowRoot.querySelector('nx-ao-input'));
+    hashChange._set({ org: 'org', site: 'disabled' });
+    await waitFor(() => !landing.shadowRoot.querySelector('nx-ao-input') && panelEvents.length);
+    expect(panelEvents).to.deep.equal([[PANEL_EVENT.CLOSE, 'chat']]);
+
+    el.replaceChildren();
+    landing.dispatchEvent(new CustomEvent(CHAT_EVENT.MESSAGE_SENT));
+    expect(panelEvents).to.deep.equal([[PANEL_EVENT.CLOSE, 'chat']]);
   });
 });
