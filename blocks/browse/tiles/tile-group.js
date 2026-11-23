@@ -16,7 +16,7 @@ export function parseTileEntries(block) {
       || icon?.querySelector('span.icon')?.className.match(/\bicon-(s2-icon-[a-z0-9-]+)\b/)?.[1];
     if (!link?.textContent.trim() || !isValidHref(link.getAttribute('href')) || !iconName) {
       // eslint-disable-next-line no-console
-      console.warn('Skipped a Landing row without an icon or a valid H3 title link.', row);
+      console.warn('Skipped a Browse row without an icon or a valid H3 title link.', row);
       return [];
     }
     return [{
@@ -32,7 +32,7 @@ export function parseTileEntries(block) {
   });
 }
 
-export class DaLandingTiles extends LitElement {
+export class DaBrowseTiles extends LitElement {
   static properties = { entries: { attribute: false } };
 
   _sizing = sizing && new sizing.UISizeController(this);
@@ -60,18 +60,18 @@ export class DaLandingTiles extends LitElement {
 
   render() {
     return html`<div class="tile-group">
-      ${this.entries?.length ? html`<ul class="quick-links landing-tiles" aria-label="Quick links">
+      ${this.entries?.length ? html`<ul class="quick-links browse-tiles" aria-label="Quick links">
         ${this.entries.map((entry) => this.renderTile(entry))}
       </ul>` : html`<p role="alert">No quick links are configured.</p>`}
     </div>`;
   }
 }
 
-customElements.define('da-landing-tiles', DaLandingTiles);
+customElements.define('da-browse-tiles', DaBrowseTiles);
 
 export default function init(el) {
   if (el.initialized) return el.initialized;
-  const tiles = document.createElement('da-landing-tiles');
+  const tiles = document.createElement('da-browse-tiles');
   tiles.entries = parseTileEntries(el);
   el.replaceChildren(tiles);
   el.initialized = tiles;

@@ -19,7 +19,7 @@
   display: flow-root;
 }
 
-.landing-tiles {
+.browse-tiles {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -29,7 +29,7 @@
   list-style: none;
 }
 
-.landing-tiles > li {
+.browse-tiles > li {
   flex: 0 0 calc((100% - 2 * var(--s2-spacing-200)) / 3);
   min-width: 0;
 }
@@ -138,7 +138,7 @@
 }
 
 @container (width < 600px) {
-  .landing-tiles > li {
+  .browse-tiles > li {
     flex-basis: 100%;
   }
 }

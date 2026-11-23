@@ -1,30 +1,27 @@
 import { getNx } from '../../scripts/utils.js';
 import { fetchDaConfigs } from '../shared/utils.js';
 import initGreeting from '../greeting/greeting.js';
-import initTiles from '../landing/tiles/tile-group.js';
+import initTiles from './tiles/tile-group.js';
 import { getBrowseComponent, resolveBrowsePath } from './utils.js';
 
 const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
 const V2_NAV_PATH = '/nx/fragments/browse2-nav';
 
-function takeLandingBlocks(el) {
-  const blocks = {};
+function takeBrowseBlocks(el) {
+  const content = document.createElement('div');
+  content.append(...el.querySelectorAll(':scope > div'));
+  const tiles = initTiles(content);
+  const blocks = { tiles: tiles.entries.length ? tiles : undefined };
   let section = el.closest('.section')?.nextElementSibling;
   while (section) {
     const next = section.nextElementSibling;
     const greeting = !blocks.greeting && section.querySelector('div.greeting');
-    const landing = !blocks.tiles && section.querySelector('div.landing');
     if (greeting) {
       greeting.remove();
       blocks.greeting = initGreeting(greeting);
     }
-    if (landing) {
-      const tiles = initTiles(landing);
-      if (tiles.entries.length) blocks.tiles = tiles;
-      landing.remove();
-    }
-    if ((greeting || landing) && !section.children.length && !section.textContent.trim()) {
+    if (greeting && !section.children.length && !section.textContent.trim()) {
       section.remove();
     }
     section = next;
@@ -66,7 +63,7 @@ async function loadBrowseStyles(cmpName) {
 async function loadComponent(el, cmpName, pathDetails, surface, { greeting, tiles } = {}) {
   await surface;
   if (cmpName === 'da-landing') {
-    const { loadLanding } = await import('../landing/landing.js');
+    const { default: loadLanding } = await import('../landing/landing.js');
     loadLanding(el);
     return;
   }
@@ -112,7 +109,7 @@ function setRecentSite(details) {
 export default function init(el) {
   el.querySelectorAll('picture').forEach((picture) => picture.remove());
   const blocks = getBrowseComponent({ search: window.location.search }) === 'da-sites'
-    ? takeLandingBlocks(el) : undefined;
+    ? takeBrowseBlocks(el) : undefined;
   hashChange.subscribe((pathDetails) => {
     const cmpName = getBrowseComponent({ search: window.location.search, pathDetails });
     const surface = cmpName === 'da-landing' ? loadLandingSurface(el) : loadBrowseStyles(cmpName);

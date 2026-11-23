@@ -1,9 +1,9 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import '../../setup-nx.js';
-import init, { parseTileEntries } from '../../../../blocks/landing/tiles/tile-group.js';
+import init, { parseTileEntries } from '../../../../blocks/browse/tiles/tile-group.js';
 
-const content = `<div class="landing">
+const content = `<div class="browse">
   <div>
     <div>:s2-icon-folderopen-20-n:</div>
     <div><h3 id="browse-content"><a href="/#/aem-sandbox/block-collection">Browse</a></h3><p>Browse files</p></div>
@@ -21,7 +21,7 @@ const content = `<div class="landing">
   </div>
 </div>`;
 
-describe('Landing tile group', () => {
+describe('Browse tile group', () => {
   let el;
   let block;
 
@@ -29,7 +29,7 @@ describe('Landing tile group', () => {
     const container = document.createElement('div');
     container.innerHTML = content;
     block = container.firstElementChild;
-    el = document.createElement('da-landing-tiles');
+    el = document.createElement('da-browse-tiles');
     el.entries = parseTileEntries(block);
     document.body.append(el);
     await el.updateComplete;
