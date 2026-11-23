@@ -8,25 +8,19 @@ const { hashChange, loadStyle } = await import(`${getNx()}/utils/utils.js`);
 
 const V2_NAV_PATH = '/nx/fragments/browse2-nav';
 
+function takeGreeting(el) {
+  const section = el.closest('.section')?.nextElementSibling;
+  const greeting = section?.querySelector('div.greeting');
+  if (!greeting) return undefined;
+  section.remove();
+  return initGreeting(greeting);
+}
+
 function takeBrowseBlocks(el) {
   const content = document.createElement('div');
   content.append(...el.querySelectorAll(':scope > div'));
   const tiles = initTiles(content);
-  const blocks = { tiles: tiles.entries.length ? tiles : undefined };
-  let section = el.closest('.section')?.nextElementSibling;
-  while (section) {
-    const next = section.nextElementSibling;
-    const greeting = !blocks.greeting && section.querySelector('div.greeting');
-    if (greeting) {
-      greeting.remove();
-      blocks.greeting = initGreeting(greeting);
-    }
-    if (greeting && !section.children.length && !section.textContent.trim()) {
-      section.remove();
-    }
-    section = next;
-  }
-  return blocks;
+  return { greeting: takeGreeting(el), tiles: tiles.entries.length ? tiles : undefined };
 }
 
 // to be removed when the v2 nav is fully integrated

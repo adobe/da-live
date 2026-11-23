@@ -2,6 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import '../../setup-nx.js';
 import initBrowse from '../../../../blocks/browse/browse.js';
+import initLanding, { DaLanding } from '../../../../blocks/landing/landing.js';
 import { getNx, getNx2Api } from '../../../../scripts/utils.js';
 
 const { hashChange } = await import(`${getNx()}/utils/utils.js`);
@@ -73,8 +74,7 @@ describe('Browse authored tiles', () => {
 
   it('slots and reuses tiles authored directly in Browse', async () => {
     container.innerHTML = `<div class="section"><div class="browse">${tileContent}</div></div>
-      <div class="section"><div class="greeting"><div><div><h1>Welcome</h1></div></div></div>
-      <p data-neighbor>Keep neighboring content</p></div>
+      <div class="section"><div class="greeting"><div><div><h1>Welcome</h1></div></div></div></div>
       <div class="section"><p data-keep>Unrelated content</p></div>`;
     const browse = container.querySelector('.browse');
     const authoredGreeting = container.querySelector('.greeting');
@@ -91,7 +91,6 @@ describe('Browse authored tiles', () => {
     expect(sites.shadowRoot.querySelector('slot[name="tiles"]')).not.to.equal(null);
     expect(sites.shadowRoot.querySelector('.da-double-card')).to.equal(null);
     expect(sites.shadowRoot.querySelectorAll('.da-site-outer')).to.have.length(2);
-    expect(container.querySelector('[data-neighbor]')).not.to.equal(null);
     expect(container.querySelector('[data-keep]')).not.to.equal(null);
     expect(tiles.isConnected).to.equal(true);
     sites.handleRemove(sites._recents[0]);
@@ -116,14 +115,11 @@ describe('Browse authored tiles', () => {
 
   ['', '<div><div><picture><img alt="Legacy background"></picture></div></div>', '<div><div>Invalid tile</div></div>']
     .forEach((content, index) => {
-      it(`keeps the existing cards without valid Browse rows and leaves Landing untouched (${index})`, async () => {
+      it(`keeps the existing cards without valid Browse rows (${index})`, async () => {
         sinon.stub(console, 'warn');
         container.innerHTML = `<div class="section"><div class="browse">${content}</div></div>
-        <div class="section"><div class="greeting"><div><div><h1>Welcome</h1></div></div></div>
-        <p data-keep>Keep existing content</p></div>
-        <div class="section"><div class="landing">${tileContent}</div></div>`;
-        const landing = container.querySelector('.landing');
-        const landingContent = landing.innerHTML;
+        <div class="section"><div class="greeting"><div><div><h1>Welcome</h1></div></div></div></div>
+        <div class="section"><p data-keep>Keep existing content</p></div>`;
         const mounted = whenMounted('da-greeting');
         initBrowse(container.querySelector('.browse'));
         await mounted;
@@ -134,10 +130,30 @@ describe('Browse authored tiles', () => {
         expect(sites.querySelector('da-browse-tiles')).to.equal(null);
         expect(sites.shadowRoot.querySelector('slot[name="tiles"]')).to.equal(null);
         expect(container.querySelector('[data-keep]')).not.to.equal(null);
-        expect(container.querySelector('.landing')).to.equal(landing);
-        expect(landing.innerHTML).to.equal(landingContent);
       });
     });
+
+  it('keeps the existing site input without redirecting when the Greeting section contains an old Landing block', async () => {
+    localStorage.removeItem('da-sites');
+    const redirect = sinon.stub(DaLanding.prototype, 'redirectToStart');
+    container.innerHTML = `<div class="section"><div class="browse"></div></div>
+      <div class="section">
+        <div class="greeting"><div><div><h1>Welcome</h1></div></div></div>
+        <div class="landing">${tileContent}</div>
+      </div>`;
+    const mounted = whenMounted('da-greeting');
+    initBrowse(container.querySelector('.browse'));
+    await mounted;
+    container.querySelectorAll('div.landing').forEach(initLanding);
+    const sites = container.querySelector('da-sites');
+    await sites.updateComplete;
+    expect(redirect.called).to.equal(false);
+    expect(sites.shadowRoot.querySelector('input[name="siteUrl"]')).not.to.equal(null);
+    expect(sites.shadowRoot.querySelector('.da-double-card-sandbox')).not.to.equal(null);
+    expect(sites.shadowRoot.querySelector('.da-double-card-add-new')).not.to.equal(null);
+    expect(loadIms.called).to.equal(false);
+    expect(handleSignIn.called).to.equal(false);
+  });
 
   it('shows authored tiles on a first visit without a greeting or sign-in', async () => {
     localStorage.removeItem('da-sites');
