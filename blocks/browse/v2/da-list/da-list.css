@@ -14,7 +14,6 @@
   --da-list-min-height: 56px;
   --da-card-width: 226px;
   --da-card-height: 300px;
-
   --da-list-columns: var(--da-list-select-width) minmax(0, 5fr) minmax(var(--da-list-type-width), 2fr) minmax(var(--da-list-date-width), 3fr) var(--da-list-action-width);
 }
 
@@ -193,8 +192,15 @@ da-file-item.is-expanded::after {
   background: light-dark(#fff, #000);
   display: grid;
   grid-template-columns: var(--da-list-columns);
+  column-gap: var(--da-list-column-gap, var(--s2-spacing-100, 8px));
   align-items: center;
   min-height: 46px;
+}
+
+@container browse-list (width >= 600px) {
+  .da-browse-table-header:has([data-column="folder"]) {
+    grid-template-columns: var(--da-list-select-width) minmax(0, var(--da-list-name-width, 442px)) minmax(var(--da-list-type-width), 1fr) var(--da-list-date-width) var(--da-list-action-width);
+  }
 }
 
 .da-browse-table-header.is-card {
