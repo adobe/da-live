@@ -1,11 +1,28 @@
 :host {
+  /* TODO: remove once the new start components support light mode. */
+  color-scheme: dark;
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
-  position: relative;
-  color: #fff;
-  background: #000;
+  color: var(--s2-gray-1000);
+  background:
+    radial-gradient(
+      ellipse 60% 520px at 15% 40px,
+      color-mix(in srgb, var(--s2-red-100) 40%, var(--s2-pink-200)) 20%,
+      transparent 100%
+    ),
+    radial-gradient(
+      ellipse 45% 520px at 48% 60px,
+      var(--s2-indigo-200, light-dark(rgb(235 238 255), rgb(35 0 110))) 20%,
+      transparent 100%
+    ),
+    radial-gradient(
+      ellipse 70% 620px at 78% 80px,
+      var(--s2-blue-200) 25%,
+      transparent 100%
+    ),
+    var(--s2-gray-25);
 }
 
 h2 {
@@ -21,43 +38,16 @@ a {
   color: #1379f3;
 }
 
-.gradient {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle, rgb(0 0 0 / 64.8%) 0%, rgb(0 0 0 / 52.4%) 100%);
+::slotted(da-greeting) {
+  display: block;
+  margin-bottom: var(--s2-spacing-600);
+  text-align: center;
 }
 
-.background {
-  width: 100vw;
-  height: 100vh;
-  object-fit: cover;
-  position: absolute;
-}
-
-.foreground {
-  position: relative;
-}
-
-ul.step-count {
-  list-style: none;
-  margin: 0 0 96px;
-  padding: 0;
-  display: flex;
-  justify-content: center;
-  gap: 200px;
-}
-
-ul.step-count li {
-  width: 96px;
-  height: 96px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: #ff00a0;
-  border-radius: 48px;
-  font-size: 32px;
-  font-weight: 700;
-  transition: all 0.5s ease;
+@media (width < 600px) {
+  ::slotted(da-greeting) {
+    margin-bottom: var(--s2-spacing-400);
+  }
 }
 
 .panels {
@@ -76,6 +66,7 @@ form.actions {
 
 div.git-input label {
   display: block;
+  color: var(--s2-gray-1000);
   font-size: 18px;
   margin-bottom: 4px;
 }
@@ -155,6 +146,7 @@ div.git-input input::placeholder {
 
 div.text-container {
   margin-block: 24px;
+  color: var(--s2-gray-1000);
 
   p {
     margin: 0;
@@ -283,13 +275,6 @@ div.template-container {
 }
 
 /* Step overrides */
-
-.step-1-active .step-2,
-.step-1-active .step-3,
-.step-2-active .step-3 {
-  opacity: 0.75;
-  background-color: rgb(62 0 39);
-}
 
 .step-1-panel,
 .step-2-panel,

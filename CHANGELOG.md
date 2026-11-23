@@ -1,3 +1,45 @@
+# [1.34.0](https://github.com/adobe/da-live/compare/v1.33.3...v1.34.0) (2026-11-23)
+
+
+### Features
+
+* add config editor for org and site settings ([#1667](https://github.com/adobe/da-live/issues/1667)) ([435355d](https://github.com/adobe/da-live/commit/435355d435452b888d23cbab9057103e78d529c3))
+
+## [1.33.3](https://github.com/adobe/da-live/compare/v1.33.2...v1.33.3) (2026-11-23)
+
+
+### Bug Fixes
+
+* enlarge fullsize extension dialogs ([#1774](https://github.com/adobe/da-live/issues/1774)) ([c07f3b0](https://github.com/adobe/da-live/commit/c07f3b031c8d11ef66df114159128efd4ff598b9))
+
+## [1.33.2](https://github.com/adobe/da-live/compare/v1.33.1...v1.33.2) (2026-11-23)
+
+
+### Bug Fixes
+
+* **nav:** show the product name only on landing ([#1702](https://github.com/adobe/da-live/issues/1702)) ([2e1f1a6](https://github.com/adobe/da-live/commit/2e1f1a6ca908bc386eac57538a39f3a61385adb1))
+
+## [1.33.1](https://github.com/adobe/da-live/compare/v1.33.0...v1.33.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* **sc:** anchor hidden switch input to its label ([#1766](https://github.com/adobe/da-live/issues/1766)) ([73b2e13](https://github.com/adobe/da-live/commit/73b2e13893b0b4a6bcff4aba5ba4ccc36732f5c5))
+
+# [1.33.0](https://github.com/adobe/da-live/compare/v1.32.0...v1.33.0) (2026-11-19)
+
+
+### Features
+
+* **start:** style cards in the consuming page ([#1751](https://github.com/adobe/da-live/issues/1751)) ([4341cf0](https://github.com/adobe/da-live/commit/4341cf0dfd97fb6e07037b66d62335ce9a2347c2))
+
+# [1.32.0](https://github.com/adobe/da-live/compare/v1.31.2...v1.32.0) (2026-11-19)
+
+
+### Features
+
+* **start:** dark gradient, greeting, no step count ([#1743](https://github.com/adobe/da-live/issues/1743)) ([9304163](https://github.com/adobe/da-live/commit/9304163e9422528d2b0375e2dcca6f7148911dd4))
+
 ## [1.31.2](https://github.com/adobe/da-live/compare/v1.31.1...v1.31.2) (2026-11-18)
 
 
