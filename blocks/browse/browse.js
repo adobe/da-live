@@ -19,7 +19,12 @@ function takeGreeting(el) {
 function takeBrowseBlocks(el) {
   const content = document.createElement('div');
   content.append(...el.querySelectorAll(':scope > div'));
-  const tiles = initTiles(content);
+  let tiles = initTiles(content);
+  const landing = el.closest('.section')?.nextElementSibling?.querySelector('div.landing');
+  if (landing) {
+    landing.remove();
+    if (!tiles.entries.length) tiles = initTiles(landing);
+  }
   return { greeting: takeGreeting(el), tiles: tiles.entries.length ? tiles : undefined };
 }
 

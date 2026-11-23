@@ -133,7 +133,7 @@ describe('Browse authored tiles', () => {
       });
     });
 
-  it('keeps the existing site input without redirecting when the Greeting section contains an old Landing block', async () => {
+  it('shows existing Landing tiles alongside the site input without redirecting or signing in', async () => {
     localStorage.removeItem('da-sites');
     const redirect = sinon.stub(DaLanding.prototype, 'redirectToStart');
     container.innerHTML = `<div class="section"><div class="browse"></div></div>
@@ -149,8 +149,12 @@ describe('Browse authored tiles', () => {
     await sites.updateComplete;
     expect(redirect.called).to.equal(false);
     expect(sites.shadowRoot.querySelector('input[name="siteUrl"]')).not.to.equal(null);
-    expect(sites.shadowRoot.querySelector('.da-double-card-sandbox')).not.to.equal(null);
-    expect(sites.shadowRoot.querySelector('.da-double-card-add-new')).not.to.equal(null);
+    const tiles = sites.querySelector('da-browse-tiles');
+    expect(tiles).not.to.equal(null);
+    await tiles.updateComplete;
+    expect([...tiles.shadowRoot.querySelectorAll('a')].map((link) => link.getAttribute('href')))
+      .to.deep.equal(['/#/aem-sandbox/block-collection', 'https://example.com/guide']);
+    expect(sites.shadowRoot.querySelector('.da-double-card')).to.equal(null);
     expect(loadIms.called).to.equal(false);
     expect(handleSignIn.called).to.equal(false);
   });
@@ -172,22 +176,56 @@ describe('Browse authored tiles', () => {
     expect(handleSignIn.called).to.equal(false);
   });
 
-  it('does not expose authored tiles while returning-visitor authentication is pending', async () => {
-    let finish;
-    loadIms.returns(new Promise((resolve) => { finish = resolve; }));
-    container.innerHTML = `<div class="section"><div class="browse">${tileContent}</div></div>`;
-    const browse = container.querySelector('.browse');
+  it('retains the existing cards for an invalid Landing tile table', async () => {
+    localStorage.removeItem('da-sites');
+    sinon.stub(console, 'warn');
+    const redirect = sinon.stub(DaLanding.prototype, 'redirectToStart');
+    container.innerHTML = `<div class="section"><div class="browse"></div></div>
+      <div class="section"><div class="landing"><div><div>Invalid tile</div></div></div></div>`;
     const mounted = whenMounted('da-sites');
-    initBrowse(browse);
+    initBrowse(container.querySelector('.browse'));
     const sites = await mounted;
+    container.querySelectorAll('div.landing').forEach(initLanding);
     await sites.updateComplete;
-    expect(browse.querySelector('da-browse-tiles, a')).to.equal(null);
-    const authenticated = whenMounted('da-browse-tiles');
-    finish({ accessToken: { token: 'test-token' } });
-    const tiles = await authenticated;
+    expect(redirect.called).to.equal(false);
+    expect(sites.shadowRoot.querySelector('input[name="siteUrl"]')).not.to.equal(null);
+    expect(sites.shadowRoot.querySelector('.da-double-card-sandbox')).not.to.equal(null);
+    expect(sites.shadowRoot.querySelector('.da-double-card-add-new')).not.to.equal(null);
+    expect(sites.querySelector('da-browse-tiles')).to.equal(null);
+  });
+
+  it('prefers Browse-authored rows when both tile tables exist', async () => {
+    container.innerHTML = `<div class="section"><div class="browse">${tileContent.replace('Sandbox', 'Browse action')}</div></div>
+      <div class="section"><div class="landing">${tileContent}</div></div>`;
+    const mounted = whenMounted('da-browse-tiles');
+    initBrowse(container.querySelector('.browse'));
+    const tiles = await mounted;
     await tiles.updateComplete;
-    expect(sites.querySelector('da-browse-tiles')).to.equal(tiles);
-    expect(tiles.shadowRoot.querySelectorAll('a')).to.have.length(2);
-    expect(handleSignIn.called).to.equal(false);
+    expect(tiles.shadowRoot.querySelector('a').textContent).to.include('Browse action');
+    expect(container.querySelector('div.landing')).to.equal(null);
+  });
+
+  [false, true].forEach((landingTable) => {
+    it(`keeps ${landingTable ? 'Landing' : 'Browse'} tiles detached while authentication is pending`, async () => {
+      let finish;
+      loadIms.returns(new Promise((resolve) => { finish = resolve; }));
+      container.innerHTML = landingTable
+        ? `<div class="section"><div class="browse"></div></div>
+          <div class="section"><div class="landing">${tileContent}</div></div>`
+        : `<div class="section"><div class="browse">${tileContent}</div></div>`;
+      const browse = container.querySelector('.browse');
+      const mounted = whenMounted('da-sites');
+      initBrowse(browse);
+      const sites = await mounted;
+      await sites.updateComplete;
+      expect(container.querySelector('da-browse-tiles, a')).to.equal(null);
+      const authenticated = whenMounted('da-browse-tiles');
+      finish({ accessToken: { token: 'test-token' } });
+      const tiles = await authenticated;
+      await tiles.updateComplete;
+      expect(sites.querySelector('da-browse-tiles')).to.equal(tiles);
+      expect(tiles.shadowRoot.querySelectorAll('a')).to.have.length(2);
+      expect(handleSignIn.called).to.equal(false);
+    });
   });
 });
