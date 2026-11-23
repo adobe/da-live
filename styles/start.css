@@ -9,3 +9,10 @@
   background: var(--s2-gray-25);
   box-shadow: var(--s2-drop-shadow-emphasized);
 }
+
+@media (width < 600px) {
+  .nx-cards.start {
+    width: calc(100% - 2 * var(--s2-spacing-300));
+    margin-block-end: var(--s2-spacing-300);
+  }
+}
