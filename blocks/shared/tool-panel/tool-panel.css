@@ -245,9 +245,8 @@
 .tool-panel-fullsize-dialog {
   position: fixed;
   inset: 0;
-  width: 90vw;
-  max-width: 1200px;
-  height: 80vh;
+  width: 95vw;
+  height: 90vh;
   margin: auto;
   padding: 0;
   border: 1px solid light-dark(var(--s2-gray-300), var(--s2-gray-600));
