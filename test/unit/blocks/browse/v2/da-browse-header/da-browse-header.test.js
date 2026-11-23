@@ -48,7 +48,7 @@ describe('da-browse-header', () => {
   it('shows the settings menu only at org and site roots, not inside folders', async () => {
     header.details = { org: 'org', path: '' };
     await header.updateComplete;
-    expect(settingsLabels()).to.deep.equal(['Configuration']);
+    expect(settingsLabels()).to.deep.equal(['Config', undefined, 'Config sheet']);
     const trigger = settingsMenu().querySelector('button[slot="trigger"]');
     expect(trigger.textContent.trim()).to.equal('Org Settings');
     expect(trigger.title).to.equal('Org Settings');
@@ -71,11 +71,11 @@ describe('da-browse-header', () => {
     await header._orgConfigCheck;
     header._canEditOrgConfig = true;
     await header.updateComplete;
-    expect(settingsLabels()).to.deep.equal(['Configuration', 'Permissions']);
+    expect(settingsLabels()).to.deep.equal(['Config', 'Permissions', undefined, 'Config sheet']);
 
     header._canEditOrgConfig = false;
     await header.updateComplete;
-    expect(settingsLabels()).to.deep.equal(['Configuration']);
+    expect(settingsLabels()).to.deep.equal(['Config', undefined, 'Config sheet']);
   });
 
   it('checks org config write access when the org changes', async () => {
@@ -88,7 +88,7 @@ describe('da-browse-header', () => {
     };
     header.details = { org: 'hdr-write', site: 'site', path: '' };
     await header.updateComplete;
-    expect(settingsLabels()).to.deep.equal(['Configuration']);
+    expect(settingsLabels()).to.deep.equal(['Config', undefined, 'Config sheet']);
     await header._orgConfigCheck;
     await header.updateComplete;
     expect(settingsLabels()).to.include('Permissions');
