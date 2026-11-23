@@ -729,7 +729,7 @@ describe('DaBrowse Component', () => {
       daBrowseComp.details = { org: 'org', site: 'site', fullpath: '/org/site' };
       daBrowseComp._canEditOrgConfig = true;
       const menu = renderMenu();
-      expect(labels(menu)).to.deep.equal(['Config', 'Permissions', undefined, 'Config sheet']);
+      expect(labels(menu)).to.deep.equal(['Configuration', 'Permissions', undefined, 'Config Sheet']);
       const trigger = menu.querySelector('button.da-breadcrumb-config[slot="trigger"]');
       expect(trigger.getAttribute('aria-label')).to.equal('Settings');
       expect(trigger.textContent.trim()).to.equal('');
@@ -739,13 +739,13 @@ describe('DaBrowse Component', () => {
     it('hides site permissions when the user cannot edit the org config', () => {
       daBrowseComp.details = { org: 'org', site: 'site', fullpath: '/org/site' };
       daBrowseComp._canEditOrgConfig = false;
-      expect(labels(renderMenu())).to.deep.equal(['Config', undefined, 'Config sheet']);
+      expect(labels(renderMenu())).to.deep.equal(['Configuration', undefined, 'Config Sheet']);
     });
 
     it('hides org permissions when the user cannot edit the org config', () => {
       daBrowseComp.details = { org: 'org', fullpath: '/org' };
       daBrowseComp._canEditOrgConfig = false;
-      expect(labels(renderMenu())).to.deep.equal(['Config', undefined, 'Config sheet']);
+      expect(labels(renderMenu())).to.deep.equal(['Configuration', undefined, 'Config Sheet']);
     });
   });
 });
