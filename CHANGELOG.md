@@ -1,3 +1,24 @@
+## [1.33.1](https://github.com/adobe/da-live/compare/v1.33.0...v1.33.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* **sc:** anchor hidden switch input to its label ([#1766](https://github.com/adobe/da-live/issues/1766)) ([73b2e13](https://github.com/adobe/da-live/commit/73b2e13893b0b4a6bcff4aba5ba4ccc36732f5c5))
+
+# [1.33.0](https://github.com/adobe/da-live/compare/v1.32.0...v1.33.0) (2026-11-19)
+
+
+### Features
+
+* **start:** style cards in the consuming page ([#1751](https://github.com/adobe/da-live/issues/1751)) ([4341cf0](https://github.com/adobe/da-live/commit/4341cf0dfd97fb6e07037b66d62335ce9a2347c2))
+
+# [1.32.0](https://github.com/adobe/da-live/compare/v1.31.2...v1.32.0) (2026-11-19)
+
+
+### Features
+
+* **start:** dark gradient, greeting, no step count ([#1743](https://github.com/adobe/da-live/issues/1743)) ([9304163](https://github.com/adobe/da-live/commit/9304163e9422528d2b0375e2dcca6f7148911dd4))
+
 ## [1.31.2](https://github.com/adobe/da-live/compare/v1.31.1...v1.31.2) (2026-11-18)
 
 
