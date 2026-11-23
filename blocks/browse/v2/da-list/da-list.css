@@ -142,8 +142,24 @@
   height: 18px;
 }
 
+.da-list-types-row span {
+  text-box: trim-both cap alphabetic;
+}
+
 .da-list-types-select-all {
   min-height: 32px;
+}
+
+.da-list-types-select-all span {
+  margin-left: 2px;
+}
+
+.menu-divider {
+  margin: calc(var(--s2-spacing-100) - 2px) var(--s2-spacing-200)
+    var(--s2-spacing-100);
+  border: none;
+  border-top: 1px solid var(--s2-gray-200);
+  border-radius: var(--s2-corner-radius-75);
 }
 
 /* List Item */
