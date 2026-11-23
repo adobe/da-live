@@ -107,6 +107,33 @@ describe('decorateArea', () => {
     expect(container.querySelector('img')).to.be.null;
   });
 
+  describe('Start cards styles', () => {
+    const { href } = new URL('../../../styles/start.css', import.meta.url);
+
+    afterEach(() => {
+      document.head.querySelector(`link[href="${href}"]`)?.remove();
+    });
+
+    it('does not load Start styling for Tools cards', () => {
+      container.innerHTML = '<div class="nx-cards tools"></div>';
+      decorateArea({ area: container });
+      expect(document.head.querySelector(`link[href="${href}"]`)).to.be.null;
+    });
+
+    it('loads styling once for authored cards without a Start block', async () => {
+      container.innerHTML = '<div class="nx-cards start"></div>';
+      decorateArea({ area: container });
+      const link = document.head.querySelector(`link[href="${href}"]`);
+      expect(link).to.exist;
+      await new Promise((resolve, reject) => {
+        link.addEventListener('load', resolve, { once: true });
+        link.addEventListener('error', reject, { once: true });
+      });
+      decorateArea({ area: container });
+      expect(document.head.querySelectorAll(`link[href="${href}"]`).length).to.equal(1);
+    });
+  });
+
   it('skips eager-load for images inside .browse when there is a hash', () => {
     window.location.hash = '#some-path';
     container.innerHTML = '<div class="browse"><img src="bg.jpg" loading="lazy" /></div>';
