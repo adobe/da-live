@@ -6,7 +6,10 @@ import { getSiteFavorites, toggleFavorite } from '../browse/shared/favorites.js'
 import { getBrowseSettings, updateBrowseSettings } from '../browse/v2/shared/settings.js';
 import { getRecentFiles } from '../shared/recent-files.js';
 import { getBrowseHref, getListItems, loadFilesByPath } from './utils.js';
+import initTiles from './tiles/tile-group.js';
 import '../browse/v2/da-list/da-list.js';
+
+export default initTiles;
 
 const { loadStyle } = await import(`${getNx()}/utils/utils.js`);
 const { loadIms, handleSignIn } = await import(`${getNx2()}/utils/ims.js`);
@@ -294,7 +297,7 @@ export class DaLanding extends LitElement {
 
 customElements.define('da-landing', DaLanding);
 
-export default function init(el) {
+export function loadLanding(el) {
   if (!document.adoptedStyleSheets.includes(background)) {
     document.adoptedStyleSheets.push(background);
   }

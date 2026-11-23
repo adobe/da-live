@@ -1,7 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import sinon from 'sinon';
 import '../../setup-nx.js';
-import init, { DaLanding } from '../../../../blocks/landing/landing.js';
+import { loadLanding as init, DaLanding } from '../../../../blocks/landing/landing.js';
 import { getNx2 } from '../../../../scripts/utils.js';
 
 const { getSiteOptions } = await import(`${getNx2()}/blocks/siteselector/site-utils.js`);
