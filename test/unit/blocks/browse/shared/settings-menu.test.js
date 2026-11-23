@@ -7,21 +7,19 @@ const { getSettingsMenuItems } = await import('../../../../../blocks/browse/shar
 
 describe('settings menu', () => {
   describe('getSettingsMenuItems', () => {
-    const SHEET = { divider: true };
+    const DIVIDER = { divider: true };
 
     it('lists the config editor, permissions, then the config sheet for the org', () => {
       expect(getSettingsMenuItems({ org: 'org', canEditOrgConfig: true })).to.deep.equal([
         { id: '/config/edit#/org', label: 'Configuration' },
         { id: '/config/permissions#/org', label: 'Permissions' },
-        SHEET,
+        DIVIDER,
         { id: '/config#/org/', label: 'Config Sheet' },
       ]);
     });
 
-    it('hides org permissions when the user cannot edit the org config', () => {
+    it('only lists the org config sheet when the user cannot edit the org config', () => {
       expect(getSettingsMenuItems({ org: 'org' })).to.deep.equal([
-        { id: '/config/edit#/org', label: 'Configuration' },
-        SHEET,
         { id: '/config#/org/', label: 'Config Sheet' },
       ]);
     });
@@ -30,15 +28,13 @@ describe('settings menu', () => {
       expect(getSettingsMenuItems({ org: 'org', site: 'site', canEditOrgConfig: true })).to.deep.equal([
         { id: '/config/edit#/org/site', label: 'Configuration' },
         { id: '/config/permissions#/org/site', label: 'Permissions' },
-        SHEET,
+        DIVIDER,
         { id: '/config#/org/site/', label: 'Config Sheet' },
       ]);
     });
 
-    it('hides site permissions when the user cannot edit the org config', () => {
+    it('only lists the site config sheet when the user cannot edit the org config', () => {
       expect(getSettingsMenuItems({ org: 'org', site: 'site', canEditOrgConfig: false })).to.deep.equal([
-        { id: '/config/edit#/org/site', label: 'Configuration' },
-        SHEET,
         { id: '/config#/org/site/', label: 'Config Sheet' },
       ]);
     });

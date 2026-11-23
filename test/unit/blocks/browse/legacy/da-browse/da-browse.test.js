@@ -736,16 +736,16 @@ describe('DaBrowse Component', () => {
       expect(trigger.querySelector('use[href="/img/icons/s2-icon-settings-20-n.svg#icon"]')).not.to.be.null;
     });
 
-    it('hides site permissions when the user cannot edit the org config', () => {
+    it('only shows the site config sheet when the user cannot edit the org config', () => {
       daBrowseComp.details = { org: 'org', site: 'site', fullpath: '/org/site' };
       daBrowseComp._canEditOrgConfig = false;
-      expect(labels(renderMenu())).to.deep.equal(['Configuration', undefined, 'Config Sheet']);
+      expect(labels(renderMenu())).to.deep.equal(['Config Sheet']);
     });
 
-    it('hides org permissions when the user cannot edit the org config', () => {
+    it('only shows the org config sheet when the user cannot edit the org config', () => {
       daBrowseComp.details = { org: 'org', fullpath: '/org' };
       daBrowseComp._canEditOrgConfig = false;
-      expect(labels(renderMenu())).to.deep.equal(['Configuration', undefined, 'Config Sheet']);
+      expect(labels(renderMenu())).to.deep.equal(['Config Sheet']);
     });
   });
 });
