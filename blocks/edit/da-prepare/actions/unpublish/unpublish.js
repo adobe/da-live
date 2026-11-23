@@ -1,4 +1,4 @@
-import { LitElement, html } from 'da-lit';
+import { LitElement, html, nothing } from 'da-lit';
 import getSheet from '../../../../shared/sheet.js';
 import { getNx2Api } from '../../../../../scripts/utils.js';
 
@@ -54,6 +54,12 @@ class DaUnpublish extends LitElement {
     return this._confirmText !== 'YES' || this._statusText || this._results?.length;
   }
 
+  get _confirmError() {
+    return this._confirmText?.length >= 3 && this._confirmText !== 'YES'
+      ? 'Type YES in uppercase.'
+      : '';
+  }
+
   renderResults() {
     return this._results.map((result) => html`<p>${result}</p>`);
   }
@@ -66,8 +72,11 @@ class DaUnpublish extends LitElement {
         type="text"
         placeholder="YES"
         @input=${({ target }) => { this._confirmText = target.value; }}
-        aria-label="Type yes to confirm unpublish"
-        value=${this._confirmText}></sl-input>`;
+        .error=${this._confirmError}
+        aria-label="Type YES to confirm unpublish"
+        aria-invalid=${this._confirmError ? 'true' : 'false'}
+        aria-description=${this._confirmError || nothing}
+        value=${this._confirmText ?? ''}></sl-input>`;
   }
 
   render() {

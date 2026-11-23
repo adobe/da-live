@@ -107,10 +107,14 @@ export default class DaListBase extends LitElement {
   }
 
   // Hooks for subclasses: loadDialog, renderDialog, renderUnpublishToggle, renderYesInput
-  upperCaseConfirm(e) {
-    const upper = e.target.value.toUpperCase();
-    if (e.target.value !== upper) e.target.value = upper;
-    this._confirmText = upper;
+  handleConfirmInput(e) {
+    this._confirmText = e.target.value;
+  }
+
+  get _confirmError() {
+    return this._confirmText?.length >= 3 && this._confirmText !== 'YES'
+      ? 'Type YES in uppercase.'
+      : '';
   }
 
   afterListChange() { }

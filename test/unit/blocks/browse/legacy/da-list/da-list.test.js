@@ -1247,19 +1247,44 @@ describe('DaList delete confirmation', () => {
     expect(getHeading(el)).to.equal('Are you sure you want to unpublish?');
   });
 
-  it('auto-uppercases lowercase typed into the YES input', async () => {
+  it('shows inline feedback for invalid confirmation and clears it when corrected', async () => {
     const el = await mountWithSelection([fileItem()], { unpublish: true });
     const input = getYesInput(el);
 
+    expect(input.error).to.equal('');
+    expect(input.getAttribute('aria-invalid')).to.equal('false');
+    expect(getDisabled(el)).to.equal(true);
+
     typeInto(input, 'yes');
     await el.updateComplete;
+    expect(input.value).to.equal('yes');
+    expect(getDisabled(el)).to.equal(true);
+    expect(input.getAttribute('aria-invalid')).to.equal('true');
+    expect(input.error).to.equal('Type YES in uppercase.');
+    expect(input.getAttribute('aria-description')).to.equal(input.error);
 
-    expect(input.value).to.equal('YES');
-    expect(el._confirmText).to.equal('YES');
+    typeInto(input, 'YE');
+    await el.updateComplete;
+    expect(getDisabled(el)).to.equal(true);
+    expect(input.getAttribute('aria-invalid')).to.equal('false');
+    expect(input.hasAttribute('aria-description')).to.equal(false);
+    expect(input.error).to.equal('');
+
+    typeInto(input, 'YES');
+    await el.updateComplete;
     expect(getDisabled(el)).to.equal(false);
+    expect(input.getAttribute('aria-invalid')).to.equal('false');
+    expect(input.hasAttribute('aria-description')).to.equal(false);
+    expect(input.error).to.equal('');
+
+    typeInto(input, '');
+    await el.updateComplete;
+    expect(getDisabled(el)).to.equal(true);
+    expect(input.getAttribute('aria-invalid')).to.equal('false');
+    expect(input.error).to.equal('');
   });
 
-  it('auto-uppercases for the delete-only big-selection gate too', async () => {
+  it('requires exact uppercase YES for the delete-only big-selection gate too', async () => {
     const items = Array.from({ length: 10 }, (_, i) => fileItem(`a${i}`));
     const el = await mountWithSelection(items);
     const input = getYesInput(el);
@@ -1267,9 +1292,10 @@ describe('DaList delete confirmation', () => {
     typeInto(input, 'yes');
     await el.updateComplete;
 
-    expect(input.value).to.equal('YES');
-    expect(el._confirmText).to.equal('YES');
-    expect(getDisabled(el)).to.equal(false);
+    expect(input.value).to.equal('yes');
+    expect(el._confirmText).to.equal('yes');
+    expect(getDisabled(el)).to.equal(true);
+    expect(input.getAttribute('aria-invalid')).to.equal('true');
   });
 
   it('does not rewrite already-uppercase value (caret-stable guard)', async () => {

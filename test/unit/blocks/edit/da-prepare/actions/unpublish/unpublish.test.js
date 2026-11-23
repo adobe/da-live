@@ -13,6 +13,52 @@ function makeUnpublish(details) {
 }
 
 describe('da-unpublish', () => {
+  it('requires exact YES and shows inline feedback until input is corrected or cleared', async () => {
+    const el = makeUnpublish({ fullpath: '/org/site/testpublishing.html' });
+    document.body.appendChild(el);
+
+    try {
+      await el.updateComplete;
+      const input = el.shadowRoot.querySelector('sl-input');
+      const button = el.shadowRoot.querySelector('sl-button');
+      const typeInto = async (value) => {
+        input.value = value;
+        input.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+        await el.updateComplete;
+      };
+
+      expect(button.hasAttribute('disabled')).to.equal(true);
+      expect(input.error).to.equal('');
+      expect(input.getAttribute('aria-invalid')).to.equal('false');
+
+      await typeInto('yes');
+      expect(input.value).to.equal('yes');
+      expect(button.hasAttribute('disabled')).to.equal(true);
+      expect(input.getAttribute('aria-invalid')).to.equal('true');
+      expect(input.error).to.equal('Type YES in uppercase.');
+      expect(input.getAttribute('aria-description')).to.equal(input.error);
+
+      await typeInto('YE');
+      expect(button.hasAttribute('disabled')).to.equal(true);
+      expect(input.getAttribute('aria-invalid')).to.equal('false');
+      expect(input.hasAttribute('aria-description')).to.equal(false);
+      expect(input.error).to.equal('');
+
+      await typeInto('YES');
+      expect(button.hasAttribute('disabled')).to.equal(false);
+      expect(input.getAttribute('aria-invalid')).to.equal('false');
+      expect(input.hasAttribute('aria-description')).to.equal(false);
+      expect(input.error).to.equal('');
+
+      await typeInto('');
+      expect(button.hasAttribute('disabled')).to.equal(true);
+      expect(input.getAttribute('aria-invalid')).to.equal('false');
+      expect(input.error).to.equal('');
+    } finally {
+      el.remove();
+    }
+  });
+
   it('Unpublishes HTML pages by their extensionless path', async () => {
     const { aem } = await getNx2Api();
     const origUnPreview = aem.unPreview;

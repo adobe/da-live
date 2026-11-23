@@ -44,8 +44,11 @@ export default class DaList extends DaListBase {
         type="text"
         placeholder="YES"
         autofocus=""
-        @input=${this.upperCaseConfirm}
+        @input=${this.handleConfirmInput}
+        .error=${this._confirmError}
         aria-label="Type YES to confirm"
+        aria-invalid=${this._confirmError ? 'true' : 'false'}
+        aria-description=${this._confirmError || nothing}
         value=${this._confirmText ?? ''}></sl-input>
     `;
   }
