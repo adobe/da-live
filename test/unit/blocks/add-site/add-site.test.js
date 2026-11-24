@@ -47,16 +47,22 @@ describe('add-site', () => {
     expect(button.disabled).to.be.false;
   });
 
-  it('rejects URLs that are not an AEM site', async () => {
-    await typeUrl('https://github.com/adobe/geometrixx');
-    el.shadowRoot.querySelector('form button').click();
-    await el.updateComplete;
-    const input = el.shadowRoot.querySelector('input');
-    expect(el.shadowRoot.querySelector('#site-error').textContent)
-      .to.equal('Enter an existing AEM site URL.');
-    expect(input.getAttribute('aria-invalid')).to.equal('true');
-    expect(input.getAttribute('aria-describedby')).to.equal('site-hint site-error');
-    expect(openSite.called).to.be.false;
+  [
+    'https://github.com/adobe/geometrixx',
+    'main--geometrixx--adobe.aem.page',
+    'not a URL',
+  ].forEach((value) => {
+    it(`shows the inline error for an invalid site URL: ${value}`, async () => {
+      await typeUrl(value);
+      el.shadowRoot.querySelector('form button').click();
+      await el.updateComplete;
+      const input = el.shadowRoot.querySelector('input');
+      expect(el.shadowRoot.querySelector('#site-error').textContent)
+        .to.equal('Enter an existing AEM site URL.');
+      expect(input.getAttribute('aria-invalid')).to.equal('true');
+      expect(input.getAttribute('aria-describedby')).to.equal('site-hint site-error');
+      expect(openSite.called).to.be.false;
+    });
   });
 
   it('opens the site in Browse', async () => {

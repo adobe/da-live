@@ -21,10 +21,6 @@ class DaAddSite extends LitElement {
     this.shadowRoot.adoptedStyleSheets = [buttons, form, styles];
   }
 
-  firstUpdated() {
-    this.shadowRoot.querySelector('#site-url')?.focus();
-  }
-
   _onInput({ target }) {
     this._siteUrl = target.value;
     this._error = undefined;
@@ -46,7 +42,7 @@ class DaAddSite extends LitElement {
 
   render() {
     return html`
-      <form class="nx-form-field ${this._error ? 'nx-field-error' : ''}" @submit=${this._onSubmit}>
+      <form class="nx-form-field ${this._error ? 'nx-field-error' : ''}" novalidate @submit=${this._onSubmit}>
         <label for="site-url">Already have an existing site?</label>
         <p id="site-hint">Enter the URL to get started.</p>
         <div class="site-entry">
