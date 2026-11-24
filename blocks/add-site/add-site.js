@@ -42,11 +42,11 @@ class DaAddSite extends LitElement {
 
   render() {
     return html`
-      <form class="nx-form-field ${this._error ? 'nx-field-error' : ''}" novalidate @submit=${this._onSubmit}>
+      <form class="nx-form-field ${this._error ? 'nx-field-error' : ''}" @submit=${this._onSubmit}>
         <label for="site-url">Already have an existing site?</label>
         <p id="site-hint">Enter the URL to get started.</p>
         <div class="site-entry">
-          <input class="nx-input" id="site-url" name="siteUrl" type="url"
+          <input class="nx-input" id="site-url" name="siteUrl" type="text" inputmode="url"
             autocomplete="url" placeholder="https://main--site--org.aem.page"
             aria-describedby=${this._error ? 'site-hint site-error' : 'site-hint'}
             aria-invalid=${this._error ? 'true' : nothing}
