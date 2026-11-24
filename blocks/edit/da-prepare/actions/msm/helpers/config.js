@@ -77,13 +77,28 @@ export function legacySource(org, site, path, opts = {}) {
   return daFetch(`${DA_ORIGIN}/source/${org}/${site}${path}`, { ...opts, noRedirect: true });
 }
 
+// nx2 keeps a failed backend check until the page reloads (da-nx hlx6probe
+// changes that), so trying again in the panel can't help.
+export async function siteIsHlx6(org, site) {
+  const { isHlx6 } = await getNx2Api();
+  try {
+    return await isHlx6(org, site);
+  } catch (e) {
+    throw new Error(`Could not check whether ${site} runs on Helix 6 (${e.message}). If this keeps happening, reload the page`);
+  }
+}
+
+export function siteBackends(org, base, satellite) {
+  return Promise.all([siteIsHlx6(org, base), siteIsHlx6(org, satellite)]);
+}
+
 // Only a 404 means the satellite has no page of its own. Any other failure
 // throws: reading it as "inherited" would offer Cancel inheritance, which
 // overwrites the page.
 export async function isPageLocal(org, site, pagePath) {
-  const { isHlx6, source } = await getNx2Api();
+  const { source } = await getNx2Api();
   const path = `${pagePath}.html`;
-  const head = await isHlx6(org, site)
+  const head = await siteIsHlx6(org, site)
     ? () => source.getMetadata({ org, site, path })
     : () => legacySource(org, site, path, { method: 'HEAD' });
   const resp = await paced(head);
@@ -93,9 +108,7 @@ export async function isPageLocal(org, site, pagePath) {
 }
 
 export async function inheritsFromBase(org, base, satellite) {
-  const { isHlx6 } = await getNx2Api();
-  const [baseHlx6, satelliteHlx6] = await Promise.all([isHlx6(org, base), isHlx6(org, satellite)]);
-  return !baseHlx6 && !satelliteHlx6;
+  return !(await siteBackends(org, base, satellite)).some(Boolean);
 }
 
 export async function checkOverrides(org, satellites, pagePath) {

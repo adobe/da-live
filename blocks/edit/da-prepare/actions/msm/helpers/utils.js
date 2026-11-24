@@ -1,7 +1,7 @@
 import { getNx, getNx2, getNx2Api } from '../../../../../../scripts/utils.js';
 import { DA_ORIGIN } from '../../../../../shared/constants.js';
 import { daFetch } from '../../../../../shared/utils.js';
-import { inheritsFromBase, legacySource } from './config.js';
+import { inheritsFromBase, legacySource, siteBackends, siteIsHlx6 } from './config.js';
 import paced from './pace.js';
 
 async function call(task, fallback) {
@@ -33,11 +33,8 @@ export function publishSatellite(org, satellite, pagePath) {
 
 export async function createOverride(org, base, satellite, pagePath) {
   const path = `${pagePath}.html`;
-  const { isHlx6, source } = await getNx2Api();
-  const [baseHlx6, satelliteHlx6] = await Promise.all([
-    isHlx6(org, base),
-    isHlx6(org, satellite),
-  ]);
+  const { source } = await getNx2Api();
+  const [baseHlx6, satelliteHlx6] = await siteBackends(org, base, satellite);
 
   // DA admin's /copy answers 204 even when the source is missing or the write
   // fails, so a legacy pair reads and writes the page itself.
@@ -89,9 +86,9 @@ export async function getSatellitePageStatus(org, satellite, pagePath) {
 }
 
 export async function deleteOverride(org, satellite, pagePath) {
-  const { isHlx6, source } = await getNx2Api();
+  const { source } = await getNx2Api();
   const path = `${pagePath}.html`;
-  const remove = await isHlx6(org, satellite)
+  const remove = await siteIsHlx6(org, satellite)
     ? () => source.delete({ org, site: satellite, path })
     : () => legacySource(org, satellite, path, { method: 'DELETE' });
   const result = await call(remove, 'Failed to delete override');
